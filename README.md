@@ -179,39 +179,40 @@ flowchart TB
     UPD -.->|checks + verifies| FEED
 ```
 
-OpenLeaf is local-first: a React webview for the UI, a Rust core that owns every
-disk, process, and network operation, and a bundled Tectonic engine for
-typesetting. The halves talk only over Tauri's IPC — nothing in the webview
-touches the filesystem or the network directly.
+OpenLeaf is local-first. A React webview draws the UI, a Rust core owns every
+disk, process, and network call, and a bundled Tectonic engine does the
+typesetting. The two halves only talk over Tauri's IPC, so nothing in the webview
+reaches the filesystem or the network on its own.
 
-**Security-hardened core.** Every file the UI *or the AI* touches is resolved
-through one Rust path guard that rejects absolute paths, `..` traversal, and
-symlink escapes, scoped to a single project — so a crafted path or project id
-can't read or write outside its own directory. The GitHub token never enters the
-webview and never lands in a git command's arguments: pushes authenticate through
-an environment-backed credential helper, and config is written atomically at
-`0600`.
+**The core is the security boundary.** Every file the UI or the AI touches goes
+through one Rust path guard. It rejects absolute paths, `..` traversal, and
+symlink escapes, and it's scoped to a single project, so a crafted path or id
+can't read or write outside its own folder. The GitHub token never reaches the
+webview and never shows up in a git command's arguments; pushes authenticate
+through an env-backed credential helper, and the config file is written
+atomically at `0600`.
 
-**Compile pipeline.** Compilation spawns the Tectonic (XeTeX) sidecar from Rust
-against a generated wrapper that neutralizes pdfLaTeX-only primitives, streams
-the live TeX log to the editor over IPC events, parses the `.log` into structured
-errors, and returns the PDF as raw bytes. A companion SyncTeX layer parses the
-gzip-compressed `.synctex.gz` and maps source ↔ PDF **both ways** — click the PDF
-to jump to the source line; move the cursor to highlight the rendered box.
+**Compiling.** A compile spawns the Tectonic (XeTeX) sidecar against a generated
+wrapper that neutralizes pdfLaTeX-only primitives, streams the live TeX log to
+the editor as it runs, parses the `.log` into structured errors, and hands back
+the PDF as raw bytes. A companion SyncTeX layer reads the gzip-compressed
+`.synctex.gz` and maps source to PDF both ways, so you can click the PDF to land
+on the source line, or move the cursor to highlight the rendered box.
 
-**Offline language checking.** Grammar and spelling run with no LaTeX parser and
-no network (Harper + Hunspell, both WASM): the document is *masked* — commands,
-math, and comments replaced with spaces — so the checker sees only prose, with an
-offset map that projects each finding back onto the real source position.
+**Checking prose without a LaTeX parser.** Grammar and spelling run entirely
+offline (Harper and Hunspell, both WASM). The trick is masking: commands, math,
+and comments get replaced with spaces before the checker sees the text, so it
+only ever reads prose. An offset map then projects each finding back onto the
+real source position.
 
-**AI agent.** The assistant is a multi-step, tool-calling loop (bring-your-own
-OpenAI / Anthropic / Ollama key) that reads files, edits, compiles, and inspects
-the *rendered* PDF text to verify its own work — with a git checkpoint taken
-before it edits and a human approval gate that must be cleared before any
-destructive change reaches disk.
+**The AI agent.** The assistant is a multi-step tool loop, with your own OpenAI,
+Anthropic, or Ollama key, that reads files, edits them, compiles, and then reads
+the rendered PDF text to check whether the edit actually worked. It commits a git
+checkpoint before it touches anything, and any destructive change waits for your
+approval before it hits disk.
 
-**Distribution.** Releases are produced for macOS, Windows, and Linux and carry a
-minisign-signed auto-update feed that the app verifies before installing.
+**Shipping.** Builds go out for macOS, Windows, and Linux with a minisign-signed
+update feed the app verifies before it installs anything.
 
 Built with Tauri 2, React 19, TypeScript, CodeMirror 6, pdf.js, Tectonic,
 Zustand, Tailwind v4 with Geist, Harper, and Hunspell (WASM).
