@@ -104,12 +104,12 @@ You get the polish of a cloud editor without handing your documents to one.
 
 | | OpenLeaf | Overleaf | VS Code + LaTeX Workshop |
 |---|---|---|---|
-| Works offline | ✅ | ❌ | ✅ |
-| Git built in | ✅ | Add-on | Manual |
-| Resume mode (ATS-clean, branchable) | ✅ | Templates | ❌ |
-| AI assistant | Built-in, BYO key | Paid add-on | Extensions |
-| Files stay on your disk | ✅ | ❌ | ✅ |
-| No account required | ✅ | ❌ | ✅ |
+| Works offline | Yes | No | Yes |
+| Git built in | Yes | Add-on | Manual |
+| Resume mode (ATS-clean, branchable) | Yes | Templates | No |
+| AI assistant | Built-in · your key or local Ollama | Paid add-on | Extensions |
+| Files stay on your disk | Yes | No | Yes |
+| No account required | Yes | No | Yes |
 
 Different tools, different bets. OpenLeaf's is that your documents belong on your machine, in Git, with AI you control.
 
@@ -227,7 +227,7 @@ flowchart TB
   GITBIN["git subprocess<br/>env-backed credential helper"]
   DISK["Local disk<br/>~/.openleaf/projects/&lt;id&gt; · real .git repos"]
   GHREMOTE["GitHub<br/>api.github.com + git remote"]
-  PROV["AI providers<br/>OpenAI · Anthropic · Ollama · BYO key"]
+  PROV["AI providers<br/>OpenAI · Anthropic (API key) · Ollama (local host)"]
   FEEDS["Update feed<br/>GitHub Releases · latest.json + .sig"]
 
   IPCC -->|"invoke(cmd, args)"| IPC
@@ -242,7 +242,7 @@ flowchart TB
   GITBIN -->|"push / pull · token via env"| GHREMOTE
   GHAPI -->|"Bearer token · Rust-side only"| GHREMOTE
   UPD -->|"GET latest.json · verify .sig"| FEEDS
-  AICHAT -.->|"streamText · direct, BYO key"| PROV
+  AICHAT -.->|"streamText · direct"| PROV
   AICHAT -.->|"tool calls: read / edit / compile"| IPCC
 
   classDef fe fill:#e0f2fe,stroke:#0284c7,stroke-width:1px,color:#0c4a6e;
@@ -255,8 +255,8 @@ flowchart TB
   class TEC,GITBIN,DISK,GHREMOTE,PROV,FEEDS ext;
   class IPC bound;
 
-  style FE fill:#f0f9ff,stroke:#0284c7,stroke-width:2px,color:#0c4a6e;
-  style BE fill:#fffbeb,stroke:#d97706,stroke-width:2px,color:#7c2d12;
+  style FE fill:none,stroke:#0284c7,stroke-width:2px,color:#0c4a6e;
+  style BE fill:none,stroke:#d97706,stroke-width:2px,color:#7c2d12;
 ```
 
 OpenLeaf is local-first. A React webview draws the UI, a Rust core owns every
@@ -285,8 +285,8 @@ and comments get replaced with spaces before the checker sees the text, so it
 only ever reads prose. An offset map then projects each finding back onto the
 real source position.
 
-**The AI agent.** The assistant is a multi-step tool loop, with your own OpenAI,
-Anthropic, or Ollama key, that reads files, edits them, compiles, and then reads
+**The AI agent.** The assistant is a multi-step tool loop, with your own OpenAI
+or Anthropic key (or a local Ollama host, no key needed), that reads files, edits, compiles, and then reads
 the rendered PDF text to check whether the edit actually worked. It commits a git
 checkpoint before it touches anything, and any destructive change waits for your
 approval before it hits disk.
