@@ -8,7 +8,7 @@ import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
 import { inverseFromClick } from "@/features/synctex";
 import { saveFileBase64, uint8ToBase64 } from "@/lib/tauri";
-import { logError } from "@/lib/log";
+import { notifyError, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 const MIN_SCALE = 0.4;
@@ -42,8 +42,9 @@ export function PreviewPane() {
       await refreshTree();
       setSaveOpen(false);
       setSaveName("");
+      toast.success("PDF saved to the project.");
     } catch (e) {
-      void logError("save pdf to project", e);
+      notifyError("save pdf to project", e, "Couldn't save the PDF into the project.");
     } finally {
       setSaving(false);
     }

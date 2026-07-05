@@ -31,6 +31,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Error & success toasts** - user-triggered actions (export, download,
+  create/fork/delete project, save PDF) now surface failures as a visible
+  toast instead of only writing to `~/.openleaf/app.log`. Lightweight,
+  dependency-free (`notifyError` logs *and* toasts).
 - **In-app auto-updates** - OpenLeaf checks for new releases on launch (and via
   About → Check for updates), then downloads, signature-verifies, installs, and
   restarts. Releases now ship signed updater artifacts and a `latest.json` feed.

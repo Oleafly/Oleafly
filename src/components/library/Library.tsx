@@ -18,6 +18,7 @@ import { GridPattern } from "@/components/ui/grid-pattern";
 import { useFavoritesStore } from "@/store/favorites";
 import { useProjectColorsStore } from "@/store/project-colors";
 import { logError } from "@/lib/log";
+import { notifyError, toast } from "@/lib/toast";
 import { celebrate } from "@/lib/confetti";
 import {
   ContextMenu,
@@ -63,7 +64,7 @@ export function Library() {
       celebrate();
       return true;
     } catch (e) {
-      void logError("create project", e);
+      notifyError("create project", e, "Couldn't create the project.");
       return false;
     }
   };
@@ -76,7 +77,7 @@ export function Library() {
       await refreshProjects();
       if (id) setProjectColor(id, DEFAULT_BOOK_COLOR);
     } catch (e) {
-      void logError("fork project", e);
+      notifyError("fork project", e, "Couldn't fork the project.");
     }
     setForkTarget(null);
     setForkName("");
@@ -218,8 +219,9 @@ export function Library() {
                       try {
                         await deleteProject(p.id);
                         await refreshProjects();
+                        toast.success(`Deleted "${p.name}".`);
                       } catch (e) {
-                        void logError("delete project", e);
+                        notifyError("delete project", e, `Couldn't delete "${p.name}".`);
                       }
                     }}
                   >

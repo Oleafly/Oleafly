@@ -25,7 +25,7 @@ import { useSettingsStore, type ViewMode } from "@/store/settings";
 import { exportCurrentPdf } from "@/features/export";
 import { downloadProjectZip, duplicateProject, exportDocument } from "@/lib/tauri";
 import { useFullscreen } from "@/lib/use-fullscreen";
-import { logError } from "@/lib/log";
+import { notifyError, toast } from "@/lib/toast";
 import { cn, isMac } from "@/lib/utils";
 
 const VIEW_OPTIONS: { mode: ViewMode; label: string; icon: typeof Columns2 }[] = [
@@ -69,8 +69,9 @@ export function TopToolbar() {
     setExporting("zip");
     try {
       await downloadProjectZip(projectId, dest);
+      toast.success("Project downloaded.");
     } catch (e) {
-      void logError("download zip", e);
+      notifyError("download zip", e, "Couldn't download the project zip.");
     } finally {
       setExporting(null);
     }
@@ -88,8 +89,9 @@ export function TopToolbar() {
     setExporting(format);
     try {
       await exportDocument(projectId, useFilesStore.getState().mainDoc || "main.tex", format, dest);
+      toast.success(`Exported ${format.toUpperCase()}.`);
     } catch (e) {
-      void logError(`export ${format}`, e);
+      notifyError(`export ${format}`, e);
     } finally {
       setExporting(null);
     }
@@ -111,7 +113,7 @@ export function TopToolbar() {
       setForkName("");
       void openProject(newId);
     } catch (e) {
-      void logError("fork project", e);
+      notifyError("fork project", e, "Couldn't fork the project.");
     } finally {
       setForkBusy(false);
     }

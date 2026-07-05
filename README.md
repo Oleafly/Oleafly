@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="public/leaf.svg" alt="OpenLeaf" width="120" height="120" />
+<img src="public/icon.png" alt="OpenLeaf" width="120" height="120" />
 
 # OpenLeaf
 
