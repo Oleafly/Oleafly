@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useGithubStore } from "@/store/github";
-import { getConfig, gitAutoCommit, gitPush, gitSetRemote } from "@/lib/tauri";
+import { gitAutoCommit, gitPush, gitSetRemote } from "@/lib/tauri";
 import {
   githubCreateRepo,
   githubListRepos,
@@ -44,7 +44,6 @@ export function PublishToGitHubDialog({
 }) {
   const status = useGithubStore((s) => s.status);
   const [tab, setTab] = useState<"new" | "existing">("new");
-  const [token, setToken] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -63,29 +62,28 @@ export function PublishToGitHubDialog({
     setMsg(null);
     setSelected(null);
     setRepoName(slug(projectName || "openleaf-project"));
-    void getConfig().then((c) => setToken(c.github_token));
   }, [open, projectName]);
 
   useEffect(() => {
-    if (!open || status !== "connected" || !token) return;
+    if (!open || status !== "connected") return;
     setLoadingRepos(true);
-    githubListRepos(token)
+    githubListRepos()
       .then(setRepos)
       .catch((e) => void logError("github list repos", e))
       .finally(() => setLoadingRepos(false));
-  }, [open, status, token]);
+  }, [open, status]);
 
   if (!open) return null;
 
   const note = (ok: boolean, text: string) => setMsg({ ok, text });
 
   const publishNew = async () => {
-    if (!projectId || !token) return;
+    if (!projectId) return;
     const name = slug(repoName.trim() || projectName || "openleaf-project");
     if (!name) return note(false, "Enter a repository name.");
     setBusy(true);
     try {
-      const repo = await githubCreateRepo(token, name, isPrivate);
+      const repo = await githubCreateRepo(name, isPrivate);
       // Ensure there's a commit to push (a brand-new project may have none yet),
       // then set a clean remote — auth is handled by gitPush's credential helper,
       // so the token is never written into .git/config.
@@ -103,7 +101,7 @@ export function PublishToGitHubDialog({
   };
 
   const publishExisting = async () => {
-    if (!projectId || !token || !selected) return;
+    if (!projectId || !selected) return;
     setBusy(true);
     try {
       await gitAutoCommit(projectId, "Initial commit");

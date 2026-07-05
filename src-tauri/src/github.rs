@@ -10,7 +10,9 @@
 //! The poll loop lives in the frontend (cancellable, non-blocking); each tick
 //! calls `gh_check_device_token` once.
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+
+use crate::config;
 
 const DEVICE_CODE_URL: &str = "https://github.com/login/device/code";
 const TOKEN_URL: &str = "https://github.com/login/oauth/access_token";
@@ -135,4 +137,140 @@ pub async fn gh_check_device_token(
             interval: None,
         }),
     }
+}
+
+// --- Authenticated GitHub REST API (token stays in the Rust core) ---
+//
+// These commands call api.github.com from Rust, reading the token from the
+// on-disk config. The token is NEVER returned to the webview (get_config blanks
+// it), so a webview compromise (XSS) can't read or exfiltrate it - it can only
+// ask the core to perform these specific, scoped actions.
+
+const API_USER: &str = "https://api.github.com/user";
+const API_REPOS: &str = "https://api.github.com/user/repos";
+
+#[derive(Serialize, Deserialize)]
+pub struct GitHubUser {
+    pub login: String,
+    #[serde(default)]
+    pub name: Option<String>,
+    #[serde(default)]
+    pub avatar_url: String,
+    #[serde(default)]
+    pub html_url: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct GitHubRepo {
+    pub full_name: String,
+    #[serde(default)]
+    pub html_url: String,
+    pub clone_url: String,
+    #[serde(default)]
+    pub private: bool,
+}
+
+/// Read the stored token, or a friendly error if GitHub isn't connected.
+fn require_token() -> Result<String, String> {
+    let cfg = config::read_config()?;
+    if cfg.github_token.is_empty() {
+        return Err("No GitHub token set. Connect in Settings → GitHub.".into());
+    }
+    Ok(cfg.github_token)
+}
+
+fn auth(req: reqwest::RequestBuilder, token: &str) -> reqwest::RequestBuilder {
+    req.header("Authorization", format!("Bearer {token}"))
+        .header("Accept", "application/vnd.github+json")
+        .header("X-GitHub-Api-Version", "2022-11-28")
+}
+
+/// Fetch the authenticated user for a given token (used to validate on connect).
+async fn fetch_user(token: &str) -> Result<GitHubUser, String> {
+    let client = http_client()?;
+    let resp = auth(client.get(API_USER), token)
+        .send()
+        .await
+        .map_err(|e| format!("network error: {e}"))?;
+    if resp.status() == reqwest::StatusCode::UNAUTHORIZED {
+        return Err("Invalid token (401).".into());
+    }
+    if !resp.status().is_success() {
+        return Err(format!("GitHub error ({}).", resp.status()));
+    }
+    resp.json::<GitHubUser>()
+        .await
+        .map_err(|e| format!("invalid response: {e}"))
+}
+
+/// Return the currently-connected GitHub user (validates the stored token).
+#[tauri::command]
+pub async fn gh_current_user() -> Result<GitHubUser, String> {
+    let token = require_token()?;
+    fetch_user(&token).await
+}
+
+/// Validate a token (OAuth or PAT) and persist it plus the resolved login.
+/// The token is written on the Rust side and never handed back to the webview.
+#[tauri::command]
+pub async fn gh_set_token(token: String) -> Result<GitHubUser, String> {
+    let token = token.trim().to_string();
+    if token.is_empty() {
+        return Err("Empty token.".into());
+    }
+    let user = fetch_user(&token).await?;
+    let mut cfg = config::read_config()?;
+    cfg.github_token = token;
+    cfg.github_user = user.login.clone();
+    config::write_config(&cfg)?;
+    Ok(user)
+}
+
+/// Clear the stored GitHub token + cached login (disconnect).
+#[tauri::command]
+pub fn gh_clear_token() -> Result<(), String> {
+    let mut cfg = config::read_config()?;
+    cfg.github_token = String::new();
+    cfg.github_user = String::new();
+    config::write_config(&cfg)
+}
+
+/// List the authenticated user's repositories (most recently updated first).
+#[tauri::command]
+pub async fn gh_list_repos() -> Result<Vec<GitHubRepo>, String> {
+    let token = require_token()?;
+    let client = http_client()?;
+    let url = format!("{API_REPOS}?per_page=100&sort=updated");
+    let resp = auth(client.get(url), &token)
+        .send()
+        .await
+        .map_err(|e| format!("network error: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(format!("Could not load repositories ({}).", resp.status()));
+    }
+    resp.json::<Vec<GitHubRepo>>()
+        .await
+        .map_err(|e| format!("invalid response: {e}"))
+}
+
+/// Create a new repository under the authenticated user.
+#[tauri::command]
+pub async fn gh_create_repo(name: String, private: bool) -> Result<GitHubRepo, String> {
+    let token = require_token()?;
+    let client = http_client()?;
+    let body = serde_json::json!({ "name": name, "private": private, "auto_init": false });
+    let resp = auth(client.post(API_REPOS), &token)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("network error: {e}"))?;
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let detail = resp.text().await.unwrap_or_default();
+        let detail: String = detail.chars().take(200).collect();
+        return Err(format!("Could not create repo ({status}). {detail}"));
+    }
+    resp.json::<GitHubRepo>()
+        .await
+        .map_err(|e| format!("invalid response: {e}"))
 }

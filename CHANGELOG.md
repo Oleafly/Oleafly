@@ -20,6 +20,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **GitHub token hardening** - the token is no longer embedded in git remote
   URLs (where it could appear in `ps`/reflogs); it's now supplied to `git` via
   an environment-backed credential helper.
+- **GitHub token never enters the webview** - the authenticated GitHub REST
+  calls (current user, list/create repos) now run in the Rust core, which reads
+  the token from disk; `get_config` no longer returns the token to the
+  frontend (only a `github_connected` flag). A webview/XSS compromise can no
+  longer read or exfiltrate the token.
+- **Config written securely** - `config.json` (GitHub token, AI keys) is now
+  written atomically at mode `0600` from creation, closing the brief
+  world-readable window left by the previous write-then-chmod approach.
 
 ### Added
 

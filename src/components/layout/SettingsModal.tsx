@@ -596,7 +596,6 @@ function GitHubSection({
   const disconnect = useGithubStore((s) => s.disconnect);
   const refresh = useGithubStore((s) => s.refresh);
 
-  const [token, setToken] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -618,10 +617,6 @@ function GitHubSection({
   useEffect(() => {
     if (ghStatus === "unknown") void refresh();
   }, [ghStatus, refresh]);
-
-  useEffect(() => {
-    void getConfig().then((c) => setToken(c.github_token));
-  }, []);
 
   useEffect(() => {
     if (!projectId) return;
@@ -680,7 +675,6 @@ function GitHubSection({
       await connectWithToken(token);
       if (cancelled()) return;
       setFlow(null);
-      setToken(token);
       note(true, `Connected as @${useGithubStore.getState().user?.login ?? "GitHub"}`);
     } catch (e) {
       if (cancelled()) return;
@@ -708,7 +702,6 @@ function GitHubSection({
     setFlowError(null);
     try {
       await connectWithToken(pat.trim());
-      setToken(pat.trim());
       setPat("");
       setShowAdvanced(false);
       note(true, `Connected as @${useGithubStore.getState().user?.login ?? "GitHub"}`);
@@ -721,7 +714,6 @@ function GitHubSection({
 
   const doDisconnect = async () => {
     await disconnect();
-    setToken("");
     note(true, "Disconnected.");
   };
 
@@ -755,14 +747,14 @@ function GitHubSection({
   };
 
   const createRepo = async () => {
-    if (!token) return note(false, "Connect GitHub first.");
+    if (!connected) return note(false, "Connect GitHub first.");
     const name = (repoName.trim() || projectName || projectId || "openleaf-project")
       .toLowerCase()
       .replace(/[^\w.-]+/g, "-")
       .replace(/^-+|-+$/g, "");
     setBusy(true);
     try {
-      const repo = await githubCreateRepo(token, name, isPrivate);
+      const repo = await githubCreateRepo(name, isPrivate);
       if (projectId) {
         // Set a CLEAN remote (no embedded token). Auth is supplied at push/pull
         // time by the Rust env-backed credential helper, so the token never
@@ -963,7 +955,7 @@ function GitHubSection({
               </Button>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" disabled={busy || !remote || !token} onClick={() => void push()}>
+              <Button size="sm" disabled={busy || !remote || !connected} onClick={() => void push()}>
                 <Github className="size-3.5" /> Push
               </Button>
               <Button size="sm" variant="secondary" disabled={busy || !remote} onClick={() => void pull()}>
@@ -996,7 +988,7 @@ function GitHubSection({
               </label>
               <Button
                 size="sm"
-                disabled={busy || !token}
+                disabled={busy || !connected}
                 onClick={() => void createRepo()}
               >
                 Create &amp; link
@@ -1045,6 +1037,7 @@ const AI_TOOLS: { name: string; desc: string }[] = [
 const DEFAULT_CFG: AppConfig = {
   github_token: "",
   github_user: "",
+  github_connected: false,
   ai_api_key: "",
   ai_provider: "openai",
   ai_model: "gpt-4o-mini",

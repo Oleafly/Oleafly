@@ -154,7 +154,7 @@ export function SourceControl() {
       setChanges(chg);
       setBranch(br);
       setRemote(rem);
-      setHasToken(!!cfg.github_token);
+      setHasToken(!!cfg.github_connected);
       setAheadBehind(ab);
       void useGitStatusStore.getState().refresh(projectId);
     } catch {

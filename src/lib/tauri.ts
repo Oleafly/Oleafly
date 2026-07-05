@@ -138,8 +138,12 @@ export const searchProject = (projectId: string, query: string) =>
   invoke<SearchHit[]>("search_project", { projectId, query });
 
 export interface AppConfig {
+  /** Always empty when read via `get_config` - the token never leaves the Rust
+   *  core. Use `github_connected` for presence; set it via `ghSetToken`. */
   github_token: string;
   github_user: string;
+  /** Whether a GitHub token is stored (derived; set by `get_config`). */
+  github_connected: boolean;
   ai_api_key: string;
   ai_provider: string;
   ai_model: string;
@@ -150,6 +154,30 @@ export interface AppConfig {
 export const getConfig = () => invoke<AppConfig>("get_config");
 export const setConfig = (config: AppConfig) =>
   invoke<void>("set_config", { config });
+
+// --- GitHub (token stays in the Rust core; these never take/return it) ---
+
+export interface GitHubUser {
+  login: string;
+  name: string | null;
+  avatar_url: string;
+  html_url: string;
+}
+
+export interface GitHubRepo {
+  full_name: string;
+  html_url: string;
+  clone_url: string;
+  private: boolean;
+}
+
+export const ghCurrentUser = () => invoke<GitHubUser>("gh_current_user");
+export const ghSetToken = (token: string) =>
+  invoke<GitHubUser>("gh_set_token", { token });
+export const ghClearToken = () => invoke<void>("gh_clear_token");
+export const ghListRepos = () => invoke<GitHubRepo[]>("gh_list_repos");
+export const ghCreateRepo = (name: string, isPrivate: boolean) =>
+  invoke<GitHubRepo>("gh_create_repo", { name, private: isPrivate });
 
 export const gitSetRemote = (projectId: string, url: string) =>
   invoke<void>("git_set_remote", { projectId, url });

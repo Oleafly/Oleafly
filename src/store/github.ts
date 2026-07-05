@@ -36,7 +36,7 @@ export const useGithubStore = create<GithubState>((set) => ({
   refresh: async () => {
     try {
       const cfg = await getConfig();
-      if (!cfg.github_token) {
+      if (!cfg.github_connected) {
         set({ status: "disconnected", user: null });
         return;
       }
@@ -51,7 +51,7 @@ export const useGithubStore = create<GithubState>((set) => ({
         : null;
       set({ status: "connected", user: cachedUser });
       try {
-        const user = await githubGetUser(cfg.github_token);
+        const user = await githubGetUser();
         set({ user });
       } catch {
         // Token present but invalid - treat as disconnected.
@@ -66,8 +66,8 @@ export const useGithubStore = create<GithubState>((set) => ({
   connectWithToken: async (token) => {
     set({ loading: true, error: null });
     try {
-      const user = await githubGetUser(token);
-      await saveGithubToken(token, user.login);
+      // Validates + persists the token Rust-side and returns the resolved user.
+      const user = await saveGithubToken(token);
       set({ status: "connected", user, loading: false });
     } catch (e) {
       set({ loading: false, error: e instanceof Error ? e.message : String(e) });

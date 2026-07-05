@@ -1,70 +1,42 @@
 import { invoke } from "@tauri-apps/api/core";
 import {
-  getConfig,
-  setConfig,
-  type AppConfig,
+  ghCurrentUser,
+  ghSetToken,
+  ghClearToken,
+  ghListRepos,
+  ghCreateRepo,
+  type GitHubUser,
+  type GitHubRepo,
 } from "@/lib/tauri";
 
-const GH_HEADERS = (token: string): HeadersInit => ({
-  Authorization: `Bearer ${token}`,
-  Accept: "application/vnd.github+json",
-  "X-GitHub-Api-Version": "2022-11-28",
-});
+export type { GitHubUser, GitHubRepo };
 
-export interface GitHubUser {
-  login: string;
-  name: string | null;
-  avatar_url: string;
-  html_url: string;
-}
+// The GitHub token lives only in the Rust core. Every authenticated call below
+// delegates to a Tauri command that reads the token server-side, so the webview
+// never holds the secret (an XSS can't read or exfiltrate it).
 
-export interface GitHubRepo {
-  full_name: string;
-  html_url: string;
-  clone_url: string;
-  private: boolean;
-}
-
-/** Validate a token by fetching the authenticated user. */
-export async function githubGetUser(token: string): Promise<GitHubUser> {
-  const r = await fetch("https://api.github.com/user", { headers: GH_HEADERS(token) });
-  if (!r.ok) {
-    throw new Error(r.status === 401 ? "Invalid token (401)." : `GitHub error (${r.status}).`);
-  }
-  return (await r.json()) as GitHubUser;
+/** Validate the stored token by fetching the authenticated user. */
+export function githubGetUser(): Promise<GitHubUser> {
+  return ghCurrentUser();
 }
 
 /** Create a new repository under the authenticated user. */
-export async function githubCreateRepo(
-  token: string,
-  name: string,
-  isPrivate: boolean
-): Promise<GitHubRepo> {
-  const r = await fetch("https://api.github.com/user/repos", {
-    method: "POST",
-    headers: { ...GH_HEADERS(token), "Content-Type": "application/json" },
-    body: JSON.stringify({ name, private: isPrivate, auto_init: false }),
-  });
-  if (!r.ok) {
-    const detail = await r.text();
-    throw new Error(`Could not create repo (${r.status}). ${detail.slice(0, 200)}`);
-  }
-  return (await r.json()) as GitHubRepo;
+export function githubCreateRepo(name: string, isPrivate: boolean): Promise<GitHubRepo> {
+  return ghCreateRepo(name, isPrivate);
 }
 
-/** Persist the token + cached login. */
-export async function saveGithubToken(token: string, user?: string) {
-  const cfg: AppConfig = await getConfig();
-  cfg.github_token = token.trim();
-  if (user !== undefined) cfg.github_user = user.trim();
-  await setConfig(cfg);
+/** List the authenticated user's repositories (most recently updated first). */
+export function githubListRepos(): Promise<GitHubRepo[]> {
+  return ghListRepos();
 }
 
-export async function clearGithubToken() {
-  const cfg: AppConfig = await getConfig();
-  cfg.github_token = "";
-  cfg.github_user = "";
-  await setConfig(cfg);
+/** Validate + persist a token (OAuth or PAT); returns the resolved user. */
+export function saveGithubToken(token: string): Promise<GitHubUser> {
+  return ghSetToken(token);
+}
+
+export function clearGithubToken(): Promise<void> {
+  return ghClearToken();
 }
 
 // --- OAuth device flow ---
@@ -116,27 +88,4 @@ export async function checkDeviceToken(
   if (r.status === "token" && r.token) return { status: "token", token: r.token };
   if (r.status === "slow_down" && r.interval) return { status: "slow_down", interval: r.interval };
   return { status: "pending" };
-}
-
-/** List the authenticated user's repositories (most recently updated first). */
-export async function githubListRepos(token: string): Promise<GitHubRepo[]> {
-  const r = await fetch(
-    "https://api.github.com/user/repos?per_page=100&sort=updated",
-    { headers: GH_HEADERS(token) }
-  );
-  if (!r.ok) {
-    throw new Error(`Could not load repositories (${r.status}).`);
-  }
-  return (await r.json()) as GitHubRepo[];
-}
-
-/**
- * Best-effort token revocation via the OAuth App API. Requires HTTP Basic auth
- * with the client id/secret; since we ship only the public client id, this is
- * a no-op fallback. Locally we always clear the token regardless.
- */
-export async function githubRevokeToken(_token: string): Promise<void> {
-  // No client secret available in a desktop app; rely on local clear + the
-  // user revoking at github.com/settings/applications if needed.
-  return;
 }
