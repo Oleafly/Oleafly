@@ -9,13 +9,17 @@ export interface CompileError {
 
 export interface CompileResult {
   ok: boolean;
-  pdf_base64: string | null;
+  has_pdf: boolean;
   log: string;
   errors: CompileError[];
   synctex_path: string | null;
   out_dir: string | null;
   compile_time_ms: number;
 }
+
+/** Fetch the last-compiled PDF as raw bytes (ArrayBuffer over IPC, no base64). */
+export const readCompiledPdf = (projectId: string) =>
+  invoke<ArrayBuffer>("read_compiled_pdf", { projectId });
 
 export const compileTex = (
   projectId: string,

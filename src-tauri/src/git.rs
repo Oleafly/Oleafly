@@ -56,10 +56,7 @@ pub fn git_auto_commit(project_id: String, message: String) -> Result<bool, Stri
 #[tauri::command]
 pub fn git_log(project_id: String) -> Result<Vec<GitCommit>, String> {
     let root = ensure_repo(&project_id)?;
-    let out = run_git(
-        &root,
-        &["log", "--pretty=format:%H%x09%h%x09%ct%x09%s"],
-    )?;
+    let out = run_git(&root, &["log", "--pretty=format:%H%x09%h%x09%ct%x09%s"])?;
     let text = String::from_utf8_lossy(&out.stdout);
     let mut commits = Vec::new();
     for line in text.lines() {
@@ -182,7 +179,20 @@ fn run_git_authed(
     // only for a `get` request, reading the secret from the environment.
     let helper = "credential.helper=!f() { test \"$1\" = get && \
         printf 'username=x-access-token\\npassword=%s\\n' \"$OPENLEAF_GH_TOKEN\"; }; f";
-    let mut full: Vec<&str> = vec!["-c", helper, "-c", "credential.useHttpPath=false"];
+    // `credential.helper` is multi-valued: helpers from the machine's config
+    // (macOS keychain, a global `~/.gitconfig` helper, etc.) run BEFORE a helper
+    // added with `-c`. A stale or different-account github.com credential cached
+    // there would then win over our token and fail auth - which GitHub reports
+    // as a misleading "Repository not found" (404). Reset the list with an empty
+    // value FIRST so only our env-backed helper is consulted.
+    let mut full: Vec<&str> = vec![
+        "-c",
+        "credential.helper=",
+        "-c",
+        helper,
+        "-c",
+        "credential.useHttpPath=false",
+    ];
     full.extend_from_slice(args);
     Command::new("git")
         .args(&full)
@@ -275,7 +285,12 @@ pub fn git_ahead_behind(project_id: String) -> Result<AheadBehind, String> {
     }
     let out = run_git(
         &root,
-        &["rev-list", "--left-right", "--count", &format!("{upstream}...{branch}")],
+        &[
+            "rev-list",
+            "--left-right",
+            "--count",
+            &format!("{upstream}...{branch}"),
+        ],
     )?;
     if !out.status.success() {
         return Ok(AheadBehind {
@@ -304,7 +319,9 @@ pub async fn git_push(project_id: String) -> Result<String, String> {
         return Err("No GitHub token set. Add one in Settings → GitHub.".into());
     }
     let remote_out = run_git(&root, &["remote", "get-url", "origin"])?;
-    let remote = String::from_utf8_lossy(&remote_out.stdout).trim().to_string();
+    let remote = String::from_utf8_lossy(&remote_out.stdout)
+        .trim()
+        .to_string();
     if remote.is_empty() {
         return Err("No remote 'origin' set for this project.".into());
     }
@@ -323,7 +340,9 @@ pub async fn git_pull(project_id: String) -> Result<String, String> {
     let root = ensure_repo(&project_id)?;
     let cfg = config::read_config()?;
     let remote_out = run_git(&root, &["remote", "get-url", "origin"])?;
-    let remote = String::from_utf8_lossy(&remote_out.stdout).trim().to_string();
+    let remote = String::from_utf8_lossy(&remote_out.stdout)
+        .trim()
+        .to_string();
     if remote.is_empty() {
         return Err("No remote 'origin' set for this project.".into());
     }
@@ -360,11 +379,14 @@ pub fn git_status(project_id: String) -> Result<Vec<GitFileChange>, String> {
     let text = String::from_utf8_lossy(&out.stdout);
     let mut changes = Vec::new();
     for line in text.lines() {
-        if line.len() < 3 {
+        // Porcelain status codes (the first two columns) are always ASCII, so
+        // index the bytes directly - avoids a panic on a multi-byte first char.
+        let bytes = line.as_bytes();
+        if bytes.len() < 3 {
             continue;
         }
-        let x = line.chars().next().unwrap();
-        let y = line.chars().nth(1).unwrap();
+        let x = bytes[0] as char;
+        let y = bytes[1] as char;
         // porcelain "XY path" or "XY orig -> path"
         let rest = &line[3..];
         let path = rest.split(" -> ").last().unwrap_or(rest).trim().to_string();
@@ -388,11 +410,7 @@ pub fn git_status(project_id: String) -> Result<Vec<GitFileChange>, String> {
 }
 
 #[tauri::command]
-pub fn git_diff(
-    project_id: String,
-    path: Option<String>,
-    staged: bool,
-) -> Result<String, String> {
+pub fn git_diff(project_id: String, path: Option<String>, staged: bool) -> Result<String, String> {
     let root = ensure_repo(&project_id)?;
 
     // Untracked files aren't shown by `git diff` (returns empty). Detect an

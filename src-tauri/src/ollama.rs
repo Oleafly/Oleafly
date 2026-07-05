@@ -71,9 +71,21 @@ mod tests {
         assert_eq!(base_url(""), "http://localhost:11434");
         assert_eq!(base_url("  "), "http://localhost:11434");
         assert_eq!(base_url("http://localhost:11434"), "http://localhost:11434");
-        assert_eq!(base_url("http://localhost:11434/"), "http://localhost:11434");
-        assert_eq!(base_url("http://localhost:11434/v1"), "http://localhost:11434");
-        assert_eq!(base_url("http://localhost:11434/v1/"), "http://localhost:11434");
-        assert_eq!(base_url("http://192.168.1.9:11434"), "http://192.168.1.9:11434");
+        assert_eq!(
+            base_url("http://localhost:11434/"),
+            "http://localhost:11434"
+        );
+        assert_eq!(
+            base_url("http://localhost:11434/v1"),
+            "http://localhost:11434"
+        );
+        assert_eq!(
+            base_url("http://localhost:11434/v1/"),
+            "http://localhost:11434"
+        );
+        assert_eq!(
+            base_url("http://192.168.1.9:11434"),
+            "http://192.168.1.9:11434"
+        );
     }
 }

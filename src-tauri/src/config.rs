@@ -135,9 +135,11 @@ mod tests {
     fn write_config_round_trips() {
         let dir = temp_dir();
         let path = dir.join("config.json");
-        let mut cfg = AppConfig::default();
-        cfg.github_token = "secret-token".to_string();
-        cfg.ai_provider = "anthropic".to_string();
+        let cfg = AppConfig {
+            github_token: "secret-token".to_string(),
+            ai_provider: "anthropic".to_string(),
+            ..Default::default()
+        };
         write_config_at(&path, &cfg).unwrap();
 
         let read: AppConfig =
@@ -156,7 +158,10 @@ mod tests {
         write_config_at(&path, &AppConfig::default()).unwrap();
         // No group/other bits at any point - the file is created at 0600.
         let mode = std::fs::metadata(&path).unwrap().permissions().mode() & 0o777;
-        assert_eq!(mode, 0o600, "config must be owner-read/write only, got {mode:o}");
+        assert_eq!(
+            mode, 0o600,
+            "config must be owner-read/write only, got {mode:o}"
+        );
         std::fs::remove_dir_all(&dir).ok();
     }
 
@@ -165,8 +170,10 @@ mod tests {
         let dir = temp_dir();
         let path = dir.join("config.json");
         write_config_at(&path, &AppConfig::default()).unwrap();
-        let mut cfg = AppConfig::default();
-        cfg.github_user = "octocat".to_string();
+        let cfg = AppConfig {
+            github_user: "octocat".to_string(),
+            ..Default::default()
+        };
         write_config_at(&path, &cfg).unwrap();
         let read: AppConfig =
             serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();

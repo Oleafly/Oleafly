@@ -49,8 +49,8 @@ fn read_synctex_text(project_id: &str, _main_doc: &str) -> Result<String, String
     // Compiles run through the `_openleaf_entry` wrapper, so the synctex file
     // is named after it.
     let path = build.join(format!("{}.synctex.gz", paths::ENTRY_STEM));
-    let bytes = std::fs::read(&path)
-        .map_err(|e| format!("failed to read synctex {path:?}: {e}"))?;
+    let bytes =
+        std::fs::read(&path).map_err(|e| format!("failed to read synctex {path:?}: {e}"))?;
     let mut decoder = GzDecoder::new(&bytes[..]);
     let mut text = String::new();
     decoder
@@ -78,9 +78,9 @@ fn parse(text: &str) -> Doc {
                     }
                 }
             }
-        } else if line.starts_with('{') {
+        } else if let Some(rest) = line.strip_prefix('{') {
             // {<page> opens a page block.
-            page = line[1..].trim().parse().unwrap_or(0);
+            page = rest.trim().parse().unwrap_or(0);
         } else if line.starts_with('[') || line.starts_with('(') {
             if let Some(node) = parse_box(line, page) {
                 doc.nodes.push(node);
@@ -95,9 +95,7 @@ fn parse(text: &str) -> Doc {
 /// `(tag,line:h,v:width,height,depth` (hbox).
 fn parse_box(line: &str, page: i32) -> Option<Node> {
     let rest = &line[1..]; // drop leading [ or (
-    let mut split = rest.splitn(2, ':');
-    let head = split.next()?;
-    let tail = split.next()?;
+    let (head, tail) = rest.split_once(':')?;
 
     let mut head = head.split(',');
     let tag: i32 = head.next()?.parse().ok()?;
@@ -131,11 +129,14 @@ fn parse_box(line: &str, page: i32) -> Option<Node> {
 /// Resolve a synctex tag for a file. Tries exact basename first, then a
 /// path-suffix match (handles "sections/intro.tex" against absolute paths).
 fn tag_for_file(doc: &Doc, file: &str) -> Option<i32> {
-    let want = Path::new(file).file_name().and_then(|s| s.to_str()).unwrap_or(file);
+    let want = Path::new(file)
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or(file);
     if let Some((t, _)) = doc
         .inputs
         .iter()
-        .find(|(_, p)| Path::new(p).file_name().and_then(|s| s.to_str()).as_deref() == Some(want))
+        .find(|(_, p)| Path::new(p).file_name().and_then(|s| s.to_str()) == Some(want))
     {
         return Some(*t);
     }
@@ -164,7 +165,7 @@ fn forward(doc: &Doc, file: &str, line: i32) -> Option<SynctexRect> {
     if let Some(chosen) = exact.into_iter().min_by(|a, b| {
         (a.width * (a.height + a.depth))
             .partial_cmp(&(b.width * (b.height + b.depth)))
-            .unwrap()
+            .unwrap_or(std::cmp::Ordering::Equal)
     }) {
         return Some(to_rect(chosen));
     }
@@ -193,7 +194,7 @@ fn inverse(doc: &Doc, page: i32, x: f64, y: f64) -> Option<SynctexHit> {
     let best = doc.nodes.iter().filter(|n| n.page == page).min_by(|a, b| {
         let da = dist(a, x, y);
         let db = dist(b, x, y);
-        da.partial_cmp(&db).unwrap()
+        da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
     })?;
     let file = doc
         .inputs
@@ -285,7 +286,11 @@ mod tests {
         assert!(rect.page >= 1, "page should be >= 1");
         // A box at the very top margin can sit a hair above the reference point,
         // so allow a small negative y rather than requiring y >= 0.
-        assert!(rect.y > -5.0 && rect.y < 2000.0, "y={} out of range", rect.y);
+        assert!(
+            rect.y > -5.0 && rect.y < 2000.0,
+            "y={} out of range",
+            rect.y
+        );
         assert!(rect.width > 0.0);
 
         // Inverse at the box center must round-trip to the same source line.

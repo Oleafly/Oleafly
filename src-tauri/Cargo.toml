@@ -35,3 +35,13 @@ reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]
+
+# Size-optimized release build. `opt-level = "s"` favors size, `lto` + a single
+# codegen unit let the linker drop dead code across crates, and `strip` removes
+# symbols. (We keep the default unwinding panic so Tauri can still turn a
+# command panic into an error instead of crashing the app.)
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true

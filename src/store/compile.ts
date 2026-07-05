@@ -1,8 +1,8 @@
 import { create } from "zustand";
 import { listen } from "@tauri-apps/api/event";
 import {
-  base64ToUint8Array,
   compileProject,
+  readCompiledPdf,
   type CompileError,
   type CompileResult,
 } from "@/lib/tauri";
@@ -57,8 +57,8 @@ export const useCompileStore = create<CompileState>((set) => ({
     });
     try {
       const result = await compileProject(projectId, mainDoc, offline);
-      const bytes = result.pdf_base64
-        ? base64ToUint8Array(result.pdf_base64)
+      const bytes = result.has_pdf
+        ? new Uint8Array(await readCompiledPdf(projectId))
         : null;
       set({
         status: bytes ? "success" : "error",

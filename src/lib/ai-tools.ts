@@ -30,7 +30,31 @@ type RawToolDef = {
   execute: (input: Record<string, unknown>) => Promise<unknown>;
 };
 
-export function createOpenLeafTools() {
+/** A request to the user to approve a destructive AI edit before it runs. */
+export interface ToolApprovalRequest {
+  /** The tool being called, e.g. "delete_file". */
+  tool: string;
+  /** One-line summary of what will happen (e.g. `Delete sections/intro.tex`). */
+  summary: string;
+  /** The primary path affected, when there is one. */
+  path?: string;
+}
+
+/**
+ * Ask the user to approve a destructive edit. Returns true to proceed, false to
+ * decline. When no callback is provided (e.g. a non-interactive context), edits
+ * proceed as before.
+ */
+export type ConfirmFn = (req: ToolApprovalRequest) => Promise<boolean>;
+
+export function createOpenLeafTools(opts?: { confirm?: ConfirmFn }) {
+  const confirm = opts?.confirm;
+  const declined = (tool: string) => ({
+    error: "The user declined this change.",
+    declined: true as const,
+    tool,
+  });
+
   const tools: Record<string, RawToolDef> = {
     read_file: {
       description:
@@ -71,6 +95,9 @@ export function createOpenLeafTools() {
         const { path, content } = input as { path: string; content: string };
         const id = pid();
         if (!id) return { error: "No project open" };
+        if (confirm && !(await confirm({ tool: "write_file", summary: `Write ${path}`, path }))) {
+          return declined("write_file");
+        }
         try {
           await writeFileContent(id, path, content);
           store().applyExternalWrite(path, content);
@@ -101,6 +128,9 @@ export function createOpenLeafTools() {
         };
         const id = pid();
         if (!id) return { error: "No project open" };
+        if (confirm && !(await confirm({ tool: "replace_in_file", summary: `Edit ${path}`, path }))) {
+          return declined("replace_in_file");
+        }
         try {
           const original = await readFileContent(id, path);
           if (!original.includes(find)) {
@@ -159,6 +189,9 @@ export function createOpenLeafTools() {
         const { from, to } = input as { from: string; to: string };
         const id = pid();
         if (!id) return { error: "No project open" };
+        if (confirm && !(await confirm({ tool: "rename_file", summary: `Rename ${from} → ${to}`, path: from }))) {
+          return declined("rename_file");
+        }
         try {
           await apiRenameFile(id, from, to);
           store().applyExternalRename(from, to);
@@ -183,6 +216,9 @@ export function createOpenLeafTools() {
         const path = input.path as string;
         const id = pid();
         if (!id) return { error: "No project open" };
+        if (confirm && !(await confirm({ tool: "delete_file", summary: `Delete ${path}`, path }))) {
+          return declined("delete_file");
+        }
         try {
           await apiDeleteFile(id, path);
           store().applyExternalDelete(path);
@@ -209,7 +245,7 @@ export function createOpenLeafTools() {
           return {
             success: result?.ok ?? false,
             errors: result?.errors ?? [],
-            has_pdf: !!result?.pdf_base64,
+            has_pdf: result?.has_pdf ?? false,
             log_tail: log.slice(-4000),
           };
         } catch (e) {

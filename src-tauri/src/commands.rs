@@ -1,5 +1,5 @@
-use base64::{engine::general_purpose::STANDARD, Engine};
 use serde::Serialize;
+use tauri::ipc::Response;
 use tauri::{Emitter, State};
 use tauri_plugin_shell::process::CommandEvent;
 use tauri_plugin_shell::ShellExt;
@@ -30,7 +30,9 @@ pub struct CompileError {
 #[derive(Serialize, Default)]
 pub struct CompileResult {
     pub ok: bool,
-    pub pdf_base64: Option<String>,
+    /// Whether a PDF was produced. The bytes are fetched separately via
+    /// `read_compiled_pdf` (raw bytes over IPC, no base64 tax).
+    pub has_pdf: bool,
     pub log: String,
     pub errors: Vec<CompileError>,
     pub synctex_path: Option<String>,
@@ -90,21 +92,7 @@ pub async fn compile_project(
 
     let compile_start = std::time::Instant::now();
 
-    let mut args: Vec<String> = vec![
-        "-X".into(),
-        "compile".into(),
-        "--synctex".into(),
-        "--keep-logs".into(),
-        "--print".into(),
-        "--outdir".into(),
-        out_str.clone(),
-        "-Z".into(),
-        search_opt,
-        entry_str.clone(),
-    ];
-    if offline.unwrap_or(false) {
-        args.insert(1, "--only-cached".into());
-    }
+    let args = tectonic_args(&out_str, &search_opt, &entry_str, offline.unwrap_or(false));
     let arg_refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
 
     let (mut rx, _child) = sidecar
@@ -145,18 +133,15 @@ pub async fn compile_project(
     let pdf_path = build_dir.join(format!("{stem}.pdf"));
     let synctex_path = build_dir.join(format!("{stem}.synctex.gz"));
 
-    let pdf_base64 = if pdf_path.exists() {
-        let bytes = std::fs::read(&pdf_path).map_err(|e| format!("failed to read pdf: {e}"))?;
-        Some(STANDARD.encode(&bytes))
-    } else {
-        None
-    };
+    // The PDF bytes are fetched separately (read_compiled_pdf) as raw bytes; here
+    // we only report whether one was produced.
+    let has_pdf = pdf_path.exists();
 
     let errors = parse_log_errors(&log);
 
     Ok(CompileResult {
-        ok: pdf_base64.is_some() && exit_code.unwrap_or(-1) == 0,
-        pdf_base64,
+        ok: has_pdf && exit_code.unwrap_or(-1) == 0,
+        has_pdf,
         log,
         errors,
         synctex_path: synctex_path
@@ -165,6 +150,40 @@ pub async fn compile_project(
         out_dir: Some(out_str),
         compile_time_ms: compile_start.elapsed().as_millis() as u64,
     })
+}
+
+/// Build the Tectonic sidecar argument list. Pure, so the ordering (notably
+/// that `--only-cached` follows the `compile` subcommand) is unit-testable.
+fn tectonic_args(out_dir: &str, search_path: &str, entry: &str, offline: bool) -> Vec<String> {
+    let mut args: Vec<String> = vec![
+        "-X".into(),
+        "compile".into(),
+        "--synctex".into(),
+        "--keep-logs".into(),
+        "--print".into(),
+        "--outdir".into(),
+        out_dir.into(),
+        "-Z".into(),
+        search_path.into(),
+        entry.into(),
+    ];
+    if offline {
+        // `--only-cached` is a flag of the `compile` subcommand, so it must come
+        // right AFTER `compile` (index 2), not between `-X` and `compile`.
+        args.insert(2, "--only-cached".into());
+    }
+    args
+}
+
+/// Return the last-compiled PDF for a project as raw bytes (no base64 tax).
+/// `tauri::ipc::Response` sends the bytes straight through IPC; the frontend
+/// receives an `ArrayBuffer`.
+#[tauri::command]
+pub fn read_compiled_pdf(project_id: String) -> Result<Response, String> {
+    let build = paths::build_dir(&project_id)?;
+    let pdf = build.join(format!("{}.pdf", paths::ENTRY_STEM));
+    let bytes = std::fs::read(&pdf).map_err(|e| format!("no compiled PDF: {e}"))?;
+    Ok(Response::new(bytes))
 }
 
 /// Parse a TeX `.log` for error/warning lines and their source line numbers.
@@ -201,4 +220,58 @@ fn parse_log_errors(log: &str) -> Vec<CompileError> {
         i += 1;
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_error_with_line_number() {
+        let log = "This is the transcript.\n! Undefined control sequence.\nl.42 \\badcmd\n";
+        let errs = parse_log_errors(log);
+        assert_eq!(errs.len(), 1);
+        assert_eq!(errs[0].line, Some(42));
+        assert_eq!(errs[0].kind, "error");
+        assert!(errs[0].message.contains("Undefined control sequence"));
+    }
+
+    #[test]
+    fn error_without_line_number() {
+        let errs = parse_log_errors("! Emergency stop.\n");
+        assert_eq!(errs.len(), 1);
+        assert_eq!(errs[0].line, None);
+    }
+
+    #[test]
+    fn clean_log_has_no_errors() {
+        assert!(parse_log_errors("Overfull \\hbox\nOutput written on doc.pdf\n").is_empty());
+    }
+
+    #[test]
+    fn stops_scanning_line_number_at_next_error() {
+        // The `l.N` belongs to the second error, not the first.
+        let log = "! First error.\n! Second error.\nl.7 foo\n";
+        let errs = parse_log_errors(log);
+        assert_eq!(errs.len(), 2);
+        assert_eq!(errs[0].line, None);
+        assert_eq!(errs[1].line, Some(7));
+    }
+
+    #[test]
+    fn offline_flag_immediately_follows_compile() {
+        let args = tectonic_args("/out", "search-path=/p", "e.tex", true);
+        let compile = args.iter().position(|a| a == "compile").unwrap();
+        let flag = args.iter().position(|a| a == "--only-cached").unwrap();
+        assert_eq!(args[0], "-X");
+        assert_eq!(flag, compile + 1, "--only-cached must follow `compile`");
+    }
+
+    #[test]
+    fn online_build_has_no_only_cached() {
+        let args = tectonic_args("/out", "search-path=/p", "e.tex", false);
+        assert!(!args.iter().any(|a| a == "--only-cached"));
+        assert_eq!(args[0], "-X");
+        assert_eq!(args[1], "compile");
+    }
 }

@@ -87,9 +87,7 @@ pub fn project_dir(project_id: &str) -> Result<PathBuf, String> {
 
 /// The per-project build directory: `<project>/.openleaf/build/`.
 pub fn build_dir(project_id: &str) -> Result<PathBuf, String> {
-    let dir = project_dir(project_id)?
-        .join(".openleaf")
-        .join("build");
+    let dir = project_dir(project_id)?.join(".openleaf").join("build");
     if !dir.exists() {
         std::fs::create_dir_all(&dir)
             .map_err(|e| format!("failed to create build dir {dir:?}: {e}"))?;

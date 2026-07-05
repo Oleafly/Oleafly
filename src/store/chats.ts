@@ -6,10 +6,19 @@ export interface ToolEntry {
   output?: string;
 }
 
+/** Lightweight metadata for a file/image the user attached to a message. Only
+ *  the name + media type are persisted (never the bytes) to protect the
+ *  localStorage quota; the bytes exist only in-session for the model call. */
+export interface AttachmentMeta {
+  name: string;
+  mediaType: string;
+}
+
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   toolCalls?: ToolEntry[];
+  attachments?: AttachmentMeta[];
 }
 
 export interface StoredChat {

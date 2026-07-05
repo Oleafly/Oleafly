@@ -11,6 +11,7 @@ import {
   History,
   Loader2,
   MessageSquare,
+  Paperclip,
   Plus,
   Sparkles,
   Square,
@@ -20,7 +21,10 @@ import {
 import { useFilesStore } from "@/store/files";
 import { getConfig, setConfig, gitLog, gitAutoCommit } from "@/lib/tauri";
 import { listOllamaModels } from "@/lib/ollama";
-import { createOpenLeafTools } from "@/lib/ai-tools";
+import { createOpenLeafTools, type ToolApprovalRequest } from "@/lib/ai-tools";
+import { ToolConfirm } from "@/components/ai/ToolConfirm";
+import { AttachmentChips, type PendingAttachment } from "@/components/ai/AttachmentChips";
+import { toast } from "@/lib/toast";
 import { buildModel as buildAiModel, defaultModel, PROVIDERS } from "@/lib/ai-providers";
 import { useSettingsStore } from "@/store/settings";
 import { useChatsStore, type ChatMessage, type StoredChat, type ToolEntry } from "@/store/chats";
@@ -211,6 +215,19 @@ const MessageItem = memo(function MessageItem({ msg }: { msg: ChatMessage }) {
       {msg.toolCalls?.map((tc, j) => (
         <ToolBadge key={j} tc={tc} />
       ))}
+      {msg.attachments && msg.attachments.length > 0 && (
+        <div className="flex max-w-[85%] flex-wrap justify-end gap-1.5">
+          {msg.attachments.map((a, j) => (
+            <span
+              key={j}
+              className="flex items-center gap-1 rounded-md border bg-muted/60 px-1.5 py-0.5 text-[11px] text-muted-foreground"
+            >
+              <Paperclip className="size-3" />
+              <span className="max-w-[140px] truncate">{a.name}</span>
+            </span>
+          ))}
+        </div>
+      )}
       {msg.content ? (
         <div
           className={cn(
@@ -265,6 +282,46 @@ export function ChatPanel() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [currentHead, setCurrentHead] = useState<string | null>(null);
   const [quotaWarning, setQuotaWarning] = useState(false);
+  const [pendingApproval, setPendingApproval] = useState<
+    { req: ToolApprovalRequest; resolve: (ok: boolean) => void } | null
+  >(null);
+  const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
+  // Always-current snapshot so `send` (a useCallback) reads the latest list
+  // without depending on it.
+  const attachmentsRef = useRef<PendingAttachment[]>(attachments);
+  attachmentsRef.current = attachments;
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const MAX_ATTACH = 6;
+  const MAX_ATTACH_BYTES = 10 * 1024 * 1024; // 10 MB per file
+
+  const addFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const picked: PendingAttachment[] = [];
+    for (const f of Array.from(files)) {
+      if (f.size > MAX_ATTACH_BYTES) {
+        toast.error(`${f.name} is too large (max 10 MB).`);
+        continue;
+      }
+      try {
+        const dataUrl = await new Promise<string>((res, rej) => {
+          const r = new FileReader();
+          r.onload = () => res(r.result as string);
+          r.onerror = () => rej(r.error);
+          r.readAsDataURL(f);
+        });
+        picked.push({
+          id: `${f.name}-${f.size}-${f.lastModified}`,
+          name: f.name,
+          mediaType: f.type || "application/octet-stream",
+          dataUrl,
+        });
+      } catch {
+        toast.error(`Couldn't read ${f.name}.`);
+      }
+    }
+    if (picked.length) setAttachments((cur) => [...cur, ...picked].slice(0, MAX_ATTACH));
+  };
   const scrollRef = useRef<HTMLDivElement>(null);
   // Aborts the in-flight AI run (Stop button, project switch, unmount).
   const abortRef = useRef<AbortController | null>(null);
@@ -412,12 +469,29 @@ export function ChatPanel() {
   };
 
   const send = useCallback(async (text: string) => {
-    if (!text.trim() || streaming) return;
+    const outgoing = attachmentsRef.current;
+    if ((!text.trim() && outgoing.length === 0) || streaming) return;
     if (!apiKey) { openAISettings(); return; }
 
     // Fresh abort controller for this run (Stop button / project switch / unmount).
     const ac = new AbortController();
     abortRef.current = ac;
+
+    // Human-in-the-loop gate for destructive edits: the tool's execute() awaits
+    // this, which naturally pauses the stream on that tool until the user picks.
+    // Resolves false if the run is stopped while a prompt is open.
+    const confirm = (req: ToolApprovalRequest): Promise<boolean> =>
+      new Promise((resolve) => {
+        if (ac.signal.aborted) { resolve(false); return; }
+        const finish = (ok: boolean) => {
+          ac.signal.removeEventListener("abort", onAbort);
+          setPendingApproval(null);
+          resolve(ok);
+        };
+        const onAbort = () => finish(false);
+        ac.signal.addEventListener("abort", onAbort, { once: true });
+        setPendingApproval({ req, resolve: finish });
+      });
 
     // Checkpoint the project before the agent edits anything, so a bad edit can
     // always be reverted from git history (best-effort; never blocks the chat).
@@ -429,10 +503,17 @@ export function ChatPanel() {
       }
     }
 
-    const userMsg: ChatMessage = { role: "user", content: text };
+    const userMsg: ChatMessage = {
+      role: "user",
+      content: text,
+      ...(outgoing.length
+        ? { attachments: outgoing.map((a) => ({ name: a.name, mediaType: a.mediaType })) }
+        : {}),
+    };
     const nextMessages: ChatMessage[] = [...messages, userMsg, { role: "assistant", content: "", toolCalls: [] }];
     setMessages(nextMessages);
     setInput("");
+    setAttachments([]);
     setStreaming(true);
     setThinkingText("Thinking…");
 
@@ -468,6 +549,21 @@ Do not stop until the task is genuinely complete. Briefly explain what you did.`
     // Using a plain array that grows as steps complete.
     type Msg = { role: string; content: string; tool_calls?: any[]; tool_call_id?: string; name?: string };
     const apiMessages: Msg[] = [...messages, userMsg].map((m) => ({ role: m.role, content: m.content }));
+    // Attach files/images to the final user message as multimodal content parts
+    // (images need a vision-capable model; other providers surface an error).
+    if (outgoing.length) {
+      apiMessages[apiMessages.length - 1] = {
+        role: "user",
+        content: [
+          ...(text.trim() ? [{ type: "text", text }] : []),
+          ...outgoing.map((a) =>
+            a.mediaType.startsWith("image/")
+              ? { type: "image", image: a.dataUrl }
+              : { type: "file", data: a.dataUrl, mediaType: a.mediaType },
+          ),
+        ],
+      } as unknown as Msg;
+    }
 
     try {
       // Runs a single model step against `apiMessages` and streams the result
@@ -554,7 +650,7 @@ Do not stop until the task is genuinely complete. Briefly explain what you did.`
         setThinkingText(step === 0 ? "Thinking…" : "Continuing…");
 
         const modelInstance = buildAiModel(provider, model, apiKey);
-        const tools = createOpenLeafTools();
+        const tools = createOpenLeafTools({ confirm });
 
         // Retry the same step on stream disconnects / transient API errors so a
         // dropped connection never abandons an unfinished task.
@@ -872,9 +968,39 @@ Do not stop until the task is genuinely complete. Briefly explain what you did.`
             )}
           </div>
 
+          {/* Destructive-edit approval prompt (pauses the AI on the tool) */}
+          {pendingApproval && (
+            <ToolConfirm
+              req={pendingApproval.req}
+              onApprove={() => pendingApproval.resolve(true)}
+              onReject={() => pendingApproval.resolve(false)}
+            />
+          )}
+
           {/* Prompt input */}
           <div className="shrink-0 border-t p-2.5">
+            <AttachmentChips
+              items={attachments}
+              onRemove={(id) => setAttachments((a) => a.filter((x) => x.id !== id))}
+            />
             <div className="flex items-end gap-2 rounded-lg border bg-background p-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="image/*,.pdf,.txt,.tex,.bib,.md"
+                className="hidden"
+                onChange={(e) => { void addFiles(e.target.files); e.target.value = ""; }}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                aria-label="Attach a file or image"
+                title="Attach a file or image"
+                className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <Paperclip className="size-4" />
+              </button>
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -897,7 +1023,7 @@ Do not stop until the task is genuinely complete. Briefly explain what you did.`
               ) : (
                 <button
                   onClick={() => void send(input)}
-                  disabled={!input.trim()}
+                  disabled={!input.trim() && attachments.length === 0}
                   aria-label="Send"
                   className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-white transition-colors hover:bg-primary disabled:opacity-40"
                 >

@@ -69,16 +69,38 @@ pub async fn gh_request_device_code(client_id: String) -> Result<DeviceCode, Str
             .get("error_description")
             .and_then(|v| v.as_str())
             .unwrap_or("");
-        let err = body.get("error").and_then(|v| v.as_str()).unwrap_or("error");
-        let msg = if desc.is_empty() { err.to_string() } else { desc.to_string() };
+        let err = body
+            .get("error")
+            .and_then(|v| v.as_str())
+            .unwrap_or("error");
+        let msg = if desc.is_empty() {
+            err.to_string()
+        } else {
+            desc.to_string()
+        };
         return Err(format!("GitHub: {}", msg.trim()));
     }
 
     Ok(DeviceCode {
-        device_code: body.get("device_code").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-        user_code: body.get("user_code").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-        verification_uri: body.get("verification_uri").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-        expires_in: body.get("expires_in").and_then(|v| v.as_u64()).unwrap_or(900),
+        device_code: body
+            .get("device_code")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
+        user_code: body
+            .get("user_code")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
+        verification_uri: body
+            .get("verification_uri")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
+        expires_in: body
+            .get("expires_in")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(900),
         interval: body.get("interval").and_then(|v| v.as_u64()).unwrap_or(5),
     })
 }

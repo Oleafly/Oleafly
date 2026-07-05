@@ -35,6 +35,7 @@ pub fn run() {
             commands::library_root,
             commands::app_version,
             commands::compile_project,
+            commands::read_compiled_pdf,
             github::gh_request_device_code,
             github::gh_check_device_token,
             github::gh_current_user,

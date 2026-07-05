@@ -133,6 +133,10 @@ function suggestionActions(sugs: GrammarSuggestion[]): Action[] {
  * proper nouns and identifiers (e.g. "L5") can be dismissed for good. Loads WASM
  * lazily.
  */
+/** Above this document size, skip the main-thread grammar pass to avoid jank.
+ *  Most single `.tex` files are well under this; book-length files exceed it. */
+const MAX_GRAMMAR_CHARS = 150_000;
+
 export function createHarperLinter() {
   return linter(
     async (view): Promise<Diagnostic[]> => {
@@ -143,6 +147,10 @@ export function createHarperLinter() {
         const projectId = useFilesStore.getState().projectId;
         const { showRegionalism, showWordChoice } = useSettingsStore.getState();
         const text = view.state.doc.toString();
+        // Guard: masking + WASM grammar linting both run on the main thread, so
+        // on a very large document they would jank the editor after the debounce.
+        // Skip the pass above a generous cap (covers normal single-file docs).
+        if (text.length > MAX_GRAMMAR_CHARS) return [];
         // Lint compacted prose (no masking gaps), then map spans back to the doc.
         const { prose, map } = maskToProse(text);
         const diags = await lintGrammar(prose, prose.length);

@@ -128,8 +128,7 @@ pub fn read_meta(project_id: &str) -> Result<ProjectMeta, String> {
             exports: Vec::new(),
         });
     }
-    let s = std::fs::read_to_string(&p)
-        .map_err(|e| format!("failed to read project.json: {e}"))?;
+    let s = std::fs::read_to_string(&p).map_err(|e| format!("failed to read project.json: {e}"))?;
     let mut meta: ProjectMeta =
         serde_json::from_str(&s).map_err(|e| format!("invalid project.json: {e}"))?;
     if meta.main_doc.is_empty() {
@@ -149,7 +148,9 @@ pub fn write_meta(project_id: &str, meta: &ProjectMeta) -> Result<(), String> {
 
 fn walk(root: &Path, dir: &Path, out: &mut Vec<FileEntry>) -> Result<(), String> {
     let entries = std::fs::read_dir(dir).map_err(|e| e.to_string())?;
-    let mut items: Vec<_> = entries.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
+    let mut items: Vec<_> = entries
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
     items.sort_by_key(|e| e.file_name());
     for entry in items {
         let name = entry.file_name();
@@ -226,11 +227,7 @@ pub fn delete_file(project_id: String, path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn rename_file(
-    project_id: String,
-    from: String,
-    to: String,
-) -> Result<(), String> {
+pub fn rename_file(project_id: String, from: String, to: String) -> Result<(), String> {
     let src = resolve(&project_id, &from)?;
     let dst = resolve(&project_id, &to)?;
     if let Some(parent) = dst.parent() {
@@ -247,8 +244,7 @@ pub fn copy_file(project_id: String, from: String, to: String) -> Result<(), Str
     if let Some(parent) = dst.parent() {
         std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
-    std::fs::copy(&src, &dst)
-        .map_err(|e| format!("copy failed: {e}"))?;
+    std::fs::copy(&src, &dst).map_err(|e| format!("copy failed: {e}"))?;
     Ok(())
 }
 
@@ -327,13 +323,21 @@ pub fn list_projects() -> Result<Vec<ProjectInfo>, String> {
             .map(|d| d.as_secs_f64())
             .unwrap_or(0.0);
         out.push(ProjectInfo {
-            name: if meta.name.is_empty() { id.clone() } else { meta.name },
+            name: if meta.name.is_empty() {
+                id.clone()
+            } else {
+                meta.name
+            },
             main_doc: meta.main_doc,
             id,
             updated_at,
         });
     }
-    out.sort_by(|a, b| b.updated_at.partial_cmp(&a.updated_at).unwrap());
+    out.sort_by(|a, b| {
+        b.updated_at
+            .partial_cmp(&a.updated_at)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     Ok(out)
 }
 
@@ -382,18 +386,17 @@ fn slugify(name: &str) -> String {
 
 // Random, human-meaningful project ids like "flying-pink-pikachu".
 const ADJECTIVES: &[&str] = &[
-    "flying", "swift", "cosmic", "velvet", "silent", "crimson", "lucky", "hidden",
-    "mellow", "quantum", "amber", "frosty", "jolly", "nimble", "rosy", "sunny",
-    "tidy", "vivid", "witty", "brave",
+    "flying", "swift", "cosmic", "velvet", "silent", "crimson", "lucky", "hidden", "mellow",
+    "quantum", "amber", "frosty", "jolly", "nimble", "rosy", "sunny", "tidy", "vivid", "witty",
+    "brave",
 ];
 const COLORS: &[&str] = &[
-    "pink", "azure", "emerald", "indigo", "maroon", "olive", "teal", "violet",
-    "cyan", "coral", "lavender", "ruby", "slate", "gold", "mint",
+    "pink", "azure", "emerald", "indigo", "maroon", "olive", "teal", "violet", "cyan", "coral",
+    "lavender", "ruby", "slate", "gold", "mint",
 ];
 const ANIMALS: &[&str] = &[
-    "pikachu", "falcon", "otter", "panda", "lynx", "koala", "heron", "narwhal",
-    "panther", "raven", "sable", "tiger", "viper", "wallaby", "yak", "zebu",
-    "fox", "wolf", "crane", "moth",
+    "pikachu", "falcon", "otter", "panda", "lynx", "koala", "heron", "narwhal", "panther", "raven",
+    "sable", "tiger", "viper", "wallaby", "yak", "zebu", "fox", "wolf", "crane", "moth",
 ];
 
 fn pick<'a>(list: &'a [&'a str], seed: &mut u64) -> &'a str {
@@ -440,9 +443,9 @@ pub type Template = &'static [(&'static str, &'static str)];
 
 const BLANK_TEMPLATE: Template = &[("main.tex", DEFAULT_MAIN_TEX)];
 
-const ATS_RESUME_TEMPLATE: Template = &[
-    ("main.tex",
-"\\documentclass[11pt,letterpaper]{article}\n\
+const ATS_RESUME_TEMPLATE: Template = &[(
+    "main.tex",
+    "\\documentclass[11pt,letterpaper]{article}\n\
 \\usepackage[T1]{fontenc}\n\
 \\usepackage[margin=0.6in]{geometry}\n\
 \\usepackage{titlesec}\n\
@@ -502,8 +505,8 @@ and shipping high-impact products end-to-end.\n\
 \\textbf{Languages:} Python, Go, Rust, TypeScript \\\\\n\
 \\textbf{Infrastructure:} Kubernetes, AWS, Terraform, PostgreSQL, Kafka\n\
 \n\
-\\end{document}\n"),
-];
+\\end{document}\n",
+)];
 
 const ONE_PAGE_RESUME_TEMPLATE: Template = &[(
     "main.tex",
@@ -1060,11 +1063,7 @@ pub fn list_templates() -> Vec<TemplateInfo> {
 }
 
 #[tauri::command]
-pub fn export_pdf(
-    project_id: String,
-    main_doc: String,
-    dest: String,
-) -> Result<(), String> {
+pub fn export_pdf(project_id: String, main_doc: String, dest: String) -> Result<(), String> {
     let build = paths::build_dir(&project_id)?;
     let stem = Path::new(&main_doc)
         .file_stem()
@@ -1117,14 +1116,17 @@ pub fn export_document(
     let probe = Command::new("pandoc").arg("--version").output();
     if probe.is_err() {
         return Err(
-            "pandoc is not installed. Install pandoc to export Word/HTML/Markdown."
-                .to_string(),
+            "pandoc is not installed. Install pandoc to export Word/HTML/Markdown.".to_string(),
         );
     }
+    // `--` terminates option parsing so a `main_doc` beginning with `-` can't be
+    // interpreted as a pandoc flag (defense-in-depth; it's already validated to
+    // stay inside the project).
     let out = Command::new("pandoc")
-        .arg(&main_doc)
         .arg("-o")
         .arg(&dest)
+        .arg("--")
+        .arg(&main_doc)
         .current_dir(&root)
         .output()
         .map_err(|e| format!("failed to run pandoc: {e}"))?;
@@ -1136,12 +1138,9 @@ pub fn export_document(
 }
 
 #[tauri::command]
-pub fn create_project_from_template(
-    name: String,
-    template_id: String,
-) -> Result<String, String> {
-    let template = template_for(&template_id)
-        .ok_or_else(|| format!("unknown template: {template_id}"))?;
+pub fn create_project_from_template(name: String, template_id: String) -> Result<String, String> {
+    let template =
+        template_for(&template_id).ok_or_else(|| format!("unknown template: {template_id}"))?;
     let root = paths::projects_root()?;
     let id = unique_random_slug(&root)?;
     let dir = root.join(&id);
@@ -1304,7 +1303,14 @@ pub fn search_project(project_id: String, query: String) -> Result<Vec<SearchHit
         meta.name
     };
     let mut hits: Vec<SearchHit> = Vec::new();
-    search_walk(&project_id, &project_name, &root, &root, &q_lower, &mut hits);
+    search_walk(
+        &project_id,
+        &project_name,
+        &root,
+        &root,
+        &q_lower,
+        &mut hits,
+    );
     Ok(hits)
 }
 
@@ -1341,7 +1347,9 @@ pub fn download_project_zip(project_id: String, dest: String) -> Result<(), Stri
                     .map_err(|e| e.to_string())?;
                 add_dir(writer, opts, base, &path)?;
             } else {
-                writer.start_file(&zip_name, opts).map_err(|e| e.to_string())?;
+                writer
+                    .start_file(&zip_name, opts)
+                    .map_err(|e| e.to_string())?;
                 let mut f = std::fs::File::open(&path).map_err(|e| e.to_string())?;
                 std::io::copy(&mut f, writer).map_err(|e| e.to_string())?;
             }
