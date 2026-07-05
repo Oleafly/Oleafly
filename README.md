@@ -307,15 +307,20 @@ Plus Tectonic (XeTeX), pdf.js, Zustand, Harper, and Hunspell.
 
 ## Roadmap
 
-Coming soon:
-- [ ] Prebuilt signed installers (macOS notarized, Windows EV, Linux AppImage)
+**Shipping next**
+- [ ] Signed and notarized installers (macOS, Windows), so no first-launch warning
 - [ ] Pre-warmed offline TeX bundle for a true zero-internet first run
-- [ ] OS keychain storage for tokens
+- [ ] OS keychain for tokens and AI keys (beyond the on-disk `0600` store)
+- [ ] One-click import from Overleaf or any Git repo
 
-Ideas for later:
-- [ ] Zotero and citation-manager integration
-- [ ] Resume scoring against a job description
-- [ ] Timeline playback of a document's history
+**The bigger bets**
+- [ ] Collaboration over Git: branches, review, and comments for LaTeX. The Overleaf workflow, but local and yours.
+- [ ] Track changes and inline comments, backed by real commits
+- [ ] OpenLeaf on iPad and mobile (Tauri), so your repo travels with you
+- [ ] A deeper AI agent: project-wide refactors, citation lookup from a claim, figures and TikZ from a description, "explain this paper"
+- [ ] A plugin API for snippets, templates, and custom AI tools
+- [ ] Timeline playback and semantic diffs (compare rendered output, not just source)
+- [ ] Zotero and reference-manager integration, resume scoring against a job description
 
 Have an idea? [Open a discussion](https://github.com/prajwal-svm/OpenLeaf/discussions).
 
