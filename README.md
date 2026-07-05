@@ -40,7 +40,7 @@ Your files stay on your disk. Every project is a real Git repo. Bring your own A
 
 **[Download the app](https://github.com/prajwal-svm/OpenLeaf/releases/latest) · [Build from source](docs/install.md) · [Docs](docs) · [Roadmap](#roadmap)**
 
-Grab a prebuilt installer for macOS, Windows, or Linux from the [latest release](https://github.com/prajwal-svm/OpenLeaf/releases/latest) — or [build it from source](docs/install.md).
+Grab a prebuilt installer for macOS, Windows, or Linux from the [latest release](https://github.com/prajwal-svm/OpenLeaf/releases/latest), or [build it from source](docs/install.md).
 
 If OpenLeaf is useful to you, a star helps other people find it.
 
@@ -145,7 +145,7 @@ For privacy there's a full offline mode, no account, and no telemetry.
 
 ```mermaid
 flowchart TB
-  subgraph FE["FRONTEND — System WebView (WKWebView / WebView2 / WebKitGTK) · React 19 + TS"]
+  subgraph FE["FRONTEND · System WebView (WKWebView / WebView2 / WebKitGTK) · React 19 + TS"]
     direction TB
     UI["React UI runtime<br/>Zustand stores · Tailwind v4 · router"]
     CM["CodeMirror 6 editor<br/>LaTeX language · autocomplete (ref/cite) · Vim"]
@@ -162,7 +162,7 @@ flowchart TB
 
   IPC["TAURI IPC BRIDGE<br/>serialize args · route commands · the only trust boundary"]
 
-  subgraph BE["RUST CORE — Tauri backend · owns disk, processes &amp; secrets"]
+  subgraph BE["RUST CORE · Tauri backend · owns disk, processes &amp; secrets"]
     direction TB
     ROUTER["Command router<br/>#tauri::command handlers · tokio async runtime"]
     PATHS["Path sandbox<br/>resolve_within · reject abs / .. / symlink · per-project id"]
@@ -280,7 +280,7 @@ Have an idea? [Open a discussion](https://github.com/prajwal-svm/OpenLeaf/discus
 | Guide | What's inside |
 |---|---|
 | [Download](https://github.com/prajwal-svm/OpenLeaf/releases/latest) | Prebuilt installers (.dmg / .msi / .exe / .AppImage / .deb / .rpm) |
-| [Build from source](docs/install.md) | For developers — clone, install deps, run |
+| [Build from source](docs/install.md) | For developers: clone, install deps, run |
 | [Getting started](docs/getting-started.md) | First project to first PDF in a couple of minutes |
 | [Features](docs/features.md) | The full tour |
 | [AI assistant](docs/ai-assistant.md) | Connect a model, or go local with Ollama |
