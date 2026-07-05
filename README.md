@@ -27,12 +27,11 @@ Your files stay on your disk. Every project is a real Git repo. Bring your own A
 
 <table align="center">
 <tr>
-<td width="50%"><img src="docs/media/synctex.gif" alt="Cmd/Ctrl-click the PDF, jump to the source" /><p align="center"><b>⌘/Ctrl-click the PDF, jump to the source</b></p></td>
-<td width="50%"><img src="docs/media/ai-fix.gif" alt="AI fixes a LaTeX error" /><p align="center"><b>Let the AI fix a LaTeX error</b></p></td>
+<td width="50%"><video src="https://github.com/prajwal-svm/OpenLeaf/raw/main/docs/media/synctex.mp4" autoplay loop muted playsinline width="100%"></video><p align="center"><b>⌘/Ctrl-click the PDF, jump to the source</b></p></td>
+<td width="50%"><video src="https://github.com/prajwal-svm/OpenLeaf/raw/main/docs/media/ai-fix.mp4" autoplay loop muted playsinline width="100%"></video><p align="center"><b>Let the AI fix a LaTeX error</b></p></td>
 </tr>
 <tr>
-<td width="50%"><img src="docs/media/git-history.gif" alt="Scrub through Git history" /><p align="center"><b>Every save is a Git commit</b></p></td>
-<td width="50%"><img src="docs/media/hero-editor.gif" alt="Generate a resume from a template" /><p align="center"><b>Resumes work out of the box</b></p></td>
+<td width="50%"><video src="https://github.com/prajwal-svm/OpenLeaf/raw/main/docs/media/hero-editor.mp4" autoplay loop muted playsinline width="100%"></video><p align="center"><b>Resumes work out of the box</b></p></td>
 </tr>
 </table>
 
