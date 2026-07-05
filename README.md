@@ -60,7 +60,7 @@ If OpenLeaf is useful to you, a star helps other people find it.
 | Windows | `.msi` or `-setup.exe` |
 | Linux | `.AppImage`, `.deb`, or `.rpm` |
 
-Builds aren't code-signed yet, so your OS warns on first launch (it's safe to open). One-time unlock: on macOS run `xattr -dr com.apple.quarantine /Applications/OpenLeaf.app`; on Windows click **More info**, then **Run anyway**; on Linux `chmod +x` the AppImage.
+Builds aren't code-signed yet, so your OS warns on first launch (it's safe to open). One-time unlock: on macOS run `/usr/bin/xattr -dr com.apple.quarantine /Applications/OpenLeaf.app`; on Windows click **More info**, then **Run anyway**; on Linux `chmod +x` the AppImage.
 
 **Or build from source:**
 

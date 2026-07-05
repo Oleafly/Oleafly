@@ -141,7 +141,7 @@ jobs:
             quarantine flag once in Terminal:
 
             ```
-            xattr -dr com.apple.quarantine /Applications/OpenLeaf.app
+            /usr/bin/xattr -dr com.apple.quarantine /Applications/OpenLeaf.app
             ```
 
             (or: System Settings -> Privacy & Security -> scroll down -> "Open Anyway").

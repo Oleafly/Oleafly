@@ -44,10 +44,11 @@ to get past the warning.
 
 - Right-click (or Control-click) the app in Applications and choose **Open**, then
   **Open** again in the dialog, or
-- Run once in Terminal to clear the quarantine flag:
+- Run once in Terminal to clear the quarantine flag (the full path avoids a
+  non-Apple `xattr` that some setups have in PATH, which lacks `-r`):
 
   ```bash
-  xattr -dr com.apple.quarantine /Applications/OpenLeaf.app
+  /usr/bin/xattr -dr com.apple.quarantine /Applications/OpenLeaf.app
   ```
 
 **Windows.** SmartScreen may show *"Windows protected your PC"*. Click **More info**,

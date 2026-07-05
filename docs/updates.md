@@ -21,10 +21,10 @@ manually from **About → Check for updates**.
 
 The signing **key pair** was generated already. The **public** key is committed
 in `src-tauri/tauri.conf.json` (`plugins.updater.pubkey`). The **private** key is
-NOT in the repo — it lives at:
+NOT in the repo. It lives at:
 
-    ~/.openleaf-keys/openleaf-updater.key      (private — keep secret, 0600)
-    ~/.openleaf-keys/openleaf-updater.key.pub  (public — already in the repo)
+    ~/.openleaf-keys/openleaf-updater.key      (private, keep secret, 0600)
+    ~/.openleaf-keys/openleaf-updater.key.pub  (public, already in the repo)
 
 Add the private key to the repo's **GitHub Actions secrets** so the release
 workflow can sign. From a machine with `gh` authenticated to the repo:
@@ -53,7 +53,7 @@ git tag v0.2.0 && git push origin v0.2.0
 
 The workflow builds every platform, signs the updater artifacts, generates
 `latest.json`, and creates a **draft** release. Publish it once the artifacts
-look right — installed apps will pick up the update on their next launch.
+look right. Installed apps will pick up the update on their next launch.
 
 ## Security notes
 

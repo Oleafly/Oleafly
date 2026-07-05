@@ -3,7 +3,7 @@
 OpenLeaf is distributed under the [Apache License 2.0](LICENSE). It bundles
 third-party open-source components, each under its own license, listed below.
 Every dependency here is under a **permissive** license (MIT, Apache-2.0, ISC,
-or BSD) — there is no copyleft (GPL/LGPL/AGPL) code in the shipped product.
+or BSD). There is no copyleft (GPL/LGPL/AGPL) code in the shipped product.
 
 This file lists the **direct** dependencies OpenLeaf ships. Their transitive
 dependencies are likewise permissively licensed; the full, authoritative license
@@ -37,7 +37,7 @@ cargo install cargo-about && cargo about generate about.hbs   # Rust / backend
 | flate2 | MIT OR Apache-2.0 |
 | zip | MIT |
 
-## Frontend (JavaScript / npm — bundled into the app)
+## Frontend (JavaScript / npm, bundled into the app)
 
 | Package | License |
 |---|---|
