@@ -13,15 +13,25 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BIN_DIR="$ROOT/src-tauri/binaries"
 mkdir -p "$BIN_DIR"
 
-declare -A ASSET
-ASSET[aarch64-apple-darwin]="tectonic-$VERSION-aarch64-apple-darwin.tar.gz:tar"
-ASSET[x86_64-apple-darwin]="tectonic-$VERSION-x86_64-apple-darwin.tar.gz:tar"
-ASSET[x86_64-pc-windows-msvc]="tectonic-$VERSION-x86_64-pc-windows-msvc.zip:zip"
-ASSET[x86_64-unknown-linux-gnu]="tectonic-$VERSION-x86_64-unknown-linux-gnu.tar.gz:tar"
+# Map a target triple to "<asset-name>:<archive-kind>". A `case` statement, not
+# an associative array, so this runs on macOS's system bash 3.2 (GitHub's macOS
+# runners use /bin/bash 3.2, which has no `declare -A`).
+asset_for() {
+  case "$1" in
+    aarch64-apple-darwin)     echo "tectonic-$VERSION-aarch64-apple-darwin.tar.gz:tar" ;;
+    x86_64-apple-darwin)      echo "tectonic-$VERSION-x86_64-apple-darwin.tar.gz:tar" ;;
+    x86_64-pc-windows-msvc)   echo "tectonic-$VERSION-x86_64-pc-windows-msvc.zip:zip" ;;
+    x86_64-unknown-linux-gnu) echo "tectonic-$VERSION-x86_64-unknown-linux-gnu.tar.gz:tar" ;;
+    *)                        echo "" ;;
+  esac
+}
+
+ALL_TARGETS="aarch64-apple-darwin x86_64-apple-darwin x86_64-pc-windows-msvc x86_64-unknown-linux-gnu"
 
 fetch() {
   local target="$1"
-  local entry="${ASSET[$target]:-}"
+  local entry
+  entry="$(asset_for "$target")"
   if [[ -z "$entry" ]]; then
     echo "unknown target: $target" >&2
     exit 1
@@ -72,12 +82,12 @@ fetch() {
 
 if [[ "$#" -eq 0 ]]; then
   echo "usage: $0 <target-triple> | all"
-  echo "targets: ${!ASSET[*]}"
+  echo "targets: $ALL_TARGETS"
   exit 0
 fi
 
 if [[ "$1" == "all" ]]; then
-  for t in "${!ASSET[@]}"; do fetch "$t"; done
+  for t in $ALL_TARGETS; do fetch "$t"; done
 else
   fetch "$1"
 fi
