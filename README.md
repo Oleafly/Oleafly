@@ -8,9 +8,10 @@
 
 Your files stay on your disk. Every project is a real Git repo. Bring your own AI, or use none.
 
+[![Download](https://img.shields.io/github/v/release/prajwal-svm/OpenLeaf?label=Download&color=22c55e)](https://github.com/prajwal-svm/OpenLeaf/releases/latest)
 [![CI](https://github.com/prajwal-svm/OpenLeaf/actions/workflows/ci.yml/badge.svg)](https://github.com/prajwal-svm/OpenLeaf/actions/workflows/ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-22c55e.svg)](LICENSE)
-[![macOS · Windows · Linux](https://img.shields.io/badge/macOS%20·%20Windows%20·%20Linux-blue)]()
+[![macOS · Windows · Linux](https://img.shields.io/badge/macOS%20·%20Windows%20·%20Linux-blue)](https://github.com/prajwal-svm/OpenLeaf/releases/latest)
 [![Tauri 2](https://img.shields.io/badge/built%20with-Tauri%202-f97316)]()
 [![Stars](https://img.shields.io/github/stars/prajwal-svm/OpenLeaf?style=social)](https://github.com/prajwal-svm/OpenLeaf)
 
@@ -37,7 +38,9 @@ Your files stay on your disk. Every project is a real Git repo. Bring your own A
 
 <div align="center">
 
-**[Install](docs/install.md) · [Docs](docs) · [Roadmap](#roadmap)**
+**[Download the app](https://github.com/prajwal-svm/OpenLeaf/releases/latest) · [Build from source](docs/install.md) · [Docs](docs) · [Roadmap](#roadmap)**
+
+Grab a prebuilt installer for macOS, Windows, or Linux from the [latest release](https://github.com/prajwal-svm/OpenLeaf/releases/latest) — or [build it from source](docs/install.md).
 
 If OpenLeaf is useful to you, a star helps other people find it.
 
@@ -276,7 +279,8 @@ Have an idea? [Open a discussion](https://github.com/prajwal-svm/OpenLeaf/discus
 
 | Guide | What's inside |
 |---|---|
-| [Install](docs/install.md) | Get running from source |
+| [Download](https://github.com/prajwal-svm/OpenLeaf/releases/latest) | Prebuilt installers (.dmg / .msi / .exe / .AppImage / .deb / .rpm) |
+| [Build from source](docs/install.md) | For developers — clone, install deps, run |
 | [Getting started](docs/getting-started.md) | First project to first PDF in a couple of minutes |
 | [Features](docs/features.md) | The full tour |
 | [AI assistant](docs/ai-assistant.md) | Connect a model, or go local with Ollama |
