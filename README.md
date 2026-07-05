@@ -20,7 +20,7 @@ Your files stay on your disk. Every project is a real Git repo. Bring your own A
 <br/>
 
 <div align="center">
-<img src="docs/media/hero-editor.gif" alt="Type on the left, watch the PDF build on the right" width="90%" />
+<img src="docs/media/hero-editor.jpg" alt="Type on the left, watch the PDF build on the right" width="90%" />
 </div>
 
 <br/>
