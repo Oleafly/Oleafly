@@ -35,7 +35,21 @@ fetch() {
   local tmp
   tmp="$(mktemp -d)"
   echo "→ fetching $target ($asset)"
-  curl -sL -o "$tmp/archive" "$url"
+  # `-f` fails on an HTTP error (so a 404/redirect page can't masquerade as the
+  # archive and make `tar` die with a confusing exit 2); `-S` surfaces the error
+  # despite `-s`; `--retry` rides out transient network/rate-limit blips (the
+  # release matrix pulls from GitHub from four jobs at once).
+  if ! curl -fSL --retry 5 --retry-delay 3 --retry-connrefused \
+      -o "$tmp/archive" "$url"; then
+    echo "failed to download $url" >&2
+    rm -rf "$tmp"
+    exit 1
+  fi
+  if [[ ! -s "$tmp/archive" ]]; then
+    echo "downloaded archive is empty: $url" >&2
+    rm -rf "$tmp"
+    exit 1
+  fi
   case "$kind" in
     tar) tar xzf "$tmp/archive" -C "$tmp" ;;
     zip) (cd "$tmp" && unzip -oq archive) ;;
