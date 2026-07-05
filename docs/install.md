@@ -1,6 +1,8 @@
 # Installing OpenLeaf
 
-OpenLeaf is built with [Tauri 2](https://tauri.app) (Rust + React). Prebuilt signed installers are on the [roadmap](../README.md#roadmap). For now, build from source.
+OpenLeaf is built with [Tauri 2](https://tauri.app) (Rust + React).
+
+**Just want to use it?** Download a prebuilt installer from the [latest release](https://github.com/prajwal-svm/OpenLeaf/releases/latest) (macOS, Windows, Linux). Those builds aren't code-signed/notarized yet (that's on the [roadmap](../README.md#roadmap)); see [First run](#first-run-running-a-downloaded-build) below for the one-time unlock. The rest of this page is for building from source.
 
 ## Prerequisites
 

@@ -50,6 +50,31 @@ If OpenLeaf is useful to you, a star helps other people find it.
 
 ---
 
+## Install
+
+**Download the app** from the [latest release](https://github.com/prajwal-svm/OpenLeaf/releases/latest):
+
+| Platform | Grab |
+|---|---|
+| macOS (Apple Silicon) | `.dmg` |
+| Windows | `.msi` or `-setup.exe` |
+| Linux | `.AppImage`, `.deb`, or `.rpm` |
+
+Builds aren't code-signed yet, so your OS warns on first launch (it's safe to open). One-time unlock: on macOS run `xattr -dr com.apple.quarantine /Applications/OpenLeaf.app`; on Windows click **More info**, then **Run anyway**; on Linux `chmod +x` the AppImage.
+
+**Or build from source:**
+
+```bash
+git clone https://github.com/prajwal-svm/OpenLeaf.git && cd OpenLeaf
+./scripts/fetch-tectonic.sh all   # Tectonic compiler sidecar
+pnpm install
+pnpm tauri dev
+```
+
+Prerequisites and production builds are in the [install guide](docs/install.md).
+
+<br/>
+
 ## Why OpenLeaf
 
 You write LaTeX the way you write code, so your editor should treat it that way.
@@ -72,6 +97,21 @@ You get the polish of a cloud editor without handing your documents to one.
 **Local, bring-your-own AI.** OpenAI, Anthropic, Groq, OpenRouter, DeepSeek, Mistral, xAI, or a local model through Ollama. Your prompts and documents don't touch a third party unless you pick one that does.
 
 **Everything on disk.** No blob store, no lock-in. A project is just `~/.openleaf/projects/<id>/`, a normal folder with a real `.git` inside.
+
+<br/>
+
+## How it compares
+
+| | OpenLeaf | Overleaf | VS Code + LaTeX Workshop |
+|---|---|---|---|
+| Works offline | ✅ | ❌ | ✅ |
+| Git built in | ✅ | Add-on | Manual |
+| Resume mode (ATS-clean, branchable) | ✅ | Templates | ❌ |
+| AI assistant | Built-in, BYO key | Paid add-on | Extensions |
+| Files stay on your disk | ✅ | ❌ | ✅ |
+| No account required | ✅ | ❌ | ✅ |
+
+Different tools, different bets. OpenLeaf's is that your documents belong on your machine, in Git, with AI you control.
 
 <br/>
 
@@ -254,8 +294,15 @@ approval before it hits disk.
 **Shipping.** Builds go out for macOS, Windows, and Linux with a minisign-signed
 update feed the app verifies before it installs anything.
 
-Built with Tauri 2, React 19, TypeScript, CodeMirror 6, pdf.js, Tectonic,
-Zustand, Tailwind v4 with Geist, Harper, and Hunspell (WASM).
+![Rust](https://img.shields.io/badge/Rust-000000?logo=rust&logoColor=white)
+![Tauri 2](https://img.shields.io/badge/Tauri_2-24C8DB?logo=tauri&logoColor=white)
+![React 19](https://img.shields.io/badge/React_19-149ECA?logo=react&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white)
+![Tailwind v4](https://img.shields.io/badge/Tailwind_v4-38BDF8?logo=tailwindcss&logoColor=white)
+![CodeMirror 6](https://img.shields.io/badge/CodeMirror_6-D30707?logo=codemirror&logoColor=white)
+
+Plus Tectonic (XeTeX), pdf.js, Zustand, Harper, and Hunspell.
 
 <br/>
 
