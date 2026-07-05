@@ -188,7 +188,7 @@ flowchart TB
   FEEDS["Update feed<br/>GitHub Releases · latest.json + .sig"]
 
   IPCC -->|"invoke(cmd, args)"| IPC
-  IPC -->|"Result&lt;T&gt; · emit events"| IPCC
+  IPC -->|"Result · emit events"| IPCC
   IPC ==> ROUTER
 
   COMPILE -->|"spawn -X compile --synctex"| TEC
