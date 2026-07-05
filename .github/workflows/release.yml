@@ -34,10 +34,10 @@ jobs:
             os: macos-14
             rust_target: aarch64-apple-darwin
             args: "--target aarch64-apple-darwin"
-          - name: macOS (Intel)
-            os: macos-13
-            rust_target: x86_64-apple-darwin
-            args: "--target x86_64-apple-darwin"
+          # macOS Intel (macos-13) is intentionally omitted: those runners are
+          # scarce and often sit queued for a long time, and Intel Macs are a
+          # shrinking share. To re-add, restore a matrix entry with
+          # os: macos-13 / rust_target: x86_64-apple-darwin.
           - name: Linux (x86_64)
             os: ubuntu-22.04
             rust_target: x86_64-unknown-linux-gnu
