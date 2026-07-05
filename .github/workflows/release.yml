@@ -125,7 +125,6 @@ jobs:
             Download the installer for your platform below.
 
             - **macOS (Apple Silicon)** - `.dmg` ending in `aarch64`
-            - **macOS (Intel)** - `.dmg` ending in `x64`
             - **Windows** - `.msi` or `-setup.exe`
             - **Linux** - `.AppImage` or `.deb`
 
