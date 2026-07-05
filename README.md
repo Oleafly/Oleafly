@@ -32,7 +32,7 @@ Your files stay on your disk. Every project is a real Git repo. Bring your own A
 </tr>
 <tr>
 <td width="50%"><img src="docs/media/git-history.gif" alt="Scrub through Git history" /><p align="center"><b>Every save is a Git commit</b></p></td>
-<td width="50%"><img src="docs/media/resume.gif" alt="Generate a resume from a template" /><p align="center"><b>Resumes work out of the box</b></p></td>
+<td width="50%"><img src="docs/media/hero-editor.gif" alt="Generate a resume from a template" /><p align="center"><b>Resumes work out of the box</b></p></td>
 </tr>
 </table>
 
