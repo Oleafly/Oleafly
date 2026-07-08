@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   Check,
+  FileText,
   GitBranch,
   Github,
   Loader2,
@@ -76,6 +77,14 @@ export function SourceControl() {
   const [publishOpen, setPublishOpen] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState<string | null>(null);
   const openDiff = useDiffStore((s) => s.openDiff);
+  const clearActiveDiff = useDiffStore((s) => s.clearActiveDiff);
+  const openFile = useFilesStore((s) => s.openFile);
+
+  // Open the file in the normal editor (VS Code's "Open File" SCM action).
+  const openSourceFile = (path: string) => {
+    void openFile(path);
+    clearActiveDiff();
+  };
 
   const refresh = useCallback(async () => {
     if (!projectId) return;
@@ -228,6 +237,14 @@ export function SourceControl() {
             <span className="block truncate text-xs font-medium">{name}</span>
             {dir && <span className="block truncate text-[10px] text-muted-foreground">{dir}</span>}
           </span>
+        </button>
+        <button
+          onClick={() => openSourceFile(c.path)}
+          aria-label="Open file"
+          title="Open file"
+          className="flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground group-hover:opacity-100"
+        >
+          <FileText className="size-3.5" />
         </button>
         {!c.staged &&
           (confirmDiscard === c.path ? (

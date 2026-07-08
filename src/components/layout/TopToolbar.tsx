@@ -3,7 +3,7 @@ import {
   CircleHelp,
   Columns2,
   ChevronRight,
-  FileOutput,
+  Download,
   FileText,
   FileArchive,
   FileType,
@@ -249,7 +249,7 @@ export function TopToolbar() {
               onClick={() => setDlOpen((v) => !v)}
               aria-label="Export"
             >
-              <FileOutput className="size-4" />
+              <Download className="size-4" />
             </Button>
           </Tooltip>
           {dlOpen && (
@@ -303,6 +303,18 @@ export function TopToolbar() {
           </Button>
         </Tooltip>
 
+        <Tooltip label="Fork project">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground hover:text-foreground"
+            disabled={!projectId}
+            onClick={() => { setForkName(`${projectName || "project"} (copy)`); setForkOpen(true); }}
+          >
+            <GitFork className="size-4" />
+          </Button>
+        </Tooltip>
+
         <Tooltip label={githubUrl ? "Share GitHub link" : "Push to GitHub to share"}>
           <Button
             variant="ghost"
@@ -326,18 +338,6 @@ export function TopToolbar() {
             aria-label="Open in GitHub"
           >
             <Github className="size-4" />
-          </Button>
-        </Tooltip>
-
-        <Tooltip label="Fork project">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-muted-foreground hover:text-foreground"
-            disabled={!projectId}
-            onClick={() => { setForkName(`${projectName || "project"} (copy)`); setForkOpen(true); }}
-          >
-            <GitFork className="size-4" />
           </Button>
         </Tooltip>
 
