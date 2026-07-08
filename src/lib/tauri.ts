@@ -81,6 +81,10 @@ export const readFileBase64 = (projectId: string, path: string) =>
 export const appendAppLog = (message: string) =>
   invoke<void>("append_app_log", { message });
 
+/** Read the tail (up to maxBytes) of ~/.openleaf/app.log for a crash report. */
+export const readAppLog = (maxBytes: number) =>
+  invoke<string>("read_app_log", { maxBytes });
+
 export const setMainDocCmd = (projectId: string, mainDoc: string) =>
   invoke<ProjectMeta>("set_main_doc", { projectId, mainDoc });
 

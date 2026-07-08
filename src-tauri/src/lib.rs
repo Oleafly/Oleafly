@@ -57,6 +57,7 @@ pub fn run() {
             project::save_file_base64,
             project::read_file_base64,
             project::append_app_log,
+            project::read_app_log,
             project::set_main_doc,
             project::get_project,
             project::list_projects,

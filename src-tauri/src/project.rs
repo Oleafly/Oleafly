@@ -291,6 +291,19 @@ pub fn append_app_log(message: String) -> Result<(), String> {
     writeln!(file, "[{secs}] {message}").map_err(|e| format!("failed to write app log: {e}"))
 }
 
+/// Read the tail (up to `max_bytes`) of the app log, for crash reports. Returns
+/// an empty string if the log doesn't exist yet.
+#[tauri::command]
+pub fn read_app_log(max_bytes: usize) -> Result<String, String> {
+    let log_path = paths::openleaf_root()?.join("app.log");
+    if !log_path.exists() {
+        return Ok(String::new());
+    }
+    let data = std::fs::read(&log_path).map_err(|e| format!("failed to read app log: {e}"))?;
+    let start = data.len().saturating_sub(max_bytes);
+    Ok(String::from_utf8_lossy(&data[start..]).to_string())
+}
+
 #[tauri::command]
 pub fn set_main_doc(project_id: String, main_doc: String) -> Result<ProjectMeta, String> {
     let mut meta = read_meta(&project_id)?;

@@ -22,9 +22,11 @@ import {
   Settings,
   Sparkles,
   Trash2,
+  TriangleAlert,
   X,
 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-shell";
+import { reportCrashToGithub } from "@/lib/crash-report";
 import { isTauri } from "@tauri-apps/api/core";
 import { platform as osPlatform, arch as osArch, version as osVersion } from "@tauri-apps/plugin-os";
 import { Button } from "@/components/ui/button";
@@ -1503,6 +1505,12 @@ function HelpSection() {
     { icon: BookOpen, label: "Documentation", onClick: ext(DOCS_URL), external: true },
     { icon: Keyboard, label: "Keyboard shortcuts", onClick: openHotkeys, external: false },
     { icon: Bug, label: "Report a bug", onClick: ext(ISSUES_URL), external: true },
+    {
+      icon: TriangleAlert,
+      label: "Report a crash (attach logs)",
+      onClick: () => void reportCrashToGithub(),
+      external: true,
+    },
     { icon: ScrollText, label: "What's new", onClick: ext(CHANGELOG_URL), external: true },
     { icon: Scale, label: "Licenses", onClick: ext(LICENSES_URL), external: true },
   ];

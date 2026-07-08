@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { appendAppLog } from "@/lib/tauri";
+import { reportCrashToGithub } from "@/lib/crash-report";
 
 interface Props {
   children: ReactNode;
@@ -49,12 +50,20 @@ export class ErrorBoundary extends Component<Props, State> {
         <pre className="max-h-40 max-w-lg overflow-auto rounded-md border bg-muted/40 p-3 text-left font-mono text-[11px] text-muted-foreground">
           {error.name}: {error.message}
         </pre>
-        <button
-          onClick={() => window.location.reload()}
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
-        >
-          Reload OpenLeaf
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => void reportCrashToGithub(`${error.name}: ${error.message}`)}
+            className="rounded-md border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+          >
+            Report to GitHub
+          </button>
+          <button
+            onClick={() => window.location.reload()}
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
+          >
+            Reload OpenLeaf
+          </button>
+        </div>
       </div>
     );
   }
