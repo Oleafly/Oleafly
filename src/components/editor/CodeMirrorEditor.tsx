@@ -37,6 +37,8 @@ import { spellLintExtensions, refreshEditorLints } from "./cm/spellcheck";
 import { useDictionary } from "@/lib/dictionary";
 import { mathHover } from "./cm/math-preview";
 import { createLatexLinter } from "./cm/latex-linter";
+import { inlineDiffPlugin } from "./cm/inline-ai/plugin";
+import { openInlineEdit } from "./cm/inline-ai/openSession";
 import { useFilesStore, useActiveContent } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 
@@ -108,7 +110,9 @@ export function CodeMirrorEditor() {
         search({ top: true }),
         mathHover(),
         createLatexLinter(),
+        inlineDiffPlugin,
         keymap.of([
+          { key: "Mod-l", run: (v) => { openInlineEdit(v); return true; } },
           indentWithTab,
           ...closeBracketsKeymap,
           ...defaultKeymap,

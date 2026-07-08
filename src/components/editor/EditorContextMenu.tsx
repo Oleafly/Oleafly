@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Bold, Italic, Heading, List, Image, Table, Sigma, Tag } from "lucide-react";
+import { Bold, Italic, Heading, List, Image, Table, Sigma, Sparkles, Tag } from "lucide-react";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -10,7 +10,8 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { insertAtCursor, wrapSelection } from "./cm/controller";
+import { getEditorView, insertAtCursor, wrapSelection } from "./cm/controller";
+import { openInlineEdit } from "./cm/inline-ai/openSession";
 
 interface EditorContextMenuProps {
   children: ReactNode;
@@ -23,6 +24,16 @@ export function EditorContextMenu({ children }: EditorContextMenuProps) {
         <div className="h-full">{children}</div>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-56">
+        <ContextMenuItem
+          onClick={() => {
+            const view = getEditorView();
+            if (view) openInlineEdit(view);
+          }}
+        >
+          <Sparkles className="mr-2 size-4" /> Ask AI…
+          <span className="ml-auto text-xs text-muted-foreground">⌘L</span>
+        </ContextMenuItem>
+        <ContextMenuSeparator />
         <ContextMenuItem onClick={() => wrapSelection("\\textbf{", "}")}>
           <Bold className="mr-2 size-4" /> Bold
           <span className="ml-auto text-xs text-muted-foreground">⌘B</span>

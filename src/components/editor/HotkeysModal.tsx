@@ -6,6 +6,7 @@ import { useSettingsStore } from "@/store/settings";
 const SHORTCUTS: { category: string; keys: string; desc: string }[] = [
   { category: "Compile", keys: "⌘↵", desc: "Recompile" },
   { category: "Compile", keys: "⌘K → Recompile", desc: "Via command palette" },
+  { category: "Editor", keys: "⌘L", desc: "Ask AI to edit selection" },
   { category: "Editor", keys: "⌘B", desc: "Bold (\\textbf)" },
   { category: "Editor", keys: "⌘I", desc: "Italic (\\textit)" },
   { category: "Editor", keys: "⌘F", desc: "Find & replace" },
