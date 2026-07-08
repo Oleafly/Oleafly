@@ -12,10 +12,12 @@ export function HistoryModal() {
   const restoreFromGit = useFilesStore((s) => s.restoreFromGit);
   const [commits, setCommits] = useState<GitCommit[]>([]);
   const [busy, setBusy] = useState(false);
+  const [confirmOid, setConfirmOid] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open || !projectId) return;
     void gitLog(projectId).then(setCommits).catch(() => setCommits([]));
+    setConfirmOid(null);
   }, [open, projectId]);
 
   if (!open) return null;
@@ -27,6 +29,7 @@ export function HistoryModal() {
       setOpen(false);
     } finally {
       setBusy(false);
+      setConfirmOid(null);
     }
   };
 
@@ -61,16 +64,38 @@ export function HistoryModal() {
                   {new Date(c.time * 1000).toLocaleString()} · {c.short}
                 </div>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={busy}
-                onClick={() => void restore(c.oid)}
-                title="Restore this version"
-              >
-                <RotateCcw className="size-3.5" />
-                Restore
-              </Button>
+              {confirmOid === c.oid ? (
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    disabled={busy}
+                    onClick={() => void restore(c.oid)}
+                    title="Overwrite all files with this version"
+                  >
+                    Overwrite all
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={busy}
+                    onClick={() => setConfirmOid(null)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => setConfirmOid(c.oid)}
+                  title="Restore this version (overwrites all files)"
+                >
+                  <RotateCcw className="size-3.5" />
+                  Restore
+                </Button>
+              )}
             </div>
           ))}
         </div>

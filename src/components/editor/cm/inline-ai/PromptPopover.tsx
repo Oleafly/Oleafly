@@ -69,13 +69,13 @@ export function PromptPopover({
       </div>
 
       {!streaming && (
-        <div className="mt-2 flex flex-wrap gap-1">
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-1.5">
           {PRESETS.map((p) => (
             <button
               key={p.id}
               type="button"
               onClick={() => onPreset(p.instruction)}
-              className="rounded-full border px-2 py-0.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+              className="flex-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-center text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
             >
               {p.label}
             </button>
