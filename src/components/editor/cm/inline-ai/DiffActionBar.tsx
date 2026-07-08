@@ -11,7 +11,7 @@ export function DiffActionBar({
   onRetry: () => void;
 }) {
   return (
-    <div className="flex items-center gap-1 rounded-lg border bg-popover p-1 text-popover-foreground shadow-xl">
+    <div className="flex w-full items-center gap-1 rounded-lg border bg-popover p-1 text-popover-foreground shadow-md">
       <button
         type="button"
         onClick={onAccept}
@@ -50,7 +50,7 @@ export function DiffErrorBar({
   onDismiss: () => void;
 }) {
   return (
-    <div className="w-80 rounded-lg border bg-popover p-2 text-popover-foreground shadow-xl">
+    <div className="w-full rounded-lg border bg-popover p-2 text-popover-foreground shadow-md">
       <p className="flex items-start gap-1.5 text-xs text-destructive">
         <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
         <span className="min-w-0 flex-1 break-words">Couldn't generate the edit. {message}</span>

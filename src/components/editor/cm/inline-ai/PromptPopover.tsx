@@ -31,7 +31,7 @@ export function PromptPopover({
   }, []);
 
   return (
-    <div className="w-80 rounded-lg border bg-popover p-2 text-popover-foreground shadow-xl">
+    <div className="w-full rounded-lg border bg-popover p-2 text-popover-foreground shadow-md">
       <div className="flex items-center gap-2">
         <Sparkles className="size-4 shrink-0 text-primary" />
         <input

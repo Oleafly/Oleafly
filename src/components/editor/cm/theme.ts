@@ -112,6 +112,12 @@ const chromeTheme = EditorView.theme({
     backgroundColor: "color-mix(in oklch, oklch(0.72 0.19 149) 20%, transparent)",
     borderRadius: "2px",
   },
+  // Block widget hosting the inline AI edit panel: full content width.
+  ".cm-inline-prompt": {
+    width: "100%",
+    boxSizing: "border-box",
+    padding: "0 8px 0 2px",
+  },
 });
 
 const highlightStyle = HighlightStyle.define([

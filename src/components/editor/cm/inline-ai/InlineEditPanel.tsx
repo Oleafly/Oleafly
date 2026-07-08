@@ -133,9 +133,9 @@ export function InlineEditPanel() {
   };
 
   return (
-    <div className="my-1 flex">
+    <div className="my-1 w-full">
       {!providerReady ? (
-        <div className="w-72 rounded-lg border bg-popover p-3 text-popover-foreground shadow-md">
+        <div className="w-full rounded-lg border bg-popover p-3 text-popover-foreground shadow-md">
           <p className="flex items-center gap-1.5 text-sm font-medium">
             <Sparkles className="size-4 text-primary" /> Set up an AI provider
           </p>
