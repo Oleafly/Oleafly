@@ -7,7 +7,7 @@ import {
   Minus,
   Plus,
   RefreshCw,
-  Trash2,
+  Undo2,
   Upload,
   X,
 } from "lucide-react";
@@ -170,23 +170,18 @@ export function SourceControl() {
   const submit = async (andPush: boolean) => {
     if (!projectId) return;
     const msg = message.trim();
-    const hasChanges = changes.length > 0;
-    // A commit requires a message; pushing already-made commits does not.
-    if (hasChanges && !msg) {
+    const hasStaged = changes.some((c) => c.staged);
+    // A commit requires staged files + a message; pushing existing commits does not.
+    if (hasStaged && !msg) {
       setStatus({ ok: false, text: "Enter a commit message before committing." });
       return;
     }
     setBusy(true);
     setStatus(null);
     try {
-      let committed = false;
-      if (hasChanges) {
-        // Commit the staged set; if nothing is staged, stage everything first
-        // (VS Code's "Stage all & commit" fallback).
-        if (!changes.some((c) => c.staged)) await gitStageAll(projectId);
-        committed = await gitCommit(projectId, msg);
-      }
-      const parts: string[] = [committed ? `Committed: "${msg}"` : "No changes to commit."];
+      // Commit the staged set only. Nothing staged -> no commit (push still runs).
+      const committed = hasStaged ? await gitCommit(projectId, msg) : false;
+      const parts: string[] = [committed ? `Committed: "${msg}"` : "Nothing staged to commit."];
       if (andPush) {
         if (!hasToken) {
           parts.push("⚠ Skipped push - no GitHub token (Settings → GitHub).");
@@ -255,10 +250,10 @@ export function SourceControl() {
             <button
               onClick={() => setConfirmDiscard(c.path)}
               aria-label="Discard changes"
-              title="Discard changes"
+              title="Discard changes (revert to last version)"
               className="flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-destructive group-hover:opacity-100"
             >
-              <Trash2 className="size-3.5" />
+              <Undo2 className="size-3.5" />
             </button>
           ))}
         <button
@@ -322,9 +317,12 @@ export function SourceControl() {
           <>
             {staged.length > 0 && (
               <div className="mb-2">
-                <div className="group/hdr flex items-center gap-1 px-2 pb-1">
+                <div className="group/hdr flex items-center gap-1.5 px-2 pb-1">
                   <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
-                    Staged ({staged.length})
+                    Staged
+                  </span>
+                  <span className="inline-flex min-w-4 items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
+                    {staged.length}
                   </span>
                   <button
                     onClick={() => void unstageAll()}
@@ -340,9 +338,12 @@ export function SourceControl() {
             )}
             {unstaged.length > 0 && (
               <div className="group/hdr">
-                <div className="flex items-center gap-1 px-2 pb-1">
+                <div className="flex items-center gap-1.5 px-2 pb-1">
                   <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
-                    Changes ({unstaged.length})
+                    Changes
+                  </span>
+                  <span className="inline-flex min-w-4 items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
+                    {unstaged.length}
                   </span>
                   <button
                     onClick={() => void stageAll()}
@@ -368,16 +369,28 @@ export function SourceControl() {
             placeholder="Commit message (required)…"
             className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-xs outline-none"
           />
-          {changes.length > 0 && !message.trim() && (
+          {staged.length === 0 && changes.length > 0 ? (
             <p className="-mt-1 text-[10px] text-muted-foreground">
-              A commit message is required.
+              Stage a file to commit.
             </p>
+          ) : (
+            staged.length > 0 && !message.trim() && (
+              <p className="-mt-1 text-[10px] text-muted-foreground">
+                A commit message is required.
+              </p>
+            )
           )}
           <div className="flex gap-1.5">
             <button
               onClick={() => void submit(false)}
-              disabled={busy || changes.length === 0 || !message.trim()}
-              title={changes.length > 0 && !message.trim() ? "Enter a commit message" : undefined}
+              disabled={busy || staged.length === 0 || !message.trim()}
+              title={
+                staged.length === 0
+                  ? "Stage a file first"
+                  : !message.trim()
+                    ? "Enter a commit message"
+                    : undefined
+              }
               className="flex flex-1 items-center justify-center gap-1.5 rounded-md bg-primary px-2 py-1.5 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
             >
               {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
@@ -386,7 +399,7 @@ export function SourceControl() {
             <Tooltip label="Commit and push to origin" className="flex-1">
               <button
                 onClick={() => void submit(true)}
-                disabled={busy || !remote || (changes.length > 0 && !message.trim())}
+                disabled={busy || !remote || (staged.length > 0 && !message.trim())}
                 aria-label="Commit and push to origin"
                 className="flex w-full items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-xs font-medium transition-colors hover:bg-accent disabled:opacity-40"
               >
