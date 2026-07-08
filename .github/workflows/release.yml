@@ -109,6 +109,28 @@ jobs:
           New-Item -ItemType Directory -Force -Path src-tauri/binaries | Out-Null
           Copy-Item $bin.FullName "src-tauri/binaries/tectonic-$target.exe"
 
+      # Build the release notes from CHANGELOG.md so both the GitHub Release and
+      # the updater's `notes` say what changed (install help is a link, not the
+      # headline). tauri-action copies `releaseBody` into `latest.json`.
+      - name: Prepare release notes
+        id: notes
+        shell: bash
+        run: |
+          VERSION="${{ github.event.inputs.tag || github.ref_name }}"
+          {
+            echo 'body<<CHANGELOG_EOF'
+            echo "## What's new in ${VERSION#v}"
+            echo ""
+            bash scripts/changelog-extract.sh "$VERSION"
+            echo ""
+            echo "---"
+            echo ""
+            echo "**Downloads:** grab your platform's installer below (macOS \`aarch64\` \`.dmg\`, Windows \`.msi\` / \`-setup.exe\`, Linux \`.AppImage\` / \`.deb\`)."
+            echo ""
+            echo "First launch on macOS or Windows? These builds aren't code-signed yet: follow the [one-time unlock steps](https://github.com/prajwal-svm/OpenLeaf/blob/main/docs/install.md#first-run-running-a-downloaded-build)."
+            echo 'CHANGELOG_EOF'
+          } >> "$GITHUB_OUTPUT"
+
       - name: Build & release
         uses: tauri-apps/tauri-action@v0
         env:
@@ -121,45 +143,7 @@ jobs:
         with:
           tagName: ${{ github.event.inputs.tag || github.ref_name }}
           releaseName: "OpenLeaf ${{ github.event.inputs.tag || github.ref_name }}"
-          releaseBody: |
-            Download the installer for your platform below.
-
-            - **macOS (Apple Silicon)** - `.dmg` ending in `aarch64`
-            - **Windows** - `.msi` or `-setup.exe`
-            - **Linux** - `.AppImage` or `.deb`
-
-            ---
-
-            ### First launch: these builds aren't code-signed yet
-
-            OpenLeaf is a young open-source project and we haven't set up
-            Apple/Windows code-signing certificates yet, so your OS will warn you
-            the first time you open it. The app is safe - here's how to get past
-            the warning:
-
-            **macOS** - after dragging OpenLeaf to Applications, remove the
-            quarantine flag once in Terminal:
-
-            ```
-            /usr/bin/xattr -dr com.apple.quarantine /Applications/OpenLeaf.app
-            ```
-
-            (or: System Settings -> Privacy & Security -> scroll down -> "Open Anyway").
-
-            **Windows** - on the "Windows protected your PC" screen, click
-            **More info**, then **Run anyway**.
-
-            **Linux** - make the AppImage executable, then run it (no signing
-            prompt on Linux):
-
-            ```
-            chmod +x OpenLeaf_*.AppImage
-            ./OpenLeaf_*.AppImage
-            ```
-
-            (or install the `.deb` / `.rpm` with your package manager).
-
-            Code-signing & notarization are on the roadmap.
+          releaseBody: ${{ steps.notes.outputs.body }}
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
