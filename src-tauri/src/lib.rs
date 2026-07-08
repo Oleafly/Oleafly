@@ -19,6 +19,7 @@ pub fn run() {
 
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_dialog::init());
 
     // The updater and process plugins are desktop-only.

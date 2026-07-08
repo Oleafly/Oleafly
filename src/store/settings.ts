@@ -68,7 +68,21 @@ interface SettingsState {
   setHotkeysOpen: (v: boolean) => void;
   railTab: RailTab;
   setRailTab: (v: RailTab) => void;
+  /** Restore Appearance + General preferences to their factory defaults. */
+  resetToDefaults: () => void;
 }
+
+/** Factory defaults for the user-facing Appearance + General preferences. */
+const PREF_DEFAULTS = {
+  vim: false,
+  spellcheck: true,
+  harper: true,
+  showRegionalism: true,
+  showWordChoice: true,
+  offline: false,
+  editorFontSize: 13,
+  accentColor: "#2563eb",
+} as const;
 
 export const useSettingsStore = create<SettingsState>((set) => ({
   vim: false,
@@ -119,4 +133,12 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   setHotkeysOpen: (v) => set({ hotkeysOpen: v }),
   railTab: "files",
   setRailTab: (v) => set({ railTab: v }),
+  resetToDefaults: () => {
+    // Drop the persisted copies so a restart doesn't resurrect old values.
+    saveLs("openleaf.harper.regionalism", "1");
+    saveLs("openleaf.harper.wordchoice", "1");
+    saveLs("openleaf.fontSize", String(PREF_DEFAULTS.editorFontSize));
+    saveLs("openleaf.accent", PREF_DEFAULTS.accentColor);
+    set({ ...PREF_DEFAULTS });
+  },
 }));

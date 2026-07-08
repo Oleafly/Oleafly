@@ -18,6 +18,7 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 tauri-plugin-shell = "2"
 tauri-plugin-dialog = "2"
+tauri-plugin-os = "2"
 # In-app auto-update: checks the GitHub Releases `latest.json`, verifies the
 # minisign signature against the pubkey in tauri.conf.json, and installs. The
 # process plugin provides `relaunch()` to restart into the new version.

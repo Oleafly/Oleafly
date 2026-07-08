@@ -1,23 +1,32 @@
 import { useEffect, useRef, useState } from "react";
 import {
   BookMarked,
+  BookOpen,
+  Bug,
   Check,
   ChevronDown,
   ChevronRight,
+  Copy,
   Database,
   ExternalLink,
   Github,
   Globe,
+  Keyboard,
   LifeBuoy,
   Loader2,
   Palette,
   RefreshCw,
+  RotateCcw,
+  Scale,
+  ScrollText,
   Settings,
   Sparkles,
   Trash2,
   X,
 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-shell";
+import { isTauri } from "@tauri-apps/api/core";
+import { platform as osPlatform, arch as osArch, version as osVersion } from "@tauri-apps/plugin-os";
 import { Button } from "@/components/ui/button";
 import { UpdateChecker } from "@/components/layout/UpdateChecker";
 import {
@@ -134,7 +143,9 @@ function ToggleRow({
 export function SettingsModal() {
   const open = useSettingsStore((s) => s.settingsOpen);
   const setOpen = useSettingsStore((s) => s.setSettingsOpen);
-  const { theme, toggleTheme } = useTheme();
+  const setHotkeysOpen = useSettingsStore((s) => s.setHotkeysOpen);
+  const resetToDefaults = useSettingsStore((s) => s.resetToDefaults);
+  const { theme, setTheme, toggleTheme } = useTheme();
   const vim = useSettingsStore((s) => s.vim);
   const toggleVim = useSettingsStore((s) => s.toggleVim);
   const spellcheck = useSettingsStore((s) => s.spellcheck);
@@ -158,7 +169,23 @@ export function SettingsModal() {
 
   const [section, setSection] = useState<Section>("appearance");
   const [libRoot, setLibRoot] = useState("");
+  const [confirmReset, setConfirmReset] = useState(false);
   const settingsInitialSection = useSettingsStore((s) => s.settingsInitialSection);
+
+  // Close Settings and pop the full keyboard-shortcuts reference on top.
+  const openHotkeys = () => {
+    setOpen(false);
+    setHotkeysOpen(true);
+  };
+
+  const doReset = () => {
+    resetToDefaults();
+    // Theme lives in a separate store; return it to the OS preference.
+    setTheme(
+      window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light",
+    );
+    setConfirmReset(false);
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -317,10 +344,46 @@ export function SettingsModal() {
                   checked={offline}
                   onChange={setOffline}
                 />
-                <div className="rounded-lg border bg-background p-3 text-xs text-muted-foreground">
-                  Shortcuts: <kbd>⌘K</kbd> command palette · <kbd>⌘⇧F</kbd> search docs ·{" "}
-                  <kbd>⌘↵</kbd> recompile · <kbd>⌘⇧J</kbd> go to PDF · <kbd>⌘B</kbd>/<kbd>⌘I</kbd>{" "}
-                  bold/italic.
+                <button
+                  type="button"
+                  onClick={openHotkeys}
+                  className="flex w-full items-center gap-2 rounded-lg border bg-background p-3 text-left text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+                >
+                  <Keyboard className="size-4 shrink-0" />
+                  <span className="flex-1">
+                    Shortcuts: <kbd>⌘K</kbd> command palette · <kbd>⌘↵</kbd> recompile ·{" "}
+                    <kbd>⌘B</kbd>/<kbd>⌘I</kbd> bold/italic — see all
+                  </span>
+                  <ChevronRight className="size-4 shrink-0" />
+                </button>
+
+                <div className="mt-2 flex items-center justify-between gap-3 border-t pt-4">
+                  <div>
+                    <p className="text-sm">Reset settings</p>
+                    <p className="text-xs text-muted-foreground">
+                      Restore Appearance &amp; General preferences to defaults.
+                    </p>
+                  </div>
+                  {confirmReset ? (
+                    <div className="flex shrink-0 items-center gap-2">
+                      <Button variant="destructive" size="sm" onClick={doReset}>
+                        Reset
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => setConfirmReset(false)}>
+                        Cancel
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() => setConfirmReset(true)}
+                    >
+                      <RotateCcw className="size-3.5" />
+                      Reset to defaults
+                    </Button>
+                  )}
                 </div>
               </div>
             )}
@@ -1391,14 +1454,58 @@ function AISection() {
 
 const REPO_URL = "https://github.com/prajwal-svm/OpenLeaf";
 const AUTHOR_URL = "http://prajwal.me";
-const DOCS_URL = "https://www.overleaf.com/learn";
+const DOCS_URL = `${REPO_URL}/blob/main/docs/getting-started.md`;
+const ISSUES_URL = `${REPO_URL}/issues/new`;
+const CHANGELOG_URL = `${REPO_URL}/blob/main/CHANGELOG.md`;
+const LICENSES_URL = `${REPO_URL}/blob/main/THIRD_PARTY_LICENSES.md`;
 
 function HelpSection() {
   const [version, setVersion] = useState("");
+  const [copied, setCopied] = useState(false);
+  const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
+  const setHotkeysOpen = useSettingsStore((s) => s.setHotkeysOpen);
   useEffect(() => {
     void appVersion().then(setVersion).catch(() => setVersion(""));
   }, []);
   const ext = (url: string) => () => void open(url);
+
+  // Close Settings first so the keyboard-shortcuts modal isn't hidden behind it.
+  const openHotkeys = () => {
+    setSettingsOpen(false);
+    setHotkeysOpen(true);
+  };
+
+  // Copy a one-line diagnostics string people can paste into a bug report.
+  const copyDiagnostics = async () => {
+    const parts = [`OpenLeaf v${version || "?"}`];
+    if (isTauri()) {
+      try {
+        parts.push(`${osPlatform()} ${osArch()}`, `OS ${osVersion()}`);
+      } catch {
+        /* os plugin unavailable */
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(parts.join(" · "));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* clipboard blocked */
+    }
+  };
+
+  const resources: {
+    icon: typeof BookOpen;
+    label: string;
+    onClick: () => void;
+    external: boolean;
+  }[] = [
+    { icon: BookOpen, label: "Documentation", onClick: ext(DOCS_URL), external: true },
+    { icon: Keyboard, label: "Keyboard shortcuts", onClick: openHotkeys, external: false },
+    { icon: Bug, label: "Report a bug", onClick: ext(ISSUES_URL), external: true },
+    { icon: ScrollText, label: "What's new", onClick: ext(CHANGELOG_URL), external: true },
+    { icon: Scale, label: "Licenses", onClick: ext(LICENSES_URL), external: true },
+  ];
 
   return (
     <div className="space-y-5">
@@ -1408,7 +1515,17 @@ function HelpSection() {
           A local-first, cross-platform LaTeX &amp; resume authoring app.
           {version && <span className="ml-1">· v{version}</span>}
         </p>
-        <UpdateChecker className="mt-3" />
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+          <UpdateChecker />
+          <button
+            type="button"
+            onClick={copyDiagnostics}
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+          >
+            {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+            {copied ? "Copied" : "Copy version & system info"}
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -1437,17 +1554,24 @@ function HelpSection() {
         </div>
       </div>
 
-      <div className="flex gap-2 pt-1">
-        <Button variant="secondary" size="sm" className="flex-1" onClick={ext(`${REPO_URL}#readme`)}>
-          Learn more
-        </Button>
-        <Button size="sm" className="flex-1" onClick={ext(DOCS_URL)}>
-          Documentation
-        </Button>
-      </div>
-
-      <div className="rounded-md border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
-        Built with Tauri, React, CodeMirror &amp; Tectonic.
+      <div className="space-y-1">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Resources</p>
+        {resources.map((r) => (
+          <button
+            key={r.label}
+            type="button"
+            onClick={r.onClick}
+            className="flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left text-sm hover:bg-accent"
+          >
+            <r.icon className="size-4 shrink-0 text-muted-foreground" />
+            <span className="flex-1 truncate">{r.label}</span>
+            {r.external ? (
+              <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
+            ) : (
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+            )}
+          </button>
+        ))}
       </div>
     </div>
   );
