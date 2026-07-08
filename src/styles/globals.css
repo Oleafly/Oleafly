@@ -232,33 +232,33 @@ select:focus-visible {
   animation: ai-shimmer 1.6s linear infinite;
 }
 
-/* --- CodeMirror merge (git diff) colors — stronger than the library defaults,
-   and legible on the dark (near-black) editor background. --- */
-/* Subtle low-alpha tints behind the text (`a` = deletions, `b` = insertions);
-   the changed words themselves get a slightly stronger tint to stand out. */
+/* --- CodeMirror merge (git diff) colors. `!important` is required because the
+   @codemirror/merge base theme injects its own `.cm-changedLine` etc. rules at
+   runtime with equal specificity, so without it our values are overridden.
+   `a` = old side (deletions, red), `b` = new side (insertions, green). --- */
 /* Light theme (default). */
-.cm-changedLine { background-color: rgba(46, 160, 67, 0.16); }  /* inserted (new / unified) */
-.cm-changedText { background-color: rgba(46, 160, 67, 0.35); }
-.cm-merge-a .cm-changedLine { background-color: rgba(220, 38, 38, 0.13); } /* deleted (old side) */
-.cm-merge-a .cm-changedText { background-color: rgba(220, 38, 38, 0.30); }
-.cm-deletedChunk { background-color: rgba(220, 38, 38, 0.10); }
+.cm-changedLine { background-color: #b6efc8 !important; }  /* inserted (new / unified) */
+.cm-changedText { background-color: #7fdfa2 !important; }
+.cm-merge-a .cm-changedLine { background-color: #ffc2ca !important; } /* deleted (old side) */
+.cm-merge-a .cm-changedText { background-color: #f79ba6 !important; }
+.cm-deletedChunk { background-color: #ffd2d8 !important; }
 .cm-deletedChunk .cm-deletedText,
-.cm-deletedText { background-color: rgba(220, 38, 38, 0.30); }
+.cm-deletedText { background-color: #f79ba6 !important; }
 .cm-collapsedLines {
-  background: #e5e7eb;
-  color: #374151;
+  background: #e5e7eb !important;
+  color: #374151 !important;
 }
-.cm-collapsedLines:hover { background: #d5d9df; }
+.cm-collapsedLines:hover { background: #d5d9df !important; }
 
-.dark .cm-changedLine { background-color: rgba(63, 185, 80, 0.13); }
-.dark .cm-changedText { background-color: rgba(63, 185, 80, 0.28); }
-.dark .cm-merge-a .cm-changedLine { background-color: rgba(248, 81, 73, 0.13); }
-.dark .cm-merge-a .cm-changedText { background-color: rgba(248, 81, 73, 0.28); }
-.dark .cm-deletedChunk { background-color: rgba(248, 81, 73, 0.10); }
+.dark .cm-changedLine { background-color: #14361f !important; }
+.dark .cm-changedText { background-color: #235c37 !important; }
+.dark .cm-merge-a .cm-changedLine { background-color: #45191e !important; }
+.dark .cm-merge-a .cm-changedText { background-color: #7f2731 !important; }
+.dark .cm-deletedChunk { background-color: #3a161a !important; }
 .dark .cm-deletedChunk .cm-deletedText,
-.dark .cm-deletedText { background-color: rgba(248, 81, 73, 0.28); }
+.dark .cm-deletedText { background-color: #7f2731 !important; }
 .dark .cm-collapsedLines {
-  background: #1f2937;
-  color: #9ca3af;
+  background: #1f2937 !important;
+  color: #9ca3af !important;
 }
-.dark .cm-collapsedLines:hover { background: #283445; }
+.dark .cm-collapsedLines:hover { background: #283445 !important; }
