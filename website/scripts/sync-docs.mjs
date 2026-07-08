@@ -2,7 +2,7 @@
 // collection. The docs stay the single source of truth in the main tree; this
 // derives site pages from them by adding frontmatter (title + description) and
 // rewriting cross-doc links to site routes. Run automatically before dev/build.
-import { readdir, readFile, writeFile, mkdir } from "node:fs/promises";
+import { readdir, readFile, writeFile, mkdir, rm } from "node:fs/promises";
 import { dirname, join, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -12,16 +12,33 @@ const OUT_DIR = join(here, "..", "src", "content", "docs");
 const BASE = "/OpenLeaf";
 const REPO = "https://github.com/prajwal-svm/OpenLeaf";
 
-/** Turn a path like `install.md#first-run` into a site route `/OpenLeaf/install/#first-run`. */
+// Product-facing docs only. Contributor/maintainer docs (development, releasing,
+// auto-update internals) live in the repo but are intentionally kept off the
+// user-facing site. Order here has no effect; the sidebar (astro.config) does.
+const USER_DOCS = new Set([
+  "getting-started",
+  "install",
+  "features",
+  "ai-assistant",
+  "github-sync",
+  "keyboard-shortcuts",
+  "faq",
+]);
+
+/** Turn a doc link into a site route (if it's a published page) or a GitHub link (if not). */
 function rewriteLink(url) {
-  // Leave external links, images, mail, and pure in-page anchors untouched.
+  // Leave external links, images, mail, absolute paths, and in-page anchors alone.
   if (/^(https?:|mailto:|#|\/)/.test(url)) return url;
-  // Links up to the repo README map to the README on GitHub.
+  // Links to the repo README map to the README on GitHub.
   const readme = url.match(/^\.\.\/README\.md(#.*)?$/);
   if (readme) return `${REPO}/blob/main/README.md${readme[1] ?? ""}`;
-  // Sibling doc: `name.md` or `./name.md`, optionally with an #anchor.
+  // Sibling doc: `name.md` (optionally `./`), optionally with an #anchor.
   const doc = url.match(/^\.?\/?([\w-]+)\.md(#.*)?$/);
-  if (doc) return `${BASE}/${doc[1]}/${doc[2] ?? ""}`;
+  if (doc) {
+    const [, name, hash = ""] = doc;
+    // Published page -> clean site route; contributor doc -> its GitHub source.
+    return USER_DOCS.has(name) ? `${BASE}/${name}/${hash}` : `${REPO}/blob/main/docs/${name}.md${hash}`;
+  }
   return url;
 }
 
@@ -41,7 +58,7 @@ function transform(src) {
     .split("\n\n")
     .map((p) => p.trim())
     .find((p) => p && !p.startsWith("#") && !p.startsWith("|") && !p.startsWith("```"));
-  let description = (para ?? "")
+  const description = (para ?? "")
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // links -> text
     .replace(/[*_`>#]/g, "")
     .replace(/\s+/g, " ")
@@ -57,14 +74,19 @@ function transform(src) {
 
 async function main() {
   await mkdir(OUT_DIR, { recursive: true });
-  const entries = (await readdir(DOCS_DIR)).filter((f) => f.endsWith(".md"));
-  let n = 0;
+  // Clear previously generated pages (all .md; the hand-authored index.mdx is
+  // kept) so dropped docs don't linger as stale routes.
+  for (const f of await readdir(OUT_DIR)) {
+    if (f.endsWith(".md")) await rm(join(OUT_DIR, f));
+  }
+  const entries = (await readdir(DOCS_DIR)).filter(
+    (f) => f.endsWith(".md") && USER_DOCS.has(basename(f, ".md")),
+  );
   for (const file of entries) {
     const src = await readFile(join(DOCS_DIR, file), "utf8");
     await writeFile(join(OUT_DIR, basename(file)), transform(src), "utf8");
-    n++;
   }
-  console.log(`sync-docs: wrote ${n} pages to src/content/docs/`);
+  console.log(`sync-docs: wrote ${entries.length} product pages to src/content/docs/`);
 }
 
 main().catch((err) => {

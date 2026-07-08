@@ -17,34 +17,27 @@ export default defineConfig({
       social: [
         { icon: "github", label: "GitHub", href: "https://github.com/prajwal-svm/OpenLeaf" },
       ],
-      editLink: {
-        baseUrl: "https://github.com/prajwal-svm/OpenLeaf/edit/main/docs/",
-      },
+      // Product docs: no "Edit this page" link (that's a contributor affordance).
       sidebar: [
         {
-          label: "Start here",
+          label: "Get started",
           items: [
             { label: "Getting started", slug: "getting-started" },
-            { label: "Install", slug: "install" },
-            { label: "Features", slug: "features" },
+            { label: "Download & install", slug: "install" },
           ],
         },
         {
-          label: "Guides",
+          label: "Using OpenLeaf",
           items: [
+            { label: "Features", slug: "features" },
             { label: "AI assistant", slug: "ai-assistant" },
             { label: "GitHub sync", slug: "github-sync" },
             { label: "Keyboard shortcuts", slug: "keyboard-shortcuts" },
-            { label: "Auto-updates", slug: "updates" },
-            { label: "FAQ", slug: "faq" },
           ],
         },
         {
-          label: "Contributing",
-          items: [
-            { label: "Development", slug: "development" },
-            { label: "Releasing", slug: "releasing" },
-          ],
+          label: "Help",
+          items: [{ label: "FAQ", slug: "faq" }],
         },
       ],
     }),

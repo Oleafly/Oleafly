@@ -1,23 +1,77 @@
 /*
- * Match the OpenLeaf app: neutral dark/light grounds (Starlight's defaults are
- * already near-black / white like the app) with the app's blue primary as the
- * accent. The green leaf mark carries the brand; blue carries interaction,
- * exactly as in the app.
+ * OpenLeaf docs theme. Mirrors the desktop app: a neutral near-black dark
+ * ground (the app's default), a clean white light ground, the app's blue as the
+ * interaction accent, and the app's rounded-card geometry. The green leaf mark
+ * carries the brand; blue carries interaction, exactly as in the app.
  */
+
+/* Dark theme (the app's default), neutral grays matched to the app's tokens. */
 :root {
   --sl-color-accent-low: #172554;
   --sl-color-accent: #2563eb;
   --sl-color-accent-high: #bfdbfe;
+
+  --sl-color-white: #fafafa;
+  --sl-color-gray-1: #ececec;
+  --sl-color-gray-2: #c2c2c2;
+  --sl-color-gray-3: #8a8a8a;
+  --sl-color-gray-4: #565656;
+  --sl-color-gray-5: #363636;
+  --sl-color-gray-6: #262626;
+  --sl-color-black: #1a1a1a;
+
+  /* App-like rounded geometry. */
+  --ol-radius: 0.75rem;
+  --ol-radius-sm: 0.5rem;
 }
 
+/* Light theme: white ground, same neutral scale inverted, same blue accent. */
 :root[data-theme="light"] {
   --sl-color-accent-low: #dbeafe;
   --sl-color-accent: #2563eb;
   --sl-color-accent-high: #172554;
+
+  --sl-color-white: #1a1a1a;
+  --sl-color-gray-1: #262626;
+  --sl-color-gray-2: #363636;
+  --sl-color-gray-3: #565656;
+  --sl-color-gray-4: #8a8a8a;
+  --sl-color-gray-5: #c2c2c2;
+  --sl-color-gray-6: #ececec;
+  --sl-color-gray-7: #f7f7f7;
+  --sl-color-black: #ffffff;
 }
 
-/* Give the hero leaf a little room and keep the wordmark tight, like the app. */
+/* Tighten the wordmark like the app. */
 .site-title {
   font-weight: 650;
   letter-spacing: -0.01em;
+}
+
+/* Rounded corners on the app's card-like surfaces. */
+.sl-markdown-content :is(pre, .expressive-code .frame),
+.expressive-code .frame.has-title,
+.card,
+.sl-link-card,
+.starlight-aside {
+  border-radius: var(--ol-radius);
+}
+
+/* Code frames clip their inner scroll to the rounded corner. */
+.expressive-code .frame {
+  overflow: hidden;
+}
+
+/* Search input + button, inline code, and images: the smaller app radius. */
+.sl-markdown-content :not(pre) > code,
+:is(button, input)[class*="search"],
+.pagefind-ui__search-input,
+.pagefind-ui__result,
+.sl-markdown-content img {
+  border-radius: var(--ol-radius-sm);
+}
+
+/* Softer, app-like hairlines instead of hard 1px lines. */
+:root {
+  --sl-color-hairline-shade: color-mix(in srgb, var(--sl-color-gray-5) 60%, transparent);
 }
