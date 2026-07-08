@@ -5,6 +5,27 @@ All notable changes to OpenLeaf are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [0.2.1]
+
+### Added
+
+- **Dedicated update window** - when a new version is available, OpenLeaf opens
+  its own branded, frameless window (instead of a native OS dialog) showing the
+  changelog for the new version, with a one-click Update now that downloads,
+  installs, and restarts.
+- **Streamlined macOS menu** - the menu bar now shows a single OpenLeaf menu
+  with About OpenLeaf, Check for Updates, and Quit.
+- **Update-check indicator** - the About panel now flags when an automatic
+  update check has failed, so an otherwise-silent failure is visible.
+
+### Changed
+
+- **Release notes come from the changelog** - the update window and the GitHub
+  release now lead with what actually changed (drawn from this file), with
+  install help as a link rather than the headline.
+
 ## [0.2.0]
 
 ### Added
@@ -130,7 +151,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   compilation, SyncTeX, Git integration, GitHub sync, and bring-your-own-key AI
   assistance.
 
-[Unreleased]: https://github.com/prajwal-svm/OpenLeaf/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/prajwal-svm/OpenLeaf/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/prajwal-svm/OpenLeaf/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/prajwal-svm/OpenLeaf/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/prajwal-svm/OpenLeaf/releases/tag/v0.1.1
 [0.1.0]: https://github.com/prajwal-svm/OpenLeaf/releases/tag/v0.1.0
