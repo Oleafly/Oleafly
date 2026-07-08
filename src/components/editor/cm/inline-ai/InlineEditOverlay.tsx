@@ -48,6 +48,15 @@ export function InlineEditOverlay() {
     return () => window.removeEventListener("openleaf:ai-config-changed", check);
   }, []);
 
+  // Abort any in-flight request whenever the session closes (Esc, ⌘L toggle,
+  // click-outside, or accept/reject all clear it).
+  useEffect(() => {
+    if (!session) {
+      abortRef.current?.abort();
+      abortRef.current = null;
+    }
+  }, [session]);
+
   // Reposition on scroll / resize while a session is open.
   useEffect(() => {
     if (!session) return;

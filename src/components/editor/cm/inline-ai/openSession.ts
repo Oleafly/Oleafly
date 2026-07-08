@@ -24,3 +24,13 @@ export function openInlineEdit(view: EditorView): void {
   if (!original.trim()) return;
   useInlineEditStore.getState().open({ from, to, original });
 }
+
+/** Toggle the inline AI edit session: open it, or close it if already open. */
+export function toggleInlineEdit(view: EditorView): void {
+  if (useInlineEditStore.getState().session) {
+    // Clearing the session lets the overlay abort any in-flight request.
+    useInlineEditStore.getState().reset();
+    return;
+  }
+  openInlineEdit(view);
+}
