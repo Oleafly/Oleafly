@@ -1,4 +1,10 @@
-import { StateEffect, StateField, type EditorState, type Extension } from "@codemirror/state";
+import {
+  StateEffect,
+  type StateEffectType,
+  StateField,
+  type EditorState,
+  type Extension,
+} from "@codemirror/state";
 import {
   Decoration,
   type DecorationSet,
@@ -29,50 +35,63 @@ class AddWidget extends WidgetType {
   }
 }
 
-const setInlineDeco = StateEffect.define<DecorationSet>();
+// The inline diff (marks + inline widgets) and the block panel widget live in
+// SEPARATE fields: a single set mixing block and inline decorations can become
+// invalid when a diff span lands at the block widget's line-end position, which
+// would silently drop the whole set. Keeping them apart guarantees each set is
+// internally valid.
+const setDiffDeco = StateEffect.define<DecorationSet>();
+const setPanelDeco = StateEffect.define<DecorationSet>();
 
-const inlineDecoField = StateField.define<DecorationSet>({
-  create() {
-    return Decoration.none;
-  },
-  update(deco, tr) {
-    deco = deco.map(tr.changes);
-    for (const e of tr.effects) if (e.is(setInlineDeco)) deco = e.value;
-    return deco;
-  },
-  provide: (f) => EditorView.decorations.from(f),
-});
+function decoField(effect: StateEffectType<DecorationSet>) {
+  return StateField.define<DecorationSet>({
+    create() {
+      return Decoration.none;
+    },
+    update(deco, tr) {
+      deco = deco.map(tr.changes);
+      for (const e of tr.effects) if (e.is(effect)) deco = e.value;
+      return deco;
+    },
+    provide: (f) => EditorView.decorations.from(f),
+  });
+}
 
-/** Build the decoration set for the current session: the diff preview (when
- * streaming/reviewing) plus the prompt panel block widget below the line. */
-function buildSet(state: EditorState): DecorationSet {
+const diffField = decoField(setDiffDeco);
+const panelField = decoField(setPanelDeco);
+
+/** Inline red/green diff over the original text (streaming + reviewing). */
+function buildDiffSet(state: EditorState): DecorationSet {
   const s = useInlineEditStore.getState().session;
-  if (!s) return Decoration.none;
+  if (!s || (s.phase !== "streaming" && s.phase !== "reviewing") || !s.proposed) {
+    return Decoration.none;
+  }
   const docLength = state.doc.length;
   const ranges = [];
-
-  // Inline red/green diff, once there is proposed text to show.
-  if ((s.phase === "streaming" || s.phase === "reviewing") && s.proposed) {
-    for (const sp of buildDecoSpans(s.original, s.proposed, s.from)) {
-      if (sp.from > docLength || sp.to > docLength) continue; // out of bounds guard
-      if (sp.kind === "del" && sp.to > sp.from) {
-        ranges.push(Decoration.mark({ class: "cm-inline-del" }).range(sp.from, sp.to));
-      } else if (sp.kind === "add") {
-        ranges.push(
-          Decoration.widget({ widget: new AddWidget(sp.text ?? ""), side: 1 }).range(sp.from),
-        );
-      }
+  for (const sp of buildDecoSpans(s.original, s.proposed, s.from)) {
+    if (sp.from > docLength || sp.to > docLength) continue; // out of bounds guard
+    if (sp.kind === "del" && sp.to > sp.from) {
+      ranges.push(Decoration.mark({ class: "cm-inline-del" }).range(sp.from, sp.to));
+    } else if (sp.kind === "add") {
+      ranges.push(
+        Decoration.widget({ widget: new AddWidget(sp.text ?? ""), side: 1 }).range(sp.from),
+      );
     }
   }
-
-  // The prompt panel, as a block widget below the target line.
-  const line = state.doc.lineAt(Math.min(s.to, docLength));
-  ranges.push(Decoration.widget({ widget: promptWidget, block: true, side: 1 }).range(line.to));
-
   return Decoration.set(ranges, true);
 }
 
-/** ViewPlugin that repaints the diff whenever the session store changes. */
+/** The prompt panel as a block widget below the target line. */
+function buildPanelSet(state: EditorState): DecorationSet {
+  const s = useInlineEditStore.getState().session;
+  if (!s) return Decoration.none;
+  const line = state.doc.lineAt(Math.min(s.to, state.doc.length));
+  return Decoration.set([
+    Decoration.widget({ widget: promptWidget, block: true, side: 1 }).range(line.to),
+  ]);
+}
+
+/** ViewPlugin that repaints both fields whenever the session store changes. */
 const inlineDiffSubscriber = ViewPlugin.fromClass(
   class {
     private unsub: () => void;
@@ -80,7 +99,12 @@ const inlineDiffSubscriber = ViewPlugin.fromClass(
       this.unsub = useInlineEditStore.subscribe(() => this.repaint());
     }
     private repaint() {
-      this.view.dispatch({ effects: setInlineDeco.of(buildSet(this.view.state)) });
+      this.view.dispatch({
+        effects: [
+          setDiffDeco.of(buildDiffSet(this.view.state)),
+          setPanelDeco.of(buildPanelSet(this.view.state)),
+        ],
+      });
     }
     destroy() {
       this.unsub();
@@ -88,8 +112,8 @@ const inlineDiffSubscriber = ViewPlugin.fromClass(
   },
 );
 
-/** Editor extension: renders the inline AI edit diff preview. */
-export const inlineDiffPlugin: Extension = [inlineDecoField, inlineDiffSubscriber];
+/** Editor extension: renders the inline AI edit diff preview + prompt panel. */
+export const inlineDiffPlugin: Extension = [diffField, panelField, inlineDiffSubscriber];
 
 /** Commit the proposed replacement into the document and clear the session. */
 export function acceptInlineEdit(view: EditorView): void {
