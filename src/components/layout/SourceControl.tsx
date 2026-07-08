@@ -148,16 +148,20 @@ export function SourceControl() {
       await gitDiscard(projectId, path);
       await refresh();
       await refreshTree();
+      notifyGitChanged();
     } catch (e) {
       setStatus({ ok: false, text: String(e) });
     }
   };
 
+  const notifyGitChanged = () =>
+    window.dispatchEvent(new CustomEvent("openleaf:git-changed"));
+
   const runGit = async (op: () => Promise<unknown>) => {
     if (!projectId) return;
     try {
       await op();
-      await refresh();
+      notifyGitChanged(); // the listener refreshes this panel; an open diff reloads too
     } catch (e) {
       setStatus({ ok: false, text: String(e) });
     }
@@ -195,6 +199,7 @@ export function SourceControl() {
       setMessage("");
       await refresh();
       await refreshTree();
+      notifyGitChanged();
       if (!andPush) window.setTimeout(() => setStatus(null), 1500);
     } catch (e) {
       setStatus({ ok: false, text: String(e) });
