@@ -2,8 +2,10 @@
 
 OpenLeaf ships with an in-app updater (Tauri's `plugin-updater`). On launch it
 quietly checks the latest GitHub Release; if a newer version is available it
-offers to download, verify, install, and restart. Users can also trigger a check
-manually from **About → Check for updates**.
+opens a dedicated, branded update window (not a native OS dialog) that shows the
+changelog and offers to download, verify, install, and restart. Users can also
+trigger a check from the **OpenLeaf → Check for Updates** menu, or from
+**About → Check for updates** (which reports the result inline).
 
 ## How it works
 
@@ -17,9 +19,12 @@ manually from **About → Check for updates**.
    against the public key embedded in `tauri.conf.json`. An unsigned or
    tampered artifact is rejected.
 
-The "update available" prompt renders the release notes (the release body from
-`latest.json`) as formatted markdown, so headings, lists, and links from the
-GitHub Release show through.
+The update window renders the release notes as formatted markdown. Those notes
+come from the version's `CHANGELOG.md` section: `release.yml` runs
+`scripts/changelog-extract.sh <version>` to build the release body (what
+changed, with install help as a link rather than the headline), and
+tauri-action copies that body into `latest.json`'s `notes`, which the window
+displays.
 
 ## One-time maintainer setup (required)
 
@@ -50,9 +55,16 @@ That's it. `.github/workflows/release.yml` already passes both to
 
 ## Cutting a release
 
+1. Update `CHANGELOG.md`: rename the top `## [Unreleased]` section to the new
+   `## [X.Y.Z]` heading and add a fresh empty `## [Unreleased]` above it. The
+   release notes are generated from this section, so the heading must match the
+   tag (minus the `v`).
+2. Bump the version, commit, and tag:
+
 ```sh
-scripts/bump-version.sh 0.2.0   # keeps package.json / Cargo.toml / tauri.conf.json in sync
-git tag v0.2.0 && git push origin v0.2.0
+scripts/bump-version.sh 0.2.2   # keeps package.json / Cargo.toml / tauri.conf.json / Cargo.lock in sync
+git commit -am "chore: release v0.2.2"
+git tag v0.2.2 && git push origin main --tags   # triggers the Release workflow
 ```
 
 The workflow builds every platform, signs the updater artifacts, generates
