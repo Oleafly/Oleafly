@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use OpenLeaf in your work, please cite it as below."
+title: OpenLeaf
+abstract: "A free, local-first LaTeX and resume editor for macOS, Windows, and Linux. An offline Overleaf alternative with Git versioning, GitHub sync, SyncTeX, and bring-your-own-key AI."
+type: software
+authors:
+  - family-names: Venkateshmurthy
+    given-names: Prajwal S
+repository-code: "https://github.com/prajwal-svm/OpenLeaf"
+url: "https://prajwal-svm.github.io/OpenLeaf/"
+license: Apache-2.0
+version: 0.2.1
+date-released: 2026-07-08
+keywords:
+  - latex
+  - resume
+  - overleaf-alternative
+  - local-first
+  - tauri
+  - academic-writing

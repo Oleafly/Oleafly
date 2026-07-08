@@ -6,7 +6,7 @@
 
 ### A LaTeX and resume editor that runs on your machine.
 
-Your files stay on your disk. Every project is a real Git repo. Bring your own AI, or use none.
+**OpenLeaf is a free, open-source, local-first LaTeX and resume editor for macOS, Windows, and Linux, an offline [Overleaf](https://www.overleaf.com) alternative.** Your files stay on your disk. Every project is a real Git repo. Bring your own AI, or use none.
 
 [![Download](https://img.shields.io/github/v/release/prajwal-svm/OpenLeaf?label=Download&color=22c55e)](https://github.com/prajwal-svm/OpenLeaf/releases/latest)
 [![CI](https://github.com/prajwal-svm/OpenLeaf/actions/workflows/ci.yml/badge.svg)](https://github.com/prajwal-svm/OpenLeaf/actions/workflows/ci.yml)
