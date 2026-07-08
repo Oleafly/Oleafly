@@ -114,11 +114,14 @@ export async function openUpdateWindow(opts: { manual?: boolean } = {}): Promise
   new WebviewWindow(UPDATE_WINDOW_LABEL, {
     url: `index.html?view=update${opts.manual ? "&manual=1" : ""}`,
     title: "OpenLeaf Update",
-    width: 440,
-    height: 460,
+    width: 600,
+    height: 520,
     resizable: false,
     center: true,
     decorations: false,
+    // Transparent so the webview's rounded card defines the window shape
+    // (macOS draws its shadow around the opaque rounded content).
+    transparent: true,
     focus: true,
   });
 }

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import type { Update } from "@tauri-apps/plugin-updater";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { AlertTriangle, ArrowUpCircle, CheckCircle2, X } from "lucide-react";
+import { AlertTriangle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LeafLogo } from "@/components/layout/LeafLogo";
 import { Markdown } from "@/components/ui/markdown";
 import { findUpdate, installUpdate } from "@/lib/updater";
 import { logError } from "@/lib/log";
@@ -74,18 +75,14 @@ export function UpdateWindow() {
   const notes = update?.body?.trim();
 
   return (
-    <div className="flex h-screen flex-col bg-popover text-popover-foreground">
-      {/* Frameless title bar: draggable, with our own close button. */}
-      <div
-        data-tauri-drag-region
-        className="flex items-center gap-2 border-b px-4 py-3"
-      >
-        {phase === "upToDate" ? (
-          <CheckCircle2 className="size-5 shrink-0 text-emerald-500" />
-        ) : (
-          <ArrowUpCircle className="size-5 shrink-0 text-primary" />
-        )}
+    <div className="flex h-screen flex-col overflow-hidden rounded-xl border bg-popover text-popover-foreground">
+      {/* Frameless, branded title bar: draggable, with our own close button. */}
+      <div data-tauri-drag-region className="flex items-start gap-3 border-b px-5 py-4">
+        <LeafLogo className="mt-0.5 size-7 shrink-0" />
         <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            OpenLeaf
+          </p>
           <p className="truncate text-sm font-semibold">{title}</p>
           {update?.currentVersion && phase !== "upToDate" && (
             <p className="text-xs text-muted-foreground">You're on v{update.currentVersion}</p>
@@ -104,7 +101,7 @@ export function UpdateWindow() {
       </div>
 
       {/* Body */}
-      <div className="min-h-0 flex-1 overflow-auto px-4 py-3">
+      <div className="min-h-0 flex-1 overflow-auto px-5 py-3">
         {phase === "checking" && (
           <p className="text-sm text-muted-foreground">Looking for the latest version…</p>
         )}
@@ -128,7 +125,7 @@ export function UpdateWindow() {
       </div>
 
       {/* Footer / actions */}
-      <div className="border-t px-4 py-3">
+      <div className="border-t px-5 py-3">
         {phase === "downloading" ? (
           <div className="space-y-1.5">
             <p className="text-xs text-muted-foreground">

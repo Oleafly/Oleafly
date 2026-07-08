@@ -27,6 +27,14 @@ window.addEventListener("error", (e) => {
 const isUpdateWindow =
   new URLSearchParams(window.location.search).get("view") === "update";
 
+// The update window is transparent so its rounded card defines the window
+// shape; clear the opaque page background the main app sets.
+if (isUpdateWindow) {
+  for (const el of [document.documentElement, document.body]) {
+    el.style.background = "transparent";
+  }
+}
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ErrorBoundary>
