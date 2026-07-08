@@ -27,3 +27,6 @@ src-tauri/gen
 src-tauri/resources/*.ttb
 src-tauri/binaries/*
 !src-tauri/binaries/.gitkeep
+
+# Local planning docs — not committed
+docs/planning/
