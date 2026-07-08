@@ -22,10 +22,11 @@ function ToastRow({ toast }: { toast: Toast }) {
   const dismiss = useToastStore((s) => s.dismiss);
 
   useEffect(() => {
+    if (toast.sticky) return; // stays until the user dismisses it
     const ms = DURATION[toast.kind] + (toast.action ? ACTION_BONUS : 0);
     const id = window.setTimeout(() => dismiss(toast.id), ms);
     return () => window.clearTimeout(id);
-  }, [toast.id, toast.kind, toast.action, dismiss]);
+  }, [toast.id, toast.kind, toast.action, toast.sticky, dismiss]);
 
   const Icon = ICON[toast.kind];
   return (

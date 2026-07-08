@@ -17,11 +17,12 @@ export async function exportCurrentPdf(): Promise<void> {
   if (!dest) return;
   try {
     await exportPdf(projectId, dest);
-    toast.success(`PDF saved to ${dest}`, {
-      label: "View",
-      onClick: () => void revealInDir(dest),
-    });
+    toast.success(
+      "Export PDF complete",
+      { label: "View File", onClick: () => void revealInDir(dest) },
+      true,
+    );
   } catch (e) {
-    notifyError("export pdf", e, "Couldn't save the PDF.");
+    notifyError("export pdf", e, "Couldn't save the PDF");
   }
 }

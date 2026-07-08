@@ -1,20 +1,23 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   CircleHelp,
   Columns2,
   ChevronRight,
-  Download,
+  FileOutput,
   FileText,
   FileArchive,
   FileType,
   GitFork,
+  Github,
   History,
   Loader2,
   Play,
+  Share2,
   SquarePen,
   X,
 } from "lucide-react";
 import { save } from "@tauri-apps/plugin-dialog";
+import { open } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { LeafLogo } from "@/components/layout/LeafLogo";
@@ -23,10 +26,26 @@ import { useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
 import { useSettingsStore, type ViewMode } from "@/store/settings";
 import { exportCurrentPdf } from "@/features/export";
-import { downloadProjectZip, duplicateProject, exportDocument, revealInDir } from "@/lib/tauri";
+import {
+  downloadProjectZip,
+  duplicateProject,
+  exportDocument,
+  gitGetRemote,
+  revealInDir,
+} from "@/lib/tauri";
+import { toGithubWebUrl } from "@/lib/github-url";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { notifyError, toast } from "@/lib/toast";
 import { cn, isMac } from "@/lib/utils";
+
+/** Display labels for export formats (matches "Export PDF/Zip/Docx/Md/html"). */
+const FMT_LABEL: Record<string, string> = {
+  zip: "Zip",
+  pdf: "PDF",
+  docx: "Docx",
+  html: "html",
+  md: "Md",
+};
 
 const VIEW_OPTIONS: { mode: ViewMode; label: string; icon: typeof Columns2 }[] = [
   { mode: "editor", label: "Editor View", icon: SquarePen },
@@ -55,6 +74,35 @@ export function TopToolbar() {
   const [forkBusy, setForkBusy] = useState(false);
   const [dlOpen, setDlOpen] = useState(false);
   const [exporting, setExporting] = useState<string | null>(null);
+  const [githubUrl, setGithubUrl] = useState<string | null>(null);
+
+  // Track the project's GitHub web URL (null until it's pushed to a remote).
+  useEffect(() => {
+    if (!projectId) {
+      setGithubUrl(null);
+      return;
+    }
+    const load = () =>
+      void gitGetRemote(projectId)
+        .then((r) => setGithubUrl(toGithubWebUrl(r)))
+        .catch(() => setGithubUrl(null));
+    load();
+    window.addEventListener("openleaf:git-changed", load);
+    return () => window.removeEventListener("openleaf:git-changed", load);
+  }, [projectId]);
+
+  const openInGithub = () => {
+    if (githubUrl) void open(githubUrl);
+  };
+  const shareGithub = async () => {
+    if (!githubUrl) return;
+    try {
+      await navigator.clipboard.writeText(githubUrl);
+      toast.success("GitHub link copied");
+    } catch {
+      toast.info(githubUrl);
+    }
+  };
 
   const safeName = () => (projectName || "document").replace(/[^\w.-]+/g, "_");
 
@@ -69,9 +117,13 @@ export function TopToolbar() {
     setExporting("zip");
     try {
       await downloadProjectZip(projectId, dest);
-      toast.success("Project downloaded.");
+      toast.success(
+        "Export Zip complete",
+        { label: "View File", onClick: () => void revealInDir(dest) },
+        true,
+      );
     } catch (e) {
-      notifyError("download zip", e, "Couldn't download the project zip.");
+      notifyError("export zip", e, "Couldn't export the project zip");
     } finally {
       setExporting(null);
     }
@@ -89,10 +141,11 @@ export function TopToolbar() {
     setExporting(format);
     try {
       await exportDocument(projectId, useFilesStore.getState().mainDoc || "main.tex", format, dest);
-      toast.success(`${format.toUpperCase()} saved to ${dest}`, {
-        label: "View",
-        onClick: () => void revealInDir(dest),
-      });
+      toast.success(
+        `Export ${FMT_LABEL[format] ?? format} complete`,
+        { label: "View File", onClick: () => void revealInDir(dest) },
+        true,
+      );
     } catch (e) {
       notifyError(`export ${format}`, e);
     } finally {
@@ -188,15 +241,15 @@ export function TopToolbar() {
         </Tooltip>
 
         <div className="relative">
-          <Tooltip label="Download">
+          <Tooltip label="Export">
             <Button
               variant="ghost"
               size="icon"
               className="text-muted-foreground hover:text-foreground"
               onClick={() => setDlOpen((v) => !v)}
-              aria-label="Download"
+              aria-label="Export"
             >
-              <Download className="size-4" />
+              <FileOutput className="size-4" />
             </Button>
           </Tooltip>
           {dlOpen && (
@@ -205,11 +258,11 @@ export function TopToolbar() {
               <div className="absolute right-0 top-9 z-50 w-60 rounded-md border bg-popover p-1 text-popover-foreground shadow-xl">
                 <button onClick={() => void doDownloadZip()} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
                   <FileArchive className="size-4 text-muted-foreground" />
-                  Download source (.zip)
+                  Export source (.zip)
                 </button>
                 <button onClick={() => void doDownloadPdf()} disabled={!pdfBytes} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent disabled:opacity-40">
                   <FileText className="size-4 text-muted-foreground" />
-                  Download as PDF
+                  Export as PDF
                 </button>
                 {!pdfBytes && (
                   <p className="px-2 py-1 pl-8 text-[10px] text-muted-foreground">
@@ -247,6 +300,32 @@ export function TopToolbar() {
             onClick={() => setHistoryOpen(true)}
           >
             <History className="size-4" />
+          </Button>
+        </Tooltip>
+
+        <Tooltip label={githubUrl ? "Share GitHub link" : "Push to GitHub to share"}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground hover:text-foreground"
+            disabled={!githubUrl}
+            onClick={() => void shareGithub()}
+            aria-label="Share GitHub link"
+          >
+            <Share2 className="size-4" />
+          </Button>
+        </Tooltip>
+
+        <Tooltip label={githubUrl ? "Open in GitHub" : "Not pushed to GitHub yet"}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground hover:text-foreground"
+            disabled={!githubUrl}
+            onClick={openInGithub}
+            aria-label="Open in GitHub"
+          >
+            <Github className="size-4" />
           </Button>
         </Tooltip>
 

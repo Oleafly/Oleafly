@@ -3,11 +3,12 @@ import { logError } from "@/lib/log";
 
 /** Fire a transient toast from anywhere (outside React too). */
 export const toast = {
-  error: (message: string) => useToastStore.getState().push("error", message),
-  success: (message: string, action?: ToastAction) =>
-    useToastStore.getState().push("success", message, action),
-  info: (message: string, action?: ToastAction) =>
-    useToastStore.getState().push("info", message, action),
+  error: (message: string, action?: ToastAction, sticky?: boolean) =>
+    useToastStore.getState().push("error", message, action, sticky),
+  success: (message: string, action?: ToastAction, sticky?: boolean) =>
+    useToastStore.getState().push("success", message, action, sticky),
+  info: (message: string, action?: ToastAction, sticky?: boolean) =>
+    useToastStore.getState().push("info", message, action, sticky),
 };
 
 /**

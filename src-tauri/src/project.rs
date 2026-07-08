@@ -1094,6 +1094,45 @@ pub fn export_pdf(project_id: String, dest: String) -> Result<(), String> {
     Ok(())
 }
 
+/// Locate a usable `pandoc` binary. macOS/Linux GUI apps launch with a minimal
+/// PATH that usually excludes Homebrew and conda, so if it isn't on PATH we also
+/// probe common install locations before giving up.
+fn find_pandoc() -> Option<String> {
+    use std::path::PathBuf;
+    use std::process::Command;
+    let works = |cmd: &str| {
+        Command::new(cmd)
+            .arg("--version")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
+    };
+    if works("pandoc") {
+        return Some("pandoc".to_string());
+    }
+    let mut candidates: Vec<PathBuf> = vec![
+        PathBuf::from("/opt/homebrew/bin/pandoc"),
+        PathBuf::from("/usr/local/bin/pandoc"),
+        PathBuf::from("/usr/bin/pandoc"),
+        PathBuf::from("/opt/homebrew/anaconda3/bin/pandoc"),
+    ];
+    if let Ok(home) = std::env::var("HOME") {
+        for sub in [
+            "anaconda3/bin/pandoc",
+            "miniconda3/bin/pandoc",
+            ".local/bin/pandoc",
+            "homebrew/bin/pandoc",
+            "bin/pandoc",
+        ] {
+            candidates.push(PathBuf::from(&home).join(sub));
+        }
+    }
+    candidates
+        .into_iter()
+        .find(|c| c.exists() && works(&c.to_string_lossy()))
+        .map(|c| c.to_string_lossy().to_string())
+}
+
 /// Convert the main document to another format via `pandoc` (md/html/docx).
 /// Errors clearly if pandoc isn't installed on the system.
 #[tauri::command]
@@ -1108,17 +1147,14 @@ pub fn export_document(
     let root = paths::project_dir(&project_id)?;
     // Validate `main_doc` stays inside the project before handing it to pandoc.
     resolve(&project_id, &main_doc)?;
-    // Verify pandoc is available.
-    let probe = Command::new("pandoc").arg("--version").output();
-    if probe.is_err() {
-        return Err(
-            "pandoc is not installed. Install pandoc to export Word/HTML/Markdown.".to_string(),
-        );
-    }
+    // Find pandoc (PATH or a common install location).
+    let pandoc = find_pandoc().ok_or_else(|| {
+        "pandoc is not installed. Install pandoc to export Word/HTML/Markdown.".to_string()
+    })?;
     // `--` terminates option parsing so a `main_doc` beginning with `-` can't be
     // interpreted as a pandoc flag (defense-in-depth; it's already validated to
     // stay inside the project).
-    let out = Command::new("pandoc")
+    let out = Command::new(&pandoc)
         .arg("-o")
         .arg(&dest)
         .arg("--")

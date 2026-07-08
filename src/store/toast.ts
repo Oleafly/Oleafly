@@ -12,12 +12,14 @@ export interface Toast {
   kind: ToastKind;
   message: string;
   action?: ToastAction;
+  /** When true, the toast stays until the user dismisses it (no auto-timeout). */
+  sticky?: boolean;
 }
 
 interface ToastState {
   toasts: Toast[];
   /** Show a toast; returns its id. */
-  push: (kind: ToastKind, message: string, action?: ToastAction) => number;
+  push: (kind: ToastKind, message: string, action?: ToastAction, sticky?: boolean) => number;
   dismiss: (id: number) => void;
 }
 
@@ -30,10 +32,10 @@ let seq = 0;
  */
 export const useToastStore = create<ToastState>((set) => ({
   toasts: [],
-  push: (kind, message) => {
+  push: (kind, message, action, sticky) => {
     const id = ++seq;
     // Cap the stack so a burst of failures can't fill the screen.
-    set((s) => ({ toasts: [...s.toasts, { id, kind, message }].slice(-4) }));
+    set((s) => ({ toasts: [...s.toasts, { id, kind, message, action, sticky }].slice(-4) }));
     return id;
   },
   dismiss: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
