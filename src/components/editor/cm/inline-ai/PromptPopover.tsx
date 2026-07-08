@@ -58,6 +58,14 @@ export function PromptPopover({
           rows={2}
           className="min-h-[2.75rem] min-w-0 flex-1 resize-none bg-transparent text-sm leading-snug outline-none placeholder:text-muted-foreground disabled:opacity-60"
         />
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          <X className="size-3.5" />
+        </button>
       </div>
 
       {!streaming && (
@@ -102,14 +110,6 @@ export function PromptPopover({
             <ArrowUp className="size-3.5" />
           </button>
         )}
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-          className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-        >
-          <X className="size-3.5" />
-        </button>
       </div>
     </div>
   );
