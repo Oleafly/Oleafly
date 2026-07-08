@@ -102,6 +102,16 @@ const chromeTheme = EditorView.theme({
     padding: "0 8px 0 4px",
     minWidth: "2.5em",
   },
+  // Inline AI edit diff preview.
+  ".cm-inline-del": {
+    backgroundColor: "color-mix(in oklch, var(--destructive) 18%, transparent)",
+    textDecoration: "line-through",
+    textDecorationColor: "color-mix(in oklch, var(--destructive) 70%, transparent)",
+  },
+  ".cm-inline-add": {
+    backgroundColor: "color-mix(in oklch, oklch(0.72 0.19 149) 20%, transparent)",
+    borderRadius: "2px",
+  },
 });
 
 const highlightStyle = HighlightStyle.define([
