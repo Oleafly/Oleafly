@@ -1,6 +1,6 @@
 # Keyboard shortcuts
 
-OpenLeaf is keyboard-driven. Formatting lives in shortcuts, the context menu, the command palette, and slash-commands, not in a toolbar.
+OpenLeaf is keyboard-driven. Formatting and code navigation live in shortcuts, the editor toolbar, the context menu, the command palette, and slash-commands.
 
 ## Global
 
@@ -22,7 +22,19 @@ OpenLeaf is keyboard-driven. Formatting lives in shortcuts, the context menu, th
 | `⌘I` / `Ctrl I` | Italic (`\textit{}`) |
 | `Ctrl Space` | Trigger autocomplete |
 | `/` | Slash-command insert menu (`/figure`, `/table`, `/section`, `/cite`, `/math`) |
+| Click the gutter arrow | Fold / unfold an environment or section |
+| `Ctrl ⇧ [` / `Ctrl ⇧ ]` | Fold / unfold at the cursor |
 | `⌘/Ctrl-click` on PDF | PDF → source (SyncTeX inverse) |
+
+## Code intelligence
+
+Powered by the project index (labels, refs, citations, macros, theorems, glossary, and the `\input` graph). Also available from the editor toolbar (the `{}` menu) and the right-click menu.
+
+| Shortcut | Action |
+|---|---|
+| `F12` or `⌘/Ctrl-click` | Go to definition (jumps across files) |
+| `⇧F12` | Find references (opens the References panel) |
+| `F2` | Rename symbol project-wide (label, citation key, or macro) |
 
 ## Layout and view
 

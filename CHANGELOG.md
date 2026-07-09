@@ -7,6 +7,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Code intelligence (project index)** - OpenLeaf now builds a live index of the
+  whole project (sections, `\label`s, `\ref`/`\cite`s, `.bib` entries, `\newcommand`
+  macros, theorems, glossary entries, and the `\input` graph). It powers:
+  go-to-definition (F12 or Cmd/Ctrl-click) that jumps from a `\ref`, `\cite`, or
+  macro use to its definition across files; find-references (Shift-F12) that lists
+  every use in a side panel; and rename-refactor (F2) that renames a label,
+  citation key, or macro and updates every use project-wide, with a collision
+  check. The AI assistant also gains a project_map tool so it can reason about the
+  whole document, not just the open file. The index rebuilds from an in-memory
+  cache as you type, so it stays fresh without slowing editing. Hovering a
+  reference shows what it points to, and Cmd/Ctrl-hover underlines it as a link.
+- **VSCode-style find and replace** - `⌘F` now opens a compact widget with icon
+  toggles for case, whole-word, and regex, a live match count, prev/next and
+  select-all, and a collapsible replace row.
+- **Code folding** - click the gutter arrow to collapse a `\begin...\end`
+  environment or a section (folds until the next same-or-higher-level section);
+  fold and unfold at the cursor with `Ctrl ⇧ [` / `Ctrl ⇧ ]`.
+
+- **Preflight: ATS and accessibility checks** - a new Preflight panel (shield
+  icon in the sidebar). It opens instantly and, like a page-speed report, lets
+  you pick which checks to run: ATS readiness (for resumes) and Accessibility
+  (for research and published PDFs), pre-selected to match your document. Run on
+  demand and it reads your source and compiled PDF and reports how ready the
+  document is: an ATS-readiness score and an accessibility score, flagging issues
+  like two-column layouts, missing image alt text, icons that hide contact info,
+  garbled ligatures, and missing PDF language or title, plus a "what the reader
+  sees" plain-text preview of the compiled PDF. Source-level issues also appear
+  as inline squiggles in the editor. Checks are a readiness aid, not a formal
+  accessibility certification.
+- **Preflight: what a parser extracted** - for resumes, Preflight now simulates
+  what an Applicant Tracking System pulls from your compiled PDF: the name,
+  email, phone, and links it captured, and which standard sections (Experience,
+  Education, Skills, and so on) it could detect, so you can see at a glance if a
+  parser would miss your contact details or work history.
+- **Preflight: output accessibility verdict** - after compiling, Preflight gives
+  a clear answer on whether the PDF is Section 508 / PDF-UA ready. When a tagged
+  PDF is present it audits the tag tree (figure alt text, table headers, heading
+  nesting); on untagged output it says so plainly instead of leaving you
+  guessing. Findings are now grouped into Source and Compiled output.
+- **Preflight: prepare for accessible export** - one click rewrites your
+  document into a form a tagging engine can turn into a Section 508 / PDF-UA
+  ready PDF: it adds the required \DocumentMetadata first line, unicode-math,
+  and alt-text placeholders, and warns about packages that break tagging. It
+  shows every change before you apply it, so nothing happens without your
+  say-so. Compile the prepared source with LuaLaTeX (TeX Live 2025 or newer),
+  then let Preflight verify the tagged output.
+- **Optional LuaLaTeX engine for tagged export** - a new Settings, LaTeX Engine
+  section. OpenLeaf uses a LuaLaTeX / TeX Live you already have, or installs
+  TinyTeX (about 100 MB) on demand, in your home folder with no admin rights,
+  and lets you delete it to free space. A built-in package manager (tlmgr) adds
+  or removes LaTeX packages, with each package tagged for tagging compatibility.
+  With an engine present, Preflight can compile a tagged PDF and verify it in one
+  step. The default Tectonic engine is unchanged for everyone who does not need
+  tagging.
+
 ## [0.2.1]
 
 ### Added
