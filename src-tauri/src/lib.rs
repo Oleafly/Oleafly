@@ -1,3 +1,4 @@
+mod citation;
 mod commands;
 mod config;
 mod git;
@@ -72,6 +73,9 @@ pub fn run() {
             latex_engine::tlmgr_install,
             latex_engine::tlmgr_remove,
             latex_engine::compile_tagged,
+            citation::fetch_doi_bibtex,
+            citation::fetch_arxiv,
+            citation::crossref_search,
             project::set_main_doc,
             project::rename_project,
             project::open_devtools,

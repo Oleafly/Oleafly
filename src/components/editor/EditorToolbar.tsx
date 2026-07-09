@@ -30,6 +30,7 @@ import {
   wrapSelection,
 } from "./cm/controller";
 import { goToDefinition, findReferences, startRename } from "@/lib/index/nav";
+import { useCitationStore } from "@/store/citation";
 import { cn } from "@/lib/utils";
 
 /** Run a code-intelligence action against the active editor view. */
@@ -125,7 +126,7 @@ export function EditorToolbar() {
       <IconBtn onClick={() => insertAtCursor("\\href{}{}")} title="Insert link">
         <LinkIcon className="size-4" />
       </IconBtn>
-      <IconBtn onClick={() => insertAtCursor("\\cite{}")} title="Insert citation">
+      <IconBtn onClick={() => useCitationStore.getState().setOpen(true)} title="Add citation (DOI, arXiv, or title)">
         <Quote className="size-4" />
       </IconBtn>
       <IconBtn onClick={() => insertAtCursor("\\ref{}")} title="Insert cross-reference">

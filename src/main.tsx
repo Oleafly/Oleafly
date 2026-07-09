@@ -6,6 +6,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { DevContextMenu } from "@/components/layout/DevContextMenu";
 import { IndexKeeper } from "@/components/editor/IndexKeeper";
 import { RenameDialog } from "@/components/layout/RenameDialog";
+import { AddCitationDialog } from "@/components/layout/AddCitationDialog";
 import { UpdateWindow } from "@/components/layout/UpdateWindow";
 import { ThemeProvider } from "@/lib/theme";
 import { Toaster } from "@/components/ui/toaster";
@@ -51,6 +52,7 @@ createRoot(document.getElementById("root")!).render(
           <DevContextMenu />
           <IndexKeeper />
           <RenameDialog />
+          <AddCitationDialog />
         </>
       )}
     </ErrorBoundary>

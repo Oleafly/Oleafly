@@ -170,6 +170,12 @@ export const tlmgrRemove = (packages: string[]) => invoke<string>("tlmgr_remove"
 export const compileTagged = (projectId: string, mainDoc: string) =>
   invoke<TaggedCompileResult>("compile_tagged", { projectId, mainDoc });
 
+// --- Citation lookup (auto-citation) ---
+
+export const fetchDoiBibtex = (doi: string) => invoke<string>("fetch_doi_bibtex", { doi });
+export const fetchArxiv = (id: string) => invoke<string>("fetch_arxiv", { id });
+export const crossrefSearch = (query: string) => invoke<string>("crossref_search", { query });
+
 export interface SearchHit {
   project_id: string;
   project_name: string;

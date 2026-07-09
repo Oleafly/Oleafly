@@ -10,6 +10,7 @@ import {
   List,
   Moon,
   Play,
+  Quote,
   Sigma,
   Square,
   Sun,
@@ -19,6 +20,7 @@ import {
 } from "lucide-react";
 import { useSettingsStore } from "@/store/settings";
 import { useCompileStore } from "@/store/compile";
+import { useCitationStore } from "@/store/citation";
 import { useTheme } from "@/lib/theme";
 import { insertAtCursor, wrapSelection } from "@/components/editor/cm/controller";
 import { forwardFromCursor } from "@/features/synctex";
@@ -118,6 +120,12 @@ export function CommandPalette() {
               icon={<List className="size-4" />}
               label="History"
               onSelect={run(() => setHistoryOpen(true))}
+            />
+            <PaletteItem
+              icon={<Quote className="size-4" />}
+              label="Add citation"
+              hint="DOI / arXiv / title"
+              onSelect={run(() => useCitationStore.getState().setOpen(true))}
             />
           </Command.Group>
 
