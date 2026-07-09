@@ -51,7 +51,7 @@ describe("runPreflight", () => {
   it("runs the references check and scores it when a refs context is supplied", () => {
     const r = runPreflight({
       source: "\\cite{ghost}\\ref{nowhere}",
-      refs: { definedLabels: [], bibKeys: [], bibLoaded: true, projectFiles: [] },
+      refs: { definedLabels: [], bibKeys: [], bibLoaded: true, projectFiles: [], duplicateDois: [] },
     });
     expect(r.findings.some((f) => f.id === "refs-undefined-cite")).toBe(true);
     expect(r.findings.some((f) => f.id === "refs-undefined-ref")).toBe(true);

@@ -17,6 +17,8 @@ export interface RefsContext {
   bibLoaded: boolean;
   /** Flat list of project file paths, for resolving includes/graphics. */
   projectFiles: string[];
+  /** Groups of bib entries that share a DOI (likely duplicates). */
+  duplicateDois: { doi: string; keys: string[] }[];
 }
 
 const GRAPHICS_EXT = ["", ".pdf", ".png", ".jpg", ".jpeg", ".eps", ".svg"];
@@ -153,6 +155,17 @@ export function runRefsRules(source: string, ctx: RefsContext): Finding[] {
         to: m.index + m[0].length,
       });
     }
+  }
+
+  // Duplicate bibliography entries (same DOI under different keys).
+  for (const dup of ctx.duplicateDois) {
+    out.push({
+      id: "refs-duplicate-bib",
+      lens: "refs",
+      severity: "warning",
+      title: `Duplicate bibliography entries: ${dup.keys.join(", ")}`,
+      detail: `These entries share the DOI ${dup.doi}, so they are the same reference under different keys. Keep one and cite it, or your bibliography will list it twice.`,
+    });
   }
 
   return out.sort((a, b) => (a.from ?? 0) - (b.from ?? 0));

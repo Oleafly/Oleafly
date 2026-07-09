@@ -3,6 +3,7 @@ import { runPreflight } from "@/lib/preflight/engine";
 import { extractForPreflight } from "@/lib/preflight/pdf-extract";
 import type { RefsContext } from "@/lib/preflight/refs-rules";
 import type { PreflightReport } from "@/lib/preflight/types";
+import { parseEntry } from "@/lib/citation/bibtex";
 import { useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
 
@@ -15,19 +16,29 @@ function buildRefsContext(files: ReturnType<typeof useFilesStore.getState>): Ref
   const bibKeys: string[] = [];
   const definedLabels: string[] = [];
   let bibLoaded = false;
+  // DOI -> the keys of the bib entries that use it (to detect duplicates).
+  const doiToKeys = new Map<string, string[]>();
   for (const [path, state] of Object.entries(files.files)) {
     if (path.endsWith(".bib")) {
       bibLoaded = true;
       const re = /@\w+\s*\{\s*([^,\s}]+)/g;
       let m: RegExpExecArray | null;
       while ((m = re.exec(state.content))) bibKeys.push(m[1]);
+      for (const chunk of state.content.split(/(?=@\w+\s*\{)/)) {
+        const p = parseEntry(chunk.trim());
+        const doi = p?.fields.doi?.trim().toLowerCase();
+        if (p && doi) doiToKeys.set(doi, [...(doiToKeys.get(doi) ?? []), p.key]);
+      }
     }
     const lre = /\\label\s*\{([^}]*)\}/g;
     let lm: RegExpExecArray | null;
     while ((lm = lre.exec(state.content))) definedLabels.push(lm[1].trim());
   }
+  const duplicateDois = [...doiToKeys.entries()]
+    .filter(([, keys]) => keys.length > 1)
+    .map(([doi, keys]) => ({ doi, keys }));
   const projectFiles = files.tree.filter((f) => !f.is_dir).map((f) => f.path);
-  return { bibKeys, definedLabels, bibLoaded, projectFiles };
+  return { bibKeys, definedLabels, bibLoaded, projectFiles, duplicateDois };
 }
 
 export type CheckId = "ats" | "a11y" | "refs";

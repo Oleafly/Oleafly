@@ -11,6 +11,7 @@ import {
   PanelLeft,
   PanelLeftClose,
   Search,
+  SearchCode,
   Settings as SettingsIcon,
   ShieldCheck,
   Sparkles,
@@ -27,7 +28,7 @@ import { cn } from "@/lib/utils";
 const TOP_TABS: { id: RailTab; label: string; icon: typeof FileText }[] = [
   { id: "files", label: "Source Tree", icon: FileText },
   { id: "search", label: "Project search", icon: Search },
-  { id: "source", label: "Source control", icon: GitBranch },
+  { id: "source", label: "Git", icon: GitBranch },
 ];
 
 export function Rail() {
@@ -95,6 +96,16 @@ export function Rail() {
             className={railBtn(railTab === "preflight" && showTree)}
           >
             <ShieldCheck className="size-5" />
+          </button>
+        </Tooltip>
+
+        <Tooltip label="References (Shift-F12)" side="right">
+          <button
+            aria-label="References"
+            onClick={() => select("refs")}
+            className={railBtn(railTab === "refs" && showTree)}
+          >
+            <SearchCode className="size-5" />
           </button>
         </Tooltip>
 

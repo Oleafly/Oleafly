@@ -6,6 +6,7 @@ const ctx = (over: Partial<RefsContext> = {}): RefsContext => ({
   bibKeys: [],
   bibLoaded: true,
   projectFiles: [],
+  duplicateDois: [],
   ...over,
 });
 
@@ -53,6 +54,19 @@ describe("duplicate labels", () => {
   });
   it("does not flag distinct labels", () => {
     expect(has("\\label{a}\\label{b}", ctx(), "refs-duplicate-label")).toBe(false);
+  });
+});
+
+describe("duplicate bib entries", () => {
+  it("flags two entries that share a DOI", () => {
+    const out = runRefsRules("", ctx({ duplicateDois: [{ doi: "10.1/x", keys: ["smith21", "smithdup"] }] }));
+    const f = out.find((x) => x.id === "refs-duplicate-bib");
+    expect(f).toBeDefined();
+    expect(f!.title).toContain("smith21");
+    expect(f!.title).toContain("smithdup");
+  });
+  it("does not fire when there are no duplicates", () => {
+    expect(runRefsRules("", ctx()).some((x) => x.id === "refs-duplicate-bib")).toBe(false);
   });
 });
 
