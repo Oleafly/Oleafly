@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Auto-citation** - add a reference by pasting a DOI, arXiv id, or URL (fetched
+  directly), or by typing a paper title to search Crossref and pick a result.
+  OpenLeaf appends a correctly-keyed BibTeX entry to your project's .bib
+  (deduplicated by DOI, so the same paper is never added twice) and inserts the
+  \cite at your cursor. Open it from the command palette ("Add citation") or the
+  citation button in the editor toolbar. Only the identifier or title is sent, to
+  doi.org, arXiv, or Crossref, and it respects offline mode.
+- **Duplicate bibliography detection** - the References check now flags two `.bib`
+  entries that share a DOI (the same paper under two keys), and a References
+  button was added to the sidebar rail to reopen the find-references results.
+
 - **Code intelligence (project index)** - OpenLeaf now builds a live index of the
   whole project (sections, `\label`s, `\ref`/`\cite`s, `.bib` entries, `\newcommand`
   macros, theorems, glossary entries, and the `\input` graph). It powers:

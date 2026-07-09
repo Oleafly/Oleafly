@@ -67,8 +67,8 @@ automated resume parsers (ATS) and screen readers.
   PDF is Section 508 / PDF-UA ready, with a full tag-tree audit when a tagged
   PDF is present.
 - References & assets check: finds undefined citations and cross-references,
-  duplicate labels, and missing figure or included files, before they break your
-  PDF at submission.
+  duplicate labels, duplicate bibliography entries (two keys sharing a DOI), and
+  missing figure or included files, before they break your PDF at submission.
 - Each check is independent: an accordion with a checkbox to enable it, a Run
   button for that check, and a Run button for all enabled checks together. The
   panel opens instantly and the relevant check is pre-selected from your document
@@ -109,6 +109,17 @@ Every project is a git repo, and OpenLeaf auto-commits on save. So you get:
 - See changed files, stage or discard them, write a message, and Commit, Push, or Pull.
 - Publish to GitHub: create a new repo or link an existing one, then push. See [GitHub Sync](github-sync.md).
 - Ahead/behind indicators tell you when to pull.
+
+## Citations
+
+- Add citation: open it from the command palette ("Add citation") or the citation
+  button in the editor toolbar. Paste a DOI, arXiv id, or URL to fetch the entry
+  directly, or type a title to search Crossref and pick a result.
+- OpenLeaf appends a correctly-keyed BibTeX entry to your project's `.bib`,
+  deduplicated by DOI, and inserts the `\cite` at your cursor.
+- Autocomplete for `\cite` keys is parsed from your `.bib` files as you type.
+- Lookups send only the identifier or title (to doi.org, arXiv, or Crossref) and
+  respect offline mode.
 
 ## AI assistant
 
