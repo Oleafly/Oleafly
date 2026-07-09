@@ -144,6 +144,32 @@ export const hasPandoc = () => invoke<boolean>("has_pandoc");
 /** Download pandoc into ~/.openleaf/bin; emits `pandoc-download-progress` events. */
 export const downloadPandoc = () => invoke<string>("download_pandoc");
 
+// --- Optional LuaLaTeX engine (tagged / accessible export) ---
+
+export interface EngineInfo {
+  kind: "system" | "tinytex" | "none";
+  lualatex: string | null;
+  tlmgr: string | null;
+  version: string | null;
+}
+
+export interface TaggedCompileResult {
+  success: boolean;
+  has_pdf: boolean;
+  log: string;
+}
+
+export const latexEngineInfo = () => invoke<EngineInfo>("latex_engine_info");
+export const hasTaggingEngine = () => invoke<boolean>("has_tagging_engine");
+/** Download + install TinyTeX; emits `tinytex-download-progress` events. */
+export const installTinytex = () => invoke<EngineInfo>("install_tinytex");
+export const deleteTinytex = () => invoke<void>("delete_tinytex");
+export const tlmgrInstalled = () => invoke<string[]>("tlmgr_installed");
+export const tlmgrInstall = (packages: string[]) => invoke<string>("tlmgr_install", { packages });
+export const tlmgrRemove = (packages: string[]) => invoke<string>("tlmgr_remove", { packages });
+export const compileTagged = (projectId: string, mainDoc: string) =>
+  invoke<TaggedCompileResult>("compile_tagged", { projectId, mainDoc });
+
 export interface SearchHit {
   project_id: string;
   project_name: string;

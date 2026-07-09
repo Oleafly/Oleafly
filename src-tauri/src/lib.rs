@@ -2,6 +2,7 @@ mod commands;
 mod config;
 mod git;
 mod github;
+mod latex_engine;
 mod menu;
 mod ollama;
 mod paths;
@@ -63,6 +64,14 @@ pub fn run() {
             project::read_app_log,
             project::has_pandoc,
             project::download_pandoc,
+            latex_engine::latex_engine_info,
+            latex_engine::has_tagging_engine,
+            latex_engine::install_tinytex,
+            latex_engine::delete_tinytex,
+            latex_engine::tlmgr_installed,
+            latex_engine::tlmgr_install,
+            latex_engine::tlmgr_remove,
+            latex_engine::compile_tagged,
             project::set_main_doc,
             project::rename_project,
             project::open_devtools,

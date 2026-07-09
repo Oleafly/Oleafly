@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ChevronRight,
   Copy,
+  Cpu,
   Database,
   ExternalLink,
   Github,
@@ -31,6 +32,7 @@ import { isTauri } from "@tauri-apps/api/core";
 import { platform as osPlatform, arch as osArch, version as osVersion } from "@tauri-apps/plugin-os";
 import { Button } from "@/components/ui/button";
 import { UpdateChecker } from "@/components/layout/UpdateChecker";
+import { EngineSection } from "@/components/settings/EngineSection";
 import {
   Select,
   SelectContent,
@@ -78,6 +80,7 @@ type Section =
   | "dictionary"
   | "data"
   | "ai"
+  | "engine"
   | "github"
   | "help";
 
@@ -87,6 +90,7 @@ const NAV: { id: Section; label: string; icon: typeof Palette }[] = [
   { id: "dictionary", label: "Dictionary", icon: BookMarked },
   { id: "data", label: "Data Storage", icon: Database },
   { id: "ai", label: "AI Assistant", icon: Sparkles },
+  { id: "engine", label: "LaTeX Engine", icon: Cpu },
   { id: "github", label: "GitHub", icon: Github },
   { id: "help", label: "Help & About", icon: LifeBuoy },
 ];
@@ -424,6 +428,8 @@ export function SettingsModal() {
             )}
 
             {section === "ai" && <AISection />}
+
+            {section === "engine" && <EngineSection />}
 
             {section === "github" && (
               <GitHubSection
