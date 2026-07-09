@@ -11,6 +11,7 @@ import {
   closeSearchPanel,
   selectMatches,
 } from "@codemirror/search";
+import { preserveCase } from "@/lib/preserve-case";
 
 /**
  * A VSCode-style find/replace widget for the editor. Replaces CodeMirror's
@@ -45,6 +46,7 @@ function createSearchPanel(view: EditorView): Panel {
   let caseSensitive = q0.caseSensitive;
   let wholeWord = q0.wholeWord;
   let regexp = q0.regexp;
+  let preserveCaseOn = false;
   let expanded = false;
 
   const wrap = document.createElement("div");
@@ -113,17 +115,57 @@ function createSearchPanel(view: EditorView): Panel {
   const replaceRow = document.createElement("div");
   replaceRow.className = "cm-vs-row";
   replaceRow.style.display = "none";
+  const preserveBtn = btn("AB", "Preserve case", () => {
+    preserveCaseOn = !preserveCaseOn;
+    preserveBtn.classList.toggle("active", preserveCaseOn);
+  });
   const replaceBox = document.createElement("div");
   replaceBox.className = "cm-vs-box";
-  replaceBox.append(replaceInput);
-  const replaceBtn = btn("Replace", "Replace next", () => {
-    replaceNext(view);
+  replaceBox.append(replaceInput, preserveBtn);
+
+  const doReplaceNext = () => {
+    // Preserve case (literal search only): map the match's case onto the replacement.
+    if (preserveCaseOn && !regexp) {
+      const sel = view.state.selection.main;
+      const matched = view.state.sliceDoc(sel.from, sel.to);
+      const isMatch =
+        matched.length > 0 &&
+        (caseSensitive ? matched === findInput.value : matched.toLowerCase() === findInput.value.toLowerCase());
+      if (isMatch) {
+        view.dispatch({ changes: { from: sel.from, to: sel.to, insert: preserveCase(matched, replaceInput.value) } });
+      }
+      findNext(view);
+    } else {
+      replaceNext(view);
+    }
     refresh();
-  });
-  const replaceAllBtn = btn("All", "Replace all", () => {
-    replaceAll(view);
+  };
+  const doReplaceAll = () => {
+    if (preserveCaseOn && !regexp) {
+      const q = getSearchQuery(view.state);
+      if (q.search && q.valid) {
+        const changes: { from: number; to: number; insert: string }[] = [];
+        try {
+          const it = q.getCursor(view.state) as Iterator<{ from: number; to: number }>;
+          let r = it.next();
+          while (!r.done) {
+            const matched = view.state.sliceDoc(r.value.from, r.value.to);
+            changes.push({ from: r.value.from, to: r.value.to, insert: preserveCase(matched, replaceInput.value) });
+            r = it.next();
+          }
+        } catch {
+          /* invalid query */
+        }
+        if (changes.length) view.dispatch({ changes });
+      }
+    } else {
+      replaceAll(view);
+    }
     refresh();
-  });
+  };
+
+  const replaceBtn = btn("Replace", "Replace next", doReplaceNext);
+  const replaceAllBtn = btn("All", "Replace all", doReplaceAll);
   replaceRow.append(replaceBox, replaceBtn, replaceAllBtn);
 
   // Stack Find above Replace (a column), with the expand chevron to their left.
@@ -188,8 +230,7 @@ function createSearchPanel(view: EditorView): Panel {
   replaceInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      replaceNext(view);
-      refresh();
+      doReplaceNext();
     } else if (e.key === "Escape") {
       e.preventDefault();
       closeSearchPanel(view);
