@@ -17,11 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   review the figure in the approval card. Open it from the spark icon in the AI
   panel, the omnibar ("Generate a figure with AI"), or right-click "Generate figure
   from selection".
-- **Insert diagram (manual composer)** - a full-height composer beside the compile
-  button (and in the omnibar): paste TikZ, compile to a live preview, and insert it
-  as vector code or as a saved PNG. The source is always kept as `figures/<name>.tikz`
-  so the diagram stays editable, and a name prompt prevents overwriting figures. No
-  AI required, works offline.
+- **Insert diagram (visual editor + code)** - a full-height composer beside the
+  compile button (and in the omnibar) with a **Draw** tab (a React Flow visual
+  editor: drag shapes, connect arrows, style colors, snap-to-grid, undo/redo) that
+  generates clean TikZ live, and a **Code** tab (LaTeX-highlighted editor with a
+  TikZ snippet toolbar). Compile to a live preview, then insert as vector code or a
+  saved PNG (with scale and transparent-background options). Drawn diagrams
+  round-trip: the saved `figures/<name>.tikz` embeds the model, so **Load** re-opens
+  it fully editable. No AI required, works offline.
 - **Image files render in the editor** - opening a `.png`, `.jpg`, `.svg`, etc.
   now shows the actual image instead of loading its bytes into the text editor.
 - **AI run timeout** - a chat/figure run that gets no response from the provider

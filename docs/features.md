@@ -163,9 +163,16 @@ With AI it works at two levels:
 
 You can also drop a hand-drawn sketch into the project and ask the assistant to reproduce it as a clean figure.
 
-## Insert diagram (manual composer, no AI)
+## Insert diagram (visual editor + code, no AI)
 
-Next to the compile button is an **Insert diagram** button (also in the omnibar) that opens a full-height composer: paste TikZ on the left, compile to a live preview on the right. Give the diagram a name, then insert it either **as vector code** (the TikZ goes straight into your document) or **as an image** (`\includegraphics` of a saved `figures/<name>.png`). Either way the source is preserved as `figures/<name>.tikz`, so the diagram stays editable and is never lost to a flattened image. The name prompt keeps you from overwriting an existing figure. No API key required, works offline.
+Next to the compile button is an **Insert diagram** button (also in the omnibar) that opens a full-height composer with two ways to build a figure, and a live compiled preview on the right:
+
+- **Draw** — a visual editor (drag rectangles, circles, ellipses, diamonds, and text; connect them with arrows; style fill, border, and colors; snap to grid; undo/redo). It generates clean TikZ as you draw, so you get GUI speed with LaTeX-native fonts and vector output.
+- **Code** — a real LaTeX editor (syntax highlighting, gutter, TikZ snippet toolbar) for writing or fine-tuning TikZ by hand.
+
+Give the diagram a name, then insert it **as vector code** (TikZ straight into your document) or **as an image** (`\includegraphics` of a saved `figures/<name>.png`, with a PNG scale and transparent-background option). Either way the source is preserved as `figures/<name>.tikz`.
+
+Drawn diagrams **round-trip**: the saved `.tikz` embeds the diagram model, so the **Load** button re-opens it in the visual editor, fully editable (the way draw.io ships editable exports). The name prompt prevents overwriting an existing figure. No API key required, works offline.
 
 ## Export
 
