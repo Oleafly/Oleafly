@@ -207,7 +207,7 @@ summary .group-label span {
 }
 
 /* ============================================================================
- * 5. Code — inline pills + Fira Code frames on the surface ground
+ * 5. Code — inline pills + Mintlify-style frames (clean panel, persistent copy)
  * ========================================================================== */
 
 /* Inline code: subtle surface pill, not a loud accent chip. */
@@ -221,10 +221,18 @@ summary .group-label span {
   color: var(--sl-color-white);
 }
 
-/* Code frames: match the surface ground, round the corners, clip scroll. */
+/* Code frames: rounded panel on the code ground, hairline border, clipped
+ * scroll. 12px corners and a soft shadow give the Mintlify block look. */
+.expressive-code {
+  --ec-brdCol: var(--sl-color-hairline-shade);
+  --ol-radius-code: 0.75rem; /* 12px */
+  font-size: 0.875rem;
+  margin: 1.25rem 0;
+}
 .expressive-code .frame {
   overflow: hidden;
-  border-radius: var(--ol-radius-lg);
+  border-radius: var(--ol-radius-code);
+  box-shadow: var(--ol-shadow-raised);
 }
 .expressive-code .frame pre,
 .expressive-code .frame .header {
@@ -232,15 +240,65 @@ summary .group-label span {
 }
 .expressive-code .frame pre {
   border-color: var(--sl-color-hairline-shade) !important;
+  padding-block: 0.9rem;
 }
-.expressive-code {
-  --ec-brdCol: var(--sl-color-hairline-shade);
-  font-size: 0.875rem;
+
+/* Plain command snippets (bash/sh with no title): Expressive Code renders an
+ * empty terminal header with traffic-light dots. Drop it for a clean Mintlify
+ * panel, restore the top edge, and pull the copy button back up to the corner. */
+.expressive-code .frame.is-terminal:not(.has-title) {
+  --button-spacing: 0.4rem;
+}
+.expressive-code .frame.is-terminal:not(.has-title) .header {
+  display: none;
+}
+.expressive-code .frame.is-terminal:not(.has-title) pre {
+  border-top: 1px solid var(--sl-color-hairline-shade) !important;
+  border-top-left-radius: var(--ol-radius-code);
+  border-top-right-radius: var(--ol-radius-code);
+}
+
+/* Titled frames: quiet header bar, title left-aligned, hairline underneath,
+ * no terminal dots. */
+.expressive-code .frame.has-title .header {
+  justify-content: flex-start;
+  border-bottom: 1px solid var(--sl-color-hairline-shade);
+}
+.expressive-code .frame.has-title .header::before,
+.expressive-code .frame.has-title .header::after {
+  display: none;
+}
+.expressive-code .frame .title {
+  color: var(--sl-color-gray-3);
+  font-weight: 500;
+  font-size: 0.8125rem;
+}
+
+/* Copy button: persistent, subtle rounded icon button top-right; brightens on
+ * hover of the block, solid on hover of the button (Mintlify affordance). */
+.expressive-code .copy button {
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--ol-radius-md);
+  background: color-mix(in srgb, var(--ol-surface) 88%, transparent);
+  opacity: 0.5;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+.expressive-code .frame:hover .copy button {
+  opacity: 0.9;
+}
+.expressive-code .copy button:hover {
+  opacity: 1;
+  background: var(--ol-surface);
+}
+.expressive-code .copy button::before {
+  border-color: var(--sl-color-hairline-shade);
+  opacity: 1;
 }
 
 /* Bare <pre> (non-EC) matches. */
 .sl-markdown-content pre {
-  border-radius: var(--ol-radius-lg);
+  border-radius: var(--ol-radius-code, 0.75rem);
 }
 
 /* ============================================================================
@@ -343,8 +401,16 @@ site-search button[data-open-modal] {
   outline-color: var(--ol-accent);
 }
 
-/* Tables: quiet header, hairline rows, roomy cells. */
+/* Tables: full-width bordered panel with a quiet header and hairline rows.
+ * Starlight sets tables to `display: block`, so the bordered box stretched to
+ * the full measure while the columns only filled their content, leaving a gap
+ * before the right border. Force a real table box that fills the width, and
+ * restore even padding on the edge cells (Starlight zeroes it for its own
+ * borderless table). */
 .sl-markdown-content table {
+  display: table;
+  width: 100%;
+  table-layout: auto;
   border-radius: var(--ol-radius-lg);
   overflow: hidden;
   border: 1px solid var(--sl-color-hairline-shade);
@@ -352,6 +418,12 @@ site-search button[data-open-modal] {
 .sl-markdown-content :is(th, td) {
   border-color: var(--sl-color-hairline-shade);
   padding: 0.6rem 0.9rem;
+}
+.sl-markdown-content :is(th:first-child, td:first-child) {
+  padding-inline-start: 0.9rem;
+}
+.sl-markdown-content :is(th:last-child, td:last-child) {
+  padding-inline-end: 0.9rem;
 }
 .sl-markdown-content thead th {
   background: var(--ol-surface);
@@ -393,4 +465,60 @@ starlight-toc a[aria-current="true"] {
 :focus-visible {
   outline: 2px solid var(--ol-accent);
   outline-offset: 2px;
+}
+
+/* ============================================================================
+ * 10. Prev / next pagination — clean cards, small muted label over the title,
+ *     accent hover with a nudging arrow (Mintlify footer nav)
+ * ========================================================================== */
+
+.pagination-links {
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+.pagination-links a {
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.8rem 1.1rem;
+  border: 1px solid var(--sl-color-hairline-shade);
+  border-radius: var(--ol-radius-lg);
+  box-shadow: none;
+  color: var(--sl-color-gray-3);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.pagination-links a:hover {
+  border-color: var(--ol-accent);
+  background: color-mix(in srgb, var(--ol-accent) 6%, transparent);
+}
+/* The "Previous" / "Next" label: small and quiet. */
+.pagination-links a > span {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--sl-color-gray-3);
+}
+/* The page title: normal reading size, not the oversized default. */
+.pagination-links .link-title {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.4;
+  color: var(--sl-color-white);
+  transition: color 0.15s ease;
+}
+.pagination-links a:hover .link-title {
+  color: var(--sl-color-text-accent);
+}
+/* Arrow: muted, picks up the accent and nudges outward on hover. */
+.pagination-links svg {
+  color: var(--sl-color-gray-3);
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+.pagination-links a:hover svg {
+  color: var(--ol-accent);
+}
+.pagination-links a[rel="prev"]:hover svg {
+  transform: translateX(-3px);
+}
+.pagination-links a[rel="next"]:hover svg {
+  transform: translateX(3px);
 }
