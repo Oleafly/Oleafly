@@ -15,6 +15,7 @@ import {
   Loader2,
   Play,
   SquarePen,
+  Workflow,
   X,
 } from "lucide-react";
 import { save } from "@tauri-apps/plugin-dialog";
@@ -78,6 +79,7 @@ export function TopToolbar() {
   const pdfBytes = useCompileStore((s) => s.pdfBytes);
   const setHistoryOpen = useSettingsStore((s) => s.setHistoryOpen);
   const setHotkeysOpen = useSettingsStore((s) => s.setHotkeysOpen);
+  const setDiagramComposerOpen = useSettingsStore((s) => s.setDiagramComposerOpen);
   const viewMode = useSettingsStore((s) => s.viewMode);
   const setViewMode = useSettingsStore((s) => s.setViewMode);
   const recompile = useCompileStore((s) => s.recompile);
@@ -333,6 +335,18 @@ export function TopToolbar() {
 
       {/* Right: actions */}
       <div data-tauri-drag-region className="flex items-center justify-end gap-1.5">
+
+        <Tooltip label="Insert diagram">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground hover:text-foreground"
+            onClick={() => setDiagramComposerOpen(true)}
+            aria-label="Insert diagram"
+          >
+            <Workflow className="size-4" />
+          </Button>
+        </Tooltip>
 
         <Tooltip label="Recompile (⌘↵)">
           <Button

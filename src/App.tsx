@@ -7,6 +7,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { CommandPalette } from "@/components/layout/CommandPalette";
 import { SearchOmnibar } from "@/components/layout/SearchOmnibar";
 import { GlobalNewProject } from "@/components/library/GlobalNewProject";
+import { DiagramComposer } from "@/components/diagram/DiagramComposer";
 import { SettingsModal } from "@/components/layout/SettingsModal";
 import { Editor } from "@/components/editor/Editor";
 import { PreviewPane } from "@/components/preview/PreviewPane";
@@ -304,6 +305,7 @@ export default function App() {
         <WordCountModal />
         <HistoryModal />
         <HotkeysModal />
+        <DiagramComposer />
       </div>
     </ThemeProvider>
   );

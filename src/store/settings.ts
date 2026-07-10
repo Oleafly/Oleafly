@@ -71,6 +71,9 @@ interface SettingsState {
   /** Request the AI panel to open in figure mode (from omnibar / right-click). */
   figureModeOpen: boolean;
   setFigureModeOpen: (v: boolean) => void;
+  /** The manual diagram composer modal (paste code, preview, insert). */
+  diagramComposerOpen: boolean;
+  setDiagramComposerOpen: (v: boolean) => void;
   wordCountOpen: boolean;
   setWordCountOpen: (v: boolean) => void;
   historyOpen: boolean;
@@ -151,6 +154,8 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   setNewProjectOpen: (v) => set({ newProjectOpen: v }),
   figureModeOpen: false,
   setFigureModeOpen: (v) => set({ figureModeOpen: v }),
+  diagramComposerOpen: false,
+  setDiagramComposerOpen: (v) => set({ diagramComposerOpen: v }),
   wordCountOpen: false,
   setWordCountOpen: (v) => set({ wordCountOpen: v }),
   historyOpen: false,
