@@ -111,6 +111,22 @@ export function insertAtCursor(text: string) {
   v.focus();
 }
 
+/** Replace a specific document range with text (used to insert a generated
+ *  figure over the paragraph it was generated from). Clamped to doc bounds so a
+ *  stale range from before an edit can't throw. */
+export function replaceRange(from: number, to: number, text: string) {
+  const v = getEditorView();
+  if (!v) return;
+  const len = v.state.doc.length;
+  const a = Math.max(0, Math.min(from, len));
+  const b = Math.max(a, Math.min(to, len));
+  v.dispatch({
+    changes: { from: a, to: b, insert: text },
+    selection: { anchor: a + text.length },
+  });
+  v.focus();
+}
+
 /** Wrap the current selection with `before`...`after`. */
 export function wrapSelection(before: string, after: string) {
   const v = getEditorView();
