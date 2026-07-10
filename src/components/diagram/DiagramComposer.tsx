@@ -16,7 +16,7 @@ import {
 import { CmCodeEditor, type CmHandle } from "@/components/diagram/CmCodeEditor";
 import { DiagramCanvas } from "@/components/diagram/DiagramCanvas";
 import { type DiagramModel, newId } from "@/components/diagram/model";
-import { modelToTikz, serializeDiagram, parseEmbeddedModel } from "@/components/diagram/tikz-serializer";
+import { modelToTikz, serializeDiagram, parseEmbeddedModel, DIAGRAM_LIBS } from "@/components/diagram/tikz-serializer";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
@@ -126,7 +126,10 @@ export function DiagramComposer() {
   const compile = useCallback(async () => {
     if (!projectId || busy) return;
     // In draw mode the code is debounced; compile the freshest generated TikZ.
-    const source = buildStandaloneDoc({ code: hasDrawing && mode === "draw" ? modelToTikz(model) : code });
+    const source = buildStandaloneDoc({
+      code: hasDrawing && mode === "draw" ? modelToTikz(model) : code,
+      libraries: DIAGRAM_LIBS,
+    });
     setBusy(true);
     setLog("");
     try {
@@ -170,6 +173,33 @@ export function DiagramComposer() {
   const docCode = hasDrawing ? modelToTikz(model) : code;
   const snippetCode = hasDrawing ? serializeDiagram(model) : code;
 
+  // Ensure the main document's preamble loads tikz + the shape libraries, so an
+  // inserted diagram actually compiles. Best-effort; runs after the figure is
+  // saved so it patches content that already includes the figure.
+  const ensurePreamble = useCallback(async () => {
+    if (!projectId) return;
+    const mainDoc = useFilesStore.getState().mainDoc || "main.tex";
+    let content: string;
+    try {
+      content = await readFileContent(projectId, mainDoc);
+    } catch {
+      return;
+    }
+    const additions: string[] = [];
+    if (!/\\usepackage(\[[^\]]*\])?\{[^}]*tikz[^}]*\}/.test(content)) {
+      additions.push("\\usepackage{tikz}");
+    }
+    const missing = DIAGRAM_LIBS.filter((l) => !content.includes(l));
+    if (missing.length) additions.push(`\\usetikzlibrary{${missing.join(",")}}`);
+    if (!additions.length) return;
+    const marker = "\\begin{document}";
+    const idx = content.indexOf(marker);
+    const block = `${additions.join("\n")}\n`;
+    const updated = idx >= 0 ? content.slice(0, idx) + block + content.slice(idx) : block + content;
+    await writeFileContent(projectId, mainDoc, updated);
+    useFilesStore.getState().applyExternalWrite(mainDoc, updated);
+  }, [projectId]);
+
   const insertAsCode = useCallback(async () => {
     if (!projectId) return;
     if (!stem) { toast.error("Enter a name for the diagram first."); return; }
@@ -177,14 +207,18 @@ export function DiagramComposer() {
     const latex = `\\begin{figure}[htbp]\n\\centering\n${docCode}\n\\caption{}\n\\label{fig:${stem}}\n\\end{figure}`;
     insertAtCursor(latex);
     try {
+      // Persist the figure into the active file, then patch the preamble on the
+      // saved content so the tikz libraries are present without losing the figure.
+      await useFilesStore.getState().saveActive();
+      await ensurePreamble();
       await writeFileContent(projectId, `figures/${stem}.tikz`, snippetCode);
       await useFilesStore.getState().refreshTree();
     } catch {
-      /* snippet save is best-effort; the code is already in the document */
+      /* snippet/preamble steps are best-effort; the code is already inserted */
     }
     toast.success("Diagram inserted as code.");
     setOpen(false);
-  }, [projectId, stem, docCode, snippetCode, confirmOverwrite, setOpen]);
+  }, [projectId, stem, docCode, snippetCode, confirmOverwrite, ensurePreamble, setOpen]);
 
   const insertAsImage = useCallback(async () => {
     if (!projectId) return;

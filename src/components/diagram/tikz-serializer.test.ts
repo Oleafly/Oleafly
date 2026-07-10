@@ -14,6 +14,12 @@ const model: DiagramModel = {
 };
 
 describe("modelToTikz", () => {
+  it("wraps the nodes in a tikzpicture (\\node is undefined outside one)", () => {
+    const t = modelToTikz(model);
+    expect(t).toContain("\\begin{tikzpicture}");
+    expect(t).toContain("\\end{tikzpicture}");
+  });
+
   it("emits a node per shape with position and label", () => {
     const t = modelToTikz(model);
     expect(t).toContain("\\node (a)");

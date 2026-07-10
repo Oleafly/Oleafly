@@ -82,13 +82,24 @@ function edgeToTikz(e: DiagEdge): string {
   return `\\draw${optStr} (${e.source}) ${connector}${mid} (${e.target});`;
 }
 
-/** Generate the TikZ body (definecolors + nodes + edges), no preamble. */
+/** TikZ libraries the generated diagrams rely on (shapes for diamond/ellipse,
+ *  arrows for the tips, positioning/calc for layout). The composer passes these
+ *  to the standalone wrapper for preview, and adds them to the document preamble
+ *  on insert. */
+export const DIAGRAM_LIBS = ["shapes.geometric", "arrows.meta", "positioning", "calc"];
+
+/** Generate a self-contained tikzpicture (color defs + nodes + edges). The
+ *  \node/\draw commands only exist inside a tikzpicture, so the wrapper is
+ *  required. Color definitions go before it (xcolor allows \definecolor in the
+ *  body). No document preamble. */
 export function modelToTikz(model: DiagramModel): string {
   const defs = new Set<string>();
   const nodes = model.nodes.map((n) => nodeToTikz(n, defs));
   const edges = model.edges.map(edgeToTikz);
   const defLines = [...defs].sort();
-  return [...defLines, ...nodes, ...edges].join("\n");
+  const body = [...nodes, ...edges].map((l) => `  ${l}`).join("\n");
+  const pre = defLines.length ? `${defLines.join("\n")}\n` : "";
+  return `${pre}\\begin{tikzpicture}[>=Stealth]\n${body}\n\\end{tikzpicture}`;
 }
 
 const MARK = "% openleaf-diagram-v1:";
