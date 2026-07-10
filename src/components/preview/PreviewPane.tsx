@@ -7,7 +7,6 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LogPane } from "@/components/editor/LogPane";
 import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
-import { useSettingsStore } from "@/store/settings";
 import { inverseFromClick } from "@/features/synctex";
 import { saveFileBase64, uint8ToBase64 } from "@/lib/tauri";
 import { notifyError, toast } from "@/lib/toast";
@@ -26,7 +25,6 @@ export function PreviewPane() {
   const projectId = useFilesStore((s) => s.projectId);
   const refreshTree = useFilesStore((s) => s.refreshTree);
   const mainDoc = useFilesStore((s) => s.mainDoc);
-  const viewMode = useSettingsStore((s) => s.viewMode);
   const [scale, setScale] = useState(1.0);
   const [tab, setTab] = useState<"pdf" | "logs">("pdf");
   const [saveOpen, setSaveOpen] = useState(false);
@@ -305,26 +303,16 @@ export function PreviewPane() {
                 {inverted ? <Contrast className="size-3.5 text-primary" /> : <Contrast className="size-3.5" />}
               </Button>
             </Tooltip>
-            <Tooltip label={viewMode === "pdf" ? "Presentation mode" : "Fullscreen (keeps your view)"}>
+            <Tooltip label="Fullscreen preview">
               <Button
                 variant="ghost"
                 size="icon"
                 className="size-7"
                 disabled={!pdfBytes}
-                onClick={() => {
-                  // In PDF-only view, an immersive slide presentation. In split
-                  // or editor view, fullscreen the whole app (via the Fullscreen
-                  // API, which needs no Tauri capability) so the current layout
-                  // and scrolling are preserved.
-                  if (viewMode === "pdf") {
-                    setPresenting(true);
-                  } else if (document.fullscreenElement) {
-                    void document.exitFullscreen().catch(() => {});
-                  } else {
-                    void document.documentElement.requestFullscreen?.().catch(() => {});
-                  }
-                }}
-                aria-label={viewMode === "pdf" ? "Presentation mode" : "Fullscreen"}
+                // Fullscreen the PDF preview only (an overlay), independent of the
+                // app's layout or window state. Scrollable; Esc exits.
+                onClick={() => setPresenting(true)}
+                aria-label="Fullscreen preview"
               >
                 <Maximize className="size-3.5" />
               </Button>

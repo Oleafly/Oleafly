@@ -37,7 +37,7 @@ export function GithubMenu({
 
   return (
     <div className="relative">
-      <div className="flex h-7 items-center rounded-md border bg-background">
+      <div className="flex h-7 items-center overflow-hidden rounded-md border bg-background">
         {/* Left: account — click opens GitHub settings. */}
         {connected && (
           <>
