@@ -5,7 +5,6 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { PdfViewer, type PdfViewerHandle, type PdfLayout } from "@/components/pdf/PdfViewer";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LogPane } from "@/components/editor/LogPane";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
@@ -138,8 +137,9 @@ export function PreviewPane() {
 
   return (
     <div className="flex h-full flex-col bg-background">
-      {/* Minimal toolbar: logs toggle + zoom */}
-      <div className="flex h-9 shrink-0 items-center gap-1 border-b px-2">
+      {/* Minimal toolbar: logs toggle + zoom. Never wraps; when the pane is
+          narrow it scrolls horizontally with a thin scrollbar that shows on hover. */}
+      <div className="flex h-9 shrink-0 items-center gap-1 overflow-x-auto whitespace-nowrap border-b px-2 [&_button]:shrink-0 [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-transparent [&::-webkit-scrollbar-track]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-border">
         <button
           onClick={() => setTab(tab === "logs" ? "pdf" : "logs")}
           className={cn(
@@ -233,7 +233,7 @@ export function PreviewPane() {
                     <ChevronUp className="size-3.5" />
                   </Button>
                 </Tooltip>
-                <div className="flex items-center gap-1 text-xs tabular-nums text-muted-foreground">
+                <div className="flex shrink-0 items-center gap-1 text-xs tabular-nums text-muted-foreground">
                   <input
                     value={pageInput}
                     onChange={(e) => setPageInput(e.target.value.replace(/[^0-9]/g, ""))}
@@ -313,19 +313,15 @@ export function PreviewPane() {
                 disabled={!pdfBytes}
                 onClick={() => {
                   // In PDF-only view, an immersive slide presentation. In split
-                  // or editor view, fullscreen the whole window so the current
-                  // layout (and scrolling) is preserved.
+                  // or editor view, fullscreen the whole app (via the Fullscreen
+                  // API, which needs no Tauri capability) so the current layout
+                  // and scrolling are preserved.
                   if (viewMode === "pdf") {
                     setPresenting(true);
+                  } else if (document.fullscreenElement) {
+                    void document.exitFullscreen().catch(() => {});
                   } else {
-                    void (async () => {
-                      try {
-                        const win = getCurrentWindow();
-                        await win.setFullscreen(!(await win.isFullscreen()));
-                      } catch {
-                        /* not running in Tauri */
-                      }
-                    })();
+                    void document.documentElement.requestFullscreen?.().catch(() => {});
                   }
                 }}
                 aria-label={viewMode === "pdf" ? "Presentation mode" : "Fullscreen"}
@@ -477,9 +473,11 @@ function CompileProgress({ estimateMs }: { estimateMs: number }) {
         Compiling your document… <span className="tabular-nums font-medium">{Math.round(pct)}%</span>
       </p>
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+        {/* Driven by rAF, so no CSS transition (a transition on the same
+            property would fight the per-frame updates and appear stuck). */}
         <div
-          className="h-full rounded-full bg-primary transition-[width] duration-150 ease-out"
-          style={{ width: `${pct}%` }}
+          className="h-full w-full origin-left rounded-full bg-primary"
+          style={{ transform: `scaleX(${Math.max(0, Math.min(1, pct / 100))})` }}
         />
       </div>
     </div>
