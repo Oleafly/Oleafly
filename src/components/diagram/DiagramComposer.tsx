@@ -167,7 +167,7 @@ export function DiagramComposer() {
         if (e.target === e.currentTarget) setOpen(false);
       }}
     >
-      <div className="flex h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl border bg-background shadow-2xl">
+      <div className="flex h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl border bg-sidebar shadow-2xl">
         {/* Header */}
         <div className="flex shrink-0 items-center gap-3 border-b px-4 py-2.5">
           <h2 className="text-sm font-semibold">Insert diagram</h2>
@@ -211,7 +211,7 @@ export function DiagramComposer() {
                 dirtyRef.current = true;
               }}
               spellCheck={false}
-              className="min-h-0 flex-1 resize-none bg-background p-3 font-mono text-xs outline-none"
+              className="min-h-0 flex-1 resize-none bg-sidebar p-3 font-mono text-xs outline-none"
             />
           </div>
           <div className="flex min-h-0 flex-col">
