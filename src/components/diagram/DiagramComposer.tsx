@@ -226,123 +226,119 @@ export function DiagramComposer() {
     <div
       role="dialog"
       aria-label="Insert diagram"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) setOpen(false);
-      }}
+      className="fixed inset-0 z-50 flex flex-col bg-background"
     >
-      <div className="flex h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl border bg-sidebar shadow-2xl">
-        {/* Header */}
-        <div className="flex shrink-0 items-center gap-3 border-b px-4 py-2.5">
-          <h2 className="text-sm font-semibold">Insert diagram</h2>
-          <div className="ml-2 flex items-center gap-1.5">
-            <label htmlFor="diagram-name" className="text-xs text-muted-foreground">Name</label>
-            <input
-              id="diagram-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="diagram"
-              className="w-48 rounded-md border border-input bg-background px-2 py-1 text-xs outline-none focus:border-primary"
-            />
-            <Tooltip label={`Load figures/${stem || "name"}.tikz to edit`}>
-              <button
-                type="button"
-                aria-label="Load existing diagram"
-                onClick={() => void loadExisting()}
-                className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-              >
-                <FolderOpen className="size-4" />
-              </button>
-            </Tooltip>
-          </div>
-          <div className="ml-auto flex items-center gap-2">
-            <Button size="sm" onClick={() => void compile()} disabled={busy}>
-              {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Play className="size-3.5" />}
-              Compile
-            </Button>
+      {/* Header */}
+      <div className="flex shrink-0 items-center gap-3 border-b bg-sidebar px-4 py-2.5">
+        <h2 className="text-sm font-semibold">Insert diagram</h2>
+        <div className="ml-2 flex items-center gap-1.5">
+          <label htmlFor="diagram-name" className="text-xs text-muted-foreground">Name</label>
+          <input
+            id="diagram-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="diagram"
+            className="w-48 rounded-md border border-input bg-background px-2 py-1 text-xs outline-none focus:border-primary"
+          />
+          <Tooltip label={`Load figures/${stem || "name"}.tikz to edit`}>
             <button
               type="button"
-              aria-label="Close"
-              onClick={() => setOpen(false)}
+              aria-label="Load existing diagram"
+              onClick={() => void loadExisting()}
               className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
             >
-              <X className="size-4" />
+              <FolderOpen className="size-4" />
             </button>
-          </div>
+          </Tooltip>
         </div>
+        <div className="ml-auto flex items-center gap-2">
+          <Button size="sm" onClick={() => void compile()} disabled={busy}>
+            {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Play className="size-3.5" />}
+            Compile
+          </Button>
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={() => setOpen(false)}
+            className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+      </div>
 
-        {/* Body: (Draw | Code) | preview */}
-        <div className="grid min-h-0 flex-1 grid-cols-2">
-          <div className="flex min-h-0 flex-col border-r">
-            <div className="flex h-[34px] shrink-0 items-center gap-1 border-b px-2">
-              {(["draw", "code"] as Mode[]).map((m) => (
+      {/* Tab bar (full width): Draw | Code, plus the snippet toolbar in Code. */}
+      <div className="flex h-[34px] shrink-0 items-center gap-1 border-b bg-sidebar px-2">
+        {(["draw", "code"] as Mode[]).map((m) => (
+          <button
+            key={m}
+            type="button"
+            onClick={() => {
+              if (m === "draw" && mode === "code" && code.trim() !== modelToTikz(model).trim()) {
+                toast.info("Draw uses the canvas. Code edits stay in Code until you redraw.");
+              }
+              setMode(m);
+            }}
+            className={cn(
+              "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs transition-colors",
+              mode === m ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent/50",
+            )}
+          >
+            {m === "draw" ? <MousePointerSquareDashed className="size-3.5" /> : <Code2 className="size-3.5" />}
+            {m === "draw" ? "Draw" : "Code"}
+          </button>
+        ))}
+        {mode === "code" && (
+          <div className="ml-auto flex items-center gap-0.5">
+            {TIKZ_SNIPPETS.map((s) => (
+              <Tooltip key={s.label} label={s.label} side="bottom">
                 <button
-                  key={m}
                   type="button"
-                  onClick={() => {
-                    if (m === "draw" && mode === "code" && code.trim() !== modelToTikz(model).trim()) {
-                      toast.info("Draw uses the canvas. Code edits stay in Code until you redraw.");
-                    }
-                    setMode(m);
-                  }}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs transition-colors",
-                    mode === m ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent/50",
-                  )}
+                  aria-label={s.label}
+                  onClick={() => cmRef.current?.insert(s.snippet)}
+                  className="flex size-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                 >
-                  {m === "draw" ? <MousePointerSquareDashed className="size-3.5" /> : <Code2 className="size-3.5" />}
-                  {m === "draw" ? "Draw" : "Code"}
+                  {s.icon}
                 </button>
-              ))}
-              {mode === "code" && (
-                <div className="ml-auto flex items-center gap-0.5">
-                  {TIKZ_SNIPPETS.map((s) => (
-                    <Tooltip key={s.label} label={s.label} side="bottom">
-                      <button
-                        type="button"
-                        aria-label={s.label}
-                        onClick={() => cmRef.current?.insert(s.snippet)}
-                        className="flex size-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                      >
-                        {s.icon}
-                      </button>
-                    </Tooltip>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className="min-h-0 flex-1">
-              {mode === "draw" ? (
-                <DiagramCanvas model={model} onChange={onModelChange} />
-              ) : (
-                <div className="h-full bg-background">
-                  <CmCodeEditor ref={cmRef} value={code} onChange={setCode} />
-                </div>
-              )}
-            </div>
+              </Tooltip>
+            ))}
           </div>
-          <div className="flex min-h-0 flex-col">
-            <div className="flex h-[34px] shrink-0 items-center gap-2 border-b px-3">
-              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Preview</span>
-            </div>
-            <div className="min-h-0 flex-1 overflow-auto bg-sidebar p-3">
-              {png ? (
-                <div className="flex h-full items-center justify-center">
-                  <img src={png} alt="Diagram preview" className="max-h-full max-w-full object-contain" />
-                </div>
-              ) : log ? (
-                <pre className="overflow-auto rounded-md border bg-muted/30 p-2 font-mono text-[10px] text-muted-foreground">{log}</pre>
-              ) : (
-                <div className="flex h-full items-center justify-center text-center text-xs text-muted-foreground">
-                  Compile to see a preview.
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        )}
+      </div>
 
-        {/* Footer: export options + insert actions */}
-        <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-t px-4 py-2.5">
+      {/* Body: Draw uses the full width; Code splits code | preview. */}
+      <div className="min-h-0 flex-1">
+        {mode === "draw" ? (
+          <DiagramCanvas model={model} onChange={onModelChange} />
+        ) : (
+          <div className="grid h-full grid-cols-2">
+            <div className="min-h-0 border-r bg-background">
+              <CmCodeEditor ref={cmRef} value={code} onChange={setCode} />
+            </div>
+            <div className="flex min-h-0 flex-col">
+              <div className="flex h-[34px] shrink-0 items-center border-b px-3">
+                <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Preview</span>
+              </div>
+              <div className="min-h-0 flex-1 overflow-auto bg-sidebar p-3">
+                {png ? (
+                  <div className="flex h-full items-center justify-center">
+                    <img src={png} alt="Diagram preview" className="max-h-full max-w-full object-contain" />
+                  </div>
+                ) : log ? (
+                  <pre className="overflow-auto rounded-md border bg-muted/30 p-2 font-mono text-[10px] text-muted-foreground">{log}</pre>
+                ) : (
+                  <div className="flex h-full items-center justify-center text-center text-xs text-muted-foreground">
+                    Compile to see a preview.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Footer: export options + insert actions */}
+      <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-t bg-sidebar px-4 py-2.5">
           <p className="text-[11px] text-muted-foreground">
             Saves the source to <code className="font-mono">figures/{stem || "name"}.tikz</code>{hasDrawing ? " (re-openable to edit)" : ""}.
           </p>
@@ -372,6 +368,5 @@ export function DiagramComposer() {
           </div>
         </div>
       </div>
-    </div>
   );
 }
