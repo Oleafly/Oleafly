@@ -5,6 +5,8 @@ export function buildStandaloneDoc(opts: {
   code: string;
   packages?: string[];
   libraries?: string[];
+  /** Hex "#RRGGBB" page background for the whole figure. Omit for transparent. */
+  background?: string;
 }): string {
   const packages = ["tikz", ...(opts.packages ?? [])];
   const seen = new Set<string>();
@@ -19,11 +21,21 @@ export function buildStandaloneDoc(opts: {
   ];
   const usepackages = uniquePackages.map((p) => `\\usepackage{${p}}`).join("\n");
   const uselibs = libs.length ? `\\usetikzlibrary{${libs.join(",")}}\n` : "";
+  // A page background fills the whole cropped image (border included) via
+  // \pagecolor; xcolor is required and provided by \usepackage{xcolor}.
+  const bgHex = (opts.background ?? "").replace("#", "").toUpperCase();
+  const hasBg = /^[0-9A-F]{6}$/.test(bgHex);
+  const bgPkg = hasBg ? "\\usepackage{xcolor}\n" : "";
+  const bgDef = hasBg
+    ? `\\definecolor{obgcolor}{HTML}{${bgHex}}\n\\pagecolor{obgcolor}\n`
+    : "";
   return (
     `\\documentclass[tikz,border=4pt]{standalone}\n` +
+    bgPkg +
     `${usepackages}\n` +
     uselibs +
     `\\begin{document}\n` +
+    bgDef +
     `${opts.code}\n` +
     `\\end{document}\n`
   );

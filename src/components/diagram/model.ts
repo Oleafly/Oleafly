@@ -35,6 +35,8 @@ export interface DiagramModel {
   version: 1;
   nodes: DiagNode[];
   edges: DiagEdge[];
+  /** Figure page background as hex "#RRGGBB"; absent/"" = transparent. */
+  background?: string;
 }
 
 export function emptyModel(): DiagramModel {

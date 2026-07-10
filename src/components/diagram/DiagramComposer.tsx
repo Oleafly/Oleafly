@@ -104,7 +104,8 @@ export function DiagramComposer() {
   const [log, setLog] = useState("");
   const [busy, setBusy] = useState(false);
   const [scale, setScale] = useState(2);
-  const [transparent, setTransparent] = useState(true);
+  // Figure page background: "" = transparent, else a hex color.
+  const [background, setBackground] = useState("");
   const cmRef = useRef<CmHandle>(null);
   const codeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -140,7 +141,7 @@ export function DiagramComposer() {
     if (!projectId || busy) return;
     // In draw mode the code is debounced; compile the freshest generated TikZ.
     const raw = overrideCode ?? (hasDrawing && mode === "draw" ? modelToTikz(model) : code);
-    const source = buildStandaloneDoc({ code: raw, libraries: DIAGRAM_LIBS });
+    const source = buildStandaloneDoc({ code: raw, libraries: DIAGRAM_LIBS, background });
     setBusy(true);
     setLog("");
     try {
@@ -148,7 +149,8 @@ export function DiagramComposer() {
       setLog((result.log ?? "").slice(-4000));
       if (result.has_pdf) {
         const bytes = new Uint8Array(await readIsolatedPdf(projectId));
-        setPng(await pdfPageToPng(bytes, 1, scale, transparent ? undefined : "#ffffff"));
+        // The PDF already carries the chosen background (\pagecolor), so render as-is.
+        setPng(await pdfPageToPng(bytes, 1, scale));
       } else {
         setPng(null);
         toast.error("Diagram did not compile. Check the log below.");
@@ -158,7 +160,7 @@ export function DiagramComposer() {
     } finally {
       setBusy(false);
     }
-  }, [projectId, busy, code, model, mode, hasDrawing, scale, transparent]);
+  }, [projectId, busy, code, model, mode, hasDrawing, scale, background]);
 
   // Warn before overwriting an existing figures/<stem>.* artifact.
   const confirmOverwrite = useCallback(
@@ -182,7 +184,7 @@ export function DiagramComposer() {
   // Clean TikZ for the document; the on-disk snippet embeds the model so a drawn
   // diagram can be re-opened and edited.
   const docCode = hasDrawing ? modelToTikz(model) : code;
-  const snippetCode = hasDrawing ? serializeDiagram(model) : code;
+  const snippetCode = hasDrawing ? serializeDiagram({ ...model, background }) : code;
 
   // Ensure the main document's preamble loads tikz + the shape libraries, so an
   // inserted diagram actually compiles. Best-effort; runs after the figure is
@@ -260,6 +262,7 @@ export function DiagramComposer() {
       if (m) {
         setModel(m);
         setCode(modelToTikz(m));
+        setBackground(m.background ?? "");
         setMode("draw");
         toast.success(`Loaded figures/${stem}.tikz for editing.`);
       } else {
@@ -277,8 +280,9 @@ export function DiagramComposer() {
   // project that appears on the home screen and re-opens in the image editor.
   const saveAsProject = useCallback(async () => {
     const src = buildStandaloneDoc({
-      code: hasDrawing ? serializeDiagram(model) : code,
+      code: hasDrawing ? serializeDiagram({ ...model, background }) : code,
       libraries: DIAGRAM_LIBS,
+      background,
     });
     try {
       await createImageProject(name.trim() || "Diagram", src);
@@ -287,7 +291,7 @@ export function DiagramComposer() {
     } catch (e) {
       toast.error(`Could not save as project: ${e}`);
     }
-  }, [name, model, code, hasDrawing]);
+  }, [name, model, code, hasDrawing, background]);
 
   // Ask the configured AI to fix a failed compile from the log. One-shot: it
   // returns corrected TikZ, which we drop into Code and recompile (undoable in
@@ -482,17 +486,30 @@ export function DiagramComposer() {
               </SelectContent>
             </Select>
           </div>
-          <button
-            type="button"
-            onClick={() => setTransparent((v) => !v)}
-            className={cn(
-              "flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] transition-colors",
-              transparent ? "border-primary/50 bg-primary/10 text-foreground" : "text-muted-foreground hover:bg-accent",
-            )}
-          >
-            <span className={cn("size-2 rounded-full", transparent ? "bg-primary" : "bg-muted-foreground/40")} />
-            Transparent
-          </button>
+          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            Background
+            <button
+              type="button"
+              onClick={() => setBackground("")}
+              className={cn(
+                "rounded-md border px-2 py-1 transition-colors",
+                background === "" ? "border-primary/50 bg-primary/10 text-foreground" : "hover:bg-accent",
+              )}
+            >
+              None
+            </button>
+            <input
+              type="color"
+              value={background || "#ffffff"}
+              onChange={(e) => setBackground(e.target.value)}
+              aria-label="Background color"
+              title="Figure background color"
+              className={cn(
+                "h-7 w-9 cursor-pointer rounded border bg-background",
+                background !== "" && "ring-2 ring-primary",
+              )}
+            />
+          </div>
           <div className="ml-auto flex items-center gap-2">
             <Button variant="secondary" size="sm" onClick={() => void insertAsCode()}>
               <Code2 className="size-3.5" /> Insert as code (vector)
