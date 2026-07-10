@@ -34,6 +34,57 @@ export function gotoLine(line: number) {
   v.focus();
 }
 
+/**
+ * Inverse-SyncTeX refinement: find `word` in the source near `line` and select
+ * it, so a PDF Cmd-click lands on the exact word instead of the line start (which
+ * often sits on a `\begin`/`\end` or the box origin). Searches the target line
+ * first, then outward a few lines, preferring a whole-word match. Returns false
+ * if the word isn't found in the window so the caller can fall back to the line.
+ */
+export function selectWordNearLine(line: number, word: string): boolean {
+  const v = getEditorView();
+  if (!v) return false;
+  const needle = word.trim();
+  if (!needle) return false;
+  const doc = v.state.doc;
+  const total = doc.lines;
+  const target = Math.min(Math.max(1, line), total);
+  const isWordChar = (c: string | undefined) => !!c && /[\p{L}\p{N}]/u.test(c);
+
+  const findInLine = (ln: number): { from: number; to: number } | null => {
+    if (ln < 1 || ln > total) return null;
+    const l = doc.line(ln);
+    const text = l.text;
+    let whole = -1;
+    let anySub = -1;
+    for (let i = text.indexOf(needle); i >= 0; i = text.indexOf(needle, i + 1)) {
+      if (anySub < 0) anySub = i;
+      if (!isWordChar(text[i - 1]) && !isWordChar(text[i + needle.length])) {
+        whole = i; // prefer a standalone occurrence
+        break;
+      }
+    }
+    const idx = whole >= 0 ? whole : anySub;
+    return idx < 0 ? null : { from: l.from + idx, to: l.from + idx + needle.length };
+  };
+
+  const WINDOW = 12;
+  for (let d = 0; d <= WINDOW; d++) {
+    for (const ln of d === 0 ? [target] : [target - d, target + d]) {
+      const m = findInLine(ln);
+      if (m) {
+        v.dispatch({
+          selection: EditorSelection.single(m.from, m.to),
+          effects: EditorView.scrollIntoView(m.from, { y: "center" }),
+        });
+        v.focus();
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 /** Select a document offset range, scroll it to center, and focus. */
 export function gotoRange(from: number, to: number) {
   const v = getEditorView();

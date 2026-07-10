@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   synctexInverse: vi.fn(),
   synctexForward: vi.fn(),
   gotoLine: vi.fn(),
+  selectWordNearLine: vi.fn(),
   getCurrentLine: vi.fn(),
   gotoRect: vi.fn(),
   openFile: vi.fn(),
@@ -23,6 +24,7 @@ vi.mock("@/lib/tauri", () => ({
 }));
 vi.mock("@/components/editor/cm/controller", () => ({
   gotoLine: mocks.gotoLine,
+  selectWordNearLine: mocks.selectWordNearLine,
   getCurrentLine: mocks.getCurrentLine,
 }));
 vi.mock("@/components/pdf/pdfController", () => ({ gotoRect: mocks.gotoRect }));
@@ -39,7 +41,8 @@ beforeEach(() => {
     cb(0);
     return 0;
   }) as typeof requestAnimationFrame;
-  for (const k of ["synctexInverse", "gotoLine", "openFile"] as const) mocks[k].mockReset();
+  for (const k of ["synctexInverse", "gotoLine", "selectWordNearLine", "openFile"] as const)
+    mocks[k].mockReset();
   mocks.state.projectId = "proj";
   mocks.state.activePath = "main.tex";
   mocks.state.tree = [
@@ -76,5 +79,21 @@ describe("inverseFromClick (multi-file, 0.1.1 fix)", () => {
     mocks.state.projectId = null;
     await inverseFromClick(1, 10, 10);
     expect(mocks.synctexInverse).not.toHaveBeenCalled();
+  });
+
+  it("places the cursor on the clicked word and skips the line jump when found", async () => {
+    mocks.synctexInverse.mockResolvedValue({ file: "main.tex", line: 7 });
+    mocks.selectWordNearLine.mockReturnValue(true);
+    await inverseFromClick(1, 10, 10, "If");
+    expect(mocks.selectWordNearLine).toHaveBeenCalledWith(7, "If");
+    expect(mocks.gotoLine).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the line when the clicked word isn't found near it", async () => {
+    mocks.synctexInverse.mockResolvedValue({ file: "main.tex", line: 7 });
+    mocks.selectWordNearLine.mockReturnValue(false);
+    await inverseFromClick(1, 10, 10, "If");
+    expect(mocks.selectWordNearLine).toHaveBeenCalledWith(7, "If");
+    expect(mocks.gotoLine).toHaveBeenCalledWith(7);
   });
 });

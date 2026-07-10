@@ -1,5 +1,5 @@
 import { synctexForward, synctexInverse } from "@/lib/tauri";
-import { getCurrentLine, gotoLine } from "@/components/editor/cm/controller";
+import { getCurrentLine, gotoLine, selectWordNearLine } from "@/components/editor/cm/controller";
 import { gotoRect } from "@/components/pdf/pdfController";
 import { useFilesStore } from "@/store/files";
 import { logError } from "@/lib/log";
@@ -45,7 +45,7 @@ function nextFrames(n: number): Promise<void> {
  *  may land on content from a different file (an `\input` child), so switch to
  *  that file before jumping. `hit.file` is a basename; resolve it against the
  *  project tree. */
-export async function inverseFromClick(page: number, x: number, y: number) {
+export async function inverseFromClick(page: number, x: number, y: number, word?: string) {
   const store = useFilesStore.getState();
   const { projectId, mainDoc } = store;
   if (!projectId) return;
@@ -64,6 +64,10 @@ export async function inverseFromClick(page: number, x: number, y: number) {
         await nextFrames(2); // let the editor mount the new file
       }
     }
+    // SyncTeX only resolves to a line (its column is coarse and often lands on a
+    // `\begin`/`\end`). If we know the word that was clicked, place the cursor on
+    // that exact word near the line; otherwise fall back to the line start.
+    if (word && selectWordNearLine(hit.line, word)) return;
     gotoLine(hit.line);
   } catch (e) {
     void logError("synctex inverse", e);

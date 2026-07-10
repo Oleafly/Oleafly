@@ -11,6 +11,37 @@ import { open as openUrl } from "@tauri-apps/plugin-shell";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
+/** The word under a screen point in the PDF text layer, for word-precise inverse
+ *  SyncTeX. Returns null over whitespace, an image, or when no text is hit. */
+function wordAtPoint(clientX: number, clientY: number): string | null {
+  const d = document as Document & {
+    caretRangeFromPoint?: (x: number, y: number) => Range | null;
+    caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
+  };
+  let node: Node | null = null;
+  let offset = 0;
+  const range = d.caretRangeFromPoint?.(clientX, clientY); // WebKit + Chromium
+  if (range) {
+    node = range.startContainer;
+    offset = range.startOffset;
+  } else {
+    const pos = d.caretPositionFromPoint?.(clientX, clientY); // Firefox / standard
+    if (pos) {
+      node = pos.offsetNode;
+      offset = pos.offset;
+    }
+  }
+  if (!node || node.nodeType !== Node.TEXT_NODE) return null;
+  const text = node.textContent ?? "";
+  const isWordChar = (c: string | undefined) => !!c && /[\p{L}\p{N}]/u.test(c);
+  let s = Math.min(Math.max(0, offset), text.length);
+  let e = s;
+  while (s > 0 && isWordChar(text[s - 1])) s--;
+  while (e < text.length && isWordChar(text[e])) e++;
+  const w = text.slice(s, e);
+  return w.length ? w : null;
+}
+
 // Render pages within this many CSS pixels of the viewport (above and below), so
 // scrolling reveals already-rasterized pages. Larger = smoother scroll, more memory.
 const RENDER_MARGIN_PX = 1200;
@@ -29,8 +60,9 @@ export type PdfLayout = "single" | "double";
 interface PdfViewerProps {
   data: Uint8Array | null;
   scale: number;
-  /** Inverse SyncTeX: invoked on Cmd/Ctrl-click with (page, x, y) in PDF bp. */
-  onInverse?: (page: number, x: number, y: number) => void;
+  /** Inverse SyncTeX: invoked on Cmd/Ctrl-click with (page, x, y) in PDF bp, plus
+   *  the word under the click (from the text layer) to place the cursor precisely. */
+  onInverse?: (page: number, x: number, y: number, word?: string) => void;
   /** Reports the page at the top of the viewport and the total page count, so a
    *  toolbar can show "N of M" and drive prev/next/jump. */
   onPageChange?: (current: number, total: number) => void;
@@ -369,7 +401,10 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
           if (!(ev.metaKey || ev.ctrlKey)) return;
           if ((ev.target as HTMLElement)?.closest?.("a")) return;
           const hit = pageClickToBp(wrap, p, ev);
-          if (hit) onInverseRef.current?.(hit.page, hit.x, hit.y);
+          if (hit) {
+            const word = wordAtPoint(ev.clientX, ev.clientY);
+            onInverseRef.current?.(hit.page, hit.x, hit.y, word ?? undefined);
+          }
         });
         container.appendChild(wrap);
         wrapsRef.current.set(p, wrap);

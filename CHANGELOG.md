@@ -92,6 +92,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Editor clipboard on macOS** - Cmd+C / Cmd+V / Cmd+X / Cmd+A work in the
   editor again. The custom application menu had replaced the default one and
   dropped the native Edit menu whose predefined items bind those shortcuts.
+- **Precise inverse SyncTeX** - Cmd/Ctrl-clicking a word in the PDF now places
+  the cursor on that exact word in the source, instead of the start of the line
+  (which often landed on a `\begin`/`\end`).
 
 ## [0.2.1]
 
