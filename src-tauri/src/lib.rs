@@ -1,3 +1,4 @@
+mod assets;
 mod citation;
 mod commands;
 mod config;
@@ -10,6 +11,7 @@ mod paths;
 mod project;
 mod state;
 mod synctex;
+mod templates;
 
 use state::AppState;
 
@@ -77,13 +79,21 @@ pub fn run() {
             citation::fetch_arxiv,
             citation::crossref_search,
             project::set_main_doc,
+            project::set_project_color,
             project::rename_project,
             project::open_devtools,
             project::get_project,
             project::list_projects,
             project::create_project,
-            project::list_templates,
+            templates::list_templates,
+            templates::template_preview,
             project::create_project_from_template,
+            assets::list_font_components,
+            assets::install_font_component,
+            assets::remove_font_component,
+            assets::download_all_fonts,
+            assets::template_prerequisites,
+            assets::ensure_template_assets,
             project::export_pdf,
             project::export_document,
             project::search_docs,

@@ -1,0 +1,15 @@
+{
+  "id": "bibliography",
+  "name": "Bibliography (natbib)",
+  "category": "Bibliographies",
+  "description": "A reference-management starter using natbib and BibTeX, with a sample .bib and examples of in-text, parenthetical, and multi-source citations.",
+  "main_doc": "main.tex",
+  "engine": "xetex",
+  "ats_profile": null,
+  "layout": "single-column",
+  "pages": "multi",
+  "default_color": "#0ca678",
+  "license": { "spdx": "MIT", "author": "OpenLeaf", "url": "https://github.com/prajwal-svm/OpenLeaf" },
+  "requires": { "packages": ["natbib"], "fonts": [], "engine": "tectonic" },
+  "order": 45
+}

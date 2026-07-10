@@ -1,0 +1,83 @@
+\documentclass[11pt,letterpaper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[margin=0.5in]{geometry}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{hyperref}
+
+% ATS-friendly: single column, real selectable text, no tables-for-layout,
+% embedded subset fonts. Linear reading order so parsers extract cleanly.
+\setlength{\parindent}{0pt}
+\pagenumbering{gobble}
+\hypersetup{colorlinks=true, urlcolor=black, linkcolor=black}
+
+\titleformat{\section}{\large\bfseries\uppercase}{}{0em}{}[\vspace{2pt}\titlerule]
+\titlespacing*{\section}{0pt}{8pt}{4pt}
+\setlist[itemize]{leftmargin=14pt, itemsep=1pt, topsep=2pt, parsep=0pt}
+
+% role{Title}{Company}{Location}{Dates}
+\newcommand{\role}[4]{%
+  \textbf{#1} \hfill #2 \\
+  \textit{#3} \hfill \textit{#4}%
+}
+
+\begin{document}
+
+\begin{center}
+  {\Huge \textbf{Alex Chen}}\\[3pt]
+  \small
+  Senior Software Engineer\\[2pt]
+  \href{mailto:alex.chen@gmail.com}{alex.chen@gmail.com}\,$\cdot$\,
+  (650) 555-0142\,$\cdot$\,
+  Mountain View, CA\,$\cdot$\,
+  \href{https://alexchen.dev}{alexchen.dev}\,$\cdot$\,
+  \href{https://github.com/alexchen}{github.com/alexchen}\,$\cdot$\,
+  \href{https://linkedin.com/in/alexchen}{linkedin.com/in/alexchen}
+\end{center}
+\vspace{2pt}
+
+\section*{Summary}
+Senior Software Engineer (L5) with 9+ years designing and operating large-scale
+distributed systems. Deep experience in backend infrastructure, performance, and
+reliability, with a track record of shipping products used by hundreds of
+millions of users and mentoring engineers toward senior roles.
+
+\section*{Experience}
+\role{Senior Software Engineer (L5)}{Google}{Mountain View, CA}{Mar 2020 -- Present}
+\begin{itemize}
+  \item Tech lead for a Search serving component handling 2M+ queries/second; drove a redesign that cut p99 latency 38\% and saved an estimated \$14M/year in compute.
+  \item Designed and launched a globally-replicated feature store on Spanner backing 40+ ML models, adopted by 12 teams across Search and Ads.
+  \item Led migration of a 300-service fleet to a new RPC framework, improving tail latency and reducing on-call pages by 45\%.
+  \item Mentored 6 engineers (2 promoted to senior); ran the team's design-review and readability programs.
+\end{itemize}
+\vspace{3pt}
+\role{Software Engineer (L4)}{Google}{Mountain View, CA}{Jul 2017 -- Mar 2020}
+\begin{itemize}
+  \item Built a real-time aggregation pipeline (C++, Flume) processing 8B events/day for a Search-quality dashboard used org-wide.
+  \item Cut batch-job cost 30\% by reworking sharding and introducing incremental recomputation.
+\end{itemize}
+\vspace{3pt}
+\role{Software Engineer}{Stripe}{San Francisco, CA}{Aug 2015 -- Jun 2017}
+\begin{itemize}
+  \item Shipped core ledger and reconciliation services for a payments platform processing \$60B+/year.
+  \item Reduced a reconciliation run from 6 hours to 25 minutes via parallelization and a columnar store.
+\end{itemize}
+
+\section*{Selected Projects}
+\textbf{Ratel} \hfill \href{https://github.com/alexchen/ratel}{github.com/alexchen/ratel} \\
+\textit{Go, Raft, gRPC} --- open-source distributed rate limiter doing 4M+ decisions/sec/node; 1.5k GitHub stars.\par\vspace{4pt}
+\textbf{tql} \hfill \href{https://github.com/alexchen/tql}{github.com/alexchen/tql} \\
+\textit{Rust} --- a typed query builder for Postgres with compile-time-checked SQL.
+
+\section*{Education}
+\textbf{M.S. Computer Science} \hfill Stanford University \\
+\textit{2013 -- 2015} \hfill \textit{Focus: Distributed Systems}\par\vspace{4pt}
+\textbf{B.S. Computer Science} \hfill University of Illinois Urbana-Champaign \\
+\textit{2009 -- 2013} \hfill \textit{GPA: 3.9 / 4.0}
+
+\section*{Skills}
+\textbf{Languages:} C++, Go, Rust, Python, Java, SQL \\
+\textbf{Systems:} Spanner, Bigtable, Kubernetes, Kafka, gRPC / Protobuf, Redis \\
+\textbf{Focus:} Distributed systems, performance, reliability (SLOs), system design, mentoring
+
+\end{document}

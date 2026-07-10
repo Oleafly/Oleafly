@@ -1,0 +1,61 @@
+\documentclass[11pt,letterpaper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[margin=0.6in]{geometry}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{hyperref}
+
+% ATS-friendly: single column, no tables-for-layout, real selectable text,
+% embedded subset fonts. Avoid \tabular for layout; keep a linear reading order.
+\setlength{\parindent}{0pt}
+\pagenumbering{gobble}
+\titleformat{\section}{\large\bfseries\uppercase}{}{0em}{}[\titlerule]
+\titlespacing*{\section}{0pt}{10pt}{4pt}
+\setlist[itemize]{leftmargin=12pt,itemsep=1pt,topsep=2pt}
+
+\begin{document}
+
+% ===== Header =====
+\begin{center}
+  {\Huge \textbf{Jane Doe}}\\[3pt]
+  \small
+  \href{mailto:jane.doe@email.com}{jane.doe@email.com} $\cdot$
+  (555) 123-4567 $\cdot$
+  San Francisco, CA $\cdot$
+  \href{https://linkedin.com/in/janedoe}{linkedin.com/in/janedoe} $\cdot$
+  \href{https://github.com/janedoe}{github.com/janedoe}
+\end{center}
+
+% ===== Summary =====
+\section*{Summary}
+Senior Software Engineer with 6+ years building scalable distributed systems
+and shipping high-impact products end-to-end.
+
+% ===== Experience =====
+\section*{Experience}
+\textbf{Senior Software Engineer} \hfill \textbf{Acme Corp} \\
+\textit{San Francisco, CA} \hfill \textit{Jan 2022 -- Present}
+\begin{itemize}
+  \item Led migration of a monolith to microservices, reducing p99 latency by 40\%.
+  \item Designed a multi-tenant data pipeline processing 5B events/day.
+  \item Mentored 4 engineers and established the team's code-review culture.
+\end{itemize}
+\vspace{4pt}
+\textbf{Software Engineer} \hfill \textbf{Startup Inc} \\
+\textit{Remote} \hfill \textit{Jun 2019 -- Dec 2021}
+\begin{itemize}
+  \item Built the core payments service handling \$20M/yr in transactions.
+  \item Cut infrastructure cost 30\% by right-sizing autoscaling groups.
+\end{itemize}
+
+% ===== Education =====
+\section*{Education}
+\textbf{B.S. Computer Science} \hfill \textbf{State University} \\
+\textit{2015 -- 2019}
+
+% ===== Skills =====
+\section*{Skills}
+\textbf{Languages:} Python, Go, Rust, TypeScript \\
+\textbf{Infrastructure:} Kubernetes, AWS, Terraform, PostgreSQL, Kafka
+
+\end{document}

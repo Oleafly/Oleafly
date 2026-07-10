@@ -1,0 +1,78 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=0.7in]{geometry}
+\usepackage{fontspec}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+
+% Lato is fetched on demand and staged into this project's fonts/ folder, so the
+% document is self-contained and compiles offline. If you started from this
+% template, the files are already there.
+\setmainfont{Lato}[
+  Path=./fonts/,
+  Extension=.ttf,
+  UprightFont=*-Regular,
+  BoldFont=*-Bold,
+  ItalicFont=*-Italic,
+  BoldItalicFont=*-BoldItalic,
+]
+
+\definecolor{accent}{HTML}{1098AD}
+
+\setlength{\parindent}{0pt}
+\pagenumbering{gobble}
+
+\titleformat{\section}{\large\bfseries\color{accent}}{}{0em}{}[{\color{accent!40}\titlerule}]
+\titlespacing*{\section}{0pt}{10pt}{4pt}
+\setlist[itemize]{leftmargin=14pt,itemsep=1pt,topsep=2pt,parsep=0pt}
+
+% role{Title}{Company}{Location}{Dates}
+\newcommand{\role}[4]{{\bfseries #1} \hfill #2\\ {\itshape #3} \hfill {\itshape #4}}
+
+\begin{document}
+
+\begin{center}
+  {\fontsize{26}{30}\selectfont\bfseries\color{accent} Morgan Lee}\\[3pt]
+  {\large Product Engineer}\\[4pt]
+  \small
+  \href{mailto:morgan.lee@example.com}{morgan.lee@example.com} \; | \;
+  (415) 555 0198 \; | \;
+  San Francisco, CA \; | \;
+  \href{https://morganlee.dev}{morganlee.dev} \; | \;
+  \href{https://github.com/morganlee}{github.com/morganlee}
+\end{center}
+\vspace{4pt}
+
+\section*{Summary}
+Product-minded software engineer with 8 years shipping consumer and developer
+products end to end. I move fast without breaking trust, and I care about design,
+performance, and the people I work with.
+
+\section*{Experience}
+\role{Staff Software Engineer}{Northwind}{Remote}{2022 -- Present}
+\begin{itemize}
+  \item Owned the checkout rewrite that lifted conversion 12\% and cut errors in half.
+  \item Set the front-end architecture adopted by five teams and 30+ engineers.
+  \item Ran the hiring loop and mentored four engineers to senior.
+\end{itemize}
+\vspace{3pt}
+\role{Senior Software Engineer}{Brightwave}{San Francisco, CA}{2018 -- 2022}
+\begin{itemize}
+  \item Built a real-time collaboration engine used by 400k monthly users.
+  \item Reduced page load time 45\% through rendering and caching work.
+\end{itemize}
+
+\section*{Projects}
+{\bfseries Tempo} \hfill \href{https://github.com/morganlee/tempo}{github.com/morganlee/tempo}\\
+An open-source scheduling library with 3k GitHub stars.
+
+\section*{Education}
+{\bfseries B.S. Computer Science} \hfill University of California, Berkeley\\
+\textit{2010 -- 2014} \hfill \textit{High Honors}
+
+\section*{Skills}
+{\bfseries Languages:} TypeScript, Go, Python, Swift\\
+{\bfseries Focus:} Product engineering, front-end architecture, performance, design systems
+
+\end{document}

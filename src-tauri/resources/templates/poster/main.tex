@@ -1,0 +1,47 @@
+\documentclass[25pt,a0paper,portrait]{tikzposter}
+\usepackage{amsmath}
+\usepackage{lipsum}
+
+\title{Your Research Poster Title Goes Here}
+\author{First Author, Second Author, Third Author}
+\institute{Department of Something, Example University}
+
+\usetheme{Default}
+\usecolorstyle{Denmark}
+
+\begin{document}
+
+\maketitle
+
+\begin{columns}
+  \column{0.5}
+  \block{Introduction}{
+    State the problem and why it matters. Posters are read at a distance, so keep
+    text short and let the structure guide the eye. \lipsum[1]
+  }
+  \block{Methods}{
+    Describe your approach. Equations render as usual:
+    \[
+      \hat{y} = \arg\max_{y} P(y \mid x).
+    \]
+    \lipsum[2][1-4]
+  }
+
+  \column{0.5}
+  \block{Results}{
+    Summarize the key findings. Use a short list of takeaways:
+    \begin{itemize}
+      \item A clear, quantified result.
+      \item A second supporting finding.
+      \item A surprising observation worth discussing.
+    \end{itemize}
+  }
+  \block{Conclusion}{
+    Restate the contribution and point to future work. \lipsum[3][1-3]
+  }
+  \note[targetoffsetx=-8cm, targetoffsety=-10cm, width=0.4\linewidth]{
+    Contact: your.email@example.edu
+  }
+\end{columns}
+
+\end{document}

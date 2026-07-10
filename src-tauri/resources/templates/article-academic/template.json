@@ -1,0 +1,15 @@
+{
+  "id": "article-academic",
+  "name": "Academic Article",
+  "category": "Journals & Conferences",
+  "description": "A clean, minimalist single-column research article with good typography, an abstract, sections, and a bibliography.",
+  "main_doc": "main.tex",
+  "engine": "xetex",
+  "ats_profile": null,
+  "layout": "single-column",
+  "pages": "multi",
+  "default_color": "#0c8599",
+  "license": { "spdx": "MIT", "author": "OpenLeaf", "url": "https://github.com/prajwal-svm/OpenLeaf" },
+  "requires": { "packages": [], "fonts": [], "engine": "tectonic" },
+  "order": 31
+}

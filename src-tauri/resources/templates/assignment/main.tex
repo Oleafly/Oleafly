@@ -1,0 +1,55 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage[hidelinks]{hyperref}
+
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\small CS 101: Algorithms}
+\chead{\small Assignment 3}
+\rhead{\small Your Name}
+\cfoot{\small \thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% A numbered "Problem" heading with a little space for the answer.
+\newcounter{problem}
+\newcommand{\problem}[1]{%
+  \stepcounter{problem}%
+  \bigskip
+  \noindent{\large\bfseries Problem \theproblem.} #1\par\smallskip}
+\newcommand{\solution}{\noindent\textbf{Solution.}\ }
+
+\begin{document}
+
+\begin{center}
+  {\LARGE\bfseries Assignment 3}\\[2pt]
+  {\large CS 101: Algorithms}\\[2pt]
+  Your Name \quad|\quad \texttt{you@example.edu} \quad|\quad Due: \today
+\end{center}
+\hrule
+\vspace{6pt}
+
+\problem{State the definition of Big-O notation, then prove that
+$3n^2 + 2n + 1 = O(n^2)$.}
+\solution
+We must find constants $c > 0$ and $n_0$ such that $3n^2 + 2n + 1 \le c\,n^2$ for
+all $n \ge n_0$. Taking $c = 6$ and $n_0 = 1$ works, since $2n + 1 \le 3n^2$ for
+all $n \ge 1$.
+
+\problem{Give the recurrence for merge sort and solve it with the Master Theorem.}
+\solution
+The recurrence is $T(n) = 2\,T(n/2) + \Theta(n)$. With $a = 2$, $b = 2$, and
+$f(n) = \Theta(n)$, we have $n^{\log_b a} = n$, so case 2 applies and
+$T(n) = \Theta(n \log n)$.
+
+\problem{Design an algorithm that finds the $k$-th smallest element of an
+unsorted array in expected linear time, and briefly justify the running time.}
+\solution
+Use Quickselect: partition around a random pivot and recurse into the side that
+contains the $k$-th element. The expected number of comparisons is $O(n)$ because
+the expected partition sizes shrink geometrically.
+
+\end{document}

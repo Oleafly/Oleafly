@@ -12,6 +12,7 @@ import {
   ExternalLink,
   Github,
   Globe,
+  HardDriveDownload,
   Keyboard,
   LifeBuoy,
   Loader2,
@@ -33,6 +34,7 @@ import { platform as osPlatform, arch as osArch, version as osVersion } from "@t
 import { Button } from "@/components/ui/button";
 import { UpdateChecker } from "@/components/layout/UpdateChecker";
 import { EngineSection } from "@/components/settings/EngineSection";
+import { DownloadsSection } from "@/components/settings/DownloadsSection";
 import {
   Select,
   SelectContent,
@@ -81,6 +83,7 @@ type Section =
   | "data"
   | "ai"
   | "engine"
+  | "downloads"
   | "github"
   | "help";
 
@@ -91,6 +94,7 @@ const NAV: { id: Section; label: string; icon: typeof Palette }[] = [
   { id: "data", label: "Data Storage", icon: Database },
   { id: "ai", label: "AI Assistant", icon: Sparkles },
   { id: "engine", label: "LaTeX Engine", icon: Cpu },
+  { id: "downloads", label: "Offline & Downloads", icon: HardDriveDownload },
   { id: "github", label: "GitHub", icon: Github },
   { id: "help", label: "Help & About", icon: LifeBuoy },
 ];
@@ -431,6 +435,7 @@ export function SettingsModal() {
             {section === "ai" && <AISection />}
 
             {section === "engine" && <EngineSection />}
+            {section === "downloads" && <DownloadsSection />}
 
             {section === "github" && (
               <GitHubSection

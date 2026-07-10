@@ -47,6 +47,18 @@ pub fn openleaf_root() -> Result<PathBuf, String> {
     Ok(home_dir()?.join(".openleaf"))
 }
 
+/// The downloadable-assets cache: `~/.openleaf/assets/` (created if missing).
+/// Holds on-demand font packs (and future package/engine caches) so the shipped
+/// installer stays small.
+pub fn assets_root() -> Result<PathBuf, String> {
+    let root = openleaf_root()?.join("assets");
+    if !root.exists() {
+        std::fs::create_dir_all(&root)
+            .map_err(|e| format!("failed to create assets root {root:?}: {e}"))?;
+    }
+    Ok(root)
+}
+
 /// The projects directory: `~/.openleaf/projects/` (created if missing).
 pub fn projects_root() -> Result<PathBuf, String> {
     let root = openleaf_root()?.join("projects");

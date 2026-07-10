@@ -1,0 +1,15 @@
+{
+  "id": "letter",
+  "name": "Formal Letter",
+  "category": "Letters",
+  "description": "A clean formal letter with sender and recipient blocks, date, salutation, body, and signature.",
+  "main_doc": "main.tex",
+  "engine": "xetex",
+  "ats_profile": null,
+  "layout": "single-column",
+  "pages": "single",
+  "default_color": "#495057",
+  "license": { "spdx": "MIT", "author": "OpenLeaf", "url": "https://github.com/prajwal-svm/OpenLeaf" },
+  "requires": { "packages": [], "fonts": [], "engine": "tectonic" },
+  "order": 90
+}

@@ -5,7 +5,7 @@ import { SettingsMenu } from "@/components/layout/SettingsMenu";
 import { LeafLogo } from "@/components/layout/LeafLogo";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Book, BOOK_COLOR_OPTIONS, DEFAULT_BOOK_COLOR } from "@/components/library/Book";
-import { NewProjectForm } from "@/components/library/NewProjectForm";
+import { NewProjectDialog } from "@/components/library/NewProjectDialog";
 import {
   Empty,
   EmptyContent,
@@ -48,6 +48,7 @@ export function Library() {
   const { theme, toggleTheme } = useTheme();
   const [templates, setTemplates] = useState<TemplateInfo[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [forkTarget, setForkTarget] = useState<{ id: string; name: string } | null>(null);
   const [forkName, setForkName] = useState("");
 
@@ -58,14 +59,18 @@ export function Library() {
 
   const create = async (rawName: string, templateId: string, color: string): Promise<boolean> => {
     const n = rawName.trim() || "Untitled";
+    setCreating(true);
     try {
-      const id = await createFromTemplate(n, templateId);
-      if (id && color) setProjectColor(id, color);
+      // The color is persisted to project.json by the backend during creation.
+      await createFromTemplate(n, templateId, color);
       celebrate();
+      setPickerOpen(false);
       return true;
     } catch (e) {
       notifyError("create project", e, "Couldn't create the project.");
       return false;
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -164,7 +169,12 @@ export function Library() {
                 </EmptyDescription>
               </EmptyHeader>
               <EmptyContent className="max-w-2xl">
-                <NewProjectForm centered templates={templates} onSubmit={(n, t, c) => { void create(n, t, c); }} />
+                <Button
+                  className="bg-primary text-white hover:bg-primary"
+                  onClick={() => setPickerOpen(true)}
+                >
+                  <Plus className="size-4" /> Create your first project
+                </Button>
               </EmptyContent>
             </Empty>
           ) : (
@@ -175,7 +185,7 @@ export function Library() {
                   <div className="flex justify-center">
                     <Book
                       title={p.name}
-                      color={projectColors[p.id] ?? DEFAULT_BOOK_COLOR}
+                      color={projectColors[p.id] ?? (p.color || DEFAULT_BOOK_COLOR)}
                       date={p.updated_at > 0 ? new Date(p.updated_at * 1000).toLocaleDateString() : undefined}
                       starred={favs.includes(p.id)}
                       onStarToggle={() => toggleFav(p.id)}
@@ -193,7 +203,7 @@ export function Library() {
                     </ContextMenuSubTrigger>
                     <ContextMenuSubContent className="w-44">
                       {BOOK_COLOR_OPTIONS.map((c) => {
-                        const active = (projectColors[p.id] ?? DEFAULT_BOOK_COLOR) === c.hex;
+                        const active = (projectColors[p.id] ?? (p.color || DEFAULT_BOOK_COLOR)) === c.hex;
                         return (
                           <ContextMenuItem key={c.hex} onClick={() => setProjectColor(p.id, c.hex)}>
                             <span className="mr-2 size-3.5 shrink-0 rounded-full ring-1 ring-black/10" style={{ background: c.hex }} />
@@ -235,32 +245,13 @@ export function Library() {
         </div>
       </div>
 
-      {pickerOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onClick={() => setPickerOpen(false)}
-        >
-          <div
-            className="w-full max-w-lg rounded-xl border bg-popover p-5 text-popover-foreground shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-base font-semibold">New project</h2>
-              <Button variant="ghost" size="icon" className="size-7" onClick={() => setPickerOpen(false)}>
-                <X className="size-4" />
-              </Button>
-            </div>
-
-            <div className="flex flex-col gap-4">
-              <NewProjectForm
-                templates={templates}
-                autoFocusName
-                onSubmit={async (n, t, c) => { if (await create(n, t, c)) setPickerOpen(false); }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      <NewProjectDialog
+        open={pickerOpen}
+        templates={templates}
+        busy={creating}
+        onClose={() => setPickerOpen(false)}
+        onCreate={(n, t, c) => { void create(n, t, c); }}
+      />
       {/* Fork modal */}
       {forkTarget && (
         <div

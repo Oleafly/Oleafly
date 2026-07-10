@@ -1,0 +1,57 @@
+\documentclass[preprint,12pt]{elsarticle}
+\usepackage{amsmath}
+\usepackage{lipsum}
+
+\journal{Journal of Interesting Results}
+
+\begin{document}
+
+\begin{frontmatter}
+
+\title{The Title of Your Elsevier Article}
+
+\author[a]{Marie Curie}
+\ead{marie@example.edu}
+\author[b]{Nikola Tesla}
+\ead{nikola@example.org}
+
+\affiliation[a]{organization={Example University}, city={Paris}, country={France}}
+\affiliation[b]{organization={Example Institute}, city={New York}, country={USA}}
+
+\begin{abstract}
+This is a working template based on Elsevier's \texttt{elsarticle} class in
+single-column preprint mode. It sets up the front matter (title, authors,
+affiliations, abstract, and keywords) the way Elsevier journals expect. Replace
+this abstract with a concise summary of your study and its findings.
+\end{abstract}
+
+\begin{keyword}
+template \sep elsarticle \sep journal article
+\end{keyword}
+
+\end{frontmatter}
+
+\section{Introduction}
+\label{sec:intro}
+Introduce the problem and your contribution. \lipsum[1]
+
+\section{Method}
+\label{sec:method}
+Describe your approach, with equations where useful:
+\begin{equation}
+  \nabla \cdot \mathbf{E} = \frac{\rho}{\varepsilon_0}.
+\end{equation}
+
+\section{Results}
+\label{sec:results}
+\lipsum[2]
+
+\section{Conclusion}
+\label{sec:conclusion}
+Summarize and describe future work.
+
+\begin{thebibliography}{9}
+\bibitem{ref1} Author, Title of a relevant work, Journal, Year.
+\end{thebibliography}
+
+\end{document}

@@ -1,0 +1,15 @@
+{
+  "id": "calendar",
+  "name": "Monthly Calendar",
+  "category": "Calendars",
+  "description": "A clean one-page monthly calendar grid with roomy cells for notes, ready to change the month and year.",
+  "main_doc": "main.tex",
+  "engine": "xetex",
+  "ats_profile": null,
+  "layout": "single-column",
+  "pages": "single",
+  "default_color": "#f08c00",
+  "license": { "spdx": "MIT", "author": "OpenLeaf", "url": "https://github.com/prajwal-svm/OpenLeaf" },
+  "requires": { "packages": [], "fonts": [], "engine": "tectonic" },
+  "order": 85
+}

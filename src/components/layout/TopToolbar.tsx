@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  BookOpen,
   Check,
   CircleHelp,
   Columns2,
@@ -9,6 +10,7 @@ import {
   FileArchive,
   FileType,
   GitFork,
+  Presentation,
   Github,
   History,
   Loader2,
@@ -47,7 +49,20 @@ const FMT_LABEL: Record<string, string> = {
   docx: "Docx",
   html: "html",
   md: "Md",
+  pptx: "PowerPoint",
+  epub: "EPUB",
+  txt: "Text",
 };
+
+type DocFormat = "docx" | "html" | "md" | "pptx" | "epub" | "txt";
+
+/** Classify the main document so the export menu can offer the right formats. */
+function classifyDoc(source: string): "presentation" | "book" | "doc" {
+  if (/\\documentclass(\[[^\]]*\])?\{\s*beamer\s*\}/.test(source)) return "presentation";
+  if (/\\documentclass(\[[^\]]*\])?\{\s*(book|report|memoir|scrbook|scrreprt)\s*\}/.test(source))
+    return "book";
+  return "doc";
+}
 
 const VIEW_OPTIONS: { mode: ViewMode; label: string; icon: typeof Columns2 }[] = [
   { mode: "editor", label: "Source View", icon: SquarePen },
@@ -108,6 +123,21 @@ export function TopToolbar() {
   };
   const [dlOpen, setDlOpen] = useState(false);
   const [exporting, setExporting] = useState<string | null>(null);
+  const [exportKind, setExportKind] = useState<"presentation" | "book" | "doc">("doc");
+
+  // Classify the current document (cheap, imperative read) whenever the export
+  // menu opens, so we can show the right formats without subscribing to content.
+  const openExportMenu = () => {
+    setDlOpen((v) => {
+      const next = !v;
+      if (next) {
+        const f = useFilesStore.getState();
+        const src = f.files[f.mainDoc]?.content ?? "";
+        setExportKind(classifyDoc(src));
+      }
+      return next;
+    });
+  };
   const [githubUrl, setGithubUrl] = useState<string | null>(null);
 
   // Track the project's GitHub web URL (null until it's pushed to a remote).
@@ -163,7 +193,7 @@ export function TopToolbar() {
     }
   };
 
-  const doExportFormat = async (format: "docx" | "html" | "md") => {
+  const doExportFormat = async (format: DocFormat) => {
     if (!projectId) return;
     setDlOpen(false);
     const ext = format;
@@ -330,7 +360,7 @@ export function TopToolbar() {
               variant="ghost"
               size="icon"
               className="text-muted-foreground hover:text-foreground"
-              onClick={() => setDlOpen((v) => !v)}
+              onClick={openExportMenu}
               aria-label="Export"
             >
               <Download className="size-4" />
@@ -366,6 +396,28 @@ export function TopToolbar() {
                   <FileType className="size-4 text-muted-foreground" />
                   Export as Markdown (.md)
                 </button>
+                <button onClick={() => void doExportFormat("txt")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
+                  <FileType className="size-4 text-muted-foreground" />
+                  Export as Plain text (.txt)
+                </button>
+                {exportKind === "presentation" && (
+                  <>
+                    <div className="my-1 h-px bg-border" />
+                    <button onClick={() => void doExportFormat("pptx")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
+                      <Presentation className="size-4 text-muted-foreground" />
+                      Export as PowerPoint (.pptx)
+                    </button>
+                  </>
+                )}
+                {exportKind === "book" && (
+                  <>
+                    <div className="my-1 h-px bg-border" />
+                    <button onClick={() => void doExportFormat("epub")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
+                      <BookOpen className="size-4 text-muted-foreground" />
+                      Export as EPUB (.epub)
+                    </button>
+                  </>
+                )}
                 {exporting && (
                   <p className="px-2 py-1 text-[10px] text-muted-foreground">
                     {`Exporting .${exporting}…`}

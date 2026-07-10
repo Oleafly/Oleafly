@@ -1,0 +1,47 @@
+[
+  {
+    "id": "lato",
+    "label": "Lato",
+    "family": "Lato",
+    "description": "A warm humanist sans-serif used by many modern resume and CV templates.",
+    "approx_bytes": 2680000,
+    "license": { "spdx": "OFL-1.1", "author": "Łukasz Dziedzic", "url": "https://fonts.google.com/specimen/Lato" },
+    "files": [
+      { "name": "Lato-Regular.ttf", "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/lato/Lato-Regular.ttf" },
+      { "name": "Lato-Bold.ttf", "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/lato/Lato-Bold.ttf" },
+      { "name": "Lato-Italic.ttf", "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/lato/Lato-Italic.ttf" },
+      { "name": "Lato-BoldItalic.ttf", "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/lato/Lato-BoldItalic.ttf" },
+      { "name": "OFL.txt", "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/lato/OFL.txt" }
+    ]
+  },
+  {
+    "id": "ptsans",
+    "label": "PT Sans",
+    "family": "PT Sans",
+    "description": "A clean, neutral sans-serif that reads well on screen and in print.",
+    "approx_bytes": 800000,
+    "license": { "spdx": "OFL-1.1", "author": "ParaType", "url": "https://fonts.google.com/specimen/PT+Sans" },
+    "files": [
+      { "name": "PTSans-Regular.ttf", "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/ptsans/PT_Sans-Web-Regular.ttf" },
+      { "name": "PTSans-Bold.ttf", "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/ptsans/PT_Sans-Web-Bold.ttf" },
+      { "name": "PTSans-Italic.ttf", "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/ptsans/PT_Sans-Web-Italic.ttf" },
+      { "name": "PTSans-BoldItalic.ttf", "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/ptsans/PT_Sans-Web-BoldItalic.ttf" },
+      { "name": "OFL.txt", "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/ptsans/OFL.txt" }
+    ]
+  },
+  {
+    "id": "ptserif",
+    "label": "PT Serif",
+    "family": "PT Serif",
+    "description": "A refined transitional serif, a good match for academic and executive documents.",
+    "approx_bytes": 900000,
+    "license": { "spdx": "OFL-1.1", "author": "ParaType", "url": "https://fonts.google.com/specimen/PT+Serif" },
+    "files": [
+      { "name": "PTSerif-Regular.ttf", "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/ptserif/PT_Serif-Web-Regular.ttf" },
+      { "name": "PTSerif-Bold.ttf", "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/ptserif/PT_Serif-Web-Bold.ttf" },
+      { "name": "PTSerif-Italic.ttf", "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/ptserif/PT_Serif-Web-Italic.ttf" },
+      { "name": "PTSerif-BoldItalic.ttf", "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/ptserif/PT_Serif-Web-BoldItalic.ttf" },
+      { "name": "OFL.txt", "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/ptserif/OFL.txt" }
+    ]
+  }
+]

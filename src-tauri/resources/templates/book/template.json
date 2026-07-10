@@ -1,0 +1,15 @@
+{
+  "id": "book",
+  "name": "Book",
+  "category": "Books",
+  "description": "A multi-chapter book with parts, chapters, front matter, and a table of contents, ready for a monograph or long-form manuscript.",
+  "main_doc": "main.tex",
+  "engine": "xetex",
+  "ats_profile": null,
+  "layout": "single-column",
+  "pages": "multi",
+  "default_color": "#862e9c",
+  "license": { "spdx": "MIT", "author": "OpenLeaf", "url": "https://github.com/prajwal-svm/OpenLeaf" },
+  "requires": { "packages": [], "fonts": [], "engine": "tectonic" },
+  "order": 60
+}

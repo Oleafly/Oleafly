@@ -1,0 +1,15 @@
+{
+  "id": "sidebar-resume",
+  "name": "Sidebar Resume",
+  "category": "CVs & Resumes",
+  "description": "A modern two-column resume with a colored left sidebar, a photo placeholder, contact details, and skills, with experience and education on the right.",
+  "main_doc": "main.tex",
+  "engine": "xetex",
+  "ats_profile": "design-forward",
+  "layout": "two-column",
+  "pages": "single",
+  "default_color": "#22304a",
+  "license": { "spdx": "MIT", "author": "OpenLeaf", "url": "https://github.com/prajwal-svm/OpenLeaf" },
+  "requires": { "packages": [], "fonts": [], "engine": "tectonic" },
+  "order": 13
+}

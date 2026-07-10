@@ -1,0 +1,61 @@
+\documentclass[11pt,a4paper,oneside]{report}
+\usepackage[T1]{fontenc}
+\usepackage[a4paper,margin=1.25in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{setspace}
+\usepackage[hidelinks]{hyperref}
+
+\onehalfspacing
+
+\begin{document}
+
+% ===== Title page =====
+\begin{titlepage}
+  \centering
+  \vspace*{2cm}
+  {\LARGE\bfseries A Study of Something Important\par}
+  \vspace{1.5cm}
+  {\large by\par}
+  \vspace{0.5cm}
+  {\Large Your Name\par}
+  \vfill
+  {\large A thesis submitted in partial fulfillment\\ of the requirements for the degree of\\ Master of Science\par}
+  \vspace{1cm}
+  {\large University Name\par}
+  {\large \today\par}
+\end{titlepage}
+
+\tableofcontents
+\clearpage
+
+\chapter{Introduction}
+Introduce the problem and the structure of the thesis. Chapters are declared with
+\verb|\chapter{...}| and appear automatically in the table of contents.
+
+\section{Motivation}
+Why does this work matter?
+
+\section{Contributions}
+List your contributions as a short, scannable summary.
+
+\chapter{Background}
+Cover the necessary background and related work.
+
+\chapter{Method}
+Describe your approach in detail, with equations where useful:
+\begin{equation}
+  f(x) = \int_{0}^{x} g(t)\,\mathrm{d}t.
+\end{equation}
+
+\chapter{Results}
+Present and discuss your findings.
+
+\chapter{Conclusion}
+Summarize and describe future directions.
+
+\begin{thebibliography}{9}
+\bibitem{ref1} Author, \emph{Title of a Relevant Work}. Publisher, Year.
+\end{thebibliography}
+
+\end{document}

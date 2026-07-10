@@ -1,0 +1,47 @@
+\documentclass[11pt,a4paper]{book}
+\usepackage[T1]{fontenc}
+\usepackage[a4paper,margin=1.1in]{geometry}
+\usepackage{graphicx}
+\usepackage{lipsum}
+\usepackage[hidelinks]{hyperref}
+
+\title{The Title of Your Book}
+\author{Your Name}
+\date{\today}
+
+\begin{document}
+
+\frontmatter
+\maketitle
+
+\tableofcontents
+
+\chapter*{Preface}
+\addcontentsline{toc}{chapter}{Preface}
+Use the front matter for the preface and acknowledgements. Page numbering here is
+in roman numerals, switching to arabic when the main matter begins.
+
+\mainmatter
+
+\part{The Beginning}
+
+\chapter{An Opening Chapter}
+\section{A Section}
+\lipsum[1-2]
+
+\section{Another Section}
+\lipsum[3]
+
+\chapter{The Story Continues}
+\lipsum[4-5]
+
+\part{The Middle}
+
+\chapter{Rising Action}
+\lipsum[6-7]
+
+\backmatter
+\chapter{Afterword}
+Closing thoughts go in the back matter.
+
+\end{document}

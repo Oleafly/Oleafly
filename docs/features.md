@@ -95,7 +95,22 @@ a readiness aid, not a formal accessibility certification.
 ## Projects and library
 
 - Library home lists all projects with thumbnails, last-edited time, and export history.
-- Templates: Blank, One-Page Resume, and IEEE Paper.
+- Template gallery: creating a project opens a browsable gallery, organized by
+  category (CVs & Resumes, Journals & Conferences, Theses & Reports, Books,
+  Presentations, Posters, Letters), with search, an ATS-friendly filter, and a
+  page-1 preview of every template. Pick one, then name the project and choose a
+  cover color. The starter set spans clean, ATS-friendly resumes, a polished
+  software engineer resume, a Modern resume set in Lato, and a photo-and-sidebar
+  design resume; a full worked IEEE paper, ACM and Elsevier journal articles, and
+  a minimalist academic article; a thesis/report, a book, a Beamer deck, a
+  research poster, a homework assignment, a two-column newsletter, a monthly
+  calendar, a bibliography starter, and a formal letter. Templates ship as
+  editable source.
+- On-demand fonts: richer templates use premium open-source fonts (Lato, PT Sans,
+  PT Serif) that download only when needed, so the app stays small. Creating such
+  a template fetches the fonts (with progress) and copies them into the project's
+  `fonts/` folder, so it stays self-contained and compiles offline. Manage these
+  in Settings, Offline & Downloads (pre-download, or remove to free space).
 - Source tree: create files and folders (nested to any depth), rename, delete, and duplicate (files and whole folders). Right-click a folder to add a file or folder inside it, and drag files and folders in and out of folders to reorganize. Upload files, and pick the main document.
 - Multi-file support for `\input`, images (PNG/JPG/PDF/EPS), `.bib`, and editor tabs.
 - Autosave writes your changes to disk shortly after you stop typing.
@@ -139,8 +154,12 @@ Bring any provider: OpenAI, Anthropic, Groq, OpenRouter, DeepSeek, Mistral, xAI,
 
 ## Export
 
-- PDF, always, ATS-clean.
-- Word (.docx), HTML, and Markdown via pandoc, which you install separately.
+- PDF, always, ATS-clean, and the full source as a `.zip`.
+- Document formats via pandoc (downloaded on demand the first time): Word
+  (`.docx`), a self-contained HTML file with MathML, Markdown, and plain text.
+- Context-aware formats based on the document: presentations (Beamer) can export
+  to PowerPoint (`.pptx`), with each frame becoming a slide; books, reports, and
+  theses can export to EPUB (`.epub`) with a table of contents.
 
 ## Theming
 

@@ -1,0 +1,15 @@
+{
+  "id": "elsevier",
+  "name": "Elsevier Article",
+  "category": "Journals & Conferences",
+  "description": "A journal article using Elsevier's elsarticle class, with title, authors, affiliations, abstract, keywords, and a bibliography.",
+  "main_doc": "main.tex",
+  "engine": "xetex",
+  "ats_profile": null,
+  "layout": "single-column",
+  "pages": "multi",
+  "default_color": "#d9480f",
+  "license": { "spdx": "LPPL-1.3", "author": "Elsevier (elsarticle class)", "url": "https://ctan.org/pkg/elsarticle" },
+  "requires": { "packages": ["elsarticle"], "fonts": [], "engine": "tectonic" },
+  "order": 33
+}

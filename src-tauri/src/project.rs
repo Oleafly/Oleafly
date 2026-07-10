@@ -26,6 +26,10 @@ pub struct ProjectMeta {
     pub main_doc: String,
     #[serde(default = "default_engine")]
     pub engine: String,
+    /// Book-cover color (hex). Empty means "unset" so the UI falls back to its
+    /// default. Stored on disk so a project's color survives across machines.
+    #[serde(default)]
+    pub color: String,
     #[serde(default)]
     pub exports: Vec<ExportRecord>,
 }
@@ -56,6 +60,8 @@ pub struct ProjectInfo {
     pub name: String,
     pub main_doc: String,
     pub updated_at: f64,
+    /// Book-cover color (hex), or empty if unset (UI falls back to its default).
+    pub color: String,
 }
 
 /// Resolve a project-relative path, rejecting traversal escapes.
@@ -125,6 +131,7 @@ pub fn read_meta(project_id: &str) -> Result<ProjectMeta, String> {
             name: project_id.to_string(),
             main_doc: default_main_doc(),
             engine: default_engine(),
+            color: String::new(),
             exports: Vec::new(),
         });
     }
@@ -404,6 +411,16 @@ pub fn get_project(project_id: String) -> Result<ProjectMeta, String> {
     read_meta(&project_id)
 }
 
+/// Persist a project's book-cover color to its `project.json` so it survives
+/// across machines (previously kept only in the browser's localStorage).
+#[tauri::command]
+pub fn set_project_color(project_id: String, color: String) -> Result<ProjectMeta, String> {
+    let mut meta = read_meta(&project_id)?;
+    meta.color = color;
+    write_meta(&project_id, &meta)?;
+    Ok(meta)
+}
+
 /// Open the webview devtools. Only does anything in debug builds (`tauri dev`),
 /// where devtools are compiled in; a no-op in release.
 #[tauri::command]
@@ -439,6 +456,7 @@ pub fn list_projects() -> Result<Vec<ProjectInfo>, String> {
                 meta.name
             },
             main_doc: meta.main_doc,
+            color: meta.color,
             id,
             updated_at,
         });
@@ -465,6 +483,7 @@ pub fn create_project(name: String) -> Result<String, String> {
             name,
             main_doc: default_main_doc(),
             engine: default_engine(),
+            color: String::new(),
             exports: Vec::new(),
         },
     )?;
@@ -544,632 +563,6 @@ fn unique_random_slug(root: &Path) -> Result<String, String> {
             .map(|d| d.subsec_nanos())
             .unwrap_or(0)
     )))
-}
-
-// --- Templates ---
-
-/// A starter template: a map of relative path -> file content.
-pub type Template = &'static [(&'static str, &'static str)];
-
-const BLANK_TEMPLATE: Template = &[("main.tex", DEFAULT_MAIN_TEX)];
-
-const ATS_RESUME_TEMPLATE: Template = &[(
-    "main.tex",
-    "\\documentclass[11pt,letterpaper]{article}\n\
-\\usepackage[T1]{fontenc}\n\
-\\usepackage[margin=0.6in]{geometry}\n\
-\\usepackage{titlesec}\n\
-\\usepackage{enumitem}\n\
-\\usepackage{hyperref}\n\
-\n\
-% ATS-friendly: single column, no tables-for-layout, real selectable text,\n\
-% embedded subset fonts. Avoid \\tabular for layout; keep a linear reading order.\n\
-\\setlength{\\parindent}{0pt}\n\
-\\pagenumbering{gobble}\n\
-\\titleformat{\\section}{\\large\\bfseries\\uppercase}{}{0em}{}[\\titlerule]\n\
-\\titlespacing*{\\section}{0pt}{10pt}{4pt}\n\
-\\setlist[itemize]{leftmargin=12pt,itemsep=1pt,topsep=2pt}\n\
-\n\
-\\begin{document}\n\
-\n\
-% ===== Header =====\n\
-\\begin{center}\n\
-  {\\Huge \\textbf{Jane Doe}}\\\\[3pt]\n\
-  \\small\n\
-  \\href{mailto:jane.doe@email.com}{jane.doe@email.com} $\\cdot$\n\
-  (555) 123-4567 $\\cdot$\n\
-  San Francisco, CA $\\cdot$\n\
-  \\href{https://linkedin.com/in/janedoe}{linkedin.com/in/janedoe} $\\cdot$\n\
-  \\href{https://github.com/janedoe}{github.com/janedoe}\n\
-\\end{center}\n\
-\n\
-% ===== Summary =====\n\
-\\section*{Summary}\n\
-Senior Software Engineer with 6+ years building scalable distributed systems\n\
-and shipping high-impact products end-to-end.\n\
-\n\
-% ===== Experience =====\n\
-\\section*{Experience}\n\
-\\textbf{Senior Software Engineer} \\hfill \\textbf{Acme Corp} \\\\\n\
-\\textit{San Francisco, CA} \\hfill \\textit{Jan 2022 -- Present}\n\
-\\begin{itemize}\n\
-  \\item Led migration of a monolith to microservices, reducing p99 latency by 40\\%.\n\
-  \\item Designed a multi-tenant data pipeline processing 5B events/day.\n\
-  \\item Mentored 4 engineers and established the team's code-review culture.\n\
-\\end{itemize}\n\
-\\vspace{4pt}\n\
-\\textbf{Software Engineer} \\hfill \\textbf{Startup Inc} \\\\\n\
-\\textit{Remote} \\hfill \\textit{Jun 2019 -- Dec 2021}\n\
-\\begin{itemize}\n\
-  \\item Built the core payments service handling \\$20M/yr in transactions.\n\
-  \\item Cut infrastructure cost 30\\% by right-sizing autoscaling groups.\n\
-\\end{itemize}\n\
-\n\
-% ===== Education =====\n\
-\\section*{Education}\n\
-\\textbf{B.S. Computer Science} \\hfill \\textbf{State University} \\\\\n\
-\\textit{2015 -- 2019}\n\
-\n\
-% ===== Skills =====\n\
-\\section*{Skills}\n\
-\\textbf{Languages:} Python, Go, Rust, TypeScript \\\\\n\
-\\textbf{Infrastructure:} Kubernetes, AWS, Terraform, PostgreSQL, Kafka\n\
-\n\
-\\end{document}\n",
-)];
-
-const ONE_PAGE_RESUME_TEMPLATE: Template = &[(
-    "main.tex",
-    r#"\documentclass[11pt,letterpaper]{article}
-\usepackage[T1]{fontenc}
-\usepackage[margin=0.5in]{geometry}
-\usepackage{titlesec}
-\usepackage{enumitem}
-\usepackage{hyperref}
-
-% ATS-friendly: single column, real selectable text, no tables-for-layout,
-% embedded subset fonts. Linear reading order so parsers extract cleanly.
-\setlength{\parindent}{0pt}
-\pagenumbering{gobble}
-\hypersetup{colorlinks=true, urlcolor=black, linkcolor=black}
-
-\titleformat{\section}{\large\bfseries\uppercase}{}{0em}{}[\vspace{2pt}\titlerule]
-\titlespacing*{\section}{0pt}{8pt}{4pt}
-\setlist[itemize]{leftmargin=14pt, itemsep=1pt, topsep=2pt, parsep=0pt}
-
-% role{Title}{Company}{Location}{Dates}
-\newcommand{\role}[4]{%
-  \textbf{#1} \hfill #2 \\
-  \textit{#3} \hfill \textit{#4}%
-}
-
-\begin{document}
-
-\begin{center}
-  {\Huge \textbf{Alex Chen}}\\[3pt]
-  \small
-  Senior Software Engineer\\[2pt]
-  \href{mailto:alex.chen@gmail.com}{alex.chen@gmail.com}\,$\cdot$\,
-  (650) 555-0142\,$\cdot$\,
-  Mountain View, CA\,$\cdot$\,
-  \href{https://alexchen.dev}{alexchen.dev}\,$\cdot$\,
-  \href{https://github.com/alexchen}{github.com/alexchen}\,$\cdot$\,
-  \href{https://linkedin.com/in/alexchen}{linkedin.com/in/alexchen}
-\end{center}
-\vspace{2pt}
-
-\section*{Summary}
-Senior Software Engineer (L5) with 9+ years designing and operating large-scale
-distributed systems. Deep experience in backend infrastructure, performance, and
-reliability, with a track record of shipping products used by hundreds of
-millions of users and mentoring engineers toward senior roles.
-
-\section*{Experience}
-\role{Senior Software Engineer (L5)}{Google}{Mountain View, CA}{Mar 2020 -- Present}
-\begin{itemize}
-  \item Tech lead for a Search serving component handling 2M+ queries/second; drove a redesign that cut p99 latency 38\% and saved an estimated \$14M/year in compute.
-  \item Designed and launched a globally-replicated feature store on Spanner backing 40+ ML models, adopted by 12 teams across Search and Ads.
-  \item Led migration of a 300-service fleet to a new RPC framework, improving tail latency and reducing on-call pages by 45\%.
-  \item Mentored 6 engineers (2 promoted to senior); ran the team's design-review and readability programs.
-\end{itemize}
-\vspace{3pt}
-\role{Software Engineer (L4)}{Google}{Mountain View, CA}{Jul 2017 -- Mar 2020}
-\begin{itemize}
-  \item Built a real-time aggregation pipeline (C++, Flume) processing 8B events/day for a Search-quality dashboard used org-wide.
-  \item Cut batch-job cost 30\% by reworking sharding and introducing incremental recomputation.
-\end{itemize}
-\vspace{3pt}
-\role{Software Engineer}{Stripe}{San Francisco, CA}{Aug 2015 -- Jun 2017}
-\begin{itemize}
-  \item Shipped core ledger and reconciliation services for a payments platform processing \$60B+/year.
-  \item Reduced a reconciliation run from 6 hours to 25 minutes via parallelization and a columnar store.
-\end{itemize}
-
-\section*{Selected Projects}
-\textbf{Ratel} \hfill \href{https://github.com/alexchen/ratel}{github.com/alexchen/ratel} \\
-\textit{Go, Raft, gRPC} --- open-source distributed rate limiter doing 4M+ decisions/sec/node; 1.5k GitHub stars.\par\vspace{4pt}
-\textbf{tql} \hfill \href{https://github.com/alexchen/tql}{github.com/alexchen/tql} \\
-\textit{Rust} --- a typed query builder for Postgres with compile-time-checked SQL.
-
-\section*{Education}
-\textbf{M.S. Computer Science} \hfill Stanford University \\
-\textit{2013 -- 2015} \hfill \textit{Focus: Distributed Systems}\par\vspace{4pt}
-\textbf{B.S. Computer Science} \hfill University of Illinois Urbana-Champaign \\
-\textit{2009 -- 2013} \hfill \textit{GPA: 3.9 / 4.0}
-
-\section*{Skills}
-\textbf{Languages:} C++, Go, Rust, Python, Java, SQL \\
-\textbf{Systems:} Spanner, Bigtable, Kubernetes, Kafka, gRPC / Protobuf, Redis \\
-\textbf{Focus:} Distributed systems, performance, reliability (SLOs), system design, mentoring
-
-\end{document}
-"#,
-)];
-
-const IEEE_TEMPLATE: Template = &[
-    (
-        "main.tex",
-        r#"\documentclass[conference]{IEEEtran}
-\IEEEoverridecommandlockouts
-\usepackage{cite}
-\usepackage{amsmath,amssymb,amsfonts}
-\usepackage{graphicx}
-\usepackage{booktabs}
-\usepackage{multirow}
-\usepackage{textcomp}
-\usepackage{xcolor}
-\usepackage{tikz}
-\usetikzlibrary{arrows.meta,positioning,fit,backgrounds}
-\usepackage{hyperref}
-
-\begin{document}
-
-\title{Attention Is All You Need}
-
-\author{%
-\IEEEauthorblockN{Ashish Vaswani\thanks{Equal contribution. Listing order is random.}\quad Noam Shazeer\footnotemark[1]\quad Niki Parmar\footnotemark[1]\quad Jakob Uszkoreit\footnotemark[1]}
-\IEEEauthorblockA{\textit{Google Brain / Google Research} \\
-\{avaswani, noam, nikip, usz\}@google.com}
-\and
-\IEEEauthorblockN{Llion Jones\footnotemark[1]\quad Aidan N. Gomez\footnotemark[1]\quad {\L}ukasz Kaiser\footnotemark[1]\quad Illia Polosukhin\footnotemark[1]}
-\IEEEauthorblockA{\textit{Google Research / University of Toronto} \\
-llion@google.com,\ aidan@cs.toronto.edu}
-}
-
-\maketitle
-
-\begin{abstract}
-The dominant sequence transduction models are based on complex recurrent or
-convolutional neural networks that include an encoder and a decoder. The best
-performing models also connect the encoder and decoder through an attention
-mechanism. We propose a new simple network architecture, the Transformer, based
-solely on attention mechanisms, dispensing with recurrence and convolutions
-entirely. Experiments on two machine translation tasks show these models to be
-superior in quality while being more parallelizable and requiring significantly
-less time to train. Our model achieves 28.4 BLEU on the WMT 2014 English-to-German
-translation task, improving over the existing best results, including ensembles,
-by over 2 BLEU. On the WMT 2014 English-to-French translation task, our model
-establishes a new single-model state-of-the-art BLEU score of 41.8 after training
-for 3.5 days on eight GPUs, a small fraction of the training costs of the best
-models from the literature.
-\end{abstract}
-
-\begin{IEEEkeywords}
-attention, self-attention, sequence transduction, neural machine translation, Transformer
-\end{IEEEkeywords}
-
-\section{Introduction}
-Recurrent neural networks, long short-term memory~\cite{hochreiter1997} and gated
-recurrent~\cite{cho2014} neural networks in particular, have been firmly
-established as state-of-the-art approaches in sequence modeling and transduction
-problems such as language modeling and machine translation. Recurrent models
-typically factor computation along the symbol positions of the input and output
-sequences. Aligning the positions to steps in computation time, they generate a
-sequence of hidden states $h_t$, as a function of the previous hidden state
-$h_{t-1}$ and the input for position $t$. This inherently sequential nature
-precludes parallelization within training examples, which becomes critical at
-longer sequence lengths, as memory constraints limit batching across examples.
-
-Attention mechanisms have become an integral part of compelling sequence modeling
-and transduction models, allowing modeling of dependencies without regard to
-their distance in the input or output sequences~\cite{bahdanau2015}. In this work
-we propose the Transformer, a model architecture eschewing recurrence and instead
-relying entirely on an attention mechanism to draw global dependencies between
-input and output. The Transformer allows for significantly more parallelization
-and can reach a new state of the art in translation quality after being trained
-for as little as twelve hours on eight P100 GPUs.
-
-\section{Background}
-The goal of reducing sequential computation also forms the foundation of the
-Extended Neural GPU, ByteNet~\cite{kalchbrenner2016} and
-ConvS2S~\cite{gehring2017}, all of which use convolutional neural networks as a
-basic building block. In these models the number of operations required to relate
-signals from two arbitrary input or output positions grows in the distance
-between positions, linearly for ConvS2S and logarithmically for ByteNet. In the
-Transformer this is reduced to a constant number of operations, albeit at the cost
-of reduced effective resolution due to averaging attention-weighted positions, an
-effect we counteract with multi-head attention.
-
-Self-attention, sometimes called intra-attention, is an attention mechanism
-relating different positions of a single sequence in order to compute a
-representation of the sequence. Self-attention has been used successfully in a
-variety of tasks including reading comprehension, abstractive summarization, and
-learning task-independent sentence representations~\cite{cheng2016,lin2017}. To
-the best of our knowledge, however, the Transformer is the first transduction
-model relying entirely on self-attention to compute representations of its input
-and output without using sequence-aligned RNNs or convolution.
-
-\section{Model Architecture}
-Most competitive neural sequence transduction models have an encoder-decoder
-structure~\cite{sutskever2014}. Here, the encoder maps an input sequence of symbol
-representations $(x_1, \dots, x_n)$ to a sequence of continuous representations
-$\mathbf{z} = (z_1, \dots, z_n)$. Given $\mathbf{z}$, the decoder then generates
-an output sequence $(y_1, \dots, y_m)$ of symbols one element at a time. At each
-step the model is auto-regressive, consuming the previously generated symbols as
-additional input when generating the next.
-
-The Transformer follows this overall architecture using stacked self-attention
-and point-wise, fully connected layers for both the encoder and decoder, shown in
-the two halves of Fig.~\ref{fig:arch}.
-
-\begin{figure}[t]
-\centering
-\begin{tikzpicture}[
-  font=\scriptsize,
-  box/.style={draw, rounded corners=2pt, minimum width=3.1cm, minimum height=0.5cm, align=center, fill=blue!5},
-  addn/.style={draw, rounded corners=2pt, minimum width=3.1cm, minimum height=0.4cm, align=center, fill=orange!12},
-  emb/.style={draw, rounded corners=2pt, minimum width=2.3cm, minimum height=0.45cm, align=center, fill=gray!8},
-  >={Stealth[length=2mm]}
-]
-% Encoder stack
-\node[emb] (ei) {Input\\Embedding};
-\node[addn, above=0.35cm of ei] (ea1) {Multi-Head\\Attention};
-\node[addn, above=0.3cm of ea1] (ea2) {Add \& Norm};
-\node[box, above=0.3cm of ea2] (ef) {Feed\\Forward};
-\node[addn, above=0.3cm of ef] (ea3) {Add \& Norm};
-\draw[->] (ei) -- (ea1);
-\draw[->] (ea1) -- (ea2);
-\draw[->] (ea2) -- (ef);
-\draw[->] (ef) -- (ea3);
-\node[above=0.15cm of ea3] {\textit{Encoder} $\times N$};
-
-% Decoder stack
-\node[emb, right=1.4cm of ei] (di) {Output\\Embedding};
-\node[addn, above=0.35cm of di] (da1) {Masked\\Multi-Head Attn};
-\node[addn, above=0.3cm of da1] (da2) {Add \& Norm};
-\node[addn, above=0.3cm of da2] (dx) {Cross\\Attention};
-\node[addn, above=0.3cm of dx] (da3) {Add \& Norm};
-\node[box, above=0.3cm of da3] (df) {Feed Forward};
-\draw[->] (di) -- (da1);
-\draw[->] (da1) -- (da2);
-\draw[->] (da2) -- (dx);
-\draw[->] (dx) -- (da3);
-\draw[->] (da3) -- (df);
-\draw[->] (ea3.east) to[out=0,in=180] (dx.west);
-\node[above=0.15cm of df] {\textit{Decoder} $\times N$};
-\end{tikzpicture}
-\caption{The Transformer follows an encoder-decoder structure built from stacked
-self-attention and point-wise feed-forward layers. The decoder additionally
-attends over the encoder output (cross attention).}
-\label{fig:arch}
-\end{figure}
-
-\subsection{Encoder and Decoder Stacks}
-\textbf{Encoder.} The encoder is composed of a stack of $N = 6$ identical layers.
-Each layer has two sub-layers. The first is a multi-head self-attention mechanism,
-and the second is a simple, position-wise fully connected feed-forward network. We
-employ a residual connection around each of the two sub-layers, followed by layer
-normalization~\cite{ba2016}. That is, the output of each sub-layer is
-$\mathrm{LayerNorm}(x + \mathrm{Sublayer}(x))$. All sub-layers, as well as the
-embedding layers, produce outputs of dimension $d_{\text{model}} = 512$.
-
-\textbf{Decoder.} The decoder is also composed of a stack of $N = 6$ identical
-layers. In addition to the two sub-layers in each encoder layer, the decoder
-inserts a third sub-layer, which performs multi-head attention over the output of
-the encoder stack. We also modify the self-attention sub-layer in the decoder
-stack to prevent positions from attending to subsequent positions. This masking,
-combined with the fact that the output embeddings are offset by one position,
-ensures that the predictions for position $i$ can depend only on the known outputs
-at positions less than $i$.
-
-\subsection{Attention}
-An attention function can be described as mapping a query and a set of key-value
-pairs to an output, where the query, keys, values, and output are all vectors. The
-output is computed as a weighted sum of the values, where the weight assigned to
-each value is computed by a compatibility function of the query with the
-corresponding key.
-
-\textbf{Scaled Dot-Product Attention.} We compute the dot products of the query
-with all keys, divide each by $\sqrt{d_k}$, and apply a softmax function to obtain
-the weights on the values. In practice, we compute the attention function on a set
-of queries simultaneously, packed together into a matrix $Q$. The keys and values
-are also packed together into matrices $K$ and $V$:
-\begin{equation}
-\mathrm{Attention}(Q, K, V) = \mathrm{softmax}\!\left(\frac{QK^{\top}}{\sqrt{d_k}}\right)V.
-\label{eq:sdpa}
-\end{equation}
-While for small values of $d_k$ additive and dot-product attention perform
-similarly, dot-product attention is much faster and more space-efficient in
-practice. We suspect that for large values of $d_k$ the dot products grow large in
-magnitude, pushing the softmax function into regions where it has extremely small
-gradients. To counteract this effect, we scale the dot products by
-$\frac{1}{\sqrt{d_k}}$.
-
-\textbf{Multi-Head Attention.} Instead of performing a single attention function
-with $d_{\text{model}}$-dimensional keys, values, and queries, we found it
-beneficial to linearly project the queries, keys, and values $h$ times with
-different, learned linear projections. On each of these projected versions we then
-perform the attention function in parallel and concatenate the results:
-\begin{equation}
-\mathrm{MultiHead}(Q, K, V) = \mathrm{Concat}(\mathrm{head}_1, \dots, \mathrm{head}_h)W^{O},
-\label{eq:mha}
-\end{equation}
-\begin{equation}
-\text{where } \mathrm{head}_i = \mathrm{Attention}(QW_i^{Q}, KW_i^{K}, VW_i^{V}).
-\end{equation}
-In this work we employ $h = 8$ parallel attention heads. For each we use
-$d_k = d_v = d_{\text{model}}/h = 64$. Due to the reduced dimension of each head,
-the total computational cost is similar to that of single-head attention with full
-dimensionality.
-
-\subsection{Position-wise Feed-Forward Networks}
-In addition to attention sub-layers, each layer contains a fully connected
-feed-forward network, applied to each position separately and identically. This
-consists of two linear transformations with a ReLU activation in between:
-\begin{equation}
-\mathrm{FFN}(x) = \max(0, xW_1 + b_1)W_2 + b_2.
-\label{eq:ffn}
-\end{equation}
-The dimensionality of input and output is $d_{\text{model}} = 512$, and the inner
-layer has dimensionality $d_{ff} = 2048$.
-
-\subsection{Positional Encoding}
-Since our model contains no recurrence and no convolution, in order for the model
-to make use of the order of the sequence we inject information about the relative
-or absolute position of the tokens. We add positional encodings to the input
-embeddings, using sine and cosine functions of different frequencies:
-\begin{align}
-PE_{(pos, 2i)}   &= \sin\!\left(pos / 10000^{2i/d_{\text{model}}}\right),\\
-PE_{(pos, 2i+1)} &= \cos\!\left(pos / 10000^{2i/d_{\text{model}}}\right),
-\end{align}
-where $pos$ is the position and $i$ is the dimension.
-
-\section{Why Self-Attention}
-In this section we compare various aspects of self-attention layers to the
-recurrent and convolutional layers commonly used for mapping one variable-length
-sequence of symbol representations to another. Motivating our use of
-self-attention we consider three desiderata: the total computational complexity
-per layer; the amount of computation that can be parallelized, as measured by the
-minimum number of sequential operations required; and the path length between
-long-range dependencies in the network. Table~\ref{tab:complexity} summarizes
-these for the different layer types.
-
-\begin{table*}[t]
-\centering
-\caption{Maximum path lengths, per-layer complexity, and minimum number of
-sequential operations for different layer types. $n$ is the sequence length, $d$
-the representation dimension, $k$ the kernel size, and $r$ the neighborhood size
-in restricted self-attention.}
-\label{tab:complexity}
-\begin{tabular}{@{}lccc@{}}
-\toprule
-Layer Type & Complexity per Layer & Sequential Operations & Maximum Path Length \\
-\midrule
-Self-Attention             & $O(n^2 \cdot d)$        & $O(1)$ & $O(1)$ \\
-Recurrent                  & $O(n \cdot d^2)$        & $O(n)$ & $O(n)$ \\
-Convolutional              & $O(k \cdot n \cdot d^2)$ & $O(1)$ & $O(\log_k n)$ \\
-Self-Attention (restricted) & $O(r \cdot n \cdot d)$  & $O(1)$ & $O(n/r)$ \\
-\bottomrule
-\end{tabular}
-\end{table*}
-
-\section{Training}
-We trained on the standard WMT 2014 English-German dataset consisting of about 4.5
-million sentence pairs, and the significantly larger WMT 2014 English-French
-dataset consisting of 36M sentences. We trained our models on one machine with
-eight NVIDIA P100 GPUs. For our base models, each training step took about 0.4
-seconds, and we trained for a total of 100{,}000 steps or 12 hours. We used the
-Adam optimizer~\cite{kingma2015} with $\beta_1 = 0.9$, $\beta_2 = 0.98$, and
-$\epsilon = 10^{-9}$, and varied the learning rate over training according to a
-warmup schedule. We applied residual dropout and label smoothing of
-$\epsilon_{ls} = 0.1$ for regularization.
-
-\section{Results}
-\subsection{Machine Translation}
-On the WMT 2014 English-to-German translation task, the big Transformer model
-outperforms the best previously reported models, including ensembles, by more than
-2.0 BLEU, establishing a new state-of-the-art BLEU score of 28.4. On the WMT 2014
-English-to-French task, our big model achieves a BLEU score of 41.8, outperforming
-all previously published single models at less than a quarter of the training cost
-of the previous state-of-the-art model. Table~\ref{tab:bleu} summarizes our
-results and compares translation quality and training costs to other model
-architectures.
-
-\begin{table*}[t]
-\centering
-\caption{The Transformer achieves better BLEU scores than previous
-state-of-the-art models on the English-to-German and English-to-French
-newstest2014 tests at a fraction of the training cost.}
-\label{tab:bleu}
-\begin{tabular}{@{}lccc@{}}
-\toprule
- & \multicolumn{2}{c}{BLEU} & Training Cost (FLOPs) \\
-\cmidrule(lr){2-3}
-Model & EN-DE & EN-FR & \\
-\midrule
-ByteNet                 & 23.75 & --    & --                  \\
-GNMT + RL               & 24.6  & 39.92 & $1.4 \times 10^{20}$ \\
-ConvS2S                 & 25.16 & 40.46 & $1.5 \times 10^{20}$ \\
-GNMT + RL Ensemble      & 26.30 & 41.16 & $1.8 \times 10^{21}$ \\
-ConvS2S Ensemble        & 26.36 & 41.29 & $1.2 \times 10^{21}$ \\
-\midrule
-Transformer (base)      & 27.3  & 38.1  & $3.3 \times 10^{18}$ \\
-\textbf{Transformer (big)} & \textbf{28.4} & \textbf{41.8} & $2.3 \times 10^{19}$ \\
-\bottomrule
-\end{tabular}
-\end{table*}
-
-\subsection{Model Variations}
-To evaluate the importance of different components of the Transformer, we varied
-our base model in different ways, measuring the change in performance on
-English-to-German translation. Table~\ref{tab:variations} presents these results.
-In rows (A) we vary the number of attention heads and the attention key and value
-dimensions, keeping the amount of computation constant. Single-head attention is
-0.9 BLEU worse than the best setting, but quality also drops off with too many
-heads.
-
-\begin{table}[t]
-\centering
-\caption{Variations on the Transformer architecture. Unlisted values are identical
-to those of the base model. All metrics are on the English-to-German development
-set, newstest2013.}
-\label{tab:variations}
-\begin{tabular}{@{}clcccc@{}}
-\toprule
- & & $h$ & $d_k$ & $d_v$ & BLEU \\
-\midrule
-base & & 8  & 64 & 64 & 25.8 \\
-\midrule
-\multirow{2}{*}{(A)} & & 1  & 512 & 512 & 24.9 \\
-                     & & 16 & 32  & 32  & 25.8 \\
-\midrule
-(B) & fewer $d_k$        & 8 & 16 & 16 & 25.1 \\
-(C) & bigger model       & 8 & 64 & 64 & 26.2 \\
-(D) & dropout $0.0$      & 8 & 64 & 64 & 24.6 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\section{Conclusion}
-In this work we presented the Transformer, the first sequence transduction model
-based entirely on attention, replacing the recurrent layers most commonly used in
-encoder-decoder architectures with multi-head self-attention. For translation
-tasks, the Transformer can be trained significantly faster than architectures
-based on recurrent or convolutional layers. On both WMT 2014 English-to-German and
-English-to-French translation tasks we achieve a new state of the art. We are
-excited about the future of attention-based models and plan to apply them to other
-tasks and to input and output modalities other than text.
-
-\bibliographystyle{IEEEtran}
-\bibliography{refs}
-
-\end{document}
-"#,
-    ),
-    (
-        "refs.bib",
-        r#"@article{hochreiter1997,
-  author  = {Hochreiter, Sepp and Schmidhuber, J{\"u}rgen},
-  title   = {Long Short-Term Memory},
-  journal = {Neural Computation},
-  volume  = {9},
-  number  = {8},
-  pages   = {1735--1780},
-  year    = {1997},
-}
-
-@inproceedings{cho2014,
-  author    = {Cho, Kyunghyun and van Merri{\"e}nboer, Bart and Gulcehre, Caglar and Bahdanau, Dzmitry and Bougares, Fethi and Schwenk, Holger and Bengio, Yoshua},
-  title     = {Learning Phrase Representations using {RNN} Encoder-Decoder for Statistical Machine Translation},
-  booktitle = {EMNLP},
-  year      = {2014},
-}
-
-@inproceedings{bahdanau2015,
-  author    = {Bahdanau, Dzmitry and Cho, Kyunghyun and Bengio, Yoshua},
-  title     = {Neural Machine Translation by Jointly Learning to Align and Translate},
-  booktitle = {ICLR},
-  year      = {2015},
-}
-
-@inproceedings{sutskever2014,
-  author    = {Sutskever, Ilya and Vinyals, Oriol and Le, Quoc V.},
-  title     = {Sequence to Sequence Learning with Neural Networks},
-  booktitle = {NeurIPS},
-  year      = {2014},
-}
-
-@article{kalchbrenner2016,
-  author  = {Kalchbrenner, Nal and Espeholt, Lasse and Simonyan, Karen and van den Oord, Aaron and Graves, Alex and Kavukcuoglu, Koray},
-  title   = {Neural Machine Translation in Linear Time},
-  journal = {arXiv preprint arXiv:1610.10099},
-  year    = {2016},
-}
-
-@inproceedings{gehring2017,
-  author    = {Gehring, Jonas and Auli, Michael and Grangier, David and Yarats, Denis and Dauphin, Yann N.},
-  title     = {Convolutional Sequence to Sequence Learning},
-  booktitle = {ICML},
-  year      = {2017},
-}
-
-@inproceedings{cheng2016,
-  author    = {Cheng, Jianpeng and Dong, Li and Lapata, Mirella},
-  title     = {Long Short-Term Memory-Networks for Machine Reading},
-  booktitle = {EMNLP},
-  year      = {2016},
-}
-
-@inproceedings{lin2017,
-  author    = {Lin, Zhouhan and Feng, Minwei and dos Santos, C{\'i}cero Nogueira and Yu, Mo and Xiang, Bing and Zhou, Bowen and Bengio, Yoshua},
-  title     = {A Structured Self-Attentive Sentence Embedding},
-  booktitle = {ICLR},
-  year      = {2017},
-}
-
-@article{ba2016,
-  author  = {Ba, Jimmy Lei and Kiros, Jamie Ryan and Hinton, Geoffrey E.},
-  title   = {Layer Normalization},
-  journal = {arXiv preprint arXiv:1607.06450},
-  year    = {2016},
-}
-
-@inproceedings{kingma2015,
-  author    = {Kingma, Diederik P. and Ba, Jimmy},
-  title     = {Adam: A Method for Stochastic Optimization},
-  booktitle = {ICLR},
-  year      = {2015},
-}
-"#,
-    ),
-];
-
-pub fn template_for(id: &str) -> Option<Template> {
-    match id {
-        "blank" => Some(BLANK_TEMPLATE),
-        "resume" => Some(ONE_PAGE_RESUME_TEMPLATE),
-        "ats-resume" => Some(ATS_RESUME_TEMPLATE),
-        "ieee" => Some(IEEE_TEMPLATE),
-        _ => None,
-    }
-}
-
-#[derive(Serialize)]
-pub struct TemplateInfo {
-    pub id: String,
-    pub name: String,
-    pub description: String,
-}
-
-#[tauri::command]
-pub fn list_templates() -> Vec<TemplateInfo> {
-    vec![
-        TemplateInfo {
-            id: "blank".into(),
-            name: "Blank document".into(),
-            description: "A minimal article to start from scratch.".into(),
-        },
-        TemplateInfo {
-            id: "resume".into(),
-            name: "One-Page Resume".into(),
-            description: "ATS-safe one-page resume, filled out as a senior software engineer example you can edit.".into(),
-        },
-        TemplateInfo {
-            id: "ieee".into(),
-            name: "IEEE Research Paper".into(),
-            description: "Complete two-column IEEEtran paper, a full worked example with a figure, tables, equations, and a .bib.".into(),
-        },
-    ]
 }
 
 /// Light hardening for a user-chosen export/save destination. These paths
@@ -1270,8 +663,11 @@ fn find_pandoc() -> Option<String> {
         .map(|c| c.to_string_lossy().to_string())
 }
 
-/// Convert the main document to another format via `pandoc` (md/html/docx).
-/// Errors clearly if pandoc isn't installed on the system.
+/// Convert the main document to another format via `pandoc`. Pandoc infers the
+/// output format from the destination extension; `format` selects a few
+/// per-format flags that make the result usable (slide splitting for PowerPoint,
+/// a self-contained HTML file, a table of contents for EPUB). Errors clearly if
+/// pandoc isn't installed.
 #[tauri::command]
 pub async fn export_document(
     project_id: String,
@@ -1281,24 +677,37 @@ pub async fn export_document(
 ) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
         use std::process::Command;
-        let _ = &format; // pandoc infers the output format from the dest extension
         guard_export_dest(&dest)?;
         let root = paths::project_dir(&project_id)?;
         // Validate `main_doc` stays inside the project before handing it to pandoc.
         resolve(&project_id, &main_doc)?;
         // Find pandoc (PATH or a common install location).
         let pandoc = find_pandoc().ok_or_else(|| {
-            "pandoc is not installed. Install pandoc to export Word/HTML/Markdown.".to_string()
+            "pandoc is not installed. Install pandoc to export documents.".to_string()
         })?;
+        let mut cmd = Command::new(&pandoc);
+        cmd.arg("-o").arg(&dest);
+        match format.as_str() {
+            // Beamer frames (and level-2 headings) become individual slides.
+            "pptx" => {
+                cmd.args(["--slide-level", "2"]);
+            }
+            // A single portable file with images and CSS inlined, and math
+            // rendered as MathML so it displays offline without a script.
+            "html" => {
+                cmd.args(["--standalone", "--embed-resources", "--mathml"]);
+            }
+            // A navigable e-book with a generated contents page.
+            "epub" => {
+                cmd.arg("--toc");
+            }
+            _ => {}
+        }
         // `--` terminates option parsing so a `main_doc` beginning with `-` can't be
         // interpreted as a pandoc flag (defense-in-depth; it's already validated to
         // stay inside the project).
-        let out = Command::new(&pandoc)
-            .arg("-o")
-            .arg(&dest)
-            .arg("--")
-            .arg(&main_doc)
-            .current_dir(&root)
+        cmd.arg("--").arg(&main_doc).current_dir(&root);
+        let out = cmd
             .output()
             .map_err(|e| format!("failed to run pandoc: {e}"))?;
         if !out.status.success() {
@@ -1451,31 +860,34 @@ pub async fn download_pandoc(app: tauri::AppHandle) -> Result<String, String> {
 }
 
 #[tauri::command]
-pub fn create_project_from_template(name: String, template_id: String) -> Result<String, String> {
-    let template =
-        template_for(&template_id).ok_or_else(|| format!("unknown template: {template_id}"))?;
+pub fn create_project_from_template(
+    app: tauri::AppHandle,
+    name: String,
+    template_id: String,
+    color: Option<String>,
+) -> Result<String, String> {
     let root = paths::projects_root()?;
     let id = unique_random_slug(&root)?;
     let dir = root.join(&id);
-    let main_doc = template
-        .iter()
-        .find(|(p, _)| p.ends_with(".tex"))
-        .map(|(p, _)| p.to_string())
-        .unwrap_or_else(|| "main.tex".to_string());
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    for (path, content) in template {
-        let file = dir.join(path);
-        if let Some(parent) = file.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-        }
-        std::fs::write(&file, content).map_err(|e| e.to_string())?;
-    }
+    // Copy the template's source files from disk and seed project.json from its
+    // manifest (main doc, engine, cover color). A user-chosen color wins over the
+    // template's default.
+    let manifest = crate::templates::instantiate(&app, &template_id, &dir)?;
+    // Stage any font packs the template needs into <project>/fonts/ so the
+    // document carries its own fonts and compiles offline.
+    crate::assets::stage_template_fonts(&app, &manifest, &dir)?;
+    let color = color
+        .filter(|c| !c.is_empty())
+        .or(manifest.default_color)
+        .unwrap_or_default();
     write_meta(
         &id,
         &ProjectMeta {
             name,
-            main_doc,
-            engine: default_engine(),
+            main_doc: manifest.main_doc,
+            engine: manifest.engine,
+            color,
             exports: Vec::new(),
         },
     )?;

@@ -48,7 +48,7 @@ interface FilesStore {
   closeProject: () => void;
   createProject: (name: string) => Promise<void>;
   renameProject: (name: string) => Promise<void>;
-  createFromTemplate: (name: string, templateId: string) => Promise<string>;
+  createFromTemplate: (name: string, templateId: string, color?: string) => Promise<string>;
   restoreFromGit: (oid: string) => Promise<void>;
 
   // files
@@ -179,8 +179,8 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     await get().refreshProjects();
   },
 
-  createFromTemplate: async (name, templateId) => {
-    const id = await apiCreateFromTemplate(name, templateId);
+  createFromTemplate: async (name, templateId, color) => {
+    const id = await apiCreateFromTemplate(name, templateId, color);
     await get().refreshProjects();
     await get().openProject(id);
     return id;

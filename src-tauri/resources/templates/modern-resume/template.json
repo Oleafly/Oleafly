@@ -1,0 +1,15 @@
+{
+  "id": "modern-resume",
+  "name": "Modern Resume",
+  "category": "CVs & Resumes",
+  "description": "A polished single-column resume set in the Lato typeface, with a colored name and clean accent rules. ATS-friendly, and the font is fetched on demand.",
+  "main_doc": "main.tex",
+  "engine": "xetex",
+  "ats_profile": "friendly",
+  "layout": "single-column",
+  "pages": "single",
+  "default_color": "#1098ad",
+  "license": { "spdx": "MIT", "author": "OpenLeaf", "url": "https://github.com/prajwal-svm/OpenLeaf" },
+  "requires": { "packages": [], "fonts": ["lato"], "engine": "tectonic" },
+  "order": 14
+}

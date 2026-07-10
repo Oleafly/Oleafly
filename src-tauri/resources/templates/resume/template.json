@@ -1,0 +1,15 @@
+{
+  "id": "resume",
+  "name": "Software Engineer Resume",
+  "category": "CVs & Resumes",
+  "description": "A polished one-page software engineer resume, single-column and ATS-friendly, filled in as a senior example you can edit.",
+  "main_doc": "main.tex",
+  "engine": "xetex",
+  "ats_profile": "friendly",
+  "layout": "single-column",
+  "pages": "single",
+  "default_color": "#1971c2",
+  "license": { "spdx": "MIT", "author": "OpenLeaf", "url": "https://github.com/prajwal-svm/OpenLeaf" },
+  "requires": { "packages": [], "fonts": [], "engine": "tectonic" },
+  "order": 11
+}

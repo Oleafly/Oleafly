@@ -1,0 +1,15 @@
+{
+  "id": "thesis",
+  "name": "Thesis / Report",
+  "category": "Theses & Reports",
+  "description": "A multi-chapter thesis or technical report with a title page, table of contents, chapters, and a bibliography.",
+  "main_doc": "main.tex",
+  "engine": "xetex",
+  "ats_profile": null,
+  "layout": "single-column",
+  "pages": "multi",
+  "default_color": "#e8590c",
+  "license": { "spdx": "MIT", "author": "OpenLeaf", "url": "https://github.com/prajwal-svm/OpenLeaf" },
+  "requires": { "packages": [], "fonts": [], "engine": "tectonic" },
+  "order": 50
+}

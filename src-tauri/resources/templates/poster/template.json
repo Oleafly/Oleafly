@@ -1,0 +1,15 @@
+{
+  "id": "poster",
+  "name": "Research Poster",
+  "category": "Posters",
+  "description": "A scientific conference poster built with tikzposter: a title banner, author block, and columns of blocks for introduction, methods, results, and conclusions.",
+  "main_doc": "main.tex",
+  "engine": "xetex",
+  "ats_profile": null,
+  "layout": "poster",
+  "pages": "single",
+  "default_color": "#087f5b",
+  "license": { "spdx": "LPPL-1.2", "author": "tikzposter authors", "url": "https://ctan.org/pkg/tikzposter" },
+  "requires": { "packages": ["tikzposter"], "fonts": [], "engine": "tectonic" },
+  "order": 80
+}

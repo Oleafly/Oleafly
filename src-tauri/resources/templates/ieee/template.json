@@ -1,0 +1,15 @@
+{
+  "id": "ieee",
+  "name": "IEEE Research Paper",
+  "category": "Journals & Conferences",
+  "description": "Two-column IEEEtran conference paper, a full worked example with a figure, tables, equations, and a bibliography.",
+  "main_doc": "main.tex",
+  "engine": "xetex",
+  "ats_profile": null,
+  "layout": "two-column",
+  "pages": "multi",
+  "default_color": "#5f3dc4",
+  "license": { "spdx": "LPPL-1.3", "author": "Michael Shell (IEEEtran class)", "url": "https://ctan.org/pkg/ieeetran" },
+  "requires": { "packages": ["IEEEtran"], "fonts": [], "engine": "tectonic" },
+  "order": 30
+}

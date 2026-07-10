@@ -1,0 +1,48 @@
+\documentclass{article}
+\usepackage[a4paper,landscape,margin=0.6in]{geometry}
+\usepackage[table]{xcolor}
+\usepackage{array}
+\usepackage{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+
+\definecolor{head}{HTML}{F08C00}
+\definecolor{grid}{HTML}{DDDDDD}
+
+\setlength{\parindent}{0pt}
+\pagestyle{empty}
+\arrayrulecolor{grid}
+
+% A day cell: the number at the top-left, then blank space to write in.
+\newcommand{\dnum}[1]{\textbf{#1}\newline\rule{0pt}{1.9cm}}
+% An empty (spill-over) cell of the same height.
+\newcommand{\pad}{\mbox{}\newline\rule{0pt}{1.9cm}}
+
+\begin{document}
+
+\begin{center}
+  {\fontsize{34}{38}\selectfont\bfseries\color{head} January 2026}
+\end{center}
+\vspace{6pt}
+
+% Seven equal columns filling the page width.
+\newcolumntype{C}{>{\raggedright\arraybackslash}p{\dimexpr(\linewidth-8\tabcolsep-8\arrayrulewidth)/7\relax}}
+
+\begin{tabular}{|C|C|C|C|C|C|C|}
+\hline
+\rowcolor{head}
+{\color{white}\textbf{Sun}} & {\color{white}\textbf{Mon}} & {\color{white}\textbf{Tue}} &
+{\color{white}\textbf{Wed}} & {\color{white}\textbf{Thu}} & {\color{white}\textbf{Fri}} & {\color{white}\textbf{Sat}} \\
+\hline
+\pad & \pad & \pad & \pad & \dnum{1} & \dnum{2} & \dnum{3} \\
+\hline
+\dnum{4} & \dnum{5} & \dnum{6} & \dnum{7} & \dnum{8} & \dnum{9} & \dnum{10} \\
+\hline
+\dnum{11} & \dnum{12} & \dnum{13} & \dnum{14} & \dnum{15} & \dnum{16} & \dnum{17} \\
+\hline
+\dnum{18} & \dnum{19} & \dnum{20} & \dnum{21} & \dnum{22} & \dnum{23} & \dnum{24} \\
+\hline
+\dnum{25} & \dnum{26} & \dnum{27} & \dnum{28} & \dnum{29} & \dnum{30} & \dnum{31} \\
+\hline
+\end{tabular}
+
+\end{document}

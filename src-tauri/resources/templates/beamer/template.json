@@ -1,0 +1,15 @@
+{
+  "id": "beamer",
+  "name": "Beamer Presentation",
+  "category": "Presentations",
+  "description": "A slide deck built with Beamer: a title slide, an outline, content frames with bullets and blocks, and a closing slide.",
+  "main_doc": "main.tex",
+  "engine": "xetex",
+  "ats_profile": null,
+  "layout": "slides",
+  "pages": "multi",
+  "default_color": "#1c7ed6",
+  "license": { "spdx": "LPPL-1.3", "author": "Till Tantau (beamer class)", "url": "https://ctan.org/pkg/beamer" },
+  "requires": { "packages": ["beamer"], "fonts": [], "engine": "tectonic" },
+  "order": 70
+}

@@ -1,0 +1,15 @@
+{
+  "id": "acm",
+  "name": "ACM Article",
+  "category": "Journals & Conferences",
+  "description": "An ACM conference paper using the official acmart class, with title, authors, abstract, CCS concepts, sections, and references.",
+  "main_doc": "main.tex",
+  "engine": "xetex",
+  "ats_profile": null,
+  "layout": "two-column",
+  "pages": "multi",
+  "default_color": "#0b7285",
+  "license": { "spdx": "LPPL-1.3c", "author": "Association for Computing Machinery (acmart class)", "url": "https://ctan.org/pkg/acmart" },
+  "requires": { "packages": ["acmart"], "fonts": [], "engine": "tectonic" },
+  "order": 32
+}

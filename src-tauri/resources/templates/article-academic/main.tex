@@ -1,0 +1,62 @@
+\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{microtype}
+\usepackage[hidelinks]{hyperref}
+
+\title{A Minimalist Template for Academic Papers}
+\author{Ada Lovelace \\ \small Department of Analytical Engines \\ \small \texttt{ada@example.edu}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This is a clean, single-column article template with sensible typography, ready
+for a working paper, preprint, or course report. It uses only base LaTeX packages,
+so it compiles anywhere and produces selectable, well-structured text. Replace this
+abstract with a short summary of your contribution, results, and why they matter.
+\end{abstract}
+
+\section{Introduction}
+State the problem, why it is interesting, and what you contribute. Cite related
+work as you go~\cite{knuth1984}. Keep paragraphs focused and lead with the point.
+
+\section{Method}
+Describe your approach. Inline math like $e^{i\pi} + 1 = 0$ and display math both
+work:
+\begin{equation}
+  \mathcal{L}(\theta) = \frac{1}{n}\sum_{i=1}^{n} \ell\big(f_\theta(x_i), y_i\big).
+  \label{eq:loss}
+\end{equation}
+Reference equations, figures, and tables by label, for example Eq.~\eqref{eq:loss}
+and Table~\ref{tab:results}.
+
+\section{Results}
+Summarize what you found. A simple table:
+
+\begin{table}[t]
+  \centering
+  \caption{A placeholder results table.}
+  \label{tab:results}
+  \begin{tabular}{@{}lcc@{}}
+    \toprule
+    Method & Accuracy & Time (s) \\
+    \midrule
+    Baseline & 0.81 & 12.4 \\
+    Ours     & \textbf{0.89} & \textbf{9.1} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Conclusion}
+Recap the contribution and point to future work.
+
+\begin{thebibliography}{9}
+\bibitem{knuth1984} D.~E. Knuth, \emph{The \TeX book}. Addison-Wesley, 1984.
+\end{thebibliography}
+
+\end{document}

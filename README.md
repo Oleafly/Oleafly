@@ -204,7 +204,8 @@ The full list. Everything here runs on your machine. For the detailed tour, see 
 
 **Projects, files, and history**
 - Library home with thumbnails, last-edited time, and export history
-- Templates: Blank, One-Page Resume, and IEEE Paper
+- Template gallery on new-project: browse by category with search, an ATS-friendly filter, and a live preview of each template. The starter set spans ATS-friendly resumes, a polished software engineer resume, a Modern resume in Lato, a photo-and-sidebar design resume, a full IEEE paper, ACM and Elsevier articles, a minimalist academic article, a thesis/report, a book, a Beamer deck, a research poster, a homework assignment, a newsletter, a monthly calendar, a bibliography starter, and a formal letter.
+- On-demand fonts: templates that use premium open-source fonts (Lato, PT Sans, PT Serif) download them only when needed and copy them into the project, so the app stays small and documents stay self-contained. Manage downloads in Settings, Offline & Downloads.
 - Source tree: create files and folders (nested to any depth), rename, delete, duplicate (files and whole folders), and reorganize by drag and drop; right-click a folder to add a file or folder inside it; upload files and set the main document
 - Multi-file support for `\input`, images (PNG/JPG/PDF/EPS), and `.bib`, with editor tabs
 - Autosave to disk shortly after you stop typing

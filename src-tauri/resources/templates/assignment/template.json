@@ -1,0 +1,15 @@
+{
+  "id": "assignment",
+  "name": "Homework Assignment",
+  "category": "Assignments",
+  "description": "A clean homework or problem-set template with a title block, running header, and numbered problems with solution space.",
+  "main_doc": "main.tex",
+  "engine": "xetex",
+  "ats_profile": null,
+  "layout": "single-column",
+  "pages": "multi",
+  "default_color": "#5c7cfa",
+  "license": { "spdx": "MIT", "author": "OpenLeaf", "url": "https://github.com/prajwal-svm/OpenLeaf" },
+  "requires": { "packages": [], "fonts": [], "engine": "tectonic" },
+  "order": 40
+}

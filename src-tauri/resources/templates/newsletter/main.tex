@@ -1,0 +1,62 @@
+\documentclass[10pt]{article}
+\usepackage[a4paper,margin=0.7in]{geometry}
+\usepackage{multicol}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{lipsum}
+\usepackage[hidelinks]{hyperref}
+
+\definecolor{brand}{HTML}{C2255C}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{4pt}
+\pagestyle{empty}
+
+\titleformat{\section}{\large\bfseries\color{brand}}{}{0em}{}
+\titlespacing*{\section}{0pt}{6pt}{2pt}
+
+\newcommand{\masthead}[3]{%
+  {\color{brand}\rule{\linewidth}{2pt}}\\[4pt]
+  {\fontsize{30}{34}\selectfont\bfseries\color{brand} #1}\\[2pt]
+  {\small #2 \hfill #3}\\[2pt]
+  {\color{brand}\rule{\linewidth}{0.8pt}}\par\vspace{8pt}}
+
+\begin{document}
+
+\masthead{The Weekly Ledger}{Volume 4, Issue 12}{\today}
+
+\begin{multicols}{2}
+
+\section*{Lead Story: A Big Week}
+{\large\bfseries The team shipped the redesign.} After three months of work, the
+new release is live for everyone. Early numbers look strong, and the response has
+been overwhelmingly positive.
+
+\lipsum[1-2]
+
+\section*{Announcements}
+\begin{itemize}
+  \item All-hands moves to Thursday at 10am.
+  \item Welcome to two new teammates joining next week.
+  \item The office will be closed for the holiday on Monday.
+\end{itemize}
+
+\section*{Community Spotlight}
+\lipsum[3]
+
+\section*{By the Numbers}
+\textbf{12k} new sign-ups this week \\
+\textbf{99.98\%} uptime \\
+\textbf{4.8/5} average rating
+
+\section*{What's Next}
+\lipsum[4][1-6]
+
+\end{multicols}
+
+\vfill
+{\color{brand}\rule{\linewidth}{0.8pt}}\\[2pt]
+{\footnotesize You are receiving this because you are on the team list.
+Questions? Reach out at \href{mailto:news@example.com}{news@example.com}.}
+
+\end{document}

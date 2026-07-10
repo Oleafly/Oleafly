@@ -1,0 +1,15 @@
+{
+  "id": "ats-resume",
+  "name": "ATS Resume",
+  "category": "CVs & Resumes",
+  "description": "Single-column, ATS-friendly resume with clean section rules. Parses reliably in applicant tracking systems.",
+  "main_doc": "main.tex",
+  "engine": "xetex",
+  "ats_profile": "friendly",
+  "layout": "single-column",
+  "pages": "single",
+  "default_color": "#2f9e44",
+  "license": { "spdx": "MIT", "author": "OpenLeaf", "url": "https://github.com/prajwal-svm/OpenLeaf" },
+  "requires": { "packages": [], "fonts": [], "engine": "tectonic" },
+  "order": 10
+}

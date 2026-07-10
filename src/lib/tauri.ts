@@ -36,6 +36,7 @@ export interface ProjectMeta {
   name: string;
   main_doc: string;
   engine: string;
+  color?: string;
 }
 
 export interface ProjectInfo {
@@ -43,6 +44,7 @@ export interface ProjectInfo {
   name: string;
   main_doc: string;
   updated_at: number;
+  color?: string;
 }
 
 export const compileProject = (projectId: string, mainDoc: string, offline = false) =>
@@ -102,16 +104,96 @@ export const listProjects = () => invoke<ProjectInfo[]>("list_projects");
 export const createProject = (name: string) =>
   invoke<string>("create_project", { name });
 
+export interface TemplateLicense {
+  spdx: string;
+  author: string;
+  url: string;
+}
+
+export interface TemplateRequires {
+  packages: string[];
+  fonts: string[];
+  engine: string; // "tectonic" | "luatex"
+}
+
+export type AtsProfile = "friendly" | "design-forward" | null;
+
 export interface TemplateInfo {
   id: string;
   name: string;
   description: string;
+  category: string;
+  engine: string; // "xetex" | "luatex"
+  ats_profile: AtsProfile;
+  layout: string | null;
+  pages: string | null;
+  default_color: string | null;
+  license: TemplateLicense | null;
+  requires: TemplateRequires;
+  has_preview: boolean;
+  ready: boolean;
+  order: number;
 }
 
 export const listTemplates = () => invoke<TemplateInfo[]>("list_templates");
 
-export const createProjectFromTemplate = (name: string, templateId: string) =>
-  invoke<string>("create_project_from_template", { name, templateId });
+export const templatePreview = (templateId: string) =>
+  invoke<string | null>("template_preview", { templateId });
+
+export const createProjectFromTemplate = (
+  name: string,
+  templateId: string,
+  color?: string,
+) => invoke<string>("create_project_from_template", { name, templateId, color });
+
+export const setProjectColor = (projectId: string, color: string) =>
+  invoke<ProjectMeta>("set_project_color", { projectId, color });
+
+// --- Downloadable assets (font packs) ---
+
+export interface ComponentInfo {
+  id: string;
+  label: string;
+  description: string;
+  approx_bytes: number;
+  license: TemplateLicense | null;
+  installed: boolean;
+  kind: string;
+}
+
+export interface Prerequisite {
+  id: string;
+  label: string;
+  approx_bytes: number;
+  installed: boolean;
+}
+
+/** Emitted on the "asset-progress" event while a font pack downloads. */
+export interface AssetProgress {
+  component: string;
+  label: string;
+  file: string;
+  index: number;
+  total: number;
+  received: number;
+  file_total: number | null;
+}
+
+export const listFontComponents = () => invoke<ComponentInfo[]>("list_font_components");
+
+export const installFontComponent = (id: string) =>
+  invoke<void>("install_font_component", { id });
+
+export const removeFontComponent = (id: string) =>
+  invoke<void>("remove_font_component", { id });
+
+export const downloadAllFonts = () => invoke<void>("download_all_fonts");
+
+export const templatePrerequisites = (templateId: string) =>
+  invoke<Prerequisite[]>("template_prerequisites", { templateId });
+
+export const ensureTemplateAssets = (templateId: string) =>
+  invoke<void>("ensure_template_assets", { templateId });
 
 export interface GitCommit {
   oid: string;

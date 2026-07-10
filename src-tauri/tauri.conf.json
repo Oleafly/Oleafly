@@ -45,7 +45,10 @@
     "externalBin": [
       "binaries/tectonic"
     ],
-    "resources": []
+    "resources": [
+      "resources/templates/**/*",
+      "resources/font-packs.json"
+    ]
   },
   "plugins": {
     "updater": {

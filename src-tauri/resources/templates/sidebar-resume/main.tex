@@ -1,0 +1,104 @@
+\documentclass[10pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[a4paper,margin=0pt]{geometry}
+\usepackage{tikz}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage[hidelinks]{hyperref}
+
+% A design-forward resume: colored left sidebar with a photo, contact, and skills;
+% experience and education on the right. Pure LaTeX (tikz + xcolor), so it compiles
+% offline with the default engine, no icon fonts required.
+\definecolor{sidebar}{HTML}{22304A}
+\definecolor{accent}{HTML}{4C6EF5}
+\definecolor{sidebartext}{HTML}{DCE3F0}
+
+\setlength{\parindent}{0pt}
+\pagestyle{empty}
+
+\newlength{\sidebarwidth}\setlength{\sidebarwidth}{0.35\paperwidth}
+\newlength{\mainwidth}\setlength{\mainwidth}{0.65\paperwidth}
+
+% Sidebar section heading (white).
+\newcommand{\sidesection}[1]{\vspace{12pt}{\normalsize\bfseries\color{white} #1}\\[2pt]
+  {\color{accent}\rule{\linewidth}{1.2pt}}\\[4pt]}
+
+% Main-column section heading.
+\titleformat{\section}{\large\bfseries\color{sidebar}}{}{0em}{}[{\color{accent}\titlerule[1.2pt]}]
+\titlespacing*{\section}{0pt}{12pt}{5pt}
+\setlist[itemize]{leftmargin=12pt,itemsep=1pt,topsep=2pt}
+
+% entry{Role}{Org}{Dates}
+\newcommand{\entry}[3]{{\bfseries #1}\hfill{\small\color{accent}#3}\\{\itshape #2}\\[2pt]}
+
+\begin{document}
+
+% Paint the full-height sidebar.
+\begin{tikzpicture}[remember picture,overlay]
+  \fill[sidebar] (current page.north west) rectangle ([xshift=\sidebarwidth]current page.south west);
+\end{tikzpicture}%
+%
+\begin{minipage}[t]{\sidebarwidth}
+  \color{sidebartext}
+  \vspace{28pt}
+  \begin{center}
+    \begin{tikzpicture}
+      \fill[white!12!sidebar] (0,0) circle (1.35cm);
+      \draw[accent,line width=1.2pt] (0,0) circle (1.35cm);
+      \node[white] at (0,0) {\small Photo};
+    \end{tikzpicture}\\[10pt]
+    {\LARGE\bfseries\color{white} Jordan Rivera}\\[3pt]
+    {\small\color{accent}\bfseries SOFTWARE ENGINEER}
+  \end{center}
+
+  \hspace{18pt}\begin{minipage}{\dimexpr\sidebarwidth-36pt\relax}
+    \sidesection{Contact}
+    Email\\{\small jordan.rivera@example.com}\\[4pt]
+    Phone\\{\small +1 (555) 123 4567}\\[4pt]
+    Location\\{\small San Francisco, CA}\\[4pt]
+    Web\\{\small jordanrivera.dev}\\[4pt]
+    GitHub\\{\small github.com/jordanrivera}
+
+    \sidesection{Skills}
+    Go, Rust, Python, TypeScript\\[3pt]
+    Kubernetes, AWS, Terraform\\[3pt]
+    PostgreSQL, Kafka, Redis
+
+    \sidesection{Languages}
+    English (native)\\[2pt]
+    Spanish (professional)
+  \end{minipage}
+\end{minipage}%
+\begin{minipage}[t]{\mainwidth}
+  \vspace{28pt}
+  \hspace{22pt}\begin{minipage}{\dimexpr\mainwidth-44pt\relax}
+    \section*{Profile}
+    Software engineer with 7+ years building reliable, large-scale backend
+    systems. I care about clean interfaces, performance, and mentoring, and I
+    ship products end to end.
+
+    \section*{Experience}
+    \entry{Senior Software Engineer}{Acme Corp}{2021 -- Present}
+    \begin{itemize}
+      \item Led the redesign of a core service, cutting p99 latency by 40\%.
+      \item Designed a multi-tenant data pipeline processing 5B events per day.
+      \item Mentored four engineers and set the team's code-review culture.
+    \end{itemize}
+    \entry{Software Engineer}{Startup Inc}{2018 -- 2021}
+    \begin{itemize}
+      \item Built the payments service handling \$20M per year in transactions.
+      \item Cut infrastructure cost 30\% by right-sizing autoscaling.
+    \end{itemize}
+
+    \section*{Education}
+    \entry{B.S. Computer Science}{State University}{2014 -- 2018}
+    Graduated with honors. GPA 3.8 / 4.0.
+
+    \section*{Projects}
+    \entry{Ratel}{Open-source distributed rate limiter}{Go}
+    4M+ decisions per second per node; 1.5k GitHub stars.
+  \end{minipage}
+\end{minipage}
+
+\end{document}

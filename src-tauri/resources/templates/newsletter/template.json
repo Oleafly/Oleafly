@@ -1,0 +1,15 @@
+{
+  "id": "newsletter",
+  "name": "Newsletter",
+  "category": "Newsletters",
+  "description": "A two-column newsletter with a masthead, lead story, and short columns, for a team update, club, or community bulletin.",
+  "main_doc": "main.tex",
+  "engine": "xetex",
+  "ats_profile": null,
+  "layout": "two-column",
+  "pages": "single",
+  "default_color": "#c2255c",
+  "license": { "spdx": "MIT", "author": "OpenLeaf", "url": "https://github.com/prajwal-svm/OpenLeaf" },
+  "requires": { "packages": [], "fonts": [], "engine": "tectonic" },
+  "order": 76
+}

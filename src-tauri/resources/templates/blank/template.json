@@ -1,0 +1,14 @@
+{
+  "id": "blank",
+  "name": "Blank document",
+  "category": "Blank",
+  "description": "A minimal article to start from scratch.",
+  "main_doc": "main.tex",
+  "engine": "xetex",
+  "layout": "single-column",
+  "pages": "single",
+  "default_color": "#1982c4",
+  "license": { "spdx": "MIT", "author": "OpenLeaf", "url": "https://github.com/prajwal-svm/OpenLeaf" },
+  "requires": { "packages": [], "fonts": [], "engine": "tectonic" },
+  "order": 0
+}

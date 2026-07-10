@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Template gallery** - creating a project now opens a browsable gallery,
+  organized by category (CVs & Resumes, Journals & Conferences, Theses & Reports,
+  Books, Presentations, Posters, Letters), with search, an ATS-friendly filter,
+  and a page-1 preview of every template. Choose a template, then name the project
+  and pick a cover color. The starter set includes clean ATS-friendly resumes, a
+  polished software engineer resume, a Modern resume in the Lato typeface, and a
+  photo-and-sidebar design resume; a full worked IEEE paper, ACM and Elsevier
+  journal articles, and a minimalist academic article; a thesis/report, a book, a
+  Beamer deck, a research poster, a homework assignment, a two-column newsletter, a
+  monthly calendar, a bibliography starter, and a formal letter, covering the full
+  range of categories you would find in an online template gallery.
+- Templates now ship as editable on-disk source files (a bundled resource folder
+  per template with a manifest), so the catalog can grow without code changes.
+- **On-demand fonts.** Richer templates use premium open-source fonts (Lato, PT
+  Sans, PT Serif) that are downloaded only when needed, keeping the installer
+  small. When you create such a template, the fonts are fetched (with progress)
+  and copied into the project's `fonts/` folder, so the document stays
+  self-contained, portable, and compiles offline. A new Settings, Offline &
+  Downloads section lets you pre-download fonts or remove them to free space.
+
+- **More export formats, matched to the document.** Export now offers plain text
+  alongside Word, HTML, and Markdown, and shows format options that fit the
+  document: presentations (Beamer) can export to PowerPoint (`.pptx`), with each
+  frame becoming a slide, and books, reports, and theses can export to EPUB
+  (`.epub`) with a table of contents. HTML export is now a single self-contained
+  file with math rendered as MathML.
+
+### Changed
+
+- A project's cover color is now saved to its `project.json` on disk, so it
+  travels with the project across machines instead of living only in the browser.
+
 ## [0.2.2] - 2026-07-10
 
 ### Added
