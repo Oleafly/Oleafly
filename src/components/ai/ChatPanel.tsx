@@ -10,7 +10,6 @@ import {
   Loader2,
   MessageSquare,
   Paperclip,
-  PencilRuler,
   Plus,
   Sparkles,
   Square,
@@ -23,7 +22,6 @@ import { listOllamaModels } from "@/lib/ollama";
 import { createOpenLeafTools, createFigureTools, type ToolApprovalRequest } from "@/lib/ai-tools";
 import { FIGURE_SYSTEM_PROMPT, modelSupportsVision, setFigureInsertTarget } from "@/lib/ai-figure";
 import { getEditorView } from "@/components/editor/cm/controller";
-import FigurePlayground from "@/components/ai/FigurePlayground";
 import { ToolConfirm } from "@/components/ai/ToolConfirm";
 import { AttachmentChips, type PendingAttachment } from "@/components/ai/AttachmentChips";
 import { toast } from "@/lib/toast";
@@ -300,8 +298,6 @@ export function ChatPanel() {
   const [showScrollDown, setShowScrollDown] = useState(false);
   // Figure studio mode: swaps in the figure system prompt + figure toolset.
   const [figureMode, setFigureMode] = useState(false);
-  // Manual (no-AI) figure Playground, reachable even with a provider configured.
-  const [figureManual, setFigureManual] = useState(false);
   // Images (data URLs) to attach to the NEXT model step so a vision model can
   // see the rendered figure. Drained each step by the send loop.
   const pendingImagesRef = useRef<string[]>([]);
@@ -1034,21 +1030,6 @@ USER_CUSTOM_INSTRUCTIONS`
               </button>
             </Tooltip>
 
-            {figureMode && (
-              <Tooltip label={figureManual ? "Back to AI" : "Draw it yourself"}>
-                <button
-                  onClick={() => setFigureManual((v) => !v)}
-                  aria-label="Toggle manual figure drawing"
-                  className={cn(
-                    "flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
-                    figureManual && "bg-accent text-foreground",
-                  )}
-                >
-                  <PencilRuler className="size-4" />
-                </button>
-              </Tooltip>
-            )}
-
             <Tooltip label="New chat">
               <button
                 onClick={newChat}
@@ -1080,19 +1061,8 @@ USER_CUSTOM_INSTRUCTIONS`
         </div>
       )}
 
-      {/* Manual figure Playground (Tier 0). Reachable with no key, or by
-          choosing "Draw it yourself" while a provider is configured. */}
-      {figureMode && (figureManual || !apiKey) && (
-        <FigurePlayground
-          onExit={() => {
-            setFigureManual(false);
-            if (!apiKey) setFigureMode(false);
-          }}
-        />
-      )}
-
       {/* No API key */}
-      {!apiKey && !figureMode && (
+      {!apiKey && (
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
           <span className="flex size-12 items-center justify-center rounded-full bg-foreground text-background">
             <Sparkles className="size-6" />
@@ -1114,17 +1084,11 @@ USER_CUSTOM_INSTRUCTIONS`
           >
             Run a local model with Ollama
           </button>
-          <button
-            onClick={() => setFigureMode(true)}
-            className="text-[11px] text-muted-foreground hover:text-foreground"
-          >
-            Draw a figure manually (no AI needed)
-          </button>
         </div>
       )}
 
       {/* Conversation */}
-      {apiKey && !(figureMode && figureManual) && (
+      {apiKey && (
         <>
           <div className="relative min-h-0 flex-1">
           <div ref={scrollRef} onScroll={onMessagesScroll} className="h-full overflow-auto px-3 py-3">
@@ -1139,14 +1103,6 @@ USER_CUSTOM_INSTRUCTIONS`
                   ))}
                 </div>
 
-                {figureMode && (
-                  <button
-                    onClick={() => setFigureManual(true)}
-                    className="mt-1 text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-                  >
-                    Or draw it yourself (no model, no waiting)
-                  </button>
-                )}
 
                 {chats.length > 0 && (
                   <div className="mt-2 flex w-full max-w-[300px] flex-col gap-0.5">
