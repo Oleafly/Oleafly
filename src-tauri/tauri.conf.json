@@ -23,7 +23,8 @@
         "hiddenTitle": true,
         "fullscreen": false,
         "resizable": true,
-        "center": true
+        "center": true,
+        "dragDropEnabled": false
       }
     ],
     "security": {
