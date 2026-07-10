@@ -14,10 +14,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   in isolation, and (on vision-capable models) looks at the rendered result to fix
   overlaps and spacing before inserting editable LaTeX at your cursor plus a
   `figures/<name>.png` copy. Text-only models refine from the compile log while you
-  steer with the live preview, and a no-AI Figure Playground lets anyone compile and
-  insert a figure by hand, offline. Open it from the spark icon in the AI panel, the
-  omnibar ("Generate a figure with AI"), or right-click "Generate figure from
-  selection".
+  review the figure in the approval card. Open it from the spark icon in the AI
+  panel, the omnibar ("Generate a figure with AI"), or right-click "Generate figure
+  from selection".
+- **Insert diagram (manual composer)** - a full-height composer beside the compile
+  button (and in the omnibar): paste TikZ, compile to a live preview, and insert it
+  as vector code or as a saved PNG. The source is always kept as `figures/<name>.tikz`
+  so the diagram stays editable, and a name prompt prevents overwriting figures. No
+  AI required, works offline.
+- **Image files render in the editor** - opening a `.png`, `.jpg`, `.svg`, etc.
+  now shows the actual image instead of loading its bytes into the text editor.
+- **AI run timeout** - a chat/figure run that gets no response from the provider
+  for 90 seconds now aborts itself with a clear message instead of spinning
+  forever, and the "thinking" indicator surfaces a model's reasoning phase.
 - **Command omnibar** - the search bar (Cmd/Ctrl+Shift+F, from anywhere) is now a
   Raycast-style palette: it finds your projects first, searches inside documents,
   and runs commands. Slash commands scope it: `/create` opens the template

@@ -156,13 +156,16 @@ Bring any provider: OpenAI, Anthropic, Groq, OpenRouter, DeepSeek, Mistral, xAI,
 
 Turn a description (or a selected paragraph) into a publication-quality figure. Toggle figure mode in the AI panel (the spark icon), pick "Generate a figure with AI" from the omnibar, or right-click a paragraph and choose "Generate figure from selection". The assistant drafts TikZ, compiles just the figure in isolation (so your main document is never disturbed), and inserts editable LaTeX at your cursor when you accept, along with a `figures/<name>.png` copy.
 
-It works at three levels, so nobody is locked out:
+With AI it works at two levels:
 
-- **No AI needed.** A manual Figure Playground: write or paste TikZ, compile to a live preview, and insert it. Works offline with no API key.
-- **Text-only models.** The assistant generates and refines from the compile errors and log, while you steer using the visible preview.
+- **Text-only models.** The assistant generates and refines from the compile errors and log, while you steer using the preview shown in the approval card.
 - **Vision models.** After each compile the assistant looks at the rendered figure and fixes overlaps, spacing, and alignment on its own before you accept.
 
 You can also drop a hand-drawn sketch into the project and ask the assistant to reproduce it as a clean figure.
+
+## Insert diagram (manual composer, no AI)
+
+Next to the compile button is an **Insert diagram** button (also in the omnibar) that opens a full-height composer: paste TikZ on the left, compile to a live preview on the right. Give the diagram a name, then insert it either **as vector code** (the TikZ goes straight into your document) or **as an image** (`\includegraphics` of a saved `figures/<name>.png`). Either way the source is preserved as `figures/<name>.tikz`, so the diagram stays editable and is never lost to a flattened image. The name prompt keeps you from overwriting an existing figure. No API key required, works offline.
 
 ## Export
 

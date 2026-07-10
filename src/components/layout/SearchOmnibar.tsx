@@ -11,6 +11,7 @@ import {
   Settings,
   Sparkles,
   Sun,
+  Workflow,
 } from "lucide-react";
 import { useSettingsStore } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
@@ -147,6 +148,13 @@ export function SearchOmnibar() {
                 if (!s.showTree) s.toggleTree();
                 s.setFigureModeOpen(true);
               },
+            },
+            {
+              id: "diagram",
+              label: "Insert a diagram (manual)",
+              kw: "diagram figure tikz manual composer draw insert paste",
+              icon: <Workflow className="size-4" />,
+              run: () => useSettingsStore.getState().setDiagramComposerOpen(true),
             },
           ]
         : []),
