@@ -19,6 +19,8 @@ import {
 } from "@/lib/tauri";
 import { logError } from "@/lib/log";
 import { notifyError } from "@/lib/toast";
+import { useDiffStore } from "@/store/diff";
+import { nextTabSeq } from "@/store/tab-order";
 
 interface FileState {
   content: string;
@@ -32,6 +34,9 @@ interface FilesStore {
   tree: FileEntry[];
   files: Record<string, FileState>;
   openTabs: string[];
+  /** Open-order stamp per file tab, shared with diff tabs so the editor renders
+   *  files and diffs interleaved by the order they were opened. */
+  tabOrder: Record<string, number>;
   activePath: string | null;
   projects: ProjectInfo[];
   loading: boolean;
@@ -88,6 +93,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   tree: [],
   files: {},
   openTabs: [],
+  tabOrder: {},
   activePath: null,
   projects: [],
   loading: false,
@@ -111,6 +117,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       tree: [],
       files: {},
       openTabs: [],
+      tabOrder: {},
       activePath: null,
     });
     try {
@@ -153,6 +160,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       tree: [],
       files: {},
       openTabs: [],
+      tabOrder: {},
       activePath: null,
     });
   },
@@ -202,20 +210,33 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
         return;
       }
     }
-    set((s) => ({
-      openTabs: s.openTabs.includes(path) ? s.openTabs : [...s.openTabs, path],
-      activePath: path,
-    }));
+    // Opening a file makes it the active view, so unfocus any git diff (otherwise
+    // the diff keeps the editor and the newly opened file never becomes active).
+    useDiffStore.getState().clearActiveDiff();
+    set((s) => {
+      const isNew = !s.openTabs.includes(path);
+      return {
+        openTabs: isNew ? [...s.openTabs, path] : s.openTabs,
+        tabOrder: isNew ? { ...s.tabOrder, [path]: nextTabSeq() } : s.tabOrder,
+        activePath: path,
+      };
+    });
   },
 
-  setActive: (path) => set({ activePath: path }),
+  setActive: (path) => {
+    useDiffStore.getState().clearActiveDiff();
+    set({ activePath: path });
+  },
 
   closeTab: (path) => {
-    const { openTabs, activePath } = get();
+    const { openTabs, activePath, tabOrder } = get();
     const next = openTabs.filter((p) => p !== path);
+    const nextOrder = { ...tabOrder };
+    delete nextOrder[path];
     set({
       openTabs: next,
-      activePath: activePath === path ? next[next.length - 1] ?? null : activePath,
+      tabOrder: nextOrder,
+      activePath: activePath === path ? (next[next.length - 1] ?? null) : activePath,
     });
   },
 
@@ -301,9 +322,12 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     set((s) => {
       const files: Record<string, FileState> = {};
       for (const [k, v] of Object.entries(s.files)) files[remap(k)] = v;
+      const tabOrder: Record<string, number> = {};
+      for (const [k, v] of Object.entries(s.tabOrder)) tabOrder[remap(k)] = v;
       return {
         files,
         openTabs: s.openTabs.map(remap),
+        tabOrder,
         activePath: s.activePath ? remap(s.activePath) : null,
         mainDoc: remap(s.mainDoc),
       };
@@ -365,11 +389,14 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
         files[to] = { ...files[from] };
         delete files[from];
       }
+      const remap = (p: string) =>
+        p === from ? to : p.startsWith(`${from}/`) ? `${to}${p.slice(from.length)}` : p;
+      const tabOrder: Record<string, number> = {};
+      for (const [k, v] of Object.entries(s.tabOrder)) tabOrder[remap(k)] = v;
       return {
         files,
-        openTabs: s.openTabs.map((p) =>
-          p === from ? to : p.startsWith(from + "/") ? to + p.slice(from.length) : p
-        ),
+        tabOrder,
+        openTabs: s.openTabs.map(remap),
         activePath:
           s.activePath === from
             ? to

@@ -104,6 +104,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Documentation link opens the docs site and License opens the LICENSE file.
 - **Copy a folder** - "Make a copy" now recursively copies a folder and its
   contents; it previously only worked on files (and silently failed on folders).
+- **Editor tabs: activation and order** - clicking a file (in the source tree or
+  its tab) now makes it the active view; with a git diff open, the file used to
+  open behind the diff and never activate. File and diff tabs also share one
+  strip in the order they were opened, instead of files-left / diffs-right, and
+  re-opening a tab keeps its position.
 
 ## [0.2.1]
 

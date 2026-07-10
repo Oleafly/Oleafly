@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { nextTabSeq } from "@/store/tab-order";
 
 export type DiffSide = "working" | "staged";
 export type DiffMode = "split" | "unified";
@@ -7,10 +8,12 @@ export interface OpenDiff {
   path: string;
   /** "working" = worktree vs index (editable); "staged" = index vs HEAD (read-only). */
   side: DiffSide;
+  /** Open-order stamp, shared with file tabs so they interleave by open time. */
+  order: number;
 }
 
 /** Stable identity for a diff tab (a file can be open as both a working and a staged diff). */
-export function diffKey(d: OpenDiff): string {
+export function diffKey(d: Pick<OpenDiff, "path" | "side">): string {
   return `${d.side}:${d.path}`;
 }
 
@@ -49,7 +52,9 @@ export const useDiffStore = create<DiffState>((set) => ({
       const key = diffKey({ path, side });
       const exists = s.diffs.some((d) => diffKey(d) === key);
       return {
-        diffs: exists ? s.diffs : [...s.diffs, { path, side }],
+        // Re-opening an already-open diff keeps its position; only new diffs get
+        // a fresh open-order stamp.
+        diffs: exists ? s.diffs : [...s.diffs, { path, side, order: nextTabSeq() }],
         activeKey: key,
       };
     }),
