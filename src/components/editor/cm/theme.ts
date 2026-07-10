@@ -20,7 +20,7 @@ const chromeTheme = EditorView.theme({
     outline: "none",
   },
   ".cm-scroller": {
-    fontFamily: "var(--font-mono)",
+    fontFamily: "var(--cm-font-family, var(--font-mono))",
     lineHeight: "1.6",
   },
   ".cm-content": {

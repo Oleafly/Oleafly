@@ -21,6 +21,25 @@ function saveLs(k: string, v: string) {
   }
 }
 
+/** Font choices offered in Appearance. "" means the app default stack. Names
+ *  apply if installed, otherwise the browser falls back (like VS Code). */
+export const APP_FONTS: { name: string; value: string }[] = [
+  { name: "System default", value: "" },
+  { name: "Inter", value: '"Inter", system-ui, sans-serif' },
+  { name: "Helvetica Neue", value: '"Helvetica Neue", Helvetica, Arial, sans-serif' },
+  { name: "Segoe UI", value: '"Segoe UI", system-ui, sans-serif' },
+  { name: "Georgia (serif)", value: 'Georgia, "Times New Roman", serif' },
+];
+export const EDITOR_FONTS: { name: string; value: string }[] = [
+  { name: "System default", value: "" },
+  { name: "JetBrains Mono", value: '"JetBrains Mono", ui-monospace, monospace' },
+  { name: "Fira Code", value: '"Fira Code", ui-monospace, monospace' },
+  { name: "Cascadia Code", value: '"Cascadia Code", ui-monospace, monospace' },
+  { name: "SF Mono", value: '"SF Mono", ui-monospace, monospace' },
+  { name: "Menlo", value: "Menlo, Monaco, monospace" },
+  { name: "Consolas", value: "Consolas, ui-monospace, monospace" },
+];
+
 /** Preset accent colors. The default is primary blue. */
 export const ACCENTS: { id: string; name: string; color: string }[] = [
   { id: "blue", name: "Blue", color: "#2563eb" },
@@ -58,8 +77,20 @@ interface SettingsState {
   setSettingsInitialSection: (v: string) => void;
   viewMode: ViewMode;
   setViewMode: (v: ViewMode) => void;
+  /** Which layout a project opens in, and whether the file tree shows on open. */
+  defaultView: ViewMode;
+  setDefaultView: (v: ViewMode) => void;
+  openInTree: boolean;
+  setOpenInTree: (v: boolean) => void;
   editorFontSize: number;
   setEditorFontSize: (v: number) => void;
+  /** Global app UI font size (px), scaling the whole interface. */
+  appFontSize: number;
+  setAppFontSize: (v: number) => void;
+  appFontFamily: string;
+  setAppFontFamily: (v: string) => void;
+  editorFontFamily: string;
+  setEditorFontFamily: (v: string) => void;
   accentColor: string;
   setAccentColor: (v: string) => void;
   showTree: boolean;
@@ -81,6 +112,11 @@ const PREF_DEFAULTS = {
   showWordChoice: true,
   offline: false,
   editorFontSize: 13,
+  appFontSize: 16,
+  appFontFamily: "",
+  editorFontFamily: "",
+  defaultView: "split" as ViewMode,
+  openInTree: true,
   accentColor: "#2563eb",
 } as const;
 
@@ -117,10 +153,35 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   setSettingsInitialSection: (v) => set({ settingsInitialSection: v }),
   viewMode: "split",
   setViewMode: (v) => set({ viewMode: v }),
+  defaultView: (ls("openleaf.defaultView", "split") as ViewMode) || "split",
+  setDefaultView: (v) => {
+    saveLs("openleaf.defaultView", v);
+    set({ defaultView: v });
+  },
+  openInTree: ls("openleaf.openInTree", "1") !== "0",
+  setOpenInTree: (v) => {
+    saveLs("openleaf.openInTree", v ? "1" : "0");
+    set({ openInTree: v });
+  },
   editorFontSize: Number(ls("openleaf.fontSize", "13")) || 13,
   setEditorFontSize: (v) => {
     saveLs("openleaf.fontSize", String(v));
     set({ editorFontSize: v });
+  },
+  appFontSize: Number(ls("openleaf.appFontSize", "16")) || 16,
+  setAppFontSize: (v) => {
+    saveLs("openleaf.appFontSize", String(v));
+    set({ appFontSize: v });
+  },
+  appFontFamily: ls("openleaf.appFont", ""),
+  setAppFontFamily: (v) => {
+    saveLs("openleaf.appFont", v);
+    set({ appFontFamily: v });
+  },
+  editorFontFamily: ls("openleaf.editorFont", ""),
+  setEditorFontFamily: (v) => {
+    saveLs("openleaf.editorFont", v);
+    set({ editorFontFamily: v });
   },
   accentColor: ls("openleaf.accent", "#2563eb"),
   setAccentColor: (v) => {
@@ -138,6 +199,11 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     saveLs("openleaf.harper.regionalism", "1");
     saveLs("openleaf.harper.wordchoice", "1");
     saveLs("openleaf.fontSize", String(PREF_DEFAULTS.editorFontSize));
+    saveLs("openleaf.appFontSize", String(PREF_DEFAULTS.appFontSize));
+    saveLs("openleaf.appFont", PREF_DEFAULTS.appFontFamily);
+    saveLs("openleaf.editorFont", PREF_DEFAULTS.editorFontFamily);
+    saveLs("openleaf.defaultView", PREF_DEFAULTS.defaultView);
+    saveLs("openleaf.openInTree", PREF_DEFAULTS.openInTree ? "1" : "0");
     saveLs("openleaf.accent", PREF_DEFAULTS.accentColor);
     set({ ...PREF_DEFAULTS });
   },

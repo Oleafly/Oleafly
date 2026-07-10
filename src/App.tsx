@@ -108,6 +108,9 @@ export default function App() {
   const setViewMode = useSettingsStore((s) => s.setViewMode);
   const showTree = useSettingsStore((s) => s.showTree);
   const editorFontSize = useSettingsStore((s) => s.editorFontSize);
+  const appFontSize = useSettingsStore((s) => s.appFontSize);
+  const appFontFamily = useSettingsStore((s) => s.appFontFamily);
+  const editorFontFamily = useSettingsStore((s) => s.editorFontFamily);
   const accentColor = useSettingsStore((s) => s.accentColor);
 
   // On startup: populate the library. The user picks a project from there.
@@ -134,15 +137,22 @@ export default function App() {
     return () => void unlisten.then((off) => off());
   }, []);
 
-  // Apply cosmetic settings (editor font size + accent color) to the document.
+  // Apply cosmetic settings (fonts, sizes, accent color) to the document.
   useEffect(() => {
     const root = document.documentElement;
     root.style.setProperty("--cm-font-size", `${editorFontSize}px`);
+    // Global app font size scales the whole (rem-based) interface.
+    root.style.fontSize = `${appFontSize}px`;
+    // Font families: empty means keep the app's default stack.
+    if (appFontFamily) root.style.fontFamily = appFontFamily;
+    else root.style.removeProperty("font-family");
+    if (editorFontFamily) root.style.setProperty("--cm-font-family", editorFontFamily);
+    else root.style.removeProperty("--cm-font-family");
     // Default accent is primary blue; accentColor is always a real color.
     const accent = accentColor || "#2563eb";
     root.style.setProperty("--primary", accent);
     root.style.setProperty("--primary-foreground", "#ffffff");
-  }, [editorFontSize, accentColor]);
+  }, [editorFontSize, appFontSize, appFontFamily, editorFontFamily, accentColor]);
 
   // Keep the source-control badge count fresh for the current project.
   const refreshGitStatus = useGitStatusStore((s) => s.refresh);
@@ -160,18 +170,19 @@ export default function App() {
     };
   }, [refreshGitStatus]);
 
-  // Always open a project in 50-50 split view.
+  // Open a project in the user's preferred view (Appearance settings).
   useEffect(() => {
-    if (projectId) setViewMode("split");
+    const s = useSettingsStore.getState();
+    if (projectId) setViewMode(s.defaultView);
     // Clear the previous project's compile output so a stale PDF never shows.
     useCompileStore.getState().reset();
     // Preflight results belong to the previous project; reset them too.
     usePreflightStore.getState().reset();
-    // Always open a project on the source-tree view.
+    // Show (or hide) the file tree on open per the user's preference.
     if (projectId) {
-      const s = useSettingsStore.getState();
       s.setRailTab("files");
-      if (!s.showTree) s.toggleTree();
+      if (s.openInTree && !s.showTree) s.toggleTree();
+      else if (!s.openInTree && s.showTree) s.toggleTree();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);

@@ -42,7 +42,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useSettingsStore, ACCENTS } from "@/store/settings";
+import { useSettingsStore, ACCENTS, APP_FONTS, EDITOR_FONTS } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
 import { useDictionary } from "@/lib/dictionary";
 import { useTheme } from "@/lib/theme";
@@ -171,6 +171,16 @@ export function SettingsModal() {
   const setOffline = useSettingsStore((s) => s.setOffline);
   const editorFontSize = useSettingsStore((s) => s.editorFontSize);
   const setEditorFontSize = useSettingsStore((s) => s.setEditorFontSize);
+  const appFontSize = useSettingsStore((s) => s.appFontSize);
+  const setAppFontSize = useSettingsStore((s) => s.setAppFontSize);
+  const appFontFamily = useSettingsStore((s) => s.appFontFamily);
+  const setAppFontFamily = useSettingsStore((s) => s.setAppFontFamily);
+  const editorFontFamily = useSettingsStore((s) => s.editorFontFamily);
+  const setEditorFontFamily = useSettingsStore((s) => s.setEditorFontFamily);
+  const defaultView = useSettingsStore((s) => s.defaultView);
+  const setDefaultView = useSettingsStore((s) => s.setDefaultView);
+  const openInTree = useSettingsStore((s) => s.openInTree);
+  const setOpenInTree = useSettingsStore((s) => s.setOpenInTree);
   const accentColor = useSettingsStore((s) => s.accentColor);
   const setAccentColor = useSettingsStore((s) => s.setAccentColor);
 
@@ -279,6 +289,105 @@ export function SettingsModal() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* App font size */}
+                <div className="flex items-center justify-between gap-4 rounded-lg border bg-background p-3">
+                  <div>
+                    <div className="text-sm font-medium">App font size</div>
+                    <div className="text-xs text-muted-foreground">
+                      Scales the whole interface (menus, panels, and buttons).
+                    </div>
+                  </div>
+                  <Select value={String(appFontSize)} onValueChange={(v) => setAppFontSize(Number(v))}>
+                    <SelectTrigger className="w-[88px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="z-[100]">
+                      {[13, 14, 15, 16, 17, 18, 20].map((n) => (
+                        <SelectItem key={n} value={String(n)}>
+                          {n}px
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* App font */}
+                <div className="flex items-center justify-between gap-4 rounded-lg border bg-background p-3">
+                  <div>
+                    <div className="text-sm font-medium">App font</div>
+                    <div className="text-xs text-muted-foreground">
+                      The interface font. Falls back if a font is not installed.
+                    </div>
+                  </div>
+                  <Select
+                    value={appFontFamily || "__default__"}
+                    onValueChange={(v) => setAppFontFamily(v === "__default__" ? "" : v)}
+                  >
+                    <SelectTrigger className="w-[168px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="z-[100]">
+                      {APP_FONTS.map((f) => (
+                        <SelectItem key={f.name} value={f.value || "__default__"}>
+                          {f.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Editor font */}
+                <div className="flex items-center justify-between gap-4 rounded-lg border bg-background p-3">
+                  <div>
+                    <div className="text-sm font-medium">Editor font</div>
+                    <div className="text-xs text-muted-foreground">
+                      The monospace font used in the code editor.
+                    </div>
+                  </div>
+                  <Select
+                    value={editorFontFamily || "__default__"}
+                    onValueChange={(v) => setEditorFontFamily(v === "__default__" ? "" : v)}
+                  >
+                    <SelectTrigger className="w-[168px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="z-[100]">
+                      {EDITOR_FONTS.map((f) => (
+                        <SelectItem key={f.name} value={f.value || "__default__"}>
+                          {f.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Default view on open */}
+                <div className="flex items-center justify-between gap-4 rounded-lg border bg-background p-3">
+                  <div>
+                    <div className="text-sm font-medium">Open projects in</div>
+                    <div className="text-xs text-muted-foreground">
+                      The layout a project lands in when you open it.
+                    </div>
+                  </div>
+                  <Select value={defaultView} onValueChange={(v) => setDefaultView(v as typeof defaultView)}>
+                    <SelectTrigger className="w-[128px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="z-[100]">
+                      <SelectItem value="split">Split view</SelectItem>
+                      <SelectItem value="editor">Editor only</SelectItem>
+                      <SelectItem value="pdf">PDF only</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <ToggleRow
+                  label="Show file tree on open"
+                  desc="Reveal the source-file tree whenever you open a project."
+                  checked={openInTree}
+                  onChange={() => setOpenInTree(!openInTree)}
+                />
 
                 {/* Accent color */}
                 <div className="rounded-lg border bg-background p-3">
