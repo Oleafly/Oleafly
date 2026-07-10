@@ -302,6 +302,8 @@ export function ChatPanel() {
   // Images (data URLs) to attach to the NEXT model step so a vision model can
   // see the rendered figure. Drained each step by the send loop.
   const pendingImagesRef = useRef<string[]>([]);
+  // Timestamp of the last stream part, for the stall watchdog.
+  const lastPartAtRef = useRef<number>(0);
   const figureModeOpen = useSettingsStore((s) => s.figureModeOpen);
   const setFigureModeOpen = useSettingsStore((s) => s.setFigureModeOpen);
   // User's own system-prompt addition (sandboxed into our prompt at send time).
@@ -367,6 +369,22 @@ export function ChatPanel() {
       setFigureModeOpen(false);
     }
   }, [figureModeOpen, setFigureModeOpen]);
+
+  // Stall watchdog: if the provider goes quiet mid-run, tell the user it is
+  // still working (reasoning models can be slow) rather than looking frozen.
+  useEffect(() => {
+    if (!streaming) return;
+    const id = window.setInterval(() => {
+      const quietMs = Date.now() - lastPartAtRef.current;
+      if (quietMs > 20000) {
+        const secs = Math.round(quietMs / 1000);
+        setThinkingText(
+          `Still working (${secs}s). Reasoning models and the first figure compile can be slow. Click stop to cancel.`,
+        );
+      }
+    }, 5000);
+    return () => window.clearInterval(id);
+  }, [streaming]);
 
   // Prefill figure mode from a selected paragraph (editor right-click).
   useEffect(() => {
@@ -603,6 +621,7 @@ export function ChatPanel() {
     setAttachments([]);
     setStreaming(true);
     setThinkingText("Thinking…");
+    lastPartAtRef.current = Date.now();
 
     // Persist this conversation as a chat (creates one on the first message).
     {
@@ -699,11 +718,21 @@ USER_CUSTOM_INSTRUCTIONS`
 
         for await (const part of result.fullStream) {
           if (ac.signal.aborted) break;
+          // Any stream activity resets the stall watchdog.
+          lastPartAtRef.current = Date.now();
           switch (part.type) {
             case "text-delta":
               setThinkingText(null);
               stepText += (part as any).text || (part as any).textDelta || "";
               updateLast((m) => ({ ...m, content: stepText }));
+              break;
+
+            // Reasoning models (GLM, o-series, DeepSeek R1) stream a "thinking"
+            // phase before any text/tool call. Surface it so a long reason step
+            // reads as progress, not a freeze.
+            case "reasoning-delta":
+            case "reasoning-start":
+              setThinkingText("Reasoning…");
               break;
 
             case "tool-call": {
