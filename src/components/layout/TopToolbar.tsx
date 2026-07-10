@@ -80,6 +80,7 @@ export function TopToolbar() {
   const setHistoryOpen = useSettingsStore((s) => s.setHistoryOpen);
   const setHotkeysOpen = useSettingsStore((s) => s.setHotkeysOpen);
   const setDiagramComposerOpen = useSettingsStore((s) => s.setDiagramComposerOpen);
+  const showCompileLabel = useSettingsStore((s) => s.showCompileLabel);
   const viewMode = useSettingsStore((s) => s.viewMode);
   const setViewMode = useSettingsStore((s) => s.setViewMode);
   const recompile = useCompileStore((s) => s.recompile);
@@ -336,23 +337,14 @@ export function TopToolbar() {
       {/* Right: actions */}
       <div data-tauri-drag-region className="flex items-center justify-end gap-1.5">
 
-        <Tooltip label="Insert diagram">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-muted-foreground hover:text-foreground"
-            onClick={() => setDiagramComposerOpen(true)}
-            aria-label="Insert diagram"
-          >
-            <Workflow className="size-4" />
-          </Button>
-        </Tooltip>
-
         <Tooltip label="Recompile (⌘↵)">
           <Button
             variant="ghost"
-            size="icon"
-            className="size-7 rounded-md bg-primary text-white shadow-sm hover:bg-primary"
+            size={showCompileLabel ? "sm" : "icon"}
+            className={cn(
+              "rounded-md bg-primary text-white shadow-sm hover:bg-primary",
+              showCompileLabel ? "h-7 gap-1.5 px-2.5" : "size-7",
+            )}
             disabled={compiling}
             onClick={() => {
               // If the PDF pane is hidden (editor-only), reveal it so the result shows.
@@ -362,6 +354,19 @@ export function TopToolbar() {
             aria-label="Recompile"
           >
             {compiling ? <Loader2 className="size-3.5 animate-spin" /> : <Play className="size-3.5" />}
+            {showCompileLabel && <span className="text-xs font-medium">Compile</span>}
+          </Button>
+        </Tooltip>
+
+        <Tooltip label="Insert diagram">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7 text-violet-500 hover:bg-violet-500/10 hover:text-violet-600 dark:text-violet-400 dark:hover:text-violet-300"
+            onClick={() => setDiagramComposerOpen(true)}
+            aria-label="Insert diagram"
+          >
+            <Workflow className="size-4" />
           </Button>
         </Tooltip>
 
