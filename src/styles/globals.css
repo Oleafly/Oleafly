@@ -262,3 +262,27 @@ select:focus-visible {
   color: #9ca3af !important;
 }
 .dark .cm-collapsedLines:hover { background: #283445 !important; }
+
+/* Diagram canvas (React Flow): keep the zoom controls and minimap legible in
+   both the light and dark canvas themes (default control icons can render
+   white-on-white against the app's styles). React Flow adds the `.dark` class
+   to `.react-flow` when colorMode is dark. */
+.react-flow__controls {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.react-flow__controls-button {
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+}
+.react-flow__controls-button svg { fill: #111827; }
+.react-flow__controls-button:hover { background: #f3f4f6; }
+.react-flow.dark .react-flow__controls-button {
+  background: #1f2937;
+  border-bottom: 1px solid #374151;
+}
+.react-flow.dark .react-flow__controls-button svg { fill: #e5e7eb; }
+.react-flow.dark .react-flow__controls-button:hover { background: #283445; }
+.react-flow__minimap { background: #ffffff; }
+.react-flow.dark .react-flow__minimap { background: #0d1117; }
