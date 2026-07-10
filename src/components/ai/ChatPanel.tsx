@@ -10,6 +10,7 @@ import {
   Loader2,
   MessageSquare,
   Paperclip,
+  PencilRuler,
   Plus,
   Sparkles,
   Square,
@@ -299,6 +300,8 @@ export function ChatPanel() {
   const [showScrollDown, setShowScrollDown] = useState(false);
   // Figure studio mode: swaps in the figure system prompt + figure toolset.
   const [figureMode, setFigureMode] = useState(false);
+  // Manual (no-AI) figure Playground, reachable even with a provider configured.
+  const [figureManual, setFigureManual] = useState(false);
   // Images (data URLs) to attach to the NEXT model step so a vision model can
   // see the rendered figure. Drained each step by the send loop.
   const pendingImagesRef = useRef<string[]>([]);
@@ -1018,6 +1021,21 @@ USER_CUSTOM_INSTRUCTIONS`
               </button>
             </Tooltip>
 
+            {figureMode && (
+              <Tooltip label={figureManual ? "Back to AI" : "Draw it yourself"}>
+                <button
+                  onClick={() => setFigureManual((v) => !v)}
+                  aria-label="Toggle manual figure drawing"
+                  className={cn(
+                    "flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                    figureManual && "bg-accent text-foreground",
+                  )}
+                >
+                  <PencilRuler className="size-4" />
+                </button>
+              </Tooltip>
+            )}
+
             <Tooltip label="New chat">
               <button
                 onClick={newChat}
@@ -1049,8 +1067,16 @@ USER_CUSTOM_INSTRUCTIONS`
         </div>
       )}
 
-      {/* No API key, figure mode: the no-AI manual Playground (Tier 0). */}
-      {!apiKey && figureMode && <FigurePlayground onExit={() => setFigureMode(false)} />}
+      {/* Manual figure Playground (Tier 0). Reachable with no key, or by
+          choosing "Draw it yourself" while a provider is configured. */}
+      {figureMode && (figureManual || !apiKey) && (
+        <FigurePlayground
+          onExit={() => {
+            setFigureManual(false);
+            if (!apiKey) setFigureMode(false);
+          }}
+        />
+      )}
 
       {/* No API key */}
       {!apiKey && !figureMode && (
@@ -1085,7 +1111,7 @@ USER_CUSTOM_INSTRUCTIONS`
       )}
 
       {/* Conversation */}
-      {apiKey && (
+      {apiKey && !(figureMode && figureManual) && (
         <>
           <div className="relative min-h-0 flex-1">
           <div ref={scrollRef} onScroll={onMessagesScroll} className="h-full overflow-auto px-3 py-3">
@@ -1099,6 +1125,15 @@ USER_CUSTOM_INSTRUCTIONS`
                     <button key={s} onClick={() => void send(s)} className="rounded-md border border-sidebar-border bg-accent px-3 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-[color-mix(in_oklch,var(--accent),#000_18%)] hover:text-foreground">{s}</button>
                   ))}
                 </div>
+
+                {figureMode && (
+                  <button
+                    onClick={() => setFigureManual(true)}
+                    className="mt-1 text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                  >
+                    Or draw it yourself (no model, no waiting)
+                  </button>
+                )}
 
                 {chats.length > 0 && (
                   <div className="mt-2 flex w-full max-w-[300px] flex-col gap-0.5">
