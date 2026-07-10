@@ -19,7 +19,10 @@ import {
 import { useFilesStore } from "@/store/files";
 import { getConfig, setConfig, gitLog, gitAutoCommit } from "@/lib/tauri";
 import { listOllamaModels } from "@/lib/ollama";
-import { createOpenLeafTools, type ToolApprovalRequest } from "@/lib/ai-tools";
+import { createOpenLeafTools, createFigureTools, type ToolApprovalRequest } from "@/lib/ai-tools";
+import { FIGURE_SYSTEM_PROMPT, modelSupportsVision, setFigureInsertTarget } from "@/lib/ai-figure";
+import { getEditorView } from "@/components/editor/cm/controller";
+import FigurePlayground from "@/components/ai/FigurePlayground";
 import { ToolConfirm } from "@/components/ai/ToolConfirm";
 import { AttachmentChips, type PendingAttachment } from "@/components/ai/AttachmentChips";
 import { toast } from "@/lib/toast";
@@ -38,6 +41,13 @@ const SUGGESTIONS = [
   "Create a new section called 'Publications'",
   "Search for all \\cite commands",
   "Recompile and check for errors",
+];
+
+const FIGURE_SUGGESTIONS = [
+  "Draw a transformer encoder with 6 blocks, attention highlighted, residual connections",
+  "Show the TCP three-way handshake between a client and a server",
+  "Draw a compiler pipeline: lexer, parser, AST, optimizer, code generator",
+  "Diagram a data preprocessing flow ending in a training loop",
 ];
 
 const TOOLS_LIST = "read_file, write_file, replace_in_file, create_file, delete_file, rename_file, list_files, search_project, compile, get_log, get_pdf_text, set_main_doc, toggle_theme";
@@ -287,6 +297,13 @@ export function ChatPanel() {
   >(null);
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
   const [showScrollDown, setShowScrollDown] = useState(false);
+  // Figure studio mode: swaps in the figure system prompt + figure toolset.
+  const [figureMode, setFigureMode] = useState(false);
+  // Images (data URLs) to attach to the NEXT model step so a vision model can
+  // see the rendered figure. Drained each step by the send loop.
+  const pendingImagesRef = useRef<string[]>([]);
+  const figureModeOpen = useSettingsStore((s) => s.figureModeOpen);
+  const setFigureModeOpen = useSettingsStore((s) => s.setFigureModeOpen);
   // User's own system-prompt addition (sandboxed into our prompt at send time).
   const [customPrompt, setCustomPrompt] = useState("");
   // Always-current snapshot so `send` (a useCallback) reads the latest list
@@ -341,6 +358,25 @@ export function ChatPanel() {
     const onQuota = () => setQuotaWarning(true);
     window.addEventListener("openleaf:chats-quota-exceeded", onQuota);
     return () => window.removeEventListener("openleaf:chats-quota-exceeded", onQuota);
+  }, []);
+
+  // Open figure mode when requested from elsewhere (omnibar / command palette).
+  useEffect(() => {
+    if (figureModeOpen) {
+      setFigureMode(true);
+      setFigureModeOpen(false);
+    }
+  }, [figureModeOpen, setFigureModeOpen]);
+
+  // Prefill figure mode from a selected paragraph (editor right-click).
+  useEffect(() => {
+    const onFromSelection = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { text?: string };
+      setFigureMode(true);
+      setInput(detail?.text ? `Draw a figure for this: ${detail.text}` : "Draw a figure: ");
+    };
+    window.addEventListener("openleaf:figure-from-selection", onFromSelection);
+    return () => window.removeEventListener("openleaf:figure-from-selection", onFromSelection);
   }, []);
 
   useEffect(() => {
@@ -504,6 +540,14 @@ export function ChatPanel() {
     if ((!text.trim() && outgoing.length === 0) || streaming) return;
     if (!apiKey) { openAISettings(); return; }
 
+    // In figure mode, remember where to place the finished figure (the selected
+    // paragraph it was generated from, else the cursor).
+    if (figureMode) {
+      const view = getEditorView();
+      const sel = view?.state.selection.main;
+      setFigureInsertTarget(sel && !sel.empty ? { from: sel.from, to: sel.to } : null);
+    }
+
     // Fresh abort controller for this run (Stop button / project switch / unmount).
     const ac = new AbortController();
     abortRef.current = ac;
@@ -604,6 +648,16 @@ USER_CUSTOM_INSTRUCTIONS`
         : ""
     }`;
 
+    // Figure mode swaps in the figure studio prompt (still honoring the user's
+    // custom style preferences).
+    const figure = figureMode;
+    const effectiveSystem = figure
+      ? FIGURE_SYSTEM_PROMPT +
+        (customPromptRef.current.trim()
+          ? `\n\nUser style preferences (honor when they do not conflict): ${customPromptRef.current.trim()}`
+          : "")
+      : systemPrompt;
+
     // Build conversation history from current messages + new user msg.
     // Using a plain array that grows as steps complete.
     type Msg = { role: string; content: string; tool_calls?: any[]; tool_call_id?: string; name?: string };
@@ -633,7 +687,7 @@ USER_CUSTOM_INSTRUCTIONS`
           model: modelInstance,
           messages: apiMessages as any,
           tools: tools as any,
-          system: systemPrompt,
+          system: effectiveSystem,
           abortSignal: ac.signal,
         } as any);
 
@@ -708,8 +762,28 @@ USER_CUSTOM_INSTRUCTIONS`
         if (ac.signal.aborted) break;
         setThinkingText(step === 0 ? "Thinking…" : "Continuing…");
 
+        // Figure mode: attach any queued rendered figures so a vision model can
+        // see and refine them. Text-only models get the errors/log instead.
+        if (figure && pendingImagesRef.current.length) {
+          const imgs = pendingImagesRef.current.splice(0);
+          if (modelSupportsVision(provider, model)) {
+            apiMessages.push({
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text: "Here is the rendered figure. Check for overlapping labels, cramped spacing, misalignment, and legibility, and refine it if it is not clean.",
+                },
+                ...imgs.map((image) => ({ type: "image", image })),
+              ],
+            } as any);
+          }
+        }
+
         const modelInstance = buildAiModel(provider, model, apiKey);
-        const tools = createOpenLeafTools({ confirm });
+        const tools = figure
+          ? createFigureTools({ confirm, onImage: (d) => pendingImagesRef.current.push(d) })
+          : createOpenLeafTools({ confirm });
 
         // Retry the same step on stream disconnects / transient API errors so a
         // dropped connection never abandons an unfinished task.
@@ -831,7 +905,7 @@ USER_CUSTOM_INSTRUCTIONS`
         });
       }
     }
-  }, [messages, streaming, apiKey, provider, model, projectId, projectName, currentHead]);
+  }, [messages, streaming, apiKey, provider, model, projectId, projectName, currentHead, figureMode]);
 
   // Stop the current AI run (used by the Stop button).
   const stop = useCallback(() => {
@@ -902,6 +976,19 @@ USER_CUSTOM_INSTRUCTIONS`
               )}
             </div>
 
+            <Tooltip label={figureMode ? "Figure mode on" : "Draw a figure"}>
+              <button
+                onClick={() => setFigureMode((v) => !v)}
+                aria-label="Toggle figure mode"
+                className={cn(
+                  "flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                  figureMode && "bg-accent text-foreground",
+                )}
+              >
+                <Sparkles className="size-4" />
+              </button>
+            </Tooltip>
+
             <Tooltip label="New chat">
               <button
                 onClick={newChat}
@@ -933,8 +1020,11 @@ USER_CUSTOM_INSTRUCTIONS`
         </div>
       )}
 
+      {/* No API key, figure mode: the no-AI manual Playground (Tier 0). */}
+      {!apiKey && figureMode && <FigurePlayground onExit={() => setFigureMode(false)} />}
+
       {/* No API key */}
-      {!apiKey && (
+      {!apiKey && !figureMode && (
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
           <span className="flex size-12 items-center justify-center rounded-full bg-foreground text-background">
             <Sparkles className="size-6" />
@@ -956,6 +1046,12 @@ USER_CUSTOM_INSTRUCTIONS`
           >
             Run a local model with Ollama
           </button>
+          <button
+            onClick={() => setFigureMode(true)}
+            className="text-[11px] text-muted-foreground hover:text-foreground"
+          >
+            Draw a figure manually (no AI needed)
+          </button>
         </div>
       )}
 
@@ -966,9 +1062,11 @@ USER_CUSTOM_INSTRUCTIONS`
           <div ref={scrollRef} onScroll={onMessagesScroll} className="h-full overflow-auto px-3 py-3">
             {messages.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center gap-3 px-2">
-                <p className="text-sm text-muted-foreground">Ask me anything about your project.</p>
+                <p className="text-sm text-muted-foreground">
+                  {figureMode ? "Describe a figure and I will draw, compile, and refine it." : "Ask me anything about your project."}
+                </p>
                 <div className="flex w-full flex-col gap-1.5">
-                  {SUGGESTIONS.map((s) => (
+                  {(figureMode ? FIGURE_SUGGESTIONS : SUGGESTIONS).map((s) => (
                     <button key={s} onClick={() => void send(s)} className="rounded-md border border-sidebar-border bg-accent px-3 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-[color-mix(in_oklch,var(--accent),#000_18%)] hover:text-foreground">{s}</button>
                   ))}
                 </div>
@@ -1083,7 +1181,7 @@ USER_CUSTOM_INSTRUCTIONS`
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(input); } }}
-                placeholder="Ask AI to help with your LaTeX…"
+                placeholder={figureMode ? "Describe a figure to draw…" : "Ask AI to help with your LaTeX…"}
                 rows={1}
                 className="max-h-32 min-h-[24px] flex-1 resize-none rounded-md bg-transparent pl-2 text-sm outline-none placeholder:text-muted-foreground"
                 style={{ height: "auto" }}

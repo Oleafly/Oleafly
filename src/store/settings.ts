@@ -68,6 +68,9 @@ interface SettingsState {
   /** The New Project gallery, openable from anywhere (Library, omnibar, palette). */
   newProjectOpen: boolean;
   setNewProjectOpen: (v: boolean) => void;
+  /** Request the AI panel to open in figure mode (from omnibar / right-click). */
+  figureModeOpen: boolean;
+  setFigureModeOpen: (v: boolean) => void;
   wordCountOpen: boolean;
   setWordCountOpen: (v: boolean) => void;
   historyOpen: boolean;
@@ -146,6 +149,8 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   setPaletteOpen: (v) => set({ paletteOpen: v }),
   newProjectOpen: false,
   setNewProjectOpen: (v) => set({ newProjectOpen: v }),
+  figureModeOpen: false,
+  setFigureModeOpen: (v) => set({ figureModeOpen: v }),
   wordCountOpen: false,
   setWordCountOpen: (v) => set({ wordCountOpen: v }),
   historyOpen: false,
