@@ -13,9 +13,9 @@ import {
   Presentation,
   History,
   Loader2,
+  ImagePlay,
   Play,
   SquarePen,
-  Workflow,
   X,
 } from "lucide-react";
 import { save } from "@tauri-apps/plugin-dialog";
@@ -362,11 +362,11 @@ export function TopToolbar() {
           <Button
             variant="ghost"
             size="icon"
-            className="size-7 text-violet-500 hover:bg-violet-500/10 hover:text-violet-600 dark:text-violet-400 dark:hover:text-violet-300"
+            className="text-muted-foreground hover:text-foreground"
             onClick={() => setDiagramComposerOpen(true)}
             aria-label="Insert diagram"
           >
-            <Workflow className="size-4" />
+            <ImagePlay className="size-4" />
           </Button>
         </Tooltip>
 
