@@ -11,11 +11,9 @@ import {
   FileType,
   GitFork,
   Presentation,
-  Github,
   History,
   Loader2,
   Play,
-  Share2,
   SquarePen,
   X,
 } from "lucide-react";
@@ -24,7 +22,7 @@ import { open } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { LeafLogo } from "@/components/layout/LeafLogo";
-import { GithubBadge } from "@/components/layout/GithubBadge";
+import { GithubMenu } from "@/components/layout/GithubMenu";
 import { useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
 import { useSettingsStore, type ViewMode } from "@/store/settings";
@@ -335,7 +333,6 @@ export function TopToolbar() {
 
       {/* Right: actions */}
       <div data-tauri-drag-region className="flex items-center justify-end gap-1.5">
-        <GithubBadge />
 
         <Tooltip label="Recompile (⌘↵)">
           <Button
@@ -451,31 +448,11 @@ export function TopToolbar() {
           </Button>
         </Tooltip>
 
-        <Tooltip label={githubUrl ? "Share GitHub link" : "Push to GitHub to share"}>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-muted-foreground hover:text-foreground"
-            disabled={!githubUrl}
-            onClick={() => void shareGithub()}
-            aria-label="Share GitHub link"
-          >
-            <Share2 className="size-4" />
-          </Button>
-        </Tooltip>
-
-        <Tooltip label={githubUrl ? "Open in GitHub" : "Not pushed to GitHub yet"}>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-muted-foreground hover:text-foreground"
-            disabled={!githubUrl}
-            onClick={openInGithub}
-            aria-label="Open in GitHub"
-          >
-            <Github className="size-4" />
-          </Button>
-        </Tooltip>
+        <GithubMenu
+          githubUrl={githubUrl}
+          onOpenInGithub={openInGithub}
+          onCopyLink={() => void shareGithub()}
+        />
 
         <Tooltip label="Shortcuts (⌘/)">
           <Button
