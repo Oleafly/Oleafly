@@ -37,6 +37,47 @@ export function PreviewPane() {
   const [pageInput, setPageInput] = useState("1");
   const [layout, setLayout] = useState<PdfLayout>("single");
   const pdfRef = useRef<PdfViewerHandle>(null);
+  const scrollBoxRef = useRef<HTMLDivElement>(null);
+  const scaleRef = useRef(scale);
+  scaleRef.current = scale;
+
+  // Trackpad pinch-to-zoom, scoped to the PDF scroll area only. Two webview
+  // families report the gesture differently, so handle both and leave ordinary
+  // two-finger scroll (no ctrlKey, no gesture events) alone.
+  useEffect(() => {
+    const el = scrollBoxRef.current;
+    if (!el) return;
+    const clamp = (v: number) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, v));
+
+    // Chromium webviews (WebView2, WebKitGTK): pinch arrives as Ctrl+wheel.
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      setScale((s) => clamp(s * Math.exp(-e.deltaY * 0.01)));
+    };
+
+    // WebKit (macOS WKWebView, Tauri's default there): pinch fires non-standard
+    // gesture events; `scale` is cumulative relative to gesturestart.
+    let startScale = 1;
+    const onGestureStart = (e: Event) => {
+      e.preventDefault();
+      startScale = scaleRef.current;
+    };
+    const onGestureChange = (e: Event) => {
+      e.preventDefault();
+      const s = (e as unknown as { scale?: number }).scale;
+      if (typeof s === "number" && s > 0) setScale(clamp(startScale * s));
+    };
+
+    el.addEventListener("wheel", onWheel, { passive: false });
+    el.addEventListener("gesturestart", onGestureStart as EventListener, { passive: false });
+    el.addEventListener("gesturechange", onGestureChange as EventListener, { passive: false });
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      el.removeEventListener("gesturestart", onGestureStart as EventListener);
+      el.removeEventListener("gesturechange", onGestureChange as EventListener);
+    };
+  }, [pdfBytes, tab]);
 
   // Keep the jump box in sync with the page the viewer reports, unless it's being
   // edited (focused).
@@ -287,6 +328,7 @@ export function PreviewPane() {
           <LogPane />
         ) : pdfBytes ? (
           <div
+            ref={scrollBoxRef}
             className="h-full overflow-auto bg-sidebar"
             style={inverted ? { filter: "invert(1) hue-rotate(180deg)" } : undefined}
           >

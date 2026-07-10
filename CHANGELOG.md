@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **PDF view layouts** - a view toggle in the preview toolbar switches between
   single-page and two-page (spread) continuous scroll, like a desktop PDF
   reader.
+- **Pinch to zoom the PDF** - a trackpad pinch zooms the preview in and out
+  (only over the PDF area), alongside the existing zoom buttons.
 - **Smooth large documents** - the PDF preview is virtualized: it only renders
   the pages near the viewport (with a hard cap, evicting the farthest), so a
   hundreds-of-pages thesis or book scrolls smoothly with bounded memory.
