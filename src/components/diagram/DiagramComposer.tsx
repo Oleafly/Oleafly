@@ -115,6 +115,14 @@ export function DiagramComposer() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open, setOpen]);
 
+  // Clear any stale preview/log from a previous session when the modal opens.
+  useEffect(() => {
+    if (open) {
+      setPng(null);
+      setLog("");
+    }
+  }, [open]);
+
   const compile = useCallback(async () => {
     if (!projectId || busy) return;
     // In draw mode the code is debounced; compile the freshest generated TikZ.
@@ -274,8 +282,11 @@ export function DiagramComposer() {
             key={m}
             type="button"
             onClick={() => {
-              if (m === "draw" && mode === "code" && code.trim() !== modelToTikz(model).trim()) {
-                toast.info("Draw uses the canvas. Code edits stay in Code until you redraw.");
+              // Entering Code: reflect the current drawing immediately (flush the
+              // debounced generation) so Code always mirrors the canvas.
+              if (m === "code" && hasDrawing) {
+                if (codeTimerRef.current) clearTimeout(codeTimerRef.current);
+                setCode(modelToTikz(model));
               }
               setMode(m);
             }}

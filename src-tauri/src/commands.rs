@@ -227,6 +227,10 @@ pub async fn compile_isolated(
     let project_dir = paths::project_dir(&project_id)?;
     let fig_dir = paths::figure_build_dir(&project_id)?;
     let entry_path = fig_dir.join("_figure.tex");
+    // Remove stale outputs so a failed compile can never return a previous
+    // figure's PDF (which would show the wrong image).
+    let _ = std::fs::remove_file(fig_dir.join("_figure.pdf"));
+    let _ = std::fs::remove_file(fig_dir.join("_figure.log"));
     std::fs::write(&entry_path, source)
         .map_err(|e| format!("failed to write figure source: {e}"))?;
     run_tectonic(

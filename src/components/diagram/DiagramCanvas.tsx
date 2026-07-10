@@ -136,6 +136,7 @@ function CanvasInner({
   onChangeRef.current = onChange;
   const lastEmittedRef = useRef<DiagramModel | null>(model);
   const hydratingRef = useRef(false);
+  const firstRunRef = useRef(true);
   const cascadeRef = useRef(0);
   // Undo/redo history of models (coalesced).
   const historyRef = useRef<DiagramModel[]>([model]);
@@ -155,6 +156,12 @@ function CanvasInner({
 
   // Emit the derived model on any canvas change (except right after hydration).
   useEffect(() => {
+    // Skip the mount run (and hydration echoes) so merely opening the canvas
+    // does not regenerate code and clobber hand edits; only real edits emit.
+    if (firstRunRef.current) {
+      firstRunRef.current = false;
+      return;
+    }
     if (hydratingRef.current) {
       hydratingRef.current = false;
       return;
