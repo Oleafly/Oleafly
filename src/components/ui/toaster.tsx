@@ -35,8 +35,6 @@ function ToastRow({ toast }: { toast: Toast }) {
       className={cn(
         "pointer-events-auto flex w-[min(360px,90vw)] items-start gap-2.5 rounded-lg border bg-popover px-3.5 py-2.5 text-popover-foreground shadow-lg",
         "animate-in fade-in slide-in-from-bottom-2",
-        toast.kind === "error" && "border-destructive/40",
-        toast.kind === "success" && "border-emerald-500/40",
       )}
     >
       <Icon

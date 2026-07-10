@@ -89,6 +89,8 @@ export function Rail() {
           </Tooltip>
         ))}
 
+        <span className="my-1 h-px w-6 bg-border" />
+
         <Tooltip label="Preflight (ATS + accessibility)" side="right">
           <button
             aria-label="Preflight"
