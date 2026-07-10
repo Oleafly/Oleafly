@@ -307,6 +307,8 @@ export function ChatPanel() {
   const pendingImagesRef = useRef<string[]>([]);
   // Timestamp of the last stream part, for the stall watchdog.
   const lastPartAtRef = useRef<number>(0);
+  // Set when the watchdog aborts a silent run, so the catch shows a timeout note.
+  const timedOutRef = useRef(false);
   const figureModeOpen = useSettingsStore((s) => s.figureModeOpen);
   const setFigureModeOpen = useSettingsStore((s) => s.setFigureModeOpen);
   // User's own system-prompt addition (sandboxed into our prompt at send time).
@@ -379,6 +381,13 @@ export function ChatPanel() {
     if (!streaming) return;
     const id = window.setInterval(() => {
       const quietMs = Date.now() - lastPartAtRef.current;
+      // Hard timeout: 90s of total silence from the provider aborts the run so a
+      // hung or unavailable model never spins forever.
+      if (quietMs > 90000) {
+        timedOutRef.current = true;
+        abortRef.current?.abort();
+        return;
+      }
       if (quietMs > 20000) {
         const secs = Math.round(quietMs / 1000);
         setThinkingText(
@@ -625,6 +634,7 @@ export function ChatPanel() {
     setStreaming(true);
     setThinkingText("Thinking…");
     lastPartAtRef.current = Date.now();
+    timedOutRef.current = false;
 
     // Persist this conversation as a chat (creates one on the first message).
     {
@@ -907,9 +917,12 @@ USER_CUSTOM_INSTRUCTIONS`
     } catch (e) {
       // A user-initiated stop (or teardown) isn't an error - note it quietly.
       if (ac.signal.aborted || (e as any)?.name === "AbortError") {
+        const note = timedOutRef.current
+          ? "_Timed out after 90s with no response. The model may be unavailable or overloaded. Try again, or switch models from the menu above._"
+          : "_Stopped._";
         updateLast((m) => ({
           ...m,
-          content: (m.content ? m.content + "\n\n" : "") + "_Stopped._",
+          content: (m.content ? m.content + "\n\n" : "") + note,
         }));
       } else {
         const errMsg = formatError(e, PROVIDERS.find((p) => p.id === provider)?.name);
