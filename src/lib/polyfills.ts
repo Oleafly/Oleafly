@@ -47,3 +47,46 @@ function install(ctor: Ctor | undefined) {
 
 install(typeof Map !== "undefined" ? (Map as unknown as Ctor) : undefined);
 install(typeof WeakMap !== "undefined" ? (WeakMap as unknown as Ctor) : undefined);
+
+// WebKit/WKWebView does not implement async iteration of ReadableStream
+// (`ReadableStream.prototype[Symbol.asyncIterator]`). pdf.js v6 `getTextContent`
+// does `for await (const value of readableStream)`, so text extraction throws
+// "undefined is not a function (near '...of readableStream...')" on macOS/iOS,
+// even though canvas rendering (which uses getReader directly) works. This breaks
+// Preflight, which extracts PDF text. Define the async iterator if it is missing.
+(() => {
+  const RS = (globalThis as unknown as { ReadableStream?: { prototype: Record<PropertyKey, unknown> } })
+    .ReadableStream;
+  if (!RS || typeof RS.prototype[Symbol.asyncIterator] === "function") return;
+  function asyncIterator(this: ReadableStream, opts?: { preventCancel?: boolean }) {
+    const preventCancel = opts?.preventCancel ?? false;
+    const reader = this.getReader();
+    return {
+      next: () => reader.read(),
+      return(value?: unknown) {
+        if (preventCancel) {
+          reader.releaseLock();
+          return Promise.resolve({ value, done: true });
+        }
+        const cancelled = reader.cancel(value);
+        reader.releaseLock();
+        return cancelled.then(() => ({ value, done: true }));
+      },
+      [Symbol.asyncIterator]() {
+        return this;
+      },
+    };
+  }
+  Object.defineProperty(RS.prototype, Symbol.asyncIterator, {
+    value: asyncIterator,
+    writable: true,
+    configurable: true,
+  });
+  if (typeof RS.prototype.values !== "function") {
+    Object.defineProperty(RS.prototype, "values", {
+      value: asyncIterator,
+      writable: true,
+      configurable: true,
+    });
+  }
+})();
