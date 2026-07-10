@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Code2, Image as ImageIcon, Loader2, Play, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Braces, Circle, Code2, Image as ImageIcon, Loader2, Minus, MoveRight, Play, Square, X } from "lucide-react";
+import { CmCodeEditor, type CmHandle } from "@/components/diagram/CmCodeEditor";
+import { Tooltip } from "@/components/ui/tooltip";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import {
@@ -22,6 +24,15 @@ const SAMPLE = `\\begin{tikzpicture}[node distance=1.2cm, >=stealth]
   \\draw[->] (a) -- (b);
   \\draw[->] (b) -- (c);
 \\end{tikzpicture}`;
+
+/** Quick TikZ inserts for the composer toolbar (mirrors the .tex toolbar idea). */
+const TIKZ_SNIPPETS: { label: string; icon: ReactNode; snippet: string }[] = [
+  { label: "Rectangle node", icon: <Square className="size-3.5" />, snippet: "\\node (n) [draw, rounded corners] {Label};\n" },
+  { label: "Circle node", icon: <Circle className="size-3.5" />, snippet: "\\node (n) [draw, circle] {};\n" },
+  { label: "Arrow edge", icon: <MoveRight className="size-3.5" />, snippet: "\\draw[->] (a) -- (b);\n" },
+  { label: "Line edge", icon: <Minus className="size-3.5" />, snippet: "\\draw (a) -- (b);\n" },
+  { label: "Scope", icon: <Braces className="size-3.5" />, snippet: "\\begin{scope}\n  \n\\end{scope}\n" },
+];
 
 /** Turn a user-entered name into a safe file stem (keeps case, no path parts). */
 function safeName(name: string): string {
@@ -49,10 +60,9 @@ export function DiagramComposer() {
   const [log, setLog] = useState("");
   const [busy, setBusy] = useState(false);
   const dirtyRef = useRef(false);
-  const gutterRef = useRef<HTMLDivElement>(null);
+  const cmRef = useRef<CmHandle>(null);
 
   const stem = useMemo(() => safeName(name), [name]);
-  const lineCount = useMemo(() => code.split("\n").length, [code]);
 
   // Close on Escape.
   useEffect(() => {
@@ -209,32 +219,33 @@ export function DiagramComposer() {
         {/* Body: code | preview */}
         <div className="grid min-h-0 flex-1 grid-cols-2">
           <div className="flex min-h-0 flex-col border-r">
-            <div className="flex h-[34px] shrink-0 items-center border-b px-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              TikZ / LaTeX code
-            </div>
-            <div className="flex min-h-0 flex-1 overflow-hidden">
-              {/* Line-number gutter, scroll-synced with the textarea. */}
-              <div
-                ref={gutterRef}
-                aria-hidden
-                className="shrink-0 select-none overflow-hidden py-3 pl-3 pr-2 text-right font-mono text-xs leading-5 text-muted-foreground/50"
-              >
-                {Array.from({ length: lineCount }, (_, i) => (
-                  <div key={i}>{i + 1}</div>
+            <div className="flex h-[34px] shrink-0 items-center gap-2 border-b px-3">
+              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                TikZ / LaTeX code
+              </span>
+              <div className="ml-auto flex items-center gap-0.5">
+                {TIKZ_SNIPPETS.map((s) => (
+                  <Tooltip key={s.label} label={s.label} side="bottom">
+                    <button
+                      type="button"
+                      aria-label={s.label}
+                      onClick={() => cmRef.current?.insert(s.snippet)}
+                      className="flex size-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    >
+                      {s.icon}
+                    </button>
+                  </Tooltip>
                 ))}
               </div>
-              <textarea
+            </div>
+            <div className="min-h-0 flex-1 bg-background">
+              <CmCodeEditor
+                ref={cmRef}
                 value={code}
-                wrap="off"
-                onChange={(e) => {
-                  setCode(e.target.value);
+                onChange={(v) => {
+                  setCode(v);
                   dirtyRef.current = true;
                 }}
-                onScroll={(e) => {
-                  if (gutterRef.current) gutterRef.current.scrollTop = e.currentTarget.scrollTop;
-                }}
-                spellCheck={false}
-                className="min-h-0 flex-1 resize-none whitespace-pre bg-sidebar py-3 pl-2 pr-3 font-mono text-xs leading-5 outline-none"
               />
             </div>
           </div>
