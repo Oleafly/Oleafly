@@ -1,15 +1,15 @@
 import { useState, type ReactNode } from "react";
-import { ChevronDown, ExternalLink, Github, Link as LinkIcon, Settings } from "lucide-react";
+import { ChevronDown, ExternalLink, Github, Link as LinkIcon } from "lucide-react";
 import { useGithubStore } from "@/store/github";
 import { useSettingsStore } from "@/store/settings";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 /**
- * The GitHub control in the top toolbar: the connected account (avatar +
- * username) and the share actions clubbed into one dropdown, like the Export
- * button. Shows "Open in GitHub" and "Copy GitHub link" (enabled once the
- * project is pushed), plus a link into GitHub settings.
+ * The GitHub control in the top toolbar: a combined pill with the connected
+ * account on the left (click opens GitHub settings) and, past a vertical
+ * separator, a GitHub icon that opens the share dropdown (Open in GitHub, Copy
+ * repository link). The share actions enable once the project is pushed.
  */
 export function GithubMenu({
   githubUrl,
@@ -37,23 +37,45 @@ export function GithubMenu({
 
   return (
     <div className="relative">
-      <Tooltip label={connected ? `Connected as @${login}` : "GitHub"} side="bottom">
-        <button
-          onClick={() => setOpen((v) => !v)}
-          aria-label="GitHub menu"
-          className="flex h-7 items-center gap-1.5 rounded-md border bg-background pl-1 pr-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent"
-        >
-          {connected && user?.avatar_url ? (
-            <img src={user.avatar_url} alt="" className="size-5 rounded-full object-cover" />
-          ) : (
-            <span className="flex size-5 items-center justify-center rounded-full bg-foreground text-background">
-              <Github className="size-3" />
-            </span>
-          )}
-          {connected && <span className="max-w-[110px] truncate">{login}</span>}
-          <ChevronDown className="size-3 shrink-0 opacity-60" />
-        </button>
-      </Tooltip>
+      <div className="flex h-7 items-center rounded-md border bg-background">
+        {/* Left: account — click opens GitHub settings. */}
+        {connected && (
+          <>
+            <Tooltip label={`Connected as @${login} · GitHub settings`} side="bottom">
+              <button
+                onClick={openSettings}
+                aria-label={`GitHub: ${login}`}
+                className="flex h-full items-center gap-1.5 rounded-l-md pl-1 pr-2 text-xs font-medium text-foreground transition-colors hover:bg-accent"
+              >
+                {user?.avatar_url ? (
+                  <img src={user.avatar_url} alt="" className="size-5 rounded-full object-cover" />
+                ) : (
+                  <span className="flex size-5 items-center justify-center rounded-full bg-foreground text-background">
+                    <Github className="size-3" />
+                  </span>
+                )}
+                <span className="max-w-[110px] truncate">{login}</span>
+              </button>
+            </Tooltip>
+            <div className="h-4 w-px shrink-0 bg-border" />
+          </>
+        )}
+
+        {/* Right: GitHub icon — opens the share dropdown. */}
+        <Tooltip label="GitHub" side="bottom">
+          <button
+            onClick={() => setOpen((v) => !v)}
+            aria-label="GitHub actions"
+            className={cn(
+              "flex h-full items-center gap-0.5 px-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+              connected ? "rounded-r-md" : "rounded-md",
+            )}
+          >
+            <Github className="size-4" />
+            <ChevronDown className="size-3 shrink-0 opacity-60" />
+          </button>
+        </Tooltip>
+      </div>
 
       {open && (
         <>
@@ -70,7 +92,7 @@ export function GithubMenu({
             />
             <MenuButton
               icon={<LinkIcon className="size-4 text-muted-foreground" />}
-              label="Copy GitHub link"
+              label="Copy repository link"
               disabled={!githubUrl}
               onClick={() => {
                 onCopyLink();
@@ -82,12 +104,16 @@ export function GithubMenu({
                 Push to GitHub to enable these
               </p>
             )}
-            <div className="my-1 h-px bg-border" />
-            <MenuButton
-              icon={<Settings className="size-4 text-muted-foreground" />}
-              label={connected ? `Connected as @${login}` : "Connect GitHub…"}
-              onClick={openSettings}
-            />
+            {!connected && (
+              <>
+                <div className="my-1 h-px bg-border" />
+                <MenuButton
+                  icon={<Github className="size-4 text-muted-foreground" />}
+                  label="Connect GitHub…"
+                  onClick={openSettings}
+                />
+              </>
+            )}
           </div>
         </>
       )}
