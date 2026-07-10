@@ -18,10 +18,12 @@ import {
 import "@xyflow/react/dist/style.css";
 import {
   Circle,
+  Code2,
   Diamond,
   Egg,
   Map as MapIcon,
   RectangleHorizontal,
+  Sigma,
   Square,
   Type as TypeIcon,
 } from "lucide-react";
@@ -48,13 +50,15 @@ const DEFAULTS: Record<NodeShape, { w: number; h: number; label: string }> = {
   text: { w: 90, h: 32, label: "Text" },
 };
 
-const PALETTE: { shape: NodeShape; label: string; icon: React.ReactNode }[] = [
+const PALETTE: { shape: NodeShape; label: string; icon: React.ReactNode; seed?: string }[] = [
   { shape: "rectangle", label: "Rectangle", icon: <Square className="size-4" /> },
   { shape: "roundrect", label: "Rounded box", icon: <RectangleHorizontal className="size-4" /> },
   { shape: "circle", label: "Circle", icon: <Circle className="size-4" /> },
   { shape: "ellipse", label: "Ellipse", icon: <Egg className="size-4" /> },
   { shape: "diamond", label: "Diamond", icon: <Diamond className="size-4" /> },
   { shape: "text", label: "Text", icon: <TypeIcon className="size-4" /> },
+  { shape: "text", label: "Math", icon: <Sigma className="size-4" />, seed: "$E = mc^2$" },
+  { shape: "text", label: "Code", icon: <Code2 className="size-4" />, seed: "\\texttt{print(x)}" },
 ];
 
 const routingToType = (r: DiagEdge["routing"]) =>
@@ -142,7 +146,7 @@ function CanvasInner({
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(model.edges.map(modelEdgeToRf));
   const [selNode, setSelNode] = useState<string | null>(null);
   const [selEdge, setSelEdge] = useState<string | null>(null);
-  const [pending, setPending] = useState<NodeShape | null>(null);
+  const [pending, setPending] = useState<{ shape: NodeShape; seed?: string; key: string } | null>(null);
   const [showMinimap, setShowMinimap] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -225,7 +229,7 @@ function CanvasInner({
   }, [undo, redo]);
 
   const placeNode = useCallback(
-    (shape: NodeShape, flowX: number, flowY: number) => {
+    (shape: NodeShape, flowX: number, flowY: number, label?: string) => {
       const def = DEFAULTS[shape];
       const n: DiagNode = {
         id: newId(),
@@ -234,12 +238,13 @@ function CanvasInner({
         y: Math.round(flowY - def.h / 2),
         w: def.w,
         h: def.h,
-        label: def.label,
+        label: label ?? def.label,
         fill: shape === "text" ? "" : "#eef2ff",
         stroke: shape === "text" ? "" : "#1e293b",
         strokeStyle: "solid",
         strokeWidth: 1,
         textColor: "#0f172a",
+        // Sharp edges by default; the rounded-box tool opts into a radius.
         radius: shape === "roundrect" ? 6 : 0,
       };
       setNodes((ns) => [...ns, modelNodeToRf(n)]);
@@ -247,14 +252,39 @@ function CanvasInner({
     [setNodes],
   );
 
+  // Pending placement carries the palette entry's shape + optional seed label.
+  const pendingRef = useRef<{ shape: NodeShape; seed?: string } | null>(null);
+  pendingRef.current = pending;
+
   const onPaneClick = useCallback(
     (e: React.MouseEvent) => {
-      if (!pending) return;
-      const p = screenToFlowPosition({ x: e.clientX, y: e.clientY });
-      placeNode(pending, p.x, p.y);
+      const p = pendingRef.current;
+      if (!p) return;
+      const pos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+      placeNode(p.shape, pos.x, pos.y, p.seed);
       setPending(null);
     },
-    [pending, placeNode, screenToFlowPosition],
+    [placeNode, screenToFlowPosition],
+  );
+
+  // Z-order: the node array order is the draw order (later draws on top). Move
+  // the selected node within it and reassign zIndex for the editing surface.
+  const reorder = useCallback(
+    (dir: "front" | "back" | "forward" | "backward") => {
+      if (!selNode) return;
+      setNodes((ns) => {
+        const i = ns.findIndex((n) => n.id === selNode);
+        if (i < 0) return ns;
+        const arr = [...ns];
+        const [item] = arr.splice(i, 1);
+        if (dir === "front") arr.push(item);
+        else if (dir === "back") arr.unshift(item);
+        else if (dir === "forward") arr.splice(Math.min(i + 1, arr.length), 0, item);
+        else arr.splice(Math.max(i - 1, 0), 0, item);
+        return arr.map((n, idx) => ({ ...n, zIndex: idx }));
+      });
+    },
+    [selNode, setNodes],
   );
 
   const onConnect = useCallback(
@@ -315,15 +345,19 @@ function CanvasInner({
       {/* Palette */}
       <div className="flex shrink-0 flex-col gap-1 border-r bg-sidebar p-1.5">
         {PALETTE.map((p) => (
-          <Tooltip key={p.shape} label={`${p.label} (click, then click canvas)`} side="right">
+          <Tooltip key={p.label} label={`${p.label} (click, then click canvas)`} side="right">
             <button
               type="button"
               aria-label={p.label}
-              aria-pressed={pending === p.shape}
-              onClick={() => setPending((cur) => (cur === p.shape ? null : p.shape))}
+              aria-pressed={pending?.key === p.label}
+              onClick={() =>
+                setPending((cur) =>
+                  cur?.key === p.label ? null : { shape: p.shape, seed: p.seed, key: p.label },
+                )
+              }
               className={cn(
                 "flex size-8 items-center justify-center rounded-md transition-colors",
-                pending === p.shape
+                pending?.key === p.label
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-accent hover:text-foreground",
               )}
@@ -393,6 +427,7 @@ function CanvasInner({
           edge={selectedEdge ? rfEdgeToModel(selectedEdge) : null}
           onNodeChange={patchNode}
           onEdgeChange={patchEdge}
+          onReorder={reorder}
         />
       </div>
     </div>

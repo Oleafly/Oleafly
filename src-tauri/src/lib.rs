@@ -89,6 +89,7 @@ pub fn run() {
             project::get_project,
             project::list_projects,
             project::create_project,
+            project::create_image_project,
             templates::list_templates,
             templates::template_preview,
             project::create_project_from_template,

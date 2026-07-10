@@ -10,9 +10,12 @@ import {
   MousePointerSquareDashed,
   MoveRight,
   Play,
+  Save,
+  Sparkles,
   Square,
   X,
 } from "lucide-react";
+import { generateText } from "ai";
 import { CmCodeEditor, type CmHandle } from "@/components/diagram/CmCodeEditor";
 import { DiagramCanvas } from "@/components/diagram/DiagramCanvas";
 import { type DiagramModel, newId } from "@/components/diagram/model";
@@ -34,8 +37,11 @@ import {
   writeFileContent,
   readFileContent,
   listFiles,
+  createImageProject,
+  getConfig,
 } from "@/lib/tauri";
 import { buildStandaloneDoc } from "@/lib/ai-figure";
+import { resolveActiveModel, hasConfiguredProvider } from "@/lib/ai-providers";
 import { pdfPageToPng } from "@/lib/pdf-image";
 import { insertAtCursor } from "@/components/editor/cm/controller";
 import { Button } from "@/components/ui/button";
@@ -48,9 +54,9 @@ function starterModel(): DiagramModel {
   return {
     version: 1,
     nodes: [
-      { id: a, shape: "roundrect", x: 200, y: 40, w: 120, h: 52, label: "Dataset", fill: "#eef2ff", stroke: "#1e293b", textColor: "#0f172a" },
-      { id: b, shape: "roundrect", x: 200, y: 150, w: 120, h: 52, label: "Encoder", fill: "#eef2ff", stroke: "#1e293b", textColor: "#0f172a" },
-      { id: c, shape: "roundrect", x: 200, y: 260, w: 120, h: 52, label: "Classifier", fill: "#eef2ff", stroke: "#1e293b", textColor: "#0f172a" },
+      { id: a, shape: "rectangle", x: 200, y: 40, w: 120, h: 52, label: "Dataset", fill: "#eef2ff", stroke: "#1e293b", textColor: "#0f172a", radius: 0 },
+      { id: b, shape: "rectangle", x: 200, y: 150, w: 120, h: 52, label: "Encoder", fill: "#eef2ff", stroke: "#1e293b", textColor: "#0f172a", radius: 0 },
+      { id: c, shape: "rectangle", x: 200, y: 260, w: 120, h: 52, label: "Classifier", fill: "#eef2ff", stroke: "#1e293b", textColor: "#0f172a", radius: 0 },
     ],
     edges: [
       { id: newId("e"), source: a, target: b, routing: "straight", arrow: "forward", style: "solid" },
@@ -130,13 +136,11 @@ export function DiagramComposer() {
     }
   }, [open]);
 
-  const compile = useCallback(async () => {
+  const compile = useCallback(async (overrideCode?: string) => {
     if (!projectId || busy) return;
     // In draw mode the code is debounced; compile the freshest generated TikZ.
-    const source = buildStandaloneDoc({
-      code: hasDrawing && mode === "draw" ? modelToTikz(model) : code,
-      libraries: DIAGRAM_LIBS,
-    });
+    const raw = overrideCode ?? (hasDrawing && mode === "draw" ? modelToTikz(model) : code);
+    const source = buildStandaloneDoc({ code: raw, libraries: DIAGRAM_LIBS });
     setBusy(true);
     setLog("");
     try {
@@ -269,6 +273,64 @@ export function DiagramComposer() {
     }
   }, [projectId, stem]);
 
+  // Save the whole diagram (figure + TikZ + editor model) as a reusable image
+  // project that appears on the home screen and re-opens in the image editor.
+  const saveAsProject = useCallback(async () => {
+    const src = buildStandaloneDoc({
+      code: hasDrawing ? serializeDiagram(model) : code,
+      libraries: DIAGRAM_LIBS,
+    });
+    try {
+      await createImageProject(name.trim() || "Diagram", src);
+      await useFilesStore.getState().refreshProjects();
+      toast.success("Saved as an image project. Find it on your home screen.");
+    } catch (e) {
+      toast.error(`Could not save as project: ${e}`);
+    }
+  }, [name, model, code, hasDrawing]);
+
+  // Ask the configured AI to fix a failed compile from the log. One-shot: it
+  // returns corrected TikZ, which we drop into Code and recompile (undoable in
+  // the editor).
+  const [fixing, setFixing] = useState(false);
+  const fixWithAi = useCallback(async () => {
+    if (fixing) return;
+    setFixing(true);
+    try {
+      const cfg = await getConfig();
+      if (!hasConfiguredProvider(cfg)) {
+        toast.error("Connect an AI provider in Settings to use Fix with AI.");
+        return;
+      }
+      const { model: aiModel } = resolveActiveModel(cfg);
+      const cur = hasDrawing && mode === "draw" ? modelToTikz(model) : code;
+      const { text } = await generateText({
+        model: aiModel,
+        system:
+          "You fix LaTeX/TikZ figure code so it compiles under Tectonic (XeLaTeX) in a standalone document with tikz + shapes.geometric, arrows.meta, positioning, calc loaded. Return ONLY the corrected figure body: the \\begin{tikzpicture}...\\end{tikzpicture} plus any \\definecolor lines. No preamble, no \\documentclass, no explanation, no markdown code fences. Never use em dashes.",
+        prompt: `This TikZ figure failed to compile. Fix it.\n\nCODE:\n${cur}\n\nCOMPILE LOG (tail):\n${log.slice(-3000)}`,
+      });
+      const fixed = text
+        .replace(/^```[a-zA-Z]*\n?/gm, "")
+        .replace(/```$/gm, "")
+        .trim();
+      if (!fixed) {
+        toast.error("The AI did not return a fix.");
+        return;
+      }
+      setCode(fixed);
+      setMode("code");
+      toast.success("Applied an AI fix. Recompiling…");
+      await compile(fixed);
+    } catch (e) {
+      toast.error(`Fix failed: ${e}`);
+    } finally {
+      setFixing(false);
+    }
+  }, [fixing, hasDrawing, mode, model, code, log, compile]);
+
+  const compileFailed = !!log && !png;
+
   if (!open) return null;
 
   return (
@@ -301,6 +363,19 @@ export function DiagramComposer() {
           </Tooltip>
         </div>
         <div className="ml-auto flex items-center gap-2">
+          {compileFailed && (
+            <Tooltip label="Ask AI to fix the compile error">
+              <Button variant="secondary" size="sm" onClick={() => void fixWithAi()} disabled={fixing}>
+                {fixing ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
+                Fix with AI
+              </Button>
+            </Tooltip>
+          )}
+          <Tooltip label="Save this diagram as a reusable image project">
+            <Button variant="secondary" size="sm" onClick={() => void saveAsProject()}>
+              <Save className="size-3.5" /> Save as project
+            </Button>
+          </Tooltip>
           <Button size="sm" onClick={() => void compile()} disabled={busy}>
             {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Play className="size-3.5" />}
             Compile

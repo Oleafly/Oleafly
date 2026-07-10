@@ -121,6 +121,10 @@ export const listProjects = () => invoke<ProjectInfo[]>("list_projects");
 export const createProject = (name: string) =>
   invoke<string>("create_project", { name });
 
+/** Create an image-kind project from a standalone document (Save as project). */
+export const createImageProject = (name: string, source: string, color?: string) =>
+  invoke<string>("create_image_project", { name, source, color });
+
 export interface TemplateLicense {
   spdx: string;
   author: string;

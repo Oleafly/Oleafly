@@ -496,6 +496,34 @@ pub fn create_project(name: String) -> Result<String, String> {
     Ok(id)
 }
 
+/// Create an image-kind project whose `main.tex` is a standalone document
+/// (`source`). Used by "Save as project" in the diagram composer so a figure,
+/// its TikZ, and its embedded editor model all persist as a reusable project.
+#[tauri::command]
+pub fn create_image_project(
+    name: String,
+    source: String,
+    color: Option<String>,
+) -> Result<String, String> {
+    let root = paths::projects_root()?;
+    let id = unique_random_slug(&root)?;
+    let dir = root.join(&id);
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    std::fs::write(dir.join("main.tex"), source).map_err(|e| e.to_string())?;
+    write_meta(
+        &id,
+        &ProjectMeta {
+            name,
+            main_doc: default_main_doc(),
+            engine: default_engine(),
+            color: color.unwrap_or_default(),
+            kind: "image".into(),
+            exports: Vec::new(),
+        },
+    )?;
+    Ok(id)
+}
+
 fn slugify(name: &str) -> String {
     let slug: String = name
         .to_lowercase()

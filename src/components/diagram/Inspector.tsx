@@ -6,6 +6,8 @@ import type {
   EdgeArrow,
   EdgeStyle,
 } from "@/components/diagram/model";
+import { BringToFront, ChevronsDown, ChevronsUp, SendToBack } from "lucide-react";
+import { Tooltip } from "@/components/ui/tooltip";
 import {
   Select,
   SelectContent,
@@ -13,6 +15,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+export type ReorderDir = "front" | "back" | "forward" | "backward";
 
 const ROUNDABLE = new Set(["rectangle", "roundrect", "text"]);
 const FONT_SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28];
@@ -73,11 +77,13 @@ export function Inspector({
   edge,
   onNodeChange,
   onEdgeChange,
+  onReorder,
 }: {
   node: DiagNode | null;
   edge: DiagEdge | null;
   onNodeChange: (patch: Partial<DiagNode>) => void;
   onEdgeChange: (patch: Partial<DiagEdge>) => void;
+  onReorder?: (dir: ReorderDir) => void;
 }) {
   if (!node && !edge) {
     return (
@@ -90,7 +96,32 @@ export function Inspector({
   if (node) {
     return (
       <div className="flex flex-col gap-2.5 p-3">
-        <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Shape</div>
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Shape</span>
+          {onReorder && (
+            <div className="flex items-center gap-0.5">
+              {(
+                [
+                  { dir: "front", label: "Bring to front", icon: <BringToFront className="size-3.5" /> },
+                  { dir: "forward", label: "Forward", icon: <ChevronsUp className="size-3.5" /> },
+                  { dir: "backward", label: "Backward", icon: <ChevronsDown className="size-3.5" /> },
+                  { dir: "back", label: "Send to back", icon: <SendToBack className="size-3.5" /> },
+                ] as { dir: ReorderDir; label: string; icon: React.ReactNode }[]
+              ).map((b) => (
+                <Tooltip key={b.dir} label={b.label} side="bottom">
+                  <button
+                    type="button"
+                    aria-label={b.label}
+                    onClick={() => onReorder(b.dir)}
+                    className="flex size-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  >
+                    {b.icon}
+                  </button>
+                </Tooltip>
+              ))}
+            </div>
+          )}
+        </div>
         <label className="flex flex-col gap-1 text-xs">
           <span className="text-muted-foreground">Label (LaTeX)</span>
           <input
