@@ -123,10 +123,33 @@ pub async fn compile_project(
     std::fs::write(&entry_path, wrapper)
         .map_err(|e| format!("failed to write compile entry: {e}"))?;
 
+    run_tectonic(
+        &app,
+        &entry_path,
+        &build_dir,
+        &project_dir,
+        paths::ENTRY_STEM,
+        "compile:log",
+        offline.unwrap_or(false),
+    )
+    .await
+}
+
+/// Spawn Tectonic on `entry_path`, streaming log lines to `log_event`, and
+/// assemble a `CompileResult` from the outputs written to `out_dir` under `stem`.
+/// Shared by the main-document compile and the isolated figure compile.
+async fn run_tectonic(
+    app: &tauri::AppHandle,
+    entry_path: &std::path::Path,
+    out_dir: &std::path::Path,
+    search_root: &std::path::Path,
+    stem: &str,
+    log_event: &str,
+    offline: bool,
+) -> Result<CompileResult, String> {
     let entry_str = entry_path.to_string_lossy().to_string();
-    let out_str = build_dir.to_string_lossy().to_string();
-    let project_str = project_dir.to_string_lossy().to_string();
-    let search_opt = format!("search-path={project_str}");
+    let out_str = out_dir.to_string_lossy().to_string();
+    let search_opt = format!("search-path={}", search_root.to_string_lossy());
 
     let sidecar = app
         .shell()
@@ -134,8 +157,7 @@ pub async fn compile_project(
         .map_err(|e| format!("sidecar lookup failed: {e}"))?;
 
     let compile_start = std::time::Instant::now();
-
-    let args = tectonic_args(&out_str, &search_opt, &entry_str, offline.unwrap_or(false));
+    let args = tectonic_args(&out_str, &search_opt, &entry_str, offline);
     let arg_refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
 
     let (mut rx, _child) = sidecar
@@ -145,41 +167,26 @@ pub async fn compile_project(
 
     let mut stdout_buf = String::new();
     let mut exit_code: Option<i32> = None;
-
     while let Some(event) = rx.recv().await {
         match event {
-            CommandEvent::Stdout(bytes) => {
+            CommandEvent::Stdout(bytes) | CommandEvent::Stderr(bytes) => {
                 let s = String::from_utf8_lossy(&bytes).into_owned();
-                let _ = app.emit("compile:log", &s);
-                stdout_buf.push_str(&s);
-            }
-            CommandEvent::Stderr(bytes) => {
-                let s = String::from_utf8_lossy(&bytes).into_owned();
-                let _ = app.emit("compile:log", &s);
+                let _ = app.emit(log_event, &s);
                 stdout_buf.push_str(&s);
             }
             CommandEvent::Error(err) => {
-                let _ = app.emit("compile:log", &err);
+                let _ = app.emit(log_event, &err);
             }
-            CommandEvent::Terminated(payload) => {
-                exit_code = payload.code;
-            }
+            CommandEvent::Terminated(payload) => exit_code = payload.code,
             _ => {}
         }
     }
 
-    // Outputs are named after the wrapper stem (`_openleaf_entry`).
-    let stem = paths::ENTRY_STEM;
-    let log = std::fs::read_to_string(build_dir.join(format!("{stem}.log")))
+    let log = std::fs::read_to_string(out_dir.join(format!("{stem}.log")))
         .unwrap_or_else(|_| stdout_buf.clone());
-
-    let pdf_path = build_dir.join(format!("{stem}.pdf"));
-    let synctex_path = build_dir.join(format!("{stem}.synctex.gz"));
-
-    // The PDF bytes are fetched separately (read_compiled_pdf) as raw bytes; here
-    // we only report whether one was produced.
+    let pdf_path = out_dir.join(format!("{stem}.pdf"));
+    let synctex_path = out_dir.join(format!("{stem}.synctex.gz"));
     let has_pdf = pdf_path.exists();
-
     let errors = parse_log_errors(&log);
 
     Ok(CompileResult {
@@ -193,6 +200,90 @@ pub async fn compile_project(
         out_dir: Some(out_str),
         compile_time_ms: compile_start.elapsed().as_millis() as u64,
     })
+}
+
+/// Decode a base64 payload for `write_project_bytes`. Pure, so it is unit-testable.
+fn decode_b64(data_base64: &str) -> Result<Vec<u8>, String> {
+    use base64::{engine::general_purpose::STANDARD, Engine};
+    STANDARD
+        .decode(data_base64.as_bytes())
+        .map_err(|e| format!("invalid base64: {e}"))
+}
+
+/// Compile a standalone figure document in isolation, so figure iteration is
+/// fast and never touches the main preview PDF. The `source` is a full
+/// `\documentclass{standalone}` document; it is written to
+/// `.openleaf/figbuild/_figure.tex` and compiled directly (no pdfLaTeX wrapper,
+/// which would collide with the standalone document class).
+#[tauri::command]
+pub async fn compile_isolated(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    project_id: String,
+    source: String,
+    offline: Option<bool>,
+) -> Result<CompileResult, String> {
+    let _guard = state.compile_lock.lock().await;
+    let project_dir = paths::project_dir(&project_id)?;
+    let fig_dir = paths::figure_build_dir(&project_id)?;
+    let entry_path = fig_dir.join("_figure.tex");
+    std::fs::write(&entry_path, source)
+        .map_err(|e| format!("failed to write figure source: {e}"))?;
+    run_tectonic(
+        &app,
+        &entry_path,
+        &fig_dir,
+        &project_dir,
+        "_figure",
+        "figure:log",
+        offline.unwrap_or(false),
+    )
+    .await
+}
+
+/// Return the last isolated figure PDF for a project as raw bytes.
+#[tauri::command]
+pub async fn read_isolated_pdf(project_id: String) -> Result<Response, String> {
+    let bytes = tauri::async_runtime::spawn_blocking(move || -> Result<Vec<u8>, String> {
+        let dir = paths::figure_build_dir(&project_id)?;
+        std::fs::read(dir.join("_figure.pdf")).map_err(|e| format!("no figure PDF: {e}"))
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+    Ok(Response::new(bytes))
+}
+
+/// Read raw bytes from a project-relative path (path-guarded). Used to hand an
+/// existing project image (e.g. a hand-drawn sketch) to a vision model.
+#[tauri::command]
+pub async fn read_project_bytes(project_id: String, rel_path: String) -> Result<Response, String> {
+    let target = crate::project::resolve_in_project(&project_id, &rel_path)?;
+    let bytes = tauri::async_runtime::spawn_blocking(move || -> Result<Vec<u8>, String> {
+        std::fs::read(&target).map_err(|e| format!("cannot read {rel_path}: {e}"))
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+    Ok(Response::new(bytes))
+}
+
+/// Write raw bytes (base64-encoded over IPC) to a project-relative path. Used to
+/// persist an accepted figure's PNG into the visible `figures/` folder.
+#[tauri::command]
+pub async fn write_project_bytes(
+    project_id: String,
+    rel_path: String,
+    data_base64: String,
+) -> Result<(), String> {
+    let bytes = decode_b64(&data_base64)?;
+    let target = crate::project::resolve_in_project(&project_id, &rel_path)?;
+    tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
+        if let Some(parent) = target.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        std::fs::write(&target, bytes).map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 /// Build the Tectonic sidecar argument list. Pure, so the ordering (notably
@@ -320,5 +411,13 @@ mod tests {
         assert!(!args.iter().any(|a| a == "--only-cached"));
         assert_eq!(args[0], "-X");
         assert_eq!(args[1], "compile");
+    }
+
+    #[test]
+    fn decode_b64_roundtrip_and_rejects_garbage() {
+        use base64::{engine::general_purpose::STANDARD, Engine};
+        let enc = STANDARD.encode(b"PNGDATA");
+        assert_eq!(decode_b64(&enc).unwrap(), b"PNGDATA");
+        assert!(decode_b64("not*base64!").is_err());
     }
 }

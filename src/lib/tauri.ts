@@ -50,6 +50,22 @@ export interface ProjectInfo {
 export const compileProject = (projectId: string, mainDoc: string, offline = false) =>
   invoke<CompileResult>("compile_project", { projectId, mainDoc, offline });
 
+/** Compile a standalone figure document in isolation (separate build dir). */
+export const compileIsolated = (projectId: string, source: string, offline = false) =>
+  invoke<CompileResult>("compile_isolated", { projectId, source, offline });
+
+/** Fetch the last isolated figure PDF as raw bytes. */
+export const readIsolatedPdf = (projectId: string) =>
+  invoke<ArrayBuffer>("read_isolated_pdf", { projectId });
+
+/** Read raw bytes of a project-relative file (e.g. an image) over IPC. */
+export const readProjectBytes = (projectId: string, relPath: string) =>
+  invoke<ArrayBuffer>("read_project_bytes", { projectId, relPath });
+
+/** Write raw bytes (base64 over IPC) to a project-relative path. */
+export const writeProjectBytes = (projectId: string, relPath: string, dataBase64: string) =>
+  invoke<void>("write_project_bytes", { projectId, relPath, dataBase64 });
+
 export const listFiles = (projectId: string) =>
   invoke<FileEntry[]>("list_files", { projectId });
 

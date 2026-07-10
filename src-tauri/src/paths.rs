@@ -107,6 +107,17 @@ pub fn build_dir(project_id: &str) -> Result<PathBuf, String> {
     Ok(dir)
 }
 
+/// The per-project isolated figure build directory: `<project>/.openleaf/figbuild/`.
+/// Separate from `build_dir` so figure iteration never clobbers the main preview PDF.
+pub fn figure_build_dir(project_id: &str) -> Result<PathBuf, String> {
+    let dir = project_dir(project_id)?.join(".openleaf").join("figbuild");
+    if !dir.exists() {
+        std::fs::create_dir_all(&dir)
+            .map_err(|e| format!("failed to create figure build dir {dir:?}: {e}"))?;
+    }
+    Ok(dir)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
