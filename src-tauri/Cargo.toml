@@ -3,7 +3,7 @@ name = "openleaf"
 version = "0.2.2"
 description = "OpenLeaf - local-first LaTeX & resume authoring"
 authors = ["Prajwal S Venkateshmurthy and contributors"]
-license = "Apache-2.0"
+license = "AGPL-3.0-or-later"
 edition = "2021"
 rust-version = "1.77"
 

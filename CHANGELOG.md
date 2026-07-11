@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **License changed from Apache-2.0 to AGPL-3.0-or-later.** OpenLeaf stays free
+  and open source; the AGPL's network copyleft means anyone who distributes or
+  hosts a modified version must share their source under the same license.
+
 ### Added
 
 - **Draw with AI (figures)** - turn a prompt or a selected paragraph into a
