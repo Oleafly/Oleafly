@@ -64,6 +64,13 @@ pnpm test                                 # vitest across src/ and packages/
 cd src-tauri && cargo check               # backend compiles
 ```
 
+For user-facing changes, also run the end-to-end suite (real app, real
+compiles; see [e2e/README.md](../e2e/README.md)):
+
+```bash
+pnpm test:e2e:app                         # builds + launches the app, runs Playwright, tears down
+```
+
 ## How a compile works
 
 1. Frontend calls `compileProject(projectId, mainDoc, offline)` via Tauri IPC.

@@ -31,3 +31,6 @@ src-tauri/binaries/*
 # Local planning docs — not committed
 docs/planning/
 docs/superpowers/
+
+# Playwright e2e artifacts
+test-results/

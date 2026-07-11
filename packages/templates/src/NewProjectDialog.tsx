@@ -242,6 +242,7 @@ export function NewProjectDialog({
       onClick={onClose}
     >
       <div
+        data-testid="template-gallery"
         className="flex h-[min(80vh,680px)] w-full max-w-4xl flex-col overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
@@ -313,6 +314,7 @@ export function NewProjectDialog({
                       <button
                         key={t.id}
                         type="button"
+                        data-testid={`template-card-${t.id}`}
                         onClick={() => choose(t)}
                         title={t.description}
                         className="group flex flex-col text-left focus:outline-none"
@@ -429,6 +431,7 @@ export function NewProjectDialog({
                     <ArrowLeft className="size-4" /> Back
                   </Button>
                   <Button
+                    data-testid="create-project"
                     className="bg-primary text-white hover:bg-primary"
                     onClick={() => void submit()}
                     disabled={working || !name.trim()}

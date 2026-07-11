@@ -233,6 +233,8 @@ export function PreviewPane() {
                 ? "Compiled with warnings"
                 : "Compiled successfully"
             }
+            data-testid="compile-status"
+            data-severity={severity}
           >
             {severity === "error" ? (
               <XCircle className="size-3.5" />

@@ -364,7 +364,7 @@ export function DiagramComposer({
               <Save className="size-3.5" /> Save as project
             </Button>
           </Tooltip>
-          <Button size="sm" onClick={() => void compile()} disabled={busy}>
+          <Button data-testid="diagram-compile" size="sm" onClick={() => void compile()} disabled={busy}>
             {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Play className="size-3.5" />}
             Compile
           </Button>
@@ -385,6 +385,7 @@ export function DiagramComposer({
           <button
             key={m}
             type="button"
+            data-testid={`diagram-tab-${m}`}
             onClick={() => {
               // Entering Code: reflect the current drawing immediately (flush the
               // debounced generation) so Code always mirrors the canvas.
@@ -498,7 +499,7 @@ export function DiagramComposer({
             <Button variant="secondary" size="sm" onClick={() => void insertAsCode()}>
               <Code2 className="size-3.5" /> Insert as code (vector)
             </Button>
-            <Button size="sm" onClick={() => void insertAsImage()} disabled={!png}>
+            <Button data-testid="diagram-insert-image" size="sm" onClick={() => void insertAsImage()} disabled={!png}>
               <ImageIcon className="size-3.5" /> Insert as image (PNG)
             </Button>
           </div>

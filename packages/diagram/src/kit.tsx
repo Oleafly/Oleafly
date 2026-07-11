@@ -12,6 +12,7 @@ export interface DiagramKit {
     onClick?: () => void;
     disabled?: boolean;
     className?: string;
+    "data-testid"?: string;
     children?: ReactNode;
   }>;
   Tooltip: ComponentType<{

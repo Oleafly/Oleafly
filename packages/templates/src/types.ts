@@ -36,6 +36,7 @@ export interface TemplatesKit {
     disabled?: boolean;
     className?: string;
     "aria-label"?: string;
+    "data-testid"?: string;
     children?: ReactNode;
   }>;
   Tooltip: ComponentType<{ label: ReactNode; children: ReactNode }>;

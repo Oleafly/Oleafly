@@ -66,7 +66,7 @@ export function Library() {
   };
 
   return (
-    <div className="relative flex h-full flex-col bg-background">
+    <div data-testid="library" className="relative flex h-full flex-col bg-background">
       <GridPattern
         width={48}
         height={48}
@@ -93,6 +93,7 @@ export function Library() {
             <>
               <Tooltip label="New project">
                 <Button
+                  data-testid="new-project"
                   variant="ghost"
                   size="sm"
                   className="text-muted-foreground hover:text-foreground"
@@ -147,6 +148,7 @@ export function Library() {
               </EmptyHeader>
               <EmptyContent className="max-w-2xl">
                 <Button
+                  data-testid="create-first-project"
                   className="bg-primary text-white hover:bg-primary"
                   onClick={() => setNewProjectOpen(true)}
                 >

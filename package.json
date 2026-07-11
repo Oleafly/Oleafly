@@ -16,7 +16,9 @@
     "lint:fix": "biome lint --write src",
     "test": "vitest run",
     "test:watch": "vitest",
-    "prepare": "git config core.hooksPath .githooks || true"
+    "prepare": "git config core.hooksPath .githooks || true",
+    "test:e2e": "playwright test -c e2e/playwright.config.ts",
+    "test:e2e:app": "./scripts/e2e.sh"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.7",
@@ -36,14 +38,14 @@
     "@codemirror/view": "^6.43.4",
     "@lezer/highlight": "^1.2.3",
     "@openleaf/ai-core": "workspace:*",
+    "@openleaf/ai-tools": "workspace:*",
     "@openleaf/diagram": "workspace:*",
     "@openleaf/editor": "workspace:*",
-    "@openleaf/ai-tools": "workspace:*",
+    "@openleaf/latex": "workspace:*",
     "@openleaf/preflight": "workspace:*",
+    "@openleaf/preview": "workspace:*",
     "@openleaf/registry": "workspace:*",
     "@openleaf/templates": "workspace:*",
-    "@openleaf/preview": "workspace:*",
-    "@openleaf/latex": "workspace:*",
     "@radix-ui/react-context-menu": "^2.3.2",
     "@radix-ui/react-select": "^2.3.2",
     "@radix-ui/react-slot": "^1.1.1",
@@ -76,6 +78,8 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.2",
+    "@playwright/test": "^1.61.1",
+    "@srsholmes/tauri-playwright": "^0.4.1",
     "@tailwindcss/vite": "^4.0.0",
     "@tauri-apps/cli": "^2.1.0",
     "@types/canvas-confetti": "^1.9.0",

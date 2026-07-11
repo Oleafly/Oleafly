@@ -37,6 +37,26 @@ pub fn run() {
             .plugin(tauri_plugin_process::init());
     }
 
+    // E2E automation bridge, compiled in only for `--features e2e-testing`
+    // builds (real-webview Playwright control; see e2e/README.md). The bridge
+    // returns eval results through a plugin command, so grant its permission
+    // at runtime here; a static capabilities/ entry would break normal builds,
+    // where the plugin (and its permission) doesn't exist.
+    #[cfg(feature = "e2e-testing")]
+    {
+        builder = builder
+            .plugin(tauri_plugin_playwright::init())
+            .setup(|app| {
+                use tauri::Manager;
+                app.add_capability(
+                    tauri::ipc::CapabilityBuilder::new("e2e-playwright")
+                        .window("main")
+                        .permission("playwright:default"),
+                )?;
+                Ok(())
+            });
+    }
+
     builder
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![

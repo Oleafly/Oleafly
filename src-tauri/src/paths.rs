@@ -42,8 +42,15 @@ pub fn run_migrations() {
     migrate_legacy();
 }
 
-/// The OpenLeaf library root: `~/.openleaf/`.
+/// The OpenLeaf library root: `~/.openleaf/`, or `$OPENLEAF_DATA_DIR` when
+/// set and non-empty (e2e tests point this at a throwaway directory so runs
+/// are hermetic and never touch the user's real projects).
 pub fn openleaf_root() -> Result<PathBuf, String> {
+    if let Some(dir) = std::env::var_os("OPENLEAF_DATA_DIR") {
+        if !dir.is_empty() {
+            return Ok(PathBuf::from(dir));
+        }
+    }
     Ok(home_dir()?.join(".openleaf"))
 }
 

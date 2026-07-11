@@ -17,6 +17,7 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = ["macos-private-api"] }
 tauri-plugin-shell = "2"
+tauri-plugin-playwright = { version = "0.4", optional = true }
 tauri-plugin-dialog = "2"
 tauri-plugin-os = "2"
 # In-app auto-update: checks the GitHub Releases `latest.json`, verifies the
@@ -41,6 +42,8 @@ reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]
+# E2E automation bridge (Playwright socket server); never in release builds.
+e2e-testing = ["dep:tauri-plugin-playwright"]
 
 # Size-optimized release build. `opt-level = "s"` favors size, `lto` + a single
 # codegen unit let the linker drop dead code across crates, and `strip` removes
