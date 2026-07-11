@@ -18,8 +18,8 @@ import {
 import { generateText } from "ai";
 import { CmCodeEditor, type CmHandle } from "@/components/diagram/CmCodeEditor";
 import { DiagramCanvas } from "@/components/diagram/DiagramCanvas";
-import { type DiagramModel, newId } from "@/components/diagram/model";
-import { modelToTikz, serializeDiagram, parseEmbeddedModel, DIAGRAM_LIBS } from "@/components/diagram/tikz-serializer";
+import { type DiagramModel, newId } from "@openleaf/latex";
+import { modelToTikz, serializeDiagram, parseEmbeddedModel, DIAGRAM_LIBS } from "@openleaf/latex";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
   Select,

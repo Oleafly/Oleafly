@@ -5,7 +5,7 @@ import {
   defaultModel,
   credentialMeta,
   pickActiveProvider,
-} from "./ai-providers";
+} from "./providers";
 
 describe("ai-providers", () => {
   it("ships a non-empty provider catalog, each with id/name/models", () => {

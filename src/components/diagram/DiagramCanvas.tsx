@@ -41,7 +41,7 @@ import {
   type DiagEdge,
   type NodeShape,
   newId,
-} from "@/components/diagram/model";
+} from "@openleaf/latex";
 import { cn } from "@/lib/utils";
 
 const DEFAULTS: Record<NodeShape, { w: number; h: number; label: string }> = {

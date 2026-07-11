@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Handle, Position, NodeResizer, type NodeProps } from "@xyflow/react";
-import type { NodeShape, StrokeStyle } from "@/components/diagram/model";
+import type { NodeShape, StrokeStyle } from "@openleaf/latex";
 import { useDiagramEdit } from "@/components/diagram/nodes/edit-context";
 
 export interface ShapeData {

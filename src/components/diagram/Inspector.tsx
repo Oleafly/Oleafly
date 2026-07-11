@@ -5,7 +5,7 @@ import type {
   EdgeRouting,
   EdgeArrow,
   EdgeStyle,
-} from "@/components/diagram/model";
+} from "@openleaf/latex";
 import { BringToFront, ChevronsDown, ChevronsUp, SendToBack } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import {

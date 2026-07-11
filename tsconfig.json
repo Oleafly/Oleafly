@@ -21,8 +21,10 @@
 
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@openleaf/latex": ["./packages/latex/src/index.ts"],
+      "@openleaf/ai-core": ["./packages/ai-core/src/index.ts"]
     }
   },
-  "include": ["src", "vite.config.ts"]
+  "include": ["src", "packages", "vite.config.ts"]
 }
