@@ -3,9 +3,11 @@ import { streamText } from "ai";
 import {
   ArrowUp,
   Brain,
+  Check,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  Copy,
   History,
   Info,
   Loader2,
@@ -93,6 +95,27 @@ function InfoHint({ message }: { message: string }) {
         </div>
       )}
     </span>
+  );
+}
+
+/** Hover-revealed copy control shown beside a chat bubble (outside it). */
+function CopyMessageButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      aria-label="Copy message"
+      title="Copy message"
+      onClick={() => {
+        void navigator.clipboard.writeText(text).then(() => {
+          setCopied(true);
+          window.setTimeout(() => setCopied(false), 1500);
+        });
+      }}
+      className="shrink-0 self-center rounded-md p-1.5 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground group-hover:opacity-100"
+    >
+      {copied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
+    </button>
   );
 }
 
@@ -328,15 +351,24 @@ const MessageItem = memo(function MessageItem({
       {msg.content ? (
         <div
           className={cn(
-            "max-w-[85%] overflow-hidden rounded-lg px-3 py-2 text-sm",
-            msg.role === "user" ? "bg-primary text-white" : "bg-muted text-foreground"
+            "group flex w-full items-center gap-2",
+            msg.role === "user" && "justify-end"
           )}
         >
-          {msg.role === "assistant" ? (
-            <Markdown className="chat-markdown">{msg.content}</Markdown>
-          ) : (
-            <p className="whitespace-pre-wrap break-words">{msg.content}</p>
-          )}
+          {msg.role === "user" && <CopyMessageButton text={msg.content} />}
+          <div
+            className={cn(
+              "max-w-[85%] overflow-hidden rounded-lg px-3 py-2 text-sm",
+              msg.role === "user" ? "bg-primary text-white" : "bg-muted text-foreground"
+            )}
+          >
+            {msg.role === "assistant" ? (
+              <Markdown className="chat-markdown">{msg.content}</Markdown>
+            ) : (
+              <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+            )}
+          </div>
+          {msg.role === "assistant" && <CopyMessageButton text={msg.content} />}
         </div>
       ) : null}
     </div>
