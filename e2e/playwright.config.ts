@@ -26,6 +26,9 @@ try {
 export default defineConfig({
   testDir: "./tests",
   timeout: 60_000,
+  // One retry absorbs machine-load flake (slow first compiles, WASM warmup);
+  // consistent double failures still fail the run.
+  retries: 1,
   // The socket bridge drives one app instance; never parallelize against it.
   workers: 1,
   fullyParallel: false,

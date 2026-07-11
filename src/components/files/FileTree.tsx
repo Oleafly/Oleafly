@@ -460,6 +460,7 @@ function TreeRow({ node, depth, ctx }: { node: TreeNode; depth: number; ctx: Tre
         <div style={{ paddingLeft: `${depth * 12 + 0}px` }} className="py-0.5">
           <input
             autoFocus
+            aria-label="Rename file"
             value={ctx.renameValue}
             onChange={(e) => ctx.onChangeRename(e.target.value)}
             onBlur={() => ctx.onCommitRename(node.path)}

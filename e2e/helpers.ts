@@ -37,7 +37,12 @@ export async function openGallery(page: Page) {
  *  into its own state) and inserts via execCommand('insertText'), which
  *  CodeMirror 6 treats as real user input - so the store sync, autosave,
  *  and linters all fire exactly as if the user typed it. */
-export async function typeInEditorAfter(page: Page, anchorText: string, text: string) {
+export async function typeInEditorAfter(
+  page: Page,
+  anchorText: string,
+  text: string,
+  occurrence = 1,
+) {
   const ok = await page.evaluate<boolean>(
     `(() => {
       const content = document.querySelector('.cm-content');
@@ -45,9 +50,10 @@ export async function typeInEditorAfter(page: Page, anchorText: string, text: st
       content.focus();
       const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
       let node;
+      let seen = 0;
       while ((node = walker.nextNode())) {
         const i = node.textContent.indexOf(${JSON.stringify(anchorText)});
-        if (i >= 0) {
+        if (i >= 0 && ++seen === ${occurrence}) {
           const range = document.createRange();
           range.setStart(node, i + ${JSON.stringify(anchorText)}.length);
           range.collapse(true);
@@ -115,6 +121,57 @@ export async function paletteItems(page: Page): Promise<string[]> {
   return page.evaluate<string[]>(
     `Array.from(document.querySelectorAll('[cmdk-item]')).map(e => e.textContent.trim())`,
   );
+}
+
+/** Place the caret inside the nth `anchorText` via a coordinate mouse click
+ *  (CodeMirror's own mouse handling; never mutates the document). Searches
+ *  line-level text, so lint/decoration spans that split text nodes (e.g.
+ *  spellcheck squiggles) cannot hide the anchor. */
+export async function caretIn(
+  page: Page,
+  anchorText: string,
+  occurrence = 1,
+  where: "start" | "end" = "start",
+) {
+  const ok = await page.evaluate<boolean>(
+    `(() => {
+      const lines = Array.from(document.querySelectorAll('.cm-content .cm-line'));
+      let seen = 0;
+      for (const line of lines) {
+        let idx = -1;
+        while ((idx = line.textContent.indexOf(ANCHOR, idx + 1)) >= 0) {
+          if (++seen !== OCC) continue;
+          // Map the line-level offset back to a concrete text node.
+          const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
+          let node, acc = 0;
+          const target = WHERE === 'end' ? idx + ANCHOR.length - 1 : idx + 1;
+          while ((node = walker.nextNode())) {
+            const len = node.textContent.length;
+            if (acc + len > target) {
+              const range = document.createRange();
+              range.setStart(node, target - acc);
+              range.setEnd(node, Math.min(target - acc + 1, len));
+              const r = range.getClientRects()[0] || range.getBoundingClientRect();
+              const x = WHERE === 'end' ? r.right - 1 : r.left + 1;
+              const y = r.top + r.height / 2;
+              const opts = { bubbles: true, cancelable: true, clientX: x, clientY: y, buttons: 1, detail: 1 };
+              const t = document.elementFromPoint(x, y) || line;
+              t.dispatchEvent(new MouseEvent('mousedown', opts));
+              document.dispatchEvent(new MouseEvent('mouseup', Object.assign({}, opts, { buttons: 0 })));
+              return true;
+            }
+            acc += len;
+          }
+          return false;
+        }
+      }
+      return false;
+    })()`
+      .replaceAll("ANCHOR", JSON.stringify(anchorText))
+      .replaceAll("WHERE", JSON.stringify(where))
+      .replace("OCC", String(occurrence)),
+  );
+  if (!ok) throw new Error("caretIn: anchor " + JSON.stringify(anchorText) + " not found");
 }
 
 /** The current app theme, read from the real DOM root. */

@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures";
-import { openProject, openRailTab } from "../helpers";
+import { caretIn, openProject, openRailTab } from "../helpers";
 
 // Deep diagram-composer coverage: shape placement, the inspector, canvas
 // controls, code snippets, and the insert-as-code round trip into the
@@ -55,6 +55,10 @@ test("insert as code lands editable TikZ in the document and a figures/ file", a
 }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  // Insert-as-code lands at the caret: put it in the document body first,
+  // or the figure would land before \documentclass and break every
+  // subsequent compile.
+  await caretIn(tauriPage, "here.", 1, "end");
   await tauriPage.click('[aria-label="Insert diagram"]');
 
   const name = `e2efig${Date.now().toString(36)}`;

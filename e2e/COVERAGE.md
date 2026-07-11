@@ -26,8 +26,10 @@ automatable by design) · **—** not yet covered (listed at the bottom).
 | File tree | new file, open, switch | 08 |
 | Outline | section listed | 08 |
 | Spellcheck/dictionary | squiggle -> hover tooltip -> ignore -> settings chip -> un-ignore -> squiggle returns | 14 |
+| Code intel: go-to-definition, find-references, rename dialog | context menu + Shift+F12, real index over a seeded label/ref pair | 23 |
+| File tree rename/delete via context menu | | ✋ known-flaky under synthetic pointer events (26 fixme; verified manually) |
 | Inline AI (Cmd+L) | provider-gated | ✋ [ai] |
-| Heading/list popovers, link/ref buttons, F12/F2 code-intel | | — (menu plumbing shared with tested paths) |
+| Heading/list popovers, link/ref buttons | | — (menu plumbing shared with tested paths) |
 
 ## Compile & preview
 | Surface | Interactions | Spec |
@@ -38,7 +40,7 @@ automatable by design) · **—** not yet covered (listed at the bottom).
 | Zoom / layout / page nav / invert | 17 |
 | Save PDF into project | in-app dialog -> file in tree | 17 |
 | SyncTeX forward (Cmd+Shift+J) | highlight appears on PDF | 10 |
-| SyncTeX inverse (Cmd-click PDF) | | — (needs trusted modifier-click on canvas) |
+| SyncTeX inverse (Cmd-click PDF) | Cmd-click via text-layer coordinates lands the caret on the word | 24 |
 | Fullscreen, detached preview window, export saves | | ✋ [native] |
 | Export menu | opens, all formats listed per doc type | 22 |
 
@@ -50,6 +52,7 @@ automatable by design) · **—** not yet covered (listed at the bottom).
 | Code tab + TikZ snippets | 19 |
 | Insert as code -> document + figures/*.tikz | 19 |
 | Insert as image, save-as-project, load-existing, Fix with AI | | — image variant / 🔑 [ai] |
+| Image projects (kind=image) | tailored rail/toolbar, figure compile, save-image control | 25 |
 | Color pickers (fill/border/background) | | ✋ [native] |
 
 ## Rail, commands, settings
@@ -65,7 +68,9 @@ automatable by design) · **—** not yet covered (listed at the bottom).
 | Settings dictionary section | chip remove round-trip | 14 |
 | Fonts (Offline & Downloads) | download -> installed -> remove (hermetic assets dir) | 15 |
 | TinyTeX engine install | | 🔑 [net, ~100MB] |
-| Reset to defaults, fonts/accent selects | | — (cosmetic) |
+| Editor font size select | restyles CodeMirror live, restores | 27 |
+| Dark-mode toggle in settings | flips the real theme | 27 |
+| Reset to defaults, app-font/accent selects | | — (cosmetic) |
 
 ## Git & GitHub
 | Surface | Interactions | Spec |
