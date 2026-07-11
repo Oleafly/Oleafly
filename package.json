@@ -37,6 +37,7 @@
     "@lezer/highlight": "^1.2.3",
     "@openleaf/ai-core": "workspace:*",
     "@openleaf/diagram": "workspace:*",
+    "@openleaf/preview": "workspace:*",
     "@openleaf/latex": "workspace:*",
     "@radix-ui/react-context-menu": "^2.3.2",
     "@radix-ui/react-select": "^2.3.2",

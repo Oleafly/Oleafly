@@ -24,7 +24,9 @@
       "@/*": ["./src/*"],
       "@openleaf/latex": ["./packages/latex/src/index.ts"],
       "@openleaf/ai-core": ["./packages/ai-core/src/index.ts"],
-      "@openleaf/diagram": ["./packages/diagram/src/index.ts"]
+      "@openleaf/diagram": ["./packages/diagram/src/index.ts"],
+      "@openleaf/preview": ["./packages/preview/src/index.ts"],
+      "@openleaf/preview/polyfills": ["./packages/preview/src/polyfills.ts"]
     }
   },
   "include": ["src", "packages", "vite.config.ts"]
