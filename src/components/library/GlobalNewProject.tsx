@@ -3,7 +3,6 @@ import { NewProjectDialog } from "@/components/library/NewProjectDialog";
 import { useSettingsStore } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
 import { listTemplates, type TemplateInfo } from "@/lib/tauri";
-import { celebrate } from "@/lib/confetti";
 import { notifyError } from "@/lib/toast";
 import { logError } from "@/lib/log";
 
@@ -33,7 +32,8 @@ export function GlobalNewProject() {
     try {
       // Creation stages the template (and any fonts) and opens the project.
       await createFromTemplate(rawName.trim() || "Untitled", templateId, color);
-      celebrate();
+      // Confetti is reserved for the future first-ever-project tour moment;
+      // firing it on every creation cheapens it (see lib/confetti.ts).
       setOpen(false);
     } catch (e) {
       notifyError("create project", e, "Couldn't create the project.");

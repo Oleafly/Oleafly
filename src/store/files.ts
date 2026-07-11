@@ -204,7 +204,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     if (path.endsWith("/")) return;
     // Binary files (PDFs/images) aren't readable as text - skip the text load
     // and just open the tab; the editor renders them via a binary viewer.
-    const isBinary = /\.(pdf|png|jpe?g|gif|webp|svg|eps|zip|gz)$/i.test(path);
+    const isBinary = /\.(pdf|png|jpe?g|gif|webp|svg|eps|zip|gz|ttf|otf|woff2?)$/i.test(path);
     if (!files[path] && !isBinary) {
       try {
         const content = await readFileContent(projectId, path);

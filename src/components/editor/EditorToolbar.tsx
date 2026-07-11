@@ -86,6 +86,7 @@ export function EditorToolbar() {
 
       {/* Section heading level */}
       <Popover
+        ariaLabel="Heading level"
         trigger={
           <span className="flex items-center gap-0.5">
             <Type className="size-4" />
@@ -152,7 +153,7 @@ export function EditorToolbar() {
       >
         <TableIcon className="size-4" />
       </IconBtn>
-      <Popover trigger={<List className="size-4" />}>
+      <Popover ariaLabel="Insert list" trigger={<List className="size-4" />}>
         <PopoverItem
           onClick={() => insertAtCursor("\\begin{itemize}\n  \\item \n\\end{itemize}\n")}
         >
@@ -169,6 +170,7 @@ export function EditorToolbar() {
 
       {/* Code intelligence (kept as one compact dropdown so it never crowds the bar) */}
       <Popover
+        ariaLabel="Code intelligence"
         trigger={
           <span className="flex items-center gap-0.5">
             <Braces className="size-4" />

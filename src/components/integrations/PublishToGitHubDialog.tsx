@@ -181,6 +181,7 @@ export function PublishToGitHubDialog({
                     <input
                       value={repoName}
                       onChange={(e) => setRepoName(e.target.value)}
+                      aria-label="Repository name"
                       className="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-ring"
                     />
                   </label>

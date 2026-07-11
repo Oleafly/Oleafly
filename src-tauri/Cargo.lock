@@ -2217,6 +2217,7 @@ dependencies = [
  "tauri-plugin-process",
  "tauri-plugin-shell",
  "tauri-plugin-updater",
+ "tokio",
  "zip 2.4.2",
 ]
 

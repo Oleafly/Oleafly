@@ -11,6 +11,7 @@ interface PopoverProps {
   children: ReactNode;
   align?: "left" | "right";
   className?: string;
+  ariaLabel?: string;
 }
 
 /** Lightweight click-to-open popover (portal-free, click-outside to close). */
@@ -19,6 +20,7 @@ export function Popover({
   children,
   align = "left",
   className,
+  ariaLabel,
 }: PopoverProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -42,6 +44,7 @@ export function Popover({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
+        aria-label={ariaLabel}
         className={cn(
           "flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
           open && "bg-accent text-foreground"

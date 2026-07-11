@@ -142,6 +142,11 @@ export function Editor() {
   const isPdfFile = activePath != null && activePath.toLowerCase().endsWith(".pdf");
   const isImageFile =
     activePath != null && IMAGE_EXTS.some((e) => activePath.toLowerCase().endsWith(e));
+  // Binary formats with no in-app preview (fonts, archives): show a notice
+  // instead of an empty text editor a save could clobber them from.
+  const isOpaqueFile =
+    activePath != null &&
+    /\.(zip|gz|eps|ttf|otf|woff2?)$/i.test(activePath);
   const projectId = useFilesStore((s) => s.projectId);
 
   return (
@@ -242,6 +247,15 @@ export function Editor() {
           ) : isImageFile && projectId ? (
             <div className="min-h-0 flex-1 overflow-auto bg-sidebar">
               <ImageFileView projectId={projectId} path={activePath!} />
+            </div>
+          ) : isOpaqueFile ? (
+            <div
+              data-testid="binary-file-notice"
+              className="flex flex-1 flex-col items-center justify-center text-center text-muted-foreground"
+            >
+              <FileText className="mb-3 size-10 opacity-30" />
+              <p className="text-sm">{basename(activePath!)}</p>
+              <p className="text-xs">Binary file. No preview available.</p>
             </div>
           ) : (
             <div className="min-h-0 flex-1 overflow-hidden">

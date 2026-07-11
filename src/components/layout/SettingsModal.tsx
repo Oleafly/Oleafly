@@ -215,7 +215,10 @@ export function SettingsModal() {
     if (!open) return;
     setSection(settingsInitialSection as Section);
     void libraryRoot().then(setLibRoot).catch(() => {});
-  }, [open]);
+    // Both deps matter: "open settings at section X" flows (the GitHub gate,
+    // AI onboarding) set the initial section and open in one click, and the
+    // section must also re-apply if a flow retargets an already-open modal.
+  }, [open, settingsInitialSection]);
 
   if (!open) return null;
 

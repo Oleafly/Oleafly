@@ -496,11 +496,21 @@ export function ChatPanel() {
   );
 
   // Load persisted chats + current git HEAD whenever the project changes.
+  // The panel unmounts whenever the sidebar collapses or another rail tab is
+  // shown, so this effect also runs on every REMOUNT - in that case (same
+  // project) restore the active conversation instead of resetting to a new
+  // chat. Only a real project switch starts fresh.
   useEffect(() => {
     if (!projectId) return;
-    loadChats(projectId);
-    setMessages([]);
-    setActiveChat(null);
+    const cs = useChatsStore.getState();
+    if (cs.projectId === projectId) {
+      const active = cs.activeId ? cs.byId(cs.activeId) : undefined;
+      if (active) setMessages(active.messages);
+    } else {
+      loadChats(projectId);
+      setMessages([]);
+      setActiveChat(null);
+    }
     void gitLog(projectId)
       .then((log) => setCurrentHead(log[0]?.oid ?? null))
       .catch(() => setCurrentHead(null));
@@ -1202,6 +1212,16 @@ USER_CUSTOM_INSTRUCTIONS`
                     messages[messages.length - 1]?.role === "assistant" && (
                       <div className="max-w-[85%] rounded-lg bg-muted px-3 py-2">
                         <Shimmer text={thinkingText || "Thinking…"} />
+                      </div>
+                    )}
+                  {/* A restored conversation can end on a user message with no
+                      reply (the app was closed or the stream was interrupted).
+                      Say so instead of leaving a silent dangling message. */}
+                  {!streaming &&
+                    messages[messages.length - 1]?.role === "user" && (
+                      <div className="max-w-[85%] rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground">
+                        No response arrived for this message. The stream was
+                        interrupted. Send it again, or start a new chat.
                       </div>
                     )}
                 </div>

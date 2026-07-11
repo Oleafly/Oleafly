@@ -160,26 +160,51 @@ async fn run_tectonic(
     let args = tectonic_args(&out_str, &search_opt, &entry_str, offline);
     let arg_refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
 
-    let (mut rx, _child) = sidecar
+    let (mut rx, child) = sidecar
         .args(arg_refs)
         .spawn()
         .map_err(|e| format!("failed to spawn tectonic: {e}"))?;
 
+    // Hard ceiling on a single compile. Tectonic can wedge indefinitely on a
+    // stalled package download, and because every compile (main preview AND
+    // the AI's isolated figure previews) serializes on one mutex, a hung
+    // process would silently block them all forever.
+    const COMPILE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(300);
+    let deadline = tokio::time::Instant::now() + COMPILE_TIMEOUT;
+
     let mut stdout_buf = String::new();
     let mut exit_code: Option<i32> = None;
-    while let Some(event) = rx.recv().await {
-        match event {
-            CommandEvent::Stdout(bytes) | CommandEvent::Stderr(bytes) => {
-                let s = String::from_utf8_lossy(&bytes).into_owned();
-                let _ = app.emit(log_event, &s);
-                stdout_buf.push_str(&s);
+    let mut timed_out = false;
+    loop {
+        match tokio::time::timeout_at(deadline, rx.recv()).await {
+            Err(_) => {
+                timed_out = true;
+                let _ = child.kill();
+                let msg = format!(
+                    "error: compile timed out after {}s and was stopped (network stall while fetching packages?)",
+                    COMPILE_TIMEOUT.as_secs()
+                );
+                let _ = app.emit(log_event, &msg);
+                stdout_buf.push_str(&msg);
+                break;
             }
-            CommandEvent::Error(err) => {
-                let _ = app.emit(log_event, &err);
-            }
-            CommandEvent::Terminated(payload) => exit_code = payload.code,
-            _ => {}
+            Ok(None) => break,
+            Ok(Some(event)) => match event {
+                CommandEvent::Stdout(bytes) | CommandEvent::Stderr(bytes) => {
+                    let s = String::from_utf8_lossy(&bytes).into_owned();
+                    let _ = app.emit(log_event, &s);
+                    stdout_buf.push_str(&s);
+                }
+                CommandEvent::Error(err) => {
+                    let _ = app.emit(log_event, &err);
+                }
+                CommandEvent::Terminated(payload) => exit_code = payload.code,
+                _ => {}
+            },
         }
+    }
+    if timed_out {
+        exit_code = Some(-1);
     }
 
     let log = std::fs::read_to_string(out_dir.join(format!("{stem}.log")))
