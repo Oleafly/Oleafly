@@ -51,3 +51,19 @@ Rerunning against an already-used app instance is not supported — relaunch.
   `.textLayer` for text that must appear in the PDF.
 - Skip: native dialogs (export "Save as"), AI conversations, the updater —
   not automatable / nondeterministic by design.
+- **Idempotency**: tests may be re-run against a live app while iterating, so
+  restore what you toggle (theme, vim, ignored words), use `\providecommand`
+  instead of `\newcommand` for injected LaTeX, and make injected command
+  names unique per run. CodeMirror anchors must live inside ONE syntax token
+  (no backslash-prefixed anchors - highlighting splits text nodes).
+- Rail tabs: use `openRailTab` (handles the persisted collapsed-sidebar state).
+- Settings: `openSettings(page, section)`; toggles are `[role="switch"]` with
+  their label as `aria-label`.
+
+## Opt-in env vars
+
+| Var | Effect |
+| --- | --- |
+| `E2E_GITHUB_TOKEN` | Runs the source-control stage/diff/commit flow (connects with the PAT) |
+| `E2E_GIT_PUSH=1` | Runs the push-to-origin test (configure the remote first; delete the remote repo afterwards) |
+| `E2E_SKIP_NETWORK=1` | Skips the font-download test |

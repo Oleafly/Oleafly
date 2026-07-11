@@ -134,12 +134,25 @@ const PREF_DEFAULTS = {
 } as const;
 
 export const useSettingsStore = create<SettingsState>((set) => ({
-  vim: false,
-  toggleVim: () => set((s) => ({ vim: !s.vim })),
-  spellcheck: true,
-  toggleSpellcheck: () => set((s) => ({ spellcheck: !s.spellcheck })),
-  harper: true,
-  setHarper: (v) => set({ harper: v }),
+  // Editor behavior toggles persist like the other preferences: enabling vim
+  // or turning spellcheck off must survive an app restart.
+  vim: ls("openleaf.vim", "0") === "1",
+  toggleVim: () =>
+    set((s) => {
+      saveLs("openleaf.vim", s.vim ? "0" : "1");
+      return { vim: !s.vim };
+    }),
+  spellcheck: ls("openleaf.spellcheck", "1") !== "0",
+  toggleSpellcheck: () =>
+    set((s) => {
+      saveLs("openleaf.spellcheck", s.spellcheck ? "0" : "1");
+      return { spellcheck: !s.spellcheck };
+    }),
+  harper: ls("openleaf.harper", "1") !== "0",
+  setHarper: (v) => {
+    saveLs("openleaf.harper", v ? "1" : "0");
+    set({ harper: v });
+  },
   showRegionalism: ls("openleaf.harper.regionalism", "1") !== "0",
   setShowRegionalism: (v) => {
     saveLs("openleaf.harper.regionalism", v ? "1" : "0");
@@ -220,6 +233,9 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   setRailTab: (v) => set({ railTab: v }),
   resetToDefaults: () => {
     // Drop the persisted copies so a restart doesn't resurrect old values.
+    saveLs("openleaf.vim", PREF_DEFAULTS.vim ? "1" : "0");
+    saveLs("openleaf.spellcheck", PREF_DEFAULTS.spellcheck ? "1" : "0");
+    saveLs("openleaf.harper", PREF_DEFAULTS.harper ? "1" : "0");
     saveLs("openleaf.harper.regionalism", "1");
     saveLs("openleaf.harper.wordchoice", "1");
     saveLs("openleaf.fontSize", String(PREF_DEFAULTS.editorFontSize));

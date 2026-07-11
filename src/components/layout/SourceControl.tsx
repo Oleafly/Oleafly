@@ -227,6 +227,7 @@ export function SourceControl() {
     return (
       <div key={c.path} className="group flex items-center gap-1.5 rounded-md px-2 py-1 hover:bg-accent/60">
         <button
+          data-testid={`git-change-${c.path}`}
           onClick={() => void viewDiff(c.path, c.staged)}
           className="flex min-w-0 flex-1 items-center gap-2 text-left"
         >

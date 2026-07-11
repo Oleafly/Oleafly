@@ -63,11 +63,58 @@ export async function typeInEditorAfter(page: Page, anchorText: string, text: st
   if (!ok) throw new Error("typeInEditorAfter: anchor " + JSON.stringify(anchorText) + " not found in editor");
 }
 
+/** Make sure the sidebar is expanded on the given rail tab (clicking a rail
+ *  tab always reveals the sidebar; re-clicking the active tab collapses it,
+ *  and that collapsed state persists across restarts). */
+export async function openRailTab(page: Page, ariaLabel: string) {
+  const collapsed = await page.evaluate<boolean>(
+    `!!document.querySelector('[aria-label="Show sidebar"]')`,
+  );
+  await page.click(`[aria-label=${JSON.stringify(ariaLabel)}]`);
+  if (collapsed) {
+    // First click may have only revealed the sidebar on the previous tab.
+    const on = await page.evaluate<boolean>(
+      `!!document.querySelector('[aria-label="Hide sidebar"]')`,
+    );
+    if (!on) await page.click(`[aria-label=${JSON.stringify(ariaLabel)}]`);
+  }
+}
+
 /** Open a project from the library by its book title. The test fixture
  *  reloads the app to the library before every test, so specs that need the
  *  editor start here — exactly like a user re-opening their document. */
 export async function openProject(page: Page & { getByText(t: string): { click(): Promise<void> } }, name: string) {
   await page.getByText(name).click();
+}
+
+/** Insert text at the very start of the CodeMirror document (fresh files). */
+export async function typeInEditorAtStart(page: Page, text: string) {
+  await page.evaluate(
+    `(() => {
+      const content = document.querySelector('.cm-content');
+      content.focus();
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      const range = document.createRange();
+      range.setStart(content, 0);
+      range.collapse(true);
+      sel.addRange(range);
+      return document.execCommand('insertText', false, ${JSON.stringify(text)});
+    })()`,
+  );
+}
+
+/** Open the settings modal (rail gear) at a section. */
+export async function openSettings(page: Page, section?: string) {
+  await page.click('[aria-label="Settings"]');
+  if (section) await page.click(`[data-testid="settings-section-${section}"]`);
+}
+
+/** All command-palette item labels currently rendered. */
+export async function paletteItems(page: Page): Promise<string[]> {
+  return page.evaluate<string[]>(
+    `Array.from(document.querySelectorAll('[cmdk-item]')).map(e => e.textContent.trim())`,
+  );
 }
 
 /** The current app theme, read from the real DOM root. */

@@ -132,6 +132,7 @@ function ToggleRow({
     <div
       role="switch"
       aria-checked={checked}
+      aria-label={label}
       tabIndex={0}
       onClick={() => onChange(!checked)}
       onKeyDown={(e) => {
@@ -231,8 +232,9 @@ export function SettingsModal() {
         <nav className="flex w-52 shrink-0 flex-col gap-0.5 border-r bg-muted/30 p-3">
           <div className="mb-2 px-2 text-sm font-semibold">Settings</div>
           {NAV.map(({ id, label, icon: Icon }) => (
-            <button
+            <button aria-label="Close settings"
               key={id}
+              data-testid={`settings-section-${id}`}
               onClick={() => setSection(id)}
               className={cn(
                 "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors",
