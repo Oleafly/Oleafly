@@ -65,6 +65,9 @@ importers:
       '@openleaf/diagram':
         specifier: workspace:*
         version: link:packages/diagram
+      '@openleaf/editor':
+        specifier: workspace:*
+        version: link:packages/editor
       '@openleaf/latex':
         specifier: workspace:*
         version: link:packages/latex
@@ -249,6 +252,54 @@ importers:
       tailwind-merge:
         specifier: '*'
         version: 2.6.1
+
+  packages/editor:
+    dependencies:
+      '@codemirror/autocomplete':
+        specifier: '*'
+        version: 6.20.3
+      '@codemirror/commands':
+        specifier: '*'
+        version: 6.10.4
+      '@codemirror/lang-css':
+        specifier: '*'
+        version: 6.3.1
+      '@codemirror/lang-json':
+        specifier: '*'
+        version: 6.0.2
+      '@codemirror/lang-markdown':
+        specifier: '*'
+        version: 6.5.0
+      '@codemirror/language':
+        specifier: '*'
+        version: 6.12.4
+      '@codemirror/legacy-modes':
+        specifier: '*'
+        version: 6.5.3
+      '@codemirror/lint':
+        specifier: '*'
+        version: 6.9.7
+      '@codemirror/search':
+        specifier: '*'
+        version: 6.7.1
+      '@codemirror/state':
+        specifier: '*'
+        version: 6.7.0
+      '@codemirror/view':
+        specifier: '*'
+        version: 6.43.4
+      '@lezer/highlight':
+        specifier: '*'
+        version: 1.2.3
+      '@replit/codemirror-vim':
+        specifier: '*'
+        version: 6.3.0(@codemirror/commands@6.10.4)(@codemirror/language@6.12.4)(@codemirror/search@6.7.1)(@codemirror/state@6.7.0)(@codemirror/view@6.43.4)
+      katex:
+        specifier: '*'
+        version: 0.17.0
+      react:
+        specifier: '*'
+        version: 19.2.7
 
   packages/latex: {}
 

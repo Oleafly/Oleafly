@@ -11,7 +11,7 @@ import {
   closeSearchPanel,
   selectMatches,
 } from "@codemirror/search";
-import { preserveCase } from "@/lib/preserve-case";
+import { preserveCase } from "./preserve-case";
 
 /**
  * A VSCode-style find/replace widget for the editor. Replaces CodeMirror's

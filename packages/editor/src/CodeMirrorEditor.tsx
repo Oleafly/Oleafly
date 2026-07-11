@@ -1,0 +1,246 @@
+import { useEffect, useRef } from "react";
+import { EditorState, Compartment, type Extension } from "@codemirror/state";
+import {
+  EditorView,
+  keymap,
+  lineNumbers,
+  highlightActiveLineGutter,
+  highlightSpecialChars,
+  drawSelection,
+  dropCursor,
+  rectangularSelection,
+  crosshairCursor,
+  highlightActiveLine,
+  type KeyBinding,
+} from "@codemirror/view";
+import {
+  foldGutter,
+  indentOnInput,
+  indentUnit,
+  bracketMatching,
+  foldKeymap,
+} from "@codemirror/language";
+import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
+import {
+  autocompletion,
+  completionKeymap,
+  closeBrackets,
+  closeBracketsKeymap,
+} from "@codemirror/autocomplete";
+import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
+import { vim } from "@replit/codemirror-vim";
+
+import { vscodeSearch } from "./search-panel";
+import { editorTheme } from "./theme";
+import { latexCompletions, slashCompletions } from "./latex";
+import { languageForPath } from "./languages";
+import { setEditorView } from "./controller";
+import { spellLintExtensions, refreshEditorLints } from "./spellcheck";
+import { mathHover } from "./math-preview";
+import { createLatexLinter } from "./latex-linter";
+import { latexFolding } from "./latex-folding";
+
+/**
+ * Document model + settings the editor needs from the host app. The use*
+ * members are React hooks (must follow hook rules; keep the host object
+ * identity stable across renders).
+ */
+export interface EditorHost {
+  useActivePath(): string | null;
+  /** Imperative read of the active path (for the edit sync listener). */
+  getActivePath(): string | null;
+  /** Bumped when the active file's content is replaced from outside the
+   *  editor (e.g. a restored history version), to force a document swap. */
+  useDocVersion(): number;
+  getContent(path: string): string;
+  setContent(path: string, content: string): void;
+  useSettings(): { vim: boolean; spellcheck: boolean; harper: boolean };
+  /** Values that must trigger a re-lint when they change (ignore dictionary,
+   *  lint-category mutes, ...). */
+  useLintRefreshDeps(): readonly unknown[];
+}
+
+export function CodeMirrorEditor({
+  host,
+  extraExtensions,
+  extraKeymap,
+}: {
+  host: EditorHost;
+  /** App feature extensions (code intel, preflight linter, inline AI, ...). */
+  extraExtensions?: Extension[];
+  /** App key bindings, checked before the default keymaps. */
+  extraKeymap?: KeyBinding[];
+}) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const viewRef = useRef<EditorView | null>(null);
+  const vimCompartmentRef = useRef<Compartment | null>(null);
+  const spellCompartmentRef = useRef<Compartment | null>(null);
+  const langCompartmentRef = useRef<Compartment | null>(null);
+  const historyCompartmentRef = useRef<Compartment | null>(null);
+  const prevPathRef = useRef<string | null>(null);
+  const suppressSyncRef = useRef(false);
+
+  const activePath = host.useActivePath();
+  // NB: the active file's content is read imperatively (host.getContent) inside
+  // the file-swap effect below, NOT subscribed to. Subscribing here would
+  // re-render this component on every keystroke (the store updates on each
+  // edit), which is pure waste since CodeMirror owns the document and the
+  // effect only needs the content when the file or docVersion actually changes.
+  const docVersion = host.useDocVersion();
+  const { vim: vimEnabled, spellcheck, harper } = host.useSettings();
+  const lintDeps = host.useLintRefreshDeps();
+
+  // Create the editor once.
+  useEffect(() => {
+    if (!hostRef.current) return;
+    const initialPath = host.getActivePath();
+    const initialContent = initialPath ? host.getContent(initialPath) : "";
+    const vimCompartment = new Compartment();
+    vimCompartmentRef.current = vimCompartment;
+    const spellCompartment = new Compartment();
+    spellCompartmentRef.current = spellCompartment;
+    const langCompartment = new Compartment();
+    langCompartmentRef.current = langCompartment;
+    const historyCompartment = new Compartment();
+    historyCompartmentRef.current = historyCompartment;
+    prevPathRef.current = initialPath;
+    const initialLang = initialPath ? languageForPath(initialPath) : null;
+
+    const state = EditorState.create({
+      doc: initialContent,
+      extensions: [
+        lineNumbers(),
+        highlightActiveLineGutter(),
+        highlightSpecialChars(),
+        foldGutter({ openText: "▾", closedText: "▸" }),
+        latexFolding(),
+        drawSelection(),
+        dropCursor(),
+        EditorState.allowMultipleSelections.of(true),
+        indentOnInput(),
+        indentUnit.of("    "),
+        bracketMatching(),
+        closeBrackets(),
+        rectangularSelection(),
+        crosshairCursor(),
+        highlightActiveLine(),
+        highlightSelectionMatches(),
+        EditorView.lineWrapping,
+        langCompartment.of(initialLang ? initialLang : []),
+        editorTheme(),
+        historyCompartment.of(history()),
+        autocompletion({
+          override: [latexCompletions, slashCompletions],
+          activateOnTyping: true,
+          closeOnBlur: true,
+        }),
+        vscodeSearch(),
+        mathHover(),
+        createLatexLinter(),
+        ...(extraExtensions ?? []),
+        keymap.of([
+          ...(extraKeymap ?? []),
+          indentWithTab,
+          ...closeBracketsKeymap,
+          ...defaultKeymap,
+          ...searchKeymap,
+          ...historyKeymap,
+          ...foldKeymap,
+          ...completionKeymap,
+        ]),
+        vimCompartment.of(vimEnabled ? vim() : []),
+        spellCompartment.of(
+          spellcheck || harper
+            ? spellLintExtensions({ spell: spellcheck, harper })
+            : []
+        ),
+        EditorView.updateListener.of((vu) => {
+          if (vu.docChanged && !suppressSyncRef.current) {
+            const path = host.getActivePath();
+            if (path) host.setContent(path, vu.state.doc.toString());
+          }
+        }),
+      ],
+    });
+
+    const view = new EditorView({ state, parent: hostRef.current });
+    viewRef.current = view;
+    setEditorView(view);
+    view.focus();
+
+    return () => {
+      view.destroy();
+      setEditorView(null);
+      viewRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // When the active file changes (or a version is restored), swap the document.
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view || !activePath) return;
+    const activeContent = host.getContent(activePath);
+    const pathChanged = prevPathRef.current !== activePath;
+    suppressSyncRef.current = true;
+    const current = view.state.doc.toString();
+    const lang = languageForPath(activePath);
+    const effects = [langCompartmentRef.current!.reconfigure(lang ? lang : [])];
+    // Drop the undo history when moving to a different file, so undo/redo never
+    // crosses file boundaries (a change from file A must not replay into file B).
+    if (pathChanged) {
+      effects.push(historyCompartmentRef.current!.reconfigure([]));
+    }
+    if (current !== activeContent) {
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: activeContent },
+        effects,
+      });
+    } else {
+      view.dispatch({ effects });
+    }
+    // Re-install a fresh, empty history for the new file.
+    if (pathChanged) {
+      view.dispatch({ effects: historyCompartmentRef.current!.reconfigure(history()) });
+    }
+    prevPathRef.current = activePath;
+    queueMicrotask(() => {
+      suppressSyncRef.current = false;
+    });
+    view.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePath, docVersion]);
+
+  // Toggle vim without recreating the editor.
+  useEffect(() => {
+    const view = viewRef.current;
+    const compartment = vimCompartmentRef.current;
+    if (!view || !compartment) return;
+    view.dispatch({
+      effects: compartment.reconfigure(vimEnabled ? vim() : []),
+    });
+  }, [vimEnabled]);
+
+  // Toggle spellcheck / Harper grammar without recreating the editor.
+  useEffect(() => {
+    const view = viewRef.current;
+    const compartment = spellCompartmentRef.current;
+    if (!view || !compartment) return;
+    view.dispatch({
+      effects: compartment.reconfigure(
+        spellcheck || harper
+          ? spellLintExtensions({ spell: spellcheck, harper })
+          : []
+      ),
+    });
+  }, [spellcheck, harper]);
+
+  // Re-lint when the ignore dictionary or lint-category mutes change (e.g. the
+  // user un-ignores a word or toggles a category in Settings).
+  useEffect(() => {
+    refreshEditorLints(viewRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, lintDeps);
+
+  return <div ref={hostRef} className="h-full overflow-auto" />;
+}
