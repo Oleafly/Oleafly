@@ -62,6 +62,9 @@ Rerunning against an already-used app instance is not supported — relaunch.
 
 ## Opt-in env vars
 
+Set them in your shell, or copy `e2e/.env.example` to `e2e/.env` (gitignored)
+and fill in values - the Playwright config loads it automatically.
+
 | Var | Effect |
 | --- | --- |
 | `E2E_GITHUB_TOKEN` | Runs the source-control stage/diff/commit flow (connects with the PAT) |

@@ -1,4 +1,20 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { defineConfig } from "@playwright/test";
+
+// Load opt-in secrets/flags from e2e/.env (gitignored; see e2e/.env.example).
+// Values already set in the shell take precedence.
+try {
+  const env = readFileSync(join(__dirname, ".env"), "utf8");
+  for (const line of env.split("\n")) {
+    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
+    if (m && m[2] !== "" && process.env[m[1]] === undefined) {
+      process.env[m[1]] = m[2].replace(/^["']|["']$/g, "");
+    }
+  }
+} catch {
+  /* no .env file: everything stays opt-out */
+}
 
 /**
  * OpenLeaf e2e: user journeys against the real desktop app (no mocks).

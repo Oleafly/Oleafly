@@ -34,3 +34,6 @@ docs/superpowers/
 
 # Playwright e2e artifacts
 test-results/
+
+# e2e secrets (copy from e2e/.env.example)
+e2e/.env
