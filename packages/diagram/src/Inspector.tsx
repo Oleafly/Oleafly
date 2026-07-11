@@ -7,14 +7,7 @@ import type {
   EdgeStyle,
 } from "@openleaf/latex";
 import { BringToFront, ChevronsDown, ChevronsUp, SendToBack } from "lucide-react";
-import { Tooltip } from "@/components/ui/tooltip";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { useDiagramKit } from "./kit";
 
 export type ReorderDir = "front" | "back" | "forward" | "backward";
 
@@ -55,6 +48,7 @@ function Pick({
   options: { value: string; label: string }[];
   width?: string;
 }) {
+  const { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } = useDiagramKit();
   return (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger className={`h-7 ${width} text-xs`}>
@@ -85,6 +79,7 @@ export function Inspector({
   onEdgeChange: (patch: Partial<DiagEdge>) => void;
   onReorder?: (dir: ReorderDir) => void;
 }) {
+  const { Tooltip } = useDiagramKit();
   if (!node && !edge) {
     return (
       <div className="p-3 text-center text-[11px] text-muted-foreground">

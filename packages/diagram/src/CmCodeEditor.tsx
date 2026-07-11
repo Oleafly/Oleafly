@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
-import { EditorState } from "@codemirror/state";
+import { EditorState, type Extension } from "@codemirror/state";
 import {
   EditorView,
   keymap,
@@ -19,8 +19,6 @@ import {
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
-import { editorTheme } from "@/components/editor/cm/theme";
-import { latexLanguage } from "@/components/editor/cm/latex";
 
 /** Imperative handle so a toolbar can insert/wrap text in THIS editor (not the
  *  app's main document editor). */
@@ -31,13 +29,15 @@ export interface CmHandle {
 }
 
 /**
- * A standalone, controlled CodeMirror editor with the same LaTeX highlighting
- * and editor theme as the main .tex editor, used inside the diagram composer.
- * Deliberately does NOT call setEditorView, so it stays independent of the
- * document editor that insert_figure / insertAtCursor target.
+ * A standalone, controlled CodeMirror editor used inside the diagram composer.
+ * Language support and theming come in via `extensions` so the host app can
+ * reuse its main editor's LaTeX highlighting. Deliberately independent of the
+ * app's document editor that insertAtCursor targets.
  */
-export const CmCodeEditor = forwardRef<CmHandle, { value: string; onChange: (v: string) => void }>(
-  function CmCodeEditor({ value, onChange }, ref) {
+export const CmCodeEditor = forwardRef<
+  CmHandle,
+  { value: string; onChange: (v: string) => void; extensions?: Extension[] }
+>(function CmCodeEditor({ value, onChange, extensions }, ref) {
     const hostRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
     const onChangeRef = useRef(onChange);
@@ -64,8 +64,7 @@ export const CmCodeEditor = forwardRef<CmHandle, { value: string; onChange: (v: 
           highlightActiveLine(),
           highlightSelectionMatches(),
           EditorView.lineWrapping,
-          latexLanguage(),
-          editorTheme(),
+          ...(extensions ?? []),
           history(),
           keymap.of([
             indentWithTab,

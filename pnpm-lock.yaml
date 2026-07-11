@@ -62,6 +62,9 @@ importers:
       '@openleaf/ai-core':
         specifier: workspace:*
         version: link:packages/ai-core
+      '@openleaf/diagram':
+        specifier: workspace:*
+        version: link:packages/diagram
       '@openleaf/latex':
         specifier: workspace:*
         version: link:packages/latex
@@ -204,6 +207,45 @@ importers:
       ai:
         specifier: '*'
         version: 7.0.14(zod@3.25.76)
+
+  packages/diagram:
+    dependencies:
+      '@codemirror/autocomplete':
+        specifier: '*'
+        version: 6.20.3
+      '@codemirror/commands':
+        specifier: '*'
+        version: 6.10.4
+      '@codemirror/language':
+        specifier: '*'
+        version: 6.12.4
+      '@codemirror/search':
+        specifier: '*'
+        version: 6.7.1
+      '@codemirror/state':
+        specifier: '*'
+        version: 6.7.0
+      '@codemirror/view':
+        specifier: '*'
+        version: 6.43.4
+      '@openleaf/latex':
+        specifier: workspace:*
+        version: link:../latex
+      '@xyflow/react':
+        specifier: '*'
+        version: 12.11.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      clsx:
+        specifier: '*'
+        version: 2.1.1
+      lucide-react:
+        specifier: '*'
+        version: 0.469.0(react@19.2.7)
+      react:
+        specifier: '*'
+        version: 19.2.7
+      tailwind-merge:
+        specifier: '*'
+        version: 2.6.1
 
   packages/latex: {}
 

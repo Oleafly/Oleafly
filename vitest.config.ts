@@ -7,6 +7,7 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
       "@openleaf/latex": path.resolve(__dirname, "./packages/latex/src"),
       "@openleaf/ai-core": path.resolve(__dirname, "./packages/ai-core/src"),
+      "@openleaf/diagram": path.resolve(__dirname, "./packages/diagram/src"),
     },
   },
   test: {

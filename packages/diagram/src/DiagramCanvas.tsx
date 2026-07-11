@@ -30,11 +30,10 @@ import {
   Sun,
   Type as TypeIcon,
 } from "lucide-react";
-import { Tooltip } from "@/components/ui/tooltip";
-import { useTheme } from "@/lib/theme";
-import { nodeTypes } from "@/components/diagram/nodes/ShapeNode";
-import { DiagramEditContext } from "@/components/diagram/nodes/edit-context";
-import { Inspector } from "@/components/diagram/Inspector";
+import { useDiagramKit } from "./kit";
+import { nodeTypes } from "./ShapeNode";
+import { DiagramEditContext } from "./edit-context";
+import { Inspector } from "./Inspector";
 import {
   type DiagramModel,
   type DiagNode,
@@ -42,7 +41,7 @@ import {
   type NodeShape,
   newId,
 } from "@openleaf/latex";
-import { cn } from "@/lib/utils";
+import { cn } from "./cn";
 
 const DEFAULTS: Record<NodeShape, { w: number; h: number; label: string }> = {
   rectangle: { w: 120, h: 56, label: "Label" },
@@ -148,12 +147,13 @@ function CanvasInner({
   model: DiagramModel;
   onChange: (m: DiagramModel) => void;
 }) {
-  const { theme } = useTheme();
+  const { Tooltip, useThemeMode } = useDiagramKit();
+  const themeMode = useThemeMode();
   const { screenToFlowPosition } = useReactFlow();
   // Canvas theme is a per-diagram viewing preference (defaults to the app theme).
   // It only affects the editor surface; shapes keep their own colors and the
   // compiled figure is unaffected.
-  const [canvasTheme, setCanvasTheme] = useState<"light" | "dark">(theme === "dark" ? "dark" : "light");
+  const [canvasTheme, setCanvasTheme] = useState<"light" | "dark">(themeMode);
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>(model.nodes.map(modelNodeToRf));
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(model.edges.map(modelEdgeToRf));
   const [selNode, setSelNode] = useState<string | null>(null);

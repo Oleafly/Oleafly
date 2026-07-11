@@ -16,6 +16,7 @@ export default defineConfig(async () => ({
       "@": path.resolve(__dirname, "./src"),
       "@openleaf/latex": path.resolve(__dirname, "./packages/latex/src"),
       "@openleaf/ai-core": path.resolve(__dirname, "./packages/ai-core/src"),
+      "@openleaf/diagram": path.resolve(__dirname, "./packages/diagram/src"),
     },
   },
   // Vite options tailored for Tauri development
