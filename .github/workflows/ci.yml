@@ -101,3 +101,69 @@ jobs:
       - name: Clippy
         working-directory: src-tauri
         run: cargo clippy --all-targets -- -D warnings
+
+  e2e:
+    # The full no-mock suite against the real app (WKWebView + Rust + Tectonic
+    # compiles) on macOS - the platform the suite is validated on. Tests that
+    # need credentials (GitHub PAT, AI keys) skip automatically when their
+    # E2E_* env vars are absent, so CI runs the ungated ~85 tests.
+    name: E2E (real app, macOS)
+    runs-on: macos-14
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Cache Tectonic sidecar
+        id: cache-tectonic-e2e
+        uses: actions/cache@v4
+        with:
+          path: src-tauri/binaries/tectonic-*
+          key: tectonic-${{ runner.os }}-${{ hashFiles('scripts/fetch-tectonic.sh') }}
+
+      - name: Fetch Tectonic sidecar
+        if: steps.cache-tectonic-e2e.outputs.cache-hit != 'true'
+        run: bash scripts/fetch-tectonic.sh aarch64-apple-darwin
+
+      # First compiles fetch LaTeX packages over the network; cache them so
+      # the 19-template matrix doesn't re-download every run.
+      - name: Cache Tectonic packages
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/Tectonic
+          key: tectonic-pkgs-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
+          restore-keys: tectonic-pkgs-${{ runner.os }}-
+
+      # The fixture machinery needs a Playwright browser even in tauri mode.
+      - name: Install Playwright browser
+        run: pnpm exec playwright install chromium
+
+      - name: Run the e2e suite
+        run: ./scripts/e2e.sh
+
+      - name: Upload failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: test-results/
+          retention-days: 7
