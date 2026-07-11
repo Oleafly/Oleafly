@@ -202,6 +202,19 @@ async fn run_tectonic(
     })
 }
 
+/// Write base64-decoded bytes to an absolute path chosen by the user (e.g. a
+/// native "Save as" dialog). Used to export a rendered figure PNG. Mirrors the
+/// trust model of `export_pdf` (the destination comes from a user dialog).
+#[tauri::command]
+pub async fn write_bytes_file(dest: String, data_base64: String) -> Result<(), String> {
+    let bytes = decode_b64(&data_base64)?;
+    tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
+        std::fs::write(&dest, bytes).map_err(|e| format!("failed to write {dest}: {e}"))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// Decode a base64 payload for `write_project_bytes`. Pure, so it is unit-testable.
 fn decode_b64(data_base64: &str) -> Result<Vec<u8>, String> {
     use base64::{engine::general_purpose::STANDARD, Engine};

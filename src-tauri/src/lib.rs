@@ -48,6 +48,7 @@ pub fn run() {
             commands::read_isolated_pdf,
             commands::read_project_bytes,
             commands::write_project_bytes,
+            commands::write_bytes_file,
             github::gh_request_device_code,
             github::gh_check_device_token,
             github::gh_current_user,

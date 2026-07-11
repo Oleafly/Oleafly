@@ -27,7 +27,7 @@ import { GithubMenu } from "@/components/layout/GithubMenu";
 import { useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
 import { useSettingsStore, type ViewMode } from "@/store/settings";
-import { exportCurrentPdf } from "@/features/export";
+import { exportCurrentPdf, exportCurrentImagePng } from "@/features/export";
 import { ensurePandoc } from "@/features/pandoc";
 import {
   downloadProjectZip,
@@ -226,6 +226,11 @@ export function TopToolbar() {
     await exportCurrentPdf();
   };
 
+  const doExportPng = async () => {
+    setDlOpen(false);
+    await exportCurrentImagePng();
+  };
+
   const submitFork = async () => {
     if (!projectId) return;
     const n = forkName.trim() || `${projectName || "project"} (copy)`;
@@ -395,30 +400,40 @@ export function TopToolbar() {
                 </button>
                 <button onClick={() => void doDownloadPdf()} disabled={!pdfBytes} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent disabled:opacity-40">
                   <FileText className="size-4 text-muted-foreground" />
-                  Export as PDF
+                  Export as PDF {projectKind === "image" ? "(vector image)" : ""}
                 </button>
+                {projectKind === "image" && (
+                  <button onClick={() => void doExportPng()} disabled={!pdfBytes} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent disabled:opacity-40">
+                    <ImagePlay className="size-4 text-muted-foreground" />
+                    Export as PNG (raster image)
+                  </button>
+                )}
                 {!pdfBytes && (
                   <p className="px-2 py-1 pl-8 text-[10px] text-muted-foreground">
-                    PDF requires a compile first
+                    {projectKind === "image" ? "Compile the figure first" : "PDF requires a compile first"}
                   </p>
                 )}
-                <div className="my-1 h-px bg-border" />
-                <button onClick={() => void doExportFormat("docx")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
-                  <FileType className="size-4 text-muted-foreground" />
-                  Export as Word (.docx)
-                </button>
-                <button onClick={() => void doExportFormat("html")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
-                  <FileType className="size-4 text-muted-foreground" />
-                  Export as HTML (.html)
-                </button>
-                <button onClick={() => void doExportFormat("md")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
-                  <FileType className="size-4 text-muted-foreground" />
-                  Export as Markdown (.md)
-                </button>
-                <button onClick={() => void doExportFormat("txt")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
-                  <FileType className="size-4 text-muted-foreground" />
-                  Export as Plain text (.txt)
-                </button>
+                {projectKind !== "image" && (
+                  <>
+                    <div className="my-1 h-px bg-border" />
+                    <button onClick={() => void doExportFormat("docx")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
+                      <FileType className="size-4 text-muted-foreground" />
+                      Export as Word (.docx)
+                    </button>
+                    <button onClick={() => void doExportFormat("html")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
+                      <FileType className="size-4 text-muted-foreground" />
+                      Export as HTML (.html)
+                    </button>
+                    <button onClick={() => void doExportFormat("md")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
+                      <FileType className="size-4 text-muted-foreground" />
+                      Export as Markdown (.md)
+                    </button>
+                    <button onClick={() => void doExportFormat("txt")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
+                      <FileType className="size-4 text-muted-foreground" />
+                      Export as Plain text (.txt)
+                    </button>
+                  </>
+                )}
                 {exportKind === "presentation" && (
                   <>
                     <div className="my-1 h-px bg-border" />

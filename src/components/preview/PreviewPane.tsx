@@ -27,6 +27,9 @@ export function PreviewPane() {
   const projectName = useFilesStore((s) => s.projectName);
   const refreshTree = useFilesStore((s) => s.refreshTree);
   const mainDoc = useFilesStore((s) => s.mainDoc);
+  // Image projects render a single figure: no pages/spreads, and "PDF" reads
+  // as "image" throughout the preview UI.
+  const isImage = useFilesStore((s) => s.projectKind) === "image";
   const [scale, setScale] = useState(1.0);
   const [tab, setTab] = useState<"pdf" | "logs">("pdf");
   const [saveOpen, setSaveOpen] = useState(false);
@@ -231,7 +234,7 @@ export function PreviewPane() {
 
         {tab === "pdf" && (
           <div className="ml-auto flex items-center gap-0.5">
-            {numPages > 0 && (
+            {numPages > 0 && !isImage && (
               <>
                 <Tooltip label="Single page view">
                   <Button
@@ -315,17 +318,17 @@ export function PreviewPane() {
                 <Plus className="size-3.5" />
               </Button>
             </Tooltip>
-            <Tooltip label="Save PDF to project">
+            <Tooltip label={isImage ? "Save image to project" : "Save PDF to project"}>
               <Button
                 variant="ghost"
                 size="icon"
                 className="size-7"
                 disabled={!pdfBytes}
                 onClick={() => {
-                  setSaveName((mainDoc.replace(/\.tex$/i, "") || "document") + ".pdf");
+                  setSaveName((mainDoc.replace(/\.tex$/i, "") || (isImage ? "figure" : "document")) + ".pdf");
                   setSaveOpen(true);
                 }}
-                aria-label="Save PDF to project"
+                aria-label={isImage ? "Save image to project" : "Save PDF to project"}
               >
                 <Save className="size-3.5" />
               </Button>
@@ -467,7 +470,7 @@ export function PreviewPane() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold">Save PDF to project</h2>
+              <h2 className="text-sm font-semibold">{isImage ? "Save image to project" : "Save PDF to project"}</h2>
               <button onClick={() => setSaveOpen(false)} className="text-muted-foreground hover:text-foreground">
                 <X className="size-4" />
               </button>

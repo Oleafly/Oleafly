@@ -289,6 +289,7 @@ const MessageItem = memo(function MessageItem({ msg }: { msg: ChatMessage }) {
 export function ChatPanel() {
   const projectId = useFilesStore((s) => s.projectId);
   const projectName = useFilesStore((s) => s.projectName);
+  const projectKind = useFilesStore((s) => s.projectKind);
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
   const setSettingsInitialSection = useSettingsStore((s) => s.setSettingsInitialSection);
   const modelDropdownRef = useRef<HTMLDivElement>(null);
@@ -672,7 +673,12 @@ export function ChatPanel() {
 
     const systemPrompt = `You are OpenLeaf AI, the friendly writing partner inside OpenLeaf, a local-first LaTeX editor.
 You have full, reliable control over the project via these tools: ${TOOLS_LIST}.
-The current project is "${projectName}" (ID: ${projectId}). Main document: ${useFilesStore.getState().mainDoc || "main.tex"}.
+The current project is "${projectName}" (ID: ${projectId}). Main document: ${useFilesStore.getState().mainDoc || "main.tex"}.${
+      projectKind === "image"
+        ? `
+This is an IMAGE project, not a text document. The main document is a standalone TikZ/LaTeX figure that compiles to a single cropped image (not a paper). Your job is to build, edit, and fix that ONE figure: shapes, arrows, labels, colors, and layout. Do not add prose, sections, abstracts, bibliographies, or multi-page document structure. Keep the standalone document class and its tikzpicture. When you compile, success means the figure renders cleanly; the "PDF" here is the image.`
+        : ""
+    }
 
 Voice and style:
 - Talk like a warm, encouraging human collaborator, not a manual. Be concise but personable, and let a little personality show.
@@ -981,7 +987,7 @@ USER_CUSTOM_INSTRUCTIONS`
         });
       }
     }
-  }, [messages, streaming, apiKey, provider, model, projectId, projectName, currentHead, figureMode]);
+  }, [messages, streaming, apiKey, provider, model, projectId, projectName, currentHead, figureMode, projectKind]);
 
   // Stop the current AI run (used by the Stop button).
   const stop = useCallback(() => {

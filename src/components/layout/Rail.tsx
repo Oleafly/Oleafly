@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-shell";
 import { useSettingsStore, type RailTab } from "@/store/settings";
+import { useFilesStore } from "@/store/files";
 import { useGitStatusStore } from "@/store/git-status";
 import { useTheme } from "@/lib/theme";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -33,6 +34,8 @@ const TOP_TABS: { id: RailTab; label: string; icon: typeof FileText }[] = [
 
 export function Rail() {
   const railTab = useSettingsStore((s) => s.railTab);
+  // Preflight (ATS + accessibility) targets documents, not single figures.
+  const isImage = useFilesStore((s) => s.projectKind) === "image";
   const setRailTab = useSettingsStore((s) => s.setRailTab);
   const showTree = useSettingsStore((s) => s.showTree);
   const toggleTree = useSettingsStore((s) => s.toggleTree);
@@ -91,15 +94,17 @@ export function Rail() {
 
         <span className="my-1 h-px w-6 bg-border" />
 
-        <Tooltip label="Preflight (ATS + accessibility)" side="right">
-          <button
-            aria-label="Preflight"
-            onClick={() => select("preflight")}
-            className={railBtn(railTab === "preflight" && showTree)}
-          >
-            <ShieldCheck className="size-5" />
-          </button>
-        </Tooltip>
+        {!isImage && (
+          <Tooltip label="Preflight (ATS + accessibility)" side="right">
+            <button
+              aria-label="Preflight"
+              onClick={() => select("preflight")}
+              className={railBtn(railTab === "preflight" && showTree)}
+            >
+              <ShieldCheck className="size-5" />
+            </button>
+          </Tooltip>
+        )}
 
         <Tooltip label="References (Shift-F12)" side="right">
           <button

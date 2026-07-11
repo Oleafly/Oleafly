@@ -101,6 +101,7 @@ const AUTO_COMPILE_DEBOUNCE_MS = 2500;
 
 export default function App() {
   const projectId = useFilesStore((s) => s.projectId);
+  const projectKind = useFilesStore((s) => s.projectKind);
   const refreshProjects = useFilesStore((s) => s.refreshProjects);
   const activeContent = useActiveContent();
   const activePath = useFilesStore((s) => s.activePath);
@@ -283,9 +284,12 @@ export default function App() {
                 )}
                 {viewMode === "split" && (
                   <VHandle id="h-mid" placement="top">
-                    <DividerBtn onClick={() => void forwardFromCursor()} title="Go to PDF (SyncTeX)">
-                      <ArrowRight className="size-3.5" />
-                    </DividerBtn>
+                    {/* SyncTeX maps source to PDF positions; a single figure has none. */}
+                    {projectKind !== "image" && (
+                      <DividerBtn onClick={() => void forwardFromCursor()} title="Go to PDF (SyncTeX)">
+                        <ArrowRight className="size-3.5" />
+                      </DividerBtn>
+                    )}
                   </VHandle>
                 )}
                 {viewMode !== "editor" && (

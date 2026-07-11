@@ -67,6 +67,10 @@ export const readProjectBytes = (projectId: string, relPath: string) =>
 export const writeProjectBytes = (projectId: string, relPath: string, dataBase64: string) =>
   invoke<void>("write_project_bytes", { projectId, relPath, dataBase64 });
 
+/** Write raw bytes (base64 over IPC) to an absolute path from a save dialog. */
+export const writeBytesFile = (dest: string, dataBase64: string) =>
+  invoke<void>("write_bytes_file", { dest, dataBase64 });
+
 export const listFiles = (projectId: string) =>
   invoke<FileEntry[]>("list_files", { projectId });
 
