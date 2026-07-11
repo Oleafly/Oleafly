@@ -180,7 +180,12 @@ export function PreflightPanel() {
                 <button
                   onClick={() => void runOne(c.id)}
                   disabled={!on || running}
-                  className="inline-flex w-14 items-center justify-center gap-1 rounded border border-input px-2 py-1 text-xs hover:bg-accent disabled:opacity-40"
+                  className={cn(
+                    "inline-flex w-14 items-center justify-center gap-1 rounded px-2 py-1 text-xs disabled:opacity-40",
+                    on
+                      ? "bg-primary text-white hover:opacity-90"
+                      : "border border-input hover:bg-accent",
+                  )}
                 >
                   {spinning(c.id) ? (
                     <RefreshCw className="size-3 animate-spin" />
