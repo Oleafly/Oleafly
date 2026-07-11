@@ -274,6 +274,7 @@ export function TopToolbar() {
         {editingTitle ? (
           <span ref={titleEditRef} className="flex items-center gap-1">
             <input
+              aria-label="Project name"
               autoFocus
               value={titleDraft}
               onChange={(e) => setTitleDraft(e.target.value)}
@@ -311,6 +312,7 @@ export function TopToolbar() {
           </span>
         ) : (
           <button
+              data-testid="project-title"
             type="button"
             onClick={startEditTitle}
             className="flex min-w-0 items-center rounded px-1 py-0.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -326,6 +328,7 @@ export function TopToolbar() {
           <Tooltip key={mode} label={label} side="bottom">
             <button
               onClick={() => setViewMode(mode)}
+              aria-label={label}
               aria-pressed={viewMode === mode}
               className={cn(
                 "flex h-7 items-center rounded-[5px] px-2 text-muted-foreground transition-colors",
