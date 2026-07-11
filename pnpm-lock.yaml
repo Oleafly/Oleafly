@@ -80,6 +80,9 @@ importers:
       '@openleaf/preview':
         specifier: workspace:*
         version: link:packages/preview
+      '@openleaf/templates':
+        specifier: workspace:*
+        version: link:packages/templates
       '@radix-ui/react-context-menu':
         specifier: ^2.3.2
         version: 2.3.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -332,6 +335,21 @@ importers:
       react:
         specifier: '*'
         version: 19.2.7
+
+  packages/templates:
+    dependencies:
+      clsx:
+        specifier: '*'
+        version: 2.1.1
+      lucide-react:
+        specifier: '*'
+        version: 0.469.0(react@19.2.7)
+      react:
+        specifier: '*'
+        version: 19.2.7
+      tailwind-merge:
+        specifier: '*'
+        version: 2.6.1
 
 packages:
 

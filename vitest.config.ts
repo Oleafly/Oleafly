@@ -11,6 +11,7 @@ export default defineConfig({
       "@openleaf/editor": path.resolve(__dirname, "./packages/editor/src"),
       "@openleaf/ai-tools": path.resolve(__dirname, "./packages/ai-tools/src"),
       "@openleaf/preflight": path.resolve(__dirname, "./packages/preflight/src"),
+      "@openleaf/templates": path.resolve(__dirname, "./packages/templates/src"),
       "@openleaf/preview": path.resolve(__dirname, "./packages/preview/src"),
     },
   },
