@@ -74,3 +74,51 @@ test("insert as code lands editable TikZ in the document and a figures/ file", a
   await tauriPage.getByText("figures").click(); // expand the folder
   await expect(tauriPage.getByText(`${name}.tikz`)).toBeVisible({ timeout: 15_000 });
 });
+
+test("canvas zoom controls change the viewport", async ({ tauriPage }) => {
+  await openProject(tauriPage, "E2E Doc");
+  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  await tauriPage.click('[aria-label="Insert diagram"]');
+  await expect(tauriPage.locator('[role="dialog"][aria-label="Insert diagram"]')).toBeVisible();
+
+  // React Flow paints the zoom level into the viewport transform. The mount
+  // runs an animated fitView that lands AT max zoom for the small starter
+  // drawing, so wait until the transform stops moving, then zoom OUT first
+  // (zooming in from max is a legitimate no-op).
+  const transform = () =>
+    tauriPage.evaluate<string>(
+      `document.querySelector('.react-flow__viewport')?.style.transform || ''`,
+    );
+  await tauriPage.waitForFunction(
+    `!!(document.querySelector('.react-flow__viewport')?.style.transform) && !!document.querySelector('.react-flow__controls-zoomin')`,
+    10_000,
+  );
+  let fitted = await transform();
+  for (let i = 0; i < 20; i++) {
+    await new Promise((r) => setTimeout(r, 400));
+    const now = await transform();
+    if (now === fitted) break;
+    fitted = now;
+  }
+
+  await tauriPage.click(".react-flow__controls-zoomout");
+  await tauriPage.waitForFunction(
+    `(document.querySelector('.react-flow__viewport')?.style.transform || '') !== ${JSON.stringify(fitted)}`,
+    5_000,
+  );
+  const zoomedOut = await transform();
+
+  await tauriPage.click(".react-flow__controls-zoomin");
+  await tauriPage.waitForFunction(
+    `(document.querySelector('.react-flow__viewport')?.style.transform || '') !== ${JSON.stringify(zoomedOut)}`,
+    5_000,
+  );
+
+  // Fit view animates back to the fitted framing.
+  await tauriPage.click(".react-flow__controls-fitview");
+  await tauriPage.waitForFunction(
+    `(document.querySelector('.react-flow__viewport')?.style.transform || '') === ${JSON.stringify(fitted)}`,
+    10_000,
+  );
+  await tauriPage.click('[role="dialog"][aria-label="Insert diagram"] [aria-label="Close"]');
+});

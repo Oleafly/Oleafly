@@ -56,19 +56,34 @@ Rerunning against an already-used app instance is not supported — relaunch.
   instead of `\newcommand` for injected LaTeX, and make injected command
   names unique per run. CodeMirror anchors must live inside ONE syntax token
   (no backslash-prefixed anchors - highlighting splits text nodes).
-- Rail tabs: use `openRailTab` (handles the persisted collapsed-sidebar state).
+- Rail tabs: use `openRailTab` (handles the persisted collapsed-sidebar state
+  AND the re-click-collapses-the-active-tab trap).
 - Settings: `openSettings(page, section)`; toggles are `[role="switch"]` with
   their label as `aria-label`.
+- TEXTAREAS: the plugin's `fill()` only drives `<input>` (it throws
+  "HTMLInputElement.value setter" on textareas) - use `fillTextarea` from
+  `helpers.ts` (chat box, commit message, custom instructions).
+- Hover-revealed controls (`opacity-0 group-hover`): the plugin's `click()`
+  waits for visibility and never fires - click the element via `evaluate`
+  (`el.click()` works fine on invisible elements).
+- Panels that refresh on mount only (source control): after making an edit,
+  loop "click Refresh -> check" rather than waiting once; the save-on-compile
+  and the panel's own refresh both land asynchronously.
+- A `data-severity="ok"` wait passes IMMEDIATELY if the chip is still "ok"
+  from an earlier compile in the same test - don't use it as a "my second
+  compile finished" signal; wait for the downstream effect instead.
 
 ## Opt-in env vars
 
 Set them in your shell, or copy `e2e/.env.example` to `e2e/.env` (gitignored)
-and fill in values - the Playwright config loads it automatically.
+and fill in values - `fixtures.ts` loads it in every worker process (loading
+it only from the Playwright config does NOT work: workers never see env vars
+set while the main process evaluates the config).
 
 | Var | Effect |
 | --- | --- |
-| `E2E_GITHUB_TOKEN` | Runs the source-control stage/diff/commit flow (connects with the PAT) |
-| `E2E_GIT_PUSH=1` | Runs the push-to-origin test (configure the remote first; delete the remote repo afterwards) |
-| `E2E_SKIP_NETWORK=1` | Skips the font-download test |
-| `E2E_AI_TOKEN` | Runs the real AI chat tests (provider connect, conversation, tool call) |
+| `E2E_GITHUB_TOKEN` | Runs the source-control stage/diff/commit flow and the history restore round-trip (connects with the PAT) |
+| `E2E_GIT_PUSH=1` | Runs the publish-to-GitHub test: creates a real `e2e-openleaf-*` repo, pushes, verifies over the API, then deletes it (grant the PAT the `delete_repo` scope, or delete the repo manually) |
+| `E2E_SKIP_NETWORK=1` | Skips the font-download and template-font-pack tests |
+| `E2E_AI_TOKEN` | Runs the real AI tests: provider connect, GLM-4.6 model pick, conversation, tool call, figure generation |
 | `E2E_AI_PROVIDER` | Provider card name for the AI tests (default `Z.AI`) |
