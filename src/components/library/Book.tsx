@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Bookmark } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -76,6 +76,22 @@ export function Book({
   const coverColor = color ?? DEFAULT_BOOK_COLOR;
   const ink = textColor ?? (isLight(coverColor) ? "#1f2937" : "#ffffff");
   const dark = shade(coverColor, -42);
+  const [slideReady, setSlideReady] = useState(false);
+
+  useEffect(() => {
+    if (!preview) {
+      setSlideReady(false);
+      return;
+    }
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => setSlideReady(true));
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
+  }, [preview]);
 
   return (
     <div
@@ -137,7 +153,7 @@ export function Book({
             </div>
 
             {preview && (
-              <div className="absolute inset-0 z-[15] -translate-x-full bg-white transition-transform duration-300 ease-out group-hover:translate-x-0">
+              <div className={cn("absolute inset-0 z-[15] -translate-x-full bg-white transition-transform duration-300 ease-out", slideReady && "group-hover:translate-x-0")}>
                 <img src={preview} alt="" draggable={false} className="size-full object-cover object-top" />
               </div>
             )}
