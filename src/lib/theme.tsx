@@ -39,6 +39,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     window.localStorage.setItem(STORAGE_KEY, theme);
   }, [theme]);
 
+  // Imperative toggle for non-React callers (registry commands, the AI
+  // toggle_theme tool): anyone can dispatch this window event.
+  useEffect(() => {
+    const onToggle = () => setThemeState((prev) => (prev === "dark" ? "light" : "dark"));
+    window.addEventListener("localleaf:toggle-theme", onToggle);
+    return () => window.removeEventListener("localleaf:toggle-theme", onToggle);
+  }, []);
+
   const value = useMemo<ThemeContextValue>(
     () => ({
       theme,

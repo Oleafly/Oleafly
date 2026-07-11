@@ -28,6 +28,7 @@
       "@openleaf/editor": ["./packages/editor/src/index.ts"],
       "@openleaf/ai-tools": ["./packages/ai-tools/src/index.ts"],
       "@openleaf/preflight": ["./packages/preflight/src/index.ts"],
+      "@openleaf/registry": ["./packages/registry/src/index.ts"],
       "@openleaf/preflight/pdf-extract": ["./packages/preflight/src/pdf-extract.ts"],
       "@openleaf/templates": ["./packages/templates/src/index.ts"],
       "@openleaf/preview": ["./packages/preview/src/index.ts"],

@@ -20,7 +20,8 @@ import {
 import { useFilesStore } from "@/store/files";
 import { getConfig, setConfig, gitLog, gitAutoCommit } from "@/lib/tauri";
 import { listOllamaModels } from "@/lib/ollama";
-import { createOpenLeafTools, createFigureTools, type ToolApprovalRequest } from "@/lib/ai-tools";
+import { registry } from "@openleaf/registry";
+import type { ToolApprovalRequest } from "@/lib/ai-tools";
 import { FIGURE_SYSTEM_PROMPT, modelSupportsVision, setFigureInsertTarget } from "@/lib/ai-figure";
 import { getEditorView } from "@/components/editor/cm/controller";
 import { ToolConfirm } from "@/components/ai/ToolConfirm";
@@ -860,9 +861,11 @@ USER_CUSTOM_INSTRUCTIONS`
         }
 
         const modelInstance = buildAiModel(provider, model, apiKey);
-        const tools = figure
-          ? createFigureTools({ confirm, onImage: (d) => pendingImagesRef.current.push(d) })
-          : createOpenLeafTools({ confirm });
+        // The toolset for this chat mode comes from the contribution registry.
+        const toolset = registry.aiToolsets.find((t) => t.mode === (figure ? "figure" : "chat"));
+        const tools = toolset
+          ? toolset.create({ confirm, onImage: (d: string) => pendingImagesRef.current.push(d) })
+          : {};
 
         // Retry the same step on stream disconnects / transient API errors so a
         // dropped connection never abandons an unfinished task.

@@ -40,6 +40,7 @@
     "@openleaf/editor": "workspace:*",
     "@openleaf/ai-tools": "workspace:*",
     "@openleaf/preflight": "workspace:*",
+    "@openleaf/registry": "workspace:*",
     "@openleaf/templates": "workspace:*",
     "@openleaf/preview": "workspace:*",
     "@openleaf/latex": "workspace:*",

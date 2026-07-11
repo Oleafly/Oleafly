@@ -9,10 +9,9 @@ import {
   Plus,
   Search,
   Settings,
-  Sparkles,
   Sun,
-  Workflow,
 } from "lucide-react";
+import { commandsFor, commandLabel, type AppContext } from "@openleaf/registry";
 import { useSettingsStore } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
 import { useTheme } from "@/lib/theme";
@@ -56,6 +55,7 @@ export function SearchOmnibar() {
   const setRailTab = useSettingsStore((s) => s.setRailTab);
   const projects = useFilesStore((s) => s.projects);
   const projectId = useFilesStore((s) => s.projectId);
+  const projectKind = useFilesStore((s) => s.projectKind);
   const openProject = useFilesStore((s) => s.openProject);
   const openFile = useFilesStore((s) => s.openFile);
   const refreshProjects = useFilesStore((s) => s.refreshProjects);
@@ -117,63 +117,20 @@ export function SearchOmnibar() {
     return list.slice(0, mode === "projects" ? 30 : 6);
   }, [projects, trimmed, mode]);
 
-  // Top-level commands, filtered by the typed term in the default scope.
+  // Top-level registered commands, filtered by the typed term in the default scope.
   const commands = useMemo(() => {
-    const all = [
-      {
-        id: "create",
-        label: "Create a new project",
-        kw: "new project create template gallery",
-        icon: <Plus className="size-4" />,
-        run: () => setNewProjectOpen(true),
-      },
-      {
-        id: "theme",
-        label: `Switch to ${theme === "dark" ? "light" : "dark"} theme`,
-        kw: "theme dark light appearance mode",
-        icon: theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />,
-        run: toggleTheme,
-      },
-      // Figures insert into an open document, so only offer this with a project open.
-      ...(projectId
-        ? [
-            {
-              id: "figure",
-              label: "Generate a figure with AI",
-              kw: "figure diagram draw tikz plot chart illustration",
-              icon: <Sparkles className="size-4" />,
-              run: () => {
-                const s = useSettingsStore.getState();
-                s.setRailTab("ai");
-                if (!s.showTree) s.toggleTree();
-                s.setFigureModeOpen(true);
-              },
-            },
-            ...(useFilesStore.getState().projectKind === "image"
-              ? []
-              : [
-                  {
-                    id: "diagram",
-                    label: "Insert a diagram (manual)",
-                    kw: "diagram figure tikz manual composer draw insert paste",
-                    icon: <Workflow className="size-4" />,
-                    run: () => useSettingsStore.getState().setDiagramComposerOpen(true),
-                  },
-                ]),
-          ]
-        : []),
-      {
-        id: "settings",
-        label: "Open settings",
-        kw: "settings preferences options",
-        icon: <Settings className="size-4" />,
-        run: () => setSettingsOpen(true),
-      },
-    ];
+    const ctx: AppContext = { projectId, projectKind, theme };
+    const all = commandsFor("omnibar", ctx).map((c) => ({
+      id: c.id,
+      label: commandLabel(c, ctx),
+      kw: c.keywords ?? "",
+      icon: c.icon?.(ctx),
+      run: () => c.run(ctx),
+    }));
     if (mode !== "all") return [];
     const q = trimmed.toLowerCase();
     return q ? all.filter((c) => (c.label + " " + c.kw).toLowerCase().includes(q)) : all;
-  }, [trimmed, mode, theme, toggleTheme, setNewProjectOpen, setSettingsOpen, projectId]);
+  }, [trimmed, mode, theme, projectId, projectKind]);
 
   const runProject = async (id: string) => {
     close();

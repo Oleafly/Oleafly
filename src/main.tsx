@@ -12,7 +12,12 @@ import { PreviewWindow } from "@/components/preview/PreviewWindow";
 import { ThemeProvider } from "@/lib/theme";
 import { Toaster } from "@/components/ui/toaster";
 import { appendAppLog } from "@/lib/tauri";
+import { registerContributions } from "@/contributions";
 import "@/styles/globals.css";
+
+// Populate the contribution registry (rail tabs, commands, AI toolsets)
+// before the shell mounts and reads it.
+registerContributions();
 
 // Record otherwise-invisible failures (rejected promises, non-React errors) to
 // the shared app log so they can be diagnosed from a user's bug report.

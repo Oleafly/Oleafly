@@ -80,6 +80,9 @@ importers:
       '@openleaf/preview':
         specifier: workspace:*
         version: link:packages/preview
+      '@openleaf/registry':
+        specifier: workspace:*
+        version: link:packages/registry
       '@openleaf/templates':
         specifier: workspace:*
         version: link:packages/templates
@@ -332,6 +335,12 @@ importers:
       pdfjs-dist:
         specifier: '*'
         version: 6.1.200
+      react:
+        specifier: '*'
+        version: 19.2.7
+
+  packages/registry:
+    dependencies:
       react:
         specifier: '*'
         version: 19.2.7

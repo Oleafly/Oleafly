@@ -5,12 +5,9 @@ import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { searchDocs, type SearchHit } from "@/lib/tauri";
 import { gotoLine } from "@/components/editor/cm/controller";
+import { registry } from "@openleaf/registry";
 import { FileTree } from "@/components/files/FileTree";
 import { Outline } from "@/components/layout/Outline";
-import { SourceControl } from "@/components/layout/SourceControl";
-import { ChatPanel } from "@/components/ai/ChatPanel";
-import { PreflightPanel } from "@/components/preflight/PreflightPanel";
-import { ReferencesPanel } from "@/components/layout/ReferencesPanel";
 import { cn } from "@/lib/utils";
 
 function basename(p: string) {
@@ -18,7 +15,7 @@ function basename(p: string) {
   return i >= 0 ? p.slice(i + 1) : p;
 }
 
-function ProjectSearch() {
+export function ProjectSearch() {
   const projectId = useFilesStore((s) => s.projectId);
   const openFile = useFilesStore((s) => s.openFile);
   const [q, setQ] = useState("");
@@ -99,30 +96,8 @@ function ProjectSearch() {
   );
 }
 
-function Placeholder({ title }: { title: string }) {
-  return (
-    <div className="flex h-full flex-col">
-      <div className="flex h-9 items-center border-b border-sidebar-border px-3">
-        <span className="text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70">
-          {title}
-        </span>
-      </div>
-      <div className="flex flex-1 flex-col items-center justify-center px-4 text-center text-muted-foreground">
-        <p className="text-sm">{title} is coming soon.</p>
-      </div>
-    </div>
-  );
-}
-
-export function Sidebar() {
-  const railTab = useSettingsStore((s) => s.railTab);
-  if (railTab === "search") return <ProjectSearch />;
-  if (railTab === "source") return <SourceControl />;
-  if (railTab === "preflight") return <PreflightPanel />;
-  if (railTab === "refs") return <ReferencesPanel />;
-  if (railTab === "ai") return <ChatPanel />;
-  if (railTab === "review") return <Placeholder title="Review" />;
-  if (railTab === "chat") return <ChatPanel />;
+/** The default sidebar: the file tree over the document outline. */
+export function FilesPanel() {
   return (
     <PanelGroup direction="vertical">
       <Panel id="filetree-v" order={1} defaultSize={70} minSize={20}>
@@ -142,4 +117,11 @@ export function Sidebar() {
       </Panel>
     </PanelGroup>
   );
+}
+
+/** Renders the active rail tab's registered panel (files when unknown). */
+export function Sidebar() {
+  const railTab = useSettingsStore((s) => s.railTab);
+  const ActivePanel = registry.railTabs.find((t) => t.id === railTab)?.panel ?? FilesPanel;
+  return <ActivePanel />;
 }
