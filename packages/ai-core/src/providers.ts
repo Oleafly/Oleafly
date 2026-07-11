@@ -1,4 +1,5 @@
 import { createOpenAI } from "@ai-sdk/openai";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createAnthropic } from "@ai-sdk/anthropic";
 
 export interface AIModel {
@@ -60,7 +61,6 @@ export const PROVIDERS: AIProvider[] = [
     baseURL: "https://api.z.ai/api/coding/paas/v4",
     models: [
       { id: "glm-5.2", name: "GLM-5.2" },
-      { id: "glm-5.2[1m]", name: "GLM-5.2 (1M context)" },
       { id: "glm-4.6", name: "GLM-4.6" },
       { id: "glm-4.5-air", name: "GLM-4.5 Air" },
       { id: "glm-4.5", name: "GLM-4.5" },
@@ -173,6 +173,19 @@ export function buildModel(provider: string, model: string, credential: string) 
   if (provider === "ollama") {
     const host = (credential || "http://localhost:11434").replace(/\/+$/, "");
     return createOpenAI({ baseURL: `${host}/v1`, apiKey: "ollama" }).chat(model);
+  }
+  // GLM and DeepSeek stream their thinking phase as `reasoning_content`, a
+  // field the strict OpenAI provider silently drops. Dropping it means the
+  // app sees TOTAL silence while the model thinks, so the stall watchdog
+  // aborts long-thinking runs (GLM-4.6) with no reply. The openai-compatible
+  // provider maps reasoning_content into real reasoning stream parts.
+  if (provider === "zai" || provider === "deepseek") {
+    const p = getProvider(provider);
+    return createOpenAICompatible({
+      name: provider,
+      baseURL: p?.baseURL ?? "",
+      apiKey: credential,
+    }).chatModel(model);
   }
   const baseURL = getProvider(provider)?.baseURL;
   return createOpenAI({
