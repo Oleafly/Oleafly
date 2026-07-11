@@ -22,11 +22,22 @@ export interface ChatMessage {
   content: string;
   toolCalls?: ToolEntry[];
   attachments?: AttachmentMeta[];
-  /** Streamed chain-of-thought from a reasoning model, shown collapsed. */
+  /** Legacy single-block chain-of-thought; still read for chats persisted
+   *  before reasoningBlocks existed. */
   reasoning?: string;
-  /** How long the model reasoned before answering, for the "Thought for Ns"
-   *  label once the block collapses. */
+  /** Legacy duration for the single `reasoning` block. */
   reasoningMs?: number;
+  /** Chain-of-thought phases in arrival order. An agentic run can think
+   *  between tool calls, so each phase records how many tool calls existed
+   *  when it began (its interleave anchor). `ms` is set when the phase ends;
+   *  undefined means it is still streaming. */
+  reasoningBlocks?: ReasoningBlockData[];
+}
+
+export interface ReasoningBlockData {
+  text: string;
+  ms?: number;
+  beforeTool: number;
 }
 
 export interface StoredChat {

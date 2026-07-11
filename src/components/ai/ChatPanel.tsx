@@ -285,20 +285,33 @@ const MessageItem = memo(function MessageItem({
   /** True only for the streaming tail message; drives the live reasoning view. */
   live?: boolean;
 }) {
-  const reasoningActive =
-    !!live && !!msg.reasoning && !msg.content && !(msg.toolCalls && msg.toolCalls.length > 0);
+  const tools = msg.toolCalls ?? [];
+  // Fall back to the legacy single-block fields for chats persisted before
+  // reasoningBlocks existed.
+  const blocks =
+    msg.reasoningBlocks ??
+    (msg.reasoning ? [{ text: msg.reasoning, ms: msg.reasoningMs, beforeTool: 0 }] : []);
+  // Interleave thinking phases and tool badges in arrival order: each block
+  // renders before the tool call whose index it recorded.
+  const rows: React.ReactNode[] = [];
+  for (let i = 0; i <= tools.length; i++) {
+    blocks.forEach((b, bi) => {
+      if (Math.min(b.beforeTool, tools.length) === i) {
+        rows.push(
+          <ReasoningBlock
+            key={`r${bi}`}
+            text={b.text}
+            active={!!live && b.ms === undefined}
+            durationMs={b.ms}
+          />,
+        );
+      }
+    });
+    if (i < tools.length) rows.push(<ToolBadge key={`t${i}`} tc={tools[i]} />);
+  }
   return (
     <div className={cn("flex flex-col gap-1.5", msg.role === "user" && "items-end")}>
-      {msg.reasoning ? (
-        <ReasoningBlock
-          text={msg.reasoning}
-          active={reasoningActive}
-          durationMs={msg.reasoningMs}
-        />
-      ) : null}
-      {msg.toolCalls?.map((tc, j) => (
-        <ToolBadge key={j} tc={tc} />
-      ))}
+      {rows}
       {msg.attachments && msg.attachments.length > 0 && (
         <div className="flex max-w-[85%] flex-wrap justify-end gap-1.5">
           {msg.attachments.map((a, j) => (
@@ -811,14 +824,43 @@ USER_CUSTOM_INSTRUCTIONS`
         const stepToolResults: { id: string; name: string; output: any }[] = [];
         let errorMsg = "";
         let errorRetryable = true;
-        // Wall-clock of the thinking phase, for the "Thought for Ns" label.
+        // Each thinking phase becomes its own block, anchored to the number
+        // of tool calls that precede it, so the transcript interleaves
+        // thought -> tools -> thought in true arrival order.
         let reasoningStartedAt: number | null = null;
+        const openReasoning = () => {
+          if (reasoningStartedAt !== null) return;
+          reasoningStartedAt = Date.now();
+          updateLast((m) => ({
+            ...m,
+            reasoningBlocks: [
+              ...(m.reasoningBlocks ?? []),
+              { text: "", beforeTool: (m.toolCalls ?? []).length },
+            ],
+          }));
+        };
+        const appendReasoning = (chunk: string) => {
+          updateLast((m) => {
+            const blocks = [...(m.reasoningBlocks ?? [])];
+            if (!blocks.length) return m;
+            const last = { ...blocks[blocks.length - 1] };
+            last.text += chunk;
+            blocks[blocks.length - 1] = last;
+            return { ...m, reasoningBlocks: blocks };
+          });
+        };
         const endReasoning = () => {
-          if (reasoningStartedAt !== null) {
-            const ms = Date.now() - reasoningStartedAt;
-            reasoningStartedAt = null;
-            updateLast((m) => (m.reasoningMs ? m : { ...m, reasoningMs: ms }));
-          }
+          if (reasoningStartedAt === null) return;
+          const ms = Date.now() - reasoningStartedAt;
+          reasoningStartedAt = null;
+          updateLast((m) => {
+            const blocks = [...(m.reasoningBlocks ?? [])];
+            if (!blocks.length) return m;
+            const last = { ...blocks[blocks.length - 1] };
+            if (last.ms === undefined) last.ms = ms;
+            blocks[blocks.length - 1] = last;
+            return { ...m, reasoningBlocks: blocks };
+          });
         };
 
         for await (const part of result.fullStream) {
@@ -838,16 +880,14 @@ USER_CUSTOM_INSTRUCTIONS`
             // auto-expanded ReasoningBlock; time it for the collapsed label.
             case "reasoning-start":
               setThinkingText("Reasoning…");
-              reasoningStartedAt ??= Date.now();
+              openReasoning();
               break;
             case "reasoning-delta": {
               setThinkingText("Reasoning…");
-              reasoningStartedAt ??= Date.now();
+              openReasoning();
               const rp = part as any;
               const chunk = rp.text ?? rp.delta ?? rp.textDelta ?? "";
-              if (chunk) {
-                updateLast((m) => ({ ...m, reasoning: (m.reasoning ?? "") + chunk }));
-              }
+              if (chunk) appendReasoning(chunk);
               break;
             }
             case "reasoning-end":
@@ -1276,10 +1316,8 @@ USER_CUSTOM_INSTRUCTIONS`
                       message's ReasoningBlock is already streaming the live
                       chain-of-thought - one indicator at a time. */}
                   {streaming &&
-                    !(
-                      messages[messages.length - 1]?.reasoning &&
-                      !messages[messages.length - 1]?.content &&
-                      !messages[messages.length - 1]?.toolCalls?.length
+                    !messages[messages.length - 1]?.reasoningBlocks?.some(
+                      (b) => b.ms === undefined,
                     ) && (
                       <div className="max-w-[85%] rounded-md border bg-muted/30 text-xs">
                         <div className="flex w-full items-center gap-2 px-2.5 py-1.5 text-muted-foreground">
