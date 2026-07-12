@@ -4,7 +4,7 @@
 
 # OpenLeaf
 
-### Cursor for technical documents. Runs entirely on your machine.
+### Cursor for research papers and resumes. Runs entirely on your machine.
 
 **OpenLeaf is a free, open-source, AI-native LaTeX studio for macOS, Windows, and Linux. No account, no cloud, no TeX install.** Every successful compile becomes a Git commit. The AI doesn't stop at editing: it compiles your document and reads the PDF to verify its own edit. Bring your own key, run a local model, or turn it off.
 
