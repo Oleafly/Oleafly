@@ -1,0 +1,34 @@
+# Weekly grouped dependency updates: one PR per ecosystem instead of a PR per
+# package. Security updates are separate (enabled repo-side) and open
+# immediately regardless of this schedule.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      npm-all:
+        patterns: ["*"]
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: cargo
+    directory: /src-tauri
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      cargo-all:
+        patterns: ["*"]
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions-all:
+        patterns: ["*"]
+    open-pull-requests-limit: 5

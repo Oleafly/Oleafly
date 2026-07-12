@@ -102,6 +102,20 @@ jobs:
         working-directory: src-tauri
         run: cargo clippy --all-targets -- -D warnings
 
+  cargo-deny:
+    # RustSec advisories plus a permissive-only license gate for everything
+    # compiled into the shipped binary. Policy lives in src-tauri/deny.toml.
+    name: Rust (cargo-deny audit)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run cargo-deny
+        uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          manifest-path: src-tauri/Cargo.toml
+          command: check
+
   e2e:
     # The full no-mock suite against the real app (WKWebView + Rust + Tectonic
     # compiles) on macOS - the platform the suite is validated on. Tests that
