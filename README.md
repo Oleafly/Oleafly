@@ -4,9 +4,9 @@
 
 # OpenLeaf
 
-### A LaTeX and resume editor that runs on your machine.
+### Cursor for technical documents. Runs entirely on your machine.
 
-**OpenLeaf is a free, open-source, local-first LaTeX and resume editor for macOS, Windows, and Linux, an offline [Overleaf](https://www.overleaf.com) alternative.** Your files stay on your disk. Every project is a real Git repo. Bring your own AI, or use none.
+**OpenLeaf is a free, open-source, AI-native LaTeX studio for macOS, Windows, and Linux. No account, no cloud, no TeX install.** Every save is a Git commit. The AI doesn't stop at editing: it compiles your document and reads the PDF to verify its own edit. Bring your own key, run a local model, or turn it off.
 
 [![Download](https://img.shields.io/github/v/release/prajwal-svm/OpenLeaf?label=Download&color=22c55e)](https://github.com/prajwal-svm/OpenLeaf/releases/latest)
 [![Downloads](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fprajwal-svm%2FOpenLeaf%2Fmain%2F.github%2Fbadges%2Fdownloads.json)](https://github.com/prajwal-svm/OpenLeaf/releases)
@@ -27,7 +27,7 @@
 
 <div align="center">
 
-**[Download the app](https://github.com/prajwal-svm/OpenLeaf/releases/latest) · [Build from source](docs/install.md) · [Docs](docs) · [Roadmap](#roadmap)**
+**[Download the app](https://github.com/prajwal-svm/OpenLeaf/releases/latest) · [Build from source](docs/install.md) · [Docs](https://prajwal-svm.github.io/OpenLeaf/) · [Roadmap](#roadmap)**
 
 Grab a prebuilt installer for macOS, Windows, or Linux from the [latest release](https://github.com/prajwal-svm/OpenLeaf/releases/latest), or [build it from source](docs/install.md).
 
@@ -46,6 +46,15 @@ If OpenLeaf is useful to you, a star helps other people find it.
 <td colspan="2" align="center"><img src="media/ai-fix.gif" alt="AI fixes a LaTeX error" width="100%" /><p align="center"><b>Let the AI fix a LaTeX error</b></p></td>
 </tr>
 </table>
+
+<br/>
+
+## Who it's for
+
+- **Students.** Write assignments, reports, and a thesis without installing a full TeX distribution. The compiler ships inside the app.
+- **Researchers.** Manage large multi-file papers with citations, cross-references, Git history, and an AI that reads the whole project.
+- **Job seekers.** Build ATS-friendly LaTeX resumes, tailor them to job descriptions, and keep every version of every variant.
+- **Developers.** Documents as plain files in real Git repos, synced to GitHub, open in any editor. LaTeX treated like code.
 
 <br/>
 
@@ -76,7 +85,7 @@ Prerequisites and production builds are in the [install guide](docs/install.md).
 
 ## Why OpenLeaf
 
-You write LaTeX the way you write code, so your editor should treat it that way.
+Cursor didn't set out to be another VS Code, and OpenLeaf isn't another Overleaf. You write LaTeX the way you write code, so your editor should treat it that way: AI-native, Git-backed, and local. Call it document engineering.
 
 - It compiles on your machine. No server, no upload queue, no account.
 - Your files live in a plain folder on your disk. Nothing leaves it unless you tell it to.
@@ -87,13 +96,21 @@ You write LaTeX the way you write code, so your editor should treat it that way.
 
 You get the polish of a cloud editor without handing your documents to one.
 
+And while it's at it, OpenLeaf quietly replaces the rest of your stack: the paid resume builder, the ATS checker, the accessibility auditor, the Git client, and the AI copilot subscription.
+
 <br/>
 
 ## What makes it different
 
-**Git-backed history.** Every project is a Git repo. It auto-commits on save, shows side-by-side diffs, and restores any past version in one click. You can undo a change from three months ago, branch a resume, or blame a paragraph.
+**Every save is a Git commit.** Undo a paragraph from yesterday. Compare two versions side by side. Branch your resume before every interview. Push it to GitHub with one click. No plugin, no setup, no `resume_final_v3_FINAL.tex`.
 
-**Local, bring-your-own AI.** OpenAI, Anthropic, Groq, OpenRouter, DeepSeek, Mistral, xAI, or a local model through Ollama. Your prompts and documents don't touch a third party unless you pick one that does.
+This is OpenLeaf's quiet superpower. Every project is a real Git repo on your disk: the app commits as you save and gives you history, diffs, and one-click restore right in the UI, and because it's real Git, `git log` and `git blame` work from a terminal too.
+
+<div align="center">
+<img src="media/git-diff.png" alt="Side-by-side diff of a past version" width="85%" />
+</div>
+
+**Local, bring-your-own AI.** OpenAI, Anthropic, Groq, OpenRouter, DeepSeek, Mistral, xAI, Z.AI, or a local model through Ollama. Your prompts and documents don't touch a third party unless you pick one that does.
 
 **Everything on disk.** No blob store, no lock-in. A project is just `~/.openleaf/projects/<id>/`, a normal folder with a real `.git` inside.
 
@@ -101,16 +118,28 @@ You get the polish of a cloud editor without handing your documents to one.
 
 ## How it compares
 
-| | OpenLeaf | Overleaf | VS Code + LaTeX Workshop |
-|---|---|---|---|
-| Works offline | Yes | No | Yes |
-| Git built in | Yes | Add-on | Manual |
-| Resume mode (ATS-clean, branchable) | Yes | Templates | No |
-| AI assistant | Built-in · BYOK or local Ollama | Paid add-on | Extensions |
-| Files stay on your disk | Yes | No | Yes |
-| No account required | Yes | No | Yes |
+OpenLeaf sits where four product categories overlap: LaTeX editors, cloud writing platforms, resume builders, and AI copilots. Here's the honest matrix.
 
-Different tools, different bets. OpenLeaf's is that your documents belong on your machine, in Git, with AI you control and give access to.
+| | OpenLeaf | [Overleaf](https://www.overleaf.com) | TeXstudio / TeXmaker | VS Code + LaTeX Workshop | Typst (web) | Word / Google Docs | Resume builders (Zety · Rezi · Novoresume · Enhancv) |
+|---|---|---|---|---|---|---|---|
+| Price | Free, open source | Free tier; subscription for full history, sync, AI | Free | Free (AI needs paid Copilot) | Free tier; subscription for teams | Subscription (Word) / free (Docs) | Subscription; downloads often paywalled |
+| Real LaTeX output | Yes | Yes | Yes | Yes | No (its own markup) | No | No |
+| Works fully offline | Yes | No | Yes | Yes | Partly (CLI only) | Partly | No |
+| Zero LaTeX setup (no TeX install) | Yes, engine bundled | Yes (cloud) | No (multi-GB TeX Live / MiKTeX) | No (bring your own TeX + config) | Yes | n/a | n/a |
+| Files stay on your disk | Yes | No | Yes | Yes | No | Partly | No |
+| Version history | Real Git, auto-commit on save, diffs, one-click restore | Paid feature | Manual | Manual | Limited | Limited | No |
+| Push to GitHub | One click | Paid sync | Manual | Manual | No | No | No |
+| AI assistant | Built in: 9 providers, bring your own key or local Ollama | Paid add-on | None | Paid Copilot | None | Copilot / Gemini subscription | Upsell |
+| AI edits gated by approval diffs | Yes, every file change | No | n/a | No | n/a | No | No |
+| AI compiles and verifies its own edits | Yes | No | n/a | No | n/a | n/a | n/a |
+| ATS resume checks | Yes, scored, with a parser's-eye preview | No | No | No | No | No | Claimed, methodology opaque |
+| Accessibility checks (Section 508 / PDF/UA) | Yes, plus tagged PDF export | No | No | No | No | Basic checker (Word) | No |
+| Click PDF to jump to source (SyncTeX) | Yes, word-level, both directions | Yes | Yes | Yes | Preview jump | n/a | n/a |
+| Template gallery | Built in: resumes, papers, theses, posters, decks | Large community gallery | A few | No | Community packages | Yes | Yes |
+| Account required | No | Yes | No | No | Yes | Yes | Yes |
+| Open source | Yes (AGPL) | Partly (server core) | Yes | Mostly | Compiler only | No | No |
+
+Different tools, different bets. OpenLeaf's is that your documents belong on your machine, in Git, with AI you control and give access to. The ATS and accessibility rows aren't a typo, by the way. We looked for those checks in other LaTeX editors, paid and free, and came up empty.
 
 <br/>
 
@@ -125,6 +154,10 @@ Most LaTeX tools treat resumes as an afterthought. OpenLeaf doesn't.
 - The PDF renders the same everywhere, so there are no "looked fine on my screen" surprises.
 
 Version-control your career. One repo, every variant of you.
+
+<div align="center">
+<img src="media/resume-tailor.gif" alt="Paste a job posting, the AI tailors your bullets with an approval diff" width="85%" />
+</div>
 
 <br/>
 
@@ -147,13 +180,21 @@ Open the Preflight panel and it scores your document out of 100 for the two audi
 - **What the reader sees.** A plain-text preview of your compiled PDF in reading order, the exact thing a screen reader or parser gets.
 - **One-click accessible export.** OpenLeaf rewrites your source with the setup a tagging engine needs and shows every change first. Compile with LuaLaTeX (use a TeX Live you already have, or install TinyTeX on demand, no admin rights) to produce a tagged, Section 508 / PDF-UA oriented PDF, then verify it right there.
 
-We don't know another LaTeX editor that checks this for you. See [Preflight in the docs](docs/features.md#preflight-ats-and-accessibility-checks).
+<div align="center">
+<img src="media/preflight-ats.png" alt="Preflight scores a resume for ATS parsers and screen readers" width="85%" />
+</div>
+
+The full breakdown of every check is in [Preflight in the docs](https://prajwal-svm.github.io/OpenLeaf/preflight/).
 
 <br/>
 
 ## AI that understands LaTeX
 
-The assistant can read your files, compile them, look at the resulting PDF, edit the source, and then check that its edit actually worked.
+Most AI editors stop after editing. OpenLeaf's assistant closes the loop: it reads your files, edits the source, compiles, and then reads the resulting PDF to check that the edit actually worked. And every file-changing edit pauses for your approval with a red/green diff, so nothing touches your document without you seeing it first.
+
+<div align="center">
+<img src="media/ai-approval-diff.png" alt="An AI edit waiting for approval with a red/green diff" width="85%" />
+</div>
 
 It also draws figures. Describe a diagram (or select a paragraph), and it generates the LaTeX, compiles just the figure in isolation, looks at the rendered result to fix overlaps and spacing, and inserts editable TikZ at your cursor. No AI key? A manual Figure Playground compiles and inserts figures offline.
 
@@ -169,7 +210,7 @@ It also draws figures. Describe a diagram (or select a paragraph), and it genera
 
 ## Features
 
-The full list. Everything here runs on your machine. For the detailed tour, see [docs/features.md](docs/features.md).
+The full list. Everything here runs on your machine. For the detailed tour, see the [documentation site](https://prajwal-svm.github.io/OpenLeaf/).
 
 **Editor (CodeMirror 6)**
 - LaTeX autocomplete for commands, `\ref`/`\label`, `\cite` (parsed from your `.bib`), and file names from the tree
@@ -208,6 +249,11 @@ The full list. Everything here runs on your machine. For the detailed tour, see 
 - Library home with thumbnails, last-edited time, and export history
 - Template gallery on new-project: browse by category with search, an ATS-friendly filter, and a live preview of each template. The starter set spans ATS-friendly resumes, a polished software engineer resume, a Modern resume in Lato, a photo-and-sidebar design resume, a full IEEE paper, ACM and Elsevier articles, a minimalist academic article, a thesis/report, a book, a Beamer deck, a research poster, a homework assignment, a newsletter, a monthly calendar, a bibliography starter, and a formal letter.
 - On-demand fonts: templates that use premium open-source fonts (Lato, PT Sans, PT Serif) download them only when needed and copy them into the project, so the app stays small and documents stay self-contained. Manage downloads in Settings, Offline & Downloads.
+
+<div align="center">
+<img src="media/project-templates.png" alt="The template gallery with categories, search, and live previews" width="85%" />
+</div>
+
 - Source tree: create files and folders (nested to any depth), rename, delete, duplicate (files and whole folders), and reorganize by drag and drop; right-click a folder to add a file or folder inside it; upload files and set the main document
 - Multi-file support for `\input`, images (PNG/JPG/PDF/EPS), and `.bib`, with editor tabs
 - Autosave to disk shortly after you stop typing
@@ -216,6 +262,11 @@ The full list. Everything here runs on your machine. For the detailed tour, see 
 **Source control and sync**
 - Stage or discard changes, write a message, and Commit, Push, or Pull
 - Publish to GitHub (new or existing repo) with ahead/behind indicators
+
+<div align="center">
+<img src="media/github-push.gif" alt="Publish a project to GitHub in one click" width="85%" />
+</div>
+
 
 **Citations**
 - Paste a DOI, arXiv id, or URL to fetch an entry, or search Crossref by title
@@ -282,7 +333,8 @@ flowchart TB
     direction TB
     ROUTER["Command router<br/>#tauri::command handlers · tokio async runtime"]
     PATHS["Path sandbox<br/>resolve_within · reject abs / .. / symlink · per-project id"]
-    PROJ["Project + FS store<br/>CRUD · full-text search · templates · zip / pandoc export"]
+    PROJ["Project + FS store<br/>CRUD · full-text search · bundled template gallery · zip / pandoc export"]
+    ASSETS["On-demand assets<br/>font packs (font-packs.json) · shared cache · copied into projects"]
     COMPILE["Compile orchestrator<br/>tectonic_args · entry wrapper · log → errors · raw-bytes PDF"]
     TAG["Tagging engine (opt-in)<br/>LuaLaTeX via system TeX Live or TinyTeX · tlmgr · PDF/UA"]
     SYNC["SyncTeX engine<br/>gunzip .synctex.gz · forward + inverse mapping"]
@@ -293,6 +345,7 @@ flowchart TB
     UPD["Updater<br/>minisign verify → install → relaunch"]
     ROUTER --> PATHS
     PATHS --> PROJ
+    ROUTER --> ASSETS
     ROUTER --> COMPILE
     ROUTER --> TAG
     ROUTER --> SYNC
@@ -306,9 +359,10 @@ flowchart TB
   TEC["Tectonic sidecar<br/>XeTeX engine · bundled externalBin"]
   TEX["LuaLaTeX engine<br/>system TeX Live or on-demand TinyTeX (~100MB)"]
   GITBIN["git subprocess<br/>env-backed credential helper"]
-  DISK["Local disk<br/>~/.openleaf/projects/&lt;id&gt; · real .git repos"]
+  DISK["Local disk<br/>~/.openleaf · projects/&lt;id&gt; with real .git repos · font cache"]
   GHREMOTE["GitHub<br/>api.github.com + git remote"]
   CITEHOSTS["Citation sources<br/>doi.org · arXiv · Crossref"]
+  FONTSRC["Font sources<br/>google/fonts (open-license TTFs)"]
   PROV["AI providers<br/>8 providers (OpenAI · Anthropic · Groq · …) + local Ollama"]
   FEEDS["Update feed<br/>GitHub Releases · latest.json + .sig"]
 
@@ -321,6 +375,8 @@ flowchart TB
   TAG -->|"spawn lualatex · tagged output"| TEX
   TEX -->|"tagged PDF · .log"| TAG
   PROJ --> DISK
+  ASSETS -->|"download once · verify"| FONTSRC
+  ASSETS --> DISK
   GIT --> GITBIN
   GITBIN --> DISK
   GITBIN -->|"push / pull · token via env"| GHREMOTE
@@ -336,8 +392,8 @@ flowchart TB
   classDef bound fill:#fee2e2,stroke:#dc2626,stroke-width:2px,color:#7f1d1d;
 
   class UI,CM,IDX,LINT,PDF,PRE,AICHAT,IPCC fe;
-  class ROUTER,PATHS,PROJ,COMPILE,TAG,SYNC,GIT,GHAPI,CITE,CFG,UPD be;
-  class TEC,TEX,GITBIN,DISK,GHREMOTE,CITEHOSTS,PROV,FEEDS ext;
+  class ROUTER,PATHS,PROJ,ASSETS,COMPILE,TAG,SYNC,GIT,GHAPI,CITE,CFG,UPD be;
+  class TEC,TEX,GITBIN,DISK,GHREMOTE,CITEHOSTS,FONTSRC,PROV,FEEDS ext;
   class IPC bound;
 
   style FE fill:none,stroke:#0284c7,stroke-width:2px,color:#0c4a6e;
@@ -383,6 +439,12 @@ tree. For real PDF/UA output there's an opt-in path that compiles with LuaLaTeX
 (a system TeX Live, or an on-demand TinyTeX that installs to your home folder),
 since the default Tectonic engine is XeTeX and can't emit tags.
 
+**Templates and fonts.** The template gallery ships as bundled resources, so it
+works offline on first launch. Templates that use richer open-source fonts
+declare them in a manifest; the fonts download once into a shared cache and get
+copied into the project itself, so the app stays small and every document stays
+self-contained and compiles offline.
+
 **The AI agent.** The assistant is a multi-step tool loop, with your own OpenAI
 or Anthropic key (or a local Ollama host, no key needed), that reads files, edits, compiles, and then reads
 the rendered PDF text to check whether the edit actually worked. It commits a git
@@ -416,7 +478,7 @@ Plus Tectonic (XeTeX), pdf.js, Zustand, Harper, and Hunspell.
 - [ ] Collaboration over Git: branches, review, and comments for LaTeX. The Overleaf workflow, but local and yours.
 - [ ] Track changes and inline comments, backed by real commits
 - [ ] OpenLeaf on iPad and mobile (Tauri), so your repo travels with you
-- [ ] A deeper AI agent: project-wide refactors, citation lookup from a claim, figures and TikZ from a description, "explain this paper"
+- [ ] A deeper AI agent: project-wide refactors, citation lookup from a claim, "explain this paper"
 - [ ] A plugin API for snippets, templates, and custom AI tools
 - [ ] Timeline playback and semantic diffs (compare rendered output, not just source)
 - [ ] Zotero and reference-manager integration, resume scoring against a job description
@@ -427,20 +489,23 @@ Have an idea? [Open a discussion](https://github.com/prajwal-svm/OpenLeaf/discus
 
 ## Documentation
 
+The full product documentation lives at **[prajwal-svm.github.io/OpenLeaf](https://prajwal-svm.github.io/OpenLeaf/)**: thirty-plus guides that cover every feature, from first launch to tagged PDF export.
+
 | Guide | What's inside |
 |---|---|
 | [Download](https://github.com/prajwal-svm/OpenLeaf/releases/latest) | Prebuilt installers (.dmg / .msi / .exe / .AppImage / .deb / .rpm) |
+| [Overview](https://prajwal-svm.github.io/OpenLeaf/overview/) | What OpenLeaf is and a tour of the whole app |
+| [Getting started](https://prajwal-svm.github.io/OpenLeaf/getting-started/) | First project to first PDF in a couple of minutes |
+| [Templates](https://prajwal-svm.github.io/OpenLeaf/templates/) | The full gallery: resumes, papers, theses, posters, decks |
+| [Preflight: ATS & accessibility](https://prajwal-svm.github.io/OpenLeaf/preflight/) | Section 508 / PDF-UA and resume-parser checks, before you submit |
+| [AI assistant](https://prajwal-svm.github.io/OpenLeaf/ai-setup/) | Connect a model, or go local with Ollama |
+| [GitHub sync](https://prajwal-svm.github.io/OpenLeaf/github-sync/) | Back up and sync across machines |
+| [Keyboard shortcuts](https://prajwal-svm.github.io/OpenLeaf/keyboard-shortcuts/) | The ones worth memorizing |
+| [FAQ](https://prajwal-svm.github.io/OpenLeaf/faq/) | Common questions and fixes |
 | [Build from source](docs/install.md) | For developers: clone, install deps, run |
-| [Getting started](docs/getting-started.md) | First project to first PDF in a couple of minutes |
-| [Features](docs/features.md) | The full tour |
-| [Accessibility & ATS](docs/features.md#preflight-ats-and-accessibility-checks) | Section 508 / PDF-UA and resume-parser checks, before you submit |
-| [AI assistant](docs/ai-assistant.md) | Connect a model, or go local with Ollama |
-| [GitHub sync](docs/github-sync.md) | Back up and sync across machines |
-| [Keyboard shortcuts](docs/keyboard-shortcuts.md) | The ones worth memorizing |
 | [Development](docs/development.md) | Setup and how to contribute |
 | [Frontend architecture](docs/architecture.md) | The `@openleaf/*` packages, ports, and the contribution registry |
 | [Auto-updates](docs/updates.md) | How releases sign & ship in-app updates (maintainers) |
-| [FAQ](docs/faq.md) | Common questions and fixes |
 
 <br/>
 
