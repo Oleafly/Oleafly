@@ -475,7 +475,7 @@ function TreeRow({ node, depth, ctx }: { node: TreeNode; depth: number; ctx: Tre
       ) : (
         <ContextMenu>
           <ContextMenuTrigger asChild>{content}</ContextMenuTrigger>
-          <ContextMenuContent className="w-52">
+          <ContextMenuContent className="w-52" onCloseAutoFocus={(e) => e.preventDefault()}>
             {node.isDir ? (
               <>
                 <ContextMenuItem onClick={() => ctx.onStartNew(node.path, "file")}>
