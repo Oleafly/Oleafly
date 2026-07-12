@@ -10,24 +10,6 @@ import { registerPdfView, clearPdfView, pageClickToBp } from "./pdfController";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
-// One worker for every document load. Per-load worker spawns can wedge forever
-// in occluded WebViews (CI, minimized windows), hanging loadingTask.promise
-// with no error and leaving the pane blank. A worker passed in explicitly also
-// survives loadingTask.destroy(), so document switches can't kill it.
-let sharedWorker: pdfjsLib.PDFWorker | null = null;
-function getWorker(): pdfjsLib.PDFWorker {
-  if (!sharedWorker) sharedWorker = new pdfjsLib.PDFWorker();
-  return sharedWorker;
-}
-function resetWorker() {
-  try {
-    sharedWorker?.destroy();
-  } catch {
-    /* ignore */
-  }
-  sharedWorker = null;
-}
-
 function withTimeout<T>(p: Promise<T>, ms: number, what: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const t = setTimeout(() => reject(new Error(`${what} timed out after ${ms}ms`)), ms);
@@ -480,8 +462,11 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     let cancelled = false;
 
     (async () => {
+      // Worker spawns can wedge silently in occluded WebViews (CI, minimized
+      // windows), hanging loadingTask.promise forever with no error. Watchdog
+      // the load and retry once on a fresh task before showing an error.
       const open = async () => {
-        loadingTask = pdfjsLib.getDocument({ data: data.slice(), worker: getWorker() });
+        loadingTask = pdfjsLib.getDocument({ data: data.slice() });
         return withTimeout(loadingTask.promise, 30_000, "pdf load");
       };
       try {
@@ -489,9 +474,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         try {
           doc = await open();
         } catch (first) {
-          // A wedged worker hangs the load silently; replace it and retry once.
           (loadingTask as pdfjsLib.PDFDocumentLoadingTask | null)?.destroy().catch(() => {});
-          resetWorker();
           if (cancelled) return;
           try {
             doc = await open();
