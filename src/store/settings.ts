@@ -93,6 +93,8 @@ interface SettingsState {
   setOpenInTree: (v: boolean) => void;
   /** Show a "Compile" text label on the toolbar run button (vs icon only). */
   showCompileLabel: boolean;
+  hoverPreview: boolean;
+  setHoverPreview: (v: boolean) => void;
   setShowCompileLabel: (v: boolean) => void;
   editorFontSize: number;
   setEditorFontSize: (v: number) => void;
@@ -130,6 +132,7 @@ const PREF_DEFAULTS = {
   defaultView: "split" as ViewMode,
   openInTree: true,
   showCompileLabel: false,
+  hoverPreview: true,
   accentColor: "#2563eb",
 } as const;
 
@@ -191,6 +194,11 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     set({ defaultView: v });
   },
   showCompileLabel: ls("openleaf.showCompileLabel", "0") !== "0",
+  hoverPreview: ls("openleaf.hoverPreview", "1") === "1",
+  setHoverPreview: (v) => {
+    saveLs("openleaf.hoverPreview", v ? "1" : "0");
+    set({ hoverPreview: v });
+  },
   setShowCompileLabel: (v) => {
     saveLs("openleaf.showCompileLabel", v ? "1" : "0");
     set({ showCompileLabel: v });
@@ -245,6 +253,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     saveLs("openleaf.defaultView", PREF_DEFAULTS.defaultView);
     saveLs("openleaf.openInTree", PREF_DEFAULTS.openInTree ? "1" : "0");
     saveLs("openleaf.showCompileLabel", PREF_DEFAULTS.showCompileLabel ? "1" : "0");
+    saveLs("openleaf.hoverPreview", PREF_DEFAULTS.hoverPreview ? "1" : "0");
     saveLs("openleaf.accent", PREF_DEFAULTS.accentColor);
     set({ ...PREF_DEFAULTS });
   },

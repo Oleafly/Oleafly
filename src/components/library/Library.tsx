@@ -46,6 +46,7 @@ export function Library() {
   const setProjectColor = useProjectColorsStore((s) => s.setColor);
   const setSearchOpen = useSettingsStore((s) => s.setSearchOpen);
   const setNewProjectOpen = useSettingsStore((s) => s.setNewProjectOpen);
+  const hoverPreview = useSettingsStore((s) => s.hoverPreview);
   const { theme, toggleTheme } = useTheme();
   const [forkTarget, setForkTarget] = useState<{ id: string; name: string } | null>(null);
   const [forkName, setForkName] = useState("");
@@ -207,7 +208,7 @@ export function Library() {
             {visibleProjects.map((p) => (
               <ContextMenu key={p.id}>
                 <ContextMenuTrigger asChild>
-                  <div className="flex justify-center" onMouseEnter={() => loadThumb(p.id, p.updated_at)}>
+                  <div className="flex justify-center" onMouseEnter={() => hoverPreview && loadThumb(p.id, p.updated_at)}>
                     <Book
                       title={p.name}
                       color={projectColors[p.id] ?? (p.color || DEFAULT_BOOK_COLOR)}
@@ -215,7 +216,7 @@ export function Library() {
                       starred={favs.includes(p.id)}
                       onStarToggle={() => toggleFav(p.id)}
                       onClick={() => void openProject(p.id)}
-                      preview={thumbs[p.id]}
+                      preview={hoverPreview ? thumbs[p.id] : undefined}
                     />
                   </div>
                 </ContextMenuTrigger>

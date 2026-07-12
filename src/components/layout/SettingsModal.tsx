@@ -183,6 +183,8 @@ export function SettingsModal() {
   const openInTree = useSettingsStore((s) => s.openInTree);
   const showCompileLabel = useSettingsStore((s) => s.showCompileLabel);
   const setShowCompileLabel = useSettingsStore((s) => s.setShowCompileLabel);
+  const hoverPreview = useSettingsStore((s) => s.hoverPreview);
+  const setHoverPreview = useSettingsStore((s) => s.setHoverPreview);
   const setOpenInTree = useSettingsStore((s) => s.setOpenInTree);
   const accentColor = useSettingsStore((s) => s.accentColor);
   const setAccentColor = useSettingsStore((s) => s.setAccentColor);
@@ -400,6 +402,13 @@ export function SettingsModal() {
                   desc="Show a 'Compile' text label on the toolbar run button instead of just the play icon."
                   checked={showCompileLabel}
                   onChange={() => setShowCompileLabel(!showCompileLabel)}
+                />
+
+                <ToggleRow
+                  label="Preview PDF on hover"
+                  desc="Slide the last compiled page over a project card when you hover it in the library."
+                  checked={hoverPreview}
+                  onChange={setHoverPreview}
                 />
 
                 {/* Accent color */}
