@@ -40,3 +40,6 @@ e2e/.env
 
 # Grok CLI session state
 .grok/
+
+# Claude Code local session state
+.claude/
