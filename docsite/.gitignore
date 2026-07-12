@@ -10,3 +10,4 @@ node_modules/
 src/content/docs/engineering/
 # shared repo media copied in by sync-docs.mjs
 public/media/
+src/assets/hero-editor.png

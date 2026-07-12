@@ -134,6 +134,9 @@ async function main() {
   if (existsSync(MEDIA_DIR)) {
     await rm(MEDIA_OUT, { recursive: true, force: true });
     await cp(MEDIA_DIR, MEDIA_OUT, { recursive: true });
+    // The landing hero imports this via astro:assets for optimized variants,
+    // so it must live under src/ (imports can't reach outside the site root).
+    await cp(join(MEDIA_DIR, "hero-editor.png"), join(here, "..", "src", "assets", "hero-editor.png"));
   }
 
   console.log(`sync-docs: wrote ${count} engineering pages, copied media/`);
