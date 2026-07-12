@@ -103,8 +103,19 @@ pub async fn compile_project(
         latest.insert(project_id.clone(), ticket);
     }
 
+    #[cfg(debug_assertions)]
+    eprintln!("compile: t{ticket} {project_id} requested");
+    #[cfg(debug_assertions)]
+    let req_at = std::time::Instant::now();
+
     // Only one compile at a time; concurrent callers wait here.
     let _guard = state.compile_lock.lock().await;
+
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "compile: t{ticket} {project_id} lock after {}ms",
+        req_at.elapsed().as_millis()
+    );
 
     // While this request waited for the lock, a newer request for the same
     // project may have arrived; its result would immediately replace this
@@ -112,6 +123,8 @@ pub async fn compile_project(
     {
         let latest = state.latest_compile.lock().await;
         if latest.get(&project_id) != Some(&ticket) {
+            #[cfg(debug_assertions)]
+            eprintln!("compile: t{ticket} {project_id} superseded, skipping");
             return Ok(CompileResult {
                 ok: false,
                 has_pdf: false,
@@ -149,7 +162,7 @@ pub async fn compile_project(
     std::fs::write(&entry_path, wrapper)
         .map_err(|e| format!("failed to write compile entry: {e}"))?;
 
-    run_tectonic(
+    let result = run_tectonic(
         &app,
         &entry_path,
         &build_dir,
@@ -158,7 +171,15 @@ pub async fn compile_project(
         "compile:log",
         offline.unwrap_or(false),
     )
-    .await
+    .await;
+    #[cfg(debug_assertions)]
+    if let Ok(r) = &result {
+        eprintln!(
+            "compile: t{ticket} {project_id} done ok={} in {}ms",
+            r.ok, r.compile_time_ms
+        );
+    }
+    result
 }
 
 /// Spawn Tectonic on `entry_path`, streaming log lines to `log_event`, and
@@ -287,7 +308,16 @@ pub async fn compile_isolated(
     source: String,
     offline: Option<bool>,
 ) -> Result<CompileResult, String> {
+    #[cfg(debug_assertions)]
+    eprintln!("figure: {project_id} requested");
+    #[cfg(debug_assertions)]
+    let req_at = std::time::Instant::now();
     let _guard = state.compile_lock.lock().await;
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "figure: {project_id} lock after {}ms",
+        req_at.elapsed().as_millis()
+    );
     let project_dir = paths::project_dir(&project_id)?;
     let fig_dir = paths::figure_build_dir(&project_id)?;
     let entry_path = fig_dir.join("_figure.tex");
@@ -297,7 +327,7 @@ pub async fn compile_isolated(
     let _ = std::fs::remove_file(fig_dir.join("_figure.log"));
     std::fs::write(&entry_path, source)
         .map_err(|e| format!("failed to write figure source: {e}"))?;
-    run_tectonic(
+    let result = run_tectonic(
         &app,
         &entry_path,
         &fig_dir,
@@ -306,7 +336,15 @@ pub async fn compile_isolated(
         "figure:log",
         offline.unwrap_or(false),
     )
-    .await
+    .await;
+    #[cfg(debug_assertions)]
+    if let Ok(r) = &result {
+        eprintln!(
+            "figure: {project_id} done ok={} in {}ms",
+            r.ok, r.compile_time_ms
+        );
+    }
+    result
 }
 
 /// Return the last isolated figure PDF for a project as raw bytes.
