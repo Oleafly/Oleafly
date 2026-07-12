@@ -5,8 +5,11 @@ import { openProject } from "../helpers";
 // isolated-compile pipeline, and see the rendered preview.
 
 test("diagram composer compiles the starter drawing to a preview", async ({ tauriPage }) => {
+  test.setTimeout(240_000);
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  await expect(tauriPage.locator(".pdf-canvas")).toBeVisible({ timeout: 120_000 });
+  await expect(tauriPage.locator('[aria-label="Recompile"]')).toBeEnabled({ timeout: 120_000 });
 
   await tauriPage.click('[aria-label="Insert diagram"]');
   await expect(tauriPage.locator('[role="dialog"][aria-label="Insert diagram"]')).toBeVisible();

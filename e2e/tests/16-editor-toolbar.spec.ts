@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures";
-import { openProject } from "../helpers";
+import { caretIn, openProject } from "../helpers";
 
 // The editor toolbar and right-click context menu: formatting, inserts,
 // undo/redo - every action lands in the real document.
@@ -62,6 +62,7 @@ test("bold wraps the selection; undo and redo round-trip", async ({ tauriPage })
 test("toolbar inserts figure and table environments", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  await caretIn(tauriPage, "here.", 1, "end");
 
   await tauriPage.click('[aria-label="Insert figure"]');
   await expect(tauriPage.locator(".cm-content")).toContainText("includegraphics");
@@ -70,6 +71,10 @@ test("toolbar inserts figure and table environments", async ({ tauriPage }) => {
   await tauriPage.click('[aria-label="Insert table"]');
   await expect(tauriPage.locator(".cm-content")).toContainText("tabular");
   await tauriPage.click('[aria-label="Undo (⌘Z)"]');
+  await tauriPage.waitForFunction(
+    `!(document.querySelector('.cm-content')?.textContent || '').includes('tabular')`,
+    5_000,
+  );
 });
 
 test("citation button opens the add-citation dialog", async ({ tauriPage }) => {
@@ -87,6 +92,7 @@ test("right-click context menu offers editor actions and inserts an equation", a
 }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  await caretIn(tauriPage, "here.", 1, "end");
   await tauriPage.evaluate(
     `(() => {
       const el = document.querySelector('.cm-content');
@@ -102,4 +108,8 @@ test("right-click context menu offers editor actions and inserts an equation", a
   await tauriPage.getByText("Equation").click();
   await expect(tauriPage.locator(".cm-content")).toContainText("\\begin{equation}");
   await tauriPage.click('[aria-label="Undo (⌘Z)"]');
+  await tauriPage.waitForFunction(
+    `!(document.querySelector('.cm-content')?.textContent || '').includes('begin{equation}')`,
+    5_000,
+  );
 });

@@ -108,12 +108,44 @@ test("choose the GLM-4.6 model in settings and persist it", async ({ tauriPage }
   );
 });
 
+async function pickModel(tauriPage: Parameters<typeof ensureAiConnected>[0], label: string) {
+  await openSettings(tauriPage, "ai");
+  await expandProviderCard(tauriPage);
+  await tauriPage.waitForFunction(
+    inProviderCard(`return !!card.querySelector('[role="combobox"]');`),
+    10_000,
+  );
+  await tauriPage.evaluate(
+    inProviderCard(`
+      const combo = card.querySelector('[role="combobox"]');
+      if (!combo) throw new Error('model select not found in the provider card');
+      combo.click();
+      return 1;
+    `),
+  );
+  await tauriPage.waitForFunction(`!!document.querySelector('[role="option"]')`, 5_000);
+  const picked = await tauriPage.evaluate<string>(
+    `(() => {
+      const opts = Array.from(document.querySelectorAll('[role="option"]'));
+      const target = opts.find(o => o.textContent.trim() === ${JSON.stringify(label)});
+      if (!target) return JSON.stringify(opts.map(o => o.textContent.trim()));
+      target.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+      target.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+      target.click();
+      return 'picked';
+    })()`,
+  );
+  expect(picked, `${label} missing; options were: ${picked}`).toBe("picked");
+  await tauriPage.click('[aria-label="Close settings"]');
+}
+
 test("a real conversation round-trip", async ({ tauriPage }) => {
   test.skip(!TOKEN, "set E2E_AI_TOKEN in e2e/.env to run");
   test.setTimeout(180_000);
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await ensureAiConnected(tauriPage);
+  await pickModel(tauriPage, "GLM-5.2");
   await newChat(tauriPage); // restored transcripts must not satisfy the waits
 
   const ta = 'textarea[placeholder*="Ask AI"]';
