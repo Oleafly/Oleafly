@@ -53,12 +53,23 @@ export default defineConfig({
           ],
         },
         {
+          label: "Writing",
+          items: [
+            { label: "The editor", slug: "editor" },
+            { label: "Autocomplete & slash commands", slug: "autocomplete" },
+            { label: "Code intelligence", slug: "code-intelligence" },
+            { label: "Spelling & grammar", slug: "spellcheck-grammar" },
+            { label: "Citations & bibliography", slug: "citations" },
+            { label: "Figures & diagrams", slug: "figures-diagrams" },
+            { label: "Keyboard shortcuts", slug: "keyboard-shortcuts" },
+          ],
+        },
+        {
           label: "Using OpenLeaf",
           items: [
             { label: "Features", slug: "features" },
             { label: "AI assistant", slug: "ai-assistant" },
             { label: "GitHub sync", slug: "github-sync" },
-            { label: "Keyboard shortcuts", slug: "keyboard-shortcuts" },
           ],
         },
         {

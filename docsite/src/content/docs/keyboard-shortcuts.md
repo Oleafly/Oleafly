@@ -1,61 +1,68 @@
 ---
 title: "Keyboard shortcuts"
-description: "OpenLeaf is keyboard-driven. Formatting and code navigation live in shortcuts, the editor toolbar, the context menu, the command palette, and slash-commands."
+description: "The complete shortcut reference for macOS, Windows, and Linux, from compile and SyncTeX to code intelligence and the slash menu."
 ---
 
-OpenLeaf is keyboard-driven. Formatting and code navigation live in shortcuts, the editor toolbar, the context menu, the command palette, and slash-commands.
+OpenLeaf is comfortable to drive entirely from the keyboard. Press **⌘/** (Ctrl+/) inside the app anytime for a searchable version of this list.
+
+macOS shortcuts are listed first; the Windows/Linux equivalent swaps ⌘ for Ctrl.
 
 ## Global
 
-| Shortcut | Action |
-|---|---|
-| `⌘K` / `Ctrl K` | Command palette |
-| `⌘⇧F` / `Ctrl ⇧ F` | Search across all documents |
-| `⌘↵` / `Ctrl ↵` | Recompile |
-| `⌘⇧J` / `Ctrl ⇧ J` | Source → PDF (SyncTeX forward) |
-| `⌘/` / `Ctrl /` | Show this reference |
+| macOS | Windows / Linux | Action |
+|---|---|---|
+| ⌘K | Ctrl+K | Command palette |
+| ⌘⇧F | Ctrl+Shift+F | Search omnibar: projects, all documents, `/` commands |
+| ⌘↵ | Ctrl+Enter | Recompile |
+| ⌘⇧J | Ctrl+Shift+J | Jump to PDF (SyncTeX forward) |
+| ⌘/ | Ctrl+/ | Keyboard shortcuts reference |
 
 ## Editor
 
-| Shortcut | Action |
-|---|---|
-| `⌘F` / `Ctrl F` | Find & replace |
-| `⌘⇧L` / `Ctrl ⇧ L` | Go to line |
-| `⌘B` / `Ctrl B` | Bold (`\textbf{}`) |
-| `⌘I` / `Ctrl I` | Italic (`\textit{}`) |
-| `Ctrl Space` | Trigger autocomplete |
-| `/` | Slash-command insert menu (`/figure`, `/table`, `/section`, `/cite`, `/math`) |
-| Click the gutter arrow | Fold / unfold an environment or section |
-| `Ctrl ⇧ [` / `Ctrl ⇧ ]` | Fold / unfold at the cursor |
-| `⌘/Ctrl-click` on PDF | PDF → source (SyncTeX inverse) |
+| macOS | Windows / Linux | Action |
+|---|---|---|
+| ⌘F | Ctrl+F | Find & replace |
+| ⌘B | Ctrl+B | Bold (`\textbf{}`) |
+| ⌘I | Ctrl+I | Italic (`\textit{}`) |
+| ⌘Z / ⌘⇧Z | Ctrl+Z / Ctrl+Shift+Z | Undo / redo |
+| ⌘L | Ctrl+L | Ask AI to edit the selection ([inline edit](/OpenLeaf/ai-inline-edit/)) |
+| Ctrl+Space | Ctrl+Space | Trigger autocomplete |
+| `/` | `/` | Slash insert menu (`/figure`, `/table`, `/section`, ...) |
+| Tab | Tab | Accept suggestion, otherwise indent |
+| Alt-drag | Alt-drag | Rectangular (column) selection |
+| Gutter arrow | Gutter arrow | Fold / unfold an environment or section |
+
+In the find widget: **Enter** next match, **Shift+Enter** previous, **Esc** close.
 
 ## Code intelligence
 
-Powered by the project index (labels, refs, citations, macros, theorems, glossary, and the `\input` graph). Also available from the editor toolbar (the `{}` menu) and the right-click menu.
+| macOS | Windows / Linux | Action |
+|---|---|---|
+| F12 or ⌘-click | F12 or Ctrl-click | Go to definition (across files) |
+| ⇧F12 | Shift+F12 | Find references (opens the References panel) |
+| F2 | F2 | Rename symbol project-wide |
+| ⌘-hover | Ctrl-hover | Underline symbols as clickable links |
 
-| Shortcut | Action |
-|---|---|
-| `F12` or `⌘/Ctrl-click` | Go to definition (jumps across files) |
-| `⇧F12` | Find references (opens the References panel) |
-| `F2` | Rename symbol project-wide (label, citation key, or macro) |
+## PDF preview
 
-## Layout and view
+| macOS | Windows / Linux | Action |
+|---|---|---|
+| ⌘-click on the PDF | Ctrl-click on the PDF | Jump to source (SyncTeX inverse) |
+| Pinch on trackpad | Ctrl+scroll | Zoom (40% to 400%) |
+| Esc | Esc | Exit fullscreen preview |
 
-| Shortcut | Action |
-|---|---|
-| Editor / Split / PDF | Segmented control in the toolbar |
-| Double-click the divider | Toggle the PDF pane |
-| Drag the divider | Resize panes |
+## Inline AI review
+
+While an [inline AI edit](/OpenLeaf/ai-inline-edit/) is showing its diff: **Enter** accepts, **Esc** rejects.
+
+## Layout
+
+The view is controlled from the toolbar rather than shortcuts: the **Source / Split / PDF** segmented control switches layouts, the divider drags to resize, and clicking the active rail tab collapses the sidebar.
 
 ## Vim mode
 
-Toggle in Settings → Appearance. When on, you get the full CodeMirror Vim keybindings (`h j k l`, `i`, `:w`, `dd`, `ciw`, ...) alongside the shortcuts above.
+Toggle **Vim mode** in Settings, General (or via the ⌘K palette) for the full Vim keybinding set (`hjkl`, `i`, `:w`, `dd`, `ciw`, visual mode) alongside everything above. See [The editor](/OpenLeaf/editor/#vim-mode).
 
-## Source control
+## Where else commands live
 
-| Shortcut | Action |
-|---|---|
-| Toolbar branch icon | Open the Commit & Push dialog |
-| Source Control panel | Stage/discard, commit, push, pull |
-
-Tip: open the in-app reference anytime with `⌘/` / `Ctrl /`.
+Almost everything with a shortcut also lives somewhere clickable: the [editor toolbar](/OpenLeaf/editor/#the-toolbar), the right-click menu, the **⌘K** command palette (fuzzy-searches every action: recompile, word count, add citation, insert figure, toggle theme, and more), and the **⌘⇧F** omnibar with its `/` scopes (`/create`, `/projects`, `/docs`, `/theme`, `/settings`).
