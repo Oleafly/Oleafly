@@ -15,27 +15,14 @@ test("settings modal opens with all sections", async ({ tauriPage }) => {
   await tauriPage.click('[aria-label="Close settings"]');
 });
 
-test("compile-button label toggle takes effect immediately", async ({ tauriPage }) => {
+test("compile button always shows its text label", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
-  const compileLabel = async () =>
-    tauriPage.evaluate<string>(
-      `document.querySelector('[aria-label="Recompile"]')?.textContent?.trim() ?? ''`,
-    );
-  const before = await compileLabel();
-
-  await openSettings(tauriPage, "appearance");
-  await tauriPage.click('[role="switch"][aria-label="Label the compile button"]');
-  await tauriPage.click('[aria-label="Close settings"]');
-  const after = await compileLabel();
-  expect(after).not.toBe(before); // "Compile" text appeared or disappeared
-
-  // Restore.
-  await openSettings(tauriPage, "appearance");
-  await tauriPage.click('[role="switch"][aria-label="Label the compile button"]');
-  await tauriPage.click('[aria-label="Close settings"]');
-  expect(await compileLabel()).toBe(before);
+  const compileLabel = await tauriPage.evaluate<string>(
+    `document.querySelector('[aria-label="Recompile"]')?.textContent?.trim() ?? ''`,
+  );
+  expect(compileLabel).toBe("Compile");
 });
 
 test("vim mode: enable via the palette (persistence part 1)", async ({ tauriPage }) => {

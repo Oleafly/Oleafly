@@ -81,7 +81,6 @@ export function TopToolbar() {
   const setHistoryOpen = useSettingsStore((s) => s.setHistoryOpen);
   const setHotkeysOpen = useSettingsStore((s) => s.setHotkeysOpen);
   const setDiagramComposerOpen = useSettingsStore((s) => s.setDiagramComposerOpen);
-  const showCompileLabel = useSettingsStore((s) => s.showCompileLabel);
   const viewMode = useSettingsStore((s) => s.viewMode);
   const setViewMode = useSettingsStore((s) => s.setViewMode);
   const recompile = useCompileStore((s) => s.recompile);
@@ -349,10 +348,10 @@ export function TopToolbar() {
         <Tooltip label="Recompile (⌘↵)">
           <Button
             variant="ghost"
-            size={showCompileLabel ? "sm" : "icon"}
+            size="sm"
             className={cn(
               "rounded-md bg-primary text-white shadow-sm hover:bg-primary",
-              showCompileLabel ? "h-7 gap-1.5 px-2.5" : "size-7",
+              "h-7 gap-1.5 px-2.5",
             )}
             disabled={compiling}
             onClick={() => {
@@ -363,7 +362,7 @@ export function TopToolbar() {
             aria-label="Recompile"
           >
             {compiling ? <Loader2 className="size-3.5 animate-spin" /> : <Play className="size-3.5" />}
-            {showCompileLabel && <span className="text-xs font-medium">Compile</span>}
+            <span className="text-xs font-medium">Compile</span>
           </Button>
         </Tooltip>
 

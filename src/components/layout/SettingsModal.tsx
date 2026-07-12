@@ -181,8 +181,6 @@ export function SettingsModal() {
   const defaultView = useSettingsStore((s) => s.defaultView);
   const setDefaultView = useSettingsStore((s) => s.setDefaultView);
   const openInTree = useSettingsStore((s) => s.openInTree);
-  const showCompileLabel = useSettingsStore((s) => s.showCompileLabel);
-  const setShowCompileLabel = useSettingsStore((s) => s.setShowCompileLabel);
   const hoverPreview = useSettingsStore((s) => s.hoverPreview);
   const setHoverPreview = useSettingsStore((s) => s.setHoverPreview);
   const setOpenInTree = useSettingsStore((s) => s.setOpenInTree);
@@ -395,13 +393,6 @@ export function SettingsModal() {
                   desc="Reveal the source-file tree whenever you open a project."
                   checked={openInTree}
                   onChange={() => setOpenInTree(!openInTree)}
-                />
-
-                <ToggleRow
-                  label="Label the compile button"
-                  desc="Show a 'Compile' text label on the toolbar run button instead of just the play icon."
-                  checked={showCompileLabel}
-                  onChange={() => setShowCompileLabel(!showCompileLabel)}
                 />
 
                 <ToggleRow
