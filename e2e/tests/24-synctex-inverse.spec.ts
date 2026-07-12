@@ -13,9 +13,24 @@ test("Cmd-click on the PDF jumps to the word in the source", async ({ tauriPage 
     timeout: 90_000,
   });
   // The text layer gives us real coordinates for the word "Introduction".
-  await expect(tauriPage.locator(".textLayer")).toContainText("Introduction", {
-    timeout: 30_000,
-  });
+  const probe = await tauriPage
+    .waitForFunction(
+      `Array.from(document.querySelectorAll('.textLayer')).some(t => (t.textContent || '').includes('Introduction'))`,
+      30_000,
+    )
+    .then(() => "ok")
+    .catch(() => "timeout");
+  if (probe !== "ok") {
+    const dump = await tauriPage.evaluate<string>(
+      `JSON.stringify({
+        canvases: document.querySelectorAll('.pdf-canvas').length,
+        layers: Array.from(document.querySelectorAll('.textLayer')).map(t => (t.textContent || '').length),
+        wraps: document.querySelectorAll('[data-page]').length,
+        chip: document.querySelector('[data-testid="compile-status"]')?.getAttribute('data-severity'),
+      })`,
+    );
+    throw new Error("textLayer never got content: " + dump);
+  }
 
   const clicked = await tauriPage.evaluate<boolean>(
     `(() => {

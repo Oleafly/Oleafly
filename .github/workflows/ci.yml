@@ -212,7 +212,8 @@ jobs:
     # socket bridge, hermetic data dir, and shortcut handling are all
     # platform-neutral; the app runs under xvfb.
     name: E2E (real app, Linux)
-    runs-on: ubuntu-22.04
+    # 24.04, not 22.04: the upstream Tectonic release binary needs glibc 2.39.
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4

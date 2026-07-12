@@ -417,6 +417,13 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         observer.observe(wrap);
       }
 
+      // Render the first page eagerly: occluded windows (CI, restored
+      // minimized apps) suspend IntersectionObserver delivery, and the
+      // initial view must not depend on it. The observer corrects the
+      // visible set as soon as it fires.
+      visibleRef.current.add(1);
+      void renderPage(1, s);
+
       registerPdfView({
         pages: [...wrapsRef.current.entries()].map(([pageNo, el]) => ({ pageNo, el })),
         scale: s,
