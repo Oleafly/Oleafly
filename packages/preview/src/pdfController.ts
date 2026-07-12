@@ -42,10 +42,14 @@ export function clearPdfView() {
 }
 
 /** Forward SyncTeX: scroll the PDF to the rect's page and flash a highlight. */
-export function gotoRect(rect: SynctexRect) {
+export function gotoRect(rect: SynctexRect, attempt = 0) {
   const entry = pages.find((p) => p.pageNo === rect.page);
   const wrap = entry?.el;
   if (!wrap) {
+    if (attempt < 20) {
+      setTimeout(() => gotoRect(rect, attempt + 1), 150);
+      return;
+    }
     logMiss(
       "synctex forward",
       `no page element for page ${rect.page} (have pages: ${pages.map((p) => p.pageNo).join(",") || "none"})`
