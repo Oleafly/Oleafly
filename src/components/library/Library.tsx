@@ -208,7 +208,11 @@ export function Library() {
             {visibleProjects.map((p) => (
               <ContextMenu key={p.id}>
                 <ContextMenuTrigger asChild>
-                  <div className="flex justify-center" onMouseEnter={() => hoverPreview && loadThumb(p.id, p.updated_at)}>
+                  <div
+                    className="flex justify-center"
+                    onMouseOver={() => hoverPreview && loadThumb(p.id, p.updated_at)}
+                    onFocus={() => hoverPreview && loadThumb(p.id, p.updated_at)}
+                  >
                     <Book
                       title={p.name}
                       color={projectColors[p.id] ?? (p.color || DEFAULT_BOOK_COLOR)}
