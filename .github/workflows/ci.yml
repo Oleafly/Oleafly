@@ -196,10 +196,7 @@ jobs:
   e2e-linux:
     # The same no-mock suite on Linux (WebKitGTK + Rust + Tectonic). The
     # socket bridge, hermetic data dir, and shortcut handling are all
-    # platform-neutral; the app runs under xvfb. Windows is NOT feasible with
-    # this architecture today: tauri-plugin-playwright 0.4.1's fixture only
-    # connects over the unix socket in external-launch mode (its TCP path is
-    # unreachable), so Windows would need the plugin's CDP mode instead.
+    # platform-neutral; the app runs under xvfb.
     name: E2E (real app, Linux)
     runs-on: ubuntu-22.04
     timeout-minutes: 60
@@ -290,5 +287,87 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: e2e-test-results-linux
+          path: test-results/
+          retention-days: 7
+
+  e2e-windows:
+    # The same suite on Windows (WebView2 + Rust + Tectonic). The plugin
+    # serves TCP there (no unix sockets); e2e/fixtures.ts connects over TCP
+    # via its own fixture, and scripts/e2e.ps1 is the launcher.
+    name: E2E (real app, Windows)
+    runs-on: windows-2022
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Cache Tectonic sidecar
+        id: cache-tectonic-e2e-windows
+        uses: actions/cache@v4
+        with:
+          path: src-tauri/binaries/tectonic-*
+          key: tectonic-${{ runner.os }}-${{ hashFiles('scripts/fetch-tectonic.sh') }}
+
+      - name: Fetch Tectonic sidecar
+        if: steps.cache-tectonic-e2e-windows.outputs.cache-hit != 'true'
+        shell: bash
+        run: bash scripts/fetch-tectonic.sh x86_64-pc-windows-msvc
+
+      - name: Restore Tectonic packages
+        id: tectonic-pkgs-windows
+        uses: actions/cache/restore@v4
+        with:
+          path: ~\AppData\Local\TectonicProject
+          key: tectonic-pkgs-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
+          restore-keys: tectonic-pkgs-${{ runner.os }}-
+
+      - name: Pre-warm the Tectonic package cache
+        if: steps.tectonic-pkgs-windows.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          BIN="$PWD/src-tauri/binaries/tectonic-x86_64-pc-windows-msvc.exe"
+          mkdir -p /tmp/prewarm
+          for f in src-tauri/resources/templates/*/main.tex; do
+            (cd "$(dirname "$f")" && "$BIN" -o /tmp/prewarm main.tex) || true
+          done
+
+      - name: Save Tectonic packages
+        if: steps.tectonic-pkgs-windows.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~\AppData\Local\TectonicProject
+          key: tectonic-pkgs-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
+
+      - name: Install Playwright browser
+        run: pnpm exec playwright install chromium
+
+      - name: Run the e2e suite
+        shell: pwsh
+        run: powershell -File scripts/e2e.ps1 --max-failures=10 --global-timeout=2400000
+
+      - name: Upload failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results-windows
           path: test-results/
           retention-days: 7
