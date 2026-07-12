@@ -53,6 +53,18 @@ pub fn github_token_account() -> &'static str {
     "github_token"
 }
 
+pub fn mcp_token_account() -> &'static str {
+    "mcp_token"
+}
+
+/// 256-bit random bearer token, lowercase hex.
+pub fn generate_mcp_token() -> String {
+    use rand::RngCore;
+    let mut bytes = [0u8; 32];
+    rand::rngs::OsRng.fill_bytes(&mut bytes);
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
+
 pub fn ai_key_account(provider: &str) -> String {
     format!("ai_key:{provider}")
 }
@@ -76,4 +88,19 @@ pub fn resolve_secret(account: &str, config_value: &str) -> String {
         return s;
     }
     config_value.to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn mcp_token_shape() {
+        let t = generate_mcp_token();
+        assert_eq!(t.len(), 64);
+        assert!(t
+            .chars()
+            .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()));
+        assert_ne!(generate_mcp_token(), t, "tokens must be random");
+    }
 }

@@ -16,7 +16,8 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = ["macos-private-api"] }
-tokio = { version = "1", features = ["time"] }
+tokio = { version = "1", features = ["time", "sync", "macros"] }
+axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }
 tauri-plugin-shell = "2"
 tauri-plugin-playwright = { version = "0.4", optional = true }
 tauri-plugin-dialog = "2"
@@ -41,6 +42,7 @@ futures-util = "0.3"
 # async + single-shot so they never block the webview thread.
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "stream"] }
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
+rand = "0.8"
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]

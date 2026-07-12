@@ -7,12 +7,12 @@ use crate::secrets;
 
 /// App-wide config stored at `~/.openleaf/config.json`.
 ///
-/// Secrets (GitHub token, AI API keys) prefer the OS keychain via `secrets`.
-/// Plaintext values in this file are migrated into the keychain on the next
-/// read/write and then blanked on disk. If the keychain is unavailable
+/// Secrets (GitHub token, AI API keys, MCP token) prefer the OS keychain via
+/// `secrets`. Plaintext values in this file are migrated into the keychain on
+/// the next read/write and then blanked on disk. If the keychain is unavailable
 /// (headless CI, locked secret service), values remain in the file at mode
 /// `0600` as a fallback.
-#[derive(Serialize, Deserialize, Default, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct AppConfig {
     #[serde(default)]
     pub github_token: String,
@@ -38,6 +38,54 @@ pub struct AppConfig {
     /// User-authored extra instructions, sandboxed into the AI system prompt.
     #[serde(default)]
     pub ai_system_prompt: String,
+    /// MCP server: expose the in-app agent tools to external MCP clients
+    /// (Claude Desktop, Claude Code, Cursor, ...). Off by default.
+    #[serde(default)]
+    pub mcp_enabled: bool,
+    /// Loopback port for the MCP endpoint.
+    #[serde(default = "default_mcp_port")]
+    pub mcp_port: u16,
+    /// When true, mutating tools are removed from the advertised tool list.
+    #[serde(default)]
+    pub mcp_read_only: bool,
+    /// "ask" (confirm every write in-app) or "auto_writes" (writes proceed,
+    /// deletes still ask). Deletes always require a click.
+    #[serde(default = "default_mcp_approval_policy")]
+    pub mcp_approval_policy: String,
+    /// Bearer token for the MCP endpoint. Secret: keychain-backed, blanked
+    /// before the webview, exactly like `github_token`.
+    #[serde(default)]
+    pub mcp_token: String,
+}
+
+fn default_mcp_port() -> u16 {
+    5323
+}
+
+fn default_mcp_approval_policy() -> String {
+    "ask".into()
+}
+
+impl Default for AppConfig {
+    fn default() -> Self {
+        // Match serde defaults so `AppConfig::default()` agrees with
+        // deserializing `{}` from disk (old configs without mcp_* keys).
+        Self {
+            github_token: String::new(),
+            github_user: String::new(),
+            github_connected: false,
+            ai_api_key: String::new(),
+            ai_provider: String::new(),
+            ai_model: String::new(),
+            ai_keys: HashMap::new(),
+            ai_system_prompt: String::new(),
+            mcp_enabled: false,
+            mcp_port: default_mcp_port(),
+            mcp_read_only: false,
+            mcp_approval_policy: default_mcp_approval_policy(),
+            mcp_token: String::new(),
+        }
+    }
 }
 
 pub fn config_path() -> Result<PathBuf, String> {
@@ -59,7 +107,8 @@ pub fn read_config() -> Result<AppConfig, String> {
         serde_json::from_str(&s).map_err(|e| format!("config.json is corrupt: {e}"))?;
     let needs_migrate = !cfg.github_token.is_empty()
         || !cfg.ai_api_key.is_empty()
-        || cfg.ai_keys.values().any(|v| !v.is_empty());
+        || cfg.ai_keys.values().any(|v| !v.is_empty())
+        || !cfg.mcp_token.is_empty();
     let hydrated = hydrate_secrets(cfg);
     // Best-effort one-shot migrate: only rewrite when the file still held
     // plaintext secrets (avoids keychain I/O on every get_config).
@@ -72,6 +121,7 @@ pub fn read_config() -> Result<AppConfig, String> {
 /// Merge keychain secrets into a config loaded from disk (or defaults).
 fn hydrate_secrets(mut cfg: AppConfig) -> AppConfig {
     cfg.github_token = secrets::resolve_secret(secrets::github_token_account(), &cfg.github_token);
+    cfg.mcp_token = secrets::resolve_secret(secrets::mcp_token_account(), &cfg.mcp_token);
     // Per-provider AI keys.
     let providers: Vec<String> = cfg
         .ai_keys
@@ -118,6 +168,7 @@ pub fn write_config(config: &AppConfig) -> Result<(), String> {
     }
     // Store secrets in the keychain when possible.
     let _ = secrets::set_secret(secrets::github_token_account(), &config.github_token);
+    let _ = secrets::set_secret(secrets::mcp_token_account(), &config.mcp_token);
     for (provider, key) in &config.ai_keys {
         let _ = secrets::set_secret(&secrets::ai_key_account(provider), key);
     }
@@ -141,6 +192,13 @@ fn persist_without_plaintext_secrets(config: &AppConfig) -> Result<(), String> {
         if secrets::get_secret(secrets::github_token_account()).is_none() {
             disk.github_token = config.github_token.clone();
         }
+    }
+    disk.mcp_token = secrets::migrate_to_keyring(secrets::mcp_token_account(), &config.mcp_token);
+    if disk.mcp_token.is_empty()
+        && !config.mcp_token.is_empty()
+        && secrets::get_secret(secrets::mcp_token_account()).is_none()
+    {
+        disk.mcp_token = config.mcp_token.clone();
     }
     let mut redacted_keys = HashMap::new();
     for (provider, key) in &config.ai_keys {
@@ -207,6 +265,9 @@ pub fn get_config() -> Result<AppConfig, String> {
     // (The AI keys stay, since the frontend calls those providers directly.)
     cfg.github_connected = !cfg.github_token.is_empty();
     cfg.github_token = String::new();
+    // Same for the MCP bearer token: only `mcp_connection_info` may hand it
+    // to the webview (for Settings copy buttons while the server is running).
+    cfg.mcp_token = String::new();
     Ok(cfg)
 }
 
@@ -217,6 +278,10 @@ pub fn set_config(mut config: AppConfig) -> Result<(), String> {
     // stored (keychain or disk). Clearing goes through gh_clear_token.
     if config.github_token.is_empty() {
         config.github_token = read_config()?.github_token;
+    }
+    // Same preserve-on-empty rule for the MCP token.
+    if config.mcp_token.is_empty() {
+        config.mcp_token = read_config()?.mcp_token;
     }
     config.github_connected = false;
     write_config(&config)
@@ -283,5 +348,24 @@ mod tests {
         assert_eq!(read.github_user, "octocat");
         assert!(!dir.join("config.json.tmp").exists());
         std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn mcp_defaults_are_safe() {
+        let cfg = AppConfig::default();
+        assert!(!cfg.mcp_enabled);
+        assert_eq!(cfg.mcp_port, 5323);
+        assert!(!cfg.mcp_read_only);
+        assert_eq!(cfg.mcp_approval_policy, "ask");
+        assert!(cfg.mcp_token.is_empty());
+    }
+
+    #[test]
+    fn mcp_port_default_survives_missing_field() {
+        // Old config files on disk have no mcp_* keys; deserialization must
+        // produce the safe defaults, not zero.
+        let cfg: AppConfig = serde_json::from_str("{}").unwrap();
+        assert_eq!(cfg.mcp_port, 5323);
+        assert_eq!(cfg.mcp_approval_policy, "ask");
     }
 }
