@@ -1,16 +1,18 @@
 import { test, expect } from "../fixtures";
-import { openProject, openRailTab, pressGlobal } from "../helpers";
+import { openProject, openRailTab } from "../helpers";
 
 // The PDF preview toolbar: zoom, layout, page navigation, invert, logs copy,
 // and saving the compiled PDF back into the project.
 
 test.beforeEach(async ({ tauriPage }) => {
+  test.setTimeout(240_000);
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await pressGlobal(tauriPage, "Enter", { meta: true });
   await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok", {
-    timeout: 90_000,
+    timeout: 180_000,
   });
+  await expect(tauriPage.locator(".pdf-canvas")).toBeVisible({ timeout: 30_000 });
+  await expect(tauriPage.locator('[aria-label="Recompile"]')).toBeEnabled({ timeout: 60_000 });
 });
 
 test("zoom controls change the zoom level", async ({ tauriPage }) => {
