@@ -6,6 +6,7 @@ mod config;
 mod git;
 mod github;
 mod latex_engine;
+mod mcp;
 mod menu;
 mod ollama;
 mod paths;
@@ -41,27 +42,43 @@ pub fn run() {
     }
 
     // E2E automation bridge, compiled in only for `--features e2e-testing`
-    // builds (real-webview Playwright control; see e2e/README.md). The bridge
-    // returns eval results through a plugin command, so grant its permission
-    // at runtime here; a static capabilities/ entry would break normal builds,
-    // where the plugin (and its permission) doesn't exist.
+    // builds (real-webview Playwright control; see e2e/README.md).
     #[cfg(feature = "e2e-testing")]
     {
-        builder = builder
-            .plugin(tauri_plugin_playwright::init())
-            .setup(|app| {
+        builder = builder.plugin(tauri_plugin_playwright::init());
+    }
+
+    builder
+        .manage(AppState::default())
+        .manage(mcp::server::McpState::default())
+        .setup(|app| {
+            // The bridge returns eval results through a plugin command, so grant
+            // its permission at runtime here; a static capabilities/ entry would
+            // break normal builds, where the plugin (and its permission) doesn't exist.
+            #[cfg(feature = "e2e-testing")]
+            {
                 use tauri::Manager;
                 app.add_capability(
                     tauri::ipc::CapabilityBuilder::new("e2e-playwright")
                         .window("main")
                         .permission("playwright:default"),
                 )?;
-                Ok(())
-            });
-    }
+            }
 
-    builder
-        .manage(AppState::default())
+            // Start the MCP server on boot when the user has enabled it. Failure to
+            // bind must not prevent the app from starting; Settings shows the state.
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                if let Ok(cfg) = crate::config::read_config() {
+                    if cfg.mcp_enabled {
+                        if let Err(e) = crate::mcp::server::start(handle, cfg.mcp_port).await {
+                            eprintln!("mcp: autostart failed: {e}");
+                        }
+                    }
+                }
+            });
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             commands::library_root,
             commands::app_version,
@@ -134,6 +151,12 @@ pub fn run() {
             commands::reveal_in_dir,
             config::get_config,
             config::set_config,
+            mcp::mcp_register_tools,
+            mcp::mcp_tool_result,
+            mcp::mcp_status,
+            mcp::mcp_set_enabled,
+            mcp::mcp_connection_info,
+            mcp::mcp_regenerate_token,
             chats::load_project_chats,
             chats::save_project_chats,
             git::git_auto_commit,
