@@ -3,8 +3,9 @@ name: Downloads badge
 # Publishes an honest installer-download count for the README badge: the raw
 # GitHub total is dominated by latest.json fetches (every running app polls it
 # to check for updates) and .sig files (fetched by the updater), so this sums
-# release assets excluding both and writes a shields.io endpoint JSON to the
-# orphan `badges` branch.
+# release assets excluding both. The shields.io endpoint JSON lives on main at
+# .github/badges/downloads.json and is only committed when the count changes;
+# CI ignores that path.
 on:
   schedule:
     - cron: "17 */6 * * *"
@@ -25,17 +26,15 @@ jobs:
         run: |
           total=$(gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100" \
             --jq '[.[].assets[] | select(.name != "latest.json") | select(.name | endswith(".sig") | not) | .download_count] | add // 0')
-          printf '{"schemaVersion":1,"label":"Downloads","message":"%s","color":"22c55e"}\n' "$total" > /tmp/downloads.json
+          mkdir -p .github/badges
+          printf '{"schemaVersion":1,"label":"Downloads","message":"%s","color":"22c55e"}\n' "$total" > .github/badges/downloads.json
+          if git diff --quiet -- .github/badges/downloads.json; then
+            echo "count unchanged ($total)"
+            exit 0
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          if git ls-remote --exit-code origin badges >/dev/null 2>&1; then
-            git fetch origin badges
-            git checkout badges
-          else
-            git checkout --orphan badges
-            git rm -rf . >/dev/null 2>&1 || true
-          fi
-          cp /tmp/downloads.json downloads.json
-          git add downloads.json
-          git commit -m "update downloads badge" || exit 0
-          git push origin badges
+          git add .github/badges/downloads.json
+          git commit -m "chore: downloads badge count $total"
+          git pull --rebase origin main
+          git push origin main

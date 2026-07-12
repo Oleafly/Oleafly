@@ -10,12 +10,14 @@ on:
       - "**.md"
       - "docs/**"
       - "docsite/**"
+      - ".github/badges/**"
   pull_request:
     branches: [main]
     paths-ignore:
       - "**.md"
       - "docs/**"
       - "docsite/**"
+      - ".github/badges/**"
 
 # Cancel superseded runs on the same ref (e.g. rapid pushes to a PR).
 concurrency:
