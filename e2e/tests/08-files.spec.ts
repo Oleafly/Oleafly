@@ -16,6 +16,10 @@ test("create a new file, edit it, and switch between files", async ({ tauriPage 
 
   // Open the new (empty) file and type into it.
   await tauriPage.getByText("notes.tex").click();
+  await tauriPage.waitForFunction(
+    `!document.querySelector('.cm-content').textContent.includes('documentclass')`,
+    10_000,
+  );
   await typeInEditorAtStart(tauriPage, "% scratch notes for e2e");
   await expect(tauriPage.locator(".cm-content")).toContainText("scratch notes");
 
