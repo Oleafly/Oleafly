@@ -74,6 +74,13 @@ export default defineConfig({
           ],
         },
         {
+          label: "Check & export",
+          items: [
+            { label: "Preflight: ATS & accessibility", slug: "preflight" },
+            { label: "Export formats", slug: "export" },
+          ],
+        },
+        {
           label: "Using OpenLeaf",
           items: [
             { label: "Features", slug: "features" },
