@@ -169,6 +169,89 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-test-results
+          name: e2e-test-results-macos
+          path: test-results/
+          retention-days: 7
+
+  e2e-linux:
+    # The same no-mock suite on Linux (WebKitGTK + Rust + Tectonic). The
+    # socket bridge, hermetic data dir, and shortcut handling are all
+    # platform-neutral; the app runs under xvfb. Windows is NOT feasible with
+    # this architecture today: tauri-plugin-playwright 0.4.1's fixture only
+    # connects over the unix socket in external-launch mode (its TCP path is
+    # unreachable), so Windows would need the plugin's CDP mode instead.
+    name: E2E (real app, Linux)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Linux system dependencies (Tauri + xvfb)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libxdo-dev \
+            build-essential \
+            xvfb \
+            curl wget file
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Cache Tectonic sidecar
+        id: cache-tectonic-e2e-linux
+        uses: actions/cache@v4
+        with:
+          path: src-tauri/binaries/tectonic-*
+          key: tectonic-${{ runner.os }}-${{ hashFiles('scripts/fetch-tectonic.sh') }}
+
+      - name: Fetch Tectonic sidecar
+        if: steps.cache-tectonic-e2e-linux.outputs.cache-hit != 'true'
+        run: bash scripts/fetch-tectonic.sh x86_64-unknown-linux-gnu
+
+      - name: Cache Tectonic packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/Tectonic
+          key: tectonic-pkgs-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
+          restore-keys: tectonic-pkgs-${{ runner.os }}-
+
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run the e2e suite
+        # WEBKIT_DISABLE_* work around webkit2gtk rendering hangs on the
+        # software GL stack xvfb provides.
+        env:
+          WEBKIT_DISABLE_COMPOSITING_MODE: "1"
+          WEBKIT_DISABLE_DMABUF_RENDERER: "1"
+        run: xvfb-run -a ./scripts/e2e.sh --max-failures=10 --global-timeout=2400000
+
+      - name: Upload failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results-linux
           path: test-results/
           retention-days: 7
