@@ -8,6 +8,9 @@ cd "$(dirname "$0")/.."
 SOCK="${TAURI_PLAYWRIGHT_SOCKET:-/tmp/tauri-playwright.sock}"
 DATA_DIR="$(mktemp -d /tmp/openleaf-e2e.XXXXXX)"
 LOG="$(mktemp /tmp/openleaf-e2e-log.XXXXXX)"
+# Export so Playwright specs can read discovery files (e.g. mcp.json) written
+# into the same throwaway data dir the app uses.
+export OPENLEAF_DATA_DIR="$DATA_DIR"
 
 echo "e2e: data dir $DATA_DIR"
 echo "e2e: app log  $LOG"

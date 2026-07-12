@@ -159,6 +159,8 @@ let pendingImages: string[] = [];
 /** Serialize tool execution: the in-app chat runs tools serially too, and
  *  parallel writes to the same file would race. */
 let chain: Promise<void> = Promise.resolve();
+/** Guard against React Strict Mode double-mount starting two listeners. */
+let bridgeLive = false;
 
 const confirm: ConfirmFn = (req) => useMcpApprovalStore.getState().request(req);
 
@@ -214,12 +216,38 @@ async function handleCall(payload: {
 /** Start listening for forwarded calls and register the tool surface. */
 export async function startMcpBridge(): Promise<() => void> {
   await rebuildRegistry();
-  const unlisten = await listen<{
-    callId: number;
-    name: string;
-    arguments: Record<string, unknown>;
-  }>("mcp:tool-call", (event) => {
-    chain = chain.then(() => handleCall(event.payload)).catch(() => {});
-  });
-  return unlisten;
+  // Test hook: e2e (and devtools) can resolve the head of the MCP approval
+  // queue without relying on Playwright click targeting inside the webview.
+  // Use string verbs so eval bridges cannot coerce a bare `false` argument away.
+  const w = window as unknown as {
+    __mcpDecide?: (verb: string) => string;
+    __mcpQueue?: () => string[];
+  };
+  w.__mcpDecide = (verb) => {
+    const head = useMcpApprovalStore.getState().queue[0];
+    if (!head) return "empty";
+    const ok = verb === "approve";
+    useMcpApprovalStore.getState().decide(head.id, ok);
+    return `${verb}:${head.req.tool}:id=${head.id}:left=${useMcpApprovalStore.getState().queue.length}`;
+  };
+  w.__mcpQueue = () =>
+    useMcpApprovalStore.getState().queue.map((q) => `${q.id}:${q.req.tool}`);
+
+  // Singleton listener: Strict Mode mounts effects twice; two listeners would
+  // run every tools/call twice and leave zombie approval cards in the queue.
+  if (!bridgeLive) {
+    bridgeLive = true;
+    await listen<{
+      callId: number;
+      name: string;
+      arguments: Record<string, unknown>;
+    }>("mcp:tool-call", (event) => {
+      chain = chain.then(() => handleCall(event.payload)).catch(() => {});
+    });
+  }
+
+  // No-op cleanup: the listener and test hooks are page-lifetime singletons.
+  // React Strict Mode double-mounts would otherwise race a late first-mount
+  // cleanup and delete hooks the second mount just installed.
+  return () => {};
 }

@@ -159,11 +159,17 @@ export default function App() {
   // MCP bridge: register tools and handle tools/call forwarded from Rust.
   useEffect(() => {
     if (!isTauri()) return;
+    let cancelled = false;
     let cleanup: (() => void) | undefined;
     void import("@/lib/mcp-bridge").then(async (m) => {
-      cleanup = await m.startMcpBridge();
+      const un = await m.startMcpBridge();
+      if (cancelled) un();
+      else cleanup = un;
     });
-    return () => cleanup?.();
+    return () => {
+      cancelled = true;
+      cleanup?.();
+    };
   }, []);
 
   // Apply cosmetic settings (fonts, sizes, accent color) to the document.

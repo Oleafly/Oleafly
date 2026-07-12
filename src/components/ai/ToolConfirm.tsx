@@ -83,15 +83,35 @@ export function ToolConfirm({
         </div>
       )}
       <div className="mt-2.5 flex flex-wrap justify-end gap-2">
-        <Button variant="secondary" size="sm" onClick={onReject}>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          aria-label="Reject"
+          data-testid="tool-confirm-reject"
+          onClick={onReject}
+        >
           <X className="size-3.5" /> Reject
         </Button>
         {canSession && (
-          <Button variant="secondary" size="sm" onClick={onApproveSession}>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            aria-label="Always allow writes"
+            data-testid="tool-confirm-approve-session"
+            onClick={onApproveSession}
+          >
             <Check className="size-3.5" /> Always allow writes
           </Button>
         )}
-        <Button size="sm" onClick={onApprove}>
+        <Button
+          type="button"
+          size="sm"
+          aria-label="Approve"
+          data-testid="tool-confirm-approve"
+          onClick={onApprove}
+        >
           <Check className="size-3.5" /> Approve
         </Button>
       </div>

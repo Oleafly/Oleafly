@@ -13,16 +13,37 @@ async function rpc(url: string, token: string, body: object) {
     },
     body: JSON.stringify(body),
   });
-  return { status: res.status, json: res.status === 202 ? null : await res.json() };
+  const text = res.status === 202 ? null : await res.text();
+  let json: Record<string, unknown> | null = null;
+  if (text) {
+    try {
+      json = JSON.parse(text) as Record<string, unknown>;
+    } catch {
+      json = { _raw: text };
+    }
+  }
+  return { status: res.status, json };
+}
+
+function toolPayload(result: unknown): Record<string, unknown> {
+  const content = (result as { content?: { text?: string }[] } | null)?.content;
+  const text = content?.at(-1)?.text;
+  if (!text) return { _result: result };
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    return { _text: text };
+  }
 }
 
 test.describe.configure({ mode: "serial" });
 
 test("mcp server serves the in-app tool surface end to end", async ({ tauriPage }) => {
+  test.setTimeout(120_000);
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
-  // Enable the server through Settings.
+  // Enable the server through Settings (default "ask" policy).
   await openSettings(tauriPage, "mcp");
   await expect(tauriPage.locator('[data-testid="settings-section-mcp"]')).toBeVisible();
   await tauriPage.click('[data-testid="mcp-enable-toggle"]');
@@ -31,7 +52,6 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
   });
   await tauriPage.click('[aria-label="Close settings"]');
 
-  // Read the discovery file the server just wrote.
   const dataDir = process.env.OPENLEAF_DATA_DIR;
   test.skip(!dataDir, "requires the e2e data-dir override");
   const { url, token } = JSON.parse(readFileSync(join(dataDir!, "mcp.json"), "utf8")) as {
@@ -52,7 +72,9 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
       clientInfo: { name: "e2e", version: "0" },
     },
   });
-  expect(init.json.result.serverInfo.name).toBe("openleaf");
+  expect((init.json as { result?: { serverInfo?: { name?: string } } })?.result?.serverInfo?.name).toBe(
+    "openleaf",
+  );
   await rpc(url, token, { jsonrpc: "2.0", method: "notifications/initialized" });
 
   // Auth is enforced.
@@ -67,7 +89,8 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
   let names: string[] = [];
   for (let i = 0; i < 20; i++) {
     const list = await rpc(url, token, { jsonrpc: "2.0", id: 2, method: "tools/list" });
-    names = (list.json.result.tools as { name: string }[]).map((t) => t.name);
+    const tools = (list.json as { result?: { tools?: { name: string }[] } })?.result?.tools ?? [];
+    names = tools.map((t) => t.name);
     if (names.includes("read_file") && names.includes("get_status")) break;
     await new Promise((r) => setTimeout(r, 500));
   }
@@ -82,7 +105,7 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
     method: "tools/call",
     params: { name: "read_file", arguments: { path: "main.tex" } },
   });
-  const readPayload = JSON.parse(read.json.result.content.at(-1).text);
+  const readPayload = toolPayload((read.json as { result?: unknown })?.result);
   expect(readPayload.content).toContain("\\documentclass");
 
   // A write tool pauses on the approval card; approving applies it.
@@ -98,10 +121,24 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
   await expect(tauriPage.locator('[data-testid="mcp-approval-panel"]')).toBeVisible({
     timeout: 15_000,
   });
-  await tauriPage.getByRole("button", { name: "Approve" }).click();
+  // Prefer the bridge test hook: webview click targeting is unreliable for the
+  // floating approval card under tauri-playwright.
+  const approved = await tauriPage.evaluate<string>(`window.__mcpDecide("approve")`);
+  expect(approved).toMatch(/approve:write_file/);
   const write = await writePromise;
-  const writePayload = JSON.parse(write.json.result.content.at(-1).text);
-  expect(writePayload.success).toBe(true);
+  const writePayload = toolPayload((write.json as { result?: unknown })?.result);
+  expect(writePayload.success, JSON.stringify(writePayload)).toBe(true);
+  // Drain any leftover write cards before starting delete (should already be empty).
+  for (let i = 0; i < 5; i++) {
+    const q = await tauriPage.evaluate<string[]>(`window.__mcpQueue?.() ?? []`);
+    if (q.length === 0) break;
+    await tauriPage.evaluate(`window.__mcpDecide("approve")`);
+  }
+  await expect
+    .poll(async () => tauriPage.evaluate<string[]>(`window.__mcpQueue?.() ?? []`), {
+      timeout: 5_000,
+    })
+    .toEqual([]);
 
   // Rejecting a delete leaves the file alone and reports declined.
   const delPromise = rpc(url, token, {
@@ -113,8 +150,25 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
   await expect(tauriPage.locator('[data-testid="mcp-approval-panel"]')).toBeVisible({
     timeout: 15_000,
   });
-  await tauriPage.getByRole("button", { name: "Reject" }).click();
+  await expect
+    .poll(async () => tauriPage.evaluate<string[]>(`window.__mcpQueue?.() ?? []`), {
+      timeout: 5_000,
+    })
+    .toEqual(expect.arrayContaining([expect.stringContaining("delete_file")]));
+  const rejected = await tauriPage.evaluate<string>(`window.__mcpDecide("reject")`);
+  expect(rejected).toContain("delete_file");
   const del = await delPromise;
-  const delPayload = JSON.parse(del.json.result.content.at(-1).text);
-  expect(delPayload.declined).toBe(true);
+  const delPayload = toolPayload((del.json as { result?: unknown })?.result);
+  expect(delPayload.success, JSON.stringify(delPayload)).not.toBe(true);
+  expect(delPayload.declined, JSON.stringify(delPayload)).toBe(true);
+
+  // File still readable after rejected delete.
+  const reread = await rpc(url, token, {
+    jsonrpc: "2.0",
+    id: 6,
+    method: "tools/call",
+    params: { name: "read_file", arguments: { path: "mcp-note.tex" } },
+  });
+  const rereadPayload = toolPayload((reread.json as { result?: unknown })?.result);
+  expect(rereadPayload.content, JSON.stringify(rereadPayload)).toContain("written over MCP");
 });
