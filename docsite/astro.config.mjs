@@ -44,6 +44,15 @@ export default defineConfig({
           ],
         },
         {
+          label: "Projects & library",
+          items: [
+            { label: "The library", slug: "library" },
+            { label: "Templates", slug: "templates" },
+            { label: "Files & folders", slug: "files" },
+            { label: "Where your data lives", slug: "where-your-data-lives" },
+          ],
+        },
+        {
           label: "Using OpenLeaf",
           items: [
             { label: "Features", slug: "features" },
