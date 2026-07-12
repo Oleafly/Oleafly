@@ -10,7 +10,7 @@ test("settings modal opens with all sections", async ({ tauriPage }) => {
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openSettings(tauriPage);
   // Core sections are always in the nav.
-  for (const s of ["appearance", "general", "ai", "github"]) {
+  for (const s of ["appearance", "general", "ai", "github", "mcp"]) {
     await expect(tauriPage.locator(`[data-testid="settings-section-${s}"]`)).toBeVisible();
   }
   // Advanced sections sit behind the "Show advanced" disclosure. The toggle
