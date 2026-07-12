@@ -13,6 +13,9 @@ automatable by design) · **—** not yet covered (listed at the bottom).
 | Every bundled template | create + compile with zero errors (all 19, incl. modern-resume's font-pack download) | 30 |
 | Export menu per document kind | beamer offers pptx (not epub), book offers epub (not pptx), plain doc offers neither, image project offers PNG and hides doc formats | 30 |
 | Book | open project, favorite toggle (hover-revealed) | 02, 21 |
+| Bookmark-only filter | header toggle filters the grid, empty-state hint | 21 |
+| Hover PDF preview | slides in for compiled projects, disabled via the appearance setting | 21 |
+| Auto-compile on open | split/pdf layouts render the PDF without pressing compile | 02 |
 | Book context menu | fork (unique name), delete (scoped confirm override) | 21 |
 | Project rename (toolbar inline) | edit, save, revert | 22 |
 | Back to library / reopen | | 22 |
@@ -103,6 +106,8 @@ automatable by design) · **—** not yet covered (listed at the bottom).
 | AI model selection (GLM-4.6) persists in settings | `E2E_AI_TOKEN` | 28 🔑 |
 | AI figure generation (figure mode -> preview_figure -> approve -> insert_figure lands TikZ) | `E2E_AI_TOKEN` | 31 🔑 |
 | Chat sessions | new chat clears, history restores the conversation | 35 🔑 |
+| Copy message button | hover control copies a bubble, flashes confirmation | 35 🔑 |
+| Live reasoning blocks | interleaved thought cards with durations | ✋ [ai] nondeterministic (model may answer without thinking) |
 | Custom instructions | saved in settings, verifiably steer a real reply | 35 🔑 |
 | References rail panel | empty-state guidance (populated flow in 23) | 35 |
 | Destructive tool approvals | Approve clicked live in 31; a Reject path test | — |

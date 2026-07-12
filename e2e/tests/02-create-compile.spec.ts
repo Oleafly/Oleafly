@@ -23,3 +23,12 @@ test("compile produces a rendered PDF with zero errors", async ({ tauriPage }) =
   // And the compile status chip reports success, not errors or warnings.
   await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok");
 });
+
+test("opening a project in split view auto-compiles", async ({ tauriPage }) => {
+  await openProject(tauriPage, "E2E Doc");
+  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  await expect(tauriPage.locator(".pdf-canvas")).toBeVisible({ timeout: 120_000 });
+  await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok", {
+    timeout: 120_000,
+  });
+});

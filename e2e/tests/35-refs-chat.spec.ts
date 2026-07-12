@@ -152,4 +152,18 @@ test("the active conversation survives tab switches and sidebar collapse", async
     `document.body.innerText.includes('LEMONGRAPE')`,
     10_000,
   );
+
+  const copied = await tauriPage.evaluate<boolean>(
+    `(() => {
+      const btns = Array.from(document.querySelectorAll('[aria-label="Copy message"]'));
+      if (!btns.length) return false;
+      btns[btns.length - 1].click();
+      return true;
+    })()`,
+  );
+  expect(copied).toBe(true);
+  await tauriPage.waitForFunction(
+    `document.querySelector('[aria-label="Copy message"] svg.text-emerald-500') !== null`,
+    5_000,
+  );
 });
