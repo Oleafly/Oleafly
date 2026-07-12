@@ -173,18 +173,25 @@ export default function App() {
   }, [editorFontSize, appFontSize, appFontFamily, editorFontFamily, accentColor]);
 
   // Keep the source-control badge count fresh for the current project.
+  // SourceControl / DiffView refresh after git mutations; we only re-poll on
+  // project switch, window focus, and a slow interval (no 5s hot loop).
   const refreshGitStatus = useGitStatusStore((s) => s.refresh);
   useEffect(() => {
     refreshGitStatus(projectId);
   }, [projectId, refreshGitStatus]);
   useEffect(() => {
     const tick = () => refreshGitStatus(useFilesStore.getState().projectId);
-    const id = window.setInterval(tick, 5000);
+    const id = window.setInterval(tick, 60_000);
     const onFocus = () => tick();
+    const onVis = () => {
+      if (document.visibilityState === "visible") tick();
+    };
     window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVis);
     return () => {
       window.clearInterval(id);
       window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVis);
     };
   }, [refreshGitStatus]);
 

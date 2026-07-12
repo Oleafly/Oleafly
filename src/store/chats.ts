@@ -1,4 +1,6 @@
 import { create } from "zustand";
+import { isTauri } from "@tauri-apps/api/core";
+import { loadProjectChats, saveProjectChats } from "@/lib/tauri";
 
 export interface ToolEntry {
   name: string;
@@ -10,8 +12,8 @@ export interface ToolEntry {
 }
 
 /** Lightweight metadata for a file/image the user attached to a message. Only
- *  the name + media type are persisted (never the bytes) to protect the
- *  localStorage quota; the bytes exist only in-session for the model call. */
+ *  the name + media type are persisted (never the bytes) to protect storage
+ *  quota; the bytes exist only in-session for the model call. */
 export interface AttachmentMeta {
   name: string;
   mediaType: string;
@@ -56,7 +58,8 @@ interface ChatsState {
   projectId: string | null;
   chats: StoredChat[]; // current project, newest-first
   activeId: string | null;
-  load: (projectId: string) => void;
+  /** Load chats for a project from disk (Tauri) or localStorage (browser). */
+  load: (projectId: string) => Promise<void>;
   create: (projectId: string, headOid: string | null) => StoredChat;
   saveMessages: (chatId: string, messages: ChatMessage[]) => void;
   patchTitleIfEmpty: (chatId: string, title: string) => void;
@@ -65,18 +68,38 @@ interface ChatsState {
   byId: (chatId: string) => StoredChat | undefined;
 }
 
-const key = (pid: string) => `openleaf.chats.${pid}`;
+const legacyKey = (pid: string) => `openleaf.chats.${pid}`;
 
-/** Keep history bounded so localStorage (~5 MB/origin) never silently fills. */
+/** Keep history bounded so storage never grows without limit. */
 const MAX_CHATS_PER_PROJECT = 50;
 
-function readAll(pid: string): StoredChat[] {
+/** Projects whose legacy localStorage payload has already been migrated this session. */
+const migratedLegacy = new Set<string>();
+
+function parseChats(raw: string | null): StoredChat[] {
+  if (!raw) return [];
   try {
-    const raw = localStorage.getItem(key(pid));
-    const arr: StoredChat[] = raw ? JSON.parse(raw) : [];
+    const arr: StoredChat[] = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
     return arr.sort((a, b) => b.updatedAt - a.updatedAt);
   } catch {
     return [];
+  }
+}
+
+function readLegacyLocal(pid: string): StoredChat[] {
+  try {
+    return parseChats(localStorage.getItem(legacyKey(pid)));
+  } catch {
+    return [];
+  }
+}
+
+function clearLegacyLocal(pid: string) {
+  try {
+    localStorage.removeItem(legacyKey(pid));
+  } catch {
+    /* ignore */
   }
 }
 
@@ -90,28 +113,68 @@ function notifyQuota() {
   }
 }
 
+function capChats(chats: StoredChat[]): StoredChat[] {
+  if (chats.length <= MAX_CHATS_PER_PROJECT) return chats;
+  return [...chats]
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .slice(0, MAX_CHATS_PER_PROJECT);
+}
+
+/** Persist chats: disk in Tauri, localStorage in the browser/dev without IPC. */
 function writeAll(pid: string, chats: StoredChat[]) {
-  // Cap the number of retained chats (newest-first), pruning the oldest.
-  const capped =
-    chats.length > MAX_CHATS_PER_PROJECT
-      ? [...chats]
-          .sort((a, b) => b.updatedAt - a.updatedAt)
-          .slice(0, MAX_CHATS_PER_PROJECT)
-      : chats;
+  const capped = capChats(chats);
+  const json = JSON.stringify(capped);
+  if (isTauri()) {
+    void saveProjectChats(pid, json).catch(() => {
+      // Disk write failed (full disk / permissions). Retry once with a smaller
+      // set so recent chats still land rather than failing silently.
+      const trimmed = capChats(capped).slice(0, Math.max(1, Math.floor(MAX_CHATS_PER_PROJECT / 2)));
+      void saveProjectChats(pid, JSON.stringify(trimmed)).catch(() => notifyQuota());
+    });
+    return;
+  }
   try {
-    localStorage.setItem(key(pid), JSON.stringify(capped));
+    localStorage.setItem(legacyKey(pid), json);
   } catch {
-    // Over quota: aggressively drop the oldest half and retry once so the most
-    // recent conversations keep saving instead of failing silently.
     try {
       const trimmed = [...capped]
         .sort((a, b) => b.updatedAt - a.updatedAt)
         .slice(0, Math.max(1, Math.floor(MAX_CHATS_PER_PROJECT / 2)));
-      localStorage.setItem(key(pid), JSON.stringify(trimmed));
+      localStorage.setItem(legacyKey(pid), JSON.stringify(trimmed));
     } catch {
       notifyQuota();
     }
   }
+}
+
+async function readAll(pid: string): Promise<StoredChat[]> {
+  if (isTauri()) {
+    try {
+      const raw = await loadProjectChats(pid);
+      let chats = parseChats(raw);
+      // One-shot migration: pull legacy localStorage chats into disk if disk is empty.
+      if (chats.length === 0 && !migratedLegacy.has(pid)) {
+        const legacy = readLegacyLocal(pid);
+        if (legacy.length > 0) {
+          chats = legacy;
+          // Clear the localStorage copy only after the disk write confirmed;
+          // otherwise a failed save would lose the whole history.
+          try {
+            await saveProjectChats(pid, JSON.stringify(capChats(legacy)));
+            clearLegacyLocal(pid);
+          } catch {
+            /* keep the legacy copy; migration re-runs on a later session */
+          }
+        }
+        migratedLegacy.add(pid);
+      }
+      return chats;
+    } catch {
+      // Fall back to any localStorage remnant if the disk read fails.
+      return readLegacyLocal(pid);
+    }
+  }
+  return readLegacyLocal(pid);
 }
 
 function newId() {
@@ -123,13 +186,28 @@ function titleFrom(text: string) {
   return t.length > 60 ? t.slice(0, 60) + "…" : t || "New chat";
 }
 
+// In-memory mirror used by create/save when an async load hasn't finished yet
+// for the active project. Keyed by project id.
+const memoryByProject = new Map<string, StoredChat[]>();
+
+// Monotonic ticket for load(); a resolved load only applies if it is still
+// the newest request (same staleness pattern as the compile/preflight/index
+// stores).
+let loadSeq = 0;
+
 export const useChatsStore = create<ChatsState>((set, get) => ({
   projectId: null,
   chats: [],
   activeId: null,
 
-  load: (projectId) => {
-    const chats = readAll(projectId);
+  load: async (projectId) => {
+    // Staleness guard: only the latest requested load may write state. The
+    // store's own projectId is NOT a valid reference here; on a normal A->B
+    // switch it still holds A when B's load resolves.
+    const my = ++loadSeq;
+    const chats = await readAll(projectId);
+    memoryByProject.set(projectId, chats);
+    if (my !== loadSeq) return; // a newer load superseded this one
     set({ projectId, chats, activeId: null });
   },
 
@@ -143,7 +221,9 @@ export const useChatsStore = create<ChatsState>((set, get) => ({
       messages: [],
       headOid,
     };
-    const next = [chat, ...readAll(projectId)];
+    const existing = memoryByProject.get(projectId) ?? get().chats.filter((c) => c.projectId === projectId);
+    const next = [chat, ...existing.filter((c) => c.id !== chat.id)];
+    memoryByProject.set(projectId, next);
     writeAll(projectId, next);
     set({ projectId, chats: next, activeId: chat.id });
     return chat;
@@ -152,16 +232,25 @@ export const useChatsStore = create<ChatsState>((set, get) => ({
   saveMessages: (chatId, messages) => {
     const { projectId, chats } = get();
     if (!projectId) return;
-    // A debounced save can fire after the user switched projects (loadChats
+    // A debounced save can fire after the user switched projects (load
     // replaced projectId/chats). If the chat isn't in the current project's
     // list, writing here would needlessly rewrite the new project's chats and
     // silently drop this update. Skip it rather than corrupt the wrong project.
     if (!chats.some((c) => c.id === chatId)) return;
     const updated = chats.map((c) =>
       c.id === chatId
-        ? { ...c, messages, updatedAt: Date.now(), title: c.title === "New chat" && messages[0]?.role === "user" ? titleFrom(messages[0].content) : c.title }
+        ? {
+            ...c,
+            messages,
+            updatedAt: Date.now(),
+            title:
+              c.title === "New chat" && messages[0]?.role === "user"
+                ? titleFrom(messages[0].content)
+                : c.title,
+          }
         : c
     );
+    memoryByProject.set(projectId, updated);
     writeAll(projectId, updated);
     set({ chats: updated.sort((a, b) => b.updatedAt - a.updatedAt) });
   },
@@ -170,8 +259,11 @@ export const useChatsStore = create<ChatsState>((set, get) => ({
     const { projectId, chats } = get();
     if (!projectId) return;
     const updated = chats.map((c) =>
-      c.id === chatId && (c.title === "New chat" || !c.title) ? { ...c, title: titleFrom(title) } : c
+      c.id === chatId && (c.title === "New chat" || !c.title)
+        ? { ...c, title: titleFrom(title) }
+        : c
     );
+    memoryByProject.set(projectId, updated);
     writeAll(projectId, updated);
     set({ chats: updated });
   },
@@ -180,6 +272,7 @@ export const useChatsStore = create<ChatsState>((set, get) => ({
     const { projectId, chats, activeId } = get();
     if (!projectId) return;
     const updated = chats.filter((c) => c.id !== chatId);
+    memoryByProject.set(projectId, updated);
     writeAll(projectId, updated);
     set({ chats: updated, activeId: activeId === chatId ? null : activeId });
   },

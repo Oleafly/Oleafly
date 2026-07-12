@@ -176,7 +176,7 @@ const AI_TOOLS: { name: string; desc: string }[] = [
   { name: "compile", desc: "Compile LaTeX to PDF" },
   { name: "get_log", desc: "Get the last compile log" },
   { name: "get_pdf_text", desc: "Extract text from the PDF" },
-  { name: "set_main_doc", desc: "Set the main document" },
+  { name: "set_main_doc", desc: "Set the main .tex document" },
   { name: "toggle_theme", desc: "Toggle light/dark mode" },
 ];
 

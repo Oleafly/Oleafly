@@ -71,6 +71,14 @@ export const writeProjectBytes = (projectId: string, relPath: string, dataBase64
 export const writeBytesFile = (dest: string, dataBase64: string) =>
   invoke<void>("write_bytes_file", { dest, dataBase64 });
 
+/** Load per-project AI chat history JSON from `~/.openleaf/chats/<id>.json`. */
+export const loadProjectChats = (projectId: string) =>
+  invoke<string>("load_project_chats", { projectId });
+
+/** Persist per-project AI chat history JSON (atomic write on the Rust side). */
+export const saveProjectChats = (projectId: string, json: string) =>
+  invoke<void>("save_project_chats", { projectId, json });
+
 export const listFiles = (projectId: string) =>
   invoke<FileEntry[]>("list_files", { projectId });
 

@@ -36,6 +36,8 @@ import { deleteProject, duplicateProject, readCompiledPdf } from "@/lib/tauri";
 import { pdfPageToPng } from "@/lib/pdf-image";
 
 const thumbCache = new Map<string, string | null>();
+/** In-flight keys so a second hover during a load does not start a parallel job. */
+const thumbInflight = new Set<string>();
 
 export function Library() {
   const projects = useFilesStore((s) => s.projects);
@@ -55,14 +57,17 @@ export function Library() {
   const [onlyFavs, setOnlyFavs] = useState(false);
   const [thumbs, setThumbs] = useState<Record<string, string | null>>({});
 
+  /** Load a book cover on demand (hover). Successful PNGs are cached; failures
+   *  are NOT permanently cached so a later compile can still produce a preview. */
   const loadThumb = (id: string, updatedAt: number) => {
     const key = `${id}:${updatedAt}`;
     if (thumbCache.has(key)) {
       const cached = thumbCache.get(key) ?? null;
-      if (thumbs[id] !== cached) setThumbs((t) => ({ ...t, [id]: cached }));
+      if (cached && thumbs[id] !== cached) setThumbs((t) => ({ ...t, [id]: cached }));
       return;
     }
-    thumbCache.set(key, null);
+    if (thumbInflight.has(key)) return;
+    thumbInflight.add(key);
     void readCompiledPdf(id)
       .then((buf) => pdfPageToPng(new Uint8Array(buf), 1, 1.2, "#ffffff"))
       .then((png) => {
@@ -70,7 +75,11 @@ export function Library() {
         setThumbs((t) => ({ ...t, [id]: png }));
       })
       .catch(() => {
-        setThumbs((t) => ({ ...t, [id]: null }));
+        // No permanent negative cache: the project may compile later.
+        setThumbs((t) => (t[id] === undefined ? t : { ...t, [id]: null }));
+      })
+      .finally(() => {
+        thumbInflight.delete(key);
       });
   };
 
