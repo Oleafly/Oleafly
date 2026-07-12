@@ -3,20 +3,50 @@ import workerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
-/**
- * Rasterize one page of a PDF byte array to a PNG data URL using pdf.js.
- * Used to show a compiled figure to a vision model (and in the Playground).
- * `scale` 2 gives a crisp thumbnail without ballooning the data URL.
- */
-export async function pdfPageToPng(
+// One worker for all one-shot rasterizations. Spawning a fresh worker per
+// call is slow in WKWebView and can wedge outright, which froze the diagram
+// composer's preview even after a successful compile.
+let sharedWorker: pdfjsLib.PDFWorker | null = null;
+
+function getWorker(): pdfjsLib.PDFWorker {
+  if (!sharedWorker) sharedWorker = new pdfjsLib.PDFWorker();
+  return sharedWorker;
+}
+
+function resetWorker() {
+  try {
+    sharedWorker?.destroy();
+  } catch {
+    /* already dead */
+  }
+  sharedWorker = null;
+}
+
+function withTimeout<T>(p: Promise<T>, ms: number, what: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`${what} timed out after ${ms}ms`)), ms);
+    p.then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(t);
+        reject(e);
+      },
+    );
+  });
+}
+
+async function rasterize(
   bytes: Uint8Array,
-  page = 1,
-  scale = 2,
+  page: number,
+  scale: number,
   background?: string,
 ): Promise<string> {
-  const loadingTask = pdfjsLib.getDocument({ data: bytes.slice() });
-  const doc = await loadingTask.promise;
+  const loadingTask = pdfjsLib.getDocument({ data: bytes.slice(), worker: getWorker() });
   try {
+    const doc = await loadingTask.promise;
     const pageNo = Math.min(Math.max(1, page), doc.numPages);
     const p = await doc.getPage(pageNo);
     const viewport = p.getViewport({ scale });
@@ -37,5 +67,25 @@ export async function pdfPageToPng(
     return canvas.toDataURL("image/png");
   } finally {
     await loadingTask.destroy();
+  }
+}
+
+/**
+ * Rasterize one page of a PDF byte array to a PNG data URL using pdf.js.
+ * Used to show a compiled figure to a vision model (and in the Playground).
+ * `scale` 2 gives a crisp thumbnail without ballooning the data URL.
+ * A wedged worker is detected by timeout and retried once on a fresh one.
+ */
+export async function pdfPageToPng(
+  bytes: Uint8Array,
+  page = 1,
+  scale = 2,
+  background?: string,
+): Promise<string> {
+  try {
+    return await withTimeout(rasterize(bytes, page, scale, background), 30_000, "pdf render");
+  } catch {
+    resetWorker();
+    return await withTimeout(rasterize(bytes, page, scale, background), 30_000, "pdf render");
   }
 }
