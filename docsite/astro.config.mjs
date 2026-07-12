@@ -97,6 +97,13 @@ export default defineConfig({
           ],
         },
         {
+          label: "Reference",
+          items: [
+            { label: "Settings reference", slug: "settings" },
+            { label: "Updates", slug: "updates" },
+          ],
+        },
+        {
           label: "Help",
           items: [{ label: "FAQ", slug: "faq" }],
         },
