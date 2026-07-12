@@ -34,10 +34,13 @@ export default defineConfig({
       // Product docs: no "Edit this page" link (that's a contributor affordance).
       sidebar: [
         {
-          label: "Get started",
+          label: "Start here",
           items: [
-            { label: "Getting started", slug: "getting-started" },
+            { label: "Overview", slug: "overview" },
+            { label: "Philosophy", slug: "philosophy" },
+            { label: "Why OpenLeaf", slug: "why-openleaf" },
             { label: "Download & install", slug: "install" },
+            { label: "Getting started", slug: "getting-started" },
           ],
         },
         {
