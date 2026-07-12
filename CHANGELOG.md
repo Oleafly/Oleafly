@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- MCP server: expose the built-in agent tools to external MCP clients with token
+  auth and in-app approvals. See [docs/mcp.md](docs/mcp.md).
 - Automatic Git commits: every successful compile snapshots the project, and
   edits commit on their own after a short quiet period, under generated
   "Update: `<files>`" messages. Automatic commits pause while the Source

@@ -119,6 +119,8 @@ This is OpenLeaf's superpower. Every project is a real Git repo on your disk: th
 
 **Local, bring-your-own AI.** OpenAI, Anthropic, Groq, OpenRouter, DeepSeek, Mistral, xAI, Z.AI, or a local model through Ollama. Your prompts and documents don't touch a third party unless you pick one that does.
 
+**MCP server.** Connect Claude Desktop, Claude Code, Cursor, or any MCP client and let it edit and compile your project with per-change approval. See [docs/mcp.md](docs/mcp.md).
+
 **Everything on disk.** No blob store, no lock-in. A project is just `~/.openleaf/projects/<id>/`, a normal folder with a real `.git` inside.
 
 <br/>
@@ -510,6 +512,7 @@ The full product documentation lives at **[prajwal-svm.github.io/OpenLeaf](https
 | [Templates](https://prajwal-svm.github.io/OpenLeaf/templates/) | The full gallery: resumes, papers, theses, posters, decks |
 | [Preflight: ATS & accessibility](https://prajwal-svm.github.io/OpenLeaf/preflight/) | Section 508 / PDF-UA and resume-parser checks, before you submit |
 | [AI assistant](https://prajwal-svm.github.io/OpenLeaf/ai-setup/) | Connect a model, or go local with Ollama |
+| [MCP server](docs/mcp.md) | Drive OpenLeaf from Claude Desktop, Claude Code, Cursor, and other MCP clients |
 | [GitHub sync](https://prajwal-svm.github.io/OpenLeaf/github-sync/) | Back up and sync across machines |
 | [Keyboard shortcuts](https://prajwal-svm.github.io/OpenLeaf/keyboard-shortcuts/) | The ones worth memorizing |
 | [FAQ](https://prajwal-svm.github.io/OpenLeaf/faq/) | Common questions and fixes |

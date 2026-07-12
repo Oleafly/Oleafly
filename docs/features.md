@@ -152,6 +152,10 @@ A chat assistant that can actually _do_ things to your project:
 
 Bring any provider: OpenAI, Anthropic, Groq, OpenRouter, DeepSeek, Mistral, xAI, Z.AI, or run locally with Ollama. See [AI Assistant](ai-assistant.md).
 
+## MCP server
+
+Expose the same agent tools to external MCP clients (Claude Desktop, Claude Code, Cursor, Grok CLI, and others). Enable under **Settings → MCP**. Clients connect over localhost HTTP with a bearer token; file changes pause for the same approval card as the built-in chat. You do not need an API key in OpenLeaf for this path. See [MCP server](mcp.md).
+
 ## Draw with AI (figures)
 
 Turn a description (or a selected paragraph) into a publication-quality figure. Toggle figure mode in the AI panel (the spark icon), pick "Generate a figure with AI" from the omnibar, or right-click a paragraph and choose "Generate figure from selection". The assistant drafts TikZ, compiles just the figure in isolation (so your main document is never disturbed), and inserts editable LaTeX at your cursor when you accept, along with a `figures/<name>.png` copy.
