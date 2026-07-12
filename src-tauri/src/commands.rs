@@ -95,8 +95,34 @@ pub async fn compile_project(
     main_doc: String,
     offline: Option<bool>,
 ) -> Result<CompileResult, String> {
+    let ticket = state
+        .compile_ticket
+        .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    {
+        let mut latest = state.latest_compile.lock().await;
+        latest.insert(project_id.clone(), ticket);
+    }
+
     // Only one compile at a time; concurrent callers wait here.
     let _guard = state.compile_lock.lock().await;
+
+    // While this request waited for the lock, a newer request for the same
+    // project may have arrived; its result would immediately replace this
+    // one, so skip the redundant Tectonic run.
+    {
+        let latest = state.latest_compile.lock().await;
+        if latest.get(&project_id) != Some(&ticket) {
+            return Ok(CompileResult {
+                ok: false,
+                has_pdf: false,
+                log: "superseded by a newer compile request".into(),
+                errors: Vec::new(),
+                synctex_path: None,
+                out_dir: None,
+                compile_time_ms: 0,
+            });
+        }
+    }
 
     let project_dir = paths::project_dir(&project_id)?;
     let build_dir = paths::build_dir(&project_id)?;
