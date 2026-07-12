@@ -75,14 +75,30 @@ export async function typeInEditorAfter(
  *  tab always reveals the sidebar; re-clicking the active tab collapses it,
  *  and that collapsed state persists across restarts). */
 export async function openRailTab(page: Page, ariaLabel: string) {
-  await page.click(`[aria-label=${JSON.stringify(ariaLabel)}]`);
-  // Clicking the ALREADY-ACTIVE tab collapses the sidebar, and clicking a tab
-  // while collapsed may only reveal the previous tab - in both cases the
-  // sidebar ends up wrong after one click. Verify and click again if needed.
-  const open = await page.evaluate<boolean>(
-    `!!document.querySelector('[aria-label="Hide sidebar"]')`,
-  );
-  if (!open) await page.click(`[aria-label=${JSON.stringify(ariaLabel)}]`);
+  const sel = JSON.stringify(`[aria-label=${JSON.stringify(ariaLabel)}]`);
+  // Desired end state: this tab is ACTIVE (bg-accent implies the sidebar is
+  // open on it). Click only when not there yet, then wait for the state to
+  // commit - a blind click-then-probe races React and can collapse the
+  // sidebar when the tab was already active.
+  const activeExpr = `(() => {
+    const b = document.querySelector(${sel});
+    return !!b && b.classList.contains('bg-accent')
+      && !!document.querySelector('[aria-label="Hide sidebar"]');
+  })()`;
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const active = await page.evaluate<boolean>(activeExpr);
+    if (active) return;
+    await page.evaluate(
+      `(() => { const b = document.querySelector(${sel}); if (b) b.click(); return true; })()`,
+    );
+    try {
+      await page.waitForFunction(activeExpr, 2_000);
+      return;
+    } catch {
+      /* re-evaluate and click again */
+    }
+  }
+  throw new Error(`openRailTab: ${ariaLabel} never became the active tab`);
 }
 
 /** Open a project from the library by its book title. The test fixture
@@ -254,7 +270,17 @@ export async function ensureAiConnected(page: Page) {
     `),
   );
   // Save a new/changed key, or activate an already-saved one via Use. If the
-  // card is already Active with the same key, neither button renders.
+  // card is already Active with the same key, neither button renders. The
+  // button appears one React render AFTER the input event, so wait for it
+  // rather than querying immediately (a lost race left the key unsaved).
+  await page
+    .waitForFunction(
+      inProviderCard(
+        `return Array.from(card.querySelectorAll('button')).some(b => ['Save', 'Use'].includes(b.textContent.trim()));`,
+      ),
+      5_000,
+    )
+    .catch(() => {});
   const clicked = await page.evaluate<boolean>(
     inProviderCard(`
       const btn = Array.from(card.querySelectorAll('button'))

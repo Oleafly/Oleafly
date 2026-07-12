@@ -2,7 +2,9 @@ import { test, expect } from "../fixtures";
 import { openProject, openRailTab, type Page } from "../helpers";
 
 // File-tree management via the context menu: rename and delete, against real
-// files on disk.
+// files on disk. Menu items are selected with real plugin clicks (the same
+// pattern as the library book menu); synthetic pointer-event dispatch on
+// Radix items is unreliable.
 
 async function treeContextMenu(page: Page & { getByText(t: string): unknown }, fileName: string) {
   const ok = await page.evaluate<boolean>(
@@ -23,103 +25,110 @@ async function treeContextMenu(page: Page & { getByText(t: string): unknown }, f
   expect(ok).toBe(true);
 }
 
-// KNOWN-FLAKY (see e2e/COVERAGE.md): Radix menu-item selection in the file
-// tree is unreliable under synthetic pointer events in a cold app instance,
-// unlike the library book menu. Verified manually; revisit if the plugin
-// gains trusted-event dispatch.
-test.fixme("rename a file via the tree context menu", async ({ tauriPage }) => {
-  await openProject(tauriPage, "E2E Doc");
-  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await openRailTab(tauriPage, "Source Tree");
-
-  // Create a throwaway file to operate on.
-  await tauriPage.click('[title="New file (in the selected folder)"]');
-  await tauriPage.fill('input[placeholder="New file name"]', "scratch.tex");
-  await tauriPage.press('input[placeholder="New file name"]', "Enter");
-  // Let the async refreshTree settle: the creation input is gone and the row
-  // is rendered (a context menu on a pre-refresh node targets a stale row).
-  await tauriPage.waitForFunction(
-    `!document.querySelector('input[placeholder="New file name"]') && (document.querySelector('[aria-label="Source tree"]')?.textContent ?? '').includes('scratch.tex')`,
-    10_000,
-  );
-
-  // Let the creation settle before reloading (reloading mid-write races the
-  // backend), then a full reload guarantees a settled tree and no armed
-  // Radix menu state (mirrors a user coming back later).
-  await tauriPage.waitForFunction(
-    `!document.querySelector('input[placeholder="New file name"]') && (document.querySelector('[aria-label="Source tree"]')?.textContent ?? '').includes('scratch.tex')`,
-    15_000,
-  );
-  await tauriPage.evaluate(`(window.location.reload(), 1)`);
+async function pickMenuItem(
+  page: Page,
+  fileName: string,
+  label: string,
+  doneExpr: string,
+) {
   for (let attempt = 0; ; attempt++) {
-    const back = await tauriPage
+    await treeContextMenu(page, fileName);
+    const opened = await page
       .waitForFunction(
-        `document.readyState === 'complete' && !!document.querySelector('[data-testid="library"]')`,
-        20_000,
+        `Array.from(document.querySelectorAll('[role="menuitem"]')).some(m => m.textContent.trim() === ${JSON.stringify(label)})`,
+        5_000,
       )
       .then(() => true)
       .catch(() => false);
-    if (back) break;
-    if (attempt >= 1) throw new Error("app did not return to the library after reload");
+    if (opened) {
+      await page.getByText(label, { exact: true }).click();
+      const done = await page
+        .waitForFunction(doneExpr, 5_000)
+        .then(() => true)
+        .catch(() => false);
+      if (done) return;
+    }
+    if (attempt >= 3) throw new Error(`menu item ${label} never took effect`);
   }
+}
+
+test("create a scratch file in the tree", async ({ tauriPage }) => {
+  await openProject(tauriPage, "E2E Doc");
+  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  await openRailTab(tauriPage, "Source Tree");
+
+  // Create a throwaway file for the rename/delete tests. Menu operations run
+  // in their own tests (fresh pages): right after a create, the tree refresh
+  // churn reliably swallows Radix menu-item selection.
+  await tauriPage.click('[title="New file (in the selected folder)"]');
+  await tauriPage.fill('input[placeholder="New file name"]', "scratch.tex");
+  await tauriPage.press('input[placeholder="New file name"]', "Enter");
+  await tauriPage.waitForFunction(
+    `!document.querySelector('input[placeholder="New file name"]') && (document.querySelector('[aria-label="Source tree"]')?.textContent ?? '').includes('scratch.tex')`,
+    15_000,
+  );
+});
+
+test("rename a file via the tree context menu", async ({ tauriPage }) => {
+  await openProject(tauriPage, "E2E Doc");
+  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  await openRailTab(tauriPage, "Source Tree");
+  // A retry after a mid-rename failure may find the file already renamed
+  // (the inline input commits on blur), so accept either starting state.
+  await tauriPage.waitForFunction(
+    `['scratch.tex', 'renamed.tex'].some(n => (document.querySelector('[aria-label="Source tree"]')?.textContent ?? '').includes(n))`,
+    15_000,
+  );
+  const hasScratch = await tauriPage.evaluate<boolean>(
+    `(document.querySelector('[aria-label="Source tree"]')?.textContent ?? '').includes('scratch.tex')`,
+  );
+
+  if (hasScratch) {
+    await pickMenuItem(
+      tauriPage,
+      "scratch.tex",
+      "Rename",
+      `!!document.querySelector('[aria-label="Rename file"]')`,
+    );
+    // Set the name and commit with Enter in ONE evaluate: the input commits
+    // on blur, so a separate fill-then-press can lose the input in between.
+    const committed = await tauriPage.evaluate<boolean>(
+      `(() => {
+        const el = document.querySelector('[aria-label="Rename file"]');
+        if (!el) return false;
+        const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+        set.call(el, 'renamed.tex');
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        return true;
+      })()`,
+    );
+    expect(committed).toBe(true);
+  }
+  await tauriPage.waitForFunction(
+    `(document.querySelector('[aria-label="Source tree"]')?.textContent ?? '').includes('renamed.tex')
+     && !(document.querySelector('[aria-label="Source tree"]')?.textContent ?? '').includes('scratch.tex')`,
+    15_000,
+  );
+});
+
+test("delete a file via the tree context menu", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openRailTab(tauriPage, "Source Tree");
   await tauriPage.waitForFunction(
-    `(document.querySelector('[aria-label="Source tree"]')?.textContent ?? '').includes('scratch.tex')`,
+    `(document.querySelector('[aria-label="Source tree"]')?.textContent ?? '').includes('renamed.tex')`,
     15_000,
   );
-  // The menu selection can still be swallowed by churn - retry.
-  for (let attempt = 0; ; attempt++) {
-    await treeContextMenu(tauriPage, "scratch.tex");
-    await expect(tauriPage.getByText("Rename", { exact: true })).toBeVisible({ timeout: 10_000 });
-    // Radix tree-menu items need the full pointer sequence, not a bare click.
-    await tauriPage.evaluate(
-      `(() => {
-        const item = Array.from(document.querySelectorAll('[role="menuitem"]')).find(m => m.textContent.trim() === 'Rename');
-        if (!item) return 0;
-        item.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
-        item.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true }));
-        item.click();
-        return 1;
-      })()`,
-    );
-    const appeared = await tauriPage
-      .waitForFunction(`!!document.querySelector('[aria-label="Rename file"]')`, 5_000)
-      .then(() => true)
-      .catch(() => false);
-    if (appeared) break;
-    if (attempt >= 3) throw new Error("rename input never appeared");
-  }
-  // The inline rename input pre-fills the current name.
-  await tauriPage.fill('[aria-label="Rename file"]', "renamed.tex");
-  await tauriPage.press('[aria-label="Rename file"]', "Enter");
-  await expect(tauriPage.getByText("renamed.tex")).toBeVisible({ timeout: 10_000 });
-});
-
-test.fixme("delete a file via the tree context menu", async ({ tauriPage }) => {
-  await openProject(tauriPage, "E2E Doc");
-  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await openRailTab(tauriPage, "Source Tree");
-  await expect(tauriPage.getByText("renamed.tex")).toBeVisible({ timeout: 10_000 });
 
   // Scoped confirm override: only accept the dialog naming this file.
   await tauriPage.evaluate(
     `(window.confirm = (msg) => typeof msg === 'string' && msg.includes('renamed.tex'), 1)`,
   );
-  await treeContextMenu(tauriPage, "renamed.tex");
-  await expect(tauriPage.getByText("Delete", { exact: true })).toBeVisible({ timeout: 10_000 });
-  await tauriPage.evaluate(
-    `(() => {
-      const item = Array.from(document.querySelectorAll('[role="menuitem"]')).find(m => m.textContent.trim() === 'Delete');
-      item.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
-      item.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true }));
-      item.click();
-      return 1;
-    })()`,
-  );
-  await tauriPage.waitForFunction(
+  await pickMenuItem(
+    tauriPage,
+    "renamed.tex",
+    "Delete",
     `!(document.querySelector('[aria-label="Source tree"]')?.textContent ?? '').includes('renamed.tex')`,
-    15_000,
   );
 });

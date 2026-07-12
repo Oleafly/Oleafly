@@ -5,11 +5,17 @@ import { openProject } from "../helpers";
 // isolated-compile pipeline, and see the rendered preview.
 
 test("diagram composer compiles the starter drawing to a preview", async ({ tauriPage }) => {
-  test.setTimeout(240_000);
+  test.setTimeout(360_000);
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await expect(tauriPage.locator(".pdf-canvas")).toBeVisible({ timeout: 120_000 });
-  await expect(tauriPage.locator('[aria-label="Recompile"]')).toBeEnabled({ timeout: 120_000 });
+  // Wait for THIS page's auto-compile to complete (the ok chip only renders
+  // after a finished compile), so the figure compile below has the compile
+  // lock to itself. "Recompile enabled" is not enough: it is also true
+  // before the auto-compile starts.
+  await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok", {
+    timeout: 180_000,
+  });
+  await expect(tauriPage.locator(".pdf-canvas")).toBeVisible({ timeout: 30_000 });
 
   await tauriPage.click('[aria-label="Insert diagram"]');
   await expect(tauriPage.locator('[role="dialog"][aria-label="Insert diagram"]')).toBeVisible();
@@ -17,7 +23,7 @@ test("diagram composer compiles the starter drawing to a preview", async ({ taur
   await tauriPage.click('[data-testid="diagram-compile"]');
   // Compile runs Tectonic on the generated TikZ; the Insert-as-image button
   // enables only once a rendered PNG exists.
-  await expect(tauriPage.getByTestId("diagram-insert-image")).toBeEnabled({ timeout: 90_000 });
+  await expect(tauriPage.getByTestId("diagram-insert-image")).toBeEnabled({ timeout: 120_000 });
 
   // The Code tab shows the rendered preview and the generated TikZ.
   await tauriPage.click('[data-testid="diagram-tab-code"]');

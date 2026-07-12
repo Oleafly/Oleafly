@@ -40,6 +40,16 @@ test("connect an AI provider through the settings UI", async ({ tauriPage }) => 
     `),
   );
   // Re-runs: filling the SAME saved key leaves the card clean (no Save).
+  // On first connect the button renders one React frame after the input
+  // event, so give it a moment instead of querying immediately.
+  await tauriPage
+    .waitForFunction(
+      inProviderCard(
+        `return Array.from(card.querySelectorAll('button')).some(b => ['Save', 'Use'].includes(b.textContent.trim()));`,
+      ),
+      5_000,
+    )
+    .catch(() => {});
   const clicked = await tauriPage.evaluate<boolean>(
     inProviderCard(`
       const btn = Array.from(card.querySelectorAll('button'))
