@@ -21,12 +21,16 @@ asset_for() {
     aarch64-apple-darwin)     echo "tectonic-$VERSION-aarch64-apple-darwin.tar.gz:tar" ;;
     x86_64-apple-darwin)      echo "tectonic-$VERSION-x86_64-apple-darwin.tar.gz:tar" ;;
     x86_64-pc-windows-msvc)   echo "tectonic-$VERSION-x86_64-pc-windows-msvc.zip:zip" ;;
+    aarch64-pc-windows-msvc)  echo "tectonic-$VERSION-aarch64-pc-windows-msvc.zip:zip" ;;
     x86_64-unknown-linux-gnu) echo "tectonic-$VERSION-x86_64-unknown-linux-gnu.tar.gz:tar" ;;
+    aarch64-unknown-linux-gnu) echo "tectonic-$VERSION-aarch64-unknown-linux-gnu.tar.gz:tar" ;;
     *)                        echo "" ;;
   esac
 }
 
-ALL_TARGETS="aarch64-apple-darwin x86_64-apple-darwin x86_64-pc-windows-msvc x86_64-unknown-linux-gnu"
+# Primary release matrix targets first; ARM Linux/Windows are best-effort when
+# upstream publishes matching assets (fetch fails clearly if missing).
+ALL_TARGETS="aarch64-apple-darwin x86_64-apple-darwin x86_64-pc-windows-msvc x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu aarch64-pc-windows-msvc"
 
 fetch() {
   local target="$1"

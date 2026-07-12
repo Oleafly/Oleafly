@@ -9,7 +9,17 @@ test("settings modal opens with all sections", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openSettings(tauriPage);
-  for (const s of ["appearance", "general", "dictionary", "ai", "engine", "downloads", "github"]) {
+  // Core sections are always in the nav.
+  for (const s of ["appearance", "general", "ai", "github"]) {
+    await expect(tauriPage.locator(`[data-testid="settings-section-${s}"]`)).toBeVisible();
+  }
+  // Advanced sections sit behind the "Show advanced" disclosure. The toggle
+  // state persists (localStorage), so reveal them only when currently hidden.
+  const dictionary = tauriPage.locator('[data-testid="settings-section-dictionary"]');
+  if (!(await dictionary.isVisible())) {
+    await tauriPage.click('[data-testid="settings-toggle-advanced"]');
+  }
+  for (const s of ["dictionary", "engine", "downloads", "data"]) {
     await expect(tauriPage.locator(`[data-testid="settings-section-${s}"]`)).toBeVisible();
   }
   await tauriPage.click('[aria-label="Close settings"]');
