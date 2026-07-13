@@ -187,6 +187,9 @@ test("chat usage accumulates per conversation via the chats store", async ({
     5_000,
   );
 
+  // Start a fresh chat so the totals below are absolute, not inherited from a
+  // prior spec that ran a real conversation and left usage on the active chat.
+  await tauriPage.evaluate(`window.__chatStartFresh?.()`);
   await tauriPage.evaluate(
     `window.__chatEnsureAndUsage?.({ inputTokens: 100, outputTokens: 40, steps: 2 })`,
   );
