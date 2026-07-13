@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { ArrowRight } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ExternalToolApprovals } from "@/components/ai/ExternalToolApprovals";
+import { CopilotOverlay } from "@/components/ai/CopilotOverlay";
 
 // Heavy surfaces load on demand so cold start stays lean.
 const SettingsModal = lazy(() =>
@@ -382,6 +383,7 @@ export default function App() {
         <SearchOmnibar />
         <GlobalNewProject />
         <ExternalToolApprovals />
+        <CopilotOverlay />
         <LazyModals>
           <SettingsModal />
         </LazyModals>
@@ -448,6 +450,7 @@ export default function App() {
         <SearchOmnibar />
         <GlobalNewProject />
         <ExternalToolApprovals />
+        <CopilotOverlay />
         <LazyModals>
           <SettingsModal />
           <WordCountModal />

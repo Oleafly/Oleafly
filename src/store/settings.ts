@@ -1,7 +1,16 @@
 import { create } from "zustand";
 
 export type ViewMode = "split" | "editor" | "pdf";
-export type RailTab = "files" | "search" | "ai" | "source" | "review" | "chat" | "preflight" | "refs";
+export type RailTab =
+  | "files"
+  | "search"
+  | "ai"
+  | "source"
+  | "review"
+  | "chat"
+  | "preflight"
+  | "refs"
+  | "mcp";
 
 /** Read a persisted setting (cosmetics survive restarts, like the theme). */
 function ls(k: string, fb: string): string {
@@ -93,6 +102,9 @@ interface SettingsState {
   setOpenInTree: (v: boolean) => void;
   hoverPreview: boolean;
   setHoverPreview: (v: boolean) => void;
+  /** When true, the assistant floats as an in-window overlay (not the docked rail). */
+  chatFloating: boolean;
+  setChatFloating: (v: boolean) => void;
   editorFontSize: number;
   setEditorFontSize: (v: number) => void;
   /** Global app UI font size (px), scaling the whole interface. */
@@ -193,6 +205,11 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   setHoverPreview: (v) => {
     saveLs("openleaf.hoverPreview", v ? "1" : "0");
     set({ hoverPreview: v });
+  },
+  chatFloating: ls("openleaf.ai.floating", "0") === "1",
+  setChatFloating: (v) => {
+    saveLs("openleaf.ai.floating", v ? "1" : "0");
+    set({ chatFloating: v });
   },
   openInTree: ls("openleaf.openInTree", "1") !== "0",
   setOpenInTree: (v) => {

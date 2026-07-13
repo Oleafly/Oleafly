@@ -11,6 +11,7 @@ import {
   Paperclip,
   Plus,
   RotateCcw,
+  PanelRightOpen,
   Sparkles,
   Square,
 } from "lucide-react";
@@ -74,6 +75,8 @@ export function ChatCore() {
   const projectKind = useFilesStore((s) => s.projectKind);
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
   const setSettingsInitialSection = useSettingsStore((s) => s.setSettingsInitialSection);
+  const chatFloating = useSettingsStore((s) => s.chatFloating);
+  const setChatFloating = useSettingsStore((s) => s.setChatFloating);
   const modelDropdownRef = useRef<HTMLDivElement>(null);
 
   const chats = useChatsStore((s) => s.chats);
@@ -1105,6 +1108,21 @@ ${sandboxedCustom}`;
                 </button>
               </Tooltip>
             </>
+          )}
+
+          {!chatFloating && (
+            <Tooltip label="Float the assistant">
+              <button
+                type="button"
+                aria-label="Float the assistant over the app"
+                data-testid="ai-chat-float"
+                disabled={streaming}
+                onClick={() => setChatFloating(true)}
+                className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
+              >
+                <PanelRightOpen className="size-3.5" />
+              </button>
+            </Tooltip>
           )}
 
         </div>
