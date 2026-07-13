@@ -21,14 +21,12 @@ test("diagram composer compiles the starter drawing to a preview", async ({ taur
   await expect(tauriPage.locator('[role="dialog"][aria-label="Insert diagram"]')).toBeVisible();
 
   await tauriPage.click('[data-testid="diagram-compile"]');
-  // Compile runs Tectonic on the generated TikZ; the Insert-as-image button
-  // enables only once a rendered PNG exists.
-  await expect(tauriPage.getByTestId("diagram-insert-image")).toBeEnabled({ timeout: 120_000 });
-
-  // The Code tab shows the rendered preview and the generated TikZ.
+  // Compile runs Tectonic on the generated TikZ; switch to Code for insert
+  // actions (vector/PNG) and to confirm the rendered preview.
   await tauriPage.click('[data-testid="diagram-tab-code"]');
-  await expect(tauriPage.locator('img[alt="Diagram preview"]')).toBeVisible();
+  await expect(tauriPage.locator('img[alt="Diagram preview"]')).toBeVisible({ timeout: 120_000 });
+  await expect(tauriPage.getByTestId("diagram-insert-image")).toBeEnabled({ timeout: 5_000 });
 
-  await tauriPage.click('[role="dialog"][aria-label="Insert diagram"] [aria-label="Close"]');
+  await tauriPage.click('[role="dialog"][aria-label="Insert diagram"] [aria-label="Back to project"]');
   await expect(tauriPage.locator('[role="dialog"][aria-label="Insert diagram"]')).toBeHidden();
 });

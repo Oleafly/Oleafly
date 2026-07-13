@@ -34,7 +34,7 @@ test("place a shape, inspect it, and toggle canvas controls", async ({ tauriPage
   );
   await tauriPage.click('[aria-label="Toggle minimap"]');
 
-  await tauriPage.click('[role="dialog"][aria-label="Insert diagram"] [aria-label="Close"]');
+  await tauriPage.click('[role="dialog"][aria-label="Insert diagram"] [aria-label="Back to project"]');
 });
 
 test("code tab snippets insert TikZ", async ({ tauriPage }) => {
@@ -47,7 +47,7 @@ test("code tab snippets insert TikZ", async ({ tauriPage }) => {
     `document.querySelectorAll('.cm-content')[1] ? Array.from(document.querySelectorAll('.cm-content')).map(e => e.textContent).join(' ') : document.querySelector('.cm-content').textContent`,
   );
   expect(code).toContain("circle");
-  await tauriPage.click('[role="dialog"][aria-label="Insert diagram"] [aria-label="Close"]');
+  await tauriPage.click('[role="dialog"][aria-label="Insert diagram"] [aria-label="Back to project"]');
 });
 
 test("insert as code lands editable TikZ in the document and a figures/ file", async ({
@@ -62,7 +62,12 @@ test("insert as code lands editable TikZ in the document and a figures/ file", a
   await tauriPage.click('[aria-label="Insert diagram"]');
 
   const name = `e2efig${Date.now().toString(36)}`;
+  // Name is plain text until clicked — same pattern as the project title.
+  await tauriPage.click('[data-testid="diagram-name-display"]');
   await tauriPage.fill("#diagram-name", name);
+  await tauriPage.click('[aria-label="Save name"]');
+  // Insert actions live on the Code tab's preview chrome.
+  await tauriPage.click('[data-testid="diagram-tab-code"]');
   await tauriPage.getByText("Insert as code (vector)").click();
   // Composer closes and the tikzpicture is in the real document.
   await expect(
@@ -120,5 +125,5 @@ test("canvas zoom controls change the viewport", async ({ tauriPage }) => {
     `(document.querySelector('.react-flow__viewport')?.style.transform || '') === ${JSON.stringify(fitted)}`,
     10_000,
   );
-  await tauriPage.click('[role="dialog"][aria-label="Insert diagram"] [aria-label="Close"]');
+  await tauriPage.click('[role="dialog"][aria-label="Insert diagram"] [aria-label="Back to project"]');
 });

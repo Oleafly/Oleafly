@@ -34,6 +34,8 @@ import { editorTheme } from "@/components/editor/cm/theme";
 import { latexLanguage } from "@/components/editor/cm/latex";
 import { useTheme } from "@/lib/theme";
 import { toast } from "@/lib/toast";
+import { useFullscreen } from "@/lib/use-fullscreen";
+import { isMac } from "@/lib/utils";
 
 /** App theme -> canvas default, as a hook the package can call. */
 function useThemeMode(): "light" | "dark" {
@@ -103,6 +105,7 @@ export function DiagramComposer() {
   const open = useSettingsStore((s) => s.diagramComposerOpen);
   const setOpen = useSettingsStore((s) => s.setDiagramComposerOpen);
   const projectId = useFilesStore((s) => s.projectId);
+  const fullscreen = useFullscreen();
   const codeExtensions = useMemo(() => [latexLanguage(), editorTheme()], []);
 
   return (
@@ -113,6 +116,8 @@ export function DiagramComposer() {
         onClose={() => setOpen(false)}
         host={HOST}
         codeExtensions={codeExtensions}
+        isMac={isMac}
+        fullscreen={fullscreen}
       />
     </DiagramKitContext.Provider>
   );

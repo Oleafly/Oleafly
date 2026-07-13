@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
+  ArrowLeft,
   Braces,
+  Check,
+  ChevronRight,
   Circle,
   Code2,
   FolderOpen,
@@ -9,6 +12,8 @@ import {
   Minus,
   MousePointerSquareDashed,
   MoveRight,
+  PanelRightClose,
+  PanelRightOpen,
   Play,
   Save,
   Sparkles,
@@ -83,6 +88,8 @@ export function DiagramComposer({
   onClose,
   host,
   codeExtensions,
+  isMac = false,
+  fullscreen = false,
 }: {
   /** Render nothing when false; keep the component mounted so the drawing survives close/reopen. */
   open: boolean;
@@ -91,6 +98,9 @@ export function DiagramComposer({
   host: DiagramHost;
   /** CodeMirror extensions for the Code tab (LaTeX language, editor theme). */
   codeExtensions?: Extension[];
+  /** Reserve space for macOS traffic lights (same as the project TopToolbar). */
+  isMac?: boolean;
+  fullscreen?: boolean;
 }) {
   const { Button, Tooltip, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, toast } =
     useDiagramKit();
@@ -99,12 +109,18 @@ export function DiagramComposer({
   const [model, setModel] = useState<DiagramModel>(() => starterModel());
   const [code, setCode] = useState<string>(() => modelToTikz(starterModel()));
   const [name, setName] = useState("diagram");
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("diagram");
+  const nameEditRef = useRef<HTMLSpanElement>(null);
   const [png, setPng] = useState<string | null>(null);
   const [log, setLog] = useState("");
   const [busy, setBusy] = useState(false);
   const [scale, setScale] = useState(2);
-  // Figure page background: "" = transparent, else a hex color.
-  const [background, setBackground] = useState("");
+  // Figure page background: hex "#RRGGBB", or "" for transparent. Default white.
+  const [background, setBackground] = useState("#ffffff");
+  const [bgPickerOpen, setBgPickerOpen] = useState(false);
+  // Preview is on-demand (not realtime): open after Compile, hide when minimized.
+  const [previewOpen, setPreviewOpen] = useState(false);
   const cmRef = useRef<CmHandle>(null);
   const codeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -132,6 +148,7 @@ export function DiagramComposer({
     if (open) {
       setPng(null);
       setLog("");
+      setPreviewOpen(false);
     }
   }, [open]);
 
@@ -142,6 +159,8 @@ export function DiagramComposer({
     const source = buildStandaloneDoc({ code: raw, libraries: DIAGRAM_LIBS, background });
     setBusy(true);
     setLog("");
+    // Reveal the pane while compiling so the user sees progress / result.
+    setPreviewOpen(true);
     try {
       const result = await host.compileIsolated(projectId, source);
       setLog((result.log ?? "").slice(-4000));
@@ -259,7 +278,8 @@ export function DiagramComposer({
       if (m) {
         setModel(m);
         setCode(modelToTikz(m));
-        setBackground(m.background ?? "");
+        // Keep "" (transparent) if the snippet stored it; only missing → white default.
+        setBackground(m.background !== undefined ? m.background : "#ffffff");
         setMode("draw");
         toast.success(`Loaded figures/${stem}.tikz for editing.`);
       } else {
@@ -317,7 +337,134 @@ export function DiagramComposer({
 
   const compileFailed = !!log && !png;
 
+  // Close the background picker when clicking outside it.
+  useEffect(() => {
+    if (!bgPickerOpen) return;
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as HTMLElement;
+      if (!t.closest?.('[aria-label="Background color picker"]') && !t.closest?.('[aria-label="Background color"]')) {
+        setBgPickerOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [bgPickerOpen]);
+
+  // Clicking outside the name editor cancels (same as project title in TopToolbar).
+  useEffect(() => {
+    if (!editingName) return;
+    const onDown = (e: MouseEvent) => {
+      if (nameEditRef.current && !nameEditRef.current.contains(e.target as Node)) {
+        setEditingName(false);
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [editingName]);
+
+  const startEditName = () => {
+    setNameDraft(name);
+    setEditingName(true);
+  };
+  const commitName = () => {
+    const next = safeName(nameDraft) || "diagram";
+    setName(next);
+    setNameDraft(next);
+    setEditingName(false);
+  };
+  const cancelEditName = () => {
+    setNameDraft(name);
+    setEditingName(false);
+  };
+
+  /** File extension for the on-disk figure snippet (always .tikz). */
+  const diagramExt = "tikz";
+  const displayFile = `${stem || "diagram"}.${diagramExt}`;
+
   if (!open) return null;
+
+  const switchMode = (m: Mode) => {
+    // Entering Code: flush debounced generation so Code mirrors the canvas.
+    if (m === "code" && hasDrawing) {
+      if (codeTimerRef.current) clearTimeout(codeTimerRef.current);
+      setCode(modelToTikz(model));
+    }
+    setMode(m);
+  };
+
+  const hasPreviewResult = !!(png || log);
+  const showPreview = previewOpen;
+
+  /** PNG scale + background picker — only rendered in the preview pane chrome. */
+  const previewOpts = (
+    <>
+      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        PNG scale
+        <Select value={String(scale)} onValueChange={(v) => setScale(Number(v))}>
+          <SelectTrigger className="h-7 w-16 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="z-[100]">
+            <SelectItem value="1" className="text-xs">1x</SelectItem>
+            <SelectItem value="2" className="text-xs">2x</SelectItem>
+            <SelectItem value="3" className="text-xs">3x</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="relative flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        Background
+        <button
+          type="button"
+          aria-label="Background color"
+          aria-expanded={bgPickerOpen}
+          title="Figure background color"
+          onClick={() => setBgPickerOpen((v) => !v)}
+          className={cn(
+            "h-7 w-9 overflow-hidden rounded border",
+            background === ""
+              ? "bg-[length:8px_8px] bg-[linear-gradient(45deg,#ccc_25%,transparent_25%,transparent_75%,#ccc_75%,#ccc),linear-gradient(45deg,#ccc_25%,#fff_25%,#fff_75%,#ccc_75%,#ccc)] bg-[position:0_0,4px_4px]"
+              : "",
+            bgPickerOpen && "ring-2 ring-primary",
+          )}
+          style={background ? { backgroundColor: background } : undefined}
+        />
+        {bgPickerOpen && (
+          <div
+            className="absolute left-0 top-[calc(100%+4px)] z-[110] flex min-w-[10rem] flex-col gap-2 rounded-lg border bg-popover p-2 text-popover-foreground shadow-md"
+            role="dialog"
+            aria-label="Background color picker"
+          >
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={background || "#ffffff"}
+                onChange={(e) => setBackground(e.target.value)}
+                aria-label="Pick background color"
+                className="h-8 w-full cursor-pointer rounded border bg-background"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setBackground("");
+                setBgPickerOpen(false);
+              }}
+              className={cn(
+                "flex items-center gap-2 rounded-md border px-2 py-1.5 text-left text-xs transition-colors hover:bg-accent",
+                background === "" && "border-primary/50 bg-primary/10",
+              )}
+            >
+              <span
+                className="size-5 shrink-0 rounded border bg-[length:6px_6px] bg-[linear-gradient(45deg,#ccc_25%,transparent_25%,transparent_75%,#ccc_75%,#ccc),linear-gradient(45deg,#ccc_25%,#fff_25%,#fff_75%,#ccc_75%,#ccc)] bg-[position:0_0,3px_3px]"
+                aria-hidden
+              />
+              None (transparent)
+            </button>
+          </div>
+        )}
+      </div>
+    </>
+  );
 
   return (
     <div
@@ -325,19 +472,82 @@ export function DiagramComposer({
       aria-label="Insert diagram"
       className="fixed inset-0 z-50 flex flex-col bg-background"
     >
-      {/* Header */}
-      <div className="flex shrink-0 items-center gap-3 border-b bg-sidebar px-4 py-2.5">
-        <h2 className="text-sm font-semibold">Insert diagram</h2>
-        <div className="ml-2 flex items-center gap-1.5">
-          <label htmlFor="diagram-name" className="text-xs text-muted-foreground">Name</label>
-          <input
-            id="diagram-name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="diagram"
-            className="w-48 rounded-md border border-input bg-background px-2 py-1 text-xs outline-none focus:border-primary"
-          />
-          <Tooltip label={`Load figures/${stem || "name"}.tikz to edit`}>
+      {/* Header: back | Insert diagram > name.tikz, Draw|Code centered, actions right.
+          On macOS (windowed), pad left for traffic lights — same as TopToolbar. */}
+      <div
+        className={cn(
+          "relative flex h-12 shrink-0 items-center gap-2 border-b bg-sidebar pr-4",
+          isMac && !fullscreen && "pl-[78px]",
+          isMac && fullscreen && "pl-4",
+          !isMac && "pl-4",
+        )}
+      >
+        <Tooltip label="Back to project">
+          <button
+            type="button"
+            aria-label="Back to project"
+            onClick={onClose}
+            className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <ArrowLeft className="size-4" />
+          </button>
+        </Tooltip>
+        <h2 className="shrink-0 text-sm font-semibold">Insert diagram</h2>
+        <ChevronRight className="size-4 shrink-0 text-muted-foreground/50" />
+        <div className="flex min-w-0 items-center gap-1">
+          {editingName ? (
+            <span ref={nameEditRef} className="flex items-center gap-1">
+              <input
+                id="diagram-name"
+                aria-label="Diagram name"
+                autoFocus
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    commitName();
+                  } else if (e.key === "Escape") {
+                    e.preventDefault();
+                    cancelEditName();
+                  }
+                }}
+                className="h-6 w-[160px] rounded border bg-muted px-1.5 text-sm outline-none focus:ring-1 focus:ring-ring"
+              />
+              <span className="text-sm text-muted-foreground">.{diagramExt}</span>
+              <Tooltip label="Save (Enter)">
+                <button
+                  type="button"
+                  onClick={commitName}
+                  aria-label="Save name"
+                  className="flex size-6 items-center justify-center rounded text-emerald-600 hover:bg-accent dark:text-emerald-400"
+                >
+                  <Check className="size-3.5" />
+                </button>
+              </Tooltip>
+              <Tooltip label="Cancel (Esc)">
+                <button
+                  type="button"
+                  onClick={cancelEditName}
+                  aria-label="Cancel rename"
+                  className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </Tooltip>
+            </span>
+          ) : (
+            <button
+              type="button"
+              data-testid="diagram-name-display"
+              onClick={startEditName}
+              title="Rename diagram"
+              className="flex min-w-0 items-center rounded px-1 py-0.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              <span className="max-w-[220px] truncate font-normal">{displayFile}</span>
+            </button>
+          )}
+          <Tooltip label={`Load figures/${displayFile} to edit`}>
             <button
               type="button"
               aria-label="Load existing diagram"
@@ -348,6 +558,26 @@ export function DiagramComposer({
             </button>
           </Tooltip>
         </div>
+
+        {/* Centered Draw | Code tabs */}
+        <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-lg border bg-background/80 p-0.5">
+          {(["draw", "code"] as Mode[]).map((m) => (
+            <button
+              key={m}
+              type="button"
+              data-testid={`diagram-tab-${m}`}
+              onClick={() => switchMode(m)}
+              className={cn(
+                "flex items-center gap-1.5 rounded-md px-3 py-1 text-xs transition-colors",
+                mode === m ? "bg-accent text-foreground shadow-sm" : "text-muted-foreground hover:bg-accent/50",
+              )}
+            >
+              {m === "draw" ? <MousePointerSquareDashed className="size-3.5" /> : <Code2 className="size-3.5" />}
+              {m === "draw" ? "Draw" : "Code"}
+            </button>
+          ))}
+        </div>
+
         <div className="ml-auto flex items-center gap-2">
           {compileFailed && host.fixWithAi && (
             <Tooltip label="Ask AI to fix the compile error">
@@ -357,151 +587,134 @@ export function DiagramComposer({
               </Button>
             </Tooltip>
           )}
+          <Button data-testid="diagram-compile" size="sm" onClick={() => void compile()} disabled={busy}>
+            {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Play className="size-3.5" />}
+            Compile
+          </Button>
           <Tooltip label="Save this diagram as a reusable image project">
             <Button variant="secondary" size="sm" onClick={() => void saveAsProject()}>
               <Save className="size-3.5" /> Save as project
             </Button>
           </Tooltip>
-          <Button data-testid="diagram-compile" size="sm" onClick={() => void compile()} disabled={busy}>
-            {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Play className="size-3.5" />}
-            Compile
-          </Button>
-          <button
-            type="button"
-            aria-label="Close"
-            onClick={onClose}
-            className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-          >
-            <X className="size-4" />
-          </button>
         </div>
       </div>
 
-      {/* Tab bar (full width): Draw | Code, plus the snippet toolbar in Code. */}
-      <div className="flex h-[34px] shrink-0 items-center gap-1 border-b bg-sidebar px-2">
-        {(["draw", "code"] as Mode[]).map((m) => (
-          <button
-            key={m}
-            type="button"
-            data-testid={`diagram-tab-${m}`}
-            onClick={() => {
-              // Entering Code: reflect the current drawing immediately (flush the
-              // debounced generation) so Code always mirrors the canvas.
-              if (m === "code" && hasDrawing) {
-                if (codeTimerRef.current) clearTimeout(codeTimerRef.current);
-                setCode(modelToTikz(model));
-              }
-              setMode(m);
-            }}
-            className={cn(
-              "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs transition-colors",
-              mode === m ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent/50",
-            )}
-          >
-            {m === "draw" ? <MousePointerSquareDashed className="size-3.5" /> : <Code2 className="size-3.5" />}
-            {m === "draw" ? "Draw" : "Code"}
-          </button>
-        ))}
-        {mode === "code" && (
-          <div className="ml-auto flex items-center gap-0.5">
-            {TIKZ_SNIPPETS.map((s) => (
-              <Tooltip key={s.label} label={s.label} side="bottom">
-                <button
-                  type="button"
-                  aria-label={s.label}
-                  onClick={() => cmRef.current?.insert(s.snippet)}
-                  className="flex size-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                >
-                  {s.icon}
-                </button>
-              </Tooltip>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Body: Draw uses the full width; Code splits code | preview. */}
-      <div className="min-h-0 flex-1">
-        {mode === "draw" ? (
-          <DiagramCanvas model={model} onChange={onModelChange} />
-        ) : (
-          <div className="grid h-full grid-cols-2">
-            <div className="min-h-0 border-r bg-background">
-              <CmCodeEditor ref={cmRef} value={code} onChange={setCode} extensions={codeExtensions} />
-            </div>
-            <div className="flex min-h-0 flex-col">
-              <div className="flex h-[34px] shrink-0 items-center border-b px-3">
-                <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Preview</span>
-              </div>
-              <div className="min-h-0 flex-1 overflow-auto bg-sidebar p-3">
-                {png ? (
-                  <div className="flex h-full items-center justify-center">
-                    <img src={png} alt="Diagram preview" className="max-h-full max-w-full object-contain" />
-                  </div>
-                ) : log ? (
-                  <pre className="overflow-auto rounded-md border bg-muted/30 p-2 font-mono text-[10px] text-muted-foreground">{log}</pre>
-                ) : (
-                  <div className="flex h-full items-center justify-center text-center text-xs text-muted-foreground">
-                    Compile to see a preview.
+      {/* Body: full-width editor until Compile opens the on-demand preview pane */}
+      <div className={cn("min-h-0 flex-1", showPreview ? "grid grid-cols-2" : "flex")}>
+        {/* Editor: Draw canvas or Code — full width until the preview pane opens */}
+        <div className={cn("flex min-h-0 min-w-0 flex-1 flex-col", showPreview && "border-r")}>
+          {mode === "draw" ? (
+            <DiagramCanvas
+              model={model}
+              onChange={onModelChange}
+              showPreviewAction={hasPreviewResult && !showPreview}
+              onShowPreview={() => setPreviewOpen(true)}
+            />
+          ) : (
+            <>
+              <div className="flex h-[34px] shrink-0 items-center gap-0.5 border-b bg-sidebar px-2">
+                <span className="mr-1 text-[11px] text-muted-foreground">Snippets</span>
+                {TIKZ_SNIPPETS.map((s) => (
+                  <Tooltip key={s.label} label={s.label} side="bottom">
+                    <button
+                      type="button"
+                      aria-label={s.label}
+                      onClick={() => cmRef.current?.insert(s.snippet)}
+                      className="flex size-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    >
+                      {s.icon}
+                    </button>
+                  </Tooltip>
+                ))}
+                {hasPreviewResult && !showPreview && (
+                  <div className="ml-auto">
+                    <Tooltip label="Show compiled preview">
+                      <button
+                        type="button"
+                        aria-label="Show preview"
+                        onClick={() => setPreviewOpen(true)}
+                        className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                      >
+                        <PanelRightOpen className="size-3.5" />
+                        Preview
+                      </button>
+                    </Tooltip>
                   </div>
                 )}
               </div>
+              <div className="min-h-0 flex-1 bg-background">
+                <CmCodeEditor ref={cmRef} value={code} onChange={setCode} extensions={codeExtensions} />
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* On-demand preview: opens on Compile; scale/background live only here */}
+        {showPreview && (
+          <div className="flex min-h-0 min-w-0 flex-col">
+            <div className="flex min-h-[34px] shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b bg-sidebar px-3 py-1">
+              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Preview</span>
+              {previewOpts}
+              <div className="ml-auto flex items-center gap-1">
+                {busy && (
+                  <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <Loader2 className="size-3.5 animate-spin" />
+                    Compiling…
+                  </span>
+                )}
+                <Tooltip label="Minimize preview">
+                  <button
+                    type="button"
+                    aria-label="Minimize preview"
+                    onClick={() => {
+                      setBgPickerOpen(false);
+                      setPreviewOpen(false);
+                    }}
+                    className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+                  >
+                    <PanelRightClose className="size-3.5" />
+                  </button>
+                </Tooltip>
+              </div>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-auto bg-sidebar p-3">
+              {busy && !png && !log ? (
+                <div className="flex h-full items-center justify-center text-center text-xs text-muted-foreground">
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Compiling…
+                </div>
+              ) : png ? (
+                <div className="flex h-full items-center justify-center">
+                  <img src={png} alt="Diagram preview" className="max-h-full max-w-full object-contain" />
+                </div>
+              ) : log ? (
+                <pre className="overflow-auto rounded-md border bg-muted/30 p-2 font-mono text-[10px] text-muted-foreground">{log}</pre>
+              ) : (
+                <div className="flex h-full items-center justify-center text-center text-xs text-muted-foreground">
+                  Compile to see a preview.
+                </div>
+              )}
             </div>
           </div>
         )}
       </div>
 
-      {/* Footer: export options + insert actions */}
-      <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-t bg-sidebar px-4 py-2.5">
-          <p className="text-[11px] text-muted-foreground">
-            Saves the source to <code className="font-mono">figures/{stem || "name"}.tikz</code>{hasDrawing ? " (re-openable to edit)" : ""}.
+      {/* Code mode: insert actions stay available even if the preview is minimized */}
+      {mode === "code" && (
+        <div className="flex shrink-0 flex-wrap items-center gap-2 border-t bg-sidebar px-3 py-2">
+          <p className="mr-auto text-[11px] text-muted-foreground">
+            Saves to <code className="font-mono">figures/{stem || "name"}.tikz</code>
+            {hasDrawing ? " (re-openable)" : ""}.
           </p>
-          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            PNG scale
-            <Select value={String(scale)} onValueChange={(v) => setScale(Number(v))}>
-              <SelectTrigger className="h-7 w-16 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="z-[100]">
-                <SelectItem value="1" className="text-xs">1x</SelectItem>
-                <SelectItem value="2" className="text-xs">2x</SelectItem>
-                <SelectItem value="3" className="text-xs">3x</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            Background
-            <button
-              type="button"
-              onClick={() => setBackground("")}
-              className={cn(
-                "rounded-md border px-2 py-1 transition-colors",
-                background === "" ? "border-primary/50 bg-primary/10 text-foreground" : "hover:bg-accent",
-              )}
-            >
-              None
-            </button>
-            <input
-              type="color"
-              value={background || "#ffffff"}
-              onChange={(e) => setBackground(e.target.value)}
-              aria-label="Background color"
-              title="Figure background color"
-              className={cn(
-                "h-7 w-9 cursor-pointer rounded border bg-background",
-                background !== "" && "ring-2 ring-primary",
-              )}
-            />
-          </div>
-          <div className="ml-auto flex items-center gap-2">
-            <Button variant="secondary" size="sm" onClick={() => void insertAsCode()}>
-              <Code2 className="size-3.5" /> Insert as code (vector)
-            </Button>
-            <Button data-testid="diagram-insert-image" size="sm" onClick={() => void insertAsImage()} disabled={!png}>
-              <ImageIcon className="size-3.5" /> Insert as image (PNG)
-            </Button>
-          </div>
+          <Button variant="secondary" size="sm" onClick={() => void insertAsCode()}>
+            <Code2 className="size-3.5" /> Insert as code (vector)
+          </Button>
+          <Button data-testid="diagram-insert-image" size="sm" onClick={() => void insertAsImage()} disabled={!png}>
+            <ImageIcon className="size-3.5" /> Insert as image (PNG)
+          </Button>
         </div>
-      </div>
+      )}
+    </div>
   );
 }

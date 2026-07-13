@@ -116,14 +116,19 @@ export function ShapeNode({ id, data, selected }: NodeProps) {
         <Handle
           key={h.id}
           id={h.id}
+          // source + Loose connection mode: drag out to create, or accept
+          // reconnected arrow heads/tails from other shapes.
           type="source"
           position={h.pos}
+          isConnectable
           style={{
-            width: 8,
-            height: 8,
-            background: "var(--primary)",
-            border: "1px solid var(--background)",
+            width: 10,
+            height: 10,
+            background: "var(--background)",
+            border: "2px solid var(--primary)",
             opacity: handlesVisible ? 1 : 0,
+            // Keep hit-testing available while hidden so edge reconnect still snaps.
+            pointerEvents: "all",
             transition: "opacity 120ms",
           }}
         />

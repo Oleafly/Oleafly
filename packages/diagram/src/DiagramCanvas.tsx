@@ -7,9 +7,11 @@ import {
   Controls,
   MiniMap,
   addEdge,
+  reconnectEdge,
   useNodesState,
   useEdgesState,
   useReactFlow,
+  useKeyPress,
   MarkerType,
   ConnectionMode,
   type Node,
@@ -24,6 +26,7 @@ import {
   Egg,
   Map as MapIcon,
   Moon,
+  PanelRightOpen,
   RectangleHorizontal,
   Sigma,
   Square,
@@ -42,6 +45,10 @@ import {
   newId,
 } from "@openleaf/latex";
 import { cn } from "./cn";
+
+/** Shared chrome for floating palette, inspector, zoom controls, and minimap. */
+const FLOAT_CHROME =
+  "!rounded-lg !border !border-border !bg-sidebar/95 !shadow-md !backdrop-blur-sm";
 
 const DEFAULTS: Record<NodeShape, { w: number; h: number; label: string }> = {
   rectangle: { w: 120, h: 56, label: "Label" },
@@ -101,6 +108,8 @@ function modelEdgeToRf(e: DiagEdge): Edge {
     markerEnd: e.arrow !== "none" ? marker : undefined,
     markerStart: e.arrow === "both" ? marker : undefined,
     style: e.style === "dashed" ? { strokeDasharray: "6 4" } : undefined,
+    // Allow dragging either end onto a new shape handle.
+    reconnectable: true,
     data: { routing: e.routing, arrow: e.arrow, style: e.style, label: e.label },
   };
 }
@@ -143,9 +152,14 @@ function rfEdgeToModel(e: Edge): DiagEdge {
 function CanvasInner({
   model,
   onChange,
+  showPreviewAction,
+  onShowPreview,
 }: {
   model: DiagramModel;
   onChange: (m: DiagramModel) => void;
+  /** Show a control next to theme/minimap to reopen a minimized preview. */
+  showPreviewAction?: boolean;
+  onShowPreview?: () => void;
 }) {
   const { Tooltip, useThemeMode } = useDiagramKit();
   const themeMode = useThemeMode();
@@ -161,6 +175,9 @@ function CanvasInner({
   const [pending, setPending] = useState<{ shape: NodeShape; seed?: string; key: string } | null>(null);
   const [showMinimap, setShowMinimap] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
+  // Space+drag pans the viewport (grab cursor); plain drag never pans.
+  const spacePressed = useKeyPress("Space");
+  const [isPanning, setIsPanning] = useState(false);
 
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
@@ -170,6 +187,15 @@ function CanvasInner({
   const historyRef = useRef<DiagramModel[]>([model]);
   const historyIdxRef = useRef(0);
   const historyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Click-drag to draw: start point + in-progress node id while the tool is armed.
+  const drawRef = useRef<{
+    id: string;
+    shape: NodeShape;
+    seed?: string;
+    startX: number;
+    startY: number;
+    pointerId: number;
+  } | null>(null);
 
   useEffect(() => {
     if (model === lastEmittedRef.current) return;
@@ -228,7 +254,22 @@ function CanvasInner({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setPending(null);
+      if (e.key === "Escape") {
+        // Cancel an in-progress draw or armed tool.
+        if (drawRef.current) {
+          const id = drawRef.current.id;
+          drawRef.current = null;
+          setNodes((ns) => ns.filter((n) => n.id !== id));
+        }
+        setPending(null);
+        return;
+      }
+      // Keep Space from scrolling the page while panning the canvas.
+      if (e.code === "Space") {
+        const t = e.target as HTMLElement;
+        if (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable) return;
+        e.preventDefault();
+      }
       if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "z") return;
       const t = e.target as HTMLElement;
       if (t.tagName === "INPUT" || t.tagName === "TEXTAREA") return;
@@ -238,44 +279,146 @@ function CanvasInner({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [undo, redo]);
+  }, [undo, redo, setNodes]);
 
-  const placeNode = useCallback(
-    (shape: NodeShape, flowX: number, flowY: number, label?: string) => {
-      const def = DEFAULTS[shape];
+  const pendingRef = useRef<{ shape: NodeShape; seed?: string; key: string } | null>(null);
+  pendingRef.current = pending;
+
+  /** Build a RF node for a drawn rect (position + size in flow coords). */
+  const makeDrawnNode = useCallback(
+    (id: string, shape: NodeShape, x: number, y: number, w: number, h: number, label: string): Node => {
       const n: DiagNode = {
-        id: newId(),
+        id,
         shape,
-        x: Math.round(flowX - def.w / 2),
-        y: Math.round(flowY - def.h / 2),
-        w: def.w,
-        h: def.h,
-        label: label ?? def.label,
+        x: Math.round(x),
+        y: Math.round(y),
+        w: Math.round(w),
+        h: Math.round(h),
+        label,
         fill: shape === "text" ? "" : "#eef2ff",
         stroke: shape === "text" ? "" : "#1e293b",
         strokeStyle: "solid",
         strokeWidth: 1,
         textColor: "#0f172a",
-        // Sharp edges by default; the rounded-box tool opts into a radius.
         radius: shape === "roundrect" ? 6 : 0,
       };
-      setNodes((ns) => [...ns, modelNodeToRf(n)]);
+      const rf = modelNodeToRf(n);
+      // Keep style in sync so the rubber-band resize paints immediately.
+      return { ...rf, style: { width: n.w, height: n.h } };
     },
-    [setNodes],
+    [],
   );
 
-  const pendingRef = useRef<{ shape: NodeShape; seed?: string } | null>(null);
-  pendingRef.current = pending;
+  const finishDraw = useCallback(
+    (clientX: number, clientY: number) => {
+      const d = drawRef.current;
+      if (!d) return;
+      drawRef.current = null;
+      const end = screenToFlowPosition({ x: clientX, y: clientY });
+      let x = Math.min(d.startX, end.x);
+      let y = Math.min(d.startY, end.y);
+      let w = Math.abs(end.x - d.startX);
+      let h = Math.abs(end.y - d.startY);
+      const def = DEFAULTS[d.shape];
+      // Click without a real drag → place the default-sized shape centered on the point.
+      if (w < 8 && h < 8) {
+        w = def.w;
+        h = def.h;
+        x = d.startX - w / 2;
+        y = d.startY - h / 2;
+      } else {
+        w = Math.max(w, 24);
+        h = Math.max(h, 24);
+        // Circles stay circular from the bounding box's shorter side.
+        if (d.shape === "circle") {
+          const s = Math.max(w, h);
+          w = s;
+          h = s;
+        }
+      }
+      const label = d.seed ?? def.label;
+      setNodes((ns) =>
+        ns.map((n) => (n.id === d.id ? makeDrawnNode(d.id, d.shape, x, y, w, h, label) : n)),
+      );
+      setPending(null);
+      setSelNode(d.id);
+    },
+    [screenToFlowPosition, setNodes, makeDrawnNode],
+  );
 
-  const onPaneClick = useCallback(
-    (e: React.MouseEvent) => {
+  // Pointer capture for click-drag drawing on the empty pane.
+  const onFlowPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if (e.button !== 0) return;
+      if (spacePressed) return; // Space+drag is for panning
       const p = pendingRef.current;
       if (!p) return;
-      const pos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
-      placeNode(p.shape, pos.x, pos.y, p.seed);
-      setPending(null);
+      const el = e.target as Element;
+      // Only start a draw on empty canvas, not on nodes/handles/UI chrome.
+      if (!el.closest?.(".react-flow__pane")) return;
+      if (el.closest?.(".react-flow__node, .react-flow__edge, .react-flow__handle, .react-flow__controls, .react-flow__minimap")) {
+        return;
+      }
+      e.preventDefault();
+      (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+      const start = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+      const id = newId();
+      const def = DEFAULTS[p.shape];
+      drawRef.current = {
+        id,
+        shape: p.shape,
+        seed: p.seed,
+        startX: start.x,
+        startY: start.y,
+        pointerId: e.pointerId,
+      };
+      // Seed a 1×1 rubber-band; pointer-move grows it.
+      setNodes((ns) => [
+        ...ns,
+        makeDrawnNode(id, p.shape, start.x, start.y, 1, 1, p.seed ?? def.label),
+      ]);
+      setSelNode(id);
     },
-    [placeNode, screenToFlowPosition],
+    [spacePressed, screenToFlowPosition, setNodes, makeDrawnNode],
+  );
+
+  const onFlowPointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      const d = drawRef.current;
+      if (!d || d.pointerId !== e.pointerId) return;
+      const cur = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+      let x = Math.min(d.startX, cur.x);
+      let y = Math.min(d.startY, cur.y);
+      let w = Math.max(Math.abs(cur.x - d.startX), 1);
+      let h = Math.max(Math.abs(cur.y - d.startY), 1);
+      if (d.shape === "circle") {
+        const s = Math.max(w, h);
+        // Grow from the start corner along the dominant axis.
+        if (cur.x < d.startX) x = d.startX - s;
+        if (cur.y < d.startY) y = d.startY - s;
+        w = s;
+        h = s;
+      }
+      const label = d.seed ?? DEFAULTS[d.shape].label;
+      setNodes((ns) =>
+        ns.map((n) => (n.id === d.id ? makeDrawnNode(d.id, d.shape, x, y, w, h, label) : n)),
+      );
+    },
+    [screenToFlowPosition, setNodes, makeDrawnNode],
+  );
+
+  const onFlowPointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      const d = drawRef.current;
+      if (!d || d.pointerId !== e.pointerId) return;
+      try {
+        (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
+      } catch {
+        /* already released */
+      }
+      finishDraw(e.clientX, e.clientY);
+    },
+    [finishDraw],
   );
 
   // Z-order: the node array order is the draw order (later draws on top). Move
@@ -311,6 +454,14 @@ function CanvasInner({
         targetHandle: c.targetHandle ?? undefined,
       };
       setEdges((es) => addEdge(modelEdgeToRf(e), es));
+    },
+    [setEdges],
+  );
+
+  // Drag an existing edge's head/tail onto another handle (or the same shape's side).
+  const onReconnect = useCallback(
+    (oldEdge: Edge, newConnection: Connection) => {
+      setEdges((es) => reconnectEdge(oldEdge, newConnection, es));
     },
     [setEdges],
   );
@@ -353,114 +504,168 @@ function CanvasInner({
   );
 
   return (
-    <div className="flex h-full min-h-0">
-      {/* Palette */}
-      <div className="flex shrink-0 flex-col gap-1 border-r bg-sidebar p-1.5">
-        {PALETTE.map((p) => (
-          <Tooltip key={p.label} label={`${p.label} (click, then click canvas)`} side="right">
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex h-8 shrink-0 items-center gap-2 border-b bg-sidebar px-2">
+        <span className="text-[11px] text-muted-foreground">
+          {pending
+            ? "Click and drag on the canvas to draw the shape (Esc to cancel)."
+            : spacePressed
+              ? "Drag to pan the canvas."
+              : "Drag shapes to move · drag handles to connect · Space+drag to pan · double-click to edit text."}
+        </span>
+        <div className="ml-auto flex items-center gap-0.5">
+          {showPreviewAction && onShowPreview && (
+            <Tooltip label="Show compiled preview">
+              <button
+                type="button"
+                aria-label="Show preview"
+                onClick={onShowPreview}
+                className="mr-1 flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <PanelRightOpen className="size-3.5" />
+                Preview
+              </button>
+            </Tooltip>
+          )}
+          <Tooltip label={canvasTheme === "dark" ? "Light canvas" : "Dark canvas"}>
             <button
               type="button"
-              aria-label={p.label}
-              aria-pressed={pending?.key === p.label}
-              onClick={() =>
-                setPending((cur) =>
-                  cur?.key === p.label ? null : { shape: p.shape, seed: p.seed, key: p.label },
-                )
-              }
-              className={cn(
-                "flex size-8 items-center justify-center rounded-md transition-colors",
-                pending?.key === p.label
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground",
-              )}
+              aria-label="Toggle canvas theme"
+              onClick={() => setCanvasTheme((t) => (t === "dark" ? "light" : "dark"))}
+              className="flex size-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
-              {p.icon}
+              {canvasTheme === "dark" ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
             </button>
           </Tooltip>
-        ))}
+          <Tooltip label={showMinimap ? "Hide minimap" : "Show minimap"}>
+            <button
+              type="button"
+              aria-label="Toggle minimap"
+              aria-pressed={showMinimap}
+              onClick={() => setShowMinimap((v) => !v)}
+              className={cn(
+                "flex size-6 items-center justify-center rounded transition-colors",
+                showMinimap ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground",
+              )}
+            >
+              <MapIcon className="size-3.5" />
+            </button>
+          </Tooltip>
+        </div>
       </div>
-
-      {/* Canvas + top toolbar */}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex h-8 shrink-0 items-center gap-2 border-b bg-sidebar px-2">
-          <span className="text-[11px] text-muted-foreground">
-            {pending ? "Click on the canvas to place the shape (Esc to cancel)." : "Drag to move, double-click to edit text, drag a handle to connect."}
-          </span>
-          <div className="ml-auto flex items-center gap-0.5">
-            <Tooltip label={canvasTheme === "dark" ? "Light canvas" : "Dark canvas"}>
+      <div
+        className={cn(
+          "relative min-h-0 flex-1",
+          pending && !spacePressed && "[&_.react-flow__pane]:cursor-crosshair",
+          spacePressed && !isPanning && "[&_.react-flow__pane]:cursor-grab",
+          spacePressed && isPanning && "[&_.react-flow__pane]:cursor-grabbing",
+        )}
+        style={{ background: canvasTheme === "dark" ? "#0d1117" : "#ffffff" }}
+        // Block the app-wide dev context menu on the canvas.
+        onContextMenu={(e) => e.preventDefault()}
+        onPointerDown={onFlowPointerDown}
+        onPointerMove={onFlowPointerMove}
+        onPointerUp={onFlowPointerUp}
+        onPointerCancel={onFlowPointerUp}
+      >
+        {/* Shape palette — floating left (Figma-style) */}
+        <div
+          role="toolbar"
+          aria-label="Shape tools"
+          className="absolute left-2 top-2 z-10 flex flex-col gap-0.5 rounded-lg border border-border bg-sidebar/95 p-1 shadow-md backdrop-blur-sm"
+        >
+          {PALETTE.map((p) => (
+            <Tooltip key={p.label} label={`${p.label} (click and drag to draw)`} side="right">
               <button
                 type="button"
-                aria-label="Toggle canvas theme"
-                onClick={() => setCanvasTheme((t) => (t === "dark" ? "light" : "dark"))}
-                className="flex size-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              >
-                {canvasTheme === "dark" ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
-              </button>
-            </Tooltip>
-            <Tooltip label={showMinimap ? "Hide minimap" : "Show minimap"}>
-              <button
-                type="button"
-                aria-label="Toggle minimap"
-                aria-pressed={showMinimap}
-                onClick={() => setShowMinimap((v) => !v)}
+                aria-label={p.label}
+                aria-pressed={pending?.key === p.label}
+                onClick={() =>
+                  setPending((cur) =>
+                    cur?.key === p.label ? null : { shape: p.shape, seed: p.seed, key: p.label },
+                  )
+                }
                 className={cn(
-                  "flex size-6 items-center justify-center rounded transition-colors",
-                  showMinimap ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                  "flex size-8 items-center justify-center rounded-md transition-colors",
+                  pending?.key === p.label
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-foreground",
                 )}
               >
-                <MapIcon className="size-3.5" />
+                {p.icon}
               </button>
             </Tooltip>
-          </div>
+          ))}
         </div>
-        <div
-          className={cn("min-h-0 flex-1", pending && "[&_.react-flow__pane]:cursor-crosshair")}
-          style={{ background: canvasTheme === "dark" ? "#0d1117" : "#ffffff" }}
-        >
-          <DiagramEditContext.Provider value={editApi}>
-            <ReactFlow
-              nodes={nodes}
-              edges={edges}
-              nodeTypes={nodeTypes}
-              colorMode={canvasTheme}
-              connectionMode={ConnectionMode.Loose}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              onConnect={onConnect}
-              onNodesDelete={(deleted) => {
-                // Remove edges attached to a deleted node so no orphan arrows
-                // survive into the compiled figure.
-                const ids = new Set(deleted.map((n) => n.id));
-                setEdges((es) => es.filter((e) => !ids.has(e.source) && !ids.has(e.target)));
-              }}
-              onPaneClick={onPaneClick}
-              onSelectionChange={({ nodes: sn, edges: se }) => {
-                setSelNode(sn[0]?.id ?? null);
-                setSelEdge(se[0]?.id ?? null);
-              }}
-              snapToGrid
-              snapGrid={[10, 10]}
-              fitView
-              deleteKeyCode={["Backspace", "Delete"]}
-              proOptions={{ hideAttribution: true }}
-            >
-              <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
-              <Controls showInteractive={false} />
-              {showMinimap && <MiniMap pannable zoomable />}
-            </ReactFlow>
-          </DiagramEditContext.Provider>
-        </div>
-      </div>
 
-      {/* Inspector */}
-      <div className="w-56 shrink-0 overflow-y-auto border-l bg-sidebar">
-        <Inspector
-          node={selectedNode ? rfNodeToModel(selectedNode) : null}
-          edge={selectedEdge ? rfEdgeToModel(selectedEdge) : null}
-          onNodeChange={patchNode}
-          onEdgeChange={patchEdge}
-          onReorder={reorder}
-        />
+        {/* Style inspector — floating right; only when something is selected */}
+        {(selectedNode || selectedEdge) && (
+          <div
+            role="complementary"
+            aria-label="Shape style"
+            className="absolute right-2 top-2 z-10 max-h-[calc(100%-1rem)] w-56 overflow-y-auto rounded-lg border border-border bg-sidebar/95 shadow-md backdrop-blur-sm"
+          >
+            <Inspector
+              node={selectedNode ? rfNodeToModel(selectedNode) : null}
+              edge={selectedEdge ? rfEdgeToModel(selectedEdge) : null}
+              onNodeChange={patchNode}
+              onEdgeChange={patchEdge}
+              onReorder={reorder}
+            />
+          </div>
+        )}
+
+        <DiagramEditContext.Provider value={editApi}>
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            nodeTypes={nodeTypes}
+            colorMode={canvasTheme}
+            connectionMode={ConnectionMode.Loose}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onReconnect={onReconnect}
+            edgesReconnectable
+            // Pan only while Space is held (grab cursor); left-drag never pans freely.
+            panOnDrag={spacePressed}
+            panActivationKeyCode={null}
+            onMoveStart={() => setIsPanning(true)}
+            onMoveEnd={() => setIsPanning(false)}
+            onNodesDelete={(deleted) => {
+              // Remove edges attached to a deleted node so no orphan arrows
+              // survive into the compiled figure.
+              const ids = new Set(deleted.map((n) => n.id));
+              setEdges((es) => es.filter((e) => !ids.has(e.source) && !ids.has(e.target)));
+            }}
+            onPaneContextMenu={(e) => e.preventDefault()}
+            onSelectionChange={({ nodes: sn, edges: se }) => {
+              setSelNode(sn[0]?.id ?? null);
+              setSelEdge(se[0]?.id ?? null);
+            }}
+            snapToGrid
+            snapGrid={[10, 10]}
+            // Larger snap radius so arrow heads/tails stick to shape handles more easily.
+            connectionRadius={28}
+            fitView
+            deleteKeyCode={["Backspace", "Delete"]}
+            proOptions={{ hideAttribution: true }}
+            defaultEdgeOptions={{ reconnectable: true }}
+          >
+            <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
+            <Controls
+              showInteractive={false}
+              className={cn(FLOAT_CHROME, "!gap-0.5 !p-1 [&>button]:!rounded-md [&>button]:!border-0 [&>button]:!bg-transparent")}
+            />
+            {showMinimap && (
+              <MiniMap
+                pannable
+                zoomable
+                className={cn(FLOAT_CHROME, "!overflow-hidden")}
+              />
+            )}
+          </ReactFlow>
+        </DiagramEditContext.Provider>
       </div>
     </div>
   );
@@ -468,7 +673,12 @@ function CanvasInner({
 
 /** Visual node/edge editor that generates TikZ. React Flow is the editing
  *  surface; the model is the source of truth (see tikz-serializer). */
-export function DiagramCanvas(props: { model: DiagramModel; onChange: (m: DiagramModel) => void }) {
+export function DiagramCanvas(props: {
+  model: DiagramModel;
+  onChange: (m: DiagramModel) => void;
+  showPreviewAction?: boolean;
+  onShowPreview?: () => void;
+}) {
   return (
     <ReactFlowProvider>
       <CanvasInner {...props} />

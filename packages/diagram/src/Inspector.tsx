@@ -80,13 +80,7 @@ export function Inspector({
   onReorder?: (dir: ReorderDir) => void;
 }) {
   const { Tooltip } = useDiagramKit();
-  if (!node && !edge) {
-    return (
-      <div className="p-3 text-center text-[11px] text-muted-foreground">
-        Select a shape or arrow to style it.
-      </div>
-    );
-  }
+  if (!node && !edge) return null;
 
   if (node) {
     return (
