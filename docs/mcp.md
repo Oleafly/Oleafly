@@ -126,10 +126,12 @@ The MCP tool list is registered from the same tool objects as the in-app assista
 
 ## Approvals and safety
 
-- **Every file-changing edit** can show an approval card in OpenLeaf (with a red/green diff when content rewrites). The card floats as "External agent request (MCP)".
-- **Always allow writes** on the card is session-scoped: further write-like tools auto-approve until you quit; deletes still ask.
-- **Settings policy**: "Ask before every change" or "Allow file writes, still ask before deletes". Deletes always require a click.
-- **Read-only mode** removes mutating tools from `tools/list` entirely.
+Your MCP client (Claude Desktop, Claude Code, and others) already asks you to approve tool use on its side before it ever calls OpenLeaf. OpenLeaf's own approval is a second, deeper gate that shows the actual change, and it is the one that still protects you after you click "Always allow" in the client. Choose how much of it you want with the **approval policy** in Settings:
+
+- **Confirm every change** (default): every write, rename, and delete shows an approval card in OpenLeaf (with a red/green diff when content rewrites, a rendered image for figures). The card floats as "External agent request (MCP)".
+- **Auto-approve edits, confirm deletes**: writes and renames apply immediately; deletes still show a card. **Always allow writes** on a card sets this for the current session.
+- **Trust this connection**: OpenLeaf never prompts. Your client's own approval is the only gate, deletes included. Use this when your client already confirms every tool call and you want a frictionless flow.
+- **Read-only mode** (separate toggle) removes mutating tools from `tools/list` entirely, so an external app can read and compile but never modify files, whatever the policy.
 - **Bearer token**: 256-bit random value, stored in the OS keychain (or the same 0600 config fallback used for other secrets). `get_config` never sends the token to the webview; only Settings connection info does, while the server is running.
 - **Localhost only**: bind address is `127.0.0.1`. Requests with a browser `Origin` header are rejected, and `Host` must be loopback.
 - **No arbitrary paths**: tools only touch the open project under the OpenLeaf projects directory, through the same sandbox as the built-in tools.

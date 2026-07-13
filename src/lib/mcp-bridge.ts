@@ -164,15 +164,26 @@ let bridgeLive = false;
 
 const confirm: ConfirmFn = (req) => useMcpApprovalStore.getState().request(req);
 
+/**
+ * Map an approval policy to the confirm function the tools run with:
+ * - "trust":       never prompt in OpenLeaf. The MCP client's own approval
+ *                  (e.g. Claude's Allow/Deny) is the only gate, deletes included.
+ * - "auto_writes": auto-approve edits; deletes and figure inserts still prompt
+ *                  in OpenLeaf with a diff.
+ * - "ask" (default): prompt in OpenLeaf for every change.
+ */
+export function confirmForPolicy(policy: string, request: ConfirmFn): ConfirmFn {
+  if (policy === "trust") return async () => true;
+  if (policy === "auto_writes") {
+    return async (req) => (isAutoApprovable(req.tool) ? true : request(req));
+  }
+  return request;
+}
+
 async function rebuildRegistry(): Promise<void> {
   const cfg = await getConfig();
-  const autoWrites = cfg.mcp_approval_policy === "auto_writes";
   registry = buildMcpToolRegistry({
-    confirm: autoWrites
-      ? async (req) =>
-          // Auto-approve writes; deletes and figure inserts still ask.
-          isAutoApprovable(req.tool) ? true : useMcpApprovalStore.getState().request(req)
-      : confirm,
+    confirm: confirmForPolicy(cfg.mcp_approval_policy, confirm),
     readOnly: !!cfg.mcp_read_only,
     onImage: (dataUrl) => pendingImages.push(dataUrl),
   });

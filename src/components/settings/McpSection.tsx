@@ -313,13 +313,17 @@ export function McpSection() {
             type="radio"
             name="mcp-policy"
             className="mt-1"
-            checked={cfg.mcp_approval_policy !== "auto_writes"}
+            data-testid="mcp-policy-ask"
+            checked={
+              cfg.mcp_approval_policy !== "auto_writes" && cfg.mcp_approval_policy !== "trust"
+            }
             onChange={() => void persistPolicy({ mcp_approval_policy: "ask" })}
           />
           <span>
-            <span className="font-medium">Ask before every change</span>
+            <span className="font-medium">Confirm every change</span>
             <span className="block text-xs text-muted-foreground">
-              Writes, renames, and deletes show an approval card in OpenLeaf.
+              Writes, renames, and deletes show an approval card in OpenLeaf with a diff before
+              anything is applied.
             </span>
           </span>
         </label>
@@ -328,13 +332,31 @@ export function McpSection() {
             type="radio"
             name="mcp-policy"
             className="mt-1"
+            data-testid="mcp-policy-auto-writes"
             checked={cfg.mcp_approval_policy === "auto_writes"}
             onChange={() => void persistPolicy({ mcp_approval_policy: "auto_writes" })}
           />
           <span>
-            <span className="font-medium">Allow file writes, still ask before deletes</span>
+            <span className="font-medium">Auto-approve edits, confirm deletes</span>
             <span className="block text-xs text-muted-foreground">
-              Deletes always require an explicit click.
+              Writes and renames apply immediately. Deletes still show an approval card.
+            </span>
+          </span>
+        </label>
+        <label className="flex cursor-pointer items-start gap-2 text-sm">
+          <input
+            type="radio"
+            name="mcp-policy"
+            className="mt-1"
+            data-testid="mcp-policy-trust"
+            checked={cfg.mcp_approval_policy === "trust"}
+            onChange={() => void persistPolicy({ mcp_approval_policy: "trust" })}
+          />
+          <span>
+            <span className="font-medium">Trust this connection</span>
+            <span className="block text-xs text-muted-foreground">
+              OpenLeaf never prompts. Your MCP client's own approval is the only gate, deletes
+              included. Best when your client already confirms tool use.
             </span>
           </span>
         </label>
@@ -457,9 +479,9 @@ export function McpSection() {
       </div>
 
       <p className="text-[11px] leading-relaxed text-muted-foreground">
-        The server only listens on this computer (127.0.0.1) and requires the token above. Deleting
-        files always asks for your confirmation in OpenLeaf. claude.ai in the browser cannot reach a
-        local server; use Claude Desktop instead.
+        The server only listens on this computer (127.0.0.1) and requires the token above. Under
+        the first two policies, deleting files always asks for your confirmation in OpenLeaf.
+        claude.ai in the browser cannot reach a local server; use Claude Desktop instead.
       </p>
 
       {error && (

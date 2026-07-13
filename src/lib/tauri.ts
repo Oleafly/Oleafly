@@ -331,7 +331,11 @@ export interface AppConfig {
   mcp_port: number;
   /** When true, mutating tools are removed from the advertised tool list. */
   mcp_read_only: boolean;
-  /** "ask" or "auto_writes". Deletes always require a click. */
+  /**
+   * "ask" (confirm every change), "auto_writes" (auto-approve edits, still
+   * confirm deletes), or "trust" (never prompt in OpenLeaf; rely on the MCP
+   * client's own approval, deletes included).
+   */
   mcp_approval_policy: string;
 }
 

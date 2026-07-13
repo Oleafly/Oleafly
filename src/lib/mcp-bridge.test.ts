@@ -55,7 +55,7 @@ vi.mock("@/store/compile", () => ({ useCompileStore: { getState: () => mocks.com
 vi.mock("@/lib/pdf-text", () => ({ extractPdfText: vi.fn() }));
 vi.mock("@/lib/pdf-image", () => ({ pdfPageToPng: vi.fn() }));
 
-import { buildMcpToolRegistry, toMcpResult, rawSchemaOf } from "@/lib/mcp-bridge";
+import { buildMcpToolRegistry, confirmForPolicy, toMcpResult, rawSchemaOf } from "@/lib/mcp-bridge";
 
 describe("mcp tool registry", () => {
   const registry = buildMcpToolRegistry({
@@ -122,6 +122,53 @@ describe("mcp tool registry", () => {
       const schema = rawSchemaOf(entry.inputSchema) as { type?: string };
       expect(schema?.type, name).toBe("object");
     }
+  });
+});
+
+describe("confirmForPolicy", () => {
+  // A request() that records whether it was consulted and always denies, so we
+  // can tell "prompted" (returns false) from "auto-approved" (returns true).
+  const denyingRequest = () => {
+    let prompted = false;
+    const fn = async () => {
+      prompted = true;
+      return false;
+    };
+    return { fn, wasPrompted: () => prompted };
+  };
+  const req = (tool: string) => ({ tool, summary: `${tool} x` });
+
+  it("ask: prompts for every change, writes and deletes alike", async () => {
+    const r = denyingRequest();
+    const confirm = confirmForPolicy("ask", r.fn);
+    expect(await confirm(req("write_file"))).toBe(false);
+    expect(await confirm(req("delete_file"))).toBe(false);
+    expect(r.wasPrompted()).toBe(true);
+  });
+
+  it("unknown/legacy policy falls back to ask", async () => {
+    const r = denyingRequest();
+    const confirm = confirmForPolicy("", r.fn);
+    expect(await confirm(req("write_file"))).toBe(false);
+    expect(r.wasPrompted()).toBe(true);
+  });
+
+  it("auto_writes: writes auto-approve, deletes still prompt", async () => {
+    const r = denyingRequest();
+    const confirm = confirmForPolicy("auto_writes", r.fn);
+    expect(await confirm(req("write_file"))).toBe(true);
+    expect(await confirm(req("replace_in_file"))).toBe(true);
+    // A delete is never auto-approvable, so it routes through request() (deny).
+    expect(await confirm(req("delete_file"))).toBe(false);
+    expect(r.wasPrompted()).toBe(true);
+  });
+
+  it("trust: never prompts, deletes included", async () => {
+    const r = denyingRequest();
+    const confirm = confirmForPolicy("trust", r.fn);
+    expect(await confirm(req("write_file"))).toBe(true);
+    expect(await confirm(req("delete_file"))).toBe(true);
+    expect(r.wasPrompted()).toBe(false);
   });
 });
 
