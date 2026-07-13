@@ -171,4 +171,15 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
   });
   const rereadPayload = toolPayload((reread.json as { result?: unknown })?.result);
   expect(rereadPayload.content, JSON.stringify(rereadPayload)).toContain("written over MCP");
+
+  // Disable the server so later specs (e.g. 36 MCP-activity, which asserts the
+  // tab is off by default) start from a clean rail. MCP-enabled persists in the
+  // shared e2e config, so leaving it on leaks across specs.
+  await openSettings(tauriPage, "mcp");
+  await tauriPage.click('[data-testid="mcp-enable-toggle"]');
+  await tauriPage.click('[aria-label="Close settings"]');
+  await tauriPage.waitForFunction(
+    `!document.querySelector('[aria-label="MCP activity"]')`,
+    10_000,
+  );
 });
