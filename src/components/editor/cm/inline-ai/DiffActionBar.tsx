@@ -1,17 +1,21 @@
-import { AlertTriangle, Check, RotateCcw, X } from "lucide-react";
+import { AlertTriangle, Check, MessageSquare, RotateCcw, X } from "lucide-react";
+import { AiChrome } from "@/components/ai/AiChrome";
 
 /** Accept / Reject / Retry bar shown while reviewing a proposed inline edit. */
 export function DiffActionBar({
   onAccept,
   onReject,
   onRetry,
+  onOpenInAgent,
 }: {
   onAccept: () => void;
   onReject: () => void;
   onRetry: () => void;
+  /** Hand the selection + instruction to the full agent chat with tools. */
+  onOpenInAgent?: () => void;
 }) {
   return (
-    <div className="flex w-full items-center gap-1 rounded-lg border bg-popover p-1 text-popover-foreground shadow-md">
+    <AiChrome className="w-full" contentClassName="flex flex-wrap items-center gap-1 p-1 text-popover-foreground">
       <button
         type="button"
         onClick={onAccept}
@@ -23,7 +27,7 @@ export function DiffActionBar({
       <button
         type="button"
         onClick={onReject}
-        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-destructive hover:bg-destructive/10"
       >
         <X className="size-3.5" /> Reject
         <span className="opacity-70">⎋</span>
@@ -35,7 +39,17 @@ export function DiffActionBar({
       >
         <RotateCcw className="size-3.5" /> Retry
       </button>
-    </div>
+      {onOpenInAgent && (
+        <button
+          type="button"
+          onClick={onOpenInAgent}
+          title="Continue in the AI assistant with full project tools"
+          className="ml-auto inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          <MessageSquare className="size-3.5" /> Open in agent
+        </button>
+      )}
+    </AiChrome>
   );
 }
 
@@ -50,7 +64,7 @@ export function DiffErrorBar({
   onDismiss: () => void;
 }) {
   return (
-    <div className="w-full rounded-lg border bg-popover p-2 text-popover-foreground shadow-md">
+    <AiChrome className="w-full" contentClassName="p-2 text-popover-foreground">
       <p className="flex items-start gap-1.5 text-xs text-destructive">
         <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
         <span className="min-w-0 flex-1 break-words">Couldn't generate the edit. {message}</span>
@@ -71,6 +85,6 @@ export function DiffErrorBar({
           Dismiss
         </button>
       </div>
-    </div>
+    </AiChrome>
   );
 }

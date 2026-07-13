@@ -73,6 +73,15 @@ export interface AiToolsHost {
   // Document editor.
   insertAtCursor(text: string): void;
   replaceRange(from: number, to: number, text: string): void;
+  // Agent plan checklist (update_todos / get_todos).
+  getAgentTodos(): { id: string; content: string; status: string }[];
+  setAgentTodos(todos: { id: string; content: string; status: string }[]): void;
+  // PDF vision verify (optional privacy gate).
+  getAiPdfCaptureEnabled(): boolean;
+  // Sticky project memory notes (across chats).
+  rememberNote(content: string): { id: string; content: string } | { error: string };
+  forgetNote(id: string): { success: boolean; error?: string };
+  listNotes(): { id: string; content: string }[];
 }
 
 type RawSchema = {
@@ -114,8 +123,12 @@ export interface ToolApprovalRequest {
  */
 export type ConfirmFn = (req: ToolApprovalRequest) => Promise<boolean>;
 
-export function createOpenLeafTools(host: AiToolsHost, opts?: { confirm?: ConfirmFn }) {
+export function createOpenLeafTools(
+  host: AiToolsHost,
+  opts?: { confirm?: ConfirmFn; onImage?: (dataUrl: string) => void },
+) {
   const confirm = opts?.confirm;
+  const onImage = opts?.onImage;
   const {
     readFileContent,
     writeFileContent,
@@ -137,21 +150,51 @@ export function createOpenLeafTools(host: AiToolsHost, opts?: { confirm?: Confir
   const tools: Record<string, RawToolDef> = {
     read_file: {
       description:
-        "Read the full contents of a file in the current project.",
+        "Read a file in the current project. Prefer offset/limit for large files. Returns truncated content when over the size cap; re-read another slice if needed.",
       inputSchema: {
         type: "object",
         properties: {
           path: { type: "string", description: "Project-relative file path, e.g. 'main.tex' or 'sections/intro.tex'" },
+          offset: {
+            type: "number",
+            description: "1-based line number to start reading (default 1)",
+          },
+          limit: {
+            type: "number",
+            description: "Max number of lines to return (default: all remaining, hard-capped)",
+          },
         },
         required: ["path"],
         additionalProperties: false,
       },
       execute: async (input) => {
         const path = input.path as string;
+        const offset = Math.max(1, Math.floor(Number(input.offset) || 1));
+        const limitRaw = input.limit != null ? Math.floor(Number(input.limit)) : null;
         const id = pid();
         if (!id) return { error: "No project open" };
         try {
-          return { path, content: await readFileContent(id, path) };
+          const full = await readFileContent(id, path);
+          const lines = full.split("\n");
+          const start = Math.min(offset - 1, lines.length);
+          const maxLines = 800;
+          const take = Math.min(limitRaw != null && limitRaw > 0 ? limitRaw : maxLines, maxLines);
+          const slice = lines.slice(start, start + take);
+          let content = slice.join("\n");
+          const MAX_CHARS = 40_000;
+          let truncated = start + slice.length < lines.length;
+          if (content.length > MAX_CHARS) {
+            content = content.slice(0, MAX_CHARS);
+            truncated = true;
+          }
+          return {
+            path,
+            offset,
+            lines_returned: slice.length,
+            total_lines: lines.length,
+            truncated,
+            content,
+          };
         } catch (e) {
           return { error: String(e) };
         }
@@ -397,7 +440,7 @@ export function createOpenLeafTools(host: AiToolsHost, opts?: { confirm?: Confir
     },
 
     set_main_doc: {
-      description: "Set the project's main document (the compile entry point, e.g. main.tex).",
+      description: "Set the project's main document (the compile entry point, e.g. main.tex). Requires user approval.",
       inputSchema: {
         type: "object",
         properties: {
@@ -410,6 +453,13 @@ export function createOpenLeafTools(host: AiToolsHost, opts?: { confirm?: Confir
         const path = input.path as string;
         const id = pid();
         if (!id) return { error: "No project open" };
+        if (confirm && !(await confirm({
+          tool: "set_main_doc",
+          summary: `Set main document to ${path}`,
+          path,
+        }))) {
+          return declined("set_main_doc");
+        }
         try {
           const meta = await setMainDocCmd(id, path);
           host.setMainDocState(meta.main_doc);
@@ -421,7 +471,8 @@ export function createOpenLeafTools(host: AiToolsHost, opts?: { confirm?: Confir
     },
 
     search_project: {
-      description: "Search the CURRENT project's documents for a query string. Returns matching lines with file paths and line numbers.",
+      description:
+        "Search the CURRENT project's documents for a query string. Returns matching lines with file paths and line numbers. For broader topical retrieval of source chunks, relevant excerpts are also auto-injected each turn via project RAG.",
       inputSchema: {
         type: "object",
         properties: {
@@ -483,7 +534,7 @@ export function createOpenLeafTools(host: AiToolsHost, opts?: { confirm?: Confir
 
     project_map: {
       description:
-        "Get a structural map of the whole project: the section outline, labels, citation keys, macros, theorem and glossary names, the \\input file graph, and any unresolved references or citations. Call this to understand the whole document before making cross-cutting edits.",
+        "Get a structural map of the whole project: the section outline, labels, citation keys, macros, theorem and glossary names, the \\input file graph, and any unresolved references or citations. Call this to understand the whole document before making cross-cutting edits. A compact map is also auto-injected into your context each turn; call this for a full refresh.",
       inputSchema: {
         type: "object",
         properties: {},
@@ -508,6 +559,187 @@ export function createOpenLeafTools(host: AiToolsHost, opts?: { confirm?: Confir
           unresolvedRefs: [...new Set(index.uses.filter((u) => u.kind === "ref" && !index.definitionFor(u)).map((u) => u.name))],
           unresolvedCites: [...new Set(index.uses.filter((u) => u.kind === "cite" && !index.definitionFor(u)).map((u) => u.name))],
         };
+      },
+    },
+
+    update_todos: {
+      description:
+        "Create or replace the agent's plan checklist for this session. Use for multi-step work: set items to pending, mark the current one in_progress, complete items as you go. Keeps the user oriented.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          todos: {
+            type: "array",
+            description: "Full replacement list of todo items",
+            items: {
+              type: "object",
+              properties: {
+                id: { type: "string", description: "Stable id for this item" },
+                content: { type: "string", description: "Short task description" },
+                status: {
+                  type: "string",
+                  description: "pending | in_progress | completed | cancelled",
+                },
+              },
+              required: ["id", "content", "status"],
+            },
+          },
+        },
+        required: ["todos"],
+        additionalProperties: false,
+      },
+      execute: async (input) => {
+        const raw = (input.todos as { id: string; content: string; status: string }[]) ?? [];
+        const allowed = new Set(["pending", "in_progress", "completed", "cancelled"]);
+        const todos = raw
+          .filter((t) => t && t.id && t.content)
+          .slice(0, 30)
+          .map((t) => ({
+            id: String(t.id).slice(0, 64),
+            content: String(t.content).slice(0, 240),
+            status: allowed.has(t.status) ? t.status : "pending",
+          }));
+        host.setAgentTodos(todos);
+        return { success: true, count: todos.length, todos };
+      },
+    },
+
+    get_todos: {
+      description: "Read the current agent plan checklist (from update_todos).",
+      inputSchema: {
+        type: "object",
+        properties: {},
+        required: [],
+        additionalProperties: false,
+      },
+      execute: async () => ({ todos: host.getAgentTodos() }),
+    },
+
+    remember_note: {
+      description:
+        "Save a short sticky note about this project for future agent turns (conventions, decisions, preferences). Use sparingly for durable facts the user would want remembered.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          content: { type: "string", description: "Note text (short; durable project knowledge)" },
+        },
+        required: ["content"],
+        additionalProperties: false,
+      },
+      execute: async (input) => host.rememberNote(String(input.content ?? "")),
+    },
+
+    forget_note: {
+      description: "Remove a sticky project note by id (from remember_note / list_notes).",
+      inputSchema: {
+        type: "object",
+        properties: {
+          id: { type: "string", description: "Note id" },
+        },
+        required: ["id"],
+        additionalProperties: false,
+      },
+      execute: async (input) => host.forgetNote(String(input.id ?? "")),
+    },
+
+    list_notes: {
+      description: "List sticky project memory notes saved with remember_note.",
+      inputSchema: {
+        type: "object",
+        properties: {},
+        required: [],
+        additionalProperties: false,
+      },
+      execute: async () => ({ notes: host.listNotes() }),
+    },
+
+    verify_pdf_pages: {
+      description:
+        "After a successful compile, inspect rendered PDF pages for layout issues (overflow, cut-off text, empty regions). Vision models receive page PNGs; text-only models get page text excerpts. Prefer after structural edits. Respects the user setting that allows PDF page capture.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          pages: {
+            type: "array",
+            items: { type: "number" },
+            description: "Optional 1-based page numbers (default: first, last, and a few middle pages, max 4)",
+          },
+          max_pages: {
+            type: "number",
+            description: "Max pages to capture when pages is omitted (default 4, max 6)",
+          },
+        },
+        required: [],
+        additionalProperties: false,
+      },
+      execute: async (input) => {
+        if (!host.getAiPdfCaptureEnabled()) {
+          return {
+            error:
+              "PDF page capture is disabled in Settings → AI Assistant. Enable “Allow PDF page capture for AI” or use get_pdf_text instead.",
+            capture_disabled: true,
+          };
+        }
+        const bytes = host.getPdfBytes();
+        if (!bytes) return { error: "No PDF available. Run compile first (and ensure it succeeds)." };
+        try {
+          const { pages: pageTexts, numPages } = await extractPdfText(bytes);
+          if (!numPages) return { error: "PDF has no pages." };
+          const maxPages = Math.min(6, Math.max(1, Math.floor(Number(input.max_pages) || 4)));
+          let selected: number[];
+          if (Array.isArray(input.pages) && input.pages.length) {
+            selected = [
+              ...new Set(
+                (input.pages as number[])
+                  .map((p) => Math.floor(Number(p)))
+                  .filter((p) => p >= 1 && p <= numPages),
+              ),
+            ]
+              .sort((a, b) => a - b)
+              .slice(0, maxPages);
+          } else {
+            // Local pick: first, last, fill middles (mirrors src/lib/ai-pdf-verify).
+            const set = new Set<number>([1, numPages]);
+            const step = Math.max(1, Math.floor(numPages / (maxPages + 1)));
+            for (let p = 1 + step; p < numPages && set.size < maxPages; p += step) set.add(p);
+            for (let p = 2; p < numPages && set.size < maxPages; p++) set.add(p);
+            selected = [...set].sort((a, b) => a - b).slice(0, maxPages);
+          }
+          const images: { page: number; dataUrl: string }[] = [];
+          for (const page of selected) {
+            try {
+              const dataUrl = await host.pdfToPng(bytes, page, 1.5);
+              images.push({ page, dataUrl });
+              // Chat loop can attach vision images via the same callback path as figures.
+              // Host opts are not here; package relies on optional onImage via createOpenLeafTools opts.
+            } catch {
+              /* skip failed page raster */
+            }
+          }
+          if (onImage) {
+            for (const img of images) onImage(img.dataUrl);
+          }
+          const text = selected
+            .map((p) => {
+              const t = pageTexts[p - 1] ?? "";
+              return `--- Page ${p}/${numPages} ---\n${t.slice(0, 1500)}`;
+            })
+            .join("\n\n");
+          return {
+            success: true,
+            numPages,
+            pages: selected,
+            images_captured: images.length,
+            // data URLs omitted from JSON echo to keep tool-result small; images go via onImage
+            text: text.slice(0, 12000),
+            note:
+              images.length > 0
+                ? "Page images were attached for vision models. Inspect for overflow, cut-off text, and empty regions."
+                : "No images captured; inspect text excerpts only.",
+          };
+        } catch (e) {
+          return { error: String(e) };
+        }
       },
     },
   };

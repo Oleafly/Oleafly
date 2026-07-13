@@ -15,12 +15,14 @@ import {
 } from "@/lib/ai-tools";
 import { isAutoApprovable } from "@/components/ai/ToolConfirm";
 import { useMcpApprovalStore } from "@/store/mcp-approvals";
+import { summarizeMcpResult, useMcpActivityStore } from "@/store/mcp-activity";
 import {
   appendAppLog,
   appVersion,
   getConfig,
   listProjects,
   mcpRegisterTools,
+  mcpStatus,
   mcpToolResult,
 } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
@@ -206,20 +208,30 @@ async function handleCall(payload: {
   name: string;
   arguments: Record<string, unknown>;
 }): Promise<void> {
+  const args = payload.arguments ?? {};
+  const logId = useMcpActivityStore.getState().beginCall(payload.name, args);
   const tool = registry[payload.name];
   let result: McpResult;
+  let summary: string | undefined;
   if (!tool) {
     result = toMcpResult({ error: `tool not available: ${payload.name}` }, []);
+    summary = `tool not available: ${payload.name}`;
   } else {
     pendingImages = [];
     try {
-      const raw = await tool.execute(payload.arguments ?? {});
+      const raw = await tool.execute(args);
       result = toMcpResult(raw, pendingImages);
+      summary = summarizeMcpResult(raw, result.isError);
     } catch (e) {
       result = toMcpResult({ error: String(e) }, []);
+      summary = String(e);
     }
     pendingImages = [];
   }
+  useMcpActivityStore.getState().endCall(logId, {
+    ok: !result.isError,
+    summary,
+  });
   void appendAppLog(`[mcp] ${payload.name} ${result.isError ? "error" : "ok"}`).catch(() => {});
   await mcpToolResult(payload.callId, result).catch(() => {});
 }
@@ -227,6 +239,14 @@ async function handleCall(payload: {
 /** Start listening for forwarded calls and register the tool surface. */
 export async function startMcpBridge(): Promise<() => void> {
   await rebuildRegistry();
+  // Reflect whether the local MCP server is up (Settings toggle / autostart)
+  // so the rail can show the activity tab.
+  try {
+    const s = await mcpStatus();
+    useMcpActivityStore.getState().setServerRunning(!!s.running);
+  } catch {
+    useMcpActivityStore.getState().setServerRunning(false);
+  }
   // Test hook: e2e (and devtools) can resolve the head of the MCP approval
   // queue without relying on Playwright click targeting inside the webview.
   // Use string verbs so eval bridges cannot coerce a bare `false` argument away.

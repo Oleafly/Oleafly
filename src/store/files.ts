@@ -371,7 +371,8 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
 
   // Called after an external actor (e.g. the AI assistant) mutates a file on
   // disk, so the in-memory editor buffer stays in sync and the next save does
-  // not clobber the edit.
+  // not clobber the edit. Cross-window broadcast is done by the AI host so
+  // listeners can re-apply without echoing forever.
   applyExternalWrite: (path, content) => {
     set((s) => ({
       files: { ...s.files, [path]: { content, dirty: false } },

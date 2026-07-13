@@ -64,3 +64,42 @@ describe("chats store load", () => {
     expect(s.chats).toEqual([]);
   });
 });
+
+describe("chats store addUsage", () => {
+  it("accumulates token totals per chat across runs", async () => {
+    const p = useChatsStore.getState().load("P");
+    loadCalls[0].resolve(
+      JSON.stringify([
+        {
+          id: "c1",
+          projectId: "P",
+          title: "t",
+          createdAt: 1,
+          updatedAt: 1,
+          messages: [],
+          headOid: null,
+        },
+      ]),
+    );
+    await p;
+    useChatsStore.getState().setActive("c1");
+    useChatsStore.getState().addUsage("c1", {
+      inputTokens: 100,
+      outputTokens: 20,
+      steps: 2,
+      estimatedUsd: 0.01,
+    });
+    useChatsStore.getState().addUsage("c1", {
+      inputTokens: 50,
+      outputTokens: 10,
+      steps: 1,
+      estimatedUsd: 0.005,
+    });
+    const u = useChatsStore.getState().byId("c1")?.usage;
+    expect(u?.inputTokens).toBe(150);
+    expect(u?.outputTokens).toBe(30);
+    expect(u?.steps).toBe(3);
+    expect(u?.runs).toBe(2);
+    expect(u?.estimatedUsd).toBeCloseTo(0.015, 6);
+  });
+});

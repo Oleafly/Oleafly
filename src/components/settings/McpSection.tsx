@@ -12,6 +12,7 @@ import {
   type McpStatus,
 } from "@/lib/tauri";
 import { refreshMcpRegistry } from "@/lib/mcp-bridge";
+import { useMcpActivityStore } from "@/store/mcp-activity";
 import { cn } from "@/lib/utils";
 
 function CopyBtn({ text, testId }: { text: string; testId?: string }) {
@@ -230,6 +231,7 @@ export function McpSection() {
       setCfg(c);
       setStatus(s);
       setPortDraft(String(c.mcp_port || 5323));
+      useMcpActivityStore.getState().setServerRunning(!!s.running);
       await loadToken(!!s.running);
     } catch (e) {
       setError(String(e));
@@ -263,6 +265,7 @@ export function McpSection() {
       const s = await mcpSetEnabled(next, port);
       setStatus(s);
       setCfg({ ...cfg, mcp_enabled: next, mcp_port: port });
+      useMcpActivityStore.getState().setServerRunning(!!s.running);
       if (next) {
         await refreshMcpRegistry();
         await loadToken(true);
@@ -297,6 +300,7 @@ export function McpSection() {
         const s = await mcpSetEnabled(true, port);
         setStatus(s);
         setCfg({ ...cfg, mcp_port: port, mcp_enabled: true });
+        useMcpActivityStore.getState().setServerRunning(!!s.running);
         await loadToken(true);
       } catch (e) {
         setError(

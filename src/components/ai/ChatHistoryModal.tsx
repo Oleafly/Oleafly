@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { MessagesSquare, Trash2, X } from "lucide-react";
 import type { StoredChat } from "@/store/chats";
+import { formatUsd } from "@/lib/ai-pricing";
 import { cn } from "@/lib/utils";
 
 function relativeTime(t: number) {
@@ -101,6 +102,13 @@ export function ChatHistoryModal({
                     </div>
                     <div className="mt-0.5 pl-5 text-[11px] text-muted-foreground">
                       {relativeTime(chat.updatedAt)} · {chat.messages.length} msgs
+                      {chat.usage &&
+                      chat.usage.inputTokens + chat.usage.outputTokens > 0
+                        ? ` · ~${(chat.usage.inputTokens + chat.usage.outputTokens).toLocaleString()} tok`
+                        : ""}
+                      {chat.usage && (chat.usage.estimatedUsd ?? 0) > 0
+                        ? ` · ${formatUsd(chat.usage.estimatedUsd ?? 0)}`
+                        : ""}
                     </div>
                   </button>
                   {confirmId === chat.id ? (

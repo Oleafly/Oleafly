@@ -38,6 +38,10 @@ pub struct AppConfig {
     /// User-authored extra instructions, sandboxed into the AI system prompt.
     #[serde(default)]
     pub ai_system_prompt: String,
+    /// When true, the agent may rasterize compiled PDF pages for vision checks
+    /// (`verify_pdf_pages`). Defaults to true; users can disable for privacy.
+    #[serde(default = "default_ai_pdf_capture")]
+    pub ai_pdf_capture: bool,
     /// MCP server: expose the in-app agent tools to external MCP clients
     /// (Claude Desktop, Claude Code, Cursor, ...). Off by default.
     #[serde(default)]
@@ -66,6 +70,10 @@ fn default_mcp_approval_policy() -> String {
     "ask".into()
 }
 
+fn default_ai_pdf_capture() -> bool {
+    true
+}
+
 impl Default for AppConfig {
     fn default() -> Self {
         // Match serde defaults so `AppConfig::default()` agrees with
@@ -79,6 +87,7 @@ impl Default for AppConfig {
             ai_model: String::new(),
             ai_keys: HashMap::new(),
             ai_system_prompt: String::new(),
+            ai_pdf_capture: true,
             mcp_enabled: false,
             mcp_port: default_mcp_port(),
             mcp_read_only: false,

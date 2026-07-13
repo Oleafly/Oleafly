@@ -69,6 +69,7 @@ automatable by design) · **—** not yet covered (listed at the bottom).
 | Surface | Interactions | Spec |
 | --- | --- | --- |
 | Rail tabs + panels (files/search/git/preflight/refs/ai) | visibility, panel render, collapsed-sidebar recovery | 05 |
+| Agentic AI (no live model) | settings tools + PDF capture toggle, plan checklist, sticky memory, handoff hook, MCP activity rail | 36 |
 | Command palette | open, full command inventory, run (theme), filter | 04, 07 |
 | Omnibar | open, keyword commands, /docs, /projects search | 04, 09 |
 | Shortcuts | Cmd+K, Cmd+Shift+F, Cmd+Enter, Cmd+Shift+J, Cmd+/ | 04, 09, 10 |

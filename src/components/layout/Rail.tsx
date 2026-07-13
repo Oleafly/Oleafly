@@ -15,6 +15,7 @@ import { open } from "@tauri-apps/plugin-shell";
 import { railSections, type AppContext, type RailTabContribution } from "@openleaf/registry";
 import { useSettingsStore, type RailTab } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
+import { useMcpActivityStore } from "@/store/mcp-activity";
 import { useTheme } from "@/lib/theme";
 import { Tooltip } from "@/components/ui/tooltip";
 import { AboutModal } from "@/components/layout/AboutModal";
@@ -73,6 +74,7 @@ export function Rail() {
   const showTree = useSettingsStore((s) => s.showTree);
   const toggleTree = useSettingsStore((s) => s.toggleTree);
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
+  const mcpEnabled = useMcpActivityStore((s) => s.serverRunning);
   const { theme, toggleTheme } = useTheme();
   const [helpOpen, setHelpOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
@@ -84,6 +86,11 @@ export function Rail() {
     return () => void unlisten.then((off) => off());
   }, []);
 
+  // MCP activity tab disappears when the server stops; leave the rail cleanly.
+  useEffect(() => {
+    if (!mcpEnabled && railTab === "mcp") setRailTab("files");
+  }, [mcpEnabled, railTab, setRailTab]);
+
   const select = (tab: RailTab) => {
     if (tab === railTab && showTree) {
       toggleTree(); // collapse sidebar when re-clicking the active tab
@@ -93,7 +100,7 @@ export function Rail() {
     }
   };
 
-  const ctx: AppContext = { projectId, projectKind, theme };
+  const ctx: AppContext = { projectId, projectKind, theme, mcpEnabled };
   const sections = railSections(ctx);
 
   return (

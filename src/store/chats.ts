@@ -42,6 +42,17 @@ export interface ReasoningBlockData {
   beforeTool: number;
 }
 
+/** Aggregated model usage for one chat conversation (sum of agent runs). */
+export interface ChatUsage {
+  inputTokens: number;
+  outputTokens: number;
+  steps: number;
+  /** Number of completed agent runs that reported usage. */
+  runs: number;
+  /** Rough USD estimate from list prices (not billing). */
+  estimatedUsd?: number;
+}
+
 export interface StoredChat {
   id: string;
   projectId: string;
@@ -52,6 +63,8 @@ export interface StoredChat {
   /** Git HEAD oid captured when the chat was started, used to warn the user
    *  that an older chat refers to an older project snapshot. */
   headOid: string | null;
+  /** Cumulative token/step usage across agent runs in this chat. */
+  usage?: ChatUsage;
 }
 
 interface ChatsState {
@@ -63,6 +76,17 @@ interface ChatsState {
   create: (projectId: string, headOid: string | null) => StoredChat;
   saveMessages: (chatId: string, messages: ChatMessage[]) => void;
   patchTitleIfEmpty: (chatId: string, title: string) => void;
+  /** Add a run's token usage into the chat's cumulative totals. */
+  addUsage: (
+    chatId: string,
+    delta: {
+      inputTokens: number;
+      outputTokens: number;
+      steps: number;
+      /** Optional USD estimate for this run (precomputed with the model price). */
+      estimatedUsd?: number;
+    },
+  ) => void;
   remove: (chatId: string) => void;
   setActive: (chatId: string | null) => void;
   byId: (chatId: string) => StoredChat | undefined;
@@ -268,6 +292,39 @@ export const useChatsStore = create<ChatsState>((set, get) => ({
     set({ chats: updated });
   },
 
+  addUsage: (chatId, delta) => {
+    const { projectId, chats } = get();
+    if (!projectId) return;
+    if (!chats.some((c) => c.id === chatId)) return;
+    const updated = chats.map((c) => {
+      if (c.id !== chatId) return c;
+      const prev = c.usage ?? {
+        inputTokens: 0,
+        outputTokens: 0,
+        steps: 0,
+        runs: 0,
+        estimatedUsd: 0,
+      };
+      return {
+        ...c,
+        usage: {
+          inputTokens: prev.inputTokens + Math.max(0, delta.inputTokens || 0),
+          outputTokens: prev.outputTokens + Math.max(0, delta.outputTokens || 0),
+          steps: prev.steps + Math.max(0, delta.steps || 0),
+          runs: prev.runs + 1,
+          estimatedUsd: (prev.estimatedUsd ?? 0) + Math.max(0, delta.estimatedUsd || 0),
+        },
+        // Do NOT bump updatedAt here: usage is bookkeeping, and touching it
+        // would reorder the chat to the top of the sidebar on every token
+        // write. saveMessages already bumps updatedAt at the end of a run.
+      };
+    });
+    memoryByProject.set(projectId, updated);
+    writeAll(projectId, updated);
+    // Preserve existing order (no re-sort) since updatedAt is unchanged.
+    set({ chats: updated });
+  },
+
   remove: (chatId) => {
     const { projectId, chats, activeId } = get();
     if (!projectId) return;
@@ -281,3 +338,31 @@ export const useChatsStore = create<ChatsState>((set, get) => ({
 
   byId: (chatId) => get().chats.find((c) => c.id === chatId),
 }));
+
+// E2E / devtools: inspect and seed per-chat usage without a model call.
+if (typeof window !== "undefined") {
+  const w = window as unknown as {
+    __chatUsageAdd?: (
+      chatId: string,
+      delta: { inputTokens: number; outputTokens: number; steps: number },
+    ) => void;
+    __chatUsageGet?: (chatId: string) => ChatUsage | null;
+    __chatEnsureAndUsage?: (delta: {
+      inputTokens: number;
+      outputTokens: number;
+      steps: number;
+      estimatedUsd?: number;
+    }) => ChatUsage | null;
+  };
+  w.__chatUsageAdd = (chatId, delta) => useChatsStore.getState().addUsage(chatId, delta);
+  w.__chatUsageGet = (chatId) => useChatsStore.getState().byId(chatId)?.usage ?? null;
+  w.__chatEnsureAndUsage = (delta) => {
+    const s = useChatsStore.getState();
+    const pid = s.projectId;
+    if (!pid) return null;
+    let id = s.activeId;
+    if (!id) id = s.create(pid, null).id;
+    s.addUsage(id, delta);
+    return s.byId(id)?.usage ?? null;
+  };
+}

@@ -1,11 +1,13 @@
-import { FileText, GitBranch, Search, SearchCode, ShieldCheck, Sparkles } from "lucide-react";
+import { FileText, GitBranch, Plug, Search, SearchCode, ShieldCheck, Sparkles } from "lucide-react";
 import { registerRailTab } from "@openleaf/registry";
 import { useGitStatusStore } from "@/store/git-status";
+import { useMcpActivityStore } from "@/store/mcp-activity";
 import { FilesPanel, ProjectSearch } from "@/components/layout/Sidebar";
 import { SourceControl } from "@/components/layout/SourceControl";
 import { PreflightPanel } from "@/components/preflight/PreflightPanel";
 import { ReferencesPanel } from "@/components/layout/ReferencesPanel";
 import { ChatPanel } from "@/components/ai/ChatPanel";
+import { McpActivityPanel } from "@/components/layout/McpActivityPanel";
 
 /** The rail tabs (and their sidebar panels) shipped with the core app. */
 export function registerRailTabs() {
@@ -59,6 +61,18 @@ export function registerRailTabs() {
     section: "assist",
     order: 60,
     panel: ChatPanel,
+  });
+  // Live log of tools/call traffic from external MCP clients. Only while the
+  // local MCP server is running (Settings → MCP).
+  registerRailTab({
+    id: "mcp",
+    label: "MCP activity",
+    icon: Plug,
+    section: "assist",
+    order: 65,
+    when: (ctx) => !!ctx.mcpEnabled,
+    useBadge: () => useMcpActivityStore((s) => s.unread),
+    panel: McpActivityPanel,
   });
   // Legacy persisted tab id that opened the same chat panel; keep the panel
   // resolvable without showing a second rail button.

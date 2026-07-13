@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
-import { ArrowUp, Sparkles, Square, X } from "lucide-react";
+import { ArrowUp, Square, X } from "lucide-react";
 import { PRESETS } from "@/lib/ai-inline";
+import { AiChrome, AiMark } from "@/components/ai/AiChrome";
 
 /**
  * The instruction input + preset chips shown when opening an inline AI edit.
@@ -39,9 +40,9 @@ export function PromptPopover({
   }, [instruction]);
 
   return (
-    <div className="w-full rounded-lg border bg-popover p-2 text-popover-foreground shadow-md">
+    <AiChrome className="w-full" contentClassName="p-2 text-popover-foreground">
       <div className="flex items-start gap-2">
-        <Sparkles className="mt-1 size-4 shrink-0 text-primary" />
+        <AiMark className="mt-0.5" />
         <textarea
           ref={inputRef}
           value={instruction}
@@ -111,6 +112,6 @@ export function PromptPopover({
           </button>
         )}
       </div>
-    </div>
+    </AiChrome>
   );
 }

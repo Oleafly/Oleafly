@@ -325,6 +325,8 @@ export interface AppConfig {
   ai_keys: Record<string, string>;
   /** User-authored extra instructions, sandboxed into the AI system prompt. */
   ai_system_prompt: string;
+  /** When true, the agent may rasterize PDF pages for vision layout checks. */
+  ai_pdf_capture: boolean;
   /** MCP server: expose in-app agent tools to external MCP clients. Off by default. */
   mcp_enabled: boolean;
   /** Loopback port for the MCP endpoint. */

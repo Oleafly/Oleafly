@@ -172,10 +172,17 @@ const AI_TOOLS: { name: string; desc: string }[] = [
   { name: "rename_file", desc: "Rename or move a path" },
   { name: "delete_file", desc: "Delete a file or folder" },
   { name: "list_files", desc: "List the project tree" },
-  { name: "search_project", desc: "Search text across all projects" },
+  { name: "search_project", desc: "Search text in the current project" },
+  { name: "project_map", desc: "Structural outline, labels, cites, inputs" },
   { name: "compile", desc: "Compile LaTeX to PDF" },
   { name: "get_log", desc: "Get the last compile log" },
   { name: "get_pdf_text", desc: "Extract text from the PDF" },
+  { name: "verify_pdf_pages", desc: "Rasterize pages for vision layout checks" },
+  { name: "update_todos", desc: "Maintain a multi-step plan checklist" },
+  { name: "get_todos", desc: "Read the current plan checklist" },
+  { name: "remember_note", desc: "Save sticky project memory for later turns" },
+  { name: "forget_note", desc: "Remove a sticky memory note" },
+  { name: "list_notes", desc: "List sticky project memory notes" },
   { name: "set_main_doc", desc: "Set the main .tex document" },
   { name: "toggle_theme", desc: "Toggle light/dark mode" },
 ];
@@ -189,6 +196,7 @@ const DEFAULT_CFG: AppConfig = {
   ai_model: "gpt-4o-mini",
   ai_keys: {},
   ai_system_prompt: "",
+  ai_pdf_capture: true,
   mcp_enabled: false,
   mcp_port: 5323,
   mcp_read_only: false,
@@ -584,6 +592,35 @@ export function AISection() {
             <span className="text-xs text-emerald-600 dark:text-emerald-400">Saved</span>
           )}
         </div>
+      </div>
+
+      <div className="space-y-2 border-t pt-4">
+        <p className="font-medium">Agent capabilities</p>
+        <label className="flex cursor-pointer items-start gap-2.5 text-xs">
+          <input
+            type="checkbox"
+            className="mt-0.5"
+            checked={cfg.ai_pdf_capture !== false}
+            onChange={(e) => {
+              const on = e.target.checked;
+              const next = { ...cfg, ai_pdf_capture: on };
+              setCfg(next);
+              try {
+                localStorage.setItem("openleaf:ai_pdf_capture", on ? "1" : "0");
+              } catch {
+                /* ignore */
+              }
+              void setConfig(next).catch((err) => setMsg({ ok: false, text: String(err) }));
+            }}
+          />
+          <span>
+            <span className="font-medium text-foreground">Allow PDF page capture for AI</span>
+            <span className="mt-0.5 block text-muted-foreground">
+              Lets the agent rasterize compiled pages (verify_pdf_pages) for vision layout checks.
+              Disable if you prefer not to send page images to your provider.
+            </span>
+          </span>
+        </label>
       </div>
 
       {msg && (

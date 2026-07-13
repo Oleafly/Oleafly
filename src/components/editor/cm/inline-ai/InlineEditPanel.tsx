@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { Sparkles } from "lucide-react";
 import { getConfig } from "@/lib/tauri";
 import {
   getProvider,
@@ -12,6 +11,8 @@ import { logError } from "@/lib/log";
 import { useInlineEditStore } from "@/store/inlineEdit";
 import { useSettingsStore } from "@/store/settings";
 import { getEditorView } from "@/components/editor/cm/controller";
+import { AiChrome, AiMark } from "@/components/ai/AiChrome";
+import { useAgentHandoffStore } from "@/store/agent-handoff";
 import { acceptInlineEdit, rejectInlineEdit } from "./plugin";
 import { PromptPopover } from "./PromptPopover";
 import { DiffActionBar, DiffErrorBar } from "./DiffActionBar";
@@ -132,12 +133,42 @@ export function InlineEditPanel() {
     useSettingsStore.getState().setSettingsOpen(true);
   };
 
+  const openInAgent = () => {
+    const s = useInlineEditStore.getState().session;
+    if (!s) return;
+    const instruction = s.instruction.trim() || "(no instruction)";
+    const original = s.original.slice(0, 4000);
+    const proposed = s.proposed.slice(0, 4000);
+    const prompt = [
+      "Continue this inline edit with full project tools (read/write/compile/verify).",
+      "",
+      `Instruction: ${instruction}`,
+      "",
+      "Original selection:",
+      "```",
+      original,
+      "```",
+      proposed
+        ? ["", "Proposed rewrite so far:", "```", proposed, "```"].join("\n")
+        : "",
+      "",
+      "Please improve or finish this change across the project as needed, then compile if relevant.",
+    ]
+      .filter(Boolean)
+      .join("\n");
+    useAgentHandoffStore.getState().handoff(prompt, { autoSend: true });
+    const settings = useSettingsStore.getState();
+    settings.setRailTab("ai");
+    if (!settings.showTree) settings.toggleTree();
+    reset();
+  };
+
   return (
     <div className="my-1 w-full">
       {!providerReady ? (
-        <div className="w-full rounded-lg border bg-popover p-3 text-popover-foreground shadow-md">
+        <AiChrome className="w-full" contentClassName="p-3 text-popover-foreground">
           <p className="flex items-center gap-1.5 text-sm font-medium">
-            <Sparkles className="size-4 text-primary" /> Set up an AI provider
+            <AiMark /> Set up an AI provider
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             Add an API key (or local Ollama) to use inline AI edits.
@@ -149,11 +180,16 @@ export function InlineEditPanel() {
           >
             Open Settings → AI
           </button>
-        </div>
+        </AiChrome>
       ) : session.phase === "error" ? (
         <DiffErrorBar message={session.error ?? ""} onRetry={retry} onDismiss={reset} />
       ) : session.phase === "reviewing" ? (
-        <DiffActionBar onAccept={accept} onReject={reject} onRetry={retry} />
+        <DiffActionBar
+          onAccept={accept}
+          onReject={reject}
+          onRetry={retry}
+          onOpenInAgent={openInAgent}
+        />
       ) : (
         <PromptPopover
           instruction={session.instruction}
