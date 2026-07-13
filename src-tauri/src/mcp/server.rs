@@ -38,6 +38,9 @@ pub struct McpState {
     /// Present while the server runs; sending true triggers graceful shutdown.
     pub shutdown: Mutex<Option<watch::Sender<bool>>>,
     pub bound_port: Mutex<Option<u16>>,
+    /// The running axum task, so `stop` can await teardown (the listener is
+    /// released early in graceful shutdown) before a caller rebinds the port.
+    pub serve_task: Mutex<Option<tauri::async_runtime::JoinHandle<()>>>,
 }
 
 pub fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
@@ -177,13 +180,14 @@ pub async fn start(app: AppHandle, port: u16) -> Result<u16, String> {
     let router = Router::new()
         .route("/mcp", post(mcp_post))
         .with_state(app.clone());
-    tauri::async_runtime::spawn(async move {
+    let serve = tauri::async_runtime::spawn(async move {
         let _ = axum::serve(listener, router)
             .with_graceful_shutdown(async move {
                 let _ = rx.changed().await;
             })
             .await;
     });
+    *state.serve_task.lock().await = Some(serve);
     Ok(bound)
 }
 
@@ -191,6 +195,14 @@ pub async fn stop(app: &AppHandle) -> Result<(), String> {
     let state = app.state::<McpState>();
     if let Some(tx) = state.shutdown.lock().await.take() {
         let _ = tx.send(true);
+    }
+    // Wait (bounded) for the serve task to finish so the listener is fully
+    // released before any caller rebinds the same port. Graceful shutdown drops
+    // the listener early, so this returns near-instantly in the normal case; the
+    // timeout guards against a long in-flight tool call holding the drain open
+    // (the detached task finishes on its own, port already freed).
+    if let Some(handle) = state.serve_task.lock().await.take() {
+        let _ = tokio::time::timeout(Duration::from_secs(3), handle).await;
     }
     *state.bound_port.lock().await = None;
     *state.token.lock().await = None;
