@@ -314,6 +314,12 @@ export async function ensureAiConnected(page: Page) {
 /** Open the settings modal (rail gear) at a section. */
 export async function openSettings(page: Page, section?: string) {
   await page.click('[aria-label="Settings"]');
+  // The settings modal is lazy-loaded (the appearance nav is always present once
+  // it mounts). Wait for it before touching a section.
+  await page.waitForFunction(
+    `!!document.querySelector('[data-testid="settings-section-appearance"]')`,
+    10_000,
+  );
   if (section) await page.click(`[data-testid="settings-section-${section}"]`);
 }
 

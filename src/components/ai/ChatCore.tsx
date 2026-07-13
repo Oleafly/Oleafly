@@ -1468,7 +1468,10 @@ ${sandboxedCustom}`;
                                 {chatUsage.steps} step{chatUsage.steps === 1 ? "" : "s"}
                               </span>
                               {chatTotal > 0 && (
-                                <span className={pill}>~{chatTotal.toLocaleString()} tok</span>
+                                <span className={pill}>
+                                  ~{chatUsage.inputTokens.toLocaleString()} in /{" "}
+                                  {chatUsage.outputTokens.toLocaleString()} out
+                                </span>
                               )}
                               {(chatUsage.estimatedUsd ?? 0) > 0 && (
                                 <span className={cn(pill, "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400")}>
