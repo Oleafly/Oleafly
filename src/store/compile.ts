@@ -118,8 +118,9 @@ export const useCompileStore = create<CompileState>((set, get) => ({
         lastCompiledAt: Date.now(),
         compileTimeMs: result.compile_time_ms ?? 0,
       });
-      // Tell a detached preview window (if open) to reload the fresh PDF.
+      // Tell detached windows (PDF preview, other OS windows) to reload.
       void import("@/lib/preview-window").then((m) => m.refreshPreviewWindow());
+      void import("@/lib/cross-window").then((m) => m.notifyCompileDone(files.projectId));
       // A successful compile is the natural checkpoint: auto-commit the
       // project (compiling already saved the active file first).
       if (bytes && files.projectId) {
