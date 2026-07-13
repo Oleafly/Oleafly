@@ -160,13 +160,17 @@ test("agent handoff hook is available and stores a prompt", async ({ tauriPage }
     `!!document.querySelector('textarea[placeholder*="Ask AI"], textarea[placeholder*="Describe a figure"]')`,
   );
   if (hasInput) {
-    await tauriPage.waitForFunction(
-      `(() => {
-        const ta = document.querySelector('textarea[placeholder*="Ask AI"], textarea[placeholder*="Describe a figure"]');
-        return !!ta && (ta as HTMLTextAreaElement).value.includes(${JSON.stringify(marker)});
-      })()`,
-      8_000,
-    );
+    // Poll a plain evaluate (bridge-robust). waitForFunction with an IIFE hangs
+    // the tauri bridge deep in a long session (30s timeout).
+    await expect
+      .poll(
+        async () =>
+          tauriPage.evaluate<string>(
+            `document.querySelector('textarea[placeholder*="Ask AI"], textarea[placeholder*="Describe a figure"]')?.value ?? ""`,
+          ),
+        { timeout: 8_000 },
+      )
+      .toContain(marker);
   }
 });
 

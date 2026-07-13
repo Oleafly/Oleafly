@@ -16,7 +16,20 @@ test("place a shape, inspect it, and toggle canvas controls", async ({ tauriPage
     tauriPage.evaluate<number>(`document.querySelectorAll('.react-flow__node').length`);
   const before = await nodes();
   await tauriPage.click('[aria-label="Rectangle"]');
-  await tauriPage.click(".react-flow__pane");
+  // Node creation is now click-drag-to-draw (pointer events), not a plain click.
+  // A pointerdown with a tool armed creates the node; the drag sizes it.
+  await tauriPage.evaluate(
+    `(() => {
+      const pane = document.querySelector('.react-flow__pane');
+      const r = pane.getBoundingClientRect();
+      const x = r.left + r.width / 2, y = r.top + r.height / 2;
+      const ev = (t, cx, cy) => new PointerEvent(t, { bubbles: true, cancelable: true, clientX: cx, clientY: cy, button: 0, pointerId: 1, isPrimary: true });
+      pane.dispatchEvent(ev('pointerdown', x, y));
+      pane.dispatchEvent(ev('pointermove', x + 90, y + 70));
+      pane.dispatchEvent(ev('pointerup', x + 90, y + 70));
+      return 1;
+    })()`,
+  );
   expect(await nodes()).toBe(before + 1);
 
   // Selecting a node brings up the style inspector.
