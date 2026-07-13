@@ -31,7 +31,7 @@ import {
 } from "./cm/controller";
 import { goToDefinition, findReferences, startRename } from "@/lib/index/nav";
 import { useCitationStore } from "@/store/citation";
-import { cn } from "@/lib/utils";
+import { cn, shortcut } from "@/lib/utils";
 
 /** Run a code-intelligence action against the active editor view. */
 function withView(fn: (v: import("@codemirror/view").EditorView) => void) {
@@ -75,10 +75,10 @@ export function EditorToolbar() {
   return (
     <div className="flex h-9 items-center gap-0.5 border-b px-2">
       {/* Undo / Redo */}
-      <IconBtn onClick={editorUndo} title="Undo (⌘Z)">
+      <IconBtn onClick={editorUndo} title={`Undo (${shortcut("⌘Z")})`}>
         <Undo2 className="size-4" />
       </IconBtn>
-      <IconBtn onClick={editorRedo} title="Redo (⌘⇧Z)">
+      <IconBtn onClick={editorRedo} title={`Redo (${shortcut("⌘⇧Z")})`}>
         <Redo2 className="size-4" />
       </IconBtn>
 
@@ -114,10 +114,10 @@ export function EditorToolbar() {
       <Divider />
 
       {/* Bold / Italic */}
-      <IconBtn onClick={() => wrapSelection("\\textbf{", "}")} title="Bold (⌘B)">
+      <IconBtn onClick={() => wrapSelection("\\textbf{", "}")} title={`Bold (${shortcut("⌘B")})`}>
         <Bold className="size-4" />
       </IconBtn>
-      <IconBtn onClick={() => wrapSelection("\\textit{", "}")} title="Italic (⌘I)">
+      <IconBtn onClick={() => wrapSelection("\\textit{", "}")} title={`Italic (${shortcut("⌘I")})`}>
         <Italic className="size-4" />
       </IconBtn>
 
@@ -194,7 +194,7 @@ export function EditorToolbar() {
       </Popover>
 
       <div className="ml-auto flex items-center gap-0.5">
-        <IconBtn onClick={editorFind} title="Find (⌘F)">
+        <IconBtn onClick={editorFind} title={`Find (${shortcut("⌘F")})`}>
           <Search className="size-4" />
         </IconBtn>
       </div>

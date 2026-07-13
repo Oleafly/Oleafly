@@ -1,6 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 
-export const DEFAULT_OLLAMA_HOST = "http://localhost:11434";
+// IPv4 loopback literal, not "localhost": Ollama binds 127.0.0.1 by default and
+// on Windows "localhost" can resolve to ::1 (IPv6) first and fail to connect.
+export const DEFAULT_OLLAMA_HOST = "http://127.0.0.1:11434";
 
 /**
  * List the models installed in a local Ollama instance (via a Rust command that

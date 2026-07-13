@@ -1,12 +1,16 @@
 import { useEffect, useState } from "react";
 import type { Update } from "@tauri-apps/plugin-updater";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { invoke } from "@tauri-apps/api/core";
+import { open as openUrl } from "@tauri-apps/plugin-shell";
 import { AlertTriangle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LeafLogo } from "@/components/layout/LeafLogo";
 import { Markdown } from "@/components/ui/markdown";
 import { findUpdate, installUpdate } from "@/lib/updater";
 import { logError } from "@/lib/log";
+
+const RELEASES_URL = "https://github.com/prajwal-svm/OpenLeaf/releases/latest";
 
 type Phase = "checking" | "available" | "upToDate" | "downloading" | "error";
 
@@ -22,6 +26,10 @@ export function UpdateWindow() {
   const [phase, setPhase] = useState<Phase>("checking");
   const [update, setUpdate] = useState<Update | null>(null);
   const [percent, setPercent] = useState(0);
+  // Linux .deb/.rpm installs can't self-update (only AppImage can). When false,
+  // we offer a link to the Releases page instead of an in-place "Update now"
+  // that would fail. Defaults true (macOS/Windows, and Linux AppImage).
+  const [selfInstallable, setSelfInstallable] = useState(true);
 
   const close = () => void getCurrentWindow().close();
 
@@ -29,6 +37,12 @@ export function UpdateWindow() {
     let cancelled = false;
     (async () => {
       try {
+        try {
+          const ok = await invoke<boolean>("updater_self_installable");
+          if (!cancelled) setSelfInstallable(ok);
+        } catch {
+          // Non-Tauri/dev or command missing: assume self-installable.
+        }
         const u = await findUpdate();
         if (cancelled) return;
         if (u) {
@@ -138,6 +152,20 @@ export function UpdateWindow() {
               />
             </div>
             <p className="text-[10px] text-muted-foreground">OpenLeaf will restart to finish.</p>
+          </div>
+        ) : phase === "available" && !selfInstallable ? (
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[11px] text-muted-foreground">
+              Installed from a package. Download the new version to update.
+            </p>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={close}>
+                Later
+              </Button>
+              <Button size="sm" onClick={() => void openUrl(RELEASES_URL)}>
+                View release
+              </Button>
+            </div>
           </div>
         ) : phase === "available" ? (
           <div className="flex items-center justify-end gap-2">

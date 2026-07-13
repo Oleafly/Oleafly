@@ -4,6 +4,7 @@ use std::process::Command;
 
 use crate::config;
 use crate::paths;
+use crate::proc::NoConsole;
 
 fn project_root(project_id: &str) -> Result<PathBuf, String> {
     paths::project_dir(project_id)
@@ -11,6 +12,7 @@ fn project_root(project_id: &str) -> Result<PathBuf, String> {
 
 fn run_git(root: &PathBuf, args: &[&str]) -> Result<std::process::Output, String> {
     Command::new("git")
+        .no_console()
         .args(args)
         .current_dir(root)
         .output()
@@ -257,6 +259,7 @@ fn run_git_authed(
     ];
     full.extend_from_slice(args);
     Command::new("git")
+        .no_console()
         .args(&full)
         .current_dir(root)
         .env("OPENLEAF_GH_TOKEN", token)

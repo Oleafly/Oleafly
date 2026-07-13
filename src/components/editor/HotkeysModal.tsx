@@ -2,6 +2,11 @@ import { useMemo, useState } from "react";
 import { Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSettingsStore } from "@/store/settings";
+import { shortcut } from "@/lib/utils";
+
+/** Render a shortcut string for the platform, leaving rows that already spell
+ * out both conventions (e.g. "⌘/Ctrl-click", "Ctrl-Space") untouched. */
+const keyLabel = (keys: string) => (keys.includes("Ctrl") ? keys : shortcut(keys));
 
 const SHORTCUTS: { category: string; keys: string; desc: string }[] = [
   { category: "Compile", keys: "⌘↵", desc: "Recompile" },
@@ -89,7 +94,7 @@ export function HotkeysModal() {
                   <div key={i} className="flex items-center justify-between py-1.5">
                     <span className="text-sm">{s.desc}</span>
                     <kbd className="rounded border border-sidebar-border bg-background px-2 py-0.5 font-mono text-xs">
-                      {s.keys}
+                      {keyLabel(s.keys)}
                     </kbd>
                   </div>
                 ))}

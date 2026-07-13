@@ -11,7 +11,7 @@ import { inverseFromClick } from "@/features/synctex";
 import { saveFileBase64, uint8ToBase64 } from "@/lib/tauri";
 import { openPreviewWindow } from "@/lib/preview-window";
 import { notifyError, toast } from "@/lib/toast";
-import { cn } from "@/lib/utils";
+import { cn, shortcut } from "@/lib/utils";
 
 const MIN_SCALE = 0.4;
 const MAX_SCALE = 4;
@@ -475,7 +475,7 @@ export function PreviewPane() {
                   </Button>
                   or hit
                   <kbd className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium">
-                    ⌘ + Enter
+                    {shortcut("⌘↵")}
                   </kbd>
                   to recompile
                 </p>

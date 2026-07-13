@@ -223,9 +223,9 @@ fn ensure_token() -> Result<String, String> {
     Ok(token)
 }
 
-/// Connection info for local clients: `<data-dir>/mcp.json`, 0600 on unix,
-/// present only while the server runs. Sensitivity is equivalent to the
-/// existing 0600 config fallback and is documented in docs/mcp.md.
+/// Connection info for local clients: `<data-dir>/mcp.json`, hardened to
+/// owner-only (0600 on unix, current-user ACL on Windows), present only while
+/// the server runs. Documented in docs/mcp.md.
 fn write_discovery_file(port: u16, token: &str) -> Result<(), String> {
     let path = paths::openleaf_root()?.join("mcp.json");
     let body = serde_json::to_string_pretty(&json!({
@@ -234,11 +234,9 @@ fn write_discovery_file(port: u16, token: &str) -> Result<(), String> {
     }))
     .map_err(|e| e.to_string())?;
     std::fs::write(&path, body).map_err(|e| e.to_string())?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
-    }
+    // Owner-only (0600 on unix, current-user ACL on Windows): the file holds the
+    // live MCP bearer token.
+    crate::fsperm::harden_file(&path);
     Ok(())
 }
 

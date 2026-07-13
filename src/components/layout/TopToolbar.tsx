@@ -39,7 +39,7 @@ import {
 import { toGithubWebUrl } from "@/lib/github-url";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { notifyError, toast } from "@/lib/toast";
-import { cn, isMac } from "@/lib/utils";
+import { cn, isMac, shortcut } from "@/lib/utils";
 
 /** Display labels for export formats (matches "Export PDF/Zip/Docx/Md/html"). */
 const FMT_LABEL: Record<string, string> = {
@@ -345,7 +345,7 @@ export function TopToolbar() {
       {/* Right: actions */}
       <div data-tauri-drag-region className="flex items-center justify-end gap-1.5">
 
-        <Tooltip label="Recompile (⌘↵)">
+        <Tooltip label={`Recompile (${shortcut("⌘↵")})`}>
           <Button
             variant="ghost"
             size="sm"
@@ -494,7 +494,7 @@ export function TopToolbar() {
           onCopyLink={() => void shareGithub()}
         />
 
-        <Tooltip label="Shortcuts (⌘/)">
+        <Tooltip label={`Shortcuts (${shortcut("⌘/")})`}>
           <Button
             variant="ghost"
             size="icon"

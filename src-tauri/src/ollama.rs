@@ -24,7 +24,10 @@ fn base_url(host: &str) -> String {
     let h = host.trim().trim_end_matches('/');
     let h = h.strip_suffix("/v1").unwrap_or(h).trim_end_matches('/');
     if h.is_empty() {
-        "http://localhost:11434".to_string()
+        // Use the IPv4 loopback literal, not "localhost": Ollama binds 127.0.0.1
+        // (IPv4) by default, but on Windows "localhost" often resolves to ::1
+        // (IPv6) first, and the request then fails as "not reachable".
+        "http://127.0.0.1:11434".to_string()
     } else {
         h.to_string()
     }
@@ -68,8 +71,8 @@ mod tests {
 
     #[test]
     fn normalizes_hosts() {
-        assert_eq!(base_url(""), "http://localhost:11434");
-        assert_eq!(base_url("  "), "http://localhost:11434");
+        assert_eq!(base_url(""), "http://127.0.0.1:11434");
+        assert_eq!(base_url("  "), "http://127.0.0.1:11434");
         assert_eq!(base_url("http://localhost:11434"), "http://localhost:11434");
         assert_eq!(
             base_url("http://localhost:11434/"),

@@ -47,7 +47,7 @@ import { useFilesStore } from "@/store/files";
 import { useDictionary } from "@/lib/dictionary";
 import { useTheme } from "@/lib/theme";
 import { appVersion, libraryRoot } from "@/lib/tauri";
-import { cn } from "@/lib/utils";
+import { cn, shortcut } from "@/lib/utils";
 
 type Section =
   | "appearance"
@@ -495,8 +495,9 @@ export function SettingsModal() {
                 >
                   <Keyboard className="size-4 shrink-0" />
                   <span className="flex-1">
-                    Shortcuts: <kbd>⌘K</kbd> command palette · <kbd>⌘↵</kbd> recompile ·{" "}
-                    <kbd>⌘B</kbd>/<kbd>⌘I</kbd> bold/italic · see all
+                    Shortcuts: <kbd>{shortcut("⌘K")}</kbd> command palette ·{" "}
+                    <kbd>{shortcut("⌘↵")}</kbd> recompile · <kbd>{shortcut("⌘B")}</kbd>/
+                    <kbd>{shortcut("⌘I")}</kbd> bold/italic · see all
                   </span>
                   <ChevronRight className="size-4 shrink-0" />
                 </button>

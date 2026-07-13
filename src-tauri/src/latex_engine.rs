@@ -12,6 +12,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use crate::paths;
+use crate::proc::NoConsole;
 use crate::state::AppState;
 
 /// rstudio/tinytex-releases scheme "1" (the default set, ~100MB). The exact tag
@@ -49,6 +50,7 @@ fn exe(name: &str) -> String {
 
 fn runs(cmd: &str) -> bool {
     Command::new(cmd)
+        .no_console()
         .arg("--version")
         .output()
         .map(|o| o.status.success())
@@ -160,7 +162,11 @@ fn find_engine() -> EngineInfo {
 }
 
 fn engine_version(lualatex: &str) -> Option<String> {
-    let out = Command::new(lualatex).arg("--version").output().ok()?;
+    let out = Command::new(lualatex)
+        .no_console()
+        .arg("--version")
+        .output()
+        .ok()?;
     let text = String::from_utf8_lossy(&out.stdout);
     text.lines().next().map(|l| l.trim().to_string())
 }
@@ -198,8 +204,21 @@ fn tinytex_asset() -> Result<(String, bool), String> {
         format!("https://github.com/rstudio/tinytex-releases/releases/download/{TINYTEX_TAG}");
     if cfg!(target_os = "windows") {
         Ok((format!("{base}/TinyTeX-1.zip"), false))
-    } else if cfg!(any(target_os = "macos", target_os = "linux")) {
+    } else if cfg!(target_os = "macos") {
+        // macOS bundle is universal (bin/universal-darwin), so arm64 is fine.
         Ok((format!("{base}/TinyTeX-1.tar.gz"), true))
+    } else if cfg!(target_os = "linux") {
+        // The Linux TinyTeX bundle ships only bin/x86_64-linux binaries; there is
+        // no upstream aarch64-linux build. Fail early rather than download ~100MB
+        // of binaries that can't run.
+        if std::env::consts::ARCH == "x86_64" {
+            Ok((format!("{base}/TinyTeX-1.tar.gz"), true))
+        } else {
+            Err(format!(
+                "Automatic TinyTeX install is not available for Linux {}. Install a LuaLaTeX / TeX Live 2025 toolchain from your package manager.",
+                std::env::consts::ARCH
+            ))
+        }
     } else {
         Err("Automatic TinyTeX install is not supported on this platform. Install a LuaLaTeX / TeX Live 2025 toolchain manually.".to_string())
     }
@@ -213,40 +232,19 @@ fn extract_all(archive: &Path, is_targz: bool, dest_dir: &Path) -> Result<(), St
     if is_targz {
         let gz = flate2::read::GzDecoder::new(file);
         let mut ar = tar::Archive::new(gz);
-        // Unpack entry-by-entry rather than `ar.unpack(dest_dir)` so a malicious
-        // archive can't escape `dest_dir`. We reject absolute / `..` paths and
-        // SKIP symlink and hardlink members entirely (a planted link could later
-        // redirect a write outside the destination); only regular files and
-        // directories are extracted.
+        // TinyTeX ships bin/<platform>/{lualatex,tlmgr,xelatex,...} as SYMLINKS
+        // into its script/binary tree, and its real binaries carry the 0755 exec
+        // bit. The previous hand-rolled copy skipped every symlink and dropped
+        // the mode, so after a "successful" extract there was no runnable engine
+        // on Linux/macOS. `unpack_in` recreates symlinks and preserves unix
+        // permissions, and STILL refuses any entry whose path would escape
+        // `dest_dir` (it returns Ok(false) and skips it), so the traversal
+        // protection the manual loop provided is retained.
+        ar.set_preserve_permissions(true);
+        ar.set_overwrite(true);
         for entry in ar.entries().map_err(|e| e.to_string())? {
             let mut entry = entry.map_err(|e| e.to_string())?;
-            let entry_type = entry.header().entry_type();
-            if entry_type.is_symlink() || entry_type.is_hard_link() {
-                continue;
-            }
-            let rel = entry.path().map_err(|e| e.to_string())?.into_owned();
-            if rel.is_absolute()
-                || rel.components().any(|c| {
-                    matches!(
-                        c,
-                        std::path::Component::ParentDir
-                            | std::path::Component::RootDir
-                            | std::path::Component::Prefix(_)
-                    )
-                })
-            {
-                continue; // skip unsafe paths
-            }
-            let out = dest_dir.join(&rel);
-            if entry_type.is_dir() {
-                std::fs::create_dir_all(&out).map_err(|e| e.to_string())?;
-            } else {
-                if let Some(parent) = out.parent() {
-                    std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-                }
-                let mut o = std::fs::File::create(&out).map_err(|e| e.to_string())?;
-                std::io::copy(&mut entry, &mut o).map_err(|e| e.to_string())?;
-            }
+            entry.unpack_in(dest_dir).map_err(|e| e.to_string())?;
         }
     } else {
         let mut zip = zip::ZipArchive::new(file).map_err(|e| e.to_string())?;
@@ -365,6 +363,7 @@ pub async fn tlmgr_installed() -> Result<Vec<String>, String> {
 fn tlmgr_installed_blocking() -> Result<Vec<String>, String> {
     let tlmgr = tlmgr_path()?;
     let out = Command::new(&tlmgr)
+        .no_console()
         .args(["info", "--only-installed", "--data", "name"])
         .output()
         .map_err(|e| format!("failed to run tlmgr: {e}"))?;
@@ -411,7 +410,7 @@ fn tlmgr_run(action: &str, packages: Vec<String>) -> Result<String, String> {
     }
     let tlmgr = tlmgr_path()?;
     let mut cmd = Command::new(&tlmgr);
-    cmd.arg(action).arg("--");
+    cmd.no_console().arg(action).arg("--");
     for p in &packages {
         cmd.arg(p);
     }
@@ -482,6 +481,7 @@ pub async fn compile_tagged(
         let mut success = false;
         for pass in 0..2 {
             let out = Command::new(&lualatex)
+                .no_console()
                 .arg("-interaction=nonstopmode")
                 .arg("-file-line-error")
                 .arg(format!("-output-directory={out_dir}"))

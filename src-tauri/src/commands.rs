@@ -5,6 +5,7 @@ use tauri_plugin_shell::process::CommandEvent;
 use tauri_plugin_shell::ShellExt;
 
 use crate::paths;
+use crate::proc::NoConsole;
 use crate::state::AppState;
 
 /// Returns the OpenLeaf projects root (`~/.openleaf/projects`).
@@ -17,6 +18,21 @@ pub fn library_root() -> Result<std::path::PathBuf, String> {
 #[tauri::command]
 pub fn app_version() -> &'static str {
     env!("CARGO_PKG_VERSION")
+}
+
+/// Whether the running install can apply a downloaded update in place. Tauri's
+/// Linux updater can only replace a running AppImage (it reads `$APPIMAGE`); a
+/// `.deb`/`.rpm` install has no `APPIMAGE`, so `downloadAndInstall` would fail.
+/// The update UI uses this to offer a "download from Releases" link instead of a
+/// broken in-place "Update now" on those installs. macOS and Windows always
+/// self-update.
+#[tauri::command]
+pub fn updater_self_installable() -> bool {
+    if cfg!(target_os = "linux") {
+        std::env::var_os("APPIMAGE").is_some()
+    } else {
+        true
+    }
 }
 
 /// Whether `path` may be revealed in the OS file manager.
@@ -70,14 +86,25 @@ pub fn reveal_in_dir(path: String, state: State<'_, AppState>) -> Result<(), Str
     #[cfg(target_os = "macos")]
     {
         std::process::Command::new("open")
+            .no_console()
             .args(["-R", &path])
             .spawn()
             .map_err(|e| format!("failed to open Finder: {e}"))?;
     }
     #[cfg(target_os = "windows")]
     {
+        // `canonicalize` returns an extended-length `\\?\C:\...` (or
+        // `\\?\UNC\server\share`) path. explorer.exe cannot parse the `\\?\`
+        // verbatim prefix for `/select`, so strip it back to a normal path or
+        // the reveal silently fails / opens the wrong place.
+        let display = path
+            .strip_prefix(r"\\?\UNC\")
+            .map(|rest| format!(r"\\{rest}"))
+            .or_else(|| path.strip_prefix(r"\\?\").map(str::to_string))
+            .unwrap_or_else(|| path.clone());
         std::process::Command::new("explorer")
-            .arg(format!("/select,{path}"))
+            .no_console()
+            .arg(format!("/select,{display}"))
             .spawn()
             .map_err(|e| format!("failed to open Explorer: {e}"))?;
     }
@@ -88,6 +115,7 @@ pub fn reveal_in_dir(path: String, state: State<'_, AppState>) -> Result<(), Str
             .map(|d| d.to_string_lossy().into_owned())
             .unwrap_or(path.clone());
         std::process::Command::new("xdg-open")
+            .no_console()
             .arg(&dir)
             .spawn()
             .map_err(|e| format!("failed to open file manager: {e}"))?;

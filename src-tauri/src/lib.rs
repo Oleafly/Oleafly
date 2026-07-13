@@ -3,6 +3,7 @@ mod chats;
 mod citation;
 mod commands;
 mod config;
+mod fsperm;
 mod git;
 mod github;
 mod latex_engine;
@@ -10,6 +11,7 @@ mod mcp;
 mod menu;
 mod ollama;
 mod paths;
+mod proc;
 mod project;
 mod sandbox;
 mod secrets;
@@ -82,6 +84,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::library_root,
             commands::app_version,
+            commands::updater_self_installable,
             commands::compile_project,
             commands::read_compiled_pdf,
             commands::compile_isolated,

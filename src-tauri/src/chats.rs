@@ -87,6 +87,8 @@ fn save_blocking(project_id: &str, json: &str) -> Result<(), String> {
             .map_err(|e| format!("failed to write chats: {e}"))?;
         let _ = f.sync_all();
     }
+    // Owner-only, mirroring config.json (unix 0600 at create, Windows ACL here).
+    crate::fsperm::harden_file(&tmp);
     std::fs::rename(&tmp, &path).map_err(|e| {
         let _ = std::fs::remove_file(&tmp);
         format!("failed to replace chats file: {e}")

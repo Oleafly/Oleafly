@@ -260,6 +260,9 @@ fn write_config_at(path: &std::path::Path, config: &AppConfig) -> Result<(), Str
             .map_err(|e| format!("failed to write config: {e}"))?;
         let _ = f.sync_all();
     }
+    // Owner-only (unix created it 0600; this also covers Windows, where the file
+    // may hold keychain-fallback secrets). The rename preserves the ACL/mode.
+    crate::fsperm::harden_file(&tmp);
 
     std::fs::rename(&tmp, path).map_err(|e| {
         let _ = std::fs::remove_file(&tmp);

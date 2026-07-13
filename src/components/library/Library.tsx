@@ -30,7 +30,7 @@ import {
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { useTheme } from "@/lib/theme";
-import { cn, isMac } from "@/lib/utils";
+import { cn, isMac, shortcut } from "@/lib/utils";
 import { cancelAutoCommit } from "@/lib/auto-commit";
 import { deleteProject, duplicateProject, readCompiledPdf } from "@/lib/tauri";
 import { pdfPageToPng } from "@/lib/pdf-image";
@@ -140,7 +140,7 @@ export function Library() {
                   <Plus className="size-4" /> New project
                 </Button>
               </Tooltip>
-              <Tooltip label="Search documents (⌘⇧F)">
+              <Tooltip label={`Search documents (${shortcut("⌘⇧F")})`}>
                 <Button
                   variant="ghost"
                   size="icon"

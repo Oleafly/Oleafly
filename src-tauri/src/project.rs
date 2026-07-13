@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
 use crate::paths;
+use crate::proc::NoConsole;
 use crate::sandbox::{guard_export_dest, is_root_delete, resolve};
 
 /// Public path resolver (sandbox). Re-exported so call sites keep importing
@@ -107,6 +108,17 @@ pub fn write_meta(project_id: &str, meta: &ProjectMeta) -> Result<(), String> {
     std::fs::write(&p, s).map_err(|e| format!("failed to write project.json: {e}"))
 }
 
+/// Relative path from `root` to `path`, always with forward-slash separators.
+/// On Windows `to_string_lossy` yields backslashes; the frontend builds the file
+/// tree and matches SyncTeX files by splitting on "/", so paths must be
+/// normalized here or subfolders won't nest and lookups mismatch on Windows.
+fn rel_slash(root: &Path, path: &Path) -> String {
+    path.strip_prefix(root)
+        .unwrap_or(path)
+        .to_string_lossy()
+        .replace('\\', "/")
+}
+
 /// Cap recursion depth on directory walks so a deep (or symlink-induced) tree
 /// can't blow the stack or hang the app.
 const MAX_WALK_DEPTH: usize = 64;
@@ -137,9 +149,8 @@ fn walk(root: &Path, dir: &Path, out: &mut Vec<FileEntry>, depth: usize) -> Resu
             continue;
         }
         let path = entry.path();
-        let rel = path.strip_prefix(root).unwrap_or(&path);
         out.push(FileEntry {
-            path: rel.to_string_lossy().into_owned(),
+            path: rel_slash(root, &path),
             is_dir: ft.is_dir(),
         });
         if ft.is_dir() {
@@ -588,6 +599,7 @@ fn find_pandoc() -> Option<String> {
     use std::process::Command;
     let works = |cmd: &str| {
         Command::new(cmd)
+            .no_console()
             .arg("--version")
             .output()
             .map(|o| o.status.success())
@@ -650,7 +662,7 @@ pub async fn export_document(
             "pandoc is not installed. Install pandoc to export documents.".to_string()
         })?;
         let mut cmd = Command::new(&pandoc);
-        cmd.arg("-o").arg(&dest);
+        cmd.no_console().arg("-o").arg(&dest);
         match format.as_str() {
             // Beamer frames (and level-2 headings) become individual slides.
             "pptx" => {
@@ -723,10 +735,15 @@ fn extract_pandoc(
     dest: &std::path::Path,
 ) -> Result<(), String> {
     use std::io::{Read, Write};
-    let want = if cfg!(windows) {
-        "bin/pandoc.exe"
+    // Match the executable by FILE NAME, not a "bin/..." suffix: since pandoc 2.8
+    // the Windows zip puts `pandoc.exe` at the archive ROOT (no bin/ dir), while
+    // macOS/Linux still nest it under bin/. The old `ends_with("bin/pandoc.exe")`
+    // never matched on Windows, so on-demand pandoc install (all non-PDF export)
+    // was completely broken there.
+    let want_name = if cfg!(windows) {
+        "pandoc.exe"
     } else {
-        "bin/pandoc"
+        "pandoc"
     };
     let file = std::fs::File::open(archive).map_err(|e| e.to_string())?;
     if is_targz {
@@ -734,12 +751,9 @@ fn extract_pandoc(
         let mut ar = tar::Archive::new(gz);
         for entry in ar.entries().map_err(|e| e.to_string())? {
             let mut entry = entry.map_err(|e| e.to_string())?;
-            let path = entry
-                .path()
-                .map_err(|e| e.to_string())?
-                .to_string_lossy()
-                .to_string();
-            if path.ends_with(want) {
+            let path = entry.path().map_err(|e| e.to_string())?.into_owned();
+            let is_match = path.file_name().and_then(|s| s.to_str()) == Some(want_name);
+            if is_match {
                 let mut out = std::fs::File::create(dest).map_err(|e| e.to_string())?;
                 std::io::copy(&mut entry, &mut out).map_err(|e| e.to_string())?;
                 return Ok(());
@@ -750,7 +764,8 @@ fn extract_pandoc(
         for i in 0..zip.len() {
             let mut f = zip.by_index(i).map_err(|e| e.to_string())?;
             let name = f.name().to_string();
-            if name.ends_with(want) {
+            let base = name.rsplit('/').next().unwrap_or(&name);
+            if base == want_name {
                 let mut buf = Vec::new();
                 f.read_to_end(&mut buf).map_err(|e| e.to_string())?;
                 let mut out = std::fs::File::create(dest).map_err(|e| e.to_string())?;
@@ -813,6 +828,7 @@ pub async fn download_pandoc(app: tauri::AppHandle) -> Result<String, String> {
         let _ = std::fs::set_permissions(&dest, std::fs::Permissions::from_mode(0o755));
     }
     if !std::process::Command::new(&dest)
+        .no_console()
         .arg("--version")
         .output()
         .map(|o| o.status.success())
@@ -932,11 +948,7 @@ fn search_walk(
         if !is_searchable(&name_str) {
             continue;
         }
-        let rel = path
-            .strip_prefix(root)
-            .unwrap_or(&path)
-            .to_string_lossy()
-            .into_owned();
+        let rel = rel_slash(root, &path);
         let text = match std::fs::read_to_string(&path) {
             Ok(t) => t,
             Err(_) => continue,
@@ -1176,3 +1188,24 @@ pub async fn delete_project(project_id: String) -> Result<(), String> {
 }
 
 // Path-sandbox unit tests live in `sandbox.rs`.
+
+#[cfg(test)]
+mod tests {
+    use super::rel_slash;
+    use std::path::Path;
+
+    #[test]
+    fn rel_slash_strips_root_and_forces_forward_slashes() {
+        let root = Path::new("/proj");
+        assert_eq!(rel_slash(root, &root.join("main.tex")), "main.tex");
+        assert_eq!(
+            rel_slash(root, &root.join("sections").join("intro.tex")),
+            "sections/intro.tex"
+        );
+        // A component holding a literal backslash (what Windows' path separator
+        // becomes via `to_string_lossy`) must be normalized to a forward slash,
+        // or the frontend file tree (which splits on "/") breaks on Windows.
+        let win_like = Path::new("/proj/sections\\intro.tex");
+        assert_eq!(rel_slash(root, win_like), "sections/intro.tex");
+    }
+}

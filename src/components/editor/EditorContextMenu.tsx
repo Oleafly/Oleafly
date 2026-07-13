@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Bold, Italic, Heading, List, Image, Table, Sigma, Sparkles, Tag, ArrowRightToLine, SearchCode, Pencil } from "lucide-react";
+import { shortcut } from "@/lib/utils";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -33,7 +34,7 @@ export function EditorContextMenu({ children }: EditorContextMenuProps) {
           }}
         >
           <Sparkles className="mr-2 size-4" /> Ask AI…
-          <span className="ml-auto text-xs text-muted-foreground">⌘L</span>
+          <span className="ml-auto text-xs text-muted-foreground">{shortcut("⌘L")}</span>
         </ContextMenuItem>
         <ContextMenuItem
           onClick={() => {
@@ -68,7 +69,7 @@ export function EditorContextMenu({ children }: EditorContextMenuProps) {
           }}
         >
           <SearchCode className="mr-2 size-4" /> Find references
-          <span className="ml-auto text-xs text-muted-foreground">⇧F12</span>
+          <span className="ml-auto text-xs text-muted-foreground">{shortcut("⇧F12")}</span>
         </ContextMenuItem>
         <ContextMenuItem
           onClick={() => {
@@ -82,11 +83,11 @@ export function EditorContextMenu({ children }: EditorContextMenuProps) {
         <ContextMenuSeparator />
         <ContextMenuItem onClick={() => wrapSelection("\\textbf{", "}")}>
           <Bold className="mr-2 size-4" /> Bold
-          <span className="ml-auto text-xs text-muted-foreground">⌘B</span>
+          <span className="ml-auto text-xs text-muted-foreground">{shortcut("⌘B")}</span>
         </ContextMenuItem>
         <ContextMenuItem onClick={() => wrapSelection("\\textit{", "}")}>
           <Italic className="mr-2 size-4" /> Italic
-          <span className="ml-auto text-xs text-muted-foreground">⌘I</span>
+          <span className="ml-auto text-xs text-muted-foreground">{shortcut("⌘I")}</span>
         </ContextMenuItem>
         <ContextMenuSeparator />
         <ContextMenuSub>
