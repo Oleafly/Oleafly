@@ -20,6 +20,7 @@ import { forwardFromCursor } from "@/features/synctex";
 import { checkForUpdatesOnStartup, openUpdateWindow } from "@/lib/updater";
 import { isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { cn } from "@/lib/utils";
 import { ArrowRight } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -159,6 +160,9 @@ export default function App() {
   // MCP bridge: register tools and handle tools/call forwarded from Rust.
   useEffect(() => {
     if (!isTauri()) return;
+    // Sync the PDF-capture privacy flag from disk config on startup (done here,
+    // not at module load, so it never fires IPC at import time).
+    void import("@/lib/ai-tools").then((m) => m.initAiPdfCaptureFlag());
     let cancelled = false;
     let cleanup: (() => void) | undefined;
     void import("@/lib/mcp-bridge").then(async (m) => {
@@ -225,11 +229,79 @@ export default function App() {
       s.setRailTab("files");
       if (s.openInTree && !s.showTree) s.toggleTree();
       else if (!s.openInTree && s.showTree) s.toggleTree();
-      // Point an open detached preview window at the new project.
+      // Point open detached windows at the new project.
       void import("@/lib/preview-window").then((m) => m.retargetPreviewWindow(projectId));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
+
+  // Cross-window: detached AI chat / preview can mutate disk. Reload open
+  // buffers and the compiled PDF when those windows report changes. Also
+  // open Settings when the chat pop-out asks for it.
+  useEffect(() => {
+    if (!isTauri()) return;
+    const selfLabel = getCurrentWindow().label;
+    const unFiles = listen<{ projectId: string; paths?: string[]; from?: string }>(
+      "project:files-changed",
+      (e) => {
+        // Ignore our own broadcast: this window already applied the write
+        // directly, and re-reading it would bump docVersion and reset the
+        // editor cursor/undo on the active file.
+        if (e.payload?.from === selfLabel) return;
+        const pid = e.payload?.projectId;
+        const fs = useFilesStore.getState();
+        if (!pid || pid !== fs.projectId) return;
+        void fs.refreshTree();
+        const paths = e.payload?.paths?.length
+          ? e.payload.paths
+          : Object.keys(fs.files);
+        for (const path of paths) {
+          if (!fs.files[path]?.dirty) {
+            void import("@/lib/tauri").then(({ readFileContent }) => {
+              void readFileContent(pid, path)
+                .then((content) => {
+                  const cur = useFilesStore.getState();
+                  if (cur.projectId !== pid) return;
+                  // Skip if the user typed while we were reading.
+                  if (cur.files[path]?.dirty) return;
+                  cur.applyExternalWrite(path, content);
+                })
+                .catch(() => {});
+            });
+          }
+        }
+      },
+    );
+    const unCompile = listen<{ projectId: string; from?: string }>("compile:done", (e) => {
+      if (e.payload?.from === selfLabel) return; // ignore our own compile broadcast
+      const pid = e.payload?.projectId;
+      if (!pid || pid !== useFilesStore.getState().projectId) return;
+      void import("@/lib/tauri").then(({ readCompiledPdf }) => {
+        void readCompiledPdf(pid)
+          .then((buf) => {
+            if (useFilesStore.getState().projectId !== pid) return;
+            useCompileStore.setState({
+              status: "success",
+              phase: "idle",
+              pdfBytes: new Uint8Array(buf),
+              lastCompiledAt: Date.now(),
+            });
+            void import("@/lib/preview-window").then((m) => m.refreshPreviewWindow());
+          })
+          .catch(() => {});
+      });
+    });
+    const unSettings = listen<{ section?: string }>("settings:open", (e) => {
+      const s = useSettingsStore.getState();
+      if (e.payload?.section) s.setSettingsInitialSection(e.payload.section);
+      s.setSettingsOpen(true);
+    });
+    return () => {
+      void unFiles.then((f) => f());
+      void unCompile.then((f) => f());
+      void unSettings.then((f) => f());
+    };
+  }, []);
 
   // Manual recompile: Cmd/Ctrl + Enter. Forward SyncTeX: Cmd/Ctrl + Shift + J.
   useEffect(() => {
@@ -326,17 +398,23 @@ export default function App() {
           <PanelGroup direction="horizontal" className="flex-1">
             {showTree && (
               <>
-                <Panel id="sidebar" order={1} defaultSize={20} minSize={12} maxSize={42} className="bg-sidebar">
+                <Panel id="sidebar" order={1} defaultSize={15} minSize={12} maxSize={42} className="bg-sidebar">
                   <Sidebar />
                 </Panel>
                 <VHandle id="h-tree" />
               </>
             )}
 
-            <Panel id="editorpdf" order={2} defaultSize={showTree ? 80 : 100}>
+            <Panel id="editorpdf" order={2} defaultSize={showTree ? 85 : 100}>
               <PanelGroup direction="horizontal">
                 {viewMode !== "pdf" && (
-                  <Panel id="editor" order={1} defaultSize={viewMode === "editor" ? 100 : 50} minSize={15}>
+                  <Panel
+                    id="editor"
+                    order={1}
+                    // 15/35/50 overall → editor is 35/85 of the editor+pdf group
+                    defaultSize={viewMode === "editor" ? 100 : (35 / 85) * 100}
+                    minSize={15}
+                  >
                     <Editor />
                   </Panel>
                 )}
@@ -351,7 +429,13 @@ export default function App() {
                   </VHandle>
                 )}
                 {viewMode !== "editor" && (
-                  <Panel id="pdf" order={2} defaultSize={viewMode === "pdf" ? 100 : 50} minSize={15}>
+                  <Panel
+                    id="pdf"
+                    order={2}
+                    // 15/35/50 overall → pdf is 50/85 of the editor+pdf group
+                    defaultSize={viewMode === "pdf" ? 100 : (50 / 85) * 100}
+                    minSize={15}
+                  >
                     <PreviewPane />
                   </Panel>
                 )}

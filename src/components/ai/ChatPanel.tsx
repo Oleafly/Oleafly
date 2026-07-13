@@ -5,10 +5,12 @@ import {
   Brain,
   CheckCircle2,
   ChevronDown,
+  ChevronUp,
   History,
   MessageSquare,
   Paperclip,
   Plus,
+  RotateCcw,
   Sparkles,
   Square,
 } from "lucide-react";
@@ -25,6 +27,13 @@ import { toast } from "@/lib/toast";
 import { buildModel as buildAiModel, defaultModel, PROVIDERS } from "@/lib/ai-providers";
 import { useSettingsStore } from "@/store/settings";
 import { useChatsStore, type ChatMessage, type StoredChat } from "@/store/chats";
+import { useAgentTodoStore } from "@/store/agent-todos";
+import { useAgentMemoryStore } from "@/store/agent-memory";
+import { useAgentHandoffStore } from "@/store/agent-handoff";
+import { buildWorkspaceContext } from "@/lib/ai-context";
+import { packChatHistory, packToolOutput } from "@/lib/ai-context-pack";
+import { estimateUsd, formatUsd } from "@/lib/ai-pricing";
+import { formatRagContext, retrieveProjectChunks } from "@/lib/ai-rag";
 import { ChatHistoryModal } from "@/components/ai/ChatHistoryModal";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
@@ -56,7 +65,8 @@ const FIGURE_SUGGESTIONS = [
   "Diagram a data preprocessing flow ending in a training loop",
 ];
 
-const TOOLS_LIST = "read_file, write_file, replace_in_file, create_file, delete_file, rename_file, list_files, search_project, compile, get_log, get_pdf_text, set_main_doc, toggle_theme";
+const TOOLS_LIST =
+  "read_file, write_file, replace_in_file, create_file, delete_file, rename_file, list_files, search_project, project_map, compile, get_log, get_pdf_text, verify_pdf_pages, update_todos, get_todos, remember_note, forget_note, list_notes, set_main_doc, toggle_theme";
 
 export function ChatPanel() {
   const projectId = useFilesStore((s) => s.projectId);
@@ -73,7 +83,10 @@ export function ChatPanel() {
   const setActiveChat = useChatsStore((s) => s.setActive);
   const activeChat = chats.find((c) => c.id === activeChatId) ?? null;
 
-  const openAISettings = () => { setSettingsInitialSection("ai"); setSettingsOpen(true); };
+  const openAISettings = () => {
+    setSettingsInitialSection("ai");
+    setSettingsOpen(true);
+  };
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -98,6 +111,36 @@ export function ChatPanel() {
   const [showScrollDown, setShowScrollDown] = useState(false);
   // Figure studio mode: swaps in the figure system prompt + figure toolset.
   const [figureMode, setFigureMode] = useState(false);
+  /** Git oid captured before the last agent run (for one-click restore). */
+  const [checkpointOid, setCheckpointOid] = useState<string | null>(null);
+  const agentTodos = useAgentTodoStore((s) => s.todos);
+  /** Aggregated token usage for the current/last agent run. */
+  const [runUsage, setRunUsage] = useState<{
+    input: number;
+    output: number;
+    steps: number;
+    usd: number;
+  } | null>(null);
+  /** Show token/$ usage strip; persisted preference. */
+  const [usageVisible, setUsageVisible] = useState(() => {
+    try {
+      return localStorage.getItem("openleaf.ai.usageVisible") !== "0";
+    } catch {
+      return true;
+    }
+  });
+  const toggleUsageVisible = () => {
+    setUsageVisible((v) => {
+      const next = !v;
+      try {
+        localStorage.setItem("openleaf.ai.usageVisible", next ? "1" : "0");
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
+  const handoffPending = useAgentHandoffStore((s) => s.pendingPrompt);
   // Images (data URLs) to attach to the NEXT model step so a vision model can
   // see the rendered figure. Drained each step by the send loop.
   const pendingImagesRef = useRef<string[]>([]);
@@ -270,6 +313,14 @@ export function ChatPanel() {
   const configuredProviders = PROVIDERS.filter(
     (p) => (keysMap[p.id] ?? "").trim().length > 0
   );
+
+  // Load sticky agent memory when the project changes. Also drop the in-run
+  // todo checklist, which is not project-scoped, so project A's plan does not
+  // linger under project B.
+  useEffect(() => {
+    if (projectId) useAgentMemoryStore.getState().load(projectId);
+    useAgentTodoStore.getState().clear();
+  }, [projectId]);
 
   // Load persisted chats + current git HEAD whenever the project changes.
   // The panel unmounts whenever the sidebar collapses or another rail tab is
@@ -471,13 +522,23 @@ export function ChatPanel() {
         setPendingApproval({ req, resolve: finish });
       });
 
+    // Fresh plan checklist each agent run; reset last-run meter (chat totals persist).
+    useAgentTodoStore.getState().clear();
+    setRunUsage(null);
+    let usageIn = 0;
+    let usageOut = 0;
+    let usageSteps = 0;
+
     // Checkpoint the project before the agent edits anything, so a bad edit can
     // always be reverted from git history (best-effort; never blocks the chat).
     if (projectId) {
       try {
         await gitAutoCommit(projectId, "OpenLeaf AI checkpoint");
+        const log = await gitLog(projectId);
+        setCheckpointOid(log[0]?.oid ?? null);
       } catch {
         /* not a git repo yet / nothing to commit - non-fatal */
+        setCheckpointOid(null);
       }
     }
 
@@ -498,6 +559,7 @@ export function ChatPanel() {
     timedOutRef.current = false;
 
     // Persist this conversation as a chat (creates one on the first message).
+    let chatIdForUsage: string | null = null;
     {
       const cs = useChatsStore.getState();
       let chatId = cs.activeId;
@@ -505,6 +567,7 @@ export function ChatPanel() {
         const created = cs.create(projectId, currentHead);
         chatId = created.id;
       }
+      chatIdForUsage = chatId;
       if (chatId) cs.saveMessages(chatId, nextMessages);
     }
 
@@ -517,7 +580,22 @@ ${customPromptRef.current.trim()}
 USER_CUSTOM_INSTRUCTIONS`
       : "";
 
-    const systemPrompt = `You are OpenLeaf AI, the friendly writing partner inside OpenLeaf, a local-first LaTeX editor.
+    let workspaceCtx = "";
+    try {
+      workspaceCtx = await buildWorkspaceContext();
+    } catch {
+      workspaceCtx = "(workspace context unavailable)";
+    }
+    // Keyword RAG over project sources (no embeddings).
+    try {
+      const chunks = await retrieveProjectChunks(text, { topK: 4 });
+      const rag = formatRagContext(chunks);
+      if (rag) workspaceCtx = `${workspaceCtx}\n\n${rag}`;
+    } catch {
+      /* non-fatal */
+    }
+
+    const systemPrompt = `You are OpenLeaf AI, a fully agentic writing partner inside OpenLeaf, a local-first LaTeX editor.
 You have full, reliable control over the project via these tools: ${TOOLS_LIST}.
 The current project is "${projectName}" (ID: ${projectId}). Main document: ${useFilesStore.getState().mainDoc || "main.tex"}.${
       projectKind === "image"
@@ -533,29 +611,39 @@ Voice and style:
 - Explain what you did in plain, friendly language. Skip jargon unless the user is clearly technical.
 - It is fine to be brief when the task is small. Match the user's energy.
 
-Tool notes:
-- write_file replaces the ENTIRE file. replace_in_file does a precise find/replace and is better for small fixes.
-- compile persists the active file, builds, and returns { success, errors, has_pdf, log_tail }.
-- get_log returns the full compile log; get_pdf_text returns the rendered PDF's text so you can verify output.
-- File reads/writes are deterministic and hit disk immediately.
+Agentic workflow (required for multi-step tasks):
+1. For multi-step work, call update_todos with a short plan (pending items), set one to in_progress, complete as you go.
+2. Use the live workspace context below; refresh with tools (project_map, read_file, compile) when you need certainty.
+3. Prefer replace_in_file for small fixes; write_file overwrites the entire file.
+4. read_file supports offset/limit; large files may be truncated — re-read another slice if needed.
+5. After structural or multi-file edits: compile, then verify_pdf_pages (vision) or get_pdf_text (text-only).
+6. set_main_doc requires approval. Deleting files always requires approval.
+7. Use remember_note for durable project conventions the user would want kept across chats; forget_note to remove.
 
 Workflow for "fix errors" requests:
-1. read_file the relevant document, or compile first to get errors.
-2. Apply fixes (prefer replace_in_file for targeted edits).
-3. compile again. If errors remain, read get_log for context, fix, and recompile. Iterate until success is true with an empty errors array.
-4. Optionally verify the result with get_pdf_text.
-Do not stop until the task is genuinely complete, then explain what you did in a friendly, human way.${sandboxedCustom}`;
+1. Use live compile errors if present, or compile first.
+2. Apply fixes (prefer replace_in_file).
+3. compile again until success is true with empty errors.
+4. verify_pdf_pages or get_pdf_text when layout/content must look right.
+Do not stop until the task is genuinely complete, then explain what you did in a friendly, human way.
+
+${workspaceCtx}
+${sandboxedCustom}`;
 
     const figure = figureMode;
     // Figure mode gets the same untrusted-instruction sandbox as main chat so a
     // crafted custom prompt cannot override figure tools or safety rules.
     const effectiveSystem = figure
-      ? FIGURE_SYSTEM_PROMPT + sandboxedCustom
+      ? FIGURE_SYSTEM_PROMPT + sandboxedCustom + `\n\n${workspaceCtx}`
       : systemPrompt;
 
-    // Conversation history: a plain array that grows as steps complete.
+    // Conversation history: packed (recent + truncated) so long chats fit context.
     type Msg = { role: string; content: string; tool_calls?: any[]; tool_call_id?: string; name?: string };
-    const apiMessages: Msg[] = [...messages, userMsg].map((m) => ({ role: m.role, content: m.content }));
+    const packedPrior = packChatHistory(messages);
+    const apiMessages: Msg[] = [
+      ...packedPrior.map((m) => ({ role: m.role, content: m.content })),
+      { role: "user", content: userMsg.content },
+    ];
     // Attach files/images to the final user message as multimodal content parts
     // (images need a vision-capable model; other providers surface an error).
     if (outgoing.length) {
@@ -590,6 +678,7 @@ Do not stop until the task is genuinely complete, then explain what you did in a
         const stepToolResults: { id: string; name: string; output: any }[] = [];
         let errorMsg = "";
         let errorRetryable = true;
+        let stepUsage: { input: number; output: number } = { input: 0, output: 0 };
         // Each thinking phase becomes its own block, anchored to the number
         // of tool calls that precede it, so the transcript interleaves
         // thought -> tools -> thought in true arrival order.
@@ -708,7 +797,18 @@ Do not stop until the task is genuinely complete, then explain what you did in a
           }
         }
 
-        return { stepText, stepToolCalls, stepToolResults, errorMsg, errorRetryable };
+        // Usage is async in the AI SDK; resolve after the stream finishes.
+        try {
+          const u = await result.usage;
+          stepUsage = {
+            input: u?.inputTokens ?? (u as { promptTokens?: number })?.promptTokens ?? 0,
+            output: u?.outputTokens ?? (u as { completionTokens?: number })?.completionTokens ?? 0,
+          };
+        } catch {
+          /* provider may not report usage */
+        }
+
+        return { stepText, stepToolCalls, stepToolResults, errorMsg, errorRetryable, stepUsage };
       };
 
       let reachedCap = false;
@@ -717,9 +817,9 @@ Do not stop until the task is genuinely complete, then explain what you did in a
         if (ac.signal.aborted) break;
         setThinkingText(step === 0 ? "Thinking…" : "Continuing…");
 
-        // Figure mode: attach any queued rendered figures so a vision model can
-        // see and refine them. Text-only models get the errors/log instead.
-        if (figure && pendingImagesRef.current.length) {
+        // Attach any queued page/figure PNGs so a vision model can inspect them.
+        // (verify_pdf_pages and figure preview_figure both push via onImage.)
+        if (pendingImagesRef.current.length) {
           const imgs = pendingImagesRef.current.splice(0);
           if (modelSupportsVision(provider, model)) {
             apiMessages.push({
@@ -727,7 +827,9 @@ Do not stop until the task is genuinely complete, then explain what you did in a
               content: [
                 {
                   type: "text",
-                  text: "Here is the rendered figure. Check for overlapping labels, cramped spacing, misalignment, and legibility, and refine it if it is not clean.",
+                  text: figure
+                    ? "Here is the rendered figure. Check for overlapping labels, cramped spacing, misalignment, and legibility, and refine it if it is not clean."
+                    : "Here are rendered PDF page image(s) from verify_pdf_pages. Check for overflow, cut-off text, empty regions, and layout problems. Fix source if needed, then recompile and re-verify.",
                 },
                 ...imgs.map((image) => ({ type: "image", image })),
               ],
@@ -757,10 +859,22 @@ Do not stop until the task is genuinely complete, then explain what you did in a
             // Only retry when nothing useful happened (no text, no tool calls).
             const isEmpty = !stepText && stepToolCalls.length === 0;
             if (r.errorMsg && isEmpty && r.errorRetryable && attempt < MAX_RETRIES) {
-              setThinkingText(`Connection issue - retrying (${attempt + 1}/${MAX_RETRIES})…`);
+              setThinkingText(`Connection issue, retrying (${attempt + 1}/${MAX_RETRIES})…`);
               await sleep(RETRY_BASE_MS * (attempt + 1));
               continue;
             }
+            // Count usage once, for the attempt we keep. Doing it before the
+            // retry decision would sum every discarded empty attempt's tokens
+            // and inflate the step count.
+            usageIn += r.stepUsage?.input ?? 0;
+            usageOut += r.stepUsage?.output ?? 0;
+            usageSteps += 1;
+            setRunUsage({
+              input: usageIn,
+              output: usageOut,
+              steps: usageSteps,
+              usd: estimateUsd(model, usageIn, usageOut).usd,
+            });
             // Permanent error (bad key, quota, model): stop and show it now.
             if (r.errorMsg) fatalError = r.errorMsg;
             break;
@@ -811,7 +925,7 @@ Do not stop until the task is genuinely complete, then explain what you did in a
                 toolName: tr.name,
                 output: {
                   type: "json",
-                  value: tr.output,
+                  value: packToolOutput(tr.output),
                 },
               },
             ],
@@ -853,6 +967,17 @@ Do not stop until the task is genuinely complete, then explain what you did in a
       flushStreamPatches();
       setStreaming(false);
       setThinkingText(null);
+      // Fold this run into the chat's cumulative usage (persisted with the chat).
+      if (chatIdForUsage && (usageIn > 0 || usageOut > 0 || usageSteps > 0)) {
+        const { usd } = estimateUsd(model, usageIn, usageOut);
+        useChatsStore.getState().addUsage(chatIdForUsage, {
+          inputTokens: usageIn,
+          outputTokens: usageOut,
+          steps: usageSteps,
+          estimatedUsd: usd,
+        });
+        setRunUsage({ input: usageIn, output: usageOut, steps: usageSteps, usd });
+      }
       // Persist the final state of the conversation (flush any pending debounce).
       if (persistTimerRef.current) {
         clearTimeout(persistTimerRef.current);
@@ -872,6 +997,15 @@ Do not stop until the task is genuinely complete, then explain what you did in a
     abortRef.current?.abort();
   }, []);
 
+  // Inline AI (and other UIs) can hand a prompt into the agent chat.
+  useEffect(() => {
+    if (!handoffPending || streaming || !apiKey) return;
+    const h = useAgentHandoffStore.getState().consume();
+    if (!h) return;
+    if (h.autoSend) void send(h.prompt);
+    else setInput(h.prompt);
+  }, [handoffPending, streaming, apiKey, send]);
+
   // Abort any in-flight run when the project changes or the panel unmounts, so a
   // stale stream can't keep spending tokens or writing into the wrong chat.
   useEffect(() => {
@@ -888,95 +1022,131 @@ Do not stop until the task is genuinely complete, then explain what you did in a
         {apiKey && activeChat?.headOid && currentHead && activeChat.headOid !== currentHead && (
           <InfoHint message="This chat started from an older version of the project. File contents may differ from what the AI saw." />
         )}
-        {configuredProviders.length > 0 && (
-          <div className="ml-auto flex items-center gap-0.5">
-            <div ref={modelDropdownRef} className="relative">
-              <button
-                onClick={() => setModelDropdown(!modelDropdown)}
-                className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
-                title="Switch provider / model"
-              >
-                <span className="max-w-[150px] truncate">
-                  {PROVIDERS.find((p) => p.id === provider)?.models.find((m) => m.id === model)?.name || model}
-                </span>
-                <ChevronDown className="size-3" />
-              </button>
-              {modelDropdown && (
-                <div className="absolute right-0 top-9 z-50 max-h-[60vh] min-w-[220px] overflow-auto rounded-md border bg-popover p-1 shadow-xl">
-                  {configuredProviders.map((p) => {
-                    const models =
-                      p.id === "ollama" && ollamaModels.length > 0
-                        ? ollamaModels.map((id) => ({ id, name: id }))
-                        : p.models;
-                    return (
-                      <div key={p.id} className="mb-1 last:mb-0">
-                        <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                          {p.name}
+        <div className="ml-auto flex items-center gap-0.5">
+          {configuredProviders.length > 0 && (
+            <>
+              <div ref={modelDropdownRef} className="relative">
+                <button
+                  onClick={() => setModelDropdown(!modelDropdown)}
+                  className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+                  title="Switch provider / model"
+                >
+                  <span className="max-w-[150px] truncate">
+                    {PROVIDERS.find((p) => p.id === provider)?.models.find((m) => m.id === model)?.name || model}
+                  </span>
+                  <ChevronDown className="size-3" />
+                </button>
+                {modelDropdown && (
+                  <div className="absolute right-0 top-9 z-50 max-h-[60vh] min-w-[220px] overflow-auto rounded-md border bg-popover p-1 shadow-xl">
+                    {configuredProviders.map((p) => {
+                      const models =
+                        p.id === "ollama" && ollamaModels.length > 0
+                          ? ollamaModels.map((id) => ({ id, name: id }))
+                          : p.models;
+                      return (
+                        <div key={p.id} className="mb-1 last:mb-0">
+                          <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            {p.name}
+                          </div>
+                          {models.map((m) => {
+                            const active = provider === p.id && model === m.id;
+                            return (
+                              <button
+                                key={p.id + m.id}
+                                onClick={() => void selectModel(p.id, m.id)}
+                                className={cn(
+                                  "flex w-full cursor-pointer items-center justify-between rounded px-2 py-1.5 text-sm hover:bg-accent",
+                                  active && "bg-accent font-medium"
+                                )}
+                              >
+                                <span className="truncate">{m.name}</span>
+                                {active && <CheckCircle2 className="size-3.5 shrink-0" />}
+                              </button>
+                            );
+                          })}
                         </div>
-                        {models.map((m) => {
-                          const active = provider === p.id && model === m.id;
-                          return (
-                            <button
-                              key={p.id + m.id}
-                              onClick={() => void selectModel(p.id, m.id)}
-                              className={cn(
-                                "flex w-full cursor-pointer items-center justify-between rounded px-2 py-1.5 text-sm hover:bg-accent",
-                                active && "bg-accent font-medium"
-                              )}
-                            >
-                              <span className="truncate">{m.name}</span>
-                              {active && <CheckCircle2 className="size-3.5 shrink-0" />}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            <Tooltip label={figureMode ? "Figure mode on" : "Draw a figure"}>
-              <button
-                onClick={() => setFigureMode((v) => !v)}
-                aria-label="Toggle figure mode"
-                className={cn(
-                  "flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
-                  figureMode && "bg-accent text-foreground",
+                      );
+                    })}
+                  </div>
                 )}
-              >
-                <Sparkles className="size-4" />
-              </button>
-            </Tooltip>
+              </div>
 
-            <Tooltip label="New chat">
-              <button
-                onClick={newChat}
-                disabled={streaming}
-                aria-label="New chat"
-                className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40"
-              >
-                <Plus className="size-4" />
-              </button>
-            </Tooltip>
+              <Tooltip label={figureMode ? "Figure mode on" : "Draw a figure"}>
+                <button
+                  onClick={() => setFigureMode((v) => !v)}
+                  aria-label="Toggle figure mode"
+                  className={cn(
+                    "flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                    figureMode && "bg-accent text-foreground",
+                  )}
+                >
+                  <Sparkles className="size-4" />
+                </button>
+              </Tooltip>
 
-            <Tooltip label="Chat history">
-              <button
-                onClick={() => setHistoryOpen(true)}
-                aria-label="Chat history"
-                className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              >
-                <History className="size-4" />
-              </button>
-            </Tooltip>
-          </div>
-        )}
+              <Tooltip label="New chat">
+                <button
+                  onClick={newChat}
+                  disabled={streaming}
+                  aria-label="New chat"
+                  className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40"
+                >
+                  <Plus className="size-4" />
+                </button>
+              </Tooltip>
+
+              <Tooltip label="Chat history">
+                <button
+                  onClick={() => setHistoryOpen(true)}
+                  aria-label="Chat history"
+                  className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  <History className="size-4" />
+                </button>
+              </Tooltip>
+            </>
+          )}
+
+        </div>
       </div>
 
       {/* Storage-full warning: chat history can no longer be saved. */}
       {quotaWarning && (
         <div className="shrink-0 border-b border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] text-amber-600 dark:text-amber-400">
           Chat history storage is full. Older chats were pruned and new messages may not be saved. Delete old chats from history to free space.
+        </div>
+      )}
+
+      {/* Live agent plan checklist (visible even keyless so e2e/hooks can assert it) */}
+      {agentTodos.length > 0 && (
+        <div className="shrink-0 border-b px-3 py-2" data-testid="agent-todos">
+          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Plan
+          </p>
+          <ul className="space-y-1">
+            {agentTodos.map((t) => (
+              <li key={t.id} className="flex items-start gap-1.5 text-[11px] leading-snug">
+                <span
+                  className={cn(
+                    "mt-0.5 size-1.5 shrink-0 rounded-full",
+                    t.status === "completed" && "bg-emerald-500",
+                    t.status === "in_progress" && "bg-primary",
+                    t.status === "pending" && "bg-muted-foreground/40",
+                    t.status === "cancelled" && "bg-muted-foreground/20",
+                  )}
+                />
+                <span
+                  className={cn(
+                    t.status === "completed" && "text-muted-foreground line-through",
+                    t.status === "cancelled" && "text-muted-foreground/60 line-through",
+                    t.status === "in_progress" && "font-medium text-foreground",
+                  )}
+                >
+                  {t.content}
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -1116,22 +1286,209 @@ Do not stop until the task is genuinely complete, then explain what you did in a
             )}
           </div>
 
-          {/* Destructive-edit approval prompt (pauses the AI on the tool) */}
-          {pendingApproval && (
-            <ToolConfirm
-              req={pendingApproval.req}
-              onApprove={() => pendingApproval.resolve(true)}
-              onReject={() => pendingApproval.resolve(false)}
-              sessionAutoApprove={sessionAutoApproveRef.current}
-              onApproveSession={() => {
-                sessionAutoApproveRef.current = true;
-                pendingApproval.resolve(true);
-              }}
-            />
-          )}
+          {/* Usage meter + checkpoint + composer.
+              Collapsed usage is a floating ^ only (absolute, zero layout height). */}
+          {(() => {
+            const chatUsage = activeChat?.usage;
+            const hasUsage =
+              !!(
+                runUsage ||
+                (chatUsage &&
+                  (chatUsage.inputTokens > 0 ||
+                    chatUsage.outputTokens > 0 ||
+                    chatUsage.steps > 0))
+              );
+            const hasCheckpoint = !!(checkpointOid && !streaming);
+            const chatTotal =
+              chatUsage != null
+                ? chatUsage.inputTokens + chatUsage.outputTokens
+                : 0;
+            const pill =
+              "inline-flex items-center gap-1 rounded-full border border-border/70 bg-muted/40 px-2 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground";
 
-          {/* Prompt input */}
-          <div className="shrink-0 border-t p-2.5">
+            const checkpointBtn = hasCheckpoint ? (
+              <div className="ml-auto flex shrink-0 items-center gap-2">
+                <span className="hidden text-[10px] text-muted-foreground sm:inline">
+                  Checkpoint ready
+                </span>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  data-testid="ai-restore-checkpoint"
+                  onClick={() => {
+                    if (!projectId || !checkpointOid) return;
+                    void (async () => {
+                      try {
+                        await useFilesStore.getState().restoreFromGit(checkpointOid);
+                        setCheckpointOid(null);
+                        useAgentTodoStore.getState().clear();
+                        toast.success("Restored project to pre-AI checkpoint.");
+                      } catch (e) {
+                        toast.error(`Could not restore: ${e}`);
+                      }
+                    })();
+                  }}
+                >
+                  <RotateCcw className="size-3.5" /> Undo AI changes
+                </Button>
+              </div>
+            ) : null;
+
+            return (
+              <div className="relative shrink-0">
+                {/* Floating ^ — always mounted when hasUsage so fade/scale can animate.
+                    Takes no layout space (absolute). Hidden while expanded. */}
+                {hasUsage && (
+                  <div
+                    className={cn(
+                      "absolute -top-7 left-2 z-10 transition-[opacity,transform] duration-200 ease-out",
+                      usageVisible
+                        ? "pointer-events-none scale-75 opacity-0"
+                        : "pointer-events-none scale-100 opacity-100",
+                    )}
+                    data-testid={usageVisible ? undefined : "ai-usage-bar"}
+                    aria-hidden={usageVisible}
+                  >
+                    <Tooltip label="Show usage">
+                      <button
+                        type="button"
+                        aria-label="Show usage"
+                        aria-pressed={false}
+                        data-testid={usageVisible ? undefined : "ai-usage-toggle"}
+                        tabIndex={usageVisible ? -1 : 0}
+                        onClick={toggleUsageVisible}
+                        className={cn(
+                          "flex size-6 items-center justify-center rounded-md border border-border/60 bg-sidebar/95 text-muted-foreground shadow-sm backdrop-blur-sm transition-colors hover:bg-accent hover:text-foreground",
+                          usageVisible ? "pointer-events-none" : "pointer-events-auto",
+                        )}
+                      >
+                        <ChevronUp className="size-3.5" />
+                      </button>
+                    </Tooltip>
+                  </div>
+                )}
+
+                {/* Expandable strip: grid 0fr↔1fr for height; content fades/slides.
+                    Collapsed height is 0 — no reserved bar space. */}
+                {hasUsage && (
+                  <div
+                    className={cn(
+                      "grid transition-[grid-template-rows] duration-200 ease-out",
+                      usageVisible ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+                    )}
+                    data-testid={usageVisible ? "ai-usage-bar" : undefined}
+                  >
+                    <div className="min-h-0 overflow-hidden">
+                      <div
+                        className={cn(
+                          "flex flex-wrap items-center gap-2 border-t px-3 py-1.5 transition-[opacity,transform] duration-200 ease-out",
+                          usageVisible
+                            ? "translate-y-0 opacity-100"
+                            : "translate-y-1 opacity-0",
+                        )}
+                      >
+                        <Tooltip label="Hide usage">
+                          <button
+                            type="button"
+                            aria-label="Hide usage"
+                            aria-pressed={true}
+                            data-testid={usageVisible ? "ai-usage-toggle" : undefined}
+                            tabIndex={usageVisible ? 0 : -1}
+                            onClick={toggleUsageVisible}
+                            className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                          >
+                            <ChevronDown className="size-3.5" />
+                          </button>
+                        </Tooltip>
+                        <div
+                          className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5"
+                          data-testid="ai-run-usage"
+                        >
+                          {runUsage && (
+                            <div className="flex flex-wrap items-center gap-1">
+                              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/80">
+                                Last
+                              </span>
+                              <span className={pill}>
+                                {runUsage.steps} step{runUsage.steps === 1 ? "" : "s"}
+                              </span>
+                              {runUsage.input + runUsage.output > 0 && (
+                                <>
+                                  <span className={pill} title="Input tokens">
+                                    <span className="text-sky-600 dark:text-sky-400">↓</span>
+                                    {runUsage.input.toLocaleString()}
+                                  </span>
+                                  <span className={pill} title="Output tokens">
+                                    <span className="text-violet-600 dark:text-violet-400">↑</span>
+                                    {runUsage.output.toLocaleString()}
+                                  </span>
+                                  <span className={pill}>
+                                    ~{(runUsage.input + runUsage.output).toLocaleString()} tok
+                                  </span>
+                                </>
+                              )}
+                              {runUsage.usd > 0 && (
+                                <span className={cn(pill, "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400")}>
+                                  {formatUsd(runUsage.usd)}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          {chatUsage && chatTotal + chatUsage.steps > 0 && (
+                            <div
+                              className="flex flex-wrap items-center gap-1"
+                              data-testid="ai-chat-usage"
+                            >
+                              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/80">
+                                Chat
+                              </span>
+                              <span className={pill}>
+                                {chatUsage.runs} run{chatUsage.runs === 1 ? "" : "s"}
+                              </span>
+                              <span className={pill}>
+                                {chatUsage.steps} step{chatUsage.steps === 1 ? "" : "s"}
+                              </span>
+                              {chatTotal > 0 && (
+                                <span className={pill}>~{chatTotal.toLocaleString()} tok</span>
+                              )}
+                              {(chatUsage.estimatedUsd ?? 0) > 0 && (
+                                <span className={cn(pill, "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400")}>
+                                  {formatUsd(chatUsage.estimatedUsd ?? 0)}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        {usageVisible ? checkpointBtn : null}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Checkpoint alone when usage is collapsed (no empty usage strip) */}
+                {hasCheckpoint && !(hasUsage && usageVisible) && (
+                  <div className="flex items-center border-t px-3 py-1.5">
+                    {checkpointBtn}
+                  </div>
+                )}
+
+                {/* Destructive-edit approval prompt (pauses the AI on the tool) */}
+                {pendingApproval && (
+                  <ToolConfirm
+                    req={pendingApproval.req}
+                    onApprove={() => pendingApproval.resolve(true)}
+                    onReject={() => pendingApproval.resolve(false)}
+                    sessionAutoApprove={sessionAutoApproveRef.current}
+                    onApproveSession={() => {
+                      sessionAutoApproveRef.current = true;
+                      pendingApproval.resolve(true);
+                    }}
+                  />
+                )}
+
+                {/* Prompt input */}
+                <div className="border-t p-2.5">
             <AttachmentChips
               items={attachments}
               onRemove={(id) => setAttachments((a) => a.filter((x) => x.id !== id))}
@@ -1185,6 +1542,9 @@ Do not stop until the task is genuinely complete, then explain what you did in a
               )}
             </div>
           </div>
+              </div>
+            );
+          })()}
         </>
       )}
 

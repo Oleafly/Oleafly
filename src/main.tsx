@@ -31,8 +31,8 @@ window.addEventListener("error", (e) => {
   void appendAppLog(`Uncaught error: ${msg}`).catch(() => {});
 });
 
-// A dedicated, frameless window (opened by the updater) renders only the update
-// UI via `?view=update`, in its own JS context.
+// Dedicated secondary windows render a slice of the SPA via `?view=…` in their
+// own JS context (same pattern as preview / update).
 const viewParam = new URLSearchParams(window.location.search).get("view");
 const isUpdateWindow = viewParam === "update";
 const isPreviewWindow = viewParam === "preview";
