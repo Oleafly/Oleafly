@@ -18,6 +18,8 @@ export interface AppContext {
   /** "tex", "image", ... or null when no project is open. */
   projectKind: string | null;
   theme: "light" | "dark";
+  /** Local MCP server is running (Settings → MCP). */
+  mcpEnabled?: boolean;
 }
 
 /** A tab on the left rail plus the sidebar panel it opens. */
@@ -71,13 +73,28 @@ export interface AiToolsetContribution<O = any, T = any> {
   create(opts: O): T;
 }
 
+/** Declares which view-context the agent should treat as active.
+ *  M1 only carries id/isActive/order; describe()/tools() arrive in later milestones. */
+export interface ContextProviderContribution {
+  id: string;
+  isActive: (ctx: AppContext) => boolean;
+  /** Lower wins when several providers are active. */
+  order: number;
+}
+
 export interface Registry {
   railTabs: RailTabContribution[];
   commands: CommandContribution[];
   aiToolsets: AiToolsetContribution[];
+  contextProviders: ContextProviderContribution[];
 }
 
-export const registry: Registry = { railTabs: [], commands: [], aiToolsets: [] };
+export const registry: Registry = {
+  railTabs: [],
+  commands: [],
+  aiToolsets: [],
+  contextProviders: [],
+};
 
 const byOrder = <T extends { order: number }>(a: T, b: T) => a.order - b.order;
 
@@ -93,6 +110,19 @@ export function registerCommand(cmd: CommandContribution): void {
 
 export function registerAiToolset(toolset: AiToolsetContribution): void {
   registry.aiToolsets.push(toolset);
+}
+
+export function registerContextProvider(c: ContextProviderContribution): void {
+  registry.contextProviders.push(c);
+  registry.contextProviders.sort(byOrder);
+}
+
+/** Active view-context provider for a context: lowest order among those whose
+ *  isActive(ctx) is true. Undefined when none match. */
+export function activeContextProvider(
+  ctx: AppContext,
+): ContextProviderContribution | undefined {
+  return registry.contextProviders.find((p) => p.isActive(ctx));
 }
 
 /** Visible rail tabs for a context, grouped by section in rail order. */
