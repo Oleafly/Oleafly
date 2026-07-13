@@ -26,6 +26,50 @@ function withTimeout<T>(p: Promise<T>, ms: number, what: string): Promise<T> {
   });
 }
 
+/** A pdf.js worker that wedges mid-session makes text calls hang or return empty
+ *  while the canvas still renders (pdf.js has no timeout for this and no
+ *  recovery). Probe page 1's text pipe, time-boxed, and throw when it is empty or
+ *  hangs so the caller can reload on a fresh worker. Most PDFs (LaTeX output)
+ *  have text on page 1; a genuinely text-less cover costs one wasted reload
+ *  before we accept it. */
+async function probePageText(doc: pdfjsLib.PDFDocumentProxy): Promise<void> {
+  if (doc.numPages < 1) return;
+  const page = await withTimeout(doc.getPage(1), 8_000, "text probe page");
+  try {
+    const tc = (await withTimeout(page.getTextContent(), 8_000, "text probe")) as {
+      items: Array<{ str?: string }>;
+    };
+    if (!tc.items.some((it) => typeof it.str === "string" && it.str.trim().length > 0)) {
+      throw new Error("text pipe returned empty");
+    }
+  } finally {
+    page.cleanup();
+  }
+}
+
+/** Last-resort recovery: pdf.js (v6) has no mid-session dead-worker recovery, so
+ *  route it to run the worker code on the MAIN THREAD via a LoopbackPort. Setting
+ *  `globalThis.pdfjsWorker` makes the next PDFWorker skip the real Web Worker.
+ *  Slower and blocks the UI during parse, but it cannot wedge. One-way and
+ *  session-wide by design (once the worker subsystem is dead, staying on the main
+ *  thread is the only way to keep rendering). Best effort. */
+let mainThreadForced = false;
+async function forceMainThreadWorker(): Promise<void> {
+  if (mainThreadForced) return;
+  mainThreadForced = true;
+  try {
+    // The worker code now runs on the main thread, so apply the same polyfills
+    // the worker bundle would.
+    await import("./polyfills");
+    // @ts-expect-error the worker module ships no type declarations; we only
+    // need its WorkerMessageHandler export, which pdf.js reads off globalThis.
+    const mod = await import("pdfjs-dist/build/pdf.worker.min.mjs");
+    (globalThis as { pdfjsWorker?: unknown }).pdfjsWorker = mod;
+  } catch {
+    /* best effort; on failure the caller falls through to rendering without text */
+  }
+}
+
 /** The word under a screen point in the PDF text layer, for word-precise inverse
  *  SyncTeX. Returns null over whitespace, an image, or when no text is hit. */
 function wordAtPoint(clientX: number, clientY: number): string | null {
@@ -262,7 +306,9 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
           container: textDiv,
           viewport,
         } as any);
-        await textLayer.render();
+        // Time-box: a worker that wedges after load can hang streamTextContent
+        // forever, which would stall this async render loop.
+        await withTimeout(textLayer.render(), 15_000, "text layer");
       } catch {
         /* text selection is a non-fatal enhancement */
       }
@@ -466,23 +512,49 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       // windows), hanging loadingTask.promise forever with no error. Watchdog
       // the load and retry once on a fresh task before showing an error.
       const open = async () => {
+        // Default getDocument (no explicit worker) spawns a FRESH worker per
+        // call and destroys it with the loading task, so each retry gets a new
+        // worker without us managing one.
         loadingTask = pdfjsLib.getDocument({ data: data.slice() });
         return withTimeout(loadingTask.promise, 30_000, "pdf load");
       };
+      // Load AND confirm the text pipe works: a wedged worker can load the doc
+      // and render the canvas while returning empty text (blank text layer,
+      // broken inverse SyncTeX).
+      const openAndProbe = async () => {
+        const doc = await open();
+        await probePageText(doc);
+        return doc;
+      };
+      // Escalating recovery. Each attempt reopens on a fresh worker; a wedge
+      // (hung load or empty text) is caught by the watchdog/probe. If two fresh
+      // workers both fail, the webview worker subsystem is likely dead, so fall
+      // back to the main thread. The final plain `open` renders the canvas even
+      // when page 1 is genuinely text-less, rather than showing an error.
+      const attempts: Array<() => Promise<pdfjsLib.PDFDocumentProxy>> = [
+        openAndProbe,
+        openAndProbe,
+        async () => {
+          await forceMainThreadWorker();
+          return openAndProbe();
+        },
+        open,
+      ];
       try {
-        let doc: pdfjsLib.PDFDocumentProxy;
-        try {
-          doc = await open();
-        } catch (first) {
-          (loadingTask as pdfjsLib.PDFDocumentLoadingTask | null)?.destroy().catch(() => {});
-          if (cancelled) return;
+        let doc: pdfjsLib.PDFDocumentProxy | null = null;
+        let lastErr: unknown;
+        for (const attempt of attempts) {
           try {
-            doc = await open();
-          } catch {
-            throw first;
+            doc = await attempt();
+            break;
+          } catch (e) {
+            lastErr = e;
+            (loadingTask as pdfjsLib.PDFDocumentLoadingTask | null)?.destroy().catch(() => {});
+            if (cancelled) return;
           }
         }
         if (cancelled) return;
+        if (!doc) throw lastErr;
         docRef.current = doc;
         await buildLayout(doc);
       } catch (e) {
