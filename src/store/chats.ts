@@ -353,6 +353,15 @@ if (typeof window !== "undefined") {
       steps: number;
       estimatedUsd?: number;
     }) => ChatUsage | null;
+    __chatStartFresh?: () => string | null;
+  };
+  // Start a brand-new active chat (zero usage). Lets a usage test assert
+  // absolute totals without inheriting usage a prior test left on the active chat.
+  w.__chatStartFresh = () => {
+    const s = useChatsStore.getState();
+    const pid = s.projectId;
+    if (!pid) return null;
+    return s.create(pid, null).id; // create() sets it active with zero usage
   };
   w.__chatUsageAdd = (chatId, delta) => useChatsStore.getState().addUsage(chatId, delta);
   w.__chatUsageGet = (chatId) => useChatsStore.getState().byId(chatId)?.usage ?? null;
