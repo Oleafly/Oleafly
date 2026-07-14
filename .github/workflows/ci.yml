@@ -174,21 +174,21 @@ jobs:
         if: steps.cache-tectonic-e2e.outputs.cache-hit != 'true'
         run: bash scripts/fetch-tectonic.sh aarch64-apple-darwin
 
-      # First compiles fetch LaTeX packages over the network. actions/cache
-      # only saves when the JOB succeeds, so a failing suite could never
-      # populate the cache and every run started cold (and failed again on
-      # download-blown test timeouts). Restore, pre-warm by compiling every
-      # bundled template directly with the sidecar, and save BEFORE the suite.
+      # First compiles fetch LaTeX packages over the network, so the suite's
+      # early compiles time out if the runner's Tectonic cache is cold. Restore
+      # it, then pre-warm by compiling every bundled template with the sidecar.
+      # Pre-warm runs UNCONDITIONALLY (not just on a cache miss): a past failing
+      # run can save an incomplete cache that later "hits" but still leaves the
+      # app compiling cold, so we always warm the live cache before the suite.
       - name: Restore Tectonic packages
         id: tectonic-pkgs
         uses: actions/cache/restore@v6
         with:
           path: ~/Library/Caches/Tectonic
-          key: tectonic-pkgs-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
-          restore-keys: tectonic-pkgs-${{ runner.os }}-
+          key: tectonic-pkgs-v2-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
+          restore-keys: tectonic-pkgs-v2-${{ runner.os }}-
 
       - name: Pre-warm the Tectonic package cache
-        if: steps.tectonic-pkgs.outputs.cache-hit != 'true'
         run: |
           BIN="$PWD/src-tauri/binaries/tectonic-aarch64-apple-darwin"
           mkdir -p /tmp/prewarm
@@ -201,7 +201,7 @@ jobs:
         uses: actions/cache/save@v6
         with:
           path: ~/Library/Caches/Tectonic
-          key: tectonic-pkgs-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
+          key: tectonic-pkgs-v2-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
 
       # The fixture machinery needs a Playwright browser even in tauri mode.
       - name: Install Playwright browser
@@ -280,11 +280,10 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: ~/.cache/Tectonic
-          key: tectonic-pkgs-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
-          restore-keys: tectonic-pkgs-${{ runner.os }}-
+          key: tectonic-pkgs-v2-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
+          restore-keys: tectonic-pkgs-v2-${{ runner.os }}-
 
       - name: Pre-warm the Tectonic package cache
-        if: steps.tectonic-pkgs-linux.outputs.cache-hit != 'true'
         run: |
           BIN="$PWD/src-tauri/binaries/tectonic-x86_64-unknown-linux-gnu"
           mkdir -p /tmp/prewarm
@@ -297,7 +296,7 @@ jobs:
         uses: actions/cache/save@v6
         with:
           path: ~/.cache/Tectonic
-          key: tectonic-pkgs-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
+          key: tectonic-pkgs-v2-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
 
       - name: Install Playwright browser
         run: pnpm exec playwright install --with-deps chromium
@@ -365,11 +364,10 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: ~\AppData\Local\TectonicProject
-          key: tectonic-pkgs-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
-          restore-keys: tectonic-pkgs-${{ runner.os }}-
+          key: tectonic-pkgs-v2-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
+          restore-keys: tectonic-pkgs-v2-${{ runner.os }}-
 
       - name: Pre-warm the Tectonic package cache
-        if: steps.tectonic-pkgs-windows.outputs.cache-hit != 'true'
         shell: bash
         run: |
           BIN="$PWD/src-tauri/binaries/tectonic-x86_64-pc-windows-msvc.exe"
@@ -383,7 +381,7 @@ jobs:
         uses: actions/cache/save@v6
         with:
           path: ~\AppData\Local\TectonicProject
-          key: tectonic-pkgs-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
+          key: tectonic-pkgs-v2-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
 
       - name: Install Playwright browser
         run: pnpm exec playwright install chromium
