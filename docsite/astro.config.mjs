@@ -87,6 +87,7 @@ export default defineConfig({
             { label: "Chat & tools", slug: "ai-chat" },
             { label: "Inline AI edits", slug: "ai-inline-edit" },
             { label: "Draw figures with AI", slug: "ai-figures" },
+            { label: "Connect via MCP", slug: "mcp" },
           ],
         },
         {

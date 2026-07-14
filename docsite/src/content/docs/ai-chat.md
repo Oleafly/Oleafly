@@ -29,6 +29,7 @@ Its toolbox, verbatim:
 | `compile` | Build the project and report errors |
 | `get_log` | Read the full compile log |
 | `get_pdf_text` | Extract the compiled PDF's text to verify output |
+| `verify_pdf_pages` | Rasterize chosen PDF pages and actually look at them, a vision check of the rendered layout (needs a vision model and the **Allow PDF page capture** toggle in Settings → AI) |
 | `set_main_doc` | Change the compile entry point |
 | `toggle_theme` | Flip light/dark mode |
 
@@ -44,6 +45,22 @@ Two more layers of safety back this up:
 
 - Before its first edit of a run, the assistant commits an "OpenLeaf AI checkpoint" to your project's Git, so even approved changes can be rolled back wholesale from [history](/OpenLeaf/git-history/).
 - Runs cap at 50 steps, so a confused agent can't loop forever.
+
+## Plans, progress, and cost
+
+On a multi-step job the assistant works like an agent, and shows its work:
+
+- **A plan checklist.** When it breaks a task into steps, a todo list renders in the panel and ticks off items as it goes, so you can see what it intends to do and where it is.
+- **A running cost meter.** Every reply shows the input and output token counts and a rough USD estimate for the model you're on, updated live as it streams. Since you bring your own key, that's real money you can watch.
+- **Sticky memory.** The agent can jot short notes to itself ("the résumé uses `moderncv`", "the intro still needs a citation"). They persist per project across new chats and app restarts, so it doesn't re-learn your document every time.
+
+## Float it over the editor
+
+The assistant doesn't have to stay in the rail. **Float the assistant** pops it out into a draggable, resizable card over the editor: drag it by the header, resize from the corner, and it stays put across view switches and restarts. **Dock it back** returns it to the rail. There's only ever one live conversation, floated or docked, so nothing desyncs when you move it.
+
+## Handing off from an inline edit
+
+Start a quick change with an [inline AI edit](/OpenLeaf/ai-inline-edit/) and then decide it needs the full agent? Hand it off, and your instruction lands in the chat composer with the context carried over, ready to send.
 
 ## Attachments
 

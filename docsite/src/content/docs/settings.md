@@ -1,9 +1,9 @@
 ---
 title: "Settings reference"
-description: "Every setting in OpenLeaf, section by section: Appearance, General, Dictionary, Data Storage, AI Assistant, LaTeX Engine, Offline & Downloads, GitHub, and Help & About."
+description: "Every setting in OpenLeaf, section by section: Appearance, General, Dictionary, Data Storage, AI Assistant, LaTeX Engine, Offline & Downloads, GitHub, MCP, and Help & About."
 ---
 
-Open Settings from the gear in the rail, `/settings` in the search omnibar, or **Open settings** in the ⌘K palette. Nine sections in the left nav; this page walks all of them.
+Open Settings from the gear in the rail, `/settings` in the search omnibar, or **Open settings** in the ⌘K palette. Ten sections in the left nav; this page walks all of them.
 
 ## Appearance
 
@@ -55,6 +55,10 @@ The on-demand font packs used by richer [templates](/OpenLeaf/templates/#on-dema
 ## GitHub
 
 Account connection (device flow or personal access token) and, with a project open, that project's repository controls: remote URL, **Push**, **Pull**, **Unlink**, and **Create & link**. Documented on [GitHub sync](/OpenLeaf/github-sync/).
+
+## MCP
+
+Turn OpenLeaf into a local MCP server so an external agent (Claude Desktop, Claude Code, Cursor, Grok) can drive your project with no API key. **Enable MCP server**, the port (default `5323`), the bearer token (Reveal / Copy / Regenerate), copy-paste connection snippets, the **approval policy** and **Read-only mode**, and pointers to the `mcp.json` on disk all live here. Documented on [Connect via MCP](/OpenLeaf/mcp/).
 
 ## Help & About
 

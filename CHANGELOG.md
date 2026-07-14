@@ -10,11 +10,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - MCP server: expose the built-in agent tools to external MCP clients with token
-  auth and in-app approvals. See [docs/mcp.md](docs/mcp.md).
+  auth and in-app approvals, a read-only mode, and three approval policies
+  (confirm everything, auto-approve edits, or trust the connection). See
+  [docs/mcp.md](docs/mcp.md).
 - Automatic Git commits: every successful compile snapshots the project, and
   edits commit on their own after a short quiet period, under generated
   "Update: `<files>`" messages. Automatic commits pause while the Source
   Control panel is open, so manual staging is never disturbed.
+- Agentic AI assistant: the chat panel plans multi-step work as a live todo
+  checklist, keeps sticky per-project memory across chats and restarts, and
+  shows a running input/output token count with a rough cost estimate as it
+  streams.
+- PDF vision check: the assistant can rasterize chosen PDF pages and inspect the
+  rendered layout with a vision model (`verify_pdf_pages`), gated by a new
+  "Allow PDF page capture" setting.
+- Floating assistant: pop the assistant out of the rail into a draggable,
+  resizable card over the editor, and dock it back. One shared conversation
+  whether floated or docked.
+- Inline AI edit: rewrite a selection in place from a prompt (Cmd/Ctrl+L) with a
+  red/green preview, and hand off into the full chat agent when the change grows.
+- Diagram editor: canvas zoom controls, a shape inspector, and inserting a
+  drawing as editable TikZ (with a figure PNG) in the document.
+
+### Fixed
+
+- Recover from a wedged pdf.js worker in the PDF preview: retry on a fresh
+  worker, probe the text pipe, and fall back to main-thread rendering, so text
+  selection and inverse SyncTeX keep working late in a long editing session.
+- Windows and Linux parity: process spawns no longer flash a console window,
+  and asset downloads, path handling, file-manager reveal, the updater,
+  secret-file permissions, and keyboard-shortcut labels behave correctly off
+  macOS.
 
 ## [0.2.3] - 2026-07-11
 
