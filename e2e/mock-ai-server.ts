@@ -33,6 +33,17 @@ export async function startMockAiServer(): Promise<MockAiServer> {
 
   const server: Server = createServer((req, res) => {
     const url = req.url || "";
+    // The webview fetches this cross-origin (app is served from localhost:1420),
+    // so browser CORS applies. Real Ollama sends permissive CORS by default;
+    // mirror that or every request is blocked before it reaches the handler.
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "*");
+    if (req.method === "OPTIONS") {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
 
     // Model listing (native Ollama + OpenAI shapes), in case the UI probes it.
     if (req.method === "GET" && url.startsWith("/api/tags")) {
@@ -74,6 +85,17 @@ export async function startMockAiServer(): Promise<MockAiServer> {
         // First turn with a pending tool call and no tool result yet -> emit the
         // tool call. The follow-up request (carrying the tool result) streams
         // the `then` text.
+        // OpenAI streams usage as a FINAL chunk with empty choices (the shape
+        // the AI SDK's `include_usage` path reads); emit it that way.
+        const usage = (u: { p: number; c: number }) =>
+          send({
+            id,
+            object: "chat.completion.chunk",
+            model,
+            choices: [],
+            usage: { prompt_tokens: u.p, completion_tokens: u.c, total_tokens: u.p + u.c },
+          });
+
         if (toolCall && !hasToolResult) {
           chunk({
             tool_calls: [
@@ -85,13 +107,15 @@ export async function startMockAiServer(): Promise<MockAiServer> {
               },
             ],
           });
-          chunk({}, "tool_calls", { prompt_tokens: 11, completion_tokens: 7, total_tokens: 18 });
+          chunk({}, "tool_calls");
+          usage({ p: 11, c: 7 });
         } else {
           const text = toolCall && hasToolResult ? toolCall.then : reply;
           for (const piece of text.match(/[\s\S]{1,4}/g) ?? [text]) {
             chunk({ content: piece });
           }
-          chunk({}, "stop", { prompt_tokens: 13, completion_tokens: 9, total_tokens: 22 });
+          chunk({}, "stop");
+          usage({ p: 13, c: 9 });
         }
         res.write("data: [DONE]\n\n");
         res.end();
