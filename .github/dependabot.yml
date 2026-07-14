@@ -9,8 +9,12 @@ updates:
       interval: weekly
       day: monday
     groups:
+      # Only minor+patch are grouped into one safe-to-merge PR. Major bumps
+      # (breaking: zod 3->4, typescript 5->7, vite 6->8, etc.) come as separate
+      # PRs so they are reviewed and migrated deliberately, never auto-bundled.
       npm-all:
         patterns: ["*"]
+        update-types: ["minor", "patch"]
     open-pull-requests-limit: 5
 
   - package-ecosystem: cargo
@@ -19,8 +23,11 @@ updates:
       interval: weekly
       day: monday
     groups:
+      # Same policy as npm: group only minor+patch; majors (e.g. rand 0.8->0.9
+      # removed rand::rngs::OsRng, zip 2->4) get their own reviewable PRs.
       cargo-all:
         patterns: ["*"]
+        update-types: ["minor", "patch"]
     open-pull-requests-limit: 5
 
   - package-ecosystem: github-actions
