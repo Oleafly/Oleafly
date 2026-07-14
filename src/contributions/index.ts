@@ -5,8 +5,7 @@ import { registerContextProviders } from "@/contributions/context-providers";
 
 let registered = false;
 
-/** Register every built-in contribution. Idempotent; called once at startup,
- *  before the app shell mounts (see main.tsx). */
+// Idempotent; called once at startup, before the app shell mounts (see main.tsx).
 export function registerContributions() {
   if (registered) return;
   registered = true;

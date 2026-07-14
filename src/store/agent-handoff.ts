@@ -1,17 +1,12 @@
 import { create } from "zustand";
 
 interface AgentHandoffState {
-  /** Prompt waiting to be consumed by ChatPanel (e.g. from inline AI). */
   pendingPrompt: string | null;
-  /** When true, ChatPanel auto-sends after consuming. */
   autoSend: boolean;
   handoff: (prompt: string, opts?: { autoSend?: boolean }) => void;
   consume: () => { prompt: string; autoSend: boolean } | null;
 }
 
-/**
- * Cross-UI handoff into the agent chat (inline edit → full agent, etc.).
- */
 export const useAgentHandoffStore = create<AgentHandoffState>((set, get) => ({
   pendingPrompt: null,
   autoSend: false,
@@ -25,7 +20,7 @@ export const useAgentHandoffStore = create<AgentHandoffState>((set, get) => ({
   },
 }));
 
-// E2E / devtools: seed a handoff without going through inline AI.
+// E2E / devtools hook: seed a handoff without going through inline AI.
 if (typeof window !== "undefined") {
   const w = window as unknown as {
     __agentHandoff?: (prompt: string, autoSend?: boolean) => void;

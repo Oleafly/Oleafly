@@ -98,10 +98,8 @@ export function ChatCore() {
   const [model, setModel] = useState("gpt-4o");
   const [modelDropdown, setModelDropdown] = useState(false);
   const [apiKey, setApiKey] = useState("");
-  // All configured provider credentials (id -> key/host), so the switcher can
-  // offer every provider the user has set up, not just the default one.
+  // So the switcher can offer every provider the user has set up, not just the default one.
   const [keysMap, setKeysMap] = useState<Record<string, string>>({});
-  // Models actually installed in local Ollama (populated when it's configured).
   const [ollamaModels, setOllamaModels] = useState<string[]>([]);
   const [thinkingText, setThinkingText] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -114,17 +112,14 @@ export function ChatCore() {
   const [showScrollDown, setShowScrollDown] = useState(false);
   // Figure studio mode: swaps in the figure system prompt + figure toolset.
   const [figureMode, setFigureMode] = useState(false);
-  /** Git oid captured before the last agent run (for one-click restore). */
   const [checkpointOid, setCheckpointOid] = useState<string | null>(null);
   const agentTodos = useAgentTodoStore((s) => s.todos);
-  /** Aggregated token usage for the current/last agent run. */
   const [runUsage, setRunUsage] = useState<{
     input: number;
     output: number;
     steps: number;
     usd: number;
   } | null>(null);
-  /** Show token/$ usage strip; persisted preference. */
   const [usageVisible, setUsageVisible] = useState(() => {
     try {
       return localStorage.getItem("openleaf.ai.usageVisible") !== "0";
@@ -164,7 +159,7 @@ export function ChatCore() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const MAX_ATTACH = 6;
-  const MAX_ATTACH_BYTES = 10 * 1024 * 1024; // 10 MB per file
+  const MAX_ATTACH_BYTES = 10 * 1024 * 1024;
 
   const addFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -295,7 +290,7 @@ export function ChatCore() {
       .catch(() => setOllamaModels([]));
   }, [keysMap.ollama]);
 
-  // Switch the active provider + model from the chat, persisting it as default.
+  // Persists as the new default provider/model.
   const selectModel = useCallback(
     async (pid: string, mid: string) => {
       setProvider(pid);
@@ -325,7 +320,6 @@ export function ChatCore() {
     useAgentTodoStore.getState().clear();
   }, [projectId]);
 
-  // Load persisted chats + current git HEAD whenever the project changes.
   // The panel unmounts whenever the sidebar collapses or another rail tab is
   // shown, so this effect also runs on every REMOUNT - in that case (same
   // project) restore the active conversation instead of resetting to a new
@@ -358,7 +352,7 @@ export function ChatCore() {
     };
   }, [projectId, loadChats, setActiveChat]);
 
-  // Persist the active conversation into the chats store (immediately).
+  // Immediate write (see persistDebounced below for the streaming path).
   const persist = useCallback((msgs: ChatMessage[]) => {
     const id = useChatsStore.getState().activeId;
     if (id) useChatsStore.getState().saveMessages(id, msgs);
@@ -428,8 +422,6 @@ export function ChatCore() {
     setShowScrollDown(longEnough && distanceFromBottom > 80);
   };
 
-  /** Flush any pending stream patches into React state immediately (end of
-   *  step, approval UI, errors). Safe to call when the queue is empty. */
   const flushStreamPatches = () => {
     if (streamRafRef.current != null) {
       cancelAnimationFrame(streamRafRef.current);
@@ -449,9 +441,9 @@ export function ChatCore() {
     });
   };
 
-  /** Update the last assistant message. High-frequency stream deltas are
-   *  coalesced to one setState per animation frame; callers that need the UI
-   *  to reflect a patch before the next frame should call flushStreamPatches. */
+  // High-frequency stream deltas are coalesced to one setState per animation
+  // frame; callers that need the UI to reflect a patch before the next frame
+  // should call flushStreamPatches.
   const updateLast = (fn: (m: ChatMessage) => ChatMessage) => {
     streamPatchesRef.current.push(fn);
     if (streamRafRef.current != null) return;
@@ -664,9 +656,7 @@ ${sandboxedCustom}`;
     }
 
     try {
-      // Runs a single model step against `apiMessages` and streams the result
-      // into the UI. Returns the accumulated text, tool calls/results, and any
-      // stream-level error. Pure w.r.t. apiMessages (does not mutate it).
+      // Pure w.r.t. apiMessages (does not mutate it).
       const runStep = async (modelInstance: any, tools: any) => {
         const result = streamText({
           model: modelInstance,
@@ -904,7 +894,6 @@ ${sandboxedCustom}`;
           break;
         }
 
-        // Carry this step's tool calls + results into the next round.
         apiMessages.push({
           role: "assistant",
           content: [
@@ -1020,7 +1009,6 @@ ${sandboxedCustom}`;
 
   return (
     <div className="flex h-full flex-col bg-sidebar">
-      {/* Header - model + controls */}
       <div className="flex h-9 shrink-0 items-center gap-1.5 border-b px-2">
         {apiKey && activeChat?.headOid && currentHead && activeChat.headOid !== currentHead && (
           <InfoHint message="This chat started from an older version of the project. File contents may differ from what the AI saw." />
@@ -1128,14 +1116,13 @@ ${sandboxedCustom}`;
         </div>
       </div>
 
-      {/* Storage-full warning: chat history can no longer be saved. */}
       {quotaWarning && (
         <div className="shrink-0 border-b border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] text-amber-600 dark:text-amber-400">
           Chat history storage is full. Older chats were pruned and new messages may not be saved. Delete old chats from history to free space.
         </div>
       )}
 
-      {/* Live agent plan checklist (visible even keyless so e2e/hooks can assert it) */}
+      {/* Visible even keyless so e2e/hooks can assert it */}
       {agentTodos.length > 0 && (
         <div className="shrink-0 border-b px-3 py-2" data-testid="agent-todos">
           <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -1168,7 +1155,6 @@ ${sandboxedCustom}`;
         </div>
       )}
 
-      {/* No API key */}
       {!apiKey && (
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
           <span className="flex size-12 items-center justify-center rounded-full bg-foreground text-background">
@@ -1194,7 +1180,6 @@ ${sandboxedCustom}`;
         </div>
       )}
 
-      {/* Conversation */}
       {apiKey && (
         <>
           <div className="relative min-h-0 flex-1">
@@ -1252,9 +1237,7 @@ ${sandboxedCustom}`;
                 }
               >
                 <div className="flex flex-col gap-3">
-                  {/* Memoized items: only the streaming (last) message re-renders per
-                      token; completed messages skip re-parsing their markdown.
-                      Key is scoped to the active chat so instances aren't reused
+                  {/* Key is scoped to the active chat so instances aren't reused
                       across conversations (which would leak expand/scroll state). */}
                   {messages.map((msg, i) => (
                     <MessageItem
@@ -1263,12 +1246,10 @@ ${sandboxedCustom}`;
                       live={streaming && i === messages.length - 1}
                     />
                   ))}
-                  {/* Live shimmer, kept OUT of the memoized items so the frequent
-                      thinkingText updates don't reconcile the whole message list.
-                      Shown for the WHOLE run (reasoning models can be silent for
-                      minutes before the first token), EXCEPT while the tail
-                      message's ReasoningBlock is already streaming the live
-                      chain-of-thought - one indicator at a time. */}
+                  {/* Kept OUT of the memoized items so frequent thinkingText updates
+                      don't reconcile the whole list. Suppressed while the tail
+                      message's ReasoningBlock is already streaming live, so there's
+                      only one indicator at a time. */}
                   {streaming &&
                     !messages[messages.length - 1]?.reasoningBlocks?.some(
                       (b) => b.ms === undefined,
@@ -1355,8 +1336,8 @@ ${sandboxedCustom}`;
 
             return (
               <div className="relative shrink-0">
-                {/* Floating ^ — always mounted when hasUsage so fade/scale can animate.
-                    Takes no layout space (absolute). Hidden while expanded. */}
+                {/* Always mounted when hasUsage so fade/scale can animate; absolute
+                    positioning keeps it out of layout. */}
                 {hasUsage && (
                   <div
                     className={cn(
@@ -1387,8 +1368,7 @@ ${sandboxedCustom}`;
                   </div>
                 )}
 
-                {/* Expandable strip: grid 0fr↔1fr for height; content fades/slides.
-                    Collapsed height is 0 — no reserved bar space. */}
+                {/* Grid 0fr↔1fr animates height to 0 with no reserved bar space. */}
                 {hasUsage && (
                   <div
                     className={cn(
@@ -1487,14 +1467,12 @@ ${sandboxedCustom}`;
                   </div>
                 )}
 
-                {/* Checkpoint alone when usage is collapsed (no empty usage strip) */}
                 {hasCheckpoint && !(hasUsage && usageVisible) && (
                   <div className="flex items-center border-t px-3 py-1.5">
                     {checkpointBtn}
                   </div>
                 )}
 
-                {/* Destructive-edit approval prompt (pauses the AI on the tool) */}
                 {pendingApproval && (
                   <ToolConfirm
                     req={pendingApproval.req}
@@ -1508,7 +1486,6 @@ ${sandboxedCustom}`;
                   />
                 )}
 
-                {/* Prompt input */}
                 <div className="border-t p-2.5">
             <AttachmentChips
               items={attachments}

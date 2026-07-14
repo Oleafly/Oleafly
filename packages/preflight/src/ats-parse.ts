@@ -1,20 +1,11 @@
 import type { Finding } from "./types";
 
-/**
- * Tier B headline: simulate what an Applicant Tracking System (Workday, Taleo,
- * Greenhouse, ...) extracts from the compiled PDF's text. Resume writers'
- * single biggest pain is not knowing whether a parser even sees their contact
- * details and Experience section; this makes that visible. Pure over the PDF's
- * reading-order text, so it works on today's (untagged) output.
- */
-
 export interface ParsedSection {
   name: string;
   present: boolean;
 }
 
 export interface AtsParse {
-  /** Whether the document looks like a resume/CV (so we should apply ATS checks). */
   isResume: boolean;
   name: string | null;
   email: string | null;
@@ -68,7 +59,6 @@ export function simulateAtsParse(text: string): AtsParse {
   return { isResume, name, email, phone, links, sections };
 }
 
-/** ATS-lens findings from the parse. Only applies when the document is a resume. */
 export function atsParseFindings(parse: AtsParse): Finding[] {
   if (!parse.isResume) return [];
   const out: Finding[] = [];

@@ -1,10 +1,3 @@
-/**
- * Cheap, source-only guess at whether a document is a resume/CV, used to
- * pre-select the relevant Preflight check (ATS for resumes, Accessibility
- * otherwise). Intentionally lightweight: it runs on panel open without touching
- * the compiled PDF.
- */
-
 const RESUME_CLASS = /\\documentclass(?:\[[^\]]*\])?\{\s*(moderncv|altacv|deedy[\w-]*|awesome-cv|[\w-]*resume[\w-]*|[\w-]*cv)\s*\}/i;
 
 const RESUME_HEADING =

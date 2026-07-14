@@ -1,28 +1,17 @@
 import { createServer, type Server } from "node:http";
 
-/**
- * A minimal OpenAI-compatible endpoint so e2e can drive a REAL AI conversation
- * (streaming, tool calls, usage) with no API key and no network. The app's
- * "Ollama (local)" provider builds its model with
- * `createOpenAI({ baseURL: <host>/v1, apiKey: "ollama" }).chat(model)`, so we
- * connect Ollama pointed at this server and every real streaming/usage/tool
- * code path runs against canned responses.
- *
- * The bundled app's CSP allows `connect-src http://127.0.0.1:*`, so the webview
- * can reach this loopback server.
- */
+// The app's "Ollama (local)" provider builds its model with
+// `createOpenAI({ baseURL: <host>/v1, apiKey: "ollama" }).chat(model)`, so we
+// connect Ollama pointed at this server and every real streaming/usage/tool
+// code path runs against canned responses.
+//
+// The bundled app's CSP allows `connect-src http://127.0.0.1:*`, so the webview
+// can reach this loopback server.
 export interface MockAiServer {
-  /** Base URL to enter as the Ollama "Host URL" (no trailing /v1). */
   url: string;
   close: () => Promise<void>;
-  /** Set the plain-text reply the next completion streams back. */
   setReply: (text: string) => void;
-  /**
-   * Make the next completion emit a tool call to `name` with `args`, then (on
-   * the follow-up request that carries the tool result) stream `then` as text.
-   */
   setToolCall: (call: { name: string; args: Record<string, unknown>; then: string } | null) => void;
-  /** How many /v1/chat/completions requests have been served. */
   requestCount: () => number;
 }
 

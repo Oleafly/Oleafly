@@ -1,16 +1,9 @@
 import type { DefKind, Edit, FileSymbols, ProjectIndex, RenamePlan, Sym, UseKind } from "./types";
 import { parseFile, maskComments } from "./parse-file";
 
-/**
- * Build the whole-project index from a map of file path -> text. Pure. Runs
- * parseFile per file, adds the `macrouse` uses in a second pass (which needs the
- * project-wide macro set), and exposes query + rename helpers.
- */
-
 const DEF_KINDS = new Set<string>(["label", "macro", "bibentry", "theorem", "glossary", "environment", "section", "file"]);
 const isDefKind = (k: string): k is DefKind => DEF_KINDS.has(k);
 
-/** Which use kind resolves to which def kind. */
 const USE_TO_DEF: Record<Exclude<UseKind, "inputedge" | "envuse">, DefKind> = {
   ref: "label",
   cite: "bibentry",
@@ -18,7 +11,6 @@ const USE_TO_DEF: Record<Exclude<UseKind, "inputedge" | "envuse">, DefKind> = {
   glossaryuse: "glossary",
 };
 
-/** Which use kinds point back at a given def kind (for rename). */
 const DEF_TO_USES: Record<DefKind, UseKind[]> = {
   label: ["ref"],
   bibentry: ["cite"],
@@ -51,12 +43,9 @@ export function buildIndex(files: Record<string, string>): ProjectIndex {
   return assembleIndex(parsed, files);
 }
 
-/**
- * Assemble a ProjectIndex from already-parsed per-file symbols plus the raw
- * texts (needed for the project-wide macro-use pass). Split out from buildIndex
- * so callers can cache `parseFile` results and re-parse only the file that
- * changed instead of the whole project on every keystroke.
- */
+// Split out from buildIndex so callers can cache parseFile results and re-parse only
+// the file that changed instead of the whole project on every keystroke; raw texts
+// are still needed here for the project-wide macro-use pass.
 export function assembleIndex(
   parsedByPath: Record<string, FileSymbols>,
   files: Record<string, string>,
@@ -64,8 +53,7 @@ export function assembleIndex(
   const defs: Sym[] = [];
   const uses: Sym[] = [];
 
-  // Collect each file's symbols; add a `file` def node per path (for inputedge
-  // resolution).
+  // Add a `file` def node per path for inputedge resolution.
   for (const [path, r] of Object.entries(parsedByPath)) {
     defs.push(...r.defs);
     uses.push(...r.uses);
@@ -75,7 +63,7 @@ export function assembleIndex(
   // Second pass: macro uses. Needs the project-wide macro name set.
   const macroNames = [...new Set(defs.filter((d) => d.kind === "macro").map((d) => d.name))];
   if (macroNames.length > 0) {
-    macroNames.sort((a, b) => b.length - a.length); // longer first
+    macroNames.sort((a, b) => b.length - a.length);
     const alt = macroNames.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
     const macroDefSpans = new Map<string, [number, number][]>();
     for (const d of defs) {
@@ -92,7 +80,7 @@ export function assembleIndex(
       let m: RegExpExecArray | null;
       while ((m = re.exec(text))) {
         const at = m.index;
-        if (spans.some(([f, t]) => at >= f && at < t)) continue; // skip the def site
+        if (spans.some(([f, t]) => at >= f && at < t)) continue;
         const name = m[1];
         const nameFrom = at + 1;
         uses.push({
@@ -109,7 +97,6 @@ export function assembleIndex(
     }
   }
 
-  // Lookups.
   const defByKindName = new Map<string, Sym>();
   for (const d of defs) {
     const key = `${d.kind}:${d.name}`;

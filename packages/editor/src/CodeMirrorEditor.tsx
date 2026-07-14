@@ -40,23 +40,15 @@ import { mathHover } from "./math-preview";
 import { createLatexLinter } from "./latex-linter";
 import { latexFolding } from "./latex-folding";
 
-/**
- * Document model + settings the editor needs from the host app. The use*
- * members are React hooks (must follow hook rules; keep the host object
- * identity stable across renders).
- */
+// The use* members are React hooks: must follow hook rules, and the host
+// object identity must stay stable across renders.
 export interface EditorHost {
   useActivePath(): string | null;
-  /** Imperative read of the active path (for the edit sync listener). */
   getActivePath(): string | null;
-  /** Bumped when the active file's content is replaced from outside the
-   *  editor (e.g. a restored history version), to force a document swap. */
   useDocVersion(): number;
   getContent(path: string): string;
   setContent(path: string, content: string): void;
   useSettings(): { vim: boolean; spellcheck: boolean; harper: boolean };
-  /** Values that must trigger a re-lint when they change (ignore dictionary,
-   *  lint-category mutes, ...). */
   useLintRefreshDeps(): readonly unknown[];
 }
 
@@ -66,9 +58,9 @@ export function CodeMirrorEditor({
   extraKeymap,
 }: {
   host: EditorHost;
-  /** App feature extensions (code intel, preflight linter, inline AI, ...). */
   extraExtensions?: Extension[];
-  /** App key bindings, checked before the default keymaps. */
+  // Checked before the default keymaps (CodeMirror keymap precedence: earlier
+  // extensions in the array win).
   extraKeymap?: KeyBinding[];
 }) {
   const hostRef = useRef<HTMLDivElement>(null);

@@ -4,18 +4,12 @@ export type DecoSpan = {
   from: number;
   to: number;
   kind: "del" | "add";
-  /** Preview text for `add` spans (zero-width inserts). */
   text?: string;
 };
 
-/**
- * Turn a word diff into absolute document ranges for decoration.
- *
- * `same`/`del` tokens consume characters of the original text (which is still in
- * the document during review), advancing a cursor from `base`. `del` tokens
- * become marks over that range. `add` tokens are zero-width insertion points
- * carrying the preview text, anchored at the current cursor.
- */
+// `same`/`del` tokens consume original-text characters (still in the doc during
+// review), advancing the cursor. `add` tokens are zero-width insertion points
+// carrying preview text instead of consuming any range.
 export function buildDecoSpans(original: string, proposed: string, base: number): DecoSpan[] {
   const spans: DecoSpan[] = [];
   let cursor = base;

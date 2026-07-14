@@ -4,10 +4,8 @@ import { invoke } from "@tauri-apps/api/core";
 // on Windows "localhost" can resolve to ::1 (IPv6) first and fail to connect.
 export const DEFAULT_OLLAMA_HOST = "http://127.0.0.1:11434";
 
-/**
- * List the models installed in a local Ollama instance (via a Rust command that
- * calls `GET {host}/api/tags`). Rejects if Ollama isn't running/reachable.
- */
+// Calls a Rust command that hits `GET {host}/api/tags`; rejects if Ollama
+// isn't running/reachable.
 export function listOllamaModels(host: string): Promise<string[]> {
   return invoke<string[]>("ollama_list_models", {
     host: host.trim() || DEFAULT_OLLAMA_HOST,

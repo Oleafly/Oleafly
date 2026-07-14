@@ -1,19 +1,13 @@
 import { X, FileText } from "lucide-react";
 
-/** A file/image staged in the composer (bytes held only until send). */
 export interface PendingAttachment {
   id: string;
   name: string;
   mediaType: string;
-  /** data: URL — used for the model call and the image thumbnail. */
   dataUrl: string;
 }
 
-/**
- * Composer attachment chips, modeled on the AI SDK Elements "Attachments"
- * inline variant: an image thumbnail or file icon, the name, and a remove
- * button. Styled to the app's tokens.
- */
+// Modeled on the AI SDK Elements "Attachments" inline variant.
 export function AttachmentChips({
   items,
   onRemove,

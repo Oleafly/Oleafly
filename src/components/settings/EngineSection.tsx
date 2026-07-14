@@ -17,7 +17,7 @@ export function EngineSection() {
   const [query, setQuery] = useState("");
 
   useEffect(() => {
-    // Settings needs both the engine info and the (slow) installed-package list.
+    // refreshPackages() needs engine info from refresh() first, so run in sequence.
     void refresh().then(() => refreshPackages());
   }, [refresh, refreshPackages]);
 

@@ -39,7 +39,6 @@ export function DownloadsSection() {
     void refresh();
   }, [refresh]);
 
-  // Run a download-style action while streaming asset-progress into the label.
   const withProgress = useCallback(
     async (id: string, run: () => Promise<void>, verb: string) => {
       setBusyId(id);

@@ -36,7 +36,7 @@ import { deleteProject, duplicateProject, readCompiledPdf } from "@/lib/tauri";
 import { pdfPageToPng } from "@/lib/pdf-image";
 
 const thumbCache = new Map<string, string | null>();
-/** In-flight keys so a second hover during a load does not start a parallel job. */
+// In-flight keys so a second hover during a load does not start a parallel job.
 const thumbInflight = new Set<string>();
 
 export function Library() {
@@ -57,8 +57,8 @@ export function Library() {
   const [onlyFavs, setOnlyFavs] = useState(false);
   const [thumbs, setThumbs] = useState<Record<string, string | null>>({});
 
-  /** Load a book cover on demand (hover). Successful PNGs are cached; failures
-   *  are NOT permanently cached so a later compile can still produce a preview. */
+  // Successful PNGs are cached; failures are NOT permanently cached so a
+  // later compile can still produce a preview.
   const loadThumb = (id: string, updatedAt: number) => {
     const key = `${id}:${updatedAt}`;
     if (thumbCache.has(key)) {
@@ -293,9 +293,7 @@ export function Library() {
         </div>
       </div>
 
-      {/* The New Project gallery is mounted globally (GlobalNewProject), so it
-          can also be opened from the omnibar and command palette. */}
-      {/* Fork modal */}
+      {/* New Project gallery is mounted globally (GlobalNewProject), not here. */}
       {forkTarget && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"

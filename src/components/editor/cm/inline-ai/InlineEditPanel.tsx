@@ -22,18 +22,14 @@ function modelLabelFor(cfg: AIConfigLike): string {
   return getProvider(providerId)?.models.find((m) => m.id === modelId)?.name ?? modelId;
 }
 
-/**
- * The inline AI edit UI, rendered inside a CodeMirror block widget below the
- * target line (Cursor/VSCode style). Reads the session from the store; the
- * widget mounts it when a session opens and unmounts it when it closes.
- */
+// Rendered inside a CodeMirror block widget below the target line; the widget
+// mounts it when a session opens and unmounts it when it closes.
 export function InlineEditPanel() {
   const session = useInlineEditStore((s) => s.session);
   const [providerReady, setProviderReady] = useState(true);
   const [modelLabel, setModelLabel] = useState("");
   const abortRef = useRef<AbortController | null>(null);
 
-  // Provider readiness + active model label, refreshed when AI settings change.
   useEffect(() => {
     const check = () =>
       void getConfig()
@@ -47,7 +43,6 @@ export function InlineEditPanel() {
     return () => window.removeEventListener("openleaf:ai-config-changed", check);
   }, []);
 
-  // Abort any in-flight request when the panel unmounts (session closed).
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
@@ -105,8 +100,7 @@ export function InlineEditPanel() {
     }
   };
 
-  // Keyboard: Esc cancels/rejects; Enter accepts while reviewing. Capture so it
-  // wins over the editor keymap, and stop propagation so no stray newline lands.
+  // Capture phase so this wins over the editor keymap; stopPropagation so no stray newline lands.
   // biome-ignore lint/correctness/useExhaustiveDependencies: re-subscribes on each session change; handlers read the live store/view.
   useEffect(() => {
     if (!session) return;

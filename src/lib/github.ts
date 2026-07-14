@@ -15,22 +15,19 @@ export type { GitHubUser, GitHubRepo };
 // delegates to a Tauri command that reads the token server-side, so the webview
 // never holds the secret (an XSS can't read or exfiltrate it).
 
-/** Validate the stored token by fetching the authenticated user. */
 export function githubGetUser(): Promise<GitHubUser> {
   return ghCurrentUser();
 }
 
-/** Create a new repository under the authenticated user. */
 export function githubCreateRepo(name: string, isPrivate: boolean): Promise<GitHubRepo> {
   return ghCreateRepo(name, isPrivate);
 }
 
-/** List the authenticated user's repositories (most recently updated first). */
+// Most recently updated first.
 export function githubListRepos(): Promise<GitHubRepo[]> {
   return ghListRepos();
 }
 
-/** Validate + persist a token (OAuth or PAT); returns the resolved user. */
 export function saveGithubToken(token: string): Promise<GitHubUser> {
   return ghSetToken(token);
 }
@@ -60,22 +57,18 @@ export interface DeviceCode {
 // Rust side (src-tauri/src/github.rs) and are invoked here. The `scope`
 // (`repo read:user`) is set in Rust.
 
-/** Step 1 of device flow: request a user code the user enters at github.com. */
 export async function requestDeviceCode(clientId: string): Promise<DeviceCode> {
   return invoke<DeviceCode>("gh_request_device_code", { clientId });
 }
 
-/** One token-check result. The frontend loops, calling `checkDeviceToken`. */
+// The frontend loops, calling `checkDeviceToken`.
 export type TokenPoll =
   | { status: "token"; token: string }
   | { status: "pending" }
   | { status: "slow_down"; interval: number };
 
-/**
- * Step 2 of device flow: a SINGLE token check (the Rust command is async +
- * short so it never blocks the webview). The frontend runs the poll loop so it
- * stays cancellable. Resolves with the status; rejects on expired/denied.
- */
+// A SINGLE token check (the Rust command is async + short so it never blocks
+// the webview). The frontend runs the poll loop so it stays cancellable.
 export async function checkDeviceToken(
   clientId: string,
   deviceCode: string

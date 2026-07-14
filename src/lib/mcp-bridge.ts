@@ -1,12 +1,10 @@
-/**
- * MCP bridge: exposes the in-app agent tools to the Rust MCP server.
- *
- * The Rust side is a transport. On `tools/call` it emits `mcp:tool-call`;
- * this module executes the SAME tool implementations the chat panel uses
- * (same host adapter, same approval cards) and replies via `mcp_tool_result`.
- * The advertised tool list is registered from here, so the MCP surface can
- * never drift from the in-app surface.
- */
+// MCP bridge: exposes the in-app agent tools to the Rust MCP server.
+//
+// The Rust side is a transport. On `tools/call` it emits `mcp:tool-call`;
+// this module executes the SAME tool implementations the chat panel uses
+// (same host adapter, same approval cards) and replies via `mcp_tool_result`.
+// The advertised tool list is registered from here, so the MCP surface can
+// never drift from the in-app surface.
 import { listen } from "@tauri-apps/api/event";
 import {
   createOpenLeafTools,
@@ -42,7 +40,7 @@ export interface McpToolEntry {
   execute: (input: Record<string, unknown>) => Promise<unknown>;
 }
 
-/** Tools removed in read-only mode: anything that mutates the project or app. */
+// Tools removed in read-only mode: anything that mutates the project or app.
 const MUTATING_TOOLS = new Set([
   "write_file",
   "replace_in_file",
@@ -55,7 +53,7 @@ const MUTATING_TOOLS = new Set([
   "open_project",
 ]);
 
-/** The ai SDK wraps schemas via jsonSchema(); unwrap back to plain JSON. */
+// The ai SDK wraps schemas via jsonSchema(); unwrap back to plain JSON.
 export function rawSchemaOf(schema: unknown): unknown {
   if (schema && typeof schema === "object" && "jsonSchema" in schema) {
     return (schema as { jsonSchema: unknown }).jsonSchema;
@@ -79,7 +77,7 @@ export function toMcpResult(raw: unknown, images: string[]): McpResult {
   return isError ? { content, isError: true } : { content };
 }
 
-/** MCP-only orientation tools: thin wrappers over existing app services. */
+// MCP-only orientation tools: thin wrappers over existing app services.
 function createMcpOnlyTools(): Record<string, McpToolEntry> {
   return {
     get_status: {
@@ -156,24 +154,22 @@ export function buildMcpToolRegistry(opts: {
 // ---- runtime wiring ----
 
 let registry: Record<string, McpToolEntry> = {};
-/** Images captured by figure tools during the current call (onImage callback). */
+// Images captured by figure tools during the current call (onImage callback).
 let pendingImages: string[] = [];
-/** Serialize tool execution: the in-app chat runs tools serially too, and
- *  parallel writes to the same file would race. */
+// Serialize tool execution: the in-app chat runs tools serially too, and
+// parallel writes to the same file would race.
 let chain: Promise<void> = Promise.resolve();
-/** Guard against React Strict Mode double-mount starting two listeners. */
+// Guard against React Strict Mode double-mount starting two listeners.
 let bridgeLive = false;
 
 const confirm: ConfirmFn = (req) => useMcpApprovalStore.getState().request(req);
 
-/**
- * Map an approval policy to the confirm function the tools run with:
- * - "trust":       never prompt in OpenLeaf. The MCP client's own approval
- *                  (e.g. Claude's Allow/Deny) is the only gate, deletes included.
- * - "auto_writes": auto-approve edits; deletes and figure inserts still prompt
- *                  in OpenLeaf with a diff.
- * - "ask" (default): prompt in OpenLeaf for every change.
- */
+// Policy values:
+// - "trust":       never prompt in OpenLeaf. The MCP client's own approval
+//                  (e.g. Claude's Allow/Deny) is the only gate, deletes included.
+// - "auto_writes": auto-approve edits; deletes and figure inserts still prompt
+//                  in OpenLeaf with a diff.
+// - "ask" (default): prompt in OpenLeaf for every change.
 export function confirmForPolicy(policy: string, request: ConfirmFn): ConfirmFn {
   if (policy === "trust") return async () => true;
   if (policy === "auto_writes") {
@@ -198,7 +194,6 @@ async function rebuildRegistry(): Promise<void> {
   );
 }
 
-/** Re-register after Settings changes (policy, read-only). */
 export async function refreshMcpRegistry(): Promise<void> {
   await rebuildRegistry();
 }
@@ -236,7 +231,6 @@ async function handleCall(payload: {
   await mcpToolResult(payload.callId, result).catch(() => {});
 }
 
-/** Start listening for forwarded calls and register the tool surface. */
 export async function startMcpBridge(): Promise<() => void> {
   await rebuildRegistry();
   // Reflect whether the local MCP server is up (Settings toggle / autostart)

@@ -3,7 +3,6 @@
 // list in the order they were opened, rather than files-then-diffs.
 let seq = 0;
 
-/** Next open-order stamp for a newly opened editor tab (file or diff). */
 export function nextTabSeq(): number {
   return ++seq;
 }

@@ -23,16 +23,11 @@ function isBinaryPath(p: string): boolean {
   return BINARY_EXTS.has(p.split(".").pop()?.toLowerCase() ?? "");
 }
 
-/** A NUL byte reliably signals binary content that slipped past the extension list. */
+// A NUL byte reliably signals binary content that slipped past the extension list.
 function hasNullByte(s: string): boolean {
   return s.includes("\u0000");
 }
 
-/**
- * Renders a git diff in the editor area (replacing the old modal), using
- * `@codemirror/merge`: split (side-by-side) or unified. Read-only for now;
- * editable working-tree diffs come in a later phase.
- */
 export function DiffView() {
   const diff = useDiffStore(activeDiff);
   const mode = useDiffStore((s) => s.mode);
@@ -45,8 +40,7 @@ export function DiffView() {
   const [loading, setLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
 
-  // Auto-rebuild a read-only STAGED diff when the git state changes (e.g. after a
-  // commit). Editable working diffs update live, so we leave them alone.
+  // Rebuild only the staged diff on git changes; working diffs already update live.
   useEffect(() => {
     const onChanged = () => {
       if (activeDiff(useDiffStore.getState())?.side === "staged") setReloadKey((k) => k + 1);
@@ -66,8 +60,7 @@ export function DiffView() {
     setNotice(null);
     const { oldRev, newRev, editable } = diffSides(side);
 
-    // Editable working-tree diff: persist edits to disk (debounced) so git sees
-    // them; the MergeView re-diffs live against the fixed old side as you type.
+    // Debounced write-through so git sees edits as the MergeView re-diffs live.
     const persist = async (content: string) => {
       try {
         await writeFileContent(projectId, path, content);
@@ -102,7 +95,6 @@ export function DiffView() {
             : await gitShow(projectId, "INDEX", path);
         if (cancelled) return;
 
-        // Guard against content the merge view can't sensibly render.
         if (isBinaryPath(path) || hasNullByte(oldText) || hasNullByte(newText)) {
           setNotice("Binary file, diff not shown.");
           setLoading(false);
@@ -164,12 +156,12 @@ export function DiffView() {
     return () => {
       cancelled = true;
       if (writeTimer) clearTimeout(writeTimer);
-      if (pending !== null) void persist(pending); // flush unsaved edits on unmount
+      if (pending !== null) void persist(pending);
       view?.destroy();
       navViewRef.current = null;
       if (hostRef.current) hostRef.current.innerHTML = "";
     };
-    // reloadKey forces a rebuild when a staged diff must refresh after a commit.
+    // reloadKey isn't read above; it's here only to force a rebuild after a commit.
   }, [diff, mode, projectId, reloadKey]);
 
   const goChunk = (dir: "next" | "prev") => {

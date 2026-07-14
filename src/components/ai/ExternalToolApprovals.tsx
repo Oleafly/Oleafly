@@ -3,11 +3,8 @@ import { AI_GRADIENT } from "@/components/ai/AiChrome";
 import { ToolConfirm, isAutoApprovable } from "@/components/ai/ToolConfirm";
 import { cn } from "@/lib/utils";
 
-/**
- * Floating approval surface for tool calls arriving over MCP (external
- * agents). Reuses the exact ToolConfirm card from the in-app chat so the
- * approval semantics and the diff preview are identical.
- */
+// Reuses the ToolConfirm card from the in-app chat so approval semantics
+// and the diff preview stay identical for MCP (external agent) requests.
 export function ExternalToolApprovals() {
   const queue = useMcpApprovalStore((s) => s.queue);
   const sessionAutoApprove = useMcpApprovalStore((s) => s.sessionAutoApprove);

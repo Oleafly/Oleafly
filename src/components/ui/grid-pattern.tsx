@@ -1,8 +1,7 @@
 import { useId } from "react";
 import { cn } from "@/lib/utils";
 
-/** Decorative grid background (MagicUI-style). Render inside a `relative`
- *  parent; mask via className for a gradient fade. */
+// Render inside a `relative` parent; mask via className for a gradient fade.
 export function GridPattern({
   width = 20,
   height = 20,

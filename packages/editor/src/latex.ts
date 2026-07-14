@@ -7,18 +7,14 @@ import {
   type CompletionResult,
 } from "@codemirror/autocomplete";
 
-/** Citation keys for \cite completion, injected by the host app (e.g. parsed
- *  from the project's .bib files). Defaults to none. */
 let bibKeysProvider: () => string[] = () => [];
 export function setBibKeysProvider(fn: () => string[]) {
   bibKeysProvider = fn;
 }
 
-/** LaTeX language via the legacy `stex` stream grammar. */
 export const latexLanguage = () =>
   new LanguageSupport(StreamLanguage.define(stex));
 
-/** Scan the document for `\label{...}` targets (used by `\ref` completion). */
 function labelsInDocument(state: { doc: { toString: () => string } }): string[] {
   const text = state.doc.toString();
   const out: string[] = [];
@@ -28,7 +24,6 @@ function labelsInDocument(state: { doc: { toString: () => string } }): string[] 
   return out;
 }
 
-/** Parse citation keys out of BibTeX file contents (helper for hosts). */
 export function bibKeysFromSources(sources: Iterable<string>): string[] {
   const out: string[] = [];
   for (const content of sources) {
@@ -39,7 +34,6 @@ export function bibKeysFromSources(sources: Iterable<string>): string[] {
   return out;
 }
 
-/** Build a command completion that inserts a snippet template. */
 function cmd(label: string, detail: string, template?: string): Completion {
   return {
     label,
@@ -83,11 +77,9 @@ const LATEX_COMMANDS: Completion[] = [
   cmd("\\align", "aligned math", "\\begin{align}\n  $1\n\\end{align}"),
 ];
 
-/** Completion source: LaTeX commands + `\ref` from document labels. */
 export function latexCompletions(
   context: CompletionContext
 ): CompletionResult | null {
-  // Reference-style completion inside \ref{ ... } (and friends).
   const refMatch = context.matchBefore(
     /\\(ref|eqref|pageref|autoref|cref|Cref)\{[^}]*$/
   );
@@ -100,7 +92,6 @@ export function latexCompletions(
     };
   }
 
-  // Citation completion inside \cite{ ... } (and friends).
   const citeMatch = context.matchBefore(
     /\\(cite|citep|citet|citeauthor|citeyear|parencite|textcite)\{[^}]*$/
   );
@@ -116,7 +107,6 @@ export function latexCompletions(
     };
   }
 
-  // Command completion after a backslash.
   const cmdMatch = context.matchBefore(/\\[a-zA-Z@]*$/);
   if (!cmdMatch && !context.explicit) return null;
   return {
@@ -126,7 +116,6 @@ export function latexCompletions(
   };
 }
 
-/** Notion-style `/` slash insert menu (active at start of a line). */
 export function slashCompletions(
   context: CompletionContext
 ): CompletionResult | null {

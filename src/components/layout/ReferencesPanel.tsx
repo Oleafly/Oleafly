@@ -19,7 +19,6 @@ const KIND_LABEL: Partial<Record<Sym["kind"], string>> = {
   environment: "definition",
 };
 
-/** Find-references results, shown in the sidebar. Clicking a row jumps to it. */
 export function ReferencesPanel() {
   const { title, results } = useReferencesStore();
   const texts = useIndexStore((s) => s.texts);

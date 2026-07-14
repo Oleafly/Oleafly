@@ -80,8 +80,6 @@ test("choose the GLM-4.6 model in settings and persist it", async ({ tauriPage }
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await ensureAiConnected(tauriPage);
 
-  // Make sure the active provider card is expanded; the Model select renders
-  // inside it.
   await openSettings(tauriPage, "ai");
   await expandProviderCard(tauriPage);
   // The model select lives inside the provider card; the chat panel behind
@@ -115,7 +113,6 @@ test("choose the GLM-4.6 model in settings and persist it", async ({ tauriPage }
   expect(options, `GLM-4.6 missing; options were: ${options}`).toBe("picked");
   await tauriPage.click('[aria-label="Close settings"]');
 
-  // Reopen settings: the choice persisted into the real config.
   await openSettings(tauriPage, "ai");
   await expandProviderCard(tauriPage);
   await tauriPage.waitForFunction(

@@ -5,12 +5,6 @@ import { useSettingsStore } from "@/store/settings";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-/**
- * The GitHub control in the top toolbar: a combined pill with the connected
- * account on the left (click opens GitHub settings) and, past a vertical
- * separator, a GitHub icon that opens the share dropdown (Open in GitHub, Copy
- * repository link). The share actions enable once the project is pushed.
- */
 export function GithubMenu({
   githubUrl,
   onOpenInGithub,
@@ -38,7 +32,6 @@ export function GithubMenu({
   return (
     <div className="relative">
       <div className="flex h-7 items-center overflow-hidden rounded-md border bg-background">
-        {/* Left: account — click opens GitHub settings. */}
         {connected && (
           <>
             <Tooltip label={`Connected as @${login} · GitHub settings`} side="bottom">
@@ -61,7 +54,6 @@ export function GithubMenu({
           </>
         )}
 
-        {/* Right: GitHub icon — opens the share dropdown. */}
         <Tooltip label="GitHub" side="bottom">
           <button
             onClick={() => setOpen((v) => !v)}

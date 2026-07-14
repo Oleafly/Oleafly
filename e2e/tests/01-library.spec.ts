@@ -8,7 +8,6 @@ test("app launches to the library", async ({ tauriPage }) => {
 test("template gallery opens with template cards and closes", async ({ tauriPage }) => {
   await openGallery(tauriPage);
   await expect(tauriPage.getByTestId("template-gallery")).toBeVisible();
-  // A few known templates render as cards.
   await expect(tauriPage.getByTestId("template-card-blank")).toBeVisible();
   await expect(tauriPage.getByTestId("template-card-ieee")).toBeVisible();
   await tauriPage.click('[data-testid="template-gallery"] [aria-label="Close"]');

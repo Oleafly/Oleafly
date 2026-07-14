@@ -10,8 +10,6 @@ import { dockerFile } from "@codemirror/legacy-modes/mode/dockerfile";
 import { shell } from "@codemirror/legacy-modes/mode/shell";
 import { latexLanguage } from "./latex";
 
-/** Returns a CodeMirror LanguageSupport for the given filename, or null for
- *  plain text. Picks the grammar by extension. */
 export function languageForPath(path: string): LanguageSupport | null {
   const p = path.toLowerCase();
   const base = p.slice(p.lastIndexOf("/") + 1);

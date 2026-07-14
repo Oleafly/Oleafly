@@ -1,16 +1,6 @@
 import { maskComments } from "./mask";
 import type { Finding, Lens, Severity } from "./types";
 
-/**
- * Static (source-level) preflight rules. Each is a pure function over the .tex
- * text producing zero or more Findings. Deliberately regex/heuristic (like
- * `latex-linter.ts`) rather than a full parser: fast enough to run on every
- * edit, and good enough to catch the ATS + accessibility defects that share a
- * root cause in the PDF text layer.
- *
- * See docs/planning/specs/2026-07-08-accessibility-ats-preflight-design.md.
- */
-
 type Rule = (text: string) => Finding[];
 
 const make = (
@@ -25,7 +15,6 @@ const make = (
 // A contact token: email, tel/mailto href, or a phone-like run of digits.
 const CONTACT = /[\w.+-]+@[\w-]+\.[\w.-]+|(?:mailto:|tel:)|\+?\d[\d\s().-]{7,}\d/;
 
-/** Find the `\documentclass[opts]{name}` line, if any. */
 function documentClass(text: string): { opts: string; name: string; from: number; to: number } | null {
   const m = /\\documentclass\s*(?:\[([^\]]*)\])?\s*\{([^}]*)\}/.exec(text);
   if (!m) return null;
@@ -356,7 +345,6 @@ const RULES: Rule[] = [
   readingOrderRisk,
 ];
 
-/** Run every source rule and return all findings, in source order. */
 export function runSourceRules(text: string): Finding[] {
   // Blank out commented-out LaTeX first so `% \usepackage{multicol}` does not
   // raise a false error. Offsets are preserved (comments become spaces).

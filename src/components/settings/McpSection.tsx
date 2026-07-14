@@ -39,7 +39,7 @@ function CopyBtn({ text, testId }: { text: string; testId?: string }) {
 
 type SnippetLang = "json" | "shell" | "toml";
 
-/** Lightweight token coloring for the MCP connection snippets (no heavy highlighter dep). */
+// Avoids pulling in a full syntax-highlighter dependency for these small snippets.
 function highlightSnippet(source: string, lang: SnippetLang): ReactNode[] {
   const out: ReactNode[] = [];
   let key = 0;
@@ -141,9 +141,9 @@ function Snippet({
   lang,
 }: {
   title: ReactNode;
-  /** Displayed (may be masked). */
+  // Displayed (may be masked).
   body: string;
-  /** Pasted on Copy (always the real snippet when the token is known). */
+  // Pasted on Copy (always the real snippet when the token is known).
   copyText: string;
   lang: SnippetLang;
 }) {
@@ -161,7 +161,6 @@ function Snippet({
   );
 }
 
-/** Build the four client snippets with a given bearer token string. */
 function buildSnippets(url: string, bearer: string) {
   const claudeCode = `claude mcp add --transport http openleaf ${url} --header "Authorization: Bearer ${bearer}"`;
   const claudeDesktop = JSON.stringify(
@@ -210,7 +209,6 @@ export function McpSection() {
   const [revealed, setRevealed] = useState(false);
   const [confirmRegen, setConfirmRegen] = useState(false);
 
-  /** Fetch the live token when the server is running (for Copy + Reveal display). */
   const loadToken = useCallback(async (running: boolean) => {
     if (!running) {
       setToken(null);

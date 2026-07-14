@@ -29,7 +29,6 @@ fn ensure_repo(project_id: &str) -> Result<PathBuf, String> {
         let _ = run_git(&root, &["symbolic-ref", "HEAD", "refs/heads/main"]);
         std::fs::write(root.join(".gitignore"), ".openleaf/\n.localleaf/\n")
             .map_err(|e| e.to_string())?;
-        // Set a local identity if none is configured.
         let email = run_git(&root, &["config", "user.email"])?;
         if String::from_utf8_lossy(&email.stdout).trim().is_empty() {
             let _ = run_git(&root, &["config", "user.email", "openleaf@local"]);
@@ -138,15 +137,12 @@ pub async fn git_log(project_id: String) -> Result<Vec<GitCommit>, String> {
 pub async fn git_restore(project_id: String, oid: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
         let root = ensure_repo(&project_id)?;
-        // Restore all tracked files from the given commit into the working tree.
         run_git(&root, &["checkout", &oid, "--", "."])?;
         Ok(())
     })
     .await
     .map_err(|e| e.to_string())?
 }
-
-// --- Remotes, push, pull ---
 
 fn out_to_string(out: &std::process::Output) -> String {
     let mut s = String::new();
@@ -431,8 +427,6 @@ pub async fn git_pull(project_id: String) -> Result<String, String> {
     Ok(format!("Pulled origin/{branch}"))
 }
 
-// --- Working-tree inspection & changes (VS Code-style source control) ---
-
 #[derive(Serialize)]
 pub struct GitFileChange {
     pub path: String,
@@ -547,8 +541,6 @@ pub fn git_head_oid(project_id: String) -> Result<Option<String>, String> {
     let s = String::from_utf8_lossy(&out.stdout).trim().to_string();
     Ok(if s.is_empty() { None } else { Some(s) })
 }
-
-// --- Staging & index-only commit (VS Code-style source control) ---
 
 /// Whether the repo has a HEAD commit yet (false on a fresh repo).
 fn has_head(root: &PathBuf) -> bool {

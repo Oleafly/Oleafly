@@ -1,8 +1,6 @@
 import { test, expect } from "../fixtures";
 import { openProject, openRailTab, pressGlobal } from "../helpers";
 
-// Preflight runs its checks against the real compiled PDF and real sources.
-
 test("preflight categories render and a single check runs independently", async ({
   tauriPage,
 }) => {
@@ -16,12 +14,9 @@ test("preflight categories render and a single check runs independently", async 
   });
 
   await openRailTab(tauriPage, "Preflight (ATS + accessibility)");
-  // Per-category Run buttons exist (independent checks).
   await expect(tauriPage.getByText("Run")).toBeVisible();
 
   await tauriPage.getByText("Run").click();
-  // The run resolves (spinner gone) and the category reports a completion
-  // state: a pass check, findings, or a score.
   await tauriPage.waitForFunction(`!document.querySelector('.animate-spin')`, 60_000);
   const after = await tauriPage.evaluate<string>(`document.body.innerText`);
   expect(after).toMatch(/✓|issue|score|finding/i);

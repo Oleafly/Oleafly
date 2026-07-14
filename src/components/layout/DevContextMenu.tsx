@@ -2,13 +2,8 @@ import { useEffect, useState } from "react";
 import { Bug, RefreshCw } from "lucide-react";
 import { openDevtools } from "@/lib/tauri";
 
-/**
- * Dev-only global right-click menu offering "Refresh App" and "Inspect".
- * Gated on `import.meta.env.DEV`, so it is stripped from production builds and
- * only appears while running against the dev server (`tauri dev`). It yields to
- * component-level context menus (e.g. the editor's) by bailing when the event
- * was already handled (`defaultPrevented`).
- */
+// Yields to component-level context menus (e.g. the editor's) by bailing
+// when the event was already handled (`defaultPrevented`).
 export function DevContextMenu() {
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
 
@@ -43,7 +38,6 @@ export function DevContextMenu() {
 
   if (!import.meta.env.DEV || !menu) return null;
 
-  // Keep the menu inside the viewport.
   const left = Math.min(menu.x, window.innerWidth - 176);
   const top = Math.min(menu.y, window.innerHeight - 88);
 

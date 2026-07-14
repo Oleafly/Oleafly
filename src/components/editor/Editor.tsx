@@ -17,12 +17,8 @@ function basename(p: string) {
   return parts[parts.length - 1];
 }
 
-/**
- * The unsaved-changes dot for one tab. Subscribes to just that file's `dirty`
- * boolean so it re-renders only when the flag flips, instead of making the whole
- * tab bar re-render on every keystroke (which subscribing to the `files` map
- * would, since it is rebuilt on each edit).
- */
+// Subscribes to just this file's `dirty` boolean, not the `files` map (which
+// is rebuilt on every edit), so the tab bar doesn't re-render on each keystroke.
 function DirtyDot({ path }: { path: string }) {
   const dirty = useFilesStore((s) => s.files[path]?.dirty ?? false);
   if (!dirty) return null;
@@ -61,9 +57,7 @@ function imageMime(path: string): string {
   return "image/png";
 }
 
-/** Render an image file (png/jpg/svg/...) as an actual picture instead of
- *  loading its bytes into the text editor. Reads base64 and shows a data URL
- *  (the CSP allows img-src data:). */
+// data: URLs, not blob:, because the CSP only allows img-src data:.
 function ImageFileView({ projectId, path }: { projectId: string; path: string }) {
   const [src, setSrc] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -99,8 +93,8 @@ export function Editor() {
   const diffFocused = activeKey !== null && diffs.some((d) => diffKey(d) === activeKey);
   const tabOrder = useFilesStore((s) => s.tabOrder);
 
-  // One tab strip, files and diffs interleaved by the order they were opened.
-  // Re-opening a tab keeps its stamp (see the stores), so it never jumps.
+  // Files and diffs interleaved into one strip; re-opening a tab keeps its
+  // stamp (see the stores) so it doesn't jump position.
   const tabs = useMemo(() => {
     const fileTabs = openTabs.map((path) => ({
       kind: "file" as const,
@@ -119,9 +113,8 @@ export function Editor() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey)) return;
-      // Only act when the CodeMirror editor itself is focused. Otherwise Cmd/Ctrl
-      // +B/I typed in a text input, the AI chat box, or any other field would
-      // silently mutate the document.
+      // Require CodeMirror focus, else Cmd/Ctrl+B/I typed in the AI chat box
+      // or any other input would silently mutate the document.
       const el = document.activeElement as HTMLElement | null;
       if (!el?.closest(".cm-editor")) return;
       const k = e.key.toLowerCase();
@@ -142,8 +135,8 @@ export function Editor() {
   const isPdfFile = activePath != null && activePath.toLowerCase().endsWith(".pdf");
   const isImageFile =
     activePath != null && IMAGE_EXTS.some((e) => activePath.toLowerCase().endsWith(e));
-  // Binary formats with no in-app preview (fonts, archives): show a notice
-  // instead of an empty text editor a save could clobber them from.
+  // No in-app preview for these; show a notice instead of an empty text
+  // editor a save could clobber them from.
   const isOpaqueFile =
     activePath != null &&
     /\.(zip|gz|eps|ttf|otf|woff2?)$/i.test(activePath);
@@ -151,7 +144,6 @@ export function Editor() {
 
   return (
     <div className="flex h-full flex-col bg-background">
-      {/* Tabs */}
       <div className="flex h-9 shrink-0 items-center gap-1 overflow-x-auto border-b px-2">
         {tabs.length === 0 && (
           <span className="px-2 text-xs text-muted-foreground">No file open</span>
@@ -222,7 +214,6 @@ export function Editor() {
           )
         )}
       </div>
-      {/* Editor body */}
       {diffFocused ? (
         <ErrorBoundary
           fallback={

@@ -43,7 +43,6 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
-  // Enable the server through Settings (default "ask" policy).
   await openSettings(tauriPage, "mcp");
   await expect(tauriPage.locator('[data-testid="settings-section-mcp"]')).toBeVisible();
   await tauriPage.click('[data-testid="mcp-enable-toggle"]');
@@ -61,7 +60,6 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
   expect(url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/mcp$/);
   expect(token.length).toBe(64);
 
-  // Handshake.
   const init = await rpc(url, token, {
     jsonrpc: "2.0",
     id: 1,
@@ -77,7 +75,6 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
   );
   await rpc(url, token, { jsonrpc: "2.0", method: "notifications/initialized" });
 
-  // Auth is enforced.
   const unauthorized = await fetch(url, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -98,7 +95,6 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
     expect(names).toContain(n);
   }
 
-  // A read tool round-trips through the webview.
   const read = await rpc(url, token, {
     jsonrpc: "2.0",
     id: 3,
@@ -108,7 +104,6 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
   const readPayload = toolPayload((read.json as { result?: unknown })?.result);
   expect(readPayload.content).toContain("\\documentclass");
 
-  // A write tool pauses on the approval card; approving applies it.
   const writePromise = rpc(url, token, {
     jsonrpc: "2.0",
     id: 4,
@@ -121,14 +116,14 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
   await expect(tauriPage.locator('[data-testid="mcp-approval-panel"]')).toBeVisible({
     timeout: 15_000,
   });
-  // Prefer the bridge test hook: webview click targeting is unreliable for the
-  // floating approval card under tauri-playwright.
+  // Bridge test hook, not a UI click: webview click targeting is unreliable
+  // for the floating approval card under tauri-playwright.
   const approved = await tauriPage.evaluate<string>(`window.__mcpDecide("approve")`);
   expect(approved).toMatch(/approve:write_file/);
   const write = await writePromise;
   const writePayload = toolPayload((write.json as { result?: unknown })?.result);
   expect(writePayload.success, JSON.stringify(writePayload)).toBe(true);
-  // Drain any leftover write cards before starting delete (should already be empty).
+  // Drain leftover approval cards so they don't interfere with the delete flow.
   for (let i = 0; i < 5; i++) {
     const q = await tauriPage.evaluate<string[]>(`window.__mcpQueue?.() ?? []`);
     if (q.length === 0) break;
@@ -140,7 +135,6 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
     })
     .toEqual([]);
 
-  // Rejecting a delete leaves the file alone and reports declined.
   const delPromise = rpc(url, token, {
     jsonrpc: "2.0",
     id: 5,
@@ -162,7 +156,6 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
   expect(delPayload.success, JSON.stringify(delPayload)).not.toBe(true);
   expect(delPayload.declined, JSON.stringify(delPayload)).toBe(true);
 
-  // File still readable after rejected delete.
   const reread = await rpc(url, token, {
     jsonrpc: "2.0",
     id: 6,
@@ -172,9 +165,8 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
   const rereadPayload = toolPayload((reread.json as { result?: unknown })?.result);
   expect(rereadPayload.content, JSON.stringify(rereadPayload)).toContain("written over MCP");
 
-  // Disable the server so later specs (e.g. 36 MCP-activity, which asserts the
-  // tab is off by default) start from a clean rail. MCP-enabled persists in the
-  // shared e2e config, so leaving it on leaks across specs.
+  // MCP-enabled persists in the shared e2e config, so disable it here or it
+  // leaks into later specs (e.g. 36, which asserts the tab is off by default).
   await openSettings(tauriPage, "mcp");
   await tauriPage.click('[data-testid="mcp-enable-toggle"]');
   await tauriPage.click('[aria-label="Close settings"]');

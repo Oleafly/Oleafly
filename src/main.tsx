@@ -15,12 +15,10 @@ import { appendAppLog } from "@/lib/tauri";
 import { registerContributions } from "@/contributions";
 import "@/styles/globals.css";
 
-// Populate the contribution registry (rail tabs, commands, AI toolsets)
-// before the shell mounts and reads it.
+// Must run before the shell mounts and reads the registry.
 registerContributions();
 
-// Record otherwise-invisible failures (rejected promises, non-React errors) to
-// the shared app log so they can be diagnosed from a user's bug report.
+// Log otherwise-invisible failures so they can be diagnosed from a bug report.
 window.addEventListener("unhandledrejection", (e) => {
   const reason = e.reason;
   const msg = reason?.stack || reason?.message || String(reason);
@@ -31,8 +29,6 @@ window.addEventListener("error", (e) => {
   void appendAppLog(`Uncaught error: ${msg}`).catch(() => {});
 });
 
-// Dedicated secondary windows render a slice of the SPA via `?view=…` in their
-// own JS context (same pattern as preview / update).
 const viewParam = new URLSearchParams(window.location.search).get("view");
 const isUpdateWindow = viewParam === "update";
 const isPreviewWindow = viewParam === "preview";

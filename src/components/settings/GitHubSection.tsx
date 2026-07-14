@@ -47,7 +47,6 @@ export function GitHubSection({
   const [flow, setFlow] = useState<DeviceCode | null>(null);
   const [flowError, setFlowError] = useState<string | null>(null);
 
-  // Advanced PAT disclosure.
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [pat, setPat] = useState("");
 
@@ -70,13 +69,12 @@ export function GitHubSection({
 
   const note = (ok: boolean, text: string) => setMsg({ ok, text });
 
-  // Lets the user cancel a running device flow. Bumping the generation
-  // invalidates any in-flight poll (also guards cancel→reconnect races).
+  // Bumping this invalidates any in-flight poll, letting the user cancel a
+  // running device flow and guarding against cancel→reconnect races.
   const flowGenRef = useRef(0);
 
-  // Cancel any in-flight device-flow poll when this section unmounts (e.g. the
-  // Settings modal is closed mid-flow). Bumping the generation makes the loop's
-  // `cancelled()` return true, so it stops polling and skips further setState.
+  // Also bump on unmount (e.g. Settings closed mid-flow) so the poll loop's
+  // `cancelled()` trips and it stops calling setState.
   useEffect(() => {
     return () => {
       flowGenRef.current++;
@@ -251,7 +249,6 @@ export function GitHubSection({
 
   return (
     <div className="space-y-5 text-sm">
-      {/* Account */}
       <div className="space-y-2">
         <div className="font-medium">GitHub account</div>
         {connected ? (
@@ -384,7 +381,6 @@ export function GitHubSection({
 
       <hr className="border-border" />
 
-      {/* Current project */}
       <div className="space-y-2">
         <div className="font-medium">
           Repository {projectId ? `· ${projectId}` : ""}

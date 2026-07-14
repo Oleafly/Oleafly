@@ -38,22 +38,18 @@ for (const p of envCandidates) {
   break;
 }
 
-/**
- * Shared Playwright fixtures. In `tauri` mode (the only mode we use), tests
- * drive the REAL app over the plugin's socket bridge: real webview, real Rust
- * backend, real Tectonic compiles. Start the app first:
- *
- *   OPENLEAF_DATA_DIR=$(mktemp -d) pnpm tauri dev --features e2e-testing
- */
+// In `tauri` mode (the only mode we use), tests drive the REAL app over the
+// plugin's socket bridge: real webview, real Rust backend, real Tectonic
+// compiles. Start the app first:
+//
+//   OPENLEAF_DATA_DIR=$(mktemp -d) pnpm tauri dev --features e2e-testing
 const DEV_URL = "http://localhost:1420";
 
-/**
- * Windows: the plugin serves TCP (no unix sockets), but createTauriTest's
- * external-launch path only ever connects to a socket PATH, so build the
- * tauriPage fixture ourselves from the exported client classes. Mirrors the
- * upstream fixture: connect, ping, reload to the dev URL, wait for the
- * bridge marker.
- */
+// Windows: the plugin serves TCP (no unix sockets), but createTauriTest's
+// external-launch path only ever connects to a socket PATH, so build the
+// tauriPage fixture ourselves from the exported client classes. Mirrors the
+// upstream fixture: connect, ping, reload to the dev URL, wait for the
+// bridge marker.
 function createWindowsTcpTest() {
   const port = Number(process.env.TAURI_PLAYWRIGHT_TCP_PORT ?? 6274);
   const test = base.extend<{ tauriPage: TauriPage }>({

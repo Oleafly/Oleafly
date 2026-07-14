@@ -2,13 +2,13 @@ import { test, expect } from "../fixtures";
 import { fillTextarea, openProject, openRailTab, waitLong, type Page } from "../helpers";
 import { startMockAiServer, type MockAiServer } from "../mock-ai-server";
 
-// A REAL AI conversation with NO key and NO network. The keyless "Ollama (local)"
-// provider streams via `<host>/v1/chat/completions`, so we point it at a local
-// fake OpenAI-compatible server (mock-ai-server.ts) and the actual streaming /
-// usage / handoff pipeline runs in CI. Connecting is a precondition done through
-// the __aiConnect devtools hook (stands in for the user connecting in Settings);
-// the conversation itself is entirely real. This closes the coverage gap where
-// CI never exercised a single real conversation (28/35/31 are token-gated).
+// A REAL AI conversation with NO key and NO network: the keyless "Ollama
+// (local)" provider streams via `<host>/v1/chat/completions`, so we point it
+// at a local fake OpenAI-compatible server (mock-ai-server.ts) and the actual
+// streaming/usage/handoff pipeline runs in CI. __aiConnect stands in only for
+// the Settings connect step; the conversation itself is real. This closes the
+// coverage gap where CI never exercised a real conversation (28/35/31 are
+// token-gated and skipped there).
 
 let server: MockAiServer;
 
@@ -21,7 +21,6 @@ test.afterAll(async () => {
 
 const TA = 'textarea[placeholder*="Ask AI"]';
 
-/** Point the keyless Ollama provider at the mock server and open the composer. */
 async function connectAndOpenChat(page: Page) {
   await openProject(page, "E2E Doc");
   await expect(page.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
@@ -44,13 +43,11 @@ test("a real streamed conversation round-trips and records usage", async ({ taur
   await fillTextarea(tauriPage, TA, "Reply with the marker.");
   await tauriPage.press(TA, "Enter");
 
-  // The streamed reply lands in the transcript and the run finishes (no Stop).
   await waitLong(
     tauriPage,
     `document.body.innerText.includes('MOCKPONG42') && !document.querySelector('[aria-label="Stop"]')`,
     30_000,
   );
-  // The usage footer is fed by the mock's usage chunk - a real end-to-end path.
   await expect(tauriPage.getByTestId("ai-chat-usage")).toBeVisible({ timeout: 5_000 });
 });
 
@@ -58,8 +55,8 @@ test("the assistant runs a real tool call end to end", async ({ tauriPage }) => 
   test.setTimeout(90_000);
   await connectAndOpenChat(tauriPage);
 
-  // First turn: the model asks to read main.tex. The follow-up turn (carrying the
-  // tool result) streams the confirmation text.
+  // The mock's `then` triggers a second turn carrying the tool result, which
+  // streams the confirmation text.
   server.setToolCall({ name: "read_file", args: { path: "main.tex" }, then: "READFILEDONE99" });
   await fillTextarea(tauriPage, TA, "Read main.tex, then confirm.");
   await tauriPage.press(TA, "Enter");
@@ -69,7 +66,6 @@ test("the assistant runs a real tool call end to end", async ({ tauriPage }) => 
     `document.body.innerText.includes('READFILEDONE99') && !document.querySelector('[aria-label="Stop"]')`,
     45_000,
   );
-  // The server saw two calls: the tool-call turn and the tool-result follow-up.
   expect(server.requestCount()).toBeGreaterThanOrEqual(2);
 });
 
@@ -79,8 +75,8 @@ test("agent handoff delivers the prompt into the live composer", async ({ tauriP
 
   const marker = `E2E handoff ${Date.now().toString(36)}`;
   await tauriPage.evaluate(`window.__agentHandoff?.(${JSON.stringify(marker)}, false)`);
-  // With a provider connected the composer is live, so this is a hard assertion
-  // (no more `if (hasInput)` soft-gate): the handoff lands in the textarea.
+  // Provider is connected here, so unlike 36-ai-agentic.spec.ts this can assert
+  // hard instead of soft-gating on `if (hasInput)`.
   await expect
     .poll(
       async () =>

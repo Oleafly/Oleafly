@@ -169,7 +169,6 @@ pub async fn compile_project(
     #[cfg(debug_assertions)]
     let req_at = std::time::Instant::now();
 
-    // Only one compile at a time; concurrent callers wait here.
     let _guard = state.compile_lock.lock().await;
 
     #[cfg(debug_assertions)]

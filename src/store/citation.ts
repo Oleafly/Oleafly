@@ -1,6 +1,5 @@
 import { create } from "zustand";
 
-/** Controls the Add-citation dialog. */
 interface CitationStore {
   open: boolean;
   setOpen: (v: boolean) => void;

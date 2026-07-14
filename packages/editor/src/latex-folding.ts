@@ -1,13 +1,9 @@
 import { codeFolding, foldService } from "@codemirror/language";
 import type { EditorState } from "@codemirror/state";
 
-/**
- * Click-to-collapse folding for LaTeX. Since LaTeX is a StreamLanguage (no syntax
- * tree), we provide fold ranges directly:
- *  - `\begin{env}` ... `\end{env}` blocks (nesting-aware).
- *  - Sectioning commands, folded until the next same-or-higher-level section.
- * The fold gutter and keymap are already installed in the editor.
- */
+// Since LaTeX is a StreamLanguage (no syntax tree), we provide fold ranges
+// directly: `\begin{env}` ... `\end{env}` blocks (nesting-aware), and
+// sectioning commands folded until the next same-or-higher-level section.
 
 const SECTION_LEVEL: Record<string, number> = {
   part: 0,
@@ -30,7 +26,6 @@ function escapeRe(s: string): string {
 function latexFoldRange(state: EditorState, lineStart: number, lineEnd: number): { from: number; to: number } | null {
   const lineText = state.doc.sliceString(lineStart, lineEnd);
 
-  // Environment fold: \begin{env} ... matching \end{env}.
   const begin = /\\begin\{([^}]*)\}/.exec(lineText);
   if (begin) {
     const env = begin[1];
@@ -49,7 +44,6 @@ function latexFoldRange(state: EditorState, lineStart: number, lineEnd: number):
     return null;
   }
 
-  // Section fold: until the next section of the same or higher level.
   const sec = SECTION_RE.exec(lineText);
   if (sec) {
     const level = SECTION_LEVEL[sec[1]];

@@ -1,19 +1,13 @@
-/**
- * Approximate public list prices (USD per 1M tokens) for common models.
- * Used only for rough UI estimates — not billing. Update periodically.
- * Sources: provider list prices as of 2025–2026; Z.AI coding plan treated as ~0.
- */
+// Approximate public list prices (USD per 1M tokens) for common models.
+// Used only for rough UI estimates — not billing. Update periodically.
+// Sources: provider list prices as of 2025–2026; Z.AI coding plan treated as ~0.
 
 export interface ModelPrice {
-  /** USD per 1M input tokens */
   inputPerMTok: number;
-  /** USD per 1M output tokens */
   outputPerMTok: number;
-  /** Optional note shown in UI */
   note?: string;
 }
 
-/** Keys are model ids (and a few provider:model aliases). */
 const PRICES: Record<string, ModelPrice> = {
   // OpenAI
   "gpt-4o": { inputPerMTok: 2.5, outputPerMTok: 10 },
@@ -54,21 +48,17 @@ const PRICES: Record<string, ModelPrice> = {
   "glm-4.5": { inputPerMTok: 0, outputPerMTok: 0, note: "plan" },
 };
 
-/** Fallback when the model id is unknown (conservative mid-tier). */
 const DEFAULT_PRICE: ModelPrice = { inputPerMTok: 1, outputPerMTok: 3, note: "estimate" };
 
 export function lookupPrice(modelId: string): ModelPrice {
   if (!modelId) return DEFAULT_PRICE;
   if (PRICES[modelId]) return PRICES[modelId];
-  // OpenRouter-style suffixes / prefixes
   const bare = modelId.includes("/") ? modelId.split("/").pop()! : modelId;
   if (PRICES[bare]) return PRICES[bare];
-  // Fuzzy: the longest PAID key that is a substring of the id. Free local/plan
-  // entries (mistral, gemma2, glm-*, ...) are skipped here so a paid id like
-  // "mistral-large-2411" is not mispriced as the free "mistral" family; it
-  // falls through to the conservative default instead. We only test
-  // `modelId.includes(k)` (not the reverse), so a short unknown id like "gpt-4"
-  // cannot borrow "gpt-4o" pricing. Longest-first favors the most specific key.
+  // Longest PAID key that is a substring of the id. Free entries (mistral, gemma2,
+  // glm-*, ...) are skipped so a paid id like "mistral-large-2411" doesn't get
+  // mispriced as the free "mistral" family. Only `modelId.includes(k)` is tested
+  // (not the reverse), so "gpt-4" can't borrow "gpt-4o" pricing.
   const paid = Object.entries(PRICES)
     .filter(([, v]) => v.inputPerMTok > 0 || v.outputPerMTok > 0)
     .sort((a, b) => b[0].length - a[0].length);
@@ -78,7 +68,6 @@ export function lookupPrice(modelId: string): ModelPrice {
   return DEFAULT_PRICE;
 }
 
-/** Estimate USD cost from token counts. Free/local models resolve to a $0 price. */
 export function estimateUsd(
   modelId: string,
   inputTokens: number,
@@ -91,7 +80,6 @@ export function estimateUsd(
   return { usd, price };
 }
 
-/** Format a USD amount for the chat UI (approx). */
 export function formatUsd(usd: number): string {
   if (usd <= 0) return "$0";
   if (usd < 0.01) return `~$${usd.toFixed(4)}`;

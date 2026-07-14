@@ -6,14 +6,13 @@ export interface ToolEntry {
   name: string;
   status: "running" | "done" | "error";
   output?: string;
-  /** For gated edits: whether the user approved or rejected the change. Left a
-   *  persistent trace in the chat after the approval prompt is dismissed. */
+  // For gated edits: whether the user approved or rejected the change. Left a
+  // persistent trace in the chat after the approval prompt is dismissed.
   approval?: "approved" | "rejected";
 }
 
-/** Lightweight metadata for a file/image the user attached to a message. Only
- *  the name + media type are persisted (never the bytes) to protect storage
- *  quota; the bytes exist only in-session for the model call. */
+// Only the name + media type are persisted (never the bytes) to protect
+// storage quota; the bytes exist only in-session for the model call.
 export interface AttachmentMeta {
   name: string;
   mediaType: string;
@@ -24,15 +23,15 @@ export interface ChatMessage {
   content: string;
   toolCalls?: ToolEntry[];
   attachments?: AttachmentMeta[];
-  /** Legacy single-block chain-of-thought; still read for chats persisted
-   *  before reasoningBlocks existed. */
+  // Legacy single-block chain-of-thought; still read for chats persisted
+  // before reasoningBlocks existed.
   reasoning?: string;
-  /** Legacy duration for the single `reasoning` block. */
+  // Legacy duration for the single `reasoning` block.
   reasoningMs?: number;
-  /** Chain-of-thought phases in arrival order. An agentic run can think
-   *  between tool calls, so each phase records how many tool calls existed
-   *  when it began (its interleave anchor). `ms` is set when the phase ends;
-   *  undefined means it is still streaming. */
+  // Chain-of-thought phases in arrival order. An agentic run can think
+  // between tool calls, so each phase records how many tool calls existed
+  // when it began (its interleave anchor). `ms` is set when the phase ends;
+  // undefined means it is still streaming.
   reasoningBlocks?: ReasoningBlockData[];
 }
 
@@ -42,14 +41,12 @@ export interface ReasoningBlockData {
   beforeTool: number;
 }
 
-/** Aggregated model usage for one chat conversation (sum of agent runs). */
 export interface ChatUsage {
   inputTokens: number;
   outputTokens: number;
   steps: number;
-  /** Number of completed agent runs that reported usage. */
   runs: number;
-  /** Rough USD estimate from list prices (not billing). */
+  // Rough USD estimate from list prices (not billing).
   estimatedUsd?: number;
 }
 
@@ -60,10 +57,9 @@ export interface StoredChat {
   createdAt: number;
   updatedAt: number;
   messages: ChatMessage[];
-  /** Git HEAD oid captured when the chat was started, used to warn the user
-   *  that an older chat refers to an older project snapshot. */
+  // Git HEAD oid captured when the chat was started, used to warn the user
+  // that an older chat refers to an older project snapshot.
   headOid: string | null;
-  /** Cumulative token/step usage across agent runs in this chat. */
   usage?: ChatUsage;
 }
 
@@ -71,19 +67,17 @@ interface ChatsState {
   projectId: string | null;
   chats: StoredChat[]; // current project, newest-first
   activeId: string | null;
-  /** Load chats for a project from disk (Tauri) or localStorage (browser). */
   load: (projectId: string) => Promise<void>;
   create: (projectId: string, headOid: string | null) => StoredChat;
   saveMessages: (chatId: string, messages: ChatMessage[]) => void;
   patchTitleIfEmpty: (chatId: string, title: string) => void;
-  /** Add a run's token usage into the chat's cumulative totals. */
   addUsage: (
     chatId: string,
     delta: {
       inputTokens: number;
       outputTokens: number;
       steps: number;
-      /** Optional USD estimate for this run (precomputed with the model price). */
+      // Precomputed with the model price; this store does not compute it.
       estimatedUsd?: number;
     },
   ) => void;
@@ -94,10 +88,8 @@ interface ChatsState {
 
 const legacyKey = (pid: string) => `openleaf.chats.${pid}`;
 
-/** Keep history bounded so storage never grows without limit. */
 const MAX_CHATS_PER_PROJECT = 50;
 
-/** Projects whose legacy localStorage payload has already been migrated this session. */
 const migratedLegacy = new Set<string>();
 
 function parseChats(raw: string | null): StoredChat[] {
@@ -127,8 +119,6 @@ function clearLegacyLocal(pid: string) {
   }
 }
 
-/** Notify the app that persistence failed even after pruning, so the UI can
- *  tell the user their chat history has stopped being saved. */
 function notifyQuota() {
   try {
     window.dispatchEvent(new CustomEvent("openleaf:chats-quota-exceeded"));
@@ -144,7 +134,6 @@ function capChats(chats: StoredChat[]): StoredChat[] {
     .slice(0, MAX_CHATS_PER_PROJECT);
 }
 
-/** Persist chats: disk in Tauri, localStorage in the browser/dev without IPC. */
 function writeAll(pid: string, chats: StoredChat[]) {
   const capped = capChats(chats);
   const json = JSON.stringify(capped);
@@ -194,7 +183,6 @@ async function readAll(pid: string): Promise<StoredChat[]> {
       }
       return chats;
     } catch {
-      // Fall back to any localStorage remnant if the disk read fails.
       return readLegacyLocal(pid);
     }
   }
@@ -361,7 +349,7 @@ if (typeof window !== "undefined") {
     const s = useChatsStore.getState();
     const pid = s.projectId;
     if (!pid) return null;
-    return s.create(pid, null).id; // create() sets it active with zero usage
+    return s.create(pid, null).id;
   };
   w.__chatUsageAdd = (chatId, delta) => useChatsStore.getState().addUsage(chatId, delta);
   w.__chatUsageGet = (chatId) => useChatsStore.getState().byId(chatId)?.usage ?? null;

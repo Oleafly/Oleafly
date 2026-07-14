@@ -1,14 +1,12 @@
 import { memo } from "react";
 import { cn } from "@/lib/utils";
 
-/** Color band for a 0-100 readiness score. */
 function band(score: number): { stroke: string; text: string } {
   if (score >= 85) return { stroke: "stroke-emerald-500", text: "text-emerald-500" };
   if (score >= 60) return { stroke: "stroke-amber-500", text: "text-amber-500" };
   return { stroke: "stroke-red-500", text: "text-red-500" };
 }
 
-/** A compact circular gauge for one lens score. */
 export const ScoreRing = memo(function ScoreRing({ label, score }: { label: string; score: number }) {
   const r = 26;
   const circ = 2 * Math.PI * r;

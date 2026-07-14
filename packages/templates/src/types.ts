@@ -1,7 +1,7 @@
 import type { ComponentType, ReactNode } from "react";
 
-/** The template fields the gallery reads (structural subset of the host's
- *  richer manifest type; extra fields pass through untouched). */
+// A structural subset of the host's richer manifest type; extra fields pass
+// through untouched.
 export interface TemplateInfo {
   id: string;
   name: string;
@@ -15,11 +15,8 @@ export interface TemplateInfo {
   ready: boolean;
 }
 
-/** Services the gallery needs from the host app. */
 export interface TemplatesHost {
-  /** Page-1 preview as a data URI, or null when none exists. */
   loadPreview(templateId: string): Promise<string | null>;
-  /** Download any missing fonts/packages for a template, reporting progress. */
   ensureAssets(
     templateId: string,
     onProgress: (label: string, index: number, total: number) => void,
@@ -27,7 +24,6 @@ export interface TemplatesHost {
   logError(scope: string, e: unknown): void;
 }
 
-/** UI primitives injected by the host app (structural shadcn subsets). */
 export interface TemplatesKit {
   Button: ComponentType<{
     variant?: "default" | "secondary" | "outline" | "ghost" | "destructive" | "link";

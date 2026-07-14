@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { maskLatex, maskToProse, spellcheckRanges } from "./latex-mask";
 
-/** The set of prose words the checkers would see for a given LaTeX source. */
 function words(tex: string): Set<string> {
   return new Set(spellcheckRanges(tex).map((r) => r.word));
 }

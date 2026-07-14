@@ -1,8 +1,5 @@
-/**
- * "What the reader sees": the plain text extracted from the compiled PDF in
- * reading order. This is the same view a resume parser or a screen reader gets,
- * and productizes the folk remedy of pasting a PDF into a plain-text editor.
- */
+// The same view a resume parser or screen reader gets: plain text extracted
+// from the compiled PDF in reading order.
 import { memo } from "react";
 
 export const ReaderView = memo(function ReaderView({ pages }: { pages: string[] }) {

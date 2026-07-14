@@ -1,6 +1,5 @@
 import type { CitationHit } from "./types";
 
-/** Parse a Crossref `/works` JSON response into citation hits. */
 export function parseCrossrefSearch(json: string): CitationHit[] {
   let data: any;
   try {

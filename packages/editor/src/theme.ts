@@ -2,13 +2,9 @@ import { EditorView } from "@codemirror/view";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { tags as t } from "@lezer/highlight";
 
-/**
- * CodeMirror chrome + syntax theme.
- *
- * Uses CSS variables (the Geist tokens + `--cm-*` syntax vars) so a single
- * theme adapts to both light and dark automatically - no compartment swapping
- * needed.
- */
+// Uses CSS variables (the Geist tokens + `--cm-*` syntax vars) so a single
+// theme adapts to both light and dark automatically, no compartment swapping
+// needed.
 const chromeTheme = EditorView.theme({
   "&": {
     backgroundColor: "var(--background)",

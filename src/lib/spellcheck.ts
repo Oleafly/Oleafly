@@ -6,7 +6,6 @@ type Hunspell = ReturnType<HunspellFactory["create"]>;
 let factoryPromise: Promise<HunspellFactory> | null = null;
 let readyPromise: Promise<Hunspell> | null = null;
 
-/** Common LaTeX / technical tokens that shouldn't be flagged. */
 const IGNORE = new Set([
   "tex", "latex", "pdflatex", "xelatex", "xetex", "luatex", "bibtex",
   "tectonic", "begin", "end", "item", "href", "url", "pdf", "ieee",
@@ -22,7 +21,6 @@ async function getFactory(): Promise<HunspellFactory> {
   return factoryPromise;
 }
 
-/** Lazily load hunspell + the en_US dictionary. Cached after first use. */
 export function getSpellchecker(): Promise<Hunspell> {
   if (readyPromise) return readyPromise;
   readyPromise = (async () => {

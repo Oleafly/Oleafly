@@ -1,7 +1,6 @@
 import { AlertTriangle, Check, MessageSquare, RotateCcw, X } from "lucide-react";
 import { AiChrome } from "@/components/ai/AiChrome";
 
-/** Accept / Reject / Retry bar shown while reviewing a proposed inline edit. */
 export function DiffActionBar({
   onAccept,
   onReject,
@@ -11,7 +10,6 @@ export function DiffActionBar({
   onAccept: () => void;
   onReject: () => void;
   onRetry: () => void;
-  /** Hand the selection + instruction to the full agent chat with tools. */
   onOpenInAgent?: () => void;
 }) {
   return (
@@ -53,7 +51,6 @@ export function DiffActionBar({
   );
 }
 
-/** Error state: message + retry / dismiss. */
 export function DiffErrorBar({
   message,
   onRetry,

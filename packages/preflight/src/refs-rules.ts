@@ -1,24 +1,11 @@
 import { maskComments } from "./mask";
 import type { Finding } from "./types";
 
-/**
- * References & assets (manuscript integrity) rules: the "did I break something"
- * checks you want right before submitting. Undefined citations and references,
- * duplicate labels, and missing included files. Pure over the source plus a
- * small context (bib keys, defined labels, project file list) that the store
- * gathers from the loaded files and the project tree.
- */
-
 export interface RefsContext {
-  /** Labels defined across the loaded project files (`\label{...}`). */
   definedLabels: string[];
-  /** Citation keys from all loaded `.bib` files. */
   bibKeys: string[];
-  /** Whether any `.bib` content was available (else citations are not checked). */
   bibLoaded: boolean;
-  /** Flat list of project file paths, for resolving includes/graphics. */
   projectFiles: string[];
-  /** Groups of bib entries that share a DOI (likely duplicates). */
   duplicateDois: { doi: string; keys: string[] }[];
 }
 
@@ -31,7 +18,6 @@ const LABEL = /\\label\s*\{([^}]*)\}/g;
 const GRAPHICS = /\\includegraphics\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}/g;
 const INPUT = /\\(?:input|include)\s*\{([^}]*)\}/g;
 
-/** Does any project file satisfy `ref` (trying the given extensions, matching by full path or basename)? */
 function resolves(ref: string, files: string[], exts: string[]): boolean {
   const target = ref.trim().replace(/^\.\//, "");
   const base = target.split("/").pop() ?? target;
@@ -56,14 +42,12 @@ export function runRefsRules(rawSource: string, ctx: RefsContext): Finding[] {
   // not raise a false finding. Offsets are preserved (comments become spaces).
   const source = maskComments(rawSource);
 
-  // Labels defined anywhere we can see (corpus + this source).
   const labels = new Set(ctx.definedLabels.map((l) => l.trim()));
   const labelRe = new RegExp(LABEL.source, "g");
   while ((m = labelRe.exec(source))) labels.add(m[1].trim());
 
   const bibKeys = new Set(ctx.bibKeys.map((k) => k.trim()));
 
-  // Undefined citations.
   if (ctx.bibLoaded) {
     const re = new RegExp(CITE.source, "g");
     while ((m = re.exec(source))) {
@@ -87,7 +71,6 @@ export function runRefsRules(rawSource: string, ctx: RefsContext): Finding[] {
     }
   }
 
-  // Undefined references.
   const refRe = new RegExp(REF.source, "g");
   while ((m = refRe.exec(source))) {
     const from = m.index;
@@ -109,7 +92,6 @@ export function runRefsRules(rawSource: string, ctx: RefsContext): Finding[] {
     }
   }
 
-  // Duplicate labels within this source.
   const seen = new Map<string, number>();
   const dupRe = new RegExp(LABEL.source, "g");
   while ((m = dupRe.exec(source))) {
@@ -129,7 +111,6 @@ export function runRefsRules(rawSource: string, ctx: RefsContext): Finding[] {
     }
   }
 
-  // Missing graphics.
   const gRe = new RegExp(GRAPHICS.source, "g");
   while ((m = gRe.exec(source))) {
     if (!resolves(m[1], ctx.projectFiles, GRAPHICS_EXT)) {
@@ -145,7 +126,6 @@ export function runRefsRules(rawSource: string, ctx: RefsContext): Finding[] {
     }
   }
 
-  // Missing inputs/includes.
   const iRe = new RegExp(INPUT.source, "g");
   while ((m = iRe.exec(source))) {
     if (!resolves(m[1], ctx.projectFiles, INPUT_EXT)) {
@@ -161,7 +141,6 @@ export function runRefsRules(rawSource: string, ctx: RefsContext): Finding[] {
     }
   }
 
-  // Duplicate bibliography entries (same DOI under different keys).
   for (const dup of ctx.duplicateDois) {
     out.push({
       id: "refs-duplicate-bib",

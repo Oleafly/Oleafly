@@ -17,7 +17,6 @@ export interface CompileResult {
   compile_time_ms: number;
 }
 
-/** Fetch the last-compiled PDF as raw bytes (ArrayBuffer over IPC, no base64). */
 export const readCompiledPdf = (projectId: string) =>
   invoke<ArrayBuffer>("read_compiled_pdf", { projectId });
 
@@ -51,31 +50,27 @@ export interface ProjectInfo {
 export const compileProject = (projectId: string, mainDoc: string, offline = false) =>
   invoke<CompileResult>("compile_project", { projectId, mainDoc, offline });
 
-/** Compile a standalone figure document in isolation (separate build dir). */
+// Runs in a separate build dir from the main project compile.
 export const compileIsolated = (projectId: string, source: string, offline = false) =>
   invoke<CompileResult>("compile_isolated", { projectId, source, offline });
 
-/** Fetch the last isolated figure PDF as raw bytes. */
 export const readIsolatedPdf = (projectId: string) =>
   invoke<ArrayBuffer>("read_isolated_pdf", { projectId });
 
-/** Read raw bytes of a project-relative file (e.g. an image) over IPC. */
 export const readProjectBytes = (projectId: string, relPath: string) =>
   invoke<ArrayBuffer>("read_project_bytes", { projectId, relPath });
 
-/** Write raw bytes (base64 over IPC) to a project-relative path. */
 export const writeProjectBytes = (projectId: string, relPath: string, dataBase64: string) =>
   invoke<void>("write_project_bytes", { projectId, relPath, dataBase64 });
 
-/** Write raw bytes (base64 over IPC) to an absolute path from a save dialog. */
+// Used for absolute paths from a save dialog.
 export const writeBytesFile = (dest: string, dataBase64: string) =>
   invoke<void>("write_bytes_file", { dest, dataBase64 });
 
-/** Load per-project AI chat history JSON from `~/.openleaf/chats/<id>.json`. */
 export const loadProjectChats = (projectId: string) =>
   invoke<string>("load_project_chats", { projectId });
 
-/** Persist per-project AI chat history JSON (atomic write on the Rust side). */
+// Atomic write on the Rust side.
 export const saveProjectChats = (projectId: string, json: string) =>
   invoke<void>("save_project_chats", { projectId, json });
 
@@ -112,7 +107,6 @@ export const readFileBase64 = (projectId: string, path: string) =>
 export const appendAppLog = (message: string) =>
   invoke<void>("append_app_log", { message });
 
-/** Read the tail (up to maxBytes) of ~/.openleaf/app.log for a crash report. */
 export const readAppLog = (maxBytes: number) =>
   invoke<string>("read_app_log", { maxBytes });
 
@@ -122,7 +116,7 @@ export const setMainDocCmd = (projectId: string, mainDoc: string) =>
 export const renameProjectCmd = (projectId: string, name: string) =>
   invoke<ProjectMeta>("rename_project", { projectId, name });
 
-/** Open the webview devtools (dev builds only; a no-op in release). */
+// No-op in release builds; only opens devtools in dev.
 export const openDevtools = () => invoke<void>("open_devtools");
 
 export const getProject = (projectId: string) =>
@@ -133,7 +127,6 @@ export const listProjects = () => invoke<ProjectInfo[]>("list_projects");
 export const createProject = (name: string) =>
   invoke<string>("create_project", { name });
 
-/** Create an image-kind project from a standalone document (Save as project). */
 export const createImageProject = (name: string, source: string, color?: string) =>
   invoke<string>("create_image_project", { name, source, color });
 
@@ -201,7 +194,7 @@ export interface Prerequisite {
   installed: boolean;
 }
 
-/** Emitted on the "asset-progress" event while a font pack downloads. */
+// Emitted on the "asset-progress" event while a font pack downloads.
 export interface AssetProgress {
   component: string;
   label: string;
@@ -238,7 +231,6 @@ export interface GitCommit {
 export const gitAutoCommit = (projectId: string, message: string) =>
   invoke<boolean>("git_auto_commit", { projectId, message });
 
-/** Commit all outstanding changes under a generated "Update: <files>" message. */
 export const gitAutoCommitUpdate = (projectId: string) =>
   invoke<boolean>("git_auto_commit_update", { projectId });
 
@@ -257,10 +249,9 @@ export const revealInDir = (path: string) =>
 export const exportDocument = (projectId: string, mainDoc: string, format: string, dest: string) =>
   invoke<void>("export_document", { projectId, mainDoc, format, dest });
 
-/** Whether a usable pandoc is available (system install or our on-demand cache). */
 export const hasPandoc = () => invoke<boolean>("has_pandoc");
 
-/** Download pandoc into ~/.openleaf/bin; emits `pandoc-download-progress` events. */
+// Emits `pandoc-download-progress` events while downloading.
 export const downloadPandoc = () => invoke<string>("download_pandoc");
 
 // --- Optional LuaLaTeX engine (tagged / accessible export) ---
@@ -280,7 +271,7 @@ export interface TaggedCompileResult {
 
 export const latexEngineInfo = () => invoke<EngineInfo>("latex_engine_info");
 export const hasTaggingEngine = () => invoke<boolean>("has_tagging_engine");
-/** Download + install TinyTeX; emits `tinytex-download-progress` events. */
+// Emits `tinytex-download-progress` events while downloading.
 export const installTinytex = () => invoke<EngineInfo>("install_tinytex");
 export const deleteTinytex = () => invoke<void>("delete_tinytex");
 export const tlmgrInstalled = () => invoke<string[]>("tlmgr_installed");
@@ -306,38 +297,31 @@ export interface SearchHit {
 export const searchDocs = (query: string) =>
   invoke<SearchHit[]>("search_docs", { query });
 
-/** Search only the given project (used by the AI assistant, which must not
- *  surface other projects' contents to the model). */
+// Used by the AI assistant, which must not surface other projects' contents
+// to the model.
 export const searchProject = (projectId: string, query: string) =>
   invoke<SearchHit[]>("search_project", { projectId, query });
 
 export interface AppConfig {
-  /** Always empty when read via `get_config` - the token never leaves the Rust
-   *  core. Use `github_connected` for presence; set it via `ghSetToken`. */
+  // Always empty when read via `get_config` - the token never leaves the
+  // Rust core. Use `github_connected` for presence; set it via `ghSetToken`.
   github_token: string;
   github_user: string;
-  /** Whether a GitHub token is stored (derived; set by `get_config`). */
   github_connected: boolean;
   ai_api_key: string;
   ai_provider: string;
   ai_model: string;
-  /** provider id -> API key (or host URL for Ollama). */
+  // provider id -> API key (or host URL for Ollama).
   ai_keys: Record<string, string>;
-  /** User-authored extra instructions, sandboxed into the AI system prompt. */
+  // User-authored extra instructions, sandboxed into the AI system prompt.
   ai_system_prompt: string;
-  /** When true, the agent may rasterize PDF pages for vision layout checks. */
   ai_pdf_capture: boolean;
-  /** MCP server: expose in-app agent tools to external MCP clients. Off by default. */
   mcp_enabled: boolean;
-  /** Loopback port for the MCP endpoint. */
   mcp_port: number;
-  /** When true, mutating tools are removed from the advertised tool list. */
   mcp_read_only: boolean;
-  /**
-   * "ask" (confirm every change), "auto_writes" (auto-approve edits, still
-   * confirm deletes), or "trust" (never prompt in OpenLeaf; rely on the MCP
-   * client's own approval, deletes included).
-   */
+  // "ask" (confirm every change), "auto_writes" (auto-approve edits, still
+  // confirm deletes), or "trust" (never prompt in OpenLeaf; rely on the MCP
+  // client's own approval, deletes included).
   mcp_approval_policy: string;
 }
 
@@ -447,11 +431,11 @@ export const gitStageAll = (projectId: string) =>
 export const gitUnstageAll = (projectId: string) =>
   invoke<void>("git_unstage_all", { projectId });
 
-/** Commit the staged index only. Returns false when nothing is staged. */
+// Commits the staged index only. Returns false when nothing is staged.
 export const gitCommit = (projectId: string, message: string) =>
   invoke<boolean>("git_commit", { projectId, message });
 
-/** Content of a path at a revision: rev = "HEAD" (last commit) or "INDEX" (staged). */
+// rev = "HEAD" (last commit) or "INDEX" (staged).
 export const gitShow = (projectId: string, rev: "HEAD" | "INDEX", path: string) =>
   invoke<string>("git_show", { projectId, rev, path });
 

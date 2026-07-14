@@ -10,11 +10,6 @@ const INSTALL_DOCS = "https://pandoc.org/installing.html";
 // download (two progress toasts, two writes to the same binary).
 let inFlight: Promise<boolean> | null = null;
 
-/**
- * Ensure pandoc is available (needed for Word/HTML/Markdown export), downloading
- * it on demand with a live progress toast. Returns true when pandoc is ready to
- * use, false if it couldn't be obtained (a toast then points to the install docs).
- */
 export async function ensurePandoc(): Promise<boolean> {
   if (inFlight) return inFlight;
   inFlight = ensurePandocInner();

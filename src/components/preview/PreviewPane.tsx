@@ -29,8 +29,7 @@ export function PreviewPane() {
   const projectName = useFilesStore((s) => s.projectName);
   const refreshTree = useFilesStore((s) => s.refreshTree);
   const mainDoc = useFilesStore((s) => s.mainDoc);
-  // Image projects render a single figure: no pages/spreads, and "PDF" reads
-  // as "image" throughout the preview UI.
+  // Image projects render a single figure: no pages/spreads, "PDF" reads as "image".
   const isImage = useFilesStore((s) => s.projectKind) === "image";
   const [scale, setScale] = useState(1.0);
   const [tab, setTab] = useState<"pdf" | "logs">("pdf");
@@ -42,7 +41,6 @@ export function PreviewPane() {
   const [numPages, setNumPages] = useState(0);
   const [pageInput, setPageInput] = useState("1");
   const [layout, setLayout] = useState<PdfLayout>("single");
-  // Fullscreen the preview pane itself (toolbar + PDF), independent of the app.
   const [isFs, setIsFs] = useState(false);
   const [fsToolbarHidden, setFsToolbarHidden] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -51,8 +49,7 @@ export function PreviewPane() {
   const scaleRef = useRef(scale);
   scaleRef.current = scale;
 
-  // Track fullscreen of the preview pane (only when the pane itself is the
-  // fullscreen element), and reset the hidden-toolbar state when it exits.
+  // Only true fullscreen when the pane itself (not a descendant) is the fullscreen element.
   useEffect(() => {
     const onChange = () => {
       const fs = document.fullscreenElement === rootRef.current;
@@ -68,9 +65,8 @@ export function PreviewPane() {
     else void rootRef.current?.requestFullscreen?.().catch(() => {});
   };
 
-  // Trackpad pinch-to-zoom, scoped to the PDF scroll area only. Two webview
-  // families report the gesture differently, so handle both and leave ordinary
-  // two-finger scroll (no ctrlKey, no gesture events) alone.
+  // Two webview families report pinch-to-zoom differently; handle both and leave
+  // ordinary two-finger scroll (no ctrlKey, no gesture events) alone.
   useEffect(() => {
     const el = scrollBoxRef.current;
     if (!el) return;
@@ -106,13 +102,10 @@ export function PreviewPane() {
     };
   }, [pdfBytes, tab]);
 
-  // Keep the jump box in sync with the page the viewer reports, unless it's being
-  // edited (focused).
   useEffect(() => {
     setPageInput(String(page));
   }, [page]);
 
-  // No PDF, no page nav.
   useEffect(() => {
     if (!pdfBytes) {
       setNumPages(0);
@@ -123,7 +116,7 @@ export function PreviewPane() {
   const jumpToPage = () => {
     const n = Number.parseInt(pageInput, 10);
     if (Number.isNaN(n) || n < 1 || n > numPages) {
-      setPageInput(String(page)); // invalid: revert to the current page
+      setPageInput(String(page));
       return;
     }
     if (n !== page) pdfRef.current?.gotoPage(n); // avoid snapping on an unchanged blur
@@ -159,9 +152,7 @@ export function PreviewPane() {
     }
   };
 
-  // When a build finishes, jump to the PDF if one was produced; only fall back
-  // to logs on a genuine failure (no PDF). Non-fatal LaTeX warnings should NOT
-  // hide a valid PDF.
+  // Fall back to logs only on a genuine failure (no PDF); non-fatal warnings shouldn't hide a valid PDF.
   useEffect(() => {
     if (lastCompiledAt == null) return;
     setTab(useCompileStore.getState().pdfBytes ? "pdf" : "logs");
@@ -174,7 +165,6 @@ export function PreviewPane() {
 
   return (
     <div ref={rootRef} className="relative flex h-full flex-col bg-background">
-      {/* In fullscreen with the toolbar hidden, a small control to bring it back. */}
       {isFs && fsToolbarHidden && (
         <Tooltip label="Show toolbar">
           <button
@@ -186,8 +176,6 @@ export function PreviewPane() {
           </button>
         </Tooltip>
       )}
-      {/* Minimal toolbar: logs toggle + zoom. Never wraps; when the pane is
-          narrow it scrolls horizontally with a thin scrollbar that shows on hover. */}
       <div
         className={cn(
           "flex h-9 shrink-0 items-center gap-1 overflow-x-auto whitespace-nowrap border-b px-2 [&_button]:shrink-0 [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-transparent [&::-webkit-scrollbar-track]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-border",
@@ -401,8 +389,6 @@ export function PreviewPane() {
                 size="icon"
                 className="size-7"
                 disabled={!pdfBytes}
-                // Fullscreen the preview pane itself (toolbar + PDF), independent
-                // of the app's layout or window. Scrollable; Esc exits.
                 onClick={toggleFullscreen}
                 aria-label={isFs ? "Exit fullscreen" : "Fullscreen preview"}
               >
@@ -526,9 +512,8 @@ export function PreviewPane() {
   );
 }
 
-// Tectonic does not stream real progress, so we show a reassuring estimate that
-// eases toward ~95% over the expected duration (last compile time). The PDF
-// appearing is the real "done" signal, which replaces this view.
+// Tectonic doesn't stream real progress, so ease toward ~95% over the expected duration
+// (last compile time); the PDF appearing is the real "done" signal that replaces this view.
 function CompileProgress({
   estimateMs,
   phase,

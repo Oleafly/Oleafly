@@ -160,8 +160,6 @@ fn walk(root: &Path, dir: &Path, out: &mut Vec<FileEntry>, depth: usize) -> Resu
     Ok(())
 }
 
-// --- Tauri commands ---
-
 #[tauri::command]
 pub async fn list_files(project_id: String) -> Result<Vec<FileEntry>, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<Vec<FileEntry>, String> {
@@ -568,7 +566,6 @@ pub fn export_pdf(
         state.reveal_allowlist.blocking_lock().insert(canon);
     }
 
-    // Record in export history (keep the most recent 50).
     let mut meta = read_meta(&project_id)?;
     let filename = Path::new(&dest)
         .file_name()
@@ -850,13 +847,9 @@ pub fn create_project_from_template(
     let id = unique_random_slug(&root)?;
     let dir = root.join(&id);
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    // Copy the template's source files from disk and seed project.json from its
-    // manifest (main doc, engine, cover color). A user-chosen color wins over the
-    // template's default.
     let manifest = crate::templates::instantiate(&app, &template_id, &dir)?;
-    // Stage any font packs the template needs into <project>/fonts/ so the
-    // document carries its own fonts and compiles offline.
     crate::assets::stage_template_fonts(&app, &manifest, &dir)?;
+    // A user-chosen color wins over the template's default.
     let color = color
         .filter(|c| !c.is_empty())
         .or(manifest.default_color)
@@ -874,8 +867,6 @@ pub fn create_project_from_template(
     )?;
     Ok(id)
 }
-
-// --- Global document search ---
 
 #[derive(Serialize)]
 pub struct SearchHit {
@@ -1046,8 +1037,6 @@ pub async fn search_project(project_id: String, query: String) -> Result<Vec<Sea
     .await
     .map_err(|e| e.to_string())?
 }
-
-// --- Download ZIP, Duplicate, Clear cache ---
 
 /// Zip a project's source files (excluding `.openleaf`, `.git`) to `dest`.
 #[tauri::command]

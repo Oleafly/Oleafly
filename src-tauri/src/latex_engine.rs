@@ -171,10 +171,6 @@ fn engine_version(lualatex: &str) -> Option<String> {
     text.lines().next().map(|l| l.trim().to_string())
 }
 
-// ---------------------------------------------------------------------------
-// Commands
-// ---------------------------------------------------------------------------
-
 // These commands run external processes (lualatex/tlmgr) which can take a second
 // or more. They are `async` and use `spawn_blocking` so they run OFF the main
 // thread; a synchronous Tauri command would block the whole webview UI.

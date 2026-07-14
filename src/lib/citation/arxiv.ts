@@ -1,4 +1,3 @@
-/** Decode the common XML entities that arrive in Atom text (e.g. `&amp;`). */
 function decodeXmlEntities(s: string): string {
   return s
     .replace(/&lt;/g, "<")
@@ -10,7 +9,7 @@ function decodeXmlEntities(s: string): string {
     .replace(/&amp;/g, "&");
 }
 
-/** Escape LaTeX special characters so remote metadata compiles as literal text. */
+// So remote metadata compiles as literal text rather than LaTeX commands.
 function escapeLatex(s: string): string {
   return s.replace(/[\\&%$#_{}~^]/g, (c) => {
     switch (c) {
@@ -26,12 +25,10 @@ function escapeLatex(s: string): string {
   });
 }
 
-/** Decode XML entities then escape LaTeX specials for a BibTeX field value. */
 function cleanField(s: string): string {
   return escapeLatex(decodeXmlEntities(s));
 }
 
-/** Convert a "First Last" name to BibTeX "Last, First". */
 function toBibName(name: string): string {
   const parts = name.split(/\s+/);
   if (parts.length < 2) return name;
@@ -39,7 +36,7 @@ function toBibName(name: string): string {
   return `${family}, ${parts.join(" ")}`;
 }
 
-/** Build a BibTeX entry from an arXiv Atom feed (the first entry). */
+// Uses the first <entry> in the feed only.
 export function arxivXmlToBibtex(xml: string): string {
   const entry = /<entry[\s\S]*?<\/entry>/.exec(xml);
   if (!entry) return "";

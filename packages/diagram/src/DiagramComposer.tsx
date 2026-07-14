@@ -36,7 +36,6 @@ import { useDiagramKit } from "./kit";
 import type { DiagramHost } from "./host";
 import { cn } from "./cn";
 
-/** A small starter diagram so the Draw canvas is not blank on first open. */
 function starterModel(): DiagramModel {
   const a = newId(), b = newId(), c = newId();
   return {
@@ -53,7 +52,6 @@ function starterModel(): DiagramModel {
   };
 }
 
-/** Quick TikZ inserts for the Code tab (mirrors the .tex toolbar idea). */
 const TIKZ_SNIPPETS: { label: string; icon: ReactNode; snippet: string }[] = [
   { label: "Rectangle node", icon: <Square className="size-3.5" />, snippet: "\\node (n) [draw, rounded corners] {Label};\n" },
   { label: "Circle node", icon: <Circle className="size-3.5" />, snippet: "\\node (n) [draw, circle] {};\n" },
@@ -62,7 +60,6 @@ const TIKZ_SNIPPETS: { label: string; icon: ReactNode; snippet: string }[] = [
   { label: "Scope", icon: <Braces className="size-3.5" />, snippet: "\\begin{scope}\n  \n\\end{scope}\n" },
 ];
 
-/** Turn a user-entered name into a safe file stem (keeps case, no path parts). */
 function safeName(name: string): string {
   return name
     .trim()
@@ -73,15 +70,8 @@ function safeName(name: string): string {
 
 type Mode = "draw" | "code";
 
-/**
- * A full-height composer for making a diagram: draw it visually (React Flow,
- * generates TikZ) or write TikZ by hand, preview the compiled figure, then
- * insert it as vector code or a saved PNG. Drawn diagrams round-trip: the
- * source snippet embeds the model so it can be re-opened and edited.
- *
- * Headless with respect to the app: all compile/file/editor/AI access goes
- * through `host` (see DiagramHost) and UI primitives come from DiagramKit.
- */
+// Headless with respect to the app: all compile/file/editor/AI access goes
+// through `host` (see DiagramHost) and UI primitives come from DiagramKit.
 export function DiagramComposer({
   open,
   projectId,
@@ -91,14 +81,11 @@ export function DiagramComposer({
   isMac = false,
   fullscreen = false,
 }: {
-  /** Render nothing when false; keep the component mounted so the drawing survives close/reopen. */
   open: boolean;
   projectId: string | null;
   onClose: () => void;
   host: DiagramHost;
-  /** CodeMirror extensions for the Code tab (LaTeX language, editor theme). */
   codeExtensions?: Extension[];
-  /** Reserve space for macOS traffic lights (same as the project TopToolbar). */
   isMac?: boolean;
   fullscreen?: boolean;
 }) {
@@ -143,7 +130,6 @@ export function DiagramComposer({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  // Clear any stale preview/log from a previous session when the modal opens.
   useEffect(() => {
     if (open) {
       setPng(null);
@@ -159,7 +145,6 @@ export function DiagramComposer({
     const source = buildStandaloneDoc({ code: raw, libraries: DIAGRAM_LIBS, background });
     setBusy(true);
     setLog("");
-    // Reveal the pane while compiling so the user sees progress / result.
     setPreviewOpen(true);
     try {
       const result = await host.compileIsolated(projectId, source);
@@ -269,7 +254,6 @@ export function DiagramComposer({
     onClose();
   }, [projectId, stem, png, snippetCode, confirmOverwrite, onClose, host, toast]);
 
-  // Re-open an existing figures/<name>.tikz to edit (round-trip drawn diagrams).
   const loadExisting = useCallback(async () => {
     if (!projectId || !stem) return;
     try {
@@ -337,7 +321,6 @@ export function DiagramComposer({
 
   const compileFailed = !!log && !png;
 
-  // Close the background picker when clicking outside it.
   useEffect(() => {
     if (!bgPickerOpen) return;
     const onDown = (e: MouseEvent) => {
@@ -377,7 +360,6 @@ export function DiagramComposer({
     setEditingName(false);
   };
 
-  /** File extension for the on-disk figure snippet (always .tikz). */
   const diagramExt = "tikz";
   const displayFile = `${stem || "diagram"}.${diagramExt}`;
 
@@ -395,7 +377,6 @@ export function DiagramComposer({
   const hasPreviewResult = !!(png || log);
   const showPreview = previewOpen;
 
-  /** PNG scale + background picker — only rendered in the preview pane chrome. */
   const previewOpts = (
     <>
       <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
@@ -472,8 +453,7 @@ export function DiagramComposer({
       aria-label="Insert diagram"
       className="fixed inset-0 z-50 flex flex-col bg-background"
     >
-      {/* Header: back | Insert diagram > name.tikz, Draw|Code centered, actions right.
-          On macOS (windowed), pad left for traffic lights — same as TopToolbar. */}
+      {/* On macOS (windowed), pad left for traffic lights — same as TopToolbar. */}
       <div
         className={cn(
           "relative flex h-12 shrink-0 items-center gap-2 border-b bg-sidebar pr-4",
@@ -559,7 +539,6 @@ export function DiagramComposer({
           </Tooltip>
         </div>
 
-        {/* Centered Draw | Code tabs */}
         <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-lg border bg-background/80 p-0.5">
           {(["draw", "code"] as Mode[]).map((m) => (
             <button
@@ -599,9 +578,7 @@ export function DiagramComposer({
         </div>
       </div>
 
-      {/* Body: full-width editor until Compile opens the on-demand preview pane */}
       <div className={cn("min-h-0 flex-1", showPreview ? "grid grid-cols-2" : "flex")}>
-        {/* Editor: Draw canvas or Code — full width until the preview pane opens */}
         <div className={cn("flex min-h-0 min-w-0 flex-1 flex-col", showPreview && "border-r")}>
           {mode === "draw" ? (
             <DiagramCanvas
@@ -649,7 +626,6 @@ export function DiagramComposer({
           )}
         </div>
 
-        {/* On-demand preview: opens on Compile; scale/background live only here */}
         {showPreview && (
           <div className="flex min-h-0 min-w-0 flex-col">
             <div className="flex min-h-[34px] shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b bg-sidebar px-3 py-1">
@@ -700,7 +676,6 @@ export function DiagramComposer({
         )}
       </div>
 
-      {/* Code mode: insert actions stay available even if the preview is minimized */}
       {mode === "code" && (
         <div className="flex shrink-0 flex-wrap items-center gap-2 border-t bg-sidebar px-3 py-2">
           <p className="mr-auto text-[11px] text-muted-foreground">

@@ -205,20 +205,16 @@ const DEFAULT_CFG: AppConfig = {
 
 export function AISection() {
   const [cfg, setCfg] = useState<AppConfig>(DEFAULT_CFG);
-  // Per-provider editable credentials in the UI.
   const [keys, setKeys] = useState<Record<string, string>>({});
-  // Snapshot of what's persisted, to know whether a field is "new/unsaved".
+  // Snapshot of persisted keys, used to detect unsaved edits (dirty check below).
   const [savedKeys, setSavedKeys] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [toolsOpen, setToolsOpen] = useState(true);
-  // Draft of the user's custom system-prompt addition (saved explicitly).
   const [sysPrompt, setSysPrompt] = useState("");
   const [sysPromptSaved, setSysPromptSaved] = useState(false);
-  // Explicit expand/collapse per provider card. Unset falls back to "open if
-  // active", so the provider in use is expanded and the rest are tucked away.
+  // Unset falls back to "open if active", so the in-use provider stays expanded.
   const [openProviders, setOpenProviders] = useState<Record<string, boolean>>({});
-  // Live Ollama detection: which models are actually installed locally.
   const [ollama, setOllama] = useState<{
     status: "idle" | "loading" | "ok" | "down";
     models: string[];
@@ -226,7 +222,7 @@ export function AISection() {
 
   useEffect(() => {
     void getConfig().then((c) => {
-      // Migrate the legacy single key into the per-provider map once.
+      // One-time migration from the old single ai_api_key field to the per-provider map.
       const merged: Record<string, string> = { ...(c.ai_keys ?? {}) };
       const legacy = c.ai_provider || "openai";
       if (Object.keys(merged).length === 0 && c.ai_api_key) {
@@ -255,17 +251,15 @@ export function AISection() {
     }
   };
 
-  // Auto-check for a local Ollama whenever the AI settings open (and after the
-  // saved host changes). It's a cheap localhost request that fails fast, so we
-  // run it proactively rather than making the user configure a host first.
+  // Cheap localhost request that fails fast, so it's run proactively instead of
+  // waiting on the user to configure a host first.
   const savedOllamaHost = cfg.ai_keys?.ollama ?? "";
   useEffect(() => {
     void refreshOllama(savedOllamaHost || DEFAULT_OLLAMA_HOST);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savedOllamaHost]);
 
-  // Pick an installed Ollama model: saves the host (default localhost) and makes
-  // Ollama the active provider with that model. No separate "Save" step needed.
+  // Saves the host and activates the model in one step; no separate "Save" button for Ollama.
   const applyOllamaModel = async (model: string) => {
     const host = (keys.ollama || DEFAULT_OLLAMA_HOST).trim();
     const nextKeys = { ...keys, ollama: host };
@@ -291,7 +285,7 @@ export function AISection() {
   const persist = async (next: AppConfig) => {
     await setConfig(next);
     setCfg(next);
-    // Notify live listeners (e.g. the chat panel) that AI config changed.
+    // Notifies listeners outside this component tree, e.g. the chat panel.
     window.dispatchEvent(new CustomEvent("openleaf:ai-config-changed"));
   };
 
@@ -364,8 +358,7 @@ export function AISection() {
       const next: AppConfig = {
         ...cfg,
         ai_keys: nextKeys,
-        // Removing a key disables AI access: clear the active provider/model
-        // when it was the one in use, and wipe the legacy single key too.
+        // Clear the active provider/model too if this was the key in use.
         ai_provider: wasActive ? "" : cfg.ai_provider,
         ai_model: wasActive ? "" : cfg.ai_model,
         ai_api_key: wasActive ? "" : cfg.ai_api_key,

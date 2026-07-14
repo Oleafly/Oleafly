@@ -161,12 +161,11 @@ pub async fn gh_check_device_token(
     }
 }
 
-// --- Authenticated GitHub REST API (token stays in the Rust core) ---
-//
-// These commands call api.github.com from Rust, reading the token from the
-// on-disk config. The token is NEVER returned to the webview (get_config blanks
-// it), so a webview compromise (XSS) can't read or exfiltrate it - it can only
-// ask the core to perform these specific, scoped actions.
+// Authenticated GitHub REST API: these commands call api.github.com from Rust,
+// reading the token from the on-disk config. The token is NEVER returned to
+// the webview (get_config blanks it), so a webview compromise (XSS) can't
+// read or exfiltrate it - it can only ask the core to perform these specific,
+// scoped actions.
 
 const API_USER: &str = "https://api.github.com/user";
 const API_REPOS: &str = "https://api.github.com/user/repos";

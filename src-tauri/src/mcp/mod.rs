@@ -71,7 +71,6 @@ pub async fn mcp_set_enabled(
             // Already serving this port: leave it alone. Restarting would stop
             // then rebind the same port and can race the listener release.
             Some(p) if p == port => {}
-            // Running on a different port: move to the requested one.
             Some(_) => {
                 server::stop(&app).await?;
                 server::start(app.clone(), port).await?;

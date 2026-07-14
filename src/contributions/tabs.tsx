@@ -9,7 +9,6 @@ import { ReferencesPanel } from "@/components/layout/ReferencesPanel";
 import { ChatPanel } from "@/components/ai/ChatPanel";
 import { McpActivityPanel } from "@/components/layout/McpActivityPanel";
 
-/** The rail tabs (and their sidebar panels) shipped with the core app. */
 export function registerRailTabs() {
   registerRailTab({
     id: "files",

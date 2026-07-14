@@ -48,9 +48,7 @@ function LazyModals({ children }: { children: ReactNode }) {
   return <Suspense fallback={null}>{children}</Suspense>;
 }
 
-/** A clearly-grabbable, visible vertical resize handle (12px hit area).
- *  Optionally renders a control cluster at the top/bottom (Overleaf-style),
- *  kept away from the centered grab thumb so it never fights the drag. */
+// Control cluster is offset from the centered grab thumb so it never fights the drag.
 function VHandle({
   id,
   children,
@@ -141,15 +139,13 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Silently check for a new release shortly after launch (no-op in dev / the
-  // browser). Only prompts the user if an update is actually available.
+  // No-op in dev / the browser; only prompts if an update is actually available.
   useEffect(() => {
     const id = window.setTimeout(() => checkForUpdatesOnStartup(), 3000);
     return () => window.clearTimeout(id);
   }, []);
 
-  // "Check for Updates…" in the app menu opens the update window (manual mode,
-  // so it reports "up to date" rather than closing silently).
+  // Manual mode so it reports "up to date" rather than closing silently.
   useEffect(() => {
     if (!isTauri()) return;
     const unlisten = listen("menu://check-updates", () => {
@@ -158,11 +154,9 @@ export default function App() {
     return () => void unlisten.then((off) => off());
   }, []);
 
-  // MCP bridge: register tools and handle tools/call forwarded from Rust.
   useEffect(() => {
     if (!isTauri()) return;
-    // Sync the PDF-capture privacy flag from disk config on startup (done here,
-    // not at module load, so it never fires IPC at import time).
+    // Done here, not at module load, so it never fires IPC at import time.
     void import("@/lib/ai-tools").then((m) => m.initAiPdfCaptureFlag());
     let cancelled = false;
     let cleanup: (() => void) | undefined;
@@ -177,24 +171,21 @@ export default function App() {
     };
   }, []);
 
-  // Apply cosmetic settings (fonts, sizes, accent color) to the document.
   useEffect(() => {
     const root = document.documentElement;
     root.style.setProperty("--cm-font-size", `${editorFontSize}px`);
-    // Global app font size scales the whole (rem-based) interface.
+    // Scales the whole rem-based interface.
     root.style.fontSize = `${appFontSize}px`;
-    // Font families: empty means keep the app's default stack.
+    // Empty means keep the app's default stack.
     if (appFontFamily) root.style.fontFamily = appFontFamily;
     else root.style.removeProperty("font-family");
     if (editorFontFamily) root.style.setProperty("--cm-font-family", editorFontFamily);
     else root.style.removeProperty("--cm-font-family");
-    // Default accent is primary blue; accentColor is always a real color.
     const accent = accentColor || "#2563eb";
     root.style.setProperty("--primary", accent);
     root.style.setProperty("--primary-foreground", "#ffffff");
   }, [editorFontSize, appFontSize, appFontFamily, editorFontFamily, accentColor]);
 
-  // Keep the source-control badge count fresh for the current project.
   // SourceControl / DiffView refresh after git mutations; we only re-poll on
   // project switch, window focus, and a slow interval (no 5s hot loop).
   const refreshGitStatus = useGitStatusStore((s) => s.refresh);
@@ -217,7 +208,6 @@ export default function App() {
     };
   }, [refreshGitStatus]);
 
-  // Open a project in the user's preferred view (Appearance settings).
   useEffect(() => {
     const s = useSettingsStore.getState();
     if (projectId) setViewMode(s.defaultView);
@@ -225,20 +215,17 @@ export default function App() {
     useCompileStore.getState().reset();
     // Preflight results belong to the previous project; reset them too.
     usePreflightStore.getState().reset();
-    // Show (or hide) the file tree on open per the user's preference.
     if (projectId) {
       s.setRailTab("files");
       if (s.openInTree && !s.showTree) s.toggleTree();
       else if (!s.openInTree && s.showTree) s.toggleTree();
-      // Point open detached windows at the new project.
       void import("@/lib/preview-window").then((m) => m.retargetPreviewWindow(projectId));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
-  // Cross-window: detached AI chat / preview can mutate disk. Reload open
-  // buffers and the compiled PDF when those windows report changes. Also
-  // open Settings when the chat pop-out asks for it.
+  // Detached AI chat / preview windows can mutate disk; reload open buffers
+  // and the compiled PDF when they report changes.
   useEffect(() => {
     if (!isTauri()) return;
     const selfLabel = getCurrentWindow().label;
@@ -274,7 +261,7 @@ export default function App() {
       },
     );
     const unCompile = listen<{ projectId: string; from?: string }>("compile:done", (e) => {
-      if (e.payload?.from === selfLabel) return; // ignore our own compile broadcast
+      if (e.payload?.from === selfLabel) return;
       const pid = e.payload?.projectId;
       if (!pid || pid !== useFilesStore.getState().projectId) return;
       void import("@/lib/tauri").then(({ readCompiledPdf }) => {
@@ -342,16 +329,14 @@ export default function App() {
     void recompile();
   }, [projectId, tree, recompile]);
 
-  // Auto-compile: debounced on real edits. `activeContent` also changes when you
-  // merely switch tabs or open a project, so skip those (they aren't edits) by
-  // only compiling when the active file is unchanged from the previous render.
+  // `activeContent` also changes on tab switch / project open, not just edits;
+  // only compile when the active file is unchanged from the previous render.
   const autoCompilePathRef = useRef<string | null>(null);
   useEffect(() => {
     if (!autoCompile || !projectId) {
       autoCompilePathRef.current = activePath;
       return;
     }
-    // Tab switch / project open: the path changed, not the content. Don't compile.
     if (autoCompilePathRef.current !== activePath) {
       autoCompilePathRef.current = activePath;
       return;
@@ -360,8 +345,7 @@ export default function App() {
     let cancelled = false;
     const attempt = () => {
       if (cancelled) return;
-      // If a compile is in flight, retry shortly so the newest edits still get
-      // compiled instead of being silently skipped.
+      // Retry shortly instead of silently skipping the newest edits.
       if (useCompileStore.getState().status === "compiling") {
         timer = setTimeout(attempt, 500);
         return;

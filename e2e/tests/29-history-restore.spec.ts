@@ -7,10 +7,8 @@ import {
   typeInEditorAfter,
 } from "../helpers";
 
-// Project history: make two real git commits through the source-control panel,
-// then restore each from the History modal and verify the document content
-// actually rolls back and forward on disk and in the editor. Commits need a
-// connected GitHub account (the panel is gated), so this is opt-in like 12.
+// Commits need a connected GitHub account (the panel is gated), so this is
+// opt-in like spec 12.
 
 const TOKEN = process.env.E2E_GITHUB_TOKEN;
 // Unique per run so re-runs against a live app never collide.
@@ -18,8 +16,8 @@ const RUN = Date.now().toString(36);
 const BASE = `histbase${RUN}`;
 const EDIT = `histedit${RUN}`;
 
-/** Stage everything and commit. Caller must already have the Git rail open so
- *  compile auto-commit is suspended (see auto-commit.ts `sourceControlOpen`). */
+// Caller must already have the Git rail open so compile auto-commit is
+// suspended (see auto-commit.ts `sourceControlOpen`).
 async function commitAll(page: import("../helpers").Page, message: string) {
   await openRailTab(page, "Git");
   // Stage all is hover-revealed (opacity-0): the plugin's own click waits for
@@ -69,7 +67,6 @@ async function openHistory(page: import("../helpers").Page) {
   );
 }
 
-/** Click Restore inside the commit row whose message matches, then confirm. */
 async function restoreCommit(page: import("../helpers").Page, message: string) {
   const clicked = await page.evaluate<boolean>(
     `(() => {
@@ -104,7 +101,6 @@ test("commit twice, restore the first commit, then roll forward again", async ({
   // races ahead and leaves nothing for us to stage.
   await ensureGithubConnected(tauriPage);
 
-  // Commit 1: a base marker, persisted by a real compile (which saves).
   await typeInEditorAfter(tauriPage, "here.", ` ${BASE}`);
   await pressGlobal(tauriPage, "Enter", { meta: true });
   await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok", {
@@ -112,7 +108,6 @@ test("commit twice, restore the first commit, then roll forward again", async ({
   });
   await commitAll(tauriPage, `e2e history base ${RUN}`);
 
-  // Commit 2: an edit on top of the base marker.
   await typeInEditorAfter(tauriPage, BASE, ` ${EDIT}`);
   await pressGlobal(tauriPage, "Enter", { meta: true });
   await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok", {
@@ -120,13 +115,11 @@ test("commit twice, restore the first commit, then roll forward again", async ({
   });
   await commitAll(tauriPage, `e2e history edit ${RUN}`);
 
-  // Both commits show up in History.
   await openHistory(tauriPage);
   await expect(tauriPage.getByText(`e2e history base ${RUN}`)).toBeVisible();
   await expect(tauriPage.getByText(`e2e history edit ${RUN}`)).toBeVisible();
 
-  // Restore the base commit: the edit marker must vanish from the editor
-  // (restore reloads every buffer from the restored working tree).
+  // Restore reloads every buffer from the restored working tree.
   await restoreCommit(tauriPage, `e2e history base ${RUN}`);
   await tauriPage.waitForFunction(
     `(() => {
@@ -136,7 +129,6 @@ test("commit twice, restore the first commit, then roll forward again", async ({
     20_000,
   );
 
-  // Roll forward: restoring the edit commit brings the marker back.
   await openHistory(tauriPage);
   await restoreCommit(tauriPage, `e2e history edit ${RUN}`);
   await tauriPage.waitForFunction(
@@ -144,7 +136,6 @@ test("commit twice, restore the first commit, then roll forward again", async ({
     20_000,
   );
 
-  // The restored document still compiles with zero errors.
   await pressGlobal(tauriPage, "Enter", { meta: true });
   await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok", {
     timeout: 120_000,

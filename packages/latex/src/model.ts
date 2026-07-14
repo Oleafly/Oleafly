@@ -29,8 +29,6 @@ export interface DiagEdge {
   arrow: EdgeArrow;
   style: EdgeStyle;
   label?: string;
-  /** Which side handle each end attaches to on the canvas (t/r/b/l). Editor-only;
-   *  TikZ connects node borders automatically. */
   sourceHandle?: string;
   targetHandle?: string;
 }
@@ -39,7 +37,6 @@ export interface DiagramModel {
   version: 1;
   nodes: DiagNode[];
   edges: DiagEdge[];
-  /** Figure page background as hex "#RRGGBB"; absent/"" = transparent. */
   background?: string;
 }
 
@@ -47,8 +44,7 @@ export function emptyModel(): DiagramModel {
   return { version: 1, nodes: [], edges: [] };
 }
 
-/** Unique-enough id for a new node/edge. Runs in the app (not a workflow), so
- *  Math.random is fine here. */
+// Runs in the app (not a workflow), so Math.random is fine here.
 let counter = 0;
 export function newId(prefix = "n"): string {
   counter += 1;

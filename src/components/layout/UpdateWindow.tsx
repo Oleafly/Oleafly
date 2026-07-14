@@ -14,21 +14,17 @@ const RELEASES_URL = "https://github.com/prajwal-svm/OpenLeaf/releases/latest";
 
 type Phase = "checking" | "available" | "upToDate" | "downloading" | "error";
 
-/**
- * Full-window contents of the dedicated, frameless update window (opened via
- * `?view=update`). It runs its own update check on mount, because a separate
- * window is a separate JS context and cannot share the main window's `Update`
- * handle. `?manual=1` (from the menu) keeps the window open to report "up to
- * date"; the automatic path closes silently when there is nothing to install.
- */
+// Runs its own update check on mount, because a separate window is a separate
+// JS context and cannot share the main window's `Update` handle. `?manual=1`
+// (from the menu) keeps the window open to report "up to date"; the automatic
+// path closes silently when there is nothing to install.
 export function UpdateWindow() {
   const manual = new URLSearchParams(window.location.search).get("manual") === "1";
   const [phase, setPhase] = useState<Phase>("checking");
   const [update, setUpdate] = useState<Update | null>(null);
   const [percent, setPercent] = useState(0);
-  // Linux .deb/.rpm installs can't self-update (only AppImage can). When false,
-  // we offer a link to the Releases page instead of an in-place "Update now"
-  // that would fail. Defaults true (macOS/Windows, and Linux AppImage).
+  // Linux .deb/.rpm can't self-update (only AppImage can); when false we link
+  // to the Releases page instead of an in-place "Update now" that would fail.
   const [selfInstallable, setSelfInstallable] = useState(true);
 
   const close = () => void getCurrentWindow().close();
@@ -90,7 +86,7 @@ export function UpdateWindow() {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden rounded-xl border bg-popover text-popover-foreground">
-      {/* Frameless, branded title bar: draggable, with our own close button. */}
+      {/* Frameless window: draggable region substitutes for the native title bar. */}
       <div data-tauri-drag-region className="flex items-start gap-3 border-b px-5 py-4">
         <LeafLogo className="mt-0.5 size-7 shrink-0" />
         <div className="min-w-0 flex-1">
@@ -114,7 +110,6 @@ export function UpdateWindow() {
         )}
       </div>
 
-      {/* Body */}
       <div className="min-h-0 flex-1 overflow-auto px-5 py-3">
         {phase === "checking" && (
           <p className="text-sm text-muted-foreground">Looking for the latest version…</p>
@@ -138,7 +133,6 @@ export function UpdateWindow() {
           ))}
       </div>
 
-      {/* Footer / actions */}
       <div className="border-t px-5 py-3">
         {phase === "downloading" ? (
           <div className="space-y-1.5">

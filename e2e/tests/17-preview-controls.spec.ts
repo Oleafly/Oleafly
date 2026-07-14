@@ -1,9 +1,6 @@
 import { test, expect } from "../fixtures";
 import { openProject, openRailTab } from "../helpers";
 
-// The PDF preview toolbar: zoom, layout, page navigation, invert, logs copy,
-// and saving the compiled PDF back into the project.
-
 test.beforeEach(async ({ tauriPage }) => {
   test.setTimeout(240_000);
   await openProject(tauriPage, "E2E Doc");

@@ -26,13 +26,13 @@ function withTimeout<T>(p: Promise<T>, ms: number, what: string): Promise<T> {
   });
 }
 
-/** A pdf.js worker that wedges mid-session makes text calls hang or return empty
- *  while the canvas still renders (pdf.js has no timeout for this and no
- *  recovery). Probe page 1's text pipe, time-boxed, and throw when it is empty or
- *  hangs so the caller can reload on a fresh worker. This runs only for documents
- *  we expect to have text; image/figure projects skip the probe entirely (the
- *  `expectText` gate in the load ladder), so a legitimately text-less page never
- *  triggers the main-thread fallback and its session-wide downgrade. */
+// A pdf.js worker that wedges mid-session makes text calls hang or return empty
+// while the canvas still renders (pdf.js has no timeout for this and no
+// recovery). Probe page 1's text pipe, time-boxed, and throw when it is empty or
+// hangs so the caller can reload on a fresh worker. This runs only for documents
+// we expect to have text; image/figure projects skip the probe entirely (the
+// `expectText` gate in the load ladder), so a legitimately text-less page never
+// triggers the main-thread fallback and its session-wide downgrade.
 async function probePageText(doc: pdfjsLib.PDFDocumentProxy): Promise<void> {
   if (doc.numPages < 1) return;
   const page = await withTimeout(doc.getPage(1), 8_000, "text probe page");
@@ -48,12 +48,12 @@ async function probePageText(doc: pdfjsLib.PDFDocumentProxy): Promise<void> {
   }
 }
 
-/** Last-resort recovery: pdf.js (v6) has no mid-session dead-worker recovery, so
- *  route it to run the worker code on the MAIN THREAD via a LoopbackPort. Setting
- *  `globalThis.pdfjsWorker` makes the next PDFWorker skip the real Web Worker.
- *  Slower and blocks the UI during parse, but it cannot wedge. One-way and
- *  session-wide by design (once the worker subsystem is dead, staying on the main
- *  thread is the only way to keep rendering). Best effort. */
+// Last-resort recovery: pdf.js (v6) has no mid-session dead-worker recovery, so
+// route it to run the worker code on the MAIN THREAD via a LoopbackPort. Setting
+// `globalThis.pdfjsWorker` makes the next PDFWorker skip the real Web Worker.
+// Slower and blocks the UI during parse, but it cannot wedge. One-way and
+// session-wide by design (once the worker subsystem is dead, staying on the main
+// thread is the only way to keep rendering). Best effort.
 let mainThreadForced = false;
 async function forceMainThreadWorker(): Promise<void> {
   if (mainThreadForced) return;
@@ -71,8 +71,6 @@ async function forceMainThreadWorker(): Promise<void> {
   }
 }
 
-/** The word under a screen point in the PDF text layer, for word-precise inverse
- *  SyncTeX. Returns null over whitespace, an image, or when no text is hit. */
 function wordAtPoint(clientX: number, clientY: number): string | null {
   const d = document as Document & {
     caretRangeFromPoint?: (x: number, y: number) => Range | null;
@@ -114,31 +112,21 @@ interface RenderState {
   tasks: pdfjsLib.RenderTask[];
 }
 
-/** Page arrangement: one column (continuous) or two-up spreads (both scroll). */
 export type PdfLayout = "single" | "double";
 
 export interface PdfViewerProps {
   data: Uint8Array | null;
   scale: number;
-  /** Inverse SyncTeX: invoked on Cmd/Ctrl-click with (page, x, y) in PDF bp, plus
-   *  the word under the click (from the text layer) to place the cursor precisely. */
   onInverse?: (page: number, x: number, y: number, word?: string) => void;
-  /** Reports the page at the top of the viewport and the total page count, so a
-   *  toolbar can show "N of M" and drive prev/next/jump. */
   onPageChange?: (current: number, total: number) => void;
-  /** Continuous single column (default) or two pages side by side. */
   layout?: PdfLayout;
-  /** Open an external link (http/mailto/tel) from a PDF annotation, e.g. in the
-   *  system browser. Without it, links fall back to the anchor's default. */
   onOpenLink?: (url: string) => void;
-  /** Whether page 1 is expected to contain text. Documents: true (default) - the
-   *  loader probes the text pipe and recovers a wedged worker. Image/figure
-   *  projects: false - skip the probe so a legitimately text-less page doesn't
-   *  force the session onto the main-thread worker. */
+  // true (default): the loader probes the text pipe and recovers a wedged
+  // worker. false: skip the probe so a legitimately text-less page (image/figure
+  // projects) doesn't force the session onto the main-thread worker.
   expectText?: boolean;
 }
 
-/** Imperative handle: scroll the viewer to a 1-based page number. */
 export interface PdfViewerHandle {
   gotoPage: (n: number) => void;
 }

@@ -1,5 +1,3 @@
-/** Shared helpers for driving the real app. All of these operate on the live
- *  webview; nothing is mocked. */
 import { expect } from "./fixtures";
 
 // The plugin's page handle (structural: only what the helpers need).
@@ -14,8 +12,7 @@ export interface Page {
   getByText(text: string, opts?: { exact?: boolean }): { click(): Promise<void> };
 }
 
-/** Dispatch a global keyboard shortcut on window (the app's own handlers for
- *  Cmd+K / Cmd+Shift+F listen on window keydown). */
+// The app's own handlers for Cmd+K / Cmd+Shift+F listen on window keydown.
 export async function pressGlobal(
   page: Page,
   key: string,
@@ -26,11 +23,9 @@ export async function pressGlobal(
   );
 }
 
-/** Open the template gallery from wherever the library currently is
- *  (first-run welcome button, or the header button once projects exist).
- *  The fixture reloads the SPA before each test, so wait for the library to
- *  finish loading projects (one of the two buttons exists only after that)
- *  before deciding which button to click - probing earlier races the load. */
+// The fixture reloads the SPA before each test, so wait for the library to
+// finish loading projects (one of the two buttons exists only after that)
+// before deciding which button to click - probing earlier races the load.
 export async function openGallery(page: Page) {
   await page.waitForFunction(
     `!!document.querySelector('[data-testid="create-first-project"], [data-testid="new-project"]')`,
@@ -42,11 +37,10 @@ export async function openGallery(page: Page) {
   await page.click(hasWelcome ? '[data-testid="create-first-project"]' : '[data-testid="new-project"]');
 }
 
-/** Insert text into the CodeMirror editor immediately after `anchorText`.
- *  Positions the caret with the DOM Selection API (which CodeMirror syncs
- *  into its own state) and inserts via execCommand('insertText'), which
- *  CodeMirror 6 treats as real user input - so the store sync, autosave,
- *  and linters all fire exactly as if the user typed it. */
+// Positions the caret with the DOM Selection API (which CodeMirror syncs
+// into its own state) and inserts via execCommand('insertText'), which
+// CodeMirror 6 treats as real user input - so the store sync, autosave,
+// and linters all fire exactly as if the user typed it.
 export async function typeInEditorAfter(
   page: Page,
   anchorText: string,
@@ -79,9 +73,8 @@ export async function typeInEditorAfter(
   if (!ok) throw new Error("typeInEditorAfter: anchor " + JSON.stringify(anchorText) + " not found in editor");
 }
 
-/** Make sure the sidebar is expanded on the given rail tab (clicking a rail
- *  tab always reveals the sidebar; re-clicking the active tab collapses it,
- *  and that collapsed state persists across restarts). */
+// Clicking a rail tab always reveals the sidebar; re-clicking the active tab
+// collapses it, and that collapsed state persists across restarts.
 export async function openRailTab(page: Page, ariaLabel: string) {
   const sel = JSON.stringify(`[aria-label=${JSON.stringify(ariaLabel)}]`);
   // Desired end state: this tab is ACTIVE (bg-accent implies the sidebar is
@@ -103,20 +96,17 @@ export async function openRailTab(page: Page, ariaLabel: string) {
       await page.waitForFunction(activeExpr, 2_000);
       return;
     } catch {
-      /* re-evaluate and click again */
     }
   }
   throw new Error(`openRailTab: ${ariaLabel} never became the active tab`);
 }
 
-/** Open a project from the library by its book title. The test fixture
- *  reloads the app to the library before every test, so specs that need the
- *  editor start here — exactly like a user re-opening their document. */
+// The test fixture reloads the app to the library before every test, so
+// specs that need the editor start here.
 export async function openProject(page: Page & { getByText(t: string): { click(): Promise<void> } }, name: string) {
   await page.getByText(name).click();
 }
 
-/** Insert text at the very start of the CodeMirror document (fresh files). */
 export async function typeInEditorAtStart(page: Page, text: string) {
   await page.evaluate(
     `(() => {
@@ -133,9 +123,9 @@ export async function typeInEditorAtStart(page: Page, text: string) {
   );
 }
 
-/** Wait for a JS expression beyond the plugin's ~30s server-side cap on
- *  wait_for_function: poll evaluate() client-side instead. Use for anything
- *  that can take longer than 30s (AI streaming, cold compiles). */
+// The plugin's wait_for_function has a ~30s server-side cap, so poll
+// evaluate() client-side instead for anything that can take longer
+// (AI streaming, cold compiles).
 export async function waitLong(page: Page, expression: string, timeoutMs: number) {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
@@ -146,10 +136,9 @@ export async function waitLong(page: Page, expression: string, timeoutMs: number
   }
 }
 
-/** Start a clean conversation in the (connected) chat panel. Conversations
- *  persist across panel remounts by design, so tests that assert on a fresh
- *  reply must begin with a real New-chat click or a restored transcript can
- *  satisfy their waits. */
+// Conversations persist across panel remounts by design, so tests that
+// assert on a fresh reply must begin with a real New-chat click or a
+// restored transcript can satisfy their waits.
 export async function newChat(page: Page) {
   await page.evaluate(
     `(() => {
@@ -160,9 +149,9 @@ export async function newChat(page: Page) {
   );
 }
 
-/** Fill a TEXTAREA as real input. The plugin's fill() uses the
- *  HTMLInputElement value setter and throws on textareas; use the textarea
- *  prototype setter + an input event so React controlled state updates. */
+// The plugin's fill() uses the HTMLInputElement value setter and throws on
+// textareas; use the textarea prototype setter + an input event so React
+// controlled state updates.
 export async function fillTextarea(page: Page, selector: string, text: string) {
   await page.evaluate(
     `(() => {
@@ -176,8 +165,6 @@ export async function fillTextarea(page: Page, selector: string, text: string) {
   );
 }
 
-/** Connect GitHub through the real settings UI (PAT route) if the git panel
- *  is still showing its onboarding gate. Reads E2E_GITHUB_TOKEN. */
 export async function ensureGithubConnected(page: Page) {
   const token = process.env.E2E_GITHUB_TOKEN;
   if (!token) throw new Error("ensureGithubConnected: E2E_GITHUB_TOKEN not set");
@@ -218,11 +205,10 @@ export async function ensureGithubConnected(page: Page) {
   );
 }
 
-/** Expand the E2E_AI_PROVIDER card inside the OPEN settings modal and return
- *  a serialized handle strategy. Every interaction with the card must be
- *  scoped to it: OpenAI and Z.AI share the "sk-…" input placeholder and a
- *  "Save" button, and a page-wide selector once saved the Z.AI key into the
- *  OpenAI card and silently switched the active provider (HTTP 401s). */
+// Every interaction with the card must be scoped to it: OpenAI and Z.AI
+// share the "sk-…" input placeholder and a "Save" button, and a page-wide
+// selector once saved the Z.AI key into the OpenAI card and silently
+// switched the active provider (HTTP 401s).
 export async function expandProviderCard(page: Page) {
   const provider = process.env.E2E_AI_PROVIDER || "Z.AI";
   await page.evaluate(
@@ -238,8 +224,6 @@ export async function expandProviderCard(page: Page) {
   );
 }
 
-/** Run a snippet against the E2E_AI_PROVIDER card's root element. The card is
- *  the header button's closest .rounded-lg; \`card\` is in scope. */
 export function inProviderCard(snippet: string): string {
   const provider = process.env.E2E_AI_PROVIDER || "Z.AI";
   return `(() => {
@@ -253,10 +237,6 @@ export function inProviderCard(snippet: string): string {
   })()`;
 }
 
-/** Connect the AI provider through the real settings UI if the chat panel is
- *  still showing its onboarding gate. Reads E2E_AI_TOKEN / E2E_AI_PROVIDER
- *  (default "Z.AI"); the key lands only in the hermetic test config. All
- *  clicks and fills are scoped to the provider's own card. */
 export async function ensureAiConnected(page: Page) {
   const token = process.env.E2E_AI_TOKEN;
   if (!token) throw new Error("ensureAiConnected: E2E_AI_TOKEN not set");
@@ -312,7 +292,6 @@ export async function ensureAiConnected(page: Page) {
   );
 }
 
-/** Open the settings modal (rail gear) at a section. */
 export async function openSettings(page: Page, section?: string) {
   // The settings modal is lazy-loaded. Wait for its always-present appearance
   // nav via the locator-assertion path (tauriExpect), NOT waitForFunction: the
@@ -353,17 +332,16 @@ export async function openSettings(page: Page, section?: string) {
   }
 }
 
-/** All command-palette item labels currently rendered. */
 export async function paletteItems(page: Page): Promise<string[]> {
   return page.evaluate<string[]>(
     `Array.from(document.querySelectorAll('[cmdk-item]')).map(e => e.textContent.trim())`,
   );
 }
 
-/** Place the caret inside the nth `anchorText` via a coordinate mouse click
- *  (CodeMirror's own mouse handling; never mutates the document). Searches
- *  line-level text, so lint/decoration spans that split text nodes (e.g.
- *  spellcheck squiggles) cannot hide the anchor. */
+// Uses a coordinate mouse click (CodeMirror's own mouse handling; never
+// mutates the document) and searches line-level text, so lint/decoration
+// spans that split text nodes (e.g. spellcheck squiggles) cannot hide the
+// anchor.
 export async function caretIn(
   page: Page,
   anchorText: string,
@@ -411,7 +389,6 @@ export async function caretIn(
   if (!ok) throw new Error("caretIn: anchor " + JSON.stringify(anchorText) + " not found");
 }
 
-/** The current app theme, read from the real DOM root. */
 export async function currentTheme(page: Page): Promise<"light" | "dark"> {
   return page.evaluate<"light" | "dark">(
     `document.documentElement.classList.contains('dark') ? 'dark' : 'light'`,

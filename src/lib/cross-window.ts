@@ -2,7 +2,6 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { isTauri } from "@tauri-apps/api/core";
 import { emit } from "@tauri-apps/api/event";
 
-/** Broadcast that project files changed (other windows should reload buffers). */
 export function notifyProjectFilesChanged(
   projectId: string | null,
   paths?: string[],
@@ -17,7 +16,6 @@ export function notifyProjectFilesChanged(
   }).catch(() => {});
 }
 
-/** Broadcast that a compile finished so other windows can reload the PDF. */
 export function notifyCompileDone(projectId: string | null): void {
   if (!isTauri() || !projectId) return;
   void emit("compile:done", { projectId, from: getCurrentWindow().label }).catch(() => {});

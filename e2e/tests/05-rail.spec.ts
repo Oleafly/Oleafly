@@ -1,9 +1,6 @@
 import { test, expect } from "../fixtures";
 import { openProject, openRailTab } from "../helpers";
 
-// The rail renders registry-contributed tabs; clicking each one must open its
-// panel in the sidebar.
-
 test.beforeEach(async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
@@ -16,8 +13,8 @@ test("project search tab opens the search panel", async ({ tauriPage }) => {
 
 test("AI tab opens the chat panel", async ({ tauriPage }) => {
   await openRailTab(tauriPage, "Chat / AI Assistant");
-  // Hermetic runs have no AI provider configured, so the panel shows its
-  // connect prompt (with a provider it would show the chat input instead).
+  // Hermetic runs have no AI provider configured, so the connect prompt shows
+  // instead of the chat input.
   await expect(tauriPage.getByText("Connect an AI provider")).toBeVisible();
 });
 

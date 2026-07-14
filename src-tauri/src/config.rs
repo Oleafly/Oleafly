@@ -131,7 +131,6 @@ pub fn read_config() -> Result<AppConfig, String> {
 fn hydrate_secrets(mut cfg: AppConfig) -> AppConfig {
     cfg.github_token = secrets::resolve_secret(secrets::github_token_account(), &cfg.github_token);
     cfg.mcp_token = secrets::resolve_secret(secrets::mcp_token_account(), &cfg.mcp_token);
-    // Per-provider AI keys.
     let providers: Vec<String> = cfg
         .ai_keys
         .keys()
@@ -162,7 +161,6 @@ fn hydrate_secrets(mut cfg: AppConfig) -> AppConfig {
             cfg.ai_keys.insert(provider, resolved);
         }
     }
-    // Legacy single key.
     if !cfg.ai_api_key.is_empty() || secrets::get_secret("ai_api_key").is_some() {
         cfg.ai_api_key = secrets::resolve_secret("ai_api_key", &cfg.ai_api_key);
     }
@@ -175,7 +173,6 @@ pub fn write_config(config: &AppConfig) -> Result<(), String> {
     if let Some(parent) = p.parent() {
         std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
-    // Store secrets in the keychain when possible.
     let _ = secrets::set_secret(secrets::github_token_account(), &config.github_token);
     let _ = secrets::set_secret(secrets::mcp_token_account(), &config.mcp_token);
     for (provider, key) in &config.ai_keys {
@@ -191,13 +188,12 @@ pub fn write_config(config: &AppConfig) -> Result<(), String> {
 /// retained (keychain fallback). Always mode `0600`.
 fn persist_without_plaintext_secrets(config: &AppConfig) -> Result<(), String> {
     let mut disk = config.clone();
-    // If keychain holds the github token, blank the disk copy.
     disk.github_token =
         secrets::migrate_to_keyring(secrets::github_token_account(), &config.github_token);
     // If migrate returned empty, keychain has it; keep empty. If non-empty,
     // keyring failed and we must keep plaintext on disk.
     if disk.github_token.is_empty() && !config.github_token.is_empty() {
-        // Confirm keychain actually has it; if not, keep fallback.
+        // Confirm the keychain actually has it; if not, keep the plaintext fallback.
         if secrets::get_secret(secrets::github_token_account()).is_none() {
             disk.github_token = config.github_token.clone();
         }
@@ -218,7 +214,6 @@ fn persist_without_plaintext_secrets(config: &AppConfig) -> Result<(), String> {
         } else if !key.is_empty() && secrets::get_secret(&acct).is_none() {
             redacted_keys.insert(provider.clone(), key.clone());
         }
-        // else: blank (keychain owns it)
     }
     disk.ai_keys = redacted_keys;
     disk.ai_api_key = {
@@ -291,7 +286,6 @@ pub fn set_config(mut config: AppConfig) -> Result<(), String> {
     if config.github_token.is_empty() {
         config.github_token = read_config()?.github_token;
     }
-    // Same preserve-on-empty rule for the MCP token.
     if config.mcp_token.is_empty() {
         config.mcp_token = read_config()?.mcp_token;
     }

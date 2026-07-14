@@ -2,10 +2,8 @@ import type { ReactNode } from "react";
 import { Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-/** Gemini-inspired blue → purple → coral gradient used for AI prompt chrome. */
 export const AI_GRADIENT = "from-[#4285F4] via-[#9B72CB] to-[#D96570]";
 
-/** Magic-wand mark — shared AI identity (no chip background). */
 export function AiMark({ className }: { className?: string }) {
   return (
     <span
@@ -17,10 +15,6 @@ export function AiMark({ className }: { className?: string }) {
   );
 }
 
-/**
- * Gemini-style gradient border shell with a soft tinted fill.
- * Use around any AI prompt / approval card.
- */
 export function AiChrome({
   children,
   className,

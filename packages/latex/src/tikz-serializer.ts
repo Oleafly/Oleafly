@@ -4,13 +4,10 @@ export const PX_PER_CM = 40;
 
 const px2cm = (v: number) => +(v / PX_PER_CM).toFixed(3);
 
-/** Center of a node in tikz coordinates (y flipped: screen down -> tikz up). */
 function center(n: DiagNode): { x: number; y: number } {
   return { x: px2cm(n.x + n.w / 2), y: px2cm(-(n.y + n.h / 2)) };
 }
 
-/** A tikz-safe color name + its \definecolor line, for a hex color. Returns
- *  name=null for empty/invalid input. */
 function colorRef(hex: string | undefined): { name: string | null; def?: string } {
   if (!hex) return { name: null };
   const h = hex.replace("#", "").toUpperCase();
@@ -78,16 +75,10 @@ function edgeToTikz(e: DiagEdge): string {
   return `\\draw${optStr} (${e.source}) ${connector}${mid} (${e.target});`;
 }
 
-/** TikZ libraries the generated diagrams rely on (shapes for diamond/ellipse,
- *  arrows for the tips, positioning/calc for layout). The composer passes these
- *  to the standalone wrapper for preview, and adds them to the document preamble
- *  on insert. */
 export const DIAGRAM_LIBS = ["shapes.geometric", "arrows.meta", "positioning", "calc"];
 
-/** Generate a self-contained tikzpicture (color defs + nodes + edges). The
- *  \node/\draw commands only exist inside a tikzpicture, so the wrapper is
- *  required. Color definitions go before it (xcolor allows \definecolor in the
- *  body). No document preamble. */
+// Color defs are emitted before the tikzpicture block: \definecolor is legal
+// in the surrounding body, but \node/\draw only exist inside tikzpicture.
 export function modelToTikz(model: DiagramModel): string {
   const defs = new Set<string>();
   const nodes = model.nodes.map((n) => nodeToTikz(n, defs));
@@ -113,12 +104,10 @@ function b64decode(b64: string): unknown {
   return JSON.parse(new TextDecoder().decode(bytes));
 }
 
-/** TikZ body + an embedded model comment for full round-trip editing. */
 export function serializeDiagram(model: DiagramModel): string {
   return `${modelToTikz(model)}\n${MARK} ${b64encode(model)}`;
 }
 
-/** Read the embedded model back, or null if this TikZ was not made by us. */
 export function parseEmbeddedModel(tikz: string): DiagramModel | null {
   const line = tikz.split("\n").find((l) => l.trimStart().startsWith(MARK));
   if (!line) return null;

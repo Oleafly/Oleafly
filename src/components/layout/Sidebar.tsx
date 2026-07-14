@@ -96,7 +96,6 @@ export function ProjectSearch() {
   );
 }
 
-/** The default sidebar: the file tree over the document outline. */
 export function FilesPanel() {
   return (
     <PanelGroup direction="vertical">
@@ -119,7 +118,6 @@ export function FilesPanel() {
   );
 }
 
-/** Renders the active rail tab's registered panel (files when unknown). */
 export function Sidebar() {
   const railTab = useSettingsStore((s) => s.railTab);
   const ActivePanel = registry.railTabs.find((t) => t.id === railTab)?.panel ?? FilesPanel;

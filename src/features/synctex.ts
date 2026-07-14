@@ -4,7 +4,6 @@ import { gotoRect } from "@/components/pdf/pdfController";
 import { useFilesStore } from "@/store/files";
 import { logError } from "@/lib/log";
 
-/** Forward SyncTeX: cursor → PDF highlight (uses the active file + project). */
 export async function forwardFromCursor() {
   const { projectId, mainDoc, activePath } = useFilesStore.getState();
   if (!projectId || !activePath) {
@@ -31,8 +30,7 @@ export async function forwardFromCursor() {
   }
 }
 
-/** Wait `n` animation frames, so a just-opened file has time to mount before we
- *  move the cursor into it. */
+// So a just-opened file has time to mount before we move the cursor into it.
 function nextFrames(n: number): Promise<void> {
   return new Promise((resolve) => {
     const step = (k: number) =>
@@ -41,10 +39,9 @@ function nextFrames(n: number): Promise<void> {
   });
 }
 
-/** Inverse SyncTeX: PDF click → editor cursor. In a multi-file project the click
- *  may land on content from a different file (an `\input` child), so switch to
- *  that file before jumping. `hit.file` is a basename; resolve it against the
- *  project tree. */
+// In a multi-file project the click may land on content from a different file
+// (an `\input` child), so switch to that file before jumping. `hit.file` is a
+// basename; resolve it against the project tree.
 export async function inverseFromClick(page: number, x: number, y: number, word?: string) {
   const store = useFilesStore.getState();
   const { projectId, mainDoc } = store;

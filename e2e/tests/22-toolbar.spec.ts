@@ -1,9 +1,6 @@
 import { test, expect } from "../fixtures";
 import { openProject } from "../helpers";
 
-// The top toolbar: view modes, inline project rename, the export menu, and
-// navigating back to the library.
-
 test("view mode segmented control switches source/split/pdf", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });

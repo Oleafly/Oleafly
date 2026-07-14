@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { runSourceRules } from "./source-rules";
 
-/** Helper: does the report contain a finding with this rule id? */
 const has = (text: string, id: string) => runSourceRules(text).some((f) => f.id === id);
 
 describe("multi-column", () => {

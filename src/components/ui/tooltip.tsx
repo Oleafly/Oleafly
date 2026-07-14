@@ -10,11 +10,8 @@ import { cn } from "@/lib/utils";
 
 type Side = "top" | "bottom" | "left" | "right";
 
-/**
- * Lightweight hover/focus tooltip. Rendered in a portal to <body> and clamped
- * to the viewport, so it is never clipped by ancestor `overflow` or the window
- * edges. Replaces native `title`.
- */
+// Portal to <body> and clamped to the viewport, so it's never clipped by
+// ancestor `overflow` or the window edges. Replaces native `title`.
 export function Tooltip({
   label,
   children,
@@ -28,7 +25,6 @@ export function Tooltip({
   side?: Side;
   delay?: number;
   className?: string;
-  /** Wrap the tip and widen it, for descriptive multi-sentence tooltips. */
   wide?: boolean;
 }) {
   const [show, setShow] = useState(false);

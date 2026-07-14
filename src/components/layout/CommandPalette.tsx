@@ -19,7 +19,6 @@ export function CommandPalette() {
     close();
   };
 
-  // Cmd/Ctrl-K toggles the palette.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
@@ -36,7 +35,7 @@ export function CommandPalette() {
     [projectId, projectKind, theme],
   );
 
-  // Registered commands grouped by heading, in registration (order) sequence.
+  // Map preserves insertion order, so groups render in registration order.
   const groups = useMemo(() => {
     const cmds = commandsFor("palette", ctx);
     const byGroup = new Map<string, typeof cmds>();

@@ -88,7 +88,6 @@ function useTemplatePreview(t: TemplateInfo, host: TemplatesHost): string | null
   return uri;
 }
 
-/** The page-1 thumbnail, or a graceful placeholder that still reads as a page. */
 function Preview({ t, host, className }: { t: TemplateInfo; host: TemplatesHost; className?: string }) {
   const uri = useTemplatePreview(t, host);
   if (uri) {
@@ -148,7 +147,6 @@ export function NewProjectDialog({
   onCreate: (name: string, templateId: string, color: string) => void | Promise<void>;
   host: TemplatesHost;
   kit: TemplatesKit;
-  /** Cover-color swatches (name + hex) supplied by the host app. */
   colorOptions: { name: string; hex: string }[];
   defaultColor: string;
 }) {
@@ -245,7 +243,6 @@ export function NewProjectDialog({
         className="flex h-[min(80vh,680px)] w-full max-w-4xl flex-col overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex items-center justify-between border-b px-5 py-3">
           <h2 className="text-base font-semibold">
             {step === 1 ? "Choose a template" : "Name your project"}
@@ -257,7 +254,6 @@ export function NewProjectDialog({
 
         {step === 1 ? (
           <div className="flex min-h-0 flex-1">
-            {/* Category rail */}
             <nav className="w-44 shrink-0 overflow-y-auto border-r p-2">
               {categories.map((c) => (
                 <button
@@ -276,7 +272,6 @@ export function NewProjectDialog({
               ))}
             </nav>
 
-            {/* Main column */}
             <div className="flex min-w-0 flex-1 flex-col">
               <div className="flex items-center gap-2 border-b px-4 py-2.5">
                 <div className="relative flex-1">
@@ -347,7 +342,6 @@ export function NewProjectDialog({
         ) : (
           selected && (
             <div className="flex min-h-0 flex-1">
-              {/* Selected template summary */}
               <div className="hidden w-64 shrink-0 flex-col gap-3 border-r p-5 sm:flex">
                 <div className="aspect-[17/22] overflow-hidden rounded-md border border-black/10 bg-white shadow-sm">
                   <Preview t={selected} host={host} />
@@ -370,7 +364,6 @@ export function NewProjectDialog({
                 )}
               </div>
 
-              {/* Name + cover */}
               <div className="flex min-w-0 flex-1 flex-col p-6">
                 <label
                   htmlFor="new-project-name"

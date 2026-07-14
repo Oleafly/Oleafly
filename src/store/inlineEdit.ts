@@ -1,19 +1,15 @@
 import { create } from "zustand";
 
-/**
- * Session state machine for the inline AI edit feature. Single source of truth:
- * the CodeMirror diff plugin and the React overlay both read/drive this store.
- */
+// Session state machine for the inline AI edit feature. Single source of truth:
+// the CodeMirror diff plugin and the React overlay both read/drive this store.
 export type Phase = "idle" | "prompting" | "streaming" | "reviewing" | "error";
 
 export interface Session {
   phase: Phase;
-  /** Document offsets of the target range (the original selection). */
   from: number;
   to: number;
   original: string;
   instruction: string;
-  /** The model's replacement text; grows while streaming. */
   proposed: string;
   error?: string;
 }

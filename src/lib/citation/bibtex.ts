@@ -1,6 +1,6 @@
 import type { ParsedBib } from "./types";
 
-/** Parse a single BibTeX entry (tolerant of nested braces, quoted, or bare values). */
+// Tolerant of nested braces, quoted, or bare field values.
 export function parseEntry(bibtex: string): ParsedBib | null {
   const text = bibtex.trim();
   const head = /^@(\w+)\s*\{\s*([^,\s}]+)\s*,/.exec(text);
@@ -78,11 +78,9 @@ function firstTitleWord(title: string): string {
   return "";
 }
 
-/**
- * Collision suffix: a, b, ..., z, then aa, ab, ... (bijective base-26). Stays
- * within [a-z] so the key remains a valid BibTeX identifier even past the 26th
- * collision (the old `String.fromCharCode(97 + n)` walked into '{', '|', '}').
- */
+// Bijective base-26 (a, b, ..., z, then aa, ab, ...) stays within [a-z] so the key
+// remains a valid BibTeX identifier even past the 26th collision (the old
+// `String.fromCharCode(97 + n)` walked into '{', '|', '}').
 function collisionSuffix(n: number): string {
   let s = "";
   let i = n;
@@ -93,7 +91,6 @@ function collisionSuffix(n: number): string {
   return s;
 }
 
-/** Generate a `firstauthorYEARword` cite key, deduped against existing keys. */
 export function generateCiteKey(fields: Record<string, string>, existing: Set<string>): string {
   const family = ascii(firstAuthorFamily(fields.author ?? ""));
   const year = (fields.year ?? "").match(/\d{4}/)?.[0] ?? "";
@@ -109,7 +106,6 @@ export function generateCiteKey(fields: Record<string, string>, existing: Set<st
   return key;
 }
 
-/** Replace the citation key in a BibTeX entry. */
 export function setKey(bibtex: string, newKey: string): string {
   return bibtex.replace(/(@\w+\s*\{\s*)[^,\s}]+/, `$1${newKey}`);
 }

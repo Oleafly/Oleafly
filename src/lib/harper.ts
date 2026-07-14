@@ -1,22 +1,18 @@
 import type { LocalLinter, Lint, Span, Suggestion } from "harper.js";
 import { logError } from "@/lib/log";
 
-/**
- * Harper grammar/style checking (offline, WASM). `harper.js` has no LaTeX
- * parser, so callers pass a *masked* copy of the document (commands/math/
- * comments replaced with spaces) — offsets then line up with the original.
- *
- * The WASM binary is dynamically imported on first use so the large inlined
- * chunk doesn't slow editor startup.
- */
+// Harper grammar/style checking (offline, WASM). `harper.js` has no LaTeX
+// parser, so callers pass a *masked* copy of the document (commands/math/
+// comments replaced with spaces) — offsets then line up with the original.
+//
+// The WASM binary is dynamically imported on first use so the large inlined
+// chunk doesn't slow editor startup.
 
 let linterPromise: Promise<LocalLinter> | null = null;
 
-/** Lazily boot the Harper WASM linter (cached after first use). */
 export function getGrammarLinter(): Promise<LocalLinter> {
   if (!linterPromise) {
     linterPromise = (async () => {
-      // Dynamic import: keeps the multi-MB inlined WASM out of the main chunk.
       const { LocalLinter: LL } = await import("harper.js");
       const { binaryInlined } = await import("harper.js/binaryInlined");
       const l: LocalLinter = new LL({
@@ -54,7 +50,7 @@ export function getGrammarLinter(): Promise<LocalLinter> {
 
 export interface GrammarSuggestion {
   text: string;
-  /** 0 = Replace, 1 = Remove, 2 = InsertAfter (Harper's SuggestionKind). */
+  // 0 = Replace, 1 = Remove, 2 = InsertAfter (Harper's SuggestionKind).
   kind: number;
 }
 
@@ -66,7 +62,6 @@ export interface GrammarDiag {
   suggestions: GrammarSuggestion[];
 }
 
-/** Lint a masked string, returning diagnostics with offsets into the original. */
 export async function lintGrammar(
   maskedText: string,
   maxLen: number

@@ -1,10 +1,8 @@
 import { test, expect } from "../fixtures";
 import { caretIn, openGallery, openRailTab, typeInEditorAtStart, type Page } from "../helpers";
 
-// The complete formatting-toolbar inventory, plus per-file-type editor
-// behavior. Runs in a throwaway project: snippets like \href{}{} would break
-// the shared E2E Doc's compiles, and a scratch project is exactly how a user
-// would try the toolbar out.
+// Runs in a throwaway project: snippets like \href{}{} would break the
+// shared E2E Doc's compiles.
 
 const RUN = Date.now().toString(36);
 const NAME = `E2E Toolbar ${RUN}`;
@@ -76,11 +74,9 @@ test("the find button opens the editor search panel", async ({ tauriPage }) => {
 
 test("non-tex files get no formatting toolbar; txt files edit fine", async ({ tauriPage }) => {
   await openScratchProject(tauriPage);
-  // main.tex is a tex file: the toolbar is there.
   await expect(tauriPage.locator('[aria-label="Bold (⌘B)"]')).toBeVisible();
 
   await openRailTab(tauriPage, "Source Tree");
-  // project.json: opens as plain text, and the LaTeX toolbar disappears.
   await tauriPage.getByText("project.json", { exact: true }).click();
   await tauriPage.waitForFunction(
     `!document.querySelector('[aria-label="Bold (⌘B)"]')`,
@@ -88,7 +84,6 @@ test("non-tex files get no formatting toolbar; txt files edit fine", async ({ ta
   );
   await expect(tauriPage.locator(".cm-content")).toContainText("name");
 
-  // A .txt file is editable like any text file (still no LaTeX toolbar).
   await tauriPage.click('[title="New file (in the selected folder)"]');
   await tauriPage.fill('input[placeholder="New file name"]', "notes.txt");
   await tauriPage.press('input[placeholder="New file name"]', "Enter");

@@ -1,10 +1,8 @@
 import { createContext, useContext, type ComponentType, type ReactNode } from "react";
 
-/**
- * UI primitives the host app injects so this package never imports the app's
- * component library directly. The prop shapes are structural subsets of the
- * app's shadcn components, so the app can pass them through unchanged.
- */
+// UI primitives the host app injects so this package never imports the app's
+// component library directly. The prop shapes are structural subsets of the
+// app's shadcn components, so the app can pass them through unchanged.
 export interface DiagramKit {
   Button: ComponentType<{
     variant?: "default" | "secondary" | "outline" | "ghost" | "destructive" | "link";
@@ -30,7 +28,6 @@ export interface DiagramKit {
   SelectContent: ComponentType<{ className?: string; children?: ReactNode }>;
   SelectItem: ComponentType<{ value: string; className?: string; children?: ReactNode }>;
   toast: { success: (msg: string) => void; error: (msg: string) => void };
-  /** Current app theme, used as the canvas default. Must be a valid hook. */
   useThemeMode: () => "light" | "dark";
 }
 

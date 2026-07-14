@@ -1,8 +1,5 @@
-/**
- * Lightweight project RAG: chunk open-project .tex/.bib files and score them
- * against the user query with a simple TF keyword score (no embeddings).
- * Good enough to surface relevant sections without external vector infra.
- */
+// Scores chunks with a simple TF keyword score (no embeddings) - good enough
+// to surface relevant sections without pulling in external vector infra.
 import { useFilesStore } from "@/store/files";
 import { readFileContent } from "@/lib/tauri";
 
@@ -74,10 +71,6 @@ function scoreChunk(queryTokens: string[], text: string): number {
   return score;
 }
 
-/**
- * Retrieve top project chunks for a natural-language query.
- * Reads open buffers first, then disk for other indexable files.
- */
 export async function retrieveProjectChunks(
   query: string,
   opts?: { topK?: number },
@@ -117,7 +110,6 @@ export async function retrieveProjectChunks(
   return chunks.slice(0, topK);
 }
 
-/** Format retrieved chunks for system/user context injection. */
 export function formatRagContext(chunks: RagChunk[]): string {
   if (!chunks.length) return "";
   const blocks = chunks.map(

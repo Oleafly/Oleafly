@@ -69,11 +69,9 @@ export function PreflightPanel() {
   const setEnabled = usePreflightStore((s) => s.setEnabled);
   const setOpen = usePreflightStore((s) => s.setOpen);
 
-  // Pre-enable and expand the check that matches the document type. Key this on
-  // the active PATH (not its content) and read a content snapshot imperatively,
-  // so typing does not re-render this whole panel or re-run the two whole-document
-  // regex scans in `looksLikeResumeSource` on every keystroke. The doc type is
-  // stable per file; the user can still toggle checks manually.
+  // Keyed on the active PATH (not its content), reading a content snapshot
+  // imperatively, so typing doesn't re-render this panel or re-run the two
+  // whole-document regex scans in `looksLikeResumeSource` on every keystroke.
   const activePath = useFilesStore((s) => s.activePath);
   const suggested = useMemo<Flags>(() => {
     const src = activePath ? useFilesStore.getState().files[activePath]?.content ?? "" : "";
@@ -244,7 +242,6 @@ export function PreflightPanel() {
   );
 }
 
-/** The results for a single check, rendered inside its accordion body. */
 const CheckResults = memo(function CheckResults({ id, report }: { id: CheckId; report: PreflightReport }) {
   const { findings, src, out } = useMemo(() => {
     const shown = forLens(id);

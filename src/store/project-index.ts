@@ -5,22 +5,19 @@ import type { FileSymbols, ProjectIndex } from "@/lib/index/types";
 import { useFilesStore } from "@/store/files";
 import { readFileContent } from "@/lib/tauri";
 
-/**
- * Live whole-project index. Built from an in-memory text cache so edits re-index
- * with pure JS (no disk IO). `updateFile` re-parses only the changed file (the
- * expensive per-file regex work) and reassembles, instead of re-parsing every
- * file on every keystroke. `rebuildFromDisk` (project switch) reads every
- * `.tex`/`.bib` once.
- */
+// Live whole-project index. Built from an in-memory text cache so edits re-index
+// with pure JS (no disk IO). `updateFile` re-parses only the changed file (the
+// expensive per-file regex work) and reassembles, instead of re-parsing every
+// file on every keystroke. `rebuildFromDisk` (project switch) reads every
+// `.tex`/`.bib` once.
 interface IndexStore {
   index: ProjectIndex | null;
-  /** Path -> text the current index was built from (rename applies against this). */
+  // Path -> text the current index was built from (rename applies against this).
   texts: Record<string, string>;
-  /** Path -> cached parse result, so unchanged files are not re-parsed. */
+  // Path -> cached parse result, so unchanged files are not re-parsed.
   parsed: Record<string, FileSymbols>;
   building: boolean;
   rebuildFromDisk: () => Promise<void>;
-  /** Update one file's text and re-index (pure, synchronous). */
   updateFile: (path: string, text: string) => void;
   reset: () => void;
 }
@@ -75,7 +72,6 @@ export const useIndexStore = create<IndexStore>((set, get) => ({
     // Skip the rebuild when nothing changed (go-to-def/click call this to be safe).
     if (cur.texts[path] === text && cur.index) return;
     const texts = { ...cur.texts, [path]: text };
-    // Re-parse only this file; reuse every other file's cached parse.
     const parsed = { ...cur.parsed, [path]: parseFile(path, text) };
     set({ texts, parsed, index: assembleIndex(parsed, texts) });
   },

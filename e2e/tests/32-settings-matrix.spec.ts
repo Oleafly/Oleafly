@@ -1,14 +1,10 @@
 import { test, expect } from "../fixtures";
 import { openProject, openSettings, pressGlobal, type Page } from "../helpers";
 
-// The full settings matrix: EVERY option of every appearance select, the
-// accent swatches, the layout preferences, the general toggles, and the
-// reset-to-defaults flow - each asserted against its real effect on the app,
-// not against stored state. Everything restores its default so re-runs and
-// later specs see factory settings.
+// Settings are asserted against their real effect on the app, not stored
+// state. Everything restores its default so re-runs and later specs see
+// factory settings.
 
-/** Open the Radix select in the row whose text contains `rowText`, then pick
- *  the option whose exact text is `optionText`. */
 async function pickOption(page: Page, rowText: string, optionText: string) {
   await page.evaluate(
     `(() => {
@@ -157,7 +153,6 @@ test("open-projects-in controls the landing layout", async ({ tauriPage }) => {
 
   await setDefaultView("PDF only");
   await reopen();
-  // PDF layout: the code editor is not rendered.
   await tauriPage.waitForFunction(`!document.querySelector('.cm-content')`, 10_000);
 
   await setDefaultView("Editor only");
@@ -186,7 +181,6 @@ test("show-file-tree-on-open controls the sidebar", async ({ tauriPage }) => {
     10_000,
   );
 
-  // Restore: toggle back on and confirm the tree shows again on open.
   await openSettings(tauriPage, "appearance");
   await tauriPage.click('[role="switch"][aria-label="Show file tree on open"]');
   await tauriPage.click('[aria-label="Close settings"]');
@@ -222,8 +216,7 @@ test("the shortcuts row opens the hotkeys reference", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openSettings(tauriPage, "general");
-  await tauriPage.getByText("command palette").click(); // the shortcuts row
-  // Opening the reference closes settings and shows the searchable list.
+  await tauriPage.getByText("command palette").click();
   await expect(tauriPage.locator('input[placeholder="Search shortcuts…"]')).toBeVisible({
     timeout: 10_000,
   });
@@ -234,7 +227,6 @@ test("reset to defaults restores factory preferences", async ({ tauriPage }) => 
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
-  // Drift two prefs away from factory state.
   await openSettings(tauriPage, "appearance");
   await pickOption(tauriPage, "Editor font size", "20px");
   await tauriPage.click('button[title="Teal"]');
@@ -243,7 +235,6 @@ test("reset to defaults restores factory preferences", async ({ tauriPage }) => 
     5_000,
   );
 
-  // Reset from the General section (confirm step included).
   await tauriPage.click('[data-testid="settings-section-general"]');
   await tauriPage.getByText("Reset to defaults").click();
   await tauriPage.getByText("Reset", { exact: true }).click();

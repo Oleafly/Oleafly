@@ -1,17 +1,11 @@
 import { test, expect } from "../fixtures";
 import { openProject, openRailTab, openSettings } from "../helpers";
 
-// Agentic AI surface that does NOT require a live model call: settings
-// capabilities, sticky memory hooks, plan checklist UI, handoff into chat,
-// and MCP activity rail visibility.
+// Agentic AI surface that does NOT require a live model call.
 
 test("AI settings shows the agent tool catalog and PDF capture toggle", async ({ tauriPage }) => {
-  // Pure-UI test (no model needed): AISection renders the agent tool catalog
-  // (expanded by default) and the PDF-capture toggle. openSettings now navigates
-  // reliably (locator waits, not the bridge eval that used to hang and forced the
-  // old test.fixme). Assert plain-text anchors, NOT the per-tool <code> chips,
-  // which the tauri-playwright bridge resolves flakily; the catalog header is
-  // only rendered when the (default-open) tool list is showing.
+  // Assert plain-text anchors, NOT the per-tool <code> chips: the
+  // tauri-playwright bridge resolves those flakily.
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openSettings(tauriPage, "ai");
@@ -29,7 +23,6 @@ test("agent plan checklist renders from the todos store", async ({ tauriPage }) 
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openRailTab(tauriPage, "Chat / AI Assistant");
 
-  // Seed todos via the e2e hook (no model required).
   await tauriPage.evaluate(`window.__agentTodosSet?.([
     { id: "1", content: "E2E plan step A", status: "completed" },
     { id: "2", content: "E2E plan step B", status: "in_progress" },
@@ -52,17 +45,15 @@ test("agent plan checklist renders from the todos store", async ({ tauriPage }) 
 test("agent sticky memory persists to storage and reloads on reopen", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  // ChatPanel binds the memory store to the open project on mount (load()).
   await openRailTab(tauriPage, "Chat / AI Assistant");
 
   await tauriPage.evaluate(`window.__agentMemoryClear?.()`);
 
   const marker = `E2E always use British English ${Date.now().toString(36)}`;
-  // The hook stands in for the model calling `remember_note`. What this test
-  // actually verifies is that add() PERSISTS (to the per-project storage key),
-  // not merely that it mutates the in-memory store — so we read storage directly
-  // rather than asserting via __agentMemoryList. Poll because ChatPanel's
-  // projectId binding can land a beat after mount (add no-ops until it does).
+  // The hook stands in for the model calling `remember_note`. This test verifies
+  // add() PERSISTS to the per-project storage key, not just the in-memory store,
+  // so we read storage directly rather than via __agentMemoryList. Poll because
+  // ChatPanel's projectId binding can land a beat after mount (add no-ops until it does).
   await expect
     .poll(
       async () =>
@@ -78,10 +69,9 @@ test("agent sticky memory persists to storage and reloads on reopen", async ({ t
     )
     .toBe(true);
 
-  // Prove the store hydrates FROM storage when the project is (re)opened, not
-  // from its module-level cache: overwrite storage out-of-band with a different
-  // note, run the exact load() ChatPanel runs on reopen, and confirm the store
-  // now reflects storage and dropped the stale in-memory note.
+  // Prove the store hydrates FROM storage on reopen, not from its module-level
+  // cache: overwrite storage out-of-band, run the exact load() ChatPanel runs
+  // on reopen, and confirm the stale in-memory note was dropped.
   const reloaded = await tauriPage.evaluate<string[]>(`(() => {
     const k = Object.keys(localStorage).find((x) => x.startsWith("openleaf.agent-memory."));
     if (!k) return [];
@@ -116,13 +106,12 @@ test("agent handoff hook is available and stores a prompt", async ({ tauriPage }
     `window.__agentHandoff?.(${JSON.stringify(marker)}, false)`,
   );
 
-  // When a provider is already connected, ChatPanel consumes into the textarea.
   const hasInput = await tauriPage.evaluate<boolean>(
     `!!document.querySelector('textarea[placeholder*="Ask AI"], textarea[placeholder*="Describe a figure"]')`,
   );
   if (hasInput) {
-    // Poll a plain evaluate (bridge-robust). waitForFunction with an IIFE hangs
-    // the tauri bridge deep in a long session (30s timeout).
+    // waitForFunction with an IIFE hangs the tauri bridge deep in a long
+    // session (30s timeout); poll a plain evaluate instead.
     await expect
       .poll(
         async () =>
@@ -135,11 +124,10 @@ test("agent handoff hook is available and stores a prompt", async ({ tauriPage }
   }
 });
 
-// The chat-usage accumulation math (input/output/steps/runs) is unit-tested in
-// src/store/chats.test.ts. A former e2e test here re-asserted that same store
-// arithmetic through devtools hooks (no real conversation, DOM footer skipped
-// without a provider), so it was redundant and tautological. The real footer is
-// exercised by the provider-backed chat test in 28-ai-chat.spec.ts.
+// Chat-usage accumulation math is unit-tested in src/store/chats.test.ts; a
+// former e2e test here re-asserted the same arithmetic via devtools hooks with
+// no real conversation, so it was redundant. Real footer coverage is in
+// 28-ai-chat.spec.ts.
 
 test("MCP activity rail tab appears only when the server is running", async ({
   tauriPage,
@@ -148,7 +136,6 @@ test("MCP activity rail tab appears only when the server is running", async ({
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
-  // Off by default: no MCP activity rail button.
   await expect(tauriPage.locator('[aria-label="MCP activity"]')).toHaveCount(0);
 
   await openSettings(tauriPage, "mcp");

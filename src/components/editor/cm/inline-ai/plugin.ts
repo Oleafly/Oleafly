@@ -16,7 +16,6 @@ import { useInlineEditStore } from "@/store/inlineEdit";
 import { buildDecoSpans } from "./diff-ranges";
 import { promptWidget } from "./promptWidget";
 
-/** Widget rendering an inserted (green) preview span. */
 class AddWidget extends WidgetType {
   constructor(readonly text: string) {
     super();
@@ -35,11 +34,9 @@ class AddWidget extends WidgetType {
   }
 }
 
-// The inline diff (marks + inline widgets) and the block panel widget live in
-// SEPARATE fields: a single set mixing block and inline decorations can become
-// invalid when a diff span lands at the block widget's line-end position, which
-// would silently drop the whole set. Keeping them apart guarantees each set is
-// internally valid.
+// Inline diff marks and the block panel widget live in separate fields: a single
+// set mixing block and inline decorations can become invalid (and get silently
+// dropped) if a diff span lands at the block widget's line-end position.
 const setDiffDeco = StateEffect.define<DecorationSet>();
 const setPanelDeco = StateEffect.define<DecorationSet>();
 
@@ -60,7 +57,6 @@ function decoField(effect: StateEffectType<DecorationSet>) {
 const diffField = decoField(setDiffDeco);
 const panelField = decoField(setPanelDeco);
 
-/** Inline red/green diff over the original text (streaming + reviewing). */
 function buildDiffSet(state: EditorState): DecorationSet {
   const s = useInlineEditStore.getState().session;
   if (!s || (s.phase !== "streaming" && s.phase !== "reviewing") || !s.proposed) {
@@ -81,7 +77,6 @@ function buildDiffSet(state: EditorState): DecorationSet {
   return Decoration.set(ranges, true);
 }
 
-/** The prompt panel as a block widget below the target line. */
 function buildPanelSet(state: EditorState): DecorationSet {
   const s = useInlineEditStore.getState().session;
   if (!s) return Decoration.none;
@@ -91,7 +86,6 @@ function buildPanelSet(state: EditorState): DecorationSet {
   ]);
 }
 
-/** ViewPlugin that repaints both fields whenever the session store changes. */
 const inlineDiffSubscriber = ViewPlugin.fromClass(
   class {
     private unsub: () => void;
@@ -112,10 +106,8 @@ const inlineDiffSubscriber = ViewPlugin.fromClass(
   },
 );
 
-/** Editor extension: renders the inline AI edit diff preview + prompt panel. */
 export const inlineDiffPlugin: Extension = [diffField, panelField, inlineDiffSubscriber];
 
-/** Commit the proposed replacement into the document and clear the session. */
 export function acceptInlineEdit(view: EditorView): void {
   const s = useInlineEditStore.getState().session;
   if (!s) return;
@@ -123,7 +115,7 @@ export function acceptInlineEdit(view: EditorView): void {
   useInlineEditStore.getState().reset();
 }
 
-/** Discard the proposal; the original text was never mutated. */
+// No document change to undo here: the diff preview never mutated the doc.
 export function rejectInlineEdit(_view: EditorView): void {
   useInlineEditStore.getState().reset();
 }

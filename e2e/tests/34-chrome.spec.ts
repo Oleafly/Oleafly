@@ -1,9 +1,6 @@
 import { test, expect } from "../fixtures";
 import { openProject, openRailTab } from "../helpers";
 
-// App chrome: the rail's theme toggle and sidebar collapse, panel resizing,
-// editor tab closing, and code folding - the ergonomics around the editor.
-
 test("the rail theme button flips the real theme", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
@@ -34,8 +31,8 @@ test("the editor/preview split resizes from the separator", async ({ tauriPage }
       `Math.round(document.querySelector('.cm-editor')?.getBoundingClientRect().width || 0)`,
     );
   const before = await editorWidth();
-  // react-resizable-panels handles support keyboard resizing when focused;
-  // h-mid is the editor/preview split (h-tree is the sidebar's).
+  // Keyboard resizing works when the panel handle is focused; h-mid is the
+  // editor/preview split (h-tree is the sidebar's).
   await tauriPage.evaluate(
     `(() => {
       const h = document.querySelector('[data-panel-resize-handle-id="h-mid"]');
@@ -53,7 +50,6 @@ test("the editor/preview split resizes from the separator", async ({ tauriPage }
   );
   const after = await editorWidth();
   expect(after).not.toBe(before);
-  // Restore roughly where it was.
   await tauriPage.evaluate(
     `(() => {
       const h = document.querySelector('[data-panel-resize-handle-id="h-mid"]');
@@ -70,7 +66,6 @@ test("editor tabs close from their x button", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openRailTab(tauriPage, "Source Tree");
-  // Create a second file if a previous run hasn't already.
   const exists = await tauriPage.evaluate<boolean>(
     `document.body.innerText.includes('tabtest.tex')`,
   );
@@ -88,14 +83,13 @@ test("editor tabs close from their x button", async ({ tauriPage }) => {
     `!document.querySelector('[aria-label="Close tabtest.tex"]')`,
     5_000,
   );
-  // main.tex remains the active file.
   await expect(tauriPage.locator(".cm-content")).toContainText("documentclass");
 });
 
 test("code folding collapses and restores a region", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  // The blank template's document environment is foldable; the gutter shows ▾.
+  // The blank template's document environment is foldable (gutter shows ▾).
   await tauriPage.waitForFunction(
     `Array.from(document.querySelectorAll('.cm-foldGutter span')).some(s => s.textContent === '▾')`,
     10_000,
@@ -109,8 +103,7 @@ test("code folding collapses and restores a region", async ({ tauriPage }) => {
     })()`,
   );
   await expect(tauriPage.locator(".cm-foldPlaceholder")).toBeVisible({ timeout: 5_000 });
-  // Unfold by clicking the placeholder itself (CodeMirror's standard
-  // affordance; the ▸ gutter marker ignores synthetic clicks).
+  // Click the placeholder to unfold; the ▸ gutter marker ignores synthetic clicks.
   await tauriPage.evaluate(
     `(() => {
       const p = document.querySelector('.cm-foldPlaceholder');

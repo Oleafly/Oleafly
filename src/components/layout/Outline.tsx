@@ -10,11 +10,8 @@ function basename(p: string): string {
   return i >= 0 ? p.slice(i + 1) : p;
 }
 
-/**
- * Document outline, derived from the shared project index (sections + the
- * `\input` graph). No separate parsing or file IO of its own; it stays in sync
- * with everything else that reads the index.
- */
+// Derived entirely from the shared project index; no parsing/file IO of its
+// own, so it stays in sync with everything else that reads the index.
 export function Outline() {
   const index = useIndexStore((s) => s.index);
   const activePath = useFilesStore((s) => s.activePath);

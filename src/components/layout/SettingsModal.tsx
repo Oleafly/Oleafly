@@ -169,7 +169,6 @@ export function SettingsModal() {
   const [section, setSection] = useState<Section>("appearance");
   const [libRoot, setLibRoot] = useState("");
   const [confirmReset, setConfirmReset] = useState(false);
-  // Progressive disclosure: advanced sections stay one click away for newcomers.
   const ADVANCED: Section[] = ["dictionary", "engine", "downloads", "data"];
   const [showAdvanced, setShowAdvanced] = useState(
     () => typeof localStorage !== "undefined" && localStorage.getItem("ol-settings-advanced") === "1",
@@ -202,9 +201,8 @@ export function SettingsModal() {
     // Deep-links into advanced sections must surface them in the nav.
     if (ADVANCED.includes(next) && !showAdvanced) setAdvanced(true);
     void libraryRoot().then(setLibRoot).catch(() => {});
-    // Both deps matter: "open settings at section X" flows (the GitHub gate,
-    // AI onboarding) set the initial section and open in one click, and the
-    // section must also re-apply if a flow retargets an already-open modal.
+    // Both deps matter: re-applies the section if a flow (GitHub gate, AI
+    // onboarding) retargets an already-open modal.
   }, [open, settingsInitialSection]);
 
   if (!open) return null;
@@ -225,7 +223,6 @@ export function SettingsModal() {
         className="flex h-[min(620px,86vh)] w-[min(820px,94vw)] overflow-hidden rounded-xl border bg-background shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Left nav */}
         <nav aria-label="Settings sections" className="flex w-52 shrink-0 flex-col gap-0.5 border-r bg-muted/30 p-3">
           <div className="mb-2 px-2 text-sm font-semibold">Settings</div>
           {NAV.filter(({ id }) => showAdvanced || !ADVANCED.includes(id)).map(({ id, label, icon: Icon }) => (
@@ -256,7 +253,6 @@ export function SettingsModal() {
           </button>
         </nav>
 
-        {/* Right content */}
         <div className="flex min-w-0 flex-1 flex-col bg-muted/30">
           <div className="flex h-12 shrink-0 items-center justify-between border-b px-5">
             <h2 className="text-sm font-semibold">
@@ -282,7 +278,6 @@ export function SettingsModal() {
                   onChange={toggleTheme}
                 />
 
-                {/* Editor font size */}
                 <div className="flex items-center justify-between gap-4 rounded-lg border bg-background p-3">
                   <div>
                     <div className="text-sm font-medium">Editor font size</div>
@@ -307,7 +302,6 @@ export function SettingsModal() {
                   </Select>
                 </div>
 
-                {/* App font size */}
                 <div className="flex items-center justify-between gap-4 rounded-lg border bg-background p-3">
                   <div>
                     <div className="text-sm font-medium">App font size</div>
@@ -329,7 +323,6 @@ export function SettingsModal() {
                   </Select>
                 </div>
 
-                {/* App font */}
                 <div className="flex items-center justify-between gap-4 rounded-lg border bg-background p-3">
                   <div>
                     <div className="text-sm font-medium">App font</div>
@@ -354,7 +347,6 @@ export function SettingsModal() {
                   </Select>
                 </div>
 
-                {/* Editor font */}
                 <div className="flex items-center justify-between gap-4 rounded-lg border bg-background p-3">
                   <div>
                     <div className="text-sm font-medium">Editor font</div>
@@ -379,7 +371,6 @@ export function SettingsModal() {
                   </Select>
                 </div>
 
-                {/* Default view on open */}
                 <div className="flex items-center justify-between gap-4 rounded-lg border bg-background p-3">
                   <div>
                     <div className="text-sm font-medium">Open projects in</div>
@@ -413,7 +404,6 @@ export function SettingsModal() {
                   onChange={setHoverPreview}
                 />
 
-                {/* Accent color */}
                 <div className="rounded-lg border bg-background p-3">
                   <div className="text-sm font-medium">Accent color</div>
                   <div className="mb-2 text-xs text-muted-foreground">
@@ -684,7 +674,6 @@ function HelpSection() {
     setHotkeysOpen(true);
   };
 
-  // Copy a one-line diagnostics string people can paste into a bug report.
   const copyDiagnostics = async () => {
     const parts = [`OpenLeaf v${version || "?"}`];
     if (isTauri()) {

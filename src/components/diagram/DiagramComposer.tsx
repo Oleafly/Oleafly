@@ -37,7 +37,7 @@ import { toast } from "@/lib/toast";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { isMac } from "@/lib/utils";
 
-/** App theme -> canvas default, as a hook the package can call. */
+// Exposed as a hook because the headless @openleaf/diagram package calls it directly.
 function useThemeMode(): "light" | "dark" {
   const { theme } = useTheme();
   return theme === "dark" ? "dark" : "light";
@@ -55,7 +55,6 @@ const KIT: DiagramKit = {
   useThemeMode,
 };
 
-/** One-shot AI repair of failed TikZ; throws user-readable errors. */
 async function fixWithAi(code: string, logTail: string): Promise<string> {
   const cfg = await getConfig();
   if (!hasConfiguredProvider(cfg)) {
@@ -99,8 +98,7 @@ const HOST: DiagramHost = {
   fixWithAi,
 };
 
-/** Thin app wrapper: wires stores, Tauri, the editor, AI, and UI primitives
- *  into the package's headless composer. */
+// Bridges app-specific stores/Tauri/editor into the package's headless composer.
 export function DiagramComposer() {
   const open = useSettingsStore((s) => s.diagramComposerOpen);
   const setOpen = useSettingsStore((s) => s.setDiagramComposerOpen);

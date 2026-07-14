@@ -1,11 +1,5 @@
-/** Pure helper for which PDF pages an agent should inspect after compile. */
+// Pure helper for which PDF pages an agent should inspect after compile.
 
-/**
- * Pick 1-based page numbers to verify.
- * Always includes first and last (when multi-page); prefers the cursor page;
- * fills the budget with evenly spaced middle pages. Unique, sorted, length
- * ≤ maxPages.
- */
 export function pickPagesToVerify(
   numPages: number,
   opts: { cursorPage?: number; maxPages?: number } = {},
@@ -21,14 +15,12 @@ export function pickPagesToVerify(
   const cursor = opts.cursorPage;
   if (cursor != null && cursor >= 1 && cursor <= numPages) set.add(cursor);
 
-  // Fill remaining slots with evenly spaced pages.
   let guard = 0;
   while (set.size < maxPages && set.size < numPages && guard++ < 64) {
     const step = Math.max(1, Math.floor(numPages / (maxPages + 1)));
     for (let p = 1 + step; p < numPages && set.size < maxPages; p += step) {
       set.add(p);
     }
-    // If still short, walk sequentially.
     for (let p = 2; p < numPages && set.size < maxPages; p++) set.add(p);
   }
 

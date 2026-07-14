@@ -4,8 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useSettingsStore } from "@/store/settings";
 import { shortcut } from "@/lib/utils";
 
-/** Render a shortcut string for the platform, leaving rows that already spell
- * out both conventions (e.g. "⌘/Ctrl-click", "Ctrl-Space") untouched. */
+// Leaves rows that already spell out both conventions (e.g. "Ctrl-Space") untouched.
 const keyLabel = (keys: string) => (keys.includes("Ctrl") ? keys : shortcut(keys));
 
 const SHORTCUTS: { category: string; keys: string; desc: string }[] = [

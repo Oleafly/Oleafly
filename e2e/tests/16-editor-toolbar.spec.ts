@@ -1,13 +1,10 @@
 import { test, expect } from "../fixtures";
 import { caretIn, openProject } from "../helpers";
 
-// The editor toolbar and right-click context menu: formatting, inserts,
-// undo/redo - every action lands in the real document.
-
 async function selectWord(tauriPage: { evaluate<T>(e: string): Promise<T> }, word: string) {
-  // Drive CodeMirror's own mouse-selection logic with a synthetic drag using
-  // real text coordinates (CM re-asserts its state over foreign DOM
-  // selections, so Range/Selection injection does not stick).
+  // Drive a synthetic mouse-drag over real text coordinates: CM re-asserts
+  // its state over foreign DOM selections, so Range/Selection injection
+  // does not stick.
   const ok = await tauriPage.evaluate<boolean>(
     `(() => {
       const content = document.querySelector('.cm-content');

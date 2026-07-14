@@ -6,11 +6,8 @@ import { listTemplates, type TemplateInfo } from "@/lib/tauri";
 import { notifyError } from "@/lib/toast";
 import { logError } from "@/lib/log";
 
-/**
- * Mounts the New Project gallery at the app root so it can be opened from
- * anywhere (the Library, the omnibar's `/create`, the command palette), not just
- * the Library screen. Controlled by `newProjectOpen` in the settings store.
- */
+// Mounted at the app root so it can be opened from anywhere (Library, the
+// omnibar's `/create`, the command palette), not just the Library screen.
 export function GlobalNewProject() {
   const open = useSettingsStore((s) => s.newProjectOpen);
   const setOpen = useSettingsStore((s) => s.setNewProjectOpen);
@@ -18,7 +15,6 @@ export function GlobalNewProject() {
   const [templates, setTemplates] = useState<TemplateInfo[]>([]);
   const [creating, setCreating] = useState(false);
 
-  // Load the catalog the first time the dialog is opened.
   useEffect(() => {
     if (open && templates.length === 0) {
       void listTemplates()

@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import type { Sym } from "@/lib/index/types";
 
-/** Results of a find-references query, shown in the References sidebar panel. */
 interface ReferencesStore {
   title: string;
   results: Sym[];

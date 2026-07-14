@@ -9,9 +9,7 @@ interface MathRange {
   display: boolean;
 }
 
-/** Find the innermost math region containing `pos`. */
 function findMath(text: string, pos: number): MathRange | null {
-  // Inline $...$ - check if we're inside a $ pair on the current line.
   const before = text.slice(0, pos);
   const after = text.slice(pos);
   const lineStart = before.lastIndexOf("\n") + 1;
@@ -38,7 +36,6 @@ function findMath(text: string, pos: number): MathRange | null {
     }
   }
 
-  // Display \[...\]
   const openDisp = before.lastIndexOf("\\[");
   const closeDisp = before.lastIndexOf("\\]");
   if (openDisp > closeDisp) {
@@ -53,7 +50,6 @@ function findMath(text: string, pos: number): MathRange | null {
     }
   }
 
-  // Inline \(...\)
   const openIn = before.lastIndexOf("\\(");
   const closeIn = before.lastIndexOf("\\)");
   if (openIn > closeIn) {
@@ -71,7 +67,6 @@ function findMath(text: string, pos: number): MathRange | null {
   return null;
 }
 
-/** CM6 hover tooltip that renders math (KaTeX) when the cursor hovers over math. */
 export function mathHover() {
   return hoverTooltip((view, pos) => {
     const text = view.state.doc.toString();

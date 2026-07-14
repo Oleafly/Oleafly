@@ -12,7 +12,6 @@ export type RailTab =
   | "refs"
   | "mcp";
 
-/** Read a persisted setting (cosmetics survive restarts, like the theme). */
 function ls(k: string, fb: string): string {
   try {
     return typeof localStorage !== "undefined"
@@ -30,8 +29,8 @@ function saveLs(k: string, v: string) {
   }
 }
 
-/** Font choices offered in Appearance. "" means the app default stack. Names
- *  apply if installed, otherwise the browser falls back (like VS Code). */
+// Font choices offered in Appearance. "" means the app default stack. Names
+// apply if installed, otherwise the browser falls back (like VS Code).
 export const APP_FONTS: { name: string; value: string }[] = [
   { name: "System default", value: "" },
   { name: "Inter", value: '"Inter", system-ui, sans-serif' },
@@ -49,7 +48,6 @@ export const EDITOR_FONTS: { name: string; value: string }[] = [
   { name: "Consolas", value: "Consolas, ui-monospace, monospace" },
 ];
 
-/** Preset accent colors. The default is primary blue. */
 export const ACCENTS: { id: string; name: string; color: string }[] = [
   { id: "blue", name: "Blue", color: "#2563eb" },
   { id: "green", name: "Green", color: "#16a34a" },
@@ -74,13 +72,10 @@ interface SettingsState {
   setOffline: (v: boolean) => void;
   paletteOpen: boolean;
   setPaletteOpen: (v: boolean) => void;
-  /** The New Project gallery, openable from anywhere (Library, omnibar, palette). */
   newProjectOpen: boolean;
   setNewProjectOpen: (v: boolean) => void;
-  /** Request the AI panel to open in figure mode (from omnibar / right-click). */
   figureModeOpen: boolean;
   setFigureModeOpen: (v: boolean) => void;
-  /** The manual diagram composer modal (paste code, preview, insert). */
   diagramComposerOpen: boolean;
   setDiagramComposerOpen: (v: boolean) => void;
   wordCountOpen: boolean;
@@ -95,19 +90,16 @@ interface SettingsState {
   setSettingsInitialSection: (v: string) => void;
   viewMode: ViewMode;
   setViewMode: (v: ViewMode) => void;
-  /** Which layout a project opens in, and whether the file tree shows on open. */
   defaultView: ViewMode;
   setDefaultView: (v: ViewMode) => void;
   openInTree: boolean;
   setOpenInTree: (v: boolean) => void;
   hoverPreview: boolean;
   setHoverPreview: (v: boolean) => void;
-  /** When true, the assistant floats as an in-window overlay (not the docked rail). */
   chatFloating: boolean;
   setChatFloating: (v: boolean) => void;
   editorFontSize: number;
   setEditorFontSize: (v: number) => void;
-  /** Global app UI font size (px), scaling the whole interface. */
   appFontSize: number;
   setAppFontSize: (v: number) => void;
   appFontFamily: string;
@@ -122,11 +114,9 @@ interface SettingsState {
   setHotkeysOpen: (v: boolean) => void;
   railTab: RailTab;
   setRailTab: (v: RailTab) => void;
-  /** Restore Appearance + General preferences to their factory defaults. */
   resetToDefaults: () => void;
 }
 
-/** Factory defaults for the user-facing Appearance + General preferences. */
 const PREF_DEFAULTS = {
   vim: false,
   spellcheck: true,
@@ -145,8 +135,6 @@ const PREF_DEFAULTS = {
 } as const;
 
 export const useSettingsStore = create<SettingsState>((set) => ({
-  // Editor behavior toggles persist like the other preferences: enabling vim
-  // or turning spellcheck off must survive an app restart.
   vim: ls("openleaf.vim", "0") === "1",
   toggleVim: () =>
     set((s) => {

@@ -1,6 +1,5 @@
 import { cn } from "@/lib/utils";
 
-/** OpenLeaf leaf mark. Fixed brand colors; size via className (e.g. "size-5"). */
 export function LeafLogo({ className }: { className?: string }) {
   return (
     <svg

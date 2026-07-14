@@ -2,10 +2,6 @@ import { streamText } from "ai";
 import { getConfig } from "@/lib/tauri";
 import { resolveActiveModel } from "@/lib/ai-providers";
 
-/**
- * One-shot (non-agentic) AI edit of a selected LaTeX fragment. Reuses the same
- * active provider/model the chat panel uses. Streams the replacement text.
- */
 export type InlineEditArgs = {
   instruction: string;
   selection: string;
@@ -30,7 +26,6 @@ const SYSTEM = [
   "Preserve LaTeX validity: balanced braces and environments.",
 ].join(" ");
 
-/** Drop a wrapping ``` fence the model may have added despite instructions. */
 function stripFence(s: string): string {
   const t = s.trim();
   const m = t.match(/^```[a-zA-Z]*\n?([\s\S]*?)\n?```$/);

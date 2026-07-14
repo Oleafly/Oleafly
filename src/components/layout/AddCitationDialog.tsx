@@ -13,11 +13,6 @@ const EXAMPLES = [
   { label: "Title", value: "Attention is all you need" },
 ];
 
-/**
- * Add a citation by pasting a DOI/arXiv id/URL (fetched directly) or typing a
- * title to search Crossref. Appends BibTeX to the project's .bib (deduped by
- * DOI) and inserts \cite at the cursor.
- */
 export function AddCitationDialog() {
   const open = useCitationStore((s) => s.open);
   const setOpen = useCitationStore((s) => s.setOpen);

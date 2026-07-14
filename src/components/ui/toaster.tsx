@@ -9,7 +9,7 @@ const DURATION: Record<ToastKind, number> = {
   info: 4000,
 };
 
-/** Toasts with an action button stay longer so the user has time to click. */
+// Toasts with an action button stay longer so the user has time to click.
 const ACTION_BONUS = 4000;
 
 const ICON = {
@@ -22,7 +22,7 @@ function ToastRow({ toast }: { toast: Toast }) {
   const dismiss = useToastStore((s) => s.dismiss);
 
   useEffect(() => {
-    if (toast.sticky) return; // stays until the user dismisses it
+    if (toast.sticky) return;
     const ms = DURATION[toast.kind] + (toast.action ? ACTION_BONUS : 0);
     const id = window.setTimeout(() => dismiss(toast.id), ms);
     return () => window.clearTimeout(id);
@@ -72,10 +72,6 @@ function ToastRow({ toast }: { toast: Toast }) {
   );
 }
 
-/**
- * Renders the transient toast stack (bottom-right). Mounted once at the app
- * root so it shows over any view. Fed by `@/lib/toast` / `notifyError`.
- */
 export function Toaster() {
   const toasts = useToastStore((s) => s.toasts);
   if (toasts.length === 0) return null;

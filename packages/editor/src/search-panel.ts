@@ -13,13 +13,6 @@ import {
 } from "@codemirror/search";
 import { preserveCase } from "./preserve-case";
 
-/**
- * A VSCode-style find/replace widget for the editor. Replaces CodeMirror's
- * default search bar: a compact, right-aligned card with icon toggles (case,
- * whole-word, regex), a live match count, prev/next, select-all, and a
- * collapsible replace row. Wired to CodeMirror's own search commands.
- */
-
 const ICON = {
   chevronRight: "›",
   chevronDown: "⌄",
@@ -52,7 +45,6 @@ function createSearchPanel(view: EditorView): Panel {
   const wrap = document.createElement("div");
   wrap.className = "cm-vs-search";
 
-  // Left expand/collapse chevron.
   const expandBtn = btn(ICON.chevronRight, "Toggle Replace", () => {
     expanded = !expanded;
     replaceRow.style.display = expanded ? "flex" : "none";
@@ -107,7 +99,6 @@ function createSearchPanel(view: EditorView): Panel {
   findBox.append(findInput, caseBtn, wordBtn, reBtn);
   findRow.append(findBox, count, prevBtn, nextBtn, selAllBtn, closeBtn);
 
-  // Replace row (hidden until expanded).
   const replaceInput = document.createElement("input");
   replaceInput.className = "cm-vs-input";
   replaceInput.placeholder = "Replace";
@@ -168,7 +159,6 @@ function createSearchPanel(view: EditorView): Panel {
   const replaceAllBtn = btn("All", "Replace all", doReplaceAll);
   replaceRow.append(replaceBox, replaceBtn, replaceAllBtn);
 
-  // Stack Find above Replace (a column), with the expand chevron to their left.
   const rows = document.createElement("div");
   rows.className = "cm-vs-rows";
   rows.append(findRow, replaceRow);

@@ -1,10 +1,8 @@
 import { test, expect } from "../fixtures";
 import { openProject, openRailTab, type Page } from "../helpers";
 
-// File-tree management via the context menu: rename and delete, against real
-// files on disk. Menu items are selected with real plugin clicks (the same
-// pattern as the library book menu); synthetic pointer-event dispatch on
-// Radix items is unreliable.
+// Menu items are selected with real plugin clicks (same as the library book
+// menu); synthetic pointer-event dispatch on Radix items is unreliable.
 
 async function treeContextMenu(page: Page & { getByText(t: string): unknown }, fileName: string) {
   const ok = await page.evaluate<boolean>(
@@ -57,9 +55,8 @@ test("create a scratch file in the tree", async ({ tauriPage }) => {
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openRailTab(tauriPage, "Source Tree");
 
-  // Create a throwaway file for the rename/delete tests. Menu operations run
-  // in their own tests (fresh pages): right after a create, the tree refresh
-  // churn reliably swallows Radix menu-item selection.
+  // Menu operations run in their own tests (fresh pages): right after a
+  // create, the tree refresh churn reliably swallows Radix menu-item selection.
   await tauriPage.click('[title="New file (in the selected folder)"]');
   await tauriPage.fill('input[placeholder="New file name"]', "scratch.tex");
   await tauriPage.press('input[placeholder="New file name"]', "Enter");

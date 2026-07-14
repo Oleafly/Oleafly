@@ -3,11 +3,6 @@ import { Check, Mail, MapPin, Phone, User, X } from "lucide-react";
 import type { AtsParse } from "@openleaf/preflight";
 import { cn } from "@/lib/utils";
 
-/**
- * Shows what an Applicant Tracking System extracts from the compiled PDF: the
- * contact fields it captured and which standard sections it could detect. This
- * makes the resume writer's biggest blind spot visible.
- */
 export const AtsCard = memo(function AtsCard({ parse }: { parse: AtsParse }) {
   const field = (Icon: typeof User, value: string | null) => (
     <div className="flex items-center gap-2 text-xs">

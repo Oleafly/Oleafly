@@ -33,7 +33,6 @@ import { goToDefinition, findReferences, startRename } from "@/lib/index/nav";
 import { useCitationStore } from "@/store/citation";
 import { cn, shortcut } from "@/lib/utils";
 
-/** Run a code-intelligence action against the active editor view. */
 function withView(fn: (v: import("@codemirror/view").EditorView) => void) {
   const v = getEditorView();
   if (v) fn(v);
@@ -74,7 +73,6 @@ function IconBtn({
 export function EditorToolbar() {
   return (
     <div className="flex h-9 items-center gap-0.5 border-b px-2">
-      {/* Undo / Redo */}
       <IconBtn onClick={editorUndo} title={`Undo (${shortcut("⌘Z")})`}>
         <Undo2 className="size-4" />
       </IconBtn>
@@ -84,7 +82,6 @@ export function EditorToolbar() {
 
       <Divider />
 
-      {/* Section heading level */}
       <Popover
         ariaLabel="Heading level"
         trigger={
@@ -113,7 +110,6 @@ export function EditorToolbar() {
 
       <Divider />
 
-      {/* Bold / Italic */}
       <IconBtn onClick={() => wrapSelection("\\textbf{", "}")} title={`Bold (${shortcut("⌘B")})`}>
         <Bold className="size-4" />
       </IconBtn>
@@ -123,7 +119,6 @@ export function EditorToolbar() {
 
       <Divider />
 
-      {/* Insert: link, cite, ref, figure, table, list */}
       <IconBtn onClick={() => insertAtCursor("\\href{}{}")} title="Insert link">
         <LinkIcon className="size-4" />
       </IconBtn>
@@ -168,7 +163,7 @@ export function EditorToolbar() {
 
       <Divider />
 
-      {/* Code intelligence (kept as one compact dropdown so it never crowds the bar) */}
+      {/* One compact dropdown so it never crowds the bar */}
       <Popover
         ariaLabel="Code intelligence"
         trigger={

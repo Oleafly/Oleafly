@@ -24,9 +24,7 @@ function save(map: Record<string, string>) {
 }
 
 interface ProjectColorsState {
-  /** Local overrides + migrated legacy colors, keyed by project id. */
   colors: Record<string, string>;
-  /** Persist a color to disk and reflect it immediately in the UI. */
   setColor: (id: string, color: string) => void;
   get: (id: string) => string | undefined;
 }

@@ -50,16 +50,10 @@ const FIRST_ARG_OPAQUE_CMDS = new Set([
 
 const LATEX_SPECIAL = new Set(["{", "}", "[", "]", "~", "&", "#", "^", "_"]);
 
-/** Blank chars [a, b) in place, preserving newlines so offsets stay aligned. */
 function blankRun(chars: string[], a: number, b: number): void {
   for (let k = a; k < b; k++) if (chars[k] !== "\n") chars[k] = " ";
 }
 
-/**
- * Given an opening delimiter at `open` (`{` or `[`), return the index just past
- * the matching close, respecting nesting and `\{`/`\}` escapes. Returns the end
- * of input if unbalanced.
- */
 function matchGroup(chars: string[], open: number): number {
   const o = chars[open];
   const close = o === "{" ? "}" : "]";
@@ -83,10 +77,6 @@ function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/**
- * Find the index just past the `\end{env}` matching an already-opened `env`,
- * starting from `from`, counting nested `\begin{env}` of the same name.
- */
 function findEnvEnd(text: string, from: number, env: string): number {
   const re = new RegExp(`\\\\(begin|end)\\s*\\{${escapeRe(env)}\\*?\\}`, "g");
   re.lastIndex = from;
@@ -99,13 +89,6 @@ function findEnvEnd(text: string, from: number, env: string): number {
   return text.length;
 }
 
-/**
- * Produce a same-length copy of `text` with all non-prose LaTeX replaced by
- * spaces: comments, math (`$…$`, `$$…$$`, `\(…\)`, `\[…\]` and math/verbatim
- * environments), command tokens, opaque command arguments, and structural
- * specials. Section titles, `\textbf{…}`, captions, and unknown macros' prose
- * arguments are preserved so real writing is still checked.
- */
 export function maskLatex(text: string): string {
   const chars = text.split("");
   const n = chars.length;
@@ -289,16 +272,12 @@ export function maskLatex(text: string): string {
 
 const TRAILING_PUNCT = new Set([".", ",", ";", ":", "!", "?", ")", "]", "}", "'"]);
 
-/**
- * Compact the masked document into clean prose for a prose linter (Harper).
- * Runs of blanked/whitespace characters collapse to a single space (or nothing
- * before closing punctuation), so the linter never sees the large gaps that
- * masking leaves behind — those gaps otherwise trigger whitespace/formatting and
- * sentence-length false positives that map back onto `\commands`.
- *
- * Returns the compacted `prose` plus a `map` where `map[k]` is the original
- * document offset of `prose[k]`, so lint spans can be translated back.
- */
+// Runs of blanked/whitespace characters collapse to a single space (or nothing
+// before closing punctuation), so the linter never sees the large gaps that
+// masking leaves behind, since those gaps otherwise trigger whitespace/formatting
+// and sentence-length false positives that map back onto `\commands`. `map[k]`
+// is the original document offset of `prose[k]`, so lint spans can be
+// translated back.
 export function maskToProse(text: string): { prose: string; map: number[] } {
   const masked = maskLatex(text);
   let prose = "";
@@ -323,10 +302,6 @@ export function maskToProse(text: string): { prose: string; map: number[] } {
   return { prose, map };
 }
 
-/**
- * Checkable word ranges for the Hunspell spellchecker, derived from the masked
- * document so commands, math, code, and non-prose arguments are already excluded.
- */
 export function spellcheckRanges(text: string): Range[] {
   const masked = maskLatex(text);
   const out: Range[] = [];

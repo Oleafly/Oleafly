@@ -12,7 +12,7 @@ describe("buildDecoSpans", () => {
   it("emits zero-width add spans with the inserted preview text", () => {
     const spans = buildDecoSpans("the old cat", "the new cat", 0);
     const add = spans.find((s) => s.kind === "add");
-    expect(add?.from).toBe(add?.to); // zero-width insertion point
+    expect(add?.from).toBe(add?.to);
     expect(add?.text).toBe("new ");
   });
 

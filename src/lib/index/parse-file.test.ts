@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import { parseFile } from "./parse-file";
 import type { Sym } from "./types";
 
-/** The text a symbol's name span points at must equal its name. */
 const spanOk = (text: string, s: Sym) => text.slice(s.nameFrom, s.nameTo) === s.name;
 
 function def(text: string, kind: string, name: string, path = "main.tex") {

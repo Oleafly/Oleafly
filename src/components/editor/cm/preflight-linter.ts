@@ -1,12 +1,8 @@
 import { linter, type Diagnostic } from "@codemirror/lint";
 import { runSourceRules } from "@openleaf/preflight";
 
-/**
- * Inline squiggles for the source-level preflight rules (ATS + accessibility),
- * so problems surface in the gutter just like the LaTeX linter. Only findings
- * that map to a source range are shown; whole-document and PDF findings live in
- * the Preflight panel. Self-contained on the view's doc, like `latex-linter.ts`.
- */
+// Only findings that map to a source range are shown here; whole-document and
+// PDF findings live in the Preflight panel instead.
 export function createPreflightLinter() {
   return linter(
     (view): Diagnostic[] => {

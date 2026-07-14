@@ -19,10 +19,8 @@ interface EngineStore {
   progress: number | null;
   installed: string[];
   busyPkg: string | null;
-  /** Whether engine info has been fetched at least once (so we cache it). */
   loaded: boolean;
   refresh: () => Promise<void>;
-  /** Fetch engine info once; a no-op after the first successful load. */
   ensureLoaded: () => Promise<void>;
   refreshPackages: () => Promise<void>;
   install: () => Promise<void>;

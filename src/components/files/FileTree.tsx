@@ -36,7 +36,6 @@ interface TreeNode {
   children: TreeNode[];
 }
 
-/** The parent directory of a path ("" for a top-level entry). */
 function parentOf(path: string): string {
   const i = path.lastIndexOf("/");
   return i >= 0 ? path.slice(0, i) : "";
@@ -65,7 +64,6 @@ function buildTree(paths: { path: string; is_dir: boolean }[]): TreeNode[] {
       node = child;
     });
   }
-  // folders first, then alphabetical
   const sortRec = (n: TreeNode) => {
     n.children.sort((a, b) =>
       a.isDir === b.isDir ? a.name.localeCompare(b.name) : a.isDir ? -1 : 1
@@ -76,7 +74,6 @@ function buildTree(paths: { path: string; is_dir: boolean }[]): TreeNode[] {
   return root.children;
 }
 
-/** Everything a row needs, bundled so the recursion stays readable. */
 interface TreeCtx {
   expanded: Set<string>;
   toggle: (p: string) => void;
@@ -88,14 +85,12 @@ interface TreeCtx {
   onDelete: (p: string) => void;
   onSetMain: (p: string) => void;
   onCopy: (p: string, isDir: boolean) => void;
-  // rename (inline)
   renamePath: string | null;
   renameValue: string;
   onStartRename: (path: string, name: string) => void;
   onChangeRename: (v: string) => void;
   onCommitRename: (path: string) => void;
   onCancelRename: () => void;
-  // create new (inline, inside a folder or at root)
   newMode: null | "file" | "dir";
   newParent: string;
   newValue: string;
@@ -103,7 +98,6 @@ interface TreeCtx {
   onChangeNew: (v: string) => void;
   onSubmitNew: () => void;
   onCancelNew: () => void;
-  // drag & drop move
   dragOver: string | null;
   setDragOver: (p: string | null) => void;
   onMove: (from: string, toDir: string) => void;
@@ -160,7 +154,6 @@ export function FileTree() {
     }
   };
 
-  // Start an inline new-file/folder input inside `parent` ("" = project root).
   const startNew = (parent: string, mode: "file" | "dir") => {
     if (parent) expand(parent);
     setNewParent(parent);
@@ -168,8 +161,6 @@ export function FileTree() {
     setNewMode(mode);
   };
 
-  // Where the toolbar buttons create: the selected folder, the selected file's
-  // folder, or the project root when nothing is selected.
   const targetDir = () => {
     if (!selected) return "";
     return selected.isDir ? selected.path : parentOf(selected.path);
@@ -196,11 +187,10 @@ export function FileTree() {
     setNewValue("");
   };
 
-  // Move (rename) a file or folder into `toDir` ("" = project root).
   const move = async (from: string, toDir: string) => {
     const base = from.split("/").pop() ?? from;
     const to = toDir ? `${toDir}/${base}` : base;
-    if (to === from) return; // already there
+    if (to === from) return;
     if (toDir === from || toDir.startsWith(`${from}/`)) return; // into itself / a descendant
     try {
       await renameEntry(from, to);

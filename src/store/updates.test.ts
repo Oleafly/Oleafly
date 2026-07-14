@@ -46,11 +46,9 @@ describe("updates store", () => {
     useUpdatesStore.getState().dismiss();
     expect(useUpdatesStore.getState().available).toBeNull();
 
-    // A later check for the SAME version must not re-open the prompt.
     useUpdatesStore.getState().setAvailable(fakeUpdate("0.2.0"));
     expect(useUpdatesStore.getState().available).toBeNull();
 
-    // But a genuinely newer version should still prompt.
     useUpdatesStore.getState().setAvailable(fakeUpdate("0.3.0"));
     expect(useUpdatesStore.getState().available?.version).toBe("0.3.0");
   });

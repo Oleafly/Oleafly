@@ -8,22 +8,17 @@ import {
 import { getConfig } from "@/lib/tauri";
 import { logError } from "@/lib/log";
 
-/**
- * App-wide GitHub connection state. Per-machine single sign-on: one token,
- * reused by every project. The device-flow orchestration (showing the user
- * code, opening the browser, polling) lives in the UI; once a token is in
- * hand the UI calls `connectWithToken`.
- */
+// App-wide GitHub connection state. Per-machine single sign-on: one token,
+// reused by every project. The device-flow orchestration (showing the user
+// code, opening the browser, polling) lives in the UI; once a token is in
+// hand the UI calls `connectWithToken`.
 interface GithubState {
   status: "unknown" | "connected" | "disconnected";
   user: GitHubUser | null;
   loading: boolean;
   error: string | null;
-  /** Read config; if a token is present, validate it and load the user. */
   refresh: () => Promise<void>;
-  /** Validate + persist a token (OAuth or PAT) and mark connected. */
   connectWithToken: (token: string) => Promise<void>;
-  /** Clear the token and mark disconnected. */
   disconnect: () => Promise<void>;
 }
 

@@ -6,19 +6,14 @@ import type { StructNode, StructDoc } from "./structure";
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
 export interface PdfExtract {
-  /** Positioned text runs, one array per page. */
   pages: PositionedText[][];
-  /** Plain reading-order text per page, for the "what the reader sees" view. */
   pageText: string[];
   lang: string | null;
   title: string | null;
-  /** Whether the PDF declares itself tagged (MarkInfo /Marked true). */
   tagged: boolean;
-  /** Normalized logical structure tree (null root when the PDF is untagged). */
   struct: StructDoc;
 }
 
-/** Normalize a pdf.js struct-tree node into our engine-independent model. */
 function normStruct(node: any): StructNode | null {
   if (!node || typeof node !== "object") return null;
   // Marked-content / object leaf refs carry no structural role; skip them.
@@ -29,11 +24,6 @@ function normStruct(node: any): StructNode | null {
   return { role: String(node.role ?? ""), alt: node.alt ?? null, lang: node.lang ?? null, children };
 }
 
-/**
- * Extract positioned text plus the catalog metadata the preflight PDF rules
- * need, in one pass over the compiled PDF. Thin adapter over pdf.js; the pure
- * analysis lives in `pdf-rules.ts`.
- */
 export async function extractForPreflight(bytes: Uint8Array): Promise<PdfExtract> {
   const loadingTask = pdfjsLib.getDocument({ data: bytes.slice() });
   const doc = await loadingTask.promise;

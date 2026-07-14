@@ -1,4 +1,3 @@
-/** A search result from Crossref (or a fetched entry rendered as a hit). */
 export interface CitationHit {
   doi: string | null;
   title: string;
@@ -8,7 +7,6 @@ export interface CitationHit {
   type: string | null;
 }
 
-/** A parsed BibTeX entry. */
 export interface ParsedBib {
   type: string;
   key: string;

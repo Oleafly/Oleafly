@@ -20,7 +20,6 @@ const KIT: TemplatesKit = { Button, Tooltip };
 const HOST: TemplatesHost = {
   loadPreview: templatePreview,
   ensureAssets: async (templateId, onProgress) => {
-    // Forward Tauri asset-progress events into the gallery's progress callback.
     let unlisten: (() => void) | undefined;
     try {
       unlisten = await listen<AssetProgress>("asset-progress", (e) => {
@@ -35,8 +34,6 @@ const HOST: TemplatesHost = {
   logError: (scope, e) => void logError(scope, e),
 };
 
-/** Thin app wrapper: wires the Tauri template client, asset downloads, and UI
- *  primitives into the package's gallery. */
 export function NewProjectDialog(props: {
   open: boolean;
   templates: TemplateInfo[];

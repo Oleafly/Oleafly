@@ -46,7 +46,6 @@ import {
 } from "@openleaf/latex";
 import { cn } from "./cn";
 
-/** Shared chrome for floating palette, inspector, zoom controls, and minimap. */
 const FLOAT_CHROME =
   "!rounded-lg !border !border-border !bg-sidebar/95 !shadow-md !backdrop-blur-sm";
 
@@ -157,7 +156,6 @@ function CanvasInner({
 }: {
   model: DiagramModel;
   onChange: (m: DiagramModel) => void;
-  /** Show a control next to theme/minimap to reopen a minimized preview. */
   showPreviewAction?: boolean;
   onShowPreview?: () => void;
 }) {
@@ -255,7 +253,6 @@ function CanvasInner({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        // Cancel an in-progress draw or armed tool.
         if (drawRef.current) {
           const id = drawRef.current.id;
           drawRef.current = null;
@@ -284,7 +281,6 @@ function CanvasInner({
   const pendingRef = useRef<{ shape: NodeShape; seed?: string; key: string } | null>(null);
   pendingRef.current = pending;
 
-  /** Build a RF node for a drawn rect (position + size in flow coords). */
   const makeDrawnNode = useCallback(
     (id: string, shape: NodeShape, x: number, y: number, w: number, h: number, label: string): Node => {
       const n: DiagNode = {
@@ -346,7 +342,6 @@ function CanvasInner({
     [screenToFlowPosition, setNodes, makeDrawnNode],
   );
 
-  // Pointer capture for click-drag drawing on the empty pane.
   const onFlowPointerDown = useCallback(
     (e: React.PointerEvent) => {
       if (e.button !== 0) return;
@@ -458,7 +453,6 @@ function CanvasInner({
     [setEdges],
   );
 
-  // Drag an existing edge's head/tail onto another handle (or the same shape's side).
   const onReconnect = useCallback(
     (oldEdge: Edge, newConnection: Connection) => {
       setEdges((es) => reconnectEdge(oldEdge, newConnection, es));
@@ -568,7 +562,6 @@ function CanvasInner({
         onPointerUp={onFlowPointerUp}
         onPointerCancel={onFlowPointerUp}
       >
-        {/* Shape palette — floating left (Figma-style) */}
         <div
           role="toolbar"
           aria-label="Shape tools"
@@ -598,7 +591,6 @@ function CanvasInner({
           ))}
         </div>
 
-        {/* Style inspector — floating right; only when something is selected */}
         {(selectedNode || selectedEdge) && (
           <div
             role="complementary"
@@ -627,7 +619,6 @@ function CanvasInner({
             onConnect={onConnect}
             onReconnect={onReconnect}
             edgesReconnectable
-            // Pan only while Space is held (grab cursor); left-drag never pans freely.
             panOnDrag={spacePressed}
             panActivationKeyCode={null}
             onMoveStart={() => setIsPanning(true)}
@@ -671,8 +662,6 @@ function CanvasInner({
   );
 }
 
-/** Visual node/edge editor that generates TikZ. React Flow is the editing
- *  surface; the model is the source of truth (see tikz-serializer). */
 export function DiagramCanvas(props: {
   model: DiagramModel;
   onChange: (m: DiagramModel) => void;

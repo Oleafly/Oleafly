@@ -1,20 +1,19 @@
 import { test, expect } from "../fixtures";
 import { openProject, openSettings, pressGlobal, paletteItems } from "../helpers";
 
-// Settings must take effect immediately AND survive an app restart (the test
-// fixture reloads the whole app before every test, so a two-test pair proves
-// real persistence, not just in-memory state).
+// The test fixture reloads the whole app before every test, so a two-test
+// pair (see below) proves real persistence across a restart, not just
+// in-memory state.
 
 test("settings modal opens with all sections", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openSettings(tauriPage);
-  // Core sections are always in the nav.
   for (const s of ["appearance", "general", "ai", "github", "mcp"]) {
     await expect(tauriPage.locator(`[data-testid="settings-section-${s}"]`)).toBeVisible();
   }
-  // Advanced sections sit behind the "Show advanced" disclosure. The toggle
-  // state persists (localStorage), so reveal them only when currently hidden.
+  // The "Show advanced" toggle persists (localStorage), so only click it when
+  // advanced sections are currently hidden.
   const dictionary = tauriPage.locator('[data-testid="settings-section-dictionary"]');
   if (!(await dictionary.isVisible())) {
     await tauriPage.click('[data-testid="settings-toggle-advanced"]');
@@ -79,7 +78,6 @@ test("palette lists every registered core command", async ({ tauriPage }) => {
   ]) {
     expect(items.some((t) => t.includes(label))).toBe(true);
   }
-  // State-dependent labels render one of their two forms.
   expect(items.some((t) => /vim mode/.test(t))).toBe(true);
   expect(items.some((t) => /spellcheck/.test(t))).toBe(true);
   expect(items.some((t) => /theme/.test(t))).toBe(true);

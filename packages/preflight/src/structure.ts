@@ -1,17 +1,7 @@
 import type { Finding } from "./types";
 
-/**
- * Tier B: output-accessibility verification over the PDF's logical structure
- * tree. Engine-agnostic: it runs against a normalized `StructNode` model, so it
- * verifies for real the moment any tagged PDF exists (a future tagged-export
- * engine, or an imported tagged PDF), and returns one honest verdict on today's
- * untagged output. See the design spec, Tier B.
- */
-
 export interface StructNode {
-  /** Structure type, e.g. "Document", "H1".."H6", "P", "Figure", "Formula", "Table", "TR", "TH", "TD". */
   role: string;
-  /** Alternative text on the node, if any. */
   alt?: string | null;
   lang?: string | null;
   children: StructNode[];
@@ -19,17 +9,14 @@ export interface StructNode {
 
 export interface StructDoc {
   root: StructNode | null;
-  /** Whether the PDF declares a logical structure (is tagged). */
   tagged: boolean;
 }
 
-/** Does any descendant (or the node itself) have this role? */
 function hasRole(node: StructNode, role: string): boolean {
   if (node.role === role) return true;
   return node.children.some((c) => hasRole(c, role));
 }
 
-/** Pre-order walk. */
 function walk(node: StructNode, visit: (n: StructNode) => void) {
   visit(node);
   for (const c of node.children) walk(c, visit);

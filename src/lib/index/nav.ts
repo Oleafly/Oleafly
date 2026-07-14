@@ -13,7 +13,8 @@ const DEF_KINDS = new Set<string>(["label", "macro", "bibentry", "theorem", "glo
 const RENAMABLE = new Set<DefKind>(["label", "macro", "bibentry", "theorem", "glossary", "environment"]);
 const isDef = (s: Sym) => DEF_KINDS.has(s.kind);
 
-/** Flush the active file into the index (pure, fast) so offsets are current, then find the token at the cursor. */
+// Flushes the active file into the index first (pure, fast) so offsets are current
+// before looking up the cursor token.
 function symbolAtCursor(view: EditorView): Sym | null {
   const path = useFilesStore.getState().activePath;
   if (!path) return null;
@@ -73,12 +74,9 @@ export function startRename(view: EditorView): boolean {
   return true;
 }
 
-/**
- * Apply a rename across the project. Edits are applied against the exact text the
- * index was built from (the cache), so offsets are always valid. The active file
- * is edited through the editor (so it updates live); other files via the store /
- * disk. Then the index is rebuilt.
- */
+// Edits are applied against the exact text the index was built from (the cache), so
+// offsets are always valid. The active file is edited through the editor (so it
+// updates live); other files via the store / disk.
 export async function applyRename(view: EditorView, sym: Sym, newName: string): Promise<void> {
   const store = useIndexStore.getState();
   const index = store.index;

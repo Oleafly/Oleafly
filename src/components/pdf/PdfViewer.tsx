@@ -11,8 +11,6 @@ import "@/components/pdf/pdfController";
 
 export type { PdfViewerHandle, PdfLayout };
 
-/** Thin app shim over @openleaf/preview's viewer: opens PDF links in the
- *  system browser via the Tauri shell plugin. */
 export const PdfViewer = forwardRef<PdfViewerHandle, Omit<PdfViewerProps, "onOpenLink">>(
   function PdfViewer(props, ref) {
     return <PdfViewerCore ref={ref} {...props} onOpenLink={(url) => void openUrl(url)} />;

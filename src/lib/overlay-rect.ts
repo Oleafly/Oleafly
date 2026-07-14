@@ -4,8 +4,8 @@ export interface Viewport { width: number; height: number }
 export const OVERLAY_MIN_W = 320;
 export const OVERLAY_MIN_H = 400;
 
-/** Keep the overlay card on screen, above a min size, and never larger than the
- *  viewport (so it cannot become an effective fullscreen window). */
+// Never larger than the viewport, so the overlay can't become an effective
+// fullscreen window.
 export function clampRect(rect: Rect, vp: Viewport): Rect {
   const w = Math.min(Math.max(rect.w, OVERLAY_MIN_W), vp.width);
   const h = Math.min(Math.max(rect.h, OVERLAY_MIN_H), vp.height);

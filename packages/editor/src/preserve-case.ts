@@ -1,8 +1,3 @@
-/**
- * Map the case pattern of a matched string onto a replacement (VSCode's
- * "preserve case"): ALL CAPS -> upper, all lower -> lower, Capitalized -> capitalize
- * the replacement's first letter. Mixed case is left as-is.
- */
 export function preserveCase(matched: string, replacement: string): string {
   if (!matched || !replacement) return replacement;
   const lower = matched.toLowerCase();

@@ -39,7 +39,6 @@ import { insertAtCursor, replaceRange } from "@/components/editor/cm/controller"
 
 export type { ToolApprovalRequest, ConfirmFn } from "@openleaf/ai-tools";
 
-/** The app adapter behind @openleaf/ai-tools: Tauri client + stores. */
 const HOST: AiToolsHost = {
   getProjectId: () => useFilesStore.getState().projectId,
   readFileContent,
@@ -132,13 +131,10 @@ const HOST: AiToolsHost = {
     useAgentMemoryStore.getState().notes.map((n) => ({ id: n.id, content: n.content })),
 };
 
-/**
- * Mirror the disk `ai_pdf_capture` flag into localStorage so the synchronous
- * `getAiPdfCaptureEnabled` getter reflects it. Call once at app startup, NOT at
- * module load: doing IPC at import time fires before the app is ready and, when
- * `getConfig` is absent in a unit-test mock, throws synchronously at import and
- * breaks the whole test file.
- */
+// Call once at app startup, NOT at module load: doing IPC at import time
+// fires before the app is ready and, when `getConfig` is absent in a
+// unit-test mock, throws synchronously at import and breaks the whole test
+// file.
 export function initAiPdfCaptureFlag(): void {
   void getConfig()
     .then((c) => {
@@ -152,12 +148,11 @@ export function initAiPdfCaptureFlag(): void {
     .catch(() => {});
 }
 
-// E2E devtools hook (same family as the other window.__* hooks): connect an AI
-// provider by writing config directly. It stands in for a user connecting a
-// provider in Settings so provider-backed flows (streaming, tool calls, usage,
-// the chat handoff) can run in CI against a local fake OpenAI-compatible
-// endpoint (see e2e/mock-ai-server.ts). Only DEFINES the function at import; the
-// IPC runs when it is invoked, so this is safe as a module side effect.
+// E2E devtools hook: lets CI connect an AI provider by writing config directly,
+// standing in for a user connecting one in Settings, so provider-backed flows
+// (streaming, tool calls, chat handoff) can run against the local fake
+// OpenAI-compatible endpoint (e2e/mock-ai-server.ts). Only DEFINES the function
+// here; the IPC runs on invocation, so this is a safe module side effect.
 if (typeof window !== "undefined") {
   (
     window as unknown as {
@@ -176,7 +171,6 @@ if (typeof window !== "undefined") {
   };
 }
 
-/** The general project toolset, bound to the app services. */
 export function createOpenLeafTools(opts?: {
   confirm?: ConfirmFn;
   onImage?: (dataUrl: string) => void;
@@ -184,7 +178,6 @@ export function createOpenLeafTools(opts?: {
   return createOpenLeafToolsCore(HOST, opts);
 }
 
-/** The figure-studio toolset, bound to the app services. */
 export function createFigureTools(opts?: {
   confirm?: ConfirmFn;
   onImage?: (dataUrl: string) => void;

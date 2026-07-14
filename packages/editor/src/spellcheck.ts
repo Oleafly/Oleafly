@@ -10,14 +10,12 @@ import type { EditorView, ViewUpdate } from "@codemirror/view";
 
 import { maskToProse, spellcheckRanges } from "./latex-mask";
 
-/** One grammar/style fix option (mirrors Harper's SuggestionKind). */
 export interface GrammarSuggestion {
   text: string;
-  /** 0 = Replace, 1 = Remove, 2 = InsertAfter. */
+  // 0 = Replace, 1 = Remove, 2 = InsertAfter.
   kind: number;
 }
 
-/** One grammar/style diagnostic over the linted prose. */
 export interface GrammarDiag {
   from: number;
   to: number;
@@ -26,24 +24,16 @@ export interface GrammarDiag {
   suggestions: GrammarSuggestion[];
 }
 
-/**
- * Everything the spelling/grammar linters need from the host app: project
- * context, the spellchecker + grammar engines, and the ignore dictionary.
- * Installed once via setSpellHost; the linters are inert without it.
- */
+// Installed once via setSpellHost; the linters are inert without it.
 export interface SpellHost {
   getProjectId(): string | null;
   getActivePath(): string | null;
-  /** Category mutes from the app's settings. */
   getLintPrefs(): { showRegionalism: boolean; showWordChoice: boolean };
   getSpellchecker(): Promise<{ spell(word: string): boolean }>;
-  /** Session-level ignore (e.g. built-in allowlist). */
   isSessionIgnored(word: string): boolean;
-  /** Persistent ignore dictionary (project + global). */
   isWordIgnored(projectId: string | null, word: string): boolean;
   ignoreWordForProject(projectId: string, word: string): void;
   ignoreWordGlobally(word: string): void;
-  /** Grammar/style linting of masked prose (e.g. Harper WASM). */
   lintGrammar(prose: string, maxLen: number): Promise<GrammarDiag[]>;
 }
 
@@ -64,21 +54,12 @@ function needsRefresh(update: ViewUpdate): boolean {
   );
 }
 
-/**
- * Re-run the linters now (used when the ignore dictionary or lint-category
- * settings change from outside the editor, e.g. the Settings dialog).
- */
 export function refreshEditorLints(view: EditorView | null): void {
   if (!view) return;
   view.dispatch({ effects: refreshLints.of(null) });
   forceLinting(view);
 }
 
-/**
- * Tooltip actions to dismiss any warning for the flagged word/phrase — either
- * for this project only or everywhere. Works for every lint kind (spelling,
- * regionalism like "Spanner", word choice, …), not just spelling.
- */
 function ignoreActions(h: SpellHost, projectId: string | null, word: string): Action[] {
   const refresh = (view: Parameters<Action["apply"]>[0]) => {
     view.dispatch({ effects: refreshLints.of(null) }); // mark re-lint needed
@@ -105,7 +86,6 @@ function ignoreActions(h: SpellHost, projectId: string | null, word: string): Ac
   return actions;
 }
 
-/** A CM6 linter that underlines misspelled words (debounced). */
 export function createSpellLinter() {
   return linter(
     async (view): Promise<Diagnostic[]> => {
@@ -143,7 +123,6 @@ export function createSpellLinter() {
   );
 }
 
-/** Build CodeMirror lint actions from Harper suggestions (click-to-fix). */
 function suggestionActions(sugs: GrammarSuggestion[]): Action[] {
   return sugs.slice(0, 4).map<Action>((s) => ({
     name:
@@ -160,17 +139,6 @@ function suggestionActions(sugs: GrammarSuggestion[]): Action[] {
   }));
 }
 
-/**
- * A CM6 linter that runs Harper's spelling + grammar/style checks. Only active
- * on `.tex` files, and only over prose (see `maskLatex`) so code and math are
- * never flagged. Harper owns spelling here (its dictionary handles technical
- * terms like "Kubernetes"/"gRPC" that plain Hunspell trips on), so every lint
- * kind is surfaced. Spelling warnings get an "Ignore in this project" action so
- * proper nouns and identifiers (e.g. "L5") can be dismissed for good. Loads WASM
- * lazily.
- */
-/** Above this document size, skip the main-thread grammar pass to avoid jank.
- *  Most single `.tex` files are well under this; book-length files exceed it. */
 const MAX_GRAMMAR_CHARS = 150_000;
 
 export function createHarperLinter() {

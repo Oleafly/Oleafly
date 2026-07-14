@@ -20,13 +20,8 @@ import { cn } from "@/lib/utils";
 const MIN_SCALE = 0.4;
 const MAX_SCALE = 4;
 
-/**
- * A detached, project-scoped PDF preview rendered in its own OS window
- * (`?view=preview`). It reads the compiled PDF from disk and reloads whenever
- * the main window emits `preview:refresh` (compile) or `preview:project`
- * (project switch). Independent of the main window's layout, so you can keep it
- * on a second screen while you edit.
- */
+// Detached PDF preview window (`?view=preview`); reloads on `preview:refresh` /
+// `preview:project` events emitted by the main window.
 export function PreviewWindow() {
   const [projectId, setProjectId] = useState<string>(() =>
     new URLSearchParams(window.location.search).get("project") ?? "",
@@ -54,7 +49,6 @@ export function PreviewWindow() {
     }
   }, []);
 
-  // Initial load, then follow the main window's compile / project events.
   useEffect(() => {
     void load(projectId);
   }, [projectId, load]);
@@ -75,7 +69,6 @@ export function PreviewWindow() {
   const scaleRefCurrent = useRef(scale);
   scaleRefCurrent.current = scale;
 
-  // Trackpad pinch-to-zoom over the PDF (mirrors the in-app preview).
   useEffect(() => {
     const el = scrollBoxRef.current;
     if (!el) return;

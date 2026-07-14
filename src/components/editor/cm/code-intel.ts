@@ -1,10 +1,6 @@
 import { EditorView, keymap } from "@codemirror/view";
 import { goToDefinition, findReferences, startRename } from "@/lib/index/nav";
 
-/**
- * Code-intelligence bindings powered by the project index: go-to-definition
- * (F12 / Cmd-click), find-references (Shift-F12), rename (F2).
- */
 export function codeIntel() {
   return [
     keymap.of([

@@ -3,10 +3,6 @@ import { ArrowUp, Square, X } from "lucide-react";
 import { PRESETS } from "@/lib/ai-inline";
 import { AiChrome, AiMark } from "@/components/ai/AiChrome";
 
-/**
- * The instruction input + preset chips shown when opening an inline AI edit.
- * Presentational: all state lives in the overlay / session store.
- */
 export function PromptPopover({
   instruction,
   onInstruction,
@@ -30,7 +26,6 @@ export function PromptPopover({
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
-  // Auto-grow the textarea with its content, up to a cap.
   // biome-ignore lint/correctness/useExhaustiveDependencies: instruction is the resize trigger, not read in the body.
   useEffect(() => {
     const el = inputRef.current;
@@ -48,7 +43,6 @@ export function PromptPopover({
           value={instruction}
           onChange={(e) => onInstruction(e.target.value)}
           onKeyDown={(e) => {
-            // Enter submits; Shift+Enter inserts a newline.
             if (e.key === "Enter" && !e.shiftKey && !streaming && instruction.trim()) {
               e.preventDefault();
               onSubmit();

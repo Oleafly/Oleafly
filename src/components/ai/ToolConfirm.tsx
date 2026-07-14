@@ -7,7 +7,6 @@ import { AiChrome, AiMark, AI_GRADIENT } from "@/components/ai/AiChrome";
 import { gotoLine } from "@/components/editor/cm/controller";
 import { useFilesStore } from "@/store/files";
 
-/** 1-based line of the first difference between two full-file texts. */
 export function firstChangedLine(oldText: string, newText: string): number {
   const a = oldText.split("\n");
   const b = newText.split("\n");
@@ -23,7 +22,6 @@ function basename(path: string): string {
   return i >= 0 ? path.slice(i + 1) : path;
 }
 
-/** Tools that rewrite project content (session auto-approve may cover these). */
 const WRITE_TOOLS = new Set([
   "write_file",
   "replace_in_file",
@@ -31,7 +29,6 @@ const WRITE_TOOLS = new Set([
   "rename_file",
 ]);
 
-/** Destructive tools that always require an explicit click (never auto-approved). */
 const ALWAYS_CONFIRM = new Set(["delete_file"]);
 
 export function isAutoApprovable(tool: string): boolean {
@@ -41,26 +38,18 @@ export function isAutoApprovable(tool: string): boolean {
 // Re-export so MCP shell and others keep a single import path.
 export { AI_GRADIENT, AiChrome, AiMark };
 
-/**
- * Inline approval prompt shown when the AI wants to run a destructive tool
- * (write / replace / delete / rename). Gemini-style gradient chrome; shared
- * with other AI prompts via AiChrome.
- */
 export function ToolConfirm({
   req,
   onApprove,
   onReject,
   onApproveSession,
   sessionAutoApprove,
-  /** Drop outer margins when nested inside another chrome (MCP floating panel). */
   embedded,
 }: {
   req: ToolApprovalRequest;
   onApprove: () => void;
   onReject: () => void;
-  /** Optional: approve this write and auto-approve further writes this session. */
   onApproveSession?: () => void;
-  /** When true, a banner notes that session auto-approve is on. */
   sessionAutoApprove?: boolean;
   embedded?: boolean;
 }) {
@@ -90,7 +79,6 @@ export function ToolConfirm({
 
   const body = (
     <div className="flex flex-col gap-3">
-      {/* Header: title + meta chips */}
       <div className="flex items-start gap-2.5">
         <AiMark className="mt-0.5" />
         <div className="min-w-0 flex-1 space-y-1.5">
@@ -157,7 +145,6 @@ export function ToolConfirm({
         </div>
       )}
 
-      {/* Actions */}
       <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border/50 pt-2.5">
         <Button
           type="button"
@@ -196,7 +183,7 @@ export function ToolConfirm({
     </div>
   );
 
-  // Nested in the MCP floating panel: content only (parent owns the gradient shell).
+  // Content only; the MCP floating panel owns the gradient shell.
   if (embedded) {
     return (
       <div role="alertdialog" aria-modal="true" aria-label="Confirm AI edit" className="p-1">

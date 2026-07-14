@@ -1,9 +1,5 @@
 export type DetectedInput = { kind: "doi" | "arxiv" | "title"; value: string };
 
-/**
- * Classify a citation input: a DOI (bare or in a URL), an arXiv id (bare or in a
- * URL, version stripped), or free text to search by title.
- */
 export function detectInput(raw: string): DetectedInput {
   const s = raw.trim();
 

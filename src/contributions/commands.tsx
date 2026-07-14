@@ -38,7 +38,6 @@ const themeLabel = (ctx: AppContext) =>
 const themeIcon = (ctx: AppContext) =>
   ctx.theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />;
 
-/** Top-level omnibar (Cmd+P) actions shipped with the core app. */
 export function registerOmnibarCommands() {
   registerCommand({
     id: "omnibar.create",
@@ -95,7 +94,6 @@ export function registerOmnibarCommands() {
   });
 }
 
-/** Command palette (Cmd+K) entries shipped with the core app. */
 export function registerPaletteCommands() {
   const ins = (text: string) => () => insertAtCursor(text);
   const palette = (

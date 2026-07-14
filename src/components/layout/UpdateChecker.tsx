@@ -12,7 +12,6 @@ import { cn } from "@/lib/utils";
 
 const RELEASES_URL = "https://github.com/prajwal-svm/OpenLeaf/releases";
 
-/** Compact "3m ago" style relative time for the last-check indicator. */
 function relativeTime(t: number): string {
   const s = Math.max(0, Math.round((Date.now() - t) / 1000));
   if (s < 60) return "just now";
@@ -23,14 +22,6 @@ function relativeTime(t: number): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-/**
- * Inline update checker used in the Help & About surfaces. Renders every state
- * of a manual update check (checking / up to date / available / downloading /
- * error) directly in the panel instead of through native OS dialogs.
- *
- * In the browser dev server (`!isTauri()`) there is no updater, so it shows an
- * "unsupported" note rather than falsely claiming the app is up to date.
- */
 type State =
   | { kind: "idle" }
   | { kind: "checking" }

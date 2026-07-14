@@ -20,20 +20,16 @@ import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirro
 import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 
-/** Imperative handle so a toolbar can insert/wrap text in THIS editor (not the
- *  app's main document editor). */
+// Imperative handle so a toolbar can insert/wrap text in THIS editor, not the
+// app's main document editor.
 export interface CmHandle {
   insert: (text: string) => void;
   wrap: (before: string, after: string) => void;
   focus: () => void;
 }
 
-/**
- * A standalone, controlled CodeMirror editor used inside the diagram composer.
- * Language support and theming come in via `extensions` so the host app can
- * reuse its main editor's LaTeX highlighting. Deliberately independent of the
- * app's document editor that insertAtCursor targets.
- */
+// Deliberately independent of the app's document editor that insertAtCursor
+// targets.
 export const CmCodeEditor = forwardRef<
   CmHandle,
   { value: string; onChange: (v: string) => void; extensions?: Extension[] }

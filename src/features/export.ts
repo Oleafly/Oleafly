@@ -5,7 +5,6 @@ import { useCompileStore } from "@/store/compile";
 import { notifyError, toast } from "@/lib/toast";
 import { pdfPageToPng } from "@/lib/pdf-image";
 
-/** Open a save dialog and write the compiled PDF to the chosen path. */
 export async function exportCurrentPdf(): Promise<void> {
   const { projectId, projectName } = useFilesStore.getState();
   const { pdfBytes } = useCompileStore.getState();
@@ -28,8 +27,7 @@ export async function exportCurrentPdf(): Promise<void> {
   }
 }
 
-/** Render the compiled figure to a PNG and write it to a chosen path. For image
- *  projects, where the output is an image rather than a document. */
+// For image projects, where the output is an image rather than a document.
 export async function exportCurrentImagePng(scale = 3): Promise<void> {
   const { projectName } = useFilesStore.getState();
   const { pdfBytes } = useCompileStore.getState();

@@ -55,9 +55,7 @@ describe("inverseFromClick (multi-file, 0.1.1 fix)", () => {
   it("switches to the child file when the click lands on \\input content", async () => {
     mocks.synctexInverse.mockResolvedValue({ file: "intro.tex", line: 12 });
     await inverseFromClick(1, 100, 200);
-    // Resolves the basename against the tree, opens the right path...
     expect(mocks.openFile).toHaveBeenCalledWith("sections/intro.tex");
-    // ...then jumps to the line in the now-active file.
     expect(mocks.gotoLine).toHaveBeenCalledWith(12);
   });
 

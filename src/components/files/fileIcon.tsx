@@ -45,7 +45,6 @@ const BY_EXT: Record<string, { Icon: LucideIcon; cls: string }> = {
   tar: { Icon: FileArchive, cls: "text-amber-500" },
 };
 
-/** Special filenames (no/hidden extension). */
 const BY_NAME: Record<string, { Icon: LucideIcon; cls: string }> = {
   ".gitignore": { Icon: Github, cls: "text-orange-500" },
   "gitignore": { Icon: Github, cls: "text-orange-500" },

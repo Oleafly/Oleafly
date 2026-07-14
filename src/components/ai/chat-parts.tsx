@@ -28,8 +28,7 @@ export function Shimmer({ text }: { text?: string }) {
   );
 }
 
-/** A circular info button that reveals a wrapping message on hover or click.
- *  Used for low-urgency notices we don't want to spend a full banner on. */
+// Used for low-urgency notices we don't want to spend a full banner on.
 export function InfoHint({ message }: { message: string }) {
   const [open, setOpen] = useState(false);
   return (
@@ -58,7 +57,6 @@ export function InfoHint({ message }: { message: string }) {
   );
 }
 
-/** Hover-revealed copy control shown beside a chat bubble (outside it). */
 export function CopyMessageButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   return (
@@ -123,7 +121,6 @@ export function ToolBadge({ tc }: { tc: ToolEntry }) {
   );
 }
 
-/** Turn a raw provider failure into a friendly, actionable message, if we can. */
 export function friendlyHint(text: string, statusCode?: number): string | null {
   const t = text.toLowerCase();
   if (
@@ -159,8 +156,7 @@ export function formatError(e: unknown, providerLabel?: string): string {
       bodyMsg = String(err.responseBody);
     }
   }
-  // Name the active provider so it's clear which endpoint failed, and always
-  // keep a compact raw detail (status + provider message) for diagnosis.
+  // Always keep a compact raw detail (status + provider message) for diagnosis.
   const who = providerLabel ? `${providerLabel}: ` : "";
   const rawDetail =
     bodyMsg && bodyMsg !== err?.message
@@ -170,7 +166,6 @@ export function formatError(e: unknown, providerLabel?: string): string {
         : "";
   const hint = friendlyHint(`${err?.message ?? String(e)} ${bodyMsg}`, statusCode);
   if (hint) return `⚠ ${who}${hint}${rawDetail}`;
-  // Unknown error — keep the technical details for debugging.
   const parts: string[] = [`⚠ ${who}`.trimEnd()];
   if (err?.name) parts.push(err.name);
   if (err?.message) parts.push(err.message);
@@ -180,11 +175,8 @@ export function formatError(e: unknown, providerLabel?: string): string {
   return parts.join(" ");
 }
 
-/**
- * Whether an error is worth retrying. Network drops, rate limits, and 5xx are
- * transient; bad keys, quota/balance, bad requests, and missing models are
- * permanent — retrying those just hides the real message behind "retrying…".
- */
+// Bad keys, quota/balance, bad requests, and missing models are permanent —
+// retrying those just hides the real message behind "retrying…".
 export function isRetryable(e: unknown): boolean {
   const err = e as any;
   const status: number | undefined = err?.statusCode ?? err?.status;
@@ -205,11 +197,7 @@ export const MAX_RETRIES = 4;
 export const RETRY_BASE_MS = 800;
 export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** Collapsible chain-of-thought from a reasoning model (GLM, DeepSeek R1, ...).
- *  While the model is thinking (`active`) the block is auto-expanded and the
- *  stream scrolls live; when the answer starts it auto-collapses to a
- *  "Thought for Ns" summary. A manual toggle always wins over the automatic
- *  behavior. Plain text (not markdown) so a long stream stays cheap. */
+// Plain text, not markdown, so a long stream stays cheap.
 export function ReasoningBlock({
   text,
   active,
@@ -258,18 +246,15 @@ export function ReasoningBlock({
   );
 }
 
-/**
- * A single chat message (tool badges + content bubble). Memoized on the message
- * object reference: `updateLast` only replaces the *last* message's reference
- * each streamed token, so every earlier message skips re-render (and skips
- * re-parsing its markdown) instead of reconciling the whole list per token.
- */
+// Memoized on the message object reference: `updateLast` only replaces the
+// *last* message's reference each streamed token, so every earlier message
+// skips re-render (and re-parsing its markdown) instead of reconciling the
+// whole list per token.
 export const MessageItem = memo(function MessageItem({
   msg,
   live,
 }: {
   msg: ChatMessage;
-  /** True only for the streaming tail message; drives the live reasoning view. */
   live?: boolean;
 }) {
   const tools = msg.toolCalls ?? [];
@@ -278,8 +263,8 @@ export const MessageItem = memo(function MessageItem({
   const blocks =
     msg.reasoningBlocks ??
     (msg.reasoning ? [{ text: msg.reasoning, ms: msg.reasoningMs, beforeTool: 0 }] : []);
-  // Interleave thinking phases and tool badges in arrival order: each block
-  // renders before the tool call whose index it recorded.
+  // Each block renders before the tool call whose index it recorded, to
+  // interleave thinking phases and tool badges in arrival order.
   const rows: React.ReactNode[] = [];
   for (let i = 0; i <= tools.length; i++) {
     blocks.forEach((b, bi) => {

@@ -1,15 +1,11 @@
 export type WordDiffToken = { kind: "same" | "del" | "add"; text: string };
 
-/** Split into words while keeping trailing whitespace glued to each word so
- * concatenating tokens reproduces the source exactly. */
+// Whitespace stays glued to the preceding word so concatenating tokens
+// reproduces the source exactly.
 function tokenize(s: string): string[] {
   return s.match(/\S+\s*|\s+/g) ?? [];
 }
 
-/**
- * Word-level diff between two strings via LCS. The returned tokens, when
- * concatenated, reproduce `oldText` (same + del) and `newText` (same + add).
- */
 export function diffWords(oldText: string, newText: string): WordDiffToken[] {
   const a = tokenize(oldText);
   const b = tokenize(newText);

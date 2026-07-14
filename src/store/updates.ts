@@ -1,16 +1,15 @@
 import { create } from "zustand";
 import type { Update } from "@tauri-apps/plugin-updater";
 
-/**
- * Tracks the result of the automatic (startup) update check:
- *
- *  - `lastCheckFailed` / `lastCheckAt` power the "last check failed" indicator
- *    in the About panel, surfacing an otherwise-silent startup failure.
- *  - `available` / `version` record what the last check found (the dedicated
- *    `UpdateWindow` re-checks to get its own install handle).
- *
- * `dismissed` remembers versions the user clicked "Later" on within a session.
- */
+// Tracks the result of the automatic (startup) update check:
+//
+//  - `lastCheckFailed` / `lastCheckAt` power the "last check failed" indicator
+//    in the About panel, surfacing an otherwise-silent startup failure.
+//  - `available` / `version` record what the last check found (the dedicated
+//    `UpdateWindow` re-checks to get its own install handle).
+//
+// `dismissed` remembers versions the user clicked "Later" on within a session
+// (not persisted across restarts).
 interface UpdatesStore {
   available: Update | null;
   version: string | null;

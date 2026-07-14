@@ -1,20 +1,13 @@
 import { test, expect } from "../fixtures";
 import { openGallery } from "../helpers";
 
-// Every bundled template, end to end: create the project from the gallery,
-// compile it with the real engine, and require a rendered PDF with zero
-// errors. Templates differ in class, packages, and layout, so this is the
-// suite's regression net for "we changed something and a template broke".
-//
-// The export menu is also classified per document kind: presentations offer
-// PowerPoint, books offer EPUB, plain documents offer neither, and image
-// projects export images instead of document formats.
+// Templates differ in class, packages, and layout, so this is the suite's
+// regression net for "we changed something and a template broke".
 
 const RUN = Date.now().toString(36);
 
-// All bundled templates. modern-resume downloads its font pack on creation,
-// so it is network-gated like the font tests. diagram is the image-kind
-// project and gets its own richer test below.
+// modern-resume downloads its font pack on creation, so it is network-gated
+// like the font tests. diagram is the image-kind project, tested separately below.
 const TEX_TEMPLATES = [
   "acm",
   "article-academic",
@@ -52,7 +45,6 @@ async function compileClean(page: import("../helpers").Page) {
   await expect(page.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok");
 }
 
-/** The export menu's visible item labels. */
 async function exportMenuItems(page: import("../helpers").Page): Promise<string> {
   await page.click('[aria-label="Export"]');
   await page.waitForFunction(

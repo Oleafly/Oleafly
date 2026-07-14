@@ -1,12 +1,9 @@
 import { test, expect } from "../fixtures";
 import { openGallery, pressGlobal, typeInEditorAfter, type Page } from "../helpers";
 
-// Local git history with NO GitHub token: a successful compile auto-commits, so
-// we compile twice (base, then an edit), then restore each snapshot from the
-// History modal and verify the document rolls back and forward on disk and in
-// the editor. Uses a FRESH project so its history holds only these two commits
-// (the auto-commit messages are identical, so we restore by position).
-// Complements 29, whose custom-message commits go through the token-gated panel.
+// Local git history with NO GitHub token: compile auto-commits, so we compile
+// twice and restore each snapshot by position (both auto-commit messages are
+// identical). Complements 29, which uses the token-gated custom-message panel.
 
 const RUN = Date.now().toString(36);
 const NAME = `GitHist ${RUN}`;
@@ -25,7 +22,6 @@ async function openHistory(page: Page) {
   );
 }
 
-/** Restore the commit at `index` (0 = newest) via its Restore button, confirm. */
 async function restoreByIndex(page: Page, index: number) {
   const clicked = await page.evaluate<boolean>(
     `(() => {
@@ -52,8 +48,7 @@ async function compileOk(page: Page) {
   });
 }
 
-/** Poll the History modal until it shows at least `atLeast` restorable commits.
- *  Leaves History OPEN once the condition is met. */
+// Leaves the History modal OPEN.
 async function waitForRestoreButtons(page: Page, atLeast: number) {
   await expect
     .poll(
@@ -68,13 +63,10 @@ async function waitForRestoreButtons(page: Page, atLeast: number) {
     .toBeGreaterThanOrEqual(atLeast);
 }
 
-/** Wait until at least `atLeast` auto-commits have actually landed in the current
- *  project. The compile auto-commit is fire-and-forget (kicked off after the
- *  compile status flips to ok), so it can run late; if the next edit is saved to
- *  disk before it runs, `git add -A` folds both edits into a single commit and one
- *  snapshot is lost. This reads the count via the __gitCommitCount devtools hook
- *  (no UI) so it does NOT open any modal between the two editor edits, which would
- *  swallow the second edit. */
+// The compile auto-commit is fire-and-forget: it can land after the next edit
+// reaches disk, where `git add -A` folds both edits into one commit. Poll via a
+// devtools hook, not the History modal, since opening a modal between the two
+// edits swallows the second edit.
 async function waitForCommitsLanded(page: Page, atLeast: number) {
   await expect
     .poll(
@@ -89,31 +81,22 @@ test("auto-commit history: restore rolls the document back and forward (no token
 }) => {
   test.setTimeout(300_000);
 
-  // Fresh project so History holds only our two auto-commits.
   await openGallery(tauriPage);
   await tauriPage.click('[data-testid="template-card-blank"]');
   await tauriPage.fill("#new-project-name", NAME);
   await tauriPage.click('[data-testid="create-project"]');
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
-  // Two successful compiles => two immediate auto-commits. Keep the edits/
-  // compiles free of any modal interaction so each edit persists cleanly.
   await typeInEditorAfter(tauriPage, "here.", ` ${BASE}`);
   await compileOk(tauriPage);
-  // Wait for commit 1 to actually land before editing again. The auto-commit is
-  // fire-and-forget after the compile status flips to ok, so a fixed settle
-  // races it: if the EDIT reaches disk first, `git add -A` folds both edits into
-  // one commit and a snapshot is lost.
   await waitForCommitsLanded(tauriPage, 1);
 
   await typeInEditorAfter(tauriPage, BASE, ` ${EDIT}`);
   await compileOk(tauriPage);
-  // Wait for the second auto-commit to land (fire-and-forget), then open History.
   await waitForCommitsLanded(tauriPage, 2);
   await waitForRestoreButtons(tauriPage, 2);
 
-  // History is open with >= 2 commits. Restore the OLDEST (last button): the edit
-  // marker must vanish (restore reloads every buffer from the restored tree).
+  // Restore the oldest (last button); the editor reloads from the restored tree.
   const n = await tauriPage.evaluate<number>(restoreCount);
   await restoreByIndex(tauriPage, n - 1);
   await tauriPage.waitForFunction(
@@ -124,7 +107,7 @@ test("auto-commit history: restore rolls the document back and forward (no token
     20_000,
   );
 
-  // Roll forward: restore the NEWEST commit -> the edit marker returns.
+  // Roll forward to the newest commit.
   await openHistory(tauriPage);
   await restoreByIndex(tauriPage, 0);
   await tauriPage.waitForFunction(

@@ -14,7 +14,6 @@ function loadRect(): Rect {
   } catch {
     /* ignore */
   }
-  // Default: right side, comfortable size.
   const w = 440;
   const h = Math.min(720, window.innerHeight - 80);
   return { x: window.innerWidth - w - 24, y: 64, w, h };
@@ -35,7 +34,6 @@ export function CopilotOverlay() {
     }
   }, []);
 
-  // Keep on screen when the window resizes.
   useEffect(() => {
     if (!floating) return;
     const onResize = () =>

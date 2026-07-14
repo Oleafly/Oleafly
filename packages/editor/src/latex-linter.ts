@@ -1,20 +1,9 @@
 import { linter, type Diagnostic } from "@codemirror/lint";
 
-/**
- * A lightweight static LaTeX linter that catches common mistakes without
- * compiling - inspired by Overleaf's `latex-linter` + ChkTeX.
- *
- * Checks:
- *  - Mismatched or unclosed environments (`\begin{X}` / `\end{Y}`)
- *  - Duplicate `\label{key}`
- *  - Unmatched `$` (odd count on a line)
- *
- * Pure (text -> diagnostics) so it is unit-testable without a CodeMirror view.
- */
+// Pure (text -> diagnostics) so it is unit-testable without a CodeMirror view.
 export function lintLatexText(text: string): Diagnostic[] {
   const diags: Diagnostic[] = [];
 
-  // --- Environment matching ---
   interface Tok {
     type: "begin" | "end";
     name: string;
@@ -65,7 +54,6 @@ export function lintLatexText(text: string): Diagnostic[] {
     });
   }
 
-  // --- Duplicate labels ---
   const labelRe = /\\label\s*\{([^}]*)\}/g;
   const seen = new Map<string, number>();
   while ((m = labelRe.exec(text))) {
@@ -82,11 +70,9 @@ export function lintLatexText(text: string): Diagnostic[] {
     }
   }
 
-  // --- Unmatched inline math `$` (basic per-line check) ---
   const lines = text.split("\n");
   let offset = 0;
   for (const line of lines) {
-    // Count unescaped, un-doubled $ on this line
     const clean = line.replace(/\\[$]/g, "").replace(/\$\$/g, "");
     const dollarCount = (clean.match(/\$/g) || []).length;
     if (dollarCount % 2 !== 0) {

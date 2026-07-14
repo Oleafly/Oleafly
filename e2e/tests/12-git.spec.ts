@@ -8,17 +8,16 @@ import {
   typeInEditorAfter,
 } from "../helpers";
 
-// Source control. For a fresh (unconnected) setup the panel shows the GitHub
-// onboarding gate; the stage/diff/commit and push flows need a real token and
-// are opt-in via env vars.
+// The stage/diff/commit and push flows below need a real token and are
+// opt-in via env vars.
 
 test("git panel shows the GitHub onboarding gate when not connected", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openRailTab(tauriPage, "Git");
   // A previous token-gated run may have left the account connected on this
-  // data dir; disconnect through settings first (real user flow) so the gate
-  // is actually asserted every run.
+  // data dir; disconnect through settings first so the gate is actually
+  // asserted every run.
   const connected = await tauriPage.evaluate<boolean>(
     `!document.body.innerText.includes('Connect GitHub to continue')`,
   );
@@ -36,8 +35,6 @@ test("git panel shows the GitHub onboarding gate when not connected", async ({ t
   await expect(tauriPage.getByText("Use a personal access token instead")).toBeVisible();
 });
 
-// Auto-commit: a successful compile snapshots the project into git history
-// under a generated "Update: <files>" message. No GitHub involved.
 test("a successful compile auto-commits an Update entry into history", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
@@ -51,8 +48,8 @@ test("a successful compile auto-commits an Update entry into history", async ({ 
     timeout: 90_000,
   });
 
-  // The commit lands asynchronously right after the compile, and the history
-  // modal loads on open - so poll by reopening it.
+  // The commit lands asynchronously after the compile, and the history modal
+  // loads its content on open, so poll by reopening it.
   let seen = false;
   for (let i = 0; i < 15 && !seen; i++) {
     await tauriPage.click('[aria-label="History"]');
@@ -65,7 +62,6 @@ test("a successful compile auto-commits an Update entry into history", async ({ 
   expect(seen).toBe(true);
 });
 
-// Full source-control flow: connect with a PAT, then stage -> diff -> commit.
 // Opt in with E2E_GITHUB_TOKEN=<pat>. Nothing is pushed.
 test("stage, diff, and commit with a connected account", async ({ tauriPage }) => {
   test.skip(!process.env.E2E_GITHUB_TOKEN, "set E2E_GITHUB_TOKEN to run");
@@ -74,15 +70,14 @@ test("stage, diff, and commit with a connected account", async ({ tauriPage }) =
 
   await ensureGithubConnected(tauriPage);
 
-  // Make a change and let the autosave persist it. Don't compile here: a
-  // successful compile now auto-commits, which would leave nothing to stage.
+  // Don't compile here: a successful compile now auto-commits, which would
+  // leave nothing to stage.
   await typeInEditorAfter(tauriPage, "here.", " gitmarker");
 
   await openRailTab(tauriPage, "Git");
-  // Surface the fresh edit: the autosave may still be landing and the panel
-  // refreshes on mount, not on file saves - refresh until it shows. (While
-  // this panel is open, the debounced auto-commit is suspended, so the change
-  // stays uncommitted for us to stage.)
+  // The autosave may still be landing and the panel refreshes on mount, not
+  // on file saves, so refresh until the change shows. (Auto-commit is
+  // suspended while this panel is open, so the change stays uncommitted.)
   for (let i = 0; i < 20; i++) {
     await tauriPage.click('[aria-label="Refresh"]');
     const ready = await tauriPage.evaluate<boolean>(
@@ -98,11 +93,10 @@ test("stage, diff, and commit with a connected account", async ({ tauriPage }) =
   );
 
   await openRailTab(tauriPage, "Git");
-  // Stage all is hover-revealed (opacity-0): the plugin's click waits for
-  // visibility and never fires - click the real button via the DOM instead.
-  // Keep refreshing + staging until the STAGED section is actually visible -
-  // the commit button reads that React state, and both the autosave and the
-  // panel refresh land asynchronously.
+  // "Stage all" is hover-revealed (opacity-0), so Playwright's click waits
+  // forever for visibility; click the DOM button directly instead. Keep
+  // refreshing + staging until STAGED is visible since the autosave and the
+  // panel refresh both land asynchronously.
   let stagedVisible = false;
   for (let i = 0; i < 25 && !stagedVisible; i++) {
     await tauriPage.evaluate(
@@ -119,7 +113,7 @@ test("stage, diff, and commit with a connected account", async ({ tauriPage }) =
     if (!stagedVisible) await tauriPage.click('[aria-label="Refresh"]');
   }
   if (!stagedVisible) throw new Error("staging never became visible");
-  // The commit box is a TEXTAREA; the plugin's fill only drives inputs.
+  // The commit box is a TEXTAREA; Playwright's fill only drives inputs.
   await tauriPage.evaluate(
     `(() => {
       const t = document.querySelector('[placeholder="Commit message (required)…"]');
@@ -130,18 +124,17 @@ test("stage, diff, and commit with a connected account", async ({ tauriPage }) =
     })()`,
   );
   await tauriPage.getByText("Commit").click();
-  // Success signal that doesn't vanish: the working tree is clean again.
+  // "No changes" doesn't vanish like a transient toast would, so it's a
+  // stable success signal to poll for.
   await tauriPage.waitForFunction(
     `document.body.innerText.includes('No changes')`,
     15_000,
   );
 });
 
-// The full publish flow, against real GitHub: create a repo through the
-// dialog, push the project, verify the file landed on the remote over the
-// API, then delete the remote repo (needs the delete_repo scope; if the
-// token lacks it the test tells you to delete manually). Opt in with
-// E2E_GIT_PUSH=1 alongside E2E_GITHUB_TOKEN.
+// Deleting the remote repo needs the delete_repo scope; if the token lacks it
+// the test tells you to delete manually. Opt in with E2E_GIT_PUSH=1 alongside
+// E2E_GITHUB_TOKEN.
 test("publish to GitHub creates a real repo and pushes the project", async ({ tauriPage }) => {
   test.skip(
     process.env.E2E_GIT_PUSH !== "1" || !process.env.E2E_GITHUB_TOKEN,
@@ -178,13 +171,11 @@ test("publish to GitHub creates a real repo and pushes the project", async ({ ta
   await tauriPage.getByText("Create & push").click();
   await expect(tauriPage.getByText("Published to")).toBeVisible({ timeout: 90_000 });
 
-  // The repo really exists and the push landed main.tex on the remote.
   const me = (await (await gh("/user")).json()) as { login: string };
   expect((await gh(`/repos/${me.login}/${repoName}`)).status).toBe(200);
   expect((await gh(`/repos/${me.login}/${repoName}/contents/main.tex`)).status).toBe(200);
 
-  // Clean up: delete the remote repo, and unlink the project so re-runs
-  // start from the Publish CTA again.
+  // Unlink too, so re-runs start from the Publish CTA again.
   const del = await gh(`/repos/${me.login}/${repoName}`, { method: "DELETE" });
   if (del.status !== 204) {
     console.warn(

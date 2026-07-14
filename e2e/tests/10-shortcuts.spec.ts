@@ -1,8 +1,7 @@
 import { test, expect } from "../fixtures";
 import { openProject, pressGlobal, waitLong } from "../helpers";
 
-// Every global shortcut must reach its real handler. (Cmd+K and Cmd+Shift+F
-// are covered in 04-commands; this file covers the rest.)
+// Cmd+K and Cmd+Shift+F are covered in 04-commands; this file covers the rest.
 
 test("Cmd+Enter compiles and Cmd+Shift+J forward-SyncTeX highlights the PDF", async ({
   tauriPage,

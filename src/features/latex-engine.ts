@@ -6,12 +6,6 @@ import { useEngineStore } from "@/store/engine";
 import { toast } from "@/lib/toast";
 import { logError } from "@/lib/log";
 
-/**
- * Compile the current project with LuaLaTeX to produce a tagged PDF, load it
- * into the normal PDF/compile state, and re-run Preflight so the output
- * accessibility verdict reflects the tagged result. Requires an engine to be
- * available (Settings > LaTeX Engine).
- */
 export async function compileTaggedAndVerify(): Promise<void> {
   const engine = useEngineStore.getState().info;
   if (!engine || engine.kind === "none") {

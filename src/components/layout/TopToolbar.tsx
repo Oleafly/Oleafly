@@ -41,7 +41,6 @@ import { useFullscreen } from "@/lib/use-fullscreen";
 import { notifyError, toast } from "@/lib/toast";
 import { cn, isMac, shortcut } from "@/lib/utils";
 
-/** Display labels for export formats (matches "Export PDF/Zip/Docx/Md/html"). */
 const FMT_LABEL: Record<string, string> = {
   zip: "Zip",
   pdf: "PDF",
@@ -55,7 +54,6 @@ const FMT_LABEL: Record<string, string> = {
 
 type DocFormat = "docx" | "html" | "md" | "pptx" | "epub" | "txt";
 
-/** Classify the main document so the export menu can offer the right formats. */
 function classifyDoc(source: string): "presentation" | "book" | "doc" {
   if (/\\documentclass(\[[^\]]*\])?\{\s*beamer\s*\}/.test(source)) return "presentation";
   if (/\\documentclass(\[[^\]]*\])?\{\s*(book|report|memoir|scrbook|scrreprt)\s*\}/.test(source))
@@ -95,7 +93,6 @@ export function TopToolbar() {
   const [titleDraft, setTitleDraft] = useState("");
   const titleEditRef = useRef<HTMLSpanElement>(null);
 
-  // Clicking anywhere outside the title editor cancels the edit (like Escape).
   useEffect(() => {
     if (!editingTitle) return;
     const onDown = (e: MouseEvent) => {
@@ -126,8 +123,7 @@ export function TopToolbar() {
   const [exporting, setExporting] = useState<string | null>(null);
   const [exportKind, setExportKind] = useState<"presentation" | "book" | "doc">("doc");
 
-  // Classify the current document (cheap, imperative read) whenever the export
-  // menu opens, so we can show the right formats without subscribing to content.
+  // Imperative read (not a subscription) to avoid re-rendering on every keystroke.
   const openExportMenu = () => {
     setDlOpen((v) => {
       const next = !v;
@@ -141,7 +137,6 @@ export function TopToolbar() {
   };
   const [githubUrl, setGithubUrl] = useState<string | null>(null);
 
-  // Track the project's GitHub web URL (null until it's pushed to a remote).
   useEffect(() => {
     if (!projectId) {
       setGithubUrl(null);
@@ -258,7 +253,6 @@ export function TopToolbar() {
         isMac && fullscreen && "pl-4"
       )}
     >
-      {/* Left: brand | project name */}
       <div data-tauri-drag-region className="flex min-w-0 items-center gap-2">
         <button
           type="button"
@@ -321,7 +315,6 @@ export function TopToolbar() {
         )}
       </div>
 
-      {/* Center: view-mode segmented control */}
       <div data-tauri-drag-region className="flex items-center rounded-md border bg-muted/40 p-0.5">
         {VIEW_OPTIONS.map(({ mode, label, icon: Icon }) => (
           <Tooltip key={mode} label={label} side="bottom">
@@ -342,7 +335,6 @@ export function TopToolbar() {
         ))}
       </div>
 
-      {/* Right: actions */}
       <div data-tauri-drag-region className="flex items-center justify-end gap-1.5">
 
         <Tooltip label={`Recompile (${shortcut("⌘↵")})`}>

@@ -14,7 +14,6 @@ interface PopoverProps {
   ariaLabel?: string;
 }
 
-/** Lightweight click-to-open popover (portal-free, click-outside to close). */
 export function Popover({
   trigger,
   children,

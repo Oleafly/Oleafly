@@ -4,7 +4,6 @@ import { useIndexStore } from "@/store/project-index";
 import { getEditorView } from "@/components/editor/cm/controller";
 import { applyRename } from "@/lib/index/nav";
 
-/** Rename-symbol dialog: shows the impact (edits across files) and applies it. */
 export function RenameDialog() {
   const sym = useRenameStore((s) => s.sym);
   const close = useRenameStore((s) => s.close);

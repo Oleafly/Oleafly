@@ -10,17 +10,12 @@ const memoryStorage: StateStorage = {
   removeItem: (k) => void memory.delete(k),
 };
 
-/**
- * The "ignore" dictionary for the spell/grammar checkers. Any flagged word or
- * phrase the user dismisses — proper nouns, product names ("Spanner"),
- * identifiers ("L5"), or a style suggestion they disagree with — is remembered
- * and never flagged again. Words can be ignored just for one project or
- * everywhere. Persisted to the webview's localStorage so it survives restarts.
- */
+// Words can be ignored just for one project or everywhere. Persisted to the
+// webview's localStorage so it survives restarts.
 interface DictionaryState {
-  /** projectId -> ignored words (as written). */
+  // Keyed by projectId -> ignored words (as written).
   ignored: Record<string, string[]>;
-  /** words ignored across every project. */
+  // Words ignored across every project.
   global: string[];
   ignore: (projectId: string, word: string) => void;
   ignoreGlobal: (word: string) => void;
@@ -73,7 +68,6 @@ export const useDictionary = create<DictionaryState>()(
   )
 );
 
-/** Is `word` ignored — globally, or for this specific project? */
 export function isWordIgnored(projectId: string | null, word: string): boolean {
   const w = word.trim();
   const s = useDictionary.getState();
@@ -82,13 +76,11 @@ export function isWordIgnored(projectId: string | null, word: string): boolean {
   return false;
 }
 
-/** Ignore `word` for just this project. */
 export function ignoreWordForProject(projectId: string | null, word: string): void {
   if (!projectId) return;
   useDictionary.getState().ignore(projectId, word);
 }
 
-/** Ignore `word` across all projects. */
 export function ignoreWordGlobally(word: string): void {
   useDictionary.getState().ignoreGlobal(word);
 }

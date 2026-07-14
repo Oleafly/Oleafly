@@ -1,8 +1,6 @@
-/**
- * Workspace snapshot injected into the agent system prompt so the model
- * starts oriented (open file, compile status, compact project map) instead of
- * burning the first tool steps on discovery.
- */
+// Injected into the agent system prompt so the model starts oriented (open
+// file, compile status, compact project map) instead of burning the first
+// tool steps on discovery.
 import { activeContextProvider } from "@openleaf/registry";
 import { useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
@@ -24,7 +22,6 @@ function clip(s: string, n: number): string {
   return `${s.slice(0, n)}\n… [truncated ${s.length - n} more chars]`;
 }
 
-/** Compact project outline from the symbol index (best-effort). */
 async function compactProjectMap(): Promise<string> {
   try {
     const idx = useIndexStore.getState();
@@ -71,9 +68,6 @@ async function compactProjectMap(): Promise<string> {
   }
 }
 
-/**
- * Build a text block for the system prompt. Safe, bounded, read-only.
- */
 export async function buildWorkspaceContext(): Promise<string> {
   const files = useFilesStore.getState();
   const compile = useCompileStore.getState();

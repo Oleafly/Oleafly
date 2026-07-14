@@ -70,12 +70,8 @@ async function rasterize(
   }
 }
 
-/**
- * Rasterize one page of a PDF byte array to a PNG data URL using pdf.js.
- * Used to show a compiled figure to a vision model (and in the Playground).
- * `scale` 2 gives a crisp thumbnail without ballooning the data URL.
- * A wedged worker is detected by timeout and retried once on a fresh one.
- */
+// `scale` 2 gives a crisp thumbnail without ballooning the data URL. A wedged
+// worker is detected by timeout and retried once on a fresh one.
 export async function pdfPageToPng(
   bytes: Uint8Array,
   page = 1,

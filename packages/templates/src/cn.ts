@@ -1,7 +1,7 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
-/** Class-name joiner with Tailwind conflict resolution (package-local copy). */
+// Package-local copy: templates must not import from the host app.
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }

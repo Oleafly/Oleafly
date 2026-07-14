@@ -1,10 +1,7 @@
 import { test, expect } from "../fixtures";
 import { caretIn, openProject, pressGlobal, typeInEditorAfter, type Page } from "../helpers";
 
-// Code intelligence over the real project index: go-to-definition,
-// find-references, and the rename dialog, driven by their keyboard shortcuts.
-
-/** Dispatch a key to the editor (CodeMirror keymaps listen on its DOM). */
+// CodeMirror keymaps listen on its own DOM, so dispatch directly to it.
 async function editorKey(page: Page, key: string, mods: { shift?: boolean } = {}) {
   await page.evaluate(
     `(document.querySelector('.cm-content').dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(key)}, shiftKey: ${!!mods.shift}, bubbles: true, cancelable: true })), 1)`,
@@ -14,7 +11,6 @@ async function editorKey(page: Page, key: string, mods: { shift?: boolean } = {}
 test.beforeEach(async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  // Seed a label + ref pair once (idempotent: skip if already present).
   const has = await tauriPage.evaluate<boolean>(
     `document.querySelector('.cm-content').textContent.includes('sec:e2eintro')`,
   );
@@ -69,7 +65,6 @@ test("Shift+F12 opens the references panel with the usage", async ({ tauriPage }
   for (let attempt = 0; ; attempt++) {
     await caretIn(tauriPage, "sec:e2eintro", 2);
     await editorKey(tauriPage, "F12", { shift: true });
-    // The rail switches to the References panel listing main.tex hits.
     const landed = await tauriPage
       .waitForFunction(
         `document.body.innerText.includes('sec:e2eintro') && !!document.querySelector('[aria-label="References (Shift-F12)"]')`,
@@ -88,7 +83,6 @@ test("F2 opens the rename-symbol dialog and cancel leaves the doc untouched", as
   for (let attempt = 0; ; attempt++) {
     await caretIn(tauriPage, "sec:e2eintro", 2);
     await contextMenuAction(tauriPage, "Rename symbol");
-    // The rename dialog announces the symbol being renamed.
     const opened = await tauriPage
       .waitForFunction(
         `document.body.innerText.includes('Rename') && document.body.innerText.includes('sec:e2eintro') && !!document.querySelector('input')`,

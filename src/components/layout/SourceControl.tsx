@@ -80,7 +80,6 @@ export function SourceControl() {
   const clearActiveDiff = useDiffStore((s) => s.clearActiveDiff);
   const openFile = useFilesStore((s) => s.openFile);
 
-  // Open the file in the normal editor (VS Code's "Open File" SCM action).
   const openSourceFile = (path: string) => {
     void openFile(path);
     clearActiveDiff();
@@ -193,6 +192,7 @@ export function SourceControl() {
     setStatus(null);
     try {
       // Commit the staged set only. Nothing staged -> no commit (push still runs).
+      // Nothing staged -> no commit (push still runs).
       const committed = hasStaged ? await gitCommit(projectId, msg) : false;
       const parts: string[] = [committed ? `Committed: "${msg}"` : "Nothing staged to commit."];
       if (andPush) {
@@ -383,7 +383,6 @@ export function SourceControl() {
           </>
         )}
 
-        {/* Commit box */}
         <div className="mt-3 flex flex-col gap-2 border-t border-sidebar-border pt-3">
           <textarea
             value={message}
@@ -457,7 +456,6 @@ export function SourceControl() {
           </div>
         )}
 
-        {/* Remote / origin */}
         <div className="mt-3 border-t border-sidebar-border pt-2">
           <div className="flex items-center justify-between gap-2 px-1 pb-1">
             <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">

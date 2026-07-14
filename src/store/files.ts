@@ -32,24 +32,22 @@ interface FileState {
 interface FilesStore {
   projectId: string | null;
   projectName: string;
-  /** Project kind: "" for a normal document project, "image" for a single-figure
-   *  project (hides doc-only tools like Insert diagram). */
+  // Project kind: "" for a normal document project, "image" for a single-figure
+  // project (hides doc-only tools like Insert diagram).
   projectKind: string;
   mainDoc: string;
   tree: FileEntry[];
   files: Record<string, FileState>;
   openTabs: string[];
-  /** Open-order stamp per file tab, shared with diff tabs so the editor renders
-   *  files and diffs interleaved by the order they were opened. */
+  // Open-order stamp per file tab, shared with diff tabs so the editor renders
+  // files and diffs interleaved by the order they were opened.
   tabOrder: Record<string, number>;
   activePath: string | null;
   projects: ProjectInfo[];
-  /** True once the first listProjects has resolved; gates empty-state UI. */
   projectsLoaded: boolean;
   loading: boolean;
   docVersion: number;
 
-  // library
   refreshProjects: () => Promise<void>;
   openProject: (id: string) => Promise<void>;
   closeProject: () => void;
@@ -58,7 +56,6 @@ interface FilesStore {
   createFromTemplate: (name: string, templateId: string, color?: string) => Promise<string>;
   restoreFromGit: (oid: string) => Promise<void>;
 
-  // files
   refreshTree: () => Promise<void>;
   openFile: (path: string) => Promise<void>;
   setActive: (path: string) => void;
@@ -294,7 +291,6 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       if (cur.content !== written) return {};
       return { files: { ...s.files, [path]: { ...cur, dirty: false } } };
     });
-    // The write landed on disk: schedule the debounced auto-commit.
     scheduleAutoCommit(projectId);
   },
 
@@ -490,10 +486,8 @@ if (typeof window !== "undefined") {
   window.addEventListener("pagehide", flushPendingSaves);
   window.addEventListener("beforeunload", flushPendingSaves);
 
-  // E2E / devtools (same family as the other window.__* hooks): read-only count
-  // of the current project's git commits, so a test can wait for a fire-and-
-  // forget auto-commit to actually land without opening the History modal
-  // (opening a modal between two editor edits can swallow the second edit).
+  // E2E / devtools hook: read-only commit count, so a test can wait for a
+  // fire-and-forget auto-commit to land without opening the History modal.
   (window as unknown as { __gitCommitCount?: () => Promise<number> }).__gitCommitCount =
     async () => {
       const id = useFilesStore.getState().projectId;

@@ -4,25 +4,16 @@ import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
 import type { Sym } from "@/lib/index/types";
 
-/**
- * VSCode-like editor intelligence powered by the project index:
- *  - Cmd/Ctrl-hover underlines a symbol you can jump to (it is Cmd-clickable).
- *  - Plain hover shows a tooltip describing the symbol and its definition.
- */
-
-/** The symbol at a document position in the active file (index may be a few ms stale; fine for hover). */
+// Index may be a few ms stale here; fine for hover.
 function symbolAtPos(pos: number): Sym | null {
   const path = useFilesStore.getState().activePath;
   if (!path) return null;
   return useIndexStore.getState().index?.symbolAt(path, pos) ?? null;
 }
 
-/** A symbol is "clickable" when it has a resolvable definition (or is a definition itself). */
 function clickable(sym: Sym): boolean {
   return !!useIndexStore.getState().index?.definitionFor(sym);
 }
-
-// --- Cmd-hover underline ---
 
 const setLink = StateEffect.define<{ from: number; to: number } | null>();
 
@@ -77,8 +68,6 @@ const linkHandlers = EditorView.domEventHandlers({
   },
 });
 
-// --- Hover tooltip ---
-
 function previewLine(file: string, line: number): string {
   const text = useIndexStore.getState().texts[file];
   return (text?.split("\n")[line - 1] ?? "").trim();
@@ -89,7 +78,6 @@ function basename(p: string): string {
   return i >= 0 ? p.slice(i + 1) : p;
 }
 
-/** Human title + detail for a symbol's hover card. */
 function describe(sym: Sym): { title: string; detail: string } | null {
   const index = useIndexStore.getState().index;
   if (!index) return null;
@@ -100,8 +88,8 @@ function describe(sym: Sym): { title: string; detail: string } | null {
       const where = `${basename(def.file)}:${def.line}`;
       return { title: `${def.kind} · ${def.name}`, detail: `${previewLine(def.file, def.line)}\n${where}` };
     }
-    // Only call it unresolved when that kind of definition actually exists in the
-    // project; otherwise the index may still be loading (or there is no .bib yet).
+    // Only call it unresolved if that definition kind exists in the project;
+    // otherwise the index may still be loading (or there's no .bib yet).
     const TARGETS: Record<string, string[]> = {
       cite: ["bibentry"],
       ref: ["label"],

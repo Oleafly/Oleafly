@@ -14,7 +14,7 @@ interface AgentTodoState {
   clear: () => void;
 }
 
-/** In-run plan checklist the agent maintains via update_todos / get_todos. */
+// In-run plan checklist the agent maintains via update_todos / get_todos.
 export const useAgentTodoStore = create<AgentTodoState>((set) => ({
   todos: [],
   setTodos: (todos) => set({ todos }),

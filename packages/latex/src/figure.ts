@@ -1,11 +1,7 @@
-/** Pure figure/standalone helpers. No app, store, or Tauri dependencies. */
-
-/** Build a standalone LaTeX document that renders just the figure. */
 export function buildStandaloneDoc(opts: {
   code: string;
   packages?: string[];
   libraries?: string[];
-  /** Hex "#RRGGBB" page background for the whole figure. Omit for transparent. */
   background?: string;
 }): string {
   const packages = ["tikz", ...(opts.packages ?? [])];
@@ -37,7 +33,6 @@ export function buildStandaloneDoc(opts: {
   );
 }
 
-/** Turn a prompt into a safe, readable filename stem. */
 export function slugifyFigureName(prompt: string): string {
   const slug = prompt
     .toLowerCase()
@@ -48,7 +43,7 @@ export function slugifyFigureName(prompt: string): string {
   return slug || "figure";
 }
 
-/** Base64-encode bytes in chunks (avoids a call-stack overflow on large files). */
+// Chunked to avoid a call-stack overflow from spreading a large byte array.
 export function bytesToBase64(bytes: Uint8Array): string {
   let binary = "";
   const chunk = 0x8000;

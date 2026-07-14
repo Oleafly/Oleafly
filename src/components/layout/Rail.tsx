@@ -29,8 +29,7 @@ const railBtn = (active: boolean) =>
       : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
   );
 
-/** One registered rail tab; its own component so useBadge (a hook) has a
- *  stable call site per tab. */
+// Its own component so useBadge (a hook) has a stable call site per tab.
 function RailTabButton({
   tab,
   active,
@@ -79,7 +78,7 @@ export function Rail() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
 
-  // "About OpenLeaf" in the app menu opens our in-app About dialog.
+  // Native "About OpenLeaf" menu item triggers this via a Tauri event.
   useEffect(() => {
     if (!isTauri()) return;
     const unlisten = listen("menu://about", () => setAboutOpen(true));
@@ -93,7 +92,7 @@ export function Rail() {
 
   const select = (tab: RailTab) => {
     if (tab === railTab && showTree) {
-      toggleTree(); // collapse sidebar when re-clicking the active tab
+      toggleTree();
     } else {
       setRailTab(tab);
       if (!showTree) toggleTree();

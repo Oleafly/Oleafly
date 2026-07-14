@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
-/** Tracks whether the app window is fullscreen, so macOS traffic-light
- *  padding can be dropped when the lights are overlaid (fullscreen). */
+// So macOS traffic-light padding can be dropped when the lights are
+// overlaid (fullscreen).
 export function useFullscreen(): boolean {
   const [fullscreen, setFullscreen] = useState(false);
 

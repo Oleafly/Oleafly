@@ -1,9 +1,5 @@
-/** Pure AI helpers for figure generation (no app/store/Tauri deps). */
+// Pure AI helpers for figure generation (no app/store/Tauri deps).
 
-/**
- * Conservative allowlist of vision-capable models. Unknown models default to
- * false so we never send an image a text-only endpoint would reject.
- */
 export function modelSupportsVision(provider: string, model: string): boolean {
   const m = model.toLowerCase();
   // OpenRouter ids embed the origin (e.g. "google/gemini-...", "openai/gpt-4o").
@@ -11,9 +7,7 @@ export function modelSupportsVision(provider: string, model: string): boolean {
   if (/gpt-4o|gpt-4\.1|gpt-4-turbo|chatgpt-4o|gpt-5|o4/.test(m)) return true;
   // Claude 3 and 4 families are all vision-capable.
   if (/claude-3|claude-.*-4|claude-(sonnet|opus|haiku)-4/.test(m)) return true;
-  // Local vision models.
   if (/llava|bakllava|-vl\b|vision|moondream|minicpm-v/.test(m)) return true;
-  // xAI vision variants only.
   if (provider === "xai" && /vision/.test(m)) return true;
   return false;
 }

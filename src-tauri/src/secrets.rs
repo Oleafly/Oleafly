@@ -77,8 +77,8 @@ pub fn migrate_to_keyring(account: &str, plaintext: &str) -> String {
         return String::new();
     }
     match set_secret(account, plaintext) {
-        Ok(()) => String::new(),         // blank the on-disk copy
-        Err(_) => plaintext.to_string(), // keep in config as fallback
+        Ok(()) => String::new(),
+        Err(_) => plaintext.to_string(),
     }
 }
 

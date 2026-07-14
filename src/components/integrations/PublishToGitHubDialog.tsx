@@ -27,8 +27,6 @@ function slug(name: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-/** Publish the current project to GitHub: create a new repo or link an
- *  existing one, set `origin`, and run the first push. */
 export function PublishToGitHubDialog({
   open,
   onClose,
@@ -47,11 +45,9 @@ export function PublishToGitHubDialog({
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
-  // Create-new state.
   const [repoName, setRepoName] = useState("");
   const [isPrivate, setIsPrivate] = useState(true);
 
-  // Link-existing state.
   const [repos, setRepos] = useState<GitHubRepo[]>([]);
   const [query, setQuery] = useState("");
   const [loadingRepos, setLoadingRepos] = useState(false);
@@ -84,9 +80,9 @@ export function PublishToGitHubDialog({
     setBusy(true);
     try {
       const repo = await githubCreateRepo(name, isPrivate);
-      // Ensure there's a commit to push (a brand-new project may have none yet),
-      // then set a clean remote — auth is handled by gitPush's credential helper,
-      // so the token is never written into .git/config.
+      // A brand-new project may have no commits yet; the remote itself stays
+      // clean since auth is handled by gitPush's credential helper, not a
+      // token embedded in .git/config.
       await gitAutoCommit(projectId, "Initial commit");
       await gitSetRemote(projectId, repo.clone_url);
       await gitPush(projectId);

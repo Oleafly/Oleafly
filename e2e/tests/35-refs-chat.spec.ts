@@ -10,14 +10,10 @@ import {
   waitLong,
 } from "../helpers";
 
-// The references rail panel, the chat panel's session controls (new chat,
-// history), custom instructions steering a real reply, and conversation
-// persistence across panel remounts.
-//
 // Marker design: the assistant is asked to CONCATENATE two words, so the
-// marker appears only in the REPLY - never in our own prompt. That matters
-// because chat titles are derived from the first user message and stay
-// visible in the recent-chats list after "New chat".
+// marker appears only in the REPLY, never in our own prompt. Chat titles are
+// derived from the first user message and stay visible in the recent-chats
+// list after "New chat", so a literal marker there would false-positive.
 
 const TOKEN = process.env.E2E_AI_TOKEN;
 const RUN = Date.now().toString(36);
@@ -47,8 +43,8 @@ test("references panel guides toward Shift-F12", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openRailTab(tauriPage, "References (Shift-F12)");
-  // Fresh panel: the guidance empty-state (populated results are covered by
-  // the code-intel spec, which drives a real find-references).
+  // Only the guidance empty-state; populated results are covered by the
+  // code-intel spec's real find-references.
   await tauriPage.waitForFunction(
     `document.body.innerText.includes('Shift-F12') || document.body.innerText.includes('References')`,
     10_000,
@@ -66,15 +62,13 @@ test("new chat clears the transcript and history brings it back", async ({ tauri
   const tag = `chat ${RUN}h`;
   await askForConcat(tauriPage, tag, "ZEBRA", "APPLE");
 
-  // New chat: the reply disappears (the old chat's TITLE may stay visible in
-  // the recent list - that's expected, and why the marker is reply-only).
+  // The old chat's TITLE may stay visible in the recent list - expected.
   await tauriPage.click('[aria-label="New chat"]');
   await tauriPage.waitForFunction(
     `!document.body.innerText.includes('ZEBRAAPPLE')`,
     10_000,
   );
 
-  // History: the old conversation is listed by its title and reopens whole.
   await tauriPage.click('[aria-label="Chat history"]');
   await tauriPage.waitForFunction(
     `document.body.innerText.includes(${JSON.stringify(tag)})`,
@@ -94,8 +88,8 @@ test("custom instructions steer a real reply", async ({ tauriPage }) => {
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await ensureAiConnected(tauriPage);
 
-  // Save an instruction with an unmistakable fingerprint. Unique per run so
-  // the Save button is always enabled (it disables when the text is unchanged).
+  // Unique per run so the Save button is always enabled (it disables when
+  // the text is unchanged).
   const prefix = `MANGO${RUN}`;
   await openSettings(tauriPage, "ai");
   await tauriPage.waitForFunction(
@@ -112,7 +106,6 @@ test("custom instructions steer a real reply", async ({ tauriPage }) => {
   await tauriPage.waitForFunction(`document.body.innerText.includes('Saved')`, 10_000);
   await tauriPage.click('[aria-label="Close settings"]');
 
-  // ensureAiConnected is idempotent and lands with the chat input ready.
   await ensureAiConnected(tauriPage);
   await newChat(tauriPage);
   const ta = 'textarea[placeholder*="Ask AI"]';
@@ -124,9 +117,9 @@ test("custom instructions steer a real reply", async ({ tauriPage }) => {
     180_000,
   );
 
-  // Restore: clear the instruction so later runs aren't steered. The modal
-  // hydrates the textarea from the async config fetch; clearing before that
-  // resolves gets clobbered back to the saved text, leaving Save disabled.
+  // The modal hydrates the textarea from an async config fetch; clearing
+  // before that resolves gets clobbered back to the saved text, leaving
+  // Save disabled - hence the wait below before clearing.
   await openSettings(tauriPage, "ai");
   await tauriPage.waitForFunction(
     `((document.querySelector(${JSON.stringify(instructionTa)}) || {}).value || '').includes(${JSON.stringify(prefix)})`,
@@ -148,7 +141,6 @@ test("the active conversation survives tab switches and sidebar collapse", async
 
   await askForConcat(tauriPage, `chat ${RUN}s`, "LEMON", "GRAPE");
 
-  // Switch to the file tree and back: the conversation must still be there.
   await openRailTab(tauriPage, "Source Tree");
   await openRailTab(tauriPage, "Chat / AI Assistant");
   await tauriPage.waitForFunction(
@@ -156,7 +148,6 @@ test("the active conversation survives tab switches and sidebar collapse", async
     10_000,
   );
 
-  // Collapse and reopen the sidebar: same conversation, not a new-chat view.
   await tauriPage.click('[aria-label="Hide sidebar"]');
   await tauriPage.click('[aria-label="Show sidebar"]');
   await tauriPage.waitForFunction(

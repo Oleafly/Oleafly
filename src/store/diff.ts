@@ -6,28 +6,27 @@ export type DiffMode = "split" | "unified";
 
 export interface OpenDiff {
   path: string;
-  /** "working" = worktree vs index (editable); "staged" = index vs HEAD (read-only). */
+  // "working" = worktree vs index (editable); "staged" = index vs HEAD (read-only).
   side: DiffSide;
-  /** Open-order stamp, shared with file tabs so they interleave by open time. */
+  // Open-order stamp, shared with file tabs so they interleave by open time.
   order: number;
 }
 
-/** Stable identity for a diff tab (a file can be open as both a working and a staged diff). */
+// Stable identity for a diff tab: a file can be open as both a working and a
+// staged diff, so path alone is not unique.
 export function diffKey(d: Pick<OpenDiff, "path" | "side">): string {
   return `${d.side}:${d.path}`;
 }
 
 interface DiffState {
-  /** Open diff tabs, in the order they were opened. */
   diffs: OpenDiff[];
-  /** Key of the focused diff, or null when a file tab is the focused view. */
+  // Key of the focused diff, or null when a file tab is the focused view.
   activeKey: string | null;
   mode: DiffMode;
   openDiff: (path: string, side: DiffSide) => void;
   closeDiff: (key: string) => void;
-  /** Focus a diff tab (without touching the open file tabs). */
+  // Focuses a diff tab without touching the open file tabs.
   setActiveDiff: (key: string) => void;
-  /** Unfocus any diff so a file tab becomes the active view. */
   clearActiveDiff: () => void;
   setMode: (mode: DiffMode) => void;
 }
@@ -42,7 +41,7 @@ function loadMode(): DiffMode {
   }
 }
 
-/** Git diffs open in the editor area as tabs (replaces the old modal). */
+// Git diffs open in the editor area as tabs (replaces the old modal).
 export const useDiffStore = create<DiffState>((set) => ({
   diffs: [],
   activeKey: null,
@@ -75,7 +74,6 @@ export const useDiffStore = create<DiffState>((set) => ({
   },
 }));
 
-/** The currently focused diff, or null when a file tab is active. */
 export function activeDiff(s: DiffState): OpenDiff | null {
   return s.diffs.find((d) => diffKey(d) === s.activeKey) ?? null;
 }

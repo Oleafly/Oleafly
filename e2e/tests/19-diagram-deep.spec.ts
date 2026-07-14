@@ -1,23 +1,18 @@
 import { test, expect } from "../fixtures";
 import { caretIn, openProject, openRailTab } from "../helpers";
 
-// Deep diagram-composer coverage: shape placement, the inspector, canvas
-// controls, code snippets, and the insert-as-code round trip into the
-// document and figures/ folder.
-
 test("place a shape, inspect it, and toggle canvas controls", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await tauriPage.click('[aria-label="Insert diagram"]');
   await expect(tauriPage.locator('[role="dialog"][aria-label="Insert diagram"]')).toBeVisible();
 
-  // Arm the rectangle tool and click the canvas: a node appears.
   const nodes = () =>
     tauriPage.evaluate<number>(`document.querySelectorAll('.react-flow__node').length`);
   const before = await nodes();
   await tauriPage.click('[aria-label="Rectangle"]');
-  // Node creation is now click-drag-to-draw (pointer events), not a plain click.
-  // A pointerdown with a tool armed creates the node; the drag sizes it.
+  // Node creation is click-drag-to-draw (pointer events), not a plain click:
+  // pointerdown with a tool armed creates the node, the drag sizes it.
   await tauriPage.evaluate(
     `(() => {
       const pane = document.querySelector('.react-flow__pane');
@@ -32,12 +27,10 @@ test("place a shape, inspect it, and toggle canvas controls", async ({ tauriPage
   );
   expect(await nodes()).toBe(before + 1);
 
-  // Selecting a node brings up the style inspector.
   await tauriPage.click(".react-flow__node");
   await expect(tauriPage.getByText("Border style")).toBeVisible();
   await expect(tauriPage.getByText("Corner radius")).toBeVisible();
 
-  // Canvas chrome: theme + minimap toggles.
   await tauriPage.click('[aria-label="Toggle canvas theme"]');
   await tauriPage.click('[aria-label="Toggle canvas theme"]');
   await tauriPage.click('[aria-label="Toggle minimap"]');
@@ -75,21 +68,18 @@ test("insert as code lands editable TikZ in the document and a figures/ file", a
   await tauriPage.click('[aria-label="Insert diagram"]');
 
   const name = `e2efig${Date.now().toString(36)}`;
-  // Name is plain text until clicked — same pattern as the project title.
+  // Name is plain text until clicked, same pattern as the project title.
   await tauriPage.click('[data-testid="diagram-name-display"]');
   await tauriPage.fill("#diagram-name", name);
   await tauriPage.click('[aria-label="Save name"]');
-  // Insert actions live on the Code tab's preview chrome.
   await tauriPage.click('[data-testid="diagram-tab-code"]');
   await tauriPage.getByText("Insert as code (vector)").click();
-  // Composer closes and the tikzpicture is in the real document.
   await expect(
     tauriPage.locator('[role="dialog"][aria-label="Insert diagram"]'),
   ).toBeHidden({ timeout: 20_000 });
   await expect(tauriPage.locator(".cm-content")).toContainText("tikzpicture");
-  // And the re-openable snippet was written into figures/.
   await openRailTab(tauriPage, "Source Tree");
-  await tauriPage.getByText("figures").click(); // expand the folder
+  await tauriPage.getByText("figures").click();
   await expect(tauriPage.getByText(`${name}.tikz`)).toBeVisible({ timeout: 15_000 });
 });
 
@@ -99,10 +89,9 @@ test("canvas zoom controls change the viewport", async ({ tauriPage }) => {
   await tauriPage.click('[aria-label="Insert diagram"]');
   await expect(tauriPage.locator('[role="dialog"][aria-label="Insert diagram"]')).toBeVisible();
 
-  // React Flow paints the zoom level into the viewport transform. The mount
-  // runs an animated fitView that lands AT max zoom for the small starter
-  // drawing, so wait until the transform stops moving, then zoom OUT first
-  // (zooming in from max is a legitimate no-op).
+  // Mount runs an animated fitView that lands AT max zoom for the small
+  // starter drawing, so wait until the transform stops moving, then zoom
+  // OUT first (zooming in from max is a legitimate no-op).
   const transform = () =>
     tauriPage.evaluate<string>(
       `document.querySelector('.react-flow__viewport')?.style.transform || ''`,
@@ -132,7 +121,6 @@ test("canvas zoom controls change the viewport", async ({ tauriPage }) => {
     5_000,
   );
 
-  // Fit view animates back to the fitted framing.
   await tauriPage.click(".react-flow__controls-fitview");
   await tauriPage.waitForFunction(
     `(document.querySelector('.react-flow__viewport')?.style.transform || '') === ${JSON.stringify(fitted)}`,

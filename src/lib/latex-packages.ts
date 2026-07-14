@@ -1,14 +1,11 @@
-/**
- * Curated LaTeX package catalog for the on-demand engine's package manager
- * (tlmgr) UI. Three axes per package:
- *  - scope:     "all" packages matter in every export; "pdf" only affect PDF.
- *  - defaultOn: part of the sensible default set for a new document.
- *  - tagging:   compatibility with tagged / accessible (PDF/UA) export:
- *               "ok" | "caution" (renders but may not tag cleanly) | "breaks".
- *
- * The tagging axis is what makes one catalog serve both research-PDF users and
- * the accessibility path. See the accessibility/ATS preflight design spec.
- */
+// Three axes per package:
+//  - scope:     "all" packages matter in every export; "pdf" only affect PDF.
+//  - defaultOn: part of the sensible default set for a new document.
+//  - tagging:   compatibility with tagged / accessible (PDF/UA) export:
+//               "ok" | "caution" (renders but may not tag cleanly) | "breaks".
+//
+// The tagging axis is what makes one catalog serve both research-PDF users
+// and the accessibility path. See the accessibility/ATS preflight design spec.
 
 export type PkgScope = "all" | "pdf";
 export type TaggingStatus = "ok" | "caution" | "breaks";
@@ -61,12 +58,10 @@ export const LATEX_PACKAGES: LatexPackage[] = [
 
 const BY_NAME = new Map(LATEX_PACKAGES.map((p) => [p.name, p]));
 
-/** Tagging compatibility for a package name, defaulting to "ok" when unknown. */
 export function taggingStatus(name: string): TaggingStatus {
   return BY_NAME.get(name)?.tagging ?? "ok";
 }
 
-/** Package names known to break tagging (feeds the preflight denylist). */
 export function packagesThatBreakTagging(): string[] {
   return LATEX_PACKAGES.filter((p) => p.tagging === "breaks").map((p) => p.name);
 }

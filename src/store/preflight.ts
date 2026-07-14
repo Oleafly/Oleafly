@@ -8,11 +8,6 @@ import { useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
 import { useIndexStore } from "@/store/project-index";
 
-/**
- * Gather the references & assets context from the project: citation keys from
- * all loaded `.bib` files, labels across loaded files, and the full project file
- * list from the tree (for resolving includes/graphics).
- */
 function buildRefsContext(files: ReturnType<typeof useFilesStore.getState>): RefsContext {
   // Labels and bib keys come from the shared project index (the single parser);
   // runRefsRules also re-scans the active source for its own labels, so a just-
@@ -54,24 +49,20 @@ const NO_FLAGS: CheckFlags = { ats: false, a11y: false, refs: false };
 
 interface PreflightStore {
   report: PreflightReport | null;
-  /** Reading-order plain text per page, for the "what the reader sees" view. */
   pageText: string[];
   running: boolean;
   showReader: boolean;
   error: string | null;
-  /** Which checks have been run (results visible). Persists across tab switches. */
   ran: CheckFlags;
-  /** User's enable override (null = use the document-type suggestion). */
+  // null = use the document-type suggestion.
   enabled: CheckFlags | null;
-  /** User's accordion expand override (null = use the suggestion). */
+  // null = use the suggestion.
   open: CheckFlags | null;
   setRan: (f: CheckFlags) => void;
   setEnabled: (f: CheckFlags) => void;
   setOpen: (f: CheckFlags) => void;
   toggleReader: () => void;
-  /** Re-run preflight against the active document and the last compiled PDF. */
   run: () => Promise<void>;
-  /** Clear everything (called on project switch). */
   reset: () => void;
 }
 

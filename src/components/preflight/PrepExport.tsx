@@ -14,12 +14,8 @@ const KIND: Record<PrepChange["kind"], { icon: typeof Info; color: string }> = {
   info: { icon: Info, color: "text-muted-foreground" },
 };
 
-/**
- * Tier C: turn the active document into one a tagging engine (LuaLaTeX + TeX
- * Live 2025) can compile into tagged, accessible output. Shows exactly what it
- * changes, then applies it or copies it. OpenLeaf does the arcane preparation;
- * the tagged compile happens in a tagging engine, and Preflight verifies it.
- */
+// Tier C: OpenLeaf prepares the source for a tagging engine (LuaLaTeX + TeX
+// Live 2025) to compile into tagged, accessible output; Preflight verifies it.
 export function PrepExport() {
   const [result, setResult] = useState<PrepResult | null>(null);
   const [applied, setApplied] = useState(false);

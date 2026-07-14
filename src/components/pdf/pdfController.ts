@@ -1,5 +1,5 @@
-// Thin app shim over @openleaf/preview's controller: keeps existing imports
-// working and wires the package's diagnostics to the app error log.
+// Re-exports @openleaf/preview's controller to keep existing imports working, and
+// wires its diagnostics logger to the app error log.
 import { setPdfLogger } from "@openleaf/preview";
 import { logError } from "@/lib/log";
 

@@ -2,7 +2,6 @@ import { jsonSchema } from "ai";
 import { buildStandaloneDoc, slugifyFigureName, bytesToBase64 } from "@openleaf/latex";
 import { pickPagesToVerify } from "./pick-pages";
 
-/** A definition in the project's symbol index (structural view). */
 export interface IndexDefView {
   kind: string;
   name: string;
@@ -11,7 +10,6 @@ export interface IndexDefView {
   line?: number;
 }
 
-/** A symbol use in the project's symbol index (structural view). */
 export interface IndexUseView {
   kind: string;
   name: string;
@@ -19,22 +17,16 @@ export interface IndexUseView {
   target?: string;
 }
 
-/** Read-only view of the app's project index, for the project_map tool. */
 export interface ProjectIndexView {
   defs: IndexDefView[];
   uses: IndexUseView[];
   definitionFor(use: IndexUseView): unknown;
 }
 
-/**
- * Everything the AI toolsets need from the host app: the project file
- * services, app-state sync, the compiler, the symbol index, the figure
- * pipeline, and the document editor. The app builds one adapter over its
- * Tauri client and stores; this package stays free of them.
- */
+// The app builds one adapter over its Tauri client and stores; this package
+// stays free of them.
 export interface AiToolsHost {
   getProjectId(): string | null;
-  // Project file services.
   readFileContent(projectId: string, path: string): Promise<string>;
   writeFileContent(projectId: string, path: string, content: string): Promise<void>;
   createFile(projectId: string, path: string, isDir: boolean): Promise<unknown>;
@@ -51,19 +43,15 @@ export interface AiToolsHost {
   applyExternalDelete(path: string): void;
   refreshTree(): Promise<void>;
   setMainDocState(mainDoc: string): void;
-  // Compile pipeline.
   recompile(): Promise<
     { ok?: boolean; errors?: unknown[]; has_pdf?: boolean; log?: string | null } | null | undefined
   >;
   getCompileLog(): string | null;
   getPdfBytes(): Uint8Array | null;
   extractPdfText(bytes: Uint8Array): Promise<{ pages: string[]; numPages: number }>;
-  /** The page the user is currently viewing in the PDF preview, if known.
-   *  `verify_pdf_pages` prefers it so a vision check looks where the user is. */
   getPdfCursorPage?(): number | null | undefined;
   // Symbol index (built lazily by the host when absent).
   getProjectIndex(): Promise<ProjectIndexView | null>;
-  // Isolated figure compile + rendering.
   compileIsolated(
     projectId: string,
     source: string,
@@ -74,7 +62,6 @@ export interface AiToolsHost {
   setLastFigurePreview(v: { pdfBytes: Uint8Array } | null): void;
   getLastFigurePreview(): { pdfBytes: Uint8Array } | null;
   getFigureInsertTarget(): { from: number; to: number } | null;
-  // Document editor.
   insertAtCursor(text: string): void;
   replaceRange(from: number, to: number, text: string): void;
   // Agent plan checklist (update_todos / get_todos).
@@ -101,30 +88,14 @@ type RawToolDef = {
   execute: (input: Record<string, unknown>) => Promise<unknown>;
 };
 
-/** A request to the user to approve a destructive AI edit before it runs. */
 export interface ToolApprovalRequest {
-  /** The tool being called, e.g. "delete_file". */
   tool: string;
-  /** One-line summary of what will happen (e.g. `Delete sections/intro.tex`). */
   summary: string;
-  /** The primary path affected, when there is one. */
   path?: string;
-  /**
-   * Before/after content for a red/green preview, present when the change
-   * rewrites a file's contents (write_file / replace_in_file). `oldText` is the
-   * current file (empty for a new file); `newText` is what would be written.
-   */
   diff?: { path: string; oldText: string; newText: string };
-  /** A rendered preview image (data URL) to show in the approval card, e.g. the
-   *  compiled figure that insert_figure is about to place in the document. */
   image?: string;
 }
 
-/**
- * Ask the user to approve a destructive edit. Returns true to proceed, false to
- * decline. When no callback is provided (e.g. a non-interactive context), edits
- * proceed as before.
- */
 export type ConfirmFn = (req: ToolApprovalRequest) => Promise<boolean>;
 
 export function createOpenLeafTools(
@@ -702,8 +673,6 @@ export function createOpenLeafTools(
               .sort((a, b) => a - b)
               .slice(0, maxPages);
           } else {
-            // Default pick: first, last, the page the user is looking at, then
-            // evenly spaced middles. Shared with the app via @openleaf/ai-tools.
             const cursorPage = host.getPdfCursorPage?.() ?? undefined;
             selected = pickPagesToVerify(numPages, {
               cursorPage: cursorPage ?? undefined,
@@ -715,8 +684,6 @@ export function createOpenLeafTools(
             try {
               const dataUrl = await host.pdfToPng(bytes, page, 1.5);
               images.push({ page, dataUrl });
-              // Chat loop can attach vision images via the same callback path as figures.
-              // Host opts are not here; package relies on optional onImage via createOpenLeafTools opts.
             } catch {
               /* skip failed page raster */
             }
@@ -767,18 +734,11 @@ export function createOpenLeafTools(
   return wrapped;
 }
 
-/** Base64 of a PNG data URL, for writing it to disk via write_project_bytes. */
 function pngDataUrlToBase64(dataUrl: string): string {
   const comma = dataUrl.indexOf(",");
   return comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
 }
 
-/**
- * The figure-studio toolset: generate a standalone figure, compile it in
- * isolation, and (on accept) insert editable LaTeX into the document. `onImage`
- * lets the chat loop attach the rendered figure to the conversation for a
- * vision model to inspect.
- */
 export function createFigureTools(
   host: AiToolsHost,
   opts?: {

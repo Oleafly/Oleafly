@@ -1,17 +1,12 @@
 import { gitAutoCommitUpdate } from "@/lib/tauri";
 import { useSettingsStore } from "@/store/settings";
 
-// Auto-commit policy: a successful compile commits immediately (it is the
-// natural checkpoint, and compiling already saved the active file first);
-// plain autosaves commit after a trailing quiet period so a typing burst
-// lands as one "Update: <files>" commit instead of dozens.
 const IDLE_COMMIT_MS = 30_000;
 
 let timer: ReturnType<typeof setTimeout> | null = null;
 let pendingProjectId: string | null = null;
 
-// Never commit out from under the user while they are staging in the Source
-// Control panel; the next save, compile, or manual commit picks the changes up.
+// Don't commit while the user is staging in the Source Control panel.
 const sourceControlOpen = () => useSettingsStore.getState().railTab === "source";
 
 async function commit(projectId: string) {
@@ -19,12 +14,10 @@ async function commit(projectId: string) {
   try {
     await gitAutoCommitUpdate(projectId);
   } catch {
-    // Auto-commit must never interrupt editing; the change simply stays
-    // uncommitted until the next save, compile, or manual commit.
+    // A failed auto-commit must never interrupt editing.
   }
 }
 
-/** Debounced auto-commit after an autosave: (re)starts the quiet-period timer. */
 export function scheduleAutoCommit(projectId: string) {
   pendingProjectId = projectId;
   if (timer) clearTimeout(timer);
@@ -35,7 +28,6 @@ export function scheduleAutoCommit(projectId: string) {
   }, IDLE_COMMIT_MS);
 }
 
-/** Drop the pending debounced commit for a deleted project. */
 export function cancelAutoCommit(projectId: string) {
   if (pendingProjectId !== projectId) return;
   if (timer) clearTimeout(timer);
@@ -43,7 +35,6 @@ export function cancelAutoCommit(projectId: string) {
   pendingProjectId = null;
 }
 
-/** Commit pending debounced work now (called before switching projects). */
 export function flushAutoCommit() {
   if (!timer) return;
   clearTimeout(timer);
@@ -53,7 +44,6 @@ export function flushAutoCommit() {
   if (id) void commit(id);
 }
 
-/** Immediate auto-commit (successful compile); supersedes any pending timer. */
 export async function autoCommitNow(projectId: string) {
   if (timer) {
     clearTimeout(timer);

@@ -18,8 +18,7 @@ import { useDictionary, isWordIgnored, ignoreWordForProject, ignoreWordGlobally 
 import { getSpellchecker, isIgnored } from "@/lib/spellcheck";
 import { lintGrammar } from "@/lib/harper";
 
-// Wire the package's spelling/grammar linters to the app's engines, ignore
-// dictionary, and settings (module side effect: installed before any lint runs).
+// Module side effect: must install before any lint runs.
 setSpellHost({
   getProjectId: () => useFilesStore.getState().projectId,
   getActivePath: () => useFilesStore.getState().activePath,
@@ -35,7 +34,6 @@ setSpellHost({
   lintGrammar,
 });
 
-// \cite completion keys come from the project's loaded .bib files.
 setBibKeysProvider(() => {
   const files = useFilesStore.getState().files;
   const bibs = Object.entries(files)
@@ -44,8 +42,7 @@ setBibKeysProvider(() => {
   return bibKeysFromSources(bibs);
 });
 
-/** Document model + settings port over the app stores. Module-level so the
- *  host identity is stable across renders (its use* members are hooks). */
+// Module-level so the host identity is stable across renders (its use* members are hooks).
 const HOST: EditorHost = {
   useActivePath: () => useFilesStore((s) => s.activePath),
   getActivePath: () => useFilesStore.getState().activePath,
@@ -65,7 +62,6 @@ const HOST: EditorHost = {
   ],
 };
 
-// App feature extensions: preflight lint, code/hover intel, inline AI editing.
 const EXTRA_EXTENSIONS: Extension[] = [
   createPreflightLinter(),
   codeIntel(),
@@ -77,8 +73,6 @@ const EXTRA_KEYMAP: KeyBinding[] = [
   { key: "Mod-l", run: (v) => { toggleInlineEdit(v); return true; } },
 ];
 
-/** Thin app wrapper: wires the app stores and feature plugins into the
- *  package's editor. */
 export function CodeMirrorEditor() {
   return (
     <CodeMirrorEditorCore

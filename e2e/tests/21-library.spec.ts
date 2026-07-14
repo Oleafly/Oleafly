@@ -1,9 +1,6 @@
 import { test, expect } from "../fixtures";
 import { openProject, openSettings } from "../helpers";
 
-// Library management: favorites, the book context menu, fork, and delete -
-// all against real projects on disk.
-
 test("favorite toggles on a project book", async ({ tauriPage }) => {
   await expect(tauriPage.getByTestId("library")).toBeVisible();
   // The bookmark control reveals on hover.
@@ -17,7 +14,6 @@ test("favorite toggles on a project book", async ({ tauriPage }) => {
 test("fork a project from the context menu", async ({ tauriPage }) => {
   await expect(tauriPage.getByTestId("library")).toBeVisible();
 
-  // Right-click the E2E Doc book (by name) to open its context menu.
   await tauriPage.evaluate(
     `(() => {
       const books = Array.from(document.querySelectorAll('[role="button"][tabindex="0"]'));
@@ -41,9 +37,9 @@ test("fork a project from the context menu", async ({ tauriPage }) => {
   await expect(tauriPage.getByText(forkName)).toBeVisible({ timeout: 20_000 });
 });
 
-// Separate test: the fixture reloads the app in between, which clears the
-// re-armed Radix context menu from the fork flow (a second synthetic
-// right-click in the same page acts on the WRONG book's menu).
+// Separate test: the fixture's reload between tests clears the re-armed
+// Radix context menu from the fork flow (a second right-click in the same
+// page would hit the wrong book's menu).
 test("delete the forked copy from the context menu", async ({ tauriPage }) => {
   await expect(tauriPage.getByTestId("library")).toBeVisible();
   await tauriPage.waitForFunction(
@@ -51,9 +47,9 @@ test("delete the forked copy from the context menu", async ({ tauriPage }) => {
     20_000,
   );
 
-  // The confirm prompt is native, so override it - but ONLY accept a dialog
-  // that names the fork; anything else is a mis-targeted destructive action
-  // and must be refused. (Comma-expression: evaluate needs a serializable value.)
+  // Override the native confirm, but only accept a dialog naming the fork;
+  // anything else is a mis-targeted delete. (Comma-expression: evaluate
+  // needs a serializable return value.)
   await tauriPage.evaluate(
     `(window.confirm = (msg) => typeof msg === 'string' && msg.includes('E2E Fork'), 1)`,
   );

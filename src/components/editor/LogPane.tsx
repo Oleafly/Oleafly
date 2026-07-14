@@ -70,7 +70,7 @@ function LogText({ text }: { text: string }) {
           body = <span className="text-muted-foreground">{inline(ln)}</span>;
         }
 
-        // Errors/refs flush-left so they stand out; others indented by nesting.
+        // Errors/refs flush-left to stand out.
         const pad = cat === "error" || cat === "warn" || cat === "lineref" ? 0 : indent;
         return (
           <span

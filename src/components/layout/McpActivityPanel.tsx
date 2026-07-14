@@ -75,7 +75,7 @@ function LogRow({ entry }: { entry: McpLogEntry }) {
   );
 }
 
-/** Live log of MCP tools/call traffic — only mounted while the MCP rail tab is open. */
+// Only mounted while the MCP rail tab is open.
 export function McpActivityPanel() {
   const logs = useMcpActivityStore((s) => s.logs);
   const serverRunning = useMcpActivityStore((s) => s.serverRunning);

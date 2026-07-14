@@ -4,11 +4,9 @@ import { reportCrashToGithub } from "@/lib/crash-report";
 
 interface Props {
   children: ReactNode;
-  /**
-   * Optional lightweight fallback for wrapping a single risky subtree (a panel)
-   * rather than the whole app. When provided, a caught error renders this
-   * instead of the full-screen crash screen, so the rest of the UI survives.
-   */
+  // Optional lightweight fallback for wrapping a single risky subtree (a panel)
+  // rather than the whole app. When provided, a caught error renders this
+  // instead of the full-screen crash screen, so the rest of the UI survives.
   fallback?: ReactNode;
 }
 
@@ -16,11 +14,9 @@ interface State {
   error: Error | null;
 }
 
-/**
- * Top-level error boundary. Without one, any render-time exception unmounts the
- * whole React tree and leaves a blank window. This catches it, logs the details
- * to `~/.openleaf/app.log` (so users can share it), and offers a reload.
- */
+// Without this, any render-time exception unmounts the whole React tree and
+// leaves a blank window. This catches it, logs details to `~/.openleaf/app.log`
+// (so users can share it), and offers a reload.
 export class ErrorBoundary extends Component<Props, State> {
   state: State = { error: null };
 

@@ -11,20 +11,12 @@ export interface AIProvider {
   id: string;
   name: string;
   blurb: string;
-  /** Where to get a key (or, for Ollama, that it's local). */
   signupUrl?: string;
-  /** Fixed OpenAI-compatible base URL. Omit for OpenAI itself. */
   baseURL?: string;
-  /** Credential is a host URL, not an API key (Ollama). */
   isHost?: boolean;
   models: AIModel[];
 }
 
-/**
- * Supported AI providers. Most are OpenAI-compatible and work with just an API
- * key via `createOpenAI({ baseURL })`. Anthropic uses its own SDK. Ollama runs
- * locally and takes a host URL instead of a key.
- */
 export const PROVIDERS: AIProvider[] = [
   {
     id: "openai",
@@ -151,7 +143,6 @@ export function defaultModel(providerId: string): string {
   return getProvider(providerId)?.models[0]?.id ?? "gpt-4o-mini";
 }
 
-/** The credential label/placeholder for a provider's input. */
 export function credentialMeta(providerId: string): { label: string; placeholder: string } {
   const p = getProvider(providerId);
   if (p?.isHost) {
@@ -160,12 +151,6 @@ export function credentialMeta(providerId: string): { label: string; placeholder
   return { label: "API key", placeholder: "sk-…" };
 }
 
-/**
- * Build a runnable model for a provider. OpenAI-compatible providers (incl.
- * Groq, OpenRouter, DeepSeek, Mistral, xAI) use `createOpenAI` with a baseURL.
- * Anthropic uses its own client. Ollama uses the OpenAI shim against the local
- * server with a dummy key.
- */
 export function buildModel(provider: string, model: string, credential: string) {
   if (provider === "anthropic") {
     return createAnthropic({ apiKey: credential })(model);
@@ -194,7 +179,6 @@ export function buildModel(provider: string, model: string, credential: string) 
   }).chat(model);
 }
 
-/** The AI-related fields of the app config that provider resolution reads. */
 export interface AIConfigLike {
   ai_provider?: string;
   ai_model?: string;
@@ -202,11 +186,6 @@ export interface AIConfigLike {
   ai_keys?: Record<string, string>;
 }
 
-/**
- * Resolve the active provider/model/credential from the stored config, matching
- * the chat panel's logic: prefer the saved provider if it has a key, otherwise
- * fall back to the first configured one; fold the legacy single key into the map.
- */
 export function pickActiveProvider(cfg: AIConfigLike): {
   providerId: string;
   modelId: string;
@@ -223,12 +202,10 @@ export function pickActiveProvider(cfg: AIConfigLike): {
   return { providerId, modelId, credential };
 }
 
-/** Whether any provider is configured with a non-empty key/host. */
 export function hasConfiguredProvider(cfg: AIConfigLike): boolean {
   return pickActiveProvider(cfg).credential.trim().length > 0;
 }
 
-/** Build the runnable model for the active provider, plus a display label. */
 export function resolveActiveModel(cfg: AIConfigLike): {
   model: ReturnType<typeof buildModel>;
   providerId: string;

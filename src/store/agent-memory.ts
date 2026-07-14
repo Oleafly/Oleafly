@@ -16,7 +16,6 @@ interface AgentMemoryState {
   add: (content: string) => AgentMemoryNote | null;
   remove: (id: string) => void;
   clear: () => void;
-  /** Compact text for system-prompt injection. */
   asPromptBlock: () => string;
 }
 
@@ -45,10 +44,6 @@ function write(pid: string, notes: AgentMemoryNote[]) {
 
 let seq = 1;
 
-/**
- * Sticky project-level agent memory: short notes the model can remember
- * across chats (conventions, decisions). Stored in localStorage per project.
- */
 export const useAgentMemoryStore = create<AgentMemoryState>((set, get) => ({
   projectId: null,
   notes: [],

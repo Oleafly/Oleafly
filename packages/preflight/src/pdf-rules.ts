@@ -1,23 +1,11 @@
 import type { Finding, PositionedText } from "./types";
 
-/**
- * PDF-layer preflight rules. These are pure functions over text already
- * extracted from the compiled PDF (a `PositionedText[]` per page), so they are
- * unit-testable with hand-built fixtures. The thin pdf.js adapter that produces
- * the input lives in `pdf-extract.ts`.
- */
-
 // Rows within this many PDF units of each other count as the same visual line.
 const ROW_TOLERANCE = 3;
 // A horizontal gap this wide (about one inch at 72dpi) between two runs on the
 // same line signals a column break, i.e. two columns merged into one row.
 const COLUMN_GAP = 72;
 
-/**
- * Flag pages where two horizontal columns share the same visual rows. That is
- * exactly the layout a parser reads straight across ("Company | phone | Title |
- * email") and a screen reader announces out of order.
- */
 export function analyzeReadingOrder(pages: PositionedText[][]): Finding[] {
   const out: Finding[] = [];
   pages.forEach((items, pageIdx) => {
@@ -59,7 +47,6 @@ export function analyzeReadingOrder(pages: PositionedText[][]): Finding[] {
   return out;
 }
 
-/** Signature markers of dropped/unmapped glyphs in the extracted text. */
 export function detectGarbledText(text: string): Finding[] {
   const hasReplacement = text.includes("�");
   const hasCid = /\(cid:\d+\)/i.test(text);
@@ -76,7 +63,6 @@ export function detectGarbledText(text: string): Finding[] {
   ];
 }
 
-/** Flag pages that yield essentially no selectable text (vector-image text or a scan). */
 export function checkSelectability(pages: PositionedText[][]): Finding[] {
   const out: Finding[] = [];
   pages.forEach((items, pageIdx) => {
@@ -96,7 +82,6 @@ export function checkSelectability(pages: PositionedText[][]): Finding[] {
   return out;
 }
 
-/** Findings from the PDF catalog metadata (language, title, whether it is tagged). */
 export function catalogFindings(meta: { lang?: string | null; title?: string | null; tagged?: boolean }): Finding[] {
   const out: Finding[] = [];
   if (!meta.lang || !meta.title) {
@@ -123,7 +108,6 @@ export function catalogFindings(meta: { lang?: string | null; title?: string | n
   return out;
 }
 
-/** Run every PDF-layer rule and return all findings. */
 export function runPdfRules(
   pages: PositionedText[][],
   meta?: { lang?: string | null; title?: string | null; tagged?: boolean },

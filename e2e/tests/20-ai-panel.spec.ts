@@ -1,9 +1,7 @@
 import { test, expect } from "../fixtures";
 import { openProject, openRailTab } from "../helpers";
 
-// The AI panel without a configured key: the onboarding state, the path into
-// settings, and the header controls that work keyless. (Conversations need a
-// key and are out of automated scope by design.)
+// Conversations need a provider key and are out of automated scope by design.
 
 test("connect-a-provider leads to Settings -> AI", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
@@ -11,7 +9,6 @@ test("connect-a-provider leads to Settings -> AI", async ({ tauriPage }) => {
   await openRailTab(tauriPage, "Chat / AI Assistant");
   await expect(tauriPage.getByText("Connect an AI provider")).toBeVisible();
   await tauriPage.getByText("Connect a provider").click();
-  // Settings opens on the AI section with the provider catalog.
   await expect(tauriPage.getByText("Ollama")).toBeVisible({ timeout: 10_000 });
   await tauriPage.click('[aria-label="Close settings"]');
 });

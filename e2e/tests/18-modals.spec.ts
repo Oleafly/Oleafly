@@ -1,9 +1,6 @@
 import { test, expect } from "../fixtures";
 import { openProject, pressGlobal } from "../helpers";
 
-// The utility modals: word count, history, about, and the shortcuts
-// reference's search filter.
-
 test.beforeEach(async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });

@@ -18,7 +18,7 @@ let rerunQueued = false;
 
 export type CompileStatus = "idle" | "compiling" | "success" | "error";
 
-/** User-facing phase while status === "compiling" (package download vs build). */
+// User-facing phase while status === "compiling" (package download vs build).
 export type CompilePhase = "idle" | "saving" | "downloading" | "building";
 
 function phaseFromLogChunk(chunk: string, prev: CompilePhase): CompilePhase {
@@ -32,7 +32,6 @@ function phaseFromLogChunk(chunk: string, prev: CompilePhase): CompilePhase {
 
 interface CompileState {
   status: CompileStatus;
-  /** Finer-grained status for the UI while compiling. */
   phase: CompilePhase;
   log: string;
   errors: CompileError[];
@@ -41,7 +40,6 @@ interface CompileState {
   compileTimeMs: number | null;
   autoCompile: boolean;
   setAutoCompile: (v: boolean) => void;
-  /** Clear all compile state (used when switching projects). */
   reset: () => void;
   recompile: () => Promise<CompileResult | undefined>;
 }

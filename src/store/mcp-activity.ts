@@ -1,15 +1,12 @@
 import { create } from "zustand";
 
-/** One MCP tools/call observed by the in-app bridge. */
 export interface McpLogEntry {
   id: number;
-  /** Epoch ms when the call started. */
   ts: number;
   name: string;
   args: Record<string, unknown>;
   status: "running" | "ok" | "error";
   durationMs?: number;
-  /** Short one-line outcome for the list (error message or result preview). */
   summary?: string;
 }
 
@@ -17,10 +14,8 @@ const MAX_LOGS = 200;
 let nextId = 1;
 
 interface McpActivityState {
-  /** True when the local MCP HTTP server is running (Settings toggle / autostart). */
   serverRunning: boolean;
   logs: McpLogEntry[];
-  /** Calls that finished since the activity panel was last focused. */
   unread: number;
   setServerRunning: (v: boolean) => void;
   beginCall: (name: string, args: Record<string, unknown>) => number;
@@ -89,7 +84,6 @@ export const useMcpActivityStore = create<McpActivityState>((set) => ({
   clearUnread: () => set({ unread: 0 }),
 }));
 
-/** Build a short preview string from an MCP tool result payload. */
 export function summarizeMcpResult(raw: unknown, isError?: boolean): string {
   if (raw == null) return isError ? "error" : "ok";
   if (typeof raw === "string") {

@@ -1,14 +1,6 @@
-/**
- * Tier C enabler: transform a .tex into one a tagging-capable engine (LuaLaTeX +
- * TeX Live 2025 or newer) can compile into a tagged, PDF/UA-oriented output.
- *
- * The research showed the real barrier is not writing content but the arcane
- * setup: `\DocumentMetadata` must be the literal first line, tagging and the PDF
- * standard must be switched on, `unicode-math` is mandatory, images need alt
- * text, and some packages break tagging. This automates that preparation and
- * reports exactly what it changed. Pure and idempotent, so it is fully testable
- * and safe to re-run.
- */
+// `\DocumentMetadata` must be the literal first line of the source (before
+// `\documentclass`) for LuaLaTeX tagging to pick it up; tagging/pdfstandard
+// keys and `unicode-math` are otherwise silently not applied.
 
 export interface PrepChange {
   kind: "add" | "modify" | "warn" | "info";
@@ -22,7 +14,6 @@ export interface PrepResult {
 
 const REQUIRED_META: Record<string, string> = { pdfstandard: "ua-2", tagging: "on" };
 
-/** Parse "a=1,b=2" into an ordered key list plus a map. */
 function parseKeys(body: string): { order: string[]; map: Map<string, string> } {
   const order: string[] = [];
   const map = new Map<string, string>();
@@ -48,7 +39,6 @@ export function prepareAccessibleSource(source: string, opts?: { lang?: string }
   const changes: PrepChange[] = [];
   let out = source;
 
-  // 1. \DocumentMetadata with the required tagging keys, as the first line.
   const metaRe = /\\DocumentMetadata\s*\{([^}]*)\}/;
   const existing = metaRe.exec(out);
   if (existing) {
@@ -75,7 +65,6 @@ export function prepareAccessibleSource(source: string, opts?: { lang?: string }
     changes.push({ kind: "add", summary: "Added \\DocumentMetadata as the first line (required, must precede \\documentclass)." });
   }
 
-  // 2. unicode-math (mandatory for tagged math), right after \documentclass.
   const hasUnicodeMath = /\\usepackage(?:\[[^\]]*\])?\{unicode-math\}/.test(out);
   const dc = /\\documentclass\s*(?:\[[^\]]*\])?\s*\{[^}]*\}/.exec(out);
   if (!hasUnicodeMath && dc) {
@@ -84,7 +73,6 @@ export function prepareAccessibleSource(source: string, opts?: { lang?: string }
     changes.push({ kind: "add", summary: "Added \\usepackage{unicode-math} (required for tagged output)." });
   }
 
-  // 3. alt placeholders on images that have none.
   let altAdded = 0;
   out = out.replace(/\\includegraphics\s*(?:\[([^\]]*)\])?\s*\{([^}]*)\}/g, (whole, optsGroup, file) => {
     const o = optsGroup ?? "";
@@ -100,7 +88,6 @@ export function prepareAccessibleSource(source: string, opts?: { lang?: string }
     });
   }
 
-  // 4. Warn about packages known to break tagging (do not remove them).
   if (/\\usepackage(?:\[[^\]]*\])?\{listings\}/.test(out) || /\\begin\{lstlisting\}/.test(out)) {
     changes.push({
       kind: "warn",
@@ -108,7 +95,6 @@ export function prepareAccessibleSource(source: string, opts?: { lang?: string }
     });
   }
 
-  // 5. Always remind about the engine requirement.
   changes.push({
     kind: "info",
     summary: "Tagged export needs LuaLaTeX with TeX Live 2025 or newer and OpenType fonts. Run the prepared source through that engine, then re-check the output.",

@@ -1,12 +1,5 @@
 import type { ProjectIndex, Sym } from "./types";
 
-/**
- * Derive the document outline from the project index (instead of a separate
- * walk): follow `\input`/`\include` edges from the active file, emitting
- * sections in document order, and a file entry for an include that has no
- * headings of its own. Pure over a ProjectIndex.
- */
-
 export interface OutlineItem {
   level: number;
   title: string;

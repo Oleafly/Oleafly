@@ -1,9 +1,5 @@
 import type { Finding, Severity } from "./types";
 
-/**
- * Point cost per severity, subtracted from a starting score of 100. Tunable in
- * one place. Errors dominate, info barely registers.
- */
 export const POINTS: Record<Severity, number> = {
   error: 15,
   warning: 6,
@@ -12,10 +8,6 @@ export const POINTS: Record<Severity, number> = {
 
 const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
 
-/**
- * Independent 0-100 scores per lens. A finding tagged "both" affects the ATS and
- * accessibility lenses; "ats" / "a11y" / "refs" affect only their own.
- */
 export function computeScores(findings: Finding[]): { ats: number; a11y: number; refs: number } {
   let ats = 100;
   let a11y = 100;

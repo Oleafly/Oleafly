@@ -36,7 +36,6 @@ function ColorInput({ value, onChange }: { value?: string; onChange: (v: string)
   );
 }
 
-/** A shadcn Select bound to a string value. */
 function Pick({
   value,
   onChange,
@@ -65,7 +64,6 @@ function Pick({
   );
 }
 
-/** Style controls for the currently selected node or edge. */
 export function Inspector({
   node,
   edge,

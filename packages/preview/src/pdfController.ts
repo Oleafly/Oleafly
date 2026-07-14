@@ -1,4 +1,3 @@
-/** A SyncTeX highlight rectangle in PDF bp, 1-based page number. */
 export interface SynctexRect {
   page: number;
   x: number;
@@ -7,7 +6,6 @@ export interface SynctexRect {
   height: number;
 }
 
-/** Injected diagnostics sink (the host app wires this to its error log). */
 let logMiss: (scope: string, message: string) => void = () => {};
 export function setPdfLogger(fn: (scope: string, message: string) => void) {
   logMiss = fn;
@@ -15,15 +13,15 @@ export function setPdfLogger(fn: (scope: string, message: string) => void) {
 
 interface PageEntry {
   pageNo: number;
-  /** The page's wrapper element. Always present (even before the page is
-   *  rasterized), so SyncTeX positioning works against a virtualized page. */
+  // Always present even before the page is rasterized, so SyncTeX positioning
+  // works against a virtualized page.
   el: HTMLElement;
 }
 
 let pages: PageEntry[] = [];
 let scale = 1;
-/** Ask the viewer to rasterize a page now (used by forward SyncTeX to a page
- *  that virtualization has not rendered yet). Set by the active PdfViewer. */
+// Set by the active PdfViewer; used by forward SyncTeX to force-render a page
+// that virtualization has not rendered yet.
 let ensurePageRendered: ((pageNo: number) => void) | null = null;
 
 export function registerPdfView(state: {
@@ -41,7 +39,6 @@ export function clearPdfView() {
   ensurePageRendered = null;
 }
 
-/** Forward SyncTeX: scroll the PDF to the rect's page and flash a highlight. */
 export function gotoRect(rect: SynctexRect, attempt = 0) {
   const entry = pages.find((p) => p.pageNo === rect.page);
   const wrap = entry?.el;
@@ -97,10 +94,6 @@ export function gotoRect(rect: SynctexRect, attempt = 0) {
   }, 1800);
 }
 
-/**
- * Inverse SyncTeX: given a Cmd/Ctrl-click on a page's wrapper element, compute
- * the (page, x, y) in PDF bp.
- */
 export function pageClickToBp(
   el: HTMLElement,
   pageNo: number,

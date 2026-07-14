@@ -15,7 +15,6 @@ function basename(p: string): string {
   return i >= 0 ? p.slice(i + 1) : p;
 }
 
-/** Resolve an input to a BibTeX entry (DOI/arXiv) or a list of search hits (title). */
 export async function resolveCitation(
   input: string,
 ): Promise<{ bibtex?: string; hits?: CitationHit[]; error?: string }> {
@@ -35,7 +34,6 @@ export async function resolveCitation(
   }
 }
 
-/** Canonical BibTeX for a chosen search hit (fetch by DOI, else synthesize). */
 export async function bibtexForHit(hit: CitationHit): Promise<string> {
   if (hit.doi) {
     try {
@@ -54,7 +52,6 @@ export async function bibtexForHit(hit: CitationHit): Promise<string> {
   return `@article{ref,\n${fields.join(",\n")}\n}`;
 }
 
-/** The project's target `.bib` (referenced by the main doc, else the first, else a new one). */
 function pickTargetBib(): { path: string; content: string } {
   const files = useFilesStore.getState();
   const mainContent = files.files[files.mainDoc]?.content ?? "";
@@ -71,7 +68,6 @@ function pickTargetBib(): { path: string; content: string } {
   return { path, content: files.files[path]?.content ?? "" };
 }
 
-/** Add a BibTeX entry to the project's `.bib` (deduped by DOI) and insert \cite. */
 export async function addCitation(bibtex: string): Promise<{ key: string } | { error: string }> {
   const parsed = parseEntry(bibtex);
   if (!parsed) return { error: "Could not parse the citation." };
@@ -84,7 +80,6 @@ export async function addCitation(bibtex: string): Promise<{ key: string } | { e
     content = await readFileContent(id, target.path).catch(() => "");
   }
 
-  // Deduplicate by DOI: reuse the existing key instead of adding a duplicate.
   const doi = parsed.fields.doi;
   if (doi) {
     const existing = findKeyByDoi(content, doi);

@@ -2,11 +2,7 @@ import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
 
-/**
- * Shared GitHub-flavored-markdown component map used to render assistant
- * replies and release notes with the app's own typography (instead of a raw
- * `<pre>` dump). Kept dependency-light: `react-markdown` + `remark-gfm` only.
- */
+// Kept dependency-light: `react-markdown` + `remark-gfm` only.
 export const markdownComponents: Components = {
   p: ({ children }) => <p className="mb-2 leading-relaxed last:mb-0">{children}</p>,
   ul: ({ children }) => <ul className="mb-2 ml-4 list-disc space-y-1">{children}</ul>,
@@ -51,7 +47,6 @@ export const markdownComponents: Components = {
   td: ({ children }) => <td className="border border-border px-2 py-1 align-top">{children}</td>,
 };
 
-/** Render a markdown string with the app's shared styling. */
 export function Markdown({ children, className }: { children: string; className?: string }) {
   return (
     <div className={cn("min-w-0", className)}>

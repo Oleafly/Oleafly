@@ -220,8 +220,6 @@ fn dist(n: &Node, x: f64, y: f64) -> f64 {
     (cx - x).hypot(cy - y)
 }
 
-// --- Tauri commands ---
-
 #[tauri::command]
 pub async fn synctex_forward(
     project_id: String,
@@ -282,7 +280,6 @@ mod tests {
         };
         let doc = parse(&text);
         let tag = tag_for_file(&doc, "main.tex").expect("main.tex has a synctex tag");
-        // Pick any real node belonging to main.tex.
         let node = doc
             .nodes
             .iter()

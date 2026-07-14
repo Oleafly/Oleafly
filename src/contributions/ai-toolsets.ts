@@ -1,7 +1,6 @@
 import { registerAiToolset } from "@openleaf/registry";
 import { createOpenLeafTools, createFigureTools, type ConfirmFn } from "@/lib/ai-tools";
 
-/** The AI chat toolsets shipped with the core app, selected by chat mode. */
 export function registerAiToolsets() {
   registerAiToolset({
     id: "project-tools",

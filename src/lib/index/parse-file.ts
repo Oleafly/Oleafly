@@ -1,10 +1,7 @@
 import type { FileSymbols, Sym, SymKind } from "./types";
 
-/**
- * Parse one file into its symbols. Pure and regex-based (like the rest of the
- * app; no full TeX parser). `.bib` files yield only bib entries. `macrouse` is
- * NOT resolved here (it needs the project-wide macro set); buildIndex adds it.
- */
+// `macrouse` uses are NOT resolved here; they need the project-wide macro set,
+// which buildIndex adds in a second pass.
 
 const SECTION_LEVEL: Record<string, number> = {
   part: 0,
@@ -16,7 +13,6 @@ const SECTION_LEVEL: Record<string, number> = {
   subparagraph: 6,
 };
 
-/** Blank out `%` comments (preserving length and newlines) so scans skip them. */
 export function maskComments(text: string): string {
   return text
     .split("\n")
@@ -32,18 +28,12 @@ export function maskComments(text: string): string {
     .join("\n");
 }
 
-/**
- * Given the index of an opening `{` in `text`, return the index of its matching
- * `}`, accounting for nested braces and backslash-escaped braces. Returns -1 if
- * unbalanced. Used so section titles like `\section{Intro to \texttt{x}}` are
- * captured whole instead of truncating at the first inner `}`.
- */
 function matchBrace(text: string, openIdx: number): number {
   let depth = 0;
   for (let i = openIdx; i < text.length; i++) {
     const c = text[i];
     if (c === "\\") {
-      i++; // skip the escaped character
+      i++;
       continue;
     }
     if (c === "{") depth++;
@@ -60,7 +50,6 @@ function dirname(p: string): string {
   return i >= 0 ? p.slice(0, i) : "";
 }
 
-/** Resolve an \input/\include target the way LaTeX does (default .tex). */
 function joinInput(dir: string, rel: string): string {
   let r = rel.replace(/^\.\//, "").trim();
   if (r.startsWith("/")) r = r.slice(1);
@@ -100,7 +89,6 @@ export function parseFile(path: string, rawText: string): FileSymbols {
     arr.push({ kind, name, file: path, line: lineAt(from), from, to, nameFrom, nameTo, ...extra });
   };
 
-  // .bib files: only entries.
   if (path.endsWith(".bib")) {
     const re = /@(\w+)\s*\{\s*([^,\s}]+)/g;
     let m: RegExpExecArray | null;
@@ -122,7 +110,7 @@ export function parseFile(path: string, rawText: string): FileSymbols {
   // nested braces (e.g. `\section{Intro to \texttt{x}}`) are captured whole.
   const sec = /\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\*?\s*\{/g;
   while ((m = sec.exec(text))) {
-    const open = m.index + m[0].length - 1; // index of the `{`
+    const open = m.index + m[0].length - 1;
     const close = matchBrace(text, open);
     if (close < 0) continue;
     const inner = text.slice(open + 1, close);
@@ -133,7 +121,6 @@ export function parseFile(path: string, rawText: string): FileSymbols {
     sec.lastIndex = close + 1; // resume scanning after this section's title
   }
 
-  // \label.
   const label = /\\label\s*\{([^}]*)\}/g;
   while ((m = label.exec(text))) {
     const start = m.index + m[0].lastIndexOf("{") + 1;
@@ -146,20 +133,18 @@ export function parseFile(path: string, rawText: string): FileSymbols {
     const nameStart = m.index + m[0].lastIndexOf("\\" + m[1]) + 1;
     push(defs, "macro", m[1], m.index, m.index + m[0].length, nameStart, nameStart + m[1].length);
   }
-  // \def\foo
   const def = /\\def\s*\\([a-zA-Z@]+)/g;
   while ((m = def.exec(text))) {
     const nameStart = m.index + m[0].lastIndexOf("\\" + m[1]) + 1;
     push(defs, "macro", m[1], m.index, m.index + m[0].length, nameStart, nameStart + m[1].length);
   }
-  // \DeclareMathOperator{\foo}
   const dmo = /\\DeclareMathOperator\*?\s*\{\s*\\([a-zA-Z@]+)/g;
   while ((m = dmo.exec(text))) {
     const nameStart = m.index + m[0].lastIndexOf("\\" + m[1]) + 1;
     push(defs, "macro", m[1], m.index, m.index + m[0].length, nameStart, nameStart + m[1].length);
   }
 
-  // \newtheorem, \newenvironment, glossary entries, and \bibitem (inline bibs).
+  // \bibitem is treated as an inline bib entry.
   const braceDef: [RegExp, SymKind][] = [
     [/\\newtheorem\*?\s*\{([^}]*)\}/g, "theorem"],
     [/\\(?:newenvironment|renewenvironment)\s*\{([^}]*)\}/g, "environment"],
@@ -197,7 +182,6 @@ export function parseFile(path: string, rawText: string): FileSymbols {
   const cite = /\\(?:cite|citep|citet|citeauthor|citeyear|citealt|parencite|textcite|autocite|nocite)\*?\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}/g;
   while ((m = cite.exec(text))) pushKeys(m[0], m.index, m[1], "cite");
 
-  // Single-key uses.
   const gls = /\\(?:gls|Gls|GLS|glspl|Glspl|acrshort|acrlong|acrfull|acs|acl|ac)\s*\{([^}]*)\}/g;
   while ((m = gls.exec(text))) {
     const start = m.index + m[0].lastIndexOf("{") + 1;

@@ -26,8 +26,8 @@ function basename(p: string) {
 
 type Mode = "all" | "projects" | "docs" | "refs" | "create" | "theme" | "settings" | "help";
 
-// Slash commands and their aliases. `/create`, `/theme`, `/settings` are actions
-// (Enter runs them); `/projects`, `/docs`, `/refs` scope the search.
+// `/create`, `/theme`, `/settings` run immediately on Enter; `/projects`,
+// `/docs`, `/refs` scope the search instead.
 const SLASH: { keys: string[]; mode: Mode; hint: string }[] = [
   { keys: ["create", "new"], mode: "create", hint: "open the template gallery" },
   { keys: ["projects", "p"], mode: "projects", hint: "search your projects" },
@@ -67,12 +67,10 @@ export function SearchOmnibar() {
   const { mode, term } = useMemo(() => parse(query), [query]);
   const trimmed = term.trim();
 
-  // Make sure the project list is fresh whenever the omnibar opens.
   useEffect(() => {
     if (open) void refreshProjects().catch(() => {});
   }, [open, refreshProjects]);
 
-  // Document text search (backend), for the "all" and "docs" scopes only.
   useEffect(() => {
     const wantDocs = mode === "all" || mode === "docs";
     if (!wantDocs || !trimmed) {
@@ -92,7 +90,6 @@ export function SearchOmnibar() {
     return () => clearTimeout(t);
   }, [trimmed, mode]);
 
-  // ⌘/Ctrl + Shift + F toggles the omnibar.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "f") {
@@ -117,7 +114,6 @@ export function SearchOmnibar() {
     return list.slice(0, mode === "projects" ? 30 : 6);
   }, [projects, trimmed, mode]);
 
-  // Top-level registered commands, filtered by the typed term in the default scope.
   const commands = useMemo(() => {
     const ctx: AppContext = { projectId, projectKind, theme };
     const all = commandsFor("omnibar", ctx).map((c) => ({
@@ -178,7 +174,6 @@ export function SearchOmnibar() {
         </div>
 
         <Command.List className="max-h-[min(60vh,440px)] overflow-auto p-1.5">
-          {/* Immediate actions for action slash-commands. */}
           {mode === "create" && (
             <Group heading="Action">
               <Row
@@ -224,7 +219,6 @@ export function SearchOmnibar() {
             </Group>
           )}
 
-          {/* Commands (default scope). */}
           {commands.length > 0 && (
             <Group heading="Commands">
               {commands.map((c) => (
@@ -238,7 +232,6 @@ export function SearchOmnibar() {
             </Group>
           )}
 
-          {/* Projects, shown before document matches. */}
           {matchedProjects.length > 0 && (
             <Group heading="Projects">
               {matchedProjects.map((p) => (
@@ -253,7 +246,6 @@ export function SearchOmnibar() {
             </Group>
           )}
 
-          {/* Document text matches. */}
           {(mode === "all" || mode === "docs") && hits.length > 0 && (
             <Group heading="Documents">
               {hits.map((hit, i) => (
@@ -276,7 +268,6 @@ export function SearchOmnibar() {
             </Group>
           )}
 
-          {/* Empty / help states. */}
           {mode === "help" && (
             <Hint>Unknown command. Try /create, /projects, /docs, /refs, /theme, or /settings.</Hint>
           )}

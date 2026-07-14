@@ -6,22 +6,16 @@ import { editorTheme } from "../cm/theme";
 import { languageForPath } from "../cm/languages";
 import { cn } from "@/lib/utils";
 
-/** Above this size (per side) we skip the merge view — it isn't worth the jank. */
+// Above this size (per side) we skip the merge view — it isn't worth the jank.
 const MAX = 400_000;
 
-/**
- * A compact, read-only red/green diff of two in-memory strings, rendered with
- * `@codemirror/merge`'s unified view (single column — deletions in red, additions
- * in green). Unlike `DiffView` this has no git or store coupling: give it the old
- * and new text and it renders. Used to preview an AI agent's proposed file edit
- * before the user approves it.
- */
+// Unlike `DiffView`, has no git/store coupling — pass old/new text directly.
 export function InlineDiffPreview({
   path,
   oldText,
   newText,
   className,
-  /** 1-based line in the new text to scroll into view after mount (fallback if chunks missing). */
+  // 1-based; fallback scroll target if merge chunks aren't available yet.
   scrollToLine,
 }: {
   path: string;
@@ -71,7 +65,6 @@ export function InlineDiffPreview({
     });
 
     const scrollToChange = () => {
-      // Prefer the first merge chunk (true changed region in the new doc).
       const chunks = getChunks(view.state)?.chunks;
       let pos: number | null = null;
       if (chunks && chunks.length > 0) {

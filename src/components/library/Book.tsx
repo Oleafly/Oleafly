@@ -11,10 +11,8 @@ export const BOOK_PALETTE = [
   "#a3c4f3", "#90dbf4", "#8eecf5", "#98f5e1", "#b9fbc0",
 ];
 
-/** Swatches shown in the color picker (default mac blue first, then pastels). */
 export const BOOK_SWATCHES = [DEFAULT_BOOK_COLOR, ...BOOK_PALETTE];
 
-/** Named color options for the "Change book color" submenu. */
 export const BOOK_COLOR_OPTIONS: { name: string; hex: string }[] = [
   { name: "Blue", hex: "#1982c4" },
   { name: "Cream", hex: "#fbf8cc" },
@@ -140,7 +138,6 @@ export function Book({
 
             {illustration}
 
-            {/* content: title + date at the bottom */}
             <div className="relative z-10 flex flex-1 flex-col justify-end p-3">
               <span className="line-clamp-3 text-[13px] font-semibold leading-snug" style={{ color: ink }}>
                 {title}
@@ -158,7 +155,6 @@ export function Book({
               </div>
             )}
 
-            {/* favorite star */}
             {onStarToggle && (
               <button
                 type="button"
