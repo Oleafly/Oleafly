@@ -1,5 +1,6 @@
 /** Shared helpers for driving the real app. All of these operate on the live
  *  webview; nothing is mocked. */
+import { expect } from "./fixtures";
 
 // The plugin's page handle (structural: only what the helpers need).
 export interface Page {
@@ -313,14 +314,43 @@ export async function ensureAiConnected(page: Page) {
 
 /** Open the settings modal (rail gear) at a section. */
 export async function openSettings(page: Page, section?: string) {
+  // The settings modal is lazy-loaded. Wait for its always-present appearance
+  // nav via the locator-assertion path (tauriExpect), NOT waitForFunction: the
+  // bridge's eval intermittently hangs for its full timeout right after the
+  // settings modal opens deep in a long session (this is what previously forced
+  // the agent-tools test to test.fixme). If the settings-button click missed and
+  // the modal never opened, reset and re-open once.
+  const appearance = page.locator(
+    '[data-testid="settings-section-appearance"]',
+  ) as unknown as Parameters<typeof expect>[0];
   await page.click('[aria-label="Settings"]');
-  // The settings modal is lazy-loaded (the appearance nav is always present once
-  // it mounts). Wait for it before touching a section.
-  await page.waitForFunction(
-    `!!document.querySelector('[data-testid="settings-section-appearance"]')`,
-    10_000,
-  );
-  if (section) await page.click(`[data-testid="settings-section-${section}"]`);
+  const mounted = await expect(appearance)
+    .toBeVisible({ timeout: 8_000 })
+    .then(() => true)
+    .catch(() => false);
+  if (!mounted) {
+    await page.press("body", "Escape").catch(() => {});
+    await page.click('[aria-label="Settings"]').catch(() => {});
+    await expect(appearance).toBeVisible({ timeout: 8_000 });
+  }
+  if (section) {
+    const sel = `[data-testid="settings-section-${section}"]`;
+    // Verify the section actually activated (the nav button gets
+    // aria-current="page"); the section click can miss through the bridge, and
+    // an un-navigated modal leaves the wrong panel showing. Retry once.
+    const active = page.locator(`${sel}[aria-current="page"]`) as unknown as Parameters<
+      typeof expect
+    >[0];
+    await page.click(sel);
+    const navigated = await expect(active)
+      .toBeVisible({ timeout: 5_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!navigated) {
+      await page.click(sel).catch(() => {});
+      await expect(active).toBeVisible({ timeout: 5_000 });
+    }
+  }
 }
 
 /** All command-palette item labels currently rendered. */

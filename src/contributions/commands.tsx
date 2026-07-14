@@ -18,6 +18,7 @@ import {
   Sun,
   Table,
   Tag,
+  Trash2,
   Workflow,
   Zap,
 } from "lucide-react";
@@ -25,6 +26,7 @@ import { registerCommand, type AppContext } from "@openleaf/registry";
 import { useSettingsStore } from "@/store/settings";
 import { useCompileStore } from "@/store/compile";
 import { useCitationStore } from "@/store/citation";
+import { clearBuildCache } from "@/lib/tauri";
 import { insertAtCursor, wrapSelection } from "@/components/editor/cm/controller";
 import { forwardFromCursor } from "@/features/synctex";
 import { exportCurrentPdf } from "@/features/export";
@@ -146,6 +148,27 @@ export function registerPaletteCommands() {
     icon: () => <Download className="size-4" />,
     order: 230,
     run: () => void exportCurrentPdf(),
+  });
+  palette({
+    id: "palette.clear-cache",
+    group: "Compile",
+    label: "Clear build cache & recompile",
+    keywords: "clear build cache clean rebuild stale reset aux",
+    icon: () => <Trash2 className="size-4" />,
+    order: 240,
+    when: (ctx) => !!ctx.projectId,
+    run: (ctx) => {
+      const pid = ctx.projectId;
+      if (!pid) return;
+      void (async () => {
+        try {
+          await clearBuildCache(pid);
+        } catch {
+          /* best effort: fall through to a normal recompile */
+        }
+        await useCompileStore.getState().recompile();
+      })();
+    },
   });
 
   palette({

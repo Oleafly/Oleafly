@@ -11,6 +11,6 @@
     "./pdf-extract": "./src/pdf-extract.ts"
   },
   "dependencies": {
-    "pdfjs-dist": "*"
+    "pdfjs-dist": "^6.1.200"
   }
 }

@@ -13,3 +13,4 @@ export {
   type ToolApprovalRequest,
   type ConfirmFn,
 } from "./tools";
+export { pickPagesToVerify } from "./pick-pages";

@@ -7,6 +7,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LogPane } from "@/components/editor/LogPane";
 import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
+import { usePdfViewStore } from "@/store/pdf-view";
 import { inverseFromClick } from "@/features/synctex";
 import { saveFileBase64, uint8ToBase64 } from "@/lib/tauri";
 import { openPreviewWindow } from "@/lib/preview-window";
@@ -282,7 +283,7 @@ export function PreviewPane() {
                     size="icon"
                     className="size-7"
                     disabled={page <= 1}
-                    onClick={() => pdfRef.current?.gotoPage(page - 1)}
+                    onClick={() => pdfRef.current?.gotoPage(page - (layout === "double" ? 2 : 1))}
                     aria-label="Previous page"
                   >
                     <ChevronUp className="size-3.5" />
@@ -311,7 +312,7 @@ export function PreviewPane() {
                     size="icon"
                     className="size-7"
                     disabled={page >= numPages}
-                    onClick={() => pdfRef.current?.gotoPage(page + 1)}
+                    onClick={() => pdfRef.current?.gotoPage(page + (layout === "double" ? 2 : 1))}
                     aria-label="Next page"
                   >
                     <ChevronDown className="size-3.5" />
@@ -438,10 +439,12 @@ export function PreviewPane() {
                 data={pdfBytes}
                 scale={scale}
                 layout={layout}
+                expectText={!isImage}
                 onInverse={inverseFromClick}
                 onPageChange={(current, total) => {
                   setPage(current);
                   setNumPages(total);
+                  usePdfViewStore.getState().setPage(current);
                 }}
               />
             </ErrorBoundary>
