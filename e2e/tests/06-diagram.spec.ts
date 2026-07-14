@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures";
-import { openProject } from "../helpers";
+import { openProject, expectPdfRendered } from "../helpers";
 
 test("diagram composer compiles the starter drawing to a preview", async ({ tauriPage }) => {
   test.setTimeout(360_000);
@@ -12,7 +12,7 @@ test("diagram composer compiles the starter drawing to a preview", async ({ taur
   await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok", {
     timeout: 180_000,
   });
-  await expect(tauriPage.locator(".pdf-canvas")).toBeVisible({ timeout: 120_000 });
+  await expectPdfRendered(tauriPage, 120_000);
 
   await tauriPage.click('[aria-label="Insert diagram"]');
   await expect(tauriPage.locator('[role="dialog"][aria-label="Insert diagram"]')).toBeVisible();

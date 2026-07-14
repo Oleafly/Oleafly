@@ -136,6 +136,20 @@ export async function waitLong(page: Page, expression: string, timeoutMs: number
   }
 }
 
+// pdf.js renders each page into a `.pdf-canvas` sized to the page (canvas.width =
+// viewport.width * dpr), so a non-zero-sized canvas means pdf.js actually drew a
+// page. That is the real signal, unlike Playwright's toBeVisible(), which also
+// needs the webview to lay out and COMPOSITE the canvas - which headless CI
+// WKWebView/WebView2 skip for the occluded window. Uses waitLong (client-side
+// poll) because the bridge's waitForFunction caps at ~30s.
+export async function expectPdfRendered(page: Page, timeoutMs = 120_000) {
+  await waitLong(
+    page,
+    `(() => { const c = document.querySelector('.pdf-canvas'); return !!c && c.width > 0 && c.height > 0; })()`,
+    timeoutMs,
+  );
+}
+
 // Conversations persist across panel remounts by design, so tests that
 // assert on a fresh reply must begin with a real New-chat click or a
 // restored transcript can satisfy their waits.
