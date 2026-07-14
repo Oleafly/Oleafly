@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures";
-import { typeInEditorAfter, openProject } from "../helpers";
+import { typeInEditorAfter, openProject, expectPdfRendered } from "../helpers";
 
 test("typed text appears in the compiled PDF", async ({ tauriPage }) => {
   test.setTimeout(240_000);
@@ -10,6 +10,6 @@ test("typed text appears in the compiled PDF", async ({ tauriPage }) => {
   await expect(tauriPage.locator(".cm-content")).toContainText("E2EMARKER");
   await expect(tauriPage.locator('[aria-label="Recompile"]')).toBeEnabled({ timeout: 120_000 });
   await tauriPage.click('[aria-label="Recompile"]');
-  await expect(tauriPage.locator(".pdf-canvas")).toBeVisible({ timeout: 90_000 });
+  await expectPdfRendered(tauriPage, 90_000);
   await expect(tauriPage.locator(".textLayer")).toContainText("E2EMARKER", { timeout: 30_000 });
 });
