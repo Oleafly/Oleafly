@@ -19,6 +19,7 @@ import {
   readProjectBytes,
   writeProjectBytes,
   getConfig,
+  setConfig,
 } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
@@ -149,6 +150,30 @@ export function initAiPdfCaptureFlag(): void {
       }
     })
     .catch(() => {});
+}
+
+// E2E devtools hook (same family as the other window.__* hooks): connect an AI
+// provider by writing config directly. It stands in for a user connecting a
+// provider in Settings so provider-backed flows (streaming, tool calls, usage,
+// the chat handoff) can run in CI against a local fake OpenAI-compatible
+// endpoint (see e2e/mock-ai-server.ts). Only DEFINES the function at import; the
+// IPC runs when it is invoked, so this is safe as a module side effect.
+if (typeof window !== "undefined") {
+  (
+    window as unknown as {
+      __aiConnect?: (provider: string, host: string, model: string) => Promise<boolean>;
+    }
+  ).__aiConnect = async (provider, host, model) => {
+    const cfg = await getConfig();
+    await setConfig({
+      ...cfg,
+      ai_provider: provider,
+      ai_keys: { ...cfg.ai_keys, [provider]: host },
+      ai_model: model,
+    });
+    window.dispatchEvent(new CustomEvent("openleaf:ai-config-changed"));
+    return true;
+  };
 }
 
 /** The general project toolset, bound to the app services. */
