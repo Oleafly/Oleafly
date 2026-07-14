@@ -70,6 +70,7 @@ function createWindowsTcpTest() {
       const ping = await client.send({ type: "ping" });
       if (!ping.ok) throw new Error("plugin ping failed over tcp");
       const page = new TauriPage(client);
+      page.setDefaultTimeout(20_000);
       await page.evaluate(`window.location.href = ${JSON.stringify(DEV_URL)}`);
       await new Promise((r) => setTimeout(r, 500));
       await page.waitForFunction('document.readyState === "complete" && !!window.__PW_ACTIVE__');
@@ -93,3 +94,10 @@ export const { test, expect } =
         devUrl: DEV_URL,
         mcpSocket: process.env.TAURI_PLAYWRIGHT_SOCKET ?? "/tmp/tauri-playwright.sock",
       });
+
+// The bridge's per-command default is 5s, which a loaded CI runner routinely
+// blows on an otherwise-fine fill/click/waitForFunction, so a different test
+// flakes each run. Raise it so transient load can't fail a healthy command.
+test.beforeEach(async ({ tauriPage }) => {
+  tauriPage.setDefaultTimeout(20_000);
+});
