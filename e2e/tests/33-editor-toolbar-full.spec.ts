@@ -31,7 +31,7 @@ const editorHas = (page: Page, needle: string) =>
 
 test("italic, link, and cross-reference buttons insert LaTeX", async ({ tauriPage }) => {
   await openScratchProject(tauriPage);
-  await tauriPage.click('[aria-label="Italic (⌘I)"]');
+  await tauriPage.click('[aria-label^="Italic ("]');
   await editorHas(tauriPage, "\\textit{");
   await tauriPage.click('[aria-label="Insert link"]');
   await editorHas(tauriPage, "\\href{");
@@ -68,18 +68,18 @@ test("both list kinds insert their environments", async ({ tauriPage }) => {
 
 test("the find button opens the editor search panel", async ({ tauriPage }) => {
   await openScratchProject(tauriPage);
-  await tauriPage.click('[aria-label="Find (⌘F)"]');
+  await tauriPage.click('[aria-label^="Find ("]');
   await expect(tauriPage.locator(".cm-vs-search")).toBeVisible({ timeout: 5_000 });
 });
 
 test("non-tex files get no formatting toolbar; txt files edit fine", async ({ tauriPage }) => {
   await openScratchProject(tauriPage);
-  await expect(tauriPage.locator('[aria-label="Bold (⌘B)"]')).toBeVisible();
+  await expect(tauriPage.locator('[aria-label^="Bold ("]')).toBeVisible();
 
   await openRailTab(tauriPage, "Source Tree");
   await tauriPage.getByText("project.json", { exact: true }).click();
   await tauriPage.waitForFunction(
-    `!document.querySelector('[aria-label="Bold (⌘B)"]')`,
+    `!document.querySelector('[aria-label^="Bold ("]')`,
     5_000,
   );
   await expect(tauriPage.locator(".cm-content")).toContainText("name");
@@ -91,7 +91,7 @@ test("non-tex files get no formatting toolbar; txt files edit fine", async ({ ta
   await typeInEditorAtStart(tauriPage, "plain text survives");
   await expect(tauriPage.locator(".cm-content")).toContainText("plain text survives");
   await tauriPage.waitForFunction(
-    `!document.querySelector('[aria-label="Bold (⌘B)"]')`,
+    `!document.querySelector('[aria-label^="Bold ("]')`,
     5_000,
   );
 });

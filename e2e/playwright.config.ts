@@ -22,7 +22,10 @@ try {
 //   pnpm test:e2e
 export default defineConfig({
   testDir: "./tests",
-  timeout: 60_000,
+  // Compile+render tests can legitimately need a couple of minutes on a loaded
+  // CI runner (real Tauri app, Tectonic compile, pdf.js render), so the per-test
+  // cap has to clear that. Tests still set their own longer setTimeout as needed.
+  timeout: 240_000,
   // One retry absorbs machine-load flake (slow first compiles, WASM warmup);
   // consistent double failures still fail the run.
   retries: 1,
@@ -30,6 +33,9 @@ export default defineConfig({
   workers: 1,
   fullyParallel: false,
   reporter: [["list"]],
+  // Trace on failure is small and debuggable; video is off (the driver's macOS
+  // screencast bloated failure artifacts to hundreds of MB and ate runner disk).
+  use: { trace: "retain-on-failure", video: "off", screenshot: "only-on-failure" },
   projects: [
     {
       name: "tauri",
