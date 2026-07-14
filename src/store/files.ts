@@ -5,6 +5,7 @@ import {
   createProject as apiCreateProject,
   createProjectFromTemplate as apiCreateFromTemplate,
   deleteFile as apiDeleteFile,
+  gitLog,
   gitRestore,
   getProject,
   listFiles,
@@ -488,4 +489,19 @@ function flushPendingSaves() {
 if (typeof window !== "undefined") {
   window.addEventListener("pagehide", flushPendingSaves);
   window.addEventListener("beforeunload", flushPendingSaves);
+
+  // E2E / devtools (same family as the other window.__* hooks): read-only count
+  // of the current project's git commits, so a test can wait for a fire-and-
+  // forget auto-commit to actually land without opening the History modal
+  // (opening a modal between two editor edits can swallow the second edit).
+  (window as unknown as { __gitCommitCount?: () => Promise<number> }).__gitCommitCount =
+    async () => {
+      const id = useFilesStore.getState().projectId;
+      if (!id) return 0;
+      try {
+        return (await gitLog(id)).length;
+      } catch {
+        return 0;
+      }
+    };
 }

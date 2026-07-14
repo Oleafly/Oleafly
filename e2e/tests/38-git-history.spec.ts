@@ -68,6 +68,22 @@ async function waitForRestoreButtons(page: Page, atLeast: number) {
     .toBeGreaterThanOrEqual(atLeast);
 }
 
+/** Wait until at least `atLeast` auto-commits have actually landed in the current
+ *  project. The compile auto-commit is fire-and-forget (kicked off after the
+ *  compile status flips to ok), so it can run late; if the next edit is saved to
+ *  disk before it runs, `git add -A` folds both edits into a single commit and one
+ *  snapshot is lost. This reads the count via the __gitCommitCount devtools hook
+ *  (no UI) so it does NOT open any modal between the two editor edits, which would
+ *  swallow the second edit. */
+async function waitForCommitsLanded(page: Page, atLeast: number) {
+  await expect
+    .poll(
+      () => page.evaluate<number>(`window.__gitCommitCount?.() ?? Promise.resolve(0)`),
+      { timeout: 30_000 },
+    )
+    .toBeGreaterThanOrEqual(atLeast);
+}
+
 test("auto-commit history: restore rolls the document back and forward (no token)", async ({
   tauriPage,
 }) => {
@@ -84,13 +100,16 @@ test("auto-commit history: restore rolls the document back and forward (no token
   // compiles free of any modal interaction so each edit persists cleanly.
   await typeInEditorAfter(tauriPage, "here.", ` ${BASE}`);
   await compileOk(tauriPage);
-  // Small settle so commit 1 lands before the next edit (immediate, not debounced).
-  await new Promise((r) => setTimeout(r, 1_500));
+  // Wait for commit 1 to actually land before editing again. The auto-commit is
+  // fire-and-forget after the compile status flips to ok, so a fixed settle
+  // races it: if the EDIT reaches disk first, `git add -A` folds both edits into
+  // one commit and a snapshot is lost.
+  await waitForCommitsLanded(tauriPage, 1);
 
   await typeInEditorAfter(tauriPage, BASE, ` ${EDIT}`);
   await compileOk(tauriPage);
-
-  // Both auto-commits should now be in History.
+  // Wait for the second auto-commit to land (fire-and-forget), then open History.
+  await waitForCommitsLanded(tauriPage, 2);
   await waitForRestoreButtons(tauriPage, 2);
 
   // History is open with >= 2 commits. Restore the OLDEST (last button): the edit
