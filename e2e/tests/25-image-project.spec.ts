@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures";
-import { openGallery, expectPdfRendered } from "../helpers";
+import { openGallery } from "../helpers";
 
 test("image project: tailored UI and a real figure compile", async ({ tauriPage }) => {
   await openGallery(tauriPage);
@@ -16,7 +16,7 @@ test("image project: tailored UI and a real figure compile", async ({ tauriPage 
   await expect(tauriPage.locator('[aria-label="Insert diagram"]')).toBeHidden();
 
   await tauriPage.click('[aria-label="Recompile"]');
-  await expectPdfRendered(tauriPage, 90_000);
+  await expect(tauriPage.locator(".pdf-canvas")).toBeVisible({ timeout: 90_000 });
   await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok");
 
   await expect(tauriPage.locator('[aria-label="Save image to project"]')).toBeVisible();

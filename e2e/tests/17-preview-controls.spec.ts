@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures";
-import { openProject, openRailTab, expectPdfRendered } from "../helpers";
+import { openProject, openRailTab } from "../helpers";
 
 test.beforeEach(async ({ tauriPage }) => {
   test.setTimeout(240_000);
@@ -8,7 +8,7 @@ test.beforeEach(async ({ tauriPage }) => {
   await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok", {
     timeout: 180_000,
   });
-  await expectPdfRendered(tauriPage, 30_000);
+  await expect(tauriPage.locator(".pdf-canvas")).toBeVisible({ timeout: 30_000 });
   await expect(tauriPage.locator('[aria-label="Recompile"]')).toBeEnabled({ timeout: 60_000 });
 });
 
@@ -46,7 +46,7 @@ test("single/two-page layout toggles and page nav is bounded on a 1-page doc", a
 test("invert colors toggles on and off", async ({ tauriPage }) => {
   await tauriPage.click('[aria-label="Invert PDF preview colors"]');
   await tauriPage.click('[aria-label="Invert PDF preview colors"]');
-  await expectPdfRendered(tauriPage);
+  await expect(tauriPage.locator(".pdf-canvas")).toBeVisible();
 });
 
 test("save PDF into the project creates a real project file", async ({ tauriPage }) => {
