@@ -1,6 +1,6 @@
 [package]
 name = "openleaf"
-version = "0.2.3"
+version = "0.2.4"
 description = "OpenLeaf - local-first LaTeX & resume authoring"
 authors = ["Prajwal S Venkateshmurthy and contributors"]
 license = "AGPL-3.0-or-later"
