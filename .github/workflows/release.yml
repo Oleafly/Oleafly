@@ -48,7 +48,7 @@ jobs:
             args: ""
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install Linux system dependencies (Tauri)
         if: matrix.os == 'ubuntu-22.04'
@@ -65,10 +65,10 @@ jobs:
 
       - name: Install pnpm
         # Version comes from the `packageManager` field in package.json.
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
 
       - name: Install Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           # pnpm 11 requires Node >= 22.13 (see package.json `packageManager`).
           node-version: 22
@@ -132,7 +132,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Build & release
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Signs the updater artifacts and generates `latest.json`. Set these

@@ -29,16 +29,16 @@ jobs:
     name: Frontend (typecheck + build)
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install pnpm
         # Version comes from the `packageManager` field in package.json, so CI
         # matches local + the lockfile generator. (pnpm 9 mis-parses the
         # settings-only pnpm-workspace.yaml as an empty workspace.)
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
 
       - name: Install Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           # pnpm 11 requires Node >= 22.13; keep this at 22+ (see package.json
           # `packageManager`). Node 20 crashes pnpm's `store path` lookup.
@@ -66,7 +66,7 @@ jobs:
     name: Rust (test + clippy)
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install Linux system dependencies (Tauri)
         run: |
@@ -94,7 +94,7 @@ jobs:
       # the host target, so fetch it before compiling. Cached across runs.
       - name: Cache Tectonic sidecar
         id: cache-tectonic
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: src-tauri/binaries/tectonic-*
           key: tectonic-${{ runner.os }}-${{ hashFiles('scripts/fetch-tectonic.sh') }}
@@ -121,7 +121,7 @@ jobs:
     name: Rust (cargo-deny audit)
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Run cargo-deny
         uses: EmbarkStudios/cargo-deny-action@v2
@@ -141,13 +141,13 @@ jobs:
     # macOS minutes timing out 118 tests one by one.
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
 
       - name: Install Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: pnpm
@@ -165,7 +165,7 @@ jobs:
 
       - name: Cache Tectonic sidecar
         id: cache-tectonic-e2e
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: src-tauri/binaries/tectonic-*
           key: tectonic-${{ runner.os }}-${{ hashFiles('scripts/fetch-tectonic.sh') }}
@@ -181,7 +181,7 @@ jobs:
       # bundled template directly with the sidecar, and save BEFORE the suite.
       - name: Restore Tectonic packages
         id: tectonic-pkgs
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: ~/Library/Caches/Tectonic
           key: tectonic-pkgs-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
@@ -198,7 +198,7 @@ jobs:
 
       - name: Save Tectonic packages
         if: steps.tectonic-pkgs.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: ~/Library/Caches/Tectonic
           key: tectonic-pkgs-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
@@ -214,7 +214,7 @@ jobs:
 
       - name: Upload failure artifacts
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-test-results-macos
           path: test-results/
@@ -229,13 +229,13 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
 
       - name: Install Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: pnpm
@@ -266,7 +266,7 @@ jobs:
 
       - name: Cache Tectonic sidecar
         id: cache-tectonic-e2e-linux
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: src-tauri/binaries/tectonic-*
           key: tectonic-${{ runner.os }}-${{ hashFiles('scripts/fetch-tectonic.sh') }}
@@ -277,7 +277,7 @@ jobs:
 
       - name: Restore Tectonic packages
         id: tectonic-pkgs-linux
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: ~/.cache/Tectonic
           key: tectonic-pkgs-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
@@ -294,7 +294,7 @@ jobs:
 
       - name: Save Tectonic packages
         if: steps.tectonic-pkgs-linux.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: ~/.cache/Tectonic
           key: tectonic-pkgs-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
@@ -312,7 +312,7 @@ jobs:
 
       - name: Upload failure artifacts
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-test-results-linux
           path: test-results/
@@ -326,13 +326,13 @@ jobs:
     runs-on: windows-2022
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
 
       - name: Install Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: pnpm
@@ -350,7 +350,7 @@ jobs:
 
       - name: Cache Tectonic sidecar
         id: cache-tectonic-e2e-windows
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: src-tauri/binaries/tectonic-*
           key: tectonic-${{ runner.os }}-${{ hashFiles('scripts/fetch-tectonic.sh') }}
@@ -362,7 +362,7 @@ jobs:
 
       - name: Restore Tectonic packages
         id: tectonic-pkgs-windows
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: ~\AppData\Local\TectonicProject
           key: tectonic-pkgs-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
@@ -380,7 +380,7 @@ jobs:
 
       - name: Save Tectonic packages
         if: steps.tectonic-pkgs-windows.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: ~\AppData\Local\TectonicProject
           key: tectonic-pkgs-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
@@ -394,7 +394,7 @@ jobs:
 
       - name: Upload failure artifacts
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-test-results-windows
           path: test-results/
