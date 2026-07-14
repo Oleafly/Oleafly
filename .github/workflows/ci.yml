@@ -18,6 +18,8 @@ on:
       - "docs/**"
       - "docsite/**"
       - ".github/badges/**"
+  # Manual trigger for the on-demand macOS/Windows e2e jobs (see their `if:`).
+  workflow_dispatch:
 
 # Cancel superseded runs on the same ref (e.g. rapid pushes to a PR).
 concurrency:
@@ -135,12 +137,13 @@ jobs:
     # automatically when their E2E_* env vars are absent, so CI runs the ungated
     # tests.
     #
-    # Non-blocking: pdf.js does not composite its canvas in the headless CI
-    # WKWebView (the window is occluded, so rendering is throttled), so the
-    # PDF-preview tests fail here even though every other UI test passes and the
-    # same suite is green on Linux (xvfb) and locally. Keep the job running for
-    # signal, but do not let this environment limitation gate the branch.
-    continue-on-error: true
+    # On-demand only (Actions -> CI -> Run workflow): pdf.js does not composite
+    # its canvas in the headless CI WKWebView (the window is occluded, so
+    # rendering is throttled), so the PDF-preview tests fail here even though
+    # every other UI test passes and the same suite is green on Linux (xvfb) and
+    # locally. Running it per-push would surface a permanently-red check, so it
+    # is gated to manual dispatch rather than gating (or cluttering) the branch.
+    if: github.event_name == 'workflow_dispatch'
     name: E2E (real app, macOS)
     runs-on: macos-14
     # Hard ceiling well under the job cap: a systemically broken environment
@@ -329,10 +332,11 @@ jobs:
     # serves TCP there (no unix sockets); e2e/fixtures.ts connects over TCP
     # via its own fixture, and scripts/e2e.ps1 is the launcher.
     #
-    # Non-blocking for the same reason as macOS: pdf.js does not composite its
-    # canvas in the headless CI WebView2, so the PDF-preview tests fail here
-    # while the suite is green on Linux and locally. Keep for signal, don't gate.
-    continue-on-error: true
+    # On-demand only, same reason as macOS: pdf.js does not composite its canvas
+    # in the headless CI WebView2, so the PDF-preview tests fail here while the
+    # suite is green on Linux and locally. Gated to manual dispatch so it never
+    # surfaces a permanently-red check on a commit.
+    if: github.event_name == 'workflow_dispatch'
     name: E2E (real app, Windows)
     runs-on: windows-2022
     timeout-minutes: 90
