@@ -1,5 +1,6 @@
 import { jsonSchema } from "ai";
 import { buildStandaloneDoc, slugifyFigureName, bytesToBase64 } from "@openleaf/latex";
+import { pickPagesToVerify } from "./pick-pages";
 
 /** A definition in the project's symbol index (structural view). */
 export interface IndexDefView {
@@ -57,6 +58,9 @@ export interface AiToolsHost {
   getCompileLog(): string | null;
   getPdfBytes(): Uint8Array | null;
   extractPdfText(bytes: Uint8Array): Promise<{ pages: string[]; numPages: number }>;
+  /** The page the user is currently viewing in the PDF preview, if known.
+   *  `verify_pdf_pages` prefers it so a vision check looks where the user is. */
+  getPdfCursorPage?(): number | null | undefined;
   // Symbol index (built lazily by the host when absent).
   getProjectIndex(): Promise<ProjectIndexView | null>;
   // Isolated figure compile + rendering.
@@ -698,12 +702,13 @@ export function createOpenLeafTools(
               .sort((a, b) => a - b)
               .slice(0, maxPages);
           } else {
-            // Local pick: first, last, fill middles (mirrors src/lib/ai-pdf-verify).
-            const set = new Set<number>([1, numPages]);
-            const step = Math.max(1, Math.floor(numPages / (maxPages + 1)));
-            for (let p = 1 + step; p < numPages && set.size < maxPages; p += step) set.add(p);
-            for (let p = 2; p < numPages && set.size < maxPages; p++) set.add(p);
-            selected = [...set].sort((a, b) => a - b).slice(0, maxPages);
+            // Default pick: first, last, the page the user is looking at, then
+            // evenly spaced middles. Shared with the app via @openleaf/ai-tools.
+            const cursorPage = host.getPdfCursorPage?.() ?? undefined;
+            selected = pickPagesToVerify(numPages, {
+              cursorPage: cursorPage ?? undefined,
+              maxPages,
+            });
           }
           const images: { page: number; dataUrl: string }[] = [];
           for (const page of selected) {

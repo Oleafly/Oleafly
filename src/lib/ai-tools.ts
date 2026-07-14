@@ -26,6 +26,7 @@ import { useIndexStore } from "@/store/project-index";
 import { useSettingsStore } from "@/store/settings";
 import { useAgentTodoStore } from "@/store/agent-todos";
 import { useAgentMemoryStore } from "@/store/agent-memory";
+import { usePdfViewStore } from "@/store/pdf-view";
 import { extractPdfText } from "@/lib/pdf-text";
 import {
   setLastFigurePreview,
@@ -81,6 +82,7 @@ const HOST: AiToolsHost = {
   getCompileLog: () => useCompileStore.getState().log,
   getPdfBytes: () => useCompileStore.getState().pdfBytes,
   extractPdfText,
+  getPdfCursorPage: () => usePdfViewStore.getState().page,
   getProjectIndex: async () => {
     const idx = useIndexStore.getState();
     if (!idx.index) await idx.rebuildFromDisk();

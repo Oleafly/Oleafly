@@ -29,9 +29,10 @@ function withTimeout<T>(p: Promise<T>, ms: number, what: string): Promise<T> {
 /** A pdf.js worker that wedges mid-session makes text calls hang or return empty
  *  while the canvas still renders (pdf.js has no timeout for this and no
  *  recovery). Probe page 1's text pipe, time-boxed, and throw when it is empty or
- *  hangs so the caller can reload on a fresh worker. Most PDFs (LaTeX output)
- *  have text on page 1; a genuinely text-less cover costs one wasted reload
- *  before we accept it. */
+ *  hangs so the caller can reload on a fresh worker. This runs only for documents
+ *  we expect to have text; image/figure projects skip the probe entirely (the
+ *  `expectText` gate in the load ladder), so a legitimately text-less page never
+ *  triggers the main-thread fallback and its session-wide downgrade. */
 async function probePageText(doc: pdfjsLib.PDFDocumentProxy): Promise<void> {
   if (doc.numPages < 1) return;
   const page = await withTimeout(doc.getPage(1), 8_000, "text probe page");
@@ -130,6 +131,11 @@ export interface PdfViewerProps {
   /** Open an external link (http/mailto/tel) from a PDF annotation, e.g. in the
    *  system browser. Without it, links fall back to the anchor's default. */
   onOpenLink?: (url: string) => void;
+  /** Whether page 1 is expected to contain text. Documents: true (default) - the
+   *  loader probes the text pipe and recovers a wedged worker. Image/figure
+   *  projects: false - skip the probe so a legitimately text-less page doesn't
+   *  force the session onto the main-thread worker. */
+  expectText?: boolean;
 }
 
 /** Imperative handle: scroll the viewer to a 1-based page number. */
@@ -138,7 +144,7 @@ export interface PdfViewerHandle {
 }
 
 export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function PdfViewer(
-  { data, scale, onInverse, onPageChange, layout = "single", onOpenLink },
+  { data, scale, onInverse, onPageChange, layout = "single", onOpenLink, expectText = true },
   ref
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -518,28 +524,29 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         loadingTask = pdfjsLib.getDocument({ data: data.slice() });
         return withTimeout(loadingTask.promise, 30_000, "pdf load");
       };
-      // Load AND confirm the text pipe works: a wedged worker can load the doc
-      // and render the canvas while returning empty text (blank text layer,
+      // Load AND confirm the text pipe is alive: a wedged worker can load the
+      // doc and render the canvas while returning empty text (blank text layer,
       // broken inverse SyncTeX).
       const openAndProbe = async () => {
         const doc = await open();
         await probePageText(doc);
         return doc;
       };
-      // Escalating recovery. Each attempt reopens on a fresh worker; a wedge
-      // (hung load or empty text) is caught by the watchdog/probe. If two fresh
-      // workers both fail, the webview worker subsystem is likely dead, so fall
-      // back to the main thread. The final plain `open` renders the canvas even
-      // when page 1 is genuinely text-less, rather than showing an error.
-      const attempts: Array<() => Promise<pdfjsLib.PDFDocumentProxy>> = [
-        openAndProbe,
-        openAndProbe,
-        async () => {
-          await forceMainThreadWorker();
-          return openAndProbe();
-        },
-        open,
-      ];
+      // Escalating recovery, but ONLY for documents we expect to have text.
+      // Image/figure projects (`expectText === false`) legitimately have no text
+      // on page 1, so probing them would fail every attempt and force the whole
+      // session onto the main-thread worker; they just do a plain `open`.
+      const attempts: Array<() => Promise<pdfjsLib.PDFDocumentProxy>> = expectText
+        ? [
+            openAndProbe,
+            openAndProbe,
+            async () => {
+              await forceMainThreadWorker();
+              return openAndProbe();
+            },
+            open,
+          ]
+        : [open];
       try {
         let doc: pdfjsLib.PDFDocumentProxy | null = null;
         let lastErr: unknown;
@@ -585,7 +592,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       loadingTask?.destroy().catch(() => {});
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, buildLayout]);
+  }, [data, buildLayout, expectText]);
 
   // Re-render on zoom without reloading. Rasterizing pages is expensive, so a
   // pinch that fires dozens of scale changes a second must NOT rasterize on each

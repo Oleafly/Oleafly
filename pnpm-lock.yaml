@@ -339,13 +339,13 @@ importers:
   packages/preflight:
     dependencies:
       pdfjs-dist:
-        specifier: '*'
+        specifier: ^6.1.200
         version: 6.1.200
 
   packages/preview:
     dependencies:
       pdfjs-dist:
-        specifier: '*'
+        specifier: ^6.1.200
         version: 6.1.200
       react:
         specifier: '*'

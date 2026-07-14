@@ -11,7 +11,7 @@
     "./polyfills": "./src/polyfills.ts"
   },
   "dependencies": {
-    "pdfjs-dist": "*",
+    "pdfjs-dist": "^6.1.200",
     "react": "*"
   }
 }
