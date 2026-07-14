@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures";
-import { openProject, pressGlobal, waitLong, expectPdfRendered } from "../helpers";
+import { openProject, pressGlobal, waitLong } from "../helpers";
 
 // Cmd+K and Cmd+Shift+F are covered in 04-commands; this file covers the rest.
 
@@ -13,7 +13,7 @@ test("Cmd+Enter compiles and Cmd+Shift+J forward-SyncTeX highlights the PDF", as
   });
 
   await pressGlobal(tauriPage, "Enter", { meta: true });
-  await expectPdfRendered(tauriPage, 90_000);
+  await expect(tauriPage.locator(".pdf-canvas")).toBeVisible({ timeout: 90_000 });
   await waitLong(
     tauriPage,
     `!document.body.innerText.includes('Compiling your document')`,

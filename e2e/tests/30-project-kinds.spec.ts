@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures";
-import { openGallery, expectPdfRendered } from "../helpers";
+import { openGallery } from "../helpers";
 
 // Templates differ in class, packages, and layout, so this is the suite's
 // regression net for "we changed something and a template broke".
@@ -41,7 +41,7 @@ async function createFromTemplate(page: import("../helpers").Page, id: string, n
 
 async function compileClean(page: import("../helpers").Page) {
   await page.click('[aria-label="Recompile"]');
-  await expectPdfRendered(page, 150_000);
+  await expect(page.locator(".pdf-canvas")).toBeVisible({ timeout: 150_000 });
   await expect(page.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok");
 }
 

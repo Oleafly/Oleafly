@@ -394,16 +394,3 @@ export async function currentTheme(page: Page): Promise<"light" | "dark"> {
     `document.documentElement.classList.contains('dark') ? 'dark' : 'light'`,
   );
 }
-
-// pdf.js renders each page into a `.pdf-canvas` sized to the page
-// (canvas.width = viewport.width * dpr). Assert the canvas exists and is sized,
-// i.e. pdf.js actually drew a page, instead of Playwright's toBeVisible(), which
-// additionally needs the webview to COMPOSITE the canvas. Headless WKWebView /
-// WebView2 throttle compositing for the occluded CI window, so a correctly
-// rendered canvas reads as "not visible" there; the draw is what we care about.
-export async function expectPdfRendered(page: Page, timeoutMs = 120_000) {
-  await page.waitForFunction(
-    `(() => { const c = document.querySelector('.pdf-canvas'); return !!c && c.width > 0 && c.height > 0; })()`,
-    timeoutMs,
-  );
-}
