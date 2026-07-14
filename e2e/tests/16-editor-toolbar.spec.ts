@@ -42,18 +42,18 @@ test("bold wraps the selection; undo and redo round-trip", async ({ tauriPage })
 
   await selectWord(tauriPage, "Write");
   await tauriPage.waitForFunction(`window.getSelection().toString() === 'Write'`, 5_000);
-  await tauriPage.click('[aria-label="Bold (⌘B)"]');
+  await tauriPage.click('[aria-label^="Bold ("]');
   await expect(tauriPage.locator(".cm-content")).toContainText("\\textbf{Write}");
 
-  await tauriPage.click('[aria-label="Undo (⌘Z)"]');
+  await tauriPage.click('[aria-label^="Undo ("]');
   await tauriPage.waitForFunction(
     `!document.querySelector('.cm-content').textContent.includes('\\\\textbf{Write}')`,
     10_000,
   );
-  await tauriPage.click('[aria-label="Redo (⌘⇧Z)"]');
+  await tauriPage.click('[aria-label^="Redo ("]');
   await expect(tauriPage.locator(".cm-content")).toContainText("\\textbf{Write}");
   // Leave the document as we found it.
-  await tauriPage.click('[aria-label="Undo (⌘Z)"]');
+  await tauriPage.click('[aria-label^="Undo ("]');
 });
 
 test("toolbar inserts figure and table environments", async ({ tauriPage }) => {
@@ -63,11 +63,11 @@ test("toolbar inserts figure and table environments", async ({ tauriPage }) => {
 
   await tauriPage.click('[aria-label="Insert figure"]');
   await expect(tauriPage.locator(".cm-content")).toContainText("includegraphics");
-  await tauriPage.click('[aria-label="Undo (⌘Z)"]');
+  await tauriPage.click('[aria-label^="Undo ("]');
 
   await tauriPage.click('[aria-label="Insert table"]');
   await expect(tauriPage.locator(".cm-content")).toContainText("tabular");
-  await tauriPage.click('[aria-label="Undo (⌘Z)"]');
+  await tauriPage.click('[aria-label^="Undo ("]');
   await tauriPage.waitForFunction(
     `!(document.querySelector('.cm-content')?.textContent || '').includes('tabular')`,
     5_000,
@@ -104,7 +104,7 @@ test("right-click context menu offers editor actions and inserts an equation", a
   await expect(tauriPage.getByText("Go to definition")).toBeVisible();
   await tauriPage.getByText("Equation").click();
   await expect(tauriPage.locator(".cm-content")).toContainText("\\begin{equation}");
-  await tauriPage.click('[aria-label="Undo (⌘Z)"]');
+  await tauriPage.click('[aria-label^="Undo ("]');
   await tauriPage.waitForFunction(
     `!(document.querySelector('.cm-content')?.textContent || '').includes('begin{equation}')`,
     5_000,
