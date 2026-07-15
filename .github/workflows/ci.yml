@@ -227,8 +227,14 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: e2e-test-results-macos
-          path: test-results/
+          # Only the small, useful debugging files. Avoids uploading the macOS
+          # driver's ~1 GB per-run screencast blob that lives under test-results/.
+          path: |
+            test-results/**/error-context.md
+            test-results/**/trace.zip
+            test-results/**/*.log
           retention-days: 7
+          if-no-files-found: ignore
 
   e2e-linux:
     # The same no-mock suite on Linux (WebKitGTK + Rust + Tectonic). The
@@ -324,8 +330,14 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: e2e-test-results-linux
-          path: test-results/
+          # Only the small, useful debugging files. Avoids uploading the macOS
+          # driver's ~1 GB per-run screencast blob that lives under test-results/.
+          path: |
+            test-results/**/error-context.md
+            test-results/**/trace.zip
+            test-results/**/*.log
           retention-days: 7
+          if-no-files-found: ignore
 
   e2e-windows:
     # The same suite on Windows (WebView2 + Rust + Tectonic). The plugin
@@ -411,5 +423,11 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: e2e-test-results-windows
-          path: test-results/
+          # Only the small, useful debugging files. Avoids uploading the macOS
+          # driver's ~1 GB per-run screencast blob that lives under test-results/.
+          path: |
+            test-results/**/error-context.md
+            test-results/**/trace.zip
+            test-results/**/*.log
           retention-days: 7
+          if-no-files-found: ignore

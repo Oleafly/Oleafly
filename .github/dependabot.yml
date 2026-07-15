@@ -8,6 +8,11 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    # Wait for a release to age before proposing it, so bumps clear pnpm's
+    # supply-chain minimum-release-age policy (a just-published version fails
+    # `pnpm install --frozen-lockfile` in CI otherwise).
+    cooldown:
+      default-days: 7
     groups:
       # Only minor+patch are grouped into one safe-to-merge PR. Major bumps
       # (breaking: zod 3->4, typescript 5->7, vite 6->8, etc.) come as separate
@@ -22,6 +27,8 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    cooldown:
+      default-days: 7
     groups:
       # Same policy as npm: group only minor+patch; majors (e.g. rand 0.8->0.9
       # removed rand::rngs::OsRng, zip 2->4) get their own reviewable PRs.
