@@ -40,7 +40,7 @@ jobs:
         uses: pnpm/action-setup@v6
 
       - name: Install Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           # pnpm 11 requires Node >= 22.13; keep this at 22+ (see package.json
           # `packageManager`). Node 20 crashes pnpm's `store path` lookup.
@@ -157,7 +157,7 @@ jobs:
         uses: pnpm/action-setup@v6
 
       - name: Install Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -245,7 +245,7 @@ jobs:
         uses: pnpm/action-setup@v6
 
       - name: Install Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -347,7 +347,7 @@ jobs:
         uses: pnpm/action-setup@v6
 
       - name: Install Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm

@@ -68,7 +68,7 @@ jobs:
         uses: pnpm/action-setup@v6
 
       - name: Install Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           # pnpm 11 requires Node >= 22.13 (see package.json `packageManager`).
           node-version: 22
