@@ -28,9 +28,7 @@ src-tauri/resources/*.ttb
 src-tauri/binaries/*
 !src-tauri/binaries/.gitkeep
 
-# Local planning docs — not committed
-docs/planning/
-docs/superpowers/
+.private/
 
 # Playwright e2e artifacts
 test-results/

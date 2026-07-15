@@ -29,7 +29,7 @@
 
 <div align="center">
 
-**[Download the app](https://github.com/prajwal-svm/OpenLeaf/releases/latest) · [Build from source](docs/install.md) · [Docs](https://prajwal-svm.github.io/OpenLeaf/) · [Roadmap](#roadmap)**
+**[Download the app](https://github.com/prajwal-svm/OpenLeaf/releases/latest) · [Build from source](docs/install.md) · [Docs](https://prajwal-svm.github.io/OpenLeaf/)**
 
 Grab a prebuilt installer for macOS, Windows, or Linux from the [latest release](https://github.com/prajwal-svm/OpenLeaf/releases/latest), or [build it from source](docs/install.md).
 
@@ -479,27 +479,6 @@ Plus Tectonic (XeTeX), pdf.js, Zustand, Harper, and Hunspell.
 
 <br/>
 
-## Roadmap
-
-**Shipping next**
-- [ ] Signed and notarized installers (macOS, Windows), so no first-launch warning
-- [ ] Pre-warmed offline TeX bundle for a true zero-internet first run
-- [ ] OS keychain for tokens and AI keys (beyond the on-disk `0600` store)
-- [ ] One-click import from Overleaf or any Git repo
-
-**The bigger bets**
-- [ ] Collaboration over Git: branches, review, and comments for LaTeX. The Overleaf workflow, but local and yours.
-- [ ] Track changes and inline comments, backed by real commits
-- [ ] OpenLeaf on iPad and mobile (Tauri), so your repo travels with you
-- [ ] A deeper AI agent: project-wide refactors, citation lookup from a claim, "explain this paper"
-- [ ] A plugin API for snippets, templates, and custom AI tools
-- [ ] Timeline playback and semantic diffs (compare rendered output, not just source)
-- [ ] Zotero and reference-manager integration, resume scoring against a job description
-
-Have an idea? [Open a discussion](https://github.com/prajwal-svm/OpenLeaf/discussions).
-
-<br/>
-
 ## Documentation
 
 The full product documentation lives at **[prajwal-svm.github.io/OpenLeaf](https://prajwal-svm.github.io/OpenLeaf/)**: thirty-plus guides that cover every feature, from first launch to tagged PDF export.
@@ -525,7 +504,7 @@ The full product documentation lives at **[prajwal-svm.github.io/OpenLeaf](https
 
 ## Contributing
 
-Bug reports, features, templates, docs, and screenshots are all welcome.
+Bug reports, features, templates, docs, and screenshots are all welcome. Have an idea? [Open a discussion](https://github.com/prajwal-svm/OpenLeaf/discussions).
 
 1. Read [CONTRIBUTING.md](CONTRIBUTING.md) to get a dev build running.
 2. Open an issue for big changes. Small fixes can go straight to a PR.
