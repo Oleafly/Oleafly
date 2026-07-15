@@ -18,19 +18,16 @@ mkdir -p "$BIN_DIR"
 # runners use /bin/bash 3.2, which has no `declare -A`).
 asset_for() {
   case "$1" in
-    aarch64-apple-darwin)     echo "tectonic-$VERSION-aarch64-apple-darwin.tar.gz:tar" ;;
-    x86_64-apple-darwin)      echo "tectonic-$VERSION-x86_64-apple-darwin.tar.gz:tar" ;;
-    x86_64-pc-windows-msvc)   echo "tectonic-$VERSION-x86_64-pc-windows-msvc.zip:zip" ;;
-    aarch64-pc-windows-msvc)  echo "tectonic-$VERSION-aarch64-pc-windows-msvc.zip:zip" ;;
-    x86_64-unknown-linux-gnu) echo "tectonic-$VERSION-x86_64-unknown-linux-gnu.tar.gz:tar" ;;
-    aarch64-unknown-linux-gnu) echo "tectonic-$VERSION-aarch64-unknown-linux-gnu.tar.gz:tar" ;;
+    aarch64-apple-darwin)     echo "tectonic-$VERSION-aarch64-apple-darwin.tar.gz:tar:edb67c61aba768289f6da441c9e6f523cfaff4f8b2a5708523ef29c543f8e88e" ;;
+    x86_64-apple-darwin)      echo "tectonic-$VERSION-x86_64-apple-darwin.tar.gz:tar:79d8839fa3594bfea9b2bf2ac0a0455bcc4d0de956a5e5c403107e9a72f79e86" ;;
+    aarch64-unknown-linux-gnu) echo "tectonic-$VERSION-aarch64-unknown-linux-musl.tar.gz:tar:f9aa39017dbd51f111fdb93dda222178cbe51c8193508fc567b523cc74fff9c1" ;;
+    x86_64-pc-windows-msvc)   echo "tectonic-$VERSION-x86_64-pc-windows-msvc.zip:zip:131a24604785a9600989a3d91225f597df52ac06f00aeffe86fd529f99ee5cdd" ;;
+    x86_64-unknown-linux-gnu) echo "tectonic-$VERSION-x86_64-unknown-linux-gnu.tar.gz:tar:f3c825128095dc3399ea11c08c18035b33050a216930c295c79e8eb11bd21de4" ;;
     *)                        echo "" ;;
   esac
 }
 
-# Primary release matrix targets first; ARM Linux/Windows are best-effort when
-# upstream publishes matching assets (fetch fails clearly if missing).
-ALL_TARGETS="aarch64-apple-darwin x86_64-apple-darwin x86_64-pc-windows-msvc x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu aarch64-pc-windows-msvc"
+ALL_TARGETS="aarch64-apple-darwin x86_64-apple-darwin aarch64-unknown-linux-gnu x86_64-pc-windows-msvc x86_64-unknown-linux-gnu"
 
 fetch() {
   local target="$1"
@@ -41,7 +38,9 @@ fetch() {
     exit 1
   fi
   local asset="${entry%%:*}"
-  local kind="${entry##*:}"
+  local rest="${entry#*:}"
+  local kind="${rest%%:*}"
+  local expected_sha="${rest##*:}"
   local ext=""
   [[ "$target" == *windows* ]] && ext=".exe"
   local out="$BIN_DIR/tectonic-$target$ext"
@@ -64,13 +63,26 @@ fetch() {
     rm -rf "$tmp"
     exit 1
   fi
+  local actual_sha
+  actual_sha="$(shasum -a 256 "$tmp/archive" | awk '{print $1}')"
+  if [[ "$actual_sha" != "$expected_sha" ]]; then
+    echo "checksum mismatch for $asset: expected $expected_sha, got $actual_sha" >&2
+    rm -rf "$tmp"
+    exit 1
+  fi
   case "$kind" in
-    tar) tar xzf "$tmp/archive" -C "$tmp" ;;
-    zip) (cd "$tmp" && unzip -oq archive) ;;
+    tar)
+      [[ "$(tar tzf "$tmp/archive" | grep -Ec '^tectonic$')" == "1" ]]
+      tar tvzf "$tmp/archive" tectonic | grep -Eq '^[-]'
+      tar xzf "$tmp/archive" -C "$tmp" tectonic
+      ;;
+    zip)
+      [[ "$(unzip -Z1 "$tmp/archive" | grep -Ec '^tectonic\.exe$')" == "1" ]]
+      (cd "$tmp" && unzip -oq archive tectonic.exe)
+      ;;
   esac
-  local bin
-  bin="$(find "$tmp" -maxdepth 2 -type f \( -name "tectonic" -o -name "tectonic.exe" \) | head -n1)"
-  if [[ -z "$bin" ]]; then
+  local bin="$tmp/tectonic$ext"
+  if [[ ! -f "$bin" || -L "$bin" ]]; then
     echo "could not locate tectonic binary in archive for $target" >&2
     rm -rf "$tmp"
     exit 1

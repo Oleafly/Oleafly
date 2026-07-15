@@ -1,0 +1,14 @@
+{
+  "id": "blank-markdown",
+  "name": "Blank Markdown document",
+  "category": "Blank",
+  "description": "A Pandoc Markdown document with YAML metadata.",
+  "main_doc": "main.md",
+  "engine": "markdown",
+  "layout": "single-column",
+  "pages": "single",
+  "default_color": "#7950f2",
+  "license": { "spdx": "MIT", "author": "OpenLeaf", "url": "https://github.com/prajwal-svm/OpenLeaf" },
+  "requires": { "packages": [], "fonts": [], "engine": "pandoc" },
+  "order": 2
+}

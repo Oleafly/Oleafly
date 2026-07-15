@@ -51,4 +51,6 @@ In Settings → GitHub, the connected-account card has a **Disconnect** button. 
 
 - SSH remotes aren't supported for token-authenticated push. Use HTTPS (Publish sets this up automatically).
 - A first push to an existing repo that already has commits may need a pull first. OpenLeaf will tell you.
-- The token is stored locally in `~/.openleaf/config.json` (with `0600` permissions on Unix). Moving it to the OS keychain is on the roadmap.
+- The token is stored locally in the OS keychain when available. If the
+  keychain is unavailable, OpenLeaf uses an owner-only
+  `~/.openleaf/config.json` fallback (`0600` on Unix).

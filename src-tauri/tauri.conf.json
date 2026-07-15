@@ -43,7 +43,8 @@
       "icons/icon.ico"
     ],
     "externalBin": [
-      "binaries/tectonic"
+      "binaries/tectonic",
+      "binaries/typst"
     ],
     "resources": [
       "resources/templates/**/*",

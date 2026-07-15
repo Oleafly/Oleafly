@@ -27,6 +27,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  markdown-platform-smoke:
+    name: Markdown smoke (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+    steps:
+      - uses: actions/checkout@v7
+      - name: Fetch Tectonic sidecar
+        run: bash scripts/fetch-tectonic.sh ${{ matrix.target }}
+      - name: Smoke-test managed Pandoc with packaged Tectonic input
+        run: bash scripts/smoke-markdown.sh ${{ matrix.target }}
+
   frontend:
     name: Frontend (typecheck + build)
     runs-on: ubuntu-22.04
@@ -49,6 +66,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Audit production dependencies
+        run: pnpm audit --prod --audit-level high
 
       # Biome lint gate. Blocks on correctness errors; the existing a11y/style
       # backlog is reported as (non-blocking) warnings. See biome.json.
@@ -104,6 +124,23 @@ jobs:
       - name: Fetch Tectonic sidecar
         if: steps.cache-tectonic.outputs.cache-hit != 'true'
         run: bash scripts/fetch-tectonic.sh x86_64-unknown-linux-gnu
+
+      - name: Cache Typst sidecar
+        id: cache-typst
+        uses: actions/cache@v6
+        with:
+          path: src-tauri/binaries/typst-*
+          key: typst-${{ runner.os }}-${{ hashFiles('scripts/fetch-typst.sh') }}
+
+      - name: Fetch Typst sidecar
+        if: steps.cache-typst.outputs.cache-hit != 'true'
+        run: bash scripts/fetch-typst.sh x86_64-unknown-linux-gnu
+
+      - name: Smoke-test Typst sidecar
+        run: bash scripts/smoke-typst.sh x86_64-unknown-linux-gnu
+
+      - name: Smoke-test managed Pandoc with bundled Tectonic
+        run: bash scripts/smoke-markdown.sh x86_64-unknown-linux-gnu
 
       - name: Test
         working-directory: src-tauri
@@ -183,6 +220,20 @@ jobs:
       - name: Fetch Tectonic sidecar
         if: steps.cache-tectonic-e2e.outputs.cache-hit != 'true'
         run: bash scripts/fetch-tectonic.sh aarch64-apple-darwin
+
+      - name: Cache Typst sidecar
+        id: cache-typst-e2e
+        uses: actions/cache@v6
+        with:
+          path: src-tauri/binaries/typst-*
+          key: typst-${{ runner.os }}-${{ hashFiles('scripts/fetch-typst.sh') }}
+
+      - name: Fetch Typst sidecar
+        if: steps.cache-typst-e2e.outputs.cache-hit != 'true'
+        run: bash scripts/fetch-typst.sh aarch64-apple-darwin
+
+      - name: Smoke-test Typst sidecar
+        run: bash scripts/smoke-typst.sh aarch64-apple-darwin
 
       # First compiles fetch LaTeX packages over the network, so the suite's
       # early compiles time out if the runner's Tectonic cache is cold. Restore
@@ -291,6 +342,20 @@ jobs:
         if: steps.cache-tectonic-e2e-linux.outputs.cache-hit != 'true'
         run: bash scripts/fetch-tectonic.sh x86_64-unknown-linux-gnu
 
+      - name: Cache Typst sidecar
+        id: cache-typst-e2e-linux
+        uses: actions/cache@v6
+        with:
+          path: src-tauri/binaries/typst-*
+          key: typst-${{ runner.os }}-${{ hashFiles('scripts/fetch-typst.sh') }}
+
+      - name: Fetch Typst sidecar
+        if: steps.cache-typst-e2e-linux.outputs.cache-hit != 'true'
+        run: bash scripts/fetch-typst.sh x86_64-unknown-linux-gnu
+
+      - name: Smoke-test Typst sidecar
+        run: bash scripts/smoke-typst.sh x86_64-unknown-linux-gnu
+
       - name: Restore Tectonic packages
         id: tectonic-pkgs-linux
         uses: actions/cache/restore@v6
@@ -386,6 +451,22 @@ jobs:
         if: steps.cache-tectonic-e2e-windows.outputs.cache-hit != 'true'
         shell: bash
         run: bash scripts/fetch-tectonic.sh x86_64-pc-windows-msvc
+
+      - name: Cache Typst sidecar
+        id: cache-typst-e2e-windows
+        uses: actions/cache@v6
+        with:
+          path: src-tauri/binaries/typst-*
+          key: typst-${{ runner.os }}-${{ hashFiles('scripts/fetch-typst.sh') }}
+
+      - name: Fetch Typst sidecar
+        if: steps.cache-typst-e2e-windows.outputs.cache-hit != 'true'
+        shell: bash
+        run: bash scripts/fetch-typst.sh x86_64-pc-windows-msvc
+
+      - name: Smoke-test Typst sidecar
+        shell: bash
+        run: bash scripts/smoke-typst.sh x86_64-pc-windows-msvc
 
       - name: Restore Tectonic packages
         id: tectonic-pkgs-windows

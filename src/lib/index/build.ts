@@ -4,7 +4,7 @@ import { parseFile, maskComments } from "./parse-file";
 const DEF_KINDS = new Set<string>(["label", "macro", "bibentry", "theorem", "glossary", "environment", "section", "file"]);
 const isDefKind = (k: string): k is DefKind => DEF_KINDS.has(k);
 
-const USE_TO_DEF: Record<Exclude<UseKind, "inputedge" | "envuse">, DefKind> = {
+const USE_TO_DEF: Record<Exclude<UseKind, "inputedge" | "envuse" | "atuse">, DefKind> = {
   ref: "label",
   cite: "bibentry",
   macrouse: "macro",
@@ -12,8 +12,8 @@ const USE_TO_DEF: Record<Exclude<UseKind, "inputedge" | "envuse">, DefKind> = {
 };
 
 const DEF_TO_USES: Record<DefKind, UseKind[]> = {
-  label: ["ref"],
-  bibentry: ["cite"],
+  label: ["ref", "atuse"],
+  bibentry: ["cite", "atuse"],
   macro: ["macrouse"],
   glossary: ["glossaryuse"],
   theorem: ["envuse"],
@@ -73,6 +73,7 @@ export function assembleIndex(
       macroDefSpans.set(d.file, arr);
     }
     for (const [path, rawText] of Object.entries(files)) {
+      if (/\.(?:typ|md|markdown)$/i.test(path)) continue;
       const text = maskComments(rawText);
       const spans = macroDefSpans.get(path) ?? [];
       const lineAt = lineCounter(text);
@@ -117,6 +118,9 @@ export function assembleIndex(
   const definitionFor = (sym: Sym): Sym | null => {
     if (isDefKind(sym.kind)) return sym;
     if (sym.kind === "inputedge") return defByKindName.get(`file:${sym.target ?? sym.name}`) ?? null;
+    if (sym.kind === "atuse") {
+      return defByKindName.get(`label:${sym.name}`) ?? defByKindName.get(`bibentry:${sym.name}`) ?? null;
+    }
     if (sym.kind === "envuse") {
       return defByKindName.get(`theorem:${sym.name}`) ?? defByKindName.get(`environment:${sym.name}`) ?? null;
     }

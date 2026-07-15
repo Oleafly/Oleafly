@@ -10,6 +10,7 @@ vi.mock("@/lib/ai-providers", () => ({
 }));
 
 import { runInlineCompletion, PRESETS } from "./ai-inline";
+import { LATEX_ENGINE } from "./document-engine";
 
 beforeEach(() => streamText.mockReset());
 
@@ -42,7 +43,7 @@ describe("runInlineCompletion", () => {
 
   it("passes the instruction and selection into the model prompt", async () => {
     streamText.mockReturnValue(fakeStream(["ok"]));
-    await runInlineCompletion({ instruction: "make formal", selection: "hey there" });
+    await runInlineCompletion({ engine: LATEX_ENGINE, instruction: "make formal", selection: "hey there" });
     const arg = streamText.mock.calls[0][0];
     expect(arg.prompt).toContain("make formal");
     expect(arg.prompt).toContain("hey there");
@@ -55,7 +56,7 @@ describe("runInlineCompletion", () => {
       "grammar",
       "concise",
       "expand",
-      "fix-latex",
+      "fix-source",
       "translate",
     ]);
   });

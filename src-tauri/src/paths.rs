@@ -96,33 +96,95 @@ pub fn validate_project_id(project_id: &str) -> Result<(), String> {
 /// A single project directory: `~/.openleaf/projects/<id>/` (created if missing).
 pub fn project_dir(project_id: &str) -> Result<PathBuf, String> {
     validate_project_id(project_id)?;
-    let dir = projects_root()?.join(project_id);
-    if !dir.exists() {
-        std::fs::create_dir_all(&dir)
-            .map_err(|e| format!("failed to create project dir {dir:?}: {e}"))?;
+    let root = projects_root()?
+        .canonicalize()
+        .map_err(|e| format!("failed to resolve projects root: {e}"))?;
+    let dir = root.join(project_id);
+    ensure_real_directory(&dir, "project")?;
+    let resolved = dir
+        .canonicalize()
+        .map_err(|e| format!("failed to resolve project dir {dir:?}: {e}"))?;
+    if resolved.parent() != Some(root.as_path()) {
+        return Err("project directory escapes the projects root".to_string());
     }
-    Ok(dir)
+    Ok(resolved)
 }
 
 /// The per-project build directory: `<project>/.openleaf/build/`.
 pub fn build_dir(project_id: &str) -> Result<PathBuf, String> {
-    let dir = project_dir(project_id)?.join(".openleaf").join("build");
-    if !dir.exists() {
-        std::fs::create_dir_all(&dir)
-            .map_err(|e| format!("failed to create build dir {dir:?}: {e}"))?;
-    }
-    Ok(dir)
+    secure_build_subdirectory(project_id, "build")
 }
 
 /// The per-project isolated figure build directory: `<project>/.openleaf/figbuild/`.
 /// Separate from `build_dir` so figure iteration never clobbers the main preview PDF.
 pub fn figure_build_dir(project_id: &str) -> Result<PathBuf, String> {
-    let dir = project_dir(project_id)?.join(".openleaf").join("figbuild");
-    if !dir.exists() {
-        std::fs::create_dir_all(&dir)
-            .map_err(|e| format!("failed to create figure build dir {dir:?}: {e}"))?;
+    secure_build_subdirectory(project_id, "figbuild")
+}
+
+fn secure_build_subdirectory(project_id: &str, name: &str) -> Result<PathBuf, String> {
+    let project = project_dir(project_id)?;
+    secure_build_subdirectory_in(&project, name)
+}
+
+fn secure_build_subdirectory_in(project: &std::path::Path, name: &str) -> Result<PathBuf, String> {
+    let project = project
+        .canonicalize()
+        .map_err(|e| format!("failed to resolve project directory: {e}"))?;
+    let internal = project.join(".openleaf");
+    ensure_real_directory(&internal, "project data")?;
+    let internal = internal
+        .canonicalize()
+        .map_err(|e| format!("failed to resolve project data directory: {e}"))?;
+    if internal.parent() != Some(project.as_path()) {
+        return Err("project data directory escapes the project root".to_string());
     }
-    Ok(dir)
+    let output = internal.join(name);
+    ensure_real_directory(&output, "build")?;
+    let output = output
+        .canonicalize()
+        .map_err(|e| format!("failed to resolve build directory: {e}"))?;
+    if output.parent() != Some(internal.as_path()) || !output.starts_with(&project) {
+        return Err("build directory escapes the project root".to_string());
+    }
+    Ok(output)
+}
+
+fn ensure_real_directory(path: &std::path::Path, label: &str) -> Result<(), String> {
+    match std::fs::symlink_metadata(path) {
+        Ok(metadata) => {
+            if !metadata.is_dir()
+                || metadata.file_type().is_symlink()
+                || is_reparse_point(&metadata)
+            {
+                return Err(format!("{label} path is not a real directory: {path:?}"));
+            }
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            std::fs::create_dir(path)
+                .map_err(|e| format!("failed to create {label} directory {path:?}: {e}"))?;
+            let metadata = std::fs::symlink_metadata(path)
+                .map_err(|e| format!("failed to inspect {label} directory {path:?}: {e}"))?;
+            if !metadata.is_dir()
+                || metadata.file_type().is_symlink()
+                || is_reparse_point(&metadata)
+            {
+                return Err(format!("{label} path is not a real directory: {path:?}"));
+            }
+        }
+        Err(error) => return Err(format!("failed to inspect {label} path {path:?}: {error}")),
+    }
+    Ok(())
+}
+
+#[cfg(windows)]
+fn is_reparse_point(metadata: &std::fs::Metadata) -> bool {
+    use std::os::windows::fs::MetadataExt;
+    metadata.file_attributes() & 0x400 != 0
+}
+
+#[cfg(not(windows))]
+fn is_reparse_point(_metadata: &std::fs::Metadata) -> bool {
+    false
 }
 
 #[cfg(test)]
@@ -146,5 +208,33 @@ mod tests {
         assert!(validate_project_id("default").is_ok());
         assert!(validate_project_id("flying-pink-pikachu").is_ok());
         assert!(validate_project_id("proj_01").is_ok());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn build_paths_reject_symlink_components() {
+        use std::os::unix::fs::symlink;
+
+        let temp = std::env::temp_dir().join(format!(
+            "openleaf-path-test-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let project = temp.join("project");
+        let outside = temp.join("outside");
+        std::fs::create_dir(&temp).unwrap();
+        std::fs::create_dir(&project).unwrap();
+        std::fs::create_dir(&outside).unwrap();
+        symlink(&outside, project.join(".openleaf")).unwrap();
+        assert!(secure_build_subdirectory_in(&project, "build").is_err());
+
+        std::fs::remove_file(project.join(".openleaf")).unwrap();
+        std::fs::create_dir(project.join(".openleaf")).unwrap();
+        symlink(&outside, project.join(".openleaf/build")).unwrap();
+        assert!(secure_build_subdirectory_in(&project, "build").is_err());
+        std::fs::remove_dir_all(temp).unwrap();
     }
 }

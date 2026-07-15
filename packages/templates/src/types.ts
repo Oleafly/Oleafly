@@ -8,11 +8,12 @@ export interface TemplateInfo {
   description: string;
   category: string;
   engine: string;
+  document_engine: "latex" | "typst" | "markdown" | "unknown";
   ats_profile: "friendly" | "design-forward" | null;
   default_color: string | null;
   license: { spdx?: string | null; author?: string | null } | null;
   has_preview: boolean;
-  ready: boolean;
+  assets_ready: boolean;
 }
 
 export interface TemplatesHost {

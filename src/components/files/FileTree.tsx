@@ -84,6 +84,7 @@ interface TreeCtx {
   onOpen: (p: string) => void;
   onDelete: (p: string) => void;
   onSetMain: (p: string) => void;
+  mainExtensions: string[];
   onCopy: (p: string, isDir: boolean) => void;
   renamePath: string | null;
   renameValue: string;
@@ -113,6 +114,9 @@ export function FileTree() {
   const renameEntry = useFilesStore((s) => s.renameEntry);
   const copyEntry = useFilesStore((s) => s.copyEntry);
   const setMainDoc = useFilesStore((s) => s.setMainDoc);
+  const mainExtensions = useFilesStore((s) =>
+    s.engineLoaded ? s.engine.source_extensions : [],
+  );
 
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<{ path: string; isDir: boolean } | null>(null);
@@ -210,6 +214,7 @@ export function FileTree() {
     onOpen: openFile,
     onDelete: deleteEntry,
     onSetMain: setMainDoc,
+    mainExtensions,
     onCopy: copyEntry,
     renamePath,
     renameValue,
@@ -479,7 +484,9 @@ function TreeRow({ node, depth, ctx }: { node: TreeNode; depth: number; ctx: Tre
               <>
                 <ContextMenuItem onClick={() => ctx.onOpen(node.path)}>Open</ContextMenuItem>
                 <ContextMenuItem
-                  disabled={!node.path.endsWith(".tex")}
+                  disabled={!ctx.mainExtensions.some((extension) =>
+                    node.path.toLowerCase().endsWith(`.${extension.toLowerCase()}`),
+                  )}
                   onClick={() => ctx.onSetMain(node.path)}
                 >
                   Set as main document

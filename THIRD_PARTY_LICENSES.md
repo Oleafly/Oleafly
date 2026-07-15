@@ -1,12 +1,12 @@
 # Third-Party Licenses
 
-OpenLeaf is distributed under the [Apache License 2.0](LICENSE). It bundles
+OpenLeaf is distributed under the [GNU AGPL v3 or later](LICENSE). It bundles
 third-party open-source components, each under its own license, listed below.
-Every dependency here is under a **permissive** license (MIT, Apache-2.0, ISC,
-or BSD). There is no copyleft (GPL/LGPL/AGPL) code in the shipped product.
+The build accepts the licenses listed in `src-tauri/deny.toml`, including
+permissive licenses and specifically reviewed licenses such as MPL-2.0.
 
 This file lists the **direct** dependencies OpenLeaf ships. Their transitive
-dependencies are likewise permissively licensed; the full, authoritative license
+dependencies are checked by the automated license policy. The full, authoritative license
 text for every JavaScript package is under `node_modules/<pkg>/LICENSE`, and for
 every Rust crate under its source in the Cargo registry.
 
@@ -24,6 +24,7 @@ cargo install cargo-about && cargo about generate about.hbs   # Rust / backend
 | Component | Purpose | License |
 |---|---|---|
 | [Tectonic](https://tectonic-typesetting.github.io/) | LaTeX compiler (sidecar) | MIT |
+| [Typst](https://github.com/typst/typst) | Typst compiler 0.15.0 (sidecar) | Apache-2.0 |
 
 ## Backend (Rust crates)
 

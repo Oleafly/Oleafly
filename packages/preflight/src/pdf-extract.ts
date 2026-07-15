@@ -26,65 +26,72 @@ function normStruct(node: any): StructNode | null {
 
 export async function extractForPreflight(bytes: Uint8Array): Promise<PdfExtract> {
   const loadingTask = pdfjsLib.getDocument({ data: bytes.slice() });
-  const doc = await loadingTask.promise;
+  try {
+    const doc = await loadingTask.promise;
 
-  const pages: PositionedText[][] = [];
-  const pageText: string[] = [];
-  const structRoots: StructNode[] = [];
-  for (let p = 1; p <= doc.numPages; p++) {
-    const page = await doc.getPage(p);
-    const tc = await page.getTextContent();
-    const items: PositionedText[] = [];
-    const lineParts: string[] = [];
-    let lastY: number | null = null;
-    for (const item of tc.items as any[]) {
-      const str = typeof item?.str === "string" ? item.str : "";
-      const x = item?.transform?.[4] ?? 0;
-      const y = item?.transform?.[5] ?? 0;
-      const width = typeof item?.width === "number" ? item.width : 0;
-      items.push({ str, x, y, width });
-      if (lastY !== null && Math.abs(y - lastY) > 2) lineParts.push("\n");
-      lineParts.push(str);
-      lastY = y;
+    const pages: PositionedText[][] = [];
+    const pageText: string[] = [];
+    const structRoots: StructNode[] = [];
+    for (let p = 1; p <= doc.numPages; p++) {
+      const page = await doc.getPage(p);
+      try {
+        const tc = await page.getTextContent();
+        const items: PositionedText[] = [];
+        const lineParts: string[] = [];
+        let lastY: number | null = null;
+        for (const item of tc.items as any[]) {
+          const str = typeof item?.str === "string" ? item.str : "";
+          const x = item?.transform?.[4] ?? 0;
+          const y = item?.transform?.[5] ?? 0;
+          const width = typeof item?.width === "number" ? item.width : 0;
+          items.push({ str, x, y, width });
+          if (lastY !== null && Math.abs(y - lastY) > 2) lineParts.push("\n");
+          lineParts.push(str);
+          lastY = y;
+        }
+        pages.push(items);
+        pageText.push(lineParts.join("").replace(/[ \t]+\n/g, "\n").trim());
+
+        try {
+          const tree: any = await (page as any).getStructTree?.();
+          const norm = tree ? normStruct(tree) : null;
+          if (norm) structRoots.push(norm);
+        } catch {
+        }
+      } finally {
+        try {
+          page.cleanup();
+        } catch {
+        }
+      }
     }
-    pages.push(items);
-    pageText.push(lineParts.join("").replace(/[ \t]+\n/g, "\n").trim());
 
+    let lang: string | null = null;
+    let title: string | null = null;
+    let tagged = false;
     try {
-      const tree: any = await (page as any).getStructTree?.();
-      const norm = tree ? normStruct(tree) : null;
-      if (norm) structRoots.push(norm);
+      const md: any = await doc.getMetadata();
+      title = md?.info?.Title || null;
+      lang = md?.info?.Language || null;
     } catch {
-      // getStructTree may be unavailable or throw on malformed trees
     }
-    page.cleanup();
-  }
+    try {
+      const markInfo: any = await (doc as any).getMarkInfo?.();
+      tagged = markInfo?.Marked === true;
+    } catch {
+    }
 
-  let lang: string | null = null;
-  let title: string | null = null;
-  let tagged = false;
-  try {
-    const md: any = await doc.getMetadata();
-    title = md?.info?.Title || null;
-    lang = md?.info?.Language || null;
-  } catch {
-    // metadata is best-effort
-  }
-  try {
-    const markInfo: any = await (doc as any).getMarkInfo?.();
-    tagged = markInfo?.Marked === true;
-  } catch {
-    // getMarkInfo may be unavailable
-  }
+    const structChildren = structRoots.flatMap((r) => r.children);
+    const struct: StructDoc = {
+      root: structChildren.length ? { role: "Document", alt: null, lang, children: structChildren } : null,
+      tagged: tagged || structChildren.length > 0,
+    };
 
-  // Merge the per-page structure trees under one synthetic Document root. If no
-  // page carried a tree, the PDF is untagged and the root stays null.
-  const structChildren = structRoots.flatMap((r) => r.children);
-  const struct: StructDoc = {
-    root: structChildren.length ? { role: "Document", alt: null, lang, children: structChildren } : null,
-    tagged: tagged || structChildren.length > 0,
-  };
-
-  await loadingTask.destroy();
-  return { pages, pageText, lang, title, tagged, struct };
+    return { pages, pageText, lang, title, tagged, struct };
+  } finally {
+    try {
+      await loadingTask.destroy();
+    } catch {
+    }
+  }
 }

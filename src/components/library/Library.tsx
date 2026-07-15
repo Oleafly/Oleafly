@@ -36,8 +36,18 @@ import { deleteProject, duplicateProject, readCompiledPdf } from "@/lib/tauri";
 import { pdfPageToPng } from "@/lib/pdf-image";
 
 const thumbCache = new Map<string, string | null>();
+const MAX_THUMBNAILS = 64;
 // In-flight keys so a second hover during a load does not start a parallel job.
 const thumbInflight = new Set<string>();
+
+function cacheThumbnail(key: string, png: string) {
+  thumbCache.delete(key);
+  thumbCache.set(key, png);
+  if (thumbCache.size > MAX_THUMBNAILS) {
+    const oldest = thumbCache.keys().next().value;
+    if (oldest) thumbCache.delete(oldest);
+  }
+}
 
 export function Library() {
   const projects = useFilesStore((s) => s.projects);
@@ -71,7 +81,7 @@ export function Library() {
     void readCompiledPdf(id)
       .then((buf) => pdfPageToPng(new Uint8Array(buf), 1, 1.2, "#ffffff"))
       .then((png) => {
-        thumbCache.set(key, png);
+        cacheThumbnail(key, png);
         setThumbs((t) => ({ ...t, [id]: png }));
       })
       .catch(() => {

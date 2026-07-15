@@ -175,8 +175,6 @@ export function formatError(e: unknown, providerLabel?: string): string {
   return parts.join(" ");
 }
 
-// Bad keys, quota/balance, bad requests, and missing models are permanent —
-// retrying those just hides the real message behind "retrying…".
 export function isRetryable(e: unknown): boolean {
   const err = e as any;
   const status: number | undefined = err?.statusCode ?? err?.status;
@@ -212,6 +210,7 @@ export function ReasoningBlock({
   const scrollRef = useRef<HTMLPreElement | null>(null);
 
   useEffect(() => {
+    void text;
     if (active && open && scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
@@ -323,5 +322,3 @@ export const MessageItem = memo(function MessageItem({
     </div>
   );
 });
-
-

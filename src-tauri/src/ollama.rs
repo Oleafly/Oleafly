@@ -3,7 +3,6 @@
 //! Queries a local Ollama instance's `GET {host}/api/tags` to list the models
 //! the user has actually pulled. Done on the Rust side (not the webview) because
 //! Ollama's CORS policy blocks browser requests from the Tauri origin unless
-//! `OLLAMA_ORIGINS` is set — going through reqwest sidesteps that entirely.
 
 use serde::Deserialize;
 

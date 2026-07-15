@@ -7,16 +7,16 @@ function band(score: number): { stroke: string; text: string } {
   return { stroke: "stroke-red-500", text: "text-red-500" };
 }
 
-export const ScoreRing = memo(function ScoreRing({ label, score }: { label: string; score: number }) {
+export const ScoreRing = memo(function ScoreRing({ label, score }: { label: string; score: number | null }) {
   const r = 26;
   const circ = 2 * Math.PI * r;
-  const dash = (Math.max(0, Math.min(100, score)) / 100) * circ;
-  const { stroke, text } = band(score);
+  const dash = score === null ? 0 : (Math.max(0, Math.min(100, score)) / 100) * circ;
+  const { stroke, text } = score === null ? { stroke: "stroke-muted", text: "text-muted-foreground" } : band(score);
 
   return (
     <div className="flex flex-col items-center gap-1.5">
       <div className="relative size-[68px]">
-        <svg viewBox="0 0 68 68" className="size-full -rotate-90" role="img" aria-label={`${label} readiness ${score} out of 100`}>
+        <svg viewBox="0 0 68 68" className="size-full -rotate-90" role="img" aria-label={score === null ? `${label} not evaluated` : `${label} readiness ${score} out of 100`}>
           <circle cx="34" cy="34" r={r} className="fill-none stroke-border" strokeWidth="6" />
           <circle
             cx="34"
@@ -29,7 +29,7 @@ export const ScoreRing = memo(function ScoreRing({ label, score }: { label: stri
           />
         </svg>
         <div className={cn("absolute inset-0 flex items-center justify-center text-lg font-semibold tabular-nums", text)}>
-          {score}
+          {score ?? "Not scored"}
         </div>
       </div>
       <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</span>

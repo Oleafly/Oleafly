@@ -48,8 +48,6 @@ export const PROVIDERS: AIProvider[] = [
     blurb: "GLM models via a Z.AI GLM Coding Plan subscription.",
     signupUrl: "https://z.ai/subscribe",
     // Use the Coding Plan endpoint. The general /api/paas/v4 one bills separate
-    // pay-as-you-go balance and returns "insufficient balance" for plan keys —
-    // which is what most people using GLM in a coding tool actually have.
     baseURL: "https://api.z.ai/api/coding/paas/v4",
     models: [
       { id: "glm-5.2", name: "GLM-5.2" },

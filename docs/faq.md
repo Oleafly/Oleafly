@@ -18,12 +18,13 @@ Yes. XeTeX/Tectonic emits real selectable Unicode text with embedded subset font
 
 ## Setup and compile
 
-### `pnpm tauri dev` fails to find the Tectonic sidecar
+### `pnpm tauri dev` fails to find a compiler sidecar
 Run the fetch script first:
 ```bash
 ./scripts/fetch-tectonic.sh all
+./scripts/fetch-typst.sh all
 ```
-Binaries land in `src-tauri/binaries/`. Re-run `pnpm tauri dev`.
+Both pinned, checksum-verified engines land in `src-tauri/binaries/`. Re-run `pnpm tauri dev`.
 
 ### A package is missing and the compile errors out
 Either turn off Offline mode so Tectonic can fetch it once, or add it to your local cache. Once fetched, it's cached for offline use.

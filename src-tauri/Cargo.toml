@@ -16,7 +16,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = ["macos-private-api"] }
-tokio = { version = "1", features = ["time", "sync", "macros"] }
+tokio = { version = "1", features = ["time", "sync", "macros", "process", "io-util"] }
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }
 tauri-plugin-shell = "2"
 tauri-plugin-playwright = { version = "0.4", optional = true }
@@ -36,6 +36,7 @@ zip = { version = "2", default-features = false, features = ["deflate"] }
 tar = "0.4"
 # Streaming the pandoc download so we can report progress.
 futures-util = "0.3"
+sha2 = "0.10"
 # Async HTTP client for the GitHub OAuth device flow, which can't be called
 # from the webview (CORS). The API endpoints on api.github.com are still called
 # directly from the frontend; only the OAuth endpoints run here. Commands are
@@ -43,6 +44,10 @@ futures-util = "0.3"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "stream"] }
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
 rand = "0.8"
+libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Storage_FileSystem"] }
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]

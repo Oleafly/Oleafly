@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useSettingsStore } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
 import { gitLog, type GitCommit } from "@/lib/tauri";
+import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 
 export function HistoryModal() {
   const open = useSettingsStore((s) => s.historyOpen);
@@ -13,6 +14,7 @@ export function HistoryModal() {
   const [commits, setCommits] = useState<GitCommit[]>([]);
   const [busy, setBusy] = useState(false);
   const [confirmOid, setConfirmOid] = useState<string | null>(null);
+  const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDivElement>(open, () => setOpen(false));
 
   useEffect(() => {
     if (!open || !projectId) return;
@@ -36,15 +38,20 @@ export function HistoryModal() {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onClick={() => setOpen(false)}
+      role="presentation"
+      onMouseDown={onBackdropMouseDown}
     >
       <div
+        role="dialog"
+        ref={dialogRef}
+        tabIndex={-1}
+        aria-modal="true"
+        aria-labelledby="history-title"
         className="flex max-h-[80vh] w-full max-w-lg flex-col rounded-xl border bg-popover text-popover-foreground shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2 border-b p-4">
           <History className="size-4" />
-          <h2 className="text-base font-semibold">History</h2>
+          <h2 id="history-title" className="text-base font-semibold">History</h2>
           <span className="ml-auto text-xs text-muted-foreground">Git</span>
         </div>
         <div className="flex-1 overflow-auto p-2">

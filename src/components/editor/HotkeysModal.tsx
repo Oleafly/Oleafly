@@ -3,6 +3,7 @@ import { Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSettingsStore } from "@/store/settings";
 import { shortcut } from "@/lib/utils";
+import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 
 // Leaves rows that already spell out both conventions (e.g. "Ctrl-Space") untouched.
 const keyLabel = (keys: string) => (keys.includes("Ctrl") ? keys : shortcut(keys));
@@ -35,6 +36,7 @@ export function HotkeysModal() {
   const open = useSettingsStore((s) => s.hotkeysOpen);
   const setOpen = useSettingsStore((s) => s.setHotkeysOpen);
   const [q, setQ] = useState("");
+  const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDivElement>(open, () => setOpen(false));
 
   const filtered = useMemo(
     () =>
@@ -57,15 +59,20 @@ export function HotkeysModal() {
   return (
     <div
       className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4"
-      onClick={() => setOpen(false)}
+      role="presentation"
+      onMouseDown={onBackdropMouseDown}
     >
       <div
+        role="dialog"
+        ref={dialogRef}
+        tabIndex={-1}
+        aria-modal="true"
+        aria-labelledby="hotkeys-title"
         className="flex max-h-[80vh] w-full max-w-lg flex-col overflow-hidden rounded-xl border bg-sidebar text-sidebar-foreground shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex h-12 items-center justify-between border-b border-sidebar-border px-5">
-          <h2 className="text-sm font-semibold">Keyboard Shortcuts</h2>
-          <Button variant="ghost" size="icon" className="size-7" onClick={() => setOpen(false)}>
+          <h2 id="hotkeys-title" className="text-sm font-semibold">Keyboard Shortcuts</h2>
+          <Button variant="ghost" size="icon" className="size-7" onClick={() => setOpen(false)} aria-label="Close keyboard shortcuts">
             <X className="size-4" />
           </Button>
         </div>
@@ -74,6 +81,8 @@ export function HotkeysModal() {
             <Search className="size-4 text-muted-foreground" />
             <input
               autoFocus
+              data-modal-initial-focus
+              aria-label="Search shortcuts"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search shortcuts…"

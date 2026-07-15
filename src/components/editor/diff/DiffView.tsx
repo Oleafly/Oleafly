@@ -50,6 +50,7 @@ export function DiffView() {
   }, []);
 
   useEffect(() => {
+    void reloadKey;
     if (!diff || !projectId) return;
     const { path, side } = diff;
     let cancelled = false;
@@ -161,7 +162,6 @@ export function DiffView() {
       navViewRef.current = null;
       if (hostRef.current) hostRef.current.innerHTML = "";
     };
-    // reloadKey isn't read above; it's here only to force a rebuild after a commit.
   }, [diff, mode, projectId, reloadKey]);
 
   const goChunk = (dir: "next" | "prev") => {

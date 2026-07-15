@@ -17,6 +17,7 @@ const BY_EXT: Record<string, { Icon: LucideIcon; cls: string }> = {
   sty: { Icon: FileText, cls: "text-sky-500" },
   cls: { Icon: FileText, cls: "text-sky-500" },
   ltx: { Icon: FileText, cls: "text-sky-500" },
+  typ: { Icon: FileType, cls: "text-emerald-500" },
   bib: { Icon: FileText, cls: "text-amber-500" },
   pdf: { Icon: FileText, cls: "text-red-500" },
   json: { Icon: FileJson, cls: "text-yellow-500" },

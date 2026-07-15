@@ -9,7 +9,6 @@ import { readFileContent } from "@/lib/tauri";
 // with pure JS (no disk IO). `updateFile` re-parses only the changed file (the
 // expensive per-file regex work) and reassembles, instead of re-parsing every
 // file on every keystroke. `rebuildFromDisk` (project switch) reads every
-// `.tex`/`.bib` once.
 interface IndexStore {
   index: ProjectIndex | null;
   // Path -> text the current index was built from (rename applies against this).
@@ -22,7 +21,7 @@ interface IndexStore {
   reset: () => void;
 }
 
-const isIndexable = (p: string) => p.endsWith(".tex") || p.endsWith(".bib");
+const isIndexable = (p: string) => /\.(?:tex|ltx|latex|typ|md|markdown|bib)$/i.test(p);
 
 // Bumped on every rebuild so a rebuild that finishes after the project switched
 // can detect it is stale and not install the old project's symbols.

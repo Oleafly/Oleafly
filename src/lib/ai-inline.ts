@@ -1,8 +1,10 @@
 import { streamText } from "ai";
 import { getConfig } from "@/lib/tauri";
 import { resolveActiveModel } from "@/lib/ai-providers";
+import type { DocumentEngineDescriptor } from "@/lib/tauri";
 
 export type InlineEditArgs = {
+  engine?: DocumentEngineDescriptor;
   instruction: string;
   selection: string;
   context?: { before: string; after: string };
@@ -15,16 +17,27 @@ export const PRESETS: { id: string; label: string; instruction: string }[] = [
   { id: "grammar", label: "Fix grammar", instruction: "Fix any spelling and grammar mistakes in the selected text." },
   { id: "concise", label: "Make concise", instruction: "Make the selected text more concise without losing meaning." },
   { id: "expand", label: "Expand", instruction: "Expand the selected text with more detail." },
-  { id: "fix-latex", label: "Fix LaTeX", instruction: "Fix any LaTeX syntax errors in the selection; keep it valid." },
+  { id: "fix-source", label: "Fix source", instruction: "Fix source syntax errors in the selection; keep it valid for the active document engine." },
   { id: "translate", label: "Translate", instruction: "Translate the selected text to English." },
 ];
 
-const SYSTEM = [
-  "You edit a fragment of a LaTeX document.",
+const systemFor = (engine: InlineEditArgs["engine"]) => {
+  const profile = engine?.capabilities.formatting_profile ?? "none";
+  return [
+  profile === "none"
+    ? "You edit a fragment whose document engine is not yet known. Make only engine-neutral prose edits."
+    : `You edit a fragment of a ${engine?.label ?? "technical"} document.`,
   "Return ONLY the replacement for the selected text.",
   "No code fences, no commentary, no explanation.",
-  "Preserve LaTeX validity: balanced braces and environments.",
+  profile === "none"
+    ? "Do not introduce markup or engine-specific commands."
+    : profile === "typst"
+    ? "Preserve valid Typst markup and scripting syntax."
+    : profile === "markdown"
+    ? "Preserve valid Pandoc Markdown syntax and YAML front matter."
+    : "Preserve LaTeX validity: balanced braces and environments.",
 ].join(" ");
+};
 
 function stripFence(s: string): string {
   const t = s.trim();
@@ -44,7 +57,7 @@ export async function runInlineCompletion(args: InlineEditArgs): Promise<string>
 
   const result = streamText({
     model,
-    system: SYSTEM,
+    system: systemFor(args.engine),
     prompt,
     abortSignal: args.signal,
   });

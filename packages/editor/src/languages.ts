@@ -9,12 +9,14 @@ import { toml } from "@codemirror/legacy-modes/mode/toml";
 import { dockerFile } from "@codemirror/legacy-modes/mode/dockerfile";
 import { shell } from "@codemirror/legacy-modes/mode/shell";
 import { latexLanguage } from "./latex";
+import { typstLanguage } from "./typst";
 
 export function languageForPath(path: string): LanguageSupport | null {
   const p = path.toLowerCase();
   const base = p.slice(p.lastIndexOf("/") + 1);
 
-  if (/\.(tex|sty|cls|ltx|bst)$/.test(p)) return latexLanguage();
+  if (/\.(tex|latex|sty|cls|ltx|bst)$/.test(p)) return latexLanguage();
+  if (p.endsWith(".typ")) return typstLanguage();
   if (p.endsWith(".bib")) return new LanguageSupport(StreamLanguage.define(stex));
   if (p.endsWith(".json")) return json();
   if (/\.(md|markdown)$/.test(p)) return markdown();

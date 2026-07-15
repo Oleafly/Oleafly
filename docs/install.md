@@ -61,10 +61,18 @@ for. It's built with [Tauri 2](https://tauri.app) (Rust + React).
 
 ### Prerequisites
 
-- Node.js 20+ and pnpm
+- Node.js 22.13+ and pnpm 11.9+ (the exact pnpm version is declared in
+  `package.json`)
 - Rust (stable), installed via [rustup](https://rustup.rs)
 - Tauri 2 system dependencies for your OS, see the [Tauri prerequisites guide](https://v2.tauri.app/start/prerequisites/)
-- Optional, for Word/HTML export: [pandoc](https://pandoc.org/installing.html)
+- Optional until first use, for Markdown PDF compilation and Word/HTML export:
+  [pandoc](https://pandoc.org/installing.html). OpenLeaf can download its pinned
+  Pandoc 3.9.0.2 archive on demand on macOS Apple Silicon, Linux x64, and
+  Windows x64. OpenLeaf pins each supported GitHub release asset's SHA256,
+  verifies it before extraction, accepts only the exact regular executable
+  member, applies size and network time limits, verifies `pandoc --version`, and
+  publishes the executable atomically. Other OS/architecture combinations fail
+  closed with a manual-install message.
 
 ### Run the dev app
 
@@ -72,8 +80,8 @@ for. It's built with [Tauri 2](https://tauri.app) (Rust + React).
 git clone https://github.com/prajwal-svm/OpenLeaf.git
 cd OpenLeaf
 
-# 1. Fetch the Tectonic compiler sidecar for your platform
 ./scripts/fetch-tectonic.sh all     # or: aarch64-apple-darwin / x86_64-pc-windows-msvc / ...
+./scripts/fetch-typst.sh all
 
 # 2. Install frontend deps
 pnpm install

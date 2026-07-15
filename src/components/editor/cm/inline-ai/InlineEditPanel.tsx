@@ -13,6 +13,7 @@ import { useSettingsStore } from "@/store/settings";
 import { getEditorView } from "@/components/editor/cm/controller";
 import { AiChrome, AiMark } from "@/components/ai/AiChrome";
 import { useAgentHandoffStore } from "@/store/agent-handoff";
+import { useFilesStore } from "@/store/files";
 import { acceptInlineEdit, rejectInlineEdit } from "./plugin";
 import { PromptPopover } from "./PromptPopover";
 import { DiffActionBar, DiffErrorBar } from "./DiffActionBar";
@@ -86,6 +87,9 @@ export function InlineEditPanel() {
     abortRef.current = ctrl;
     try {
       await runInlineCompletion({
+        engine: useFilesStore.getState().engineLoaded
+          ? useFilesStore.getState().engine
+          : undefined,
         instruction,
         selection: s.original,
         signal: ctrl.signal,

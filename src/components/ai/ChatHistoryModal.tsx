@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { MessagesSquare, Trash2, X } from "lucide-react";
 import type { StoredChat } from "@/store/chats";
 import { formatUsd } from "@/lib/ai-pricing";
 import { cn } from "@/lib/utils";
+import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 
 function relativeTime(t: number) {
   const diff = Date.now() - t;
@@ -34,28 +35,29 @@ export function ChatHistoryModal({
   onDelete: (chatId: string) => void;
 }) {
   const [confirmId, setConfirmId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onEsc = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", onEsc);
-    return () => document.removeEventListener("keydown", onEsc);
-  }, [open, onClose]);
+  const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDivElement>(open, onClose);
 
   if (!open) return null;
 
   return (
     <div
       className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4"
-      onClick={onClose}
+      role="presentation"
+      onMouseDown={onBackdropMouseDown}
     >
       <div
+        role="dialog"
+        ref={dialogRef}
+        tabIndex={-1}
+        aria-modal="true"
+        aria-labelledby="chat-history-title"
         className="flex max-h-[80vh] w-full max-w-lg flex-col rounded-xl border bg-sidebar text-sidebar-foreground shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex h-11 shrink-0 items-center justify-between border-b px-4">
-          <h2 className="text-sm font-semibold">Chat history</h2>
+          <h2 id="chat-history-title" className="text-sm font-semibold">Chat history</h2>
           <button
+            type="button"
+            data-modal-initial-focus
             onClick={onClose}
             className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
             aria-label="Close"
@@ -83,6 +85,7 @@ export function ChatHistoryModal({
                   )}
                 >
                   <button
+                    type="button"
                     onClick={() => onOpen(chat)}
                     className="min-w-0 flex-1 text-left"
                   >
@@ -114,6 +117,7 @@ export function ChatHistoryModal({
                   {confirmId === chat.id ? (
                     <div className="flex shrink-0 items-center gap-1">
                       <button
+                        type="button"
                         onClick={() => {
                           onDelete(chat.id);
                           setConfirmId(null);
@@ -123,6 +127,7 @@ export function ChatHistoryModal({
                         Delete
                       </button>
                       <button
+                        type="button"
                         onClick={() => setConfirmId(null)}
                         className="rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent"
                       >
@@ -131,6 +136,8 @@ export function ChatHistoryModal({
                     </div>
                   ) : (
                     <button
+                      type="button"
+                      aria-label={`Delete ${chat.title || "chat"}`}
                       onClick={() => setConfirmId(chat.id)}
                       title="Delete chat"
                       className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-destructive group-hover:opacity-100"

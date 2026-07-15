@@ -2,11 +2,8 @@ import type { LocalLinter, Lint, Span, Suggestion } from "harper.js";
 import { logError } from "@/lib/log";
 
 // Harper grammar/style checking (offline, WASM). `harper.js` has no LaTeX
-// parser, so callers pass a *masked* copy of the document (commands/math/
-// comments replaced with spaces) — offsets then line up with the original.
 //
 // The WASM binary is dynamically imported on first use so the large inlined
-// chunk doesn't slow editor startup.
 
 let linterPromise: Promise<LocalLinter> | null = null;
 
@@ -35,7 +32,6 @@ export function getGrammarLinter(): Promise<LocalLinter> {
           SentenceCapitalization: false,
         });
       } catch {
-        /* config keys may differ across versions — non-fatal */
       }
       return l;
     })();
@@ -81,7 +77,6 @@ export async function lintGrammar(
       const suggestions: GrammarSuggestion[] = [];
       for (const s of sugs) {
         const text = s.get_replacement_text();
-        // Skip empty replacements that aren't removals — nothing to apply.
         if (text.length === 0 && s.kind() !== 1) continue;
         suggestions.push({ text, kind: s.kind() });
       }

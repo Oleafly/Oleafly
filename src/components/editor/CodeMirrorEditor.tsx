@@ -62,11 +62,10 @@ const HOST: EditorHost = {
   ],
 };
 
-const EXTRA_EXTENSIONS: Extension[] = [
+const LATEX_EXTENSIONS: Extension[] = [
   createPreflightLinter(),
   codeIntel(),
   hoverIntel(),
-  inlineDiffPlugin,
 ];
 
 const EXTRA_KEYMAP: KeyBinding[] = [
@@ -77,7 +76,10 @@ export function CodeMirrorEditor() {
   return (
     <CodeMirrorEditorCore
       host={HOST}
-      extraExtensions={EXTRA_EXTENSIONS}
+      extraExtensions={[inlineDiffPlugin]}
+      extraExtensionsForPath={(path) =>
+        path && /\.(?:tex|latex|ltx)$/i.test(path) ? LATEX_EXTENSIONS : []
+      }
       extraKeymap={EXTRA_KEYMAP}
     />
   );

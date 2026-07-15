@@ -9,6 +9,7 @@ import { computeScores } from "./score";
 
 export interface PreflightInput {
   source: string;
+  sourceProfile?: "latex" | "none";
   pages?: PositionedText[][];
   meta?: { lang?: string | null; title?: string | null; tagged?: boolean };
   readerText?: string;
@@ -16,23 +17,29 @@ export interface PreflightInput {
   refs?: RefsContext;
 }
 
-export function runPreflight({ source, pages, meta, readerText, struct, refs }: PreflightInput): PreflightReport {
+export function runPreflight({ source, sourceProfile = "latex", pages, meta, readerText, struct, refs }: PreflightInput): PreflightReport {
   const atsParse = readerText !== undefined ? simulateAtsParse(readerText) : undefined;
 
   const findings = [
-    ...runSourceRules(source),
+    ...(sourceProfile === "latex" ? runSourceRules(source) : []),
     ...(pages ? runPdfRules(pages, meta) : []),
     ...(struct ? verifyStructure(struct) : []),
     ...(atsParse ? atsParseFindings(atsParse) : []),
-    ...(refs ? runRefsRules(source, refs) : []),
+    ...(sourceProfile === "latex" && refs ? runRefsRules(source, refs) : []),
   ];
 
   const { ats, a11y, refs: refsScore } = computeScores(findings);
+  const coverage = {
+    ats: pages && readerText !== undefined ? "evaluated" as const : "not_run" as const,
+    a11y: pages ? "evaluated" as const : "not_run" as const,
+    refs: sourceProfile === "latex" && refs ? "evaluated" as const : "unsupported" as const,
+  };
   return {
     findings,
-    atsScore: ats,
-    a11yScore: a11y,
-    refsScore,
+    atsScore: coverage.ats === "evaluated" ? ats : null,
+    a11yScore: coverage.a11y === "evaluated" ? a11y : null,
+    refsScore: coverage.refs === "evaluated" ? refsScore : null,
+    coverage,
     ranAt: Date.now(),
     hasPdf: pages !== undefined,
     atsParse,

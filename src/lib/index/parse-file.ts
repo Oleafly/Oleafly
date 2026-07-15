@@ -1,4 +1,6 @@
 import type { FileSymbols, Sym, SymKind } from "./types";
+import { parseTypstFile } from "./parse-typst";
+import { parseMarkdownFile } from "./parse-markdown";
 
 // `macrouse` uses are NOT resolved here; they need the project-wide macro set,
 // which buildIndex adds in a second pass.
@@ -58,6 +60,8 @@ function joinInput(dir: string, rel: string): string {
 }
 
 export function parseFile(path: string, rawText: string): FileSymbols {
+  if (path.toLowerCase().endsWith(".typ")) return parseTypstFile(path, rawText);
+  if (/\.(?:md|markdown)$/i.test(path)) return parseMarkdownFile(path, rawText);
   const text = maskComments(rawText);
   const defs: Sym[] = [];
   const uses: Sym[] = [];

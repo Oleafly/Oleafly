@@ -33,6 +33,14 @@ PDF to source: ⌘/Ctrl-click anywhere on the PDF to jump the cursor there in th
 
 Click the Download icon in the toolbar, then Download as PDF. The output is ATS-clean by default: real selectable text, embedded subset fonts. For Word/HTML/Markdown, install pandoc and use the same menu.
 
+You can also create a blank **Markdown** project from the library. OpenLeaf
+compiles its `main.md` (or `main.markdown`) to PDF with Pandoc and the bundled
+Tectonic engine. The first compile offers the same on-demand Pandoc download
+used by document export. If that download is unavailable, the error links to
+Pandoc's manual installation guide. Markdown projects keep the normal local
+Git history and PDF preview, but do not offer SyncTeX, offline mode, or isolated
+figure compilation.
+
 ## 6. Where your files live
 
 Every project is a plain folder under `~/.openleaf/projects/<id>/` containing your `.tex`, `.bib`, images, and a real `.git` repository. They're just files, so you can browse, copy, or back them up with any tool.

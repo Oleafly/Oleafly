@@ -86,7 +86,7 @@ export async function retrieveProjectChunks(
   if (!projectId) return [];
 
   const paths = files.tree
-    .filter((f) => !f.is_dir && (f.path.endsWith(".tex") || f.path.endsWith(".bib")))
+    .filter((f) => !f.is_dir && /\.(?:tex|typ|md|markdown|bib)$/i.test(f.path))
     .map((f) => f.path)
     .slice(0, MAX_FILES);
 

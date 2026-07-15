@@ -9,6 +9,7 @@ import { StateEffect } from "@codemirror/state";
 import type { EditorView, ViewUpdate } from "@codemirror/view";
 
 import { maskToProse, spellcheckRanges } from "./latex-mask";
+import { markdownSpellcheckRanges, markdownToProse } from "./markdown-mask";
 
 export interface GrammarSuggestion {
   text: string;
@@ -94,7 +95,11 @@ export function createSpellLinter() {
       try {
         const hunspell = await h.getSpellchecker();
         const projectId = h.getProjectId();
-        const ranges = spellcheckRanges(view.state.doc.toString());
+        const path = h.getActivePath() ?? "";
+        const text = view.state.doc.toString();
+        const ranges = /\.(?:md|markdown)$/i.test(path)
+          ? markdownSpellcheckRanges(text)
+          : spellcheckRanges(text);
         const diags: Diagnostic[] = [];
         for (const r of ranges) {
           if (r.word.length < 2 || h.isSessionIgnored(r.word)) continue;
@@ -147,8 +152,7 @@ export function createHarperLinter() {
       const h = host;
       if (!h) return [];
       const path = h.getActivePath() ?? "";
-      // Prose checking only for LaTeX; leave .sty/.cls/etc. alone.
-      if (!/\.tex$/i.test(path)) return [];
+      if (!/\.(tex|ltx|latex|md|markdown)$/i.test(path)) return [];
       try {
         const projectId = h.getProjectId();
         const { showRegionalism, showWordChoice } = h.getLintPrefs();
@@ -158,7 +162,9 @@ export function createHarperLinter() {
         // Skip the pass above a generous cap (covers normal single-file docs).
         if (text.length > MAX_GRAMMAR_CHARS) return [];
         // Lint compacted prose (no masking gaps), then map spans back to the doc.
-        const { prose, map } = maskToProse(text);
+        const { prose, map } = /\.(?:md|markdown)$/i.test(path)
+          ? markdownToProse(text)
+          : maskToProse(text);
         const diags = await h.lintGrammar(prose, prose.length);
         const out: Diagnostic[] = [];
         for (const d of diags) {
@@ -171,7 +177,6 @@ export function createHarperLinter() {
           if (to <= from) continue;
           const word = text.slice(from, to);
           if (h.isWordIgnored(projectId, word)) continue;
-          // Every warning can be dismissed for the flagged word/phrase — spelling,
           // regionalism ("Spanner"), word choice, or any style suggestion.
           const actions = [
             ...suggestionActions(d.suggestions),
@@ -194,7 +199,6 @@ export const spellLintExtensions = (opts: { spell?: boolean; harper?: boolean } 
   const exts = [];
   if (opts.spell || opts.harper) exts.push(lintGutter());
   // Harper covers spelling too, so only run the standalone Hunspell speller when
-  // Harper is off — otherwise every misspelling would be underlined twice.
   if (opts.spell && !opts.harper) exts.push(createSpellLinter());
   if (opts.harper) exts.push(createHarperLinter());
   return exts;

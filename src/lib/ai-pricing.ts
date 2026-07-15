@@ -1,6 +1,4 @@
 // Approximate public list prices (USD per 1M tokens) for common models.
-// Used only for rough UI estimates — not billing. Update periodically.
-// Sources: provider list prices as of 2025–2026; Z.AI coding plan treated as ~0.
 
 export interface ModelPrice {
   inputPerMTok: number;
@@ -37,7 +35,6 @@ const PRICES: Record<string, ModelPrice> = {
   // xAI
   "grok-2": { inputPerMTok: 2, outputPerMTok: 10 },
   "grok-beta": { inputPerMTok: 5, outputPerMTok: 15 },
-  // Local / plan-based — free at the meter
   "llama3.2": { inputPerMTok: 0, outputPerMTok: 0, note: "local" },
   "qwen2.5": { inputPerMTok: 0, outputPerMTok: 0, note: "local" },
   mistral: { inputPerMTok: 0, outputPerMTok: 0, note: "local" },

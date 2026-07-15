@@ -6,6 +6,27 @@ test.beforeEach(async ({ tauriPage }) => {
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 });
 
+test("nested app and template modals honor topmost Escape ownership", async ({ tauriPage }) => {
+  await tauriPage.click('[aria-label="Home"]');
+  await tauriPage.click('[aria-label="Settings"]');
+  await expect(tauriPage.locator('[aria-label="Close settings"]')).toBeVisible();
+  await tauriPage.evaluate(`Array.from(document.querySelectorAll('button')).find((button) => button.textContent?.trim() === 'New project')?.click()`);
+  await expect(tauriPage.getByTestId("template-gallery")).toBeVisible();
+  await tauriPage.evaluate(`document.querySelector('[aria-label="Close settings"]')?.closest('[role="presentation"]')?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))`);
+  await expect(tauriPage.getByTestId("template-gallery")).toBeVisible();
+  await expect(tauriPage.locator('[aria-label="Close settings"]')).toBeVisible();
+  await tauriPage.press("body", "Escape");
+  await expect(tauriPage.getByTestId("template-gallery")).not.toBeVisible();
+  await expect(tauriPage.locator('[aria-label="Close settings"]')).toBeVisible();
+  await tauriPage.evaluate(`Array.from(document.querySelectorAll('button')).find((button) => button.textContent?.trim() === 'New project')?.click()`);
+  await expect(tauriPage.getByTestId("template-gallery")).toBeVisible();
+  await tauriPage.evaluate(`document.querySelector('[data-testid="template-gallery"]')?.parentElement?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))`);
+  await expect(tauriPage.getByTestId("template-gallery")).not.toBeVisible();
+  await tauriPage.press("body", "Escape");
+  await expect(tauriPage.locator('[aria-label="Close settings"]')).not.toBeVisible();
+  await expect(tauriPage.locator('[aria-label="Settings"]')).toBeFocused();
+});
+
 test("word count modal opens from the palette and closes", async ({ tauriPage }) => {
   await pressGlobal(tauriPage, "k", { meta: true });
   await tauriPage.fill("[cmdk-input]", "word"); // cmdk matches single terms

@@ -13,6 +13,8 @@ const mocks = vi.hoisted(() => ({
   state: {
     projectId: "proj" as string | null,
     mainDoc: "main.tex",
+    engine: { capabilities: { supports_synctex: true } },
+    engineLoaded: true,
     activePath: "main.tex" as string | null,
     tree: [] as { path: string; is_dir: boolean }[],
   },
@@ -44,6 +46,9 @@ beforeEach(() => {
   for (const k of ["synctexInverse", "gotoLine", "selectWordNearLine", "openFile"] as const)
     mocks[k].mockReset();
   mocks.state.projectId = "proj";
+  mocks.state.mainDoc = "main.tex";
+  mocks.state.engine.capabilities.supports_synctex = true;
+  mocks.state.engineLoaded = true;
   mocks.state.activePath = "main.tex";
   mocks.state.tree = [
     { path: "main.tex", is_dir: false },
@@ -75,6 +80,13 @@ describe("inverseFromClick (multi-file, 0.1.1 fix)", () => {
 
   it("no-ops with no project open (never calls into the backend)", async () => {
     mocks.state.projectId = null;
+    await inverseFromClick(1, 10, 10);
+    expect(mocks.synctexInverse).not.toHaveBeenCalled();
+  });
+
+  it("does not fake SyncTeX navigation for Typst projects", async () => {
+    mocks.state.mainDoc = "main.typ";
+    mocks.state.engine.capabilities.supports_synctex = false;
     await inverseFromClick(1, 10, 10);
     expect(mocks.synctexInverse).not.toHaveBeenCalled();
   });

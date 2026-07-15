@@ -42,7 +42,6 @@ export interface AiToolsHost {
   applyExternalRename(from: string, to: string): void;
   applyExternalDelete(path: string): void;
   refreshTree(): Promise<void>;
-  setMainDocState(mainDoc: string): void;
   recompile(): Promise<
     { ok?: boolean; errors?: unknown[]; has_pdf?: boolean; log?: string | null } | null | undefined
   >;
@@ -129,7 +128,7 @@ export function createOpenLeafTools(
       inputSchema: {
         type: "object",
         properties: {
-          path: { type: "string", description: "Project-relative file path, e.g. 'main.tex' or 'sections/intro.tex'" },
+          path: { type: "string", description: "Project-relative file path, e.g. 'main.tex', 'main.typ', or 'sections/intro.tex'" },
           offset: {
             type: "number",
             description: "1-based line number to start reading (default 1)",
@@ -178,7 +177,7 @@ export function createOpenLeafTools(
 
     write_file: {
       description:
-        "Write or overwrite a file in the current project. Use for editing LaTeX, adding content, or fixing issues.",
+        "Write or overwrite a file in the current project. Use for editing document source, adding content, or fixing issues.",
       inputSchema: {
         type: "object",
         properties: {
@@ -215,7 +214,7 @@ export function createOpenLeafTools(
 
     replace_in_file: {
       description:
-        "Replace occurrences of an exact string in a file. Prefer this over write_file for small, precise fixes (e.g. fixing a single LaTeX command). Set replace_all=true to replace every occurrence. Fails if the find string is not present.",
+        "Replace occurrences of an exact string in a file. Prefer this over write_file for small, precise source fixes. Set replace_all=true to replace every occurrence. Fails if the find string is not present.",
       inputSchema: {
         type: "object",
         properties: {
@@ -351,7 +350,7 @@ export function createOpenLeafTools(
 
     compile: {
       description:
-        "Compile the current LaTeX project to PDF. Persists the active editor file first, runs the build, and returns the outcome. Always check `success` and `errors`; if errors remain, read them, fix the file, then compile again until success is true.",
+        "Compile the current document project to PDF with its selected engine. Persists the active editor file first, runs the build, and returns the outcome. Always check `success` and `errors`. If errors remain, read them, fix the file, then compile again until success is true.",
       inputSchema: {
         type: "object",
         properties: {},
@@ -376,7 +375,7 @@ export function createOpenLeafTools(
 
     get_log: {
       description:
-        "Return the full LaTeX compile log from the last compile. Use this when `compile` reports errors and you need surrounding context to diagnose them.",
+        "Return the full document-engine compile log from the last compile. Use this when `compile` reports errors and you need surrounding context to diagnose them.",
       inputSchema: {
         type: "object",
         properties: {},
@@ -415,7 +414,7 @@ export function createOpenLeafTools(
     },
 
     set_main_doc: {
-      description: "Set the project's main document (the compile entry point, e.g. main.tex). Requires user approval.",
+      description: "Set the project's main document (the compile entry point, e.g. main.tex, main.typ, or main.md). Requires user approval.",
       inputSchema: {
         type: "object",
         properties: {
@@ -437,7 +436,6 @@ export function createOpenLeafTools(
         }
         try {
           const meta = await setMainDocCmd(id, path);
-          host.setMainDocState(meta.main_doc);
           return { success: true, main_doc: meta.main_doc };
         } catch (e) {
           return { error: String(e) };
@@ -499,7 +497,7 @@ export function createOpenLeafTools(
       },
       execute: async () => {
         try {
-          window.dispatchEvent(new CustomEvent("localleaf:toggle-theme"));
+          window.dispatchEvent(new CustomEvent("openleaf:toggle-theme"));
           return { success: true };
         } catch (e) {
           return { error: String(e) };
@@ -509,7 +507,7 @@ export function createOpenLeafTools(
 
     project_map: {
       description:
-        "Get a structural map of the whole project: the section outline, labels, citation keys, macros, theorem and glossary names, the \\input file graph, and any unresolved references or citations. Call this to understand the whole document before making cross-cutting edits. A compact map is also auto-injected into your context each turn; call this for a full refresh.",
+        "Get a structural map of the whole project: the section outline, labels, citation keys, macros, theorem and glossary names, included/imported files, and unresolved links. Typst @key uses are reported as ambiguous because the syntax can mean either a label reference or a citation. Call this before cross-cutting edits.",
       inputSchema: {
         type: "object",
         properties: {},
@@ -533,6 +531,7 @@ export function createOpenLeafTools(
             .map((u) => ({ from: u.file, to: u.target })),
           unresolvedRefs: [...new Set(index.uses.filter((u) => u.kind === "ref" && !index.definitionFor(u)).map((u) => u.name))],
           unresolvedCites: [...new Set(index.uses.filter((u) => u.kind === "cite" && !index.definitionFor(u)).map((u) => u.name))],
+          ambiguousTypstAtUses: [...new Set(index.uses.filter((u) => u.kind === "atuse").map((u) => u.name))],
         };
       },
     },

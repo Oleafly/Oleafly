@@ -15,12 +15,68 @@ import { getEditorView, insertAtCursor, wrapSelection } from "./cm/controller";
 import { openInlineEdit } from "./cm/inline-ai/openSession";
 import { goToDefinition, findReferences, startRename } from "@/lib/index/nav";
 import { useSettingsStore } from "@/store/settings";
+import { useFilesStore } from "@/store/files";
 
 interface EditorContextMenuProps {
   children: ReactNode;
 }
 
 export function EditorContextMenu({ children }: EditorContextMenuProps) {
+  const engineLoaded = useFilesStore((s) => s.engineLoaded);
+  const isTypst = useFilesStore((s) => s.engineLoaded && s.engine.capabilities.formatting_profile === "typst");
+  const isMarkdown = useFilesStore((s) => s.engineLoaded && s.engine.capabilities.formatting_profile === "markdown");
+  if (!engineLoaded) {
+    return (
+      <ContextMenu>
+        <ContextMenuTrigger asChild><div className="h-full">{children}</div></ContextMenuTrigger>
+        <ContextMenuContent className="w-56">
+          <ContextMenuItem disabled>Document engine actions unavailable</ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
+    );
+  }
+  if (isTypst) {
+    return (
+      <ContextMenu>
+        <ContextMenuTrigger asChild><div className="h-full">{children}</div></ContextMenuTrigger>
+        <ContextMenuContent className="w-56">
+          <ContextMenuItem onClick={() => { const view = getEditorView(); if (view) openInlineEdit(view); }}>
+            <Sparkles className="mr-2 size-4" /> Ask AI…
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem onClick={() => wrapSelection("*", "*")}>
+            <Bold className="mr-2 size-4" /> Bold
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => wrapSelection("_", "_")}>
+            <Italic className="mr-2 size-4" /> Italic
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => insertAtCursor("= Heading\n")}>
+            <Heading className="mr-2 size-4" /> Heading
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => insertAtCursor("- Item\n")}>
+            <List className="mr-2 size-4" /> Bulleted list
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
+    );
+  }
+  if (isMarkdown) {
+    return (
+      <ContextMenu>
+        <ContextMenuTrigger asChild><div className="h-full">{children}</div></ContextMenuTrigger>
+        <ContextMenuContent className="w-56">
+          <ContextMenuItem onClick={() => { const view = getEditorView(); if (view) openInlineEdit(view); }}>
+            <Sparkles className="mr-2 size-4" /> Ask AI…
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem onClick={() => wrapSelection("**", "**")}><Bold className="mr-2 size-4" /> Bold</ContextMenuItem>
+          <ContextMenuItem onClick={() => wrapSelection("*", "*")}><Italic className="mr-2 size-4" /> Italic</ContextMenuItem>
+          <ContextMenuItem onClick={() => insertAtCursor("# Heading\n")}><Heading className="mr-2 size-4" /> Heading</ContextMenuItem>
+          <ContextMenuItem onClick={() => insertAtCursor("- Item\n")}><List className="mr-2 size-4" /> Bulleted list</ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
+    );
+  }
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>

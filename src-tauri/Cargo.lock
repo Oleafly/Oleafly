@@ -2303,10 +2303,12 @@ dependencies = [
  "flate2",
  "futures-util",
  "keyring",
+ "libc",
  "rand 0.8.7",
  "reqwest 0.12.28",
  "serde",
  "serde_json",
+ "sha2",
  "tar",
  "tauri",
  "tauri-build",
@@ -2317,6 +2319,7 @@ dependencies = [
  "tauri-plugin-shell",
  "tauri-plugin-updater",
  "tokio",
+ "windows-sys 0.61.2",
  "zip 2.4.2",
 ]
 

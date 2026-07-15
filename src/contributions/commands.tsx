@@ -30,8 +30,37 @@ import { clearBuildCache } from "@/lib/tauri";
 import { insertAtCursor, wrapSelection } from "@/components/editor/cm/controller";
 import { forwardFromCursor } from "@/features/synctex";
 import { exportCurrentPdf } from "@/features/export";
+import { useFilesStore } from "@/store/files";
+import {
+  formattingForEngine,
+  pathUsesEngineSource,
+  type EngineFormattingAction,
+} from "@/lib/document-engine";
 
-const toggleTheme = () => window.dispatchEvent(new CustomEvent("localleaf:toggle-theme"));
+const engine = () => useFilesStore.getState().engine;
+const engineLoaded = () => useFilesStore.getState().engineLoaded;
+const activeUsesEngineSource = () => {
+  const files = useFilesStore.getState();
+  return pathUsesEngineSource(files.engine, files.activePath);
+};
+const isLatex = () =>
+  engineLoaded() && engine().capabilities.formatting_profile === "latex";
+const activeIsLatexSource = () => isLatex() && activeUsesEngineSource();
+const supportsCitations = () =>
+  engineLoaded() && activeUsesEngineSource() && engine().capabilities.features.includes("citations");
+const supportsSyncTeX = () => engineLoaded() && engine().capabilities.supports_synctex;
+const supportsIsolatedCompile = () =>
+  engineLoaded() && engine().capabilities.supports_isolated_compile;
+export const engineFormattingAvailable = () => engineLoaded() && activeUsesEngineSource();
+export const runEngineFormatting = (action: EngineFormattingAction) => {
+  if (!activeUsesEngineSource()) return;
+  const formatting = formattingForEngine(engine(), engineLoaded(), action);
+  if (!formatting) return;
+  if (formatting.kind === "wrap") wrapSelection(formatting.before, formatting.after);
+  else insertAtCursor(formatting.text);
+};
+
+const toggleTheme = () => window.dispatchEvent(new CustomEvent("openleaf:toggle-theme"));
 const openNewProject = () => useSettingsStore.getState().setNewProjectOpen(true);
 const themeLabel = (ctx: AppContext) =>
   `Switch to ${ctx.theme === "dark" ? "light" : "dark"} theme`;
@@ -65,7 +94,7 @@ export function registerOmnibarCommands() {
     keywords: "figure diagram draw tikz plot chart illustration",
     icon: () => <Sparkles className="size-4" />,
     order: 30,
-    when: (ctx) => !!ctx.projectId,
+    when: (ctx) => !!ctx.projectId && isLatex() && supportsIsolatedCompile(),
     run: () => {
       const s = useSettingsStore.getState();
       s.setRailTab("ai");
@@ -80,7 +109,8 @@ export function registerOmnibarCommands() {
     keywords: "diagram figure tikz manual composer draw insert paste",
     icon: () => <Workflow className="size-4" />,
     order: 40,
-    when: (ctx) => !!ctx.projectId && ctx.projectKind !== "image",
+    when: (ctx) =>
+      !!ctx.projectId && ctx.projectKind !== "image" && isLatex() && supportsIsolatedCompile(),
     run: () => useSettingsStore.getState().setDiagramComposerOpen(true),
   });
   registerCommand({
@@ -137,6 +167,7 @@ export function registerPaletteCommands() {
     icon: () => <Crosshair className="size-4" />,
     hint: "⌘⇧J",
     order: 220,
+    when: supportsSyncTeX,
     run: () => void forwardFromCursor(),
   });
   palette({
@@ -192,6 +223,7 @@ export function registerPaletteCommands() {
     icon: () => <Quote className="size-4" />,
     hint: "DOI / arXiv / title",
     order: 320,
+    when: supportsCitations,
     run: () => useCitationStore.getState().setOpen(true),
   });
 
@@ -202,7 +234,8 @@ export function registerPaletteCommands() {
     icon: () => <Bold className="size-4" />,
     hint: "⌘B",
     order: 400,
-    run: () => wrapSelection("\\textbf{", "}"),
+    when: engineFormattingAvailable,
+    run: () => runEngineFormatting("bold"),
   });
   palette({
     id: "palette.italic",
@@ -211,7 +244,8 @@ export function registerPaletteCommands() {
     icon: () => <Italic className="size-4" />,
     hint: "⌘I",
     order: 410,
-    run: () => wrapSelection("\\textit{", "}"),
+    when: engineFormattingAvailable,
+    run: () => runEngineFormatting("italic"),
   });
   palette({
     id: "palette.section",
@@ -219,7 +253,8 @@ export function registerPaletteCommands() {
     label: "Section",
     icon: () => <Square className="size-4" />,
     order: 420,
-    run: ins("\\section{}\n"),
+    when: engineFormattingAvailable,
+    run: () => runEngineFormatting("section"),
   });
   palette({
     id: "palette.list",
@@ -227,7 +262,8 @@ export function registerPaletteCommands() {
     label: "Bulleted list",
     icon: () => <List className="size-4" />,
     order: 430,
-    run: ins("\\begin{itemize}\n  \\item \n\\end{itemize}\n"),
+    when: engineFormattingAvailable,
+    run: () => runEngineFormatting("list"),
   });
   palette({
     id: "palette.figure",
@@ -235,6 +271,7 @@ export function registerPaletteCommands() {
     label: "Figure",
     icon: () => <ImageIcon className="size-4" />,
     order: 440,
+    when: activeIsLatexSource,
     run: ins(
       "\\begin{figure}[h]\n  \\centering\n  \\includegraphics[width=0.8\\textwidth]{}\n  \\caption{}\n\\end{figure}\n",
     ),
@@ -245,6 +282,7 @@ export function registerPaletteCommands() {
     label: "Table",
     icon: () => <Table className="size-4" />,
     order: 450,
+    when: activeIsLatexSource,
     run: ins(
       "\\begin{table}[h]\n  \\centering\n  \\caption{}\n  \\begin{tabular}{ll}\n    & \\\\\n  \\end{tabular}\n\\end{table}\n",
     ),
@@ -255,6 +293,7 @@ export function registerPaletteCommands() {
     label: "Equation",
     icon: () => <Sigma className="size-4" />,
     order: 460,
+    when: activeIsLatexSource,
     run: ins("\\begin{equation}\n  \n\\end{equation}\n"),
   });
   palette({
@@ -263,6 +302,7 @@ export function registerPaletteCommands() {
     label: "Label",
     icon: () => <Tag className="size-4" />,
     order: 470,
+    when: activeIsLatexSource,
     run: ins("\\label{}"),
   });
 
