@@ -21,8 +21,7 @@ That's the whole install. Open the app and you're in. No account, no sign-in.
 
 The apps aren't code-signed or notarized yet, so the first time you open one the
 OS puts up a warning. The app is safe to open; you just have to tell the OS you
-meant it. Signing is on the [roadmap](../README.md#roadmap), and once it ships
-this step goes away.
+meant it. Signing is planned, and once it ships this step goes away.
 
 **macOS.** Double-clicking may say *"OpenLeaf is damaged and can't be opened"* or
 *"can't be opened because Apple cannot check it"*. Either:
