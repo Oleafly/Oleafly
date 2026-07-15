@@ -183,6 +183,12 @@ Drawn diagrams **round-trip**: the saved `.tikz` embeds the diagram model, so th
 - PDF, always, ATS-clean, and the full source as a `.zip`.
 - Document formats via pandoc (downloaded on demand the first time): Word
   (`.docx`), a self-contained HTML file with MathML, Markdown, and plain text.
+- First-class Pandoc Markdown projects (`.md` / `.markdown`) with PDF preview,
+  conversion exports, engine-aware editing, shared output preflight, local Git
+  history, AI editing, structural heading/citation indexing, and safe
+  Markdown formatting actions. Markdown compilation intentionally reports no
+  SyncTeX, offline, or isolated-figure capability. See the [document engine
+  matrix](document-engines.md) for exact capabilities.
 - Context-aware formats based on the document: presentations (Beamer) can export
   to PowerPoint (`.pptx`), with each frame becoming a slide; books, reports, and
   theses can export to EPUB (`.epub`) with a table of contents.

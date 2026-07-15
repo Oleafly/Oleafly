@@ -48,6 +48,7 @@ import { useDictionary } from "@/lib/dictionary";
 import { useTheme } from "@/lib/theme";
 import { appVersion, libraryRoot } from "@/lib/tauri";
 import { cn, shortcut } from "@/lib/utils";
+import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 
 type Section =
   | "appearance"
@@ -73,6 +74,7 @@ const NAV: { id: Section; label: string; icon: typeof Palette }[] = [
   { id: "mcp", label: "MCP", icon: Plug },
   { id: "help", label: "Help & About", icon: LifeBuoy },
 ];
+const ADVANCED: Section[] = ["dictionary", "engine", "downloads", "data"];
 
 function Switch({ checked }: { checked: boolean }) {
   return (
@@ -169,7 +171,6 @@ export function SettingsModal() {
   const [section, setSection] = useState<Section>("appearance");
   const [libRoot, setLibRoot] = useState("");
   const [confirmReset, setConfirmReset] = useState(false);
-  const ADVANCED: Section[] = ["dictionary", "engine", "downloads", "data"];
   const [showAdvanced, setShowAdvanced] = useState(
     () => typeof localStorage !== "undefined" && localStorage.getItem("ol-settings-advanced") === "1",
   );
@@ -179,6 +180,7 @@ export function SettingsModal() {
     if (!v && ADVANCED.includes(section)) setSection("appearance");
   };
   const settingsInitialSection = useSettingsStore((s) => s.settingsInitialSection);
+  const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDivElement>(open, () => setOpen(false));
 
   const openHotkeys = () => {
     setOpen(false);
@@ -199,11 +201,12 @@ export function SettingsModal() {
     const next = settingsInitialSection as Section;
     setSection(next);
     // Deep-links into advanced sections must surface them in the nav.
-    if (ADVANCED.includes(next) && !showAdvanced) setAdvanced(true);
+    if (ADVANCED.includes(next)) {
+      setShowAdvanced(true);
+      try { localStorage.setItem("ol-settings-advanced", "1"); } catch {}
+    }
     void libraryRoot().then(setLibRoot).catch(() => {});
-    // Both deps matter: re-applies the section if a flow (GitHub gate, AI
-    // onboarding) retargets an already-open modal.
-  }, [open, settingsInitialSection]);
+  }, [open, settingsInitialSection, setShowAdvanced]);
 
   if (!open) return null;
 
@@ -211,22 +214,21 @@ export function SettingsModal() {
     <div
       className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4"
       role="presentation"
-      onClick={() => setOpen(false)}
-      onKeyDown={(e) => {
-        if (e.key === "Escape") setOpen(false);
-      }}
+      onMouseDown={onBackdropMouseDown}
     >
       <div
         role="dialog"
+        ref={dialogRef}
+        tabIndex={-1}
         aria-modal="true"
         aria-label="Settings"
         className="flex h-[min(620px,86vh)] w-[min(820px,94vw)] overflow-hidden rounded-xl border bg-background shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
       >
         <nav aria-label="Settings sections" className="flex w-52 shrink-0 flex-col gap-0.5 border-r bg-muted/30 p-3">
           <div className="mb-2 px-2 text-sm font-semibold">Settings</div>
           {NAV.filter(({ id }) => showAdvanced || !ADVANCED.includes(id)).map(({ id, label, icon: Icon }) => (
             <button
+              data-modal-initial-focus={id === "appearance" ? true : undefined}
               key={id}
               type="button"
               aria-current={section === id ? "page" : undefined}

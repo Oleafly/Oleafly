@@ -16,9 +16,10 @@ export interface Finding {
 
 export interface PreflightReport {
   findings: Finding[];
-  atsScore: number;
-  a11yScore: number;
-  refsScore: number;
+  atsScore: number | null;
+  a11yScore: number | null;
+  refsScore: number | null;
+  coverage: Record<"ats" | "a11y" | "refs", "evaluated" | "not_run" | "unsupported">;
   ranAt: number;
   hasPdf: boolean;
   atsParse?: import("./ats-parse").AtsParse;

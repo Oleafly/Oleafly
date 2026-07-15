@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
     refreshTree: vi.fn(),
   },
   compileState: { recompile: vi.fn(), log: "", pdfBytes: null as Uint8Array | null },
+  indexState: { index: null as any, rebuildFromDisk: vi.fn() },
 }));
 
 vi.mock("@/lib/tauri", () => mocks.api);
@@ -27,6 +28,7 @@ vi.mock("@/store/files", () => ({
   useFilesStore: { getState: () => mocks.filesState, setState: vi.fn() },
 }));
 vi.mock("@/store/compile", () => ({ useCompileStore: { getState: () => mocks.compileState } }));
+vi.mock("@/store/project-index", () => ({ useIndexStore: { getState: () => mocks.indexState } }));
 vi.mock("@/lib/pdf-text", () => ({ extractPdfText: vi.fn() }));
 // pdf-image pulls in pdfjs-dist (needs DOMMatrix), so mock it out of the graph.
 vi.mock("@/lib/pdf-image", () => ({ pdfPageToPng: vi.fn() }));
@@ -166,5 +168,20 @@ describe("ai-tools: project scoping", () => {
     const tools = createOpenLeafTools();
     await tools.search_project.execute({ query: "theorem" });
     expect(mocks.api.searchProject).toHaveBeenCalledWith("proj", "theorem");
+  });
+});
+
+describe("ai-tools: Typst project map", () => {
+  it("reports file edges and ambiguous @ uses explicitly", async () => {
+    const index = (await import("@/lib/index/build")).buildIndex({
+      "main.typ": '= Main <main>\n#include "chapter.typ"\nSee @main and @source.',
+      "chapter.typ": "== Chapter",
+    });
+    mocks.indexState.index = index;
+    const result = await createOpenLeafTools().project_map.execute({});
+    expect(result).toMatchObject({
+      inputGraph: [{ from: "main.typ", to: "chapter.typ" }],
+      ambiguousTypstAtUses: ["main", "source"],
+    });
   });
 });

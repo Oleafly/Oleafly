@@ -28,18 +28,18 @@ async function ensurePandocInner(): Promise<boolean> {
   }
 
   const id = toast.info("Downloading pandoc… 0%", undefined, true);
-  const unlisten = await listen<{ received: number; total: number | null }>(
-    "pandoc-download-progress",
-    (e) => {
-      const { received, total } = e.payload;
-      const label = total
-        ? `Downloading pandoc… ${Math.round((received / total) * 100)}%`
-        : `Downloading pandoc… ${(received / 1_000_000).toFixed(1)} MB`;
-      toast.update(id, label);
-    },
-  );
-
+  let unlisten: (() => void) | null = null;
   try {
+    unlisten = await listen<{ received: number; total: number | null }>(
+      "pandoc-download-progress",
+      (e) => {
+        const { received, total } = e.payload;
+        const label = total
+          ? `Downloading pandoc… ${Math.round((received / total) * 100)}%`
+          : `Downloading pandoc… ${(received / 1_000_000).toFixed(1)} MB`;
+        toast.update(id, label);
+      },
+    );
     await downloadPandoc();
     toast.dismiss(id);
     toast.success("pandoc installed");
@@ -54,6 +54,6 @@ async function ensurePandocInner(): Promise<boolean> {
     );
     return false;
   } finally {
-    unlisten();
+    unlisten?.();
   }
 }

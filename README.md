@@ -79,7 +79,8 @@ Builds aren't code-signed yet, so your OS warns on first launch (it's safe to op
 
 ```bash
 git clone https://github.com/prajwal-svm/OpenLeaf.git && cd OpenLeaf
-./scripts/fetch-tectonic.sh all   # Tectonic compiler sidecar
+./scripts/fetch-tectonic.sh all   # LaTeX compiler sidecar
+./scripts/fetch-typst.sh all      # Typst compiler sidecar
 pnpm install
 pnpm tauri dev
 ```
@@ -306,7 +307,9 @@ The full list. Everything here runs on your machine. For the detailed tour, see 
 
 **Export and the rest**
 - PDF export (always ATS-clean) and source-as-`.zip`
-- Word (.docx), HTML, and Markdown via pandoc, installed separately
+- First-class Markdown projects compile to PDF through Pandoc and the bundled
+  Tectonic engine. Word (.docx), HTML, and Markdown export use the same Pandoc
+  installation, downloaded on demand or installed separately
 - Light and dark themes with Geist tokens, following your system setting
 - Command palette (`⌘K`) to fuzzy-search every action
 - In-app version display and update checker

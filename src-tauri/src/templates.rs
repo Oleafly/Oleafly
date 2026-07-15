@@ -97,6 +97,7 @@ pub struct TemplateInfo {
     pub description: String,
     pub category: String,
     pub engine: String,
+    pub document_engine: String,
     pub ats_profile: Option<String>,
     pub layout: Option<String>,
     pub pages: Option<String>,
@@ -104,10 +105,7 @@ pub struct TemplateInfo {
     pub license: Option<TemplateLicense>,
     pub requires: TemplateRequires,
     pub has_preview: bool,
-    /// Whether the template's prerequisites are already satisfied so it can be
-    /// created without a download. Refined by the asset manager; here it is a
-    /// conservative heuristic (default Tectonic engine, no extra fonts).
-    pub ready: bool,
+    pub assets_ready: bool,
     pub order: i64,
 }
 
@@ -162,20 +160,63 @@ pub fn read_manifest(dir: &Path) -> Result<TemplateManifest, String> {
     serde_json::from_str(&s).map_err(|e| format!("invalid template.json in {}: {e}", dir.display()))
 }
 
-/// A template is ready to create without a download when it uses the default
-/// Tectonic engine and every font pack it needs is already cached.
+fn validate_manifest_dir(dir: &Path, manifest: &TemplateManifest) -> Result<(), String> {
+    if dir.file_name().and_then(|name| name.to_str()) != Some(manifest.id.as_str()) {
+        return Err("template directory name does not match manifest id".into());
+    }
+    let main = Path::new(&manifest.main_doc);
+    if main.is_absolute()
+        || main
+            .components()
+            .any(|component| !matches!(component, std::path::Component::Normal(_)))
+    {
+        return Err("template main_doc must be a safe relative path".into());
+    }
+    let main = dir.join(main);
+    let metadata = std::fs::symlink_metadata(&main)
+        .map_err(|_| format!("template main document is missing: {}", manifest.main_doc))?;
+    if metadata.file_type().is_symlink() || !metadata.is_file() {
+        return Err("template main document must be a regular non-symlink file".into());
+    }
+    let descriptor = crate::document_engine::descriptor_for(&manifest.engine, &manifest.main_doc)?;
+    let kind = if manifest.kind.as_deref() == Some("image") {
+        crate::document_engine::TemplateKind::Image
+    } else if manifest
+        .kind
+        .as_deref()
+        .map(|kind| kind.is_empty() || kind == "document")
+        .unwrap_or(true)
+    {
+        crate::document_engine::TemplateKind::Document
+    } else {
+        return Err("unsupported template kind".into());
+    };
+    if !descriptor.capabilities.template_kinds.contains(&kind) {
+        return Err("template kind is unsupported by its document engine".into());
+    }
+    Ok(())
+}
+
 fn manifest_ready(app: &AppHandle, m: &TemplateManifest) -> bool {
-    m.requires.engine == "tectonic" && crate::assets::fonts_ready(app, &m.requires.fonts)
+    crate::assets::fonts_ready(app, &m.requires.fonts)
 }
 
 fn to_info(app: &AppHandle, m: TemplateManifest, has_preview: bool) -> TemplateInfo {
     let ready = manifest_ready(app, &m);
+    let document_engine = match m.engine.to_ascii_lowercase().as_str() {
+        "typst" | "typ" => "typst",
+        "markdown" | "md" | "pandoc" => "markdown",
+        "xetex" | "latex" | "tectonic" | "luatex" => "latex",
+        _ => "unknown",
+    }
+    .to_owned();
     TemplateInfo {
         id: m.id,
         name: m.name,
         description: m.description,
         category: m.category,
         engine: m.engine,
+        document_engine,
         ats_profile: m.ats_profile,
         layout: m.layout,
         pages: m.pages,
@@ -183,7 +224,7 @@ fn to_info(app: &AppHandle, m: TemplateManifest, has_preview: bool) -> TemplateI
         license: m.license,
         requires: m.requires,
         has_preview,
-        ready,
+        assets_ready: ready,
         order: m.order,
     }
 }
@@ -194,7 +235,8 @@ pub fn list_templates(app: AppHandle) -> Result<Vec<TemplateInfo>, String> {
     let mut items: Vec<(TemplateManifest, bool)> = Vec::new();
     for entry in std::fs::read_dir(&root).map_err(|e| e.to_string())? {
         let entry = entry.map_err(|e| e.to_string())?;
-        if !entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+        let file_type = entry.file_type().map_err(|e| e.to_string())?;
+        if file_type.is_symlink() || !file_type.is_dir() {
             continue;
         }
         let dir = entry.path();
@@ -203,6 +245,9 @@ pub fn list_templates(app: AppHandle) -> Result<Vec<TemplateInfo>, String> {
             Ok(m) => m,
             Err(_) => continue,
         };
+        if validate_manifest_dir(&dir, &manifest).is_err() {
+            continue;
+        }
         let has_preview = dir.join("preview.png").is_file();
         items.push((manifest, has_preview));
     }
@@ -240,13 +285,16 @@ pub fn template_preview(app: AppHandle, template_id: String) -> Result<Option<St
 pub fn instantiate(app: &AppHandle, id: &str, dest: &Path) -> Result<TemplateManifest, String> {
     let src = template_dir(app, id)?;
     let manifest = read_manifest(&src)?;
+    validate_manifest_dir(&src, &manifest)?;
     copy_tree(&src, dest, 0)?;
     Ok(manifest)
 }
 
 fn copy_tree(src: &Path, dest: &Path, depth: usize) -> Result<(), String> {
     if depth >= MAX_COPY_DEPTH {
-        return Ok(());
+        return Err(format!(
+            "template nesting exceeds maximum depth {MAX_COPY_DEPTH}"
+        ));
     }
     for entry in std::fs::read_dir(src).map_err(|e| e.to_string())? {
         let entry = entry.map_err(|e| e.to_string())?;
@@ -259,6 +307,9 @@ fn copy_tree(src: &Path, dest: &Path, depth: usize) -> Result<(), String> {
         let from = entry.path();
         let to = dest.join(&name);
         let ft = entry.file_type().map_err(|e| e.to_string())?;
+        if ft.is_symlink() {
+            return Err(format!("template contains a symlink: {}", from.display()));
+        }
         if ft.is_dir() {
             std::fs::create_dir_all(&to).map_err(|e| e.to_string())?;
             copy_tree(&from, &to, depth + 1)?;
@@ -293,9 +344,21 @@ mod tests {
                 m.id,
                 "folder name matches manifest id"
             );
+            validate_manifest_dir(&dir, &m).expect("manifest runtime invariants");
             count += 1;
         }
         assert!(count >= 4, "expected the migrated first-set templates");
+        let typst = read_manifest(&root.join("blank-typst")).unwrap();
+        assert_eq!(typst.engine, "typst");
+        assert_eq!(typst.main_doc, "main.typ");
+        let markdown = read_manifest(&root.join("blank-markdown")).unwrap();
+        assert_eq!(markdown.engine, "markdown");
+        assert_eq!(markdown.main_doc, "main.md");
+        assert!(validate_manifest_dir(&root.join("blank"), &markdown).is_err());
+        let mut missing = markdown.clone();
+        missing.id = "blank-markdown".into();
+        missing.main_doc = "missing.md".into();
+        assert!(validate_manifest_dir(&root.join("blank-markdown"), &missing).is_err());
     }
 
     #[test]
@@ -309,5 +372,41 @@ mod tests {
         assert!(tmp.join("refs.bib").is_file());
         assert!(!tmp.join("template.json").exists());
         let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn copy_tree_rejects_symlinks() {
+        use std::os::unix::fs::symlink;
+        let base =
+            std::env::temp_dir().join(format!("openleaf-template-link-{}", std::process::id()));
+        let src = base.join("src");
+        let dest = base.join("dest");
+        let _ = std::fs::remove_dir_all(&base);
+        std::fs::create_dir_all(&src).unwrap();
+        std::fs::create_dir_all(&dest).unwrap();
+        std::fs::write(base.join("outside"), "secret").unwrap();
+        symlink(base.join("outside"), src.join("linked")).unwrap();
+        assert!(copy_tree(&src, &dest, 0).is_err());
+        assert!(!dest.join("linked").exists());
+        let _ = std::fs::remove_dir_all(base);
+    }
+
+    #[test]
+    fn copy_tree_rejects_excessive_depth_instead_of_truncating() {
+        let base =
+            std::env::temp_dir().join(format!("openleaf-template-depth-{}", std::process::id()));
+        let src = base.join("src");
+        let dest = base.join("dest");
+        let _ = std::fs::remove_dir_all(&base);
+        let mut nested = src.clone();
+        for _ in 0..=MAX_COPY_DEPTH {
+            nested = nested.join("nested");
+        }
+        std::fs::create_dir_all(&nested).unwrap();
+        std::fs::write(nested.join("main.tex"), "x").unwrap();
+        std::fs::create_dir_all(&dest).unwrap();
+        assert!(copy_tree(&src, &dest, 0).is_err());
+        let _ = std::fs::remove_dir_all(base);
     }
 }

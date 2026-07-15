@@ -1,5 +1,3 @@
-// @openleaf/diagram — visual diagram composer (React Flow -> TikZ). App
-// services are injected via DiagramHost; UI primitives via DiagramKit. No
 // store, Tauri, AI-provider, or app-UI imports.
 export * from "./host";
 export * from "./kit";

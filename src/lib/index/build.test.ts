@@ -58,6 +58,20 @@ describe("buildIndex: symbolAt + definitionFor", () => {
   });
 });
 
+describe("buildIndex: Typst graph and ambiguous links", () => {
+  it("resolves local includes and @labels without pretending every @key is a citation", () => {
+    const idx = buildIndex({
+      "main.typ": '= Main <main>\n#include "chapter.typ"\nSee @chapter.',
+      "chapter.typ": "== Chapter <chapter>",
+    });
+    const edge = idx.uses.find((u) => u.kind === "inputedge")!;
+    expect(idx.definitionFor(edge)?.file).toBe("chapter.typ");
+    const link = idx.uses.find((u) => u.kind === "atuse")!;
+    expect(idx.definitionFor(link)).toMatchObject({ kind: "label", name: "chapter" });
+    expect(idx.references("chapter", "atuse")).toHaveLength(1);
+  });
+});
+
 describe("buildIndex: references", () => {
   it("lists every use of a label", () => {
     const idx = buildIndex({ "m.tex": "\\label{a}\n\\ref{a} \\cref{a,b} \\eqref{a}" });

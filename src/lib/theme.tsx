@@ -43,8 +43,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   // toggle_theme tool): anyone can dispatch this window event.
   useEffect(() => {
     const onToggle = () => setThemeState((prev) => (prev === "dark" ? "light" : "dark"));
+    window.addEventListener("openleaf:toggle-theme", onToggle);
     window.addEventListener("localleaf:toggle-theme", onToggle);
-    return () => window.removeEventListener("localleaf:toggle-theme", onToggle);
+    return () => {
+      window.removeEventListener("openleaf:toggle-theme", onToggle);
+      window.removeEventListener("localleaf:toggle-theme", onToggle);
+    };
   }, []);
 
   const value = useMemo<ThemeContextValue>(

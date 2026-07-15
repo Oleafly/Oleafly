@@ -49,24 +49,30 @@ async function rasterize(
     const doc = await loadingTask.promise;
     const pageNo = Math.min(Math.max(1, page), doc.numPages);
     const p = await doc.getPage(pageNo);
-    const viewport = p.getViewport({ scale });
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.floor(viewport.width));
-    canvas.height = Math.max(1, Math.floor(viewport.height));
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("no 2d context");
-    // Fill a solid background first (for a non-transparent export); pdf.js draws
-    // over it. Omitting `background` keeps the PNG transparent (standalone PDFs
-    // have no page fill).
-    if (background) {
-      ctx.fillStyle = background;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    try {
+      const viewport = p.getViewport({ scale });
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.floor(viewport.width));
+      canvas.height = Math.max(1, Math.floor(viewport.height));
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("no 2d context");
+      if (background) {
+        ctx.fillStyle = background;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+      await p.render({ canvas, canvasContext: ctx, viewport }).promise;
+      return canvas.toDataURL("image/png");
+    } finally {
+      try {
+        p.cleanup();
+      } catch {
+      }
     }
-    await p.render({ canvas, canvasContext: ctx, viewport }).promise;
-    p.cleanup();
-    return canvas.toDataURL("image/png");
   } finally {
-    await loadingTask.destroy();
+    try {
+      await loadingTask.destroy();
+    } catch {
+    }
   }
 }
 

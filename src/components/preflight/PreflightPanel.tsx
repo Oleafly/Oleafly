@@ -73,6 +73,8 @@ export function PreflightPanel() {
   // imperatively, so typing doesn't re-render this panel or re-run the two
   // whole-document regex scans in `looksLikeResumeSource` on every keystroke.
   const activePath = useFilesStore((s) => s.activePath);
+  const engineLabel = useFilesStore((s) => s.engine.label);
+  const sourcePreflight = useFilesStore((s) => s.engine.capabilities.source_preflight_profile);
   const suggested = useMemo<Flags>(() => {
     const src = activePath ? useFilesStore.getState().files[activePath]?.content ?? "" : "";
     const resume = looksLikeResumeSource(src);
@@ -202,6 +204,11 @@ export function PreflightPanel() {
                 <div className="border-t border-sidebar-border px-3 py-2.5">
                   <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{c.who}</p>
                   <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{c.detail}</p>
+                  {sourcePreflight === "none" && c.id !== "refs" && (
+                    <p className="mt-2 rounded bg-muted/60 px-2 py-1.5 text-[10px] text-muted-foreground">
+                      {engineLabel} source checks are not implemented yet. This check uses the compiled PDF only and does not report missing source support as a failure.
+                    </p>
+                  )}
                   {showResults ? (
                     <CheckResults id={c.id} report={report} />
                   ) : (
@@ -243,6 +250,7 @@ export function PreflightPanel() {
 }
 
 const CheckResults = memo(function CheckResults({ id, report }: { id: CheckId; report: PreflightReport }) {
+  const coverage = report.coverage[id];
   const { findings, src, out } = useMemo(() => {
     const shown = forLens(id);
     const f = report.findings.filter((x) => includes(x, shown));
@@ -273,14 +281,19 @@ const CheckResults = memo(function CheckResults({ id, report }: { id: CheckId; r
 
       {id !== "refs" && !report.hasPdf && (
         <p className="mt-2 rounded-md border border-sidebar-border bg-black/[0.03] px-2.5 py-2 text-[11px] text-muted-foreground dark:bg-background">
-          Compile the project and run again to add output checks (reading order, garbled text, PDF metadata).
+          PDF required. Compile the project and run again. This check is not evaluated yet.
+        </p>
+      )}
+      {coverage === "unsupported" && (
+        <p className="mt-2 rounded-md border border-sidebar-border px-2.5 py-2 text-[11px] text-muted-foreground">
+          Not evaluated. Source checks for this engine are not implemented.
         </p>
       )}
 
       {group("Source", src)}
       {group("Compiled output", out)}
 
-      {findings.length === 0 && (
+      {findings.length === 0 && coverage === "evaluated" && (
         <p className="mt-2 rounded-md border border-sidebar-border bg-black/[0.03] px-2.5 py-4 text-center text-xs text-muted-foreground dark:bg-background">
           No problems found.
         </p>

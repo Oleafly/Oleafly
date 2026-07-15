@@ -17,6 +17,34 @@ export interface CompileResult {
   compile_time_ms: number;
 }
 
+export interface EngineCapabilities {
+  produces_pdf: boolean;
+  supports_synctex: boolean;
+  supports_offline: boolean;
+  supports_isolated_compile: boolean;
+  formatting_profile: "latex" | "typst" | "markdown" | "none";
+  source_preflight_profile: "latex" | "none";
+  features: EngineFeature[];
+  conversion_exports: Array<"docx" | "html" | "md" | "txt" | "pptx" | "epub">;
+  template_kinds: Array<"document" | "image">;
+  compiler_prerequisite: "pandoc" | null;
+}
+export type EngineFeature = "citations" | "document_index";
+
+export interface DocumentEngineDescriptor {
+  id: DocumentEngineId;
+  label: string;
+  source_format: "latex" | "typst" | "markdown" | "unknown";
+  main_document: string;
+  source_extensions: string[];
+  capabilities: EngineCapabilities;
+}
+
+export type DocumentEngineId = "latex" | "typst" | "markdown" | "unknown";
+
+export const getProjectEngine = (projectId: string) =>
+  invoke<DocumentEngineDescriptor>("project_engine", { projectId });
+
 export const readCompiledPdf = (projectId: string) =>
   invoke<ArrayBuffer>("read_compiled_pdf", { projectId });
 
@@ -127,6 +155,12 @@ export const listProjects = () => invoke<ProjectInfo[]>("list_projects");
 export const createProject = (name: string) =>
   invoke<string>("create_project", { name });
 
+export const createTypstProject = (name: string) =>
+  invoke<string>("create_typst_project", { name });
+
+export const createMarkdownProject = (name: string) =>
+  invoke<string>("create_markdown_project", { name });
+
 export const createImageProject = (name: string, source: string, color?: string) =>
   invoke<string>("create_image_project", { name, source, color });
 
@@ -150,6 +184,7 @@ export interface TemplateInfo {
   description: string;
   category: string;
   engine: string; // "xetex" | "luatex"
+  document_engine: DocumentEngineId;
   ats_profile: AtsProfile;
   layout: string | null;
   pages: string | null;
@@ -157,7 +192,7 @@ export interface TemplateInfo {
   license: TemplateLicense | null;
   requires: TemplateRequires;
   has_preview: boolean;
-  ready: boolean;
+  assets_ready: boolean;
   order: number;
 }
 

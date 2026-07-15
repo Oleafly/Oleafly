@@ -17,8 +17,8 @@ approach before you invest time.
 
 | Tool | Version | Notes |
 | --- | --- | --- |
-| [Node.js](https://nodejs.org) | 20+ | |
-| [pnpm](https://pnpm.io) | 9+ | `npm i -g pnpm` |
+| [Node.js](https://nodejs.org) | 22.13+ | Required by pnpm 11 |
+| [pnpm](https://pnpm.io) | 11.9+ | Enable Corepack or install the version declared in `package.json` |
 | [Rust](https://rustup.rs) | stable (1.77+) | includes `cargo` |
 | Platform deps | - | See the [Tauri v2 prerequisites](https://v2.tauri.app/start/prerequisites/) for your OS (on Linux: `libwebkit2gtk-4.1-dev`, `librsvg2-dev`, `patchelf`, …) |
 
@@ -29,15 +29,15 @@ git clone https://github.com/prajwal-svm/OpenLeaf.git
 cd OpenLeaf
 pnpm install
 
-# Fetch the Tectonic (LaTeX compiler) sidecar for your machine's target.
 # Find your target with `rustc -vV | grep host`.
 bash scripts/fetch-tectonic.sh aarch64-apple-darwin   # or your host triple
+bash scripts/fetch-typst.sh aarch64-apple-darwin
 
 # Run the app in dev mode (hot-reloads the frontend, rebuilds Rust on change):
 pnpm tauri dev
 ```
 
-> The Tectonic binaries are large (~50 MB each) and are **git-ignored** on
+> The Tectonic and Typst binaries are **git-ignored** on
 > purpose - never commit them. The fetch script drops them in
 > `src-tauri/binaries/`, which is where `bundle.externalBin` expects them.
 
@@ -109,7 +109,7 @@ style is appreciated but not required (e.g. `fix: reject absolute paths in resol
 
 Releases are cut by pushing a version tag; the
 [`Release` workflow](.github/workflows/release.yml) builds installers for macOS
-(Apple Silicon + Intel), Windows, and Linux and attaches them to a **draft**
+(Apple Silicon), Windows x64, and Linux x64 and attaches them to a **draft**
 GitHub Release for review before publishing.
 
 ```bash
@@ -122,4 +122,4 @@ git tag v0.2.0 && git push origin v0.2.0
 ```
 
 By contributing, you agree that your contributions are licensed under the
-project's [Apache License 2.0](LICENSE).
+project's [GNU Affero General Public License v3.0 or later](LICENSE).

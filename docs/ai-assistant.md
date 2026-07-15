@@ -18,7 +18,9 @@ Open Settings → AI Assistant. There's a card for each supported provider. Past
 | **Z.AI (GLM)** | API key | GLM coding models |
 | **Ollama** | Local host | Runs on your machine, no key needed |
 
-Each card links out to where you can grab a key. Keys are stored locally only, in `~/.openleaf/config.json`.
+Each card links out to where you can grab a key. Keys stay local and are stored
+in the OS keychain when available. If the keychain is unavailable, OpenLeaf
+uses an owner-only `~/.openleaf/config.json` fallback (`0600` on Unix).
 
 ## Run it locally with Ollama
 
@@ -56,8 +58,8 @@ The assistant is a multi-step agent. Each turn it receives live workspace contex
 | `delete_file` | Delete a file or folder |
 | `list_files` | List the project tree |
 | `search_project` | Search text in the current project |
-| `project_map` | Structural outline, labels, cites, inputs, unresolved refs |
-| `compile` | Compile LaTeX to PDF |
+| `project_map` | Structural outline, labels, citations/refs, and included/imported file graph for LaTeX or Typst |
+| `compile` | Compile with the project’s selected document engine |
 | `get_log` | Read the last compile log |
 | `get_pdf_text` | Extract text from the rendered PDF |
 | `verify_pdf_pages` | Rasterize selected pages for vision layout checks |
@@ -66,9 +68,15 @@ The assistant is a multi-step agent. Each turn it receives live workspace contex
 | `set_main_doc` | Set the main document (requires approval) |
 | `toggle_theme` | Toggle light/dark mode |
 
-The chat shows **token usage** for the last run and a **cumulative total for the conversation** (when the provider reports usage), plus a **rough $ estimate** from public list prices (not a bill — local/plan models show $0). Chat history lists tokens and $ per chat.
+The chat shows **token usage** for the last run and a **cumulative total for the conversation** (when the provider reports usage), plus a **rough $ estimate** from public list prices (not a bill. Local and plan models show $0). Chat history lists tokens and $ per chat.
 
-Each turn also injects **keyword RAG excerpts** from your `.tex`/`.bib` files (no external embeddings). A live **Plan** checklist appears during multi-step work. Inline AI edits can **Open in agent** to continue with full project tools.
+Each turn also injects **keyword RAG excerpts** from `.tex`, `.typ`, and `.bib`
+files (no external embeddings). Typst `@key` occurrences are exposed honestly as
+ambiguous reference-or-citation uses unless a project definition resolves them.
+Figure mode is available only when the backend engine advertises isolated
+compilation. It is therefore unavailable for Typst today. A live **Plan**
+checklist appears during multi-step work. Inline AI edits can **Open in agent**
+to continue with full project tools.
 
 ## Approving edits
 

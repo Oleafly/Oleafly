@@ -11,6 +11,7 @@ import { useFilesStore } from "@/store/files";
 import { useDiffStore, diffKey } from "@/store/diff";
 import { base64ToUint8Array, readFileBase64 } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
+import { formattingForEngine, pathUsesEngineSource } from "@/lib/document-engine";
 
 function basename(p: string) {
   const parts = p.split("/");
@@ -44,7 +45,6 @@ function PdfFileView({ projectId, path }: { projectId: string; path: string }) {
   return <PdfViewer data={bytes} scale={1} />;
 }
 
-const TEX_EXTS = [".tex", ".sty", ".cls", ".bib", ".ltx", ".bst"];
 const IMAGE_EXTS = [".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg"];
 
 function imageMime(path: string): string {
@@ -117,13 +117,19 @@ export function Editor() {
       // or any other input would silently mutate the document.
       const el = document.activeElement as HTMLElement | null;
       if (!el?.closest(".cm-editor")) return;
+      const path = useFilesStore.getState().activePath;
+      const engineState = useFilesStore.getState();
+      if (!engineState.engineLoaded) return;
+      if (!pathUsesEngineSource(engineState.engine, path)) return;
       const k = e.key.toLowerCase();
       if (k === "b") {
         e.preventDefault();
-        wrapSelection("\\textbf{", "}");
+        const f = formattingForEngine(engineState.engine, true, "bold");
+        if (f?.kind === "wrap") wrapSelection(f.before, f.after);
       } else if (k === "i") {
         e.preventDefault();
-        wrapSelection("\\textit{", "}");
+        const f = formattingForEngine(engineState.engine, true, "italic");
+        if (f?.kind === "wrap") wrapSelection(f.before, f.after);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -131,7 +137,7 @@ export function Editor() {
   }, []);
 
   const hasOpenFile = activePath !== null;
-  const isTexFile = activePath != null && TEX_EXTS.some((e) => activePath.endsWith(e));
+  const isTypstFile = activePath?.toLowerCase().endsWith(".typ") ?? false;
   const isPdfFile = activePath != null && activePath.toLowerCase().endsWith(".pdf");
   const isImageFile =
     activePath != null && IMAGE_EXTS.some((e) => activePath.toLowerCase().endsWith(e));
@@ -141,6 +147,10 @@ export function Editor() {
     activePath != null &&
     /\.(zip|gz|eps|ttf|otf|woff2?)$/i.test(activePath);
   const projectId = useFilesStore((s) => s.projectId);
+  const engineLoaded = useFilesStore((s) => s.engineLoaded);
+  const engine = useFilesStore((s) => s.engine);
+  const formattingProfile = useFilesStore((s) => s.engine.capabilities.formatting_profile);
+  const showLatexToolbar = engineLoaded && formattingProfile === "latex" && pathUsesEngineSource(engine, activePath);
 
   return (
     <div className="flex h-full flex-col bg-background">
@@ -226,9 +236,14 @@ export function Editor() {
         </ErrorBoundary>
       ) : hasOpenFile ? (
         <>
-          {isTexFile && (
+          {showLatexToolbar && (
             <div className="shrink-0">
               <EditorToolbar />
+            </div>
+          )}
+          {isTypstFile && (
+            <div className="shrink-0 border-b bg-muted/30 px-3 py-1 text-[10px] text-muted-foreground">
+              Typst mode · LaTeX linting and spelling/grammar checks are disabled.
             </div>
           )}
           {isPdfFile && projectId ? (

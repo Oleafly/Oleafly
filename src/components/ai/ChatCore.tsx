@@ -21,6 +21,7 @@ import { listOllamaModels } from "@/lib/ollama";
 import { registry } from "@openleaf/registry";
 import type { ToolApprovalRequest } from "@/lib/ai-tools";
 import { FIGURE_SYSTEM_PROMPT, modelSupportsVision, setFigureInsertTarget } from "@/lib/ai-figure";
+import { canUseFigureMode } from "@/lib/document-engine";
 import { getEditorView } from "@/components/editor/cm/controller";
 import { ToolConfirm, isAutoApprovable } from "@/components/ai/ToolConfirm";
 import { AttachmentChips, type PendingAttachment } from "@/components/ai/AttachmentChips";
@@ -38,6 +39,7 @@ import { formatRagContext, retrieveProjectChunks } from "@/lib/ai-rag";
 import { ChatHistoryModal } from "@/components/ai/ChatHistoryModal";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
+import { cancelChatRun, ChatRunIsolation } from "@/lib/chat-run-lifecycle";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { cn } from "@/lib/utils";
 import {
@@ -51,11 +53,12 @@ import {
   RETRY_BASE_MS,
   sleep,
 } from "@/components/ai/chat-parts";
+import type { EngineFeature } from "@/lib/tauri";
 
 const SUGGESTIONS = [
-  "Fix any LaTeX errors in my document",
+  "Fix any source errors in my document",
   "Create a new section called 'Publications'",
-  "Search for all \\cite commands",
+  "Find every citation in the project",
   "Recompile and check for errors",
 ];
 
@@ -66,12 +69,18 @@ const FIGURE_SUGGESTIONS = [
   "Diagram a data preprocessing flow ending in a training loop",
 ];
 
-const TOOLS_LIST =
-  "read_file, write_file, replace_in_file, create_file, delete_file, rename_file, list_files, search_project, project_map, compile, get_log, get_pdf_text, verify_pdf_pages, update_todos, get_todos, remember_note, forget_note, list_notes, set_main_doc, toggle_theme";
+const UNIVERSAL_TOOLS = ["read_file", "write_file", "replace_in_file", "create_file", "delete_file", "rename_file", "list_files", "search_project", "compile", "get_log", "get_pdf_text", "verify_pdf_pages", "update_todos", "get_todos", "remember_note", "forget_note", "list_notes", "set_main_doc", "toggle_theme"];
+export function buildAiToolInventory(features: EngineFeature[], figure: boolean, isolated: boolean): string[] {
+  if (figure) return isolated ? ["preview_figure", "insert_figure", "load_image"] : [];
+  return features.includes("document_index") ? [...UNIVERSAL_TOOLS, "project_map"] : UNIVERSAL_TOOLS;
+}
 
 export function ChatCore() {
   const projectId = useFilesStore((s) => s.projectId);
   const projectName = useFilesStore((s) => s.projectName);
+  const documentEngine = useFilesStore((s) => s.engine);
+  const engineLoaded = useFilesStore((s) => s.engineLoaded);
+  const figureModeAvailable = canUseFigureMode(documentEngine, engineLoaded);
   const projectKind = useFilesStore((s) => s.projectKind);
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
   const setSettingsInitialSection = useSettingsStore((s) => s.setSettingsInitialSection);
@@ -86,10 +95,10 @@ export function ChatCore() {
   const setActiveChat = useChatsStore((s) => s.setActive);
   const activeChat = chats.find((c) => c.id === activeChatId) ?? null;
 
-  const openAISettings = () => {
+  const openAISettings = useCallback(() => {
     setSettingsInitialSection("ai");
     setSettingsOpen(true);
-  };
+  }, [setSettingsInitialSection, setSettingsOpen]);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -202,6 +211,7 @@ export function ChatCore() {
   // a fast provider cannot thrash the chat UI on every delta.
   const streamPatchesRef = useRef<Array<(m: ChatMessage) => ChatMessage>>([]);
   const streamRafRef = useRef<number | null>(null);
+  const runIsolationRef = useRef(new ChatRunIsolation());
 
   // Surface a one-time warning if chat history can no longer be saved (quota).
   useEffect(() => {
@@ -212,11 +222,15 @@ export function ChatCore() {
 
   // Open figure mode when requested from elsewhere (omnibar / command palette).
   useEffect(() => {
-    if (figureModeOpen) {
+    if (figureModeOpen && figureModeAvailable) {
       setFigureMode(true);
-      setFigureModeOpen(false);
     }
-  }, [figureModeOpen, setFigureModeOpen]);
+    if (figureModeOpen) setFigureModeOpen(false);
+  }, [figureModeAvailable, figureModeOpen, setFigureModeOpen]);
+
+  useEffect(() => {
+    if (!figureModeAvailable) setFigureMode(false);
+  }, [figureModeAvailable]);
 
   // Stall watchdog: if the provider goes quiet mid-run, tell the user it is
   // still working (reasoning models can be slow) rather than looking frozen.
@@ -401,6 +415,8 @@ export function ChatCore() {
   }, [modelDropdown]);
 
   useEffect(() => {
+    void messages;
+    void thinkingText;
     if (!nearBottomRef.current) return;
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, thinkingText]);
@@ -422,7 +438,7 @@ export function ChatCore() {
     setShowScrollDown(longEnough && distanceFromBottom > 80);
   };
 
-  const flushStreamPatches = () => {
+  const flushStreamPatches = useCallback(() => {
     if (streamRafRef.current != null) {
       cancelAnimationFrame(streamRafRef.current);
       streamRafRef.current = null;
@@ -439,28 +455,43 @@ export function ChatCore() {
       persistDebounced(copy);
       return copy;
     });
-  };
+  }, [persistDebounced]);
 
   // High-frequency stream deltas are coalesced to one setState per animation
   // frame; callers that need the UI to reflect a patch before the next frame
   // should call flushStreamPatches.
-  const updateLast = (fn: (m: ChatMessage) => ChatMessage) => {
+  const updateLast = useCallback((fn: (m: ChatMessage) => ChatMessage) => {
     streamPatchesRef.current.push(fn);
     if (streamRafRef.current != null) return;
     streamRafRef.current = requestAnimationFrame(() => {
       streamRafRef.current = null;
       flushStreamPatches();
     });
-  };
+  }, [flushStreamPatches]);
 
   const send = useCallback(async (text: string) => {
     const outgoing = attachmentsRef.current;
     if ((!text.trim() && outgoing.length === 0) || streaming) return;
+    if (!engineLoaded) {
+      toast.error("Document engine details are not loaded. AI editing is disabled for safety.");
+      return;
+    }
     if (!apiKey) { openAISettings(); return; }
+    const runIdentity = runIsolationRef.current.begin(projectId);
+    const runIsCurrent = () => runIsolationRef.current.allows(
+      runIdentity,
+      useFilesStore.getState().projectId,
+    );
+    const updateRunLast = (fn: (message: ChatMessage) => ChatMessage) => {
+      if (runIsCurrent()) updateLast(fn);
+    };
+    const setRunThinking = (value: string | null) => {
+      if (runIsCurrent()) setThinkingText(value);
+    };
 
     // In figure mode, remember where to place the finished figure (the selected
     // paragraph it was generated from, else the cursor).
-    if (figureMode) {
+    if (figureMode && figureModeAvailable) {
       const view = getEditorView();
       const sel = view?.state.selection.main;
       setFigureInsertTarget(sel && !sel.empty ? { from: sel.from, to: sel.to } : null);
@@ -477,7 +508,7 @@ export function ChatCore() {
         if (ac.signal.aborted) { resolve(false); return; }
         // Session auto-approve covers non-delete writes only.
         if (sessionAutoApproveRef.current && isAutoApprovable(req.tool)) {
-          updateLast((m) => {
+          updateRunLast((m) => {
             const calls = [...(m.toolCalls || [])];
             for (let i = calls.length - 1; i >= 0; i--) {
               if (calls[i].name === req.tool && calls[i].approval === undefined) {
@@ -494,7 +525,7 @@ export function ChatCore() {
           ac.signal.removeEventListener("abort", onAbort);
           // Leave a persistent trace on the tool badge so the chat records that
           // the user approved or rejected this edit (the prompt itself vanishes).
-          updateLast((m) => {
+          updateRunLast((m) => {
             const calls = [...(m.toolCalls || [])];
             for (let i = calls.length - 1; i >= 0; i--) {
               if (calls[i].name === req.tool && calls[i].approval === undefined) {
@@ -509,17 +540,18 @@ export function ChatCore() {
             }
             return { ...m, toolCalls: calls };
           });
-          setPendingApproval(null);
+          if (runIsCurrent()) setPendingApproval(null);
           resolve(ok);
         };
         const onAbort = () => finish(false);
         ac.signal.addEventListener("abort", onAbort, { once: true });
-        setPendingApproval({ req, resolve: finish });
+        if (runIsCurrent()) setPendingApproval({ req, resolve: finish });
+        else finish(false);
       });
 
     // Fresh plan checklist each agent run; reset last-run meter (chat totals persist).
     useAgentTodoStore.getState().clear();
-    setRunUsage(null);
+    if (runIsCurrent()) setRunUsage(null);
     let usageIn = 0;
     let usageOut = 0;
     let usageSteps = 0;
@@ -530,12 +562,13 @@ export function ChatCore() {
       try {
         await gitAutoCommit(projectId, "OpenLeaf AI checkpoint");
         const log = await gitLog(projectId);
-        setCheckpointOid(log[0]?.oid ?? null);
+        if (runIsCurrent()) setCheckpointOid(log[0]?.oid ?? null);
       } catch {
         /* not a git repo yet / nothing to commit - non-fatal */
-        setCheckpointOid(null);
+        if (runIsCurrent()) setCheckpointOid(null);
       }
     }
+    if (!runIsCurrent()) return;
 
     const userMsg: ChatMessage = {
       role: "user",
@@ -549,20 +582,20 @@ export function ChatCore() {
     setInput("");
     setAttachments([]);
     setStreaming(true);
-    setThinkingText("Thinking…");
+    setRunThinking("Thinking…");
     lastPartAtRef.current = Date.now();
     timedOutRef.current = false;
 
     // Persist this conversation as a chat (creates one on the first message).
-    let chatIdForUsage: string | null = null;
+    let runChatId: string | null = null;
     {
       const cs = useChatsStore.getState();
-      let chatId = cs.activeId;
+      let chatId = cs.projectId === projectId ? cs.activeId : null;
       if (!chatId && projectId) {
         const created = cs.create(projectId, currentHead);
         chatId = created.id;
       }
-      chatIdForUsage = chatId;
+      runChatId = chatId;
       if (chatId) cs.saveMessages(chatId, nextMessages);
     }
 
@@ -590,9 +623,17 @@ USER_CUSTOM_INSTRUCTIONS`
       /* non-fatal */
     }
 
-    const systemPrompt = `You are OpenLeaf AI, a fully agentic writing partner inside OpenLeaf, a local-first LaTeX editor.
-You have full, reliable control over the project via these tools: ${TOOLS_LIST}.
-The current project is "${projectName}" (ID: ${projectId}). Main document: ${useFilesStore.getState().mainDoc || "main.tex"}.${
+    const mainDocument = useFilesStore.getState().mainDoc || "main.tex";
+    const sourceVocabulary = documentEngine.capabilities.formatting_profile === "typst"
+      ? "Typst markup and scripting"
+      : documentEngine.capabilities.formatting_profile === "markdown"
+        ? "Pandoc Markdown and YAML front matter"
+        : documentEngine.capabilities.formatting_profile === "latex"
+          ? "LaTeX"
+          : "engine-neutral prose";
+    const systemPrompt = `You are OpenLeaf AI, a fully agentic writing partner inside OpenLeaf, a local-first technical document editor.
+You have full, reliable control over the project via these tools: ${buildAiToolInventory(documentEngine.capabilities.features, false, false).join(", ")}.
+The current project is "${projectName}" (ID: ${projectId}). Main document: ${mainDocument}. The document engine is ${documentEngine.label}. Use only valid ${sourceVocabulary} source rules.${
       projectKind === "image"
         ? `
 This is an IMAGE project, not a text document. The main document is a standalone TikZ/LaTeX figure that compiles to a single cropped image (not a paper). Your job is to build, edit, and fix that ONE figure: shapes, arrows, labels, colors, and layout. Do not add prose, sections, abstracts, bibliographies, or multi-page document structure. Keep the standalone document class and its tikzpicture. When you compile, success means the figure renders cleanly; the "PDF" here is the image.`
@@ -610,7 +651,7 @@ Agentic workflow (required for multi-step tasks):
 1. For multi-step work, call update_todos with a short plan (pending items), set one to in_progress, complete as you go.
 2. Use the live workspace context below; refresh with tools (project_map, read_file, compile) when you need certainty.
 3. Prefer replace_in_file for small fixes; write_file overwrites the entire file.
-4. read_file supports offset/limit; large files may be truncated — re-read another slice if needed.
+4. read_file supports offset and limit. Large files may be truncated, so read another slice if needed.
 5. After structural or multi-file edits: compile, then verify_pdf_pages (vision) or get_pdf_text (text-only).
 6. set_main_doc requires approval. Deleting files always requires approval.
 7. Use remember_note for durable project conventions the user would want kept across chats; forget_note to remove.
@@ -625,7 +666,7 @@ Do not stop until the task is genuinely complete, then explain what you did in a
 ${workspaceCtx}
 ${sandboxedCustom}`;
 
-    const figure = figureMode;
+    const figure = figureMode && figureModeAvailable;
     // Figure mode gets the same untrusted-instruction sandbox as main chat so a
     // crafted custom prompt cannot override figure tools or safety rules.
     const effectiveSystem = figure
@@ -679,7 +720,7 @@ ${sandboxedCustom}`;
         const openReasoning = () => {
           if (reasoningStartedAt !== null) return;
           reasoningStartedAt = Date.now();
-          updateLast((m) => ({
+          updateRunLast((m) => ({
             ...m,
             reasoningBlocks: [
               ...(m.reasoningBlocks ?? []),
@@ -688,7 +729,7 @@ ${sandboxedCustom}`;
           }));
         };
         const appendReasoning = (chunk: string) => {
-          updateLast((m) => {
+          updateRunLast((m) => {
             const blocks = [...(m.reasoningBlocks ?? [])];
             if (!blocks.length) return m;
             const last = { ...blocks[blocks.length - 1] };
@@ -701,7 +742,7 @@ ${sandboxedCustom}`;
           if (reasoningStartedAt === null) return;
           const ms = Date.now() - reasoningStartedAt;
           reasoningStartedAt = null;
-          updateLast((m) => {
+          updateRunLast((m) => {
             const blocks = [...(m.reasoningBlocks ?? [])];
             if (!blocks.length) return m;
             const last = { ...blocks[blocks.length - 1] };
@@ -717,21 +758,21 @@ ${sandboxedCustom}`;
           lastPartAtRef.current = Date.now();
           switch (part.type) {
             case "text-delta":
-              setThinkingText(null);
+              setRunThinking(null);
               endReasoning();
               stepText += (part as any).text || (part as any).textDelta || "";
-              updateLast((m) => ({ ...m, content: stepText }));
+              updateRunLast((m) => ({ ...m, content: stepText }));
               break;
 
             // Reasoning models (GLM, DeepSeek R1) stream a "thinking" phase
             // before any text/tool call. It renders LIVE in the message's
             // auto-expanded ReasoningBlock; time it for the collapsed label.
             case "reasoning-start":
-              setThinkingText("Reasoning…");
+              setRunThinking("Reasoning…");
               openReasoning();
               break;
             case "reasoning-delta": {
-              setThinkingText("Reasoning…");
+              setRunThinking("Reasoning…");
               openReasoning();
               const rp = part as any;
               const chunk = rp.text ?? rp.delta ?? rp.textDelta ?? "";
@@ -746,8 +787,8 @@ ${sandboxedCustom}`;
               const tc = part as any;
               endReasoning();
               stepToolCalls.push({ id: tc.toolCallId || tc.id || `${tc.toolName}-${Date.now()}`, name: tc.toolName, args: tc.input || tc.args || {} });
-              setThinkingText(`Running ${tc.toolName}…`);
-              updateLast((m) => ({
+              setRunThinking(`Running ${tc.toolName}…`);
+              updateRunLast((m) => ({
                 ...m,
                 toolCalls: [...(m.toolCalls || []), { name: tc.toolName, status: "running" as const }],
               }));
@@ -763,8 +804,8 @@ ${sandboxedCustom}`;
                 name: tr.toolName,
                 output: out,
               });
-              setThinkingText("Processing result…");
-              updateLast((m) => {
+              setRunThinking("Processing result…");
+              updateRunLast((m) => {
                 const calls = [...(m.toolCalls || [])];
                 for (let i = calls.length - 1; i >= 0; i--) {
                   if (calls[i].name === tr.toolName && calls[i].status === "running") {
@@ -808,7 +849,7 @@ ${sandboxedCustom}`;
 
       for (let step = 0; step < MAX_STEPS; step++) {
         if (ac.signal.aborted) break;
-        setThinkingText(step === 0 ? "Thinking…" : "Continuing…");
+        setRunThinking(step === 0 ? "Thinking…" : "Continuing…");
 
         // Attach any queued page/figure PNGs so a vision model can inspect them.
         // (verify_pdf_pages and figure preview_figure both push via onImage.)
@@ -835,7 +876,9 @@ ${sandboxedCustom}`;
         const tools = toolset
           ? toolset.create({ confirm, onImage: (d: string) => pendingImagesRef.current.push(d) })
           : {};
-
+        if (!documentEngine.capabilities.features.includes("document_index")) {
+          delete tools.project_map;
+        }
         // Retry the same step on stream disconnects / transient API errors so a
         // dropped connection never abandons an unfinished task.
         let stepText = "";
@@ -852,7 +895,7 @@ ${sandboxedCustom}`;
             // Only retry when nothing useful happened (no text, no tool calls).
             const isEmpty = !stepText && stepToolCalls.length === 0;
             if (r.errorMsg && isEmpty && r.errorRetryable && attempt < MAX_RETRIES) {
-              setThinkingText(`Connection issue, retrying (${attempt + 1}/${MAX_RETRIES})…`);
+              setRunThinking(`Connection issue, retrying (${attempt + 1}/${MAX_RETRIES})…`);
               await sleep(RETRY_BASE_MS * (attempt + 1));
               continue;
             }
@@ -862,7 +905,7 @@ ${sandboxedCustom}`;
             usageIn += r.stepUsage?.input ?? 0;
             usageOut += r.stepUsage?.output ?? 0;
             usageSteps += 1;
-            setRunUsage({
+            if (runIsCurrent()) setRunUsage({
               input: usageIn,
               output: usageOut,
               steps: usageSteps,
@@ -872,10 +915,9 @@ ${sandboxedCustom}`;
             if (r.errorMsg) fatalError = r.errorMsg;
             break;
           } catch (e) {
-            // A user-initiated stop must not be retried — let it unwind.
             if (ac.signal.aborted) throw e;
             if (attempt < MAX_RETRIES) {
-              setThinkingText(`Stream interrupted - retrying (${attempt + 1}/${MAX_RETRIES})…`);
+              setRunThinking(`Stream interrupted - retrying (${attempt + 1}/${MAX_RETRIES})…`);
               await sleep(RETRY_BASE_MS * (attempt + 1));
               continue;
             }
@@ -885,7 +927,7 @@ ${sandboxedCustom}`;
 
         // Exhausted retries with nothing to show for it - surface and stop.
         if (fatalError && !stepText && stepToolCalls.length === 0) {
-          updateLast((m) => ({ ...m, content: (m.content ? m.content + "\n\n" : "") + fatalError }));
+          updateRunLast((m) => ({ ...m, content: (m.content ? m.content + "\n\n" : "") + fatalError }));
           break;
         }
 
@@ -928,7 +970,7 @@ ${sandboxedCustom}`;
       }
 
       if (reachedCap) {
-        updateLast((m) => ({
+        updateRunLast((m) => ({
           ...m,
           content: (m.content ? m.content + "\n\n" : "") +
             "_Reached the step safety limit. You can continue by sending another message._",
@@ -940,13 +982,13 @@ ${sandboxedCustom}`;
         const note = timedOutRef.current
           ? "_Timed out after 90s with no response. The model may be unavailable or overloaded. Try again, or switch models from the menu above._"
           : "_Stopped._";
-        updateLast((m) => ({
+        updateRunLast((m) => ({
           ...m,
           content: (m.content ? m.content + "\n\n" : "") + note,
         }));
       } else {
         const errMsg = formatError(e, PROVIDERS.find((p) => p.id === provider)?.name);
-        updateLast((m) => ({
+        updateRunLast((m) => ({
           ...m,
           content: errMsg.includes("NoOutputGenerated")
             ? "The model returned no output. Check Settings → AI Assistant."
@@ -955,35 +997,34 @@ ${sandboxedCustom}`;
       }
     } finally {
       if (abortRef.current === ac) abortRef.current = null;
-      // Land any rAF-coalesced stream patches before we read messages for save.
-      flushStreamPatches();
-      setStreaming(false);
-      setThinkingText(null);
-      // Fold this run into the chat's cumulative usage (persisted with the chat).
-      if (chatIdForUsage && (usageIn > 0 || usageOut > 0 || usageSteps > 0)) {
+      if (projectId && runChatId && (usageIn > 0 || usageOut > 0 || usageSteps > 0)) {
         const { usd } = estimateUsd(model, usageIn, usageOut);
-        useChatsStore.getState().addUsage(chatIdForUsage, {
+        void useChatsStore.getState().addUsageForProject(projectId, runChatId, {
           inputTokens: usageIn,
           outputTokens: usageOut,
           steps: usageSteps,
           estimatedUsd: usd,
         });
-        setRunUsage({ input: usageIn, output: usageOut, steps: usageSteps, usd });
+        if (runIsCurrent()) setRunUsage({ input: usageIn, output: usageOut, steps: usageSteps, usd });
       }
-      // Persist the final state of the conversation (flush any pending debounce).
-      if (persistTimerRef.current) {
-        clearTimeout(persistTimerRef.current);
-        persistTimerRef.current = null;
-      }
-      const cs = useChatsStore.getState();
-      if (cs.activeId) {
-        setMessages((cur) => {
-          cs.saveMessages(cs.activeId!, cur);
-          return cur;
-        });
+      if (runIsCurrent()) {
+        flushStreamPatches();
+        setStreaming(false);
+        setRunThinking(null);
+        if (persistTimerRef.current) {
+          clearTimeout(persistTimerRef.current);
+          persistTimerRef.current = null;
+        }
+        const cs = useChatsStore.getState();
+        if (runChatId) {
+          setMessages((cur) => {
+            cs.saveMessages(runChatId, cur);
+            return cur;
+          });
+        }
       }
     }
-  }, [messages, streaming, apiKey, provider, model, projectId, projectName, currentHead, figureMode, projectKind]);
+  }, [messages, streaming, apiKey, provider, model, projectId, projectName, currentHead, figureMode, figureModeAvailable, engineLoaded, documentEngine, projectKind, openAISettings, flushStreamPatches, updateLast]);
 
   const stop = useCallback(() => {
     abortRef.current?.abort();
@@ -1001,9 +1042,19 @@ ${sandboxedCustom}`;
   // Abort any in-flight run when the project changes or the panel unmounts, so a
   // stale stream can't keep spending tokens or writing into the wrong chat.
   useEffect(() => {
+    void projectId;
+    setStreaming(false);
+    setThinkingText(null);
+    setPendingApproval(null);
+    pendingImagesRef.current = [];
     return () => {
-      abortRef.current?.abort();
-      if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+      runIsolationRef.current.invalidate();
+      cancelChatRun(abortRef.current, persistTimerRef.current, () => {
+        if (streamRafRef.current != null) cancelAnimationFrame(streamRafRef.current);
+        streamRafRef.current = null;
+        streamPatchesRef.current = [];
+      });
+      persistTimerRef.current = null;
     };
   }, [projectId]);
 
@@ -1062,7 +1113,7 @@ ${sandboxedCustom}`;
                 )}
               </div>
 
-              <Tooltip label={figureMode ? "Figure mode on" : "Draw a figure"}>
+              {figureModeAvailable && <Tooltip label={figureMode ? "Figure mode on" : "Draw a figure"}>
                 <button
                   onClick={() => setFigureMode((v) => !v)}
                   aria-label="Toggle figure mode"
@@ -1073,7 +1124,7 @@ ${sandboxedCustom}`;
                 >
                   <Sparkles className="size-4" />
                 </button>
-              </Tooltip>
+              </Tooltip>}
 
               <Tooltip label="New chat">
                 <button
@@ -1496,7 +1547,7 @@ ${sandboxedCustom}`;
                 ref={fileInputRef}
                 type="file"
                 multiple
-                accept="image/*,.pdf,.txt,.tex,.bib,.md"
+                accept="image/*,.pdf,.txt,.tex,.typ,.bib,.md"
                 className="hidden"
                 onChange={(e) => { void addFiles(e.target.files); e.target.value = ""; }}
               />
@@ -1513,7 +1564,8 @@ ${sandboxedCustom}`;
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(input); } }}
-                placeholder={figureMode ? "Describe a figure to draw…" : "Ask AI to help with your LaTeX…"}
+                placeholder={!engineLoaded ? "Document engine unavailable. AI editing disabled" : figureMode ? "Describe a figure to draw…" : "Ask AI to help with your document…"}
+                disabled={!engineLoaded}
                 rows={1}
                 className="max-h-32 min-h-[24px] flex-1 resize-none rounded-md bg-transparent pl-2 text-sm outline-none placeholder:text-muted-foreground"
                 style={{ height: "auto" }}
@@ -1531,7 +1583,7 @@ ${sandboxedCustom}`;
               ) : (
                 <button
                   onClick={() => void send(input)}
-                  disabled={!input.trim() && attachments.length === 0}
+                  disabled={!engineLoaded || (!input.trim() && attachments.length === 0)}
                   aria-label="Send"
                   className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-white transition-colors hover:bg-primary disabled:opacity-40"
                 >

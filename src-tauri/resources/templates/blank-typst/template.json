@@ -1,0 +1,14 @@
+{
+  "id": "blank-typst",
+  "name": "Blank Typst document",
+  "category": "Blank",
+  "description": "A minimal Typst document to start from scratch.",
+  "main_doc": "main.typ",
+  "engine": "typst",
+  "layout": "single-column",
+  "pages": "single",
+  "default_color": "#12b886",
+  "license": { "spdx": "MIT", "author": "OpenLeaf", "url": "https://github.com/prajwal-svm/OpenLeaf" },
+  "requires": { "packages": [], "fonts": [], "engine": "typst" },
+  "order": 1
+}

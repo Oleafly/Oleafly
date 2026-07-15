@@ -6,6 +6,8 @@ import { useFilesStore } from "@/store/files";
 import { usePreflightStore } from "@/store/preflight";
 import { useEngineStore } from "@/store/engine";
 import { compileTaggedAndVerify } from "@/features/latex-engine";
+import { pathUsesEngineSource } from "@/lib/document-engine";
+import { canPrepareAccessible } from "./prep-capability";
 
 const KIND: Record<PrepChange["kind"], { icon: typeof Info; color: string }> = {
   add: { icon: Plus, color: "text-emerald-500" },
@@ -23,6 +25,10 @@ export function PrepExport() {
 
   const activePath = useFilesStore((s) => s.activePath);
   const source = useFilesStore((s) => (s.activePath ? s.files[s.activePath]?.content ?? "" : ""));
+  const latexSource = useFilesStore((s) =>
+    canPrepareAccessible(s.engineLoaded, s.engine.capabilities.source_preflight_profile) &&
+    pathUsesEngineSource(s.engine, s.activePath),
+  );
 
   const engine = useEngineStore((s) => s.info);
   const ensureEngine = useEngineStore((s) => s.ensureLoaded);
@@ -33,13 +39,14 @@ export function PrepExport() {
   }, [ensureEngine]);
 
   const run = () => {
+    if (!latexSource) return;
     setResult(prepareAccessibleSource(source));
     setApplied(false);
     setCopied(false);
   };
 
   const apply = () => {
-    if (!result || !activePath) return;
+    if (!latexSource || !result || !activePath) return;
     useFilesStore.getState().setContent(activePath, result.output);
     setApplied(true);
     void usePreflightStore.getState().run();
@@ -50,12 +57,13 @@ export function PrepExport() {
     void navigator.clipboard.writeText(result.output).then(() => setCopied(true));
   };
 
+  if (!latexSource) return null;
   return (
     <div className="mx-3 mb-4 rounded-md border border-sidebar-border bg-black/[0.03] dark:bg-background">
       <div className="px-2.5 py-2">
         <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Accessible export</p>
         <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-          Prepare this document for a tagged, Section 508 / PDF-UA export. OpenLeaf adds the required setup; compile the
+          Prepare this document for a tagged, Section 508 / PDF-UA export. OpenLeaf adds the required setup. Compile the
           result with LuaLaTeX (TeX Live 2025 or newer), then re-check.
         </p>
         <button

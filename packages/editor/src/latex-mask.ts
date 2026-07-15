@@ -6,7 +6,6 @@
 // Getting this right is what keeps equations, code, citation keys, package
 // names, and file paths out of the checkers and stops false positives.
 //
-// This module has no imports on purpose — it is pure and unit-tested in
 // `latex-mask.test.ts`.
 // ---------------------------------------------------------------------------
 

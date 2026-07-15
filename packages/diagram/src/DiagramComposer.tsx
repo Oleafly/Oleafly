@@ -453,7 +453,6 @@ export function DiagramComposer({
       aria-label="Insert diagram"
       className="fixed inset-0 z-50 flex flex-col bg-background"
     >
-      {/* On macOS (windowed), pad left for traffic lights — same as TopToolbar. */}
       <div
         className={cn(
           "relative flex h-12 shrink-0 items-center gap-2 border-b bg-sidebar pr-4",

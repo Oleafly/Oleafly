@@ -93,6 +93,7 @@ export function LogPane() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
+    void log;
     endRef.current?.scrollIntoView({ block: "end" });
   }, [log]);
 

@@ -1,7 +1,5 @@
 name: Release
 
-# Cuts a GitHub Release with downloadable installers for macOS (Apple Silicon +
-# Intel), Windows, and Linux. Trigger by pushing a version tag:
 #
 #     git tag v0.1.0 && git push origin v0.1.0
 #
@@ -89,25 +87,21 @@ jobs:
 
       # Fetch the Tectonic LaTeX-compiler sidecar for the build target. Tauri
       # bundles it (bundle.externalBin) so the shipped app compiles offline.
-      - name: Fetch Tectonic sidecar (Unix)
-        if: matrix.os != 'windows-latest'
+      - name: Fetch checksum-pinned Tectonic sidecar
+        shell: bash
         run: bash scripts/fetch-tectonic.sh ${{ matrix.rust_target }}
 
-      - name: Fetch Tectonic sidecar (Windows)
-        if: matrix.os == 'windows-latest'
-        shell: pwsh
-        run: |
-          $version = '0.16.9'   # keep in sync with scripts/fetch-tectonic.sh
-          $target  = 'x86_64-pc-windows-msvc'
-          $asset   = "tectonic-$version-$target.zip"
-          $url     = "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%40$version/$asset"
-          $tmp     = Join-Path $env:RUNNER_TEMP 'tectonic'
-          New-Item -ItemType Directory -Force -Path $tmp | Out-Null
-          Invoke-WebRequest -Uri $url -OutFile "$tmp/archive.zip"
-          Expand-Archive -Path "$tmp/archive.zip" -DestinationPath "$tmp/x" -Force
-          $bin = Get-ChildItem -Path "$tmp/x" -Recurse -Filter tectonic.exe | Select-Object -First 1
-          New-Item -ItemType Directory -Force -Path src-tauri/binaries | Out-Null
-          Copy-Item $bin.FullName "src-tauri/binaries/tectonic-$target.exe"
+      - name: Fetch Typst sidecar
+        shell: bash
+        run: bash scripts/fetch-typst.sh ${{ matrix.rust_target }}
+
+      - name: Smoke-test Typst sidecar
+        shell: bash
+        run: bash scripts/smoke-typst.sh ${{ matrix.rust_target }}
+
+      - name: Smoke-test managed Pandoc with packaged Tectonic input
+        shell: bash
+        run: bash scripts/smoke-markdown.sh ${{ matrix.rust_target }}
 
       # Build the release notes from CHANGELOG.md so both the GitHub Release and
       # the updater's `notes` say what changed (install help is a link, not the
@@ -147,3 +141,20 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
+
+      - name: Verify staged runtime sidecars are sibling-resolvable
+        shell: bash
+        run: |
+          if [[ "${{ matrix.rust_target }}" == "aarch64-apple-darwin" ]]; then
+            RUNTIME_DIR="src-tauri/target/${{ matrix.rust_target }}/release"
+            test -f "$RUNTIME_DIR/tectonic"
+            test -f "$RUNTIME_DIR/typst"
+          elif [[ "${{ matrix.rust_target }}" == *windows* ]]; then
+            RUNTIME_DIR="src-tauri/target/release"
+            test -f "$RUNTIME_DIR/tectonic.exe"
+            test -f "$RUNTIME_DIR/typst.exe"
+          else
+            RUNTIME_DIR="src-tauri/target/release"
+            test -f "$RUNTIME_DIR/tectonic"
+            test -f "$RUNTIME_DIR/typst"
+          fi

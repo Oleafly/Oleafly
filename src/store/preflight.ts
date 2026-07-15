@@ -90,6 +90,10 @@ export const usePreflightStore = create<PreflightStore>((set) => ({
     set({ running: true, error: null });
     try {
       const files = useFilesStore.getState();
+      if (!files.engineLoaded) {
+        set({ running: false, error: files.engineError ?? "Document engine details are still loading." });
+        return;
+      }
       // Lint the document currently in the editor so source offsets line up with
       // the editor for jump-to-source; fall back to the main document.
       const path = files.activePath ?? files.mainDoc;
@@ -103,6 +107,7 @@ export const usePreflightStore = create<PreflightStore>((set) => ({
         if (stale()) return; // project switched during PDF extraction
         const report = runPreflight({
           source,
+          sourceProfile: files.engine.capabilities.source_preflight_profile,
           pages: ex.pages,
           meta: { lang: ex.lang, title: ex.title, tagged: ex.tagged },
           readerText: ex.pageText.join("\n"),
@@ -111,7 +116,11 @@ export const usePreflightStore = create<PreflightStore>((set) => ({
         });
         set({ report, pageText: ex.pageText, running: false });
       } else {
-        const report = runPreflight({ source, refs });
+        const report = runPreflight({
+          source,
+          sourceProfile: files.engine.capabilities.source_preflight_profile,
+          refs,
+        });
         if (stale()) return;
         set({ report, pageText: [], running: false });
       }

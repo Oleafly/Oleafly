@@ -52,13 +52,20 @@ export interface EditorHost {
   useLintRefreshDeps(): readonly unknown[];
 }
 
+export const isLatexSourcePath = (path: string | null): boolean =>
+  !!path && /\.(?:tex|latex|ltx)$/i.test(path);
+export const isProseSourcePath = (path: string | null): boolean =>
+  !!path && /\.(?:tex|latex|ltx|md|markdown)$/i.test(path);
+
 export function CodeMirrorEditor({
   host,
   extraExtensions,
+  extraExtensionsForPath,
   extraKeymap,
 }: {
   host: EditorHost;
   extraExtensions?: Extension[];
+  extraExtensionsForPath?: (path: string | null) => Extension[];
   // Checked before the default keymaps (CodeMirror keymap precedence: earlier
   // extensions in the array win).
   extraKeymap?: KeyBinding[];
@@ -69,6 +76,8 @@ export function CodeMirrorEditor({
   const spellCompartmentRef = useRef<Compartment | null>(null);
   const langCompartmentRef = useRef<Compartment | null>(null);
   const historyCompartmentRef = useRef<Compartment | null>(null);
+  const sourceToolsCompartmentRef = useRef<Compartment | null>(null);
+  const hostToolsCompartmentRef = useRef<Compartment | null>(null);
   const prevPathRef = useRef<string | null>(null);
   const suppressSyncRef = useRef(false);
 
@@ -94,6 +103,10 @@ export function CodeMirrorEditor({
     langCompartmentRef.current = langCompartment;
     const historyCompartment = new Compartment();
     historyCompartmentRef.current = historyCompartment;
+    const sourceToolsCompartment = new Compartment();
+    sourceToolsCompartmentRef.current = sourceToolsCompartment;
+    const hostToolsCompartment = new Compartment();
+    hostToolsCompartmentRef.current = hostToolsCompartment;
     prevPathRef.current = initialPath;
     const initialLang = initialPath ? languageForPath(initialPath) : null;
 
@@ -104,7 +117,6 @@ export function CodeMirrorEditor({
         highlightActiveLineGutter(),
         highlightSpecialChars(),
         foldGutter({ openText: "▾", closedText: "▸" }),
-        latexFolding(),
         drawSelection(),
         dropCursor(),
         EditorState.allowMultipleSelections.of(true),
@@ -120,15 +132,23 @@ export function CodeMirrorEditor({
         langCompartment.of(initialLang ? initialLang : []),
         editorTheme(),
         historyCompartment.of(history()),
-        autocompletion({
-          override: [latexCompletions, slashCompletions],
-          activateOnTyping: true,
-          closeOnBlur: true,
-        }),
         vscodeSearch(),
-        mathHover(),
-        createLatexLinter(),
+        sourceToolsCompartment.of(
+          isLatexSourcePath(initialPath)
+            ? [
+                latexFolding(),
+                autocompletion({
+                  override: [latexCompletions, slashCompletions],
+                  activateOnTyping: true,
+                  closeOnBlur: true,
+                }),
+                mathHover(),
+                createLatexLinter(),
+              ]
+            : [],
+        ),
         ...(extraExtensions ?? []),
+        hostToolsCompartment.of(extraExtensionsForPath?.(initialPath) ?? []),
         keymap.of([
           ...(extraKeymap ?? []),
           indentWithTab,
@@ -141,7 +161,7 @@ export function CodeMirrorEditor({
         ]),
         vimCompartment.of(vimEnabled ? vim() : []),
         spellCompartment.of(
-          spellcheck || harper
+          isProseSourcePath(initialPath) && (spellcheck || harper)
             ? spellLintExtensions({ spell: spellcheck, harper })
             : []
         ),
@@ -177,6 +197,32 @@ export function CodeMirrorEditor({
     const current = view.state.doc.toString();
     const lang = languageForPath(activePath);
     const effects = [langCompartmentRef.current!.reconfigure(lang ? lang : [])];
+    effects.push(
+      sourceToolsCompartmentRef.current!.reconfigure(
+        isLatexSourcePath(activePath)
+          ? [
+              latexFolding(),
+              autocompletion({
+                override: [latexCompletions, slashCompletions],
+                activateOnTyping: true,
+                closeOnBlur: true,
+              }),
+              mathHover(),
+              createLatexLinter(),
+            ]
+          : [],
+      ),
+    );
+    effects.push(
+      hostToolsCompartmentRef.current!.reconfigure(extraExtensionsForPath?.(activePath) ?? []),
+    );
+    effects.push(
+      spellCompartmentRef.current!.reconfigure(
+        isProseSourcePath(activePath) && (spellcheck || harper)
+          ? spellLintExtensions({ spell: spellcheck, harper })
+          : [],
+      ),
+    );
     // Drop the undo history when moving to a different file, so undo/redo never
     // crosses file boundaries (a change from file A must not replay into file B).
     if (pathChanged) {
@@ -219,7 +265,7 @@ export function CodeMirrorEditor({
     if (!view || !compartment) return;
     view.dispatch({
       effects: compartment.reconfigure(
-        spellcheck || harper
+        isProseSourcePath(host.getActivePath()) && (spellcheck || harper)
           ? spellLintExtensions({ spell: spellcheck, harper })
           : []
       ),

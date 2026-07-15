@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { LeafLogo } from "@/components/layout/LeafLogo";
 import { UpdateChecker } from "@/components/layout/UpdateChecker";
 import { appVersion } from "@/lib/tauri";
+import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 
 const REPO = "https://github.com/prajwal-svm/OpenLeaf";
 const AUTHOR_URL = "http://prajwal.me";
@@ -12,6 +13,7 @@ const DOCS = "https://www.overleaf.com/learn";
 
 export function AboutModal({ open: isOpen, onClose }: { open: boolean; onClose: () => void }) {
   const [version, setVersion] = useState("");
+  const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDivElement>(isOpen, onClose);
 
   useEffect(() => {
     if (isOpen) void appVersion().then(setVersion).catch(() => setVersion(""));
@@ -24,13 +26,20 @@ export function AboutModal({ open: isOpen, onClose }: { open: boolean; onClose: 
   return (
     <div
       className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 p-4"
-      onClick={onClose}
+      role="presentation"
+      onMouseDown={onBackdropMouseDown}
     >
       <div
+        role="dialog"
+        ref={dialogRef}
+        tabIndex={-1}
+        aria-modal="true"
+        aria-labelledby="about-title"
         className="w-full max-w-sm rounded-xl border bg-popover p-6 text-popover-foreground shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
       >
         <button
+          type="button"
+          data-modal-initial-focus
           onClick={onClose}
           className="absolute right-3 top-3 flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
           aria-label="Close"
@@ -40,7 +49,7 @@ export function AboutModal({ open: isOpen, onClose }: { open: boolean; onClose: 
 
         <div className="flex flex-col items-center text-center">
           <LeafLogo className="size-12" />
-          <h2 className="mt-3 text-base font-semibold">OpenLeaf</h2>
+          <h2 id="about-title" className="mt-3 text-base font-semibold">OpenLeaf</h2>
           {version && (
             <span className="mt-0.5 text-xs text-muted-foreground">Version {version}</span>
           )}
@@ -54,6 +63,7 @@ export function AboutModal({ open: isOpen, onClose }: { open: boolean; onClose: 
           <div className="space-y-1">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Author</p>
             <button
+              type="button"
               onClick={ext(AUTHOR_URL)}
               className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
             >
@@ -66,6 +76,7 @@ export function AboutModal({ open: isOpen, onClose }: { open: boolean; onClose: 
           <div className="space-y-1">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Project</p>
             <button
+              type="button"
               onClick={ext(REPO)}
               className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
             >

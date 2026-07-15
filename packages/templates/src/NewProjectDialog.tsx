@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Download, FileText, Search, Sparkles, X } from "lucide-react";
 import { cn } from "./cn";
+import { modalCoordinator, visibleFocusable } from "./modal-coordinator";
 import type { TemplateInfo, TemplatesHost, TemplatesKit } from "./types";
 
 // Preferred category order (anything else falls to the end, alphabetically).
@@ -60,9 +61,25 @@ function nameHint(t: TemplateInfo | null): string {
   return NAME_HINT_BY_ID[t.id] ?? NAME_HINT_BY_CATEGORY[t.category] ?? "My Project";
 }
 
+export function compilerLabel(template: TemplateInfo): string {
+  if (template.document_engine === "unknown") return "Unknown compiler";
+  if (template.document_engine === "typst") return "Typst";
+  if (template.document_engine === "markdown") return "Pandoc";
+  return template.engine === "luatex" ? "LuaLaTeX" : "Tectonic";
+}
+export function wrappedModalFocus(
+  active: unknown,
+  first: unknown,
+  last: unknown,
+  shift: boolean,
+): "first" | "last" | null {
+  if (shift && active === first) return "last";
+  if (!shift && active === last) return "first";
+  return null;
+}
+
 // Cache preview data URIs so switching steps or categories doesn't refetch.
 const previewCache = new Map<string, string | null>();
-
 function useTemplatePreview(t: TemplateInfo, host: TemplatesHost): string | null {
   const [uri, setUri] = useState<string | null>(() => previewCache.get(t.id) ?? null);
   useEffect(() => {
@@ -158,11 +175,18 @@ export function NewProjectDialog({
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string>("All");
   const [atsOnly, setAtsOnly] = useState(false);
+  const [engine, setEngine] = useState<"all" | TemplateInfo["document_engine"]>("all");
   const [setup, setSetup] = useState<{ active: boolean; label: string }>({
     active: false,
     label: "",
   });
   const nameRef = useRef<HTMLInputElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
+  const modalIdRef = useRef(Symbol("new-project-dialog"));
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (open) {
@@ -173,13 +197,54 @@ export function NewProjectDialog({
       setSearch("");
       setCategory("All");
       setAtsOnly(false);
+      setEngine("all");
       setSetup({ active: false, label: "" });
     }
   }, [open]);
 
   useEffect(() => {
+    if (!open) return;
+    openerRef.current = document.activeElement as HTMLElement | null;
+    const registeredId = modalCoordinator.add(openerRef.current);
+    modalIdRef.current = registeredId;
+    const isTopmost = () => modalCoordinator.isTop(registeredId);
+    const focusable = () => visibleFocusable(Array.from(dialogRef.current?.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    ) ?? []));
+    const onKey = (event: KeyboardEvent) => {
+      if (!isTopmost()) return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        onCloseRef.current();
+      }
+      if (event.key === "Tab") {
+        const elements = focusable();
+        if (!elements.length) return;
+        const first = elements[0];
+        const last = elements[elements.length - 1];
+        const wrap = wrappedModalFocus(document.activeElement, first, last, event.shiftKey);
+        if (wrap) { event.preventDefault(); (wrap === "first" ? first : last).focus(); }
+      }
+    };
+    const onFocus = (event: FocusEvent) => {
+      if (!isTopmost() || dialogRef.current?.contains(event.target as Node)) return;
+      focusable()[0]?.focus();
+    };
+    window.addEventListener("keydown", onKey);
+    document.addEventListener("focusin", onFocus);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.removeEventListener("focusin", onFocus);
+      const restore = modalCoordinator.remove(registeredId);
+      if (restore) restore.focus();
+    };
+  }, [open]);
+
+  useEffect(() => {
     if (step === 2) nameRef.current?.focus();
-  }, [step]);
+    else if (open) searchRef.current?.focus();
+  }, [step, open]);
 
   const categories = useMemo(() => {
     const present = new Set(templates.map((t) => t.category || "Other"));
@@ -193,10 +258,11 @@ export function NewProjectDialog({
     return templates.filter((t) => {
       if (category !== "All" && (t.category || "Other") !== category) return false;
       if (atsOnly && t.ats_profile !== "friendly") return false;
+      if (engine !== "all" && t.document_engine !== engine) return false;
       if (q && !`${t.name} ${t.description} ${t.category}`.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [templates, search, category, atsOnly]);
+  }, [templates, search, category, atsOnly, engine]);
 
   const selected = useMemo(
     () => templates.find((t) => t.id === selectedId) ?? null,
@@ -215,7 +281,7 @@ export function NewProjectDialog({
     if (!selected || setup.active) return;
     // Fetch any fonts/packages the template needs, showing live progress, before
     // handing off to creation (which stages them into the project).
-    if (!selected.ready) {
+    if (!selected.assets_ready) {
       setSetup({ active: true, label: "Setting up your template..." });
       try {
         await host.ensureAssets(selected.id, (label, index, total) => {
@@ -236,15 +302,22 @@ export function NewProjectDialog({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onClick={onClose}
+      onMouseDown={(event) => {
+        const modalId = modalIdRef.current;
+        if (modalId && modalCoordinator.isTop(modalId) && event.target === event.currentTarget) onClose();
+      }}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="new-project-title"
         data-testid="template-gallery"
         className="flex h-[min(80vh,680px)] w-full max-w-4xl flex-col overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b px-5 py-3">
-          <h2 className="text-base font-semibold">
+          <h2 id="new-project-title" className="text-base font-semibold">
             {step === 1 ? "Choose a template" : "Name your project"}
           </h2>
           <Button variant="ghost" size="icon" className="size-7" onClick={onClose} aria-label="Close">
@@ -277,12 +350,24 @@ export function NewProjectDialog({
                 <div className="relative flex-1">
                   <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                   <input
+                    ref={searchRef}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search templates"
                     className="w-full rounded-md border border-input bg-background py-1.5 pl-8 pr-3 text-sm outline-none focus:ring-1 focus:ring-ring"
                   />
                 </div>
+                <select
+                  aria-label="Document engine"
+                  value={engine}
+                  onChange={(e) => setEngine(e.target.value as typeof engine)}
+                  className="rounded-md border border-input bg-background px-2 py-1.5 text-xs"
+                >
+                  <option value="all">All engines</option>
+                  <option value="latex">LaTeX</option>
+                  <option value="typst">Typst</option>
+                  <option value="markdown">Markdown</option>
+                </select>
                 <button
                   type="button"
                   onClick={() => setAtsOnly((v) => !v)}
@@ -315,7 +400,7 @@ export function NewProjectDialog({
                       >
                         <div className="relative aspect-[17/22] overflow-hidden rounded-md border border-black/10 bg-white shadow-sm ring-2 ring-transparent transition-all duration-150 group-hover:-translate-y-0.5 group-hover:shadow-md group-hover:ring-primary/50 group-focus-visible:ring-primary">
                           <Preview t={t} host={host} />
-                          {!t.ready && (
+                          {!t.assets_ready && (
                             <span className="absolute left-1.5 top-1.5 flex items-center gap-1 rounded bg-black/65 px-1.5 py-0.5 text-[9px] font-medium text-white backdrop-blur-sm">
                               <Download className="size-2.5" /> Setup
                             </span>
@@ -353,7 +438,7 @@ export function NewProjectDialog({
                 <div className="flex flex-wrap items-center gap-1">
                   <AtsBadge profile={selected.ats_profile} />
                   <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                    {selected.engine === "luatex" ? "LuaLaTeX" : "Tectonic"}
+                    {compilerLabel(selected)}
                   </span>
                 </div>
                 {selected.license && (
@@ -408,7 +493,7 @@ export function NewProjectDialog({
                   })}
                 </div>
 
-                {!selected.ready && (
+                {!selected.assets_ready && (
                   <div className="mt-5 flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
                     <Sparkles className="mt-0.5 size-3.5 shrink-0" />
                     <span>

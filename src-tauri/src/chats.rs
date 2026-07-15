@@ -5,6 +5,11 @@
 //! The frontend still migrates any legacy localStorage payload on first load.
 
 use crate::paths;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Mutex, OnceLock};
+
+static SAVE_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+static TEMP_SEQUENCE: AtomicU64 = AtomicU64::new(1);
 
 /// Directory holding one JSON file per project.
 fn chats_root() -> Result<std::path::PathBuf, String> {
@@ -67,10 +72,30 @@ fn save_blocking(project_id: &str, json: &str) -> Result<(), String> {
         return Err("chat history must be a JSON array".into());
     }
     let path = chats_path(project_id)?;
+    save_to_path(&path, json)
+}
+
+fn save_to_path(path: &std::path::Path, json: &str) -> Result<(), String> {
+    let lock = SAVE_LOCK.get_or_init(|| Mutex::new(()));
+    let _guard = lock
+        .lock()
+        .map_err(|_| "chat save lock is poisoned".to_string())?;
     let dir = path
         .parent()
         .ok_or_else(|| "chats path has no parent".to_string())?;
-    let tmp = dir.join(format!("{project_id}.json.tmp"));
+    let name = path
+        .file_name()
+        .and_then(|value| value.to_str())
+        .ok_or_else(|| "chats path has no file name".to_string())?;
+    let sequence = TEMP_SEQUENCE.fetch_add(1, Ordering::Relaxed);
+    let tmp = dir.join(format!(".{name}.{}.{}.tmp", std::process::id(), sequence));
+    struct Cleanup(std::path::PathBuf);
+    impl Drop for Cleanup {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_file(&self.0);
+        }
+    }
+    let cleanup = Cleanup(tmp.clone());
     {
         use std::io::Write;
         let mut opts = std::fs::OpenOptions::new();
@@ -87,12 +112,43 @@ fn save_blocking(project_id: &str, json: &str) -> Result<(), String> {
             .map_err(|e| format!("failed to write chats: {e}"))?;
         let _ = f.sync_all();
     }
-    // Owner-only, mirroring config.json (unix 0600 at create, Windows ACL here).
     crate::fsperm::harden_file(&tmp);
-    std::fs::rename(&tmp, &path).map_err(|e| {
-        let _ = std::fs::remove_file(&tmp);
-        format!("failed to replace chats file: {e}")
-    })
+    replace_path(&tmp, path)?;
+    drop(cleanup);
+    Ok(())
+}
+
+#[cfg(not(windows))]
+fn replace_path(source: &std::path::Path, destination: &std::path::Path) -> Result<(), String> {
+    std::fs::rename(source, destination).map_err(|e| format!("failed to replace chats file: {e}"))
+}
+
+#[cfg(windows)]
+fn replace_path(source: &std::path::Path, destination: &std::path::Path) -> Result<(), String> {
+    use std::os::windows::ffi::OsStrExt;
+    use windows_sys::Win32::Storage::FileSystem::{
+        MoveFileExW, MOVEFILE_REPLACE_EXISTING, MOVEFILE_WRITE_THROUGH,
+    };
+    let source: Vec<u16> = source.as_os_str().encode_wide().chain(Some(0)).collect();
+    let destination: Vec<u16> = destination
+        .as_os_str()
+        .encode_wide()
+        .chain(Some(0))
+        .collect();
+    let result = unsafe {
+        MoveFileExW(
+            source.as_ptr(),
+            destination.as_ptr(),
+            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH,
+        )
+    };
+    if result == 0 {
+        return Err(format!(
+            "failed to replace chats file: {}",
+            std::io::Error::last_os_error()
+        ));
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -104,5 +160,39 @@ mod tests {
         assert!(chats_path("..").is_err());
         assert!(chats_path("a/b").is_err());
         assert!(chats_path("").is_err());
+    }
+
+    #[test]
+    fn repeated_save_replaces_existing_file_and_removes_staging_files() {
+        let root = std::env::temp_dir().join(format!(
+            "openleaf-chat-save-{}-{}",
+            std::process::id(),
+            TEMP_SEQUENCE.fetch_add(1, Ordering::Relaxed)
+        ));
+        std::fs::create_dir_all(&root).unwrap();
+        let path = root.join("project.json");
+        save_to_path(&path, "[]").unwrap();
+        save_to_path(&path, "[{\"id\":\"second\"}]").unwrap();
+        assert_eq!(
+            std::fs::read_to_string(&path).unwrap(),
+            "[{\"id\":\"second\"}]"
+        );
+        assert_eq!(std::fs::read_dir(&root).unwrap().count(), 1);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn failed_replace_preserves_existing_file() {
+        let root = std::env::temp_dir().join(format!(
+            "openleaf-chat-failure-{}-{}",
+            std::process::id(),
+            TEMP_SEQUENCE.fetch_add(1, Ordering::Relaxed)
+        ));
+        std::fs::create_dir_all(&root).unwrap();
+        let path = root.join("project.json");
+        std::fs::write(&path, "old").unwrap();
+        assert!(replace_path(&root.join("missing.tmp"), &path).is_err());
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "old");
+        std::fs::remove_dir_all(root).unwrap();
     }
 }

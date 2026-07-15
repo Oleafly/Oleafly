@@ -7,9 +7,6 @@
 /* Vercel Geist-inspired neutral palette (shadcn "neutral" base)
  *
  * Light surfaces use three distinct steps (mirrors dark hierarchy):
- *   background  — pure white (editor / main content)
- *   sidebar     — ~gray-50 (side panels, PDF chrome)
- *   muted       — ~gray-100 (rail, chips, fills)
  * Card/popover stay pure white so floating UI lifts off the shell.
  */
 :root {
@@ -22,7 +19,6 @@
   --popover-foreground: oklch(0.145 0 0);
   --primary: oklch(0.205 0 0);
   --primary-foreground: oklch(0.985 0 0);
-  /* ~gray-100 — third surface tier (rail, chips, secondary fills) */
   --secondary: oklch(0.95 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.95 0 0);
@@ -34,7 +30,6 @@
   --border: oklch(0.9 0 0);
   --input: oklch(0.9 0 0);
   --ring: oklch(0.708 0 0);
-  /* ~gray-50 — second surface tier (sidebar, PDF area, log pane) */
   --sidebar: oklch(0.975 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-border: oklch(0.9 0 0);

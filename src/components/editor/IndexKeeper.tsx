@@ -14,6 +14,7 @@ export function IndexKeeper() {
   const content = useActiveContent();
 
   useEffect(() => {
+    void projectId;
     useIndexStore.getState().reset();
   }, [projectId]);
 

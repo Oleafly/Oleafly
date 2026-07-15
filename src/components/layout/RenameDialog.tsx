@@ -3,12 +3,14 @@ import { useRenameStore } from "@/store/rename";
 import { useIndexStore } from "@/store/project-index";
 import { getEditorView } from "@/components/editor/cm/controller";
 import { applyRename } from "@/lib/index/nav";
+import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 
 export function RenameDialog() {
   const sym = useRenameStore((s) => s.sym);
   const close = useRenameStore((s) => s.close);
   const index = useIndexStore((s) => s.index);
   const [name, setName] = useState("");
+  const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDivElement>(!!sym, close);
 
   useEffect(() => {
     if (sym) setName(sym.name);
@@ -26,16 +28,22 @@ export function RenameDialog() {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-start justify-center bg-black/40 pt-[20vh]" onClick={close}>
+    <div className="fixed inset-0 z-[60] flex items-start justify-center bg-black/40 pt-[20vh]" role="presentation" onMouseDown={onBackdropMouseDown}>
       <div
+        role="dialog"
+        ref={dialogRef}
+        tabIndex={-1}
+        aria-modal="true"
+        aria-labelledby="rename-title"
         className="w-[26rem] max-w-[90vw] rounded-lg border bg-popover p-4 text-popover-foreground shadow-xl"
-        onClick={(e) => e.stopPropagation()}
       >
-        <p className="text-sm font-semibold">
+        <p id="rename-title" className="text-sm font-semibold">
           Rename <span className="font-mono">{sym.name}</span>
         </p>
         <input
           autoFocus
+          data-modal-initial-focus
+          aria-label="New name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => {
@@ -54,10 +62,11 @@ export function RenameDialog() {
           )}
         </p>
         <div className="mt-3 flex justify-end gap-2">
-          <button onClick={close} className="rounded-md border border-input px-3 py-1.5 text-xs hover:bg-accent">
+          <button type="button" onClick={close} className="rounded-md border border-input px-3 py-1.5 text-xs hover:bg-accent">
             Cancel
           </button>
           <button
+            type="button"
             onClick={() => void submit()}
             disabled={!valid}
             className="rounded-md bg-primary px-3 py-1.5 text-xs text-white hover:opacity-90 disabled:opacity-50"

@@ -29,7 +29,8 @@ in reports about:
 - **Command execution** - getting the app to run arbitrary programs or shell
   commands.
 - **Secret exposure** - leaking the stored GitHub token or AI API keys (from
-  `~/.openleaf/config.json`, process arguments, logs, or the network).
+  the OS keychain, the owner-only config fallback, process arguments, logs, or
+  the network).
 - **Webview escapes / XSS** - script injection via rendered AI output, compile
   logs, PDF content, or file contents, bypassing the app's Content Security
   Policy.
@@ -39,9 +40,10 @@ in reports about:
 These are documented trade-offs, not vulnerabilities - though we welcome help
 improving them:
 
-- **Secrets at rest** - the GitHub token and AI keys are stored in
-  `~/.openleaf/config.json` (mode `0600` on Unix), not the OS keychain. Moving
-  to a keychain is on the roadmap.
+- **Secrets at rest** - the GitHub token and AI keys are stored in the OS
+  keychain when available. If the keychain is unavailable, OpenLeaf uses an
+  owner-only fallback in `~/.openleaf/config.json` (`0600` on Unix). The
+  fallback provides filesystem permissions, not keychain-backed encryption.
 - **Unsigned builds** - release binaries for macOS and Windows are not yet
   code-signed or notarized.
 

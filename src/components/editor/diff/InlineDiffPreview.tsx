@@ -6,10 +6,8 @@ import { editorTheme } from "../cm/theme";
 import { languageForPath } from "../cm/languages";
 import { cn } from "@/lib/utils";
 
-// Above this size (per side) we skip the merge view — it isn't worth the jank.
 const MAX = 400_000;
 
-// Unlike `DiffView`, has no git/store coupling — pass old/new text directly.
 export function InlineDiffPreview({
   path,
   oldText,

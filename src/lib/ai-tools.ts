@@ -11,7 +11,6 @@ import {
   createFile,
   deleteFile,
   renameFile,
-  setMainDocCmd,
   listFiles,
   searchProject,
   compileIsolated,
@@ -46,7 +45,12 @@ const HOST: AiToolsHost = {
   createFile,
   deleteFile,
   renameFile,
-  setMainDoc: setMainDocCmd,
+  setMainDoc: async (projectId, path) => {
+    const files = useFilesStore.getState();
+    if (files.projectId !== projectId) throw new Error("Project changed before setting main document");
+    await files.setMainDoc(path);
+    return { main_doc: useFilesStore.getState().mainDoc };
+  },
   listFiles,
   searchProject,
   // NB: the figure-pipeline services are referenced lazily (arrow wrappers)
@@ -72,12 +76,6 @@ const HOST: AiToolsHost = {
     );
   },
   refreshTree: () => useFilesStore.getState().refreshTree(),
-  setMainDocState: (mainDoc) => {
-    useFilesStore.setState({ mainDoc });
-    void import("@/lib/cross-window").then((m) =>
-      m.notifyProjectFilesChanged(useFilesStore.getState().projectId),
-    );
-  },
   recompile: () => useCompileStore.getState().recompile(),
   getCompileLog: () => useCompileStore.getState().log,
   getPdfBytes: () => useCompileStore.getState().pdfBytes,

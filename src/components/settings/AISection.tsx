@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Check,
   ChevronDown,
@@ -174,7 +174,7 @@ const AI_TOOLS: { name: string; desc: string }[] = [
   { name: "list_files", desc: "List the project tree" },
   { name: "search_project", desc: "Search text in the current project" },
   { name: "project_map", desc: "Structural outline, labels, cites, inputs" },
-  { name: "compile", desc: "Compile LaTeX to PDF" },
+  { name: "compile", desc: "Compile the project to PDF" },
   { name: "get_log", desc: "Get the last compile log" },
   { name: "get_pdf_text", desc: "Extract text from the PDF" },
   { name: "verify_pdf_pages", desc: "Rasterize pages for vision layout checks" },
@@ -183,7 +183,7 @@ const AI_TOOLS: { name: string; desc: string }[] = [
   { name: "remember_note", desc: "Save sticky project memory for later turns" },
   { name: "forget_note", desc: "Remove a sticky memory note" },
   { name: "list_notes", desc: "List sticky project memory notes" },
-  { name: "set_main_doc", desc: "Set the main .tex document" },
+  { name: "set_main_doc", desc: "Set the main document" },
   { name: "toggle_theme", desc: "Toggle light/dark mode" },
 ];
 
@@ -241,7 +241,7 @@ export function AISection() {
 
   const activeProvider = cfg.ai_provider;
 
-  const refreshOllama = async (host: string) => {
+  const refreshOllama = useCallback(async (host: string) => {
     setOllama((o) => ({ ...o, status: "loading" }));
     try {
       const models = await listOllamaModels(host);
@@ -249,15 +249,14 @@ export function AISection() {
     } catch {
       setOllama({ status: "down", models: [] });
     }
-  };
+  }, []);
 
   // Cheap localhost request that fails fast, so it's run proactively instead of
   // waiting on the user to configure a host first.
   const savedOllamaHost = cfg.ai_keys?.ollama ?? "";
   useEffect(() => {
     void refreshOllama(savedOllamaHost || DEFAULT_OLLAMA_HOST);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [savedOllamaHost]);
+  }, [savedOllamaHost, refreshOllama]);
 
   // Saves the host and activates the model in one step; no separate "Save" button for Ollama.
   const applyOllamaModel = async (model: string) => {
@@ -631,4 +630,3 @@ export function AISection() {
     </div>
   );
 }
-

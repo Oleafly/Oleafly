@@ -71,6 +71,9 @@ export function TopToolbar() {
   const projectName = useFilesStore((s) => s.projectName);
   const projectId = useFilesStore((s) => s.projectId);
   const projectKind = useFilesStore((s) => s.projectKind);
+  const engine = useFilesStore((s) => s.engine);
+  const engineLoaded = useFilesStore((s) => s.engineLoaded);
+  const engineError = useFilesStore((s) => s.engineError);
   const closeProject = useFilesStore((s) => s.closeProject);
   const refreshProjects = useFilesStore((s) => s.refreshProjects);
   const openProject = useFilesStore((s) => s.openProject);
@@ -200,7 +203,6 @@ export function TopToolbar() {
     if (!dest) return;
     setExporting(format);
     try {
-      // Word/HTML/Markdown need pandoc — fetch it on demand the first time.
       if (!(await ensurePandoc())) return;
       await exportDocument(projectId, useFilesStore.getState().mainDoc || "main.tex", format, dest);
       toast.success(
@@ -337,7 +339,7 @@ export function TopToolbar() {
 
       <div data-tauri-drag-region className="flex items-center justify-end gap-1.5">
 
-        <Tooltip label={`Recompile (${shortcut("⌘↵")})`}>
+        <Tooltip label={`Compile ${engine.label} (${shortcut("⌘↵")})`}>
           <Button
             variant="ghost"
             size="sm"
@@ -345,7 +347,7 @@ export function TopToolbar() {
               "rounded-md bg-primary text-white shadow-sm hover:bg-primary",
               "h-7 gap-1.5 px-2.5",
             )}
-            disabled={compiling}
+            disabled={compiling || !engineLoaded}
             onClick={() => {
               // If the PDF pane is hidden (editor-only), reveal it so the result shows.
               if (viewMode === "editor") setViewMode("split");
@@ -358,7 +360,9 @@ export function TopToolbar() {
           </Button>
         </Tooltip>
 
-        {projectKind !== "image" && (
+        {engineError && <span className="max-w-48 truncate text-xs text-destructive" title={engineError}>{engineError}</span>}
+
+        {projectKind !== "image" && engineLoaded && engine.capabilities.supports_isolated_compile && (
           <Tooltip label="Insert diagram">
             <Button
               variant="ghost"
@@ -392,10 +396,10 @@ export function TopToolbar() {
                   <FileArchive className="size-4 text-muted-foreground" />
                   Export source (.zip)
                 </button>
-                <button onClick={() => void doDownloadPdf()} disabled={!pdfBytes} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent disabled:opacity-40">
+                {engine.capabilities.produces_pdf && <button onClick={() => void doDownloadPdf()} disabled={!pdfBytes} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent disabled:opacity-40">
                   <FileText className="size-4 text-muted-foreground" />
                   Export as PDF {projectKind === "image" ? "(vector image)" : ""}
-                </button>
+                </button>}
                 {projectKind === "image" && (
                   <button onClick={() => void doExportPng()} disabled={!pdfBytes} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent disabled:opacity-40">
                     <ImagePlay className="size-4 text-muted-foreground" />
@@ -407,28 +411,28 @@ export function TopToolbar() {
                     {projectKind === "image" ? "Compile the figure first" : "PDF requires a compile first"}
                   </p>
                 )}
-                {projectKind !== "image" && (
+                {projectKind !== "image" && engine.capabilities.conversion_exports.length > 0 && (
                   <>
                     <div className="my-1 h-px bg-border" />
-                    <button onClick={() => void doExportFormat("docx")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
+                    {engine.capabilities.conversion_exports.includes("docx") && <button onClick={() => void doExportFormat("docx")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
                       <FileType className="size-4 text-muted-foreground" />
                       Export as Word (.docx)
-                    </button>
-                    <button onClick={() => void doExportFormat("html")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
+                    </button>}
+                    {engine.capabilities.conversion_exports.includes("html") && <button onClick={() => void doExportFormat("html")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
                       <FileType className="size-4 text-muted-foreground" />
                       Export as HTML (.html)
-                    </button>
-                    <button onClick={() => void doExportFormat("md")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
+                    </button>}
+                    {engine.capabilities.conversion_exports.includes("md") && <button onClick={() => void doExportFormat("md")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
                       <FileType className="size-4 text-muted-foreground" />
                       Export as Markdown (.md)
-                    </button>
-                    <button onClick={() => void doExportFormat("txt")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
+                    </button>}
+                    {engine.capabilities.conversion_exports.includes("txt") && <button onClick={() => void doExportFormat("txt")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
                       <FileType className="size-4 text-muted-foreground" />
                       Export as Plain text (.txt)
-                    </button>
+                    </button>}
                   </>
                 )}
-                {exportKind === "presentation" && (
+                {exportKind === "presentation" && engine.capabilities.conversion_exports.includes("pptx") && (
                   <>
                     <div className="my-1 h-px bg-border" />
                     <button onClick={() => void doExportFormat("pptx")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
@@ -437,7 +441,7 @@ export function TopToolbar() {
                     </button>
                   </>
                 )}
-                {exportKind === "book" && (
+                {exportKind === "book" && engine.capabilities.conversion_exports.includes("epub") && (
                   <>
                     <div className="my-1 h-px bg-border" />
                     <button onClick={() => void doExportFormat("epub")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">

@@ -14,6 +14,7 @@ import { useFilesStore, useActiveContent } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
 import { usePreflightStore } from "@/store/preflight";
 import { useSettingsStore } from "@/store/settings";
+import { resetOpenCompileMarker, shouldCompileOnOpen } from "@/lib/open-compile";
 import { useGitStatusStore } from "@/store/git-status";
 import { useGithubStore } from "@/store/github";
 import { forwardFromCursor } from "@/features/synctex";
@@ -119,11 +120,14 @@ const AUTO_COMPILE_DEBOUNCE_MS = 2500;
 export default function App() {
   const projectId = useFilesStore((s) => s.projectId);
   const projectKind = useFilesStore((s) => s.projectKind);
+  const engine = useFilesStore((s) => s.engine);
+  const engineLoaded = useFilesStore((s) => s.engineLoaded);
   const refreshProjects = useFilesStore((s) => s.refreshProjects);
   const activeContent = useActiveContent();
   const activePath = useFilesStore((s) => s.activePath);
   const recompile = useCompileStore((s) => s.recompile);
   const autoCompile = useCompileStore((s) => s.autoCompile);
+  const compileStatus = useCompileStore((s) => s.status);
   const viewMode = useSettingsStore((s) => s.viewMode);
   const setViewMode = useSettingsStore((s) => s.setViewMode);
   const showTree = useSettingsStore((s) => s.showTree);
@@ -136,8 +140,7 @@ export default function App() {
   useEffect(() => {
     void refreshProjects();
     void useGithubStore.getState().refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [refreshProjects]);
 
   // No-op in dev / the browser; only prompts if an update is actually available.
   useEffect(() => {
@@ -221,8 +224,7 @@ export default function App() {
       else if (!s.openInTree && s.showTree) s.toggleTree();
       void import("@/lib/preview-window").then((m) => m.retargetPreviewWindow(projectId));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId]);
+  }, [projectId, setViewMode]);
 
   // Detached AI chat / preview windows can mutate disk; reload open buffers
   // and the compiled PDF when they report changes.
@@ -320,19 +322,18 @@ export default function App() {
   const tree = useFilesStore((s) => s.tree);
   const openCompiledRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!projectId || tree.length === 0) return;
-    if (openCompiledRef.current === projectId) return;
+    openCompiledRef.current = resetOpenCompileMarker(projectId, openCompiledRef.current);
     const view = useSettingsStore.getState().viewMode;
-    if (view !== "split" && view !== "pdf") return;
+    if (!shouldCompileOnOpen(projectId, tree.length > 0, engineLoaded, openCompiledRef.current, view, compileStatus)) return;
     openCompiledRef.current = projectId;
-    if (useCompileStore.getState().status === "compiling") return;
     void recompile();
-  }, [projectId, tree, recompile]);
+  }, [projectId, tree, engineLoaded, compileStatus, recompile]);
 
   // `activeContent` also changes on tab switch / project open, not just edits;
   // only compile when the active file is unchanged from the previous render.
   const autoCompilePathRef = useRef<string | null>(null);
   useEffect(() => {
+    void activeContent;
     if (!autoCompile || !projectId) {
       autoCompilePathRef.current = activePath;
       return;
@@ -407,7 +408,7 @@ export default function App() {
                 {viewMode === "split" && (
                   <VHandle id="h-mid" placement="top">
                     {/* SyncTeX maps source to PDF positions; a single figure has none. */}
-                    {projectKind !== "image" && (
+                    {projectKind !== "image" && engineLoaded && engine.capabilities.supports_synctex && (
                       <DividerBtn onClick={() => void forwardFromCursor()} title="Go to PDF (SyncTeX)">
                         <ArrowRight className="size-3.5" />
                       </DividerBtn>

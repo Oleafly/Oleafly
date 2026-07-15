@@ -3,6 +3,7 @@ mod chats;
 mod citation;
 mod commands;
 mod config;
+mod document_engine;
 mod fsperm;
 mod git;
 mod github;
@@ -84,6 +85,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::library_root,
             commands::app_version,
+            commands::project_engine,
             commands::updater_self_installable,
             commands::compile_project,
             commands::read_compiled_pdf,
@@ -133,6 +135,8 @@ pub fn run() {
             project::get_project,
             project::list_projects,
             project::create_project,
+            project::create_typst_project,
+            project::create_markdown_project,
             project::create_image_project,
             templates::list_templates,
             templates::template_preview,

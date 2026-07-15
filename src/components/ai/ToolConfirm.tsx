@@ -75,7 +75,7 @@ export function ToolConfirm({
     return () => {
       cancelled = true;
     };
-  }, [req, filePath, changeLine]);
+  }, [filePath, changeLine]);
 
   const body = (
     <div className="flex flex-col gap-3">

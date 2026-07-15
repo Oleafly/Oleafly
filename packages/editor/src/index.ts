@@ -1,9 +1,9 @@
-// @openleaf/editor — the CodeMirror LaTeX editing core: component, controller,
 // language/completions, theme, folding, linters, spelling/grammar, search.
 // The host app injects a document/settings port (EditorHost), the spelling
 // stack (setSpellHost), citation keys (setBibKeysProvider), and feature
 // extensions (extraExtensions/extraKeymap). No store, Tauri, or app imports.
-export { CodeMirrorEditor, type EditorHost } from "./CodeMirrorEditor";
+
+export { CodeMirrorEditor, isLatexSourcePath, type EditorHost } from "./CodeMirrorEditor";
 export * from "./controller";
 export { editorTheme } from "./theme";
 export { languageForPath } from "./languages";

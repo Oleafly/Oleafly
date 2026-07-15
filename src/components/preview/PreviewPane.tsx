@@ -13,6 +13,7 @@ import { saveFileBase64, uint8ToBase64 } from "@/lib/tauri";
 import { openPreviewWindow } from "@/lib/preview-window";
 import { notifyError, toast } from "@/lib/toast";
 import { cn, shortcut } from "@/lib/utils";
+import { attachPreviewZoom } from "./preview-zoom";
 
 const MIN_SCALE = 0.4;
 const MAX_SCALE = 4;
@@ -68,38 +69,11 @@ export function PreviewPane() {
   // Two webview families report pinch-to-zoom differently; handle both and leave
   // ordinary two-finger scroll (no ctrlKey, no gesture events) alone.
   useEffect(() => {
+    void pdfBytes;
+    void tab;
     const el = scrollBoxRef.current;
     if (!el) return;
-    const clamp = (v: number) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, v));
-
-    // Chromium webviews (WebView2, WebKitGTK): pinch arrives as Ctrl+wheel.
-    const onWheel = (e: WheelEvent) => {
-      if (!e.ctrlKey) return;
-      e.preventDefault();
-      setScale((s) => clamp(s * Math.exp(-e.deltaY * 0.01)));
-    };
-
-    // WebKit (macOS WKWebView, Tauri's default there): pinch fires non-standard
-    // gesture events; `scale` is cumulative relative to gesturestart.
-    let startScale = 1;
-    const onGestureStart = (e: Event) => {
-      e.preventDefault();
-      startScale = scaleRef.current;
-    };
-    const onGestureChange = (e: Event) => {
-      e.preventDefault();
-      const s = (e as unknown as { scale?: number }).scale;
-      if (typeof s === "number" && s > 0) setScale(clamp(startScale * s));
-    };
-
-    el.addEventListener("wheel", onWheel, { passive: false });
-    el.addEventListener("gesturestart", onGestureStart as EventListener, { passive: false });
-    el.addEventListener("gesturechange", onGestureChange as EventListener, { passive: false });
-    return () => {
-      el.removeEventListener("wheel", onWheel);
-      el.removeEventListener("gesturestart", onGestureStart as EventListener);
-      el.removeEventListener("gesturechange", onGestureChange as EventListener);
-    };
+    return attachPreviewZoom(el, () => scaleRef.current, setScale);
   }, [pdfBytes, tab]);
 
   useEffect(() => {
@@ -137,7 +111,7 @@ export function PreviewPane() {
         setSaveName("");
         toast.success("Image saved to the project.");
       } else {
-        const raw = saveName.trim() || mainDoc.replace(/\.tex$/i, "") || "document";
+        const raw = saveName.trim() || mainDoc.replace(/\.(?:tex|typ|md|markdown)$/i, "") || "document";
         const name = raw.replace(/\.pdf$/i, "") + ".pdf";
         await saveFileBase64(projectId, name, uint8ToBase64(pdfBytes));
         await refreshTree();
@@ -335,7 +309,7 @@ export function PreviewPane() {
                       "figure";
                     setSaveName(`${base}.png`);
                   } else {
-                    setSaveName((mainDoc.replace(/\.tex$/i, "") || "document") + ".pdf");
+                    setSaveName((mainDoc.replace(/\.(?:tex|typ|md|markdown)$/i, "") || "document") + ".pdf");
                   }
                   setSaveOpen(true);
                 }}
@@ -555,4 +529,3 @@ function CompileProgress({
     </div>
   );
 }
-

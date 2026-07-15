@@ -52,13 +52,21 @@ export async function bibtexForHit(hit: CitationHit): Promise<string> {
   return `@article{ref,\n${fields.join(",\n")}\n}`;
 }
 
+export function ensureTypstBibliography(source: string, path: string): string {
+  if (/#bibliography\s*\(/.test(source)) return source;
+  const safePath = path.replaceAll("\\", "/").replaceAll('"', '\\"');
+  return `${source.trimEnd()}\n\n#bibliography("${safePath}")\n`;
+}
+
 function pickTargetBib(): { path: string; content: string } {
   const files = useFilesStore.getState();
   const mainContent = files.files[files.mainDoc]?.content ?? "";
   const bibPaths = files.tree.filter((f) => !f.is_dir && f.path.endsWith(".bib")).map((f) => f.path);
 
   let path: string | null = null;
-  const m = /\\(?:bibliography|addbibresource)\s*\{([^}]*)\}/.exec(mainContent);
+  const m = files.engine.capabilities.formatting_profile === "latex"
+    ? /\\(?:bibliography|addbibresource)\s*\{([^}]*)\}/.exec(mainContent)
+    : null;
   if (m) {
     const ref = m[1].split(",")[0].trim();
     const want = ref.endsWith(".bib") ? ref : `${ref}.bib`;
@@ -114,6 +122,20 @@ export async function addCitation(bibtex: string): Promise<{ key: string } | { e
     }
   }
 
+  if (files.engine.capabilities.formatting_profile === "typst" && id) {
+    const mainPath = files.mainDoc;
+    const main = files.files[mainPath]?.content ?? await readFileContent(id, mainPath).catch(() => "");
+    if (!/#bibliography\s*\(/.test(main)) {
+      const next = ensureTypstBibliography(main, target.path);
+      if (files.files[mainPath] !== undefined) {
+        files.setContent(mainPath, next);
+        await useFilesStore.getState().saveFile(mainPath);
+      } else {
+        await writeFileContent(id, mainPath, next);
+      }
+    }
+  }
+
   insertCite(key);
   void useIndexStore.getState().rebuildFromDisk();
   return { key };
@@ -121,5 +143,10 @@ export async function addCitation(bibtex: string): Promise<{ key: string } | { e
 
 function insertCite(key: string) {
   const v = getEditorView();
-  if (v) insertAtCursor(`\\cite{${key}}`);
+  if (!v) return;
+  const files = useFilesStore.getState();
+  const extension = files.activePath?.split(".").pop()?.toLowerCase();
+  if (!extension || !files.engine.source_extensions.includes(extension)) return;
+  const profile = files.engine.capabilities.formatting_profile;
+  insertAtCursor(profile === "typst" ? `@${key}` : profile === "markdown" ? `[@${key}]` : `\\cite{${key}}`);
 }

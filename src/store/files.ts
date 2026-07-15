@@ -3,11 +3,14 @@ import {
   createFile as apiCreateFile,
   copyFile as apiCopyFile,
   createProject as apiCreateProject,
+  createTypstProject as apiCreateTypstProject,
+  createMarkdownProject as apiCreateMarkdownProject,
   createProjectFromTemplate as apiCreateFromTemplate,
   deleteFile as apiDeleteFile,
   gitLog,
   gitRestore,
   getProject,
+  getProjectEngine,
   listFiles,
   listProjects,
   readFileContent,
@@ -17,7 +20,9 @@ import {
   writeFileContent,
   type FileEntry,
   type ProjectInfo,
+  type DocumentEngineDescriptor,
 } from "@/lib/tauri";
+import { UNKNOWN_ENGINE } from "@/lib/document-engine";
 import { flushAutoCommit, scheduleAutoCommit } from "@/lib/auto-commit";
 import { logError } from "@/lib/log";
 import { notifyError } from "@/lib/toast";
@@ -36,6 +41,9 @@ interface FilesStore {
   // project (hides doc-only tools like Insert diagram).
   projectKind: string;
   mainDoc: string;
+  engine: DocumentEngineDescriptor;
+  engineLoaded: boolean;
+  engineError: string | null;
   tree: FileEntry[];
   files: Record<string, FileState>;
   openTabs: string[];
@@ -52,6 +60,8 @@ interface FilesStore {
   openProject: (id: string) => Promise<void>;
   closeProject: () => void;
   createProject: (name: string) => Promise<void>;
+  createTypstProject: (name: string) => Promise<void>;
+  createMarkdownProject: (name: string) => Promise<void>;
   renameProject: (name: string) => Promise<void>;
   createFromTemplate: (name: string, templateId: string, color?: string) => Promise<string>;
   restoreFromGit: (oid: string) => Promise<void>;
@@ -81,6 +91,7 @@ const pendingSaves = new Set<string>();
 // Bumped on every openProject so an in-flight load from a previous project can
 // detect it is stale and stop writing into the newly opened project's state.
 let openSeq = 0;
+let mainDocSeq = 0;
 
 function cancelPendingAutosave() {
   if (autosaveTimer) {
@@ -95,6 +106,9 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   projectName: "",
   projectKind: "",
   mainDoc: "main.tex",
+  engine: UNKNOWN_ENGINE,
+  engineLoaded: false,
+  engineError: null,
   tree: [],
   files: {},
   openTabs: [],
@@ -112,6 +126,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
 
   openProject: async (id) => {
     const seq = ++openSeq;
+    mainDocSeq++;
     // Land any pending auto-commit for the previous project, then drop pending
     // autosaves and every buffer so its dirty tabs can't be written into this
     // project's directory.
@@ -123,6 +138,9 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       projectName: "",
       projectKind: "",
       mainDoc: "main.tex",
+      engine: UNKNOWN_ENGINE,
+      engineLoaded: false,
+      engineError: null,
       tree: [],
       files: {},
       openTabs: [],
@@ -135,6 +153,16 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       const tree = await listFiles(id);
       if (seq !== openSeq) return;
       set({ projectName: meta.name, projectKind: meta.kind ?? "", mainDoc: meta.main_doc, tree });
+      try {
+        const engine = await getProjectEngine(id);
+        if (seq !== openSeq) return;
+        set({ engine, engineLoaded: true, engineError: null });
+      } catch (error) {
+        if (seq !== openSeq) return;
+        const message = "Document engine details could not be loaded. Engine-specific actions are disabled.";
+        set({ engine: UNKNOWN_ENGINE, engineLoaded: false, engineError: message });
+        notifyError("load document engine", error, message);
+      }
       // Preload .bib files so citation autocomplete works.
       const bibs = tree.filter((f) => !f.is_dir && f.path.endsWith(".bib"));
       for (const b of bibs) {
@@ -162,11 +190,17 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   },
 
   closeProject: () => {
+    mainDocSeq++;
     flushAutoCommit();
     cancelPendingAutosave();
     set({
       projectId: null,
       projectName: "",
+      projectKind: "",
+      mainDoc: "main.tex",
+      engine: UNKNOWN_ENGINE,
+      engineLoaded: false,
+      engineError: null,
       tree: [],
       files: {},
       openTabs: [],
@@ -177,6 +211,18 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
 
   createProject: async (name) => {
     const id = await apiCreateProject(name);
+    await get().refreshProjects();
+    await get().openProject(id);
+  },
+
+  createTypstProject: async (name) => {
+    const id = await apiCreateTypstProject(name);
+    await get().refreshProjects();
+    await get().openProject(id);
+  },
+
+  createMarkdownProject: async (name) => {
+    const id = await apiCreateMarkdownProject(name);
     await get().refreshProjects();
     await get().openProject(id);
   },
@@ -424,8 +470,21 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   setMainDoc: async (path) => {
     const { projectId } = get();
     if (!projectId) return;
-    const meta = await setMainDocCmd(projectId, path);
-    set({ mainDoc: meta.main_doc });
+    const seq = ++mainDocSeq;
+    set({ engine: UNKNOWN_ENGINE, engineLoaded: false, engineError: null });
+    try {
+      const meta = await setMainDocCmd(projectId, path);
+      if (seq !== mainDocSeq || get().projectId !== projectId) return;
+      const engine = await getProjectEngine(projectId);
+      if (seq !== mainDocSeq || get().projectId !== projectId) return;
+      set({ mainDoc: meta.main_doc, engine, engineLoaded: true, engineError: null });
+    } catch (error) {
+      if (seq !== mainDocSeq || get().projectId !== projectId) return;
+      const message = "Document engine details could not be loaded. Engine-specific actions are disabled.";
+      set({ engine: UNKNOWN_ENGINE, engineLoaded: false, engineError: message });
+      notifyError("set main document", error, message);
+      throw error;
+    }
   },
 
   restoreFromGit: async (oid) => {

@@ -1,7 +1,7 @@
 // See docs/planning/specs/2026-07-09-project-index-language-service-design.md for design rationale.
 
 export type DefKind = "label" | "macro" | "bibentry" | "theorem" | "glossary" | "environment" | "section" | "file";
-export type UseKind = "ref" | "cite" | "macrouse" | "envuse" | "glossaryuse" | "inputedge";
+export type UseKind = "ref" | "cite" | "atuse" | "macrouse" | "envuse" | "glossaryuse" | "inputedge";
 export type SymKind = DefKind | UseKind;
 
 export interface Sym {
@@ -15,7 +15,6 @@ export interface Sym {
   // Full token span within `file` (for hit-testing and jump targets).
   from: number;
   to: number;
-  // The name-only span within `file` (what rename edits) — distinct from `from`/`to`.
   nameFrom: number;
   nameTo: number;
   // Only set for `section` symbols.

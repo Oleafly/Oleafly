@@ -81,6 +81,16 @@ interface ChatsState {
       estimatedUsd?: number;
     },
   ) => void;
+  addUsageForProject: (
+    projectId: string,
+    chatId: string,
+    delta: {
+      inputTokens: number;
+      outputTokens: number;
+      steps: number;
+      estimatedUsd?: number;
+    },
+  ) => Promise<void>;
   remove: (chatId: string) => void;
   setActive: (chatId: string | null) => void;
   byId: (chatId: string) => StoredChat | undefined;
@@ -89,8 +99,18 @@ interface ChatsState {
 const legacyKey = (pid: string) => `openleaf.chats.${pid}`;
 
 const MAX_CHATS_PER_PROJECT = 50;
+const MAX_CACHED_PROJECTS = 16;
 
 const migratedLegacy = new Set<string>();
+
+function rememberMigration(projectId: string) {
+  migratedLegacy.delete(projectId);
+  migratedLegacy.add(projectId);
+  if (migratedLegacy.size > MAX_CACHED_PROJECTS) {
+    const oldest = migratedLegacy.values().next().value;
+    if (oldest) migratedLegacy.delete(oldest);
+  }
+}
 
 function parseChats(raw: string | null): StoredChat[] {
   if (!raw) return [];
@@ -134,16 +154,20 @@ function capChats(chats: StoredChat[]): StoredChat[] {
     .slice(0, MAX_CHATS_PER_PROJECT);
 }
 
-function writeAll(pid: string, chats: StoredChat[]) {
+async function persistAll(pid: string, chats: StoredChat[]): Promise<void> {
   const capped = capChats(chats);
   const json = JSON.stringify(capped);
   if (isTauri()) {
-    void saveProjectChats(pid, json).catch(() => {
-      // Disk write failed (full disk / permissions). Retry once with a smaller
-      // set so recent chats still land rather than failing silently.
+    try {
+      await saveProjectChats(pid, json);
+    } catch {
       const trimmed = capChats(capped).slice(0, Math.max(1, Math.floor(MAX_CHATS_PER_PROJECT / 2)));
-      void saveProjectChats(pid, JSON.stringify(trimmed)).catch(() => notifyQuota());
-    });
+      try {
+        await saveProjectChats(pid, JSON.stringify(trimmed));
+      } catch {
+        notifyQuota();
+      }
+    }
     return;
   }
   try {
@@ -158,6 +182,19 @@ function writeAll(pid: string, chats: StoredChat[]) {
       notifyQuota();
     }
   }
+}
+
+const persistChains = new Map<string, Promise<void>>();
+
+function queuePersist(projectId: string, chats: StoredChat[]): Promise<void> {
+  const previous = persistChains.get(projectId) ?? Promise.resolve();
+  const next = previous.catch(() => {}).then(() => persistAll(projectId, chats));
+  persistChains.set(projectId, next);
+  const cleanup = () => {
+    if (persistChains.get(projectId) === next) persistChains.delete(projectId);
+  };
+  void next.then(cleanup, cleanup);
+  return next;
 }
 
 async function readAll(pid: string): Promise<StoredChat[]> {
@@ -179,7 +216,7 @@ async function readAll(pid: string): Promise<StoredChat[]> {
             /* keep the legacy copy; migration re-runs on a later session */
           }
         }
-        migratedLegacy.add(pid);
+        rememberMigration(pid);
       }
       return chats;
     } catch {
@@ -202,6 +239,42 @@ function titleFrom(text: string) {
 // for the active project. Keyed by project id.
 const memoryByProject = new Map<string, StoredChat[]>();
 
+function cacheProjectChats(projectId: string, chats: StoredChat[]) {
+  memoryByProject.delete(projectId);
+  memoryByProject.set(projectId, chats);
+  if (memoryByProject.size > MAX_CACHED_PROJECTS) {
+    const oldest = memoryByProject.keys().next().value;
+    if (oldest) memoryByProject.delete(oldest);
+  }
+}
+
+function applyUsage(
+  chats: StoredChat[],
+  chatId: string,
+  delta: { inputTokens: number; outputTokens: number; steps: number; estimatedUsd?: number },
+): StoredChat[] {
+  return chats.map((chat) => {
+    if (chat.id !== chatId) return chat;
+    const previous = chat.usage ?? {
+      inputTokens: 0,
+      outputTokens: 0,
+      steps: 0,
+      runs: 0,
+      estimatedUsd: 0,
+    };
+    return {
+      ...chat,
+      usage: {
+        inputTokens: previous.inputTokens + Math.max(0, delta.inputTokens || 0),
+        outputTokens: previous.outputTokens + Math.max(0, delta.outputTokens || 0),
+        steps: previous.steps + Math.max(0, delta.steps || 0),
+        runs: previous.runs + 1,
+        estimatedUsd: (previous.estimatedUsd ?? 0) + Math.max(0, delta.estimatedUsd || 0),
+      },
+    };
+  });
+}
+
 // Monotonic ticket for load(); a resolved load only applies if it is still
 // the newest request (same staleness pattern as the compile/preflight/index
 // stores).
@@ -217,8 +290,9 @@ export const useChatsStore = create<ChatsState>((set, get) => ({
     // store's own projectId is NOT a valid reference here; on a normal A->B
     // switch it still holds A when B's load resolves.
     const my = ++loadSeq;
-    const chats = await readAll(projectId);
-    memoryByProject.set(projectId, chats);
+    const loaded = await readAll(projectId);
+    const chats = memoryByProject.get(projectId) ?? loaded;
+    cacheProjectChats(projectId, chats);
     if (my !== loadSeq) return; // a newer load superseded this one
     set({ projectId, chats, activeId: null });
   },
@@ -235,15 +309,16 @@ export const useChatsStore = create<ChatsState>((set, get) => ({
     };
     const existing = memoryByProject.get(projectId) ?? get().chats.filter((c) => c.projectId === projectId);
     const next = [chat, ...existing.filter((c) => c.id !== chat.id)];
-    memoryByProject.set(projectId, next);
-    writeAll(projectId, next);
+    cacheProjectChats(projectId, next);
+    void queuePersist(projectId, next);
     set({ projectId, chats: next, activeId: chat.id });
     return chat;
   },
 
   saveMessages: (chatId, messages) => {
-    const { projectId, chats } = get();
+    const { projectId } = get();
     if (!projectId) return;
+    const chats = memoryByProject.get(projectId) ?? get().chats;
     // A debounced save can fire after the user switched projects (load
     // replaced projectId/chats). If the chat isn't in the current project's
     // list, writing here would needlessly rewrite the new project's chats and
@@ -262,63 +337,57 @@ export const useChatsStore = create<ChatsState>((set, get) => ({
           }
         : c
     );
-    memoryByProject.set(projectId, updated);
-    writeAll(projectId, updated);
+    cacheProjectChats(projectId, updated);
+    void queuePersist(projectId, updated);
     set({ chats: updated.sort((a, b) => b.updatedAt - a.updatedAt) });
   },
 
   patchTitleIfEmpty: (chatId, title) => {
-    const { projectId, chats } = get();
+    const { projectId } = get();
     if (!projectId) return;
+    const chats = memoryByProject.get(projectId) ?? get().chats;
     const updated = chats.map((c) =>
       c.id === chatId && (c.title === "New chat" || !c.title)
         ? { ...c, title: titleFrom(title) }
         : c
     );
-    memoryByProject.set(projectId, updated);
-    writeAll(projectId, updated);
+    cacheProjectChats(projectId, updated);
+    void queuePersist(projectId, updated);
     set({ chats: updated });
   },
 
   addUsage: (chatId, delta) => {
-    const { projectId, chats } = get();
+    const { projectId } = get();
     if (!projectId) return;
+    const chats = memoryByProject.get(projectId) ?? get().chats;
     if (!chats.some((c) => c.id === chatId)) return;
-    const updated = chats.map((c) => {
-      if (c.id !== chatId) return c;
-      const prev = c.usage ?? {
-        inputTokens: 0,
-        outputTokens: 0,
-        steps: 0,
-        runs: 0,
-        estimatedUsd: 0,
-      };
-      return {
-        ...c,
-        usage: {
-          inputTokens: prev.inputTokens + Math.max(0, delta.inputTokens || 0),
-          outputTokens: prev.outputTokens + Math.max(0, delta.outputTokens || 0),
-          steps: prev.steps + Math.max(0, delta.steps || 0),
-          runs: prev.runs + 1,
-          estimatedUsd: (prev.estimatedUsd ?? 0) + Math.max(0, delta.estimatedUsd || 0),
-        },
-        // Do NOT bump updatedAt here: usage is bookkeeping, and touching it
-        // would reorder the chat to the top of the sidebar on every token
-        // write. saveMessages already bumps updatedAt at the end of a run.
-      };
-    });
-    memoryByProject.set(projectId, updated);
-    writeAll(projectId, updated);
-    // Preserve existing order (no re-sort) since updatedAt is unchanged.
+    const updated = applyUsage(chats, chatId, delta);
+    cacheProjectChats(projectId, updated);
+    void queuePersist(projectId, updated);
     set({ chats: updated });
   },
 
+  addUsageForProject: async (projectId, chatId, delta) => {
+    const cached = memoryByProject.get(projectId);
+    const loaded = cached ?? await readAll(projectId);
+    const chats = memoryByProject.get(projectId) ?? loaded;
+    if (!chats.some((chat) => chat.id === chatId)) return;
+    const updated = applyUsage(chats, chatId, delta);
+    cacheProjectChats(projectId, updated);
+    if (get().projectId === projectId) set({ chats: updated });
+    await queuePersist(projectId, updated);
+    if (get().projectId === projectId) {
+      set({ chats: memoryByProject.get(projectId) ?? updated });
+    }
+  },
+
   remove: (chatId) => {
-    const { projectId, chats, activeId } = get();
+    const { projectId, activeId } = get();
     if (!projectId) return;
+    const chats = memoryByProject.get(projectId) ?? get().chats;
     const updated = chats.filter((c) => c.id !== chatId);
-    memoryByProject.set(projectId, updated);
-    writeAll(projectId, updated);
+    cacheProjectChats(projectId, updated);
+    void queuePersist(projectId, updated);
     set({ chats: updated, activeId: activeId === chatId ? null : activeId });
   },
 

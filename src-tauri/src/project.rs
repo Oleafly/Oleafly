@@ -24,6 +24,17 @@ Write your \\LaTeX{} here.\n\
 \n\
 \\end{document}\n";
 
+const DEFAULT_MAIN_TYPST: &str = "#set document(title: \"Untitled\", author: ())\n\
+#set page(paper: \"us-letter\", margin: 1in)\n\
+#set text(size: 11pt)\n\
+\n\
+= Untitled\n\
+\n\
+Write your document in Typst.\n";
+
+const DEFAULT_MAIN_MARKDOWN: &str =
+    "---\ntitle: Untitled\nauthor: ''\n---\n\n# Introduction\n\nWrite your document in Markdown.\n";
+
 #[derive(Serialize, Deserialize, Default, Clone)]
 pub struct ProjectMeta {
     #[serde(default)]
@@ -104,8 +115,12 @@ pub fn read_meta(project_id: &str) -> Result<ProjectMeta, String> {
 
 pub fn write_meta(project_id: &str, meta: &ProjectMeta) -> Result<(), String> {
     let p = meta_path(project_id)?;
+    write_meta_at(&p, meta)
+}
+
+fn write_meta_at(path: &Path, meta: &ProjectMeta) -> Result<(), String> {
     let s = serde_json::to_string_pretty(meta).map_err(|e| e.to_string())?;
-    std::fs::write(&p, s).map_err(|e| format!("failed to write project.json: {e}"))
+    std::fs::write(path, s).map_err(|e| format!("failed to write project.json: {e}"))
 }
 
 /// Relative path from `root` to `path`, always with forward-slash separators.
@@ -339,14 +354,61 @@ pub fn set_main_doc(project_id: String, main_doc: String) -> Result<ProjectMeta,
     if !resolved.is_file() {
         return Err(format!("main document not found: {main_doc}"));
     }
-    let lower = main_doc.to_ascii_lowercase();
-    if !(lower.ends_with(".tex") || lower.ends_with(".ltx") || lower.ends_with(".latex")) {
-        return Err("main document must be a .tex file".into());
-    }
     let mut meta = read_meta(&project_id)?;
+    let selected_engine = engine_for_main_document(&meta.engine, &main_doc)?;
     meta.main_doc = main_doc;
+    meta.engine = selected_engine;
     write_meta(&project_id, &meta)?;
     Ok(meta)
+}
+
+fn engine_for_main_document(current_engine: &str, main_doc: &str) -> Result<String, String> {
+    let current_is_typst = matches!(
+        current_engine.trim().to_ascii_lowercase().as_str(),
+        "typst" | "typ"
+    );
+    let current_is_markdown = matches!(
+        current_engine.trim().to_ascii_lowercase().as_str(),
+        "markdown" | "md" | "pandoc"
+    );
+    let lower = main_doc.to_ascii_lowercase();
+    let selected = if lower.ends_with(".typ") {
+        "typst".to_owned()
+    } else if lower.ends_with(".md") || lower.ends_with(".markdown") {
+        "markdown".to_owned()
+    } else if current_is_typst || current_is_markdown {
+        default_engine()
+    } else {
+        current_engine.to_owned()
+    };
+    crate::document_engine::engine_for(&selected, main_doc)?;
+    Ok(selected)
+}
+
+#[tauri::command]
+pub fn create_markdown_project(name: String) -> Result<String, String> {
+    let root = paths::projects_root()?;
+    create_markdown_project_in(&root, name)
+}
+
+fn create_markdown_project_in(root: &Path, name: String) -> Result<String, String> {
+    let id = unique_random_slug(root)?;
+    let dir = root.join(&id);
+    create_project_transaction(&dir, || {
+        std::fs::write(dir.join("main.md"), DEFAULT_MAIN_MARKDOWN).map_err(|e| e.to_string())?;
+        write_meta_at(
+            &dir.join("project.json"),
+            &ProjectMeta {
+                name,
+                main_doc: "main.md".into(),
+                engine: "markdown".into(),
+                color: String::new(),
+                kind: String::new(),
+                exports: Vec::new(),
+            },
+        )
+    })?;
+    Ok(id)
 }
 
 #[tauri::command]
@@ -429,20 +491,60 @@ pub fn create_project(name: String) -> Result<String, String> {
     let root = paths::projects_root()?;
     let id = unique_random_slug(&root)?;
     let dir = root.join(&id);
-    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    std::fs::write(dir.join("main.tex"), DEFAULT_MAIN_TEX).map_err(|e| e.to_string())?;
-    write_meta(
-        &id,
-        &ProjectMeta {
-            name,
-            main_doc: default_main_doc(),
-            engine: default_engine(),
-            color: String::new(),
-            kind: String::new(),
-            exports: Vec::new(),
-        },
-    )?;
+    create_project_transaction(&dir, || {
+        std::fs::write(dir.join("main.tex"), DEFAULT_MAIN_TEX).map_err(|e| e.to_string())?;
+        write_meta_at(
+            &dir.join("project.json"),
+            &ProjectMeta {
+                name,
+                main_doc: default_main_doc(),
+                engine: default_engine(),
+                color: String::new(),
+                kind: String::new(),
+                exports: Vec::new(),
+            },
+        )
+    })?;
     Ok(id)
+}
+
+#[tauri::command]
+pub fn create_typst_project(name: String) -> Result<String, String> {
+    let root = paths::projects_root()?;
+    create_typst_project_in(&root, name)
+}
+
+fn create_typst_project_in(root: &Path, name: String) -> Result<String, String> {
+    let id = unique_random_slug(root)?;
+    let dir = root.join(&id);
+    create_project_transaction(&dir, || {
+        std::fs::write(dir.join("main.typ"), DEFAULT_MAIN_TYPST).map_err(|e| e.to_string())?;
+        write_meta_at(
+            &dir.join("project.json"),
+            &ProjectMeta {
+                name,
+                main_doc: "main.typ".into(),
+                engine: "typst".into(),
+                color: String::new(),
+                kind: String::new(),
+                exports: Vec::new(),
+            },
+        )
+    })?;
+    Ok(id)
+}
+
+fn create_project_transaction<F>(dir: &Path, initialize: F) -> Result<(), String>
+where
+    F: FnOnce() -> Result<(), String>,
+{
+    std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    let result = initialize();
+    if let Err(error) = result {
+        let _ = std::fs::remove_dir_all(dir);
+        return Err(error);
+    }
+    Ok(())
 }
 
 /// Create an image-kind project whose `main.tex` is a standalone document
@@ -455,21 +557,31 @@ pub fn create_image_project(
     color: Option<String>,
 ) -> Result<String, String> {
     let root = paths::projects_root()?;
-    let id = unique_random_slug(&root)?;
+    create_image_project_in(&root, name, source, color)
+}
+
+fn create_image_project_in(
+    root: &Path,
+    name: String,
+    source: String,
+    color: Option<String>,
+) -> Result<String, String> {
+    let id = unique_random_slug(root)?;
     let dir = root.join(&id);
-    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    std::fs::write(dir.join("main.tex"), source).map_err(|e| e.to_string())?;
-    write_meta(
-        &id,
-        &ProjectMeta {
-            name,
-            main_doc: default_main_doc(),
-            engine: default_engine(),
-            color: color.unwrap_or_default(),
-            kind: "image".into(),
-            exports: Vec::new(),
-        },
-    )?;
+    create_project_transaction(&dir, || {
+        std::fs::write(dir.join("main.tex"), source).map_err(|e| e.to_string())?;
+        write_meta_at(
+            &dir.join("project.json"),
+            &ProjectMeta {
+                name,
+                main_doc: default_main_doc(),
+                engine: default_engine(),
+                color: color.unwrap_or_default(),
+                kind: "image".into(),
+                exports: Vec::new(),
+            },
+        )
+    })?;
     Ok(id)
 }
 
@@ -555,15 +667,19 @@ pub fn export_pdf(
     state: tauri::State<'_, crate::state::AppState>,
 ) -> Result<(), String> {
     guard_export_dest(&dest)?;
-    let build = paths::build_dir(&project_id)?;
-    let pdf = build.join(format!("{}.pdf", paths::ENTRY_STEM));
+    let meta = read_meta(&project_id)?;
+    let pdf = crate::document_engine::compiled_pdf_path(&project_id, &meta.engine, &meta.main_doc)?;
     if !pdf.exists() {
         return Err("No compiled PDF found - recompile first.".into());
     }
     std::fs::copy(&pdf, &dest).map_err(|e| format!("failed to write PDF: {e}"))?;
     // Allow reveal_in_dir for this user-chosen export path.
     if let Ok(canon) = std::path::Path::new(&dest).canonicalize() {
-        state.reveal_allowlist.blocking_lock().insert(canon);
+        let mut allow = state.reveal_allowlist.blocking_lock();
+        if allow.len() >= 1024 {
+            allow.pop_front();
+        }
+        allow.push_back(canon);
     }
 
     let mut meta = read_meta(&project_id)?;
@@ -591,7 +707,7 @@ pub fn export_pdf(
 /// Locate a usable `pandoc` binary. macOS/Linux GUI apps launch with a minimal
 /// PATH that usually excludes Homebrew and conda, so if it isn't on PATH we also
 /// probe common install locations before giving up.
-fn find_pandoc() -> Option<String> {
+pub(crate) fn find_pandoc() -> Option<String> {
     use std::path::PathBuf;
     use std::process::Command;
     let works = |cmd: &str| {
@@ -602,9 +718,6 @@ fn find_pandoc() -> Option<String> {
             .map(|o| o.status.success())
             .unwrap_or(false)
     };
-    if works("pandoc") {
-        return Some("pandoc".to_string());
-    }
     let mut candidates: Vec<PathBuf> = Vec::new();
     // Our own on-demand download location wins first (guaranteed compatible).
     if let Ok(root) = paths::openleaf_root() {
@@ -613,6 +726,14 @@ fn find_pandoc() -> Option<String> {
         } else {
             "pandoc"
         }));
+    }
+    if let Some(cached) = candidates.pop() {
+        if cached.is_file() && works(&cached.to_string_lossy()) {
+            return Some(cached.to_string_lossy().into_owned());
+        }
+    }
+    if works("pandoc") {
+        return Some("pandoc".to_string());
     }
     candidates.extend([
         PathBuf::from("/opt/homebrew/bin/pandoc"),
@@ -648,49 +769,88 @@ pub async fn export_document(
     main_doc: String,
     format: String,
     dest: String,
+    state: tauri::State<'_, crate::state::AppState>,
 ) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
-        use std::process::Command;
-        guard_export_dest(&dest)?;
-        let root = paths::project_dir(&project_id)?;
-        // Validate `main_doc` stays inside the project before handing it to pandoc.
-        resolve(&project_id, &main_doc)?;
-        let pandoc = find_pandoc().ok_or_else(|| {
+    let reveal_dest = dest.clone();
+    guard_export_dest(&dest)?;
+    let meta = read_meta(&project_id)?;
+    if meta.main_doc != main_doc {
+        return Err("main document changed; reopen the export menu and try again".into());
+    }
+    let writer = validate_conversion_export(&meta, &format, &dest)?;
+    let root = paths::project_dir(&project_id)?;
+    resolve(&project_id, &main_doc)?;
+    let pandoc = tauri::async_runtime::spawn_blocking(find_pandoc)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| {
             "pandoc is not installed. Install pandoc to export documents.".to_string()
         })?;
-        let mut cmd = Command::new(&pandoc);
-        cmd.no_console().arg("-o").arg(&dest);
-        match format.as_str() {
-            // Beamer frames (and level-2 headings) become individual slides.
-            "pptx" => {
-                cmd.args(["--slide-level", "2"]);
-            }
-            // A single portable file with images and CSS inlined, and math
-            // rendered as MathML so it displays offline without a script.
-            "html" => {
-                cmd.args(["--standalone", "--embed-resources", "--mathml"]);
-            }
-            // A navigable e-book with a generated contents page.
-            "epub" => {
-                cmd.arg("--toc");
-            }
-            _ => {}
+    let mut args = vec![format!("--to={writer}"), "-o".into(), dest.clone()];
+    match format.as_str() {
+        "pptx" => {
+            args.extend(["--slide-level".into(), "2".into()]);
         }
-        // `--` terminates option parsing so a `main_doc` beginning with `-` can't be
-        // interpreted as a pandoc flag (defense-in-depth; it's already validated to
-        // stay inside the project).
-        cmd.arg("--").arg(&main_doc).current_dir(&root);
-        let out = cmd
-            .output()
-            .map_err(|e| format!("failed to run pandoc: {e}"))?;
-        if !out.status.success() {
-            let err = String::from_utf8_lossy(&out.stderr);
-            return Err(format!("pandoc failed: {}", err.trim()));
+        "html" => {
+            args.extend([
+                "--standalone".into(),
+                "--embed-resources".into(),
+                "--mathml".into(),
+            ]);
         }
-        Ok(())
-    })
-    .await
-    .map_err(|e| e.to_string())?
+        "epub" => {
+            args.push("--toc".into());
+        }
+        _ => {}
+    }
+    args.extend(["--".into(), main_doc]);
+    let (log, code) =
+        crate::document_engine::run_supervised_external(Path::new(&pandoc), &args, &root).await?;
+    if code != Some(0) {
+        return Err(format!("pandoc failed: {}", log.trim()));
+    }
+    if let Ok(canon) = Path::new(&reveal_dest).canonicalize() {
+        let mut allow = state.reveal_allowlist.lock().await;
+        if allow.len() >= 1024 {
+            allow.pop_front();
+        }
+        allow.push_back(canon);
+    }
+    Ok(())
+}
+
+fn validate_conversion_export(
+    meta: &ProjectMeta,
+    format: &str,
+    dest: &str,
+) -> Result<&'static str, String> {
+    let (writer, extension) = match format {
+        "docx" => ("docx", "docx"),
+        "html" => ("html5", "html"),
+        "md" => ("markdown", "md"),
+        "txt" => ("plain", "txt"),
+        "pptx" => ("pptx", "pptx"),
+        "epub" => ("epub", "epub"),
+        _ => return Err(format!("unsupported export format: {format}")),
+    };
+    if !Path::new(dest)
+        .extension()
+        .and_then(|value| value.to_str())
+        .map(|value| value.eq_ignore_ascii_case(extension))
+        .unwrap_or(false)
+    {
+        return Err(format!("export destination must end in .{extension}"));
+    }
+    let descriptor = crate::document_engine::descriptor_for(&meta.engine, &meta.main_doc)?;
+    if !descriptor
+        .capabilities
+        .conversion_exports
+        .iter()
+        .any(|candidate| candidate.as_str() == format)
+    {
+        return Err(format!("{} cannot export {format}", descriptor.label));
+    }
+    Ok(writer)
 }
 
 /// Whether a usable pandoc is already available (system or our cache).
@@ -708,20 +868,48 @@ struct PandocProgress {
 }
 
 /// The pandoc release asset URL for this platform, and whether it's a tar.gz.
-fn pandoc_asset() -> Result<(String, bool), String> {
-    const V: &str = "3.5";
+fn pandoc_asset() -> Result<(String, bool, &'static str, PathBuf), String> {
+    pandoc_asset_for(std::env::consts::OS, std::env::consts::ARCH)
+}
+
+fn pandoc_asset_for(os: &str, arch: &str) -> Result<(String, bool, &'static str, PathBuf), String> {
+    const V: &str = "3.9.0.2";
     let base = format!("https://github.com/jgm/pandoc/releases/download/{V}");
-    let arch = std::env::consts::ARCH;
-    if cfg!(target_os = "macos") {
-        let a = if arch == "aarch64" { "arm64" } else { "x86_64" };
-        Ok((format!("{base}/pandoc-{V}-{a}-macOS.zip"), false))
-    } else if cfg!(target_os = "windows") {
-        Ok((format!("{base}/pandoc-{V}-windows-x86_64.zip"), false))
-    } else if cfg!(target_os = "linux") {
-        let a = if arch == "aarch64" { "arm64" } else { "amd64" };
-        Ok((format!("{base}/pandoc-{V}-linux-{a}.tar.gz"), true))
-    } else {
-        Err("Automatic pandoc download isn't supported on this platform.".to_string())
+    match (os, arch) {
+        ("macos", "aarch64") => Ok((
+            format!("{base}/pandoc-{V}-arm64-macOS.zip"),
+            false,
+            "6e9eca844076bcbb599bbeebbba78a70f93b5307782b85c2c272872812c88875",
+            PathBuf::from(format!("pandoc-{V}/bin/pandoc")),
+        )),
+        ("macos", "x86_64") => Ok((
+            format!("{base}/pandoc-{V}-x86_64-macOS.zip"),
+            false,
+            "b9fbceabccbc8f34ac021a50483fc32f8160568d0b4b2c22d81bb29e3054fd82",
+            PathBuf::from(format!("pandoc-{V}/bin/pandoc")),
+        )),
+        ("linux", "x86_64") => Ok((
+            format!("{base}/pandoc-{V}-linux-amd64.tar.gz"),
+            true,
+            "a69abfababda8a56969a254b09f9553a7be89ddec00d4e0fe9fd585d71a67508",
+            PathBuf::from(format!("pandoc-{V}/bin/pandoc")),
+        )),
+        ("linux", "aarch64") => Ok((
+            format!("{base}/pandoc-{V}-linux-arm64.tar.gz"),
+            true,
+            "b6d21e8f9c3b15744f5a7ab40248019157ed7793875dbe0383d4c82ff572b528",
+            PathBuf::from(format!("pandoc-{V}/bin/pandoc")),
+        )),
+        ("windows", "x86_64") => Ok((
+            format!("{base}/pandoc-{V}-windows-x86_64.zip"),
+            false,
+            "c97542f2800f446e788d9f74237856d995421ad1bb3cc8324286840c5f272d3a",
+            PathBuf::from(format!("pandoc-{V}/pandoc.exe")),
+        )),
+        _ => Err(format!(
+            "Automatic Pandoc download is not supported on {}/{}. Install Pandoc manually.",
+            os, arch
+        )),
     }
 }
 
@@ -730,43 +918,47 @@ fn extract_pandoc(
     archive: &std::path::Path,
     is_targz: bool,
     dest: &std::path::Path,
+    expected: &Path,
 ) -> Result<(), String> {
-    use std::io::{Read, Write};
-    // Match the executable by FILE NAME, not a "bin/..." suffix: since pandoc 2.8
-    // the Windows zip puts `pandoc.exe` at the archive ROOT (no bin/ dir), while
-    // macOS/Linux still nest it under bin/. The old `ends_with("bin/pandoc.exe")`
-    // never matched on Windows, so on-demand pandoc install (all non-PDF export)
-    // was completely broken there.
-    let want_name = if cfg!(windows) {
-        "pandoc.exe"
-    } else {
-        "pandoc"
-    };
+    use std::io::Read;
+    const MAX_EXECUTABLE_BYTES: u64 = 100 * 1024 * 1024;
     let file = std::fs::File::open(archive).map_err(|e| e.to_string())?;
     if is_targz {
         let gz = flate2::read::GzDecoder::new(file);
         let mut ar = tar::Archive::new(gz);
         for entry in ar.entries().map_err(|e| e.to_string())? {
-            let mut entry = entry.map_err(|e| e.to_string())?;
+            let entry = entry.map_err(|e| e.to_string())?;
             let path = entry.path().map_err(|e| e.to_string())?.into_owned();
-            let is_match = path.file_name().and_then(|s| s.to_str()) == Some(want_name);
-            if is_match {
+            if path == expected {
+                if !entry.header().entry_type().is_file() || entry.size() > MAX_EXECUTABLE_BYTES {
+                    return Err("invalid pandoc executable member".to_string());
+                }
                 let mut out = std::fs::File::create(dest).map_err(|e| e.to_string())?;
-                std::io::copy(&mut entry, &mut out).map_err(|e| e.to_string())?;
+                let copied = std::io::copy(&mut entry.take(MAX_EXECUTABLE_BYTES + 1), &mut out)
+                    .map_err(|e| e.to_string())?;
+                if copied > MAX_EXECUTABLE_BYTES {
+                    return Err("pandoc executable exceeds size limit".to_string());
+                }
                 return Ok(());
             }
         }
     } else {
         let mut zip = zip::ZipArchive::new(file).map_err(|e| e.to_string())?;
         for i in 0..zip.len() {
-            let mut f = zip.by_index(i).map_err(|e| e.to_string())?;
-            let name = f.name().to_string();
-            let base = name.rsplit('/').next().unwrap_or(&name);
-            if base == want_name {
-                let mut buf = Vec::new();
-                f.read_to_end(&mut buf).map_err(|e| e.to_string())?;
+            let f = zip.by_index(i).map_err(|e| e.to_string())?;
+            let Some(path) = f.enclosed_name() else {
+                continue;
+            };
+            if path == expected {
+                if !f.is_file() || f.size() > MAX_EXECUTABLE_BYTES {
+                    return Err("invalid pandoc executable member".to_string());
+                }
                 let mut out = std::fs::File::create(dest).map_err(|e| e.to_string())?;
-                out.write_all(&buf).map_err(|e| e.to_string())?;
+                let copied = std::io::copy(&mut f.take(MAX_EXECUTABLE_BYTES + 1), &mut out)
+                    .map_err(|e| e.to_string())?;
+                if copied > MAX_EXECUTABLE_BYTES {
+                    return Err("pandoc executable exceeds size limit".to_string());
+                }
                 return Ok(());
             }
         }
@@ -777,31 +969,70 @@ fn extract_pandoc(
 /// Download pandoc on demand and cache it under `~/.openleaf/bin`. Emits
 /// `pandoc-download-progress` events; returns the path to the ready binary.
 #[tauri::command]
-pub async fn download_pandoc(app: tauri::AppHandle) -> Result<String, String> {
+pub async fn download_pandoc(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, crate::state::AppState>,
+) -> Result<String, String> {
     use futures_util::StreamExt;
     use std::io::Write as _;
     use tauri::Emitter;
 
+    let _install = state.pandoc_install_lock.lock().await;
     if let Some(p) = find_pandoc() {
         return Ok(p);
     }
-    let (url, is_targz) = pandoc_asset()?;
+    let (url, is_targz, expected_sha256, expected_member) = pandoc_asset()?;
     let bin_dir = paths::openleaf_root()?.join("bin");
     std::fs::create_dir_all(&bin_dir).map_err(|e| e.to_string())?;
-    let tmp = bin_dir.join("pandoc-download.tmp");
+    let nonce = format!(
+        "{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_err(|e| e.to_string())?
+            .as_nanos()
+    );
+    let tmp = bin_dir.join(format!("pandoc-{nonce}.archive"));
+    let staging = bin_dir.join(format!("pandoc-{nonce}.staging"));
 
-    let resp = reqwest::get(&url)
+    struct Cleanup(Vec<PathBuf>);
+    impl Drop for Cleanup {
+        fn drop(&mut self) {
+            for path in &self.0 {
+                let _ = std::fs::remove_file(path);
+            }
+        }
+    }
+    let mut cleanup = Cleanup(vec![tmp.clone(), staging.clone()]);
+
+    let client = reqwest::Client::builder()
+        .connect_timeout(std::time::Duration::from_secs(15))
+        .timeout(std::time::Duration::from_secs(180))
+        .build()
+        .map_err(|e| format!("failed to configure download: {e}"))?;
+    let resp = client
+        .get(&url)
+        .send()
         .await
         .map_err(|e| format!("download failed: {e}"))?
         .error_for_status()
         .map_err(|e| format!("download failed: {e}"))?;
+    const MAX_ARCHIVE_BYTES: u64 = 150 * 1024 * 1024;
     let total = resp.content_length();
+    if total.is_some_and(|size| size > MAX_ARCHIVE_BYTES) {
+        return Err("pandoc download exceeds the 150 MB safety limit".to_string());
+    }
     let mut file = std::fs::File::create(&tmp).map_err(|e| e.to_string())?;
     let mut stream = resp.bytes_stream();
     let mut received: u64 = 0;
     while let Some(chunk) = stream.next().await {
         let chunk = chunk.map_err(|e| format!("download interrupted: {e}"))?;
         received += chunk.len() as u64;
+        if received > MAX_ARCHIVE_BYTES {
+            drop(file);
+            let _ = std::fs::remove_file(&tmp);
+            return Err("pandoc download exceeded the 150 MB safety limit".to_string());
+        }
         file.write_all(&chunk).map_err(|e| e.to_string())?;
         let _ = app.emit(
             "pandoc-download-progress",
@@ -809,30 +1040,60 @@ pub async fn download_pandoc(app: tauri::AppHandle) -> Result<String, String> {
         );
     }
     file.flush().map_err(|e| e.to_string())?;
+    file.sync_all().map_err(|e| e.to_string())?;
     drop(file);
+
+    use sha2::{Digest, Sha256};
+    let mut archive = std::fs::File::open(&tmp).map_err(|e| e.to_string())?;
+    let mut hasher = Sha256::new();
+    std::io::copy(&mut archive, &mut hasher).map_err(|e| e.to_string())?;
+    let actual = format!("{:x}", hasher.finalize());
+    if actual != expected_sha256 {
+        return Err(format!(
+            "Pandoc archive integrity check failed (expected {expected_sha256}, got {actual})"
+        ));
+    }
 
     let dest = bin_dir.join(if cfg!(windows) {
         "pandoc.exe"
     } else {
         "pandoc"
     });
-    let extracted = extract_pandoc(&tmp, is_targz, &dest);
-    let _ = std::fs::remove_file(&tmp);
-    extracted?;
+    extract_pandoc(&tmp, is_targz, &staging, &expected_member)?;
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        let _ = std::fs::set_permissions(&dest, std::fs::Permissions::from_mode(0o755));
+        std::fs::set_permissions(&staging, std::fs::Permissions::from_mode(0o755))
+            .map_err(|e| e.to_string())?;
     }
-    if !std::process::Command::new(&dest)
+    let staging_file = std::fs::OpenOptions::new()
+        .read(true)
+        .open(&staging)
+        .map_err(|e| e.to_string())?;
+    staging_file.sync_all().map_err(|e| e.to_string())?;
+    let version = std::process::Command::new(&staging)
         .no_console()
         .arg("--version")
         .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
+        .map_err(|e| format!("Downloaded Pandoc failed to run: {e}"))?;
+    if !version.status.success()
+        || !String::from_utf8_lossy(&version.stdout).starts_with("pandoc 3.9.0.2")
     {
-        return Err("Downloaded pandoc, but it failed to run.".to_string());
+        return Err("Downloaded executable did not identify as Pandoc 3.9.0.2".to_string());
     }
+    let backup = bin_dir.join(format!("pandoc-{nonce}.previous"));
+    if dest.exists() {
+        std::fs::rename(&dest, &backup)
+            .map_err(|e| format!("failed to stage prior Pandoc cache: {e}"))?;
+        cleanup.0.push(backup.clone());
+    }
+    if let Err(error) = std::fs::rename(&staging, &dest) {
+        if backup.exists() {
+            let _ = std::fs::rename(&backup, &dest);
+        }
+        return Err(format!("failed to publish Pandoc atomically: {error}"));
+    }
+    drop(cleanup);
     Ok(dest.to_string_lossy().to_string())
 }
 
@@ -846,25 +1107,26 @@ pub fn create_project_from_template(
     let root = paths::projects_root()?;
     let id = unique_random_slug(&root)?;
     let dir = root.join(&id);
-    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    let manifest = crate::templates::instantiate(&app, &template_id, &dir)?;
-    crate::assets::stage_template_fonts(&app, &manifest, &dir)?;
-    // A user-chosen color wins over the template's default.
-    let color = color
-        .filter(|c| !c.is_empty())
-        .or(manifest.default_color)
-        .unwrap_or_default();
-    write_meta(
-        &id,
-        &ProjectMeta {
-            name,
-            main_doc: manifest.main_doc,
-            engine: manifest.engine,
-            color,
-            kind: manifest.kind.unwrap_or_default(),
-            exports: Vec::new(),
-        },
-    )?;
+    create_project_transaction(&dir, || {
+        let manifest = crate::templates::instantiate(&app, &template_id, &dir)?;
+        crate::document_engine::engine_for(&manifest.engine, &manifest.main_doc)?;
+        crate::assets::stage_template_fonts(&app, &manifest, &dir)?;
+        let color = color
+            .filter(|c| !c.is_empty())
+            .or(manifest.default_color)
+            .unwrap_or_default();
+        write_meta_at(
+            &dir.join("project.json"),
+            &ProjectMeta {
+                name,
+                main_doc: manifest.main_doc,
+                engine: manifest.engine,
+                color,
+                kind: manifest.kind.unwrap_or_default(),
+                exports: Vec::new(),
+            },
+        )
+    })?;
     Ok(id)
 }
 
@@ -882,6 +1144,7 @@ const SEARCH_LIMIT: usize = 200;
 fn is_searchable(name: &str) -> bool {
     let n = name.to_lowercase();
     n.ends_with(".tex")
+        || n.ends_with(".typ")
         || n.ends_with(".bib")
         || n.ends_with(".sty")
         || n.ends_with(".cls")
@@ -1180,8 +1443,35 @@ pub async fn delete_project(project_id: String) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use super::rel_slash;
+    use super::{
+        create_image_project_in, create_markdown_project_in, create_project_transaction,
+        create_typst_project_in, engine_for_main_document, extract_pandoc, pandoc_asset_for,
+        rel_slash, validate_conversion_export, ProjectMeta,
+    };
+    use std::io::Write;
     use std::path::Path;
+
+    fn test_dir(label: &str) -> std::path::PathBuf {
+        let path = std::env::temp_dir().join(format!(
+            "openleaf-{label}-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&path).unwrap();
+        path
+    }
+
+    fn zip_with_member(path: &Path, member: &str, contents: &[u8]) {
+        let file = std::fs::File::create(path).unwrap();
+        let mut zip = zip::ZipWriter::new(file);
+        zip.start_file(member, zip::write::SimpleFileOptions::default())
+            .unwrap();
+        zip.write_all(contents).unwrap();
+        zip.finish().unwrap();
+    }
 
     #[test]
     fn rel_slash_strips_root_and_forces_forward_slashes() {
@@ -1196,5 +1486,205 @@ mod tests {
         // or the frontend file tree (which splits on "/") breaks on Windows.
         let win_like = Path::new("/proj/sections\\intro.tex");
         assert_eq!(rel_slash(root, win_like), "sections/intro.tex");
+    }
+
+    #[test]
+    fn main_document_selection_switches_engine_safely() {
+        assert_eq!(
+            engine_for_main_document("xetex", "main.typ").unwrap(),
+            "typst"
+        );
+        assert_eq!(
+            engine_for_main_document("typst", "main.tex").unwrap(),
+            "xetex"
+        );
+        assert_eq!(
+            engine_for_main_document("luatex", "main.ltx").unwrap(),
+            "luatex"
+        );
+        assert_eq!(
+            engine_for_main_document("typst", "main.md").unwrap(),
+            "markdown"
+        );
+        assert_eq!(
+            engine_for_main_document("markdown", "main.tex").unwrap(),
+            "xetex"
+        );
+    }
+
+    #[test]
+    fn typst_project_metadata_round_trips() {
+        let meta = ProjectMeta {
+            name: "Typst paper".into(),
+            main_doc: "chapters/main.typ".into(),
+            engine: "typst".into(),
+            color: String::new(),
+            kind: String::new(),
+            exports: Vec::new(),
+        };
+        let json = serde_json::to_string(&meta).unwrap();
+        let decoded: ProjectMeta = serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded.main_doc, "chapters/main.typ");
+        assert_eq!(decoded.engine, "typst");
+    }
+
+    #[test]
+    fn create_markdown_project_writes_source_and_metadata() {
+        let root = test_dir("markdown-create");
+        let id = create_markdown_project_in(&root, "Markdown paper".into()).unwrap();
+        let dir = root.join(id);
+        let source = std::fs::read_to_string(dir.join("main.md")).unwrap();
+        let meta: ProjectMeta =
+            serde_json::from_str(&std::fs::read_to_string(dir.join("project.json")).unwrap())
+                .unwrap();
+        assert!(source.contains("# Introduction"));
+        assert_eq!(meta.main_doc, "main.md");
+        assert_eq!(meta.engine, "markdown");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn managed_pandoc_manifest_is_exact_and_fail_closed() {
+        let (url, _, hash, member) = pandoc_asset_for("macos", "aarch64").unwrap();
+        assert!(url.ends_with("pandoc-3.9.0.2-arm64-macOS.zip"));
+        assert_eq!(
+            hash,
+            "6e9eca844076bcbb599bbeebbba78a70f93b5307782b85c2c272872812c88875"
+        );
+        assert_eq!(member, Path::new("pandoc-3.9.0.2/bin/pandoc"));
+        let (url, tar, hash, _) = pandoc_asset_for("linux", "x86_64").unwrap();
+        assert!(tar && url.ends_with("pandoc-3.9.0.2-linux-amd64.tar.gz"));
+        assert_eq!(
+            hash,
+            "a69abfababda8a56969a254b09f9553a7be89ddec00d4e0fe9fd585d71a67508"
+        );
+        let (url, _, hash, member) = pandoc_asset_for("windows", "x86_64").unwrap();
+        assert!(url.ends_with("pandoc-3.9.0.2-windows-x86_64.zip"));
+        assert_eq!(
+            hash,
+            "c97542f2800f446e788d9f74237856d995421ad1bb3cc8324286840c5f272d3a"
+        );
+        assert_eq!(member, Path::new("pandoc-3.9.0.2/pandoc.exe"));
+        let (url, tar, hash, member) = pandoc_asset_for("linux", "aarch64").unwrap();
+        assert!(tar && url.ends_with("pandoc-3.9.0.2-linux-arm64.tar.gz"));
+        assert_eq!(
+            hash,
+            "b6d21e8f9c3b15744f5a7ab40248019157ed7793875dbe0383d4c82ff572b528"
+        );
+        assert_eq!(member, Path::new("pandoc-3.9.0.2/bin/pandoc"));
+        let (url, tar, hash, member) = pandoc_asset_for("macos", "x86_64").unwrap();
+        assert!(!tar && url.ends_with("pandoc-3.9.0.2-x86_64-macOS.zip"));
+        assert_eq!(
+            hash,
+            "b9fbceabccbc8f34ac021a50483fc32f8160568d0b4b2c22d81bb29e3054fd82"
+        );
+        assert_eq!(member, Path::new("pandoc-3.9.0.2/bin/pandoc"));
+    }
+
+    #[test]
+    fn windows_pandoc_zip_extracts_only_the_exact_nested_member() {
+        let root = test_dir("pandoc-windows-zip");
+        let expected = Path::new("pandoc-3.9.0.2/pandoc.exe");
+        let valid_archive = root.join("valid.zip");
+        let valid_dest = root.join("valid-pandoc.exe");
+        zip_with_member(&valid_archive, "pandoc-3.9.0.2/pandoc.exe", b"valid");
+        extract_pandoc(&valid_archive, false, &valid_dest, expected).unwrap();
+        assert_eq!(std::fs::read(valid_dest).unwrap(), b"valid");
+
+        for (name, member) in [
+            ("basename", "pandoc.exe"),
+            ("wrong-version", "pandoc-3.8/pandoc.exe"),
+            ("unsafe", "../pandoc-3.9.0.2/pandoc.exe"),
+        ] {
+            let archive = root.join(format!("{name}.zip"));
+            let dest = root.join(format!("{name}-pandoc.exe"));
+            zip_with_member(&archive, member, b"invalid");
+            assert!(extract_pandoc(&archive, false, &dest, expected).is_err());
+            assert!(!dest.exists());
+        }
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn create_typst_project_writes_source_and_metadata() {
+        let root = test_dir("typst-create");
+        let id = create_typst_project_in(&root, "Typst paper".into()).unwrap();
+        let dir = root.join(id);
+        assert!(dir.join("main.typ").is_file());
+        let meta: ProjectMeta =
+            serde_json::from_str(&std::fs::read_to_string(dir.join("project.json")).unwrap())
+                .unwrap();
+        assert_eq!(meta.name, "Typst paper");
+        assert_eq!(meta.main_doc, "main.typ");
+        assert_eq!(meta.engine, "typst");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn failed_project_initialization_removes_partial_directory() {
+        let root = test_dir("typst-rollback");
+        let dir = root.join("partial-project");
+        let result = create_project_transaction(&dir, || {
+            std::fs::write(dir.join("main.typ"), "partial").unwrap();
+            Err("simulated metadata failure".into())
+        });
+        assert!(result.is_err());
+        assert!(!dir.exists());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn image_project_uses_transactional_initializer() {
+        let root = test_dir("image-create");
+        let id = create_image_project_in(
+            &root,
+            "Diagram".into(),
+            "\\documentclass{standalone}".into(),
+            Some("#123456".into()),
+        )
+        .unwrap();
+        let dir = root.join(id);
+        let meta: ProjectMeta =
+            serde_json::from_str(&std::fs::read_to_string(dir.join("project.json")).unwrap())
+                .unwrap();
+        assert_eq!(meta.kind, "image");
+        assert!(dir.join("main.tex").is_file());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn conversion_exports_are_allowlisted_by_persisted_engine() {
+        let latex = ProjectMeta {
+            main_doc: "main.tex".into(),
+            engine: "xetex".into(),
+            ..ProjectMeta::default()
+        };
+        assert_eq!(
+            validate_conversion_export(&latex, "docx", "/tmp/out.docx").unwrap(),
+            "docx"
+        );
+        assert!(validate_conversion_export(&latex, "exe", "/tmp/out.exe").is_err());
+        assert!(validate_conversion_export(&latex, "docx", "/tmp/crafted.html").is_err());
+        let typst = ProjectMeta {
+            main_doc: "main.typ".into(),
+            engine: "typst".into(),
+            ..ProjectMeta::default()
+        };
+        assert!(validate_conversion_export(&typst, "docx", "/tmp/out.docx").is_err());
+        let markdown = ProjectMeta {
+            main_doc: "main.md".into(),
+            engine: "markdown".into(),
+            ..ProjectMeta::default()
+        };
+        assert!(validate_conversion_export(&markdown, "md", "/tmp/out.md").is_err());
+        assert_eq!(
+            validate_conversion_export(&markdown, "html", "/tmp/out.html").unwrap(),
+            "html5"
+        );
+        assert_eq!(
+            validate_conversion_export(&markdown, "txt", "/tmp/out.txt").unwrap(),
+            "plain"
+        );
     }
 }

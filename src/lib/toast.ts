@@ -1,7 +1,6 @@
 import { useToastStore, type ToastAction } from "@/store/toast";
 import { logError } from "@/lib/log";
 
-// Works outside React too — not tied to hooks/components.
 export const toast = {
   error: (message: string, action?: ToastAction, sticky?: boolean) =>
     useToastStore.getState().push("error", message, action, sticky),

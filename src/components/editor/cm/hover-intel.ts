@@ -82,7 +82,7 @@ function describe(sym: Sym): { title: string; detail: string } | null {
   const index = useIndexStore.getState().index;
   if (!index) return null;
 
-  if (sym.kind === "ref" || sym.kind === "cite" || sym.kind === "macrouse" || sym.kind === "glossaryuse" || sym.kind === "envuse") {
+  if (sym.kind === "ref" || sym.kind === "cite" || sym.kind === "atuse" || sym.kind === "macrouse" || sym.kind === "glossaryuse" || sym.kind === "envuse") {
     const def = index.definitionFor(sym);
     if (def) {
       const where = `${basename(def.file)}:${def.line}`;

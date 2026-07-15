@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Introduced a Rust `DocumentEngine` abstraction that gives LaTeX, Typst, and Markdown one supervised compile contract with normalized artifacts, diagnostics, executable provenance, and capabilities.
+- Added first-class Typst projects with editor support, parsing and indexing, templates, AI context, preflight integration, and PDF compilation.
+- Added Markdown projects through managed Pandoc with bundled Tectonic, citeproc bibliography support, document conversion exports, templates, indexing, AI context, and PDF compilation.
+- Added pinned, checksum-verified Typst, Pandoc, and Tectonic acquisition with exact archive-member extraction and cross-platform release smoke infrastructure.
+
+### Changed
+
+- Generalized templates, AI tools and prompts, preflight coverage, formatting, citations, exports, SyncTeX, figures, and UI controls around typed engine capability flags.
+- Strengthened project trust boundaries with transactional creation, persisted-engine validation, exact export authorization, safer archive extraction, and fail-closed capability loading.
+- Improved release trust through consistent AGPL documentation, dependency auditing, accessibility fixes, PDF lifecycle cleanup, bounded caches and logs, serialized chat persistence, and supervised process-tree termination.
+- Preserved cross-platform behavior with managed compiler discovery and installation, native Windows atomic chat replacement, and platform-specific process cleanup.
+
+### Fixed
+
+- Corrected the managed Windows Pandoc archive member to `pandoc-3.9.0.2/pandoc.exe` and added exact ZIP extraction regressions for valid, basename-only, wrong-version, and unsafe paths.
+- Rejected symlinked or reparse-point project build directories before artifact cleanup, compiler execution, or output writes.
+- Replaced Typst code-string masking with a linear lexical scan that remains bounded on marker-heavy lines.
+- Deferred the initial preview compile until document engine metadata is loaded.
+- Restored PDF pinch and Ctrl-wheel zoom after compiled output first appears.
+- Limited editor bold and italic shortcuts to source files owned by the project engine.
+- Restored the checksum-pinned Pandoc and Tectonic pipeline on Intel macOS and ARM Linux.
+- Kept the last successful PDF visible while recompiling and after compiler failures.
+- Prevented delayed main-document updates from overwriting a newly opened project's engine state.
+- Prevented the advanced-settings toggle from resetting the selected settings section.
+- Limited Typst string masking to code expressions, preserving references in paired quotes, measurement quotes, and markup after code.
+- Added Markdown-aware spell and grammar masking for code, links, URLs, and math while preserving percent prose.
+- Restricted AI figure mode to LaTeX-capable projects.
+- Restored accessible-source preparation before a PDF has been compiled.
+- Removed contradictory compiled-PDF guidance from unsupported reference checks.
+- Made stale build-artifact cleanup tolerant of transient file locks without hashing normal successful output or accepting unverifiable stale output.
+- Moved compiler command preparation and Markdown dependency discovery off the asynchronous executor after compile request coalescing.
+- Made bounded compiler-log truncation safe at multibyte UTF-8 boundaries.
+- Fixed inline Typst raw highlighting and limited heading highlighting to line starts.
+- Excluded email domains from Typst references and corrected Markdown heading spans and Setext detection.
+- Indexed `.ltx` and `.latex` sources alongside `.tex` files.
+- Limited LaTeX insertion commands and the LaTeX toolbar to active engine source files.
+- Unified app and template modal coordination so only the top dialog handles Escape, backdrop input, focus containment, and restoration.
+- Repositioned visible tooltips when their labels change.
+- Released compile intent after failed Pandoc setup and invalidated pending compile results on reset.
+- Deferred source preflight until engine metadata is loaded.
+- Persisted AI token usage to the originating project when a run finishes after a project switch.
+- Serialized chat mutations and durable saves per project, including cache-miss races and repeated Windows file replacement.
+- Preserved combined chat messages and token usage when synchronous edits arrive before an earlier save promise resolves.
+- Avoided probing the managed Pandoc binary twice.
+- Kept exact-path export reveal authorization reusable within the session and raised its bounded capacity.
+
 ## [0.2.4] - 2026-07-14
 
 ### Added
@@ -219,7 +267,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   toggles for case, whole-word, and regex, a live match count, prev/next and
   select-all, and a collapsible replace row.
 - **Code folding** - click the gutter arrow to collapse a `\begin...\end`
-  environment or a section (folds until the next same-or-higher-level section);
+  environment or a section that folds until the next same-or-higher-level section.
   fold and unfold at the cursor with `Ctrl ⇧ [` / `Ctrl ⇧ ]`.
 
 - **Preflight: ATS and accessibility checks** - a new Preflight panel (shield

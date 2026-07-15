@@ -6,6 +6,8 @@ import { logError } from "@/lib/log";
 
 export async function forwardFromCursor() {
   const { projectId, mainDoc, activePath } = useFilesStore.getState();
+  const engineState = useFilesStore.getState();
+  if (!engineState.engineLoaded || !engineState.engine.capabilities.supports_synctex) return;
   if (!projectId || !activePath) {
     void logError("synctex forward", "no active project/file");
     return;
@@ -46,6 +48,7 @@ export async function inverseFromClick(page: number, x: number, y: number, word?
   const store = useFilesStore.getState();
   const { projectId, mainDoc } = store;
   if (!projectId) return;
+  if (!store.engineLoaded || !store.engine.capabilities.supports_synctex) return;
   try {
     const hit = await synctexInverse(projectId, mainDoc, page, x, y);
     if (!hit) return;
