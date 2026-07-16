@@ -392,31 +392,35 @@ export function NewProjectDialog({
                     { value: "markdown", label: "Markdown" },
                   ]}
                 />
-                <button
-                  type="button"
-                  onClick={() => setAtsOnly((v) => !v)}
-                  className={cn(
-                    "flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors",
-                    atsOnly
-                      ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                      : "border-border text-muted-foreground hover:bg-accent",
-                  )}
-                >
-                  <Check className={cn("size-3", !atsOnly && "opacity-0")} /> ATS-friendly
-                </button>
-                <button
-                  type="button"
-                  data-testid="template-offline-filter"
-                  onClick={() => setOfflineOnly((v) => !v)}
-                  className={cn(
-                    "flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors",
-                    offlineOnly
-                      ? "border-sky-500/40 bg-sky-500/15 text-sky-600 dark:text-sky-400"
-                      : "border-border text-muted-foreground hover:bg-accent",
-                  )}
-                >
-                  <Check className={cn("size-3", !offlineOnly && "opacity-0")} /> Offline
-                </button>
+                <Tooltip label="Show only resume templates that Applicant Tracking Systems can parse reliably: single-column, standard fonts, and selectable text (no words baked into graphics).">
+                  <button
+                    type="button"
+                    onClick={() => setAtsOnly((v) => !v)}
+                    className={cn(
+                      "flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors",
+                      atsOnly
+                        ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                        : "border-border text-muted-foreground hover:bg-accent",
+                    )}
+                  >
+                    <Check className={cn("size-3", !atsOnly && "opacity-0")} /> ATS-friendly
+                  </button>
+                </Tooltip>
+                <Tooltip label="Show only templates that compile with no downloads: their fonts and packages are already bundled, so they build without an internet connection.">
+                  <button
+                    type="button"
+                    data-testid="template-offline-filter"
+                    onClick={() => setOfflineOnly((v) => !v)}
+                    className={cn(
+                      "flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors",
+                      offlineOnly
+                        ? "border-sky-500/40 bg-sky-500/15 text-sky-600 dark:text-sky-400"
+                        : "border-border text-muted-foreground hover:bg-accent",
+                    )}
+                  >
+                    <Check className={cn("size-3", !offlineOnly && "opacity-0")} /> Offline
+                  </button>
+                </Tooltip>
               </div>
 
               <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">

@@ -457,7 +457,7 @@ export function DiagramComposer({
     >
       <div
         className={cn(
-          "relative flex h-12 shrink-0 items-center gap-2 border-b bg-sidebar pr-4",
+          "relative flex h-12 shrink-0 items-center gap-2 border-b bg-background pr-4",
           isMac && !fullscreen && "pl-[78px]",
           isMac && fullscreen && "pl-4",
           !isMac && "pl-4",

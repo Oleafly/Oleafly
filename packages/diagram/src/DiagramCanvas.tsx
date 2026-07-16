@@ -190,12 +190,13 @@ function CanvasInner({
   // colour that is deliberately lighter/darker than the canvas background
   // (dark canvas #0d1117) rather than the app-theme sidebar, which can match it.
   const canvasDark = canvasTheme === "dark";
-  // The app's sidebar palette (--sidebar / --sidebar-border / --sidebar-foreground),
-  // keyed to the canvas theme so the chrome matches the app's sidebar sections.
+  // The chrome matches the app's card/popover surface (#171717 dark, #fafafa
+  // light). The canvas region is scoped to the canvas theme below, so these
+  // vars resolve to the canvas light/dark rather than the app's.
   const chromeStyle = {
-    background: canvasDark ? "#171717" : "#f7f7f7",
-    borderColor: canvasDark ? "rgba(255,255,255,0.1)" : "#e3e3e3",
-    color: canvasDark ? "#fafafa" : "#0a0a0a",
+    background: "var(--card)",
+    borderColor: "var(--border)",
+    color: "var(--card-foreground)",
   };
   const chromeHover = canvasDark ? "hover:bg-white/10" : "hover:bg-black/5";
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>(model.nodes.map(modelNodeToRf));
@@ -531,7 +532,7 @@ function CanvasInner({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex h-8 shrink-0 items-center gap-2 border-b bg-sidebar px-2">
+      <div className="flex h-8 shrink-0 items-center gap-2 border-b bg-background px-2">
         <span className="text-[11px] text-muted-foreground">
           {pending
             ? "Click and drag on the canvas to draw the shape (Esc to cancel)."
@@ -581,12 +582,16 @@ function CanvasInner({
       </div>
       <div
         className={cn(
+          // Scope the whole canvas region (toolbar, shape panel + its inputs,
+          // controls, minimap) to the CANVAS theme so form controls switch with
+          // the canvas light/dark toggle, independent of the app theme.
+          canvasDark ? "dark" : "light",
           "relative min-h-0 flex-1",
           pending && !spacePressed && "[&_.react-flow__pane]:cursor-crosshair",
           spacePressed && !isPanning && "[&_.react-flow__pane]:cursor-grab",
           spacePressed && isPanning && "[&_.react-flow__pane]:cursor-grabbing",
         )}
-        style={{ background: canvasTheme === "dark" ? "#0d1117" : "#ffffff" }}
+        style={{ background: canvasDark ? "#121212" : "#ffffff" }}
         // Block the app-wide dev context menu on the canvas.
         onContextMenu={(e) => e.preventDefault()}
         onPointerDown={onFlowPointerDown}
@@ -689,9 +694,9 @@ function CanvasInner({
                 zoomable
                 style={chromeStyle}
                 bgColor="transparent"
-                maskColor={canvasDark ? "rgba(13,17,23,0.6)" : "rgba(255,255,255,0.6)"}
-                nodeColor={canvasDark ? "#4b5563" : "#cbd5e1"}
-                nodeStrokeColor={canvasDark ? "#6b7280" : "#94a3b8"}
+                maskColor={canvasDark ? "rgba(18,18,18,0.6)" : "rgba(255,255,255,0.6)"}
+                nodeColor={canvasDark ? "#3a3a3a" : "#d4d4d4"}
+                nodeStrokeColor={canvasDark ? "#525252" : "#a3a3a3"}
                 className={cn(FLOAT_CHROME, "!overflow-hidden")}
               />
             )}
