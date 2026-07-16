@@ -194,6 +194,7 @@ export function NewProjectDialog({
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string>("All");
   const [atsOnly, setAtsOnly] = useState(false);
+  const [offlineOnly, setOfflineOnly] = useState(false);
   const [engine, setEngine] = useState<"all" | TemplateInfo["document_engine"]>("all");
   const [setup, setSetup] = useState<{ active: boolean; label: string }>({
     active: false,
@@ -216,6 +217,7 @@ export function NewProjectDialog({
       setSearch("");
       setCategory("All");
       setAtsOnly(false);
+      setOfflineOnly(false);
       setEngine("all");
       setSetup({ active: false, label: "" });
     }
@@ -277,11 +279,12 @@ export function NewProjectDialog({
     return templates.filter((t) => {
       if (category !== "All" && (t.category || "Other") !== category) return false;
       if (atsOnly && t.ats_profile !== "friendly") return false;
+      if (offlineOnly && !t.assets_ready) return false;
       if (engine !== "all" && t.document_engine !== engine) return false;
       if (q && !`${t.name} ${t.description} ${t.category}`.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [templates, search, category, atsOnly, engine]);
+  }, [templates, search, category, atsOnly, offlineOnly, engine]);
 
   const selected = useMemo(
     () => templates.find((t) => t.id === selectedId) ?? null,
@@ -401,6 +404,19 @@ export function NewProjectDialog({
                 >
                   <Check className={cn("size-3", !atsOnly && "opacity-0")} /> ATS-friendly
                 </button>
+                <button
+                  type="button"
+                  data-testid="template-offline-filter"
+                  onClick={() => setOfflineOnly((v) => !v)}
+                  className={cn(
+                    "flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors",
+                    offlineOnly
+                      ? "border-sky-500/40 bg-sky-500/15 text-sky-600 dark:text-sky-400"
+                      : "border-border text-muted-foreground hover:bg-accent",
+                  )}
+                >
+                  <Check className={cn("size-3", !offlineOnly && "opacity-0")} /> Offline
+                </button>
               </div>
 
               <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
@@ -436,6 +452,16 @@ export function NewProjectDialog({
                               className="size-1.5 shrink-0 rounded-full bg-emerald-500"
                               title="ATS-friendly"
                             />
+                          )}
+                        </div>
+                        <div className="mt-0.5 flex items-center gap-1.5 px-0.5">
+                          <span className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground/70">
+                            {compilerLabel(t)}
+                          </span>
+                          {!t.assets_ready && (
+                            <span className="text-[9px] font-medium text-amber-600 dark:text-amber-400">
+                              needs setup
+                            </span>
                           )}
                         </div>
                       </button>

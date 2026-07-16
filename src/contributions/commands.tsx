@@ -273,7 +273,7 @@ export function registerPaletteCommands() {
     order: 440,
     when: activeIsLatexSource,
     run: ins(
-      "\\begin{figure}[h]\n  \\centering\n  \\includegraphics[width=0.8\\textwidth]{}\n  \\caption{}\n\\end{figure}\n",
+      "\\begin{figure}[htbp]\n  \\centering\n  \\includegraphics[width=0.8\\textwidth]{}\n  \\caption{}\n\\end{figure}\n",
     ),
   });
   palette({
@@ -284,7 +284,7 @@ export function registerPaletteCommands() {
     order: 450,
     when: activeIsLatexSource,
     run: ins(
-      "\\begin{table}[h]\n  \\centering\n  \\caption{}\n  \\begin{tabular}{ll}\n    & \\\\\n  \\end{tabular}\n\\end{table}\n",
+      "\\begin{table}[htbp]\n  \\centering\n  \\caption{}\n  \\begin{tabular}{ll}\n    & \\\\\n  \\end{tabular}\n\\end{table}\n",
     ),
   });
   palette({

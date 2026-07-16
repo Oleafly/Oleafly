@@ -5,6 +5,7 @@ export interface CompileError {
   file: string | null;
   message: string;
   kind: string;
+  explanation: string | null;
 }
 
 export interface CompileResult {
