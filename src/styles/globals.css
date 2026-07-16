@@ -9,14 +9,11 @@
  * Light surfaces use three distinct steps (mirrors dark hierarchy):
  * Card/popover stay pure white so floating UI lifts off the shell.
  */
-/* `.light` re-declares the light palette so a subtree (e.g. the diagram canvas
-   when its own theme differs from the app) can be forced light inside a dark app. */
 :root,
 .light {
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
-  /* Cards, popovers and modals are a hair off pure white (#fafafa). */
   --card: oklch(0.985 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(0.985 0 0);

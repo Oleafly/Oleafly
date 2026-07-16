@@ -40,9 +40,6 @@ export function ShapeNode({ id, data, selected }: NodeProps) {
   }, [editing, d.label]);
 
   const hasBorder = !!d.stroke;
-  // Diamond and parallelogram render as SVG polygons so their borders and
-  // proportions match the compiled TikZ output at any width/height. (A CSS
-  // rotate(45deg) box only looks like a rhombus while it stays square.)
   const polygon =
     d.shape === "diamond"
       ? "50,0 100,50 50,100 0,50"
@@ -71,8 +68,6 @@ export function ShapeNode({ id, data, selected }: NodeProps) {
     padding: 4,
     boxSizing: "border-box",
     fontSize: d.fontSize ? d.fontSize * 1.6 : 12,
-    // Match the compiled LaTeX default (Computer Modern) so the canvas preview
-    // reflects the rendered serif type rather than the app's sans-serif UI font.
     fontFamily: "'Latin Modern Roman', 'CMU Serif', Georgia, 'Times New Roman', serif",
     color: d.textColor || "inherit",
     background: polygon ? "transparent" : d.fill || "transparent",
@@ -83,7 +78,6 @@ export function ShapeNode({ id, data, selected }: NodeProps) {
     borderRadius: polygon ? "0" : round,
     overflow: "hidden",
   };
-  // Keep the label above the SVG fill (positioned children paint over in-flow).
   const labelStyle: CSSProperties = { position: "relative", zIndex: 1 };
   const handlesVisible = hover || selected;
 

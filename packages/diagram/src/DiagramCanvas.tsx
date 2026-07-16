@@ -46,8 +46,6 @@ import {
 } from "@openleaf/latex";
 import { cn } from "./cn";
 
-// Background/border come from an inline, canvas-theme-aware style so the chrome
-// stays an elevated surface over the canvas (see chromeStyle in the component).
 const FLOAT_CHROME = "!rounded-lg !border !shadow-md !backdrop-blur-sm";
 
 const DEFAULTS: Record<NodeShape, { w: number; h: number; label: string }> = {
@@ -185,14 +183,7 @@ function CanvasInner({
   // It only affects the editor surface; shapes keep their own colors and the
   // compiled figure is unaffected.
   const [canvasTheme, setCanvasTheme] = useState<"light" | "dark">(themeMode);
-  // The floating chrome (toolbar, zoom controls, minimap) must read as an
-  // elevated surface ABOVE the canvas, so it follows the canvas theme with a
-  // colour that is deliberately lighter/darker than the canvas background
-  // (dark canvas #0d1117) rather than the app-theme sidebar, which can match it.
   const canvasDark = canvasTheme === "dark";
-  // The chrome matches the app's card/popover surface (#171717 dark, #fafafa
-  // light). The canvas region is scoped to the canvas theme below, so these
-  // vars resolve to the canvas light/dark rather than the app's.
   const chromeStyle = {
     background: "var(--card)",
     borderColor: "var(--border)",
@@ -582,9 +573,6 @@ function CanvasInner({
       </div>
       <div
         className={cn(
-          // Scope the whole canvas region (toolbar, shape panel + its inputs,
-          // controls, minimap) to the CANVAS theme so form controls switch with
-          // the canvas light/dark toggle, independent of the app theme.
           canvasDark ? "dark" : "light",
           "relative min-h-0 flex-1",
           pending && !spacePressed && "[&_.react-flow__pane]:cursor-crosshair",
