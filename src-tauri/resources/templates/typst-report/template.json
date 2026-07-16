@@ -1,0 +1,14 @@
+{
+  "id": "typst-report",
+  "name": "Typst Report",
+  "category": "Theses & Reports",
+  "description": "A structured report or article in Typst with numbered sections, an abstract, and cross-references, compiled offline with the bundled Typst engine.",
+  "main_doc": "main.typ",
+  "engine": "typst",
+  "layout": "single-column",
+  "pages": "multi",
+  "default_color": "#4f46e5",
+  "license": { "spdx": "MIT", "author": "OpenLeaf", "url": "https://github.com/prajwal-svm/OpenLeaf" },
+  "requires": { "packages": [], "fonts": [], "engine": "typst" },
+  "order": 42
+}

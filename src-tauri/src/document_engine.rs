@@ -621,6 +621,7 @@ fn parse_pandoc_diagnostics(log: &str) -> Vec<CompileError> {
                 file: None,
                 message: trimmed.to_owned(),
                 kind: kind.to_owned(),
+                explanation: None,
             })
         })
         .collect()
@@ -656,6 +657,8 @@ pub struct CompileError {
     pub file: Option<String>,
     pub message: String,
     pub kind: String,
+    /// Deterministic plain-English explanation for common errors, when known.
+    pub explanation: Option<String>,
 }
 
 #[derive(Serialize, Default)]
@@ -1184,16 +1187,157 @@ fn parse_typst_short_diagnostics(log: &str) -> Vec<CompileError> {
             file,
             message: message.to_owned(),
             kind: kind.to_owned(),
+            explanation: None,
         });
     }
     diagnostics
 }
 
+// A TeX log token after `(` looks like an input file if it carries a path
+// separator or a file extension. Font/date/version parens ("(Font)", "(2021/01/01)")
+// do not, so they never masquerade as the source file for an error.
+fn looks_like_tex_path(token: &str) -> bool {
+    token.starts_with('/')
+        || token.starts_with("./")
+        || (token.contains('.') && token.contains('/'))
+        || token.rsplit('.').next().is_some_and(|ext| {
+            matches!(
+                ext,
+                "tex" | "sty" | "cls" | "def" | "ldf" | "bbl" | "bib" | "clo" | "fd" | "cfg"
+            )
+        })
+}
+
+// TeX marks the file it is reading with balanced parens: `(path` on open, `)` on
+// close. Track the nesting so an error can be attributed to the right file in a
+// multi-file (\input/\include) project. Every `(` pushes and every `)` pops to
+// keep the stack balanced; the current file is the innermost path-like entry.
+fn update_tex_file_stack(line: &str, stack: &mut Vec<String>) {
+    let bytes = line.as_bytes();
+    let mut idx = 0;
+    while idx < bytes.len() {
+        match bytes[idx] {
+            b'(' => {
+                let start = idx + 1;
+                let mut end = start;
+                while end < bytes.len()
+                    && !matches!(bytes[end], b'(' | b')' | b' ' | b'\t' | b'[' | b']')
+                {
+                    end += 1;
+                }
+                stack.push(line[start..end].trim_start_matches("./").to_owned());
+                idx = end;
+            }
+            b')' => {
+                stack.pop();
+                idx += 1;
+            }
+            _ => idx += 1,
+        }
+    }
+}
+
+fn current_tex_file(stack: &[String]) -> Option<String> {
+    stack
+        .iter()
+        .rev()
+        .find(|token| looks_like_tex_path(token))
+        .cloned()
+}
+
+// Deterministic plain-English explanations for high-frequency TeX errors. This is
+// intentionally a small, curated set (Humanized Errors Milestone 1), not an
+// exhaustive catalog. Returns None for anything not recognized.
+fn humanize_tex_error(message: &str) -> Option<&'static str> {
+    let m = message.trim();
+    if m.starts_with("Undefined control sequence") {
+        return Some("LaTeX does not recognize this command. Check for a typo, or load the package that defines it.");
+    }
+    if m.starts_with("Missing $ inserted") {
+        return Some("A math-only symbol (such as _, ^, or a Greek letter) was used outside math mode. Wrap it in $...$.");
+    }
+    if m.starts_with("Missing } inserted") || m.starts_with("Missing { inserted") {
+        return Some("Unbalanced braces. Make sure every { has a matching }.");
+    }
+    if m.starts_with("Runaway argument") {
+        return Some("A command argument was never closed, usually a missing } or \\end{...} above this point.");
+    }
+    if m.starts_with("Double superscript") {
+        return Some("Two ^ in a row. Group them, for example x^{a}^{b} becomes x^{ab}.");
+    }
+    if m.starts_with("Double subscript") {
+        return Some("Two _ in a row. Group them, for example x_{a}_{b} becomes x_{ab}.");
+    }
+    if m.starts_with("Extra alignment tab") {
+        return Some("A table row has more & separators than the column specification allows.");
+    }
+    if m.starts_with("Misplaced alignment tab character &") {
+        return Some(
+            "An & appeared outside a table or alignment. Write \\& for a literal ampersand.",
+        );
+    }
+    if m.starts_with("There's no line here to end") {
+        return Some("\\\\ was used where LaTeX did not expect a line break, for example in ordinary paragraph text.");
+    }
+    if let Some(rest) = m.strip_prefix("LaTeX Error: ") {
+        if rest.starts_with("Too many unprocessed floats") {
+            return Some("LaTeX ran out of room to place figures/tables. Add a \\clearpage before continuing, shrink the floats, or use [htbp] placement so they can move.");
+        }
+        if rest.contains("not found") {
+            return Some("A file or package could not be found. Check the name and path, or install the missing package.");
+        }
+        if rest.starts_with("Environment ") && rest.contains("undefined") {
+            return Some("This environment is not defined. Check the spelling, or load the package that provides it.");
+        }
+        if rest.starts_with("\\begin{") && rest.contains("ended by") {
+            return Some(
+                "Environment mismatch: a \\begin{...} was closed by a different \\end{...}.",
+            );
+        }
+        if rest.contains("missing \\item") {
+            return Some(
+                "A list (itemize/enumerate/description) has content before its first \\item.",
+            );
+        }
+    }
+    if m.starts_with("Package ") && m.contains(" Error:") {
+        return Some(
+            "A LaTeX package reported an error. The package name and detail follow in the log.",
+        );
+    }
+    None
+}
+
+// Deterministic float placement warnings surfaced from the log (Float Advisor
+// Milestone 1). These are LaTeX Warnings, not `!` errors, so they are matched
+// separately and always carry an explanation.
+fn float_warning(line: &str) -> Option<&'static str> {
+    let l = line.trim();
+    if l.contains("float specifier changed to") {
+        return Some("LaTeX could not place this float where you asked and moved it. Use [htbp] to give it more placement options.");
+    }
+    if l.starts_with("LaTeX Warning: Float too large for page") {
+        return Some("A figure or table is taller than the text area, so LaTeX cannot place it. Scale it down (for example width=\\linewidth) or make it a full-page float.");
+    }
+    None
+}
+
 fn parse_tex_log_errors(log: &str) -> Vec<CompileError> {
     let mut out = Vec::new();
     let lines: Vec<&str> = log.lines().collect();
-    let mut i = 0;
-    while i < lines.len() {
+    let mut stack: Vec<String> = Vec::new();
+    for i in 0..lines.len() {
+        update_tex_file_stack(lines[i], &mut stack);
+        if let Some(explanation) = float_warning(lines[i]) {
+            out.push(CompileError {
+                line: None,
+                file: current_tex_file(&stack),
+                message: lines[i].trim().to_owned(),
+                kind: "warning".to_owned(),
+                explanation: Some(explanation.to_owned()),
+            });
+            continue;
+        }
         if let Some(message) = lines[i].strip_prefix("! ") {
             let mut line_no = None;
             for following in lines
@@ -1214,12 +1358,12 @@ fn parse_tex_log_errors(log: &str) -> Vec<CompileError> {
             }
             out.push(CompileError {
                 line: line_no,
-                file: None,
+                file: current_tex_file(&stack),
                 message: message.to_owned(),
                 kind: "error".to_owned(),
+                explanation: humanize_tex_error(message).map(str::to_owned),
             });
         }
-        i += 1;
     }
     out
 }
@@ -1245,6 +1389,70 @@ pub fn compiled_pdf_path(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tex_errors_get_plain_english_explanations() {
+        let log = "! Undefined control sequence.\nl.42 \\foo\n";
+        let errors = parse_tex_log_errors(log);
+        assert_eq!(errors.len(), 1);
+        assert_eq!(errors[0].line, Some(42));
+        assert_eq!(errors[0].kind, "error");
+        assert!(errors[0]
+            .explanation
+            .as_deref()
+            .unwrap()
+            .contains("does not recognize"));
+    }
+
+    #[test]
+    fn tex_errors_without_a_known_pattern_have_no_explanation() {
+        let log = "! Some novel engine failure.\nl.3 x\n";
+        let errors = parse_tex_log_errors(log);
+        assert_eq!(errors.len(), 1);
+        assert_eq!(errors[0].explanation, None);
+    }
+
+    #[test]
+    fn tex_errors_attribute_to_the_innermost_open_file() {
+        // main opens chapter, the error occurs inside chapter, then chapter closes.
+        let log = "(./main.tex (./chapters/intro.tex\n! Missing $ inserted.\nl.7 x_1\n))\n";
+        let errors = parse_tex_log_errors(log);
+        assert_eq!(errors.len(), 1);
+        assert_eq!(errors[0].file.as_deref(), Some("chapters/intro.tex"));
+        assert_eq!(errors[0].line, Some(7));
+        assert!(errors[0].explanation.as_deref().unwrap().contains("math"));
+    }
+
+    #[test]
+    fn tex_file_stack_ignores_non_path_parens() {
+        // Font/version parens must not be mistaken for the source file.
+        let log = "(./main.tex (Font) (2021/01/01)\n! Undefined control sequence.\nl.9 \\bad\n)\n";
+        let errors = parse_tex_log_errors(log);
+        assert_eq!(errors[0].file.as_deref(), Some("main.tex"));
+    }
+
+    #[test]
+    fn float_placement_warnings_are_surfaced_and_explained() {
+        let log = "(./main.tex\nLaTeX Warning: `h' float specifier changed to `ht'.\n)\n";
+        let errors = parse_tex_log_errors(log);
+        assert_eq!(errors.len(), 1);
+        assert_eq!(errors[0].kind, "warning");
+        assert_eq!(errors[0].file.as_deref(), Some("main.tex"));
+        assert!(errors[0].explanation.as_deref().unwrap().contains("htbp"));
+    }
+
+    #[test]
+    fn too_many_floats_error_is_explained() {
+        let log = "! LaTeX Error: Too many unprocessed floats.\nl.120 \\end{figure}\n";
+        let errors = parse_tex_log_errors(log);
+        assert_eq!(errors.len(), 1);
+        assert_eq!(errors[0].kind, "error");
+        assert!(errors[0]
+            .explanation
+            .as_deref()
+            .unwrap()
+            .contains("clearpage"));
+    }
 
     #[test]
     fn legacy_latex_names_dispatch_to_canonical_engine() {

@@ -131,7 +131,7 @@ export function EditorToolbar() {
       <IconBtn
         onClick={() =>
           insertAtCursor(
-            "\\begin{figure}[h]\n  \\centering\n  \\includegraphics[width=0.8\\textwidth]{}\n  \\caption{}\n\\end{figure}\n"
+            "\\begin{figure}[htbp]\n  \\centering\n  \\includegraphics[width=0.8\\textwidth]{}\n  \\caption{}\n\\end{figure}\n"
           )
         }
         title="Insert figure"
@@ -141,7 +141,7 @@ export function EditorToolbar() {
       <IconBtn
         onClick={() =>
           insertAtCursor(
-            "\\begin{table}[h]\n  \\centering\n  \\caption{}\n  \\begin{tabular}{ll}\n    & \\\\\n  \\end{tabular}\n\\end{table}\n"
+            "\\begin{table}[htbp]\n  \\centering\n  \\caption{}\n  \\begin{tabular}{ll}\n    & \\\\\n  \\end{tabular}\n\\end{table}\n"
           )
         }
         title="Insert table"

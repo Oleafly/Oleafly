@@ -113,20 +113,31 @@ export function LogPane() {
       {errors.length > 0 && (
         <div className="border-b border-sidebar-border bg-sidebar-accent/40">
           {errors.map((err, i) => (
-            <div key={i} className="flex items-start gap-2 px-3 py-1.5 text-xs">
-              <span
-                className={cn(
-                  "mt-0.5 shrink-0 rounded px-1 font-mono text-[10px] uppercase",
-                  err.kind === "error"
-                    ? "bg-red-500/15 text-red-500"
-                    : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+            <div key={i} className="flex flex-col gap-0.5 px-3 py-1.5 text-xs">
+              <div className="flex items-start gap-2">
+                <span
+                  className={cn(
+                    "mt-0.5 shrink-0 rounded px-1 font-mono text-[10px] uppercase",
+                    err.kind === "error"
+                      ? "bg-red-500/15 text-red-500"
+                      : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                  )}
+                >
+                  {err.kind}
+                </span>
+                <span className="text-sidebar-foreground">{err.message}</span>
+                {(err.file || err.line != null) && (
+                  <span className="ml-auto shrink-0 font-mono text-muted-foreground">
+                    {err.file
+                      ? `${err.file}${err.line != null ? `:${err.line}` : ""}`
+                      : `l.${err.line}`}
+                  </span>
                 )}
-              >
-                {err.kind}
-              </span>
-              <span className="text-sidebar-foreground">{err.message}</span>
-              {err.line != null && (
-                <span className="ml-auto shrink-0 font-mono text-muted-foreground">l.{err.line}</span>
+              </div>
+              {err.explanation && (
+                <p className="pl-7 text-[11px] leading-snug text-muted-foreground">
+                  {err.explanation}
+                </p>
               )}
             </div>
           ))}

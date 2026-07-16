@@ -1,0 +1,15 @@
+{
+  "id": "typst-resume",
+  "name": "Typst Resume",
+  "category": "CVs & Resumes",
+  "description": "A clean single-column resume in Typst: quick to edit, ATS-friendly, and compiled offline with the bundled Typst engine.",
+  "main_doc": "main.typ",
+  "engine": "typst",
+  "ats_profile": "friendly",
+  "layout": "single-column",
+  "pages": "single",
+  "default_color": "#0f766e",
+  "license": { "spdx": "MIT", "author": "OpenLeaf", "url": "https://github.com/prajwal-svm/OpenLeaf" },
+  "requires": { "packages": [], "fonts": [], "engine": "typst" },
+  "order": 15
+}
