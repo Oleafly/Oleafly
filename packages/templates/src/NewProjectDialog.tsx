@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, Download, FileText, Search, Sparkles, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Download, FileText, Hash, Search, Sparkles, X } from "lucide-react";
 import { cn } from "./cn";
 import { modalCoordinator, visibleFocusable } from "./modal-coordinator";
 import type { TemplateInfo, TemplatesHost, TemplatesKit } from "./types";
@@ -117,15 +117,34 @@ function Preview({ t, host, className }: { t: TemplateInfo; host: TemplatesHost;
       />
     );
   }
+  // No rendered thumbnail (e.g. Markdown previews need Pandoc at build time):
+  // fall back to an intentional, engine-branded placeholder tinted by the
+  // template's accent color, rather than a generic gray file icon.
+  const tint = /^#[0-9a-fA-F]{6}$/.test(t.default_color ?? "") ? (t.default_color as string) : null;
+  const Icon =
+    t.document_engine === "markdown" ? Hash : t.document_engine === "typst" ? Sparkles : FileText;
   return (
     <div
-      className={cn(
-        "flex h-full w-full flex-col items-center justify-center gap-1.5 bg-white text-neutral-300",
-        className,
-      )}
+      className={cn("flex h-full w-full flex-col items-center justify-center gap-2 bg-white", className)}
     >
-      <FileText className="size-7" />
-      <span className="px-3 text-center text-[10px] font-medium text-neutral-400">{t.name}</span>
+      <div
+        className="flex size-11 items-center justify-center rounded-xl"
+        style={{
+          backgroundColor: tint ? `${tint}1a` : "#f5f5f5",
+          color: tint ?? "#a3a3a3",
+        }}
+      >
+        <Icon className="size-6" />
+      </div>
+      <span
+        className="rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
+        style={{ color: tint ?? "#737373", backgroundColor: tint ? `${tint}14` : "#f5f5f5" }}
+      >
+        {compilerLabel(t)}
+      </span>
+      <span className="line-clamp-2 px-3 text-center text-[10px] font-medium text-neutral-500">
+        {t.name}
+      </span>
     </div>
   );
 }
@@ -167,7 +186,7 @@ export function NewProjectDialog({
   colorOptions: { name: string; hex: string }[];
   defaultColor: string;
 }) {
-  const { Button, Tooltip } = kit;
+  const { Button, Tooltip, Select } = kit;
   const [step, setStep] = useState<1 | 2>(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -357,17 +376,19 @@ export function NewProjectDialog({
                     className="w-full rounded-md border border-input bg-background py-1.5 pl-8 pr-3 text-sm outline-none focus:ring-1 focus:ring-ring"
                   />
                 </div>
-                <select
+                <Select
                   aria-label="Document engine"
+                  data-testid="template-engine-filter"
                   value={engine}
-                  onChange={(e) => setEngine(e.target.value as typeof engine)}
-                  className="rounded-md border border-input bg-background px-2 py-1.5 text-xs"
-                >
-                  <option value="all">All engines</option>
-                  <option value="latex">LaTeX</option>
-                  <option value="typst">Typst</option>
-                  <option value="markdown">Markdown</option>
-                </select>
+                  onValueChange={(v) => setEngine(v as typeof engine)}
+                  className="w-[132px] text-xs"
+                  options={[
+                    { value: "all", label: "All engines" },
+                    { value: "latex", label: "LaTeX" },
+                    { value: "typst", label: "Typst" },
+                    { value: "markdown", label: "Markdown" },
+                  ]}
+                />
                 <button
                   type="button"
                   onClick={() => setAtsOnly((v) => !v)}

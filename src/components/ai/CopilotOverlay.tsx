@@ -14,7 +14,8 @@ function loadRect(): Rect {
   } catch {
     /* ignore */
   }
-  const w = 440;
+  // Initial width sits a touch above the 30% floor so there is room to shrink.
+  const w = Math.max(440, Math.round(window.innerWidth * 0.32));
   const h = Math.min(720, window.innerHeight - 80);
   return { x: window.innerWidth - w - 24, y: 64, w, h };
 }

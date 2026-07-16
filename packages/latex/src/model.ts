@@ -1,4 +1,11 @@
-export type NodeShape = "rectangle" | "roundrect" | "circle" | "ellipse" | "diamond" | "text";
+export type NodeShape =
+  | "rectangle"
+  | "roundrect"
+  | "circle"
+  | "ellipse"
+  | "diamond"
+  | "parallelogram"
+  | "text";
 export type StrokeStyle = "solid" | "dashed" | "dotted";
 export type EdgeRouting = "straight" | "orthogonal" | "curved";
 export type EdgeArrow = "none" | "forward" | "both";

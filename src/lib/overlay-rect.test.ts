@@ -20,4 +20,12 @@ describe("clampRect", () => {
     expect(r.w).toBeLessThanOrEqual(1200);
     expect(r.h).toBeLessThanOrEqual(800);
   });
+  it("enforces a 30% width floor so the AI chat keeps room", () => {
+    // 30% of 1200 = 360, above the absolute 320 minimum.
+    const r = clampRect({ x: 0, y: 0, w: 340, h: 600 }, vp);
+    expect(r.w).toBe(360);
+    // On a narrow viewport the floor collapses to the viewport width.
+    const narrow = clampRect({ x: 0, y: 0, w: 100, h: 600 }, { width: 300, height: 800 });
+    expect(narrow.w).toBe(300);
+  });
 });
