@@ -190,10 +190,12 @@ function CanvasInner({
   // colour that is deliberately lighter/darker than the canvas background
   // (dark canvas #0d1117) rather than the app-theme sidebar, which can match it.
   const canvasDark = canvasTheme === "dark";
+  // The app's sidebar palette (--sidebar / --sidebar-border / --sidebar-foreground),
+  // keyed to the canvas theme so the chrome matches the app's sidebar sections.
   const chromeStyle = {
-    background: canvasDark ? "rgba(33,38,45,0.95)" : "rgba(255,255,255,0.95)",
-    borderColor: canvasDark ? "#30363d" : "#d0d7de",
-    color: canvasDark ? "#c9d1d9" : "#374151",
+    background: canvasDark ? "#171717" : "#f7f7f7",
+    borderColor: canvasDark ? "rgba(255,255,255,0.1)" : "#e3e3e3",
+    color: canvasDark ? "#fafafa" : "#0a0a0a",
   };
   const chromeHover = canvasDark ? "hover:bg-white/10" : "hover:bg-black/5";
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>(model.nodes.map(modelNodeToRf));
