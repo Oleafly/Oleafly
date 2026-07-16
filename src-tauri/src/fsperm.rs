@@ -1,13 +1,3 @@
-//! Cross-platform "owner-only" hardening for on-disk secret files.
-//!
-//! GitHub tokens and AI keys prefer the OS keychain, but a few files still hold
-//! secrets on disk: `config.json` (keychain fallback), `mcp.json` (the live MCP
-//! bearer token), and per-project chat history. On unix these are created at
-//! mode `0600`. On Windows there is no mode bit; a file under `%USERPROFILE%` is
-//! already hidden from other standard users, but inherited NTFS ACLs can still
-//! expose it to Administrators/SYSTEM and other processes in the session. This
-//! module tightens that to the current user only, mirroring `0600`.
-
 use std::path::Path;
 
 /// Restrict `path` so only the current user can read/write it (the unix `0600`

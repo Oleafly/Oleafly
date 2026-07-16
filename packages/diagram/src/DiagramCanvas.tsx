@@ -46,8 +46,9 @@ import {
 } from "@openleaf/latex";
 import { cn } from "./cn";
 
-const FLOAT_CHROME =
-  "!rounded-lg !border !border-border !bg-sidebar/95 !shadow-md !backdrop-blur-sm";
+// Background/border come from an inline, canvas-theme-aware style so the chrome
+// stays an elevated surface over the canvas (see chromeStyle in the component).
+const FLOAT_CHROME = "!rounded-lg !border !shadow-md !backdrop-blur-sm";
 
 const DEFAULTS: Record<NodeShape, { w: number; h: number; label: string }> = {
   rectangle: { w: 120, h: 56, label: "Label" },
@@ -184,6 +185,17 @@ function CanvasInner({
   // It only affects the editor surface; shapes keep their own colors and the
   // compiled figure is unaffected.
   const [canvasTheme, setCanvasTheme] = useState<"light" | "dark">(themeMode);
+  // The floating chrome (toolbar, zoom controls, minimap) must read as an
+  // elevated surface ABOVE the canvas, so it follows the canvas theme with a
+  // colour that is deliberately lighter/darker than the canvas background
+  // (dark canvas #0d1117) rather than the app-theme sidebar, which can match it.
+  const canvasDark = canvasTheme === "dark";
+  const chromeStyle = {
+    background: canvasDark ? "rgba(33,38,45,0.95)" : "rgba(255,255,255,0.95)",
+    borderColor: canvasDark ? "#30363d" : "#d0d7de",
+    color: canvasDark ? "#c9d1d9" : "#374151",
+  };
+  const chromeHover = canvasDark ? "hover:bg-white/10" : "hover:bg-black/5";
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>(model.nodes.map(modelNodeToRf));
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(model.edges.map(modelEdgeToRf));
   const [selNode, setSelNode] = useState<string | null>(null);
@@ -583,7 +595,8 @@ function CanvasInner({
         <div
           role="toolbar"
           aria-label="Shape tools"
-          className="absolute left-2 top-2 z-10 flex flex-col gap-0.5 rounded-lg border border-border bg-sidebar/95 p-1 shadow-md backdrop-blur-sm"
+          style={chromeStyle}
+          className="absolute left-2 top-2 z-10 flex flex-col gap-0.5 rounded-lg border p-1 shadow-md backdrop-blur-sm"
         >
           {PALETTE.map((p) => (
             <Tooltip key={p.label} label={`${p.label} (click and drag to draw)`} side="right">
@@ -600,7 +613,7 @@ function CanvasInner({
                   "flex size-8 items-center justify-center rounded-md transition-colors",
                   pending?.key === p.label
                     ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                    : chromeHover,
                 )}
               >
                 {p.icon}
@@ -664,12 +677,18 @@ function CanvasInner({
             <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
             <Controls
               showInteractive={false}
-              className={cn(FLOAT_CHROME, "!gap-0.5 !p-1 [&>button]:!rounded-md [&>button]:!border-0 [&>button]:!bg-transparent")}
+              style={chromeStyle}
+              className={cn(FLOAT_CHROME, "!gap-0.5 !p-1 [&>button]:!rounded-md [&>button]:!border-0 [&>button]:!bg-transparent [&>button]:!text-current [&_svg]:!fill-current")}
             />
             {showMinimap && (
               <MiniMap
                 pannable
                 zoomable
+                style={chromeStyle}
+                bgColor="transparent"
+                maskColor={canvasDark ? "rgba(13,17,23,0.6)" : "rgba(255,255,255,0.6)"}
+                nodeColor={canvasDark ? "#4b5563" : "#cbd5e1"}
+                nodeStrokeColor={canvasDark ? "#6b7280" : "#94a3b8"}
                 className={cn(FLOAT_CHROME, "!overflow-hidden")}
               />
             )}
