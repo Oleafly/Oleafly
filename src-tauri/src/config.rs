@@ -5,13 +5,6 @@ use std::path::PathBuf;
 use crate::paths;
 use crate::secrets;
 
-/// App-wide config stored at `~/.openleaf/config.json`.
-///
-/// Secrets (GitHub token, AI API keys, MCP token) prefer the OS keychain via
-/// `secrets`. Plaintext values in this file are migrated into the keychain on
-/// the next read/write and then blanked on disk. If the keychain is unavailable
-/// (headless CI, locked secret service), values remain in the file at mode
-/// `0600` as a fallback.
 #[derive(Serialize, Deserialize, Clone)]
 pub struct AppConfig {
     #[serde(default)]
@@ -101,12 +94,10 @@ pub fn config_path() -> Result<PathBuf, String> {
     Ok(paths::openleaf_root()?.join("config.json"))
 }
 
-/// Read config from disk, hydrate secrets from the keychain, and migrate any
-/// plaintext secrets still sitting in the file into the keychain.
 pub fn read_config() -> Result<AppConfig, String> {
     let p = config_path()?;
     if !p.exists() {
-        return Ok(hydrate_secrets(AppConfig::default()));
+        return hydrate_secrets(AppConfig::default());
     }
     let s = std::fs::read_to_string(&p).map_err(|e| e.to_string())?;
     // A malformed config must NOT silently degrade to an empty AppConfig: a later
@@ -118,7 +109,7 @@ pub fn read_config() -> Result<AppConfig, String> {
         || !cfg.ai_api_key.is_empty()
         || cfg.ai_keys.values().any(|v| !v.is_empty())
         || !cfg.mcp_token.is_empty();
-    let hydrated = hydrate_secrets(cfg);
+    let hydrated = hydrate_secrets(cfg)?;
     // Best-effort one-shot migrate: only rewrite when the file still held
     // plaintext secrets (avoids keychain I/O on every get_config).
     if needs_migrate {
@@ -127,47 +118,21 @@ pub fn read_config() -> Result<AppConfig, String> {
     Ok(hydrated)
 }
 
-/// Merge keychain secrets into a config loaded from disk (or defaults).
-fn hydrate_secrets(mut cfg: AppConfig) -> AppConfig {
+fn hydrate_secrets(mut cfg: AppConfig) -> Result<AppConfig, String> {
     cfg.github_token = secrets::resolve_secret(secrets::github_token_account(), &cfg.github_token);
     cfg.mcp_token = secrets::resolve_secret(secrets::mcp_token_account(), &cfg.mcp_token);
-    let providers: Vec<String> = cfg
-        .ai_keys
-        .keys()
-        .cloned()
-        .chain(
-            [
-                "openai",
-                "anthropic",
-                "groq",
-                "openrouter",
-                "deepseek",
-                "mistral",
-                "xai",
-                "zai",
-                "ollama",
-            ]
-            .into_iter()
-            .map(String::from),
-        )
-        .collect::<std::collections::HashSet<_>>()
-        .into_iter()
-        .collect();
-    for provider in providers {
-        let acct = secrets::ai_key_account(&provider);
-        let from_file = cfg.ai_keys.get(&provider).cloned().unwrap_or_default();
-        let resolved = secrets::resolve_secret(&acct, &from_file);
-        if !resolved.is_empty() {
-            cfg.ai_keys.insert(provider, resolved);
+    for (provider, value) in secrets::read_ai_secrets()? {
+        if provider == "__legacy__" {
+            if cfg.ai_api_key.is_empty() {
+                cfg.ai_api_key = value;
+            }
+        } else {
+            cfg.ai_keys.insert(provider, value);
         }
     }
-    if !cfg.ai_api_key.is_empty() || secrets::get_secret("ai_api_key").is_some() {
-        cfg.ai_api_key = secrets::resolve_secret("ai_api_key", &cfg.ai_api_key);
-    }
-    cfg
+    Ok(cfg)
 }
 
-/// Write secrets to the keychain and persist a redacted config to disk.
 pub fn write_config(config: &AppConfig) -> Result<(), String> {
     let p = config_path()?;
     if let Some(parent) = p.parent() {
@@ -175,18 +140,15 @@ pub fn write_config(config: &AppConfig) -> Result<(), String> {
     }
     let _ = secrets::set_secret(secrets::github_token_account(), &config.github_token);
     let _ = secrets::set_secret(secrets::mcp_token_account(), &config.mcp_token);
-    for (provider, key) in &config.ai_keys {
-        let _ = secrets::set_secret(&secrets::ai_key_account(provider), key);
-    }
-    if !config.ai_api_key.is_empty() {
-        let _ = secrets::set_secret("ai_api_key", &config.ai_api_key);
-    }
     persist_without_plaintext_secrets(config)
 }
 
-/// Serialize config with secrets blanked (when keychain accepted them) or
-/// retained (keychain fallback). Always mode `0600`.
 fn persist_without_plaintext_secrets(config: &AppConfig) -> Result<(), String> {
+    let mut ai_secrets = config.ai_keys.clone();
+    if !config.ai_api_key.is_empty() {
+        ai_secrets.insert("__legacy__".to_string(), config.ai_api_key.clone());
+    }
+    secrets::write_ai_secrets(&ai_secrets)?;
     let mut disk = config.clone();
     disk.github_token =
         secrets::migrate_to_keyring(secrets::github_token_account(), &config.github_token);
@@ -205,27 +167,8 @@ fn persist_without_plaintext_secrets(config: &AppConfig) -> Result<(), String> {
     {
         disk.mcp_token = config.mcp_token.clone();
     }
-    let mut redacted_keys = HashMap::new();
-    for (provider, key) in &config.ai_keys {
-        let acct = secrets::ai_key_account(provider);
-        let kept = secrets::migrate_to_keyring(&acct, key);
-        if !kept.is_empty() {
-            redacted_keys.insert(provider.clone(), kept);
-        } else if !key.is_empty() && secrets::get_secret(&acct).is_none() {
-            redacted_keys.insert(provider.clone(), key.clone());
-        }
-    }
-    disk.ai_keys = redacted_keys;
-    disk.ai_api_key = {
-        let kept = secrets::migrate_to_keyring("ai_api_key", &config.ai_api_key);
-        if !kept.is_empty() {
-            kept
-        } else if !config.ai_api_key.is_empty() && secrets::get_secret("ai_api_key").is_none() {
-            config.ai_api_key.clone()
-        } else {
-            String::new()
-        }
-    };
+    disk.ai_keys = HashMap::new();
+    disk.ai_api_key = String::new();
     disk.github_connected = false;
     write_config_at(&config_path()?, &disk)
 }

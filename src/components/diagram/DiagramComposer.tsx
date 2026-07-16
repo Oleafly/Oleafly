@@ -103,6 +103,7 @@ export function DiagramComposer() {
   const open = useSettingsStore((s) => s.diagramComposerOpen);
   const setOpen = useSettingsStore((s) => s.setDiagramComposerOpen);
   const projectId = useFilesStore((s) => s.projectId);
+  const projectName = useFilesStore((s) => s.projectName);
   const fullscreen = useFullscreen();
   const codeExtensions = useMemo(() => [latexLanguage(), editorTheme()], []);
 
@@ -111,6 +112,7 @@ export function DiagramComposer() {
       <DiagramComposerCore
         open={open}
         projectId={projectId}
+        projectName={projectName}
         onClose={() => setOpen(false)}
         host={HOST}
         codeExtensions={codeExtensions}

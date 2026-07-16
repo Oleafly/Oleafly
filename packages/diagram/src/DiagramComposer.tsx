@@ -75,6 +75,7 @@ type Mode = "draw" | "code";
 export function DiagramComposer({
   open,
   projectId,
+  projectName,
   onClose,
   host,
   codeExtensions,
@@ -83,6 +84,7 @@ export function DiagramComposer({
 }: {
   open: boolean;
   projectId: string | null;
+  projectName?: string | null;
   onClose: () => void;
   host: DiagramHost;
   codeExtensions?: Extension[];
@@ -471,7 +473,9 @@ export function DiagramComposer({
             <ArrowLeft className="size-4" />
           </button>
         </Tooltip>
-        <h2 className="shrink-0 text-sm font-semibold">Insert diagram</h2>
+        <h2 className="shrink-0 truncate text-sm font-semibold" title={projectName || "Insert diagram"}>
+          {projectName || "Insert diagram"}
+        </h2>
         <ChevronRight className="size-4 shrink-0 text-muted-foreground/50" />
         <div className="flex min-w-0 items-center gap-1">
           {editingName ? (
