@@ -26,6 +26,11 @@ function nodeToTikz(n: DiagNode, defs: Set<string>): string {
   if (n.shape === "circle") opts.push("circle");
   else if (n.shape === "ellipse") opts.push("ellipse");
   else if (n.shape === "diamond") opts.push("diamond");
+  // Flowchart I/O box: a trapezium with equal-and-supplementary side angles is a
+  // parallelogram. `trapezium stretches` lets minimum width/height set the box.
+  else if (n.shape === "parallelogram") {
+    opts.push("trapezium", "trapezium left angle=70", "trapezium right angle=110", "trapezium stretches");
+  }
 
   const stroke = colorRef(n.stroke);
   if (stroke.name) {

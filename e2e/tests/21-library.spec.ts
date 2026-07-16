@@ -11,6 +11,51 @@ test("favorite toggles on a project book", async ({ tauriPage }) => {
   await expect(tauriPage.locator('[aria-label="Add to favorites"]')).toBeVisible();
 });
 
+// Regression: the hover preview used to slide in ABOVE the bookmark (its overlay
+// z-[15] over the button's z-[12]), hiding it and swallowing the click, so a
+// project with a preview could not be bookmarked. The bookmark must stack above
+// the decorative overlay. Asserted via computed z-index (static, not hover-gated)
+// rather than a click, because the bridge dispatches synthetic clicks that ignore
+// occlusion and so cannot observe the stacking bug.
+test("the bookmark stacks above the hover preview overlay", async ({ tauriPage }) => {
+  await expect(tauriPage.getByTestId("library")).toBeVisible();
+
+  // Reveal the preview overlay: it mounts only for a compiled project with the
+  // default-on hover-preview setting, and its thumbnail loads on hover.
+  await tauriPage.evaluate(
+    `(() => {
+      const el = Array.from(document.querySelectorAll('[role="button"][tabindex="0"]'))
+        .find((b) => b.textContent.includes('E2E Doc'));
+      if (!el) return false;
+      el.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+      el.parentElement?.dispatchEvent(new MouseEvent('mouseenter', { bubbles: false }));
+      return true;
+    })()`,
+  );
+  await tauriPage.waitForFunction(
+    `(() => {
+      const el = Array.from(document.querySelectorAll('[role="button"][tabindex="0"]'))
+        .find((b) => b.textContent.includes('E2E Doc'));
+      return !!el && !!el.querySelector('img[draggable="false"]');
+    })()`,
+    20_000,
+  );
+
+  const stacked = await tauriPage.evaluate<boolean>(
+    `(() => {
+      const el = Array.from(document.querySelectorAll('[role="button"][tabindex="0"]'))
+        .find((b) => b.textContent.includes('E2E Doc'));
+      const btn = el && el.querySelector('[aria-label="Add to favorites"], [aria-label="Remove from favorites"]');
+      const img = el && el.querySelector('img[draggable="false"]');
+      const overlay = img && img.parentElement;
+      if (!btn || !overlay) return false;
+      const z = (n) => parseInt(getComputedStyle(n).zIndex || '0', 10) || 0;
+      return z(btn) > z(overlay);
+    })()`,
+  );
+  expect(stacked).toBe(true);
+});
+
 test("fork a project from the context menu", async ({ tauriPage }) => {
   await expect(tauriPage.getByTestId("library")).toBeVisible();
 

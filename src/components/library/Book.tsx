@@ -163,7 +163,7 @@ export function Book({
                   onStarToggle();
                 }}
                 aria-label={starred ? "Remove from favorites" : "Add to favorites"}
-                className="absolute right-2 top-2 z-[12] flex size-6 items-center justify-center rounded-full transition-colors hover:bg-black/10"
+                className="absolute right-2 top-2 z-20 flex size-6 items-center justify-center rounded-full transition-colors hover:bg-black/10"
                 style={{ color: starred ? "#f59e0b" : ink }}
               >
                 <Bookmark className={cn("size-3.5", starred && "fill-current")} />

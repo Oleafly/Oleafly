@@ -39,7 +39,16 @@ export function ShapeNode({ id, data, selected }: NodeProps) {
     }
   }, [editing, d.label]);
 
-  const isDiamond = d.shape === "diamond";
+  const hasBorder = !!d.stroke;
+  // Diamond and parallelogram render as SVG polygons so their borders and
+  // proportions match the compiled TikZ output at any width/height. (A CSS
+  // rotate(45deg) box only looks like a rhombus while it stays square.)
+  const polygon =
+    d.shape === "diamond"
+      ? "50,0 100,50 50,100 0,50"
+      : d.shape === "parallelogram"
+        ? "22,0 100,0 78,100 0,100"
+        : null;
   const round =
     d.shape === "circle" || d.shape === "ellipse"
       ? "50%"
@@ -48,9 +57,11 @@ export function ShapeNode({ id, data, selected }: NodeProps) {
         : d.shape === "roundrect"
           ? "8px"
           : "0";
+  const dashArray =
+    d.strokeStyle === "dashed" ? "6,4" : d.strokeStyle === "dotted" ? "1.5,4" : undefined;
 
-  const hasBorder = !!d.stroke;
   const style: CSSProperties = {
+    position: "relative",
     width: "100%",
     height: "100%",
     display: "flex",
@@ -61,13 +72,16 @@ export function ShapeNode({ id, data, selected }: NodeProps) {
     boxSizing: "border-box",
     fontSize: d.fontSize ? d.fontSize * 1.6 : 12,
     color: d.textColor || "inherit",
-    background: d.fill || "transparent",
-    border: hasBorder ? `${d.strokeWidth ?? 1}px ${d.strokeStyle || "solid"} ${d.stroke}` : "none",
-    borderRadius: round,
-    transform: isDiamond ? "rotate(45deg)" : undefined,
+    background: polygon ? "transparent" : d.fill || "transparent",
+    border:
+      polygon || !hasBorder
+        ? "none"
+        : `${d.strokeWidth ?? 1}px ${d.strokeStyle || "solid"} ${d.stroke}`,
+    borderRadius: polygon ? "0" : round,
     overflow: "hidden",
   };
-  const labelStyle: CSSProperties = isDiamond ? { transform: "rotate(-45deg)" } : {};
+  // Keep the label above the SVG fill (positioned children paint over in-flow).
+  const labelStyle: CSSProperties = { position: "relative", zIndex: 1 };
   const handlesVisible = hover || selected;
 
   const commit = () => edit.commitLabel(id, draft);
@@ -90,6 +104,23 @@ export function ShapeNode({ id, data, selected }: NodeProps) {
         handleClassName="!bg-background !border-primary"
       />
       <div style={style}>
+        {polygon && (
+          <svg
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            aria-hidden
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}
+          >
+            <polygon
+              points={polygon}
+              fill={d.fill || "transparent"}
+              stroke={hasBorder ? d.stroke : "none"}
+              strokeWidth={hasBorder ? d.strokeWidth ?? 1 : 0}
+              strokeDasharray={dashArray}
+              vectorEffect="non-scaling-stroke"
+            />
+          </svg>
+        )}
         {editing ? (
           <textarea
             ref={taRef}

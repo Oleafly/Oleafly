@@ -48,6 +48,26 @@ describe("modelToTikz", () => {
     const t = modelToTikz(model);
     expect(t).toMatch(/\(b\) at \([\d.]+,\s*-[\d.]+\)/);
   });
+
+  it("maps a diamond to the TikZ diamond shape", () => {
+    const t = modelToTikz({
+      version: 1,
+      nodes: [{ id: "d", shape: "diamond", x: 0, y: 0, w: 90, h: 90, label: "a > b?" }],
+      edges: [],
+    });
+    expect(t).toContain("[diamond,");
+  });
+
+  it("maps a parallelogram to a TikZ trapezium (flowchart I/O)", () => {
+    const t = modelToTikz({
+      version: 1,
+      nodes: [{ id: "p", shape: "parallelogram", x: 0, y: 0, w: 140, h: 60, label: "Read a" }],
+      edges: [],
+    });
+    expect(t).toContain("trapezium");
+    expect(t).toContain("trapezium left angle=70");
+    expect(t).toContain("trapezium right angle=110");
+  });
 });
 
 describe("round-trip", () => {

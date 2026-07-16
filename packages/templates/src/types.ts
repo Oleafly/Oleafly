@@ -37,4 +37,12 @@ export interface TemplatesKit {
     children?: ReactNode;
   }>;
   Tooltip: ComponentType<{ label: ReactNode; children: ReactNode }>;
+  Select: ComponentType<{
+    value: string;
+    onValueChange: (value: string) => void;
+    options: { value: string; label: string }[];
+    className?: string;
+    "aria-label"?: string;
+    "data-testid"?: string;
+  }>;
 }

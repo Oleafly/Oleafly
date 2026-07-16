@@ -245,14 +245,24 @@ export function SettingsModal() {
               {label}
             </button>
           ))}
-          <button
-            type="button"
+          <div
+            role="switch"
+            aria-checked={showAdvanced}
+            aria-label="Show advanced settings"
             data-testid="settings-toggle-advanced"
+            tabIndex={0}
             onClick={() => setAdvanced(!showAdvanced)}
-            className="mt-auto flex items-center gap-2 rounded-md px-2.5 py-2 text-xs text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setAdvanced(!showAdvanced);
+              }
+            }}
+            className="mt-auto flex cursor-pointer items-center justify-between gap-2 rounded-md px-2.5 py-2 text-xs text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground"
           >
-            {showAdvanced ? "Hide advanced" : "Show advanced"}
-          </button>
+            <span>Advanced</span>
+            <Switch checked={showAdvanced} />
+          </div>
         </nav>
 
         <div className="flex min-w-0 flex-1 flex-col bg-muted/30">
@@ -280,7 +290,10 @@ export function SettingsModal() {
                   onChange={toggleTheme}
                 />
 
-                <div className="flex items-center justify-between gap-4 rounded-lg border bg-background p-3">
+                <div
+                  data-testid="settings-row-editor-font-size"
+                  className="flex items-center justify-between gap-4 rounded-lg border bg-background p-3"
+                >
                   <div>
                     <div className="text-sm font-medium">Editor font size</div>
                     <div className="text-xs text-muted-foreground">
@@ -304,7 +317,10 @@ export function SettingsModal() {
                   </Select>
                 </div>
 
-                <div className="flex items-center justify-between gap-4 rounded-lg border bg-background p-3">
+                <div
+                  data-testid="settings-row-app-font-size"
+                  className="flex items-center justify-between gap-4 rounded-lg border bg-background p-3"
+                >
                   <div>
                     <div className="text-sm font-medium">App font size</div>
                     <div className="text-xs text-muted-foreground">
@@ -325,7 +341,10 @@ export function SettingsModal() {
                   </Select>
                 </div>
 
-                <div className="flex items-center justify-between gap-4 rounded-lg border bg-background p-3">
+                <div
+                  data-testid="settings-row-app-font"
+                  className="flex items-center justify-between gap-4 rounded-lg border bg-background p-3"
+                >
                   <div>
                     <div className="text-sm font-medium">App font</div>
                     <div className="text-xs text-muted-foreground">
@@ -349,7 +368,10 @@ export function SettingsModal() {
                   </Select>
                 </div>
 
-                <div className="flex items-center justify-between gap-4 rounded-lg border bg-background p-3">
+                <div
+                  data-testid="settings-row-editor-font"
+                  className="flex items-center justify-between gap-4 rounded-lg border bg-background p-3"
+                >
                   <div>
                     <div className="text-sm font-medium">Editor font</div>
                     <div className="text-xs text-muted-foreground">
@@ -373,7 +395,10 @@ export function SettingsModal() {
                   </Select>
                 </div>
 
-                <div className="flex items-center justify-between gap-4 rounded-lg border bg-background p-3">
+                <div
+                  data-testid="settings-row-open-projects-in"
+                  className="flex items-center justify-between gap-4 rounded-lg border bg-background p-3"
+                >
                   <div>
                     <div className="text-sm font-medium">Open projects in</div>
                     <div className="text-xs text-muted-foreground">

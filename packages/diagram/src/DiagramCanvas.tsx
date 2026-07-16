@@ -55,6 +55,7 @@ const DEFAULTS: Record<NodeShape, { w: number; h: number; label: string }> = {
   circle: { w: 72, h: 72, label: "" },
   ellipse: { w: 110, h: 64, label: "Label" },
   diamond: { w: 92, h: 92, label: "" },
+  parallelogram: { w: 140, h: 60, label: "Label" },
   text: { w: 90, h: 32, label: "Text" },
 };
 
@@ -64,6 +65,23 @@ const PALETTE: { shape: NodeShape; label: string; icon: React.ReactNode; seed?: 
   { shape: "circle", label: "Circle", icon: <Circle className="size-4" /> },
   { shape: "ellipse", label: "Ellipse", icon: <Egg className="size-4" /> },
   { shape: "diamond", label: "Diamond", icon: <Diamond className="size-4" /> },
+  {
+    shape: "parallelogram",
+    label: "Parallelogram",
+    icon: (
+      <svg
+        viewBox="0 0 24 24"
+        className="size-4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinejoin="round"
+        aria-hidden
+      >
+        <path d="M7 5 H21 L17 19 H3 Z" />
+      </svg>
+    ),
+  },
   { shape: "text", label: "Text", icon: <TypeIcon className="size-4" /> },
   { shape: "text", label: "Math", icon: <Sigma className="size-4" />, seed: "$E = mc^2$" },
   { shape: "text", label: "Code", icon: <Code2 className="size-4" />, seed: "\\texttt{print(x)}" },
