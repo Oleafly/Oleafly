@@ -626,7 +626,8 @@ function CanvasInner({
           <div
             role="complementary"
             aria-label="Shape style"
-            className="absolute right-2 top-2 z-10 max-h-[calc(100%-1rem)] w-56 overflow-y-auto rounded-lg border border-border bg-sidebar/95 shadow-md backdrop-blur-sm"
+            style={chromeStyle}
+            className="absolute right-2 top-2 z-10 max-h-[calc(100%-1rem)] w-56 overflow-y-auto rounded-lg border shadow-md backdrop-blur-sm"
           >
             <Inspector
               node={selectedNode ? rfNodeToModel(selectedNode) : null}

@@ -42,7 +42,6 @@ sha2 = "0.10"
 # directly from the frontend; only the OAuth endpoints run here. Commands are
 # async + single-shot so they never block the webview thread.
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "stream"] }
-keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
 rand = "0.8"
 ring = "0.17"
 libc = "0.2"

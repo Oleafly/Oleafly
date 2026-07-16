@@ -1,51 +1,38 @@
-//! OS keychain / credential-store helpers for long-lived secrets.
+//! Encrypted, on-disk storage for long-lived secrets (GitHub token, MCP token,
+//! AI provider keys).
 //!
-use keyring::Entry;
+//! Nothing here touches the OS keychain. An unsigned dev build gets a fresh code
+//! identity each launch, so the keychain never remembers its access grant and
+//! re-prompts on every run; storing secrets in an AES-256-GCM file under the
+//! app data dir (0600 on unix, owner-only ACL on Windows) avoids that entirely
+//! and keeps e2e/dev sandboxes isolated via `OPENLEAF_DATA_DIR`.
 use ring::{aead, rand as ring_rand};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
 
-const SERVICE: &str = "com.openleaf.app";
-
-/// The OS keychain is global: `OPENLEAF_DATA_DIR` isolates the disk for e2e
-/// runs and dev sandboxes, but NOT keychain entries, so a test that saved or
-/// cleared a token would clobber the real app's secrets. When the override is
-/// set we skip the keyring entirely and rely on the 0600-config fallback.
-fn keyring_disabled() -> bool {
-    std::env::var_os("OPENLEAF_DATA_DIR").is_some()
-}
-
-fn entry(account: &str) -> Result<Entry, String> {
-    if keyring_disabled() {
-        return Err("keyring disabled (OPENLEAF_DATA_DIR is set)".into());
-    }
-    Entry::new(SERVICE, account).map_err(|e| format!("keyring entry: {e}"))
-}
-
-/// Persist a secret. Empty value deletes the entry.
+/// Persist a secret in the encrypted app-secrets store. An empty value removes it.
 pub fn set_secret(account: &str, value: &str) -> Result<(), String> {
-    let e = entry(account)?;
+    let data = app_secrets_path()?;
+    let key = secret_key_path()?;
+    let mut map = read_secret_map_at(&data, &key)?;
     if value.is_empty() {
-        match e.delete_credential() {
-            Ok(()) => Ok(()),
-            // Already absent is fine.
-            Err(keyring::Error::NoEntry) => Ok(()),
-            Err(err) => Err(format!("keyring delete: {err}")),
-        }
+        map.remove(account);
     } else {
-        e.set_password(value)
-            .map_err(|err| format!("keyring set: {err}"))
+        map.insert(account.to_string(), value.to_string());
     }
+    write_secret_map_at(&data, &key, &map)
 }
 
-/// Read a secret. Returns `None` when missing or keyring is unavailable.
+/// Read a secret from the encrypted app-secrets store. `None` when missing.
 pub fn get_secret(account: &str) -> Option<String> {
-    let e = entry(account).ok()?;
-    match e.get_password() {
-        Ok(s) if !s.is_empty() => Some(s),
-        _ => None,
-    }
+    let data = app_secrets_path().ok()?;
+    let key = secret_key_path().ok()?;
+    read_secret_map_at(&data, &key)
+        .ok()?
+        .get(account)
+        .filter(|value| !value.is_empty())
+        .cloned()
 }
 
 pub fn github_token_account() -> &'static str {
@@ -65,7 +52,7 @@ pub fn generate_mcp_token() -> String {
 }
 
 #[derive(Serialize, Deserialize)]
-struct EncryptedAiSecrets {
+struct EncryptedSecrets {
     version: u8,
     nonce: String,
     ciphertext: String,
@@ -75,7 +62,14 @@ fn ai_secrets_path() -> Result<std::path::PathBuf, String> {
     Ok(crate::paths::openleaf_root()?.join("ai-secrets.json"))
 }
 
-fn ai_secrets_key_path() -> Result<std::path::PathBuf, String> {
+// GitHub + MCP tokens live here, encrypted with the same key as the secrets.
+fn app_secrets_path() -> Result<std::path::PathBuf, String> {
+    Ok(crate::paths::openleaf_root()?.join("app-secrets.json"))
+}
+
+// Shared symmetric key for every encrypted secret file. Named `ai-secrets.key`
+// for backward compatibility with existing installs.
+fn secret_key_path() -> Result<std::path::PathBuf, String> {
     Ok(crate::paths::openleaf_root()?.join("ai-secrets.key"))
 }
 
@@ -119,29 +113,29 @@ fn write_private(path: &Path, bytes: &[u8]) -> Result<(), String> {
     })
 }
 
-fn load_or_create_ai_key(path: &Path) -> Result<[u8; 32], String> {
+fn load_or_create_key(path: &Path) -> Result<[u8; 32], String> {
     if std::fs::symlink_metadata(path)
         .map(|metadata| metadata.file_type().is_symlink())
         .unwrap_or(false)
     {
-        return Err("AI secret key cannot be a symbolic link".to_string());
+        return Err("secret key cannot be a symbolic link".to_string());
     }
     match std::fs::read(path) {
         Ok(bytes) => bytes
             .try_into()
-            .map_err(|_| "AI secret key has an invalid length".to_string()),
+            .map_err(|_| "secret key has an invalid length".to_string()),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
             let mut key = [0u8; 32];
             ring_rand::SecureRandom::fill(&ring_rand::SystemRandom::new(), &mut key)
-                .map_err(|_| "failed to generate AI secret key".to_string())?;
+                .map_err(|_| "failed to generate secret key".to_string())?;
             write_private(path, &key)?;
             Ok(key)
         }
-        Err(error) => Err(format!("failed to read AI secret key: {error}")),
+        Err(error) => Err(format!("failed to read secret key: {error}")),
     }
 }
 
-fn read_ai_secrets_at(
+fn read_secret_map_at(
     data_path: &Path,
     key_path: &Path,
 ) -> Result<HashMap<String, String>, String> {
@@ -149,32 +143,32 @@ fn read_ai_secrets_at(
         .map(|metadata| metadata.file_type().is_symlink())
         .unwrap_or(false)
     {
-        return Err("AI secrets file cannot be a symbolic link".to_string());
+        return Err("secrets file cannot be a symbolic link".to_string());
     }
     let raw = match std::fs::read(data_path) {
         Ok(raw) => raw,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(HashMap::new()),
-        Err(error) => return Err(format!("failed to read AI secrets: {error}")),
+        Err(error) => return Err(format!("failed to read secrets: {error}")),
     };
-    let envelope: EncryptedAiSecrets =
-        serde_json::from_slice(&raw).map_err(|e| format!("AI secrets file is corrupt: {e}"))?;
+    let envelope: EncryptedSecrets =
+        serde_json::from_slice(&raw).map_err(|e| format!("secrets file is corrupt: {e}"))?;
     if envelope.version != 1 {
-        return Err("AI secrets file has an unsupported version".to_string());
+        return Err("secrets file has an unsupported version".to_string());
     }
     let nonce_bytes =
         base64::Engine::decode(&base64::engine::general_purpose::STANDARD, envelope.nonce)
-            .map_err(|e| format!("AI secrets nonce is corrupt: {e}"))?;
+            .map_err(|e| format!("secrets nonce is corrupt: {e}"))?;
     let nonce_array: [u8; 12] = nonce_bytes
         .try_into()
-        .map_err(|_| "AI secrets nonce has an invalid length".to_string())?;
+        .map_err(|_| "secrets nonce has an invalid length".to_string())?;
     let mut ciphertext = base64::Engine::decode(
         &base64::engine::general_purpose::STANDARD,
         envelope.ciphertext,
     )
-    .map_err(|e| format!("AI secrets ciphertext is corrupt: {e}"))?;
-    let key = load_or_create_ai_key(key_path)?;
+    .map_err(|e| format!("secrets ciphertext is corrupt: {e}"))?;
+    let key = load_or_create_key(key_path)?;
     let key = aead::UnboundKey::new(&aead::AES_256_GCM, &key)
-        .map_err(|_| "failed to load AI secret key".to_string())?;
+        .map_err(|_| "failed to load secret key".to_string())?;
     let key = aead::LessSafeKey::new(key);
     let plaintext = key
         .open_in_place(
@@ -182,18 +176,18 @@ fn read_ai_secrets_at(
             aead::Aad::empty(),
             &mut ciphertext,
         )
-        .map_err(|_| "AI secrets could not be decrypted".to_string())?;
-    serde_json::from_slice(plaintext).map_err(|e| format!("AI secrets payload is corrupt: {e}"))
+        .map_err(|_| "secrets could not be decrypted".to_string())?;
+    serde_json::from_slice(plaintext).map_err(|e| format!("secrets payload is corrupt: {e}"))
 }
 
-fn write_ai_secrets_at(
+fn write_secret_map_at(
     data_path: &Path,
     key_path: &Path,
     values: &HashMap<String, String>,
 ) -> Result<(), String> {
-    let key = load_or_create_ai_key(key_path)?;
+    let key = load_or_create_key(key_path)?;
     let key = aead::UnboundKey::new(&aead::AES_256_GCM, &key)
-        .map_err(|_| "failed to load AI secret key".to_string())?;
+        .map_err(|_| "failed to load secret key".to_string())?;
     let key = aead::LessSafeKey::new(key);
     let mut nonce = [0u8; 12];
     ring_rand::SecureRandom::fill(&ring_rand::SystemRandom::new(), &mut nonce)
@@ -204,8 +198,8 @@ fn write_ai_secrets_at(
         aead::Aad::empty(),
         &mut ciphertext,
     )
-    .map_err(|_| "failed to encrypt AI secrets".to_string())?;
-    let envelope = EncryptedAiSecrets {
+    .map_err(|_| "failed to encrypt secrets".to_string())?;
+    let envelope = EncryptedSecrets {
         version: 1,
         nonce: base64::Engine::encode(&base64::engine::general_purpose::STANDARD, nonce),
         ciphertext: base64::Engine::encode(&base64::engine::general_purpose::STANDARD, ciphertext),
@@ -215,27 +209,26 @@ fn write_ai_secrets_at(
 }
 
 pub fn read_ai_secrets() -> Result<HashMap<String, String>, String> {
-    read_ai_secrets_at(&ai_secrets_path()?, &ai_secrets_key_path()?)
+    read_secret_map_at(&ai_secrets_path()?, &secret_key_path()?)
 }
 
 pub fn write_ai_secrets(values: &HashMap<String, String>) -> Result<(), String> {
-    write_ai_secrets_at(&ai_secrets_path()?, &ai_secrets_key_path()?, values)
+    write_secret_map_at(&ai_secrets_path()?, &secret_key_path()?, values)
 }
 
-/// Best-effort: migrate a plaintext value from config into the keyring and
-/// return the value that should remain in the config file (empty when migration
-/// succeeded, original when keyring is unavailable).
-pub fn migrate_to_keyring(account: &str, plaintext: &str) -> String {
-    if plaintext.is_empty() {
-        return String::new();
-    }
-    match set_secret(account, plaintext) {
+/// Store `value` in the encrypted secret store, returning the value that must
+/// stay in the plaintext config: empty when stored (or cleared) successfully, or
+/// the original value as a 0600-config fallback if the store write failed. An
+/// empty `value` clears any previously stored secret.
+pub fn store_secret_or_fallback(account: &str, value: &str) -> String {
+    match set_secret(account, value) {
         Ok(()) => String::new(),
-        Err(_) => plaintext.to_string(),
+        Err(_) => value.to_string(),
     }
 }
 
-/// Resolve a secret: prefer keyring, fall back to the config value (legacy).
+/// Resolve a secret: prefer the encrypted store, fall back to the config value
+/// (legacy plaintext, or the 0600-config fallback above).
 pub fn resolve_secret(account: &str, config_value: &str) -> String {
     if let Some(s) = get_secret(account) {
         return s;
@@ -271,11 +264,43 @@ mod tests {
             ("openai".to_string(), "sk-test-secret".to_string()),
             ("ollama".to_string(), "http://localhost:11434".to_string()),
         ]);
-        write_ai_secrets_at(&data, &key, &values).unwrap();
+        write_secret_map_at(&data, &key, &values).unwrap();
         let stored = std::fs::read_to_string(&data).unwrap();
         assert!(!stored.contains("sk-test-secret"));
         assert!(!stored.contains("localhost"));
-        assert_eq!(read_ai_secrets_at(&data, &key).unwrap(), values);
+        assert_eq!(read_secret_map_at(&data, &key).unwrap(), values);
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn github_and_mcp_tokens_store_encrypted_off_keychain() {
+        // The app-secrets store holds GitHub/MCP tokens as encrypted bytes, with
+        // no plaintext and no OS keychain involvement.
+        let dir = std::env::temp_dir().join(format!(
+            "openleaf-app-secrets-{}-{}",
+            std::process::id(),
+            generate_mcp_token()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let data = dir.join("app-secrets.json");
+        let key = dir.join("secrets.key");
+        let map = HashMap::from([
+            (
+                github_token_account().to_string(),
+                "ghp_secrettoken".to_string(),
+            ),
+            (
+                mcp_token_account().to_string(),
+                "mcp-bearer-secret".to_string(),
+            ),
+        ]);
+        write_secret_map_at(&data, &key, &map).unwrap();
+        let stored = std::fs::read_to_string(&data).unwrap();
+        assert!(!stored.contains("ghp_secrettoken"));
+        assert!(!stored.contains("mcp-bearer-secret"));
+        let back = read_secret_map_at(&data, &key).unwrap();
+        assert_eq!(back.get(github_token_account()).unwrap(), "ghp_secrettoken");
+        assert_eq!(back.get(mcp_token_account()).unwrap(), "mcp-bearer-secret");
         std::fs::remove_dir_all(dir).ok();
     }
 
@@ -289,17 +314,17 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         let data = dir.join("ai-secrets.json");
         let key = dir.join("ai-secrets.key");
-        write_ai_secrets_at(
+        write_secret_map_at(
             &data,
             &key,
             &HashMap::from([("anthropic".to_string(), "secret".to_string())]),
         )
         .unwrap();
-        let mut envelope: EncryptedAiSecrets =
+        let mut envelope: EncryptedSecrets =
             serde_json::from_slice(&std::fs::read(&data).unwrap()).unwrap();
         envelope.ciphertext.push('A');
         write_private(&data, &serde_json::to_vec(&envelope).unwrap()).unwrap();
-        assert!(read_ai_secrets_at(&data, &key).is_err());
+        assert!(read_secret_map_at(&data, &key).is_err());
         std::fs::remove_dir_all(dir).ok();
     }
 }

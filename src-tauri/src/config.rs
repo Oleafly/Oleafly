@@ -138,8 +138,6 @@ pub fn write_config(config: &AppConfig) -> Result<(), String> {
     if let Some(parent) = p.parent() {
         std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
-    let _ = secrets::set_secret(secrets::github_token_account(), &config.github_token);
-    let _ = secrets::set_secret(secrets::mcp_token_account(), &config.mcp_token);
     persist_without_plaintext_secrets(config)
 }
 
@@ -150,23 +148,14 @@ fn persist_without_plaintext_secrets(config: &AppConfig) -> Result<(), String> {
     }
     secrets::write_ai_secrets(&ai_secrets)?;
     let mut disk = config.clone();
+    // GitHub + MCP tokens go into the encrypted secret store, never plaintext on
+    // disk. store_secret_or_fallback clears the store on an empty value and, on
+    // the rare store-write failure, returns the value to keep in the 0600 config
+    // so it is not lost (resolve_secret reads that fallback on the next load).
     disk.github_token =
-        secrets::migrate_to_keyring(secrets::github_token_account(), &config.github_token);
-    // If migrate returned empty, keychain has it; keep empty. If non-empty,
-    // keyring failed and we must keep plaintext on disk.
-    if disk.github_token.is_empty() && !config.github_token.is_empty() {
-        // Confirm the keychain actually has it; if not, keep the plaintext fallback.
-        if secrets::get_secret(secrets::github_token_account()).is_none() {
-            disk.github_token = config.github_token.clone();
-        }
-    }
-    disk.mcp_token = secrets::migrate_to_keyring(secrets::mcp_token_account(), &config.mcp_token);
-    if disk.mcp_token.is_empty()
-        && !config.mcp_token.is_empty()
-        && secrets::get_secret(secrets::mcp_token_account()).is_none()
-    {
-        disk.mcp_token = config.mcp_token.clone();
-    }
+        secrets::store_secret_or_fallback(secrets::github_token_account(), &config.github_token);
+    disk.mcp_token =
+        secrets::store_secret_or_fallback(secrets::mcp_token_account(), &config.mcp_token);
     disk.ai_keys = HashMap::new();
     disk.ai_api_key = String::new();
     disk.github_connected = false;
