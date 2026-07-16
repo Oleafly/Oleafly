@@ -80,7 +80,13 @@ function edgeToTikz(e: DiagEdge): string {
   return `\\draw${optStr} (${e.source}) ${connector}${mid} (${e.target});`;
 }
 
-export const DIAGRAM_LIBS = ["shapes.geometric", "arrows.meta", "positioning", "calc"];
+export const DIAGRAM_LIBS = [
+  "shapes.geometric",
+  "arrows.meta",
+  "positioning",
+  "calc",
+  "backgrounds",
+];
 
 // Color defs are emitted before the tikzpicture block: \definecolor is legal
 // in the surrounding body, but \node/\draw only exist inside tikzpicture.
@@ -89,9 +95,15 @@ export function modelToTikz(model: DiagramModel): string {
   const nodes = model.nodes.map((n) => nodeToTikz(n, defs));
   const edges = model.edges.map(edgeToTikz);
   const defLines = [...defs].sort();
-  const body = [...nodes, ...edges].map((l) => `  ${l}`).join("\n");
+  const nodeBody = nodes.map((l) => `  ${l}`).join("\n");
+  // Nodes must be declared before edges reference them, but edges should render
+  // BEHIND the shapes (as they do on the canvas) so an arrow crossing a node is
+  // hidden by it. The background layer achieves both: declare on top, draw below.
+  const edgeBody = edges.length
+    ? `\n  \\begin{scope}[on background layer]\n${edges.map((l) => `    ${l}`).join("\n")}\n  \\end{scope}`
+    : "";
   const pre = defLines.length ? `${defLines.join("\n")}\n` : "";
-  return `${pre}\\begin{tikzpicture}[>=Stealth]\n${body}\n\\end{tikzpicture}`;
+  return `${pre}\\begin{tikzpicture}[>=Stealth]\n${nodeBody}${edgeBody}\n\\end{tikzpicture}`;
 }
 
 const MARK = "% openleaf-diagram-v1:";

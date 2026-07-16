@@ -21,6 +21,7 @@ export function buildStandaloneDoc(opts: {
   const hasBg = /^[0-9A-F]{6}$/.test(bgHex);
   const bgPkg = hasBg ? "\\usepackage{xcolor}\n" : "";
   const bgDef = hasBg ? `\\definecolor{obgcolor}{HTML}{${bgHex}}\n\\pagecolor{obgcolor}\n` : "";
+  const code = normalizeFigureCode(opts.code);
   return (
     `\\documentclass[tikz,border=4pt]{standalone}\n` +
     bgPkg +
@@ -28,9 +29,15 @@ export function buildStandaloneDoc(opts: {
     uselibs +
     `\\begin{document}\n` +
     bgDef +
-    `${opts.code}\n` +
+    `${code}\n` +
     `\\end{document}\n`
   );
+}
+
+export function normalizeFigureCode(code: string): string {
+  const trimmed = code.trim();
+  if (/\\begin\s*\{tikzpicture\}/.test(trimmed)) return trimmed;
+  return `\\begin{tikzpicture}\n${trimmed}\n\\end{tikzpicture}`;
 }
 
 export function slugifyFigureName(prompt: string): string {

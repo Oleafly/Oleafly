@@ -4,12 +4,27 @@ set -euo pipefail
 VERSION="0.15.0"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BIN_DIR="$ROOT/src-tauri/binaries"
+CACHE_DIR="${OPENLEAF_SIDECAR_CACHE_DIR:-$ROOT/src-tauri/target/e2e-sidecars}"
 mkdir -p "$BIN_DIR"
+mkdir -p "$CACHE_DIR"
+TMP=""
+
+cleanup_fetch() {
+  if [[ -n "$TMP" ]]; then
+    rm -rf "$TMP"
+    TMP=""
+  fi
+}
+trap cleanup_fetch EXIT INT TERM
 
 asset_for() {
   case "$1" in
     aarch64-apple-darwin)
       echo "typst-aarch64-apple-darwin.tar.xz:tar:fe53838737abf93a774495952a1a797b4686e9c4a21c2d99b9fdf77f46cc3572" ;;
+    x86_64-apple-darwin)
+      echo "typst-x86_64-apple-darwin.tar.xz:tar:30210c7c539c7954db94c063cd98b43fd0a0cad285d656dbbce2a40aee2e79be" ;;
+    aarch64-unknown-linux-gnu)
+      echo "typst-aarch64-unknown-linux-musl.tar.xz:tar:cdf50ffc7b8ba759ed02200632eda3d78eb8b99aacb6611f4f75684990647620" ;;
     x86_64-pc-windows-msvc)
       echo "typst-x86_64-pc-windows-msvc.zip:zip:66ae7f0907b4b9afed5c7d6cb9b21e07f0f3c3d4e293ba3e0026a54d88202fe9" ;;
     x86_64-unknown-linux-gnu)
@@ -41,20 +56,29 @@ fetch() {
   local ext=""
   [[ "$target" == *windows* ]] && ext=".exe"
   local out="$BIN_DIR/typst-$target$ext"
-  local tmp
-  tmp="$(mktemp -d)"
-  local archive="$tmp/archive"
+  TMP="$(mktemp -d)"
+  local tmp="$TMP"
+  local archive="$CACHE_DIR/$asset"
   local url="https://github.com/typst/typst/releases/download/v$VERSION/$asset"
 
-  echo "fetching Typst $VERSION for $target ($asset)"
-  curl -fSL --retry 5 --retry-delay 3 --retry-connrefused -o "$archive" "$url"
   local actual
-  actual="$(checksum "$archive")"
+  actual=""
+  if [[ -f "$archive" && ! -L "$archive" ]]; then
+    actual="$(checksum "$archive")"
+  fi
+  if [[ "$actual" != "$expected" ]]; then
+    rm -f "$archive"
+    echo "fetching Typst $VERSION for $target ($asset)"
+    curl -fSL --retry 5 --retry-delay 3 --retry-connrefused -o "$tmp/download" "$url"
+    actual="$(checksum "$tmp/download")"
+    if [[ "$actual" == "$expected" ]]; then
+      mv "$tmp/download" "$archive"
+    fi
+  fi
   if [[ "$actual" != "$expected" ]]; then
     echo "Typst checksum mismatch for $asset" >&2
     echo "expected: $expected" >&2
     echo "actual:   $actual" >&2
-    rm -rf "$tmp"
     exit 1
   fi
 
@@ -66,9 +90,8 @@ fetch() {
     tar) tar xJOf "$archive" "$archive_root/typst$ext" > "$bin" ;;
     zip) unzip -p "$archive" "$archive_root/typst$ext" > "$bin" ;;
   esac
-  if [[ ! -f "$bin" || -L "$bin" ]]; then
-    echo "expected Typst binary is missing or unsafe: $archive_root/typst$ext" >&2
-    rm -rf "$tmp"
+  if [[ ! -s "$bin" ]]; then
+    echo "expected Typst binary is missing or empty: $archive_root/typst$ext" >&2
     exit 1
   fi
   cp "$bin" "$out"
@@ -76,13 +99,13 @@ fetch() {
   if [[ "$(uname)" == "Darwin" ]]; then
     xattr -d com.apple.quarantine "$out" 2>/dev/null || true
   fi
-  rm -rf "$tmp"
+  cleanup_fetch
   echo "installed $out"
 }
 
 case "${1:-}" in
   all)
-    for target in aarch64-apple-darwin x86_64-pc-windows-msvc x86_64-unknown-linux-gnu; do
+    for target in aarch64-apple-darwin x86_64-apple-darwin aarch64-unknown-linux-gnu x86_64-pc-windows-msvc x86_64-unknown-linux-gnu; do
       fetch "$target"
     done
     ;;

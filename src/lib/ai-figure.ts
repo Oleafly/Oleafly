@@ -2,7 +2,12 @@
 // @openleaf/ai-core) and are re-exported here so existing `@/lib/ai-figure`
 // imports keep working. Only the stateful singletons below are truly
 // app-scoped.
-export { buildStandaloneDoc, slugifyFigureName, bytesToBase64 } from "@openleaf/latex";
+export {
+  buildStandaloneDoc,
+  slugifyFigureName,
+  bytesToBase64,
+  normalizeFigureCode,
+} from "@openleaf/latex";
 export { modelSupportsVision, FIGURE_SYSTEM_PROMPT } from "@openleaf/ai-core";
 
 let lastPreview: { pdfBytes: Uint8Array } | null = null;

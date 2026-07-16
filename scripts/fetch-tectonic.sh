@@ -11,7 +11,18 @@ set -euo pipefail
 VERSION="0.16.9"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BIN_DIR="$ROOT/src-tauri/binaries"
+CACHE_DIR="${OPENLEAF_SIDECAR_CACHE_DIR:-$ROOT/src-tauri/target/e2e-sidecars}"
 mkdir -p "$BIN_DIR"
+mkdir -p "$CACHE_DIR"
+TMP=""
+
+cleanup_fetch() {
+  if [[ -n "$TMP" ]]; then
+    rm -rf "$TMP"
+    TMP=""
+  fi
+}
+trap cleanup_fetch EXIT INT TERM
 
 # Map a target triple to "<asset-name>:<archive-kind>". A `case` statement, not
 # an associative array, so this runs on macOS's system bash 3.2 (GitHub's macOS
@@ -45,46 +56,50 @@ fetch() {
   [[ "$target" == *windows* ]] && ext=".exe"
   local out="$BIN_DIR/tectonic-$target$ext"
   local url="https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%40$VERSION/$asset"
-  local tmp
-  tmp="$(mktemp -d)"
-  echo "→ fetching $target ($asset)"
+  TMP="$(mktemp -d)"
+  local tmp="$TMP"
+  local archive="$CACHE_DIR/$asset"
   # `-f` fails on an HTTP error (so a 404/redirect page can't masquerade as the
   # archive and make `tar` die with a confusing exit 2); `-S` surfaces the error
   # despite `-s`; `--retry` rides out transient network/rate-limit blips (the
   # release matrix pulls from GitHub from four jobs at once).
-  if ! curl -fSL --retry 5 --retry-delay 3 --retry-connrefused \
-      -o "$tmp/archive" "$url"; then
-    echo "failed to download $url" >&2
-    rm -rf "$tmp"
-    exit 1
+  local actual_sha=""
+  if [[ -f "$archive" && ! -L "$archive" ]]; then
+    actual_sha="$(shasum -a 256 "$archive" | awk '{print $1}')"
   fi
-  if [[ ! -s "$tmp/archive" ]]; then
-    echo "downloaded archive is empty: $url" >&2
-    rm -rf "$tmp"
-    exit 1
+  if [[ "$actual_sha" != "$expected_sha" ]]; then
+    rm -f "$archive"
+    echo "→ fetching $target ($asset)"
+    if ! curl -fSL --retry 5 --retry-delay 3 --retry-connrefused \
+        -o "$tmp/download" "$url"; then
+      echo "failed to download $url" >&2
+      exit 1
+    fi
+    actual_sha="$(shasum -a 256 "$tmp/download" | awk '{print $1}')"
+    if [[ "$actual_sha" == "$expected_sha" ]]; then
+      mv "$tmp/download" "$archive"
+    fi
   fi
-  local actual_sha
-  actual_sha="$(shasum -a 256 "$tmp/archive" | awk '{print $1}')"
   if [[ "$actual_sha" != "$expected_sha" ]]; then
     echo "checksum mismatch for $asset: expected $expected_sha, got $actual_sha" >&2
-    rm -rf "$tmp"
     exit 1
   fi
   case "$kind" in
     tar)
-      [[ "$(tar tzf "$tmp/archive" | grep -Ec '^tectonic$')" == "1" ]]
-      tar tvzf "$tmp/archive" tectonic | grep -Eq '^[-]'
-      tar xzf "$tmp/archive" -C "$tmp" tectonic
+      [[ "$(tar tzf "$archive" | grep -Ec '^tectonic$')" == "1" ]]
+      local tar_entry
+      tar_entry="$(tar tvzf "$archive" tectonic)"
+      grep -E '^[-]' <<<"$tar_entry" >/dev/null
+      tar xzf "$archive" -C "$tmp" tectonic
       ;;
     zip)
-      [[ "$(unzip -Z1 "$tmp/archive" | grep -Ec '^tectonic\.exe$')" == "1" ]]
-      (cd "$tmp" && unzip -oq archive tectonic.exe)
+      [[ "$(unzip -Z1 "$archive" | grep -Ec '^tectonic\.exe$')" == "1" ]]
+      unzip -oq "$archive" tectonic.exe -d "$tmp"
       ;;
   esac
   local bin="$tmp/tectonic$ext"
   if [[ ! -f "$bin" || -L "$bin" ]]; then
     echo "could not locate tectonic binary in archive for $target" >&2
-    rm -rf "$tmp"
     exit 1
   fi
   cp "$bin" "$out"
@@ -92,7 +107,7 @@ fetch() {
   if [[ "$(uname)" == "Darwin" ]]; then
     xattr -d com.apple.quarantine "$out" 2>/dev/null || true
   fi
-  rm -rf "$tmp"
+  cleanup_fetch
   echo "✓ $out"
 }
 

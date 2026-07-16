@@ -114,7 +114,11 @@ export function Library() {
   };
 
   return (
-    <div data-testid="library" className="relative flex h-full flex-col bg-background">
+    <div
+      data-testid="library"
+      data-projects-loaded={projectsLoaded ? "true" : "false"}
+      className="relative flex h-full flex-col bg-background"
+    >
       <GridPattern
         width={48}
         height={48}

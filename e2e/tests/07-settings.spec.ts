@@ -37,6 +37,15 @@ test("compile button always shows its text label", async ({ tauriPage }) => {
 test("vim mode: enable via the palette (persistence part 1)", async ({ tauriPage }) => {
   await pressGlobal(tauriPage, "k", { meta: true });
   await tauriPage.fill("[cmdk-input]", "vim");
+  const alreadyEnabled = await tauriPage.evaluate<boolean>(
+    `document.body.innerText.includes('Disable vim mode')`,
+  );
+  if (alreadyEnabled) {
+    await tauriPage.press("[cmdk-input]", "Enter");
+    await expect(tauriPage.locator("[cmdk-input]")).toBeHidden();
+    await pressGlobal(tauriPage, "k", { meta: true });
+    await tauriPage.fill("[cmdk-input]", "vim");
+  }
   await expect(tauriPage.getByText("Enable vim mode")).toBeVisible();
   await tauriPage.press("[cmdk-input]", "Enter");
 });

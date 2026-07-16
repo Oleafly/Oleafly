@@ -7,6 +7,7 @@ test("create a project from the Blank template", async ({ tauriPage }) => {
   await tauriPage.fill("#new-project-name", "E2E Doc");
   await tauriPage.click('[data-testid="create-project"]');
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  await expect(tauriPage.getByTestId("error-boundary")).not.toBeVisible();
 });
 
 test("compile produces a rendered PDF with zero errors", async ({ tauriPage }) => {

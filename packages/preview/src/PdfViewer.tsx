@@ -10,6 +10,8 @@ import { registerPdfView, clearPdfView, pageClickToBp } from "./pdfController";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
+type PageTextContent = Awaited<ReturnType<pdfjsLib.PDFPageProxy["getTextContent"]>>;
+
 function withTimeout<T>(p: Promise<T>, ms: number, what: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const t = setTimeout(() => reject(new Error(`${what} timed out after ${ms}ms`)), ms);
@@ -33,16 +35,15 @@ function withTimeout<T>(p: Promise<T>, ms: number, what: string): Promise<T> {
 // we expect to have text; image/figure projects skip the probe entirely (the
 // `expectText` gate in the load ladder), so a legitimately text-less page never
 // triggers the main-thread fallback and its session-wide downgrade.
-async function probePageText(doc: pdfjsLib.PDFDocumentProxy): Promise<void> {
-  if (doc.numPages < 1) return;
+async function probePageText(doc: pdfjsLib.PDFDocumentProxy): Promise<PageTextContent | null> {
+  if (doc.numPages < 1) return null;
   const page = await withTimeout(doc.getPage(1), 8_000, "text probe page");
   try {
-    const tc = (await withTimeout(page.getTextContent(), 8_000, "text probe")) as {
-      items: Array<{ str?: string }>;
-    };
-    if (!tc.items.some((it) => typeof it.str === "string" && it.str.trim().length > 0)) {
+    const tc = await withTimeout(page.getTextContent(), 8_000, "text probe");
+    if (!tc.items.some((it) => "str" in it && it.str.trim().length > 0)) {
       throw new Error("text pipe returned empty");
     }
+    return tc;
   } finally {
     page.cleanup();
   }
@@ -165,6 +166,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
   // Debounce for crisp re-rasterization: zoom resizes instantly (cheap) and only
   // re-renders at full resolution once the scale settles, so pinch stays smooth.
   const rasterTimerRef = useRef<number | null>(null);
+  const textContentRef = useRef<Map<number, PageTextContent>>(new Map());
 
   // Minimal link service: open external links in the system browser, ignore
   // internal destinations (no in-app page router).
@@ -200,6 +202,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       }
     }
     renderedRef.current.delete(pageNo);
+    textContentRef.current.delete(pageNo);
     const wrap = wrapsRef.current.get(pageNo);
     if (wrap) {
       for (const n of wrap.querySelectorAll(".pdf-canvas, .textLayer, .annotationLayer")) n.remove();
@@ -295,8 +298,12 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
 
       // Selectable text layer (best-effort; never blocks the page).
       try {
+        const textContent =
+          textContentRef.current.get(pageNo) ??
+          (await withTimeout(page.getTextContent(), 15_000, "page text"));
+        textContentRef.current.set(pageNo, textContent);
         const textLayer = new pdfjsLib.TextLayer({
-          textContentSource: page.streamTextContent(),
+          textContentSource: textContent,
           container: textDiv,
           viewport,
         } as any);
@@ -517,7 +524,8 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       // broken inverse SyncTeX).
       const openAndProbe = async () => {
         const doc = await open();
-        await probePageText(doc);
+        const textContent = await probePageText(doc);
+        if (textContent) textContentRef.current.set(1, textContent);
         return doc;
       };
       // Escalating recovery, but ONLY for documents we expect to have text.
@@ -544,6 +552,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
             break;
           } catch (e) {
             lastErr = e;
+            textContentRef.current.clear();
             (loadingTask as pdfjsLib.PDFDocumentLoadingTask | null)?.destroy().catch(() => {});
             if (cancelled) return;
           }
@@ -574,6 +583,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       renderedRef.current.clear();
       wrapsRef.current.clear();
       visibleRef.current.clear();
+      textContentRef.current.clear();
       clearPdfView();
       docRef.current = null;
       if (container) container.innerHTML = "";

@@ -1,5 +1,10 @@
 import { jsonSchema } from "ai";
-import { buildStandaloneDoc, slugifyFigureName, bytesToBase64 } from "@openleaf/latex";
+import {
+  buildStandaloneDoc,
+  slugifyFigureName,
+  bytesToBase64,
+  normalizeFigureCode,
+} from "@openleaf/latex";
 import { pickPagesToVerify } from "./pick-pages";
 
 export interface IndexDefView {
@@ -856,9 +861,10 @@ export function createFigureTools(
         };
         const id = pid();
         if (!id) return { error: "No project open" };
+        const normalizedCode = normalizeFigureCode(code);
         const latex = raw
-          ? code
-          : `\\begin{figure}[htbp]\n\\centering\n${code}\n` +
+          ? normalizedCode
+          : `\\begin{figure}[htbp]\n\\centering\n${normalizedCode}\n` +
             (caption ? `\\caption{${caption}}\n` : "") +
             (label ? `\\label{${label}}\n` : "") +
             `\\end{figure}`;

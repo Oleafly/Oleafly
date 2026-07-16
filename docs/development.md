@@ -123,7 +123,7 @@ engine capability becomes truthful. Do not add extension-based UI exceptions.
 ## Where state lives
 
 - Config: `~/.openleaf/config.json` (`0600` on Unix). Non-secret preferences
-  live here. GitHub and AI credentials use the OS keychain when available and
+  live here. GitHub credentials use the OS keychain when available and
   fall back to the owner-only config file when it is not.
 - Projects: `~/.openleaf/projects/<id>/`, plain folders with `.git`.
 - App log: `~/.openleaf/app.log`.

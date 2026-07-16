@@ -27,14 +27,18 @@ export async function pressGlobal(
 // finish loading projects (one of the two buttons exists only after that)
 // before deciding which button to click - probing earlier races the load.
 export async function openGallery(page: Page) {
-  await page.waitForFunction(
-    `!!document.querySelector('[data-testid="create-first-project"], [data-testid="new-project"]')`,
-    15_000,
-  );
+  const library = page.locator(
+    '[data-testid="library"][data-projects-loaded="true"]',
+  ) as unknown as Parameters<typeof expect>[0];
+  await expect(library).toBeVisible({ timeout: 30_000 });
   const hasWelcome = await page.evaluate<boolean>(
     `!!document.querySelector('[data-testid="create-first-project"]')`,
   );
   await page.click(hasWelcome ? '[data-testid="create-first-project"]' : '[data-testid="new-project"]');
+  const gallery = page.locator('[data-testid="template-gallery"]') as unknown as Parameters<
+    typeof expect
+  >[0];
+  await expect(gallery).toBeVisible({ timeout: 30_000 });
 }
 
 // Positions the caret with the DOM Selection API (which CodeMirror syncs

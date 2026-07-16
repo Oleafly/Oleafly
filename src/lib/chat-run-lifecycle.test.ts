@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { cancelChatRun, ChatRunIsolation } from "./chat-run-lifecycle";
+import {
+  cancelChatRun,
+  ChatRunIsolation,
+  scheduleChatPersistence,
+} from "./chat-run-lifecycle";
 
 describe("cancelChatRun", () => {
   it("aborts the provider request and cancels pending persistence", () => {
@@ -35,5 +39,34 @@ describe("ChatRunIsolation", () => {
 
     expect(chats.get("chat-a")).toEqual(["started", "stream part"]);
     expect(chats.get("chat-b")).toEqual(["existing-b"]);
+  });
+});
+
+describe("scheduleChatPersistence", () => {
+  it("saves to the chat captured when the snapshot was scheduled", () => {
+    vi.useFakeTimers();
+    const save = vi.fn();
+    let activeChat = "chat-a";
+
+    scheduleChatPersistence(null, activeChat, ["reply-a"], save);
+    activeChat = "chat-b";
+    vi.advanceTimersByTime(400);
+
+    expect(save).toHaveBeenCalledWith("chat-a", ["reply-a"]);
+    expect(save).not.toHaveBeenCalledWith("chat-b", expect.anything());
+    vi.useRealTimers();
+  });
+
+  it("cancels the superseded snapshot", () => {
+    vi.useFakeTimers();
+    const save = vi.fn();
+    const first = scheduleChatPersistence(null, "chat-a", ["old"], save);
+
+    scheduleChatPersistence(first, "chat-a", ["new"], save);
+    vi.advanceTimersByTime(400);
+
+    expect(save).toHaveBeenCalledOnce();
+    expect(save).toHaveBeenCalledWith("chat-a", ["new"]);
+    vi.useRealTimers();
   });
 });

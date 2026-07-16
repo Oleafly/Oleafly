@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added self-contained E2E sidecar preparation that detects the Rust host, validates pinned Typst and Tectonic versions, and installs missing binaries before the app starts.
 - Introduced a Rust `DocumentEngine` abstraction that gives LaTeX, Typst, and Markdown one supervised compile contract with normalized artifacts, diagnostics, executable provenance, and capabilities.
 - Added first-class Typst projects with editor support, parsing and indexing, templates, AI context, preflight integration, and PDF compilation.
 - Added Markdown projects through managed Pandoc with bundled Tectonic, citeproc bibliography support, document conversion exports, templates, indexing, AI context, and PDF compilation.
@@ -23,6 +24,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Removed repeated OS authorization prompts for AI providers by moving AI credentials into an authenticated encrypted owner-only local store.
+- Made interrupted E2E runs release their process tree, port, socket, and shared runner lock, with bounded TERM-to-KILL escalation.
+- Reused checksum-validated sidecar archives without executing untrusted existing binaries or downloading trusted assets again.
+- Removed pipefail-sensitive version probes and tightened E2E recovery, error-boundary, palette, and settings selector coverage.
+- Verified and replaced native E2E sidecars before execution, closed runner ownership races, and limited cleanup to the process tree started by each run.
+- Restored stable settings automation coverage for editor font and default project layout controls.
+- Applied the PDF worker compatibility layer to one-shot page rasterization, preventing diagram and image previews from hanging in older native WebViews.
+- Prevented overlapping desktop E2E runners from sharing and terminating the same app bridge by acquiring an atomic process-owned runner lock before sidecar setup or process cleanup, then removing only the bridge socket whose filesystem identity belongs to that run.
+- Bound delayed streaming chat snapshots to their originating chat so opening or starting another conversation cannot redirect a pending save.
+- Normalized bare AI-generated TikZ commands into complete `tikzpicture` environments before isolated preview and document insertion.
+- Preserved streamed model reasoning in tool-call continuation requests so reasoning providers can reliably process real tool results.
+- Made template creation and appearance-settings E2E flows wait for visible application readiness before performing real user interactions.
+- Made the Vim persistence journey establish its initial state through the command palette when WebView preferences survive an interrupted run.
+- Kept compile failures visible in the preview status before any successful compile and made the real error-recovery journey restore its document after failed assertions.
+- Reused validated PDF page text when rendering selectable layers, preventing a second pdf.js worker stream from leaving text selection and inverse SyncTeX blank after a successful canvas render.
+- Refreshed capability-gated command palette entries after engine metadata or the active source file changes.
+- Replaced modal E2E shortcuts through hidden DOM state with independent keyboard and focus-restoration flows available to users.
+- Restored an accessible Home label on the editor control that returns to the project library.
+- Prevented the file tree from returning an unstable empty Zustand snapshot while engine metadata loads, which crashed the project editor with a maximum update-depth error.
+- Added checksum-pinned Typst acquisition for Intel macOS and ARM Linux development hosts.
 - Corrected the managed Windows Pandoc archive member to `pandoc-3.9.0.2/pandoc.exe` and added exact ZIP extraction regressions for valid, basename-only, wrong-version, and unsafe paths.
 - Rejected symlinked or reparse-point project build directories before artifact cleanup, compiler execution, or output writes.
 - Replaced Typst code-string masking with a linear lexical scan that remains bounded on marker-heavy lines.

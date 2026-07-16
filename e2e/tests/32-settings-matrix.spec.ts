@@ -1,19 +1,20 @@
 import { test, expect } from "../fixtures";
 import { openProject, openSettings, pressGlobal, type Page } from "../helpers";
 
-// Settings are asserted against their real effect on the app, not stored
-// state. Everything restores its default so re-runs and later specs see
-// factory settings.
-
 async function pickOption(page: Page, rowText: string, optionText: string) {
+  const rowId = rowText
+    .normalize("NFKD")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  const row = page.locator(`[data-testid="settings-row-${rowId}"]`) as unknown as Parameters<
+    typeof expect
+  >[0];
+  await expect(row).toBeVisible({ timeout: 10_000 });
   await page.evaluate(
     `(() => {
-      // Match the row by its EXACT label ("App font" is a substring of
-      // "App font size", so includes() grabs the wrong card), then take the
-      // select inside that row's card.
-      const label = Array.from(document.querySelectorAll('.rounded-lg .text-sm.font-medium'))
-        .find(d => d.textContent.trim() === ${JSON.stringify(rowText)});
-      const combo = label?.closest('.rounded-lg')?.querySelector('[role="combobox"]');
+      const row = document.querySelector(${JSON.stringify(`[data-testid="settings-row-${rowId}"]`)});
+      const combo = row?.querySelector('[role="combobox"]');
       if (!combo) throw new Error('no combobox in row ' + ${JSON.stringify(rowText)});
       combo.click();
       return 1;

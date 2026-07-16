@@ -41,7 +41,7 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.props.fallback !== undefined) return this.props.fallback;
 
     return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center gap-4 bg-background p-8 text-center text-foreground">
+      <div data-testid="error-boundary" className="flex h-screen w-screen flex-col items-center justify-center gap-4 bg-background p-8 text-center text-foreground">
         <div className="space-y-2">
           <h1 className="text-lg font-semibold">Something went wrong</h1>
           <p className="mx-auto max-w-md text-sm text-muted-foreground">

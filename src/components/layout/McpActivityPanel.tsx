@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react";
-import { Activity, CheckCircle2, CircleAlert, Loader2, Radio, Trash2 } from "lucide-react";
+import { Activity, CheckCircle2, CircleAlert, Info, Loader2, Radio, Trash2 } from "lucide-react";
 import {
   formatMcpArgs,
   useMcpActivityStore,
@@ -8,6 +8,7 @@ import {
 import { useSettingsStore } from "@/store/settings";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
+import { AiToolsGrid } from "@/components/ai/AiToolsList";
 import { cn } from "@/lib/utils";
 
 function timeLabel(ts: number): string {
@@ -106,7 +107,25 @@ export function McpActivityPanel() {
           <Radio className={cn("size-2.5", serverRunning && "animate-pulse")} />
           {serverRunning ? "Live" : "Off"}
         </span>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-0.5">
+          <Tooltip
+            side="bottom"
+            wide
+            label={
+              <div>
+                <p className="mb-1.5 font-medium text-foreground">Tools available over MCP</p>
+                <AiToolsGrid columns={1} />
+              </div>
+            }
+          >
+            <button
+              type="button"
+              aria-label="Tools available over MCP"
+              className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              <Info className="size-3.5" />
+            </button>
+          </Tooltip>
           <Tooltip label="Clear log">
             <button
               type="button"

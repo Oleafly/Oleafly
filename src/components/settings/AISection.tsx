@@ -26,6 +26,7 @@ import {
   getProvider,
 } from "@/lib/ai-providers";
 import { listOllamaModels, DEFAULT_OLLAMA_HOST } from "@/lib/ollama";
+import { AiToolsGrid } from "@/components/ai/AiToolsList";
 import { cn } from "@/lib/utils";
 
 function OllamaSetup({
@@ -163,29 +164,6 @@ function OllamaSetup({
   );
 }
 
-
-const AI_TOOLS: { name: string; desc: string }[] = [
-  { name: "read_file", desc: "Read a file's contents" },
-  { name: "write_file", desc: "Write or overwrite a file" },
-  { name: "replace_in_file", desc: "Find & replace within a file" },
-  { name: "create_file", desc: "Create a file or folder" },
-  { name: "rename_file", desc: "Rename or move a path" },
-  { name: "delete_file", desc: "Delete a file or folder" },
-  { name: "list_files", desc: "List the project tree" },
-  { name: "search_project", desc: "Search text in the current project" },
-  { name: "project_map", desc: "Structural outline, labels, cites, inputs" },
-  { name: "compile", desc: "Compile the project to PDF" },
-  { name: "get_log", desc: "Get the last compile log" },
-  { name: "get_pdf_text", desc: "Extract text from the PDF" },
-  { name: "verify_pdf_pages", desc: "Rasterize pages for vision layout checks" },
-  { name: "update_todos", desc: "Maintain a multi-step plan checklist" },
-  { name: "get_todos", desc: "Read the current plan checklist" },
-  { name: "remember_note", desc: "Save sticky project memory for later turns" },
-  { name: "forget_note", desc: "Remove a sticky memory note" },
-  { name: "list_notes", desc: "List sticky project memory notes" },
-  { name: "set_main_doc", desc: "Set the main document" },
-  { name: "toggle_theme", desc: "Toggle light/dark mode" },
-];
 
 const DEFAULT_CFG: AppConfig = {
   github_token: "",
@@ -380,39 +358,6 @@ export function AISection() {
 
   return (
     <div className="space-y-4 text-sm">
-      <div className="overflow-hidden rounded-lg border bg-background">
-        <button
-          onClick={() => setToolsOpen((v) => !v)}
-          className="flex w-full items-center gap-1.5 p-3 text-left text-xs font-semibold hover:bg-accent/40"
-          aria-expanded={toolsOpen}
-        >
-          <Sparkles className="size-3.5 text-primary" />
-          The assistant currently supports these tools
-          {toolsOpen ? (
-            <ChevronDown className="ml-auto size-3.5 text-muted-foreground" />
-          ) : (
-            <ChevronRight className="ml-auto size-3.5 text-muted-foreground" />
-          )}
-        </button>
-        {toolsOpen && (
-          <div className="border-t px-3 pb-3 pt-2">
-            <p className="mb-2 text-[11px] text-muted-foreground">
-              Ask it things like "fix the LaTeX errors", "add a Publications section", or "recompile
-              and check the PDF".
-            </p>
-            <div className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
-              {AI_TOOLS.map((t) => (
-                <div key={t.name} className="flex items-baseline gap-2 text-[11px]">
-                  <code className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] text-primary">
-                    {t.name}
-                  </code>
-                  <span className="text-muted-foreground">{t.desc}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
 
       <p className="text-xs text-muted-foreground">
         Connect any providers you use below. Keys are stored locally only. Saving one sets it as the
@@ -432,6 +377,7 @@ export function AISection() {
           return (
             <div
               key={p.id}
+              data-testid={`ai-provider-card-${p.id}`}
               className={cn(
                 "rounded-lg border bg-background transition-colors",
                 isActive && "border-primary/40 ring-1 ring-primary/20"
@@ -520,6 +466,7 @@ export function AISection() {
                     {dirty ? (
                       <Button
                         size="sm"
+                        data-testid={`ai-provider-save-${p.id}`}
                         disabled={saving === p.id}
                         onClick={() => void saveProvider(p.id)}
                       >
@@ -540,6 +487,7 @@ export function AISection() {
                     ) : null}
                     {hasSaved && (
                       <button
+                        data-testid={`ai-provider-delete-${p.id}`}
                         aria-label={`Delete ${p.name} key`}
                         title="Delete key"
                         disabled={saving === p.id}
@@ -627,6 +575,31 @@ export function AISection() {
           {msg.text}
         </div>
       )}
+
+      <div className="overflow-hidden rounded-lg border bg-background">
+        <button
+          onClick={() => setToolsOpen((v) => !v)}
+          className="flex w-full items-center gap-1.5 p-3 text-left text-xs font-semibold hover:bg-accent/40"
+          aria-expanded={toolsOpen}
+        >
+          <Sparkles className="size-3.5 text-primary" />
+          The assistant currently supports these tools
+          {toolsOpen ? (
+            <ChevronDown className="ml-auto size-3.5 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="ml-auto size-3.5 text-muted-foreground" />
+          )}
+        </button>
+        {toolsOpen && (
+          <div className="border-t px-3 pb-3 pt-2">
+            <p className="mb-2 text-[11px] text-muted-foreground">
+              Ask it things like "fix the LaTeX errors", "add a Publications section", or "recompile
+              and check the PDF".
+            </p>
+            <AiToolsGrid columns={2} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

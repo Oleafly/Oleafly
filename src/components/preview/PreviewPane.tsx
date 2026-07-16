@@ -179,7 +179,7 @@ export function PreviewPane() {
           )}
         </button>
 
-        {!compiling && compileTimeMs != null && (
+        {!compiling && status !== "idle" && (
           <span
             className={cn(
               "flex items-center gap-1 text-[10px] font-medium tabular-nums",
@@ -206,7 +206,9 @@ export function PreviewPane() {
             ) : (
               <CheckCircle2 className="size-3.5" />
             )}
-            {(compileTimeMs / 1000).toFixed(1)}s
+            {severity === "error" || compileTimeMs == null
+              ? "Failed"
+              : `${(compileTimeMs / 1000).toFixed(1)}s`}
           </span>
         )}
 

@@ -9,6 +9,9 @@ export interface AppContext {
   projectKind: string | null;
   theme: "light" | "dark";
   mcpEnabled?: boolean;
+  documentEngineId?: string;
+  documentEngineLoaded?: boolean;
+  activeDocumentPath?: string | null;
 }
 
 export interface RailTabContribution {

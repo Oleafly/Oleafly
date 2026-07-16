@@ -5,6 +5,23 @@
 $ErrorActionPreference = "Stop"
 Set-Location (Join-Path $PSScriptRoot "..")
 
+$runnerMutex = [System.Threading.Mutex]::new($false, "Local\OpenLeafE2ERunner")
+$runnerOwned = $false
+$app = $null
+$log = $null
+$code = 1
+try {
+  try {
+    $runnerOwned = $runnerMutex.WaitOne(0)
+  } catch [System.Threading.AbandonedMutexException] {
+    $runnerOwned = $true
+  }
+  if (-not $runnerOwned) {
+    throw "e2e: another runner owns the app and bridge"
+  }
+
+  & (Join-Path $PSScriptRoot "ensure-e2e-sidecars.ps1")
+
 $stamp = [System.Guid]::NewGuid().ToString("N").Substring(0, 8)
 $dataDir = Join-Path ([System.IO.Path]::GetTempPath()) "openleaf-e2e-$stamp"
 New-Item -ItemType Directory -Path $dataDir | Out-Null
@@ -12,8 +29,6 @@ $log = Join-Path ([System.IO.Path]::GetTempPath()) "openleaf-e2e-log-$stamp.txt"
 
 Write-Host "e2e: data dir $dataDir"
 Write-Host "e2e: app log  $log"
-
-Get-Process -Name openleaf -ErrorAction SilentlyContinue | Stop-Process -Force
 
 $env:OPENLEAF_DATA_DIR = $dataDir
 $app = Start-Process -FilePath "cmd.exe" `
@@ -42,14 +57,17 @@ if (-not $ready) {
 }
 Start-Sleep -Seconds 2
 
-$code = 1
-try {
-  pnpm exec playwright test -c e2e/playwright.config.ts @args
-  $code = $LASTEXITCODE
+pnpm exec playwright test -c e2e/playwright.config.ts @args
+$code = $LASTEXITCODE
 } finally {
-  taskkill /PID $app.Id /T /F 2>$null | Out-Null
-  Get-Process -Name openleaf -ErrorAction SilentlyContinue | Stop-Process -Force
-  New-Item -ItemType Directory -Force -Path test-results | Out-Null
-  if (Test-Path $log) { Copy-Item $log (Join-Path "test-results" "app.log") -Force }
+  if ($null -ne $app -and -not $app.HasExited) {
+    taskkill /PID $app.Id /T /F 2>$null | Out-Null
+  }
+  if ($null -ne $log) {
+    New-Item -ItemType Directory -Force -Path test-results | Out-Null
+    if (Test-Path $log) { Copy-Item $log (Join-Path "test-results" "app.log") -Force }
+  }
+  if ($runnerOwned) { $runnerMutex.ReleaseMutex() }
+  $runnerMutex.Dispose()
 }
 exit $code

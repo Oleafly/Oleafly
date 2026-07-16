@@ -19,8 +19,7 @@ Open Settings → AI Assistant. There's a card for each supported provider. Past
 | **Ollama** | Local host | Runs on your machine, no key needed |
 
 Each card links out to where you can grab a key. Keys stay local and are stored
-in the OS keychain when available. If the keychain is unavailable, OpenLeaf
-uses an owner-only `~/.openleaf/config.json` fallback (`0600` on Unix).
+in an authenticated encrypted owner-only local store.
 
 ## Run it locally with Ollama
 

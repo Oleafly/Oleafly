@@ -259,6 +259,7 @@ export function TopToolbar() {
         <button
           type="button"
           onClick={closeProject}
+          aria-label="Home"
           title="Back to library"
           className="flex items-center gap-1.5 rounded px-1.5 py-1 text-sm font-semibold tracking-tight hover:bg-accent"
         >

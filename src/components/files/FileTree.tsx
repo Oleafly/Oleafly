@@ -42,6 +42,7 @@ function parentOf(path: string): string {
 }
 
 const ROOT = "__root__";
+const EMPTY_EXTENSIONS: string[] = [];
 
 function buildTree(paths: { path: string; is_dir: boolean }[]): TreeNode[] {
   const root: TreeNode = { name: "", path: "", isDir: true, children: [] };
@@ -114,9 +115,9 @@ export function FileTree() {
   const renameEntry = useFilesStore((s) => s.renameEntry);
   const copyEntry = useFilesStore((s) => s.copyEntry);
   const setMainDoc = useFilesStore((s) => s.setMainDoc);
-  const mainExtensions = useFilesStore((s) =>
-    s.engineLoaded ? s.engine.source_extensions : [],
-  );
+  const engineLoaded = useFilesStore((s) => s.engineLoaded);
+  const sourceExtensions = useFilesStore((s) => s.engine.source_extensions);
+  const mainExtensions = engineLoaded ? sourceExtensions : EMPTY_EXTENSIONS;
 
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<{ path: string; isDir: boolean } | null>(null);

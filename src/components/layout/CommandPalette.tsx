@@ -11,6 +11,9 @@ export function CommandPalette() {
   const setPaletteOpen = useSettingsStore((s) => s.setPaletteOpen);
   const projectId = useFilesStore((s) => s.projectId);
   const projectKind = useFilesStore((s) => s.projectKind);
+  const engine = useFilesStore((s) => s.engine);
+  const engineLoaded = useFilesStore((s) => s.engineLoaded);
+  const activePath = useFilesStore((s) => s.activePath);
   const { theme } = useTheme();
 
   const close = () => setPaletteOpen(false);
@@ -31,8 +34,15 @@ export function CommandPalette() {
   }, [setPaletteOpen]);
 
   const ctx = useMemo<AppContext>(
-    () => ({ projectId, projectKind, theme }),
-    [projectId, projectKind, theme],
+    () => ({
+      projectId,
+      projectKind,
+      theme,
+      documentEngineId: engine.id,
+      documentEngineLoaded: engineLoaded,
+      activeDocumentPath: activePath,
+    }),
+    [activePath, engine.id, engineLoaded, projectId, projectKind, theme],
   );
 
   // Map preserves insertion order, so groups render in registration order.

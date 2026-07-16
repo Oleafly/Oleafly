@@ -31,10 +31,12 @@ const NETWORK_TEMPLATES = ["modern-resume"];
 
 async function createFromTemplate(page: import("../helpers").Page, id: string, name: string) {
   await openGallery(page);
-  await expect(page.getByTestId("template-gallery")).toBeVisible();
-  // The gallery groups templates by category; the card testid is stable.
-  await page.click(`[data-testid="template-card-${id}"]`, { timeout: 15_000 });
+  const card = page.locator(`[data-testid="template-card-${id}"]`);
+  await expect(card).toBeVisible({ timeout: 30_000 });
+  await page.click(`[data-testid="template-card-${id}"]`, { timeout: 30_000 });
+  await expect(page.locator("#new-project-name")).toBeVisible({ timeout: 10_000 });
   await page.fill("#new-project-name", name);
+  await expect(page.getByTestId("create-project")).toBeEnabled({ timeout: 10_000 });
   await page.click('[data-testid="create-project"]');
   await expect(page.locator(".cm-content")).toBeVisible({ timeout: 60_000 });
 }

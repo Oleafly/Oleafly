@@ -39,7 +39,11 @@ import { formatRagContext, retrieveProjectChunks } from "@/lib/ai-rag";
 import { ChatHistoryModal } from "@/components/ai/ChatHistoryModal";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
-import { cancelChatRun, ChatRunIsolation } from "@/lib/chat-run-lifecycle";
+import {
+  cancelChatRun,
+  ChatRunIsolation,
+  scheduleChatPersistence,
+} from "@/lib/chat-run-lifecycle";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { cn } from "@/lib/utils";
 import {
@@ -73,6 +77,23 @@ const UNIVERSAL_TOOLS = ["read_file", "write_file", "replace_in_file", "create_f
 export function buildAiToolInventory(features: EngineFeature[], figure: boolean, isolated: boolean): string[] {
   if (figure) return isolated ? ["preview_figure", "insert_figure", "load_image"] : [];
   return features.includes("document_index") ? [...UNIVERSAL_TOOLS, "project_map"] : UNIVERSAL_TOOLS;
+}
+
+export function buildToolContinuation(
+  reasoning: string,
+  text: string,
+  calls: { id: string; name: string; args: unknown }[],
+) {
+  return [
+    ...(reasoning ? [{ type: "reasoning", text: reasoning }] : []),
+    ...(text ? [{ type: "text", text }] : []),
+    ...calls.map((call) => ({
+      type: "tool-call",
+      toolCallId: call.id,
+      toolName: call.name,
+      input: call.args,
+    })),
+  ];
 }
 
 export function ChatCore() {
@@ -209,7 +230,10 @@ export function ChatCore() {
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Coalesce stream-token setState into one React update per animation frame so
   // a fast provider cannot thrash the chat UI on every delta.
-  const streamPatchesRef = useRef<Array<(m: ChatMessage) => ChatMessage>>([]);
+  const streamPatchesRef = useRef<Array<{
+    chatId: string | null;
+    apply: (message: ChatMessage) => ChatMessage;
+  }>>([]);
   const streamRafRef = useRef<number | null>(null);
   const runIsolationRef = useRef(new ChatRunIsolation());
 
@@ -367,21 +391,24 @@ export function ChatCore() {
   }, [projectId, loadChats, setActiveChat]);
 
   // Immediate write (see persistDebounced below for the streaming path).
-  const persist = useCallback((msgs: ChatMessage[]) => {
-    const id = useChatsStore.getState().activeId;
-    if (id) useChatsStore.getState().saveMessages(id, msgs);
+  const persist = useCallback((chatId: string | null, msgs: ChatMessage[]) => {
+    if (chatId) useChatsStore.getState().saveMessages(chatId, msgs);
   }, []);
 
   // Trailing-debounced persist: during streaming, `updateLast` fires often;
   // without debouncing we'd rewrite the whole conversation per token.
   // Coalesce to ~1 write/400ms (disk via Tauri, or localStorage in browser).
   const persistDebounced = useCallback(
-    (msgs: ChatMessage[]) => {
-      if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
-      persistTimerRef.current = setTimeout(() => {
-        persistTimerRef.current = null;
-        persist(msgs);
-      }, 400);
+    (chatId: string | null, msgs: ChatMessage[]) => {
+      persistTimerRef.current = scheduleChatPersistence(
+        persistTimerRef.current,
+        chatId,
+        msgs,
+        (id, value) => {
+          persistTimerRef.current = null;
+          persist(id, value);
+        },
+      );
     },
     [persist]
   );
@@ -450,9 +477,9 @@ export function ChatCore() {
       if (!prev.length) return prev;
       const copy = [...prev];
       let last = copy[copy.length - 1];
-      for (const p of patches) last = p(last);
+      for (const patch of patches) last = patch.apply(last);
       copy[copy.length - 1] = last;
-      persistDebounced(copy);
+      persistDebounced(patches[patches.length - 1].chatId, copy);
       return copy;
     });
   }, [persistDebounced]);
@@ -460,8 +487,8 @@ export function ChatCore() {
   // High-frequency stream deltas are coalesced to one setState per animation
   // frame; callers that need the UI to reflect a patch before the next frame
   // should call flushStreamPatches.
-  const updateLast = useCallback((fn: (m: ChatMessage) => ChatMessage) => {
-    streamPatchesRef.current.push(fn);
+  const updateLast = useCallback((chatId: string | null, fn: (m: ChatMessage) => ChatMessage) => {
+    streamPatchesRef.current.push({ chatId, apply: fn });
     if (streamRafRef.current != null) return;
     streamRafRef.current = requestAnimationFrame(() => {
       streamRafRef.current = null;
@@ -478,12 +505,13 @@ export function ChatCore() {
     }
     if (!apiKey) { openAISettings(); return; }
     const runIdentity = runIsolationRef.current.begin(projectId);
+    let runChatId: string | null = null;
     const runIsCurrent = () => runIsolationRef.current.allows(
       runIdentity,
       useFilesStore.getState().projectId,
     );
     const updateRunLast = (fn: (message: ChatMessage) => ChatMessage) => {
-      if (runIsCurrent()) updateLast(fn);
+      if (runIsCurrent()) updateLast(runChatId, fn);
     };
     const setRunThinking = (value: string | null) => {
       if (runIsCurrent()) setThinkingText(value);
@@ -587,7 +615,6 @@ export function ChatCore() {
     timedOutRef.current = false;
 
     // Persist this conversation as a chat (creates one on the first message).
-    let runChatId: string | null = null;
     {
       const cs = useChatsStore.getState();
       let chatId = cs.projectId === projectId ? cs.activeId : null;
@@ -708,6 +735,7 @@ ${sandboxedCustom}`;
         } as any);
 
         let stepText = "";
+        let stepReasoning = "";
         const stepToolCalls: { id: string; name: string; args: any }[] = [];
         const stepToolResults: { id: string; name: string; output: any }[] = [];
         let errorMsg = "";
@@ -776,7 +804,10 @@ ${sandboxedCustom}`;
               openReasoning();
               const rp = part as any;
               const chunk = rp.text ?? rp.delta ?? rp.textDelta ?? "";
-              if (chunk) appendReasoning(chunk);
+              if (chunk) {
+                stepReasoning += chunk;
+                appendReasoning(chunk);
+              }
               break;
             }
             case "reasoning-end":
@@ -842,7 +873,15 @@ ${sandboxedCustom}`;
           /* provider may not report usage */
         }
 
-        return { stepText, stepToolCalls, stepToolResults, errorMsg, errorRetryable, stepUsage };
+        return {
+          stepText,
+          stepReasoning,
+          stepToolCalls,
+          stepToolResults,
+          errorMsg,
+          errorRetryable,
+          stepUsage,
+        };
       };
 
       let reachedCap = false;
@@ -882,6 +921,7 @@ ${sandboxedCustom}`;
         // Retry the same step on stream disconnects / transient API errors so a
         // dropped connection never abandons an unfinished task.
         let stepText = "";
+        let stepReasoning = "";
         let stepToolCalls: { id: string; name: string; args: any }[] = [];
         let stepToolResults: { id: string; name: string; output: any }[] = [];
         let fatalError = "";
@@ -890,6 +930,7 @@ ${sandboxedCustom}`;
           try {
             const r = await runStep(modelInstance, tools);
             stepText = r.stepText;
+            stepReasoning = r.stepReasoning;
             stepToolCalls = r.stepToolCalls;
             stepToolResults = r.stepToolResults;
             // Only retry when nothing useful happened (no text, no tool calls).
@@ -938,15 +979,7 @@ ${sandboxedCustom}`;
 
         apiMessages.push({
           role: "assistant",
-          content: [
-            ...(stepText ? [{ type: "text", text: stepText }] : []),
-            ...stepToolCalls.map((tc) => ({
-              type: "tool-call",
-              toolCallId: tc.id,
-              toolName: tc.name,
-              input: tc.args,
-            })),
-          ],
+          content: buildToolContinuation(stepReasoning, stepText, stepToolCalls),
         } as any);
 
         for (const tr of stepToolResults) {

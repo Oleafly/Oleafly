@@ -44,6 +44,19 @@ describe("modelToTikz", () => {
     expect(t).toContain("flow");
   });
 
+  it("draws edges on the background layer so they sit behind the shapes", () => {
+    const t = modelToTikz(model);
+    expect(t).toContain("\\begin{scope}[on background layer]");
+    // The edge must come after its nodes are declared, inside the scope.
+    expect(t.indexOf("\\node (a)")).toBeLessThan(t.indexOf("on background layer"));
+    expect(t.indexOf("on background layer")).toBeLessThan(t.indexOf("\\draw[->"));
+  });
+
+  it("omits the background scope when there are no edges", () => {
+    const t = modelToTikz({ version: 1, nodes: [model.nodes[0]], edges: [] });
+    expect(t).not.toContain("on background layer");
+  });
+
   it("flips y: screen-down becomes tikz-up", () => {
     const t = modelToTikz(model);
     expect(t).toMatch(/\(b\) at \([\d.]+,\s*-[\d.]+\)/);

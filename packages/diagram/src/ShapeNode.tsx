@@ -71,6 +71,9 @@ export function ShapeNode({ id, data, selected }: NodeProps) {
     padding: 4,
     boxSizing: "border-box",
     fontSize: d.fontSize ? d.fontSize * 1.6 : 12,
+    // Match the compiled LaTeX default (Computer Modern) so the canvas preview
+    // reflects the rendered serif type rather than the app's sans-serif UI font.
+    fontFamily: "'Latin Modern Roman', 'CMU Serif', Georgia, 'Times New Roman', serif",
     color: d.textColor || "inherit",
     background: polygon ? "transparent" : d.fill || "transparent",
     border:
