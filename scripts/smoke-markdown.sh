@@ -12,10 +12,6 @@ case "$TARGET" in
     ASSET="pandoc-$VERSION-arm64-macOS.zip"
     SHA="6e9eca844076bcbb599bbeebbba78a70f93b5307782b85c2c272872812c88875"
     KIND=zip; PANDOC="pandoc-$VERSION/bin/pandoc"; TECTONIC="src-tauri/binaries/tectonic-$TARGET" ;;
-  x86_64-apple-darwin)
-    ASSET="pandoc-$VERSION-x86_64-macOS.zip"
-    SHA="b9fbceabccbc8f34ac021a50483fc32f8160568d0b4b2c22d81bb29e3054fd82"
-    KIND=zip; PANDOC="pandoc-$VERSION/bin/pandoc"; TECTONIC="src-tauri/binaries/tectonic-$TARGET" ;;
   aarch64-unknown-linux-gnu)
     ASSET="pandoc-$VERSION-linux-arm64.tar.gz"
     SHA="b6d21e8f9c3b15744f5a7ab40248019157ed7793875dbe0383d4c82ff572b528"

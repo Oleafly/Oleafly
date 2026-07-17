@@ -77,6 +77,89 @@ export async function typeInEditorAfter(
   if (!ok) throw new Error("typeInEditorAfter: anchor " + JSON.stringify(anchorText) + " not found in editor");
 }
 
+async function pollCompiledPdf(page: Page, predicate: string, timeoutMs: number, onTimeout: string) {
+  const deadline = Date.now() + timeoutMs;
+  let lastError = "";
+  for (;;) {
+    await page.evaluate(
+      `(() => {
+        window.__pdfProbe = null;
+        window.__pdfProbeError = null;
+        window.__e2ePdfText()
+          .then((t) => { window.__pdfProbe = t; })
+          .catch((error) => { window.__pdfProbeError = String(error); });
+        return true;
+      })()`,
+    );
+    try {
+      await waitLong(
+        page,
+        `typeof window.__pdfProbe === 'string' || typeof window.__pdfProbeError === 'string'`,
+        20_000,
+      );
+    } catch {
+    }
+    lastError = await page.evaluate<string>(
+      `typeof window.__pdfProbeError === 'string' ? window.__pdfProbeError : ''`,
+    );
+    const ok = await page.evaluate<boolean>(
+      `(() => { const t = window.__pdfProbe; return typeof t === 'string' && (${predicate}); })()`,
+    );
+    if (ok) return;
+    if (Date.now() > deadline) {
+      throw new Error(lastError ? `${onTimeout}: ${lastError}` : onTimeout);
+    }
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+}
+
+export async function expectCompiledPdfContains(page: Page, text: string, timeoutMs = 90_000) {
+  await pollCompiledPdf(
+    page,
+    `t.includes(${JSON.stringify(text)})`,
+    timeoutMs,
+    `compiled PDF never contained: ${text}`,
+  );
+}
+
+export async function expectCompiledPdfAbsent(page: Page, text: string, timeoutMs = 90_000) {
+  await pollCompiledPdf(
+    page,
+    `!t.includes(${JSON.stringify(text)})`,
+    timeoutMs,
+    `compiled PDF still contains: ${text}`,
+  );
+}
+
+export async function expectCompiledPdfEmpty(page: Page, timeoutMs = 90_000) {
+  await pollCompiledPdf(page, `t.trim() === ''`, timeoutMs, "compiled PDF text was not empty");
+}
+
+export async function createBlankProject(page: Page, name: string) {
+  await openGallery(page);
+  await page.click('[data-testid="template-card-blank"]');
+  await page.fill("#new-project-name", name);
+  await page.click('[data-testid="create-project"]');
+  await expect(page.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+}
+
+export async function setEditorContent(page: Page, text: string) {
+  const ok = await page.evaluate<boolean>(
+    `(() => {
+      const content = document.querySelector('.cm-content');
+      if (!content) return false;
+      content.focus();
+      const range = document.createRange();
+      range.selectNodeContents(content);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      return document.execCommand('insertText', false, ${JSON.stringify(text)});
+    })()`,
+  );
+  if (!ok) throw new Error("setEditorContent: could not replace editor content");
+}
+
 // Clicking a rail tab always reveals the sidebar; re-clicking the active tab
 // collapses it, and that collapsed state persists across restarts.
 export async function openRailTab(page: Page, ariaLabel: string) {

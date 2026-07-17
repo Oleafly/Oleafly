@@ -49,8 +49,6 @@ pub struct AppConfig {
     /// deletes still ask). Deletes always require a click.
     #[serde(default = "default_mcp_approval_policy")]
     pub mcp_approval_policy: String,
-    /// Bearer token for the MCP endpoint. Secret: keychain-backed, blanked
-    /// before the webview, exactly like `github_token`.
     #[serde(default)]
     pub mcp_token: String,
 }
@@ -110,8 +108,6 @@ pub fn read_config() -> Result<AppConfig, String> {
         || cfg.ai_keys.values().any(|v| !v.is_empty())
         || !cfg.mcp_token.is_empty();
     let hydrated = hydrate_secrets(cfg)?;
-    // Best-effort one-shot migrate: only rewrite when the file still held
-    // plaintext secrets (avoids keychain I/O on every get_config).
     if needs_migrate {
         let _ = persist_without_plaintext_secrets(&hydrated);
     }
@@ -119,8 +115,8 @@ pub fn read_config() -> Result<AppConfig, String> {
 }
 
 fn hydrate_secrets(mut cfg: AppConfig) -> Result<AppConfig, String> {
-    cfg.github_token = secrets::resolve_secret(secrets::github_token_account(), &cfg.github_token);
-    cfg.mcp_token = secrets::resolve_secret(secrets::mcp_token_account(), &cfg.mcp_token);
+    cfg.github_token = secrets::resolve_secret(secrets::github_token_account(), &cfg.github_token)?;
+    cfg.mcp_token = secrets::resolve_secret(secrets::mcp_token_account(), &cfg.mcp_token)?;
     for (provider, value) in secrets::read_ai_secrets()? {
         if provider == "__legacy__" {
             if cfg.ai_api_key.is_empty() {
@@ -148,14 +144,12 @@ fn persist_without_plaintext_secrets(config: &AppConfig) -> Result<(), String> {
     }
     secrets::write_ai_secrets(&ai_secrets)?;
     let mut disk = config.clone();
-    // GitHub + MCP tokens go into the encrypted secret store, never plaintext on
-    // disk. store_secret_or_fallback clears the store on an empty value and, on
-    // the rare store-write failure, returns the value to keep in the 0600 config
-    // so it is not lost (resolve_secret reads that fallback on the next load).
-    disk.github_token =
-        secrets::store_secret_or_fallback(secrets::github_token_account(), &config.github_token);
-    disk.mcp_token =
-        secrets::store_secret_or_fallback(secrets::mcp_token_account(), &config.mcp_token);
+    secrets::set_secrets(&[
+        (secrets::github_token_account(), &config.github_token),
+        (secrets::mcp_token_account(), &config.mcp_token),
+    ])?;
+    disk.github_token = String::new();
+    disk.mcp_token = String::new();
     disk.ai_keys = HashMap::new();
     disk.ai_api_key = String::new();
     disk.github_connected = false;
@@ -187,8 +181,6 @@ fn write_config_at(path: &std::path::Path, config: &AppConfig) -> Result<(), Str
             .map_err(|e| format!("failed to write config: {e}"))?;
         let _ = f.sync_all();
     }
-    // Owner-only (unix created it 0600; this also covers Windows, where the file
-    // may hold keychain-fallback secrets). The rename preserves the ACL/mode.
     crate::fsperm::harden_file(&tmp);
 
     std::fs::rename(&tmp, path).map_err(|e| {
@@ -212,14 +204,14 @@ pub fn get_config() -> Result<AppConfig, String> {
 
 #[tauri::command]
 pub fn set_config(mut config: AppConfig) -> Result<(), String> {
-    // The webview never receives the real token (get_config blanks it), so an
-    // empty incoming token means "unchanged", not "clear it" - preserve what's
-    // stored (keychain or disk). Clearing goes through gh_clear_token.
-    if config.github_token.is_empty() {
-        config.github_token = read_config()?.github_token;
-    }
-    if config.mcp_token.is_empty() {
-        config.mcp_token = read_config()?.mcp_token;
+    if config.github_token.is_empty() || config.mcp_token.is_empty() {
+        let stored = read_config()?;
+        if config.github_token.is_empty() {
+            config.github_token = stored.github_token;
+        }
+        if config.mcp_token.is_empty() {
+            config.mcp_token = stored.mcp_token;
+        }
     }
     config.github_connected = false;
     write_config(&config)

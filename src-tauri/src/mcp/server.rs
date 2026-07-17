@@ -33,7 +33,6 @@ pub struct McpState {
     /// In-flight forwarded calls awaiting a webview result.
     pub pending: Mutex<HashMap<u64, oneshot::Sender<Value>>>,
     pub call_seq: AtomicU64,
-    /// Cached at server start so request handling never touches the keychain.
     pub token: Mutex<Option<String>>,
     /// Present while the server runs; sending true triggers graceful shutdown.
     pub shutdown: Mutex<Option<watch::Sender<bool>>>,

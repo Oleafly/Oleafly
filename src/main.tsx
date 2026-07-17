@@ -17,6 +17,9 @@ import "@/styles/globals.css";
 
 // Must run before the shell mounts and reads the registry.
 registerContributions();
+if (import.meta.env.DEV) {
+  void import("@/lib/e2e-probe").then(({ installE2ePdfProbe }) => installE2ePdfProbe());
+}
 
 // Log otherwise-invisible failures so they can be diagnosed from a bug report.
 window.addEventListener("unhandledrejection", (e) => {
