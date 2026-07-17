@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Limited supported release targets to macOS Apple Silicon, Windows x64, and Linux x64, removing unsupported macOS downloader and CI paths.
+- Aligned public and private documentation with authenticated encrypted local storage for AI, GitHub, and MCP credentials, including its same-user threat-model limitation.
 - Generalized templates, AI tools and prompts, preflight coverage, formatting, citations, exports, SyncTeX, figures, and UI controls around typed engine capability flags.
 - Strengthened project trust boundaries with transactional creation, persisted-engine validation, exact export authorization, safer archive extraction, and fail-closed capability loading.
 - Improved release trust through consistent AGPL documentation, dependency auditing, accessibility fixes, PDF lifecycle cleanup, bounded caches and logs, serialized chat persistence, and supervised process-tree termination.
@@ -24,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Added native E2E coverage that verifies source edits, full replacements, and reversions change the compiled PDF, with extraction failures reported instead of accepted as blank output.
+- Serialized encrypted-secret transactions across threads and processes, made first-run key creation atomic, eliminated shared temporary paths, and surfaced corrupted GitHub and MCP secret storage instead of treating it as missing credentials.
 - Removed repeated OS authorization prompts for AI providers by moving AI credentials into an authenticated encrypted owner-only local store.
 - Made interrupted E2E runs release their process tree, port, socket, and shared runner lock, with bounded TERM-to-KILL escalation.
 - Reused checksum-validated sidecar archives without executing untrusted existing binaries or downloading trusted assets again.
@@ -43,14 +47,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replaced modal E2E shortcuts through hidden DOM state with independent keyboard and focus-restoration flows available to users.
 - Restored an accessible Home label on the editor control that returns to the project library.
 - Prevented the file tree from returning an unstable empty Zustand snapshot while engine metadata loads, which crashed the project editor with a maximum update-depth error.
-- Added checksum-pinned Typst acquisition for Intel macOS and ARM Linux development hosts.
+- Added checksum-pinned Typst acquisition for ARM Linux development hosts.
 - Corrected the managed Windows Pandoc archive member to `pandoc-3.9.0.2/pandoc.exe` and added exact ZIP extraction regressions for valid, basename-only, wrong-version, and unsafe paths.
 - Rejected symlinked or reparse-point project build directories before artifact cleanup, compiler execution, or output writes.
 - Replaced Typst code-string masking with a linear lexical scan that remains bounded on marker-heavy lines.
 - Deferred the initial preview compile until document engine metadata is loaded.
 - Restored PDF pinch and Ctrl-wheel zoom after compiled output first appears.
 - Limited editor bold and italic shortcuts to source files owned by the project engine.
-- Restored the checksum-pinned Pandoc and Tectonic pipeline on Intel macOS and ARM Linux.
+- Restored the checksum-pinned Pandoc and Tectonic pipeline on ARM Linux.
 - Kept the last successful PDF visible while recompiling and after compiler failures.
 - Prevented delayed main-document updates from overwriting a newly opened project's engine state.
 - Prevented the advanced-settings toggle from resetting the selected settings section.
@@ -480,7 +484,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Smoother large documents** - the grammar/spell pass is skipped above a
   generous size threshold so a book-length file no longer janks the editor.
 - Cross-platform release pipeline producing downloadable installers for macOS
-  (Apple Silicon + Intel), Windows, and Linux.
+  Apple Silicon, Windows x64, and Linux x64.
 - Contributor docs: `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`,
   issue/PR templates.
 - Regression tests for path sandboxing (`resolve_within`, `validate_project_id`).

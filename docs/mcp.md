@@ -132,7 +132,10 @@ Your MCP client (Claude Desktop, Claude Code, and others) already asks you to ap
 - **Auto-approve edits, confirm deletes**: writes and renames apply immediately; deletes still show a card. **Always allow writes** on a card sets this for the current session.
 - **Trust this connection**: OpenLeaf never prompts. Your client's own approval is the only gate, deletes included. Use this when your client already confirms every tool call and you want a frictionless flow.
 - **Read-only mode** (separate toggle) removes mutating tools from `tools/list` entirely, so an external app can read and compile but never modify files, whatever the policy.
-- **Bearer token**: 256-bit random value, stored in the OS keychain (or the same 0600 config fallback used for other secrets). `get_config` never sends the token to the webview; only Settings connection info does, while the server is running.
+- **Bearer token**: 256-bit random value stored in authenticated encrypted
+  local storage under `~/.openleaf/`. `get_config` never sends the token to the
+  webview. Only Settings connection info exposes it while the server is
+  running.
 - **Localhost only**: bind address is `127.0.0.1`. Requests with a browser `Origin` header are rejected, and `Host` must be loopback.
 - **No arbitrary paths**: tools only touch the open project under the OpenLeaf projects directory, through the same sandbox as the built-in tools.
 

@@ -123,8 +123,11 @@ engine capability becomes truthful. Do not add extension-based UI exceptions.
 ## Where state lives
 
 - Config: `~/.openleaf/config.json` (`0600` on Unix). Non-secret preferences
-  live here. GitHub credentials use the OS keychain when available and
-  fall back to the owner-only config file when it is not.
+  live here.
+- Secrets: `~/.openleaf/ai-secrets.json` and
+  `~/.openleaf/app-secrets.json`, encrypted with the owner-only
+  `~/.openleaf/ai-secrets.key`. GitHub and MCP share `app-secrets.json`. AI
+  provider credentials use `ai-secrets.json`.
 - Projects: `~/.openleaf/projects/<id>/`, plain folders with `.git`.
 - App log: `~/.openleaf/app.log`.
 
@@ -149,4 +152,6 @@ OAuth device flow runs server-side in Rust (`src-tauri/src/github.rs`) because t
 
 ## Releasing
 
-Packaging and signing are still being set up. The goal is a notarized `.dmg` (macOS), signed `.msi`/`.exe` (Windows x64), and `.AppImage`/`.deb` (Linux), each with matching Tectonic and Typst sidecars fetched and smoke-tested in CI.
+Packaging targets macOS Apple Silicon, Windows x64, and Linux x64, each with
+matching Tectonic and Typst sidecars fetched and smoke-tested in CI. Signing and
+notarization are deferred until the maintainer explicitly reopens that work.

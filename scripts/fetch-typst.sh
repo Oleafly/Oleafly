@@ -21,8 +21,6 @@ asset_for() {
   case "$1" in
     aarch64-apple-darwin)
       echo "typst-aarch64-apple-darwin.tar.xz:tar:fe53838737abf93a774495952a1a797b4686e9c4a21c2d99b9fdf77f46cc3572" ;;
-    x86_64-apple-darwin)
-      echo "typst-x86_64-apple-darwin.tar.xz:tar:30210c7c539c7954db94c063cd98b43fd0a0cad285d656dbbce2a40aee2e79be" ;;
     aarch64-unknown-linux-gnu)
       echo "typst-aarch64-unknown-linux-musl.tar.xz:tar:cdf50ffc7b8ba759ed02200632eda3d78eb8b99aacb6611f4f75684990647620" ;;
     x86_64-pc-windows-msvc)
@@ -105,7 +103,7 @@ fetch() {
 
 case "${1:-}" in
   all)
-    for target in aarch64-apple-darwin x86_64-apple-darwin aarch64-unknown-linux-gnu x86_64-pc-windows-msvc x86_64-unknown-linux-gnu; do
+    for target in aarch64-apple-darwin aarch64-unknown-linux-gnu x86_64-pc-windows-msvc x86_64-unknown-linux-gnu; do
       fetch "$target"
     done
     ;;
