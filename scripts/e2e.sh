@@ -98,11 +98,13 @@ if [ "$has_spec" -eq 1 ]; then
   start_app
   pnpm exec playwright test -c e2e/playwright.config.ts "$@"
 else
+  suite_status=0
   for spec in e2e/tests/*.spec.ts; do
     start_app
     if ! pnpm exec playwright test -c e2e/playwright.config.ts "$@" "$spec"; then
-      exit 1
+      suite_status=1
     fi
     stop_app
   done
+  exit "$suite_status"
 fi
