@@ -186,7 +186,7 @@ export function NewProjectDialog({
   colorOptions: { name: string; hex: string }[];
   defaultColor: string;
 }) {
-  const { Button, Tooltip, Select } = kit;
+  const { Button, Input, Tooltip, Select } = kit;
   const [step, setStep] = useState<1 | 2>(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -371,7 +371,7 @@ export function NewProjectDialog({
               <div className="flex items-center gap-2 border-b px-4 py-2.5">
                 <div className="relative flex-1">
                   <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <input
+                  <Input
                     ref={searchRef}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
@@ -507,7 +507,7 @@ export function NewProjectDialog({
                 >
                   Project name
                 </label>
-                <input
+                <Input
                   id="new-project-name"
                   ref={nameRef}
                   value={name}

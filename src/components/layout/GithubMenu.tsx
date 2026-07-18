@@ -1,8 +1,15 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { ChevronDown, ExternalLink, Github, Link as LinkIcon } from "lucide-react";
 import { useGithubStore } from "@/store/github";
 import { useSettingsStore } from "@/store/settings";
 import { Tooltip } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 export function GithubMenu({
@@ -30,8 +37,8 @@ export function GithubMenu({
   };
 
   return (
-    <div className="relative">
-      <div className="flex h-7 items-center overflow-hidden rounded-md border bg-background">
+    <DropdownMenu open={open} onOpenChange={setOpen}>
+      <div className="flex h-7 items-center overflow-hidden rounded-md">
         {connected && (
           <>
             <Tooltip label={`Connected as @${login} · GitHub settings`} side="bottom">
@@ -55,86 +62,45 @@ export function GithubMenu({
         )}
 
         <Tooltip label="GitHub" side="bottom">
-          <button type="button"
-            onClick={() => setOpen((v) => !v)}
-            aria-label="GitHub actions"
-            className={cn(
-              "flex h-full items-center gap-0.5 px-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
-              connected ? "rounded-r-md" : "rounded-md",
-            )}
-          >
-            <Github className="size-4" />
-            <ChevronDown className="size-3 shrink-0 opacity-60" />
-          </button>
+          <DropdownMenuTrigger asChild>
+            <button type="button"
+              aria-label="GitHub actions"
+              className={cn(
+                "flex h-full items-center gap-0.5 px-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                connected ? "rounded-r-md" : "rounded-md",
+              )}
+            >
+              <Github className="size-4" />
+              <ChevronDown className="size-3 shrink-0 opacity-60" />
+            </button>
+          </DropdownMenuTrigger>
         </Tooltip>
       </div>
 
-      {open && (
-        <>
-          <button type="button" aria-label="Close GitHub menu" className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-9 z-50 w-56 rounded-md border bg-popover p-1 text-popover-foreground shadow-xl">
-            <MenuButton
-              icon={<ExternalLink className="size-4 text-muted-foreground" />}
-              label="Open in GitHub"
-              disabled={!githubUrl}
-              onClick={() => {
-                onOpenInGithub();
-                setOpen(false);
-              }}
-            />
-            <MenuButton
-              icon={<LinkIcon className="size-4 text-muted-foreground" />}
-              label="Copy repository link"
-              disabled={!githubUrl}
-              onClick={() => {
-                onCopyLink();
-                setOpen(false);
-              }}
-            />
-            {!githubUrl && (
-              <p className="px-2 py-1 pl-8 text-[10px] text-muted-foreground">
-                Push to GitHub to enable these
-              </p>
-            )}
-            {!connected && (
-              <>
-                <div className="my-1 h-px bg-border" />
-                <MenuButton
-                  icon={<Github className="size-4 text-muted-foreground" />}
-                  label="Connect GitHub…"
-                  onClick={openSettings}
-                />
-              </>
-            )}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-function MenuButton({
-  icon,
-  label,
-  disabled,
-  onClick,
-}: {
-  icon: ReactNode;
-  label: string;
-  disabled?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={cn(
-        "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent",
-        disabled && "cursor-not-allowed opacity-40 hover:bg-transparent",
-      )}
-    >
-      {icon}
-      <span className="truncate">{label}</span>
-    </button>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuItem disabled={!githubUrl} onSelect={onOpenInGithub}>
+          <ExternalLink className="size-4 text-muted-foreground" />
+          <span className="truncate">Open in GitHub</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem disabled={!githubUrl} onSelect={onCopyLink}>
+          <LinkIcon className="size-4 text-muted-foreground" />
+          <span className="truncate">Copy repository link</span>
+        </DropdownMenuItem>
+        {!githubUrl && (
+          <p className="px-2 py-1 pl-8 text-[10px] text-muted-foreground">
+            Push to GitHub to enable these
+          </p>
+        )}
+        {!connected && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={openSettings}>
+              <Github className="size-4 text-muted-foreground" />
+              <span className="truncate">Connect GitHub…</span>
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

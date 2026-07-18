@@ -6,6 +6,7 @@ import type { CitationHit } from "@/lib/citation/types";
 import { toast } from "@/lib/toast";
 import { objectKey } from "@/lib/react-key";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
+import { Input } from "@/components/ui/input";
 
 type Status = "idle" | "loading" | "hits" | "preview" | "error";
 
@@ -102,7 +103,7 @@ export function AddCitationDialog() {
         <div className="border-b p-3">
           <div className="flex items-center gap-2 rounded-md border border-input bg-background py-1 pl-2.5 pr-1">
             <Search className="size-4 shrink-0 text-muted-foreground" />
-            <input
+            <Input
               data-modal-initial-focus
               value={input}
               onChange={(e) => setInput(e.target.value)}

@@ -48,7 +48,10 @@ test("a real streamed conversation round-trips and records usage", async ({ taur
     `document.body.innerText.includes('MOCKPONG42') && !document.querySelector('[aria-label="Stop"]')`,
     30_000,
   );
-  await expect(tauriPage.getByTestId("ai-chat-usage")).toBeVisible({ timeout: 5_000 });
+  await expect(tauriPage.getByTestId("ai-chat-usage")).not.toBeVisible();
+  await tauriPage.getByLabel("View AI usage").click();
+  await expect(tauriPage.getByTestId("ai-run-usage")).toBeVisible({ timeout: 5_000 });
+  await expect(tauriPage.getByTestId("ai-chat-usage")).toBeVisible();
 });
 
 test("the assistant runs a real tool call end to end", async ({ tauriPage }) => {

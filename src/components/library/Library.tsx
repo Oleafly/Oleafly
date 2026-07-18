@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Bookmark, Check, FileText, GitFork, Moon, Palette, Plus, Search, Sun, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { SettingsMenu } from "@/components/layout/SettingsMenu";
 import { LeafLogo } from "@/components/layout/LeafLogo";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -337,7 +338,7 @@ export function Library() {
               Copies <span className="font-medium text-foreground">{forkTarget.name}</span> and its full history into a new project.
             </p>
             <div className="flex items-center gap-2">
-              <input
+              <Input
                 data-modal-initial-focus
                 value={forkName}
                 onChange={(e) => setForkName(e.target.value)}

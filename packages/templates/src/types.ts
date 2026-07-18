@@ -1,4 +1,4 @@
-import type { ComponentType, ReactNode } from "react";
+import type { ComponentPropsWithRef, ComponentType, ReactNode } from "react";
 
 // A structural subset of the host's richer manifest type; extra fields pass
 // through untouched.
@@ -26,6 +26,7 @@ export interface TemplatesHost {
 }
 
 export interface TemplatesKit {
+  Input: ComponentType<ComponentPropsWithRef<"input">>;
   Button: ComponentType<{
     variant?: "default" | "secondary" | "outline" | "ghost" | "destructive" | "link";
     size?: "default" | "sm" | "lg" | "icon";

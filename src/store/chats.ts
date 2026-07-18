@@ -23,6 +23,8 @@ export interface ChatMessage {
   id?: string;
   role: "user" | "assistant";
   content: string;
+  checkpointOid?: string;
+  checkpointRestored?: boolean;
   toolCalls?: ToolEntry[];
   attachments?: AttachmentMeta[];
   // Legacy single-block chain-of-thought; still read for chats persisted

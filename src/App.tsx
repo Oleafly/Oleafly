@@ -1,5 +1,10 @@
 import { lazy, Suspense, useEffect, useRef, type ReactNode } from "react";
-import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
+import {
+  PanelGroup,
+  Panel,
+  PanelResizeHandle,
+  type ImperativePanelHandle,
+} from "react-resizable-panels";
 import { ThemeProvider } from "@/lib/theme";
 import { TopToolbar } from "@/components/layout/TopToolbar";
 import { Rail } from "@/components/layout/Rail";
@@ -62,12 +67,12 @@ function VHandle({
   placement?: "top" | "center" | "bottom";
 }) {
   return (
-    <div className="relative flex w-3 shrink-0 cursor-col-resize">
+    <div className="resize-handle-col relative flex w-3 shrink-0">
       <PanelResizeHandle
         id={id}
         style={{ cursor: "col-resize" }}
         className={cn(
-          "group absolute inset-0 flex cursor-col-resize items-center justify-center",
+          "group absolute inset-0 flex items-center justify-center",
           "transition-colors hover:bg-accent/40"
         )}
       >
@@ -139,11 +144,40 @@ export default function App() {
   const editorFontFamily = useSettingsStore((s) => s.editorFontFamily);
   const accentColor = useSettingsStore((s) => s.accentColor);
   const chatFloating = useSettingsStore((s) => s.chatFloating);
+  const railTab = useSettingsStore((s) => s.railTab);
+  const sidebarPanelRef = useRef<ImperativePanelHandle>(null);
+  const previousRailTabRef = useRef(railTab);
+  const sidebarSizeBeforeAiRef = useRef<number | null>(null);
 
   useEffect(() => {
     void refreshProjects();
     void useGithubStore.getState().refresh();
   }, [refreshProjects]);
+
+  useEffect(() => {
+    const wasAi = previousRailTabRef.current === "ai" || previousRailTabRef.current === "chat";
+    const isAi = railTab === "ai" || railTab === "chat";
+    previousRailTabRef.current = railTab;
+
+    if (isAi && !wasAi) {
+      useSettingsStore.getState().setChatFloating(false);
+      setViewMode("pdf");
+      window.requestAnimationFrame(() => {
+        const panel = sidebarPanelRef.current;
+        if (!panel) return;
+        sidebarSizeBeforeAiRef.current = panel.getSize();
+        panel.resize(50);
+      });
+      return;
+    }
+
+    if (!isAi && wasAi) {
+      const previousSize = sidebarSizeBeforeAiRef.current;
+      sidebarSizeBeforeAiRef.current = null;
+      if (previousSize == null) return;
+      window.requestAnimationFrame(() => sidebarPanelRef.current?.resize(previousSize));
+    }
+  }, [railTab, setViewMode]);
 
   // No-op in dev / the browser; only prompts if an update is actually available.
   useEffect(() => {
@@ -392,7 +426,15 @@ export default function App() {
           <PanelGroup direction="horizontal" className="flex-1">
             {showTree && (
               <>
-                <Panel id="sidebar" order={1} defaultSize={15} minSize={12} maxSize={42} className="bg-sidebar">
+                <Panel
+                  ref={sidebarPanelRef}
+                  id="sidebar"
+                  order={1}
+                  defaultSize={15}
+                  minSize={12}
+                  maxSize={65}
+                  className="bg-sidebar"
+                >
                   <Sidebar />
                 </Panel>
                 <VHandle id="h-tree" />

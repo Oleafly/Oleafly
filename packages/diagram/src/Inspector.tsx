@@ -5,6 +5,7 @@ import type {
   EdgeRouting,
   EdgeArrow,
   EdgeStyle,
+  DiagramFontFamily,
 } from "@openleaf/latex";
 import { BringToFront, ChevronsDown, ChevronsUp, SendToBack } from "lucide-react";
 import { useDiagramKit } from "./kit";
@@ -15,6 +16,11 @@ const ROUNDABLE = new Set(["rectangle", "roundrect", "text"]);
 const FONT_SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28];
 const RADII = [0, 2, 4, 6, 8, 12, 16, 24];
 const WIDTHS = [0.5, 1, 1.5, 2, 3];
+const FONTS = [
+  { value: "serif", label: "Serif" },
+  { value: "sans", label: "Sans Serif" },
+  { value: "mono", label: "Monospace" },
+];
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -26,12 +32,11 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 function ColorInput({ value, onChange }: { value?: string; onChange: (v: string) => void }) {
+  const { ColorInput: ColorControl } = useDiagramKit();
   return (
-    <input
-      type="color"
+    <ColorControl
       value={value || "#ffffff"}
       onChange={(e) => onChange(e.target.value)}
-      className="h-6 w-10 cursor-pointer rounded border bg-background"
     />
   );
 }
@@ -77,7 +82,7 @@ export function Inspector({
   onEdgeChange: (patch: Partial<DiagEdge>) => void;
   onReorder?: (dir: ReorderDir) => void;
 }) {
-  const { Tooltip } = useDiagramKit();
+  const { Input, Tooltip } = useDiagramKit();
   if (!node && !edge) return null;
 
   if (node) {
@@ -111,7 +116,7 @@ export function Inspector({
         </div>
         <label className="flex flex-col gap-1 text-xs">
           <span className="text-muted-foreground">Label (LaTeX)</span>
-          <input
+          <Input
             value={node.label}
             onChange={(e) => onNodeChange({ label: e.target.value })}
             className="rounded border border-input bg-background px-1.5 py-1 text-xs outline-none focus:border-primary"
@@ -160,7 +165,16 @@ export function Inspector({
             width="w-20"
           />
         </Field>
-        <Field label="Text color">
+        <Field label="Font">
+          <Pick
+            value={node.fontFamily ?? "serif"}
+            onChange={(v) =>
+              onNodeChange({ fontFamily: v as DiagramFontFamily })
+            }
+            options={FONTS}
+          />
+        </Field>
+        <Field label="Font color">
           <ColorInput value={node.textColor} onChange={(v) => onNodeChange({ textColor: v })} />
         </Field>
       </div>
@@ -172,7 +186,7 @@ export function Inspector({
       <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Arrow</div>
       <label className="flex flex-col gap-1 text-xs">
         <span className="text-muted-foreground">Label</span>
-        <input
+        <Input
           value={edge!.label || ""}
           onChange={(e) => onEdgeChange({ label: e.target.value })}
           className="rounded border border-input bg-background px-1.5 py-1 text-xs outline-none focus:border-primary"

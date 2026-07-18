@@ -462,7 +462,6 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         wrap.style.height = `${Math.floor(baseDimsRef.current.h * s)}px`;
         wrap.style.setProperty("--scale-factor", String(s));
         wrap.addEventListener("click", (ev: MouseEvent) => {
-          if (!(ev.metaKey || ev.ctrlKey)) return;
           if ((ev.target as HTMLElement)?.closest?.("a")) return;
           const hit = pageClickToBp(wrap, p, ev);
           if (hit) {
@@ -663,23 +662,6 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       if (raf) cancelAnimationFrame(raf);
     };
   }, [emitCurrentPage, data]);
-
-  // Crosshair cursor only while ⌘/Ctrl is held - the SyncTeX-click hint.
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    const set = (on: boolean) => {
-      container.style.cursor = on ? "crosshair" : "";
-    };
-    const down = (e: KeyboardEvent) => set(e.metaKey || e.ctrlKey);
-    const up = (e: KeyboardEvent) => set(e.metaKey || e.ctrlKey);
-    window.addEventListener("keydown", down);
-    window.addEventListener("keyup", up);
-    return () => {
-      window.removeEventListener("keydown", down);
-      window.removeEventListener("keyup", up);
-    };
-  }, [data]);
 
   if (!data) return null;
   // The page wrappers are appended imperatively; switching the container between

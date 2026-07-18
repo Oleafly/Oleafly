@@ -21,6 +21,14 @@ import {
 import { save } from "@tauri-apps/plugin-dialog";
 import { open } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import { useInitialFocus } from "@/components/ui/use-initial-focus";
@@ -133,16 +141,13 @@ export function TopToolbar() {
   const [exportKind, setExportKind] = useState<"presentation" | "book" | "doc">("doc");
 
   // Imperative read (not a subscription) to avoid re-rendering on every keystroke.
-  const openExportMenu = () => {
-    setDlOpen((v) => {
-      const next = !v;
-      if (next) {
-        const f = useFilesStore.getState();
-        const src = f.files[f.mainDoc]?.content ?? "";
-        setExportKind(classifyDoc(src));
-      }
-      return next;
-    });
+  const setExportMenuOpen = (open: boolean) => {
+    if (open) {
+      const f = useFilesStore.getState();
+      const src = f.files[f.mainDoc]?.content ?? "";
+      setExportKind(classifyDoc(src));
+    }
+    setDlOpen(open);
   };
   const [githubUrl, setGithubUrl] = useState<string | null>(null);
 
@@ -275,7 +280,7 @@ export function TopToolbar() {
         <ChevronRight className="size-4 text-muted-foreground/50" />
         {editingTitle ? (
           <span ref={titleEditRef} className="flex items-center gap-1">
-            <input
+            <Input
               ref={titleInputRef}
               aria-label="Project name"
               value={titleDraft}
@@ -383,35 +388,33 @@ export function TopToolbar() {
           </Tooltip>
         )}
 
-        <div className="relative">
+        <DropdownMenu open={dlOpen} onOpenChange={setExportMenuOpen}>
           <Tooltip label="Export">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-muted-foreground hover:text-foreground"
-              onClick={openExportMenu}
-              aria-label="Export"
-            >
-              <Download className="size-4" />
-            </Button>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground hover:text-foreground"
+                aria-label="Export"
+              >
+                <Download className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
           </Tooltip>
-          {dlOpen && (
-            <>
-              <button type="button" aria-label="Close download menu" className="fixed inset-0 z-40" onClick={() => setDlOpen(false)} />
-              <div className="absolute right-0 top-9 z-50 w-60 rounded-md border bg-popover p-1 text-popover-foreground shadow-xl">
-                <button type="button" onClick={() => void doDownloadZip()} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
+          <DropdownMenuContent align="end" className="w-60">
+                <DropdownMenuItem onSelect={() => void doDownloadZip()}>
                   <FileArchive className="size-4 text-muted-foreground" />
                   Export source (.zip)
-                </button>
-                {engine.capabilities.produces_pdf && <button type="button" onClick={() => void doDownloadPdf()} disabled={!pdfBytes} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent disabled:opacity-40">
+                </DropdownMenuItem>
+                {engine.capabilities.produces_pdf && <DropdownMenuItem onSelect={() => void doDownloadPdf()} disabled={!pdfBytes}>
                   <FileText className="size-4 text-muted-foreground" />
                   Export as PDF {projectKind === "image" ? "(vector image)" : ""}
-                </button>}
+                </DropdownMenuItem>}
                 {projectKind === "image" && (
-                  <button type="button" onClick={() => void doExportPng()} disabled={!pdfBytes} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent disabled:opacity-40">
+                  <DropdownMenuItem onSelect={() => void doExportPng()} disabled={!pdfBytes}>
                     <ImagePlay className="size-4 text-muted-foreground" />
                     Export as PNG (raster image)
-                  </button>
+                  </DropdownMenuItem>
                 )}
                 {!pdfBytes && (
                   <p className="px-2 py-1 pl-8 text-[10px] text-muted-foreground">
@@ -420,41 +423,41 @@ export function TopToolbar() {
                 )}
                 {projectKind !== "image" && engine.capabilities.conversion_exports.length > 0 && (
                   <>
-                    <div className="my-1 h-px bg-border" />
-                    {engine.capabilities.conversion_exports.includes("docx") && <button type="button" onClick={() => void doExportFormat("docx")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
+                    <DropdownMenuSeparator />
+                    {engine.capabilities.conversion_exports.includes("docx") && <DropdownMenuItem onSelect={() => void doExportFormat("docx")}>
                       <FileType className="size-4 text-muted-foreground" />
                       Export as Word (.docx)
-                    </button>}
-                    {engine.capabilities.conversion_exports.includes("html") && <button type="button" onClick={() => void doExportFormat("html")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
+                    </DropdownMenuItem>}
+                    {engine.capabilities.conversion_exports.includes("html") && <DropdownMenuItem onSelect={() => void doExportFormat("html")}>
                       <FileType className="size-4 text-muted-foreground" />
                       Export as HTML (.html)
-                    </button>}
-                    {engine.capabilities.conversion_exports.includes("md") && <button type="button" onClick={() => void doExportFormat("md")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
+                    </DropdownMenuItem>}
+                    {engine.capabilities.conversion_exports.includes("md") && <DropdownMenuItem onSelect={() => void doExportFormat("md")}>
                       <FileType className="size-4 text-muted-foreground" />
                       Export as Markdown (.md)
-                    </button>}
-                    {engine.capabilities.conversion_exports.includes("txt") && <button type="button" onClick={() => void doExportFormat("txt")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
+                    </DropdownMenuItem>}
+                    {engine.capabilities.conversion_exports.includes("txt") && <DropdownMenuItem onSelect={() => void doExportFormat("txt")}>
                       <FileType className="size-4 text-muted-foreground" />
                       Export as Plain text (.txt)
-                    </button>}
+                    </DropdownMenuItem>}
                   </>
                 )}
                 {exportKind === "presentation" && engine.capabilities.conversion_exports.includes("pptx") && (
                   <>
-                    <div className="my-1 h-px bg-border" />
-                    <button type="button" onClick={() => void doExportFormat("pptx")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={() => void doExportFormat("pptx")}>
                       <Presentation className="size-4 text-muted-foreground" />
                       Export as PowerPoint (.pptx)
-                    </button>
+                    </DropdownMenuItem>
                   </>
                 )}
                 {exportKind === "book" && engine.capabilities.conversion_exports.includes("epub") && (
                   <>
-                    <div className="my-1 h-px bg-border" />
-                    <button type="button" onClick={() => void doExportFormat("epub")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={() => void doExportFormat("epub")}>
                       <BookOpen className="size-4 text-muted-foreground" />
                       Export as EPUB (.epub)
-                    </button>
+                    </DropdownMenuItem>
                   </>
                 )}
                 {exporting && (
@@ -462,10 +465,8 @@ export function TopToolbar() {
                     {`Exporting .${exporting}…`}
                   </p>
                 )}
-              </div>
-            </>
-          )}
-        </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <Tooltip label="History">
           <Button
@@ -531,7 +532,7 @@ export function TopToolbar() {
             Copies <span className="font-medium text-foreground">{projectName}</span> and its full history into a new project.
           </p>
           <div className="flex items-center gap-2">
-            <input
+            <Input
               data-modal-initial-focus
               value={forkName}
               onChange={(e) => setForkName(e.target.value)}

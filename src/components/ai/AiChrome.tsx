@@ -3,6 +3,7 @@ import { Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const AI_GRADIENT = "from-[#4285F4] via-[#9B72CB] to-[#D96570]";
+export const AI_PROMPT_SURFACE = "ai-prompt-surface";
 
 export function AiMark({ className }: { className?: string }) {
   return (
@@ -27,17 +28,17 @@ export function AiChrome({
   return (
     <div
       className={cn(
-        "rounded-xl bg-gradient-to-br p-[1.5px] shadow-lg shadow-[#9B72CB]/20",
+        "rounded-xl bg-gradient-to-br p-0.5 shadow-lg shadow-[#9B72CB]/20",
         AI_GRADIENT,
         className,
       )}
     >
       <div
-        className={cn("rounded-[10px] backdrop-blur-sm", contentClassName)}
-        style={{
-          background:
-            "linear-gradient(135deg, rgba(66,133,244,0.10) 0%, rgba(155,114,203,0.12) 50%, rgba(217,101,112,0.10) 100%), var(--background)",
-        }}
+        className={cn(
+          AI_PROMPT_SURFACE,
+          "rounded-[10px] backdrop-blur-sm",
+          contentClassName,
+        )}
       >
         {children}
       </div>

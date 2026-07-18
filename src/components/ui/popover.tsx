@@ -1,9 +1,6 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { useState, type ReactNode } from "react";
+import * as PopoverPrimitive from "@radix-ui/react-popover";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface PopoverProps {
@@ -22,52 +19,33 @@ export function Popover({
   ariaLabel,
 }: PopoverProps) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    const onEsc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onEsc);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onEsc);
-    };
-  }, [open]);
-
   return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-label={ariaLabel}
-        className={cn(
-          "flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
-          open && "bg-accent text-foreground"
-        )}
-      >
-        {trigger}
-      </button>
-      {open && (
-        <div
-          role="menu"
+    <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
+      <PopoverPrimitive.Trigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={ariaLabel}
+          className={cn("size-7 text-muted-foreground", open && "bg-accent text-foreground")}
+        >
+          {trigger}
+        </Button>
+      </PopoverPrimitive.Trigger>
+      <PopoverPrimitive.Portal>
+        <PopoverPrimitive.Content
+          align={align === "right" ? "end" : "start"}
+          sideOffset={4}
           onClick={() => setOpen(false)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === "Escape") setOpen(false);
-          }}
           className={cn(
-            "absolute top-full z-50 mt-1 min-w-[168px] rounded-md border bg-popover p-1 text-popover-foreground shadow-xl",
-            align === "right" ? "right-0" : "left-0",
-            className
+            "z-50 min-w-42 rounded-md border bg-popover p-1 text-popover-foreground shadow-xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+            className,
           )}
         >
           {children}
-        </div>
-      )}
-    </div>
+        </PopoverPrimitive.Content>
+      </PopoverPrimitive.Portal>
+    </PopoverPrimitive.Root>
   );
 }
 
@@ -79,12 +57,15 @@ export function PopoverItem({
   children: ReactNode;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex w-full cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent"
-    >
-      {children}
-    </button>
+    <PopoverPrimitive.Close asChild>
+      <Button
+        type="button"
+        variant="ghost"
+        onClick={onClick}
+        className="h-auto w-full justify-start px-2 py-1.5 text-left font-normal"
+      >
+        {children}
+      </Button>
+    </PopoverPrimitive.Close>
   );
 }

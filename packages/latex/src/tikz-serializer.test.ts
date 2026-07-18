@@ -62,7 +62,75 @@ describe("modelToTikz", () => {
       ],
     };
     const tikz = modelToTikz(handledModel);
-    expect(tikz).toContain("\\draw[<->, dotted] (a.south) to[out=-90, in=0] (b.east);");
+    expect(tikz).toContain(
+      "\\draw[<->, dash pattern=on 0.038cm off 0.1cm, line cap=round, line width=0.025cm] (a.south) to[out=-90, in=0] (b.east);",
+    );
+  });
+
+  it("matches the canvas default bottom-to-top handles", () => {
+    const tikz = modelToTikz(model);
+    expect(tikz).toContain("(a.south) --");
+    expect(tikz).toContain("(b.north)");
+  });
+
+  it("serializes the full canvas orthogonal route", () => {
+    const tikz = modelToTikz({
+      ...model,
+      edges: [
+        {
+          id: "orthogonal",
+          source: "a",
+          target: "b",
+          routing: "orthogonal",
+          arrow: "forward",
+          style: "dashed",
+        },
+      ],
+    });
+    expect(tikz).toContain(
+      "(1,-1) -- (1,-1.5) -- (1,-2) -- (0.75,-2) -- (0.75,-2.5) -- (0.75,-3)",
+    );
+    expect(tikz).toContain("rounded corners=0.125cm");
+    expect(tikz).toContain("dash pattern=on 0.15cm off 0.1cm");
+  });
+
+  it("routes same-side and perpendicular handles without changing attachment sides", () => {
+    const sameSide = modelToTikz({
+      ...model,
+      edges: [
+        {
+          id: "same",
+          source: "a",
+          target: "b",
+          sourceHandle: "r",
+          targetHandle: "r",
+          routing: "orthogonal",
+          arrow: "both",
+          style: "solid",
+        },
+      ],
+    });
+    expect(sameSide).toContain(
+      "(2,-0.5) -- (2.5,-0.5) -- (2.5,-3.75) -- (2,-3.75) -- (1.5,-3.75)",
+    );
+
+    const perpendicular = modelToTikz({
+      ...model,
+      edges: [
+        {
+          id: "perpendicular",
+          source: "a",
+          target: "b",
+          sourceHandle: "b",
+          targetHandle: "l",
+          routing: "orthogonal",
+          arrow: "none",
+          style: "dotted",
+        },
+      ],
+    });
+    expect(perpendicular).toContain("(1,-1)");
+    expect(perpendicular).toContain("(0,-3.75)");
   });
 
   it("draws edges on the background layer so they sit behind the shapes", () => {
@@ -92,6 +160,22 @@ describe("modelToTikz", () => {
     expect(t).toContain("[diamond,");
   });
 
+  it("serializes each selectable font family", () => {
+    const fontModel: DiagramModel = {
+      version: 1,
+      nodes: [
+        { ...model.nodes[0], id: "serif", fontFamily: "serif" },
+        { ...model.nodes[0], id: "sans", fontFamily: "sans" },
+        { ...model.nodes[0], id: "mono", fontFamily: "mono" },
+      ],
+      edges: [],
+    };
+    const tikz = modelToTikz(fontModel);
+    expect(tikz).toContain("font=\\rmfamily");
+    expect(tikz).toContain("font=\\sffamily");
+    expect(tikz).toContain("font=\\ttfamily");
+  });
+
   it("maps a parallelogram to a TikZ trapezium (flowchart I/O)", () => {
     const t = modelToTikz({
       version: 1,
@@ -99,8 +183,8 @@ describe("modelToTikz", () => {
       edges: [],
     });
     expect(t).toContain("trapezium");
-    expect(t).toContain("trapezium left angle=70");
-    expect(t).toContain("trapezium right angle=110");
+    expect(t).toContain("trapezium left angle=62.82");
+    expect(t).toContain("trapezium right angle=117.17");
   });
 });
 

@@ -11,6 +11,7 @@ import { Outline } from "@/components/layout/Outline";
 import { cn } from "@/lib/utils";
 import { objectKey } from "@/lib/react-key";
 import { useInitialFocus } from "@/components/ui/use-initial-focus";
+import { Input } from "@/components/ui/input";
 
 function basename(p: string) {
   const i = p.lastIndexOf("/");
@@ -57,7 +58,7 @@ export function ProjectSearch() {
         </span>
       </div>
       <div className="border-b border-sidebar-border p-2">
-        <input
+        <Input
           ref={searchInputRef}
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -108,7 +109,7 @@ export function FilesPanel() {
       <PanelResizeHandle
         style={{ cursor: "row-resize" }}
         className={cn(
-          "group flex h-2.5 cursor-row-resize items-center justify-center",
+          "resize-handle-row group flex h-2.5 items-center justify-center",
           "transition-colors hover:bg-accent/40"
         )}
       >

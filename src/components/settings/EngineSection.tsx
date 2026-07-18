@@ -3,6 +3,7 @@ import { AlertTriangle, Check, Cpu, Download, Info, Loader2, Trash2, X } from "l
 import { useEngineStore } from "@/store/engine";
 import { LATEX_PACKAGES, type TaggingStatus } from "@/lib/latex-packages";
 import { Tooltip } from "@/components/ui/tooltip";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 const TAG_BADGE: Record<TaggingStatus, { label: string; className: string } | null> = {
@@ -79,7 +80,7 @@ export function EngineSection() {
         {!hasEngine && (
           <p className="mb-2 text-xs text-muted-foreground">Install an engine above to add or remove LaTeX packages.</p>
         )}
-        <input
+        <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Filter packages…"

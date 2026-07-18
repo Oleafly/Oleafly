@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { LeafLogo } from "@/components/layout/LeafLogo";
 import { Markdown } from "@/components/ui/markdown";
 import { findUpdate, installUpdate } from "@/lib/updater";
+import { Progress } from "@/components/ui/progress";
 import { logError } from "@/lib/log";
 
 const RELEASES_URL = "https://github.com/prajwal-svm/OpenLeaf/releases/latest";
@@ -139,12 +140,7 @@ export function UpdateWindow() {
             <p className="text-xs text-muted-foreground">
               {percent >= 100 ? "Installing…" : `Downloading… ${percent}%`}
             </p>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-primary transition-[width] duration-200"
-                style={{ width: `${percent}%` }}
-              />
-            </div>
+            <Progress value={percent} />
             <p className="text-[10px] text-muted-foreground">OpenLeaf will restart to finish.</p>
           </div>
         ) : phase === "available" && !selfInstallable ? (

@@ -11,6 +11,9 @@ import {
 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -152,7 +155,7 @@ function OllamaSetup({
         )}
       </div>
       {showHost && (
-        <input
+        <Input
           type="text"
           value={host}
           onChange={(e) => onHostChange(e.target.value)}
@@ -371,17 +374,17 @@ export function AISection() {
           const value = keys[p.id] ?? "";
           const saved = savedKeys[p.id] ?? "";
           const dirty = value.trim().length > 0 && value !== saved;
-          const isActive = activeProvider === p.id;
           const hasSaved = saved.length > 0;
-          const isOpen = openProviders[p.id] ?? isActive;
+          const isSelected = activeProvider === p.id;
+          const isActive = isSelected && hasSaved;
+          // Settings never recommends or expands a provider implicitly. The
+          // user chooses which card to inspect, including the active provider.
+          const isOpen = openProviders[p.id] ?? false;
           return (
             <div
               key={p.id}
               data-testid={`ai-provider-card-${p.id}`}
-              className={cn(
-                "rounded-lg border bg-background transition-colors",
-                isActive && "border-primary/40 ring-1 ring-primary/20"
-              )}
+              className="rounded-lg border bg-background transition-colors"
             >
               <div className="flex items-start gap-2 p-3">
                 <button
@@ -437,7 +440,7 @@ export function AISection() {
                 </div>
               ) : (
                 <div className="px-3 pb-3">
-                  {isActive && (
+                  {isSelected && (
                     <div className="mt-2 flex items-center gap-2">
                       <span className="text-[11px] text-muted-foreground">Model</span>
                       <Select
@@ -458,7 +461,7 @@ export function AISection() {
                     </div>
                   )}
                   <div className="mt-2 flex gap-2">
-                    <input
+                    <Input
                       type="password"
                       value={value}
                       onChange={(e) => setKeys((k) => ({ ...k, [p.id]: e.target.value }))}
@@ -514,7 +517,7 @@ export function AISection() {
           assistant follows these on top of its built-in behavior. They can't
           override its tools or safety rules.
         </p>
-        <textarea
+        <Textarea
           value={sysPrompt}
           onChange={(e) => setSysPrompt(e.target.value)}
           rows={5}
@@ -538,13 +541,13 @@ export function AISection() {
 
       <div className="space-y-2 border-t pt-4">
         <p className="font-medium">Agent capabilities</p>
-        <label className="flex cursor-pointer items-start gap-2.5 text-xs">
-          <input
-            type="checkbox"
+        <label htmlFor="ai-pdf-capture" className="flex cursor-pointer items-start gap-2.5 text-xs">
+          <Checkbox
+            id="ai-pdf-capture"
             className="mt-0.5"
             checked={cfg.ai_pdf_capture !== false}
-            onChange={(e) => {
-              const on = e.target.checked;
+            onCheckedChange={(checked) => {
+              const on = checked === true;
               const next = { ...cfg, ai_pdf_capture: on };
               setCfg(next);
               try {

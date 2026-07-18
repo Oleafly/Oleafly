@@ -9,6 +9,8 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useGithubStore } from "@/store/github";
 import { gitAutoCommit, gitPush, gitSetRemote } from "@/lib/tauri";
@@ -175,18 +177,19 @@ export function PublishToGitHubDialog({
             <div className="min-h-0 flex-1 overflow-auto p-4 text-sm">
               {tab === "new" ? (
                 <div className="space-y-3">
-                  <label className="block space-y-1.5">
+                  <label htmlFor="publish-repository-name" className="block space-y-1.5">
                     <span className="text-xs font-medium text-muted-foreground">
                       Repository name
                     </span>
-                    <input
+                    <Input
+                      id="publish-repository-name"
                       value={repoName}
                       onChange={(e) => setRepoName(e.target.value)}
                       aria-label="Repository name"
                       className="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-ring"
                     />
                   </label>
-                  <label className="flex cursor-pointer items-center justify-between rounded-md border bg-card p-3">
+                  <label htmlFor="publish-private-repository" className="flex cursor-pointer items-center justify-between rounded-md border bg-card p-3">
                     <span className="flex items-center gap-2">
                       <Lock className="size-4 text-muted-foreground" />
                       <span className="text-xs">
@@ -196,10 +199,10 @@ export function PublishToGitHubDialog({
                         </span>
                       </span>
                     </span>
-                    <input
-                      type="checkbox"
+                    <Checkbox
+                      id="publish-private-repository"
                       checked={isPrivate}
-                      onChange={(e) => setIsPrivate(e.target.checked)}
+                      onCheckedChange={(checked) => setIsPrivate(checked === true)}
                     />
                   </label>
                   <Button
@@ -219,7 +222,7 @@ export function PublishToGitHubDialog({
                 <div className="flex h-full flex-col gap-2">
                   <div className="flex items-center gap-2 rounded-md border px-2">
                     <Search className="size-3.5 text-muted-foreground" />
-                    <input
+                    <Input
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
                       placeholder="Search your repositories…"

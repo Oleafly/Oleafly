@@ -47,4 +47,37 @@ describe("pdfPageToPng cleanup", () => {
     expect(mocks.getDocument).toHaveBeenCalledOnce();
     expect(mocks.destroyWorker).toHaveBeenCalledOnce();
   });
+
+  it("passes a transparent background through to the PDF renderer", async () => {
+    vi.stubGlobal("Worker", class {});
+    const render = vi.fn(() => ({ promise: Promise.resolve() }));
+    const canvas = {
+      getContext: () => ({}),
+      toDataURL: () => "data:image/png;base64,alpha",
+      width: 0,
+      height: 0,
+    };
+    vi.stubGlobal("document", { createElement: () => canvas });
+    const page = {
+      getViewport: () => ({ width: 100, height: 100 }),
+      cleanup: mocks.cleanup,
+      render,
+    };
+    mocks.getDocument.mockImplementation(() => ({
+      promise: Promise.resolve({ numPages: 1, getPage: () => Promise.resolve(page) }),
+      destroy: mocks.destroyTask,
+    }));
+
+    const result = await pdfPageToPng(
+      new Uint8Array([1]),
+      1,
+      2,
+      "rgba(0,0,0,0)",
+    );
+
+    expect(result).toBe("data:image/png;base64,alpha");
+    expect(render).toHaveBeenCalledWith(
+      expect.objectContaining({ background: "rgba(0,0,0,0)" }),
+    );
+  });
 });

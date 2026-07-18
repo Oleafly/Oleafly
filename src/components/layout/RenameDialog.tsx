@@ -4,6 +4,7 @@ import { useIndexStore } from "@/store/project-index";
 import { getEditorView } from "@/components/editor/cm/controller";
 import { applyRename } from "@/lib/index/nav";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
+import { Input } from "@/components/ui/input";
 
 export function RenameDialog() {
   const sym = useRenameStore((s) => s.sym);
@@ -41,7 +42,7 @@ export function RenameDialog() {
         <p id="rename-title" className="text-sm font-semibold">
           Rename <span className="font-mono">{sym.name}</span>
         </p>
-        <input
+        <Input
           data-modal-initial-focus
           aria-label="New name"
           value={name}

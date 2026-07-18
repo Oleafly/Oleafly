@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useSettingsStore } from "@/store/settings";
 import { shortcut } from "@/lib/utils";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
@@ -79,7 +80,7 @@ export function HotkeysModal() {
         <div className="border-b border-sidebar-border p-3">
           <div className="flex items-center gap-2 rounded-md border border-input bg-background px-3">
             <Search className="size-4 text-muted-foreground" />
-            <input
+            <Input
               data-modal-initial-focus
               aria-label="Search shortcuts"
               value={q}

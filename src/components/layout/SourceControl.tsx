@@ -12,6 +12,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { useFilesStore } from "@/store/files";
 import { useDiffStore } from "@/store/diff";
 import {
@@ -392,7 +393,7 @@ export function SourceControl() {
         )}
 
         <div className="mt-3 flex flex-col gap-2 border-t border-sidebar-border pt-3">
-          <textarea
+          <Textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             rows={2}

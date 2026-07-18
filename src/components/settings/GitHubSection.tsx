@@ -7,6 +7,8 @@ import {
 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useGithubStore } from "@/store/github";
 import {
   gitCurrentBranch,
@@ -354,7 +356,7 @@ export function GitHubSection({
             </button>
             {showAdvanced && (
               <div className="flex gap-2 pt-1">
-                <input
+                <Input
                   type="password"
                   value={pat}
                   onChange={(e) => setPat(e.target.value)}
@@ -393,7 +395,7 @@ export function GitHubSection({
         {projectId ? (
           <>
             <div className="flex gap-2">
-              <input
+              <Input
                 value={remote}
                 onChange={(e) => setRemote(e.target.value)}
                 placeholder="https://github.com/you/repo.git"
@@ -421,17 +423,17 @@ export function GitHubSection({
               No repo yet? Create one and link it:
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <input
+              <Input
                 value={repoName}
                 onChange={(e) => setRepoName(e.target.value)}
                 placeholder={projectName || "repo-name"}
                 className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring"
               />
-              <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <input
-                  type="checkbox"
+              <label htmlFor="github-private-repository" className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Checkbox
+                  id="github-private-repository"
                   checked={isPrivate}
-                  onChange={(e) => setIsPrivate(e.target.checked)}
+                  onCheckedChange={(checked) => setIsPrivate(checked === true)}
                 />
                 Private
               </label>

@@ -8,6 +8,7 @@ import { Markdown } from "@/components/ui/markdown";
 import { installUpdate, runUpdateCheck } from "@/lib/updater";
 import { logError } from "@/lib/log";
 import { useUpdatesStore } from "@/store/updates";
+import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
 const RELEASES_URL = "https://github.com/prajwal-svm/OpenLeaf/releases";
@@ -150,12 +151,7 @@ export function UpdateChecker({ className }: { className?: string }) {
           <p className="text-xs text-muted-foreground">
             {state.percent >= 100 ? "Installing…" : `Downloading… ${state.percent}%`}
           </p>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-primary transition-[width] duration-200"
-              style={{ width: `${state.percent}%` }}
-            />
-          </div>
+          <Progress value={state.percent} />
           <p className="text-[10px] text-muted-foreground">
             OpenLeaf will restart to finish.
           </p>

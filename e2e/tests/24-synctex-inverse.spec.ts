@@ -1,7 +1,7 @@
 import { test, expect } from "../fixtures";
 import { openProject, pressGlobal } from "../helpers";
 
-test("Cmd-click on the PDF jumps to the word in the source", async ({ tauriPage }) => {
+test("clicking the PDF jumps to the word in the source", async ({ tauriPage }) => {
   test.setTimeout(180_000); // cold text-layer render can be slow
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
@@ -37,7 +37,7 @@ test("Cmd-click on the PDF jumps to the word in the source", async ({ tauriPage 
       const wrap = target.closest('[data-page]');
       if (!wrap) return false;
       wrap.dispatchEvent(new MouseEvent('click', {
-        bubbles: true, cancelable: true, metaKey: true,
+        bubbles: true, cancelable: true,
         clientX: r.left + r.width / 2, clientY: r.top + r.height / 2,
       }));
       return true;

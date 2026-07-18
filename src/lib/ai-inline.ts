@@ -1,9 +1,10 @@
 import { streamText } from "ai";
 import { getConfig } from "@/lib/tauri";
-import { resolveActiveModel } from "@/lib/ai-providers";
+import { resolveActiveModel, type AIConfigLike } from "@/lib/ai-providers";
 import type { DocumentEngineDescriptor } from "@/lib/tauri";
 
 export type InlineEditArgs = {
+  config?: AIConfigLike;
   engine?: DocumentEngineDescriptor;
   instruction: string;
   selection: string;
@@ -46,7 +47,7 @@ function stripFence(s: string): string {
 }
 
 export async function runInlineCompletion(args: InlineEditArgs): Promise<string> {
-  const cfg = await getConfig();
+  const cfg = args.config ?? (await getConfig());
   const { model } = resolveActiveModel(cfg);
   const prompt = [
     args.context?.before ? `Context before:\n${args.context.before}\n` : "",

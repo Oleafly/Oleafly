@@ -14,8 +14,11 @@ import {
   useKeyPress,
   MarkerType,
   ConnectionMode,
+  BaseEdge,
+  Position,
   type Node,
   type Edge,
+  type EdgeProps,
   type Connection,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
@@ -42,6 +45,10 @@ import {
   type DiagNode,
   type DiagEdge,
   type NodeShape,
+  type DiagramFontFamily,
+  orthogonalRoute,
+  type DiagramHandle,
+  type DiagramPoint,
   newId,
 } from "@openleaf/latex";
 import { cn } from "./cn";
@@ -57,6 +64,20 @@ const DEFAULTS: Record<NodeShape, { w: number; h: number; label: string }> = {
   parallelogram: { w: 140, h: 60, label: "Label" },
   text: { w: 90, h: 32, label: "Text" },
 };
+
+interface NodeStyleDefaults {
+  fill: string;
+  stroke: string;
+  shapeTextColor: string;
+  lightTextColor: string;
+  darkTextColor: string;
+  strokeStyle: DiagNode["strokeStyle"];
+  strokeWidth: number;
+  fontSize: number;
+  fontFamily: DiagramFontFamily;
+  radius: number;
+  radiusCustomized: boolean;
+}
 
 const PALETTE: { shape: NodeShape; label: string; icon: React.ReactNode; seed?: string }[] = [
   { shape: "rectangle", label: "Rectangle", icon: <Square className="size-4" /> },
@@ -87,7 +108,91 @@ const PALETTE: { shape: NodeShape; label: string; icon: React.ReactNode; seed?: 
 ];
 
 const routingToType = (r: DiagEdge["routing"]) =>
-  r === "orthogonal" ? "smoothstep" : r === "curved" ? "default" : "straight";
+  r === "orthogonal" ? "diagramOrthogonal" : r === "curved" ? "default" : "straight";
+
+const positionHandle: Record<Position, DiagramHandle> = {
+  [Position.Top]: "t",
+  [Position.Right]: "r",
+  [Position.Bottom]: "b",
+  [Position.Left]: "l",
+};
+
+function pointDistance(a: DiagramPoint, b: DiagramPoint) {
+  return Math.hypot(b.x - a.x, b.y - a.y);
+}
+
+function roundedBend(
+  previous: DiagramPoint,
+  point: DiagramPoint,
+  next: DiagramPoint,
+  radius: number,
+) {
+  const size = Math.min(
+    pointDistance(previous, point) / 2,
+    pointDistance(point, next) / 2,
+    radius,
+  );
+  if (
+    (previous.x === point.x && point.x === next.x) ||
+    (previous.y === point.y && point.y === next.y)
+  ) {
+    return `L${point.x} ${point.y}`;
+  }
+  if (previous.y === point.y) {
+    const xDirection = previous.x < next.x ? -1 : 1;
+    const yDirection = previous.y < next.y ? 1 : -1;
+    return `L${point.x + size * xDirection},${point.y}Q${point.x},${point.y} ${point.x},${point.y + size * yDirection}`;
+  }
+  const xDirection = previous.x < next.x ? 1 : -1;
+  const yDirection = previous.y < next.y ? -1 : 1;
+  return `L${point.x},${point.y + size * yDirection}Q${point.x},${point.y} ${point.x + size * xDirection},${point.y}`;
+}
+
+function DiagramOrthogonalEdge({
+  sourceX,
+  sourceY,
+  sourcePosition,
+  targetX,
+  targetY,
+  targetPosition,
+  markerStart,
+  markerEnd,
+  style,
+  label,
+  interactionWidth,
+}: EdgeProps) {
+  const route = orthogonalRoute(
+    { x: sourceX, y: sourceY },
+    { x: targetX, y: targetY },
+    positionHandle[sourcePosition],
+    positionHandle[targetPosition],
+  );
+  let path = `M${route.points[0].x} ${route.points[0].y}`;
+  for (let index = 1; index < route.points.length - 1; index += 1) {
+    path += roundedBend(
+      route.points[index - 1],
+      route.points[index],
+      route.points[index + 1],
+      5,
+    );
+  }
+  const last = route.points[route.points.length - 1];
+  path += `L${last.x} ${last.y}`;
+  return (
+    <BaseEdge
+      path={path}
+      label={label}
+      labelX={route.label.x}
+      labelY={route.label.y}
+      markerStart={markerStart}
+      markerEnd={markerEnd}
+      style={style}
+      interactionWidth={interactionWidth}
+    />
+  );
+}
+
+const edgeTypes = { diagramOrthogonal: DiagramOrthogonalEdge };
 
 function modelNodeToRf(n: DiagNode): Node {
   return {
@@ -105,6 +210,7 @@ function modelNodeToRf(n: DiagNode): Node {
       strokeWidth: n.strokeWidth,
       textColor: n.textColor,
       fontSize: n.fontSize,
+      fontFamily: n.fontFamily,
       radius: n.radius,
     },
   };
@@ -151,6 +257,7 @@ function rfNodeToModel(n: Node): DiagNode {
     strokeWidth: d.strokeWidth as number | undefined,
     textColor: d.textColor as string | undefined,
     fontSize: d.fontSize as number | undefined,
+    fontFamily: d.fontFamily as DiagramFontFamily | undefined,
     radius: d.radius as number | undefined,
   };
 }
@@ -189,6 +296,19 @@ function CanvasInner({
   // compiled figure is unaffected.
   const [canvasTheme, setCanvasTheme] = useState<"light" | "dark">(themeMode);
   const canvasDark = canvasTheme === "dark";
+  const nodeStyleDefaultsRef = useRef<NodeStyleDefaults>({
+    fill: "#ffffff",
+    stroke: "#6b7280",
+    shapeTextColor: "#000000",
+    lightTextColor: "#000000",
+    darkTextColor: "#ffffff",
+    strokeStyle: "solid",
+    strokeWidth: 1,
+    fontSize: 11,
+    fontFamily: "serif",
+    radius: 0,
+    radiusCustomized: false,
+  });
   const chromeStyle = {
     background: "var(--card)",
     borderColor: "var(--border)",
@@ -312,6 +432,8 @@ function CanvasInner({
 
   const makeDrawnNode = useCallback(
     (id: string, shape: NodeShape, x: number, y: number, w: number, h: number, label: string): Node => {
+      const defaults = nodeStyleDefaultsRef.current;
+      const standaloneText = shape === "text";
       const n: DiagNode = {
         id,
         shape,
@@ -320,18 +442,27 @@ function CanvasInner({
         w: Math.round(w),
         h: Math.round(h),
         label,
-        fill: shape === "text" ? "" : "#eef2ff",
-        stroke: shape === "text" ? "" : "#1e293b",
-        strokeStyle: "solid",
-        strokeWidth: 1,
-        textColor: "#0f172a",
-        radius: shape === "roundrect" ? 6 : 0,
+        fill: standaloneText ? "" : defaults.fill,
+        stroke: standaloneText ? "" : defaults.stroke,
+        strokeStyle: defaults.strokeStyle,
+        strokeWidth: defaults.strokeWidth,
+        textColor: standaloneText
+          ? canvasDark
+            ? defaults.darkTextColor
+            : defaults.lightTextColor
+          : defaults.shapeTextColor,
+        fontSize: defaults.fontSize,
+        fontFamily: defaults.fontFamily,
+        radius:
+          shape === "roundrect" && !defaults.radiusCustomized
+            ? 6
+            : defaults.radius,
       };
       const rf = modelNodeToRf(n);
       // Keep style in sync so the rubber-band resize paints immediately.
       return { ...rf, style: { width: n.w, height: n.h } };
     },
-    [],
+    [canvasDark],
   );
 
   const finishDraw = useCallback(
@@ -492,9 +623,34 @@ function CanvasInner({
   const patchNode = useCallback(
     (patch: Partial<DiagNode>) => {
       if (!selNode) return;
-      setNodes((ns) => ns.map((n) => (n.id === selNode ? { ...n, data: { ...n.data, ...patch } } : n)));
+      setNodes((ns) =>
+        ns.map((n) => {
+          if (n.id !== selNode) return n;
+          const defaults = nodeStyleDefaultsRef.current;
+          const data = n.data as Record<string, unknown>;
+          if (patch.fill !== undefined) defaults.fill = patch.fill;
+          if (patch.stroke !== undefined) defaults.stroke = patch.stroke;
+          if (patch.strokeStyle !== undefined) defaults.strokeStyle = patch.strokeStyle;
+          if (patch.strokeWidth !== undefined) defaults.strokeWidth = patch.strokeWidth;
+          if (patch.fontSize !== undefined) defaults.fontSize = patch.fontSize;
+          if (patch.fontFamily !== undefined) defaults.fontFamily = patch.fontFamily;
+          if (patch.radius !== undefined) {
+            defaults.radius = patch.radius;
+            defaults.radiusCustomized = true;
+          }
+          if (patch.textColor !== undefined) {
+            if (data.shape === "text") {
+              if (canvasDark) defaults.darkTextColor = patch.textColor;
+              else defaults.lightTextColor = patch.textColor;
+            } else {
+              defaults.shapeTextColor = patch.textColor;
+            }
+          }
+          return { ...n, data: { ...n.data, ...patch } };
+        }),
+      );
     },
-    [selNode, setNodes],
+    [canvasDark, selNode, setNodes],
   );
   const patchEdge = useCallback(
     (patch: Partial<DiagEdge>) => {
@@ -537,13 +693,13 @@ function CanvasInner({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex h-8 shrink-0 items-center gap-2 border-b bg-background px-2">
-        <span className="text-[11px] text-muted-foreground">
+      <div className="relative flex h-8 shrink-0 items-center gap-2 border-b bg-background px-2">
+        <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] text-muted-foreground">
           {pending
-            ? "Click and drag on the canvas to draw the shape (Esc to cancel)."
+            ? "Click and Drag on the Canvas to Draw the Shape (Esc to Cancel)"
             : spacePressed
-              ? "Drag to pan the canvas."
-              : "Drag shapes to move · drag handles to connect · Space+drag to pan · double-click to edit text."}
+              ? "Drag to Pan the Canvas"
+              : "Drag Shapes to Move · Drag Handles to Connect · Space + Drag to Pan · Double-Click to Edit Text"}
         </span>
         <div className="ml-auto flex items-center gap-0.5">
           {showPreviewAction && onShowPreview && (
@@ -653,6 +809,7 @@ function CanvasInner({
             nodes={nodes}
             edges={edges}
             nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
             colorMode={canvasTheme}
             connectionMode={ConnectionMode.Loose}
             onNodesChange={onNodesChange}

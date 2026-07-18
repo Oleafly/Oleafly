@@ -10,6 +10,8 @@ import { ReaderView } from "./ReaderView";
 import { AtsCard } from "./AtsCard";
 import { PrepExport } from "./PrepExport";
 import { cn } from "@/lib/utils";
+import { Popover } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type CheckId = "ats" | "a11y" | "refs";
 type Flags = Record<CheckId, boolean>;
@@ -83,7 +85,6 @@ export function PreflightPanel() {
   }, [activePath]);
   const enabled = storedEnabled ?? suggested;
   const expanded = storedOpen ?? suggested;
-  const [infoOpen, setInfoOpen] = useState(false);
   // Which run is in flight, so only the clicked button shows a spinner.
   const [busy, setBusy] = useState<CheckId | "all" | null>(null);
 
@@ -117,17 +118,13 @@ export function PreflightPanel() {
       <div className="relative flex h-9 items-center gap-2 border-b border-sidebar-border px-3">
         <ShieldCheck className="size-3.5 text-muted-foreground" />
         <span className="text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70">Preflight</span>
-        <button type="button"
-          onClick={() => setInfoOpen((v) => !v)}
-          className="ml-auto flex items-center rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-          aria-label="About Preflight"
-        >
-          <Info className="size-3.5" />
-        </button>
-        {infoOpen && (
-          <>
-            <button type="button" aria-label="Close preflight information" className="fixed inset-0 z-40" onClick={() => setInfoOpen(false)} />
-            <div className="absolute right-2 top-9 z-50 w-72 rounded-md border bg-popover p-3 text-popover-foreground shadow-xl">
+        <div className="ml-auto">
+          <Popover
+            align="right"
+            ariaLabel="About Preflight"
+            trigger={<Info className="size-3.5" />}
+            className="w-72 p-3"
+          >
               <p className="text-xs font-semibold">What is Preflight?</p>
               <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
                 It checks how ready your document is before you send it out. Turn on the checks that fit your document
@@ -149,9 +146,8 @@ export function PreflightPanel() {
                 Everything runs on your machine, from your source and last compiled PDF. Results are a readiness aid, not
                 a formal certification.
               </p>
-            </div>
-          </>
-        )}
+          </Popover>
+        </div>
       </div>
 
       <div className="flex flex-1 flex-col gap-2 overflow-auto p-3">
@@ -163,22 +159,13 @@ export function PreflightPanel() {
           return (
             <div key={c.id} className={cn("rounded-lg border border-sidebar-border bg-black/[0.03] dark:bg-background", !on && "opacity-70")}>
               <div className="flex items-center gap-2.5 p-3">
-                <label className="shrink-0">
-                  <input
-                    type="checkbox"
+                <label htmlFor={`preflight-${c.id}`} className="shrink-0">
+                  <Checkbox
+                    id={`preflight-${c.id}`}
                     checked={on}
-                    onChange={() => flip(c.id)}
+                    onCheckedChange={() => flip(c.id)}
                     aria-label={`Enable ${c.label}`}
-                    className="sr-only"
                   />
-                  <span
-                    className={cn(
-                      "flex size-4 items-center justify-center rounded border",
-                      on ? "border-primary bg-primary text-white" : "border-muted-foreground/40",
-                    )}
-                  >
-                    {on && <span className="text-[10px] leading-none">✓</span>}
-                  </span>
                 </label>
                 <button type="button" onClick={() => toggleOpen(c.id)} className="flex min-w-0 flex-1 items-center gap-1.5 text-left">
                   <Icon className="size-3.5 shrink-0 text-muted-foreground" />

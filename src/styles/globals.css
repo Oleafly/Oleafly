@@ -87,6 +87,40 @@
   --cm-operator: #79c0ff;
 }
 
+.ai-prompt-surface {
+  --background: #fafafa;
+  --foreground: #171717;
+  --popover-foreground: #171717;
+  --muted: #ededed;
+  --muted-foreground: #666666;
+  --border: #d4d4d4;
+  --input: #d4d4d4;
+  --accent: #e8e8e8;
+  --accent-foreground: #171717;
+  --secondary: #ededed;
+  --secondary-foreground: #171717;
+  color: #171717;
+  color-scheme: light;
+  background: #fafafa;
+}
+
+.dark .ai-prompt-surface {
+  --background: #171717;
+  --foreground: #f5f5f5;
+  --popover-foreground: #f5f5f5;
+  --muted: #262626;
+  --muted-foreground: #a3a3a3;
+  --border: #404040;
+  --input: #404040;
+  --accent: #292929;
+  --accent-foreground: #fafafa;
+  --secondary: #262626;
+  --secondary-foreground: #f5f5f5;
+  color: #f5f5f5;
+  color-scheme: dark;
+  background: #171717;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -162,6 +196,12 @@
   [data-disabled] {
     cursor: not-allowed;
   }
+  button:focus-visible,
+  [role="button"]:focus-visible,
+  [role="menuitem"]:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
   input,
   textarea,
   select,
@@ -236,6 +276,44 @@ select:focus-visible {
   -webkit-text-fill-color: transparent;
   color: transparent;
   animation: ai-shimmer 1.6s linear infinite;
+}
+
+@keyframes compile-icon-shimmer {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.compile-shimmer-icon {
+  animation: compile-icon-shimmer 1.6s ease-in-out infinite;
+}
+
+.resize-handle-col,
+.resize-handle-col * {
+  cursor: col-resize !important;
+}
+
+.resize-handle-row,
+.resize-handle-row * {
+  cursor: row-resize !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-shimmer {
+    animation: none;
+    background: none;
+    color: var(--foreground);
+    -webkit-text-fill-color: currentColor;
+  }
+
+  .compile-shimmer-icon {
+    animation: none;
+    opacity: 1;
+  }
 }
 
 /* --- CodeMirror merge (git diff) colors. `!important` is required because the

@@ -61,11 +61,7 @@ async function rasterize(
           canvas.height = Math.max(1, Math.floor(viewport.height));
           const ctx = canvas.getContext("2d");
           if (!ctx) throw new Error("no 2d context");
-          if (background) {
-            ctx.fillStyle = background;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-          }
-          await p.render({ canvas, canvasContext: ctx, viewport }).promise;
+          await p.render({ canvas, canvasContext: ctx, viewport, background }).promise;
           return canvas.toDataURL("image/png");
         } finally {
           try {

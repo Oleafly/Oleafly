@@ -5,6 +5,7 @@ import {
   type TemplatesKit,
 } from "@openleaf/templates";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
   Select,
@@ -55,7 +56,7 @@ function KitSelect({
   );
 }
 
-const KIT: TemplatesKit = { Button, Tooltip, Select: KitSelect };
+const KIT: TemplatesKit = { Button, Input, Tooltip, Select: KitSelect };
 
 const HOST: TemplatesHost = {
   loadPreview: templatePreview,

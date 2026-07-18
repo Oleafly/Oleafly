@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import type { ChatMessage, ToolEntry } from "@/store/chats";
 import { Markdown } from "@/components/ui/markdown";
+import { Popover } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 export function Shimmer({ text }: { text?: string }) {
@@ -30,28 +31,10 @@ export function Shimmer({ text }: { text?: string }) {
 
 // Used for low-urgency notices we don't want to spend a full banner on.
 export function InfoHint({ message }: { message: string }) {
-  const [open, setOpen] = useState(false);
   return (
-    <span className="relative flex">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
-        aria-label={message}
-        className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-      >
-        <Info className="size-4" />
-      </button>
-      {open && (
-        <div
-          role="tooltip"
-          className="absolute left-0 top-full z-[200] mt-1 w-60 rounded-md border bg-popover px-2.5 py-2 text-[11px] leading-relaxed text-muted-foreground shadow-md"
-        >
-          {message}
-        </div>
-      )}
-    </span>
+    <Popover ariaLabel={message} trigger={<Info className="size-4" />} className="w-60 p-2.5">
+      <p className="text-[11px] leading-relaxed text-muted-foreground">{message}</p>
+    </Popover>
   );
 }
 

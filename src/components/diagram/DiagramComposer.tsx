@@ -7,6 +7,10 @@ import {
   type DiagramKit,
 } from "@openleaf/diagram";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { ColorInput } from "@/components/ui/color-input";
+import { ColorPicker } from "@/components/ui/color-picker";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
   Select,
@@ -45,6 +49,10 @@ function useThemeMode(): "light" | "dark" {
 
 const KIT: DiagramKit = {
   Button,
+  Input,
+  Textarea,
+  ColorInput,
+  ColorPicker,
   Tooltip,
   Select,
   SelectContent,

@@ -171,7 +171,12 @@ test("show-file-tree-on-open controls the sidebar", async ({ tauriPage }) => {
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
   await openSettings(tauriPage, "appearance");
-  await tauriPage.click('[role="switch"][aria-label="Show file tree on open"]');
+  await tauriPage.evaluate(
+    `(() => {
+      const toggle = document.querySelector('[role="switch"][aria-label="Show file tree on open"]');
+      if (toggle?.getAttribute('aria-checked') === 'true') toggle.click();
+    })()`,
+  );
   await tauriPage.click('[aria-label="Close settings"]');
   await tauriPage.click('[title="Back to library"]');
   await expect(tauriPage.getByTestId("library")).toBeVisible({ timeout: 10_000 });
@@ -183,7 +188,12 @@ test("show-file-tree-on-open controls the sidebar", async ({ tauriPage }) => {
   );
 
   await openSettings(tauriPage, "appearance");
-  await tauriPage.click('[role="switch"][aria-label="Show file tree on open"]');
+  await tauriPage.evaluate(
+    `(() => {
+      const toggle = document.querySelector('[role="switch"][aria-label="Show file tree on open"]');
+      if (toggle?.getAttribute('aria-checked') !== 'true') toggle?.click();
+    })()`,
+  );
   await tauriPage.click('[aria-label="Close settings"]');
   await tauriPage.click('[title="Back to library"]');
   await expect(tauriPage.getByTestId("library")).toBeVisible({ timeout: 10_000 });

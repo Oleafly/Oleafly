@@ -91,7 +91,7 @@ export function DiagramComposer({
   isMac?: boolean;
   fullscreen?: boolean;
 }) {
-  const { Button, Tooltip, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, toast } =
+  const { Button, Input, ColorPicker, Tooltip, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, toast } =
     useDiagramKit();
 
   const [mode, setMode] = useState<Mode>("draw");
@@ -107,7 +107,6 @@ export function DiagramComposer({
   const [scale, setScale] = useState(2);
   // Figure page background: hex "#RRGGBB", or "" for transparent. Default white.
   const [background, setBackground] = useState("#ffffff");
-  const [bgPickerOpen, setBgPickerOpen] = useState(false);
   // Preview is on-demand (not realtime): open after Compile, hide when minimized.
   const [previewOpen, setPreviewOpen] = useState(false);
   const cmRef = useRef<CmHandle>(null);
@@ -140,11 +139,16 @@ export function DiagramComposer({
     }
   }, [open]);
 
-  const compile = useCallback(async (overrideCode?: string) => {
+  const compile = useCallback(async (overrideCode?: string, overrideBackground?: string) => {
     if (!projectId || busy) return;
     // In draw mode the code is debounced; compile the freshest generated TikZ.
     const raw = overrideCode ?? (hasDrawing && mode === "draw" ? modelToTikz(model) : code);
-    const source = buildStandaloneDoc({ code: raw, libraries: DIAGRAM_LIBS, background });
+    const nextBackground = overrideBackground !== undefined ? overrideBackground : background;
+    const source = buildStandaloneDoc({
+      code: raw,
+      libraries: DIAGRAM_LIBS,
+      background: nextBackground,
+    });
     setBusy(true);
     setLog("");
     setPreviewOpen(true);
@@ -154,7 +158,14 @@ export function DiagramComposer({
       if (result.has_pdf) {
         const bytes = new Uint8Array(await host.readIsolatedPdf(projectId));
         // The PDF already carries the chosen background (\pagecolor), so render as-is.
-        setPng(await host.pdfToPng(bytes, 1, scale));
+        setPng(
+          await host.pdfToPng(
+            bytes,
+            1,
+            scale,
+            nextBackground || "rgba(0,0,0,0)",
+          ),
+        );
       } else {
         setPng(null);
         toast.error("Diagram did not compile. Check the log below.");
@@ -323,18 +334,6 @@ export function DiagramComposer({
 
   const compileFailed = !!log && !png;
 
-  useEffect(() => {
-    if (!bgPickerOpen) return;
-    const onDown = (e: MouseEvent) => {
-      const t = e.target as HTMLElement;
-      if (!t.closest?.('[aria-label="Background color picker"]') && !t.closest?.('[aria-label="Background color"]')) {
-        setBgPickerOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [bgPickerOpen]);
-
   // Clicking outside the name editor cancels (same as project title in TopToolbar).
   useEffect(() => {
     if (!editingName) return;
@@ -394,57 +393,17 @@ export function DiagramComposer({
           </SelectContent>
         </Select>
       </div>
-      <div className="relative flex items-center gap-1.5 text-[11px] text-muted-foreground">
+      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
         Background
-        <button
-          type="button"
-          aria-label="Background color"
-          aria-expanded={bgPickerOpen}
-          title="Figure background color"
-          onClick={() => setBgPickerOpen((v) => !v)}
-          className={cn(
-            "h-7 w-9 overflow-hidden rounded border",
-            background === ""
-              ? "bg-[length:8px_8px] bg-[linear-gradient(45deg,#ccc_25%,transparent_25%,transparent_75%,#ccc_75%,#ccc),linear-gradient(45deg,#ccc_25%,#fff_25%,#fff_75%,#ccc_75%,#ccc)] bg-[position:0_0,4px_4px]"
-              : "",
-            bgPickerOpen && "ring-2 ring-primary",
-          )}
-          style={background ? { backgroundColor: background } : undefined}
+        <ColorPicker
+          value={background}
+          allowTransparent
+          ariaLabel="Figure background color"
+          onChange={(value) => {
+            setBackground(value);
+            if (!value) void compile(undefined, "");
+          }}
         />
-        {bgPickerOpen && (
-          <div
-            className="absolute left-0 top-[calc(100%+4px)] z-[110] flex min-w-[10rem] flex-col gap-2 rounded-lg border bg-popover p-2 text-popover-foreground shadow-md"
-            role="dialog"
-            aria-label="Background color picker"
-          >
-            <div className="flex items-center gap-2">
-              <input
-                type="color"
-                value={background || "#ffffff"}
-                onChange={(e) => setBackground(e.target.value)}
-                aria-label="Pick background color"
-                className="h-8 w-full cursor-pointer rounded border bg-background"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setBackground("");
-                setBgPickerOpen(false);
-              }}
-              className={cn(
-                "flex items-center gap-2 rounded-md border px-2 py-1.5 text-left text-xs transition-colors hover:bg-accent",
-                background === "" && "border-primary/50 bg-primary/10",
-              )}
-            >
-              <span
-                className="size-5 shrink-0 rounded border bg-[length:6px_6px] bg-[linear-gradient(45deg,#ccc_25%,transparent_25%,transparent_75%,#ccc_75%,#ccc),linear-gradient(45deg,#ccc_25%,#fff_25%,#fff_75%,#ccc_75%,#ccc)] bg-[position:0_0,3px_3px]"
-                aria-hidden
-              />
-              None (transparent)
-            </button>
-          </div>
-        )}
       </div>
     </>
   );
@@ -480,7 +439,7 @@ export function DiagramComposer({
         <div className="flex min-w-0 items-center gap-1">
           {editingName ? (
             <span ref={nameEditRef} className="flex items-center gap-1">
-              <input
+              <Input
                 id="diagram-name"
                 aria-label="Diagram name"
                 autoFocus
@@ -570,8 +529,10 @@ export function DiagramComposer({
             </Tooltip>
           )}
           <Button data-testid="diagram-compile" size="sm" onClick={() => void compile()} disabled={busy}>
-            {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Play className="size-3.5" />}
-            Compile
+            {busy ? <Loader2 className="compile-shimmer-icon size-3.5" /> : <Play className="size-3.5" />}
+            <span className={busy ? "ai-shimmer" : undefined}>
+              {busy ? "Compiling…" : "Compile"}
+            </span>
           </Button>
           <Tooltip label="Save this diagram as a reusable image project">
             <Button variant="secondary" size="sm" onClick={() => void saveAsProject()}>
@@ -646,7 +607,6 @@ export function DiagramComposer({
                     type="button"
                     aria-label="Minimize preview"
                     onClick={() => {
-                      setBgPickerOpen(false);
                       setPreviewOpen(false);
                     }}
                     className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -665,7 +625,15 @@ export function DiagramComposer({
                 </div>
               ) : png ? (
                 <div className="flex h-full items-center justify-center">
-                  <img src={png} alt="Diagram preview" className="max-h-full max-w-full object-contain" />
+                  <img
+                    src={png}
+                    alt="Diagram preview"
+                    className={cn(
+                      "max-h-full max-w-full object-contain",
+                      background === "" &&
+                        "bg-[length:16px_16px] bg-[linear-gradient(45deg,#252525_25%,transparent_25%,transparent_75%,#252525_75%,#252525),linear-gradient(45deg,#252525_25%,#333_25%,#333_75%,#252525_75%,#252525)] bg-[position:0_0,8px_8px]",
+                    )}
+                  />
                 </div>
               ) : log ? (
                 <pre className="overflow-auto rounded-md border bg-muted/30 p-2 font-mono text-[10px] text-muted-foreground">{log}</pre>

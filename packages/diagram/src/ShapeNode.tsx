@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Handle, Position, NodeResizer, type NodeProps } from "@xyflow/react";
-import type { NodeShape, StrokeStyle } from "@openleaf/latex";
+import type {
+  DiagramFontFamily,
+  NodeShape,
+  StrokeStyle,
+} from "@openleaf/latex";
 import { useDiagramEdit } from "./edit-context";
+import { useDiagramKit } from "./kit";
 
 export interface ShapeData {
   shape: NodeShape;
@@ -12,6 +17,7 @@ export interface ShapeData {
   strokeWidth?: number;
   textColor?: string;
   fontSize?: number;
+  fontFamily?: DiagramFontFamily;
   radius?: number;
   [key: string]: unknown;
 }
@@ -26,6 +32,7 @@ const HANDLES = [
 export function ShapeNode({ id, data, selected }: NodeProps) {
   const d = data as ShapeData;
   const edit = useDiagramEdit();
+  const { Textarea } = useDiagramKit();
   const editing = edit.editingId === id;
   const [hover, setHover] = useState(false);
   const [draft, setDraft] = useState(d.label);
@@ -52,10 +59,16 @@ export function ShapeNode({ id, data, selected }: NodeProps) {
       : d.radius != null
         ? `${d.radius}px`
         : d.shape === "roundrect"
-          ? "8px"
+          ? "6px"
           : "0";
   const dashArray =
     d.strokeStyle === "dashed" ? "6,4" : d.strokeStyle === "dotted" ? "1.5,4" : undefined;
+  const fontFamily =
+    d.fontFamily === "sans"
+      ? "'Latin Modern Sans', 'Helvetica Neue', Arial, sans-serif"
+      : d.fontFamily === "mono"
+        ? "'Latin Modern Mono', 'SFMono-Regular', Consolas, monospace"
+        : "'Latin Modern Roman', 'CMU Serif', Georgia, 'Times New Roman', serif";
 
   const style: CSSProperties = {
     position: "relative",
@@ -67,8 +80,8 @@ export function ShapeNode({ id, data, selected }: NodeProps) {
     textAlign: "center",
     padding: 4,
     boxSizing: "border-box",
-    fontSize: d.fontSize ? d.fontSize * 1.6 : 12,
-    fontFamily: "'Latin Modern Roman', 'CMU Serif', Georgia, 'Times New Roman', serif",
+    fontSize: d.fontSize ? `${d.fontSize}pt` : "10pt",
+    fontFamily,
     color: d.textColor || "inherit",
     background: polygon ? "transparent" : d.fill || "transparent",
     border:
@@ -119,7 +132,7 @@ export function ShapeNode({ id, data, selected }: NodeProps) {
           </svg>
         )}
         {editing ? (
-          <textarea
+          <Textarea
             ref={taRef}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -133,7 +146,7 @@ export function ShapeNode({ id, data, selected }: NodeProps) {
               }
               e.stopPropagation();
             }}
-            className="nodrag h-full w-full resize-none bg-transparent text-center outline-none"
+            className="nodrag h-full min-h-0 w-full resize-none border-0 bg-transparent p-0 text-center shadow-none focus-visible:ring-0"
             style={{ ...labelStyle, fontSize: "inherit", color: "inherit" }}
           />
         ) : (

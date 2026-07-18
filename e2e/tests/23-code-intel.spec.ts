@@ -35,8 +35,10 @@ async function contextMenuAction(page: Page & { getByText(t: string): { click():
   await page.evaluate(
     `(() => {
       const el = document.querySelector('.cm-content');
-      const r = el.getBoundingClientRect();
-      el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.left + 60, clientY: r.top + 60, button: 2 }));
+      const cursor = document.querySelector('.cm-cursor-primary') || document.querySelector('.cm-cursor');
+      const r = cursor?.getBoundingClientRect();
+      if (!r) throw new Error('editor cursor not found');
+      el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.left, clientY: r.top + r.height / 2, button: 2 }));
       return 1;
     })()`,
   );

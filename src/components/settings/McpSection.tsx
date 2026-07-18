@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Check, Copy, Eye, EyeOff, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   getConfig,
   mcpConnectionInfo,
@@ -430,7 +432,7 @@ export function McpSection() {
         <label className="text-xs font-medium" htmlFor="mcp-port">
           Port
         </label>
-        <input
+        <Input
           id="mcp-port"
           type="number"
           min={1}
@@ -444,16 +446,16 @@ export function McpSection() {
 
       <fieldset className="space-y-2">
         <legend className="text-xs font-medium">Approval policy</legend>
-        <label className="flex cursor-pointer items-start gap-2 text-sm">
-          <input
-            type="radio"
-            name="mcp-policy"
+        <RadioGroup
+          value={cfg.mcp_approval_policy || "ask"}
+          onValueChange={(value) => void persistPolicy({ mcp_approval_policy: value })}
+        >
+        <label htmlFor="mcp-policy-ask" className="flex cursor-pointer items-start gap-2 text-sm">
+          <RadioGroupItem
+            id="mcp-policy-ask"
+            value="ask"
             className="mt-1"
             data-testid="mcp-policy-ask"
-            checked={
-              cfg.mcp_approval_policy !== "auto_writes" && cfg.mcp_approval_policy !== "trust"
-            }
-            onChange={() => void persistPolicy({ mcp_approval_policy: "ask" })}
           />
           <span>
             <span className="font-medium">Confirm every change</span>
@@ -463,14 +465,12 @@ export function McpSection() {
             </span>
           </span>
         </label>
-        <label className="flex cursor-pointer items-start gap-2 text-sm">
-          <input
-            type="radio"
-            name="mcp-policy"
+        <label htmlFor="mcp-policy-auto-writes" className="flex cursor-pointer items-start gap-2 text-sm">
+          <RadioGroupItem
+            id="mcp-policy-auto-writes"
+            value="auto_writes"
             className="mt-1"
             data-testid="mcp-policy-auto-writes"
-            checked={cfg.mcp_approval_policy === "auto_writes"}
-            onChange={() => void persistPolicy({ mcp_approval_policy: "auto_writes" })}
           />
           <span>
             <span className="font-medium">Auto-approve edits, confirm deletes</span>
@@ -479,14 +479,12 @@ export function McpSection() {
             </span>
           </span>
         </label>
-        <label className="flex cursor-pointer items-start gap-2 text-sm">
-          <input
-            type="radio"
-            name="mcp-policy"
+        <label htmlFor="mcp-policy-trust" className="flex cursor-pointer items-start gap-2 text-sm">
+          <RadioGroupItem
+            id="mcp-policy-trust"
+            value="trust"
             className="mt-1"
             data-testid="mcp-policy-trust"
-            checked={cfg.mcp_approval_policy === "trust"}
-            onChange={() => void persistPolicy({ mcp_approval_policy: "trust" })}
           />
           <span>
             <span className="font-medium">Trust this connection</span>
@@ -496,6 +494,7 @@ export function McpSection() {
             </span>
           </span>
         </label>
+        </RadioGroup>
       </fieldset>
 
       <div

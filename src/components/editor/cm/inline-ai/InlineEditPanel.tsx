@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { getConfig } from "@/lib/tauri";
+import { getConfig, setConfig, type AppConfig } from "@/lib/tauri";
 import {
-  getProvider,
+  PROVIDERS,
   hasConfiguredProvider,
   pickActiveProvider,
-  type AIConfigLike,
 } from "@/lib/ai-providers";
 import { runInlineCompletion } from "@/lib/ai-inline";
 import { logError } from "@/lib/log";
 import { useInlineEditStore } from "@/store/inlineEdit";
 import { useSettingsStore } from "@/store/settings";
+import { listOllamaModels } from "@/lib/ollama";
 import { getEditorView } from "@/components/editor/cm/controller";
 import { AiChrome, AiMark } from "@/components/ai/AiChrome";
 import { useAgentHandoffStore } from "@/store/agent-handoff";
@@ -18,31 +18,41 @@ import { acceptInlineEdit, rejectInlineEdit } from "./plugin";
 import { PromptPopover } from "./PromptPopover";
 import { DiffActionBar, DiffErrorBar } from "./DiffActionBar";
 
-function modelLabelFor(cfg: AIConfigLike): string {
-  const { providerId, modelId } = pickActiveProvider(cfg);
-  return getProvider(providerId)?.models.find((m) => m.id === modelId)?.name ?? modelId;
-}
-
 // Rendered inside a CodeMirror block widget below the target line; the widget
 // mounts it when a session opens and unmounts it when it closes.
 export function InlineEditPanel() {
   const session = useInlineEditStore((s) => s.session);
   const [providerReady, setProviderReady] = useState(true);
-  const [modelLabel, setModelLabel] = useState("");
+  const [config, setLocalConfig] = useState<AppConfig | null>(null);
+  const [ollamaModels, setOllamaModels] = useState<string[]>([]);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    const check = () =>
-      void getConfig()
-        .then((c) => {
-          setProviderReady(hasConfiguredProvider(c));
-          setModelLabel(modelLabelFor(c));
-        })
-        .catch(() => {});
+    const apply = (c: AppConfig) => {
+      setLocalConfig(c);
+      setProviderReady(hasConfiguredProvider(c));
+    };
+    const check = (event?: Event) => {
+      const detail = (event as CustomEvent<AppConfig> | undefined)?.detail;
+      if (detail) {
+        apply(detail);
+        return;
+      }
+      void getConfig().then(apply).catch(() => {});
+    };
     check();
     window.addEventListener("openleaf:ai-config-changed", check);
     return () => window.removeEventListener("openleaf:ai-config-changed", check);
   }, []);
+
+  useEffect(() => {
+    const host = config?.ai_keys?.ollama;
+    if (!host) {
+      setOllamaModels([]);
+      return;
+    }
+    void listOllamaModels(host).then(setOllamaModels).catch(() => setOllamaModels([]));
+  }, [config?.ai_keys?.ollama]);
 
   useEffect(() => {
     return () => {
@@ -87,6 +97,7 @@ export function InlineEditPanel() {
     abortRef.current = ctrl;
     try {
       await runInlineCompletion({
+        config: config ?? undefined,
         engine: useFilesStore.getState().engineLoaded
           ? useFilesStore.getState().engine
           : undefined,
@@ -161,6 +172,40 @@ export function InlineEditPanel() {
     reset();
   };
 
+  const selectModel = async (providerId: string, modelId: string) => {
+    const current = config ?? (await getConfig());
+    const next = { ...current, ai_provider: providerId, ai_model: modelId };
+    setLocalConfig(next);
+    await setConfig(next);
+    window.dispatchEvent(new CustomEvent("openleaf:ai-config-changed", { detail: next }));
+  };
+
+  const keys = { ...(config?.ai_keys ?? {}) };
+  if (config?.ai_api_key && config.ai_provider && !keys[config.ai_provider]) {
+    keys[config.ai_provider] = config.ai_api_key;
+  }
+  const active = config ? pickActiveProvider(config) : null;
+  const modelGroups = PROVIDERS.filter((provider) => (keys[provider.id] ?? "").trim()).map(
+    (provider) => {
+      const available =
+        provider.id === "ollama" && ollamaModels.length > 0
+          ? ollamaModels.map((id) => ({ id, name: id }))
+          : [...provider.models];
+      if (
+        active?.providerId === provider.id &&
+        active.modelId &&
+        !available.some((model) => model.id === active.modelId)
+      ) {
+        available.push({ id: active.modelId, name: active.modelId });
+      }
+      return {
+        id: provider.id,
+        name: provider.name,
+        models: available,
+      };
+    },
+  );
+
   return (
     <div className="my-1 w-full">
       {!providerReady ? (
@@ -197,7 +242,10 @@ export function InlineEditPanel() {
           onClose={dismiss}
           streaming={session.phase === "streaming"}
           onStop={stop}
-          modelLabel={modelLabel}
+          providerId={active?.providerId ?? ""}
+          modelId={active?.modelId ?? ""}
+          modelGroups={modelGroups}
+          onModelChange={(providerId, modelId) => void selectModel(providerId, modelId)}
         />
       )}
     </div>

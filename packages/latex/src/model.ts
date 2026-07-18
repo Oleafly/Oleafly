@@ -10,6 +10,7 @@ export type StrokeStyle = "solid" | "dashed" | "dotted";
 export type EdgeRouting = "straight" | "orthogonal" | "curved";
 export type EdgeArrow = "none" | "forward" | "both";
 export type EdgeStyle = "solid" | "dashed" | "dotted";
+export type DiagramFontFamily = "serif" | "sans" | "mono";
 
 export interface DiagNode {
   id: string;
@@ -25,6 +26,7 @@ export interface DiagNode {
   strokeWidth?: number; // px
   textColor?: string; // hex
   fontSize?: number; // pt
+  fontFamily?: DiagramFontFamily;
   radius?: number; // corner radius in pt (rectangle/roundrect/text)
 }
 

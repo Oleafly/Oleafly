@@ -3,7 +3,12 @@
 export interface DiagramHost {
   compileIsolated(projectId: string, source: string): Promise<{ log?: string | null; has_pdf: boolean }>;
   readIsolatedPdf(projectId: string): Promise<ArrayBuffer | number[]>;
-  pdfToPng(bytes: Uint8Array, page: number, scale: number): Promise<string>;
+  pdfToPng(
+    bytes: Uint8Array,
+    page: number,
+    scale: number,
+    background?: string,
+  ): Promise<string>;
   listFiles(projectId: string): Promise<{ path: string }[]>;
   readFileContent(projectId: string, path: string): Promise<string>;
   writeFileContent(projectId: string, path: string, content: string): Promise<void>;

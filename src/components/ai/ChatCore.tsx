@@ -10,10 +10,9 @@ import {
 } from "ai";
 import {
   ArrowUp,
+  BadgeDollarSign,
   Brain,
-  CheckCircle2,
   ChevronDown,
-  ChevronUp,
   History,
   MessageSquare,
   Paperclip,
@@ -33,6 +32,7 @@ import { canUseFigureMode } from "@/lib/document-engine";
 import { getEditorView } from "@/components/editor/cm/controller";
 import { ToolConfirm, isAutoApprovable } from "@/components/ai/ToolConfirm";
 import { AttachmentChips, type PendingAttachment } from "@/components/ai/AttachmentChips";
+import { ModelSelector } from "@/components/ai/ModelSelector";
 import { toast } from "@/lib/toast";
 import { buildModel as buildAiModel, defaultModel, PROVIDERS } from "@/lib/ai-providers";
 import { useSettingsStore } from "@/store/settings";
@@ -51,6 +51,9 @@ import { formatRagContext, retrieveProjectChunks } from "@/lib/ai-rag";
 import { ChatHistoryModal } from "@/components/ai/ChatHistoryModal";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Popover } from "@/components/ui/popover";
 import {
   cancelChatRun,
   ChatRunIsolation,
@@ -84,6 +87,16 @@ const FIGURE_SUGGESTIONS = [
   "Draw a compiler pipeline: lexer, parser, AST, optimizer, code generator",
   "Diagram a data preprocessing flow ending in a training loop",
 ];
+
+const CODE_EDIT_TOOLS = new Set([
+  "write_file",
+  "replace_in_file",
+  "create_file",
+  "delete_file",
+  "rename_file",
+  "insert_figure",
+  "set_main_doc",
+]);
 
 const UNIVERSAL_TOOLS = ["read_file", "write_file", "replace_in_file", "create_file", "delete_file", "rename_file", "list_files", "search_project", "compile", "get_log", "get_pdf_text", "verify_pdf_pages", "update_todos", "get_todos", "remember_note", "forget_note", "list_notes", "set_main_doc", "toggle_theme"];
 export function buildAiToolInventory(features: EngineFeature[], figure: boolean, isolated: boolean): string[] {
@@ -119,8 +132,6 @@ export function ChatCore() {
   const setSettingsInitialSection = useSettingsStore((s) => s.setSettingsInitialSection);
   const chatFloating = useSettingsStore((s) => s.chatFloating);
   const setChatFloating = useSettingsStore((s) => s.setChatFloating);
-  const modelDropdownRef = useRef<HTMLDivElement>(null);
-
   const chats = useChatsStore((s) => s.chats);
   const activeChatId = useChatsStore((s) => s.activeId);
   const loadChats = useChatsStore((s) => s.load);
@@ -138,7 +149,6 @@ export function ChatCore() {
   const [streaming, setStreaming] = useState(false);
   const [provider, setProvider] = useState("openai");
   const [model, setModel] = useState("gpt-4o");
-  const [modelDropdown, setModelDropdown] = useState(false);
   const [apiKey, setApiKey] = useState("");
   // So the switcher can offer every provider the user has set up, not just the default one.
   const [keysMap, setKeysMap] = useState<Record<string, string>>({});
@@ -154,7 +164,6 @@ export function ChatCore() {
   const [showScrollDown, setShowScrollDown] = useState(false);
   // Figure studio mode: swaps in the figure system prompt + figure toolset.
   const [figureMode, setFigureMode] = useState(false);
-  const [checkpointOid, setCheckpointOid] = useState<string | null>(null);
   const agentTodos = useAgentTodoStore((s) => s.todos);
   const [runUsage, setRunUsage] = useState<{
     input: number;
@@ -162,24 +171,7 @@ export function ChatCore() {
     steps: number;
     usd: number;
   } | null>(null);
-  const [usageVisible, setUsageVisible] = useState(() => {
-    try {
-      return localStorage.getItem("openleaf.ai.usageVisible") !== "0";
-    } catch {
-      return true;
-    }
-  });
-  const toggleUsageVisible = () => {
-    setUsageVisible((v) => {
-      const next = !v;
-      try {
-        localStorage.setItem("openleaf.ai.usageVisible", next ? "1" : "0");
-      } catch {
-        /* ignore */
-      }
-      return next;
-    });
-  };
+  const [restoringCheckpoint, setRestoringCheckpoint] = useState<string | null>(null);
   const handoffPending = useAgentHandoffStore((s) => s.pendingPrompt);
   // Images (data URLs) to attach to the NEXT model step so a vision model can
   // see the rendered figure. Drained each step by the send loop.
@@ -353,7 +345,6 @@ export function ChatCore() {
       setProvider(pid);
       setModel(mid);
       setApiKey(keysMap[pid] || "");
-      setModelDropdown(false);
       try {
         const cfg = await getConfig();
         await setConfig({ ...cfg, ai_provider: pid, ai_model: mid });
@@ -368,6 +359,24 @@ export function ChatCore() {
   const configuredProviders = PROVIDERS.filter(
     (p) => (keysMap[p.id] ?? "").trim().length > 0
   );
+  const modelGroups = configuredProviders.map((configuredProvider) => {
+    const available =
+      configuredProvider.id === "ollama" && ollamaModels.length > 0
+        ? ollamaModels.map((id) => ({ id, name: id }))
+        : [...configuredProvider.models];
+    if (
+      configuredProvider.id === provider &&
+      model &&
+      !available.some((availableModel) => availableModel.id === model)
+    ) {
+      available.push({ id: model, name: model });
+    }
+    return {
+      id: configuredProvider.id,
+      name: configuredProvider.name,
+      models: available,
+    };
+  });
 
   // Load sticky agent memory when the project changes. Also drop the in-run
   // todo checklist, which is not project-scoped, so project A's plan does not
@@ -450,15 +459,6 @@ export function ChatCore() {
     setActiveChat(null);
     setMessages([]);
   }, [streaming, setActiveChat]);
-
-  useEffect(() => {
-    if (!modelDropdown) return;
-    const onDown = (e: MouseEvent) => {
-      if (modelDropdownRef.current && !modelDropdownRef.current.contains(e.target as Node)) setModelDropdown(false);
-    };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [modelDropdown]);
 
   useEffect(() => {
     void messages;
@@ -605,14 +605,15 @@ export function ChatCore() {
 
     // Checkpoint the project before the agent edits anything, so a bad edit can
     // always be reverted from git history (best-effort; never blocks the chat).
+    let runCheckpointOid: string | null = null;
     if (projectId) {
       try {
         await gitAutoCommit(projectId, "OpenLeaf AI checkpoint");
         const log = await gitLog(projectId);
-        if (runIsCurrent()) setCheckpointOid(log[0]?.oid ?? null);
+        runCheckpointOid = log[0]?.oid ?? null;
       } catch {
         /* not a git repo yet / nothing to commit - non-fatal */
-        if (runIsCurrent()) setCheckpointOid(null);
+        runCheckpointOid = null;
       }
     }
     if (!runIsCurrent()) return;
@@ -628,7 +629,13 @@ export function ChatCore() {
     const nextMessages: ChatMessage[] = [
       ...messages,
       userMsg,
-      { id: crypto.randomUUID(), role: "assistant", content: "", toolCalls: [] },
+      {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: "",
+        toolCalls: [],
+        ...(runCheckpointOid ? { checkpointOid: runCheckpointOid } : {}),
+      },
     ];
     setMessages(nextMessages);
     setInput("");
@@ -1100,8 +1107,43 @@ ${sandboxedCustom}`;
   const renderedMessages = messages.map((msg, index) => ({
     key: msg.id ?? objectKey(msg, activeChatId ?? "chat"),
     live: streaming && index === messages.length - 1,
+    isLatestAssistant:
+      msg.role === "assistant" &&
+      !messages.slice(index + 1).some((later) => later.role === "assistant"),
     msg,
   }));
+
+  const restoreCheckpoint = useCallback(
+    async (message: ChatMessage, isLatest: boolean) => {
+      if (!projectId || !message.id || !message.checkpointOid || restoringCheckpoint) return;
+      if (
+        !isLatest &&
+        !window.confirm(
+          "Restore project files to before this response? This also discards code changes made by later AI responses. The conversation will stay here.",
+        )
+      ) {
+        return;
+      }
+      setRestoringCheckpoint(message.id);
+      try {
+        await useFilesStore.getState().restoreFromGit(message.checkpointOid);
+        setMessages((current) => {
+          const restored = current.map((item) =>
+            item.id === message.id ? { ...item, checkpointRestored: true } : item,
+          );
+          if (activeChatId) useChatsStore.getState().saveMessages(activeChatId, restored);
+          return restored;
+        });
+        useAgentTodoStore.getState().clear();
+        toast.success("Restored project files. The conversation was kept.");
+      } catch (error) {
+        toast.error(`Could not restore: ${error}`);
+      } finally {
+        setRestoringCheckpoint(null);
+      }
+    },
+    [activeChatId, projectId, restoringCheckpoint],
+  );
 
   // Inline AI (and other UIs) can hand a prompt into the agent chat.
   useEffect(() => {
@@ -1131,6 +1173,23 @@ ${sandboxedCustom}`;
     };
   }, [projectId]);
 
+  const chatUsage = activeChat?.usage;
+  const chatTotal = chatUsage
+    ? chatUsage.inputTokens + chatUsage.outputTokens
+    : 0;
+  const hasUsage = Boolean(
+    runUsage ||
+      (chatUsage &&
+        (chatUsage.inputTokens > 0 ||
+          chatUsage.outputTokens > 0 ||
+          chatUsage.steps > 0)),
+  );
+  const usageSummary = runUsage
+    ? `Last run: ${runUsage.steps} step${runUsage.steps === 1 ? "" : "s"}, ${(runUsage.input + runUsage.output).toLocaleString()} tokens${runUsage.usd > 0 ? `, about ${formatUsd(runUsage.usd)}` : ""}`
+    : chatUsage
+      ? `This chat: ${chatUsage.steps} steps, ${chatTotal.toLocaleString()} tokens`
+      : "AI usage";
+
   return (
     <div className="flex h-full flex-col bg-sidebar">
       <div className="flex h-9 shrink-0 items-center gap-1.5 border-b px-2">
@@ -1140,51 +1199,78 @@ ${sandboxedCustom}`;
         <div className="ml-auto flex items-center gap-0.5">
           {configuredProviders.length > 0 && (
             <>
-              <div ref={modelDropdownRef} className="relative">
-                <button type="button"
-                  onClick={() => setModelDropdown(!modelDropdown)}
-                  className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
-                  title="Switch provider / model"
-                >
-                  <span className="max-w-[150px] truncate">
-                    {PROVIDERS.find((p) => p.id === provider)?.models.find((m) => m.id === model)?.name || model}
-                  </span>
-                  <ChevronDown className="size-3" />
-                </button>
-                {modelDropdown && (
-                  <div className="absolute right-0 top-9 z-50 max-h-[60vh] min-w-[220px] overflow-auto rounded-md border bg-popover p-1 shadow-xl">
-                    {configuredProviders.map((p) => {
-                      const models =
-                        p.id === "ollama" && ollamaModels.length > 0
-                          ? ollamaModels.map((id) => ({ id, name: id }))
-                          : p.models;
-                      return (
-                        <div key={p.id} className="mb-1 last:mb-0">
-                          <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                            {p.name}
+              <ModelSelector
+                compact
+                providerId={provider}
+                modelId={model}
+                groups={modelGroups}
+                onChange={(nextProvider, nextModel) =>
+                  void selectModel(nextProvider, nextModel)
+                }
+              />
+
+              {hasUsage && (
+                <Tooltip label={usageSummary}>
+                  <Popover
+                    align="right"
+                    ariaLabel="View AI usage"
+                    className="w-64 p-0"
+                    trigger={<BadgeDollarSign className="size-4" />}
+                  >
+                    <div
+                      className="space-y-3 p-3 text-xs"
+                      data-testid="ai-usage-popover"
+                    >
+                      {runUsage && (
+                        <section data-testid="ai-run-usage">
+                          <div className="mb-1.5 flex items-center justify-between">
+                            <span className="font-medium text-foreground">Last run</span>
+                            {runUsage.usd > 0 && (
+                              <span className="font-medium tabular-nums text-emerald-600 dark:text-emerald-400">
+                                {formatUsd(runUsage.usd)}
+                              </span>
+                            )}
                           </div>
-                          {models.map((m) => {
-                            const active = provider === p.id && model === m.id;
-                            return (
-                              <button type="button"
-                                key={p.id + m.id}
-                                onClick={() => void selectModel(p.id, m.id)}
-                                className={cn(
-                                  "flex w-full cursor-pointer items-center justify-between rounded px-2 py-1.5 text-sm hover:bg-accent",
-                                  active && "bg-accent font-medium"
-                                )}
-                              >
-                                <span className="truncate">{m.name}</span>
-                                {active && <CheckCircle2 className="size-3.5 shrink-0" />}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+                          <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-muted-foreground">
+                            <dt>Steps</dt>
+                            <dd className="text-right tabular-nums">{runUsage.steps}</dd>
+                            <dt>Input</dt>
+                            <dd className="text-right tabular-nums">{runUsage.input.toLocaleString()}</dd>
+                            <dt>Output</dt>
+                            <dd className="text-right tabular-nums">{runUsage.output.toLocaleString()}</dd>
+                          </dl>
+                        </section>
+                      )}
+                      {chatUsage && chatTotal + chatUsage.steps > 0 && (
+                        <section
+                          className={cn(runUsage && "border-t pt-3")}
+                          data-testid="ai-chat-usage"
+                        >
+                          <div className="mb-1.5 flex items-center justify-between">
+                            <span className="font-medium text-foreground">This chat</span>
+                            {(chatUsage.estimatedUsd ?? 0) > 0 && (
+                              <span className="font-medium tabular-nums text-emerald-600 dark:text-emerald-400">
+                                {formatUsd(chatUsage.estimatedUsd ?? 0)}
+                              </span>
+                            )}
+                          </div>
+                          <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-muted-foreground">
+                            <dt>Runs</dt>
+                            <dd className="text-right tabular-nums">{chatUsage.runs}</dd>
+                            <dt>Steps</dt>
+                            <dd className="text-right tabular-nums">{chatUsage.steps}</dd>
+                            <dt>Tokens</dt>
+                            <dd className="text-right tabular-nums">{chatTotal.toLocaleString()}</dd>
+                          </dl>
+                        </section>
+                      )}
+                      <p className="border-t pt-2 text-[10px] leading-relaxed text-muted-foreground">
+                        Costs are estimates based on public model pricing, not billing totals.
+                      </p>
+                    </div>
+                  </Popover>
+                </Tooltip>
+              )}
 
               {figureModeAvailable && <Tooltip label={figureMode ? "Figure mode on" : "Draw a figure"}>
                 <button type="button"
@@ -1363,8 +1449,40 @@ ${sandboxedCustom}`;
                 <div className="flex flex-col gap-3">
                   {/* Key is scoped to the active chat so instances aren't reused
                       across conversations (which would leak expand/scroll state). */}
-                  {renderedMessages.map(({ key, live, msg }) => (
-                    <MessageItem key={key} msg={msg} live={live} />
+                  {renderedMessages.map(({ key, live, isLatestAssistant, msg }) => (
+                    <div key={key} className="min-w-0">
+                      <MessageItem msg={msg} live={live} />
+                      {msg.role === "assistant" &&
+                        msg.checkpointOid &&
+                        msg.toolCalls?.some(
+                          (tool) =>
+                            CODE_EDIT_TOOLS.has(tool.name) &&
+                            tool.approval !== "rejected" &&
+                            tool.status === "done",
+                        ) &&
+                        !live && (
+                          <div className="mt-1.5 flex items-center justify-end px-1">
+                            {msg.checkpointRestored ? (
+                              <span className="text-[10px] text-muted-foreground">
+                                Project restored to this checkpoint
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                data-testid="ai-restore-checkpoint"
+                                disabled={restoringCheckpoint !== null}
+                                onClick={() => void restoreCheckpoint(msg, isLatestAssistant)}
+                                className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+                              >
+                                <RotateCcw className="size-3" />
+                                {restoringCheckpoint === msg.id
+                                  ? "Restoring…"
+                                  : "Restore code to before this response"}
+                              </button>
+                            )}
+                          </div>
+                        )}
+                    </div>
                   ))}
                   {/* Kept OUT of the memoized items so frequent thinkingText updates
                       don't reconcile the whole list. Suppressed while the tail
@@ -1405,194 +1523,7 @@ ${sandboxedCustom}`;
             )}
           </div>
 
-          {/* Usage meter + checkpoint + composer.
-              Collapsed usage is a floating ^ only (absolute, zero layout height). */}
-          {(() => {
-            const chatUsage = activeChat?.usage;
-            const hasUsage =
-              !!(
-                runUsage ||
-                (chatUsage &&
-                  (chatUsage.inputTokens > 0 ||
-                    chatUsage.outputTokens > 0 ||
-                    chatUsage.steps > 0))
-              );
-            const hasCheckpoint = !!(checkpointOid && !streaming);
-            const chatTotal =
-              chatUsage != null
-                ? chatUsage.inputTokens + chatUsage.outputTokens
-                : 0;
-            const pill =
-              "inline-flex items-center gap-1 rounded-full border border-border/70 bg-muted/40 px-2 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground";
-
-            const checkpointBtn = hasCheckpoint ? (
-              <div className="ml-auto flex shrink-0 items-center gap-2">
-                <span className="hidden text-[10px] text-muted-foreground sm:inline">
-                  Checkpoint ready
-                </span>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  data-testid="ai-restore-checkpoint"
-                  onClick={() => {
-                    if (!projectId || !checkpointOid) return;
-                    void (async () => {
-                      try {
-                        await useFilesStore.getState().restoreFromGit(checkpointOid);
-                        setCheckpointOid(null);
-                        useAgentTodoStore.getState().clear();
-                        toast.success("Restored project to pre-AI checkpoint.");
-                      } catch (e) {
-                        toast.error(`Could not restore: ${e}`);
-                      }
-                    })();
-                  }}
-                >
-                  <RotateCcw className="size-3.5" /> Undo AI changes
-                </Button>
-              </div>
-            ) : null;
-
-            return (
-              <div className="relative shrink-0">
-                {/* Always mounted when hasUsage so fade/scale can animate; absolute
-                    positioning keeps it out of layout. */}
-                {hasUsage && (
-                  <div
-                    className={cn(
-                      "absolute -top-7 left-2 z-10 transition-[opacity,transform] duration-200 ease-out",
-                      usageVisible
-                        ? "pointer-events-none scale-75 opacity-0"
-                        : "pointer-events-none scale-100 opacity-100",
-                    )}
-                    data-testid={usageVisible ? undefined : "ai-usage-bar"}
-                    aria-hidden={usageVisible}
-                  >
-                    <Tooltip label="Show usage">
-                      <button
-                        type="button"
-                        aria-label="Show usage"
-                        aria-pressed={false}
-                        data-testid={usageVisible ? undefined : "ai-usage-toggle"}
-                        tabIndex={usageVisible ? -1 : 0}
-                        onClick={toggleUsageVisible}
-                        className={cn(
-                          "flex size-6 items-center justify-center rounded-md border border-border/60 bg-sidebar/95 text-muted-foreground shadow-sm backdrop-blur-sm transition-colors hover:bg-accent hover:text-foreground",
-                          usageVisible ? "pointer-events-none" : "pointer-events-auto",
-                        )}
-                      >
-                        <ChevronUp className="size-3.5" />
-                      </button>
-                    </Tooltip>
-                  </div>
-                )}
-
-                {/* Grid 0fr↔1fr animates height to 0 with no reserved bar space. */}
-                {hasUsage && (
-                  <div
-                    className={cn(
-                      "grid transition-[grid-template-rows] duration-200 ease-out",
-                      usageVisible ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
-                    )}
-                    data-testid={usageVisible ? "ai-usage-bar" : undefined}
-                  >
-                    <div className="min-h-0 overflow-hidden">
-                      <div
-                        className={cn(
-                          "flex flex-wrap items-center gap-2 border-t px-3 py-1.5 transition-[opacity,transform] duration-200 ease-out",
-                          usageVisible
-                            ? "translate-y-0 opacity-100"
-                            : "translate-y-1 opacity-0",
-                        )}
-                      >
-                        <Tooltip label="Hide usage">
-                          <button
-                            type="button"
-                            aria-label="Hide usage"
-                            aria-pressed={true}
-                            data-testid={usageVisible ? "ai-usage-toggle" : undefined}
-                            tabIndex={usageVisible ? 0 : -1}
-                            onClick={toggleUsageVisible}
-                            className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                          >
-                            <ChevronDown className="size-3.5" />
-                          </button>
-                        </Tooltip>
-                        <div
-                          className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5"
-                          data-testid="ai-run-usage"
-                        >
-                          {runUsage && (
-                            <div className="flex flex-wrap items-center gap-1">
-                              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/80">
-                                Last
-                              </span>
-                              <span className={pill}>
-                                {runUsage.steps} step{runUsage.steps === 1 ? "" : "s"}
-                              </span>
-                              {runUsage.input + runUsage.output > 0 && (
-                                <>
-                                  <span className={pill} title="Input tokens">
-                                    <span className="text-sky-600 dark:text-sky-400">↓</span>
-                                    {runUsage.input.toLocaleString()}
-                                  </span>
-                                  <span className={pill} title="Output tokens">
-                                    <span className="text-violet-600 dark:text-violet-400">↑</span>
-                                    {runUsage.output.toLocaleString()}
-                                  </span>
-                                  <span className={pill}>
-                                    ~{(runUsage.input + runUsage.output).toLocaleString()} tok
-                                  </span>
-                                </>
-                              )}
-                              {runUsage.usd > 0 && (
-                                <span className={cn(pill, "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400")}>
-                                  {formatUsd(runUsage.usd)}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                          {chatUsage && chatTotal + chatUsage.steps > 0 && (
-                            <div
-                              className="flex flex-wrap items-center gap-1"
-                              data-testid="ai-chat-usage"
-                            >
-                              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/80">
-                                Chat
-                              </span>
-                              <span className={pill}>
-                                {chatUsage.runs} run{chatUsage.runs === 1 ? "" : "s"}
-                              </span>
-                              <span className={pill}>
-                                {chatUsage.steps} step{chatUsage.steps === 1 ? "" : "s"}
-                              </span>
-                              {chatTotal > 0 && (
-                                <span className={pill}>
-                                  ~{chatUsage.inputTokens.toLocaleString()} in /{" "}
-                                  {chatUsage.outputTokens.toLocaleString()} out
-                                </span>
-                              )}
-                              {(chatUsage.estimatedUsd ?? 0) > 0 && (
-                                <span className={cn(pill, "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400")}>
-                                  {formatUsd(chatUsage.estimatedUsd ?? 0)}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                        {usageVisible ? checkpointBtn : null}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {hasCheckpoint && !(hasUsage && usageVisible) && (
-                  <div className="flex items-center border-t px-3 py-1.5">
-                    {checkpointBtn}
-                  </div>
-                )}
-
+          <div className="relative shrink-0">
                 {pendingApproval && (
                   <ToolConfirm
                     req={pendingApproval.req}
@@ -1612,7 +1543,7 @@ ${sandboxedCustom}`;
               onRemove={(id) => setAttachments((a) => a.filter((x) => x.id !== id))}
             />
             <div className="flex items-end gap-2 rounded-lg border bg-background p-2">
-              <input
+              <Input
                 ref={fileInputRef}
                 type="file"
                 multiple
@@ -1629,7 +1560,7 @@ ${sandboxedCustom}`;
               >
                 <Paperclip className="size-4" />
               </button>
-              <textarea
+              <Textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(input); } }}
@@ -1661,9 +1592,7 @@ ${sandboxedCustom}`;
               )}
             </div>
           </div>
-              </div>
-            );
-          })()}
+          </div>
         </>
       )}
 

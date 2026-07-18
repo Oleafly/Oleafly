@@ -171,7 +171,7 @@ test("arrow styling stays selected and matches the generated TikZ", async ({ tau
   await tauriPage.click('[data-testid="diagram-tab-code"]');
   await tauriPage.waitForFunction(
     `Array.from(document.querySelectorAll('.cm-content')).some((el) =>
-      (el.textContent || '').includes('<->, dotted') &&
+      (el.textContent || '').includes('<->, dash pattern=on 0.038cm off 0.1cm') &&
       (el.textContent || '').includes('.south') &&
       (el.textContent || '').includes('.north')
     )`,

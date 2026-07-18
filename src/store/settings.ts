@@ -129,7 +129,7 @@ const PREF_DEFAULTS = {
   appFontFamily: "",
   editorFontFamily: "",
   defaultView: "split" as ViewMode,
-  openInTree: true,
+  openInTree: false,
   hoverPreview: true,
   accentColor: "#2563eb",
 } as const;
@@ -199,7 +199,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     saveLs("openleaf.ai.floating", v ? "1" : "0");
     set({ chatFloating: v });
   },
-  openInTree: ls("openleaf.openInTree", "1") !== "0",
+  openInTree: ls("openleaf.openInTree", "0") !== "0",
   setOpenInTree: (v) => {
     saveLs("openleaf.openInTree", v ? "1" : "0");
     set({ openInTree: v });

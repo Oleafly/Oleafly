@@ -25,15 +25,10 @@ test("zoom controls change the zoom level", async ({ tauriPage }) => {
   expect(await zoom()).toBe(before);
 });
 
-test("single/two-page layout toggles and page nav is bounded on a 1-page doc", async ({
+test("one-page documents hide two-page layout and bound page navigation", async ({
   tauriPage,
 }) => {
-  await tauriPage.click('[aria-label="Two-page view"]');
-  await expect(tauriPage.locator('[aria-label="Two-page view"]')).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-  await tauriPage.click('[aria-label="Single page view"]');
+  await expect(tauriPage.locator('[aria-label="Two-page view"]')).not.toBeVisible();
   await expect(tauriPage.locator('[aria-label="Single page view"]')).toHaveAttribute(
     "aria-pressed",
     "true",

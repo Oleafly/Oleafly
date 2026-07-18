@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Columns2, Contrast, FileText, Maximize, Minimize, PanelTopClose, PanelTopOpen, Play, RectangleVertical, Save, SquareArrowOutUpRight, X, XCircle, ZoomIn, ZoomOut } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Columns2, Contrast, FileText, Loader2, Maximize, Minimize, PanelTopClose, PanelTopOpen, Play, RectangleVertical, Save, SquareArrowOutUpRight, X, XCircle, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import { PdfViewer, type PdfViewerHandle, type PdfLayout } from "@/components/pdf/PdfViewer";
@@ -85,6 +86,10 @@ export function PreviewPane() {
   }, [page]);
 
   useEffect(() => {
+    if (numPages <= 1 && layout === "double") setLayout("single");
+  }, [layout, numPages]);
+
+  useEffect(() => {
     if (!pdfBytes) {
       setNumPages(0);
       setPage(1);
@@ -156,7 +161,7 @@ export function PreviewPane() {
       )}
       <div
         className={cn(
-          "flex h-9 shrink-0 items-center gap-1 overflow-x-auto whitespace-nowrap border-b px-2 [&_button]:shrink-0 [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-transparent [&::-webkit-scrollbar-track]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-border",
+          "flex min-h-9 shrink-0 flex-wrap items-center gap-1 border-b px-2 py-1 [&_button]:shrink-0",
           isFs && fsToolbarHidden && "hidden",
         )}
       >
@@ -182,6 +187,13 @@ export function PreviewPane() {
             </span>
           )}
         </button>
+
+        {compiling && (
+          <span className="flex items-center gap-1 text-[10px] font-medium" role="status">
+            <Loader2 className="compile-shimmer-icon size-3.5" />
+            <span className="ai-shimmer">Compiling…</span>
+          </span>
+        )}
 
         {!compiling && status !== "idle" && (
           <span
@@ -217,7 +229,7 @@ export function PreviewPane() {
         )}
 
         {tab === "pdf" && (
-          <div className="ml-auto flex items-center gap-0.5">
+          <div className="ml-auto flex min-w-0 flex-[1_1_22rem] flex-wrap items-center justify-end gap-0.5">
             {numPages > 0 && !isImage && (
               <>
                 <Tooltip label="Single page view">
@@ -232,18 +244,20 @@ export function PreviewPane() {
                     <RectangleVertical className="size-3.5" />
                   </Button>
                 </Tooltip>
-                <Tooltip label="Two-page view">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn("size-7", layout === "double" && "bg-accent text-foreground")}
-                    onClick={() => setLayout("double")}
-                    aria-label="Two-page view"
-                    aria-pressed={layout === "double"}
-                  >
-                    <Columns2 className="size-3.5" />
-                  </Button>
-                </Tooltip>
+                {numPages > 1 && (
+                  <Tooltip label="Two-page view">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={cn("size-7", layout === "double" && "bg-accent text-foreground")}
+                      onClick={() => setLayout("double")}
+                      aria-label="Two-page view"
+                      aria-pressed={layout === "double"}
+                    >
+                      <Columns2 className="size-3.5" />
+                    </Button>
+                  </Tooltip>
+                )}
                 <div className="mx-1 h-4 w-px bg-border" />
                 <Tooltip label="Previous page">
                   <Button
@@ -258,7 +272,7 @@ export function PreviewPane() {
                   </Button>
                 </Tooltip>
                 <div className="flex shrink-0 items-center gap-1 text-xs tabular-nums text-muted-foreground">
-                  <input
+                  <Input
                     value={pageInput}
                     onChange={(e) => setPageInput(e.target.value.replace(/[^0-9]/g, ""))}
                     onKeyDown={(e) => {
@@ -417,7 +431,7 @@ export function PreviewPane() {
           </div>
         ) : (
           <div className="flex h-full flex-col items-center justify-center gap-3 bg-sidebar px-6 text-center text-muted-foreground">
-            <FileText className="size-10 opacity-30" />
+            <FileText className={cn("size-10 opacity-30", compiling && "compile-shimmer-icon")} />
             {status === "error" ? (
               <p className="max-w-xs text-sm">
                 Compile failed. Open the <strong>Logs</strong> tab to see what went wrong.
@@ -475,7 +489,7 @@ export function PreviewPane() {
               Saves the current PDF into the project tree (committed via Git).
             </p>
             <div className="flex items-center gap-2">
-              <input
+              <Input
                 data-modal-initial-focus
                 value={saveName}
                 onChange={(e) => setSaveName(e.target.value)}
@@ -523,7 +537,7 @@ function CompileProgress({
   return (
     <div className="w-64 space-y-2" role="status" aria-live="polite">
       <p className="text-sm">
-        {label}{" "}
+        <span className="ai-shimmer">{label}</span>{" "}
         <span className="tabular-nums font-medium">{Math.round(pct)}%</span>
       </p>
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">

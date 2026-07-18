@@ -11,6 +11,7 @@ import {
   RectangleVertical,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PdfViewer, type PdfViewerHandle, type PdfLayout } from "@/components/pdf/PdfViewer";
@@ -66,6 +67,10 @@ export function PreviewWindow() {
 
   useEffect(() => setPageInput(String(page)), [page]);
 
+  useEffect(() => {
+    if (numPages <= 1 && layout === "double") setLayout("single");
+  }, [layout, numPages]);
+
   const scaleRefCurrent = useRef(scale);
   scaleRefCurrent.current = scale;
 
@@ -106,7 +111,7 @@ export function PreviewWindow() {
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
-      <div className="flex h-9 shrink-0 items-center gap-1 overflow-x-auto whitespace-nowrap border-b px-2 [&_button]:shrink-0 [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-border">
+      <div className="flex min-h-9 shrink-0 flex-wrap items-center justify-end gap-1 border-b px-2 py-1 [&_button]:shrink-0">
         {numPages > 0 && (
           <>
             <Tooltip label="Single page view">
@@ -114,11 +119,13 @@ export function PreviewWindow() {
                 <RectangleVertical className="size-3.5" />
               </Button>
             </Tooltip>
-            <Tooltip label="Two-page view">
-              <Button variant="ghost" size="icon" className={cn("size-7", layout === "double" && "bg-accent text-foreground")} onClick={() => setLayout("double")} aria-label="Two-page view">
-                <Columns2 className="size-3.5" />
-              </Button>
-            </Tooltip>
+            {numPages > 1 && (
+              <Tooltip label="Two-page view">
+                <Button variant="ghost" size="icon" className={cn("size-7", layout === "double" && "bg-accent text-foreground")} onClick={() => setLayout("double")} aria-label="Two-page view">
+                  <Columns2 className="size-3.5" />
+                </Button>
+              </Tooltip>
+            )}
             <div className="mx-1 h-4 w-px bg-border" />
             <Tooltip label="Previous page">
               <Button variant="ghost" size="icon" className="size-7" disabled={page <= 1} onClick={() => pdfRef.current?.gotoPage(page - 1)} aria-label="Previous page">
@@ -126,7 +133,7 @@ export function PreviewWindow() {
               </Button>
             </Tooltip>
             <div className="flex shrink-0 items-center gap-1 text-xs tabular-nums text-muted-foreground">
-              <input
+              <Input
                 value={pageInput}
                 onChange={(e) => setPageInput(e.target.value.replace(/[^0-9]/g, ""))}
                 onKeyDown={(e) => {

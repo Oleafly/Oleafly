@@ -17,6 +17,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useInitialFocus } from "@/components/ui/use-initial-focus";
 import {
   ContextMenu,
@@ -332,7 +333,7 @@ function NewEntryInput({
   const inputRef = useInitialFocus<HTMLInputElement>();
   return (
     <div style={{ paddingLeft: `${depth * 12 + 8}px` }} className="py-0.5">
-      <input
+      <Input
         ref={inputRef}
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -457,7 +458,7 @@ function TreeRow({ node, depth, ctx }: { node: TreeNode; depth: number; ctx: Tre
     <div>
       {isRenaming ? (
         <div style={{ paddingLeft: `${depth * 12 + 0}px` }} className="py-0.5">
-          <input
+          <Input
             ref={renameInputRef}
             aria-label="Rename file"
             value={ctx.renameValue}

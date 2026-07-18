@@ -2,6 +2,8 @@ import { useEffect, useRef } from "react";
 import { ArrowUp, Square, X } from "lucide-react";
 import { PRESETS } from "@/lib/ai-inline";
 import { AiChrome, AiMark } from "@/components/ai/AiChrome";
+import { ModelSelector, type ModelSelectorGroup } from "@/components/ai/ModelSelector";
+import { Textarea } from "@/components/ui/textarea";
 
 export function PromptPopover({
   instruction,
@@ -11,7 +13,10 @@ export function PromptPopover({
   onClose,
   streaming,
   onStop,
-  modelLabel,
+  providerId,
+  modelId,
+  modelGroups,
+  onModelChange,
 }: {
   instruction: string;
   onInstruction: (v: string) => void;
@@ -20,7 +25,10 @@ export function PromptPopover({
   onClose: () => void;
   streaming: boolean;
   onStop: () => void;
-  modelLabel: string;
+  providerId: string;
+  modelId: string;
+  modelGroups: ModelSelectorGroup[];
+  onModelChange: (providerId: string, modelId: string) => void;
 }) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
@@ -38,7 +46,7 @@ export function PromptPopover({
     <AiChrome className="w-full" contentClassName="p-2 text-popover-foreground">
       <div className="flex items-start gap-2">
         <AiMark className="mt-0.5" />
-        <textarea
+        <Textarea
           ref={inputRef}
           value={instruction}
           onChange={(e) => onInstruction(e.target.value)}
@@ -70,7 +78,7 @@ export function PromptPopover({
               key={p.id}
               type="button"
               onClick={() => onPreset(p.instruction)}
-              className="flex-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-center text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+              className="flex-1 whitespace-nowrap rounded-full border border-primary/35 px-2 py-0.5 text-center text-black text-xs hover:border-primary/55 hover:bg-primary/10 dark:text-white"
             >
               {p.label}
             </button>
@@ -82,9 +90,15 @@ export function PromptPopover({
         <div className="min-w-0 flex-1">
           {streaming && <span className="ai-shimmer text-[10px] font-medium">Thinking…</span>}
         </div>
-        <span className="max-w-[45%] shrink-0 truncate text-[10px] text-muted-foreground">
-          {modelLabel}
-        </span>
+        <ModelSelector
+          compact
+          disabled={streaming}
+          providerId={providerId}
+          modelId={modelId}
+          groups={modelGroups}
+          onChange={onModelChange}
+          className="max-w-[45%]"
+        />
         {streaming ? (
           <button
             type="button"
