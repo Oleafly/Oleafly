@@ -17,7 +17,7 @@ export async function openPreviewWindow(projectId: string, title: string): Promi
   }
   new WebviewWindow(PREVIEW_WINDOW_LABEL, {
     url: `index.html?view=preview&project=${encodeURIComponent(projectId)}`,
-    title: `Preview: ${title || "OpenLeaf"}`,
+    title: `Preview: ${title || "Oleafly"}`,
     width: 720,
     height: 960,
     resizable: true,

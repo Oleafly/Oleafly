@@ -3,7 +3,7 @@ title: "Keyboard shortcuts"
 description: "The complete shortcut reference for macOS, Windows, and Linux, from compile and SyncTeX to code intelligence and the slash menu."
 ---
 
-OpenLeaf is comfortable to drive entirely from the keyboard. Press **⌘/** (Ctrl+/) inside the app anytime for a searchable version of this list.
+Oleafly is comfortable to drive entirely from the keyboard. Press **⌘/** (Ctrl+/) inside the app anytime for a searchable version of this list.
 
 ![The searchable in-app keyboard shortcuts reference](/OpenLeaf/media/keyboard-shortcuts.png)
 

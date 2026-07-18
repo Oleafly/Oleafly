@@ -17,7 +17,7 @@ const KIND: Record<PrepChange["kind"], { icon: typeof Info; color: string }> = {
   info: { icon: Info, color: "text-muted-foreground" },
 };
 
-// Tier C: OpenLeaf prepares the source for a tagging engine (LuaLaTeX + TeX
+// Tier C: Oleafly prepares the source for a tagging engine (LuaLaTeX + TeX
 // Live 2025) to compile into tagged, accessible output; Preflight verifies it.
 export function PrepExport() {
   const [result, setResult] = useState<PrepResult | null>(null);
@@ -64,7 +64,7 @@ export function PrepExport() {
       <div className="px-2.5 py-2">
         <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Accessible export</p>
         <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-          Prepare this document for a tagged, Section 508 / PDF-UA export. OpenLeaf adds the required setup. Compile the
+          Prepare this document for a tagged, Section 508 / PDF-UA export. Oleafly adds the required setup. Compile the
           result with LuaLaTeX (TeX Live 2025 or newer), then re-check.
         </p>
         <button type="button"

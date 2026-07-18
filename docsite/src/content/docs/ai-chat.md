@@ -43,7 +43,7 @@ Any file-changing tool pauses the whole run and shows an approval card: which to
 
 Two more layers of safety back this up:
 
-- Before its first edit of a run, the assistant commits an "OpenLeaf AI checkpoint" to your project's Git, so even approved changes can be rolled back wholesale from [history](/OpenLeaf/git-history/).
+- Before its first edit of a run, the assistant commits an "Oleafly AI checkpoint" to your project's Git, so even approved changes can be rolled back wholesale from [history](/OpenLeaf/git-history/).
 - Runs cap at 50 steps, so a confused agent can't loop forever.
 
 ## Plans, progress, and cost

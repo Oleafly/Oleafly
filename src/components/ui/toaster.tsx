@@ -42,7 +42,7 @@ function ToastRow({ toast }: { toast: Toast }) {
           "mt-0.5 size-4 shrink-0",
           toast.kind === "error" && "text-destructive",
           toast.kind === "success" && "text-emerald-500",
-          toast.kind === "info" && "text-muted-foreground",
+          toast.kind === "info" && "text-blue-500",
         )}
       />
       <p className="min-w-0 flex-1 whitespace-pre-wrap break-words text-xs leading-relaxed">

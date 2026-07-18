@@ -3,7 +3,7 @@ title: "Compiling"
 description: "The bundled Tectonic engine: one-key and auto-compile, live progress, the status chip, reading the logs, offline mode, and how packages are fetched and cached."
 ---
 
-OpenLeaf compiles with **Tectonic**, an XeTeX-based engine that ships inside the app. There is no TeX distribution to install and no build configuration: open a project, press compile, get a PDF. Output is Unicode-clean with embedded, subsetted fonts, which is exactly what ATS parsers and archives want.
+Oleafly compiles with **Tectonic**, an XeTeX-based engine that ships inside the app. There is no TeX distribution to install and no build configuration: open a project, press compile, get a PDF. Output is Unicode-clean with embedded, subsetted fonts, which is exactly what ATS parsers and archives want.
 
 ## Starting a compile
 
@@ -16,7 +16,7 @@ Compiling always saves the active file first, so the PDF matches what you see. I
 
 ## Auto-compile
 
-Run **Enable auto-compile** from the ⌘K palette and OpenLeaf recompiles about 2.5 seconds after you stop typing. Only real edits trigger it; switching tabs or opening files doesn't. It's off by default, and the same palette entry turns it back off.
+Run **Enable auto-compile** from the ⌘K palette and Oleafly recompiles about 2.5 seconds after you stop typing. Only real edits trigger it; switching tabs or opening files doesn't. It's off by default, and the same palette entry turns it back off.
 
 Compiles never pile up: if you keep typing while a build runs, exactly one follow-up compile is queued so the final PDF always reflects your latest edits.
 
@@ -59,4 +59,4 @@ Tectonic downloads a LaTeX package the first time a document needs it, then cach
 
 ## Beyond Tectonic
 
-Tectonic covers everyday compiling. For tagged, accessible PDFs (Section 508 / PDF-UA), OpenLeaf can use LuaLaTeX via a system TeX Live or a self-contained TinyTeX install. That story lives on [LaTeX engines & packages](/OpenLeaf/latex-engines/).
+Tectonic covers everyday compiling. For tagged, accessible PDFs (Section 508 / PDF-UA), Oleafly can use LuaLaTeX via a system TeX Live or a self-contained TinyTeX install. That story lives on [LaTeX engines & packages](/OpenLeaf/latex-engines/).

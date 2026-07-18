@@ -63,7 +63,7 @@ pub fn dispatch(msg: &Value, tools: &[ToolMeta], instructions: &str) -> RpcOutco
                     "capabilities": { "tools": { "listChanged": false } },
                     "serverInfo": {
                         "name": "openleaf",
-                        "title": "OpenLeaf",
+                        "title": "Oleafly",
                         "version": env!("CARGO_PKG_VERSION"),
                     },
                     "instructions": instructions,

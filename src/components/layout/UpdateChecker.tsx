@@ -153,7 +153,7 @@ export function UpdateChecker({ className }: { className?: string }) {
           </p>
           <Progress value={state.percent} />
           <p className="text-[10px] text-muted-foreground">
-            OpenLeaf will restart to finish.
+            Oleafly will restart to finish.
           </p>
         </div>
       )}

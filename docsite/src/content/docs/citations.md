@@ -3,7 +3,7 @@ title: "Citations & bibliography"
 description: "Paste a DOI, arXiv id, or paper title and get a clean BibTeX entry plus the \\cite at your cursor, deduplicated against your .bib automatically."
 ---
 
-Adding a citation in most LaTeX workflows means: find the paper, export BibTeX, clean it up, paste it into the `.bib`, invent a key, and finally type the `\cite`. OpenLeaf collapses all of that into one dialog.
+Adding a citation in most LaTeX workflows means: find the paper, export BibTeX, clean it up, paste it into the `.bib`, invent a key, and finally type the `\cite`. Oleafly collapses all of that into one dialog.
 
 ## Add citation
 
@@ -16,7 +16,7 @@ Open it from the quote button in the [editor toolbar](/OpenLeaf/editor/#the-tool
 
 ![The Add citation dialog with a fetched BibTeX entry](/OpenLeaf/media/citation-lookup.png)
 
-Click **Look up**, review the fetched BibTeX in the preview, and hit **Add to .bib and cite**. OpenLeaf then does three things at once:
+Click **Look up**, review the fetched BibTeX in the preview, and hit **Add to .bib and cite**. Oleafly then does three things at once:
 
 1. **Appends the entry to your project's `.bib`**, with a clean, auto-generated citation key.
 2. **Deduplicates by DOI**: if the paper is already in your bibliography under any key, no duplicate is created and the existing key is reused.
@@ -24,7 +24,7 @@ Click **Look up**, review the fetched BibTeX in the preview, and hit **Add to .b
 
 ## Which .bib file it uses
 
-OpenLeaf targets the bibliography your document actually loads: the file named in `\bibliography{}` or `\addbibresource{}`. If neither exists, it uses the project's first `.bib`, and if the project has none at all, it creates `references.bib`. You never have to think about it, but the behavior is predictable when you do.
+Oleafly targets the bibliography your document actually loads: the file named in `\bibliography{}` or `\addbibresource{}`. If neither exists, it uses the project's first `.bib`, and if the project has none at all, it creates `references.bib`. You never have to think about it, but the behavior is predictable when you do.
 
 ## Autocomplete from your .bib
 

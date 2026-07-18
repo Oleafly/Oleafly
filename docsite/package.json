@@ -2,7 +2,7 @@
   "name": "openleaf-docsite",
   "type": "module",
   "private": true,
-  "description": "Documentation site for OpenLeaf, built with Astro Starlight from the repo's docs/ markdown.",
+  "description": "Documentation site for Oleafly, built with Astro Starlight from the repo's docs/ markdown.",
   "scripts": {
     "sync": "node scripts/sync-docs.mjs",
     "dev": "node scripts/sync-docs.mjs && astro dev",

@@ -3,7 +3,7 @@
 ## General
 
 ### Do I need an account?
-No. OpenLeaf has no accounts and no login. Install it and write.
+No. Oleafly has no accounts and no login. Install it and write.
 
 ### Does it need the internet?
 Only to fetch LaTeX packages the first time you use them (or when you add a package you've never used). Turn on Offline mode (Settings → General) to compile with `--only-cached` and never touch the network.
@@ -33,7 +33,7 @@ Either turn off Offline mode so Tectonic can fetch it once, or add it to your lo
 Use Tectonic ≥ 0.16.9 (the fetch script pins it). Older versions had an arm64 `\setmainfont` crash that's fixed in 0.16.9+.
 
 ### Word/HTML/Markdown export is greyed out
-Those formats go through [pandoc](https://pandoc.org/installing.html). Install it and restart OpenLeaf.
+Those formats go through [pandoc](https://pandoc.org/installing.html). Install it and restart Oleafly.
 
 ---
 
@@ -46,7 +46,7 @@ Make sure Device Flow is enabled on your OAuth App (GitHub → Settings → Deve
 Publish the project first (Source Control → Publish to GitHub). Push and Pull are disabled until a remote exists.
 
 ### Push says SSH remotes aren't supported
-OpenLeaf authenticates over HTTPS with your token. Use an HTTPS remote (Publish sets this automatically), or paste a PAT under Settings → GitHub → Advanced.
+Oleafly authenticates over HTTPS with your token. Use an HTTPS remote (Publish sets this automatically), or paste a PAT under Settings → GitHub → Advanced.
 
 ### Can I sync across two computers?
 Yes. Push on one, Pull on the other. See [GitHub Sync](github-sync.md).

@@ -9,7 +9,7 @@ test.beforeEach(async ({ tauriPage }) => {
     timeout: 180_000,
   });
   await expect(tauriPage.locator(".pdf-canvas")).toBeVisible({ timeout: 30_000 });
-  await expect(tauriPage.locator('[aria-label="Recompile"]')).toBeEnabled({ timeout: 60_000 });
+  await expect(tauriPage.locator('[data-testid="compile-button"]')).toBeEnabled({ timeout: 60_000 });
 });
 
 test("zoom controls change the zoom level", async ({ tauriPage }) => {
@@ -23,6 +23,32 @@ test("zoom controls change the zoom level", async ({ tauriPage }) => {
   expect(Number(after)).toBeGreaterThan(Number(before));
   await tauriPage.click('[aria-label="Zoom out"]');
   expect(await zoom()).toBe(before);
+});
+
+test("zoom menu applies presets and calculated fit scales", async ({ tauriPage }) => {
+  const trigger = tauriPage.locator('[aria-haspopup="menu"][aria-label^="Zoom "]');
+
+  await trigger.click();
+  await tauriPage.getByText("400%", { exact: true }).click();
+  await expect(trigger).toHaveText(/400%/);
+  await expect(tauriPage.locator('button[aria-label="Zoom in"]')).toBeDisabled();
+
+  await trigger.click();
+  await tauriPage.getByText("25%", { exact: true }).click();
+  await expect(trigger).toHaveText(/25%/);
+  await expect(tauriPage.locator('button[aria-label="Zoom out"]')).toBeDisabled();
+
+  await trigger.click();
+  await tauriPage.getByText("Fit to width", { exact: true }).click();
+  const widthScale = Number((await trigger.textContent())?.match(/\d+/)?.[0]);
+  expect(widthScale).toBeGreaterThanOrEqual(25);
+  expect(widthScale).toBeLessThan(400);
+
+  await trigger.click();
+  await tauriPage.getByText("Fit to height", { exact: true }).click();
+  const heightScale = Number((await trigger.textContent())?.match(/\d+/)?.[0]);
+  expect(heightScale).toBeGreaterThanOrEqual(25);
+  expect(heightScale).toBeLessThan(400);
 });
 
 test("one-page documents hide two-page layout and bound page navigation", async ({

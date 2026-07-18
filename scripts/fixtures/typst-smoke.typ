@@ -1,4 +1,4 @@
 #set page(width: 120pt, height: 80pt)
-= OpenLeaf Typst smoke
+= Oleafly Typst smoke
 
 The bundled engine works.

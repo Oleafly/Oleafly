@@ -17,9 +17,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PdfViewer, type PdfViewerHandle, type PdfLayout } from "@/components/pdf/PdfViewer";
 import { readCompiledPdf } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
-
-const MIN_SCALE = 0.4;
-const MAX_SCALE = 4;
+import { MAX_PREVIEW_SCALE, MIN_PREVIEW_SCALE } from "./preview-zoom";
 
 // Detached PDF preview window (`?view=preview`); reloads on `preview:refresh` /
 // `preview:project` events emitted by the main window.
@@ -77,7 +75,8 @@ export function PreviewWindow() {
   useEffect(() => {
     const el = scrollBoxRef.current;
     if (!el) return;
-    const clamp = (s: number) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, s));
+    const clamp = (s: number) =>
+      Math.min(MAX_PREVIEW_SCALE, Math.max(MIN_PREVIEW_SCALE, s));
     const onWheel = (e: WheelEvent) => {
       if (!e.ctrlKey) return;
       e.preventDefault();
@@ -158,13 +157,27 @@ export function PreviewWindow() {
           </>
         )}
         <Tooltip label="Zoom out">
-          <Button variant="ghost" size="icon" className="size-7" onClick={() => setScale((s) => Math.max(MIN_SCALE, s - 0.2))} aria-label="Zoom out">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7"
+            disabled={scale <= MIN_PREVIEW_SCALE}
+            onClick={() => setScale((s) => Math.max(MIN_PREVIEW_SCALE, s - 0.2))}
+            aria-label="Zoom out"
+          >
             <Minus className="size-3.5" />
           </Button>
         </Tooltip>
         <span className="w-10 text-center text-xs tabular-nums text-muted-foreground">{Math.round(scale * 100)}%</span>
         <Tooltip label="Zoom in">
-          <Button variant="ghost" size="icon" className="size-7" onClick={() => setScale((s) => Math.min(MAX_SCALE, s + 0.2))} aria-label="Zoom in">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7"
+            disabled={scale >= MAX_PREVIEW_SCALE}
+            onClick={() => setScale((s) => Math.min(MAX_PREVIEW_SCALE, s + 0.2))}
+            aria-label="Zoom in"
+          >
             <Plus className="size-3.5" />
           </Button>
         </Tooltip>

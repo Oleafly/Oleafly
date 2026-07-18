@@ -1,4 +1,4 @@
-# Getting started with OpenLeaf
+# Getting started with Oleafly
 
 In about two minutes you'll have a project open, compiled, and exporting a PDF. Everything runs locally, so you don't need an account or an internet connection to write or compile.
 
@@ -33,7 +33,7 @@ PDF to source: ⌘/Ctrl-click anywhere on the PDF to jump the cursor there in th
 
 Click the Download icon in the toolbar, then Download as PDF. The output is ATS-clean by default: real selectable text, embedded subset fonts. For Word/HTML/Markdown, install pandoc and use the same menu.
 
-You can also create a blank **Markdown** project from the library. OpenLeaf
+You can also create a blank **Markdown** project from the library. Oleafly
 compiles its `main.md` (or `main.markdown`) to PDF with Pandoc and the bundled
 Tectonic engine. The first compile offers the same on-demand Pandoc download
 used by document export. If that download is unavailable, the error links to

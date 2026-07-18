@@ -1,11 +1,11 @@
 # Third-Party Licenses
 
-OpenLeaf is distributed under the [GNU AGPL v3 or later](LICENSE). It bundles
+Oleafly is distributed under the [GNU AGPL v3 or later](LICENSE). It bundles
 third-party open-source components, each under its own license, listed below.
 The build accepts the licenses listed in `src-tauri/deny.toml`, including
 permissive licenses and specifically reviewed licenses such as MPL-2.0.
 
-This file lists the **direct** dependencies OpenLeaf ships. Their transitive
+This file lists the **direct** dependencies Oleafly ships. Their transitive
 dependencies are checked by the automated license policy. The full, authoritative license
 text for every JavaScript package is under `node_modules/<pkg>/LICENSE`, and for
 every Rust crate under its source in the Cargo registry.
@@ -72,6 +72,6 @@ cargo install cargo-about && cargo about generate about.hbs   # Rust / backend
 
 ---
 
-Attribution notices for OpenLeaf itself are in [NOTICE](NOTICE). If you
-redistribute OpenLeaf or a derivative, keep this file and the notices it
+Attribution notices for Oleafly itself are in [NOTICE](NOTICE). If you
+redistribute Oleafly or a derivative, keep this file and the notices it
 references, per the terms of each component's license.

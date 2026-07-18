@@ -1,6 +1,6 @@
 # Security Policy
 
-OpenLeaf is a local-first desktop app: your documents, GitHub token, and AI API
+Oleafly is a local-first desktop app: your documents, GitHub token, and AI API
 keys live on your machine. We take the integrity of that boundary seriously.
 
 ## Reporting a vulnerability
@@ -54,7 +54,7 @@ improving them:
 
 ## Supported versions
 
-OpenLeaf is pre-1.0. Security fixes are applied to the `main` branch and shipped
+Oleafly is pre-1.0. Security fixes are applied to the `main` branch and shipped
 in the next release; only the latest release is supported.
 
 | Version | Supported |

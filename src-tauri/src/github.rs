@@ -40,7 +40,7 @@ pub struct TokenPoll {
 
 fn http_client() -> Result<reqwest::Client, String> {
     reqwest::Client::builder()
-        .user_agent("OpenLeaf")
+        .user_agent("Oleafly")
         .timeout(std::time::Duration::from_secs(30))
         .build()
         .map_err(|e| format!("could not build HTTP client: {e}"))

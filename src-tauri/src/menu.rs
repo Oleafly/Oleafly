@@ -7,11 +7,11 @@ use tauri::{AppHandle, Emitter, Runtime};
 /// ⌘C/⌘V/⌘X/⌘A/⌘Z accelerators into the WKWebView; replacing the default menu
 /// without it silently kills clipboard everywhere, including CodeMirror.
 pub fn build<R: Runtime>(handle: &AppHandle<R>) -> tauri::Result<Menu<R>> {
-    let about = MenuItemBuilder::with_id("about", "About OpenLeaf").build(handle)?;
+    let about = MenuItemBuilder::with_id("about", "About Oleafly").build(handle)?;
     let check_updates =
         MenuItemBuilder::with_id("check_updates", "Check for Updates…").build(handle)?;
 
-    let app_menu = SubmenuBuilder::new(handle, "OpenLeaf")
+    let app_menu = SubmenuBuilder::new(handle, "Oleafly")
         .item(&about)
         .separator()
         .item(&check_updates)

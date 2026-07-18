@@ -1,6 +1,6 @@
 cff-version: 1.2.0
-message: "If you use OpenLeaf in your work, please cite it as below."
-title: OpenLeaf
+message: "If you use Oleafly in your work, please cite it as below."
+title: Oleafly
 abstract: "A free, local-first LaTeX and resume editor for macOS, Windows, and Linux. An offline Overleaf alternative with Git versioning, GitHub sync, SyncTeX, and bring-your-own-key AI."
 type: software
 authors:

@@ -1,4 +1,4 @@
-"""Generate the 1024x1024 source app icon for OpenLeaf from public/leaf.svg.
+"""Generate the 1024x1024 source app icon for Oleafly from public/leaf.svg.
 
 The brand mark is the leaf in `public/leaf.svg`. This script renders it, trims
 to the mark's actual bounding box (the SVG has uneven padding), and centers it

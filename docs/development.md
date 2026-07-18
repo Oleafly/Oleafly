@@ -1,6 +1,6 @@
 # Development
 
-What you need to work on OpenLeaf. The app is a [Tauri 2](https://tauri.app) project: a React + TypeScript + Vite frontend that talks over IPC to a Rust backend. Rust selects a compiler through the `DocumentEngine` interface. LaTeX and Typst use shipped CLI sidecars. Markdown uses a discovered or on-demand Pandoc executable with the shipped Tectonic executable as Pandoc's PDF engine.
+What you need to work on Oleafly. The app is a [Tauri 2](https://tauri.app) project: a React + TypeScript + Vite frontend that talks over IPC to a Rust backend. Rust selects a compiler through the `DocumentEngine` interface. LaTeX and Typst use shipped CLI sidecars. Markdown uses a discovered or on-demand Pandoc executable with the shipped Tectonic executable as Pandoc's PDF engine.
 
 ## Repo layout
 
@@ -89,14 +89,14 @@ pnpm test:e2e:app                         # builds + launches the app, runs Play
 5. Markdown invokes Pandoc directly against `.md`/`.markdown`, with an explicit
    output path and `--pdf-engine=<absolute bundled Tectonic path>`. Pandoc's
    manual explicitly supports a full PDF-engine path. Do not replace this with
-   an implicit system `pdflatex`, since packaged OpenLeaf must not depend on an
+   an implicit system `pdflatex`, since packaged Oleafly must not depend on an
    undeclared TeX installation. The process runs with the project root as its
    working directory so relative images, bibliography files, and CSL files work
    for both root and nested main documents.
 
 Tauri's [sidecar documentation](https://v2.tauri.app/develop/sidecar/) defines
 `bundle.externalBin` inputs with target-triple suffixes and exposes the packaged
-sidecar under its unsuffixed name at runtime. OpenLeaf's Pandoc adapter resolves
+sidecar under its unsuffixed name at runtime. Oleafly's Pandoc adapter resolves
 that packaged Tectonic executable beside the application executable, matching
 Tauri's desktop bundle layout. Unit tests cover macOS app-bundle and Cargo
 debug/release candidates, while the release workflow inspects the staged

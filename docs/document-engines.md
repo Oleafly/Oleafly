@@ -1,6 +1,6 @@
 # Document engines
 
-OpenLeaf loads one backend-owned engine descriptor when a project opens. The frontend treats that descriptor as the source of truth for formatting, preflight, compile options, diagrams, SyncTeX, and conversion exports. Until it loads successfully those controls stay unavailable rather than guessing from a filename.
+Oleafly loads one backend-owned engine descriptor when a project opens. The frontend treats that descriptor as the source of truth for formatting, preflight, compile options, diagrams, SyncTeX, and conversion exports. Until it loads successfully those controls stay unavailable rather than guessing from a filename.
 
 | Capability | LaTeX / Tectonic | Typst | Markdown / Pandoc |
 |---|---|---|---|

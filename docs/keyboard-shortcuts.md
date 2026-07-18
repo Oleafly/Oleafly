@@ -1,6 +1,6 @@
 # Keyboard shortcuts
 
-OpenLeaf is keyboard-driven. Formatting and code navigation live in shortcuts, the editor toolbar, the context menu, the command palette, and slash-commands.
+Oleafly is keyboard-driven. Formatting and code navigation live in shortcuts, the editor toolbar, the context menu, the command palette, and slash-commands.
 
 ## Global
 

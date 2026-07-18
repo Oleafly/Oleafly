@@ -17,7 +17,7 @@ const DOCS_DIR = join(ROOT, "docs");
 const OUT_DIR = join(here, "..", "src", "content", "docs", "engineering");
 const MEDIA_DIR = join(ROOT, "media");
 const MEDIA_OUT = join(here, "..", "public", "media");
-const BASE = "/OpenLeaf";
+const BASE = "/Oleafly";
 const REPO = "https://github.com/prajwal-svm/OpenLeaf";
 
 // Engineering pages, synced from root docs/. CONTRIBUTING.md is added from the
@@ -29,7 +29,7 @@ const ENGINEERING_DOCS = new Set(["architecture", "development", "releasing", "u
 const PRODUCT_SLUGS = new Set([
   "overview",
   "philosophy",
-  "why-openleaf",
+  "why-oleafly",
   "getting-started",
   "install",
   "library",
@@ -86,7 +86,7 @@ function rewriteLink(url) {
 function transform(src) {
   const lines = src.split("\n");
   // First `# Heading` becomes the frontmatter title and is dropped from the body.
-  let title = "OpenLeaf";
+  let title = "Oleafly";
   const h1 = lines.findIndex((l) => /^#\s+/.test(l));
   if (h1 !== -1) {
     title = lines[h1].replace(/^#\s+/, "").trim();

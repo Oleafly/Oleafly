@@ -44,6 +44,14 @@ test("a LaTeX error surfaces as an error status, and fixing it recovers", async 
     await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "error", {
       timeout: 90_000,
     });
+    await expect(tauriPage.getByText("Copy log")).toBeVisible();
+    await expect(tauriPage.getByText("Ask AI", { exact: true })).toBeVisible();
+    await tauriPage.getByText("Ask AI", { exact: true }).click();
+    await expect(tauriPage.locator('[data-testid="settings-section-ai"]')).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    await tauriPage.click('[aria-label="Close settings"]');
   } finally {
     await recoverDocument(tauriPage);
   }

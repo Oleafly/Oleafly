@@ -81,7 +81,7 @@ export function UpdateWindow() {
         ? "You're up to date"
         : update
           ? `Update available · v${update.version}`
-          : "OpenLeaf";
+          : "Oleafly";
 
   const notes = update?.body?.trim();
 
@@ -92,7 +92,7 @@ export function UpdateWindow() {
         <LeafLogo className="mt-0.5 size-7 shrink-0" />
         <div className="min-w-0 flex-1">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            OpenLeaf
+            Oleafly
           </p>
           <p className="truncate text-sm font-semibold">{title}</p>
           {update?.currentVersion && phase !== "upToDate" && (
@@ -117,7 +117,7 @@ export function UpdateWindow() {
         )}
         {phase === "upToDate" && (
           <p className="text-sm text-muted-foreground">
-            You're running the latest version of OpenLeaf.
+            You're running the latest version of Oleafly.
           </p>
         )}
         {phase === "error" && (
@@ -141,7 +141,7 @@ export function UpdateWindow() {
               {percent >= 100 ? "Installing…" : `Downloading… ${percent}%`}
             </p>
             <Progress value={percent} />
-            <p className="text-[10px] text-muted-foreground">OpenLeaf will restart to finish.</p>
+            <p className="text-[10px] text-muted-foreground">Oleafly will restart to finish.</p>
           </div>
         ) : phase === "available" && !selfInstallable ? (
           <div className="flex items-center justify-between gap-2">

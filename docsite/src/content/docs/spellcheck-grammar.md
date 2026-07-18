@@ -3,7 +3,7 @@ title: "Spelling & grammar"
 description: "Offline spelling, grammar, and style checking that understands LaTeX: Hunspell and Harper run as local WASM, skip your commands and math, and offer one-click fixes."
 ---
 
-OpenLeaf proofreads your prose without sending a word anywhere. Two engines run entirely on your machine as WebAssembly: **Hunspell** for classic spellchecking and **Harper** for spelling, grammar, and style together. Both are LaTeX-aware: commands, math, environments, and citation keys are masked out before checking, so `\usepackage` never gets flagged as a typo and `$\sigma$` never becomes a grammar error.
+Oleafly proofreads your prose without sending a word anywhere. Two engines run entirely on your machine as WebAssembly: **Hunspell** for classic spellchecking and **Harper** for spelling, grammar, and style together. Both are LaTeX-aware: commands, math, environments, and citation keys are masked out before checking, so `\usepackage` never gets flagged as a typo and `$\sigma$` never becomes a grammar error.
 
 ## Which engine runs when
 
@@ -40,4 +40,4 @@ Ignored words take effect immediately, and you can unignore any of them later: S
 
 ## Privacy
 
-There is no cloud grammar service here. The dictionaries and models ship with the app and execute locally, so drafts under embargo, unpublished results, and personal documents are never uploaded for proofreading. This is the same [local-first principle](/OpenLeaf/philosophy/) as the rest of OpenLeaf.
+There is no cloud grammar service here. The dictionaries and models ship with the app and execute locally, so drafts under embargo, unpublished results, and personal documents are never uploaded for proofreading. This is the same [local-first principle](/OpenLeaf/philosophy/) as the rest of Oleafly.

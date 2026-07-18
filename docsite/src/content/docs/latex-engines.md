@@ -3,7 +3,7 @@ title: "LaTeX engines & packages"
 description: "Tectonic for everyday compiles, LuaLaTeX for tagged accessible PDFs: system TeX Live detection, the self-contained TinyTeX install, and the built-in package manager."
 ---
 
-OpenLeaf ships one engine and can manage a second. Understanding the split takes a minute and explains everything in Settings, LaTeX Engine.
+Oleafly ships one engine and can manage a second. Understanding the split takes a minute and explains everything in Settings, LaTeX Engine.
 
 ## Tectonic: the everyday engine
 
@@ -15,7 +15,7 @@ One thing Tectonic cannot do: produce **tagged PDFs**, the structure layer that 
 
 Settings, **LaTeX Engine** ("Tagged / accessible export") manages it, and there are two ways to have it:
 
-1. **You already have TeX Live.** OpenLeaf detects a system LuaLaTeX and shows "Using a system LuaLaTeX / TeX Live". Nothing to install.
+1. **You already have TeX Live.** Oleafly detects a system LuaLaTeX and shows "Using a system LuaLaTeX / TeX Live". Nothing to install.
 2. **You don't.** One button, **Install TinyTeX (~100 MB)**, downloads a self-contained TeX Live into `~/.openleaf/tinytex` with live progress. No admin rights, no system changes, and **Delete TinyTeX to free space** removes it entirely whenever you like.
 
 With an engine present, the [Preflight](/OpenLeaf/preflight/) panel's **Compile tagged and verify** button can produce a tagged PDF with LuaLaTeX and immediately audit it, in one step. Prefer your own toolchain? Preflight's **Prepare for accessible export** rewrites your source for tagging and you compile it with any LuaLaTeX (TeX Live 2025 or newer) outside the app.

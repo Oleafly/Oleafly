@@ -3,7 +3,7 @@ title: "Figures & diagrams"
 description: "The diagram composer: draw shapes and arrows visually or write TikZ by hand, preview the compiled result live, and insert as editable vector code or PNG. Round-trips for later editing."
 ---
 
-Publication figures usually force a choice: a GUI tool that exports pixels and forgets, or hand-written TikZ with no visual feedback. OpenLeaf's diagram composer gives you both in one window, with a live compiled preview, and the figures it makes stay editable forever.
+Publication figures usually force a choice: a GUI tool that exports pixels and forgets, or hand-written TikZ with no visual feedback. Oleafly's diagram composer gives you both in one window, with a live compiled preview, and the figures it makes stay editable forever.
 
 No API key, no network. This is a fully offline feature. (For AI-generated figures, see [Draw with AI](/OpenLeaf/ai-figures/).)
 

@@ -1,19 +1,19 @@
 ---
 title: "Overview"
-description: "OpenLeaf is a free, local-first LaTeX editor and resume studio for macOS, Windows, and Linux. Write, compile, check, and ship polished PDFs, all on your own machine."
+description: "Oleafly is a free, local-first LaTeX editor and resume studio for macOS, Windows, and Linux. Write, compile, check, and ship polished PDFs, all on your own machine."
 ---
 
-OpenLeaf is a free, local-first LaTeX editor and resume studio for macOS, Windows, and Linux. It gives you the full writing experience of a cloud LaTeX service, the compiler included, on your own machine: no account, no subscription, no upload, no waiting on someone else's build queue.
+Oleafly is a free, local-first LaTeX editor and resume studio for macOS, Windows, and Linux. It gives you the full writing experience of a cloud LaTeX service, the compiler included, on your own machine: no account, no subscription, no upload, no waiting on someone else's build queue.
 
 You write on the left, the PDF builds on the right, and everything in between is built in: citation lookups, accessibility checks, even an AI assistant that can edit your files with your approval.
 
-![OpenLeaf: the editor on the left, the compiled PDF on the right](/OpenLeaf/media/hero-editor.png)
+![Oleafly: the editor on the left, the compiled PDF on the right](/OpenLeaf/media/hero-editor.png)
 
 ## Who it's for
 
 - **Researchers and academics** writing papers for IEEE, ACM, or Elsevier venues, with real bibliography management, cross-file navigation, and SyncTeX.
 - **Students and PhD candidates** writing theses, reports, homework assignments, and Beamer presentations.
-- **Job seekers** building resumes that actually survive applicant tracking systems. OpenLeaf ships ATS-friendly templates and a Preflight panel that simulates what a resume parser extracts from your PDF.
+- **Job seekers** building resumes that actually survive applicant tracking systems. Oleafly ships ATS-friendly templates and a Preflight panel that simulates what a resume parser extracts from your PDF.
 - **Anyone who wants beautiful typeset documents** without installing and maintaining a multi-gigabyte TeX distribution: books, posters, newsletters, letters, calendars, and standalone figures are all templates away.
 
 ## What you get
@@ -36,7 +36,7 @@ A fast, virtualized [PDF preview](/OpenLeaf/pdf-preview/) with zoom, spreads, a 
 
 ### Citations without the copy-paste
 
-Paste a DOI, an arXiv id, or a paper title. OpenLeaf fetches the BibTeX, deduplicates it against your `.bib`, and inserts the `\cite` at your cursor. [Citation lookup](/OpenLeaf/citations/) talks directly to doi.org, arXiv, and Crossref.
+Paste a DOI, an arXiv id, or a paper title. Oleafly fetches the BibTeX, deduplicates it against your `.bib`, and inserts the `\cite` at your cursor. [Citation lookup](/OpenLeaf/citations/) talks directly to doi.org, arXiv, and Crossref.
 
 ### Figures, drawn or generated
 
@@ -66,6 +66,6 @@ Your projects are plain folders under `~/.openleaf/projects/`, each with your `.
 
 1. [Download and install](/OpenLeaf/install/) for your platform.
 2. Follow [Getting started](/OpenLeaf/getting-started/): first project to first PDF in about two minutes.
-3. Browse the [templates](/OpenLeaf/templates/) to see what OpenLeaf can produce out of the box.
+3. Browse the [templates](/OpenLeaf/templates/) to see what Oleafly can produce out of the box.
 
-If you're wondering how OpenLeaf compares to Overleaf, VS Code, or TeXstudio, read [Why OpenLeaf](/OpenLeaf/why-openleaf/). If you want to understand the thinking behind the product, read the [Philosophy](/OpenLeaf/philosophy/).
+If you're wondering how Oleafly compares to Overleaf, VS Code, or TeXstudio, read [Why Oleafly](/OpenLeaf/why-oleafly/). If you want to understand the thinking behind the product, read the [Philosophy](/OpenLeaf/philosophy/).

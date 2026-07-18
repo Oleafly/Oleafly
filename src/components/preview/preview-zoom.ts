@@ -1,9 +1,13 @@
+export const MIN_PREVIEW_SCALE = 0.25;
+export const MAX_PREVIEW_SCALE = 4;
+
 export function attachPreviewZoom(
   element: HTMLElement,
   readScale: () => number,
   writeScale: (updater: (scale: number) => number) => void,
 ) {
-  const clamp = (value: number) => Math.min(4, Math.max(0.4, value));
+  const clamp = (value: number) =>
+    Math.min(MAX_PREVIEW_SCALE, Math.max(MIN_PREVIEW_SCALE, value));
   const onWheel = (event: WheelEvent) => {
     if (!event.ctrlKey) return;
     event.preventDefault();

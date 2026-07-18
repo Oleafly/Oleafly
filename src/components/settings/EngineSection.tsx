@@ -35,7 +35,7 @@ export function EngineSection() {
         <Tooltip
           wide
           side="right"
-          label="The default engine (Tectonic) is fast and offline but cannot produce tagged, Section 508 / PDF-UA PDFs. That needs LuaLaTeX. OpenLeaf uses one you already have, or installs TinyTeX (about 100 MB) on demand. It lives in your home folder and needs no admin rights."
+          label="The default engine (Tectonic) is fast and offline but cannot produce tagged, Section 508 / PDF-UA PDFs. That needs LuaLaTeX. Oleafly uses one you already have, or installs TinyTeX (about 100 MB) on demand. It lives in your home folder and needs no admin rights."
         >
           <Info className="size-3.5 cursor-help text-muted-foreground/60 hover:text-muted-foreground" />
         </Tooltip>

@@ -45,7 +45,7 @@ export class ErrorBoundary extends Component<Props, State> {
         <div className="space-y-2">
           <h1 className="text-lg font-semibold">Something went wrong</h1>
           <p className="mx-auto max-w-md text-sm text-muted-foreground">
-            OpenLeaf hit an unexpected error and couldn't render this screen. Your
+            Oleafly hit an unexpected error and couldn't render this screen. Your
             files are safe on disk. Details were saved to{" "}
             <code className="rounded bg-foreground/10 px-1 py-0.5 text-xs">
               ~/.openleaf/app.log
@@ -67,7 +67,7 @@ export class ErrorBoundary extends Component<Props, State> {
             onClick={() => window.location.reload()}
             className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
           >
-            Reload OpenLeaf
+            Reload Oleafly
           </button>
         </div>
       </div>

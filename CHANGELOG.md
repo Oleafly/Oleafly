@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to OpenLeaf are documented here.
+All notable changes to Oleafly are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -133,7 +133,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **License changed from Apache-2.0 to AGPL-3.0-or-later.** OpenLeaf stays free
+- **License changed from Apache-2.0 to AGPL-3.0-or-later.** Oleafly stays free
   and open source; the AGPL's network copyleft means anyone who distributes or
   hosts a modified version must share their source under the same license.
 - **The frontend is now a pnpm workspace.** Feature engines moved into nine
@@ -280,7 +280,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   hundreds-of-pages thesis or book scrolls smoothly with bounded memory.
 - **Auto-citation** - add a reference by pasting a DOI, arXiv id, or URL (fetched
   directly), or by typing a paper title to search Crossref and pick a result.
-  OpenLeaf appends a correctly-keyed BibTeX entry to your project's .bib
+  Oleafly appends a correctly-keyed BibTeX entry to your project's .bib
   (deduplicated by DOI, so the same paper is never added twice) and inserts the
   \cite at your cursor. Open it from the command palette ("Add citation") or the
   citation button in the editor toolbar. Only the identifier or title is sent, to
@@ -289,7 +289,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   entries that share a DOI (the same paper under two keys), and a References
   button was added to the sidebar rail to reopen the find-references results.
 
-- **Code intelligence (project index)** - OpenLeaf now builds a live index of the
+- **Code intelligence (project index)** - Oleafly now builds a live index of the
   whole project (sections, `\label`s, `\ref`/`\cite`s, `.bib` entries, `\newcommand`
   macros, theorems, glossary entries, and the `\input` graph). It powers:
   go-to-definition (F12 or Cmd/Ctrl-click) that jumps from a `\ref`, `\cite`, or
@@ -336,7 +336,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   say-so. Compile the prepared source with LuaLaTeX (TeX Live 2025 or newer),
   then let Preflight verify the tagged output.
 - **Optional LuaLaTeX engine for tagged export** - a new Settings, LaTeX Engine
-  section. OpenLeaf uses a LuaLaTeX / TeX Live you already have, or installs
+  section. Oleafly uses a LuaLaTeX / TeX Live you already have, or installs
   TinyTeX (about 100 MB) on demand, in your home folder with no admin rights,
   and lets you delete it to free space. A built-in package manager (tlmgr) adds
   or removes LaTeX packages, with each package tagged for tagging compatibility.
@@ -367,12 +367,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Dedicated update window** - when a new version is available, OpenLeaf opens
+- **Dedicated update window** - when a new version is available, Oleafly opens
   its own branded, frameless window (instead of a native OS dialog) showing the
   changelog for the new version, with a one-click Update now that downloads,
   installs, and restarts.
-- **Streamlined macOS menu** - the menu bar now shows a single OpenLeaf menu
-  with About OpenLeaf, Check for Updates, and Quit.
+- **Streamlined macOS menu** - the menu bar now shows a single Oleafly menu
+  with About Oleafly, Check for Updates, and Quit.
 - **Update-check indicator** - the About panel now flags when an automatic
   update check has failed, so an otherwise-silent failure is visible.
 
@@ -462,7 +462,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   create/fork/delete project, save PDF) now surface failures as a visible
   toast instead of only writing to `~/.openleaf/app.log`. Lightweight,
   dependency-free (`notifyError` logs *and* toasts).
-- **In-app auto-updates** - OpenLeaf checks for new releases on launch (and via
+- **In-app auto-updates** - Oleafly checks for new releases on launch (and via
   About → Check for updates), then downloads, signature-verifies, installs, and
   restarts. Releases now ship signed updater artifacts and a `latest.json` feed.
   See `docs/updates.md`.
@@ -482,7 +482,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   have a cached `github.com` credential (macOS keychain or a global git
   credential helper). Git consulted that stale/other-account credential before
   our token; auth failed and GitHub masked it as a 404. Push/pull now reset the
-  credential-helper chain so only OpenLeaf's token is used.
+  credential-helper chain so only Oleafly's token is used.
 
 ### Changed
 

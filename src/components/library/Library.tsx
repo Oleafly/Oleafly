@@ -148,7 +148,7 @@ export function Library() {
           {projects.length > 0 && (
             <>
               <LeafLogo className="size-5" />
-              <span className="text-sm font-semibold tracking-tight">OpenLeaf</span>
+              <span className="text-sm font-semibold tracking-tight">Oleafly</span>
             </>
           )}
         </div>
@@ -222,7 +222,7 @@ export function Library() {
                 <EmptyMedia variant="icon">
                   <LeafLogo className="size-7" />
                 </EmptyMedia>
-                <EmptyTitle>Welcome to OpenLeaf</EmptyTitle>
+                <EmptyTitle>Welcome to Oleafly</EmptyTitle>
                 <EmptyDescription>
                   A local-first LaTeX &amp; resume studio. Everything stays on your disk -
                   create your first project to get going. Your PDFs are about to get a whole lot prettier.

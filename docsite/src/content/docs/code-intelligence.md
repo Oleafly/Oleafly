@@ -3,7 +3,7 @@ title: "Code intelligence"
 description: "IDE-grade navigation for LaTeX: go to definition, find references, project-wide rename, hover cards, math preview, and the document outline."
 ---
 
-OpenLeaf indexes your whole project, not just the open file: every `\label`, citation key, custom macro, theorem, glossary entry, and the `\input` graph connecting your files. That index powers navigation that LaTeX writing has mostly lived without.
+Oleafly indexes your whole project, not just the open file: every `\label`, citation key, custom macro, theorem, glossary entry, and the `\input` graph connecting your files. That index powers navigation that LaTeX writing has mostly lived without.
 
 Shortcuts show macOS keys; on Windows and Linux, read ⌘ as Ctrl.
 

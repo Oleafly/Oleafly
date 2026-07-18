@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { ChevronDown, ExternalLink, Github, Link as LinkIcon } from "lucide-react";
+import { ExternalLink, Github, Link as LinkIcon } from "lucide-react";
 import { useGithubStore } from "@/store/github";
 import { useSettingsStore } from "@/store/settings";
+import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
@@ -10,7 +11,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
 
 export function GithubMenu({
   githubUrl,
@@ -38,41 +38,36 @@ export function GithubMenu({
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
-      <div className="flex h-7 items-center overflow-hidden rounded-md">
+      <div className="flex items-center">
         {connected && (
-          <>
-            <Tooltip label={`Connected as @${login} · GitHub settings`} side="bottom">
-              <button type="button"
-                onClick={openSettings}
-                aria-label={`GitHub: ${login}`}
-                className="flex h-full items-center gap-1.5 rounded-l-md pl-1 pr-2 text-xs font-medium text-foreground transition-colors hover:bg-accent"
-              >
-                {user?.avatar_url ? (
-                  <img src={user.avatar_url} alt="" className="size-5 rounded-full object-cover" />
-                ) : (
-                  <span className="flex size-5 items-center justify-center rounded-full bg-foreground text-background">
-                    <Github className="size-3" />
-                  </span>
-                )}
-                <span className="max-w-[110px] truncate">{login}</span>
-              </button>
-            </Tooltip>
-            <div className="h-4 w-px shrink-0 bg-border" />
-          </>
+          <Tooltip label={`Connected as @${login} · GitHub settings`} side="bottom">
+            <button type="button"
+              onClick={openSettings}
+              aria-label={`GitHub: ${login}`}
+              className="flex h-9 items-center gap-1.5 rounded-md pl-1 pr-2 text-xs font-medium text-foreground transition-colors hover:bg-accent"
+            >
+              {user?.avatar_url ? (
+                <img src={user.avatar_url} alt="" className="size-5 rounded-full object-cover" />
+              ) : (
+                <span className="flex size-5 items-center justify-center rounded-full bg-foreground text-background">
+                  <Github className="size-3" />
+                </span>
+              )}
+              <span className="max-w-[110px] truncate">{login}</span>
+            </button>
+          </Tooltip>
         )}
 
         <Tooltip label="GitHub" side="bottom">
           <DropdownMenuTrigger asChild>
-            <button type="button"
+            <Button
+              variant="ghost"
+              size="icon"
               aria-label="GitHub actions"
-              className={cn(
-                "flex h-full items-center gap-0.5 px-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                connected ? "rounded-r-md" : "rounded-md",
-              )}
+              className="text-muted-foreground hover:text-foreground"
             >
-              <Github className="size-4" />
-              <ChevronDown className="size-3 shrink-0 opacity-60" />
-            </button>
+              <Github />
+            </Button>
           </DropdownMenuTrigger>
         </Tooltip>
       </div>

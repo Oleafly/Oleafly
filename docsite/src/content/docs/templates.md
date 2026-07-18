@@ -3,7 +3,7 @@ title: "Templates"
 description: "The template gallery: 19 ready-to-edit starting points from ATS-safe resumes to IEEE papers, theses, Beamer decks, and posters, with previews, search, and on-demand fonts."
 ---
 
-Every OpenLeaf project starts from a template. The gallery gives you a real page-one preview of each one, so you pick by looking at the output, not by guessing from a name. Templates ship as plain, editable LaTeX source: what you create is yours.
+Every Oleafly project starts from a template. The gallery gives you a real page-one preview of each one, so you pick by looking at the output, not by guessing from a name. Templates ship as plain, editable LaTeX source: what you create is yours.
 
 ![The template gallery with category rail, search, and page-one previews](/OpenLeaf/media/project-templates.png)
 

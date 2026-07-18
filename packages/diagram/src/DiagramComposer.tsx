@@ -15,6 +15,7 @@ import {
   PanelRightClose,
   PanelRightOpen,
   Play,
+  RefreshCw,
   Save,
   Sparkles,
   Square,
@@ -104,6 +105,7 @@ export function DiagramComposer({
   const [png, setPng] = useState<string | null>(null);
   const [log, setLog] = useState("");
   const [busy, setBusy] = useState(false);
+  const [hasCompiled, setHasCompiled] = useState(false);
   const [scale, setScale] = useState(2);
   // Figure page background: hex "#RRGGBB", or "" for transparent. Default white.
   const [background, setBackground] = useState("#ffffff");
@@ -135,6 +137,7 @@ export function DiagramComposer({
     if (open) {
       setPng(null);
       setLog("");
+      setHasCompiled(false);
       setPreviewOpen(false);
     }
   }, [open]);
@@ -174,6 +177,7 @@ export function DiagramComposer({
       toast.error(String(e));
     } finally {
       setBusy(false);
+      setHasCompiled(true);
     }
   }, [projectId, busy, code, model, mode, hasDrawing, scale, background, host, toast]);
 
@@ -529,9 +533,15 @@ export function DiagramComposer({
             </Tooltip>
           )}
           <Button data-testid="diagram-compile" size="sm" onClick={() => void compile()} disabled={busy}>
-            {busy ? <Loader2 className="compile-shimmer-icon size-3.5" /> : <Play className="size-3.5" />}
+            {busy ? (
+              <Loader2 className="compile-shimmer-icon size-3.5" />
+            ) : hasCompiled ? (
+              <RefreshCw className="size-3.5" />
+            ) : (
+              <Play className="size-3.5" />
+            )}
             <span className={busy ? "ai-shimmer" : undefined}>
-              {busy ? "Compiling…" : "Compile"}
+              {busy ? "Compiling…" : hasCompiled ? "Recompile" : "Compile"}
             </span>
           </Button>
           <Tooltip label="Save this diagram as a reusable image project">

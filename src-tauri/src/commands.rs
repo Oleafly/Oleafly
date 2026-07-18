@@ -32,7 +32,7 @@ fn take_latest_compile_ticket(
     true
 }
 
-/// Returns the OpenLeaf projects root (`~/.openleaf/projects`).
+/// Returns the Oleafly projects root (`~/.openleaf/projects`).
 #[tauri::command]
 pub fn library_root() -> Result<std::path::PathBuf, String> {
     paths::projects_root()
@@ -68,7 +68,7 @@ pub fn updater_self_installable() -> bool {
 }
 
 /// Whether `path` may be revealed in the OS file manager.
-/// Allowed: anything under the OpenLeaf data root, or a path the user just
+/// Allowed: anything under the Oleafly data root, or a path the user just
 /// exported via a native save dialog (short-lived allowlist).
 fn assert_revealable(
     canonical: &std::path::Path,
@@ -87,7 +87,7 @@ fn assert_revealable(
         return Ok(());
     }
     Err(
-        "refusing to reveal a path outside OpenLeaf's data directory \
+        "refusing to reveal a path outside Oleafly's data directory \
          (export destinations must come from a successful save)"
             .into(),
     )

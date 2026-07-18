@@ -15,6 +15,7 @@ import {
   Loader2,
   ImagePlay,
   Play,
+  RefreshCw,
   SquarePen,
   X,
 } from "lucide-react";
@@ -97,6 +98,8 @@ export function TopToolbar() {
   const recompile = useCompileStore((s) => s.recompile);
   const status = useCompileStore((s) => s.status);
   const compiling = status === "compiling";
+  const hasCompileResult = status === "success" || status === "error";
+  const compileLabel = hasCompileResult ? "Recompile" : "Compile";
   const fullscreen = useFullscreen();
 
   const [forkOpen, setForkOpen] = useState(false);
@@ -275,7 +278,7 @@ export function TopToolbar() {
           className="flex items-center gap-1.5 rounded px-1.5 py-1 text-sm font-semibold tracking-tight hover:bg-accent"
         >
           <LeafLogo className="size-5" />
-          OpenLeaf
+          Oleafly
         </button>
         <ChevronRight className="size-4 text-muted-foreground/50" />
         {editingTitle ? (
@@ -351,8 +354,9 @@ export function TopToolbar() {
 
       <div data-tauri-drag-region className="flex items-center justify-end gap-1.5">
 
-        <Tooltip label={`Compile ${engine.label} (${shortcut("⌘↵")})`}>
+        <Tooltip label={`${compileLabel} ${engine.label} (${shortcut("⌘↵")})`}>
           <Button
+            data-testid="compile-button"
             variant="ghost"
             size="sm"
             className={cn(
@@ -365,10 +369,16 @@ export function TopToolbar() {
               if (viewMode === "editor") setViewMode("split");
               void recompile();
             }}
-            aria-label="Recompile"
+            aria-label={compileLabel}
           >
-            {compiling ? <Loader2 className="size-3.5 animate-spin" /> : <Play className="size-3.5" />}
-            <span className="text-xs font-medium">Compile</span>
+            {compiling ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : hasCompileResult ? (
+              <RefreshCw className="size-3.5" />
+            ) : (
+              <Play className="size-3.5" />
+            )}
+            <span className="text-xs font-medium">{compileLabel}</span>
           </Button>
         </Tooltip>
 

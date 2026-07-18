@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Columns2, Contrast, FileText, Loader2, Maximize, Minimize, PanelTopClose, PanelTopOpen, Play, RectangleVertical, Save, SquareArrowOutUpRight, X, XCircle, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
@@ -15,10 +23,13 @@ import { saveFileBase64, uint8ToBase64 } from "@/lib/tauri";
 import { openPreviewWindow } from "@/lib/preview-window";
 import { notifyError, toast } from "@/lib/toast";
 import { cn, shortcut } from "@/lib/utils";
-import { attachPreviewZoom } from "./preview-zoom";
+import {
+  attachPreviewZoom,
+  MAX_PREVIEW_SCALE,
+  MIN_PREVIEW_SCALE,
+} from "./preview-zoom";
 
-const MIN_SCALE = 0.4;
-const MAX_SCALE = 4;
+const ZOOM_PRESETS = [0.25, 0.5, 0.75, 1, 1.5, 2, 4];
 
 export function PreviewPane() {
   const status = useCompileStore((s) => s.status);
@@ -27,7 +38,6 @@ export function PreviewPane() {
   const recompile = useCompileStore((s) => s.recompile);
   const errors = useCompileStore((s) => s.errors);
   const compileTimeMs = useCompileStore((s) => s.compileTimeMs);
-  const lastCompiledAt = useCompileStore((s) => s.lastCompiledAt);
   const projectId = useFilesStore((s) => s.projectId);
   const projectName = useFilesStore((s) => s.projectName);
   const refreshTree = useFilesStore((s) => s.refreshTree);
@@ -105,6 +115,15 @@ export function PreviewPane() {
     if (n !== page) pdfRef.current?.gotoPage(n); // avoid snapping on an unchanged blur
   };
 
+  const setClampedScale = (next: number) => {
+    setScale(Math.min(MAX_PREVIEW_SCALE, Math.max(MIN_PREVIEW_SCALE, next)));
+  };
+
+  const fitPreview = (mode: "width" | "height") => {
+    const next = pdfRef.current?.getFitScale(mode);
+    if (next != null) setClampedScale(next);
+  };
+
   const submitSavePdf = async () => {
     if (!projectId || !pdfBytes) return;
     setSaving(true);
@@ -135,11 +154,10 @@ export function PreviewPane() {
     }
   };
 
-  // Fall back to logs only on a genuine failure (no PDF); non-fatal warnings shouldn't hide a valid PDF.
   useEffect(() => {
-    if (lastCompiledAt == null) return;
-    setTab(useCompileStore.getState().pdfBytes ? "pdf" : "logs");
-  }, [lastCompiledAt]);
+    if (status === "error") setTab("logs");
+    if (status === "success") setTab("pdf");
+  }, [status]);
 
   const compiling = status === "compiling";
   const hasError = status === "error" || errors.some((e) => e.kind === "error");
@@ -304,15 +322,73 @@ export function PreviewPane() {
               </>
             )}
             <Tooltip label="Zoom out">
-              <Button variant="ghost" size="icon" className="size-7" onClick={() => setScale((s) => Math.max(MIN_SCALE, s - 0.2))} aria-label="Zoom out">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7"
+                disabled={scale <= MIN_PREVIEW_SCALE}
+                onClick={() => setScale((s) => Math.max(MIN_PREVIEW_SCALE, s - 0.2))}
+                aria-label="Zoom out"
+              >
                 <ZoomOut className="size-3.5" />
               </Button>
             </Tooltip>
-            <span className="w-11 text-center text-xs tabular-nums text-muted-foreground">
-              {Math.round(scale * 100)}%
-            </span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 min-w-14 gap-1 px-1.5 text-xs tabular-nums text-muted-foreground"
+                  aria-label={`Zoom ${Math.round(scale * 100)} percent`}
+                  disabled={!pdfBytes}
+                >
+                  {Math.round(scale * 100)}%
+                  <ChevronDown data-icon="inline-end" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" className="min-w-40">
+                <DropdownMenuGroup>
+                  <DropdownMenuItem
+                    disabled={scale >= MAX_PREVIEW_SCALE}
+                    onSelect={() => setScale((s) => Math.min(MAX_PREVIEW_SCALE, s + 0.2))}
+                  >
+                    Zoom in
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={scale <= MIN_PREVIEW_SCALE}
+                    onSelect={() => setScale((s) => Math.max(MIN_PREVIEW_SCALE, s - 0.2))}
+                  >
+                    Zoom out
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                  <DropdownMenuItem onSelect={() => fitPreview("width")}>
+                    Fit to width
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => fitPreview("height")}>
+                    Fit to height
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                  {ZOOM_PRESETS.map((preset) => (
+                    <DropdownMenuItem key={preset} onSelect={() => setClampedScale(preset)}>
+                      {Math.round(preset * 100)}%
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Tooltip label="Zoom in">
-              <Button variant="ghost" size="icon" className="size-7" onClick={() => setScale((s) => Math.min(MAX_SCALE, s + 0.2))} aria-label="Zoom in">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7"
+                disabled={scale >= MAX_PREVIEW_SCALE}
+                onClick={() => setScale((s) => Math.min(MAX_PREVIEW_SCALE, s + 0.2))}
+                aria-label="Zoom in"
+              >
                 <ZoomIn className="size-3.5" />
               </Button>
             </Tooltip>

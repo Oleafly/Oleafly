@@ -1,4 +1,4 @@
-# Releasing OpenLeaf
+# Releasing Oleafly
 
 ## The one thing to understand
 

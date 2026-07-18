@@ -1,6 +1,6 @@
 # Frontend architecture
 
-OpenLeaf's frontend is a pnpm workspace: the app shell lives at the repo root
+Oleafly's frontend is a pnpm workspace: the app shell lives at the repo root
 (`src/`), and the engines it is built from live in `packages/*` as nine
 focused packages. The Rust backend (`src-tauri/`) is unchanged by this split;
 see the [README's architecture diagram](../README.md#architecture) for the

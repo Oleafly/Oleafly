@@ -3,7 +3,7 @@ title: "The editor"
 description: "A CodeMirror 6 LaTeX editor with a formatting toolbar, VSCode-style find and replace, code folding, Vim mode, multi-cursor editing, and a linter that catches errors before you compile."
 ---
 
-OpenLeaf's editor is built on CodeMirror 6 and tuned for LaTeX. Line numbers, soft wrapping, bracket matching, and an active-line highlight are always on; everything else on this page is a click or a shortcut away.
+Oleafly's editor is built on CodeMirror 6 and tuned for LaTeX. Line numbers, soft wrapping, bracket matching, and an active-line highlight are always on; everything else on this page is a click or a shortcut away.
 
 Shortcuts below show the macOS key first; on Windows and Linux, read ⌘ as Ctrl.
 
@@ -52,7 +52,7 @@ Four-space indent unit with auto-indent as you type. **Tab** indents (or accepts
 
 ## Vim mode
 
-Settings, General, **Vim mode** (or run "Enable vim mode" from the ⌘K palette) switches on full Vim keybindings: `hjkl`, operators and text objects (`dd`, `ciw`), `:w`, visual mode, the lot. It applies live, no restart, and all the OpenLeaf shortcuts on this page keep working alongside it.
+Settings, General, **Vim mode** (or run "Enable vim mode" from the ⌘K palette) switches on full Vim keybindings: `hjkl`, operators and text objects (`dd`, `ciw`), `:w`, visual mode, the lot. It applies live, no restart, and all the Oleafly shortcuts on this page keep working alongside it.
 
 ## The built-in LaTeX linter
 

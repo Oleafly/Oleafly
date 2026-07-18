@@ -556,7 +556,7 @@ export function SettingsModal() {
             {section === "data" && (
               <div className="space-y-3 text-sm">
                 <p className="text-muted-foreground">
-                  OpenLeaf is local-first. All projects live on your disk:
+                  Oleafly is local-first. All projects live on your disk:
                 </p>
                 <code className="block break-all rounded-lg border bg-background p-3 text-xs">
                   {libRoot || "~/.openleaf/projects"}
@@ -701,7 +701,7 @@ function HelpSection() {
   };
 
   const copyDiagnostics = async () => {
-    const parts = [`OpenLeaf v${version || "?"}`];
+    const parts = [`Oleafly v${version || "?"}`];
     if (isTauri()) {
       try {
         parts.push(`${osPlatform()} ${osArch()}`, `OS ${osVersion()}`);
@@ -740,7 +740,7 @@ function HelpSection() {
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-sm font-semibold">About OpenLeaf</h3>
+        <h3 className="text-sm font-semibold">About Oleafly</h3>
         <p className="mt-1 text-xs text-muted-foreground">
           A local-first, cross-platform LaTeX &amp; resume authoring app.
           {version && <span className="ml-1">· v{version}</span>}

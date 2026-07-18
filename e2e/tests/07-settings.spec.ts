@@ -41,14 +41,19 @@ test("settings modal opens with all sections", async ({ tauriPage }) => {
   await tauriPage.click('[aria-label="Close settings"]');
 });
 
-test("compile button always shows its text label", async ({ tauriPage }) => {
+test("compile button becomes recompile after the first result", async ({ tauriPage }) => {
   await openSettingsProject(tauriPage);
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
-  const compileLabel = await tauriPage.evaluate<string>(
-    `document.querySelector('[aria-label="Recompile"]')?.textContent?.trim() ?? ''`,
+  const initialLabel = await tauriPage.evaluate<string>(
+    `document.querySelector('[data-testid="compile-button"]')?.textContent?.trim() ?? ''`,
   );
-  expect(compileLabel).toBe("Compile");
+  if (initialLabel === "Compile") {
+    await tauriPage.click('[data-testid="compile-button"]');
+  }
+  await expect(tauriPage.locator('[data-testid="compile-button"]')).toContainText("Recompile", {
+    timeout: 120_000,
+  });
 });
 
 test("vim mode: enable via the palette (persistence part 1)", async ({ tauriPage }) => {

@@ -1,6 +1,6 @@
 # AI assistant
 
-OpenLeaf has a built-in AI assistant that can read and edit your files, compile your project, and check the result against the actual PDF. Point it at errors and let it iterate until the build is green.
+Oleafly has a built-in AI assistant that can read and edit your files, compile your project, and check the result against the actual PDF. Point it at errors and let it iterate until the build is green.
 
 ## Connect a provider
 
@@ -81,7 +81,7 @@ to continue with full project tools.
 
 Read-only tools (read, list, search, compile, get log, get PDF text, project map, todos, verify) run on their own. Anything that changes a file (or the main document) pauses for your approval first. The approval prompt shows a real red/green diff of exactly what will change. Approve, reject, or **Always allow** for the rest of the session (deletes still always ask).
 
-Before each run, OpenLeaf takes a git **AI checkpoint**. After the run you can **Undo AI changes** in the chat to restore that checkpoint.
+Before each run, Oleafly takes a git **AI checkpoint**. After the run you can **Undo AI changes** in the chat to restore that checkpoint.
 
 ## PDF page capture
 
@@ -96,4 +96,4 @@ Settings → AI Assistant → **Allow PDF page capture for AI** (on by default) 
 
 ## Privacy
 
-Your document content and keys stay on your machine. API calls go directly from the app to the provider you chose (or to `localhost` for Ollama). There's no OpenLeaf server in the middle.
+Your document content and keys stay on your machine. API calls go directly from the app to the provider you chose (or to `localhost` for Ollama). There's no Oleafly server in the middle.

@@ -13,7 +13,7 @@ test("create a project from the Blank template", async ({ tauriPage }) => {
 test("compile produces a rendered PDF with zero errors", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await tauriPage.click('[aria-label="Recompile"]');
+  await tauriPage.click('[data-testid="compile-button"]');
   // First compile can take a while.
   await expect(tauriPage.locator(".pdf-canvas")).toBeVisible({ timeout: 90_000 });
   await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok");

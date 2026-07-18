@@ -4,7 +4,7 @@
   "version": "0.2.5",
   "type": "module",
   "packageManager": "pnpm@11.9.0",
-  "description": "OpenLeaf - a local-first, cross-platform LaTeX & resume authoring app.",
+  "description": "Oleafly - a local-first, cross-platform LaTeX & resume authoring app.",
   "license": "AGPL-3.0-or-later",
   "author": "Prajwal S Venkateshmurthy",
   "scripts": {

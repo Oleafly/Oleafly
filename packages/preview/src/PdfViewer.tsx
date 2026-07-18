@@ -125,6 +125,7 @@ export interface PdfViewerProps {
 
 export interface PdfViewerHandle {
   gotoPage: (n: number) => void;
+  getFitScale: (mode: "width" | "height") => number | null;
 }
 
 export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function PdfViewer(
@@ -404,8 +405,19 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         void renderPage(clamped, scaleRef.current);
         wrap.scrollIntoView({ block: "start" });
       },
+      getFitScale: (mode) => {
+        const viewport = containerRef.current?.parentElement;
+        if (!viewport || !docRef.current) return null;
+        const { w, h } = baseDimsRef.current;
+        if (w <= 0 || h <= 0) return null;
+        const availableWidth = Math.max(1, viewport.clientWidth - 32);
+        const availableHeight = Math.max(1, viewport.clientHeight - 32);
+        if (mode === "height") return availableHeight / h;
+        const columns = layout === "double" && docRef.current.numPages > 1 ? 2 : 1;
+        return availableWidth / (w * columns + (columns - 1) * 16);
+      },
     }),
-    [renderPage]
+    [layout, renderPage]
   );
 
   // Build the placeholder layout for every page and start observing them.

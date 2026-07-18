@@ -3,7 +3,7 @@ title: "Files & folders"
 description: "The Source Tree: creating, renaming, moving, and copying files, the main document, tabs, image and PDF views, and how autosave protects your work."
 ---
 
-Every project is a real folder of files, and the **Source Tree** panel (the first tab in the left rail) is how you work with it. Multi-file projects are first-class: split chapters into their own `.tex` files, keep images in a folder, and OpenLeaf's compile, navigation, and search all follow along.
+Every project is a real folder of files, and the **Source Tree** panel (the first tab in the left rail) is how you work with it. Multi-file projects are first-class: split chapters into their own `.tex` files, keep images in a folder, and Oleafly's compile, navigation, and search all follow along.
 
 ## The Source Tree panel
 
@@ -27,7 +27,7 @@ On a **folder**: **New file**, **New folder**, **Rename**, **Make a copy** (copi
 
 ## Moving things: drag and drop
 
-Drag any file or folder onto another folder to move it inside, or onto the empty area at the bottom of the tree to move it to the project root. Drop targets highlight as you hover. OpenLeaf refuses moves that would put a folder inside itself.
+Drag any file or folder onto another folder to move it inside, or onto the empty area at the bottom of the tree to move it to the project root. Drop targets highlight as you hover. Oleafly refuses moves that would put a folder inside itself.
 
 ## Tabs
 
@@ -45,7 +45,7 @@ Closing the active tab activates the previous one. Undo history never crosses fi
 
 ## Autosave
 
-You never press save. Edits write to disk about 1.5 seconds after you pause typing, and OpenLeaf goes further than a simple timer:
+You never press save. Edits write to disk about 1.5 seconds after you pause typing, and Oleafly goes further than a simple timer:
 
 - Edit file A, switch to file B before the timer fires, and A still saves.
 - Closing or reloading the app flushes every pending save first, so a quit inside the debounce window loses nothing.
@@ -55,4 +55,4 @@ You never press save. Edits write to disk about 1.5 seconds after you pause typi
 
 Files currently enter a project by being created in the app, saved from the [PDF preview](/OpenLeaf/pdf-preview/#save-the-pdf-into-the-project), produced by the [diagram composer](/OpenLeaf/figures-diagrams/), or written by the [AI assistant](/OpenLeaf/ai-chat/). There is no upload button yet.
 
-Because a project is a plain folder, the practical workaround is direct: drop your images or `.bib` into `~/.openleaf/projects/<project>/` with your file manager, then reopen the project so OpenLeaf picks them up. Do the copy while the project is closed (or reopen right after), since the app's autosave writes what it has in memory.
+Because a project is a plain folder, the practical workaround is direct: drop your images or `.bib` into `~/.openleaf/projects/<project>/` with your file manager, then reopen the project so Oleafly picks them up. Do the copy while the project is closed (or reopen right after), since the app's autosave writes what it has in memory.

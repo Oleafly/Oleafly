@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Set the OpenLeaf version in one place so a release tag never drifts from the
+# Set the Oleafly version in one place so a release tag never drifts from the
 # manifests. Updates all four spots that carry the version:
 #
 #   - package.json            ("version")

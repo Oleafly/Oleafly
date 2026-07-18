@@ -608,7 +608,7 @@ export function ChatCore() {
     let runCheckpointOid: string | null = null;
     if (projectId) {
       try {
-        await gitAutoCommit(projectId, "OpenLeaf AI checkpoint");
+        await gitAutoCommit(projectId, "Oleafly AI checkpoint");
         const log = await gitLog(projectId);
         runCheckpointOid = log[0]?.oid ?? null;
       } catch {
@@ -690,7 +690,7 @@ USER_CUSTOM_INSTRUCTIONS`
         : documentEngine.capabilities.formatting_profile === "latex"
           ? "LaTeX"
           : "engine-neutral prose";
-    const systemPrompt = `You are OpenLeaf AI, a fully agentic writing partner inside OpenLeaf, a local-first technical document editor.
+    const systemPrompt = `You are Oleafly AI, a fully agentic writing partner inside Oleafly, a local-first technical document editor.
 You have full, reliable control over the project via these tools: ${buildAiToolInventory(documentEngine.capabilities.features, false, false).join(", ")}.
 The current project is "${projectName}" (ID: ${projectId}). Main document: ${mainDocument}. The document engine is ${documentEngine.label}. Use only valid ${sourceVocabulary} source rules.${
       projectKind === "image"

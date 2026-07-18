@@ -27,7 +27,7 @@ export function AboutModal({ open: isOpen, onClose }: { open: boolean; onClose: 
     <div
       className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 p-4"
     >
-      <button type="button" aria-label="Close About OpenLeaf" className="absolute inset-0" onMouseDown={onBackdropMouseDown} />
+      <button type="button" aria-label="Close About Oleafly" className="absolute inset-0" onMouseDown={onBackdropMouseDown} />
       <div
         role="dialog"
         ref={dialogRef}
@@ -48,7 +48,7 @@ export function AboutModal({ open: isOpen, onClose }: { open: boolean; onClose: 
 
         <div className="flex flex-col items-center text-center">
           <LeafLogo className="size-12" />
-          <h2 id="about-title" className="mt-3 text-base font-semibold">OpenLeaf</h2>
+          <h2 id="about-title" className="mt-3 text-base font-semibold">Oleafly</h2>
           {version && (
             <span className="mt-0.5 text-xs text-muted-foreground">Version {version}</span>
           )}

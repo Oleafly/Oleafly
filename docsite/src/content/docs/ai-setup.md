@@ -3,7 +3,7 @@ title: "Set up AI"
 description: "Bring your own key from nine providers or run fully local with Ollama: connecting, switching models, custom instructions, and exactly where your keys live."
 ---
 
-OpenLeaf's AI is strictly bring-your-own: you connect a provider you already have (or a local model), your key stays on your machine, and requests go directly from the app to that provider. There is no OpenLeaf server in the loop and no markup on your tokens.
+Oleafly's AI is strictly bring-your-own: you connect a provider you already have (or a local model), your key stays on your machine, and requests go directly from the app to that provider. There is no Oleafly server in the loop and no markup on your tokens.
 
 Everything here lives in Settings, **AI Assistant**, also reachable from the chat panel's **Connect a provider** button.
 
@@ -38,7 +38,7 @@ Configure as many providers as you like: extras show a grey **Connected** badge 
 Zero-cloud AI in three steps:
 
 1. Install [Ollama](https://ollama.com) and pull a model: `ollama pull llama3.2`
-2. In the Ollama card, click **Check for Ollama**. OpenLeaf detects the local server and lists your installed models.
+2. In the Ollama card, click **Check for Ollama**. Oleafly detects the local server and lists your installed models.
 3. Pick one. That's the whole connection; no key exists because nothing leaves your machine.
 
 The card handles the failure case too: if Ollama isn't running you get the exact commands to fix it and a **Re-check** button. A custom host URL (for Ollama on another machine) hides under "Change host (advanced)".
@@ -51,7 +51,7 @@ Instructions are sandboxed: they steer tone, style, and content, but they can't 
 
 ## Where your keys live, precisely
 
-- Keys and host URLs are stored in OpenLeaf's local config on your disk. The settings screen says it plainly: keys are stored locally only.
+- Keys and host URLs are stored in Oleafly's local config on your disk. The settings screen says it plainly: keys are stored locally only.
 - Requests go app-to-provider over HTTPS (or app-to-localhost for Ollama).
 - Attachment bytes are never saved into chat history; only file names and types are.
 

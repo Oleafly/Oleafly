@@ -5,13 +5,13 @@ import starlight from "@astrojs/starlight";
 // Project site served from https://prajwal-svm.github.io/OpenLeaf/.
 export default defineConfig({
   site: "https://prajwal-svm.github.io",
-  base: "/OpenLeaf",
+  base: "/Oleafly",
   integrations: [
     starlight({
-      title: "OpenLeaf",
+      title: "Oleafly",
       description:
         "Free, local-first LaTeX and resume editor for macOS, Windows, and Linux. An offline Overleaf alternative with Git, GitHub sync, SyncTeX, and bring-your-own-key AI.",
-      logo: { src: "./src/assets/icon.png", alt: "OpenLeaf" },
+      logo: { src: "./src/assets/icon.png", alt: "Oleafly" },
       favicon: "/favicon.png",
       customCss: ["./src/styles/theme.css", "./src/styles/landing.css"],
       // Swap Starlight's light/dark/auto <select> for a light/dark toggle button.
@@ -38,7 +38,7 @@ export default defineConfig({
           items: [
             { label: "Overview", slug: "overview" },
             { label: "Philosophy", slug: "philosophy" },
-            { label: "Why OpenLeaf", slug: "why-openleaf" },
+            { label: "Why Oleafly", slug: "why-oleafly" },
             { label: "Download & install", slug: "install" },
             { label: "Getting started", slug: "getting-started" },
           ],

@@ -3,7 +3,7 @@ title: "Where your data lives"
 description: "The ~/.openleaf folder explained: project layout, metadata, caches, logs, and how to back up or migrate everything with ordinary tools."
 ---
 
-OpenLeaf keeps everything in one place, in plain files you can inspect, copy, and back up with any tool you already use. This page is the map.
+Oleafly keeps everything in one place, in plain files you can inspect, copy, and back up with any tool you already use. This page is the map.
 
 ## The layout
 
@@ -27,7 +27,7 @@ OpenLeaf keeps everything in one place, in plain files you can inspect, copy, an
 
 A project is exactly its folder under `~/.openleaf/projects/`. Copy the folder and you've copied the project, history included. Delete it and it's gone. There is no hidden database that has to stay in sync.
 
-`project.json` holds the small amount of metadata OpenLeaf tracks per project: the display name, which file is the main document, the cover color you picked in the library, the project kind, and your export history. It's ordinary JSON; the worst that happens if you edit it badly is that OpenLeaf regenerates sensible defaults.
+`project.json` holds the small amount of metadata Oleafly tracks per project: the display name, which file is the main document, the cover color you picked in the library, the project kind, and your export history. It's ordinary JSON; the worst that happens if you edit it badly is that Oleafly regenerates sensible defaults.
 
 The `.openleaf/build/` subfolder is a disposable compile cache (the compiled PDF, the log, SyncTeX data). It's ignored by Git and safe to delete anytime; the next compile recreates it.
 
@@ -41,7 +41,7 @@ Three good options, in increasing order of robustness:
 
 ## Moving to a new machine
 
-Install OpenLeaf, then either pull your projects from GitHub or copy your old `~/.openleaf/projects/` folder into place. Cover colors, main-document choices, and history all travel with the folders. App-level preferences (theme, fonts, AI keys) are per-machine and take a minute to reset in [Settings](/OpenLeaf/settings/).
+Install Oleafly, then either pull your projects from GitHub or copy your old `~/.openleaf/projects/` folder into place. Cover colors, main-document choices, and history all travel with the folders. App-level preferences (theme, fonts, AI keys) are per-machine and take a minute to reset in [Settings](/OpenLeaf/settings/).
 
 ## The log file
 

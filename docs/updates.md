@@ -1,13 +1,13 @@
 # Auto-updates
 
-OpenLeaf ships with an in-app updater (Tauri's `plugin-updater`). On launch it
+Oleafly ships with an in-app updater (Tauri's `plugin-updater`). On launch it
 quietly checks the latest GitHub Release; if a newer version is available it
 opens a dedicated, branded update window (not a native OS dialog) that shows the
 changelog and offers to download, verify, install, and restart. Users can also
-trigger a check from the **OpenLeaf → Check for Updates** menu, or from
+trigger a check from the **Oleafly → Check for Updates** menu, or from
 **About → Check for updates** (which reports the result inline).
 
-OpenLeaf 0.2.5 is an unsigned developer beta. This local beta build does not
+Oleafly 0.2.5 is an unsigned developer beta. This local beta build does not
 generate updater artifacts because no release-signing private key is configured,
 and the macOS and Windows applications do not have operating-system code
 signatures. Update failure handling remains available for a future signed feed.
@@ -83,8 +83,8 @@ and can be retried from About or the application menu. Signature verification
 failure blocks installation. The application restarts only after
 `downloadAndInstall` completes successfully.
 
-OpenLeaf 0.2.5 does not provide automatic rollback after a successful update.
-To return to an earlier version, close OpenLeaf, download the earlier official
+Oleafly 0.2.5 does not provide automatic rollback after a successful update.
+To return to an earlier version, close Oleafly, download the earlier official
 installer, verify its checksum, and install it over the current version. Back
 up important projects before changing application versions.
 

@@ -9,7 +9,7 @@
   "layout": "single-column",
   "pages": "multi",
   "default_color": "#0ca678",
-  "license": { "spdx": "MIT", "author": "OpenLeaf", "url": "https://github.com/prajwal-svm/OpenLeaf" },
+  "license": { "spdx": "MIT", "author": "Oleafly", "url": "https://github.com/prajwal-svm/OpenLeaf" },
   "requires": { "packages": ["natbib"], "fonts": [], "engine": "tectonic" },
   "order": 45
 }

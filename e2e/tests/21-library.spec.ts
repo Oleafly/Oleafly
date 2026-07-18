@@ -5,7 +5,7 @@ import { openProject, openSettings } from "../helpers";
 async function compileForLibraryPreview(tauriPage: TauriPage) {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await tauriPage.click('[aria-label="Recompile"]');
+  await tauriPage.click('[data-testid="compile-button"]');
   await expect(tauriPage.locator(".pdf-canvas")).toBeVisible({ timeout: 90_000 });
   await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok");
   await tauriPage.click('[title="Back to library"]');

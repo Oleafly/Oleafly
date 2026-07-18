@@ -296,7 +296,7 @@ export function GitHubSection({
                 >
                   {flow.verification_uri}
                 </button>{" "}
-                in your browser. Paste the code there to authorize OpenLeaf.
+                in your browser. Paste the code there to authorize Oleafly.
               </div>
             </div>
             <div className="flex items-center justify-center gap-2 rounded-md border bg-muted/40 py-4">

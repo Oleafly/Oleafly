@@ -1,6 +1,6 @@
-# Contributing to OpenLeaf
+# Contributing to Oleafly
 
-Thanks for wanting to make OpenLeaf better! This guide gets you from a fresh
+Thanks for wanting to make Oleafly better! This guide gets you from a fresh
 clone to a working dev build, and covers how we review and land changes.
 
 ## Ways to contribute

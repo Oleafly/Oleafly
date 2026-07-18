@@ -84,7 +84,7 @@ export function Rail() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
 
-  // Native "About OpenLeaf" menu item triggers this via a Tauri event.
+  // Native "About Oleafly" menu item triggers this via a Tauri event.
   useEffect(() => {
     if (!isTauri()) return;
     const unlisten = listen("menu://about", () => setAboutOpen(true));

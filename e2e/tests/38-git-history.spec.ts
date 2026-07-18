@@ -42,7 +42,7 @@ async function restoreByIndex(page: Page, index: number) {
 }
 
 async function compileOk(page: Page) {
-  await page.click('[aria-label="Recompile"]');
+  await page.click('[data-testid="compile-button"]');
   await expect(page.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok", {
     timeout: 120_000,
   });

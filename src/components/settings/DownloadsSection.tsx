@@ -89,7 +89,7 @@ export function DownloadsSection() {
           <Tooltip
             wide
             side="right"
-            label="Some templates use premium open-source fonts. To keep OpenLeaf small, those fonts are downloaded on demand: when you create such a template, the fonts are fetched and copied into the project so it stays self-contained and compiles offline. You can also pre-download them here, or remove them to free space."
+            label="Some templates use premium open-source fonts. To keep Oleafly small, those fonts are downloaded on demand: when you create such a template, the fonts are fetched and copied into the project so it stays self-contained and compiles offline. You can also pre-download them here, or remove them to free space."
           >
             <Info className="size-3.5 cursor-help text-muted-foreground/60 hover:text-muted-foreground" />
           </Tooltip>

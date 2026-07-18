@@ -3,7 +3,7 @@ title: "Export formats"
 description: "PDF and full source always; Word, HTML, Markdown, and plain text via on-demand pandoc; PowerPoint for Beamer decks and EPUB for books. Context-aware and one menu away."
 ---
 
-The **Export** menu (the download icon in the top toolbar) gets your work out of OpenLeaf in whatever shape the destination demands. It's context-aware: the menu offers what makes sense for the document you're looking at.
+The **Export** menu (the download icon in the top toolbar) gets your work out of Oleafly in whatever shape the destination demands. It's context-aware: the menu offers what makes sense for the document you're looking at.
 
 ## Always available
 
@@ -16,7 +16,7 @@ The **Export** menu (the download icon in the top toolbar) gets your work out of
 - **Export as HTML (.html)**: a single self-contained file with embedded resources and MathML for equations.
 - **Export as Markdown (.md)** and **Export as Plain text (.txt)**.
 
-These run through [pandoc](https://pandoc.org). You don't install it: the first export downloads pandoc automatically into OpenLeaf's own folder, with progress shown, and reuses it from then on.
+These run through [pandoc](https://pandoc.org). You don't install it: the first export downloads pandoc automatically into Oleafly's own folder, with progress shown, and reuses it from then on.
 
 ## Context-aware formats
 

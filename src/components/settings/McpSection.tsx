@@ -376,7 +376,7 @@ export function McpSection() {
       <div>
         <h2 className="text-base font-semibold">MCP</h2>
         <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-          Expose OpenLeaf&apos;s AI tools to external apps over the Model Context Protocol. Claude
+          Expose Oleafly&apos;s AI tools to external apps over the Model Context Protocol. Claude
           Desktop, Claude Code, Cursor, and other MCP clients can then read, edit, and compile the
           open project, with your approval for every change.
         </p>
@@ -402,7 +402,7 @@ export function McpSection() {
         <div>
           <div className="text-sm font-medium">Enable MCP server</div>
           <div className="text-xs text-muted-foreground">
-            Listens only on this computer while OpenLeaf is open.
+            Listens only on this computer while Oleafly is open.
           </div>
         </div>
         <span
@@ -460,7 +460,7 @@ export function McpSection() {
           <span>
             <span className="font-medium">Confirm every change</span>
             <span className="block text-xs text-muted-foreground">
-              Writes, renames, and deletes show an approval card in OpenLeaf with a diff before
+              Writes, renames, and deletes show an approval card in Oleafly with a diff before
               anything is applied.
             </span>
           </span>
@@ -489,7 +489,7 @@ export function McpSection() {
           <span>
             <span className="font-medium">Trust this connection</span>
             <span className="block text-xs text-muted-foreground">
-              OpenLeaf never prompts. Your MCP client's own approval is the only gate, deletes
+              Oleafly never prompts. Your MCP client's own approval is the only gate, deletes
               included. Best when your client already confirms tool use.
             </span>
           </span>
@@ -643,7 +643,7 @@ export function McpSection() {
 
       <p className="text-[11px] leading-relaxed text-muted-foreground">
         The server only listens on this computer (127.0.0.1) and requires the token above. Under
-        the first two policies, deleting files always asks for your confirmation in OpenLeaf.
+        the first two policies, deleting files always asks for your confirmation in Oleafly.
         claude.ai in the browser cannot reach a local server; use Claude Desktop instead.
       </p>
 

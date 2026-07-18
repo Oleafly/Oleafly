@@ -356,7 +356,7 @@ export interface AppConfig {
   mcp_port: number;
   mcp_read_only: boolean;
   // "ask" (confirm every change), "auto_writes" (auto-approve edits, still
-  // confirm deletes), or "trust" (never prompt in OpenLeaf; rely on the MCP
+  // confirm deletes), or "trust" (never prompt in Oleafly; rely on the MCP
   // client's own approval, deletes included).
   mcp_approval_policy: string;
 }

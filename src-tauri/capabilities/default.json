@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Default capabilities for the OpenLeaf main, update, and preview windows.",
+  "description": "Default capabilities for the Oleafly main, update, and preview windows.",
   "windows": ["main", "update", "preview"],
   "permissions": [
     "core:default",

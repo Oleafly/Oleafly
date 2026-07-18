@@ -32,7 +32,7 @@ fn ensure_repo(project_id: &str) -> Result<PathBuf, String> {
         let email = run_git(&root, &["config", "user.email"])?;
         if String::from_utf8_lossy(&email.stdout).trim().is_empty() {
             let _ = run_git(&root, &["config", "user.email", "openleaf@local"]);
-            let _ = run_git(&root, &["config", "user.name", "OpenLeaf"]);
+            let _ = run_git(&root, &["config", "user.name", "Oleafly"]);
         }
     }
     Ok(root)

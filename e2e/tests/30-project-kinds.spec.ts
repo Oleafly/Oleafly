@@ -42,7 +42,7 @@ async function createFromTemplate(page: import("../helpers").Page, id: string, n
 }
 
 async function compileClean(page: import("../helpers").Page) {
-  await page.click('[aria-label="Recompile"]');
+  await page.click('[data-testid="compile-button"]');
   await expect(page.locator(".pdf-canvas")).toBeVisible({ timeout: 150_000 });
   await expect(page.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok");
 }

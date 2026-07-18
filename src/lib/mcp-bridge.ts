@@ -82,7 +82,7 @@ function createMcpOnlyTools(): Record<string, McpToolEntry> {
   return {
     get_status: {
       description:
-        "Get the app status: OpenLeaf version, the currently open project, its main document, and the last compile outcome. Call this first to orient yourself.",
+        "Get the app status: Oleafly version, the currently open project, its main document, and the last compile outcome. Call this first to orient yourself.",
       inputSchema: { type: "object", properties: {}, required: [], additionalProperties: false },
       execute: async () => {
         const files = useFilesStore.getState();
@@ -96,7 +96,7 @@ function createMcpOnlyTools(): Record<string, McpToolEntry> {
       },
     },
     list_projects: {
-      description: "List all projects in the OpenLeaf library with their ids and names.",
+      description: "List all projects in the Oleafly library with their ids and names.",
       inputSchema: { type: "object", properties: {}, required: [], additionalProperties: false },
       execute: async () => {
         try {
@@ -165,11 +165,11 @@ let bridgeLive = false;
 const confirm: ConfirmFn = (req) => useMcpApprovalStore.getState().request(req);
 
 // Policy values:
-// - "trust":       never prompt in OpenLeaf. The MCP client's own approval
+// - "trust":       never prompt in Oleafly. The MCP client's own approval
 //                  (e.g. Claude's Allow/Deny) is the only gate, deletes included.
 // - "auto_writes": auto-approve edits; deletes and figure inserts still prompt
-//                  in OpenLeaf with a diff.
-// - "ask" (default): prompt in OpenLeaf for every change.
+//                  in Oleafly with a diff.
+// - "ask" (default): prompt in Oleafly for every change.
 export function confirmForPolicy(policy: string, request: ConfirmFn): ConfirmFn {
   if (policy === "trust") return async () => true;
   if (policy === "auto_writes") {

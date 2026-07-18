@@ -446,7 +446,7 @@ impl DocumentEngine for MarkdownEngine {
             "Pandoc is required to compile Markdown. Install it from Downloads, then compile again.".to_string()
         )?;
         let tectonic = find_bundled_tectonic().ok_or_else(||
-            "OpenLeaf's bundled Tectonic PDF engine could not be located. Reinstall OpenLeaf, then compile again.".to_string()
+            "Oleafly's bundled Tectonic PDF engine could not be located. Reinstall Oleafly, then compile again.".to_string()
         )?;
         markdown_compile_spec(
             self,
@@ -831,7 +831,7 @@ pub async fn compile(request: CompileRequest<'_>) -> Result<CompileResult, Strin
 const COMPILE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(300);
 const MAX_LOG_BYTES: usize = 1024 * 1024;
 const MAX_EMITTED_LOG_BYTES: usize = 256 * 1024;
-const LOG_TRUNCATED: &str = "\n[OpenLeaf: compiler output truncated]\n";
+const LOG_TRUNCATED: &str = "\n[Oleafly: compiler output truncated]\n";
 
 fn append_bounded(output: &mut String, bytes: &[u8]) {
     if output.len() >= MAX_LOG_BYTES {
@@ -2065,14 +2065,14 @@ mod tests {
     fn packaged_tectonic_candidates_cover_tauri_and_cargo_layouts() {
         let candidates = tectonic_sidecar_candidates(
             Some(Path::new(
-                "/Applications/OpenLeaf.app/Contents/MacOS/openleaf",
+                "/Applications/Oleafly.app/Contents/MacOS/openleaf",
             )),
             Path::new("/src/src-tauri"),
             "tectonic",
         );
         assert_eq!(
             candidates[0],
-            PathBuf::from("/Applications/OpenLeaf.app/Contents/MacOS/tectonic")
+            PathBuf::from("/Applications/Oleafly.app/Contents/MacOS/tectonic")
         );
         assert_eq!(
             candidates[1],

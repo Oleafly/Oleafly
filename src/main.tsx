@@ -45,7 +45,7 @@ if (isUpdateWindow) {
 }
 
 const root = document.getElementById("root");
-if (!root) throw new Error("OpenLeaf root element is missing");
+if (!root) throw new Error("Oleafly root element is missing");
 
 createRoot(root).render(
   <StrictMode>

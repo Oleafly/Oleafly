@@ -15,7 +15,7 @@ const TRUNCATION_MARKER = "\n…(truncated, attach ~/.openleaf/app.log for the f
 async function systemBlock(): Promise<string> {
   const lines: string[] = [];
   try {
-    lines.push(`- OpenLeaf: v${await appVersion()}`);
+    lines.push(`- Oleafly: v${await appVersion()}`);
   } catch {
     /* ignore */
   }

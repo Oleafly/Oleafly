@@ -1,7 +1,7 @@
 [package]
 name = "openleaf"
 version = "0.2.5"
-description = "OpenLeaf - local-first LaTeX & resume authoring"
+description = "Oleafly - local-first LaTeX & resume authoring"
 authors = ["Prajwal S Venkateshmurthy and contributors"]
 license = "AGPL-3.0-or-later"
 edition = "2021"

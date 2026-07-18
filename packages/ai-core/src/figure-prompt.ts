@@ -12,7 +12,7 @@ export function modelSupportsVision(provider: string, model: string): boolean {
   return false;
 }
 
-export const FIGURE_SYSTEM_PROMPT = `You are OpenLeaf's figure studio. You turn a description (or a selected paragraph) into a clean, publication-quality figure using LaTeX, usually TikZ or PGFPlots.
+export const FIGURE_SYSTEM_PROMPT = `You are Oleafly's figure studio. You turn a description (or a selected paragraph) into a clean, publication-quality figure using LaTeX, usually TikZ or PGFPlots.
 
 How you work:
 1. Draft the figure as a TikZ picture (or PGFPlots axis). Keep it self-contained.

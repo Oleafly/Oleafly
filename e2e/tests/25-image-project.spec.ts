@@ -15,7 +15,7 @@ test("image project: tailored UI and a real figure compile", async ({ tauriPage 
   ).toBeHidden();
   await expect(tauriPage.locator('[aria-label="Insert diagram"]')).toBeHidden();
 
-  await tauriPage.click('[aria-label="Recompile"]');
+  await tauriPage.click('[data-testid="compile-button"]');
   await expect(tauriPage.locator(".pdf-canvas")).toBeVisible({ timeout: 90_000 });
   await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok");
 

@@ -1,6 +1,6 @@
 # Features
 
-What OpenLeaf can do. All of it runs on your machine.
+What Oleafly can do. All of it runs on your machine.
 
 ## Editor (CodeMirror 6)
 
@@ -17,7 +17,7 @@ What OpenLeaf can do. All of it runs on your machine.
 
 ## Code intelligence
 
-OpenLeaf understands your whole project, not just the open file.
+Oleafly understands your whole project, not just the open file.
 
 - Go to definition: press F12 (or Cmd/Ctrl-click) on a `\ref`, `\cite`, `\gls`,
   a custom macro, or a `\begin{env}` to jump to where it is defined, across files.
@@ -117,7 +117,7 @@ a readiness aid, not a formal accessibility certification.
 
 ## History (Git-backed)
 
-Every project is a git repo, and OpenLeaf commits automatically: after every successful compile, and shortly after you stop editing. So you get:
+Every project is a git repo, and Oleafly commits automatically: after every successful compile, and shortly after you stop editing. So you get:
 
 - A history view with the full commit log.
 - Side-by-side diffs, unified or split.
@@ -134,7 +134,7 @@ Every project is a git repo, and OpenLeaf commits automatically: after every suc
 - Add citation: open it from the command palette ("Add citation") or the citation
   button in the editor toolbar. Paste a DOI, arXiv id, or URL to fetch the entry
   directly, or type a title to search Crossref and pick a result.
-- OpenLeaf appends a correctly-keyed BibTeX entry to your project's `.bib`,
+- Oleafly appends a correctly-keyed BibTeX entry to your project's `.bib`,
   deduplicated by DOI, and inserts the `\cite` at your cursor.
 - Autocomplete for `\cite` keys is parsed from your `.bib` files as you type.
 - Lookups send only the identifier or title (to doi.org, arXiv, or Crossref) and
@@ -154,7 +154,7 @@ Bring any provider: OpenAI, Anthropic, Groq, OpenRouter, DeepSeek, Mistral, xAI,
 
 ## MCP server
 
-Expose the same agent tools to external MCP clients (Claude Desktop, Claude Code, Cursor, Grok CLI, and others). Enable under **Settings → MCP**. Clients connect over localhost HTTP with a bearer token; file changes pause for the same approval card as the built-in chat. You do not need an API key in OpenLeaf for this path. See [MCP server](mcp.md).
+Expose the same agent tools to external MCP clients (Claude Desktop, Claude Code, Cursor, Grok CLI, and others). Enable under **Settings → MCP**. Clients connect over localhost HTTP with a bearer token; file changes pause for the same approval card as the built-in chat. You do not need an API key in Oleafly for this path. See [MCP server](mcp.md).
 
 ## Draw with AI (figures)
 

@@ -1,4 +1,4 @@
-<!-- Thanks for contributing to OpenLeaf! -->
+<!-- Thanks for contributing to Oleafly! -->
 
 ## Summary
 

@@ -24,7 +24,7 @@ use crate::paths;
 /// slow; anything past this returns a JSON-RPC error to the client.
 const CALL_TIMEOUT: Duration = Duration::from_secs(300);
 
-const INSTRUCTIONS: &str = "OpenLeaf is a local-first LaTeX editor. These tools operate on the project currently open in the app. Start with get_status to see what is open, list_files or project_map to orient, then read and edit files and call compile. Destructive edits may pause for the user to approve inside OpenLeaf.";
+const INSTRUCTIONS: &str = "Oleafly is a local-first LaTeX editor. These tools operate on the project currently open in the app. Start with get_status to see what is open, list_files or project_map to orient, then read and edit files and call compile. Destructive edits may pause for the user to approve inside Oleafly.";
 
 #[derive(Default)]
 pub struct McpState {

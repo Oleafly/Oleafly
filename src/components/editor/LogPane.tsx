@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useCompileStore } from "@/store/compile";
+import { useAgentHandoffStore } from "@/store/agent-handoff";
+import { useSettingsStore } from "@/store/settings";
+import { hasConfiguredProvider } from "@/lib/ai-providers";
+import { getConfig } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { objectKey } from "@/lib/react-key";
 
@@ -91,8 +96,10 @@ function LogText({ text }: { text: string }) {
 export function LogPane() {
   const log = useCompileStore((s) => s.log);
   const errors = useCompileStore((s) => s.errors);
+  const status = useCompileStore((s) => s.status);
   const endRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
+  const hasCompileError = status === "error" || errors.some((error) => error.kind === "error");
 
   useEffect(() => {
     void log;
@@ -108,6 +115,40 @@ export function LogPane() {
     } catch {
       /* ignore */
     }
+  };
+
+  const askAi = async () => {
+    let configured = false;
+    try {
+      configured = hasConfiguredProvider(await getConfig());
+    } catch {
+      configured = false;
+    }
+    const settings = useSettingsStore.getState();
+    if (!configured) {
+      settings.setSettingsInitialSection("ai");
+      settings.setSettingsOpen(true);
+      return;
+    }
+    const details = errors
+      .filter((error) => error.kind === "error")
+      .slice(0, 8)
+      .map((error) => {
+        const location = error.file
+          ? `${error.file}${error.line != null ? `:${error.line}` : ""}`
+          : error.line != null
+            ? `line ${error.line}`
+            : "";
+        return `- ${location ? `${location}: ` : ""}${error.message}`;
+      });
+    const prompt = [
+      "Fix the current document compilation failure.",
+      details.length > 0 ? `\nCompiler errors:\n${details.join("\n")}` : "",
+      "\nInspect the relevant project files and the full compile log, make the smallest correct changes, then recompile until it succeeds and verify the resulting document.",
+    ].join("");
+    useAgentHandoffStore.getState().handoff(prompt, { autoSend: false });
+    settings.setRailTab("ai");
+    if (!settings.showTree) settings.toggleTree();
   };
 
   return (
@@ -147,14 +188,30 @@ export function LogPane() {
       )}
 
       <div className="flex h-7 shrink-0 items-center justify-end border-b border-sidebar-border px-2">
-        <button type="button"
+        {hasCompileError && (
+          <Button
+            variant="ghostPrimary"
+            size="xs"
+            onClick={() => void askAi()}
+          >
+            <Sparkles data-icon="inline-start" />
+            Ask AI
+          </Button>
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => void copy()}
           disabled={!log}
-          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40"
+          className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground"
         >
-          {copied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
+          {copied ? (
+            <Check data-icon="inline-start" className="text-emerald-500" />
+          ) : (
+            <Copy data-icon="inline-start" />
+          )}
           {copied ? "Copied" : "Copy log"}
-        </button>
+        </Button>
       </div>
 
       <div className="flex-1 overflow-auto p-3">

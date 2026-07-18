@@ -1,6 +1,6 @@
 ---
 title: "Settings reference"
-description: "Every setting in OpenLeaf, section by section: Appearance, General, Dictionary, Data Storage, AI Assistant, LaTeX Engine, Offline & Downloads, GitHub, MCP, and Help & About."
+description: "Every setting in Oleafly, section by section: Appearance, General, Dictionary, Data Storage, AI Assistant, LaTeX Engine, Offline & Downloads, GitHub, MCP, and Help & About."
 ---
 
 Open Settings from the gear in the rail, `/settings` in the search omnibar, or **Open settings** in the ⌘K palette. Ten sections in the left nav; this page walks all of them.
@@ -58,7 +58,7 @@ Account connection (device flow or personal access token) and, with a project op
 
 ## MCP
 
-Turn OpenLeaf into a local MCP server so an external agent (Claude Desktop, Claude Code, Cursor, Grok) can drive your project with no API key. **Enable MCP server**, the port (default `5323`), the bearer token (Reveal / Copy / Regenerate), copy-paste connection snippets, the **approval policy** and **Read-only mode**, and pointers to the `mcp.json` on disk all live here. Documented on [Connect via MCP](/OpenLeaf/mcp/).
+Turn Oleafly into a local MCP server so an external agent (Claude Desktop, Claude Code, Cursor, Grok) can drive your project with no API key. **Enable MCP server**, the port (default `5323`), the bearer token (Reveal / Copy / Regenerate), copy-paste connection snippets, the **approval policy** and **Read-only mode**, and pointers to the `mcp.json` on disk all live here. Documented on [Connect via MCP](/OpenLeaf/mcp/).
 
 ## Help & About
 

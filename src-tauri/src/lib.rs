@@ -189,5 +189,5 @@ pub fn run() {
             git::git_show,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running OpenLeaf");
+        .expect("error while running Oleafly");
 }

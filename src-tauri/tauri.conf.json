@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "OpenLeaf",
+  "productName": "Oleafly",
   "version": "0.2.5",
   "identifier": "com.openleaf.app",
   "build": {
@@ -13,7 +13,7 @@
     "macOSPrivateApi": true,
     "windows": [
       {
-        "title": "OpenLeaf",
+        "title": "Oleafly",
         "width": 1280,
         "height": 800,
         "minWidth": 900,

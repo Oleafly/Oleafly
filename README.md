@@ -1,12 +1,12 @@
 <div align="center">
 
-<img src="public/icon.png" alt="OpenLeaf" width="120" height="120" />
+<img src="public/icon.png" alt="Oleafly" width="120" height="120" />
 
-# OpenLeaf
+# Oleafly
 
 ### Cursor for research papers and resumes. Runs entirely on your machine.
 
-**OpenLeaf is a free, open-source, AI-native LaTeX studio for macOS, Windows, and Linux. No account, no cloud, no TeX install.** Every successful compile becomes a Git commit. The AI doesn't stop at editing: it compiles your document and reads the PDF to verify its own edit. Bring your own key, run a local model, or turn it off.
+**Oleafly is a free, open-source, AI-native LaTeX studio for macOS, Windows, and Linux. No account, no cloud, no TeX install.** Every successful compile becomes a Git commit. The AI doesn't stop at editing: it compiles your document and reads the PDF to verify its own edit. Bring your own key, run a local model, or turn it off.
 
 *Documents should outlive services.*
 
@@ -33,12 +33,12 @@
 
 Grab a prebuilt installer for macOS, Windows, or Linux from the [latest release](https://github.com/prajwal-svm/OpenLeaf/releases/latest), or [build it from source](docs/install.md).
 
-If OpenLeaf is useful to you, a star helps other people find it.
+If Oleafly is useful to you, a star helps other people find it.
 
 </div>
 
 > [!NOTE]
-> **Status:** OpenLeaf is already usable for real projects. Some advanced workflows and package compatibility are still evolving. [Feedback and bug reports](https://github.com/prajwal-svm/OpenLeaf/issues) are welcome.
+> **Status:** Oleafly is already usable for real projects. Some advanced workflows and package compatibility are still evolving. [Feedback and bug reports](https://github.com/prajwal-svm/OpenLeaf/issues) are welcome.
 
 <br/>
 
@@ -73,7 +73,7 @@ If OpenLeaf is useful to you, a star helps other people find it.
 | Windows | `.msi` or `-setup.exe` |
 | Linux | `.AppImage`, `.deb`, or `.rpm` |
 
-Builds aren't code-signed yet, so your OS warns on first launch (it's safe to open). One-time unlock: on macOS run `/usr/bin/xattr -dr com.apple.quarantine /Applications/OpenLeaf.app`; on Windows click **More info**, then **Run anyway**; on Linux `chmod +x` the AppImage.
+Builds aren't code-signed yet, so your OS warns on first launch (it's safe to open). One-time unlock: on macOS run `/usr/bin/xattr -dr com.apple.quarantine /Applications/Oleafly.app`; on Windows click **More info**, then **Run anyway**; on Linux `chmod +x` the AppImage.
 
 **Or build from source:**
 
@@ -89,9 +89,9 @@ Prerequisites and production builds are in the [install guide](docs/install.md).
 
 <br/>
 
-## Why OpenLeaf
+## Why Oleafly
 
-OpenLeaf isn't trying to recreate Overleaf on the desktop. It's built around a different idea: technical documents deserve the same AI, Git, and local-first workflows that developers expect from modern code editors. This is document engineering.
+Oleafly isn't trying to recreate Overleaf on the desktop. It's built around a different idea: technical documents deserve the same AI, Git, and local-first workflows that developers expect from modern code editors. This is document engineering.
 
 - It compiles on your machine. No server, no upload queue, no account.
 - Your files live in a plain folder on your disk. Nothing leaves it unless you tell it to.
@@ -102,9 +102,9 @@ OpenLeaf isn't trying to recreate Overleaf on the desktop. It's built around a d
 
 You get the polish of a cloud editor without handing your documents to one.
 
-You can assemble most of these features yourself with VS Code extensions, Git, Copilot, TeX Live, PDF viewers, ATS tools, and scripts. OpenLeaf integrates them into one application that works out of the box.
+You can assemble most of these features yourself with VS Code extensions, Git, Copilot, TeX Live, PDF viewers, ATS tools, and scripts. Oleafly integrates them into one application that works out of the box.
 
-**And while it's at it, OpenLeaf quietly replaces the rest of your stack: the paid resume builder, the ATS checker, the accessibility auditor, the Git client, and the AI copilot subscription.**
+**And while it's at it, Oleafly quietly replaces the rest of your stack: the paid resume builder, the ATS checker, the accessibility auditor, the Git client, and the AI copilot subscription.**
 
 <br/>
 
@@ -112,7 +112,7 @@ You can assemble most of these features yourself with VS Code extensions, Git, C
 
 **Every compile becomes a Git commit.** Undo a paragraph from yesterday. Compare two versions side by side. Branch your resume before every interview. Push it to GitHub with one click. No plugin, no setup, no `resume_final_v3_FINAL.tex`.
 
-This is OpenLeaf's superpower. Every project is a real Git repo on your disk: the app commits your work automatically (after every successful compile, and shortly after you stop editing) and gives you history, diffs, and one-click restore right in the UI. And because it's real Git, `git log` and `git blame` work from a terminal too.
+This is Oleafly's superpower. Every project is a real Git repo on your disk: the app commits your work automatically (after every successful compile, and shortly after you stop editing) and gives you history, diffs, and one-click restore right in the UI. And because it's real Git, `git log` and `git blame` work from a terminal too.
 
 <div align="center">
 <img src="media/git-diff.png" alt="Side-by-side diff of a past version" width="85%" />
@@ -142,9 +142,9 @@ This is OpenLeaf's superpower. Every project is a real Git repo on your disk: th
 
 ## How it compares
 
-OpenLeaf sits where four product categories overlap: LaTeX editors, cloud writing platforms, resume builders, and AI copilots. Here's the honest matrix.
+Oleafly sits where four product categories overlap: LaTeX editors, cloud writing platforms, resume builders, and AI copilots. Here's the honest matrix.
 
-| | &emsp;&emsp;OpenLeaf&emsp;&emsp; | &emsp;&emsp;Overleaf&emsp;&emsp; | &emsp;TeXstudio / TeXmaker&emsp; | &emsp;VS Code + LaTeX Workshop&emsp; | &emsp;&emsp;Typst (web)&emsp;&emsp; | &emsp;Word / Google Docs&emsp; | &emsp;Resume builders (Zety · Rezi · Novoresume · Enhancv)&emsp; |
+| | &emsp;&emsp;Oleafly&emsp;&emsp; | &emsp;&emsp;Overleaf&emsp;&emsp; | &emsp;TeXstudio / TeXmaker&emsp; | &emsp;VS Code + LaTeX Workshop&emsp; | &emsp;&emsp;Typst (web)&emsp;&emsp; | &emsp;Word / Google Docs&emsp; | &emsp;Resume builders (Zety · Rezi · Novoresume · Enhancv)&emsp; |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | Price | Free, open source | Free tier; subscription for full history, sync, AI | Free | Free (AI needs paid Copilot) | Free tier; subscription for teams | Subscription (Word) / free (Docs) | Subscription; downloads often paywalled |
 | Real LaTeX output | Yes | Yes | Yes | Yes | No (its own markup) | No | No |
@@ -163,13 +163,13 @@ OpenLeaf sits where four product categories overlap: LaTeX editors, cloud writin
 | Account required | No | Yes | No | No | Yes | Yes | Yes |
 | Open source | Yes (AGPL) | Partly (server core) | Yes | Mostly | Compiler only | No | No |
 
-Different tools, different bets. OpenLeaf's is that your documents belong on your machine, in Git, with AI you control and give access to. The ATS and accessibility rows aren't a typo, by the way. We looked for those checks in other LaTeX editors, paid and free, and came up empty.
+Different tools, different bets. Oleafly's is that your documents belong on your machine, in Git, with AI you control and give access to. The ATS and accessibility rows aren't a typo, by the way. We looked for those checks in other LaTeX editors, paid and free, and came up empty.
 
 <br/>
 
 ## Resume mode
 
-Most LaTeX tools treat resumes as an afterthought. OpenLeaf doesn't.
+Most LaTeX tools treat resumes as an afterthought. Oleafly doesn't.
 
 - ATS-friendly by default. XeTeX with embedded fonts means the PDF parses cleanly in applicant-tracking systems.
 - One-page templates that actually stay one page.
@@ -195,14 +195,14 @@ Multi-file projects, `\input` trees, `.bib` bibliographies, figures, and cross-r
 
 ## Accessible and ATS-ready, checked before you submit
 
-Most LaTeX looks fine to a human and falls apart for a machine reader. A two-column layout reads across in a screen reader. An icon font hides your email from a resume parser. An untagged PDF fails Section 508 and PDF-UA outright. OpenLeaf catches all of this while you write, not after a rejection.
+Most LaTeX looks fine to a human and falls apart for a machine reader. A two-column layout reads across in a screen reader. An icon font hides your email from a resume parser. An untagged PDF fails Section 508 and PDF-UA outright. Oleafly catches all of this while you write, not after a rejection.
 
 Open the Preflight panel and it scores your document out of 100 for the two audiences that fail on the same defects: applicant-tracking systems (ATS) and screen readers. It reads your source and your compiled PDF and shows you exactly what a machine sees.
 
 - **ATS readiness.** A simulation of what an applicant-tracking system pulls from your resume PDF: name, email, phone, links, and which standard sections (Experience, Education, Skills) it detected, so you catch a section a parser can't see before a recruiter does.
 - **Accessibility.** A Section 508 / PDF-UA verdict with a full tag-tree audit, plus source checks for multi-column layouts, missing image alt text, skipped heading levels, undescriptive links, and missing document language or title.
 - **What the reader sees.** A plain-text preview of your compiled PDF in reading order, the exact thing a screen reader or parser gets.
-- **One-click accessible export.** OpenLeaf rewrites your source with the setup a tagging engine needs and shows every change first. Compile with LuaLaTeX (use a TeX Live you already have, or install TinyTeX on demand, no admin rights) to produce a tagged, Section 508 / PDF-UA oriented PDF, then verify it right there.
+- **One-click accessible export.** Oleafly rewrites your source with the setup a tagging engine needs and shows every change first. Compile with LuaLaTeX (use a TeX Live you already have, or install TinyTeX on demand, no admin rights) to produce a tagged, Section 508 / PDF-UA oriented PDF, then verify it right there.
 
 <div align="center">
 <img src="media/preflight-ats.png" alt="Preflight scores a resume for ATS parsers and screen readers" width="85%" />
@@ -214,7 +214,7 @@ Every check is documented in [the Preflight guide](https://prajwal-svm.github.io
 
 ## AI that understands LaTeX
 
-Most AI editors stop after editing. OpenLeaf's assistant closes the loop: it reads your files, edits the source, compiles, and then reads the resulting PDF to check that the edit actually worked. And every file-changing edit pauses for your approval with a red/green diff, so nothing touches your document without you seeing it first.
+Most AI editors stop after editing. Oleafly's assistant closes the loop: it reads your files, edits the source, compiles, and then reads the resulting PDF to check that the edit actually worked. And every file-changing edit pauses for your approval with a red/green diff, so nothing touches your document without you seeing it first.
 
 <div align="center">
 <img src="media/ai-approval-diff.png" alt="An AI edit waiting for approval with a red/green diff" width="85%" />
@@ -294,7 +294,7 @@ The full list. Everything here runs on your machine. For the detailed tour, see 
 
 **Citations**
 - Paste a DOI, arXiv id, or URL to fetch an entry, or search Crossref by title
-- OpenLeaf appends a correctly-keyed BibTeX entry (deduplicated by DOI) and inserts the `\cite` at your cursor
+- Oleafly appends a correctly-keyed BibTeX entry (deduplicated by DOI) and inserts the `\cite` at your cursor
 - Lookups send only the identifier or title, and respect offline mode
 
 **AI assistant (bring your own model)**
@@ -416,7 +416,7 @@ flowchart TB
   style BE fill:none,stroke:#d97706,stroke-width:2px,color:#7c2d12;
 ```
 
-OpenLeaf is local-first. A React webview draws the UI, a Rust core owns every
+Oleafly is local-first. A React webview draws the UI, a Rust core owns every
 disk, process, and network call, and a bundled Tectonic engine does the
 typesetting. The two halves only talk over Tauri's IPC, so nothing in the webview
 reaches the filesystem or the network on its own.
@@ -442,7 +442,7 @@ and comments get replaced with spaces before the checker sees the text, so it
 only ever reads prose. An offset map then projects each finding back onto the
 real source position.
 
-**Understanding the whole project.** OpenLeaf keeps a live index of every file:
+**Understanding the whole project.** Oleafly keeps a live index of every file:
 sections, labels, `\ref`/`\cite` uses, `.bib` keys, macros, and the `\input`
 graph. It rebuilds incrementally as you type, so go-to-definition,
 find-references, and project-wide rename work across files without a compile, and
@@ -489,12 +489,12 @@ The full product documentation lives at **[prajwal-svm.github.io/OpenLeaf](https
 | Guide | What's inside |
 |---|---|
 | [Download](https://github.com/prajwal-svm/OpenLeaf/releases/latest) | Prebuilt installers (.dmg / .msi / .exe / .AppImage / .deb / .rpm) |
-| [Overview](https://prajwal-svm.github.io/OpenLeaf/overview/) | What OpenLeaf is and a tour of the whole app |
+| [Overview](https://prajwal-svm.github.io/OpenLeaf/overview/) | What Oleafly is and a tour of the whole app |
 | [Getting started](https://prajwal-svm.github.io/OpenLeaf/getting-started/) | First project to first PDF in a couple of minutes |
 | [Templates](https://prajwal-svm.github.io/OpenLeaf/templates/) | The full gallery: resumes, papers, theses, posters, decks |
 | [Preflight: ATS & accessibility](https://prajwal-svm.github.io/OpenLeaf/preflight/) | Section 508 / PDF-UA and resume-parser checks, before you submit |
 | [AI assistant](https://prajwal-svm.github.io/OpenLeaf/ai-setup/) | Connect a model, or go local with Ollama |
-| [MCP server](docs/mcp.md) | Drive OpenLeaf from Claude Desktop, Claude Code, Cursor, and other MCP clients |
+| [MCP server](docs/mcp.md) | Drive Oleafly from Claude Desktop, Claude Code, Cursor, and other MCP clients |
 | [GitHub sync](https://prajwal-svm.github.io/OpenLeaf/github-sync/) | Back up and sync across machines |
 | [Keyboard shortcuts](https://prajwal-svm.github.io/OpenLeaf/keyboard-shortcuts/) | The ones worth memorizing |
 | [FAQ](https://prajwal-svm.github.io/OpenLeaf/faq/) | Common questions and fixes |
@@ -521,4 +521,4 @@ Found a security issue? Report it privately, see [SECURITY.md](SECURITY.md). Eve
 
 Built on [Tectonic](https://tectonic-typesetting.github.io/), [Tauri](https://tauri.app/), [CodeMirror](https://codemirror.net/), [pdf.js](https://mozilla.github.io/pdf.js/), [React](https://react.dev/), [Zustand](https://github.com/pmndrs/zustand), [Tailwind CSS](https://tailwindcss.com/), [Geist](https://vercel.com/geist/introduction), [Harper](https://writewithharper.com/), and [Hunspell](https://hunspell.github.io/).
 
-**License:** [AGPL-3.0-or-later](LICENSE) © 2026 Prajwal S Venkateshmurthy and contributors. OpenLeaf is free and open source: use, study, modify, and share it freely. The AGPL's network copyleft means anyone who runs a modified version (including as a hosted service) must make their source available under the same license. Bundled open-source components are listed in [THIRD_PARTY_LICENSES](THIRD_PARTY_LICENSES.md).
+**License:** [AGPL-3.0-or-later](LICENSE) © 2026 Prajwal S Venkateshmurthy and contributors. Oleafly is free and open source: use, study, modify, and share it freely. The AGPL's network copyleft means anyone who runs a modified version (including as a hosted service) must make their source available under the same license. Bundled open-source components are listed in [THIRD_PARTY_LICENSES](THIRD_PARTY_LICENSES.md).

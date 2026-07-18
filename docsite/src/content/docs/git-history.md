@@ -3,7 +3,7 @@ title: "Git history & source control"
 description: "Every project is a real Git repository: a VS Code-style source control panel, side-by-side diffs, one-click restore, and automatic safety checkpoints before AI edits."
 ---
 
-Every OpenLeaf project is a genuine Git repository, not a proprietary "versions" feature. That buys you real diffs, real history, one-click restores, and portability: the same repo pushes to [GitHub](/OpenLeaf/github-sync/) or opens in any Git tool you already use.
+Every Oleafly project is a genuine Git repository, not a proprietary "versions" feature. That buys you real diffs, real history, one-click restores, and portability: the same repo pushes to [GitHub](/OpenLeaf/github-sync/) or opens in any Git tool you already use.
 
 ## Zero-setup
 
@@ -39,10 +39,10 @@ The **History** button (clock icon, top toolbar) lists every commit with its mes
 
 ## What commits automatically, and what doesn't
 
-OpenLeaf snapshots your work on its own, so history exists even if you never open the Source Control panel:
+Oleafly snapshots your work on its own, so history exists even if you never open the Source Control panel:
 
 - **"Update: `<files>`"**: written right after every successful compile, and again a quiet moment (about 30 seconds) after you stop editing. The message lists exactly which files changed.
-- **"OpenLeaf AI checkpoint"**: committed automatically before the [AI assistant's](/OpenLeaf/ai-chat/) first edit of a run, so any AI session can be rolled back in one restore.
+- **"Oleafly AI checkpoint"**: committed automatically before the [AI assistant's](/OpenLeaf/ai-chat/) first edit of a run, so any AI session can be rolled back in one restore.
 - **"Initial commit"**: created when you first publish a project to GitHub.
 - **Manual commits are still yours.** The Source Control panel stages and commits exactly what you pick, with your message, and automatic commits pause while that panel is open so nothing gets swept out from under you mid-staging.
 

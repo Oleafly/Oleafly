@@ -1,12 +1,12 @@
 # GitHub sync
 
-OpenLeaf is local-first, so every project already has its own `.git` history on disk. GitHub integration lets you back a project up to the cloud and sync it across your machines. There's no OpenLeaf account, just your own GitHub.
+Oleafly is local-first, so every project already has its own `.git` history on disk. GitHub integration lets you back a project up to the cloud and sync it across your machines. There's no Oleafly account, just your own GitHub.
 
 ## Connect your account (once per machine)
 
 1. Open Settings → GitHub.
 2. Click **Connect GitHub**. A one-time code appears in the app, and your browser opens to `github.com/login/device`.
-3. Enter the code and authorize OpenLeaf. The app detects it within a few seconds and shows your account.
+3. Enter the code and authorize Oleafly. The app detects it within a few seconds and shows your account.
 4. Your account badge now appears in the top toolbar.
 
 This uses OAuth device flow, so there's no copy-pasting long-lived tokens, and the app only requests `repo` + `read:user` scope.
@@ -20,8 +20,8 @@ To put a project on GitHub for the first time:
 1. Open the Source Control panel (the branch icon in the rail).
 2. Click **Publish to GitHub**.
 3. Choose one of:
-   - **Create new repository**: pick a name and public/private. OpenLeaf creates it, links it as the project's `origin`, and pushes.
-   - **Link existing**: pick one of your repos. OpenLeaf sets `origin` and pushes.
+   - **Create new repository**: pick a name and public/private. Oleafly creates it, links it as the project's `origin`, and pushes.
+   - **Link existing**: pick one of your repos. Oleafly sets `origin` and pushes.
 
 Once published, Push and Pull become enabled.
 
@@ -50,7 +50,7 @@ In Settings → GitHub, the connected-account card has a **Disconnect** button. 
 ## Notes and troubleshooting
 
 - SSH remotes aren't supported for token-authenticated push. Use HTTPS (Publish sets this up automatically).
-- A first push to an existing repo that already has commits may need a pull first. OpenLeaf will tell you.
+- A first push to an existing repo that already has commits may need a pull first. Oleafly will tell you.
 - The token is stored in authenticated encrypted local storage under
   `~/.openleaf/`. The encrypted data, encryption key, and lock file are
   restricted to the current OS user.

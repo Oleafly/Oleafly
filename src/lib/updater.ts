@@ -95,7 +95,7 @@ export async function openUpdateWindow(opts: { manual?: boolean } = {}): Promise
   }
   new WebviewWindow(UPDATE_WINDOW_LABEL, {
     url: `index.html?view=update${opts.manual ? "&manual=1" : ""}`,
-    title: "OpenLeaf Update",
+    title: "Oleafly Update",
     width: 600,
     height: 520,
     resizable: false,

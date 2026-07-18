@@ -3,7 +3,7 @@ title: "The library"
 description: "Your home screen: projects as books with covers and colors, bookmarks, hover previews, forking, renaming, deleting, and search across everything."
 ---
 
-The library is OpenLeaf's home screen. Every project appears as a book on a shelf, sorted by most recently modified, and everything you need to manage projects happens here.
+The library is Oleafly's home screen. Every project appears as a book on a shelf, sorted by most recently modified, and everything you need to manage projects happens here.
 
 ## The shelf
 

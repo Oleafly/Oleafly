@@ -9,7 +9,7 @@
   "layout": "single-column",
   "pages": "single",
   "default_color": "#0f766e",
-  "license": { "spdx": "MIT", "author": "OpenLeaf", "url": "https://github.com/prajwal-svm/OpenLeaf" },
+  "license": { "spdx": "MIT", "author": "Oleafly", "url": "https://github.com/prajwal-svm/OpenLeaf" },
   "requires": { "packages": [], "fonts": [], "engine": "typst" },
   "order": 15
 }
