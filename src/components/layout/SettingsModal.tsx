@@ -5,6 +5,7 @@ import {
   Bug,
   Check,
   ChevronRight,
+  Compass,
   Copy,
   Cpu,
   Database,
@@ -29,6 +30,7 @@ import { reportCrashToGithub } from "@/lib/crash-report";
 import { isTauri } from "@tauri-apps/api/core";
 import { platform as osPlatform, arch as osArch, version as osVersion } from "@tauri-apps/plugin-os";
 import { Button } from "@/components/ui/button";
+import { LeafLogo } from "@/components/layout/LeafLogo";
 import { UpdateChecker } from "@/components/layout/UpdateChecker";
 import { EngineSection } from "@/components/settings/EngineSection";
 import { DownloadsSection } from "@/components/settings/DownloadsSection";
@@ -49,6 +51,7 @@ import { useTheme } from "@/lib/theme";
 import { appVersion, libraryRoot } from "@/lib/tauri";
 import { cn, shortcut } from "@/lib/utils";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
+import { startTour } from "@/lib/tour";
 
 type Section =
   | "appearance"
@@ -183,7 +186,6 @@ export function SettingsModal() {
   const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDivElement>(open, () => setOpen(false));
 
   const openHotkeys = () => {
-    setOpen(false);
     setHotkeysOpen(true);
   };
 
@@ -444,9 +446,9 @@ export function SettingsModal() {
                           title={a.name}
                           onClick={() => setAccentColor(a.color)}
                           className={cn(
-                            "flex size-8 items-center justify-center rounded-full border-2 transition-transform hover:scale-110",
+                            "flex size-8 items-center justify-center rounded-full border transition-transform hover:scale-110",
                             active
-                              ? "border-foreground ring-2 ring-foreground/20"
+                              ? "border-foreground ring-1 ring-foreground/20"
                               : "border-border"
                           )}
                           style={{ backgroundColor: a.color }}
@@ -694,10 +696,12 @@ function HelpSection() {
   }, []);
   const ext = (url: string) => () => void open(url);
 
-  // Close Settings first so the keyboard-shortcuts modal isn't hidden behind it.
   const openHotkeys = () => {
-    setSettingsOpen(false);
     setHotkeysOpen(true);
+  };
+  const beginTour = () => {
+    setSettingsOpen(false);
+    window.requestAnimationFrame(startTour);
   };
 
   const copyDiagnostics = async () => {
@@ -724,6 +728,7 @@ function HelpSection() {
     onClick: () => void;
     external: boolean;
   }[] = [
+    { icon: Compass, label: "Start tour", onClick: beginTour, external: false },
     { icon: BookOpen, label: "Documentation", onClick: ext(DOCS_URL), external: true },
     { icon: Keyboard, label: "Keyboard shortcuts", onClick: openHotkeys, external: false },
     { icon: Bug, label: "Report a bug", onClick: ext(ISSUES_URL), external: true },
@@ -740,6 +745,9 @@ function HelpSection() {
   return (
     <div className="space-y-5">
       <div>
+        <div data-testid="about-oleafly-logo" className="mb-3">
+          <LeafLogo className="size-12" />
+        </div>
         <h3 className="text-sm font-semibold">About Oleafly</h3>
         <p className="mt-1 text-xs text-muted-foreground">
           A local-first, cross-platform LaTeX &amp; resume authoring app.

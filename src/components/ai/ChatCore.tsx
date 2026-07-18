@@ -14,7 +14,7 @@ import {
   Brain,
   ChevronDown,
   History,
-  MessageSquare,
+  MessageSquareQuote,
   Paperclip,
   Plus,
   RotateCcw,
@@ -1343,7 +1343,7 @@ ${sandboxedCustom}`;
               <li key={t.id} className="flex items-start gap-1.5 text-[11px] leading-snug">
                 <span
                   className={cn(
-                    "mt-0.5 size-1.5 shrink-0 rounded-full",
+                    "mt-[0.4em] size-1.5 shrink-0 rounded-full",
                     t.status === "completed" && "bg-emerald-500",
                     t.status === "in_progress" && "bg-primary",
                     t.status === "pending" && "bg-muted-foreground/40",
@@ -1417,7 +1417,7 @@ ${sandboxedCustom}`;
                           onClick={() => openChat(chat)}
                           className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-accent"
                         >
-                          <MessageSquare className="size-3.5 shrink-0 text-muted-foreground" />
+                          <MessageSquareQuote className="size-3.5 shrink-0 text-muted-foreground" />
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-xs font-medium">{chat.title || "New chat"}</span>
                             <span className="block truncate text-[10px] text-muted-foreground">
@@ -1494,7 +1494,7 @@ ${sandboxedCustom}`;
                     ) && (
                       <div className="max-w-[85%] rounded-md border bg-muted text-xs">
                         <div className="flex w-full items-center gap-2 px-2.5 py-1.5 text-muted-foreground">
-                          <Brain className="size-3.5 animate-pulse" />
+                          <Brain className="ai-shimmer-icon size-3.5" />
                           <Shimmer text={thinkingText || "Thinking…"} />
                         </div>
                       </div>

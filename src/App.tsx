@@ -51,6 +51,9 @@ const HistoryModal = lazy(() =>
 const HotkeysModal = lazy(() =>
   import("@/components/editor/HotkeysModal").then((m) => ({ default: m.HotkeysModal })),
 );
+const TourGuide = lazy(() =>
+  import("@/components/tour/TourGuide").then((m) => ({ default: m.TourGuide })),
+);
 
 function LazyModals({ children }: { children: ReactNode }) {
   return <Suspense fallback={null}>{children}</Suspense>;
@@ -412,6 +415,8 @@ export default function App() {
         )}
         <LazyModals>
           <SettingsModal />
+          <HotkeysModal />
+          <TourGuide />
         </LazyModals>
       </ThemeProvider>
     );
@@ -495,6 +500,7 @@ export default function App() {
           <HistoryModal />
           <HotkeysModal />
           <DiagramComposer />
+          <TourGuide />
         </LazyModals>
       </div>
     </ThemeProvider>

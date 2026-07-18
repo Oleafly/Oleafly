@@ -61,7 +61,7 @@ function RailTabButton({
           <span
             role="status"
             aria-label={`${badge} pending`}
-            className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-white ring-2 ring-muted/30"
+            className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-white ring-1 ring-muted/30"
           >
             {badge > 99 ? "99+" : badge}
           </span>
@@ -111,6 +111,7 @@ export function Rail() {
   return (
     <nav
       aria-label="Sidebar"
+      data-tour="project-sidebar"
       className="flex w-12 shrink-0 flex-col items-center border-r bg-muted/30 py-2"
     >
       <div className="flex flex-1 flex-col items-center gap-1">

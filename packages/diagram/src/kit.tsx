@@ -50,6 +50,7 @@ export interface DiagramKit {
   SelectItem: ComponentType<{ value: string; className?: string; children?: ReactNode }>;
   toast: { success: (msg: string) => void; error: (msg: string) => void };
   useThemeMode: () => "light" | "dark";
+  usePrimaryColor: () => string;
 }
 
 export const DiagramKitContext = createContext<DiagramKit | null>(null);

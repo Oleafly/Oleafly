@@ -17,16 +17,7 @@ import { Popover } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 export function Shimmer({ text }: { text?: string }) {
-  return (
-    <div className="flex items-center gap-2 px-1 py-2">
-      <div className="flex gap-1">
-        <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:-0.3s]" />
-        <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:-0.15s]" />
-        <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground/60" />
-      </div>
-      {text && <span className="text-xs text-muted-foreground">{text}</span>}
-    </div>
-  );
+  return text ? <span className="ai-shimmer text-xs">{text}</span> : null;
 }
 
 // Used for low-urgency notices we don't want to spend a full banner on.
@@ -219,7 +210,7 @@ export function ReasoningBlock({
         onClick={() => setUserToggled(!open)}
         className="flex w-full items-center gap-2 px-2.5 py-1.5 text-muted-foreground hover:bg-accent/50"
       >
-        <Brain className={cn("size-3.5", active && "animate-pulse")} />
+        <Brain className={cn("size-3.5", active && "ai-shimmer-icon")} />
         {active ? <Shimmer text={label} /> : <span>{label}</span>}
         <ChevronRight className={cn("ml-auto size-3 transition-transform", open && "rotate-90")} />
       </button>

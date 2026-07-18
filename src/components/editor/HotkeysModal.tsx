@@ -71,14 +71,14 @@ export function HotkeysModal() {
         aria-labelledby="hotkeys-title"
         className="relative flex max-h-[80vh] w-full max-w-lg flex-col overflow-hidden rounded-xl border bg-sidebar text-sidebar-foreground shadow-2xl"
       >
-        <div className="flex h-12 items-center justify-between border-b border-sidebar-border px-5">
+        <div className="flex min-h-14 items-center justify-between border-b border-sidebar-border px-5 py-3">
           <h2 id="hotkeys-title" className="text-sm font-semibold">Keyboard Shortcuts</h2>
           <Button variant="ghost" size="icon" className="size-7" onClick={() => setOpen(false)} aria-label="Close keyboard shortcuts">
             <X className="size-4" />
           </Button>
         </div>
         <div className="border-b border-sidebar-border p-3">
-          <div className="flex items-center gap-2 rounded-md border border-input bg-background px-3">
+          <div className="flex items-center gap-2 rounded-md border border-input bg-background px-3 transition-colors focus-within:ring-1 focus-within:ring-ring">
             <Search className="size-4 text-muted-foreground" />
             <Input
               data-modal-initial-focus
@@ -86,7 +86,7 @@ export function HotkeysModal() {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search shortcuts…"
-              className="h-9 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              className="h-9 w-full rounded-none border-0 bg-transparent px-0 text-sm shadow-none outline-none placeholder:text-muted-foreground focus-visible:ring-0"
             />
           </div>
         </div>

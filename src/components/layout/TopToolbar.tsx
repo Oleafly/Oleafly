@@ -262,6 +262,7 @@ export function TopToolbar() {
     <>
     <header
       data-tauri-drag-region
+      data-tour="project-toolbar"
       className={cn(
         "grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center border-b bg-background",
         isMac && "pr-3",
