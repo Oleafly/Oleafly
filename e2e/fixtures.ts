@@ -43,16 +43,18 @@ for (const p of envCandidates) {
 // compiles. Start the app first:
 //
 //   OPENLEAF_DATA_DIR=$(mktemp -d) pnpm tauri dev --features e2e-testing
-// Windows: the plugin serves TCP (no unix sockets), but createTauriTest's
-// external-launch path only ever connects to a socket PATH, so build the
-// tauriPage fixture ourselves from the exported client classes. Mirrors the
-// upstream fixture: connect, ping, reload to the dev URL, wait for the
-// bridge marker.
-function createWindowsTcpTest() {
+const DEV_URL = "http://localhost:1420";
+let nativePageOpened = false;
+
+function createNativeTest() {
   const port = Number(process.env.TAURI_PLAYWRIGHT_TCP_PORT ?? 6274);
+  const socket = process.env.TAURI_PLAYWRIGHT_SOCKET ?? "/tmp/tauri-playwright.sock";
   const test = base.extend<{ tauriPage: TauriPage }>({
     tauriPage: async ({}, use) => {
-      const client = new PluginClient(undefined, port);
+      const client =
+        process.platform === "win32"
+          ? new PluginClient(undefined, port)
+          : new PluginClient(socket);
       let lastErr: unknown = null;
       for (let i = 0; i < 30; i++) {
         try {
@@ -66,10 +68,15 @@ function createWindowsTcpTest() {
       }
       if (lastErr) throw lastErr;
       const ping = await client.send({ type: "ping" });
-      if (!ping.ok) throw new Error("plugin ping failed over tcp");
+      if (!ping.ok) throw new Error("plugin ping failed");
       const page = new TauriPage(client);
       page.setDefaultTimeout(20_000);
+      if (nativePageOpened) {
+        await page.evaluate(`window.location.href = ${JSON.stringify(DEV_URL)}`);
+        await new Promise((r) => setTimeout(r, 500));
+      }
       await page.waitForFunction('document.readyState === "complete" && !!window.__PW_ACTIVE__');
+      nativePageOpened = true;
       try {
         await use(page);
       } finally {
@@ -84,11 +91,7 @@ function createWindowsTcpTest() {
 }
 
 export const { test, expect } =
-  process.platform === "win32"
-    ? createWindowsTcpTest()
-    : createTauriTest({
-        mcpSocket: process.env.TAURI_PLAYWRIGHT_SOCKET ?? "/tmp/tauri-playwright.sock",
-      });
+  createNativeTest();
 
 // The bridge's per-command default is 5s, which a loaded CI runner routinely
 // blows on an otherwise-fine fill/click/waitForFunction, so a different test
