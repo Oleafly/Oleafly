@@ -21,7 +21,7 @@ export function ColorPicker({
           type="button"
           aria-label={ariaLabel}
           className={cn(
-            "size-7 cursor-pointer overflow-hidden rounded-full border border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            "size-7 cursor-pointer overflow-hidden rounded-full border border-input focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
             !value &&
               "bg-[length:8px_8px] bg-[linear-gradient(45deg,#ccc_25%,transparent_25%,transparent_75%,#ccc_75%,#ccc),linear-gradient(45deg,#ccc_25%,#fff_25%,#fff_75%,#ccc_75%,#ccc)] bg-[position:0_0,4px_4px]",
           )}

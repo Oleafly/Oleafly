@@ -199,7 +199,7 @@
   button:focus-visible,
   [role="button"]:focus-visible,
   [role="menuitem"]:focus-visible {
-    outline: 2px solid var(--ring);
+    outline: 1px solid var(--ring);
     outline-offset: 2px;
   }
   input,
@@ -278,6 +278,22 @@ select:focus-visible {
   animation: ai-shimmer 1.6s linear infinite;
 }
 
+@keyframes ai-shimmer-icon {
+  0%,
+  40%,
+  60%,
+  100% {
+    color: var(--muted-foreground);
+  }
+  50% {
+    color: var(--foreground);
+  }
+}
+
+.ai-shimmer-icon {
+  animation: ai-shimmer-icon 1.6s linear infinite;
+}
+
 @keyframes compile-icon-shimmer {
   0%,
   100% {
@@ -302,12 +318,79 @@ select:focus-visible {
   cursor: row-resize !important;
 }
 
+.diagram-resize-control.left:not(.top):not(.bottom),
+.diagram-resize-control.right:not(.top):not(.bottom) {
+  cursor: ew-resize !important;
+}
+
+.diagram-resize-control.line.left,
+.diagram-resize-control.line.right {
+  width: 12px;
+  border: 0;
+  background: linear-gradient(
+    to right,
+    transparent calc(50% - 0.5px),
+    var(--diagram-primary) calc(50% - 0.5px),
+    var(--diagram-primary) calc(50% + 0.5px),
+    transparent calc(50% + 0.5px)
+  );
+}
+
+.diagram-resize-control.top:not(.left):not(.right),
+.diagram-resize-control.bottom:not(.left):not(.right) {
+  cursor: ns-resize !important;
+}
+
+.diagram-resize-control.line.top,
+.diagram-resize-control.line.bottom {
+  height: 12px;
+  border: 0;
+  background: linear-gradient(
+    to bottom,
+    transparent calc(50% - 0.5px),
+    var(--diagram-primary) calc(50% - 0.5px),
+    var(--diagram-primary) calc(50% + 0.5px),
+    transparent calc(50% + 0.5px)
+  );
+}
+
+.diagram-resize-control.top.left,
+.diagram-resize-control.bottom.right {
+  cursor: nwse-resize !important;
+}
+
+.diagram-resize-control.top.right,
+.diagram-resize-control.bottom.left {
+  cursor: nesw-resize !important;
+}
+
+.diagram-resize-ew {
+  cursor: ew-resize !important;
+}
+
+.diagram-resize-ns {
+  cursor: ns-resize !important;
+}
+
+.diagram-resize-nwse {
+  cursor: nwse-resize !important;
+}
+
+.diagram-resize-nesw {
+  cursor: nesw-resize !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ai-shimmer {
     animation: none;
     background: none;
     color: var(--foreground);
     -webkit-text-fill-color: currentColor;
+  }
+
+  .ai-shimmer-icon {
+    animation: none;
+    color: var(--muted-foreground);
   }
 
   .compile-shimmer-icon {

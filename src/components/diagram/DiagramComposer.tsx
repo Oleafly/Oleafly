@@ -47,6 +47,10 @@ function useThemeMode(): "light" | "dark" {
   return theme === "dark" ? "dark" : "light";
 }
 
+function usePrimaryColor(): string {
+  return useSettingsStore((s) => s.accentColor);
+}
+
 const KIT: DiagramKit = {
   Button,
   Input,
@@ -61,6 +65,7 @@ const KIT: DiagramKit = {
   SelectValue,
   toast,
   useThemeMode,
+  usePrimaryColor,
 };
 
 async function fixWithAi(code: string, logTail: string): Promise<string> {

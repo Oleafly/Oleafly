@@ -42,7 +42,7 @@ export function clearGithubToken(): Promise<void> {
 // client secret, which makes it the right choice for a desktop app. Forks can
 // override at build time with VITE_GITHUB_CLIENT_ID.
 export const GITHUB_OAUTH_CLIENT_ID =
-  import.meta.env.VITE_GITHUB_CLIENT_ID ?? "Ov23liH7AKwZc4J10rhx";
+  import.meta.env.VITE_GITHUB_CLIENT_ID ?? "Ov23li4f2jpz7iBljiYT";
 
 export interface DeviceCode {
   device_code: string;

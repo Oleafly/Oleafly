@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { Handle, Position, NodeResizer, type NodeProps } from "@xyflow/react";
+import {
+  Handle,
+  NodeResizeControl,
+  Position,
+  ResizeControlVariant,
+  type ControlPosition,
+  type NodeProps,
+} from "@xyflow/react";
 import type {
   DiagramFontFamily,
   NodeShape,
@@ -29,10 +36,27 @@ const HANDLES = [
   { id: "l", pos: Position.Left },
 ];
 
+const RESIZE_CONTROLS: Array<{
+  position: ControlPosition;
+  variant: ResizeControlVariant;
+  cursor: CSSProperties["cursor"];
+  cursorClass: string;
+}> = [
+  { position: "left", variant: ResizeControlVariant.Line, cursor: "ew-resize", cursorClass: "diagram-resize-ew" },
+  { position: "right", variant: ResizeControlVariant.Line, cursor: "ew-resize", cursorClass: "diagram-resize-ew" },
+  { position: "top", variant: ResizeControlVariant.Line, cursor: "ns-resize", cursorClass: "diagram-resize-ns" },
+  { position: "bottom", variant: ResizeControlVariant.Line, cursor: "ns-resize", cursorClass: "diagram-resize-ns" },
+  { position: "top-left", variant: ResizeControlVariant.Handle, cursor: "nwse-resize", cursorClass: "diagram-resize-nwse" },
+  { position: "top-right", variant: ResizeControlVariant.Handle, cursor: "nesw-resize", cursorClass: "diagram-resize-nesw" },
+  { position: "bottom-left", variant: ResizeControlVariant.Handle, cursor: "nesw-resize", cursorClass: "diagram-resize-nesw" },
+  { position: "bottom-right", variant: ResizeControlVariant.Handle, cursor: "nwse-resize", cursorClass: "diagram-resize-nwse" },
+];
+
 export function ShapeNode({ id, data, selected }: NodeProps) {
   const d = data as ShapeData;
   const edit = useDiagramEdit();
-  const { Textarea } = useDiagramKit();
+  const { Textarea, usePrimaryColor } = useDiagramKit();
+  const primaryColor = usePrimaryColor();
   const editing = edit.editingId === id;
   const [hover, setHover] = useState(false);
   const [draft, setDraft] = useState(d.label);
@@ -104,15 +128,29 @@ export function ShapeNode({ id, data, selected }: NodeProps) {
         e.stopPropagation();
         edit.beginEdit(id);
       }}
-      style={{ width: "100%", height: "100%" }}
+      style={{
+        width: "100%",
+        height: "100%",
+        "--diagram-primary": primaryColor,
+      } as CSSProperties}
     >
-      <NodeResizer
-        isVisible={!!selected}
-        minWidth={30}
-        minHeight={24}
-        lineClassName="!border-primary"
-        handleClassName="!bg-background !border-primary"
-      />
+      {!!selected &&
+        RESIZE_CONTROLS.map((control) => (
+          <NodeResizeControl
+            key={control.position}
+            position={control.position}
+            variant={control.variant}
+            minWidth={30}
+            minHeight={24}
+            color={primaryColor}
+            className={`diagram-resize-control ${control.cursorClass} ${
+              control.variant === ResizeControlVariant.Handle
+                ? "!border-primary !bg-background"
+                : "!border-primary"
+            }`}
+            style={{ cursor: control.cursor }}
+          />
+        ))}
       <div style={style}>
         {polygon && (
           <svg
@@ -166,10 +204,11 @@ export function ShapeNode({ id, data, selected }: NodeProps) {
             width: 10,
             height: 10,
             background: "var(--background)",
-            border: "2px solid var(--primary)",
+            border: `1px solid ${primaryColor}`,
             opacity: handlesVisible ? 1 : 0,
             // Keep hit-testing available while hidden so edge reconnect still snaps.
             pointerEvents: "all",
+            cursor: "crosshair",
             transition: "opacity 120ms",
           }}
         />

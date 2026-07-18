@@ -128,6 +128,7 @@ export function Library() {
   return (
     <div
       data-testid="library"
+      data-tour="home"
       data-projects-loaded={projectsLoaded ? "true" : "false"}
       className="relative flex h-full flex-col bg-background"
     >
@@ -158,6 +159,7 @@ export function Library() {
               <Tooltip label="New project">
                 <Button
                   data-testid="new-project"
+                  data-tour="new-project"
                   variant="ghost"
                   size="sm"
                   className="text-muted-foreground hover:text-foreground"
@@ -231,6 +233,7 @@ export function Library() {
               <EmptyContent className="max-w-2xl">
                 <Button
                   data-testid="create-first-project"
+                  data-tour="new-project"
                   className="bg-primary text-white hover:bg-primary"
                   onClick={() => setNewProjectOpen(true)}
                 >

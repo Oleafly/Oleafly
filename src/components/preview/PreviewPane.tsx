@@ -165,7 +165,11 @@ export function PreviewPane() {
   const severity: "error" | "warning" | "ok" = hasError ? "error" : hasWarning ? "warning" : "ok";
 
   return (
-    <div ref={rootRef} className="relative flex h-full flex-col bg-background">
+    <div
+      ref={rootRef}
+      data-tour="project-preview"
+      className="relative flex h-full flex-col bg-background"
+    >
       {isFs && fsToolbarHidden && (
         <Tooltip label="Show toolbar">
           <button type="button"

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MessagesSquare, Trash2, X } from "lucide-react";
+import { MessageSquareQuote, Trash2, X } from "lucide-react";
 import type { StoredChat } from "@/store/chats";
 import { formatUsd } from "@/lib/ai-pricing";
 import { cn } from "@/lib/utils";
@@ -89,7 +89,7 @@ export function ChatHistoryModal({
                     className="min-w-0 flex-1 text-left"
                   >
                     <div className="flex items-center gap-1.5">
-                      <MessagesSquare className="size-3.5 shrink-0 text-muted-foreground" />
+                      <MessageSquareQuote className="size-3.5 shrink-0 text-muted-foreground" />
                       <span className="truncate text-sm font-medium">
                         {chat.title || "New chat"}
                       </span>

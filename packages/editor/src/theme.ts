@@ -41,7 +41,7 @@ const chromeTheme = EditorView.theme({
   },
   ".cm-cursor, .cm-dropCursor": {
     borderLeftColor: "var(--primary)",
-    borderLeftWidth: "2px",
+    borderLeftWidth: "1px",
   },
   ".cm-panels": {
     backgroundColor: "var(--popover)",

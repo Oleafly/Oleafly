@@ -7,6 +7,7 @@ export function SettingsMenu({ trigger }: { trigger?: ReactNode }) {
   return (
     <button
       type="button"
+      data-tour="settings"
       onClick={() => setOpen(true)}
       aria-label="Settings"
       title="Settings"
