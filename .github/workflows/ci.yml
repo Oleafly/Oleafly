@@ -77,6 +77,8 @@ jobs:
       # frontend build needs no Tectonic sidecar.
       - name: Typecheck & build
         run: pnpm build
+      - name: Check performance budgets
+        run: pnpm check:performance
 
       # Unit tests for the LaTeX masking (spell/grammar false-positive coverage).
       - name: Test

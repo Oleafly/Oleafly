@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Columns2, Contrast, FileText, Maximize, Minimize, PanelTopClose, PanelTopOpen, Play, RectangleVertical, Save, SquareArrowOutUpRight, X, XCircle, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import { PdfViewer, type PdfViewerHandle, type PdfLayout } from "@/components/pdf/PdfViewer";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LogPane } from "@/components/editor/LogPane";
@@ -48,6 +49,9 @@ export function PreviewPane() {
   const pdfRef = useRef<PdfViewerHandle>(null);
   const scrollBoxRef = useRef<HTMLDivElement>(null);
   const scaleRef = useRef(scale);
+  const closeSave = () => setSaveOpen(false);
+  const { dialogRef: saveDialogRef, onBackdropMouseDown: onSaveBackdropMouseDown } =
+    useModalAccessibility<HTMLDivElement>(saveOpen, closeSave);
   scaleRef.current = scale;
 
   // Only true fullscreen when the pane itself (not a descendant) is the fullscreen element.
@@ -112,7 +116,7 @@ export function PreviewPane() {
         toast.success("Image saved to the project.");
       } else {
         const raw = saveName.trim() || mainDoc.replace(/\.(?:tex|typ|md|markdown)$/i, "") || "document";
-        const name = raw.replace(/\.pdf$/i, "") + ".pdf";
+        const name = `${raw.replace(/\.pdf$/i, "")}.pdf`;
         await saveFileBase64(projectId, name, uint8ToBase64(pdfBytes));
         await refreshTree();
         setSaveOpen(false);
@@ -141,7 +145,7 @@ export function PreviewPane() {
     <div ref={rootRef} className="relative flex h-full flex-col bg-background">
       {isFs && fsToolbarHidden && (
         <Tooltip label="Show toolbar">
-          <button
+          <button type="button"
             onClick={() => setFsToolbarHidden(false)}
             aria-label="Show toolbar"
             className="absolute right-3 top-3 z-20 flex size-8 items-center justify-center rounded-full bg-black/40 text-white/80 backdrop-blur transition-colors hover:bg-black/60 hover:text-white"
@@ -156,7 +160,7 @@ export function PreviewPane() {
           isFs && fsToolbarHidden && "hidden",
         )}
       >
-        <button
+        <button type="button"
           onClick={() => setTab(tab === "logs" ? "pdf" : "logs")}
           className={cn(
             "flex h-6 items-center gap-1.5 rounded-md px-2 text-xs font-medium",
@@ -311,7 +315,7 @@ export function PreviewPane() {
                       "figure";
                     setSaveName(`${base}.png`);
                   } else {
-                    setSaveName((mainDoc.replace(/\.(?:tex|typ|md|markdown)$/i, "") || "document") + ".pdf");
+                    setSaveName(`${mainDoc.replace(/\.(?:tex|typ|md|markdown)$/i, "") || "document"}.pdf`);
                   }
                   setSaveOpen(true);
                 }}
@@ -451,17 +455,19 @@ export function PreviewPane() {
       </div>
 
       {saveOpen && (
-        <div
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4"
-          onClick={() => setSaveOpen(false)}
-        >
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4">
+          <button type="button" aria-label="Close save dialog" className="absolute inset-0" onMouseDown={onSaveBackdropMouseDown} />
           <div
-            className="w-full max-w-sm rounded-xl border bg-popover p-5 text-popover-foreground shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
+            ref={saveDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="save-preview-title"
+            tabIndex={-1}
+            className="relative w-full max-w-sm rounded-xl border bg-popover p-5 text-popover-foreground shadow-2xl"
           >
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold">{isImage ? "Save image to project" : "Save PDF to project"}</h2>
-              <button onClick={() => setSaveOpen(false)} className="text-muted-foreground hover:text-foreground">
+              <h2 id="save-preview-title" className="text-sm font-semibold">{isImage ? "Save image to project" : "Save PDF to project"}</h2>
+              <button type="button" onClick={closeSave} className="text-muted-foreground hover:text-foreground">
                 <X className="size-4" />
               </button>
             </div>
@@ -470,7 +476,7 @@ export function PreviewPane() {
             </p>
             <div className="flex items-center gap-2">
               <input
-                autoFocus
+                data-modal-initial-focus
                 value={saveName}
                 onChange={(e) => setSaveName(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !saving) void submitSavePdf(); }}

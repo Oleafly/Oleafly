@@ -1,5 +1,5 @@
 import * as pdfjsLib from "pdfjs-dist";
-import workerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import workerSrc from "@openleaf/preview/pdf.worker?worker&url";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
@@ -18,7 +18,8 @@ export async function extractPdfText(
         const tc = await page.getTextContent();
         const line: string[] = [];
         let lastY: number | null = null;
-        for (const item of tc.items as any[]) {
+        for (const item of tc.items) {
+          if (!("str" in item)) continue;
           const str = typeof item?.str === "string" ? item.str : "";
           const y = item?.transform?.[5];
           if (lastY !== null && y !== undefined && Math.abs(y - lastY) > 2) {

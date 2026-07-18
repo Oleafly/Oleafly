@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Check, Copy } from "lucide-react";
 import { useCompileStore } from "@/store/compile";
 import { cn } from "@/lib/utils";
+import { objectKey } from "@/lib/react-key";
 
 type Cat = "error" | "warn" | "lineref" | "register" | "normal";
 
@@ -18,10 +19,9 @@ const TOKEN_RE = /(\([^\s()]+\.\w+\)|\\[a-zA-Z@]+|[{}()])/g;
 function inline(line: string): ReactNode[] {
   const out: ReactNode[] = [];
   let last = 0;
-  let m: RegExpExecArray | null;
   let key = 0;
   TOKEN_RE.lastIndex = 0;
-  while ((m = TOKEN_RE.exec(line))) {
+  for (const m of line.matchAll(TOKEN_RE)) {
     if (m.index > last) out.push(<span key={key++}>{line.slice(last, m.index)}</span>);
     const tok = m[0];
     let cls = "";
@@ -45,7 +45,7 @@ function LogText({ text }: { text: string }) {
   let depth = 0;
   return (
     <>
-      {lines.map((ln, i) => {
+      {lines.map((ln, index) => {
         const cat = category(ln);
         const lineDepth = depth;
         const opens = (ln.match(/\(/g) || []).length;
@@ -74,7 +74,9 @@ function LogText({ text }: { text: string }) {
         const pad = cat === "error" || cat === "warn" || cat === "lineref" ? 0 : indent;
         return (
           <span
-            key={i}
+            // Log lines are an append-oriented, stateless transcript.
+            // biome-ignore lint/suspicious/noArrayIndexKey: preserving a line's position is the intended identity
+            key={index}
             className="block whitespace-pre-wrap break-words"
             style={{ paddingLeft: pad }}
           >
@@ -112,8 +114,8 @@ export function LogPane() {
     <div className="flex h-full flex-col bg-sidebar">
       {errors.length > 0 && (
         <div className="border-b border-sidebar-border bg-sidebar-accent/40">
-          {errors.map((err, i) => (
-            <div key={i} className="flex flex-col gap-0.5 px-3 py-1.5 text-xs">
+          {errors.map((err) => (
+            <div key={objectKey(err, "compile-error")} className="flex flex-col gap-0.5 px-3 py-1.5 text-xs">
               <div className="flex items-start gap-2">
                 <span
                   className={cn(
@@ -145,7 +147,7 @@ export function LogPane() {
       )}
 
       <div className="flex h-7 shrink-0 items-center justify-end border-b border-sidebar-border px-2">
-        <button
+        <button type="button"
           onClick={() => void copy()}
           disabled={!log}
           className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40"

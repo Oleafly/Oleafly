@@ -44,7 +44,10 @@ if (isUpdateWindow) {
   }
 }
 
-createRoot(document.getElementById("root")!).render(
+const root = document.getElementById("root");
+if (!root) throw new Error("OpenLeaf root element is missing");
+
+createRoot(root).render(
   <StrictMode>
     <ErrorBoundary>
       {isUpdateWindow ? (
@@ -67,5 +70,5 @@ createRoot(document.getElementById("root")!).render(
         </>
       )}
     </ErrorBoundary>
-  </StrictMode>
+  </StrictMode>,
 );

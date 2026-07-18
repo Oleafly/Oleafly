@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { buildIndex } from "./build";
+import { required } from "../test-utils";
 
 describe("buildIndex: macrouse second pass", () => {
   it("links \\foo uses to the \\newcommand def and excludes the def site", () => {
@@ -38,14 +39,14 @@ describe("buildIndex: symbolAt + definitionFor", () => {
   });
 
   it("resolves a ref to its label definition", () => {
-    const ref = idx.uses.find((u) => u.kind === "ref" && u.name === "fig:1")!;
+    const ref = required(idx.uses.find((u) => u.kind === "ref" && u.name === "fig:1"));
     const d = idx.definitionFor(ref);
     expect(d?.kind).toBe("label");
     expect(d?.file).toBe("main.tex");
   });
 
   it("resolves a cite to its bib entry", () => {
-    const cite = idx.uses.find((u) => u.kind === "cite" && u.name === "smith21")!;
+    const cite = required(idx.uses.find((u) => u.kind === "cite" && u.name === "smith21"));
     const d = idx.definitionFor(cite);
     expect(d?.kind).toBe("bibentry");
     expect(d?.file).toBe("refs.bib");
@@ -53,7 +54,7 @@ describe("buildIndex: symbolAt + definitionFor", () => {
 
   it("returns null for an unresolved ref", () => {
     const i2 = buildIndex({ "m.tex": "\\ref{ghost}" });
-    const ref = i2.uses.find((u) => u.kind === "ref")!;
+    const ref = required(i2.uses.find((u) => u.kind === "ref"));
     expect(i2.definitionFor(ref)).toBeNull();
   });
 });
@@ -64,9 +65,9 @@ describe("buildIndex: Typst graph and ambiguous links", () => {
       "main.typ": '= Main <main>\n#include "chapter.typ"\nSee @chapter.',
       "chapter.typ": "== Chapter <chapter>",
     });
-    const edge = idx.uses.find((u) => u.kind === "inputedge")!;
+    const edge = required(idx.uses.find((u) => u.kind === "inputedge"));
     expect(idx.definitionFor(edge)?.file).toBe("chapter.typ");
-    const link = idx.uses.find((u) => u.kind === "atuse")!;
+    const link = required(idx.uses.find((u) => u.kind === "atuse"));
     expect(idx.definitionFor(link)).toMatchObject({ kind: "label", name: "chapter" });
     expect(idx.references("chapter", "atuse")).toHaveLength(1);
   });
@@ -85,7 +86,7 @@ describe("buildIndex: renamePlan", () => {
       "main.tex": "\\label{old}\ntext",
       "body.tex": "see \\ref{old} and \\cref{old,x}",
     });
-    const def = idx.defs.find((d) => d.kind === "label" && d.name === "old")!;
+    const def = required(idx.defs.find((d) => d.kind === "label" && d.name === "old"));
     const plan = idx.renamePlan(def, "new");
     expect(plan.collision).toBe(false);
     // 1 def + 2 refs (\ref and the "old" in \cref) = 3 edits across 2 files.
@@ -96,20 +97,20 @@ describe("buildIndex: renamePlan", () => {
 
   it("renames a macro at its def and every use", () => {
     const idx = buildIndex({ "m.tex": "\\newcommand{\\foo}{x}\n\\foo and \\foo" });
-    const def = idx.defs.find((d) => d.kind === "macro" && d.name === "foo")!;
+    const def = required(idx.defs.find((d) => d.kind === "macro" && d.name === "foo"));
     const plan = idx.renamePlan(def, "bar");
     expect(plan.edits).toHaveLength(3); // def + 2 uses
   });
 
   it("detects a collision with an existing same-kind def", () => {
     const idx = buildIndex({ "m.tex": "\\label{a}\n\\label{b}" });
-    const def = idx.defs.find((d) => d.kind === "label" && d.name === "a")!;
+    const def = required(idx.defs.find((d) => d.kind === "label" && d.name === "a"));
     expect(idx.renamePlan(def, "b").collision).toBe(true);
   });
 
   it("resolves a use to its def before planning (rename from a use site)", () => {
     const idx = buildIndex({ "m.tex": "\\label{a}\n\\ref{a}" });
-    const use = idx.uses.find((u) => u.kind === "ref" && u.name === "a")!;
+    const use = required(idx.uses.find((u) => u.kind === "ref" && u.name === "a"));
     const plan = idx.renamePlan(use, "z");
     expect(plan.edits).toHaveLength(2); // def + the ref
   });

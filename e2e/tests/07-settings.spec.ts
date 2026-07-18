@@ -1,12 +1,29 @@
 import { test, expect } from "../fixtures";
-import { openProject, openSettings, pressGlobal, paletteItems } from "../helpers";
+import {
+  createBlankProject,
+  openProject,
+  openSettings,
+  pressGlobal,
+  paletteItems,
+  type Page,
+} from "../helpers";
 
-// The test fixture reloads the whole app before every test, so a two-test
-// pair (see below) proves real persistence across a restart, not just
-// in-memory state.
+const PROJECT = "E2E Settings";
+
+async function openSettingsProject(page: Page & { getByText(t: string): { click(): Promise<void> } }) {
+  const exists = await page.evaluate<boolean>(
+    `Array.from(document.querySelectorAll('button')).some((el) => el.textContent?.includes(${JSON.stringify(PROJECT)}))`,
+  );
+  if (exists) await openProject(page, PROJECT);
+  else await createBlankProject(page, PROJECT);
+}
+
+// The test fixture reloads the whole frontend before every test, so the
+// two-test pair below proves persistence across a renderer restart, not merely
+// React component state.
 
 test("settings modal opens with all sections", async ({ tauriPage }) => {
-  await openProject(tauriPage, "E2E Doc");
+  await openSettingsProject(tauriPage);
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openSettings(tauriPage);
   for (const s of ["appearance", "general", "ai", "github", "mcp"]) {
@@ -25,7 +42,7 @@ test("settings modal opens with all sections", async ({ tauriPage }) => {
 });
 
 test("compile button always shows its text label", async ({ tauriPage }) => {
-  await openProject(tauriPage, "E2E Doc");
+  await openSettingsProject(tauriPage);
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
   const compileLabel = await tauriPage.evaluate<string>(
@@ -63,7 +80,7 @@ test("vim mode survived the app restart, then disable it (part 2)", async ({ tau
 });
 
 test("palette lists every registered core command", async ({ tauriPage }) => {
-  await openProject(tauriPage, "E2E Doc");
+  await openSettingsProject(tauriPage);
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await pressGlobal(tauriPage, "k", { meta: true });
   await expect(tauriPage.locator("[cmdk-input]")).toBeVisible();

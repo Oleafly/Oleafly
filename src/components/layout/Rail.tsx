@@ -125,7 +125,7 @@ export function Rail() {
 
       <div className="flex flex-col items-center gap-1">
         <Tooltip label={showTree ? "Hide sidebar" : "Show sidebar"} side="right">
-          <button
+          <button type="button"
             aria-label={showTree ? "Hide sidebar" : "Show sidebar"}
             onClick={toggleTree}
             className={railBtn(false)}
@@ -139,7 +139,7 @@ export function Rail() {
         </Tooltip>
         <Tooltip label="Help" side="right">
           <div className="relative">
-            <button
+            <button type="button"
               aria-label="Help"
               onClick={() => setHelpOpen((v) => !v)}
               className={railBtn(false)}
@@ -148,15 +148,15 @@ export function Rail() {
             </button>
             {helpOpen && (
               <>
-                <div className="fixed inset-0 z-40" onClick={() => setHelpOpen(false)} />
+                <button type="button" aria-label="Close help menu" className="fixed inset-0 z-40" onClick={() => setHelpOpen(false)} />
                 <div className="absolute bottom-0 left-full z-50 ml-2 w-44 rounded-md border bg-popover p-1 text-popover-foreground shadow-xl">
-                  <button
+                  <button type="button"
                     onClick={() => { setHelpOpen(false); void open("https://www.overleaf.com/learn"); }}
                     className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent"
                   >
                     <BookOpen className="size-4 text-muted-foreground" /> Documentation
                   </button>
-                  <button
+                  <button type="button"
                     onClick={() => { setHelpOpen(false); setAboutOpen(true); }}
                     className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent"
                   >
@@ -168,7 +168,7 @@ export function Rail() {
           </div>
         </Tooltip>
         <Tooltip label={theme === "dark" ? "Light theme" : "Dark theme"} side="right">
-          <button
+          <button type="button"
             aria-label="Toggle theme"
             onClick={toggleTheme}
             className={railBtn(false)}
@@ -177,7 +177,7 @@ export function Rail() {
           </button>
         </Tooltip>
         <Tooltip label="Settings" side="right">
-          <button
+          <button type="button"
             aria-label="Settings"
             onClick={() => setSettingsOpen(true)}
             className={railBtn(false)}

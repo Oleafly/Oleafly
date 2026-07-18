@@ -4,6 +4,8 @@ import { useCitationStore } from "@/store/citation";
 import { resolveCitation, bibtexForHit, addCitation } from "@/features/citation";
 import type { CitationHit } from "@/lib/citation/types";
 import { toast } from "@/lib/toast";
+import { objectKey } from "@/lib/react-key";
+import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 
 type Status = "idle" | "loading" | "hits" | "preview" | "error";
 
@@ -23,6 +25,9 @@ export function AddCitationDialog() {
   const [bibtex, setBibtex] = useState("");
   const [error, setError] = useState("");
   const [adding, setAdding] = useState(false);
+  const close = () => setOpen(false);
+  const { dialogRef, onBackdropMouseDown } =
+    useModalAccessibility<HTMLDivElement>(open, close);
 
   useEffect(() => {
     if (open) {
@@ -36,8 +41,6 @@ export function AddCitationDialog() {
   }, [open]);
 
   if (!open) return null;
-
-  const close = () => setOpen(false);
 
   const search = async (raw?: string) => {
     const q = (raw ?? input).trim();
@@ -81,21 +84,26 @@ export function AddCitationDialog() {
   };
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-start justify-center bg-black/40 pt-[15vh]" onClick={close}>
+    <div className="fixed inset-0 z-[70] flex items-start justify-center bg-black/40 pt-[15vh]">
+      <button type="button" aria-label="Close citation dialog" className="absolute inset-0" onMouseDown={onBackdropMouseDown} />
       <div
-        className="flex max-h-[60vh] w-[34rem] max-w-[92vw] flex-col rounded-lg border bg-popover text-popover-foreground shadow-xl"
-        onClick={(e) => e.stopPropagation()}
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="citation-dialog-title"
+        tabIndex={-1}
+        className="relative flex max-h-[60vh] w-[34rem] max-w-[92vw] flex-col rounded-lg border bg-popover text-popover-foreground shadow-xl"
       >
         <div className="flex items-center gap-2 border-b px-3 py-2.5">
           <Quote className="size-4 text-muted-foreground" />
-          <span className="text-sm font-semibold">Add citation</span>
+          <span id="citation-dialog-title" className="text-sm font-semibold">Add citation</span>
         </div>
 
         <div className="border-b p-3">
           <div className="flex items-center gap-2 rounded-md border border-input bg-background py-1 pl-2.5 pr-1">
             <Search className="size-4 shrink-0 text-muted-foreground" />
             <input
-              autoFocus
+              data-modal-initial-focus
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
@@ -105,7 +113,7 @@ export function AddCitationDialog() {
               placeholder="DOI, arXiv id, URL, or a paper title…"
               className="h-8 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
-            <button
+            <button type="button"
               onClick={() => void search()}
               disabled={status === "loading" || !input.trim()}
               className="inline-flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded bg-primary px-2.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
@@ -128,7 +136,7 @@ export function AddCitationDialog() {
               </p>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {EXAMPLES.map((ex) => (
-                  <button
+                  <button type="button"
                     key={ex.label}
                     onClick={() => {
                       setInput(ex.value);
@@ -162,9 +170,9 @@ export function AddCitationDialog() {
               <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                 {hits.length} {hits.length === 1 ? "match" : "matches"} from Crossref. Pick one:
               </p>
-              {hits.map((h, i) => (
-                <button
-                  key={`${h.doi ?? h.title}:${i}`}
+              {hits.map((h) => (
+                <button type="button"
+                  key={objectKey(h, "citation")}
                   onClick={() => void pick(h)}
                   className="rounded-md border border-sidebar-border px-2.5 py-2 text-left hover:bg-accent"
                 >
@@ -200,10 +208,10 @@ export function AddCitationDialog() {
 
         {status === "preview" && (
           <div className="flex justify-end gap-2 border-t p-3">
-            <button onClick={close} className="rounded-md border border-input px-3 py-1.5 text-xs hover:bg-accent">
+            <button type="button" onClick={close} className="rounded-md border border-input px-3 py-1.5 text-xs hover:bg-accent">
               Cancel
             </button>
-            <button
+            <button type="button"
               onClick={() => void add()}
               disabled={adding}
               className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"

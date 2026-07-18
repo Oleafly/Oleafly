@@ -7,6 +7,7 @@ import { usePreflightStore } from "@/store/preflight";
 import { useEngineStore } from "@/store/engine";
 import { compileTaggedAndVerify } from "@/features/latex-engine";
 import { pathUsesEngineSource } from "@/lib/document-engine";
+import { objectKey } from "@/lib/react-key";
 import { canPrepareAccessible } from "./prep-capability";
 
 const KIND: Record<PrepChange["kind"], { icon: typeof Info; color: string }> = {
@@ -66,7 +67,7 @@ export function PrepExport() {
           Prepare this document for a tagged, Section 508 / PDF-UA export. OpenLeaf adds the required setup. Compile the
           result with LuaLaTeX (TeX Live 2025 or newer), then re-check.
         </p>
-        <button
+        <button type="button"
           onClick={run}
           disabled={!activePath}
           className="mt-2 inline-flex items-center gap-1.5 rounded border border-input px-2 py-1 text-xs hover:bg-accent disabled:opacity-50"
@@ -78,10 +79,10 @@ export function PrepExport() {
       {result && (
         <div className="border-t border-sidebar-border px-2.5 py-2">
           <ul className="flex flex-col gap-1.5">
-            {result.changes.map((c, i) => {
+            {result.changes.map((c) => {
               const { icon: Icon, color } = KIND[c.kind];
               return (
-                <li key={i} className="flex items-start gap-2 text-[11px] leading-relaxed">
+                <li key={objectKey(c, "prep-change")} className="flex items-start gap-2 text-[11px] leading-relaxed">
                   <Icon className={`mt-0.5 size-3.5 shrink-0 ${color}`} />
                   <span className="text-muted-foreground">{c.summary}</span>
                 </li>
@@ -89,7 +90,7 @@ export function PrepExport() {
             })}
           </ul>
           <div className="mt-2.5 flex gap-1.5">
-            <button
+            <button type="button"
               onClick={apply}
               disabled={applied}
               className="inline-flex items-center gap-1.5 rounded bg-primary px-2 py-1 text-xs text-white hover:opacity-90 disabled:opacity-60"
@@ -97,7 +98,7 @@ export function PrepExport() {
               {applied ? <Check className="size-3" /> : null}
               {applied ? "Applied" : "Apply to document"}
             </button>
-            <button onClick={copy} className="inline-flex items-center gap-1.5 rounded border border-input px-2 py-1 text-xs hover:bg-accent">
+            <button type="button" onClick={copy} className="inline-flex items-center gap-1.5 rounded border border-input px-2 py-1 text-xs hover:bg-accent">
               {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
               {copied ? "Copied" : "Copy source"}
             </button>
@@ -105,7 +106,7 @@ export function PrepExport() {
 
           <div className="mt-2.5 border-t border-sidebar-border pt-2.5">
             {hasEngine ? (
-              <button
+              <button type="button"
                 onClick={() => void compileTaggedAndVerify()}
                 className="inline-flex items-center gap-1.5 rounded border border-input px-2 py-1 text-xs hover:bg-accent"
               >

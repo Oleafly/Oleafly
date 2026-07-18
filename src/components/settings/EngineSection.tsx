@@ -51,7 +51,7 @@ export function EngineSection() {
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {kind === "none" && (
-            <button
+            <button type="button"
               onClick={() => void install()}
               disabled={installing}
               className="inline-flex items-center gap-1.5 rounded-md bg-primary px-2.5 py-1.5 text-xs text-white hover:opacity-90 disabled:opacity-60"
@@ -61,7 +61,7 @@ export function EngineSection() {
             </button>
           )}
           {kind === "tinytex" && (
-            <button
+            <button type="button"
               onClick={() => void remove()}
               className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs hover:bg-accent"
             >
@@ -105,7 +105,7 @@ export function EngineSection() {
                   </div>
                   <p className="truncate text-[11px] text-muted-foreground">{p.description}</p>
                 </div>
-                <button
+                <button type="button"
                   onClick={() => void (on ? removePackage(p.name) : addPackage(p.name))}
                   disabled={!hasEngine || !!busyPkg}
                   className={cn(

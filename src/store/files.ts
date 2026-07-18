@@ -357,9 +357,9 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       delete files[path];
       return {
         files,
-        openTabs: s.openTabs.filter((p) => p !== path && !p.startsWith(path + "/")),
+        openTabs: s.openTabs.filter((p) => p !== path && !p.startsWith(`${path}/`)),
         activePath:
-          s.activePath === path || s.activePath?.startsWith(path + "/")
+          s.activePath === path || s.activePath?.startsWith(`${path}/`)
             ? null
             : s.activePath,
       };
@@ -430,9 +430,9 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       delete files[path];
       return {
         files,
-        openTabs: s.openTabs.filter((p) => p !== path && !p.startsWith(path + "/")),
+        openTabs: s.openTabs.filter((p) => p !== path && !p.startsWith(`${path}/`)),
         activePath:
-          s.activePath === path || s.activePath?.startsWith(path + "/")
+          s.activePath === path || s.activePath?.startsWith(`${path}/`)
             ? null
             : s.activePath,
       };
@@ -458,10 +458,10 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
         activePath:
           s.activePath === from
             ? to
-            : s.activePath?.startsWith(from + "/")
-            ? to + s.activePath!.slice(from.length)
+            : s.activePath?.startsWith(`${from}/`)
+            ? to + s.activePath?.slice(from.length)
             : s.activePath,
-        docVersion: s.activePath === from || s.activePath?.startsWith(from + "/") ? s.docVersion + 1 : s.docVersion,
+        docVersion: s.activePath === from || s.activePath?.startsWith(`${from}/`) ? s.docVersion + 1 : s.docVersion,
       };
     });
     void get().refreshTree();

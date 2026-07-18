@@ -78,8 +78,7 @@ export function assembleIndex(
       const spans = macroDefSpans.get(path) ?? [];
       const lineAt = lineCounter(text);
       const re = new RegExp(`\\\\(${alt})(?![a-zA-Z@])`, "g");
-      let m: RegExpExecArray | null;
-      while ((m = re.exec(text))) {
+      for (const m of text.matchAll(re)) {
         const at = m.index;
         if (spans.some(([f, t]) => at >= f && at < t)) continue;
         const name = m[1];

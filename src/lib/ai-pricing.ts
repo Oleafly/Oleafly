@@ -50,7 +50,7 @@ const DEFAULT_PRICE: ModelPrice = { inputPerMTok: 1, outputPerMTok: 3, note: "es
 export function lookupPrice(modelId: string): ModelPrice {
   if (!modelId) return DEFAULT_PRICE;
   if (PRICES[modelId]) return PRICES[modelId];
-  const bare = modelId.includes("/") ? modelId.split("/").pop()! : modelId;
+  const bare = modelId.includes("/") ? modelId.split("/").pop() ?? modelId : modelId;
   if (PRICES[bare]) return PRICES[bare];
   // Longest PAID key that is a substring of the id. Free entries (mistral, gemma2,
   // glm-*, ...) are skipped so a paid id like "mistral-large-2411" doesn't get

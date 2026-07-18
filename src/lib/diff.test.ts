@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { parseDiff, toSplitPairs } from "./diff";
+import { required } from "./test-utils";
 
 const SAMPLE = `diff --git a/main.tex b/main.tex
 index 1111111..2222222 100644
@@ -26,8 +27,8 @@ describe("parseDiff", () => {
       "add",
       "context",
     ]);
-    const del = rows.find((r) => r.kind === "del")!;
-    const add = rows.find((r) => r.kind === "add")!;
+    const del = required(rows.find((r) => r.kind === "del"));
+    const add = required(rows.find((r) => r.kind === "add"));
     expect(del.text).toBe("old line"); // leading "-" stripped
     expect(add.text).toBe("new line"); // leading "+" stripped
     expect(rows[5].text).toBe("context"); // leading " " stripped
@@ -38,9 +39,9 @@ describe("parseDiff", () => {
     const context = rows[5];
     expect(context.oldLine).toBe(1);
     expect(context.newLine).toBe(1);
-    const del = rows.find((r) => r.kind === "del")!;
+    const del = required(rows.find((r) => r.kind === "del"));
     expect(del.oldLine).toBe(2);
-    const add = rows.find((r) => r.kind === "add")!;
+    const add = required(rows.find((r) => r.kind === "add"));
     expect(add.newLine).toBe(2);
     const context2 = rows[rows.length - 1];
     expect(context2.oldLine).toBe(3);

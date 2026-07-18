@@ -58,6 +58,7 @@ export function Book({
   starred,
   onStarToggle,
   preview,
+  onPreviewRequest,
 }: {
   title: string;
   color?: string;
@@ -70,6 +71,7 @@ export function Book({
   starred?: boolean;
   onStarToggle?: () => void;
   preview?: string | null;
+  onPreviewRequest?: () => void;
 }) {
   const coverColor = color ?? DEFAULT_BOOK_COLOR;
   const ink = textColor ?? (isLight(coverColor) ? "#1f2937" : "#ffffff");
@@ -93,19 +95,19 @@ export function Book({
 
   return (
     <div
-      role="button"
-      tabIndex={0}
-      onClick={onClick}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onClick?.();
-        }
-      }}
-      className="group w-full cursor-pointer rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="group relative w-full rounded-md"
       style={{ width }}
     >
-      <div style={{ perspective: "1600px" }}>
+      <button
+        type="button"
+        tabIndex={0}
+        aria-label={`Open ${title}`}
+        onClick={onClick}
+        onMouseOver={onPreviewRequest}
+        onFocus={onPreviewRequest}
+        className="block w-full cursor-pointer rounded-md text-left focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <div style={{ perspective: "1600px" }}>
         <div
           className={cn(
             "relative transition-transform duration-500 ease-out [transform-style:preserve-3d]",
@@ -155,25 +157,22 @@ export function Book({
               </div>
             )}
 
-            {onStarToggle && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onStarToggle();
-                }}
-                aria-label={starred ? "Remove from favorites" : "Add to favorites"}
-                className="absolute right-2 top-2 z-20 flex size-6 items-center justify-center rounded-full transition-colors hover:bg-black/10"
-                style={{ color: starred ? "#f59e0b" : ink }}
-              >
-                <Bookmark className={cn("size-3.5", starred && "fill-current")} />
-              </button>
-            )}
-
             <div className="pointer-events-none absolute inset-0 rounded-md ring-1 ring-inset ring-black/10" />
           </div>
         </div>
-      </div>
+        </div>
+      </button>
+      {onStarToggle && (
+        <button
+          type="button"
+          onClick={onStarToggle}
+          aria-label={starred ? "Remove from favorites" : "Add to favorites"}
+          className="absolute right-2 top-2 z-20 flex size-6 items-center justify-center rounded-full transition-colors hover:bg-black/10"
+          style={{ color: starred ? "#f59e0b" : ink }}
+        >
+          <Bookmark className={cn("size-3.5", starred && "fill-current")} />
+        </button>
+      )}
     </div>
   );
 }

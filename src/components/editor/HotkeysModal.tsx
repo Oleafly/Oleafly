@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useSettingsStore } from "@/store/settings";
 import { shortcut } from "@/lib/utils";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
+import { objectKey } from "@/lib/react-key";
 
 // Leaves rows that already spell out both conventions (e.g. "Ctrl-Space") untouched.
 const keyLabel = (keys: string) => (keys.includes("Ctrl") ? keys : shortcut(keys));
@@ -59,16 +60,15 @@ export function HotkeysModal() {
   return (
     <div
       className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4"
-      role="presentation"
-      onMouseDown={onBackdropMouseDown}
     >
+      <button type="button" aria-label="Close keyboard shortcuts" className="absolute inset-0" onMouseDown={onBackdropMouseDown} />
       <div
         role="dialog"
         ref={dialogRef}
         tabIndex={-1}
         aria-modal="true"
         aria-labelledby="hotkeys-title"
-        className="flex max-h-[80vh] w-full max-w-lg flex-col overflow-hidden rounded-xl border bg-sidebar text-sidebar-foreground shadow-2xl"
+        className="relative flex max-h-[80vh] w-full max-w-lg flex-col overflow-hidden rounded-xl border bg-sidebar text-sidebar-foreground shadow-2xl"
       >
         <div className="flex h-12 items-center justify-between border-b border-sidebar-border px-5">
           <h2 id="hotkeys-title" className="text-sm font-semibold">Keyboard Shortcuts</h2>
@@ -80,7 +80,6 @@ export function HotkeysModal() {
           <div className="flex items-center gap-2 rounded-md border border-input bg-background px-3">
             <Search className="size-4 text-muted-foreground" />
             <input
-              autoFocus
               data-modal-initial-focus
               aria-label="Search shortcuts"
               value={q}
@@ -98,8 +97,8 @@ export function HotkeysModal() {
               </div>
               {filtered
                 .filter((s) => s.category === cat)
-                .map((s, i) => (
-                  <div key={i} className="flex items-center justify-between py-1.5">
+                .map((s) => (
+                  <div key={objectKey(s, "shortcut")} className="flex items-center justify-between py-1.5">
                     <span className="text-sm">{s.desc}</span>
                     <kbd className="rounded border border-sidebar-border bg-background px-2 py-0.5 font-mono text-xs">
                       {keyLabel(s.keys)}

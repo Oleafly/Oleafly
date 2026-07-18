@@ -3,15 +3,20 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   cleanup: vi.fn(),
   destroyTask: vi.fn().mockResolvedValue(undefined),
+  destroyWorker: vi.fn(),
   getDocument: vi.fn(),
 }));
 
 vi.mock("pdfjs-dist", () => ({
   GlobalWorkerOptions: {},
-  PDFWorker: class { destroy() {} },
   getDocument: mocks.getDocument,
+  PDFWorker: class {
+    static create() {
+      return new this();
+    }
+    destroy = mocks.destroyWorker;
+  },
 }));
-vi.mock("pdfjs-dist/build/pdf.worker.min.mjs?url", () => ({ default: "worker.js" }));
 
 import { pdfPageToPng } from "./pdf-image";
 
@@ -19,10 +24,12 @@ describe("pdfPageToPng cleanup", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     mocks.cleanup.mockReset();
+    mocks.destroyWorker.mockReset();
     mocks.getDocument.mockReset();
   });
 
-  it("cleans each loaded page when canvas setup fails", async () => {
+  it("cleans the loaded page and retires the worker without retrying", async () => {
+    vi.stubGlobal("Worker", class {});
     vi.stubGlobal("document", {
       createElement: () => ({ getContext: () => null, width: 0, height: 0 }),
     });
@@ -36,6 +43,8 @@ describe("pdfPageToPng cleanup", () => {
     }));
 
     await expect(pdfPageToPng(new Uint8Array([1]))).rejects.toThrow("no 2d context");
-    expect(mocks.cleanup).toHaveBeenCalledTimes(2);
+    expect(mocks.cleanup).toHaveBeenCalledOnce();
+    expect(mocks.getDocument).toHaveBeenCalledOnce();
+    expect(mocks.destroyWorker).toHaveBeenCalledOnce();
   });
 });

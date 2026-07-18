@@ -128,3 +128,54 @@ test("canvas zoom controls change the viewport", async ({ tauriPage }) => {
   );
   await tauriPage.click('[role="dialog"][aria-label="Insert diagram"] [aria-label="Back to project"]');
 });
+
+test("arrow styling stays selected and matches the generated TikZ", async ({ tauriPage }) => {
+  await openProject(tauriPage, "E2E Doc");
+  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  await tauriPage.click('[aria-label="Insert diagram"]');
+  await tauriPage.waitForFunction(`!!document.querySelector('.react-flow__edge-path')`, 10_000);
+  await tauriPage.evaluate(
+    `(() => {
+      const path = document.querySelector('.react-flow__edge-interaction') ||
+        document.querySelector('.react-flow__edge-path');
+      path.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+      return true;
+    })()`,
+  );
+  const inspector = tauriPage.locator('[role="complementary"][aria-label="Shape style"]');
+  await expect(inspector).toBeVisible();
+  await expect(tauriPage.getByText("Arrowhead", { exact: true })).toBeVisible();
+
+  const choose = async (field: string, value: string) => {
+    await tauriPage.evaluate(
+      `(() => {
+        const panel = document.querySelector('[role="complementary"][aria-label="Shape style"]');
+        const row = Array.from(panel.querySelectorAll('div')).find((el) =>
+          Array.from(el.children).some((child) => child.textContent?.trim() === ${JSON.stringify(field)})
+        );
+        const trigger = row?.querySelector('button[role="combobox"]');
+        if (!trigger) throw new Error('diagram field not found: ' + ${JSON.stringify(field)});
+        trigger.click();
+        return true;
+      })()`,
+    );
+    await tauriPage.getByText(value, { exact: true }).click();
+    // Regression: rebuilding an edge used to clear React Flow's selected flag,
+    // which immediately removed this entire inspector after any value change.
+    await expect(inspector).toBeVisible();
+  };
+
+  await choose("Arrowhead", "Both");
+  await choose("Routing", "Curved");
+  await choose("Line", "Dotted");
+  await tauriPage.click('[data-testid="diagram-tab-code"]');
+  await tauriPage.waitForFunction(
+    `Array.from(document.querySelectorAll('.cm-content')).some((el) =>
+      (el.textContent || '').includes('<->, dotted') &&
+      (el.textContent || '').includes('.south') &&
+      (el.textContent || '').includes('.north')
+    )`,
+    10_000,
+  );
+  await tauriPage.click('[role="dialog"][aria-label="Insert diagram"] [aria-label="Back to project"]');
+});

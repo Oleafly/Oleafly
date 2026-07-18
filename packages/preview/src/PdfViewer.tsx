@@ -10,6 +10,24 @@ import { registerPdfView, clearPdfView, pageClickToBp } from "./pdfController";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
+// Last-resort recovery for a worker subsystem wedged by a long-occluded
+// WKWebView. This is intentionally session-wide: once real worker creation is
+// no longer viable, the main-thread loopback worker keeps preview usable.
+let mainThreadForced = false;
+async function forceMainThreadWorker(): Promise<void> {
+  if (mainThreadForced) return;
+  mainThreadForced = true;
+  try {
+    await import("./polyfills");
+    // Reuse the exact emitted worker asset instead of bundling a second copy
+    // solely for this rare main-thread fallback.
+    const mod = await import(/* @vite-ignore */ workerSrc);
+    (globalThis as { pdfjsWorker?: unknown }).pdfjsWorker = mod;
+  } catch {
+    // The final plain-open attempt still provides a useful fallback.
+  }
+}
+
 type PageTextContent = Awaited<ReturnType<pdfjsLib.PDFPageProxy["getTextContent"]>>;
 
 function withTimeout<T>(p: Promise<T>, ms: number, what: string): Promise<T> {
@@ -46,29 +64,6 @@ async function probePageText(doc: pdfjsLib.PDFDocumentProxy): Promise<PageTextCo
     return tc;
   } finally {
     page.cleanup();
-  }
-}
-
-// Last-resort recovery: pdf.js (v6) has no mid-session dead-worker recovery, so
-// route it to run the worker code on the MAIN THREAD via a LoopbackPort. Setting
-// `globalThis.pdfjsWorker` makes the next PDFWorker skip the real Web Worker.
-// Slower and blocks the UI during parse, but it cannot wedge. One-way and
-// session-wide by design (once the worker subsystem is dead, staying on the main
-// thread is the only way to keep rendering). Best effort.
-let mainThreadForced = false;
-async function forceMainThreadWorker(): Promise<void> {
-  if (mainThreadForced) return;
-  mainThreadForced = true;
-  try {
-    // The worker code now runs on the main thread, so apply the same polyfills
-    // the worker bundle would.
-    await import("./polyfills");
-    // @ts-expect-error the worker module ships no type declarations; we only
-    // need its WorkerMessageHandler export, which pdf.js reads off globalThis.
-    const mod = await import("pdfjs-dist/build/pdf.worker.min.mjs");
-    (globalThis as { pdfjsWorker?: unknown }).pdfjsWorker = mod;
-  } catch {
-    /* best effort; on failure the caller falls through to rendering without text */
   }
 }
 
@@ -506,17 +501,29 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
 
     loadSeqRef.current++;
     let loadingTask: pdfjsLib.PDFDocumentLoadingTask | null = null;
+    let worker: pdfjsLib.PDFWorker | null = null;
     let cancelled = false;
+    const destroyWorker = () => {
+      try {
+        worker?.destroy();
+      } catch {
+      }
+      worker = null;
+    };
+    const destroyLoadingTask = () => {
+      void loadingTask?.destroy().catch(() => {});
+      destroyWorker();
+    };
+    window.addEventListener("beforeunload", destroyLoadingTask);
 
     (async () => {
       // Worker spawns can wedge silently in occluded WebViews (CI, minimized
       // windows), hanging loadingTask.promise forever with no error. Watchdog
       // the load and retry once on a fresh task before showing an error.
       const open = async () => {
-        // Default getDocument (no explicit worker) spawns a FRESH worker per
-        // call and destroys it with the loading task, so each retry gets a new
-        // worker without us managing one.
-        loadingTask = pdfjsLib.getDocument({ data: data.slice() });
+        destroyWorker();
+        worker = new pdfjsLib.PDFWorker();
+        loadingTask = pdfjsLib.getDocument({ data: data.slice(), worker });
         return withTimeout(loadingTask.promise, 30_000, "pdf load");
       };
       // Load AND confirm the text pipe is alive: a wedged worker can load the
@@ -528,10 +535,6 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         if (textContent) textContentRef.current.set(1, textContent);
         return doc;
       };
-      // Escalating recovery, but ONLY for documents we expect to have text.
-      // Image/figure projects (`expectText === false`) legitimately have no text
-      // on page 1, so probing them would fail every attempt and force the whole
-      // session onto the main-thread worker; they just do a plain `open`.
       const attempts: Array<() => Promise<pdfjsLib.PDFDocumentProxy>> = expectText
         ? [
             openAndProbe,
@@ -554,6 +557,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
             lastErr = e;
             textContentRef.current.clear();
             (loadingTask as pdfjsLib.PDFDocumentLoadingTask | null)?.destroy().catch(() => {});
+            destroyWorker();
             if (cancelled) return;
           }
         }
@@ -567,6 +571,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     })();
 
     return () => {
+      window.removeEventListener("beforeunload", destroyLoadingTask);
       cancelled = true;
       loadSeqRef.current++;
       observerRef.current?.disconnect();
@@ -587,7 +592,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       clearPdfView();
       docRef.current = null;
       if (container) container.innerHTML = "";
-      loadingTask?.destroy().catch(() => {});
+      destroyLoadingTask();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, buildLayout, expectText]);

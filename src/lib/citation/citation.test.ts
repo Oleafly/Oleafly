@@ -4,6 +4,7 @@ import { parseEntry, generateCiteKey, setKey } from "./bibtex";
 import { parseCrossrefSearch } from "./crossref";
 import { arxivXmlToBibtex } from "./arxiv";
 import { findKeyByDoi } from "./dedup";
+import { required } from "../test-utils";
 
 describe("detectInput", () => {
   it("detects a bare DOI", () => {
@@ -26,7 +27,7 @@ describe("detectInput", () => {
 describe("parseEntry", () => {
   const bib = "@article{smith21, title = {A {Great} Paper}, author = {Smith, Jane and Doe, John}, year = {2021}, doi = {10.1/x}}";
   it("parses type, key, and fields (including nested braces)", () => {
-    const p = parseEntry(bib)!;
+    const p = required(parseEntry(bib));
     expect(p.type).toBe("article");
     expect(p.key).toBe("smith21");
     expect(p.fields.title).toBe("A {Great} Paper");
@@ -108,7 +109,7 @@ describe("arxivXmlToBibtex", () => {
     </entry></feed>`;
   it("builds a bibtex entry with title, authors, year, and eprint", () => {
     const bib = arxivXmlToBibtex(xml);
-    const p = parseEntry(bib)!;
+    const p = required(parseEntry(bib));
     expect(p.fields.title).toContain("Attention Is All You Need");
     expect(p.fields.author).toContain("Vaswani");
     expect(p.fields.author).toContain(" and ");
@@ -131,7 +132,7 @@ describe("arxivXmlToBibtex", () => {
     // Raw specials must be escaped so the entry compiles as literal text.
     expect(bib).toContain("A \\& B\\_C 50\\%");
     // The escaped title round-trips through the parser.
-    const p = parseEntry(bib)!;
+    const p = required(parseEntry(bib));
     expect(p.fields.title).toBe("A \\& B\\_C 50\\%");
   });
 });

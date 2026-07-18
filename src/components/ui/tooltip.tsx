@@ -47,6 +47,7 @@ export function Tooltip({
 
   useLayoutEffect(() => {
     if (!show) return;
+    void label;
     const place = () => {
       const trig = triggerRef.current?.getBoundingClientRect();
       const tip = tipRef.current?.getBoundingClientRect();
@@ -76,6 +77,7 @@ export function Tooltip({
   }, [show, side, label]);
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: hover is supplementary; the wrapped control remains keyboard accessible
     <span
       ref={triggerRef}
       className={cn("relative inline-flex", className)}

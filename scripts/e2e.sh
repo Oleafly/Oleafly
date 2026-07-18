@@ -3,6 +3,9 @@
 # throwaway data dir, waits for the bridge socket, runs the Playwright suite,
 # and always tears the app down. Usage: ./scripts/e2e.sh [playwright args...]
 set -euo pipefail
+# Give each background app launch its own process group so teardown can target
+# only processes owned by this runner.
+set -m
 cd "$(dirname "$0")/.."
 
 source scripts/e2e-run-lock.sh
@@ -14,11 +17,21 @@ SOCK="${TAURI_PLAYWRIGHT_SOCKET:-/tmp/tauri-playwright.sock}"
 SOCK_ID=""
 CLEANED=0
 
+terminate_app_group() {
+  local leader="$1"
+  kill -TERM -- "-$leader" 2>/dev/null || terminate_e2e_tree "$leader"
+  for _ in $(seq 1 10); do
+    kill -0 "$leader" 2>/dev/null || return 0
+    sleep 1
+  done
+  kill -KILL -- "-$leader" 2>/dev/null || terminate_e2e_tree "$leader"
+}
+
 cleanup() {
   [ "$CLEANED" -eq 0 ] || return 0
   CLEANED=1
   if [ -n "$APP_PID" ]; then
-    terminate_e2e_tree "$APP_PID"
+    terminate_app_group "$APP_PID"
   fi
   remove_owned_e2e_socket "$SOCK" "$SOCK_ID"
   if [ -n "$LOG" ]; then
@@ -40,28 +53,56 @@ export OPENLEAF_DATA_DIR="$DATA_DIR"
 
 echo "e2e: data dir $DATA_DIR"
 echo "e2e: app log  $LOG"
-rm -f "$SOCK"
 
 if lsof -ti :1420 >/dev/null 2>&1; then
   echo "e2e: port 1420 is already owned by pid(s): $(lsof -ti :1420 | tr '\n' ' ')" >&2
   exit 1
 fi
 
-OPENLEAF_DATA_DIR="$DATA_DIR" pnpm tauri dev --features e2e-testing >"$LOG" 2>&1 &
-APP_PID=$!
-
-echo "e2e: waiting for the bridge socket (first build can take minutes)..."
-for _ in $(seq 1 180); do
-  [ -S "$SOCK" ] && break
-  if ! kill -0 "$APP_PID" 2>/dev/null; then
-    echo "e2e: app process exited early; last log lines:" >&2
-    tail -20 "$LOG" >&2
-    exit 1
-  fi
+start_app() {
+  rm -f "$SOCK"
+  OPENLEAF_DATA_DIR="$DATA_DIR" pnpm tauri dev --features e2e-testing >>"$LOG" 2>&1 &
+  APP_PID=$!
+  echo "e2e: waiting for the bridge socket (first build can take minutes)..."
+  for _ in $(seq 1 900); do
+    [ -S "$SOCK" ] && break
+    if ! kill -0 "$APP_PID" 2>/dev/null; then
+      echo "e2e: app process exited early; last log lines:" >&2
+      tail -20 "$LOG" >&2
+      return 1
+    fi
+    sleep 1
+  done
+  [ -S "$SOCK" ] || { echo "e2e: bridge socket never appeared; log tail:" >&2; tail -20 "$LOG" >&2; return 1; }
+  SOCK_ID="$(e2e_socket_identity "$SOCK")"
   sleep 5
-done
-[ -S "$SOCK" ] || { echo "e2e: bridge socket never appeared; log tail:" >&2; tail -20 "$LOG" >&2; exit 1; }
-SOCK_ID="$(e2e_socket_identity "$SOCK")"
-sleep 2
+}
 
-pnpm exec playwright test -c e2e/playwright.config.ts "$@"
+stop_app() {
+  if [ -n "$APP_PID" ]; then
+    terminate_app_group "$APP_PID"
+    APP_PID=""
+  fi
+  remove_owned_e2e_socket "$SOCK" "$SOCK_ID"
+  SOCK_ID=""
+}
+
+has_spec=0
+for arg in "$@"; do
+  case "$arg" in
+    *.spec.ts|*.spec.ts:*) has_spec=1 ;;
+  esac
+done
+
+if [ "$has_spec" -eq 1 ]; then
+  start_app
+  pnpm exec playwright test -c e2e/playwright.config.ts "$@"
+else
+  for spec in e2e/tests/*.spec.ts; do
+    start_app
+    if ! pnpm exec playwright test -c e2e/playwright.config.ts "$@" "$spec"; then
+      exit 1
+    fi
+    stop_app
+  done
+fi

@@ -26,7 +26,6 @@ import { cn } from "@/lib/utils";
 import { ArrowRight } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ExternalToolApprovals } from "@/components/ai/ExternalToolApprovals";
-import { CopilotOverlay } from "@/components/ai/CopilotOverlay";
 
 // Heavy surfaces load on demand so cold start stays lean.
 const SettingsModal = lazy(() =>
@@ -34,6 +33,9 @@ const SettingsModal = lazy(() =>
 );
 const DiagramComposer = lazy(() =>
   import("@/components/diagram/DiagramComposer").then((m) => ({ default: m.DiagramComposer })),
+);
+const CopilotOverlay = lazy(() =>
+  import("@/components/ai/CopilotOverlay").then((m) => ({ default: m.CopilotOverlay })),
 );
 const WordCountModal = lazy(() =>
   import("@/components/editor/WordCountModal").then((m) => ({ default: m.WordCountModal })),
@@ -136,6 +138,7 @@ export default function App() {
   const appFontFamily = useSettingsStore((s) => s.appFontFamily);
   const editorFontFamily = useSettingsStore((s) => s.editorFontFamily);
   const accentColor = useSettingsStore((s) => s.accentColor);
+  const chatFloating = useSettingsStore((s) => s.chatFloating);
 
   useEffect(() => {
     void refreshProjects();
@@ -368,7 +371,11 @@ export default function App() {
         <SearchOmnibar />
         <GlobalNewProject />
         <ExternalToolApprovals />
-        <CopilotOverlay />
+        {chatFloating && (
+          <Suspense fallback={null}>
+            <CopilotOverlay />
+          </Suspense>
+        )}
         <LazyModals>
           <SettingsModal />
         </LazyModals>
@@ -435,7 +442,11 @@ export default function App() {
         <SearchOmnibar />
         <GlobalNewProject />
         <ExternalToolApprovals />
-        <CopilotOverlay />
+        {chatFloating && (
+          <Suspense fallback={null}>
+            <CopilotOverlay />
+          </Suspense>
+        )}
         <LazyModals>
           <SettingsModal />
           <WordCountModal />

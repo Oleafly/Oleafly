@@ -44,6 +44,27 @@ describe("modelToTikz", () => {
     expect(t).toContain("flow");
   });
 
+  it("preserves canvas edge handles, dotted lines, and curved direction", () => {
+    const handledModel: DiagramModel = {
+      version: 1,
+      nodes: model.nodes,
+      edges: [
+        {
+          id: "e-handles",
+          source: "a",
+          target: "b",
+          sourceHandle: "b",
+          targetHandle: "r",
+          routing: "curved",
+          arrow: "both",
+          style: "dotted",
+        },
+      ],
+    };
+    const tikz = modelToTikz(handledModel);
+    expect(tikz).toContain("\\draw[<->, dotted] (a.south) to[out=-90, in=0] (b.east);");
+  });
+
   it("draws edges on the background layer so they sit behind the shapes", () => {
     const t = modelToTikz(model);
     expect(t).toContain("\\begin{scope}[on background layer]");

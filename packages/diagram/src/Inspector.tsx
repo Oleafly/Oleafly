@@ -207,6 +207,7 @@ export function Inspector({
           options={[
             { value: "solid", label: "Solid" },
             { value: "dashed", label: "Dashed" },
+            { value: "dotted", label: "Dotted" },
           ]}
         />
       </Field>

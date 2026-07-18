@@ -123,7 +123,12 @@ function modelEdgeToRf(e: DiagEdge): Edge {
     label: e.label,
     markerEnd: e.arrow !== "none" ? marker : undefined,
     markerStart: e.arrow === "both" ? marker : undefined,
-    style: e.style === "dashed" ? { strokeDasharray: "6 4" } : undefined,
+    style:
+      e.style === "dashed"
+        ? { strokeDasharray: "6 4" }
+        : e.style === "dotted"
+          ? { strokeDasharray: "1.5 4", strokeLinecap: "round" }
+          : undefined,
     // Allow dragging either end onto a new shape handle.
     reconnectable: true,
     data: { routing: e.routing, arrow: e.arrow, style: e.style, label: e.label },
@@ -494,7 +499,16 @@ function CanvasInner({
   const patchEdge = useCallback(
     (patch: Partial<DiagEdge>) => {
       if (!selEdge) return;
-      setEdges((es) => es.map((e) => (e.id === selEdge ? modelEdgeToRf({ ...rfEdgeToModel(e), ...patch }) : e)));
+      setEdges((es) =>
+        es.map((e) => {
+          if (e.id !== selEdge) return e;
+          // Rebuilding an edge is necessary to update its marker, route, and
+          // dash rendering. Preserve React Flow's interaction state, otherwise
+          // the edge becomes deselected and the inspector vanishes after every
+          // value change.
+          return { ...e, ...modelEdgeToRf({ ...rfEdgeToModel(e), ...patch }), selected: e.selected };
+        }),
+      );
     },
     [selEdge, setEdges],
   );

@@ -36,9 +36,8 @@ export function parseMarkdownFile(path: string, text: string): FileSymbols {
         const nameFrom = offset + leading;
         defs.push({ kind: "section", name, file: path, line: index + 1, from: offset, to: offset + line.length, nameFrom, nameTo: nameFrom + name.length, level: lines[index + 1].trimStart().startsWith("=") ? 0 : 1 });
       }
-      const citations = /(?:^|[^\w])@([A-Za-z0-9_:.#$%&+?<>~/\-]+)/g;
-      let match: RegExpExecArray | null;
-      while ((match = citations.exec(visible))) {
+      const citations = /(?:^|[^\w])@([A-Za-z0-9_:.#$%&+?<>~/-]+)/g;
+      for (const match of visible.matchAll(citations)) {
         const name = match[1].replace(/[.,;!?]+$/, "");
         if (!name) continue;
         const at = offset + match.index + match[0].lastIndexOf("@");

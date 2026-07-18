@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import type { ProjectIndex } from "@/lib/index/types";
 
 // Mock the Tauri command layer and the stores the tools reach into.
 const mocks = vi.hoisted(() => ({
@@ -20,7 +21,7 @@ const mocks = vi.hoisted(() => ({
     refreshTree: vi.fn(),
   },
   compileState: { recompile: vi.fn(), log: "", pdfBytes: null as Uint8Array | null },
-  indexState: { index: null as any, rebuildFromDisk: vi.fn() },
+  indexState: { index: null as ProjectIndex | null, rebuildFromDisk: vi.fn() },
 }));
 
 vi.mock("@/lib/tauri", () => mocks.api);

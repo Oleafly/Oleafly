@@ -174,10 +174,18 @@ export function SourceControl() {
       setStatus({ ok: false, text: String(e) });
     }
   };
-  const stageFile = (path: string) => runGit(() => gitStage(projectId!, path));
-  const unstageFile = (path: string) => runGit(() => gitUnstage(projectId!, path));
-  const stageAll = () => runGit(() => gitStageAll(projectId!));
-  const unstageAll = () => runGit(() => gitUnstageAll(projectId!));
+  const stageFile = (path: string) => {
+    if (projectId) void runGit(() => gitStage(projectId, path));
+  };
+  const unstageFile = (path: string) => {
+    if (projectId) void runGit(() => gitUnstage(projectId, path));
+  };
+  const stageAll = () => {
+    if (projectId) void runGit(() => gitStageAll(projectId));
+  };
+  const unstageAll = () => {
+    if (projectId) void runGit(() => gitUnstageAll(projectId));
+  };
 
   const submit = async (andPush: boolean) => {
     if (!projectId) return;
@@ -226,7 +234,7 @@ export function SourceControl() {
     const dir = c.path.includes("/") ? c.path.slice(0, c.path.lastIndexOf("/")) : "";
     return (
       <div key={c.path} className="group flex items-center gap-1.5 rounded-md px-2 py-1 hover:bg-accent/60">
-        <button
+        <button type="button"
           data-testid={`git-change-${c.path}`}
           onClick={() => void viewDiff(c.path, c.staged)}
           className="flex min-w-0 flex-1 items-center gap-2 text-left"
@@ -239,7 +247,7 @@ export function SourceControl() {
             {dir && <span className="block truncate text-[10px] text-muted-foreground">{dir}</span>}
           </span>
         </button>
-        <button
+        <button type="button"
           onClick={() => openSourceFile(c.path)}
           aria-label="Open file"
           title="Open file"
@@ -250,7 +258,7 @@ export function SourceControl() {
         {!c.staged &&
           (confirmDiscard === c.path ? (
             <>
-              <button
+              <button type="button"
                 onClick={() => {
                   setConfirmDiscard(null);
                   void discard(c.path);
@@ -261,7 +269,7 @@ export function SourceControl() {
               >
                 <Check className="size-3.5" />
               </button>
-              <button
+              <button type="button"
                 onClick={() => setConfirmDiscard(null)}
                 aria-label="Cancel"
                 className="flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -270,7 +278,7 @@ export function SourceControl() {
               </button>
             </>
           ) : (
-            <button
+            <button type="button"
               onClick={() => setConfirmDiscard(c.path)}
               aria-label="Discard changes"
               title="Discard changes (revert to last version)"
@@ -279,7 +287,7 @@ export function SourceControl() {
               <Undo2 className="size-3.5" />
             </button>
           ))}
-        <button
+        <button type="button"
           onClick={() => void (c.staged ? unstageFile(c.path) : stageFile(c.path))}
           aria-label={c.staged ? "Unstage" : "Stage"}
           title={c.staged ? "Unstage" : "Stage"}
@@ -320,7 +328,7 @@ export function SourceControl() {
           </Tooltip>
         )}
         <Tooltip label="Refresh" side="bottom">
-          <button
+          <button type="button"
             onClick={() => void refresh()}
             aria-label="Refresh"
             className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -347,7 +355,7 @@ export function SourceControl() {
                   <span className="inline-flex min-w-4 items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
                     {staged.length}
                   </span>
-                  <button
+                  <button type="button"
                     onClick={() => void unstageAll()}
                     title="Unstage all"
                     aria-label="Unstage all"
@@ -368,7 +376,7 @@ export function SourceControl() {
                   <span className="inline-flex min-w-4 items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
                     {unstaged.length}
                   </span>
-                  <button
+                  <button type="button"
                     onClick={() => void stageAll()}
                     title="Stage all"
                     aria-label="Stage all"
@@ -403,7 +411,7 @@ export function SourceControl() {
             )
           )}
           <div className="flex gap-1.5">
-            <button
+            <button type="button"
               onClick={() => void submit(false)}
               disabled={busy || staged.length === 0 || !message.trim()}
               title={
@@ -419,7 +427,7 @@ export function SourceControl() {
               Commit
             </button>
             <Tooltip label="Commit and push to origin" className="flex-1">
-              <button
+              <button type="button"
                 onClick={() => void submit(true)}
                 disabled={busy || !remote || (staged.length > 0 && !message.trim())}
                 aria-label="Commit and push to origin"
@@ -430,7 +438,7 @@ export function SourceControl() {
               </button>
             </Tooltip>
             <Tooltip label="Pull from origin" className="flex-1">
-              <button
+              <button type="button"
                 onClick={() => void pull()}
                 disabled={busy || !remote}
                 aria-label="Pull from origin"
@@ -467,14 +475,14 @@ export function SourceControl() {
           </div>
           {remote ? (
             <div className="flex gap-1.5 px-1">
-              <button
+              <button type="button"
                 onClick={() => setPublishOpen(true)}
                 disabled={busy}
                 className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium hover:bg-accent disabled:opacity-40"
               >
                 <Github className="size-3" /> Change repo
               </button>
-              <button
+              <button type="button"
                 onClick={() => void unlink()}
                 disabled={busy}
                 className="rounded-md border px-2 py-1 text-[11px] hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
@@ -484,7 +492,7 @@ export function SourceControl() {
             </div>
           ) : (
             <div className="px-1">
-              <button
+              <button type="button"
                 onClick={() => setPublishOpen(true)}
                 disabled={busy}
                 className="flex w-full items-center justify-center gap-1.5 rounded-md bg-primary px-2 py-1.5 text-[11px] font-medium text-primary-foreground hover:opacity-90 disabled:opacity-40"
@@ -519,7 +527,7 @@ export function SourceControl() {
             <Github className="size-4" />
             Connect to GitHub
           </Button>
-          <button
+          <button type="button"
             onClick={() => {
               setSettingsInitialSection("github");
               setSettingsOpen(true);

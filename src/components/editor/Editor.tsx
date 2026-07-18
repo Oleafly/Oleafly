@@ -138,7 +138,7 @@ export function Editor() {
 
   const hasOpenFile = activePath !== null;
   const isTypstFile = activePath?.toLowerCase().endsWith(".typ") ?? false;
-  const isPdfFile = activePath != null && activePath.toLowerCase().endsWith(".pdf");
+  const isPdfFile = activePath?.toLowerCase().endsWith(".pdf");
   const isImageFile =
     activePath != null && IMAGE_EXTS.some((e) => activePath.toLowerCase().endsWith(e));
   // No in-app preview for these; show a notice instead of an empty text
@@ -246,21 +246,21 @@ export function Editor() {
               Typst mode · LaTeX linting and spelling/grammar checks are disabled.
             </div>
           )}
-          {isPdfFile && projectId ? (
+          {isPdfFile && projectId && activePath ? (
             <div className="min-h-0 flex-1 overflow-auto bg-sidebar">
-              <PdfFileView projectId={projectId} path={activePath!} />
+              <PdfFileView projectId={projectId} path={activePath} />
             </div>
-          ) : isImageFile && projectId ? (
+          ) : isImageFile && projectId && activePath ? (
             <div className="min-h-0 flex-1 overflow-auto bg-sidebar">
-              <ImageFileView projectId={projectId} path={activePath!} />
+              <ImageFileView projectId={projectId} path={activePath} />
             </div>
-          ) : isOpaqueFile ? (
+          ) : isOpaqueFile && activePath ? (
             <div
               data-testid="binary-file-notice"
               className="flex flex-1 flex-col items-center justify-center text-center text-muted-foreground"
             >
               <FileText className="mb-3 size-10 opacity-30" />
-              <p className="text-sm">{basename(activePath!)}</p>
+              <p className="text-sm">{basename(activePath)}</p>
               <p className="text-xs">Binary file. No preview available.</p>
             </div>
           ) : (

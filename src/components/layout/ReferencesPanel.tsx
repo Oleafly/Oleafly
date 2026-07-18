@@ -4,6 +4,7 @@ import { useIndexStore } from "@/store/project-index";
 import { useFilesStore } from "@/store/files";
 import { gotoRange } from "@/components/editor/cm/controller";
 import type { Sym } from "@/lib/index/types";
+import { objectKey } from "@/lib/react-key";
 
 function basename(p: string) {
   const i = p.lastIndexOf("/");
@@ -49,9 +50,9 @@ export function ReferencesPanel() {
             Put the cursor on a label, citation, or macro and press Shift-F12.
           </p>
         ) : (
-          results.map((sym, i) => (
-            <button
-              key={`${sym.file}:${sym.from}:${i}`}
+          results.map((sym) => (
+            <button type="button"
+              key={objectKey(sym, "reference")}
               onClick={() => jump(sym)}
               className="block w-full cursor-pointer rounded-md px-2 py-1.5 text-left hover:bg-sidebar-accent"
             >

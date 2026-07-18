@@ -42,16 +42,15 @@ export function ChatHistoryModal({
   return (
     <div
       className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4"
-      role="presentation"
-      onMouseDown={onBackdropMouseDown}
     >
+      <button type="button" aria-label="Close chat history" className="absolute inset-0" onMouseDown={onBackdropMouseDown} />
       <div
         role="dialog"
         ref={dialogRef}
         tabIndex={-1}
         aria-modal="true"
         aria-labelledby="chat-history-title"
-        className="flex max-h-[80vh] w-full max-w-lg flex-col rounded-xl border bg-sidebar text-sidebar-foreground shadow-2xl"
+        className="relative flex max-h-[80vh] w-full max-w-lg flex-col rounded-xl border bg-sidebar text-sidebar-foreground shadow-2xl"
       >
         <div className="flex h-11 shrink-0 items-center justify-between border-b px-4">
           <h2 id="chat-history-title" className="text-sm font-semibold">Chat history</h2>

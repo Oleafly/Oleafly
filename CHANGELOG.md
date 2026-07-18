@@ -17,6 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Reduced startup payloads by loading Harper as WebAssembly on demand, consolidating PDF rendering onto one worker, and deferring editor, preview, and AI surfaces until they are opened.
+- Added enforced production bundle budgets for JavaScript, CSS, Harper WebAssembly, and PDF worker count.
+- Verified 141 native macOS E2E scenarios with zero retries/skips and recorded
+  final production bundle measurements.
+- Improved keyboard, focus, labeling, and semantic control behavior across dialogs, menus, project cards, search, preflight, tooltips, and editor surfaces.
+- Positioned 0.2.5 explicitly as an unsigned developer beta and documented updater failure behavior and manual rollback.
 - Limited supported release targets to macOS Apple Silicon, Windows x64, and Linux x64, removing unsupported macOS downloader and CI paths.
 - Aligned public and private documentation with authenticated encrypted local storage for AI, GitHub, and MCP credentials, including its same-user threat-model limitation.
 - Generalized templates, AI tools and prompts, preflight coverage, formatting, citations, exports, SyncTeX, figures, and UI controls around typed engine capability flags.
@@ -25,6 +31,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Preserved cross-platform behavior with managed compiler discovery and installation, native Windows atomic chat replacement, and platform-specific process cleanup.
 
 ### Fixed
+
+- Fixed diagram edge edits clearing selection and hiding the style pane; dotted
+  lines, arrow direction, routing, and connection-side anchors now carry through
+  to generated TikZ.
+- Fixed a race where chat submitted immediately after saving custom AI
+  instructions could use the previous persisted prompt.
 
 - Added native E2E coverage that verifies source edits, full replacements, and reversions change the compiled PDF, with extraction failures reported instead of accepted as blank output.
 - Serialized encrypted-secret transactions across threads and processes, made first-run key creation atomic, eliminated shared temporary paths, and surfaced corrupted GitHub and MCP secret storage instead of treating it as missing credentials.

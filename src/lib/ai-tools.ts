@@ -27,13 +27,11 @@ import { useSettingsStore } from "@/store/settings";
 import { useAgentTodoStore } from "@/store/agent-todos";
 import { useAgentMemoryStore } from "@/store/agent-memory";
 import { usePdfViewStore } from "@/store/pdf-view";
-import { extractPdfText } from "@/lib/pdf-text";
 import {
   setLastFigurePreview,
   getLastFigurePreview,
   getFigureInsertTarget,
 } from "@/lib/ai-figure";
-import { pdfPageToPng } from "@/lib/pdf-image";
 import { insertAtCursor, replaceRange } from "@/components/editor/cm/controller";
 
 export type { ToolApprovalRequest, ConfirmFn } from "@openleaf/ai-tools";
@@ -79,7 +77,10 @@ const HOST: AiToolsHost = {
   recompile: () => useCompileStore.getState().recompile(),
   getCompileLog: () => useCompileStore.getState().log,
   getPdfBytes: () => useCompileStore.getState().pdfBytes,
-  extractPdfText,
+  extractPdfText: async (bytes) => {
+    const { extractPdfText } = await import("@/lib/pdf-text");
+    return extractPdfText(bytes);
+  },
   getPdfCursorPage: () => usePdfViewStore.getState().page,
   getProjectIndex: async () => {
     const idx = useIndexStore.getState();
@@ -89,7 +90,10 @@ const HOST: AiToolsHost = {
   compileIsolated: (projectId, source) =>
     compileIsolated(projectId, source, useSettingsStore.getState().offline),
   readIsolatedPdf: (projectId) => readIsolatedPdf(projectId),
-  pdfToPng: pdfPageToPng,
+  pdfToPng: async (...args) => {
+    const { pdfPageToPng } = await import("@/lib/pdf-image");
+    return pdfPageToPng(...args);
+  },
   setLastFigurePreview,
   getLastFigurePreview,
   getFigureInsertTarget,
@@ -158,13 +162,14 @@ if (typeof window !== "undefined") {
     }
   ).__aiConnect = async (provider, host, model) => {
     const cfg = await getConfig();
-    await setConfig({
+    const next = {
       ...cfg,
       ai_provider: provider,
       ai_keys: { ...cfg.ai_keys, [provider]: host },
       ai_model: model,
-    });
-    window.dispatchEvent(new CustomEvent("openleaf:ai-config-changed"));
+    };
+    await setConfig(next);
+    window.dispatchEvent(new CustomEvent("openleaf:ai-config-changed", { detail: next }));
     return true;
   };
 }

@@ -117,7 +117,7 @@ export function PreflightPanel() {
       <div className="relative flex h-9 items-center gap-2 border-b border-sidebar-border px-3">
         <ShieldCheck className="size-3.5 text-muted-foreground" />
         <span className="text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70">Preflight</span>
-        <button
+        <button type="button"
           onClick={() => setInfoOpen((v) => !v)}
           className="ml-auto flex items-center rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
           aria-label="About Preflight"
@@ -126,7 +126,7 @@ export function PreflightPanel() {
         </button>
         {infoOpen && (
           <>
-            <div className="fixed inset-0 z-40" onClick={() => setInfoOpen(false)} />
+            <button type="button" aria-label="Close preflight information" className="fixed inset-0 z-40" onClick={() => setInfoOpen(false)} />
             <div className="absolute right-2 top-9 z-50 w-72 rounded-md border bg-popover p-3 text-popover-foreground shadow-xl">
               <p className="text-xs font-semibold">What is Preflight?</p>
               <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
@@ -163,7 +163,14 @@ export function PreflightPanel() {
           return (
             <div key={c.id} className={cn("rounded-lg border border-sidebar-border bg-black/[0.03] dark:bg-background", !on && "opacity-70")}>
               <div className="flex items-center gap-2.5 p-3">
-                <button onClick={() => flip(c.id)} role="checkbox" aria-checked={on} aria-label={`Enable ${c.label}`} className="shrink-0">
+                <label className="shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={on}
+                    onChange={() => flip(c.id)}
+                    aria-label={`Enable ${c.label}`}
+                    className="sr-only"
+                  />
                   <span
                     className={cn(
                       "flex size-4 items-center justify-center rounded border",
@@ -172,12 +179,12 @@ export function PreflightPanel() {
                   >
                     {on && <span className="text-[10px] leading-none">✓</span>}
                   </span>
-                </button>
-                <button onClick={() => toggleOpen(c.id)} className="flex min-w-0 flex-1 items-center gap-1.5 text-left">
+                </label>
+                <button type="button" onClick={() => toggleOpen(c.id)} className="flex min-w-0 flex-1 items-center gap-1.5 text-left">
                   <Icon className="size-3.5 shrink-0 text-muted-foreground" />
                   <span className="truncate text-sm font-medium">{c.label}</span>
                 </button>
-                <button
+                <button type="button"
                   onClick={() => void runOne(c.id)}
                   disabled={!on || running}
                   className={cn(
@@ -195,7 +202,7 @@ export function PreflightPanel() {
                     </>
                   )}
                 </button>
-                <button onClick={() => toggleOpen(c.id)} aria-label={isOpen ? "Collapse" : "Expand"} className="shrink-0 text-muted-foreground">
+                <button type="button" onClick={() => toggleOpen(c.id)} aria-label={isOpen ? "Collapse" : "Expand"} className="shrink-0 text-muted-foreground">
                   <ChevronDown className={cn("size-4 transition-transform", isOpen && "rotate-180")} />
                 </button>
               </div>
@@ -221,7 +228,7 @@ export function PreflightPanel() {
         })}
 
         {enabledCount > 1 && (
-          <button
+          <button type="button"
             onClick={() => void runEnabled()}
             disabled={running}
             className="inline-flex items-center justify-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm text-white hover:opacity-90 disabled:opacity-50"
@@ -235,7 +242,7 @@ export function PreflightPanel() {
 
         {(ran.ats || ran.a11y) && pageText.length > 0 && (
           <div className="mt-1">
-            <button
+            <button type="button"
               onClick={toggleReader}
               className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
             >

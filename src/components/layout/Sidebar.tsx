@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 import { FileText, Search } from "lucide-react";
 import { useFilesStore } from "@/store/files";
@@ -9,6 +9,8 @@ import { registry } from "@openleaf/registry";
 import { FileTree } from "@/components/files/FileTree";
 import { Outline } from "@/components/layout/Outline";
 import { cn } from "@/lib/utils";
+import { objectKey } from "@/lib/react-key";
+import { useInitialFocus } from "@/components/ui/use-initial-focus";
 
 function basename(p: string) {
   const i = p.lastIndexOf("/");
@@ -21,6 +23,7 @@ export function ProjectSearch() {
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [loading, setLoading] = useState(false);
+  const searchInputRef = useInitialFocus<HTMLInputElement>();
 
   useEffect(() => {
     if (!q.trim()) {
@@ -55,7 +58,7 @@ export function ProjectSearch() {
       </div>
       <div className="border-b border-sidebar-border p-2">
         <input
-          autoFocus
+          ref={searchInputRef}
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Find in project…"
@@ -63,9 +66,9 @@ export function ProjectSearch() {
         />
       </div>
       <div className="flex-1 overflow-auto p-1.5">
-        {hits.map((hit, i) => (
-          <button
-            key={`${hit.path}:${hit.line}:${i}`}
+        {hits.map((hit) => (
+          <button type="button"
+            key={objectKey(hit, "search-hit")}
             onClick={() => void open(hit)}
             className="block w-full cursor-pointer rounded-md px-2 py-1.5 text-left hover:bg-sidebar-accent"
           >
@@ -121,5 +124,9 @@ export function FilesPanel() {
 export function Sidebar() {
   const railTab = useSettingsStore((s) => s.railTab);
   const ActivePanel = registry.railTabs.find((t) => t.id === railTab)?.panel ?? FilesPanel;
-  return <ActivePanel />;
+  return (
+    <Suspense fallback={null}>
+      <ActivePanel />
+    </Suspense>
+  );
 }

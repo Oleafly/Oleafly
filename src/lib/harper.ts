@@ -1,26 +1,15 @@
 import type { LocalLinter, Lint, Span, Suggestion } from "harper.js";
 import { logError } from "@/lib/log";
 
-// Harper grammar/style checking (offline, WASM). `harper.js` has no LaTeX
-//
-// The WASM binary is dynamically imported on first use so the large inlined
-
 let linterPromise: Promise<LocalLinter> | null = null;
 
 export function getGrammarLinter(): Promise<LocalLinter> {
   if (!linterPromise) {
     linterPromise = (async () => {
       const { LocalLinter: LL } = await import("harper.js");
-      const { binaryInlined } = await import("harper.js/binaryInlined");
-      const l: LocalLinter = new LL({
-        binary: binaryInlined as unknown as never,
-      });
+      const { binary } = await import("harper.js/binary");
+      const l: LocalLinter = new LL({ binary });
       await l.setup();
-      // Disable rules that are noise for LaTeX prose. Whitespace/formatting
-      // rules fire on the gaps that masking leaves behind; dash rules flag
-      // LaTeX's own `--`/`---` en/em dashes; and sentence-length/capitalization
-      // misfire on the pseudo-sentences that masking creates. Word-level
-      // spelling and grammar stay on.
       try {
         await l.setLintConfig({
           Spaces: false,
@@ -35,7 +24,6 @@ export function getGrammarLinter(): Promise<LocalLinter> {
       }
       return l;
     })();
-    // Reset on failure so a later attempt can retry.
     linterPromise.catch((e) => {
       void logError("harper init", e);
       linterPromise = null;
@@ -46,7 +34,6 @@ export function getGrammarLinter(): Promise<LocalLinter> {
 
 export interface GrammarSuggestion {
   text: string;
-  // 0 = Replace, 1 = Remove, 2 = InsertAfter (Harper's SuggestionKind).
   kind: number;
 }
 
@@ -88,24 +75,20 @@ export async function lintGrammar(
         suggestions,
       });
     } catch {
-      /* skip a malformed lint */
     } finally {
       sugs.forEach((s) => {
         try {
           s.free();
         } catch {
-          /* ignore */
         }
       });
       try {
         span?.free();
       } catch {
-        /* ignore */
       }
       try {
         l.free();
       } catch {
-        /* ignore */
       }
     }
   }

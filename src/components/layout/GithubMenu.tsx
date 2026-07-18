@@ -35,7 +35,7 @@ export function GithubMenu({
         {connected && (
           <>
             <Tooltip label={`Connected as @${login} · GitHub settings`} side="bottom">
-              <button
+              <button type="button"
                 onClick={openSettings}
                 aria-label={`GitHub: ${login}`}
                 className="flex h-full items-center gap-1.5 rounded-l-md pl-1 pr-2 text-xs font-medium text-foreground transition-colors hover:bg-accent"
@@ -55,7 +55,7 @@ export function GithubMenu({
         )}
 
         <Tooltip label="GitHub" side="bottom">
-          <button
+          <button type="button"
             onClick={() => setOpen((v) => !v)}
             aria-label="GitHub actions"
             className={cn(
@@ -71,7 +71,7 @@ export function GithubMenu({
 
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <button type="button" aria-label="Close GitHub menu" className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute right-0 top-9 z-50 w-56 rounded-md border bg-popover p-1 text-popover-foreground shadow-xl">
             <MenuButton
               icon={<ExternalLink className="size-4 text-muted-foreground" />}
@@ -125,7 +125,7 @@ function MenuButton({
   onClick: () => void;
 }) {
   return (
-    <button
+    <button type="button"
       onClick={onClick}
       disabled={disabled}
       className={cn(

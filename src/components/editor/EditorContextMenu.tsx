@@ -96,7 +96,7 @@ export function EditorContextMenu({ children }: EditorContextMenuProps) {
           onClick={() => {
             const view = getEditorView();
             const sel = view?.state.selection.main;
-            const text = sel && !sel.empty ? view!.state.sliceDoc(sel.from, sel.to) : "";
+            const text = sel && !sel.empty ? view?.state.sliceDoc(sel.from, sel.to) : "";
             const s = useSettingsStore.getState();
             s.setRailTab("ai");
             if (!s.showTree) s.toggleTree();

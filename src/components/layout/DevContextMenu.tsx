@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Bug, RefreshCw } from "lucide-react";
 import { openDevtools } from "@/lib/tauri";
 
@@ -6,6 +6,7 @@ import { openDevtools } from "@/lib/tauri";
 // when the event was already handled (`defaultPrevented`).
 export function DevContextMenu() {
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
@@ -20,18 +21,21 @@ export function DevContextMenu() {
 
   useEffect(() => {
     if (!menu) return;
-    const close = () => setMenu(null);
+    const close = (event: MouseEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setMenu(null);
+    };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
+      if (e.key === "Escape") setMenu(null);
     };
     window.addEventListener("mousedown", close);
-    window.addEventListener("resize", close);
-    window.addEventListener("blur", close);
+    const closeAlways = () => setMenu(null);
+    window.addEventListener("resize", closeAlways);
+    window.addEventListener("blur", closeAlways);
     window.addEventListener("keydown", onKey);
     return () => {
       window.removeEventListener("mousedown", close);
-      window.removeEventListener("resize", close);
-      window.removeEventListener("blur", close);
+      window.removeEventListener("resize", closeAlways);
+      window.removeEventListener("blur", closeAlways);
       window.removeEventListener("keydown", onKey);
     };
   }, [menu]);
@@ -43,9 +47,9 @@ export function DevContextMenu() {
 
   return (
     <div
+      ref={menuRef}
       className="fixed z-[300] min-w-[160px] overflow-hidden rounded-md border bg-popover p-1 text-sm shadow-lg"
       style={{ top, left }}
-      onMouseDown={(e) => e.stopPropagation()}
     >
       <button
         type="button"

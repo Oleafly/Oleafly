@@ -25,16 +25,15 @@ export function WordCountModal() {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      role="presentation"
-      onMouseDown={onBackdropMouseDown}
     >
+      <button type="button" aria-label="Close word count" className="absolute inset-0" onMouseDown={onBackdropMouseDown} />
       <div
         role="dialog"
         ref={dialogRef}
         tabIndex={-1}
         aria-modal="true"
         aria-labelledby="word-count-title"
-        className="w-full max-w-sm rounded-xl border bg-popover p-5 text-popover-foreground shadow-2xl"
+        className="relative w-full max-w-sm rounded-xl border bg-popover p-5 text-popover-foreground shadow-2xl"
       >
         <h2 id="word-count-title" className="mb-1 text-base font-semibold">Word count</h2>
         <p className="mb-4 truncate text-xs text-muted-foreground">

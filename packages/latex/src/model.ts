@@ -9,7 +9,7 @@ export type NodeShape =
 export type StrokeStyle = "solid" | "dashed" | "dotted";
 export type EdgeRouting = "straight" | "orthogonal" | "curved";
 export type EdgeArrow = "none" | "forward" | "both";
-export type EdgeStyle = "solid" | "dashed";
+export type EdgeStyle = "solid" | "dashed" | "dotted";
 
 export interface DiagNode {
   id: string;

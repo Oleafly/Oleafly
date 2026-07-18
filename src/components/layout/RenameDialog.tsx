@@ -28,20 +28,20 @@ export function RenameDialog() {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-start justify-center bg-black/40 pt-[20vh]" role="presentation" onMouseDown={onBackdropMouseDown}>
+    <div className="fixed inset-0 z-[60] flex items-start justify-center bg-black/40 pt-[20vh]">
+      <button type="button" aria-label="Close rename dialog" className="absolute inset-0" onMouseDown={onBackdropMouseDown} />
       <div
         role="dialog"
         ref={dialogRef}
         tabIndex={-1}
         aria-modal="true"
         aria-labelledby="rename-title"
-        className="w-[26rem] max-w-[90vw] rounded-lg border bg-popover p-4 text-popover-foreground shadow-xl"
+        className="relative w-[26rem] max-w-[90vw] rounded-lg border bg-popover p-4 text-popover-foreground shadow-xl"
       >
         <p id="rename-title" className="text-sm font-semibold">
           Rename <span className="font-mono">{sym.name}</span>
         </p>
         <input
-          autoFocus
           data-modal-initial-focus
           aria-label="New name"
           value={name}

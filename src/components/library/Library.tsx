@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { SettingsMenu } from "@/components/layout/SettingsMenu";
 import { LeafLogo } from "@/components/layout/LeafLogo";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import { Book, BOOK_COLOR_OPTIONS, DEFAULT_BOOK_COLOR } from "@/components/library/Book";
 import {
   Empty,
@@ -33,7 +34,6 @@ import { useTheme } from "@/lib/theme";
 import { cn, isMac, shortcut } from "@/lib/utils";
 import { cancelAutoCommit } from "@/lib/auto-commit";
 import { deleteProject, duplicateProject, readCompiledPdf } from "@/lib/tauri";
-import { pdfPageToPng } from "@/lib/pdf-image";
 
 const thumbCache = new Map<string, string | null>();
 const MAX_THUMBNAILS = 64;
@@ -66,6 +66,12 @@ export function Library() {
   const [forkName, setForkName] = useState("");
   const [onlyFavs, setOnlyFavs] = useState(false);
   const [thumbs, setThumbs] = useState<Record<string, string | null>>({});
+  const closeFork = () => {
+    setForkTarget(null);
+    setForkName("");
+  };
+  const { dialogRef: forkDialogRef, onBackdropMouseDown: onForkBackdropMouseDown } =
+    useModalAccessibility<HTMLDivElement>(!!forkTarget, closeFork);
 
   // Successful PNGs are cached; failures are NOT permanently cached so a
   // later compile can still produce a preview.
@@ -78,13 +84,18 @@ export function Library() {
     }
     if (thumbInflight.has(key)) return;
     thumbInflight.add(key);
-    void readCompiledPdf(id)
-      .then((buf) => pdfPageToPng(new Uint8Array(buf), 1, 1.2, "#ffffff"))
+    const rasterizeLatest = async () => {
+      const { pdfPageToPng } = await import("@/lib/pdf-image");
+      const buf = await readCompiledPdf(id);
+      return pdfPageToPng(new Uint8Array(buf), 1, 1.2, "#ffffff");
+    };
+    void rasterizeLatest()
       .then((png) => {
         cacheThumbnail(key, png);
         setThumbs((t) => ({ ...t, [id]: png }));
       })
-      .catch(() => {
+      .catch((error) => {
+        void logError("library thumbnail", error);
         // No permanent negative cache: the project may compile later.
         setThumbs((t) => (t[id] === undefined ? t : { ...t, [id]: null }));
       })
@@ -237,11 +248,7 @@ export function Library() {
             {visibleProjects.map((p) => (
               <ContextMenu key={p.id}>
                 <ContextMenuTrigger asChild>
-                  <div
-                    className="flex justify-center"
-                    onMouseOver={() => hoverPreview && loadThumb(p.id, p.updated_at)}
-                    onFocus={() => hoverPreview && loadThumb(p.id, p.updated_at)}
-                  >
+                  <div className="flex justify-center">
                     <Book
                       title={p.name}
                       color={projectColors[p.id] ?? (p.color || DEFAULT_BOOK_COLOR)}
@@ -249,6 +256,7 @@ export function Library() {
                       starred={favs.includes(p.id)}
                       onStarToggle={() => toggleFav(p.id)}
                       onClick={() => void openProject(p.id)}
+                      onPreviewRequest={() => hoverPreview && loadThumb(p.id, p.updated_at)}
                       preview={hoverPreview ? thumbs[p.id] : undefined}
                     />
                   </div>
@@ -309,17 +317,19 @@ export function Library() {
 
       {/* New Project gallery is mounted globally (GlobalNewProject), not here. */}
       {forkTarget && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onClick={() => { setForkTarget(null); setForkName(""); }}
-        >
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <button type="button" aria-label="Close fork dialog" className="absolute inset-0" onMouseDown={onForkBackdropMouseDown} />
           <div
-            className="w-full max-w-md rounded-xl border bg-popover p-5 text-popover-foreground shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
+            ref={forkDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="library-fork-title"
+            tabIndex={-1}
+            className="relative w-full max-w-md rounded-xl border bg-popover p-5 text-popover-foreground shadow-2xl"
           >
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-base font-semibold">Fork project</h2>
-              <Button variant="ghost" size="icon" className="size-7" onClick={() => { setForkTarget(null); setForkName(""); }}>
+              <h2 id="library-fork-title" className="text-base font-semibold">Fork project</h2>
+              <Button variant="ghost" size="icon" className="size-7" onClick={closeFork}>
                 <X className="size-4" />
               </Button>
             </div>
@@ -328,7 +338,7 @@ export function Library() {
             </p>
             <div className="flex items-center gap-2">
               <input
-                autoFocus
+                data-modal-initial-focus
                 value={forkName}
                 onChange={(e) => setForkName(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") void submitFork(); }}

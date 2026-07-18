@@ -1,23 +1,26 @@
 import * as pdfjsLib from "pdfjs-dist";
-import workerSrc from "./pdf-image.worker?worker&url";
+import workerSrc from "@openleaf/preview/pdf.worker?worker&url";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
-// One worker for all one-shot rasterizations. Spawning a fresh worker per
-// call is slow in WKWebView and can wedge outright, which froze the diagram
-// composer's preview even after a successful compile.
 let sharedWorker: pdfjsLib.PDFWorker | null = null;
 
 function getWorker(): pdfjsLib.PDFWorker {
-  if (!sharedWorker) sharedWorker = new pdfjsLib.PDFWorker();
+  if (!sharedWorker) {
+    const port = new Worker(workerSrc, {
+      type: "module",
+      name: "openleaf-pdf-raster",
+    });
+    sharedWorker = pdfjsLib.PDFWorker.create({ port });
+  }
   return sharedWorker;
 }
 
-function resetWorker() {
+function resetWorker(): void {
   try {
     sharedWorker?.destroy();
   } catch {
-    /* already dead */
+    // The worker may already have terminated after a load failure.
   }
   sharedWorker = null;
 }
@@ -46,38 +49,39 @@ async function rasterize(
 ): Promise<string> {
   const loadingTask = pdfjsLib.getDocument({ data: bytes.slice(), worker: getWorker() });
   try {
-    const doc = await loadingTask.promise;
-    const pageNo = Math.min(Math.max(1, page), doc.numPages);
-    const p = await doc.getPage(pageNo);
-    try {
-      const viewport = p.getViewport({ scale });
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.max(1, Math.floor(viewport.width));
-      canvas.height = Math.max(1, Math.floor(viewport.height));
-      const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("no 2d context");
-      if (background) {
-        ctx.fillStyle = background;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-      }
-      await p.render({ canvas, canvasContext: ctx, viewport }).promise;
-      return canvas.toDataURL("image/png");
-    } finally {
-      try {
-        p.cleanup();
-      } catch {
-      }
-    }
+    return await withTimeout(
+      (async () => {
+        const doc = await loadingTask.promise;
+        const pageNo = Math.min(Math.max(1, page), doc.numPages);
+        const p = await doc.getPage(pageNo);
+        try {
+          const viewport = p.getViewport({ scale });
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.max(1, Math.floor(viewport.width));
+          canvas.height = Math.max(1, Math.floor(viewport.height));
+          const ctx = canvas.getContext("2d");
+          if (!ctx) throw new Error("no 2d context");
+          if (background) {
+            ctx.fillStyle = background;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+          }
+          await p.render({ canvas, canvasContext: ctx, viewport }).promise;
+          return canvas.toDataURL("image/png");
+        } finally {
+          try {
+            p.cleanup();
+          } catch {
+          }
+        }
+      })(),
+      5_000,
+      "pdf render",
+    );
   } finally {
-    try {
-      await loadingTask.destroy();
-    } catch {
-    }
+    void loadingTask.destroy().catch(() => {});
   }
 }
 
-// `scale` 2 gives a crisp thumbnail without ballooning the data URL. A wedged
-// worker is detected by timeout and retried once on a fresh one.
 export async function pdfPageToPng(
   bytes: Uint8Array,
   page = 1,
@@ -85,9 +89,17 @@ export async function pdfPageToPng(
   background?: string,
 ): Promise<string> {
   try {
-    return await withTimeout(rasterize(bytes, page, scale, background), 30_000, "pdf render");
-  } catch {
+    return await rasterize(bytes, page, scale, background);
+  } catch (error) {
     resetWorker();
-    return await withTimeout(rasterize(bytes, page, scale, background), 30_000, "pdf render");
+    const message = error instanceof Error ? error.message : String(error);
+    const workerFailure = /timed out|worker|messagehandler|transport/i.test(message);
+    if (!workerFailure) throw error;
+    try {
+      return await rasterize(bytes, page, scale, background);
+    } catch (retryError) {
+      resetWorker();
+      throw retryError;
+    }
   }
 }

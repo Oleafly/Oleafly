@@ -17,6 +17,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useInitialFocus } from "@/components/ui/use-initial-focus";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -328,10 +329,11 @@ function NewEntryInput({
   onSubmit: () => void;
   onCancel: () => void;
 }) {
+  const inputRef = useInitialFocus<HTMLInputElement>();
   return (
     <div style={{ paddingLeft: `${depth * 12 + 8}px` }} className="py-0.5">
       <input
-        autoFocus
+        ref={inputRef}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onBlur={onSubmit}
@@ -352,6 +354,7 @@ function TreeRow({ node, depth, ctx }: { node: TreeNode; depth: number; ctx: Tre
   const isSelected = ctx.selected === node.path;
   const isMain = ctx.mainDoc === node.path;
   const isRenaming = ctx.renamePath === node.path;
+  const renameInputRef = useInitialFocus<HTMLInputElement>(isRenaming);
   const isDropTarget = ctx.dragOver === node.path && node.isDir;
 
   // Dropping onto a folder targets that folder; onto a file targets its folder.
@@ -455,7 +458,7 @@ function TreeRow({ node, depth, ctx }: { node: TreeNode; depth: number; ctx: Tre
       {isRenaming ? (
         <div style={{ paddingLeft: `${depth * 12 + 0}px` }} className="py-0.5">
           <input
-            autoFocus
+            ref={renameInputRef}
             aria-label="Rename file"
             value={ctx.renameValue}
             onChange={(e) => ctx.onChangeRename(e.target.value)}

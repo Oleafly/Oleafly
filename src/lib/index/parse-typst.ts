@@ -164,9 +164,8 @@ export function parseTypstFile(path: string, rawText: string): FileSymbols {
     nameFrom: number, nameTo: number, extra?: Partial<Sym>,
   ) => list.push({ kind, name, file: path, line: lineAt(from), from, to, nameFrom, nameTo, ...extra });
 
-  let match: RegExpExecArray | null;
   const heading = /^(={1,6})[ \t]+([^\n]+)$/gm;
-  while ((match = heading.exec(text))) {
+  for (const match of text.matchAll(heading)) {
     const rawTitle = match[2].replace(/[ \t]+<[^>]+>[ \t]*$/, "").trim();
     if (!rawTitle) continue;
     const nameFrom = match.index + match[0].indexOf(match[2]) + match[2].indexOf(rawTitle);
@@ -175,14 +174,14 @@ export function parseTypstFile(path: string, rawText: string): FileSymbols {
   }
 
   const label = /<([A-Za-z_][\w:-]*)>/g;
-  while ((match = label.exec(code))) {
+  for (const match of code.matchAll(label)) {
     const nameFrom = match.index + 1;
     push(defs, "label", match[1], match.index, match.index + match[0].length, nameFrom,
       nameFrom + match[1].length);
   }
 
   const atUse = /(?:^|[^\w])@([A-Za-z_][\w:-]*)/g;
-  while ((match = atUse.exec(code))) {
+  for (const match of code.matchAll(atUse)) {
     const at = match.index + match[0].lastIndexOf("@");
     const nameFrom = at + 1;
     push(uses, "atuse", match[1], at, at + match[1].length + 1, nameFrom,
@@ -190,7 +189,7 @@ export function parseTypstFile(path: string, rawText: string): FileSymbols {
   }
 
   const input = /#(?:include|import)\s+"([^"]+)"/g;
-  while ((match = input.exec(text))) {
+  for (const match of text.matchAll(input)) {
     const target = resolveImport(path, match[1]);
     if (!target) continue;
     const nameFrom = match.index + match[0].indexOf(match[1]);

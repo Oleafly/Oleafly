@@ -3,6 +3,7 @@ import { isTauri } from "@tauri-apps/api/core";
 import { loadProjectChats, saveProjectChats } from "@/lib/tauri";
 
 export interface ToolEntry {
+  id?: string;
   name: string;
   status: "running" | "done" | "error";
   output?: string;
@@ -19,6 +20,7 @@ export interface AttachmentMeta {
 }
 
 export interface ChatMessage {
+  id?: string;
   role: "user" | "assistant";
   content: string;
   toolCalls?: ToolEntry[];
@@ -36,6 +38,7 @@ export interface ChatMessage {
 }
 
 export interface ReasoningBlockData {
+  id?: string;
   text: string;
   ms?: number;
   beforeTool: number;
@@ -232,7 +235,7 @@ function newId() {
 
 function titleFrom(text: string) {
   const t = text.replace(/\s+/g, " ").trim();
-  return t.length > 60 ? t.slice(0, 60) + "…" : t || "New chat";
+  return t.length > 60 ? `${t.slice(0, 60)}…` : t || "New chat";
 }
 
 // In-memory mirror used by create/save when an async load hasn't finished yet

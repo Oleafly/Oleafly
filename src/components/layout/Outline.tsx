@@ -35,7 +35,7 @@ export function Outline() {
 
   return (
     <div className="flex shrink-0 flex-col border-t border-sidebar-border">
-      <button
+      <button type="button"
         onClick={() => setCollapsed(!collapsed)}
         className="flex h-8 items-center gap-1.5 px-3 text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70 hover:bg-sidebar-accent"
       >
@@ -50,11 +50,11 @@ export function Outline() {
               No sections or includes found in this document.
             </p>
           ) : (
-            items.map((item, i) => {
+            items.map((item) => {
               const crossFile = item.file !== activePath;
               return (
-                <button
-                  key={i}
+                <button type="button"
+                  key={`${item.file}:${item.line}:${item.kind}:${item.title}`}
                   onClick={() => jump(item)}
                   className="flex w-full cursor-pointer items-center gap-1 truncate py-0.5 pr-2 text-left text-xs text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                   style={{ paddingLeft: `${item.level * 12 + 12}px` }}

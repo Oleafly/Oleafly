@@ -101,6 +101,15 @@ fetch() {
     echo "could not locate tectonic binary in archive for $target" >&2
     exit 1
   fi
+  if [[ -f "$out" && ! -L "$out" ]] && cmp -s "$bin" "$out"; then
+    chmod +x "$out"
+    if [[ "$(uname)" == "Darwin" ]]; then
+      xattr -d com.apple.quarantine "$out" 2>/dev/null || true
+    fi
+    cleanup_fetch
+    echo "✓ $out"
+    return
+  fi
   cp "$bin" "$out"
   chmod +x "$out"
   if [[ "$(uname)" == "Darwin" ]]; then

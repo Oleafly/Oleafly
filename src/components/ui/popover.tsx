@@ -53,7 +53,11 @@ export function Popover({
       </button>
       {open && (
         <div
+          role="menu"
           onClick={() => setOpen(false)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === "Escape") setOpen(false);
+          }}
           className={cn(
             "absolute top-full z-50 mt-1 min-w-[168px] rounded-md border bg-popover p-1 text-popover-foreground shadow-xl",
             align === "right" ? "right-0" : "left-0",

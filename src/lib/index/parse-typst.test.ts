@@ -11,7 +11,7 @@ describe("parseFile: Typst", () => {
     ]);
     const label = parsed.defs.find((s) => s.kind === "label");
     expect(label?.name).toBe("intro");
-    expect(text.slice(label!.nameFrom, label!.nameTo)).toBe("intro");
+    expect(text.slice(label?.nameFrom, label?.nameTo)).toBe("intro");
   });
 
   it("models markup references including paired prose quotes", () => {

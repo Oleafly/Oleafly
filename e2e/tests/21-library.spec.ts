@@ -1,10 +1,21 @@
 import { test, expect } from "../fixtures";
+import type { TauriPage } from "@srsholmes/tauri-playwright";
 import { openProject, openSettings } from "../helpers";
+
+async function compileForLibraryPreview(tauriPage: TauriPage) {
+  await openProject(tauriPage, "E2E Doc");
+  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  await tauriPage.click('[aria-label="Recompile"]');
+  await expect(tauriPage.locator(".pdf-canvas")).toBeVisible({ timeout: 90_000 });
+  await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok");
+  await tauriPage.click('[title="Back to library"]');
+  await expect(tauriPage.getByTestId("library")).toBeVisible({ timeout: 10_000 });
+}
 
 test("favorite toggles on a project book", async ({ tauriPage }) => {
   await expect(tauriPage.getByTestId("library")).toBeVisible();
   // The bookmark control reveals on hover.
-  await tauriPage.hover('[role="button"][tabindex="0"]');
+  await tauriPage.hover('button[aria-label^="Open "]');
   await tauriPage.click('[aria-label="Add to favorites"]');
   await expect(tauriPage.locator('[aria-label="Remove from favorites"]')).toBeVisible();
   await tauriPage.click('[aria-label="Remove from favorites"]');
@@ -19,12 +30,13 @@ test("favorite toggles on a project book", async ({ tauriPage }) => {
 // occlusion and so cannot observe the stacking bug.
 test("the bookmark stacks above the hover preview overlay", async ({ tauriPage }) => {
   await expect(tauriPage.getByTestId("library")).toBeVisible();
+  await compileForLibraryPreview(tauriPage);
 
   // Reveal the preview overlay: it mounts only for a compiled project with the
   // default-on hover-preview setting, and its thumbnail loads on hover.
   await tauriPage.evaluate(
     `(() => {
-      const el = Array.from(document.querySelectorAll('[role="button"][tabindex="0"]'))
+      const el = Array.from(document.querySelectorAll('button[aria-label^="Open "]'))
         .find((b) => b.textContent.includes('E2E Doc'));
       if (!el) return false;
       el.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
@@ -34,7 +46,7 @@ test("the bookmark stacks above the hover preview overlay", async ({ tauriPage }
   );
   await tauriPage.waitForFunction(
     `(() => {
-      const el = Array.from(document.querySelectorAll('[role="button"][tabindex="0"]'))
+      const el = Array.from(document.querySelectorAll('button[aria-label^="Open "]'))
         .find((b) => b.textContent.includes('E2E Doc'));
       return !!el && !!el.querySelector('img[draggable="false"]');
     })()`,
@@ -43,9 +55,9 @@ test("the bookmark stacks above the hover preview overlay", async ({ tauriPage }
 
   const stacked = await tauriPage.evaluate<boolean>(
     `(() => {
-      const el = Array.from(document.querySelectorAll('[role="button"][tabindex="0"]'))
+      const el = Array.from(document.querySelectorAll('button[aria-label^="Open "]'))
         .find((b) => b.textContent.includes('E2E Doc'));
-      const btn = el && el.querySelector('[aria-label="Add to favorites"], [aria-label="Remove from favorites"]');
+      const btn = el?.parentElement?.querySelector('[aria-label="Add to favorites"], [aria-label="Remove from favorites"]');
       const img = el && el.querySelector('img[draggable="false"]');
       const overlay = img && img.parentElement;
       if (!btn || !overlay) return false;
@@ -61,7 +73,7 @@ test("fork a project from the context menu", async ({ tauriPage }) => {
 
   await tauriPage.evaluate(
     `(() => {
-      const books = Array.from(document.querySelectorAll('[role="button"][tabindex="0"]'));
+      const books = Array.from(document.querySelectorAll('button[aria-label^="Open "]'));
       const book = books.find(b => b.textContent.includes('E2E Doc'));
       const r = book.getBoundingClientRect();
       book.dispatchEvent(new MouseEvent('contextmenu', {
@@ -88,8 +100,8 @@ test("fork a project from the context menu", async ({ tauriPage }) => {
 test("delete the forked copy from the context menu", async ({ tauriPage }) => {
   await expect(tauriPage.getByTestId("library")).toBeVisible();
   await tauriPage.waitForFunction(
-    `Array.from(document.querySelectorAll('[role="button"][tabindex="0"]')).some(b => b.textContent.includes('E2E Fork'))`,
-    20_000,
+    `Array.from(document.querySelectorAll('button[aria-label^="Open "]')).some(b => b.textContent.includes('E2E Fork'))`,
+    60_000,
   );
 
   // Override the native confirm, but only accept a dialog naming the fork;
@@ -100,7 +112,7 @@ test("delete the forked copy from the context menu", async ({ tauriPage }) => {
   );
   await tauriPage.evaluate(
     `(() => {
-      const books = Array.from(document.querySelectorAll('[role="button"][tabindex="0"]'));
+      const books = Array.from(document.querySelectorAll('button[aria-label^="Open "]'));
       const copy = books.find(b => b.textContent.includes('E2E Fork'));
       const r = copy.getBoundingClientRect();
       copy.dispatchEvent(new MouseEvent('contextmenu', {
@@ -113,14 +125,14 @@ test("delete the forked copy from the context menu", async ({ tauriPage }) => {
   await expect(tauriPage.getByText("Delete project")).toBeVisible({ timeout: 10_000 });
   await tauriPage.getByText("Delete project").click();
   await tauriPage.waitForFunction(
-    `!Array.from(document.querySelectorAll('[role="button"][tabindex="0"]')).some(b => b.textContent.includes('E2E Fork'))`,
+    `!Array.from(document.querySelectorAll('button[aria-label^="Open "]')).some(b => b.textContent.includes('E2E Fork'))`,
     20_000,
   );
 });
 
 test("bookmark filter shows only bookmarked projects", async ({ tauriPage }) => {
   await expect(tauriPage.getByTestId("library")).toBeVisible();
-  await tauriPage.hover('[role="button"][tabindex="0"]');
+  await tauriPage.hover('button[aria-label^="Open "]');
   await tauriPage.click('[aria-label="Add to favorites"]');
 
   await tauriPage.click('[aria-label="Show bookmarked only"]');
@@ -144,9 +156,10 @@ test("hovering a compiled project slides in its PDF preview, gated by the settin
   tauriPage,
 }) => {
   await expect(tauriPage.getByTestId("library")).toBeVisible();
+  await compileForLibraryPreview(tauriPage);
   const bookFor = (name: string) =>
     `(() => {
-      const el = Array.from(document.querySelectorAll('[role="button"][tabindex="0"]'))
+      const el = Array.from(document.querySelectorAll('button[aria-label^="Open "]'))
         .find(b => b.textContent.includes(${JSON.stringify(name)}));
       if (!el) return null;
       el.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
@@ -156,7 +169,7 @@ test("hovering a compiled project slides in its PDF preview, gated by the settin
   await tauriPage.evaluate(bookFor("E2E Doc"));
   await tauriPage.waitForFunction(
     `(() => {
-      const el = Array.from(document.querySelectorAll('[role="button"][tabindex="0"]'))
+      const el = Array.from(document.querySelectorAll('button[aria-label^="Open "]'))
         .find(b => b.textContent.includes('E2E Doc'));
       return !!el && !!el.querySelector('img[draggable="false"]');
     })()`,
@@ -173,7 +186,7 @@ test("hovering a compiled project slides in its PDF preview, gated by the settin
   await tauriPage.evaluate(bookFor("E2E Doc"));
   await tauriPage.waitForFunction(
     `(() => {
-      const el = Array.from(document.querySelectorAll('[role="button"][tabindex="0"]'))
+      const el = Array.from(document.querySelectorAll('button[aria-label^="Open "]'))
         .find(b => b.textContent.includes('E2E Doc'));
       return !!el && !el.querySelector('img[draggable="false"]');
     })()`,

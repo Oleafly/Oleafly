@@ -288,7 +288,7 @@ export function GitHubSection({
               <div className="text-sm font-semibold">Enter this code on GitHub</div>
               <div className="text-xs text-muted-foreground">
                 We opened{" "}
-                <button
+                <button type="button"
                   onClick={() => void open(flow.verification_uri)}
                   className="font-medium text-primary hover:underline dark:text-primary"
                 >
@@ -341,7 +341,7 @@ export function GitHubSection({
                 {flowError}
               </div>
             )}
-            <button
+            <button type="button"
               onClick={() => setShowAdvanced((v) => !v)}
               className="flex items-center gap-1 pt-1 text-[11px] text-muted-foreground hover:text-foreground"
             >

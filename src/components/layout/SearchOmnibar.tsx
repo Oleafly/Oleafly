@@ -18,6 +18,7 @@ import { useTheme } from "@/lib/theme";
 import { searchDocs, type SearchHit } from "@/lib/tauri";
 import { gotoLine } from "@/components/editor/cm/controller";
 import { cn } from "@/lib/utils";
+import { objectKey } from "@/lib/react-key";
 
 function basename(p: string) {
   const i = p.lastIndexOf("/");
@@ -125,7 +126,7 @@ export function SearchOmnibar() {
     }));
     if (mode !== "all") return [];
     const q = trimmed.toLowerCase();
-    return q ? all.filter((c) => (c.label + " " + c.kw).toLowerCase().includes(q)) : all;
+    return q ? all.filter((c) => (`${c.label} ${c.kw}`).toLowerCase().includes(q)) : all;
   }, [trimmed, mode, theme, projectId, projectKind]);
 
   const runProject = async (id: string) => {
@@ -248,10 +249,12 @@ export function SearchOmnibar() {
 
           {(mode === "all" || mode === "docs") && hits.length > 0 && (
             <Group heading="Documents">
-              {hits.map((hit, i) => (
+              {hits.map((hit) => {
+                const itemKey = objectKey(hit, "document");
+                return (
                 <Command.Item
-                  key={`${hit.project_id}:${hit.path}:${hit.line}:${i}`}
-                  value={`doc-${i}`}
+                  key={itemKey}
+                  value={itemKey}
                   onSelect={() => void openHit(hit)}
                   className="flex cursor-pointer flex-col gap-0.5 rounded-md px-2.5 py-2 text-sm outline-none data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
                 >
@@ -264,7 +267,8 @@ export function SearchOmnibar() {
                   </div>
                   <PreviewLine preview={hit.preview} query={trimmed} />
                 </Command.Item>
-              ))}
+                );
+              })}
             </Group>
           )}
 

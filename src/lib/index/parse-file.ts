@@ -95,8 +95,7 @@ export function parseFile(path: string, rawText: string): FileSymbols {
 
   if (path.endsWith(".bib")) {
     const re = /@(\w+)\s*\{\s*([^,\s}]+)/g;
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(text))) {
+    for (const m of text.matchAll(re)) {
       const type = m[1].toLowerCase();
       if (type === "comment" || type === "string" || type === "preamble") continue;
       const key = m[2];
@@ -106,14 +105,12 @@ export function parseFile(path: string, rawText: string): FileSymbols {
     return { file: path, defs, uses };
   }
 
-  let m: RegExpExecArray | null;
-
   // --- Definitions ---
 
   // Sectioning. Match up to the opening brace, then brace-match so titles with
   // nested braces (e.g. `\section{Intro to \texttt{x}}`) are captured whole.
   const sec = /\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\*?\s*\{/g;
-  while ((m = sec.exec(text))) {
+  for (let m = sec.exec(text); m; m = sec.exec(text)) {
     const open = m.index + m[0].length - 1;
     const close = matchBrace(text, open);
     if (close < 0) continue;
@@ -126,25 +123,25 @@ export function parseFile(path: string, rawText: string): FileSymbols {
   }
 
   const label = /\\label\s*\{([^}]*)\}/g;
-  while ((m = label.exec(text))) {
+  for (const m of text.matchAll(label)) {
     const start = m.index + m[0].lastIndexOf("{") + 1;
     push(defs, "label", m[1].trim(), m.index, m.index + m[0].length, start, start + m[1].length);
   }
 
   // Macros: \newcommand / \renewcommand / \providecommand (braced or bare).
   const cmd = /\\(?:newcommand|renewcommand|providecommand)\*?\s*\{?\s*\\([a-zA-Z@]+)/g;
-  while ((m = cmd.exec(text))) {
-    const nameStart = m.index + m[0].lastIndexOf("\\" + m[1]) + 1;
+  for (const m of text.matchAll(cmd)) {
+    const nameStart = m.index + m[0].lastIndexOf(`\\${m[1]}`) + 1;
     push(defs, "macro", m[1], m.index, m.index + m[0].length, nameStart, nameStart + m[1].length);
   }
   const def = /\\def\s*\\([a-zA-Z@]+)/g;
-  while ((m = def.exec(text))) {
-    const nameStart = m.index + m[0].lastIndexOf("\\" + m[1]) + 1;
+  for (const m of text.matchAll(def)) {
+    const nameStart = m.index + m[0].lastIndexOf(`\\${m[1]}`) + 1;
     push(defs, "macro", m[1], m.index, m.index + m[0].length, nameStart, nameStart + m[1].length);
   }
   const dmo = /\\DeclareMathOperator\*?\s*\{\s*\\([a-zA-Z@]+)/g;
-  while ((m = dmo.exec(text))) {
-    const nameStart = m.index + m[0].lastIndexOf("\\" + m[1]) + 1;
+  for (const m of text.matchAll(dmo)) {
+    const nameStart = m.index + m[0].lastIndexOf(`\\${m[1]}`) + 1;
     push(defs, "macro", m[1], m.index, m.index + m[0].length, nameStart, nameStart + m[1].length);
   }
 
@@ -157,7 +154,7 @@ export function parseFile(path: string, rawText: string): FileSymbols {
     [/\\bibitem\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}/g, "bibentry"],
   ];
   for (const [re, kind] of braceDef) {
-    while ((m = re.exec(text))) {
+    for (const m of text.matchAll(re)) {
       const start = m.index + m[0].lastIndexOf("{") + 1;
       push(defs, kind, m[1].trim(), m.index, m.index + m[0].length, start, start + m[1].length);
     }
@@ -169,8 +166,7 @@ export function parseFile(path: string, rawText: string): FileSymbols {
   const pushKeys = (whole: string, wholeIdx: number, group: string, kind: SymKind) => {
     const keyBase = wholeIdx + whole.lastIndexOf("{") + 1;
     const partRe = /[^,]+/g;
-    let pm: RegExpExecArray | null;
-    while ((pm = partRe.exec(group))) {
+    for (const pm of group.matchAll(partRe)) {
       const seg = pm[0];
       const key = seg.trim();
       if (!key || key === "*") continue;
@@ -181,24 +177,24 @@ export function parseFile(path: string, rawText: string): FileSymbols {
   };
 
   const ref = /\\(?:ref|eqref|autoref|cref|Cref|cpageref|pageref|vref|labelcref)\s*\{([^}]*)\}/g;
-  while ((m = ref.exec(text))) pushKeys(m[0], m.index, m[1], "ref");
+  for (const m of text.matchAll(ref)) pushKeys(m[0], m.index, m[1], "ref");
 
   const cite = /\\(?:cite|citep|citet|citeauthor|citeyear|citealt|parencite|textcite|autocite|nocite)\*?\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}/g;
-  while ((m = cite.exec(text))) pushKeys(m[0], m.index, m[1], "cite");
+  for (const m of text.matchAll(cite)) pushKeys(m[0], m.index, m[1], "cite");
 
   const gls = /\\(?:gls|Gls|GLS|glspl|Glspl|acrshort|acrlong|acrfull|acs|acl|ac)\s*\{([^}]*)\}/g;
-  while ((m = gls.exec(text))) {
+  for (const m of text.matchAll(gls)) {
     const start = m.index + m[0].lastIndexOf("{") + 1;
     push(uses, "glossaryuse", m[1].trim(), m.index, m.index + m[0].length, start, start + m[1].length);
   }
   const beginEnv = /\\begin\s*\{([^}]*)\}/g;
-  while ((m = beginEnv.exec(text))) {
+  for (const m of text.matchAll(beginEnv)) {
     const start = m.index + m[0].lastIndexOf("{") + 1;
     push(uses, "envuse", m[1].trim(), m.index, m.index + m[0].length, start, start + m[1].length);
   }
   const dir = dirname(path);
   const input = /\\(?:input|include)\s*\{([^}]*)\}/g;
-  while ((m = input.exec(text))) {
+  for (const m of text.matchAll(input)) {
     const start = m.index + m[0].lastIndexOf("{") + 1;
     const raw = m[1].trim();
     push(uses, "inputedge", raw, m.index, m.index + m[0].length, start, start + m[1].length, {

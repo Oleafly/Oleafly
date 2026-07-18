@@ -22,6 +22,7 @@ test("agent plan checklist renders from the todos store", async ({ tauriPage }) 
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openRailTab(tauriPage, "Chat / AI Assistant");
+  await expect(tauriPage.getByTestId("ai-chat-float")).toBeVisible({ timeout: 10_000 });
 
   await tauriPage.evaluate(`window.__agentTodosSet?.([
     { id: "1", content: "E2E plan step A", status: "completed" },

@@ -26,16 +26,15 @@ export function AboutModal({ open: isOpen, onClose }: { open: boolean; onClose: 
   return (
     <div
       className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 p-4"
-      role="presentation"
-      onMouseDown={onBackdropMouseDown}
     >
+      <button type="button" aria-label="Close About OpenLeaf" className="absolute inset-0" onMouseDown={onBackdropMouseDown} />
       <div
         role="dialog"
         ref={dialogRef}
         tabIndex={-1}
         aria-modal="true"
         aria-labelledby="about-title"
-        className="w-full max-w-sm rounded-xl border bg-popover p-6 text-popover-foreground shadow-2xl"
+        className="relative w-full max-w-sm rounded-xl border bg-popover p-6 text-popover-foreground shadow-2xl"
       >
         <button
           type="button"

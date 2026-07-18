@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { parseFile } from "./parse-file";
 import type { Sym } from "./types";
+import { required } from "../test-utils";
 
 const spanOk = (text: string, s: Sym) => text.slice(s.nameFrom, s.nameTo) === s.name;
 
@@ -16,7 +17,7 @@ function use(text: string, kind: string, name: string, path = "main.tex") {
 describe("parseFile: definitions", () => {
   it("finds a \\label with an exact name span", () => {
     const t = "text \\label{fig:one} more";
-    const d = def(t, "label", "fig:one")!;
+    const d = required(def(t, "label", "fig:one"));
     expect(d).toBeDefined();
     expect(spanOk(t, d)).toBe(true);
   });
@@ -25,7 +26,7 @@ describe("parseFile: definitions", () => {
     expect(def("\\newcommand{\\foo}{x}", "macro", "foo")).toBeDefined();
     expect(def("\\newcommand\\bar{x}", "macro", "bar")).toBeDefined();
     expect(def("\\renewcommand{\\baz}{x}", "macro", "baz")).toBeDefined();
-    const d = def("\\newcommand{\\foo}{x}", "macro", "foo")!;
+    const d = required(def("\\newcommand{\\foo}{x}", "macro", "foo"));
     expect("\\newcommand{\\foo}{x}".slice(d.nameFrom, d.nameTo)).toBe("foo");
   });
 
@@ -43,7 +44,7 @@ describe("parseFile: definitions", () => {
   });
 
   it("finds sections with a level and title", () => {
-    const d = def("\\section{Introduction}", "section", "Introduction")!;
+    const d = required(def("\\section{Introduction}", "section", "Introduction"));
     expect(d).toBeDefined();
     expect(d.level).toBe(2);
     expect(def("\\subsection{Background}", "section", "Background")?.level).toBe(3);
@@ -51,7 +52,7 @@ describe("parseFile: definitions", () => {
 
   it("captures a section title with nested braces whole (exact name span)", () => {
     const t = "\\section{Intro to \\texttt{foo}} body";
-    const d = def(t, "section", "Intro to \\texttt{foo}")!;
+    const d = required(def(t, "section", "Intro to \\texttt{foo}"));
     expect(d).toBeDefined();
     expect(spanOk(t, d)).toBe(true);
     // A following symbol still parses (scanning resumed past the whole title).
@@ -101,7 +102,7 @@ describe("parseFile: uses", () => {
   it("finds glossary uses, \\begin environments, and \\input edges", () => {
     expect(use("\\gls{gpu}", "glossaryuse", "gpu")).toBeDefined();
     expect(use("\\begin{thm}", "envuse", "thm")).toBeDefined();
-    const e = use("\\input{sections/intro}", "inputedge", "sections/intro", "main.tex")!;
+    const e = required(use("\\input{sections/intro}", "inputedge", "sections/intro", "main.tex"));
     expect(e).toBeDefined();
     expect(e.target).toBe("sections/intro.tex");
   });

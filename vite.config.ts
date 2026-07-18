@@ -8,6 +8,9 @@ const host = process.env.TAURI_DEV_HOST;
 
 export default defineConfig(async () => ({
   plugins: [react(), tailwindcss()],
+  optimizeDeps: {
+    exclude: ["harper.js"],
+  },
   // pdf.js v6 loads its worker as an ES module; build ours the same way so the
   // polyfill wrapper worker (src/components/pdf/pdf.worker.ts) loads correctly.
   worker: { format: "es" as const },

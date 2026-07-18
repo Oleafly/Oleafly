@@ -21,11 +21,14 @@ export const FindingRow = memo(function FindingRow({ finding }: { finding: Findi
   const [open, setOpen] = useState(false);
   const sev = SEV[finding.severity];
   const Icon = sev.icon;
-  const jumpable = typeof finding.from === "number" && typeof finding.to === "number";
+  const sourceRange =
+    typeof finding.from === "number" && typeof finding.to === "number"
+      ? { from: finding.from, to: finding.to }
+      : null;
 
   return (
     <div className="rounded-md border border-sidebar-border bg-black/[0.03] dark:bg-background">
-      <button
+      <button type="button"
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-start gap-2 rounded-md px-2.5 py-2 text-left hover:bg-sidebar-accent"
       >
@@ -42,9 +45,9 @@ export const FindingRow = memo(function FindingRow({ finding }: { finding: Findi
       {open && (
         <div className="border-t border-sidebar-border px-2.5 py-2">
           <p className="text-xs leading-relaxed text-muted-foreground">{finding.detail}</p>
-          {jumpable && (
-            <button
-              onClick={() => gotoRange(finding.from!, finding.to!)}
+          {sourceRange && (
+            <button type="button"
+              onClick={() => gotoRange(sourceRange.from, sourceRange.to)}
               className="mt-2 inline-flex items-center gap-1.5 rounded border border-input px-2 py-1 text-xs hover:bg-accent"
             >
               <CornerDownLeft className="size-3" /> Jump to source

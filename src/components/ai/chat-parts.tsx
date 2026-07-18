@@ -32,14 +32,12 @@ export function Shimmer({ text }: { text?: string }) {
 export function InfoHint({ message }: { message: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <span
-      className="relative flex"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-    >
+    <span className="relative flex">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
         aria-label={message}
         className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
       >
@@ -81,7 +79,7 @@ export function ToolBadge({ tc }: { tc: ToolEntry }) {
   const [expanded, setExpanded] = useState(false);
   return (
     <div className="rounded-md border bg-muted text-xs">
-      <button
+      <button type="button"
         onClick={() => tc.output && setExpanded(!expanded)}
         className={cn("flex w-full items-center gap-2 px-2.5 py-1.5", tc.output && "cursor-pointer hover:bg-accent/50")}
       >
@@ -146,12 +144,16 @@ export function friendlyHint(text: string, statusCode?: number): string | null {
 }
 
 export function formatError(e: unknown, providerLabel?: string): string {
-  const err = e as any;
-  const statusCode: number | undefined = err?.statusCode ?? err?.status;
+  const err = typeof e === "object" && e !== null
+    ? e as Record<string, unknown>
+    : {};
+  const statusValue = err.statusCode ?? err.status;
+  const statusCode = typeof statusValue === "number" ? statusValue : undefined;
   let bodyMsg = "";
-  if (err?.responseBody) {
+  if (typeof err.responseBody === "string") {
     try {
-      bodyMsg = JSON.parse(err.responseBody)?.error?.message ?? String(err.responseBody);
+      const parsed = JSON.parse(err.responseBody) as { error?: { message?: string } };
+      bodyMsg = parsed.error?.message ?? err.responseBody;
     } catch {
       bodyMsg = String(err.responseBody);
     }
@@ -164,11 +166,13 @@ export function formatError(e: unknown, providerLabel?: string): string {
       : statusCode
         ? ` (HTTP ${statusCode})`
         : "";
-  const hint = friendlyHint(`${err?.message ?? String(e)} ${bodyMsg}`, statusCode);
+  const message = typeof err.message === "string" ? err.message : String(e);
+  const name = typeof err.name === "string" ? err.name : "";
+  const hint = friendlyHint(`${message} ${bodyMsg}`, statusCode);
   if (hint) return `⚠ ${who}${hint}${rawDetail}`;
   const parts: string[] = [`⚠ ${who}`.trimEnd()];
-  if (err?.name) parts.push(err.name);
-  if (err?.message) parts.push(err.message);
+  if (name) parts.push(name);
+  if (message) parts.push(message);
   if (statusCode) parts.push(`(HTTP ${statusCode})`);
   if (bodyMsg && bodyMsg !== err?.message) parts.push(`→ ${bodyMsg.slice(0, 300)}`);
   if (parts.length <= 1) parts.push(String(e));
@@ -176,10 +180,13 @@ export function formatError(e: unknown, providerLabel?: string): string {
 }
 
 export function isRetryable(e: unknown): boolean {
-  const err = e as any;
-  const status: number | undefined = err?.statusCode ?? err?.status;
+  const err = typeof e === "object" && e !== null
+    ? e as Record<string, unknown>
+    : {};
+  const statusValue = err.statusCode ?? err.status;
+  const status = typeof statusValue === "number" ? statusValue : undefined;
   if (status && [400, 401, 402, 403, 404, 405, 422].includes(status)) return false;
-  const text = `${err?.message ?? ""} ${err?.responseBody ?? ""}`.toLowerCase();
+  const text = `${String(err.message ?? "")} ${String(err.responseBody ?? "")}`.toLowerCase();
   if (
     /insufficient balance|no resource package|out of credit|insufficient[_ ]?quota|billing|payment required|invalid api key|incorrect api key|unauthorized|authentication|no api key|model.*(not found|does not exist|not exist|unavailable)|invalid model|not supported/.test(
       text
@@ -257,6 +264,7 @@ export const MessageItem = memo(function MessageItem({
   live?: boolean;
 }) {
   const tools = msg.toolCalls ?? [];
+  const attachmentOccurrences = new Map<string, number>();
   // Fall back to the legacy single-block fields for chats persisted before
   // reasoningBlocks existed.
   const blocks =
@@ -266,11 +274,11 @@ export const MessageItem = memo(function MessageItem({
   // interleave thinking phases and tool badges in arrival order.
   const rows: React.ReactNode[] = [];
   for (let i = 0; i <= tools.length; i++) {
-    blocks.forEach((b, bi) => {
+    blocks.forEach((b, blockIndex) => {
       if (Math.min(b.beforeTool, tools.length) === i) {
         rows.push(
           <ReasoningBlock
-            key={`r${bi}`}
+            key={b.id ?? `legacy-reasoning-${blockIndex}`}
             text={b.text}
             active={!!live && b.ms === undefined}
             durationMs={b.ms}
@@ -278,22 +286,30 @@ export const MessageItem = memo(function MessageItem({
         );
       }
     });
-    if (i < tools.length) rows.push(<ToolBadge key={`t${i}`} tc={tools[i]} />);
+    if (i < tools.length) {
+      const tool = tools[i];
+      rows.push(<ToolBadge key={tool.id ?? `legacy-tool-${i}`} tc={tool} />);
+    }
   }
   return (
     <div className={cn("flex flex-col gap-1.5", msg.role === "user" && "items-end")}>
       {rows}
       {msg.attachments && msg.attachments.length > 0 && (
         <div className="flex max-w-[85%] flex-wrap justify-end gap-1.5">
-          {msg.attachments.map((a, j) => (
+          {msg.attachments.map((a) => {
+            const identity = `${a.name}:${a.mediaType}`;
+            const occurrence = attachmentOccurrences.get(identity) ?? 0;
+            attachmentOccurrences.set(identity, occurrence + 1);
+            return (
             <span
-              key={j}
+              key={`${identity}:${occurrence}`}
               className="flex items-center gap-1 rounded-md border bg-muted/60 px-1.5 py-0.5 text-[11px] text-muted-foreground"
             >
               <Paperclip className="size-3" />
               <span className="max-w-[140px] truncate">{a.name}</span>
             </span>
-          ))}
+            );
+          })}
         </div>
       )}
       {msg.content ? (

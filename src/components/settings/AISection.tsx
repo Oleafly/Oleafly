@@ -90,7 +90,7 @@ function OllamaSetup({
           </p>
           <p>
             1. Install from{" "}
-            <button
+            <button type="button"
               onClick={() => void open("https://ollama.com/download")}
               className="font-medium text-primary hover:underline"
             >
@@ -136,14 +136,14 @@ function OllamaSetup({
       )}
 
       <div className="flex items-center gap-3">
-        <button
+        <button type="button"
           onClick={() => setShowHost((s) => !s)}
           className="text-[11px] text-muted-foreground hover:text-foreground"
         >
           {showHost ? "Hide host" : "Change host (advanced)"}
         </button>
         {onDisconnect && (
-          <button
+          <button type="button"
             onClick={onDisconnect}
             className="text-[11px] text-muted-foreground hover:text-destructive"
           >
@@ -263,7 +263,7 @@ export function AISection() {
     await setConfig(next);
     setCfg(next);
     // Notifies listeners outside this component tree, e.g. the chat panel.
-    window.dispatchEvent(new CustomEvent("openleaf:ai-config-changed"));
+    window.dispatchEvent(new CustomEvent("openleaf:ai-config-changed", { detail: next }));
   };
 
   const saveProvider = async (id: string) => {
@@ -410,8 +410,10 @@ export function AISection() {
                   </span>
                 ) : null}
                 {p.signupUrl && isOpen && (
-                  <button
-                    onClick={() => void open(p.signupUrl!)}
+                  <button type="button"
+                    onClick={() => {
+                      if (p.signupUrl) void open(p.signupUrl);
+                    }}
                     className="flex shrink-0 items-center gap-1 text-[11px] text-primary hover:underline dark:text-primary"
                   >
                     {p.isHost ? "Docs" : "Get key"} <ExternalLink className="size-3" />
@@ -486,7 +488,7 @@ export function AISection() {
                       </Button>
                     ) : null}
                     {hasSaved && (
-                      <button
+                      <button type="button"
                         data-testid={`ai-provider-delete-${p.id}`}
                         aria-label={`Delete ${p.name} key`}
                         title="Delete key"
@@ -577,7 +579,7 @@ export function AISection() {
       )}
 
       <div className="overflow-hidden rounded-lg border bg-background">
-        <button
+        <button type="button"
           onClick={() => setToolsOpen((v) => !v)}
           className="flex w-full items-center gap-1.5 p-3 text-left text-xs font-semibold hover:bg-accent/40"
           aria-expanded={toolsOpen}

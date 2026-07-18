@@ -19,6 +19,7 @@ import {
 } from "@/lib/github";
 import { logError } from "@/lib/log";
 import { cn } from "@/lib/utils";
+import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 
 function slug(name: string): string {
   return name
@@ -52,6 +53,8 @@ export function PublishToGitHubDialog({
   const [query, setQuery] = useState("");
   const [loadingRepos, setLoadingRepos] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
+  const { dialogRef, onBackdropMouseDown } =
+    useModalAccessibility<HTMLDivElement>(open, onClose);
 
   useEffect(() => {
     if (!open) return;
@@ -126,18 +129,20 @@ export function PublishToGitHubDialog({
     .slice(0, 60);
 
   return (
-    <div
-      className="fixed inset-0 z-[85] flex items-center justify-center bg-black/50 p-4"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-[85] flex items-center justify-center bg-black/50 p-4">
+      <button type="button" aria-label="Close publish dialog" className="absolute inset-0" onMouseDown={onBackdropMouseDown} />
       <div
-        className="flex h-[min(560px,88vh)] w-[min(620px,94vw)] flex-col overflow-hidden rounded-xl border bg-sidebar text-sidebar-foreground shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="publish-github-title"
+        tabIndex={-1}
+        className="relative flex h-[min(560px,88vh)] w-[min(620px,94vw)] flex-col overflow-hidden rounded-xl border bg-sidebar text-sidebar-foreground shadow-2xl"
       >
         <div className="flex h-12 shrink-0 items-center justify-between border-b px-4">
           <div className="flex items-center gap-2">
             <Github className="size-4" />
-            <h2 className="text-sm font-semibold">Publish to GitHub</h2>
+            <h2 id="publish-github-title" className="text-sm font-semibold">Publish to GitHub</h2>
           </div>
           <Button variant="ghost" size="icon" className="size-7" onClick={onClose}>
             <X className="size-4" />
@@ -152,7 +157,7 @@ export function PublishToGitHubDialog({
           <>
             <div className="flex shrink-0 gap-1 border-b px-3 py-2">
               {(["new", "existing"] as const).map((t) => (
-                <button
+                <button type="button"
                   key={t}
                   onClick={() => setTab(t)}
                   className={cn(
@@ -232,7 +237,7 @@ export function PublishToGitHubDialog({
                       </div>
                     ) : (
                       filtered.map((r) => (
-                        <button
+                        <button type="button"
                           key={r.full_name}
                           onClick={() => setSelected(r.clone_url)}
                           className={cn(

@@ -57,13 +57,13 @@ export class ErrorBoundary extends Component<Props, State> {
           {error.name}: {error.message}
         </pre>
         <div className="flex items-center gap-2">
-          <button
+          <button type="button"
             onClick={() => void reportCrashToGithub(`${error.name}: ${error.message}`)}
             className="rounded-md border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
           >
             Report to GitHub
           </button>
-          <button
+          <button type="button"
             onClick={() => window.location.reload()}
             className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
           >

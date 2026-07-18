@@ -22,6 +22,8 @@ import { save } from "@tauri-apps/plugin-dialog";
 import { open } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
+import { useInitialFocus } from "@/components/ui/use-initial-focus";
 import { LeafLogo } from "@/components/layout/LeafLogo";
 import { GithubMenu } from "@/components/layout/GithubMenu";
 import { useFilesStore } from "@/store/files";
@@ -95,6 +97,10 @@ export function TopToolbar() {
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
   const titleEditRef = useRef<HTMLSpanElement>(null);
+  const titleInputRef = useInitialFocus<HTMLInputElement>(editingTitle);
+  const closeFork = () => setForkOpen(false);
+  const { dialogRef: forkDialogRef, onBackdropMouseDown: onForkBackdropMouseDown } =
+    useModalAccessibility<HTMLDivElement>(forkOpen, closeFork);
 
   useEffect(() => {
     if (!editingTitle) return;
@@ -270,8 +276,8 @@ export function TopToolbar() {
         {editingTitle ? (
           <span ref={titleEditRef} className="flex items-center gap-1">
             <input
+              ref={titleInputRef}
               aria-label="Project name"
-              autoFocus
               value={titleDraft}
               onChange={(e) => setTitleDraft(e.target.value)}
               onKeyDown={(e) => {
@@ -321,7 +327,7 @@ export function TopToolbar() {
       <div data-tauri-drag-region className="flex items-center rounded-md border bg-muted/40 p-0.5">
         {VIEW_OPTIONS.map(({ mode, label, icon: Icon }) => (
           <Tooltip key={mode} label={label} side="bottom">
-            <button
+            <button type="button"
               onClick={() => setViewMode(mode)}
               aria-label={label}
               aria-pressed={viewMode === mode}
@@ -391,18 +397,18 @@ export function TopToolbar() {
           </Tooltip>
           {dlOpen && (
             <>
-              <div className="fixed inset-0 z-40" onClick={() => setDlOpen(false)} />
+              <button type="button" aria-label="Close download menu" className="fixed inset-0 z-40" onClick={() => setDlOpen(false)} />
               <div className="absolute right-0 top-9 z-50 w-60 rounded-md border bg-popover p-1 text-popover-foreground shadow-xl">
-                <button onClick={() => void doDownloadZip()} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
+                <button type="button" onClick={() => void doDownloadZip()} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
                   <FileArchive className="size-4 text-muted-foreground" />
                   Export source (.zip)
                 </button>
-                {engine.capabilities.produces_pdf && <button onClick={() => void doDownloadPdf()} disabled={!pdfBytes} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent disabled:opacity-40">
+                {engine.capabilities.produces_pdf && <button type="button" onClick={() => void doDownloadPdf()} disabled={!pdfBytes} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent disabled:opacity-40">
                   <FileText className="size-4 text-muted-foreground" />
                   Export as PDF {projectKind === "image" ? "(vector image)" : ""}
                 </button>}
                 {projectKind === "image" && (
-                  <button onClick={() => void doExportPng()} disabled={!pdfBytes} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent disabled:opacity-40">
+                  <button type="button" onClick={() => void doExportPng()} disabled={!pdfBytes} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent disabled:opacity-40">
                     <ImagePlay className="size-4 text-muted-foreground" />
                     Export as PNG (raster image)
                   </button>
@@ -415,19 +421,19 @@ export function TopToolbar() {
                 {projectKind !== "image" && engine.capabilities.conversion_exports.length > 0 && (
                   <>
                     <div className="my-1 h-px bg-border" />
-                    {engine.capabilities.conversion_exports.includes("docx") && <button onClick={() => void doExportFormat("docx")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
+                    {engine.capabilities.conversion_exports.includes("docx") && <button type="button" onClick={() => void doExportFormat("docx")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
                       <FileType className="size-4 text-muted-foreground" />
                       Export as Word (.docx)
                     </button>}
-                    {engine.capabilities.conversion_exports.includes("html") && <button onClick={() => void doExportFormat("html")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
+                    {engine.capabilities.conversion_exports.includes("html") && <button type="button" onClick={() => void doExportFormat("html")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
                       <FileType className="size-4 text-muted-foreground" />
                       Export as HTML (.html)
                     </button>}
-                    {engine.capabilities.conversion_exports.includes("md") && <button onClick={() => void doExportFormat("md")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
+                    {engine.capabilities.conversion_exports.includes("md") && <button type="button" onClick={() => void doExportFormat("md")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
                       <FileType className="size-4 text-muted-foreground" />
                       Export as Markdown (.md)
                     </button>}
-                    {engine.capabilities.conversion_exports.includes("txt") && <button onClick={() => void doExportFormat("txt")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
+                    {engine.capabilities.conversion_exports.includes("txt") && <button type="button" onClick={() => void doExportFormat("txt")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
                       <FileType className="size-4 text-muted-foreground" />
                       Export as Plain text (.txt)
                     </button>}
@@ -436,7 +442,7 @@ export function TopToolbar() {
                 {exportKind === "presentation" && engine.capabilities.conversion_exports.includes("pptx") && (
                   <>
                     <div className="my-1 h-px bg-border" />
-                    <button onClick={() => void doExportFormat("pptx")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
+                    <button type="button" onClick={() => void doExportFormat("pptx")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
                       <Presentation className="size-4 text-muted-foreground" />
                       Export as PowerPoint (.pptx)
                     </button>
@@ -445,7 +451,7 @@ export function TopToolbar() {
                 {exportKind === "book" && engine.capabilities.conversion_exports.includes("epub") && (
                   <>
                     <div className="my-1 h-px bg-border" />
-                    <button onClick={() => void doExportFormat("epub")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
+                    <button type="button" onClick={() => void doExportFormat("epub")} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent">
                       <BookOpen className="size-4 text-muted-foreground" />
                       Export as EPUB (.epub)
                     </button>
@@ -505,17 +511,19 @@ export function TopToolbar() {
     </header>
 
     {forkOpen && (
-      <div
-        className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4"
-        onClick={() => setForkOpen(false)}
-      >
+      <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4">
+        <button type="button" aria-label="Close fork dialog" className="absolute inset-0" onMouseDown={onForkBackdropMouseDown} />
         <div
-          className="w-full max-w-md rounded-xl border bg-popover p-5 text-popover-foreground shadow-2xl"
-          onClick={(e) => e.stopPropagation()}
+          ref={forkDialogRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="toolbar-fork-title"
+          tabIndex={-1}
+          className="relative w-full max-w-md rounded-xl border bg-popover p-5 text-popover-foreground shadow-2xl"
         >
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-base font-semibold">Fork project</h2>
-            <Button variant="ghost" size="icon" className="size-7" onClick={() => setForkOpen(false)}>
+            <h2 id="toolbar-fork-title" className="text-base font-semibold">Fork project</h2>
+            <Button variant="ghost" size="icon" className="size-7" onClick={closeFork}>
               <X className="size-4" />
             </Button>
           </div>
@@ -524,7 +532,7 @@ export function TopToolbar() {
           </p>
           <div className="flex items-center gap-2">
             <input
-              autoFocus
+              data-modal-initial-focus
               value={forkName}
               onChange={(e) => setForkName(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && !forkBusy) void submitFork(); }}

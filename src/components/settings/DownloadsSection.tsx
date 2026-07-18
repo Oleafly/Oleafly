@@ -94,7 +94,7 @@ export function DownloadsSection() {
             <Info className="size-3.5 cursor-help text-muted-foreground/60 hover:text-muted-foreground" />
           </Tooltip>
         </div>
-        <button
+        <button type="button"
           onClick={() => void downloadAll()}
           disabled={anyBusy || allInstalled}
           className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
@@ -127,7 +127,7 @@ export function DownloadsSection() {
                   </p>
                 </div>
                 {c.installed ? (
-                  <button
+                  <button type="button"
                     onClick={() => void remove(c.id)}
                     disabled={anyBusy}
                     className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
@@ -135,7 +135,7 @@ export function DownloadsSection() {
                     <Trash2 className="size-3.5" /> Remove
                   </button>
                 ) : (
-                  <button
+                  <button type="button"
                     onClick={() => void install(c.id)}
                     disabled={anyBusy}
                     className="inline-flex w-24 items-center justify-center gap-1.5 rounded-md bg-primary px-2.5 py-1.5 text-xs text-white hover:opacity-90 disabled:opacity-60"

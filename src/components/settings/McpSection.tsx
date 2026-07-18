@@ -59,9 +59,8 @@ function highlightSnippet(source: string, lang: SnippetLang): ReactNode[] {
   if (lang === "json") {
     // Keys, strings, numbers, booleans/null, punctuation.
     const re =
-      /("(?:\\.|[^"\\])*")(\s*:)?|(-?\d+(?:\.\d+)?)\b|(\b(?:true|false|null)\b)|([{}\[\],:])|(\s+)|([^\s"{}\[\],:]+)/g;
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(source))) {
+      /("(?:\\.|[^"\\])*")(\s*:)?|(-?\d+(?:\.\d+)?)\b|(\b(?:true|false|null)\b)|([{}[\],:])|(\s+)|([^\s"{}[\],:]+)/g;
+    for (const m of source.matchAll(re)) {
       if (m[1] !== undefined) {
         if (m[2] !== undefined) {
           push("text-sky-700 dark:text-sky-300", m[1]);
@@ -86,9 +85,8 @@ function highlightSnippet(source: string, lang: SnippetLang): ReactNode[] {
 
   if (lang === "toml") {
     const re =
-      /(\[[^\]]+\])|([A-Za-z_][\w.]*)(\s*=\s*)|("(?:\\.|[^"\\])*")|([{}=,])|(\s+)|([^\s\[\]"={}]+)/g;
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(source))) {
+      /(\[[^\]]+\])|([A-Za-z_][\w.]*)(\s*=\s*)|("(?:\\.|[^"\\])*")|([{}=,])|(\s+)|([^\s[\]"={}]+)/g;
+    for (const m of source.matchAll(re)) {
       if (m[1] !== undefined) {
         push("text-sky-700 dark:text-sky-300", m[1]);
       } else if (m[2] !== undefined) {
@@ -109,9 +107,8 @@ function highlightSnippet(source: string, lang: SnippetLang): ReactNode[] {
 
   // shell: flag, quoted string, bare token
   const re = /("(?:\\.|[^"\\])*")|(--?[\w-]+)|(\s+)|([^\s"]+)/g;
-  let m: RegExpExecArray | null;
   let first = true;
-  while ((m = re.exec(source))) {
+  for (const m of source.matchAll(re)) {
     if (m[1] !== undefined) {
       push("text-emerald-700 dark:text-emerald-400", m[1]);
     } else if (m[2] !== undefined) {

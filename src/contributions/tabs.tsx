@@ -6,8 +6,8 @@ import { FilesPanel, ProjectSearch } from "@/components/layout/Sidebar";
 import { SourceControl } from "@/components/layout/SourceControl";
 import { PreflightPanel } from "@/components/preflight/PreflightPanel";
 import { ReferencesPanel } from "@/components/layout/ReferencesPanel";
-import { ChatPanel } from "@/components/ai/ChatPanel";
 import { McpActivityPanel } from "@/components/layout/McpActivityPanel";
+import { ChatPanel } from "@/components/ai/ChatPanel";
 
 export function registerRailTabs() {
   registerRailTab({

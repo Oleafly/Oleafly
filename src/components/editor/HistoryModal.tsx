@@ -38,16 +38,15 @@ export function HistoryModal() {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      role="presentation"
-      onMouseDown={onBackdropMouseDown}
     >
+      <button type="button" aria-label="Close history" className="absolute inset-0" onMouseDown={onBackdropMouseDown} />
       <div
         role="dialog"
         ref={dialogRef}
         tabIndex={-1}
         aria-modal="true"
         aria-labelledby="history-title"
-        className="flex max-h-[80vh] w-full max-w-lg flex-col rounded-xl border bg-popover text-popover-foreground shadow-2xl"
+        className="relative flex max-h-[80vh] w-full max-w-lg flex-col rounded-xl border bg-popover text-popover-foreground shadow-2xl"
       >
         <div className="flex items-center gap-2 border-b p-4">
           <History className="size-4" />

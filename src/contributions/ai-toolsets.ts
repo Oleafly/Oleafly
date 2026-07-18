@@ -1,7 +1,11 @@
 import { registerAiToolset } from "@openleaf/registry";
-import { createOpenLeafTools, createFigureTools, type ConfirmFn } from "@/lib/ai-tools";
+import { createFigureTools, createOpenLeafTools, type ConfirmFn } from "@/lib/ai-tools";
+
+let registered = false;
 
 export function registerAiToolsets() {
+  if (registered) return;
+  registered = true;
   registerAiToolset({
     id: "project-tools",
     mode: "chat",

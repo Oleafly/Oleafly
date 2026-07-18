@@ -206,23 +206,22 @@ export function SettingsModal() {
       try { localStorage.setItem("ol-settings-advanced", "1"); } catch {}
     }
     void libraryRoot().then(setLibRoot).catch(() => {});
-  }, [open, settingsInitialSection, setShowAdvanced]);
+  }, [open, settingsInitialSection]);
 
   if (!open) return null;
 
   return (
     <div
       className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4"
-      role="presentation"
-      onMouseDown={onBackdropMouseDown}
     >
+      <button type="button" aria-label="Close settings" className="absolute inset-0" onMouseDown={onBackdropMouseDown} />
       <div
         role="dialog"
         ref={dialogRef}
         tabIndex={-1}
         aria-modal="true"
         aria-label="Settings"
-        className="flex h-[min(620px,86vh)] w-[min(820px,94vw)] overflow-hidden rounded-xl border bg-background shadow-2xl"
+        className="relative flex h-[min(620px,86vh)] w-[min(820px,94vw)] overflow-hidden rounded-xl border bg-background shadow-2xl"
       >
         <nav aria-label="Settings sections" className="flex w-52 shrink-0 flex-col gap-0.5 border-r bg-muted/30 p-3">
           <div className="mb-2 px-2 text-sm font-semibold">Settings</div>
@@ -440,7 +439,7 @@ export function SettingsModal() {
                     {ACCENTS.map((a) => {
                       const active = accentColor === a.color;
                       return (
-                        <button
+                        <button type="button"
                           key={a.id}
                           title={a.name}
                           onClick={() => setAccentColor(a.color)}
@@ -572,7 +571,7 @@ export function SettingsModal() {
                     Back up or sync a project across devices: connect GitHub, then use{" "}
                     <strong className="font-medium text-foreground">Push</strong> /{" "}
                     <strong className="font-medium text-foreground">Pull</strong> in Source Control.{" "}
-                    <button
+                    <button type="button"
                       onClick={() => setSection("github")}
                       className="font-medium text-primary hover:underline"
                     >
@@ -624,7 +623,7 @@ function IgnoreChips({
           className="inline-flex items-center gap-1 rounded-md border bg-background py-1 pl-2 pr-1 text-xs"
         >
           <span className="font-mono">{w}</span>
-          <button
+          <button type="button"
             onClick={() => onRemove(w)}
             aria-label={`Stop ignoring ${w}`}
             title={`Stop ignoring “${w}”`}
@@ -762,7 +761,7 @@ function HelpSection() {
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Author</p>
-          <button
+          <button type="button"
             onClick={ext(AUTHOR_URL)}
             className="flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left text-sm hover:bg-accent"
           >
@@ -774,7 +773,7 @@ function HelpSection() {
 
         <div className="space-y-1">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Project</p>
-          <button
+          <button type="button"
             onClick={ext(REPO_URL)}
             className="flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left text-sm hover:bg-accent"
           >

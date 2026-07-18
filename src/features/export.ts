@@ -3,7 +3,6 @@ import { exportPdf, revealInDir, writeBytesFile } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
 import { notifyError, toast } from "@/lib/toast";
-import { pdfPageToPng } from "@/lib/pdf-image";
 
 export async function exportCurrentPdf(): Promise<void> {
   const { projectId, projectName } = useFilesStore.getState();
@@ -39,6 +38,7 @@ export async function exportCurrentImagePng(scale = 3): Promise<void> {
   });
   if (!dest) return;
   try {
+    const { pdfPageToPng } = await import("@/lib/pdf-image");
     const dataUrl = await pdfPageToPng(pdfBytes, 1, scale);
     await writeBytesFile(dest, dataUrl.slice(dataUrl.indexOf(",") + 1));
     toast.success(

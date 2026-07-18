@@ -73,11 +73,27 @@ function edgeToTikz(e: DiagEdge): string {
   const a = ARROW_OPT[e.arrow];
   if (a) opts.push(a);
   if (e.style === "dashed") opts.push("dashed");
+  else if (e.style === "dotted") opts.push("dotted");
   const optStr = opts.length ? `[${opts.join(", ")}]` : "";
+  const anchor: Record<string, string> = {
+    t: "north",
+    r: "east",
+    b: "south",
+    l: "west",
+  };
+  const sourceAnchor = anchor[e.sourceHandle ?? ""];
+  const targetAnchor = anchor[e.targetHandle ?? ""];
+  const source = sourceAnchor ? `${e.source}.${sourceAnchor}` : e.source;
+  const target = targetAnchor ? `${e.target}.${targetAnchor}` : e.target;
+  const angle: Record<string, number> = { t: 90, r: 0, b: -90, l: 180 };
   const connector =
-    e.routing === "orthogonal" ? "-|" : e.routing === "curved" ? "to[out=0, in=180]" : "--";
+    e.routing === "orthogonal"
+      ? "-|"
+      : e.routing === "curved"
+        ? `to[out=${angle[e.sourceHandle ?? ""] ?? 0}, in=${angle[e.targetHandle ?? ""] ?? 180}]`
+        : "--";
   const mid = e.label ? ` node[midway, fill=white, font=\\small] {${e.label}}` : "";
-  return `\\draw${optStr} (${e.source}) ${connector}${mid} (${e.target});`;
+  return `\\draw${optStr} (${source}) ${connector}${mid} (${target});`;
 }
 
 export const DIAGRAM_LIBS = [
