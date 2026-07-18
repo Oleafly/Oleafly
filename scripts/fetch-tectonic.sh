@@ -39,6 +39,14 @@ asset_for() {
 
 ALL_TARGETS="aarch64-apple-darwin aarch64-unknown-linux-gnu x86_64-pc-windows-msvc x86_64-unknown-linux-gnu"
 
+checksum() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | awk '{print $1}'
+  else
+    shasum -a 256 "$1" | awk '{print $1}'
+  fi
+}
+
 fetch() {
   local target="$1"
   local entry
@@ -64,7 +72,7 @@ fetch() {
   # release matrix pulls from GitHub from four jobs at once).
   local actual_sha=""
   if [[ -f "$archive" && ! -L "$archive" ]]; then
-    actual_sha="$(shasum -a 256 "$archive" | awk '{print $1}')"
+    actual_sha="$(checksum "$archive")"
   fi
   if [[ "$actual_sha" != "$expected_sha" ]]; then
     rm -f "$archive"
@@ -74,7 +82,7 @@ fetch() {
       echo "failed to download $url" >&2
       exit 1
     fi
-    actual_sha="$(shasum -a 256 "$tmp/download" | awk '{print $1}')"
+    actual_sha="$(checksum "$tmp/download")"
     if [[ "$actual_sha" == "$expected_sha" ]]; then
       mv "$tmp/download" "$archive"
     fi

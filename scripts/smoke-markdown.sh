@@ -7,6 +7,14 @@ VERSION="3.9.0.2"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
+checksum() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | awk '{print $1}'
+  else
+    shasum -a 256 "$1" | awk '{print $1}'
+  fi
+}
+
 case "$TARGET" in
   aarch64-apple-darwin)
     ASSET="pandoc-$VERSION-arm64-macOS.zip"
@@ -29,7 +37,7 @@ esac
 
 curl -fSL --retry 5 --retry-delay 3 --retry-connrefused \
   -o "$TMP/archive" "https://github.com/jgm/pandoc/releases/download/$VERSION/$ASSET"
-ACTUAL="$(shasum -a 256 "$TMP/archive" | awk '{print $1}')"
+ACTUAL="$(checksum "$TMP/archive")"
 test "$ACTUAL" = "$SHA"
 if [[ "$KIND" == tar ]]; then tar xzf "$TMP/archive" -C "$TMP"; else unzip -q "$TMP/archive" -d "$TMP"; fi
 "$TMP/$PANDOC" --version | grep -F "pandoc $VERSION"
