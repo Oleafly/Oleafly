@@ -14,11 +14,10 @@ test("connect-a-provider leads to Settings -> AI", async ({ tauriPage }) => {
   );
   await expect(tauriPage.locator(".cm-content")).not.toBeVisible();
   const sidebarBox = await tauriPage.locator('[data-panel-id="sidebar"]').boundingBox();
-  const viewport = tauriPage.viewportSize();
+  const viewportWidth = await tauriPage.evaluate<number>("window.innerWidth");
   expect(sidebarBox).not.toBeNull();
-  expect(viewport).not.toBeNull();
-  expect((sidebarBox?.width ?? 0) / (viewport?.width ?? 1)).toBeGreaterThan(0.42);
-  expect((sidebarBox?.width ?? 0) / (viewport?.width ?? 1)).toBeLessThan(0.58);
+  expect((sidebarBox?.width ?? 0) / viewportWidth).toBeGreaterThan(0.42);
+  expect((sidebarBox?.width ?? 0) / viewportWidth).toBeLessThan(0.58);
   await tauriPage.click('[aria-label="Split View"]');
   await expect(tauriPage.locator(".cm-content")).toBeVisible();
   await expect(tauriPage.getByText("Connect an AI provider")).toBeVisible();

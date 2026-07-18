@@ -48,7 +48,8 @@ async function compileClean(page: import("../helpers").Page) {
 }
 
 async function exportMenuItems(page: import("../helpers").Page): Promise<string> {
-  await page.click('[aria-label="Export"]');
+  await page.focus('[aria-label="Export"]');
+  await page.press('[aria-label="Export"]', "Enter");
   await page.waitForFunction(
     `document.body.innerText.includes('Export source (.zip)')`,
     10_000,

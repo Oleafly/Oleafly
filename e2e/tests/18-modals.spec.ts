@@ -54,8 +54,9 @@ test("history modal opens from the palette", async ({ tauriPage }) => {
 });
 
 test("help popover leads to the About dialog", async ({ tauriPage }) => {
-  await tauriPage.click('[aria-label="Help"]');
-  await tauriPage.getByText("Contact us").click();
+  await tauriPage.focus('[aria-label="Help"]');
+  await tauriPage.press('[aria-label="Help"]', "Enter");
+  await tauriPage.getByText("Contact us").press("Enter");
   await expect(tauriPage.locator('[aria-label="Close"]')).toBeVisible();
   await tauriPage.click('[aria-label="Close"]');
 });

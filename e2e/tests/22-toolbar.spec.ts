@@ -29,13 +29,14 @@ test("inline project rename commits and reverts", async ({ tauriPage }) => {
 test("export menu lists the document formats", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await tauriPage.click('[aria-label="Export"]');
+  await tauriPage.focus('[aria-label="Export"]');
+  await tauriPage.press('[aria-label="Export"]', "Enter");
   await expect(tauriPage.getByText("Export source (.zip)")).toBeVisible();
   await expect(tauriPage.getByText("Export as PDF")).toBeVisible();
   await expect(tauriPage.getByText("Export as Word (.docx)")).toBeVisible();
   await expect(tauriPage.getByText("Export as Markdown (.md)")).toBeVisible();
   // Close via the backdrop; actual exports open native save dialogs (manual).
-  await tauriPage.click('[aria-label="Export"]');
+  await tauriPage.press('[aria-label="Export"]', "Enter");
 });
 
 test("back to library and reopen", async ({ tauriPage }) => {

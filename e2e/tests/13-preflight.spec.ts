@@ -17,10 +17,12 @@ test("preflight categories render and a single check runs independently", async 
   await expect(tauriPage.getByText("Run")).toBeVisible();
 
   await tauriPage.getByText("Run").click();
-  await tauriPage.waitForFunction(
-    `/✓|issue|score|finding/i.test(document.body.innerText) && !document.querySelector('.animate-spin')`,
-    60_000,
-  );
+  await expect.poll(
+    () => tauriPage.evaluate<boolean>(
+      `/✓|issue|score|finding/i.test(document.body.innerText) && !document.querySelector('.animate-spin')`,
+    ),
+    { timeout: 60_000 },
+  ).toBe(true);
   const after = await tauriPage.evaluate<string>(`document.body.innerText`);
   expect(after).toMatch(/✓|issue|score|finding/i);
 });
