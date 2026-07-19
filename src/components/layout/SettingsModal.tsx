@@ -884,7 +884,7 @@ function HelpSection() {
   const projectId = useFilesStore((s) => s.projectId);
   const beginTour = () => {
     setOpen(false);
-    startTour(projectId ? "workspace" : "home");
+    window.requestAnimationFrame(() => startTour(projectId ? "workspace" : "home"));
   };
 
   const copyDiagnostics = async () => {
