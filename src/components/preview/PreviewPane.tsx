@@ -18,6 +18,7 @@ import { LogPane } from "@/components/editor/LogPane";
 import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
 import { usePdfViewStore } from "@/store/pdf-view";
+import { useTourStore } from "@/store/tours";
 import { inverseFromClick } from "@/features/synctex";
 import { saveFileBase64, uint8ToBase64 } from "@/lib/tauri";
 import { openPreviewWindow } from "@/lib/preview-window";
@@ -45,7 +46,10 @@ export function PreviewPane() {
   // Image projects render a single figure: no pages/spreads, "PDF" reads as "image".
   const isImage = useFilesStore((s) => s.projectKind) === "image";
   const [scale, setScale] = useState(1.0);
+  const [zoomMenuOpen, setZoomMenuOpen] = useState(false);
   const [tab, setTab] = useState<"pdf" | "logs">("pdf");
+  const activeTourId = useTourStore((state) => state.activeTourId);
+  const tourTabRef = useRef<"pdf" | "logs" | null>(null);
   const [saveOpen, setSaveOpen] = useState(false);
   const [saveName, setSaveName] = useState("");
   const [saving, setSaving] = useState(false);
@@ -155,9 +159,21 @@ export function PreviewPane() {
   };
 
   useEffect(() => {
+    if (activeTourId === "workspace") return;
     if (status === "error") setTab("logs");
     if (status === "success") setTab("pdf");
-  }, [status]);
+  }, [activeTourId, status]);
+
+  useEffect(() => {
+    if (activeTourId === "workspace" && tourTabRef.current === null) {
+      tourTabRef.current = tab;
+      setTab("pdf");
+    }
+    if (activeTourId !== "workspace" && tourTabRef.current !== null) {
+      setTab(tourTabRef.current);
+      tourTabRef.current = null;
+    }
+  }, [activeTourId, tab]);
 
   const compiling = status === "compiling";
   const hasError = status === "error" || errors.some((e) => e.kind === "error");
@@ -187,71 +203,80 @@ export function PreviewPane() {
           isFs && fsToolbarHidden && "hidden",
         )}
       >
-        <button type="button"
-          onClick={() => setTab(tab === "logs" ? "pdf" : "logs")}
-          className={cn(
-            "flex h-6 items-center gap-1.5 rounded-md px-2 text-xs font-medium",
-            tab === "logs"
-              ? "bg-muted text-foreground"
-              : "text-muted-foreground hover:text-foreground"
-          )}
+        <div
+          data-tour="project-compile-logs"
+          className="flex items-center gap-1"
         >
-          <AlertTriangle className="size-3.5" />
-          Logs
-          {errors.length > 0 && (
-            <span
-              className={cn(
-                "rounded-full px-1.5 text-[10px] font-semibold text-white",
-                severity === "error" ? "bg-red-500" : "bg-amber-500"
-              )}
-            >
-              {errors.length}
+          <button
+            type="button"
+            onClick={() => setTab(tab === "logs" ? "pdf" : "logs")}
+            className={cn(
+              "flex h-6 items-center gap-1.5 rounded-md px-2 text-xs font-medium",
+              tab === "logs"
+                ? "bg-muted text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <AlertTriangle className="size-3.5" />
+            Logs
+            {errors.length > 0 && (
+              <span
+                className={cn(
+                  "rounded-full px-1.5 text-[10px] font-semibold text-white",
+                  severity === "error" ? "bg-red-500" : "bg-amber-500"
+                )}
+              >
+                {errors.length}
+              </span>
+            )}
+          </button>
+
+          {compiling && (
+            <span className="flex items-center gap-1 text-[10px] font-medium" role="status">
+              <Loader2 className="compile-shimmer-icon size-3.5" />
+              <span className="ai-shimmer">Compiling…</span>
             </span>
           )}
-        </button>
 
-        {compiling && (
-          <span className="flex items-center gap-1 text-[10px] font-medium" role="status">
-            <Loader2 className="compile-shimmer-icon size-3.5" />
-            <span className="ai-shimmer">Compiling…</span>
-          </span>
-        )}
-
-        {!compiling && status !== "idle" && (
-          <span
-            className={cn(
-              "flex items-center gap-1 text-[10px] font-medium tabular-nums",
-              severity === "error"
-                ? "text-red-500"
-                : severity === "warning"
-                ? "text-amber-500"
-                : "text-emerald-500"
-            )}
-            title={
-              severity === "error"
-                ? "Compiled with errors"
-                : severity === "warning"
-                ? "Compiled with warnings"
-                : "Compiled successfully"
-            }
-            data-testid="compile-status"
-            data-severity={severity}
-          >
-            {severity === "error" ? (
-              <XCircle className="size-3.5" />
-            ) : severity === "warning" ? (
-              <AlertTriangle className="size-3.5" />
-            ) : (
-              <CheckCircle2 className="size-3.5" />
-            )}
-            {severity === "error" || compileTimeMs == null
-              ? "Failed"
-              : `${(compileTimeMs / 1000).toFixed(1)}s`}
-          </span>
-        )}
+          {!compiling && status !== "idle" && (
+            <span
+              className={cn(
+                "flex items-center gap-1 text-[10px] font-medium tabular-nums",
+                severity === "error"
+                  ? "text-red-500"
+                  : severity === "warning"
+                  ? "text-amber-500"
+                  : "text-emerald-500"
+              )}
+              title={
+                severity === "error"
+                  ? "Compiled with errors"
+                  : severity === "warning"
+                  ? "Compiled with warnings"
+                  : "Compiled successfully"
+              }
+              data-testid="compile-status"
+              data-severity={severity}
+            >
+              {severity === "error" ? (
+                <XCircle className="size-3.5" />
+              ) : severity === "warning" ? (
+                <AlertTriangle className="size-3.5" />
+              ) : (
+                <CheckCircle2 className="size-3.5" />
+              )}
+              {severity === "error" || compileTimeMs == null
+                ? "Failed"
+                : `${(compileTimeMs / 1000).toFixed(1)}s`}
+            </span>
+          )}
+        </div>
 
         {tab === "pdf" && (
-          <div className="ml-auto flex min-w-0 flex-[1_1_22rem] flex-wrap items-center justify-end gap-0.5">
+          <div
+            data-tour="project-preview-zoom"
+            className="ml-auto flex min-w-0 flex-[1_1_22rem] flex-wrap items-center justify-end gap-0.5"
+          >
             {numPages > 0 && !isImage && (
               <>
                 <Tooltip label="Single page view">
@@ -337,7 +362,7 @@ export function PreviewPane() {
                 <ZoomOut className="size-3.5" />
               </Button>
             </Tooltip>
-            <DropdownMenu>
+            <DropdownMenu open={zoomMenuOpen} onOpenChange={setZoomMenuOpen}>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
@@ -345,6 +370,17 @@ export function PreviewPane() {
                   className="h-7 min-w-14 gap-1 px-1.5 text-xs tabular-nums text-muted-foreground"
                   aria-label={`Zoom ${Math.round(scale * 100)} percent`}
                   disabled={!pdfBytes}
+                  onKeyDown={(event) => {
+                    if (
+                      event.key !== "Enter" &&
+                      event.key !== " " &&
+                      event.key !== "ArrowDown"
+                    ) {
+                      return;
+                    }
+                    event.preventDefault();
+                    setZoomMenuOpen(true);
+                  }}
                 >
                   {Math.round(scale * 100)}%
                   <ChevronDown data-icon="inline-end" />
@@ -473,7 +509,7 @@ export function PreviewPane() {
         )}
       </div>
 
-      <div className="relative min-h-0 flex-1 overflow-hidden">
+      <div data-tour="project-preview-content" className="relative min-h-0 flex-1 overflow-hidden">
         {compiling && (
           <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-0.5 overflow-hidden">
             <div className="h-full w-1/3 animate-pulse bg-primary" />

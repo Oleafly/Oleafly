@@ -56,3 +56,13 @@ Toggle in Settings → Appearance. When on, you get the full CodeMirror Vim keyb
 | Source Control panel | Stage/discard, commit, push, pull |
 
 Tip: open the in-app reference anytime with `⌘/` / `Ctrl /`.
+
+## Customize application shortcuts
+
+Open **Settings → Keyboard Shortcuts** to change Recompile, Command palette,
+Search all documents, Go to PDF, or Shortcut reference. Select the displayed
+keys, press the new combination, and click elsewhere to cancel recording.
+Reset controls restore one binding or all application bindings. Editor-native
+shortcuts remain fixed by the editor. Custom bindings must include `⌘` on
+macOS or `Ctrl` on Windows and Linux; Oleafly rejects standalone keys and
+combinations already used by the editor.

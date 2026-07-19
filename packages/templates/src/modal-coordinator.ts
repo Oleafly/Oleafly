@@ -1,6 +1,7 @@
 export interface ModalRegistration {
   id: symbol;
   restore: HTMLElement[];
+  logicalOverlay: HTMLElement | null;
 }
 
 export function visibleFocusable(elements: HTMLElement[]): HTMLElement[] {
@@ -20,9 +21,9 @@ export function visibleFocusable(elements: HTMLElement[]): HTMLElement[] {
 export class ModalCoordinator {
   private stack: ModalRegistration[] = [];
 
-  add(opener: HTMLElement | null): symbol {
+  add(opener: HTMLElement | null, logicalOverlay: HTMLElement | null = null): symbol {
     const id = Symbol("modal");
-    this.stack.push({ id, restore: opener ? [opener] : [] });
+    this.stack.push({ id, restore: opener ? [opener] : [], logicalOverlay });
     return id;
   }
 
@@ -45,6 +46,10 @@ export class ModalCoordinator {
 
   size(): number {
     return this.stack.length;
+  }
+
+  topOverlay(): HTMLElement | null {
+    return this.stack.at(-1)?.logicalOverlay ?? null;
   }
 }
 

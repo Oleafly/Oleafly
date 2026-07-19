@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import {
   BookOpen,
   Check,
-  CircleHelp,
   Columns2,
   ChevronRight,
   Download,
@@ -14,6 +13,7 @@ import {
   History,
   Loader2,
   ImagePlay,
+  Keyboard,
   Play,
   RefreshCw,
   SquarePen,
@@ -267,7 +267,7 @@ export function TopToolbar() {
         "grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center border-b bg-background",
         isMac && "pr-3",
         isMac && !fullscreen && "pl-[78px]",
-        isMac && fullscreen && "pl-4"
+        isMac && fullscreen && "pl-2"
       )}
     >
       <div data-tauri-drag-region className="flex min-w-0 items-center gap-2">
@@ -358,6 +358,7 @@ export function TopToolbar() {
         <Tooltip label={`${compileLabel} ${engine.label} (${shortcut("⌘↵")})`}>
           <Button
             data-testid="compile-button"
+            data-tour="project-compile"
             variant="ghost"
             size="sm"
             className={cn(
@@ -516,7 +517,7 @@ export function TopToolbar() {
             className="text-muted-foreground hover:text-foreground"
             onClick={() => setHotkeysOpen(true)}
           >
-            <CircleHelp className="size-4" />
+            <Keyboard className="size-4" />
           </Button>
         </Tooltip>
       </div>

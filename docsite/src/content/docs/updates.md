@@ -18,6 +18,8 @@ Settings, **Help & About**, **Check for updates** (also in the About dialog and 
 - A download progress bar, then "Installing… Oleafly will restart to finish."
 - If the check fails (offline, GitHub down), an error with **Try again** and a **Download from GitHub** fallback link.
 
+The Oleafly application menu also includes **Reload Views** to refresh every webview and **Restart Application** for a full app restart.
+
 ## Signed, verified, and boring by design
 
 Updates come from the project's GitHub Releases and are cryptographically signed; the app verifies each download's signature against a key embedded in the app before installing. A build that doesn't verify doesn't install. There's one release channel (latest stable), and your projects are never touched by an update: they live in [their own folder](/OpenLeaf/where-your-data-lives/), fully separate from the app.

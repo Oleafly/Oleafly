@@ -11,6 +11,8 @@ Download the app for your platform from the [latest release](https://github.com/
 
 ## 2. Create your first project
 
+On a fresh installation, choose **Show me around** on the welcome screen. The progressive guide introduces the library, creates a real project with you, and continues in the workspace. Settings, AI Assistant, and Diagram Composer each have a guide that appears on the first eligible visit. Manage individual guides and progress in **Settings → General → Enable tour guides**, or restart the guide for the current view from **Help & About → Start tour**.
+
 1. On the Library home screen, click **New project**.
 2. The template gallery opens. Browse by category, search, or filter by **ATS-friendly**. Try one of these to start:
    - **Blank document**: a minimal article to start from scratch.

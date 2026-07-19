@@ -51,8 +51,18 @@ export function CopyMessageButton({ text }: { text: string }) {
 
 export function ToolBadge({ tc }: { tc: ToolEntry }) {
   const [expanded, setExpanded] = useState(false);
+  const result = tc.output?.includes('"success": true')
+    ? "success"
+    : tc.output?.includes('"error"')
+      ? "error"
+      : undefined;
   return (
-    <div className="rounded-md border bg-muted text-xs">
+    <div
+      data-tool-name={tc.name}
+      data-tool-status={tc.status}
+      data-tool-result={result}
+      className="rounded-md border bg-muted text-xs"
+    >
       <button type="button"
         onClick={() => tc.output && setExpanded(!expanded)}
         className={cn("flex w-full items-center gap-2 px-2.5 py-1.5", tc.output && "cursor-pointer hover:bg-accent/50")}

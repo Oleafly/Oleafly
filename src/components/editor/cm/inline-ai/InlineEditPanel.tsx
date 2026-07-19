@@ -14,6 +14,7 @@ import { getEditorView } from "@/components/editor/cm/controller";
 import { AiChrome, AiMark } from "@/components/ai/AiChrome";
 import { useAgentHandoffStore } from "@/store/agent-handoff";
 import { useFilesStore } from "@/store/files";
+import { useTourStore } from "@/store/tours";
 import { acceptInlineEdit, rejectInlineEdit } from "./plugin";
 import { PromptPopover } from "./PromptPopover";
 import { DiffActionBar, DiffErrorBar } from "./DiffActionBar";
@@ -120,6 +121,7 @@ export function InlineEditPanel() {
   useEffect(() => {
     if (!session) return;
     const onKey = (e: KeyboardEvent) => {
+      if (useTourStore.getState().activeTourId) return;
       if (e.key === "Escape") {
         e.preventDefault();
         e.stopPropagation();

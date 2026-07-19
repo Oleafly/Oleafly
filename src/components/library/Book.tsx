@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Bookmark } from "lucide-react";
+import { Bookmark, BookmarkCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Variant = "book" | "simple" | "stripe";
@@ -52,6 +52,7 @@ export function Book({
   textColor,
   illustration,
   date,
+  engine,
   variant = "book",
   width = 150,
   onClick,
@@ -65,6 +66,7 @@ export function Book({
   textColor?: string;
   illustration?: ReactNode;
   date?: string;
+  engine?: string;
   variant?: Variant;
   width?: number;
   onClick?: () => void;
@@ -141,11 +143,25 @@ export function Book({
             {illustration}
 
             <div className="relative z-10 flex flex-1 flex-col justify-end p-3">
-              <span className="line-clamp-3 text-[13px] font-semibold leading-snug" style={{ color: ink }}>
+              {engine && (
+                <span
+                  className="mb-1 text-[8px] font-semibold uppercase leading-none tracking-wide opacity-55"
+                  style={{ color: ink }}
+                >
+                  {engine}
+                </span>
+              )}
+              <span
+                className="line-clamp-3 text-[13px] font-semibold leading-snug"
+                style={{ color: ink }}
+              >
                 {title}
               </span>
               {date && (
-                <span className="mt-1 text-[10px] font-medium uppercase tracking-wide" style={{ color: ink, opacity: 0.65 }}>
+                <span
+                  className="mt-1 text-[10px] font-medium"
+                  style={{ color: ink, opacity: 0.65 }}
+                >
                   {date}
                 </span>
               )}
@@ -170,7 +186,11 @@ export function Book({
           className="absolute right-2 top-2 z-20 flex size-6 items-center justify-center rounded-full transition-colors hover:bg-black/10"
           style={{ color: starred ? "#f59e0b" : ink }}
         >
-          <Bookmark className={cn("size-3.5", starred && "fill-current")} />
+          {starred ? (
+            <BookmarkCheck className="size-3.5 fill-current" />
+          ) : (
+            <Bookmark className="size-3.5" />
+          )}
         </button>
       )}
     </div>

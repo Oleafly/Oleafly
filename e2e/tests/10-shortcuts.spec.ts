@@ -1,4 +1,4 @@
-import { test, expect } from "../fixtures";
+import { expect, test } from "../fixtures";
 import { openProject, pressGlobal, waitLong } from "../helpers";
 
 // Cmd+K and Cmd+Shift+F are covered in 04-commands; this file covers the rest.

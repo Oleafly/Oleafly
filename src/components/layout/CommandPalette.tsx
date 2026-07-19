@@ -5,6 +5,7 @@ import { useSettingsStore } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
+import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 
 export function CommandPalette() {
   const open = useSettingsStore((s) => s.paletteOpen);
@@ -24,7 +25,7 @@ export function CommandPalette() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+      if (matchesShortcut(e, useShortcutStore.getState().bindings.commandPalette)) {
         e.preventDefault();
         setPaletteOpen(!useSettingsStore.getState().paletteOpen);
       }

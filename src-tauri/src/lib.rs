@@ -74,15 +74,18 @@ pub fn run() {
             tauri::async_runtime::spawn(async move {
                 if let Ok(cfg) = crate::config::read_config() {
                     if cfg.mcp_enabled {
-                        if let Err(e) = crate::mcp::server::start(handle, cfg.mcp_port).await {
+                        if let Err(e) = crate::mcp::start_configured(handle, cfg.mcp_port).await {
                             eprintln!("mcp: autostart failed: {e}");
                         }
+                    } else {
+                        crate::mcp::server::remove_discovery_file();
                     }
                 }
             });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::reload_views,
             commands::library_root,
             commands::app_version,
             commands::project_engine,
@@ -162,6 +165,7 @@ pub fn run() {
             mcp::mcp_tool_result,
             mcp::mcp_status,
             mcp::mcp_set_enabled,
+            mcp::mcp_restart_server,
             mcp::mcp_connection_info,
             mcp::mcp_regenerate_token,
             chats::load_project_chats,

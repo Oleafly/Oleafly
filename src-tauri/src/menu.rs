@@ -1,22 +1,25 @@
 use tauri::menu::{Menu, MenuBuilder, MenuItemBuilder, SubmenuBuilder};
-use tauri::{AppHandle, Emitter, Runtime};
+use tauri::{AppHandle, Emitter, Manager, Runtime};
 
-/// Replaces Tauri's default menu with a trimmed app menu plus a standard Edit
-/// menu. The Edit menu is required, not decorative: on macOS the native
-/// predefined Copy/Paste/Cut/Select All/Undo/Redo items are what bind the
-/// ⌘C/⌘V/⌘X/⌘A/⌘Z accelerators into the WKWebView; replacing the default menu
-/// without it silently kills clipboard everywhere, including CodeMirror.
 pub fn build<R: Runtime>(handle: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     let about = MenuItemBuilder::with_id("about", "About Oleafly").build(handle)?;
     let check_updates =
         MenuItemBuilder::with_id("check_updates", "Check for Updates…").build(handle)?;
+    let reload_views = MenuItemBuilder::with_id("reload_views", "Reload Views").build(handle)?;
+    let restart_app =
+        MenuItemBuilder::with_id("restart_app", "Restart Application").build(handle)?;
+    let quit = MenuItemBuilder::with_id("quit_app", "Quit Oleafly")
+        .accelerator("CmdOrCtrl+Q")
+        .build(handle)?;
 
     let app_menu = SubmenuBuilder::new(handle, "Oleafly")
-        .item(&about)
+        .item(&reload_views)
+        .item(&restart_app)
         .separator()
+        .item(&about)
         .item(&check_updates)
         .separator()
-        .quit()
+        .item(&quit)
         .build()?;
 
     let edit_menu = SubmenuBuilder::new(handle, "Edit")
@@ -44,6 +47,17 @@ pub fn on_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
         }
         "check_updates" => {
             let _ = app.emit("menu://check-updates", ());
+        }
+        "reload_views" => {
+            for window in app.webview_windows().values() {
+                let _ = window.reload();
+            }
+        }
+        "restart_app" => {
+            app.request_restart();
+        }
+        "quit_app" => {
+            app.exit(0);
         }
         _ => {}
     }

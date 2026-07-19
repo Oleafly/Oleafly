@@ -94,9 +94,13 @@ a readiness aid, not a formal accessibility certification.
 
 ## Projects and library
 
-- Library home lists all projects with thumbnails, last-edited time, and export history.
+- Library home lists all projects with thumbnails, engine labels, last-edited
+  time, and export history. Omnibar project search indexes project ID, name,
+  engine, kind, main document, created and modified dates, cover color,
+  bookmark and preview state, and export metadata. It supports composable
+  `field:value` filters such as `engine:typst bookmark:yes preview:true`.
 - Template gallery: creating a project opens a browsable gallery, organized by
-  category (CVs & Resumes, Journals & Conferences, Theses & Reports, Books,
+  category (Resume, Journals, Diagrams, Theses & Reports, Books,
   Presentations, Posters, Letters), with search, an ATS-friendly filter, and a
   page-1 preview of every template. Pick one, then name the project and choose a
   cover color. The starter set spans clean, ATS-friendly resumes, a polished

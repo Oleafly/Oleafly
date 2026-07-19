@@ -1,12 +1,14 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Check, Copy, Eye, EyeOff, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Tooltip } from "@/components/ui/tooltip";
 import {
   getConfig,
   mcpConnectionInfo,
   mcpRegenerateToken,
+  mcpRestartServer,
   mcpSetEnabled,
   mcpStatus,
   setConfig,
@@ -202,8 +204,8 @@ export function McpSection() {
   const [cfg, setCfg] = useState<AppConfig | null>(null);
   const [status, setStatus] = useState<McpStatus | null>(null);
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
-  const [portDraft, setPortDraft] = useState("5323");
   const [token, setToken] = useState<string | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [confirmRegen, setConfirmRegen] = useState(false);
@@ -227,7 +229,6 @@ export function McpSection() {
       const [c, s] = await Promise.all([getConfig(), mcpStatus()]);
       setCfg(c);
       setStatus(s);
-      setPortDraft(String(c.mcp_port || 5323));
       useMcpActivityStore.getState().setServerRunning(!!s.running);
       await loadToken(!!s.running);
     } catch (e) {
@@ -253,15 +254,19 @@ export function McpSection() {
   };
 
   const toggleEnabled = async (next: boolean) => {
-    if (!cfg) return;
+    if (!cfg || busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
     setError(null);
     setRevealed(false);
     try {
-      const port = Number(portDraft) || cfg.mcp_port || 5323;
-      const s = await mcpSetEnabled(next, port);
+      const s = await mcpSetEnabled(next);
       setStatus(s);
-      setCfg({ ...cfg, mcp_enabled: next, mcp_port: port });
+      setCfg({
+        ...cfg,
+        mcp_enabled: next,
+        mcp_port: s.port ?? cfg.mcp_port,
+      });
       useMcpActivityStore.getState().setServerRunning(!!s.running);
       if (next) {
         await refreshMcpRegistry();
@@ -270,46 +275,37 @@ export function McpSection() {
         setToken(null);
       }
     } catch (e) {
-      const msg = String(e);
-      setError(
-        msg.includes("bind") || msg.includes("in use") || msg.includes("Address already")
-          ? `Port ${portDraft} is in use. Pick another port.`
-          : msg,
-      );
+      setError(String(e));
       await load();
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   };
 
-  const applyPort = async () => {
-    if (!cfg) return;
-    const port = Number(portDraft);
-    if (!Number.isFinite(port) || port < 1 || port > 65535) {
-      setError("Port must be a number between 1 and 65535.");
-      setPortDraft(String(cfg.mcp_port || 5323));
-      return;
-    }
+  const restartServer = async () => {
+    if (!cfg || busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
     setError(null);
-    if (cfg.mcp_enabled || status?.running) {
-      setBusy(true);
-      try {
-        const s = await mcpSetEnabled(true, port);
-        setStatus(s);
-        setCfg({ ...cfg, mcp_port: port, mcp_enabled: true });
-        useMcpActivityStore.getState().setServerRunning(!!s.running);
-        await loadToken(true);
-      } catch (e) {
-        setError(
-          String(e).includes("bind") || String(e).includes("in use")
-            ? `Port ${port} is in use. Pick another port.`
-            : String(e),
-        );
-      } finally {
-        setBusy(false);
-      }
-    } else {
-      await persistPolicy({ mcp_port: port });
+    setRevealed(false);
+    try {
+      const s = await mcpRestartServer();
+      setStatus(s);
+      setCfg({
+        ...cfg,
+        mcp_enabled: true,
+        mcp_port: s.port ?? cfg.mcp_port,
+      });
+      useMcpActivityStore.getState().setServerRunning(!!s.running);
+      await refreshMcpRegistry();
+      await loadToken(true);
+    } catch (e) {
+      setError(String(e));
+      await load();
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
     }
   };
 
@@ -353,7 +349,7 @@ export function McpSection() {
   };
 
   const enabled = !!(cfg?.mcp_enabled || status?.running);
-  const url = status?.url ?? `http://127.0.0.1:${portDraft || 5323}/mcp`;
+  const url = status?.url ?? `http://127.0.0.1:${cfg?.mcp_port || 5323}/mcp`;
   // Display: real token when revealed, short mask when hidden, <token> only when unknown.
   const tokenMask = "XXXXXX";
   const tokenForDisplay = token ? (revealed ? token : tokenMask) : "<token>";
@@ -397,7 +393,7 @@ export function McpSection() {
             if (!busy) void toggleEnabled(!enabled);
           }
         }}
-        className="flex cursor-pointer items-center justify-between gap-4 rounded-lg border bg-background p-3 hover:bg-accent"
+        className="flex cursor-pointer items-center justify-between gap-4 rounded-lg border bg-card p-3 hover:bg-accent"
       >
         <div>
           <div className="text-sm font-medium">Enable MCP server</div>
@@ -420,7 +416,7 @@ export function McpSection() {
         </span>
       </div>
 
-      <div data-testid="mcp-status" className="rounded-lg border bg-background p-3 text-sm">
+      <div data-testid="mcp-status" className="rounded-lg border bg-card p-3 text-sm">
         {status?.running && status.url ? (
           <span className="text-emerald-600 dark:text-emerald-500">Running at {status.url}</span>
         ) : (
@@ -428,21 +424,39 @@ export function McpSection() {
         )}
       </div>
 
-      <div className="space-y-1.5">
-        <label className="text-xs font-medium" htmlFor="mcp-port">
-          Port
-        </label>
-        <Input
-          id="mcp-port"
-          type="number"
-          min={1}
-          max={65535}
-          value={portDraft}
-          onChange={(e) => setPortDraft(e.target.value)}
-          onBlur={() => void applyPort()}
-          className="w-32 rounded-md border bg-background px-2 py-1.5 text-sm"
-        />
-      </div>
+      {enabled && (
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium" htmlFor="mcp-port">
+            Port
+          </label>
+          <div className="flex items-center gap-2">
+            <Input
+              id="mcp-port"
+              type="text"
+              readOnly
+              aria-label="Automatically selected MCP server port"
+              value={status?.port ?? cfg.mcp_port}
+              className="w-32"
+            />
+            <Tooltip
+              side="right"
+              wide
+              label="Restart the MCP server. Oleafly reuses this port if it is available, or selects another free port."
+            >
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                disabled={busy}
+                aria-label="Restart MCP server and select an available port"
+                onClick={() => void restartServer()}
+              >
+                <RefreshCw className={cn("size-4", busy && "animate-spin")} />
+              </Button>
+            </Tooltip>
+          </div>
+        </div>
+      )}
 
       <fieldset className="space-y-2">
         <legend className="text-xs font-medium">Approval policy</legend>
@@ -509,7 +523,7 @@ export function McpSection() {
             void persistPolicy({ mcp_read_only: !cfg.mcp_read_only });
           }
         }}
-        className="flex cursor-pointer items-center justify-between gap-4 rounded-lg border bg-background p-3 hover:bg-accent"
+        className="flex cursor-pointer items-center justify-between gap-4 rounded-lg border bg-card p-3 hover:bg-accent"
       >
         <div>
           <div className="text-sm font-medium">Read-only</div>
@@ -532,16 +546,16 @@ export function McpSection() {
         </span>
       </div>
 
-      <div className="space-y-2 rounded-lg border bg-background p-3">
+      <div className="space-y-2 rounded-lg border bg-card p-3">
         <div className="text-xs font-medium">Bearer token</div>
-        <div className="flex flex-wrap items-center gap-2">
-          <code className="min-w-0 flex-1 truncate rounded bg-muted px-2 py-1.5 text-[11px] font-mono">
-            {status?.running
-              ? revealed && token
-                ? token
-                : tokenMask
-              : "Enable the server to view the token."}
-          </code>
+        <code className="block w-full truncate rounded bg-muted px-2 py-1.5 text-[11px] font-mono">
+          {status?.running
+            ? revealed && token
+              ? token
+              : tokenMask
+            : "Enable the server to view the token."}
+        </code>
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <Button
             type="button"
             variant="secondary"
@@ -599,6 +613,10 @@ export function McpSection() {
             </div>
           )}
         </div>
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          Reveal or copy the bearer token, copy the server URL, or regenerate the
+          token for connected MCP clients.
+        </p>
       </div>
 
       <div className="space-y-3">

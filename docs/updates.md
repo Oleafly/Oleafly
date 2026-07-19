@@ -6,6 +6,8 @@ opens a dedicated, branded update window (not a native OS dialog) that shows the
 changelog and offers to download, verify, install, and restart. Users can also
 trigger a check from the **Oleafly → Check for Updates** menu, or from
 **About → Check for updates** (which reports the result inline).
+The same application menu provides **Reload Views** for refreshing webviews and
+**Restart Application** for a full process restart.
 
 Oleafly 0.2.5 is an unsigned developer beta. This local beta build does not
 generate updater artifacts because no release-signing private key is configured,

@@ -122,6 +122,7 @@ export function ShapeNode({ id, data, selected }: NodeProps) {
 
   return (
     <div
+      data-tour={selected ? "diagram-handles" : undefined}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       onDoubleClick={(e) => {

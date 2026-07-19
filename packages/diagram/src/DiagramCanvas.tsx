@@ -742,6 +742,8 @@ function CanvasInner({
         </div>
       </div>
       <div
+        data-tour="diagram-canvas"
+        data-tour-selection={selectedNode || selectedEdge ? "true" : "false"}
         className={cn(
           canvasDark ? "dark" : "light",
           "relative min-h-0 flex-1",
@@ -758,6 +760,7 @@ function CanvasInner({
         onPointerCancel={onFlowPointerUp}
       >
         <div
+          data-tour="diagram-palette"
           role="toolbar"
           aria-label="Shape tools"
           style={chromeStyle}
@@ -789,6 +792,7 @@ function CanvasInner({
 
         {(selectedNode || selectedEdge) && (
           <div
+            data-tour="diagram-inspector"
             role="complementary"
             aria-label="Shape style"
             style={chromeStyle}

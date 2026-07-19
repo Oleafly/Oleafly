@@ -34,6 +34,24 @@ async fn status(app: &AppHandle) -> Result<McpStatus, String> {
     })
 }
 
+async fn start_available(app: AppHandle, preferred_port: u16) -> Result<u16, String> {
+    match server::start(app.clone(), preferred_port).await {
+        Ok(port) => Ok(port),
+        Err(error) if preferred_port != 0 && error.contains("could not bind") => {
+            server::start(app, 0).await
+        }
+        Err(error) => Err(error),
+    }
+}
+
+pub async fn start_configured(app: AppHandle, preferred_port: u16) -> Result<u16, String> {
+    let port = start_available(app, preferred_port).await?;
+    let mut cfg = crate::config::read_config()?;
+    cfg.mcp_port = port;
+    crate::config::write_config(&cfg)?;
+    Ok(port)
+}
+
 #[tauri::command]
 pub async fn mcp_register_tools(app: AppHandle, tools: Vec<ToolMeta>) -> Result<(), String> {
     let state = app.state::<McpState>();
@@ -56,32 +74,37 @@ pub async fn mcp_status(app: AppHandle) -> Result<McpStatus, String> {
 }
 
 #[tauri::command]
-pub async fn mcp_set_enabled(
-    app: AppHandle,
-    enabled: bool,
-    port: u16,
-) -> Result<McpStatus, String> {
-    let mut cfg = crate::config::read_config()?;
-    cfg.mcp_enabled = enabled;
-    cfg.mcp_port = port;
-    crate::config::write_config(&cfg)?;
+pub async fn mcp_set_enabled(app: AppHandle, enabled: bool) -> Result<McpStatus, String> {
+    let cfg = crate::config::read_config()?;
     let running_port = *app.state::<McpState>().bound_port.lock().await;
-    if enabled {
-        match running_port {
-            // Already serving this port: leave it alone. Restarting would stop
-            // then rebind the same port and can race the listener release.
-            Some(p) if p == port => {}
-            Some(_) => {
-                server::stop(&app).await?;
-                server::start(app.clone(), port).await?;
-            }
-            None => {
-                server::start(app.clone(), port).await?;
-            }
-        }
-    } else if running_port.is_some() {
+    let started_port = if enabled && running_port.is_none() {
+        Some(start_available(app.clone(), cfg.mcp_port).await?)
+    } else {
+        None
+    };
+    if !enabled && running_port.is_some() {
         server::stop(&app).await?;
     }
+    let mut cfg = crate::config::read_config()?;
+    if let Some(port) = started_port {
+        cfg.mcp_port = port;
+    }
+    cfg.mcp_enabled = enabled;
+    crate::config::write_config(&cfg)?;
+    status(&app).await
+}
+
+#[tauri::command]
+pub async fn mcp_restart_server(app: AppHandle) -> Result<McpStatus, String> {
+    let preferred_port = crate::config::read_config()?.mcp_port;
+    if app.state::<McpState>().bound_port.lock().await.is_some() {
+        server::stop(&app).await?;
+    }
+    let port = start_available(app.clone(), preferred_port).await?;
+    let mut cfg = crate::config::read_config()?;
+    cfg.mcp_port = port;
+    cfg.mcp_enabled = true;
+    crate::config::write_config(&cfg)?;
     status(&app).await
 }
 

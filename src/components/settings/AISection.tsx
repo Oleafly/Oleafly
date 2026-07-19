@@ -24,7 +24,6 @@ import {
 import { getConfig, setConfig, type AppConfig } from "@/lib/tauri";
 import {
   PROVIDERS,
-  credentialMeta,
   defaultModel,
   getProvider,
 } from "@/lib/ai-providers";
@@ -370,7 +369,6 @@ export function AISection() {
 
       <div className="space-y-2.5">
         {PROVIDERS.map((p) => {
-          const meta = credentialMeta(p.id);
           const value = keys[p.id] ?? "";
           const saved = savedKeys[p.id] ?? "";
           const dirty = value.trim().length > 0 && value !== saved;
@@ -384,7 +382,7 @@ export function AISection() {
             <div
               key={p.id}
               data-testid={`ai-provider-card-${p.id}`}
-              className="rounded-lg border bg-background transition-colors"
+              className="rounded-lg border bg-card transition-colors"
             >
               <div className="flex items-start gap-2 p-3">
                 <button
@@ -465,7 +463,7 @@ export function AISection() {
                       type="password"
                       value={value}
                       onChange={(e) => setKeys((k) => ({ ...k, [p.id]: e.target.value }))}
-                      placeholder={meta.placeholder}
+                      placeholder="Paste your API key here"
                       className="flex-1 rounded-md border border-input bg-background px-3 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-ring"
                     />
                     {dirty ? (
@@ -581,7 +579,7 @@ export function AISection() {
         </div>
       )}
 
-      <div className="overflow-hidden rounded-lg border bg-background">
+      <div className="overflow-hidden rounded-lg border bg-card">
         <button type="button"
           onClick={() => setToolsOpen((v) => !v)}
           className="flex w-full items-center gap-1.5 p-3 text-left text-xs font-semibold hover:bg-accent/40"

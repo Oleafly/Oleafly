@@ -12,7 +12,9 @@ The first compile fetches LaTeX packages (a few hundred MB) and caches them, so 
 
 ## 2. Create your first project
 
-1. On the Library home, click New from template.
+On a fresh installation, the non-dismissible welcome screen offers **Show me around**. The progressive guide introduces Home, creates a real project with you, and then continues in the workspace. Later guides appear only when you first open Settings, AI Assistant, or Diagram Composer. You can manage individual guides in **Settings → General → Enable tour guides** or restart the current guide from **Help & About → Start tour**.
+
+1. On the Library home, click **New project**.
 2. Pick a starter:
    - Blank document: a minimal article.
    - One-Page Resume: an ATS-safe single-page resume.

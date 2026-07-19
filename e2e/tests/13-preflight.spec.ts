@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures";
-import { openProject, openRailTab, pressGlobal } from "../helpers";
+import { openProject, openRailTab } from "../helpers";
 
 test("preflight categories render and a single check runs independently", async ({
   tauriPage,
@@ -8,21 +8,30 @@ test("preflight categories render and a single check runs independently", async 
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
   // Preflight's PDF checks need a compiled PDF.
-  await pressGlobal(tauriPage, "Enter", { meta: true });
   await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok", {
     timeout: 90_000,
   });
+  await expect(tauriPage.locator(".pdf-canvas")).toBeVisible({ timeout: 30_000 });
 
   await openRailTab(tauriPage, "Preflight (ATS + accessibility)");
-  await expect(tauriPage.getByText("Run")).toBeVisible();
+  const runButton = tauriPage.locator('[aria-label^="Run "]:not(:disabled)').first();
+  await expect(runButton).toBeVisible();
 
-  await tauriPage.getByText("Run").click();
-  await expect.poll(
-    () => tauriPage.evaluate<boolean>(
-      `/✓|issue|score|finding/i.test(document.body.innerText) && !document.querySelector('.animate-spin')`,
-    ),
+  await runButton.click();
+  await expect(tauriPage.getByTestId("preflight-panel")).toHaveAttribute(
+    "data-running",
+    "false",
     { timeout: 60_000 },
-  ).toBe(true);
-  const after = await tauriPage.evaluate<string>(`document.body.innerText`);
-  expect(after).toMatch(/✓|issue|score|finding/i);
+  );
+  await expect(tauriPage.getByTestId("preflight-panel")).toHaveAttribute(
+    "data-error",
+    "",
+  );
+  await expect(tauriPage.getByTestId("preflight-panel")).toHaveAttribute(
+    "data-report",
+    "true",
+    { timeout: 60_000 },
+  );
+  await expect(tauriPage.getByText("No document language set")).toBeVisible();
+  await expect(tauriPage.getByText("Accessible export")).toBeVisible();
 });

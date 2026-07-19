@@ -11,11 +11,11 @@ This is useful when you already have a Claude (or similar) subscription and want
 
 The server runs only while Oleafly is open. It listens on `127.0.0.1` only (this computer), never on the network. When you turn it off or quit Oleafly, the endpoint disappears.
 
-Default port is `5323` (`http://127.0.0.1:5323/mcp`). Change it in Settings if that port is taken.
+Oleafly prefers port `5323` (`http://127.0.0.1:5323/mcp`). If it is unavailable, the server automatically binds another free local port and saves it for the next launch. Settings shows the active URL. Its restart button reuses the current port when possible or selects another free one.
 
 ## Connect your client
 
-Settings shows copy-paste snippets for common clients. Replace `<token>` with the bearer token from Settings (Reveal / Copy), or use the live values when the server is running.
+Settings shows copy-paste snippets for common clients. Copy the live URL because the selected port may differ from `5323`, then replace `<token>` with the bearer token from Settings (Reveal / Copy).
 
 ### Claude Code
 
@@ -148,7 +148,7 @@ A cloud chat service cannot reach `127.0.0.1` on your machine. Use **Claude Desk
 | Symptom | What to try |
 |---|---|
 | Empty tool list right after launch | The app registers tools a moment after startup. Retry `tools/list`. |
-| Port in use | Change the port in Settings → MCP and re-enable. |
+| Port changed from `5323` | The preferred port was unavailable, so Oleafly selected a free one. Copy the live URL from Settings. |
 | HTTP 401 | Token mismatch (e.g. after Regenerate). Copy the new token into the client. |
 | HTTP 403 | Client sent an `Origin` header or a non-loopback `Host`. Use a native MCP client, not a browser tab. |
 | Call timed out | Each tool call waits up to **5 minutes** (300 s) for compiles or for you to click Approve. Approve or reject pending cards, or retry. |

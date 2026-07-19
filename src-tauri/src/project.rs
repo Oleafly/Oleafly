@@ -76,13 +76,25 @@ pub struct FileEntry {
 }
 
 #[derive(Serialize)]
+pub struct ProjectExportInfo {
+    pub date: f64,
+    pub filename: String,
+    pub path: String,
+    pub format: String,
+}
+
+#[derive(Serialize)]
 pub struct ProjectInfo {
     pub id: String,
     pub name: String,
     pub main_doc: String,
+    pub engine: String,
+    pub kind: String,
+    pub created_at: f64,
     pub updated_at: f64,
-    /// Book-cover color (hex), or empty if unset (UI falls back to its default).
     pub color: String,
+    pub has_preview: bool,
+    pub exports: Vec<ProjectExportInfo>,
 }
 
 fn meta_path(project_id: &str) -> Result<PathBuf, String> {
@@ -459,13 +471,37 @@ pub fn list_projects() -> Result<Vec<ProjectInfo>, String> {
         }
         let id = entry.file_name().to_string_lossy().into_owned();
         let meta = read_meta(&id).unwrap_or_default();
-        let updated_at = entry
-            .metadata()
-            .and_then(|m| m.modified())
-            .ok()
+        let fs_meta = entry.metadata().ok();
+        let updated_at = fs_meta
+            .as_ref()
+            .and_then(|m| m.modified().ok())
             .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
             .map(|d| d.as_secs_f64())
             .unwrap_or(0.0);
+        let created_at = fs_meta
+            .as_ref()
+            .and_then(|m| m.created().ok())
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_secs_f64())
+            .unwrap_or(updated_at);
+        let has_preview =
+            crate::document_engine::compiled_pdf_path(&id, &meta.engine, &meta.main_doc)
+                .map(|path| path.is_file())
+                .unwrap_or(false);
+        let exports = meta
+            .exports
+            .iter()
+            .map(|export| ProjectExportInfo {
+                date: export.date,
+                filename: export.filename.clone(),
+                path: export.path.clone(),
+                format: Path::new(&export.filename)
+                    .extension()
+                    .and_then(|extension| extension.to_str())
+                    .unwrap_or_default()
+                    .to_ascii_lowercase(),
+            })
+            .collect();
         out.push(ProjectInfo {
             name: if meta.name.is_empty() {
                 id.clone()
@@ -473,7 +509,20 @@ pub fn list_projects() -> Result<Vec<ProjectInfo>, String> {
                 meta.name
             },
             main_doc: meta.main_doc,
+            engine: if meta.engine.is_empty() {
+                default_engine()
+            } else {
+                meta.engine
+            },
+            kind: if meta.kind.is_empty() {
+                "document".to_string()
+            } else {
+                meta.kind
+            },
+            created_at,
             color: meta.color,
+            has_preview,
+            exports,
             id,
             updated_at,
         });

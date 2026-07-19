@@ -1,15 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Update } from "@tauri-apps/plugin-updater";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 import { open as openUrl } from "@tauri-apps/plugin-shell";
-import { AlertTriangle, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LeafLogo } from "@/components/layout/LeafLogo";
 import { Markdown } from "@/components/ui/markdown";
 import { findUpdate, installUpdate } from "@/lib/updater";
 import { Progress } from "@/components/ui/progress";
 import { logError } from "@/lib/log";
+import { appVersion } from "@/lib/tauri";
+import { celebrate } from "@/lib/confetti";
 
 const RELEASES_URL = "https://github.com/prajwal-svm/OpenLeaf/releases/latest";
 
@@ -24,11 +26,23 @@ export function UpdateWindow() {
   const [phase, setPhase] = useState<Phase>("checking");
   const [update, setUpdate] = useState<Update | null>(null);
   const [percent, setPercent] = useState(0);
+  const [version, setVersion] = useState("");
+  const celebratedRef = useRef(false);
   // Linux .deb/.rpm can't self-update (only AppImage can); when false we link
   // to the Releases page instead of an in-place "Update now" that would fail.
   const [selfInstallable, setSelfInstallable] = useState(true);
 
   const close = () => void getCurrentWindow().close();
+
+  useEffect(() => {
+    void appVersion().then(setVersion).catch(() => setVersion(""));
+  }, []);
+
+  useEffect(() => {
+    if (phase !== "upToDate" || celebratedRef.current) return;
+    celebratedRef.current = true;
+    celebrate();
+  }, [phase]);
 
   useEffect(() => {
     let cancelled = false;
@@ -116,9 +130,19 @@ export function UpdateWindow() {
           <p className="text-sm text-muted-foreground">Looking for the latest version…</p>
         )}
         {phase === "upToDate" && (
-          <p className="text-sm text-muted-foreground">
-            You're running the latest version of Oleafly.
-          </p>
+          <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+            <div className="flex size-20 items-center justify-center text-emerald-500">
+              <CheckCircle2 className="size-14" strokeWidth={1.6} />
+            </div>
+            <div className="flex flex-col gap-1">
+              <p className="text-lg font-semibold text-foreground">You're up to date!</p>
+              <p className="text-sm text-muted-foreground">
+                {version
+                  ? `Oleafly v${version} is the latest version`
+                  : "You're running the latest version of Oleafly"}
+              </p>
+            </div>
+          </div>
         )}
         {phase === "error" && (
           <p className="inline-flex items-center gap-1.5 text-sm text-destructive">

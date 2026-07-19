@@ -17,6 +17,8 @@ automatable by design) · **—** not yet covered (listed at the bottom).
 | Hover PDF preview | slides in for compiled projects, disabled via the appearance setting | 21 |
 | Auto-compile on open | split/pdf layouts render the PDF without pressing compile | 02 |
 | Book context menu | fork (unique name), delete (scoped confirm override) | 21 |
+| Project metadata dialogs | details and export history open/close without leaving a blocking layer | 21 |
+| Advanced project filters | abandoned select interaction keeps the popover open; metadata filters update the shelf | 21 |
 | Project rename (toolbar inline) | edit, save, revert | 22 |
 | Back to library / reopen | | 22 |
 | Change book color / open via Enter | | — (low risk; color is cosmetic) |

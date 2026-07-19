@@ -11,26 +11,13 @@ async function pickOption(page: Page, rowText: string, optionText: string) {
     typeof expect
   >[0];
   await expect(row).toBeVisible({ timeout: 10_000 });
+  await page.click(`[data-testid="settings-row-${rowId}"] [role="combobox"]`);
+  const optionSelector = `[role="option"][data-label=${JSON.stringify(optionText)}]`;
+  await page.waitForFunction(`!!document.querySelector(${JSON.stringify(optionSelector)})`, 5_000);
   await page.evaluate(
-    `(() => {
-      const row = document.querySelector(${JSON.stringify(`[data-testid="settings-row-${rowId}"]`)});
-      const combo = row?.querySelector('[role="combobox"]');
-      if (!combo) throw new Error('no combobox in row ' + ${JSON.stringify(rowText)});
-      combo.click();
-      return 1;
-    })()`,
+    `document.querySelector(${JSON.stringify(optionSelector)}).scrollIntoView({ block: "nearest" })`,
   );
-  await page.waitForFunction(`!!document.querySelector('[role="option"]')`, 5_000);
-  await page.evaluate(
-    `(() => {
-      const opt = Array.from(document.querySelectorAll('[role="option"]')).find(o => o.textContent.trim() === ${JSON.stringify(optionText)});
-      if (!opt) throw new Error('option not found: ' + ${JSON.stringify(optionText)});
-      opt.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
-      opt.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
-      opt.click();
-      return 1;
-    })()`,
-  );
+  await page.click(optionSelector);
 }
 
 test("every editor font size option restyles the editor", async ({ tauriPage }) => {
@@ -223,15 +210,12 @@ test("offline mode compiles from the local cache", async ({ tauriPage }) => {
   await tauriPage.click('[aria-label="Close settings"]');
 });
 
-test("the shortcuts row opens the hotkeys reference", async ({ tauriPage }) => {
+test("the shortcuts settings section exposes configurable app shortcuts", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await openSettings(tauriPage, "general");
-  await tauriPage.getByText("command palette").click();
-  await expect(tauriPage.locator('input[placeholder="Search shortcuts…"]')).toBeVisible({
-    timeout: 10_000,
-  });
-  await pressGlobal(tauriPage, "Escape");
+  await openSettings(tauriPage, "shortcuts");
+  await expect(tauriPage.getByText("Command palette", { exact: true })).toBeVisible();
+  await expect(tauriPage.getByText("Reset all shortcuts", { exact: true })).toBeVisible();
 });
 
 test("reset to defaults restores factory preferences", async ({ tauriPage }) => {

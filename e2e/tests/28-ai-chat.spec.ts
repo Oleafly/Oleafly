@@ -69,6 +69,9 @@ test("connect an AI provider through the settings UI", async ({ tauriPage }) => 
 
   // The chat panel now offers the real input instead of the onboarding gate.
   await openRailTab(tauriPage, "Chat / AI Assistant");
+  await expect(
+    tauriPage.locator('[data-tour="ai-assistant"][data-tour-configured="true"]'),
+  ).toBeVisible({ timeout: 10_000 });
   await expect(tauriPage.locator('textarea[placeholder*="Ask AI"]')).toBeVisible({
     timeout: 10_000,
   });

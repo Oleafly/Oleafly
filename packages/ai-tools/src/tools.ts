@@ -66,8 +66,13 @@ export interface AiToolsHost {
   setLastFigurePreview(v: { pdfBytes: Uint8Array } | null): void;
   getLastFigurePreview(): { pdfBytes: Uint8Array } | null;
   getFigureInsertTarget(): { from: number; to: number } | null;
-  insertAtCursor(text: string): void;
-  replaceRange(from: number, to: number, text: string): void;
+  insertAtCursor(projectId: string, text: string): boolean | Promise<boolean>;
+  replaceRange(
+    projectId: string,
+    from: number,
+    to: number,
+    text: string,
+  ): boolean | Promise<boolean>;
   // Agent plan checklist (update_todos / get_todos).
   getAgentTodos(): { id: string; content: string; status: string }[];
   setAgentTodos(todos: { id: string; content: string; status: string }[]): void;
@@ -889,8 +894,10 @@ export function createFigureTools(
           return declined("insert_figure");
         }
         const target = getFigureInsertTarget();
-        if (target) replaceRange(target.from, target.to, latex);
-        else insertAtCursor(latex);
+        const inserted = target
+          ? await replaceRange(id, target.from, target.to, latex)
+          : await insertAtCursor(id, latex);
+        if (!inserted) return { error: "No editable document is open" };
         try {
           if (png) {
             const name = slugifyFigureName(caption || label || "figure");

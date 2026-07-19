@@ -1,5 +1,5 @@
 use tauri::ipc::Response;
-use tauri::State;
+use tauri::{Manager, State};
 
 use crate::document_engine::{CompileRequest, CompileResult, CompileTarget};
 use crate::paths;
@@ -7,6 +7,17 @@ use crate::proc::NoConsole;
 use crate::state::AppState;
 
 const MAX_QUEUED_PROJECTS: usize = 128;
+
+#[tauri::command]
+pub fn reload_views(app: tauri::AppHandle, window: tauri::WebviewWindow) {
+    let caller = window.label();
+    for (label, view) in app.webview_windows() {
+        if label != caller {
+            let _ = view.reload();
+        }
+    }
+    let _ = window.eval("setTimeout(() => location.reload(), 0)");
+}
 
 fn register_compile_ticket(
     latest: &mut std::collections::HashMap<String, u64>,
