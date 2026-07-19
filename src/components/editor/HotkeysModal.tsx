@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
-import { Search, X } from "lucide-react";
+import { Search, Wrench, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { Tooltip } from "@/components/ui/tooltip";
 import { useSettingsStore } from "@/store/settings";
 import { shortcut } from "@/lib/utils";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
@@ -9,6 +11,47 @@ import { objectKey } from "@/lib/react-key";
 
 // Leaves rows that already spell out both conventions (e.g. "Ctrl-Space") untouched.
 const keyLabel = (keys: string) => (keys.includes("Ctrl") ? keys : shortcut(keys));
+
+function ShortcutKeys({ keys }: { keys: string }) {
+  const mac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+  let tokens: string[];
+  if (keys === "⌘/Ctrl-click") {
+    tokens = [mac ? "⌘" : "Ctrl", "Click"];
+  } else if (keys.includes("Toolbar →")) {
+    tokens = keys.split(" → ");
+  } else {
+    const normalized = keyLabel(keys);
+    const [combination, command] = normalized.split(" → ");
+    if (combination.includes("+")) {
+      tokens = combination.split("+");
+    } else if (combination.includes("-")) {
+      tokens = combination.split("-");
+    } else {
+      tokens = [];
+      let remaining = combination;
+      for (const modifier of ["⌘", "⇧", "⌥"]) {
+        if (!remaining.startsWith(modifier)) continue;
+        tokens.push(modifier === "⇧" ? "Shift" : modifier);
+        remaining = remaining.slice(modifier.length);
+      }
+      if (remaining) tokens.push(remaining === "↵" ? "Enter" : remaining);
+    }
+    if (command) tokens.push("→", command);
+  }
+
+  return (
+    <KbdGroup className="shrink-0">
+      {tokens.map((token) => (
+        <Kbd
+          key={token}
+          className="h-7 min-w-7 rounded-md border bg-background px-2 text-sm text-foreground"
+        >
+          {token}
+        </Kbd>
+      ))}
+    </KbdGroup>
+  );
+}
 
 const SHORTCUTS: { category: string; keys: string; desc: string }[] = [
   { category: "Compile", keys: "⌘↵", desc: "Recompile" },
@@ -37,6 +80,8 @@ const SHORTCUTS: { category: string; keys: string; desc: string }[] = [
 export function HotkeysModal() {
   const open = useSettingsStore((s) => s.hotkeysOpen);
   const setOpen = useSettingsStore((s) => s.setHotkeysOpen);
+  const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
+  const setSettingsInitialSection = useSettingsStore((s) => s.setSettingsInitialSection);
   const [q, setQ] = useState("");
   const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDivElement>(open, () => setOpen(false));
 
@@ -73,9 +118,26 @@ export function HotkeysModal() {
       >
         <div className="flex min-h-14 items-center justify-between border-b border-sidebar-border px-5 py-3">
           <h2 id="hotkeys-title" className="text-sm font-semibold">Keyboard Shortcuts</h2>
-          <Button variant="ghost" size="icon" className="size-7" onClick={() => setOpen(false)} aria-label="Close keyboard shortcuts">
-            <X className="size-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Tooltip label="Customize keyboard shortcuts">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7"
+                onClick={() => {
+                  setOpen(false);
+                  setSettingsInitialSection("shortcuts");
+                  requestAnimationFrame(() => setSettingsOpen(true));
+                }}
+                aria-label="Open keyboard shortcut settings"
+              >
+                <Wrench />
+              </Button>
+            </Tooltip>
+            <Button variant="ghost" size="icon" className="size-7" onClick={() => setOpen(false)} aria-label="Close keyboard shortcuts">
+              <X />
+            </Button>
+          </div>
         </div>
         <div className="border-b border-sidebar-border p-3">
           <div className="flex items-center gap-2 rounded-md border border-input bg-background px-3 transition-colors focus-within:ring-1 focus-within:ring-ring">
@@ -101,9 +163,7 @@ export function HotkeysModal() {
                 .map((s) => (
                   <div key={objectKey(s, "shortcut")} className="flex items-center justify-between py-1.5">
                     <span className="text-sm">{s.desc}</span>
-                    <kbd className="rounded border border-sidebar-border bg-background px-2 py-0.5 font-mono text-xs">
-                      {keyLabel(s.keys)}
-                    </kbd>
+                    <ShortcutKeys keys={s.keys} />
                   </div>
                 ))}
             </div>

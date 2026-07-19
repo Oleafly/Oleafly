@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Command } from "cmdk";
 import {
-  CornerDownLeft,
   FileText,
   FolderOpen,
   Link2,
@@ -13,16 +12,101 @@ import {
 } from "lucide-react";
 import { commandsFor, commandLabel, type AppContext } from "@openleaf/registry";
 import { useSettingsStore } from "@/store/settings";
+import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { useFilesStore } from "@/store/files";
 import { useTheme } from "@/lib/theme";
-import { searchDocs, type SearchHit } from "@/lib/tauri";
+import { searchDocs, type ProjectInfo, type SearchHit } from "@/lib/tauri";
 import { gotoLine } from "@/components/editor/cm/controller";
 import { cn } from "@/lib/utils";
 import { objectKey } from "@/lib/react-key";
+import { Kbd } from "@/components/ui/kbd";
+import { useFavoritesStore } from "@/store/favorites";
 
 function basename(p: string) {
   const i = p.lastIndexOf("/");
   return i >= 0 ? p.slice(i + 1) : p;
+}
+
+function searchableDate(timestamp: number) {
+  if (!timestamp) return "";
+  const date = new Date(timestamp * 1000);
+  if (Number.isNaN(date.getTime())) return "";
+  return `${date.toLocaleDateString()} ${date.toISOString().slice(0, 10)}`;
+}
+
+function searchableEngine(project: ProjectInfo) {
+  const raw = project.engine?.trim().toLowerCase() ?? "";
+  const path = project.main_doc.toLowerCase();
+  const label =
+    raw === "typst" || raw === "typ" || path.endsWith(".typ")
+      ? "typst"
+      : raw === "markdown" ||
+          raw === "md" ||
+          raw === "pandoc" ||
+          path.endsWith(".md") ||
+          path.endsWith(".markdown")
+        ? "markdown"
+        : "tectonic";
+  return `${raw} ${label}`.trim();
+}
+
+function projectSearchFields(project: ProjectInfo, bookmarked: boolean) {
+  const exports = (project.exports ?? [])
+    .map(
+      (item) =>
+        `${item.filename} ${item.format} ${item.path} ${searchableDate(item.date)}`,
+    )
+    .join(" ");
+  return {
+    id: project.id,
+    project_id: project.id,
+    name: project.name,
+    engine: searchableEngine(project),
+    type: searchableEngine(project),
+    kind: project.kind,
+    main: project.main_doc,
+    main_doc: project.main_doc,
+    path: project.main_doc,
+    created: searchableDate(project.created_at),
+    created_at: searchableDate(project.created_at),
+    modified: searchableDate(project.updated_at),
+    modified_at: searchableDate(project.updated_at),
+    updated: searchableDate(project.updated_at),
+    color: project.color ?? "",
+    cover: project.color ?? "",
+    bookmark: bookmarked
+      ? "yes true bookmarked favorite starred"
+      : "no false unbookmarked not-bookmarked",
+    favorite: bookmarked
+      ? "yes true bookmarked favorite starred"
+      : "no false unbookmarked not-bookmarked",
+    preview: project.has_preview
+      ? "yes true available compiled pdf"
+      : "no false missing",
+    pdf_preview: project.has_preview
+      ? "yes true available compiled pdf"
+      : "no false missing",
+    export: exports,
+    exports,
+  };
+}
+
+export function projectMatches(project: ProjectInfo, query: string, bookmarked: boolean) {
+  const fields = projectSearchFields(project, bookmarked);
+  const all = Object.values(fields).join(" ").toLowerCase();
+  return query
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .every((token) => {
+      const separator = token.indexOf(":");
+      if (separator < 1) return all.includes(token);
+      const field = token.slice(0, separator) as keyof typeof fields;
+      const value = token.slice(separator + 1);
+      if (!Object.hasOwn(fields, field)) return false;
+      const fieldValue = fields[field];
+      return typeof fieldValue === "string" && fieldValue.toLowerCase().includes(value);
+    });
 }
 
 type Mode = "all" | "projects" | "docs" | "refs" | "create" | "theme" | "settings" | "help";
@@ -55,6 +139,7 @@ export function SearchOmnibar() {
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
   const setRailTab = useSettingsStore((s) => s.setRailTab);
   const projects = useFilesStore((s) => s.projects);
+  const favs = useFavoritesStore((s) => s.favs);
   const projectId = useFilesStore((s) => s.projectId);
   const projectKind = useFilesStore((s) => s.projectKind);
   const openProject = useFilesStore((s) => s.openProject);
@@ -93,7 +178,7 @@ export function SearchOmnibar() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "f") {
+      if (matchesShortcut(e, useShortcutStore.getState().bindings.searchDocuments)) {
         e.preventDefault();
         setSearchOpen(!useSettingsStore.getState().searchOpen);
       }
@@ -110,10 +195,11 @@ export function SearchOmnibar() {
 
   const matchedProjects = useMemo(() => {
     if (mode !== "all" && mode !== "projects") return [];
-    const q = trimmed.toLowerCase();
-    const list = q ? projects.filter((p) => p.name.toLowerCase().includes(q)) : projects;
+    const list = trimmed
+      ? projects.filter((project) => projectMatches(project, trimmed, favs.includes(project.id)))
+      : projects;
     return list.slice(0, mode === "projects" ? 30 : 6);
-  }, [projects, trimmed, mode]);
+  }, [favs, projects, trimmed, mode]);
 
   const commands = useMemo(() => {
     const ctx: AppContext = { projectId, projectKind, theme };
@@ -146,7 +232,7 @@ export function SearchOmnibar() {
 
   const placeholder =
     mode === "projects"
-      ? "Search projects…"
+      ? "Search projects by name, engine, kind, date, or metadata…"
       : mode === "docs"
         ? "Search inside documents…"
         : "Search projects, documents, or type / for commands…";
@@ -289,9 +375,13 @@ export function SearchOmnibar() {
 
         <div className="flex items-center gap-3 border-t border-border px-3 py-1.5 text-[11px] text-muted-foreground">
           <span className="flex items-center gap-1">
-            <CornerDownLeft className="size-3" /> open
+            <Kbd className="border bg-background text-foreground">Enter</Kbd>
+            <span>Open</span>
           </span>
-          <span>/ for commands</span>
+          <span className="flex items-center gap-1">
+            <Kbd className="border bg-background text-foreground">/</Kbd>
+            <span>Commands</span>
+          </span>
         </div>
       </div>
     </Command.Dialog>

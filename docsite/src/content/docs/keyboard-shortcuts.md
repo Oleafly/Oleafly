@@ -9,6 +9,10 @@ Oleafly is comfortable to drive entirely from the keyboard. Press **⌘/** (Ctrl
 
 macOS shortcuts are listed first; the Windows/Linux equivalent swaps ⌘ for Ctrl.
 
+## Customize application shortcuts
+
+Open **Settings → Keyboard Shortcuts** to change Recompile, Command palette, Search all documents, Go to PDF, or Shortcut reference. Select the displayed keys, press the new combination, and click elsewhere to cancel recording. Reset controls restore one binding or all application bindings. Custom bindings must include ⌘ on macOS or Ctrl on Windows and Linux. Oleafly rejects standalone keys and combinations already used by the editor.
+
 ## Global
 
 | macOS | Windows / Linux | Action |

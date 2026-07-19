@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   PanelGroup,
   Panel,
@@ -19,6 +19,7 @@ import { useFilesStore, useActiveContent } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
 import { usePreflightStore } from "@/store/preflight";
 import { useSettingsStore } from "@/store/settings";
+import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { resetOpenCompileMarker, shouldCompileOnOpen } from "@/lib/open-compile";
 import { useGitStatusStore } from "@/store/git-status";
 import { useGithubStore } from "@/store/github";
@@ -31,6 +32,7 @@ import { cn } from "@/lib/utils";
 import { ArrowRight } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ExternalToolApprovals } from "@/components/ai/ExternalToolApprovals";
+import { AboutModal } from "@/components/layout/AboutModal";
 
 // Heavy surfaces load on demand so cold start stays lean.
 const SettingsModal = lazy(() =>
@@ -128,6 +130,7 @@ function DividerBtn({
 const AUTO_COMPILE_DEBOUNCE_MS = 2500;
 
 export default function App() {
+  const [aboutOpen, setAboutOpen] = useState(false);
   const projectId = useFilesStore((s) => s.projectId);
   const projectKind = useFilesStore((s) => s.projectKind);
   const engine = useFilesStore((s) => s.engine);
@@ -149,8 +152,9 @@ export default function App() {
   const chatFloating = useSettingsStore((s) => s.chatFloating);
   const railTab = useSettingsStore((s) => s.railTab);
   const sidebarPanelRef = useRef<ImperativePanelHandle>(null);
-  const previousRailTabRef = useRef(railTab);
+  const previousRailTabRef = useRef<string | null>(null);
   const sidebarSizeBeforeAiRef = useRef<number | null>(null);
+  const aiResizePendingRef = useRef(false);
 
   useEffect(() => {
     void refreshProjects();
@@ -158,29 +162,40 @@ export default function App() {
   }, [refreshProjects]);
 
   useEffect(() => {
-    const wasAi = previousRailTabRef.current === "ai" || previousRailTabRef.current === "chat";
+    const wasAi =
+      previousRailTabRef.current === "ai" || previousRailTabRef.current === "chat";
     const isAi = railTab === "ai" || railTab === "chat";
     previousRailTabRef.current = railTab;
 
     if (isAi && !wasAi) {
       useSettingsStore.getState().setChatFloating(false);
+      aiResizePendingRef.current = true;
+      const panel = sidebarPanelRef.current;
+      if (panel) sidebarSizeBeforeAiRef.current = panel.getSize();
       setViewMode("pdf");
-      window.requestAnimationFrame(() => {
+    }
+
+    if (isAi && aiResizePendingRef.current && viewMode === "pdf") {
+      const frame = window.requestAnimationFrame(() => {
         const panel = sidebarPanelRef.current;
         if (!panel) return;
-        sidebarSizeBeforeAiRef.current = panel.getSize();
+        if (sidebarSizeBeforeAiRef.current == null) {
+          sidebarSizeBeforeAiRef.current = panel.getSize();
+        }
         panel.resize(50);
+        aiResizePendingRef.current = false;
       });
-      return;
+      return () => window.cancelAnimationFrame(frame);
     }
 
     if (!isAi && wasAi) {
+      aiResizePendingRef.current = false;
       const previousSize = sidebarSizeBeforeAiRef.current;
       sidebarSizeBeforeAiRef.current = null;
       if (previousSize == null) return;
       window.requestAnimationFrame(() => sidebarPanelRef.current?.resize(previousSize));
     }
-  }, [railTab, setViewMode]);
+  }, [railTab, setViewMode, viewMode]);
 
   // No-op in dev / the browser; only prompts if an update is actually available.
   useEffect(() => {
@@ -194,6 +209,12 @@ export default function App() {
     const unlisten = listen("menu://check-updates", () => {
       void openUpdateWindow({ manual: true });
     });
+    return () => void unlisten.then((off) => off());
+  }, []);
+
+  useEffect(() => {
+    if (!isTauri()) return;
+    const unlisten = listen("menu://about", () => setAboutOpen(true));
     return () => void unlisten.then((off) => off());
   }, []);
 
@@ -336,17 +357,17 @@ export default function App() {
   // Manual recompile: Cmd/Ctrl + Enter. Forward SyncTeX: Cmd/Ctrl + Shift + J.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (!(e.metaKey || e.ctrlKey)) return;
-      if (e.key === "Enter") {
+      const bindings = useShortcutStore.getState().bindings;
+      if (matchesShortcut(e, bindings.recompile)) {
         e.preventDefault();
         // Reveal the PDF pane if it's hidden, so a keyboard recompile shows output.
         const s = useSettingsStore.getState();
         if (s.viewMode === "editor") s.setViewMode("split");
         void recompile();
-      } else if (e.shiftKey && e.key.toLowerCase() === "j") {
+      } else if (matchesShortcut(e, bindings.forwardSync)) {
         e.preventDefault();
         void forwardFromCursor();
-      } else if (e.key === "/") {
+      } else if (matchesShortcut(e, bindings.shortcutReference)) {
         e.preventDefault();
         useSettingsStore.getState().setHotkeysOpen(true);
       }
@@ -408,6 +429,7 @@ export default function App() {
         <SearchOmnibar />
         <GlobalNewProject />
         <ExternalToolApprovals />
+        <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
         {chatFloating && (
           <Suspense fallback={null}>
             <CopilotOverlay />
@@ -489,6 +511,7 @@ export default function App() {
         <SearchOmnibar />
         <GlobalNewProject />
         <ExternalToolApprovals />
+        <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
         {chatFloating && (
           <Suspense fallback={null}>
             <CopilotOverlay />

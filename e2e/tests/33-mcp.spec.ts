@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "../fixtures";
-import { openProject, openSettings } from "../helpers";
+import { createBlankProject, openSettings } from "../helpers";
 
 async function rpc(url: string, token: string, body: object) {
   const res = await fetch(url, {
@@ -40,7 +40,7 @@ test.describe.configure({ mode: "serial" });
 
 test("mcp server serves the in-app tool surface end to end", async ({ tauriPage }) => {
   test.setTimeout(120_000);
-  await openProject(tauriPage, "E2E Doc");
+  await createBlankProject(tauriPage, `MCP E2E ${Date.now()}`);
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
   await openSettings(tauriPage, "mcp");
@@ -59,6 +59,24 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
   };
   expect(url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/mcp$/);
   expect(token.length).toBe(64);
+
+  await openSettings(tauriPage, "mcp");
+  await tauriPage.click('[aria-label="Restart MCP server and select an available port"]');
+  await expect(tauriPage.locator('[data-testid="mcp-status"]')).toContainText("Running", {
+    timeout: 15_000,
+  });
+  await expect
+    .poll(
+      () => {
+        const restarted = JSON.parse(readFileSync(join(dataDir!, "mcp.json"), "utf8")) as {
+          token: string;
+        };
+        return restarted.token;
+      },
+      { timeout: 15_000 },
+    )
+    .toBe(token);
+  await tauriPage.click('[aria-label="Close settings"]');
 
   const init = await rpc(url, token, {
     jsonrpc: "2.0",

@@ -416,6 +416,9 @@ export function DiagramComposer({
     <div
       role="dialog"
       aria-label="Insert diagram"
+      aria-modal="true"
+      aria-labelledby="diagram-composer-title"
+      data-tour="diagram-composer"
       className="fixed inset-0 z-50 flex flex-col bg-background"
     >
       <div
@@ -436,7 +439,11 @@ export function DiagramComposer({
             <ArrowLeft className="size-4" />
           </button>
         </Tooltip>
-        <h2 className="shrink-0 truncate text-sm font-semibold" title={projectName || "Insert diagram"}>
+        <h2
+          id="diagram-composer-title"
+          className="max-w-[15ch] shrink-0 truncate text-sm font-semibold"
+          title={projectName || "Insert diagram"}
+        >
           {projectName || "Insert diagram"}
         </h2>
         <ChevronRight className="size-4 shrink-0 text-muted-foreground/50" />
@@ -505,7 +512,7 @@ export function DiagramComposer({
           </Tooltip>
         </div>
 
-        <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-lg border bg-background/80 p-0.5">
+        <div data-tour="diagram-modes" className="group absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-lg border bg-background/80 p-0.5">
           {(["draw", "code"] as Mode[]).map((m) => (
             <button
               key={m}
@@ -514,7 +521,9 @@ export function DiagramComposer({
               onClick={() => switchMode(m)}
               className={cn(
                 "flex items-center gap-1.5 rounded-md px-3 py-1 text-xs transition-colors",
-                mode === m ? "bg-accent text-foreground shadow-sm" : "text-muted-foreground hover:bg-accent/50",
+                mode === m
+                  ? "bg-accent text-foreground shadow-sm"
+                  : "text-muted-foreground hover:bg-accent/50 group-data-[tour-active=true]:text-foreground",
               )}
             >
               {m === "draw" ? <MousePointerSquareDashed className="size-3.5" /> : <Code2 className="size-3.5" />}
@@ -532,7 +541,7 @@ export function DiagramComposer({
               </Button>
             </Tooltip>
           )}
-          <Button data-testid="diagram-compile" size="sm" onClick={() => void compile()} disabled={busy}>
+          <Button data-tour="diagram-compile" data-testid="diagram-compile" size="sm" onClick={() => void compile()} disabled={busy}>
             {busy ? (
               <Loader2 className="compile-shimmer-icon size-3.5" />
             ) : hasCompiled ? (
@@ -545,14 +554,17 @@ export function DiagramComposer({
             </span>
           </Button>
           <Tooltip label="Save this diagram as a reusable image project">
-            <Button variant="secondary" size="sm" onClick={() => void saveAsProject()}>
+            <Button data-tour="diagram-save-project" variant="secondary" size="sm" onClick={() => void saveAsProject()}>
               <Save className="size-3.5" /> Save as project
             </Button>
           </Tooltip>
         </div>
       </div>
 
-      <div className={cn("min-h-0 flex-1", showPreview ? "grid grid-cols-2" : "flex")}>
+      <div
+        data-tour="diagram-preview-affordance"
+        className={cn("min-h-0 flex-1", showPreview ? "grid grid-cols-2" : "flex")}
+      >
         <div className={cn("flex min-h-0 min-w-0 flex-1 flex-col", showPreview && "border-r")}>
           {mode === "draw" ? (
             <DiagramCanvas

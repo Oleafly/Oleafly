@@ -1,6 +1,4 @@
 import { useEffect, useState } from "react";
-import { isTauri } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
 import {
   BookOpen,
   CircleHelp,
@@ -24,8 +22,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { AboutModal } from "@/components/layout/AboutModal";
 import { cn } from "@/lib/utils";
+import { AboutModal } from "@/components/layout/AboutModal";
 
 const railBtn = (active: boolean) =>
   cn(
@@ -83,13 +81,6 @@ export function Rail() {
   const { theme, toggleTheme } = useTheme();
   const [helpOpen, setHelpOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
-
-  // Native "About Oleafly" menu item triggers this via a Tauri event.
-  useEffect(() => {
-    if (!isTauri()) return;
-    const unlisten = listen("menu://about", () => setAboutOpen(true));
-    return () => void unlisten.then((off) => off());
-  }, []);
 
   // MCP activity tab disappears when the server stops; leave the rail cleanly.
   useEffect(() => {
@@ -180,7 +171,6 @@ export function Rail() {
           </button>
         </Tooltip>
       </div>
-
       <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
     </nav>
   );

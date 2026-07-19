@@ -1,8 +1,7 @@
 import confetti from "canvas-confetti";
 
-// Currently unused by design: reserved for the first-ever-project moment in
-// a future onboarding tour, not for every project creation.
 export function celebrate(): void {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   const colors = ["#1982c4", "#98f5e1", "#b9fbc0", "#fde4cf", "#a3c4f3"];
   confetti({
     particleCount: 140,
@@ -13,9 +12,24 @@ export function celebrate(): void {
     origin: { y: 0.35 },
     colors,
     scalar: 1,
+    zIndex: 200,
   });
   setTimeout(() => {
-    confetti({ particleCount: 60, angle: 60, spread: 70, origin: { x: 0, y: 0.5 }, colors });
-    confetti({ particleCount: 60, angle: 120, spread: 70, origin: { x: 1, y: 0.5 }, colors });
+    confetti({
+      particleCount: 60,
+      angle: 60,
+      spread: 70,
+      origin: { x: 0, y: 0.5 },
+      colors,
+      zIndex: 200,
+    });
+    confetti({
+      particleCount: 60,
+      angle: 120,
+      spread: 70,
+      origin: { x: 1, y: 0.5 },
+      colors,
+      zIndex: 200,
+    });
   }, 180);
 }

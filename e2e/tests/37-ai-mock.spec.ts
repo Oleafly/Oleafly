@@ -49,7 +49,9 @@ test("a real streamed conversation round-trips and records usage", async ({ taur
     30_000,
   );
   await expect(tauriPage.getByTestId("ai-chat-usage")).not.toBeVisible();
-  await tauriPage.getByLabel("View AI usage").click();
+  const usageButton = tauriPage.locator('button[aria-label="View AI usage"]');
+  await expect(usageButton).toBeVisible({ timeout: 10_000 });
+  await usageButton.click();
   await expect(tauriPage.getByTestId("ai-run-usage")).toBeVisible({ timeout: 5_000 });
   await expect(tauriPage.getByTestId("ai-chat-usage")).toBeVisible();
 });

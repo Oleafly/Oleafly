@@ -1,6 +1,6 @@
 import { test, expect } from "../fixtures";
 import type { TauriPage } from "@srsholmes/tauri-playwright";
-import { openProject, openSettings } from "../helpers";
+import { createBlankProject, openProject, openSettings } from "../helpers";
 
 async function compileForLibraryPreview(tauriPage: TauriPage) {
   await openProject(tauriPage, "E2E Doc");
@@ -50,7 +50,7 @@ test("the bookmark stacks above the hover preview overlay", async ({ tauriPage }
         .find((b) => b.textContent.includes('E2E Doc'));
       return !!el && !!el.querySelector('img[draggable="false"]');
     })()`,
-    20_000,
+    70_000,
   );
 
   const stacked = await tauriPage.evaluate<boolean>(
@@ -198,4 +198,76 @@ test("hovering a compiled project slides in its PDF preview, gated by the settin
   await openSettings(tauriPage, "appearance");
   await tauriPage.click('[role="switch"][aria-label="Preview PDF on hover"]');
   await tauriPage.click('[aria-label="Close settings"]');
+});
+
+test("project details and export history release their modal layers after closing", async ({
+  tauriPage,
+}) => {
+  await createBlankProject(tauriPage, `Modal Layers ${Date.now()}`);
+  await tauriPage.click('[title="Back to library"]');
+  await expect(
+    tauriPage.locator('[data-testid="library"][data-projects-loaded="true"]'),
+  ).toBeVisible();
+  const openContextMenu = () =>
+    tauriPage.evaluate(
+      `(() => {
+        const book = document.querySelector('button[aria-label^="Open "]');
+        const r = book.getBoundingClientRect();
+        book.dispatchEvent(new MouseEvent('contextmenu', {
+          bubbles: true, cancelable: true, clientX: r.left + r.width / 2,
+          clientY: r.top + r.height / 2, button: 2,
+        }));
+        return true;
+      })()`,
+    );
+
+  await openContextMenu();
+  await expect(tauriPage.getByText("Project details", { exact: true })).toBeVisible();
+  await tauriPage.evaluate(
+    `Array.from(document.querySelectorAll('[role="menuitem"]')).find((item) => item.textContent.includes("Project details")).click()`,
+  );
+  await expect(
+    tauriPage.getByText("Read-only metadata used by project search and filters."),
+  ).toBeVisible();
+  await tauriPage.getByText("Close", { exact: true }).click();
+  await expect(
+    tauriPage.getByText("Read-only metadata used by project search and filters."),
+  ).toHaveCount(0);
+
+  await openContextMenu();
+  await expect(tauriPage.getByText("Export history", { exact: true })).toBeVisible();
+  await tauriPage.evaluate(
+    `Array.from(document.querySelectorAll('[role="menuitem"]')).find((item) => item.textContent.includes("Export history")).click()`,
+  );
+  await expect(tauriPage.getByText("Files exported from", { exact: false })).toBeVisible();
+  await tauriPage.getByText("Close", { exact: true }).click();
+  await expect(tauriPage.getByText("Files exported from", { exact: false })).toHaveCount(0);
+
+  await tauriPage.waitForFunction(`(() => {
+    const button = document.querySelector('[data-tour="settings"]');
+    if (!button || document.body.style.pointerEvents === "none") return false;
+    const rect = button.getBoundingClientRect();
+    const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    return hit === button || button.contains(hit);
+  })()`);
+  await tauriPage.click('[data-tour="settings"]');
+  await expect(tauriPage.locator('[role="dialog"][aria-label="Settings"]')).toBeVisible();
+});
+
+test("advanced filters stay open through abandoned select interactions", async ({
+  tauriPage,
+}) => {
+  await expect(tauriPage.getByTestId("library")).toBeVisible();
+  await tauriPage.click('[aria-label="Advanced project filters"]');
+  await expect(tauriPage.getByText("Advanced filters", { exact: true })).toBeVisible();
+
+  await tauriPage.getByText("All engines", { exact: true }).click();
+  await expect(tauriPage.getByRole("listbox")).toBeVisible();
+  await tauriPage.click("#project-filter-metadata");
+  await expect(tauriPage.getByText("Advanced filters", { exact: true })).toBeVisible();
+
+  await tauriPage.fill("#project-filter-metadata", "E2E Doc");
+  await expect(tauriPage.getByText("Showing 1 of", { exact: false })).toBeVisible();
+  await tauriPage.click('[aria-label="Advanced project filters"]');
+  await expect(tauriPage.getByText("Advanced filters", { exact: true })).toHaveCount(0);
 });

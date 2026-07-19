@@ -31,4 +31,11 @@ describe("cross-package modal coordination", () => {
     expect(coordinator.remove(appModal)).toBeNull();
     expect(coordinator.remove(templateModal)).toBe(rootOpener);
   });
+
+  it("exposes the active logical overlay", () => {
+    const overlay = element(true);
+    const id = appModalCoordinator.add(null, overlay);
+    expect(appModalCoordinator.topOverlay()).toBe(overlay);
+    appModalCoordinator.remove(id);
+  });
 });

@@ -114,7 +114,13 @@ export function PreflightPanel() {
   const enabledCount = Number(enabled.ats) + Number(enabled.a11y) + Number(enabled.refs);
 
   return (
-    <div className="flex h-full flex-col">
+    <div
+      className="flex h-full flex-col"
+      data-testid="preflight-panel"
+      data-running={running ? "true" : "false"}
+      data-report={report ? "true" : "false"}
+      data-error={error ?? ""}
+    >
       <div className="relative flex h-9 items-center gap-2 border-b border-sidebar-border px-3">
         <ShieldCheck className="size-3.5 text-muted-foreground" />
         <span className="text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70">Preflight</span>
@@ -174,6 +180,7 @@ export function PreflightPanel() {
                 <button type="button"
                   onClick={() => void runOne(c.id)}
                   disabled={!on || running}
+                  aria-label={`Run ${c.label}`}
                   className={cn(
                     "inline-flex w-14 items-center justify-center gap-1 rounded px-2 py-1 text-xs disabled:opacity-40",
                     on

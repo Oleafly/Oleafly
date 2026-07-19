@@ -19,15 +19,15 @@ Click **New project** in the library (or type `/create` in the search omnibar) a
 | Template | Category | What you get |
 |---|---|---|
 | **Blank document** | Blank | A minimal article to start from scratch. |
-| **Diagram / Figure** | Diagrams & Figures | A standalone TikZ figure project; previews as an image and pairs with the [diagram composer](/OpenLeaf/figures-diagrams/). |
-| **ATS Resume** | CVs & Resumes | Single-column, ATS-friendly resume with clean section rules. |
-| **Software Engineer Resume** | CVs & Resumes | A polished one-page SWE resume, pre-filled as a senior example so you edit instead of invent. |
-| **Sidebar Resume** | CVs & Resumes | Design-forward two-column layout: colored sidebar, photo placeholder, skills on the left, experience on the right. |
-| **Modern Resume** | CVs & Resumes | Single-column ATS-friendly resume set in the Lato typeface. |
-| **IEEE Research Paper** | Journals & Conferences | Two-column IEEEtran conference paper with figures, tables, equations, and a bibliography. |
-| **Academic Article** | Journals & Conferences | Minimalist single-column research article with abstract and bibliography. |
-| **ACM Article** | Journals & Conferences | The official acmart class: authors, abstract, CCS concepts, references. |
-| **Elsevier Article** | Journals & Conferences | The elsarticle class: affiliations, abstract, keywords, bibliography. |
+| **Diagram / Figure** | Diagrams | A standalone TikZ figure project; previews as an image and pairs with the [diagram composer](/OpenLeaf/figures-diagrams/). |
+| **ATS Resume** | Resume | Single-column, ATS-friendly resume with clean section rules. |
+| **Software Engineer Resume** | Resume | A polished one-page SWE resume, pre-filled as a senior example so you edit instead of invent. |
+| **Sidebar Resume** | Resume | Design-forward two-column layout: colored sidebar, photo placeholder, skills on the left, experience on the right. |
+| **Modern Resume** | Resume | Single-column ATS-friendly resume set in the Lato typeface. |
+| **IEEE Research Paper** | Journals | Two-column IEEEtran conference paper with figures, tables, equations, and a bibliography. |
+| **Academic Article** | Journals | Minimalist single-column research article with abstract and bibliography. |
+| **ACM Article** | Journals | The official acmart class: authors, abstract, CCS concepts, references. |
+| **Elsevier Article** | Journals | The elsarticle class: affiliations, abstract, keywords, bibliography. |
 | **Homework Assignment** | Assignments | Title block, running header, numbered problems with solution space. |
 | **Bibliography (natbib)** | Bibliographies | A natbib + BibTeX starter with a sample `.bib` and citation examples. |
 | **Thesis / Report** | Theses & Reports | Title page, table of contents, chapters, bibliography. |

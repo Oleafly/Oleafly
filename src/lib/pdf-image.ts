@@ -7,11 +7,7 @@ let sharedWorker: pdfjsLib.PDFWorker | null = null;
 
 function getWorker(): pdfjsLib.PDFWorker {
   if (!sharedWorker) {
-    const port = new Worker(workerSrc, {
-      type: "module",
-      name: "openleaf-pdf-raster",
-    });
-    sharedWorker = pdfjsLib.PDFWorker.create({ port });
+    sharedWorker = new pdfjsLib.PDFWorker();
   }
   return sharedWorker;
 }
@@ -70,7 +66,7 @@ async function rasterize(
           }
         }
       })(),
-      5_000,
+      30_000,
       "pdf render",
     );
   } finally {

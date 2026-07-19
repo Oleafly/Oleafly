@@ -1,5 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 
+export const reloadViews = () => invoke<void>("reload_views");
+
 export interface CompileError {
   line: number | null;
   file: string | null;
@@ -72,8 +74,18 @@ export interface ProjectInfo {
   id: string;
   name: string;
   main_doc: string;
+  engine?: string;
+  kind: string;
+  created_at: number;
   updated_at: number;
   color?: string;
+  has_preview: boolean;
+  exports: {
+    date: number;
+    filename: string;
+    path: string;
+    format: string;
+  }[];
 }
 
 export const compileProject = (projectId: string, mainDoc: string, offline = false) =>
@@ -380,8 +392,9 @@ export interface McpConnectionInfo {
 }
 
 export const mcpStatus = () => invoke<McpStatus>("mcp_status");
-export const mcpSetEnabled = (enabled: boolean, port: number) =>
-  invoke<McpStatus>("mcp_set_enabled", { enabled, port });
+export const mcpSetEnabled = (enabled: boolean) =>
+  invoke<McpStatus>("mcp_set_enabled", { enabled });
+export const mcpRestartServer = () => invoke<McpStatus>("mcp_restart_server");
 export const mcpConnectionInfo = () => invoke<McpConnectionInfo>("mcp_connection_info");
 export const mcpRegenerateToken = () => invoke<void>("mcp_regenerate_token");
 export const mcpRegisterTools = (

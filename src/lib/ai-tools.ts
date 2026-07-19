@@ -32,7 +32,11 @@ import {
   getLastFigurePreview,
   getFigureInsertTarget,
 } from "@/lib/ai-figure";
-import { insertAtCursor, replaceRange } from "@/components/editor/cm/controller";
+import {
+  getEditorView,
+  insertAtCursor,
+  replaceRange as replaceRangeInEditor,
+} from "@/components/editor/cm/controller";
 
 export type { ToolApprovalRequest, ConfirmFn } from "@openleaf/ai-tools";
 
@@ -97,8 +101,37 @@ const HOST: AiToolsHost = {
   setLastFigurePreview,
   getLastFigurePreview,
   getFigureInsertTarget,
-  insertAtCursor,
-  replaceRange,
+  insertAtCursor: async (projectId, text) => {
+    if (getEditorView()) {
+      insertAtCursor(text);
+      return true;
+    }
+    const files = useFilesStore.getState();
+    const path = files.activePath || files.mainDoc || "main.tex";
+    const current = files.files[path]?.content ?? (await readFileContent(projectId, path));
+    const documentEnd = current.lastIndexOf("\\end{document}");
+    const at = documentEnd >= 0 ? documentEnd : current.length;
+    const next = `${current.slice(0, at)}${text}\n${current.slice(at)}`;
+    await writeFileContent(projectId, path, next);
+    useFilesStore.getState().applyExternalWrite(path, next);
+    return true;
+  },
+  replaceRange: async (projectId, from, to, text) => {
+    if (getEditorView()) {
+      replaceRangeInEditor(from, to, text);
+      return true;
+    }
+    const files = useFilesStore.getState();
+    const path = files.activePath || files.mainDoc || "main.tex";
+    if (!path) return false;
+    const current = files.files[path]?.content ?? (await readFileContent(projectId, path));
+    const start = Math.max(0, Math.min(from, current.length));
+    const end = Math.max(start, Math.min(to, current.length));
+    const next = `${current.slice(0, start)}${text}${current.slice(end)}`;
+    await writeFileContent(projectId, path, next);
+    useFilesStore.getState().applyExternalWrite(path, next);
+    return true;
+  },
   getAgentTodos: () => useAgentTodoStore.getState().todos,
   setAgentTodos: (todos) =>
     useAgentTodoStore.getState().setTodos(

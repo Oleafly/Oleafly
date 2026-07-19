@@ -270,7 +270,9 @@ The full list. Everything here runs on your machine. For the detailed tour, see 
 - Optional LuaLaTeX engine: use an existing TeX Live or install TinyTeX (about 100 MB) on demand to compile and verify a tagged, Section 508 / PDF-UA oriented PDF
 
 **Projects, files, and history**
-- Library home with thumbnails, last-edited time, and export history
+- Library home with thumbnails, engine labels, last-edited time, project details, export history, metadata search, and advanced filters
+- Progressive, persisted tours for Home, the project workspace, Settings, AI Assistant, and Diagram Composer
+- Searchable keyboard reference plus safe, customizable application shortcuts in Settings
 - Template gallery on new-project: browse by category with search, an ATS-friendly filter, and a live preview of each template. The starter set spans ATS-friendly resumes, a polished software engineer resume, a Modern resume in Lato, a photo-and-sidebar design resume, a full IEEE paper, ACM and Elsevier articles, a minimalist academic article, a thesis/report, a book, a Beamer deck, a research poster, a homework assignment, a newsletter, a monthly calendar, a bibliography starter, and a formal letter.
 - On-demand fonts: templates that use premium open-source fonts (Lato, PT Sans, PT Serif) download them only when needed and copy them into the project, so the app stays small and documents stay self-contained. Manage downloads in Settings, Offline & Downloads.
 

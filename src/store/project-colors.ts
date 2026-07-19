@@ -26,6 +26,7 @@ function save(map: Record<string, string>) {
 interface ProjectColorsState {
   colors: Record<string, string>;
   setColor: (id: string, color: string) => void;
+  remove: (id: string) => void;
   get: (id: string) => string | undefined;
 }
 
@@ -36,6 +37,11 @@ export const useProjectColorsStore = create<ProjectColorsState>((set, get) => ({
     save(next);
     set({ colors: next });
     void setProjectColorCmd(id, color).catch((e) => void logError("persist project color", e));
+  },
+  remove: (id) => {
+    const { [id]: _removed, ...next } = get().colors;
+    save(next);
+    set({ colors: next });
   },
   get: (id) => get().colors[id],
 }));

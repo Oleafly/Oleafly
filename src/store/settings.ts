@@ -1,5 +1,19 @@
 import { create } from "zustand";
 
+const SETTINGS_SECTIONS = new Set([
+  "general",
+  "appearance",
+  "dictionary",
+  "data",
+  "ai",
+  "engine",
+  "downloads",
+  "github",
+  "shortcuts",
+  "mcp",
+  "help",
+]);
+
 export type ViewMode = "split" | "editor" | "pdf";
 export type RailTab =
   | "files"
@@ -180,8 +194,9 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   setSearchOpen: (v) => set({ searchOpen: v }),
   settingsOpen: false,
   setSettingsOpen: (v) => set({ settingsOpen: v }),
-  settingsInitialSection: "appearance",
-  setSettingsInitialSection: (v) => set({ settingsInitialSection: v }),
+  settingsInitialSection: "general",
+  setSettingsInitialSection: (v) =>
+    set({ settingsInitialSection: SETTINGS_SECTIONS.has(v) ? v : "general" }),
   viewMode: "split",
   setViewMode: (v) => set({ viewMode: v }),
   defaultView: (ls("openleaf.defaultView", "split") as ViewMode) || "split",

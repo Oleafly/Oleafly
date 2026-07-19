@@ -17,7 +17,7 @@ First time in the app? You'll see a welcome card instead: **"Create your first p
 
 ## Creating a project
 
-Click **New project** in the header. The template gallery opens with 19 starting points across categories like CVs & Resumes, Journals & Conferences, Theses & Reports, and Presentations. Pick one, name the project, choose a cover color, and you're writing. The gallery is covered in detail on the [Templates](/OpenLeaf/templates/) page.
+Click **New project** in the header. The template gallery opens with 19 starting points across categories like Resume, Journals, Diagrams, Theses & Reports, and Presentations. Pick one, name the project, choose a cover color, and you're writing. The gallery is covered in detail on the [Templates](/OpenLeaf/templates/) page.
 
 You can also open the gallery from anywhere with the search omnibar: press **⌘⇧F** (Ctrl+Shift+F) and type `/create`.
 
@@ -46,7 +46,40 @@ Open the project and click its title in the top toolbar. It becomes editable in 
 
 ## Search from the library
 
-The header's search icon (or **⌘⇧F** / Ctrl+Shift+F anywhere) opens the search omnibar, which finds projects by name and searches the full text of every document in every project, jumping straight to the matching file and line. Type `/` in the omnibar for scoped commands like `/projects`, `/docs`, or `/create`.
+The header's search icon (or **⌘⇧F** / Ctrl+Shift+F anywhere) opens the search omnibar. It searches project metadata as well as the full text of every document in every project, jumping straight to the matching project, file, and line. Type `/` for scoped commands such as `/projects`, `/docs`, or `/create`.
+
+Plain text matches any indexed project metadata. For a precise search, use a
+`field:value` filter:
+
+| Filter | Example | Matches |
+| --- | --- | --- |
+| `project_id:` | `project_id:abc123` | Project ID |
+| `name:` | `name:resume` | Project name |
+| `engine:` | `engine:typst` | Tectonic, Typst, or Markdown engine |
+| `kind:` | `kind:image` | Document or image project |
+| `main:` | `main:resume.typ` | Main document path |
+| `created:` | `created:2026-07-18` | Creation date |
+| `modified:` | `modified:7/18/2026` | Last-modified date |
+| `color:` | `color:#1982c4` | Cover color |
+| `bookmark:` | `bookmark:yes` | Bookmarked or unbookmarked projects |
+| `preview:` | `preview:no` | Compiled PDF preview availability |
+| `export:` | `export:pdf` | Export filename, format, path, or date |
+
+Dates can use the ISO `YYYY-MM-DD` format or the date format used by your
+computer. Boolean filters accept values such as `yes`, `no`, `true`, and
+`false`.
+
+Combine filters by separating them with spaces:
+
+```text
+engine:tectonic bookmark:yes preview:true
+```
+
+You can also mix filters with ordinary words:
+
+```text
+name:resume typst
+```
 
 ## Also in the header
 

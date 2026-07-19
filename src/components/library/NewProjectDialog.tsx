@@ -81,6 +81,8 @@ export function NewProjectDialog(props: {
   busy?: boolean;
   onClose: () => void;
   onCreate: (name: string, templateId: string, color: string) => void | Promise<void>;
+  allowEnterSubmit?: boolean;
+  allowClose?: boolean;
 }) {
   return (
     <NewProjectDialogCore

@@ -1,9 +1,23 @@
 ---
 title: "Settings reference"
-description: "Every setting in Oleafly, section by section: Appearance, General, Dictionary, Data Storage, AI Assistant, LaTeX Engine, Offline & Downloads, GitHub, MCP, and Help & About."
+description: "Every Oleafly setting: General, Appearance, Dictionary, Data Storage, AI Assistant, LaTeX Engine, Offline & Downloads, GitHub, Keyboard Shortcuts, MCP, and Help & About."
 ---
 
-Open Settings from the gear in the rail, `/settings` in the search omnibar, or **Open settings** in the ⌘K palette. Ten sections in the left nav; this page walks all of them.
+Open Settings from the gear in the rail, `/settings` in the search omnibar, or **Open settings** in the ⌘K palette. General appears first. Turn on **Show Advanced** at the bottom of the navigation to reveal every section.
+
+## General
+
+| Setting | Type | Default | What it does |
+|---|---|---|---|
+| **Enable tour guides** | Expandable toggle | On | Shows the five context-aware guides. Expand it to enable or disable Home, Workspace, Settings, AI Assistant, and Diagram Composer separately, see progress, or dismiss all tours. Re-enabling starts the current Home or Project guide from the beginning. |
+| **Vim mode** | Toggle | Off | Full Vim keybindings in the editor. |
+| **Spellcheck** | Toggle | On | Hunspell spelling underlines; active only when Harper is off. |
+| **Spelling, grammar & style (Harper)** | Toggle | On | The full offline [grammar checker](/OpenLeaf/spellcheck-grammar/). |
+| **Regionalism suggestions** | Toggle | On | Flag British vs. American usage (shown when Harper is on). |
+| **Word-choice suggestions** | Toggle | On | Catch word mix-ups like "too" vs. "to" (shown when Harper is on). |
+| **Offline mode** | Toggle | Off | Compile with `--only-cached`; the compiler never touches the network, and [citation lookups](/OpenLeaf/citations/) are blocked. |
+
+**Reset settings** restores Appearance and General preferences to their defaults after confirmation.
 
 ## Appearance
 
@@ -19,26 +33,13 @@ Open Settings from the gear in the rail, `/settings` in the search omnibar, or *
 | **Preview PDF on hover** | Toggle | On | The library's page-one [hover previews](/OpenLeaf/library/#hover-previews). |
 | **Accent color** | Swatches | Blue | The highlight color everywhere: Blue, Green, Purple, Rose, Orange, or Teal. |
 
-## General
-
-| Setting | Type | Default | What it does |
-|---|---|---|---|
-| **Vim mode** | Toggle | Off | Full Vim keybindings in the editor. |
-| **Spellcheck** | Toggle | On | Hunspell spelling underlines; active only when Harper is off. |
-| **Spelling, grammar & style (Harper)** | Toggle | On | The full offline [grammar checker](/OpenLeaf/spellcheck-grammar/). |
-| **Regionalism suggestions** | Toggle | On | Flag British vs. American usage (shown when Harper is on). |
-| **Word-choice suggestions** | Toggle | On | Catch word mix-ups like "too" vs. "to" (shown when Harper is on). |
-| **Offline mode** | Toggle | Off | Compile with `--only-cached`; the compiler never touches the network, and [citation lookups](/OpenLeaf/citations/) are blocked. |
-
-Also here: a **Shortcuts** row that opens the keyboard reference, and **Reset settings**, which restores Appearance and General to factory defaults (with a confirmation).
-
 ## Dictionary
 
 Every word you told the [spellchecker](/OpenLeaf/spellcheck-grammar/#fixing-and-ignoring) to ignore, in two groups: **This project** and **All projects**. Remove a chip to start flagging that word again.
 
 ## Data Storage
 
-Informational: shows where your library lives on disk (`~/.openleaf/projects`) and explains the local-first layout, with a shortcut to the GitHub section. The full story is on [Where your data lives](/OpenLeaf/where-your-data-lives/).
+Shows where your library lives on disk (`~/.openleaf/projects`) and explains the local-first layout, with a shortcut to the GitHub section. Development builds also provide a Finder shortcut beside the path. Cloud sync is listed as coming soon. The full storage story is on [Where your data lives](/OpenLeaf/where-your-data-lives/).
 
 ## AI Assistant
 
@@ -56,15 +57,19 @@ The on-demand font packs used by richer [templates](/OpenLeaf/templates/#on-dema
 
 Account connection (device flow or personal access token) and, with a project open, that project's repository controls: remote URL, **Push**, **Pull**, **Unlink**, and **Create & link**. Documented on [GitHub sync](/OpenLeaf/github-sync/).
 
+## Keyboard Shortcuts
+
+Shows the complete searchable shortcut reference and lets you record new key combinations for Recompile, Command palette, Search all documents, Go to PDF, and Shortcut reference. Select the displayed keys to start recording, press the new combination, or use the reset control for one shortcut or all application shortcuts. Editor-native shortcuts remain managed by the editor. See [Keyboard shortcuts](/OpenLeaf/keyboard-shortcuts/).
+
 ## MCP
 
-Turn Oleafly into a local MCP server so an external agent (Claude Desktop, Claude Code, Cursor, Grok) can drive your project with no API key. **Enable MCP server**, the port (default `5323`), the bearer token (Reveal / Copy / Regenerate), copy-paste connection snippets, the **approval policy** and **Read-only mode**, and pointers to the `mcp.json` on disk all live here. Documented on [Connect via MCP](/OpenLeaf/mcp/).
+Turn Oleafly into a local MCP server so an external agent (Claude Desktop, Claude Code, Cursor, Grok) can drive your project with no API key. **Enable MCP server**, the automatically selected local port, bearer-token controls, copy-paste connection snippets, the **approval policy**, **Read-only mode**, and pointers to the `mcp.json` on disk all live here. The restart icon reuses the current port when available or selects another free port. Documented on [Connect via MCP](/OpenLeaf/mcp/).
 
 ## Help & About
 
 - Version info and the **Check for updates** flow ([Updates](/OpenLeaf/updates/)).
 - **Copy version & system info**: one click to copy exactly what a bug report needs.
-- Resources: Documentation, Keyboard shortcuts, Report a bug, Report a crash (with log pointers), What's new, and the License.
+- Resources: Start tour, Documentation, Report a bug, Report a crash (with log pointers), What's new, and the License.
 
 ## Where settings live
 

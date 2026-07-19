@@ -28,6 +28,7 @@ const INSTRUCTIONS: &str = "Oleafly is a local-first LaTeX editor. These tools o
 
 #[derive(Default)]
 pub struct McpState {
+    pub lifecycle: Mutex<()>,
     /// Tool metadata pushed by the webview at startup (and on policy change).
     pub registry: Mutex<Vec<ToolMeta>>,
     /// In-flight forwarded calls awaiting a webview result.
@@ -159,21 +160,18 @@ async fn mcp_post(State(app): State<AppHandle>, headers: HeaderMap, body: String
 /// port is taken.
 pub async fn start(app: AppHandle, port: u16) -> Result<u16, String> {
     let state = app.state::<McpState>();
+    let _lifecycle = state.lifecycle.lock().await;
     if state.shutdown.lock().await.is_some() {
         return Err("MCP server already running".into());
     }
     let token = ensure_token()?;
-    *state.token.lock().await = Some(token.clone());
 
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
     let listener = tokio::net::TcpListener::bind(addr)
         .await
         .map_err(|e| format!("could not bind {addr}: {e}"))?;
     let bound = listener.local_addr().map(|a| a.port()).unwrap_or(port);
-
     let (tx, mut rx) = watch::channel(false);
-    *state.shutdown.lock().await = Some(tx);
-    *state.bound_port.lock().await = Some(bound);
     write_discovery_file(bound, &token)?;
 
     let router = Router::new()
@@ -186,12 +184,16 @@ pub async fn start(app: AppHandle, port: u16) -> Result<u16, String> {
             })
             .await;
     });
+    *state.token.lock().await = Some(token);
+    *state.shutdown.lock().await = Some(tx);
+    *state.bound_port.lock().await = Some(bound);
     *state.serve_task.lock().await = Some(serve);
     Ok(bound)
 }
 
 pub async fn stop(app: &AppHandle) -> Result<(), String> {
     let state = app.state::<McpState>();
+    let _lifecycle = state.lifecycle.lock().await;
     if let Some(tx) = state.shutdown.lock().await.take() {
         let _ = tx.send(true);
     }
@@ -244,7 +246,7 @@ pub fn rewrite_discovery_file(port: u16, token: &str) -> Result<(), String> {
     write_discovery_file(port, token)
 }
 
-fn remove_discovery_file() {
+pub fn remove_discovery_file() {
     if let Ok(root) = paths::openleaf_root() {
         let _ = std::fs::remove_file(root.join("mcp.json"));
     }

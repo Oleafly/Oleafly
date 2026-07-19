@@ -4,6 +4,9 @@
   "version": "0.2.5",
   "type": "module",
   "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": ">=22.13 <25"
+  },
   "description": "Oleafly - a local-first, cross-platform LaTeX & resume authoring app.",
   "license": "AGPL-3.0-or-later",
   "author": "Prajwal S Venkateshmurthy",

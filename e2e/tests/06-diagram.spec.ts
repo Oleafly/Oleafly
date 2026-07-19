@@ -17,10 +17,13 @@ test("diagram composer compiles the starter drawing to a preview", async ({ taur
   await tauriPage.click('[aria-label="Insert diagram"]');
   await expect(tauriPage.locator('[role="dialog"][aria-label="Insert diagram"]')).toBeVisible();
 
-  await tauriPage.click('[data-testid="diagram-compile"]');
+  const compile = tauriPage.getByTestId("diagram-compile");
+  await expect(compile).toBeEnabled();
+  await compile.click();
+  await expect(compile).toContainText("Compiling", { timeout: 5_000 });
+  await expect(tauriPage.locator('img[alt="Diagram preview"]')).toBeVisible({ timeout: 120_000 });
   // Insert actions (vector/PNG) live under the Code tab.
   await tauriPage.click('[data-testid="diagram-tab-code"]');
-  await expect(tauriPage.locator('img[alt="Diagram preview"]')).toBeVisible({ timeout: 120_000 });
   await expect(tauriPage.getByTestId("diagram-insert-image")).toBeEnabled({ timeout: 5_000 });
 
   await tauriPage.click('[role="dialog"][aria-label="Insert diagram"] [aria-label="Back to project"]');

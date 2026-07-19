@@ -7,6 +7,7 @@ import {
   TauriPage,
   tauriExpect,
 } from "@srsholmes/tauri-playwright";
+import { tourRegistry } from "../src/lib/tours/registry";
 
 // Load opt-in secrets/flags from e2e/.env (gitignored; see e2e/.env.example).
 // This must run HERE, not only in playwright.config.ts: Playwright workers are
@@ -43,10 +44,57 @@ for (const p of envCandidates) {
 // compiles. Start the app first:
 //
 //   OPENLEAF_DATA_DIR=$(mktemp -d) pnpm tauri dev --features e2e-testing
-const DEV_URL = "http://localhost:1420";
 let nativePageOpened = false;
+const DISMISSED_TOUR_STATE = JSON.stringify({
+  state: {
+    schemaVersion: 1,
+    enabled: false,
+    tours: {
+      home: { status: "dismissed", version: tourRegistry.home.version },
+      workspace: { status: "dismissed", version: tourRegistry.workspace.version },
+      settings: { status: "dismissed", version: tourRegistry.settings.version },
+      ai: { status: "dismissed", version: tourRegistry.ai.version },
+      diagram: { status: "dismissed", version: tourRegistry.diagram.version },
+    },
+  },
+  version: 1,
+});
 
-function createNativeTest() {
+export async function reloadNativePage(page: TauriPage) {
+  await page.evaluate(`window.__E2E_RELOAD_PENDING__ = true`);
+  await page.evaluate(
+    `import("/src/lib/tauri.ts").then(({ reloadViews }) => reloadViews())`,
+  );
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    try {
+      const pending = await page.evaluate(
+        `window.__E2E_RELOAD_PENDING__ === true`,
+      );
+      if (!pending) break;
+    } catch {
+      break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  await page.waitForFunction(
+    'document.readyState === "complete" && !!window.__PW_ACTIVE__',
+    20_000,
+  );
+}
+
+async function ensureNativePageReady(page: TauriPage) {
+  try {
+    await page.waitForFunction(
+      'document.readyState === "complete" && !!window.__PW_ACTIVE__',
+      10_000,
+    );
+  } catch {
+    await reloadNativePage(page);
+  }
+}
+
+function createNativeTest(dismissTours: boolean) {
   const port = Number(process.env.TAURI_PLAYWRIGHT_TCP_PORT ?? 6274);
   const socket = process.env.TAURI_PLAYWRIGHT_SOCKET ?? "/tmp/tauri-playwright.sock";
   const test = base.extend<{ tauriPage: TauriPage }>({
@@ -71,11 +119,21 @@ function createNativeTest() {
       if (!ping.ok) throw new Error("plugin ping failed");
       const page = new TauriPage(client);
       page.setDefaultTimeout(20_000);
+      const firstPage = !nativePageOpened;
       if (nativePageOpened) {
-        await page.evaluate(`window.location.href = ${JSON.stringify(DEV_URL)}`);
-        await new Promise((r) => setTimeout(r, 500));
+        await reloadNativePage(page);
       }
-      await page.waitForFunction('document.readyState === "complete" && !!window.__PW_ACTIVE__');
+      await ensureNativePageReady(page);
+      if (firstPage) {
+        await page.evaluate(`localStorage.removeItem("oleafly.shortcuts")`);
+        await reloadNativePage(page);
+      }
+      if (dismissTours) {
+        await page.evaluate(
+          `localStorage.setItem("oleafly.tours", ${JSON.stringify(DISMISSED_TOUR_STATE)})`,
+        );
+        await reloadNativePage(page);
+      }
       nativePageOpened = true;
       try {
         await use(page);
@@ -91,7 +149,8 @@ function createNativeTest() {
 }
 
 export const { test, expect } =
-  createNativeTest();
+  createNativeTest(true);
+export const { test: tourTest, expect: tourExpect } = createNativeTest(false);
 
 // The bridge's per-command default is 5s, which a loaded CI runner routinely
 // blows on an otherwise-fine fill/click/waitForFunction, so a different test

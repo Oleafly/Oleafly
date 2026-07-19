@@ -11,7 +11,7 @@ export default defineConfig({
       title: "Oleafly",
       description:
         "Free, local-first LaTeX and resume editor for macOS, Windows, and Linux. An offline Overleaf alternative with Git, GitHub sync, SyncTeX, and bring-your-own-key AI.",
-      logo: { src: "./src/assets/icon.png", alt: "Oleafly" },
+      logo: { src: "./src/assets/leaf.svg", alt: "Oleafly" },
       favicon: "/favicon.png",
       customCss: ["./src/styles/theme.css", "./src/styles/landing.css"],
       // Swap Starlight's light/dark/auto <select> for a light/dark toggle button.

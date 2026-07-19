@@ -32,8 +32,10 @@ export function useModalAccessibility<T extends HTMLElement>(
     const frame = requestAnimationFrame(() => {
       const dialog = dialogRef.current;
       if (!dialog) return;
-      const initial = dialog.querySelector<HTMLElement>("[data-modal-initial-focus]")
-        ?? dialog.querySelector<HTMLElement>(FOCUSABLE);
+      const initial = dialog.matches("[data-modal-initial-focus]")
+        ? dialog
+        : dialog.querySelector<HTMLElement>("[data-modal-initial-focus]")
+          ?? dialog.querySelector<HTMLElement>(FOCUSABLE);
       (initial ?? dialog).focus();
     });
 

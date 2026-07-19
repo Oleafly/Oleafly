@@ -149,6 +149,8 @@ export function ChatCore() {
   const [streaming, setStreaming] = useState(false);
   const [provider, setProvider] = useState("openai");
   const [model, setModel] = useState("gpt-4o");
+  const [providerConfigReady, setProviderConfigReady] = useState(false);
+  const [providerConfigError, setProviderConfigError] = useState(false);
   const [apiKey, setApiKey] = useState("");
   // So the switcher can offer every provider the user has set up, not just the default one.
   const [keysMap, setKeysMap] = useState<Record<string, string>>({});
@@ -312,6 +314,8 @@ export function ChatCore() {
         setModel(
           provider === saved && cfg.ai_model ? cfg.ai_model : defaultModel(provider)
         );
+        setProviderConfigReady(true);
+        setProviderConfigError(false);
     };
     const load = (event?: Event) => {
       const cfg = (event as CustomEvent<AppConfig> | undefined)?.detail;
@@ -319,7 +323,12 @@ export function ChatCore() {
         apply(cfg);
         return;
       }
-      void getConfig().then(apply);
+      void getConfig()
+        .then(apply)
+        .catch(() => {
+          setProviderConfigError(true);
+          setProviderConfigReady(true);
+        });
     };
     load();
     // Re-read when AI settings change elsewhere (e.g. connected in Settings),
@@ -541,7 +550,7 @@ export function ChatCore() {
     if (figureMode && figureModeAvailable) {
       const view = getEditorView();
       const sel = view?.state.selection.main;
-      setFigureInsertTarget(sel && !sel.empty ? { from: sel.from, to: sel.to } : null);
+      setFigureInsertTarget(sel ? { from: sel.from, to: sel.to } : null);
     }
 
     const ac = new AbortController();
@@ -1191,7 +1200,21 @@ ${sandboxedCustom}`;
       : "AI usage";
 
   return (
-    <div className="flex h-full flex-col bg-sidebar">
+    <div
+      data-tour="ai-assistant"
+      data-tour-ready={providerConfigReady ? "true" : "false"}
+      data-tour-config-error={providerConfigError ? "true" : "false"}
+      data-tour-configured={apiKey ? "true" : "false"}
+      data-tour-has-usage={hasUsage ? "true" : "false"}
+      data-tour-has-restore={
+        renderedMessages.some(
+          ({ msg }) => msg.role === "assistant" && Boolean(msg.checkpointOid),
+        )
+          ? "true"
+          : "false"
+      }
+      className="flex h-full flex-col bg-sidebar"
+    >
       <div className="flex h-9 shrink-0 items-center gap-1.5 border-b px-2">
         {apiKey && activeChat?.headOid && currentHead && activeChat.headOid !== currentHead && (
           <InfoHint message="This chat started from an older version of the project. File contents may differ from what the AI saw." />
@@ -1199,17 +1222,20 @@ ${sandboxedCustom}`;
         <div className="ml-auto flex items-center gap-0.5">
           {configuredProviders.length > 0 && (
             <>
-              <ModelSelector
-                compact
-                providerId={provider}
-                modelId={model}
-                groups={modelGroups}
-                onChange={(nextProvider, nextModel) =>
-                  void selectModel(nextProvider, nextModel)
-                }
-              />
+              <div data-tour="ai-provider-model">
+                <ModelSelector
+                  compact
+                  providerId={provider}
+                  modelId={model}
+                  groups={modelGroups}
+                  onChange={(nextProvider, nextModel) =>
+                    void selectModel(nextProvider, nextModel)
+                  }
+                />
+              </div>
 
               {hasUsage && (
+                <div data-tour="ai-usage">
                 <Tooltip label={usageSummary}>
                   <Popover
                     align="right"
@@ -1270,6 +1296,7 @@ ${sandboxedCustom}`;
                     </div>
                   </Popover>
                 </Tooltip>
+                </div>
               )}
 
               {figureModeAvailable && <Tooltip label={figureMode ? "Figure mode on" : "Draw a figure"}>
@@ -1296,8 +1323,9 @@ ${sandboxedCustom}`;
                 </button>
               </Tooltip>
 
-              <Tooltip label="Chat history">
+                <Tooltip label="Chat history">
                 <button type="button"
+                  data-tour="ai-history"
                   onClick={() => setHistoryOpen(true)}
                   aria-label="Chat history"
                   className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
@@ -1377,7 +1405,7 @@ ${sandboxedCustom}`;
               Ollama. The assistant can read &amp; edit files, compile, and verify your PDF.
             </p>
           </div>
-          <Button onClick={() => openAISettings()}>
+          <Button data-tour="ai-connect-provider" onClick={() => openAISettings()}>
             <Sparkles className="size-4" />
             Connect a provider
           </Button>
@@ -1450,7 +1478,7 @@ ${sandboxedCustom}`;
                   {/* Key is scoped to the active chat so instances aren't reused
                       across conversations (which would leak expand/scroll state). */}
                   {renderedMessages.map(({ key, live, isLatestAssistant, msg }) => (
-                    <div key={key} className="min-w-0">
+                    <div key={key} data-message-role={msg.role} className="min-w-0">
                       <MessageItem msg={msg} live={live} />
                       {msg.role === "assistant" &&
                         msg.checkpointOid &&
@@ -1461,7 +1489,7 @@ ${sandboxedCustom}`;
                             tool.status === "done",
                         ) &&
                         !live && (
-                          <div className="mt-1.5 flex items-center justify-end px-1">
+                          <div data-tour="ai-restore" className="mt-1.5 flex items-center justify-end px-1">
                             {msg.checkpointRestored ? (
                               <span className="text-[10px] text-muted-foreground">
                                 Project restored to this checkpoint
@@ -1552,6 +1580,7 @@ ${sandboxedCustom}`;
                 onChange={(e) => { void addFiles(e.target.files); e.target.value = ""; }}
               />
               <button
+                data-tour="ai-attachments"
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 aria-label="Attach a file or image"
@@ -1561,6 +1590,7 @@ ${sandboxedCustom}`;
                 <Paperclip className="size-4" />
               </button>
               <Textarea
+                data-tour="ai-input"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(input); } }}

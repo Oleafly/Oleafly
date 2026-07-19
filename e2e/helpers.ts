@@ -16,10 +16,21 @@ export interface Page {
 export async function pressGlobal(
   page: Page,
   key: string,
-  mods: { meta?: boolean; shift?: boolean } = {},
+  mods: { alt?: boolean; ctrl?: boolean; meta?: boolean; shift?: boolean } = {},
 ) {
   await page.evaluate(
-    `window.dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(key)}, metaKey: ${!!mods.meta}, shiftKey: ${!!mods.shift}, bubbles: true, cancelable: true }))`,
+    `(() => {
+      const apple = /Mac|iPhone|iPad/.test(navigator.platform);
+      window.dispatchEvent(new KeyboardEvent('keydown', {
+        key: ${JSON.stringify(key)},
+        altKey: ${!!mods.alt},
+        ctrlKey: ${!!mods.ctrl} || (${!!mods.meta} && !apple),
+        metaKey: ${!!mods.meta} && apple,
+        shiftKey: ${!!mods.shift},
+        bubbles: true,
+        cancelable: true,
+      }));
+    })()`,
   );
 }
 
@@ -191,7 +202,20 @@ export async function openRailTab(page: Page, ariaLabel: string) {
 // The test fixture reloads the app to the library before every test, so
 // specs that need the editor start here.
 export async function openProject(page: Page & { getByText(t: string): { click(): Promise<void> } }, name: string) {
-  await page.getByText(name).click();
+  const libraryVisible = await page.evaluate<boolean>(
+    `!!document.querySelector('[data-testid="library"]')`,
+  );
+  if (!libraryVisible) {
+    const hasBack = await page.evaluate<boolean>(
+      `!!document.querySelector('[title="Back to library"]')`,
+    );
+    if (hasBack) await page.click('[title="Back to library"]');
+  }
+  const library = page.locator(
+    '[data-testid="library"][data-projects-loaded="true"]',
+  ) as unknown as Parameters<typeof expect>[0];
+  await expect(library).toBeVisible({ timeout: 30_000 });
+  await page.click(`button[aria-label=${JSON.stringify(`Open ${name}`)}]`);
 }
 
 export async function typeInEditorAtStart(page: Page, text: string) {

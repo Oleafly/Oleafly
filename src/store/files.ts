@@ -417,10 +417,15 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   // not clobber the edit. Cross-window broadcast is done by the AI host so
   // listeners can re-apply without echoing forever.
   applyExternalWrite: (path, content) => {
-    set((s) => ({
-      files: { ...s.files, [path]: { content, dirty: false } },
-      docVersion: s.activePath === path ? s.docVersion + 1 : s.docVersion,
-    }));
+    set((s) => {
+      const activatesPath = !s.activePath || s.activePath === path;
+      return {
+        files: { ...s.files, [path]: { content, dirty: false } },
+        openTabs: s.openTabs.includes(path) ? s.openTabs : [...s.openTabs, path],
+        activePath: s.activePath || path,
+        docVersion: activatesPath ? s.docVersion + 1 : s.docVersion,
+      };
+    });
     void get().refreshTree();
   },
 

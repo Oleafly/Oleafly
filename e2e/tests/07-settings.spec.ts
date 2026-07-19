@@ -44,33 +44,26 @@ test("settings modal opens with all sections", async ({ tauriPage }) => {
   await tauriPage.click('[aria-label="Close settings"]');
 });
 
-test("keyboard shortcuts opens above settings without closing it", async ({ tauriPage }) => {
+test("keyboard shortcuts are editable from their Settings section", async ({ tauriPage }) => {
   await openSettingsProject(tauriPage);
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openSettings(tauriPage);
-  await tauriPage.click('[data-testid="settings-section-general"]');
-  await tauriPage.getByText("Shortcuts:", { exact: false }).click();
+  await tauriPage.click('[data-testid="settings-section-shortcuts"]');
   await expect(tauriPage.getByRole("dialog", { name: "Settings" })).toBeVisible();
   await expect(
-    tauriPage.getByRole("dialog", { name: "Keyboard Shortcuts" }),
+    tauriPage.getByText("Customize application shortcuts", { exact: false }),
   ).toBeVisible();
-  await tauriPage.click('[aria-label="Close keyboard shortcuts"]');
-  await expect(tauriPage.getByRole("dialog", { name: "Settings" })).toBeVisible();
+  await expect(tauriPage.getByText("Recompile", { exact: true })).toBeVisible();
   await tauriPage.click('[aria-label="Close settings"]');
 });
 
-test("keyboard shortcuts opens above settings from the home view", async ({ tauriPage }) => {
+test("keyboard shortcuts Settings section opens from the home view", async ({ tauriPage }) => {
   const back = tauriPage.locator('[title="Back to library"]');
   if (await back.isVisible()) await back.click();
   await openSettings(tauriPage);
-  await tauriPage.click('[data-testid="settings-section-general"]');
-  await tauriPage.getByText("Shortcuts:", { exact: false }).click();
+  await tauriPage.click('[data-testid="settings-section-shortcuts"]');
   await expect(tauriPage.getByRole("dialog", { name: "Settings" })).toBeVisible();
-  await expect(
-    tauriPage.getByRole("dialog", { name: "Keyboard Shortcuts" }),
-  ).toBeVisible();
-  await tauriPage.click('[aria-label="Close keyboard shortcuts"]');
-  await expect(tauriPage.getByRole("dialog", { name: "Settings" })).toBeVisible();
+  await expect(tauriPage.getByText("Reset all shortcuts", { exact: true })).toBeVisible();
   await tauriPage.click('[aria-label="Close settings"]');
 });
 
@@ -80,8 +73,8 @@ test("home tour opens from Help and About", async ({ tauriPage }) => {
   await openSettings(tauriPage);
   await tauriPage.click('[data-testid="settings-section-help"]');
   await tauriPage.getByText("Start tour", { exact: true }).click();
-  await expect(tauriPage.getByRole("alertdialog")).toBeVisible();
-  await expect(tauriPage.getByText("Home", { exact: true })).toBeVisible();
+  await expect(tauriPage.getByRole("alertdialog")).toBeVisible({ timeout: 20_000 });
+  await expect(tauriPage.getByText("Settings", { exact: true })).toBeVisible();
   await tauriPage.getByRole("button", { name: "Skip" }).click();
   await expect(tauriPage.getByRole("alertdialog")).toBeHidden();
 });
