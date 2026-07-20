@@ -34,20 +34,37 @@ export function GlobalNewProject() {
       setOpen(false);
       const tours = useTourStore.getState();
       finishHomeTourAfterProjectCreation(tours);
-      let attempts = 0;
+      let observer: MutationObserver | null = null;
+      const timeout = window.setTimeout(() => observer?.disconnect(), 30_000);
       const chainWorkspace = () => {
-        attempts += 1;
         const state = useTourStore.getState();
-        if (
-          useFilesStore.getState().projectId &&
-          document.querySelector('[data-tour="project-toolbar"]')
-        ) {
-          state.start("workspace");
+        if (state.activeTourId === "workspace") {
+          window.clearTimeout(timeout);
+          observer?.disconnect();
           return;
         }
-        if (attempts < 120) requestAnimationFrame(chainWorkspace);
+        const toolbar = document.querySelector<HTMLElement>(
+          '[data-tour="project-toolbar"]',
+        );
+        if (
+          useFilesStore.getState().projectId &&
+          toolbar &&
+          toolbar.getClientRects().length > 0 &&
+          state.start("workspace")
+        ) {
+          window.clearTimeout(timeout);
+          observer?.disconnect();
+          return;
+        }
       };
-      requestAnimationFrame(chainWorkspace);
+      observer = new MutationObserver(chainWorkspace);
+      observer.observe(document.body, {
+        attributes: true,
+        attributeFilter: ["data-tour", "hidden", "style"],
+        childList: true,
+        subtree: true,
+      });
+      chainWorkspace();
     } catch (e) {
       notifyError("create project", e, "Couldn't create the project.");
       useTourStore.getState().stop();
