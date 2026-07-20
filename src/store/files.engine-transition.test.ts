@@ -47,6 +47,29 @@ beforeEach(() => {
 });
 
 describe("project engine transition", () => {
+  it("does not reopen a tab after it is closed while its content is loading", async () => {
+    const pending = deferred<string>();
+    useFilesStore.setState({
+      projectId: "project",
+      files: {},
+      openTabs: ["late.tex"],
+      tabOrder: { "late.tex": 1 },
+      activePath: "late.tex",
+    });
+    mocks.readFileContent.mockReturnValue(pending.promise);
+
+    const opening = useFilesStore.getState().openFile("late.tex");
+    await vi.waitFor(() =>
+      expect(mocks.readFileContent).toHaveBeenCalledWith("project", "late.tex")
+    );
+    useFilesStore.getState().closeTab("late.tex");
+    pending.resolve("late content");
+    await opening;
+
+    expect(useFilesStore.getState().openTabs).not.toContain("late.tex");
+    expect(useFilesStore.getState().activePath).toBeNull();
+  });
+
   it("denies capabilities until the backend descriptor resolves", async () => {
     const pending = deferred<typeof LATEX_ENGINE>();
     mocks.getProjectEngine.mockReturnValue(pending.promise);
