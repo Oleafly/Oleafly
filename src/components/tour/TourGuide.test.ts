@@ -7,6 +7,7 @@ import {
   shouldCompleteTourAfterStep,
   shouldCloseProjectDialogOnBack,
   shouldSuppressTourKey,
+  terminalTourAction,
   autoSkipAction,
   toJoyrideStep,
   tourArrowSide,
@@ -149,6 +150,14 @@ describe("tour target hydration", () => {
 });
 
 describe("terminal tour lifecycle", () => {
+  it("persists only explicit completion or dismissal", () => {
+    expect(terminalTourAction("update", "finished")).toBe("complete");
+    expect(terminalTourAction("skip", "skipped")).toBe("dismiss");
+    expect(terminalTourAction("close", "skipped")).toBe("dismiss");
+    expect(terminalTourAction("stop", "skipped")).toBe("interrupt");
+    expect(terminalTourAction("update", "paused")).toBe("interrupt");
+  });
+
   it("completes every tour when Done advances from its final step", () => {
     for (const definition of Object.values(tourRegistry)) {
       const finalIndex = definition.steps.length - 1;
