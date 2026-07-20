@@ -566,13 +566,18 @@ export function NewProjectDialog({
                           type="button"
                           onClick={() => setColor(c.hex)}
                           aria-label={c.name}
+                          aria-pressed={active}
                           className={cn(
                             "flex size-7 items-center justify-center rounded-full transition-transform hover:scale-110",
                             active && "scale-110 ring-1 ring-primary ring-offset-2 ring-offset-background",
                           )}
                           style={{ background: c.hex }}
                         >
-                          {active && <Check className="size-3.5 text-white drop-shadow" />}
+                          {active && (
+                            <span className="flex size-4 items-center justify-center rounded-full bg-black/65 text-white shadow-sm">
+                              <Check className="size-3 stroke-[3]" />
+                            </span>
+                          )}
                         </button>
                       </Tooltip>
                     );

@@ -83,6 +83,7 @@ export const tourRegistry = {
       {
         id: "home-color",
         target: '[data-tour="project-cover-color"]',
+        interactionArea: '[data-tour="project-cover-color"]',
         kind: "informational",
         title: "Choose a cover color",
         content: "This color makes the project easy to spot on Home. You can keep the template default.",
@@ -321,6 +322,7 @@ export const tourRegistry = {
         title: "AI Assistant",
         content: "Work with a project-aware assistant without sending anything during this tour.",
         waitForTarget: true,
+        placement: "right",
       },
       {
         id: "ai-connect-provider",

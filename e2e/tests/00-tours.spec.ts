@@ -99,6 +99,12 @@ test("welcome is modal and Home creates a real project before Workspace starts",
   await tauriPage.type('[data-tour="project-name"]', projectName);
   await tauriPage.getByText("Next", { exact: true }).click();
   await expect(tauriPage.getByText("Choose a cover color", { exact: true })).toBeVisible();
+  const creamSwatch = tauriPage.locator(
+    '[data-tour="project-cover-color"] button[aria-label="Cream"]',
+  );
+  await creamSwatch.click();
+  await expect(creamSwatch).toHaveAttribute("aria-pressed", "true");
+  await expect(creamSwatch.locator("svg")).toBeVisible();
   await tauriPage.getByText("Next", { exact: true }).click();
   await tauriPage.click('[data-tour="create-project"]');
   await expect(tauriPage.getByText("Project toolbar", { exact: true })).toBeVisible({
@@ -173,6 +179,20 @@ test("AI and Diagram tours select their eligible context without sending or comp
   await expect(tauriPage.locator("#react-joyride-portal h2")).toHaveText("AI Assistant", {
     timeout: 30_000,
   });
+  await tauriPage.waitForFunction(
+    `(() => {
+      const target = document.querySelector('[data-tour="ai-assistant"]');
+      const tooltip = document.querySelector('[data-tour-tooltip="ai-assistant"]');
+      if (!(target instanceof HTMLElement) || !(tooltip instanceof HTMLElement)) return false;
+      const targetRect = target.getBoundingClientRect();
+      const tooltipRect = tooltip.getBoundingClientRect();
+      return tooltipRect.left >= targetRect.right - 2
+        && tooltipRect.top >= 0
+        && tooltipRect.right <= window.innerWidth
+        && tooltipRect.bottom <= window.innerHeight;
+    })()`,
+    20_000,
+  );
   await tauriPage.getByText("Skip", { exact: true }).click();
 
   await tauriPage.click('[aria-label="Insert diagram"]');

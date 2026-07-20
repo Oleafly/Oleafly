@@ -44,6 +44,7 @@ function TourTooltip(props: TooltipRenderProps) {
   return (
     <div
       {...tooltipProps}
+      data-tour-tooltip={definition.id}
       className="w-[min(21rem,calc(100vw-2rem))] rounded-lg border bg-popover p-4 text-popover-foreground shadow-xl"
     >
       {definition.id === "home-overview" ? (

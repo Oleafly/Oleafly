@@ -15,6 +15,9 @@ describe("tour registry", () => {
     expect(tourRegistry.home.steps[3].interactionTarget).toBe(
       '[data-tour="project-template-card"]',
     );
+    expect(tourRegistry.home.steps[5].interactionArea).toBe(
+      '[data-tour="project-cover-color"]',
+    );
   });
 
   it("uses only stable data-tour targets", () => {
@@ -72,6 +75,7 @@ describe("tour registry", () => {
       "ai-restore",
     ]);
     expect(tourRegistry.ai.steps.every((step) => step.kind === "informational")).toBe(true);
+    expect(tourRegistry.ai.steps[0].placement).toBe("right");
   });
 
   it("covers diagram authoring without compiling or saving", () => {
