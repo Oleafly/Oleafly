@@ -7,6 +7,7 @@ import workerSrc from "./pdf.worker?worker&url";
 // Styles for the selectable text layer + clickable annotation (link) layer.
 import "pdfjs-dist/web/pdf_viewer.css";
 import { registerPdfView, clearPdfView, pageClickToBp } from "./pdfController";
+import { installMainThreadPdfWorker } from "./mainThreadWorker";
 import { closestMatchingElement, wordAtHorizontalPosition, wordInText } from "./textHit";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
@@ -17,16 +18,8 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 let mainThreadForced = false;
 async function forceMainThreadWorker(): Promise<void> {
   if (mainThreadForced) return;
+  await installMainThreadPdfWorker(workerSrc);
   mainThreadForced = true;
-  try {
-    await import("./polyfills");
-    // Reuse the exact emitted worker asset instead of bundling a second copy
-    // solely for this rare main-thread fallback.
-    const mod = await import(/* @vite-ignore */ workerSrc);
-    (globalThis as { pdfjsWorker?: unknown }).pdfjsWorker = mod;
-  } catch {
-    // The final plain-open attempt still provides a useful fallback.
-  }
 }
 
 type PageTextContent = Awaited<ReturnType<pdfjsLib.PDFPageProxy["getTextContent"]>>;
