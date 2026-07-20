@@ -1,9 +1,19 @@
 import { test, expect } from "../fixtures";
-import { openProject, pressGlobal } from "../helpers";
+import { createBlankProject, openProject, pressGlobal } from "../helpers";
 
 test("clicking the PDF jumps to the word in the source", async ({ tauriPage }) => {
   test.setTimeout(180_000); // cold text-layer render can be slow
-  await openProject(tauriPage, "E2E Doc");
+  await expect(
+    tauriPage.locator('[data-testid="library"][data-projects-loaded="true"]'),
+  ).toBeVisible({ timeout: 30_000 });
+  const projectExists = await tauriPage.evaluate<boolean>(
+    `!!document.querySelector('button[aria-label="Open E2E Doc"]')`,
+  );
+  if (projectExists) {
+    await openProject(tauriPage, "E2E Doc");
+  } else {
+    await createBlankProject(tauriPage, "E2E Doc");
+  }
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await pressGlobal(tauriPage, "Enter", { meta: true });
   await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok", {

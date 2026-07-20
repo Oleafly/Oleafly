@@ -51,7 +51,11 @@ export async function inverseFromClick(page: number, x: number, y: number, word?
   if (!store.engineLoaded || !store.engine.capabilities.supports_synctex) return;
   try {
     const hit = await synctexInverse(projectId, mainDoc, page, x, y);
-    if (!hit) return;
+    if (!hit) {
+      const currentLine = getCurrentLine();
+      if (word && currentLine != null) selectWordNearLine(currentLine, word);
+      return;
+    }
 
     const { activePath, tree } = useFilesStore.getState();
     const activeBase = activePath?.split("/").pop();

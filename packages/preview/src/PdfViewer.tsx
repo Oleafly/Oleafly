@@ -7,7 +7,7 @@ import workerSrc from "./pdf.worker?worker&url";
 // Styles for the selectable text layer + clickable annotation (link) layer.
 import "pdfjs-dist/web/pdf_viewer.css";
 import { registerPdfView, clearPdfView, pageClickToBp } from "./pdfController";
-import { wordAtHorizontalPosition, wordInText } from "./textHit";
+import { closestMatchingElement, wordAtHorizontalPosition, wordInText } from "./textHit";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
@@ -78,11 +78,21 @@ function wordAtPoint(
     caretRangeFromPoint?: (x: number, y: number) => Range | null;
     caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
   };
-  const clickedSpan =
-    eventTarget instanceof Element ? eventTarget.closest<HTMLElement>(".textLayer span") : null;
-  if (clickedSpan) {
-    const text = clickedSpan.textContent ?? "";
-    const rect = clickedSpan.getBoundingClientRect();
+  const clickedSpan = closestMatchingElement<HTMLElement>(eventTarget, ".textLayer span");
+  const containingSpan =
+    clickedSpan ??
+    Array.from(root.querySelectorAll<HTMLElement>(".textLayer span")).find((span) => {
+      const rect = span.getBoundingClientRect();
+      return (
+        clientX >= rect.left &&
+        clientX <= rect.right &&
+        clientY >= rect.top &&
+        clientY <= rect.bottom
+      );
+    });
+  if (containingSpan) {
+    const text = containingSpan.textContent ?? "";
+    const rect = containingSpan.getBoundingClientRect();
     const word = wordAtHorizontalPosition(text, rect.left, rect.width, clientX);
     if (word) return word;
   }
@@ -99,21 +109,11 @@ function wordAtPoint(
       offset = pos.offset;
     }
   }
-  if (!node || node.nodeType !== Node.TEXT_NODE || (clickedSpan && !clickedSpan.contains(node))) {
-    const target =
-      clickedSpan ?? document.elementFromPoint(clientX, clientY)?.closest(".textLayer span");
-    const containingSpan =
-      target ??
-      Array.from(root.querySelectorAll<HTMLElement>(".textLayer span")).find((span) => {
-        const rect = span.getBoundingClientRect();
-        return (
-          clientX >= rect.left &&
-          clientX <= rect.right &&
-          clientY >= rect.top &&
-          clientY <= rect.bottom
-        );
-      });
-    const fallbackText = containingSpan?.textContent?.trim() ?? "";
+  if (!node || node.nodeType !== Node.TEXT_NODE || (containingSpan && !containingSpan.contains(node))) {
+    const fallbackText =
+      containingSpan?.textContent?.trim() ??
+      document.elementFromPoint(clientX, clientY)?.closest(".textLayer span")?.textContent?.trim() ??
+      "";
     return fallbackText || null;
   }
   const text = node.textContent ?? "";

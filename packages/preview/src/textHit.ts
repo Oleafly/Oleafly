@@ -9,6 +9,14 @@ export function wordInText(text: string, offset: number): string | null {
   return word.length ? word : null;
 }
 
+export function closestMatchingElement<T extends Element>(
+  target: EventTarget | null | undefined,
+  selector: string,
+): T | null {
+  const closest = (target as { closest?: (value: string) => Element | null } | null)?.closest;
+  return typeof closest === "function" ? (closest.call(target, selector) as T | null) : null;
+}
+
 export function wordAtHorizontalPosition(
   text: string,
   left: number,

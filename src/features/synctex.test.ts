@@ -43,7 +43,13 @@ beforeEach(() => {
     cb(0);
     return 0;
   }) as typeof requestAnimationFrame;
-  for (const k of ["synctexInverse", "gotoLine", "selectWordNearLine", "openFile"] as const)
+  for (const k of [
+    "synctexInverse",
+    "gotoLine",
+    "selectWordNearLine",
+    "getCurrentLine",
+    "openFile",
+  ] as const)
     mocks[k].mockReset();
   mocks.state.projectId = "proj";
   mocks.state.mainDoc = "main.tex";
@@ -75,6 +81,16 @@ describe("inverseFromClick (multi-file, 0.1.1 fix)", () => {
     mocks.synctexInverse.mockResolvedValue(null);
     await inverseFromClick(1, 10, 10);
     expect(mocks.openFile).not.toHaveBeenCalled();
+    expect(mocks.gotoLine).not.toHaveBeenCalled();
+  });
+
+  it("selects the clicked PDF word when synctex has no exact coordinate hit", async () => {
+    mocks.synctexInverse.mockResolvedValue(null);
+    mocks.getCurrentLine.mockReturnValue(3);
+
+    await inverseFromClick(1, 10, 10, "Introduction");
+
+    expect(mocks.selectWordNearLine).toHaveBeenCalledWith(3, "Introduction");
     expect(mocks.gotoLine).not.toHaveBeenCalled();
   });
 
