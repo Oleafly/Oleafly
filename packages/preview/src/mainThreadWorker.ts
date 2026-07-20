@@ -2,6 +2,8 @@ type PdfWorkerModule = {
   WorkerMessageHandler?: unknown;
 };
 
+type WorkerModuleLoader = (workerSrc: string) => Promise<PdfWorkerModule>;
+
 export function installPdfWorkerModule(workerModule: PdfWorkerModule) {
   const handler = workerModule.WorkerMessageHandler as { setup?: unknown } | undefined;
   if (typeof handler?.setup !== "function") {
@@ -10,12 +12,11 @@ export function installPdfWorkerModule(workerModule: PdfWorkerModule) {
   (globalThis as { pdfjsWorker?: unknown }).pdfjsWorker = workerModule;
 }
 
-export async function installMainThreadPdfWorker(workerSrc: string) {
+export async function installMainThreadPdfWorker(
+  workerSrc: string,
+  loadWorkerModule: WorkerModuleLoader = (src) => import(/* @vite-ignore */ src),
+) {
   await import("./polyfills");
-  await import(/* @vite-ignore */ workerSrc);
-  const workerModule = (globalThis as { pdfjsWorker?: PdfWorkerModule }).pdfjsWorker;
-  if (!workerModule) {
-    throw new Error("PDF worker module did not register its main-thread handler");
-  }
+  const workerModule = await loadWorkerModule(workerSrc);
   installPdfWorkerModule(workerModule);
 }
