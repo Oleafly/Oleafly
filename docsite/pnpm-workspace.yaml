@@ -4,3 +4,9 @@ packages: []
 allowBuilds:
   esbuild: true
   sharp: true
+
+minimumReleaseAgeExclude:
+  - astro@7.1.2
+
+overrides:
+  esbuild: 0.28.1
