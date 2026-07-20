@@ -204,6 +204,7 @@ export function McpSection() {
   const [cfg, setCfg] = useState<AppConfig | null>(null);
   const [status, setStatus] = useState<McpStatus | null>(null);
   const [busy, setBusy] = useState(false);
+  const [restartConfirmation, setRestartConfirmation] = useState<string | null>(null);
   const busyRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -259,6 +260,7 @@ export function McpSection() {
     setBusy(true);
     setError(null);
     setRevealed(false);
+    setRestartConfirmation(null);
     try {
       const s = await mcpSetEnabled(next);
       setStatus(s);
@@ -298,6 +300,7 @@ export function McpSection() {
         mcp_port: s.port ?? cfg.mcp_port,
       });
       useMcpActivityStore.getState().setServerRunning(!!s.running);
+      setRestartConfirmation(s.url);
       await refreshMcpRegistry();
       await loadToken(true);
     } catch (e) {
@@ -418,7 +421,9 @@ export function McpSection() {
 
       <div data-testid="mcp-status" className="rounded-lg border bg-card p-3 text-sm">
         {status?.running && status.url ? (
-          <span className="text-emerald-600 dark:text-emerald-500">Running at {status.url}</span>
+          <span className="text-emerald-600 dark:text-emerald-500">
+            {restartConfirmation ? `Restarted at ${restartConfirmation}` : `Running at ${status.url}`}
+          </span>
         ) : (
           <span className="text-muted-foreground">Off</span>
         )}
