@@ -22,8 +22,8 @@ The Oleafly application menu also includes **Reload Views** to refresh every web
 
 ## Signed, verified, and boring by design
 
-Updates come from the project's GitHub Releases and are cryptographically signed; the app verifies each download's signature against a key embedded in the app before installing. A build that doesn't verify doesn't install. There's one release channel (latest stable), and your projects are never touched by an update: they live in [their own folder](/OpenLeaf/where-your-data-lives/), fully separate from the app.
+Updates come from the project's GitHub Releases and are cryptographically signed; the app verifies each download's signature against a key embedded in the app before installing. A build that doesn't verify doesn't install. There's one release channel (latest stable), and your projects are never touched by an update: they live in [their own folder](/Oleafly/where-your-data-lives/), fully separate from the app.
 
 ## What's in a release
 
-Every release ships with human-written notes; the same changelog is available in the app under Settings, Help & About, **What's new**, and on the [releases page](https://github.com/prajwal-svm/OpenLeaf/releases). Maintainer-facing details of how releases are built and signed live in [Engineering](/OpenLeaf/engineering/updates/).
+Every release ships with human-written notes; the same changelog is available in the app under Settings, Help & About, **What's new**, and on the [releases page](https://github.com/Oleafly/Oleafly/releases). Maintainer-facing details of how releases are built and signed live in [Engineering](/Oleafly/engineering/updates/).

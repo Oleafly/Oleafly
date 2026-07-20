@@ -7,7 +7,7 @@ Two audiences read your PDF without ever telling you what went wrong: applicant 
 
 Open it from the shield icon in the left rail. The panel opens instantly, pre-selects the checks relevant to your document type, and every check explains itself with an info icon.
 
-![Preflight scoring a resume for ATS readiness](/OpenLeaf/media/preflight-ats.png)
+![Preflight scoring a resume for ATS readiness](/Oleafly/media/preflight-ats.png)
 
 ## Two scores
 
@@ -60,7 +60,7 @@ The **Accessible export** card turns a regular document into one ready for taggi
 1. **Prepare for accessible export** rewrites your source with what a tagging engine needs (the `\DocumentMetadata` first line, unicode-math, alt-text placeholders), showing every change before you apply it.
 2. **Compile tagged and verify** builds with LuaLaTeX and immediately audits the result, including a full tag-tree inspection, ending in a clear verdict: is this PDF Section 508 / PDF-UA ready?
 
-The LuaLaTeX engine comes from your system TeX Live or a one-click TinyTeX install; see [LaTeX engines](/OpenLeaf/latex-engines/). Your everyday Tectonic compiles are untouched by any of this.
+The LuaLaTeX engine comes from your system TeX Live or a one-click TinyTeX install; see [LaTeX engines](/Oleafly/latex-engines/). Your everyday Tectonic compiles are untouched by any of this.
 
 ## Honest scope
 

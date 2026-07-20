@@ -4,7 +4,7 @@ In about two minutes you'll have a project open, compiled, and exporting a PDF. 
 
 ## 1. Install
 
-Download the app for your platform from the [latest release](https://github.com/prajwal-svm/OpenLeaf/releases/latest): a `.dmg` for macOS (Apple Silicon), a `.msi` or `-setup.exe` for Windows, or an `.AppImage`, `.deb`, or `.rpm` for Linux. Open it and you're ready. The builds aren't signed yet, so your OS warns on first launch; the [install guide](install.md#first-launch) has the one-time unlock for each platform.
+Download the app for your platform from the [latest release](https://github.com/Oleafly/Oleafly/releases/latest): a `.dmg` for macOS (Apple Silicon), a `.msi` or `-setup.exe` for Windows, or an `.AppImage`, `.deb`, or `.rpm` for Linux. Open it and you're ready. The builds aren't signed yet, so your OS warns on first launch; the [install guide](install.md#first-launch) has the one-time unlock for each platform.
 
 Prefer to build from source? See [Build from source](install.md#build-from-source) in the install guide.
 

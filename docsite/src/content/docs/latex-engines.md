@@ -7,7 +7,7 @@ Oleafly ships one engine and can manage a second. Understanding the split takes 
 
 ## Tectonic: the everyday engine
 
-Everything on the [Compiling](/OpenLeaf/compiling/) page runs on **Tectonic**, the XeTeX-based engine bundled inside the app. It's fast, needs zero installation, fetches packages on demand, caches them for offline use, and produces clean Unicode PDFs with embedded fonts. For writing, previewing, and exporting, Tectonic is all you ever touch, and it is not configurable away.
+Everything on the [Compiling](/Oleafly/compiling/) page runs on **Tectonic**, the XeTeX-based engine bundled inside the app. It's fast, needs zero installation, fetches packages on demand, caches them for offline use, and produces clean Unicode PDFs with embedded fonts. For writing, previewing, and exporting, Tectonic is all you ever touch, and it is not configurable away.
 
 One thing Tectonic cannot do: produce **tagged PDFs**, the structure layer that screen readers and Section 508 / PDF-UA compliance require. That takes LuaLaTeX.
 
@@ -18,7 +18,7 @@ Settings, **LaTeX Engine** ("Tagged / accessible export") manages it, and there 
 1. **You already have TeX Live.** Oleafly detects a system LuaLaTeX and shows "Using a system LuaLaTeX / TeX Live". Nothing to install.
 2. **You don't.** One button, **Install TinyTeX (~100 MB)**, downloads a self-contained TeX Live into `~/.openleaf/tinytex` with live progress. No admin rights, no system changes, and **Delete TinyTeX to free space** removes it entirely whenever you like.
 
-With an engine present, the [Preflight](/OpenLeaf/preflight/) panel's **Compile tagged and verify** button can produce a tagged PDF with LuaLaTeX and immediately audit it, in one step. Prefer your own toolchain? Preflight's **Prepare for accessible export** rewrites your source for tagging and you compile it with any LuaLaTeX (TeX Live 2025 or newer) outside the app.
+With an engine present, the [Preflight](/Oleafly/preflight/) panel's **Compile tagged and verify** button can produce a tagged PDF with LuaLaTeX and immediately audit it, in one step. Prefer your own toolchain? Preflight's **Prepare for accessible export** rewrites your source for tagging and you compile it with any LuaLaTeX (TeX Live 2025 or newer) outside the app.
 
 ## The package manager
 
@@ -36,4 +36,4 @@ This manager is about the tagging engine. Tectonic needs no package management a
 
 ## Templates and packages
 
-Templates declare the packages they need (IEEEtran, acmart, elsarticle, beamer, tikzposter, natbib, and friends), and Tectonic fetches them on first compile. Templates with on-demand fonts handle those separately; see [Templates](/OpenLeaf/templates/#on-demand-fonts-the-setup-badge).
+Templates declare the packages they need (IEEEtran, acmart, elsarticle, beamer, tikzposter, natbib, and friends), and Tectonic fetches them on first compile. Templates with on-demand fonts handle those separately; see [Templates](/Oleafly/templates/#on-demand-fonts-the-setup-badge).

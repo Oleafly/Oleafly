@@ -117,7 +117,7 @@ jobs:
             echo ""
             echo "**Downloads:** grab your platform's installer below (macOS \`aarch64\` \`.dmg\`, Windows \`.msi\` / \`-setup.exe\`, Linux \`.AppImage\` / \`.deb\`)."
             echo ""
-            echo "First launch on macOS or Windows? These builds aren't code-signed yet: follow the [one-time unlock steps](https://github.com/prajwal-svm/OpenLeaf/blob/main/docs/install.md#first-launch)."
+            echo "First launch on macOS or Windows? These builds aren't code-signed yet: follow the [one-time unlock steps](https://github.com/Oleafly/Oleafly/blob/main/docs/install.md#first-launch)."
             echo 'CHANGELOG_EOF'
           } >> "$GITHUB_OUTPUT"
 

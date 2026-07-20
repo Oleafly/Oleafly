@@ -10,12 +10,12 @@
 
 *Documents should outlive services.*
 
-[![Download](https://img.shields.io/github/v/release/prajwal-svm/OpenLeaf?label=Download&color=22c55e)](https://github.com/prajwal-svm/OpenLeaf/releases/latest)
-[![Downloads](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fprajwal-svm%2FOpenLeaf%2Fmain%2F.github%2Fbadges%2Fdownloads.json)](https://github.com/prajwal-svm/OpenLeaf/releases)
-[![CI](https://github.com/prajwal-svm/OpenLeaf/actions/workflows/ci.yml/badge.svg)](https://github.com/prajwal-svm/OpenLeaf/actions/workflows/ci.yml)
+[![Download](https://img.shields.io/github/v/release/Oleafly/Oleafly?label=Download&color=22c55e)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Downloads](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FOleafly%2FOleafly%2Fmain%2F.github%2Fbadges%2Fdownloads.json)](https://github.com/Oleafly/Oleafly/releases)
+[![CI](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](LICENSE)
-[![macOS · Windows · Linux](https://img.shields.io/badge/macOS%20·%20Windows%20·%20Linux-blue)](https://github.com/prajwal-svm/OpenLeaf/releases/latest)
-[![Stars](https://img.shields.io/github/stars/prajwal-svm/OpenLeaf?style=social)](https://github.com/prajwal-svm/OpenLeaf)
+[![macOS · Windows · Linux](https://img.shields.io/badge/macOS%20·%20Windows%20·%20Linux-blue)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Stars](https://img.shields.io/github/stars/Oleafly/Oleafly?style=social)](https://github.com/Oleafly/Oleafly)
 
 </div>
 
@@ -29,16 +29,16 @@
 
 <div align="center">
 
-**[Download the app](https://github.com/prajwal-svm/OpenLeaf/releases/latest) · [Build from source](docs/install.md) · [Docs](https://prajwal-svm.github.io/OpenLeaf/)**
+**[Download the app](https://github.com/Oleafly/Oleafly/releases/latest) · [Build from source](docs/install.md) · [Docs](https://oleafly.github.io/Oleafly/)**
 
-Grab a prebuilt installer for macOS, Windows, or Linux from the [latest release](https://github.com/prajwal-svm/OpenLeaf/releases/latest), or [build it from source](docs/install.md).
+Grab a prebuilt installer for macOS, Windows, or Linux from the [latest release](https://github.com/Oleafly/Oleafly/releases/latest), or [build it from source](docs/install.md).
 
 If Oleafly is useful to you, a star helps other people find it.
 
 </div>
 
 > [!NOTE]
-> **Status:** Oleafly is already usable for real projects. Some advanced workflows and package compatibility are still evolving. [Feedback and bug reports](https://github.com/prajwal-svm/OpenLeaf/issues) are welcome.
+> **Status:** Oleafly is already usable for real projects. Some advanced workflows and package compatibility are still evolving. [Feedback and bug reports](https://github.com/Oleafly/Oleafly/issues) are welcome.
 
 <br/>
 
@@ -65,7 +65,7 @@ If Oleafly is useful to you, a star helps other people find it.
 
 ## Install
 
-**Download the app** from the [latest release](https://github.com/prajwal-svm/OpenLeaf/releases/latest):
+**Download the app** from the [latest release](https://github.com/Oleafly/Oleafly/releases/latest):
 
 | Platform | Grab |
 |---|---|
@@ -78,7 +78,7 @@ Builds aren't code-signed yet, so your OS warns on first launch (it's safe to op
 **Or build from source:**
 
 ```bash
-git clone https://github.com/prajwal-svm/OpenLeaf.git && cd OpenLeaf
+git clone https://github.com/Oleafly/Oleafly.git && cd Oleafly
 ./scripts/fetch-tectonic.sh all   # LaTeX compiler sidecar
 ./scripts/fetch-typst.sh all      # Typst compiler sidecar
 pnpm install
@@ -208,7 +208,7 @@ Open the Preflight panel and it scores your document out of 100 for the two audi
 <img src="media/preflight-ats.png" alt="Preflight scores a resume for ATS parsers and screen readers" width="85%" />
 </div>
 
-Every check is documented in [the Preflight guide](https://prajwal-svm.github.io/OpenLeaf/preflight/).
+Every check is documented in [the Preflight guide](https://oleafly.github.io/Oleafly/preflight/).
 
 <br/>
 
@@ -234,7 +234,7 @@ It also draws figures. Describe a diagram (or select a paragraph), and it genera
 
 ## Features
 
-The full list. Everything here runs on your machine. For the detailed tour, see the [documentation site](https://prajwal-svm.github.io/OpenLeaf/).
+The full list. Everything here runs on your machine. For the detailed tour, see the [documentation site](https://oleafly.github.io/Oleafly/).
 
 **Editor (CodeMirror 6)**
 - LaTeX autocomplete for commands, `\ref`/`\label`, `\cite` (parsed from your `.bib`), and file names from the tree
@@ -486,20 +486,20 @@ Plus Tectonic (XeTeX), pdf.js, Zustand, Harper, and Hunspell.
 
 ## Documentation
 
-The full product documentation lives at **[prajwal-svm.github.io/OpenLeaf](https://prajwal-svm.github.io/OpenLeaf/)**: thirty-plus guides that cover every feature, from first launch to tagged PDF export.
+The full product documentation lives at **[oleafly.github.io/Oleafly](https://oleafly.github.io/Oleafly/)**: thirty-plus guides that cover every feature, from first launch to tagged PDF export.
 
 | Guide | What's inside |
 |---|---|
-| [Download](https://github.com/prajwal-svm/OpenLeaf/releases/latest) | Prebuilt installers (.dmg / .msi / .exe / .AppImage / .deb / .rpm) |
-| [Overview](https://prajwal-svm.github.io/OpenLeaf/overview/) | What Oleafly is and a tour of the whole app |
-| [Getting started](https://prajwal-svm.github.io/OpenLeaf/getting-started/) | First project to first PDF in a couple of minutes |
-| [Templates](https://prajwal-svm.github.io/OpenLeaf/templates/) | The full gallery: resumes, papers, theses, posters, decks |
-| [Preflight: ATS & accessibility](https://prajwal-svm.github.io/OpenLeaf/preflight/) | Section 508 / PDF-UA and resume-parser checks, before you submit |
-| [AI assistant](https://prajwal-svm.github.io/OpenLeaf/ai-setup/) | Connect a model, or go local with Ollama |
+| [Download](https://github.com/Oleafly/Oleafly/releases/latest) | Prebuilt installers (.dmg / .msi / .exe / .AppImage / .deb / .rpm) |
+| [Overview](https://oleafly.github.io/Oleafly/overview/) | What Oleafly is and a tour of the whole app |
+| [Getting started](https://oleafly.github.io/Oleafly/getting-started/) | First project to first PDF in a couple of minutes |
+| [Templates](https://oleafly.github.io/Oleafly/templates/) | The full gallery: resumes, papers, theses, posters, decks |
+| [Preflight: ATS & accessibility](https://oleafly.github.io/Oleafly/preflight/) | Section 508 / PDF-UA and resume-parser checks, before you submit |
+| [AI assistant](https://oleafly.github.io/Oleafly/ai-setup/) | Connect a model, or go local with Ollama |
 | [MCP server](docs/mcp.md) | Drive Oleafly from Claude Desktop, Claude Code, Cursor, and other MCP clients |
-| [GitHub sync](https://prajwal-svm.github.io/OpenLeaf/github-sync/) | Back up and sync across machines |
-| [Keyboard shortcuts](https://prajwal-svm.github.io/OpenLeaf/keyboard-shortcuts/) | The ones worth memorizing |
-| [FAQ](https://prajwal-svm.github.io/OpenLeaf/faq/) | Common questions and fixes |
+| [GitHub sync](https://oleafly.github.io/Oleafly/github-sync/) | Back up and sync across machines |
+| [Keyboard shortcuts](https://oleafly.github.io/Oleafly/keyboard-shortcuts/) | The ones worth memorizing |
+| [FAQ](https://oleafly.github.io/Oleafly/faq/) | Common questions and fixes |
 | [Build from source](docs/install.md) | For developers: clone, install deps, run |
 | [Development](docs/development.md) | Setup and how to contribute |
 | [Frontend architecture](docs/architecture.md) | The `@openleaf/*` packages, ports, and the contribution registry |
@@ -509,7 +509,7 @@ The full product documentation lives at **[prajwal-svm.github.io/OpenLeaf](https
 
 ## Contributing
 
-Bug reports, features, templates, docs, and screenshots are all welcome. Have an idea? [Open a discussion](https://github.com/prajwal-svm/OpenLeaf/discussions).
+Bug reports, features, templates, docs, and screenshots are all welcome. Have an idea? [Open a discussion](https://github.com/Oleafly/Oleafly/discussions).
 
 1. Read [CONTRIBUTING.md](CONTRIBUTING.md) to get a dev build running.
 2. Open an issue for big changes. Small fixes can go straight to a PR.

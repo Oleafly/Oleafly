@@ -7,7 +7,7 @@ In about two minutes you'll have a project open, compiled, and exported as a PDF
 
 ## 1. Install
 
-Download the app for your platform from the [latest release](https://github.com/prajwal-svm/OpenLeaf/releases/latest) and open it. The builds aren't signed yet, so your OS warns on first launch; the [install guide](/OpenLeaf/install/#first-launch) has the one-time unlock for each platform.
+Download the app for your platform from the [latest release](https://github.com/Oleafly/Oleafly/releases/latest) and open it. The builds aren't signed yet, so your OS warns on first launch; the [install guide](/Oleafly/install/#first-launch) has the one-time unlock for each platform.
 
 ## 2. Create your first project
 
@@ -20,7 +20,7 @@ On a fresh installation, choose **Show me around** on the welcome screen. The pr
    - **IEEE Research Paper**: a two-column conference paper with figures, tables, and a bibliography.
 3. Click your pick, give the project a name, choose a cover color, and hit **Create project**.
 
-The full catalog of 19 templates is on the [Templates](/OpenLeaf/templates/) page.
+The full catalog of 19 templates is on the [Templates](/Oleafly/templates/) page.
 
 ## 3. Write and compile
 
@@ -28,27 +28,27 @@ Type in the editor on the left. Press **⌘↵** (Ctrl+Enter on Windows/Linux) t
 
 Prefer compile-as-you-type? Open the command palette (**⌘K** / Ctrl+K) and run **Enable auto-compile**: from then on, a compile starts about 2.5 seconds after you stop typing.
 
-While you write, the editor is already helping: type `\` for LaTeX command completion, `/` for the slash insert menu (`/figure`, `/table`, `/section`, `/cite`, `/math` and more), and **Ctrl+Space** to trigger suggestions anywhere. See [Autocomplete & slash commands](/OpenLeaf/autocomplete/).
+While you write, the editor is already helping: type `\` for LaTeX command completion, `/` for the slash insert menu (`/figure`, `/table`, `/section`, `/cite`, `/math` and more), and **Ctrl+Space** to trigger suggestions anywhere. See [Autocomplete & slash commands](/Oleafly/autocomplete/).
 
 ## 4. Jump between source and PDF (SyncTeX)
 
 - **Source to PDF:** put your cursor anywhere and press **⌘⇧J** (Ctrl+Shift+J). The PDF scrolls to the matching spot and flashes a highlight.
 - **PDF to source:** hold **⌘** (Ctrl) and click any word in the PDF. The editor jumps to that exact word, even across `\input` files.
 
-More in [SyncTeX](/OpenLeaf/synctex/).
+More in [SyncTeX](/Oleafly/synctex/).
 
 ## 5. Export
 
-Click the **Export** button (download icon) in the toolbar, then **Export as PDF**. The output is ATS-clean by default: real selectable text with embedded fonts. The same menu exports your full source as a `.zip`, and Word, HTML, Markdown, and plain text via pandoc (downloaded on demand the first time). Details in [Export formats](/OpenLeaf/export/).
+Click the **Export** button (download icon) in the toolbar, then **Export as PDF**. The output is ATS-clean by default: real selectable text with embedded fonts. The same menu exports your full source as a `.zip`, and Word, HTML, Markdown, and plain text via pandoc (downloaded on demand the first time). Details in [Export formats](/Oleafly/export/).
 
 ## 6. Where your files live
 
-Every project is a plain folder under `~/.openleaf/projects/` containing your `.tex`, `.bib`, images, and a real `.git` repository. They're just files: browse, copy, or back them up with any tool. See [Where your data lives](/OpenLeaf/where-your-data-lives/).
+Every project is a plain folder under `~/.openleaf/projects/` containing your `.tex`, `.bib`, images, and a real `.git` repository. They're just files: browse, copy, or back them up with any tool. See [Where your data lives](/Oleafly/where-your-data-lives/).
 
 ## Keep going
 
-- **Cite something:** paste a DOI or paper title and get a `\cite` plus a clean BibTeX entry. [Citations](/OpenLeaf/citations/)
-- **Draw a figure:** the diagram composer generates editable TikZ from a visual canvas. [Figures & diagrams](/OpenLeaf/figures-diagrams/)
-- **Connect an AI:** bring a key from any of nine providers, or run local with Ollama, and let the assistant fix your LaTeX errors. [Set up AI](/OpenLeaf/ai-setup/)
-- **Check before you submit:** Preflight scores your PDF for resume parsers and screen readers. [Preflight](/OpenLeaf/preflight/)
-- **Back it up:** publish the project to GitHub in two clicks. [GitHub sync](/OpenLeaf/github-sync/)
+- **Cite something:** paste a DOI or paper title and get a `\cite` plus a clean BibTeX entry. [Citations](/Oleafly/citations/)
+- **Draw a figure:** the diagram composer generates editable TikZ from a visual canvas. [Figures & diagrams](/Oleafly/figures-diagrams/)
+- **Connect an AI:** bring a key from any of nine providers, or run local with Ollama, and let the assistant fix your LaTeX errors. [Set up AI](/Oleafly/ai-setup/)
+- **Check before you submit:** Preflight scores your PDF for resume parsers and screen readers. [Preflight](/Oleafly/preflight/)
+- **Back it up:** publish the project to GitHub in two clicks. [GitHub sync](/Oleafly/github-sync/)

@@ -28,11 +28,11 @@ The menu reads your document class:
 
 ## Save into the project instead
 
-Different from exporting: the [PDF preview's](/OpenLeaf/pdf-preview/#the-toolbar-left-to-right) **Save PDF to project** writes the compiled PDF into the project tree itself, committed via Git. Use it to snapshot "the version I submitted" next to your source.
+Different from exporting: the [PDF preview's](/Oleafly/pdf-preview/#the-toolbar-left-to-right) **Save PDF to project** writes the compiled PDF into the project tree itself, committed via Git. Use it to snapshot "the version I submitted" next to your source.
 
 ## Tagged, accessible PDFs
 
-For a Section 508 / PDF-UA oriented PDF with a real tag structure, use the [Preflight accessible-export flow](/OpenLeaf/preflight/#accessible-tagged-pdf-export); the result lands in the same build output and downloads like any other PDF.
+For a Section 508 / PDF-UA oriented PDF with a real tag structure, use the [Preflight accessible-export flow](/Oleafly/preflight/#accessible-tagged-pdf-export); the result lands in the same build output and downloads like any other PDF.
 
 ## Bookkeeping
 

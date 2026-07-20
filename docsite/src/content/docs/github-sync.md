@@ -3,7 +3,7 @@ title: "GitHub sync"
 description: "Connect GitHub with a device code or a token, publish a project as a new or existing repo, push and pull between machines, and how your token is protected."
 ---
 
-GitHub sync gives every project an off-machine backup and a way to move between computers, built on the [real Git repo](/OpenLeaf/git-history/) each project already is. There's no Oleafly account in the picture, just your own GitHub.
+GitHub sync gives every project an off-machine backup and a way to move between computers, built on the [real Git repo](/Oleafly/git-history/) each project already is. There's no Oleafly account in the picture, just your own GitHub.
 
 ## Connecting your account
 
@@ -56,4 +56,4 @@ Cover color, main-document choice, and history all travel, because they live in 
 - Push rejected because the remote has commits: pull first, then push.
 - "No GitHub token set": connect in Settings, GitHub.
 
-More in the [FAQ](/OpenLeaf/faq/#github-sync).
+More in the [FAQ](/Oleafly/faq/#github-sync).

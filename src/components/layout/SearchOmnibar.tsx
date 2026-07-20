@@ -13,6 +13,7 @@ import {
 import { commandsFor, commandLabel, type AppContext } from "@openleaf/registry";
 import { useSettingsStore } from "@/store/settings";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
+import { useTourStore } from "@/store/tours";
 import { useFilesStore } from "@/store/files";
 import { useTheme } from "@/lib/theme";
 import { searchDocs, type ProjectInfo, type SearchHit } from "@/lib/tauri";
@@ -178,6 +179,7 @@ export function SearchOmnibar() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (useTourStore.getState().activeTourId) return;
       if (matchesShortcut(e, useShortcutStore.getState().bindings.searchDocuments)) {
         e.preventDefault();
         setSearchOpen(!useSettingsStore.getState().searchOpen);

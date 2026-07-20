@@ -56,7 +56,7 @@ Oleafly's answer:
 - LaTeX output is deterministic. The PDF is the PDF.
 - The compiler emits real selectable Unicode text with embedded fonts, which is what parsers need.
 - The ATS-friendly resume templates follow single-column, linear-reading-order rules.
-- [Preflight](/OpenLeaf/preflight/) shows you the parsed result: name, email, phone, links, and which sections an ATS actually detected in your PDF.
+- [Preflight](/Oleafly/preflight/) shows you the parsed result: name, email, phone, links, and which sections an ATS actually detected in your PDF.
 
 For long-form academic writing, the comparison barely needs making: numbered references, cross-references, equations, and journal classes are what LaTeX exists for.
 
@@ -68,4 +68,4 @@ Honesty cuts both ways:
 - **No in-app merge conflict resolver.** Conflicts surface as Git output; you resolve them like any Git conflict.
 - **English-only spellcheck and grammar** for now.
 
-If one of these is your hard requirement, the comparisons above should help you pick the right tool. For everything else, [get started](/OpenLeaf/getting-started/): the download is free and the first PDF takes about two minutes.
+If one of these is your hard requirement, the comparisons above should help you pick the right tool. For everything else, [get started](/Oleafly/getting-started/): the download is free and the first PDF takes about two minutes.

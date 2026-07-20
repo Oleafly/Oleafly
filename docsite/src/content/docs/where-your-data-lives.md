@@ -37,11 +37,11 @@ Three good options, in increasing order of robustness:
 
 1. **Copy the folder.** `~/.openleaf/projects/` into your normal backup routine (Time Machine, restic, a synced drive) covers everything.
 2. **Use the zip export.** The Export menu's **Export source (.zip)** produces a clean archive of one project's sources, without caches.
-3. **Push to GitHub.** [GitHub sync](/OpenLeaf/github-sync/) gives each project an off-machine copy with full history, and it's the right tool for moving between computers.
+3. **Push to GitHub.** [GitHub sync](/Oleafly/github-sync/) gives each project an off-machine copy with full history, and it's the right tool for moving between computers.
 
 ## Moving to a new machine
 
-Install Oleafly, then either pull your projects from GitHub or copy your old `~/.openleaf/projects/` folder into place. Cover colors, main-document choices, and history all travel with the folders. App-level preferences (theme, fonts, AI keys) are per-machine and take a minute to reset in [Settings](/OpenLeaf/settings/).
+Install Oleafly, then either pull your projects from GitHub or copy your old `~/.openleaf/projects/` folder into place. Cover colors, main-document choices, and history all travel with the folders. App-level preferences (theme, fonts, AI keys) are per-machine and take a minute to reset in [Settings](/Oleafly/settings/).
 
 ## The log file
 
@@ -49,4 +49,4 @@ Install Oleafly, then either pull your projects from GitHub or copy your old `~/
 
 ## What never leaves this folder
 
-Your documents, your Git history, your AI keys, and your GitHub token all live locally. The [Philosophy](/OpenLeaf/philosophy/) page covers exactly which features talk to the network and what they send.
+Your documents, your Git history, your AI keys, and your GitHub token all live locally. The [Philosophy](/Oleafly/philosophy/) page covers exactly which features talk to the network and what they send.

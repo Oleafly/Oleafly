@@ -7,9 +7,9 @@ import { UpdateChecker } from "@/components/layout/UpdateChecker";
 import { appVersion } from "@/lib/tauri";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 
-const REPO = "https://github.com/prajwal-svm/OpenLeaf";
-const AUTHOR_URL = "http://prajwal.me";
-const DOCS = "https://www.overleaf.com/learn";
+const REPO = "https://github.com/Oleafly/Oleafly";
+const AUTHOR_URL = "https://prajwal.me";
+const DOCS = "https://oleafly.github.io/Oleafly/";
 
 export function AboutModal({ open: isOpen, onClose }: { open: boolean; onClose: () => void }) {
   const [version, setVersion] = useState("");

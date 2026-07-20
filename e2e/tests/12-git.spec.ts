@@ -123,11 +123,14 @@ test("stage, diff, and commit with a connected account", async ({ tauriPage }) =
       return 1;
     })()`,
   );
-  await tauriPage.getByText("Commit").click();
-  // "No changes" doesn't vanish like a transient toast would, so it's a
-  // stable success signal to poll for.
+  const commit = tauriPage.getByText("Commit", { exact: true });
+  await expect(commit).toBeEnabled({ timeout: 5_000 });
+  await commit.click();
+  // The success card proves the real git commit completed. The working tree
+  // can legitimately gain a later autosave, so "No changes" is not a stable
+  // assertion for the commit operation itself.
   await tauriPage.waitForFunction(
-    `document.body.innerText.includes('No changes')`,
+    `document.body.innerText.includes('Committed: "e2e: commit gitmarker"')`,
     15_000,
   );
 });

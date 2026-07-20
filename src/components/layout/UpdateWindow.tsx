@@ -13,7 +13,7 @@ import { logError } from "@/lib/log";
 import { appVersion } from "@/lib/tauri";
 import { celebrate } from "@/lib/confetti";
 
-const RELEASES_URL = "https://github.com/prajwal-svm/OpenLeaf/releases/latest";
+const RELEASES_URL = "https://github.com/Oleafly/Oleafly/releases/latest";
 
 type Phase = "checking" | "available" | "upToDate" | "downloading" | "error";
 

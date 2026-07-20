@@ -21,7 +21,7 @@ Everything here lives in Settings, **AI Assistant**, also reachable from the cha
 | **xAI (Grok)** | Grok 2, Grok Beta |
 | **Ollama (local)** | Whatever you've pulled: Llama 3.2, Qwen 2.5, Mistral, Gemma 2, ... |
 
-Each provider card carries a **Get key** link straight to the right page. Reasoning models (GLM, DeepSeek R1) stream their thinking phase live into the chat; see [Chat & tools](/OpenLeaf/ai-chat/#reasoning-models-think-out-loud).
+Each provider card carries a **Get key** link straight to the right page. Reasoning models (GLM, DeepSeek R1) stream their thinking phase live into the chat; see [Chat & tools](/Oleafly/ai-chat/#reasoning-models-think-out-loud).
 
 ## Connecting a provider
 
@@ -31,7 +31,7 @@ Each provider card carries a **Get key** link straight to the right page. Reason
 
 Configure as many providers as you like: extras show a grey **Connected** badge with an **Activate** button, and the chat panel's model menu switches between all of them on the fly. The trash icon deletes a key.
 
-![Provider cards in Settings, AI Assistant](/OpenLeaf/media/settings-ai.png)
+![Provider cards in Settings, AI Assistant](/Oleafly/media/settings-ai.png)
 
 ## Going local with Ollama
 
@@ -57,4 +57,4 @@ Instructions are sandboxed: they steer tone, style, and content, but they can't 
 
 ## What the assistant can do once connected
 
-The settings page lists the assistant's tools with plain-English descriptions, from `read_file` to `compile`. The full story, including the approval flow that gates every file change, is on [Chat & tools](/OpenLeaf/ai-chat/).
+The settings page lists the assistant's tools with plain-English descriptions, from `read_file` to `compile`. The full story, including the approval flow that gates every file change, is on [Chat & tools](/Oleafly/ai-chat/).

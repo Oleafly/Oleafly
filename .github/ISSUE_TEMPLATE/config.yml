@@ -1,11 +1,11 @@
 blank_issues_enabled: false
 contact_links:
   - name: 🔒 Report a security vulnerability
-    url: https://github.com/prajwal-svm/OpenLeaf/security/advisories/new
+    url: https://github.com/Oleafly/Oleafly/security/advisories/new
     about: Please report vulnerabilities privately - do not open a public issue.
   - name: 💬 Questions & discussion
-    url: https://github.com/prajwal-svm/OpenLeaf/discussions
+    url: https://github.com/Oleafly/Oleafly/discussions
     about: Ask questions, share templates, and discuss ideas.
   - name: 📖 Documentation
-    url: https://github.com/prajwal-svm/OpenLeaf/tree/main/docs
+    url: https://github.com/Oleafly/Oleafly/tree/main/docs
     about: Getting started, FAQ, and feature guides.

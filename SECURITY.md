@@ -11,7 +11,7 @@ pull requests.**
 Instead, use GitHub's private vulnerability reporting:
 
 1. Go to the repository's **Security** tab → **Report a vulnerability**
-   (or open <https://github.com/prajwal-svm/OpenLeaf/security/advisories/new>).
+   (or open <https://github.com/Oleafly/Oleafly/security/advisories/new>).
 2. Describe the issue, the affected version/commit, and reproduction steps.
 
 We aim to acknowledge a report within **72 hours** and to ship a fix or

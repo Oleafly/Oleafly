@@ -7,15 +7,15 @@ The right-hand pane is a full PDF reader built for the write-compile loop: it up
 
 The viewer is virtualized: only pages near your viewport are rasterized, so a 300-page thesis scrolls as lightly as a one-page letter.
 
-![Two-page spread view in the PDF preview](/OpenLeaf/media/pdf-preview-spread.png)
+![Two-page spread view in the PDF preview](/Oleafly/media/pdf-preview-spread.png)
 
 ## The toolbar, left to right
 
-- **Logs**: flips to the [compile log view](/OpenLeaf/compiling/#reading-the-logs), with an error/warning badge.
+- **Logs**: flips to the [compile log view](/Oleafly/compiling/#reading-the-logs), with an error/warning badge.
 - **Single page view / Two-page view**: continuous scrolling in one column, or side-by-side spreads like an open book. Spreads are ideal for proofing facing pages of a thesis or book.
 - **Page navigation**: previous, next, and a "N of M" box. Type a number and press Enter to jump; the counter tracks your scroll position automatically.
 - **Zoom out / Zoom in** with a live percentage, from 40% to 400%. Zoom is instant (existing pages scale immediately, then re-render crisply a moment later).
-- **Save PDF to project**: writes the compiled PDF into your project tree under a name you choose, committed via Git so it shows up in [history](/OpenLeaf/git-history/). For image projects this becomes **Save image to project** and saves a high-resolution PNG.
+- **Save PDF to project**: writes the compiled PDF into your project tree under a name you choose, committed via Git so it shows up in [history](/Oleafly/git-history/). For image projects this becomes **Save image to project** and saves a high-resolution PNG.
 - **Invert PDF preview colors**: a dark-reading filter for late-night sessions. Toggle **Restore colors** to go back.
 - **Open preview in a new window**: see below.
 - **Fullscreen preview**: the preview takes the whole screen; **Esc** exits. In fullscreen you can also hide the toolbar entirely (a floating button brings it back).
@@ -34,7 +34,7 @@ Every page has a selectable text layer: select and copy straight from the previe
 
 ## Jumping between source and PDF
 
-Hold ⌘ (Ctrl) and click any word in the PDF to jump to that word in your source, or press **⌘⇧J** (Ctrl+Shift+J) in the editor to light up the matching spot in the PDF. Full details on the [SyncTeX](/OpenLeaf/synctex/) page.
+Hold ⌘ (Ctrl) and click any word in the PDF to jump to that word in your source, or press **⌘⇧J** (Ctrl+Shift+J) in the editor to light up the matching spot in the PDF. Full details on the [SyncTeX](/Oleafly/synctex/) page.
 
 ## Layout controls around the preview
 
