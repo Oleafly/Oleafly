@@ -55,7 +55,6 @@ if (-not $ready) {
   if (Test-Path $log) { Get-Content $log -Tail 30 }
   exit 1
 }
-Start-Sleep -Seconds 2
 
 pnpm exec playwright test -c e2e/playwright.config.ts @args
 $code = $LASTEXITCODE
