@@ -293,6 +293,12 @@ export function shouldCompleteTourAfterStep(
   );
 }
 
+export function terminalTourAction(action: string, status: string) {
+  if (status === STATUS.FINISHED) return "complete" as const;
+  if (action === ACTIONS.SKIP || action === ACTIONS.CLOSE) return "dismiss" as const;
+  return "interrupt" as const;
+}
+
 export function missingTargetAction(
   direction: "next" | "prev",
   kind: TourStepDefinition["kind"],
@@ -585,11 +591,31 @@ export function TourGuide() {
       return;
     }
     if (result.reason !== "missing-target") return;
-    const observer = new MutationObserver(() => {
-      const retry = evaluateCurrentContext();
-      if (!retry.tourId) return;
+    let frame = 0;
+    let disposed = false;
+    const deadline = performance.now() + 10_000;
+    const stopWaiting = () => {
+      disposed = true;
       observer.disconnect();
-      useTourStore.getState().start(retry.tourId);
+      cancelAnimationFrame(frame);
+    };
+    const retry = () => {
+      if (disposed) return;
+      const next = evaluateCurrentContext();
+      if (next.tourId) {
+        stopWaiting();
+        useTourStore.getState().start(next.tourId);
+        return;
+      }
+      if (next.reason !== "missing-target" || performance.now() >= deadline) {
+        stopWaiting();
+        return;
+      }
+      frame = requestAnimationFrame(retry);
+    };
+    const observer = new MutationObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(retry);
     });
     observer.observe(document.body, {
       attributes: true,
@@ -597,7 +623,8 @@ export function TourGuide() {
       childList: true,
       subtree: true,
     });
-    return () => observer.disconnect();
+    frame = requestAnimationFrame(retry);
+    return stopWaiting;
   }, [
     activeTourId,
     aiReadinessRevision,
@@ -978,8 +1005,10 @@ export function TourGuide() {
     }
     if (data.type !== EVENTS.TOUR_END) return;
     if (!activeTourId) return;
-    if (data.status === STATUS.FINISHED) useTourStore.getState().complete(activeTourId);
-    else useTourStore.getState().dismiss(activeTourId);
+    const terminalAction = terminalTourAction(data.action, data.status);
+    if (terminalAction === "complete") useTourStore.getState().complete(activeTourId);
+    if (terminalAction === "dismiss") useTourStore.getState().dismiss(activeTourId);
+    if (terminalAction === "interrupt") useTourStore.getState().stop();
   };
 
   if (showWelcome) {
