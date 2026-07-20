@@ -63,4 +63,3 @@ release just establishes the baseline.
   artifacts are separately minisign-signed (repo secrets
   `TAURI_SIGNING_PRIVATE_KEY` + `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`).
   See [updates.md](updates.md).
-</content>
