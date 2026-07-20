@@ -49,4 +49,4 @@ All three navigation commands also live in the editor toolbar's **Code intellige
 
 ## The AI sees the same index
 
-The [AI assistant](/OpenLeaf/ai-chat/) has a `project_map` tool built on this same index: the outline, labels, citations, macros, file graph, and any unresolved references. When you ask it about "the methodology section," it can actually find it.
+The [AI assistant](/Oleafly/ai-chat/) has a `project_map` tool built on this same index: the outline, labels, citations, macros, file graph, and any unresolved references. When you ask it about "the methodology section," it can actually find it.

@@ -5,8 +5,8 @@ clone to a working dev build, and covers how we review and land changes.
 
 ## Ways to contribute
 
-- Report a bug: open a [bug report](https://github.com/prajwal-svm/OpenLeaf/issues/new/choose).
-- Request a feature: open a [feature request](https://github.com/prajwal-svm/OpenLeaf/issues/new/choose).
+- Report a bug: open a [bug report](https://github.com/Oleafly/Oleafly/issues/new/choose).
+- Request a feature: open a [feature request](https://github.com/Oleafly/Oleafly/issues/new/choose).
 - Report a vulnerability: please do not open a public issue; see [SECURITY.md](SECURITY.md).
 - Send a pull request: see below.
 
@@ -25,8 +25,8 @@ approach before you invest time.
 ## Getting started
 
 ```bash
-git clone https://github.com/prajwal-svm/OpenLeaf.git
-cd OpenLeaf
+git clone https://github.com/Oleafly/Oleafly.git
+cd Oleafly
 pnpm install
 
 # Find your target with `rustc -vV | grep host`.

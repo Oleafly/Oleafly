@@ -5,7 +5,7 @@ description: "The template gallery: 19 ready-to-edit starting points from ATS-sa
 
 Every Oleafly project starts from a template. The gallery gives you a real page-one preview of each one, so you pick by looking at the output, not by guessing from a name. Templates ship as plain, editable LaTeX source: what you create is yours.
 
-![The template gallery with category rail, search, and page-one previews](/OpenLeaf/media/project-templates.png)
+![The template gallery with category rail, search, and page-one previews](/Oleafly/media/project-templates.png)
 
 ## The gallery
 
@@ -19,7 +19,7 @@ Click **New project** in the library (or type `/create` in the search omnibar) a
 | Template | Category | What you get |
 |---|---|---|
 | **Blank document** | Blank | A minimal article to start from scratch. |
-| **Diagram / Figure** | Diagrams | A standalone TikZ figure project; previews as an image and pairs with the [diagram composer](/OpenLeaf/figures-diagrams/). |
+| **Diagram / Figure** | Diagrams | A standalone TikZ figure project; previews as an image and pairs with the [diagram composer](/Oleafly/figures-diagrams/). |
 | **ATS Resume** | Resume | Single-column, ATS-friendly resume with clean section rules. |
 | **Software Engineer Resume** | Resume | A polished one-page SWE resume, pre-filled as a senior example so you edit instead of invent. |
 | **Sidebar Resume** | Resume | Design-forward two-column layout: colored sidebar, photo placeholder, skills on the left, experience on the right. |
@@ -47,16 +47,16 @@ The resume templates are split honestly:
 - **ATS-friendly** (green badge): ATS Resume, Software Engineer Resume, Modern Resume. Single column, linear reading order, no layout tables, real text. These are built so applicant tracking systems extract everything.
 - **Design-forward** (amber badge): Sidebar Resume. It looks striking, and the badge is your heads-up that multi-column layouts can trip strict parsers.
 
-Whichever you pick, run [Preflight](/OpenLeaf/preflight/) before submitting: it simulates a resume parser against your actual PDF and shows what was extracted.
+Whichever you pick, run [Preflight](/Oleafly/preflight/) before submitting: it simulates a resume parser against your actual PDF and shows what was extracted.
 
-![Creating a resume from a template](/OpenLeaf/media/hero-editor.gif)
+![Creating a resume from a template](/Oleafly/media/hero-editor.gif)
 
 ## On-demand fonts (the Setup badge)
 
 Templates that use premium open-source typefaces (like the Lato-based Modern Resume) show a small **Setup** badge in the gallery. Creating one triggers a one-time font download with live progress, and the fonts are copied into the project's own `fonts/` folder, so the project stays self-contained and compiles offline from then on.
 
-You can pre-download or remove these font packs anytime in Settings, Offline & Downloads. Details in [Settings](/OpenLeaf/settings/#offline--downloads).
+You can pre-download or remove these font packs anytime in Settings, Offline & Downloads. Details in [Settings](/Oleafly/settings/#offline--downloads).
 
 ## After creation
 
-The new project opens immediately with the template's structure in the [file tree](/OpenLeaf/files/): the main document, any `.bib`, and assets. Compile once (**⌘↵** / Ctrl+Enter) and start replacing the sample content with your own. Nothing in a template is locked; it's ordinary LaTeX you can reshape freely.
+The new project opens immediately with the template's structure in the [file tree](/Oleafly/files/): the main document, any `.bib`, and assets. Compile once (**⌘↵** / Ctrl+Enter) and start replacing the sample content with your own. Nothing in a template is locked; it's ordinary LaTeX you can reshape freely.

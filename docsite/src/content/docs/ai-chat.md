@@ -5,11 +5,11 @@ description: "An AI agent wired into your project: it reads files, edits with yo
 
 The chat panel (the sparkles tab in the left rail) is an agent inside your editor, not a chatbot bolted on next to it. Ask it to fix your LaTeX errors and it will compile, read the log, edit the file, recompile, and report back, pausing for your approval before touching anything.
 
-![The assistant finds and fixes a LaTeX error](/OpenLeaf/media/ai-fix.gif)
+![The assistant finds and fixes a LaTeX error](/Oleafly/media/ai-fix.gif)
 
 ## Asking
 
-Type in the composer (Enter sends, Shift+Enter for a newline) or start from a suggestion chip: "Fix any LaTeX errors in my document", "Create a new section called 'Publications'", "Recompile and check for errors". The header shows which model you're talking to; click it to switch between every provider and model you've [configured](/OpenLeaf/ai-setup/), mid-conversation.
+Type in the composer (Enter sends, Shift+Enter for a newline) or start from a suggestion chip: "Fix any LaTeX errors in my document", "Create a new section called 'Publications'", "Recompile and check for errors". The header shows which model you're talking to; click it to switch between every provider and model you've [configured](/Oleafly/ai-setup/), mid-conversation.
 
 ## What the assistant can do
 
@@ -39,11 +39,11 @@ Tool calls appear in the chat as chips (spinner while running, then a check, or 
 
 Any file-changing tool pauses the whole run and shows an approval card: which tool, what it wants to do, and a red/green diff of exactly what would change. **Approve** or **Reject**; the decision is stamped on the tool chip permanently, so the conversation records what you allowed.
 
-![The approval card: a diff you approve or reject](/OpenLeaf/media/ai-approval-diff.png)
+![The approval card: a diff you approve or reject](/Oleafly/media/ai-approval-diff.png)
 
 Two more layers of safety back this up:
 
-- Before its first edit of a run, the assistant commits an "Oleafly AI checkpoint" to your project's Git, so even approved changes can be rolled back wholesale from [history](/OpenLeaf/git-history/).
+- Before its first edit of a run, the assistant commits an "Oleafly AI checkpoint" to your project's Git, so even approved changes can be rolled back wholesale from [history](/Oleafly/git-history/).
 - Runs cap at 50 steps, so a confused agent can't loop forever.
 
 ## Plans, progress, and cost
@@ -60,7 +60,7 @@ The assistant doesn't have to stay in the rail. **Float the assistant** pops it 
 
 ## Handing off from an inline edit
 
-Start a quick change with an [inline AI edit](/OpenLeaf/ai-inline-edit/) and then decide it needs the full agent? Hand it off, and your instruction lands in the chat composer with the context carried over, ready to send.
+Start a quick change with an [inline AI edit](/Oleafly/ai-inline-edit/) and then decide it needs the full agent? Hand it off, and your instruction lands in the chat composer with the context carried over, ready to send.
 
 ## Attachments
 
@@ -80,8 +80,8 @@ The **+** button starts a new chat; the clock opens history: up to 50 chats per 
 
 ## What the assistant knows
 
-It starts with your project's name and main document, and pulls everything else through tools: it reads files when it needs them and uses `project_map` to reason about structure (the same [index](/OpenLeaf/code-intelligence/) that powers go-to-definition). Your [custom instructions](/OpenLeaf/ai-setup/#custom-instructions) ride along on every request.
+It starts with your project's name and main document, and pulls everything else through tools: it reads files when it needs them and uses `project_map` to reason about structure (the same [index](/Oleafly/code-intelligence/) that powers go-to-definition). Your [custom instructions](/Oleafly/ai-setup/#custom-instructions) ride along on every request.
 
 ## Figures are their own mode
 
-The sparkles toggle in the chat header switches to the figure studio, where the assistant drafts TikZ, compiles it in isolation, and inspects the render. That flow has its own page: [Draw figures with AI](/OpenLeaf/ai-figures/). For quick selection rewrites without a conversation, see [Inline edits](/OpenLeaf/ai-inline-edit/).
+The sparkles toggle in the chat header switches to the figure studio, where the assistant drafts TikZ, compiles it in isolation, and inspects the render. That flow has its own page: [Draw figures with AI](/Oleafly/ai-figures/). For quick selection rewrites without a conversation, see [Inline edits](/Oleafly/ai-inline-edit/).

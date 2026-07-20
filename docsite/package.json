@@ -1,5 +1,5 @@
 {
-  "name": "openleaf-docsite",
+  "name": "oleafly-docsite",
   "type": "module",
   "private": true,
   "description": "Documentation site for Oleafly, built with Astro Starlight from the repo's docs/ markdown.",

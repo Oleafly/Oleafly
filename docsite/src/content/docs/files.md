@@ -21,7 +21,7 @@ On a **file**:
 - **Set as main document** (available for `.tex` files): makes this file the compile entry point and moves the star.
 - **Rename**: edit the name inline. Open tabs, unsaved edits, and the main-document pointer all follow the rename.
 - **Make a copy**: creates `name copy.tex` next to the original. Works byte-for-byte, so images and other binaries copy safely.
-- **Delete**: removes the file after a confirmation. This cannot be undone from the app, though [Git history](/OpenLeaf/git-history/) can bring back anything you had committed.
+- **Delete**: removes the file after a confirmation. This cannot be undone from the app, though [Git history](/Oleafly/git-history/) can bring back anything you had committed.
 
 On a **folder**: **New file**, **New folder**, **Rename**, **Make a copy** (copies the whole folder recursively), and **Delete**.
 
@@ -31,7 +31,7 @@ Drag any file or folder onto another folder to move it inside, or onto the empty
 
 ## Tabs
 
-Open files appear as tabs above the editor, in the order you opened them. A dot on the tab means unsaved changes are pending (they'll autosave in a moment). Git [diff views](/OpenLeaf/git-history/#the-diff-viewer) open as tabs in the same strip, labeled with the file name plus `(Index)` or `(Working Tree)`.
+Open files appear as tabs above the editor, in the order you opened them. A dot on the tab means unsaved changes are pending (they'll autosave in a moment). Git [diff views](/Oleafly/git-history/#the-diff-viewer) open as tabs in the same strip, labeled with the file name plus `(Index)` or `(Working Tree)`.
 
 Closing the active tab activates the previous one. Undo history never crosses files: each file keeps its own.
 
@@ -41,7 +41,7 @@ Closing the active tab activates the previous one. Undo history never crosses fi
 - **Images** (`.png`, `.jpg`, `.gif`, `.webp`, `.svg`, and more) open as a rendered picture.
 - **PDFs** open in the PDF viewer.
 - **Opaque binaries** (`.zip`, `.eps`, font files) show a "Binary file. No preview available." notice rather than risking corruption by loading them as text.
-- **`.bib` files** are also parsed in the background the moment a project opens, which is what powers [citation autocomplete](/OpenLeaf/citations/#autocomplete-from-your-bib).
+- **`.bib` files** are also parsed in the background the moment a project opens, which is what powers [citation autocomplete](/Oleafly/citations/#autocomplete-from-your-bib).
 
 ## Autosave
 
@@ -53,6 +53,6 @@ You never press save. Edits write to disk about 1.5 seconds after you pause typi
 
 ## Adding existing files
 
-Files currently enter a project by being created in the app, saved from the [PDF preview](/OpenLeaf/pdf-preview/#save-the-pdf-into-the-project), produced by the [diagram composer](/OpenLeaf/figures-diagrams/), or written by the [AI assistant](/OpenLeaf/ai-chat/). There is no upload button yet.
+Files currently enter a project by being created in the app, saved from the [PDF preview](/Oleafly/pdf-preview/#save-the-pdf-into-the-project), produced by the [diagram composer](/Oleafly/figures-diagrams/), or written by the [AI assistant](/Oleafly/ai-chat/). There is no upload button yet.
 
 Because a project is a plain folder, the practical workaround is direct: drop your images or `.bib` into `~/.openleaf/projects/<project>/` with your file manager, then reopen the project so Oleafly picks them up. Do the copy while the project is closed (or reopen right after), since the app's autosave writes what it has in memory.

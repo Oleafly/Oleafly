@@ -3,9 +3,9 @@ title: "Connect via MCP"
 description: "Drive Oleafly from Claude Desktop, Claude Code, Cursor, or Grok with no API key: Oleafly runs a local MCP server on 127.0.0.1, exposing the same tools and approval prompts as the built-in assistant."
 ---
 
-Oleafly can act as an MCP (Model Context Protocol) server. Any MCP client (Claude Desktop, Claude Code, Cursor, Grok CLI, and others) can read, edit, search, and compile the project you have open, using the same tools and the same approval prompts as Oleafly's built-in [assistant](/OpenLeaf/ai-chat/). You do not need an API key in Oleafly for this; the external app brings its own model.
+Oleafly can act as an MCP (Model Context Protocol) server. Any MCP client (Claude Desktop, Claude Code, Cursor, Grok CLI, and others) can read, edit, search, and compile the project you have open, using the same tools and the same approval prompts as Oleafly's built-in [assistant](/Oleafly/ai-chat/). You do not need an API key in Oleafly for this; the external app brings its own model.
 
-This is the option when you already have a Claude (or similar) subscription and want that chat app to drive Oleafly, without pasting an API key into [Settings](/OpenLeaf/ai-setup/).
+This is the option when you already have a Claude (or similar) subscription and want that chat app to drive Oleafly, without pasting an API key into [Settings](/Oleafly/ai-setup/).
 
 ## Enable it
 
@@ -80,7 +80,7 @@ The `mcp.json` file next to your Oleafly data (shown in Settings) contains the s
 
 ## What the tools can do
 
-The MCP tool list is registered from the same tool objects as the in-app assistant, so names, descriptions, and schemas stay in lockstep with [Chat & tools](/OpenLeaf/ai-chat/#what-the-assistant-can-do).
+The MCP tool list is registered from the same tool objects as the in-app assistant, so names, descriptions, and schemas stay in lockstep with [Chat & tools](/Oleafly/ai-chat/#what-the-assistant-can-do).
 
 ### Orientation
 

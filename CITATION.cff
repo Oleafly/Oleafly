@@ -6,11 +6,11 @@ type: software
 authors:
   - family-names: Venkateshmurthy
     given-names: Prajwal S
-repository-code: "https://github.com/prajwal-svm/OpenLeaf"
-url: "https://prajwal-svm.github.io/OpenLeaf/"
+repository-code: "https://github.com/Oleafly/Oleafly"
+url: "https://oleafly.github.io/Oleafly/"
 license: AGPL-3.0-or-later
-version: 0.2.4
-date-released: 2026-07-14
+version: 0.2.5
+date-released: 2026-07-20
 keywords:
   - latex
   - resume

@@ -7,7 +7,7 @@ The editor completes three things as you type: LaTeX commands, cross-references,
 
 Suggestions appear automatically while typing; **Ctrl+Space** summons them anywhere. Accept with **Tab** or **Enter**.
 
-![The slash insert menu in the editor](/OpenLeaf/media/editor-slash-menu.png)
+![The slash insert menu in the editor](/Oleafly/media/editor-slash-menu.png)
 
 ## Command completion
 
@@ -23,7 +23,7 @@ Inside `\ref{`, `\eqref{`, `\pageref{`, `\autoref{`, `\cref{`, or `\Cref{`, the 
 
 Inside `\cite{` and its variants (`\citep`, `\citet`, `\citeauthor`, `\citeyear`, `\parencite`, `\textcite`), the menu lists the citation keys from your project's `.bib` files, which are parsed automatically when the project opens.
 
-If the paper isn't in your `.bib` yet, that's what [citation lookup](/OpenLeaf/citations/) is for: paste a DOI or title and Oleafly adds the entry and the `\cite` in one step.
+If the paper isn't in your `.bib` yet, that's what [citation lookup](/Oleafly/citations/) is for: paste a DOI or title and Oleafly adds the entry and the `\cite` in one step.
 
 ## The slash menu
 

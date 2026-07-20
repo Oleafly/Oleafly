@@ -7,8 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.5] - 2026-07-20
+
 ### Added
 
+- Added progressive, persisted onboarding for Home and project creation, the
+  project workspace, Settings, AI Assistant, and Diagram Composer, with
+  per-tour controls, accessible focus management, real required interactions,
+  and manual restarts.
+- Added customizable application shortcuts in Settings, a searchable shortcut
+  reference, and conflict and reserved-key protection while preserving native
+  editor and macOS clipboard commands.
+- Added project metadata search and advanced filters for engine, kind, dates,
+  cover color, bookmarks, preview availability, paths, IDs, and export history,
+  plus project details and export-history dialogs.
+- Added automatic local-port selection and restart handling for the MCP server,
+  with clearer bearer-token controls and durable authenticated client
+  configuration.
 - Added self-contained E2E sidecar preparation that detects the Rust host, validates pinned Typst and Tectonic versions, and installs missing binaries before the app starts.
 - Introduced a Rust `DocumentEngine` abstraction that gives LaTeX, Typst, and Markdown one supervised compile contract with normalized artifacts, diagnostics, executable provenance, and capabilities.
 - Added first-class Typst projects with editor support, parsing and indexing, templates, AI context, preflight integration, and PDF compilation.
@@ -32,6 +47,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Restored PDF rendering on Windows WebViews that do not yet provide
+  `Uint8Array.prototype.toHex`, including the worker used by native preview and
+  diagram rasterization.
+- Prevented command palette, omnibar, compile, SyncTeX, and shortcut-reference
+  accelerators from firing while a tour is active, while keeping text editing,
+  clipboard chords, macOS Option characters, and Windows AltGr usable in the
+  required project-name field.
+- Fixed tour navigation across skipped or late-mounted targets, template-dialog
+  back navigation, cover-color selection feedback, Settings and AI tooltip
+  placement, stale backdrops, missing-target recovery, and active-target blur.
+- Preserved MCP bearer tokens across enable and restart, avoided publishing
+  phantom running state after startup failure, and serialized rapid server
+  actions.
+- Preserved the native macOS Edit menu and Command-Q accelerator so undo, redo,
+  cut, copy, paste, select all, and quit continue to work in WKWebView and
+  CodeMirror.
+- Fixed modal and popover layer cleanup after project details, export history,
+  tours, and nested filter controls close.
 - Fixed diagram edge edits clearing selection and hiding the style pane; dotted
   lines, arrow direction, routing, and connection-side anchors now carry through
   to generated TikZ.
@@ -507,10 +540,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   compilation, SyncTeX, Git integration, GitHub sync, and bring-your-own-key AI
   assistance.
 
-[Unreleased]: https://github.com/prajwal-svm/OpenLeaf/compare/v0.2.3...HEAD
-[0.2.3]: https://github.com/prajwal-svm/OpenLeaf/compare/v0.2.2...v0.2.3
-[0.2.2]: https://github.com/prajwal-svm/OpenLeaf/compare/v0.2.1...v0.2.2
-[0.2.1]: https://github.com/prajwal-svm/OpenLeaf/compare/v0.2.0...v0.2.1
-[0.2.0]: https://github.com/prajwal-svm/OpenLeaf/compare/v0.1.1...v0.2.0
-[0.1.1]: https://github.com/prajwal-svm/OpenLeaf/releases/tag/v0.1.1
-[0.1.0]: https://github.com/prajwal-svm/OpenLeaf/releases/tag/v0.1.0
+[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/Oleafly/Oleafly/compare/v0.2.2...v0.2.3
+[0.2.2]: https://github.com/Oleafly/Oleafly/compare/v0.2.1...v0.2.2
+[0.2.1]: https://github.com/Oleafly/Oleafly/compare/v0.2.0...v0.2.1
+[0.2.0]: https://github.com/Oleafly/Oleafly/compare/v0.1.1...v0.2.0
+[0.1.1]: https://github.com/Oleafly/Oleafly/releases/tag/v0.1.1
+[0.1.0]: https://github.com/Oleafly/Oleafly/releases/tag/v0.1.0

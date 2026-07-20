@@ -124,8 +124,8 @@ test("Settings tour remains in the viewport and tour confirmations are atomic", 
 }) => {
   await loadTours(tauriPage, {
     home: "completed",
-    workspace: "pending",
     settings: "pending",
+    diagram: "pending",
   });
   await tauriPage.click('[data-tour="settings"]');
   await expect(tauriPage.locator("#react-joyride-portal h2")).toHaveText("Settings", {
@@ -133,7 +133,7 @@ test("Settings tour remains in the viewport and tour confirmations are atomic", 
   });
   await tauriPage.waitForFunction(
     `(() => {
-      const tooltip = document.querySelector('#react-joyride-portal [role="alertdialog"]');
+      const tooltip = document.querySelector('[data-tour-tooltip="settings-navigation"]');
       if (!tooltip) return false;
       const r = tooltip.getBoundingClientRect();
       return r.top >= 0 && r.left >= 0 && r.bottom <= innerHeight && r.right <= innerWidth;

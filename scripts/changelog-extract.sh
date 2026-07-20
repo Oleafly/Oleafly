@@ -38,7 +38,7 @@ section="$(printf '%s\n' "$section" | awk '
 ')"
 
 if [ -z "$section" ]; then
-  echo "See the changelog: https://github.com/prajwal-svm/OpenLeaf/blob/main/CHANGELOG.md"
+  echo "See the changelog: https://github.com/Oleafly/Oleafly/blob/main/CHANGELOG.md"
 else
   printf '%s\n' "$section"
 fi

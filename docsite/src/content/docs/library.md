@@ -11,13 +11,13 @@ Each project is a colored book with a spine and page edges, showing the project 
 
 The grid adapts to your window: two, three, or four columns.
 
-![The library shelf with project books](/OpenLeaf/media/library-shelf.png)
+![The library shelf with project books](/Oleafly/media/library-shelf.png)
 
-First time in the app? You'll see a welcome card instead: **"Create your first project"** opens the [template gallery](/OpenLeaf/templates/).
+First time in the app? You'll see a welcome card instead: **"Create your first project"** opens the [template gallery](/Oleafly/templates/).
 
 ## Creating a project
 
-Click **New project** in the header. The template gallery opens with 19 starting points across categories like Resume, Journals, Diagrams, Theses & Reports, and Presentations. Pick one, name the project, choose a cover color, and you're writing. The gallery is covered in detail on the [Templates](/OpenLeaf/templates/) page.
+Click **New project** in the header. The template gallery opens with 19 starting points across categories like Resume, Journals, Diagrams, Theses & Reports, and Presentations. Pick one, name the project, choose a cover color, and you're writing. The gallery is covered in detail on the [Templates](/Oleafly/templates/) page.
 
 You can also open the gallery from anywhere with the search omnibar: press **⌘⇧F** (Ctrl+Shift+F) and type `/create`.
 
@@ -38,7 +38,7 @@ Right-click any book:
 - **Open project**
 - **Change book color**: eleven cover swatches (Blue, Cream, Peach, Rose, Pink, Lilac, Sky, Aqua, Cyan, Mint, Spring). The color is stored in the project itself, so it travels with the project if you sync it to another machine.
 - **Fork project**: copies the project and its full Git history into a new project. The dialog suggests `<name> (copy)`; give it any name you like. Forking is the fastest way to start "version 2" of a resume or to experiment on a paper without touching the original.
-- **Delete project**: removes the whole project folder from disk after a confirmation. This cannot be undone, so if the project matters, [push it to GitHub](/OpenLeaf/github-sync/) first.
+- **Delete project**: removes the whole project folder from disk after a confirmation. This cannot be undone, so if the project matters, [push it to GitHub](/Oleafly/github-sync/) first.
 
 ## Renaming a project
 
@@ -84,8 +84,8 @@ name:resume typst
 ## Also in the header
 
 - **Theme toggle**: switch light and dark mode.
-- **Settings**: the gear opens the full [settings](/OpenLeaf/settings/) window.
+- **Settings**: the gear opens the full [settings](/Oleafly/settings/) window.
 
 ## Where the shelf lives on disk
 
-Every book is a plain folder under `~/.openleaf/projects/`, with a human-readable random name like `flying-pink-pikachu`. Nothing about the library is proprietary: see [Where your data lives](/OpenLeaf/where-your-data-lives/).
+Every book is a plain folder under `~/.openleaf/projects/`, with a human-readable random name like `flying-pink-pikachu`. Nothing about the library is proprietary: see [Where your data lives](/Oleafly/where-your-data-lives/).

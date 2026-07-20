@@ -20,6 +20,7 @@ import { useCompileStore } from "@/store/compile";
 import { usePreflightStore } from "@/store/preflight";
 import { useSettingsStore } from "@/store/settings";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
+import { useTourStore } from "@/store/tours";
 import { resetOpenCompileMarker, shouldCompileOnOpen } from "@/lib/open-compile";
 import { useGitStatusStore } from "@/store/git-status";
 import { useGithubStore } from "@/store/github";
@@ -357,6 +358,7 @@ export default function App() {
   // Manual recompile: Cmd/Ctrl + Enter. Forward SyncTeX: Cmd/Ctrl + Shift + J.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (useTourStore.getState().activeTourId) return;
       const bindings = useShortcutStore.getState().bindings;
       if (matchesShortcut(e, bindings.recompile)) {
         e.preventDefault();

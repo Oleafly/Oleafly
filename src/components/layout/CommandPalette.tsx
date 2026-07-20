@@ -6,6 +6,7 @@ import { useFilesStore } from "@/store/files";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
+import { useTourStore } from "@/store/tours";
 
 export function CommandPalette() {
   const open = useSettingsStore((s) => s.paletteOpen);
@@ -25,6 +26,7 @@ export function CommandPalette() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (useTourStore.getState().activeTourId) return;
       if (matchesShortcut(e, useShortcutStore.getState().bindings.commandPalette)) {
         e.preventDefault();
         setPaletteOpen(!useSettingsStore.getState().paletteOpen);

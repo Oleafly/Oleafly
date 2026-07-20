@@ -16,12 +16,12 @@ A formatting toolbar sits above every `.tex`-family file, left to right:
 - **Bold (⌘B)**: wraps the selection in `\textbf{…}`
 - **Italic (⌘I)**: wraps the selection in `\textit{…}`
 - **Insert link**: `\href{}{}`
-- **Add citation**: opens the [citation lookup](/OpenLeaf/citations/) (DOI, arXiv, or title)
+- **Add citation**: opens the [citation lookup](/Oleafly/citations/) (DOI, arXiv, or title)
 - **Insert cross-reference**: `\ref{}`
 - **Insert figure**: a complete `figure` float with `\includegraphics`, `\centering`, and `\caption`
 - **Insert table**: a `table` float with a starter `tabular`
 - **Insert list** menu: bulleted (`itemize`) or numbered (`enumerate`)
-- **Code intelligence** menu: go to definition, find references, rename symbol (see [Code intelligence](/OpenLeaf/code-intelligence/))
+- **Code intelligence** menu: go to definition, find references, rename symbol (see [Code intelligence](/Oleafly/code-intelligence/))
 - **Find (⌘F)**: opens find and replace
 
 The same inserts, plus **Ask AI** and **Generate figure from selection**, live in the right-click menu, so nothing requires a trip to the top of the screen.
@@ -63,7 +63,7 @@ The editor checks structural problems as you type, before any compile:
 - Duplicate `\label{}` keys
 - An odd number of `$` on a line (almost always a forgotten math delimiter)
 
-Errors get red squiggles, warnings amber, with markers in the gutter. Compile errors from the actual LaTeX run appear separately in the [Logs pane](/OpenLeaf/compiling/#reading-the-logs), and [Preflight](/OpenLeaf/preflight/) adds its own source-level checks inline.
+Errors get red squiggles, warnings amber, with markers in the gutter. Compile errors from the actual LaTeX run appear separately in the [Logs pane](/Oleafly/compiling/#reading-the-logs), and [Preflight](/Oleafly/preflight/) adds its own source-level checks inline.
 
 ## Word count
 
@@ -71,12 +71,12 @@ Run **Word count** from the ⌘K palette for words, characters, and lines in the
 
 ## More than .tex
 
-Files open with highlighting matched to their extension: BibTeX, Markdown, JSON, YAML, TOML, CSS, shell scripts, and more. Images and PDFs open as rendered views instead of text, and binary formats are protected from accidental corruption; see [Files & folders](/OpenLeaf/files/#how-different-file-types-open).
+Files open with highlighting matched to their extension: BibTeX, Markdown, JSON, YAML, TOML, CSS, shell scripts, and more. Images and PDFs open as rendered views instead of text, and binary formats are protected from accidental corruption; see [Files & folders](/Oleafly/files/#how-different-file-types-open).
 
 ## Related pages
 
-- [Autocomplete & slash commands](/OpenLeaf/autocomplete/): completion for commands, references, citations, and the `/` insert menu
-- [Code intelligence](/OpenLeaf/code-intelligence/): jump-to-definition, rename, hover cards, math preview
-- [Spelling & grammar](/OpenLeaf/spellcheck-grammar/): offline Hunspell and Harper checking that understands LaTeX
-- [Keyboard shortcuts](/OpenLeaf/keyboard-shortcuts/): the complete reference
-- [Inline AI edits](/OpenLeaf/ai-inline-edit/): press ⌘L on a selection and describe the change
+- [Autocomplete & slash commands](/Oleafly/autocomplete/): completion for commands, references, citations, and the `/` insert menu
+- [Code intelligence](/Oleafly/code-intelligence/): jump-to-definition, rename, hover cards, math preview
+- [Spelling & grammar](/Oleafly/spellcheck-grammar/): offline Hunspell and Harper checking that understands LaTeX
+- [Keyboard shortcuts](/Oleafly/keyboard-shortcuts/): the complete reference
+- [Inline AI edits](/Oleafly/ai-inline-edit/): press ⌘L on a selection and describe the change

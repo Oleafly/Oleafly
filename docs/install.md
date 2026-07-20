@@ -7,7 +7,7 @@ platform we don't ship a prebuilt app for yet.
 
 ## Download the app
 
-Grab the latest installer from the [releases page](https://github.com/prajwal-svm/OpenLeaf/releases/latest).
+Grab the latest installer from the [releases page](https://github.com/Oleafly/Oleafly/releases/latest).
 
 | Platform | Download | What to do |
 |---|---|---|
@@ -73,8 +73,8 @@ for. It's built with [Tauri 2](https://tauri.app) (Rust + React).
 ### Run the dev app
 
 ```bash
-git clone https://github.com/prajwal-svm/OpenLeaf.git
-cd OpenLeaf
+git clone https://github.com/Oleafly/Oleafly.git
+cd Oleafly
 
 ./scripts/fetch-tectonic.sh all     # or: aarch64-apple-darwin / x86_64-pc-windows-msvc / ...
 ./scripts/fetch-typst.sh all

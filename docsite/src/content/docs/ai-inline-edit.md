@@ -15,11 +15,11 @@ For a paragraph that needs tightening or a broken equation that needs one fix, a
 
 Nothing mutates until you accept, and the diff renders in place, in context, where you can actually judge it, rather than in a side panel you have to mentally map back.
 
-![An inline AI edit reviewed as a red/green diff](/OpenLeaf/media/inline-ai-edit.png)
+![An inline AI edit reviewed as a red/green diff](/Oleafly/media/inline-ai-edit.png)
 
 ## What powers it
 
-Inline edit uses the same active provider and model as the [chat](/OpenLeaf/ai-chat/) (the panel shows which), plus your [custom instructions](/OpenLeaf/ai-setup/#custom-instructions). It's a single-shot edit rather than an agent: no tools, no multi-step runs, which is what makes it instant.
+Inline edit uses the same active provider and model as the [chat](/Oleafly/ai-chat/) (the panel shows which), plus your [custom instructions](/Oleafly/ai-setup/#custom-instructions). It's a single-shot edit rather than an agent: no tools, no multi-step runs, which is what makes it instant.
 
 The response is constrained to be a pure replacement for the selected text: no code fences, no commentary, no "Here's your improved version!".
 
@@ -33,5 +33,5 @@ The response is constrained to be a pure replacement for the selected text: no c
 ## When to use which AI surface
 
 - **A sentence, a paragraph, an equation**: inline edit, right here.
-- **Anything multi-file, structural, or needing a compile to verify**: [chat](/OpenLeaf/ai-chat/), where the agent has tools.
-- **A figure**: [Draw with AI](/OpenLeaf/ai-figures/) or the [diagram composer](/OpenLeaf/figures-diagrams/).
+- **Anything multi-file, structural, or needing a compile to verify**: [chat](/Oleafly/ai-chat/), where the agent has tools.
+- **A figure**: [Draw with AI](/Oleafly/ai-figures/) or the [diagram composer](/Oleafly/figures-diagrams/).

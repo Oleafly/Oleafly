@@ -11,7 +11,7 @@ import { useUpdatesStore } from "@/store/updates";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
-const RELEASES_URL = "https://github.com/prajwal-svm/OpenLeaf/releases";
+const RELEASES_URL = "https://github.com/Oleafly/Oleafly/releases";
 
 function relativeTime(t: number): string {
   const s = Math.max(0, Math.round((Date.now() - t) / 1000));

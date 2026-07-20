@@ -40,4 +40,4 @@ Ignored words take effect immediately, and you can unignore any of them later: S
 
 ## Privacy
 
-There is no cloud grammar service here. The dictionaries and models ship with the app and execute locally, so drafts under embargo, unpublished results, and personal documents are never uploaded for proofreading. This is the same [local-first principle](/OpenLeaf/philosophy/) as the rest of Oleafly.
+There is no cloud grammar service here. The dictionaries and models ship with the app and execute locally, so drafts under embargo, unpublished results, and personal documents are never uploaded for proofreading. This is the same [local-first principle](/Oleafly/philosophy/) as the rest of Oleafly.

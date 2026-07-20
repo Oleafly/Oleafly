@@ -6,8 +6,8 @@ body:
     attributes:
       value: |
         Thanks for the idea! Please check the
-        [roadmap](https://github.com/prajwal-svm/OpenLeaf#-roadmap) and
-        [existing requests](https://github.com/prajwal-svm/OpenLeaf/issues?q=is%3Aissue+label%3Aenhancement)
+        [roadmap](https://github.com/Oleafly/Oleafly#-roadmap) and
+        [existing requests](https://github.com/Oleafly/Oleafly/issues?q=is%3Aissue+label%3Aenhancement)
         first.
   - type: textarea
     id: problem

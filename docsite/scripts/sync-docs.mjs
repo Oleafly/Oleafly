@@ -18,7 +18,7 @@ const OUT_DIR = join(here, "..", "src", "content", "docs", "engineering");
 const MEDIA_DIR = join(ROOT, "media");
 const MEDIA_OUT = join(here, "..", "public", "media");
 const BASE = "/Oleafly";
-const REPO = "https://github.com/prajwal-svm/OpenLeaf";
+const REPO = "https://github.com/Oleafly/Oleafly";
 
 // Engineering pages, synced from root docs/. CONTRIBUTING.md is added from the
 // repo root separately. Everything else in docs/ (product markdown kept for

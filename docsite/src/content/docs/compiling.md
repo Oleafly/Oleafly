@@ -38,7 +38,7 @@ The **Logs** button at the left of the preview toolbar flips between the PDF and
 - The full raw TeX log below, colorized: errors bold red, line references highlighted, file nesting indented.
 - A **Copy log** button grabs the whole thing for a bug report or a forum post.
 
-Compile errors also become squiggles in the editor via the [linter pipeline](/OpenLeaf/editor/#the-built-in-latex-linter), and the [AI assistant](/OpenLeaf/ai-chat/) can read this same log with its `get_log` tool when you ask it to fix the errors.
+Compile errors also become squiggles in the editor via the [linter pipeline](/Oleafly/editor/#the-built-in-latex-linter), and the [AI assistant](/Oleafly/ai-chat/) can read this same log with its `get_log` tool when you ask it to fix the errors.
 
 ## Packages: fetched once, cached forever
 
@@ -54,9 +54,9 @@ Tectonic downloads a LaTeX package the first time a document needs it, then cach
 ## Common failures, quick fixes
 
 - **"Missing package" in Offline mode**: turn Offline mode off for one compile to fetch and cache it, then turn it back on.
-- **Undefined citation or reference warnings**: [Preflight](/OpenLeaf/preflight/#references--assets) pinpoints every one, with the file and line.
+- **Undefined citation or reference warnings**: [Preflight](/Oleafly/preflight/#references--assets) pinpoints every one, with the file and line.
 - **An error you can't parse**: ask the AI. "Fix the LaTeX errors" triggers a compile, log read, targeted edit, and recompile loop, with every change shown to you for approval first.
 
 ## Beyond Tectonic
 
-Tectonic covers everyday compiling. For tagged, accessible PDFs (Section 508 / PDF-UA), Oleafly can use LuaLaTeX via a system TeX Live or a self-contained TinyTeX install. That story lives on [LaTeX engines & packages](/OpenLeaf/latex-engines/).
+Tectonic covers everyday compiling. For tagged, accessible PDFs (Section 508 / PDF-UA), Oleafly can use LuaLaTeX via a system TeX Live or a self-contained TinyTeX install. That story lives on [LaTeX engines & packages](/Oleafly/latex-engines/).

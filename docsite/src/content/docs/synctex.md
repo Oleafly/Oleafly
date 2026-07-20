@@ -5,7 +5,7 @@ description: "Bidirectional source-PDF navigation: jump from the cursor to the e
 
 SyncTeX is the link between your LaTeX source and the typeset PDF. Oleafly compiles with SyncTeX data enabled on every build, so both directions of the jump are always one gesture away.
 
-![Cmd-click the PDF and land on the exact word in the source](/OpenLeaf/media/synctex.gif)
+![Cmd-click the PDF and land on the exact word in the source](/Oleafly/media/synctex.gif)
 
 ## Source to PDF: ⌘⇧J
 
@@ -32,5 +32,5 @@ SyncTeX data comes from the last compile, so it can go stale:
 
 ## Where it doesn't apply
 
-- The [detached preview window](/OpenLeaf/pdf-preview/#a-second-monitor-the-detached-preview-window) mirrors the PDF but doesn't accept SyncTeX clicks; jump from the main window.
+- The [detached preview window](/Oleafly/pdf-preview/#a-second-monitor-the-detached-preview-window) mirrors the PDF but doesn't accept SyncTeX clicks; jump from the main window.
 - Image projects (standalone figures) skip SyncTeX; a one-page figure doesn't need it.

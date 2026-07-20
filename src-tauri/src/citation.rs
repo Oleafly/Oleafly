@@ -2,7 +2,7 @@
 //! (doi.org, arXiv, Crossref); all parsing/normalization happens in TypeScript
 //! so it stays unit-testable. Only the identifier or query is ever sent.
 
-const UA: &str = "Oleafly/0.2 (https://github.com/prajwal-svm/OpenLeaf; citation lookup)";
+const UA: &str = "Oleafly/0.2 (https://github.com/Oleafly/Oleafly; citation lookup)";
 
 fn client() -> Result<reqwest::Client, String> {
     reqwest::Client::builder()

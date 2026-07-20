@@ -31,11 +31,11 @@ Where Oleafly does talk to the network, it talks directly and minimally, and the
 
 ## History should be free
 
-Version history is not a premium feature. Every project is a Git repository, so diffs, restores, and a full commit log are simply there, and [GitHub sync](/OpenLeaf/github-sync/) is one connection away when you want an off-machine backup or to move between computers. Because it is real Git, your history is portable too.
+Version history is not a premium feature. Every project is a Git repository, so diffs, restores, and a full commit log are simply there, and [GitHub sync](/Oleafly/github-sync/) is one connection away when you want an off-machine backup or to move between computers. Because it is real Git, your history is portable too.
 
 ## The document you submit matters more than the one you see
 
-A PDF can look perfect and still fail the two audiences that never complain out loud: resume parsers and screen readers. Oleafly treats machine readability as a first-class output. The compiler produces real, selectable Unicode text with embedded fonts, the resume templates follow ATS-safe layout rules, and the [Preflight panel](/OpenLeaf/preflight/) shows you what a parser or a screen reader actually receives, before you hit submit.
+A PDF can look perfect and still fail the two audiences that never complain out loud: resume parsers and screen readers. Oleafly treats machine readability as a first-class output. The compiler produces real, selectable Unicode text with embedded fonts, the resume templates follow ATS-safe layout rules, and the [Preflight panel](/Oleafly/preflight/) shows you what a parser or a screen reader actually receives, before you hit submit.
 
 ## AI that acts, but never without you
 
@@ -43,4 +43,4 @@ The AI assistant is an agent, not an autocomplete: it can read your project, edi
 
 ## Free and open source
 
-Oleafly is AGPL-licensed and developed in the open at [github.com/prajwal-svm/OpenLeaf](https://github.com/prajwal-svm/OpenLeaf). The templates it ships are permissively licensed, each with its license text included. If you want to see how something works or make it better, the [Engineering section](/OpenLeaf/engineering/contributing/) is the place to start.
+Oleafly is AGPL-licensed and developed in the open at [github.com/Oleafly/Oleafly](https://github.com/Oleafly/Oleafly). The templates it ships are permissively licensed, each with its license text included. If you want to see how something works or make it better, the [Engineering section](/Oleafly/engineering/contributing/) is the place to start.

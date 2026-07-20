@@ -68,6 +68,6 @@ Yes, use Ollama. Pull a model (`ollama pull llama3.2`), then save the Ollama hos
 
 ## Still stuck?
 
-- Search existing [issues](https://github.com/prajwal-svm/OpenLeaf/issues).
+- Search existing [issues](https://github.com/Oleafly/Oleafly/issues).
 - The app logs errors to `~/.openleaf/app.log`. Include the relevant snippet when you report.
 - Open a new issue with the steps to reproduce and your OS.

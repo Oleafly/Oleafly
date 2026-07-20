@@ -49,10 +49,13 @@ async function commitAll(page: import("../helpers").Page, message: string) {
       return 1;
     })()`,
   );
-  await page.getByText("Commit").click();
-  // Success signal that doesn't vanish: the working tree is clean again.
+  const commit = page.getByText("Commit", { exact: true });
+  await expect(commit).toBeEnabled({ timeout: 5_000 });
+  await commit.click();
+  // Assert the completed git operation itself. A later autosave may
+  // legitimately dirty the working tree again after this commit succeeds.
   await page.waitForFunction(
-    `document.body.innerText.includes('No changes')`,
+    `document.body.innerText.includes(${JSON.stringify(`Committed: "${message}"`)})`,
     15_000,
   );
 }

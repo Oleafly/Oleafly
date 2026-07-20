@@ -48,6 +48,29 @@ function install(ctor: Ctor | undefined) {
 install(typeof Map !== "undefined" ? (Map as unknown as Ctor) : undefined);
 install(typeof WeakMap !== "undefined" ? (WeakMap as unknown as Ctor) : undefined);
 
+type Uint8ArrayCtor = {
+  prototype: {
+    toHex?: unknown;
+  };
+};
+
+export function installUint8ArrayToHex(ctor: Uint8ArrayCtor | undefined) {
+  if (!ctor || typeof ctor.prototype.toHex === "function") return;
+  Object.defineProperty(ctor.prototype, "toHex", {
+    value: function (this: Uint8Array) {
+      let result = "";
+      for (const byte of this) result += byte.toString(16).padStart(2, "0");
+      return result;
+    },
+    writable: true,
+    configurable: true,
+  });
+}
+
+installUint8ArrayToHex(
+  typeof Uint8Array !== "undefined" ? (Uint8Array as unknown as Uint8ArrayCtor) : undefined,
+);
+
 // WebKit/WKWebView does not implement async iteration of ReadableStream
 // (`ReadableStream.prototype[Symbol.asyncIterator]`). pdf.js v6 `getTextContent`
 // does `for await (const value of readableStream)`, so text extraction throws

@@ -2,9 +2,9 @@
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 
-// Project site served from https://prajwal-svm.github.io/OpenLeaf/.
+// Project site served from https://oleafly.github.io/Oleafly/.
 export default defineConfig({
-  site: "https://prajwal-svm.github.io",
+  site: "https://oleafly.github.io",
   base: "/Oleafly",
   integrations: [
     starlight({
@@ -29,7 +29,7 @@ export default defineConfig({
         },
       ],
       social: [
-        { icon: "github", label: "GitHub", href: "https://github.com/prajwal-svm/OpenLeaf" },
+        { icon: "github", label: "GitHub", href: "https://github.com/Oleafly/Oleafly" },
       ],
       // Product docs: no "Edit this page" link (that's a contributor affordance).
       sidebar: [

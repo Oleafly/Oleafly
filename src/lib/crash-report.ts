@@ -3,7 +3,7 @@ import { open } from "@tauri-apps/plugin-shell";
 import { platform as osPlatform, arch as osArch, version as osVersion } from "@tauri-apps/plugin-os";
 import { appVersion, readAppLog } from "@/lib/tauri";
 
-const NEW_ISSUE_URL = "https://github.com/prajwal-svm/OpenLeaf/issues/new";
+const NEW_ISSUE_URL = "https://github.com/Oleafly/Oleafly/issues/new";
 // Keep the assembled body comfortably under GitHub's new-issue URL limit.
 const MAX_LOG_BYTES = 5000;
 // Cap the *encoded* body length, since percent-encoding expands the raw text

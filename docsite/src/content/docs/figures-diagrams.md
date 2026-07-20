@@ -5,9 +5,9 @@ description: "The diagram composer: draw shapes and arrows visually or write Tik
 
 Publication figures usually force a choice: a GUI tool that exports pixels and forgets, or hand-written TikZ with no visual feedback. Oleafly's diagram composer gives you both in one window, with a live compiled preview, and the figures it makes stay editable forever.
 
-No API key, no network. This is a fully offline feature. (For AI-generated figures, see [Draw with AI](/OpenLeaf/ai-figures/).)
+No API key, no network. This is a fully offline feature. (For AI-generated figures, see [Draw with AI](/Oleafly/ai-figures/).)
 
-![The diagram composer: visual canvas, TikZ code, and live preview](/OpenLeaf/media/diagram-composer.png)
+![The diagram composer: visual canvas, TikZ code, and live preview](/Oleafly/media/diagram-composer.png)
 
 ## Opening the composer
 
@@ -28,7 +28,7 @@ As you draw, the composer generates clean TikZ from the canvas. You get GUI spee
 
 A real LaTeX editor for the TikZ itself, with syntax highlighting and a snippet toolbar for the building blocks (rectangle node, circle node, arrow edge, line edge, scope). Start from a drawing and fine-tune the generated code, or write the whole figure by hand; the **Preview** button compiles exactly what's in the editor.
 
-If a compile fails and you have an AI provider connected, a **Fix with AI** button appears: it sends the TikZ and the compile log for a one-shot repair and recompiles. See [Draw with AI](/OpenLeaf/ai-figures/#fix-with-ai-in-the-composer).
+If a compile fails and you have an AI provider connected, a **Fix with AI** button appears: it sends the TikZ and the compile log for a one-shot repair and recompiles. See [Draw with AI](/Oleafly/ai-figures/#fix-with-ai-in-the-composer).
 
 ## The live preview
 
@@ -38,7 +38,7 @@ The preview pane compiles your figure in isolation, in its own build sandbox, so
 
 Give the diagram a name and pick how it lands in your document:
 
-- **Insert as code (vector)**: the TikZ goes straight into your document. Infinitely scalable, themeable, and diffable in [Git history](/OpenLeaf/git-history/) like any other source.
+- **Insert as code (vector)**: the TikZ goes straight into your document. Infinitely scalable, themeable, and diffable in [Git history](/Oleafly/git-history/) like any other source.
 - **Insert as image (PNG)**: an `\includegraphics` of a rendered `figures/<name>.png`, with your chosen scale and background. Right when the figure is heavy enough to slow the main compile.
 
 Either way, the source is preserved as `figures/<name>.tikz`, and the name prompt warns before overwriting an existing figure.
@@ -49,4 +49,4 @@ Drawn diagrams embed their model inside the saved `.tikz` file. The composer's *
 
 ## Save as project
 
-A diagram can also become a standalone **image project** on your library shelf (the **Save as project** option, or start one from the **Diagram / Figure** template). Image projects preview as the figure itself, and their [export menu](/OpenLeaf/export/) offers PDF (vector) and PNG (raster) directly. Useful for figures you reuse across papers.
+A diagram can also become a standalone **image project** on your library shelf (the **Save as project** option, or start one from the **Diagram / Figure** template). Image projects preview as the figure itself, and their [export menu](/Oleafly/export/) offers PDF (vector) and PNG (raster) directly. Useful for figures you reuse across papers.
