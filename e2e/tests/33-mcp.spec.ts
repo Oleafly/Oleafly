@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "../fixtures";
 import { createBlankProject, openSettings } from "../helpers";
@@ -61,14 +61,15 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
   expect(token.length).toBe(64);
 
   await openSettings(tauriPage, "mcp");
+  const discoveryPath = join(dataDir!, "mcp.json");
+  const discoveryMtime = statSync(discoveryPath).mtimeMs;
   await tauriPage.click('[aria-label="Restart MCP server and select an available port"]');
-  await expect(tauriPage.locator('[data-testid="mcp-status"]')).toContainText("Running", {
-    timeout: 15_000,
-  });
   await expect
     .poll(
       () => {
-        const restarted = JSON.parse(readFileSync(join(dataDir!, "mcp.json"), "utf8")) as {
+        if (!existsSync(discoveryPath)) return false;
+        if (statSync(discoveryPath).mtimeMs <= discoveryMtime) return false;
+        const restarted = JSON.parse(readFileSync(discoveryPath, "utf8")) as {
           url: string;
           token: string;
         };
@@ -77,7 +78,7 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
       { timeout: 15_000 },
     )
     .toBe(true);
-  const restarted = JSON.parse(readFileSync(join(dataDir!, "mcp.json"), "utf8")) as {
+  const restarted = JSON.parse(readFileSync(discoveryPath, "utf8")) as {
     url: string;
     token: string;
   };

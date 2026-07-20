@@ -85,7 +85,11 @@ function wordAtPoint(clientX: number, clientY: number): string | null {
       offset = pos.offset;
     }
   }
-  if (!node || node.nodeType !== Node.TEXT_NODE) return null;
+  if (!node || node.nodeType !== Node.TEXT_NODE) {
+    const hit = document.elementFromPoint(clientX, clientY);
+    const fallbackText = hit?.closest(".textLayer span")?.textContent?.trim() ?? "";
+    return fallbackText || null;
+  }
   const text = node.textContent ?? "";
   const isWordChar = (c: string | undefined) => !!c && /[\p{L}\p{N}]/u.test(c);
   let s = Math.min(Math.max(0, offset), text.length);
