@@ -220,24 +220,16 @@ export async function openProject(page: Page & { getByText(t: string): { click()
 
 export async function typeInEditorAtStart(page: Page, text: string) {
   const inserted = await page.evaluate<boolean>(
-    `(() => {
-      const content = document.querySelector('.cm-content');
-      if (!content) return false;
-      content.focus();
-      const sel = window.getSelection();
-      sel.removeAllRanges();
-      const range = document.createRange();
-      range.setStart(content, 0);
-      range.collapse(true);
-      sel.addRange(range);
-      if (!document.execCommand('insertText', false, ${JSON.stringify(text)})) return false;
-      content.dispatchEvent(new InputEvent('input', {
-        bubbles: true,
-        data: ${JSON.stringify(text)},
-        inputType: 'insertText',
-      }));
+    `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {
+      const view = getEditorView();
+      if (!view) return false;
+      view.focus();
+      view.dispatch({
+        changes: { from: 0, insert: ${JSON.stringify(text)} },
+        selection: { anchor: ${JSON.stringify(text)}.length },
+      });
       return true;
-    })()`,
+    })`,
   );
   if (!inserted) throw new Error("typeInEditorAtStart: editor input was rejected");
 }

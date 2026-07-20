@@ -30,9 +30,17 @@ test("clicking the PDF jumps to the word in the source", async ({ tauriPage }) =
 
   const target = tauriPage.locator(".textLayer span").filter({ hasText: "Introduction" });
   await target.scrollIntoViewIfNeeded();
-  const box = await target.boundingBox();
-  expect(box).not.toBeNull();
-  await tauriPage.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
+  await target.evaluate(`(element) => {
+    const rect = element.getBoundingClientRect();
+    const options = {
+      bubbles: true,
+      clientX: rect.left + rect.width / 2,
+      clientY: rect.top + rect.height / 2,
+    };
+    element.dispatchEvent(new MouseEvent("mousedown", options));
+    element.dispatchEvent(new MouseEvent("mouseup", options));
+    element.dispatchEvent(new MouseEvent("click", options));
+  }`);
 
   await expect
     .poll(

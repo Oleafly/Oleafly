@@ -77,6 +77,8 @@ function wordAtPoint(
     caretRangeFromPoint?: (x: number, y: number) => Range | null;
     caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
   };
+  const clickedSpan =
+    eventTarget instanceof Element ? eventTarget.closest<HTMLElement>(".textLayer span") : null;
   let node: Node | null = null;
   let offset = 0;
   const range = d.caretRangeFromPoint?.(clientX, clientY); // WebKit + Chromium
@@ -90,11 +92,9 @@ function wordAtPoint(
       offset = pos.offset;
     }
   }
-  if (!node || node.nodeType !== Node.TEXT_NODE) {
+  if (!node || node.nodeType !== Node.TEXT_NODE || (clickedSpan && !clickedSpan.contains(node))) {
     const target =
-      eventTarget instanceof Element
-        ? eventTarget.closest(".textLayer span")
-        : document.elementFromPoint(clientX, clientY)?.closest(".textLayer span");
+      clickedSpan ?? document.elementFromPoint(clientX, clientY)?.closest(".textLayer span");
     const containingSpan =
       target ??
       Array.from(root.querySelectorAll<HTMLElement>(".textLayer span")).find((span) => {
