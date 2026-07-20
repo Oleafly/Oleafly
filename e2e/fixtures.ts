@@ -63,7 +63,7 @@ const DISMISSED_TOUR_STATE = JSON.stringify({
 export async function reloadNativePage(page: TauriPage) {
   await page.evaluate(`window.__E2E_RELOAD_PENDING__ = true`);
   await page.evaluate(
-    `import("/src/lib/tauri.ts").then(({ reloadViews }) => reloadViews())`,
+    `import("/src/lib/tauri.ts").then(({ reloadViews }) => { void reloadViews(); })`,
   );
   const deadline = Date.now() + 10_000;
   while (Date.now() < deadline) {
