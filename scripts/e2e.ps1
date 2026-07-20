@@ -9,6 +9,8 @@ $runnerMutex = [System.Threading.Mutex]::new($false, "Local\OpenLeafE2ERunner")
 $runnerOwned = $false
 $app = $null
 $log = $null
+$logStream = $null
+$heartbeat = $null
 $code = 1
 try {
   try {
@@ -30,10 +32,22 @@ $log = Join-Path ([System.IO.Path]::GetTempPath()) "openleaf-e2e-log-$stamp.txt"
 Write-Host "e2e: data dir $dataDir"
 Write-Host "e2e: app log  $log"
 
+function Start-OutputProcess([string]$command) {
+  $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
+  Start-Process -FilePath "powershell.exe" `
+    -ArgumentList "-NoProfile", "-EncodedCommand", $encoded `
+    -NoNewWindow -PassThru
+}
+
 $env:OPENLEAF_DATA_DIR = $dataDir
 $app = Start-Process -FilePath "cmd.exe" `
   -ArgumentList "/c", "pnpm tauri dev --features e2e-testing > `"$log`" 2>&1" `
   -PassThru -WindowStyle Hidden
+$escapedLog = $log.Replace("'", "''")
+$logStream = Start-OutputProcess @"
+Get-Content -LiteralPath '$escapedLog' -Wait -Tail 0 |
+  ForEach-Object { Write-Output ('[app] ' + `$_) }
+"@
 
 Write-Host "e2e: waiting for the tcp bridge (first build can take minutes)..."
 $deadline = (Get-Date).AddMinutes(30)
@@ -56,9 +70,23 @@ if (-not $ready) {
   exit 1
 }
 
+$heartbeat = Start-OutputProcess @"
+`$started = Get-Date
+while (`$true) {
+  Start-Sleep -Seconds 30
+  `$elapsed = [int]((Get-Date) - `$started).TotalSeconds
+  Write-Output "e2e: heartbeat — Windows suite running for `$(`$elapsed)s"
+}
+"@
+Write-Host "e2e: starting Windows suite at $((Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'))"
 pnpm exec playwright test -c e2e/playwright.config.ts @args
 $code = $LASTEXITCODE
 } finally {
+  foreach ($process in @($heartbeat, $logStream)) {
+    if ($null -ne $process -and -not $process.HasExited) {
+      Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+    }
+  }
   if ($null -ne $app -and -not $app.HasExited) {
     taskkill /PID $app.Id /T /F 2>$null | Out-Null
   }

@@ -1,6 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 export const reloadViews = () => invoke<void>("reload_views");
+
+export const focusCurrentWindow = async () => {
+  const window = getCurrentWindow();
+  await window.setFocus();
+};
 
 export interface CompileError {
   line: number | null;

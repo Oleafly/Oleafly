@@ -96,6 +96,14 @@ async function ensureNativePageReady(page: TauriPage) {
   }
 }
 
+async function focusNativeWindow(page: TauriPage) {
+  await page.evaluate(`
+    import("/src/lib/tauri.ts").then(({ focusCurrentWindow }) =>
+      focusCurrentWindow().then(() => true)
+    )
+  `);
+}
+
 function createNativeTest(dismissTours: boolean) {
   const port = Number(process.env.TAURI_PLAYWRIGHT_TCP_PORT ?? 6274);
   const socket = process.env.TAURI_PLAYWRIGHT_SOCKET ?? "/tmp/tauri-playwright.sock";
@@ -136,6 +144,7 @@ function createNativeTest(dismissTours: boolean) {
         );
         await reloadNativePage(page);
       }
+      await focusNativeWindow(page);
       nativePageOpened = true;
       try {
         await use(page);

@@ -257,6 +257,8 @@ jobs:
 
       # The fixture machinery needs a Playwright browser even in tauri mode.
       - name: Install Playwright browser
+        env:
+          DEBUG: pw:install
         run: pnpm exec playwright install chromium
 
       - name: Run the e2e suite
@@ -371,6 +373,8 @@ jobs:
           key: tectonic-pkgs-v2-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
 
       - name: Install Playwright browser
+        env:
+          DEBUG: pw:install
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Run the e2e suite
@@ -478,6 +482,8 @@ jobs:
           key: tectonic-pkgs-v2-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
 
       - name: Install Playwright browser
+        env:
+          DEBUG: pw:install
         run: pnpm exec playwright install chromium
 
       - name: Run the e2e suite

@@ -13,6 +13,8 @@ acquire_e2e_lock
 
 APP_PID=""
 LOG=""
+LOG_STREAM_PID=""
+HEARTBEAT_PID=""
 SOCK="${TAURI_PLAYWRIGHT_SOCKET:-/tmp/tauri-playwright.sock}"
 SOCK_ID=""
 CLEANED=0
@@ -33,6 +35,8 @@ cleanup() {
   if [ -n "$APP_PID" ]; then
     terminate_app_group "$APP_PID"
   fi
+  [ -z "$HEARTBEAT_PID" ] || kill "$HEARTBEAT_PID" 2>/dev/null || true
+  [ -z "$LOG_STREAM_PID" ] || kill "$LOG_STREAM_PID" 2>/dev/null || true
   remove_owned_e2e_socket "$SOCK" "$SOCK_ID"
   if [ -n "$LOG" ]; then
     mkdir -p test-results && cp "$LOG" test-results/app.log 2>/dev/null || true
@@ -53,6 +57,59 @@ export OPENLEAF_DATA_DIR="$DATA_DIR"
 
 echo "e2e: data dir $DATA_DIR"
 echo "e2e: app log  $LOG"
+
+stream_app_log() {
+  local shown=0
+  while true; do
+    local available
+    available="$(wc -l < "$LOG" | tr -d ' ')"
+    if [ "$available" -gt "$shown" ]; then
+      sed -n "$((shown + 1)),${available}p" "$LOG" | sed -u 's/^/[app] /'
+      shown="$available"
+    fi
+    sleep 2
+  done
+}
+
+start_heartbeat() {
+  local label="$1"
+  local started
+  started="$(date +%s)"
+  (
+    while true; do
+      sleep 30
+      echo "e2e: heartbeat — ${label} running for $(( $(date +%s) - started ))s"
+    done
+  ) &
+  HEARTBEAT_PID=$!
+}
+
+stop_heartbeat() {
+  if [ -n "$HEARTBEAT_PID" ]; then
+    kill "$HEARTBEAT_PID" 2>/dev/null || true
+    wait "$HEARTBEAT_PID" 2>/dev/null || true
+    HEARTBEAT_PID=""
+  fi
+}
+
+run_playwright() {
+  local label="$1"
+  shift
+  echo "e2e: starting ${label} at $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+  start_heartbeat "$label"
+  local status=0
+  pnpm exec playwright test -c e2e/playwright.config.ts "$@" || status=$?
+  stop_heartbeat
+  if [ "$status" -eq 0 ]; then
+    echo "e2e: completed ${label}"
+  else
+    echo "e2e: failed ${label} with exit code ${status}" >&2
+  fi
+  return "$status"
+}
+
+stream_app_log &
+LOG_STREAM_PID=$!
 
 if lsof -ti :1420 >/dev/null 2>&1; then
   echo "e2e: port 1420 is already owned by pid(s): $(lsof -ti :1420 | tr '\n' ' ')" >&2
@@ -95,12 +152,12 @@ done
 
 if [ "$has_spec" -eq 1 ]; then
   start_app
-  pnpm exec playwright test -c e2e/playwright.config.ts "$@"
+  run_playwright "requested spec selection" "$@"
 else
   suite_status=0
   for spec in e2e/tests/*.spec.ts; do
     start_app
-    if ! pnpm exec playwright test -c e2e/playwright.config.ts "$@" "$spec"; then
+    if ! run_playwright "$(basename "$spec")" "$@" "$spec"; then
       suite_status=1
     fi
     stop_app
