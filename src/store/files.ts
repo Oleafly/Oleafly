@@ -92,6 +92,18 @@ const pendingSaves = new Set<string>();
 // detect it is stale and stop writing into the newly opened project's state.
 let openSeq = 0;
 let mainDocSeq = 0;
+let fileOpenSeq = 0;
+let fileOpenEpoch = 0;
+const pendingFileOpens = new Map<string, number>();
+
+function fileOpenKey(projectId: string, path: string) {
+  return `${projectId}\0${path}`;
+}
+
+function invalidatePendingFileOpen(projectId: string | null, path: string) {
+  if (!projectId) return;
+  pendingFileOpens.set(fileOpenKey(projectId, path), ++fileOpenSeq);
+}
 
 function cancelPendingAutosave() {
   if (autosaveTimer) {
@@ -126,6 +138,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
 
   openProject: async (id) => {
     const seq = ++openSeq;
+    fileOpenEpoch++;
     mainDocSeq++;
     // Land any pending auto-commit for the previous project, then drop pending
     // autosaves and every buffer so its dirty tabs can't be written into this
@@ -190,6 +203,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   },
 
   closeProject: () => {
+    fileOpenEpoch++;
     mainDocSeq++;
     flushAutoCommit();
     cancelPendingAutosave();
@@ -253,6 +267,10 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const { projectId, files } = get();
     if (!projectId) return;
     if (path.endsWith("/")) return;
+    const epoch = fileOpenEpoch;
+    const key = fileOpenKey(projectId, path);
+    const requestSeq = ++fileOpenSeq;
+    pendingFileOpens.set(key, requestSeq);
     // Binary files (PDFs/images) aren't readable as text - skip the text load
     // and just open the tab; the editor renders them via a binary viewer.
     const isBinary = /\.(pdf|png|jpe?g|gif|webp|svg|eps|zip|gz|ttf|otf|woff2?)$/i.test(path);
@@ -265,6 +283,13 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       } catch {
         return;
       }
+    }
+    if (
+      get().projectId !== projectId ||
+      fileOpenEpoch !== epoch ||
+      pendingFileOpens.get(key) !== requestSeq
+    ) {
+      return;
     }
     // Opening a file makes it the active view, so unfocus any git diff (otherwise
     // the diff keeps the editor and the newly opened file never becomes active).
@@ -285,7 +310,8 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   },
 
   closeTab: (path) => {
-    const { openTabs, activePath, tabOrder } = get();
+    const { projectId, openTabs, activePath, tabOrder } = get();
+    invalidatePendingFileOpen(projectId, path);
     const next = openTabs.filter((p) => p !== path);
     const nextOrder = { ...tabOrder };
     delete nextOrder[path];
