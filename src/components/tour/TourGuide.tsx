@@ -563,25 +563,45 @@ export function TourGuide() {
     if (showWelcome || activeTourId) return;
     if (!projectId && tours.home.status === "pending" && !libraryReady) return;
     const context = currentContext(projectId, settingsOpen, diagramOpen, railTab, chatFloating);
-    const result = evaluateTour(
-      { enabled, tours, activeTourId },
-      context,
-      {
-        blockingOverlay:
-          newProjectOpen ||
-          (diagramOpen && settingsOpen) ||
-          (diagramOpen && context !== "diagram") ||
-          (settingsOpen && context !== "settings"),
-        targetExists: (target) =>
-          isTourTargetReady(target, document.querySelector<HTMLElement>(target)),
-      },
-    );
-    if (result.tourId) useTourStore.getState().start(result.tourId);
+    const evaluateCurrentContext = () => {
+      const state = useTourStore.getState();
+      return evaluateTour(
+        { enabled: state.enabled, tours: state.tours, activeTourId: state.activeTourId },
+        context,
+        {
+          blockingOverlay:
+            newProjectOpen ||
+            (diagramOpen && settingsOpen) ||
+            (diagramOpen && context !== "diagram") ||
+            (settingsOpen && context !== "settings"),
+          targetExists: (target) =>
+            isTourTargetReady(target, document.querySelector<HTMLElement>(target)),
+        },
+      );
+    };
+    const result = evaluateCurrentContext();
+    if (result.tourId) {
+      useTourStore.getState().start(result.tourId);
+      return;
+    }
+    if (result.reason !== "missing-target") return;
+    const observer = new MutationObserver(() => {
+      const retry = evaluateCurrentContext();
+      if (!retry.tourId) return;
+      observer.disconnect();
+      useTourStore.getState().start(retry.tourId);
+    });
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ["class", "data-tour", "data-tour-ready", "hidden", "style"],
+      childList: true,
+      subtree: true,
+    });
+    return () => observer.disconnect();
   }, [
     activeTourId,
     aiReadinessRevision,
     chatFloating,
-    enabled,
     diagramOpen,
     libraryReady,
     newProjectOpen,
