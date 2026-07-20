@@ -248,9 +248,10 @@ fn load_or_create_key(path: &Path) -> Result<[u8; 32], String> {
         return Err("secret key cannot be a symbolic link".to_string());
     }
     match std::fs::read(path) {
-        Ok(bytes) => bytes
-            .try_into()
-            .map_err(|_| "secret key has an invalid length".to_string()),
+        Ok(bytes) => match bytes.try_into() {
+            Ok(key) => Ok(key),
+            Err(_) => read_key_after_concurrent_create(path),
+        },
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
             let mut key = [0u8; 32];
             ring_rand::SecureRandom::fill(&ring_rand::SystemRandom::new(), &mut key)
@@ -277,21 +278,24 @@ fn load_or_create_key(path: &Path) -> Result<[u8; 32], String> {
                     Ok(key)
                 }
                 Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
-                    for _ in 0..100 {
-                        let bytes = std::fs::read(path)
-                            .map_err(|e| format!("failed to read secret key: {e}"))?;
-                        if let Ok(key) = bytes.try_into() {
-                            return Ok(key);
-                        }
-                        std::thread::sleep(std::time::Duration::from_millis(2));
-                    }
-                    Err("secret key has an invalid length".to_string())
+                    read_key_after_concurrent_create(path)
                 }
                 Err(error) => Err(format!("failed to create secret key: {error}")),
             }
         }
         Err(error) => Err(format!("failed to read secret key: {error}")),
     }
+}
+
+fn read_key_after_concurrent_create(path: &Path) -> Result<[u8; 32], String> {
+    for _ in 0..100 {
+        let bytes = std::fs::read(path).map_err(|e| format!("failed to read secret key: {e}"))?;
+        if let Ok(key) = bytes.try_into() {
+            return Ok(key);
+        }
+        std::thread::sleep(std::time::Duration::from_millis(2));
+    }
+    Err("secret key has an invalid length".to_string())
 }
 
 fn read_secret_map_at(

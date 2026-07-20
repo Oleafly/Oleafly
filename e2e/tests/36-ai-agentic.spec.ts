@@ -137,6 +137,15 @@ test("MCP activity rail tab appears only when the server is running", async ({
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
+  await openSettings(tauriPage, "mcp");
+  const mcpToggle = tauriPage.locator('[data-testid="mcp-enable-toggle"]');
+  if ((await mcpToggle.getAttribute("aria-checked")) === "true") {
+    await mcpToggle.click();
+    await expect(tauriPage.locator('[data-testid="mcp-status"]')).toContainText("Off", {
+      timeout: 15_000,
+    });
+  }
+  await tauriPage.click('[aria-label="Close settings"]');
   await expect(tauriPage.locator('[aria-label="MCP activity"]')).toHaveCount(0);
 
   await openSettings(tauriPage, "mcp");
