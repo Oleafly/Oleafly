@@ -15,6 +15,7 @@ export default defineConfig(async () => ({
   plugins: [react(), tailwindcss()],
   optimizeDeps: {
     exclude: ["harper.js"],
+    include: ["pdfjs-dist/build/pdf.worker.min.mjs"],
   },
   // pdf.js v6 loads its worker as an ES module; build ours the same way so the
   // polyfill wrapper worker (src/components/pdf/pdf.worker.ts) loads correctly.
