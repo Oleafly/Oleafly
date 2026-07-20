@@ -8,6 +8,7 @@ import workerSrc from "./pdf.worker?worker&url";
 import "pdfjs-dist/web/pdf_viewer.css";
 import { registerPdfView, clearPdfView, pageClickToBp } from "./pdfController";
 import { installMainThreadPdfWorker } from "./mainThreadWorker";
+import { createPdfLoadAttempts } from "./pdfLoadStrategy";
 import { closestMatchingElement, wordAtHorizontalPosition, wordInText } from "./textHit";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
@@ -16,6 +17,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 // WKWebView. This is intentionally session-wide: once real worker creation is
 // no longer viable, the main-thread loopback worker keeps preview usable.
 let mainThreadForced = false;
+const PDF_WORKER_LOAD_TIMEOUT_MS = 10_000;
 async function forceMainThreadWorker(): Promise<void> {
   if (mainThreadForced) return;
   await installMainThreadPdfWorker(workerSrc);
@@ -562,7 +564,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         destroyWorker();
         worker = new pdfjsLib.PDFWorker();
         loadingTask = pdfjsLib.getDocument({ data: data.slice(), worker });
-        return withTimeout(loadingTask.promise, 30_000, "pdf load");
+        return withTimeout(loadingTask.promise, PDF_WORKER_LOAD_TIMEOUT_MS, "pdf load");
       };
       // Load AND confirm the text pipe is alive: a wedged worker can load the
       // doc and render the canvas while returning empty text (blank text layer,
@@ -573,17 +575,12 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         if (textContent) probedPageText.set(doc, textContent);
         return doc;
       };
-      const attempts: Array<() => Promise<pdfjsLib.PDFDocumentProxy>> = expectText
-        ? [
-            openAndProbe,
-            openAndProbe,
-            async () => {
-              await forceMainThreadWorker();
-              return openAndProbe();
-            },
-            open,
-          ]
-        : [open];
+      const attempts = createPdfLoadAttempts(
+        expectText,
+        open,
+        openAndProbe,
+        forceMainThreadWorker,
+      );
       try {
         let doc: pdfjsLib.PDFDocumentProxy | null = null;
         let lastErr: unknown;
