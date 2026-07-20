@@ -82,21 +82,18 @@ test("Shift+F12 opens the references panel with the usage", async ({ tauriPage }
 test("F2 opens the rename-symbol dialog and cancel leaves the doc untouched", async ({
   tauriPage,
 }) => {
+  const dialog = tauriPage.locator('[role="dialog"][aria-labelledby="rename-title"]');
   for (let attempt = 0; ; attempt++) {
     await caretIn(tauriPage, "sec:e2eintro", 2);
     await contextMenuAction(tauriPage, "Rename symbol");
-    const opened = await tauriPage
-      .waitForFunction(
-        `document.body.innerText.includes('Rename') && document.body.innerText.includes('sec:e2eintro') && !!document.querySelector('input')`,
-        5_000,
-      )
+    const opened = await expect(dialog)
+      .toBeVisible({ timeout: 5_000 })
       .then(() => true)
       .catch(() => false);
     if (opened) break;
     if (attempt >= 3) throw new Error("rename dialog never opened");
   }
-  await tauriPage.evaluate(
-    `(Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === 'Cancel').click(), 1)`,
-  );
+  await dialog.getByText("Cancel", { exact: true }).click();
+  await expect(dialog).toBeHidden();
   await expect(tauriPage.locator(".cm-content")).toContainText("sec:e2eintro");
 });
