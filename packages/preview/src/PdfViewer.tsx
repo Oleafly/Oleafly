@@ -7,6 +7,7 @@ import workerSrc from "./pdf.worker?worker&url";
 // Styles for the selectable text layer + clickable annotation (link) layer.
 import "pdfjs-dist/web/pdf_viewer.css";
 import { registerPdfView, clearPdfView, pageClickToBp } from "./pdfController";
+import { wordAtHorizontalPosition, wordInText } from "./textHit";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
@@ -79,6 +80,12 @@ function wordAtPoint(
   };
   const clickedSpan =
     eventTarget instanceof Element ? eventTarget.closest<HTMLElement>(".textLayer span") : null;
+  if (clickedSpan) {
+    const text = clickedSpan.textContent ?? "";
+    const rect = clickedSpan.getBoundingClientRect();
+    const word = wordAtHorizontalPosition(text, rect.left, rect.width, clientX);
+    if (word) return word;
+  }
   let node: Node | null = null;
   let offset = 0;
   const range = d.caretRangeFromPoint?.(clientX, clientY); // WebKit + Chromium
@@ -110,13 +117,7 @@ function wordAtPoint(
     return fallbackText || null;
   }
   const text = node.textContent ?? "";
-  const isWordChar = (c: string | undefined) => !!c && /[\p{L}\p{N}]/u.test(c);
-  let s = Math.min(Math.max(0, offset), text.length);
-  let e = s;
-  while (s > 0 && isWordChar(text[s - 1])) s--;
-  while (e < text.length && isWordChar(text[e])) e++;
-  const w = text.slice(s, e);
-  return w.length ? w : null;
+  return wordInText(text, offset);
 }
 
 // Render pages within this many CSS pixels of the viewport (above and below), so
