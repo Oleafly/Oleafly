@@ -67,7 +67,12 @@ async function probePageText(doc: pdfjsLib.PDFDocumentProxy): Promise<PageTextCo
   }
 }
 
-function wordAtPoint(clientX: number, clientY: number): string | null {
+function wordAtPoint(
+  clientX: number,
+  clientY: number,
+  eventTarget?: EventTarget | null,
+  root: ParentNode = document,
+): string | null {
   const d = document as Document & {
     caretRangeFromPoint?: (x: number, y: number) => Range | null;
     caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
@@ -86,8 +91,22 @@ function wordAtPoint(clientX: number, clientY: number): string | null {
     }
   }
   if (!node || node.nodeType !== Node.TEXT_NODE) {
-    const hit = document.elementFromPoint(clientX, clientY);
-    const fallbackText = hit?.closest(".textLayer span")?.textContent?.trim() ?? "";
+    const target =
+      eventTarget instanceof Element
+        ? eventTarget.closest(".textLayer span")
+        : document.elementFromPoint(clientX, clientY)?.closest(".textLayer span");
+    const containingSpan =
+      target ??
+      Array.from(root.querySelectorAll<HTMLElement>(".textLayer span")).find((span) => {
+        const rect = span.getBoundingClientRect();
+        return (
+          clientX >= rect.left &&
+          clientX <= rect.right &&
+          clientY >= rect.top &&
+          clientY <= rect.bottom
+        );
+      });
+    const fallbackText = containingSpan?.textContent?.trim() ?? "";
     return fallbackText || null;
   }
   const text = node.textContent ?? "";
@@ -481,7 +500,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
           if ((ev.target as HTMLElement)?.closest?.("a")) return;
           const hit = pageClickToBp(wrap, p, ev);
           if (hit) {
-            const word = wordAtPoint(ev.clientX, ev.clientY);
+            const word = wordAtPoint(ev.clientX, ev.clientY, ev.target, wrap);
             onInverseRef.current?.(hit.page, hit.x, hit.y, word ?? undefined);
           }
         });
