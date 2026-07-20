@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures";
-import { createBlankProject, openProject, pressGlobal } from "../helpers";
+import { createBlankProject, openProject } from "../helpers";
 
 test("clicking the PDF jumps to the word in the source", async ({ tauriPage }) => {
   test.setTimeout(180_000); // cold text-layer render can be slow
@@ -15,7 +15,6 @@ test("clicking the PDF jumps to the word in the source", async ({ tauriPage }) =
     await createBlankProject(tauriPage, "E2E Doc");
   }
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await pressGlobal(tauriPage, "Enter", { meta: true });
   await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok", {
     timeout: 90_000,
   });
@@ -40,17 +39,7 @@ test("clicking the PDF jumps to the word in the source", async ({ tauriPage }) =
 
   const target = tauriPage.locator(".textLayer span").filter({ hasText: "Introduction" });
   await target.scrollIntoViewIfNeeded();
-  await target.evaluate(`(element) => {
-    const rect = element.getBoundingClientRect();
-    const options = {
-      bubbles: true,
-      clientX: rect.left + rect.width / 2,
-      clientY: rect.top + rect.height / 2,
-    };
-    element.dispatchEvent(new MouseEvent("mousedown", options));
-    element.dispatchEvent(new MouseEvent("mouseup", options));
-    element.dispatchEvent(new MouseEvent("click", options));
-  }`);
+  await target.click();
 
   await expect
     .poll(

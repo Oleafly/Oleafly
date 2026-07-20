@@ -94,6 +94,31 @@ describe("inverseFromClick (multi-file, 0.1.1 fix)", () => {
     expect(mocks.gotoLine).not.toHaveBeenCalled();
   });
 
+  it("selects the clicked word before native inverse lookup finishes", async () => {
+    let resolveHit: (value: null) => void = () => {};
+    mocks.synctexInverse.mockReturnValue(
+      new Promise((resolve) => {
+        resolveHit = resolve;
+      }),
+    );
+    mocks.getCurrentLine.mockReturnValue(3);
+
+    const inverse = inverseFromClick(1, 10, 10, "Introduction");
+
+    expect(mocks.selectWordNearLine).toHaveBeenCalledWith(3, "Introduction");
+    resolveHit(null);
+    await inverse;
+  });
+
+  it("keeps the clicked word selected when native inverse lookup fails", async () => {
+    mocks.synctexInverse.mockRejectedValue(new Error("native lookup failed"));
+    mocks.getCurrentLine.mockReturnValue(3);
+
+    await inverseFromClick(1, 10, 10, "Introduction");
+
+    expect(mocks.selectWordNearLine).toHaveBeenCalledWith(3, "Introduction");
+  });
+
   it("no-ops with no project open (never calls into the backend)", async () => {
     mocks.state.projectId = null;
     await inverseFromClick(1, 10, 10);

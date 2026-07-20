@@ -30,6 +30,7 @@ async function forceMainThreadWorker(): Promise<void> {
 }
 
 type PageTextContent = Awaited<ReturnType<pdfjsLib.PDFPageProxy["getTextContent"]>>;
+const probedPageText = new WeakMap<pdfjsLib.PDFDocumentProxy, PageTextContent>();
 
 function withTimeout<T>(p: Promise<T>, ms: number, what: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -212,6 +213,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
   // Drop a page's rasterization (canvas/text/annotation layers) and cancel its
   // in-flight render, keeping the placeholder wrapper (sized) so layout holds.
   const unrenderPage = useCallback((pageNo: number) => {
+    if (pageNo === 1) return;
     const st = renderedRef.current.get(pageNo);
     if (!st) return;
     for (const t of st.tasks) {
@@ -308,17 +310,11 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
 
       const renderTask = page.render({ canvas, canvasContext: ctx, viewport, transform });
       tasks.push(renderTask);
-      try {
-        await renderTask.promise;
-      } catch (err) {
-        if (String(err).includes("RenderingCancelled")) return;
-        throw err;
-      }
-      if (seq !== loadSeqRef.current) return;
 
       // Selectable text layer (best-effort; never blocks the page).
       try {
         const textContent =
+          (pageNo === 1 ? probedPageText.get(doc) : undefined) ??
           textContentRef.current.get(pageNo) ??
           (await withTimeout(page.getTextContent(), 15_000, "page text"));
         textContentRef.current.set(pageNo, textContent);
@@ -333,6 +329,14 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       } catch {
         /* text selection is a non-fatal enhancement */
       }
+
+      try {
+        await renderTask.promise;
+      } catch (err) {
+        if (String(err).includes("RenderingCancelled")) return;
+        throw err;
+      }
+      if (seq !== loadSeqRef.current) return;
 
       // Links/annotations (best-effort).
       try {
@@ -499,9 +503,15 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         wrap.style.setProperty("--scale-factor", String(s));
         wrap.addEventListener("click", (ev: MouseEvent) => {
           if ((ev.target as HTMLElement)?.closest?.("a")) return;
-          const hit = pageClickToBp(wrap, p, ev);
+          const clickedSpan = closestMatchingElement<HTMLElement>(ev.target, ".textLayer span");
+          const spanRect = clickedSpan?.getBoundingClientRect();
+          const clientX =
+            ev.clientX || (spanRect ? spanRect.left + spanRect.width / 2 : ev.clientX);
+          const clientY =
+            ev.clientY || (spanRect ? spanRect.top + spanRect.height / 2 : ev.clientY);
+          const hit = pageClickToBp(wrap, p, { clientX, clientY });
           if (hit) {
-            const word = wordAtPoint(ev.clientX, ev.clientY, ev.target, wrap);
+            const word = wordAtPoint(clientX, clientY, ev.target, wrap);
             onInverseRef.current?.(hit.page, hit.x, hit.y, word ?? undefined);
           }
         });
@@ -567,7 +577,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       const openAndProbe = async () => {
         const doc = await open();
         const textContent = await probePageText(doc);
-        if (textContent) textContentRef.current.set(1, textContent);
+        if (textContent) probedPageText.set(doc, textContent);
         return doc;
       };
       const attempts: Array<() => Promise<pdfjsLib.PDFDocumentProxy>> = expectText
@@ -590,10 +600,10 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
             break;
           } catch (e) {
             lastErr = e;
+            if (cancelled) return;
             textContentRef.current.clear();
             (loadingTask as pdfjsLib.PDFDocumentLoadingTask | null)?.destroy().catch(() => {});
             destroyWorker();
-            if (cancelled) return;
           }
         }
         if (cancelled) return;
