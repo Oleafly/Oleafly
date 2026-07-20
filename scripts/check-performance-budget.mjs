@@ -45,6 +45,11 @@ if (!harper || harper.bytes > limits.harperWasm) {
 }
 if (workers.length !== limits.pdfWorkers) {
   failures.push(`PDF worker count is ${workers.length}`);
+} else {
+  const workerModule = await import(new URL(workers[0].name, root).href);
+  if (typeof workerModule.WorkerMessageHandler?.setup !== "function") {
+    failures.push("PDF worker does not export WorkerMessageHandler");
+  }
 }
 if (assets.some((asset) => asset.name.startsWith("binaryInlined-"))) {
   failures.push("Harper is embedded in JavaScript");

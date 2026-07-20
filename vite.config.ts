@@ -1,10 +1,15 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "node:path";
 
 // Tauri expects a fixed port; if that's not available it will attempt the next one.
 const host = process.env.TAURI_DEV_HOST;
+
+const preserveWorkerExports = (): Plugin => ({
+  name: "preserve-worker-exports",
+  options: (options) => ({ ...options, preserveEntrySignatures: "strict" }),
+});
 
 export default defineConfig(async () => ({
   plugins: [react(), tailwindcss()],
@@ -13,7 +18,10 @@ export default defineConfig(async () => ({
   },
   // pdf.js v6 loads its worker as an ES module; build ours the same way so the
   // polyfill wrapper worker (src/components/pdf/pdf.worker.ts) loads correctly.
-  worker: { format: "es" as const },
+  worker: {
+    format: "es" as const,
+    plugins: () => [preserveWorkerExports()],
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
