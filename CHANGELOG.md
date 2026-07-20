@@ -34,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Reduced startup payloads by loading Harper as WebAssembly on demand, consolidating PDF rendering onto one worker, and deferring editor, preview, and AI surfaces until they are opened.
 - Added enforced production bundle budgets for JavaScript, CSS, Harper WebAssembly, and PDF worker count.
-- Verified 141 native macOS E2E scenarios with zero retries/skips and recorded
+- Verified 151 native macOS E2E scenarios with zero retries/skips and recorded
   final production bundle measurements.
 - Improved keyboard, focus, labeling, and semantic control behavior across dialogs, menus, project cards, search, preflight, tooltips, and editor surfaces.
 - Positioned 0.2.5 explicitly as an unsigned developer beta and documented updater failure behavior and manual rollback.

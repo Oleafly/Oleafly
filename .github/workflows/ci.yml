@@ -177,7 +177,7 @@ jobs:
     # Hard ceiling well under the job cap: a systemically broken environment
     # (e.g. the webview failing to start) must fail fast, not burn billed
     # macOS minutes timing out 118 tests one by one.
-    timeout-minutes: 60
+    timeout-minutes: 70
     steps:
       - uses: actions/checkout@v7
 
@@ -261,8 +261,8 @@ jobs:
 
       - name: Run the e2e suite
         # --max-failures stops a systemically broken run early;
-        # --global-timeout bounds the whole suite to ~40 minutes.
-        run: ./scripts/e2e.sh --max-failures=10 --global-timeout=2400000
+        # --global-timeout bounds the expanded 151-test suite to 50 minutes.
+        run: ./scripts/e2e.sh --max-failures=10 --global-timeout=3000000
 
       - name: Upload failure artifacts
         if: failure()
@@ -285,7 +285,7 @@ jobs:
     name: E2E (real app, Linux)
     # 24.04, not 22.04: the upstream Tectonic release binary needs glibc 2.39.
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 70
     steps:
       - uses: actions/checkout@v7
 
@@ -379,7 +379,7 @@ jobs:
         env:
           WEBKIT_DISABLE_COMPOSITING_MODE: "1"
           WEBKIT_DISABLE_DMABUF_RENDERER: "1"
-        run: xvfb-run -a ./scripts/e2e.sh --max-failures=10 --global-timeout=2400000
+        run: xvfb-run -a ./scripts/e2e.sh --max-failures=10 --global-timeout=3000000
 
       - name: Upload failure artifacts
         if: failure()
@@ -482,7 +482,7 @@ jobs:
 
       - name: Run the e2e suite
         shell: pwsh
-        run: powershell -File scripts/e2e.ps1 --max-failures=10 --global-timeout=2400000
+        run: powershell -File scripts/e2e.ps1 --max-failures=10 --global-timeout=3000000
 
       - name: Upload failure artifacts
         if: failure()

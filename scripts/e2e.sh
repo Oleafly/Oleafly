@@ -75,7 +75,6 @@ start_app() {
   done
   [ -S "$SOCK" ] || { echo "e2e: bridge socket never appeared; log tail:" >&2; tail -20 "$LOG" >&2; return 1; }
   SOCK_ID="$(e2e_socket_identity "$SOCK")"
-  sleep 5
 }
 
 stop_app() {
