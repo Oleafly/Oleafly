@@ -558,6 +558,7 @@ export function TourGuide() {
   }, []);
 
   useEffect(() => {
+    void aiReadinessRevision;
     if (showWelcome || activeTourId) return;
     if (!projectId && tours.home.status === "pending" && !libraryReady) return;
     const context = currentContext(projectId, settingsOpen, diagramOpen, railTab, chatFloating);
@@ -577,6 +578,7 @@ export function TourGuide() {
     if (result.tourId) useTourStore.getState().start(result.tourId);
   }, [
     activeTourId,
+    aiReadinessRevision,
     chatFloating,
     enabled,
     diagramOpen,
