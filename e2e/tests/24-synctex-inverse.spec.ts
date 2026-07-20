@@ -28,25 +28,24 @@ test("clicking the PDF jumps to the word in the source", async ({ tauriPage }) =
     throw new Error("textLayer never got content: " + dump);
   }
 
-  const clicked = await tauriPage.evaluate<boolean>(
-    `(() => {
-      const spans = Array.from(document.querySelectorAll('.textLayer span'));
-      const target = spans.find(s => s.textContent.includes('Introduction'));
-      if (!target) return false;
-      const r = target.getBoundingClientRect();
-      const wrap = target.closest('[data-page]');
-      if (!wrap) return false;
-      wrap.dispatchEvent(new MouseEvent('click', {
-        bubbles: true, cancelable: true,
-        clientX: r.left + r.width / 2, clientY: r.top + r.height / 2,
-      }));
-      return true;
-    })()`,
-  );
-  expect(clicked).toBe(true);
+  const target = tauriPage.locator(".textLayer span").filter({ hasText: "Introduction" });
+  await target.scrollIntoViewIfNeeded();
+  const box = await target.boundingBox();
+  expect(box).not.toBeNull();
+  await tauriPage.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
 
-  await tauriPage.waitForFunction(
-    `window.getSelection().toString().includes('Introduction') || (document.querySelector('.cm-activeLine')?.textContent ?? '').includes('Introduction')`,
-    15_000,
-  );
+  await expect
+    .poll(
+      () =>
+        tauriPage.evaluate<string>(
+          `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {
+            const view = getEditorView();
+            if (!view) return "";
+            const selection = view.state.selection.main;
+            return view.state.sliceDoc(selection.from, selection.to);
+          })`,
+        ),
+      { timeout: 15_000 },
+    )
+    .toBe("Introduction");
 });

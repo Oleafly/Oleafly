@@ -219,9 +219,10 @@ export async function openProject(page: Page & { getByText(t: string): { click()
 }
 
 export async function typeInEditorAtStart(page: Page, text: string) {
-  await page.evaluate(
+  const inserted = await page.evaluate<boolean>(
     `(() => {
       const content = document.querySelector('.cm-content');
+      if (!content) return false;
       content.focus();
       const sel = window.getSelection();
       sel.removeAllRanges();
@@ -229,9 +230,16 @@ export async function typeInEditorAtStart(page: Page, text: string) {
       range.setStart(content, 0);
       range.collapse(true);
       sel.addRange(range);
-      return document.execCommand('insertText', false, ${JSON.stringify(text)});
+      if (!document.execCommand('insertText', false, ${JSON.stringify(text)})) return false;
+      content.dispatchEvent(new InputEvent('input', {
+        bubbles: true,
+        data: ${JSON.stringify(text)},
+        inputType: 'insertText',
+      }));
+      return true;
     })()`,
   );
+  if (!inserted) throw new Error("typeInEditorAtStart: editor input was rejected");
 }
 
 // The plugin's wait_for_function has a ~30s server-side cap, so poll

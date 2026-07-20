@@ -69,16 +69,21 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
     .poll(
       () => {
         const restarted = JSON.parse(readFileSync(join(dataDir!, "mcp.json"), "utf8")) as {
+          url: string;
           token: string;
         };
-        return restarted.token;
+        return restarted.token === token && /^http:\/\/127\.0\.0\.1:\d+\/mcp$/.test(restarted.url);
       },
       { timeout: 15_000 },
     )
-    .toBe(token);
+    .toBe(true);
+  const restarted = JSON.parse(readFileSync(join(dataDir!, "mcp.json"), "utf8")) as {
+    url: string;
+    token: string;
+  };
   await tauriPage.click('[aria-label="Close settings"]');
 
-  const init = await rpc(url, token, {
+  const init = await rpc(restarted.url, token, {
     jsonrpc: "2.0",
     id: 1,
     method: "initialize",
@@ -91,9 +96,12 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
   expect((init.json as { result?: { serverInfo?: { name?: string } } })?.result?.serverInfo?.name).toBe(
     "openleaf",
   );
-  await rpc(url, token, { jsonrpc: "2.0", method: "notifications/initialized" });
+  await rpc(restarted.url, token, {
+    jsonrpc: "2.0",
+    method: "notifications/initialized",
+  });
 
-  const unauthorized = await fetch(url, {
+  const unauthorized = await fetch(restarted.url, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ jsonrpc: "2.0", id: 99, method: "ping" }),
@@ -103,7 +111,11 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
   // Tool list mirrors the in-app agent (bridge registers after mount).
   let names: string[] = [];
   for (let i = 0; i < 20; i++) {
-    const list = await rpc(url, token, { jsonrpc: "2.0", id: 2, method: "tools/list" });
+    const list = await rpc(restarted.url, token, {
+      jsonrpc: "2.0",
+      id: 2,
+      method: "tools/list",
+    });
     const tools = (list.json as { result?: { tools?: { name: string }[] } })?.result?.tools ?? [];
     names = tools.map((t) => t.name);
     if (names.includes("read_file") && names.includes("get_status")) break;
@@ -113,7 +125,7 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
     expect(names).toContain(n);
   }
 
-  const read = await rpc(url, token, {
+  const read = await rpc(restarted.url, token, {
     jsonrpc: "2.0",
     id: 3,
     method: "tools/call",
@@ -122,7 +134,7 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
   const readPayload = toolPayload((read.json as { result?: unknown })?.result);
   expect(readPayload.content).toContain("\\documentclass");
 
-  const writePromise = rpc(url, token, {
+  const writePromise = rpc(restarted.url, token, {
     jsonrpc: "2.0",
     id: 4,
     method: "tools/call",
@@ -153,7 +165,7 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
     })
     .toEqual([]);
 
-  const delPromise = rpc(url, token, {
+  const delPromise = rpc(restarted.url, token, {
     jsonrpc: "2.0",
     id: 5,
     method: "tools/call",
@@ -174,7 +186,7 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
   expect(delPayload.success, JSON.stringify(delPayload)).not.toBe(true);
   expect(delPayload.declined, JSON.stringify(delPayload)).toBe(true);
 
-  const reread = await rpc(url, token, {
+  const reread = await rpc(restarted.url, token, {
     jsonrpc: "2.0",
     id: 6,
     method: "tools/call",
