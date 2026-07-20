@@ -61,26 +61,28 @@ const DISMISSED_TOUR_STATE = JSON.stringify({
 });
 
 export async function reloadNativePage(page: TauriPage) {
-  await page.evaluate(`window.__E2E_RELOAD_PENDING__ = true`);
-  await page.evaluate(
+  const mainWindow = await page.waitForWindow((window) => window.label === "main", {
+    timeout: 20_000,
+  });
+  await mainWindow.evaluate(`window.__E2E_RELOAD_PENDING__ = true`);
+  await mainWindow.evaluate(
     `import("/src/lib/tauri.ts").then(({ reloadViews }) => { void reloadViews(); })`,
   );
-  const deadline = Date.now() + 10_000;
+  const deadline = Date.now() + 20_000;
   while (Date.now() < deadline) {
     try {
-      const pending = await page.evaluate(
-        `window.__E2E_RELOAD_PENDING__ === true`,
+      const reloadedWindow = await page.waitForWindow(
+        (window) => window.label === "main",
+        { timeout: Math.min(1_000, deadline - Date.now()) },
       );
-      if (!pending) break;
-    } catch {
-      break;
-    }
+      const ready = await reloadedWindow.evaluate(
+        `document.readyState === "complete" && !!window.__PW_ACTIVE__ && window.__E2E_RELOAD_PENDING__ !== true`,
+      );
+      if (ready) return;
+    } catch {}
     await new Promise((resolve) => setTimeout(resolve, 25));
   }
-  await page.waitForFunction(
-    'document.readyState === "complete" && !!window.__PW_ACTIVE__',
-    20_000,
-  );
+  throw new Error("main window did not finish reloading within 20 seconds");
 }
 
 async function ensureNativePageReady(page: TauriPage) {
