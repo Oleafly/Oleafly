@@ -58,8 +58,8 @@ export function selectWordNearLine(line: number, word: string): boolean {
     return idx < 0 ? null : { from: l.from + idx, to: l.from + idx + needle.length };
   };
 
-  const WINDOW = 12;
-  for (let d = 0; d <= WINDOW; d++) {
+  const furthestLine = Math.max(target - 1, total - target);
+  for (let d = 0; d <= furthestLine; d++) {
     for (const ln of d === 0 ? [target] : [target - d, target + d]) {
       const m = findInLine(ln);
       if (m) {

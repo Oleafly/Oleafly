@@ -66,7 +66,7 @@ export async function inverseFromClick(page: number, x: number, y: number, word?
     }
     // SyncTeX only resolves to a line (its column is coarse and often lands on a
     // `\begin`/`\end`). If we know the word that was clicked, place the cursor on
-    // that exact word near the line; otherwise fall back to the line start.
+    // the nearest matching word; otherwise fall back to the line start.
     if (word && selectWordNearLine(hit.line, word)) return;
     gotoLine(hit.line);
   } catch (e) {
