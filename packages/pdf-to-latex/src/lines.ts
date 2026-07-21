@@ -43,6 +43,12 @@ export function buildLines(items: TextItem[]): Line[] {
       .replace(/\s+/g, " ")
       .trim();
     l.fontSize = mode(l.items.map((i) => i.fontSize));
+    // baseline from dominant-font items so scripts don't skew it
+    const baseYs = l.items
+      .filter((i) => Math.abs(i.fontSize - l.fontSize) < 0.5)
+      .map((i) => i.y)
+      .sort((a, b) => a - b);
+    if (baseYs.length > 0) l.y = baseYs[Math.floor(baseYs.length / 2)];
     l.x0 = Math.min(...l.items.map((i) => i.x));
     l.x1 = Math.max(...l.items.map((i) => i.x + i.width));
   }
