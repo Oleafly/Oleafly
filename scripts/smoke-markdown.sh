@@ -31,7 +31,7 @@ case "$TARGET" in
   x86_64-pc-windows-msvc)
     ASSET="pandoc-$VERSION-windows-x86_64.zip"
     SHA="c97542f2800f446e788d9f74237856d995421ad1bb3cc8324286840c5f272d3a"
-    KIND=zip; PANDOC="pandoc.exe"; TECTONIC="src-tauri/binaries/tectonic-$TARGET.exe" ;;
+    KIND=zip; PANDOC="pandoc-$VERSION/pandoc.exe"; TECTONIC="src-tauri/binaries/tectonic-$TARGET.exe" ;;
   *) echo "unsupported Markdown smoke target: $TARGET" >&2; exit 1 ;;
 esac
 
