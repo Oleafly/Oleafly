@@ -554,6 +554,9 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
   useEffect(() => {
     const container = containerRef.current;
     if (!container || !data) return;
+    container.dataset.pdfState = "loading-primary";
+    container.dataset.pdfEnvironment = `${document.visibilityState}:${document.hasFocus() ? "focused" : "unfocused"}`;
+    delete container.dataset.pdfError;
 
     loadSeqRef.current++;
     let loadingTask: pdfjsLib.PDFDocumentLoadingTask | null = null;
@@ -600,12 +603,15 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       try {
         let doc: pdfjsLib.PDFDocumentProxy | null = null;
         let lastErr: unknown;
-        for (const attempt of attempts) {
+        for (const [attemptIndex, attempt] of attempts.entries()) {
+          container.dataset.pdfState =
+            attemptIndex === 0 ? "loading-primary" : "loading-fallback";
           try {
             doc = await attempt();
             break;
           } catch (e) {
             lastErr = e;
+            container.dataset.pdfError = String(e);
             if (cancelled) return;
             textContentRef.current.clear();
             (loadingTask as pdfjsLib.PDFDocumentLoadingTask | null)?.destroy().catch(() => {});
@@ -615,9 +621,15 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         if (cancelled) return;
         if (!doc) throw lastErr;
         docRef.current = doc;
+        container.dataset.pdfState = "building-layout";
         await buildLayout(doc);
+        container.dataset.pdfState = "ready";
       } catch (e) {
-        if (!cancelled) container.textContent = `Failed to render PDF: ${String(e)}`;
+        if (!cancelled) {
+          container.dataset.pdfState = "error";
+          container.dataset.pdfError = String(e);
+          container.textContent = `Failed to render PDF: ${String(e)}`;
+        }
       }
     })();
 
@@ -723,6 +735,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
   return (
     <div
       ref={containerRef}
+      data-testid="pdf-renderer"
       className={
         layout === "double"
           ? "grid grid-cols-[auto_auto] content-start justify-center gap-4 p-4"
