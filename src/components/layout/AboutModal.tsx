@@ -9,7 +9,7 @@ import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 
 const REPO = "https://github.com/Oleafly/Oleafly";
 const AUTHOR_URL = "https://prajwal.me";
-const DOCS = "https://oleafly.github.io/Oleafly/";
+const DOCS = "https://oleafly.com/docs/";
 
 export function AboutModal({ open: isOpen, onClose }: { open: boolean; onClose: () => void }) {
   const [version, setVersion] = useState("");

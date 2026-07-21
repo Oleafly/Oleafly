@@ -867,7 +867,7 @@ function DictionarySection({
 
 const REPO_URL = "https://github.com/Oleafly/Oleafly";
 const AUTHOR_URL = "https://prajwal.me";
-const DOCS_URL = "https://oleafly.github.io/Oleafly/";
+const DOCS_URL = "https://oleafly.com/docs/";
 const ISSUES_URL = `${REPO_URL}/issues/new`;
 const CHANGELOG_URL = `${REPO_URL}/blob/main/CHANGELOG.md`;
 const LICENSE_URL = `${REPO_URL}/blob/main/LICENSE`;

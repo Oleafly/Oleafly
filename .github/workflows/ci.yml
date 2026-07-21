@@ -9,14 +9,12 @@ on:
     paths-ignore:
       - "**.md"
       - "docs/**"
-      - "docsite/**"
       - ".github/badges/**"
   pull_request:
     branches: [main]
     paths-ignore:
       - "**.md"
       - "docs/**"
-      - "docsite/**"
       - ".github/badges/**"
   workflow_dispatch:
 

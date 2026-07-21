@@ -1,7 +1,8 @@
 # Shared media
 
-Used by the README and the docsite (copied into the site at build time).
-Overwrite a file here and both pick it up on the next push.
+Used by the README and the docs site at [oleafly.com](https://oleafly.com)
+(maintained in its own repository). Overwrite a file here and the README picks
+it up on the next push.
 
 ## Placeholders to replace (currently gray boxes)
 

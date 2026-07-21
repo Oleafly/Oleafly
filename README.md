@@ -29,7 +29,7 @@
 
 <div align="center">
 
-**[Download the app](https://github.com/Oleafly/Oleafly/releases/latest) · [Build from source](docs/install.md) · [Docs](https://oleafly.github.io/Oleafly/)**
+**[Download the app](https://github.com/Oleafly/Oleafly/releases/latest) · [Build from source](docs/install.md) · [Docs](https://oleafly.com/docs/)**
 
 Grab a prebuilt installer for macOS, Windows, or Linux from the [latest release](https://github.com/Oleafly/Oleafly/releases/latest), or [build it from source](docs/install.md).
 
@@ -208,7 +208,7 @@ Open the Preflight panel and it scores your document out of 100 for the two audi
 <img src="media/preflight-ats.png" alt="Preflight scores a resume for ATS parsers and screen readers" width="85%" />
 </div>
 
-Every check is documented in [the Preflight guide](https://oleafly.github.io/Oleafly/preflight/).
+Every check is documented in [the Preflight guide](https://oleafly.com/docs/preflight/).
 
 <br/>
 
@@ -234,7 +234,7 @@ It also draws figures. Describe a diagram (or select a paragraph), and it genera
 
 ## Features
 
-The full list. Everything here runs on your machine. For the detailed tour, see the [documentation site](https://oleafly.github.io/Oleafly/).
+The full list. Everything here runs on your machine. For the detailed tour, see the [documentation site](https://oleafly.com/docs/).
 
 **Editor (CodeMirror 6)**
 - LaTeX autocomplete for commands, `\ref`/`\label`, `\cite` (parsed from your `.bib`), and file names from the tree
@@ -486,20 +486,20 @@ Plus Tectonic (XeTeX), pdf.js, Zustand, Harper, and Hunspell.
 
 ## Documentation
 
-The full product documentation lives at **[oleafly.github.io/Oleafly](https://oleafly.github.io/Oleafly/)**: thirty-plus guides that cover every feature, from first launch to tagged PDF export.
+The full product documentation lives at **[oleafly.com/docs](https://oleafly.com/docs/)**: thirty-plus guides that cover every feature, from first launch to tagged PDF export.
 
 | Guide | What's inside |
 |---|---|
 | [Download](https://github.com/Oleafly/Oleafly/releases/latest) | Prebuilt installers (.dmg / .msi / .exe / .AppImage / .deb / .rpm) |
-| [Overview](https://oleafly.github.io/Oleafly/overview/) | What Oleafly is and a tour of the whole app |
-| [Getting started](https://oleafly.github.io/Oleafly/getting-started/) | First project to first PDF in a couple of minutes |
-| [Templates](https://oleafly.github.io/Oleafly/templates/) | The full gallery: resumes, papers, theses, posters, decks |
-| [Preflight: ATS & accessibility](https://oleafly.github.io/Oleafly/preflight/) | Section 508 / PDF-UA and resume-parser checks, before you submit |
-| [AI assistant](https://oleafly.github.io/Oleafly/ai-setup/) | Connect a model, or go local with Ollama |
+| [Overview](https://oleafly.com/docs/overview/) | What Oleafly is and a tour of the whole app |
+| [Getting started](https://oleafly.com/docs/getting-started/) | First project to first PDF in a couple of minutes |
+| [Templates](https://oleafly.com/docs/templates/) | The full gallery: resumes, papers, theses, posters, decks |
+| [Preflight: ATS & accessibility](https://oleafly.com/docs/preflight/) | Section 508 / PDF-UA and resume-parser checks, before you submit |
+| [AI assistant](https://oleafly.com/docs/ai-setup/) | Connect a model, or go local with Ollama |
 | [MCP server](docs/mcp.md) | Drive Oleafly from Claude Desktop, Claude Code, Cursor, and other MCP clients |
-| [GitHub sync](https://oleafly.github.io/Oleafly/github-sync/) | Back up and sync across machines |
-| [Keyboard shortcuts](https://oleafly.github.io/Oleafly/keyboard-shortcuts/) | The ones worth memorizing |
-| [FAQ](https://oleafly.github.io/Oleafly/faq/) | Common questions and fixes |
+| [GitHub sync](https://oleafly.com/docs/github-sync/) | Back up and sync across machines |
+| [Keyboard shortcuts](https://oleafly.com/docs/keyboard-shortcuts/) | The ones worth memorizing |
+| [FAQ](https://oleafly.com/docs/faq/) | Common questions and fixes |
 | [Build from source](docs/install.md) | For developers: clone, install deps, run |
 | [Development](docs/development.md) | Setup and how to contribute |
 | [Frontend architecture](docs/architecture.md) | The `@openleaf/*` packages, ports, and the contribution registry |
