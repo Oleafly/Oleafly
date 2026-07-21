@@ -52,6 +52,27 @@ export async function startMockAiServer(): Promise<MockAiServer> {
       req.on("end", () => {
         requests++;
         const hasToolResult = /"role"\s*:\s*"tool"/.test(body);
+        // generateText (single-shot, e.g. image-to-LaTeX) posts stream:false and
+        // expects a plain JSON completion instead of SSE.
+        if (!/"stream"\s*:\s*true/.test(body)) {
+          res.writeHead(200, { "content-type": "application/json" });
+          res.end(
+            JSON.stringify({
+              id: "chatcmpl-mock",
+              object: "chat.completion",
+              model: "llama3.2",
+              choices: [
+                {
+                  index: 0,
+                  message: { role: "assistant", content: reply },
+                  finish_reason: "stop",
+                },
+              ],
+              usage: { prompt_tokens: 13, completion_tokens: 9, total_tokens: 22 },
+            }),
+          );
+          return;
+        }
         res.writeHead(200, {
           "content-type": "text/event-stream",
           "cache-control": "no-cache",

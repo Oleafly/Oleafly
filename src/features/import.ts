@@ -5,6 +5,7 @@ import { logError } from "@/lib/log";
 import {
   createProject,
   createProjectFromDocx,
+  hasPandoc,
   saveFileBase64,
   writeBytesFile,
   writeFileContent,
@@ -108,6 +109,18 @@ export async function downloadZip(): Promise<void> {
   const zipped = zipSync(zipEntries(result.tex, figures));
   await writeBytesFile(dest, bytesToBase64(zipped));
   toast.success("Saved .zip");
+}
+
+// E2E / devtools hook: the native test bridge cannot drive a real file input,
+// so specs feed bytes in directly.
+if (typeof window !== "undefined" && import.meta.env.DEV) {
+  const w = window as unknown as {
+    __importFile?: (name: string, base64: string) => Promise<void>;
+    __hasPandoc?: () => Promise<boolean>;
+  };
+  w.__importFile = (name, base64) =>
+    handlePickedFile(new File([base64ToBytes(base64) as BlobPart], name));
+  w.__hasPandoc = () => hasPandoc();
 }
 
 export async function downloadFigure(fig: ExtractedFigure): Promise<void> {
