@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test, expect } from "../fixtures";
-import { expectCompiledPdfContains, waitLong, type Page } from "../helpers";
+import { expectCompiledPdfContains, waitEditorContains, waitLong, type Page } from "../helpers";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixture = (name: string) =>
@@ -82,9 +82,6 @@ test("DOCX imports through pandoc into a project", async ({ tauriPage }) => {
   const pandoc = await tauriPage.evaluate<boolean>(`window.__pandocProbe === true`);
   test.skip(!pandoc, "pandoc is not installed in this environment");
   await importFixture(tauriPage, "tiny.docx");
-  await waitLong(
-    tauriPage,
-    `(document.querySelector(".cm-content")?.textContent ?? "").includes("Docx fixture paragraph")`,
-    60_000,
-  );
+  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 60_000 });
+  await waitEditorContains(tauriPage, "Docx fixture paragraph", 30_000);
 });

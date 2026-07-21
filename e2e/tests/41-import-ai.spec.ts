@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test, expect } from "../fixtures";
-import { openProject, openRailTab, waitLong, type Page } from "../helpers";
+import { openProject, openRailTab, waitEditorContains, waitLong, type Page } from "../helpers";
 import { startMockAiServer, type MockAiServer } from "../mock-ai-server";
 
 // Tier 2 of the import pipeline: the refine handoff and image-to-LaTeX both
@@ -49,6 +49,12 @@ test("refine with AI creates the project and hands off to the agent", async ({ t
   await expect(tauriPage.locator('[data-testid="import-refine"]')).toBeVisible({
     timeout: 20_000,
   });
+  // wait for the conversion result: refine is a no-op while the button is disabled
+  await waitLong(
+    tauriPage,
+    `(document.querySelector('[data-testid="import-source"]')?.textContent ?? "").includes("documentclass")`,
+    30_000,
+  );
   await tauriPage.click('[data-testid="import-refine"]');
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 60_000 });
   await openRailTab(tauriPage, "Chat / AI Assistant");
@@ -87,9 +93,5 @@ test("image to LaTeX transcribes into the editor", async ({ tauriPage }) => {
       return true;
     })()`,
   );
-  await waitLong(
-    tauriPage,
-    `(document.querySelector(".cm-content")?.textContent ?? "").includes("E=mc^2")`,
-    60_000,
-  );
+  await waitEditorContains(tauriPage, "E=mc^2", 60_000);
 });
