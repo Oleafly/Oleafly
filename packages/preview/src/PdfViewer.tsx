@@ -16,12 +16,28 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 // Last-resort recovery for a worker subsystem wedged by a long-occluded
 // WKWebView. This is intentionally session-wide: once real worker creation is
 // no longer viable, the main-thread loopback worker keeps preview usable.
-let mainThreadForced = false;
+let mainThreadWorkerInstall: Promise<void> | null = null;
 const PDF_WORKER_LOAD_TIMEOUT_MS = 10_000;
 async function forceMainThreadWorker(): Promise<void> {
-  if (mainThreadForced) return;
-  await installMainThreadPdfWorker(workerSrc);
-  mainThreadForced = true;
+  if (!mainThreadWorkerInstall) {
+    mainThreadWorkerInstall = installMainThreadPdfWorker().catch((error) => {
+      mainThreadWorkerInstall = null;
+      throw error;
+    });
+  }
+  await mainThreadWorkerInstall;
+}
+
+async function createPdfWorker(): Promise<pdfjsLib.PDFWorker> {
+  const usingMainThread = mainThreadWorkerInstall !== null;
+  if (mainThreadWorkerInstall) {
+    await mainThreadWorkerInstall;
+  }
+  const worker = new pdfjsLib.PDFWorker();
+  if (usingMainThread) {
+    await withTimeout(worker.promise, PDF_WORKER_LOAD_TIMEOUT_MS, "main-thread PDF worker setup");
+  }
+  return worker;
 }
 
 type PageTextContent = Awaited<ReturnType<pdfjsLib.PDFPageProxy["getTextContent"]>>;
@@ -562,7 +578,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       // the load and retry once on a fresh task before showing an error.
       const open = async () => {
         destroyWorker();
-        worker = new pdfjsLib.PDFWorker();
+        worker = await createPdfWorker();
         loadingTask = pdfjsLib.getDocument({ data: data.slice(), worker });
         return withTimeout(loadingTask.promise, PDF_WORKER_LOAD_TIMEOUT_MS, "pdf load");
       };

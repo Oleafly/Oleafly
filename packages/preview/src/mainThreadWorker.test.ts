@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { installMainThreadPdfWorker, installPdfWorkerModule } from "./mainThreadWorker";
 import "./pdf.worker";
 
@@ -22,13 +22,10 @@ describe("main-thread PDF worker fallback", () => {
 
   it("loads and installs the worker module directly on the main thread", async () => {
     delete (globalThis as { pdfjsWorker?: unknown }).pdfjsWorker;
-    const setup = () => {};
-    const loader = vi.fn(async () => ({ WorkerMessageHandler: { setup } }));
-    await installMainThreadPdfWorker("/assets/pdf.worker.js", loader);
-    expect(loader).toHaveBeenCalledWith("/assets/pdf.worker.js");
+    await installMainThreadPdfWorker();
     const worker = (globalThis as {
       pdfjsWorker?: { WorkerMessageHandler?: { setup?: unknown } };
     }).pdfjsWorker;
-    expect(worker?.WorkerMessageHandler?.setup).toBe(setup);
+    expect(typeof worker?.WorkerMessageHandler?.setup).toBe("function");
   });
 });
