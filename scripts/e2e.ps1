@@ -1,9 +1,25 @@
-# Self-contained e2e run for Windows: launches the app with the e2e bridge
-# (TCP transport; Windows has no unix sockets) and a throwaway data dir, waits
-# for the bridge, runs the Playwright suite, and always tears the app down.
-# Usage: powershell -File scripts/e2e.ps1 [playwright args...]
+# Self-contained e2e run for Windows. A full suite launches a fresh real app
+# for every spec while retaining one throwaway data directory across the run.
+# Usage: powershell -File scripts/e2e.ps1 [--suite-max-failures=N] [playwright args...]
 $ErrorActionPreference = "Stop"
 Set-Location (Join-Path $PSScriptRoot "..")
+
+$suiteMaxFailures = 0
+$playwrightArgs = [System.Collections.Generic.List[string]]::new()
+for ($index = 0; $index -lt $args.Count; $index++) {
+  $argument = [string]$args[$index]
+  if ($argument -match "^--suite-max-failures=(\d+)$") {
+    $suiteMaxFailures = [int]$Matches[1]
+  } elseif ($argument -eq "--suite-max-failures") {
+    $index++
+    if ($index -ge $args.Count -or [string]$args[$index] -notmatch "^\d+$") {
+      throw "--suite-max-failures requires a non-negative integer"
+    }
+    $suiteMaxFailures = [int]$args[$index]
+  } else {
+    $playwrightArgs.Add($argument)
+  }
+}
 
 $runnerMutex = [System.Threading.Mutex]::new($false, "Local\OpenLeafE2ERunner")
 $runnerOwned = $false
@@ -12,6 +28,105 @@ $log = $null
 $logStream = $null
 $heartbeat = $null
 $code = 1
+$stamp = [System.Guid]::NewGuid().ToString("N").Substring(0, 8)
+$dataDir = Join-Path ([System.IO.Path]::GetTempPath()) "openleaf-e2e-$stamp"
+
+function Start-OutputProcess([string]$command) {
+  $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
+  Start-Process -FilePath "powershell.exe" `
+    -ArgumentList "-NoProfile", "-EncodedCommand", $encoded `
+    -NoNewWindow -PassThru
+}
+
+function Stop-AuxiliaryProcesses {
+  foreach ($process in @($script:heartbeat, $script:logStream)) {
+    if ($null -ne $process -and -not $process.HasExited) {
+      Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+    }
+  }
+  $script:heartbeat = $null
+  $script:logStream = $null
+}
+
+function Stop-App {
+  Stop-AuxiliaryProcesses
+  if ($null -ne $script:app -and -not $script:app.HasExited) {
+    taskkill /PID $script:app.Id /T /F 2>$null | Out-Null
+  }
+  $script:app = $null
+}
+
+function Start-App([string]$label) {
+  Stop-App
+  $safeLabel = $label -replace "[^A-Za-z0-9._-]", "-"
+  $script:log = Join-Path ([System.IO.Path]::GetTempPath()) "openleaf-e2e-$stamp-$safeLabel.log"
+  New-Item -ItemType File -Force -Path $script:log | Out-Null
+
+  Write-Host "e2e: launching app for $label"
+  Write-Host "e2e: app log $($script:log)"
+  $env:OPENLEAF_DATA_DIR = $script:dataDir
+  $script:app = Start-Process -FilePath "cmd.exe" `
+    -ArgumentList "/c", "pnpm tauri dev --features e2e-testing > `"$($script:log)`" 2>&1" `
+    -PassThru -WindowStyle Hidden
+
+  $escapedLog = $script:log.Replace("'", "''")
+  $script:logStream = Start-OutputProcess @"
+Get-Content -LiteralPath '$escapedLog' -Wait -Tail 0 |
+  ForEach-Object { Write-Output ('[app] ' + `$_) }
+"@
+
+  Write-Host "e2e: waiting for the tcp bridge (the first build can take minutes)..."
+  $deadline = (Get-Date).AddMinutes(30)
+  while ((Get-Date) -lt $deadline) {
+    if ($script:app.HasExited) {
+      Write-Host "e2e: app process exited before the bridge was ready"
+      Get-Content $script:log -Tail 30
+      throw "The app process exited before the bridge was ready"
+    }
+    if (Select-String -Path $script:log -Pattern "listening on tcp" -Quiet) {
+      return
+    }
+    Start-Sleep -Seconds 2
+  }
+
+  Write-Host "e2e: bridge never came up; log tail:"
+  Get-Content $script:log -Tail 30
+  throw "The e2e bridge did not become ready within 30 minutes"
+}
+
+function Run-Playwright([string]$label, [string[]]$selection) {
+  $script:heartbeat = Start-OutputProcess @"
+`$started = Get-Date
+while (`$true) {
+  Start-Sleep -Seconds 30
+  `$elapsed = [int]((Get-Date) - `$started).TotalSeconds
+  Write-Output "e2e: heartbeat - $label running for `$(`$elapsed)s"
+}
+"@
+  Write-Host "e2e: starting $label at $((Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'))"
+  & pnpm exec playwright test -c e2e/playwright.config.ts @playwrightArgs @selection
+  $status = $LASTEXITCODE
+
+  if ($null -ne $script:heartbeat -and -not $script:heartbeat.HasExited) {
+    Stop-Process -Id $script:heartbeat.Id -Force -ErrorAction SilentlyContinue
+  }
+  $script:heartbeat = $null
+  if ($status -eq 0) {
+    Write-Host "e2e: completed $label"
+  } else {
+    Write-Host "e2e: failed $label with exit code $status"
+  }
+  return $status
+}
+
+function Preserve-AppLog([string]$label) {
+  New-Item -ItemType Directory -Force -Path test-results | Out-Null
+  if ($null -ne $script:log -and (Test-Path $script:log)) {
+    $safeLabel = $label -replace "[^A-Za-z0-9._-]", "-"
+    Copy-Item $script:log (Join-Path "test-results" "app-$safeLabel.log") -Force
+  }
+}
+
 try {
   try {
     $runnerOwned = $runnerMutex.WaitOne(0)
@@ -23,78 +138,48 @@ try {
   }
 
   & (Join-Path $PSScriptRoot "ensure-e2e-sidecars.ps1")
+  New-Item -ItemType Directory -Path $dataDir | Out-Null
+  Write-Host "e2e: shared data dir $dataDir"
 
-$stamp = [System.Guid]::NewGuid().ToString("N").Substring(0, 8)
-$dataDir = Join-Path ([System.IO.Path]::GetTempPath()) "openleaf-e2e-$stamp"
-New-Item -ItemType Directory -Path $dataDir | Out-Null
-$log = Join-Path ([System.IO.Path]::GetTempPath()) "openleaf-e2e-log-$stamp.txt"
-
-Write-Host "e2e: data dir $dataDir"
-Write-Host "e2e: app log  $log"
-
-function Start-OutputProcess([string]$command) {
-  $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
-  Start-Process -FilePath "powershell.exe" `
-    -ArgumentList "-NoProfile", "-EncodedCommand", $encoded `
-    -NoNewWindow -PassThru
-}
-
-$env:OPENLEAF_DATA_DIR = $dataDir
-$app = Start-Process -FilePath "cmd.exe" `
-  -ArgumentList "/c", "pnpm tauri dev --features e2e-testing > `"$log`" 2>&1" `
-  -PassThru -WindowStyle Hidden
-$escapedLog = $log.Replace("'", "''")
-$logStream = Start-OutputProcess @"
-Get-Content -LiteralPath '$escapedLog' -Wait -Tail 0 |
-  ForEach-Object { Write-Output ('[app] ' + `$_) }
-"@
-
-Write-Host "e2e: waiting for the tcp bridge (first build can take minutes)..."
-$deadline = (Get-Date).AddMinutes(30)
-$ready = $false
-while ((Get-Date) -lt $deadline) {
-  if ($app.HasExited) {
-    Write-Host "e2e: app process exited early; log tail:"
-    if (Test-Path $log) { Get-Content $log -Tail 30 }
-    exit 1
-  }
-  if ((Test-Path $log) -and (Select-String -Path $log -Pattern "listening on tcp" -Quiet)) {
-    $ready = $true
-    break
-  }
-  Start-Sleep -Seconds 5
-}
-if (-not $ready) {
-  Write-Host "e2e: bridge never came up; log tail:"
-  if (Test-Path $log) { Get-Content $log -Tail 30 }
-  exit 1
-}
-
-$heartbeat = Start-OutputProcess @"
-`$started = Get-Date
-while (`$true) {
-  Start-Sleep -Seconds 30
-  `$elapsed = [int]((Get-Date) - `$started).TotalSeconds
-  Write-Output "e2e: heartbeat — Windows suite running for `$(`$elapsed)s"
-}
-"@
-Write-Host "e2e: starting Windows suite at $((Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'))"
-pnpm exec playwright test -c e2e/playwright.config.ts @args
-$code = $LASTEXITCODE
-} finally {
-  foreach ($process in @($heartbeat, $logStream)) {
-    if ($null -ne $process -and -not $process.HasExited) {
-      Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+  $hasSpec = $false
+  foreach ($argument in $playwrightArgs) {
+    if ($argument -match "\.spec\.ts(?::\d+)?$") {
+      $hasSpec = $true
+      break
     }
   }
-  if ($null -ne $app -and -not $app.HasExited) {
-    taskkill /PID $app.Id /T /F 2>$null | Out-Null
+
+  if ($hasSpec) {
+    $label = "requested-spec-selection"
+    Start-App $label
+    $code = Run-Playwright $label @()
+    Preserve-AppLog $label
+    Stop-App
+  } else {
+    $code = 0
+    $failures = 0
+    $specs = Get-ChildItem -Path "e2e/tests" -Filter "*.spec.ts" | Sort-Object Name
+    foreach ($spec in $specs) {
+      $label = $spec.Name
+      Start-App $label
+      $status = Run-Playwright $label @($spec.FullName)
+      Preserve-AppLog $label
+      Stop-App
+      if ($status -ne 0) {
+        $code = 1
+        $failures++
+        if ($suiteMaxFailures -gt 0 -and $failures -ge $suiteMaxFailures) {
+          Write-Host "e2e: stopping after $failures failed spec(s)"
+          break
+        }
+      }
+    }
   }
-  if ($null -ne $log) {
-    New-Item -ItemType Directory -Force -Path test-results | Out-Null
-    if (Test-Path $log) { Copy-Item $log (Join-Path "test-results" "app.log") -Force }
+} finally {
+  Stop-App
+  if ($runnerOwned) {
+    $runnerMutex.ReleaseMutex()
   }
-  if ($runnerOwned) { $runnerMutex.ReleaseMutex() }
   $runnerMutex.Dispose()
 }
 exit $code

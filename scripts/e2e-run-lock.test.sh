@@ -41,7 +41,7 @@ acquire_e2e_lock
 test "$(sed -n '1p' "$e2e_lock_dir/owner")" = "$$"
 release_e2e_lock
 
-launcher="$(sed -n '1,80p' "$ROOT/scripts/e2e.sh")"
+launcher="$(cat "$ROOT/scripts/e2e.sh")"
 case "$launcher" in
   *"acquire_e2e_lock"*"ensure-e2e-sidecars.sh"*) ;;
   *) exit 1 ;;
@@ -63,8 +63,12 @@ case "$(sed -n '1,110p' "$ROOT/scripts/e2e-run-lock.sh")" in
   *) exit 1 ;;
 esac
 
-powershell_launcher="$(sed -n '1,80p' "$ROOT/scripts/e2e.ps1")"
+powershell_launcher="$(cat "$ROOT/scripts/e2e.ps1")"
 case "$powershell_launcher" in
   *"WaitOne(0)"*"ensure-e2e-sidecars.ps1"*"ReleaseMutex"*) ;;
+  *) exit 1 ;;
+esac
+case "$powershell_launcher" in
+  *'Get-ChildItem -Path "e2e/tests" -Filter "*.spec.ts"'*'Start-App $label'*"Stop-App"*) ;;
   *) exit 1 ;;
 esac

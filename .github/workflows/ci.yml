@@ -488,7 +488,7 @@ jobs:
 
       - name: Run the e2e suite
         shell: pwsh
-        run: powershell -File scripts/e2e.ps1 --max-failures=1 --global-timeout=3000000
+        run: powershell -File scripts/e2e.ps1 --suite-max-failures=1 --max-failures=1 --global-timeout=3000000
 
       - name: Upload failure artifacts
         if: failure()
