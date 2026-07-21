@@ -51,7 +51,10 @@ function Stop-AuxiliaryProcesses {
 function Stop-App {
   Stop-AuxiliaryProcesses
   if ($null -ne $script:app -and -not $script:app.HasExited) {
-    taskkill /PID $script:app.Id /T /F 2>$null | Out-Null
+    # Route taskkill output through cmd so its stderr never becomes a
+    # terminating NativeCommandError under $ErrorActionPreference = "Stop".
+    cmd /c "taskkill /PID $($script:app.Id) /T /F >nul 2>&1"
+    try { $script:app.WaitForExit(15000) | Out-Null } catch {}
   }
   $script:app = $null
 }
