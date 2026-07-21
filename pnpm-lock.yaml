@@ -354,6 +354,12 @@ importers:
 
   packages/latex: {}
 
+  packages/pdf-to-latex:
+    dependencies:
+      pdfjs-dist:
+        specifier: ^6.1.200
+        version: 6.1.200
+
   packages/preflight:
     dependencies:
       pdfjs-dist:

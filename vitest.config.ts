@@ -14,6 +14,7 @@ export default defineConfig({
       "@oleafly/registry": path.resolve(__dirname, "./packages/registry/src"),
       "@oleafly/templates": path.resolve(__dirname, "./packages/templates/src"),
       "@oleafly/preview": path.resolve(__dirname, "./packages/preview/src"),
+      "@oleafly/pdf-to-latex": path.resolve(__dirname, "./packages/pdf-to-latex/src"),
     },
   },
   test: {
