@@ -69,6 +69,6 @@ case "$powershell_launcher" in
   *) exit 1 ;;
 esac
 case "$powershell_launcher" in
-  *'Get-ChildItem -Path "e2e/tests" -Filter "*.spec.ts"'*'Start-App $label'*"Stop-App"*) ;;
+  *'@selection | Out-Host'*'Get-ChildItem -Path "e2e/tests" -Filter "*.spec.ts"'*'Start-App $label'*"Stop-App"*) ;;
   *) exit 1 ;;
 esac

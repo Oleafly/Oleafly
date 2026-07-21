@@ -71,6 +71,48 @@ installUint8ArrayToHex(
   typeof Uint8Array !== "undefined" ? (Uint8Array as unknown as Uint8ArrayCtor) : undefined,
 );
 
+type PromiseCtor = {
+  try?: unknown;
+};
+
+export function installPromiseTry(ctor: PromiseCtor | undefined) {
+  if (!ctor || typeof ctor.try === "function") return;
+  Object.defineProperty(ctor, "try", {
+    value: function <TArgs extends unknown[], TResult>(
+      callback: (...args: TArgs) => TResult | PromiseLike<TResult>,
+      ...args: TArgs
+    ) {
+      return new Promise<TResult>((resolve) => resolve(callback(...args)));
+    },
+    writable: true,
+    configurable: true,
+  });
+}
+
+installPromiseTry(typeof Promise !== "undefined" ? (Promise as unknown as PromiseCtor) : undefined);
+
+type URLCtor = {
+  new (input: string | URL, base?: string | URL): URL;
+  parse?: unknown;
+};
+
+export function installURLParse(ctor: URLCtor | undefined) {
+  if (!ctor || typeof ctor.parse === "function") return;
+  Object.defineProperty(ctor, "parse", {
+    value: (input: string | URL, base?: string | URL) => {
+      try {
+        return new ctor(input, base);
+      } catch {
+        return null;
+      }
+    },
+    writable: true,
+    configurable: true,
+  });
+}
+
+installURLParse(typeof URL !== "undefined" ? (URL as unknown as URLCtor) : undefined);
+
 // WebKit/WKWebView does not implement async iteration of ReadableStream
 // (`ReadableStream.prototype[Symbol.asyncIterator]`). pdf.js v6 `getTextContent`
 // does `for await (const value of readableStream)`, so text extraction throws

@@ -104,7 +104,7 @@ while (`$true) {
 }
 "@
   Write-Host "e2e: starting $label at $((Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'))"
-  & pnpm exec playwright test -c e2e/playwright.config.ts @playwrightArgs @selection
+  & pnpm exec playwright test -c e2e/playwright.config.ts @playwrightArgs @selection | Out-Host
   $status = $LASTEXITCODE
 
   if ($null -ne $script:heartbeat -and -not $script:heartbeat.HasExited) {
