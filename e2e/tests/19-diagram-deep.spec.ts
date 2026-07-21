@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures";
-import { caretIn, openProject, openRailTab } from "../helpers";
+import { caretIn, createBlankProject, openProject, openRailTab } from "../helpers";
 
 test("place a shape, inspect it, and toggle canvas controls", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
@@ -59,8 +59,10 @@ test("code tab snippets insert TikZ", async ({ tauriPage }) => {
 test("insert as code lands editable TikZ in the document and a figures/ file", async ({
   tauriPage,
 }) => {
-  await openProject(tauriPage, "E2E Doc");
-  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  // This test permanently edits the document, so it gets a throwaway project:
+  // a mis-placed insert must never break the shared "E2E Doc" fixture that
+  // later specs compile.
+  await createBlankProject(tauriPage, `E2E Diagram ${Date.now().toString(36)}`);
   // Insert-as-code lands at the caret: put it in the document body first,
   // or the figure would land before \documentclass and break every
   // subsequent compile.

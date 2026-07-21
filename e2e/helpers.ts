@@ -498,6 +498,26 @@ export async function caretIn(
       .replace("OCC", String(occurrence)),
   );
   if (!ok) throw new Error("caretIn: anchor " + JSON.stringify(anchorText) + " not found");
+
+  // The synthetic mouse events place the caret through CodeMirror's DOM
+  // observer; verify the selection actually landed on the anchor's line so a
+  // missed placement fails here instead of corrupting the document at the
+  // original caret position (e.g. inserting before \documentclass).
+  const placed = `(() => {
+    const sel = window.getSelection();
+    const node = sel && sel.anchorNode;
+    if (!node) return false;
+    const el = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
+    const line = el && el.closest ? el.closest('.cm-line') : null;
+    return !!line && line.textContent.includes(${JSON.stringify(anchorText)});
+  })()`;
+  for (let attempt = 0; attempt < 20; attempt++) {
+    if (await page.evaluate<boolean>(placed)) return;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error(
+    "caretIn: selection did not land on the line containing " + JSON.stringify(anchorText),
+  );
 }
 
 export async function currentTheme(page: Page): Promise<"light" | "dark"> {
