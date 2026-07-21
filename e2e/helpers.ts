@@ -247,6 +247,28 @@ export async function waitLong(page: Page, expression: string, timeoutMs: number
   }
 }
 
+// CodeMirror virtualizes the document, so `.cm-content` textContent only holds
+// the rendered viewport. Read the full doc through the editor controller (the
+// dev-server module import trick spec 24 established).
+export async function waitEditorContains(page: Page, needle: string, timeoutMs: number) {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    await page.evaluate(
+      `(import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {
+        window.__docText = getEditorView()?.state.doc.toString() ?? "";
+      }), true)`,
+    );
+    await new Promise((r) => setTimeout(r, 500));
+    const ok = await page.evaluate<boolean>(
+      `(window.__docText ?? "").includes(${JSON.stringify(needle)})`,
+    );
+    if (ok) return;
+    if (Date.now() > deadline) {
+      throw new Error(`editor never contained: ${needle}`);
+    }
+  }
+}
+
 // Conversations persist across panel remounts by design, so tests that
 // assert on a fresh reply must begin with a real New-chat click or a
 // restored transcript can satisfy their waits.
