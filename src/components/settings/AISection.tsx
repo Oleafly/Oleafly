@@ -211,7 +211,9 @@ export function AISection() {
       const next: AppConfig = { ...DEFAULT_CFG, ...c, ai_keys: merged };
       setCfg(next);
       setSysPrompt(next.ai_system_prompt || "");
-      setKeys(merged);
+      // Merge under any keys already typed: the load resolves async and must
+      // not wipe an edit made before it landed.
+      setKeys((prev) => ({ ...merged, ...prev }));
       setSavedKeys(merged);
       if (Object.keys(c.ai_keys ?? {}).length === 0 && c.ai_api_key) {
         void setConfig(next);
