@@ -19,6 +19,29 @@ export async function extractPagesForConvert(
       const page = await doc.getPage(p);
       const view = page.view;
       const content = await page.getTextContent();
+      // getOperatorList also populates commonObjs, which holds the real face
+      // names ("ABCDEF+Times-Bold") behind the internal ids getTextContent uses.
+      let ops: Awaited<ReturnType<typeof page.getOperatorList>> | null = null;
+      try {
+        ops = await page.getOperatorList();
+      } catch {
+        ops = null;
+      }
+      const faceNames = new Map<string, string>();
+      const faceOf = (id: string): string => {
+        const cached = faceNames.get(id);
+        if (cached) return cached;
+        let name = id;
+        try {
+          // biome-ignore lint/suspicious/noExplicitAny: pdf.js font objects are untyped
+          const font = page.commonObjs.has(id) ? (page.commonObjs.get(id) as any) : null;
+          if (font?.name) name = String(font.name);
+        } catch {
+          // keep the internal id; style detection degrades gracefully
+        }
+        faceNames.set(id, name);
+        return name;
+      };
       const items: TextItem[] = [];
       for (const raw of content.items) {
         if (!("str" in raw) || !raw.str) continue;
@@ -29,14 +52,13 @@ export async function extractPagesForConvert(
           y: t[5],
           width: raw.width,
           height: raw.height,
-          fontName:
-            (content.styles?.[raw.fontName]?.fontFamily as string | undefined) ?? raw.fontName,
+          fontName: faceOf(raw.fontName),
           fontSize: Math.hypot(t[2], t[3]) || Math.abs(t[3]) || raw.height,
         });
       }
       const figureNames: string[] = [];
       try {
-        const ops = await page.getOperatorList();
+        if (!ops) throw new Error("no operator list");
         let n = 0;
         for (let i = 0; i < ops.fnArray.length; i++) {
           if (ops.fnArray[i] !== pdfjsLib.OPS.paintImageXObject) continue;
