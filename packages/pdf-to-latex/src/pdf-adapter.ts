@@ -1,6 +1,6 @@
 import * as pdfjsLib from "pdfjs-dist";
 import workerSrc from "@oleafly/preview/pdf.worker?worker&url";
-import { rawToRgba, rgbaToPngDataUrl } from "./figure-decode";
+import { bitmapToPngDataUrl, rawToRgba, rgbaToPngDataUrl } from "./figure-decode";
 import type { ExtractedFigure, PageInput, TextItem } from "./types";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
@@ -71,11 +71,18 @@ export async function extractPagesForConvert(
               resolve(null);
             }
           });
-          if (!img?.data || img.width < MIN_FIGURE_PX || img.height < MIN_FIGURE_PX) continue;
+          if (!img || (!img.data && !img.bitmap)) continue;
+          if (img.width < MIN_FIGURE_PX || img.height < MIN_FIGURE_PX) continue;
           n++;
           const name = `figure_p${p}_${n}.png`;
-          const rgba = rawToRgba(img.data, img.width, img.height, img.kind ?? 2);
-          figures.push({ name, page: p, pngDataUrl: rgbaToPngDataUrl(rgba, img.width, img.height) });
+          const pngDataUrl = img.bitmap
+            ? bitmapToPngDataUrl(img.bitmap, img.width, img.height)
+            : rgbaToPngDataUrl(
+                rawToRgba(img.data, img.width, img.height, img.kind ?? 2),
+                img.width,
+                img.height,
+              );
+          figures.push({ name, page: p, pngDataUrl });
           figureNames.push(name);
         }
       } catch {

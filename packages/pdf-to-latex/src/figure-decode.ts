@@ -34,6 +34,17 @@ export function rawToRgba(
   return out;
 }
 
+/** pdf.js v6 usually hands decoded images over as an ImageBitmap. */
+export function bitmapToPngDataUrl(bitmap: ImageBitmap, width: number, height: number): string {
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("canvas 2d context unavailable");
+  ctx.drawImage(bitmap, 0, 0, width, height);
+  return canvas.toDataURL("image/png");
+}
+
 export function rgbaToPngDataUrl(rgba: Uint8ClampedArray, width: number, height: number): string {
   const canvas = document.createElement("canvas");
   canvas.width = width;

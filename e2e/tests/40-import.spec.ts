@@ -74,15 +74,17 @@ test("DOCX imports through pandoc into a project", async ({ tauriPage }) => {
       typeof expect
     >[0],
   ).toBeVisible({ timeout: 30_000 });
-  const pandoc = await tauriPage.evaluate<boolean>(
-    `typeof window.__hasPandoc === "function" ? window.__hasPandoc() : false`,
+  // the bridge's evaluate does not await promises, so stash the result and poll
+  await tauriPage.evaluate(
+    `(window.__pandocProbe = null, window.__hasPandoc().then((v) => { window.__pandocProbe = v; }), true)`,
   );
+  await waitLong(tauriPage, `typeof window.__pandocProbe === "boolean"`, 15_000);
+  const pandoc = await tauriPage.evaluate<boolean>(`window.__pandocProbe === true`);
   test.skip(!pandoc, "pandoc is not installed in this environment");
   await importFixture(tauriPage, "tiny.docx");
-  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 60_000 });
   await waitLong(
     tauriPage,
     `(document.querySelector(".cm-content")?.textContent ?? "").includes("Docx fixture paragraph")`,
-    20_000,
+    60_000,
   );
 });
