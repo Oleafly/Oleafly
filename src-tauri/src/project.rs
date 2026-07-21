@@ -902,6 +902,78 @@ fn validate_conversion_export(
     Ok(writer)
 }
 
+fn docx_pandoc_args() -> Vec<String> {
+    vec![
+        "--from=docx".into(),
+        "--to=latex".into(),
+        "--standalone".into(),
+        "--extract-media=assets".into(),
+        "-o".into(),
+        "main.tex".into(),
+        "--".into(),
+        "source.docx".into(),
+    ]
+}
+
+fn decode_docx_base64(data: &str) -> Result<Vec<u8>, String> {
+    use base64::{engine::general_purpose::STANDARD, Engine};
+    let bytes = STANDARD
+        .decode(data.trim())
+        .map_err(|e| format!("invalid base64: {e}"))?;
+    if bytes.len() < 4 || &bytes[0..2] != b"PK" {
+        return Err("not a .docx file (missing zip container signature)".into());
+    }
+    Ok(bytes)
+}
+
+/// Create a LaTeX project from an uploaded .docx. The bytes are written inside
+/// the new project dir and pandoc runs there, so no external path is read.
+#[tauri::command]
+pub async fn create_project_from_docx(name: String, data_base64: String) -> Result<String, String> {
+    let bytes = decode_docx_base64(&data_base64)?;
+    let pandoc = tauri::async_runtime::spawn_blocking(find_pandoc)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| {
+            "pandoc is not installed. Install pandoc to import Word documents.".to_string()
+        })?;
+    let root = paths::projects_root()?;
+    let id = unique_random_slug(&root)?;
+    let dir = root.join(&id);
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let result: Result<(), String> = async {
+        std::fs::write(dir.join("source.docx"), &bytes)
+            .map_err(|e| format!("failed to write source.docx: {e}"))?;
+        let (log, code) = crate::document_engine::run_supervised_external(
+            Path::new(&pandoc),
+            &docx_pandoc_args(),
+            &dir,
+        )
+        .await?;
+        if code != Some(0) {
+            return Err(format!("pandoc failed: {}", log.trim()));
+        }
+        let _ = std::fs::remove_file(dir.join("source.docx"));
+        write_meta_at(
+            &dir.join("project.json"),
+            &ProjectMeta {
+                name,
+                main_doc: default_main_doc(),
+                engine: default_engine(),
+                color: String::new(),
+                kind: String::new(),
+                exports: Vec::new(),
+            },
+        )
+    }
+    .await;
+    if let Err(e) = result {
+        let _ = std::fs::remove_dir_all(&dir);
+        return Err(e);
+    }
+    Ok(id)
+}
+
 /// Whether a usable pandoc is already available (system or our cache).
 #[tauri::command]
 pub async fn has_pandoc() -> bool {
@@ -1724,5 +1796,27 @@ mod tests {
             validate_conversion_export(&markdown, "txt", "/tmp/out.txt").unwrap(),
             "plain"
         );
+    }
+
+    #[test]
+    fn docx_pandoc_args_extract_media_into_assets() {
+        let args = super::docx_pandoc_args();
+        assert!(args.contains(&"--from=docx".to_string()));
+        assert!(args.contains(&"--to=latex".to_string()));
+        assert!(args.contains(&"--standalone".to_string()));
+        assert!(args.contains(&"--extract-media=assets".to_string()));
+        let o = args.iter().position(|a| a == "-o").unwrap();
+        assert_eq!(args[o + 1], "main.tex");
+        assert_eq!(args.last().unwrap(), "source.docx");
+    }
+
+    #[test]
+    fn docx_base64_must_decode_and_look_like_zip() {
+        use base64::{engine::general_purpose::STANDARD, Engine};
+        assert!(super::decode_docx_base64("not base64 ???").is_err());
+        let bogus = STANDARD.encode(b"plain text");
+        assert!(super::decode_docx_base64(&bogus).is_err());
+        let zipish = STANDARD.encode(b"PK\x03\x04rest-of-file");
+        assert!(super::decode_docx_base64(&zipish).is_ok());
     }
 }

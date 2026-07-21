@@ -143,6 +143,7 @@ pub fn run() {
             templates::list_templates,
             templates::template_preview,
             project::create_project_from_template,
+            project::create_project_from_docx,
             assets::list_font_components,
             assets::install_font_component,
             assets::remove_font_component,

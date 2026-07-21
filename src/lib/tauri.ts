@@ -151,6 +151,9 @@ export const saveFileBase64 = (projectId: string, path: string, data: string) =>
 export const readFileBase64 = (projectId: string, path: string) =>
   invoke<string>("read_file_base64", { projectId, path });
 
+export const createProjectFromDocx = (name: string, dataBase64: string) =>
+  invoke<string>("create_project_from_docx", { name, dataBase64 });
+
 export const appendAppLog = (message: string) =>
   invoke<void>("append_app_log", { message });
 
