@@ -307,7 +307,10 @@ The full list. Everything here runs on your machine. For the detailed tour, see 
 - Custom instructions, sandboxed so they can't reveal or override the built-in prompt
 - Providers: OpenAI, Anthropic, Groq, OpenRouter, DeepSeek, Mistral, xAI, Z.AI, or local Ollama
 
-**Export and the rest**
+**Import and export**
+- Import: Word (`.docx`) via Pandoc, PDF to LaTeX through a built-in local
+  converter (runs entirely on your machine, no AI required) with optional AI
+  refinement, and photo-of-equation to LaTeX with a vision model
 - PDF export (always ATS-clean) and source-as-`.zip`
 - First-class Markdown projects compile to PDF through Pandoc and the bundled
   Tectonic engine. Word (.docx), HTML, and Markdown export use the same Pandoc
