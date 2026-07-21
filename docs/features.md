@@ -182,6 +182,18 @@ Give the diagram a name, then insert it **as vector code** (TikZ straight into y
 
 Drawn diagrams **round-trip**: the saved `.tikz` embeds the diagram model, so the **Load** button re-opens it in the visual editor, fully editable (the way draw.io ships editable exports). The name prompt prevents overwriting an existing figure. No API key required, works offline.
 
+## Import
+
+- "PDF to ..." on the library home screen converts a PDF into an editable LaTeX
+  project with a deterministic, fully local reconstruction: headings, columns,
+  styles, math symbols, and embedded figures (each downloadable separately).
+  No AI key required; the converter states its limits and never invents text.
+- With a vision-capable AI provider connected, "Refine with AI" improves the
+  imported project against the original page images (math, tables, scanned
+  pages), and the editor toolbar gains an image-to-LaTeX transcription action.
+- Word documents (`.docx`) import through pandoc into a ready-to-compile
+  LaTeX project, including embedded images.
+
 ## Export
 
 - PDF, always, ATS-clean, and the full source as a `.zip`.
