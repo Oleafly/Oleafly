@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="public/icon.png" alt="Oleafly" width="120" height="120" />
+<img src="media/logo/png/oleafly-tile-gradient-256.png" alt="Oleafly" width="120" height="120" />
 
 # Oleafly
 
