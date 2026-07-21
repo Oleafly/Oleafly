@@ -1,8 +1,21 @@
 import type { Para } from "./lines";
-import { mode } from "./lines";
 
 export function bodyFontSize(paras: Para[]): number {
-  return mode(paras.map((p) => p.fontSize));
+  // weight by text length: body text dominates by characters, not by count
+  const weights = new Map<number, number>();
+  for (const p of paras) {
+    const k = Math.round(p.fontSize * 2) / 2;
+    weights.set(k, (weights.get(k) ?? 0) + p.text.length);
+  }
+  let best = paras[0]?.fontSize ?? 0;
+  let bestWeight = 0;
+  for (const [k, w] of weights) {
+    if (w > bestWeight) {
+      best = k;
+      bestWeight = w;
+    }
+  }
+  return best;
 }
 
 export function classifyHeadings(paras: Para[], sensitivity = 0.5): Map<Para, 1 | 2 | 3> {
