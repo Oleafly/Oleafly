@@ -1,12 +1,41 @@
 #!/usr/bin/env bash
 # Self-contained e2e run: builds + launches the app with the e2e bridge and a
 # throwaway data dir, waits for the bridge socket, runs the Playwright suite,
-# and always tears the app down. Usage: ./scripts/e2e.sh [playwright args...]
+# and always tears the app down.
+# Usage: ./scripts/e2e.sh [--suite-max-failures=N] [playwright args...]
 set -euo pipefail
 # Give each background app launch its own process group so teardown can target
 # only processes owned by this runner.
 set -m
 cd "$(dirname "$0")/.."
+
+SUITE_MAX_FAILURES=0
+PLAYWRIGHT_ARGS=()
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --suite-max-failures=*)
+      SUITE_MAX_FAILURES="${1#*=}"
+      ;;
+    --suite-max-failures)
+      shift
+      [ "$#" -gt 0 ] || { echo "e2e: --suite-max-failures requires a value" >&2; exit 2; }
+      SUITE_MAX_FAILURES="$1"
+      ;;
+    *)
+      PLAYWRIGHT_ARGS+=("$1")
+      ;;
+  esac
+  shift
+done
+
+case "$SUITE_MAX_FAILURES" in
+  ''|*[!0-9]*)
+    echo "e2e: --suite-max-failures must be a non-negative integer" >&2
+    exit 2
+    ;;
+esac
+
+set -- "${PLAYWRIGHT_ARGS[@]}"
 
 source scripts/e2e-run-lock.sh
 acquire_e2e_lock
@@ -155,12 +184,18 @@ if [ "$has_spec" -eq 1 ]; then
   run_playwright "requested spec selection" "$@"
 else
   suite_status=0
+  suite_failures=0
   for spec in e2e/tests/*.spec.ts; do
     start_app
     if ! run_playwright "$(basename "$spec")" "$@" "$spec"; then
       suite_status=1
+      suite_failures=$((suite_failures + 1))
     fi
     stop_app
+    if [ "$SUITE_MAX_FAILURES" -gt 0 ] && [ "$suite_failures" -ge "$SUITE_MAX_FAILURES" ]; then
+      echo "e2e: stopping after ${suite_failures} failed spec(s)" >&2
+      break
+    fi
   done
   exit "$suite_status"
 fi
