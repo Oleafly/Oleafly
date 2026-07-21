@@ -1,10 +1,11 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ArrowRightToLine,
   Bold,
   Braces,
   ChevronDown,
   Image as ImageIcon,
+  ImagePlus,
   Italic,
   Link as LinkIcon,
   List,
@@ -30,6 +31,7 @@ import {
   wrapSelection,
 } from "./cm/controller";
 import { goToDefinition, findReferences, startRename } from "@/lib/index/nav";
+import { imageToLatex, imageToLatexAvailable } from "@/features/image-to-latex";
 import { useCitationStore } from "@/store/citation";
 import { cn, shortcut } from "@/lib/utils";
 
@@ -71,6 +73,11 @@ function IconBtn({
 }
 
 export function EditorToolbar() {
+  const [visionReady, setVisionReady] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    void imageToLatexAvailable().then(setVisionReady);
+  }, []);
   return (
     <div className="flex h-9 items-center gap-0.5 border-b px-2">
       <IconBtn onClick={editorUndo} title={`Undo (${shortcut("⌘Z")})`}>
@@ -148,6 +155,28 @@ export function EditorToolbar() {
       >
         <TableIcon className="size-4" />
       </IconBtn>
+      {visionReady && (
+        <>
+          <input
+            ref={imageInputRef}
+            data-testid="image-to-latex-input"
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              e.target.value = "";
+              if (f) void imageToLatex(f);
+            }}
+          />
+          <IconBtn
+            onClick={() => imageInputRef.current?.click()}
+            title="Image to LaTeX (transcribe with AI)"
+          >
+            <ImagePlus data-testid="image-to-latex" className="size-4" />
+          </IconBtn>
+        </>
+      )}
       <Popover ariaLabel="Insert list" trigger={<List className="size-4" />}>
         <PopoverItem
           onClick={() => insertAtCursor("\\begin{itemize}\n  \\item \n\\end{itemize}\n")}
