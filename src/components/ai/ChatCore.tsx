@@ -1159,6 +1159,7 @@ ${sandboxedCustom}`;
     if (!handoffPending || streaming || !apiKey) return;
     const h = useAgentHandoffStore.getState().consume();
     if (!h) return;
+    if (h.images.length) pendingImagesRef.current.push(...h.images);
     if (h.autoSend) void send(h.prompt);
     else setInput(h.prompt);
   }, [handoffPending, streaming, apiKey, send]);

@@ -3,20 +3,26 @@ import { create } from "zustand";
 interface AgentHandoffState {
   pendingPrompt: string | null;
   autoSend: boolean;
-  handoff: (prompt: string, opts?: { autoSend?: boolean }) => void;
-  consume: () => { prompt: string; autoSend: boolean } | null;
+  pendingImages: string[];
+  handoff: (prompt: string, opts?: { autoSend?: boolean; images?: string[] }) => void;
+  consume: () => { prompt: string; autoSend: boolean; images: string[] } | null;
 }
 
 export const useAgentHandoffStore = create<AgentHandoffState>((set, get) => ({
   pendingPrompt: null,
   autoSend: false,
+  pendingImages: [],
   handoff: (prompt, opts) =>
-    set({ pendingPrompt: prompt, autoSend: opts?.autoSend ?? true }),
+    set({
+      pendingPrompt: prompt,
+      autoSend: opts?.autoSend ?? true,
+      pendingImages: opts?.images ?? [],
+    }),
   consume: () => {
-    const { pendingPrompt, autoSend } = get();
+    const { pendingPrompt, autoSend, pendingImages } = get();
     if (!pendingPrompt) return null;
-    set({ pendingPrompt: null, autoSend: false });
-    return { prompt: pendingPrompt, autoSend };
+    set({ pendingPrompt: null, autoSend: false, pendingImages: [] });
+    return { prompt: pendingPrompt, autoSend, images: pendingImages };
   },
 }));
 
