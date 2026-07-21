@@ -161,8 +161,9 @@ try {
     $specs = Get-ChildItem -Path "e2e/tests" -Filter "*.spec.ts" | Sort-Object Name
     foreach ($spec in $specs) {
       $label = $spec.Name
+      $specPath = "e2e/tests/$($spec.Name)"
       Start-App $label
-      $status = Run-Playwright $label @($spec.FullName)
+      $status = Run-Playwright $label @($specPath)
       Preserve-AppLog $label
       Stop-App
       if ($status -ne 0) {
