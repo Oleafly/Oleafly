@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bookmark,
   Check,
   Clock3,
+  FileInput,
   FileText,
   GitFork,
   History,
@@ -61,6 +62,7 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
+import { handlePickedFile } from "@/features/import";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { useTheme } from "@/lib/theme";
@@ -232,6 +234,7 @@ export function Library() {
   const removeProjectColor = useProjectColorsStore((s) => s.remove);
   const setSearchOpen = useSettingsStore((s) => s.setSearchOpen);
   const setNewProjectOpen = useSettingsStore((s) => s.setNewProjectOpen);
+  const importInputRef = useRef<HTMLInputElement>(null);
   const hoverPreview = useSettingsStore((s) => s.hoverPreview);
   const { theme, toggleTheme } = useTheme();
   const [forkTarget, setForkTarget] = useState<{ id: string; name: string } | null>(null);
@@ -364,6 +367,18 @@ export function Library() {
         height={48}
         className="[mask-image:linear-gradient(to_bottom_right,white,transparent,transparent)]"
       />
+      <input
+        ref={importInputRef}
+        data-testid="import-file-input"
+        type="file"
+        accept=".pdf,.docx"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = "";
+          if (f) void handlePickedFile(f);
+        }}
+      />
       <header
         data-tauri-drag-region
         className={cn(
@@ -397,6 +412,17 @@ export function Library() {
                   onClick={() => setNewProjectOpen(true)}
                 >
                   <Plus className="size-4" /> New project
+                </Button>
+              </Tooltip>
+              <Tooltip label="Import a PDF or Word document as LaTeX">
+                <Button
+                  data-testid="import-pdf"
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-foreground"
+                  onClick={() => importInputRef.current?.click()}
+                >
+                  <FileInput className="size-4" /> PDF to ...
                 </Button>
               </Tooltip>
               <Tooltip label={`Search documents (${shortcut("⌘⇧F")})`}>
