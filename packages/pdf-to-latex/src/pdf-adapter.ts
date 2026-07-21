@@ -10,7 +10,8 @@ const MIN_FIGURE_PX = 32;
 export async function extractPagesForConvert(
   bytes: Uint8Array,
 ): Promise<{ pages: PageInput[]; figures: ExtractedFigure[] }> {
-  const doc = await pdfjsLib.getDocument({ data: bytes.slice() }).promise;
+  const loadingTask = pdfjsLib.getDocument({ data: bytes.slice() });
+  const doc = await loadingTask.promise;
   const pages: PageInput[] = [];
   const figures: ExtractedFigure[] = [];
   try {
@@ -61,7 +62,7 @@ export async function extractPagesForConvert(
       pages.push({ width: view[2] - view[0], height: view[3] - view[1], items, figureNames });
     }
   } finally {
-    await doc.destroy();
+    await loadingTask.destroy();
   }
   return { pages, figures };
 }
