@@ -1,6 +1,6 @@
 // store, Tauri, or app imports.
 export {
-  createOpenLeafTools,
+  createOleaflyTools,
   createFigureTools,
   type AiToolsHost,
   type ProjectIndexView,

@@ -60,7 +60,7 @@ export const useDictionary = create<DictionaryState>()(
         }),
     }),
     {
-      name: "openleaf.dictionary",
+      name: "oleafly.dictionary",
       storage: createJSONStorage(() =>
         typeof localStorage !== "undefined" ? localStorage : memoryStorage
       ),

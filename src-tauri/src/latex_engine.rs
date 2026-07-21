@@ -71,9 +71,9 @@ fn find_in_texdir(root: &Path, name: &str) -> Option<PathBuf> {
     None
 }
 
-/// Our own TinyTeX install root: `~/.openleaf/tinytex`.
+/// Our own TinyTeX install root: `~/.oleafly/tinytex`.
 fn tinytex_root() -> Result<PathBuf, String> {
-    Ok(paths::openleaf_root()?.join("tinytex"))
+    Ok(paths::oleafly_root()?.join("tinytex"))
 }
 
 /// The directory TinyTeX was extracted into may nest one level (e.g. `TinyTeX/`
@@ -265,7 +265,7 @@ fn extract_all(archive: &Path, is_targz: bool, dest_dir: &Path) -> Result<(), St
     Ok(())
 }
 
-/// Download and install TinyTeX on demand under `~/.openleaf/tinytex`. Emits
+/// Download and install TinyTeX on demand under `~/.oleafly/tinytex`. Emits
 /// `tinytex-download-progress` events; returns the resulting engine info.
 #[tauri::command]
 pub async fn install_tinytex(app: tauri::AppHandle) -> Result<EngineInfo, String> {
@@ -442,7 +442,7 @@ pub async fn compile_tagged(
     project_id: String,
     main_doc: String,
 ) -> Result<TaggedCompileResult, String> {
-    // This writes the same build outputs (`_openleaf_entry.pdf`, etc.) as
+    // This writes the same build outputs (`_oleafly_entry.pdf`, etc.) as
     // `compile_project`, which serializes on `compile_lock`. Hold that same lock
     // for the whole run so a Tectonic and a LuaLaTeX compile can't clobber each
     // other's outputs. The guard is held until the end of this function (across

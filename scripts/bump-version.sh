@@ -6,7 +6,7 @@
 #   - package.json            ("version")
 #   - src-tauri/tauri.conf.json ("version")
 #   - src-tauri/Cargo.toml     ([package] version)
-#   - src-tauri/Cargo.lock     (the openleaf package entry)
+#   - src-tauri/Cargo.lock     (the oleafly package entry)
 #
 # Usage:
 #   ./scripts/bump-version.sh 0.2.0
@@ -49,9 +49,9 @@ perl -0pi -e 's/("version"\s*:\s*")[^"]*(")/${1}'"$VERSION"'${2}/' "$conf"
 # match `^version = `.
 perl -pi -e 'if (!$seen && /^version = "/) { s/^version = "[^"]*"/version = "'"$VERSION"'"/; $seen = 1 }' "$cargo"
 
-# Cargo.lock: the version line immediately under the openleaf package entry.
+# Cargo.lock: the version line immediately under the oleafly package entry.
 if [[ -f "$lock" ]]; then
-  perl -0pi -e 's/(name = "openleaf"\nversion = ")[^"]*(")/${1}'"$VERSION"'${2}/' "$lock"
+  perl -0pi -e 's/(name = "oleafly"\nversion = ")[^"]*(")/${1}'"$VERSION"'${2}/' "$lock"
 fi
 
 echo "Set version to $VERSION in:"

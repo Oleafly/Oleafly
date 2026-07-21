@@ -1,5 +1,5 @@
 import { linter, type Diagnostic } from "@codemirror/lint";
-import { runSourceRules } from "@openleaf/preflight";
+import { runSourceRules } from "@oleafly/preflight";
 import { useFilesStore } from "@/store/files";
 
 // Only findings that map to a source range are shown here; whole-document and

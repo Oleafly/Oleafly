@@ -21,7 +21,7 @@ for ($index = 0; $index -lt $args.Count; $index++) {
   }
 }
 
-$runnerMutex = [System.Threading.Mutex]::new($false, "Local\OpenLeafE2ERunner")
+$runnerMutex = [System.Threading.Mutex]::new($false, "Local\OleaflyE2ERunner")
 $runnerOwned = $false
 $app = $null
 $log = $null
@@ -29,7 +29,7 @@ $logStream = $null
 $heartbeat = $null
 $code = 1
 $stamp = [System.Guid]::NewGuid().ToString("N").Substring(0, 8)
-$dataDir = Join-Path ([System.IO.Path]::GetTempPath()) "openleaf-e2e-$stamp"
+$dataDir = Join-Path ([System.IO.Path]::GetTempPath()) "oleafly-e2e-$stamp"
 
 function Start-OutputProcess([string]$command) {
   $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
@@ -62,12 +62,12 @@ function Stop-App {
 function Start-App([string]$label) {
   Stop-App
   $safeLabel = $label -replace "[^A-Za-z0-9._-]", "-"
-  $script:log = Join-Path ([System.IO.Path]::GetTempPath()) "openleaf-e2e-$stamp-$safeLabel.log"
+  $script:log = Join-Path ([System.IO.Path]::GetTempPath()) "oleafly-e2e-$stamp-$safeLabel.log"
   New-Item -ItemType File -Force -Path $script:log | Out-Null
 
   Write-Host "e2e: launching app for $label"
   Write-Host "e2e: app log $($script:log)"
-  $env:OPENLEAF_DATA_DIR = $script:dataDir
+  $env:OLEAFLY_DATA_DIR = $script:dataDir
   $script:app = Start-Process -FilePath "cmd.exe" `
     -ArgumentList "/c", "pnpm tauri dev --features e2e-testing > `"$($script:log)`" 2>&1" `
     -PassThru -WindowStyle Hidden

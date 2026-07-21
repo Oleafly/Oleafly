@@ -5,7 +5,7 @@ import {
   DiagramKitContext,
   type DiagramHost,
   type DiagramKit,
-} from "@openleaf/diagram";
+} from "@oleafly/diagram";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -41,7 +41,7 @@ import { toast } from "@/lib/toast";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { isMac } from "@/lib/utils";
 
-// Exposed as a hook because the headless @openleaf/diagram package calls it directly.
+// Exposed as a hook because the headless @oleafly/diagram package calls it directly.
 function useThemeMode(): "light" | "dark" {
   const { theme } = useTheme();
   return theme === "dark" ? "dark" : "light";

@@ -11,7 +11,7 @@ import type {
   DiagramFontFamily,
   NodeShape,
   StrokeStyle,
-} from "@openleaf/latex";
+} from "@oleafly/latex";
 import { useDiagramEdit } from "./edit-context";
 import { useDiagramKit } from "./kit";
 

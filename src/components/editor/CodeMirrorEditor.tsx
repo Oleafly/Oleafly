@@ -6,7 +6,7 @@ import {
   setSpellHost,
   setBibKeysProvider,
   bibKeysFromSources,
-} from "@openleaf/editor";
+} from "@oleafly/editor";
 import { createPreflightLinter } from "./cm/preflight-linter";
 import { codeIntel } from "./cm/code-intel";
 import { hoverIntel } from "./cm/hover-intel";

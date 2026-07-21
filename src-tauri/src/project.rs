@@ -162,7 +162,7 @@ fn walk(root: &Path, dir: &Path, out: &mut Vec<FileEntry>, depth: usize) -> Resu
     for entry in items {
         let name = entry.file_name();
         let name_str = name.to_string_lossy();
-        if name_str == ".openleaf" || name_str == ".localleaf" || name_str == ".git" {
+        if name_str == ".oleafly" || name_str == ".git" {
             continue;
         }
         // Skip symlinks entirely (don't list or follow them) so a link pointing
@@ -322,13 +322,13 @@ pub async fn read_file_base64(project_id: String, path: String) -> Result<String
     .map_err(|e| e.to_string())?
 }
 
-/// Append a line to the global app log at `~/.openleaf/app.log` (append-only,
+/// Append a line to the global app log at `~/.oleafly/app.log` (append-only,
 /// created if missing). Used by the frontend to record caught errors so users
 /// can share the file for debugging.
 #[tauri::command]
 pub fn append_app_log(message: String) -> Result<(), String> {
     use std::io::Write;
-    let log_path = paths::openleaf_root()?.join("app.log");
+    let log_path = paths::oleafly_root()?.join("app.log");
     let secs = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs())
@@ -345,7 +345,7 @@ pub fn append_app_log(message: String) -> Result<(), String> {
 /// an empty string if the log doesn't exist yet.
 #[tauri::command]
 pub fn read_app_log(max_bytes: usize) -> Result<String, String> {
-    let log_path = paths::openleaf_root()?.join("app.log");
+    let log_path = paths::oleafly_root()?.join("app.log");
     if !log_path.exists() {
         return Ok(String::new());
     }
@@ -769,7 +769,7 @@ pub(crate) fn find_pandoc() -> Option<String> {
     };
     let mut candidates: Vec<PathBuf> = Vec::new();
     // Our own on-demand download location wins first (guaranteed compatible).
-    if let Ok(root) = paths::openleaf_root() {
+    if let Ok(root) = paths::oleafly_root() {
         candidates.push(root.join("bin").join(if cfg!(windows) {
             "pandoc.exe"
         } else {
@@ -1011,7 +1011,7 @@ fn extract_pandoc(
     Err("pandoc binary not found in the downloaded archive.".to_string())
 }
 
-/// Download pandoc on demand and cache it under `~/.openleaf/bin`. Emits
+/// Download pandoc on demand and cache it under `~/.oleafly/bin`. Emits
 /// `pandoc-download-progress` events; returns the path to the ready binary.
 #[tauri::command]
 pub async fn download_pandoc(
@@ -1027,7 +1027,7 @@ pub async fn download_pandoc(
         return Ok(p);
     }
     let (url, is_targz, expected_sha256, expected_member) = pandoc_asset()?;
-    let bin_dir = paths::openleaf_root()?.join("bin");
+    let bin_dir = paths::oleafly_root()?.join("bin");
     std::fs::create_dir_all(&bin_dir).map_err(|e| e.to_string())?;
     let nonce = format!(
         "{}-{}",
@@ -1219,7 +1219,7 @@ fn search_walk(
         }
         let name = entry.file_name();
         let name_str = name.to_string_lossy();
-        if name_str == ".openleaf" || name_str == ".localleaf" || name_str == ".git" {
+        if name_str == ".oleafly" || name_str == ".git" {
             continue;
         }
         // Skip symlinks (don't follow or read them) to avoid escaping the project
@@ -1346,7 +1346,7 @@ pub async fn search_project(project_id: String, query: String) -> Result<Vec<Sea
     .map_err(|e| e.to_string())?
 }
 
-/// Zip a project's source files (excluding `.openleaf`, `.git`) to `dest`.
+/// Zip a project's source files (excluding `.oleafly`, `.git`) to `dest`.
 #[tauri::command]
 pub async fn download_project_zip(project_id: String, dest: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
@@ -1371,7 +1371,7 @@ pub async fn download_project_zip(project_id: String, dest: String) -> Result<()
                 let entry = entry.map_err(|e| e.to_string())?;
                 let name = entry.file_name();
                 let name_str = name.to_string_lossy();
-                if name_str == ".openleaf" || name_str == ".localleaf" || name_str == ".git" {
+                if name_str == ".oleafly" || name_str == ".git" {
                     continue;
                 }
                 // Skip symlinks so the archive can't include or follow a link
@@ -1498,7 +1498,7 @@ mod tests {
 
     fn test_dir(label: &str) -> std::path::PathBuf {
         let path = std::env::temp_dir().join(format!(
-            "openleaf-{label}-{}-{}",
+            "oleafly-{label}-{}-{}",
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)

@@ -54,7 +54,7 @@ body:
       label: Logs
       description: >
         If relevant, paste the compile log or the contents of
-        `~/.openleaf/app.log`. Remove anything sensitive first.
+        `~/.oleafly/app.log`. Remove anything sensitive first.
       render: shell
     validations:
       required: false

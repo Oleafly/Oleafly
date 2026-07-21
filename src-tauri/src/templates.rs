@@ -364,7 +364,7 @@ mod tests {
     #[test]
     fn copy_tree_skips_metadata() {
         let src = repo_templates_dir().join("ieee");
-        let tmp = std::env::temp_dir().join(format!("openleaf-tpl-test-{}", std::process::id()));
+        let tmp = std::env::temp_dir().join(format!("oleafly-tpl-test-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&tmp);
         std::fs::create_dir_all(&tmp).unwrap();
         copy_tree(&src, &tmp, 0).unwrap();
@@ -379,7 +379,7 @@ mod tests {
     fn copy_tree_rejects_symlinks() {
         use std::os::unix::fs::symlink;
         let base =
-            std::env::temp_dir().join(format!("openleaf-template-link-{}", std::process::id()));
+            std::env::temp_dir().join(format!("oleafly-template-link-{}", std::process::id()));
         let src = base.join("src");
         let dest = base.join("dest");
         let _ = std::fs::remove_dir_all(&base);
@@ -395,7 +395,7 @@ mod tests {
     #[test]
     fn copy_tree_rejects_excessive_depth_instead_of_truncating() {
         let base =
-            std::env::temp_dir().join(format!("openleaf-template-depth-{}", std::process::id()));
+            std::env::temp_dir().join(format!("oleafly-template-depth-{}", std::process::id()));
         let src = base.join("src");
         let dest = base.join("dest");
         let _ = std::fs::remove_dir_all(&base);

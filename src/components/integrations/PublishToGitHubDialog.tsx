@@ -62,7 +62,7 @@ export function PublishToGitHubDialog({
     if (!open) return;
     setMsg(null);
     setSelected(null);
-    setRepoName(slug(projectName || "openleaf-project"));
+    setRepoName(slug(projectName || "oleafly-project"));
   }, [open, projectName]);
 
   useEffect(() => {
@@ -80,7 +80,7 @@ export function PublishToGitHubDialog({
 
   const publishNew = async () => {
     if (!projectId) return;
-    const name = slug(repoName.trim() || projectName || "openleaf-project");
+    const name = slug(repoName.trim() || projectName || "oleafly-project");
     if (!name) return note(false, "Enter a repository name.");
     setBusy(true);
     try {

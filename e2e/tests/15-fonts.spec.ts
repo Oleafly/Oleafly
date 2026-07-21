@@ -15,7 +15,7 @@ test("a font component downloads, installs, and removes", async ({ tauriPage }) 
   await expect(tauriPage.getByText("Download", { exact: true })).toBeVisible();
 
   await tauriPage.getByText("Download", { exact: true }).click();
-  // Downloads into OPENLEAF_DATA_DIR/assets (hermetic test data dir).
+  // Downloads into OLEAFLY_DATA_DIR/assets (hermetic test data dir).
   await expect(tauriPage.getByText("Remove")).toBeVisible({ timeout: 240_000 });
 
   await tauriPage.getByText("Remove", { exact: true }).click();

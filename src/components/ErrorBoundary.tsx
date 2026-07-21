@@ -15,7 +15,7 @@ interface State {
 }
 
 // Without this, any render-time exception unmounts the whole React tree and
-// leaves a blank window. This catches it, logs details to `~/.openleaf/app.log`
+// leaves a blank window. This catches it, logs details to `~/.oleafly/app.log`
 // (so users can share it), and offers a reload.
 export class ErrorBoundary extends Component<Props, State> {
   state: State = { error: null };
@@ -48,7 +48,7 @@ export class ErrorBoundary extends Component<Props, State> {
             Oleafly hit an unexpected error and couldn't render this screen. Your
             files are safe on disk. Details were saved to{" "}
             <code className="rounded bg-foreground/10 px-1 py-0.5 text-xs">
-              ~/.openleaf/app.log
+              ~/.oleafly/app.log
             </code>
             .
           </p>

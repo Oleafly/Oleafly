@@ -46,7 +46,7 @@ pub struct SynctexHit {
 
 fn read_synctex_text(project_id: &str, _main_doc: &str) -> Result<String, String> {
     let build = paths::build_dir(project_id)?;
-    // Compiles run through the `_openleaf_entry` wrapper, so the synctex file
+    // Compiles run through the `_oleafly_entry` wrapper, so the synctex file
     // is named after it.
     let path = build.join(format!("{}.synctex.gz", paths::ENTRY_STEM));
     let bytes =
@@ -264,7 +264,7 @@ mod tests {
     fn load_default() -> Option<String> {
         let home = std::env::var_os("HOME")?;
         let p = std::path::PathBuf::from(home)
-            .join(".openleaf/projects/default/.openleaf/build/_openleaf_entry.synctex.gz");
+            .join(".oleafly/projects/default/.oleafly/build/_oleafly_entry.synctex.gz");
         let bytes = std::fs::read(&p).ok()?;
         let mut dec = GzDecoder::new(&bytes[..]);
         let mut s = String::new();

@@ -164,8 +164,8 @@ export function TopToolbar() {
         .then((r) => setGithubUrl(toGithubWebUrl(r)))
         .catch(() => setGithubUrl(null));
     load();
-    window.addEventListener("openleaf:git-changed", load);
-    return () => window.removeEventListener("openleaf:git-changed", load);
+    window.addEventListener("oleafly:git-changed", load);
+    return () => window.removeEventListener("oleafly:git-changed", load);
   }, [projectId]);
 
   const openInGithub = () => {

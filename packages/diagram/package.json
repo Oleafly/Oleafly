@@ -1,5 +1,5 @@
 {
-  "name": "@openleaf/diagram",
+  "name": "@oleafly/diagram",
   "version": "0.0.0",
   "private": true,
   "license": "AGPL-3.0-or-later",
@@ -14,7 +14,7 @@
     "@codemirror/search": "*",
     "@codemirror/state": "*",
     "@codemirror/view": "*",
-    "@openleaf/latex": "workspace:*",
+    "@oleafly/latex": "workspace:*",
     "@xyflow/react": "*",
     "clsx": "*",
     "lucide-react": "*",

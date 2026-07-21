@@ -20,7 +20,7 @@ Settings shows copy-paste snippets for common clients. Copy the live URL because
 ### Claude Code
 
 ```bash
-claude mcp add --transport http openleaf http://127.0.0.1:5323/mcp --header "Authorization: Bearer <token>"
+claude mcp add --transport http oleafly http://127.0.0.1:5323/mcp --header "Authorization: Bearer <token>"
 ```
 
 ### Claude Desktop
@@ -30,7 +30,7 @@ Add to `claude_desktop_config.json` (stdio bridge via `mcp-remote`, because Desk
 ```json
 {
   "mcpServers": {
-    "openleaf": {
+    "oleafly": {
       "command": "npx",
       "args": [
         "-y",
@@ -53,7 +53,7 @@ In `.cursor/mcp.json` (or your client's MCP config):
 ```json
 {
   "mcpServers": {
-    "openleaf": {
+    "oleafly": {
       "url": "http://127.0.0.1:5323/mcp",
       "headers": {
         "Authorization": "Bearer <token>"
@@ -68,7 +68,7 @@ In `.cursor/mcp.json` (or your client's MCP config):
 In `~/.grok/config.toml`:
 
 ```toml
-[mcp_servers.openleaf]
+[mcp_servers.oleafly]
 url = "http://127.0.0.1:5323/mcp"
 headers = { Authorization = "Bearer <token>" }
 ```
@@ -133,7 +133,7 @@ Your MCP client (Claude Desktop, Claude Code, and others) already asks you to ap
 - **Trust this connection**: Oleafly never prompts. Your client's own approval is the only gate, deletes included. Use this when your client already confirms every tool call and you want a frictionless flow.
 - **Read-only mode** (separate toggle) removes mutating tools from `tools/list` entirely, so an external app can read and compile but never modify files, whatever the policy.
 - **Bearer token**: 256-bit random value stored in authenticated encrypted
-  local storage under `~/.openleaf/`. `get_config` never sends the token to the
+  local storage under `~/.oleafly/`. `get_config` never sends the token to the
   webview. Only Settings connection info exposes it while the server is
   running.
 - **Localhost only**: bind address is `127.0.0.1`. Requests with a browser `Origin` header are rejected, and `Host` must be loopback.

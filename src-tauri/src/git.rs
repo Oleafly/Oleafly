@@ -27,11 +27,10 @@ fn ensure_repo(project_id: &str) -> Result<PathBuf, String> {
         // Put the (still unborn) default branch on `main` regardless of the
         // user's git `init.defaultBranch`, so the first commit and push agree.
         let _ = run_git(&root, &["symbolic-ref", "HEAD", "refs/heads/main"]);
-        std::fs::write(root.join(".gitignore"), ".openleaf/\n.localleaf/\n")
-            .map_err(|e| e.to_string())?;
+        std::fs::write(root.join(".gitignore"), ".oleafly/\n").map_err(|e| e.to_string())?;
         let email = run_git(&root, &["config", "user.email"])?;
         if String::from_utf8_lossy(&email.stdout).trim().is_empty() {
-            let _ = run_git(&root, &["config", "user.email", "openleaf@local"]);
+            let _ = run_git(&root, &["config", "user.email", "oleafly@local"]);
             let _ = run_git(&root, &["config", "user.name", "Oleafly"]);
         }
     }
@@ -226,7 +225,7 @@ pub fn scrub_remote_credentials() {
 /// Run a git command that may need GitHub auth, supplying the token via an
 /// inline credential helper that reads it from the child process's environment.
 ///
-/// The token is passed in `OPENLEAF_GH_TOKEN` (env), NOT embedded in the remote
+/// The token is passed in `OLEAFLY_GH_TOKEN` (env), NOT embedded in the remote
 /// URL or any argument - so it never shows up in `ps`/argv and never lands in a
 /// tracking ref or the reflog. The helper only runs for HTTPS remotes; SSH
 /// remotes fall through to the user's SSH keys.
@@ -238,7 +237,7 @@ fn run_git_authed(
     // `!f() { ... }; f` is git's inline shell-helper form. It prints credentials
     // only for a `get` request, reading the secret from the environment.
     let helper = "credential.helper=!f() { test \"$1\" = get && \
-        printf 'username=x-access-token\\npassword=%s\\n' \"$OPENLEAF_GH_TOKEN\"; }; f";
+        printf 'username=x-access-token\\npassword=%s\\n' \"$OLEAFLY_GH_TOKEN\"; }; f";
     // `credential.helper` is multi-valued: helpers from the machine's config
     // (macOS keychain, a global `~/.gitconfig` helper, etc.) run BEFORE a helper
     // added with `-c`. A stale or different-account github.com credential cached
@@ -258,7 +257,7 @@ fn run_git_authed(
         .no_console()
         .args(&full)
         .current_dir(root)
-        .env("OPENLEAF_GH_TOKEN", token)
+        .env("OLEAFLY_GH_TOKEN", token)
         .output()
         .map_err(|e| format!("failed to run git: {e}"))
 }
@@ -710,8 +709,7 @@ mod tests {
     /// Create a throwaway git repo in a temp dir with a fixed identity.
     fn temp_repo() -> PathBuf {
         let n = COUNTER.fetch_add(1, Ordering::SeqCst);
-        let dir =
-            std::env::temp_dir().join(format!("openleaf-git-test-{}-{n}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("oleafly-git-test-{}-{n}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         run_git(&dir, &["init", "--quiet"]).unwrap();

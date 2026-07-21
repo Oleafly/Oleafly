@@ -1,5 +1,5 @@
-import { registerAiToolset } from "@openleaf/registry";
-import { createFigureTools, createOpenLeafTools, type ConfirmFn } from "@/lib/ai-tools";
+import { registerAiToolset } from "@oleafly/registry";
+import { createFigureTools, createOleaflyTools, type ConfirmFn } from "@/lib/ai-tools";
 
 let registered = false;
 
@@ -10,7 +10,7 @@ export function registerAiToolsets() {
     id: "project-tools",
     mode: "chat",
     create: (opts: { confirm?: ConfirmFn; onImage?: (dataUrl: string) => void }) =>
-      createOpenLeafTools(opts),
+      createOleaflyTools(opts),
   });
   registerAiToolset({
     id: "figure-tools",

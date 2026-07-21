@@ -5,7 +5,7 @@ import { ChatCore } from "@/components/ai/ChatCore";
 import { useSettingsStore } from "@/store/settings";
 import { clampRect, type Rect } from "@/lib/overlay-rect";
 
-const KEY = "openleaf.ai.overlay.rect";
+const KEY = "oleafly.ai.overlay.rect";
 
 function loadRect(): Rect {
   try {

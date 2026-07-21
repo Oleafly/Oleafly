@@ -2,9 +2,9 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-TMPDIR="$(mktemp -d /tmp/openleaf-e2e-lock-test.XXXXXX)"
+TMPDIR="$(mktemp -d /tmp/oleafly-e2e-lock-test.XXXXXX)"
 export TMPDIR
-export OPENLEAF_E2E_LOCK_DIR="$TMPDIR/runner.lock"
+export OLEAFLY_E2E_LOCK_DIR="$TMPDIR/runner.lock"
 source "$ROOT/scripts/e2e-run-lock.sh"
 
 cleanup_test() {

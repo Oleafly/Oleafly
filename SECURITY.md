@@ -25,7 +25,7 @@ in reports about:
 
 - **Path/sandbox escapes** - reading, writing, or deleting files outside a
   project directory (e.g. via crafted paths or project ids, symlinks, or
-  traversal). File access is meant to stay within `~/.openleaf/projects/<id>/`.
+  traversal). File access is meant to stay within `~/.oleafly/projects/<id>/`.
 - **Command execution** - getting the app to run arbitrary programs or shell
   commands.
 - **Secret exposure** - leaking the stored GitHub token or AI API keys (from
@@ -40,7 +40,7 @@ These are documented trade-offs, not vulnerabilities - though we welcome help
 improving them:
 
 - **Secrets at rest** - AI provider credentials, GitHub tokens, and MCP tokens
-  are stored as AES-256-GCM authenticated ciphertext under `~/.openleaf/`.
+  are stored as AES-256-GCM authenticated ciphertext under `~/.oleafly/`.
   Ciphertext files, the separate encryption key, and the shared lock file are
   restricted to the current OS user. This prevents plaintext disclosure from
   configuration files, logs, process arguments, and casual filesystem

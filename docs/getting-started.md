@@ -45,7 +45,7 @@ figure compilation.
 
 ## 6. Where your files live
 
-Every project is a plain folder under `~/.openleaf/projects/<id>/` containing your `.tex`, `.bib`, images, and a real `.git` repository. They're just files, so you can browse, copy, or back them up with any tool.
+Every project is a plain folder under `~/.oleafly/projects/<id>/` containing your `.tex`, `.bib`, images, and a real `.git` repository. They're just files, so you can browse, copy, or back them up with any tool.
 
 ---
 

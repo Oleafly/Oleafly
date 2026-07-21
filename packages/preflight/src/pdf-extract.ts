@@ -1,5 +1,5 @@
 import * as pdfjsLib from "pdfjs-dist";
-import workerSrc from "@openleaf/preview/pdf.worker?worker&url";
+import workerSrc from "@oleafly/preview/pdf.worker?worker&url";
 import type { PositionedText } from "./types";
 import type { StructNode, StructDoc } from "./structure";
 

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ModalCoordinator, modalCoordinator as templateModalCoordinator } from "@openleaf/templates/modal-coordinator";
+import { ModalCoordinator, modalCoordinator as templateModalCoordinator } from "@oleafly/templates/modal-coordinator";
 import { appModalCoordinator } from "./use-modal-accessibility";
 
 const element = (connected: boolean) => ({

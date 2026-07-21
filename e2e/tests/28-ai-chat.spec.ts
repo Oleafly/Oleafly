@@ -14,7 +14,7 @@ import {
 // Real AI conversations against a real provider. Opt in by setting
 // E2E_AI_TOKEN (and optionally E2E_AI_PROVIDER, default "Z.AI") in e2e/.env.
 // The key is saved through the actual Settings UI into the hermetic data
-// dir's config - nothing touches your real ~/.openleaf.
+// dir's config - nothing touches your real ~/.oleafly.
 
 const TOKEN = process.env.E2E_AI_TOKEN;
 // Visible provider-card name in Settings -> AI (substring match).

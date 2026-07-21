@@ -1,5 +1,5 @@
 [package]
-name = "openleaf"
+name = "oleafly"
 version = "0.2.5"
 description = "Oleafly - local-first LaTeX & resume authoring"
 authors = ["Prajwal S Venkateshmurthy and contributors"]
@@ -8,7 +8,7 @@ edition = "2021"
 rust-version = "1.77"
 
 [lib]
-name = "openleaf_lib"
+name = "oleafly_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

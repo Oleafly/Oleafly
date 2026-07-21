@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { Check, Mail, MapPin, Phone, User, X } from "lucide-react";
-import type { AtsParse } from "@openleaf/preflight";
+import type { AtsParse } from "@oleafly/preflight";
 import { cn } from "@/lib/utils";
 
 export const AtsCard = memo(function AtsCard({ parse }: { parse: AtsParse }) {

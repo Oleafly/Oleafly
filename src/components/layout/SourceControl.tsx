@@ -111,8 +111,8 @@ export function SourceControl() {
     void refresh();
     // Refresh when an editable diff (or other action) mutates the working tree.
     const onChanged = () => void refresh();
-    window.addEventListener("openleaf:git-changed", onChanged);
-    return () => window.removeEventListener("openleaf:git-changed", onChanged);
+    window.addEventListener("oleafly:git-changed", onChanged);
+    return () => window.removeEventListener("oleafly:git-changed", onChanged);
   }, [refresh]);
 
   const pull = async () => {
@@ -164,7 +164,7 @@ export function SourceControl() {
   };
 
   const notifyGitChanged = () =>
-    window.dispatchEvent(new CustomEvent("openleaf:git-changed"));
+    window.dispatchEvent(new CustomEvent("oleafly:git-changed"));
 
   const runGit = async (op: () => Promise<unknown>) => {
     if (!projectId) return;

@@ -7,7 +7,7 @@
 // never drift from the in-app surface.
 import { listen } from "@tauri-apps/api/event";
 import {
-  createOpenLeafTools,
+  createOleaflyTools,
   createFigureTools,
   type ConfirmFn,
 } from "@/lib/ai-tools";
@@ -138,7 +138,7 @@ export function buildMcpToolRegistry(opts: {
   onImage: (dataUrl: string) => void;
 }): Record<string, McpToolEntry> {
   const all: Record<string, McpToolEntry> = {
-    ...(createOpenLeafTools({ confirm: opts.confirm }) as Record<string, McpToolEntry>),
+    ...(createOleaflyTools({ confirm: opts.confirm }) as Record<string, McpToolEntry>),
     ...(createFigureTools({ confirm: opts.confirm, onImage: opts.onImage }) as Record<
       string,
       McpToolEntry

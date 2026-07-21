@@ -191,7 +191,7 @@ describe("modelToTikz", () => {
 describe("round-trip", () => {
   it("embeds and parses the model back to an equal object", () => {
     const tikz = serializeDiagram(model);
-    expect(tikz).toContain("% openleaf-diagram-v1:");
+    expect(tikz).toContain("% oleafly-diagram-v1:");
     const back = parseEmbeddedModel(tikz);
     expect(back).toEqual(model);
   });

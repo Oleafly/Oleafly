@@ -89,7 +89,7 @@ impl Default for AppConfig {
 }
 
 pub fn config_path() -> Result<PathBuf, String> {
-    Ok(paths::openleaf_root()?.join("config.json"))
+    Ok(paths::oleafly_root()?.join("config.json"))
 }
 
 pub fn read_config() -> Result<AppConfig, String> {
@@ -225,7 +225,7 @@ mod tests {
         use std::sync::atomic::{AtomicU64, Ordering};
         static COUNTER: AtomicU64 = AtomicU64::new(0);
         let n = COUNTER.fetch_add(1, Ordering::Relaxed);
-        let d = std::env::temp_dir().join(format!("openleaf-cfg-{}-{n}", std::process::id()));
+        let d = std::env::temp_dir().join(format!("oleafly-cfg-{}-{n}", std::process::id()));
         std::fs::create_dir_all(&d).unwrap();
         d
     }

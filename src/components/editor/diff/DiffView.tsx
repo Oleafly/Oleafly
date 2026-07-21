@@ -45,8 +45,8 @@ export function DiffView() {
     const onChanged = () => {
       if (activeDiff(useDiffStore.getState())?.side === "staged") setReloadKey((k) => k + 1);
     };
-    window.addEventListener("openleaf:git-changed", onChanged);
-    return () => window.removeEventListener("openleaf:git-changed", onChanged);
+    window.addEventListener("oleafly:git-changed", onChanged);
+    return () => window.removeEventListener("oleafly:git-changed", onChanged);
   }, []);
 
   useEffect(() => {
@@ -69,7 +69,7 @@ export function DiffView() {
           files: { ...s.files, [path]: { content, dirty: false } },
         }));
         void useGitStatusStore.getState().refresh(projectId);
-        window.dispatchEvent(new CustomEvent("openleaf:git-changed"));
+        window.dispatchEvent(new CustomEvent("oleafly:git-changed"));
       } catch {
         /* ignore transient write errors */
       }

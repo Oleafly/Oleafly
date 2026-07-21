@@ -1,6 +1,6 @@
 import { useEffect, useMemo, type ReactNode } from "react";
 import { Command } from "cmdk";
-import { commandsFor, commandLabel, type AppContext } from "@openleaf/registry";
+import { commandsFor, commandLabel, type AppContext } from "@oleafly/registry";
 import { useSettingsStore } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
 import { useTheme } from "@/lib/theme";

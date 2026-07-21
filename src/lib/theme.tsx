@@ -17,7 +17,7 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
-const STORAGE_KEY = "openleaf.theme";
+const STORAGE_KEY = "oleafly.theme";
 
 function getInitialTheme(): Theme {
   if (typeof window === "undefined") return "dark";
@@ -43,11 +43,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   // toggle_theme tool): anyone can dispatch this window event.
   useEffect(() => {
     const onToggle = () => setThemeState((prev) => (prev === "dark" ? "light" : "dark"));
-    window.addEventListener("openleaf:toggle-theme", onToggle);
-    window.addEventListener("localleaf:toggle-theme", onToggle);
+    window.addEventListener("oleafly:toggle-theme", onToggle);
     return () => {
-      window.removeEventListener("openleaf:toggle-theme", onToggle);
-      window.removeEventListener("localleaf:toggle-theme", onToggle);
+      window.removeEventListener("oleafly:toggle-theme", onToggle);
     };
   }, []);
 

@@ -62,7 +62,7 @@ test("agent sticky memory persists to storage and reloads on reopen", async ({ t
           `(() => {
              window.__agentMemoryAdd?.(${JSON.stringify(marker)});
              return Object.keys(localStorage)
-               .filter((k) => k.startsWith("openleaf.agent-memory."))
+               .filter((k) => k.startsWith("oleafly.agent-memory."))
                .some((k) => (localStorage.getItem(k) || "").includes(${JSON.stringify(marker)}));
            })()`,
         ),
@@ -74,9 +74,9 @@ test("agent sticky memory persists to storage and reloads on reopen", async ({ t
   // cache: overwrite storage out-of-band, run the exact load() ChatPanel runs
   // on reopen, and confirm the stale in-memory note was dropped.
   const reloaded = await tauriPage.evaluate<string[]>(`(() => {
-    const k = Object.keys(localStorage).find((x) => x.startsWith("openleaf.agent-memory."));
+    const k = Object.keys(localStorage).find((x) => x.startsWith("oleafly.agent-memory."));
     if (!k) return [];
-    const pid = k.slice("openleaf.agent-memory.".length);
+    const pid = k.slice("oleafly.agent-memory.".length);
     localStorage.setItem(
       k,
       JSON.stringify([{ id: "m-e2e-disk", content: "reloaded from storage E2E", createdAt: 1 }]),

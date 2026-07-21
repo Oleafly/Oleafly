@@ -1,4 +1,4 @@
-// Thin app shim: the editor controller lives in @openleaf/editor.
+// Thin app shim: the editor controller lives in @oleafly/editor.
 export {
   setEditorView,
   getEditorView,
@@ -14,4 +14,4 @@ export {
   editorRedo,
   editorFind,
   insertText,
-} from "@openleaf/editor";
+} from "@oleafly/editor";

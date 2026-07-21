@@ -5,7 +5,7 @@
 //! identity each launch, so the keychain never remembers its access grant and
 //! re-prompts on every run; storing secrets in an AES-256-GCM file under the
 //! app data dir (0600 on unix, owner-only ACL on Windows) avoids that entirely
-//! and keeps e2e/dev sandboxes isolated via `OPENLEAF_DATA_DIR`.
+//! and keeps e2e/dev sandboxes isolated via `OLEAFLY_DATA_DIR`.
 use ring::{aead, rand as ring_rand};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -148,18 +148,18 @@ struct EncryptedSecrets {
 }
 
 fn ai_secrets_path() -> Result<std::path::PathBuf, String> {
-    Ok(crate::paths::openleaf_root()?.join("ai-secrets.json"))
+    Ok(crate::paths::oleafly_root()?.join("ai-secrets.json"))
 }
 
 // GitHub + MCP tokens live here, encrypted with the same key as the secrets.
 fn app_secrets_path() -> Result<std::path::PathBuf, String> {
-    Ok(crate::paths::openleaf_root()?.join("app-secrets.json"))
+    Ok(crate::paths::oleafly_root()?.join("app-secrets.json"))
 }
 
 // Shared symmetric key for every encrypted secret file. Named `ai-secrets.key`
 // for backward compatibility with existing installs.
 fn secret_key_path() -> Result<std::path::PathBuf, String> {
-    Ok(crate::paths::openleaf_root()?.join("ai-secrets.key"))
+    Ok(crate::paths::oleafly_root()?.join("ai-secrets.key"))
 }
 
 fn write_private(path: &Path, bytes: &[u8]) -> Result<(), String> {
@@ -413,7 +413,7 @@ mod tests {
     #[test]
     fn ai_secrets_round_trip_without_plaintext() {
         let dir = std::env::temp_dir().join(format!(
-            "openleaf-ai-secrets-{}-{}",
+            "oleafly-ai-secrets-{}-{}",
             std::process::id(),
             generate_mcp_token()
         ));
@@ -437,7 +437,7 @@ mod tests {
         // The app-secrets store holds GitHub/MCP tokens as encrypted bytes, with
         // no plaintext and no OS keychain involvement.
         let dir = std::env::temp_dir().join(format!(
-            "openleaf-app-secrets-{}-{}",
+            "oleafly-app-secrets-{}-{}",
             std::process::id(),
             generate_mcp_token()
         ));
@@ -467,7 +467,7 @@ mod tests {
     #[test]
     fn ai_secrets_reject_tampering() {
         let dir = std::env::temp_dir().join(format!(
-            "openleaf-ai-secrets-tamper-{}-{}",
+            "oleafly-ai-secrets-tamper-{}-{}",
             std::process::id(),
             generate_mcp_token()
         ));
@@ -491,7 +491,7 @@ mod tests {
     #[test]
     fn first_run_key_creation_is_atomic() {
         let dir = std::env::temp_dir().join(format!(
-            "openleaf-key-race-{}-{}",
+            "oleafly-key-race-{}-{}",
             std::process::id(),
             generate_mcp_token()
         ));
@@ -520,7 +520,7 @@ mod tests {
     #[test]
     fn poisoned_process_lock_recovers() {
         let dir = std::env::temp_dir().join(format!(
-            "openleaf-secret-poison-{}-{}",
+            "oleafly-secret-poison-{}-{}",
             std::process::id(),
             generate_mcp_token()
         ));
@@ -539,7 +539,7 @@ mod tests {
     #[test]
     fn concurrent_secret_updates_preserve_every_account() {
         let dir = std::env::temp_dir().join(format!(
-            "openleaf-secret-updates-{}-{}",
+            "oleafly-secret-updates-{}-{}",
             std::process::id(),
             generate_mcp_token()
         ));
@@ -584,10 +584,10 @@ mod tests {
 
     #[test]
     fn secret_update_process_worker() {
-        let Some(dir) = std::env::var_os("OPENLEAF_SECRET_PROCESS_WORKER") else {
+        let Some(dir) = std::env::var_os("OLEAFLY_SECRET_PROCESS_WORKER") else {
             return;
         };
-        let index = std::env::var("OPENLEAF_SECRET_PROCESS_INDEX").unwrap();
+        let index = std::env::var("OLEAFLY_SECRET_PROCESS_INDEX").unwrap();
         let dir = std::path::PathBuf::from(dir);
         let data = dir.join("app-secrets.json");
         let key = dir.join("ai-secrets.key");
@@ -599,7 +599,7 @@ mod tests {
     #[test]
     fn concurrent_process_updates_share_one_key_and_preserve_accounts() {
         let dir = std::env::temp_dir().join(format!(
-            "openleaf-secret-processes-{}-{}",
+            "oleafly-secret-processes-{}-{}",
             std::process::id(),
             generate_mcp_token()
         ));
@@ -610,8 +610,8 @@ mod tests {
                 std::process::Command::new(&executable)
                     .arg("--exact")
                     .arg("secrets::tests::secret_update_process_worker")
-                    .env("OPENLEAF_SECRET_PROCESS_WORKER", &dir)
-                    .env("OPENLEAF_SECRET_PROCESS_INDEX", index.to_string())
+                    .env("OLEAFLY_SECRET_PROCESS_WORKER", &dir)
+                    .env("OLEAFLY_SECRET_PROCESS_INDEX", index.to_string())
                     .spawn()
                     .unwrap()
             })
@@ -636,7 +636,7 @@ mod tests {
     #[test]
     fn corrupt_app_secret_storage_returns_an_error() {
         let dir = std::env::temp_dir().join(format!(
-            "openleaf-secret-corrupt-{}-{}",
+            "oleafly-secret-corrupt-{}-{}",
             std::process::id(),
             generate_mcp_token()
         ));

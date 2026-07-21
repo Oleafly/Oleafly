@@ -149,31 +149,31 @@ const PREF_DEFAULTS = {
 } as const;
 
 export const useSettingsStore = create<SettingsState>((set) => ({
-  vim: ls("openleaf.vim", "0") === "1",
+  vim: ls("oleafly.vim", "0") === "1",
   toggleVim: () =>
     set((s) => {
-      saveLs("openleaf.vim", s.vim ? "0" : "1");
+      saveLs("oleafly.vim", s.vim ? "0" : "1");
       return { vim: !s.vim };
     }),
-  spellcheck: ls("openleaf.spellcheck", "1") !== "0",
+  spellcheck: ls("oleafly.spellcheck", "1") !== "0",
   toggleSpellcheck: () =>
     set((s) => {
-      saveLs("openleaf.spellcheck", s.spellcheck ? "0" : "1");
+      saveLs("oleafly.spellcheck", s.spellcheck ? "0" : "1");
       return { spellcheck: !s.spellcheck };
     }),
-  harper: ls("openleaf.harper", "1") !== "0",
+  harper: ls("oleafly.harper", "1") !== "0",
   setHarper: (v) => {
-    saveLs("openleaf.harper", v ? "1" : "0");
+    saveLs("oleafly.harper", v ? "1" : "0");
     set({ harper: v });
   },
-  showRegionalism: ls("openleaf.harper.regionalism", "1") !== "0",
+  showRegionalism: ls("oleafly.harper.regionalism", "1") !== "0",
   setShowRegionalism: (v) => {
-    saveLs("openleaf.harper.regionalism", v ? "1" : "0");
+    saveLs("oleafly.harper.regionalism", v ? "1" : "0");
     set({ showRegionalism: v });
   },
-  showWordChoice: ls("openleaf.harper.wordchoice", "1") !== "0",
+  showWordChoice: ls("oleafly.harper.wordchoice", "1") !== "0",
   setShowWordChoice: (v) => {
-    saveLs("openleaf.harper.wordchoice", v ? "1" : "0");
+    saveLs("oleafly.harper.wordchoice", v ? "1" : "0");
     set({ showWordChoice: v });
   },
   offline: false,
@@ -199,49 +199,49 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     set({ settingsInitialSection: SETTINGS_SECTIONS.has(v) ? v : "general" }),
   viewMode: "split",
   setViewMode: (v) => set({ viewMode: v }),
-  defaultView: (ls("openleaf.defaultView", "split") as ViewMode) || "split",
+  defaultView: (ls("oleafly.defaultView", "split") as ViewMode) || "split",
   setDefaultView: (v) => {
-    saveLs("openleaf.defaultView", v);
+    saveLs("oleafly.defaultView", v);
     set({ defaultView: v });
   },
-  hoverPreview: ls("openleaf.hoverPreview", "1") === "1",
+  hoverPreview: ls("oleafly.hoverPreview", "1") === "1",
   setHoverPreview: (v) => {
-    saveLs("openleaf.hoverPreview", v ? "1" : "0");
+    saveLs("oleafly.hoverPreview", v ? "1" : "0");
     set({ hoverPreview: v });
   },
-  chatFloating: ls("openleaf.ai.floating", "0") === "1",
+  chatFloating: ls("oleafly.ai.floating", "0") === "1",
   setChatFloating: (v) => {
-    saveLs("openleaf.ai.floating", v ? "1" : "0");
+    saveLs("oleafly.ai.floating", v ? "1" : "0");
     set({ chatFloating: v });
   },
-  openInTree: ls("openleaf.openInTree", "0") !== "0",
+  openInTree: ls("oleafly.openInTree", "0") !== "0",
   setOpenInTree: (v) => {
-    saveLs("openleaf.openInTree", v ? "1" : "0");
+    saveLs("oleafly.openInTree", v ? "1" : "0");
     set({ openInTree: v });
   },
-  editorFontSize: Number(ls("openleaf.fontSize", "13")) || 13,
+  editorFontSize: Number(ls("oleafly.fontSize", "13")) || 13,
   setEditorFontSize: (v) => {
-    saveLs("openleaf.fontSize", String(v));
+    saveLs("oleafly.fontSize", String(v));
     set({ editorFontSize: v });
   },
-  appFontSize: Number(ls("openleaf.appFontSize", "16")) || 16,
+  appFontSize: Number(ls("oleafly.appFontSize", "16")) || 16,
   setAppFontSize: (v) => {
-    saveLs("openleaf.appFontSize", String(v));
+    saveLs("oleafly.appFontSize", String(v));
     set({ appFontSize: v });
   },
-  appFontFamily: ls("openleaf.appFont", ""),
+  appFontFamily: ls("oleafly.appFont", ""),
   setAppFontFamily: (v) => {
-    saveLs("openleaf.appFont", v);
+    saveLs("oleafly.appFont", v);
     set({ appFontFamily: v });
   },
-  editorFontFamily: ls("openleaf.editorFont", ""),
+  editorFontFamily: ls("oleafly.editorFont", ""),
   setEditorFontFamily: (v) => {
-    saveLs("openleaf.editorFont", v);
+    saveLs("oleafly.editorFont", v);
     set({ editorFontFamily: v });
   },
-  accentColor: ls("openleaf.accent", "#2563eb"),
+  accentColor: ls("oleafly.accent", "#2563eb"),
   setAccentColor: (v) => {
-    saveLs("openleaf.accent", v);
+    saveLs("oleafly.accent", v);
     set({ accentColor: v });
   },
   showTree: true,
@@ -252,19 +252,19 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   setRailTab: (v) => set({ railTab: v }),
   resetToDefaults: () => {
     // Drop the persisted copies so a restart doesn't resurrect old values.
-    saveLs("openleaf.vim", PREF_DEFAULTS.vim ? "1" : "0");
-    saveLs("openleaf.spellcheck", PREF_DEFAULTS.spellcheck ? "1" : "0");
-    saveLs("openleaf.harper", PREF_DEFAULTS.harper ? "1" : "0");
-    saveLs("openleaf.harper.regionalism", "1");
-    saveLs("openleaf.harper.wordchoice", "1");
-    saveLs("openleaf.fontSize", String(PREF_DEFAULTS.editorFontSize));
-    saveLs("openleaf.appFontSize", String(PREF_DEFAULTS.appFontSize));
-    saveLs("openleaf.appFont", PREF_DEFAULTS.appFontFamily);
-    saveLs("openleaf.editorFont", PREF_DEFAULTS.editorFontFamily);
-    saveLs("openleaf.defaultView", PREF_DEFAULTS.defaultView);
-    saveLs("openleaf.openInTree", PREF_DEFAULTS.openInTree ? "1" : "0");
-    saveLs("openleaf.hoverPreview", PREF_DEFAULTS.hoverPreview ? "1" : "0");
-    saveLs("openleaf.accent", PREF_DEFAULTS.accentColor);
+    saveLs("oleafly.vim", PREF_DEFAULTS.vim ? "1" : "0");
+    saveLs("oleafly.spellcheck", PREF_DEFAULTS.spellcheck ? "1" : "0");
+    saveLs("oleafly.harper", PREF_DEFAULTS.harper ? "1" : "0");
+    saveLs("oleafly.harper.regionalism", "1");
+    saveLs("oleafly.harper.wordchoice", "1");
+    saveLs("oleafly.fontSize", String(PREF_DEFAULTS.editorFontSize));
+    saveLs("oleafly.appFontSize", String(PREF_DEFAULTS.appFontSize));
+    saveLs("oleafly.appFont", PREF_DEFAULTS.appFontFamily);
+    saveLs("oleafly.editorFont", PREF_DEFAULTS.editorFontFamily);
+    saveLs("oleafly.defaultView", PREF_DEFAULTS.defaultView);
+    saveLs("oleafly.openInTree", PREF_DEFAULTS.openInTree ? "1" : "0");
+    saveLs("oleafly.hoverPreview", PREF_DEFAULTS.hoverPreview ? "1" : "0");
+    saveLs("oleafly.accent", PREF_DEFAULTS.accentColor);
     set({ ...PREF_DEFAULTS });
   },
 }));

@@ -9,7 +9,7 @@ pub struct AppState {
     pub compile_lock: Mutex<()>,
     /// Serializes isolated figure compiles separately so AI figure previews
     /// never block the main document compile (and vice versa). Figure builds
-    /// write to `.openleaf/figbuild/`, not the main build dir.
+    /// write to `.oleafly/figbuild/`, not the main build dir.
     pub figure_compile_lock: Mutex<()>,
     pub pandoc_install_lock: Mutex<()>,
     /// Monotonic ticket for compile requests; used to skip queued compiles
@@ -18,7 +18,7 @@ pub struct AppState {
     /// Latest compile ticket per project id.
     pub latest_compile: Mutex<HashMap<String, u64>>,
     /// Absolute paths the user has just written via a native save/export dialog.
-    /// `reveal_in_dir` may open these even when they sit outside `~/.openleaf`.
+    /// `reveal_in_dir` may open these even when they sit outside `~/.oleafly`.
     pub reveal_allowlist: Mutex<VecDeque<PathBuf>>,
 }
 

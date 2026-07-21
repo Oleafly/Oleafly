@@ -2,7 +2,7 @@
 //!
 //! To keep the installer small, richer templates declare the font packs they need
 //! in their manifest (`requires.fonts`), and those packs are downloaded on demand
-//! into a shared cache under `~/.openleaf/assets/fonts/<packId>/`. When a project
+//! into a shared cache under `~/.oleafly/assets/fonts/<packId>/`. When a project
 //! is created from such a template, the cached fonts are copied into the project's
 //! `fonts/` folder, so the document is self-contained, portable, and compiles
 //! offline with the bundled Tectonic (via `\setmainfont{...}[Path=fonts/]`).

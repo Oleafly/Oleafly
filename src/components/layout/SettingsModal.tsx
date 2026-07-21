@@ -700,7 +700,7 @@ export function SettingsModal() {
                 </p>
                 <div className="flex items-center gap-2">
                   <code className="min-w-0 flex-1 break-all rounded-lg border bg-background p-3 text-xs">
-                    {libRoot || "~/.openleaf/projects"}
+                    {libRoot || "~/.oleafly/projects"}
                   </code>
                   {import.meta.env.DEV && isTauri() && libRoot ? (
                     <Tooltip label="Reveal projects folder in Finder">

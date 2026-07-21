@@ -4,7 +4,7 @@ import {
   slugifyFigureName,
   bytesToBase64,
   normalizeFigureCode,
-} from "@openleaf/latex";
+} from "@oleafly/latex";
 import { pickPagesToVerify } from "./pick-pages";
 
 export interface IndexDefView {
@@ -107,7 +107,7 @@ export interface ToolApprovalRequest {
 
 export type ConfirmFn = (req: ToolApprovalRequest) => Promise<boolean>;
 
-export function createOpenLeafTools(
+export function createOleaflyTools(
   host: AiToolsHost,
   opts?: { confirm?: ConfirmFn; onImage?: (dataUrl: string) => void },
 ) {
@@ -507,7 +507,7 @@ export function createOpenLeafTools(
       },
       execute: async () => {
         try {
-          window.dispatchEvent(new CustomEvent("openleaf:toggle-theme"));
+          window.dispatchEvent(new CustomEvent("oleafly:toggle-theme"));
           return { success: true };
         } catch (e) {
           return { error: String(e) };

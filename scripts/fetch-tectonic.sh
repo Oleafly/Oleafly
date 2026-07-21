@@ -11,7 +11,7 @@ set -euo pipefail
 VERSION="0.16.9"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BIN_DIR="$ROOT/src-tauri/binaries"
-CACHE_DIR="${OPENLEAF_SIDECAR_CACHE_DIR:-$ROOT/src-tauri/target/e2e-sidecars}"
+CACHE_DIR="${OLEAFLY_SIDECAR_CACHE_DIR:-$ROOT/src-tauri/target/e2e-sidecars}"
 mkdir -p "$BIN_DIR"
 mkdir -p "$CACHE_DIR"
 TMP=""

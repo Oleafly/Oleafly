@@ -6,7 +6,7 @@ import type {
   EdgeArrow,
   EdgeStyle,
   DiagramFontFamily,
-} from "@openleaf/latex";
+} from "@oleafly/latex";
 import { BringToFront, ChevronsDown, ChevronsUp, SendToBack } from "lucide-react";
 import { useDiagramKit } from "./kit";
 

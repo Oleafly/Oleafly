@@ -13,8 +13,8 @@ same buttons gets a PDF with zero errors.
   granted only in e2e builds (see `lib.rs`).
 - `@srsholmes/tauri-playwright` (npm) gives Playwright's test API
   (`test`, `expect`, locators, auto-waiting) over that bridge.
-- `OPENLEAF_DATA_DIR` points the app at a throwaway directory, so runs are
-  hermetic and never touch `~/.openleaf`.
+- `OLEAFLY_DATA_DIR` points the app at a throwaway directory, so runs are
+  hermetic and never touch `~/.oleafly`.
 
 ## Running
 
@@ -28,7 +28,7 @@ Or manually, keeping the app open between runs while writing tests:
 
 ```bash
 # Terminal 1
-OPENLEAF_DATA_DIR=$(mktemp -d) pnpm tauri dev --features e2e-testing
+OLEAFLY_DATA_DIR=$(mktemp -d) pnpm tauri dev --features e2e-testing
 # Terminal 2
 pnpm test:e2e
 ```
@@ -83,7 +83,7 @@ set while the main process evaluates the config).
 | Var | Effect |
 | --- | --- |
 | `E2E_GITHUB_TOKEN` | Runs the source-control stage/diff/commit flow and the history restore round-trip (connects with the PAT) |
-| `E2E_GIT_PUSH=1` | Runs the publish-to-GitHub test: creates a real `e2e-openleaf-*` repo, pushes, verifies over the API, then deletes it (grant the PAT the `delete_repo` scope, or delete the repo manually) |
+| `E2E_GIT_PUSH=1` | Runs the publish-to-GitHub test: creates a real `e2e-oleafly-*` repo, pushes, verifies over the API, then deletes it (grant the PAT the `delete_repo` scope, or delete the repo manually) |
 | `E2E_SKIP_NETWORK=1` | Skips the font-download and template-font-pack tests |
 | `E2E_AI_TOKEN` | Runs the real AI tests: provider connect, GLM-4.6 model pick, conversation, tool call, figure generation |
 | `E2E_AI_PROVIDER` | Provider card name for the AI tests (default `Z.AI`) |

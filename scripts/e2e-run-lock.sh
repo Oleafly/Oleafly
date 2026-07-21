@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-e2e_lock_dir="${OPENLEAF_E2E_LOCK_DIR:-/tmp/openleaf-e2e-bridge.lock}"
+e2e_lock_dir="${OLEAFLY_E2E_LOCK_DIR:-/tmp/oleafly-e2e-bridge.lock}"
 e2e_recovery_dir="${e2e_lock_dir}.recovery"
 
 acquire_e2e_lock() {

@@ -1,4 +1,4 @@
-//! Per-project AI chat history on disk under `~/.openleaf/chats/<id>.json`.
+//! Per-project AI chat history on disk under `~/.oleafly/chats/<id>.json`.
 //!
 //! History used to live only in the webview's localStorage (~5 MB/origin),
 //! which was wiped by profile resets and shared a tight quota with other keys.
@@ -13,7 +13,7 @@ static TEMP_SEQUENCE: AtomicU64 = AtomicU64::new(1);
 
 /// Directory holding one JSON file per project.
 fn chats_root() -> Result<std::path::PathBuf, String> {
-    let dir = paths::openleaf_root()?.join("chats");
+    let dir = paths::oleafly_root()?.join("chats");
     if !dir.exists() {
         std::fs::create_dir_all(&dir)
             .map_err(|e| format!("failed to create chats dir {dir:?}: {e}"))?;
@@ -165,7 +165,7 @@ mod tests {
     #[test]
     fn repeated_save_replaces_existing_file_and_removes_staging_files() {
         let root = std::env::temp_dir().join(format!(
-            "openleaf-chat-save-{}-{}",
+            "oleafly-chat-save-{}-{}",
             std::process::id(),
             TEMP_SEQUENCE.fetch_add(1, Ordering::Relaxed)
         ));
@@ -184,7 +184,7 @@ mod tests {
     #[test]
     fn failed_replace_preserves_existing_file() {
         let root = std::env::temp_dir().join(format!(
-            "openleaf-chat-failure-{}-{}",
+            "oleafly-chat-failure-{}-{}",
             std::process::id(),
             TEMP_SEQUENCE.fetch_add(1, Ordering::Relaxed)
         ));

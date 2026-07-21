@@ -18,7 +18,7 @@ try {
 
 // The app must already be running with the e2e bridge compiled in:
 //
-//   OPENLEAF_DATA_DIR=$(mktemp -d) pnpm tauri dev --features e2e-testing
+//   OLEAFLY_DATA_DIR=$(mktemp -d) pnpm tauri dev --features e2e-testing
 //   pnpm test:e2e
 export default defineConfig({
   testDir: "./tests",

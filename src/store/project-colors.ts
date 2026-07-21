@@ -5,7 +5,7 @@ import { logError } from "@/lib/log";
 // Cover colors now live on disk in each project's project.json. This store keeps
 // a lightweight in-memory override for instant UI feedback and still reads the
 // legacy localStorage map so projects created before the on-disk color keep theirs.
-const KEY = "openleaf.projectColors";
+const KEY = "oleafly.projectColors";
 
 function load(): Record<string, string> {
   try {

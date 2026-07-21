@@ -1,5 +1,5 @@
 import { FileText, GitBranch, Plug, Search, SearchCode, ShieldCheck, Sparkles } from "lucide-react";
-import { registerRailTab } from "@openleaf/registry";
+import { registerRailTab } from "@oleafly/registry";
 import { useGitStatusStore } from "@/store/git-status";
 import { useMcpActivityStore } from "@/store/mcp-activity";
 import { FilesPanel, ProjectSearch } from "@/components/layout/Sidebar";

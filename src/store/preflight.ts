@@ -1,7 +1,7 @@
 import { create } from "zustand";
-import { runPreflight } from "@openleaf/preflight";
-import type { RefsContext } from "@openleaf/preflight";
-import type { PreflightReport } from "@openleaf/preflight";
+import { runPreflight } from "@oleafly/preflight";
+import type { RefsContext } from "@oleafly/preflight";
+import type { PreflightReport } from "@oleafly/preflight";
 import { parseEntry } from "@/lib/citation/bibtex";
 import { useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
@@ -102,7 +102,7 @@ export const usePreflightStore = create<PreflightStore>((set) => ({
 
       const bytes = useCompileStore.getState().pdfBytes;
       if (bytes) {
-        const { extractForPreflight } = await import("@openleaf/preflight/pdf-extract");
+        const { extractForPreflight } = await import("@oleafly/preflight/pdf-extract");
         const ex = await extractForPreflight(bytes);
         if (stale()) return; // project switched during PDF extraction
         const report = runPreflight({

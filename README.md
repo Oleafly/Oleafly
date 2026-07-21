@@ -122,7 +122,7 @@ This is Oleafly's superpower. Every project is a real Git repo on your disk: the
 
 **MCP server.** Connect Claude Desktop, Claude Code, Cursor, or any MCP client and let it edit and compile your project with per-change approval. See [docs/mcp.md](docs/mcp.md).
 
-**Everything on disk.** No blob store, no lock-in. A project is just `~/.openleaf/projects/<id>/`, a normal folder with a real `.git` inside.
+**Everything on disk.** No blob store, no lock-in. A project is just `~/.oleafly/projects/<id>/`, a normal folder with a real `.git` inside.
 
 <br/>
 
@@ -321,7 +321,7 @@ The full list. Everything here runs on your machine. For the detailed tour, see 
 
 ## Architecture
 
-The frontend is a pnpm workspace: nine `@openleaf/*` engine packages (editor, preview, diagram, preflight, AI tools, templates, …) behind injected ports, wired into the app shell through a contribution registry. The deep dive is in [docs/architecture.md](docs/architecture.md).
+The frontend is a pnpm workspace: nine `@oleafly/*` engine packages (editor, preview, diagram, preflight, AI tools, templates, …) behind injected ports, wired into the app shell through a contribution registry. The deep dive is in [docs/architecture.md](docs/architecture.md).
 
 ```mermaid
 flowchart TB
@@ -377,7 +377,7 @@ flowchart TB
   TEC["Tectonic sidecar<br/>XeTeX engine · bundled externalBin"]
   TEX["LuaLaTeX engine<br/>system TeX Live or on-demand TinyTeX (~100MB)"]
   GITBIN["git subprocess<br/>env-backed credential helper"]
-  DISK["Local disk<br/>~/.openleaf · projects/&lt;id&gt; with real .git repos · font cache"]
+  DISK["Local disk<br/>~/.oleafly · projects/&lt;id&gt; with real .git repos · font cache"]
   GHREMOTE["GitHub<br/>api.github.com + git remote"]
   CITEHOSTS["Citation sources<br/>doi.org · arXiv · Crossref"]
   FONTSRC["Font sources<br/>google/fonts (open-license TTFs)"]
@@ -502,7 +502,7 @@ The full product documentation lives at **[oleafly.com/docs](https://oleafly.com
 | [FAQ](https://oleafly.com/docs/faq/) | Common questions and fixes |
 | [Build from source](docs/install.md) | For developers: clone, install deps, run |
 | [Development](docs/development.md) | Setup and how to contribute |
-| [Frontend architecture](docs/architecture.md) | The `@openleaf/*` packages, ports, and the contribution registry |
+| [Frontend architecture](docs/architecture.md) | The `@oleafly/*` packages, ports, and the contribution registry |
 | [Auto-updates](docs/updates.md) | How releases sign & ship in-app updates (maintainers) |
 
 <br/>

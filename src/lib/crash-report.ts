@@ -10,7 +10,7 @@ const MAX_LOG_BYTES = 5000;
 // 2-3x and it is the encoded URL that GitHub limits (~8KB). We keep the whole
 // URL comfortably under that.
 const MAX_ENCODED_BODY = 7000;
-const TRUNCATION_MARKER = "\n…(truncated, attach ~/.openleaf/app.log for the full log)";
+const TRUNCATION_MARKER = "\n…(truncated, attach ~/.oleafly/app.log for the full log)";
 
 async function systemBlock(): Promise<string> {
   const lines: string[] = [];

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, Check, Copy, FileCheck2, Info, Pencil, Plus, Wand2 } from "lucide-react";
 import { isTauri } from "@tauri-apps/api/core";
-import { prepareAccessibleSource, type PrepChange, type PrepResult } from "@openleaf/preflight";
+import { prepareAccessibleSource, type PrepChange, type PrepResult } from "@oleafly/preflight";
 import { useFilesStore } from "@/store/files";
 import { usePreflightStore } from "@/store/preflight";
 import { useEngineStore } from "@/store/engine";

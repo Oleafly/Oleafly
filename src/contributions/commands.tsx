@@ -22,7 +22,7 @@ import {
   Workflow,
   Zap,
 } from "lucide-react";
-import { registerCommand, type AppContext } from "@openleaf/registry";
+import { registerCommand, type AppContext } from "@oleafly/registry";
 import { useSettingsStore } from "@/store/settings";
 import { useCompileStore } from "@/store/compile";
 import { useCitationStore } from "@/store/citation";
@@ -60,7 +60,7 @@ export const runEngineFormatting = (action: EngineFormattingAction) => {
   else insertAtCursor(formatting.text);
 };
 
-const toggleTheme = () => window.dispatchEvent(new CustomEvent("openleaf:toggle-theme"));
+const toggleTheme = () => window.dispatchEvent(new CustomEvent("oleafly:toggle-theme"));
 const openNewProject = () => useSettingsStore.getState().setNewProjectOpen(true);
 const themeLabel = (ctx: AppContext) =>
   `Switch to ${ctx.theme === "dark" ? "light" : "dark"} theme`;

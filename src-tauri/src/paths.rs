@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
 /// Compile entry wrapper (neutralizes pdfLaTeX-only commands under XeTeX).
-pub const ENTRY_TEX: &str = "_openleaf_entry.tex";
-pub const ENTRY_STEM: &str = "_openleaf_entry";
+pub const ENTRY_TEX: &str = "_oleafly_entry.tex";
+pub const ENTRY_STEM: &str = "_oleafly_entry";
 
 /// The user's home directory.
 pub fn home_dir() -> Result<PathBuf, String> {
@@ -12,53 +12,23 @@ pub fn home_dir() -> Result<PathBuf, String> {
         .ok_or_else(|| "could not determine user home directory".to_string())
 }
 
-/// One-time migration from the legacy `~/.localleaf` layout to `~/.openleaf`.
-/// Runs once at startup (see `run_migrations`), not on every path lookup.
-fn migrate_legacy() {
-    if let Ok(home) = home_dir() {
-        let new_root = home.join(".openleaf");
-        let old_root = home.join(".localleaf");
-        if !new_root.exists() && old_root.exists() {
-            let _ = std::fs::rename(&old_root, &new_root);
-        }
-        // Rename each project's legacy build cache `.localleaf` -> `.openleaf`.
-        if let Ok(projects) = std::fs::read_dir(new_root.join("projects")) {
-            for entry in projects.flatten() {
-                if !entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
-                    continue;
-                }
-                let old = entry.path().join(".localleaf");
-                let new = entry.path().join(".openleaf");
-                if old.is_dir() && !new.exists() {
-                    let _ = std::fs::rename(&old, &new);
-                }
-            }
-        }
-    }
-}
-
-/// Run startup migrations. Called once from `lib::run()`.
-pub fn run_migrations() {
-    migrate_legacy();
-}
-
-/// The Oleafly library root: `~/.openleaf/`, or `$OPENLEAF_DATA_DIR` when
+/// The Oleafly library root: `~/.oleafly/`, or `$OLEAFLY_DATA_DIR` when
 /// set and non-empty (e2e tests point this at a throwaway directory so runs
 /// are hermetic and never touch the user's real projects).
-pub fn openleaf_root() -> Result<PathBuf, String> {
-    if let Some(dir) = std::env::var_os("OPENLEAF_DATA_DIR") {
+pub fn oleafly_root() -> Result<PathBuf, String> {
+    if let Some(dir) = std::env::var_os("OLEAFLY_DATA_DIR") {
         if !dir.is_empty() {
             return Ok(PathBuf::from(dir));
         }
     }
-    Ok(home_dir()?.join(".openleaf"))
+    Ok(home_dir()?.join(".oleafly"))
 }
 
-/// The downloadable-assets cache: `~/.openleaf/assets/` (created if missing).
+/// The downloadable-assets cache: `~/.oleafly/assets/` (created if missing).
 /// Holds on-demand font packs (and future package/engine caches) so the shipped
 /// installer stays small.
 pub fn assets_root() -> Result<PathBuf, String> {
-    let root = openleaf_root()?.join("assets");
+    let root = oleafly_root()?.join("assets");
     if !root.exists() {
         std::fs::create_dir_all(&root)
             .map_err(|e| format!("failed to create assets root {root:?}: {e}"))?;
@@ -66,9 +36,9 @@ pub fn assets_root() -> Result<PathBuf, String> {
     Ok(root)
 }
 
-/// The projects directory: `~/.openleaf/projects/` (created if missing).
+/// The projects directory: `~/.oleafly/projects/` (created if missing).
 pub fn projects_root() -> Result<PathBuf, String> {
-    let root = openleaf_root()?.join("projects");
+    let root = oleafly_root()?.join("projects");
     if !root.exists() {
         std::fs::create_dir_all(&root)
             .map_err(|e| format!("failed to create projects root {root:?}: {e}"))?;
@@ -93,7 +63,7 @@ pub fn validate_project_id(project_id: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// A single project directory: `~/.openleaf/projects/<id>/` (created if missing).
+/// A single project directory: `~/.oleafly/projects/<id>/` (created if missing).
 pub fn project_dir(project_id: &str) -> Result<PathBuf, String> {
     validate_project_id(project_id)?;
     let root = projects_root()?
@@ -110,12 +80,12 @@ pub fn project_dir(project_id: &str) -> Result<PathBuf, String> {
     Ok(resolved)
 }
 
-/// The per-project build directory: `<project>/.openleaf/build/`.
+/// The per-project build directory: `<project>/.oleafly/build/`.
 pub fn build_dir(project_id: &str) -> Result<PathBuf, String> {
     secure_build_subdirectory(project_id, "build")
 }
 
-/// The per-project isolated figure build directory: `<project>/.openleaf/figbuild/`.
+/// The per-project isolated figure build directory: `<project>/.oleafly/figbuild/`.
 /// Separate from `build_dir` so figure iteration never clobbers the main preview PDF.
 pub fn figure_build_dir(project_id: &str) -> Result<PathBuf, String> {
     secure_build_subdirectory(project_id, "figbuild")
@@ -130,7 +100,7 @@ fn secure_build_subdirectory_in(project: &std::path::Path, name: &str) -> Result
     let project = project
         .canonicalize()
         .map_err(|e| format!("failed to resolve project directory: {e}"))?;
-    let internal = project.join(".openleaf");
+    let internal = project.join(".oleafly");
     ensure_real_directory(&internal, "project data")?;
     let internal = internal
         .canonicalize()
@@ -216,7 +186,7 @@ mod tests {
         use std::os::unix::fs::symlink;
 
         let temp = std::env::temp_dir().join(format!(
-            "openleaf-path-test-{}-{}",
+            "oleafly-path-test-{}-{}",
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -228,12 +198,12 @@ mod tests {
         std::fs::create_dir(&temp).unwrap();
         std::fs::create_dir(&project).unwrap();
         std::fs::create_dir(&outside).unwrap();
-        symlink(&outside, project.join(".openleaf")).unwrap();
+        symlink(&outside, project.join(".oleafly")).unwrap();
         assert!(secure_build_subdirectory_in(&project, "build").is_err());
 
-        std::fs::remove_file(project.join(".openleaf")).unwrap();
-        std::fs::create_dir(project.join(".openleaf")).unwrap();
-        symlink(&outside, project.join(".openleaf/build")).unwrap();
+        std::fs::remove_file(project.join(".oleafly")).unwrap();
+        std::fs::create_dir(project.join(".oleafly")).unwrap();
+        symlink(&outside, project.join(".oleafly/build")).unwrap();
         assert!(secure_build_subdirectory_in(&project, "build").is_err());
         std::fs::remove_dir_all(temp).unwrap();
     }

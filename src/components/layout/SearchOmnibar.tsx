@@ -10,7 +10,7 @@ import {
   Settings,
   Sun,
 } from "lucide-react";
-import { commandsFor, commandLabel, type AppContext } from "@openleaf/registry";
+import { commandsFor, commandLabel, type AppContext } from "@oleafly/registry";
 import { useSettingsStore } from "@/store/settings";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { useTourStore } from "@/store/tours";

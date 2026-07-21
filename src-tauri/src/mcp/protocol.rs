@@ -62,7 +62,7 @@ pub fn dispatch(msg: &Value, tools: &[ToolMeta], instructions: &str) -> RpcOutco
                     "protocolVersion": version,
                     "capabilities": { "tools": { "listChanged": false } },
                     "serverInfo": {
-                        "name": "openleaf",
+                        "name": "oleafly",
                         "title": "Oleafly",
                         "version": env!("CARGO_PKG_VERSION"),
                     },
@@ -118,7 +118,7 @@ mod tests {
             panic!("expected reply")
         };
         assert_eq!(v.pointer("/result/protocolVersion").unwrap(), "2025-03-26");
-        assert_eq!(v.pointer("/result/serverInfo/name").unwrap(), "openleaf");
+        assert_eq!(v.pointer("/result/serverInfo/name").unwrap(), "oleafly");
         assert!(v.pointer("/result/capabilities/tools").is_some());
         assert_eq!(v.pointer("/result/instructions").unwrap(), "hi");
     }

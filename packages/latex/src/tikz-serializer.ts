@@ -179,7 +179,7 @@ export function modelToTikz(model: DiagramModel): string {
   return `${pre}\\begin{tikzpicture}[>={Triangle[length=0.313cm,width=0.313cm]}]\n${nodeBody}${edgeBody}\n\\end{tikzpicture}`;
 }
 
-const MARK = "% openleaf-diagram-v1:";
+const MARK = "% oleafly-diagram-v1:";
 
 function b64encode(obj: unknown): string {
   const bytes = new TextEncoder().encode(JSON.stringify(obj));

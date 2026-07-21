@@ -42,8 +42,8 @@ export function InlineEditPanel() {
       void getConfig().then(apply).catch(() => {});
     };
     check();
-    window.addEventListener("openleaf:ai-config-changed", check);
-    return () => window.removeEventListener("openleaf:ai-config-changed", check);
+    window.addEventListener("oleafly:ai-config-changed", check);
+    return () => window.removeEventListener("oleafly:ai-config-changed", check);
   }, []);
 
   useEffect(() => {
@@ -179,7 +179,7 @@ export function InlineEditPanel() {
     const next = { ...current, ai_provider: providerId, ai_model: modelId };
     setLocalConfig(next);
     await setConfig(next);
-    window.dispatchEvent(new CustomEvent("openleaf:ai-config-changed", { detail: next }));
+    window.dispatchEvent(new CustomEvent("oleafly:ai-config-changed", { detail: next }));
   };
 
   const keys = { ...(config?.ai_keys ?? {}) };

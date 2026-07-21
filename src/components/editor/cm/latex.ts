@@ -1,2 +1,2 @@
-// Thin app shim: the LaTeX language + completions live in @openleaf/editor.
-export { latexLanguage, latexCompletions, slashCompletions } from "@openleaf/editor";
+// Thin app shim: the LaTeX language + completions live in @oleafly/editor.
+export { latexLanguage, latexCompletions, slashCompletions } from "@oleafly/editor";

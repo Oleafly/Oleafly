@@ -22,17 +22,17 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@openleaf/latex": ["./packages/latex/src/index.ts"],
-      "@openleaf/ai-core": ["./packages/ai-core/src/index.ts"],
-      "@openleaf/diagram": ["./packages/diagram/src/index.ts"],
-      "@openleaf/editor": ["./packages/editor/src/index.ts"],
-      "@openleaf/ai-tools": ["./packages/ai-tools/src/index.ts"],
-      "@openleaf/preflight": ["./packages/preflight/src/index.ts"],
-      "@openleaf/registry": ["./packages/registry/src/index.ts"],
-      "@openleaf/preflight/pdf-extract": ["./packages/preflight/src/pdf-extract.ts"],
-      "@openleaf/templates": ["./packages/templates/src/index.ts"],
-      "@openleaf/preview": ["./packages/preview/src/index.ts"],
-      "@openleaf/preview/polyfills": ["./packages/preview/src/polyfills.ts"]
+      "@oleafly/latex": ["./packages/latex/src/index.ts"],
+      "@oleafly/ai-core": ["./packages/ai-core/src/index.ts"],
+      "@oleafly/diagram": ["./packages/diagram/src/index.ts"],
+      "@oleafly/editor": ["./packages/editor/src/index.ts"],
+      "@oleafly/ai-tools": ["./packages/ai-tools/src/index.ts"],
+      "@oleafly/preflight": ["./packages/preflight/src/index.ts"],
+      "@oleafly/registry": ["./packages/registry/src/index.ts"],
+      "@oleafly/preflight/pdf-extract": ["./packages/preflight/src/pdf-extract.ts"],
+      "@oleafly/templates": ["./packages/templates/src/index.ts"],
+      "@oleafly/preview": ["./packages/preview/src/index.ts"],
+      "@oleafly/preview/polyfills": ["./packages/preview/src/polyfills.ts"]
     }
   },
   "include": ["src", "packages", "vite.config.ts"]

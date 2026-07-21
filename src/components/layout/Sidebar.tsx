@@ -5,7 +5,7 @@ import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { searchDocs, type SearchHit } from "@/lib/tauri";
 import { gotoLine } from "@/components/editor/cm/controller";
-import { registry } from "@openleaf/registry";
+import { registry } from "@oleafly/registry";
 import { FileTree } from "@/components/files/FileTree";
 import { Outline } from "@/components/layout/Outline";
 import { cn } from "@/lib/utils";

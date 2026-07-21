@@ -32,7 +32,7 @@ import {
   parseEmbeddedModel,
   buildStandaloneDoc,
   DIAGRAM_LIBS,
-} from "@openleaf/latex";
+} from "@oleafly/latex";
 import { useDiagramKit } from "./kit";
 import type { DiagramHost } from "./host";
 import { cn } from "./cn";

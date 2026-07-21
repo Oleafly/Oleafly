@@ -228,7 +228,7 @@ fn ensure_token() -> Result<String, String> {
 /// owner-only (0600 on unix, current-user ACL on Windows), present only while
 /// the server runs. Documented in docs/mcp.md.
 fn write_discovery_file(port: u16, token: &str) -> Result<(), String> {
-    let path = paths::openleaf_root()?.join("mcp.json");
+    let path = paths::oleafly_root()?.join("mcp.json");
     let body = serde_json::to_string_pretty(&json!({
         "url": format!("http://127.0.0.1:{port}/mcp"),
         "token": token,
@@ -247,7 +247,7 @@ pub fn rewrite_discovery_file(port: u16, token: &str) -> Result<(), String> {
 }
 
 pub fn remove_discovery_file() {
-    if let Ok(root) = paths::openleaf_root() {
+    if let Ok(root) = paths::oleafly_root() {
         let _ = std::fs::remove_file(root.join("mcp.json"));
     }
 }

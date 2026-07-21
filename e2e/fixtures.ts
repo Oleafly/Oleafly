@@ -43,7 +43,7 @@ for (const p of envCandidates) {
 // plugin's socket bridge: real webview, real Rust backend, real Tectonic
 // compiles. Start the app first:
 //
-//   OPENLEAF_DATA_DIR=$(mktemp -d) pnpm tauri dev --features e2e-testing
+//   OLEAFLY_DATA_DIR=$(mktemp -d) pnpm tauri dev --features e2e-testing
 let nativePageOpened = false;
 const DISMISSED_TOUR_STATE = JSON.stringify({
   state: {

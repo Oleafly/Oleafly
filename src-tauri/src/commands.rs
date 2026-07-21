@@ -43,7 +43,7 @@ fn take_latest_compile_ticket(
     true
 }
 
-/// Returns the Oleafly projects root (`~/.openleaf/projects`).
+/// Returns the Oleafly projects root (`~/.oleafly/projects`).
 #[tauri::command]
 pub fn library_root() -> Result<std::path::PathBuf, String> {
     paths::projects_root()
@@ -85,7 +85,7 @@ fn assert_revealable(
     canonical: &std::path::Path,
     allowlist: &std::collections::VecDeque<std::path::PathBuf>,
 ) -> Result<(), String> {
-    if let Ok(root) = paths::openleaf_root() {
+    if let Ok(root) = paths::oleafly_root() {
         if let Ok(rr) = root.canonicalize() {
             if canonical.starts_with(&rr) {
                 return Ok(());
@@ -307,7 +307,7 @@ fn decode_b64(data_base64: &str) -> Result<Vec<u8>, String> {
 /// Compile a standalone figure document in isolation, so figure iteration is
 /// fast and never touches the main preview PDF. The `source` is a full
 /// `\documentclass{standalone}` document; it is written to
-/// `.openleaf/figbuild/_figure.tex` and compiled directly (no pdfLaTeX wrapper,
+/// `.oleafly/figbuild/_figure.tex` and compiled directly (no pdfLaTeX wrapper,
 /// which would collide with the standalone document class).
 #[tauri::command]
 pub async fn compile_isolated(
@@ -464,7 +464,7 @@ mod tests {
 
     #[test]
     fn reveal_capability_matches_only_the_exact_export() {
-        let exported = std::path::PathBuf::from("/outside/openleaf/export.pdf");
+        let exported = std::path::PathBuf::from("/outside/oleafly/export.pdf");
         let allow = std::collections::VecDeque::from([exported.clone()]);
         assert!(assert_revealable(&exported, &allow).is_ok());
         assert!(assert_revealable(exported.parent().unwrap(), &allow).is_err());

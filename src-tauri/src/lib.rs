@@ -24,7 +24,6 @@ use state::AppState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    paths::run_migrations();
     // One-time hardening: strip any token baked into a project's `origin` remote
     // by earlier builds (auth now flows through the env credential helper).
     git::scrub_remote_credentials();

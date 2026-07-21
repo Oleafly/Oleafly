@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-const KEY = "openleaf.favorites";
+const KEY = "oleafly.favorites";
 
 function load(): string[] {
   try {

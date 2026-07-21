@@ -31,7 +31,7 @@ interface DiffState {
   setMode: (mode: DiffMode) => void;
 }
 
-const MODE_KEY = "openleaf.diffMode";
+const MODE_KEY = "oleafly.diffMode";
 
 function loadMode(): DiffMode {
   try {

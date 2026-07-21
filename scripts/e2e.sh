@@ -78,11 +78,11 @@ trap 'exit 143' TERM
 
 bash scripts/ensure-e2e-sidecars.sh
 
-DATA_DIR="$(mktemp -d /tmp/openleaf-e2e.XXXXXX)"
-LOG="$(mktemp /tmp/openleaf-e2e-log.XXXXXX)"
+DATA_DIR="$(mktemp -d /tmp/oleafly-e2e.XXXXXX)"
+LOG="$(mktemp /tmp/oleafly-e2e-log.XXXXXX)"
 # Export so Playwright specs can read discovery files (e.g. mcp.json) written
 # into the same throwaway data dir the app uses.
-export OPENLEAF_DATA_DIR="$DATA_DIR"
+export OLEAFLY_DATA_DIR="$DATA_DIR"
 
 echo "e2e: data dir $DATA_DIR"
 echo "e2e: app log  $LOG"
@@ -147,7 +147,7 @@ fi
 
 start_app() {
   rm -f "$SOCK"
-  OPENLEAF_DATA_DIR="$DATA_DIR" pnpm tauri dev --features e2e-testing >>"$LOG" 2>&1 &
+  OLEAFLY_DATA_DIR="$DATA_DIR" pnpm tauri dev --features e2e-testing >>"$LOG" 2>&1 &
   APP_PID=$!
   echo "e2e: waiting for the bridge socket (first build can take minutes)..."
   for _ in $(seq 1 900); do

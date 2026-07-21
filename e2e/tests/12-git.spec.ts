@@ -145,7 +145,7 @@ test("publish to GitHub creates a real repo and pushes the project", async ({ ta
   );
   test.setTimeout(180_000);
   const token = process.env.E2E_GITHUB_TOKEN as string;
-  const repoName = `e2e-openleaf-${Date.now().toString(36)}`;
+  const repoName = `e2e-oleafly-${Date.now().toString(36)}`;
   const gh = (path: string, init?: RequestInit) =>
     fetch(`https://api.github.com${path}`, {
       ...init,

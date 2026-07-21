@@ -52,7 +52,7 @@ In Settings → GitHub, the connected-account card has a **Disconnect** button. 
 - SSH remotes aren't supported for token-authenticated push. Use HTTPS (Publish sets this up automatically).
 - A first push to an existing repo that already has commits may need a pull first. Oleafly will tell you.
 - The token is stored in authenticated encrypted local storage under
-  `~/.openleaf/`. The encrypted data, encryption key, and lock file are
+  `~/.oleafly/`. The encrypted data, encryption key, and lock file are
   restricted to the current OS user.
 - The token is never written to `config.json`, process arguments, or Git remote
   URLs.

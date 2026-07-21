@@ -1,2 +1,2 @@
-// Thin app shim: per-path language support lives in @openleaf/editor.
-export { languageForPath } from "@openleaf/editor";
+// Thin app shim: per-path language support lives in @oleafly/editor.
+export { languageForPath } from "@oleafly/editor";

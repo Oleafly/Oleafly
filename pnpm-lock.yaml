@@ -62,31 +62,31 @@ importers:
       '@lezer/highlight':
         specifier: ^1.2.3
         version: 1.2.3
-      '@openleaf/ai-core':
+      '@oleafly/ai-core':
         specifier: workspace:*
         version: link:packages/ai-core
-      '@openleaf/ai-tools':
+      '@oleafly/ai-tools':
         specifier: workspace:*
         version: link:packages/ai-tools
-      '@openleaf/diagram':
+      '@oleafly/diagram':
         specifier: workspace:*
         version: link:packages/diagram
-      '@openleaf/editor':
+      '@oleafly/editor':
         specifier: workspace:*
         version: link:packages/editor
-      '@openleaf/latex':
+      '@oleafly/latex':
         specifier: workspace:*
         version: link:packages/latex
-      '@openleaf/preflight':
+      '@oleafly/preflight':
         specifier: workspace:*
         version: link:packages/preflight
-      '@openleaf/preview':
+      '@oleafly/preview':
         specifier: workspace:*
         version: link:packages/preview
-      '@openleaf/registry':
+      '@oleafly/registry':
         specifier: workspace:*
         version: link:packages/registry
-      '@openleaf/templates':
+      '@oleafly/templates':
         specifier: workspace:*
         version: link:packages/templates
       '@radix-ui/react-checkbox':
@@ -258,7 +258,7 @@ importers:
 
   packages/ai-tools:
     dependencies:
-      '@openleaf/latex':
+      '@oleafly/latex':
         specifier: workspace:*
         version: link:../latex
       ai:
@@ -285,7 +285,7 @@ importers:
       '@codemirror/view':
         specifier: '*'
         version: 6.43.4
-      '@openleaf/latex':
+      '@oleafly/latex':
         specifier: workspace:*
         version: link:../latex
       '@xyflow/react':

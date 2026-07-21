@@ -9,7 +9,7 @@ No. Oleafly has no accounts and no login. Install it and write.
 Only to fetch LaTeX packages the first time you use them (or when you add a package you've never used). Turn on Offline mode (Settings → General) to compile with `--only-cached` and never touch the network.
 
 ### Where are my files?
-Every project is a plain folder under `~/.openleaf/projects/<id>/`, with your `.tex`, `.bib`, images, and a `.git` repo. They're just files, so back them up, copy them, or version-control them however you like.
+Every project is a plain folder under `~/.oleafly/projects/<id>/`, with your `.tex`, `.bib`, images, and a `.git` repo. They're just files, so back them up, copy them, or version-control them however you like.
 
 ### Is the PDF output ATS-friendly?
 Yes. XeTeX/Tectonic emits real selectable Unicode text with embedded subset fonts. The starter templates follow ATS rules (single column, no table-based layout, linear reading order) so resume parsers extract everything correctly.
@@ -69,5 +69,5 @@ Yes, use Ollama. Pull a model (`ollama pull llama3.2`), then save the Ollama hos
 ## Still stuck?
 
 - Search existing [issues](https://github.com/Oleafly/Oleafly/issues).
-- The app logs errors to `~/.openleaf/app.log`. Include the relevant snippet when you report.
+- The app logs errors to `~/.oleafly/app.log`. Include the relevant snippet when you report.
 - Open a new issue with the steps to reproduce and your OS.

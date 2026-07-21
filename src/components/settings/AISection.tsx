@@ -267,7 +267,7 @@ export function AISection() {
     await setConfig(next);
     setCfg(next);
     // Notifies listeners outside this component tree, e.g. the chat panel.
-    window.dispatchEvent(new CustomEvent("openleaf:ai-config-changed", { detail: next }));
+    window.dispatchEvent(new CustomEvent("oleafly:ai-config-changed", { detail: next }));
   };
 
   const saveProvider = async (id: string) => {
@@ -551,7 +551,7 @@ export function AISection() {
               const next = { ...cfg, ai_pdf_capture: on };
               setCfg(next);
               try {
-                localStorage.setItem("openleaf:ai_pdf_capture", on ? "1" : "0");
+                localStorage.setItem("oleafly:ai_pdf_capture", on ? "1" : "0");
               } catch {
                 /* ignore */
               }

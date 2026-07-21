@@ -39,15 +39,15 @@ The signing **key pair** was generated already. The **public** key is committed
 in `src-tauri/tauri.conf.json` (`plugins.updater.pubkey`). The **private** key is
 NOT in the repo. It lives at:
 
-    ~/.openleaf-keys/openleaf-updater.key      (private, keep secret, 0600)
-    ~/.openleaf-keys/openleaf-updater.key.pub  (public, already in the repo)
+    ~/.oleafly-keys/oleafly-updater.key      (private, keep secret, 0600)
+    ~/.oleafly-keys/oleafly-updater.key.pub  (public, already in the repo)
 
 Add the private key to the repo's **GitHub Actions secrets** so the release
 workflow can sign. From a machine with `gh` authenticated to the repo:
 
 ```sh
 # The private key contents (this file is the whole secret):
-gh secret set TAURI_SIGNING_PRIVATE_KEY < ~/.openleaf-keys/openleaf-updater.key
+gh secret set TAURI_SIGNING_PRIVATE_KEY < ~/.oleafly-keys/oleafly-updater.key
 
 # The key was generated WITHOUT a password, so set the password secret to empty:
 printf '' | gh secret set TAURI_SIGNING_PRIVATE_KEY_PASSWORD

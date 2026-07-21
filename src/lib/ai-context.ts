@@ -1,7 +1,7 @@
 // Injected into the agent system prompt so the model starts oriented (open
 // file, compile status, compact project map) instead of burning the first
 // tool steps on discovery.
-import { activeContextProvider } from "@openleaf/registry";
+import { activeContextProvider } from "@oleafly/registry";
 import { useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
 import { useIndexStore } from "@/store/project-index";

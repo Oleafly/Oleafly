@@ -22,9 +22,9 @@ import { fileURLToPath } from "node:url";
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const templatesDir = join(repoRoot, "src-tauri", "resources", "templates");
 const fontCatalogPath = join(repoRoot, "src-tauri", "resources", "font-packs.json");
-// Shared with the app: fonts are cached under ~/.openleaf/assets/fonts/<id>/ so a
+// Shared with the app: fonts are cached under ~/.oleafly/assets/fonts/<id>/ so a
 // preview run and the running app reuse the same downloads.
-const fontCacheRoot = join(homedir(), ".openleaf", "assets", "fonts");
+const fontCacheRoot = join(homedir(), ".oleafly", "assets", "fonts");
 
 let fontCatalog = null;
 function loadFontCatalog() {
@@ -86,7 +86,7 @@ function tectonicBinary() {
 function pandocBinary() {
   const managed = join(
     homedir(),
-    ".openleaf",
+    ".oleafly",
     "bin",
     process.platform === "win32" ? "pandoc.exe" : "pandoc",
   );
@@ -140,7 +140,7 @@ async function render(id, tools) {
   const engineKind = manifest.requires?.engine ?? "tectonic";
   const mainDoc = manifest.main_doc ?? "main.tex";
 
-  const work = mkdtempSync(join(tmpdir(), `openleaf-preview-${id}-`));
+  const work = mkdtempSync(join(tmpdir(), `oleafly-preview-${id}-`));
   try {
     cpSync(dir, work, { recursive: true });
     rmSync(join(work, "template.json"), { force: true });

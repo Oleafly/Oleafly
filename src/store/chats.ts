@@ -101,7 +101,7 @@ interface ChatsState {
   byId: (chatId: string) => StoredChat | undefined;
 }
 
-const legacyKey = (pid: string) => `openleaf.chats.${pid}`;
+const legacyKey = (pid: string) => `oleafly.chats.${pid}`;
 
 const MAX_CHATS_PER_PROJECT = 50;
 const MAX_CACHED_PROJECTS = 16;
@@ -146,7 +146,7 @@ function clearLegacyLocal(pid: string) {
 
 function notifyQuota() {
   try {
-    window.dispatchEvent(new CustomEvent("openleaf:chats-quota-exceeded"));
+    window.dispatchEvent(new CustomEvent("oleafly:chats-quota-exceeded"));
   } catch {
     /* non-browser / test env */
   }

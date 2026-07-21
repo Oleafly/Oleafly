@@ -1,5 +1,5 @@
-// The pure helpers now live in the workspace packages (@openleaf/latex,
-// @openleaf/ai-core) and are re-exported here so existing `@/lib/ai-figure`
+// The pure helpers now live in the workspace packages (@oleafly/latex,
+// @oleafly/ai-core) and are re-exported here so existing `@/lib/ai-figure`
 // imports keep working. Only the stateful singletons below are truly
 // app-scoped.
 export {
@@ -7,8 +7,8 @@ export {
   slugifyFigureName,
   bytesToBase64,
   normalizeFigureCode,
-} from "@openleaf/latex";
-export { modelSupportsVision, FIGURE_SYSTEM_PROMPT } from "@openleaf/ai-core";
+} from "@oleafly/latex";
+export { modelSupportsVision, FIGURE_SYSTEM_PROMPT } from "@oleafly/ai-core";
 
 let lastPreview: { pdfBytes: Uint8Array } | null = null;
 export function setLastFigurePreview(v: { pdfBytes: Uint8Array } | null) {

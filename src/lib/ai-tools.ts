@@ -1,10 +1,10 @@
 import {
-  createOpenLeafTools as createOpenLeafToolsCore,
+  createOleaflyTools as createOleaflyToolsCore,
   createFigureTools as createFigureToolsCore,
   type AiToolsHost,
   type ProjectIndexView,
   type ConfirmFn,
-} from "@openleaf/ai-tools";
+} from "@oleafly/ai-tools";
 import {
   readFileContent,
   writeFileContent,
@@ -38,7 +38,7 @@ import {
   replaceRange as replaceRangeInEditor,
 } from "@/components/editor/cm/controller";
 
-export type { ToolApprovalRequest, ConfirmFn } from "@openleaf/ai-tools";
+export type { ToolApprovalRequest, ConfirmFn } from "@oleafly/ai-tools";
 
 const HOST: AiToolsHost = {
   getProjectId: () => useFilesStore.getState().projectId,
@@ -146,7 +146,7 @@ const HOST: AiToolsHost = {
   getAiPdfCaptureEnabled: () => {
     // Sync cache set by ChatPanel/settings; fall back to true-if-unknown only after config load.
     try {
-      const v = localStorage.getItem("openleaf:ai_pdf_capture");
+      const v = localStorage.getItem("oleafly:ai_pdf_capture");
       if (v === "0") return false;
       if (v === "1") return true;
     } catch {
@@ -175,7 +175,7 @@ export function initAiPdfCaptureFlag(): void {
     .then((c) => {
       const on = c.ai_pdf_capture !== false;
       try {
-        localStorage.setItem("openleaf:ai_pdf_capture", on ? "1" : "0");
+        localStorage.setItem("oleafly:ai_pdf_capture", on ? "1" : "0");
       } catch {
         /* ignore */
       }
@@ -202,16 +202,16 @@ if (typeof window !== "undefined") {
       ai_model: model,
     };
     await setConfig(next);
-    window.dispatchEvent(new CustomEvent("openleaf:ai-config-changed", { detail: next }));
+    window.dispatchEvent(new CustomEvent("oleafly:ai-config-changed", { detail: next }));
     return true;
   };
 }
 
-export function createOpenLeafTools(opts?: {
+export function createOleaflyTools(opts?: {
   confirm?: ConfirmFn;
   onImage?: (dataUrl: string) => void;
 }) {
-  return createOpenLeafToolsCore(HOST, opts);
+  return createOleaflyToolsCore(HOST, opts);
 }
 
 export function createFigureTools(opts?: {

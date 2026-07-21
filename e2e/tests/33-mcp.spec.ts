@@ -51,7 +51,7 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
   });
   await tauriPage.click('[aria-label="Close settings"]');
 
-  const dataDir = process.env.OPENLEAF_DATA_DIR;
+  const dataDir = process.env.OLEAFLY_DATA_DIR;
   test.skip(!dataDir, "requires the e2e data-dir override");
   const { url, token } = JSON.parse(readFileSync(join(dataDir!, "mcp.json"), "utf8")) as {
     url: string;
@@ -86,7 +86,7 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
     },
   });
   expect((init.json as { result?: { serverInfo?: { name?: string } } })?.result?.serverInfo?.name).toBe(
-    "openleaf",
+    "oleafly",
   );
   await rpc(restarted.url, token, {
     jsonrpc: "2.0",

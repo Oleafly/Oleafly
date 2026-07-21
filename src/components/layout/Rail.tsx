@@ -10,7 +10,7 @@ import {
   Sun,
 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-shell";
-import { railSections, type AppContext, type RailTabContribution } from "@openleaf/registry";
+import { railSections, type AppContext, type RailTabContribution } from "@oleafly/registry";
 import { useSettingsStore, type RailTab } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
 import { useMcpActivityStore } from "@/store/mcp-activity";

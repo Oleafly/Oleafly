@@ -23,27 +23,27 @@ packages, never the reverse.
 
 Packages are consumed **as TypeScript source** (their `main` points at
 `src/index.ts`). There is no build step, no publishing, and no version skew:
-Vite, Vitest, and `tsc` all resolve `@openleaf/*` straight to the package
+Vite, Vitest, and `tsc` all resolve `@oleafly/*` straight to the package
 sources via aliases (see [Module resolution](#module-resolution)).
 
 ## The packages
 
 | Package | What it is | Injected ports | Notable deps |
 | --- | --- | --- | --- |
-| `@openleaf/latex` | Pure LaTeX/figure logic: the diagram model, TikZ serializer (`modelToTikz`, embedded-model round-trip), standalone-doc builder (`buildStandaloneDoc`), figure name/byte helpers | none (pure) | none |
-| `@openleaf/ai-core` | AI provider catalog and resolution (`resolveActiveModel`, `hasConfiguredProvider`), vision-capability detection, the figure system prompt | none (pure) | `ai`, `@ai-sdk/*` |
-| `@openleaf/registry` | The contribution registry: rail tabs, palette/omnibar commands, AI toolsets ([details below](#the-contribution-registry)) | none (contributions carry their own behavior) | react (types) |
-| `@openleaf/preflight` | The preflight engine: document typing, source/PDF/reference rules, ATS parsing, accessible-export prep, scoring. `pdf-extract` ships as the `@openleaf/preflight/pdf-extract` subpath so pdf.js stays out of node test graphs | none (pure) | `pdfjs-dist` (subpath only) |
-| `@openleaf/editor` | The CodeMirror LaTeX core: `CodeMirrorEditor`, the editor-view controller (`insertAtCursor`, `gotoLine`, …), language + completions, theme, folding, linters, latex-mask, math preview, search panel, spelling/grammar linters | `EditorHost` (document model + settings, hook-shaped), `SpellHost` (spellchecker/Harper/dictionary), `setBibKeysProvider`, `extraExtensions`/`extraKeymap` | `@codemirror/*`, `@replit/codemirror-vim`, `katex` |
-| `@openleaf/preview` | The virtualized pdf.js viewer (`PdfViewer`), the SyncTeX page controller (`gotoRect`, `pageClickToBp`), the pdf.js worker, and the WebView polyfills (`@openleaf/preview/polyfills`, imported first in `main.tsx`) | `onOpenLink` prop (system-browser links), `setPdfLogger` | `pdfjs-dist` |
-| `@openleaf/diagram` | The visual diagram composer: React Flow canvas, shape inspector, Draw/Code tabs, compile-preview-insert flow | `DiagramHost` (compile, file IO, editor insert, AI fix), `DiagramKit` context (Button/Tooltip/Select/toast/theme) | `@xyflow/react`, `@codemirror/*`, `@openleaf/latex` |
-| `@openleaf/ai-tools` | The AI agent toolsets: project tools (read/write/compile/search/`project_map`, approval-gated edits) and figure-studio tools (`preview_figure`, `insert_figure`) | `AiToolsHost` (files, compile, symbol index, figure pipeline, editor) | `ai`, `@openleaf/latex` |
-| `@openleaf/templates` | The new-project template gallery (two-step wizard, categories, previews, one-time asset downloads with progress) | `TemplatesHost` (previews, asset downloads, logging), `TemplatesKit` (Button/Tooltip), color options as props | none beyond UI utils |
+| `@oleafly/latex` | Pure LaTeX/figure logic: the diagram model, TikZ serializer (`modelToTikz`, embedded-model round-trip), standalone-doc builder (`buildStandaloneDoc`), figure name/byte helpers | none (pure) | none |
+| `@oleafly/ai-core` | AI provider catalog and resolution (`resolveActiveModel`, `hasConfiguredProvider`), vision-capability detection, the figure system prompt | none (pure) | `ai`, `@ai-sdk/*` |
+| `@oleafly/registry` | The contribution registry: rail tabs, palette/omnibar commands, AI toolsets ([details below](#the-contribution-registry)) | none (contributions carry their own behavior) | react (types) |
+| `@oleafly/preflight` | The preflight engine: document typing, source/PDF/reference rules, ATS parsing, accessible-export prep, scoring. `pdf-extract` ships as the `@oleafly/preflight/pdf-extract` subpath so pdf.js stays out of node test graphs | none (pure) | `pdfjs-dist` (subpath only) |
+| `@oleafly/editor` | The CodeMirror LaTeX core: `CodeMirrorEditor`, the editor-view controller (`insertAtCursor`, `gotoLine`, …), language + completions, theme, folding, linters, latex-mask, math preview, search panel, spelling/grammar linters | `EditorHost` (document model + settings, hook-shaped), `SpellHost` (spellchecker/Harper/dictionary), `setBibKeysProvider`, `extraExtensions`/`extraKeymap` | `@codemirror/*`, `@replit/codemirror-vim`, `katex` |
+| `@oleafly/preview` | The virtualized pdf.js viewer (`PdfViewer`), the SyncTeX page controller (`gotoRect`, `pageClickToBp`), the pdf.js worker, and the WebView polyfills (`@oleafly/preview/polyfills`, imported first in `main.tsx`) | `onOpenLink` prop (system-browser links), `setPdfLogger` | `pdfjs-dist` |
+| `@oleafly/diagram` | The visual diagram composer: React Flow canvas, shape inspector, Draw/Code tabs, compile-preview-insert flow | `DiagramHost` (compile, file IO, editor insert, AI fix), `DiagramKit` context (Button/Tooltip/Select/toast/theme) | `@xyflow/react`, `@codemirror/*`, `@oleafly/latex` |
+| `@oleafly/ai-tools` | The AI agent toolsets: project tools (read/write/compile/search/`project_map`, approval-gated edits) and figure-studio tools (`preview_figure`, `insert_figure`) | `AiToolsHost` (files, compile, symbol index, figure pipeline, editor) | `ai`, `@oleafly/latex` |
+| `@oleafly/templates` | The new-project template gallery (two-step wizard, categories, previews, one-time asset downloads with progress) | `TemplatesHost` (previews, asset downloads, logging), `TemplatesKit` (Button/Tooltip), color options as props | none beyond UI utils |
 
 Dependency direction, strictly enforced:
 
 ```
-app (src/)  ──▶  @openleaf/*  ──▶  @openleaf/latex, @openleaf/ai-core (leaves)
+app (src/)  ──▶  @oleafly/*  ──▶  @oleafly/latex, @oleafly/ai-core (leaves)
 ```
 
 A package must never import from `src/` (`@/…`), a Zustand store, `@tauri-apps/*`,
@@ -70,12 +70,12 @@ const HOST: AiToolsHost = {
   insertAtCursor,                        // editor controller
   // ...
 };
-export const createOpenLeafTools = (opts?) => createOpenLeafToolsCore(HOST, opts);
+export const createOleaflyTools = (opts?) => createOleaflyToolsCore(HOST, opts);
 ```
 
 Keeping app-only concerns inside the adapter also keeps dependencies out of
 packages: the AI-SDK `generateText` call for the diagram "Fix with AI" lives
-in the app adapter, so `@openleaf/diagram` has no `ai` dependency.
+in the app adapter, so `@oleafly/diagram` has no `ai` dependency.
 
 **UI kits**: a React context (or prop) of structurally-typed components:
 `Button: ComponentType<{ variant?: …; onClick?: () => void }>`. The app passes
@@ -99,12 +99,12 @@ wraps) the package, so consumers and existing `vi.mock(...)` paths never
 churned. Examples: `src/components/editor/cm/controller.ts` (re-export),
 `src/components/pdf/PdfViewer.tsx` (wrapper injecting the shell-plugin link
 opener), `src/lib/ai-tools.ts` (adapter + original factory signatures). New
-code may import `@openleaf/*` directly; shims exist for compatibility, not as
+code may import `@oleafly/*` directly; shims exist for compatibility, not as
 the preferred path.
 
 ## The contribution registry
 
-`@openleaf/registry` is how features plug into the app shell without the shell
+`@oleafly/registry` is how features plug into the app shell without the shell
 knowing them. Three contribution kinds:
 
 - **Rail tabs** (`registerRailTab`): icon, section (`explore` / `review` /
@@ -152,9 +152,9 @@ formats, settings schemas, and project-kind behaviors as contributions.
 Because packages are consumed as source, the same alias is declared in three
 places, and all three must stay in sync when a package is added:
 
-1. `tsconfig.json` → `compilerOptions.paths` (`"@openleaf/x": ["./packages/x/src/index.ts"]`;
-   subpaths like `@openleaf/preflight/pdf-extract` need their own explicit entry).
-2. `vite.config.ts` → `resolve.alias` (`"@openleaf/x": …/packages/x/src`; string
+1. `tsconfig.json` → `compilerOptions.paths` (`"@oleafly/x": ["./packages/x/src/index.ts"]`;
+   subpaths like `@oleafly/preflight/pdf-extract` need their own explicit entry).
+2. `vite.config.ts` → `resolve.alias` (`"@oleafly/x": …/packages/x/src`; string
    aliases prefix-match, so subpaths resolve for free).
 3. `vitest.config.ts` → the same `resolve.alias`, **plus** `test.include` must
    cover `packages/**/*.test.ts`. Otherwise moved tests silently drop out of

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { registry, registerContextProvider, activeContextProvider } from "@openleaf/registry";
+import { registry, registerContextProvider, activeContextProvider } from "@oleafly/registry";
 
 const ctx = { projectId: "p", projectKind: "tex", theme: "light" as const };
 beforeEach(() => { registry.contextProviders.length = 0; });

@@ -7,7 +7,7 @@ if ($hostTriple -ne "x86_64-pc-windows-msvc") {
 }
 
 $binDir = Join-Path $root "src-tauri\binaries"
-$cacheDir = if ($env:OPENLEAF_SIDECAR_CACHE_DIR) { $env:OPENLEAF_SIDECAR_CACHE_DIR } else { Join-Path $root "src-tauri\target\e2e-sidecars" }
+$cacheDir = if ($env:OLEAFLY_SIDECAR_CACHE_DIR) { $env:OLEAFLY_SIDECAR_CACHE_DIR } else { Join-Path $root "src-tauri\target\e2e-sidecars" }
 New-Item -ItemType Directory -Force -Path $binDir | Out-Null
 New-Item -ItemType Directory -Force -Path $cacheDir | Out-Null
 
@@ -19,7 +19,7 @@ function Test-Version($path, $version) {
 
 function Install-Sidecar($name, $version, $asset, $sha256, $member, $url) {
   $out = Join-Path $binDir "$name-$hostTriple.exe"
-  $temp = Join-Path ([System.IO.Path]::GetTempPath()) "openleaf-sidecar-$([System.Guid]::NewGuid().ToString('N'))"
+  $temp = Join-Path ([System.IO.Path]::GetTempPath()) "oleafly-sidecar-$([System.Guid]::NewGuid().ToString('N'))"
   New-Item -ItemType Directory -Path $temp | Out-Null
   try {
     $archive = Join-Path $cacheDir $asset

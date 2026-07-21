@@ -5,7 +5,7 @@ import {
   type PdfViewerHandle,
   type PdfViewerProps,
   type PdfLayout,
-} from "@openleaf/preview";
+} from "@oleafly/preview";
 // Ensure the package's SyncTeX diagnostics logger is installed.
 import "@/components/pdf/pdfController";
 

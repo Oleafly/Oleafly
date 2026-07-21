@@ -25,7 +25,7 @@ import {
 import { useFilesStore } from "@/store/files";
 import { getConfig, setConfig, gitLog, gitAutoCommit, type AppConfig } from "@/lib/tauri";
 import { listOllamaModels } from "@/lib/ollama";
-import { registry } from "@openleaf/registry";
+import { registry } from "@oleafly/registry";
 import type { ToolApprovalRequest } from "@/lib/ai-tools";
 import { FIGURE_SYSTEM_PROMPT, modelSupportsVision, setFigureInsertTarget } from "@/lib/ai-figure";
 import { canUseFigureMode } from "@/lib/document-engine";
@@ -246,8 +246,8 @@ export function ChatCore() {
   // Surface a one-time warning if chat history can no longer be saved (quota).
   useEffect(() => {
     const onQuota = () => setQuotaWarning(true);
-    window.addEventListener("openleaf:chats-quota-exceeded", onQuota);
-    return () => window.removeEventListener("openleaf:chats-quota-exceeded", onQuota);
+    window.addEventListener("oleafly:chats-quota-exceeded", onQuota);
+    return () => window.removeEventListener("oleafly:chats-quota-exceeded", onQuota);
   }, []);
 
   // Open figure mode when requested from elsewhere (omnibar / command palette).
@@ -292,8 +292,8 @@ export function ChatCore() {
       setFigureMode(true);
       setInput(detail?.text ? `Draw a figure for this: ${detail.text}` : "Draw a figure: ");
     };
-    window.addEventListener("openleaf:figure-from-selection", onFromSelection);
-    return () => window.removeEventListener("openleaf:figure-from-selection", onFromSelection);
+    window.addEventListener("oleafly:figure-from-selection", onFromSelection);
+    return () => window.removeEventListener("oleafly:figure-from-selection", onFromSelection);
   }, []);
 
   useEffect(() => {
@@ -333,8 +333,8 @@ export function ChatCore() {
     load();
     // Re-read when AI settings change elsewhere (e.g. connected in Settings),
     // so the panel updates live without a remount.
-    window.addEventListener("openleaf:ai-config-changed", load);
-    return () => window.removeEventListener("openleaf:ai-config-changed", load);
+    window.addEventListener("oleafly:ai-config-changed", load);
+    return () => window.removeEventListener("oleafly:ai-config-changed", load);
   }, []);
 
   useEffect(() => {

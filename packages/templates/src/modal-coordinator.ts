@@ -53,6 +53,6 @@ export class ModalCoordinator {
   }
 }
 
-const key = Symbol.for("openleaf.modal-coordinator");
+const key = Symbol.for("oleafly.modal-coordinator");
 const shared = globalThis as typeof globalThis & { [key]?: ModalCoordinator };
 export const modalCoordinator = shared[key] ??= new ModalCoordinator();

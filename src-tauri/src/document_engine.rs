@@ -573,7 +573,7 @@ fn discover_bibliographies(project_dir: &Path) -> Result<Vec<String>, String> {
             }
             let path = entry.path();
             if file_type.is_dir() {
-                if entry.file_name() != ".openleaf" {
+                if entry.file_name() != ".oleafly" {
                     walk(root, &path, depth + 1, output)?;
                 }
             } else if file_type.is_file()
@@ -1521,7 +1521,7 @@ mod tests {
     #[tokio::test]
     async fn timeout_terminates_grandchild_process_group() {
         let root = std::env::temp_dir().join(format!(
-            "openleaf-process-tree-{}-{}",
+            "oleafly-process-tree-{}-{}",
             std::process::id(),
             rand::random::<u64>()
         ));
@@ -1551,7 +1551,7 @@ mod tests {
     #[tokio::test]
     async fn timeout_terminates_windows_grandchild_tree() {
         let root = std::env::temp_dir().join(format!(
-            "openleaf-process-tree-{}-{}",
+            "oleafly-process-tree-{}-{}",
             std::process::id(),
             rand::random::<u64>()
         ));
@@ -1639,17 +1639,17 @@ mod tests {
         assert_eq!(
             spec.input,
             EngineInput::Generated {
-                path: PathBuf::from("/build/_openleaf_entry.tex"),
+                path: PathBuf::from("/build/_oleafly_entry.tex"),
                 content: "\\ifdefined\\pdfglyphtounicode\\else\\def\\pdfglyphtounicode#1#2{}\\fi\n\\ifdefined\\pdfgentounicode\\else\\newcount\\pdfgentounicode\\fi\n\\input{\\detokenize{main.tex}}\n".into(),
             }
         );
         assert_eq!(
             spec.artifacts.pdf,
-            Some(PathBuf::from("/build/_openleaf_entry.pdf"))
+            Some(PathBuf::from("/build/_oleafly_entry.pdf"))
         );
         assert_eq!(
             spec.artifacts.log,
-            Some(PathBuf::from("/build/_openleaf_entry.log"))
+            Some(PathBuf::from("/build/_oleafly_entry.log"))
         );
         assert_eq!(
             spec.args,
@@ -1664,7 +1664,7 @@ mod tests {
                 "/build",
                 "-Z",
                 "search-path=/project",
-                "/build/_openleaf_entry.tex"
+                "/build/_oleafly_entry.tex"
             ]
         );
         assert_eq!(
@@ -1748,7 +1748,7 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::temp_dir().join(format!("openleaf-artifact-test-{unique}"));
+        let dir = std::env::temp_dir().join(format!("oleafly-artifact-test-{unique}"));
         std::fs::create_dir_all(&dir).unwrap();
         let artifacts = EngineArtifacts {
             output_dir: dir.clone(),
@@ -1777,7 +1777,7 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let path = std::env::temp_dir().join(format!("openleaf-retained-test-{unique}.pdf"));
+        let path = std::env::temp_dir().join(format!("oleafly-retained-test-{unique}.pdf"));
         std::fs::write(&path, b"old").unwrap();
         let retained = vec![RetainedArtifact {
             path: path.clone(),
@@ -1897,7 +1897,7 @@ mod tests {
         );
         assert_eq!(
             spec.artifacts.pdf,
-            Some(PathBuf::from("/build/_openleaf_entry.pdf"))
+            Some(PathBuf::from("/build/_oleafly_entry.pdf"))
         );
         assert_eq!(spec.artifacts.log, None);
         assert_eq!(spec.working_dir, PathBuf::from("/project"));
@@ -1909,7 +1909,7 @@ mod tests {
                 "never",
                 "compile",
                 "/project/chapters/main.typ",
-                "/build/_openleaf_entry.pdf",
+                "/build/_oleafly_entry.pdf",
                 "--root",
                 "/project",
                 "--diagnostic-format",
@@ -1989,7 +1989,7 @@ mod tests {
         );
         assert_eq!(
             spec.artifacts.pdf,
-            Some(PathBuf::from("/build/_openleaf_entry.pdf"))
+            Some(PathBuf::from("/build/_oleafly_entry.pdf"))
         );
         assert_eq!(spec.artifacts.log, None);
         assert_eq!(
@@ -1999,7 +1999,7 @@ mod tests {
                 "--standalone",
                 "--resource-path=/project",
                 "--pdf-engine=/app/tectonic",
-                "--output=/build/_openleaf_entry.pdf",
+                "--output=/build/_oleafly_entry.pdf",
                 "--",
                 "/project/chapters/main.md",
             ]
@@ -2008,7 +2008,7 @@ mod tests {
 
     #[test]
     fn markdown_compile_enables_citeproc_for_safe_project_bibliography() {
-        let dir = std::env::temp_dir().join(format!("openleaf-md-cites-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("oleafly-md-cites-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(dir.join("main.md"), "See [@demo].").unwrap();
@@ -2065,7 +2065,7 @@ mod tests {
     fn packaged_tectonic_candidates_cover_tauri_and_cargo_layouts() {
         let candidates = tectonic_sidecar_candidates(
             Some(Path::new(
-                "/Applications/Oleafly.app/Contents/MacOS/openleaf",
+                "/Applications/Oleafly.app/Contents/MacOS/oleafly",
             )),
             Path::new("/src/src-tauri"),
             "tectonic",

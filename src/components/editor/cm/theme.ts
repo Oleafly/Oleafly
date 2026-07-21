@@ -1,2 +1,2 @@
-// Thin app shim: the editor theme lives in @openleaf/editor.
-export { editorTheme } from "@openleaf/editor";
+// Thin app shim: the editor theme lives in @oleafly/editor.
+export { editorTheme } from "@oleafly/editor";

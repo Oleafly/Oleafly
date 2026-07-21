@@ -50,7 +50,7 @@ import {
   type DiagramHandle,
   type DiagramPoint,
   newId,
-} from "@openleaf/latex";
+} from "@oleafly/latex";
 import { cn } from "./cn";
 
 const FLOAT_CHROME = "!rounded-lg !border !shadow-md !backdrop-blur-sm";

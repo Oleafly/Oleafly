@@ -201,7 +201,7 @@ export function GitHubSection({
 
   const createRepo = async () => {
     if (!connected) return note(false, "Connect GitHub first.");
-    const name = (repoName.trim() || projectName || projectId || "openleaf-project")
+    const name = (repoName.trim() || projectName || projectId || "oleafly-project")
       .toLowerCase()
       .replace(/[^\w.-]+/g, "-")
       .replace(/^-+|-+$/g, "");

@@ -3,7 +3,7 @@ import {
   NewProjectDialog as NewProjectDialogCore,
   type TemplatesHost,
   type TemplatesKit,
-} from "@openleaf/templates";
+} from "@oleafly/templates";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";

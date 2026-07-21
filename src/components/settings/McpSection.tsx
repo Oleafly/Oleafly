@@ -163,11 +163,11 @@ function Snippet({
 }
 
 function buildSnippets(url: string, bearer: string) {
-  const claudeCode = `claude mcp add --transport http openleaf ${url} --header "Authorization: Bearer ${bearer}"`;
+  const claudeCode = `claude mcp add --transport http oleafly ${url} --header "Authorization: Bearer ${bearer}"`;
   const claudeDesktop = JSON.stringify(
     {
       mcpServers: {
-        openleaf: {
+        oleafly: {
           command: "npx",
           args: [
             "-y",
@@ -187,7 +187,7 @@ function buildSnippets(url: string, bearer: string) {
   const cursor = JSON.stringify(
     {
       mcpServers: {
-        openleaf: {
+        oleafly: {
           url,
           headers: { Authorization: `Bearer ${bearer}` },
         },
@@ -196,7 +196,7 @@ function buildSnippets(url: string, bearer: string) {
     null,
     2,
   );
-  const grok = `[mcp_servers.openleaf]\nurl = "${url}"\nheaders = { Authorization = "Bearer ${bearer}" }`;
+  const grok = `[mcp_servers.oleafly]\nurl = "${url}"\nheaders = { Authorization = "Bearer ${bearer}" }`;
   return { claudeCode, claudeDesktop, cursor, grok };
 }
 

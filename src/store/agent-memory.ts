@@ -20,7 +20,7 @@ interface AgentMemoryState {
 }
 
 function key(pid: string) {
-  return `openleaf.agent-memory.${pid}`;
+  return `oleafly.agent-memory.${pid}`;
 }
 
 function read(pid: string): AgentMemoryNote[] {

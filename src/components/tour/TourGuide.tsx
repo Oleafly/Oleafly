@@ -9,7 +9,7 @@ import {
   type Step,
   type TooltipRenderProps,
 } from "react-joyride";
-import { modalCoordinator } from "@openleaf/templates/modal-coordinator";
+import { modalCoordinator } from "@oleafly/templates/modal-coordinator";
 import { LeafLogo } from "@/components/layout/LeafLogo";
 import { Button } from "@/components/ui/button";
 import { START_TOUR_EVENT } from "@/lib/tour";

@@ -1,5 +1,5 @@
 import { useEffect, useRef, type MouseEvent as ReactMouseEvent, type RefObject } from "react";
-import { modalCoordinator, visibleFocusable } from "@openleaf/templates/modal-coordinator";
+import { modalCoordinator, visibleFocusable } from "@oleafly/templates/modal-coordinator";
 
 export const appModalCoordinator = modalCoordinator;
 
