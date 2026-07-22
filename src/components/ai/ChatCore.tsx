@@ -25,7 +25,7 @@ import {
 import { useFilesStore } from "@/store/files";
 import { getConfig, setConfig, gitLog, gitAutoCommit, type AppConfig } from "@/lib/tauri";
 import { listOllamaModels } from "@/lib/ollama";
-import { registry } from "@oleafly/registry";
+import { registry, type AiToolsetContribution } from "@oleafly/registry";
 import type { ToolApprovalRequest } from "@/lib/ai-tools";
 import { FIGURE_SYSTEM_PROMPT, modelSupportsVision, setFigureInsertTarget } from "@/lib/ai-figure";
 import { canUseFigureMode } from "@/lib/document-engine";
@@ -102,6 +102,22 @@ const UNIVERSAL_TOOLS = ["read_file", "write_file", "replace_in_file", "create_f
 export function buildAiToolInventory(features: EngineFeature[], figure: boolean, isolated: boolean): string[] {
   if (figure) return isolated ? ["preview_figure", "insert_figure", "load_image"] : [];
   return features.includes("document_index") ? [...UNIVERSAL_TOOLS, "project_map"] : UNIVERSAL_TOOLS;
+}
+
+// Multiple toolsets can share a mode (e.g. "project-tools" and "research-tools"
+// both run in "chat"); merge every match instead of picking only the first, or
+// later contributions silently never reach the model.
+export function resolveChatTools(
+  toolsets: AiToolsetContribution[],
+  mode: string,
+  createOpts: unknown,
+): ToolSet {
+  const merged: ToolSet = {};
+  for (const t of toolsets) {
+    if (t.mode !== mode) continue;
+    Object.assign(merged, t.create(createOpts));
+  }
+  return merged;
 }
 
 export function buildToolContinuation(
@@ -956,10 +972,10 @@ ${sandboxedCustom}`;
         }
 
         const modelInstance = buildAiModel(provider, model, apiKey);
-        const toolset = registry.aiToolsets.find((t) => t.mode === (figure ? "figure" : "chat"));
-        const tools = toolset
-          ? toolset.create({ confirm, onImage: (d: string) => pendingImagesRef.current.push(d) })
-          : {};
+        const tools = resolveChatTools(registry.aiToolsets, figure ? "figure" : "chat", {
+          confirm,
+          onImage: (d: string) => pendingImagesRef.current.push(d),
+        });
         if (!documentEngine.capabilities.features.includes("document_index")) {
           delete tools.project_map;
         }
