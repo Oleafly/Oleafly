@@ -21,11 +21,18 @@ async function forceMainThreadWorker(): Promise<void> {
 
 let sharedWorker: pdfjsLib.PDFWorker | null = null;
 
-function getWorker(): pdfjsLib.PDFWorker {
+// A wedged worker subsystem never resolves `worker.promise`, so a short
+// handshake probe detects it in seconds instead of letting the first render
+// burn its full timeout.
+const WORKER_SETUP_TIMEOUT_MS = 5_000;
+
+async function getReadyWorker(): Promise<pdfjsLib.PDFWorker> {
   if (!sharedWorker) {
     sharedWorker = new pdfjsLib.PDFWorker();
   }
-  return sharedWorker;
+  const worker = sharedWorker;
+  await withTimeout(worker.promise, WORKER_SETUP_TIMEOUT_MS, "pdf worker setup");
+  return worker;
 }
 
 function resetWorker(): void {
@@ -59,7 +66,7 @@ async function rasterize(
   scale: number,
   background?: string,
 ): Promise<string> {
-  const loadingTask = pdfjsLib.getDocument({ data: bytes.slice(), worker: getWorker() });
+  const loadingTask = pdfjsLib.getDocument({ data: bytes.slice(), worker: await getReadyWorker() });
   try {
     return await withTimeout(
       (async () => {

@@ -14,6 +14,7 @@ vi.mock("pdfjs-dist", () => ({
     static create() {
       return new this();
     }
+    promise = Promise.resolve(undefined);
     destroy = mocks.destroyWorker;
   },
 }));
