@@ -284,7 +284,13 @@ export function Library() {
     const rasterizeLatest = async () => {
       const { pdfPageToPng } = await import("@/lib/pdf-image");
       const buf = await readCompiledPdf(id);
-      return pdfPageToPng(new Uint8Array(buf), 1, 1.2, "#ffffff");
+      // A hover preview is low-stakes: the full worker retry/fallback chain
+      // can otherwise take 100+ seconds in the worst case, which just leaves
+      // the hover stuck looking broken far longer than any hover lasts. Bound
+      // it generously enough for the retry+fallback chain to get a fair shot
+      // (two worker-setup timeouts plus the main-thread fallback), but not
+      // the full multi-stage worst case.
+      return pdfPageToPng(new Uint8Array(buf), 1, 1.2, "#ffffff", { overallTimeoutMs: 15_000 });
     };
     void rasterizeLatest()
       .then((png) => {

@@ -81,4 +81,16 @@ describe("pdfPageToPng cleanup", () => {
       expect.objectContaining({ background: "rgba(0,0,0,0)" }),
     );
   });
+
+  it("bounds a stuck render to the given overall timeout instead of hanging", async () => {
+    vi.stubGlobal("Worker", class {});
+    mocks.getDocument.mockImplementation(() => ({
+      promise: new Promise(() => {}),
+      destroy: mocks.destroyTask,
+    }));
+
+    await expect(
+      pdfPageToPng(new Uint8Array([1]), 1, 2, undefined, { overallTimeoutMs: 30 }),
+    ).rejects.toThrow(/timed out/i);
+  });
 });

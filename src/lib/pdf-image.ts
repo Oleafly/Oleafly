@@ -102,10 +102,10 @@ async function rasterize(
   }
 }
 
-export async function pdfPageToPng(
+async function pdfPageToPngChain(
   bytes: Uint8Array,
-  page = 1,
-  scale = 2,
+  page: number,
+  scale: number,
   background?: string,
 ): Promise<string> {
   try {
@@ -128,4 +128,17 @@ export async function pdfPageToPng(
       }
     }
   }
+}
+
+export async function pdfPageToPng(
+  bytes: Uint8Array,
+  page = 1,
+  scale = 2,
+  background?: string,
+  opts?: { overallTimeoutMs?: number },
+): Promise<string> {
+  const chain = pdfPageToPngChain(bytes, page, scale, background);
+  return opts?.overallTimeoutMs
+    ? withTimeout(chain, opts.overallTimeoutMs, "pdf thumbnail")
+    : chain;
 }

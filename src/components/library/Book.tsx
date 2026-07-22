@@ -152,7 +152,7 @@ export function Book({
                 </span>
               )}
               <span
-                className="line-clamp-3 text-[13px] font-semibold leading-snug"
+                className="line-clamp-3 break-words text-[13px] font-semibold leading-snug"
                 style={{ color: ink }}
               >
                 {title}
