@@ -83,6 +83,10 @@ LOG="$(mktemp /tmp/oleafly-e2e-log.XXXXXX)"
 # Export so Playwright specs can read discovery files (e.g. mcp.json) written
 # into the same throwaway data dir the app uses.
 export OLEAFLY_DATA_DIR="$DATA_DIR"
+# Hermetic remote endpoints: specs 42/44 run a local fixture server on this fixed
+# port; other specs never call the pack/deadline commands, so this is harmless.
+export OLEAFLY_PACKS_BASE_URL="${OLEAFLY_PACKS_BASE_URL:-http://127.0.0.1:38999}"
+export OLEAFLY_DEADLINES_URL="${OLEAFLY_DEADLINES_URL:-http://127.0.0.1:38999/allconf.yml}"
 
 echo "e2e: data dir $DATA_DIR"
 echo "e2e: app log  $LOG"
