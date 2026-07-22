@@ -6,6 +6,10 @@ test("dump composer state after compile", async ({ tauriPage }) => {
   test.setTimeout(180_000);
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok", {
+    timeout: 180_000,
+  });
+  await expect(tauriPage.locator(".pdf-canvas")).toBeVisible({ timeout: 120_000 });
   await tauriPage.evaluate(
     `(window.__diagErrors = [], window.addEventListener("unhandledrejection", (e) => window.__diagErrors.push("rejection: " + (e.reason?.stack || e.reason))), window.__origConsoleError = console.error, console.error = (...a) => { window.__diagErrors.push("console: " + a.map(String).join(" ")); window.__origConsoleError(...a); }, true)`,
   );
