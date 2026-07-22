@@ -216,6 +216,7 @@ export interface TemplateInfo {
   has_preview: boolean;
   assets_ready: boolean;
   order: number;
+  source: string;
 }
 
 export const listTemplates = () => invoke<TemplateInfo[]>("list_templates");
