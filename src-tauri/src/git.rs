@@ -15,6 +15,15 @@ fn run_git(root: &PathBuf, args: &[&str]) -> Result<std::process::Output, String
         .no_console()
         .args(args)
         .current_dir(root)
+        // A caller invoked from inside a git hook (e.g. this crate's own
+        // pre-commit test run) inherits GIT_DIR/GIT_INDEX_FILE/GIT_WORK_TREE
+        // from the hook's git process. Without clearing them, every `git`
+        // subprocess spawned here targets the hook's repository instead of
+        // `root`, regardless of `current_dir` - which let a test's throwaway
+        // repo operations land on the real repository during `cargo test`.
+        .env_remove("GIT_DIR")
+        .env_remove("GIT_WORK_TREE")
+        .env_remove("GIT_INDEX_FILE")
         .output()
         .map_err(|e| format!("failed to run git: {e}"))
 }
