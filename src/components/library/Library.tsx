@@ -63,6 +63,7 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { handlePickedFile } from "@/features/import";
+import { useDeadlinesStore } from "@/store/deadlines";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { useTheme } from "@/lib/theme";
@@ -412,6 +413,17 @@ export function Library() {
                   onClick={() => setNewProjectOpen(true)}
                 >
                   <Plus className="size-4" /> New project
+                </Button>
+              </Tooltip>
+              <Tooltip label="Conference deadlines with live countdowns">
+                <Button
+                  data-testid="open-deadlines"
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-foreground"
+                  onClick={() => void useDeadlinesStore.getState().openView()}
+                >
+                  <Clock3 className="size-4" /> Deadlines
                 </Button>
               </Tooltip>
               <Tooltip label="Import a PDF or Word document as LaTeX">

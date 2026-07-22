@@ -13,6 +13,7 @@ import { CommandPalette } from "@/components/layout/CommandPalette";
 import { SearchOmnibar } from "@/components/layout/SearchOmnibar";
 import { GlobalNewProject } from "@/components/library/GlobalNewProject";
 import { PdfImportView } from "@/components/import/PdfImportView";
+import { DeadlinesView } from "@/components/deadlines/DeadlinesView";
 import { Editor } from "@/components/editor/Editor";
 import { PreviewPane } from "@/components/preview/PreviewPane";
 import { Library } from "@/components/library/Library";
@@ -432,6 +433,7 @@ export default function App() {
         <SearchOmnibar />
         <GlobalNewProject />
         <PdfImportView />
+        <DeadlinesView />
         <ExternalToolApprovals />
         <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
         {chatFloating && (
@@ -515,6 +517,7 @@ export default function App() {
         <SearchOmnibar />
         <GlobalNewProject />
         <PdfImportView />
+        <DeadlinesView />
         <ExternalToolApprovals />
         <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
         {chatFloating && (

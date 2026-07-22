@@ -303,6 +303,10 @@ export const refreshPackCatalog = () => invoke<void>("refresh_pack_catalog");
 export const installTemplatePack = (id: string) =>
   invoke<void>("install_template_pack", { id });
 
+export const readDeadlines = () => invoke<string>("read_deadlines");
+
+export const refreshDeadlines = () => invoke<void>("refresh_deadlines");
+
 export const removeTemplatePack = (id: string) =>
   invoke<void>("remove_template_pack", { id });
 
