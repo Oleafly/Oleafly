@@ -3,6 +3,7 @@ mod chats;
 mod citation;
 mod commands;
 mod config;
+mod deadlines;
 mod document_engine;
 mod fsperm;
 mod git;
@@ -156,6 +157,8 @@ pub fn run() {
             template_packs::install_template_pack,
             template_packs::remove_template_pack,
             templates::save_custom_template,
+            deadlines::read_deadlines,
+            deadlines::refresh_deadlines,
             project::export_pdf,
             project::export_document,
             project::search_docs,
