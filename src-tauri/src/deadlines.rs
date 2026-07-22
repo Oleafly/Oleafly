@@ -167,17 +167,75 @@ fn bundled_seed_path(app: &tauri::AppHandle) -> Option<PathBuf> {
     }
 }
 
-/// The normalized deadlines JSON: refreshed cache if present, else the seed.
-#[tauri::command]
-pub fn read_deadlines(app: tauri::AppHandle) -> Result<String, String> {
-    if let Ok(cache) = deadlines_cache_path() {
-        if let Ok(s) = std::fs::read_to_string(&cache) {
-            return Ok(s);
+/// Bundled hand-curated venues outside the ccfddl dataset (neuroscience,
+/// physics, materials science, and venues with non-AoE timezones). Merged
+/// into every read so a dataset refresh never drops them.
+fn bundled_extra_path(app: &tauri::AppHandle) -> Option<PathBuf> {
+    if let Ok(p) = app.path().resolve(
+        "resources/deadlines-extra.json",
+        tauri::path::BaseDirectory::Resource,
+    ) {
+        if p.is_file() {
+            return Some(p);
         }
     }
-    match bundled_seed_path(&app) {
-        Some(seed) => std::fs::read_to_string(&seed).map_err(|e| e.to_string()),
-        None => Ok(r#"{"generated_at":"","venues":[]}"#.to_string()),
+    let dev = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("resources")
+        .join("deadlines-extra.json");
+    if dev.is_file() {
+        Some(dev)
+    } else {
+        None
+    }
+}
+
+pub(crate) fn merge_extra(base_json: &str, extra_json: &str) -> Result<String, String> {
+    let mut base: serde_json::Value =
+        serde_json::from_str(base_json).map_err(|e| format!("invalid deadlines json: {e}"))?;
+    let extra: serde_json::Value =
+        serde_json::from_str(extra_json).map_err(|e| format!("invalid extra deadlines: {e}"))?;
+    let extra_venues = extra["venues"].as_array().cloned().unwrap_or_default();
+    if let Some(venues) = base["venues"].as_array_mut() {
+        let seen: std::collections::HashSet<String> = venues
+            .iter()
+            .filter_map(|v| v["id"].as_str().map(String::from))
+            .collect();
+        for v in extra_venues {
+            if v["id"]
+                .as_str()
+                .map(|id| !seen.contains(id))
+                .unwrap_or(false)
+            {
+                venues.push(v);
+            }
+        }
+    }
+    serde_json::to_string(&base).map_err(|e| e.to_string())
+}
+
+/// The normalized deadlines JSON: refreshed cache if present, else the seed,
+/// always merged with the bundled extra venues.
+#[tauri::command]
+pub fn read_deadlines(app: tauri::AppHandle) -> Result<String, String> {
+    let base = (|| {
+        if let Ok(cache) = deadlines_cache_path() {
+            if let Ok(s) = std::fs::read_to_string(&cache) {
+                return s;
+            }
+        }
+        match bundled_seed_path(&app) {
+            Some(seed) => std::fs::read_to_string(&seed).unwrap_or_default(),
+            None => String::new(),
+        }
+    })();
+    let base = if base.is_empty() {
+        r#"{"generated_at":"","venues":[]}"#.to_string()
+    } else {
+        base
+    };
+    match bundled_extra_path(&app).and_then(|p| std::fs::read_to_string(p).ok()) {
+        Some(extra) => merge_extra(&base, &extra),
+        None => Ok(base),
     }
 }
 
@@ -203,12 +261,28 @@ pub async fn refresh_deadlines() -> Result<(), String> {
 }
 
 fn chrono_now() -> String {
-    // RFC3339-ish UTC stamp without a chrono dependency.
-    let now = std::time::SystemTime::now()
+    let secs = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0);
-    format!("epoch:{now}")
+    format_utc_date(secs)
+}
+
+/// "YYYY-MM-DD" from a unix timestamp, no chrono dependency
+/// (civil-from-days, Howard Hinnant's algorithm).
+pub(crate) fn format_utc_date(secs: u64) -> String {
+    let days = (secs / 86_400) as i64;
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z.rem_euclid(146_097);
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = if m <= 2 { y + 1 } else { y };
+    format!("{y:04}-{m:02}-{d:02}")
 }
 
 #[cfg(test)]
@@ -260,6 +334,25 @@ mod tests {
         assert_eq!(venues[0]["deadlines"].as_array().unwrap().len(), 2);
         assert_eq!(venues[0]["deadlines"][0]["kind"], "abstract");
         assert_eq!(v["generated_at"], "2026-07-21T00:00:00Z");
+    }
+
+    #[test]
+    fn utc_date_formatting_is_civil() {
+        assert_eq!(super::format_utc_date(0), "1970-01-01");
+        assert_eq!(super::format_utc_date(1_784_701_899), "2026-07-22");
+    }
+
+    #[test]
+    fn extra_venues_merge_without_id_collisions() {
+        let base =
+            r#"{"generated_at":"2026-07-21","venues":[{"id":"aaai27","title":"AAAI 2027"}]}"#;
+        let extra = r#"{"venues":[{"id":"sfn26","title":"SfN 2026","estimated":false},{"id":"aaai27","title":"dup"}]}"#;
+        let merged = super::merge_extra(base, extra).unwrap();
+        let v: serde_json::Value = serde_json::from_str(&merged).unwrap();
+        let venues = v["venues"].as_array().unwrap();
+        assert_eq!(venues.len(), 2);
+        assert_eq!(venues[1]["id"], "sfn26");
+        assert_eq!(v["generated_at"], "2026-07-21");
     }
 
     #[test]

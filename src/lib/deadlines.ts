@@ -14,14 +14,37 @@ export interface Venue {
   deadlines: DeadlineEntry[];
   conf_date: string;
   place: string;
+  /** Projected from a prior-year schedule; no official CFP yet. */
+  estimated?: boolean;
 }
 
-/** "yyyy-mm-dd hh:mm:ss" in a "UTC±N" / "AoE" zone to an absolute instant. */
+/** Named zones from official calls, as fixed offsets. DST-observing zones use
+ *  their summer offset when the name is the daylight variant; the help notes
+ *  tell users to verify against the official CFP either way. */
+const NAMED_ZONES: Record<string, number> = {
+  AoE: -12,
+  PST: -8,
+  PDT: -7,
+  PT: -8,
+  MST: -7,
+  MDT: -6,
+  "US Mountain": -7,
+  CST: -6,
+  CDT: -5,
+  EST: -5,
+  EDT: -4,
+  ET: -5,
+  "US Eastern": -5,
+  GMT: 0,
+  UTC: 0,
+};
+
+/** "yyyy-mm-dd hh:mm:ss" in a "UTC±N" / named zone to an absolute instant. */
 export function deadlineInstant(at: string, timezone: string): Date {
   const m = at.trim().match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})$/);
   if (!m) return new Date(Number.NaN);
   const tz = timezone.trim();
-  const offsetHours = tz === "AoE" ? -12 : Number(tz.match(/^UTC([+-]\d+)$/)?.[1] ?? 0);
+  const offsetHours = NAMED_ZONES[tz] ?? Number(tz.match(/^UTC([+-]\d+)$/)?.[1] ?? 0);
   const utc = Date.UTC(
     Number(m[1]),
     Number(m[2]) - 1,
@@ -82,4 +105,22 @@ export function sortByNextDeadline(venues: Venue[], now: Date): Venue[] {
     if (nb) return 1;
     return a.title.localeCompare(b.title);
   });
+}
+
+export type SortKey = "deadline" | "name" | "field";
+
+export function sortVenues(venues: Venue[], key: SortKey, now: Date): Venue[] {
+  if (key === "deadline") return sortByNextDeadline(venues, now);
+  if (key === "name") return [...venues].sort((a, b) => a.title.localeCompare(b.title));
+  return [...venues].sort(
+    (a, b) => a.sub.localeCompare(b.sub) || a.title.localeCompare(b.title),
+  );
+}
+
+/** Urgency bucket for countdown coloring. */
+export function urgency(target: Date, now: Date): "critical" | "soon" | "comfortable" {
+  const days = (target.getTime() - now.getTime()) / 86_400_000;
+  if (days <= 3) return "critical";
+  if (days <= 21) return "soon";
+  return "comfortable";
 }

@@ -5,6 +5,8 @@ import {
   filterVenues,
   nextDeadline,
   sortByNextDeadline,
+  sortVenues,
+  urgency,
   type Venue,
 } from "./deadlines";
 
@@ -37,6 +39,32 @@ describe("deadlineInstant", () => {
 
   it("returns NaN date for garbage", () => {
     expect(Number.isNaN(deadlineInstant("TBD", "UTC").getTime())).toBe(true);
+  });
+
+  it("understands named US zones from official calls", () => {
+    expect(deadlineInstant("2026-11-14 23:59:59", "PST").toISOString()).toBe(
+      "2026-11-15T07:59:59.000Z",
+    );
+    expect(deadlineInstant("2026-05-05 17:00:00", "US Eastern").toISOString()).toBe(
+      "2026-05-05T22:00:00.000Z",
+    );
+  });
+});
+
+describe("sortVenues and urgency", () => {
+  const now = new Date("2026-07-01T00:00:00Z");
+  const a = { id: "a", title: "ZULU 2026", sub: "SE" } as Venue;
+  const b = { id: "b", title: "ALPHA 2026", sub: "AI" } as Venue;
+
+  it("sorts by name and by field", () => {
+    expect(sortVenues([a, b], "name", now).map((v) => v.id)).toEqual(["b", "a"]);
+    expect(sortVenues([a, b], "field", now).map((v) => v.id)).toEqual(["b", "a"]);
+  });
+
+  it("buckets urgency by days remaining", () => {
+    expect(urgency(new Date("2026-07-02T00:00:00Z"), now)).toBe("critical");
+    expect(urgency(new Date("2026-07-10T00:00:00Z"), now)).toBe("soon");
+    expect(urgency(new Date("2026-09-01T00:00:00Z"), now)).toBe("comfortable");
   });
 });
 

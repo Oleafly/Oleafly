@@ -3,17 +3,14 @@ import {
   Bookmark,
   Check,
   Clock3,
-  FileInput,
   FileText,
   GitFork,
   History,
   Info,
   ListFilter,
-  Moon,
   Palette,
   Plus,
   Search,
-  Sun,
   Trash2,
   X,
 } from "lucide-react";
@@ -35,7 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SettingsMenu } from "@/components/layout/SettingsMenu";
+import { LibrarySidebar } from "@/components/library/LibrarySidebar";
 import { LeafLogo } from "@/components/layout/LeafLogo";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
@@ -63,10 +60,8 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { handlePickedFile } from "@/features/import";
-import { useDeadlinesStore } from "@/store/deadlines";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
-import { useTheme } from "@/lib/theme";
 import { cn, isMac, shortcut } from "@/lib/utils";
 import { cancelAutoCommit } from "@/lib/auto-commit";
 import {
@@ -237,7 +232,6 @@ export function Library() {
   const setNewProjectOpen = useSettingsStore((s) => s.setNewProjectOpen);
   const importInputRef = useRef<HTMLInputElement>(null);
   const hoverPreview = useSettingsStore((s) => s.hoverPreview);
-  const { theme, toggleTheme } = useTheme();
   const [forkTarget, setForkTarget] = useState<{ id: string; name: string } | null>(null);
   const [forkName, setForkName] = useState("");
   const [onlyFavs, setOnlyFavs] = useState(false);
@@ -361,7 +355,7 @@ export function Library() {
       data-testid="library"
       data-tour="home"
       data-projects-loaded={projectsLoaded ? "true" : "false"}
-      className="relative flex h-full flex-col bg-background"
+      className="relative flex h-full flex-row bg-background"
     >
       <GridPattern
         width={48}
@@ -380,6 +374,8 @@ export function Library() {
           if (f) void handlePickedFile(f);
         }}
       />
+      <LibrarySidebar importInputRef={importInputRef} />
+      <div className="flex min-w-0 flex-1 flex-col">
       <header
         data-tauri-drag-region
         className={cn(
@@ -393,50 +389,11 @@ export function Library() {
           data-tour="home-brand"
           className="flex items-center justify-center gap-1.5"
         >
-          {projects.length > 0 && (
-            <>
-              <LeafLogo className="size-5" />
-              <span className="text-sm font-semibold tracking-tight">Oleafly</span>
-            </>
-          )}
+
         </div>
         <div data-tauri-drag-region className="flex items-center justify-end gap-1.5">
           {projects.length > 0 && (
             <>
-              <Tooltip label="New project">
-                <Button
-                  data-testid="new-project"
-                  data-tour="new-project"
-                  variant="ghost"
-                  size="sm"
-                  className="text-muted-foreground hover:text-foreground"
-                  onClick={() => setNewProjectOpen(true)}
-                >
-                  <Plus className="size-4" /> New project
-                </Button>
-              </Tooltip>
-              <Tooltip label="Conference deadlines with live countdowns">
-                <Button
-                  data-testid="open-deadlines"
-                  variant="ghost"
-                  size="sm"
-                  className="text-muted-foreground hover:text-foreground"
-                  onClick={() => void useDeadlinesStore.getState().openView()}
-                >
-                  <Clock3 className="size-4" /> Deadlines
-                </Button>
-              </Tooltip>
-              <Tooltip label="Import a PDF or Word document as LaTeX">
-                <Button
-                  data-testid="import-pdf"
-                  variant="ghost"
-                  size="sm"
-                  className="text-muted-foreground hover:text-foreground"
-                  onClick={() => importInputRef.current?.click()}
-                >
-                  <FileInput className="size-4" /> PDF to ...
-                </Button>
-              </Tooltip>
               <Tooltip label={`Search documents (${shortcut("⌘⇧F")})`}>
                 <Button
                   variant="ghost"
@@ -615,20 +572,6 @@ export function Library() {
               </Tooltip>
             </>
           )}
-          <Tooltip label="Settings">
-            <SettingsMenu />
-          </Tooltip>
-          <Tooltip label={theme === "dark" ? "Light theme" : "Dark theme"}>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-muted-foreground hover:text-foreground"
-              onClick={toggleTheme}
-              aria-label="Toggle theme"
-            >
-              {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
-            </Button>
-          </Tooltip>
         </div>
       </header>
 
@@ -755,6 +698,7 @@ export function Library() {
           )
           )}
         </div>
+      </div>
       </div>
 
       {/* New Project gallery is mounted globally (GlobalNewProject), not here. */}

@@ -1,0 +1,186 @@
+{
+  "note": "Hand-curated venues outside the ccfddl dataset. estimated=true entries are projected from prior-year schedules; verify against the official call. Curated 2026-07-22 from official CFP pages (neurips.cc, corl.org, sfn.org, ccneuro.org, cosyne.org, humanbrainmapping.org, acm-stoc.org, spie.org, summit.aps.org, mrs.org) cross-checked with community deadline hubs.",
+  "venues": [
+    {
+      "id": "spie-pw27",
+      "title": "SPIE Photonics West 2027",
+      "full_name": "SPIE Photonics West",
+      "sub": "PHYS",
+      "rank": "",
+      "link": "https://spie.org/conferences-and-exhibitions/photonics-west",
+      "timezone": "PT",
+      "deadlines": [{ "kind": "abstract", "at": "2026-07-22 23:59:59" }],
+      "conf_date": "Jan 30 - Feb 4, 2027",
+      "place": "San Francisco, CA, USA",
+      "estimated": false
+    },
+    {
+      "id": "wacv27-r2",
+      "title": "WACV 2027",
+      "full_name": "IEEE/CVF Winter Conference on Applications of Computer Vision (Round 2)",
+      "sub": "CV",
+      "rank": "",
+      "link": "https://wacv.thecvf.com/Conferences/2027/Dates",
+      "timezone": "AoE",
+      "deadlines": [
+        { "kind": "abstract", "at": "2026-08-21 23:59:59" },
+        { "kind": "paper", "at": "2026-08-28 23:59:59" }
+      ],
+      "conf_date": "Early 2027",
+      "place": "TBA",
+      "estimated": false
+    },
+    {
+      "id": "sfn26",
+      "title": "SfN Neuroscience 2026",
+      "full_name": "Society for Neuroscience Annual Meeting (late-breaking abstracts)",
+      "sub": "NEURO",
+      "rank": "",
+      "link": "https://www.sfn.org/meetings/neuroscience-2026/call-for-abstracts",
+      "timezone": "US Eastern",
+      "deadlines": [{ "kind": "abstract", "at": "2026-09-15 17:00:00" }],
+      "conf_date": "Fall 2026",
+      "place": "TBA",
+      "estimated": false
+    },
+    {
+      "id": "cosyne27",
+      "title": "Cosyne 2027",
+      "full_name": "Computational and Systems Neuroscience",
+      "sub": "NEURO",
+      "rank": "",
+      "link": "https://www.cosyne.org",
+      "timezone": "UTC",
+      "deadlines": [{ "kind": "abstract", "at": "2026-10-15 23:59:59" }],
+      "conf_date": "Feb - Mar 2027",
+      "place": "TBA",
+      "estimated": true
+    },
+    {
+      "id": "aps-summit27",
+      "title": "APS Global Physics Summit 2027",
+      "full_name": "American Physical Society Global Physics Summit (contributed abstracts)",
+      "sub": "PHYS",
+      "rank": "",
+      "link": "https://summit.aps.org/attend/abstracts/contributed/",
+      "timezone": "US Eastern",
+      "deadlines": [{ "kind": "abstract", "at": "2026-10-31 23:59:59" }],
+      "conf_date": "March 2027",
+      "place": "TBA",
+      "estimated": true
+    },
+    {
+      "id": "mrs-spring27",
+      "title": "MRS Spring Meeting 2027",
+      "full_name": "Materials Research Society Spring Meeting",
+      "sub": "MAT",
+      "rank": "",
+      "link": "https://www.mrs.org/meetings-events/annual-meetings",
+      "timezone": "US Eastern",
+      "deadlines": [{ "kind": "abstract", "at": "2026-10-31 23:59:59" }],
+      "conf_date": "April 2027",
+      "place": "TBA",
+      "estimated": true
+    },
+    {
+      "id": "stoc27",
+      "title": "STOC 2027",
+      "full_name": "ACM Symposium on Theory of Computing",
+      "sub": "CT",
+      "rank": "CCF-A",
+      "link": "https://acm-stoc.org",
+      "timezone": "PST",
+      "deadlines": [{ "kind": "paper", "at": "2026-11-03 16:59:59" }],
+      "conf_date": "June 2027",
+      "place": "TBA",
+      "estimated": true
+    },
+    {
+      "id": "cvpr27-est",
+      "title": "CVPR 2027",
+      "full_name": "IEEE/CVF Conference on Computer Vision and Pattern Recognition",
+      "sub": "CV",
+      "rank": "A*",
+      "link": "https://cvpr.thecvf.com",
+      "timezone": "AoE",
+      "deadlines": [
+        { "kind": "abstract", "at": "2026-11-06 23:59:59" },
+        { "kind": "paper", "at": "2026-11-13 23:59:59" }
+      ],
+      "conf_date": "June 2027",
+      "place": "TBA",
+      "estimated": true
+    },
+    {
+      "id": "ohbm27",
+      "title": "OHBM 2027",
+      "full_name": "Organization for Human Brain Mapping Annual Meeting",
+      "sub": "NEURO",
+      "rank": "",
+      "link": "https://www.humanbrainmapping.org/ohbm-2027/",
+      "timezone": "UTC",
+      "deadlines": [{ "kind": "abstract", "at": "2027-01-31 23:59:59" }],
+      "conf_date": "June 26-30, 2027",
+      "place": "TBA",
+      "estimated": true
+    },
+    {
+      "id": "ccn27",
+      "title": "CCN 2027",
+      "full_name": "Cognitive Computational Neuroscience",
+      "sub": "NEURO",
+      "rank": "",
+      "link": "https://ccneuro.org",
+      "timezone": "AoE",
+      "deadlines": [
+        { "kind": "abstract", "at": "2027-02-09 23:59:59" },
+        { "kind": "paper", "at": "2027-02-12 23:59:59" }
+      ],
+      "conf_date": "August 2027",
+      "place": "TBA",
+      "estimated": true
+    },
+    {
+      "id": "neurips27",
+      "title": "NeurIPS 2027",
+      "full_name": "Conference on Neural Information Processing Systems",
+      "sub": "AI",
+      "rank": "A*",
+      "link": "https://neurips.cc",
+      "timezone": "AoE",
+      "deadlines": [
+        { "kind": "abstract", "at": "2027-05-03 23:59:59" },
+        { "kind": "paper", "at": "2027-05-05 23:59:59" }
+      ],
+      "conf_date": "December 2027",
+      "place": "TBA",
+      "estimated": true
+    },
+    {
+      "id": "corl27",
+      "title": "CoRL 2027",
+      "full_name": "Conference on Robot Learning",
+      "sub": "RO",
+      "rank": "",
+      "link": "https://www.corl.org",
+      "timezone": "AoE",
+      "deadlines": [{ "kind": "paper", "at": "2027-05-27 23:59:59" }],
+      "conf_date": "November 2027",
+      "place": "TBA",
+      "estimated": true
+    },
+    {
+      "id": "mrs-fall27",
+      "title": "MRS Fall Meeting 2027",
+      "full_name": "Materials Research Society Fall Meeting",
+      "sub": "MAT",
+      "rank": "",
+      "link": "https://www.mrs.org/meetings-events/annual-meetings",
+      "timezone": "US Eastern",
+      "deadlines": [{ "kind": "abstract", "at": "2027-05-31 23:59:59" }],
+      "conf_date": "November 2027",
+      "place": "TBA",
+      "estimated": true
+    }
+  ]
+}
