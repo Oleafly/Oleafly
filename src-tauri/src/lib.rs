@@ -3,6 +3,7 @@ mod chats;
 mod citation;
 mod commands;
 mod config;
+mod connectors;
 mod deadlines;
 mod document_engine;
 mod fsperm;
@@ -132,6 +133,8 @@ pub fn run() {
             citation::fetch_doi_bibtex,
             citation::fetch_arxiv,
             citation::crossref_search,
+            connectors::get_connector_key,
+            connectors::set_connector_key,
             project::set_main_doc,
             project::set_project_color,
             project::rename_project,

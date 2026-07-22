@@ -389,6 +389,31 @@ pub fn write_ai_secrets(values: &HashMap<String, String>) -> Result<(), String> 
     write_secret_map_at(&data, &secret_key_path()?, values)
 }
 
+fn connector_secrets_path() -> Result<std::path::PathBuf, String> {
+    Ok(crate::paths::oleafly_root()?.join("connector-secrets.json"))
+}
+
+/// Per-connector API keys for the research copilot (alphaXiv, etc.), keyed by
+/// connector id. Separate file from `ai-secrets.json` (AI provider keys) so
+/// the two credential namespaces never collide on key names.
+pub fn read_connector_secrets() -> Result<HashMap<String, String>, String> {
+    let data = connector_secrets_path()?;
+    let parent = data
+        .parent()
+        .ok_or_else(|| "secret path has no parent directory".to_string())?;
+    let _lock = lock_secrets(parent)?;
+    read_secret_map_at(&data, &secret_key_path()?)
+}
+
+pub fn write_connector_secrets(values: &HashMap<String, String>) -> Result<(), String> {
+    let data = connector_secrets_path()?;
+    let parent = data
+        .parent()
+        .ok_or_else(|| "secret path has no parent directory".to_string())?;
+    let _lock = lock_secrets(parent)?;
+    write_secret_map_at(&data, &secret_key_path()?, values)
+}
+
 pub fn resolve_secret(account: &str, config_value: &str) -> Result<String, String> {
     if let Some(s) = get_secret(account)? {
         return Ok(s);
@@ -461,6 +486,25 @@ mod tests {
         let back = read_secret_map_at(&data, &key).unwrap();
         assert_eq!(back.get(github_token_account()).unwrap(), "ghp_secrettoken");
         assert_eq!(back.get(mcp_token_account()).unwrap(), "mcp-bearer-secret");
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn connector_secrets_round_trip() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let dir = std::env::temp_dir().join(format!(
+            "oleafly-connector-secrets-{}-{}",
+            std::process::id(),
+            generate_mcp_token()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", &dir);
+        let mut values = HashMap::new();
+        values.insert("alphaxiv".to_string(), "test-key-123".to_string());
+        write_connector_secrets(&values).unwrap();
+        let back = read_connector_secrets().unwrap();
+        assert_eq!(back.get("alphaxiv").unwrap(), "test-key-123");
+        std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(dir).ok();
     }
 

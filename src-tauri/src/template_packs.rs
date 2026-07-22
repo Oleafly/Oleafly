@@ -324,6 +324,7 @@ mod tests {
 
     #[test]
     fn pack_install_dir_guards_ids() {
+        let _env_guard = crate::paths::data_dir_env_lock();
         assert!(super::pack_install_dir("../evil").is_err());
         std::env::set_var(
             "OLEAFLY_DATA_DIR",
