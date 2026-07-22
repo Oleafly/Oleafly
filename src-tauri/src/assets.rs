@@ -69,14 +69,14 @@ pub struct Prerequisite {
 
 /// Streamed to the webview as each file downloads.
 #[derive(Serialize, Clone)]
-struct AssetProgress {
-    component: String,
-    label: String,
-    file: String,
-    index: usize,
-    total: usize,
-    received: u64,
-    file_total: Option<u64>,
+pub(crate) struct AssetProgress {
+    pub(crate) component: String,
+    pub(crate) label: String,
+    pub(crate) file: String,
+    pub(crate) index: usize,
+    pub(crate) total: usize,
+    pub(crate) received: u64,
+    pub(crate) file_total: Option<u64>,
 }
 
 fn is_valid_id(id: &str) -> bool {
