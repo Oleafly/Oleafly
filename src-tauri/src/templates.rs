@@ -107,6 +107,8 @@ pub struct TemplateInfo {
     pub has_preview: bool,
     pub assets_ready: bool,
     pub order: i64,
+    /// "bundled" | "pack" | "custom"
+    pub source: String,
 }
 
 fn is_valid_id(id: &str) -> bool {
@@ -141,16 +143,44 @@ fn repo_templates_dir() -> PathBuf {
         .join("templates")
 }
 
-/// A single template's directory, guarding the id so it can't escape the root.
+/// All template roots in precedence order: bundled, then downloaded pack dirs,
+/// then user-made custom templates. First id wins on collision.
+pub fn template_roots(app: &AppHandle) -> Vec<(PathBuf, &'static str)> {
+    let mut roots: Vec<(PathBuf, &'static str)> = Vec::new();
+    if let Ok(bundled) = templates_root(app) {
+        roots.push((bundled, "bundled"));
+    }
+    if let Ok(data) = crate::paths::templates_data_root() {
+        let packs = data.join("packs");
+        if let Ok(entries) = std::fs::read_dir(&packs) {
+            let mut dirs: Vec<PathBuf> = entries
+                .flatten()
+                .filter(|e| e.file_type().map(|t| t.is_dir()).unwrap_or(false))
+                .map(|e| e.path())
+                .collect();
+            dirs.sort();
+            for d in dirs {
+                roots.push((d, "pack"));
+            }
+        }
+        roots.push((data.join("custom"), "custom"));
+    }
+    roots
+}
+
+/// A single template's directory, guarding the id so it can't escape a root.
+/// Resolves through the same precedence chain as the listing.
 pub fn template_dir(app: &AppHandle, id: &str) -> Result<PathBuf, String> {
     if !is_valid_id(id) {
         return Err(format!("illegal template id: {id}"));
     }
-    let dir = templates_root(app)?.join(id);
-    if !dir.is_dir() {
-        return Err(format!("unknown template: {id}"));
+    for (root, _) in template_roots(app) {
+        let dir = root.join(id);
+        if dir.is_dir() {
+            return Ok(dir);
+        }
     }
-    Ok(dir)
+    Err(format!("unknown template: {id}"))
 }
 
 pub fn read_manifest(dir: &Path) -> Result<TemplateManifest, String> {
@@ -201,7 +231,7 @@ fn manifest_ready(app: &AppHandle, m: &TemplateManifest) -> bool {
     crate::assets::fonts_ready(app, &m.requires.fonts)
 }
 
-fn to_info(app: &AppHandle, m: TemplateManifest, has_preview: bool) -> TemplateInfo {
+fn to_info(app: &AppHandle, m: TemplateManifest, has_preview: bool, source: &str) -> TemplateInfo {
     let ready = manifest_ready(app, &m);
     let document_engine = match m.engine.to_ascii_lowercase().as_str() {
         "typst" | "typ" => "typst",
@@ -226,31 +256,50 @@ fn to_info(app: &AppHandle, m: TemplateManifest, has_preview: bool) -> TemplateI
         has_preview,
         assets_ready: ready,
         order: m.order,
+        source: source.to_string(),
     }
+}
+
+/// The listing core over explicit roots (first id wins), extracted so tests
+/// can exercise the merge without an AppHandle.
+fn list_templates_in_roots(
+    roots: &[(PathBuf, &'static str)],
+) -> Vec<(TemplateManifest, PathBuf, &'static str)> {
+    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut items: Vec<(TemplateManifest, PathBuf, &'static str)> = Vec::new();
+    for (root, source) in roots {
+        let Ok(entries) = std::fs::read_dir(root) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let Ok(file_type) = entry.file_type() else {
+                continue;
+            };
+            if file_type.is_symlink() || !file_type.is_dir() {
+                continue;
+            }
+            let dir = entry.path();
+            // Skip folders without a valid manifest rather than failing the list.
+            let manifest = match read_manifest(&dir) {
+                Ok(m) => m,
+                Err(_) => continue,
+            };
+            if validate_manifest_dir(&dir, &manifest).is_err() {
+                continue;
+            }
+            if !seen.insert(manifest.id.clone()) {
+                continue;
+            }
+            items.push((manifest, dir, source));
+        }
+    }
+    items
 }
 
 #[tauri::command]
 pub fn list_templates(app: AppHandle) -> Result<Vec<TemplateInfo>, String> {
-    let root = templates_root(&app)?;
-    let mut items: Vec<(TemplateManifest, bool)> = Vec::new();
-    for entry in std::fs::read_dir(&root).map_err(|e| e.to_string())? {
-        let entry = entry.map_err(|e| e.to_string())?;
-        let file_type = entry.file_type().map_err(|e| e.to_string())?;
-        if file_type.is_symlink() || !file_type.is_dir() {
-            continue;
-        }
-        let dir = entry.path();
-        // Skip folders without a valid manifest rather than failing the whole list.
-        let manifest = match read_manifest(&dir) {
-            Ok(m) => m,
-            Err(_) => continue,
-        };
-        if validate_manifest_dir(&dir, &manifest).is_err() {
-            continue;
-        }
-        let has_preview = dir.join("preview.png").is_file();
-        items.push((manifest, has_preview));
-    }
+    let roots = template_roots(&app);
+    let mut items = list_templates_in_roots(&roots);
     items.sort_by(|a, b| {
         a.0.order
             .cmp(&b.0.order)
@@ -258,7 +307,10 @@ pub fn list_templates(app: AppHandle) -> Result<Vec<TemplateInfo>, String> {
     });
     Ok(items
         .into_iter()
-        .map(|(m, p)| to_info(&app, m, p))
+        .map(|(m, dir, source)| {
+            let has_preview = dir.join("preview.png").is_file();
+            to_info(&app, m, has_preview, source)
+        })
         .collect())
 }
 
@@ -408,5 +460,30 @@ mod tests {
         std::fs::create_dir_all(&dest).unwrap();
         assert!(copy_tree(&src, &dest, 0).is_err());
         let _ = std::fs::remove_dir_all(base);
+    }
+
+    #[test]
+    fn first_root_wins_on_id_collision() {
+        let base = std::env::temp_dir().join(format!("oleafly-roots-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&base);
+        for (root, name) in [("a", "ieee"), ("b", "ieee"), ("b", "extra")] {
+            let d = base.join(root).join(name);
+            std::fs::create_dir_all(&d).unwrap();
+            std::fs::write(
+                d.join("template.json"),
+                format!(r#"{{"id":"{name}","name":"{name} from {root}"}}"#),
+            )
+            .unwrap();
+            std::fs::write(d.join("main.tex"), "\\documentclass{article}").unwrap();
+        }
+        let roots = vec![(base.join("a"), "bundled"), (base.join("b"), "pack")];
+        let listed = super::list_templates_in_roots(&roots);
+        let ieee = listed.iter().find(|(m, _, _)| m.id == "ieee").unwrap();
+        assert!(ieee.0.name.contains("from a"));
+        assert_eq!(ieee.2, "bundled");
+        assert!(listed
+            .iter()
+            .any(|(m, _, s)| m.id == "extra" && *s == "pack"));
+        let _ = std::fs::remove_dir_all(&base);
     }
 }

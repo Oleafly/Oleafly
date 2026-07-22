@@ -5,7 +5,7 @@ import type { TemplateInfo } from "./types";
 
 const template = (document_engine: TemplateInfo["document_engine"], engine: string): TemplateInfo => ({
   id: "blank", name: "Blank", description: "", category: "Blank", document_engine, engine,
-  ats_profile: null, default_color: null, license: null, has_preview: false, assets_ready: true,
+  ats_profile: null, default_color: null, license: null, has_preview: false, assets_ready: true, source: "bundled",
 });
 
 describe("modal focus wrapping", () => {

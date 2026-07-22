@@ -14,6 +14,7 @@ export interface TemplateInfo {
   license: { spdx?: string | null; author?: string | null } | null;
   has_preview: boolean;
   assets_ready: boolean;
+  source: string;
 }
 
 export interface TemplatesHost {
