@@ -1,9 +1,11 @@
+import { useEffect, useMemo, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import {
   NewProjectDialog as NewProjectDialogCore,
   type TemplatesHost,
   type TemplatesKit,
 } from "@oleafly/templates";
+import { generateTemplate, generateTemplateAvailable } from "@/features/template-generate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -114,10 +116,18 @@ export function NewProjectDialog(props: {
   allowEnterSubmit?: boolean;
   allowClose?: boolean;
 }) {
+  const [canGenerate, setCanGenerate] = useState(false);
+  useEffect(() => {
+    if (props.open) void generateTemplateAvailable().then(setCanGenerate);
+  }, [props.open]);
+  const host = useMemo<TemplatesHost>(
+    () => (canGenerate ? { ...HOST, generateTemplate } : HOST),
+    [canGenerate],
+  );
   return (
     <NewProjectDialogCore
       {...props}
-      host={HOST}
+      host={host}
       kit={KIT}
       colorOptions={BOOK_COLOR_OPTIONS}
       defaultColor={DEFAULT_BOOK_COLOR}

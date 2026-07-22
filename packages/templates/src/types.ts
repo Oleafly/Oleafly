@@ -40,6 +40,15 @@ export interface TemplatesHost {
     id: string,
     onProgress: (label: string, index: number, total: number) => void,
   ): Promise<void>;
+  /** AI template generation; absent when no provider is configured. */
+  generateTemplate?(description: string): Promise<GeneratedPreview>;
+}
+
+export interface GeneratedPreview {
+  name: string;
+  previewPng: string | null;
+  log: string;
+  save(): Promise<void>;
 }
 
 export interface TemplatesKit {

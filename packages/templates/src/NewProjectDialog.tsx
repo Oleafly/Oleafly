@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Download, FileText, Hash, Search, Sparkles, X } from "lucide-react";
 import { cn } from "./cn";
 import { modalCoordinator, visibleFocusable } from "./modal-coordinator";
+import { GenerateTemplate } from "./GenerateTemplate";
 import type { PackDisplay, TemplateInfo, TemplatesHost, TemplatesKit } from "./types";
 
 // Preferred category order (anything else falls to the end, alphabetically).
@@ -594,6 +595,14 @@ export function NewProjectDialog({
                       ))}
                     </div>
                   </div>
+                )}
+                {host.generateTemplate && (
+                  <GenerateTemplate
+                    kit={kit}
+                    generate={(d) => (host.generateTemplate as NonNullable<typeof host.generateTemplate>)(d)}
+                    onSaved={() => onTemplatesChanged?.()}
+                    logError={host.logError}
+                  />
                 )}
               </div>
             </div>
