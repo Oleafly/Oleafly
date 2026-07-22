@@ -185,6 +185,74 @@ pub async fn refresh_pack_catalog() -> Result<(), String> {
     Ok(())
 }
 
+/// Download every file of a pack into its install dir. Streams to a `.part`
+/// sibling then renames, emitting the shared `asset-progress` event.
+#[tauri::command]
+pub async fn install_template_pack(app: AppHandle, id: String) -> Result<(), String> {
+    use futures_util::StreamExt;
+    use std::io::Write as _;
+    use tauri::Emitter;
+
+    let pack = catalog(&app)?
+        .into_iter()
+        .find(|p| p.id == id)
+        .ok_or_else(|| format!("unknown template pack: {id}"))?;
+    let dir = pack_install_dir(&pack.id)?;
+    let total = pack.files.len();
+    for (i, f) in pack.files.iter().enumerate() {
+        if !is_safe_rel_file(&f.name) {
+            return Err(format!("illegal pack file name: {}", f.name));
+        }
+        let dest = dir.join(&f.name);
+        if dest.is_file() {
+            continue;
+        }
+        if let Some(parent) = dest.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        let tmp = dest.with_extension("part");
+        let resp = reqwest::get(&f.url)
+            .await
+            .map_err(|e| format!("download failed: {e}"))?
+            .error_for_status()
+            .map_err(|e| format!("download failed: {e}"))?;
+        let file_total = resp.content_length();
+        let mut out = std::fs::File::create(&tmp).map_err(|e| e.to_string())?;
+        let mut stream = resp.bytes_stream();
+        let mut received: u64 = 0;
+        while let Some(chunk) = stream.next().await {
+            let chunk = chunk.map_err(|e| format!("download interrupted: {e}"))?;
+            received += chunk.len() as u64;
+            out.write_all(&chunk).map_err(|e| e.to_string())?;
+            let _ = app.emit(
+                "asset-progress",
+                crate::assets::AssetProgress {
+                    component: pack.id.clone(),
+                    label: pack.label.clone(),
+                    file: f.name.clone(),
+                    index: i + 1,
+                    total,
+                    received,
+                    file_total,
+                },
+            );
+        }
+        out.flush().map_err(|e| e.to_string())?;
+        drop(out);
+        std::fs::rename(&tmp, &dest).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn remove_template_pack(id: String) -> Result<(), String> {
+    let dir = pack_install_dir(&id)?;
+    if dir.is_dir() {
+        std::fs::remove_dir_all(&dir).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     #[test]

@@ -153,6 +153,8 @@ pub fn run() {
             assets::ensure_template_assets,
             template_packs::list_template_packs,
             template_packs::refresh_pack_catalog,
+            template_packs::install_template_pack,
+            template_packs::remove_template_pack,
             project::export_pdf,
             project::export_document,
             project::search_docs,
