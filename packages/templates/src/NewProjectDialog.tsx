@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Download, FileText, Hash, Search, Sparkles, X } from "lucide-react";
 import { cn } from "./cn";
 import { modalCoordinator, visibleFocusable } from "./modal-coordinator";
-import type { TemplateInfo, TemplatesHost, TemplatesKit } from "./types";
+import type { PackDisplay, TemplateInfo, TemplatesHost, TemplatesKit } from "./types";
 
 // Preferred category order (anything else falls to the end, alphabetically).
 const CATEGORY_ORDER = [
@@ -64,6 +64,13 @@ const NAME_HINT_BY_CATEGORY: Record<string, string> = {
 function nameHint(t: TemplateInfo | null): string {
   if (!t) return "My Project";
   return NAME_HINT_BY_ID[t.id] ?? NAME_HINT_BY_CATEGORY[t.category] ?? "My Project";
+}
+
+export function formatBytes(bytes: number): string {
+  if (bytes <= 0) return "small";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export function compilerLabel(template: TemplateInfo): string {
@@ -176,6 +183,7 @@ export function NewProjectDialog({
   busy = false,
   onClose,
   onCreate,
+  onTemplatesChanged,
   host,
   kit,
   colorOptions,
@@ -188,6 +196,7 @@ export function NewProjectDialog({
   busy?: boolean;
   onClose: () => void;
   onCreate: (name: string, templateId: string, color: string) => void | Promise<void>;
+  onTemplatesChanged?: () => void;
   host: TemplatesHost;
   kit: TemplatesKit;
   colorOptions: { name: string; hex: string }[];
@@ -209,6 +218,8 @@ export function NewProjectDialog({
     active: false,
     label: "",
   });
+  const [packs, setPacks] = useState<PackDisplay[] | null>(null);
+  const [packBusy, setPackBusy] = useState<{ id: string; label: string } | null>(null);
   const nameRef = useRef<HTMLInputElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -231,8 +242,43 @@ export function NewProjectDialog({
       setOfflineOnly(false);
       setEngine("all");
       setSetup({ active: false, label: "" });
+      setPackBusy(null);
     }
   }, [open]);
+
+  const installPack = async (p: PackDisplay) => {
+    if (!host.installPack || packBusy) return;
+    setPackBusy({ id: p.id, label: "Starting download..." });
+    try {
+      await host.installPack(p.id, (label, index, total) => {
+        setPackBusy({ id: p.id, label: `Downloading ${label} (${index} of ${total})` });
+      });
+      setPacks((prev) =>
+        prev ? prev.map((x) => (x.id === p.id ? { ...x, installed: true } : x)) : prev,
+      );
+      onTemplatesChanged?.();
+    } catch (e) {
+      host.logError("template-packs", e);
+    } finally {
+      setPackBusy(null);
+    }
+  };
+
+  useEffect(() => {
+    if (!open || !host.listPacks) return;
+    let cancelled = false;
+    void host
+      .listPacks()
+      .then((p) => {
+        if (!cancelled) setPacks(p);
+      })
+      .catch(() => {
+        if (!cancelled) setPacks([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, host]);
 
   useEffect(() => {
     if (!open) return;
@@ -499,6 +545,54 @@ export function NewProjectDialog({
                         </div>
                       </button>
                     ))}
+                  </div>
+                )}
+                {host.listPacks && packs !== null && packs.length > 0 && (
+                  <div data-testid="pack-section" className="mt-8 border-t pt-5">
+                    <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Get more templates
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      {packs.map((p) => (
+                        <div
+                          key={p.id}
+                          className="flex items-center gap-3 rounded-md border bg-muted/20 px-3 py-2.5"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-medium">{p.label}</span>
+                              <span className="text-[10px] text-muted-foreground">
+                                {p.count} templates · {formatBytes(p.approxBytes)}
+                              </span>
+                            </div>
+                            <div className="truncate text-[11px] text-muted-foreground">
+                              {p.description}
+                            </div>
+                            {p.licenseSummary && (
+                              <div className="truncate text-[10px] text-muted-foreground/70">
+                                {p.licenseSummary}
+                              </div>
+                            )}
+                          </div>
+                          {p.installed ? (
+                            <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                              <Check className="size-3.5" /> Installed
+                            </span>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              data-testid={`pack-install-${p.id}`}
+                              disabled={packBusy !== null}
+                              onClick={() => void installPack(p)}
+                            >
+                              <Download className="size-3.5" />{" "}
+                              {packBusy?.id === p.id ? packBusy.label : "Install"}
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>

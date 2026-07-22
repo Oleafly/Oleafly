@@ -87,6 +87,11 @@ export function GlobalNewProject() {
       onCreate={(n, t, c) => {
         void create(n, t, c);
       }}
+      onTemplatesChanged={() => {
+        void listTemplates()
+          .then(setTemplates)
+          .catch((e) => void logError("load templates", e));
+      }}
     />
   );
 }
