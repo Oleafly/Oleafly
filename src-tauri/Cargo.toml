@@ -36,7 +36,7 @@ zip = { version = "2", default-features = false, features = ["deflate"] }
 tar = "0.4"
 # Streaming the pandoc download so we can report progress.
 futures-util = "0.3"
-sha2 = "0.10"
+sha2 = "0.11"
 # Async HTTP client for the GitHub OAuth device flow, which can't be called
 # from the webview (CORS). The API endpoints on api.github.com are still called
 # directly from the frontend; only the OAuth endpoints run here. Commands are
