@@ -1,7 +1,23 @@
 import * as pdfjsLib from "pdfjs-dist";
 import workerSrc from "@oleafly/preview/pdf.worker?worker&url";
+import { installMainThreadPdfWorker } from "@oleafly/preview/mainThreadWorker";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
+
+// Session-wide last resort shared with PdfViewer's ladder: a worker subsystem
+// wedged by WKWebView renders every fresh PDFWorker dead, so downgrade to the
+// main-thread loopback worker once two real-worker attempts have timed out.
+let mainThreadInstall: Promise<void> | null = null;
+
+async function forceMainThreadWorker(): Promise<void> {
+  if (!mainThreadInstall) {
+    mainThreadInstall = installMainThreadPdfWorker().catch((error) => {
+      mainThreadInstall = null;
+      throw error;
+    });
+  }
+  await mainThreadInstall;
+}
 
 let sharedWorker: pdfjsLib.PDFWorker | null = null;
 
@@ -91,7 +107,13 @@ export async function pdfPageToPng(
       return await rasterize(bytes, page, scale, background);
     } catch (retryError) {
       resetWorker();
-      throw retryError;
+      try {
+        await forceMainThreadWorker();
+        return await rasterize(bytes, page, scale, background);
+      } catch {
+        resetWorker();
+        throw retryError;
+      }
     }
   }
 }
