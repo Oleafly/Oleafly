@@ -20,6 +20,10 @@ export interface ResearchToolsHost {
   fetchJson(url: string, init?: { headers?: Record<string, string> }): Promise<unknown>;
   crossrefSearch(query: string): Promise<string>;
   fetchDoiBibtex(doi: string): Promise<string>;
+  retrieveProjectChunks(
+    query: string,
+    opts?: { topK?: number },
+  ): Promise<Array<{ path: string; startLine: number; endLine: number; text: string; score: number }>>;
 }
 
 const ALPHAXIV_API_BASE = "https://api.alphaxiv.org/mcp/v1";
@@ -39,6 +43,14 @@ registerConnector({
   capability: "read",
   auth: "none",
   toolNames: ["literature_search", "verify_citation"],
+});
+
+registerConnector({
+  id: "project-library",
+  name: "This project's files",
+  capability: "read",
+  auth: "none",
+  toolNames: ["project_library_search"],
 });
 
 async function requireKey(
@@ -171,6 +183,25 @@ export function createResearchTools(host: ResearchToolsHost): Record<string, Raw
         } catch (e) {
           return { error: String(e instanceof Error ? e.message : e) };
         }
+      },
+    },
+
+    project_library_search: {
+      description:
+        "Search the currently open project's own files (sections, notes, .bib entries) by keyword. This is local and instant, unlike the other research tools which reach external services. Prefer this first when the user asks about something they may have already written or imported.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Search query" },
+        },
+        required: ["query"],
+        additionalProperties: false,
+      },
+      execute: async (input) => {
+        const query = String(input.query ?? "");
+        if (!query.trim()) return { error: "query must not be empty" };
+        const chunks = await host.retrieveProjectChunks(query, { topK: 5 });
+        return { chunks };
       },
     },
   };

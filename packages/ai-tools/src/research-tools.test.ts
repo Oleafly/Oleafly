@@ -88,3 +88,36 @@ describe("OpenAlex + citation verification tools", () => {
     expect(res).toMatchObject({ verified: false });
   });
 });
+
+describe("project library search", () => {
+  const retrieveProjectChunks = vi.fn();
+  let host: ResearchToolsHost;
+
+  beforeEach(() => {
+    retrieveProjectChunks.mockReset();
+    host = {
+      fetchJson: vi.fn(),
+      getConnectorKey: vi.fn(),
+      crossrefSearch: vi.fn(),
+      fetchDoiBibtex: vi.fn(),
+      retrieveProjectChunks,
+    };
+  });
+
+  it("searches the current project's own files, no external call", async () => {
+    retrieveProjectChunks.mockResolvedValue([
+      { path: "related-work.tex", startLine: 10, endLine: 20, text: "prior work on...", score: 4.2 },
+    ]);
+    const tools = createResearchTools(host);
+    const res = await tools.project_library_search.execute({ query: "prior work" });
+    expect(retrieveProjectChunks).toHaveBeenCalledWith("prior work", { topK: 5 });
+    expect(res).toMatchObject({ chunks: [{ path: "related-work.tex" }] });
+  });
+
+  it("reports no open project cleanly rather than throwing", async () => {
+    retrieveProjectChunks.mockResolvedValue([]);
+    const tools = createResearchTools(host);
+    const res = await tools.project_library_search.execute({ query: "anything" });
+    expect(res).toMatchObject({ chunks: [] });
+  });
+});
