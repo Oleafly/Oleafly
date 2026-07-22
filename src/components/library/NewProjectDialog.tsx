@@ -18,6 +18,9 @@ import { BOOK_COLOR_OPTIONS, DEFAULT_BOOK_COLOR } from "@/components/library/Boo
 import { logError } from "@/lib/log";
 import {
   ensureTemplateAssets,
+  installTemplatePack,
+  listTemplatePacks,
+  refreshPackCatalog,
   templatePreview,
   type AssetProgress,
   type TemplateInfo,
@@ -73,6 +76,32 @@ const HOST: TemplatesHost = {
     }
   },
   logError: (scope, e) => void logError(scope, e),
+  listPacks: async () => {
+    // Best-effort catalog refresh; offline just serves the cache/bundled copy.
+    await refreshPackCatalog().catch(() => {});
+    const packs = await listTemplatePacks();
+    return packs.map((p) => ({
+      id: p.id,
+      label: p.label,
+      description: p.description,
+      count: p.count,
+      approxBytes: p.approx_bytes,
+      licenseSummary: p.license_summary,
+      installed: p.installed,
+    }));
+  },
+  installPack: async (id, onProgress) => {
+    let unlisten: (() => void) | undefined;
+    try {
+      unlisten = await listen<AssetProgress>("asset-progress", (e) => {
+        const p = e.payload;
+        if (p.component === id) onProgress(p.file, p.index, p.total);
+      });
+      await installTemplatePack(id);
+    } finally {
+      unlisten?.();
+    }
+  },
 };
 
 export function NewProjectDialog(props: {

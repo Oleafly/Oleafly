@@ -285,6 +285,27 @@ export const templatePrerequisites = (templateId: string) =>
 export const ensureTemplateAssets = (templateId: string) =>
   invoke<void>("ensure_template_assets", { templateId });
 
+export interface PackInfo {
+  id: string;
+  label: string;
+  description: string;
+  category: string;
+  approx_bytes: number;
+  count: number;
+  license_summary: string;
+  installed: boolean;
+}
+
+export const listTemplatePacks = () => invoke<PackInfo[]>("list_template_packs");
+
+export const refreshPackCatalog = () => invoke<void>("refresh_pack_catalog");
+
+export const installTemplatePack = (id: string) =>
+  invoke<void>("install_template_pack", { id });
+
+export const removeTemplatePack = (id: string) =>
+  invoke<void>("remove_template_pack", { id });
+
 export interface GitCommit {
   oid: string;
   short: string;

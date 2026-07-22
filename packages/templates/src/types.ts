@@ -17,6 +17,16 @@ export interface TemplateInfo {
   source: string;
 }
 
+export interface PackDisplay {
+  id: string;
+  label: string;
+  description: string;
+  count: number;
+  approxBytes: number;
+  licenseSummary: string;
+  installed: boolean;
+}
+
 export interface TemplatesHost {
   loadPreview(templateId: string): Promise<string | null>;
   ensureAssets(
@@ -24,6 +34,12 @@ export interface TemplatesHost {
     onProgress: (label: string, index: number, total: number) => void,
   ): Promise<void>;
   logError(scope: string, e: unknown): void;
+  /** Downloadable template packs; absent host methods hide the section. */
+  listPacks?(): Promise<PackDisplay[]>;
+  installPack?(
+    id: string,
+    onProgress: (label: string, index: number, total: number) => void,
+  ): Promise<void>;
 }
 
 export interface TemplatesKit {
