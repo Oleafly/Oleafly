@@ -307,6 +307,16 @@ The full list. Everything here runs on your machine. For the detailed tour, see 
 - Custom instructions, sandboxed so they can't reveal or override the built-in prompt
 - Providers: OpenAI, Anthropic, Groq, OpenRouter, DeepSeek, Mistral, xAI, Z.AI, or local Ollama
 
+**Templates, deadlines, and growth**
+- Template packs downloaded on demand from an open catalog
+  (github.com/Oleafly/template-packs): journal and conference classes
+  (REVTeX, ACS, Elsevier, ACM), resume and CV expansions, slides and
+  posters. The catalog grows without app updates.
+- Generate a template with AI: describe the document, preview the compiled
+  result, and save it as a permanent gallery entry
+- Conference deadlines browser with live countdowns, field filters, and
+  search, fed by the open ccf-deadlines dataset
+
 **Import and export**
 - Import: Word (`.docx`) via Pandoc, PDF to LaTeX through a built-in local
   converter (runs entirely on your machine, no AI required) with optional AI

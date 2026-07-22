@@ -182,6 +182,20 @@ Give the diagram a name, then insert it **as vector code** (TikZ straight into y
 
 Drawn diagrams **round-trip**: the saved `.tikz` embeds the diagram model, so the **Load** button re-opens it in the visual editor, fully editable (the way draw.io ships editable exports). The name prompt prevents overwriting an existing figure. No API key required, works offline.
 
+## Templates and deadlines
+
+- The New Project gallery includes downloadable template packs from an open
+  catalog: journal and conference classes (REVTeX, ACS achemso, Elsevier,
+  ACM sigconf, Typst starters), resume and CV expansions, and slides or
+  poster layouts. Packs install in seconds and new catalog entries appear
+  without an app update.
+- With an AI provider connected, "Generate with AI" turns a description into
+  a compiled, previewable template you can save into the gallery permanently.
+- The library's Deadlines view tracks conference submission deadlines with
+  live countdowns, CCF/CORE ranks, field filters, and search. Data comes
+  from the open ccf-deadlines dataset and refreshes on demand; a bundled
+  snapshot keeps the view useful offline.
+
 ## Import
 
 - "PDF to ..." on the library home screen converts a PDF into an editable LaTeX
