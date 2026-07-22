@@ -6,6 +6,7 @@ import type {
 } from "@oleafly/pdf-to-latex";
 import { convertPages } from "@oleafly/pdf-to-latex";
 import { create } from "zustand";
+import { useHomeViewStore } from "@/store/home-view";
 
 interface ImportState {
   open: boolean;
@@ -36,6 +37,7 @@ export const useImportStore = create<ImportState>((set, get) => ({
   view: "split",
   options: {},
   openWithPdf: async (bytes, fileName) => {
+    useHomeViewStore.getState().goTo("pdf-import");
     set({
       open: true,
       busy: true,

@@ -1,15 +1,13 @@
-import { useRef } from "react";
 import { Clock3, FileInput, Moon, Plus, Sun, Wrench } from "lucide-react";
 import { LeafLogo } from "@/components/layout/LeafLogo";
 import { SettingsMenu } from "@/components/layout/SettingsMenu";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
-import { handlePickedFile } from "@/features/import";
 import { cn, isMac } from "@/lib/utils";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { useTheme } from "@/lib/theme";
 import { useDeadlinesStore } from "@/store/deadlines";
-import { useLatexToolsStore } from "@/store/latex-tools";
+import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
 
 export { useLibrarySidebarStore as useLibrarySidebarCollapsed } from "@/store/library-sidebar";
@@ -20,6 +18,7 @@ function NavItem({
   icon,
   onClick,
   primary = false,
+  active = false,
   testId,
   tour,
 }: {
@@ -28,6 +27,7 @@ function NavItem({
   icon: React.ReactNode;
   onClick: () => void;
   primary?: boolean;
+  active?: boolean;
   testId?: string;
   tour?: string;
 }) {
@@ -35,12 +35,13 @@ function NavItem({
     <Button
       data-testid={testId}
       data-tour={tour}
-      variant={primary ? "default" : "ghost"}
+      data-active={active ? "true" : "false"}
+      variant={primary ? "default" : active ? "secondary" : "ghost"}
       size="sm"
       className={cn(
         collapsed ? "size-9 justify-center p-0" : "w-full justify-start gap-2.5 px-2.5",
         "text-[13px] font-medium",
-        !primary && "text-muted-foreground hover:text-foreground",
+        !primary && !active && "text-muted-foreground hover:text-foreground",
       )}
       onClick={onClick}
     >
@@ -58,14 +59,16 @@ function NavItem({
 }
 
 /** Home-shell navigation sidebar (shadcn sidebar pattern, icon-collapsible).
- *  Shared across the library, deadlines, PDF-import, and LaTeX-tools views;
- *  each mounts its own instance, self-contained (own file input), so collapse
- *  state (persisted in useLibrarySidebarStore) stays in sync across all of them. */
+ *  Shared across the library, deadlines, PDF-import, and LaTeX-tools pages;
+ *  each mounts its own instance (only one page is ever rendered at a time,
+ *  gated by useHomeViewStore.page), so collapse state (persisted in
+ *  useLibrarySidebarStore) stays in sync across all of them. */
 export function LibrarySidebar({ collapsed }: { collapsed: boolean }) {
   const setNewProjectOpen = useSettingsStore((s) => s.setNewProjectOpen);
   const { theme, toggleTheme } = useTheme();
-  const importInputRef = useRef<HTMLInputElement>(null);
   const fullscreen = useFullscreen();
+  const page = useHomeViewStore((s) => s.page);
+  const goTo = useHomeViewStore((s) => s.goTo);
 
   return (
     <aside
@@ -76,20 +79,13 @@ export function LibrarySidebar({ collapsed }: { collapsed: boolean }) {
         collapsed ? "w-14" : "w-56",
       )}
     >
-      <input
-        ref={importInputRef}
-        type="file"
-        accept=".pdf,.docx"
-        className="hidden"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          e.target.value = "";
-          if (f) void handlePickedFile(f);
-        }}
-      />
-      <div
+      <button
+        type="button"
+        data-testid="sidebar-home"
+        onClick={() => goTo("library")}
+        aria-label="Home"
         className={cn(
-          "flex h-12 items-center gap-2",
+          "flex h-12 items-center gap-2 text-left",
           collapsed ? "justify-center" : "px-4",
           isMac && !fullscreen && "mt-7",
         )}
@@ -97,7 +93,7 @@ export function LibrarySidebar({ collapsed }: { collapsed: boolean }) {
       >
         <LeafLogo className="size-5" />
         {!collapsed && <span className="text-sm font-semibold tracking-tight">Oleafly</span>}
-      </div>
+      </button>
       <nav
         className={cn("flex flex-col gap-1 p-2", collapsed && "items-center")}
         aria-label="Library"
@@ -115,21 +111,27 @@ export function LibrarySidebar({ collapsed }: { collapsed: boolean }) {
           collapsed={collapsed}
           label="PDF to LaTeX"
           icon={<FileInput className="size-4" />}
-          onClick={() => importInputRef.current?.click()}
+          onClick={() => goTo("pdf-import")}
+          active={page === "pdf-import"}
           testId="import-pdf"
         />
         <NavItem
           collapsed={collapsed}
           label="CCF Deadlines"
           icon={<Clock3 className="size-4" />}
-          onClick={() => void useDeadlinesStore.getState().openView()}
+          onClick={() => {
+            void useDeadlinesStore.getState().openView();
+            goTo("deadlines");
+          }}
+          active={page === "deadlines"}
           testId="open-deadlines"
         />
         <NavItem
           collapsed={collapsed}
           label="LaTeX Tools"
           icon={<Wrench className="size-4" />}
-          onClick={() => useLatexToolsStore.getState().openView()}
+          onClick={() => goTo("latex-tools")}
+          active={page === "latex-tools"}
           testId="open-latex-tools"
         />
       </nav>

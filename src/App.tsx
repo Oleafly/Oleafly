@@ -15,6 +15,7 @@ import { GlobalNewProject } from "@/components/library/GlobalNewProject";
 import { PdfImportView } from "@/components/import/PdfImportView";
 import { DeadlinesView } from "@/components/deadlines/DeadlinesView";
 import { LatexToolsView } from "@/components/tools/LatexToolsView";
+import { useHomeViewStore } from "@/store/home-view";
 import { Editor } from "@/components/editor/Editor";
 import { PreviewPane } from "@/components/preview/PreviewPane";
 import { Library } from "@/components/library/Library";
@@ -164,6 +165,12 @@ export default function App() {
     void refreshProjects();
     void useGithubStore.getState().refresh();
   }, [refreshProjects]);
+
+  // Closing a project (or a fresh launch) always lands back on the library,
+  // never stranded on whatever home-shell page was open beforehand.
+  useEffect(() => {
+    if (!projectId) useHomeViewStore.getState().goTo("library");
+  }, [projectId]);
 
   useEffect(() => {
     const wasAi =
@@ -518,9 +525,6 @@ export default function App() {
         <CommandPalette />
         <SearchOmnibar />
         <GlobalNewProject />
-        <PdfImportView />
-        <DeadlinesView />
-        <LatexToolsView />
         <ExternalToolApprovals />
         <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
         {chatFloating && (

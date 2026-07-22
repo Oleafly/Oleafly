@@ -62,10 +62,8 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { useDeadlinesStore } from "@/store/deadlines";
 import { useFilesStore } from "@/store/files";
-import { useImportStore } from "@/store/import";
-import { useLatexToolsStore } from "@/store/latex-tools";
+import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
 import { cn, shortcut } from "@/lib/utils";
 import { cancelAutoCommit } from "@/lib/auto-commit";
@@ -223,13 +221,10 @@ function FilterSelect({
 }
 
 export function Library() {
-  // Deadlines/import/LaTeX-tools render as opaque full-screen overlays over
-  // the library; skip the library's own DOM while one is open so its sidebar
-  // testids and hidden file input don't duplicate the overlay's.
-  const deadlinesOpen = useDeadlinesStore((s) => s.open);
-  const importOpen = useImportStore((s) => s.open);
-  const latexToolsOpen = useLatexToolsStore((s) => s.open);
-  const overlayOpen = deadlinesOpen || importOpen || latexToolsOpen;
+  // Home-shell pages (deadlines/pdf-import/latex-tools/library) are mutually
+  // exclusive siblings gated on the same store, so switching between them
+  // never requires closing one first.
+  const page = useHomeViewStore((s) => s.page);
   const projects = useFilesStore((s) => s.projects);
   const projectsLoaded = useFilesStore((s) => s.projectsLoaded);
   const refreshProjects = useFilesStore((s) => s.refreshProjects);
@@ -362,6 +357,8 @@ export function Library() {
     setForkName("");
   };
 
+  if (page !== "library") return null;
+
   return (
     <div
       data-testid="library"
@@ -374,7 +371,7 @@ export function Library() {
         height={48}
         className="[mask-image:linear-gradient(to_bottom_right,white,transparent,transparent)]"
       />
-      {!overlayOpen && <LibrarySidebar collapsed={sidebarCollapsed} />}
+      <LibrarySidebar collapsed={sidebarCollapsed} />
       <div className="flex min-w-0 flex-1 flex-col">
       <header
         data-tauri-drag-region
