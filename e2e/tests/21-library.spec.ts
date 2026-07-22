@@ -143,7 +143,7 @@ test("bookmark filter shows only bookmarked projects", async ({ tauriPage }) => 
   );
 
   await tauriPage.click('[aria-label="Remove from favorites"]');
-  await expect(tauriPage.getByText("No bookmarked projects yet")).toBeVisible({ timeout: 5_000 });
+  await expect(tauriPage.getByText("No bookmarks yet")).toBeVisible({ timeout: 5_000 });
 
   await tauriPage.click('[aria-label="Show bookmarked only"]');
   await tauriPage.waitForFunction(
