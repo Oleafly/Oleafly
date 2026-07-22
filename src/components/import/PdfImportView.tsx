@@ -19,6 +19,7 @@ import {
   downloadZip,
 } from "@/features/import";
 import { refineAvailable, refineWithAi } from "@/features/import-refine";
+import { LatexSourceViewer } from "@/components/import/LatexSourceViewer";
 import { pdfPageToPng } from "@/lib/pdf-image";
 import { toast } from "@/lib/toast";
 import { useImportStore } from "@/store/import";
@@ -42,13 +43,14 @@ function StatsBar() {
 
 function PagePreviews() {
   const pdfBytes = useImportStore((s) => s.pdfBytes);
+  const pageCount = useImportStore((s) => s.pages.length);
   const [pngs, setPngs] = useState<{ page: number; url: string }[]>([]);
   useEffect(() => {
     let cancelled = false;
     setPngs([]);
     if (!pdfBytes) return;
     void (async () => {
-      for (let p = 1; p <= 20; p++) {
+      for (let p = 1; p <= Math.min(pageCount || 1, 40); p++) {
         try {
           const url = await pdfPageToPng(pdfBytes, p, 1.5, "#ffffff");
           if (cancelled) return;
@@ -61,7 +63,7 @@ function PagePreviews() {
     return () => {
       cancelled = true;
     };
-  }, [pdfBytes]);
+  }, [pdfBytes, pageCount]);
   return (
     <div className="h-full space-y-4 overflow-y-auto bg-muted/30 p-4">
       {pngs.map(({ page, url }) => (
@@ -86,12 +88,7 @@ function SourcePane() {
           This PDF has no text layer (likely scanned). Use Refine with AI to transcribe it.
         </div>
       )}
-      <pre
-        data-testid="import-source"
-        className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap p-4 font-mono text-xs"
-      >
-        {tex}
-      </pre>
+      <LatexSourceViewer source={tex} />
     </div>
   );
 }

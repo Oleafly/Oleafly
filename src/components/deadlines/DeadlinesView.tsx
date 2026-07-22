@@ -3,13 +3,13 @@ import {
   ArrowLeft,
   CalendarDays,
   CalendarX2,
-  ExternalLink,
   HelpCircle,
   MapPin,
   RefreshCw,
   Search,
 } from "lucide-react";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
+import { Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -45,11 +45,33 @@ import {
   type SortKey,
   type Venue,
 } from "@/lib/deadlines";
-import { cn } from "@/lib/utils";
+import { cn, isMac } from "@/lib/utils";
 import { useDeadlinesStore } from "@/store/deadlines";
 
 function pad(n: number): string {
   return String(n).padStart(2, "0");
+}
+
+const SUB_LABELS: Record<string, string> = {
+  AI: "Artificial intelligence and machine learning",
+  CG: "Computer graphics and multimedia",
+  CT: "Theory of computation",
+  CV: "Computer vision",
+  DB: "Databases and data mining",
+  DS: "Computer architecture, parallel and storage systems",
+  HI: "Human-computer interaction",
+  MX: "Interdisciplinary and emerging areas",
+  NW: "Computer networks",
+  SC: "Security and cryptography",
+  SE: "Software engineering and programming languages",
+  NEURO: "Neuroscience",
+  PHYS: "Physics and optics",
+  MAT: "Materials science",
+  RO: "Robotics",
+};
+
+export function subLabel(sub: string): string {
+  return SUB_LABELS[sub] ?? sub;
 }
 
 const URGENCY_COLOR: Record<ReturnType<typeof urgency>, string> = {
@@ -66,11 +88,30 @@ function CountdownText({ venue, now }: { venue: Venue; now: Date }) {
   const c = countdown(next.when, now);
   if (!c) return null;
   return (
-    <div className={cn("font-mono text-sm font-semibold", URGENCY_COLOR[urgency(next.when, now)])}>
-      {pad(c.days)}d : {pad(c.hours)}h : {pad(c.minutes)}m : {pad(c.seconds)}s
-      <span className="ml-2 text-[10px] font-normal uppercase tracking-wide text-muted-foreground">
-        {next.kind}
-      </span>
+    <div className="flex items-center gap-2">
+      <Tooltip
+        label={`Time left until the ${next.kind} deadline, in the venue's own timezone (${venue.timezone})`}
+      >
+        <span
+          className={cn(
+            "font-mono text-sm font-semibold",
+            URGENCY_COLOR[urgency(next.when, now)],
+          )}
+        >
+          {pad(c.days)}d : {pad(c.hours)}h : {pad(c.minutes)}m : {pad(c.seconds)}s
+        </span>
+      </Tooltip>
+      <Tooltip
+        label={
+          next.kind === "abstract"
+            ? "Abstract registration closes first; the full paper deadline follows"
+            : "Full paper submission deadline"
+        }
+      >
+        <span className="rounded border border-border bg-secondary px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wide text-secondary-foreground">
+          {next.kind}
+        </span>
+      </Tooltip>
     </div>
   );
 }
@@ -130,43 +171,65 @@ function DeadlineCard({ venue, now }: { venue: Venue; now: Date }) {
       <div className="flex items-center gap-2">
         <span className="text-sm font-semibold">{venue.title}</span>
         {venue.rank && (
-          <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
-            {venue.rank}
-          </span>
+          <Tooltip
+            label={
+              venue.rank.startsWith("CCF")
+                ? "China Computer Federation venue ranking (A is highest)"
+                : "CORE venue ranking (A* is highest)"
+            }
+          >
+            <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+              {venue.rank}
+            </span>
+          </Tooltip>
         )}
         {venue.estimated && (
-          <span className="rounded border border-dashed border-muted-foreground/40 px-1.5 py-0.5 font-mono text-[9px] font-semibold text-muted-foreground">
-            EST.
-          </span>
+          <Tooltip label="Projected from the prior-year schedule; the official call has not been posted yet">
+            <span className="rounded border border-dashed border-muted-foreground/40 px-1.5 py-0.5 font-mono text-[9px] font-semibold text-muted-foreground">
+              EST.
+            </span>
+          </Tooltip>
         )}
-        <span className="ml-auto text-[10px] uppercase tracking-wide text-muted-foreground">
-          {venue.sub}
-        </span>
+        <Tooltip label={subLabel(venue.sub)}>
+          <span className="ml-auto text-[10px] uppercase tracking-wide text-muted-foreground">
+            {venue.sub}
+          </span>
+        </Tooltip>
       </div>
       <div className="truncate text-xs text-muted-foreground">{venue.full_name}</div>
       <CountdownText venue={venue} now={now} />
-      {venue.conf_date && (
-        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-          <CalendarDays className="size-3.5 shrink-0" />
-          {venue.conf_date}
+      <div className="mt-1 flex items-end justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-1.5">
+          {venue.conf_date && (
+            <Tooltip label="When the conference itself takes place">
+              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <CalendarDays className="size-3.5 shrink-0" />
+                {venue.conf_date}
+              </div>
+            </Tooltip>
+          )}
+          {venue.place && (
+            <Tooltip label="Conference location">
+              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <MapPin className="size-3.5 shrink-0" />
+                {venue.place}
+              </div>
+            </Tooltip>
+          )}
         </div>
-      )}
-      {venue.place && (
-        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-          <MapPin className="size-3.5 shrink-0" />
-          {venue.place}
-        </div>
-      )}
-      {venue.link && (
-        <Button
-          variant="outline"
-          size="xs"
-          className="mt-1 w-fit"
-          onClick={() => void openExternal(venue.link)}
-        >
-          Official call <ExternalLink className="size-3" />
-        </Button>
-      )}
+        {venue.link && (
+          <Tooltip label="Open the venue's official website for the call for papers">
+            <Button
+              variant="secondary"
+              size="xs"
+              className="shrink-0"
+              onClick={() => void openExternal(venue.link)}
+            >
+              <Globe className="size-3" /> Website
+            </Button>
+          </Tooltip>
+        )}
+      </div>
     </div>
   );
 }
@@ -205,24 +268,33 @@ export function DeadlinesView() {
   if (!open) return null;
   return (
     <div data-testid="deadlines-view" className="fixed inset-0 z-50 flex flex-col bg-background">
-      <div className="flex items-center gap-3 border-b px-4 py-2">
+      <div
+        data-tauri-drag-region
+        className={cn("relative flex items-center gap-3 border-b py-2 pr-4", isMac ? "pl-[78px]" : "pl-4")}
+      >
         <Button variant="ghost" size="sm" onClick={close} data-testid="deadlines-back">
           <ArrowLeft className="size-4" /> Back
         </Button>
         <div className="font-medium">Conference Deadlines</div>
-        <div className="relative ml-2 w-64">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search conferences"
-            className="h-8 pl-8 text-xs"
-            data-testid="deadlines-search"
-          />
+        <div className="pointer-events-none absolute inset-x-0 flex justify-center">
+          <div className="pointer-events-auto relative w-72">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search conferences"
+              className="h-8 border-border/80 pl-8 text-xs dark:bg-[#181818]"
+              data-testid="deadlines-search"
+            />
+          </div>
         </div>
         <div className="ml-auto flex items-center gap-2">
           {error && <span className="max-w-64 truncate text-xs text-destructive">{error}</span>}
-          {updated && <span className="text-xs text-muted-foreground">Updated {updated}</span>}
+          {updated && (
+            <Tooltip label="When the deadline dataset was last fetched">
+              <span className="text-xs text-muted-foreground">Updated {updated}</span>
+            </Tooltip>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -251,19 +323,23 @@ export function DeadlinesView() {
           All
         </Button>
         {subs.map((s) => (
-          <Button
-            key={s}
-            size="xs"
-            variant={sub === s ? "secondary" : "ghost"}
-            data-testid={`deadlines-sub-${s}`}
-            onClick={() => setSub(sub === s ? null : s)}
-          >
-            {s}
-          </Button>
+          <Tooltip key={s} label={subLabel(s)}>
+            <Button
+              size="xs"
+              variant={sub === s ? "secondary" : "ghost"}
+              data-testid={`deadlines-sub-${s}`}
+              onClick={() => setSub(sub === s ? null : s)}
+            >
+              {s}
+            </Button>
+          </Tooltip>
         ))}
         <div className="ml-auto flex items-center gap-4">
           <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
-            <SelectTrigger className="h-7 w-36 text-xs" aria-label="Sort by">
+            <SelectTrigger
+              className="h-7 w-36 border-border/80 text-xs dark:bg-[#181818]"
+              aria-label="Sort by"
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -286,7 +362,9 @@ export function DeadlinesView() {
               Show passed
             </label>
           </div>
-          <span className="text-xs text-muted-foreground">{shown.length} entries</span>
+          <Tooltip label="Conference cycles currently listed with these filters">
+            <span className="text-xs text-muted-foreground">{shown.length} entries</span>
+          </Tooltip>
         </div>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-4">

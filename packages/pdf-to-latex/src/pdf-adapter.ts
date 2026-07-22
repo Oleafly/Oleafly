@@ -7,6 +7,17 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
 const MIN_FIGURE_PX = 32;
 
+/** Infer the pixel layout when pdf.js omits `kind` (e.g. decoded JPEGs). */
+// biome-ignore lint/suspicious/noExplicitAny: pdf.js image objects are untyped
+function guessKind(img: any): number {
+  const len = img.data?.length ?? 0;
+  const px = (img.width ?? 0) * (img.height ?? 0);
+  if (px <= 0) return 2;
+  if (len >= px * 4) return 3;
+  if (len >= px * 3) return 2;
+  return 1;
+}
+
 export async function extractPagesForConvert(
   bytes: Uint8Array,
 ): Promise<{ pages: PageInput[]; figures: ExtractedFigure[] }> {
@@ -59,31 +70,44 @@ export async function extractPagesForConvert(
       const figureNames: string[] = [];
       try {
         if (!ops) throw new Error("no operator list");
-        let n = 0;
-        for (let i = 0; i < ops.fnArray.length; i++) {
-          if (ops.fnArray[i] !== pdfjsLib.OPS.paintImageXObject) continue;
-          const objName = ops.argsArray[i][0] as string;
-          // biome-ignore lint/suspicious/noExplicitAny: pdf.js image objects are untyped
-          const img = await new Promise<any>((resolve) => {
+        // biome-ignore lint/suspicious/noExplicitAny: pdf.js image objects are untyped
+        const resolveObj = (objName: string): Promise<any> =>
+          new Promise((resolve) => {
             try {
-              page.objs.get(objName, resolve);
+              // Shared XObjects land in commonObjs, page-local ones in objs.
+              if (page.commonObjs.has(objName)) {
+                page.commonObjs.get(objName, resolve);
+              } else {
+                page.objs.get(objName, resolve);
+              }
             } catch {
               resolve(null);
             }
           });
-          if (!img || (!img.data && !img.bitmap)) continue;
-          if (img.width < MIN_FIGURE_PX || img.height < MIN_FIGURE_PX) continue;
-          n++;
-          const name = `figure_p${p}_${n}.png`;
-          const pngDataUrl = img.bitmap
-            ? bitmapToPngDataUrl(img.bitmap, img.width, img.height)
-            : rgbaToPngDataUrl(
-                rawToRgba(img.data, img.width, img.height, img.kind ?? 2),
-                img.width,
-                img.height,
-              );
-          figures.push({ name, page: p, pngDataUrl });
-          figureNames.push(name);
+        let n = 0;
+        for (let i = 0; i < ops.fnArray.length; i++) {
+          const fn = ops.fnArray[i];
+          const isRef = fn === pdfjsLib.OPS.paintImageXObject;
+          const isInline = fn === pdfjsLib.OPS.paintInlineImageXObject;
+          if (!isRef && !isInline) continue;
+          try {
+            const img = isRef ? await resolveObj(ops.argsArray[i][0] as string) : ops.argsArray[i][0];
+            if (!img || (!img.data && !img.bitmap)) continue;
+            if (img.width < MIN_FIGURE_PX || img.height < MIN_FIGURE_PX) continue;
+            const pngDataUrl = img.bitmap
+              ? bitmapToPngDataUrl(img.bitmap, img.width, img.height)
+              : rgbaToPngDataUrl(
+                  rawToRgba(img.data, img.width, img.height, img.kind ?? guessKind(img)),
+                  img.width,
+                  img.height,
+                );
+            n++;
+            const name = `figure_p${p}_${n}.png`;
+            figures.push({ name, page: p, pngDataUrl });
+            figureNames.push(name);
+          } catch {
+            // one broken image must not sink the rest of the page
+          }
         }
       } catch {
         // operator list failures must not sink text conversion

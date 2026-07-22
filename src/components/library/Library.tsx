@@ -9,6 +9,7 @@ import {
   Info,
   ListFilter,
   Palette,
+  PanelLeft,
   Plus,
   Search,
   Trash2,
@@ -32,7 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { LibrarySidebar } from "@/components/library/LibrarySidebar";
+import { LibrarySidebar, useLibrarySidebarCollapsed } from "@/components/library/LibrarySidebar";
 import { LeafLogo } from "@/components/layout/LeafLogo";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
@@ -62,7 +63,7 @@ import {
 import { handlePickedFile } from "@/features/import";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
-import { cn, isMac, shortcut } from "@/lib/utils";
+import { cn, shortcut } from "@/lib/utils";
 import { cancelAutoCommit } from "@/lib/auto-commit";
 import {
   deleteProject,
@@ -231,6 +232,7 @@ export function Library() {
   const setSearchOpen = useSettingsStore((s) => s.setSearchOpen);
   const setNewProjectOpen = useSettingsStore((s) => s.setNewProjectOpen);
   const importInputRef = useRef<HTMLInputElement>(null);
+  const { collapsed: sidebarCollapsed, toggle: toggleSidebar } = useLibrarySidebarCollapsed();
   const hoverPreview = useSettingsStore((s) => s.hoverPreview);
   const [forkTarget, setForkTarget] = useState<{ id: string; name: string } | null>(null);
   const [forkName, setForkName] = useState("");
@@ -374,16 +376,28 @@ export function Library() {
           if (f) void handlePickedFile(f);
         }}
       />
-      <LibrarySidebar importInputRef={importInputRef} />
+      <LibrarySidebar importInputRef={importInputRef} collapsed={sidebarCollapsed} />
       <div className="flex min-w-0 flex-1 flex-col">
       <header
         data-tauri-drag-region
         className={cn(
-          "relative z-10 grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center",
-          isMac ? "pl-[78px] pr-3" : "px-4"
+          "relative z-10 grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center px-3"
         )}
       >
-        <div data-tauri-drag-region />
+        <div data-tauri-drag-region className="flex items-center">
+          <Tooltip label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Toggle sidebar"
+              data-testid="toggle-library-sidebar"
+              className="text-muted-foreground hover:text-foreground"
+              onClick={toggleSidebar}
+            >
+              <PanelLeft className="size-4" />
+            </Button>
+          </Tooltip>
+        </div>
         <div
           data-tauri-drag-region
           data-tour="home-brand"

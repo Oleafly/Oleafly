@@ -71,7 +71,12 @@ async function rasterize(
     return await withTimeout(
       (async () => {
         const doc = await loadingTask.promise;
-        const pageNo = Math.min(Math.max(1, page), doc.numPages);
+        // Out-of-range pages must FAIL, not silently clamp: clamping made
+        // page-by-page consumers render the last page over and over.
+        if (page < 1 || page > doc.numPages) {
+          throw new Error(`page ${page} out of range (document has ${doc.numPages})`);
+        }
+        const pageNo = page;
         const p = await doc.getPage(pageNo);
         try {
           const viewport = p.getViewport({ scale });
