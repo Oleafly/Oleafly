@@ -1,0 +1,155 @@
+[
+  {
+    "id": "resume-plus",
+    "label": "Resume & CV expansion",
+    "description": "Two-column tech resume, minimal resume, long-form academic CV, cover letter, and a Typst CV.",
+    "category": "CVs & Resumes",
+    "approx_bytes": 8172,
+    "count": 5,
+    "license_summary": "CC0-1.0",
+    "files": [
+      {
+        "name": "academic-cv/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/resume-plus/academic-cv/main.tex"
+      },
+      {
+        "name": "academic-cv/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/resume-plus/academic-cv/template.json"
+      },
+      {
+        "name": "cover-letter/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/resume-plus/cover-letter/main.tex"
+      },
+      {
+        "name": "cover-letter/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/resume-plus/cover-letter/template.json"
+      },
+      {
+        "name": "deedy-style-resume/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/resume-plus/deedy-style-resume/main.tex"
+      },
+      {
+        "name": "deedy-style-resume/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/resume-plus/deedy-style-resume/template.json"
+      },
+      {
+        "name": "rendercv-style-resume/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/resume-plus/rendercv-style-resume/main.tex"
+      },
+      {
+        "name": "rendercv-style-resume/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/resume-plus/rendercv-style-resume/template.json"
+      },
+      {
+        "name": "typst-modern-cv/main.typ",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/resume-plus/typst-modern-cv/main.typ"
+      },
+      {
+        "name": "typst-modern-cv/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/resume-plus/typst-modern-cv/template.json"
+      }
+    ]
+  },
+  {
+    "id": "slides-posters",
+    "label": "Slides & posters",
+    "description": "Metropolis beamer deck, tikzposter portrait and landscape, and a better-poster layout.",
+    "category": "Presentations",
+    "approx_bytes": 5032,
+    "count": 4,
+    "license_summary": "CC0-1.0",
+    "files": [
+      {
+        "name": "beamer-metropolis/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/slides-posters/beamer-metropolis/main.tex"
+      },
+      {
+        "name": "beamer-metropolis/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/slides-posters/beamer-metropolis/template.json"
+      },
+      {
+        "name": "better-poster/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/slides-posters/better-poster/main.tex"
+      },
+      {
+        "name": "better-poster/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/slides-posters/better-poster/template.json"
+      },
+      {
+        "name": "tikzposter-landscape/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/slides-posters/tikzposter-landscape/main.tex"
+      },
+      {
+        "name": "tikzposter-landscape/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/slides-posters/tikzposter-landscape/template.json"
+      },
+      {
+        "name": "tikzposter-portrait/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/slides-posters/tikzposter-portrait/main.tex"
+      },
+      {
+        "name": "tikzposter-portrait/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/slides-posters/tikzposter-portrait/template.json"
+      }
+    ]
+  },
+  {
+    "id": "venue-classes",
+    "label": "Journal & conference classes",
+    "description": "REVTeX, ACS achemso, Elsevier, ACM sigconf, and Typst journal starters.",
+    "category": "Journals & Conferences",
+    "approx_bytes": 9074,
+    "count": 6,
+    "license_summary": "CC0-1.0",
+    "files": [
+      {
+        "name": "achemso-article/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/venue-classes/achemso-article/main.tex"
+      },
+      {
+        "name": "achemso-article/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/venue-classes/achemso-article/template.json"
+      },
+      {
+        "name": "acmart-sigconf/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/venue-classes/acmart-sigconf/main.tex"
+      },
+      {
+        "name": "acmart-sigconf/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/venue-classes/acmart-sigconf/template.json"
+      },
+      {
+        "name": "elsarticle-2col/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/venue-classes/elsarticle-2col/main.tex"
+      },
+      {
+        "name": "elsarticle-2col/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/venue-classes/elsarticle-2col/template.json"
+      },
+      {
+        "name": "revtex-aps-article/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/venue-classes/revtex-aps-article/main.tex"
+      },
+      {
+        "name": "revtex-aps-article/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/venue-classes/revtex-aps-article/template.json"
+      },
+      {
+        "name": "typst-conference-paper/main.typ",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/venue-classes/typst-conference-paper/main.typ"
+      },
+      {
+        "name": "typst-conference-paper/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/venue-classes/typst-conference-paper/template.json"
+      },
+      {
+        "name": "typst-journal-article/main.typ",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/venue-classes/typst-journal-article/main.typ"
+      },
+      {
+        "name": "typst-journal-article/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/venue-classes/typst-journal-article/template.json"
+      }
+    ]
+  }
+]

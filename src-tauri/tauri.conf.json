@@ -48,7 +48,9 @@
     ],
     "resources": [
       "resources/templates/**/*",
-      "resources/font-packs.json"
+      "resources/font-packs.json",
+      "resources/template-packs.json",
+      "resources/deadlines-seed.json"
     ]
   },
   "plugins": {
