@@ -9,7 +9,13 @@ describe("alphaXiv connector tools", () => {
   beforeEach(() => {
     fetchJson.mockReset();
     getConnectorKey.mockReset();
-    host = { fetchJson, getConnectorKey };
+    host = {
+      fetchJson,
+      getConnectorKey,
+      crossrefSearch: vi.fn(),
+      fetchDoiBibtex: vi.fn(),
+      retrieveProjectChunks: vi.fn(),
+    };
   });
 
   it("alphaxiv_search returns a friendly error when no key is configured", async () => {
@@ -53,7 +59,13 @@ describe("OpenAlex + citation verification tools", () => {
     getConnectorKey.mockReset();
     crossrefSearch.mockReset();
     fetchDoiBibtex.mockReset();
-    host = { fetchJson, getConnectorKey, crossrefSearch, fetchDoiBibtex };
+    host = {
+      fetchJson,
+      getConnectorKey,
+      crossrefSearch,
+      fetchDoiBibtex,
+      retrieveProjectChunks: vi.fn(),
+    };
   });
 
   it("literature_search needs no connector key (OpenAlex is keyless)", async () => {
