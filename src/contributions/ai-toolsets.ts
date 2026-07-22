@@ -1,5 +1,6 @@
 import { registerAiToolset } from "@oleafly/registry";
 import { createFigureTools, createOleaflyTools, type ConfirmFn } from "@/lib/ai-tools";
+import { createResearchAiTools } from "@/lib/research-tools";
 
 let registered = false;
 
@@ -17,5 +18,10 @@ export function registerAiToolsets() {
     mode: "figure",
     create: (opts: { confirm?: ConfirmFn; onImage?: (dataUrl: string) => void }) =>
       createFigureTools(opts),
+  });
+  registerAiToolset({
+    id: "research-tools",
+    mode: "chat",
+    create: () => createResearchAiTools(),
   });
 }
