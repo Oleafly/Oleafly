@@ -49,6 +49,7 @@ function PdfDropzoneLanding() {
   return (
     <div className="flex flex-1 items-center justify-center overflow-y-auto p-8">
       <div className="w-full max-w-xl">
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: drag-and-drop is supplementary; the browse button below remains keyboard accessible */}
         <div
           data-testid="pdf-dropzone"
           className={cn(
