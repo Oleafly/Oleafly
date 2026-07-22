@@ -20,9 +20,10 @@ test("sidebar switches directly between home pages without closing first", async
   await expect(tauriPage.locator('[data-testid="latex-tools-view"]')).toBeVisible();
   await expect(tauriPage.locator('[data-testid="deadlines-view"]')).toBeHidden();
 
-  // Switch straight to PDF to LaTeX, landing on the dropzone (not an
+  // PDF to LaTeX now lives only as a card in the LaTeX Tools gallery; opening
+  // it switches straight there and lands on the dropzone (not an
   // immediately-triggered OS file picker).
-  await tauriPage.click('[data-testid="import-pdf"]');
+  await tauriPage.click('[data-testid="latex-tool-card-pdf-to-latex"]');
   await expect(tauriPage.locator('[data-testid="pdf-import-view"]')).toBeVisible();
   await expect(tauriPage.locator('[data-testid="pdf-dropzone"]')).toBeVisible();
   await expect(tauriPage.locator('[data-testid="latex-tools-view"]')).toBeHidden();

@@ -1,4 +1,4 @@
-import { Clock3, FileInput, Moon, Plus, Sun, Wrench } from "lucide-react";
+import { Clock3, Moon, Plus, Sun, Wrench } from "lucide-react";
 import { LeafLogo } from "@/components/layout/LeafLogo";
 import { SettingsMenu } from "@/components/layout/SettingsMenu";
 import { Button } from "@/components/ui/button";
@@ -106,14 +106,6 @@ export function LibrarySidebar({ collapsed }: { collapsed: boolean }) {
           primary
           testId="new-project"
           tour="new-project"
-        />
-        <NavItem
-          collapsed={collapsed}
-          label="PDF to LaTeX"
-          icon={<FileInput className="size-4" />}
-          onClick={() => goTo("pdf-import")}
-          active={page === "pdf-import"}
-          testId="import-pdf"
         />
         <NavItem
           collapsed={collapsed}
