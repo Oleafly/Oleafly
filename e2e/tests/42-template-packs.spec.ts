@@ -20,6 +20,10 @@ test("installing a pack adds its templates to the gallery", async ({ tauriPage }
   await expect(tauriPage.locator('[data-testid="pack-section"]')).toBeVisible({
     timeout: 20_000,
   });
+  await tauriPage.click('[data-testid="pack-section-toggle"]');
+  await expect(tauriPage.locator('[data-testid="pack-install-fixture-pack"]')).toBeVisible({
+    timeout: 10_000,
+  });
   await tauriPage.click('[data-testid="pack-install-fixture-pack"]');
   await waitLong(
     tauriPage,

@@ -1,5 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, Download, FileText, Hash, Search, Sparkles, X } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  ChevronDown,
+  Download,
+  FileText,
+  Hash,
+  Search,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { cn } from "./cn";
 import { modalCoordinator, visibleFocusable } from "./modal-coordinator";
 import { GenerateTemplate } from "./GenerateTemplate";
@@ -221,6 +232,7 @@ export function NewProjectDialog({
   });
   const [packs, setPacks] = useState<PackDisplay[] | null>(null);
   const [packBusy, setPackBusy] = useState<{ id: string; label: string } | null>(null);
+  const [packSectionOpen, setPackSectionOpen] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -244,6 +256,7 @@ export function NewProjectDialog({
       setEngine("all");
       setSetup({ active: false, label: "" });
       setPackBusy(null);
+      setPackSectionOpen(false);
     }
   }, [open]);
 
@@ -330,6 +343,16 @@ export function NewProjectDialog({
     const ordered = CATEGORY_ORDER.filter((c) => present.has(c));
     const rest = [...present].filter((c) => !CATEGORY_ORDER.includes(c)).sort();
     return ["All", ...ordered, ...rest];
+  }, [templates]);
+
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    counts.set("All", templates.length);
+    for (const t of templates) {
+      const c = t.category || "Other";
+      counts.set(c, (counts.get(c) ?? 0) + 1);
+    }
+    return counts;
   }, [templates]);
 
   const filtered = useMemo(() => {
@@ -428,13 +451,23 @@ export function NewProjectDialog({
                   title={CATEGORY_LABELS[c] ? c : undefined}
                   onClick={() => setCategory(c)}
                   className={cn(
-                    "mb-0.5 w-full rounded-md px-2.5 py-1.5 text-left text-sm transition-colors",
+                    "mb-0.5 flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-left text-sm transition-colors",
                     category === c
                       ? "bg-accent font-medium text-accent-foreground"
                       : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
                   )}
                 >
-                  {CATEGORY_LABELS[c] ?? c}
+                  <span className="truncate">{CATEGORY_LABELS[c] ?? c}</span>
+                  <span
+                    className={cn(
+                      "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium tabular-nums",
+                      category === c
+                        ? "bg-accent-foreground/15 text-accent-foreground"
+                        : "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    {categoryCounts.get(c) ?? 0}
+                  </span>
                 </button>
               ))}
             </nav>
@@ -550,10 +583,25 @@ export function NewProjectDialog({
                 )}
                 {host.listPacks && packs !== null && packs.length > 0 && (
                   <div data-testid="pack-section" className="mt-8 border-t pt-5">
-                    <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Get more templates
-                    </div>
-                    <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      data-testid="pack-section-toggle"
+                      aria-expanded={packSectionOpen}
+                      onClick={() => setPackSectionOpen((v) => !v)}
+                      className="flex w-full items-center justify-between text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                    >
+                      <span>
+                        Get more templates
+                        <span className="ml-2 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium normal-case tracking-normal text-muted-foreground">
+                          {packs.length}
+                        </span>
+                      </span>
+                      <ChevronDown
+                        className={cn("size-4 transition-transform", packSectionOpen && "rotate-180")}
+                      />
+                    </button>
+                    {packSectionOpen && (
+                    <div className="mt-3 flex flex-col gap-2">
                       {packs.map((p) => (
                         <div
                           key={p.id}
@@ -594,6 +642,7 @@ export function NewProjectDialog({
                         </div>
                       ))}
                     </div>
+                    )}
                   </div>
                 )}
                 {host.generateTemplate && (

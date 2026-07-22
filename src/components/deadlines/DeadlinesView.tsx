@@ -5,6 +5,7 @@ import {
   CalendarX2,
   HelpCircle,
   MapPin,
+  PanelLeft,
   RefreshCw,
   Search,
 } from "lucide-react";
@@ -45,8 +46,10 @@ import {
   type SortKey,
   type Venue,
 } from "@/lib/deadlines";
-import { cn, isMac } from "@/lib/utils";
+import { LibrarySidebar } from "@/components/library/LibrarySidebar";
+import { cn } from "@/lib/utils";
 import { useDeadlinesStore } from "@/store/deadlines";
+import { useLibrarySidebarStore } from "@/store/library-sidebar";
 
 function pad(n: number): string {
   return String(n).padStart(2, "0");
@@ -248,6 +251,7 @@ export function DeadlinesView() {
   const [showPassed, setShowPassed] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("deadline");
   const [helpOpen, setHelpOpen] = useState(false);
+  const { collapsed: sidebarCollapsed, toggle: toggleSidebar } = useLibrarySidebarStore();
 
   useEffect(() => {
     if (!open) return;
@@ -267,11 +271,22 @@ export function DeadlinesView() {
 
   if (!open) return null;
   return (
-    <div data-testid="deadlines-view" className="fixed inset-0 z-50 flex flex-col bg-background">
-      <div
-        data-tauri-drag-region
-        className={cn("relative flex items-center gap-3 border-b py-2 pr-4", isMac ? "pl-[78px]" : "pl-4")}
-      >
+    <div data-testid="deadlines-view" className="fixed inset-0 z-50 flex bg-background">
+      <LibrarySidebar collapsed={sidebarCollapsed} />
+      <div className="flex min-w-0 flex-1 flex-col">
+      <div data-tauri-drag-region className="relative flex items-center gap-3 border-b py-2 pl-4 pr-4">
+        <Tooltip label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Toggle sidebar"
+            data-testid="toggle-deadlines-sidebar"
+            className="text-muted-foreground hover:text-foreground"
+            onClick={toggleSidebar}
+          >
+            <PanelLeft className="size-4" />
+          </Button>
+        </Tooltip>
         <Button variant="ghost" size="sm" onClick={close} data-testid="deadlines-back">
           <ArrowLeft className="size-4" /> Back
         </Button>
@@ -403,6 +418,7 @@ export function DeadlinesView() {
         )}
       </div>
       <HelpDialog open={helpOpen} onOpenChange={setHelpOpen} />
+      </div>
     </div>
   );
 }

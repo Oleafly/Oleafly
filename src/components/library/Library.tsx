@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Bookmark,
+  BookmarkX,
   Check,
   Clock3,
   FileText,
@@ -12,6 +13,7 @@ import {
   PanelLeft,
   Plus,
   Search,
+  SearchX,
   Trash2,
   X,
 } from "lucide-react";
@@ -60,8 +62,10 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { handlePickedFile } from "@/features/import";
+import { useDeadlinesStore } from "@/store/deadlines";
 import { useFilesStore } from "@/store/files";
+import { useImportStore } from "@/store/import";
+import { useLatexToolsStore } from "@/store/latex-tools";
 import { useSettingsStore } from "@/store/settings";
 import { cn, shortcut } from "@/lib/utils";
 import { cancelAutoCommit } from "@/lib/auto-commit";
@@ -219,6 +223,13 @@ function FilterSelect({
 }
 
 export function Library() {
+  // Deadlines/import/LaTeX-tools render as opaque full-screen overlays over
+  // the library; skip the library's own DOM while one is open so its sidebar
+  // testids and hidden file input don't duplicate the overlay's.
+  const deadlinesOpen = useDeadlinesStore((s) => s.open);
+  const importOpen = useImportStore((s) => s.open);
+  const latexToolsOpen = useLatexToolsStore((s) => s.open);
+  const overlayOpen = deadlinesOpen || importOpen || latexToolsOpen;
   const projects = useFilesStore((s) => s.projects);
   const projectsLoaded = useFilesStore((s) => s.projectsLoaded);
   const refreshProjects = useFilesStore((s) => s.refreshProjects);
@@ -231,7 +242,6 @@ export function Library() {
   const removeProjectColor = useProjectColorsStore((s) => s.remove);
   const setSearchOpen = useSettingsStore((s) => s.setSearchOpen);
   const setNewProjectOpen = useSettingsStore((s) => s.setNewProjectOpen);
-  const importInputRef = useRef<HTMLInputElement>(null);
   const { collapsed: sidebarCollapsed, toggle: toggleSidebar } = useLibrarySidebarCollapsed();
   const hoverPreview = useSettingsStore((s) => s.hoverPreview);
   const [forkTarget, setForkTarget] = useState<{ id: string; name: string } | null>(null);
@@ -364,19 +374,7 @@ export function Library() {
         height={48}
         className="[mask-image:linear-gradient(to_bottom_right,white,transparent,transparent)]"
       />
-      <input
-        ref={importInputRef}
-        data-testid="import-file-input"
-        type="file"
-        accept=".pdf,.docx"
-        className="hidden"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          e.target.value = "";
-          if (f) void handlePickedFile(f);
-        }}
-      />
-      <LibrarySidebar importInputRef={importInputRef} collapsed={sidebarCollapsed} />
+      {!overlayOpen && <LibrarySidebar collapsed={sidebarCollapsed} />}
       <div className="flex min-w-0 flex-1 flex-col">
       <header
         data-tauri-drag-region
@@ -620,11 +618,25 @@ export function Library() {
             ) : null
           ) : (
           visibleProjects.length === 0 ? (
-            <p className="py-16 text-center text-sm text-muted-foreground">
-              {onlyFavs && activeFilterCount === 0
-                ? "No bookmarked projects yet. Hover a book and click its bookmark to add one."
-                : "No projects match the current filters."}
-            </p>
+            <Empty className="min-h-[60vh]">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  {onlyFavs && activeFilterCount === 0 ? (
+                    <BookmarkX className="size-6" />
+                  ) : (
+                    <SearchX className="size-6" />
+                  )}
+                </EmptyMedia>
+                <EmptyTitle>
+                  {onlyFavs && activeFilterCount === 0 ? "No bookmarks yet" : "No matches"}
+                </EmptyTitle>
+                <EmptyDescription>
+                  {onlyFavs && activeFilterCount === 0
+                    ? "Hover a book and click its bookmark to add one."
+                    : "No projects match the current filters."}
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
           ) : (
           <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-3 lg:grid-cols-4">
             {visibleProjects.map((p) => (

@@ -1,16 +1,1116 @@
 [
   {
+    "id": "academic-writing",
+    "label": "Academic writing pack",
+    "description": "Research and grant proposals, literature reviews, statements of purpose, letters of recommendation, white papers, and theses.",
+    "category": "Theses & Reports",
+    "approx_bytes": 1020911,
+    "count": 13,
+    "license_summary": "CC0-1.0",
+    "files": [
+      {
+        "name": "book-chapter/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/book-chapter/main.tex"
+      },
+      {
+        "name": "book-chapter/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/book-chapter/preview.png"
+      },
+      {
+        "name": "book-chapter/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/book-chapter/template.json"
+      },
+      {
+        "name": "dissertation-classic/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/dissertation-classic/main.tex"
+      },
+      {
+        "name": "dissertation-classic/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/dissertation-classic/preview.png"
+      },
+      {
+        "name": "dissertation-classic/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/dissertation-classic/template.json"
+      },
+      {
+        "name": "essay/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/essay/main.tex"
+      },
+      {
+        "name": "essay/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/essay/preview.png"
+      },
+      {
+        "name": "essay/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/essay/template.json"
+      },
+      {
+        "name": "grant-proposal/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/grant-proposal/main.tex"
+      },
+      {
+        "name": "grant-proposal/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/grant-proposal/preview.png"
+      },
+      {
+        "name": "grant-proposal/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/grant-proposal/template.json"
+      },
+      {
+        "name": "letter-of-recommendation/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/letter-of-recommendation/main.tex"
+      },
+      {
+        "name": "letter-of-recommendation/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/letter-of-recommendation/preview.png"
+      },
+      {
+        "name": "letter-of-recommendation/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/letter-of-recommendation/template.json"
+      },
+      {
+        "name": "literature-review/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/literature-review/main.tex"
+      },
+      {
+        "name": "literature-review/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/literature-review/preview.png"
+      },
+      {
+        "name": "literature-review/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/literature-review/template.json"
+      },
+      {
+        "name": "manuscript-submission/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/manuscript-submission/main.tex"
+      },
+      {
+        "name": "manuscript-submission/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/manuscript-submission/preview.png"
+      },
+      {
+        "name": "manuscript-submission/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/manuscript-submission/template.json"
+      },
+      {
+        "name": "motivation-letter/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/motivation-letter/main.tex"
+      },
+      {
+        "name": "motivation-letter/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/motivation-letter/preview.png"
+      },
+      {
+        "name": "motivation-letter/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/motivation-letter/template.json"
+      },
+      {
+        "name": "phd-thesis-modern/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/phd-thesis-modern/main.tex"
+      },
+      {
+        "name": "phd-thesis-modern/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/phd-thesis-modern/preview.png"
+      },
+      {
+        "name": "phd-thesis-modern/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/phd-thesis-modern/template.json"
+      },
+      {
+        "name": "research-proposal/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/research-proposal/main.tex"
+      },
+      {
+        "name": "research-proposal/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/research-proposal/preview.png"
+      },
+      {
+        "name": "research-proposal/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/research-proposal/template.json"
+      },
+      {
+        "name": "research-statement/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/research-statement/main.tex"
+      },
+      {
+        "name": "research-statement/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/research-statement/preview.png"
+      },
+      {
+        "name": "research-statement/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/research-statement/template.json"
+      },
+      {
+        "name": "statement-of-purpose/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/statement-of-purpose/main.tex"
+      },
+      {
+        "name": "statement-of-purpose/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/statement-of-purpose/preview.png"
+      },
+      {
+        "name": "statement-of-purpose/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/statement-of-purpose/template.json"
+      },
+      {
+        "name": "white-paper/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/white-paper/main.tex"
+      },
+      {
+        "name": "white-paper/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/white-paper/preview.png"
+      },
+      {
+        "name": "white-paper/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/academic-writing/white-paper/template.json"
+      }
+    ]
+  },
+  {
+    "id": "beamer-themes",
+    "label": "Beamer theme collection",
+    "description": "Madrid, Warsaw, Berkeley, Singapore, Copenhagen, Frankfurt, Boadilla, and Pittsburgh beamer decks.",
+    "category": "Presentations",
+    "approx_bytes": 169140,
+    "count": 8,
+    "license_summary": "CC0-1.0",
+    "files": [
+      {
+        "name": "beamer-berkeley/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/beamer-themes/beamer-berkeley/main.tex"
+      },
+      {
+        "name": "beamer-berkeley/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/beamer-themes/beamer-berkeley/preview.png"
+      },
+      {
+        "name": "beamer-berkeley/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/beamer-themes/beamer-berkeley/template.json"
+      },
+      {
+        "name": "beamer-boadilla/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/beamer-themes/beamer-boadilla/main.tex"
+      },
+      {
+        "name": "beamer-boadilla/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/beamer-themes/beamer-boadilla/preview.png"
+      },
+      {
+        "name": "beamer-boadilla/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/beamer-themes/beamer-boadilla/template.json"
+      },
+      {
+        "name": "beamer-copenhagen/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/beamer-themes/beamer-copenhagen/main.tex"
+      },
+      {
+        "name": "beamer-copenhagen/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/beamer-themes/beamer-copenhagen/preview.png"
+      },
+      {
+        "name": "beamer-copenhagen/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/beamer-themes/beamer-copenhagen/template.json"
+      },
+      {
+        "name": "beamer-frankfurt/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/beamer-themes/beamer-frankfurt/main.tex"
+      },
+      {
+        "name": "beamer-frankfurt/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/beamer-themes/beamer-frankfurt/preview.png"
+      },
+      {
+        "name": "beamer-frankfurt/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/beamer-themes/beamer-frankfurt/template.json"
+      },
+      {
+        "name": "beamer-madrid/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/beamer-themes/beamer-madrid/main.tex"
+      },
+      {
+        "name": "beamer-madrid/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/beamer-themes/beamer-madrid/preview.png"
+      },
+      {
+        "name": "beamer-madrid/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/beamer-themes/beamer-madrid/template.json"
+      },
+      {
+        "name": "beamer-pittsburgh/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/beamer-themes/beamer-pittsburgh/main.tex"
+      },
+      {
+        "name": "beamer-pittsburgh/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/beamer-themes/beamer-pittsburgh/preview.png"
+      },
+      {
+        "name": "beamer-pittsburgh/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/beamer-themes/beamer-pittsburgh/template.json"
+      },
+      {
+        "name": "beamer-singapore/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/beamer-themes/beamer-singapore/main.tex"
+      },
+      {
+        "name": "beamer-singapore/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/beamer-themes/beamer-singapore/preview.png"
+      },
+      {
+        "name": "beamer-singapore/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/beamer-themes/beamer-singapore/template.json"
+      },
+      {
+        "name": "beamer-warsaw/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/beamer-themes/beamer-warsaw/main.tex"
+      },
+      {
+        "name": "beamer-warsaw/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/beamer-themes/beamer-warsaw/preview.png"
+      },
+      {
+        "name": "beamer-warsaw/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/beamer-themes/beamer-warsaw/template.json"
+      }
+    ]
+  },
+  {
+    "id": "business-documents",
+    "label": "Business documents",
+    "description": "Invoices, memos, meeting minutes, business plans and reports, certificates, and a trifold brochure.",
+    "category": "Business",
+    "approx_bytes": 688046,
+    "count": 10,
+    "license_summary": "CC0-1.0",
+    "files": [
+      {
+        "name": "business-card/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/business-documents/business-card/main.tex"
+      },
+      {
+        "name": "business-card/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/business-documents/business-card/preview.png"
+      },
+      {
+        "name": "business-card/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/business-documents/business-card/template.json"
+      },
+      {
+        "name": "business-plan/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/business-documents/business-plan/main.tex"
+      },
+      {
+        "name": "business-plan/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/business-documents/business-plan/preview.png"
+      },
+      {
+        "name": "business-plan/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/business-documents/business-plan/template.json"
+      },
+      {
+        "name": "business-report/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/business-documents/business-report/main.tex"
+      },
+      {
+        "name": "business-report/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/business-documents/business-report/preview.png"
+      },
+      {
+        "name": "business-report/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/business-documents/business-report/template.json"
+      },
+      {
+        "name": "certificate/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/business-documents/certificate/main.tex"
+      },
+      {
+        "name": "certificate/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/business-documents/certificate/preview.png"
+      },
+      {
+        "name": "certificate/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/business-documents/certificate/template.json"
+      },
+      {
+        "name": "conference-program/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/business-documents/conference-program/main.tex"
+      },
+      {
+        "name": "conference-program/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/business-documents/conference-program/preview.png"
+      },
+      {
+        "name": "conference-program/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/business-documents/conference-program/template.json"
+      },
+      {
+        "name": "invoice/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/business-documents/invoice/main.tex"
+      },
+      {
+        "name": "invoice/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/business-documents/invoice/preview.png"
+      },
+      {
+        "name": "invoice/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/business-documents/invoice/template.json"
+      },
+      {
+        "name": "meeting-minutes/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/business-documents/meeting-minutes/main.tex"
+      },
+      {
+        "name": "meeting-minutes/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/business-documents/meeting-minutes/preview.png"
+      },
+      {
+        "name": "meeting-minutes/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/business-documents/meeting-minutes/template.json"
+      },
+      {
+        "name": "memo/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/business-documents/memo/main.tex"
+      },
+      {
+        "name": "memo/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/business-documents/memo/preview.png"
+      },
+      {
+        "name": "memo/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/business-documents/memo/template.json"
+      },
+      {
+        "name": "questionnaire/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/business-documents/questionnaire/main.tex"
+      },
+      {
+        "name": "questionnaire/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/business-documents/questionnaire/preview.png"
+      },
+      {
+        "name": "questionnaire/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/business-documents/questionnaire/template.json"
+      },
+      {
+        "name": "trifold-brochure/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/business-documents/trifold-brochure/main.tex"
+      },
+      {
+        "name": "trifold-brochure/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/business-documents/trifold-brochure/preview.png"
+      },
+      {
+        "name": "trifold-brochure/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/business-documents/trifold-brochure/template.json"
+      }
+    ]
+  },
+  {
+    "id": "conference-preprints",
+    "label": "Conference preprint styles",
+    "description": "NeurIPS, ICML, ICLR, ACL, CVPR, AAAI, IJCAI, Springer LNCS, JMLR, arXiv, and Interspeech style preprints.",
+    "category": "Journals & Conferences",
+    "approx_bytes": 1381991,
+    "count": 12,
+    "license_summary": "CC0-1.0",
+    "files": [
+      {
+        "name": "aaai-style-paper/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/aaai-style-paper/main.tex"
+      },
+      {
+        "name": "aaai-style-paper/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/aaai-style-paper/preview.png"
+      },
+      {
+        "name": "aaai-style-paper/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/aaai-style-paper/template.json"
+      },
+      {
+        "name": "acl-style-paper/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/acl-style-paper/main.tex"
+      },
+      {
+        "name": "acl-style-paper/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/acl-style-paper/preview.png"
+      },
+      {
+        "name": "acl-style-paper/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/acl-style-paper/template.json"
+      },
+      {
+        "name": "arxiv-preprint/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/arxiv-preprint/main.tex"
+      },
+      {
+        "name": "arxiv-preprint/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/arxiv-preprint/preview.png"
+      },
+      {
+        "name": "arxiv-preprint/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/arxiv-preprint/template.json"
+      },
+      {
+        "name": "cvpr-style-paper/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/cvpr-style-paper/main.tex"
+      },
+      {
+        "name": "cvpr-style-paper/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/cvpr-style-paper/preview.png"
+      },
+      {
+        "name": "cvpr-style-paper/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/cvpr-style-paper/template.json"
+      },
+      {
+        "name": "iclr-style-preprint/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/iclr-style-preprint/main.tex"
+      },
+      {
+        "name": "iclr-style-preprint/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/iclr-style-preprint/preview.png"
+      },
+      {
+        "name": "iclr-style-preprint/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/iclr-style-preprint/template.json"
+      },
+      {
+        "name": "icml-style-preprint/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/icml-style-preprint/main.tex"
+      },
+      {
+        "name": "icml-style-preprint/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/icml-style-preprint/preview.png"
+      },
+      {
+        "name": "icml-style-preprint/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/icml-style-preprint/template.json"
+      },
+      {
+        "name": "ijcai-style-paper/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/ijcai-style-paper/main.tex"
+      },
+      {
+        "name": "ijcai-style-paper/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/ijcai-style-paper/preview.png"
+      },
+      {
+        "name": "ijcai-style-paper/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/ijcai-style-paper/template.json"
+      },
+      {
+        "name": "interspeech-style-paper/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/interspeech-style-paper/main.tex"
+      },
+      {
+        "name": "interspeech-style-paper/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/interspeech-style-paper/preview.png"
+      },
+      {
+        "name": "interspeech-style-paper/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/interspeech-style-paper/template.json"
+      },
+      {
+        "name": "jmlr-style-article/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/jmlr-style-article/main.tex"
+      },
+      {
+        "name": "jmlr-style-article/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/jmlr-style-article/preview.png"
+      },
+      {
+        "name": "jmlr-style-article/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/jmlr-style-article/template.json"
+      },
+      {
+        "name": "neurips-style-preprint/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/neurips-style-preprint/main.tex"
+      },
+      {
+        "name": "neurips-style-preprint/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/neurips-style-preprint/preview.png"
+      },
+      {
+        "name": "neurips-style-preprint/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/neurips-style-preprint/template.json"
+      },
+      {
+        "name": "springer-lncs-style/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/springer-lncs-style/main.tex"
+      },
+      {
+        "name": "springer-lncs-style/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/springer-lncs-style/preview.png"
+      },
+      {
+        "name": "springer-lncs-style/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/springer-lncs-style/template.json"
+      },
+      {
+        "name": "two-column-paper/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/two-column-paper/main.tex"
+      },
+      {
+        "name": "two-column-paper/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/two-column-paper/preview.png"
+      },
+      {
+        "name": "two-column-paper/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/conference-preprints/two-column-paper/template.json"
+      }
+    ]
+  },
+  {
+    "id": "coursework",
+    "label": "Coursework pack",
+    "description": "Homework, worksheets, quizzes, rubrics, lecture notes, syllabi, math reference sheets, exams, and pseudocode writeups.",
+    "category": "Assignments",
+    "approx_bytes": 1051974,
+    "count": 14,
+    "license_summary": "CC0-1.0",
+    "files": [
+      {
+        "name": "algorithm-pseudocode/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/algorithm-pseudocode/main.tex"
+      },
+      {
+        "name": "algorithm-pseudocode/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/algorithm-pseudocode/preview.png"
+      },
+      {
+        "name": "algorithm-pseudocode/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/algorithm-pseudocode/template.json"
+      },
+      {
+        "name": "flashcards/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/flashcards/main.tex"
+      },
+      {
+        "name": "flashcards/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/flashcards/preview.png"
+      },
+      {
+        "name": "flashcards/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/flashcards/template.json"
+      },
+      {
+        "name": "formula-sheet/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/formula-sheet/main.tex"
+      },
+      {
+        "name": "formula-sheet/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/formula-sheet/preview.png"
+      },
+      {
+        "name": "formula-sheet/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/formula-sheet/template.json"
+      },
+      {
+        "name": "grading-rubric/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/grading-rubric/main.tex"
+      },
+      {
+        "name": "grading-rubric/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/grading-rubric/preview.png"
+      },
+      {
+        "name": "grading-rubric/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/grading-rubric/template.json"
+      },
+      {
+        "name": "homework/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/homework/main.tex"
+      },
+      {
+        "name": "homework/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/homework/preview.png"
+      },
+      {
+        "name": "homework/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/homework/template.json"
+      },
+      {
+        "name": "lecture-notes/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/lecture-notes/main.tex"
+      },
+      {
+        "name": "lecture-notes/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/lecture-notes/preview.png"
+      },
+      {
+        "name": "lecture-notes/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/lecture-notes/template.json"
+      },
+      {
+        "name": "math-cheat-sheet/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/math-cheat-sheet/main.tex"
+      },
+      {
+        "name": "math-cheat-sheet/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/math-cheat-sheet/preview.png"
+      },
+      {
+        "name": "math-cheat-sheet/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/math-cheat-sheet/template.json"
+      },
+      {
+        "name": "math-exam/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/math-exam/main.tex"
+      },
+      {
+        "name": "math-exam/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/math-exam/preview.png"
+      },
+      {
+        "name": "math-exam/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/math-exam/template.json"
+      },
+      {
+        "name": "math-notes/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/math-notes/main.tex"
+      },
+      {
+        "name": "math-notes/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/math-notes/preview.png"
+      },
+      {
+        "name": "math-notes/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/math-notes/template.json"
+      },
+      {
+        "name": "math-problem-set/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/math-problem-set/main.tex"
+      },
+      {
+        "name": "math-problem-set/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/math-problem-set/preview.png"
+      },
+      {
+        "name": "math-problem-set/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/math-problem-set/template.json"
+      },
+      {
+        "name": "quiz/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/quiz/main.tex"
+      },
+      {
+        "name": "quiz/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/quiz/preview.png"
+      },
+      {
+        "name": "quiz/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/quiz/template.json"
+      },
+      {
+        "name": "syllabus/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/syllabus/main.tex"
+      },
+      {
+        "name": "syllabus/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/syllabus/preview.png"
+      },
+      {
+        "name": "syllabus/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/syllabus/template.json"
+      },
+      {
+        "name": "tufte-handout/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/tufte-handout/main.tex"
+      },
+      {
+        "name": "tufte-handout/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/tufte-handout/preview.png"
+      },
+      {
+        "name": "tufte-handout/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/tufte-handout/template.json"
+      },
+      {
+        "name": "worksheet/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/worksheet/main.tex"
+      },
+      {
+        "name": "worksheet/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/worksheet/preview.png"
+      },
+      {
+        "name": "worksheet/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/coursework/worksheet/template.json"
+      }
+    ]
+  },
+  {
+    "id": "creative-misc",
+    "label": "Creative & miscellaneous",
+    "description": "Recipe books, invitations, RPG character sheets, a year calendar, table and TikZ galleries, and field notes.",
+    "category": "Creative",
+    "approx_bytes": 688712,
+    "count": 10,
+    "license_summary": "CC0-1.0",
+    "files": [
+      {
+        "name": "calendar-year/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/creative-misc/calendar-year/main.tex"
+      },
+      {
+        "name": "calendar-year/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/creative-misc/calendar-year/preview.png"
+      },
+      {
+        "name": "calendar-year/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/creative-misc/calendar-year/template.json"
+      },
+      {
+        "name": "computational-neuroscience-notes/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/creative-misc/computational-neuroscience-notes/main.tex"
+      },
+      {
+        "name": "computational-neuroscience-notes/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/creative-misc/computational-neuroscience-notes/preview.png"
+      },
+      {
+        "name": "computational-neuroscience-notes/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/creative-misc/computational-neuroscience-notes/template.json"
+      },
+      {
+        "name": "dnd-character-sheet/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/creative-misc/dnd-character-sheet/main.tex"
+      },
+      {
+        "name": "dnd-character-sheet/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/creative-misc/dnd-character-sheet/preview.png"
+      },
+      {
+        "name": "dnd-character-sheet/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/creative-misc/dnd-character-sheet/template.json"
+      },
+      {
+        "name": "greeting-card/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/creative-misc/greeting-card/main.tex"
+      },
+      {
+        "name": "greeting-card/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/creative-misc/greeting-card/preview.png"
+      },
+      {
+        "name": "greeting-card/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/creative-misc/greeting-card/template.json"
+      },
+      {
+        "name": "molecular-biology-notes/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/creative-misc/molecular-biology-notes/main.tex"
+      },
+      {
+        "name": "molecular-biology-notes/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/creative-misc/molecular-biology-notes/preview.png"
+      },
+      {
+        "name": "molecular-biology-notes/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/creative-misc/molecular-biology-notes/template.json"
+      },
+      {
+        "name": "quantum-computing-notes/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/creative-misc/quantum-computing-notes/main.tex"
+      },
+      {
+        "name": "quantum-computing-notes/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/creative-misc/quantum-computing-notes/preview.png"
+      },
+      {
+        "name": "quantum-computing-notes/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/creative-misc/quantum-computing-notes/template.json"
+      },
+      {
+        "name": "recipe-book/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/creative-misc/recipe-book/main.tex"
+      },
+      {
+        "name": "recipe-book/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/creative-misc/recipe-book/preview.png"
+      },
+      {
+        "name": "recipe-book/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/creative-misc/recipe-book/template.json"
+      },
+      {
+        "name": "table-showcase/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/creative-misc/table-showcase/main.tex"
+      },
+      {
+        "name": "table-showcase/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/creative-misc/table-showcase/preview.png"
+      },
+      {
+        "name": "table-showcase/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/creative-misc/table-showcase/template.json"
+      },
+      {
+        "name": "tikz-gallery/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/creative-misc/tikz-gallery/main.tex"
+      },
+      {
+        "name": "tikz-gallery/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/creative-misc/tikz-gallery/preview.png"
+      },
+      {
+        "name": "tikz-gallery/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/creative-misc/tikz-gallery/template.json"
+      },
+      {
+        "name": "wedding-invitation/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/creative-misc/wedding-invitation/main.tex"
+      },
+      {
+        "name": "wedding-invitation/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/creative-misc/wedding-invitation/preview.png"
+      },
+      {
+        "name": "wedding-invitation/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/creative-misc/wedding-invitation/template.json"
+      }
+    ]
+  },
+  {
+    "id": "cv-collection",
+    "label": "CV & resume style collection",
+    "description": "ModernCV, AltaCV, Awesome-CV, Europass, Friggeri, Plasmati, Twenty Seconds, and Jake's-style resumes.",
+    "category": "CVs & Resumes",
+    "approx_bytes": 663017,
+    "count": 11,
+    "license_summary": "CC0-1.0",
+    "files": [
+      {
+        "name": "altacv-resume/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/cv-collection/altacv-resume/main.tex"
+      },
+      {
+        "name": "altacv-resume/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/cv-collection/altacv-resume/preview.png"
+      },
+      {
+        "name": "altacv-resume/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/cv-collection/altacv-resume/template.json"
+      },
+      {
+        "name": "awesome-cv-style/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/cv-collection/awesome-cv-style/main.tex"
+      },
+      {
+        "name": "awesome-cv-style/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/cv-collection/awesome-cv-style/preview.png"
+      },
+      {
+        "name": "awesome-cv-style/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/cv-collection/awesome-cv-style/template.json"
+      },
+      {
+        "name": "europass-style-cv/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/cv-collection/europass-style-cv/main.tex"
+      },
+      {
+        "name": "europass-style-cv/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/cv-collection/europass-style-cv/preview.png"
+      },
+      {
+        "name": "europass-style-cv/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/cv-collection/europass-style-cv/template.json"
+      },
+      {
+        "name": "friggeri-style-cv/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/cv-collection/friggeri-style-cv/main.tex"
+      },
+      {
+        "name": "friggeri-style-cv/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/cv-collection/friggeri-style-cv/preview.png"
+      },
+      {
+        "name": "friggeri-style-cv/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/cv-collection/friggeri-style-cv/template.json"
+      },
+      {
+        "name": "hipster-style-cv/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/cv-collection/hipster-style-cv/main.tex"
+      },
+      {
+        "name": "hipster-style-cv/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/cv-collection/hipster-style-cv/preview.png"
+      },
+      {
+        "name": "hipster-style-cv/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/cv-collection/hipster-style-cv/template.json"
+      },
+      {
+        "name": "jakes-style-resume/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/cv-collection/jakes-style-resume/main.tex"
+      },
+      {
+        "name": "jakes-style-resume/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/cv-collection/jakes-style-resume/preview.png"
+      },
+      {
+        "name": "jakes-style-resume/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/cv-collection/jakes-style-resume/template.json"
+      },
+      {
+        "name": "moderncv-banking/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/cv-collection/moderncv-banking/main.tex"
+      },
+      {
+        "name": "moderncv-banking/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/cv-collection/moderncv-banking/preview.png"
+      },
+      {
+        "name": "moderncv-banking/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/cv-collection/moderncv-banking/template.json"
+      },
+      {
+        "name": "moderncv-classic/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/cv-collection/moderncv-classic/main.tex"
+      },
+      {
+        "name": "moderncv-classic/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/cv-collection/moderncv-classic/preview.png"
+      },
+      {
+        "name": "moderncv-classic/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/cv-collection/moderncv-classic/template.json"
+      },
+      {
+        "name": "one-page-cv/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/cv-collection/one-page-cv/main.tex"
+      },
+      {
+        "name": "one-page-cv/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/cv-collection/one-page-cv/preview.png"
+      },
+      {
+        "name": "one-page-cv/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/cv-collection/one-page-cv/template.json"
+      },
+      {
+        "name": "plasmati-style-cv/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/cv-collection/plasmati-style-cv/main.tex"
+      },
+      {
+        "name": "plasmati-style-cv/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/cv-collection/plasmati-style-cv/preview.png"
+      },
+      {
+        "name": "plasmati-style-cv/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/cv-collection/plasmati-style-cv/template.json"
+      },
+      {
+        "name": "twenty-seconds-style-cv/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/cv-collection/twenty-seconds-style-cv/main.tex"
+      },
+      {
+        "name": "twenty-seconds-style-cv/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/cv-collection/twenty-seconds-style-cv/preview.png"
+      },
+      {
+        "name": "twenty-seconds-style-cv/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/cv-collection/twenty-seconds-style-cv/template.json"
+      }
+    ]
+  },
+  {
+    "id": "reports-lab",
+    "label": "Lab & technical reports",
+    "description": "Lab reports, scientific and technical reports, project and internship reports, and an annual report.",
+    "category": "Theses & Reports",
+    "approx_bytes": 458239,
+    "count": 6,
+    "license_summary": "CC0-1.0",
+    "files": [
+      {
+        "name": "annual-report/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/reports-lab/annual-report/main.tex"
+      },
+      {
+        "name": "annual-report/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/reports-lab/annual-report/preview.png"
+      },
+      {
+        "name": "annual-report/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/reports-lab/annual-report/template.json"
+      },
+      {
+        "name": "internship-report/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/reports-lab/internship-report/main.tex"
+      },
+      {
+        "name": "internship-report/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/reports-lab/internship-report/preview.png"
+      },
+      {
+        "name": "internship-report/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/reports-lab/internship-report/template.json"
+      },
+      {
+        "name": "lab-report/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/reports-lab/lab-report/main.tex"
+      },
+      {
+        "name": "lab-report/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/reports-lab/lab-report/preview.png"
+      },
+      {
+        "name": "lab-report/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/reports-lab/lab-report/template.json"
+      },
+      {
+        "name": "project-report/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/reports-lab/project-report/main.tex"
+      },
+      {
+        "name": "project-report/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/reports-lab/project-report/preview.png"
+      },
+      {
+        "name": "project-report/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/reports-lab/project-report/template.json"
+      },
+      {
+        "name": "scientific-report/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/reports-lab/scientific-report/main.tex"
+      },
+      {
+        "name": "scientific-report/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/reports-lab/scientific-report/preview.png"
+      },
+      {
+        "name": "scientific-report/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/reports-lab/scientific-report/template.json"
+      },
+      {
+        "name": "technical-report/main.tex",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/reports-lab/technical-report/main.tex"
+      },
+      {
+        "name": "technical-report/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/reports-lab/technical-report/preview.png"
+      },
+      {
+        "name": "technical-report/template.json",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/reports-lab/technical-report/template.json"
+      }
+    ]
+  },
+  {
     "id": "resume-plus",
     "label": "Resume & CV expansion",
     "description": "Two-column tech resume, minimal resume, long-form academic CV, cover letter, and a Typst CV.",
     "category": "CVs & Resumes",
-    "approx_bytes": 8172,
+    "approx_bytes": 204613,
     "count": 5,
     "license_summary": "CC0-1.0",
     "files": [
       {
         "name": "academic-cv/main.tex",
         "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/resume-plus/academic-cv/main.tex"
+      },
+      {
+        "name": "academic-cv/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/resume-plus/academic-cv/preview.png"
       },
       {
         "name": "academic-cv/template.json",
@@ -21,12 +1121,20 @@
         "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/resume-plus/cover-letter/main.tex"
       },
       {
+        "name": "cover-letter/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/resume-plus/cover-letter/preview.png"
+      },
+      {
         "name": "cover-letter/template.json",
         "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/resume-plus/cover-letter/template.json"
       },
       {
         "name": "deedy-style-resume/main.tex",
         "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/resume-plus/deedy-style-resume/main.tex"
+      },
+      {
+        "name": "deedy-style-resume/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/resume-plus/deedy-style-resume/preview.png"
       },
       {
         "name": "deedy-style-resume/template.json",
@@ -37,12 +1145,20 @@
         "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/resume-plus/rendercv-style-resume/main.tex"
       },
       {
+        "name": "rendercv-style-resume/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/resume-plus/rendercv-style-resume/preview.png"
+      },
+      {
         "name": "rendercv-style-resume/template.json",
         "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/resume-plus/rendercv-style-resume/template.json"
       },
       {
         "name": "typst-modern-cv/main.typ",
         "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/resume-plus/typst-modern-cv/main.typ"
+      },
+      {
+        "name": "typst-modern-cv/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/resume-plus/typst-modern-cv/preview.png"
       },
       {
         "name": "typst-modern-cv/template.json",
@@ -55,13 +1171,17 @@
     "label": "Slides & posters",
     "description": "Metropolis beamer deck, tikzposter portrait and landscape, and a better-poster layout.",
     "category": "Presentations",
-    "approx_bytes": 5032,
+    "approx_bytes": 59587,
     "count": 4,
     "license_summary": "CC0-1.0",
     "files": [
       {
         "name": "beamer-metropolis/main.tex",
         "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/slides-posters/beamer-metropolis/main.tex"
+      },
+      {
+        "name": "beamer-metropolis/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/slides-posters/beamer-metropolis/preview.png"
       },
       {
         "name": "beamer-metropolis/template.json",
@@ -72,6 +1192,10 @@
         "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/slides-posters/better-poster/main.tex"
       },
       {
+        "name": "better-poster/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/slides-posters/better-poster/preview.png"
+      },
+      {
         "name": "better-poster/template.json",
         "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/slides-posters/better-poster/template.json"
       },
@@ -80,12 +1204,20 @@
         "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/slides-posters/tikzposter-landscape/main.tex"
       },
       {
+        "name": "tikzposter-landscape/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/slides-posters/tikzposter-landscape/preview.png"
+      },
+      {
         "name": "tikzposter-landscape/template.json",
         "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/slides-posters/tikzposter-landscape/template.json"
       },
       {
         "name": "tikzposter-portrait/main.tex",
         "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/slides-posters/tikzposter-portrait/main.tex"
+      },
+      {
+        "name": "tikzposter-portrait/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/slides-posters/tikzposter-portrait/preview.png"
       },
       {
         "name": "tikzposter-portrait/template.json",
@@ -98,13 +1230,17 @@
     "label": "Journal & conference classes",
     "description": "REVTeX, ACS achemso, Elsevier, ACM sigconf, and Typst journal starters.",
     "category": "Journals & Conferences",
-    "approx_bytes": 9074,
+    "approx_bytes": 234691,
     "count": 6,
     "license_summary": "CC0-1.0",
     "files": [
       {
         "name": "achemso-article/main.tex",
         "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/venue-classes/achemso-article/main.tex"
+      },
+      {
+        "name": "achemso-article/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/venue-classes/achemso-article/preview.png"
       },
       {
         "name": "achemso-article/template.json",
@@ -115,12 +1251,20 @@
         "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/venue-classes/acmart-sigconf/main.tex"
       },
       {
+        "name": "acmart-sigconf/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/venue-classes/acmart-sigconf/preview.png"
+      },
+      {
         "name": "acmart-sigconf/template.json",
         "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/venue-classes/acmart-sigconf/template.json"
       },
       {
         "name": "elsarticle-2col/main.tex",
         "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/venue-classes/elsarticle-2col/main.tex"
+      },
+      {
+        "name": "elsarticle-2col/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/venue-classes/elsarticle-2col/preview.png"
       },
       {
         "name": "elsarticle-2col/template.json",
@@ -131,6 +1275,10 @@
         "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/venue-classes/revtex-aps-article/main.tex"
       },
       {
+        "name": "revtex-aps-article/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/venue-classes/revtex-aps-article/preview.png"
+      },
+      {
         "name": "revtex-aps-article/template.json",
         "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/venue-classes/revtex-aps-article/template.json"
       },
@@ -139,12 +1287,20 @@
         "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/venue-classes/typst-conference-paper/main.typ"
       },
       {
+        "name": "typst-conference-paper/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/venue-classes/typst-conference-paper/preview.png"
+      },
+      {
         "name": "typst-conference-paper/template.json",
         "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/venue-classes/typst-conference-paper/template.json"
       },
       {
         "name": "typst-journal-article/main.typ",
         "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/venue-classes/typst-journal-article/main.typ"
+      },
+      {
+        "name": "typst-journal-article/preview.png",
+        "url": "https://raw.githubusercontent.com/Oleafly/template-packs/main/packs/venue-classes/typst-journal-article/preview.png"
       },
       {
         "name": "typst-journal-article/template.json",

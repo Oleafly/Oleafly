@@ -1,25 +1,18 @@
-import { useEffect, useState, type RefObject } from "react";
-import { Clock3, FileInput, Moon, Plus, Sun } from "lucide-react";
+import { useRef } from "react";
+import { Clock3, FileInput, Moon, Plus, Sun, Wrench } from "lucide-react";
 import { LeafLogo } from "@/components/layout/LeafLogo";
 import { SettingsMenu } from "@/components/layout/SettingsMenu";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
+import { handlePickedFile } from "@/features/import";
 import { cn, isMac } from "@/lib/utils";
+import { useFullscreen } from "@/lib/use-fullscreen";
 import { useTheme } from "@/lib/theme";
 import { useDeadlinesStore } from "@/store/deadlines";
+import { useLatexToolsStore } from "@/store/latex-tools";
 import { useSettingsStore } from "@/store/settings";
 
-const COLLAPSE_KEY = "oleafly.librarySidebarCollapsed";
-
-export function useLibrarySidebarCollapsed() {
-  const [collapsed, setCollapsed] = useState(
-    () => localStorage.getItem(COLLAPSE_KEY) === "1",
-  );
-  useEffect(() => {
-    localStorage.setItem(COLLAPSE_KEY, collapsed ? "1" : "0");
-  }, [collapsed]);
-  return { collapsed, toggle: () => setCollapsed((v) => !v) };
-}
+export { useLibrarySidebarStore as useLibrarySidebarCollapsed } from "@/store/library-sidebar";
 
 function NavItem({
   collapsed,
@@ -55,19 +48,24 @@ function NavItem({
       {!collapsed && label}
     </Button>
   );
-  return collapsed ? <Tooltip label={label}>{button}</Tooltip> : button;
+  return collapsed ? (
+    <Tooltip label={label} side="right">
+      {button}
+    </Tooltip>
+  ) : (
+    button
+  );
 }
 
-/** Home-screen navigation sidebar (shadcn sidebar pattern, icon-collapsible). */
-export function LibrarySidebar({
-  importInputRef,
-  collapsed,
-}: {
-  importInputRef: RefObject<HTMLInputElement | null>;
-  collapsed: boolean;
-}) {
+/** Home-shell navigation sidebar (shadcn sidebar pattern, icon-collapsible).
+ *  Shared across the library, deadlines, PDF-import, and LaTeX-tools views;
+ *  each mounts its own instance, self-contained (own file input), so collapse
+ *  state (persisted in useLibrarySidebarStore) stays in sync across all of them. */
+export function LibrarySidebar({ collapsed }: { collapsed: boolean }) {
   const setNewProjectOpen = useSettingsStore((s) => s.setNewProjectOpen);
   const { theme, toggleTheme } = useTheme();
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const fullscreen = useFullscreen();
 
   return (
     <aside
@@ -78,11 +76,22 @@ export function LibrarySidebar({
         collapsed ? "w-14" : "w-56",
       )}
     >
+      <input
+        ref={importInputRef}
+        type="file"
+        accept=".pdf,.docx"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = "";
+          if (f) void handlePickedFile(f);
+        }}
+      />
       <div
         className={cn(
           "flex h-12 items-center gap-2",
           collapsed ? "justify-center" : "px-4",
-          isMac && "mt-7",
+          isMac && !fullscreen && "mt-7",
         )}
         data-tauri-drag-region
       >
@@ -116,6 +125,13 @@ export function LibrarySidebar({
           onClick={() => void useDeadlinesStore.getState().openView()}
           testId="open-deadlines"
         />
+        <NavItem
+          collapsed={collapsed}
+          label="LaTeX Tools"
+          icon={<Wrench className="size-4" />}
+          onClick={() => useLatexToolsStore.getState().openView()}
+          testId="open-latex-tools"
+        />
       </nav>
       <div
         className={cn(
@@ -123,10 +139,7 @@ export function LibrarySidebar({
           collapsed ? "flex-col items-center" : "items-center",
         )}
       >
-        <Tooltip label="Settings">
-          <SettingsMenu />
-        </Tooltip>
-        <Tooltip label={theme === "dark" ? "Light theme" : "Dark theme"}>
+        <Tooltip label={theme === "dark" ? "Light theme" : "Dark theme"} side="right">
           <Button
             variant="ghost"
             size="icon"
@@ -136,6 +149,9 @@ export function LibrarySidebar({
           >
             {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
           </Button>
+        </Tooltip>
+        <Tooltip label="Settings" side="right">
+          <SettingsMenu />
         </Tooltip>
       </div>
     </aside>

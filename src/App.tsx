@@ -14,6 +14,7 @@ import { SearchOmnibar } from "@/components/layout/SearchOmnibar";
 import { GlobalNewProject } from "@/components/library/GlobalNewProject";
 import { PdfImportView } from "@/components/import/PdfImportView";
 import { DeadlinesView } from "@/components/deadlines/DeadlinesView";
+import { LatexToolsView } from "@/components/tools/LatexToolsView";
 import { Editor } from "@/components/editor/Editor";
 import { PreviewPane } from "@/components/preview/PreviewPane";
 import { Library } from "@/components/library/Library";
@@ -434,6 +435,7 @@ export default function App() {
         <GlobalNewProject />
         <PdfImportView />
         <DeadlinesView />
+        <LatexToolsView />
         <ExternalToolApprovals />
         <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
         {chatFloating && (
@@ -518,6 +520,7 @@ export default function App() {
         <GlobalNewProject />
         <PdfImportView />
         <DeadlinesView />
+        <LatexToolsView />
         <ExternalToolApprovals />
         <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
         {chatFloating && (
