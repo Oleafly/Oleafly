@@ -41,6 +41,7 @@ import { EngineSection } from "@/components/settings/EngineSection";
 import { DownloadsSection } from "@/components/settings/DownloadsSection";
 import { AISection } from "@/components/settings/AISection";
 import { GitHubSection } from "@/components/settings/GitHubSection";
+import { AlphaXivSection } from "@/components/settings/AlphaXivSection";
 import { McpSection } from "@/components/settings/McpSection";
 import { ShortcutsSection } from "@/components/settings/ShortcutsSection";
 import {
@@ -762,11 +763,14 @@ export function SettingsModal() {
             {section === "downloads" && <DownloadsSection />}
 
             {section === "github" && (
-              <GitHubSection
-                projectId={projectId}
-                projectName={projectName}
-                onRemoteChanged={() => void refreshTree()}
-              />
+              <>
+                <GitHubSection
+                  projectId={projectId}
+                  projectName={projectName}
+                  onRemoteChanged={() => void refreshTree()}
+                />
+                <AlphaXivSection />
+              </>
             )}
 
             {section === "shortcuts" && <ShortcutsSection />}
