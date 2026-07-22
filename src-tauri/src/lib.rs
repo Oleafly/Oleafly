@@ -18,6 +18,7 @@ mod sandbox;
 mod secrets;
 mod state;
 mod synctex;
+mod template_packs;
 mod templates;
 
 use state::AppState;
@@ -150,6 +151,8 @@ pub fn run() {
             assets::download_all_fonts,
             assets::template_prerequisites,
             assets::ensure_template_assets,
+            template_packs::list_template_packs,
+            template_packs::refresh_pack_catalog,
             project::export_pdf,
             project::export_document,
             project::search_docs,

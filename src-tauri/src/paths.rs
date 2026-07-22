@@ -36,6 +36,14 @@ pub fn assets_root() -> Result<PathBuf, String> {
     Ok(root)
 }
 
+/// `~/.oleafly/templates/` — downloaded template packs and user-made templates.
+pub fn templates_data_root() -> Result<PathBuf, String> {
+    let dir = oleafly_root()?.join("templates");
+    std::fs::create_dir_all(&dir)
+        .map_err(|e| format!("failed to create templates root {dir:?}: {e}"))?;
+    Ok(dir)
+}
+
 /// The projects directory: `~/.oleafly/projects/` (created if missing).
 pub fn projects_root() -> Result<PathBuf, String> {
     let root = oleafly_root()?.join("projects");
