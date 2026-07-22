@@ -200,8 +200,12 @@ export function createResearchTools(host: ResearchToolsHost): Record<string, Raw
       execute: async (input) => {
         const query = String(input.query ?? "");
         if (!query.trim()) return { error: "query must not be empty" };
-        const chunks = await host.retrieveProjectChunks(query, { topK: 5 });
-        return { chunks };
+        try {
+          const chunks = await host.retrieveProjectChunks(query, { topK: 5 });
+          return { chunks };
+        } catch (e) {
+          return { error: String(e instanceof Error ? e.message : e) };
+        }
       },
     },
   };

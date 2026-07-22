@@ -127,9 +127,9 @@ describe("project library search", () => {
   });
 
   it("reports no open project cleanly rather than throwing", async () => {
-    retrieveProjectChunks.mockResolvedValue([]);
+    retrieveProjectChunks.mockRejectedValue(new Error("no project is currently open"));
     const tools = createResearchTools(host);
     const res = await tools.project_library_search.execute({ query: "anything" });
-    expect(res).toMatchObject({ chunks: [] });
+    expect(res).toMatchObject({ error: expect.stringContaining("no project is currently open") });
   });
 });
