@@ -155,6 +155,7 @@ pub fn run() {
             template_packs::refresh_pack_catalog,
             template_packs::install_template_pack,
             template_packs::remove_template_pack,
+            templates::save_custom_template,
             project::export_pdf,
             project::export_document,
             project::search_docs,

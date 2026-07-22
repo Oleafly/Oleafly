@@ -219,6 +219,12 @@ export interface TemplateInfo {
   source: string;
 }
 
+export const saveCustomTemplate = (
+  slug: string,
+  manifestJson: string,
+  files: { name: string; content: string }[]
+) => invoke<void>("save_custom_template", { slug, manifestJson, files });
+
 export const listTemplates = () => invoke<TemplateInfo[]>("list_templates");
 
 export const templatePreview = (templateId: string) =>

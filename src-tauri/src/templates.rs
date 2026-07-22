@@ -314,6 +314,90 @@ pub fn list_templates(app: AppHandle) -> Result<Vec<TemplateInfo>, String> {
         .collect())
 }
 
+#[derive(serde::Deserialize)]
+pub struct CustomFile {
+    pub name: String,
+    pub content: String,
+}
+
+fn is_safe_custom_file(name: &str) -> bool {
+    !name.is_empty()
+        && !name.starts_with('/')
+        && !name.contains('\\')
+        && !name
+            .split('/')
+            .any(|seg| seg.is_empty() || seg == "." || seg == "..")
+}
+
+/// The testable core: writes into `<custom_root>/<slug>` via a staging dir.
+fn save_custom_template_at(
+    custom_root: &Path,
+    slug: &str,
+    manifest_json: &str,
+    files: &[CustomFile],
+    reserved: &[String],
+) -> Result<(), String> {
+    if !is_valid_id(slug) {
+        return Err(format!("illegal template id: {slug}"));
+    }
+    if reserved.iter().any(|r| r == slug) {
+        return Err(format!("template id {slug} is already taken"));
+    }
+    let manifest: TemplateManifest =
+        serde_json::from_str(manifest_json).map_err(|e| format!("invalid manifest: {e}"))?;
+    if manifest.id != slug {
+        return Err("manifest id must match the template slug".into());
+    }
+    if !files.iter().any(|f| f.name == manifest.main_doc) {
+        return Err(format!("missing main document {}", manifest.main_doc));
+    }
+    if let Some(bad) = files.iter().find(|f| !is_safe_custom_file(&f.name)) {
+        return Err(format!("illegal file name: {}", bad.name));
+    }
+    let dest = custom_root.join(slug);
+    if dest.exists() {
+        return Err(format!("custom template {slug} already exists"));
+    }
+    let staging = custom_root.join(format!(".staging-{slug}"));
+    let _ = std::fs::remove_dir_all(&staging);
+    let write_all = || -> Result<(), String> {
+        std::fs::create_dir_all(&staging).map_err(|e| e.to_string())?;
+        std::fs::write(staging.join("template.json"), manifest_json).map_err(|e| e.to_string())?;
+        for f in files {
+            let p = staging.join(&f.name);
+            if let Some(parent) = p.parent() {
+                std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+            }
+            std::fs::write(&p, &f.content).map_err(|e| e.to_string())?;
+        }
+        std::fs::rename(&staging, &dest).map_err(|e| e.to_string())
+    };
+    if let Err(e) = write_all() {
+        let _ = std::fs::remove_dir_all(&staging);
+        return Err(e);
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn save_custom_template(
+    app: AppHandle,
+    slug: String,
+    manifest_json: String,
+    files: Vec<CustomFile>,
+) -> Result<(), String> {
+    let custom_root = crate::paths::templates_data_root()?.join("custom");
+    std::fs::create_dir_all(&custom_root).map_err(|e| e.to_string())?;
+    // Bundled ids stay reserved so a custom template can never shadow or be
+    // shadowed confusingly by a shipped one.
+    let reserved: Vec<String> = list_templates_in_roots(&template_roots(&app))
+        .into_iter()
+        .filter(|(_, _, source)| *source != "custom")
+        .map(|(m, _, _)| m.id)
+        .collect();
+    save_custom_template_at(&custom_root, &slug, &manifest_json, &files, &reserved)
+}
+
 /// The pre-rendered page-1 preview as a `data:` URI, or `None` if absent. Called
 /// lazily per card so the gallery list stays light.
 #[tauri::command]
@@ -460,6 +544,42 @@ mod tests {
         std::fs::create_dir_all(&dest).unwrap();
         assert!(copy_tree(&src, &dest, 0).is_err());
         let _ = std::fs::remove_dir_all(base);
+    }
+
+    #[test]
+    fn custom_template_save_validates_and_is_transactional() {
+        let root = std::env::temp_dir().join(format!("oleafly-custom-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).unwrap();
+        let manifest = r#"{"id":"my-note","name":"My Note"}"#;
+        let files = vec![super::CustomFile {
+            name: "main.tex".into(),
+            content: "\\documentclass{article}".into(),
+        }];
+        // slug guard
+        assert!(super::save_custom_template_at(&root, "../x", manifest, &files, &[]).is_err());
+        // reserved id
+        assert!(super::save_custom_template_at(
+            &root,
+            "my-note",
+            manifest,
+            &files,
+            &["my-note".into()]
+        )
+        .is_err());
+        // manifest id mismatch
+        assert!(super::save_custom_template_at(&root, "other", manifest, &files, &[]).is_err());
+        // missing main doc
+        assert!(super::save_custom_template_at(&root, "my-note", manifest, &[], &[]).is_err());
+        // happy path
+        super::save_custom_template_at(&root, "my-note", manifest, &files, &[]).unwrap();
+        assert!(root.join("my-note/template.json").is_file());
+        assert!(root.join("my-note/main.tex").is_file());
+        // duplicate
+        assert!(super::save_custom_template_at(&root, "my-note", manifest, &files, &[]).is_err());
+        // no staging leftovers
+        assert!(!root.join(".staging-my-note").exists());
+        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[test]
