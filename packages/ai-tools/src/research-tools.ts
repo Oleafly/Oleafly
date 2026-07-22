@@ -18,6 +18,8 @@ type RawToolDef = {
 export interface ResearchToolsHost {
   getConnectorKey(connectorId: string): Promise<string | null>;
   fetchJson(url: string, init?: { headers?: Record<string, string> }): Promise<unknown>;
+  crossrefSearch(query: string): Promise<string>;
+  fetchDoiBibtex(doi: string): Promise<string>;
 }
 
 const ALPHAXIV_API_BASE = "https://api.alphaxiv.org/mcp/v1";
@@ -29,6 +31,14 @@ registerConnector({
   auth: "api-key",
   docsUrl: "https://www.alphaxiv.org/assistant",
   toolNames: ["alphaxiv_search", "alphaxiv_paper_content"],
+});
+
+registerConnector({
+  id: "openalex",
+  name: "OpenAlex / Crossref",
+  capability: "read",
+  auth: "none",
+  toolNames: ["literature_search", "verify_citation"],
 });
 
 async function requireKey(
@@ -95,6 +105,69 @@ export function createResearchTools(host: ResearchToolsHost): Record<string, Raw
             `${ALPHAXIV_API_BASE}/papers/${encodeURIComponent(paperId)}`,
             { headers: { Authorization: `Bearer ${keyOrError}` } },
           );
+        } catch (e) {
+          return { error: String(e instanceof Error ? e.message : e) };
+        }
+      },
+    },
+
+    literature_search: {
+      description:
+        "Search OpenAlex's scholarly-works index by natural-language query. Keyless and free; results include titles, authors, publication year, and OpenAlex/DOI ids. Use for general literature discovery.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Natural-language search query" },
+          limit: { type: "number", description: "Max results (default 10, capped at 25)" },
+        },
+        required: ["query"],
+        additionalProperties: false,
+      },
+      execute: async (input) => {
+        const query = String(input.query ?? "");
+        if (!query.trim()) return { error: "query must not be empty" };
+        const limit = Math.min(Math.max(1, Math.floor(Number(input.limit) || 10)), 25);
+        try {
+          return await host.fetchJson(
+            `https://api.openalex.org/works?search=${encodeURIComponent(query)}&per-page=${limit}`,
+          );
+        } catch (e) {
+          return { error: String(e instanceof Error ? e.message : e) };
+        }
+      },
+    },
+
+    verify_citation: {
+      description:
+        "Verify a citation is real before it is inserted anywhere. Given a DOI, resolves it directly to BibTeX. Given only a title, searches Crossref and reports whether a matching real record was found. Never fabricate a citation the agent cannot verify with this tool.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          doi: { type: "string", description: "DOI, if known (fastest, most reliable path)" },
+          title: { type: "string", description: "Paper title, used only if doi is not provided" },
+        },
+        required: [],
+        additionalProperties: false,
+      },
+      execute: async (input) => {
+        const doi = typeof input.doi === "string" ? input.doi.trim() : "";
+        const title = typeof input.title === "string" ? input.title.trim() : "";
+        if (!doi && !title) return { error: "Provide either doi or title." };
+        try {
+          if (doi) {
+            const bibtex = await host.fetchDoiBibtex(doi);
+            return { verified: true, source: "crossref-doi", doi, bibtex };
+          }
+          const raw = await host.crossrefSearch(title);
+          const parsed = JSON.parse(raw) as { items?: Array<{ title?: string[]; DOI?: string }> };
+          const match = parsed.items?.[0];
+          if (!match) return { verified: false, reason: "No matching Crossref record found." };
+          return {
+            verified: true,
+            source: "crossref-search",
+            doi: match.DOI ?? null,
+            matchedTitle: match.title?.[0] ?? null,
+          };
         } catch (e) {
           return { error: String(e instanceof Error ? e.message : e) };
         }

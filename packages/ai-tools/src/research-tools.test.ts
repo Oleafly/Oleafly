@@ -40,3 +40,51 @@ describe("alphaXiv connector tools", () => {
     expect(fetchJson).not.toHaveBeenCalled();
   });
 });
+
+describe("OpenAlex + citation verification tools", () => {
+  const fetchJson = vi.fn();
+  const getConnectorKey = vi.fn();
+  const crossrefSearch = vi.fn();
+  const fetchDoiBibtex = vi.fn();
+  let host: ResearchToolsHost;
+
+  beforeEach(() => {
+    fetchJson.mockReset();
+    getConnectorKey.mockReset();
+    crossrefSearch.mockReset();
+    fetchDoiBibtex.mockReset();
+    host = { fetchJson, getConnectorKey, crossrefSearch, fetchDoiBibtex };
+  });
+
+  it("literature_search needs no connector key (OpenAlex is keyless)", async () => {
+    fetchJson.mockResolvedValue({ results: [{ id: "W123", display_name: "A Work" }] });
+    const tools = createResearchTools(host);
+    const res = await tools.literature_search.execute({ query: "graph neural networks" });
+    expect(getConnectorKey).not.toHaveBeenCalled();
+    expect(fetchJson).toHaveBeenCalledWith(expect.stringContaining("api.openalex.org/works"));
+    expect(res).toMatchObject({ results: [{ id: "W123" }] });
+  });
+
+  it("verify_citation resolves a DOI to BibTeX", async () => {
+    fetchDoiBibtex.mockResolvedValue("@article{key, title={A Paper}}");
+    const tools = createResearchTools(host);
+    const res = await tools.verify_citation.execute({ doi: "10.1000/example" });
+    expect(fetchDoiBibtex).toHaveBeenCalledWith("10.1000/example");
+    expect(res).toMatchObject({ verified: true, bibtex: expect.stringContaining("A Paper") });
+  });
+
+  it("verify_citation falls back to a Crossref title search when no DOI is given", async () => {
+    crossrefSearch.mockResolvedValue(JSON.stringify({ items: [{ title: ["A Paper"], DOI: "10.1000/x" }] }));
+    const tools = createResearchTools(host);
+    const res = await tools.verify_citation.execute({ title: "A Paper" });
+    expect(crossrefSearch).toHaveBeenCalledWith("A Paper");
+    expect(res).toMatchObject({ verified: true });
+  });
+
+  it("verify_citation reports unverified when nothing matches", async () => {
+    crossrefSearch.mockResolvedValue(JSON.stringify({ items: [] }));
+    const tools = createResearchTools(host);
+    const res = await tools.verify_citation.execute({ title: "Definitely Not A Real Paper Title Xyz" });
+    expect(res).toMatchObject({ verified: false });
+  });
+});
