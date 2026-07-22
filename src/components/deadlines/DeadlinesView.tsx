@@ -49,6 +49,7 @@ import {
 import { LibrarySidebar } from "@/components/library/LibrarySidebar";
 import { cn } from "@/lib/utils";
 import { useDeadlinesStore } from "@/store/deadlines";
+import { useHomeViewStore } from "@/store/home-view";
 import { useLibrarySidebarStore } from "@/store/library-sidebar";
 
 function pad(n: number): string {
@@ -238,13 +239,12 @@ function DeadlineCard({ venue, now }: { venue: Venue; now: Date }) {
 }
 
 export function DeadlinesView() {
-  const open = useDeadlinesStore((s) => s.open);
+  const page = useHomeViewStore((s) => s.page);
   const venues = useDeadlinesStore((s) => s.venues);
   const generatedAt = useDeadlinesStore((s) => s.generatedAt);
   const busy = useDeadlinesStore((s) => s.busy);
   const error = useDeadlinesStore((s) => s.error);
   const refresh = useDeadlinesStore((s) => s.refresh);
-  const close = useDeadlinesStore((s) => s.close);
   const [now, setNow] = useState(() => new Date());
   const [sub, setSub] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -252,12 +252,13 @@ export function DeadlinesView() {
   const [sortKey, setSortKey] = useState<SortKey>("deadline");
   const [helpOpen, setHelpOpen] = useState(false);
   const { collapsed: sidebarCollapsed, toggle: toggleSidebar } = useLibrarySidebarStore();
+  const active = page === "deadlines";
 
   useEffect(() => {
-    if (!open) return;
+    if (!active) return;
     const t = window.setInterval(() => setNow(new Date()), 1000);
     return () => window.clearInterval(t);
-  }, [open]);
+  }, [active]);
 
   const subs = useMemo(
     () => [...new Set((venues ?? []).map((v) => v.sub).filter(Boolean))].sort(),
@@ -269,9 +270,9 @@ export function DeadlinesView() {
   );
   const updated = formatUpdated(generatedAt);
 
-  if (!open) return null;
+  if (!active) return null;
   return (
-    <div data-testid="deadlines-view" className="fixed inset-0 z-50 flex bg-background">
+    <div data-testid="deadlines-view" className="flex h-full bg-background">
       <LibrarySidebar collapsed={sidebarCollapsed} />
       <div className="flex min-w-0 flex-1 flex-col">
       <div data-tauri-drag-region className="relative flex items-center gap-3 border-b py-2 pl-4 pr-4">
@@ -287,7 +288,12 @@ export function DeadlinesView() {
             <PanelLeft className="size-4" />
           </Button>
         </Tooltip>
-        <Button variant="ghost" size="sm" onClick={close} data-testid="deadlines-back">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => useHomeViewStore.getState().goTo("library")}
+          data-testid="deadlines-back"
+        >
           <ArrowLeft className="size-4" /> Back
         </Button>
         <div className="font-medium">Conference Deadlines</div>
