@@ -43,7 +43,7 @@ test("deadlines view refreshes, counts down, and filters", async ({ tauriPage })
   );
   // search works across the full name
   await tauriPage.click('[data-testid="deadlines-sub-SE"]');
-  await tauriPage.fill('[data-testid="deadlines-search"]', "neural information");
+  await tauriPage.fill('[data-testid="deadlines-search"]', "artificial intelligence");
   await waitLong(
     tauriPage,
     `!!document.querySelector('[data-testid="deadline-card-aaai33"]') && !document.querySelector('[data-testid="deadline-card-icse33"]')`,

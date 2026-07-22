@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures";
-import { openGallery, waitLong } from "../helpers";
+import { fillTextarea, openGallery, waitLong } from "../helpers";
 import { startMockAiServer, type MockAiServer } from "../mock-ai-server";
 
 // Generator gating reads the configured provider, so connect the keyless
@@ -35,7 +35,8 @@ test("generate with AI saves a reusable custom template", async ({ tauriPage }) 
   await expect(tauriPage.locator('[data-testid="template-generate-card"]')).toBeVisible({
     timeout: 20_000,
   });
-  await tauriPage.fill(
+  await fillTextarea(
+    tauriPage,
     '[data-testid="template-generate-input"]',
     "A short markdown note template",
   );
