@@ -220,10 +220,10 @@ function ToolsGallery({ onOpenTool }: { onOpenTool: (id: ToolId) => void }) {
 }
 
 export function LatexToolsView() {
-  const page = useHomeViewStore((s) => s.page);
+  const toolsOpen = useHomeViewStore((s) => s.toolsOpen);
   const { collapsed: sidebarCollapsed, toggle: toggleSidebar } = useLibrarySidebarStore();
   const [activeTool, setActiveTool] = useState<ToolId | null>(null);
-  const active = page === "latex-tools";
+  const active = toolsOpen;
   const tool = activeTool ? TOOLS.find((t) => t.id === activeTool) : null;
   if (!active) return null;
   return (
