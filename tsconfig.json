@@ -12,12 +12,12 @@
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
+    "types": ["node", "@testing-library/jest-dom"],
 
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "types": ["node", "vitest/globals", "@testing-library/jest-dom"],
 
     "baseUrl": ".",
     "paths": {
