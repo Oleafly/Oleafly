@@ -10,7 +10,6 @@ export interface DiagramHost {
     background?: string,
   ): Promise<string>;
   listFiles(projectId: string): Promise<{ path: string }[]>;
-  readFileContent(projectId: string, path: string): Promise<string>;
   writeFileContent(projectId: string, path: string, content: string): Promise<void>;
   writeProjectBytes(projectId: string, relPath: string, dataBase64: string): Promise<void>;
   insertAtCursor(text: string): void;
@@ -25,5 +24,9 @@ export interface DiagramHost {
   listProjectNames(): Promise<{ id: string; name: string }[]>;
   saveFigureToCache(name: string, pngBase64: string, tikz: string): Promise<{ hash: string; alreadyCached: boolean }>;
   saveBytesToDisk(defaultName: string, extension: string, dataBase64: string): Promise<boolean>;
+  // Lets the user pick an arbitrary .tikz/.tex file from disk (not tied to
+  // any project) to load into the composer as a draft. Resolves null if the
+  // user cancels the picker.
+  pickTikzFile(): Promise<{ name: string; content: string } | null>;
   fixWithAi?(code: string, logTail: string): Promise<string>;
 }

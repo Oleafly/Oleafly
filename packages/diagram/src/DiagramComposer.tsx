@@ -20,6 +20,7 @@ import {
   Save,
   Sparkles,
   Square,
+  Upload,
   X,
 } from "lucide-react";
 import type { Extension } from "@codemirror/state";
@@ -244,6 +245,7 @@ export function DiagramComposer({
   codeExtensions,
   isMac = false,
   fullscreen = false,
+  forcePreviewOpen = false,
 }: {
   open: boolean;
   projectId: string | null;
@@ -253,6 +255,10 @@ export function DiagramComposer({
   codeExtensions?: Extension[];
   isMac?: boolean;
   fullscreen?: boolean;
+  // Shows the (empty, pre-compile) preview pane layout without actually
+  // compiling anything. Lets an app-level caller (e.g. a product tour) point
+  // at the real preview affordance instead of describing UI that isn't there.
+  forcePreviewOpen?: boolean;
 }) {
   const { Button, Input, ColorPicker, Tooltip, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, toast } =
     useDiagramKit();
@@ -447,20 +453,30 @@ export function DiagramComposer({
     if (saved) toast.success("Downloaded.");
   }, [png, stem, host, toast]);
 
-  const loadExisting = useCallback(async () => {
-    if (!projectId || !stem) return;
+  const [importing, setImporting] = useState(false);
+  const importTikzFile = useCallback(async () => {
+    if (importing) return;
+    setImporting(true);
     try {
-      const content = await host.readFileContent(projectId, `figures/${stem}.tikz`);
-      const drawable = applyLoadedContent(content);
+      const picked = await host.pickTikzFile();
+      if (!picked) return;
+      const drawable = applyLoadedContent(picked.content);
+      const importedName = safeName(picked.name.replace(/\.(tikz|tex)$/i, ""));
+      if (importedName) {
+        setName(importedName);
+        setNameDraft(importedName);
+      }
       toast.success(
         drawable
-          ? `Loaded figures/${stem}.tikz for editing.`
-          : `Loaded figures/${stem}.tikz (code only, not drawable).`,
+          ? `Imported ${picked.name} for editing.`
+          : `Imported ${picked.name} (code only, not drawable).`,
       );
-    } catch {
-      toast.error(`No figures/${stem}.tikz to load.`);
+    } catch (e) {
+      toast.error(`Could not import that file: ${e}`);
+    } finally {
+      setImporting(false);
     }
-  }, [projectId, stem, host, toast, applyLoadedContent]);
+  }, [importing, host, toast, applyLoadedContent]);
 
   // Ask the configured AI to fix a failed compile from the log. One-shot: it
   // returns corrected TikZ, which we drop into Code and recompile (undoable in
@@ -545,7 +561,7 @@ export function DiagramComposer({
   };
 
   const hasPreviewResult = !!(png || log);
-  const showPreview = previewOpen;
+  const showPreview = previewOpen || forcePreviewOpen;
 
   const previewOpts = (
     <>
@@ -665,14 +681,16 @@ export function DiagramComposer({
               <span className="max-w-[220px] truncate font-normal">{displayFile}</span>
             </button>
           )}
-          <Tooltip label={`Load figures/${displayFile} to edit`}>
+          <Tooltip label="Import a .tikz or .tex file, replacing this draft">
             <button
               type="button"
-              aria-label="Load existing diagram"
-              onClick={() => void loadExisting()}
-              className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+              data-tour="diagram-import"
+              aria-label="Import TikZ file"
+              onClick={() => void importTikzFile()}
+              disabled={importing}
+              className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
             >
-              <FolderOpen className="size-4" />
+              {importing ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
             </button>
           </Tooltip>
         </div>
@@ -793,6 +811,7 @@ export function DiagramComposer({
               <Button
                 variant="ghost"
                 size="sm"
+                data-tour="diagram-download"
                 aria-label="Download"
                 onClick={() => setDownloadPickerOpen((v) => !v)}
               >

@@ -193,3 +193,62 @@ test("the Download picker offers PNG and disables SVG", async ({ tauriPage }) =>
 
   await closeDiagramComposer(tauriPage);
 });
+
+// Import replaces the default draft; it never forces a project save (that
+// stays a separate, explicit "Save to project" action - see the "saving to
+// a new project" test above).
+test("importing a plain (non-composer) TikZ file loads it as code-only", async ({ tauriPage }) => {
+  await openDiagramComposer(tauriPage);
+
+  const importedTikz = "\\node (imported) [draw] {Imported Content};";
+  await tauriPage.evaluate(
+    `window.__setNextTikzImport(${JSON.stringify("hand-written.tikz")}, ${JSON.stringify(importedTikz)})`,
+  );
+  await tauriPage.click('[aria-label="Import TikZ file"]');
+
+  await tauriPage.waitForFunction(
+    `document.body.innerText.includes('Imported hand-written.tikz (code only, not drawable).')`,
+    10_000,
+  );
+  // Non-drawable content switches to the Code tab automatically.
+  await tauriPage.waitForFunction(
+    `document.querySelector('[data-testid="diagram-tab-code"]').className.includes('bg-accent')`,
+    5_000,
+  );
+  await expect(tauriPage.locator(".cm-content")).toContainText("Imported Content");
+  // The draft's display name picks up the imported file's basename.
+  await expect(tauriPage.locator('[data-testid="diagram-name-display"]')).toContainText(
+    "hand-written",
+  );
+
+  await closeDiagramComposer(tauriPage);
+});
+
+test("canceling the file picker during import leaves the draft untouched", async ({
+  tauriPage,
+}) => {
+  await openDiagramComposer(tauriPage);
+  // The starter drawing's generated TikZ is long enough that CodeMirror
+  // virtualizes .cm-content (only the scrolled-to viewport renders), so a
+  // before/after text diff would be comparing arbitrary scroll windows, not
+  // the actual document. The name display is short and never virtualized,
+  // and only a successful import ever changes it - a reliable proxy here.
+  await expect(tauriPage.locator('[data-testid="diagram-name-display"]')).toContainText(
+    "diagram.tikz",
+  );
+
+  // name: null simulates the user dismissing the picker without choosing a
+  // file - pickTikzFile() resolves null the same way for a real cancel.
+  await tauriPage.evaluate(`window.__setNextTikzImport(null, null)`);
+  await tauriPage.click('[aria-label="Import TikZ file"]');
+  await tauriPage.waitForFunction(
+    `!document.querySelector('[aria-label="Import TikZ file"][disabled]')`,
+    5_000,
+  );
+
+  await expect(tauriPage.locator('[data-testid="diagram-name-display"]')).toContainText(
+    "diagram.tikz",
+  );
+  await expect(tauriPage.getByText("Imported", { exact: false })).toHaveCount(0);
+  await closeDiagramComposer(tauriPage);
+});

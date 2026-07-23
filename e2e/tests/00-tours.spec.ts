@@ -195,7 +195,11 @@ test("AI and Diagram tours select their eligible context without sending or comp
   );
   await tauriPage.getByText("Skip", { exact: true }).click();
 
-  await tauriPage.click('[aria-label="Insert diagram"]');
+  // The Diagram Composer is a standalone home-shell page now, not a
+  // per-project modal, so reaching it means leaving the project first.
+  await tauriPage.click('[title="Back to library"]');
+  await expect(tauriPage.getByTestId("library")).toBeVisible();
+  await tauriPage.click('[data-testid="open-diagram-composer"]');
   await expect(tauriPage.locator("#react-joyride-portal h2")).toHaveText("Diagram Composer", {
     timeout: 30_000,
   });

@@ -69,7 +69,10 @@ export const tourRegistry = {
         title: "Choose a template",
         content: "Select any real template to continue. Its files will become your new project.",
         waitForTarget: true,
-        placement: "left",
+        // Same large target as home-gallery: "left"/"top" had nowhere to
+        // fit against a near-fullscreen modal and clipped above the
+        // viewport. Center like home-gallery does for the same target.
+        placement: "center",
       },
       {
         id: "home-name",
@@ -94,8 +97,8 @@ export const tourRegistry = {
         id: "home-create-project",
         target: '[data-tour="create-project"]',
         kind: "required-click",
-        title: "Open your workspace",
-        content: "Create the project with the selected template, name, and cover color.",
+        title: "Create your project",
+        content: 'Click "Create project" to create a project with the selected template.',
         waitForTarget: true,
         placement: "top",
       },
@@ -384,7 +387,7 @@ export const tourRegistry = {
   },
   diagram: {
     id: "diagram",
-    version: 2,
+    version: 3,
     contexts: ["diagram"],
     priority: 50,
     steps: [
@@ -396,6 +399,14 @@ export const tourRegistry = {
         content: "Build diagrams visually or from TikZ code. The tour does not modify, compile, or save your work.",
         waitForTarget: true,
         placement: "center",
+      },
+      {
+        id: "diagram-import",
+        target: '[data-tour="diagram-import"]',
+        kind: "informational",
+        title: "Import a TikZ file",
+        content: "Already have a .tikz or .tex file? Import it to replace this starter drawing. It stays a draft until you choose to save it.",
+        waitForTarget: true,
       },
       {
         id: "diagram-modes",
@@ -461,6 +472,14 @@ export const tourRegistry = {
         kind: "informational",
         title: "Save as project",
         content: "Save a finished diagram as a reusable image project that appears on Home.",
+        waitForTarget: true,
+      },
+      {
+        id: "diagram-download",
+        target: '[data-tour="diagram-download"]',
+        kind: "informational",
+        title: "Download",
+        content: "Download the compiled diagram as a PNG file without saving it as a project.",
         waitForTarget: true,
       },
     ],
