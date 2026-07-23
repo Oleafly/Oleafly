@@ -5,6 +5,7 @@ import {
   PanelResizeHandle,
   type ImperativePanelHandle,
 } from "react-resizable-panels";
+import { LeafLogo } from "@/components/layout/LeafLogo";
 import { ThemeProvider } from "@/lib/theme";
 import { TopToolbar } from "@/components/layout/TopToolbar";
 import { Rail } from "@/components/layout/Rail";
@@ -64,8 +65,18 @@ const TourGuide = lazy(() =>
   import("@/components/tour/TourGuide").then((m) => ({ default: m.TourGuide })),
 );
 
+// Shown only on the first open of a given lazy surface in a session (its
+// chunk is cached after that), so the fallback stays brief and simple.
+function LazyOverlayFallback() {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-[1px]">
+      <LeafLogo className="size-9 animate-pulse" />
+    </div>
+  );
+}
+
 function LazyModals({ children }: { children: ReactNode }) {
-  return <Suspense fallback={null}>{children}</Suspense>;
+  return <Suspense fallback={<LazyOverlayFallback />}>{children}</Suspense>;
 }
 
 // Control cluster is offset from the centered grab thumb so it never fights the drag.
@@ -476,7 +487,7 @@ export default function App() {
         <ExternalToolApprovals />
         <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
         {chatFloating && (
-          <Suspense fallback={null}>
+          <Suspense fallback={<LazyOverlayFallback />}>
             <CopilotOverlay />
           </Suspense>
         )}
@@ -555,7 +566,7 @@ export default function App() {
         <ExternalToolApprovals />
         <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
         {chatFloating && (
-          <Suspense fallback={null}>
+          <Suspense fallback={<LazyOverlayFallback />}>
             <CopilotOverlay />
           </Suspense>
         )}

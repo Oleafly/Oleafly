@@ -9,6 +9,7 @@ import {
   History,
   Info,
   ListFilter,
+  Loader2,
   Palette,
   Plus,
   SearchX,
@@ -593,7 +594,11 @@ export function Library() {
                 </Button>
               </EmptyContent>
             </Empty>
-            ) : null
+            ) : (
+              <div className="flex min-h-[60vh] items-center justify-center">
+                <Loader2 className="size-5 animate-spin text-muted-foreground" />
+              </div>
+            )
           ) : (
           visibleProjects.length === 0 ? (
             <Empty className="min-h-[60vh]">
