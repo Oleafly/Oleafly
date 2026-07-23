@@ -10,12 +10,13 @@ import { KIT } from "@/components/diagram/diagram-kit";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
+import { useTourStore } from "@/store/tours";
+import { tourRegistry } from "@/lib/tours/registry";
 import {
   compileIsolated,
   readIsolatedPdf,
   writeProjectBytes,
   writeFileContent,
-  readFileContent,
   writeBytesFile,
   listFiles,
   createImageProject,
@@ -31,6 +32,53 @@ import { editorTheme } from "@/components/editor/cm/theme";
 import { latexLanguage } from "@/components/editor/cm/latex";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { isMac } from "@/lib/utils";
+
+// E2E / devtools hook: the native bridge cannot drive a real file input, so
+// specs can queue the next pick's result here instead of opening a picker
+// (name: null simulates the user canceling the dialog). The real button
+// click and the real applyLoadedContent() codepath still run end to end;
+// only the OS file dialog itself is bypassed.
+if (typeof window !== "undefined" && import.meta.env.DEV) {
+  const w = window as unknown as {
+    __setNextTikzImport?: (name: string | null, content: string | null) => void;
+  };
+  w.__setNextTikzImport = (name, content) => {
+    nextTikzImportOverride = name === null ? null : { name, content: content ?? "" };
+  };
+}
+let nextTikzImportOverride: { name: string; content: string } | null | undefined;
+
+function pickTikzFile(): Promise<{ name: string; content: string } | null> {
+  if (import.meta.env.DEV && nextTikzImportOverride !== undefined) {
+    const next = nextTikzImportOverride;
+    nextTikzImportOverride = undefined;
+    return Promise.resolve(next);
+  }
+  return new Promise((resolve) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".tikz,.tex";
+    let settled = false;
+    const settle = (result: { name: string; content: string } | null) => {
+      if (settled) return;
+      settled = true;
+      resolve(result);
+    };
+    input.addEventListener("cancel", () => settle(null));
+    input.addEventListener("change", () => {
+      const file = input.files?.[0];
+      if (!file) {
+        settle(null);
+        return;
+      }
+      file
+        .text()
+        .then((content) => settle({ name: file.name, content }))
+        .catch(() => settle(null));
+    });
+    input.click();
+  });
+}
 
 async function fixWithAi(code: string, logTail: string): Promise<string> {
   const cfg = await getConfig();
@@ -61,7 +109,6 @@ const HOST: DiagramHost = {
   readIsolatedPdf,
   pdfToPng: pdfPageToPng,
   listFiles,
-  readFileContent,
   writeFileContent,
   writeProjectBytes,
   insertAtCursor,
@@ -94,6 +141,7 @@ const HOST: DiagramHost = {
     await writeBytesFile(dest, dataBase64);
     return true;
   },
+  pickTikzFile,
   fixWithAi,
 };
 
@@ -104,6 +152,15 @@ export function DiagramComposer() {
   const fullscreen = useFullscreen();
   const codeExtensions = useMemo(() => [latexLanguage(), editorTheme()], []);
   const [scratchId, setScratchId] = useState<string | null>(null);
+  const activeTourId = useTourStore((s) => s.activeTourId);
+  const activeStepIndex = useTourStore((s) => s.activeStepIndex);
+  // The tour never compiles or changes the drawing (see the diagram-composer
+  // step's own copy), so its "Compiled preview" step has to show the real
+  // (empty) preview pane layout itself rather than point at UI that only
+  // appears after a real compile.
+  const forcePreviewOpen =
+    activeTourId === "diagram" &&
+    tourRegistry.diagram.steps[activeStepIndex]?.id === "diagram-preview";
 
   useEffect(() => {
     if (!open || scratchId) return;
@@ -123,6 +180,7 @@ export function DiagramComposer() {
         codeExtensions={codeExtensions}
         isMac={isMac}
         fullscreen={fullscreen}
+        forcePreviewOpen={forcePreviewOpen}
       />
     </DiagramKitContext.Provider>
   );

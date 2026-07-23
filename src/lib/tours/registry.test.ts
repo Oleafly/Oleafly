@@ -81,6 +81,7 @@ describe("tour registry", () => {
   it("covers diagram authoring without compiling or saving", () => {
     expect(tourRegistry.diagram.steps.map((step) => step.id)).toEqual([
       "diagram-composer",
+      "diagram-import",
       "diagram-modes",
       "diagram-palette",
       "diagram-canvas",
@@ -89,6 +90,7 @@ describe("tour registry", () => {
       "diagram-preview",
       "diagram-compile",
       "diagram-save-project",
+      "diagram-download",
     ]);
     expect(tourRegistry.diagram.steps.every((step) => step.kind === "informational")).toBe(true);
   });
