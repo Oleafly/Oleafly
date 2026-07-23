@@ -259,7 +259,11 @@ export function DownloadsSection() {
           packs.map((p) => {
             const busy = packBusyId === p.id || (packBusyId === ALL && !p.installed);
             return (
-              <div key={p.id} className="flex items-center gap-3 border-b px-3 py-2.5 last:border-b-0">
+              <div
+                key={p.id}
+                data-testid={`pack-row-${p.id}`}
+                className="flex items-center gap-3 border-b px-3 py-2.5 last:border-b-0"
+              >
                 <FileText className="size-4 shrink-0 text-muted-foreground" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
@@ -276,6 +280,7 @@ export function DownloadsSection() {
                 </div>
                 {p.installed ? (
                   <button type="button"
+                    data-testid={`pack-remove-${p.id}`}
                     onClick={() => void removePack(p.id)}
                     disabled={anyPackBusy}
                     className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
@@ -284,6 +289,7 @@ export function DownloadsSection() {
                   </button>
                 ) : (
                   <button type="button"
+                    data-testid={`pack-install-${p.id}`}
                     onClick={() => void installPack(p.id)}
                     disabled={anyPackBusy}
                     className="inline-flex w-24 items-center justify-center gap-1.5 rounded-md bg-primary px-2.5 py-1.5 text-xs text-white hover:opacity-90 disabled:opacity-60"

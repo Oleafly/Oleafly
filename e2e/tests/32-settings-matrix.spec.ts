@@ -107,7 +107,7 @@ test("every accent color repaints the primary color", async ({ tauriPage }) => {
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openSettings(tauriPage, "appearance");
   const accents = [
-    ["Green", "#16a34a"],
+    ["Green", "#0b8842"],
     ["Purple", "#7c3aed"],
     ["Rose", "#db2777"],
     ["Orange", "#ea580c"],
@@ -139,16 +139,16 @@ test("open-projects-in controls the landing layout", async ({ tauriPage }) => {
     await openProject(tauriPage, "E2E Doc");
   };
 
-  await setDefaultView("PDF only");
+  await setDefaultView("Preview Only");
   await reopen();
   await tauriPage.waitForFunction(`!document.querySelector('.cm-content')`, 10_000);
 
-  await setDefaultView("Editor only");
+  await setDefaultView("Editor Only");
   await reopen();
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 10_000 });
   await tauriPage.waitForFunction(`!document.querySelector('.pdf-canvas')`, 10_000);
 
-  await setDefaultView("Split view");
+  await setDefaultView("Editor + Preview");
   await reopen();
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 10_000 });
 });

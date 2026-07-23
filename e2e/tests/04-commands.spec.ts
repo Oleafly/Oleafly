@@ -23,7 +23,7 @@ test("Cmd+Shift+F opens the omnibar with registered commands", async ({ tauriPag
   await pressGlobal(tauriPage, "f", { meta: true, shift: true });
   await expect(tauriPage.locator("[cmdk-input]")).toBeVisible();
   await tauriPage.fill("[cmdk-input]", "diagram");
-  await expect(tauriPage.getByText("Insert a diagram (manual)")).toBeVisible();
+  await expect(tauriPage.getByText("Open Diagram Composer")).toBeVisible();
   await tauriPage.press("[cmdk-input]", "Escape");
   await expect(tauriPage.locator("[cmdk-input]")).toBeHidden();
 });

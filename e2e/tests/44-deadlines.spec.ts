@@ -34,15 +34,26 @@ test("deadlines view refreshes, counts down, and filters", async ({ tauriPage })
   expect(card).toContain("AAAI 2033");
   expect(card).toContain("A*");
   expect(card).toMatch(/\d+d : \d+h : \d+m : \d+s/);
-  // sub filter narrows to the SE venue only
+  // sub filter (a Select dropdown, not a toggle button) narrows to the SE venue only
+  await tauriPage.click('[aria-label="Filter by field"]');
+  await tauriPage.waitForFunction(
+    `!!document.querySelector('[data-testid="deadlines-sub-SE"]')`,
+    5_000,
+  );
   await tauriPage.click('[data-testid="deadlines-sub-SE"]');
   await waitLong(
     tauriPage,
     `!document.querySelector('[data-testid="deadline-card-aaai33"]') && !!document.querySelector('[data-testid="deadline-card-icse33"]')`,
     10_000,
   );
-  // search works across the full name
-  await tauriPage.click('[data-testid="deadlines-sub-SE"]');
+  // reset back to "All" before checking search works across the full name
+  await tauriPage.click('[aria-label="Filter by field"]');
+  await tauriPage.getByText("All", { exact: true }).click();
+  await waitLong(
+    tauriPage,
+    `!!document.querySelector('[data-testid="deadline-card-aaai33"]')`,
+    10_000,
+  );
   await tauriPage.fill('[data-testid="deadlines-search"]', "artificial intelligence");
   await waitLong(
     tauriPage,

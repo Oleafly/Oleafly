@@ -12,7 +12,7 @@ export function AlphaXivSection() {
   }, [refresh]);
 
   return (
-    <div className="space-y-2 border-b pb-4">
+    <div data-testid="alphaxiv-section" className="space-y-2 border-b pb-4">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-medium">alphaXiv</h3>
