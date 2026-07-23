@@ -42,7 +42,7 @@ export function registerRailTabs() {
     section: "review",
     order: 40,
     // Preflight (ATS + accessibility) targets documents, not single figures.
-    when: (ctx) => ctx.projectKind !== "image",
+    when: (ctx) => ctx.projectKind !== "image" && ctx.projectKind !== "diagram",
     panel: PreflightPanel,
   });
   registerRailTab({

@@ -171,8 +171,8 @@ importers:
         specifier: ^0.17.0
         version: 0.17.0
       lucide-react:
-        specifier: ^0.469.0
-        version: 0.469.0(react@19.2.7)
+        specifier: ^0.540.0
+        version: 0.540.0(react@19.2.7)
       pdfjs-dist:
         specifier: ^6.1.200
         version: 6.1.200
@@ -2535,6 +2535,11 @@ packages:
 
   lucide-react@0.469.0:
     resolution: {integrity: sha512-28vvUnnKQ/dBwiCQtwJw7QauYnE7yd2Cyp4tTTJpvglX4EMpbflcdBgrgToX2j71B3YvugK/NH3BGUk+E/p/Fw==}
+    peerDependencies:
+      react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
+  lucide-react@0.540.0:
+    resolution: {integrity: sha512-armkCAqQvO62EIX4Hq7hqX/q11WSZu0Jd23cnnqx0/49yIxGXyL/zyZfBxNN9YDx0ensPTb4L+DjTh3yQXUxtQ==}
     peerDependencies:
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
@@ -5203,6 +5208,10 @@ snapshots:
       yallist: 3.1.1
 
   lucide-react@0.469.0(react@19.2.7):
+    dependencies:
+      react: 19.2.7
+
+  lucide-react@0.540.0(react@19.2.7):
     dependencies:
       react: 19.2.7
 

@@ -292,7 +292,10 @@ export function DeadlinesView() {
         aria-labelledby="deadlines-title"
         data-modal-initial-focus
         data-testid="deadlines-view"
-        className={cn("relative flex h-[36rem] w-full max-w-4xl flex-col overflow-hidden rounded-xl", GLASS_PANEL)}
+        className={cn(
+          "relative flex h-[36rem] w-full max-w-4xl flex-col overflow-hidden rounded-xl xl:h-[42rem] xl:max-w-6xl",
+          GLASS_PANEL,
+        )}
       >
       <div className="relative flex items-center gap-3 border-b py-2 pl-4 pr-4">
         <div id="deadlines-title" className="font-medium">Conference Deadlines</div>
@@ -418,7 +421,7 @@ export function DeadlinesView() {
             </EmptyContent>
           </Empty>
         ) : (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
             {shown.map((v) => (
               <DeadlineCard key={v.id} venue={v} now={now} />
             ))}

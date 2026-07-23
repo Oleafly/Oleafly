@@ -3,11 +3,12 @@ import {
   ArrowLeft,
   Braces,
   Check,
+  ChevronLeft,
   ChevronRight,
   Circle,
   Code2,
+  Download,
   FolderOpen,
-  Image as ImageIcon,
   Loader2,
   Minus,
   MousePointerSquareDashed,
@@ -26,6 +27,7 @@ import { CmCodeEditor, type CmHandle } from "./CmCodeEditor";
 import { DiagramCanvas } from "./DiagramCanvas";
 import {
   type DiagramModel,
+  type EdgeRouting,
   newId,
   modelToTikz,
   serializeDiagram,
@@ -38,19 +40,179 @@ import type { DiagramHost } from "./host";
 import { cn } from "./cn";
 
 function starterModel(): DiagramModel {
-  const a = newId(), b = newId(), c = newId();
-  return {
-    version: 1,
-    nodes: [
-      { id: a, shape: "rectangle", x: 200, y: 40, w: 120, h: 52, label: "Dataset", fill: "#eef2ff", stroke: "#1e293b", textColor: "#0f172a", radius: 0 },
-      { id: b, shape: "rectangle", x: 200, y: 150, w: 120, h: 52, label: "Encoder", fill: "#eef2ff", stroke: "#1e293b", textColor: "#0f172a", radius: 0 },
-      { id: c, shape: "rectangle", x: 200, y: 260, w: 120, h: 52, label: "Classifier", fill: "#eef2ff", stroke: "#1e293b", textColor: "#0f172a", radius: 0 },
-    ],
-    edges: [
-      { id: newId("e"), source: a, target: b, routing: "straight", arrow: "forward", style: "solid" },
-      { id: newId("e"), source: b, target: c, routing: "straight", arrow: "forward", style: "solid" },
-    ],
-  };
+  const STROKE = "#1e293b";
+  const INK = "#0f172a";
+  const PINK = "#f9d7d9";
+  const ORANGE = "#fde3c7";
+  const YELLOW_GREEN = "#eef2c3";
+  const BLUE = "#cfe8f8";
+  const PURPLE = "#dad2f0";
+  const GREEN = "#cdedd0";
+  const GREY = "#e9e9ec";
+
+  const BW = 170, BH = 46;
+  const ENC_CX = 250, DEC_CX = 650;
+  const box = (
+    cx: number,
+    y: number,
+    label: string,
+    fill: string,
+    w = BW,
+    h = BH,
+  ) => ({
+    id: newId(),
+    shape: "rectangle" as const,
+    x: cx - w / 2,
+    y,
+    w,
+    h,
+    label,
+    fill,
+    stroke: STROKE,
+    textColor: INK,
+    radius: 4,
+  });
+  const text = (cx: number, y: number, label: string, w = 170, h = 40) => ({
+    id: newId(),
+    shape: "text" as const,
+    x: cx - w / 2,
+    y,
+    w,
+    h,
+    label,
+    fill: "",
+    stroke: "",
+    textColor: INK,
+  });
+  const circle = (cx: number, y: number, label = "") => ({
+    id: newId(),
+    shape: "circle" as const,
+    x: cx - 17,
+    y,
+    w: 34,
+    h: 34,
+    label,
+    fill: "#ffffff",
+    stroke: STROKE,
+    textColor: INK,
+  });
+  const bg = (x: number, y: number, w: number, h: number) => ({
+    id: newId(),
+    shape: "roundrect" as const,
+    x,
+    y,
+    w,
+    h,
+    label: "",
+    fill: GREY,
+    stroke: "#c7c7cc",
+    textColor: INK,
+    radius: 16,
+  });
+
+  const encInputs = text(ENC_CX, 850, "Inputs");
+  const encEmbed = box(ENC_CX, 780, "Input Embedding", PINK);
+  const encPosCircle = circle(ENC_CX - 80, 710);
+  const encPlusCircle = circle(ENC_CX, 710, "+");
+  const encPosText = text(ENC_CX - 145, 755, "Positional Encoding", 140, 40);
+  const encMHA = box(ENC_CX, 630, "Multi-Head Attention", ORANGE);
+  const encAddNorm1 = box(ENC_CX, 560, "Add & Norm", YELLOW_GREEN);
+  const encFF = box(ENC_CX, 480, "Feed Forward", BLUE);
+  const encAddNorm2 = box(ENC_CX, 410, "Add & Norm", YELLOW_GREEN);
+  const encNxBg = bg(ENC_CX - BW / 2 - 25, 390, BW + 50, 306);
+  const encNxLabel = text(ENC_CX - BW / 2 - 90, 528, "N×", 50, 30);
+
+  const decOutputs = text(DEC_CX, 850, "Outputs (shifted right)");
+  const decEmbed = box(DEC_CX, 780, "Output Embedding", PINK);
+  const decPlusCircle = circle(DEC_CX, 710, "+");
+  const decPosCircle = circle(DEC_CX + 80, 710);
+  const decPosText = text(DEC_CX + 145, 755, "Positional Encoding", 140, 40);
+  const decMaskedMHA = box(DEC_CX, 630, "Masked Multi-Head Attention", ORANGE);
+  const decAddNorm1 = box(DEC_CX, 560, "Add & Norm", YELLOW_GREEN);
+  const decMHA = box(DEC_CX, 480, "Multi-Head Attention", ORANGE);
+  const decAddNorm2 = box(DEC_CX, 410, "Add & Norm", YELLOW_GREEN);
+  const decFF = box(DEC_CX, 330, "Feed Forward", BLUE);
+  const decAddNorm3 = box(DEC_CX, 260, "Add & Norm", YELLOW_GREEN);
+  const decNxBg = bg(DEC_CX - BW / 2 - 25, 240, BW + 50, 456);
+  const decNxLabel = text(DEC_CX + BW / 2 + 40, 458, "N×", 50, 30);
+  const decLinear = box(DEC_CX, 170, "Linear", PURPLE, BW, 44);
+  const decSoftmax = box(DEC_CX, 90, "Softmax", GREEN, BW, 44);
+  const decOutputProbs = text(DEC_CX, 10, "Output Probabilities", 180, 50);
+
+  const nodes = [
+    encNxBg,
+    decNxBg,
+    encInputs,
+    encEmbed,
+    encPosCircle,
+    encPlusCircle,
+    encPosText,
+    encMHA,
+    encAddNorm1,
+    encFF,
+    encAddNorm2,
+    encNxLabel,
+    decOutputs,
+    decEmbed,
+    decPlusCircle,
+    decPosCircle,
+    decPosText,
+    decMaskedMHA,
+    decAddNorm1,
+    decMHA,
+    decAddNorm2,
+    decFF,
+    decAddNorm3,
+    decNxLabel,
+    decLinear,
+    decSoftmax,
+    decOutputProbs,
+  ];
+
+  const link = (
+    source: { id: string },
+    target: { id: string },
+    opts: { routing?: EdgeRouting; sourceHandle?: string; targetHandle?: string } = {},
+  ) => ({
+    id: newId("e"),
+    source: source.id,
+    target: target.id,
+    routing: opts.routing ?? ("orthogonal" as EdgeRouting),
+    arrow: "forward" as const,
+    style: "solid" as const,
+    sourceHandle: opts.sourceHandle ?? "t",
+    targetHandle: opts.targetHandle ?? "b",
+  });
+
+  const edges = [
+    link(encInputs, encEmbed),
+    link(encEmbed, encPlusCircle),
+    link(encPosCircle, encPlusCircle, { sourceHandle: "r", targetHandle: "l" }),
+    link(encPlusCircle, encMHA),
+    link(encMHA, encAddNorm1),
+    link(encAddNorm1, encFF),
+    link(encFF, encAddNorm2),
+    link(decOutputs, decEmbed),
+    link(decEmbed, decPlusCircle),
+    link(decPosCircle, decPlusCircle, { sourceHandle: "l", targetHandle: "r" }),
+    link(decPlusCircle, decMaskedMHA),
+    link(decMaskedMHA, decAddNorm1),
+    link(decAddNorm1, decMHA),
+    link(decMHA, decAddNorm2),
+    link(decAddNorm2, decFF),
+    link(decFF, decAddNorm3),
+    link(decAddNorm3, decLinear),
+    link(decLinear, decSoftmax),
+    link(decSoftmax, decOutputProbs),
+    link(encAddNorm2, decMHA, { sourceHandle: "r", targetHandle: "l" }),
+    link(encPlusCircle, encAddNorm1, { sourceHandle: "l", targetHandle: "l" }),
+    link(encAddNorm1, encAddNorm2, { sourceHandle: "l", targetHandle: "l" }),
+    link(decPlusCircle, decAddNorm1, { sourceHandle: "r", targetHandle: "r" }),
+    link(decAddNorm1, decAddNorm2, { sourceHandle: "r", targetHandle: "r" }),
+    link(decAddNorm2, decAddNorm3, { sourceHandle: "r", targetHandle: "r" }),
+  ];
+
+  return { version: 1, nodes, edges };
 }
 
 const TIKZ_SNIPPETS: { label: string; icon: ReactNode; snippet: string }[] = [
@@ -77,7 +239,6 @@ export function DiagramComposer({
   open,
   projectId,
   projectName,
-  initialFilePath,
   onClose,
   host,
   codeExtensions,
@@ -87,7 +248,6 @@ export function DiagramComposer({
   open: boolean;
   projectId: string | null;
   projectName?: string | null;
-  initialFilePath?: string | null;
   onClose: () => void;
   host: DiagramHost;
   codeExtensions?: Extension[];
@@ -113,9 +273,10 @@ export function DiagramComposer({
   const [background, setBackground] = useState("#ffffff");
   // Preview is on-demand (not realtime): open after Compile, hide when minimized.
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [savedProjectId, setSavedProjectId] = useState<string | null>(null);
   const cmRef = useRef<CmHandle>(null);
   const codeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savePickerRef = useRef<HTMLDivElement>(null);
+  const downloadPickerRef = useRef<HTMLDivElement>(null);
 
   const stem = useMemo(() => safeName(name), [name]);
   const hasDrawing = model.nodes.length > 0;
@@ -158,23 +319,7 @@ export function DiagramComposer({
     setLog("");
     setHasCompiled(false);
     setPreviewOpen(false);
-    setSavedProjectId(null);
-    let cancelled = false;
-    void host.findProjectIdByName(`Diagram - ${projectName?.trim() || "Untitled"}`).then((id) => {
-      if (!cancelled) setSavedProjectId(id);
-    });
-    if (projectId && initialFilePath) {
-      const base = initialFilePath.split("/").pop() ?? initialFilePath;
-      const stemFromPath = base.replace(/\.tikz$/i, "");
-      setName(stemFromPath);
-      void host.readFileContent(projectId, initialFilePath).then((content) => {
-        if (!cancelled) applyLoadedContent(content);
-      });
-    }
-    return () => {
-      cancelled = true;
-    };
-  }, [open, projectId, projectName, initialFilePath, host, applyLoadedContent]);
+  }, [open]);
 
   const compile = useCallback(async (overrideCode?: string, overrideBackground?: string) => {
     if (!projectId || busy) return;
@@ -233,93 +378,74 @@ export function DiagramComposer({
     [projectId, host],
   );
 
-  // Clean TikZ for the document; the on-disk snippet embeds the model so a drawn
-  // diagram can be re-opened and edited.
-  const docCode = hasDrawing ? modelToTikz(model) : code;
   const snippetCode = hasDrawing ? serializeDiagram({ ...model, background }) : code;
 
-  // Ensure the main document's preamble loads tikz + the shape libraries, so an
-  // inserted diagram actually compiles. Best-effort; runs after the figure is
-  // saved so it patches content that already includes the figure.
-  const ensurePreamble = useCallback(async () => {
-    if (!projectId) return;
-    const mainDoc = host.getMainDoc() || "main.tex";
-    let content: string;
-    try {
-      content = await host.readFileContent(projectId, mainDoc);
-    } catch {
-      return;
-    }
-    const additions: string[] = [];
-    if (!/\\usepackage(\[[^\]]*\])?\{[^}]*tikz[^}]*\}/.test(content)) {
-      additions.push("\\usepackage{tikz}");
-    }
-    const missing = DIAGRAM_LIBS.filter((l) => !content.includes(l));
-    if (missing.length) additions.push(`\\usetikzlibrary{${missing.join(",")}}`);
-    if (!additions.length) return;
-    const marker = "\\begin{document}";
-    const idx = content.indexOf(marker);
-    const block = `${additions.join("\n")}\n`;
-    const updated = idx >= 0 ? content.slice(0, idx) + block + content.slice(idx) : block + content;
-    await host.writeFileContent(projectId, mainDoc, updated);
-    host.applyExternalWrite(mainDoc, updated);
-  }, [projectId, host]);
+  const [savePickerOpen, setSavePickerOpen] = useState(false);
+  const [saveToProjectHover, setSaveToProjectHover] = useState(false);
+  const [projectPicks, setProjectPicks] = useState<{ id: string; name: string }[]>([]);
 
-  const insertAsCode = useCallback(async () => {
-    if (!projectId) return;
-    if (!stem) { toast.error("Enter a name for the diagram first."); return; }
-    if (!(await confirmOverwrite([`figures/${stem}.tikz`]))) return;
-    const latex = `\\begin{figure}[htbp]\n\\centering\n${docCode}\n\\caption{}\n\\label{fig:${stem}}\n\\end{figure}`;
-    host.insertAtCursor(latex);
-    try {
-      // Persist the figure into the active file, then patch the preamble on the
-      // saved content so the tikz libraries are present without losing the figure.
-      await host.saveActive();
-      await ensurePreamble();
-      await host.writeFileContent(projectId, `figures/${stem}.tikz`, snippetCode);
-      await host.refreshTree();
-    } catch {
-      /* snippet/preamble steps are best-effort; the code is already inserted */
-    }
-    toast.success("Diagram inserted as code.");
-    onClose();
-  }, [projectId, stem, docCode, snippetCode, confirmOverwrite, ensurePreamble, onClose, host, toast]);
+  const openSavePicker = useCallback(async () => {
+    if (!png) { toast.error("Compile the diagram first so there is something to save."); return; }
+    setProjectPicks(await host.listProjectNames());
+    setSavePickerOpen(true);
+  }, [png, host, toast]);
 
-  const insertAsImage = useCallback(async () => {
-    if (!projectId) return;
+  const saveToExistingProject = useCallback(async (targetProjectId: string) => {
     if (!stem) { toast.error("Enter a name for the diagram first."); return; }
-    if (!png) { toast.error("Compile the diagram first so there is an image to insert."); return; }
+    if (!png) return;
     if (!(await confirmOverwrite([`figures/${stem}.png`, `figures/${stem}.tikz`]))) return;
     try {
       const b64 = png.slice(png.indexOf(",") + 1);
-      await host.writeProjectBytes(projectId, `figures/${stem}.png`, b64);
-      await host.writeFileContent(projectId, `figures/${stem}.tikz`, snippetCode);
-      await host.refreshTree();
-    } catch (e) {
-      toast.error(`Could not save the image: ${e}`);
-      return;
-    }
-    const latex = `\\begin{figure}[htbp]\n\\centering\n\\includegraphics[width=0.8\\linewidth]{figures/${stem}.png}\n\\caption{}\n\\label{fig:${stem}}\n\\end{figure}`;
-    host.insertAtCursor(latex);
-    toast.success("Diagram inserted as image.");
-    onClose();
-  }, [projectId, stem, png, snippetCode, confirmOverwrite, onClose, host, toast]);
-
-  const saveToFigures = useCallback(async () => {
-    if (!projectId) return;
-    if (!stem) { toast.error("Enter a name for the diagram first."); return; }
-    if (!png) { toast.error("Compile the diagram first so there is an image to save."); return; }
-    if (!(await confirmOverwrite([`figures/${stem}.png`, `figures/${stem}.tikz`]))) return;
-    try {
-      const b64 = png.slice(png.indexOf(",") + 1);
-      await host.writeProjectBytes(projectId, `figures/${stem}.png`, b64);
-      await host.writeFileContent(projectId, `figures/${stem}.tikz`, snippetCode);
+      await host.writeProjectBytes(targetProjectId, `figures/${stem}.png`, b64);
+      await host.writeFileContent(targetProjectId, `figures/${stem}.tikz`, snippetCode);
       await host.refreshTree();
       toast.success(`Saved to figures/${stem}.png`);
     } catch (e) {
       toast.error(`Could not save the diagram: ${e}`);
+    } finally {
+      setSavePickerOpen(false);
     }
-  }, [projectId, stem, png, snippetCode, confirmOverwrite, host, toast]);
+  }, [stem, png, snippetCode, confirmOverwrite, host, toast]);
+
+  const saveAsNewProject = useCallback(async () => {
+    const src = buildStandaloneDoc({
+      code: hasDrawing ? serializeDiagram({ ...model, background }) : code,
+      libraries: DIAGRAM_LIBS,
+      background,
+    });
+    const targetName = name.trim() || "Untitled Diagram";
+    try {
+      await host.createDiagramProject(targetName, src);
+      await host.refreshProjects();
+      toast.success("Saved as a new diagram project. Find it on your home screen.");
+    } catch (e) {
+      toast.error(`Could not save as a project: ${e}`);
+    } finally {
+      setSavePickerOpen(false);
+    }
+  }, [name, model, code, hasDrawing, background, host, toast]);
+
+  const saveFigureGlobally = useCallback(async () => {
+    if (!stem) { toast.error("Enter a name for the diagram first."); return; }
+    if (!png) { toast.error("Compile the diagram first so there is something to save."); return; }
+    try {
+      const b64 = png.slice(png.indexOf(",") + 1);
+      const result = await host.saveFigureToCache(stem, b64, snippetCode);
+      toast.success(result.alreadyCached ? "Already cached, reusing the existing figure." : "Saved to your figures cache.");
+    } catch (e) {
+      toast.error(`Could not save the figure: ${e}`);
+    }
+  }, [stem, png, snippetCode, host, toast]);
+
+  const [downloadPickerOpen, setDownloadPickerOpen] = useState(false);
+
+  const downloadFigure = useCallback(async (format: "png") => {
+    if (!png) { toast.error("Compile the diagram first so there is something to download."); return; }
+    setDownloadPickerOpen(false);
+    const b64 = png.slice(png.indexOf(",") + 1);
+    const saved = await host.saveBytesToDisk(stem || "diagram", format, b64);
+    if (saved) toast.success("Downloaded.");
+  }, [png, stem, host, toast]);
 
   const loadExisting = useCallback(async () => {
     if (!projectId || !stem) return;
@@ -335,29 +461,6 @@ export function DiagramComposer({
       toast.error(`No figures/${stem}.tikz to load.`);
     }
   }, [projectId, stem, host, toast, applyLoadedContent]);
-
-  const saveAsProject = useCallback(async () => {
-    const src = buildStandaloneDoc({
-      code: hasDrawing ? serializeDiagram({ ...model, background }) : code,
-      libraries: DIAGRAM_LIBS,
-      background,
-    });
-    const targetName = `Diagram - ${projectName?.trim() || "Untitled"}`;
-    try {
-      let id = savedProjectId ?? (await host.findProjectIdByName(targetName));
-      if (id) {
-        await host.writeFileContent(id, "main.tex", src);
-        toast.success("Diagram project updated.");
-      } else {
-        id = await host.createImageProject(targetName, src);
-        toast.success("Saved as an image project. Find it on your home screen.");
-      }
-      setSavedProjectId(id);
-      await host.refreshProjects();
-    } catch (e) {
-      toast.error(`Could not save as project: ${e}`);
-    }
-  }, [projectName, savedProjectId, model, code, hasDrawing, background, host, toast]);
 
   // Ask the configured AI to fix a failed compile from the log. One-shot: it
   // returns corrected TikZ, which we drop into Code and recompile (undoable in
@@ -397,6 +500,20 @@ export function DiagramComposer({
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
   }, [editingName]);
+
+  useEffect(() => {
+    if (!savePickerOpen && !downloadPickerOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (savePickerOpen && savePickerRef.current && !savePickerRef.current.contains(e.target as Node)) {
+        setSavePickerOpen(false);
+      }
+      if (downloadPickerOpen && downloadPickerRef.current && !downloadPickerRef.current.contains(e.target as Node)) {
+        setDownloadPickerOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [savePickerOpen, downloadPickerOpen]);
 
   const startEditName = () => {
     setNameDraft(name);
@@ -601,11 +718,109 @@ export function DiagramComposer({
               {busy ? "Compiling…" : hasCompiled ? "Recompile" : "Compile"}
             </span>
           </Button>
-          <Tooltip label="Save this diagram as a reusable image project">
-            <Button data-tour="diagram-save-project" variant="secondary" size="sm" onClick={() => void saveAsProject()}>
-              <Save className="size-3.5" /> {savedProjectId ? "Save" : "Save as project"}
-            </Button>
-          </Tooltip>
+          <div className="relative" ref={savePickerRef}>
+            <Tooltip label="Save this diagram">
+              <Button
+                data-tour="diagram-save-project"
+                variant="ghost"
+                size="sm"
+                aria-label="Save"
+                onClick={() => void openSavePicker()}
+              >
+                <Save className="size-3.5" />
+                <ChevronRight className="size-3 rotate-90" />
+              </Button>
+            </Tooltip>
+            {savePickerOpen && (
+              <div className="absolute right-0 top-full z-20 mt-1 w-56 rounded-md border bg-background p-1 shadow-lg">
+                <div
+                  className="relative"
+                  onMouseEnter={() => setSaveToProjectHover(true)}
+                  onMouseLeave={() => setSaveToProjectHover(false)}
+                >
+                  <button
+                    type="button"
+                    data-testid="diagram-save-to-project"
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
+                  >
+                    <ChevronLeft className="size-3.5 shrink-0 text-muted-foreground" />
+                    <span className="flex flex-1 items-center justify-end gap-2">
+                      Save to project <FolderOpen className="size-3.5" />
+                    </span>
+                  </button>
+                  {saveToProjectHover && (
+                    <div className="absolute right-full top-0 z-30 mr-1 w-64 rounded-md border bg-background p-2 shadow-lg">
+                      <button
+                        type="button"
+                        onClick={() => void saveAsNewProject()}
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
+                      >
+                        <Save className="size-3.5" /> New project
+                      </button>
+                      <div className="my-1 border-t" />
+                      <div className="max-h-40 overflow-auto">
+                        {projectPicks.length === 0 ? (
+                          <div className="px-2 py-1.5 text-xs text-muted-foreground">No other projects yet.</div>
+                        ) : (
+                          projectPicks.map((p) => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => void saveToExistingProject(p.id)}
+                              className="flex w-full items-center gap-2 truncate rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
+                            >
+                              {p.name}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="my-1 border-t" />
+                <button
+                  type="button"
+                  onClick={() => void saveFigureGlobally()}
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
+                >
+                  <Save className="size-3.5" /> Save Figure
+                </button>
+              </div>
+            )}
+          </div>
+          <div className="relative" ref={downloadPickerRef}>
+            <Tooltip label="Download this diagram">
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label="Download"
+                onClick={() => setDownloadPickerOpen((v) => !v)}
+              >
+                <Download className="size-3.5" />
+                <ChevronRight className="size-3 rotate-90" />
+              </Button>
+            </Tooltip>
+            {downloadPickerOpen && (
+              <div className="absolute right-0 top-full z-20 mt-1 w-44 rounded-md border bg-background p-1 shadow-lg">
+                <button
+                  type="button"
+                  onClick={() => void downloadFigure("png")}
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
+                >
+                  PNG
+                </button>
+                <Tooltip label="SVG export needs a vector renderer, not available yet">
+                  <button
+                    type="button"
+                    disabled
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground/50"
+                  >
+                    SVG (coming soon)
+                  </button>
+                </Tooltip>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -672,19 +887,6 @@ export function DiagramComposer({
                     Compiling…
                   </span>
                 )}
-                {png && projectId && (
-                  <Tooltip label={`Save to figures/${stem || "name"}.png`}>
-                    <button
-                      type="button"
-                      aria-label="Save diagram to project"
-                      onClick={() => void saveToFigures()}
-                      className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                    >
-                      <Save className="size-3.5" />
-                      Save to project
-                    </button>
-                  </Tooltip>
-                )}
                 <Tooltip label="Minimize preview">
                   <button
                     type="button"
@@ -730,20 +932,6 @@ export function DiagramComposer({
         )}
       </div>
 
-      {mode === "code" && (
-        <div className="flex shrink-0 flex-wrap items-center gap-2 border-t bg-sidebar px-3 py-2">
-          <p className="mr-auto text-[11px] text-muted-foreground">
-            Saves to <code className="font-mono">figures/{stem || "name"}.tikz</code>
-            {hasDrawing ? " (re-openable)" : ""}.
-          </p>
-          <Button variant="secondary" size="sm" onClick={() => void insertAsCode()}>
-            <Code2 className="size-3.5" /> Insert as code (vector)
-          </Button>
-          <Button data-testid="diagram-insert-image" size="sm" onClick={() => void insertAsImage()} disabled={!png}>
-            <ImageIcon className="size-3.5" /> Insert as image (PNG)
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

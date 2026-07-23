@@ -33,6 +33,8 @@ import { reportCrashToGithub } from "@/lib/crash-report";
 import { isTauri } from "@tauri-apps/api/core";
 import { platform as osPlatform, arch as osArch, version as osVersion } from "@tauri-apps/plugin-os";
 import { Button } from "@/components/ui/button";
+import { DotPattern } from "@/components/ui/dot-pattern";
+import { GridPattern } from "@/components/ui/grid-pattern";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
@@ -199,6 +201,8 @@ export function SettingsModal() {
   const setAccentColor = useSettingsStore((s) => s.setAccentColor);
   const dockPlacement = useSettingsStore((s) => s.dockPlacement);
   const setDockPlacement = useSettingsStore((s) => s.setDockPlacement);
+  const bgPattern = useSettingsStore((s) => s.bgPattern);
+  const setBgPattern = useSettingsStore((s) => s.setBgPattern);
 
   const projectId = useFilesStore((s) => s.projectId);
   const projectName = useFilesStore((s) => s.projectName);
@@ -236,7 +240,6 @@ export function SettingsModal() {
 
   const doReset = () => {
     resetToDefaults();
-    // Theme lives in a separate store; return it to the OS preference.
     setTheme(
       window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light",
     );
@@ -561,6 +564,44 @@ export function SettingsModal() {
                             )}
                             {opt.id === "bottom" && (
                               <div className="absolute inset-x-0 bottom-1 mx-auto h-2 w-10 rounded bg-foreground/30" />
+                            )}
+                          </div>
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="rounded-lg border bg-background p-3">
+                  <div className="text-sm font-medium">Background pattern</div>
+                  <div className="mb-2 text-xs text-muted-foreground">
+                    The pattern behind your project shelf.
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(
+                      [
+                        { id: "dots", label: "Dots" },
+                        { id: "grid", label: "Grid" },
+                      ] as const
+                    ).map((opt) => {
+                      const active = bgPattern === opt.id;
+                      return (
+                        <button
+                          type="button"
+                          key={opt.id}
+                          data-testid={`settings-bg-pattern-${opt.id}`}
+                          onClick={() => setBgPattern(opt.id)}
+                          className={cn(
+                            "flex flex-col items-center gap-2 rounded-md border p-3 text-xs font-medium transition-colors",
+                            active ? "border-primary bg-primary/5" : "border-border hover:bg-accent",
+                          )}
+                        >
+                          <div className="relative h-14 w-full overflow-hidden rounded bg-muted">
+                            {opt.id === "dots" ? (
+                              <DotPattern width={10} height={10} radius={0.75} />
+                            ) : (
+                              <GridPattern width={10} height={10} />
                             )}
                           </div>
                           {opt.label}

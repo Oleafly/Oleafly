@@ -106,6 +106,7 @@ export function TopToolbar() {
   const projectName = useFilesStore((s) => s.projectName);
   const projectId = useFilesStore((s) => s.projectId);
   const projectKind = useFilesStore((s) => s.projectKind);
+  const isSingleFigureProject = projectKind === "image" || projectKind === "diagram";
   const engine = useFilesStore((s) => s.engine);
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
   const engineError = useFilesStore((s) => s.engineError);
@@ -116,7 +117,6 @@ export function TopToolbar() {
   const pdfBytes = useCompileStore((s) => s.pdfBytes);
   const setHistoryOpen = useSettingsStore((s) => s.setHistoryOpen);
   const setHotkeysOpen = useSettingsStore((s) => s.setHotkeysOpen);
-  const setDiagramComposerOpen = useSettingsStore((s) => s.setDiagramComposerOpen);
   const viewMode = useSettingsStore((s) => s.viewMode);
   const setViewMode = useSettingsStore((s) => s.setViewMode);
   const railTab = useSettingsStore((s) => s.railTab);
@@ -413,20 +413,6 @@ export function TopToolbar() {
 
         {engineError && <span className="max-w-48 truncate text-xs text-destructive" title={engineError}>{engineError}</span>}
 
-        {projectKind !== "image" && engineLoaded && engine.capabilities.supports_isolated_compile && (
-          <Tooltip label="Insert diagram">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-muted-foreground hover:text-foreground"
-              onClick={() => setDiagramComposerOpen(true)}
-              aria-label="Insert diagram"
-            >
-              <ImagePlay className="size-4" />
-            </Button>
-          </Tooltip>
-        )}
-
         <DropdownMenu open={dlOpen} onOpenChange={setExportMenuOpen}>
           <Tooltip label="Export">
             <DropdownMenuTrigger asChild>
@@ -447,9 +433,9 @@ export function TopToolbar() {
                 </DropdownMenuItem>
                 {engine.capabilities.produces_pdf && <DropdownMenuItem onSelect={() => void doDownloadPdf()} disabled={!pdfBytes}>
                   <FileText className="size-4 text-muted-foreground" />
-                  Export as PDF {projectKind === "image" ? "(vector image)" : ""}
+                  Export as PDF {isSingleFigureProject ? "(vector image)" : ""}
                 </DropdownMenuItem>}
-                {projectKind === "image" && (
+                {isSingleFigureProject && (
                   <DropdownMenuItem onSelect={() => void doExportPng()} disabled={!pdfBytes}>
                     <ImagePlay className="size-4 text-muted-foreground" />
                     Export as PNG (raster image)
@@ -457,10 +443,10 @@ export function TopToolbar() {
                 )}
                 {!pdfBytes && (
                   <p className="px-2 py-1 pl-8 text-[10px] text-muted-foreground">
-                    {projectKind === "image" ? "Compile the figure first" : "PDF requires a compile first"}
+                    {isSingleFigureProject ? "Compile the figure first" : "PDF requires a compile first"}
                   </p>
                 )}
-                {projectKind !== "image" && engine.capabilities.conversion_exports.length > 0 && (
+                {!isSingleFigureProject && engine.capabilities.conversion_exports.length > 0 && (
                   <>
                     <DropdownMenuSeparator />
                     {engine.capabilities.conversion_exports.includes("docx") && <DropdownMenuItem onSelect={() => void doExportFormat("docx")}>

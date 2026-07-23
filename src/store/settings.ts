@@ -45,6 +45,7 @@ export type RailTab =
   | "mcp";
 
 export type DockPlacement = "left" | "right" | "bottom";
+export type BackgroundPattern = "dots" | "grid";
 
 function ls(k: string, fb: string): string {
   try {
@@ -103,7 +104,7 @@ export const EDITOR_FONTS: { name: string; value: string }[] = [
 
 export const ACCENTS: { id: string; name: string; color: string }[] = [
   { id: "blue", name: "Blue", color: "#2563eb" },
-  { id: "green", name: "Green", color: "#16a34a" },
+  { id: "green", name: "Green", color: "#0b8842" },
   { id: "purple", name: "Purple", color: "#7c3aed" },
   { id: "rose", name: "Rose", color: "#db2777" },
   { id: "orange", name: "Orange", color: "#ea580c" },
@@ -129,10 +130,6 @@ interface SettingsState {
   setNewProjectOpen: (v: boolean) => void;
   figureModeOpen: boolean;
   setFigureModeOpen: (v: boolean) => void;
-  diagramComposerOpen: boolean;
-  setDiagramComposerOpen: (v: boolean) => void;
-  diagramComposerInitialPath: string | null;
-  openDiagramComposerForFile: (path: string) => void;
   wordCountOpen: boolean;
   setWordCountOpen: (v: boolean) => void;
   historyOpen: boolean;
@@ -174,6 +171,8 @@ interface SettingsState {
   setLayoutPreset: (v: LayoutPreset) => void;
   dockPlacement: DockPlacement;
   setDockPlacement: (v: DockPlacement) => void;
+  bgPattern: BackgroundPattern;
+  setBgPattern: (v: BackgroundPattern) => void;
   resetToDefaults: () => void;
 }
 
@@ -193,6 +192,7 @@ const PREF_DEFAULTS = {
   hoverPreview: true,
   accentColor: "#2563eb",
   dockPlacement: "left" as DockPlacement,
+  bgPattern: "dots" as BackgroundPattern,
 } as const;
 
 export const useSettingsStore = create<SettingsState>((set) => ({
@@ -231,11 +231,6 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   setNewProjectOpen: (v) => set({ newProjectOpen: v }),
   figureModeOpen: false,
   setFigureModeOpen: (v) => set({ figureModeOpen: v }),
-  diagramComposerOpen: false,
-  setDiagramComposerOpen: (v) =>
-    set(v ? { diagramComposerOpen: true, diagramComposerInitialPath: null } : { diagramComposerOpen: false }),
-  diagramComposerInitialPath: null,
-  openDiagramComposerForFile: (path) => set({ diagramComposerOpen: true, diagramComposerInitialPath: path }),
   wordCountOpen: false,
   setWordCountOpen: (v) => set({ wordCountOpen: v }),
   historyOpen: false,
@@ -299,6 +294,11 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     saveLs("oleafly.dockPlacement", v);
     set({ dockPlacement: v });
   },
+  bgPattern: (ls("oleafly.bgPattern", "dots") as BackgroundPattern) || "dots",
+  setBgPattern: (v) => {
+    saveLs("oleafly.bgPattern", v);
+    set({ bgPattern: v });
+  },
   showTree: true,
   toggleTree: () => set((s) => ({ showTree: !s.showTree })),
   hotkeysOpen: false,
@@ -357,6 +357,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     saveLs("oleafly.hoverPreview", PREF_DEFAULTS.hoverPreview ? "1" : "0");
     saveLs("oleafly.accent", PREF_DEFAULTS.accentColor);
     saveLs("oleafly.dockPlacement", PREF_DEFAULTS.dockPlacement);
+    saveLs("oleafly.bgPattern", PREF_DEFAULTS.bgPattern);
     set({ ...PREF_DEFAULTS });
   },
 }));

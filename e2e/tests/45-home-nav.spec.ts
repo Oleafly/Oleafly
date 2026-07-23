@@ -1,4 +1,5 @@
 import { test, expect } from "../fixtures";
+import { createBlankProject } from "../helpers";
 
 // Deadlines and LaTeX Tools are now glass modals over the dashboard (not
 // full pages), and clicking a tool inside the Tools modal hands off to that
@@ -49,4 +50,50 @@ test("LaTeX Tools gallery filters by category and search, and opens a dedicated 
   await tauriPage.click('[data-testid="table-tool-view-back"]');
   await expect(tauriPage.getByTestId("library")).toBeVisible();
   await expect(tauriPage.locator('[data-testid="table-tool-view"]')).toBeHidden();
+});
+
+test("dock opens the Diagram Composer as a standalone page and back returns to Library", async ({
+  tauriPage,
+}) => {
+  await expect(tauriPage.getByTestId("library")).toBeVisible();
+  // Library (and the dock with it) unmounts entirely once another home page
+  // is active (Library.tsx: `if (page !== "library") return null`), so there
+  // is no dock button left to check an active state on once the dialog opens.
+  await tauriPage.click('[data-testid="open-diagram-composer"]');
+  await expect(
+    tauriPage.locator('[role="dialog"][aria-labelledby="diagram-composer-title"]'),
+  ).toBeVisible({ timeout: 20_000 });
+  await expect(tauriPage.getByTestId("library")).toBeHidden();
+
+  await tauriPage.click('[aria-label="Back to project"]');
+  await expect(tauriPage.getByTestId("library")).toBeVisible();
+  await expect(
+    tauriPage.locator('[role="dialog"][aria-labelledby="diagram-composer-title"]'),
+  ).toBeHidden();
+
+  // Reopening reuses the same hidden scratch project rather than creating a
+  // new one each time (idempotent get-or-create on the Rust side).
+  await tauriPage.click('[data-testid="open-diagram-composer"]');
+  await expect(
+    tauriPage.locator('[role="dialog"][aria-labelledby="diagram-composer-title"]'),
+  ).toBeVisible({ timeout: 20_000 });
+  await tauriPage.click('[aria-label="Back to project"]');
+});
+
+test("dock's Search button is gated on having at least one project", async ({ tauriPage }) => {
+  await expect(tauriPage.getByTestId("library")).toBeVisible();
+  const hasProjects = await tauriPage.evaluate<boolean>(
+    `!document.querySelector('[data-testid="create-first-project"]')`,
+  );
+  if (!hasProjects) {
+    await expect(tauriPage.locator('[data-testid="open-search"]')).toBeHidden();
+    await createBlankProject(tauriPage, `E2E Home Nav ${Date.now().toString(36)}`);
+    await tauriPage.evaluate(`(() => { const b = document.querySelector('[title="Back to library"]'); if (b) b.click(); return true; })()`);
+    await expect(tauriPage.getByTestId("library")).toBeVisible();
+  }
+  await expect(tauriPage.locator('[data-testid="open-search"]')).toBeVisible();
+  await tauriPage.click('[data-testid="open-search"]');
+  await expect(
+    tauriPage.locator('input[placeholder^="Search projects, documents"]'),
+  ).toBeVisible({ timeout: 10_000 });
 });

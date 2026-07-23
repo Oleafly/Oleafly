@@ -18,15 +18,28 @@ export function AlphaXivSection() {
           <h3 className="text-sm font-medium">alphaXiv</h3>
           <p className="text-xs text-muted-foreground">
             Literature search and paper analysis tools for the assistant.
-            {" "}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            To get a key: sign in at{" "}
             <a
-              href="https://www.alphaxiv.org/assistant"
+              href="https://www.alphaxiv.org"
               target="_blank"
               rel="noopener noreferrer"
               className="text-primary hover:underline"
             >
-              Get an API key
+              alphaxiv.org
             </a>
+            , open your{" "}
+            <a
+              href="https://www.alphaxiv.org/@api-key"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
+            >
+              API key page
+            </a>
+            , generate a key (it starts with{" "}
+            <code className="rounded bg-muted px-1 py-0.5">axv1_</code>), and paste it below.
           </p>
         </div>
         {connected && (

@@ -66,6 +66,7 @@ export function CommandPalette() {
       open={open}
       onOpenChange={setPaletteOpen}
       label="Command Palette"
+      overlayClassName="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm"
       className={cn("fixed left-1/2 top-[20%] z-50 w-[min(560px,92vw)] -translate-x-1/2")}
     >
       <div className="overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-2xl">

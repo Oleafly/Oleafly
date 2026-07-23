@@ -483,6 +483,7 @@ export default function App() {
         <LazyModals>
           <SettingsModal />
           <HotkeysModal />
+          <DiagramComposer />
           <TourGuide />
         </LazyModals>
       </ThemeProvider>
@@ -563,7 +564,6 @@ export default function App() {
           <WordCountModal />
           <HistoryModal />
           <HotkeysModal />
-          <DiagramComposer />
           <TourGuide />
         </LazyModals>
       </div>

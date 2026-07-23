@@ -17,16 +17,6 @@ export interface TemplateInfo {
   source: string;
 }
 
-export interface PackDisplay {
-  id: string;
-  label: string;
-  description: string;
-  count: number;
-  approxBytes: number;
-  licenseSummary: string;
-  installed: boolean;
-}
-
 export interface TemplatesHost {
   loadPreview(templateId: string): Promise<string | null>;
   ensureAssets(
@@ -34,27 +24,12 @@ export interface TemplatesHost {
     onProgress: (label: string, index: number, total: number) => void,
   ): Promise<void>;
   logError(scope: string, e: unknown): void;
-  /** Downloadable template packs; absent host methods hide the section. */
-  listPacks?(): Promise<PackDisplay[]>;
-  installPack?(
-    id: string,
-    onProgress: (label: string, index: number, total: number) => void,
-  ): Promise<void>;
-  /** AI template generation; absent when no provider is configured. */
-  generateTemplate?(description: string): Promise<GeneratedPreview>;
-}
-
-export interface GeneratedPreview {
-  name: string;
-  previewPng: string | null;
-  log: string;
-  save(): Promise<void>;
 }
 
 export interface TemplatesKit {
   Input: ComponentType<ComponentPropsWithRef<"input">>;
   Button: ComponentType<{
-    variant?: "default" | "secondary" | "outline" | "ghost" | "destructive" | "link";
+    variant?: "default" | "secondary" | "outline" | "ghost" | "ghostPrimary" | "destructive" | "link";
     size?: "default" | "sm" | "lg" | "icon";
     onClick?: () => void;
     disabled?: boolean;

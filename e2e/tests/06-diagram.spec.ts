@@ -1,31 +1,54 @@
 import { test, expect } from "../fixtures";
-import { openProject } from "../helpers";
+import { closeDiagramComposer, openDiagramComposer } from "../helpers";
 
+// The Diagram Composer moved from a per-project modal to a standalone home
+// page over a hidden "scratch" project (see e2e/tests/45-home-nav.spec.ts for
+// the dock entry point itself); there is no more "insert into the current
+// document" flow, only compile-and-save/download.
 test("diagram composer compiles the starter drawing to a preview", async ({ tauriPage }) => {
-  test.setTimeout(360_000);
-  await openProject(tauriPage, "E2E Doc");
-  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  // Wait for this page's auto-compile to finish (the ok chip only renders
-  // after a finished compile) so the figure compile below has the compile
-  // lock to itself. "Recompile enabled" isn't enough: it's also true before
-  // the auto-compile starts.
-  await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok", {
-    timeout: 180_000,
-  });
-  await expect(tauriPage.locator(".pdf-canvas")).toBeVisible({ timeout: 120_000 });
-
-  await tauriPage.click('[aria-label="Insert diagram"]');
-  await expect(tauriPage.locator('[role="dialog"][aria-label="Insert diagram"]')).toBeVisible();
+  test.setTimeout(180_000);
+  await openDiagramComposer(tauriPage);
 
   const compile = tauriPage.getByTestId("diagram-compile");
   await expect(compile).toBeEnabled();
   await compile.click();
   await expect(compile).toContainText("Compiling", { timeout: 5_000 });
   await expect(tauriPage.locator('img[alt="Diagram preview"]')).toBeVisible({ timeout: 120_000 });
-  // Insert actions (vector/PNG) live under the Code tab.
-  await tauriPage.click('[data-testid="diagram-tab-code"]');
-  await expect(tauriPage.getByTestId("diagram-insert-image")).toBeEnabled({ timeout: 5_000 });
+  await expect(compile).toContainText("Recompile");
 
-  await tauriPage.click('[role="dialog"][aria-label="Insert diagram"] [aria-label="Back to project"]');
-  await expect(tauriPage.locator('[role="dialog"][aria-label="Insert diagram"]')).toBeHidden();
+  // The Code tab mirrors the drawing as TikZ once compiled.
+  await tauriPage.click('[data-testid="diagram-tab-code"]');
+  await expect(tauriPage.locator(".cm-content")).toContainText("tikzpicture", { timeout: 5_000 });
+
+  await closeDiagramComposer(tauriPage);
+  await expect(
+    tauriPage.locator('[role="dialog"][aria-labelledby="diagram-composer-title"]'),
+  ).toBeHidden();
+});
+
+test("Save Figure caches the compiled diagram without leaving the composer", async ({
+  tauriPage,
+}) => {
+  test.setTimeout(180_000);
+  await openDiagramComposer(tauriPage);
+
+  const name = `e2ecache${Date.now().toString(36)}`;
+  await tauriPage.click('[data-testid="diagram-name-display"]');
+  await tauriPage.fill("#diagram-name", name);
+  await tauriPage.click('[aria-label="Save name"]');
+
+  await tauriPage.getByTestId("diagram-compile").click();
+  await expect(tauriPage.locator('img[alt="Diagram preview"]')).toBeVisible({ timeout: 120_000 });
+
+  await tauriPage.click('[aria-label="Save"]');
+  await tauriPage.getByText("Save Figure", { exact: true }).click();
+  // The cache key is a content hash of the PNG bytes (src-tauri/src/project.rs
+  // save_figure_to_cache), and the starter drawing compiles identically every
+  // run, so a repeat run legitimately hits the "already cached" branch.
+  await tauriPage.waitForFunction(
+    `document.body.innerText.includes('Saved to your figures cache.') || document.body.innerText.includes('Already cached, reusing the existing figure.')`,
+    10_000,
+  );
+
+  await closeDiagramComposer(tauriPage);
 });

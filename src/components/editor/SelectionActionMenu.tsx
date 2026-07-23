@@ -20,11 +20,12 @@ export function SelectionActionMenu() {
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const [text, setText] = useState("");
   const [expanded, setExpanded] = useState(false);
-  const ignoreRef = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const update = () => {
-      if (ignoreRef.current) return;
+    const update = (e?: Event) => {
+      const target = e?.target as Node | null;
+      if (target && containerRef.current?.contains(target)) return;
       const v = getEditorView();
       if (!v?.hasFocus) {
         setPos(null);
@@ -71,22 +72,14 @@ export function SelectionActionMenu() {
     setExpanded(false);
   };
 
-  const onWrapperMouseDown = () => {
-    ignoreRef.current = true;
-    window.setTimeout(() => {
-      ignoreRef.current = false;
-    }, 0);
-  };
-
   return (
-    <div className="fixed z-50" style={{ top: pos.top, left: pos.left }}>
+    <div ref={containerRef} className="fixed z-50" style={{ top: pos.top, left: pos.left }}>
       {expanded ? (
         <div className="w-56 rounded-lg border bg-popover p-1 text-popover-foreground shadow-xl">
           {ACTIONS.map((action) => (
             <button
               type="button"
               key={action.label}
-              onMouseDown={onWrapperMouseDown}
               onClick={() => runAction(action)}
               className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent"
             >
@@ -98,7 +91,6 @@ export function SelectionActionMenu() {
       ) : (
         <button
           type="button"
-          onMouseDown={onWrapperMouseDown}
           onClick={() => setExpanded(true)}
           className="flex items-center gap-1.5 rounded-full bg-foreground px-2.5 py-1 text-xs font-medium text-background shadow-lg"
         >

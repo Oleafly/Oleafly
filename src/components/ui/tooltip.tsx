@@ -83,6 +83,7 @@ export function Tooltip({
       className={cn("relative inline-flex", className)}
       onMouseEnter={enter}
       onMouseLeave={leave}
+      onMouseDown={leave}
     >
       {children}
       {show &&

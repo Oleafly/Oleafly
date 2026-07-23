@@ -1,7 +1,6 @@
 import { useId } from "react";
 import { cn } from "@/lib/utils";
 
-// Render inside a `relative` parent; mask via className for a gradient fade.
 export function DotPattern({
   width = 24,
   height = 24,
@@ -21,7 +20,7 @@ export function DotPattern({
   return (
     <svg
       aria-hidden="true"
-      className={cn("pointer-events-none absolute inset-0 h-full w-full fill-gray-400/70", className)}
+      className={cn("pointer-events-none absolute inset-0 h-full w-full fill-gray-400/50 dark:fill-gray-400/20", className)}
     >
       <defs>
         <pattern id={id} width={width} height={height} patternUnits="userSpaceOnUse" x={x} y={y}>

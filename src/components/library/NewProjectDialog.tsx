@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import {
   NewProjectDialog as NewProjectDialogCore,
   type TemplatesHost,
   type TemplatesKit,
 } from "@oleafly/templates";
-import { generateTemplate, generateTemplateAvailable } from "@/features/template-generate";
+import { generateTemplateAvailable } from "@/features/template-generate";
+import { TemplateGenerateModal } from "@/components/library/TemplateGenerateModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -20,9 +21,6 @@ import { BOOK_COLOR_OPTIONS, DEFAULT_BOOK_COLOR } from "@/components/library/Boo
 import { logError } from "@/lib/log";
 import {
   ensureTemplateAssets,
-  installTemplatePack,
-  listTemplatePacks,
-  refreshPackCatalog,
   templatePreview,
   type AssetProgress,
   type TemplateInfo,
@@ -78,32 +76,6 @@ const HOST: TemplatesHost = {
     }
   },
   logError: (scope, e) => void logError(scope, e),
-  listPacks: async () => {
-    // Best-effort catalog refresh; offline just serves the cache/bundled copy.
-    await refreshPackCatalog().catch(() => {});
-    const packs = await listTemplatePacks();
-    return packs.map((p) => ({
-      id: p.id,
-      label: p.label,
-      description: p.description,
-      count: p.count,
-      approxBytes: p.approx_bytes,
-      licenseSummary: p.license_summary,
-      installed: p.installed,
-    }));
-  },
-  installPack: async (id, onProgress) => {
-    let unlisten: (() => void) | undefined;
-    try {
-      unlisten = await listen<AssetProgress>("asset-progress", (e) => {
-        const p = e.payload;
-        if (p.component === id) onProgress(p.file, p.index, p.total);
-      });
-      await installTemplatePack(id);
-    } finally {
-      unlisten?.();
-    }
-  },
 };
 
 export function NewProjectDialog(props: {
@@ -117,20 +89,25 @@ export function NewProjectDialog(props: {
   allowClose?: boolean;
 }) {
   const [canGenerate, setCanGenerate] = useState(false);
+  const [generateOpen, setGenerateOpen] = useState(false);
   useEffect(() => {
     if (props.open) void generateTemplateAvailable().then(setCanGenerate);
   }, [props.open]);
-  const host = useMemo<TemplatesHost>(
-    () => (canGenerate ? { ...HOST, generateTemplate } : HOST),
-    [canGenerate],
-  );
   return (
-    <NewProjectDialogCore
-      {...props}
-      host={host}
-      kit={KIT}
-      colorOptions={BOOK_COLOR_OPTIONS}
-      defaultColor={DEFAULT_BOOK_COLOR}
-    />
+    <>
+      <NewProjectDialogCore
+        {...props}
+        onGenerateWithAi={canGenerate ? () => setGenerateOpen(true) : undefined}
+        host={HOST}
+        kit={KIT}
+        colorOptions={BOOK_COLOR_OPTIONS}
+        defaultColor={DEFAULT_BOOK_COLOR}
+      />
+      <TemplateGenerateModal
+        open={generateOpen}
+        onClose={() => setGenerateOpen(false)}
+        onSaved={() => props.onTemplatesChanged?.()}
+      />
+    </>
   );
 }

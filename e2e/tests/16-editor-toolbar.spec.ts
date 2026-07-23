@@ -1,40 +1,5 @@
 import { test, expect } from "../fixtures";
-import { caretIn, openProject } from "../helpers";
-
-async function selectWord(tauriPage: { evaluate<T>(e: string): Promise<T> }, word: string) {
-  // Drive a synthetic mouse-drag over real text coordinates: CM re-asserts
-  // its state over foreign DOM selections, so Range/Selection injection
-  // does not stick.
-  const ok = await tauriPage.evaluate<boolean>(
-    `(() => {
-      const content = document.querySelector('.cm-content');
-      const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
-      let node;
-      while ((node = walker.nextNode())) {
-        const i = node.textContent.indexOf(${JSON.stringify(word)});
-        if (i >= 0) {
-          const range = document.createRange();
-          range.setStart(node, i);
-          range.setEnd(node, i + ${JSON.stringify(word)}.length);
-          const rects = range.getClientRects();
-          const a = rects[0], b = rects[rects.length - 1];
-          const opts = (x, y, extra) => Object.assign({
-            bubbles: true, cancelable: true, clientX: x, clientY: y, buttons: 1, detail: 1,
-          }, extra);
-          const sx = a.left + 1, sy = a.top + a.height / 2;
-          const ex = b.right - 1, ey = b.top + b.height / 2;
-          const target = document.elementFromPoint(sx, sy) || content;
-          target.dispatchEvent(new MouseEvent('mousedown', opts(sx, sy)));
-          document.dispatchEvent(new MouseEvent('mousemove', opts(ex, ey)));
-          document.dispatchEvent(new MouseEvent('mouseup', opts(ex, ey, { buttons: 0 })));
-          return true;
-        }
-      }
-      return false;
-    })()`,
-  );
-  expect(ok).toBe(true);
-}
+import { caretIn, openProject, selectWord } from "../helpers";
 
 test("bold wraps the selection; undo and redo round-trip", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
@@ -65,7 +30,10 @@ test("toolbar inserts figure and table environments", async ({ tauriPage }) => {
   await expect(tauriPage.locator(".cm-content")).toContainText("includegraphics");
   await tauriPage.click('[aria-label^="Undo ("]');
 
+  // "Insert table" opens a size-grid picker (TableSizePicker.tsx); insertion
+  // happens on picking a cell, not on the trigger click itself.
   await tauriPage.click('[aria-label="Insert table"]');
+  await tauriPage.click('[aria-label="2 by 2 table"]');
   await expect(tauriPage.locator(".cm-content")).toContainText("tabular");
   await tauriPage.click('[aria-label^="Undo ("]');
   await tauriPage.waitForFunction(

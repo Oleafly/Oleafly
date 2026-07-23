@@ -699,6 +699,50 @@ pub fn get_or_create_scratch_project() -> Result<String, String> {
     Ok(SCRATCH_PROJECT_ID.to_string())
 }
 
+#[derive(Serialize)]
+pub struct FigureCacheResult {
+    pub hash: String,
+    pub already_cached: bool,
+}
+
+#[tauri::command]
+pub fn save_figure_to_cache(
+    name: String,
+    png_base64: String,
+    tikz: String,
+) -> Result<FigureCacheResult, String> {
+    use base64::{engine::general_purpose::STANDARD, Engine};
+    use sha2::{Digest, Sha256};
+
+    let png_bytes = STANDARD
+        .decode(png_base64.as_bytes())
+        .map_err(|e| format!("invalid PNG data: {e}"))?;
+    let mut hasher = Sha256::new();
+    hasher.update(&png_bytes);
+    let hash = format!("{:x}", hasher.finalize());
+
+    let entry_dir = paths::figures_cache_root()?.join(&hash);
+    if entry_dir.exists() {
+        return Ok(FigureCacheResult {
+            hash,
+            already_cached: true,
+        });
+    }
+    std::fs::create_dir_all(&entry_dir).map_err(|e| e.to_string())?;
+    std::fs::write(entry_dir.join("figure.png"), &png_bytes).map_err(|e| e.to_string())?;
+    std::fs::write(entry_dir.join("figure.tikz"), &tikz).map_err(|e| e.to_string())?;
+    let meta = serde_json::json!({ "name": name, "hash": hash });
+    std::fs::write(
+        entry_dir.join("meta.json"),
+        serde_json::to_string_pretty(&meta).map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(FigureCacheResult {
+        hash,
+        already_cached: false,
+    })
+}
+
 fn slugify(name: &str) -> String {
     let slug: String = name
         .to_lowercase()
@@ -1593,6 +1637,67 @@ fn copy_dir_recursive(src: &Path, dst: &Path, depth: usize) -> Result<(), String
         }
     }
     Ok(())
+}
+
+#[tauri::command]
+pub async fn import_paths_into_project(
+    project_id: String,
+    dest_dir: String,
+    source_paths: Vec<String>,
+) -> Result<Vec<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || -> Result<Vec<String>, String> {
+        let dest_parent = resolve(&project_id, &dest_dir)?;
+        std::fs::create_dir_all(&dest_parent).map_err(|e| e.to_string())?;
+        let project_root = paths::project_dir(&project_id)?;
+        let mut imported = Vec::new();
+        for source_path in &source_paths {
+            let src = PathBuf::from(source_path);
+            let meta = std::fs::symlink_metadata(&src)
+                .map_err(|e| format!("cannot read {source_path}: {e}"))?;
+            if meta.file_type().is_symlink() {
+                return Err(format!("refusing to import a symlink: {source_path}"));
+            }
+            let name = src
+                .file_name()
+                .ok_or_else(|| format!("invalid source path: {source_path}"))?
+                .to_string_lossy()
+                .to_string();
+            let dest = unique_import_dest(&dest_parent, &name);
+            if meta.is_dir() {
+                copy_dir_recursive(&src, &dest, 0)?;
+            } else {
+                std::fs::copy(&src, &dest).map_err(|e| format!("import failed: {e}"))?;
+            }
+            let rel = dest
+                .strip_prefix(&project_root)
+                .map_err(|e| e.to_string())?
+                .to_string_lossy()
+                .replace('\\', "/");
+            imported.push(rel);
+        }
+        Ok(imported)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+fn unique_import_dest(dir: &Path, name: &str) -> PathBuf {
+    let candidate = dir.join(name);
+    if !candidate.exists() {
+        return candidate;
+    }
+    let (stem, ext) = match name.rfind('.') {
+        Some(i) if i > 0 => (&name[..i], &name[i..]),
+        _ => (name, ""),
+    };
+    let mut n = 2;
+    loop {
+        let candidate = dir.join(format!("{stem} ({n}){ext}"));
+        if !candidate.exists() {
+            return candidate;
+        }
+        n += 1;
+    }
 }
 
 /// Clear the build cache (forces a clean rebuild on next compile).

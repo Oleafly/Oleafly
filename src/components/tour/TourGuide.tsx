@@ -20,6 +20,7 @@ import {
   type TourStepDefinition,
 } from "@/lib/tours/registry";
 import { useFilesStore } from "@/store/files";
+import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
 import { useTourStore } from "@/store/tours";
 
@@ -502,7 +503,7 @@ export function TourGuide() {
   const projectId = useFilesStore((state) => state.projectId);
   const newProjectOpen = useSettingsStore((state) => state.newProjectOpen);
   const settingsOpen = useSettingsStore((state) => state.settingsOpen);
-  const diagramOpen = useSettingsStore((state) => state.diagramComposerOpen);
+  const diagramOpen = useHomeViewStore((state) => state.page === "diagram-composer");
   const railTab = useSettingsStore((state) => state.railTab);
   const chatFloating = useSettingsStore((state) => state.chatFloating);
   const enabled = useTourStore((state) => state.enabled);

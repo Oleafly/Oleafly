@@ -11,7 +11,6 @@ import {
   ListFilter,
   Palette,
   Plus,
-  Search,
   SearchX,
   Trash2,
   X,
@@ -48,6 +47,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { DotPattern } from "@/components/ui/dot-pattern";
+import { GridPattern } from "@/components/ui/grid-pattern";
 import { useFavoritesStore } from "@/store/favorites";
 import { useProjectColorsStore } from "@/store/project-colors";
 import { logError } from "@/lib/log";
@@ -64,7 +64,7 @@ import {
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
-import { cn, shortcut } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { cancelAutoCommit } from "@/lib/auto-commit";
 import {
   deleteProject,
@@ -81,7 +81,7 @@ const thumbInflight = new Set<string>();
 type ProjectFilters = {
   metadata: string;
   engine: "all" | "tectonic" | "typst" | "markdown";
-  kind: "all" | "document" | "image";
+  kind: "all" | "document" | "image" | "diagram";
   bookmark: "all" | "yes" | "no";
   preview: "all" | "yes" | "no";
   created: "all" | "7" | "30" | "365";
@@ -234,9 +234,9 @@ export function Library() {
   const projectColors = useProjectColorsStore((s) => s.colors);
   const setProjectColor = useProjectColorsStore((s) => s.setColor);
   const removeProjectColor = useProjectColorsStore((s) => s.remove);
-  const setSearchOpen = useSettingsStore((s) => s.setSearchOpen);
   const setNewProjectOpen = useSettingsStore((s) => s.setNewProjectOpen);
   const hoverPreview = useSettingsStore((s) => s.hoverPreview);
+  const bgPattern = useSettingsStore((s) => s.bgPattern);
   const [forkTarget, setForkTarget] = useState<{ id: string; name: string } | null>(null);
   const [forkName, setForkName] = useState("");
   const [onlyFavs, setOnlyFavs] = useState(false);
@@ -370,12 +370,11 @@ export function Library() {
       data-projects-loaded={projectsLoaded ? "true" : "false"}
       className="relative flex h-full flex-row bg-background"
     >
-      <DotPattern
-        width={22}
-        height={22}
-        radius={1}
-        className="[mask-image:radial-gradient(circle_at_50%_0%,white,transparent_75%)]"
-      />
+      {bgPattern === "grid" ? (
+        <GridPattern width={22} height={22} />
+      ) : (
+        <DotPattern width={22} height={22} radius={1} />
+      )}
       <HomeDock />
       <div className="flex min-w-0 flex-1 flex-col">
       <header
@@ -395,17 +394,6 @@ export function Library() {
         <div data-tauri-drag-region className="flex items-center justify-end gap-1.5">
           {projects.length > 0 && (
             <>
-              <Tooltip label={`Search documents (${shortcut("⌘⇧F")})`}>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-muted-foreground hover:text-foreground"
-                  onClick={() => setSearchOpen(true)}
-                  aria-label="Search documents"
-                >
-                  <Search className="size-4" />
-                </Button>
-              </Tooltip>
               <Tooltip label="Advanced project filters">
                 <Popover
                   ariaLabel="Advanced project filters"
@@ -486,6 +474,7 @@ export function Library() {
                       { value: "all", label: "All kinds" },
                       { value: "document", label: "Document" },
                       { value: "image", label: "Image" },
+                      { value: "diagram", label: "Diagram" },
                     ]}
                   />
                   <FilterSelect
@@ -577,7 +566,7 @@ export function Library() {
       </header>
 
       <div className="relative z-10 flex-1 overflow-auto p-8">
-        <div className="mx-auto max-w-4xl">
+        <div className="mx-auto max-w-4xl xl:max-w-5xl">
           {projects.length === 0 ? (
             // Until the first listProjects resolves we don't know whether the
             // library is empty, so don't flash the first-run welcome.
@@ -627,7 +616,7 @@ export function Library() {
               </EmptyHeader>
             </Empty>
           ) : (
-          <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-12 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 xl:gap-x-14 xl:gap-y-14">
             {visibleProjects.map((p) => (
               <ContextMenu key={p.id}>
                 <ContextMenuTrigger asChild>

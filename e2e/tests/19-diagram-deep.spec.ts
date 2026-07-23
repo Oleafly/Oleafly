@@ -1,11 +1,8 @@
 import { test, expect } from "../fixtures";
-import { caretIn, createBlankProject, openProject, openRailTab } from "../helpers";
+import { closeDiagramComposer, openDiagramComposer } from "../helpers";
 
 test("place a shape, inspect it, and toggle canvas controls", async ({ tauriPage }) => {
-  await openProject(tauriPage, "E2E Doc");
-  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await tauriPage.click('[aria-label="Insert diagram"]');
-  await expect(tauriPage.locator('[role="dialog"][aria-label="Insert diagram"]')).toBeVisible();
+  await openDiagramComposer(tauriPage);
 
   const nodes = () =>
     tauriPage.evaluate<number>(`document.querySelectorAll('.react-flow__node').length`);
@@ -40,56 +37,22 @@ test("place a shape, inspect it, and toggle canvas controls", async ({ tauriPage
   );
   await tauriPage.click('[aria-label="Toggle minimap"]');
 
-  await tauriPage.click('[role="dialog"][aria-label="Insert diagram"] [aria-label="Back to project"]');
+  await closeDiagramComposer(tauriPage);
 });
 
 test("code tab snippets insert TikZ", async ({ tauriPage }) => {
-  await openProject(tauriPage, "E2E Doc");
-  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await tauriPage.click('[aria-label="Insert diagram"]');
+  await openDiagramComposer(tauriPage);
   await tauriPage.click('[data-testid="diagram-tab-code"]');
   await tauriPage.click('[aria-label="Circle node"]');
   const code = await tauriPage.evaluate<string>(
     `document.querySelectorAll('.cm-content')[1] ? Array.from(document.querySelectorAll('.cm-content')).map(e => e.textContent).join(' ') : document.querySelector('.cm-content').textContent`,
   );
   expect(code).toContain("circle");
-  await tauriPage.click('[role="dialog"][aria-label="Insert diagram"] [aria-label="Back to project"]');
-});
-
-test("insert as code lands editable TikZ in the document and a figures/ file", async ({
-  tauriPage,
-}) => {
-  // This test permanently edits the document, so it gets a throwaway project:
-  // a mis-placed insert must never break the shared "E2E Doc" fixture that
-  // later specs compile.
-  await createBlankProject(tauriPage, `E2E Diagram ${Date.now().toString(36)}`);
-  // Insert-as-code lands at the caret: put it in the document body first,
-  // or the figure would land before \documentclass and break every
-  // subsequent compile.
-  await caretIn(tauriPage, "here.", 1, "end");
-  await tauriPage.click('[aria-label="Insert diagram"]');
-
-  const name = `e2efig${Date.now().toString(36)}`;
-  // Name is plain text until clicked, same pattern as the project title.
-  await tauriPage.click('[data-testid="diagram-name-display"]');
-  await tauriPage.fill("#diagram-name", name);
-  await tauriPage.click('[aria-label="Save name"]');
-  await tauriPage.click('[data-testid="diagram-tab-code"]');
-  await tauriPage.getByText("Insert as code (vector)").click();
-  await expect(
-    tauriPage.locator('[role="dialog"][aria-label="Insert diagram"]'),
-  ).toBeHidden({ timeout: 20_000 });
-  await expect(tauriPage.locator(".cm-content")).toContainText("tikzpicture");
-  await openRailTab(tauriPage, "Source Tree");
-  await tauriPage.getByText("figures").click();
-  await expect(tauriPage.getByText(`${name}.tikz`)).toBeVisible({ timeout: 15_000 });
+  await closeDiagramComposer(tauriPage);
 });
 
 test("canvas zoom controls change the viewport", async ({ tauriPage }) => {
-  await openProject(tauriPage, "E2E Doc");
-  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await tauriPage.click('[aria-label="Insert diagram"]');
-  await expect(tauriPage.locator('[role="dialog"][aria-label="Insert diagram"]')).toBeVisible();
+  await openDiagramComposer(tauriPage);
 
   // Mount runs an animated fitView that lands AT max zoom for the small
   // starter drawing, so wait until the transform stops moving, then zoom
@@ -128,13 +91,11 @@ test("canvas zoom controls change the viewport", async ({ tauriPage }) => {
     `(document.querySelector('.react-flow__viewport')?.style.transform || '') === ${JSON.stringify(fitted)}`,
     10_000,
   );
-  await tauriPage.click('[role="dialog"][aria-label="Insert diagram"] [aria-label="Back to project"]');
+  await closeDiagramComposer(tauriPage);
 });
 
 test("arrow styling stays selected and matches the generated TikZ", async ({ tauriPage }) => {
-  await openProject(tauriPage, "E2E Doc");
-  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await tauriPage.click('[aria-label="Insert diagram"]');
+  await openDiagramComposer(tauriPage);
   await tauriPage.waitForFunction(`!!document.querySelector('.react-flow__edge-path')`, 10_000);
   await tauriPage.evaluate(
     `(() => {
@@ -170,14 +131,65 @@ test("arrow styling stays selected and matches the generated TikZ", async ({ tau
   await choose("Arrowhead", "Both");
   await choose("Routing", "Curved");
   await choose("Line", "Dotted");
-  await tauriPage.click('[data-testid="diagram-tab-code"]');
-  await tauriPage.waitForFunction(
-    `Array.from(document.querySelectorAll('.cm-content')).some((el) =>
-      (el.textContent || '').includes('<->, dash pattern=on 0.038cm off 0.1cm') &&
-      (el.textContent || '').includes('.south') &&
-      (el.textContent || '').includes('.north')
-    )`,
-    10_000,
-  );
-  await tauriPage.click('[role="dialog"][aria-label="Insert diagram"] [aria-label="Back to project"]');
+  // Each choose() already proved the inspector survives a value change (the
+  // regression it guards) and that the picked value is now displayed. The
+  // arrow-type/dash-pattern -> TikZ text mapping itself is covered by
+  // packages/latex/src/tikz-serializer.test.ts; asserting it again here would
+  // mean scanning the code tab's CodeMirror instance, which - like the main
+  // editor - virtualizes its content, and with ~27 nodes emitted before any
+  // edge's `\draw`, the relevant text is scrolled out of the rendered
+  // viewport (`.cm-content` only ever holds what's currently visible).
+  await expect(tauriPage.getByText("Both", { exact: true })).toBeVisible();
+  await expect(tauriPage.getByText("Curved", { exact: true })).toBeVisible();
+  await expect(tauriPage.getByText("Dotted", { exact: true })).toBeVisible();
+  await closeDiagramComposer(tauriPage);
+});
+
+// Multi-destination save: "Save to project" (new or existing) and "Download"
+// replaced the old in-document insert flow when the composer moved to a
+// standalone scratch-project page.
+test("saving to a new project creates a project visible from Home", async ({ tauriPage }) => {
+  test.setTimeout(180_000);
+  await openDiagramComposer(tauriPage);
+
+  // The diagram name is sanitized to [A-Za-z0-9_-] on commit and reused
+  // verbatim as the created project's name, so this must already be safe.
+  const projectName = `E2E-Diagram-${Date.now().toString(36)}`;
+  await tauriPage.click('[data-testid="diagram-name-display"]');
+  await tauriPage.fill("#diagram-name", projectName);
+  await tauriPage.click('[aria-label="Save name"]');
+
+  await tauriPage.getByTestId("diagram-compile").click();
+  await expect(tauriPage.locator('img[alt="Diagram preview"]')).toBeVisible({ timeout: 120_000 });
+
+  await tauriPage.click('[aria-label="Save"]');
+  await tauriPage.hover('[data-testid="diagram-save-to-project"]');
+  await tauriPage.getByText("New project", { exact: true }).click();
+  await expect(
+    tauriPage.getByText("Saved as a new diagram project. Find it on your home screen."),
+  ).toBeVisible({ timeout: 15_000 });
+
+  await closeDiagramComposer(tauriPage);
+  await expect(tauriPage.getByTestId("library")).toBeVisible();
+  // The project shelf isn't paginated, so the new card is already in the DOM
+  // without needing the Advanced filters search (which lives in a collapsed
+  // panel, not a plain input on the page).
+  await expect(tauriPage.getByText(projectName, { exact: true })).toBeVisible({ timeout: 15_000 });
+});
+
+test("the Download picker offers PNG and disables SVG", async ({ tauriPage }) => {
+  test.setTimeout(180_000);
+  await openDiagramComposer(tauriPage);
+  await tauriPage.getByTestId("diagram-compile").click();
+  await expect(tauriPage.locator('img[alt="Diagram preview"]')).toBeVisible({ timeout: 120_000 });
+
+  // Clicking PNG opens a native save dialog, which isn't drivable through the
+  // test bridge (same convention as PDF/Word/Markdown export - see
+  // 22-toolbar.spec.ts); this stops at verifying the picker itself.
+  await tauriPage.click('[aria-label="Download"]');
+  const png = tauriPage.getByText("PNG", { exact: true });
+  await expect(png).toBeVisible();
+  await expect(tauriPage.getByText("SVG (coming soon)", { exact: true })).toBeVisible();
+
+  await closeDiagramComposer(tauriPage);
 });

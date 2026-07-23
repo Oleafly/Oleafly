@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
-import { Clock3, Moon, Plus, Settings as SettingsIcon, Sun, Wrench } from "lucide-react";
+import { ClipboardClock, Moon, PenTool, Plus, Search, Settings as SettingsIcon, Sun, ToolCase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
-import { cn, isMac } from "@/lib/utils";
+import { cn, isMac, shortcut } from "@/lib/utils";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { useTheme } from "@/lib/theme";
 import { useDeadlinesStore } from "@/store/deadlines";
+import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
 
@@ -38,7 +39,7 @@ function DockButton({
         size="icon"
         aria-label={label}
         className={cn(
-          "rounded-xl hover:scale-[1.2]",
+          "rounded-full hover:scale-[1.2]",
           !primary &&
             (active
               ? "bg-white/20 text-foreground shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2)] hover:bg-white/25 dark:bg-white/10 dark:hover:bg-white/15"
@@ -58,18 +59,47 @@ const GLASS_SURFACE =
 export function HomeDock() {
   const setNewProjectOpen = useSettingsStore((s) => s.setNewProjectOpen);
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
+  const setSearchOpen = useSettingsStore((s) => s.setSearchOpen);
   const dockPlacement = useSettingsStore((s) => s.dockPlacement);
+  const hasProjects = useFilesStore((s) => s.projects.length > 0);
   const { theme, toggleTheme } = useTheme();
   const fullscreen = useFullscreen();
   const deadlinesOpen = useHomeViewStore((s) => s.deadlinesOpen);
   const toolsOpen = useHomeViewStore((s) => s.toolsOpen);
   const openDeadlines = useHomeViewStore((s) => s.openDeadlines);
   const openTools = useHomeViewStore((s) => s.openTools);
+  const page = useHomeViewStore((s) => s.page);
+  const goTo = useHomeViewStore((s) => s.goTo);
   const horizontal = dockPlacement === "bottom";
   const tooltipSide = horizontal ? "top" : dockPlacement === "right" ? "left" : "right";
 
   const items = (
     <>
+      {hasProjects && (
+        <DockButton
+          label={`Search Documents (${shortcut("⌘⇧F")})`}
+          icon={<Search className="size-4" />}
+          onClick={() => setSearchOpen(true)}
+          testId="open-search"
+          tooltipSide={tooltipSide}
+        />
+      )}
+      <DockButton
+        label="Diagram Composer"
+        icon={<PenTool className="size-4" />}
+        onClick={() => goTo("diagram-composer")}
+        active={page === "diagram-composer"}
+        testId="open-diagram-composer"
+        tooltipSide={tooltipSide}
+      />
+      <DockButton
+        label="LaTeX Tools"
+        icon={<ToolCase className="size-4" />}
+        onClick={openTools}
+        active={toolsOpen}
+        testId="open-latex-tools"
+        tooltipSide={tooltipSide}
+      />
       <DockButton
         label="New project"
         icon={<Plus className="size-4" />}
@@ -81,21 +111,13 @@ export function HomeDock() {
       />
       <DockButton
         label="CCF Deadlines"
-        icon={<Clock3 className="size-4" />}
+        icon={<ClipboardClock className="size-4" />}
         onClick={() => {
           void useDeadlinesStore.getState().openView();
           openDeadlines();
         }}
         active={deadlinesOpen}
         testId="open-deadlines"
-        tooltipSide={tooltipSide}
-      />
-      <DockButton
-        label="LaTeX Tools"
-        icon={<Wrench className="size-4" />}
-        onClick={openTools}
-        active={toolsOpen}
-        testId="open-latex-tools"
         tooltipSide={tooltipSide}
       />
       <DockButton
@@ -122,7 +144,7 @@ export function HomeDock() {
         <div
           data-testid="home-dock"
           data-placement="bottom"
-          className={cn("pointer-events-auto flex items-center gap-1 rounded-2xl p-1.5", GLASS_SURFACE)}
+          className={cn("pointer-events-auto flex items-center gap-2 rounded-2xl p-1.5", GLASS_SURFACE)}
         >
           {items}
         </div>
@@ -143,7 +165,7 @@ export function HomeDock() {
       <div
         data-testid="home-dock"
         data-placement={dockPlacement}
-        className={cn("pointer-events-auto flex flex-col items-center gap-1 rounded-2xl p-1.5", GLASS_SURFACE)}
+        className={cn("pointer-events-auto flex flex-col items-center gap-2 rounded-2xl p-1.5", GLASS_SURFACE)}
       >
         {items}
       </div>

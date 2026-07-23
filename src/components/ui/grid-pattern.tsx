@@ -1,7 +1,6 @@
 import { useId } from "react";
 import { cn } from "@/lib/utils";
 
-// Render inside a `relative` parent; mask via className for a gradient fade.
 export function GridPattern({
   width = 20,
   height = 20,
@@ -22,7 +21,7 @@ export function GridPattern({
     <svg
       aria-hidden="true"
       className={cn(
-        "pointer-events-none absolute inset-0 h-full w-full fill-gray-400/30 stroke-gray-400/30",
+        "pointer-events-none absolute inset-0 h-full w-full fill-gray-400/50 stroke-gray-400/50 dark:fill-gray-400/20 dark:stroke-gray-400/20",
         className
       )}
     >

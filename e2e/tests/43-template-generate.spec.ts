@@ -32,9 +32,11 @@ test("generate with AI saves a reusable custom template", async ({ tauriPage }) 
   expect(ok, "__aiConnect devtools hook must be present").toBe(true);
   server.setReply(GENERATED);
   await openGallery(tauriPage);
-  await expect(tauriPage.locator('[data-testid="template-generate-card"]')).toBeVisible({
+  await expect(tauriPage.locator('[data-testid="generate-template-with-ai"]')).toBeVisible({
     timeout: 20_000,
   });
+  await tauriPage.click('[data-testid="generate-template-with-ai"]');
+  await expect(tauriPage.locator('[data-testid="template-generate-modal"]')).toBeVisible();
   await fillTextarea(
     tauriPage,
     '[data-testid="template-generate-input"]',

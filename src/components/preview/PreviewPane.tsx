@@ -43,8 +43,9 @@ export function PreviewPane() {
   const projectName = useFilesStore((s) => s.projectName);
   const refreshTree = useFilesStore((s) => s.refreshTree);
   const mainDoc = useFilesStore((s) => s.mainDoc);
-  // Image projects render a single figure: no pages/spreads, "PDF" reads as "image".
-  const isImage = useFilesStore((s) => s.projectKind) === "image";
+  // Image and diagram projects render a single figure: no pages/spreads, "PDF" reads as "image".
+  const projectKindForPreview = useFilesStore((s) => s.projectKind);
+  const isImage = projectKindForPreview === "image" || projectKindForPreview === "diagram";
   const [scale, setScale] = useState(1.0);
   const [zoomMenuOpen, setZoomMenuOpen] = useState(false);
   const [tab, setTab] = useState<"pdf" | "logs">("pdf");

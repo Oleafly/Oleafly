@@ -1,16 +1,21 @@
 import { useCallback, useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { Check, Download, Info, Loader2, Trash2, Type } from "lucide-react";
+import { Check, Download, FileText, Info, Loader2, Trash2, Type } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { logError } from "@/lib/log";
 import { notifyError } from "@/lib/toast";
 import {
   downloadAllFonts,
   installFontComponent,
+  installTemplatePack,
   listFontComponents,
+  listTemplatePacks,
+  refreshPackCatalog,
   removeFontComponent,
+  removeTemplatePack,
   type AssetProgress,
   type ComponentInfo,
+  type PackInfo,
 } from "@/lib/tauri";
 
 const ALL = "__all__";
@@ -80,6 +85,78 @@ export function DownloadsSection() {
 
   const anyBusy = busyId !== null;
   const allInstalled = components.length > 0 && components.every((c) => c.installed);
+
+  const [packs, setPacks] = useState<PackInfo[]>([]);
+  const [packBusyId, setPackBusyId] = useState<string | null>(null);
+  const [packProgress, setPackProgress] = useState("");
+
+  const refreshPacks = useCallback(async () => {
+    try {
+      await refreshPackCatalog().catch(() => {});
+      setPacks(await listTemplatePacks());
+    } catch (e) {
+      void logError("list template packs", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshPacks();
+  }, [refreshPacks]);
+
+  const runPackInstall = async (id: string) => {
+    let unlisten: (() => void) | undefined;
+    try {
+      unlisten = await listen<AssetProgress>("asset-progress", (e) => {
+        const p = e.payload;
+        if (p.component === id) setPackProgress(`${p.index} of ${p.total}`);
+      });
+      await installTemplatePack(id);
+      await refreshPacks();
+    } finally {
+      unlisten?.();
+      setPackProgress("");
+    }
+  };
+
+  const installPack = async (id: string) => {
+    setPackBusyId(id);
+    try {
+      await runPackInstall(id);
+    } catch (e) {
+      notifyError("download the template pack", e, "Couldn't download the template pack.");
+    } finally {
+      setPackBusyId(null);
+    }
+  };
+
+  const downloadAllPacks = async () => {
+    setPackBusyId(ALL);
+    try {
+      for (const p of packs) {
+        if (p.installed) continue;
+        await runPackInstall(p.id);
+      }
+    } catch (e) {
+      notifyError("download the template packs", e, "Couldn't download the template packs.");
+    } finally {
+      setPackBusyId(null);
+    }
+  };
+
+  const removePack = async (id: string) => {
+    setPackBusyId(id);
+    try {
+      await removeTemplatePack(id);
+      await refreshPacks();
+    } catch (e) {
+      notifyError("remove the template pack", e, "Couldn't remove the template pack.");
+    } finally {
+      setPackBusyId(null);
+    }
+  };
+
+  const anyPackBusy = packBusyId !== null;
+  const allPacksInstalled = packs.length > 0 && packs.every((p) => p.installed);
 
   return (
     <div className="flex flex-col gap-5">
@@ -153,6 +230,73 @@ export function DownloadsSection() {
       <p className="text-[11px] leading-relaxed text-muted-foreground">
         The LuaLaTeX engine (for tagged, accessible PDFs) is managed in the LaTeX Engine section.
       </p>
+
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Templates</h3>
+          <Tooltip
+            wide
+            side="right"
+            label="Extra template packs are downloaded on demand so Oleafly stays small. Download a pack here to use its templates offline, or remove them later to free space."
+          >
+            <Info className="size-3.5 cursor-help text-muted-foreground/60 hover:text-muted-foreground" />
+          </Tooltip>
+        </div>
+        <button type="button"
+          onClick={() => void downloadAllPacks()}
+          disabled={anyPackBusy || allPacksInstalled}
+          className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
+        >
+          {packBusyId === ALL ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+          {allPacksInstalled ? "All downloaded" : "Download all"}
+        </button>
+      </div>
+
+      <div className="overflow-hidden rounded-lg border">
+        {packs.length === 0 ? (
+          <p className="px-3 py-4 text-sm text-muted-foreground">No downloadable template packs.</p>
+        ) : (
+          packs.map((p) => {
+            const busy = packBusyId === p.id || (packBusyId === ALL && !p.installed);
+            return (
+              <div key={p.id} className="flex items-center gap-3 border-b px-3 py-2.5 last:border-b-0">
+                <FileText className="size-4 shrink-0 text-muted-foreground" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">{p.label}</span>
+                    {p.installed && <Check className="size-3.5 text-emerald-500" />}
+                    {p.approx_bytes > 0 && (
+                      <span className="text-[11px] text-muted-foreground">{formatSize(p.approx_bytes)}</span>
+                    )}
+                  </div>
+                  <p className="truncate text-[11px] text-muted-foreground">
+                    {busy && packProgress ? packProgress : p.description}
+                    {!busy && p.license_summary ? ` · ${p.license_summary}` : ""}
+                  </p>
+                </div>
+                {p.installed ? (
+                  <button type="button"
+                    onClick={() => void removePack(p.id)}
+                    disabled={anyPackBusy}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
+                  >
+                    <Trash2 className="size-3.5" /> Remove
+                  </button>
+                ) : (
+                  <button type="button"
+                    onClick={() => void installPack(p.id)}
+                    disabled={anyPackBusy}
+                    className="inline-flex w-24 items-center justify-center gap-1.5 rounded-md bg-primary px-2.5 py-1.5 text-xs text-white hover:opacity-90 disabled:opacity-60"
+                  >
+                    {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+                    {busy ? "" : "Download"}
+                  </button>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
     </div>
   );
 }

@@ -19,7 +19,11 @@ export interface DiagramHost {
   saveActive(): Promise<void>;
   refreshTree(): Promise<void>;
   createImageProject(name: string, source: string): Promise<string>;
+  createDiagramProject(name: string, source: string): Promise<string>;
   refreshProjects(): Promise<void>;
   findProjectIdByName(name: string): Promise<string | null>;
+  listProjectNames(): Promise<{ id: string; name: string }[]>;
+  saveFigureToCache(name: string, pngBase64: string, tikz: string): Promise<{ hash: string; alreadyCached: boolean }>;
+  saveBytesToDisk(defaultName: string, extension: string, dataBase64: string): Promise<boolean>;
   fixWithAi?(code: string, logTail: string): Promise<string>;
 }

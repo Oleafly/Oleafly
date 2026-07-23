@@ -44,6 +44,13 @@ pub fn templates_data_root() -> Result<PathBuf, String> {
     Ok(dir)
 }
 
+pub fn figures_cache_root() -> Result<PathBuf, String> {
+    let dir = oleafly_root()?.join("figures");
+    std::fs::create_dir_all(&dir)
+        .map_err(|e| format!("failed to create figures cache root {dir:?}: {e}"))?;
+    Ok(dir)
+}
+
 /// The projects directory: `~/.oleafly/projects/` (created if missing).
 pub fn projects_root() -> Result<PathBuf, String> {
     let root = oleafly_root()?.join("projects");

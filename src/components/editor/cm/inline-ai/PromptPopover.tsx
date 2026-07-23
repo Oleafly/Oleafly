@@ -59,7 +59,7 @@ export function PromptPopover({
           placeholder="Describe the change…  (Shift+Enter for a new line)"
           disabled={streaming}
           rows={2}
-          className="min-h-[2.75rem] min-w-0 flex-1 resize-none bg-transparent text-sm leading-snug outline-none placeholder:text-muted-foreground disabled:opacity-60"
+          className="min-h-[2.75rem] min-w-0 flex-1 resize-none border-0 bg-transparent text-sm leading-snug shadow-none outline-none placeholder:text-muted-foreground disabled:opacity-60"
         />
         <button
           type="button"
@@ -78,7 +78,7 @@ export function PromptPopover({
               key={p.id}
               type="button"
               onClick={() => onPreset(p.instruction)}
-              className="flex-1 whitespace-nowrap rounded-full border border-primary/35 px-2 py-0.5 text-center text-black text-xs hover:border-primary/55 hover:bg-primary/10 dark:text-white"
+              className="flex-1 whitespace-nowrap rounded-full px-2 py-0.5 text-center text-xs text-primary hover:bg-primary/10"
             >
               {p.label}
             </button>
@@ -97,7 +97,7 @@ export function PromptPopover({
           modelId={modelId}
           groups={modelGroups}
           onChange={onModelChange}
-          className="max-w-[45%]"
+          className="max-w-28"
         />
         {streaming ? (
           <button

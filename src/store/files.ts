@@ -11,6 +11,7 @@ import {
   gitRestore,
   getProject,
   getProjectEngine,
+  importPathsIntoProject as apiImportPathsIntoProject,
   listFiles,
   listProjects,
   readFileContent,
@@ -51,6 +52,8 @@ interface FilesStore {
   // files and diffs interleaved by the order they were opened.
   tabOrder: Record<string, number>;
   activePath: string | null;
+  diagramCanvasView: boolean;
+  toggleDiagramCanvasView: () => void;
   projects: ProjectInfo[];
   projectsLoaded: boolean;
   loading: boolean;
@@ -77,6 +80,7 @@ interface FilesStore {
   deleteEntry: (path: string) => Promise<void>;
   renameEntry: (from: string, to: string) => Promise<void>;
   copyEntry: (path: string, isDir?: boolean) => Promise<void>;
+  importPaths: (destDir: string, sourcePaths: string[]) => Promise<void>;
   applyExternalWrite: (path: string, content: string) => void;
   applyExternalDelete: (path: string) => void;
   applyExternalRename: (from: string, to: string) => void;
@@ -126,6 +130,8 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   openTabs: [],
   tabOrder: {},
   activePath: null,
+  diagramCanvasView: true,
+  toggleDiagramCanvasView: () => set((s) => ({ diagramCanvasView: !s.diagramCanvasView })),
   projects: [],
   projectsLoaded: false,
   loading: false,
@@ -159,6 +165,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       openTabs: [],
       tabOrder: {},
       activePath: null,
+      diagramCanvasView: true,
     });
     try {
       const meta = await getProject(id);
@@ -220,6 +227,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       openTabs: [],
       tabOrder: {},
       activePath: null,
+      diagramCanvasView: true,
     });
   },
 
@@ -435,6 +443,17 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       await get().refreshTree();
     } catch (e) {
       void logError("copy file", e);
+    }
+  },
+
+  importPaths: async (destDir, sourcePaths) => {
+    const { projectId } = get();
+    if (!projectId || sourcePaths.length === 0) return;
+    try {
+      await apiImportPathsIntoProject(projectId, destDir, sourcePaths);
+      await get().refreshTree();
+    } catch (e) {
+      notifyError("import files", e, "Could not import. See the app log for details.");
     }
   },
 

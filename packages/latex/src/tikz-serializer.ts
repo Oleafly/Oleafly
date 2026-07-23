@@ -15,6 +15,10 @@ const dash = (style: "solid" | "dashed" | "dotted" | undefined) =>
       ? "dash pattern=on 0.038cm off 0.1cm, line cap=round"
       : null;
 
+function escapeLatex(text: string): string {
+  return text.replace(/[&%#]/g, (ch) => `\\${ch}`);
+}
+
 function center(n: DiagNode): { x: number; y: number } {
   return { x: px2cm(n.x + n.w / 2), y: px2cm(-(n.y + n.h / 2)) };
 }
@@ -85,7 +89,7 @@ function nodeToTikz(n: DiagNode, defs: Set<string>): string {
   opts.push(`minimum width=${px2cm(n.w)}cm`);
   opts.push(`minimum height=${px2cm(n.h)}cm`);
   const optStr = opts.length ? `[${opts.join(", ")}] ` : "";
-  return `\\node (${n.id}) at (${c.x},${c.y}) ${optStr}{${n.label}};`;
+  return `\\node (${n.id}) at (${c.x},${c.y}) ${optStr}{${escapeLatex(n.label)}};`;
 }
 
 const ARROW_OPT: Record<DiagEdge["arrow"], string> = {
@@ -139,7 +143,7 @@ function edgeToTikz(e: DiagEdge, nodes: Map<string, DiagNode>): string {
       );
       const path = route.points.map(pointToTikz).join(" -- ");
       const label = e.label
-        ? `\n    \\node[fill=white, font=\\small] at ${pointToTikz(route.label)} {${e.label}};`
+        ? `\n    \\node[fill=white, font=\\small] at ${pointToTikz(route.label)} {${escapeLatex(e.label)}};`
         : "";
       return `\\draw${optStr} ${path};${label}`;
     }
@@ -148,7 +152,7 @@ function edgeToTikz(e: DiagEdge, nodes: Map<string, DiagNode>): string {
     e.routing === "curved"
       ? `to[out=${angle[sourceHandle]}, in=${angle[targetHandle]}]`
       : "--";
-  const mid = e.label ? ` node[midway, fill=white, font=\\small] {${e.label}}` : "";
+  const mid = e.label ? ` node[midway, fill=white, font=\\small] {${escapeLatex(e.label)}}` : "";
   return `\\draw${optStr} (${source}) ${connector}${mid} (${target});`;
 }
 

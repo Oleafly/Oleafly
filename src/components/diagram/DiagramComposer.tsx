@@ -1,25 +1,14 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { generateText } from "ai";
 import {
   DiagramComposer as DiagramComposerCore,
   DiagramKitContext,
   type DiagramHost,
-  type DiagramKit,
 } from "@oleafly/diagram";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { ColorInput } from "@/components/ui/color-input";
-import { ColorPicker } from "@/components/ui/color-picker";
-import { Tooltip } from "@/components/ui/tooltip";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { save } from "@tauri-apps/plugin-dialog";
+import { KIT } from "@/components/diagram/diagram-kit";
 import { useFilesStore } from "@/store/files";
+import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
 import {
   compileIsolated,
@@ -27,8 +16,12 @@ import {
   writeProjectBytes,
   writeFileContent,
   readFileContent,
+  writeBytesFile,
   listFiles,
   createImageProject,
+  createDiagramProject,
+  getOrCreateScratchProject,
+  saveFigureToCache,
   getConfig,
 } from "@/lib/tauri";
 import { resolveActiveModel, hasConfiguredProvider } from "@/lib/ai-providers";
@@ -36,37 +29,8 @@ import { pdfPageToPng } from "@/lib/pdf-image";
 import { insertAtCursor } from "@/components/editor/cm/controller";
 import { editorTheme } from "@/components/editor/cm/theme";
 import { latexLanguage } from "@/components/editor/cm/latex";
-import { useTheme } from "@/lib/theme";
-import { toast } from "@/lib/toast";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { isMac } from "@/lib/utils";
-
-// Exposed as a hook because the headless @oleafly/diagram package calls it directly.
-function useThemeMode(): "light" | "dark" {
-  const { theme } = useTheme();
-  return theme === "dark" ? "dark" : "light";
-}
-
-function usePrimaryColor(): string {
-  return useSettingsStore((s) => s.accentColor);
-}
-
-const KIT: DiagramKit = {
-  Button,
-  Input,
-  Textarea,
-  ColorInput,
-  ColorPicker,
-  Tooltip,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  toast,
-  useThemeMode,
-  usePrimaryColor,
-};
 
 async function fixWithAi(code: string, logTail: string): Promise<string> {
   const cfg = await getConfig();
@@ -107,32 +71,54 @@ const HOST: DiagramHost = {
   saveActive: () => useFilesStore.getState().saveActive(),
   refreshTree: () => useFilesStore.getState().refreshTree(),
   createImageProject,
+  createDiagramProject,
   refreshProjects: () => useFilesStore.getState().refreshProjects(),
   findProjectIdByName: async (name) => {
     await useFilesStore.getState().refreshProjects();
     return useFilesStore.getState().projects.find((p) => p.name === name)?.id ?? null;
+  },
+  listProjectNames: async () => {
+    await useFilesStore.getState().refreshProjects();
+    return useFilesStore.getState().projects.map((p) => ({ id: p.id, name: p.name }));
+  },
+  saveFigureToCache: async (name, pngBase64, tikz) => {
+    const r = await saveFigureToCache(name, pngBase64, tikz);
+    return { hash: r.hash, alreadyCached: r.alreadyCached };
+  },
+  saveBytesToDisk: async (defaultName, extension, dataBase64) => {
+    const dest = await save({
+      defaultPath: `${defaultName}.${extension}`,
+      filters: [{ name: extension.toUpperCase(), extensions: [extension] }],
+    });
+    if (!dest) return false;
+    await writeBytesFile(dest, dataBase64);
+    return true;
   },
   fixWithAi,
 };
 
 // Bridges app-specific stores/Tauri/editor into the package's headless composer.
 export function DiagramComposer() {
-  const open = useSettingsStore((s) => s.diagramComposerOpen);
-  const setOpen = useSettingsStore((s) => s.setDiagramComposerOpen);
-  const initialFilePath = useSettingsStore((s) => s.diagramComposerInitialPath);
-  const projectId = useFilesStore((s) => s.projectId);
-  const projectName = useFilesStore((s) => s.projectName);
+  const open = useHomeViewStore((s) => s.page === "diagram-composer");
+  const goTo = useHomeViewStore((s) => s.goTo);
   const fullscreen = useFullscreen();
   const codeExtensions = useMemo(() => [latexLanguage(), editorTheme()], []);
+  const [scratchId, setScratchId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open || scratchId) return;
+    void getOrCreateScratchProject().then(setScratchId);
+  }, [open, scratchId]);
+
+  if (!open || !scratchId) return null;
 
   return (
     <DiagramKitContext.Provider value={KIT}>
       <DiagramComposerCore
         open={open}
-        projectId={projectId}
-        projectName={projectName}
-        initialFilePath={initialFilePath}
-        onClose={() => setOpen(false)}
+        projectId={scratchId}
+        projectName="Diagram Composer"
+        onClose={() => goTo("library")}
         host={HOST}
         codeExtensions={codeExtensions}
         isMac={isMac}

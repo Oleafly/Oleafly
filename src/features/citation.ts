@@ -6,6 +6,10 @@ import { parseCrossrefSearch } from "@/lib/citation/crossref";
 import { arxivXmlToBibtex } from "@/lib/citation/arxiv";
 import { findKeyByDoi } from "@/lib/citation/dedup";
 import type { CitationHit } from "@/lib/citation/types";
+import { parseBib } from "@/lib/latex-tools";
+import { parseRis } from "@/lib/citation/ris";
+import { parseEndNoteXml } from "@/lib/citation/endnote-xml";
+import { parseZoteroRdf } from "@/lib/citation/zotero-rdf";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { useIndexStore } from "@/store/project-index";
@@ -220,6 +224,30 @@ export async function addCitations(entries: ParsedBib[]): Promise<BatchImportRes
 
   if (!errors.length) void useIndexStore.getState().rebuildFromDisk();
   return { imported: newBlocks.length, duplicates, errors };
+}
+
+export function parseCitationFile(filename: string, text: string): ParsedBib[] | null {
+  const ext = filename.split(".").pop()?.toLowerCase();
+  if (ext === "rdf") return parseZoteroRdf(text);
+  if (ext === "xml") return parseEndNoteXml(text);
+  if (ext === "ris") return parseRis(text);
+  if (ext === "bib") return parseBib(text).entries;
+  return null;
+}
+
+// E2E / devtools hook: the native test bridge cannot drive a real file input,
+// so specs feed file text in directly through the same parse/import path the
+// Connect Sources dialog uses.
+if (typeof window !== "undefined" && import.meta.env.DEV) {
+  const w = window as unknown as {
+    __importCitationFile?: (name: string, text: string) => Promise<BatchImportResult | { error: string }>;
+  };
+  w.__importCitationFile = async (name, text) => {
+    const entries = parseCitationFile(name, text);
+    if (!entries) return { error: `Unrecognized file type: ${name}` };
+    if (!entries.length) return { error: "No references found in that file." };
+    return addCitations(entries);
+  };
 }
 
 function insertCite(key: string) {

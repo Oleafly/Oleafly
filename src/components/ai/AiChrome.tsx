@@ -8,7 +8,7 @@ export const AI_PROMPT_SURFACE = "ai-prompt-surface";
 export function AiMark({ className }: { className?: string }) {
   return (
     <span
-      className={cn("flex size-7 shrink-0 items-center justify-center text-foreground/80", className)}
+      className={cn("flex size-7 shrink-0 items-center justify-center text-primary", className)}
       aria-hidden
     >
       <Wand2 className="size-5" />

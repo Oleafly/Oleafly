@@ -3,7 +3,6 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
-  ChevronDown,
   Download,
   FileText,
   Hash,
@@ -13,8 +12,7 @@ import {
 } from "lucide-react";
 import { cn } from "./cn";
 import { modalCoordinator, visibleFocusable } from "./modal-coordinator";
-import { GenerateTemplate } from "./GenerateTemplate";
-import type { PackDisplay, TemplateInfo, TemplatesHost, TemplatesKit } from "./types";
+import type { TemplateInfo, TemplatesHost, TemplatesKit } from "./types";
 
 // Preferred category order (anything else falls to the end, alphabetically).
 const CATEGORY_ORDER = [
@@ -76,13 +74,6 @@ const NAME_HINT_BY_CATEGORY: Record<string, string> = {
 function nameHint(t: TemplateInfo | null): string {
   if (!t) return "My Project";
   return NAME_HINT_BY_ID[t.id] ?? NAME_HINT_BY_CATEGORY[t.category] ?? "My Project";
-}
-
-export function formatBytes(bytes: number): string {
-  if (bytes <= 0) return "small";
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export function compilerLabel(template: TemplateInfo): string {
@@ -195,7 +186,7 @@ export function NewProjectDialog({
   busy = false,
   onClose,
   onCreate,
-  onTemplatesChanged,
+  onGenerateWithAi,
   host,
   kit,
   colorOptions,
@@ -208,7 +199,7 @@ export function NewProjectDialog({
   busy?: boolean;
   onClose: () => void;
   onCreate: (name: string, templateId: string, color: string) => void | Promise<void>;
-  onTemplatesChanged?: () => void;
+  onGenerateWithAi?: () => void;
   host: TemplatesHost;
   kit: TemplatesKit;
   colorOptions: { name: string; hex: string }[];
@@ -230,9 +221,6 @@ export function NewProjectDialog({
     active: false,
     label: "",
   });
-  const [packs, setPacks] = useState<PackDisplay[] | null>(null);
-  const [packBusy, setPackBusy] = useState<{ id: string; label: string } | null>(null);
-  const [packSectionOpen, setPackSectionOpen] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -255,44 +243,8 @@ export function NewProjectDialog({
       setOfflineOnly(false);
       setEngine("all");
       setSetup({ active: false, label: "" });
-      setPackBusy(null);
-      setPackSectionOpen(false);
     }
   }, [open]);
-
-  const installPack = async (p: PackDisplay) => {
-    if (!host.installPack || packBusy) return;
-    setPackBusy({ id: p.id, label: "Starting download..." });
-    try {
-      await host.installPack(p.id, (label, index, total) => {
-        setPackBusy({ id: p.id, label: `Downloading ${label} (${index} of ${total})` });
-      });
-      setPacks((prev) =>
-        prev ? prev.map((x) => (x.id === p.id ? { ...x, installed: true } : x)) : prev,
-      );
-      onTemplatesChanged?.();
-    } catch (e) {
-      host.logError("template-packs", e);
-    } finally {
-      setPackBusy(null);
-    }
-  };
-
-  useEffect(() => {
-    if (!open || !host.listPacks) return;
-    let cancelled = false;
-    void host
-      .listPacks()
-      .then((p) => {
-        if (!cancelled) setPacks(p);
-      })
-      .catch(() => {
-        if (!cancelled) setPacks([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [open, host]);
 
   useEffect(() => {
     if (!open) return;
@@ -404,7 +356,7 @@ export function NewProjectDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm"
       onMouseDown={(event) => {
         const modalId = modalIdRef.current;
         if (
@@ -434,11 +386,23 @@ export function NewProjectDialog({
           <h2 id="new-project-title" className="text-base font-semibold">
             {step === 1 ? "Choose a template" : "Name your project"}
           </h2>
-          {allowClose ? (
-            <Button variant="ghost" size="icon" className="size-7" onClick={onClose} aria-label="Close">
-              <X className="size-4" />
-            </Button>
-          ) : null}
+          <div className="flex items-center gap-2">
+            {step === 1 && onGenerateWithAi && (
+              <Button
+                variant="ghostPrimary"
+                size="sm"
+                data-testid="generate-template-with-ai"
+                onClick={onGenerateWithAi}
+              >
+                <Sparkles className="size-3.5" /> Generate a template with AI
+              </Button>
+            )}
+            {allowClose ? (
+              <Button variant="ghost" size="icon" className="size-7" onClick={onClose} aria-label="Close">
+                <X className="size-4" />
+              </Button>
+            ) : null}
+          </div>
         </div>
 
         {step === 1 ? (
@@ -580,78 +544,6 @@ export function NewProjectDialog({
                       </button>
                     ))}
                   </div>
-                )}
-                {host.listPacks && packs !== null && packs.length > 0 && (
-                  <div data-testid="pack-section" className="mt-8 border-t pt-5">
-                    <button
-                      type="button"
-                      data-testid="pack-section-toggle"
-                      aria-expanded={packSectionOpen}
-                      onClick={() => setPackSectionOpen((v) => !v)}
-                      className="flex w-full items-center justify-between text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-                    >
-                      <span>
-                        Get more templates
-                        <span className="ml-2 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium normal-case tracking-normal text-muted-foreground">
-                          {packs.length}
-                        </span>
-                      </span>
-                      <ChevronDown
-                        className={cn("size-4 transition-transform", packSectionOpen && "rotate-180")}
-                      />
-                    </button>
-                    {packSectionOpen && (
-                    <div className="mt-3 flex flex-col gap-2">
-                      {packs.map((p) => (
-                        <div
-                          key={p.id}
-                          className="flex items-center gap-3 rounded-md border bg-muted/20 px-3 py-2.5"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-medium">{p.label}</span>
-                              <span className="text-[10px] text-muted-foreground">
-                                {p.count} templates · {formatBytes(p.approxBytes)}
-                              </span>
-                            </div>
-                            <div className="truncate text-[11px] text-muted-foreground">
-                              {p.description}
-                            </div>
-                            {p.licenseSummary && (
-                              <div className="truncate text-[10px] text-muted-foreground/70">
-                                {p.licenseSummary}
-                              </div>
-                            )}
-                          </div>
-                          {p.installed ? (
-                            <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-                              <Check className="size-3.5" /> Installed
-                            </span>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              data-testid={`pack-install-${p.id}`}
-                              disabled={packBusy !== null}
-                              onClick={() => void installPack(p)}
-                            >
-                              <Download className="size-3.5" />{" "}
-                              {packBusy?.id === p.id ? packBusy.label : "Install"}
-                            </Button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                    )}
-                  </div>
-                )}
-                {host.generateTemplate && (
-                  <GenerateTemplate
-                    kit={kit}
-                    generate={(d) => (host.generateTemplate as NonNullable<typeof host.generateTemplate>)(d)}
-                    onSaved={() => onTemplatesChanged?.()}
-                    logError={host.logError}
-                  />
                 )}
               </div>
             </div>

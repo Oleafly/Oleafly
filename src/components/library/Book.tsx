@@ -97,7 +97,7 @@ export function Book({
 
   return (
     <div
-      className="group relative w-full rounded-md"
+      className="group relative w-full shrink-0 rounded-md"
       style={{ width }}
     >
       <button
@@ -117,7 +117,7 @@ export function Book({
               ? "group-hover:-translate-y-1"
               : "group-hover:[transform:rotateY(-18deg)_translateY(-2px)]"
           )}
-          style={{ width: "100%", aspectRatio: "5 / 6.4" }}
+          style={{ width: "100%", aspectRatio: "8.5 / 11" }}
         >
           {/* back cover - peeks below for thickness */}
           <div className="absolute inset-0 translate-y-[6px] rounded-md" style={{ background: dark }} />
@@ -173,7 +173,7 @@ export function Book({
                   src={preview}
                   alt=""
                   draggable={false}
-                  className="size-full scale-105 object-cover object-top transition-transform duration-500 ease-out group-hover:scale-110"
+                  className="size-full object-cover object-top transition-transform duration-500 ease-out group-hover:scale-105"
                 />
               </div>
             )}

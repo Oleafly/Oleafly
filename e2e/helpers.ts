@@ -175,13 +175,14 @@ export async function setEditorContent(page: Page, text: string) {
 // collapses it, and that collapsed state persists across restarts.
 export async function openRailTab(page: Page, ariaLabel: string) {
   const sel = JSON.stringify(`[aria-label=${JSON.stringify(ariaLabel)}]`);
-  // Desired end state: this tab is ACTIVE (bg-accent implies the sidebar is
-  // open on it). Click only when not there yet, then wait for the state to
-  // commit - a blind click-then-probe races React and can collapse the
-  // sidebar when the tab was already active.
+  // Desired end state: this tab is ACTIVE (aria-current="page", set by
+  // Rail.tsx's RailTabButton) and the sidebar is open on it. Click only when
+  // not there yet, then wait for the state to commit - a blind
+  // click-then-probe races React and can collapse the sidebar when the tab
+  // was already active.
   const activeExpr = `(() => {
     const b = document.querySelector(${sel});
-    return !!b && b.classList.contains('bg-accent')
+    return !!b && b.getAttribute('aria-current') === 'page'
       && !!document.querySelector('[aria-label="Hide sidebar"]');
   })()`;
   for (let attempt = 0; attempt < 10; attempt++) {
@@ -540,6 +541,76 @@ export async function caretIn(
   throw new Error(
     "caretIn: selection did not land on the line containing " + JSON.stringify(anchorText),
   );
+}
+
+// The Diagram Composer is now a standalone home-shell page (not a per-project
+// modal), reached from the dock and backed by a single hidden scratch
+// project, not the currently open project.
+export async function openDiagramComposer(page: Page) {
+  const libraryVisible = await page.evaluate<boolean>(
+    `!!document.querySelector('[data-testid="library"]')`,
+  );
+  if (!libraryVisible) {
+    const hasBack = await page.evaluate<boolean>(
+      `!!document.querySelector('[title="Back to library"]')`,
+    );
+    if (hasBack) await page.click('[title="Back to library"]');
+  }
+  const library = page.locator(
+    '[data-testid="library"][data-projects-loaded="true"]',
+  ) as unknown as Parameters<typeof expect>[0];
+  await expect(library).toBeVisible({ timeout: 30_000 });
+  await page.click('[data-testid="open-diagram-composer"]');
+  const dialog = page.locator(
+    '[role="dialog"][aria-labelledby="diagram-composer-title"]',
+  ) as unknown as Parameters<typeof expect>[0];
+  await expect(dialog).toBeVisible({ timeout: 20_000 });
+  // The dialog mounts before React Flow finishes its first render pass (the
+  // starter drawing has ~27 nodes); wait for the canvas to actually settle so
+  // callers that count/select nodes don't race an empty or partial canvas.
+  await page.waitForFunction(
+    `document.querySelectorAll('.react-flow__node').length > 0`,
+    15_000,
+  );
+}
+
+export async function closeDiagramComposer(page: Page) {
+  await page.click('[role="dialog"][aria-labelledby="diagram-composer-title"] [aria-label="Back to project"]');
+}
+
+// Drives a synthetic mouse-drag over real text coordinates: CM re-asserts its
+// state over foreign DOM selections, so Range/Selection injection alone does
+// not stick.
+export async function selectWord(page: Page, word: string) {
+  const ok = await page.evaluate<boolean>(
+    `(() => {
+      const content = document.querySelector('.cm-content');
+      const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
+      let node;
+      while ((node = walker.nextNode())) {
+        const i = node.textContent.indexOf(${JSON.stringify(word)});
+        if (i >= 0) {
+          const range = document.createRange();
+          range.setStart(node, i);
+          range.setEnd(node, i + ${JSON.stringify(word)}.length);
+          const rects = range.getClientRects();
+          const a = rects[0], b = rects[rects.length - 1];
+          const opts = (x, y, extra) => Object.assign({
+            bubbles: true, cancelable: true, clientX: x, clientY: y, buttons: 1, detail: 1,
+          }, extra);
+          const sx = a.left + 1, sy = a.top + a.height / 2;
+          const ex = b.right - 1, ey = b.top + b.height / 2;
+          const target = document.elementFromPoint(sx, sy) || content;
+          target.dispatchEvent(new MouseEvent('mousedown', opts(sx, sy)));
+          document.dispatchEvent(new MouseEvent('mousemove', opts(ex, ey)));
+          document.dispatchEvent(new MouseEvent('mouseup', opts(ex, ey, { buttons: 0 })));
+          return true;
+        }
+      }
+      return false;
+    })()`,
+  );
+  expect(ok).toBe(true);
 }
 
 export async function currentTheme(page: Page): Promise<"light" | "dark"> {

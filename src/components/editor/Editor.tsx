@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { FileText, X } from "lucide-react";
 import { CodeMirrorEditor } from "./CodeMirrorEditor";
 import { EditorContextMenu } from "./EditorContextMenu";
@@ -82,6 +82,8 @@ function ImageFileView({ projectId, path }: { projectId: string; path: string })
   );
 }
 
+const DiagramMainFileView = lazy(() => import("./DiagramMainFileView"));
+
 export function Editor() {
   const openTabs = useFilesStore((s) => s.openTabs);
   const activePath = useFilesStore((s) => s.activePath);
@@ -148,6 +150,11 @@ export function Editor() {
     activePath != null &&
     /\.(zip|gz|eps|ttf|otf|woff2?)$/i.test(activePath);
   const projectId = useFilesStore((s) => s.projectId);
+  const projectKind = useFilesStore((s) => s.projectKind);
+  const mainDoc = useFilesStore((s) => s.mainDoc);
+  const diagramCanvasView = useFilesStore((s) => s.diagramCanvasView);
+  const toggleDiagramCanvasView = useFilesStore((s) => s.toggleDiagramCanvasView);
+  const isDiagramMainFile = projectKind === "diagram" && activePath === mainDoc;
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
   const engine = useFilesStore((s) => s.engine);
   const formattingProfile = useFilesStore((s) => s.engine.capabilities.formatting_profile);
@@ -247,7 +254,26 @@ export function Editor() {
               Typst mode · LaTeX linting and spelling/grammar checks are disabled.
             </div>
           )}
-          {isPdfFile && projectId && activePath ? (
+          {isDiagramMainFile && projectId && activePath && (
+            <div className="flex shrink-0 items-center justify-end border-b px-2 py-1">
+              <button
+                type="button"
+                onClick={toggleDiagramCanvasView}
+                className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
+                {diagramCanvasView ? "View code" : "View canvas"}
+              </button>
+            </div>
+          )}
+          {isDiagramMainFile && diagramCanvasView && projectId && activePath ? (
+            <div className="min-h-0 flex-1 overflow-hidden">
+              <Suspense
+                fallback={<div className="p-6 text-sm text-muted-foreground">Loading…</div>}
+              >
+                <DiagramMainFileView projectId={projectId} path={activePath} />
+              </Suspense>
+            </div>
+          ) : isPdfFile && projectId && activePath ? (
             <div className="min-h-0 flex-1 overflow-auto bg-sidebar">
               <PdfFileView projectId={projectId} path={activePath} />
             </div>

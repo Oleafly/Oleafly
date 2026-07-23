@@ -1,14 +1,13 @@
 import { generateText } from "ai";
-import type { GeneratedPreview } from "@oleafly/templates";
 import { hasConfiguredProvider, resolveActiveModel } from "@/lib/ai-providers";
 import { pdfPageToPng } from "@/lib/pdf-image";
 import {
   compileIsolated,
   getConfig,
+  getOrCreateScratchProject,
   readIsolatedPdf,
   saveCustomTemplate,
 } from "@/lib/tauri";
-import { useFilesStore } from "@/store/files";
 
 const SYSTEM = [
   "You create document templates for a LaTeX/Typst/Markdown editor.",
@@ -69,60 +68,44 @@ export async function generateTemplateAvailable(): Promise<boolean> {
   }
 }
 
-export async function generateTemplate(description: string): Promise<GeneratedPreview> {
+export async function generateTemplateSource(description: string): Promise<ParsedTemplate> {
   const cfg = await getConfig();
   const { model } = resolveActiveModel(cfg);
-  const projectId = useFilesStore.getState().projectId;
-  let parsed: ParsedTemplate | null = null;
-  let log = "";
-  let previewPng: string | null = null;
-  let prompt = `Create a template for: ${description}`;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const { text } = await generateText({ model, system: SYSTEM, prompt });
-    const candidate = parseGeneratedTemplate(text);
-    if (candidate.engine !== "xetex" || !projectId) {
-      parsed = candidate;
-      break;
-    }
-    const res = await compileIsolated(projectId, candidate.source);
-    log = (res.log ?? "").slice(-2000);
-    if (res.has_pdf) {
-      parsed = candidate;
-      try {
-        const bytes = new Uint8Array(await readIsolatedPdf(projectId));
-        previewPng = await pdfPageToPng(bytes, 1, 1.5, "#ffffff");
-      } catch {
-        previewPng = null;
-      }
-      break;
-    }
-    prompt = [
-      `Create a template for: ${description}`,
-      "The previous attempt failed to compile. Fix it and return the full JSON again.",
-      `COMPILE LOG TAIL:\n${log}`,
-      `PREVIOUS SOURCE:\n${candidate.source}`,
-    ].join("\n\n");
+  const { text } = await generateText({
+    model,
+    system: SYSTEM,
+    prompt: `Create a template for: ${description}`,
+    abortSignal: AbortSignal.timeout(45_000),
+  });
+  return parseGeneratedTemplate(text);
+}
+
+export async function compileGeneratedTemplate(
+  parsed: ParsedTemplate,
+): Promise<{ png: string | null; log: string }> {
+  if (parsed.engine !== "xetex") {
+    return { png: null, log: "" };
   }
-  if (!parsed) {
-    throw new Error(`The generated template did not compile after 3 attempts. ${log}`);
-  }
-  const final = parsed;
+  const scratchId = await getOrCreateScratchProject();
+  const res = await compileIsolated(scratchId, parsed.source);
+  const log = (res.log ?? "").slice(-2000);
+  if (!res.has_pdf) return { png: null, log };
+  const bytes = new Uint8Array(await readIsolatedPdf(scratchId));
+  const png = await pdfPageToPng(bytes, 1, 1.5, "#ffffff");
+  return { png, log };
+}
+
+export async function saveGeneratedTemplate(parsed: ParsedTemplate): Promise<void> {
   const manifest = {
-    id: final.slug,
-    name: final.name,
-    description: final.description,
-    category: final.category,
-    engine: final.engine,
-    main_doc: final.mainDoc,
+    id: parsed.slug,
+    name: parsed.name,
+    description: parsed.description,
+    category: parsed.category,
+    engine: parsed.engine,
+    main_doc: parsed.mainDoc,
     license: { spdx: "CC0-1.0", author: "AI generated", url: "" },
   };
-  return {
-    name: final.name,
-    previewPng,
-    log,
-    save: () =>
-      saveCustomTemplate(final.slug, JSON.stringify(manifest, null, 2), [
-        { name: final.mainDoc, content: final.source },
-      ]),
-  };
+  await saveCustomTemplate(parsed.slug, JSON.stringify(manifest, null, 2), [
+    { name: parsed.mainDoc, content: parsed.source },
+  ]);
 }

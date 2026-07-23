@@ -4,6 +4,7 @@ import {
   type DragEvent as ReactDragEvent,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
+import { open } from "@tauri-apps/plugin-dialog";
 import {
   ChevronRight,
   CopyPlus,
@@ -12,6 +13,7 @@ import {
   FolderOpen,
   FolderPlus,
   FolderTree,
+  Import,
   Pencil,
   Star,
   Trash2,
@@ -26,10 +28,22 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useFilesStore } from "@/store/files";
 import { FileIcon } from "@/components/files/fileIcon";
 import { logError } from "@/lib/log";
 import { cn } from "@/lib/utils";
+
+async function pickImportSources(mode: "file" | "dir"): Promise<string[]> {
+  const picked = await open(mode === "dir" ? { directory: true } : { multiple: true });
+  if (!picked) return [];
+  return Array.isArray(picked) ? picked : [picked];
+}
 
 interface TreeNode {
   name: string;
@@ -89,6 +103,7 @@ interface TreeCtx {
   onSetMain: (p: string) => void;
   mainExtensions: string[];
   onCopy: (p: string, isDir: boolean) => void;
+  onImport: (destDir: string, mode: "file" | "dir") => void;
   renamePath: string | null;
   renameValue: string;
   onStartRename: (path: string, name: string) => void;
@@ -116,6 +131,7 @@ export function FileTree() {
   const deleteEntry = useFilesStore((s) => s.deleteEntry);
   const renameEntry = useFilesStore((s) => s.renameEntry);
   const copyEntry = useFilesStore((s) => s.copyEntry);
+  const importPaths = useFilesStore((s) => s.importPaths);
   const setMainDoc = useFilesStore((s) => s.setMainDoc);
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
   const sourceExtensions = useFilesStore((s) => s.engine.source_extensions);
@@ -207,6 +223,13 @@ export function FileTree() {
     }
   };
 
+  const importInto = async (destDir: string, mode: "file" | "dir") => {
+    const sources = await pickImportSources(mode);
+    if (sources.length === 0) return;
+    await importPaths(destDir, sources);
+    if (destDir) expand(destDir);
+  };
+
   const ctx: TreeCtx = {
     expanded,
     toggle,
@@ -219,6 +242,7 @@ export function FileTree() {
     onSetMain: setMainDoc,
     mainExtensions,
     onCopy: copyEntry,
+    onImport: (destDir, mode) => void importInto(destDir, mode),
     renamePath,
     renameValue,
     onStartRename: (p, name) => {
@@ -271,46 +295,85 @@ export function FileTree() {
           >
             <FolderPlus className="size-3.5" />
           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7"
+                title="Import a file or folder (into the selected folder)"
+              >
+                <Import className="size-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem onClick={() => ctx.onImport(targetDir(), "file")}>
+                <FilePlus className="size-4 text-muted-foreground" /> Import file(s)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => ctx.onImport(targetDir(), "dir")}>
+                <FolderPlus className="size-4 text-muted-foreground" /> Import folder
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
       {/* The whole list is a drop target for moving entries back to the root. */}
-      <div
-        role="tree"
-        aria-label="Source tree"
-        className={cn(
-          "flex-1 overflow-auto p-1.5",
-          dragOver === ROOT && "rounded-md ring-1 ring-inset ring-primary/40"
-        )}
-        onDragOver={(e) => {
-          if (!e.dataTransfer.types.includes("text/plain")) return;
-          e.preventDefault();
-          setDragOver(ROOT);
-        }}
-        onDrop={(e) => {
-          e.preventDefault();
-          const from = e.dataTransfer.getData("text/plain");
-          setDragOver(null);
-          if (from) void move(from, "");
-        }}
-        onDragLeave={(e) => {
-          if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(null);
-        }}
-      >
-        {newMode && newParent === "" && (
-          <NewEntryInput
-            mode={newMode}
-            value={newValue}
-            depth={0}
-            onChange={ctx.onChangeNew}
-            onSubmit={ctx.onSubmitNew}
-            onCancel={ctx.onCancelNew}
-          />
-        )}
-        {nodes.map((n) => (
-          <TreeRow key={n.path} node={n} depth={0} ctx={ctx} />
-        ))}
-      </div>
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <div
+            role="tree"
+            aria-label="Source tree"
+            className={cn(
+              "flex-1 overflow-auto p-1.5",
+              dragOver === ROOT && "rounded-md ring-1 ring-inset ring-primary/40"
+            )}
+            onDragOver={(e) => {
+              if (!e.dataTransfer.types.includes("text/plain")) return;
+              e.preventDefault();
+              setDragOver(ROOT);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              const from = e.dataTransfer.getData("text/plain");
+              setDragOver(null);
+              if (from) void move(from, "");
+            }}
+            onDragLeave={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(null);
+            }}
+          >
+            {newMode && newParent === "" && (
+              <NewEntryInput
+                mode={newMode}
+                value={newValue}
+                depth={0}
+                onChange={ctx.onChangeNew}
+                onSubmit={ctx.onSubmitNew}
+                onCancel={ctx.onCancelNew}
+              />
+            )}
+            {nodes.map((n) => (
+              <TreeRow key={n.path} node={n} depth={0} ctx={ctx} />
+            ))}
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent className="w-52" onCloseAutoFocus={(e) => e.preventDefault()}>
+          <ContextMenuItem onClick={() => ctx.onStartNew("", "file")}>
+            <FilePlus className="mr-2 size-4" /> New file
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => ctx.onStartNew("", "dir")}>
+            <FolderPlus className="mr-2 size-4" /> New folder
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem onClick={() => ctx.onImport("", "file")}>
+            <Import className="mr-2 size-4" /> Import file(s)
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => ctx.onImport("", "dir")}>
+            <Import className="mr-2 size-4" /> Import folder
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
     </div>
   );
 }
@@ -483,6 +546,13 @@ function TreeRow({ node, depth, ctx }: { node: TreeNode; depth: number; ctx: Tre
                 </ContextMenuItem>
                 <ContextMenuItem onClick={() => ctx.onStartNew(node.path, "dir")}>
                   <FolderPlus className="mr-2 size-4" /> New folder
+                </ContextMenuItem>
+                <ContextMenuSeparator />
+                <ContextMenuItem onClick={() => ctx.onImport(node.path, "file")}>
+                  <Import className="mr-2 size-4" /> Import file(s)
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => ctx.onImport(node.path, "dir")}>
+                  <Import className="mr-2 size-4" /> Import folder
                 </ContextMenuItem>
               </>
             ) : (

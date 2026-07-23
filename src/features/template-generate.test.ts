@@ -5,15 +5,13 @@ vi.mock("@/lib/pdf-image", () => ({ pdfPageToPng: vi.fn() }));
 vi.mock("@/lib/tauri", () => ({
   compileIsolated: vi.fn(),
   getConfig: vi.fn(),
+  getOrCreateScratchProject: vi.fn(),
   readIsolatedPdf: vi.fn(),
   saveCustomTemplate: vi.fn(),
 }));
 vi.mock("@/lib/ai-providers", () => ({
   hasConfiguredProvider: vi.fn(),
   resolveActiveModel: vi.fn(),
-}));
-vi.mock("@/store/files", () => ({
-  useFilesStore: { getState: () => ({ projectId: null }) },
 }));
 
 import { parseGeneratedTemplate } from "./template-generate";
@@ -37,7 +35,7 @@ describe("parseGeneratedTemplate", () => {
   });
 
   it("strips markdown fences", () => {
-    const t = parseGeneratedTemplate("```json\n" + valid + "\n```");
+    const t = parseGeneratedTemplate(`\`\`\`json\n${valid}\n\`\`\``);
     expect(t.name).toBe("My Template");
   });
 

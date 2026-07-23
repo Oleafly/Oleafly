@@ -145,6 +145,9 @@ export const renameFile = (projectId: string, from: string, to: string) =>
 export const copyFile = (projectId: string, from: string, to: string) =>
   invoke<void>("copy_file", { projectId, from, to });
 
+export const importPathsIntoProject = (projectId: string, destDir: string, sourcePaths: string[]) =>
+  invoke<string[]>("import_paths_into_project", { projectId, destDir, sourcePaths });
+
 export const saveFileBase64 = (projectId: string, path: string, data: string) =>
   invoke<void>("save_file_base64", { projectId, path, data });
 
@@ -185,6 +188,29 @@ export const createMarkdownProject = (name: string) =>
 
 export const createImageProject = (name: string, source: string, color?: string) =>
   invoke<string>("create_image_project", { name, source, color });
+
+export const createDiagramProject = (name: string, source: string) =>
+  invoke<string>("create_diagram_project", { name, source });
+
+export const getOrCreateScratchProject = () =>
+  invoke<string>("get_or_create_scratch_project");
+
+export interface FigureCacheResult {
+  hash: string;
+  alreadyCached: boolean;
+}
+
+export const saveFigureToCache = async (
+  name: string,
+  pngBase64: string,
+  tikz: string,
+): Promise<FigureCacheResult> => {
+  const result = await invoke<{ hash: string; already_cached: boolean }>(
+    "save_figure_to_cache",
+    { name, pngBase64, tikz },
+  );
+  return { hash: result.hash, alreadyCached: result.already_cached };
+};
 
 export interface TemplateLicense {
   spdx: string;
@@ -303,12 +329,12 @@ export const refreshPackCatalog = () => invoke<void>("refresh_pack_catalog");
 export const installTemplatePack = (id: string) =>
   invoke<void>("install_template_pack", { id });
 
+export const removeTemplatePack = (id: string) =>
+  invoke<void>("remove_template_pack", { id });
+
 export const readDeadlines = () => invoke<string>("read_deadlines");
 
 export const refreshDeadlines = () => invoke<void>("refresh_deadlines");
-
-export const removeTemplatePack = (id: string) =>
-  invoke<void>("remove_template_pack", { id });
 
 export interface GitCommit {
   oid: string;

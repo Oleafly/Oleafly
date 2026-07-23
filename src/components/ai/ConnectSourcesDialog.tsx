@@ -8,22 +8,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { addCitations, type BatchImportResult } from "@/features/citation";
-import { parseBib } from "@/lib/latex-tools";
-import { parseRis } from "@/lib/citation/ris";
-import { parseEndNoteXml } from "@/lib/citation/endnote-xml";
-import { parseZoteroRdf } from "@/lib/citation/zotero-rdf";
-import type { ParsedBib } from "@/lib/citation/types";
+import { addCitations, parseCitationFile, type BatchImportResult } from "@/features/citation";
 import { toast, notifyError } from "@/lib/toast";
-
-function parseByExtension(filename: string, text: string): ParsedBib[] | null {
-  const ext = filename.split(".").pop()?.toLowerCase();
-  if (ext === "rdf") return parseZoteroRdf(text);
-  if (ext === "xml") return parseEndNoteXml(text);
-  if (ext === "ris") return parseRis(text);
-  if (ext === "bib") return parseBib(text).entries;
-  return null;
-}
 
 function summarize(result: BatchImportResult): string {
   const parts = [`${result.imported} reference${result.imported === 1 ? "" : "s"} imported`];
@@ -84,7 +70,7 @@ export function ConnectSourcesDialog({ open, onOpenChange }: { open: boolean; on
     setBusy(true);
     try {
       const text = await file.text();
-      const entries = parseByExtension(file.name, text);
+      const entries = parseCitationFile(file.name, text);
       if (!entries) {
         toast.error(`Unrecognized file type: ${file.name}`);
         return;

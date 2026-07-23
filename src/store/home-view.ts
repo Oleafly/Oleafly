@@ -1,6 +1,13 @@
 import { create } from "zustand";
 
-export type HomePage = "library" | "pdf-import" | "equation" | "bibtex" | "table" | "lab-search";
+export type HomePage =
+  | "library"
+  | "pdf-import"
+  | "equation"
+  | "bibtex"
+  | "table"
+  | "lab-search"
+  | "diagram-composer";
 
 export const useHomeViewStore = create<{
   page: HomePage;

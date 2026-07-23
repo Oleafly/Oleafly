@@ -176,6 +176,17 @@ describe("modelToTikz", () => {
     expect(tikz).toContain("font=\\ttfamily");
   });
 
+  it("escapes & % # in labels so they don't break compilation, but leaves $ { } _ raw for math mode", () => {
+    const t = modelToTikz({
+      version: 1,
+      nodes: [{ id: "a", shape: "rectangle", x: 0, y: 0, w: 80, h: 40, label: "Add & Norm, 100% #1" }],
+      edges: [{ id: "e1", source: "a", target: "a", routing: "straight", arrow: "forward", style: "solid", label: "A & B" }],
+    });
+    expect(t).toContain("{Add \\& Norm, 100\\% \\#1}");
+    expect(t).toContain("A \\& B");
+    expect(modelToTikz(model)).toContain("{$x_i$}");
+  });
+
   it("maps a parallelogram to a TikZ trapezium (flowchart I/O)", () => {
     const t = modelToTikz({
       version: 1,

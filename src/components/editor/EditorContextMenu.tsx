@@ -78,7 +78,8 @@ export function EditorContextMenu({ children }: EditorContextMenuProps) {
   const isMarkdown = useFilesStore((s) => s.engineLoaded && s.engine.capabilities.formatting_profile === "markdown");
   const projectKind = useFilesStore((s) => s.projectKind);
   const engine = useFilesStore((s) => s.engine);
-  const syncTexSupported = projectKind !== "image" && engineLoaded && engine.capabilities.supports_synctex;
+  const syncTexSupported =
+    projectKind !== "image" && projectKind !== "diagram" && engineLoaded && engine.capabilities.supports_synctex;
   if (!engineLoaded) {
     return (
       <ContextMenu>

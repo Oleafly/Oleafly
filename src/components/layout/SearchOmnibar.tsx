@@ -245,6 +245,7 @@ export function SearchOmnibar() {
       onOpenChange={(v) => (v ? setSearchOpen(true) : close())}
       label="Search"
       shouldFilter={false}
+      overlayClassName="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm"
       className="fixed left-1/2 top-[18%] z-50 w-[min(660px,92vw)] -translate-x-1/2"
     >
       <div className="overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-2xl">

@@ -31,6 +31,7 @@ import { insertAtCursor, wrapSelection } from "@/components/editor/cm/controller
 import { forwardFromCursor } from "@/features/synctex";
 import { exportCurrentPdf } from "@/features/export";
 import { useFilesStore } from "@/store/files";
+import { useHomeViewStore } from "@/store/home-view";
 import {
   formattingForEngine,
   pathUsesEngineSource,
@@ -103,15 +104,13 @@ export function registerOmnibarCommands() {
     },
   });
   registerCommand({
-    id: "omnibar.diagram",
+    id: "omnibar.diagram-composer",
     surfaces: ["omnibar"],
-    label: "Insert a diagram (manual)",
-    keywords: "diagram figure tikz manual composer draw insert paste",
+    label: "Open Diagram Composer",
+    keywords: "diagram figure tikz composer draw canvas",
     icon: () => <Workflow className="size-4" />,
     order: 40,
-    when: (ctx) =>
-      !!ctx.projectId && ctx.projectKind !== "image" && isLatex() && supportsIsolatedCompile(),
-    run: () => useSettingsStore.getState().setDiagramComposerOpen(true),
+    run: () => useHomeViewStore.getState().goTo("diagram-composer"),
   });
   registerCommand({
     id: "omnibar.settings",
