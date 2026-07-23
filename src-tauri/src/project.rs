@@ -35,6 +35,16 @@ Write your document in Typst.\n";
 const DEFAULT_MAIN_MARKDOWN: &str =
     "---\ntitle: Untitled\nauthor: ''\n---\n\n# Introduction\n\nWrite your document in Markdown.\n";
 
+pub const SCRATCH_PROJECT_ID: &str = "__diagram_scratch__";
+
+const DEFAULT_MAIN_DIAGRAM: &str = "\\documentclass[tikz,border=4pt]{standalone}\n\
+\\usepackage{tikz}\n\
+\\usetikzlibrary{shapes.geometric,arrows.meta,positioning,calc,backgrounds}\n\
+\\begin{document}\n\
+\\begin{tikzpicture}\n\
+\\end{tikzpicture}\n\
+\\end{document}\n";
+
 #[derive(Serialize, Deserialize, Default, Clone)]
 pub struct ProjectMeta {
     #[serde(default)]
@@ -53,6 +63,8 @@ pub struct ProjectMeta {
     pub kind: String,
     #[serde(default)]
     pub exports: Vec<ExportRecord>,
+    #[serde(default)]
+    pub hidden: bool,
 }
 
 #[derive(Serialize, Deserialize, Default, Clone)]
@@ -111,6 +123,7 @@ pub fn read_meta(project_id: &str) -> Result<ProjectMeta, String> {
             color: String::new(),
             kind: String::new(),
             exports: Vec::new(),
+            hidden: false,
         });
     }
     let s = std::fs::read_to_string(&p).map_err(|e| format!("failed to read project.json: {e}"))?;
@@ -417,6 +430,7 @@ fn create_markdown_project_in(root: &Path, name: String) -> Result<String, Strin
                 color: String::new(),
                 kind: String::new(),
                 exports: Vec::new(),
+                hidden: false,
             },
         )
     })?;
@@ -471,6 +485,9 @@ pub fn list_projects() -> Result<Vec<ProjectInfo>, String> {
         }
         let id = entry.file_name().to_string_lossy().into_owned();
         let meta = read_meta(&id).unwrap_or_default();
+        if meta.hidden {
+            continue;
+        }
         let fs_meta = entry.metadata().ok();
         let updated_at = fs_meta
             .as_ref()
@@ -551,6 +568,7 @@ pub fn create_project(name: String) -> Result<String, String> {
                 color: String::new(),
                 kind: String::new(),
                 exports: Vec::new(),
+                hidden: false,
             },
         )
     })?;
@@ -577,6 +595,7 @@ fn create_typst_project_in(root: &Path, name: String) -> Result<String, String> 
                 color: String::new(),
                 kind: String::new(),
                 exports: Vec::new(),
+                hidden: false,
             },
         )
     })?;
@@ -628,10 +647,33 @@ fn create_image_project_in(
                 color: color.unwrap_or_default(),
                 kind: "image".into(),
                 exports: Vec::new(),
+                hidden: false,
             },
         )
     })?;
     Ok(id)
+}
+
+#[tauri::command]
+pub fn get_or_create_scratch_project() -> Result<String, String> {
+    let dir = paths::project_dir(SCRATCH_PROJECT_ID)?;
+    let meta_file = dir.join("project.json");
+    if !meta_file.exists() {
+        std::fs::write(dir.join("main.tex"), DEFAULT_MAIN_DIAGRAM).map_err(|e| e.to_string())?;
+        write_meta_at(
+            &meta_file,
+            &ProjectMeta {
+                name: "Diagram Composer Scratch".to_string(),
+                main_doc: default_main_doc(),
+                engine: default_engine(),
+                color: String::new(),
+                kind: "diagram".into(),
+                exports: Vec::new(),
+                hidden: true,
+            },
+        )?;
+    }
+    Ok(SCRATCH_PROJECT_ID.to_string())
 }
 
 fn slugify(name: &str) -> String {
@@ -963,6 +1005,7 @@ pub async fn create_project_from_docx(name: String, data_base64: String) -> Resu
                 color: String::new(),
                 kind: String::new(),
                 exports: Vec::new(),
+                hidden: false,
             },
         )
     }
@@ -1241,6 +1284,7 @@ pub fn create_project_from_template(
                 color,
                 kind: manifest.kind.unwrap_or_default(),
                 exports: Vec::new(),
+                hidden: false,
             },
         )
     })?;
@@ -1562,8 +1606,9 @@ pub async fn delete_project(project_id: String) -> Result<(), String> {
 mod tests {
     use super::{
         create_image_project_in, create_markdown_project_in, create_project_transaction,
-        create_typst_project_in, engine_for_main_document, extract_pandoc, pandoc_asset_for,
-        rel_slash, validate_conversion_export, ProjectMeta,
+        create_typst_project_in, engine_for_main_document, extract_pandoc,
+        get_or_create_scratch_project, list_projects, pandoc_asset_for, read_meta, rel_slash,
+        validate_conversion_export, ProjectMeta, SCRATCH_PROJECT_ID,
     };
     use std::io::Write;
     use std::path::Path;
@@ -1638,6 +1683,7 @@ mod tests {
             color: String::new(),
             kind: String::new(),
             exports: Vec::new(),
+            hidden: false,
         };
         let json = serde_json::to_string(&meta).unwrap();
         let decoded: ProjectMeta = serde_json::from_str(&json).unwrap();
@@ -1818,5 +1864,23 @@ mod tests {
         assert!(super::decode_docx_base64(&bogus).is_err());
         let zipish = STANDARD.encode(b"PK\x03\x04rest-of-file");
         assert!(super::decode_docx_base64(&zipish).is_ok());
+    }
+
+    #[test]
+    fn scratch_project_is_hidden_and_idempotent() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("scratch-project");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let id1 = get_or_create_scratch_project().unwrap();
+        let id2 = get_or_create_scratch_project().unwrap();
+        assert_eq!(id1, id2);
+        assert_eq!(id1, SCRATCH_PROJECT_ID);
+        let meta = read_meta(&id1).unwrap();
+        assert!(meta.hidden);
+        assert_eq!(meta.kind, "diagram");
+        let listed = list_projects().unwrap();
+        assert!(listed.iter().all(|p| p.id != SCRATCH_PROJECT_ID));
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
     }
 }
