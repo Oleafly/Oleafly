@@ -67,8 +67,11 @@ export function LibrarySidebar({ collapsed }: { collapsed: boolean }) {
   const setNewProjectOpen = useSettingsStore((s) => s.setNewProjectOpen);
   const { theme, toggleTheme } = useTheme();
   const fullscreen = useFullscreen();
-  const page = useHomeViewStore((s) => s.page);
   const goTo = useHomeViewStore((s) => s.goTo);
+  const deadlinesOpen = useHomeViewStore((s) => s.deadlinesOpen);
+  const toolsOpen = useHomeViewStore((s) => s.toolsOpen);
+  const openDeadlines = useHomeViewStore((s) => s.openDeadlines);
+  const openTools = useHomeViewStore((s) => s.openTools);
 
   return (
     <aside
@@ -113,17 +116,17 @@ export function LibrarySidebar({ collapsed }: { collapsed: boolean }) {
           icon={<Clock3 className="size-4" />}
           onClick={() => {
             void useDeadlinesStore.getState().openView();
-            goTo("deadlines");
+            openDeadlines();
           }}
-          active={page === "deadlines"}
+          active={deadlinesOpen}
           testId="open-deadlines"
         />
         <NavItem
           collapsed={collapsed}
           label="LaTeX Tools"
           icon={<Wrench className="size-4" />}
-          onClick={() => goTo("latex-tools")}
-          active={page === "latex-tools"}
+          onClick={() => openTools()}
+          active={toolsOpen}
           testId="open-latex-tools"
         />
       </nav>

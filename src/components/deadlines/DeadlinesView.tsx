@@ -239,7 +239,7 @@ function DeadlineCard({ venue, now }: { venue: Venue; now: Date }) {
 }
 
 export function DeadlinesView() {
-  const page = useHomeViewStore((s) => s.page);
+  const deadlinesOpen = useHomeViewStore((s) => s.deadlinesOpen);
   const venues = useDeadlinesStore((s) => s.venues);
   const generatedAt = useDeadlinesStore((s) => s.generatedAt);
   const busy = useDeadlinesStore((s) => s.busy);
@@ -252,7 +252,7 @@ export function DeadlinesView() {
   const [sortKey, setSortKey] = useState<SortKey>("deadline");
   const [helpOpen, setHelpOpen] = useState(false);
   const { collapsed: sidebarCollapsed, toggle: toggleSidebar } = useLibrarySidebarStore();
-  const active = page === "deadlines";
+  const active = deadlinesOpen;
 
   useEffect(() => {
     if (!active) return;
