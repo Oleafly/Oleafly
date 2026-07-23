@@ -173,13 +173,13 @@ export const useCompileStore = create<CompileState>((set, get) => ({
         compileTimeMs: result.ok && bytes ? (result.compile_time_ms ?? 0) : state.compileTimeMs,
       }));
       // Tell detached windows (PDF preview, other OS windows) to reload.
-      void import("@/lib/preview-window").then((m) => m.refreshPreviewWindow());
-      void import("@/lib/cross-window").then((m) => m.notifyCompileDone(capturedProjectId));
+      void import("@/lib/preview-window").then((m) => m.refreshPreviewWindow()).catch(() => {});
+      void import("@/lib/cross-window").then((m) => m.notifyCompileDone(capturedProjectId)).catch(() => {});
       // A successful compile is the natural checkpoint: auto-commit the
       // project (compiling already saved the active file first).
       if (result.ok && bytes && capturedProjectId) {
         const pid = capturedProjectId;
-        void import("@/lib/auto-commit").then((m) => m.autoCommitNow(pid));
+        void import("@/lib/auto-commit").then((m) => m.autoCommitNow(pid)).catch(() => {});
       }
       return result;
     } catch (e) {
