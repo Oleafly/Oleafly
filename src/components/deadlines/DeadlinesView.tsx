@@ -46,7 +46,7 @@ import {
   type SortKey,
   type Venue,
 } from "@/lib/deadlines";
-import { cn } from "@/lib/utils";
+import { GLASS_PANEL, cn } from "@/lib/utils";
 import { useDeadlinesStore } from "@/store/deadlines";
 import { useHomeViewStore } from "@/store/home-view";
 
@@ -285,7 +285,7 @@ export function DeadlinesView() {
         aria-modal="true"
         aria-labelledby="deadlines-title"
         data-testid="deadlines-view"
-        className="relative flex h-[36rem] w-full max-w-4xl flex-col overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-2xl"
+        className={cn("relative flex h-[36rem] w-full max-w-4xl flex-col overflow-hidden rounded-xl", GLASS_PANEL)}
       >
       <div className="relative flex items-center gap-3 border-b py-2 pl-4 pr-4">
         <div id="deadlines-title" className="font-medium">Conference Deadlines</div>
@@ -335,21 +335,19 @@ export function DeadlinesView() {
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-1.5 border-b px-4 py-2">
-        <Button size="xs" variant={sub === null ? "secondary" : "ghost"} onClick={() => setSub(null)}>
-          All
-        </Button>
-        {subs.map((s) => (
-          <Tooltip key={s} label={subLabel(s)}>
-            <Button
-              size="xs"
-              variant={sub === s ? "secondary" : "ghost"}
-              data-testid={`deadlines-sub-${s}`}
-              onClick={() => setSub(sub === s ? null : s)}
-            >
-              {s}
-            </Button>
-          </Tooltip>
-        ))}
+        <Select value={sub ?? "__all__"} onValueChange={(v) => setSub(v === "__all__" ? null : v)}>
+          <SelectTrigger className="h-7 w-44 border-border/80 text-xs dark:bg-[#181818]" aria-label="Filter by field">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">All</SelectItem>
+            {subs.map((s) => (
+              <SelectItem key={s} value={s} data-testid={`deadlines-sub-${s}`}>
+                {s} — {subLabel(s)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <div className="ml-auto flex items-center gap-4">
           <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
             <SelectTrigger
@@ -359,9 +357,9 @@ export function DeadlinesView() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="deadline">Sort: deadline</SelectItem>
-              <SelectItem value="name">Sort: name</SelectItem>
-              <SelectItem value="field">Sort: field</SelectItem>
+              <SelectItem value="deadline">Deadline</SelectItem>
+              <SelectItem value="name">Name</SelectItem>
+              <SelectItem value="field">Field</SelectItem>
             </SelectContent>
           </Select>
           <div className="flex items-center gap-2">

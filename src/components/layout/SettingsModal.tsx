@@ -198,8 +198,6 @@ export function SettingsModal() {
   const setAccentColor = useSettingsStore((s) => s.setAccentColor);
   const dockPlacement = useSettingsStore((s) => s.dockPlacement);
   const setDockPlacement = useSettingsStore((s) => s.setDockPlacement);
-  const dashboardGlass = useSettingsStore((s) => s.dashboardGlass);
-  const setDashboardGlass = useSettingsStore((s) => s.setDashboardGlass);
 
   const projectId = useFilesStore((s) => s.projectId);
   const projectName = useFilesStore((s) => s.projectName);
@@ -557,48 +555,6 @@ export function SettingsModal() {
                               <div className="absolute inset-x-0 bottom-1 mx-auto h-2 w-10 rounded bg-foreground/30" />
                             )}
                           </div>
-                          {opt.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="rounded-lg border bg-background p-3">
-                  <div className="text-sm font-medium">Dashboard glass</div>
-                  <div className="mb-2 text-xs text-muted-foreground">
-                    How much translucency the home screen background uses.
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(
-                      [
-                        { id: "minimal", label: "Minimal" },
-                        { id: "ambient", label: "Ambient" },
-                        { id: "full", label: "Full glass" },
-                      ] as const
-                    ).map((opt) => {
-                      const active = dashboardGlass === opt.id;
-                      return (
-                        <button
-                          type="button"
-                          key={opt.id}
-                          data-testid={`settings-dashboard-glass-${opt.id}`}
-                          onClick={() => setDashboardGlass(opt.id)}
-                          className={cn(
-                            "flex flex-col items-center gap-2 rounded-md border p-3 text-xs font-medium transition-colors",
-                            active ? "border-primary bg-primary/5" : "border-border hover:bg-accent",
-                          )}
-                        >
-                          <div
-                            className={cn(
-                              "h-14 w-full rounded",
-                              opt.id === "minimal" && "bg-muted",
-                              opt.id === "ambient" &&
-                                "bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.35),transparent_60%),radial-gradient(circle_at_75%_75%,rgba(168,85,247,0.3),transparent_60%)] bg-muted",
-                              opt.id === "full" &&
-                                "bg-[linear-gradient(135deg,#ff6b6b,#a06bff_45%,#3b82f6)]",
-                            )}
-                          />
                           {opt.label}
                         </button>
                       );

@@ -34,10 +34,16 @@ function DockButton({
         data-testid={testId}
         data-tour={tour}
         data-active={active ? "true" : "false"}
-        variant={primary ? "default" : active ? "secondary" : "ghost"}
+        variant={primary ? "default" : "ghost"}
         size="icon"
         aria-label={label}
-        className={cn("rounded-xl", !primary && !active && "text-muted-foreground hover:text-foreground")}
+        className={cn(
+          "rounded-xl hover:scale-[1.2]",
+          !primary &&
+            (active
+              ? "bg-white/20 text-foreground shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2)] hover:bg-white/25 dark:bg-white/10 dark:hover:bg-white/15"
+              : "text-muted-foreground hover:bg-white/10 hover:text-foreground dark:hover:bg-white/10"),
+        )}
         onClick={onClick}
       >
         {icon}
@@ -45,6 +51,9 @@ function DockButton({
     </Tooltip>
   );
 }
+
+const GLASS_SURFACE =
+  "border border-white/30 bg-white/10 shadow-[0_8px_30px_-6px_rgba(0,0,0,0.3),inset_0_1px_0_0_rgba(255,255,255,0.3)] backdrop-blur-2xl backdrop-saturate-150 dark:border-white/10 dark:bg-white/5 dark:shadow-[0_8px_30px_-6px_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(255,255,255,0.08)]";
 
 export function HomeDock() {
   const setNewProjectOpen = useSettingsStore((s) => s.setNewProjectOpen);
@@ -108,11 +117,11 @@ export function HomeDock() {
 
   if (horizontal) {
     return (
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center pb-4">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-center pb-4">
         <div
           data-testid="home-dock"
           data-placement="bottom"
-          className="pointer-events-auto flex items-center gap-1 rounded-2xl border bg-sidebar/70 p-1.5 shadow-xl backdrop-blur-md"
+          className={cn("pointer-events-auto flex items-center gap-1 rounded-2xl p-1.5", GLASS_SURFACE)}
         >
           {items}
         </div>
@@ -123,14 +132,14 @@ export function HomeDock() {
   return (
     <div
       className={cn(
-        "relative z-10 flex w-20 shrink-0 items-center justify-center",
+        "pointer-events-none absolute inset-y-0 left-0 z-30 flex items-center pl-4",
         isMac && !fullscreen && "pt-7",
       )}
     >
       <div
         data-testid="home-dock"
         data-placement="left"
-        className="pointer-events-auto flex flex-col items-center gap-1 rounded-2xl border bg-sidebar/70 p-1.5 shadow-xl backdrop-blur-md"
+        className={cn("pointer-events-auto flex flex-col items-center gap-1 rounded-2xl p-1.5", GLASS_SURFACE)}
       >
         {items}
       </div>

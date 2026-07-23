@@ -3,7 +3,7 @@ import { useSettingsStore } from "./settings";
 
 const lsValues = new Map<string, string>();
 
-describe("useSettingsStore dock/glass appearance settings", () => {
+describe("useSettingsStore dock appearance settings", () => {
   beforeAll(() => {
     vi.stubGlobal("localStorage", {
       clear: () => lsValues.clear(),
@@ -17,9 +17,8 @@ describe("useSettingsStore dock/glass appearance settings", () => {
     lsValues.clear();
   });
 
-  it("defaults dockPlacement to left and dashboardGlass to ambient", () => {
+  it("defaults dockPlacement to left", () => {
     expect(useSettingsStore.getState().dockPlacement).toBe("left");
-    expect(useSettingsStore.getState().dashboardGlass).toBe("ambient");
   });
 
   it("setDockPlacement updates state and persists to localStorage", () => {
@@ -27,12 +26,5 @@ describe("useSettingsStore dock/glass appearance settings", () => {
     expect(useSettingsStore.getState().dockPlacement).toBe("bottom");
     expect(localStorage.getItem("oleafly.dockPlacement")).toBe("bottom");
     useSettingsStore.getState().setDockPlacement("left");
-  });
-
-  it("setDashboardGlass updates state and persists to localStorage", () => {
-    useSettingsStore.getState().setDashboardGlass("full");
-    expect(useSettingsStore.getState().dashboardGlass).toBe("full");
-    expect(localStorage.getItem("oleafly.dashboardGlass")).toBe("full");
-    useSettingsStore.getState().setDashboardGlass("ambient");
   });
 });

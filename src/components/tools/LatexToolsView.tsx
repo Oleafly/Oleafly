@@ -2,7 +2,7 @@ import { useMemo, useState, type ComponentType } from "react";
 import { Calculator, FileInput, School, Search, ShieldCheck, Table2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { GLASS_PANEL, cn } from "@/lib/utils";
 import { useHomeViewStore, type HomePage } from "@/store/home-view";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 
@@ -220,7 +220,7 @@ export function LatexToolsView() {
         aria-modal="true"
         aria-labelledby="latex-tools-title"
         data-testid="latex-tools-view"
-        className="relative flex h-[36rem] w-full max-w-3xl flex-col overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-2xl"
+        className={cn("relative flex h-[36rem] w-full max-w-3xl flex-col overflow-hidden rounded-xl", GLASS_PANEL)}
       >
         <div className="flex items-center justify-between border-b px-5 py-3">
           <div id="latex-tools-title" className="font-medium">LaTeX Tools</div>

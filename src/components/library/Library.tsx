@@ -47,7 +47,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { GridPattern } from "@/components/ui/grid-pattern";
+import { DotPattern } from "@/components/ui/dot-pattern";
 import { useFavoritesStore } from "@/store/favorites";
 import { useProjectColorsStore } from "@/store/project-colors";
 import { logError } from "@/lib/log";
@@ -237,7 +237,6 @@ export function Library() {
   const setSearchOpen = useSettingsStore((s) => s.setSearchOpen);
   const setNewProjectOpen = useSettingsStore((s) => s.setNewProjectOpen);
   const hoverPreview = useSettingsStore((s) => s.hoverPreview);
-  const dashboardGlass = useSettingsStore((s) => s.dashboardGlass);
   const [forkTarget, setForkTarget] = useState<{ id: string; name: string } | null>(null);
   const [forkName, setForkName] = useState("");
   const [onlyFavs, setOnlyFavs] = useState(false);
@@ -369,18 +368,13 @@ export function Library() {
       data-testid="library"
       data-tour="home"
       data-projects-loaded={projectsLoaded ? "true" : "false"}
-      className={cn(
-        "relative flex h-full flex-row bg-background",
-        dashboardGlass === "ambient" &&
-          "bg-[radial-gradient(circle_at_25%_15%,rgba(59,130,246,0.10),transparent_55%),radial-gradient(circle_at_80%_75%,rgba(168,85,247,0.08),transparent_55%)]",
-        dashboardGlass === "full" &&
-          "bg-[radial-gradient(circle_at_20%_10%,rgba(255,107,107,0.22),transparent_50%),radial-gradient(circle_at_60%_45%,rgba(160,107,255,0.22),transparent_55%),radial-gradient(circle_at_85%_85%,rgba(59,130,246,0.22),transparent_55%)]",
-      )}
+      className="relative flex h-full flex-row bg-background"
     >
-      <GridPattern
-        width={48}
-        height={48}
-        className="[mask-image:linear-gradient(to_bottom_right,white,transparent,transparent)]"
+      <DotPattern
+        width={22}
+        height={22}
+        radius={1}
+        className="[mask-image:radial-gradient(circle_at_50%_0%,white,transparent_75%)]"
       />
       <HomeDock />
       <div className="flex min-w-0 flex-1 flex-col">

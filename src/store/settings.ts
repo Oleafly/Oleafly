@@ -27,7 +27,6 @@ export type RailTab =
   | "mcp";
 
 export type DockPlacement = "left" | "bottom";
-export type DashboardGlass = "minimal" | "ambient" | "full";
 
 function ls(k: string, fb: string): string {
   try {
@@ -133,8 +132,6 @@ interface SettingsState {
   setRailTab: (v: RailTab) => void;
   dockPlacement: DockPlacement;
   setDockPlacement: (v: DockPlacement) => void;
-  dashboardGlass: DashboardGlass;
-  setDashboardGlass: (v: DashboardGlass) => void;
   resetToDefaults: () => void;
 }
 
@@ -154,7 +151,6 @@ const PREF_DEFAULTS = {
   hoverPreview: true,
   accentColor: "#2563eb",
   dockPlacement: "left" as DockPlacement,
-  dashboardGlass: "ambient" as DashboardGlass,
 } as const;
 
 export const useSettingsStore = create<SettingsState>((set) => ({
@@ -258,11 +254,6 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     saveLs("oleafly.dockPlacement", v);
     set({ dockPlacement: v });
   },
-  dashboardGlass: (ls("oleafly.dashboardGlass", "ambient") as DashboardGlass) || "ambient",
-  setDashboardGlass: (v) => {
-    saveLs("oleafly.dashboardGlass", v);
-    set({ dashboardGlass: v });
-  },
   showTree: true,
   toggleTree: () => set((s) => ({ showTree: !s.showTree })),
   hotkeysOpen: false,
@@ -285,7 +276,6 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     saveLs("oleafly.hoverPreview", PREF_DEFAULTS.hoverPreview ? "1" : "0");
     saveLs("oleafly.accent", PREF_DEFAULTS.accentColor);
     saveLs("oleafly.dockPlacement", PREF_DEFAULTS.dockPlacement);
-    saveLs("oleafly.dashboardGlass", PREF_DEFAULTS.dashboardGlass);
     set({ ...PREF_DEFAULTS });
   },
 }));
