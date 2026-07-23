@@ -1,25 +1,10 @@
 import { useMemo, useState, type ComponentType } from "react";
-import {
-  ArrowLeft,
-  Calculator,
-  FileInput,
-  PanelLeft,
-  School,
-  Search,
-  ShieldCheck,
-  Table2,
-} from "lucide-react";
+import { Calculator, FileInput, School, Search, ShieldCheck, Table2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tooltip } from "@/components/ui/tooltip";
-import { LibrarySidebar } from "@/components/library/LibrarySidebar";
 import { cn } from "@/lib/utils";
-import { useHomeViewStore } from "@/store/home-view";
-import { useLibrarySidebarStore } from "@/store/library-sidebar";
-import { BibtexValidatorPanel } from "@/components/tools/BibtexValidatorPanel";
-import { EquationPreviewPanel } from "@/components/tools/EquationPreviewPanel";
-import { TableGeneratorPanel } from "@/components/tools/TableGeneratorPanel";
-import { LabSearchPanel } from "@/components/tools/LabSearchPanel";
+import { useHomeViewStore, type HomePage } from "@/store/home-view";
+import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 
 type ToolId = "pdf-to-latex" | "equation" | "bibtex" | "table" | "lab-search";
 
@@ -30,8 +15,6 @@ interface ToolDef {
   icon: ComponentType<{ className?: string }>;
   tags: string[];
   category: string;
-  /** Navigates to a different home page instead of opening in-gallery. */
-  external?: boolean;
 }
 
 const CATEGORY_ORDER = ["Write & Convert", "Check & Validate", "Data & Tables", "Research & Analyze"];
@@ -44,7 +27,6 @@ const TOOLS: ToolDef[] = [
     icon: FileInput,
     tags: ["Math extraction", "Figure export", "Client-side"],
     category: "Write & Convert",
-    external: true,
   },
   {
     id: "equation",
@@ -79,6 +61,14 @@ const TOOLS: ToolDef[] = [
     category: "Research & Analyze",
   },
 ];
+
+const TOOL_PAGE: Record<ToolId, HomePage> = {
+  "pdf-to-latex": "pdf-import",
+  equation: "equation",
+  bibtex: "bibtex",
+  table: "table",
+  "lab-search": "lab-search",
+};
 
 function ToolCard({ tool, onOpen }: { tool: ToolDef; onOpen: () => void }) {
   return (
@@ -197,17 +187,7 @@ function ToolsGallery({ onOpenTool }: { onOpenTool: (id: ToolId) => void }) {
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {tools.map((t) => (
-                    <ToolCard
-                      key={t.id}
-                      tool={t}
-                      onOpen={() => {
-                        if (t.external) {
-                          useHomeViewStore.getState().goTo("pdf-import");
-                        } else {
-                          onOpenTool(t.id);
-                        }
-                      }}
-                    />
+                    <ToolCard key={t.id} tool={t} onOpen={() => onOpenTool(t.id)} />
                   ))}
                 </div>
               </div>
@@ -220,53 +200,40 @@ function ToolsGallery({ onOpenTool }: { onOpenTool: (id: ToolId) => void }) {
 }
 
 export function LatexToolsView() {
-  const toolsOpen = useHomeViewStore((s) => s.toolsOpen);
-  const { collapsed: sidebarCollapsed, toggle: toggleSidebar } = useLibrarySidebarStore();
-  const [activeTool, setActiveTool] = useState<ToolId | null>(null);
-  const active = toolsOpen;
-  const tool = activeTool ? TOOLS.find((t) => t.id === activeTool) : null;
+  const active = useHomeViewStore((s) => s.toolsOpen);
+  const closeTools = useHomeViewStore((s) => s.closeTools);
+  const goTo = useHomeViewStore((s) => s.goTo);
+  const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDivElement>(active, closeTools);
   if (!active) return null;
   return (
-    <div data-testid="latex-tools-view" className="flex h-full bg-background">
-      <LibrarySidebar collapsed={sidebarCollapsed} />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <div data-tauri-drag-region className="flex items-center gap-3 border-b py-2 pl-4 pr-4">
-          <Tooltip label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Toggle sidebar"
-              data-testid="toggle-latex-tools-sidebar"
-              className="text-muted-foreground hover:text-foreground"
-              onClick={toggleSidebar}
-            >
-              <PanelLeft className="size-4" />
-            </Button>
-          </Tooltip>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() =>
-              tool
-                ? setActiveTool(null)
-                : useHomeViewStore.getState().goTo("library")
-            }
-            data-testid="latex-tools-back"
-          >
-            <ArrowLeft className="size-4" /> {tool ? "All tools" : "Back"}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <button
+        type="button"
+        aria-label="Close LaTeX tools"
+        className="absolute inset-0"
+        onMouseDown={onBackdropMouseDown}
+      />
+      <div
+        role="dialog"
+        ref={dialogRef}
+        tabIndex={-1}
+        aria-modal="true"
+        aria-labelledby="latex-tools-title"
+        data-testid="latex-tools-view"
+        className="relative flex h-[36rem] w-full max-w-3xl flex-col overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-2xl"
+      >
+        <div className="flex items-center justify-between border-b px-5 py-3">
+          <div id="latex-tools-title" className="font-medium">LaTeX Tools</div>
+          <Button variant="ghost" size="icon" className="size-7" onClick={closeTools} aria-label="Close">
+            <X className="size-4" />
           </Button>
-          <div className="font-medium">{tool ? tool.name : "LaTeX Tools"}</div>
         </div>
-        {tool ? (
-          <div className="flex min-h-0 flex-1">
-            {tool.id === "bibtex" && <BibtexValidatorPanel />}
-            {tool.id === "equation" && <EquationPreviewPanel />}
-            {tool.id === "table" && <TableGeneratorPanel />}
-            {tool.id === "lab-search" && <LabSearchPanel />}
-          </div>
-        ) : (
-          <ToolsGallery onOpenTool={setActiveTool} />
-        )}
+        <ToolsGallery
+          onOpenTool={(id) => {
+            closeTools();
+            goTo(TOOL_PAGE[id]);
+          }}
+        />
       </div>
     </div>
   );
