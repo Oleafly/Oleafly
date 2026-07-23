@@ -10,7 +10,6 @@ import {
   Info,
   ListFilter,
   Palette,
-  PanelLeft,
   Plus,
   Search,
   SearchX,
@@ -35,7 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { LibrarySidebar, useLibrarySidebarCollapsed } from "@/components/library/LibrarySidebar";
+import { HomeDock } from "@/components/library/HomeDock";
 import { LeafLogo } from "@/components/layout/LeafLogo";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
@@ -237,8 +236,8 @@ export function Library() {
   const removeProjectColor = useProjectColorsStore((s) => s.remove);
   const setSearchOpen = useSettingsStore((s) => s.setSearchOpen);
   const setNewProjectOpen = useSettingsStore((s) => s.setNewProjectOpen);
-  const { collapsed: sidebarCollapsed, toggle: toggleSidebar } = useLibrarySidebarCollapsed();
   const hoverPreview = useSettingsStore((s) => s.hoverPreview);
+  const dashboardGlass = useSettingsStore((s) => s.dashboardGlass);
   const [forkTarget, setForkTarget] = useState<{ id: string; name: string } | null>(null);
   const [forkName, setForkName] = useState("");
   const [onlyFavs, setOnlyFavs] = useState(false);
@@ -370,14 +369,20 @@ export function Library() {
       data-testid="library"
       data-tour="home"
       data-projects-loaded={projectsLoaded ? "true" : "false"}
-      className="relative flex h-full flex-row bg-background"
+      className={cn(
+        "relative flex h-full flex-row bg-background",
+        dashboardGlass === "ambient" &&
+          "bg-[radial-gradient(circle_at_25%_15%,rgba(59,130,246,0.10),transparent_55%),radial-gradient(circle_at_80%_75%,rgba(168,85,247,0.08),transparent_55%)]",
+        dashboardGlass === "full" &&
+          "bg-[radial-gradient(circle_at_20%_10%,rgba(255,107,107,0.22),transparent_50%),radial-gradient(circle_at_60%_45%,rgba(160,107,255,0.22),transparent_55%),radial-gradient(circle_at_85%_85%,rgba(59,130,246,0.22),transparent_55%)]",
+      )}
     >
       <GridPattern
         width={48}
         height={48}
         className="[mask-image:linear-gradient(to_bottom_right,white,transparent,transparent)]"
       />
-      <LibrarySidebar collapsed={sidebarCollapsed} />
+      <HomeDock />
       <div className="flex min-w-0 flex-1 flex-col">
       <header
         data-tauri-drag-region
@@ -385,20 +390,7 @@ export function Library() {
           "relative z-10 grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center px-3"
         )}
       >
-        <div data-tauri-drag-region className="flex items-center">
-          <Tooltip label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Toggle sidebar"
-              data-testid="toggle-library-sidebar"
-              className="text-muted-foreground hover:text-foreground"
-              onClick={toggleSidebar}
-            >
-              <PanelLeft className="size-4" />
-            </Button>
-          </Tooltip>
-        </div>
+        <div data-tauri-drag-region className="flex items-center" />
         <div
           data-tauri-drag-region
           data-tour="home-brand"
