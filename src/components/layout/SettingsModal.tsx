@@ -196,6 +196,8 @@ export function SettingsModal() {
   const setOpenInTree = useSettingsStore((s) => s.setOpenInTree);
   const accentColor = useSettingsStore((s) => s.accentColor);
   const setAccentColor = useSettingsStore((s) => s.setAccentColor);
+  const dockPlacement = useSettingsStore((s) => s.dockPlacement);
+  const setDockPlacement = useSettingsStore((s) => s.setDockPlacement);
 
   const projectId = useFilesStore((s) => s.projectId);
   const projectName = useFilesStore((s) => s.projectName);
@@ -516,6 +518,44 @@ export function SettingsModal() {
                           {active && (
                             <Check className="size-3.5 text-white drop-shadow" />
                           )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="rounded-lg border bg-background p-3">
+                  <div className="text-sm font-medium">Dock placement</div>
+                  <div className="mb-2 text-xs text-muted-foreground">
+                    Where the floating home-screen dock sits.
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(
+                      [
+                        { id: "left", label: "Left" },
+                        { id: "bottom", label: "Bottom" },
+                      ] as const
+                    ).map((opt) => {
+                      const active = dockPlacement === opt.id;
+                      return (
+                        <button
+                          type="button"
+                          key={opt.id}
+                          data-testid={`settings-dock-placement-${opt.id}`}
+                          onClick={() => setDockPlacement(opt.id)}
+                          className={cn(
+                            "flex flex-col items-center gap-2 rounded-md border p-3 text-xs font-medium transition-colors",
+                            active ? "border-primary bg-primary/5" : "border-border hover:bg-accent",
+                          )}
+                        >
+                          <div className="relative h-14 w-full overflow-hidden rounded bg-muted">
+                            {opt.id === "left" ? (
+                              <div className="absolute inset-y-1 left-1 w-2 rounded bg-foreground/30" />
+                            ) : (
+                              <div className="absolute inset-x-0 bottom-1 mx-auto h-2 w-10 rounded bg-foreground/30" />
+                            )}
+                          </div>
+                          {opt.label}
                         </button>
                       );
                     })}

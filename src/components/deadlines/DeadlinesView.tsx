@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  ArrowLeft,
   CalendarDays,
   CalendarX2,
   HelpCircle,
   MapPin,
-  PanelLeft,
   RefreshCw,
   Search,
+  X,
 } from "lucide-react";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { Globe } from "lucide-react";
@@ -37,6 +36,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import {
   countdown,
   filterVenues,
@@ -46,11 +46,9 @@ import {
   type SortKey,
   type Venue,
 } from "@/lib/deadlines";
-import { LibrarySidebar } from "@/components/library/LibrarySidebar";
-import { cn } from "@/lib/utils";
+import { GLASS_PANEL, cn } from "@/lib/utils";
 import { useDeadlinesStore } from "@/store/deadlines";
 import { useHomeViewStore } from "@/store/home-view";
-import { useLibrarySidebarStore } from "@/store/library-sidebar";
 
 function pad(n: number): string {
   return String(n).padStart(2, "0");
@@ -239,7 +237,7 @@ function DeadlineCard({ venue, now }: { venue: Venue; now: Date }) {
 }
 
 export function DeadlinesView() {
-  const page = useHomeViewStore((s) => s.page);
+  const deadlinesOpen = useHomeViewStore((s) => s.deadlinesOpen);
   const venues = useDeadlinesStore((s) => s.venues);
   const generatedAt = useDeadlinesStore((s) => s.generatedAt);
   const busy = useDeadlinesStore((s) => s.busy);
@@ -251,8 +249,9 @@ export function DeadlinesView() {
   const [showPassed, setShowPassed] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("deadline");
   const [helpOpen, setHelpOpen] = useState(false);
-  const { collapsed: sidebarCollapsed, toggle: toggleSidebar } = useLibrarySidebarStore();
-  const active = page === "deadlines";
+  const closeDeadlines = useHomeViewStore((s) => s.closeDeadlines);
+  const active = deadlinesOpen;
+  const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDivElement>(active, closeDeadlines);
 
   useEffect(() => {
     if (!active) return;
@@ -272,31 +271,24 @@ export function DeadlinesView() {
 
   if (!active) return null;
   return (
-    <div data-testid="deadlines-view" className="flex h-full bg-background">
-      <LibrarySidebar collapsed={sidebarCollapsed} />
-      <div className="flex min-w-0 flex-1 flex-col">
-      <div data-tauri-drag-region className="relative flex items-center gap-3 border-b py-2 pl-4 pr-4">
-        <Tooltip label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Toggle sidebar"
-            data-testid="toggle-deadlines-sidebar"
-            className="text-muted-foreground hover:text-foreground"
-            onClick={toggleSidebar}
-          >
-            <PanelLeft className="size-4" />
-          </Button>
-        </Tooltip>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => useHomeViewStore.getState().goTo("library")}
-          data-testid="deadlines-back"
-        >
-          <ArrowLeft className="size-4" /> Back
-        </Button>
-        <div className="font-medium">Conference Deadlines</div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <button
+        type="button"
+        aria-label="Close deadlines"
+        className="absolute inset-0"
+        onMouseDown={onBackdropMouseDown}
+      />
+      <div
+        role="dialog"
+        ref={dialogRef}
+        tabIndex={-1}
+        aria-modal="true"
+        aria-labelledby="deadlines-title"
+        data-testid="deadlines-view"
+        className={cn("relative flex h-[36rem] w-full max-w-4xl flex-col overflow-hidden rounded-xl", GLASS_PANEL)}
+      >
+      <div className="relative flex items-center gap-3 border-b py-2 pl-4 pr-4">
+        <div id="deadlines-title" className="font-medium">Conference Deadlines</div>
         <div className="pointer-events-none absolute inset-x-0 flex justify-center">
           <div className="pointer-events-auto relative w-72">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -337,24 +329,25 @@ export function DeadlinesView() {
               <HelpCircle className="size-4" />
             </Button>
           </Tooltip>
+          <Button variant="ghost" size="icon" className="size-7" onClick={closeDeadlines} aria-label="Close">
+            <X className="size-4" />
+          </Button>
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-1.5 border-b px-4 py-2">
-        <Button size="xs" variant={sub === null ? "secondary" : "ghost"} onClick={() => setSub(null)}>
-          All
-        </Button>
-        {subs.map((s) => (
-          <Tooltip key={s} label={subLabel(s)}>
-            <Button
-              size="xs"
-              variant={sub === s ? "secondary" : "ghost"}
-              data-testid={`deadlines-sub-${s}`}
-              onClick={() => setSub(sub === s ? null : s)}
-            >
-              {s}
-            </Button>
-          </Tooltip>
-        ))}
+        <Select value={sub ?? "__all__"} onValueChange={(v) => setSub(v === "__all__" ? null : v)}>
+          <SelectTrigger className="h-7 w-44 border-border/80 text-xs dark:bg-[#181818]" aria-label="Filter by field">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">All</SelectItem>
+            {subs.map((s) => (
+              <SelectItem key={s} value={s} data-testid={`deadlines-sub-${s}`}>
+                {s} — {subLabel(s)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <div className="ml-auto flex items-center gap-4">
           <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
             <SelectTrigger
@@ -364,9 +357,9 @@ export function DeadlinesView() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="deadline">Sort: deadline</SelectItem>
-              <SelectItem value="name">Sort: name</SelectItem>
-              <SelectItem value="field">Sort: field</SelectItem>
+              <SelectItem value="deadline">Deadline</SelectItem>
+              <SelectItem value="name">Name</SelectItem>
+              <SelectItem value="field">Field</SelectItem>
             </SelectContent>
           </Select>
           <div className="flex items-center gap-2">

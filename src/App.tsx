@@ -15,6 +15,10 @@ import { GlobalNewProject } from "@/components/library/GlobalNewProject";
 import { PdfImportView } from "@/components/import/PdfImportView";
 import { DeadlinesView } from "@/components/deadlines/DeadlinesView";
 import { LatexToolsView } from "@/components/tools/LatexToolsView";
+import { EquationToolView } from "@/components/tools/EquationToolView";
+import { BibtexToolView } from "@/components/tools/BibtexToolView";
+import { TableToolView } from "@/components/tools/TableToolView";
+import { LabSearchToolView } from "@/components/tools/LabSearchToolView";
 import { useHomeViewStore } from "@/store/home-view";
 import { Editor } from "@/components/editor/Editor";
 import { PreviewPane } from "@/components/preview/PreviewPane";
@@ -463,6 +467,10 @@ export default function App() {
         <SearchOmnibar />
         <GlobalNewProject />
         <PdfImportView />
+        <EquationToolView />
+        <BibtexToolView />
+        <TableToolView />
+        <LabSearchToolView />
         <DeadlinesView />
         <LatexToolsView />
         <ExternalToolApprovals />
