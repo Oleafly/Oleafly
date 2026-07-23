@@ -145,6 +145,7 @@ pub fn run() {
             project::create_typst_project,
             project::create_markdown_project,
             project::create_image_project,
+            project::create_diagram_project,
             project::get_or_create_scratch_project,
             templates::list_templates,
             templates::template_preview,

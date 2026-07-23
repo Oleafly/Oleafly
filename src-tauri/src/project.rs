@@ -655,6 +655,29 @@ fn create_image_project_in(
 }
 
 #[tauri::command]
+pub fn create_diagram_project(name: String, source: String) -> Result<String, String> {
+    let root = paths::projects_root()?;
+    let id = unique_random_slug(&root)?;
+    let dir = root.join(&id);
+    create_project_transaction(&dir, || {
+        std::fs::write(dir.join("main.tex"), source).map_err(|e| e.to_string())?;
+        write_meta_at(
+            &dir.join("project.json"),
+            &ProjectMeta {
+                name,
+                main_doc: default_main_doc(),
+                engine: default_engine(),
+                color: String::new(),
+                kind: "diagram".into(),
+                exports: Vec::new(),
+                hidden: false,
+            },
+        )
+    })?;
+    Ok(id)
+}
+
+#[tauri::command]
 pub fn get_or_create_scratch_project() -> Result<String, String> {
     let dir = paths::project_dir(SCRATCH_PROJECT_ID)?;
     let meta_file = dir.join("project.json");
@@ -1605,10 +1628,10 @@ pub async fn delete_project(project_id: String) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        create_image_project_in, create_markdown_project_in, create_project_transaction,
-        create_typst_project_in, engine_for_main_document, extract_pandoc,
-        get_or_create_scratch_project, list_projects, pandoc_asset_for, read_meta, rel_slash,
-        validate_conversion_export, ProjectMeta, SCRATCH_PROJECT_ID,
+        create_diagram_project, create_image_project_in, create_markdown_project_in,
+        create_project_transaction, create_typst_project_in, engine_for_main_document,
+        extract_pandoc, get_or_create_scratch_project, list_projects, pandoc_asset_for, read_meta,
+        rel_slash, validate_conversion_export, ProjectMeta, SCRATCH_PROJECT_ID,
     };
     use std::io::Write;
     use std::path::Path;
@@ -1880,6 +1903,24 @@ mod tests {
         assert_eq!(meta.kind, "diagram");
         let listed = list_projects().unwrap();
         assert!(listed.iter().all(|p| p.id != SCRATCH_PROJECT_ID));
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn diagram_project_has_diagram_kind() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("diagram-project");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let id = create_diagram_project(
+            "My Diagram".to_string(),
+            "\\documentclass{standalone}".to_string(),
+        )
+        .unwrap();
+        let meta = read_meta(&id).unwrap();
+        assert_eq!(meta.kind, "diagram");
+        assert_eq!(meta.name, "My Diagram");
+        assert!(!meta.hidden);
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(root).unwrap();
     }
