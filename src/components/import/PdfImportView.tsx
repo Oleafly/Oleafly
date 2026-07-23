@@ -7,7 +7,6 @@ import {
   FileArchive,
   FileInput,
   FolderPlus,
-  PanelLeft,
   Settings2,
   Sparkles,
 } from "lucide-react";
@@ -24,13 +23,11 @@ import {
 } from "@/features/import";
 import { refineAvailable, refineWithAi } from "@/features/import-refine";
 import { LatexSourceViewer } from "@/components/import/LatexSourceViewer";
-import { LibrarySidebar } from "@/components/library/LibrarySidebar";
 import { cn } from "@/lib/utils";
 import { pdfPageToPng } from "@/lib/pdf-image";
 import { toast } from "@/lib/toast";
 import { useHomeViewStore } from "@/store/home-view";
 import { useImportStore } from "@/store/import";
-import { useLibrarySidebarStore } from "@/store/library-sidebar";
 
 const HANDLES = [
   "Headings, paragraphs, lists",
@@ -275,29 +272,14 @@ export function PdfImportView() {
   const fileName = useImportStore((s) => s.fileName);
   const result = useImportStore((s) => s.result);
   const [refineable, setRefineable] = useState(false);
-  const { collapsed: sidebarCollapsed, toggle: toggleSidebar } = useLibrarySidebarStore();
   const active = page === "pdf-import";
   useEffect(() => {
     if (active) void refineAvailable().then(setRefineable);
   }, [active]);
   if (!active) return null;
   return (
-    <div data-testid="pdf-import-view" className="flex h-full bg-background">
-      <LibrarySidebar collapsed={sidebarCollapsed} />
-      <div className="flex min-w-0 flex-1 flex-col">
+    <div data-testid="pdf-import-view" className="flex h-full flex-col bg-background">
       <div className="flex items-center gap-3 border-b px-4 py-2">
-        <Tooltip label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Toggle sidebar"
-            data-testid="toggle-import-sidebar"
-            className="text-muted-foreground hover:text-foreground"
-            onClick={toggleSidebar}
-          >
-            <PanelLeft className="size-4" />
-          </Button>
-        </Tooltip>
         <Button
           variant="ghost"
           size="sm"
@@ -409,7 +391,6 @@ export function PdfImportView() {
           <FiguresStrip />
         </>
       )}
-      </div>
     </div>
   );
 }
