@@ -26,7 +26,7 @@ import { Library } from "@/components/library/Library";
 import { useFilesStore, useActiveContent } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
 import { usePreflightStore } from "@/store/preflight";
-import { useSettingsStore } from "@/store/settings";
+import { layoutPresetViewMode, layoutPresetWantsAi, useSettingsStore } from "@/store/settings";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { useTourStore } from "@/store/tours";
 import { resetOpenCompileMarker, shouldCompileOnOpen } from "@/lib/open-compile";
@@ -311,13 +311,13 @@ export default function App() {
 
   useEffect(() => {
     const s = useSettingsStore.getState();
-    if (projectId) setViewMode(s.defaultView);
+    if (projectId) setViewMode(layoutPresetViewMode(s.defaultView));
     // Clear the previous project's compile output so a stale PDF never shows.
     useCompileStore.getState().reset();
     // Preflight results belong to the previous project; reset them too.
     usePreflightStore.getState().reset();
     if (projectId) {
-      s.setRailTab("files");
+      s.setRailTab(layoutPresetWantsAi(s.defaultView) ? "ai" : "files");
       if (s.openInTree && !s.showTree) s.toggleTree();
       else if (!s.openInTree && s.showTree) s.toggleTree();
       void import("@/lib/preview-window").then((m) => m.retargetPreviewWindow(projectId));

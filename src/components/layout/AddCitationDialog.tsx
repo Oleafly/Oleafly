@@ -85,7 +85,7 @@ export function AddCitationDialog() {
   };
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-start justify-center bg-black/40 pt-[15vh]">
+    <div className="fixed inset-0 z-[70] flex items-start justify-center bg-black/40 pt-[15vh] backdrop-blur-sm">
       <button type="button" aria-label="Close citation dialog" className="absolute inset-0" onMouseDown={onBackdropMouseDown} />
       <div
         ref={dialogRef}

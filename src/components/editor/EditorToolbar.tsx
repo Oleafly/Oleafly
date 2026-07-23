@@ -11,6 +11,7 @@ import {
   Code,
   Divide,
   Image as ImageIcon,
+  ImagePlay,
   ImagePlus,
   Info,
   Italic,
@@ -294,7 +295,9 @@ export function EditorToolbar() {
   const projectKind = useFilesStore((s) => s.projectKind);
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
   const engine = useFilesStore((s) => s.engine);
+  const activePath = useFilesStore((s) => s.activePath);
   const syncTexSupported = projectKind !== "image" && engineLoaded && engine.capabilities.supports_synctex;
+  const tikzCanvasSupported = !!activePath && activePath.toLowerCase().endsWith(".tikz");
   useEffect(() => {
     void imageToLatexAvailable().then(setVisionReady);
   }, []);
@@ -379,8 +382,16 @@ export function EditorToolbar() {
       list.push(btnControl("synctex", ArrowRight, "Go to PDF (SyncTeX)", goToSyncTex));
     }
 
+    if (tikzCanvasSupported) {
+      list.push(
+        btnControl("view-in-canvas", ImagePlay, "View in Canvas", () => {
+          if (activePath) useSettingsStore.getState().openDiagramComposerForFile(activePath);
+        }),
+      );
+    }
+
     return list;
-  }, [visionReady, syncTexSupported]);
+  }, [visionReady, syncTexSupported, tikzCanvasSupported, activePath]);
 
   const { containerRef, availableWidth } = useAvailableWidth();
   const visibleCount = fitCount(controls, availableWidth);

@@ -25,7 +25,7 @@ export function AboutModal({ open: isOpen, onClose }: { open: boolean; onClose: 
 
   return (
     <div
-      className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
     >
       <button type="button" aria-label="Close About Oleafly" className="absolute inset-0" onMouseDown={onBackdropMouseDown} />
       <div

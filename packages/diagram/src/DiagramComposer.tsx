@@ -77,6 +77,7 @@ export function DiagramComposer({
   open,
   projectId,
   projectName,
+  initialFilePath,
   onClose,
   host,
   codeExtensions,
@@ -86,6 +87,7 @@ export function DiagramComposer({
   open: boolean;
   projectId: string | null;
   projectName?: string | null;
+  initialFilePath?: string | null;
   onClose: () => void;
   host: DiagramHost;
   codeExtensions?: Extension[];
@@ -111,6 +113,7 @@ export function DiagramComposer({
   const [background, setBackground] = useState("#ffffff");
   // Preview is on-demand (not realtime): open after Compile, hide when minimized.
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [savedProjectId, setSavedProjectId] = useState<string | null>(null);
   const cmRef = useRef<CmHandle>(null);
   const codeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -124,6 +127,22 @@ export function DiagramComposer({
     codeTimerRef.current = setTimeout(() => setCode(modelToTikz(m)), 200);
   }, []);
 
+  const applyLoadedContent = useCallback((content: string) => {
+    const m = parseEmbeddedModel(content);
+    if (m) {
+      setModel(m);
+      setCode(modelToTikz(m));
+      // Keep "" (transparent) if the snippet stored it; only missing → white default.
+      setBackground(m.background !== undefined ? m.background : "#ffffff");
+      setMode("draw");
+    } else {
+      setCode(content);
+      setMode("code");
+    }
+    setPng(null);
+    return Boolean(m);
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -134,13 +153,28 @@ export function DiagramComposer({
   }, [open, onClose]);
 
   useEffect(() => {
-    if (open) {
-      setPng(null);
-      setLog("");
-      setHasCompiled(false);
-      setPreviewOpen(false);
+    if (!open) return;
+    setPng(null);
+    setLog("");
+    setHasCompiled(false);
+    setPreviewOpen(false);
+    setSavedProjectId(null);
+    let cancelled = false;
+    void host.findProjectIdByName(`Diagram - ${projectName?.trim() || "Untitled"}`).then((id) => {
+      if (!cancelled) setSavedProjectId(id);
+    });
+    if (projectId && initialFilePath) {
+      const base = initialFilePath.split("/").pop() ?? initialFilePath;
+      const stemFromPath = base.replace(/\.tikz$/i, "");
+      setName(stemFromPath);
+      void host.readFileContent(projectId, initialFilePath).then((content) => {
+        if (!cancelled) applyLoadedContent(content);
+      });
     }
-  }, [open]);
+    return () => {
+      cancelled = true;
+    };
+  }, [open, projectId, projectName, initialFilePath, host, applyLoadedContent]);
 
   const compile = useCallback(async (overrideCode?: string, overrideBackground?: string) => {
     if (!projectId || busy) return;
@@ -271,45 +305,59 @@ export function DiagramComposer({
     onClose();
   }, [projectId, stem, png, snippetCode, confirmOverwrite, onClose, host, toast]);
 
+  const saveToFigures = useCallback(async () => {
+    if (!projectId) return;
+    if (!stem) { toast.error("Enter a name for the diagram first."); return; }
+    if (!png) { toast.error("Compile the diagram first so there is an image to save."); return; }
+    if (!(await confirmOverwrite([`figures/${stem}.png`, `figures/${stem}.tikz`]))) return;
+    try {
+      const b64 = png.slice(png.indexOf(",") + 1);
+      await host.writeProjectBytes(projectId, `figures/${stem}.png`, b64);
+      await host.writeFileContent(projectId, `figures/${stem}.tikz`, snippetCode);
+      await host.refreshTree();
+      toast.success(`Saved to figures/${stem}.png`);
+    } catch (e) {
+      toast.error(`Could not save the diagram: ${e}`);
+    }
+  }, [projectId, stem, png, snippetCode, confirmOverwrite, host, toast]);
+
   const loadExisting = useCallback(async () => {
     if (!projectId || !stem) return;
     try {
       const content = await host.readFileContent(projectId, `figures/${stem}.tikz`);
-      const m = parseEmbeddedModel(content);
-      if (m) {
-        setModel(m);
-        setCode(modelToTikz(m));
-        // Keep "" (transparent) if the snippet stored it; only missing → white default.
-        setBackground(m.background !== undefined ? m.background : "#ffffff");
-        setMode("draw");
-        toast.success(`Loaded figures/${stem}.tikz for editing.`);
-      } else {
-        setCode(content);
-        setMode("code");
-        toast.success(`Loaded figures/${stem}.tikz (code only, not drawable).`);
-      }
-      setPng(null);
+      const drawable = applyLoadedContent(content);
+      toast.success(
+        drawable
+          ? `Loaded figures/${stem}.tikz for editing.`
+          : `Loaded figures/${stem}.tikz (code only, not drawable).`,
+      );
     } catch {
       toast.error(`No figures/${stem}.tikz to load.`);
     }
-  }, [projectId, stem, host, toast]);
+  }, [projectId, stem, host, toast, applyLoadedContent]);
 
-  // Save the whole diagram (figure + TikZ + editor model) as a reusable image
-  // project that appears on the home screen and re-opens in the image editor.
   const saveAsProject = useCallback(async () => {
     const src = buildStandaloneDoc({
       code: hasDrawing ? serializeDiagram({ ...model, background }) : code,
       libraries: DIAGRAM_LIBS,
       background,
     });
+    const targetName = `Diagram - ${projectName?.trim() || "Untitled"}`;
     try {
-      await host.createImageProject(name.trim() || "Diagram", src);
+      let id = savedProjectId ?? (await host.findProjectIdByName(targetName));
+      if (id) {
+        await host.writeFileContent(id, "main.tex", src);
+        toast.success("Diagram project updated.");
+      } else {
+        id = await host.createImageProject(targetName, src);
+        toast.success("Saved as an image project. Find it on your home screen.");
+      }
+      setSavedProjectId(id);
       await host.refreshProjects();
-      toast.success("Saved as an image project. Find it on your home screen.");
     } catch (e) {
       toast.error(`Could not save as project: ${e}`);
     }
-  }, [name, model, code, hasDrawing, background, host, toast]);
+  }, [projectName, savedProjectId, model, code, hasDrawing, background, host, toast]);
 
   // Ask the configured AI to fix a failed compile from the log. One-shot: it
   // returns corrected TikZ, which we drop into Code and recompile (undoable in
@@ -555,7 +603,7 @@ export function DiagramComposer({
           </Button>
           <Tooltip label="Save this diagram as a reusable image project">
             <Button data-tour="diagram-save-project" variant="secondary" size="sm" onClick={() => void saveAsProject()}>
-              <Save className="size-3.5" /> Save as project
+              <Save className="size-3.5" /> {savedProjectId ? "Save" : "Save as project"}
             </Button>
           </Tooltip>
         </div>
@@ -623,6 +671,19 @@ export function DiagramComposer({
                     <Loader2 className="size-3.5 animate-spin" />
                     Compiling…
                   </span>
+                )}
+                {png && projectId && (
+                  <Tooltip label={`Save to figures/${stem || "name"}.png`}>
+                    <button
+                      type="button"
+                      aria-label="Save diagram to project"
+                      onClick={() => void saveToFigures()}
+                      className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    >
+                      <Save className="size-3.5" />
+                      Save to project
+                    </button>
+                  </Tooltip>
                 )}
                 <Tooltip label="Minimize preview">
                   <button

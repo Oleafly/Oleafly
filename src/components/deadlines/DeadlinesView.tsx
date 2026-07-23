@@ -90,31 +90,36 @@ function CountdownText({ venue, now }: { venue: Venue; now: Date }) {
   const c = countdown(next.when, now);
   if (!c) return null;
   return (
-    <div className="flex items-center gap-2">
-      <Tooltip
-        label={`Time left until the ${next.kind} deadline, in the venue's own timezone (${venue.timezone})`}
+    <Tooltip
+      label={`Time left until the ${next.kind} deadline, in the venue's own timezone (${venue.timezone})`}
+    >
+      <span
+        className={cn(
+          "font-mono text-sm font-semibold",
+          URGENCY_COLOR[urgency(next.when, now)],
+        )}
       >
-        <span
-          className={cn(
-            "font-mono text-sm font-semibold",
-            URGENCY_COLOR[urgency(next.when, now)],
-          )}
-        >
-          {pad(c.days)}d : {pad(c.hours)}h : {pad(c.minutes)}m : {pad(c.seconds)}s
-        </span>
-      </Tooltip>
-      <Tooltip
-        label={
-          next.kind === "abstract"
-            ? "Abstract registration closes first; the full paper deadline follows"
-            : "Full paper submission deadline"
-        }
-      >
-        <span className="rounded border border-border bg-secondary px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wide text-secondary-foreground">
-          {next.kind}
-        </span>
-      </Tooltip>
-    </div>
+        {pad(c.days)}d : {pad(c.hours)}h : {pad(c.minutes)}m : {pad(c.seconds)}s
+      </span>
+    </Tooltip>
+  );
+}
+
+function DeadlineKindBadge({ venue, now }: { venue: Venue; now: Date }) {
+  const next = nextDeadline(venue, now);
+  if (!next) return null;
+  return (
+    <Tooltip
+      label={
+        next.kind === "abstract"
+          ? "Abstract registration closes first; the full paper deadline follows"
+          : "Full paper submission deadline"
+      }
+    >
+      <span className="shrink-0 rounded border border-border bg-secondary px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wide text-secondary-foreground">
+        {next.kind}
+      </span>
+    </Tooltip>
   );
 }
 
@@ -200,31 +205,32 @@ function DeadlineCard({ venue, now }: { venue: Venue; now: Date }) {
       </div>
       <div className="truncate text-xs text-muted-foreground">{venue.full_name}</div>
       <CountdownText venue={venue} now={now} />
-      <div className="mt-1 flex items-end justify-between gap-3">
-        <div className="flex min-w-0 flex-col gap-1.5">
-          {venue.conf_date && (
-            <Tooltip label="When the conference itself takes place">
-              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                <CalendarDays className="size-3.5 shrink-0" />
-                {venue.conf_date}
-              </div>
-            </Tooltip>
-          )}
-          {venue.place && (
-            <Tooltip label="Conference location">
-              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                <MapPin className="size-3.5 shrink-0" />
-                {venue.place}
-              </div>
-            </Tooltip>
-          )}
+      <div className="mt-1 grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1.5">
+        {venue.conf_date && (
+          <Tooltip label="When the conference itself takes place">
+            <div className="col-start-1 row-start-1 flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground">
+              <CalendarDays className="size-3.5 shrink-0" />
+              {venue.conf_date}
+            </div>
+          </Tooltip>
+        )}
+        <div className="col-start-2 row-start-1 justify-self-end">
+          <DeadlineKindBadge venue={venue} now={now} />
         </div>
+        {venue.place && (
+          <Tooltip label="Conference location">
+            <div className="col-start-1 row-start-2 flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground">
+              <MapPin className="size-3.5 shrink-0" />
+              {venue.place}
+            </div>
+          </Tooltip>
+        )}
         {venue.link && (
           <Tooltip label="Open the venue's official website for the call for papers">
             <Button
               variant="secondary"
               size="xs"
-              className="shrink-0"
+              className="col-start-2 row-start-2 shrink-0 justify-self-end"
               onClick={() => void openExternal(venue.link)}
             >
               <Globe className="size-3" /> Website
@@ -271,7 +277,7 @@ export function DeadlinesView() {
 
   if (!active) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
       <button
         type="button"
         aria-label="Close deadlines"
@@ -284,6 +290,7 @@ export function DeadlinesView() {
         tabIndex={-1}
         aria-modal="true"
         aria-labelledby="deadlines-title"
+        data-modal-initial-focus
         data-testid="deadlines-view"
         className={cn("relative flex h-[36rem] w-full max-w-4xl flex-col overflow-hidden rounded-xl", GLASS_PANEL)}
       >
@@ -308,16 +315,18 @@ export function DeadlinesView() {
               <span className="text-xs text-muted-foreground">Updated {updated}</span>
             </Tooltip>
           )}
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={busy}
-            data-testid="deadlines-refresh"
-            onClick={() => void refresh()}
-          >
-            <RefreshCw className={cn("size-4", busy && "animate-spin")} />
-            {busy ? "Refreshing..." : "Refresh"}
-          </Button>
+          <Tooltip label={busy ? "Refreshing..." : "Refresh"}>
+            <Button
+              variant="outline"
+              size="icon"
+              disabled={busy}
+              aria-label={busy ? "Refreshing..." : "Refresh"}
+              data-testid="deadlines-refresh"
+              onClick={() => void refresh()}
+            >
+              <RefreshCw className={cn("size-4", busy && "animate-spin")} />
+            </Button>
+          </Tooltip>
           <Tooltip label="About these deadlines">
             <Button
               variant="ghost"
