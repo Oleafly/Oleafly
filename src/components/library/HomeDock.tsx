@@ -17,7 +17,7 @@ function DockButton({
   active = false,
   testId,
   tour,
-  horizontal,
+  tooltipSide,
 }: {
   label: string;
   icon: ReactNode;
@@ -26,10 +26,10 @@ function DockButton({
   active?: boolean;
   testId?: string;
   tour?: string;
-  horizontal: boolean;
+  tooltipSide: "top" | "left" | "right";
 }) {
   return (
-    <Tooltip label={label} side={horizontal ? "top" : "right"}>
+    <Tooltip label={label} side={tooltipSide}>
       <Button
         data-testid={testId}
         data-tour={tour}
@@ -66,6 +66,7 @@ export function HomeDock() {
   const openDeadlines = useHomeViewStore((s) => s.openDeadlines);
   const openTools = useHomeViewStore((s) => s.openTools);
   const horizontal = dockPlacement === "bottom";
+  const tooltipSide = horizontal ? "top" : dockPlacement === "right" ? "left" : "right";
 
   const items = (
     <>
@@ -76,7 +77,7 @@ export function HomeDock() {
         primary
         testId="new-project"
         tour="new-project"
-        horizontal={horizontal}
+        tooltipSide={tooltipSide}
       />
       <DockButton
         label="CCF Deadlines"
@@ -87,7 +88,7 @@ export function HomeDock() {
         }}
         active={deadlinesOpen}
         testId="open-deadlines"
-        horizontal={horizontal}
+        tooltipSide={tooltipSide}
       />
       <DockButton
         label="LaTeX Tools"
@@ -95,14 +96,14 @@ export function HomeDock() {
         onClick={openTools}
         active={toolsOpen}
         testId="open-latex-tools"
-        horizontal={horizontal}
+        tooltipSide={tooltipSide}
       />
       <DockButton
         label={theme === "dark" ? "Light theme" : "Dark theme"}
         icon={theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
         onClick={toggleTheme}
         testId="toggle-theme"
-        horizontal={horizontal}
+        tooltipSide={tooltipSide}
       />
       <DockButton
         label="Settings"
@@ -110,7 +111,7 @@ export function HomeDock() {
         onClick={() => setSettingsOpen(true)}
         testId="open-settings"
         tour="settings"
-        horizontal={horizontal}
+        tooltipSide={tooltipSide}
       />
     </>
   );
@@ -129,16 +130,19 @@ export function HomeDock() {
     );
   }
 
+  const isRight = dockPlacement === "right";
+
   return (
     <div
       className={cn(
-        "pointer-events-none absolute inset-y-0 left-0 z-30 flex items-center pl-4",
+        "pointer-events-none absolute inset-y-0 z-30 flex items-center",
+        isRight ? "right-0 pr-4" : "left-0 pl-4",
         isMac && !fullscreen && "pt-7",
       )}
     >
       <div
         data-testid="home-dock"
-        data-placement="left"
+        data-placement={dockPlacement}
         className={cn("pointer-events-auto flex flex-col items-center gap-1 rounded-2xl p-1.5", GLASS_SURFACE)}
       >
         {items}

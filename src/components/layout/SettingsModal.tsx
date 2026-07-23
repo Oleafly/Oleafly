@@ -57,6 +57,7 @@ import { useDictionary } from "@/lib/dictionary";
 import { useTheme } from "@/lib/theme";
 import { appVersion, libraryRoot } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
+import { LAYOUT_OPTIONS } from "@/components/layout/TopToolbar";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import { startTour } from "@/lib/tour";
 import { TOUR_IDS } from "@/lib/tours/registry";
@@ -260,7 +261,7 @@ export function SettingsModal() {
 
   return (
     <div
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
     >
       <button type="button" aria-label="Close settings" className="absolute inset-0" onMouseDown={onBackdropMouseDown} />
       <div
@@ -469,13 +470,15 @@ export function SettingsModal() {
                     </div>
                   </div>
                   <Select value={defaultView} onValueChange={(v) => setDefaultView(v as typeof defaultView)}>
-                    <SelectTrigger className="w-[128px]">
+                    <SelectTrigger className="w-[200px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="z-[100]">
-                      <SelectItem value="split">Split view</SelectItem>
-                      <SelectItem value="editor">Editor only</SelectItem>
-                      <SelectItem value="pdf">PDF only</SelectItem>
+                      {LAYOUT_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.preset} value={opt.preset}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -529,11 +532,12 @@ export function SettingsModal() {
                   <div className="mb-2 text-xs text-muted-foreground">
                     Where the floating home-screen dock sits.
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     {(
                       [
                         { id: "left", label: "Left" },
                         { id: "bottom", label: "Bottom" },
+                        { id: "right", label: "Right" },
                       ] as const
                     ).map((opt) => {
                       const active = dockPlacement === opt.id;
@@ -549,9 +553,13 @@ export function SettingsModal() {
                           )}
                         >
                           <div className="relative h-14 w-full overflow-hidden rounded bg-muted">
-                            {opt.id === "left" ? (
+                            {opt.id === "left" && (
                               <div className="absolute inset-y-1 left-1 w-2 rounded bg-foreground/30" />
-                            ) : (
+                            )}
+                            {opt.id === "right" && (
+                              <div className="absolute inset-y-1 right-1 w-2 rounded bg-foreground/30" />
+                            )}
+                            {opt.id === "bottom" && (
                               <div className="absolute inset-x-0 bottom-1 mx-auto h-2 w-10 rounded bg-foreground/30" />
                             )}
                           </div>
@@ -730,9 +738,7 @@ export function SettingsModal() {
               </div>
             )}
 
-            {section === "dictionary" && (
-              <DictionarySection projectId={projectId} projectName={projectName} />
-            )}
+            {section === "dictionary" && <DictionarySection />}
 
             {section === "data" && (
               <div className="space-y-3 text-sm">
@@ -869,18 +875,13 @@ function IgnoreChips({
   );
 }
 
-function DictionarySection({
-  projectId,
-  projectName,
-}: {
-  projectId: string | null;
-  projectName: string;
-}) {
+function DictionarySection() {
   const global = useDictionary((s) => s.global);
   const ignored = useDictionary((s) => s.ignored);
   const unignore = useDictionary((s) => s.unignore);
   const unignoreGlobal = useDictionary((s) => s.unignoreGlobal);
-  const projectWords = projectId ? ignored[projectId] ?? [] : [];
+  const projects = useFilesStore((s) => s.projects);
+  const projectEntries = Object.entries(ignored).filter(([, words]) => words.length > 0);
 
   return (
     <div className="space-y-5 text-sm">
@@ -890,18 +891,28 @@ function DictionarySection({
       </p>
       <div className="space-y-2">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          This project{projectName ? ` · ${projectName}` : ""}
-        </h3>
-        <IgnoreChips
-          words={projectWords}
-          onRemove={(w) => projectId && unignore(projectId, w)}
-        />
-      </div>
-      <div className="space-y-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          All projects
+          Global ignore
         </h3>
         <IgnoreChips words={global} onRemove={(w) => unignoreGlobal(w)} />
+      </div>
+      <div className="space-y-4">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Project level ignores
+        </h3>
+        {projectEntries.length === 0 ? (
+          <p className="text-xs text-muted-foreground">Nothing ignored yet.</p>
+        ) : (
+          <div className="space-y-4">
+            {projectEntries.map(([id, words]) => (
+              <div key={id} className="space-y-2">
+                <h4 className="text-xs font-medium text-foreground">
+                  {projects.find((p) => p.id === id)?.name ?? id}
+                </h4>
+                <IgnoreChips words={words} onRemove={(w) => unignore(id, w)} />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

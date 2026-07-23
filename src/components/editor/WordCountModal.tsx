@@ -24,7 +24,7 @@ export function WordCountModal() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
     >
       <button type="button" aria-label="Close word count" className="absolute inset-0" onMouseDown={onBackdropMouseDown} />
       <div

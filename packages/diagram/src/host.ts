@@ -18,7 +18,8 @@ export interface DiagramHost {
   applyExternalWrite(path: string, content: string): void;
   saveActive(): Promise<void>;
   refreshTree(): Promise<void>;
-  createImageProject(name: string, source: string): Promise<unknown>;
+  createImageProject(name: string, source: string): Promise<string>;
   refreshProjects(): Promise<void>;
+  findProjectIdByName(name: string): Promise<string | null>;
   fixWithAi?(code: string, logTail: string): Promise<string>;
 }

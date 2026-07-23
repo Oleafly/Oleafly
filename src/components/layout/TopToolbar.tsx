@@ -80,7 +80,7 @@ const VIEW_OPTIONS: { mode: ViewMode; label: string; icon: typeof Columns2 }[] =
   { mode: "pdf", label: "PDF View", icon: FileText },
 ];
 
-const LAYOUT_OPTIONS: { preset: LayoutPreset; label: string; icon: typeof Columns2 }[] = [
+export const LAYOUT_OPTIONS: { preset: LayoutPreset; label: string; icon: typeof Columns2 }[] = [
   { preset: "editor-preview-ai", label: "Editor + Preview + AI", icon: Columns2 },
   { preset: "editor-preview", label: "Editor + Preview", icon: Columns2 },
   { preset: "editor-ai", label: "Editor + AI", icon: Columns2 },
@@ -578,7 +578,7 @@ export function TopToolbar() {
     </header>
 
     {forkOpen && (
-      <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4">
+      <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
         <button type="button" aria-label="Close fork dialog" className="absolute inset-0" onMouseDown={onForkBackdropMouseDown} />
         <div
           ref={forkDialogRef}

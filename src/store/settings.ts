@@ -22,6 +22,17 @@ export type LayoutPreset =
   | "preview-ai"
   | "editor-only"
   | "preview-only";
+
+export function layoutPresetViewMode(preset: LayoutPreset): ViewMode {
+  if (preset === "editor-preview-ai" || preset === "editor-preview") return "split";
+  if (preset === "editor-ai" || preset === "editor-only") return "editor";
+  return "pdf";
+}
+
+export function layoutPresetWantsAi(preset: LayoutPreset): boolean {
+  return preset === "editor-preview-ai" || preset === "editor-ai" || preset === "preview-ai";
+}
+
 export type RailTab =
   | "files"
   | "search"
@@ -33,7 +44,7 @@ export type RailTab =
   | "refs"
   | "mcp";
 
-export type DockPlacement = "left" | "bottom";
+export type DockPlacement = "left" | "right" | "bottom";
 
 function ls(k: string, fb: string): string {
   try {
@@ -43,6 +54,25 @@ function ls(k: string, fb: string): string {
   } catch {
     return fb;
   }
+}
+
+const LAYOUT_PRESETS: LayoutPreset[] = [
+  "editor-preview-ai",
+  "editor-preview",
+  "editor-ai",
+  "preview-ai",
+  "editor-only",
+  "preview-only",
+];
+const LEGACY_VIEW_MODE_TO_PRESET: Record<string, LayoutPreset> = {
+  split: "editor-preview",
+  editor: "editor-only",
+  pdf: "preview-only",
+};
+
+function readDefaultView(raw: string): LayoutPreset {
+  if ((LAYOUT_PRESETS as string[]).includes(raw)) return raw as LayoutPreset;
+  return LEGACY_VIEW_MODE_TO_PRESET[raw] ?? "editor-preview";
 }
 function saveLs(k: string, v: string) {
   try {
@@ -101,6 +131,8 @@ interface SettingsState {
   setFigureModeOpen: (v: boolean) => void;
   diagramComposerOpen: boolean;
   setDiagramComposerOpen: (v: boolean) => void;
+  diagramComposerInitialPath: string | null;
+  openDiagramComposerForFile: (path: string) => void;
   wordCountOpen: boolean;
   setWordCountOpen: (v: boolean) => void;
   historyOpen: boolean;
@@ -113,8 +145,8 @@ interface SettingsState {
   setSettingsInitialSection: (v: string) => void;
   viewMode: ViewMode;
   setViewMode: (v: ViewMode) => void;
-  defaultView: ViewMode;
-  setDefaultView: (v: ViewMode) => void;
+  defaultView: LayoutPreset;
+  setDefaultView: (v: LayoutPreset) => void;
   openInTree: boolean;
   setOpenInTree: (v: boolean) => void;
   hoverPreview: boolean;
@@ -156,7 +188,7 @@ const PREF_DEFAULTS = {
   appFontSize: 16,
   appFontFamily: "",
   editorFontFamily: "",
-  defaultView: "split" as ViewMode,
+  defaultView: "editor-preview" as LayoutPreset,
   openInTree: false,
   hoverPreview: true,
   accentColor: "#2563eb",
@@ -200,7 +232,10 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   figureModeOpen: false,
   setFigureModeOpen: (v) => set({ figureModeOpen: v }),
   diagramComposerOpen: false,
-  setDiagramComposerOpen: (v) => set({ diagramComposerOpen: v }),
+  setDiagramComposerOpen: (v) =>
+    set(v ? { diagramComposerOpen: true, diagramComposerInitialPath: null } : { diagramComposerOpen: false }),
+  diagramComposerInitialPath: null,
+  openDiagramComposerForFile: (path) => set({ diagramComposerOpen: true, diagramComposerInitialPath: path }),
   wordCountOpen: false,
   setWordCountOpen: (v) => set({ wordCountOpen: v }),
   historyOpen: false,
@@ -214,7 +249,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     set({ settingsInitialSection: SETTINGS_SECTIONS.has(v) ? v : "general" }),
   viewMode: "split",
   setViewMode: (v) => set({ viewMode: v }),
-  defaultView: (ls("oleafly.defaultView", "split") as ViewMode) || "split",
+  defaultView: readDefaultView(ls("oleafly.defaultView", "editor-preview")),
   setDefaultView: (v) => {
     saveLs("oleafly.defaultView", v);
     set({ defaultView: v });

@@ -108,6 +108,10 @@ const HOST: DiagramHost = {
   refreshTree: () => useFilesStore.getState().refreshTree(),
   createImageProject,
   refreshProjects: () => useFilesStore.getState().refreshProjects(),
+  findProjectIdByName: async (name) => {
+    await useFilesStore.getState().refreshProjects();
+    return useFilesStore.getState().projects.find((p) => p.name === name)?.id ?? null;
+  },
   fixWithAi,
 };
 
@@ -115,6 +119,7 @@ const HOST: DiagramHost = {
 export function DiagramComposer() {
   const open = useSettingsStore((s) => s.diagramComposerOpen);
   const setOpen = useSettingsStore((s) => s.setDiagramComposerOpen);
+  const initialFilePath = useSettingsStore((s) => s.diagramComposerInitialPath);
   const projectId = useFilesStore((s) => s.projectId);
   const projectName = useFilesStore((s) => s.projectName);
   const fullscreen = useFullscreen();
@@ -126,6 +131,7 @@ export function DiagramComposer() {
         open={open}
         projectId={projectId}
         projectName={projectName}
+        initialFilePath={initialFilePath}
         onClose={() => setOpen(false)}
         host={HOST}
         codeExtensions={codeExtensions}

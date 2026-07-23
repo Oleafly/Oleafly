@@ -29,7 +29,7 @@ export function RenameDialog() {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-start justify-center bg-black/40 pt-[20vh]">
+    <div className="fixed inset-0 z-[60] flex items-start justify-center bg-black/40 pt-[20vh] backdrop-blur-sm">
       <button type="button" aria-label="Close rename dialog" className="absolute inset-0" onMouseDown={onBackdropMouseDown} />
       <div
         role="dialog"

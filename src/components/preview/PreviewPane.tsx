@@ -585,7 +585,7 @@ export function PreviewPane() {
       </div>
 
       {saveOpen && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4">
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
           <button type="button" aria-label="Close save dialog" className="absolute inset-0" onMouseDown={onSaveBackdropMouseDown} />
           <div
             ref={saveDialogRef}

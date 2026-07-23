@@ -206,7 +206,7 @@ export function LatexToolsView() {
   const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDivElement>(active, closeTools);
   if (!active) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
       <button
         type="button"
         aria-label="Close LaTeX tools"
@@ -219,6 +219,7 @@ export function LatexToolsView() {
         tabIndex={-1}
         aria-modal="true"
         aria-labelledby="latex-tools-title"
+        data-modal-initial-focus
         data-testid="latex-tools-view"
         className={cn("relative flex h-[36rem] w-full max-w-3xl flex-col overflow-hidden rounded-xl", GLASS_PANEL)}
       >

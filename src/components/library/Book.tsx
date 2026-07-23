@@ -168,8 +168,13 @@ export function Book({
             </div>
 
             {preview && (
-              <div className={cn("absolute inset-0 z-[15] -translate-x-full bg-white transition-transform duration-300 ease-out", slideReady && "group-hover:translate-x-0")}>
-                <img src={preview} alt="" draggable={false} className="size-full object-cover object-top" />
+              <div className={cn("absolute inset-0 z-[15] -translate-x-full overflow-hidden bg-white transition-transform duration-300 ease-out", slideReady && "group-hover:translate-x-0")}>
+                <img
+                  src={preview}
+                  alt=""
+                  draggable={false}
+                  className="size-full scale-105 object-cover object-top transition-transform duration-500 ease-out group-hover:scale-110"
+                />
               </div>
             )}
 
