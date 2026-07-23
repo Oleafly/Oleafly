@@ -1,14 +1,23 @@
 import { create } from "zustand";
 
-export type HomePage = "library" | "pdf-import" | "deadlines" | "latex-tools";
+export type HomePage = "library" | "pdf-import" | "equation" | "bibtex" | "table" | "lab-search";
 
-// Single source of truth for which home-shell page is showing, so the sidebar
-// can switch between Library/PDF-to-LaTeX/Deadlines/LaTeX-Tools directly
-// instead of each view independently opening/closing as its own overlay.
 export const useHomeViewStore = create<{
   page: HomePage;
   goTo: (page: HomePage) => void;
+  deadlinesOpen: boolean;
+  toolsOpen: boolean;
+  openDeadlines: () => void;
+  openTools: () => void;
+  closeDeadlines: () => void;
+  closeTools: () => void;
 }>((set) => ({
   page: "library",
   goTo: (page) => set({ page }),
+  deadlinesOpen: false,
+  toolsOpen: false,
+  openDeadlines: () => set({ deadlinesOpen: true, toolsOpen: false }),
+  openTools: () => set({ toolsOpen: true, deadlinesOpen: false }),
+  closeDeadlines: () => set({ deadlinesOpen: false }),
+  closeTools: () => set({ toolsOpen: false }),
 }));

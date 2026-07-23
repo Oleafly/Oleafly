@@ -33,6 +33,8 @@ export type RailTab =
   | "refs"
   | "mcp";
 
+export type DockPlacement = "left" | "bottom";
+
 function ls(k: string, fb: string): string {
   try {
     return typeof localStorage !== "undefined"
@@ -138,6 +140,8 @@ interface SettingsState {
   suppressAiAutoLayout: boolean;
   setSuppressAiAutoLayout: (v: boolean) => void;
   setLayoutPreset: (v: LayoutPreset) => void;
+  dockPlacement: DockPlacement;
+  setDockPlacement: (v: DockPlacement) => void;
   resetToDefaults: () => void;
 }
 
@@ -156,6 +160,7 @@ const PREF_DEFAULTS = {
   openInTree: false,
   hoverPreview: true,
   accentColor: "#2563eb",
+  dockPlacement: "left" as DockPlacement,
 } as const;
 
 export const useSettingsStore = create<SettingsState>((set) => ({
@@ -254,6 +259,11 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     saveLs("oleafly.accent", v);
     set({ accentColor: v });
   },
+  dockPlacement: (ls("oleafly.dockPlacement", "left") as DockPlacement) || "left",
+  setDockPlacement: (v) => {
+    saveLs("oleafly.dockPlacement", v);
+    set({ dockPlacement: v });
+  },
   showTree: true,
   toggleTree: () => set((s) => ({ showTree: !s.showTree })),
   hotkeysOpen: false,
@@ -311,6 +321,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     saveLs("oleafly.openInTree", PREF_DEFAULTS.openInTree ? "1" : "0");
     saveLs("oleafly.hoverPreview", PREF_DEFAULTS.hoverPreview ? "1" : "0");
     saveLs("oleafly.accent", PREF_DEFAULTS.accentColor);
+    saveLs("oleafly.dockPlacement", PREF_DEFAULTS.dockPlacement);
     set({ ...PREF_DEFAULTS });
   },
 }));

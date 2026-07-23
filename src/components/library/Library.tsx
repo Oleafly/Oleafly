@@ -10,7 +10,6 @@ import {
   Info,
   ListFilter,
   Palette,
-  PanelLeft,
   Plus,
   Search,
   SearchX,
@@ -35,7 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { LibrarySidebar, useLibrarySidebarCollapsed } from "@/components/library/LibrarySidebar";
+import { HomeDock } from "@/components/library/HomeDock";
 import { LeafLogo } from "@/components/layout/LeafLogo";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
@@ -48,7 +47,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { GridPattern } from "@/components/ui/grid-pattern";
+import { DotPattern } from "@/components/ui/dot-pattern";
 import { useFavoritesStore } from "@/store/favorites";
 import { useProjectColorsStore } from "@/store/project-colors";
 import { logError } from "@/lib/log";
@@ -237,7 +236,6 @@ export function Library() {
   const removeProjectColor = useProjectColorsStore((s) => s.remove);
   const setSearchOpen = useSettingsStore((s) => s.setSearchOpen);
   const setNewProjectOpen = useSettingsStore((s) => s.setNewProjectOpen);
-  const { collapsed: sidebarCollapsed, toggle: toggleSidebar } = useLibrarySidebarCollapsed();
   const hoverPreview = useSettingsStore((s) => s.hoverPreview);
   const [forkTarget, setForkTarget] = useState<{ id: string; name: string } | null>(null);
   const [forkName, setForkName] = useState("");
@@ -372,12 +370,13 @@ export function Library() {
       data-projects-loaded={projectsLoaded ? "true" : "false"}
       className="relative flex h-full flex-row bg-background"
     >
-      <GridPattern
-        width={48}
-        height={48}
-        className="[mask-image:linear-gradient(to_bottom_right,white,transparent,transparent)]"
+      <DotPattern
+        width={22}
+        height={22}
+        radius={1}
+        className="[mask-image:radial-gradient(circle_at_50%_0%,white,transparent_75%)]"
       />
-      <LibrarySidebar collapsed={sidebarCollapsed} />
+      <HomeDock />
       <div className="flex min-w-0 flex-1 flex-col">
       <header
         data-tauri-drag-region
@@ -385,20 +384,7 @@ export function Library() {
           "relative z-10 grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center px-3"
         )}
       >
-        <div data-tauri-drag-region className="flex items-center">
-          <Tooltip label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Toggle sidebar"
-              data-testid="toggle-library-sidebar"
-              className="text-muted-foreground hover:text-foreground"
-              onClick={toggleSidebar}
-            >
-              <PanelLeft className="size-4" />
-            </Button>
-          </Tooltip>
-        </div>
+        <div data-tauri-drag-region className="flex items-center" />
         <div
           data-tauri-drag-region
           data-tour="home-brand"

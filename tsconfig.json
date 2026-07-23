@@ -12,7 +12,7 @@
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
-    "types": ["node"],
+    "types": ["node", "@testing-library/jest-dom"],
 
     "strict": true,
     "noUnusedLocals": true,
