@@ -4,14 +4,12 @@ import { logError } from "@/lib/log";
 import { readDeadlines, refreshDeadlines } from "@/lib/tauri";
 
 interface DeadlinesState {
-  open: boolean;
   venues: Venue[] | null;
   generatedAt: string | null;
   busy: boolean;
   error: string | null;
   openView: () => Promise<void>;
   refresh: () => Promise<void>;
-  close: () => void;
 }
 
 async function load(): Promise<{ venues: Venue[]; generatedAt: string | null }> {
@@ -24,13 +22,12 @@ async function load(): Promise<{ venues: Venue[]; generatedAt: string | null }> 
 }
 
 export const useDeadlinesStore = create<DeadlinesState>((set) => ({
-  open: false,
   venues: null,
   generatedAt: null,
   busy: false,
   error: null,
   openView: async () => {
-    set({ open: true, error: null });
+    set({ error: null });
     try {
       const { venues, generatedAt } = await load();
       set({ venues, generatedAt });
@@ -50,5 +47,4 @@ export const useDeadlinesStore = create<DeadlinesState>((set) => ({
       set({ busy: false, error: String(e) });
     }
   },
-  close: () => set({ open: false }),
 }));
