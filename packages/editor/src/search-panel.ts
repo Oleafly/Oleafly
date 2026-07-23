@@ -246,9 +246,20 @@ function createSearchPanel(view: EditorView): Panel {
 // EditorView.theme (not baseTheme) so the z-index override beats CodeMirror's
 // default `.cm-panels` stacking, keeping the widget below app modals (z-80).
 const searchTheme = EditorView.theme({
-  ".cm-panels.cm-panels-top": { borderBottom: "none", backgroundColor: "transparent", zIndex: "20" },
+  ".cm-panels.cm-panels-top": {
+    position: "absolute",
+    top: "0",
+    left: "0",
+    right: "0",
+    border: "none",
+    borderBottom: "none",
+    backgroundColor: "transparent",
+    zIndex: "20",
+    pointerEvents: "none",
+  },
   ".cm-vs-search": {
     position: "relative",
+    pointerEvents: "auto",
     display: "flex",
     alignItems: "flex-start",
     gap: "2px",

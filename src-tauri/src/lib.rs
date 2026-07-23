@@ -185,6 +185,8 @@ pub fn run() {
             git::git_auto_commit,
             git::git_auto_commit_update,
             git::git_log,
+            git::git_read_version_labels,
+            git::git_set_version_label,
             git::git_restore,
             git::git_set_remote,
             git::git_remove_remote,

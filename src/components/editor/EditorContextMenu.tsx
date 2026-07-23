@@ -1,5 +1,25 @@
 import type { MouseEvent, ReactNode } from "react";
-import { Bold, Italic, Heading, List, Image, Table, Sigma, Sparkles, Tag, ArrowRightToLine, SearchCode, Pencil } from "lucide-react";
+import {
+  ArrowRight,
+  ArrowRightToLine,
+  Asterisk,
+  Bold,
+  Code,
+  Divide,
+  Heading,
+  Image,
+  Italic,
+  List,
+  Pencil,
+  Quote,
+  Rows3,
+  SearchCode,
+  Sigma,
+  Sparkles,
+  Table,
+  Tag,
+  Underline,
+} from "lucide-react";
 import { shortcut } from "@/lib/utils";
 import {
   ContextMenu,
@@ -14,8 +34,28 @@ import {
 import { getEditorView, insertAtCursor, wrapSelection } from "./cm/controller";
 import { openInlineEdit } from "./cm/inline-ai/openSession";
 import { goToDefinition, findReferences, startRename } from "@/lib/index/nav";
+import { goToSyncTex } from "@/features/synctex";
 import { useFilesStore } from "@/store/files";
 import { toast } from "@/lib/toast";
+import {
+  HEADING_LEVELS,
+  insertAlign,
+  insertBlockquote,
+  insertBold,
+  insertCode,
+  insertEnumerate,
+  insertEquation,
+  insertFigure,
+  insertFootnote,
+  insertFraction,
+  insertHeading,
+  insertItalic,
+  insertItemize,
+  insertLabel,
+  insertRef,
+  insertTable,
+  insertUnderline,
+} from "@/components/editor/latex-commands";
 
 interface EditorContextMenuProps {
   children: ReactNode;
@@ -36,6 +76,9 @@ export function EditorContextMenu({ children }: EditorContextMenuProps) {
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
   const isTypst = useFilesStore((s) => s.engineLoaded && s.engine.capabilities.formatting_profile === "typst");
   const isMarkdown = useFilesStore((s) => s.engineLoaded && s.engine.capabilities.formatting_profile === "markdown");
+  const projectKind = useFilesStore((s) => s.projectKind);
+  const engine = useFilesStore((s) => s.engine);
+  const syncTexSupported = projectKind !== "image" && engineLoaded && engine.capabilities.supports_synctex;
   if (!engineLoaded) {
     return (
       <ContextMenu>
@@ -110,6 +153,11 @@ export function EditorContextMenu({ children }: EditorContextMenuProps) {
           <span className="ml-auto text-xs text-muted-foreground">{shortcut("⌘L")}</span>
         </ContextMenuItem>
         <ContextMenuSeparator />
+        {syncTexSupported && (
+          <ContextMenuItem onClick={goToSyncTex}>
+            <ArrowRight className="mr-2 size-4" /> Go to PDF (SyncTeX)
+          </ContextMenuItem>
+        )}
         <ContextMenuItem
           onClick={() => {
             const view = getEditorView();
@@ -144,13 +192,19 @@ export function EditorContextMenu({ children }: EditorContextMenuProps) {
           <span className="ml-auto text-xs text-muted-foreground">F2</span>
         </ContextMenuItem>
         <ContextMenuSeparator />
-        <ContextMenuItem onClick={() => wrapSelection("\\textbf{", "}")}>
+        <ContextMenuItem onClick={insertBold}>
           <Bold className="mr-2 size-4" /> Bold
           <span className="ml-auto text-xs text-muted-foreground">{shortcut("⌘B")}</span>
         </ContextMenuItem>
-        <ContextMenuItem onClick={() => wrapSelection("\\textit{", "}")}>
+        <ContextMenuItem onClick={insertItalic}>
           <Italic className="mr-2 size-4" /> Italic
           <span className="ml-auto text-xs text-muted-foreground">{shortcut("⌘I")}</span>
+        </ContextMenuItem>
+        <ContextMenuItem onClick={insertUnderline}>
+          <Underline className="mr-2 size-4" /> Underline
+        </ContextMenuItem>
+        <ContextMenuItem onClick={insertCode}>
+          <Code className="mr-2 size-4" /> Inline code
         </ContextMenuItem>
         <ContextMenuSeparator />
         <ContextMenuSub>
@@ -158,18 +212,11 @@ export function EditorContextMenu({ children }: EditorContextMenuProps) {
             <Heading className="mr-2 size-4" /> Heading
           </ContextMenuSubTrigger>
           <ContextMenuSubContent className="w-44">
-            <ContextMenuItem onClick={() => insertAtCursor("\\section{}\n")}>
-              \section
-            </ContextMenuItem>
-            <ContextMenuItem onClick={() => insertAtCursor("\\subsection{}\n")}>
-              \subsection
-            </ContextMenuItem>
-            <ContextMenuItem onClick={() => insertAtCursor("\\subsubsection{}\n")}>
-              \subsubsection
-            </ContextMenuItem>
-            <ContextMenuItem onClick={() => insertAtCursor("\\paragraph{}\n")}>
-              \paragraph
-            </ContextMenuItem>
+            {HEADING_LEVELS.map((level) => (
+              <ContextMenuItem key={level.label} onClick={() => insertHeading(level)}>
+                {level.label}
+              </ContextMenuItem>
+            ))}
           </ContextMenuSubContent>
         </ContextMenuSub>
         <ContextMenuSub>
@@ -177,46 +224,36 @@ export function EditorContextMenu({ children }: EditorContextMenuProps) {
             <List className="mr-2 size-4" /> List
           </ContextMenuSubTrigger>
           <ContextMenuSubContent className="w-44">
-            <ContextMenuItem
-              onClick={() =>
-                insertAtCursor("\\begin{itemize}\n  \\item \n\\end{itemize}\n")
-              }
-            >
-              Itemize
-            </ContextMenuItem>
-            <ContextMenuItem
-              onClick={() =>
-                insertAtCursor("\\begin{enumerate}\n  \\item \n\\end{enumerate}\n")
-              }
-            >
-              Enumerate
-            </ContextMenuItem>
+            <ContextMenuItem onClick={insertItemize}>Itemize</ContextMenuItem>
+            <ContextMenuItem onClick={insertEnumerate}>Enumerate</ContextMenuItem>
           </ContextMenuSubContent>
         </ContextMenuSub>
-        <ContextMenuItem
-          onClick={() =>
-            insertAtCursor(
-              "\\begin{figure}[htbp]\n  \\centering\n  \\includegraphics[width=0.8\\textwidth]{}\n  \\caption{}\n\\end{figure}\n"
-            )
-        }
-        >
+        <ContextMenuItem onClick={insertFigure}>
           <Image className="mr-2 size-4" /> Figure
         </ContextMenuItem>
-        <ContextMenuItem
-          onClick={() =>
-            insertAtCursor(
-              "\\begin{table}[htbp]\n  \\centering\n  \\caption{}\n  \\begin{tabular}{ll}\n    & \\\\\n  \\end{tabular}\n\\end{table}\n"
-            )
-          }
-        >
+        <ContextMenuItem onClick={() => insertTable(3, 3)}>
           <Table className="mr-2 size-4" /> Table
         </ContextMenuItem>
-        <ContextMenuItem
-          onClick={() => insertAtCursor("\\begin{equation}\n  \n\\end{equation}\n")}
-        >
+        <ContextMenuSeparator />
+        <ContextMenuItem onClick={insertAlign}>
+          <Rows3 className="mr-2 size-4" /> Align
+        </ContextMenuItem>
+        <ContextMenuItem onClick={insertEquation}>
           <Sigma className="mr-2 size-4" /> Equation
         </ContextMenuItem>
-        <ContextMenuItem onClick={() => insertAtCursor("\\label{}\n")}>
+        <ContextMenuItem onClick={insertFraction}>
+          <Divide className="mr-2 size-4" /> Fraction
+        </ContextMenuItem>
+        <ContextMenuItem onClick={insertBlockquote}>
+          <Quote className="mr-2 size-4" /> Blockquote
+        </ContextMenuItem>
+        <ContextMenuItem onClick={insertFootnote}>
+          <Asterisk className="mr-2 size-4" /> Footnote
+        </ContextMenuItem>
+        <ContextMenuItem onClick={insertRef}>
+          <Tag className="mr-2 size-4" /> Cross-reference
+        </ContextMenuItem>
+        <ContextMenuItem onClick={insertLabel}>
           <Tag className="mr-2 size-4" /> Label
         </ContextMenuItem>
       </ContextMenuContent>

@@ -2,7 +2,18 @@ import { synctexForward, synctexInverse } from "@/lib/tauri";
 import { getCurrentLine, gotoLine, selectWordNearLine } from "@/components/editor/cm/controller";
 import { gotoRect } from "@/components/pdf/pdfController";
 import { useFilesStore } from "@/store/files";
+import { useSettingsStore } from "@/store/settings";
 import { logError } from "@/lib/log";
+
+export function goToSyncTex() {
+  const s = useSettingsStore.getState();
+  if (s.viewMode === "editor") {
+    s.setViewMode("split");
+    requestAnimationFrame(() => void forwardFromCursor());
+  } else {
+    void forwardFromCursor();
+  }
+}
 
 export async function forwardFromCursor() {
   const { projectId, mainDoc, activePath } = useFilesStore.getState();

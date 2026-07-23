@@ -34,8 +34,6 @@ import { isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { cn } from "@/lib/utils";
-import { ArrowRight } from "lucide-react";
-import { Tooltip } from "@/components/ui/tooltip";
 import { ExternalToolApprovals } from "@/components/ai/ExternalToolApprovals";
 import { AboutModal } from "@/components/layout/AboutModal";
 
@@ -109,36 +107,11 @@ function VHandle({
   );
 }
 
-function DividerBtn({
-  onClick,
-  title,
-  children,
-}: {
-  onClick: () => void;
-  title: string;
-  children: ReactNode;
-}) {
-  return (
-    <Tooltip label={title} side="right">
-      <button
-        type="button"
-        aria-label={title}
-        onClick={onClick}
-        className="flex size-6 items-center justify-center rounded-md border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-foreground"
-      >
-        {children}
-      </button>
-    </Tooltip>
-  );
-}
-
 const AUTO_COMPILE_DEBOUNCE_MS = 2500;
 
 export default function App() {
   const [aboutOpen, setAboutOpen] = useState(false);
   const projectId = useFilesStore((s) => s.projectId);
-  const projectKind = useFilesStore((s) => s.projectKind);
-  const engine = useFilesStore((s) => s.engine);
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
   const refreshProjects = useFilesStore((s) => s.refreshProjects);
   const activeContent = useActiveContent();
@@ -157,9 +130,41 @@ export default function App() {
   const chatFloating = useSettingsStore((s) => s.chatFloating);
   const railTab = useSettingsStore((s) => s.railTab);
   const sidebarPanelRef = useRef<ImperativePanelHandle>(null);
+  const editorPanelRef = useRef<ImperativePanelHandle>(null);
+  const pdfPanelRef = useRef<ImperativePanelHandle>(null);
   const previousRailTabRef = useRef<string | null>(null);
+  const previousShowTreeRef = useRef(showTree);
   const sidebarSizeBeforeAiRef = useRef<number | null>(null);
   const aiResizePendingRef = useRef(false);
+
+  const RAIL_WIDTH_PX = 48;
+  const SIDEBAR_DEFAULT_PX = 340;
+  const SIDEBAR_MIN_PX = 240;
+  const panelAreaRef = useRef<HTMLDivElement>(null);
+  const [panelAreaWidth, setPanelAreaWidth] = useState(0);
+  useEffect(() => {
+    const el = panelAreaRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width;
+      if (width) setPanelAreaWidth(width);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  const panelGroupWidth = Math.max(0, panelAreaWidth - RAIL_WIDTH_PX);
+  const sidebarMinSize = panelGroupWidth > 0 ? Math.min(65, (SIDEBAR_MIN_PX / panelGroupWidth) * 100) : 15;
+  const sidebarDefaultSize =
+    panelGroupWidth > 0 ? Math.min(65, (SIDEBAR_DEFAULT_PX / panelGroupWidth) * 100) : 15;
+
+  useEffect(() => {
+    const wasOpen = previousShowTreeRef.current;
+    previousShowTreeRef.current = showTree;
+    const isAiTab = railTab === "ai" || railTab === "chat";
+    if (showTree && !wasOpen && !isAiTab) {
+      window.requestAnimationFrame(() => sidebarPanelRef.current?.resize(sidebarDefaultSize));
+    }
+  }, [showTree, railTab, sidebarDefaultSize]);
 
   useEffect(() => {
     void refreshProjects();
@@ -173,6 +178,9 @@ export default function App() {
   }, [projectId]);
 
   useEffect(() => {
+    const suppressAutoLayout = useSettingsStore.getState().suppressAiAutoLayout;
+    if (suppressAutoLayout) useSettingsStore.getState().setSuppressAiAutoLayout(false);
+
     const wasAi =
       previousRailTabRef.current === "ai" || previousRailTabRef.current === "chat";
     const isAi = railTab === "ai" || railTab === "chat";
@@ -183,17 +191,26 @@ export default function App() {
       aiResizePendingRef.current = true;
       const panel = sidebarPanelRef.current;
       if (panel) sidebarSizeBeforeAiRef.current = panel.getSize();
-      setViewMode("pdf");
+      if (!suppressAutoLayout) setViewMode("pdf");
     }
 
-    if (isAi && aiResizePendingRef.current && viewMode === "pdf") {
+    if (isAi && aiResizePendingRef.current) {
       const frame = window.requestAnimationFrame(() => {
         const panel = sidebarPanelRef.current;
-        if (!panel) return;
-        if (sidebarSizeBeforeAiRef.current == null) {
-          sidebarSizeBeforeAiRef.current = panel.getSize();
+        if (panel) {
+          if (sidebarSizeBeforeAiRef.current == null) {
+            sidebarSizeBeforeAiRef.current = panel.getSize();
+          }
+          if (viewMode === "split") {
+            panel.resize(30);
+            editorPanelRef.current?.resize((30 / 70) * 100);
+            pdfPanelRef.current?.resize((40 / 70) * 100);
+          } else {
+            panel.resize(50);
+            if (viewMode === "editor") editorPanelRef.current?.resize(100);
+            else if (viewMode === "pdf") pdfPanelRef.current?.resize(100);
+          }
         }
-        panel.resize(50);
         aiResizePendingRef.current = false;
       });
       return () => window.cancelAnimationFrame(frame);
@@ -203,8 +220,13 @@ export default function App() {
       aiResizePendingRef.current = false;
       const previousSize = sidebarSizeBeforeAiRef.current;
       sidebarSizeBeforeAiRef.current = null;
-      if (previousSize == null) return;
-      window.requestAnimationFrame(() => sidebarPanelRef.current?.resize(previousSize));
+      window.requestAnimationFrame(() => {
+        if (previousSize != null) sidebarPanelRef.current?.resize(previousSize);
+        if (viewMode === "split") {
+          editorPanelRef.current?.resize(50);
+          pdfPanelRef.current?.resize(50);
+        }
+      });
     }
   }, [railTab, setViewMode, viewMode]);
 
@@ -463,7 +485,7 @@ export default function App() {
     <ThemeProvider>
       <div className="flex h-full flex-col">
         <TopToolbar />
-        <div className="flex min-h-0 flex-1">
+        <div ref={panelAreaRef} className="flex min-h-0 flex-1">
           <Rail />
           <PanelGroup direction="horizontal" className="flex-1">
             {showTree && (
@@ -472,9 +494,14 @@ export default function App() {
                   ref={sidebarPanelRef}
                   id="sidebar"
                   order={1}
-                  defaultSize={15}
-                  minSize={12}
+                  defaultSize={sidebarDefaultSize}
+                  minSize={sidebarMinSize}
                   maxSize={65}
+                  collapsible
+                  collapsedSize={0}
+                  onCollapse={() => {
+                    if (useSettingsStore.getState().showTree) useSettingsStore.getState().toggleTree();
+                  }}
                   className="bg-sidebar"
                 >
                   <Sidebar />
@@ -487,31 +514,22 @@ export default function App() {
               <PanelGroup direction="horizontal">
                 {viewMode !== "pdf" && (
                   <Panel
+                    ref={editorPanelRef}
                     id="editor"
                     order={1}
-                    // 15/35/50 overall → editor is 35/85 of the editor+pdf group
-                    defaultSize={viewMode === "editor" ? 100 : (35 / 85) * 100}
+                    defaultSize={viewMode === "editor" ? 100 : 50}
                     minSize={15}
                   >
                     <Editor />
                   </Panel>
                 )}
-                {viewMode === "split" && (
-                  <VHandle id="h-mid" placement="top">
-                    {/* SyncTeX maps source to PDF positions; a single figure has none. */}
-                    {projectKind !== "image" && engineLoaded && engine.capabilities.supports_synctex && (
-                      <DividerBtn onClick={() => void forwardFromCursor()} title="Go to PDF (SyncTeX)">
-                        <ArrowRight className="size-3.5" />
-                      </DividerBtn>
-                    )}
-                  </VHandle>
-                )}
+                {viewMode === "split" && <VHandle id="h-mid" placement="top" />}
                 {viewMode !== "editor" && (
                   <Panel
+                    ref={pdfPanelRef}
                     id="pdf"
                     order={2}
-                    // 15/35/50 overall → pdf is 50/85 of the editor+pdf group
-                    defaultSize={viewMode === "pdf" ? 100 : (50 / 85) * 100}
+                    defaultSize={viewMode === "pdf" ? 100 : 50}
                     minSize={15}
                   >
                     <PreviewPane />

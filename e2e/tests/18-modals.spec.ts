@@ -47,10 +47,10 @@ test("history modal opens from the palette", async ({ tauriPage }) => {
   await tauriPage.press("[cmdk-input]", "Enter");
   // The modal heading renders (history may be empty for a fresh repo).
   await tauriPage.waitForFunction(
-    `Array.from(document.querySelectorAll('h2')).some(h => h.textContent.trim() === 'History')`,
+    `Array.from(document.querySelectorAll('h2')).some(h => h.textContent.trim() === 'Version History')`,
     10_000,
   );
-  await tauriPage.getByText("Close", { exact: true }).click();
+  await tauriPage.click('[aria-label="Close"]');
 });
 
 test("help popover leads to the About dialog", async ({ tauriPage }) => {

@@ -109,3 +109,10 @@ export function generateCiteKey(fields: Record<string, string>, existing: Set<st
 export function setKey(bibtex: string, newKey: string): string {
   return bibtex.replace(/(@\w+\s*\{\s*)[^,\s}]+/, `$1${newKey}`);
 }
+
+export function stringifyBibEntry(entry: ParsedBib): string {
+  const lines = Object.entries(entry.fields)
+    .filter(([, value]) => value.trim())
+    .map(([name, value]) => `  ${name} = {${value}}`);
+  return `@${entry.type}{${entry.key},\n${lines.join(",\n")}\n}`;
+}

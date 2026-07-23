@@ -41,3 +41,4 @@ e2e/.env
 
 # Claude Code local session state
 .claude/
+.superpowers/

@@ -65,7 +65,7 @@ async function openHistory(page: import("../helpers").Page) {
   await page.fill("[cmdk-input]", "history");
   await page.press("[cmdk-input]", "Enter");
   await page.waitForFunction(
-    `Array.from(document.querySelectorAll('h2')).some(h => h.textContent.trim() === 'History')`,
+    `Array.from(document.querySelectorAll('h2')).some(h => h.textContent.trim() === 'Version History')`,
     10_000,
   );
 }
@@ -88,7 +88,7 @@ async function restoreCommit(page: import("../helpers").Page, message: string) {
   await page.getByText("Overwrite all").click();
   // The modal closes itself once the restore lands.
   await page.waitForFunction(
-    `!Array.from(document.querySelectorAll('h2')).some(h => h.textContent.trim() === 'History')`,
+    `!Array.from(document.querySelectorAll('h2')).some(h => h.textContent.trim() === 'Version History')`,
     15_000,
   );
 }

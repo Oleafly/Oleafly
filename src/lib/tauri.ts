@@ -326,6 +326,12 @@ export const gitAutoCommitUpdate = (projectId: string) =>
 export const gitLog = (projectId: string) =>
   invoke<GitCommit[]>("git_log", { projectId });
 
+export const gitReadVersionLabels = (projectId: string) =>
+  invoke<Record<string, string>>("git_read_version_labels", { projectId });
+
+export const gitSetVersionLabel = (projectId: string, oid: string, label: string) =>
+  invoke<void>("git_set_version_label", { projectId, oid, label });
+
 export const gitRestore = (projectId: string, oid: string) =>
   invoke<void>("git_restore", { projectId, oid });
 

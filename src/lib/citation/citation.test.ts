@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { detectInput } from "./detect";
-import { parseEntry, generateCiteKey, setKey } from "./bibtex";
+import { parseEntry, generateCiteKey, setKey, stringifyBibEntry } from "./bibtex";
 import { parseCrossrefSearch } from "./crossref";
 import { arxivXmlToBibtex } from "./arxiv";
 import { findKeyByDoi } from "./dedup";
@@ -36,6 +36,22 @@ describe("parseEntry", () => {
   });
   it("returns null for non-bibtex", () => {
     expect(parseEntry("not bibtex")).toBeNull();
+  });
+});
+
+describe("stringifyBibEntry", () => {
+  it("renders a valid bibtex entry, skipping empty fields", () => {
+    const out = stringifyBibEntry({
+      type: "article",
+      key: "smith2021great",
+      fields: { title: "A Great Paper", author: "Smith, Jane", year: "2021", journal: "" },
+    });
+    expect(out).toBe("@article{smith2021great,\n  title = {A Great Paper},\n  author = {Smith, Jane},\n  year = {2021}\n}");
+    expect(required(parseEntry(out)).fields).toEqual({
+      title: "A Great Paper",
+      author: "Smith, Jane",
+      year: "2021",
+    });
   });
 });
 

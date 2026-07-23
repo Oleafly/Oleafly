@@ -1,4 +1,5 @@
 use serde::Serialize;
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -111,6 +112,55 @@ pub async fn git_auto_commit_update(project_id: String) -> Result<bool, String> 
         }
         let root = ensure_repo(&project_id)?;
         auto_commit_update_in(&root)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+fn version_labels_path(project_id: &str) -> Result<PathBuf, String> {
+    Ok(project_root(project_id)?
+        .join(".oleafly")
+        .join("version-labels.json"))
+}
+
+fn read_version_labels_at(path: &PathBuf) -> Result<HashMap<String, String>, String> {
+    if !path.exists() {
+        return Ok(HashMap::new());
+    }
+    let text = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
+    Ok(serde_json::from_str(&text).unwrap_or_default())
+}
+
+#[tauri::command]
+pub async fn git_read_version_labels(
+    project_id: String,
+) -> Result<HashMap<String, String>, String> {
+    tauri::async_runtime::spawn_blocking(move || -> Result<HashMap<String, String>, String> {
+        read_version_labels_at(&version_labels_path(&project_id)?)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn git_set_version_label(
+    project_id: String,
+    oid: String,
+    label: String,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
+        let path = version_labels_path(&project_id)?;
+        let mut labels = read_version_labels_at(&path)?;
+        if label.trim().is_empty() {
+            labels.remove(&oid);
+        } else {
+            labels.insert(oid, label);
+        }
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        let json = serde_json::to_string_pretty(&labels).map_err(|e| e.to_string())?;
+        std::fs::write(&path, json).map_err(|e| e.to_string())
     })
     .await
     .map_err(|e| e.to_string())?
@@ -708,7 +758,8 @@ pub async fn git_show(project_id: String, rev: String, path: String) -> Result<S
 mod tests {
     use super::{
         auto_commit_update_in, commit_index, is_allowed_remote_url, parse_status_porcelain,
-        run_git, sanitize_url, show, stage, stage_all, unstage, unstage_all, update_message,
+        read_version_labels_at, run_git, sanitize_url, show, stage, stage_all, unstage,
+        unstage_all, update_message,
     };
     use std::path::{Path, PathBuf};
     use std::sync::atomic::{AtomicU32, Ordering};
@@ -858,6 +909,23 @@ mod tests {
     #[test]
     fn porcelain_skips_blank_and_short_lines() {
         assert!(parse_status_porcelain("\n\nx").is_empty());
+    }
+
+    #[test]
+    fn version_labels_missing_file_reads_as_empty() {
+        let path = temp_repo().join("no-such-file.json");
+        assert!(read_version_labels_at(&path).unwrap().is_empty());
+    }
+
+    #[test]
+    fn version_labels_round_trip_through_json() {
+        let path = temp_repo().join(".oleafly").join("version-labels.json");
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        let mut labels = std::collections::HashMap::new();
+        labels.insert("abc123".to_string(), "Submission draft".to_string());
+        std::fs::write(&path, serde_json::to_string_pretty(&labels).unwrap()).unwrap();
+        let back = read_version_labels_at(&path).unwrap();
+        assert_eq!(back.get("abc123").unwrap(), "Submission draft");
     }
 
     #[test]

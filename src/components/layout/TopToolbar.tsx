@@ -11,9 +11,11 @@ import {
   GitFork,
   Presentation,
   History,
+  LayoutGrid,
   Loader2,
   ImagePlay,
   Keyboard,
+  Maximize,
   Play,
   RefreshCw,
   SquarePen,
@@ -37,7 +39,7 @@ import { LeafLogo } from "@/components/layout/LeafLogo";
 import { GithubMenu } from "@/components/layout/GithubMenu";
 import { useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
-import { useSettingsStore, type ViewMode } from "@/store/settings";
+import { useSettingsStore, type LayoutPreset, type RailTab, type ViewMode } from "@/store/settings";
 import { exportCurrentPdf, exportCurrentImagePng } from "@/features/export";
 import { ensurePandoc } from "@/features/pandoc";
 import {
@@ -78,6 +80,28 @@ const VIEW_OPTIONS: { mode: ViewMode; label: string; icon: typeof Columns2 }[] =
   { mode: "pdf", label: "PDF View", icon: FileText },
 ];
 
+const LAYOUT_OPTIONS: { preset: LayoutPreset; label: string; icon: typeof Columns2 }[] = [
+  { preset: "editor-preview-ai", label: "Editor + Preview + AI", icon: Columns2 },
+  { preset: "editor-preview", label: "Editor + Preview", icon: Columns2 },
+  { preset: "editor-ai", label: "Editor + AI", icon: Columns2 },
+  { preset: "preview-ai", label: "Preview + AI", icon: Columns2 },
+  { preset: "editor-only", label: "Editor Only", icon: Maximize },
+  { preset: "preview-only", label: "Preview Only", icon: Columns2 },
+];
+
+function activeLayoutPreset(viewMode: ViewMode, railTab: RailTab, showTree: boolean): LayoutPreset | null {
+  const isAi = railTab === "ai" || railTab === "chat";
+  if (!showTree) {
+    if (viewMode === "editor") return "editor-only";
+    if (viewMode === "pdf") return "preview-only";
+    return null;
+  }
+  if (viewMode === "split") return isAi ? "editor-preview-ai" : "editor-preview";
+  if (viewMode === "editor" && isAi) return "editor-ai";
+  if (viewMode === "pdf" && isAi) return "preview-ai";
+  return null;
+}
+
 export function TopToolbar() {
   const projectName = useFilesStore((s) => s.projectName);
   const projectId = useFilesStore((s) => s.projectId);
@@ -95,6 +119,9 @@ export function TopToolbar() {
   const setDiagramComposerOpen = useSettingsStore((s) => s.setDiagramComposerOpen);
   const viewMode = useSettingsStore((s) => s.viewMode);
   const setViewMode = useSettingsStore((s) => s.setViewMode);
+  const railTab = useSettingsStore((s) => s.railTab);
+  const showTree = useSettingsStore((s) => s.showTree);
+  const setLayoutPreset = useSettingsStore((s) => s.setLayoutPreset);
   const recompile = useCompileStore((s) => s.recompile);
   const status = useCompileStore((s) => s.status);
   const compiling = status === "compiling";
@@ -520,6 +547,33 @@ export function TopToolbar() {
             <Keyboard className="size-4" />
           </Button>
         </Tooltip>
+
+        <DropdownMenu>
+          <Tooltip label="Layout">
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground hover:text-foreground"
+                aria-label="Layout"
+              >
+                <LayoutGrid className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+          </Tooltip>
+          <DropdownMenuContent align="end" className="w-56">
+            {LAYOUT_OPTIONS.map(({ preset, label, icon: Icon }) => {
+              const active = activeLayoutPreset(viewMode, railTab, showTree) === preset;
+              return (
+                <DropdownMenuItem key={preset} onClick={() => setLayoutPreset(preset)}>
+                  <Icon className="size-4 text-muted-foreground" />
+                  <span className="flex-1">{label}</span>
+                  {active && <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />}
+                </DropdownMenuItem>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
 

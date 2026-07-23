@@ -132,6 +132,36 @@ export function wrapSelection(before: string, after: string) {
   v.focus();
 }
 
+export function insertTemplate(template: string, selStart: number, selEnd: number) {
+  const v = getEditorView();
+  if (!v) return;
+  const sel = v.state.selection.main;
+  v.dispatch({
+    changes: { from: sel.from, to: sel.to, insert: template },
+    selection: { anchor: sel.from + selStart, head: sel.from + selEnd },
+  });
+  v.focus();
+}
+
+export function wrapSelectionOrPlaceholder(before: string, after: string, placeholder: string) {
+  const v = getEditorView();
+  if (!v) return;
+  const sel = v.state.selection.main;
+  const content = sel.from !== sel.to ? v.state.sliceDoc(sel.from, sel.to) : placeholder;
+  insertTemplate(`${before}${content}${after}`, before.length, before.length + content.length);
+}
+
+export function insertEnvironment(name: string) {
+  const v = getEditorView();
+  if (!v) return;
+  const sel = v.state.selection.main;
+  const inner = v.state.sliceDoc(sel.from, sel.to);
+  const head = `\\begin{${name}}\n  `;
+  const template = `${head}${inner}\n\\end{${name}}\n`;
+  const cursor = head.length + inner.length;
+  insertTemplate(template, cursor, cursor);
+}
+
 export function focusEditor() {
   getEditorView()?.focus();
 }
