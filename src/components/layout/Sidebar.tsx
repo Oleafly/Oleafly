@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useState } from "react";
 import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
-import { FileText, Search } from "lucide-react";
+import { FileText, Loader2, Search } from "lucide-react";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { searchDocs, type SearchHit } from "@/lib/tauri";
@@ -122,11 +122,19 @@ export function FilesPanel() {
   );
 }
 
+function SidebarPanelFallback() {
+  return (
+    <div className="flex h-full items-center justify-center">
+      <Loader2 className="size-4 animate-spin text-muted-foreground" />
+    </div>
+  );
+}
+
 export function Sidebar() {
   const railTab = useSettingsStore((s) => s.railTab);
   const ActivePanel = registry.railTabs.find((t) => t.id === railTab)?.panel ?? FilesPanel;
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<SidebarPanelFallback />}>
       <ActivePanel />
     </Suspense>
   );

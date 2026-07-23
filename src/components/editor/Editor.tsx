@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { FileText, X } from "lucide-react";
+import { FileText, Loader2, X } from "lucide-react";
 import { CodeMirrorEditor } from "./CodeMirrorEditor";
 import { EditorContextMenu } from "./EditorContextMenu";
 import { EditorToolbar } from "./EditorToolbar";
@@ -268,7 +268,11 @@ export function Editor() {
           {isDiagramMainFile && diagramCanvasView && projectId && activePath ? (
             <div className="min-h-0 flex-1 overflow-hidden">
               <Suspense
-                fallback={<div className="p-6 text-sm text-muted-foreground">Loading…</div>}
+                fallback={
+                  <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="size-4 animate-spin" /> Loading…
+                  </div>
+                }
               >
                 <DiagramMainFileView projectId={projectId} path={activePath} />
               </Suspense>
