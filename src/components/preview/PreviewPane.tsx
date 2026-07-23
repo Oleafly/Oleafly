@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Columns2, Contrast, FileText, Loader2, Maximize, Minimize, PanelTopClose, PanelTopOpen, Play, RectangleVertical, Save, SquareArrowOutUpRight, X, XCircle, ZoomIn, ZoomOut } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Columns2, Contrast, FileText, Loader2, Maximize, Minimize, PanelTopClose, PanelTopOpen, Play, RectangleVertical, Save, ScrollText, SquareArrowOutUpRight, X, XCircle, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -217,7 +217,7 @@ export function PreviewPane() {
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            <AlertTriangle className="size-3.5" />
+            <ScrollText className="size-3.5" />
             Logs
             {errors.length > 0 && (
               <span

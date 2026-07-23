@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertCircle, BookOpen, Loader2, Quote, Search } from "lucide-react";
+import { AlertCircle, AtSign, BookOpen, Loader2, Search } from "lucide-react";
 import { useCitationStore } from "@/store/citation";
 import { resolveCitation, bibtexForHit, addCitation } from "@/features/citation";
 import type { CitationHit } from "@/lib/citation/types";
@@ -96,12 +96,12 @@ export function AddCitationDialog() {
         className="relative flex max-h-[60vh] w-[34rem] max-w-[92vw] flex-col rounded-lg border bg-popover text-popover-foreground shadow-xl"
       >
         <div className="flex items-center gap-2 border-b px-3 py-2.5">
-          <Quote className="size-4 text-muted-foreground" />
+          <AtSign className="size-4 text-muted-foreground" />
           <span id="citation-dialog-title" className="text-sm font-semibold">Add citation</span>
         </div>
 
         <div className="border-b p-3">
-          <div className="flex items-center gap-2 rounded-md border border-input bg-background py-1 pl-2.5 pr-1">
+          <div className="flex items-center gap-2 rounded-md bg-background py-1 pl-2.5 pr-1">
             <Search className="size-4 shrink-0 text-muted-foreground" />
             <Input
               data-modal-initial-focus
@@ -112,7 +112,7 @@ export function AddCitationDialog() {
                 if (e.key === "Escape") close();
               }}
               placeholder="DOI, arXiv id, URL, or a paper title…"
-              className="h-8 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              className="h-8 w-full border-0 bg-transparent text-sm shadow-none outline-none placeholder:text-muted-foreground"
             />
             <button type="button"
               onClick={() => void search()}
@@ -143,9 +143,9 @@ export function AddCitationDialog() {
                       setInput(ex.value);
                       void search(ex.value);
                     }}
-                    className="rounded-full border border-sidebar-border px-2.5 py-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
+                    className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[11px] text-primary hover:bg-primary/20"
                   >
-                    <span className="font-medium text-foreground/80">{ex.label}:</span> {ex.value}
+                    <span className="font-medium">{ex.label}:</span> {ex.value}
                   </button>
                 ))}
               </div>

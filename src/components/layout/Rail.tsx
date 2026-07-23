@@ -29,7 +29,7 @@ const railBtn = (active: boolean) =>
   cn(
     "flex size-9 items-center justify-center rounded-md transition-colors",
     active
-      ? "bg-accent text-foreground"
+      ? "bg-primary/10 text-foreground"
       : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
   );
 

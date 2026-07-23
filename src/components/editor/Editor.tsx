@@ -3,6 +3,7 @@ import { FileText, X } from "lucide-react";
 import { CodeMirrorEditor } from "./CodeMirrorEditor";
 import { EditorContextMenu } from "./EditorContextMenu";
 import { EditorToolbar } from "./EditorToolbar";
+import { SelectionActionMenu } from "./SelectionActionMenu";
 import { DiffView } from "./diff/DiffView";
 import { PdfViewer } from "@/components/pdf/PdfViewer";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -268,6 +269,7 @@ export function Editor() {
               <EditorContextMenu>
                 <CodeMirrorEditor />
               </EditorContextMenu>
+              <SelectionActionMenu />
             </div>
           )}
         </>

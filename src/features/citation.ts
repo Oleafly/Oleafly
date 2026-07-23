@@ -1,6 +1,7 @@
 import { fetchDoiBibtex, fetchArxiv, crossrefSearch, readFileContent, writeFileContent } from "@/lib/tauri";
 import { detectInput } from "@/lib/citation/detect";
-import { parseEntry, generateCiteKey, setKey } from "@/lib/citation/bibtex";
+import { parseEntry, generateCiteKey, setKey, stringifyBibEntry } from "@/lib/citation/bibtex";
+import type { ParsedBib } from "@/lib/citation/types";
 import { parseCrossrefSearch } from "@/lib/citation/crossref";
 import { arxivXmlToBibtex } from "@/lib/citation/arxiv";
 import { findKeyByDoi } from "@/lib/citation/dedup";
@@ -139,6 +140,86 @@ export async function addCitation(bibtex: string): Promise<{ key: string } | { e
   insertCite(key);
   void useIndexStore.getState().rebuildFromDisk();
   return { key };
+}
+
+export interface BatchImportResult {
+  imported: number;
+  duplicates: number;
+  errors: string[];
+}
+
+// Imports a whole reference library (from Zotero/EndNote/RIS/BibTeX) into the
+// project's bib file in one write, deduping by DOI against both the existing
+// file and the rest of the batch. Unlike addCitation, this never inserts a
+// \cite{} at the cursor - a bulk import is a library, not a citation action.
+export async function addCitations(entries: ParsedBib[]): Promise<BatchImportResult> {
+  if (!entries.length) return { imported: 0, duplicates: 0, errors: [] };
+
+  const files = useFilesStore.getState();
+  const id = files.projectId;
+  const target = pickTargetBib();
+  let content = target.content;
+  if (!content && id && files.files[target.path] === undefined) {
+    content = await readFileContent(id, target.path).catch(() => "");
+  }
+
+  const idx = useIndexStore.getState().index;
+  const existingKeys = new Set<string>(idx ? idx.defs.filter((d) => d.kind === "bibentry").map((d) => d.name) : []);
+  for (const km of content.matchAll(/@\w+\s*\{\s*([^,\s}]+)/g)) existingKeys.add(km[1]);
+
+  const seenDois = new Set<string>();
+  const newBlocks: string[] = [];
+  let duplicates = 0;
+  for (const entry of entries) {
+    const doi = entry.fields.doi?.trim().toLowerCase();
+    if (doi && (findKeyByDoi(content, doi) || seenDois.has(doi))) {
+      duplicates++;
+      continue;
+    }
+    if (doi) seenDois.add(doi);
+    const key = generateCiteKey(entry.fields, existingKeys);
+    existingKeys.add(key);
+    newBlocks.push(stringifyBibEntry({ ...entry, key }));
+  }
+
+  if (!newBlocks.length) return { imported: 0, duplicates, errors: [] };
+
+  const newContent = content.trim()
+    ? `${content.trimEnd()}\n\n${newBlocks.join("\n\n")}\n`
+    : `${newBlocks.join("\n\n")}\n`;
+
+  const errors: string[] = [];
+  if (files.files[target.path] !== undefined) {
+    files.setContent(target.path, newContent);
+    try {
+      await useFilesStore.getState().saveFile(target.path);
+    } catch (e) {
+      errors.push(`Could not write ${target.path}: ${e}`);
+    }
+  } else if (id) {
+    try {
+      await writeFileContent(id, target.path, newContent);
+    } catch (e) {
+      errors.push(`Could not write ${target.path}: ${e}`);
+    }
+  }
+
+  if (!errors.length && files.engine.capabilities.formatting_profile === "typst" && id) {
+    const mainPath = files.mainDoc;
+    const main = files.files[mainPath]?.content ?? (await readFileContent(id, mainPath).catch(() => ""));
+    if (!/#bibliography\s*\(/.test(main)) {
+      const next = ensureTypstBibliography(main, target.path);
+      if (files.files[mainPath] !== undefined) {
+        files.setContent(mainPath, next);
+        await useFilesStore.getState().saveFile(mainPath);
+      } else {
+        await writeFileContent(id, mainPath, next);
+      }
+    }
+  }
+
+  if (!errors.length) void useIndexStore.getState().rebuildFromDisk();
+  return { imported: newBlocks.length, duplicates, errors };
 }
 
 function insertCite(key: string) {

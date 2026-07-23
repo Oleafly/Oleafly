@@ -17,7 +17,7 @@ async function openHistory(page: Page) {
   await page.fill("[cmdk-input]", "history");
   await page.press("[cmdk-input]", "Enter");
   await page.waitForFunction(
-    `Array.from(document.querySelectorAll('h2')).some((h) => h.textContent.trim() === 'History')`,
+    `Array.from(document.querySelectorAll('h2')).some((h) => h.textContent.trim() === 'Version History')`,
     10_000,
   );
 }
@@ -36,7 +36,7 @@ async function restoreByIndex(page: Page, index: number) {
   if (!clicked) throw new Error(`no Restore button at index ${index}`);
   await page.getByText("Overwrite all").click();
   await page.waitForFunction(
-    `!Array.from(document.querySelectorAll('h2')).some((h) => h.textContent.trim() === 'History')`,
+    `!Array.from(document.querySelectorAll('h2')).some((h) => h.textContent.trim() === 'Version History')`,
     15_000,
   );
 }

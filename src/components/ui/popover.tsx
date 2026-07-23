@@ -8,6 +8,7 @@ interface PopoverProps {
   children: ReactNode;
   align?: "left" | "right";
   className?: string;
+  triggerClassName?: string;
   ariaLabel?: string;
   closeOnClick?: boolean;
 }
@@ -17,6 +18,7 @@ export function Popover({
   children,
   align = "left",
   className,
+  triggerClassName,
   ariaLabel,
   closeOnClick = true,
 }: PopoverProps) {
@@ -34,9 +36,13 @@ export function Popover({
         <Button
           type="button"
           variant="ghost"
-          size="icon"
+          size={triggerClassName ? "sm" : "icon"}
           aria-label={ariaLabel}
-          className={cn("size-7 text-muted-foreground", open && "bg-accent text-foreground")}
+          className={cn(
+            triggerClassName ? "text-foreground" : "size-7 text-muted-foreground",
+            open && "bg-accent text-foreground",
+            triggerClassName,
+          )}
           onPointerDown={() => {
             interactionInsideRef.current = false;
           }}
@@ -57,7 +63,7 @@ export function Popover({
             const target = event.target;
             if (
               target instanceof Element &&
-              target.closest('[role="listbox"]')
+              target.closest('[role="listbox"], [data-radix-popper-content-wrapper]')
             ) {
               interactionInsideRef.current = true;
               event.preventDefault();
@@ -69,7 +75,7 @@ export function Popover({
             if (
               !closeOnClick &&
               event.target instanceof Element &&
-              event.target.closest('[role="listbox"]')
+              event.target.closest('[role="listbox"], [data-radix-popper-content-wrapper]')
             ) {
               interactionInsideRef.current = true;
               event.preventDefault();
@@ -81,7 +87,7 @@ export function Popover({
             if (
               !closeOnClick &&
               event.target instanceof Element &&
-              event.target.closest('[role="listbox"]')
+              event.target.closest('[role="listbox"], [data-radix-popper-content-wrapper]')
             ) {
               interactionInsideRef.current = true;
               event.preventDefault();

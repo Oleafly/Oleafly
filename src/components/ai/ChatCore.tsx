@@ -11,16 +11,24 @@ import {
 import {
   ArrowUp,
   BadgeDollarSign,
+  BookOpen,
   Brain,
   ChevronDown,
+  FilePlus2,
   History,
+  Library,
   MessageSquareQuote,
+  Mic,
   Paperclip,
   Plus,
+  Quote,
   RotateCcw,
   PanelRightOpen,
+  Search,
   Sparkles,
   Square,
+  Wrench,
+  type LucideIcon,
 } from "lucide-react";
 import { useFilesStore } from "@/store/files";
 import { getConfig, setConfig, gitLog, gitAutoCommit, type AppConfig } from "@/lib/tauri";
@@ -49,6 +57,8 @@ import { packChatHistory, packToolOutput } from "@/lib/ai-context-pack";
 import { estimateUsd, formatUsd } from "@/lib/ai-pricing";
 import { formatRagContext, retrieveProjectChunks } from "@/lib/ai-rag";
 import { ChatHistoryModal } from "@/components/ai/ChatHistoryModal";
+import { ConnectSourcesDialog } from "@/components/ai/ConnectSourcesDialog";
+import { PROMPT_CATEGORIES } from "@/components/ai/prompt-shortcuts";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,11 +85,22 @@ import {
 import type { EngineFeature } from "@/lib/tauri";
 
 const SUGGESTIONS = [
+  "Find papers to cite",
+  "Write a literature review",
   "Fix any source errors in my document",
   "Create a new section called 'Publications'",
   "Find every citation in the project",
   "Recompile and check for errors",
 ];
+
+const SUGGESTION_ICONS: Record<string, LucideIcon> = {
+  "Find papers to cite": Search,
+  "Write a literature review": BookOpen,
+  "Fix any source errors in my document": Wrench,
+  "Create a new section called 'Publications'": FilePlus2,
+  "Find every citation in the project": Quote,
+  "Recompile and check for errors": RotateCcw,
+};
 
 const FIGURE_SUGGESTIONS = [
   "Draw a transformer encoder with 6 blocks, attention highlighted, residual connections",
@@ -173,6 +194,7 @@ export function ChatCore() {
   const [ollamaModels, setOllamaModels] = useState<string[]>([]);
   const [thinkingText, setThinkingText] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [connectSourcesOpen, setConnectSourcesOpen] = useState(false);
   const [currentHead, setCurrentHead] = useState<string | null>(null);
   const [quotaWarning, setQuotaWarning] = useState(false);
   const [pendingApproval, setPendingApproval] = useState<
@@ -209,6 +231,7 @@ export function ChatCore() {
   const customPromptRef = useRef("");
   customPromptRef.current = customPrompt;
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const MAX_ATTACH = 6;
   const MAX_ATTACH_BYTES = 10 * 1024 * 1024;
@@ -1125,6 +1148,15 @@ ${sandboxedCustom}`;
     }
   }, [messages, streaming, apiKey, provider, model, projectId, projectName, currentHead, figureMode, figureModeAvailable, engineLoaded, documentEngine, projectKind, openAISettings, flushStreamPatches, updateLast]);
 
+  useEffect(() => {
+    const onSelectionAction = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { prompt?: string };
+      if (detail?.prompt) void send(detail.prompt);
+    };
+    window.addEventListener("oleafly:ai-selection-action", onSelectionAction);
+    return () => window.removeEventListener("oleafly:ai-selection-action", onSelectionAction);
+  }, [send]);
+
   const stop = useCallback(() => {
     abortRef.current?.abort();
   }, []);
@@ -1239,17 +1271,6 @@ ${sandboxedCustom}`;
         <div className="ml-auto flex items-center gap-0.5">
           {configuredProviders.length > 0 && (
             <>
-              <div data-tour="ai-provider-model">
-                <ModelSelector
-                  compact
-                  providerId={provider}
-                  modelId={model}
-                  groups={modelGroups}
-                  onChange={(nextProvider, nextModel) =>
-                    void selectModel(nextProvider, nextModel)
-                  }
-                />
-              </div>
 
               {hasUsage && (
                 <div data-tour="ai-usage">
@@ -1315,19 +1336,6 @@ ${sandboxedCustom}`;
                 </Tooltip>
                 </div>
               )}
-
-              {figureModeAvailable && <Tooltip label={figureMode ? "Figure mode on" : "Draw a figure"}>
-                <button type="button"
-                  onClick={() => setFigureMode((v) => !v)}
-                  aria-label="Toggle figure mode"
-                  className={cn(
-                    "flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
-                    figureMode && "bg-accent text-foreground",
-                  )}
-                >
-                  <Sparkles className="size-4" />
-                </button>
-              </Tooltip>}
 
               <Tooltip label="New chat">
                 <button type="button"
@@ -1441,15 +1449,55 @@ ${sandboxedCustom}`;
           <div ref={scrollRef} onScroll={onMessagesScroll} className="h-full overflow-auto px-3 py-3">
             {messages.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center gap-3 px-2">
-                <p className="text-sm text-muted-foreground">
-                  {figureMode ? "Describe a figure and I will draw, compile, and refine it." : "Ask me anything about your project."}
-                </p>
-                <div className="flex w-full flex-col gap-1.5">
-                  {(figureMode ? FIGURE_SUGGESTIONS : SUGGESTIONS).map((s) => (
-                    <button type="button" key={s} onClick={() => void send(s)} className="rounded-md border border-sidebar-border bg-accent px-3 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-[color-mix(in_oklch,var(--accent),#000_18%)] hover:text-foreground">{s}</button>
-                  ))}
+                {figureMode ? (
+                  <p className="text-sm text-muted-foreground">
+                    Describe a figure and I will draw, compile, and refine it.
+                  </p>
+                ) : (
+                  <>
+                    <span className="flex size-12 items-center justify-center rounded-full bg-foreground text-background">
+                      <Sparkles className="size-6" />
+                    </span>
+                    <div className="space-y-1 text-center">
+                      <p className="text-base font-semibold text-foreground">How can I help with your research?</p>
+                      {projectName && (
+                        <p className="text-xs text-muted-foreground">Working on "{projectName}"</p>
+                      )}
+                    </div>
+                  </>
+                )}
+                <div className="flex w-full flex-wrap items-center justify-center gap-1.5">
+                  {(figureMode ? FIGURE_SUGGESTIONS : SUGGESTIONS).map((s) => {
+                    const Icon = figureMode ? null : SUGGESTION_ICONS[s];
+                    return (
+                      <button
+                        type="button"
+                        key={s}
+                        onClick={() => void send(s)}
+                        className={cn(
+                          "flex items-center gap-1.5 rounded-full border text-left text-xs transition-colors",
+                          figureMode
+                            ? "border-sidebar-border bg-accent px-3 py-1.5 text-muted-foreground hover:bg-[color-mix(in_oklch,var(--accent),#000_18%)] hover:text-foreground"
+                            : "border-blue-200 bg-blue-50 px-3 py-2 text-blue-700 hover:bg-blue-100 dark:border-blue-800/60 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-950/70",
+                        )}
+                      >
+                        {Icon && <Icon className="size-3.5 shrink-0" />}
+                        {s}
+                      </button>
+                    );
+                  })}
                 </div>
 
+                {!figureMode && (
+                  <button
+                    type="button"
+                    onClick={() => setConnectSourcesOpen(true)}
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    <Library className="size-3.5" />
+                    Import your Zotero or EndNote library
+                  </button>
+                )}
 
                 {chats.length > 0 && (
                   <div className="mt-2 flex w-full max-w-[300px] flex-col gap-0.5">
@@ -1587,7 +1635,7 @@ ${sandboxedCustom}`;
               items={attachments}
               onRemove={(id) => setAttachments((a) => a.filter((x) => x.id !== id))}
             />
-            <div className="flex items-end gap-2 rounded-lg border bg-background p-2">
+            <div className="rounded-lg bg-background p-2">
               <Input
                 ref={fileInputRef}
                 type="file"
@@ -1596,17 +1644,8 @@ ${sandboxedCustom}`;
                 className="hidden"
                 onChange={(e) => { void addFiles(e.target.files); e.target.value = ""; }}
               />
-              <button
-                data-tour="ai-attachments"
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                aria-label="Attach a file or image"
-                title="Attach a file or image"
-                className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              >
-                <Paperclip className="size-4" />
-              </button>
               <Textarea
+                ref={textareaRef}
                 data-tour="ai-input"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -1614,29 +1653,129 @@ ${sandboxedCustom}`;
                 placeholder={!engineLoaded ? "Document engine unavailable. AI editing disabled" : figureMode ? "Describe a figure to draw…" : "Ask AI to help with your document…"}
                 disabled={!engineLoaded}
                 rows={1}
-                className="max-h-32 min-h-[24px] flex-1 resize-none rounded-md bg-transparent pl-2 text-sm outline-none placeholder:text-muted-foreground"
+                className="max-h-32 min-h-[24px] w-full resize-none rounded-md border-0 bg-transparent px-1 text-sm shadow-none outline-none placeholder:text-muted-foreground"
                 style={{ height: "auto" }}
                 onInput={(e) => { const t = e.currentTarget; t.style.height = "auto"; t.style.height = `${Math.min(t.scrollHeight, 128)}px`; }}
               />
-              {streaming ? (
-                <button type="button"
-                  onClick={stop}
-                  aria-label="Stop"
-                  title="Stop generating"
-                  className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-white transition-colors hover:opacity-90"
-                >
-                  <Square className="size-3.5 fill-current" />
-                </button>
-              ) : (
-                <button type="button"
-                  onClick={() => void send(input)}
-                  disabled={!engineLoaded || (!input.trim() && attachments.length === 0)}
-                  aria-label="Send"
-                  className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-white transition-colors hover:bg-primary disabled:opacity-40"
-                >
-                  <ArrowUp className="size-4" />
-                </button>
-              )}
+              <div className="mt-1.5 flex items-center justify-between">
+                <div className="flex items-center gap-0.5">
+                  <button
+                    data-tour="ai-attachments"
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    aria-label="Attach a file or image"
+                    title="Attach a file or image"
+                    className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  >
+                    <Paperclip className="size-4" />
+                  </button>
+                  {figureModeAvailable && (
+                    <Tooltip label={figureMode ? "Figure mode on" : "Draw a figure"}>
+                      <button type="button"
+                        onClick={() => setFigureMode((v) => !v)}
+                        aria-label="Toggle figure mode"
+                        className={cn(
+                          "flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                          figureMode && "bg-accent text-foreground",
+                        )}
+                      >
+                        <Sparkles className="size-4" />
+                      </button>
+                    </Tooltip>
+                  )}
+                  {!figureMode && (
+                    <Popover
+                      align="left"
+                      ariaLabel="Prompts"
+                      triggerClassName="gap-1 px-2 text-xs font-medium"
+                      className="max-h-96 w-80 overflow-y-auto p-1.5"
+                      trigger={
+                        <>
+                          Prompts
+                          <ChevronDown className="size-3.5" />
+                        </>
+                      }
+                    >
+                      {PROMPT_CATEGORIES.map((category, i) => (
+                        <div
+                          key={category.label}
+                          className={cn("py-2", i > 0 && "mt-1 border-t pt-2.5")}
+                        >
+                          <span className="block px-2.5 pb-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
+                            {category.label}
+                          </span>
+                          <div className="space-y-0.5">
+                            {category.items.map((item) => (
+                              <button
+                                type="button"
+                                key={item.label}
+                                onClick={() => {
+                                  setInput(item.prompt);
+                                  requestAnimationFrame(() => textareaRef.current?.focus());
+                                }}
+                                className="flex w-full items-start gap-2.5 rounded-md px-2.5 py-2.5 text-left transition-colors hover:bg-accent"
+                              >
+                                <item.icon className="mt-0.5 size-4 shrink-0 text-primary" />
+                                <span className="min-w-0 flex-1">
+                                  <span className="block truncate text-xs font-medium leading-snug">{item.label}</span>
+                                  <span className="block truncate text-[11px] leading-snug text-muted-foreground">
+                                    {item.description}
+                                  </span>
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </Popover>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  {configuredProviders.length > 0 && (
+                    <div data-tour="ai-provider-model">
+                      <ModelSelector
+                        compact
+                        className="h-7 gap-1 px-2 text-xs font-medium text-foreground hover:text-foreground"
+                        providerId={provider}
+                        modelId={model}
+                        groups={modelGroups}
+                        onChange={(nextProvider, nextModel) =>
+                          void selectModel(nextProvider, nextModel)
+                        }
+                      />
+                    </div>
+                  )}
+                  <Tooltip label="Voice input is coming soon">
+                    <button
+                      type="button"
+                      disabled
+                      aria-label="Voice input (coming soon)"
+                      className="flex size-7 shrink-0 cursor-not-allowed items-center justify-center rounded-md text-muted-foreground/40"
+                    >
+                      <Mic className="size-4" />
+                    </button>
+                  </Tooltip>
+                  {streaming ? (
+                    <button type="button"
+                      onClick={stop}
+                      aria-label="Stop"
+                      title="Stop generating"
+                      className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-white transition-colors hover:opacity-90"
+                    >
+                      <Square className="size-3.5 fill-current" />
+                    </button>
+                  ) : (
+                    <button type="button"
+                      onClick={() => void send(input)}
+                      disabled={!engineLoaded || (!input.trim() && attachments.length === 0)}
+                      aria-label="Send"
+                      className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-white transition-colors hover:bg-primary disabled:opacity-40"
+                    >
+                      <ArrowUp className="size-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
           </div>
@@ -1655,6 +1794,7 @@ ${sandboxedCustom}`;
           if (id === activeChatId) newChat();
         }}
       />
+      <ConnectSourcesDialog open={connectSourcesOpen} onOpenChange={setConnectSourcesOpen} />
     </div>
   );
 }

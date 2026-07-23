@@ -15,6 +15,13 @@ const SETTINGS_SECTIONS = new Set([
 ]);
 
 export type ViewMode = "split" | "editor" | "pdf";
+export type LayoutPreset =
+  | "editor-preview-ai"
+  | "editor-preview"
+  | "editor-ai"
+  | "preview-ai"
+  | "editor-only"
+  | "preview-only";
 export type RailTab =
   | "files"
   | "search"
@@ -128,6 +135,9 @@ interface SettingsState {
   setHotkeysOpen: (v: boolean) => void;
   railTab: RailTab;
   setRailTab: (v: RailTab) => void;
+  suppressAiAutoLayout: boolean;
+  setSuppressAiAutoLayout: (v: boolean) => void;
+  setLayoutPreset: (v: LayoutPreset) => void;
   resetToDefaults: () => void;
 }
 
@@ -250,6 +260,42 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   setHotkeysOpen: (v) => set({ hotkeysOpen: v }),
   railTab: "files",
   setRailTab: (v) => set({ railTab: v }),
+  suppressAiAutoLayout: false,
+  setSuppressAiAutoLayout: (v) => set({ suppressAiAutoLayout: v }),
+  setLayoutPreset: (preset) => {
+    switch (preset) {
+      case "editor-preview-ai":
+        set({ suppressAiAutoLayout: true, showTree: true, railTab: "ai", viewMode: "split" });
+        break;
+      case "editor-preview":
+        set((s) => ({
+          showTree: true,
+          railTab: s.railTab === "ai" || s.railTab === "chat" ? "files" : s.railTab,
+          viewMode: "split",
+        }));
+        break;
+      case "editor-ai":
+        set({ suppressAiAutoLayout: true, showTree: true, railTab: "ai", viewMode: "editor" });
+        break;
+      case "preview-ai":
+        set({ suppressAiAutoLayout: true, showTree: true, railTab: "ai", viewMode: "pdf" });
+        break;
+      case "editor-only":
+        set((s) => ({
+          showTree: false,
+          railTab: s.railTab === "ai" || s.railTab === "chat" ? "files" : s.railTab,
+          viewMode: "editor",
+        }));
+        break;
+      case "preview-only":
+        set((s) => ({
+          showTree: false,
+          railTab: s.railTab === "ai" || s.railTab === "chat" ? "files" : s.railTab,
+          viewMode: "pdf",
+        }));
+        break;
+    }
+  },
   resetToDefaults: () => {
     // Drop the persisted copies so a restart doesn't resurrect old values.
     saveLs("oleafly.vim", PREF_DEFAULTS.vim ? "1" : "0");
