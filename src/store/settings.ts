@@ -26,6 +26,9 @@ export type RailTab =
   | "refs"
   | "mcp";
 
+export type DockPlacement = "left" | "bottom";
+export type DashboardGlass = "minimal" | "ambient" | "full";
+
 function ls(k: string, fb: string): string {
   try {
     return typeof localStorage !== "undefined"
@@ -128,6 +131,10 @@ interface SettingsState {
   setHotkeysOpen: (v: boolean) => void;
   railTab: RailTab;
   setRailTab: (v: RailTab) => void;
+  dockPlacement: DockPlacement;
+  setDockPlacement: (v: DockPlacement) => void;
+  dashboardGlass: DashboardGlass;
+  setDashboardGlass: (v: DashboardGlass) => void;
   resetToDefaults: () => void;
 }
 
@@ -146,6 +153,8 @@ const PREF_DEFAULTS = {
   openInTree: false,
   hoverPreview: true,
   accentColor: "#2563eb",
+  dockPlacement: "left" as DockPlacement,
+  dashboardGlass: "ambient" as DashboardGlass,
 } as const;
 
 export const useSettingsStore = create<SettingsState>((set) => ({
@@ -244,6 +253,16 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     saveLs("oleafly.accent", v);
     set({ accentColor: v });
   },
+  dockPlacement: (ls("oleafly.dockPlacement", "left") as DockPlacement) || "left",
+  setDockPlacement: (v) => {
+    saveLs("oleafly.dockPlacement", v);
+    set({ dockPlacement: v });
+  },
+  dashboardGlass: (ls("oleafly.dashboardGlass", "ambient") as DashboardGlass) || "ambient",
+  setDashboardGlass: (v) => {
+    saveLs("oleafly.dashboardGlass", v);
+    set({ dashboardGlass: v });
+  },
   showTree: true,
   toggleTree: () => set((s) => ({ showTree: !s.showTree })),
   hotkeysOpen: false,
@@ -265,6 +284,8 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     saveLs("oleafly.openInTree", PREF_DEFAULTS.openInTree ? "1" : "0");
     saveLs("oleafly.hoverPreview", PREF_DEFAULTS.hoverPreview ? "1" : "0");
     saveLs("oleafly.accent", PREF_DEFAULTS.accentColor);
+    saveLs("oleafly.dockPlacement", PREF_DEFAULTS.dockPlacement);
+    saveLs("oleafly.dashboardGlass", PREF_DEFAULTS.dashboardGlass);
     set({ ...PREF_DEFAULTS });
   },
 }));
