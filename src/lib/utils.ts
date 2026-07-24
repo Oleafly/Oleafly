@@ -14,13 +14,6 @@ export const isMac =
   typeof navigator !== "undefined" &&
   /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 
-// The main window ships with no native decorations on Windows (see
-// src-tauri/tauri.windows.conf.json) so it matches macOS's borderless-overlay
-// look instead of the stock opaque titlebar - WindowControls.tsx renders the
-// replacement minimize/maximize/close buttons only on this platform.
-export const isWindows =
-  typeof navigator !== "undefined" && /Win/.test(navigator.platform || navigator.userAgent);
-
 export const modKey = isMac ? "⌘" : "Ctrl";
 export const altKey = isMac ? "⌥" : "Alt";
 export const shiftKey = isMac ? "⇧" : "Shift";
