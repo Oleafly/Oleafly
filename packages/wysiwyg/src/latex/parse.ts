@@ -115,9 +115,18 @@ export function parseLatexBody(body: string): JSONContent {
   };
 
   for (const node of ast.content) {
-    if (node.type === "whitespace") continue;
+    if (node.type === "whitespace") {
+      if (paragraphBuffer.length === 0) continue;
+      paragraphBuffer.push(node);
+      continue;
+    }
     if (node.type === "parbreak") {
       flushParagraph();
+      continue;
+    }
+    if (node.type === "comment") {
+      flushParagraph();
+      content.push({ type: "rawBlock", attrs: { source: printRawNode(node) } });
       continue;
     }
     if (node.type === "macro") {
@@ -146,6 +155,8 @@ export function parseLatexBody(body: string): JSONContent {
         content.push(mapped);
         continue;
       }
+      content.push({ type: "rawBlock", attrs: { source: printRawNode(node) } });
+      continue;
     }
     paragraphBuffer.push(node);
   }

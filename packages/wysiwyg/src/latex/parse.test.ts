@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { parseLatexBody } from "./parse";
 
+function fullText(node: { content?: { text?: string }[] } | undefined): string {
+  return (node?.content ?? []).map((n) => n.text ?? "").join("");
+}
+
 describe("parseLatexBody", () => {
   it("parses a section heading and a paragraph with marks and a link", () => {
     const body = "\\section{Intro}\nSome \\textbf{bold} and \\textit{italic} text with a \\href{https://example.com}{link}.\n";
@@ -17,6 +21,14 @@ describe("parseLatexBody", () => {
     const link = paragraph?.content?.find((n) => n.marks?.some((m) => m.type === "link"));
     expect(link?.text).toBe("link");
     expect(link?.marks?.find((m) => m.type === "link")?.attrs?.href).toBe("https://example.com");
+    expect(fullText(paragraph)).toBe("Some bold and italic text with a link.");
+  });
+
+  it("preserves spacing between words in a plain paragraph with no macros", () => {
+    const doc = parseLatexBody("This is a plain paragraph with several words.\n");
+    const paragraph = doc.content?.[0];
+    expect(paragraph?.type).toBe("paragraph");
+    expect(fullText(paragraph)).toBe("This is a plain paragraph with several words.");
   });
 
   it("parses a quote environment as a blockquote", () => {
@@ -44,5 +56,23 @@ describe("parseLatexBody", () => {
   it("falls back to a rawBlock for unrecognized macros", () => {
     const doc = parseLatexBody("\\newcommand{\\foo}{bar}\n\\foo\n");
     expect(doc.content?.some((n) => n.type === "rawBlock")).toBe(true);
+  });
+
+  it("preserves a comment as a rawBlock instead of dropping it", () => {
+    const doc = parseLatexBody("Some text % a trailing comment\nmore text.\n");
+    const rawBlock = doc.content?.find((n) => n.type === "rawBlock");
+    expect(rawBlock).toBeDefined();
+    expect(rawBlock?.attrs?.source).toContain("a trailing comment");
+    const texts = doc.content?.filter((n) => n.type === "paragraph").map((n) => fullText(n));
+    expect(texts).toContain("Some text");
+    expect(texts).toContain("more text.");
+  });
+
+  it("falls back to a rawBlock for unrecognized environments", () => {
+    const doc = parseLatexBody("\\begin{tabular}{cc}\na & b\n\\end{tabular}\n");
+    const rawBlock = doc.content?.find((n) => n.type === "rawBlock");
+    expect(rawBlock).toBeDefined();
+    expect(rawBlock?.attrs?.source).toContain("\\begin{tabular}");
+    expect(rawBlock?.attrs?.source).toContain("\\end{tabular}");
   });
 });
