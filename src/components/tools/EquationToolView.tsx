@@ -7,6 +7,7 @@ import {
   renderEquation,
 } from "@/components/tools/EquationPreviewPanel";
 import { useHomeViewStore } from "@/store/home-view";
+import { useSettingsStore } from "@/store/settings";
 import { useTheme } from "@/lib/theme";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { cn, isMac } from "@/lib/utils";
@@ -16,6 +17,7 @@ export function EquationToolView() {
   const activePage = useHomeViewStore((s) => s.page);
   const goTo = useHomeViewStore((s) => s.goTo);
   const { theme, toggleTheme } = useTheme();
+  const editorTheme = useSettingsStore((s) => s.editorTheme);
   const fullscreen = useFullscreen();
   const [input, setInput] = useState(EQUATION_EXAMPLES[0].latex);
   const [display, setDisplay] = useState(true);
@@ -113,6 +115,7 @@ export function EquationToolView() {
         onPreviewThemeChange={setPreviewTheme}
         zoom={zoom}
         onZoomChange={setZoom}
+        editorTheme={editorTheme}
       />
     </div>
   );

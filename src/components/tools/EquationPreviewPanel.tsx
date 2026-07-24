@@ -40,6 +40,7 @@ interface EquationPreviewPanelProps {
   onPreviewThemeChange: (theme: "light" | "dark") => void;
   zoom: number;
   onZoomChange: (zoom: number) => void;
+  editorTheme: string;
 }
 
 const MIN_ZOOM = 25;
@@ -56,6 +57,7 @@ export function EquationPreviewPanel({
   onPreviewThemeChange,
   zoom,
   onZoomChange,
+  editorTheme,
 }: EquationPreviewPanelProps) {
   const previewCardRef = useRef<HTMLDivElement>(null);
   const lines = input.split("\n");
@@ -101,8 +103,18 @@ export function EquationPreviewPanel({
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-1 overflow-auto">
-          <div className="select-none border-r px-3 py-4 text-right font-mono text-xs text-muted-foreground">
+        <div
+          data-editor-theme={editorTheme}
+          className="flex min-h-0 flex-1 overflow-auto"
+          style={{
+            backgroundColor: "var(--cm-editor-bg, var(--background))",
+            color: "var(--cm-editor-fg, var(--foreground))",
+          }}
+        >
+          <div
+            className="select-none border-r px-3 py-4 text-right font-mono text-xs"
+            style={{ color: "var(--cm-gutter-fg, var(--muted-foreground))" }}
+          >
             {lines.map((_, i) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: line numbers are positionally stable within a render
               <div key={i} className="leading-6">
@@ -114,7 +126,8 @@ export function EquationPreviewPanel({
             value={input}
             onChange={(e) => onInputChange(e.target.value)}
             spellCheck={false}
-            className="min-h-full flex-1 resize-none border-0 bg-transparent px-3 py-4 font-mono text-sm leading-6 text-foreground outline-none"
+            className="min-h-full flex-1 resize-none border-0 bg-transparent px-3 py-4 font-mono text-sm leading-6 outline-none"
+            style={{ color: "var(--cm-editor-fg, var(--foreground))", caretColor: "var(--cm-cursor, var(--primary))" }}
           />
         </div>
 
@@ -174,11 +187,11 @@ export function EquationPreviewPanel({
           </div>
         </div>
 
-        <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-auto p-8">
+        <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-auto p-4">
           <div
             ref={previewCardRef}
             className={cn(
-              "relative flex max-h-full max-w-full items-center justify-center overflow-auto rounded-xl p-10",
+              "relative flex h-full w-full items-center justify-center overflow-auto rounded-xl p-10",
               previewTheme === "dark" ? "bg-[#111111] text-white" : "bg-white text-black",
             )}
           >
