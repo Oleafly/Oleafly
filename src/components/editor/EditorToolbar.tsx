@@ -193,10 +193,24 @@ function btnControl(
   };
 }
 
+const DIVIDER_WIDTH = 9;
+
+// Purely visual grouping between clusters of controls: takes part in the
+// overflow width math but renders nothing in the "More" menu.
+function dividerControl(id: string): ToolbarControl {
+  return {
+    id,
+    width: DIVIDER_WIDTH,
+    render: () => <Divider />,
+    renderMenu: () => null,
+  };
+}
+
 function HeadingDropdown({ variant }: { variant: "bar" | "menu" }) {
   return (
     <Popover
       ariaLabel="Heading level"
+      className="w-auto min-w-0"
       triggerClassName={variant === "bar" ? "gap-0.5 px-1.5" : "w-full justify-start gap-2 px-2 font-normal"}
       trigger={
         variant === "bar" ? (
@@ -368,9 +382,11 @@ export function EditorToolbar({
         render: () => <HeadingDropdown variant="bar" />,
         renderMenu: () => <HeadingDropdown key="heading" variant="menu" />,
       },
+      dividerControl("divider-1"),
       btnControl("bold", Bold, "Bold", insertBold, `Bold (${shortcut("⌘B")})`),
       btnControl("italic", Italic, "Italic", insertItalic, `Italic (${shortcut("⌘I")})`),
       btnControl("underline", Underline, "Underline", insertUnderline),
+      dividerControl("divider-2"),
       btnControl("code", Code, "Inline code", insertCode),
       btnControl("link", LinkIcon, "Insert link", insertLink),
       btnControl(
@@ -383,6 +399,7 @@ export function EditorToolbar({
       btnControl("ref", Tag, "Insert cross-reference", insertRef),
       btnControl("footnote", Asterisk, "Insert footnote", insertFootnote),
       btnControl("blockquote", Quote, "Insert blockquote", insertBlockquote),
+      dividerControl("divider-3"),
       btnControl("figure", ImageIcon, "Insert figure", insertFigure),
       {
         id: "table",
@@ -413,6 +430,7 @@ export function EditorToolbar({
     }
 
     list.push(
+      dividerControl("divider-4"),
       {
         id: "list",
         width: ICON_BUTTON_WIDTH,
@@ -422,6 +440,7 @@ export function EditorToolbar({
       btnControl("align", Rows3, "Align environment", insertAlign, "Insert align environment"),
       btnControl("equation", Sigma, "Equation environment", insertEquation, "Insert equation environment"),
       btnControl("fraction", Divide, "Fraction", insertFraction, "Insert fraction"),
+      dividerControl("divider-5"),
       {
         id: "symbols",
         width: ICON_BUTTON_WIDTH,
@@ -436,12 +455,8 @@ export function EditorToolbar({
       }
     );
 
-    if (syncTexSupported) {
-      list.push(btnControl("synctex", ArrowRight, "Go to PDF (SyncTeX)", goToSyncTex));
-    }
-
     return list;
-  }, [visionReady, syncTexSupported]);
+  }, [visionReady]);
 
   const { containerRef, availableWidth } = useAvailableWidth();
   const visibleCount = fitCount(controls, availableWidth);
@@ -491,11 +506,19 @@ export function EditorToolbar({
       </div>
 
       <div className="ml-auto flex shrink-0 items-center gap-0.5">
+        <WysiwygModeSwitch wysiwyg={wysiwyg} onToggle={onToggleWysiwyg} data-tour="wysiwyg-toggle" />
         <WordCountButton />
         <IconBtn onClick={editorFind} title={`Find (${shortcut("⌘F")})`}>
           <Search className="size-4" />
         </IconBtn>
-        <WysiwygModeSwitch wysiwyg={wysiwyg} onToggle={onToggleWysiwyg} data-tour="wysiwyg-toggle" />
+        {syncTexSupported && (
+          <>
+            <Divider />
+            <IconBtn onClick={goToSyncTex} title="Go to PDF (SyncTeX)">
+              <ArrowRight className="size-4" />
+            </IconBtn>
+          </>
+        )}
       </div>
     </div>
   );
