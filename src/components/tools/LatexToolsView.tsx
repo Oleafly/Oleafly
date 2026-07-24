@@ -1,5 +1,5 @@
 import { useMemo, useState, type ComponentType } from "react";
-import { Calculator, FileInput, School, Search, ShieldCheck, Table2, X } from "lucide-react";
+import { Calculator, FileInput, School, Search, ShieldCheck, Table2, ToolCase, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { WHITE_PANEL, cn } from "@/lib/utils";
@@ -188,8 +188,8 @@ export function LatexToolsView() {
         className={cn("dark relative flex h-[36rem] w-full max-w-3xl flex-col overflow-hidden rounded-xl text-foreground", WHITE_PANEL)}
       >
         <div className="flex items-center gap-3 border-b px-5 py-3">
-          <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-foreground font-mono text-sm font-bold text-background">
-            \
+          <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-foreground text-background">
+            <ToolCase className="size-4" />
           </div>
           <div id="latex-tools-title" className="shrink-0 text-base font-bold tracking-tight">LaTeX Tools</div>
           <div className="relative min-w-0 flex-1">
