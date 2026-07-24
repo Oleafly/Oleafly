@@ -203,7 +203,7 @@ function FilterSelect({
     >
       {label}
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger id={id} className="h-8 text-xs">
+        <SelectTrigger id={id} className="h-10 text-sm">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -382,7 +382,7 @@ export function Library() {
           <DotPattern width={22} height={22} radius={1} className="dark:hidden" />
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 hidden dark:block dark:bg-[radial-gradient(oklch(1_0_0/0.17)_1px,transparent_1px)] dark:bg-[length:22px_22px] dark:[mask-image:radial-gradient(ellipse_75%_65%_at_50%_45%,black,transparent_100%)]"
+            className="pointer-events-none absolute inset-0 hidden dark:block dark:bg-[radial-gradient(oklch(1_0_0/0.17)_1px,transparent_1px)] dark:bg-[length:22px_22px] dark:[mask-image:radial-gradient(ellipse_90%_100%_at_50%_0%,black,transparent_100%)]"
           />
         </>
       )}
@@ -452,7 +452,7 @@ export function Library() {
                       }))
                     }
                     placeholder="Name, ID, main file, color, or export"
-                    className="h-8 text-xs"
+                    className="h-9 text-sm"
                   />
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -551,7 +551,7 @@ export function Library() {
                     ]}
                   />
                 </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-center text-[10px] text-muted-foreground">
                     Showing {visibleProjects.length} of {projects.length} projects
                   </p>
                 </Popover>
@@ -570,7 +570,7 @@ export function Library() {
                 >
                   <Bookmark className={cn("size-4", onlyFavs && "fill-current")} />
                   {favs.length > 0 && (
-                    <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-foreground text-[10px] font-semibold text-background">
+                    <span className="absolute -right-0.5 -top-0.5 flex size-3.5 items-center justify-center rounded-full bg-primary text-[9px] font-semibold text-primary-foreground">
                       {favs.length}
                     </span>
                   )}
