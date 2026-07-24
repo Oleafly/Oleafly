@@ -52,6 +52,21 @@ function nextFrames(n: number): Promise<void> {
   });
 }
 
+export async function openFileAndGotoLine(file: string | null, line: number) {
+  const store = useFilesStore.getState();
+  const activePath = store.activePath;
+  const activeBase = activePath?.split("/").pop();
+  const targetBase = file?.split("/").pop();
+  if (targetBase && targetBase !== activeBase) {
+    const match = store.tree.find((f) => !f.is_dir && f.path.split("/").pop() === targetBase);
+    if (match && match.path !== activePath) {
+      await store.openFile(match.path);
+      await nextFrames(2);
+    }
+  }
+  gotoLine(line);
+}
+
 // In a multi-file project the click may land on content from a different file
 // (an `\input` child), so switch to that file before jumping. `hit.file` is a
 // basename; resolve it against the project tree.

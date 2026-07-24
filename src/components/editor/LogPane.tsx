@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Check, Copy, Sparkles } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Copy, Crosshair, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCompileStore } from "@/store/compile";
 import { useAgentHandoffStore } from "@/store/agent-handoff";
 import { useSettingsStore } from "@/store/settings";
 import { hasConfiguredProvider } from "@/lib/ai-providers";
-import { getConfig } from "@/lib/tauri";
+import { getConfig, type CompileError } from "@/lib/tauri";
+import { openFileAndGotoLine } from "@/features/synctex";
 import { cn } from "@/lib/utils";
 import { objectKey } from "@/lib/react-key";
 
@@ -93,6 +94,100 @@ function LogText({ text }: { text: string }) {
   );
 }
 
+function extractErrorExcerpt(log: string, message: string): string {
+  const lines = log.replace(/\r/g, "").split("\n");
+  const startIndex = lines.findIndex((ln) => ln === `! ${message}`);
+  if (startIndex === -1) return "";
+  const excerpt: string[] = [lines[startIndex]];
+  for (let i = startIndex + 1; i < lines.length && excerpt.length < 12; i++) {
+    const ln = lines[i];
+    if (ln.startsWith("!")) break;
+    excerpt.push(ln);
+    if (ln.trim() === "" && excerpt.length > 2) break;
+  }
+  return excerpt.join("\n").trimEnd();
+}
+
+function ErrorCard({ err, log }: { err: CompileError; log: string }) {
+  const [expanded, setExpanded] = useState(true);
+  const excerpt = extractErrorExcerpt(log, err.message);
+  const title = err.explanation ?? err.message;
+  const location = err.file ? `${err.file}${err.line != null ? `, ${err.line}` : ""}` : err.line != null ? `l.${err.line}` : "";
+
+  return (
+    <div className="border-b border-sidebar-border">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setExpanded((v) => !v)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") setExpanded((v) => !v);
+        }}
+        className="flex w-full items-start gap-2 px-3 py-2 text-left"
+      >
+        <div className="min-w-0 flex-1">
+          <p
+            className={cn(
+              "text-xs font-medium",
+              err.kind === "error" ? "text-red-500" : "text-amber-600 dark:text-amber-400"
+            )}
+          >
+            {title}
+          </p>
+          {location && <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">{location}</p>}
+        </div>
+        <div className="flex shrink-0 items-center gap-0.5">
+          {err.line != null && (
+            <button
+              type="button"
+              title="Go to code location"
+              aria-label="Go to code location"
+              onClick={(e) => {
+                e.stopPropagation();
+                void openFileAndGotoLine(err.file, err.line as number);
+              }}
+              className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <Crosshair className="size-3.5" />
+            </button>
+          )}
+          {expanded ? (
+            <ChevronUp className="size-3.5 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="size-3.5 text-muted-foreground" />
+          )}
+        </div>
+      </div>
+      {expanded && excerpt && (
+        <pre className="mx-3 mb-2 whitespace-pre-wrap break-words rounded bg-background/60 p-2 font-mono text-[10.5px] leading-relaxed">
+          <LogText text={excerpt} />
+        </pre>
+      )}
+    </div>
+  );
+}
+
+function RawLogSection({ log, defaultOpen }: { log: string; defaultOpen: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="border-t border-sidebar-border">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-1.5 px-3 py-2 text-left text-xs font-medium text-sidebar-foreground"
+      >
+        {open ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+        Raw logs
+      </button>
+      {open && (
+        <pre className="whitespace-pre-wrap break-words px-3 pb-3 font-mono text-[11px] leading-relaxed">
+          <LogText text={log} />
+        </pre>
+      )}
+    </div>
+  );
+}
+
 export function LogPane() {
   const log = useCompileStore((s) => s.log);
   const errors = useCompileStore((s) => s.errors);
@@ -153,40 +248,6 @@ export function LogPane() {
 
   return (
     <div className="flex h-full flex-col bg-sidebar">
-      {errors.length > 0 && (
-        <div className="border-b border-sidebar-border bg-sidebar-accent/40">
-          {errors.map((err) => (
-            <div key={objectKey(err, "compile-error")} className="flex flex-col gap-0.5 px-3 py-1.5 text-xs">
-              <div className="flex items-start gap-2">
-                <span
-                  className={cn(
-                    "mt-0.5 shrink-0 rounded px-1 font-mono text-[10px] uppercase",
-                    err.kind === "error"
-                      ? "bg-red-500/15 text-red-500"
-                      : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                  )}
-                >
-                  {err.kind}
-                </span>
-                <span className="text-sidebar-foreground">{err.message}</span>
-                {(err.file || err.line != null) && (
-                  <span className="ml-auto shrink-0 font-mono text-muted-foreground">
-                    {err.file
-                      ? `${err.file}${err.line != null ? `:${err.line}` : ""}`
-                      : `l.${err.line}`}
-                  </span>
-                )}
-              </div>
-              {err.explanation && (
-                <p className="pl-7 text-[11px] leading-snug text-muted-foreground">
-                  {err.explanation}
-                </p>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
       <div className="flex h-7 shrink-0 items-center justify-end border-b border-sidebar-border px-2">
         {hasCompileError && (
           <Button
@@ -214,11 +275,20 @@ export function LogPane() {
         </Button>
       </div>
 
-      <div className="flex-1 overflow-auto p-3">
-        <pre className="whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed">
-          {log ? <LogText text={log} /> : <span className="text-muted-foreground">Compile output will appear here.</span>}
-          <div ref={endRef} />
-        </pre>
+      <div className="flex-1 overflow-auto">
+        {errors.length > 0 &&
+          errors.map((err) => <ErrorCard key={objectKey(err, "compile-error")} err={err} log={log} />)}
+        {!log && errors.length === 0 && (
+          <p className="p-3 text-[11px] text-muted-foreground">Compile output will appear here.</p>
+        )}
+        {log && (
+          <RawLogSection
+            key={errors.length === 0 ? "clean" : "errors"}
+            log={log}
+            defaultOpen={errors.length === 0}
+          />
+        )}
+        <div ref={endRef} />
       </div>
     </div>
   );
