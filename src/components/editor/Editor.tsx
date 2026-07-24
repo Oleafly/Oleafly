@@ -14,7 +14,9 @@ import { base64ToUint8Array, readFileBase64 } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { formattingForEngine, pathUsesEngineSource } from "@/lib/document-engine";
 import { getWysiwygMode, setWysiwygMode } from "@/lib/wysiwyg-mode";
-import { WysiwygEditor } from "./wysiwyg/WysiwygEditor";
+const WysiwygEditor = lazy(() =>
+  import("./wysiwyg/WysiwygEditor").then((m) => ({ default: m.WysiwygEditor })),
+);
 
 function basename(p: string) {
   const parts = p.split("/");
@@ -324,7 +326,15 @@ export function Editor() {
           ) : (
             <div className="relative min-h-0 flex-1 overflow-hidden">
               <div className={cn("absolute inset-0", !wysiwyg && "hidden")}>
-                <WysiwygEditor wysiwyg={wysiwyg} />
+                <Suspense
+                  fallback={
+                    <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="size-4 animate-spin" /> Loading…
+                    </div>
+                  }
+                >
+                  <WysiwygEditor wysiwyg={wysiwyg} />
+                </Suspense>
               </div>
               <div className={cn("absolute inset-0", wysiwyg && "hidden")}>
                 <EditorContextMenu>

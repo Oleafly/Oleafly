@@ -1,5 +1,5 @@
 import { expect, test } from "../fixtures";
-import { openProject, pressGlobal, waitLong } from "../helpers";
+import { caretIn, openProject, pressGlobal, waitLong } from "../helpers";
 
 // Cmd+K and Cmd+Shift+F are covered in 04-commands; this file covers the rest.
 
@@ -21,7 +21,7 @@ test("Cmd+Enter compiles and Cmd+Shift+J forward-SyncTeX highlights the PDF", as
   );
   await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok");
 
-  await tauriPage.getByText("Write your").click();
+  await caretIn(tauriPage, "Write your");
   await pressGlobal(tauriPage, "j", { meta: true, shift: true });
   await expect(tauriPage.locator(".ll-synctex-hl")).toBeVisible({ timeout: 15_000 });
 });

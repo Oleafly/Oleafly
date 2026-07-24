@@ -35,7 +35,7 @@ test("misspellings get squiggles; ignore clears them; un-ignore brings them back
   );
 
   await openSettings(tauriPage, "dictionary");
-  await expect(tauriPage.getByText("Qwertzuiopz")).toBeVisible();
+  await expect(tauriPage.locator('[aria-label="Stop ignoring Qwertzuiopz"]')).toBeVisible();
   await tauriPage.click('[aria-label="Stop ignoring Qwertzuiopz"]');
   await tauriPage.click('[aria-label="Close settings"]');
   await tauriPage.waitForFunction(
