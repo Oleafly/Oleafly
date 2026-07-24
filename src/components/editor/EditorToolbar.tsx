@@ -71,7 +71,7 @@ function Divider() {
   return <span className="mx-1 h-5 w-px shrink-0 bg-border" />;
 }
 
-function IconBtn({
+export function IconBtn({
   onClick,
   title,
   children,

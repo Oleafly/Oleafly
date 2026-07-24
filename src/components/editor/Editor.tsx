@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { FileText, Loader2, X } from "lucide-react";
 import { CodeMirrorEditor } from "./CodeMirrorEditor";
 import { EditorContextMenu } from "./EditorContextMenu";
-import { EditorToolbar } from "./EditorToolbar";
+import { EditorToolbar, IconBtn } from "./EditorToolbar";
 import { SelectionActionMenu } from "./SelectionActionMenu";
 import { DiffView } from "./diff/DiffView";
 import { PdfViewer } from "@/components/pdf/PdfViewer";
@@ -161,6 +161,8 @@ export function Editor() {
   const engine = useFilesStore((s) => s.engine);
   const formattingProfile = useFilesStore((s) => s.engine.capabilities.formatting_profile);
   const showLatexToolbar = engineLoaded && formattingProfile === "latex" && pathUsesEngineSource(engine, activePath);
+  const showMarkdownWysiwygToggle =
+    engineLoaded && formattingProfile === "markdown" && pathUsesEngineSource(engine, activePath);
 
   const [wysiwyg, setWysiwygState] = useState(() => (projectId ? getWysiwygMode(projectId) : false));
   useEffect(() => {
@@ -260,6 +262,13 @@ export function Editor() {
           {showLatexToolbar && (
             <div className="shrink-0">
               <EditorToolbar wysiwyg={wysiwyg} onToggleWysiwyg={toggleWysiwyg} />
+            </div>
+          )}
+          {showMarkdownWysiwygToggle && (
+            <div className="flex h-9 shrink-0 items-center justify-end gap-0.5 border-b px-2">
+              <IconBtn onClick={toggleWysiwyg} title={wysiwyg ? "Switch to source view" : "Switch to WYSIWYG view"}>
+                <span className="text-[10px] font-semibold">{wysiwyg ? "SRC" : "WYS"}</span>
+              </IconBtn>
             </div>
           )}
           {isTypstFile && (
