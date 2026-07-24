@@ -7,7 +7,7 @@ export interface Page {
   press(selector: string, key: string): Promise<void>;
   evaluate<T = unknown>(expression: string): Promise<T>;
   waitForFunction(expression: string, timeout?: number): Promise<unknown>;
-  locator(selector: string): unknown;
+  locator(selector: string): { isVisible(): Promise<boolean>; click(): Promise<void> };
   getByTestId(id: string): unknown;
   getByText(text: string, opts?: { exact?: boolean }): { click(): Promise<void> };
 }
@@ -580,37 +580,72 @@ export async function closeDiagramComposer(page: Page) {
 
 // Drives a synthetic mouse-drag over real text coordinates: CM re-asserts its
 // state over foreign DOM selections, so Range/Selection injection alone does
-// not stick.
-export async function selectWord(page: Page, word: string) {
-  const ok = await page.evaluate<boolean>(
-    `(() => {
-      const content = document.querySelector('.cm-content');
-      const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
-      let node;
-      while ((node = walker.nextNode())) {
-        const i = node.textContent.indexOf(${JSON.stringify(word)});
-        if (i >= 0) {
-          const range = document.createRange();
-          range.setStart(node, i);
-          range.setEnd(node, i + ${JSON.stringify(word)}.length);
-          const rects = range.getClientRects();
-          const a = rects[0], b = rects[rects.length - 1];
-          const opts = (x, y, extra) => Object.assign({
-            bubbles: true, cancelable: true, clientX: x, clientY: y, buttons: 1, detail: 1,
-          }, extra);
-          const sx = a.left + 1, sy = a.top + a.height / 2;
-          const ex = b.right - 1, ey = b.top + b.height / 2;
-          const target = document.elementFromPoint(sx, sy) || content;
-          target.dispatchEvent(new MouseEvent('mousedown', opts(sx, sy)));
-          document.dispatchEvent(new MouseEvent('mousemove', opts(ex, ey)));
-          document.dispatchEvent(new MouseEvent('mouseup', opts(ex, ey, { buttons: 0 })));
-          return true;
+// not stick. CI runners occasionally render the target line off the
+// currently-scrolled viewport on the first attempt (slower initial layout),
+// which makes elementFromPoint miss - scrollIntoView plus a couple of
+// retries makes this deterministic without weakening the assertion.
+export async function selectWord(page: Page, word: string, attempts = 3) {
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    const ok = await page.evaluate<boolean>(
+      `(() => {
+        const content = document.querySelector('.cm-content');
+        const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
+        let node;
+        while ((node = walker.nextNode())) {
+          const i = node.textContent.indexOf(${JSON.stringify(word)});
+          if (i >= 0) {
+            const range = document.createRange();
+            range.setStart(node, i);
+            range.setEnd(node, i + ${JSON.stringify(word)}.length);
+            range.startContainer.parentElement?.scrollIntoView({ block: 'center' });
+            const rects = range.getClientRects();
+            const a = rects[0], b = rects[rects.length - 1];
+            if (!a || !b) return false;
+            const opts = (x, y, extra) => Object.assign({
+              bubbles: true, cancelable: true, clientX: x, clientY: y, buttons: 1, detail: 1,
+            }, extra);
+            const sx = a.left + 1, sy = a.top + a.height / 2;
+            const ex = b.right - 1, ey = b.top + b.height / 2;
+            const target = document.elementFromPoint(sx, sy) || content;
+            target.dispatchEvent(new MouseEvent('mousedown', opts(sx, sy)));
+            document.dispatchEvent(new MouseEvent('mousemove', opts(ex, ey)));
+            document.dispatchEvent(new MouseEvent('mouseup', opts(ex, ey, { buttons: 0 })));
+            return true;
+          }
         }
-      }
-      return false;
-    })()`,
-  );
-  expect(ok).toBe(true);
+        return false;
+      })()`,
+    );
+    if (!ok) {
+      expect(ok).toBe(true);
+      return;
+    }
+    try {
+      await page.waitForFunction(
+        `window.getSelection().toString() === ${JSON.stringify(word)}`,
+        1_500,
+      );
+      return;
+    } catch {
+      if (attempt === attempts - 1) throw new Error(`selectWord("${word}") never stuck after ${attempts} attempts`);
+    }
+  }
+}
+
+// The editor toolbar collapses controls that don't fit its measured width
+// into a "More formatting options" overflow menu (EditorToolbar.tsx's
+// ResizeObserver-driven fitCount) - the overflowed control loses its
+// aria-label (the menu row is plain text) and sits behind the trigger.
+// CI's window can render narrower than local dev, so direct bar selectors
+// are not reliable for controls past the first few; this checks both states.
+export async function clickToolbarControl(page: Page, barSelector: string, menuText: string) {
+  const bar = page.locator(barSelector);
+  if (await bar.isVisible().catch(() => false)) {
+    await bar.click();
+    return;
+  }
+  await page.click('[aria-label="More formatting options"]');
+  await page.getByText(menuText, { exact: true }).click();
 }
 
 export async function currentTheme(page: Page): Promise<"light" | "dark"> {

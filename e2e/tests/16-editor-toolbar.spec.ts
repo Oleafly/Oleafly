@@ -1,13 +1,12 @@
 import { test, expect } from "../fixtures";
-import { caretIn, openProject, selectWord } from "../helpers";
+import { caretIn, clickToolbarControl, openProject, selectWord } from "../helpers";
 
 test("bold wraps the selection; undo and redo round-trip", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
   await selectWord(tauriPage, "Write");
-  await tauriPage.waitForFunction(`window.getSelection().toString() === 'Write'`, 5_000);
-  await tauriPage.click('[aria-label^="Bold ("]');
+  await clickToolbarControl(tauriPage, '[aria-label^="Bold ("]', "Bold");
   await expect(tauriPage.locator(".cm-content")).toContainText("\\textbf{Write}");
 
   await tauriPage.click('[aria-label^="Undo ("]');
@@ -26,12 +25,18 @@ test("toolbar inserts figure and table environments", async ({ tauriPage }) => {
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await caretIn(tauriPage, "here.", 1, "end");
 
-  await tauriPage.click('[aria-label="Insert figure"]');
+  await clickToolbarControl(tauriPage, '[aria-label="Insert figure"]', "Insert figure");
   await expect(tauriPage.locator(".cm-content")).toContainText("includegraphics");
   await tauriPage.click('[aria-label^="Undo ("]');
 
   // "Insert table" opens a size-grid picker (TableSizePicker.tsx); insertion
-  // happens on picking a cell, not on the trigger click itself.
+  // happens on picking a cell, not on the trigger click itself. The picker
+  // itself has no overflow variant worth chasing here - if the bar is too
+  // narrow to show it, open the overflow menu's Table row first.
+  const tableBar = tauriPage.locator('[aria-label="Insert table"]');
+  if (!(await tableBar.isVisible().catch(() => false))) {
+    await tauriPage.click('[aria-label="More formatting options"]');
+  }
   await tauriPage.click('[aria-label="Insert table"]');
   await tauriPage.click('[aria-label="2 by 2 table"]');
   await expect(tauriPage.locator(".cm-content")).toContainText("tabular");
