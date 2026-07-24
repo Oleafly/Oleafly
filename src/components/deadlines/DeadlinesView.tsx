@@ -46,7 +46,7 @@ import {
   type SortKey,
   type Venue,
 } from "@/lib/deadlines";
-import { GLASS_PANEL, cn } from "@/lib/utils";
+import { WHITE_PANEL, cn } from "@/lib/utils";
 import { useDeadlinesStore } from "@/store/deadlines";
 import { useHomeViewStore } from "@/store/home-view";
 
@@ -171,7 +171,7 @@ function DeadlineCard({ venue, now }: { venue: Venue; now: Date }) {
     <div
       data-testid={`deadline-card-${venue.id}`}
       className={cn(
-        "flex flex-col gap-1.5 rounded-lg border p-4 dark:bg-[#171717] bg-card",
+        "flex flex-col gap-1.5 rounded-lg border p-4 bg-card",
         venue.estimated ? "border-dashed border-border" : "border-border/80",
       )}
     >
@@ -294,7 +294,7 @@ export function DeadlinesView() {
         data-testid="deadlines-view"
         className={cn(
           "relative flex h-[36rem] w-full max-w-4xl flex-col overflow-hidden rounded-xl xl:h-[42rem] xl:max-w-6xl",
-          GLASS_PANEL,
+          WHITE_PANEL,
         )}
       >
       <div className="relative flex items-center gap-3 border-b py-2 pl-4 pr-4">
@@ -306,7 +306,7 @@ export function DeadlinesView() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search conferences"
-              className="h-8 border-border/80 pl-8 text-xs dark:bg-[#181818]"
+              className="h-8 border-border/80 pl-8 text-xs"
               data-testid="deadlines-search"
             />
           </div>
@@ -348,7 +348,7 @@ export function DeadlinesView() {
       </div>
       <div className="flex flex-wrap items-center gap-1.5 border-b px-4 py-2">
         <Select value={sub ?? "__all__"} onValueChange={(v) => setSub(v === "__all__" ? null : v)}>
-          <SelectTrigger className="h-7 w-44 border-border/80 text-xs dark:bg-[#181818]" aria-label="Filter by field">
+          <SelectTrigger className="h-7 w-44 border-border/80 text-xs" aria-label="Filter by field">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -363,7 +363,7 @@ export function DeadlinesView() {
         <div className="ml-auto flex items-center gap-4">
           <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
             <SelectTrigger
-              className="h-7 w-36 border-border/80 text-xs dark:bg-[#181818]"
+              className="h-7 w-36 border-border/80 text-xs"
               aria-label="Sort by"
             >
               <SelectValue />
