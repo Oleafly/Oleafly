@@ -2,7 +2,7 @@ import { useMemo, useState, type ComponentType } from "react";
 import { Calculator, FileInput, School, Search, ShieldCheck, Table2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { GLASS_PANEL, cn } from "@/lib/utils";
+import { WHITE_PANEL, cn } from "@/lib/utils";
 import { useHomeViewStore, type HomePage } from "@/store/home-view";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 
@@ -101,9 +101,13 @@ function ToolCard({ tool, onOpen }: { tool: ToolDef; onOpen: () => void }) {
   );
 }
 
-function ToolsGallery({ onOpenTool }: { onOpenTool: (id: ToolId) => void }) {
-  const [search, setSearch] = useState("");
-
+function ToolsGallery({
+  search,
+  onOpenTool,
+}: {
+  search: string;
+  onOpenTool: (id: ToolId) => void;
+}) {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return TOOLS;
@@ -123,17 +127,6 @@ function ToolsGallery({ onOpenTool }: { onOpenTool: (id: ToolId) => void }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-      <div className="border-b px-5 py-3">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={`Search ${TOOLS.length} tools`}
-            className="pl-8"
-          />
-        </div>
-      </div>
       <div className="flex-1 space-y-6 p-5">
         {grouped.length === 0 ? (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -163,6 +156,7 @@ export function LatexToolsView() {
   const closeTools = useHomeViewStore((s) => s.closeTools);
   const goTo = useHomeViewStore((s) => s.goTo);
   const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDivElement>(active, closeTools);
+  const [search, setSearch] = useState("");
   if (!active) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
@@ -180,15 +174,25 @@ export function LatexToolsView() {
         aria-labelledby="latex-tools-title"
         data-modal-initial-focus
         data-testid="latex-tools-view"
-        className={cn("relative flex h-[36rem] w-full max-w-3xl flex-col overflow-hidden rounded-xl", GLASS_PANEL)}
+        className={cn("relative flex h-[36rem] w-full max-w-3xl flex-col overflow-hidden rounded-xl", WHITE_PANEL)}
       >
-        <div className="flex items-center justify-between border-b px-5 py-3">
-          <div id="latex-tools-title" className="font-medium">LaTeX Tools</div>
-          <Button variant="ghost" size="icon" className="size-7" onClick={closeTools} aria-label="Close">
+        <div className="flex items-center gap-3 border-b px-5 py-3">
+          <div id="latex-tools-title" className="shrink-0 font-medium">LaTeX Tools</div>
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={`Search ${TOOLS.length} tools`}
+              className="h-8 pl-8"
+            />
+          </div>
+          <Button variant="ghost" size="icon" className="size-7 shrink-0" onClick={closeTools} aria-label="Close">
             <X className="size-4" />
           </Button>
         </div>
         <ToolsGallery
+          search={search}
           onOpenTool={(id) => {
             closeTools();
             goTo(TOOL_PAGE[id]);

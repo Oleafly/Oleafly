@@ -64,12 +64,7 @@ const TourGuide = lazy(() =>
   import("@/components/tour/TourGuide").then((m) => ({ default: m.TourGuide })),
 );
 
-// These modals/overlays mount unconditionally so they can hold their own
-// open/closed state (most render null until opened) - a visible fallback
-// here would block the whole screen with a full-viewport overlay every time
-// their chunk hasn't been fetched yet, even though nothing the user asked
-// for is actually appearing. Keep this silent; the loading affordance below
-// is reserved for lazy content inside an already-visible layout slot.
+// fallback must stay null - a visible one blocks the whole screen (these mount unconditionally, closed by default).
 function LazyModals({ children }: { children: ReactNode }) {
   return <Suspense fallback={null}>{children}</Suspense>;
 }
