@@ -1,21 +1,20 @@
 import { test, expect } from "../fixtures";
 import { createBlankProject } from "../helpers";
 
-// Deadlines and LaTeX Tools are now glass modals over the dashboard (not
-// full pages), and clicking a tool inside the Tools modal hands off to that
-// tool's own dedicated full view (back button returns straight to Library).
-test("dock opens Deadlines and Tools as modals, mutually exclusive", async ({ tauriPage }) => {
+// Oleafly Tools is a glass modal over the dashboard (not a full page), and
+// clicking a tool inside it hands off to that tool's own dedicated full view
+// (back button returns straight to Library). Deadlines moved from its own
+// dock modal into a tool card here (Research & Analyze) and is now one of
+// those full views too - see 44-deadlines.spec.ts for its own coverage.
+test("dock opens Tools as a modal, and a tool card hands off to a full view", async ({
+  tauriPage,
+}) => {
   await expect(tauriPage.getByTestId("library")).toBeVisible();
 
-  await tauriPage.click('[data-testid="open-deadlines"]');
-  await expect(tauriPage.locator('[data-testid="deadlines-view"]')).toBeVisible({
-    timeout: 20_000,
-  });
-
-  // Opening Tools while Deadlines is open closes Deadlines first.
   await tauriPage.click('[data-testid="open-latex-tools"]');
   await expect(tauriPage.locator('[data-testid="latex-tools-view"]')).toBeVisible();
-  await expect(tauriPage.locator('[data-testid="deadlines-view"]')).toBeHidden();
+  await expect(tauriPage.getByText("Oleafly Tools", { exact: true })).toBeVisible();
+  await expect(tauriPage.locator('[data-testid="latex-tool-card-deadlines"]')).toBeVisible();
 
   // PDF to LaTeX is a card in the Tools modal; opening it closes the modal
   // and lands on the dropzone (not an immediately-triggered OS file picker).
@@ -29,7 +28,7 @@ test("dock opens Deadlines and Tools as modals, mutually exclusive", async ({ ta
   await expect(tauriPage.locator('[data-testid="pdf-import-view"]')).toBeHidden();
 });
 
-test("LaTeX Tools gallery filters by category and search, and opens a dedicated tool view", async ({
+test("Oleafly Tools gallery filters by category and search, and opens a dedicated tool view", async ({
   tauriPage,
 }) => {
   await expect(tauriPage.getByTestId("library")).toBeVisible();

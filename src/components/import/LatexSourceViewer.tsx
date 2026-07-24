@@ -11,6 +11,7 @@ export function LatexSourceViewer({ source }: { source: string }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: recreated only on mount; content updates below
   useEffect(() => {
     if (!hostRef.current) return;
     const view = new EditorView({
@@ -32,7 +33,6 @@ export function LatexSourceViewer({ source }: { source: string }) {
       view.destroy();
       viewRef.current = null;
     };
-    // biome-ignore lint/correctness/useExhaustiveDependencies: recreated only on mount; content updates below
   }, []);
 
   useEffect(() => {

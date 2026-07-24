@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  ArrowLeft,
   CalendarDays,
   CalendarX2,
   HelpCircle,
   MapPin,
   RefreshCw,
   Search,
-  X,
 } from "lucide-react";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { Globe } from "lucide-react";
@@ -36,7 +36,6 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip } from "@/components/ui/tooltip";
-import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import {
   countdown,
   filterVenues,
@@ -46,7 +45,8 @@ import {
   type SortKey,
   type Venue,
 } from "@/lib/deadlines";
-import { WHITE_PANEL, cn } from "@/lib/utils";
+import { useFullscreen } from "@/lib/use-fullscreen";
+import { cn, isMac } from "@/lib/utils";
 import { useDeadlinesStore } from "@/store/deadlines";
 import { useHomeViewStore } from "@/store/home-view";
 
@@ -243,11 +243,13 @@ function DeadlineCard({ venue, now }: { venue: Venue; now: Date }) {
 }
 
 export function DeadlinesView() {
-  const deadlinesOpen = useHomeViewStore((s) => s.deadlinesOpen);
+  const activePage = useHomeViewStore((s) => s.page);
+  const goTo = useHomeViewStore((s) => s.goTo);
   const venues = useDeadlinesStore((s) => s.venues);
   const generatedAt = useDeadlinesStore((s) => s.generatedAt);
   const busy = useDeadlinesStore((s) => s.busy);
   const error = useDeadlinesStore((s) => s.error);
+  const openView = useDeadlinesStore((s) => s.openView);
   const refresh = useDeadlinesStore((s) => s.refresh);
   const [now, setNow] = useState(() => new Date());
   const [sub, setSub] = useState<string | null>(null);
@@ -255,9 +257,13 @@ export function DeadlinesView() {
   const [showPassed, setShowPassed] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("deadline");
   const [helpOpen, setHelpOpen] = useState(false);
-  const closeDeadlines = useHomeViewStore((s) => s.closeDeadlines);
-  const active = deadlinesOpen;
-  const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDivElement>(active, closeDeadlines);
+  const fullscreen = useFullscreen();
+  const active = activePage === "deadlines";
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: openView is a stable store action, re-running it on every render would refetch on each countdown tick
+  useEffect(() => {
+    if (active) void openView();
+  }, [active]);
 
   useEffect(() => {
     if (!active) return;
@@ -277,28 +283,18 @@ export function DeadlinesView() {
 
   if (!active) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <button
-        type="button"
-        aria-label="Close deadlines"
-        className="absolute inset-0"
-        onMouseDown={onBackdropMouseDown}
-      />
+    <div data-testid="deadlines-view" className="flex h-full flex-col bg-background">
       <div
-        role="dialog"
-        ref={dialogRef}
-        tabIndex={-1}
-        aria-modal="true"
-        aria-labelledby="deadlines-title"
-        data-modal-initial-focus
-        data-testid="deadlines-view"
         className={cn(
-          "dark relative flex h-[36rem] w-full max-w-4xl flex-col overflow-hidden rounded-xl text-foreground xl:h-[42rem] xl:max-w-6xl",
-          WHITE_PANEL,
+          "flex items-center gap-3 border-b px-4 py-2.5",
+          isMac && !fullscreen && "pl-20",
         )}
       >
-      <div className="relative flex items-center gap-3 border-b py-3 pl-5 pr-4">
-        <div id="deadlines-title" className="text-lg font-bold tracking-tight">Conference Deadlines</div>
+        <Button variant="ghost" size="sm" onClick={() => goTo("library")} data-testid="deadlines-view-back">
+          <ArrowLeft className="size-4" /> Back
+        </Button>
+        <div className="h-6 w-px bg-border" />
+        <div className="text-sm font-semibold">Conference Deadlines</div>
         <div className="ml-auto flex items-center gap-2">
           {error && <span className="max-w-64 truncate text-xs text-destructive">{error}</span>}
           {updated && (
@@ -331,9 +327,6 @@ export function DeadlinesView() {
               <HelpCircle className="size-4" />
             </Button>
           </Tooltip>
-          <Button variant="ghost" size="icon" className="size-7 rounded-full" onClick={closeDeadlines} aria-label="Close">
-            <X className="size-4" />
-          </Button>
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2 border-b px-5 py-2.5">
@@ -380,7 +373,6 @@ export function DeadlinesView() {
               checked={showPassed}
               onCheckedChange={setShowPassed}
               aria-label="Show passed"
-              className="data-[state=checked]:bg-blue-500 data-[state=unchecked]:bg-white/10 data-[state=unchecked]:border-white/10"
             />
             <label
               htmlFor="deadlines-show-passed"
@@ -430,7 +422,6 @@ export function DeadlinesView() {
         )}
       </div>
       <HelpDialog open={helpOpen} onOpenChange={setHelpOpen} />
-      </div>
     </div>
   );
 }

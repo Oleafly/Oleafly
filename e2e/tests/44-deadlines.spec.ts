@@ -18,7 +18,9 @@ test("deadlines view refreshes, counts down, and filters", async ({ tauriPage })
       typeof expect
     >[0],
   ).toBeVisible({ timeout: 30_000 });
-  await tauriPage.click('[data-testid="open-deadlines"]');
+  await tauriPage.click('[data-testid="open-latex-tools"]');
+  await expect(tauriPage.locator('[data-testid="latex-tools-view"]')).toBeVisible();
+  await tauriPage.click('[data-testid="latex-tool-card-deadlines"]');
   await expect(tauriPage.locator('[data-testid="deadlines-view"]')).toBeVisible({
     timeout: 20_000,
   });

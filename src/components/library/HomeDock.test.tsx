@@ -4,10 +4,6 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
 
-vi.mock("@/store/deadlines", () => ({
-  useDeadlinesStore: { getState: () => ({ openView: vi.fn(async () => {}) }) },
-}));
-
 vi.mock("@/lib/theme", () => ({
   useTheme: vi.fn(() => ({ theme: "light", toggleTheme: vi.fn() })),
 }));
@@ -19,24 +15,17 @@ vi.mock("@/lib/use-fullscreen", () => ({
 import { HomeDock } from "./HomeDock";
 
 beforeEach(() => {
-  useHomeViewStore.setState({ page: "library", deadlinesOpen: false, toolsOpen: false });
+  useHomeViewStore.setState({ page: "library", toolsOpen: false });
   useSettingsStore.setState({ dockPlacement: "left" });
 });
 
 describe("HomeDock", () => {
-  it("renders all five actions", () => {
+  it("renders all four always-visible actions", () => {
     render(<HomeDock />);
     expect(screen.getByTestId("new-project")).toBeInTheDocument();
-    expect(screen.getByTestId("open-deadlines")).toBeInTheDocument();
     expect(screen.getByTestId("open-latex-tools")).toBeInTheDocument();
     expect(screen.getByTestId("toggle-theme")).toBeInTheDocument();
     expect(screen.getByTestId("open-settings")).toBeInTheDocument();
-  });
-
-  it("clicking Deadlines opens the deadlines modal", () => {
-    render(<HomeDock />);
-    fireEvent.click(screen.getByTestId("open-deadlines"));
-    expect(useHomeViewStore.getState().deadlinesOpen).toBe(true);
   });
 
   it("clicking Tools opens the tools modal", () => {
@@ -49,5 +38,12 @@ describe("HomeDock", () => {
     useSettingsStore.setState({ dockPlacement: "bottom" });
     render(<HomeDock />);
     expect(screen.getByTestId("home-dock")).toHaveAttribute("data-placement", "bottom");
+  });
+
+  it("puts New project first in the dock", () => {
+    render(<HomeDock />);
+    const dock = screen.getByTestId("home-dock");
+    const first = dock.querySelector("button[data-testid]");
+    expect(first).toHaveAttribute("data-testid", "new-project");
   });
 });
