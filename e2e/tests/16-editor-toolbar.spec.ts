@@ -30,14 +30,26 @@ test("toolbar inserts figure and table environments", async ({ tauriPage }) => {
   await tauriPage.click('[aria-label^="Undo ("]');
 
   // "Insert table" opens a size-grid picker (TableSizePicker.tsx); insertion
-  // happens on picking a cell, not on the trigger click itself. The picker
-  // itself has no overflow variant worth chasing here - if the bar is too
-  // narrow to show it, open the overflow menu's Table row first.
+  // happens on picking a cell, not on the trigger click itself. If the bar is
+  // too narrow to show it, open the overflow menu first - the trigger then
+  // sits inside a Popover nested in the overflow Popover, and the bridge's
+  // occlusion-blind click can land before Radix has finished wiring up the
+  // nested trigger's open state, so retry the click until the grid appears
+  // rather than trusting a single click.
   const tableBar = tauriPage.locator('[aria-label="Insert table"]');
   if (!(await tableBar.isVisible().catch(() => false))) {
     await tauriPage.click('[aria-label="More formatting options"]');
   }
-  await tauriPage.click('[aria-label="Insert table"]');
+  let gridOpen = false;
+  for (let attempt = 0; attempt < 5 && !gridOpen; attempt++) {
+    await tauriPage.click('[aria-label="Insert table"]');
+    try {
+      await tauriPage.waitForFunction(`!!document.querySelector('[aria-label="2 by 2 table"]')`, 3_000);
+      gridOpen = true;
+    } catch {
+      // not open yet - loop retries the trigger click
+    }
+  }
   await tauriPage.click('[aria-label="2 by 2 table"]');
   await expect(tauriPage.locator(".cm-content")).toContainText("tabular");
   await tauriPage.click('[aria-label^="Undo ("]');
