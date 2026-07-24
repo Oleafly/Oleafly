@@ -154,7 +154,7 @@ export function buildModel(provider: string, model: string, credential: string) 
     return createAnthropic({ apiKey: credential })(model);
   }
   if (provider === "ollama") {
-    const host = (credential || "http://localhost:11434").replace(/\/+$/, "");
+    const host = (credential || "http://localhost:11434").replace(/\/{1,20}$/, "");
     return createOpenAI({ baseURL: `${host}/v1`, apiKey: "ollama" }).chat(model);
   }
   // GLM and DeepSeek stream their thinking phase as `reasoning_content`, a

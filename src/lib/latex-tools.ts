@@ -1,6 +1,8 @@
 // Pure logic behind the LaTeX tools view: BibTeX parsing/validation and
 // LaTeX table generation. Kept UI-free so it is unit-testable.
 
+import { escapeLatex } from "./citation/text";
+
 const SPEC: Record<string, { required: string[][]; optional: string[] }> = {
   article: {
     required: [["author"], ["title"], ["journal"], ["year"]],
@@ -205,12 +207,11 @@ export function buildLatexTable(
   opts: { booktabs: boolean; headerRow: boolean; caption: string },
 ): string {
   const colSpec = aligns.join("");
-  const esc = (s: string) => s.replace(/([%$&#_{}])/g, "\\$1");
-  const row = (r: string[]) => `    ${r.map(esc).join(" & ")} \\\\`;
+  const row = (r: string[]) => `    ${r.map(escapeLatex).join(" & ")} \\\\`;
   const lines: string[] = [];
   lines.push("\\begin{table}[htbp]");
   lines.push("  \\centering");
-  if (opts.caption) lines.push(`  \\caption{${esc(opts.caption)}}`);
+  if (opts.caption) lines.push(`  \\caption{${escapeLatex(opts.caption)}}`);
   lines.push(`  \\begin{tabular}{${colSpec}}`);
   if (opts.booktabs) {
     lines.push("    \\toprule");

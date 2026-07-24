@@ -29,6 +29,18 @@ export function cleanField(s: string): string {
   return escapeLatex(decodeXmlEntities(s));
 }
 
+// Strips markup tags to a fixed point (not a single pass) so a malformed or
+// nested tag like "<<script>script>" can't reconstitute into "<script>"
+// after one round of removal.
+export function stripTags(s: string): string {
+  let prev: string;
+  do {
+    prev = s;
+    s = s.replace(/<[^>]+>/g, "");
+  } while (s !== prev);
+  return s;
+}
+
 // "Jane Smith" -> "Smith, Jane"; already-comma'd names pass through.
 export function toBibName(name: string): string {
   const trimmed = name.trim();

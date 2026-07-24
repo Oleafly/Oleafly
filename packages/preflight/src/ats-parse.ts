@@ -14,8 +14,8 @@ export interface AtsParse {
   sections: ParsedSection[];
 }
 
-const EMAIL = /[\w.+-]+@[\w-]+\.[\w.-]+/;
-const PHONE = /\+?\d[\d\s().-]{7,}\d/;
+const EMAIL = /[\w.+-]{1,100}@[\w-]{1,100}\.[\w.-]{1,100}/;
+const PHONE = /\+?\d[\d\s().-]{7,20}\d/;
 const URL = /https?:\/\/[^\s|)]+|(?:www\.|linkedin\.com|github\.com)[^\s|)]+/gi;
 
 // Standard resume sections and the patterns a heading line must match.
