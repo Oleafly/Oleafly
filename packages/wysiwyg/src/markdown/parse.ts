@@ -15,7 +15,7 @@ export function parseMarkdownBody(source: string): { doc: JSONContent; frontmatt
     extensions: [StarterKit.configure({ codeBlock: false, horizontalRule: false }), Markdown],
     content: "",
   });
-  editor.commands.setContent(body, { contentType: "markdown" });
+  editor.commands.setContent(body);
   const doc = editor.getJSON();
   editor.destroy();
 
