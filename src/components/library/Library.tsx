@@ -73,6 +73,7 @@ import {
   readCompiledPdf,
   type ProjectInfo,
 } from "@/lib/tauri";
+import { projectDateTime, projectModifiedLabel } from "@/lib/project-format";
 
 const thumbCache = new Map<string, string | null>();
 const MAX_THUMBNAILS = 64;
@@ -113,27 +114,6 @@ function projectEngineLabel(engine: string | undefined, mainDoc: string) {
     return "Markdown";
   }
   return "Tectonic";
-}
-
-function projectModifiedLabel(timestamp: number) {
-  if (!timestamp) return undefined;
-  const date = new Date(timestamp * 1000);
-  if (Number.isNaN(date.getTime())) return undefined;
-  return `Updated ${new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(date)}`;
-}
-
-function projectDateTime(timestamp: number) {
-  if (!timestamp) return "Unavailable";
-  const date = new Date(timestamp * 1000);
-  if (Number.isNaN(date.getTime())) return "Unavailable";
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
 }
 
 function keyedExports(exports: ProjectInfo["exports"]) {
