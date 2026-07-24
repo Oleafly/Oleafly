@@ -6,5 +6,8 @@ allowBuilds:
 
 # Force the transitive nanoid (via hunspell-asm) to a patched version.
 # GHSA-mwcw-c2x4-8c55: predictable results in nanoid < 3.3.8.
+# Force the transitive postcss (via vite) to a patched version.
+# GHSA-r28c-9q8g-f849: source-map path traversal in postcss <= 8.5.17.
 overrides:
   nanoid@<3.3.8: ">=3.3.8"
+  postcss@<8.5.18: ">=8.5.18"
