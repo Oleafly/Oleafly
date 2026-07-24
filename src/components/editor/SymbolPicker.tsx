@@ -193,7 +193,7 @@ export function SymbolPicker({ menuRow }: { menuRow?: boolean }) {
   return (
     <Popover
       ariaLabel="Insert symbol"
-      className="w-96 p-2"
+      className="w-[26rem] p-0"
       closeOnClick={false}
       triggerClassName={menuRow ? "w-full justify-start gap-2 px-2 font-normal" : undefined}
       trigger={
@@ -207,15 +207,15 @@ export function SymbolPicker({ menuRow }: { menuRow?: boolean }) {
         )
       }
     >
-      <div className="mb-2 flex items-center justify-between gap-2 border-b pb-2">
-        <div className="flex flex-wrap gap-1">
+      <div className="flex h-80">
+        <div className="flex w-28 shrink-0 flex-col gap-0.5 border-r p-2">
           {CATEGORIES.map((c) => (
             <button
               key={c.id}
               type="button"
               onClick={() => setActiveTab(c.id)}
               className={cn(
-                "rounded px-1.5 py-0.5 text-xs font-medium transition-colors",
+                "rounded px-2 py-1 text-left text-xs font-medium transition-colors",
                 !q && activeTab === c.id
                   ? "bg-accent text-foreground"
                   : "text-muted-foreground hover:text-foreground"
@@ -225,20 +225,24 @@ export function SymbolPicker({ menuRow }: { menuRow?: boolean }) {
             </button>
           ))}
         </div>
-        <Input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search…"
-          aria-label="Search symbols"
-          className="h-7 w-28 text-xs"
-        />
-      </div>
-      <div className="flex max-h-64 flex-wrap gap-1 overflow-y-auto">
-        {visibleItems.length === 0 ? (
-          <p className="w-full py-4 text-center text-xs text-muted-foreground">No symbols match.</p>
-        ) : (
-          visibleItems.map((s) => <SymbolButton key={s.latex} symbol={s} />)
-        )}
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="border-b p-2">
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search…"
+              aria-label="Search symbols"
+              className="h-7 text-xs"
+            />
+          </div>
+          <div className="flex flex-1 flex-wrap content-start gap-1 overflow-y-auto p-2">
+            {visibleItems.length === 0 ? (
+              <p className="w-full py-4 text-center text-xs text-muted-foreground">No symbols match.</p>
+            ) : (
+              visibleItems.map((s) => <SymbolButton key={s.latex} symbol={s} />)
+            )}
+          </div>
+        </div>
       </div>
     </Popover>
   );
