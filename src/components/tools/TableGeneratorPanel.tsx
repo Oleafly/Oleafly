@@ -4,8 +4,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { buildLatexTable, resizeTable, type TableAlign } from "@/lib/latex-tools";
 import { toast } from "@/lib/toast";
+import { useSettingsStore } from "@/store/settings";
 
 export function TableGeneratorPanel() {
+  const editorTheme = useSettingsStore((s) => s.editorTheme);
   const [rows, setRows] = useState(3);
   const [cols, setCols] = useState(3);
   const [cells, setCells] = useState<string[][]>(() =>
@@ -149,7 +151,16 @@ export function TableGeneratorPanel() {
             Copy
           </Button>
         </div>
-        <pre className="min-h-0 flex-1 overflow-auto p-4 font-mono text-xs">{code}</pre>
+        <pre
+          data-editor-theme={editorTheme}
+          className="min-h-0 flex-1 overflow-auto p-4 font-mono text-xs"
+          style={{
+            backgroundColor: "var(--cm-editor-bg, var(--background))",
+            color: "var(--cm-editor-fg, var(--foreground))",
+          }}
+        >
+          {code}
+        </pre>
         {booktabs && (
           <p className="border-t px-4 py-2 text-xs text-muted-foreground">
             Requires <code>\usepackage{"{booktabs}"}</code> in your preamble.

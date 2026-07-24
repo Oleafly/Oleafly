@@ -3,9 +3,11 @@ import { EditorState } from "@codemirror/state";
 import { EditorView, lineNumbers } from "@codemirror/view";
 import { latexLanguage } from "@/components/editor/cm/latex";
 import { editorTheme } from "@/components/editor/cm/theme";
+import { useSettingsStore } from "@/store/settings";
 
 /** Read-only, syntax-highlighted LaTeX viewer for the converter's source pane. */
 export function LatexSourceViewer({ source }: { source: string }) {
+  const editorThemeId = useSettingsStore((s) => s.editorTheme);
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
 
@@ -46,6 +48,7 @@ export function LatexSourceViewer({ source }: { source: string }) {
     <div
       ref={hostRef}
       data-testid="import-source"
+      data-editor-theme={editorThemeId}
       className="min-h-0 flex-1 overflow-auto text-xs [&_.cm-editor]:h-full"
     />
   );

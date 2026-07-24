@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { parseBib, validateBib } from "@/lib/latex-tools";
+import { useSettingsStore } from "@/store/settings";
 
 const SAMPLE = `@article{einstein1905,
   author  = {Einstein, Albert},
@@ -17,6 +18,7 @@ const LEVEL_CLASS: Record<"error" | "warning" | "ok", string> = {
 };
 
 export function BibtexValidatorPanel() {
+  const editorTheme = useSettingsStore((s) => s.editorTheme);
   const [input, setInput] = useState("");
   const result = useMemo(() => {
     if (!input.trim()) return null;
@@ -32,11 +34,17 @@ export function BibtexValidatorPanel() {
           <span>{result ? `${result.entries.length} entries` : "0 entries"}</span>
         </div>
         <Textarea
+          data-editor-theme={editorTheme}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder={`${SAMPLE}\n\nPaste your full .bib file here...`}
           spellCheck={false}
           className="min-h-0 flex-1 resize-none rounded-none border-0 font-mono text-xs focus-visible:ring-0"
+          style={{
+            backgroundColor: "var(--cm-editor-bg, var(--background))",
+            color: "var(--cm-editor-fg, var(--foreground))",
+            caretColor: "var(--cm-cursor, var(--primary))",
+          }}
         />
         <div className="flex items-center gap-2 border-t px-4 py-2">
           <Button variant="ghost" size="sm" onClick={() => setInput(SAMPLE)}>
