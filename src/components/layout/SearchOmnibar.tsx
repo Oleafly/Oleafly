@@ -151,8 +151,12 @@ export function SearchOmnibar() {
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const { mode, term } = useMemo(() => parse(query), [query]);
+  const { mode, term, cmd } = useMemo(() => parse(query), [query]);
   const trimmed = term.trim();
+  const slashSuggestions = useMemo(
+    () => (mode === "help" ? SLASH.filter((s) => s.keys.some((k) => k.startsWith(cmd))) : []),
+    [mode, cmd],
+  );
 
   useEffect(() => {
     if (open) void refreshProjects().catch(() => {});
@@ -361,7 +365,19 @@ export function SearchOmnibar() {
             </Group>
           )}
 
-          {mode === "help" && (
+          {mode === "help" && slashSuggestions.length > 0 && (
+            <Group heading="Commands">
+              {slashSuggestions.map((s) => (
+                <Row
+                  key={s.keys[0]}
+                  icon={<code className="text-xs">/{s.keys[0]}</code>}
+                  title={s.hint}
+                  onSelect={() => setQuery(`/${s.keys[0]} `)}
+                />
+              ))}
+            </Group>
+          )}
+          {mode === "help" && slashSuggestions.length === 0 && (
             <Hint>Unknown command. Try /create, /projects, /docs, /refs, /theme, or /settings.</Hint>
           )}
           {mode === "all" &&
