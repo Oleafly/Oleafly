@@ -23,9 +23,10 @@ import {
 } from "@/features/import";
 import { refineAvailable, refineWithAi } from "@/features/import-refine";
 import { LatexSourceViewer } from "@/components/import/LatexSourceViewer";
-import { cn } from "@/lib/utils";
+import { cn, isMac } from "@/lib/utils";
 import { pdfPageToPng } from "@/lib/pdf-image";
 import { toast } from "@/lib/toast";
+import { useFullscreen } from "@/lib/use-fullscreen";
 import { useHomeViewStore } from "@/store/home-view";
 import { useImportStore } from "@/store/import";
 
@@ -272,6 +273,7 @@ export function PdfImportView() {
   const fileName = useImportStore((s) => s.fileName);
   const result = useImportStore((s) => s.result);
   const [refineable, setRefineable] = useState(false);
+  const fullscreen = useFullscreen();
   const active = page === "pdf-import";
   useEffect(() => {
     if (active) void refineAvailable().then(setRefineable);
@@ -279,7 +281,12 @@ export function PdfImportView() {
   if (!active) return null;
   return (
     <div data-testid="pdf-import-view" className="flex h-full flex-col bg-background">
-      <div className="flex items-center gap-3 border-b px-4 py-2">
+      <div
+        className={cn(
+          "flex items-center gap-3 border-b px-4 py-2",
+          isMac && !fullscreen && "pl-20",
+        )}
+      >
         <Button
           variant="ghost"
           size="sm"
