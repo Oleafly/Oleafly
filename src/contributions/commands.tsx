@@ -1,5 +1,6 @@
 import {
   Bold,
+  ClipboardClock,
   Command as CommandIcon,
   Crosshair,
   Download,
@@ -8,6 +9,7 @@ import {
   Italic,
   List,
   Moon,
+  PenTool,
   Play,
   Plus,
   Quote,
@@ -18,8 +20,8 @@ import {
   Sun,
   Table,
   Tag,
+  ToolCase,
   Trash2,
-  Workflow,
   Zap,
 } from "lucide-react";
 import { registerCommand, type AppContext } from "@oleafly/registry";
@@ -108,9 +110,27 @@ export function registerOmnibarCommands() {
     surfaces: ["omnibar"],
     label: "Open Diagram Composer",
     keywords: "diagram figure tikz composer draw canvas",
-    icon: () => <Workflow className="size-4" />,
+    icon: () => <PenTool className="size-4" />,
     order: 40,
     run: () => useHomeViewStore.getState().goTo("diagram-composer"),
+  });
+  registerCommand({
+    id: "omnibar.tools",
+    surfaces: ["omnibar"],
+    label: "Open Oleafly Tools",
+    keywords: "tools latex pdf equation bibtex table lab search deadlines gallery",
+    icon: () => <ToolCase className="size-4" />,
+    order: 42,
+    run: () => useHomeViewStore.getState().openTools(),
+  });
+  registerCommand({
+    id: "omnibar.deadlines",
+    surfaces: ["omnibar"],
+    label: "Open Conference Deadlines",
+    keywords: "deadlines conference ccf venue submission countdown",
+    icon: () => <ClipboardClock className="size-4" />,
+    order: 44,
+    run: () => useHomeViewStore.getState().goTo("deadlines"),
   });
   registerCommand({
     id: "omnibar.settings",
