@@ -9,11 +9,6 @@ vi.mock("@/features/synctex", () => ({
   openFileAndGotoLine: (...args: unknown[]) => openFileAndGotoLine(...args),
 }));
 
-vi.mock("@/lib/tauri", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/tauri")>();
-  return { ...actual, getConfig: vi.fn().mockResolvedValue({}) };
-});
-
 import { LogPane } from "./LogPane";
 
 if (!Element.prototype.scrollIntoView) {
@@ -119,7 +114,7 @@ describe("LogPane", () => {
     expect(openFileAndGotoLine).toHaveBeenCalledWith("main.tex", 42);
   });
 
-  it("still shows Ask AI and Copy log for a failed compile", () => {
+  it("still shows Copy log (on the raw logs section) for a failed compile", () => {
     setCompileState({
       status: "error",
       log: ERROR_LOG,
@@ -128,7 +123,28 @@ describe("LogPane", () => {
       ],
     });
     render(<LogPane />);
-    expect(screen.getByText("Ask AI", { exact: true })).toBeInTheDocument();
     expect(screen.getByText("Copy log")).toBeInTheDocument();
+  });
+
+  it("copies an individual error's text when its copy button is clicked", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    setCompileState({
+      status: "error",
+      log: ERROR_LOG,
+      errors: [
+        {
+          line: 42,
+          file: "main.tex",
+          message: "Undefined control sequence.",
+          kind: "error",
+          explanation: "LaTeX does not recognize this command.",
+        },
+      ],
+    });
+    render(<LogPane />);
+    fireEvent.click(screen.getByLabelText("Copy error"));
+    expect(writeText).toHaveBeenCalledOnce();
+    expect(writeText.mock.calls[0][0]).toContain("LaTeX does not recognize this command.");
   });
 });

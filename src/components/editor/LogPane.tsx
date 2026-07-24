@@ -1,11 +1,7 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowUpRight, Check, ChevronDown, ChevronRight, Copy, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
+import { ArrowUpRight, Check, ChevronDown, ChevronRight, Copy } from "lucide-react";
 import { useCompileStore } from "@/store/compile";
-import { useAgentHandoffStore } from "@/store/agent-handoff";
-import { useSettingsStore } from "@/store/settings";
-import { hasConfiguredProvider } from "@/lib/ai-providers";
-import { getConfig, type CompileError } from "@/lib/tauri";
+import type { CompileError } from "@/lib/tauri";
 import { openFileAndGotoLine } from "@/features/synctex";
 import { cn } from "@/lib/utils";
 import { objectKey } from "@/lib/react-key";
@@ -111,6 +107,7 @@ function extractErrorExcerpt(log: string, message: string): string {
 
 function ErrorCard({ err, log }: { err: CompileError; log: string }) {
   const [expanded, setExpanded] = useState(true);
+  const [copied, setCopied] = useState(false);
   const excerpt = extractErrorExcerpt(log, err.message);
   const title = err.explanation ?? err.message;
   const location = err.file
@@ -118,6 +115,18 @@ function ErrorCard({ err, log }: { err: CompileError; log: string }) {
     : err.line != null
       ? `line ${err.line}`
       : "";
+
+  const copyError = async (e: MouseEvent) => {
+    e.stopPropagation();
+    const text = [title, location, excerpt].filter(Boolean).join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* ignore */
+    }
+  };
 
   return (
     <div className="overflow-hidden rounded-lg border border-sidebar-border bg-background/40">
@@ -145,6 +154,16 @@ function ErrorCard({ err, log }: { err: CompileError; log: string }) {
           <p className="text-[13px] font-medium leading-snug text-foreground">{title}</p>
           {location && <p className="mt-0.5 font-mono text-[10.5px] text-muted-foreground">{location}</p>}
         </div>
+        <Tooltip label={copied ? "Copied" : "Copy error"} side="top">
+          <button
+            type="button"
+            aria-label="Copy error"
+            onClick={(e) => void copyError(e)}
+            className="flex shrink-0 items-center rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            {copied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
+          </button>
+        </Tooltip>
         {expanded && err.line != null && (
           <Tooltip label="Go to code location" side="top">
             <button
@@ -175,16 +194,42 @@ function ErrorCard({ err, log }: { err: CompileError; log: string }) {
 
 function RawLogSection({ log, defaultOpen }: { log: string; defaultOpen: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
+  const [copied, setCopied] = useState(false);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(log);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* ignore */
+    }
+  };
+
   return (
     <div className="overflow-hidden rounded-lg border border-sidebar-border bg-background/40">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-1.5 px-3 py-2.5 text-left text-[13px] font-medium text-sidebar-foreground"
-      >
-        {open ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
-        Raw logs
-      </button>
+      <div className="flex w-full items-center gap-1.5 px-3 py-2.5 text-left">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="flex min-w-0 flex-1 items-center gap-1.5 text-[13px] font-medium text-sidebar-foreground"
+        >
+          {open ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
+          Raw logs
+        </button>
+        <button
+          type="button"
+          onClick={() => void copy()}
+          className="flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        >
+          {copied ? (
+            <Check className="size-3 text-emerald-500" />
+          ) : (
+            <Copy className="size-3" />
+          )}
+          {copied ? "Copied" : "Copy log"}
+        </button>
+      </div>
       {open && (
         <pre className="whitespace-pre-wrap break-words border-t border-sidebar-border px-3 py-3 font-mono text-[11px] leading-relaxed">
           <LogText text={log} />
@@ -197,90 +242,15 @@ function RawLogSection({ log, defaultOpen }: { log: string; defaultOpen: boolean
 export function LogPane() {
   const log = useCompileStore((s) => s.log);
   const errors = useCompileStore((s) => s.errors);
-  const status = useCompileStore((s) => s.status);
   const endRef = useRef<HTMLDivElement>(null);
-  const [copied, setCopied] = useState(false);
-  const hasCompileError = status === "error" || errors.some((error) => error.kind === "error");
 
   useEffect(() => {
     void log;
     endRef.current?.scrollIntoView({ block: "end" });
   }, [log]);
 
-  const copy = async () => {
-    if (!log) return;
-    try {
-      await navigator.clipboard.writeText(log);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      /* ignore */
-    }
-  };
-
-  const askAi = async () => {
-    let configured = false;
-    try {
-      configured = hasConfiguredProvider(await getConfig());
-    } catch {
-      configured = false;
-    }
-    const settings = useSettingsStore.getState();
-    if (!configured) {
-      settings.setSettingsInitialSection("ai");
-      settings.setSettingsOpen(true);
-      return;
-    }
-    const details = errors
-      .filter((error) => error.kind === "error")
-      .slice(0, 8)
-      .map((error) => {
-        const location = error.file
-          ? `${error.file}${error.line != null ? `:${error.line}` : ""}`
-          : error.line != null
-            ? `line ${error.line}`
-            : "";
-        return `- ${location ? `${location}: ` : ""}${error.message}`;
-      });
-    const prompt = [
-      "Fix the current document compilation failure.",
-      details.length > 0 ? `\nCompiler errors:\n${details.join("\n")}` : "",
-      "\nInspect the relevant project files and the full compile log, make the smallest correct changes, then recompile until it succeeds and verify the resulting document.",
-    ].join("");
-    useAgentHandoffStore.getState().handoff(prompt, { autoSend: false });
-    settings.setRailTab("ai");
-    if (!settings.showTree) settings.toggleTree();
-  };
-
   return (
     <div className="flex h-full flex-col bg-sidebar">
-      <div className="flex h-7 shrink-0 items-center justify-end border-b border-sidebar-border px-2">
-        {hasCompileError && (
-          <Button
-            variant="ghostPrimary"
-            size="xs"
-            onClick={() => void askAi()}
-          >
-            <Sparkles data-icon="inline-start" />
-            Ask AI
-          </Button>
-        )}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => void copy()}
-          disabled={!log}
-          className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground"
-        >
-          {copied ? (
-            <Check data-icon="inline-start" className="text-emerald-500" />
-          ) : (
-            <Copy data-icon="inline-start" />
-          )}
-          {copied ? "Copied" : "Copy log"}
-        </Button>
-      </div>
-
       <div className="flex-1 overflow-auto p-3">
         <div className="space-y-3">
           {errors.length > 0 &&
