@@ -117,6 +117,28 @@ describe("serializeLatexBody", () => {
     );
   });
 
+  it("round-trips escaped special characters through parse and back", () => {
+    const src = "cut p99 latency 38\\% and saved \\$14M/year\n";
+    expect(serializeLatexBody(parseLatexBody(src))).toBe(src);
+  });
+
+  it("serializes a rawInline node verbatim, inline with surrounding text", () => {
+    const doc: import("@tiptap/core").JSONContent = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            { type: "text", text: "Ratel " },
+            { type: "rawInline", attrs: { source: "\\hfill" } },
+            { type: "text", text: " more" },
+          ],
+        },
+      ],
+    };
+    expect(serializeLatexBody(doc)).toBe("Ratel \\hfill more\n");
+  });
+
   it("returns just a trailing newline for an empty document", () => {
     expect(serializeLatexBody({ type: "doc", content: [] })).toBe("\n");
     expect(serializeLatexBody({ type: "doc" })).toBe("\n");

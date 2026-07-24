@@ -53,9 +53,36 @@ describe("parseLatexBody", () => {
     expect(numbered.content?.[0].type).toBe("orderedList");
   });
 
-  it("falls back to a rawBlock for unrecognized macros", () => {
+  it("falls back to an inline rawInline for an isolated unrecognized macro, not a block", () => {
     const doc = parseLatexBody("\\newcommand{\\foo}{bar}\n\\foo\n");
-    expect(doc.content?.some((n) => n.type === "rawBlock")).toBe(true);
+    const paragraph = doc.content?.find((n) => n.type === "paragraph");
+    expect(paragraph).toBeDefined();
+    expect(paragraph?.content?.some((n) => n.type === "rawInline")).toBe(true);
+  });
+
+  it("preserves a custom macro's arguments instead of dropping them (unregistered macro signature)", () => {
+    const body = "\\role{Senior Engineer}{Google}{Mountain View}{2020 -- Present}\n";
+    const doc = parseLatexBody(body);
+    const paragraph = doc.content?.find((n) => n.type === "paragraph");
+    const rawInline = paragraph?.content?.find((n) => n.type === "rawInline");
+    expect(rawInline?.attrs?.source).toBe(
+      "\\role{Senior Engineer}{Google}{Mountain View}{2020 -- Present}",
+    );
+  });
+
+  it("preserves escaped special characters as literal text instead of dropping them", () => {
+    const doc = parseLatexBody("cut p99 latency 38\\% and saved \\$14M/year\n");
+    const paragraph = doc.content?.find((n) => n.type === "paragraph");
+    expect(fullText(paragraph)).toBe("cut p99 latency 38% and saved $14M/year");
+  });
+
+  it("keeps unrecognized inline commands like \\hfill and \\\\ inline instead of splitting the paragraph", () => {
+    const body = "\\textbf{Ratel} \\hfill \\href{https://x.com}{y} \\\\\nmore text\n";
+    const doc = parseLatexBody(body);
+    expect(doc.content?.filter((n) => n.type === "paragraph")).toHaveLength(1);
+    const paragraph = doc.content?.[0];
+    expect(paragraph?.content?.some((n) => n.type === "rawInline" && n.attrs?.source === "\\hfill")).toBe(true);
+    expect(paragraph?.content?.some((n) => n.type === "rawInline" && n.attrs?.source === "\\\\")).toBe(true);
   });
 
   it("preserves a comment as a rawBlock instead of dropping it", () => {

@@ -16,6 +16,16 @@ const MARK_MACRO: Record<string, string> = {
   texttt: "code",
 };
 
+const ESCAPED_CHAR_MACRO: Record<string, string> = {
+  "%": "%",
+  "$": "$",
+  "&": "&",
+  "_": "_",
+  "#": "#",
+  "{": "{",
+  "}": "}",
+};
+
 function macroArgContent(node: Macro, index: number): LatexNode[] {
   const arg = node.args?.[index];
   return arg && arg.type === "argument" ? arg.content : [];
@@ -46,7 +56,8 @@ function mergeAdjacentText(nodes: JSONContent[]): JSONContent[] {
 
 function inlineNodesToJSON(nodes: LatexNode[], marks: JSONContent["marks"] = []): JSONContent[] {
   const out: JSONContent[] = [];
-  for (const node of nodes) {
+  for (let i = 0; i < nodes.length; i++) {
+    const node = nodes[i];
     if (node.type === "string") {
       out.push({ type: "text", text: node.content, ...(marks.length ? { marks } : {}) });
     } else if (node.type === "whitespace") {
@@ -58,6 +69,17 @@ function inlineNodesToJSON(nodes: LatexNode[], marks: JSONContent["marks"] = [])
     } else if (node.type === "macro" && node.content in MARK_MACRO) {
       const inner = macroArgContent(node, node.args && node.args.length > 1 ? node.args.length - 1 : 0);
       out.push(...inlineNodesToJSON(inner, [...marks, { type: MARK_MACRO[node.content] }]));
+    } else if (node.type === "macro" && node.content in ESCAPED_CHAR_MACRO) {
+      out.push({ type: "text", text: ESCAPED_CHAR_MACRO[node.content], ...(marks.length ? { marks } : {}) });
+    } else {
+      let end = i;
+      let source = printRawNode(nodes[end]);
+      while (end + 1 < nodes.length && nodes[end + 1].type === "group") {
+        end++;
+        source += printRawNode(nodes[end]);
+      }
+      i = end;
+      out.push({ type: "rawInline", attrs: { source } });
     }
   }
   return mergeAdjacentText(out);
@@ -140,12 +162,7 @@ export function parseLatexBody(body: string): JSONContent {
         });
         continue;
       }
-      if (node.content === "href" || node.content in MARK_MACRO) {
-        paragraphBuffer.push(node);
-        continue;
-      }
-      flushParagraph();
-      content.push({ type: "rawBlock", attrs: { source: printRawNode(node) } });
+      paragraphBuffer.push(node);
       continue;
     }
     if (node.type === "environment") {

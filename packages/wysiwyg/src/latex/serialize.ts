@@ -18,6 +18,7 @@ function escapeLatexText(text: string): string {
 function inlineToLatex(nodes: JSONContent[] = []): string {
   return nodes
     .map((node) => {
+      if (node.type === "rawInline") return String(node.attrs?.source ?? "");
       if (node.type !== "text") return "";
       const escaped = escapeLatexText(node.text ?? "");
       const marks = node.marks ?? [];
