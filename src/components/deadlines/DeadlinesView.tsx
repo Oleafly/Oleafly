@@ -171,7 +171,7 @@ function DeadlineCard({ venue, now }: { venue: Venue; now: Date }) {
     <div
       data-testid={`deadline-card-${venue.id}`}
       className={cn(
-        "flex flex-col gap-1.5 rounded-lg border p-4 bg-card",
+        "flex flex-col gap-1.5 rounded-xl border bg-card p-4 transition-colors hover:border-foreground/25 hover:bg-accent/40",
         venue.estimated ? "border-dashed border-border" : "border-border/80",
       )}
     >
@@ -293,23 +293,24 @@ export function DeadlinesView() {
         data-modal-initial-focus
         data-testid="deadlines-view"
         className={cn(
-          "relative flex h-[36rem] w-full max-w-4xl flex-col overflow-hidden rounded-xl xl:h-[42rem] xl:max-w-6xl",
+          "dark relative flex h-[36rem] w-full max-w-4xl flex-col overflow-hidden rounded-xl text-foreground xl:h-[42rem] xl:max-w-6xl",
           WHITE_PANEL,
         )}
       >
-      <div className="relative flex items-center gap-3 border-b py-2 pl-4 pr-4">
-        <div id="deadlines-title" className="font-medium">Conference Deadlines</div>
+      <div className="relative flex items-center gap-3 border-b py-3 pl-5 pr-4">
+        <div id="deadlines-title" className="text-lg font-bold tracking-tight">Conference Deadlines</div>
         <div className="ml-auto flex items-center gap-2">
           {error && <span className="max-w-64 truncate text-xs text-destructive">{error}</span>}
           {updated && (
             <Tooltip label="When the deadline dataset was last fetched">
-              <span className="text-xs text-muted-foreground">Updated {updated}</span>
+              <span className="font-mono text-xs text-muted-foreground">Updated {updated}</span>
             </Tooltip>
           )}
           <Tooltip label={busy ? "Refreshing..." : "Refresh"}>
             <Button
               variant="outline"
               size="icon"
+              className="rounded-full"
               disabled={busy}
               aria-label={busy ? "Refreshing..." : "Refresh"}
               data-testid="deadlines-refresh"
@@ -322,6 +323,7 @@ export function DeadlinesView() {
             <Button
               variant="ghost"
               size="icon"
+              className="rounded-full"
               aria-label="About these deadlines"
               data-testid="deadlines-help"
               onClick={() => setHelpOpen(true)}
@@ -329,14 +331,14 @@ export function DeadlinesView() {
               <HelpCircle className="size-4" />
             </Button>
           </Tooltip>
-          <Button variant="ghost" size="icon" className="size-7" onClick={closeDeadlines} aria-label="Close">
+          <Button variant="ghost" size="icon" className="size-7 rounded-full" onClick={closeDeadlines} aria-label="Close">
             <X className="size-4" />
           </Button>
         </div>
       </div>
-      <div className="flex flex-wrap items-center gap-1.5 border-b px-4 py-2">
+      <div className="flex flex-wrap items-center gap-2 border-b px-5 py-2.5">
         <Select value={sub ?? "__all__"} onValueChange={(v) => setSub(v === "__all__" ? null : v)}>
-          <SelectTrigger className="h-7 w-44 border-border/80 text-xs" aria-label="Filter by field">
+          <SelectTrigger className="h-8 w-44 rounded-full border-border/80 bg-card text-xs" aria-label="Filter by field">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -349,19 +351,19 @@ export function DeadlinesView() {
           </SelectContent>
         </Select>
         <div className="relative w-64">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search conferences"
-            className="h-7 border-border/80 pl-8 text-xs"
+            className="h-8 rounded-full border-border/80 bg-card pl-9 text-xs"
             data-testid="deadlines-search"
           />
         </div>
         <div className="ml-auto flex items-center gap-4">
           <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
             <SelectTrigger
-              className="h-7 w-36 border-border/80 text-xs"
+              className="h-8 w-36 rounded-full border-border/80 bg-card text-xs"
               aria-label="Sort by"
             >
               <SelectValue />
@@ -378,6 +380,7 @@ export function DeadlinesView() {
               checked={showPassed}
               onCheckedChange={setShowPassed}
               aria-label="Show passed"
+              className="data-[state=checked]:bg-blue-500 data-[state=unchecked]:bg-white/10 data-[state=unchecked]:border-white/10"
             />
             <label
               htmlFor="deadlines-show-passed"
@@ -387,7 +390,7 @@ export function DeadlinesView() {
             </label>
           </div>
           <Tooltip label="Conference cycles currently listed with these filters">
-            <span className="text-xs text-muted-foreground">{shown.length} entries</span>
+            <span className="font-mono text-xs text-muted-foreground">{shown.length} entries</span>
           </Tooltip>
         </div>
       </div>
