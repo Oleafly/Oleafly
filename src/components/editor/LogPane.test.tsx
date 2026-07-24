@@ -76,7 +76,7 @@ describe("LogPane", () => {
     });
     render(<LogPane />);
     expect(screen.getByText("LaTeX does not recognize this command.")).toBeInTheDocument();
-    expect(screen.getByText("main.tex, 42")).toBeInTheDocument();
+    expect(screen.getByText("main.tex · line 42")).toBeInTheDocument();
     expect(screen.queryByText("This is pdfTeX, Version 3.14")).not.toBeInTheDocument();
     fireEvent.click(screen.getByText("Raw logs"));
     expect(screen.getByText("This is pdfTeX, Version 3.14")).toBeInTheDocument();

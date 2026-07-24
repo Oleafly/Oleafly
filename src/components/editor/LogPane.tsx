@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Check, ChevronDown, ChevronUp, Copy, Crosshair, Sparkles } from "lucide-react";
+import { ArrowUpRight, Check, ChevronDown, ChevronRight, Copy, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCompileStore } from "@/store/compile";
 import { useAgentHandoffStore } from "@/store/agent-handoff";
@@ -9,7 +9,6 @@ import { getConfig, type CompileError } from "@/lib/tauri";
 import { openFileAndGotoLine } from "@/features/synctex";
 import { cn } from "@/lib/utils";
 import { objectKey } from "@/lib/react-key";
-import { Tooltip } from "@/components/ui/tooltip";
 
 type Cat = "error" | "warn" | "lineref" | "register" | "normal";
 
@@ -113,10 +112,14 @@ function ErrorCard({ err, log }: { err: CompileError; log: string }) {
   const [expanded, setExpanded] = useState(true);
   const excerpt = extractErrorExcerpt(log, err.message);
   const title = err.explanation ?? err.message;
-  const location = err.file ? `${err.file}${err.line != null ? `, ${err.line}` : ""}` : err.line != null ? `l.${err.line}` : "";
+  const location = err.file
+    ? `${err.file}${err.line != null ? ` · line ${err.line}` : ""}`
+    : err.line != null
+      ? `line ${err.line}`
+      : "";
 
   return (
-    <div className="border-b border-sidebar-border">
+    <div className="overflow-hidden rounded-lg border border-sidebar-border bg-background/40">
       <div
         role="button"
         tabIndex={0}
@@ -124,46 +127,44 @@ function ErrorCard({ err, log }: { err: CompileError; log: string }) {
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") setExpanded((v) => !v);
         }}
-        className="flex w-full items-start gap-2 px-3 py-2 text-left"
+        className="flex w-full items-start gap-2 px-3 py-2.5 text-left"
       >
+        {expanded ? (
+          <ChevronDown className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+        )}
+        <span
+          className={cn(
+            "mt-1.5 size-1.5 shrink-0 rounded-full",
+            err.kind === "error" ? "bg-red-500" : "bg-amber-500"
+          )}
+        />
         <div className="min-w-0 flex-1">
-          <p
-            className={cn(
-              "text-xs font-medium",
-              err.kind === "error" ? "text-red-500" : "text-amber-600 dark:text-amber-400"
-            )}
+          <p className="text-[13px] font-medium leading-snug text-foreground">{title}</p>
+          {location && <p className="mt-0.5 font-mono text-[10.5px] text-muted-foreground">{location}</p>}
+        </div>
+        {expanded && err.line != null && (
+          <button
+            type="button"
+            aria-label="Go to code location"
+            onClick={(e) => {
+              e.stopPropagation();
+              void openFileAndGotoLine(err.file, err.line as number);
+            }}
+            className="flex shrink-0 items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
-            {title}
-          </p>
-          {location && <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">{location}</p>}
-        </div>
-        <div className="flex shrink-0 items-center gap-0.5">
-          {err.line != null && (
-            <Tooltip label="Go to code location" side="top">
-              <button
-                type="button"
-                aria-label="Go to code location"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  void openFileAndGotoLine(err.file, err.line as number);
-                }}
-                className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              >
-                <Crosshair className="size-3.5" />
-              </button>
-            </Tooltip>
-          )}
-          {expanded ? (
-            <ChevronUp className="size-3.5 text-muted-foreground" />
-          ) : (
-            <ChevronDown className="size-3.5 text-muted-foreground" />
-          )}
-        </div>
+            Open
+            <ArrowUpRight className="size-3" />
+          </button>
+        )}
       </div>
       {expanded && excerpt && (
-        <pre className="mx-3 mb-2 whitespace-pre-wrap break-words rounded bg-background/60 p-2 font-mono text-[10.5px] leading-relaxed">
-          <LogText text={excerpt} />
-        </pre>
+        <div className="mx-3 mb-3 overflow-hidden rounded-md border border-sidebar-border/70 bg-background/80">
+          <pre className="whitespace-pre-wrap break-words p-2.5 font-mono text-[10.5px] leading-relaxed">
+            <LogText text={excerpt} />
+          </pre>
+        </div>
       )}
     </div>
   );
@@ -172,17 +173,17 @@ function ErrorCard({ err, log }: { err: CompileError; log: string }) {
 function RawLogSection({ log, defaultOpen }: { log: string; defaultOpen: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="border-t border-sidebar-border">
+    <div className="overflow-hidden rounded-lg border border-sidebar-border bg-background/40">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-1.5 px-3 py-2 text-left text-xs font-medium text-sidebar-foreground"
+        className="flex w-full items-center gap-1.5 px-3 py-2.5 text-left text-[13px] font-medium text-sidebar-foreground"
       >
-        {open ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+        {open ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
         Raw logs
       </button>
       {open && (
-        <pre className="whitespace-pre-wrap break-words px-3 pb-3 font-mono text-[11px] leading-relaxed">
+        <pre className="whitespace-pre-wrap break-words border-t border-sidebar-border px-3 py-3 font-mono text-[11px] leading-relaxed">
           <LogText text={log} />
         </pre>
       )}
@@ -277,19 +278,21 @@ export function LogPane() {
         </Button>
       </div>
 
-      <div className="flex-1 overflow-auto">
-        {errors.length > 0 &&
-          errors.map((err) => <ErrorCard key={objectKey(err, "compile-error")} err={err} log={log} />)}
-        {!log && errors.length === 0 && (
-          <p className="p-3 text-[11px] text-muted-foreground">Compile output will appear here.</p>
-        )}
-        {log && (
-          <RawLogSection
-            key={errors.length === 0 ? "clean" : "errors"}
-            log={log}
-            defaultOpen={errors.length === 0}
-          />
-        )}
+      <div className="flex-1 overflow-auto p-3">
+        <div className="space-y-3">
+          {errors.length > 0 &&
+            errors.map((err) => <ErrorCard key={objectKey(err, "compile-error")} err={err} log={log} />)}
+          {!log && errors.length === 0 && (
+            <p className="text-[11px] text-muted-foreground">Compile output will appear here.</p>
+          )}
+          {log && (
+            <RawLogSection
+              key={errors.length === 0 ? "clean" : "errors"}
+              log={log}
+              defaultOpen={errors.length === 0}
+            />
+          )}
+        </div>
         <div ref={endRef} />
       </div>
     </div>
