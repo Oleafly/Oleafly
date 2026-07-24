@@ -63,21 +63,14 @@ test("every heading level inserts its sectioning command", async ({ tauriPage })
   }
 });
 
-// The list trigger is itself a Popover; when it has overflowed into the
-// toolbar's "More formatting options" menu it sits nested inside that
-// Popover, and the bridge's occlusion-blind click can land before Radix
-// finishes wiring up the nested trigger's open state - retry from scratch
-// (re-checking bar vs. overflow each time) until the dropdown items appear.
 async function openListDropdown(page: Page) {
   let open = false;
   for (let attempt = 0; attempt < 5 && !open; attempt++) {
-    await clickToolbarControl(page, '[aria-label="Insert list"]', "List");
     try {
+      await clickToolbarControl(page, '[aria-label="Insert list"]', "List");
       await page.waitForFunction(`document.body.innerText.includes('Bulleted list')`, 3_000);
       open = true;
-    } catch {
-      // not open yet - loop retries from scratch
-    }
+    } catch {}
   }
 }
 

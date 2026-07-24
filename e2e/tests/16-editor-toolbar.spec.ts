@@ -29,23 +29,13 @@ test("toolbar inserts figure and table environments", async ({ tauriPage }) => {
   await expect(tauriPage.locator(".cm-content")).toContainText("includegraphics");
   await tauriPage.click('[aria-label^="Undo ("]');
 
-  // "Insert table" opens a size-grid picker (TableSizePicker.tsx); insertion
-  // happens on picking a cell, not on the trigger click itself. The Undo
-  // click above is a real outside-click as far as the overflow Popover is
-  // concerned, so it can close a menu that was left open - re-evaluate
-  // bar-vs-overflow from scratch on every attempt rather than deciding once
-  // up front, since the "More formatting options" click sits inside a
-  // Popover nested in another Popover and the bridge's occlusion-blind click
-  // can land before Radix finishes wiring up the nested trigger's state.
   let gridOpen = false;
   for (let attempt = 0; attempt < 5 && !gridOpen; attempt++) {
-    await clickToolbarControl(tauriPage, '[aria-label="Insert table"]', "Table");
     try {
+      await clickToolbarControl(tauriPage, '[aria-label="Insert table"]', "Table");
       await tauriPage.waitForFunction(`!!document.querySelector('[aria-label="2 by 2 table"]')`, 3_000);
       gridOpen = true;
-    } catch {
-      // not open yet - loop retries from scratch
-    }
+    } catch {}
   }
   await tauriPage.click('[aria-label="2 by 2 table"]');
   await expect(tauriPage.locator(".cm-content")).toContainText("tabular");
