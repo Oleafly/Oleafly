@@ -72,6 +72,7 @@
     "@tiptap/starter-kit": "^3.28.0",
     "@unified-latex/unified-latex-types": "^1.8.4",
     "@unified-latex/unified-latex-util-parse": "^1.8.4",
+    "@unified-latex/unified-latex-util-print-raw": "^1.8.4",
     "@xyflow/react": "^12.11.2",
     "ai": "^7.0.14",
     "canvas-confetti": "^1.9.4",

@@ -152,6 +152,9 @@ importers:
       '@unified-latex/unified-latex-util-parse':
         specifier: ^1.8.4
         version: 1.8.4
+      '@unified-latex/unified-latex-util-print-raw':
+        specifier: ^1.8.4
+        version: 1.8.4
       '@xyflow/react':
         specifier: ^12.11.2
         version: 12.11.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
