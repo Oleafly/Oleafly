@@ -30,9 +30,6 @@ export function WysiwygEditor() {
     immediatelyRender: false,
   });
 
-  // Content is read imperatively, not via a reactive selector, so this effect
-  // only re-runs when the active path changes - not on every store write
-  // (including this component's own save-on-unmount effect below).
   useEffect(() => {
     if (!editor || !activePath) return;
     const raw = useFilesStore.getState().files[activePath]?.content ?? "";
@@ -49,12 +46,6 @@ export function WysiwygEditor() {
     }
   }, [editor, activePath]);
 
-  // `path`/`markdown` are captured from this render's closure (the OLD path),
-  // never read live from the store: by the time this cleanup runs on a path
-  // switch, the store's activePath already holds the NEW path. React runs all
-  // of a commit's effect cleanups before any of its new effect setups, so this
-  // cleanup (reading editor.getJSON()) always fires before the load effect
-  // above resets the editor to the new file's content.
   useEffect(() => {
     if (!editor || !activePath) return;
     const path = activePath;
