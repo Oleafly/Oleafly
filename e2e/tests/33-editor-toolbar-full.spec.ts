@@ -1,5 +1,12 @@
 import { test, expect } from "../fixtures";
-import { caretIn, openGallery, openRailTab, typeInEditorAtStart, type Page } from "../helpers";
+import {
+  caretIn,
+  clickToolbarControl,
+  openGallery,
+  openRailTab,
+  typeInEditorAtStart,
+  type Page,
+} from "../helpers";
 
 // Runs in a throwaway project: snippets like \href{}{} would break the
 // shared E2E Doc's compiles.
@@ -31,11 +38,11 @@ const editorHas = (page: Page, needle: string) =>
 
 test("italic, link, and cross-reference buttons insert LaTeX", async ({ tauriPage }) => {
   await openScratchProject(tauriPage);
-  await tauriPage.click('[aria-label^="Italic ("]');
+  await clickToolbarControl(tauriPage, '[aria-label^="Italic ("]', "Italic");
   await editorHas(tauriPage, "\\textit{");
-  await tauriPage.click('[aria-label="Insert link"]');
+  await clickToolbarControl(tauriPage, '[aria-label="Insert link"]', "Insert link");
   await editorHas(tauriPage, "\\href{");
-  await tauriPage.click('[aria-label="Insert cross-reference"]');
+  await clickToolbarControl(tauriPage, '[aria-label="Insert cross-reference"]', "Insert cross-reference");
   await editorHas(tauriPage, "\\ref{");
 });
 
@@ -56,12 +63,30 @@ test("every heading level inserts its sectioning command", async ({ tauriPage })
   }
 });
 
+// The list trigger is itself a Popover; when it has overflowed into the
+// toolbar's "More formatting options" menu it sits nested inside that
+// Popover, and the bridge's occlusion-blind click can land before Radix
+// finishes wiring up the nested trigger's open state - retry from scratch
+// (re-checking bar vs. overflow each time) until the dropdown items appear.
+async function openListDropdown(page: Page) {
+  let open = false;
+  for (let attempt = 0; attempt < 5 && !open; attempt++) {
+    await clickToolbarControl(page, '[aria-label="Insert list"]', "List");
+    try {
+      await page.waitForFunction(`document.body.innerText.includes('Bulleted list')`, 3_000);
+      open = true;
+    } catch {
+      // not open yet - loop retries from scratch
+    }
+  }
+}
+
 test("both list kinds insert their environments", async ({ tauriPage }) => {
   await openScratchProject(tauriPage);
-  await tauriPage.click('[aria-label="Insert list"]');
+  await openListDropdown(tauriPage);
   await tauriPage.getByText("Bulleted list").click();
   await editorHas(tauriPage, "\\begin{itemize}");
-  await tauriPage.click('[aria-label="Insert list"]');
+  await openListDropdown(tauriPage);
   await tauriPage.getByText("Numbered list").click();
   await editorHas(tauriPage, "\\begin{enumerate}");
 });
