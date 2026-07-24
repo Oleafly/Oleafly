@@ -14,12 +14,19 @@ async function compileForLibraryPreview(tauriPage: TauriPage) {
 
 test("favorite toggles on a project book", async ({ tauriPage }) => {
   await expect(tauriPage.getByTestId("library")).toBeVisible();
-  // The bookmark control reveals on hover.
-  await tauriPage.hover('button[aria-label^="Open "]');
-  await tauriPage.click('[aria-label="Add to favorites"]');
-  await expect(tauriPage.locator('[aria-label="Remove from favorites"]')).toBeVisible();
-  await tauriPage.click('[aria-label="Remove from favorites"]');
-  await expect(tauriPage.locator('[aria-label="Add to favorites"]')).toBeVisible();
+  // Scoped to the E2E Doc book specifically: by this point in the suite the
+  // library holds several project books, each with its own (generically
+  // aria-labeled) bookmark button, so an unscoped selector can match a
+  // different, non-hovered book's hidden button first.
+  await tauriPage.hover('button[aria-label="Open E2E Doc"]');
+  await tauriPage.click('button[aria-label="Open E2E Doc"] ~ [aria-label="Add to favorites"]');
+  await expect(
+    tauriPage.locator('button[aria-label="Open E2E Doc"] ~ [aria-label="Remove from favorites"]'),
+  ).toBeVisible();
+  await tauriPage.click('button[aria-label="Open E2E Doc"] ~ [aria-label="Remove from favorites"]');
+  await expect(
+    tauriPage.locator('button[aria-label="Open E2E Doc"] ~ [aria-label="Add to favorites"]'),
+  ).toBeVisible();
 });
 
 // Regression: the hover preview used to slide in ABOVE the bookmark (its overlay
