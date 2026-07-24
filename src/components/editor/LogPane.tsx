@@ -9,6 +9,7 @@ import { getConfig, type CompileError } from "@/lib/tauri";
 import { openFileAndGotoLine } from "@/features/synctex";
 import { cn } from "@/lib/utils";
 import { objectKey } from "@/lib/react-key";
+import { Tooltip } from "@/components/ui/tooltip";
 
 type Cat = "error" | "warn" | "lineref" | "register" | "normal";
 
@@ -138,18 +139,19 @@ function ErrorCard({ err, log }: { err: CompileError; log: string }) {
         </div>
         <div className="flex shrink-0 items-center gap-0.5">
           {err.line != null && (
-            <button
-              type="button"
-              title="Go to code location"
-              aria-label="Go to code location"
-              onClick={(e) => {
-                e.stopPropagation();
-                void openFileAndGotoLine(err.file, err.line as number);
-              }}
-              className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            >
-              <Crosshair className="size-3.5" />
-            </button>
+            <Tooltip label="Go to code location" side="top">
+              <button
+                type="button"
+                aria-label="Go to code location"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void openFileAndGotoLine(err.file, err.line as number);
+                }}
+                className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <Crosshair className="size-3.5" />
+              </button>
+            </Tooltip>
           )}
           {expanded ? (
             <ChevronUp className="size-3.5 text-muted-foreground" />
