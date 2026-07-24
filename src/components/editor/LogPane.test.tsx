@@ -14,6 +14,9 @@ import { LogPane } from "./LogPane";
 if (!Element.prototype.scrollIntoView) {
   Element.prototype.scrollIntoView = () => {};
 }
+if (!Element.prototype.scrollTo) {
+  Element.prototype.scrollTo = () => {};
+}
 
 const SUCCESS_LOG = "This is pdfTeX, Version 3.14\n(./main.tex\nOutput written on main.pdf.\n)";
 
@@ -53,6 +56,15 @@ describe("LogPane", () => {
     setCompileState({ status: "success", log: SUCCESS_LOG, errors: [] });
     render(<LogPane />);
     expect(screen.getByText(/Output written on main\.pdf/)).toBeInTheDocument();
+  });
+
+  it("shows scroll-to-top and scroll-to-bottom buttons when the raw log is open", () => {
+    setCompileState({ status: "success", log: SUCCESS_LOG, errors: [] });
+    render(<LogPane />);
+    expect(screen.getByLabelText("Scroll to top")).toBeInTheDocument();
+    expect(screen.getByLabelText("Scroll to bottom")).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText("Scroll to bottom"));
+    fireEvent.click(screen.getByLabelText("Scroll to top"));
   });
 
   it("shows an error card with the explanation, location, and a collapsed raw log by default when there are errors", () => {

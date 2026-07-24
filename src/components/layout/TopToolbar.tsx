@@ -35,7 +35,7 @@ import {
 import { Tooltip } from "@/components/ui/tooltip";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import { useInitialFocus } from "@/components/ui/use-initial-focus";
-import { LeafLogo } from "@/components/layout/LeafLogo";
+import { HomeBrandButton } from "@/components/layout/HomeBrandButton";
 import { GithubMenu } from "@/components/layout/GithubMenu";
 import { useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
@@ -305,16 +305,7 @@ export function TopToolbar() {
       )}
     >
       <div data-tauri-drag-region className="flex min-w-0 items-center gap-2">
-        <button
-          type="button"
-          onClick={closeProject}
-          aria-label="Home"
-          title="Back to library"
-          className="flex items-center gap-1.5 rounded px-1.5 py-1 text-sm font-semibold tracking-tight hover:bg-accent"
-        >
-          <LeafLogo className="size-5" />
-          Oleafly
-        </button>
+        <HomeBrandButton onClick={closeProject} />
         <ChevronRight className="size-4 text-muted-foreground/50" />
         {editingTitle ? (
           <span ref={titleEditRef} className="flex items-center gap-1">

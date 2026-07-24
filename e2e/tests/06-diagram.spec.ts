@@ -22,7 +22,7 @@ test("diagram composer compiles the starter drawing to a preview", async ({ taur
 
   await closeDiagramComposer(tauriPage);
   await expect(
-    tauriPage.locator('[role="dialog"][aria-labelledby="diagram-composer-title"]'),
+    tauriPage.locator('[role="dialog"][data-tour="diagram-composer"]'),
   ).toBeHidden();
 });
 
