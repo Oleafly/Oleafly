@@ -1343,7 +1343,7 @@ fn parse_tex_log_errors(log: &str) -> Vec<CompileError> {
             for following in lines
                 .iter()
                 .skip(i + 1)
-                .take(4.min(lines.len().saturating_sub(i + 1)))
+                .take(20.min(lines.len().saturating_sub(i + 1)))
             {
                 if following.starts_with('!') {
                     break;
@@ -1402,6 +1402,28 @@ mod tests {
             .as_deref()
             .unwrap()
             .contains("does not recognize"));
+    }
+
+    #[test]
+    fn tex_errors_find_line_number_past_tectonic_v2_cli_preamble() {
+        // Real tectonic -X compile --print output interleaves several lines
+        // (including a duplicated "error: file:line:" summary from the V2
+        // CLI itself) between the "! " trigger and the "l.NN" reference,
+        // well past a short lookahead window.
+        let log = concat!(
+            "! LaTeX Error: Environment align undefined.\n",
+            "\n",
+            "See the LaTeX manual or LaTeX Companion for explanation.\n",
+            "Type  H <return>  for immediate help.\n",
+            " ...                                              \n",
+            "                                                  \n",
+            "l.5 \\begin{align}\n",
+            "                 \n",
+            "No pages of output.\n",
+        );
+        let errors = parse_tex_log_errors(log);
+        assert_eq!(errors.len(), 1);
+        assert_eq!(errors[0].line, Some(5));
     }
 
     #[test]
