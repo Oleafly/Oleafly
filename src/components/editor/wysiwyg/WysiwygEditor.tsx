@@ -65,5 +65,9 @@ export function WysiwygEditor() {
     };
   }, [editor, activePath, setContent, saveFile]);
 
-  return <EditorContent editor={editor} />;
+  return (
+    <div className="wysiwyg-content h-full overflow-auto px-8 py-6">
+      <EditorContent editor={editor} />
+    </div>
+  );
 }

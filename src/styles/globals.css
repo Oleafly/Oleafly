@@ -129,6 +129,75 @@
   background: var(--background);
 }
 
+.wysiwyg-content .ProseMirror {
+  outline: none;
+  max-width: 42rem;
+  margin: 0 auto;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--foreground);
+}
+.wysiwyg-content .ProseMirror > * + * {
+  margin-top: 0.75em;
+}
+.wysiwyg-content .ProseMirror h1 {
+  font-size: 1.5em;
+  font-weight: 700;
+  margin-top: 1.2em;
+}
+.wysiwyg-content .ProseMirror h2 {
+  font-size: 1.25em;
+  font-weight: 700;
+  margin-top: 1em;
+}
+.wysiwyg-content .ProseMirror h3 {
+  font-size: 1.1em;
+  font-weight: 600;
+  margin-top: 1em;
+}
+.wysiwyg-content .ProseMirror ul,
+.wysiwyg-content .ProseMirror ol {
+  padding-left: 1.5em;
+}
+.wysiwyg-content .ProseMirror ul {
+  list-style: disc;
+}
+.wysiwyg-content .ProseMirror ol {
+  list-style: decimal;
+}
+.wysiwyg-content .ProseMirror li + li {
+  margin-top: 0.25em;
+}
+.wysiwyg-content .ProseMirror blockquote {
+  border-left: 3px solid var(--border);
+  padding-left: 1em;
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+.wysiwyg-content .ProseMirror a {
+  color: var(--primary);
+  text-decoration: underline;
+}
+.wysiwyg-content .ProseMirror code {
+  background: var(--muted);
+  border-radius: 0.25em;
+  padding: 0.1em 0.35em;
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+}
+.wysiwyg-content .ProseMirror [data-type="raw-block"] {
+  display: block;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  border: 1px dashed var(--border);
+  border-radius: 0.375em;
+  padding: 0.5em 0.75em;
+  font-family: var(--font-mono);
+  font-size: 0.8125em;
+  white-space: pre-wrap;
+  cursor: not-allowed;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

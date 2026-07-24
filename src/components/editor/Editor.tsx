@@ -321,7 +321,7 @@ export function Editor() {
               <p className="text-xs">Binary file. No preview available.</p>
             </div>
           ) : wysiwyg && !isTypstFile ? (
-            <div className="min-h-0 flex-1 overflow-auto">
+            <div className="min-h-0 flex-1 overflow-hidden">
               <WysiwygEditor />
             </div>
           ) : (
