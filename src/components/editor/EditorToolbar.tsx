@@ -39,7 +39,6 @@ import { goToSyncTex } from "@/features/synctex";
 import { countWords } from "@/lib/wordcount";
 import { useCitationStore } from "@/store/citation";
 import { useActiveContent, useFilesStore } from "@/store/files";
-import { useSettingsStore } from "@/store/settings";
 import { cn, shortcut } from "@/lib/utils";
 import {
   HEADING_LEVELS,
@@ -99,6 +98,48 @@ export function IconBtn({
         {children}
       </button>
     </Tooltip>
+  );
+}
+
+export function WysiwygModeSwitch({
+  wysiwyg,
+  onToggle,
+  "data-tour": dataTour,
+}: {
+  wysiwyg: boolean;
+  onToggle: () => void;
+  "data-tour"?: string;
+}) {
+  return (
+    <div
+      data-tour={dataTour}
+      className="flex h-7 shrink-0 items-center rounded-full bg-muted p-0.5 text-xs font-medium"
+    >
+      <button
+        type="button"
+        onClick={() => wysiwyg && onToggle()}
+        aria-label="Switch to source view"
+        aria-pressed={!wysiwyg}
+        className={cn(
+          "rounded-full px-2.5 py-1 transition-colors",
+          !wysiwyg ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+        )}
+      >
+        Code
+      </button>
+      <button
+        type="button"
+        onClick={() => !wysiwyg && onToggle()}
+        aria-label="Switch to WYSIWYG view"
+        aria-pressed={wysiwyg}
+        className={cn(
+          "rounded-full px-2.5 py-1 transition-colors",
+          wysiwyg ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+        )}
+      >
+        Visual
+      </button>
+    </div>
   );
 }
 
@@ -248,15 +289,25 @@ function CodeIntelDropdown({ variant }: { variant: "bar" | "menu" }) {
 
 function WordCountButton() {
   const content = useActiveContent();
+  const activePath = useFilesStore((s) => s.activePath);
   const stats = useMemo(() => countWords(content), [content]);
+  const rows: [string, number][] = [
+    ["Words", stats.words],
+    ["Characters", stats.characters],
+    ["Lines", stats.lines],
+  ];
   return (
-    <Popover ariaLabel="Word count" className="w-56 p-2" trigger={<Info className="size-4" />}>
-      <div className="px-1 py-1 text-sm">
-        Words: {stats.words.toLocaleString()} • Characters: {stats.characters.toLocaleString()}
+    <Popover ariaLabel="Word count" className="w-56 p-3" trigger={<Info className="size-4" />}>
+      <p className="mb-1 text-sm font-semibold text-foreground">Word count</p>
+      <p className="mb-2 truncate text-xs text-muted-foreground">{activePath ?? "no file"}</p>
+      <div className="divide-y divide-border">
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex items-center justify-between py-2 text-sm">
+            <span className="text-muted-foreground">{label}</span>
+            <span className="font-mono tabular-nums">{value.toLocaleString()}</span>
+          </div>
+        ))}
       </div>
-      <PopoverItem onClick={() => useSettingsStore.getState().setWordCountOpen(true)}>
-        View full breakdown
-      </PopoverItem>
     </Popover>
   );
 }
@@ -444,13 +495,7 @@ export function EditorToolbar({
         <IconBtn onClick={editorFind} title={`Find (${shortcut("⌘F")})`}>
           <Search className="size-4" />
         </IconBtn>
-        <IconBtn
-          onClick={onToggleWysiwyg}
-          title={wysiwyg ? "Switch to source view" : "Switch to WYSIWYG view"}
-          data-tour="wysiwyg-toggle"
-        >
-          <span className="text-[10px] font-semibold">{wysiwyg ? "SRC" : "WYS"}</span>
-        </IconBtn>
+        <WysiwygModeSwitch wysiwyg={wysiwyg} onToggle={onToggleWysiwyg} data-tour="wysiwyg-toggle" />
       </div>
     </div>
   );

@@ -20,17 +20,22 @@ class ResizeObserverStub {
 vi.stubGlobal("ResizeObserver", ResizeObserverStub);
 
 describe("EditorToolbar wysiwyg toggle", () => {
-  it("shows WYS label and calls onToggleWysiwyg when off", () => {
+  it("shows a Code/Visual segmented switch and calls onToggleWysiwyg when the Visual segment is clicked while off", () => {
     const onToggleWysiwyg = vi.fn();
     render(<EditorToolbar wysiwyg={false} onToggleWysiwyg={onToggleWysiwyg} />);
-    const btn = screen.getByLabelText("Switch to WYSIWYG view");
-    expect(btn).toHaveTextContent("WYS");
-    fireEvent.click(btn);
+    expect(screen.getByLabelText("Switch to source view")).toHaveTextContent("Code");
+    const visualBtn = screen.getByLabelText("Switch to WYSIWYG view");
+    expect(visualBtn).toHaveTextContent("Visual");
+    fireEvent.click(visualBtn);
     expect(onToggleWysiwyg).toHaveBeenCalledTimes(1);
   });
 
-  it("shows SRC label when wysiwyg is on", () => {
-    render(<EditorToolbar wysiwyg={true} onToggleWysiwyg={vi.fn()} />);
-    expect(screen.getByLabelText("Switch to source view")).toHaveTextContent("SRC");
+  it("does not call onToggleWysiwyg when clicking the already-active segment", () => {
+    const onToggleWysiwyg = vi.fn();
+    render(<EditorToolbar wysiwyg={true} onToggleWysiwyg={onToggleWysiwyg} />);
+    fireEvent.click(screen.getByLabelText("Switch to WYSIWYG view"));
+    expect(onToggleWysiwyg).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByLabelText("Switch to source view"));
+    expect(onToggleWysiwyg).toHaveBeenCalledTimes(1);
   });
 });

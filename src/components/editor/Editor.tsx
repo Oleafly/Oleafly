@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { FileText, Loader2, X } from "lucide-react";
 import { CodeMirrorEditor } from "./CodeMirrorEditor";
 import { EditorContextMenu } from "./EditorContextMenu";
-import { EditorToolbar, IconBtn } from "./EditorToolbar";
+import { EditorToolbar, WysiwygModeSwitch } from "./EditorToolbar";
 import { SelectionActionMenu } from "./SelectionActionMenu";
 import { DiffView } from "./diff/DiffView";
 import { PdfViewer } from "@/components/pdf/PdfViewer";
@@ -265,14 +265,8 @@ export function Editor() {
             </div>
           )}
           {showMarkdownWysiwygToggle && (
-            <div className="flex h-9 shrink-0 items-center justify-end gap-0.5 border-b px-2">
-              <IconBtn
-                onClick={toggleWysiwyg}
-                title={wysiwyg ? "Switch to source view" : "Switch to WYSIWYG view"}
-                data-tour="wysiwyg-toggle"
-              >
-                <span className="text-[10px] font-semibold">{wysiwyg ? "SRC" : "WYS"}</span>
-              </IconBtn>
+            <div className="flex h-9 shrink-0 items-center justify-end border-b px-2">
+              <WysiwygModeSwitch wysiwyg={wysiwyg} onToggle={toggleWysiwyg} data-tour="wysiwyg-toggle" />
             </div>
           )}
           {isTypstFile && (
