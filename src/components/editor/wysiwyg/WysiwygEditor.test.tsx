@@ -49,6 +49,11 @@ function setFiles(files: Record<string, { content: string; dirty: boolean }>, ac
   } as unknown as ReturnType<typeof useFilesStore.getState>);
 }
 
+function requireEditor(): Editor {
+  if (!lastEditor) throw new Error("editor not ready");
+  return lastEditor;
+}
+
 describe("WysiwygEditor", () => {
   beforeEach(() => {
     lastEditor = null;
@@ -70,7 +75,8 @@ describe("WysiwygEditor", () => {
     expect(lastEditor).not.toBeNull();
 
     act(() => {
-      lastEditor!.chain().focus().insertContentAt(lastEditor!.state.doc.content.size, " Edited.").run();
+      const editor = requireEditor();
+      editor.chain().focus().insertContentAt(editor.state.doc.content.size, " Edited.").run();
     });
 
     act(() => {
@@ -99,7 +105,8 @@ describe("WysiwygEditor", () => {
     expect(lastEditor).not.toBeNull();
 
     act(() => {
-      lastEditor!.chain().focus().insertContentAt(lastEditor!.state.doc.content.size, " EDITED-A").run();
+      const editor = requireEditor();
+      editor.chain().focus().insertContentAt(editor.state.doc.content.size, " EDITED-A").run();
     });
 
     act(() => {
