@@ -39,10 +39,30 @@ describe("countWords", () => {
     expect(countWords("cost is $x$ dollars").words).toBe(4);
   });
 
-  it("empty input is zero words, zero chars, one line", () => {
+  it("empty input is zero words, zero chars, zero lines", () => {
     const r = countWords("");
     expect(r.words).toBe(0);
     expect(r.characters).toBe(0);
+    expect(r.lines).toBe(0);
+  });
+
+  it("does not count preamble commands or comment-only lines toward the line count", () => {
+    const tex =
+      "\\documentclass{article}\n% a comment line\n\\usepackage{geometry}\n\\begin{document}\nActual content here.\n\\end{document}\n";
+    const r = countWords(tex);
     expect(r.lines).toBe(1);
+    expect(r.words).toBe(3);
+  });
+
+  it("characters excludes LaTeX markup and comments, not just the raw string length", () => {
+    const tex = "\\textbf{hello} world % trailing comment";
+    const r = countWords(tex);
+    expect(r.characters).toBe("hello world".length);
+  });
+
+  it("blank lines between real content are not counted as lines", () => {
+    const tex = "first line\n\n\nsecond line\n";
+    const r = countWords(tex);
+    expect(r.lines).toBe(2);
   });
 });
