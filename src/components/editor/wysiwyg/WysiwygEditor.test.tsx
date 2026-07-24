@@ -125,6 +125,47 @@ describe("WysiwygEditor", () => {
     expect(screen.queryByText("Intro")).not.toBeInTheDocument();
   });
 
+  it("flushes an edit to the store while still in WYSIWYG mode, without unmounting or switching files", () => {
+    vi.useFakeTimers();
+    try {
+      render(<WysiwygEditor />);
+      expect(lastEditor).not.toBeNull();
+
+      act(() => {
+        const editor = requireEditor();
+        editor.chain().insertContentAt(editor.state.doc.content.size, " EDITED-LIVE").run();
+      });
+
+      expect(useFilesStore.getState().files["main.tex"].content).toBe(LATEX_A);
+
+      act(() => {
+        vi.advanceTimersByTime(500);
+      });
+
+      const saved = useFilesStore.getState().files["main.tex"].content;
+      expect(saved).toContain("EDITED-LIVE");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not rewrite the store merely from loading a file with no edits", () => {
+    vi.useFakeTimers();
+    try {
+      render(<WysiwygEditor />);
+      expect(lastEditor).not.toBeNull();
+
+      act(() => {
+        vi.advanceTimersByTime(500);
+      });
+
+      expect(useFilesStore.getState().files["main.tex"].content).toBe(LATEX_A);
+      expect(useFilesStore.getState().files["main.tex"].dirty).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("round-trips markdown frontmatter unchanged", () => {
     setFiles(
       {
