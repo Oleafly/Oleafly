@@ -1,4 +1,4 @@
-import { stex } from "@codemirror/legacy-modes/mode/stex";
+import { stex, stexMath } from "@codemirror/legacy-modes/mode/stex";
 import { LanguageSupport, StreamLanguage } from "@codemirror/language";
 import {
   snippet,
@@ -14,6 +14,10 @@ export function setBibKeysProvider(fn: () => string[]) {
 
 export const latexLanguage = () =>
   new LanguageSupport(StreamLanguage.define(stex));
+
+/** For content that's bare math (no surrounding $...$ or \[...\]), e.g. the equation preview tool. */
+export const latexMathLanguage = () =>
+  new LanguageSupport(StreamLanguage.define(stexMath));
 
 function labelsInDocument(state: { doc: { toString: () => string } }): string[] {
   const text = state.doc.toString();
