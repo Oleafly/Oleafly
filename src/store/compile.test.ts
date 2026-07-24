@@ -129,9 +129,19 @@ describe("compile output lifecycle", () => {
     expect(mocks.compileProject).not.toHaveBeenCalled();
   });
 
-  it("reports a nonzero compile as an error and preserves the prior PDF", async () => {
+  it("reports a nonzero compile as an error but still shows the best-effort PDF", async () => {
     mocks.compileProject.mockResolvedValue({ ok: false, has_pdf: true, log: "failed", errors: [], synctex_path: null, out_dir: "/build", compile_time_ms: 1 });
     mocks.readCompiledPdf.mockResolvedValue(new Uint8Array([1]).buffer);
+    useCompileStore.setState({ pdfBytes: new Uint8Array([9]), lastCompiledAt: 123 });
+    await useCompileStore.getState().recompile();
+    expect(useCompileStore.getState().status).toBe("error");
+    expect(useCompileStore.getState().pdfBytes).toEqual(new Uint8Array([1]));
+    expect(useCompileStore.getState().lastCompiledAt).toBe(123);
+    expect(mocks.readCompiledPdf).toHaveBeenCalledOnce();
+  });
+
+  it("preserves the prior PDF when the failed compile produced none at all", async () => {
+    mocks.compileProject.mockResolvedValue({ ok: false, has_pdf: false, log: "failed", errors: [], synctex_path: null, out_dir: "/build", compile_time_ms: 1 });
     useCompileStore.setState({ pdfBytes: new Uint8Array([9]), lastCompiledAt: 123 });
     await useCompileStore.getState().recompile();
     expect(useCompileStore.getState().status).toBe("error");
