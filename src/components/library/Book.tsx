@@ -145,24 +145,10 @@ export function Book({
             <div className="relative z-10 flex flex-1 flex-col justify-end p-3">
               {engine && (
                 <span
-                  className="mb-1 text-[8px] font-semibold uppercase leading-none tracking-wide opacity-55"
+                  className="text-[9px] font-semibold uppercase leading-none tracking-wide opacity-55"
                   style={{ color: ink }}
                 >
                   {engine}
-                </span>
-              )}
-              <span
-                className="line-clamp-3 break-words text-[13px] font-semibold leading-snug"
-                style={{ color: ink }}
-              >
-                {title}
-              </span>
-              {date && (
-                <span
-                  className="mt-1 text-[10px] font-medium"
-                  style={{ color: ink, opacity: 0.65 }}
-                >
-                  {date}
                 </span>
               )}
             </div>
@@ -188,7 +174,10 @@ export function Book({
           type="button"
           onClick={onStarToggle}
           aria-label={starred ? "Remove from favorites" : "Add to favorites"}
-          className="absolute right-2 top-2 z-20 flex size-6 items-center justify-center rounded-full transition-colors hover:bg-black/10"
+          className={cn(
+            "absolute right-2 top-2 z-20 flex size-7 items-center justify-center rounded-md bg-black/15 backdrop-blur-sm transition-all hover:bg-black/25",
+            starred ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          )}
           style={{ color: starred ? "#f59e0b" : ink }}
         >
           {starred ? (
@@ -198,6 +187,12 @@ export function Book({
           )}
         </button>
       )}
+      <div className="mt-2.5 px-0.5">
+        <div className="line-clamp-2 break-words text-sm font-semibold leading-snug text-foreground">
+          {title}
+        </div>
+        {date && <div className="mt-0.5 text-xs text-muted-foreground">{date}</div>}
+      </div>
     </div>
   );
 }

@@ -563,12 +563,17 @@ export function Library() {
                   aria-label="Show bookmarked only"
                   aria-pressed={onlyFavs}
                   className={cn(
-                    "hover:text-foreground",
+                    "relative hover:text-foreground",
                     onlyFavs ? "text-amber-500 hover:text-amber-500" : "text-muted-foreground"
                   )}
                   onClick={() => setOnlyFavs((v) => !v)}
                 >
                   <Bookmark className={cn("size-4", onlyFavs && "fill-current")} />
+                  {favs.length > 0 && (
+                    <span className="absolute -right-1.5 -top-1.5 flex size-4 items-center justify-center rounded-full bg-foreground text-[10px] font-semibold text-background">
+                      {favs.length}
+                    </span>
+                  )}
                 </Button>
               </Tooltip>
             </>
@@ -631,7 +636,7 @@ export function Library() {
               </EmptyHeader>
             </Empty>
           ) : (
-          <div className="grid grid-cols-2 gap-x-6 gap-y-12 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 xl:gap-x-14 xl:gap-y-14">
+          <div className="grid grid-cols-2 gap-x-8 gap-y-14 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-16 xl:gap-y-16">
             {visibleProjects.map((p) => (
               <ContextMenu key={p.id}>
                 <ContextMenuTrigger asChild>
@@ -646,6 +651,7 @@ export function Library() {
                       onClick={() => void openProject(p.id)}
                       onPreviewRequest={() => hoverPreview && loadThumb(p.id, p.updated_at)}
                       preview={hoverPreview ? thumbs[p.id] : undefined}
+                      width={180}
                     />
                   </div>
                 </ContextMenuTrigger>
