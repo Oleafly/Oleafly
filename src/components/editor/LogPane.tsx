@@ -9,6 +9,7 @@ import { getConfig, type CompileError } from "@/lib/tauri";
 import { openFileAndGotoLine } from "@/features/synctex";
 import { cn } from "@/lib/utils";
 import { objectKey } from "@/lib/react-key";
+import { Tooltip } from "@/components/ui/tooltip";
 
 type Cat = "error" | "warn" | "lineref" | "register" | "normal";
 
@@ -145,18 +146,20 @@ function ErrorCard({ err, log }: { err: CompileError; log: string }) {
           {location && <p className="mt-0.5 font-mono text-[10.5px] text-muted-foreground">{location}</p>}
         </div>
         {expanded && err.line != null && (
-          <button
-            type="button"
-            aria-label="Go to code location"
-            onClick={(e) => {
-              e.stopPropagation();
-              void openFileAndGotoLine(err.file, err.line as number);
-            }}
-            className="flex shrink-0 items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          >
-            Open
-            <ArrowUpRight className="size-3" />
-          </button>
+          <Tooltip label="Go to code location" side="top">
+            <button
+              type="button"
+              aria-label="Go to code location"
+              onClick={(e) => {
+                e.stopPropagation();
+                void openFileAndGotoLine(err.file, err.line as number);
+              }}
+              className="flex shrink-0 items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              Open
+              <ArrowUpRight className="size-3" />
+            </button>
+          </Tooltip>
         )}
       </div>
       {expanded && excerpt && (
