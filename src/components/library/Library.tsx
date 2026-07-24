@@ -382,7 +382,7 @@ export function Library() {
           <DotPattern width={22} height={22} radius={1} className="dark:hidden" />
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 hidden dark:block dark:bg-[radial-gradient(oklch(1_0_0/0.17)_1px,transparent_1px)] dark:bg-[length:22px_22px] dark:[mask-image:radial-gradient(ellipse_90%_100%_at_50%_0%,black,transparent_100%)]"
+            className="pointer-events-none absolute inset-0 hidden dark:block dark:bg-[radial-gradient(oklch(1_0_0/0.17)_1px,transparent_1px)] dark:bg-[length:22px_22px]"
           />
         </>
       )}
