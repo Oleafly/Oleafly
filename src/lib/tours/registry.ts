@@ -106,7 +106,7 @@ export const tourRegistry = {
   },
   workspace: {
     id: "workspace",
-    version: 3,
+    version: 4,
     contexts: ["project"],
     priority: 20,
     steps: [
@@ -136,6 +136,15 @@ export const tourRegistry = {
         content: "Write and navigate source with completion, diagnostics, formatting, and code intelligence.",
         waitForTarget: true,
         placement: "right",
+      },
+      {
+        id: "workspace-wysiwyg-toggle",
+        target: '[data-tour="wysiwyg-toggle"]',
+        kind: "informational",
+        title: "Try WYSIWYG mode",
+        content: "Switch between raw source and a formatted, Google-Docs-style view of your document.",
+        waitForTarget: true,
+        placement: "bottom",
       },
       {
         id: "workspace-compile",

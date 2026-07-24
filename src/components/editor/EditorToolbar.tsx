@@ -76,11 +76,13 @@ export function IconBtn({
   title,
   children,
   wide,
+  "data-tour": dataTour,
 }: {
   onClick: () => void;
   title: string;
   children: ReactNode;
   wide?: boolean;
+  "data-tour"?: string;
 }) {
   return (
     <Tooltip label={title} side="bottom">
@@ -88,6 +90,7 @@ export function IconBtn({
         type="button"
         onClick={onClick}
         aria-label={title}
+        data-tour={dataTour}
         className={cn(
           "flex h-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
           wide ? "w-auto px-1.5" : "w-7"
@@ -441,7 +444,11 @@ export function EditorToolbar({
         <IconBtn onClick={editorFind} title={`Find (${shortcut("⌘F")})`}>
           <Search className="size-4" />
         </IconBtn>
-        <IconBtn onClick={onToggleWysiwyg} title={wysiwyg ? "Switch to source view" : "Switch to WYSIWYG view"}>
+        <IconBtn
+          onClick={onToggleWysiwyg}
+          title={wysiwyg ? "Switch to source view" : "Switch to WYSIWYG view"}
+          data-tour="wysiwyg-toggle"
+        >
           <span className="text-[10px] font-semibold">{wysiwyg ? "SRC" : "WYS"}</span>
         </IconBtn>
       </div>

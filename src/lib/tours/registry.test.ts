@@ -33,6 +33,7 @@ describe("tour registry", () => {
       ["workspace-toolbar", '[data-tour="project-toolbar"]'],
       ["workspace-sidebar", '[data-tour="project-sidebar"]'],
       ["workspace-editor", '[data-tour="project-editor"]'],
+      ["workspace-wysiwyg-toggle", '[data-tour="wysiwyg-toggle"]'],
       ["workspace-compile", '[data-tour="project-compile"]'],
       ["workspace-logs", '[data-tour="project-compile-logs"]'],
       ["workspace-preview", '[data-tour="project-preview"]'],

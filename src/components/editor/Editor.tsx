@@ -266,7 +266,11 @@ export function Editor() {
           )}
           {showMarkdownWysiwygToggle && (
             <div className="flex h-9 shrink-0 items-center justify-end gap-0.5 border-b px-2">
-              <IconBtn onClick={toggleWysiwyg} title={wysiwyg ? "Switch to source view" : "Switch to WYSIWYG view"}>
+              <IconBtn
+                onClick={toggleWysiwyg}
+                title={wysiwyg ? "Switch to source view" : "Switch to WYSIWYG view"}
+                data-tour="wysiwyg-toggle"
+              >
                 <span className="text-[10px] font-semibold">{wysiwyg ? "SRC" : "WYS"}</span>
               </IconBtn>
             </div>
