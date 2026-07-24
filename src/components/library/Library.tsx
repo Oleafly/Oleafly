@@ -369,7 +369,7 @@ export function Library() {
       data-testid="library"
       data-tour="home"
       data-projects-loaded={projectsLoaded ? "true" : "false"}
-      className="relative flex h-full flex-row bg-background"
+      className="relative flex h-full flex-row bg-[var(--home-background)]"
     >
       {bgPattern === "grid" ? (
         <GridPattern width={22} height={22} />
