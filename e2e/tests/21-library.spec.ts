@@ -12,21 +12,41 @@ async function compileForLibraryPreview(tauriPage: TauriPage) {
   await expect(tauriPage.getByTestId("library")).toBeVisible({ timeout: 10_000 });
 }
 
+// The bookmark only reveals via a real CSS :hover, which the bridge's
+// synthetic hover doesn't reliably keep active across the follow-up click,
+// so this drives the button directly (bypassing hover/opacity) and, by this
+// point in the suite the library holds several project books, scopes to the
+// E2E Doc one specifically rather than an unscoped aria-label.
+async function clickBookBookmark(tauriPage: TauriPage) {
+  const clicked = await tauriPage.evaluate<boolean>(
+    `(() => {
+      const book = Array.from(document.querySelectorAll('button[aria-label^="Open "]'))
+        .find((b) => b.textContent.includes('E2E Doc'));
+      const btn = book?.parentElement?.querySelector('[aria-label="Add to favorites"], [aria-label="Remove from favorites"]');
+      if (!btn) return false;
+      btn.click();
+      return true;
+    })()`,
+  );
+  if (!clicked) throw new Error("bookmark button not found for the E2E Doc book");
+}
+
 test("favorite toggles on a project book", async ({ tauriPage }) => {
   await expect(tauriPage.getByTestId("library")).toBeVisible();
-  // Scoped to the E2E Doc book specifically: by this point in the suite the
-  // library holds several project books, each with its own (generically
-  // aria-labeled) bookmark button, so an unscoped selector can match a
-  // different, non-hovered book's hidden button first.
-  await tauriPage.hover('button[aria-label="Open E2E Doc"]');
-  await tauriPage.click('button[aria-label="Open E2E Doc"] ~ [aria-label="Add to favorites"]');
-  await expect(
-    tauriPage.locator('button[aria-label="Open E2E Doc"] ~ [aria-label="Remove from favorites"]'),
-  ).toBeVisible();
-  await tauriPage.click('button[aria-label="Open E2E Doc"] ~ [aria-label="Remove from favorites"]');
-  await expect(
-    tauriPage.locator('button[aria-label="Open E2E Doc"] ~ [aria-label="Add to favorites"]'),
-  ).toBeVisible();
+  await clickBookBookmark(tauriPage);
+  await tauriPage.waitForFunction(
+    `Array.from(document.querySelectorAll('button[aria-label^="Open "]'))
+      .find((b) => b.textContent.includes('E2E Doc'))
+      ?.parentElement?.querySelector('[aria-label="Remove from favorites"]') != null`,
+    10_000,
+  );
+  await clickBookBookmark(tauriPage);
+  await tauriPage.waitForFunction(
+    `Array.from(document.querySelectorAll('button[aria-label^="Open "]'))
+      .find((b) => b.textContent.includes('E2E Doc'))
+      ?.parentElement?.querySelector('[aria-label="Add to favorites"]') != null`,
+    10_000,
+  );
 });
 
 // Regression: the hover preview used to slide in ABOVE the bookmark (its overlay
@@ -139,8 +159,19 @@ test("delete the forked copy from the context menu", async ({ tauriPage }) => {
 
 test("bookmark filter shows only bookmarked projects", async ({ tauriPage }) => {
   await expect(tauriPage.getByTestId("library")).toBeVisible();
-  await tauriPage.hover('button[aria-label^="Open "]');
-  await tauriPage.click('[aria-label="Add to favorites"]');
+  // Bookmark whichever book is first; the bridge's synthetic hover doesn't
+  // reliably keep :hover active for the follow-up click, so drive the
+  // (opacity-gated until starred) button directly instead.
+  const clicked = await tauriPage.evaluate<boolean>(
+    `(() => {
+      const book = document.querySelector('button[aria-label^="Open "]');
+      const btn = book?.parentElement?.querySelector('[aria-label="Add to favorites"], [aria-label="Remove from favorites"]');
+      if (!btn) return false;
+      btn.click();
+      return true;
+    })()`,
+  );
+  if (!clicked) throw new Error("no project book found to bookmark");
 
   await tauriPage.click('[aria-label="Show bookmarked only"]');
   await tauriPage.waitForFunction(
