@@ -646,6 +646,7 @@ export function Library() {
                       color={projectColors[p.id] ?? (p.color || DEFAULT_BOOK_COLOR)}
                       date={projectModifiedLabel(p.updated_at)}
                       engine={projectEngineLabel(p.engine, p.main_doc)}
+                      kind={p.kind || "document"}
                       starred={favs.includes(p.id)}
                       onStarToggle={() => toggleFav(p.id)}
                       onClick={() => void openProject(p.id)}

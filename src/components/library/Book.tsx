@@ -53,6 +53,7 @@ export function Book({
   illustration,
   date,
   engine,
+  kind,
   variant = "book",
   width = 150,
   onClick,
@@ -67,6 +68,7 @@ export function Book({
   illustration?: ReactNode;
   date?: string;
   engine?: string;
+  kind?: string;
   variant?: Variant;
   width?: number;
   onClick?: () => void;
@@ -194,9 +196,7 @@ export function Book({
         </button>
       )}
       <div className="mt-2.5 px-0.5">
-        <div className="line-clamp-2 break-words text-sm font-semibold leading-snug text-foreground">
-          {title}
-        </div>
+        {kind && <div className="text-xs capitalize text-muted-foreground">{kind}</div>}
         {date && <div className="mt-0.5 text-xs text-muted-foreground">{date}</div>}
       </div>
     </div>
