@@ -1,12 +1,22 @@
 import { useMemo, useState, type ComponentType } from "react";
-import { Calculator, FileInput, School, Search, ShieldCheck, Table2, ToolCase, X } from "lucide-react";
+import {
+  Calculator,
+  ClipboardClock,
+  FileInput,
+  School,
+  Search,
+  ShieldCheck,
+  Table2,
+  ToolCase,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { WHITE_PANEL, cn } from "@/lib/utils";
 import { useHomeViewStore, type HomePage } from "@/store/home-view";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 
-type ToolId = "pdf-to-latex" | "equation" | "bibtex" | "table" | "lab-search";
+type ToolId = "pdf-to-latex" | "equation" | "bibtex" | "table" | "lab-search" | "deadlines";
 
 interface ToolDef {
   id: ToolId;
@@ -66,6 +76,15 @@ const TOOLS: ToolDef[] = [
     tags: ["OpenAlex", "Global", "No sign-up"],
     category: "Research & Analyze",
   },
+  {
+    id: "deadlines",
+    name: "Conference Deadlines",
+    letter: "D",
+    description: "Live countdowns and filters for CS and research conference deadlines.",
+    icon: ClipboardClock,
+    tags: ["Live countdown", "Field filters", "ccf-deadlines"],
+    category: "Research & Analyze",
+  },
 ];
 
 const TOOL_PAGE: Record<ToolId, HomePage> = {
@@ -74,6 +93,7 @@ const TOOL_PAGE: Record<ToolId, HomePage> = {
   bibtex: "bibtex",
   table: "table",
   "lab-search": "lab-search",
+  deadlines: "deadlines",
 };
 
 function ToolCard({ tool, onOpen }: { tool: ToolDef; onOpen: () => void }) {
@@ -191,7 +211,7 @@ export function LatexToolsView() {
           <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-foreground text-background">
             <ToolCase className="size-4" />
           </div>
-          <div id="latex-tools-title" className="shrink-0 text-base font-bold tracking-tight">LaTeX Tools</div>
+          <div id="latex-tools-title" className="shrink-0 text-base font-bold tracking-tight">Oleafly Tools</div>
           <div className="relative min-w-0 flex-1">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input

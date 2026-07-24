@@ -1,11 +1,10 @@
 import type { ReactNode } from "react";
-import { ClipboardClock, Moon, PenTool, Plus, Search, Settings as SettingsIcon, Sun, ToolCase } from "lucide-react";
+import { Moon, PenTool, Plus, Search, Settings as SettingsIcon, Sun, ToolCase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn, isMac, shortcut } from "@/lib/utils";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { useTheme } from "@/lib/theme";
-import { useDeadlinesStore } from "@/store/deadlines";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
@@ -64,9 +63,7 @@ export function HomeDock() {
   const hasProjects = useFilesStore((s) => s.projects.length > 0);
   const { theme, toggleTheme } = useTheme();
   const fullscreen = useFullscreen();
-  const deadlinesOpen = useHomeViewStore((s) => s.deadlinesOpen);
   const toolsOpen = useHomeViewStore((s) => s.toolsOpen);
-  const openDeadlines = useHomeViewStore((s) => s.openDeadlines);
   const openTools = useHomeViewStore((s) => s.openTools);
   const page = useHomeViewStore((s) => s.page);
   const goTo = useHomeViewStore((s) => s.goTo);
@@ -75,6 +72,15 @@ export function HomeDock() {
 
   const items = (
     <>
+      <DockButton
+        label="New project"
+        icon={<Plus className="size-4" />}
+        onClick={() => setNewProjectOpen(true)}
+        primary
+        testId="new-project"
+        tour="new-project"
+        tooltipSide={tooltipSide}
+      />
       {hasProjects && (
         <DockButton
           label={`Search Documents (${shortcut("⌘⇧F")})`}
@@ -93,31 +99,11 @@ export function HomeDock() {
         tooltipSide={tooltipSide}
       />
       <DockButton
-        label="LaTeX Tools"
+        label="Oleafly Tools"
         icon={<ToolCase className="size-4" />}
         onClick={openTools}
         active={toolsOpen}
         testId="open-latex-tools"
-        tooltipSide={tooltipSide}
-      />
-      <DockButton
-        label="New project"
-        icon={<Plus className="size-4" />}
-        onClick={() => setNewProjectOpen(true)}
-        primary
-        testId="new-project"
-        tour="new-project"
-        tooltipSide={tooltipSide}
-      />
-      <DockButton
-        label="CCF Deadlines"
-        icon={<ClipboardClock className="size-4" />}
-        onClick={() => {
-          void useDeadlinesStore.getState().openView();
-          openDeadlines();
-        }}
-        active={deadlinesOpen}
-        testId="open-deadlines"
         tooltipSide={tooltipSide}
       />
       <DockButton
