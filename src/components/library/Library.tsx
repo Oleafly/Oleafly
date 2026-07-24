@@ -371,10 +371,20 @@ export function Library() {
       data-projects-loaded={projectsLoaded ? "true" : "false"}
       className="relative flex h-full flex-row bg-[var(--home-background)]"
     >
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(ellipse_60%_100%_at_50%_0%,oklch(0.7_0.11_262/0.08),transparent_70%)]"
+      />
       {bgPattern === "grid" ? (
         <GridPattern width={22} height={22} />
       ) : (
-        <DotPattern width={22} height={22} radius={1} />
+        <>
+          <DotPattern width={22} height={22} radius={1} className="dark:hidden" />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 hidden dark:block dark:bg-[radial-gradient(oklch(1_0_0/0.17)_1px,transparent_1px)] dark:bg-[length:22px_22px] dark:[mask-image:radial-gradient(ellipse_75%_65%_at_50%_45%,black,transparent_100%)]"
+          />
+        </>
       )}
       <HomeDock />
       <div className="flex min-w-0 flex-1 flex-col">

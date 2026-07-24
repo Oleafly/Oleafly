@@ -76,7 +76,7 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-accent: oklch(0.269 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
-  --home-background: var(--background);
+  --home-background: oklch(0.155 0.004 266);
 
   /* CodeMirror syntax tokens (dark) */
   --cm-comment: #8b949e;
