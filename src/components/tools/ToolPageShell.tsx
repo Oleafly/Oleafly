@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn, isMac } from "@/lib/utils";
+import { useFullscreen } from "@/lib/use-fullscreen";
 import { useHomeViewStore, type HomePage } from "@/store/home-view";
 
 export function ToolPageShell({
@@ -16,10 +18,16 @@ export function ToolPageShell({
 }) {
   const activePage = useHomeViewStore((s) => s.page);
   const goTo = useHomeViewStore((s) => s.goTo);
+  const fullscreen = useFullscreen();
   if (activePage !== page) return null;
   return (
     <div data-testid={testId} className="flex h-full flex-col bg-background">
-      <div className="flex items-center gap-3 border-b px-4 py-2">
+      <div
+        className={cn(
+          "flex items-center gap-3 border-b px-4 py-2",
+          isMac && !fullscreen && "pl-20",
+        )}
+      >
         <Button variant="ghost" size="sm" onClick={() => goTo("library")} data-testid={`${testId}-back`}>
           <ArrowLeft className="size-4" /> Back
         </Button>
