@@ -92,7 +92,10 @@ test("the find button opens the editor search panel", async ({ tauriPage }) => {
 
 test("non-tex files get no formatting toolbar; txt files edit fine", async ({ tauriPage }) => {
   await openScratchProject(tauriPage);
-  await expect(tauriPage.locator('[aria-label^="Bold ("]')).toBeVisible();
+  // Undo never overflows into the "More formatting options" menu (unlike
+  // Bold, which can on a narrow CI window), so it's a more reliable signal
+  // that the LaTeX toolbar mounted at all.
+  await expect(tauriPage.locator('[aria-label^="Undo ("]')).toBeVisible({ timeout: 10_000 });
 
   await openRailTab(tauriPage, "Source Tree");
   await tauriPage.getByText("project.json", { exact: true }).click();
