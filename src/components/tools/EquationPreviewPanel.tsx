@@ -3,6 +3,8 @@ import katex from "katex";
 import "katex/dist/katex.min.css";
 import { Copy, Maximize, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CodeField } from "@/components/tools/CodeField";
+import { latexMathLanguage } from "@/components/editor/cm/latex";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 
@@ -60,7 +62,6 @@ export function EquationPreviewPanel({
   editorTheme,
 }: EquationPreviewPanelProps) {
   const previewCardRef = useRef<HTMLDivElement>(null);
-  const lines = input.split("\n");
 
   const copyWrapped = () => {
     void navigator.clipboard.writeText(wrapped);
@@ -103,33 +104,14 @@ export function EquationPreviewPanel({
           </div>
         </div>
 
-        <div
-          data-editor-theme={editorTheme}
-          className="flex min-h-0 flex-1 overflow-auto"
-          style={{
-            backgroundColor: "var(--cm-editor-bg, var(--background))",
-            color: "var(--cm-editor-fg, var(--foreground))",
-          }}
-        >
-          <div
-            className="select-none border-r px-3 py-4 text-right font-mono text-xs"
-            style={{ color: "var(--cm-gutter-fg, var(--muted-foreground))" }}
-          >
-            {lines.map((_, i) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: line numbers are positionally stable within a render
-              <div key={i} className="leading-6">
-                {i + 1}
-              </div>
-            ))}
-          </div>
-          <textarea
-            value={input}
-            onChange={(e) => onInputChange(e.target.value)}
-            spellCheck={false}
-            className="min-h-full flex-1 resize-none border-0 bg-transparent px-3 py-4 font-mono text-sm leading-6 outline-none"
-            style={{ color: "var(--cm-editor-fg, var(--foreground))", caretColor: "var(--cm-cursor, var(--primary))" }}
-          />
-        </div>
+        <CodeField
+          value={input}
+          onChange={onInputChange}
+          language={latexMathLanguage}
+          themeId={editorTheme}
+          testId="equation-latex-field"
+          className="min-h-0 flex-1 overflow-auto text-sm [&_.cm-editor]:h-full"
+        />
 
         <div className="border-t px-4 py-3">
           <div className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground">

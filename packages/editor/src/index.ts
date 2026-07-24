@@ -9,11 +9,13 @@ export { editorTheme } from "./theme";
 export { languageForPath } from "./languages";
 export {
   latexLanguage,
+  latexMathLanguage,
   latexCompletions,
   slashCompletions,
   setBibKeysProvider,
   bibKeysFromSources,
 } from "./latex";
+export { bibtexLanguage } from "./bibtex";
 export { latexFolding } from "./latex-folding";
 export { createLatexLinter } from "./latex-linter";
 export * from "./latex-mask";

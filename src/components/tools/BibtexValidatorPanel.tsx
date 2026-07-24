@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { CodeField } from "@/components/tools/CodeField";
+import { bibtexLanguage } from "@/components/editor/cm/bibtex";
 import { parseBib, validateBib } from "@/lib/latex-tools";
 import { useSettingsStore } from "@/store/settings";
 
@@ -10,6 +11,35 @@ const SAMPLE = `@article{einstein1905,
   journal = {Annalen der Physik},
   year    = {1905}
 }`;
+
+const EXAMPLES: { label: string; hint: string; bib: string }[] = [
+  { label: "Valid entry", hint: "all required fields present", bib: SAMPLE },
+  {
+    label: "Missing field",
+    hint: "flags a required field",
+    bib: `@article{turing1950,
+  author = {Turing, Alan},
+  title  = {Computing Machinery and Intelligence}
+}`,
+  },
+  {
+    label: "Duplicate keys",
+    hint: "flags a repeated citation key",
+    bib: `@article{shannon1948,
+  author  = {Shannon, Claude},
+  title   = {A Mathematical Theory of Communication},
+  journal = {Bell System Technical Journal},
+  year    = {1948}
+}
+
+@book{shannon1948,
+  author    = {Shannon, Claude},
+  title     = {A Mathematical Theory of Communication},
+  publisher = {University of Illinois Press},
+  year      = {1949}
+}`,
+  },
+];
 
 const LEVEL_CLASS: Record<"error" | "warning" | "ok", string> = {
   error: "border-l-destructive",
@@ -33,26 +63,37 @@ export function BibtexValidatorPanel() {
           <span>BibTeX input</span>
           <span>{result ? `${result.entries.length} entries` : "0 entries"}</span>
         </div>
-        <Textarea
-          data-editor-theme={editorTheme}
+        <CodeField
           value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder={`${SAMPLE}\n\nPaste your full .bib file here...`}
-          spellCheck={false}
-          className="min-h-0 flex-1 resize-none rounded-none border-0 font-mono text-xs focus-visible:ring-0"
-          style={{
-            backgroundColor: "var(--cm-editor-bg, var(--background))",
-            color: "var(--cm-editor-fg, var(--foreground))",
-            caretColor: "var(--cm-cursor, var(--primary))",
-          }}
+          onChange={setInput}
+          language={bibtexLanguage}
+          themeId={editorTheme}
+          placeholder="Paste your full .bib file here…"
+          testId="bibtex-code-field"
+          className="min-h-0 flex-1 overflow-auto text-xs [&_.cm-editor]:h-full"
         />
-        <div className="flex items-center gap-2 border-t px-4 py-2">
-          <Button variant="ghost" size="sm" onClick={() => setInput(SAMPLE)}>
-            Sample
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => setInput("")}>
-            Clear
-          </Button>
+        <div className="border-t px-4 py-3">
+          <div className="mb-2 flex items-center justify-between">
+            <div className="text-xs font-semibold tracking-wide text-muted-foreground">
+              EXAMPLES
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => setInput("")}>
+              Clear
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {EXAMPLES.map((ex) => (
+              <Button
+                key={ex.label}
+                variant="outline"
+                size="sm"
+                title={ex.hint}
+                onClick={() => setInput(ex.bib)}
+              >
+                {ex.label}
+              </Button>
+            ))}
+          </div>
         </div>
       </div>
       <div className="flex min-w-0 flex-1 flex-col">

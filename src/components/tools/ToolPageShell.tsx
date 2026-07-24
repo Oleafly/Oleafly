@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn, isMac } from "@/lib/utils";
@@ -8,11 +8,17 @@ import { useHomeViewStore, type HomePage } from "@/store/home-view";
 export function ToolPageShell({
   page,
   title,
+  subtitle,
+  icon: Icon,
+  actions,
   testId,
   children,
 }: {
   page: HomePage;
   title: string;
+  subtitle?: string;
+  icon?: ComponentType<{ className?: string }>;
+  actions?: ReactNode;
   testId: string;
   children: ReactNode;
 }) {
@@ -24,14 +30,27 @@ export function ToolPageShell({
     <div data-testid={testId} className="flex h-full flex-col bg-background">
       <div
         className={cn(
-          "flex items-center gap-3 border-b px-4 py-2",
+          "flex items-center gap-3 border-b px-4 py-2.5",
           isMac && !fullscreen && "pl-20",
         )}
       >
         <Button variant="ghost" size="sm" onClick={() => goTo("library")} data-testid={`${testId}-back`}>
           <ArrowLeft className="size-4" /> Back
         </Button>
-        <div className="font-medium">{title}</div>
+        <div className="h-6 w-px bg-border" />
+        {Icon && (
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-md border bg-muted">
+            <Icon className="size-4" />
+          </div>
+        )}
+        <div className="min-w-0">
+          <div className="text-sm font-semibold leading-tight">{title}</div>
+          {subtitle && (
+            <div className="text-xs leading-tight text-muted-foreground">{subtitle}</div>
+          )}
+        </div>
+        <div className="flex-1" />
+        {actions}
       </div>
       <div className="flex min-h-0 flex-1">{children}</div>
     </div>
