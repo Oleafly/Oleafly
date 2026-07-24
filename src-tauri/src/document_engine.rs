@@ -812,10 +812,12 @@ pub async fn compile(request: CompileRequest<'_>) -> Result<CompileResult, Strin
     } else {
         false
     };
+    let errors = request.engine.parse_errors(&log);
+    let has_reported_errors = errors.iter().any(|e| e.kind == "error");
     Ok(CompileResult {
-        ok: has_pdf && exit_code.unwrap_or(-1) == 0,
+        ok: has_pdf && exit_code.unwrap_or(-1) == 0 && !has_reported_errors,
         has_pdf,
-        errors: request.engine.parse_errors(&log),
+        errors,
         log,
         synctex_path: capabilities
             .supports_synctex
@@ -1140,6 +1142,8 @@ fn tectonic_args(out_dir: &str, search_path: &str, entry: &str, offline: bool) -
         "--print".into(),
         "--outdir".into(),
         out_dir.into(),
+        "-Z".into(),
+        "continue-on-errors".into(),
         "-Z".into(),
         search_path.into(),
         entry.into(),
@@ -1684,6 +1688,8 @@ mod tests {
                 "--print",
                 "--outdir",
                 "/build",
+                "-Z",
+                "continue-on-errors",
                 "-Z",
                 "search-path=/project",
                 "/build/_oleafly_entry.tex"
