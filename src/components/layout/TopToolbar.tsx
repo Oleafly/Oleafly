@@ -39,6 +39,8 @@ import { LeafLogo } from "@/components/layout/LeafLogo";
 import { GithubMenu } from "@/components/layout/GithubMenu";
 import { useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
+import { useProjectColorsStore } from "@/store/project-colors";
+import { DEFAULT_BOOK_COLOR } from "@/components/library/Book";
 import { useSettingsStore, type LayoutPreset, type RailTab, type ViewMode } from "@/store/settings";
 import { exportCurrentPdf, exportCurrentImagePng } from "@/features/export";
 import { ensurePandoc } from "@/features/pandoc";
@@ -105,6 +107,11 @@ function activeLayoutPreset(viewMode: ViewMode, railTab: RailTab, showTree: bool
 export function TopToolbar() {
   const projectName = useFilesStore((s) => s.projectName);
   const projectId = useFilesStore((s) => s.projectId);
+  const projects = useFilesStore((s) => s.projects);
+  const projectColors = useProjectColorsStore((s) => s.colors);
+  const currentProject = projects.find((p) => p.id === projectId);
+  const coverColor =
+    (projectId ? projectColors[projectId] : undefined) ?? (currentProject?.color || DEFAULT_BOOK_COLOR);
   const projectKind = useFilesStore((s) => s.projectKind);
   const isSingleFigureProject = projectKind === "image" || projectKind === "diagram";
   const engine = useFilesStore((s) => s.engine);
@@ -353,9 +360,14 @@ export function TopToolbar() {
               data-testid="project-title"
             type="button"
             onClick={startEditTitle}
-            className="flex min-w-0 items-center rounded px-1 py-0.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+            className="flex min-w-0 items-center gap-1.5 rounded px-1 py-0.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
           >
             <span className="max-w-[200px] truncate">{projectName || "project"}</span>
+            <span
+              aria-hidden="true"
+              className="size-2 shrink-0 rounded-full"
+              style={{ backgroundColor: coverColor }}
+            />
           </button>
         )}
       </div>
