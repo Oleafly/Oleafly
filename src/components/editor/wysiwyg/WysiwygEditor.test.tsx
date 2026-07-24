@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { Editor } from "@tiptap/core";
 import { WysiwygEditor } from "./WysiwygEditor";
 import { useFilesStore } from "@/store/files";
@@ -185,5 +185,50 @@ describe("WysiwygEditor", () => {
     expect(saved.startsWith("---\ntitle: My Doc\n---")).toBe(true);
     expect(saved).toContain("# Heading");
     expect(saved).toContain("Body text.");
+  });
+
+  it("shows a collapsed preamble toggle for a full LaTeX document, hidden by default", () => {
+    render(<WysiwygEditor />);
+    expect(screen.getByText("Show document preamble")).toBeInTheDocument();
+    expect(screen.queryByDisplayValue(/documentclass/)).not.toBeInTheDocument();
+  });
+
+  it("reveals and edits the preamble, and the edit is saved back on unmount", () => {
+    const { unmount } = render(<WysiwygEditor />);
+
+    fireEvent.click(screen.getByText("Show document preamble"));
+    const textarea = screen.getByDisplayValue(/documentclass/) as HTMLTextAreaElement;
+    expect(textarea.value).toBe("\\documentclass{article}\n\\begin{document}\n");
+
+    fireEvent.change(textarea, { target: { value: "\\documentclass{report}\n\\begin{document}\n" } });
+
+    act(() => {
+      unmount();
+    });
+
+    const saved = useFilesStore.getState().files["main.tex"].content;
+    expect(saved.startsWith("\\documentclass{report}\n\\begin{document}\n")).toBe(true);
+    expect(saved).toContain("\\section{Intro}");
+  });
+
+  it("does not show a preamble toggle for markdown files or LaTeX without \\begin{document}", () => {
+    setFiles(
+      {
+        "notes.md": { content: MARKDOWN_WITH_FRONTMATTER, dirty: false },
+      },
+      "notes.md",
+    );
+    const { unmount } = render(<WysiwygEditor />);
+    expect(screen.queryByText("Show document preamble")).not.toBeInTheDocument();
+    unmount();
+
+    setFiles(
+      {
+        "snippet.tex": { content: "Just a snippet, no document environment.\n", dirty: false },
+      },
+      "snippet.tex",
+    );
+    render(<WysiwygEditor />);
+    expect(screen.queryByText("Show document preamble")).not.toBeInTheDocument();
   });
 });

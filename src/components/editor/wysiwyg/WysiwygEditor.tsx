@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import {
   WYSIWYG_EXTENSIONS,
   parseLatexBody,
@@ -27,6 +28,10 @@ export function WysiwygEditor() {
   const activePathRef = useRef<string | null>(null);
   activePathRef.current = activePath;
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const preambleRef = useRef("");
+  const [preamble, setPreamble] = useState("");
+  const [hasDocumentEnv, setHasDocumentEnv] = useState(false);
+  const [showPreamble, setShowPreamble] = useState(false);
 
   const flush = useCallback((editorInstance: Editor) => {
     const path = activePathRef.current;
@@ -39,7 +44,10 @@ export function WysiwygEditor() {
     } else {
       const body = serializeLatexBody(json);
       const split = latexSplitRef.current;
-      useFilesStore.getState().setContent(path, split ? joinLatexDocument({ ...split, body }) : body);
+      const nextSource = split
+        ? joinLatexDocument({ ...split, preamble: preambleRef.current, body })
+        : body;
+      useFilesStore.getState().setContent(path, nextSource);
     }
   }, []);
 
@@ -60,10 +68,16 @@ export function WysiwygEditor() {
       const { doc, frontmatter } = parseMarkdownBody(raw);
       frontmatterRef.current = frontmatter;
       latexSplitRef.current = null;
+      preambleRef.current = "";
+      setPreamble("");
+      setHasDocumentEnv(false);
       editor.commands.setContent(doc, { emitUpdate: false });
     } else {
       const split = splitLatexDocument(raw);
       latexSplitRef.current = split;
+      preambleRef.current = split.preamble;
+      setPreamble(split.preamble);
+      setHasDocumentEnv(split.hasDocumentEnv);
       frontmatterRef.current = "";
       editor.commands.setContent(parseLatexBody(split.body), { emitUpdate: false });
     }
@@ -83,9 +97,50 @@ export function WysiwygEditor() {
     };
   }, [editor, activePath, saveFile, flush]);
 
+  const onPreambleChange = (value: string) => {
+    setPreamble(value);
+    preambleRef.current = value;
+    if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
+    flushTimerRef.current = setTimeout(() => {
+      if (editor) flush(editor);
+    }, FLUSH_DEBOUNCE_MS);
+  };
+
   return (
-    <div className="wysiwyg-content h-full overflow-auto px-8 py-6">
-      <EditorContent editor={editor} />
+    <div className="wysiwyg-content flex h-full flex-col overflow-auto">
+      {hasDocumentEnv && (
+        <div className="mx-auto w-full max-w-[42rem] px-8 pt-6">
+          <div className="rounded-md border border-border">
+            <button
+              type="button"
+              onClick={() => setShowPreamble((v) => !v)}
+              className="flex w-full items-center justify-between px-3 py-2 text-xs text-muted-foreground hover:text-foreground"
+            >
+              {showPreamble ? "Hide document preamble" : "Show document preamble"}
+              {showPreamble ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+            </button>
+            {showPreamble && (
+              <textarea
+                value={preamble}
+                onChange={(e) => onPreambleChange(e.target.value)}
+                spellCheck={false}
+                rows={Math.min(Math.max(preamble.split("\n").length, 3), 20)}
+                className="w-full resize-none border-t border-border bg-muted/40 px-3 py-2 font-mono text-xs text-foreground outline-none"
+              />
+            )}
+          </div>
+        </div>
+      )}
+      <div className="flex-1 px-8 py-6">
+        <EditorContent editor={editor} />
+      </div>
+      {hasDocumentEnv && (
+        <div className="mx-auto w-full max-w-[42rem] px-8 pb-6">
+          <div className="rounded-md border border-border px-3 py-2 text-center text-xs text-muted-foreground">
+            End of document
+          </div>
+        </div>
+      )}
     </div>
   );
 }

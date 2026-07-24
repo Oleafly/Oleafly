@@ -189,25 +189,23 @@
   display: block;
   background: var(--muted);
   color: var(--muted-foreground);
-  border: 1px dashed var(--border);
   border-radius: 0.375em;
-  padding: 0.5em 0.75em;
+  padding: 0.4em 0.7em;
   font-family: var(--font-mono);
   font-size: 0.8125em;
   white-space: pre-wrap;
-  cursor: not-allowed;
+  cursor: default;
 }
 .wysiwyg-content .ProseMirror [data-type="raw-inline"] {
   display: inline;
   background: var(--muted);
   color: var(--muted-foreground);
-  border: 1px dashed var(--border);
-  border-radius: 0.25em;
-  padding: 0 0.3em;
+  border-radius: 9999px;
+  padding: 0.05em 0.65em;
   font-family: var(--font-mono);
   font-size: 0.8125em;
   white-space: pre-wrap;
-  cursor: not-allowed;
+  cursor: default;
 }
 
 @theme inline {
