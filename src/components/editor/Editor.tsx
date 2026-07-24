@@ -13,6 +13,8 @@ import { useDiffStore, diffKey } from "@/store/diff";
 import { base64ToUint8Array, readFileBase64 } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { formattingForEngine, pathUsesEngineSource } from "@/lib/document-engine";
+import { getWysiwygMode, setWysiwygMode } from "@/lib/wysiwyg-mode";
+import { WysiwygEditor } from "./wysiwyg/WysiwygEditor";
 
 function basename(p: string) {
   const parts = p.split("/");
@@ -160,6 +162,17 @@ export function Editor() {
   const formattingProfile = useFilesStore((s) => s.engine.capabilities.formatting_profile);
   const showLatexToolbar = engineLoaded && formattingProfile === "latex" && pathUsesEngineSource(engine, activePath);
 
+  const [wysiwyg, setWysiwygState] = useState(() => (projectId ? getWysiwygMode(projectId) : false));
+  useEffect(() => {
+    if (projectId) setWysiwygState(getWysiwygMode(projectId));
+  }, [projectId]);
+  const toggleWysiwyg = () => {
+    if (!projectId) return;
+    const next = !wysiwyg;
+    setWysiwygMode(projectId, next);
+    setWysiwygState(next);
+  };
+
   return (
     <div data-tour="project-editor" className="flex h-full flex-col bg-background">
       <div className="flex h-9 shrink-0 items-center gap-1 overflow-x-auto border-b px-2">
@@ -246,7 +259,7 @@ export function Editor() {
         <>
           {showLatexToolbar && (
             <div className="shrink-0">
-              <EditorToolbar />
+              <EditorToolbar wysiwyg={wysiwyg} onToggleWysiwyg={toggleWysiwyg} />
             </div>
           )}
           {isTypstFile && (
@@ -293,6 +306,10 @@ export function Editor() {
               <FileText className="mb-3 size-10 opacity-30" />
               <p className="text-sm">{basename(activePath)}</p>
               <p className="text-xs">Binary file. No preview available.</p>
+            </div>
+          ) : wysiwyg && !isTypstFile ? (
+            <div className="min-h-0 flex-1 overflow-auto">
+              <WysiwygEditor />
             </div>
           ) : (
             <div className="min-h-0 flex-1 overflow-hidden">

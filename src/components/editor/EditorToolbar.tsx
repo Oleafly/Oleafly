@@ -288,7 +288,13 @@ function fitCount(controls: ToolbarControl[], availableWidth: number): number {
   return controls.length;
 }
 
-export function EditorToolbar() {
+export function EditorToolbar({
+  wysiwyg,
+  onToggleWysiwyg,
+}: {
+  wysiwyg: boolean;
+  onToggleWysiwyg: () => void;
+}) {
   const [visionReady, setVisionReady] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const projectKind = useFilesStore((s) => s.projectKind);
@@ -434,6 +440,9 @@ export function EditorToolbar() {
         <WordCountButton />
         <IconBtn onClick={editorFind} title={`Find (${shortcut("⌘F")})`}>
           <Search className="size-4" />
+        </IconBtn>
+        <IconBtn onClick={onToggleWysiwyg} title={wysiwyg ? "Switch to source view" : "Switch to WYSIWYG view"}>
+          <span className="text-[10px] font-semibold">{wysiwyg ? "SRC" : "WYS"}</span>
         </IconBtn>
       </div>
     </div>
