@@ -55,6 +55,7 @@ describe("renderLineText", () => {
 
   it("applies the escape callback to run text", () => {
     const line = buildLines([item("50%", 0)])[0];
-    expect(renderLineText(line, (s) => s.replace(/%/g, "\\%"))).toBe("50\\%");
+    const fullEscape = (s: string) => s.replace(/\\/g, "\\textbackslash{}").replace(/%/g, "\\%");
+    expect(renderLineText(line, fullEscape)).toBe("50\\%");
   });
 });

@@ -39,7 +39,7 @@ export function prepareAccessibleSource(source: string, opts?: { lang?: string }
   const changes: PrepChange[] = [];
   let out = source;
 
-  const metaRe = /\\DocumentMetadata\s*\{([^}]{0,2000})\}/;
+  const metaRe = /\\DocumentMetadata\s{0,20}\{([^}]{0,2000})\}/;
   const existing = metaRe.exec(out);
   if (existing) {
     const { order, map } = parseKeys(existing[1]);
@@ -66,7 +66,7 @@ export function prepareAccessibleSource(source: string, opts?: { lang?: string }
   }
 
   const hasUnicodeMath = /\\usepackage(?:\[[^\]]{0,500}\])?\{unicode-math\}/.test(out);
-  const dc = /\\documentclass\s*(?:\[[^\]]{0,500}\])?\s*\{[^}]{0,500}\}/.exec(out);
+  const dc = /\\documentclass\s{0,20}(?:\[[^\]]{0,500}\])?\s{0,20}\{[^}]{0,500}\}/.exec(out);
   if (!hasUnicodeMath && dc) {
     const insertAt = dc.index + dc[0].length;
     out = `${out.slice(0, insertAt)}\n\\usepackage{unicode-math}${out.slice(insertAt)}`;
@@ -74,7 +74,7 @@ export function prepareAccessibleSource(source: string, opts?: { lang?: string }
   }
 
   let altAdded = 0;
-  out = out.replace(/\\includegraphics\s*(?:\[([^\]]{0,500})\])?\s*\{([^}]{0,2000})\}/g, (whole, optsGroup, file) => {
+  out = out.replace(/\\includegraphics\s{0,20}(?:\[([^\]]{0,500})\])?\s{0,20}\{([^}]{0,2000})\}/g, (whole, optsGroup, file) => {
     const o = optsGroup ?? "";
     if (/\balt\s*=/.test(o)) return whole;
     altAdded++;
