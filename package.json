@@ -69,6 +69,7 @@
     "@tauri-apps/plugin-shell": "^2",
     "@tauri-apps/plugin-updater": "^2.10.1",
     "@tiptap/core": "^3.28.0",
+    "@tiptap/react": "^3.28.0",
     "@tiptap/starter-kit": "^3.28.0",
     "@unified-latex/unified-latex-types": "^1.8.4",
     "@unified-latex/unified-latex-util-parse": "^1.8.4",
