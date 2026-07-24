@@ -12,6 +12,8 @@ import {
   type LatexDocumentSplit,
 } from "@oleafly/wysiwyg";
 import { useFilesStore } from "@/store/files";
+import { editorRedo, editorUndo } from "@/components/editor/cm/controller";
+import { setWysiwygEditor, setWysiwygVisible } from "./controller";
 
 function isMarkdownPath(path: string): boolean {
   const p = path.toLowerCase();
@@ -20,15 +22,19 @@ function isMarkdownPath(path: string): boolean {
 
 const FLUSH_DEBOUNCE_MS = 300;
 
-export function WysiwygEditor() {
+export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
   const activePath = useFilesStore((s) => s.activePath);
+  const docVersion = useFilesStore((s) => s.docVersion);
   const saveFile = useFilesStore((s) => s.saveFile);
   const latexSplitRef = useRef<LatexDocumentSplit | null>(null);
   const frontmatterRef = useRef("");
   const activePathRef = useRef<string | null>(null);
   activePathRef.current = activePath;
+  const wysiwygRef = useRef(wysiwyg);
+  wysiwygRef.current = wysiwyg;
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const preambleRef = useRef("");
+  const lastSyncedTextRef = useRef<string | null>(null);
   const [preamble, setPreamble] = useState("");
   const [hasDocumentEnv, setHasDocumentEnv] = useState(false);
   const [showPreamble, setShowPreamble] = useState(false);
@@ -37,24 +43,43 @@ export function WysiwygEditor() {
     const path = activePathRef.current;
     if (!path) return;
     const json = editorInstance.getJSON();
+    let nextSource: string;
     if (isMarkdownPath(path)) {
       const body = serializeMarkdownBody(json);
       const frontmatter = frontmatterRef.current;
-      useFilesStore.getState().setContent(path, frontmatter ? `${frontmatter}\n\n${body}` : body);
+      nextSource = frontmatter ? `${frontmatter}\n\n${body}` : body;
     } else {
       const body = serializeLatexBody(json);
       const split = latexSplitRef.current;
-      const nextSource = split
+      nextSource = split
         ? joinLatexDocument({ ...split, preamble: preambleRef.current, body })
         : body;
-      useFilesStore.getState().setContent(path, nextSource);
     }
+    lastSyncedTextRef.current = nextSource;
+    useFilesStore.getState().setContent(path, nextSource, { bumpVersion: true });
   }, []);
 
   const editor = useEditor({
     extensions: WYSIWYG_EXTENSIONS,
     content: { type: "doc", content: [{ type: "paragraph" }] },
     immediatelyRender: false,
+    editorProps: {
+      handleKeyDown: (_view, event) => {
+        if (!(event.metaKey || event.ctrlKey)) return false;
+        const key = event.key.toLowerCase();
+        if (key === "z" && !event.shiftKey) {
+          event.preventDefault();
+          editorUndo();
+          return true;
+        }
+        if ((key === "z" && event.shiftKey) || key === "y") {
+          event.preventDefault();
+          editorRedo();
+          return true;
+        }
+        return false;
+      },
+    },
     onUpdate: ({ editor: editorInstance }) => {
       if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
       flushTimerRef.current = setTimeout(() => flush(editorInstance), FLUSH_DEBOUNCE_MS);
@@ -62,8 +87,20 @@ export function WysiwygEditor() {
   });
 
   useEffect(() => {
+    setWysiwygEditor(editor ?? null);
+    return () => setWysiwygEditor(null);
+  }, [editor]);
+
+  useEffect(() => {
+    setWysiwygVisible(wysiwyg);
+  }, [wysiwyg]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: wysiwyg/docVersion are re-sync triggers, not read directly; the store is read imperatively below
+  useEffect(() => {
     if (!editor || !activePath) return;
     const raw = useFilesStore.getState().files[activePath]?.content ?? "";
+    if (raw === lastSyncedTextRef.current) return;
+    lastSyncedTextRef.current = raw;
     if (isMarkdownPath(activePath)) {
       const { doc, frontmatter } = parseMarkdownBody(raw);
       frontmatterRef.current = frontmatter;
@@ -81,7 +118,7 @@ export function WysiwygEditor() {
       frontmatterRef.current = "";
       editor.commands.setContent(parseLatexBody(split.body), { emitUpdate: false });
     }
-  }, [editor, activePath]);
+  }, [editor, activePath, wysiwyg, docVersion]);
 
   useEffect(() => {
     if (!editor || !activePath) return;
@@ -91,6 +128,7 @@ export function WysiwygEditor() {
         clearTimeout(flushTimerRef.current);
         flushTimerRef.current = null;
       }
+      if (!wysiwygRef.current) return;
       activePathRef.current = path;
       flush(editor);
       void saveFile(path);

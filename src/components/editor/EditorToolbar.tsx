@@ -195,8 +195,6 @@ function btnControl(
 
 const DIVIDER_WIDTH = 9;
 
-// Purely visual grouping between clusters of controls: takes part in the
-// overflow width math but renders nothing in the "More" menu.
 function dividerControl(id: string): ToolbarControl {
   return {
     id,

@@ -66,12 +66,12 @@ describe("WysiwygEditor", () => {
   });
 
   it("renders the parsed heading text from the active file", () => {
-    render(<WysiwygEditor />);
+    render(<WysiwygEditor wysiwyg={true} />);
     expect(screen.getByText("Intro")).toBeInTheDocument();
   });
 
   it("preserves the LaTeX preamble/suffix and wraps the edited body on unmount", () => {
-    const { unmount } = render(<WysiwygEditor />);
+    const { unmount } = render(<WysiwygEditor wysiwyg={true} />);
     expect(lastEditor).not.toBeNull();
 
     act(() => {
@@ -100,7 +100,7 @@ describe("WysiwygEditor", () => {
       "a.tex",
     );
 
-    render(<WysiwygEditor />);
+    render(<WysiwygEditor wysiwyg={true} />);
     expect(screen.getByText("Intro")).toBeInTheDocument();
     expect(lastEditor).not.toBeNull();
 
@@ -125,10 +125,34 @@ describe("WysiwygEditor", () => {
     expect(screen.queryByText("Intro")).not.toBeInTheDocument();
   });
 
+  it("does not overwrite newer content with a stale doc when hidden (wysiwyg=false) and the file switches", () => {
+    setFiles(
+      {
+        "a.tex": { content: LATEX_A, dirty: false },
+        "b.tex": { content: LATEX_B, dirty: false },
+      },
+      "a.tex",
+    );
+
+    render(<WysiwygEditor wysiwyg={false} />);
+    expect(lastEditor).not.toBeNull();
+
+    const newerContent = "\\documentclass{article}\n\\begin{document}\n\\section{From CodeMirror}\n\\end{document}\n";
+    act(() => {
+      useFilesStore.getState().setContent("a.tex", newerContent);
+    });
+
+    act(() => {
+      useFilesStore.setState({ activePath: "b.tex" } as unknown as ReturnType<typeof useFilesStore.getState>);
+    });
+
+    expect(useFilesStore.getState().files["a.tex"].content).toBe(newerContent);
+  });
+
   it("flushes an edit to the store while still in WYSIWYG mode, without unmounting or switching files", () => {
     vi.useFakeTimers();
     try {
-      render(<WysiwygEditor />);
+      render(<WysiwygEditor wysiwyg={true} />);
       expect(lastEditor).not.toBeNull();
 
       act(() => {
@@ -152,7 +176,7 @@ describe("WysiwygEditor", () => {
   it("does not rewrite the store merely from loading a file with no edits", () => {
     vi.useFakeTimers();
     try {
-      render(<WysiwygEditor />);
+      render(<WysiwygEditor wysiwyg={true} />);
       expect(lastEditor).not.toBeNull();
 
       act(() => {
@@ -174,7 +198,7 @@ describe("WysiwygEditor", () => {
       "notes.md",
     );
 
-    const { unmount } = render(<WysiwygEditor />);
+    const { unmount } = render(<WysiwygEditor wysiwyg={true} />);
     expect(screen.getByText("Heading")).toBeInTheDocument();
 
     act(() => {
@@ -188,13 +212,13 @@ describe("WysiwygEditor", () => {
   });
 
   it("shows a collapsed preamble toggle for a full LaTeX document, hidden by default", () => {
-    render(<WysiwygEditor />);
+    render(<WysiwygEditor wysiwyg={true} />);
     expect(screen.getByText("Show document preamble")).toBeInTheDocument();
     expect(screen.queryByDisplayValue(/documentclass/)).not.toBeInTheDocument();
   });
 
   it("reveals and edits the preamble, and the edit is saved back on unmount", () => {
-    const { unmount } = render(<WysiwygEditor />);
+    const { unmount } = render(<WysiwygEditor wysiwyg={true} />);
 
     fireEvent.click(screen.getByText("Show document preamble"));
     const textarea = screen.getByDisplayValue(/documentclass/) as HTMLTextAreaElement;
@@ -218,7 +242,7 @@ describe("WysiwygEditor", () => {
       },
       "notes.md",
     );
-    const { unmount } = render(<WysiwygEditor />);
+    const { unmount } = render(<WysiwygEditor wysiwyg={true} />);
     expect(screen.queryByText("Show document preamble")).not.toBeInTheDocument();
     unmount();
 
@@ -228,7 +252,7 @@ describe("WysiwygEditor", () => {
       },
       "snippet.tex",
     );
-    render(<WysiwygEditor />);
+    render(<WysiwygEditor wysiwyg={true} />);
     expect(screen.queryByText("Show document preamble")).not.toBeInTheDocument();
   });
 });

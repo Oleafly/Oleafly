@@ -73,7 +73,8 @@ interface FilesStore {
   openFile: (path: string) => Promise<void>;
   setActive: (path: string) => void;
   closeTab: (path: string) => void;
-  setContent: (path: string, content: string) => void;
+  setContent: (path: string, content: string, opts?: { bumpVersion?: boolean }) => void;
+  bumpDocVersion: () => void;
   saveActive: () => Promise<void>;
   saveFile: (path: string) => Promise<void>;
   createFile: (path: string, isDir: boolean) => Promise<void>;
@@ -330,9 +331,10 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     });
   },
 
-  setContent: (path, content) => {
+  setContent: (path, content, opts) => {
     set((s) => ({
       files: { ...s.files, [path]: { content, dirty: true } },
+      docVersion: opts?.bumpVersion ? s.docVersion + 1 : s.docVersion,
     }));
     // Debounce a save of THIS file. Track every edited path so the single timer
     // flushes them all, instead of only whichever tab happens to be active when
@@ -348,6 +350,8 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       }
     }, 1500);
   },
+
+  bumpDocVersion: () => set((s) => ({ docVersion: s.docVersion + 1 })),
 
   saveActive: async () => {
     const { projectId, activePath } = get();

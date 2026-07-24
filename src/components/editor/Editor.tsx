@@ -314,16 +314,24 @@ export function Editor() {
               <p className="text-sm">{basename(activePath)}</p>
               <p className="text-xs">Binary file. No preview available.</p>
             </div>
-          ) : wysiwyg && !isTypstFile ? (
-            <div className="min-h-0 flex-1 overflow-hidden">
-              <WysiwygEditor />
-            </div>
-          ) : (
+          ) : isTypstFile ? (
             <div className="min-h-0 flex-1 overflow-hidden">
               <EditorContextMenu>
                 <CodeMirrorEditor />
               </EditorContextMenu>
               <SelectionActionMenu />
+            </div>
+          ) : (
+            <div className="relative min-h-0 flex-1 overflow-hidden">
+              <div className={cn("absolute inset-0", !wysiwyg && "hidden")}>
+                <WysiwygEditor wysiwyg={wysiwyg} />
+              </div>
+              <div className={cn("absolute inset-0", wysiwyg && "hidden")}>
+                <EditorContextMenu>
+                  <CodeMirrorEditor />
+                </EditorContextMenu>
+                <SelectionActionMenu />
+              </div>
             </div>
           )}
         </>
