@@ -299,18 +299,6 @@ export function DeadlinesView() {
       >
       <div className="relative flex items-center gap-3 border-b py-2 pl-4 pr-4">
         <div id="deadlines-title" className="font-medium">Conference Deadlines</div>
-        <div className="pointer-events-none absolute inset-x-0 flex justify-center">
-          <div className="pointer-events-auto relative w-72">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search conferences"
-              className="h-8 border-border/80 pl-8 text-xs"
-              data-testid="deadlines-search"
-            />
-          </div>
-        </div>
         <div className="ml-auto flex items-center gap-2">
           {error && <span className="max-w-64 truncate text-xs text-destructive">{error}</span>}
           {updated && (
@@ -360,6 +348,16 @@ export function DeadlinesView() {
             ))}
           </SelectContent>
         </Select>
+        <div className="relative w-64">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search conferences"
+            className="h-7 border-border/80 pl-8 text-xs"
+            data-testid="deadlines-search"
+          />
+        </div>
         <div className="ml-auto flex items-center gap-4">
           <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
             <SelectTrigger
