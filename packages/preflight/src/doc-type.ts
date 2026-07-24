@@ -1,4 +1,4 @@
-const RESUME_CLASS = /\\documentclass(?:\[[^\]]*\])?\{\s*(moderncv|altacv|deedy[\w-]*|awesome-cv|[\w-]*resume[\w-]*|[\w-]*cv)\s*\}/i;
+const RESUME_CLASS = /\\documentclass(?:\[[^\]]{0,500}\])?\{\s*(moderncv|altacv|deedy[\w-]*|awesome-cv|[\w-]*resume[\w-]*|[\w-]*cv)\s*\}/i;
 
 const RESUME_HEADING =
   /\\(?:section|subsection|cvsection|resumeSection)\*?\s*\{\s*(experience|work experience|professional experience|education|skills|technical skills|projects|employment)\s*\}/gi;

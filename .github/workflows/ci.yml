@@ -18,6 +18,11 @@ on:
       - ".github/badges/**"
   workflow_dispatch:
 
+# No job here writes to the repo, comments on PRs, or creates releases, so a
+# read-only default covers every job below.
+permissions:
+  contents: read
+
 # Cancel superseded runs on the same ref (e.g. rapid pushes to a PR).
 concurrency:
   group: ci-${{ github.ref }}

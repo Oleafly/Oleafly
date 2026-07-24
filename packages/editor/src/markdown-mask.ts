@@ -29,12 +29,12 @@ export function maskMarkdown(text: string): string {
 
   const masked = chars.join("");
   for (const match of masked.matchAll(/(`+)(?!`)([^\n]*?)\1/g)) blank(chars, match.index!, match.index! + match[0].length);
-  for (const match of chars.join("").matchAll(/!?\[[^\]\n]*\]\((?:\\.|[^)\n])*\)/g)) {
+  for (const match of chars.join("").matchAll(/!?\[[^\]\n]*\]\((?:\\.|[^\\)\n])*\)/g)) {
     const open = match[0].lastIndexOf("(");
     blank(chars, match.index! + open, match.index! + match[0].length);
   }
   for (const match of chars.join("").matchAll(/(?:https?:\/\/|www\.)[^\s<>()]+/gi)) blank(chars, match.index!, match.index! + match[0].length);
-  for (const match of chars.join("").matchAll(/\$\$(?:.|\n)*?\$\$|(?<!\\)\$(?!\s)(?:\\.|[^$\n])+?(?<!\s)\$/g)) blank(chars, match.index!, match.index! + match[0].length);
+  for (const match of chars.join("").matchAll(/\$\$(?:.|\n)*?\$\$|(?<!\\)\$(?!\s)(?:\\.|[^\\$\n])+?(?<!\s)\$/g)) blank(chars, match.index!, match.index! + match[0].length);
   return chars.join("");
 }
 

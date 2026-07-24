@@ -1,6 +1,6 @@
 import type { ParsedBib } from "./types";
 import { generateCiteKey } from "./bibtex";
-import { cleanField, toBibName } from "./text";
+import { cleanField, stripTags, toBibName } from "./text";
 
 // EndNote's "ref-type name" attribute -> BibTeX entry type.
 const REF_TYPE_MAP: Record<string, string> = {
@@ -19,12 +19,12 @@ const REF_TYPE_MAP: Record<string, string> = {
 
 function tag(source: string, name: string): string {
   const re = new RegExp(`<${name}[^>]*>([\\s\\S]*?)<\\/${name}>`);
-  return cleanField((re.exec(source)?.[1] ?? "").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim());
+  return cleanField(stripTags(re.exec(source)?.[1] ?? "").replace(/\s+/g, " ").trim());
 }
 
 function tagAll(source: string, name: string): string[] {
   const re = new RegExp(`<${name}[^>]*>([\\s\\S]*?)<\\/${name}>`, "g");
-  return [...source.matchAll(re)].map((m) => cleanField(m[1].replace(/<[^>]+>/g, "").trim())).filter(Boolean);
+  return [...source.matchAll(re)].map((m) => cleanField(stripTags(m[1]).trim())).filter(Boolean);
 }
 
 export function parseEndNoteXml(xml: string): ParsedBib[] {

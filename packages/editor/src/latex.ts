@@ -18,7 +18,7 @@ export const latexLanguage = () =>
 function labelsInDocument(state: { doc: { toString: () => string } }): string[] {
   const text = state.doc.toString();
   const out: string[] = [];
-  const re = /\\label\{([^}]+)\}/g;
+  const re = /\\label\{([^}]{1,500})\}/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text))) out.push(m[1]);
   return out;
@@ -81,7 +81,7 @@ export function latexCompletions(
   context: CompletionContext
 ): CompletionResult | null {
   const refMatch = context.matchBefore(
-    /\\(ref|eqref|pageref|autoref|cref|Cref)\{[^}]*$/
+    /\\(ref|eqref|pageref|autoref|cref|Cref)\{[^}]{0,500}$/
   );
   if (refMatch) {
     const labels = labelsInDocument(context.state);
@@ -93,7 +93,7 @@ export function latexCompletions(
   }
 
   const citeMatch = context.matchBefore(
-    /\\(cite|citep|citet|citeauthor|citeyear|parencite|textcite)\{[^}]*$/
+    /\\(cite|citep|citet|citeauthor|citeyear|parencite|textcite)\{[^}]{0,500}$/
   );
   if (citeMatch) {
     return {

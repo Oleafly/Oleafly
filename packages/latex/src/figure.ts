@@ -42,6 +42,7 @@ export function normalizeFigureCode(code: string): string {
 
 export function slugifyFigureName(prompt: string): string {
   const slug = prompt
+    .slice(0, 200)
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")

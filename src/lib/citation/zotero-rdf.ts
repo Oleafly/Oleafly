@@ -1,6 +1,6 @@
 import type { ParsedBib } from "./types";
 import { generateCiteKey } from "./bibtex";
-import { cleanField } from "./text";
+import { cleanField, stripTags } from "./text";
 
 // Zotero's z:itemType (or the RDF element's local name when itemType is absent)
 // -> BibTeX entry type.
@@ -26,7 +26,7 @@ function rawBlock(source: string, localName: string): string {
 
 // Extracts a tag's inner text with any nested markup stripped.
 function textOf(source: string, localName: string): string {
-  return cleanField(rawBlock(source, localName).replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim());
+  return cleanField(stripTags(rawBlock(source, localName)).replace(/\s+/g, " ").trim());
 }
 
 function rawBlockAll(source: string, localName: string): string[] {
