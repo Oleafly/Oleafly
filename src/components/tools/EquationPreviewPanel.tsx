@@ -199,7 +199,12 @@ export function EquationPreviewPanel({
               <Button
                 variant="outline"
                 size="sm"
-                className="absolute right-3 top-3"
+                className={cn(
+                  "absolute right-3 top-3",
+                  previewTheme === "dark"
+                    ? "border-white/15 bg-white/10 text-white hover:bg-white/20"
+                    : "border-black/10 bg-black/5 text-black hover:bg-black/10",
+                )}
                 onClick={copyWrapped}
               >
                 <Copy className="size-3.5" /> Copy
