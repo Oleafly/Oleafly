@@ -9,7 +9,6 @@ import { ThemeProvider } from "@/lib/theme";
 import { TopToolbar } from "@/components/layout/TopToolbar";
 import { Rail } from "@/components/layout/Rail";
 import { Sidebar } from "@/components/layout/Sidebar";
-import { WindowControls } from "@/components/layout/WindowControls";
 import { CommandPalette } from "@/components/layout/CommandPalette";
 import { SearchOmnibar } from "@/components/layout/SearchOmnibar";
 import { GlobalNewProject } from "@/components/library/GlobalNewProject";
@@ -469,7 +468,6 @@ export default function App() {
   if (!projectId) {
     return (
       <ThemeProvider>
-        <WindowControls />
         <Library />
         <CommandPalette />
         <SearchOmnibar />
@@ -500,7 +498,6 @@ export default function App() {
 
   return (
     <ThemeProvider>
-      <WindowControls />
       <div className="flex h-full flex-col">
         <TopToolbar />
         <div ref={panelAreaRef} className="flex min-h-0 flex-1">
