@@ -7,6 +7,83 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Renamed the app from OpenLeaf to Oleafly across the UI, packages, Rust
+  crate, environment variables, and data directory.
+- Added a PDF-to-LaTeX import pipeline: upload a PDF or DOCX (via a bundled
+  Pandoc conversion) and convert it into an editable LaTeX project, with
+  two-column detection, heading classification, math symbol mapping, header
+  and footer stripping, figure and image extraction, and an optional AI
+  refine pass.
+- Added template packs: an installable catalog of community/curated project
+  templates, a custom-template save flow, and an AI template generator, all
+  reachable from the new project gallery.
+- Added a Conference Deadlines board (backed by the community ccf-deadlines
+  dataset) with countdowns, filters, and curated extra venues.
+- Added a LaTeX Tools gallery: a BibTeX validator, a visual table generator,
+  an equation preview, an academic lab search, and the PDF-to-LaTeX
+  converter, unified under one searchable picker.
+- Reworked the Diagram Composer into a standalone scratch-project page with
+  multi-destination save/download, AI-assisted template generation, and TikZ
+  file import.
+- Redesigned the home screen around a dock/modal navigation model: a
+  floating HomeDock, collapsible sidebar, dashboard glass background, and
+  full-page views for each tool.
+- Added research connector tools available to the AI assistant: alphaXiv,
+  OpenAlex literature search, citation verification, and project library
+  search, with encrypted per-connector API key storage.
+- Added a foundational WYSIWYG editor for LaTeX and Markdown projects: a
+  Code/Visual toggle backed by a lossless LaTeX AST parser and serializer,
+  a symbol picker, unified undo/redo between Code and Visual modes,
+  continuous autosave, and a locked/dashed fallback rendering for LaTeX
+  constructs the rich editor doesn't yet understand.
+- Added an editor syntax theme picker (Linear, GitHub Dark, Dracula, Nord,
+  Tokyo Night, Rose Pine, Catppuccin, One Dark) independent of the app's
+  light/dark mode.
+- Added an "AI Only" layout preset that hides the editor and PDF preview
+  entirely.
+
+### Changed
+
+- Tectonic now continues past compile errors and reports all of them
+  instead of stopping at the first, matching how Overleaf surfaces errors.
+- Compile errors now show as red gutter markers at the actual source line,
+  plus collapsible per-error cards in the Logs panel with a "go to code
+  location" button, instead of one long raw log dump.
+- Redesigned the editor toolbar: an overflow menu for narrow windows,
+  reordered controls, a SyncTeX button, and the project's cover color shown
+  as a dot next to the title.
+- Redesigned home project cards: bigger covers, hover-reveal bookmarks with
+  a count and filter, and the project kind/date moved below the cover.
+- Redesigned the crash screen as a two-column layout with a stack trace
+  panel.
+- Redesigned the History modal, added a resizable sidebar, a floating
+  find/replace panel, a selection-based AI action menu, and more citation
+  import formats.
+
+### Fixed
+
+- Fixed compile-error line numbers not being extracted from Tectonic's V2
+  CLI output, which broke the editor's gutter markers and "go to code
+  location" button.
+- Fixed the AI prompt textarea not auto-growing when its value is set
+  programmatically (prefilled prompts, compile-fix handoff).
+- Fixed a regression where lazy-loaded modals could briefly swallow clicks
+  on the first project open of a session.
+- Fixed the home screen's dot-grid background occasionally rendering as a
+  solid bar at the top.
+
+### Security
+
+- Bounded several regular expressions used in citation, preflight, and
+  LaTeX parsing to close denial-of-service (ReDoS) patterns flagged by
+  CodeQL.
+- Hardened HTML tag stripping in the Zotero RDF and EndNote XML citation
+  importers, and fixed incomplete backslash escaping in the LaTeX table
+  generator.
+- Added explicit least-privilege `permissions` to CI workflows.
+
 ## [0.2.5] - 2026-07-20
 
 ### Added

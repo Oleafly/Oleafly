@@ -242,8 +242,14 @@ The full list. Everything here runs on your machine. For the detailed tour, see 
 - Find and replace (`⌘F`) with case, whole-word, and regex toggles, a live match count, and preserve-case replace; go to line with `⌘⇧L`
 - Code folding for `\begin…\end` environments and section trees
 - Vim mode, toggleable in Settings
+- 8 selectable syntax themes (Linear, GitHub Dark, Dracula, Nord, Tokyo Night, Rose Pine, Catppuccin, One Dark), independent of the app's light/dark mode
 - Offline spellcheck (Hunspell WASM) and grammar (Harper), masking commands, math, and comments so only prose is checked
-- Compile errors surface as inline red squiggles and gutter marks
+- Compile errors surface as inline red squiggles, gutter marks, and collapsible per-error cards in the Logs panel
+
+**Visual editor (WYSIWYG)**
+- A Code/Visual toggle for LaTeX and Markdown projects: edit rendered headings, lists, bold/italic, blockquotes, and links directly, backed by a lossless round-trip parser and serializer
+- Undo/redo is unified between Code and Visual, so switching modes never breaks history
+- LaTeX constructs the rich editor doesn't yet render fall back to an editable, clearly-marked raw block instead of silently dropping content
 
 **Code intelligence (whole-project, not just the open file)**
 - Go to definition (F12 or Cmd/Ctrl-click) for `\ref`, `\cite`, `\gls`, custom macros, and environments, across files
@@ -303,6 +309,8 @@ The full list. Everything here runs on your machine. For the detailed tour, see 
 - Reads and writes files, find-and-replace, create, rename, delete
 - Compiles, reads the log, and extracts PDF text to verify its own edits
 - Searches across projects, sets the main doc, toggles the theme
+- Research connectors: search OpenAlex literature, verify citations, and pull
+  paper metadata from alphaXiv, each with its own encrypted API key
 - Every file-changing edit pauses for approval with a red/green diff, and the decision stays in the chat
 - Custom instructions, sandboxed so they can't reveal or override the built-in prompt
 - Providers: OpenAI, Anthropic, Groq, OpenRouter, DeepSeek, Mistral, xAI, Z.AI, or local Ollama
@@ -334,7 +342,7 @@ The full list. Everything here runs on your machine. For the detailed tour, see 
 
 ## Architecture
 
-The frontend is a pnpm workspace: nine `@oleafly/*` engine packages (editor, preview, diagram, preflight, AI tools, templates, …) behind injected ports, wired into the app shell through a contribution registry. The deep dive is in [docs/architecture.md](docs/architecture.md).
+The frontend is a pnpm workspace: eleven `@oleafly/*` engine packages (editor, wysiwyg, preview, diagram, preflight, pdf-to-latex, AI tools, templates, …) behind injected ports, wired into the app shell through a contribution registry. The deep dive is in [docs/architecture.md](docs/architecture.md).
 
 ```mermaid
 flowchart TB
