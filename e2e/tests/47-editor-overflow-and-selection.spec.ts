@@ -4,6 +4,10 @@ import { caretIn, clickToolbarControl, openProject, selectWord } from "../helper
 test("toolbar overflow menu surfaces controls that don't fit the bar", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  // The LaTeX toolbar mounts once engine/file-type detection resolves, which
+  // can land a beat after .cm-content itself; wait for Bold so the DOM
+  // manipulation below doesn't race an empty toolbar.
+  await tauriPage.waitForFunction(`!!document.querySelector('[aria-label^="Bold ("]')`, 10_000);
 
   // Force the toolbar's measured container down to a width that fits nothing,
   // so every control deterministically lands in the overflow menu (real
