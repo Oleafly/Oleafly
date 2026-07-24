@@ -29,16 +29,26 @@ test("toolbar inserts figure and table environments", async ({ tauriPage }) => {
   await expect(tauriPage.locator(".cm-content")).toContainText("includegraphics");
   await tauriPage.click('[aria-label^="Undo ("]');
 
-  let gridOpen = false;
-  for (let attempt = 0; attempt < 5 && !gridOpen; attempt++) {
+  // On a narrow CI window "Insert table" can land in the toolbar's overflow
+  // menu, where the size-grid popover (nested inside that menu's own popover)
+  // occasionally fails to open or gets torn down mid-interaction as the
+  // overflow set re-measures. Retry the whole open-pick-verify sequence
+  // rather than just the "did it open" check, so a bad window gets another
+  // full attempt instead of proceeding into a doomed click.
+  let tableInserted = false;
+  for (let attempt = 0; attempt < 8 && !tableInserted; attempt++) {
     try {
       await clickToolbarControl(tauriPage, '[aria-label="Insert table"]', "Table");
-      await tauriPage.waitForFunction(`!!document.querySelector('[aria-label="2 by 2 table"]')`, 3_000);
-      gridOpen = true;
+      await tauriPage.waitForFunction(`!!document.querySelector('[aria-label="2 by 2 table"]')`, 4_000);
+      await tauriPage.click('[aria-label="2 by 2 table"]');
+      await tauriPage.waitForFunction(
+        `(document.querySelector('.cm-content')?.textContent || '').includes('tabular')`,
+        4_000,
+      );
+      tableInserted = true;
     } catch {}
   }
-  await tauriPage.click('[aria-label="2 by 2 table"]');
-  await expect(tauriPage.locator(".cm-content")).toContainText("tabular");
+  if (!tableInserted) throw new Error("could not insert a table via the toolbar after 8 attempts");
   await tauriPage.click('[aria-label^="Undo ("]');
   await tauriPage.waitForFunction(
     `!(document.querySelector('.cm-content')?.textContent || '').includes('tabular')`,
