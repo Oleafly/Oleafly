@@ -7,6 +7,7 @@ import {
 } from "@oleafly/diagram";
 import { save } from "@tauri-apps/plugin-dialog";
 import { KIT } from "@/components/diagram/diagram-kit";
+import { HomeBrandButton } from "@/components/layout/HomeBrandButton";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
@@ -174,13 +175,13 @@ export function DiagramComposer() {
       <DiagramComposerCore
         open={open}
         projectId={scratchId}
-        projectName="Diagram Composer"
         onClose={() => goTo("library")}
         host={HOST}
         codeExtensions={codeExtensions}
         isMac={isMac}
         fullscreen={fullscreen}
         forcePreviewOpen={forcePreviewOpen}
+        brand={<HomeBrandButton onClick={() => goTo("library")} />}
       />
     </DiagramKitContext.Provider>
   );

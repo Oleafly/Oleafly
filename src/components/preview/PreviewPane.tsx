@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Columns2, Contrast, FileText, Loader2, Maximize, Minimize, PanelTopClose, PanelTopOpen, Play, RectangleVertical, Save, ScrollText, SquareArrowOutUpRight, X, XCircle, ZoomIn, ZoomOut } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Columns2, Contrast, FileText, Loader2, Maximize, Minimize, PanelTopClose, PanelTopOpen, Play, RectangleVertical, Save, ScrollText, Sparkles, SquareArrowOutUpRight, X, XCircle, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -20,6 +20,7 @@ import { useFilesStore } from "@/store/files";
 import { usePdfViewStore } from "@/store/pdf-view";
 import { useTourStore } from "@/store/tours";
 import { inverseFromClick } from "@/features/synctex";
+import { askAiAboutCompileErrors } from "@/features/ask-ai-compile-errors";
 import { saveFileBase64, uint8ToBase64 } from "@/lib/tauri";
 import { openPreviewWindow } from "@/lib/preview-window";
 import { notifyError, toast } from "@/lib/toast";
@@ -200,7 +201,7 @@ export function PreviewPane() {
       )}
       <div
         className={cn(
-          "flex min-h-9 shrink-0 flex-wrap items-center gap-1 border-b px-2 py-1 [&_button]:shrink-0",
+          "flex min-h-10 shrink-0 flex-wrap items-center gap-1 border-b px-2 py-1 [&_button]:shrink-0",
           isFs && fsToolbarHidden && "hidden",
         )}
       >
@@ -272,6 +273,15 @@ export function PreviewPane() {
             </span>
           )}
         </div>
+
+        {tab === "logs" && hasError && (
+          <div className="ml-auto flex items-center">
+            <Button variant="ghostPrimary" size="xs" onClick={() => void askAiAboutCompileErrors()}>
+              <Sparkles data-icon="inline-start" />
+              Ask AI
+            </Button>
+          </div>
+        )}
 
         {tab === "pdf" && (
           <div
@@ -433,6 +443,7 @@ export function PreviewPane() {
                 <ZoomIn className="size-3.5" />
               </Button>
             </Tooltip>
+            <div className="mx-1 h-4 w-px bg-border" />
             <Tooltip label={isImage ? "Save image to project" : "Save PDF to project"}>
               <Button
                 variant="ghost"
@@ -467,6 +478,7 @@ export function PreviewPane() {
                 {inverted ? <Contrast className="size-3.5 text-primary" /> : <Contrast className="size-3.5" />}
               </Button>
             </Tooltip>
+            <div className="mx-1 h-4 w-px bg-border" />
             {!isFs && (
               <Tooltip label="Open preview in a new window">
                 <Button

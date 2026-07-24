@@ -8,11 +8,11 @@ import {
   GitFork,
   History,
   Info,
-  ListFilter,
   Loader2,
   Palette,
   Plus,
   SearchX,
+  SlidersHorizontal,
   Trash2,
   X,
 } from "lucide-react";
@@ -203,7 +203,7 @@ function FilterSelect({
     >
       {label}
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger id={id} className="h-8 text-xs">
+        <SelectTrigger id={id} className="h-10 text-sm">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -371,10 +371,20 @@ export function Library() {
       data-projects-loaded={projectsLoaded ? "true" : "false"}
       className="relative flex h-full flex-row bg-[var(--home-background)]"
     >
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(ellipse_60%_100%_at_50%_0%,oklch(0.7_0.11_262/0.08),transparent_70%)]"
+      />
       {bgPattern === "grid" ? (
         <GridPattern width={22} height={22} />
       ) : (
-        <DotPattern width={22} height={22} radius={1} />
+        <>
+          <DotPattern width={22} height={22} radius={1} className="dark:hidden" />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 hidden dark:block dark:bg-[radial-gradient(oklch(1_0_0/0.17)_1px,transparent_1px)] dark:bg-[length:22px_22px]"
+          />
+        </>
       )}
       <HomeDock />
       <div className="flex min-w-0 flex-1 flex-col">
@@ -403,7 +413,7 @@ export function Library() {
                   className="flex w-80 flex-col gap-3 p-3"
                   trigger={
                     <span className="relative inline-flex">
-                      <ListFilter className="size-4" />
+                      <SlidersHorizontal className="size-4" />
                       {activeFilterCount > 0 && (
                         <span className="absolute -right-1 -top-1 size-1.5 rounded-full bg-primary" />
                       )}
@@ -442,7 +452,7 @@ export function Library() {
                       }))
                     }
                     placeholder="Name, ID, main file, color, or export"
-                    className="h-8 text-xs"
+                    className="h-9 text-sm"
                   />
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -541,7 +551,7 @@ export function Library() {
                     ]}
                   />
                 </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-center text-[10px] text-muted-foreground">
                     Showing {visibleProjects.length} of {projects.length} projects
                   </p>
                 </Popover>
@@ -553,12 +563,17 @@ export function Library() {
                   aria-label="Show bookmarked only"
                   aria-pressed={onlyFavs}
                   className={cn(
-                    "hover:text-foreground",
+                    "relative hover:text-foreground",
                     onlyFavs ? "text-amber-500 hover:text-amber-500" : "text-muted-foreground"
                   )}
                   onClick={() => setOnlyFavs((v) => !v)}
                 >
                   <Bookmark className={cn("size-4", onlyFavs && "fill-current")} />
+                  {favs.length > 0 && (
+                    <span className="absolute -right-0.5 -top-0.5 flex size-3.5 items-center justify-center rounded-full bg-primary text-[9px] font-semibold text-primary-foreground">
+                      {favs.length}
+                    </span>
+                  )}
                 </Button>
               </Tooltip>
             </>
@@ -621,7 +636,7 @@ export function Library() {
               </EmptyHeader>
             </Empty>
           ) : (
-          <div className="grid grid-cols-2 gap-x-6 gap-y-12 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 xl:gap-x-14 xl:gap-y-14">
+          <div className="grid grid-cols-2 gap-x-8 gap-y-14 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-16 xl:gap-y-16">
             {visibleProjects.map((p) => (
               <ContextMenu key={p.id}>
                 <ContextMenuTrigger asChild>
@@ -631,11 +646,13 @@ export function Library() {
                       color={projectColors[p.id] ?? (p.color || DEFAULT_BOOK_COLOR)}
                       date={projectModifiedLabel(p.updated_at)}
                       engine={projectEngineLabel(p.engine, p.main_doc)}
+                      kind={p.kind || "document"}
                       starred={favs.includes(p.id)}
                       onStarToggle={() => toggleFav(p.id)}
                       onClick={() => void openProject(p.id)}
                       onPreviewRequest={() => hoverPreview && loadThumb(p.id, p.updated_at)}
                       preview={hoverPreview ? thumbs[p.id] : undefined}
+                      width={180}
                     />
                   </div>
                 </ContextMenuTrigger>

@@ -1,13 +1,27 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Check, Copy, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
+import { ArrowDown, ArrowUp, ArrowUpRight, Check, ChevronDown, ChevronRight, Copy } from "lucide-react";
 import { useCompileStore } from "@/store/compile";
-import { useAgentHandoffStore } from "@/store/agent-handoff";
-import { useSettingsStore } from "@/store/settings";
-import { hasConfiguredProvider } from "@/lib/ai-providers";
-import { getConfig } from "@/lib/tauri";
+import type { CompileError } from "@/lib/tauri";
+import { openFileAndGotoLine } from "@/features/synctex";
 import { cn } from "@/lib/utils";
 import { objectKey } from "@/lib/react-key";
+import { Tooltip } from "@/components/ui/tooltip";
+
+function easeInOutQuad(t: number): number {
+  return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+}
+
+function smoothScrollTo(el: HTMLElement, targetTop: number, duration = 700) {
+  const startTop = el.scrollTop;
+  const delta = targetTop - startTop;
+  const startTime = performance.now();
+  function step(now: number) {
+    const t = Math.min(1, (now - startTime) / duration);
+    el.scrollTop = startTop + delta * easeInOutQuad(t);
+    if (t < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
 
 type Cat = "error" | "warn" | "lineref" | "register" | "normal";
 
@@ -93,21 +107,112 @@ function LogText({ text }: { text: string }) {
   );
 }
 
-export function LogPane() {
-  const log = useCompileStore((s) => s.log);
-  const errors = useCompileStore((s) => s.errors);
-  const status = useCompileStore((s) => s.status);
-  const endRef = useRef<HTMLDivElement>(null);
-  const [copied, setCopied] = useState(false);
-  const hasCompileError = status === "error" || errors.some((error) => error.kind === "error");
+function extractErrorExcerpt(log: string, message: string): string {
+  const lines = log.replace(/\r/g, "").split("\n");
+  const startIndex = lines.findIndex((ln) => ln === `! ${message}`);
+  if (startIndex === -1) return "";
+  const excerpt: string[] = [lines[startIndex]];
+  for (let i = startIndex + 1; i < lines.length && excerpt.length < 12; i++) {
+    const ln = lines[i];
+    if (ln.startsWith("!")) break;
+    excerpt.push(ln);
+    if (ln.trim() === "" && excerpt.length > 2) break;
+  }
+  return excerpt.join("\n").trimEnd();
+}
 
-  useEffect(() => {
-    void log;
-    endRef.current?.scrollIntoView({ block: "end" });
-  }, [log]);
+function ErrorCard({ err, log }: { err: CompileError; log: string }) {
+  const [expanded, setExpanded] = useState(true);
+  const [copied, setCopied] = useState(false);
+  const excerpt = extractErrorExcerpt(log, err.message);
+  const title = err.explanation ?? err.message;
+  const location = err.file
+    ? `${err.file}${err.line != null ? ` · line ${err.line}` : ""}`
+    : err.line != null
+      ? `line ${err.line}`
+      : "";
+
+  const copyError = async (e: MouseEvent) => {
+    e.stopPropagation();
+    const text = [title, location, excerpt].filter(Boolean).join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-sidebar-border bg-background/40">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setExpanded((v) => !v)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") setExpanded((v) => !v);
+        }}
+        className="flex w-full items-start gap-2 px-3 py-2.5 text-left"
+      >
+        {expanded ? (
+          <ChevronDown className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+        )}
+        <span
+          className={cn(
+            "mt-1.5 size-1.5 shrink-0 rounded-full",
+            err.kind === "error" ? "bg-red-500" : "bg-amber-500"
+          )}
+        />
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-medium leading-snug text-foreground">{title}</p>
+          {location && <p className="mt-0.5 font-mono text-[10.5px] text-muted-foreground">{location}</p>}
+        </div>
+        <Tooltip label={copied ? "Copied" : "Copy error"} side="top">
+          <button
+            type="button"
+            aria-label="Copy error"
+            onClick={(e) => void copyError(e)}
+            className="flex shrink-0 items-center rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            {copied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
+          </button>
+        </Tooltip>
+        {expanded && err.line != null && (
+          <Tooltip label="Go to code location" side="top">
+            <button
+              type="button"
+              aria-label="Go to code location"
+              onClick={(e) => {
+                e.stopPropagation();
+                void openFileAndGotoLine(err.file, err.line as number);
+              }}
+              className="flex shrink-0 items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              Open
+              <ArrowUpRight className="size-3" />
+            </button>
+          </Tooltip>
+        )}
+      </div>
+      {expanded && excerpt && (
+        <div className="mx-3 mb-3 overflow-hidden rounded-md border border-sidebar-border/70 bg-background/80">
+          <pre className="whitespace-pre-wrap break-words p-2.5 font-mono text-[10.5px] leading-relaxed">
+            <LogText text={excerpt} />
+          </pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RawLogSection({ log, defaultOpen }: { log: string; defaultOpen: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const [copied, setCopied] = useState(false);
 
   const copy = async () => {
-    if (!log) return;
     try {
       await navigator.clipboard.writeText(log);
       setCopied(true);
@@ -117,109 +222,100 @@ export function LogPane() {
     }
   };
 
-  const askAi = async () => {
-    let configured = false;
-    try {
-      configured = hasConfiguredProvider(await getConfig());
-    } catch {
-      configured = false;
-    }
-    const settings = useSettingsStore.getState();
-    if (!configured) {
-      settings.setSettingsInitialSection("ai");
-      settings.setSettingsOpen(true);
-      return;
-    }
-    const details = errors
-      .filter((error) => error.kind === "error")
-      .slice(0, 8)
-      .map((error) => {
-        const location = error.file
-          ? `${error.file}${error.line != null ? `:${error.line}` : ""}`
-          : error.line != null
-            ? `line ${error.line}`
-            : "";
-        return `- ${location ? `${location}: ` : ""}${error.message}`;
-      });
-    const prompt = [
-      "Fix the current document compilation failure.",
-      details.length > 0 ? `\nCompiler errors:\n${details.join("\n")}` : "",
-      "\nInspect the relevant project files and the full compile log, make the smallest correct changes, then recompile until it succeeds and verify the resulting document.",
-    ].join("");
-    useAgentHandoffStore.getState().handoff(prompt, { autoSend: false });
-    settings.setRailTab("ai");
-    if (!settings.showTree) settings.toggleTree();
+  return (
+    <div className="overflow-hidden rounded-lg border border-sidebar-border bg-background/40">
+      <div className="flex w-full items-center gap-1.5 px-3 py-2.5 text-left">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="flex min-w-0 flex-1 items-center gap-1.5 text-[13px] font-medium text-sidebar-foreground"
+        >
+          {open ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
+          Raw logs
+        </button>
+        <button
+          type="button"
+          onClick={() => void copy()}
+          className="flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        >
+          {copied ? (
+            <Check className="size-3 text-emerald-500" />
+          ) : (
+            <Copy className="size-3" />
+          )}
+          {copied ? "Copied" : "Copy log"}
+        </button>
+      </div>
+      {open && (
+        <pre className="whitespace-pre-wrap break-words border-t border-sidebar-border px-3 py-3 font-mono text-[11px] leading-relaxed">
+          <LogText text={log} />
+        </pre>
+      )}
+    </div>
+  );
+}
+
+export function LogPane() {
+  const log = useCompileStore((s) => s.log);
+  const errors = useCompileStore((s) => s.errors);
+  const endRef = useRef<HTMLDivElement>(null);
+  const scrollBoxRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    void log;
+    endRef.current?.scrollIntoView({ block: "end" });
+  }, [log]);
+
+  const scrollToTop = () => {
+    if (scrollBoxRef.current) smoothScrollTo(scrollBoxRef.current, 0);
+  };
+  const scrollToBottom = () => {
+    if (scrollBoxRef.current) smoothScrollTo(scrollBoxRef.current, scrollBoxRef.current.scrollHeight);
   };
 
   return (
-    <div className="flex h-full flex-col bg-sidebar">
-      {errors.length > 0 && (
-        <div className="border-b border-sidebar-border bg-sidebar-accent/40">
-          {errors.map((err) => (
-            <div key={objectKey(err, "compile-error")} className="flex flex-col gap-0.5 px-3 py-1.5 text-xs">
-              <div className="flex items-start gap-2">
-                <span
-                  className={cn(
-                    "mt-0.5 shrink-0 rounded px-1 font-mono text-[10px] uppercase",
-                    err.kind === "error"
-                      ? "bg-red-500/15 text-red-500"
-                      : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                  )}
-                >
-                  {err.kind}
-                </span>
-                <span className="text-sidebar-foreground">{err.message}</span>
-                {(err.file || err.line != null) && (
-                  <span className="ml-auto shrink-0 font-mono text-muted-foreground">
-                    {err.file
-                      ? `${err.file}${err.line != null ? `:${err.line}` : ""}`
-                      : `l.${err.line}`}
-                  </span>
-                )}
-              </div>
-              {err.explanation && (
-                <p className="pl-7 text-[11px] leading-snug text-muted-foreground">
-                  {err.explanation}
-                </p>
-              )}
-            </div>
-          ))}
+    <div className="relative flex h-full flex-col bg-sidebar">
+      <div ref={scrollBoxRef} className="flex-1 overflow-auto p-3">
+        <div className="space-y-3">
+          {errors.length > 0 &&
+            errors.map((err) => <ErrorCard key={objectKey(err, "compile-error")} err={err} log={log} />)}
+          {!log && errors.length === 0 && (
+            <p className="text-[11px] text-muted-foreground">Compile output will appear here.</p>
+          )}
+          {log && (
+            <RawLogSection
+              key={errors.length === 0 ? "clean" : "errors"}
+              log={log}
+              defaultOpen={errors.length === 0}
+            />
+          )}
+        </div>
+        <div ref={endRef} />
+      </div>
+      {log && (
+        <div className="absolute bottom-3 right-3 flex flex-col gap-1">
+          <Tooltip label="Scroll to top" side="left">
+            <button
+              type="button"
+              aria-label="Scroll to top"
+              onClick={scrollToTop}
+              className="flex size-7 items-center justify-center rounded-full border border-sidebar-border bg-background/90 text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <ArrowUp className="size-3.5" />
+            </button>
+          </Tooltip>
+          <Tooltip label="Scroll to bottom" side="left">
+            <button
+              type="button"
+              aria-label="Scroll to bottom"
+              onClick={scrollToBottom}
+              className="flex size-7 items-center justify-center rounded-full border border-sidebar-border bg-background/90 text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <ArrowDown className="size-3.5" />
+            </button>
+          </Tooltip>
         </div>
       )}
-
-      <div className="flex h-7 shrink-0 items-center justify-end border-b border-sidebar-border px-2">
-        {hasCompileError && (
-          <Button
-            variant="ghostPrimary"
-            size="xs"
-            onClick={() => void askAi()}
-          >
-            <Sparkles data-icon="inline-start" />
-            Ask AI
-          </Button>
-        )}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => void copy()}
-          disabled={!log}
-          className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground"
-        >
-          {copied ? (
-            <Check data-icon="inline-start" className="text-emerald-500" />
-          ) : (
-            <Copy data-icon="inline-start" />
-          )}
-          {copied ? "Copied" : "Copy log"}
-        </Button>
-      </div>
-
-      <div className="flex-1 overflow-auto p-3">
-        <pre className="whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed">
-          {log ? <LogText text={log} /> : <span className="text-muted-foreground">Compile output will appear here.</span>}
-          <div ref={endRef} />
-        </pre>
-      </div>
     </div>
   );
 }

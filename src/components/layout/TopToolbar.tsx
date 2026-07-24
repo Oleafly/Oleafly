@@ -18,6 +18,7 @@ import {
   Maximize,
   Play,
   RefreshCw,
+  Sparkles,
   SquarePen,
   X,
 } from "lucide-react";
@@ -35,10 +36,12 @@ import {
 import { Tooltip } from "@/components/ui/tooltip";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import { useInitialFocus } from "@/components/ui/use-initial-focus";
-import { LeafLogo } from "@/components/layout/LeafLogo";
+import { HomeBrandButton } from "@/components/layout/HomeBrandButton";
 import { GithubMenu } from "@/components/layout/GithubMenu";
 import { useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
+import { useProjectColorsStore } from "@/store/project-colors";
+import { DEFAULT_BOOK_COLOR } from "@/components/library/Book";
 import { useSettingsStore, type LayoutPreset, type RailTab, type ViewMode } from "@/store/settings";
 import { exportCurrentPdf, exportCurrentImagePng } from "@/features/export";
 import { ensurePandoc } from "@/features/pandoc";
@@ -87,10 +90,17 @@ export const LAYOUT_OPTIONS: { preset: LayoutPreset; label: string; icon: typeof
   { preset: "preview-ai", label: "Preview + AI", icon: Columns2 },
   { preset: "editor-only", label: "Editor Only", icon: Maximize },
   { preset: "preview-only", label: "Preview Only", icon: Columns2 },
+  { preset: "ai-only", label: "AI Only", icon: Sparkles },
 ];
 
-function activeLayoutPreset(viewMode: ViewMode, railTab: RailTab, showTree: boolean): LayoutPreset | null {
+function activeLayoutPreset(
+  viewMode: ViewMode,
+  railTab: RailTab,
+  showTree: boolean,
+  hideEditorArea: boolean
+): LayoutPreset | null {
   const isAi = railTab === "ai" || railTab === "chat";
+  if (hideEditorArea) return isAi ? "ai-only" : null;
   if (!showTree) {
     if (viewMode === "editor") return "editor-only";
     if (viewMode === "pdf") return "preview-only";
@@ -105,6 +115,11 @@ function activeLayoutPreset(viewMode: ViewMode, railTab: RailTab, showTree: bool
 export function TopToolbar() {
   const projectName = useFilesStore((s) => s.projectName);
   const projectId = useFilesStore((s) => s.projectId);
+  const projects = useFilesStore((s) => s.projects);
+  const projectColors = useProjectColorsStore((s) => s.colors);
+  const currentProject = projects.find((p) => p.id === projectId);
+  const coverColor =
+    (projectId ? projectColors[projectId] : undefined) ?? (currentProject?.color || DEFAULT_BOOK_COLOR);
   const projectKind = useFilesStore((s) => s.projectKind);
   const isSingleFigureProject = projectKind === "image" || projectKind === "diagram";
   const engine = useFilesStore((s) => s.engine);
@@ -121,6 +136,7 @@ export function TopToolbar() {
   const setViewMode = useSettingsStore((s) => s.setViewMode);
   const railTab = useSettingsStore((s) => s.railTab);
   const showTree = useSettingsStore((s) => s.showTree);
+  const hideEditorArea = useSettingsStore((s) => s.hideEditorArea);
   const setLayoutPreset = useSettingsStore((s) => s.setLayoutPreset);
   const recompile = useCompileStore((s) => s.recompile);
   const status = useCompileStore((s) => s.status);
@@ -298,16 +314,7 @@ export function TopToolbar() {
       )}
     >
       <div data-tauri-drag-region className="flex min-w-0 items-center gap-2">
-        <button
-          type="button"
-          onClick={closeProject}
-          aria-label="Home"
-          title="Back to library"
-          className="flex items-center gap-1.5 rounded px-1.5 py-1 text-sm font-semibold tracking-tight hover:bg-accent"
-        >
-          <LeafLogo className="size-5" />
-          Oleafly
-        </button>
+        <HomeBrandButton onClick={closeProject} />
         <ChevronRight className="size-4 text-muted-foreground/50" />
         {editingTitle ? (
           <span ref={titleEditRef} className="flex items-center gap-1">
@@ -349,14 +356,21 @@ export function TopToolbar() {
             </Tooltip>
           </span>
         ) : (
-          <button
-              data-testid="project-title"
-            type="button"
-            onClick={startEditTitle}
-            className="flex min-w-0 items-center rounded px-1 py-0.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
-          >
-            <span className="max-w-[200px] truncate">{projectName || "project"}</span>
-          </button>
+          <Tooltip label={projectName || "project"} side="bottom">
+            <button
+                data-testid="project-title"
+              type="button"
+              onClick={startEditTitle}
+              className="flex min-w-0 items-center gap-1.5 rounded px-1 py-0.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              <span
+                aria-hidden="true"
+                className="size-2 shrink-0 rounded-full"
+                style={{ backgroundColor: coverColor }}
+              />
+              <span className="max-w-[200px] truncate">{projectName || "project"}</span>
+            </button>
+          </Tooltip>
         )}
       </div>
 
@@ -549,7 +563,7 @@ export function TopToolbar() {
           </Tooltip>
           <DropdownMenuContent align="end" className="w-56">
             {LAYOUT_OPTIONS.map(({ preset, label, icon: Icon }) => {
-              const active = activeLayoutPreset(viewMode, railTab, showTree) === preset;
+              const active = activeLayoutPreset(viewMode, railTab, showTree, hideEditorArea) === preset;
               return (
                 <DropdownMenuItem key={preset} onClick={() => setLayoutPreset(preset)}>
                   <Icon className="size-4 text-muted-foreground" />

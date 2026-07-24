@@ -39,7 +39,6 @@ import { goToSyncTex } from "@/features/synctex";
 import { countWords } from "@/lib/wordcount";
 import { useCitationStore } from "@/store/citation";
 import { useActiveContent, useFilesStore } from "@/store/files";
-import { useSettingsStore } from "@/store/settings";
 import { cn, shortcut } from "@/lib/utils";
 import {
   HEADING_LEVELS,
@@ -71,16 +70,18 @@ function Divider() {
   return <span className="mx-1 h-5 w-px shrink-0 bg-border" />;
 }
 
-function IconBtn({
+export function IconBtn({
   onClick,
   title,
   children,
   wide,
+  "data-tour": dataTour,
 }: {
   onClick: () => void;
   title: string;
   children: ReactNode;
   wide?: boolean;
+  "data-tour"?: string;
 }) {
   return (
     <Tooltip label={title} side="bottom">
@@ -88,6 +89,7 @@ function IconBtn({
         type="button"
         onClick={onClick}
         aria-label={title}
+        data-tour={dataTour}
         className={cn(
           "flex h-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
           wide ? "w-auto px-1.5" : "w-7"
@@ -96,6 +98,48 @@ function IconBtn({
         {children}
       </button>
     </Tooltip>
+  );
+}
+
+export function WysiwygModeSwitch({
+  wysiwyg,
+  onToggle,
+  "data-tour": dataTour,
+}: {
+  wysiwyg: boolean;
+  onToggle: () => void;
+  "data-tour"?: string;
+}) {
+  return (
+    <div
+      data-tour={dataTour}
+      className="flex h-7 shrink-0 items-center rounded-full bg-muted p-0.5 text-xs font-medium"
+    >
+      <button
+        type="button"
+        onClick={() => wysiwyg && onToggle()}
+        aria-label="Switch to source view"
+        aria-pressed={!wysiwyg}
+        className={cn(
+          "rounded-full px-2.5 py-1 transition-colors",
+          !wysiwyg ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+        )}
+      >
+        Code
+      </button>
+      <button
+        type="button"
+        onClick={() => !wysiwyg && onToggle()}
+        aria-label="Switch to WYSIWYG view"
+        aria-pressed={wysiwyg}
+        className={cn(
+          "rounded-full px-2.5 py-1 transition-colors",
+          wysiwyg ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+        )}
+      >
+        Visual
+      </button>
+    </div>
   );
 }
 
@@ -149,10 +193,22 @@ function btnControl(
   };
 }
 
+const DIVIDER_WIDTH = 9;
+
+function dividerControl(id: string): ToolbarControl {
+  return {
+    id,
+    width: DIVIDER_WIDTH,
+    render: () => <Divider />,
+    renderMenu: () => null,
+  };
+}
+
 function HeadingDropdown({ variant }: { variant: "bar" | "menu" }) {
   return (
     <Popover
       ariaLabel="Heading level"
+      className="w-auto min-w-0"
       triggerClassName={variant === "bar" ? "gap-0.5 px-1.5" : "w-full justify-start gap-2 px-2 font-normal"}
       trigger={
         variant === "bar" ? (
@@ -245,15 +301,25 @@ function CodeIntelDropdown({ variant }: { variant: "bar" | "menu" }) {
 
 function WordCountButton() {
   const content = useActiveContent();
+  const activePath = useFilesStore((s) => s.activePath);
   const stats = useMemo(() => countWords(content), [content]);
+  const rows: [string, number][] = [
+    ["Words", stats.words],
+    ["Characters", stats.characters],
+    ["Lines", stats.lines],
+  ];
   return (
-    <Popover ariaLabel="Word count" className="w-56 p-2" trigger={<Info className="size-4" />}>
-      <div className="px-1 py-1 text-sm">
-        Words: {stats.words.toLocaleString()} • Characters: {stats.characters.toLocaleString()}
+    <Popover ariaLabel="Word count" className="w-56 p-3" trigger={<Info className="size-4" />}>
+      <p className="mb-1 text-sm font-semibold text-foreground">Word count</p>
+      <p className="mb-2 truncate text-xs text-muted-foreground">{activePath ?? "no file"}</p>
+      <div className="divide-y divide-border">
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex items-center justify-between py-2 text-sm">
+            <span className="text-muted-foreground">{label}</span>
+            <span className="font-mono tabular-nums">{value.toLocaleString()}</span>
+          </div>
+        ))}
       </div>
-      <PopoverItem onClick={() => useSettingsStore.getState().setWordCountOpen(true)}>
-        View full breakdown
-      </PopoverItem>
     </Popover>
   );
 }
@@ -288,7 +354,13 @@ function fitCount(controls: ToolbarControl[], availableWidth: number): number {
   return controls.length;
 }
 
-export function EditorToolbar() {
+export function EditorToolbar({
+  wysiwyg,
+  onToggleWysiwyg,
+}: {
+  wysiwyg: boolean;
+  onToggleWysiwyg: () => void;
+}) {
   const [visionReady, setVisionReady] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const projectKind = useFilesStore((s) => s.projectKind);
@@ -308,9 +380,11 @@ export function EditorToolbar() {
         render: () => <HeadingDropdown variant="bar" />,
         renderMenu: () => <HeadingDropdown key="heading" variant="menu" />,
       },
+      dividerControl("divider-1"),
       btnControl("bold", Bold, "Bold", insertBold, `Bold (${shortcut("⌘B")})`),
       btnControl("italic", Italic, "Italic", insertItalic, `Italic (${shortcut("⌘I")})`),
       btnControl("underline", Underline, "Underline", insertUnderline),
+      dividerControl("divider-2"),
       btnControl("code", Code, "Inline code", insertCode),
       btnControl("link", LinkIcon, "Insert link", insertLink),
       btnControl(
@@ -323,6 +397,7 @@ export function EditorToolbar() {
       btnControl("ref", Tag, "Insert cross-reference", insertRef),
       btnControl("footnote", Asterisk, "Insert footnote", insertFootnote),
       btnControl("blockquote", Quote, "Insert blockquote", insertBlockquote),
+      dividerControl("divider-3"),
       btnControl("figure", ImageIcon, "Insert figure", insertFigure),
       {
         id: "table",
@@ -353,6 +428,7 @@ export function EditorToolbar() {
     }
 
     list.push(
+      dividerControl("divider-4"),
       {
         id: "list",
         width: ICON_BUTTON_WIDTH,
@@ -362,6 +438,7 @@ export function EditorToolbar() {
       btnControl("align", Rows3, "Align environment", insertAlign, "Insert align environment"),
       btnControl("equation", Sigma, "Equation environment", insertEquation, "Insert equation environment"),
       btnControl("fraction", Divide, "Fraction", insertFraction, "Insert fraction"),
+      dividerControl("divider-5"),
       {
         id: "symbols",
         width: ICON_BUTTON_WIDTH,
@@ -376,12 +453,8 @@ export function EditorToolbar() {
       }
     );
 
-    if (syncTexSupported) {
-      list.push(btnControl("synctex", ArrowRight, "Go to PDF (SyncTeX)", goToSyncTex));
-    }
-
     return list;
-  }, [visionReady, syncTexSupported]);
+  }, [visionReady]);
 
   const { containerRef, availableWidth } = useAvailableWidth();
   const visibleCount = fitCount(controls, availableWidth);
@@ -431,10 +504,19 @@ export function EditorToolbar() {
       </div>
 
       <div className="ml-auto flex shrink-0 items-center gap-0.5">
+        <WysiwygModeSwitch wysiwyg={wysiwyg} onToggle={onToggleWysiwyg} data-tour="wysiwyg-toggle" />
         <WordCountButton />
         <IconBtn onClick={editorFind} title={`Find (${shortcut("⌘F")})`}>
           <Search className="size-4" />
         </IconBtn>
+        {syncTexSupported && (
+          <>
+            <Divider />
+            <IconBtn onClick={goToSyncTex} title="Go to PDF (SyncTeX)">
+              <ArrowRight className="size-4" />
+            </IconBtn>
+          </>
+        )}
       </div>
     </div>
   );

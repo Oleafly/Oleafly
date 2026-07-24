@@ -53,6 +53,7 @@ export function Book({
   illustration,
   date,
   engine,
+  kind,
   variant = "book",
   width = 150,
   onClick,
@@ -67,6 +68,7 @@ export function Book({
   illustration?: ReactNode;
   date?: string;
   engine?: string;
+  kind?: string;
   variant?: Variant;
   width?: number;
   onClick?: () => void;
@@ -145,7 +147,7 @@ export function Book({
             <div className="relative z-10 flex flex-1 flex-col justify-end p-3">
               {engine && (
                 <span
-                  className="mb-1 text-[8px] font-semibold uppercase leading-none tracking-wide opacity-55"
+                  className="mb-1 text-[9px] font-semibold uppercase leading-none tracking-wide opacity-55"
                   style={{ color: ink }}
                 >
                   {engine}
@@ -157,14 +159,6 @@ export function Book({
               >
                 {title}
               </span>
-              {date && (
-                <span
-                  className="mt-1 text-[10px] font-medium"
-                  style={{ color: ink, opacity: 0.65 }}
-                >
-                  {date}
-                </span>
-              )}
             </div>
 
             {preview && (
@@ -188,7 +182,10 @@ export function Book({
           type="button"
           onClick={onStarToggle}
           aria-label={starred ? "Remove from favorites" : "Add to favorites"}
-          className="absolute right-2 top-2 z-20 flex size-6 items-center justify-center rounded-full transition-colors hover:bg-black/10"
+          className={cn(
+            "absolute right-2 top-2 z-20 flex size-7 items-center justify-center rounded-md bg-black/15 backdrop-blur-sm transition-all hover:bg-black/25",
+            starred ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          )}
           style={{ color: starred ? "#f59e0b" : ink }}
         >
           {starred ? (
@@ -198,6 +195,10 @@ export function Book({
           )}
         </button>
       )}
+      <div className="mt-2.5 px-0.5">
+        {kind && <div className="text-xs capitalize text-muted-foreground">{kind}</div>}
+        {date && <div className="mt-0.5 text-xs text-muted-foreground">{date}</div>}
+      </div>
     </div>
   );
 }

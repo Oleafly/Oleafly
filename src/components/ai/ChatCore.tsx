@@ -233,6 +233,13 @@ export function ChatCore() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  useEffect(() => {
+    const t = textareaRef.current;
+    if (!t) return;
+    t.style.height = "auto";
+    t.style.height = `${Math.min(t.scrollHeight, 128)}px`;
+  }, [input]);
+
   const MAX_ATTACH = 6;
   const MAX_ATTACH_BYTES = 10 * 1024 * 1024;
 
@@ -1654,8 +1661,6 @@ ${sandboxedCustom}`;
                 disabled={!engineLoaded}
                 rows={1}
                 className="max-h-32 min-h-[24px] w-full resize-none rounded-md border-0 bg-transparent px-1 text-sm shadow-none outline-none placeholder:text-muted-foreground"
-                style={{ height: "auto" }}
-                onInput={(e) => { const t = e.currentTarget; t.style.height = "auto"; t.style.height = `${Math.min(t.scrollHeight, 128)}px`; }}
               />
               <div className="mt-1.5 flex items-center justify-between">
                 <div className="flex items-center gap-0.5">

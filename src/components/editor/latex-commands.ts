@@ -1,4 +1,11 @@
 import { insertEnvironment, insertTemplate, wrapSelectionOrPlaceholder } from "@/components/editor/cm/controller";
+import { getWysiwygEditor, isWysiwygActive } from "@/components/editor/wysiwyg/controller";
+
+const NATIVE_HEADING_LEVEL: Record<string, 1 | 2 | 3> = {
+  section: 1,
+  subsection: 2,
+  subsubsection: 3,
+};
 
 export interface HeadingLevel {
   label: string;
@@ -36,19 +43,48 @@ export const HEADING_LEVELS: HeadingLevel[] = [
 ];
 
 export function insertHeading(level: HeadingLevel) {
+  const nativeLevel = NATIVE_HEADING_LEVEL[level.cmd];
+  if (nativeLevel && isWysiwygActive()) {
+    const editor = getWysiwygEditor();
+    if (editor) {
+      editor.chain().focus().toggleHeading({ level: nativeLevel }).run();
+      return;
+    }
+  }
   wrapSelectionOrPlaceholder(`\\${level.cmd}{`, "}\n", level.placeholder);
 }
 
 export function insertBold() {
+  if (isWysiwygActive()) {
+    const editor = getWysiwygEditor();
+    if (editor) {
+      editor.chain().focus().toggleBold().run();
+      return;
+    }
+  }
   wrapSelectionOrPlaceholder("\\textbf{", "}", "text");
 }
 export function insertItalic() {
+  if (isWysiwygActive()) {
+    const editor = getWysiwygEditor();
+    if (editor) {
+      editor.chain().focus().toggleItalic().run();
+      return;
+    }
+  }
   wrapSelectionOrPlaceholder("\\textit{", "}", "text");
 }
 export function insertUnderline() {
   wrapSelectionOrPlaceholder("\\underline{", "}", "text");
 }
 export function insertCode() {
+  if (isWysiwygActive()) {
+    const editor = getWysiwygEditor();
+    if (editor) {
+      editor.chain().focus().toggleCode().run();
+      return;
+    }
+  }
   wrapSelectionOrPlaceholder("\\texttt{", "}", "text");
 }
 export function insertFootnote() {
@@ -87,6 +123,13 @@ export function insertEquation() {
   insertEnvironment("equation");
 }
 export function insertBlockquote() {
+  if (isWysiwygActive()) {
+    const editor = getWysiwygEditor();
+    if (editor) {
+      editor.chain().focus().toggleBlockquote().run();
+      return;
+    }
+  }
   insertEnvironment("quote");
 }
 function insertFirstItem(template: string): void {
@@ -94,9 +137,23 @@ function insertFirstItem(template: string): void {
   insertTemplate(template, cursor, cursor);
 }
 export function insertItemize() {
+  if (isWysiwygActive()) {
+    const editor = getWysiwygEditor();
+    if (editor) {
+      editor.chain().focus().toggleBulletList().run();
+      return;
+    }
+  }
   insertFirstItem("\\begin{itemize}\n  \\item \n\\end{itemize}\n");
 }
 export function insertEnumerate() {
+  if (isWysiwygActive()) {
+    const editor = getWysiwygEditor();
+    if (editor) {
+      editor.chain().focus().toggleOrderedList().run();
+      return;
+    }
+  }
   insertFirstItem("\\begin{enumerate}\n  \\item \n\\end{enumerate}\n");
 }
 

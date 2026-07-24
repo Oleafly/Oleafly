@@ -246,6 +246,7 @@ export function DiagramComposer({
   isMac = false,
   fullscreen = false,
   forcePreviewOpen = false,
+  brand,
 }: {
   open: boolean;
   projectId: string | null;
@@ -259,6 +260,9 @@ export function DiagramComposer({
   // compiling anything. Lets an app-level caller (e.g. a product tour) point
   // at the real preview affordance instead of describing UI that isn't there.
   forcePreviewOpen?: boolean;
+  // App-supplied brand/back element, rendered in place of the default back
+  // button + title so this matches the app's own project toolbar.
+  brand?: ReactNode;
 }) {
   const { Button, Input, ColorPicker, Tooltip, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, toast } =
     useDiagramKit();
@@ -598,7 +602,7 @@ export function DiagramComposer({
       role="dialog"
       aria-label="Insert diagram"
       aria-modal="true"
-      aria-labelledby="diagram-composer-title"
+      aria-labelledby={brand ? undefined : "diagram-composer-title"}
       data-tour="diagram-composer"
       className="fixed inset-0 z-50 flex flex-col bg-background"
     >
@@ -610,23 +614,27 @@ export function DiagramComposer({
           !isMac && "pl-4",
         )}
       >
-        <Tooltip label="Back to project">
-          <button
-            type="button"
-            aria-label="Back to project"
-            onClick={onClose}
-            className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-          >
-            <ArrowLeft className="size-4" />
-          </button>
-        </Tooltip>
-        <h2
-          id="diagram-composer-title"
-          className="max-w-[15ch] shrink-0 truncate text-sm font-semibold"
-          title={projectName || "Insert diagram"}
-        >
-          {projectName || "Insert diagram"}
-        </h2>
+        {brand ?? (
+          <>
+            <Tooltip label="Back to project">
+              <button
+                type="button"
+                aria-label="Back to project"
+                onClick={onClose}
+                className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
+                <ArrowLeft className="size-4" />
+              </button>
+            </Tooltip>
+            <h2
+              id="diagram-composer-title"
+              className="max-w-[15ch] shrink-0 truncate text-sm font-semibold"
+              title={projectName || "Insert diagram"}
+            >
+              {projectName || "Insert diagram"}
+            </h2>
+          </>
+        )}
         <ChevronRight className="size-4 shrink-0 text-muted-foreground/50" />
         <div className="flex min-w-0 items-center gap-1">
           {editingName ? (
@@ -671,15 +679,17 @@ export function DiagramComposer({
               </Tooltip>
             </span>
           ) : (
-            <button
-              type="button"
-              data-testid="diagram-name-display"
-              onClick={startEditName}
-              title="Rename diagram"
-              className="flex min-w-0 items-center rounded px-1 py-0.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
-            >
-              <span className="max-w-[220px] truncate font-normal">{displayFile}</span>
-            </button>
+            <Tooltip label={displayFile}>
+              <button
+                type="button"
+                data-testid="diagram-name-display"
+                onClick={startEditName}
+                title="Rename diagram"
+                className="flex min-w-0 items-center rounded px-1 py-0.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
+                <span className="max-w-[220px] truncate font-normal">{displayFile}</span>
+              </button>
+            </Tooltip>
           )}
           <Tooltip label="Import a .tikz or .tex file, replacing this draft">
             <button

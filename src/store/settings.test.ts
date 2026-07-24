@@ -28,3 +28,20 @@ describe("useSettingsStore dock appearance settings", () => {
     useSettingsStore.getState().setDockPlacement("left");
   });
 });
+
+describe("useSettingsStore layout presets", () => {
+  it("ai-only hides the editor area and shows the AI rail", () => {
+    useSettingsStore.getState().setLayoutPreset("ai-only");
+    const s = useSettingsStore.getState();
+    expect(s.hideEditorArea).toBe(true);
+    expect(s.showTree).toBe(true);
+    expect(s.railTab).toBe("ai");
+  });
+
+  it("switching away from ai-only clears hideEditorArea", () => {
+    useSettingsStore.getState().setLayoutPreset("ai-only");
+    expect(useSettingsStore.getState().hideEditorArea).toBe(true);
+    useSettingsStore.getState().setLayoutPreset("editor-preview");
+    expect(useSettingsStore.getState().hideEditorArea).toBe(false);
+  });
+});

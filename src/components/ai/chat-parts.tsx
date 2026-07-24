@@ -61,7 +61,7 @@ export function ToolBadge({ tc }: { tc: ToolEntry }) {
       data-tool-name={tc.name}
       data-tool-status={tc.status}
       data-tool-result={result}
-      className="rounded-md border bg-muted text-xs"
+      className="max-w-[85%] rounded-md border bg-muted text-xs"
     >
       <button type="button"
         onClick={() => tc.output && setExpanded(!expanded)}

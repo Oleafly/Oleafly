@@ -562,7 +562,7 @@ export async function openDiagramComposer(page: Page) {
   await expect(library).toBeVisible({ timeout: 30_000 });
   await page.click('[data-testid="open-diagram-composer"]');
   const dialog = page.locator(
-    '[role="dialog"][aria-labelledby="diagram-composer-title"]',
+    '[role="dialog"][data-tour="diagram-composer"]',
   ) as unknown as Parameters<typeof expect>[0];
   await expect(dialog).toBeVisible({ timeout: 20_000 });
   // The dialog mounts before React Flow finishes its first render pass (the
@@ -575,7 +575,7 @@ export async function openDiagramComposer(page: Page) {
 }
 
 export async function closeDiagramComposer(page: Page) {
-  await page.click('[role="dialog"][aria-labelledby="diagram-composer-title"] [aria-label="Back to project"]');
+  await page.click('[role="dialog"][data-tour="diagram-composer"] [aria-label="Home"]');
 }
 
 // Drives a synthetic mouse-drag over real text coordinates: CM re-asserts its

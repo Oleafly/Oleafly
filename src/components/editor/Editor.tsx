@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { FileText, Loader2, X } from "lucide-react";
 import { CodeMirrorEditor } from "./CodeMirrorEditor";
 import { EditorContextMenu } from "./EditorContextMenu";
-import { EditorToolbar } from "./EditorToolbar";
+import { EditorToolbar, WysiwygModeSwitch } from "./EditorToolbar";
 import { SelectionActionMenu } from "./SelectionActionMenu";
 import { DiffView } from "./diff/DiffView";
 import { PdfViewer } from "@/components/pdf/PdfViewer";
@@ -13,6 +13,8 @@ import { useDiffStore, diffKey } from "@/store/diff";
 import { base64ToUint8Array, readFileBase64 } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { formattingForEngine, pathUsesEngineSource } from "@/lib/document-engine";
+import { getWysiwygMode, setWysiwygMode } from "@/lib/wysiwyg-mode";
+import { WysiwygEditor } from "./wysiwyg/WysiwygEditor";
 
 function basename(p: string) {
   const parts = p.split("/");
@@ -159,6 +161,19 @@ export function Editor() {
   const engine = useFilesStore((s) => s.engine);
   const formattingProfile = useFilesStore((s) => s.engine.capabilities.formatting_profile);
   const showLatexToolbar = engineLoaded && formattingProfile === "latex" && pathUsesEngineSource(engine, activePath);
+  const showMarkdownWysiwygToggle =
+    engineLoaded && formattingProfile === "markdown" && pathUsesEngineSource(engine, activePath);
+
+  const [wysiwyg, setWysiwygState] = useState(() => (projectId ? getWysiwygMode(projectId) : false));
+  useEffect(() => {
+    if (projectId) setWysiwygState(getWysiwygMode(projectId));
+  }, [projectId]);
+  const toggleWysiwyg = () => {
+    if (!projectId) return;
+    const next = !wysiwyg;
+    setWysiwygMode(projectId, next);
+    setWysiwygState(next);
+  };
 
   return (
     <div data-tour="project-editor" className="flex h-full flex-col bg-background">
@@ -246,7 +261,12 @@ export function Editor() {
         <>
           {showLatexToolbar && (
             <div className="shrink-0">
-              <EditorToolbar />
+              <EditorToolbar wysiwyg={wysiwyg} onToggleWysiwyg={toggleWysiwyg} />
+            </div>
+          )}
+          {showMarkdownWysiwygToggle && (
+            <div className="flex h-9 shrink-0 items-center justify-end border-b px-2">
+              <WysiwygModeSwitch wysiwyg={wysiwyg} onToggle={toggleWysiwyg} data-tour="wysiwyg-toggle" />
             </div>
           )}
           {isTypstFile && (
@@ -294,12 +314,24 @@ export function Editor() {
               <p className="text-sm">{basename(activePath)}</p>
               <p className="text-xs">Binary file. No preview available.</p>
             </div>
-          ) : (
+          ) : isTypstFile ? (
             <div className="min-h-0 flex-1 overflow-hidden">
               <EditorContextMenu>
                 <CodeMirrorEditor />
               </EditorContextMenu>
               <SelectionActionMenu />
+            </div>
+          ) : (
+            <div className="relative min-h-0 flex-1 overflow-hidden">
+              <div className={cn("absolute inset-0", !wysiwyg && "hidden")}>
+                <WysiwygEditor wysiwyg={wysiwyg} />
+              </div>
+              <div className={cn("absolute inset-0", wysiwyg && "hidden")}>
+                <EditorContextMenu>
+                  <CodeMirrorEditor />
+                </EditorContextMenu>
+                <SelectionActionMenu />
+              </div>
             </div>
           )}
         </>

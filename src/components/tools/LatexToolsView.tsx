@@ -1,5 +1,5 @@
 import { useMemo, useState, type ComponentType } from "react";
-import { Calculator, FileInput, School, Search, ShieldCheck, Table2, X } from "lucide-react";
+import { Calculator, FileInput, School, Search, ShieldCheck, Table2, ToolCase, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { WHITE_PANEL, cn } from "@/lib/utils";
@@ -11,6 +11,7 @@ type ToolId = "pdf-to-latex" | "equation" | "bibtex" | "table" | "lab-search";
 interface ToolDef {
   id: ToolId;
   name: string;
+  letter: string;
   description: string;
   icon: ComponentType<{ className?: string }>;
   tags: string[];
@@ -23,6 +24,7 @@ const TOOLS: ToolDef[] = [
   {
     id: "pdf-to-latex",
     name: "PDF to LaTeX",
+    letter: "P",
     description: "Convert PDFs to LaTeX with math, figures, and structure preserved.",
     icon: FileInput,
     tags: ["Math extraction", "Figure export", "Client-side"],
@@ -31,6 +33,7 @@ const TOOLS: ToolDef[] = [
   {
     id: "equation",
     name: "Equation Preview",
+    letter: "E",
     description: "Render LaTeX math live with KaTeX and copy the source.",
     icon: Calculator,
     tags: ["KaTeX", "Inline & display", "Copy source"],
@@ -39,6 +42,7 @@ const TOOLS: ToolDef[] = [
   {
     id: "bibtex",
     name: "BibTeX Validator",
+    letter: "B",
     description: "Validate .bib files for syntax errors and missing required fields.",
     icon: ShieldCheck,
     tags: ["12 entry types", "Required fields", "Duplicate keys"],
@@ -47,6 +51,7 @@ const TOOLS: ToolDef[] = [
   {
     id: "table",
     name: "LaTeX Table Generator",
+    letter: "T",
     description: "Build LaTeX tables with a visual row/column editor.",
     icon: Table2,
     tags: ["Visual editor", "booktabs", "Export"],
@@ -55,6 +60,7 @@ const TOOLS: ToolDef[] = [
   {
     id: "lab-search",
     name: "Lab Search",
+    letter: "L",
     description: "Search research institutions worldwide via the open OpenAlex API.",
     icon: School,
     tags: ["OpenAlex", "Global", "No sign-up"],
@@ -76,13 +82,18 @@ function ToolCard({ tool, onOpen }: { tool: ToolDef; onOpen: () => void }) {
       type="button"
       data-testid={`latex-tool-card-${tool.id}`}
       onClick={onOpen}
-      className="group flex w-full items-center gap-4 rounded-lg border bg-muted/20 p-4 text-left transition-colors hover:bg-muted/40"
+      className="group flex w-full items-start gap-4 rounded-lg border bg-card p-4 text-left transition-colors hover:border-foreground/25 hover:bg-accent/40"
     >
-      <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+      <div className="flex size-11 shrink-0 items-center justify-center rounded-lg border bg-muted/40 text-foreground">
         <tool.icon className="size-5" />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="text-sm font-semibold group-hover:text-foreground">{tool.name}</div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold group-hover:text-foreground">{tool.name}</span>
+          <span className="flex size-4 shrink-0 items-center justify-center rounded border bg-muted/60 font-mono text-[9px] font-medium text-muted-foreground">
+            {tool.letter}
+          </span>
+        </div>
         <div className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
           {tool.description}
         </div>
@@ -90,7 +101,7 @@ function ToolCard({ tool, onOpen }: { tool: ToolDef; onOpen: () => void }) {
           {tool.tags.map((t) => (
             <span
               key={t}
-              className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+              className="rounded-full border bg-muted/40 px-2 py-0.5 font-mono text-[10px] font-medium text-muted-foreground"
             >
               {t}
             </span>
@@ -174,10 +185,13 @@ export function LatexToolsView() {
         aria-labelledby="latex-tools-title"
         data-modal-initial-focus
         data-testid="latex-tools-view"
-        className={cn("relative flex h-[36rem] w-full max-w-3xl flex-col overflow-hidden rounded-xl", WHITE_PANEL)}
+        className={cn("dark relative flex h-[36rem] w-full max-w-3xl flex-col overflow-hidden rounded-xl text-foreground", WHITE_PANEL)}
       >
         <div className="flex items-center gap-3 border-b px-5 py-3">
-          <div id="latex-tools-title" className="shrink-0 font-medium">LaTeX Tools</div>
+          <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-foreground text-background">
+            <ToolCase className="size-4" />
+          </div>
+          <div id="latex-tools-title" className="shrink-0 text-base font-bold tracking-tight">LaTeX Tools</div>
           <div className="relative min-w-0 flex-1">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input

@@ -21,16 +21,22 @@ export type LayoutPreset =
   | "editor-ai"
   | "preview-ai"
   | "editor-only"
-  | "preview-only";
+  | "preview-only"
+  | "ai-only";
 
 export function layoutPresetViewMode(preset: LayoutPreset): ViewMode {
   if (preset === "editor-preview-ai" || preset === "editor-preview") return "split";
-  if (preset === "editor-ai" || preset === "editor-only") return "editor";
+  if (preset === "editor-ai" || preset === "editor-only" || preset === "ai-only") return "editor";
   return "pdf";
 }
 
 export function layoutPresetWantsAi(preset: LayoutPreset): boolean {
-  return preset === "editor-preview-ai" || preset === "editor-ai" || preset === "preview-ai";
+  return (
+    preset === "editor-preview-ai" ||
+    preset === "editor-ai" ||
+    preset === "preview-ai" ||
+    preset === "ai-only"
+  );
 }
 
 export type RailTab =
@@ -46,6 +52,16 @@ export type RailTab =
 
 export type DockPlacement = "left" | "right" | "bottom";
 export type BackgroundPattern = "dots" | "grid";
+export type EditorThemeId =
+  | "system"
+  | "linear"
+  | "github-dark"
+  | "dracula"
+  | "nord"
+  | "tokyo-night"
+  | "rose-pine"
+  | "catppuccin"
+  | "one-dark";
 
 function ls(k: string, fb: string): string {
   try {
@@ -75,6 +91,9 @@ function readDefaultView(raw: string): LayoutPreset {
   if ((LAYOUT_PRESETS as string[]).includes(raw)) return raw as LayoutPreset;
   return LEGACY_VIEW_MODE_TO_PRESET[raw] ?? "editor-preview";
 }
+function readEditorTheme(raw: string): EditorThemeId {
+  return EDITOR_THEMES.some((t) => t.id === raw) ? (raw as EditorThemeId) : "system";
+}
 function saveLs(k: string, v: string) {
   try {
     localStorage.setItem(k, v);
@@ -100,6 +119,21 @@ export const EDITOR_FONTS: { name: string; value: string }[] = [
   { name: "SF Mono", value: '"SF Mono", ui-monospace, monospace' },
   { name: "Menlo", value: "Menlo, Monaco, monospace" },
   { name: "Consolas", value: "Consolas, ui-monospace, monospace" },
+];
+
+// Syntax/surface colors for each id are defined in globals.css under
+// `[data-editor-theme="..."]`; "system" applies no override and follows
+// the app's own light/dark mode.
+export const EDITOR_THEMES: { id: EditorThemeId; name: string }[] = [
+  { id: "system", name: "Match app theme" },
+  { id: "linear", name: "Linear" },
+  { id: "github-dark", name: "GitHub Dark" },
+  { id: "dracula", name: "Dracula" },
+  { id: "nord", name: "Nord" },
+  { id: "tokyo-night", name: "Tokyo Night" },
+  { id: "rose-pine", name: "Rosé Pine" },
+  { id: "catppuccin", name: "Catppuccin" },
+  { id: "one-dark", name: "One Dark" },
 ];
 
 export const ACCENTS: { id: string; name: string; color: string }[] = [
@@ -158,6 +192,8 @@ interface SettingsState {
   setAppFontFamily: (v: string) => void;
   editorFontFamily: string;
   setEditorFontFamily: (v: string) => void;
+  editorTheme: EditorThemeId;
+  setEditorTheme: (v: EditorThemeId) => void;
   accentColor: string;
   setAccentColor: (v: string) => void;
   showTree: boolean;
@@ -169,6 +205,8 @@ interface SettingsState {
   suppressAiAutoLayout: boolean;
   setSuppressAiAutoLayout: (v: boolean) => void;
   setLayoutPreset: (v: LayoutPreset) => void;
+  hideEditorArea: boolean;
+  setHideEditorArea: (v: boolean) => void;
   dockPlacement: DockPlacement;
   setDockPlacement: (v: DockPlacement) => void;
   bgPattern: BackgroundPattern;
@@ -187,6 +225,7 @@ const PREF_DEFAULTS = {
   appFontSize: 16,
   appFontFamily: "",
   editorFontFamily: "",
+  editorTheme: "system" as EditorThemeId,
   defaultView: "editor-preview" as LayoutPreset,
   openInTree: false,
   hoverPreview: true,
@@ -284,6 +323,11 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     saveLs("oleafly.editorFont", v);
     set({ editorFontFamily: v });
   },
+  editorTheme: readEditorTheme(ls("oleafly.editorTheme", "system")),
+  setEditorTheme: (v) => {
+    saveLs("oleafly.editorTheme", v);
+    set({ editorTheme: v });
+  },
   accentColor: ls("oleafly.accent", "#2563eb"),
   setAccentColor: (v) => {
     saveLs("oleafly.accent", v);
@@ -307,29 +351,51 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   setRailTab: (v) => set({ railTab: v }),
   suppressAiAutoLayout: false,
   setSuppressAiAutoLayout: (v) => set({ suppressAiAutoLayout: v }),
+  hideEditorArea: false,
+  setHideEditorArea: (v) => set({ hideEditorArea: v }),
   setLayoutPreset: (preset) => {
     switch (preset) {
       case "editor-preview-ai":
-        set({ suppressAiAutoLayout: true, showTree: true, railTab: "ai", viewMode: "split" });
+        set({
+          suppressAiAutoLayout: true,
+          showTree: true,
+          railTab: "ai",
+          viewMode: "split",
+          hideEditorArea: false,
+        });
         break;
       case "editor-preview":
         set((s) => ({
           showTree: true,
           railTab: s.railTab === "ai" || s.railTab === "chat" ? "files" : s.railTab,
           viewMode: "split",
+          hideEditorArea: false,
         }));
         break;
       case "editor-ai":
-        set({ suppressAiAutoLayout: true, showTree: true, railTab: "ai", viewMode: "editor" });
+        set({
+          suppressAiAutoLayout: true,
+          showTree: true,
+          railTab: "ai",
+          viewMode: "editor",
+          hideEditorArea: false,
+        });
         break;
       case "preview-ai":
-        set({ suppressAiAutoLayout: true, showTree: true, railTab: "ai", viewMode: "pdf" });
+        set({
+          suppressAiAutoLayout: true,
+          showTree: true,
+          railTab: "ai",
+          viewMode: "pdf",
+          hideEditorArea: false,
+        });
         break;
       case "editor-only":
         set((s) => ({
           showTree: false,
           railTab: s.railTab === "ai" || s.railTab === "chat" ? "files" : s.railTab,
           viewMode: "editor",
+          hideEditorArea: false,
         }));
         break;
       case "preview-only":
@@ -337,7 +403,11 @@ export const useSettingsStore = create<SettingsState>((set) => ({
           showTree: false,
           railTab: s.railTab === "ai" || s.railTab === "chat" ? "files" : s.railTab,
           viewMode: "pdf",
+          hideEditorArea: false,
         }));
+        break;
+      case "ai-only":
+        set({ suppressAiAutoLayout: true, showTree: true, railTab: "ai", hideEditorArea: true });
         break;
     }
   },
@@ -352,6 +422,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     saveLs("oleafly.appFontSize", String(PREF_DEFAULTS.appFontSize));
     saveLs("oleafly.appFont", PREF_DEFAULTS.appFontFamily);
     saveLs("oleafly.editorFont", PREF_DEFAULTS.editorFontFamily);
+    saveLs("oleafly.editorTheme", PREF_DEFAULTS.editorTheme);
     saveLs("oleafly.defaultView", PREF_DEFAULTS.defaultView);
     saveLs("oleafly.openInTree", PREF_DEFAULTS.openInTree ? "1" : "0");
     saveLs("oleafly.hoverPreview", PREF_DEFAULTS.hoverPreview ? "1" : "0");

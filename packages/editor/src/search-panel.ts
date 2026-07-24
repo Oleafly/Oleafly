@@ -314,6 +314,11 @@ const searchTheme = EditorView.theme({
   ".cm-vs-count": { minWidth: "4.5rem", padding: "0 6px", color: "var(--muted-foreground, #888)", whiteSpace: "nowrap" },
 });
 
+const panelBorderOverride = EditorView.baseTheme({
+  "&light .cm-panels-top": { borderBottom: "none" },
+  "&dark .cm-panels-top": { borderBottom: "none" },
+});
+
 export function vscodeSearch() {
-  return [search({ top: true, createPanel: createSearchPanel }), searchTheme];
+  return [search({ top: true, createPanel: createSearchPanel }), searchTheme, panelBorderOverride];
 }

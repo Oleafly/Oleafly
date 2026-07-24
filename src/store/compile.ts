@@ -159,14 +159,16 @@ export const useCompileStore = create<CompileState>((set, get) => ({
         set((s) => ({ log: s.log + e.payload, phase: phaseFromLogChunk(e.payload, s.phase) }));
       });
       const result = await compileProject(projectId, mainDoc, offlinePolicy.offline);
-      // Wrap the IPC ArrayBuffer as a view (no copy of the payload bytes).
-      const buf = result.ok && result.has_pdf ? await readCompiledPdf(projectId) : null;
+      // Wrap the IPC ArrayBuffer as a view (no copy of the payload bytes). Read
+      // whenever a PDF exists, even on error: Tectonic's continue-on-errors mode
+      // still produces a best-effort PDF, and we want to keep showing it.
+      const buf = result.has_pdf ? await readCompiledPdf(projectId) : null;
       const bytes = buf ? new Uint8Array(buf) : null;
       if (stale()) return result;
       set((state) => ({
         status: result.ok && bytes ? "success" : "error",
         phase: "idle",
-        pdfBytes: result.ok && bytes ? bytes : state.pdfBytes,
+        pdfBytes: bytes ?? state.pdfBytes,
         errors: result.errors,
         log: `${offlinePolicy.notice ? `${offlinePolicy.notice}\n` : ""}${result.log}`,
         lastCompiledAt: result.ok && bytes ? Date.now() : state.lastCompiledAt,

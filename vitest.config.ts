@@ -8,6 +8,7 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
       "@oleafly/latex": path.resolve(__dirname, "./packages/latex/src"),
+      "@oleafly/wysiwyg": path.resolve(__dirname, "./packages/wysiwyg/src"),
       "@oleafly/ai-core": path.resolve(__dirname, "./packages/ai-core/src"),
       "@oleafly/diagram": path.resolve(__dirname, "./packages/diagram/src"),
       "@oleafly/editor": path.resolve(__dirname, "./packages/editor/src"),

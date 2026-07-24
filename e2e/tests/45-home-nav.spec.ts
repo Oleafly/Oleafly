@@ -61,23 +61,23 @@ test("dock opens the Diagram Composer as a standalone page and back returns to L
   // is no dock button left to check an active state on once the dialog opens.
   await tauriPage.click('[data-testid="open-diagram-composer"]');
   await expect(
-    tauriPage.locator('[role="dialog"][aria-labelledby="diagram-composer-title"]'),
+    tauriPage.locator('[role="dialog"][data-tour="diagram-composer"]'),
   ).toBeVisible({ timeout: 20_000 });
   await expect(tauriPage.getByTestId("library")).toBeHidden();
 
-  await tauriPage.click('[aria-label="Back to project"]');
+  await tauriPage.click('[role="dialog"][data-tour="diagram-composer"] [aria-label="Home"]');
   await expect(tauriPage.getByTestId("library")).toBeVisible();
   await expect(
-    tauriPage.locator('[role="dialog"][aria-labelledby="diagram-composer-title"]'),
+    tauriPage.locator('[role="dialog"][data-tour="diagram-composer"]'),
   ).toBeHidden();
 
   // Reopening reuses the same hidden scratch project rather than creating a
   // new one each time (idempotent get-or-create on the Rust side).
   await tauriPage.click('[data-testid="open-diagram-composer"]');
   await expect(
-    tauriPage.locator('[role="dialog"][aria-labelledby="diagram-composer-title"]'),
+    tauriPage.locator('[role="dialog"][data-tour="diagram-composer"]'),
   ).toBeVisible({ timeout: 20_000 });
-  await tauriPage.click('[aria-label="Back to project"]');
+  await tauriPage.click('[role="dialog"][data-tour="diagram-composer"] [aria-label="Home"]');
 });
 
 test("dock's Search button is gated on having at least one project", async ({ tauriPage }) => {

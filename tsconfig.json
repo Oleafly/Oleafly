@@ -23,6 +23,7 @@
     "paths": {
       "@/*": ["./src/*"],
       "@oleafly/latex": ["./packages/latex/src/index.ts"],
+      "@oleafly/wysiwyg": ["./packages/wysiwyg/src/index.ts"],
       "@oleafly/ai-core": ["./packages/ai-core/src/index.ts"],
       "@oleafly/diagram": ["./packages/diagram/src/index.ts"],
       "@oleafly/editor": ["./packages/editor/src/index.ts"],
