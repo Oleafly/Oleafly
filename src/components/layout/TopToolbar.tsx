@@ -18,6 +18,7 @@ import {
   Maximize,
   Play,
   RefreshCw,
+  Sparkles,
   SquarePen,
   X,
 } from "lucide-react";
@@ -89,10 +90,17 @@ export const LAYOUT_OPTIONS: { preset: LayoutPreset; label: string; icon: typeof
   { preset: "preview-ai", label: "Preview + AI", icon: Columns2 },
   { preset: "editor-only", label: "Editor Only", icon: Maximize },
   { preset: "preview-only", label: "Preview Only", icon: Columns2 },
+  { preset: "ai-only", label: "AI Only", icon: Sparkles },
 ];
 
-function activeLayoutPreset(viewMode: ViewMode, railTab: RailTab, showTree: boolean): LayoutPreset | null {
+function activeLayoutPreset(
+  viewMode: ViewMode,
+  railTab: RailTab,
+  showTree: boolean,
+  hideEditorArea: boolean
+): LayoutPreset | null {
   const isAi = railTab === "ai" || railTab === "chat";
+  if (hideEditorArea) return isAi ? "ai-only" : null;
   if (!showTree) {
     if (viewMode === "editor") return "editor-only";
     if (viewMode === "pdf") return "preview-only";
@@ -128,6 +136,7 @@ export function TopToolbar() {
   const setViewMode = useSettingsStore((s) => s.setViewMode);
   const railTab = useSettingsStore((s) => s.railTab);
   const showTree = useSettingsStore((s) => s.showTree);
+  const hideEditorArea = useSettingsStore((s) => s.hideEditorArea);
   const setLayoutPreset = useSettingsStore((s) => s.setLayoutPreset);
   const recompile = useCompileStore((s) => s.recompile);
   const status = useCompileStore((s) => s.status);
@@ -554,7 +563,7 @@ export function TopToolbar() {
           </Tooltip>
           <DropdownMenuContent align="end" className="w-56">
             {LAYOUT_OPTIONS.map(({ preset, label, icon: Icon }) => {
-              const active = activeLayoutPreset(viewMode, railTab, showTree) === preset;
+              const active = activeLayoutPreset(viewMode, railTab, showTree, hideEditorArea) === preset;
               return (
                 <DropdownMenuItem key={preset} onClick={() => setLayoutPreset(preset)}>
                   <Icon className="size-4 text-muted-foreground" />

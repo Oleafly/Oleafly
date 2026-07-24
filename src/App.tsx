@@ -127,6 +127,7 @@ export default function App() {
   const viewMode = useSettingsStore((s) => s.viewMode);
   const setViewMode = useSettingsStore((s) => s.setViewMode);
   const showTree = useSettingsStore((s) => s.showTree);
+  const hideEditorArea = useSettingsStore((s) => s.hideEditorArea);
   const editorFontSize = useSettingsStore((s) => s.editorFontSize);
   const appFontSize = useSettingsStore((s) => s.appFontSize);
   const appFontFamily = useSettingsStore((s) => s.appFontFamily);
@@ -183,6 +184,13 @@ export default function App() {
   }, [projectId]);
 
   useEffect(() => {
+    // No adjacent editor/pdf panel to balance against in this mode: the
+    // sidebar just stays at its own 100% width.
+    if (hideEditorArea) {
+      previousRailTabRef.current = railTab;
+      return;
+    }
+
     const suppressAutoLayout = useSettingsStore.getState().suppressAiAutoLayout;
     if (suppressAutoLayout) useSettingsStore.getState().setSuppressAiAutoLayout(false);
 
@@ -233,7 +241,7 @@ export default function App() {
         }
       });
     }
-  }, [railTab, setViewMode, viewMode]);
+  }, [railTab, setViewMode, viewMode, hideEditorArea]);
 
   // No-op in dev / the browser; only prompts if an update is actually available.
   useEffect(() => {
@@ -319,6 +327,7 @@ export default function App() {
     usePreflightStore.getState().reset();
     if (projectId) {
       s.setRailTab(layoutPresetWantsAi(s.defaultView) ? "ai" : "files");
+      s.setHideEditorArea(s.defaultView === "ai-only");
       if (s.openInTree && !s.showTree) s.toggleTree();
       else if (!s.openInTree && s.showTree) s.toggleTree();
       void import("@/lib/preview-window").then((m) => m.retargetPreviewWindow(projectId));
@@ -504,10 +513,10 @@ export default function App() {
                   ref={sidebarPanelRef}
                   id="sidebar"
                   order={1}
-                  defaultSize={sidebarDefaultSize}
-                  minSize={sidebarMinSize}
-                  maxSize={65}
-                  collapsible
+                  defaultSize={hideEditorArea ? 100 : sidebarDefaultSize}
+                  minSize={hideEditorArea ? 100 : sidebarMinSize}
+                  maxSize={hideEditorArea ? 100 : 65}
+                  collapsible={!hideEditorArea}
                   collapsedSize={0}
                   onCollapse={() => {
                     if (useSettingsStore.getState().showTree) useSettingsStore.getState().toggleTree();
@@ -516,10 +525,11 @@ export default function App() {
                 >
                   <Sidebar />
                 </Panel>
-                <VHandle id="h-tree" />
+                {!hideEditorArea && <VHandle id="h-tree" />}
               </>
             )}
 
+            {!hideEditorArea && (
             <Panel id="editorpdf" order={2} defaultSize={showTree ? 85 : 100}>
               <PanelGroup direction="horizontal">
                 {viewMode !== "pdf" && (
@@ -547,6 +557,7 @@ export default function App() {
                 )}
               </PanelGroup>
             </Panel>
+            )}
           </PanelGroup>
         </div>
 

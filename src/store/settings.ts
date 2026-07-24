@@ -21,16 +21,22 @@ export type LayoutPreset =
   | "editor-ai"
   | "preview-ai"
   | "editor-only"
-  | "preview-only";
+  | "preview-only"
+  | "ai-only";
 
 export function layoutPresetViewMode(preset: LayoutPreset): ViewMode {
   if (preset === "editor-preview-ai" || preset === "editor-preview") return "split";
-  if (preset === "editor-ai" || preset === "editor-only") return "editor";
+  if (preset === "editor-ai" || preset === "editor-only" || preset === "ai-only") return "editor";
   return "pdf";
 }
 
 export function layoutPresetWantsAi(preset: LayoutPreset): boolean {
-  return preset === "editor-preview-ai" || preset === "editor-ai" || preset === "preview-ai";
+  return (
+    preset === "editor-preview-ai" ||
+    preset === "editor-ai" ||
+    preset === "preview-ai" ||
+    preset === "ai-only"
+  );
 }
 
 export type RailTab =
@@ -199,6 +205,8 @@ interface SettingsState {
   suppressAiAutoLayout: boolean;
   setSuppressAiAutoLayout: (v: boolean) => void;
   setLayoutPreset: (v: LayoutPreset) => void;
+  hideEditorArea: boolean;
+  setHideEditorArea: (v: boolean) => void;
   dockPlacement: DockPlacement;
   setDockPlacement: (v: DockPlacement) => void;
   bgPattern: BackgroundPattern;
@@ -343,29 +351,51 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   setRailTab: (v) => set({ railTab: v }),
   suppressAiAutoLayout: false,
   setSuppressAiAutoLayout: (v) => set({ suppressAiAutoLayout: v }),
+  hideEditorArea: false,
+  setHideEditorArea: (v) => set({ hideEditorArea: v }),
   setLayoutPreset: (preset) => {
     switch (preset) {
       case "editor-preview-ai":
-        set({ suppressAiAutoLayout: true, showTree: true, railTab: "ai", viewMode: "split" });
+        set({
+          suppressAiAutoLayout: true,
+          showTree: true,
+          railTab: "ai",
+          viewMode: "split",
+          hideEditorArea: false,
+        });
         break;
       case "editor-preview":
         set((s) => ({
           showTree: true,
           railTab: s.railTab === "ai" || s.railTab === "chat" ? "files" : s.railTab,
           viewMode: "split",
+          hideEditorArea: false,
         }));
         break;
       case "editor-ai":
-        set({ suppressAiAutoLayout: true, showTree: true, railTab: "ai", viewMode: "editor" });
+        set({
+          suppressAiAutoLayout: true,
+          showTree: true,
+          railTab: "ai",
+          viewMode: "editor",
+          hideEditorArea: false,
+        });
         break;
       case "preview-ai":
-        set({ suppressAiAutoLayout: true, showTree: true, railTab: "ai", viewMode: "pdf" });
+        set({
+          suppressAiAutoLayout: true,
+          showTree: true,
+          railTab: "ai",
+          viewMode: "pdf",
+          hideEditorArea: false,
+        });
         break;
       case "editor-only":
         set((s) => ({
           showTree: false,
           railTab: s.railTab === "ai" || s.railTab === "chat" ? "files" : s.railTab,
           viewMode: "editor",
+          hideEditorArea: false,
         }));
         break;
       case "preview-only":
@@ -373,7 +403,11 @@ export const useSettingsStore = create<SettingsState>((set) => ({
           showTree: false,
           railTab: s.railTab === "ai" || s.railTab === "chat" ? "files" : s.railTab,
           viewMode: "pdf",
+          hideEditorArea: false,
         }));
+        break;
+      case "ai-only":
+        set({ suppressAiAutoLayout: true, showTree: true, railTab: "ai", hideEditorArea: true });
         break;
     }
   },
