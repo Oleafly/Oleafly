@@ -443,6 +443,7 @@ export function PreviewPane() {
                 <ZoomIn className="size-3.5" />
               </Button>
             </Tooltip>
+            <div className="mx-1 h-4 w-px bg-border" />
             <Tooltip label={isImage ? "Save image to project" : "Save PDF to project"}>
               <Button
                 variant="ghost"
@@ -477,6 +478,7 @@ export function PreviewPane() {
                 {inverted ? <Contrast className="size-3.5 text-primary" /> : <Contrast className="size-3.5" />}
               </Button>
             </Tooltip>
+            <div className="mx-1 h-4 w-px bg-border" />
             {!isFs && (
               <Tooltip label="Open preview in a new window">
                 <Button
