@@ -7,8 +7,8 @@ import { tags as t } from "@lezer/highlight";
 // needed.
 const chromeTheme = EditorView.theme({
   "&": {
-    backgroundColor: "var(--background)",
-    color: "var(--foreground)",
+    backgroundColor: "var(--cm-editor-bg, var(--background))",
+    color: "var(--cm-editor-fg, var(--foreground))",
     height: "100%",
     fontSize: "var(--cm-font-size, 13px)",
   },
@@ -20,27 +20,28 @@ const chromeTheme = EditorView.theme({
     lineHeight: "1.6",
   },
   ".cm-content": {
-    caretColor: "var(--primary)",
+    caretColor: "var(--cm-cursor, var(--primary))",
     padding: "10px 0",
   },
   ".cm-gutters": {
     backgroundColor: "transparent",
-    color: "var(--muted-foreground)",
+    color: "var(--cm-gutter-fg, var(--muted-foreground))",
     border: "none",
     paddingLeft: "6px",
   },
   ".cm-activeLineGutter": {
     backgroundColor: "transparent",
-    color: "var(--foreground)",
+    color: "var(--cm-editor-fg, var(--foreground))",
   },
   ".cm-activeLine": {
-    backgroundColor: "color-mix(in oklch, var(--muted) 45%, transparent)",
+    backgroundColor: "var(--cm-active-line, color-mix(in oklch, var(--muted) 45%, transparent))",
   },
   "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection": {
-    backgroundColor: "color-mix(in oklch, var(--primary) 18%, transparent) !important",
+    backgroundColor:
+      "var(--cm-selection, color-mix(in oklch, var(--primary) 18%, transparent)) !important",
   },
   ".cm-cursor, .cm-dropCursor": {
-    borderLeftColor: "var(--primary)",
+    borderLeftColor: "var(--cm-cursor, var(--primary))",
     borderLeftWidth: "1px",
   },
   ".cm-panels": {

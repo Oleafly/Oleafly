@@ -48,7 +48,7 @@ export interface EditorHost {
   useDocVersion(): number;
   getContent(path: string): string;
   setContent(path: string, content: string): void;
-  useSettings(): { vim: boolean; spellcheck: boolean; harper: boolean };
+  useSettings(): { vim: boolean; spellcheck: boolean; harper: boolean; editorTheme: string };
   useLintRefreshDeps(): readonly unknown[];
 }
 
@@ -88,7 +88,7 @@ export function CodeMirrorEditor({
   // edit), which is pure waste since CodeMirror owns the document and the
   // effect only needs the content when the file or docVersion actually changes.
   const docVersion = host.useDocVersion();
-  const { vim: vimEnabled, spellcheck, harper } = host.useSettings();
+  const { vim: vimEnabled, spellcheck, harper, editorTheme: editorThemeId } = host.useSettings();
   const lintDeps = host.useLintRefreshDeps();
 
   useEffect(() => {
@@ -279,5 +279,5 @@ export function CodeMirrorEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, lintDeps);
 
-  return <div ref={hostRef} className="h-full overflow-auto" />;
+  return <div ref={hostRef} data-editor-theme={editorThemeId} className="h-full overflow-auto" />;
 }

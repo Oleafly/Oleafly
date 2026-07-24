@@ -56,6 +56,7 @@ const HOST: EditorHost = {
     vim: useSettingsStore((s) => s.vim),
     spellcheck: useSettingsStore((s) => s.spellcheck),
     harper: useSettingsStore((s) => s.harper),
+    editorTheme: useSettingsStore((s) => s.editorTheme),
   }),
   useLintRefreshDeps: () => [
     useSettingsStore((s) => s.showRegionalism),

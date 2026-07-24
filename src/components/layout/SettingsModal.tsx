@@ -53,7 +53,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useSettingsStore, ACCENTS, APP_FONTS, EDITOR_FONTS } from "@/store/settings";
+import { useSettingsStore, ACCENTS, APP_FONTS, EDITOR_FONTS, EDITOR_THEMES } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
 import { useDictionary } from "@/lib/dictionary";
 import { useTheme } from "@/lib/theme";
@@ -191,6 +191,8 @@ export function SettingsModal() {
   const setAppFontFamily = useSettingsStore((s) => s.setAppFontFamily);
   const editorFontFamily = useSettingsStore((s) => s.editorFontFamily);
   const setEditorFontFamily = useSettingsStore((s) => s.setEditorFontFamily);
+  const editorTheme = useSettingsStore((s) => s.editorTheme);
+  const setEditorTheme = useSettingsStore((s) => s.setEditorTheme);
   const defaultView = useSettingsStore((s) => s.defaultView);
   const setDefaultView = useSettingsStore((s) => s.setDefaultView);
   const openInTree = useSettingsStore((s) => s.openInTree);
@@ -456,6 +458,33 @@ export function SettingsModal() {
                       {EDITOR_FONTS.map((f) => (
                         <SelectItem key={f.name} value={f.value || "__default__"}>
                           {f.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div
+                  data-testid="settings-row-editor-theme"
+                  className="flex items-center justify-between gap-4 rounded-lg border bg-background p-3"
+                >
+                  <div>
+                    <div className="text-sm font-medium">Editor theme</div>
+                    <div className="text-xs text-muted-foreground">
+                      Syntax colors for the code editor, independent of the app's theme.
+                    </div>
+                  </div>
+                  <Select
+                    value={editorTheme}
+                    onValueChange={(v) => setEditorTheme(v as typeof editorTheme)}
+                  >
+                    <SelectTrigger className="w-[168px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="z-[100]">
+                      {EDITOR_THEMES.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.name}
                         </SelectItem>
                       ))}
                     </SelectContent>

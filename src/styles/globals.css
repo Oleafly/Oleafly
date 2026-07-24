@@ -95,6 +95,157 @@
   background-color: #121212;
 }
 
+/* Editor color themes: independent of the app's light/dark mode. Each
+ * scopes --cm-editor-bg/fg/gutter-fg/active-line/selection/cursor (the
+ * editor's own surface, unset otherwise so it falls back to the app's
+ * --background/--foreground) plus the --cm-* syntax token vars that
+ * packages/editor/src/theme.ts's highlightStyle already reads. Chrome
+ * shared with the rest of the app (panels, tooltips, buttons) is
+ * intentionally left alone. */
+[data-editor-theme="linear"] {
+  --cm-editor-bg: #08090a;
+  --cm-editor-fg: #d0d6e0;
+  --cm-gutter-fg: #52565f;
+  --cm-active-line: rgba(255, 255, 255, 0.035);
+  --cm-selection: rgba(94, 106, 210, 0.25);
+  --cm-cursor: #5e6ad2;
+  --cm-comment: #6b7280;
+  --cm-keyword: #5e6ad2;
+  --cm-number: #e6a23c;
+  --cm-string: #4cb782;
+  --cm-bracket: #9ca3af;
+  --cm-variable: #d0d6e0;
+  --cm-meta: #a78bfa;
+  --cm-tag: #6e7bf2;
+  --cm-operator: #8b92a8;
+}
+
+[data-editor-theme="github-dark"] {
+  --cm-editor-bg: #0d1117;
+  --cm-editor-fg: #c9d1d9;
+  --cm-gutter-fg: #6e7681;
+  --cm-active-line: rgba(110, 118, 129, 0.1);
+  --cm-selection: rgba(56, 139, 253, 0.15);
+  --cm-cursor: #58a6ff;
+  --cm-comment: #8b949e;
+  --cm-keyword: #ff7b72;
+  --cm-number: #79c0ff;
+  --cm-string: #a5d6ff;
+  --cm-bracket: #d2a8ff;
+  --cm-variable: #ffa657;
+  --cm-meta: #d2a8ff;
+  --cm-tag: #7ee787;
+  --cm-operator: #79c0ff;
+}
+
+[data-editor-theme="dracula"] {
+  --cm-editor-bg: #282a36;
+  --cm-editor-fg: #f8f8f2;
+  --cm-gutter-fg: #6272a4;
+  --cm-active-line: rgba(68, 71, 90, 0.5);
+  --cm-selection: rgba(68, 71, 90, 0.7);
+  --cm-cursor: #f8f8f2;
+  --cm-comment: #6272a4;
+  --cm-keyword: #ff79c6;
+  --cm-number: #bd93f9;
+  --cm-string: #f1fa8c;
+  --cm-bracket: #f8f8f2;
+  --cm-variable: #ffb86c;
+  --cm-meta: #ff79c6;
+  --cm-tag: #50fa7b;
+  --cm-operator: #ff79c6;
+}
+
+[data-editor-theme="nord"] {
+  --cm-editor-bg: #2e3440;
+  --cm-editor-fg: #d8dee9;
+  --cm-gutter-fg: #4c566a;
+  --cm-active-line: rgba(76, 86, 106, 0.3);
+  --cm-selection: rgba(67, 76, 94, 0.6);
+  --cm-cursor: #d8dee9;
+  --cm-comment: #616e88;
+  --cm-keyword: #81a1c1;
+  --cm-number: #b48ead;
+  --cm-string: #a3be8c;
+  --cm-bracket: #eceff4;
+  --cm-variable: #d8dee9;
+  --cm-meta: #5e81ac;
+  --cm-tag: #88c0d0;
+  --cm-operator: #81a1c1;
+}
+
+[data-editor-theme="tokyo-night"] {
+  --cm-editor-bg: #1a1b26;
+  --cm-editor-fg: #a9b1d6;
+  --cm-gutter-fg: #3b4261;
+  --cm-active-line: rgba(41, 46, 66, 0.6);
+  --cm-selection: rgba(51, 64, 109, 0.6);
+  --cm-cursor: #c0caf5;
+  --cm-comment: #565f89;
+  --cm-keyword: #bb9af7;
+  --cm-number: #ff9e64;
+  --cm-string: #9ece6a;
+  --cm-bracket: #a9b1d6;
+  --cm-variable: #c0caf5;
+  --cm-meta: #7aa2f7;
+  --cm-tag: #f7768e;
+  --cm-operator: #89ddff;
+}
+
+[data-editor-theme="rose-pine"] {
+  --cm-editor-bg: #191724;
+  --cm-editor-fg: #e0def4;
+  --cm-gutter-fg: #6e6a86;
+  --cm-active-line: rgba(38, 35, 58, 0.6);
+  --cm-selection: rgba(64, 61, 82, 0.6);
+  --cm-cursor: #e0def4;
+  --cm-comment: #6e6a86;
+  --cm-keyword: #31748f;
+  --cm-number: #ebbcba;
+  --cm-string: #f6c177;
+  --cm-bracket: #908caa;
+  --cm-variable: #e0def4;
+  --cm-meta: #c4a7e7;
+  --cm-tag: #eb6f92;
+  --cm-operator: #9ccfd8;
+}
+
+[data-editor-theme="catppuccin"] {
+  --cm-editor-bg: #1e1e2e;
+  --cm-editor-fg: #cdd6f4;
+  --cm-gutter-fg: #6c7086;
+  --cm-active-line: rgba(49, 50, 68, 0.6);
+  --cm-selection: rgba(69, 71, 90, 0.6);
+  --cm-cursor: #f5e0dc;
+  --cm-comment: #6c7086;
+  --cm-keyword: #cba6f7;
+  --cm-number: #fab387;
+  --cm-string: #a6e3a1;
+  --cm-bracket: #f5e0dc;
+  --cm-variable: #cdd6f4;
+  --cm-meta: #f9e2af;
+  --cm-tag: #f38ba8;
+  --cm-operator: #89dceb;
+}
+
+[data-editor-theme="one-dark"] {
+  --cm-editor-bg: #282c34;
+  --cm-editor-fg: #abb2bf;
+  --cm-gutter-fg: #636d83;
+  --cm-active-line: rgba(255, 255, 255, 0.04);
+  --cm-selection: rgba(97, 175, 239, 0.25);
+  --cm-cursor: #528bff;
+  --cm-comment: #5c6370;
+  --cm-keyword: #c678dd;
+  --cm-number: #d19a66;
+  --cm-string: #98c379;
+  --cm-bracket: #abb2bf;
+  --cm-variable: #e06c75;
+  --cm-meta: #e5c07b;
+  --cm-tag: #e06c75;
+  --cm-operator: #56b6c2;
+}
+
 .ai-prompt-surface {
   --background: #fafafa;
   --foreground: var(--neutral-900);
