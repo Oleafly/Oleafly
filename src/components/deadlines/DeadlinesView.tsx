@@ -230,7 +230,7 @@ function DeadlineCard({ venue, now }: { venue: Venue; now: Date }) {
             <Button
               variant="secondary"
               size="xs"
-              className="col-start-2 row-start-2 shrink-0 justify-self-end"
+              className="col-start-2 row-start-2 shrink-0 justify-self-end hover:bg-blue-500 hover:text-white"
               onClick={() => void openExternal(venue.link)}
             >
               <Globe className="size-3" /> Website
@@ -306,7 +306,7 @@ export function DeadlinesView() {
             <Button
               variant="outline"
               size="icon"
-              className="rounded-full"
+              className="rounded-md"
               disabled={busy}
               aria-label={busy ? "Refreshing..." : "Refresh"}
               data-testid="deadlines-refresh"
@@ -319,7 +319,7 @@ export function DeadlinesView() {
             <Button
               variant="ghost"
               size="icon"
-              className="rounded-full"
+              className="rounded-md"
               aria-label="About these deadlines"
               data-testid="deadlines-help"
               onClick={() => setHelpOpen(true)}
@@ -331,7 +331,7 @@ export function DeadlinesView() {
       </div>
       <div className="flex flex-wrap items-center gap-2 border-b px-5 py-2.5">
         <Select value={sub ?? "__all__"} onValueChange={(v) => setSub(v === "__all__" ? null : v)}>
-          <SelectTrigger className="h-8 w-44 rounded-full border-border/80 bg-card text-xs" aria-label="Filter by field">
+          <SelectTrigger className="h-8 w-44 rounded-md border-border/80 bg-card text-xs" aria-label="Filter by field">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -343,20 +343,22 @@ export function DeadlinesView() {
             ))}
           </SelectContent>
         </Select>
-        <div className="relative w-64">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search conferences"
-            className="h-8 rounded-full border-border/80 bg-card pl-9 text-xs"
-            data-testid="deadlines-search"
-          />
+        <div className="flex flex-1 justify-center">
+          <div className="relative w-80">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search conferences"
+              className="h-8 rounded-md border-border/80 bg-card pl-9 text-xs"
+              data-testid="deadlines-search"
+            />
+          </div>
         </div>
         <div className="ml-auto flex items-center gap-4">
           <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
             <SelectTrigger
-              className="h-8 w-36 rounded-full border-border/80 bg-card text-xs"
+              className="h-8 w-36 rounded-md border-border/80 bg-card text-xs"
               aria-label="Sort by"
             >
               <SelectValue />
