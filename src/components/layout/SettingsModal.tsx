@@ -118,7 +118,7 @@ function Switch({ checked }: { checked: boolean }) {
     <span
       className={cn(
         "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors",
-        checked ? "bg-blue-500" : "bg-white/10"
+        checked ? "bg-primary" : "bg-zinc-300 dark:bg-zinc-600"
       )}
     >
       <span
@@ -276,15 +276,15 @@ export function SettingsModal() {
         data-modal-initial-focus
         aria-modal="true"
         aria-label="Settings"
-        className="dark relative flex h-[min(620px,86vh)] w-[min(820px,94vw)] overflow-hidden rounded-xl border bg-background text-foreground shadow-2xl outline-none"
+        className="relative flex h-[min(620px,86vh)] w-[min(820px,94vw)] overflow-hidden rounded-xl border bg-background shadow-2xl outline-none"
       >
         <nav
           aria-label="Settings sections"
           data-tour="settings-navigation-panel"
-          className="flex w-52 shrink-0 flex-col gap-0.5 border-r bg-background p-3"
+          className="flex w-52 shrink-0 flex-col gap-0.5 border-r bg-muted/30 p-3"
         >
           <div className="flex flex-col gap-0.5">
-            <div data-tour="settings-navigation" className="mb-2 px-2 text-base font-bold">Settings</div>
+            <div data-tour="settings-navigation" className="mb-2 px-2 text-sm font-semibold">Settings</div>
             {NAV.filter(({ id }) => showAdvanced || !ADVANCED.includes(id)).map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -295,8 +295,8 @@ export function SettingsModal() {
               className={cn(
                 "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors",
                 section === id
-                  ? "bg-accent font-medium text-foreground"
-                  : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+                  ? "bg-background font-medium text-foreground shadow-sm"
+                  : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
               )}
             >
               <Icon className="size-4" aria-hidden />
@@ -317,7 +317,7 @@ export function SettingsModal() {
                 setAdvanced(!showAdvanced);
               }
             }}
-            className="mt-auto flex cursor-pointer items-center justify-between gap-2 rounded-md px-2.5 py-2 text-xs text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
+            className="mt-auto flex cursor-pointer items-center justify-between gap-2 rounded-md px-2.5 py-2 text-xs text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground"
           >
             <span>Show Advanced</span>
             <Switch checked={showAdvanced} />
@@ -330,12 +330,12 @@ export function SettingsModal() {
               ? `${TOUR_SECTION_TARGETS[section]}-panel`
               : undefined
           }
-          className="flex min-w-0 flex-1 flex-col bg-background"
+          className="flex min-w-0 flex-1 flex-col bg-muted/30"
         >
-          <div className="flex h-14 shrink-0 items-center justify-between border-b px-5">
+          <div className="flex h-12 shrink-0 items-center justify-between border-b px-5">
             <h2
               data-tour={TOUR_SECTION_TARGETS[section]}
-              className="text-lg font-bold tracking-tight"
+              className="text-sm font-semibold"
             >
               {NAV.find((n) => n.id === section)?.label}
             </h2>
