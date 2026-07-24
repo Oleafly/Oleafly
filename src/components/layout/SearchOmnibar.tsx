@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Command } from "cmdk";
 import {
+  Bookmark,
   FileText,
   FolderOpen,
   Link2,
@@ -17,6 +18,7 @@ import { useTourStore } from "@/store/tours";
 import { useFilesStore } from "@/store/files";
 import { useTheme } from "@/lib/theme";
 import { searchDocs, type ProjectInfo, type SearchHit } from "@/lib/tauri";
+import { projectModifiedLabel } from "@/lib/project-format";
 import { gotoLine } from "@/components/editor/cm/controller";
 import { cn } from "@/lib/utils";
 import { objectKey } from "@/lib/react-key";
@@ -333,7 +335,8 @@ export function SearchOmnibar() {
                   key={p.id}
                   icon={<FolderOpen className="size-4" />}
                   title={p.name}
-                  hint={p.updated_at > 0 ? new Date(p.updated_at * 1000).toLocaleDateString() : undefined}
+                  starred={favs.includes(p.id)}
+                  hint={projectModifiedLabel(p.updated_at)}
                   onSelect={() => void runProject(p.id)}
                 />
               ))}
@@ -422,11 +425,13 @@ function Row({
   icon,
   title,
   hint,
+  starred,
   onSelect,
 }: {
   icon: ReactNode;
   title: string;
   hint?: string;
+  starred?: boolean;
   onSelect: () => void;
 }) {
   return (
@@ -437,6 +442,9 @@ function Row({
     >
       <span className="text-muted-foreground">{icon}</span>
       <span className="truncate">{title}</span>
+      {starred && (
+        <Bookmark className="size-3.5 shrink-0 fill-current text-amber-500" aria-label="Bookmarked" />
+      )}
       {hint && <span className="ml-auto shrink-0 text-xs text-muted-foreground">{hint}</span>}
     </Command.Item>
   );

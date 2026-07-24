@@ -140,6 +140,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
 
   refreshProjects: async () => {
     const projects = await listProjects();
+    projects.sort((a, b) => b.updated_at - a.updated_at);
     set({ projects, projectsLoaded: true });
   },
 

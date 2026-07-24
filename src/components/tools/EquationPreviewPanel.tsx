@@ -131,11 +131,6 @@ export function EquationPreviewPanel({
           />
         </div>
 
-        <div className="flex items-center justify-between border-t px-4 py-2 text-xs text-muted-foreground">
-          <span>{rendered.error ? rendered.error : "Syntax looks good"}</span>
-          <span className="shrink-0">⌘ Enter to render</span>
-        </div>
-
         <div className="border-t px-4 py-3">
           <div className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground">
             EXAMPLES
@@ -165,7 +160,7 @@ export function EquationPreviewPanel({
               {display ? "Display" : "Inline"}
             </span>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-3">
             <button
               type="button"
               aria-label="Preview on dark"
@@ -217,8 +212,17 @@ export function EquationPreviewPanel({
               {rendered.error ? (
                 <p className="max-w-sm text-sm text-destructive">{rendered.error}</p>
               ) : rendered.html ? (
-                // biome-ignore lint/security/noDangerouslySetInnerHtml: KaTeX output is trusted local rendering
-                <div dangerouslySetInnerHTML={{ __html: rendered.html }} />
+                display ? (
+                  // biome-ignore lint/security/noDangerouslySetInnerHtml: KaTeX output is trusted local rendering
+                  <div dangerouslySetInnerHTML={{ __html: rendered.html }} />
+                ) : (
+                  <p className="max-w-md text-base leading-relaxed">
+                    This is how it sits inline within a sentence, like{" "}
+                    {/* biome-ignore lint/security/noDangerouslySetInnerHtml: KaTeX output is trusted local rendering */}
+                    <span dangerouslySetInnerHTML={{ __html: rendered.html }} />, flowing with the
+                    surrounding text.
+                  </p>
+                )
               ) : (
                 <p className="text-sm opacity-60">Type LaTeX math on the left.</p>
               )}
