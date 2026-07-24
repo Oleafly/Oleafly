@@ -102,7 +102,7 @@ function ToolCard({ tool, onOpen }: { tool: ToolDef; onOpen: () => void }) {
       type="button"
       data-testid={`latex-tool-card-${tool.id}`}
       onClick={onOpen}
-      className="group flex w-full items-start gap-4 rounded-lg border bg-card p-4 text-left transition-colors hover:border-foreground/25 hover:bg-accent/40"
+      className="group flex w-full items-start gap-4 rounded-lg border bg-card p-4 text-left transition-colors hover:border-primary hover:bg-accent/40 hover:ring-1 hover:ring-primary"
     >
       <div className="flex size-11 shrink-0 items-center justify-center rounded-lg border bg-muted/40 text-foreground">
         <tool.icon className="size-5" />
