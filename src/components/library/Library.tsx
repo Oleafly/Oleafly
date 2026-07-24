@@ -8,11 +8,11 @@ import {
   GitFork,
   History,
   Info,
-  ListFilter,
   Loader2,
   Palette,
   Plus,
   SearchX,
+  SlidersHorizontal,
   Trash2,
   X,
 } from "lucide-react";
@@ -413,7 +413,7 @@ export function Library() {
                   className="flex w-80 flex-col gap-3 p-3"
                   trigger={
                     <span className="relative inline-flex">
-                      <ListFilter className="size-4" />
+                      <SlidersHorizontal className="size-4" />
                       {activeFilterCount > 0 && (
                         <span className="absolute -right-1 -top-1 size-1.5 rounded-full bg-primary" />
                       )}
@@ -570,7 +570,7 @@ export function Library() {
                 >
                   <Bookmark className={cn("size-4", onlyFavs && "fill-current")} />
                   {favs.length > 0 && (
-                    <span className="absolute -right-1.5 -top-1.5 flex size-4 items-center justify-center rounded-full bg-foreground text-[10px] font-semibold text-background">
+                    <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-foreground text-[10px] font-semibold text-background">
                       {favs.length}
                     </span>
                   )}
