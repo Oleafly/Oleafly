@@ -347,19 +347,21 @@ export function TopToolbar() {
             </Tooltip>
           </span>
         ) : (
-          <button
-              data-testid="project-title"
-            type="button"
-            onClick={startEditTitle}
-            className="flex min-w-0 items-center gap-1.5 rounded px-1 py-0.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
-          >
-            <span
-              aria-hidden="true"
-              className="size-2 shrink-0 rounded-full"
-              style={{ backgroundColor: coverColor }}
-            />
-            <span className="max-w-[200px] truncate">{projectName || "project"}</span>
-          </button>
+          <Tooltip label={projectName || "project"} side="bottom">
+            <button
+                data-testid="project-title"
+              type="button"
+              onClick={startEditTitle}
+              className="flex min-w-0 items-center gap-1.5 rounded px-1 py-0.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              <span
+                aria-hidden="true"
+                className="size-2 shrink-0 rounded-full"
+                style={{ backgroundColor: coverColor }}
+              />
+              <span className="max-w-[200px] truncate">{projectName || "project"}</span>
+            </button>
+          </Tooltip>
         )}
       </div>
 

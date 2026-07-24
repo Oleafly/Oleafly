@@ -679,15 +679,17 @@ export function DiagramComposer({
               </Tooltip>
             </span>
           ) : (
-            <button
-              type="button"
-              data-testid="diagram-name-display"
-              onClick={startEditName}
-              title="Rename diagram"
-              className="flex min-w-0 items-center rounded px-1 py-0.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
-            >
-              <span className="max-w-[220px] truncate font-normal">{displayFile}</span>
-            </button>
+            <Tooltip label={displayFile}>
+              <button
+                type="button"
+                data-testid="diagram-name-display"
+                onClick={startEditName}
+                title="Rename diagram"
+                className="flex min-w-0 items-center rounded px-1 py-0.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
+                <span className="max-w-[220px] truncate font-normal">{displayFile}</span>
+              </button>
+            </Tooltip>
           )}
           <Tooltip label="Import a .tikz or .tex file, replacing this draft">
             <button

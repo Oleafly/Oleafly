@@ -1,11 +1,27 @@
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
-import { ArrowUpRight, Check, ChevronDown, ChevronRight, ChevronsDown, ChevronsUp, Copy } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpRight, Check, ChevronDown, ChevronRight, Copy } from "lucide-react";
 import { useCompileStore } from "@/store/compile";
 import type { CompileError } from "@/lib/tauri";
 import { openFileAndGotoLine } from "@/features/synctex";
 import { cn } from "@/lib/utils";
 import { objectKey } from "@/lib/react-key";
 import { Tooltip } from "@/components/ui/tooltip";
+
+function easeInOutQuad(t: number): number {
+  return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+}
+
+function smoothScrollTo(el: HTMLElement, targetTop: number, duration = 700) {
+  const startTop = el.scrollTop;
+  const delta = targetTop - startTop;
+  const startTime = performance.now();
+  function step(now: number) {
+    const t = Math.min(1, (now - startTime) / duration);
+    el.scrollTop = startTop + delta * easeInOutQuad(t);
+    if (t < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
 
 type Cat = "error" | "warn" | "lineref" | "register" | "normal";
 
@@ -195,7 +211,6 @@ function ErrorCard({ err, log }: { err: CompileError; log: string }) {
 function RawLogSection({ log, defaultOpen }: { log: string; defaultOpen: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   const [copied, setCopied] = useState(false);
-  const scrollRef = useRef<HTMLPreElement>(null);
 
   const copy = async () => {
     try {
@@ -206,10 +221,6 @@ function RawLogSection({ log, defaultOpen }: { log: string; defaultOpen: boolean
       /* ignore */
     }
   };
-
-  const scrollToTop = () => scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-  const scrollToBottom = () =>
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
 
   return (
     <div className="overflow-hidden rounded-lg border border-sidebar-border bg-background/40">
@@ -236,36 +247,9 @@ function RawLogSection({ log, defaultOpen }: { log: string; defaultOpen: boolean
         </button>
       </div>
       {open && (
-        <div className="relative border-t border-sidebar-border">
-          <pre
-            ref={scrollRef}
-            className="max-h-[420px] overflow-auto whitespace-pre-wrap break-words px-3 py-3 font-mono text-[11px] leading-relaxed"
-          >
-            <LogText text={log} />
-          </pre>
-          <div className="absolute bottom-2 right-2 flex flex-col gap-1">
-            <Tooltip label="Scroll to top" side="left">
-              <button
-                type="button"
-                aria-label="Scroll to top"
-                onClick={scrollToTop}
-                className="flex size-6 items-center justify-center rounded-full border border-sidebar-border bg-background/90 text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-foreground"
-              >
-                <ChevronsUp className="size-3.5" />
-              </button>
-            </Tooltip>
-            <Tooltip label="Scroll to bottom" side="left">
-              <button
-                type="button"
-                aria-label="Scroll to bottom"
-                onClick={scrollToBottom}
-                className="flex size-6 items-center justify-center rounded-full border border-sidebar-border bg-background/90 text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-foreground"
-              >
-                <ChevronsDown className="size-3.5" />
-              </button>
-            </Tooltip>
-          </div>
-        </div>
+        <pre className="whitespace-pre-wrap break-words border-t border-sidebar-border px-3 py-3 font-mono text-[11px] leading-relaxed">
+          <LogText text={log} />
+        </pre>
       )}
     </div>
   );
@@ -275,15 +259,23 @@ export function LogPane() {
   const log = useCompileStore((s) => s.log);
   const errors = useCompileStore((s) => s.errors);
   const endRef = useRef<HTMLDivElement>(null);
+  const scrollBoxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     void log;
     endRef.current?.scrollIntoView({ block: "end" });
   }, [log]);
 
+  const scrollToTop = () => {
+    if (scrollBoxRef.current) smoothScrollTo(scrollBoxRef.current, 0);
+  };
+  const scrollToBottom = () => {
+    if (scrollBoxRef.current) smoothScrollTo(scrollBoxRef.current, scrollBoxRef.current.scrollHeight);
+  };
+
   return (
-    <div className="flex h-full flex-col bg-sidebar">
-      <div className="flex-1 overflow-auto p-3">
+    <div className="relative flex h-full flex-col bg-sidebar">
+      <div ref={scrollBoxRef} className="flex-1 overflow-auto p-3">
         <div className="space-y-3">
           {errors.length > 0 &&
             errors.map((err) => <ErrorCard key={objectKey(err, "compile-error")} err={err} log={log} />)}
@@ -300,6 +292,30 @@ export function LogPane() {
         </div>
         <div ref={endRef} />
       </div>
+      {log && (
+        <div className="absolute bottom-3 right-3 flex flex-col gap-1">
+          <Tooltip label="Scroll to top" side="left">
+            <button
+              type="button"
+              aria-label="Scroll to top"
+              onClick={scrollToTop}
+              className="flex size-7 items-center justify-center rounded-full border border-sidebar-border bg-background/90 text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <ArrowUp className="size-3.5" />
+            </button>
+          </Tooltip>
+          <Tooltip label="Scroll to bottom" side="left">
+            <button
+              type="button"
+              aria-label="Scroll to bottom"
+              onClick={scrollToBottom}
+              className="flex size-7 items-center justify-center rounded-full border border-sidebar-border bg-background/90 text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <ArrowDown className="size-3.5" />
+            </button>
+          </Tooltip>
+        </div>
+      )}
     </div>
   );
 }
