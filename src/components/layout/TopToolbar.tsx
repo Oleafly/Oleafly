@@ -52,7 +52,7 @@ import {
 import { toGithubWebUrl } from "@/lib/github-url";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { notifyError, toast } from "@/lib/toast";
-import { cn, isMac, shortcut } from "@/lib/utils";
+import { cn, isMac, isWindows, shortcut } from "@/lib/utils";
 
 const FMT_LABEL: Record<string, string> = {
   zip: "Zip",
@@ -294,7 +294,8 @@ export function TopToolbar() {
         "grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center border-b bg-background",
         isMac && "pr-3",
         isMac && !fullscreen && "pl-[78px]",
-        isMac && fullscreen && "pl-2"
+        isMac && fullscreen && "pl-2",
+        isWindows && !fullscreen && "pr-[132px]"
       )}
     >
       <div data-tauri-drag-region className="flex min-w-0 items-center gap-2">

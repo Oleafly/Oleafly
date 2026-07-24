@@ -65,7 +65,7 @@ import {
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
-import { cn } from "@/lib/utils";
+import { cn, isWindows } from "@/lib/utils";
 import { cancelAutoCommit } from "@/lib/auto-commit";
 import {
   deleteProject,
@@ -381,7 +381,8 @@ export function Library() {
       <header
         data-tauri-drag-region
         className={cn(
-          "relative z-10 grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center px-3"
+          "relative z-10 grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center px-3",
+          isWindows && "pr-[132px]"
         )}
       >
         <div data-tauri-drag-region className="flex items-center" />
