@@ -10,6 +10,7 @@ import { TemplateGenerateModal } from "@/components/library/TemplateGenerateModa
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useSettingsStore } from "@/store/settings";
 import {
   Select,
   SelectContent,
@@ -93,11 +94,21 @@ export function NewProjectDialog(props: {
   useEffect(() => {
     if (props.open) void generateTemplateAvailable().then(setCanGenerate);
   }, [props.open]);
+  const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
+  const setSettingsInitialSection = useSettingsStore((s) => s.setSettingsInitialSection);
+  const setSettingsScrollTarget = useSettingsStore((s) => s.setSettingsScrollTarget);
+  const openTemplateDownloads = () => {
+    setSettingsScrollTarget("templates");
+    setSettingsInitialSection("downloads");
+    setSettingsOpen(true);
+    props.onClose();
+  };
   return (
     <>
       <NewProjectDialogCore
         {...props}
         onGenerateWithAi={canGenerate ? () => setGenerateOpen(true) : undefined}
+        onOpenTemplateDownloads={openTemplateDownloads}
         host={HOST}
         kit={KIT}
         colorOptions={BOOK_COLOR_OPTIONS}

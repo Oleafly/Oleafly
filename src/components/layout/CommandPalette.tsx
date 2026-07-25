@@ -73,7 +73,7 @@ export function CommandPalette() {
         <Command.Input
           autoFocus
           placeholder="Type a command or search…"
-          className="flex h-11 w-full border-b border-border bg-transparent px-4 text-sm outline-none placeholder:text-muted-foreground"
+          className="flex h-12 w-full border-b border-border bg-transparent px-4 text-sm outline-none placeholder:text-muted-foreground"
         />
         <Command.List className="max-h-[min(60vh,360px)] overflow-auto p-1.5">
           <Command.Empty className="py-6 text-center text-sm text-muted-foreground">

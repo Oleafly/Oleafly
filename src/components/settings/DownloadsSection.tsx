@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { Check, Download, FileText, Info, Loader2, Trash2, Type } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { logError } from "@/lib/log";
 import { notifyError } from "@/lib/toast";
+import { useSettingsStore } from "@/store/settings";
 import {
   downloadAllFonts,
   installFontComponent,
@@ -31,6 +32,15 @@ export function DownloadsSection() {
   const [components, setComponents] = useState<ComponentInfo[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [progress, setProgress] = useState("");
+
+  const templatesHeadingRef = useRef<HTMLHeadingElement>(null);
+  const scrollTarget = useSettingsStore((s) => s.settingsScrollTarget);
+  const setScrollTarget = useSettingsStore((s) => s.setSettingsScrollTarget);
+  useEffect(() => {
+    if (scrollTarget !== "templates") return;
+    templatesHeadingRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setScrollTarget(null);
+  }, [scrollTarget, setScrollTarget]);
 
   const refresh = useCallback(async () => {
     try {
@@ -233,7 +243,12 @@ export function DownloadsSection() {
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Templates</h3>
+          <h3
+            ref={templatesHeadingRef}
+            className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+          >
+            Templates
+          </h3>
           <Tooltip
             wide
             side="right"

@@ -350,7 +350,7 @@ export function DeadlinesView() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search conferences"
-              className="h-8 rounded-md border-border/80 bg-card pl-9 text-xs"
+              className="h-9 rounded-md border-border/80 bg-card pl-9 text-xs"
               data-testid="deadlines-search"
             />
           </div>

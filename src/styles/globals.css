@@ -95,6 +95,12 @@
   background-color: #121212;
 }
 
+/* These two overlay-style palettes read slightly lighter than other dialogs. */
+.dark [data-testid="template-gallery"],
+.dark [data-testid="latex-tools-view"] {
+  background-color: #181818;
+}
+
 /* Editor color themes: independent of the app's light/dark mode. Each
  * scopes --cm-editor-bg/fg/gutter-fg/active-line/selection/cursor (the
  * editor's own surface, unset otherwise so it falls back to the app's

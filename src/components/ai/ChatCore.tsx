@@ -9,13 +9,16 @@ import {
   type UserContent,
 } from "ai";
 import {
+  ArrowLeftRight,
   ArrowUp,
   BadgeDollarSign,
   BookOpen,
   Brain,
   ChevronDown,
+  Filter,
   FilePlus2,
   History,
+  Layers,
   Library,
   MessageSquareQuote,
   Mic,
@@ -27,6 +30,7 @@ import {
   Search,
   Sparkles,
   Square,
+  Workflow,
   Wrench,
   type LucideIcon,
 } from "lucide-react";
@@ -108,6 +112,13 @@ const FIGURE_SUGGESTIONS = [
   "Draw a compiler pipeline: lexer, parser, AST, optimizer, code generator",
   "Diagram a data preprocessing flow ending in a training loop",
 ];
+
+const FIGURE_SUGGESTION_ICONS: Record<string, LucideIcon> = {
+  "Draw a transformer encoder with 6 blocks, attention highlighted, residual connections": Layers,
+  "Show the TCP three-way handshake between a client and a server": ArrowLeftRight,
+  "Draw a compiler pipeline: lexer, parser, AST, optimizer, code generator": Workflow,
+  "Diagram a data preprocessing flow ending in a training loop": Filter,
+};
 
 const CODE_EDIT_TOOLS = new Set([
   "write_file",
@@ -1456,37 +1467,30 @@ ${sandboxedCustom}`;
           <div ref={scrollRef} onScroll={onMessagesScroll} className="h-full overflow-auto px-3 py-3">
             {messages.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center gap-3 px-2">
+                <span className="flex size-12 items-center justify-center rounded-full bg-foreground text-background">
+                  <Sparkles className="size-6" />
+                </span>
                 {figureMode ? (
                   <p className="text-sm text-muted-foreground">
                     Describe a figure and I will draw, compile, and refine it.
                   </p>
                 ) : (
-                  <>
-                    <span className="flex size-12 items-center justify-center rounded-full bg-foreground text-background">
-                      <Sparkles className="size-6" />
-                    </span>
-                    <div className="space-y-1 text-center">
-                      <p className="text-base font-semibold text-foreground">How can I help with your research?</p>
-                      {projectName && (
-                        <p className="text-xs text-muted-foreground">Working on "{projectName}"</p>
-                      )}
-                    </div>
-                  </>
+                  <div className="space-y-1 text-center">
+                    <p className="text-base font-semibold text-foreground">How can I help with your research?</p>
+                    {projectName && (
+                      <p className="text-xs text-muted-foreground">Working on "{projectName}"</p>
+                    )}
+                  </div>
                 )}
                 <div className="flex w-full flex-wrap items-center justify-center gap-1.5">
                   {(figureMode ? FIGURE_SUGGESTIONS : SUGGESTIONS).map((s) => {
-                    const Icon = figureMode ? null : SUGGESTION_ICONS[s];
+                    const Icon = figureMode ? FIGURE_SUGGESTION_ICONS[s] : SUGGESTION_ICONS[s];
                     return (
                       <button
                         type="button"
                         key={s}
                         onClick={() => void send(s)}
-                        className={cn(
-                          "flex items-center gap-1.5 rounded-full border text-left text-xs transition-colors",
-                          figureMode
-                            ? "border-sidebar-border bg-accent px-3 py-1.5 text-muted-foreground hover:bg-[color-mix(in_oklch,var(--accent),#000_18%)] hover:text-foreground"
-                            : "border-blue-200 bg-blue-50 px-3 py-2 text-blue-700 hover:bg-blue-100 dark:border-blue-800/60 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-950/70",
-                        )}
+                        className="flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-2 text-left text-xs text-blue-700 transition-colors hover:bg-blue-100 dark:border-blue-800/60 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-950/70"
                       >
                         {Icon && <Icon className="size-3.5 shrink-0" />}
                         {s}

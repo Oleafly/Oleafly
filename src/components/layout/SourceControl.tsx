@@ -34,6 +34,7 @@ import {
   type GitFileChange,
 } from "@/lib/tauri";
 import { useGitStatusStore } from "@/store/git-status";
+import { useGithubStore } from "@/store/github";
 import { Tooltip } from "@/components/ui/tooltip";
 import { PublishToGitHubDialog } from "@/components/integrations/PublishToGitHubDialog";
 import { cn } from "@/lib/utils";
@@ -55,6 +56,8 @@ export function SourceControl() {
   const projectId = useFilesStore((s) => s.projectId);
   const projectName = useFilesStore((s) => s.projectName);
   const refreshTree = useFilesStore((s) => s.refreshTree);
+  const githubConnected = useGithubStore((s) => s.status === "connected");
+  const githubUser = useGithubStore((s) => s.user);
 
   const [changes, setChanges] = useState<GitFileChange[]>([]);
   const [branch, setBranch] = useState("");
@@ -293,14 +296,24 @@ export function SourceControl() {
     <div className="flex h-full flex-col bg-sidebar">
       <div className="flex h-9 shrink-0 items-center gap-2 border-b border-sidebar-border px-3">
         <GitBranch className="size-3.5 text-muted-foreground" />
-        <span className="text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70">Git</span>
-        {branch ? (
-          <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-medium text-primary-foreground">
+        <span className="text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70">
+          Source Control
+        </span>
+        <span className="ml-auto" />
+        <Tooltip label="Refresh" side="bottom">
+          <button type="button"
+            onClick={() => void refresh()}
+            aria-label="Refresh"
+            className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <RefreshCw className="size-3.5" />
+          </button>
+        </Tooltip>
+        {branch && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-green-600 px-2 py-0.5 text-[10px] font-medium text-white">
             <GitBranch className="size-3" />
             {branch}
           </span>
-        ) : (
-          <span className="ml-auto" />
         )}
         {remote && aheadBehind?.has_upstream && (aheadBehind.ahead > 0 || aheadBehind.behind > 0) && (
           <Tooltip
@@ -317,15 +330,47 @@ export function SourceControl() {
             </span>
           </Tooltip>
         )}
-        <Tooltip label="Refresh" side="bottom">
-          <button type="button"
-            onClick={() => void refresh()}
-            aria-label="Refresh"
-            className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+        {githubConnected && (
+          <Tooltip
+            side="bottom"
+            wide
+            label={
+              <div className="flex items-center gap-2">
+                {githubUser?.avatar_url ? (
+                  <img
+                    src={githubUser.avatar_url}
+                    alt=""
+                    className="size-9 shrink-0 rounded-full object-cover"
+                  />
+                ) : (
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-foreground text-background">
+                    <Github className="size-4" />
+                  </span>
+                )}
+                <div className="flex min-w-0 flex-col">
+                  {githubUser?.name && (
+                    <span className="truncate text-[13px] font-semibold text-foreground">
+                      {githubUser.name}
+                    </span>
+                  )}
+                  <span className="truncate text-xs text-muted-foreground">@{githubUser?.login}</span>
+                </div>
+              </div>
+            }
           >
-            <RefreshCw className="size-3.5" />
-          </button>
-        </Tooltip>
+            {githubUser?.avatar_url ? (
+              <img
+                src={githubUser.avatar_url}
+                alt={`@${githubUser.login}`}
+                className="size-6 shrink-0 cursor-pointer rounded-full object-cover"
+              />
+            ) : (
+              <span className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full bg-foreground text-background">
+                <Github className="size-3.5" />
+              </span>
+            )}
+          </Tooltip>
+        )}
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto p-2">

@@ -205,7 +205,7 @@ export function LatexToolsView() {
         aria-labelledby="latex-tools-title"
         data-modal-initial-focus
         data-testid="latex-tools-view"
-        className={cn("dark relative flex h-[36rem] w-full max-w-3xl flex-col overflow-hidden rounded-xl text-foreground", WHITE_PANEL)}
+        className={cn("relative flex h-[36rem] w-full max-w-3xl flex-col overflow-hidden rounded-xl text-foreground", WHITE_PANEL)}
       >
         <div className="flex items-center gap-3 border-b px-5 py-3">
           <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-foreground text-background">
@@ -218,7 +218,7 @@ export function LatexToolsView() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={`Search ${TOOLS.length} tools`}
-              className="h-8 pl-8"
+              className="h-9 pl-8"
             />
           </div>
           <Button variant="ghost" size="icon" className="size-7 shrink-0" onClick={closeTools} aria-label="Close">

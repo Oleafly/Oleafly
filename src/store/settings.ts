@@ -174,6 +174,11 @@ interface SettingsState {
   setSettingsOpen: (v: boolean) => void;
   settingsInitialSection: string;
   setSettingsInitialSection: (v: string) => void;
+  // One-shot scroll target within a settings section (e.g. "templates" inside
+  // Downloads); consumed and cleared by the section that renders it so it
+  // never re-triggers on a later, unrelated open.
+  settingsScrollTarget: string | null;
+  setSettingsScrollTarget: (v: string | null) => void;
   viewMode: ViewMode;
   setViewMode: (v: ViewMode) => void;
   defaultView: LayoutPreset;
@@ -281,6 +286,8 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   settingsInitialSection: "general",
   setSettingsInitialSection: (v) =>
     set({ settingsInitialSection: SETTINGS_SECTIONS.has(v) ? v : "general" }),
+  settingsScrollTarget: null,
+  setSettingsScrollTarget: (v) => set({ settingsScrollTarget: v }),
   viewMode: "split",
   setViewMode: (v) => set({ viewMode: v }),
   defaultView: readDefaultView(ls("oleafly.defaultView", "editor-preview")),

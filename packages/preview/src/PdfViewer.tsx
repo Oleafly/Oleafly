@@ -1257,10 +1257,18 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
 
       for (let p = 1; p <= doc.numPages; p++) {
         const wrap = document.createElement("div");
-        // Spacing between pages comes from the container's `gap`, not a per-page
-        // margin, so single-column and two-up grids stay evenly spaced.
+        // Horizontal spacing between pages comes from the container's `gap`, not
+        // a per-page margin, so single-column and two-up grids stay evenly
+        // spaced. `mx-auto` is the centering mechanism itself (see the
+        // container className below): in the auto-sized grid columns of the
+        // two-up layout it is a no-op (no free space in an `auto` track to
+        // distribute), but in the single-column flex layout it centers this
+        // fixed-width page within the full-width column, and - being a plain
+        // margin rather than `align-items`/`justify-content` - it degrades to
+        // flush-start (not an unreachable centered overflow) if the page is
+        // ever wider than the viewport, so every edge stays scrollable.
         wrap.className =
-          "relative shadow-md ring-1 ring-black/5 rounded-sm overflow-hidden bg-white";
+          "relative mx-auto shadow-md ring-1 ring-black/5 rounded-sm overflow-hidden bg-white";
         wrap.dataset.page = String(p);
         const viewport = p === 1 ? firstViewport : PENDING_PAGE_VIEWPORT;
         wrap.dataset.pdfGeometry = p === 1 ? "exact" : "pending";
@@ -1702,11 +1710,19 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       data-testid="pdf-renderer"
       className={
         layout === "double"
-          ? // `safe center`, not plain `center`: at high zoom the spread is wider
-            // than the scroll parent, and plain centering makes the browser only
-            // grant scroll room on one side, so the far edge is unreachable.
-            "grid grid-cols-[auto_auto] content-start justify-[safe_center] gap-4 p-4"
-          : "flex flex-col items-[safe_center] gap-4 p-4"
+          ? // Centered via `w-max mx-auto` (a shrink-to-fit block centered by
+            // margin), not `justify-content`/`align-items` centering: this
+            // container's own box only ever spans its content's natural width
+            // (the two pages + gap), so it always centers relative to the
+            // current scroll-pane width, even after the pane is resized. When
+            // the spread is wider than the pane (high zoom), the auto margins
+            // simply compute to 0 rather than an unreachable negative offset,
+            // so the far edge stays reachable by scrolling. `justify-content:
+            // safe center` was tried here previously, but that CSS Alignment
+            // Level 3 keyword isn't reliably supported by every webview this
+            // app runs in; margin-based centering is plain CSS1 and universal.
+            "grid w-max grid-cols-[auto_auto] content-start gap-4 p-4 mx-auto"
+          : "flex w-full flex-col gap-4 p-4"
       }
     />
   );

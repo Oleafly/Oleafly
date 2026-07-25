@@ -8,7 +8,7 @@
   "ats_profile": "design-forward",
   "layout": "two-column",
   "pages": "single",
-  "default_color": "#22304a",
+  "default_color": "#1c5b50",
   "license": { "spdx": "MIT", "author": "Oleafly", "url": "https://github.com/Oleafly/Oleafly" },
   "requires": { "packages": [], "fonts": [], "engine": "tectonic" },
   "order": 13

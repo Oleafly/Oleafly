@@ -7,11 +7,11 @@
 
 \begin{document}
 \begin{tikzpicture}[>=Stealth, node distance=1.4cm,
-    box/.style={draw=black!70, rounded corners, fill=blue!8,
-                minimum width=2.6cm, minimum height=0.9cm, align=center}]
-  \node[box] (input) {Input};
-  \node[box, below=of input] (encoder) {Encoder};
-  \node[box, below=of encoder] (classifier) {Classifier};
+    box/.style={draw=black!70, rounded corners, minimum width=2.6cm,
+                minimum height=0.9cm, align=center}]
+  \node[box, fill=blue!12] (input) {Input};
+  \node[box, fill=violet!14, below=of input] (encoder) {Encoder};
+  \node[box, fill=green!14, below=of encoder] (classifier) {Classifier};
   \draw[->] (input) -- (encoder);
   \draw[->] (encoder) -- (classifier);
 \end{tikzpicture}
