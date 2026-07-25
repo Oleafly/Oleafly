@@ -628,8 +628,16 @@ export async function clickToolbarControl(page: Page, barSelector: string, menuT
     await bar.click();
     return;
   }
-  await page.click('[aria-label="More formatting options"]');
-  await page.getByText(menuText, { exact: true }).click();
+  // The overflow popover has closeOnClick=false and stays open across a
+  // nested dropdown selection (e.g. picking "Bulleted list" then reopening
+  // "List" for "Numbered list"). Re-clicking its trigger while it's already
+  // open toggles it CLOSED instead of opening it, so only click the trigger
+  // when the target isn't already visible.
+  const menuItem = page.getByText(menuText, { exact: true });
+  if (!(await menuItem.isVisible().catch(() => false))) {
+    await page.click('[aria-label="More formatting options"]');
+  }
+  await menuItem.click();
 }
 
 export async function currentTheme(page: Page): Promise<"light" | "dark"> {
