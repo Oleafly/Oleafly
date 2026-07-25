@@ -180,9 +180,9 @@ export function PreflightPanel() {
                 <button type="button"
                   onClick={() => void runOne(c.id)}
                   disabled={!on || running}
-                  aria-label={`Run ${c.label}`}
+                  aria-label={ran[c.id] ? `Re-run ${c.label}` : `Run ${c.label}`}
                   className={cn(
-                    "inline-flex w-14 items-center justify-center gap-1 rounded px-2 py-1 text-xs disabled:opacity-40",
+                    "inline-flex min-w-14 shrink-0 items-center justify-center gap-1 rounded px-2 py-1 text-xs disabled:opacity-40",
                     on
                       ? "bg-primary text-white hover:opacity-90"
                       : "border border-input hover:bg-accent",
@@ -192,7 +192,7 @@ export function PreflightPanel() {
                     <RefreshCw className="size-3 animate-spin" />
                   ) : (
                     <>
-                      <Play className="size-3" /> Run
+                      <Play className="size-3" /> {ran[c.id] ? "Re-run" : "Run"}
                     </>
                   )}
                 </button>
@@ -228,7 +228,9 @@ export function PreflightPanel() {
             className="inline-flex items-center justify-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm text-white hover:opacity-90 disabled:opacity-50"
           >
             {running ? <RefreshCw className="size-4 animate-spin" /> : <Play className="size-4" />}
-            {running ? "Analyzing…" : `Run ${enabledCount} enabled checks`}
+            {running
+              ? "Analyzing…"
+              : `${CHECKS.every((c) => !enabled[c.id] || ran[c.id]) ? "Re-run" : "Run"} ${enabledCount} enabled checks`}
           </button>
         )}
 
