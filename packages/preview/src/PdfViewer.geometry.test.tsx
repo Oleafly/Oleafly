@@ -648,6 +648,9 @@ describe("PdfViewer production geometry and lifecycle wiring", () => {
       "aria-owns",
       expect.stringMatching(/^annotation-/),
     );
+    const scaleOneTextSpan =
+      second?.querySelector<HTMLElement>(".textLayer span") ?? null;
+    expect(scaleOneTextSpan?.style.getPropertyValue("--scale-x")).toBe("1.5");
     expect(harness.linkApisExercised).toBeGreaterThan(0);
     expect(harness.structureUpdated).toBeGreaterThan(0);
 
@@ -658,6 +661,9 @@ describe("PdfViewer production geometry and lifecycle wiring", () => {
       expect(second).toHaveStyle({ width: "1800px", height: "1260px" }),
     );
     expect(second?.style.getPropertyValue("--scale-factor")).toBe("2");
+    // The existing selectable layer is recalibrated in the instant zoom frame,
+    // before the 120 ms crisp re-render replaces it.
+    expect(scaleOneTextSpan?.style.getPropertyValue("--scale-x")).toBe("3");
     await waitFor(
       () =>
         expect(

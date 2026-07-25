@@ -1569,7 +1569,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
 
     // Instant + bounded: only the capped set of live rasterizations needs exact
     // pdf.js rounding and bitmap stretching in the gesture frame.
-    for (const [pageNo] of renderedRef.current) {
+    for (const [pageNo, state] of renderedRef.current) {
       const wrap = wrapsRef.current.get(pageNo);
       if (!wrap) continue;
       const baseViewport = pageViewportsRef.current.get(pageNo);
@@ -1584,6 +1584,26 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       if (canvas) {
         canvas.style.width = geometry.cssWidth;
         canvas.style.height = geometry.cssHeight;
+      }
+      const textContent = textContentRef.current.get(pageNo);
+      if (state.textLayer && state.renderedTextLayer && textContent) {
+        try {
+          // `--scale-factor` changes each span's font size immediately. Font
+          // engines do not promise that a glyph run at 2x has exactly twice
+          // its 1x advance (notably Pango on WebKitGTK), so the old --scale-x
+          // can leave the selectable boundary a CSS pixel away from the PDF
+          // item during the debounce window. Re-measure the capped set of live
+          // layers in this frame; the later crisp render calibrates again.
+          calibratePdfTextLayerWidths(
+            state.renderedTextLayer.div,
+            state.textLayer.textDivs,
+            textContent,
+            viewport,
+          );
+        } catch {
+          // Preserve pdf.js' previous calibration if synchronous layout is
+          // temporarily unavailable during a browser resize.
+        }
       }
     }
 
