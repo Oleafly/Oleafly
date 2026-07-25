@@ -302,41 +302,25 @@ export async function fillTextarea(page: Page, selector: string, text: string) {
 export async function ensureGithubConnected(page: Page) {
   const token = process.env.E2E_GITHUB_TOKEN;
   if (!token) throw new Error("ensureGithubConnected: E2E_GITHUB_TOKEN not set");
-  await openRailTab(page, "Git");
-  const gated = await page.evaluate<boolean>(
-    `document.body.innerText.includes('Connect GitHub to continue')`,
+  // The Git panel itself has no connection gate (it works fully locally);
+  // connection state and the PAT input both live on the GitHub tab of
+  // Settings -> Integrations, which is the tab's default.
+  await openSettings(page, "integrations");
+  const connected = await page.evaluate<boolean>(
+    `document.body.innerText.includes('Disconnect')`,
   );
-  if (!gated) return;
-  // The gate's link opens Settings -> GitHub; the PAT input hides behind the
-  // "Advanced" disclosure there. Right after a disconnect the section can
-  // briefly render a transient state, so retry the link once if needed.
-  await page.getByText("Use a personal access token instead").click();
-  try {
+  if (!connected) {
+    await page.getByText("Advanced: use a personal access token").click();
+    await page.fill('input[placeholder="ghp_…"]', token);
+    await page.getByText("Connect", { exact: true }).click();
+    // Connected: the account card renders with a Disconnect button.
     await page.waitForFunction(
-      `document.body.innerText.includes('Advanced: use a personal access token')`,
-      10_000,
-    );
-  } catch {
-    await page.getByText("Use a personal access token instead").click();
-    await page.waitForFunction(
-      `document.body.innerText.includes('Advanced: use a personal access token')`,
-      10_000,
+      `document.body.innerText.includes('Disconnect')`,
+      20_000,
     );
   }
-  await page.getByText("Advanced: use a personal access token").click();
-  await page.fill('input[placeholder="ghp_…"]', token);
-  await page.getByText("Connect", { exact: true }).click();
-  // Connected: the account card renders with a Disconnect button.
-  await page.waitForFunction(
-    `document.body.innerText.includes('Disconnect')`,
-    20_000,
-  );
   await page.click('[aria-label="Close settings"]');
   await openRailTab(page, "Git");
-  await page.waitForFunction(
-    `!document.body.innerText.includes('Connect GitHub to continue')`,
-    10_000,
-  );
 }
 
 // Every interaction with the card must be scoped to it: OpenAI and Z.AI

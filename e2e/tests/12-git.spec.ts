@@ -3,7 +3,6 @@ import {
   ensureGithubConnected,
   openProject,
   openRailTab,
-  openSettings,
   pressGlobal,
   typeInEditorAfter,
 } from "../helpers";
@@ -11,28 +10,17 @@ import {
 // The stage/diff/commit and push flows below need a real token and are
 // opt-in via env vars.
 
-test("git panel shows the GitHub onboarding gate when not connected", async ({ tauriPage }) => {
+test("git panel shows local status directly, without a GitHub connection gate", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openRailTab(tauriPage, "Git");
-  // A previous token-gated run may have left the account connected on this
-  // data dir; disconnect through settings first so the gate is actually
-  // asserted every run.
-  const connected = await tauriPage.evaluate<boolean>(
-    `!document.body.innerText.includes('Connect GitHub to continue')`,
-  );
-  if (connected && process.env.E2E_GITHUB_TOKEN) {
-    await openSettings(tauriPage, "github");
-    await tauriPage.getByText("Disconnect", { exact: true }).click();
-    await tauriPage.waitForFunction(
-      `document.body.innerText.includes('Disconnected.') || !document.body.innerText.includes('Disconnect')`,
-      10_000,
-    );
-    await tauriPage.click('[aria-label="Close settings"]');
-    await openRailTab(tauriPage, "Git");
-  }
-  await expect(tauriPage.getByText("Connect GitHub to continue")).toBeVisible({ timeout: 10_000 });
-  await expect(tauriPage.getByText("Use a personal access token instead")).toBeVisible();
+  await expect(tauriPage.getByText("Connect GitHub to continue")).toHaveCount(0);
+  // The Remote section (and Push/Pull) only ever rendered behind the old
+  // GitHub-connection gate; their presence here proves the panel now shows
+  // local status/diff/commit unconditionally.
+  await expect(tauriPage.getByText("Remote", { exact: true })).toBeVisible({ timeout: 10_000 });
+  await expect(tauriPage.locator('[aria-label="Commit and push to origin"]')).toBeVisible();
+  await expect(tauriPage.locator('[aria-label="Pull from origin"]')).toBeVisible();
 });
 
 test("a successful compile auto-commits an Update entry into history", async ({ tauriPage }) => {
