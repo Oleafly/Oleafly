@@ -1,15 +1,9 @@
 import { useEffect } from "react";
 import { CircleAlert, CheckCircle2, Info, X } from "lucide-react";
-import { useToastStore, type Toast, type ToastKind } from "@/store/toast";
+import { useToastStore, type Toast } from "@/store/toast";
 import { cn } from "@/lib/utils";
 
-const DURATION: Record<ToastKind, number> = {
-  error: 6000,
-  success: 3500,
-  info: 4000,
-};
-
-// Toasts with an action button stay longer so the user has time to click.
+const DURATION_MS = 5000;
 const ACTION_BONUS = 4000;
 
 const ICON = {
@@ -23,10 +17,10 @@ function ToastRow({ toast }: { toast: Toast }) {
 
   useEffect(() => {
     if (toast.sticky) return;
-    const ms = DURATION[toast.kind] + (toast.action ? ACTION_BONUS : 0);
+    const ms = DURATION_MS + (toast.action ? ACTION_BONUS : 0);
     const id = window.setTimeout(() => dismiss(toast.id), ms);
     return () => window.clearTimeout(id);
-  }, [toast.id, toast.kind, toast.action, toast.sticky, dismiss]);
+  }, [toast.id, toast.action, toast.sticky, dismiss]);
 
   const Icon = ICON[toast.kind];
   return (
@@ -76,7 +70,7 @@ export function Toaster() {
   const toasts = useToastStore((s) => s.toasts);
   if (toasts.length === 0) return null;
   return (
-    <div className="pointer-events-none fixed bottom-4 right-4 z-[100] flex flex-col gap-2">
+    <div className="pointer-events-none fixed bottom-4 left-4 z-[100] flex flex-col gap-2">
       {toasts.map((t) => (
         <ToastRow key={t.id} toast={t} />
       ))}
