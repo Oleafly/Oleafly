@@ -1030,12 +1030,42 @@ export async function clickToolbarControl(page: Page, barSelector: string, menuT
   // nested dropdown selection (e.g. picking "Bulleted list" then reopening
   // "List" for "Numbered list"). Re-clicking its trigger while it's already
   // open toggles it CLOSED instead of opening it, so only click the trigger
-  // when the target isn't already visible.
-  const menuItem = page.getByText(menuText, { exact: true });
-  if (!(await menuItem.isVisible().catch(() => false))) {
-    await page.click('[aria-label="More formatting options"]');
+  // when the target isn't already visible. Scope the lookup to Radix's open
+  // portal: getByText can otherwise bind to a clipped bar control, and the
+  // Tauri bridge's coordinate click can outlive the popover's entrance frame.
+  const menuButtonExpression = `Array.from(
+    document.querySelectorAll('[data-radix-popper-content-wrapper] button')
+  ).find((candidate) => {
+    if (candidate.textContent?.trim() !== ${JSON.stringify(menuText)}) return false;
+    const style = getComputedStyle(candidate);
+    const rect = candidate.getBoundingClientRect();
+    return style.display !== 'none'
+      && style.visibility !== 'hidden'
+      && rect.width > 0
+      && rect.height > 0;
+  })`;
+  const menuItemVisible = await page.evaluate<boolean>(
+    `!!(${menuButtonExpression})`,
+  );
+  if (!menuItemVisible) {
+    await page.evaluate(`(() => {
+      const trigger = document.querySelector('[aria-label="More formatting options"]');
+      if (!(trigger instanceof HTMLElement)) {
+        throw new Error('More formatting options trigger not found');
+      }
+      trigger.click();
+      return true;
+    })()`);
   }
-  await menuItem.click();
+  await page.waitForFunction(`!!(${menuButtonExpression})`, 5_000);
+  await page.evaluate(`(() => {
+    const button = ${menuButtonExpression};
+    if (!(button instanceof HTMLElement)) {
+      throw new Error(${JSON.stringify(`${menuText} overflow control not found`)});
+    }
+    button.click();
+    return true;
+  })()`);
 }
 
 export async function currentTheme(page: Page): Promise<"light" | "dark"> {
