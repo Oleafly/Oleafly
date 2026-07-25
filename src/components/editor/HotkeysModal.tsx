@@ -148,7 +148,7 @@ export function HotkeysModal() {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search shortcuts…"
-              className="h-9 w-full rounded-none border-0 bg-transparent px-0 text-sm shadow-none outline-none placeholder:text-muted-foreground focus-visible:ring-0"
+              className="h-10 w-full rounded-none border-0 bg-transparent px-0 text-sm shadow-none outline-none placeholder:text-muted-foreground focus-visible:ring-0"
             />
           </div>
         </div>

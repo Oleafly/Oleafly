@@ -262,7 +262,7 @@ export function SearchOmnibar() {
             onValueChange={setQuery}
             autoFocus
             placeholder={placeholder}
-            className="flex h-11 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            className="flex h-12 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
           <span className="shrink-0 text-xs text-muted-foreground">
             {loading ? "…" : ""}

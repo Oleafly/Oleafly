@@ -112,7 +112,7 @@ export function AddCitationDialog() {
                 if (e.key === "Escape") close();
               }}
               placeholder="DOI, arXiv id, URL, or a paper title…"
-              className="h-8 w-full border-0 bg-transparent text-sm shadow-none outline-none placeholder:text-muted-foreground"
+              className="h-9 w-full border-0 bg-transparent text-sm shadow-none outline-none placeholder:text-muted-foreground"
             />
             <button type="button"
               onClick={() => void search()}

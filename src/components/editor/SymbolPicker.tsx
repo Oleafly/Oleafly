@@ -238,7 +238,7 @@ export function SymbolPicker({ menuRow }: { menuRow?: boolean }) {
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search…"
               aria-label="Search symbols"
-              className="h-7 text-xs"
+              className="h-8 text-xs"
             />
           </div>
           <div className="flex flex-1 flex-wrap content-start gap-1 overflow-y-auto p-2">

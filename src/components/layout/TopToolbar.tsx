@@ -112,6 +112,12 @@ function activeLayoutPreset(
   return null;
 }
 
+// Groups the right-side toolbar into: Recompile | Export | History + Fork
+// project | account | Shortcuts + Layout.
+function Divider() {
+  return <span className="mx-1 h-5 w-px shrink-0 bg-border" />;
+}
+
 export function TopToolbar() {
   const projectName = useFilesStore((s) => s.projectName);
   const projectId = useFilesStore((s) => s.projectId);
@@ -439,6 +445,8 @@ export function TopToolbar() {
 
         {engineError && <span className="max-w-48 truncate text-xs text-destructive" title={engineError}>{engineError}</span>}
 
+        <Divider />
+
         <DropdownMenu open={dlOpen} onOpenChange={setExportMenuOpen}>
           <Tooltip label="Export">
             <DropdownMenuTrigger asChild>
@@ -519,6 +527,8 @@ export function TopToolbar() {
           </DropdownMenuContent>
         </DropdownMenu>
 
+        <Divider />
+
         <Tooltip label="History">
           <Button
             variant="ghost"
@@ -543,11 +553,15 @@ export function TopToolbar() {
           </Button>
         </Tooltip>
 
+        <Divider />
+
         <GithubMenu
           githubUrl={githubUrl}
           onOpenInGithub={openInGithub}
           onCopyLink={() => void shareGithub()}
         />
+
+        <Divider />
 
         <Tooltip label={`Shortcuts (${shortcut("⌘/")})`}>
           <Button

@@ -117,6 +117,25 @@ const positionHandle: Record<Position, DiagramHandle> = {
   [Position.Left]: "l",
 };
 
+// Outward unit vector for each handle side, used to pull a connector's
+// endpoint a few pixels clear of the shape it's attached to (see
+// EDGE_SHAPE_GAP below) rather than terminating exactly on the shape's
+// boundary, where it can render underneath the shape's own fill.
+const positionOutward: Record<Position, DiagramPoint> = {
+  [Position.Top]: { x: 0, y: -1 },
+  [Position.Right]: { x: 1, y: 0 },
+  [Position.Bottom]: { x: 0, y: 1 },
+  [Position.Left]: { x: -1, y: 0 },
+};
+
+// Visible clearance between a connector's endpoint (and its arrowhead) and
+// the shape it connects to - the same idea as Miro's connector gap. Without
+// this, the endpoint sits exactly on the shape's true boundary, so for
+// shapes with rounded/curved edges (circles, round-rects) or shapes stacked
+// in front of other shapes, the line or arrowhead can visually disappear
+// under the shape's own opaque fill instead of stopping cleanly beside it.
+const EDGE_SHAPE_GAP = 6;
+
 function pointDistance(a: DiagramPoint, b: DiagramPoint) {
   return Math.hypot(b.x - a.x, b.y - a.y);
 }
@@ -161,9 +180,11 @@ function DiagramOrthogonalEdge({
   label,
   interactionWidth,
 }: EdgeProps) {
+  const sourceOut = positionOutward[sourcePosition];
+  const targetOut = positionOutward[targetPosition];
   const route = orthogonalRoute(
-    { x: sourceX, y: sourceY },
-    { x: targetX, y: targetY },
+    { x: sourceX + sourceOut.x * EDGE_SHAPE_GAP, y: sourceY + sourceOut.y * EDGE_SHAPE_GAP },
+    { x: targetX + targetOut.x * EDGE_SHAPE_GAP, y: targetY + targetOut.y * EDGE_SHAPE_GAP },
     positionHandle[sourcePosition],
     positionHandle[targetPosition],
   );

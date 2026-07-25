@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ExternalLink, Github, Link as LinkIcon } from "lucide-react";
+import { ExternalLink, Github, Link as LinkIcon, Settings } from "lucide-react";
 import { useGithubStore } from "@/store/github";
 import { useSettingsStore } from "@/store/settings";
 import { Button } from "@/components/ui/button";
@@ -38,11 +38,10 @@ export function GithubMenu({
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
-      <div className="flex items-center">
-        {connected && (
-          <Tooltip label={`Connected as @${login} · GitHub settings`} side="bottom">
+      {connected ? (
+        <Tooltip label={`Connected as @${login}`} side="bottom">
+          <DropdownMenuTrigger asChild>
             <button type="button"
-              onClick={openSettings}
               aria-label={`GitHub: ${login}`}
               className="flex h-9 items-center gap-1.5 rounded-md pl-1 pr-2 text-xs font-medium text-foreground transition-colors hover:bg-accent"
             >
@@ -55,22 +54,22 @@ export function GithubMenu({
               )}
               <span className="max-w-[110px] truncate">{login}</span>
             </button>
-          </Tooltip>
-        )}
-
+          </DropdownMenuTrigger>
+        </Tooltip>
+      ) : (
         <Tooltip label="GitHub" side="bottom">
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
               aria-label="GitHub actions"
-              className="text-muted-foreground hover:text-foreground"
+              className="h-9 text-muted-foreground hover:text-foreground"
             >
               <Github />
             </Button>
           </DropdownMenuTrigger>
         </Tooltip>
-      </div>
+      )}
 
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuItem disabled={!githubUrl} onSelect={onOpenInGithub}>
@@ -86,14 +85,17 @@ export function GithubMenu({
             Push to GitHub to enable these
           </p>
         )}
-        {!connected && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={openSettings}>
-              <Github className="size-4 text-muted-foreground" />
-              <span className="truncate">Connect GitHub…</span>
-            </DropdownMenuItem>
-          </>
+        <DropdownMenuSeparator />
+        {connected ? (
+          <DropdownMenuItem onSelect={openSettings}>
+            <Settings className="size-4 text-muted-foreground" />
+            <span className="truncate">GitHub settings</span>
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem onSelect={openSettings}>
+            <Github className="size-4 text-muted-foreground" />
+            <span className="truncate">Connect GitHub…</span>
+          </DropdownMenuItem>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

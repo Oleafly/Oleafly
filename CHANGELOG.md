@@ -700,7 +700,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **License changed from MIT to Apache-2.0**, © Prajwal S Venkateshmurthy and
+- **License changed from MIT to Apache-2.0**, © Prajwal Murthy and
   contributors. Still permissive (free for commercial and open-source use) but
   with stronger, explicit attribution (a `NOTICE` file redistributors must
   keep) and a patent grant. Harper is added to the credits.

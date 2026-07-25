@@ -241,7 +241,7 @@ export function PublishToGitHubDialog({
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
                       placeholder="Search your repositories…"
-                      className="flex-1 bg-transparent py-2 text-xs outline-none"
+                      className="h-10 flex-1 bg-transparent text-xs outline-none"
                     />
                   </div>
                   <div className="min-h-0 flex-1 overflow-auto rounded-md border">

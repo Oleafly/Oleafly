@@ -102,7 +102,7 @@ export function LabSearchPanel() {
           onChange={(e) => setQuery(e.target.value)}
           placeholder="e.g. computational neuroscience, MIT, Max Planck"
           aria-label="Search research institutions"
-          className="max-w-md flex-1"
+          className="h-10 max-w-md flex-1"
         />
         <Select value={country} onValueChange={setCountry}>
           <SelectTrigger className="w-44 text-xs" aria-label="Country filter">

@@ -123,11 +123,20 @@ function useTemplatePreview(t: TemplateInfo, host: TemplatesHost): string | null
 function Preview({ t, host, className }: { t: TemplateInfo; host: TemplatesHost; className?: string }) {
   const uri = useTemplatePreview(t, host);
   if (uri) {
+    // Diagram/figure previews are a standalone cropped image, not a document
+    // page, and rarely share the card's portrait aspect ratio. Cropping them
+    // like a page thumbnail (object-cover) can clip content off the bottom;
+    // show the whole figure instead.
+    const isFigure = t.category === "Diagrams & Figures";
     return (
       <img
         src={uri}
         alt={`${t.name} preview`}
-        className={cn("h-full w-full bg-white object-cover object-top", className)}
+        className={cn(
+          "h-full w-full bg-white",
+          isFigure ? "object-contain p-3" : "object-cover object-top",
+          className,
+        )}
         draggable={false}
       />
     );
@@ -187,6 +196,7 @@ export function NewProjectDialog({
   onClose,
   onCreate,
   onGenerateWithAi,
+  onOpenTemplateDownloads,
   host,
   kit,
   colorOptions,
@@ -200,6 +210,7 @@ export function NewProjectDialog({
   onClose: () => void;
   onCreate: (name: string, templateId: string, color: string) => void | Promise<void>;
   onGenerateWithAi?: () => void;
+  onOpenTemplateDownloads?: () => void;
   host: TemplatesHost;
   kit: TemplatesKit;
   colorOptions: { name: string; hex: string }[];
@@ -407,7 +418,7 @@ export function NewProjectDialog({
 
         {step === 1 ? (
           <div className="flex min-h-0 flex-1">
-            <nav className="w-44 shrink-0 overflow-y-auto border-r p-2">
+            <nav className="flex w-44 shrink-0 flex-col overflow-y-auto border-r p-2">
               {categories.map((c) => (
                 <button
                   key={c}
@@ -434,6 +445,18 @@ export function NewProjectDialog({
                   </span>
                 </button>
               ))}
+              {onOpenTemplateDownloads && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  data-testid="open-template-downloads"
+                  onClick={onOpenTemplateDownloads}
+                  className="mt-auto w-full justify-start gap-2 text-muted-foreground"
+                >
+                  <Download className="size-3.5" />
+                  Get more templates
+                </Button>
+              )}
             </nav>
 
             <div className="flex min-w-0 flex-1 flex-col">
@@ -445,7 +468,7 @@ export function NewProjectDialog({
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search templates"
-                    className="w-full rounded-md border border-input bg-background py-1.5 pl-8 pr-3 text-sm outline-none focus:ring-1 focus:ring-ring"
+                    className="h-10 w-full rounded-md border border-input bg-background pl-8 pr-3 text-sm outline-none focus:ring-1 focus:ring-ring"
                   />
                 </div>
                 <Select

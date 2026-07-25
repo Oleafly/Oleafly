@@ -2,7 +2,7 @@
 name = "oleafly"
 version = "0.2.7"
 description = "Oleafly - the intelligent research workspace, free, local-first, 100% open source"
-authors = ["Prajwal S Venkateshmurthy and contributors"]
+authors = ["Prajwal Murthy and contributors"]
 license = "AGPL-3.0-or-later"
 edition = "2021"
 rust-version = "1.77"
