@@ -5,7 +5,9 @@ import {
   PanelResizeHandle,
   type ImperativePanelHandle,
 } from "react-resizable-panels";
+import { RefreshCw } from "lucide-react";
 import { ThemeProvider } from "@/lib/theme";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { TopToolbar } from "@/components/layout/TopToolbar";
 import { Rail } from "@/components/layout/Rail";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -506,6 +508,22 @@ export default function App() {
         <TopToolbar />
         <div ref={panelAreaRef} className="flex min-h-0 flex-1">
           <Rail />
+          <ErrorBoundary
+            key={`${showTree}-${hideEditorArea}-${viewMode}`}
+            fallback={
+              <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center text-sm text-muted-foreground">
+                <p>The panel layout hit a snag. Your project files are safe on disk.</p>
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+                >
+                  <RefreshCw className="size-4" />
+                  Reload Oleafly
+                </button>
+              </div>
+            }
+          >
           <PanelGroup direction="horizontal" className="flex-1">
             {showTree && (
               <>
@@ -559,6 +577,7 @@ export default function App() {
             </Panel>
             )}
           </PanelGroup>
+          </ErrorBoundary>
         </div>
 
         <CommandPalette />
