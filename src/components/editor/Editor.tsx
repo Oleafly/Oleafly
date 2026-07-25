@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { FileText, Loader2, X } from "lucide-react";
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { CodeMirrorEditor } from "./CodeMirrorEditor";
 import { EditorContextMenu } from "./EditorContextMenu";
 import { EditorToolbar, WysiwygModeSwitch } from "./EditorToolbar";
@@ -156,8 +157,6 @@ export function Editor() {
   const projectId = useFilesStore((s) => s.projectId);
   const projectKind = useFilesStore((s) => s.projectKind);
   const mainDoc = useFilesStore((s) => s.mainDoc);
-  const diagramCanvasView = useFilesStore((s) => s.diagramCanvasView);
-  const toggleDiagramCanvasView = useFilesStore((s) => s.toggleDiagramCanvasView);
   const isDiagramMainFile = projectKind === "diagram" && activePath === mainDoc;
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
   const engine = useFilesStore((s) => s.engine);
@@ -276,29 +275,29 @@ export function Editor() {
               Typst mode · LaTeX linting and spelling/grammar checks are disabled.
             </div>
           )}
-          {isDiagramMainFile && projectId && activePath && (
-            <div className="flex shrink-0 items-center justify-end border-b px-2 py-1">
-              <button
-                type="button"
-                onClick={toggleDiagramCanvasView}
-                className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
-              >
-                {diagramCanvasView ? "View code" : "View canvas"}
-              </button>
-            </div>
-          )}
-          {isDiagramMainFile && diagramCanvasView && projectId && activePath ? (
-            <div className="min-h-0 flex-1 overflow-hidden">
-              <Suspense
-                fallback={
-                  <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="size-4 animate-spin" /> Loading…
-                  </div>
-                }
-              >
-                <DiagramMainFileView projectId={projectId} path={activePath} />
-              </Suspense>
-            </div>
+          {isDiagramMainFile && projectId && activePath ? (
+            <PanelGroup direction="horizontal" className="min-h-0 flex-1">
+              <Panel id="diagram-code" order={1} defaultSize={50} minSize={20}>
+                <div className="relative h-full min-h-0 overflow-hidden">
+                  <EditorContextMenu>
+                    <CodeMirrorEditor />
+                  </EditorContextMenu>
+                  <SelectionActionMenu />
+                </div>
+              </Panel>
+              <PanelResizeHandle className="w-1 shrink-0 bg-border transition-colors hover:bg-ring" />
+              <Panel id="diagram-canvas" order={2} defaultSize={50} minSize={20}>
+                <Suspense
+                  fallback={
+                    <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="size-4 animate-spin" /> Loading…
+                    </div>
+                  }
+                >
+                  <DiagramMainFileView projectId={projectId} path={activePath} />
+                </Suspense>
+              </Panel>
+            </PanelGroup>
           ) : isPdfFile && projectId && activePath ? (
             <div className="min-h-0 flex-1 overflow-auto bg-sidebar">
               <PdfFileView projectId={projectId} path={activePath} />
