@@ -17,7 +17,18 @@ test("zoom controls change the zoom level", async ({ tauriPage }) => {
     tauriPage.evaluate<string>(
       `(document.body.innerText.match(/(\\d+)%/) || ["", "?"])[1]`,
     );
-  const before = await zoom();
+  // The preview auto-fits to page height once, deferred a requestAnimationFrame
+  // after the PDF becomes visible. Reading `before` immediately can race that
+  // and capture the pre-auto-fit value, making the later zoom-out assertion
+  // compare against a level the app never actually returns to. Poll until two
+  // consecutive reads agree before treating it as the stable baseline.
+  let before = await zoom();
+  for (let i = 0; i < 20; i++) {
+    await new Promise((r) => setTimeout(r, 100));
+    const reread = await zoom();
+    if (reread === before) break;
+    before = reread;
+  }
   await tauriPage.click('[aria-label="Zoom in"]');
   const after = await zoom();
   expect(Number(after)).toBeGreaterThan(Number(before));
