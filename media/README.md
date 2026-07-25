@@ -4,6 +4,17 @@ Used by the README and the docs site at [oleafly.com](https://oleafly.com)
 (maintained in its own repository). Overwrite a file here and the README picks
 it up on the next push.
 
+## README cover recording
+
+`hero-editor.png` currently stands in for the product walkthrough at the top of
+the README. Replace it with `workspace-tour.webp` when the recording is ready,
+then update the image source in `README.md`.
+
+Capture one 45–60 second path: open a real project, edit source, use one toolbar
+action, compile, jump between source and PDF, open Git history, and show an AI
+diff approval. Keep the final animated WebP below 10 MB so the README remains
+quick to load.
+
 ## Placeholders to replace (currently gray boxes)
 
 | File | What to capture | Shown on |
