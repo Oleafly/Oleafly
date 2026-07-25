@@ -526,13 +526,14 @@ function TreeRow({ node, depth, ctx }: { node: TreeNode; depth: number; ctx: Tre
         </>
       ) : (
         <>
-          <span className="w-3.5 shrink-0" />
+          <span className="flex w-3.5 shrink-0 items-center justify-center">
+            {isMain && <Star className="size-3 shrink-0 fill-foreground text-foreground" />}
+          </span>
           <FileIcon name={node.name} className="size-4 shrink-0" />
         </>
       )}
       <span className="truncate">{node.name}</span>
       <span className="ml-auto flex shrink-0 items-center gap-1">
-        {isMain && <Star className="size-3 shrink-0 fill-foreground text-foreground" />}
         <button
           type="button"
           aria-label={`More actions for ${node.name}`}
