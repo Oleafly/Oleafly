@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ExternalLink, Globe, Github, X } from "lucide-react";
+import { ExternalLink, Github, X } from "lucide-react";
 import { open } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
 import { LeafLogo } from "@/components/layout/LeafLogo";
@@ -8,8 +8,9 @@ import { appVersion } from "@/lib/tauri";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 
 const REPO = "https://github.com/Oleafly/Oleafly";
-const AUTHOR_URL = "https://prajwal.me";
+// const AUTHOR_URL = "https://prajwal.me";
 const DOCS = "https://oleafly.com/docs/";
+const LEARN = "https://oleafly.com/learn/";
 
 export function AboutModal({ open: isOpen, onClose }: { open: boolean; onClose: () => void }) {
   const [version, setVersion] = useState("");
@@ -53,11 +54,12 @@ export function AboutModal({ open: isOpen, onClose }: { open: boolean; onClose: 
             <span className="mt-0.5 text-xs text-muted-foreground">Version {version}</span>
           )}
           <p className="mt-2 text-xs text-muted-foreground">
-            A local-first, cross-platform LaTeX &amp; resume authoring app.
+            A local-first workspace for research papers, technical documents, and resumes.
           </p>
           <UpdateChecker className="mt-3 flex flex-col items-center" />
         </div>
 
+        {/* Author row removed for now; will re-add later.
         <div className="mt-5 grid grid-cols-2 gap-3 border-t pt-4">
           <div className="space-y-1">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Author</p>
@@ -71,23 +73,23 @@ export function AboutModal({ open: isOpen, onClose }: { open: boolean; onClose: 
               <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
             </button>
           </div>
-
-          <div className="space-y-1">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Project</p>
-            <button
-              type="button"
-              onClick={ext(REPO)}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
-            >
-              <Github className="size-4 shrink-0 text-muted-foreground" />
-              <span className="flex-1 truncate">GitHub</span>
-              <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
-            </button>
-          </div>
+        </div>
+        */}
+        <div className="mt-5 space-y-1 border-t pt-4">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Project</p>
+          <button
+            type="button"
+            onClick={ext(REPO)}
+            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
+          >
+            <Github className="size-4 shrink-0 text-muted-foreground" />
+            <span className="flex-1 truncate">GitHub</span>
+            <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
+          </button>
         </div>
 
         <div className="mt-5 flex gap-2">
-          <Button variant="secondary" size="sm" className="flex-1" onClick={ext(`${REPO}#readme`)}>
+          <Button variant="secondary" size="sm" className="flex-1" onClick={ext(LEARN)}>
             Learn more
           </Button>
           <Button size="sm" className="flex-1" onClick={ext(DOCS)}>

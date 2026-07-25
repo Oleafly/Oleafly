@@ -738,8 +738,11 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       data-testid="pdf-renderer"
       className={
         layout === "double"
-          ? "grid grid-cols-[auto_auto] content-start justify-center gap-4 p-4"
-          : "flex flex-col items-center gap-4 p-4"
+          ? // `safe center`, not plain `center`: at high zoom the spread is wider
+            // than the scroll parent, and plain centering makes the browser only
+            // grant scroll room on one side, so the far edge is unreachable.
+            "grid grid-cols-[auto_auto] content-start justify-[safe_center] gap-4 p-4"
+          : "flex flex-col items-[safe_center] gap-4 p-4"
       }
     />
   );

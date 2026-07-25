@@ -4,7 +4,7 @@ import { startPackFixtureServer } from "../pack-fixture-server";
 
 // The Rust side fetches the catalog from OLEAFLY_PACKS_BASE_URL, which
 // scripts/e2e.sh points at the fixed fixture port before the app starts.
-// Pack management now lives in Settings -> Offline & Downloads (moved out of
+// Pack management now lives in Settings -> Downloads (moved out of
 // the template gallery in the home-shell redesign), which is an "Advanced"
 // settings section: its nav entry only renders once Advanced is toggled on.
 

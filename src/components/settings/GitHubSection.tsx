@@ -225,7 +225,6 @@ export function GitHubSection() {
           <Button
             disabled={busy || ghLoading}
             onClick={() => void connectDeviceFlow()}
-            className="bg-black text-white hover:bg-zinc-800"
           >
             {busy || ghLoading ? (
               <Loader2 className="size-4 animate-spin" />

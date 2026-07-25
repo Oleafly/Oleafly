@@ -160,7 +160,6 @@ export function PublishToGitHubDialog({
               Connect GitHub to publish this project.
             </p>
             <Button
-              className="bg-black text-white hover:bg-zinc-800"
               onClick={() => {
                 onClose();
                 setSettingsInitialSection("integrations");
