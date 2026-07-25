@@ -995,6 +995,26 @@ pub async fn export_document(
         }
         allow.push_back(canon);
     }
+
+    let mut meta = read_meta(&project_id)?;
+    let filename = Path::new(&dest)
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or(dest.as_str())
+        .to_string();
+    let date = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs_f64())
+        .unwrap_or(0.0);
+    meta.exports.push(ExportRecord {
+        date,
+        filename,
+        path: dest,
+    });
+    if meta.exports.len() > 50 {
+        meta.exports.drain(0..meta.exports.len() - 50);
+    }
+    write_meta(&project_id, &meta)?;
     Ok(())
 }
 
