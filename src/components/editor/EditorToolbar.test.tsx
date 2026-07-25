@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { LATEX_ENGINE } from "@/lib/document-engine";
+import { useFilesStore } from "@/store/files";
 
 vi.mock("@oleafly/preview", () => ({
   registerPdfView: vi.fn(),
@@ -37,5 +39,23 @@ describe("EditorToolbar wysiwyg toggle", () => {
     expect(onToggleWysiwyg).not.toHaveBeenCalled();
     fireEvent.click(screen.getByLabelText("Switch to source view"));
     expect(onToggleWysiwyg).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not expose CodeMirror-only navigation while Visual mode is active", () => {
+    useFilesStore.setState({
+      projectKind: "",
+      engineLoaded: true,
+      engine: LATEX_ENGINE,
+    });
+    const { rerender } = render(
+      <EditorToolbar wysiwyg={false} onToggleWysiwyg={vi.fn()} />,
+    );
+    expect(screen.getByLabelText(/^Find \(/u)).toBeInTheDocument();
+    expect(screen.getByLabelText("Go to PDF (SyncTeX)")).toBeInTheDocument();
+
+    rerender(<EditorToolbar wysiwyg={true} onToggleWysiwyg={vi.fn()} />);
+    expect(screen.queryByLabelText(/^Find \(/u)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Go to PDF (SyncTeX)")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Word count")).toBeInTheDocument();
   });
 });

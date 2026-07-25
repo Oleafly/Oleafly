@@ -18,7 +18,7 @@ import {
   createProjectFromConversion,
   downloadFigure,
   downloadTex,
-  downloadZip,
+  handleDownloadZipClick,
   handlePickedFile,
 } from "@/features/import";
 import { refineAvailable, refineWithAi } from "@/features/import-refine";
@@ -332,7 +332,7 @@ export function PdfImportView() {
               variant="outline"
               size="sm"
               disabled={!result}
-              onClick={() => void downloadZip()}
+              onClick={() => void handleDownloadZipClick()}
             >
               <FileArchive className="size-4" /> .zip
             </Button>

@@ -59,11 +59,10 @@ describe("catalogFindings", () => {
   it("is quiet when language and title are present", () => {
     expect(catalogFindings({ lang: "en", title: "CV", tagged: true }).some((f) => f.id === "pdf-lang-title")).toBe(false);
   });
-  it("adds an info finding when the PDF is not tagged", () => {
+  it("leaves the structure-tree checker as the single owner of tagging verdicts", () => {
     const fs = catalogFindings({ lang: "en", title: "CV", tagged: false });
-    const tag = fs.find((f) => f.id === "pdf-tagged");
-    expect(tag).toBeDefined();
-    expect(tag!.severity).toBe("info");
+    expect(fs.some((f) => f.id === "pdf-tagged")).toBe(false);
+    expect(fs.some((f) => f.id === "pdf-untagged-output")).toBe(false);
   });
   it("does not add the not-tagged note when the PDF is tagged", () => {
     expect(catalogFindings({ lang: "en", title: "CV", tagged: true }).some((f) => f.id === "pdf-tagged")).toBe(false);

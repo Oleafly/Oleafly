@@ -200,6 +200,8 @@ pub async fn compile_project(
             return Ok(CompileResult {
                 ok: false,
                 has_pdf: false,
+                output_id: None,
+                output_revision: None,
                 log: "superseded by a newer compile request".into(),
                 errors: Vec::new(),
                 synctex_path: None,
@@ -217,10 +219,7 @@ pub async fn compile_project(
             "main document not found: {main_doc} (in project {project_id})"
         ));
     }
-    let meta = crate::project::read_meta(&project_id)?;
-    if meta.main_doc != main_doc {
-        return Err("main document changed; refresh the project and compile again".into());
-    }
+    let meta = crate::project::read_compile_meta(&project_id, &main_doc)?;
     let engine = crate::document_engine::engine_for(&meta.engine, &main_doc)?;
     let prepared_spec = crate::document_engine::prepare_compile_spec(
         engine.id(),
@@ -232,12 +231,9 @@ pub async fn compile_project(
         offline.unwrap_or(false),
     )
     .await?;
-    let current_meta = crate::project::read_meta(&project_id)?;
-    if current_meta.main_doc != meta.main_doc || current_meta.engine != meta.engine {
-        return Err("main document changed; refresh the project and compile again".into());
-    }
+    crate::project::ensure_compile_meta_unchanged(&project_id, &main_doc, &meta.engine)?;
 
-    let result = crate::document_engine::compile(CompileRequest {
+    let mut result = crate::document_engine::compile(CompileRequest {
         app: &app,
         engine,
         out_dir: &build_dir,
@@ -249,15 +245,36 @@ pub async fn compile_project(
         offline: offline.unwrap_or(false),
         prepared_spec: Some(prepared_spec),
     })
-    .await;
-    #[cfg(debug_assertions)]
-    if let Ok(r) = &result {
-        eprintln!(
-            "compile: t{ticket} {project_id} done ok={} in {}ms",
-            r.ok, r.compile_time_ms
+    .await?;
+    // `document_engine::compile` has now fingerprinted the output, but do not
+    // publish that identity or allocate a revision until the persisted
+    // project/main selection is revalidated under the same compile lock.
+    if let Err(error) =
+        crate::project::ensure_compile_meta_unchanged(&project_id, &main_doc, &meta.engine)
+    {
+        result.ok = false;
+        result.has_pdf = false;
+        result.output_id = None;
+        result.output_revision = None;
+        result
+            .log
+            .push_str(&format!("\nOleafly rejected the compile output: {error}"));
+        return Ok(result);
+    }
+    if result.ok {
+        result.output_revision = Some(
+            state
+                .compile_output_revision
+                .fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+                + 1,
         );
     }
-    result
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "compile: t{ticket} {project_id} done ok={} in {}ms",
+        result.ok, result.compile_time_ms
+    );
+    Ok(result)
 }
 
 /// Write base64-decoded bytes to an absolute path chosen by the user (e.g. a
@@ -271,11 +288,13 @@ pub async fn write_bytes_file(
     data_base64: String,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
-    crate::sandbox::guard_export_dest(&dest)?;
     let bytes = decode_b64(&data_base64)?;
     let dest_for_allow = dest.clone();
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
-        std::fs::write(&dest, bytes).map_err(|e| format!("failed to write {dest}: {e}"))
+        let transaction = crate::sandbox::AtomicFile::for_export(&dest)?;
+        std::fs::write(transaction.staging_path(), bytes)
+            .map_err(|e| format!("failed to write staged artifact: {e}"))?;
+        transaction.commit()
     })
     .await
     .map_err(|e| e.to_string())??;
@@ -405,7 +424,7 @@ pub async fn write_project_bytes(
         if let Some(parent) = target.parent() {
             std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
         }
-        std::fs::write(&target, bytes).map_err(|e| e.to_string())
+        crate::sandbox::atomic_write(&target, &bytes)
     })
     .await
     .map_err(|e| e.to_string())?

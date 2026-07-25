@@ -92,7 +92,7 @@ export const useAgentMemoryStore = create<AgentMemoryState>((set, get) => ({
 }));
 
 // E2E / devtools hooks for sticky memory without going through the model.
-if (typeof window !== "undefined") {
+if (typeof window !== "undefined" && import.meta.env.DEV) {
   const w = window as unknown as {
     __agentMemoryLoad?: (projectId: string) => void;
     __agentMemoryAdd?: (content: string) => string | null;

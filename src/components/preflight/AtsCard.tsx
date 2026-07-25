@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Check, Mail, MapPin, Phone, User, X } from "lucide-react";
+import { Check, Mail, MapPin, Minus, Phone, User, X } from "lucide-react";
 import type { AtsParse } from "@oleafly/preflight";
 import { cn } from "@/lib/utils";
 
@@ -24,13 +24,42 @@ export const AtsCard = memo(function AtsCard({ parse }: { parse: AtsParse }) {
         {parse.sections.map((s) => (
           <span
             key={s.name}
+            role="img"
+            data-testid={`ats-section-${s.name.toLocaleLowerCase("en-US")}`}
+            data-present={s.present ? "true" : "false"}
+            data-required={s.required ? "true" : "false"}
+            aria-label={`${s.name}: ${
+              s.present
+                ? "detected"
+                : s.required
+                  ? "required section not detected"
+                  : "optional section not detected"
+            }`}
+            title={
+              s.present
+                ? `${s.name} section detected`
+                : s.required
+                  ? `${s.name} is expected but was not detected`
+                  : `${s.name} is optional and was not detected`
+            }
             className={cn(
               "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]",
-              s.present ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-red-500/10 text-red-600 dark:text-red-400",
+              s.present
+                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                : s.required
+                  ? "bg-red-500/10 text-red-600 dark:text-red-400"
+                  : "bg-muted text-muted-foreground",
             )}
           >
-            {s.present ? <Check className="size-3" /> : <X className="size-3" />}
+            {s.present ? (
+              <Check className="size-3" />
+            ) : s.required ? (
+              <X className="size-3" />
+            ) : (
+              <Minus className="size-3" />
+            )}
             {s.name}
+            {!s.required && <span className="sr-only">, optional</span>}
           </span>
         ))}
       </div>

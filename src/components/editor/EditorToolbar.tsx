@@ -447,16 +447,18 @@ export function EditorToolbar({
         render: () => <SymbolPicker />,
         renderMenu: () => <SymbolPicker key="symbols" menuRow />,
       },
-      {
+    );
+    if (!wysiwyg) {
+      list.push({
         id: "code-intel",
         width: DROPDOWN_TRIGGER_WIDTH,
         render: () => <CodeIntelDropdown variant="bar" />,
         renderMenu: () => <CodeIntelDropdown key="code-intel" variant="menu" />,
-      }
-    );
+      });
+    }
 
     return list;
-  }, [visionReady]);
+  }, [visionReady, wysiwyg]);
 
   const { containerRef, availableWidth } = useAvailableWidth();
   const visibleCount = fitCount(controls, availableWidth);
@@ -513,10 +515,12 @@ export function EditorToolbar({
           data-tour="wysiwyg-toggle"
         />
         <WordCountButton />
-        <IconBtn onClick={editorFind} title={`Find (${shortcut("⌘F")})`}>
-          <Search className="size-4" />
-        </IconBtn>
-        {syncTexSupported && (
+        {!wysiwyg && (
+          <IconBtn onClick={editorFind} title={`Find (${shortcut("⌘F")})`}>
+            <Search className="size-4" />
+          </IconBtn>
+        )}
+        {!wysiwyg && syncTexSupported && (
           <>
             <Divider />
             <IconBtn onClick={goToSyncTex} title="Go to PDF (SyncTeX)">

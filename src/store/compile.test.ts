@@ -4,6 +4,8 @@ import { LATEX_ENGINE } from "@/lib/document-engine";
 const mocks = vi.hoisted(() => ({
   compileProject: vi.fn(),
   readCompiledPdf: vi.fn(),
+  notifyCompileSucceeded: vi.fn(),
+  refreshPreviewWindow: vi.fn(),
   ensurePandoc: vi.fn(),
   saveActive: vi.fn(),
   settings: { offline: false },
@@ -27,14 +29,46 @@ vi.mock("@/store/files", () => ({ useFilesStore: { getState: () => mocks.files }
 vi.mock("@/store/settings", () => ({ useSettingsStore: { getState: () => mocks.settings } }));
 vi.mock("@/lib/toast", () => ({ notifyError: vi.fn() }));
 vi.mock("@/lib/log", () => ({ logError: vi.fn() }));
-vi.mock("@/lib/preview-window", () => ({ refreshPreviewWindow: vi.fn() }));
-vi.mock("@/lib/cross-window", () => ({ notifyCompileDone: vi.fn() }));
+vi.mock("@/lib/preview-window", () => ({
+  refreshPreviewWindow: mocks.refreshPreviewWindow,
+}));
+vi.mock("@/lib/cross-window", () => ({
+  currentCompileProducerId: () => "test-window",
+  notifyCompileSucceeded: mocks.notifyCompileSucceeded,
+}));
 
 import { useCompileStore } from "./compile";
+import {
+  createCompileSuccessCheckpoint,
+  fingerprintCompileOutput,
+} from "@/lib/compile-checkpoint";
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
+
+function checkpoint(bytes: Uint8Array, outputRevision: number) {
+  return createCompileSuccessCheckpoint({
+    projectId: "project",
+    mainDocument: "main.tex",
+    outputKind: "standard",
+    producerId: "remote-window",
+    outputRevision,
+    outputId: fingerprintCompileOutput(bytes),
+    previousCompletedAt: 100,
+    now: 100 + outputRevision,
+  });
+}
 
 beforeEach(() => {
   mocks.compileProject.mockReset();
   mocks.readCompiledPdf.mockReset();
+  mocks.notifyCompileSucceeded.mockReset();
+  mocks.refreshPreviewWindow.mockReset();
   mocks.ensurePandoc.mockReset().mockResolvedValue(true);
   mocks.saveActive.mockReset().mockResolvedValue(undefined);
   mocks.files.saveActive = mocks.saveActive;
@@ -48,6 +82,46 @@ beforeEach(() => {
 });
 
 describe("compile output lifecycle", () => {
+  it("timestamps and broadcasts the exact verified successful output", async () => {
+    const bytes = new Uint8Array([1, 2, 3]);
+    mocks.compileProject.mockResolvedValue({
+      ok: true,
+      has_pdf: true,
+      output_id: fingerprintCompileOutput(bytes),
+      output_revision: 7,
+      log: "ok",
+      errors: [],
+      synctex_path: null,
+      out_dir: "/build",
+      compile_time_ms: 12,
+    });
+    mocks.readCompiledPdf.mockResolvedValue(bytes.buffer);
+    useCompileStore.setState({ lastCompiledAt: 123 });
+
+    await useCompileStore.getState().recompile();
+
+    const state = useCompileStore.getState();
+    expect(state.status).toBe("success");
+    expect(state.pdfBytes).toEqual(bytes);
+    expect(state.lastCompiledAt).toBeGreaterThan(123);
+    expect(state.lastCompileCheckpoint).toEqual(
+      expect.objectContaining({
+        version: 1,
+        projectId: "project",
+        mainDocument: "main.tex",
+        outputKind: "standard",
+        producerId: "test-window",
+        outputRevision: 7,
+        outputId: fingerprintCompileOutput(bytes),
+        completedAt: state.lastCompiledAt,
+      }),
+    );
+    expect(mocks.notifyCompileSucceeded).toHaveBeenCalledTimes(1);
+    expect(mocks.notifyCompileSucceeded).toHaveBeenCalledWith(
+      state.lastCompileCheckpoint,
+    );
+  });
+
   it("releases intent when the engine is unloaded so a loaded retry can compile", async () => {
     mocks.files.engineLoaded = false;
     await useCompileStore.getState().recompile();
@@ -130,14 +204,181 @@ describe("compile output lifecycle", () => {
   });
 
   it("reports a nonzero compile as an error but still shows the best-effort PDF", async () => {
-    mocks.compileProject.mockResolvedValue({ ok: false, has_pdf: true, log: "failed", errors: [], synctex_path: null, out_dir: "/build", compile_time_ms: 1 });
-    mocks.readCompiledPdf.mockResolvedValue(new Uint8Array([1]).buffer);
+    const bestEffort = new Uint8Array([1]);
+    mocks.compileProject.mockResolvedValue({
+      ok: false,
+      has_pdf: true,
+      output_id: fingerprintCompileOutput(bestEffort),
+      output_revision: null,
+      log: "failed",
+      errors: [],
+      synctex_path: null,
+      out_dir: "/build",
+      compile_time_ms: 1,
+    });
+    mocks.readCompiledPdf.mockResolvedValue(bestEffort.buffer);
     useCompileStore.setState({ pdfBytes: new Uint8Array([9]), lastCompiledAt: 123 });
     await useCompileStore.getState().recompile();
     expect(useCompileStore.getState().status).toBe("error");
     expect(useCompileStore.getState().pdfBytes).toEqual(new Uint8Array([1]));
     expect(useCompileStore.getState().lastCompiledAt).toBe(123);
+    expect(useCompileStore.getState().lastCompileCheckpoint).toBeNull();
+    expect(mocks.notifyCompileSucceeded).not.toHaveBeenCalled();
     expect(mocks.readCompiledPdf).toHaveBeenCalledOnce();
+  });
+
+  it("rejects a successful result when the readable PDF belongs to another output", async () => {
+    const compiled = new Uint8Array([1, 2, 3]);
+    const overwritten = new Uint8Array([9, 9, 9]);
+    mocks.compileProject.mockResolvedValue({
+      ok: true,
+      has_pdf: true,
+      output_id: fingerprintCompileOutput(compiled),
+      output_revision: 8,
+      log: "ok",
+      errors: [],
+      synctex_path: null,
+      out_dir: "/build",
+      compile_time_ms: 1,
+    });
+    mocks.readCompiledPdf.mockResolvedValue(overwritten.buffer);
+    useCompileStore.setState({
+      pdfBytes: new Uint8Array([7]),
+      lastCompiledAt: 123,
+    });
+
+    await useCompileStore.getState().recompile();
+
+    const state = useCompileStore.getState();
+    expect(state.status).toBe("error");
+    expect(state.pdfBytes).toEqual(new Uint8Array([7]));
+    expect(state.lastCompiledAt).toBe(123);
+    expect(state.lastCompileCheckpoint).toBeNull();
+    expect(state.log).toContain("changed before it could be verified");
+    expect(mocks.notifyCompileSucceeded).not.toHaveBeenCalled();
+  });
+
+  it("does not let an older successful PDF read overwrite a newer remote checkpoint", async () => {
+    const olderBytes = new Uint8Array([1, 2, 3]);
+    const newerBytes = new Uint8Array([8, 8, 8]);
+    const pendingRead = deferred<ArrayBuffer>();
+    mocks.compileProject.mockResolvedValue({
+      ok: true,
+      has_pdf: true,
+      output_id: fingerprintCompileOutput(olderBytes),
+      output_revision: 7,
+      log: "older local success",
+      errors: [],
+      synctex_path: null,
+      out_dir: "/build",
+      compile_time_ms: 1,
+    });
+    mocks.readCompiledPdf.mockReturnValue(pendingRead.promise);
+
+    const compiling = useCompileStore.getState().recompile();
+    await vi.waitFor(() => expect(mocks.readCompiledPdf).toHaveBeenCalledOnce());
+
+    const newer = checkpoint(newerBytes, 8);
+    useCompileStore.setState({
+      status: "success",
+      phase: "idle",
+      pdfBytes: newerBytes,
+      log: "newer remote success",
+      lastCompiledAt: newer.completedAt,
+      lastCompileCheckpoint: newer,
+    });
+    pendingRead.resolve(olderBytes.buffer);
+    await compiling;
+
+    expect(useCompileStore.getState()).toEqual(
+      expect.objectContaining({
+        status: "success",
+        pdfBytes: newerBytes,
+        log: "newer remote success",
+        lastCompiledAt: newer.completedAt,
+        lastCompileCheckpoint: newer,
+      }),
+    );
+    expect(mocks.notifyCompileSucceeded).not.toHaveBeenCalled();
+  });
+
+  it("does not let a failed best-effort PDF read downgrade a newer remote success", async () => {
+    const bestEffort = new Uint8Array([4, 5, 6]);
+    const newerBytes = new Uint8Array([9, 9, 9]);
+    const pendingRead = deferred<ArrayBuffer>();
+    mocks.compileProject.mockResolvedValue({
+      ok: false,
+      has_pdf: true,
+      output_id: fingerprintCompileOutput(bestEffort),
+      output_revision: null,
+      log: "older local failure",
+      errors: [],
+      synctex_path: null,
+      out_dir: "/build",
+      compile_time_ms: 1,
+    });
+    mocks.readCompiledPdf.mockReturnValue(pendingRead.promise);
+
+    const compiling = useCompileStore.getState().recompile();
+    await vi.waitFor(() => expect(mocks.readCompiledPdf).toHaveBeenCalledOnce());
+
+    const newer = checkpoint(newerBytes, 9);
+    useCompileStore.setState({
+      status: "success",
+      phase: "idle",
+      pdfBytes: newerBytes,
+      log: "newer remote success",
+      lastCompiledAt: newer.completedAt,
+      lastCompileCheckpoint: newer,
+    });
+    pendingRead.resolve(bestEffort.buffer);
+    await compiling;
+
+    expect(useCompileStore.getState()).toEqual(
+      expect.objectContaining({
+        status: "success",
+        pdfBytes: newerBytes,
+        log: "newer remote success",
+        lastCompiledAt: newer.completedAt,
+        lastCompileCheckpoint: newer,
+      }),
+    );
+    expect(mocks.notifyCompileSucceeded).not.toHaveBeenCalled();
+  });
+
+  it("rejects a PDF read for a main document that is no longer active", async () => {
+    const bytes = new Uint8Array([1, 2, 3]);
+    const priorBytes = new Uint8Array([7, 7, 7]);
+    const pendingRead = deferred<ArrayBuffer>();
+    mocks.compileProject.mockResolvedValue({
+      ok: true,
+      has_pdf: true,
+      output_id: fingerprintCompileOutput(bytes),
+      output_revision: 10,
+      log: "success for old main",
+      errors: [],
+      synctex_path: null,
+      out_dir: "/build",
+      compile_time_ms: 1,
+    });
+    mocks.readCompiledPdf.mockReturnValue(pendingRead.promise);
+    useCompileStore.setState({ pdfBytes: priorBytes });
+
+    const compiling = useCompileStore.getState().recompile();
+    await vi.waitFor(() => expect(mocks.readCompiledPdf).toHaveBeenCalledOnce());
+    mocks.files.mainDoc = "replacement.tex";
+    pendingRead.resolve(bytes.buffer);
+    await compiling;
+
+    expect(useCompileStore.getState()).toEqual(
+      expect.objectContaining({
+        status: "idle",
+        phase: "idle",
+        pdfBytes: priorBytes,
+        lastCompileCheckpoint: null,
+      }),
+    );
+    expect(mocks.notifyCompileSucceeded).not.toHaveBeenCalled();
   });
 
   it("preserves the prior PDF when the failed compile produced none at all", async () => {
@@ -194,6 +435,16 @@ describe("compile output lifecycle", () => {
     const compiling = useCompileStore.getState().recompile();
     mocks.files.projectId = "replacement";
     finishSave?.();
+    await compiling;
+    expect(mocks.compileProject).not.toHaveBeenCalled();
+  });
+
+  it("does not invoke IPC when the main document changes while save is pending", async () => {
+    const pendingSave = deferred<void>();
+    mocks.saveActive.mockReturnValue(pendingSave.promise);
+    const compiling = useCompileStore.getState().recompile();
+    mocks.files.mainDoc = "replacement.tex";
+    pendingSave.resolve();
     await compiling;
     expect(mocks.compileProject).not.toHaveBeenCalled();
   });

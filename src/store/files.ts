@@ -26,7 +26,6 @@ import {
 } from "@/lib/tauri";
 import { UNKNOWN_ENGINE } from "@/lib/document-engine";
 import { flushAutoCommit, scheduleAutoCommit } from "@/lib/auto-commit";
-import { logError } from "@/lib/log";
 import { notifyError } from "@/lib/toast";
 import { useDiffStore } from "@/store/diff";
 import { nextTabSeq } from "@/store/tab-order";
@@ -387,7 +386,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const { projectId } = get();
     if (!projectId) return;
     const tree = await listFiles(projectId);
-    set({ tree });
+    if (get().projectId === projectId) set({ tree });
   },
 
   openFile: async (path) => {
@@ -514,20 +513,72 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   deleteEntry: async (path) => {
     const { projectId } = get();
     if (!projectId) return;
-    await apiDeleteFile(projectId, path);
-    set((s) => {
-      const files = { ...s.files };
-      delete files[path];
-      return {
-        files,
-        openTabs: s.openTabs.filter((p) => p !== path && !p.startsWith(`${path}/`)),
-        activePath:
-          s.activePath === path || s.activePath?.startsWith(`${path}/`)
-            ? null
-            : s.activePath,
-      };
-    });
-    await get().refreshTree();
+
+    const isDeletedPath = (candidate: string) =>
+      candidate === path || candidate.startsWith(`${path}/`);
+    // A queued autosave must not recreate a file after the backend removes it.
+    // Let already-running writes settle, discard queued snapshots for the
+    // deleted subtree, and then perform the delete.
+    stopAutosaveTimer();
+    const discardedPending = new Set<string>();
+    for (const pendingPath of [...pendingSaves]) {
+      if (isDeletedPath(pendingPath)) {
+        pendingSaves.delete(pendingPath);
+        discardedPending.add(pendingPath);
+      }
+    }
+    // Deleting one subtree must not suspend autosave for unrelated buffers.
+    scheduleAutosave(get);
+    const writes = [...pendingWrites.entries()]
+      .filter(([key]) => {
+        const pendingPath = key.slice(projectId.length + 1);
+        return isDeletedPath(pendingPath);
+      })
+      .map(([, write]) => write);
+    let deleted = false;
+    try {
+      if (writes.length > 0) await Promise.allSettled(writes);
+      if (get().projectId !== projectId) return;
+
+      await apiDeleteFile(projectId, path);
+      deleted = true;
+      if (get().projectId !== projectId) return;
+
+      set((s) => {
+        if (s.projectId !== projectId) return {};
+        const files = Object.fromEntries(
+          Object.entries(s.files).filter(([candidate]) => !isDeletedPath(candidate)),
+        );
+        const tabOrder = Object.fromEntries(
+          Object.entries(s.tabOrder).filter(([candidate]) => !isDeletedPath(candidate)),
+        );
+        const openTabs = s.openTabs.filter((candidate) => !isDeletedPath(candidate));
+        const deletedActive = !!s.activePath && isDeletedPath(s.activePath);
+        return {
+          files,
+          tabOrder,
+          openTabs,
+          activePath: deletedActive ? (openTabs.at(-1) ?? null) : s.activePath,
+        };
+      });
+      await get().refreshTree();
+      const current = get();
+      if (
+        current.projectId === projectId &&
+        !current.activePath &&
+        !isDeletedPath(current.mainDoc)
+      ) {
+        await current.openFile(current.mainDoc);
+      }
+    } finally {
+      if (!deleted && get().projectId === projectId) {
+        const current = get();
+        for (const pendingPath of discardedPending) {
+          if (current.files[pendingPath]?.dirty) pendingSaves.add(pendingPath);
+        }
+      }
+      scheduleAutosave(get);
+    }
   },
 
   renameEntry: async (from, to, conflictStrategy = "error") => {
@@ -594,9 +645,9 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const to = dir ? `${dir}/${base} copy${ext}` : `${base} copy${ext}`;
     try {
       await apiCopyFile(projectId, path, to);
-      await get().refreshTree();
+      if (get().projectId === projectId) await get().refreshTree();
     } catch (e) {
-      void logError("copy file", e);
+      notifyError("copy file", e, `Could not copy "${path}".`);
     }
   },
 
@@ -605,7 +656,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     if (!projectId || sourcePaths.length === 0) return;
     try {
       await apiImportPathsIntoProject(projectId, destDir, sourcePaths);
-      await get().refreshTree();
+      if (get().projectId === projectId) await get().refreshTree();
     } catch (e) {
       notifyError("import files", e, "Could not import. See the app log for details.");
     }
@@ -676,10 +727,22 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const { projectId } = get();
     if (!projectId) return;
     const seq = ++mainDocSeq;
+    const compileStore = import("@/store/compile");
     set({ engine: UNKNOWN_ENGINE, engineLoaded: false, engineError: null });
     try {
       const meta = await setMainDocCmd(projectId, path);
       if (seq !== mainDocSeq || get().projectId !== projectId) return;
+      const compile = await compileStore;
+      if (seq !== mainDocSeq || get().projectId !== projectId) return;
+      // The backend serializes this metadata change after any active compile.
+      // Invalidate the matching frontend attempt/output before exposing the new
+      // main document so its late IPC response cannot paint the old PDF.
+      compile.useCompileStore.getState().reset();
+      // Metadata is already committed under the backend compile lock. Publish
+      // its source identity immediately while capabilities remain fail-closed;
+      // otherwise an old compile could still match `mainDoc` during the engine
+      // descriptor request and repopulate the cleared preview.
+      set({ mainDoc: meta.main_doc });
       const engine = await getProjectEngine(projectId);
       if (seq !== mainDocSeq || get().projectId !== projectId) return;
       set({ mainDoc: meta.main_doc, engine, engineLoaded: true, engineError: null });
@@ -750,16 +813,18 @@ if (typeof window !== "undefined") {
   window.addEventListener("pagehide", flushPendingSaves);
   window.addEventListener("beforeunload", flushPendingSaves);
 
-  // E2E / devtools hook: read-only commit count, so a test can wait for a
-  // fire-and-forget auto-commit to land without opening the History modal.
-  (window as unknown as { __gitCommitCount?: () => Promise<number> }).__gitCommitCount =
-    async () => {
-      const id = useFilesStore.getState().projectId;
-      if (!id) return 0;
-      try {
-        return (await gitLog(id)).length;
-      } catch {
-        return 0;
-      }
-    };
+  if (import.meta.env.DEV) {
+    // E2E / devtools hook: read-only commit count, so a test can wait for a
+    // fire-and-forget auto-commit to land without opening the History modal.
+    (window as unknown as { __gitCommitCount?: () => Promise<number> }).__gitCommitCount =
+      async () => {
+        const id = useFilesStore.getState().projectId;
+        if (!id) return 0;
+        try {
+          return (await gitLog(id)).length;
+        } catch {
+          return 0;
+        }
+      };
+  }
 }

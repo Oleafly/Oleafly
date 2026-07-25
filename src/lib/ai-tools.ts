@@ -188,7 +188,7 @@ export function initAiPdfCaptureFlag(): void {
 // (streaming, tool calls, chat handoff) can run against the local fake
 // OpenAI-compatible endpoint (e2e/mock-ai-server.ts). Only DEFINES the function
 // here; the IPC runs on invocation, so this is a safe module side effect.
-if (typeof window !== "undefined") {
+if (typeof window !== "undefined" && import.meta.env.DEV) {
   (
     window as unknown as {
       __aiConnect?: (provider: string, host: string, model: string) => Promise<boolean>;

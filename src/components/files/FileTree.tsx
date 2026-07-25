@@ -1,4 +1,5 @@
 import {
+  useId,
   useMemo,
   useRef,
   useState,
@@ -6,7 +7,6 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
 } from "react";
-import { open } from "@tauri-apps/plugin-dialog";
 import {
   ChevronRight,
   CopyPlus,
@@ -44,9 +44,12 @@ import { logError } from "@/lib/log";
 import { isFileConflictError } from "@/lib/tauri";
 import { notifyError } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { pickOpenPath } from "@/lib/native-file-dialog";
 
 async function pickImportSources(mode: "file" | "dir"): Promise<string[]> {
-  const picked = await open(mode === "dir" ? { directory: true } : { multiple: true });
+  const picked = await pickOpenPath(
+    mode === "dir" ? { directory: true } : { multiple: true },
+  );
   if (!picked) return [];
   return Array.isArray(picked) ? picked : [picked];
 }
@@ -293,7 +296,11 @@ export function FileTree() {
     selected: selected?.path ?? null,
     onSelect: (path, isDir) => setSelected({ path, isDir }),
     onOpen: openFile,
-    onDelete: deleteEntry,
+    onDelete: (path) => {
+      void deleteEntry(path).catch((error) =>
+        notifyError("delete file", error, `Could not delete "${path}".`),
+      );
+    },
     onSetMain: setMainDoc,
     mainExtensions,
     onCopy: copyEntry,
@@ -337,6 +344,7 @@ export function FileTree() {
             size="icon"
             className="size-7"
             title="New file (in the selected folder)"
+            aria-label="New file in selected folder"
             onClick={() => startNew(targetDir(), "file")}
           >
             <FilePlus className="size-3.5" />
@@ -346,6 +354,7 @@ export function FileTree() {
             size="icon"
             className="size-7"
             title="New folder (in the selected folder)"
+            aria-label="New folder in selected folder"
             onClick={() => startNew(targetDir(), "dir")}
           >
             <FolderPlus className="size-3.5" />
@@ -357,6 +366,7 @@ export function FileTree() {
                 size="icon"
                 className="size-7"
                 title="Import a file or folder (into the selected folder)"
+                aria-label="Import into selected folder"
               >
                 <Import className="size-3.5" />
               </Button>
@@ -403,6 +413,7 @@ export function FileTree() {
                 mode={newMode}
                 value={newValue}
                 depth={0}
+                parentPath=""
                 onChange={ctx.onChangeNew}
                 onSubmit={ctx.onSubmitNew}
                 onCancel={ctx.onCancelNew}
@@ -489,10 +500,11 @@ export function FileTree() {
   );
 }
 
-function NewEntryInput({
+export function NewEntryInput({
   mode,
   value,
   depth,
+  parentPath,
   onChange,
   onSubmit,
   onCancel,
@@ -500,14 +512,22 @@ function NewEntryInput({
   mode: "file" | "dir";
   value: string;
   depth: number;
+  parentPath: string;
   onChange: (v: string) => void;
   onSubmit: () => void;
   onCancel: () => void;
 }) {
   const inputRef = useInitialFocus<HTMLInputElement>();
+  const inputId = useId();
+  const entryKind = mode === "dir" ? "folder" : "file";
+  const destination = parentPath ? `folder ${parentPath}` : "project root";
   return (
     <div style={{ paddingLeft: `${depth * 12 + 8}px` }} className="py-0.5">
+      <label htmlFor={inputId} className="sr-only">
+        New {entryKind} name in {destination}
+      </label>
       <Input
+        id={inputId}
         ref={inputRef}
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -517,7 +537,7 @@ function NewEntryInput({
           if (e.key === "Escape") onCancel();
         }}
         placeholder={mode === "dir" ? "New folder name" : "New file name"}
-        className="w-full rounded-md border border-input bg-background px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-ring"
+        className="w-full rounded-md border border-input bg-background px-2 py-1 text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
       />
     </div>
   );
@@ -601,10 +621,11 @@ function TreeRow({ node, depth, ctx }: { node: TreeNode; depth: number; ctx: Tre
       ref={rowRef}
       role="treeitem"
       data-path={node.path}
+      data-main-document={isMain ? "true" : "false"}
       tabIndex={0}
       draggable={!isRenaming}
       aria-expanded={node.isDir ? ctx.expanded.has(node.path) : undefined}
-      aria-selected={isActive}
+      aria-selected={isActive || isSelected}
       className={cn(
         "group flex cursor-pointer items-center gap-1.5 rounded-md py-1.5 pr-2 text-sm text-sidebar-foreground outline-none hover:bg-sidebar-accent focus-visible:ring-1 focus-visible:ring-ring",
         isActive && "bg-sidebar-accent",
@@ -647,7 +668,7 @@ function TreeRow({ node, depth, ctx }: { node: TreeNode; depth: number; ctx: Tre
           type="button"
           aria-label={`More actions for ${node.name}`}
           onClick={openRowMenu}
-          className="flex size-5 shrink-0 items-center justify-center rounded opacity-0 hover:bg-sidebar-accent-foreground/10 group-hover:opacity-100"
+          className="flex size-5 shrink-0 items-center justify-center rounded opacity-0 hover:bg-sidebar-accent-foreground/10 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <MoreHorizontal className="size-3.5" />
         </button>
@@ -727,12 +748,16 @@ function TreeRow({ node, depth, ctx }: { node: TreeNode; depth: number; ctx: Tre
         </ContextMenu>
       )}
       {node.isDir && ctx.expanded.has(node.path) && (
-        <>
+        // A WAI-ARIA tree uses role=group for nested treeitems. A fieldset
+        // would add unrelated form-group semantics and browser chrome.
+        // biome-ignore lint/a11y/useSemanticElements: tree ownership requires this ARIA role
+        <div role="group">
           {ctx.newMode && ctx.newParent === node.path && (
             <NewEntryInput
               mode={ctx.newMode}
               value={ctx.newValue}
               depth={depth + 1}
+              parentPath={node.path}
               onChange={ctx.onChangeNew}
               onSubmit={ctx.onSubmitNew}
               onCancel={ctx.onCancelNew}
@@ -742,7 +767,7 @@ function TreeRow({ node, depth, ctx }: { node: TreeNode; depth: number; ctx: Tre
             node.children.map((c) => (
               <TreeRow key={c.path} node={c} depth={depth + 1} ctx={ctx} />
             ))}
-        </>
+        </div>
       )}
     </div>
   );

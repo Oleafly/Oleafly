@@ -11,6 +11,17 @@ import { useSettingsStore } from "@/store/settings";
 import { notifyError } from "@/lib/toast";
 import { compileOfflineForEngine } from "@/lib/document-engine";
 import { ensurePandoc } from "@/features/pandoc";
+import {
+  canApplyLocalCompileOutcome,
+  createCompileSuccessCheckpoint,
+  fingerprintCompileOutput,
+  hasCompileCheckpointAdvanced,
+  type CompileSuccessCheckpoint,
+} from "@/lib/compile-checkpoint";
+import {
+  currentCompileProducerId,
+  notifyCompileSucceeded,
+} from "@/lib/cross-window";
 
 // Bumped on every recompile so a compile that finishes after the project was
 // switched (or a newer compile started) can detect it is stale and not overwrite
@@ -41,6 +52,7 @@ interface CompileState {
   errors: CompileError[];
   pdfBytes: Uint8Array | null;
   lastCompiledAt: number | null;
+  lastCompileCheckpoint: CompileSuccessCheckpoint | null;
   compileTimeMs: number | null;
   autoCompile: boolean;
   setAutoCompile: (v: boolean) => void;
@@ -55,6 +67,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
   errors: [],
   pdfBytes: null,
   lastCompiledAt: null,
+  lastCompileCheckpoint: null,
   compileTimeMs: null,
   autoCompile: false,
   setAutoCompile: (v) => set({ autoCompile: v }),
@@ -70,6 +83,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       errors: [],
       pdfBytes: null,
       lastCompiledAt: null,
+      lastCompileCheckpoint: null,
       compileTimeMs: null,
     });
   },
@@ -95,6 +109,19 @@ export const useCompileStore = create<CompileState>((set, get) => ({
 
     const files = useFilesStore.getState();
     const capturedProjectId = files.projectId;
+    const mainDoc = files.mainDoc || "main.tex";
+    const checkpointAtStart = get().lastCompileCheckpoint;
+    const matchesAttemptIdentity = () => {
+      const currentFiles = useFilesStore.getState();
+      return (
+        activeCompileIntent === intent &&
+        currentFiles.projectId === capturedProjectId &&
+        (currentFiles.mainDoc || "main.tex") === mainDoc
+      );
+    };
+    const checkpointAdvanced = (
+      current = get().lastCompileCheckpoint,
+    ) => hasCompileCheckpointAdvanced(checkpointAtStart, current);
     if (!files.engineLoaded) {
       notifyError(
         "compile",
@@ -115,8 +142,12 @@ export const useCompileStore = create<CompileState>((set, get) => ({
         abortIntent();
         return undefined;
       }
+      if (!matchesAttemptIdentity() || checkpointAdvanced()) {
+        abortIntent();
+        return undefined;
+      }
     }
-    if (useFilesStore.getState().projectId !== capturedProjectId) {
+    if (!matchesAttemptIdentity() || checkpointAdvanced()) {
       abortIntent();
       return undefined;
     }
@@ -127,16 +158,12 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       abortIntent();
       return undefined;
     }
-    if (
-      activeCompileIntent !== intent ||
-      useFilesStore.getState().projectId !== capturedProjectId
-    ) {
+    if (!matchesAttemptIdentity() || checkpointAdvanced()) {
       abortIntent();
       return undefined;
     }
 
     const projectId = capturedProjectId ?? "default";
-    const mainDoc = files.mainDoc || "main.tex";
     const offlinePolicy = compileOfflineForEngine(
       files.engine,
       useSettingsStore.getState().offline,
@@ -144,63 +171,192 @@ export const useCompileStore = create<CompileState>((set, get) => ({
     const seq = ++compileSeq;
     // True once this compile's result is no longer the one the UI should show
     // (project switched, or a newer compile started).
-    const stale = () => seq !== compileSeq || useFilesStore.getState().projectId !== capturedProjectId;
+    const identityStale = () => {
+      const currentFiles = useFilesStore.getState();
+      return (
+        seq !== compileSeq ||
+        currentFiles.projectId !== capturedProjectId ||
+        (currentFiles.mainDoc || "main.tex") !== mainDoc
+      );
+    };
 
-    set({
-      status: "compiling",
-      phase: "building",
-      log: offlinePolicy.notice ? `${offlinePolicy.notice}\n` : "",
-      errors: [],
+    let started = false;
+    set((state) => {
+      if (
+        identityStale() ||
+        hasCompileCheckpointAdvanced(
+          checkpointAtStart,
+          state.lastCompileCheckpoint,
+        )
+      ) {
+        return state;
+      }
+      started = true;
+      return {
+        status: "compiling",
+        phase: "building",
+        log: offlinePolicy.notice ? `${offlinePolicy.notice}\n` : "",
+        errors: [],
+      };
     });
+    if (!started) {
+      abortIntent();
+      return undefined;
+    }
     let unlisten = () => {};
     try {
       unlisten = await listen<string>("compile:log", (e) => {
-        if (seq !== compileSeq) return;
-        set((s) => ({ log: s.log + e.payload, phase: phaseFromLogChunk(e.payload, s.phase) }));
+        set((state) => {
+          if (
+            identityStale() ||
+            hasCompileCheckpointAdvanced(
+              checkpointAtStart,
+              state.lastCompileCheckpoint,
+            )
+          ) {
+            return state;
+          }
+          return {
+            log: state.log + e.payload,
+            phase: phaseFromLogChunk(e.payload, state.phase),
+          };
+        });
       });
+      if (identityStale() || checkpointAdvanced()) return undefined;
       const result = await compileProject(projectId, mainDoc, offlinePolicy.offline);
+      const resultRevision =
+        result.ok &&
+        Number.isSafeInteger(result.output_revision) &&
+        (result.output_revision ?? 0) > 0
+          ? result.output_revision
+          : null;
+      const currentCheckpoint = get().lastCompileCheckpoint;
+      if (
+        identityStale() ||
+        (checkpointAdvanced(currentCheckpoint) &&
+          (resultRevision === null ||
+            (currentCheckpoint !== null &&
+              resultRevision <= currentCheckpoint.outputRevision)))
+      ) {
+        return result;
+      }
       // Wrap the IPC ArrayBuffer as a view (no copy of the payload bytes). Read
       // whenever a PDF exists, even on error: Tectonic's continue-on-errors mode
       // still produces a best-effort PDF, and we want to keep showing it.
       const buf = result.has_pdf ? await readCompiledPdf(projectId) : null;
       const bytes = buf ? new Uint8Array(buf) : null;
-      if (stale()) return result;
-      set((state) => ({
-        status: result.ok && bytes ? "success" : "error",
-        phase: "idle",
-        pdfBytes: bytes ?? state.pdfBytes,
-        errors: result.errors,
-        log: `${offlinePolicy.notice ? `${offlinePolicy.notice}\n` : ""}${result.log}`,
-        lastCompiledAt: result.ok && bytes ? Date.now() : state.lastCompiledAt,
-        compileTimeMs: result.ok && bytes ? (result.compile_time_ms ?? 0) : state.compileTimeMs,
-      }));
+      if (identityStale()) return result;
+      const verifiedOutputId =
+        bytes &&
+        result.output_id &&
+        fingerprintCompileOutput(bytes) === result.output_id
+          ? result.output_id
+          : null;
+      const verifiedBytes = verifiedOutputId ? bytes : null;
+      const outputIdentityError =
+        result.has_pdf && !verifiedBytes
+          ? "\nCompiled PDF changed before it could be verified. Keeping the prior preview."
+          : "";
+      const successfulRevision =
+        result.ok &&
+        verifiedBytes &&
+        Number.isSafeInteger(result.output_revision) &&
+        (result.output_revision ?? 0) > 0
+          ? result.output_revision
+          : null;
+      const checkpoint =
+        successfulRevision !== null && verifiedOutputId
+          ? createCompileSuccessCheckpoint({
+              projectId,
+              mainDocument: mainDoc,
+              outputKind: "standard",
+              producerId: currentCompileProducerId(),
+              outputRevision: successfulRevision,
+              outputId: verifiedOutputId,
+              previousCompletedAt: get().lastCompiledAt,
+            })
+          : null;
+      let applied = false;
+      set((state) => {
+        if (
+          identityStale() ||
+          !canApplyLocalCompileOutcome(
+            checkpoint,
+            state.lastCompileCheckpoint,
+            checkpointAtStart,
+          )
+        ) {
+          return state;
+        }
+        applied = true;
+        return {
+          status: checkpoint ? "success" : "error",
+          phase: "idle",
+          pdfBytes: verifiedBytes ?? state.pdfBytes,
+          errors: result.errors,
+          log: `${offlinePolicy.notice ? `${offlinePolicy.notice}\n` : ""}${result.log}${outputIdentityError}`,
+          lastCompiledAt: checkpoint?.completedAt ?? state.lastCompiledAt,
+          lastCompileCheckpoint:
+            checkpoint ?? state.lastCompileCheckpoint,
+          compileTimeMs: checkpoint
+            ? (result.compile_time_ms ?? 0)
+            : state.compileTimeMs,
+        };
+      });
+      if (!applied) return result;
       // Tell detached windows (PDF preview, other OS windows) to reload.
       void import("@/lib/preview-window").then((m) => m.refreshPreviewWindow()).catch(() => {});
-      void import("@/lib/cross-window").then((m) => m.notifyCompileDone(capturedProjectId)).catch(() => {});
+      if (checkpoint) notifyCompileSucceeded(checkpoint);
       // A successful compile is the natural checkpoint: auto-commit the
       // project (compiling already saved the active file first).
-      if (result.ok && bytes && capturedProjectId) {
+      if (checkpoint && capturedProjectId) {
         const pid = capturedProjectId;
         void import("@/lib/auto-commit").then((m) => m.autoCommitNow(pid)).catch(() => {});
       }
       return result;
     } catch (e) {
-      if (!stale()) {
-        set({
+      set((state) => {
+        if (
+          identityStale() ||
+          hasCompileCheckpointAdvanced(
+            checkpointAtStart,
+            state.lastCompileCheckpoint,
+          )
+        ) {
+          return state;
+        }
+        return {
           status: "error",
           phase: "idle",
           log: `${offlinePolicy.notice ? `${offlinePolicy.notice}\n` : ""}Compile failed: ${String(e)}`,
-        });
-      }
+        };
+      });
       void import("@/lib/log").then(({ logError }) => logError("compile", e));
       return undefined;
     } finally {
       unlisten();
       const ownsIntent = activeCompileIntent === intent;
+      if (ownsIntent && identityStale()) {
+        // A same-project main-document switch does not run the project-reset
+        // effect. Clear only this attempt's orphaned "compiling" indicator;
+        // never replace a success checkpoint that arrived while it was active.
+        set((state) => {
+          if (
+            state.status !== "compiling" ||
+            hasCompileCheckpointAdvanced(
+              checkpointAtStart,
+              state.lastCompileCheckpoint,
+            )
+          ) {
+            return state;
+          }
+          return { status: "idle", phase: "idle" };
+        });
+      }
       releaseIntent();
       if (ownsIntent && rerunQueued) {
         rerunQueued = false;
-        if (!stale()) void get().recompile();
+        if (!identityStale()) void get().recompile();
       }
     }
   },

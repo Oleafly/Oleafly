@@ -143,6 +143,7 @@ pub fn run() {
             project::get_project,
             project::list_projects,
             project::create_project,
+            project::create_project_from_pdf_conversion,
             project::create_typst_project,
             project::create_markdown_project,
             project::create_image_project,

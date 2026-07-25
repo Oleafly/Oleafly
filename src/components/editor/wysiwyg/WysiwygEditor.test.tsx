@@ -70,6 +70,53 @@ describe("WysiwygEditor", () => {
     expect(screen.getByText("Intro")).toBeInTheDocument();
   });
 
+  it("keeps loaded content outside history while preserving undo and redo for user edits", () => {
+    render(<WysiwygEditor wysiwyg={true} />);
+    const editor = requireEditor();
+
+    act(() => {
+      editor.chain().insertContentAt(editor.state.doc.content.size, " EDITED").run();
+    });
+    expect(editor.getText()).toContain("EDITED");
+
+    act(() => {
+      expect(editor.commands.undo()).toBe(true);
+    });
+    expect(editor.getText()).toContain("Intro");
+    expect(editor.getText()).toContain("Hello.");
+    expect(editor.getText()).not.toContain("EDITED");
+
+    act(() => {
+      expect(editor.commands.redo()).toBe(true);
+    });
+    expect(editor.getText()).toContain("EDITED");
+  });
+
+  it("clears visual history when the active file changes", () => {
+    setFiles(
+      {
+        "a.tex": { content: LATEX_A, dirty: false },
+        "b.tex": { content: LATEX_B, dirty: false },
+      },
+      "a.tex",
+    );
+    render(<WysiwygEditor wysiwyg={true} />);
+    const editor = requireEditor();
+
+    act(() => {
+      editor.chain().insertContentAt(editor.state.doc.content.size, " EDITED-A").run();
+      useFilesStore.setState({
+        activePath: "b.tex",
+      } as unknown as ReturnType<typeof useFilesStore.getState>);
+    });
+
+    expect(editor.getText()).toContain("Second");
+    expect(editor.getText()).toContain("World.");
+    expect(editor.getText()).not.toContain("EDITED-A");
+    expect(editor.commands.undo()).toBe(false);
+    expect(editor.getText()).toContain("Second");
+  });
+
   it("preserves the LaTeX preamble/suffix and wraps the edited body on unmount", () => {
     const { unmount } = render(<WysiwygEditor wysiwyg={true} />);
     expect(lastEditor).not.toBeNull();

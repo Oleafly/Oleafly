@@ -2,6 +2,7 @@ import { memo, useMemo, useState } from "react";
 import { Accessibility, ChevronDown, Eye, FileSearch, Info, Link2, Play, RefreshCw, ShieldCheck } from "lucide-react";
 import { usePreflightStore } from "@/store/preflight";
 import { useFilesStore } from "@/store/files";
+import { useCompileStore } from "@/store/compile";
 import { looksLikeResumeSource } from "@oleafly/preflight";
 import type { Finding, PreflightReport, Severity } from "@oleafly/preflight";
 import { ScoreRing } from "./ScoreRing";
@@ -72,17 +73,24 @@ export function PreflightPanel() {
   const setOpen = usePreflightStore((s) => s.setOpen);
 
   // Keyed on the active PATH (not its content), reading a content snapshot
-  // imperatively, so typing doesn't re-render this panel or re-run the two
-  // whole-document regex scans in `looksLikeResumeSource` on every keystroke.
+  // imperatively. A successful compile is the low-frequency checkpoint that
+  // refreshes the suggestion after edits, without re-running whole-document
+  // resume detection on every keystroke.
   const activePath = useFilesStore((s) => s.activePath);
+  const lastCompiledAt = useCompileStore((s) => s.lastCompiledAt);
   const engineLabel = useFilesStore((s) => s.engine.label);
   const sourcePreflight = useFilesStore((s) => s.engine.capabilities.source_preflight_profile);
   const suggested = useMemo<Flags>(() => {
-    const src = activePath ? useFilesStore.getState().files[activePath]?.content ?? "" : "";
-    const resume = looksLikeResumeSource(src);
+    // The timestamp is intentionally a cache key: source is read imperatively
+    // at this successful compile checkpoint, not subscribed to per keystroke.
+    void lastCompiledAt;
+    const source = activePath
+      ? useFilesStore.getState().files[activePath]?.content ?? ""
+      : "";
+    const resume = looksLikeResumeSource(source);
     // Resume: ATS. Otherwise: accessibility and integrity, the paper concerns.
     return { ats: resume, a11y: !resume, refs: !resume };
-  }, [activePath]);
+  }, [activePath, lastCompiledAt]);
   const enabled = storedEnabled ?? suggested;
   const expanded = storedOpen ?? suggested;
   // Which run is in flight, so only the clicked button shows a spinner.

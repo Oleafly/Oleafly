@@ -19,6 +19,8 @@ export interface CompileError {
 export interface CompileResult {
   ok: boolean;
   has_pdf: boolean;
+  output_id: string | null;
+  output_revision: number | null;
   log: string;
   errors: CompileError[];
   synctex_path: string | null;
@@ -178,7 +180,7 @@ export async function renameFile(
 }
 
 export const copyFile = (projectId: string, from: string, to: string) =>
-  invoke<void>("copy_file", { projectId, from, to });
+  invoke<string>("copy_file", { projectId, from, to });
 
 export const importPathsIntoProject = (projectId: string, destDir: string, sourcePaths: string[]) =>
   invoke<string[]>("import_paths_into_project", { projectId, destDir, sourcePaths });
@@ -214,6 +216,13 @@ export const listProjects = () => invoke<ProjectInfo[]>("list_projects");
 
 export const createProject = (name: string) =>
   invoke<string>("create_project", { name });
+
+export const createProjectFromPdfConversion = (
+  name: string,
+  tex: string,
+  figures: { name: string; dataBase64: string }[],
+) =>
+  invoke<string>("create_project_from_pdf_conversion", { name, tex, figures });
 
 export const createTypstProject = (name: string) =>
   invoke<string>("create_typst_project", { name });
@@ -422,6 +431,8 @@ export interface EngineInfo {
 export interface TaggedCompileResult {
   success: boolean;
   has_pdf: boolean;
+  output_id: string | null;
+  output_revision: number | null;
   log: string;
 }
 

@@ -1,5 +1,9 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from "react";
 import * as pdfjsLib from "pdfjs-dist";
+import type {
+  PDFLinkService,
+  StructTreeLayerBuilder,
+} from "pdfjs-dist/web/pdf_viewer.mjs";
 // A wrapper worker that polyfills newer JS (Map.getOrInsert*) before loading the
 // real pdf.js worker, so PDFs render on older WebViews too. `?worker&url` lets
 // pdf.js manage the worker lifecycle as it does with the stock worker URL.
@@ -8,7 +12,21 @@ import workerSrc from "./pdf.worker?worker&url";
 import "pdfjs-dist/web/pdf_viewer.css";
 import { registerPdfView, clearPdfView, pageClickToBp } from "./pdfController";
 import { installMainThreadPdfWorker } from "./mainThreadWorker";
+import { PdfTextAccessibilityManager } from "./pdfAccessibility";
+import {
+  applyPdfLayerViewport,
+  applyPdfPlaceholderViewport,
+  releasePdfRenderNodes,
+  visitPdfPlaceholderBatch,
+} from "./pdfLayerGeometry";
 import { createPdfLoadAttempts } from "./pdfLoadStrategy";
+import {
+  loadPdfPageViewport,
+  type PdfPageGeometryScan,
+  type PdfPageViewport,
+  scanPdfPageViewports,
+} from "./pdfPageGeometry";
+import { registerPdfTextSelection } from "./pdfTextSelection";
 import { closestMatchingElement, wordAtHorizontalPosition, wordInText } from "./textHit";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
@@ -17,7 +35,15 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 // WKWebView. This is intentionally session-wide: once real worker creation is
 // no longer viable, the main-thread loopback worker keeps preview usable.
 let mainThreadWorkerInstall: Promise<void> | null = null;
+type PdfViewerRuntime = typeof import("pdfjs-dist/web/pdf_viewer.mjs");
+type PdfDownloadManager = InstanceType<PdfViewerRuntime["DownloadManager"]>;
+let pdfViewerRuntimePromise: Promise<PdfViewerRuntime> | null = null;
 const PDF_WORKER_LOAD_TIMEOUT_MS = 10_000;
+const TEXT_CONTENT_PARAMS = {
+  includeMarkedContent: true,
+  disableNormalization: true,
+} as const;
+
 async function forceMainThreadWorker(): Promise<void> {
   if (!mainThreadWorkerInstall) {
     mainThreadWorkerInstall = installMainThreadPdfWorker().catch((error) => {
@@ -28,16 +54,50 @@ async function forceMainThreadWorker(): Promise<void> {
   await mainThreadWorkerInstall;
 }
 
-async function createPdfWorker(): Promise<pdfjsLib.PDFWorker> {
+function loadPdfViewerRuntime(): Promise<PdfViewerRuntime> {
+  return (pdfViewerRuntimePromise ??= import("pdfjs-dist/web/pdf_viewer.mjs"));
+}
+
+function destroyPdfWorker(worker: pdfjsLib.PDFWorker): void {
+  try {
+    worker.destroy();
+  } catch {
+    /* already destroyed */
+  }
+}
+
+async function createPdfWorker(signal: AbortSignal): Promise<pdfjsLib.PDFWorker> {
   const usingMainThread = mainThreadWorkerInstall !== null;
   if (mainThreadWorkerInstall) {
     await mainThreadWorkerInstall;
   }
   const worker = new pdfjsLib.PDFWorker();
-  if (usingMainThread) {
-    await withTimeout(worker.promise, PDF_WORKER_LOAD_TIMEOUT_MS, "main-thread PDF worker setup");
+  let rejectAborted: ((reason: DOMException) => void) | null = null;
+  const aborted = new Promise<never>((_, reject) => {
+    rejectAborted = reject;
+  });
+  const onAbort = () => {
+    destroyPdfWorker(worker);
+    rejectAborted?.(new DOMException("PDF load cancelled", "AbortError"));
+  };
+  signal.addEventListener("abort", onAbort, { once: true });
+  try {
+    if (signal.aborted) onAbort();
+    await withTimeout(
+      Promise.race([worker.promise, aborted]),
+      PDF_WORKER_LOAD_TIMEOUT_MS,
+      usingMainThread ? "main-thread PDF worker setup" : "PDF worker setup",
+    );
+    if (signal.aborted) {
+      throw new DOMException("PDF load cancelled", "AbortError");
+    }
+    return worker;
+  } catch (error) {
+    destroyPdfWorker(worker);
+    throw error;
+  } finally {
+    signal.removeEventListener("abort", onAbort);
   }
-  return worker;
 }
 
 type PageTextContent = Awaited<ReturnType<pdfjsLib.PDFPageProxy["getTextContent"]>>;
@@ -70,7 +130,11 @@ async function probePageText(doc: pdfjsLib.PDFDocumentProxy): Promise<PageTextCo
   if (doc.numPages < 1) return null;
   const page = await withTimeout(doc.getPage(1), 8_000, "text probe page");
   try {
-    const tc = await withTimeout(page.getTextContent(), 8_000, "text probe");
+    const tc = await withTimeout(
+      page.getTextContent(TEXT_CONTENT_PARAMS),
+      8_000,
+      "text probe",
+    );
     if (!tc.items.some((it) => "str" in it && it.str.trim().length > 0)) {
       throw new Error("text pipe returned empty");
     }
@@ -138,10 +202,274 @@ const RENDER_MARGIN_PX = 1200;
 // Hard cap on simultaneously-rasterized pages, a safety net against unbounded
 // memory on very tall/zoomed documents regardless of scroll behavior.
 const MAX_RENDERED_PAGES = 14;
+const PLACEHOLDER_ZOOM_BATCH_SIZE = 32;
+const PDF_SPREAD_GAP_PX = 16;
+const PDF_VIEWPORT_PADDING_PX = 32;
+const PENDING_PAGE_VIEWPORT = {
+  width: 640,
+  height: 820,
+  scale: 1,
+  userUnit: 1,
+  rotation: 0,
+} as const;
 
 interface RenderState {
   renderScale: number;
   tasks: pdfjsLib.RenderTask[];
+  textLayer: pdfjsLib.TextLayer | null;
+  renderedTextLayer: PdfRenderedTextLayer | null;
+  annotationLayer: pdfjsLib.AnnotationLayer | null;
+  accessibilityManager: PdfTextAccessibilityManager | null;
+  structTreeLayer: StructTreeLayerBuilder | null;
+  page: pdfjsLib.PDFPageProxy | null;
+  removeTextSelection: (() => void) | null;
+  nodes: HTMLElement[];
+}
+
+function cancelRenderState(state: RenderState): void {
+  state.removeTextSelection?.();
+  state.removeTextSelection = null;
+  try {
+    state.annotationLayer?.destroy();
+  } catch {
+    /* already destroyed */
+  }
+  state.annotationLayer = null;
+  state.structTreeLayer?.hide();
+  state.structTreeLayer = null;
+  state.accessibilityManager?.disable();
+  state.accessibilityManager = null;
+  try {
+    state.textLayer?.cancel();
+  } catch {
+    /* already settled */
+  }
+  state.textLayer = null;
+  state.renderedTextLayer = null;
+  for (const task of state.tasks) {
+    try {
+      task.cancel();
+    } catch {
+      /* already settled */
+    }
+  }
+  state.tasks.length = 0;
+  try {
+    state.page?.cleanup();
+  } catch {
+    /* page resources are already released */
+  }
+  state.page = null;
+  releasePdfRenderNodes(state.nodes);
+}
+
+export function prioritizePdfPages(
+  pages: Iterable<number>,
+  focusPage: number,
+  limit = MAX_RENDERED_PAGES,
+): number[] {
+  return [...pages]
+    .sort((a, b) => Math.abs(a - focusPage) - Math.abs(b - focusPage) || a - b)
+    .slice(0, Math.max(0, Math.floor(limit)));
+}
+
+type PdfOptionalContentConfig = Awaited<
+  ReturnType<pdfjsLib.PDFDocumentProxy["getOptionalContentConfig"]>
+>;
+
+export interface PdfRenderedTextLayer {
+  div: HTMLElement;
+  numTextDivs: number;
+}
+
+export interface PdfLinkEventBus {
+  dispatch: (eventName: string, data: object) => void;
+}
+
+function dispatchPdfTextLayerRendered(
+  eventBus: PdfLinkEventBus,
+  pageNumber: number,
+  renderedTextLayer: PdfRenderedTextLayer,
+): void {
+  eventBus.dispatch("textlayerrendered", {
+    source: { textLayer: { div: renderedTextLayer.div } },
+    pageNumber,
+    numTextDivs: renderedTextLayer.numTextDivs,
+    error: null,
+  });
+}
+
+export interface PdfLinkScrollRequest {
+  pageNumber: number;
+  destArray?: unknown[];
+  allowNegativeOffset?: boolean;
+  ignoreDestinationZoom?: boolean;
+}
+
+export interface PdfLinkViewerAdapter {
+  currentPageNumber: number;
+  pagesRotation: number;
+  readonly isInPresentationMode: boolean;
+  optionalContentConfigPromise: Promise<PdfOptionalContentConfig>;
+  pageLabelToPageNumber: (label: string) => number | null;
+  scrollPageIntoView: (request: PdfLinkScrollRequest) => void;
+  nextPage: () => boolean;
+  previousPage: () => boolean;
+}
+
+export interface PdfLinkViewerAdapterOptions {
+  pagesCount: number;
+  getCurrentPage: () => number;
+  setCurrentPage: (pageNumber: number) => void;
+  scrollPageIntoView: (request: PdfLinkScrollRequest) => void;
+  optionalContentConfigPromise: Promise<PdfOptionalContentConfig>;
+  eventBus?: PdfLinkEventBus;
+  getRenderedTextLayer?: (
+    pageNumber: number,
+  ) => PdfRenderedTextLayer | null;
+  onOptionalContentConfigChange?: (
+    promise: Promise<PdfOptionalContentConfig>,
+  ) => void;
+  pageLabelToPageNumber?: (label: string) => number | null;
+}
+
+export function createPdfLinkViewerAdapter(
+  options: PdfLinkViewerAdapterOptions,
+): PdfLinkViewerAdapter {
+  let rotation = 0;
+  let optionalContentConfigPromise = options.optionalContentConfigPromise;
+  const clampPage = (value: number) =>
+    Math.max(1, Math.min(options.pagesCount, Math.floor(value)));
+
+  return {
+    get currentPageNumber() {
+      return clampPage(options.getCurrentPage());
+    },
+    set currentPageNumber(value: number) {
+      options.setCurrentPage(clampPage(value));
+    },
+    get pagesRotation() {
+      return rotation;
+    },
+    set pagesRotation(value: number) {
+      if (Number.isInteger(value) && value % 90 === 0) rotation = value;
+    },
+    get isInPresentationMode() {
+      return false;
+    },
+    get optionalContentConfigPromise() {
+      return optionalContentConfigPromise;
+    },
+    set optionalContentConfigPromise(promise: Promise<PdfOptionalContentConfig>) {
+      optionalContentConfigPromise = promise;
+      options.onOptionalContentConfigChange?.(promise);
+    },
+    pageLabelToPageNumber: (label: string) => {
+      if (options.pageLabelToPageNumber) {
+        return options.pageLabelToPageNumber(label);
+      }
+      if (!/^\d+$/.test(label)) return null;
+      const pageNumber = Number(label);
+      return pageNumber >= 1 && pageNumber <= options.pagesCount
+        ? pageNumber
+        : null;
+    },
+    scrollPageIntoView: (request) => {
+      options.scrollPageIntoView(request);
+      const eventBus = options.eventBus;
+      const renderedTextLayer =
+        options.getRenderedTextLayer?.(request.pageNumber) ?? null;
+      if (!eventBus || !renderedTextLayer) return;
+
+      // PDFLinkService registers its one-shot focus listener immediately after
+      // scrollPageIntoView returns. Re-emit an already-completed text layer in
+      // a microtask so that listener observes it and aborts itself. Pages still
+      // rendering use the normal completion dispatch below.
+      queueMicrotask(() => {
+        dispatchPdfTextLayerRendered(
+          eventBus,
+          request.pageNumber,
+          renderedTextLayer,
+        );
+      });
+    },
+    nextPage: () => {
+      const current = clampPage(options.getCurrentPage());
+      if (current >= options.pagesCount) return false;
+      options.setCurrentPage(current + 1);
+      return true;
+    },
+    previousPage: () => {
+      const current = clampPage(options.getCurrentPage());
+      if (current <= 1) return false;
+      options.setCurrentPage(current - 1);
+      return true;
+    },
+  };
+}
+
+function instantiatePdfLinkService(runtime: PdfViewerRuntime): PDFLinkService {
+  return new runtime.PDFLinkService({
+    eventBus: new runtime.EventBus(),
+    externalLinkTarget: runtime.LinkTarget.BLANK,
+    externalLinkRel: "noopener noreferrer nofollow",
+    ignoreDestinationZoom: true,
+  });
+}
+
+export async function createPdfLinkService(options?: {
+  pdfDocument?: pdfjsLib.PDFDocumentProxy;
+  pdfViewer?: PdfLinkViewerAdapter;
+}): Promise<PDFLinkService> {
+  const service = instantiatePdfLinkService(await loadPdfViewerRuntime());
+  if (options?.pdfDocument) service.setDocument(options.pdfDocument);
+  if (options?.pdfViewer) service.setViewer(options.pdfViewer);
+  return service;
+}
+
+export interface CalculatePdfFitScaleOptions {
+  mode: "width" | "height";
+  layout: PdfLayout;
+  currentPage: number;
+  pagesCount: number;
+  pageViewports: ReadonlyMap<number, Pick<PdfPageViewport, "width" | "height">>;
+  viewportWidth: number;
+  viewportHeight: number;
+}
+
+export function calculatePdfFitScale({
+  mode,
+  layout,
+  currentPage,
+  pagesCount,
+  pageViewports,
+  viewportWidth,
+  viewportHeight,
+}: CalculatePdfFitScaleOptions): number | null {
+  const clamped = Math.max(1, Math.min(pagesCount, Math.floor(currentPage)));
+  const pageNumbers =
+    layout === "double" && pagesCount > 1
+      ? (() => {
+          const left = clamped % 2 === 0 ? clamped - 1 : clamped;
+          return left + 1 <= pagesCount ? [left, left + 1] : [left];
+        })()
+      : [clamped];
+  const viewports = pageNumbers.map((pageNumber) => pageViewports.get(pageNumber));
+  if (viewports.some((viewport) => !viewport)) return null;
+
+  const exact = viewports as Array<Pick<PdfPageViewport, "width" | "height">>;
+  const spreadWidth =
+    exact.reduce((sum, viewport) => sum + viewport.width, 0) +
+    PDF_SPREAD_GAP_PX * Math.max(0, exact.length - 1);
+  const spreadHeight = Math.max(...exact.map((viewport) => viewport.height));
+  if (spreadWidth <= 0 || spreadHeight <= 0) return null;
+
+  const availableWidth = Math.max(1, viewportWidth - PDF_VIEWPORT_PADDING_PX);
+  const availableHeight = Math.max(1, viewportHeight - PDF_VIEWPORT_PADDING_PX);
+  return {
+    width: availableWidth / spreadWidth,
+    height: availableHeight / spreadHeight,
+  }[mode];
 }
 
 export type PdfLayout = "single" | "double";
@@ -193,151 +521,358 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
   // Pages currently within the observer's margin (candidates to keep rendered).
   const visibleRef = useRef<Set<number>>(new Set());
   const observerRef = useRef<IntersectionObserver | null>(null);
-  // Page dimensions at scale 1 (from page 1), for sizing not-yet-rendered pages.
-  const baseDimsRef = useRef<{ w: number; h: number }>({ w: 612, h: 792 });
+  // Exact scale-1 viewports retain mixed media boxes, rotation and UserUnit.
+  const pageViewportsRef = useRef<Map<number, PdfPageViewport>>(new Map());
+  const geometryPromisesRef = useRef<Map<number, Promise<PdfPageViewport>>>(new Map());
+  const geometryScanRef = useRef<PdfPageGeometryScan | null>(null);
+  const documentAbortRef = useRef<AbortController | null>(null);
   // Debounce for crisp re-rasterization: zoom resizes instantly (cheap) and only
   // re-renders at full resolution once the scale settles, so pinch stays smooth.
   const rasterTimerRef = useRef<number | null>(null);
+  const placeholderResizeFrameRef = useRef<number | null>(null);
   const textContentRef = useRef<Map<number, PageTextContent>>(new Map());
 
-  // Minimal link service: open external links in the system browser, ignore
-  // internal destinations (no in-app page router).
-  const linkServiceRef = useRef<any>({
-    externalLinkEnabled: true,
-    externalLinkRel: "noopener noreferrer nofollow",
-    externalLinkTarget: 2, // BLANK
-    isPageVisible: () => true,
-    isPageHidden: () => false,
-    getDestinationHash: () => "#",
-    getAnchorUrl: (hash: string) => hash,
-    navigateTo: () => {},
-    addLinkAttributes: (link: HTMLAnchorElement) => {
-      try {
-        link.rel = "noopener noreferrer nofollow";
-        link.target = "_blank";
-      } catch {
-        /* ignore */
+  // pdf.js' real PDFLinkService is bound to our lightweight viewer adapter once
+  // the document opens. This keeps internal destinations, named actions, OCG
+  // actions and attachment lookup functional without pulling in PDFViewer's
+  // heavyweight rendering/scroll stack.
+  const pdfViewerRuntimeRef = useRef<PdfViewerRuntime | null>(null);
+  const linkServiceRef = useRef<PDFLinkService | null>(null);
+  const linkViewerAdapterRef = useRef<PdfLinkViewerAdapter | null>(null);
+  const downloadManagerRef = useRef<PdfDownloadManager | null>(null);
+  const optionalContentConfigPromiseRef =
+    useRef<Promise<PdfOptionalContentConfig> | null>(null);
+
+  const applyExactPageViewport = useCallback(
+    (pageNumber: number, viewport: PdfPageViewport) => {
+      const wrap = wrapsRef.current.get(pageNumber);
+      const scrollParent = containerRef.current?.parentElement;
+      const rootTop = scrollParent?.getBoundingClientRect().top ?? 0;
+      const anchor =
+        scrollParent &&
+        [
+          ...new Set([
+            currentPageRef.current,
+            ...visibleRef.current,
+          ]),
+        ]
+          .sort((a, b) => a - b)
+          .map((candidate) => wrapsRef.current.get(candidate))
+          .filter((element): element is HTMLElement => Boolean(element))
+          .find((element) => element.getBoundingClientRect().bottom > rootTop + 1);
+      const anchorTopBefore = anchor?.getBoundingClientRect().top;
+
+      pageViewportsRef.current.set(pageNumber, viewport);
+      if (wrap) {
+        wrap.dataset.pdfGeometry = "exact";
+        wrap.dataset.pdfRotation = String(viewport.rotation);
+        wrap.dataset.pdfUserUnit = String(viewport.userUnit);
+        if (!renderedRef.current.has(pageNumber)) {
+          applyPdfPlaceholderViewport(
+            wrap,
+            viewport,
+            scaleRef.current,
+            window.devicePixelRatio || 1,
+          );
+        }
+      }
+
+      // Replacing an approximate page above the viewport must not move the
+      // reader's current line. Preserve the first on-screen page as an anchor.
+      if (scrollParent && anchor && anchorTopBefore !== undefined) {
+        const anchorTopAfter = anchor.getBoundingClientRect().top;
+        const delta = anchorTopAfter - anchorTopBefore;
+        if (Number.isFinite(delta) && Math.abs(delta) >= 0.5) {
+          scrollParent.scrollTop += delta;
+        }
       }
     },
-  });
+    [],
+  );
+
+  const ensurePageGeometry = useCallback(
+    (pageNumber: number): Promise<PdfPageViewport> => {
+      const exact = pageViewportsRef.current.get(pageNumber);
+      if (exact) return Promise.resolve(exact);
+      const existing = geometryPromisesRef.current.get(pageNumber);
+      if (existing) return existing;
+
+      const doc = docRef.current;
+      const lifecycle = documentAbortRef.current;
+      const seq = loadSeqRef.current;
+      if (!doc || !lifecycle) {
+        return Promise.reject(new Error("PDF document geometry is unavailable"));
+      }
+
+      const promise = loadPdfPageViewport(
+        doc,
+        pageNumber,
+        lifecycle.signal,
+      )
+        .then((viewport) => {
+          if (
+            lifecycle.signal.aborted ||
+            seq !== loadSeqRef.current ||
+            docRef.current !== doc
+          ) {
+            throw new DOMException("PDF geometry superseded", "AbortError");
+          }
+          applyExactPageViewport(pageNumber, viewport);
+          return viewport;
+        })
+        .finally(() => {
+          if (geometryPromisesRef.current.get(pageNumber) === promise) {
+            geometryPromisesRef.current.delete(pageNumber);
+          }
+        });
+      geometryPromisesRef.current.set(pageNumber, promise);
+      return promise;
+    },
+    [applyExactPageViewport],
+  );
 
   // Drop a page's rasterization (canvas/text/annotation layers) and cancel its
   // in-flight render, keeping the placeholder wrapper (sized) so layout holds.
   const unrenderPage = useCallback((pageNo: number) => {
-    if (pageNo === 1) return;
-    const st = renderedRef.current.get(pageNo);
-    if (!st) return;
-    for (const t of st.tasks) {
-      try {
-        t.cancel();
-      } catch {
-        /* already settled */
-      }
-    }
+    const state = renderedRef.current.get(pageNo);
+    if (!state) return;
+    cancelRenderState(state);
     renderedRef.current.delete(pageNo);
     textContentRef.current.delete(pageNo);
     const wrap = wrapsRef.current.get(pageNo);
     if (wrap) {
-      for (const n of wrap.querySelectorAll(".pdf-canvas, .textLayer, .annotationLayer")) n.remove();
-      const s = scaleRef.current;
-      wrap.style.width = `${Math.floor(baseDimsRef.current.w * s)}px`;
-      wrap.style.height = `${Math.floor(baseDimsRef.current.h * s)}px`;
+      const baseViewport = pageViewportsRef.current.get(pageNo);
+      if (!baseViewport) return;
+      applyPdfPlaceholderViewport(
+        wrap,
+        baseViewport,
+        scaleRef.current,
+        window.devicePixelRatio || 1,
+      );
     }
   }, []);
 
-  // Evict rasterized pages farthest from the viewport until under the cap.
-  const enforceCap = useCallback(() => {
-    if (renderedRef.current.size <= MAX_RENDERED_PAGES) return;
-    const visible = visibleRef.current;
-    const rendered = [...renderedRef.current.keys()];
-    const center =
-      visible.size > 0 ? [...visible].reduce((a, b) => a + b, 0) / visible.size : rendered[0];
-    // Evict the off-screen rendered pages farthest from the viewport first.
-    const evictable = rendered
-      .filter((p) => !visible.has(p))
-      .sort((a, b) => Math.abs(b - center) - Math.abs(a - center));
-    for (const p of evictable) {
-      if (renderedRef.current.size <= MAX_RENDERED_PAGES) break;
-      unrenderPage(p);
+  // Reserve a live raster slot before any async page work starts. This is the
+  // common admission path for intersection, toolbar, SyncTeX and zoom renders,
+  // so even concurrent/off-screen requests cannot exceed the memory budget.
+  const reserveRenderSlot = useCallback((requestedPage: number) => {
+    if (renderedRef.current.has(requestedPage)) return;
+    while (renderedRef.current.size >= MAX_RENDERED_PAGES) {
+      const focus = currentPageRef.current || requestedPage;
+      const desiredVisible = new Set(
+        prioritizePdfPages(visibleRef.current, focus, MAX_RENDERED_PAGES),
+      );
+      const victim = [...renderedRef.current.keys()]
+        .filter((pageNumber) => pageNumber !== requestedPage)
+        .sort((a, b) => {
+          const aDesired = desiredVisible.has(a) ? 1 : 0;
+          const bDesired = desiredVisible.has(b) ? 1 : 0;
+          return (
+            aDesired - bDesired ||
+            Math.abs(b - focus) - Math.abs(a - focus) ||
+            b - a
+          );
+        })[0];
+      if (victim === undefined) return;
+      unrenderPage(victim);
     }
   }, [unrenderPage]);
 
   // Rasterize one page at the given scale (skips if already current). Idempotent
   // and cancellation-safe.
   const renderPage = useCallback(async (pageNo: number, renderScale: number) => {
-    const doc = docRef.current;
-    const wrap = wrapsRef.current.get(pageNo);
-    if (!doc || !wrap) return;
-    const existing = renderedRef.current.get(pageNo);
-    if (existing && existing.renderScale === renderScale) return; // already correct
-    if (existing) {
-      for (const t of existing.tasks) {
-        try {
-          t.cancel();
-        } catch {
-          /* ignore */
+    const requestedDoc = docRef.current;
+    const requestedSeq = loadSeqRef.current;
+    if (!requestedDoc) return;
+    try {
+      // A page is never rasterized against a borrowed/approximate wrapper.
+      // Exact rotation, UserUnit and MediaBox geometry must win first.
+      await ensurePageGeometry(pageNo);
+    } catch (error) {
+      if (
+        requestedSeq === loadSeqRef.current &&
+        docRef.current === requestedDoc
+      ) {
+        const failedWrap = wrapsRef.current.get(pageNo);
+        if (failedWrap) {
+          failedWrap.dataset.pdfGeometry = "error";
+          failedWrap.dataset.pdfGeometryError = String(error);
         }
       }
-      for (const n of wrap.querySelectorAll(".pdf-canvas, .textLayer, .annotationLayer")) n.remove();
+      return;
     }
 
+    const doc = docRef.current;
+    const wrap = wrapsRef.current.get(pageNo);
+    const viewerRuntime = pdfViewerRuntimeRef.current;
+    const linkService = linkServiceRef.current;
+    if (
+      !doc ||
+      doc !== requestedDoc ||
+      requestedSeq !== loadSeqRef.current ||
+      !wrap ||
+      !viewerRuntime ||
+      !linkService
+    ) {
+      return;
+    }
+    const existing = renderedRef.current.get(pageNo);
+    if (existing && existing.renderScale === renderScale) return; // already correct
+    if (existing) cancelRenderState(existing);
+    else reserveRenderSlot(pageNo);
+
     const seq = loadSeqRef.current;
-    const tasks: pdfjsLib.RenderTask[] = [];
-    renderedRef.current.set(pageNo, { renderScale, tasks });
+    const state: RenderState = {
+      renderScale,
+      tasks: [],
+      textLayer: null,
+      renderedTextLayer: null,
+      annotationLayer: null,
+      accessibilityManager: null,
+      structTreeLayer: null,
+      page: null,
+      removeTextSelection: null,
+      nodes: [],
+    };
+    renderedRef.current.set(pageNo, state);
+    const isCurrent = () =>
+      seq === loadSeqRef.current &&
+      docRef.current === doc &&
+      wrapsRef.current.get(pageNo) === wrap &&
+      renderedRef.current.get(pageNo) === state;
 
     try {
       const page = await doc.getPage(pageNo);
-      if (seq !== loadSeqRef.current || renderedRef.current.get(pageNo)?.tasks !== tasks) return;
+      state.page = page;
+      if (!isCurrent()) {
+        page.cleanup();
+        state.page = null;
+        return;
+      }
 
       const viewport = page.getViewport({ scale: renderScale });
-      wrap.style.width = `${Math.floor(viewport.width)}px`;
-      wrap.style.height = `${Math.floor(viewport.height)}px`;
-      wrap.style.setProperty("--scale-factor", String(renderScale));
-
       const dpr = window.devicePixelRatio || 1;
+      const geometry = applyPdfLayerViewport(wrap, viewport, dpr);
+      const baseViewport = page.getViewport({ scale: 1 });
+      applyExactPageViewport(pageNo, baseViewport);
+      wrap.dataset.pdfRasterScale = String(renderScale);
+      wrap.dataset.pdfCanvasScaling = geometry.restrictedScaling
+        ? "restricted"
+        : "native";
+      wrap.dataset.pdfRotation = String(viewport.rotation);
+      wrap.dataset.pdfUserUnit = String(viewport.userUnit);
+
       const canvas = document.createElement("canvas");
       canvas.className = "pdf-canvas";
+      canvas.setAttribute("role", "presentation");
       const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      canvas.width = Math.floor(viewport.width * dpr);
-      canvas.height = Math.floor(viewport.height * dpr);
-      canvas.style.width = `${Math.floor(viewport.width)}px`;
-      canvas.style.height = `${Math.floor(viewport.height)}px`;
-      const transform = dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : undefined;
+      if (!ctx) throw new Error("2D canvas context is unavailable");
+      canvas.width = geometry.canvasWidth;
+      canvas.height = geometry.canvasHeight;
+      canvas.style.width = geometry.cssWidth;
+      canvas.style.height = geometry.cssHeight;
+      // All interactive layers share the page wrapper's exact (0, 0) origin.
+      // Leaving a canvas as an inline replaced element lets line-box/baseline
+      // metrics shift its painted pixels by a fraction of a CSS pixel in
+      // WebKit, while the absolute text layer stays at the wrapper origin.
+      canvas.style.position = "absolute";
+      canvas.style.inset = "0";
+      canvas.style.display = "block";
+      const transform =
+        geometry.outputScaleX !== 1 || geometry.outputScaleY !== 1
+          ? [geometry.outputScaleX, 0, 0, geometry.outputScaleY, 0, 0]
+          : undefined;
       wrap.appendChild(canvas);
+      state.nodes.push(canvas);
 
       const textDiv = document.createElement("div");
       textDiv.className = "textLayer";
-      textDiv.style.position = "absolute";
-      textDiv.style.inset = "0";
-      textDiv.style.overflow = "hidden";
+      textDiv.tabIndex = -1;
       wrap.appendChild(textDiv);
+      state.nodes.push(textDiv);
 
       const annotDiv = document.createElement("div");
       annotDiv.className = "annotationLayer";
       annotDiv.style.position = "absolute";
       annotDiv.style.inset = "0";
       wrap.appendChild(annotDiv);
+      state.nodes.push(annotDiv);
 
-      const renderTask = page.render({ canvas, canvasContext: ctx, viewport, transform });
-      tasks.push(renderTask);
+      const optionalContentConfigPromise =
+        optionalContentConfigPromiseRef.current ?? undefined;
+      const renderTask = page.render({
+        canvas,
+        canvasContext: ctx,
+        viewport,
+        transform,
+        optionalContentConfigPromise,
+      });
+      state.tasks.push(renderTask);
 
-      // Selectable text layer (best-effort; never blocks the page).
+      const accessibilityManager = new PdfTextAccessibilityManager();
+      state.accessibilityManager = accessibilityManager;
+      const structTreeLayer = new viewerRuntime.StructTreeLayerBuilder(
+        page,
+        viewport.rawDims,
+      );
+      state.structTreeLayer = structTreeLayer;
+
+      // Selectable text layer (best-effort; never blocks the page). pdf.js does
+      // not export TextAccessibilityManager/TextHighlighter from its component
+      // runtime. We wire TextLayer's public mapping into the compatible
+      // accessibility contract; a highlighter is intentionally absent because
+      // this lightweight preview has no PDFFindController.
       try {
         const textContent =
           (pageNo === 1 ? probedPageText.get(doc) : undefined) ??
           textContentRef.current.get(pageNo) ??
-          (await withTimeout(page.getTextContent(), 15_000, "page text"));
+          (await withTimeout(
+            page.getTextContent(TEXT_CONTENT_PARAMS),
+            15_000,
+            "page text",
+          ));
+        if (!isCurrent()) return;
         textContentRef.current.set(pageNo, textContent);
         const textLayer = new pdfjsLib.TextLayer({
           textContentSource: textContent,
           container: textDiv,
           viewport,
-        } as any);
+        });
+        state.textLayer = textLayer;
         // Time-box: a worker that wedges after load can hang streamTextContent
         // forever, which would stall this async render loop.
-        await withTimeout(textLayer.render(), 15_000, "text layer");
+        try {
+          await withTimeout(textLayer.render(), 15_000, "text layer");
+        } catch (error) {
+          textLayer.cancel();
+          throw error;
+        }
+        if (!isCurrent()) {
+          textLayer.cancel();
+          return;
+        }
+        accessibilityManager.setTextMapping(textLayer.textDivs);
+        accessibilityManager.enable();
+        state.removeTextSelection = registerPdfTextSelection(
+          textDiv,
+          pageNo,
+          pdfjsLib.normalizeUnicode,
+        );
+        state.renderedTextLayer = {
+          div: textDiv,
+          numTextDivs: textLayer.textDivs.length,
+        };
+        dispatchPdfTextLayerRendered(
+          linkService.eventBus,
+          pageNo,
+          state.renderedTextLayer,
+        );
       } catch {
+        state.textLayer = null;
+        state.renderedTextLayer = null;
+        accessibilityManager.disable();
+        if (!isCurrent()) return;
+        textDiv.replaceChildren();
         /* text selection is a non-fatal enhancement */
       }
 
@@ -347,29 +882,57 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         if (String(err).includes("RenderingCancelled")) return;
         throw err;
       }
-      if (seq !== loadSeqRef.current) return;
+      if (!isCurrent()) return;
+
+      // Preserve tagged-PDF reading order and structure semantics. The current
+      // pdf.js type declaration says `void`, while the 6.1.200 implementation
+      // returns the generated structure-tree DOM, hence the narrow `unknown`
+      // bridge here.
+      try {
+        const structureDom = (await structTreeLayer.render()) as unknown;
+        if (!isCurrent()) return;
+        structTreeLayer.updateTextLayer();
+        if (structureDom instanceof HTMLElement && structureDom.parentNode !== canvas) {
+          canvas.append(structureDom);
+        }
+        structTreeLayer.show();
+      } catch {
+        /* untagged PDFs legitimately have no structure tree */
+      }
 
       // Links/annotations (best-effort).
       try {
-        const annotations = await page.getAnnotations({ intent: "display" });
-        if (seq !== loadSeqRef.current) return;
+        const [annotations, optionalContentConfig] = await Promise.all([
+          page.getAnnotations({ intent: "display" }),
+          optionalContentConfigPromise,
+        ]);
+        if (!isCurrent()) return;
         const annotationLayer = new pdfjsLib.AnnotationLayer({
           div: annotDiv,
-          linkService: linkServiceRef.current,
+          accessibilityManager,
+          annotationCanvasMap: null,
+          annotationEditorUIManager: null,
+          commentManager: null,
+          linkService,
           annotationStorage: doc.annotationStorage,
           page,
-          viewport,
-        } as any);
+          structTreeLayer,
+          viewport: viewport.clone({ dontFlip: true }),
+        });
+        state.annotationLayer = annotationLayer;
         await annotationLayer.render({
-          viewport,
+          viewport: viewport.clone({ dontFlip: true }),
           div: annotDiv,
           annotations,
           page,
-          linkService: linkServiceRef.current,
+          linkService,
           annotationStorage: doc.annotationStorage,
+          downloadManager: downloadManagerRef.current ?? undefined,
           renderForms: false,
           enableScripting: false,
-        } as any);
+          optionalContentConfig,
+        });
+        if (!isCurrent()) return;
         annotDiv.querySelectorAll<HTMLAnchorElement>("a[href]").forEach((a) => {
           const href = a.getAttribute("href") ?? "";
           if (/^(https?:|mailto:|tel:)/i.test(href)) {
@@ -387,13 +950,16 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     } catch (err) {
       if (!String(err).includes("RenderingCancelled")) {
         const container = containerRef.current;
-        if (container && renderedRef.current.size === 0) {
+        if (container && isCurrent() && renderedRef.current.size === 1) {
           container.textContent = `Failed to render PDF: ${String(err)}`;
         }
       }
-      renderedRef.current.delete(pageNo);
+      if (renderedRef.current.get(pageNo) === state) {
+        cancelRenderState(state);
+        renderedRef.current.delete(pageNo);
+      }
     }
-  }, []);
+  }, [applyExactPageViewport, ensurePageGeometry, reserveRenderSlot]);
 
   // Forward SyncTeX may target an off-screen page; render it on demand.
   const ensurePageRendered = useCallback(
@@ -402,6 +968,27 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     },
     [renderPage]
   );
+
+  const reconcileVisiblePages = useCallback(() => {
+    const desired = new Set(
+      prioritizePdfPages(
+        visibleRef.current,
+        currentPageRef.current,
+        MAX_RENDERED_PAGES,
+      ),
+    );
+    // When more than 14 pages fit inside the observer margin, keep the pages
+    // nearest the current viewport and leave the rest as exact placeholders.
+    // Scroll reconciliation rotates that bounded window as the reader moves.
+    for (const pageNumber of [...renderedRef.current.keys()]) {
+      if (visibleRef.current.has(pageNumber) && !desired.has(pageNumber)) {
+        unrenderPage(pageNumber);
+      }
+    }
+    for (const pageNumber of desired) {
+      void renderPage(pageNumber, scaleRef.current);
+    }
+  }, [renderPage, unrenderPage]);
 
   // The "current" page is the one straddling the top of the viewport. We only
   // scan pages the observer already flagged visible (a handful), so this is cheap
@@ -428,7 +1015,62 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       currentPageRef.current = current;
       onPageChangeRef.current?.(current, doc.numPages);
     }
-  }, []);
+    reconcileVisiblePages();
+  }, [reconcileVisiblePages]);
+
+  const scrollPageIntoView = useCallback(
+    (request: PdfLinkScrollRequest) => {
+      const doc = docRef.current;
+      if (!doc) return;
+      const pageNumber = Math.max(
+        1,
+        Math.min(doc.numPages, Math.floor(request.pageNumber)),
+      );
+      const wrap = wrapsRef.current.get(pageNumber);
+      if (!wrap) return;
+
+      currentPageRef.current = pageNumber;
+      onPageChangeRef.current?.(pageNumber, doc.numPages);
+      void renderPage(pageNumber, scaleRef.current);
+      if (typeof wrap.scrollIntoView === "function") {
+        wrap.scrollIntoView({ block: "start" });
+      }
+
+      // Honor the vertical component of common PDF destinations after exact
+      // geometry is available. Fit/XYZ zoom is intentionally ignored because
+      // zoom remains under the preview toolbar's control.
+      const destination = request.destArray;
+      const destinationType = destination?.[1] as { name?: string } | undefined;
+      const pdfY =
+        destinationType?.name === "XYZ"
+          ? destination?.[3]
+          : destinationType?.name === "FitH" ||
+              destinationType?.name === "FitBH"
+            ? destination?.[2]
+            : null;
+      if (typeof pdfY !== "number") return;
+
+      void ensurePageGeometry(pageNumber).then((baseViewport) => {
+        if (
+          docRef.current !== doc ||
+          wrapsRef.current.get(pageNumber) !== wrap
+        ) {
+          return;
+        }
+        const scrollParent = containerRef.current?.parentElement;
+        if (!scrollParent) return;
+        const viewport = baseViewport.clone({ scale: scaleRef.current });
+        const convert = viewport.convertToViewportPoint?.bind(viewport);
+        if (!convert) return;
+        const [, viewportY] = convert(0, pdfY);
+        const target = wrap.offsetTop + viewportY;
+        scrollParent.scrollTop = request.allowNegativeOffset
+          ? target
+          : Math.max(0, target);
+      });
+    },
+    [ensurePageGeometry, renderPage],
+  );
 
   // Scroll the viewer to a page (prev/next/jump from the toolbar), rendering it
   // on demand since virtualization may not have rasterized it yet.
@@ -439,24 +1081,37 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         const doc = docRef.current;
         if (!doc) return;
         const clamped = Math.max(1, Math.min(doc.numPages, Math.floor(n)));
-        const wrap = wrapsRef.current.get(clamped);
-        if (!wrap) return;
-        void renderPage(clamped, scaleRef.current);
-        wrap.scrollIntoView({ block: "start" });
+        scrollPageIntoView({ pageNumber: clamped });
       },
       getFitScale: (mode) => {
         const viewport = containerRef.current?.parentElement;
-        if (!viewport || !docRef.current) return null;
-        const { w, h } = baseDimsRef.current;
-        if (w <= 0 || h <= 0) return null;
-        const availableWidth = Math.max(1, viewport.clientWidth - 32);
-        const availableHeight = Math.max(1, viewport.clientHeight - 32);
-        if (mode === "height") return availableHeight / h;
-        const columns = layout === "double" && docRef.current.numPages > 1 ? 2 : 1;
-        return availableWidth / (w * columns + (columns - 1) * 16);
+        const doc = docRef.current;
+        if (!viewport || !doc) return null;
+        const fit = calculatePdfFitScale({
+          mode,
+          layout,
+          currentPage: currentPageRef.current,
+          pagesCount: doc.numPages,
+          pageViewports: pageViewportsRef.current,
+          viewportWidth: viewport.clientWidth,
+          viewportHeight: viewport.clientHeight,
+        });
+        if (fit !== null) return fit;
+
+        // Geometry for a newly reached spread may still be resolving. Request
+        // it now; the toolbar can retry on its next action without ever using
+        // page-one dimensions for another page.
+        const current = currentPageRef.current;
+        const left =
+          layout === "double" && current % 2 === 0 ? current - 1 : current;
+        void ensurePageGeometry(left).catch(() => {});
+        if (layout === "double" && left + 1 <= doc.numPages) {
+          void ensurePageGeometry(left + 1).catch(() => {});
+        }
+        return null;
       },
     }),
-    [layout, renderPage]
+    [ensurePageGeometry, layout, scrollPageIntoView]
   );
 
   // Build the placeholder layout for every page and start observing them.
@@ -465,21 +1120,30 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       const container = containerRef.current;
       if (!container) return;
       const seq = loadSeqRef.current;
+      if (placeholderResizeFrameRef.current) {
+        cancelAnimationFrame(placeholderResizeFrameRef.current);
+        placeholderResizeFrameRef.current = null;
+      }
 
+      for (const state of renderedRef.current.values()) cancelRenderState(state);
+      geometryScanRef.current?.abort("layout rebuilt");
+      geometryScanRef.current = null;
       container.innerHTML = "";
       wrapsRef.current.clear();
       renderedRef.current.clear();
       visibleRef.current.clear();
+      pageViewportsRef.current.clear();
+      geometryPromisesRef.current.clear();
 
-      // Base dimensions from page 1 (most PDFs are uniform; per-page rendering
-      // corrects the exact size when a page is rasterized).
-      try {
-        const first = await doc.getPage(1);
-        if (seq !== loadSeqRef.current) return;
-        const vp = first.getViewport({ scale: 1 });
-        baseDimsRef.current = { w: vp.width, h: vp.height };
-      } catch {
-        /* keep the US-Letter default */
+      // Page 1 is the only geometry on the startup critical path. Every later
+      // page gets a clearly marked neutral skeleton, then its own exact
+      // MediaBox/rotation/UserUnit replaces it progressively.
+      const firstViewport = await ensurePageGeometry(1);
+      if (
+        seq !== loadSeqRef.current ||
+        docRef.current !== doc
+      ) {
+        return;
       }
 
       const s = scaleRef.current;
@@ -490,13 +1154,12 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
             if (!p) continue;
             if (entry.isIntersecting) {
               visibleRef.current.add(p);
-              void renderPage(p, scaleRef.current);
             } else {
               visibleRef.current.delete(p);
               unrenderPage(p);
             }
           }
-          enforceCap();
+          reconcileVisiblePages();
         },
         { root: container.parentElement ?? null, rootMargin: `${RENDER_MARGIN_PX}px 0px` }
       );
@@ -509,11 +1172,24 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         wrap.className =
           "relative shadow-md ring-1 ring-black/5 rounded-sm overflow-hidden bg-white";
         wrap.dataset.page = String(p);
-        wrap.style.width = `${Math.floor(baseDimsRef.current.w * s)}px`;
-        wrap.style.height = `${Math.floor(baseDimsRef.current.h * s)}px`;
-        wrap.style.setProperty("--scale-factor", String(s));
+        const viewport = p === 1 ? firstViewport : PENDING_PAGE_VIEWPORT;
+        wrap.dataset.pdfGeometry = p === 1 ? "exact" : "pending";
+        wrap.dataset.pdfRotation = String(viewport.rotation);
+        wrap.dataset.pdfUserUnit = String(viewport.userUnit);
+        applyPdfPlaceholderViewport(
+          wrap,
+          viewport,
+          s,
+          window.devicePixelRatio || 1,
+        );
         wrap.addEventListener("click", (ev: MouseEvent) => {
           if ((ev.target as HTMLElement)?.closest?.("a")) return;
+          const selection = document.getSelection();
+          if (selection && !selection.isCollapsed) {
+            for (let index = 0; index < selection.rangeCount; index++) {
+              if (selection.getRangeAt(index).intersectsNode(wrap)) return;
+            }
+          }
           const clickedSpan = closestMatchingElement<HTMLElement>(ev.target, ".textLayer span");
           const spanRect = clickedSpan?.getBoundingClientRect();
           const clientX =
@@ -531,12 +1207,46 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         observer.observe(wrap);
       }
 
+      const lifecycle = documentAbortRef.current;
+      if (lifecycle) {
+        const scan = scanPdfPageViewports(doc, {
+          signal: lifecycle.signal,
+          startPage: 2,
+          onViewport: (pageNumber, viewport) => {
+            if (
+              seq !== loadSeqRef.current ||
+              docRef.current !== doc
+            ) {
+              return;
+            }
+            applyExactPageViewport(pageNumber, viewport);
+          },
+          onError: (error, pageNumber) => {
+            if (
+              seq !== loadSeqRef.current ||
+              docRef.current !== doc
+            ) {
+              return;
+            }
+            container.dataset.pdfGeometryState = "partial";
+            container.dataset.pdfGeometryError =
+              `Page ${pageNumber}: ${String(error)}`;
+          },
+        });
+        geometryScanRef.current = scan;
+        void scan.done.finally(() => {
+          if (geometryScanRef.current === scan) {
+            geometryScanRef.current = null;
+          }
+        });
+      }
+
       // Render the first page eagerly: occluded windows (CI, restored
       // minimized apps) suspend IntersectionObserver delivery, and the
       // initial view must not depend on it. The observer corrects the
       // visible set as soon as it fires.
       visibleRef.current.add(1);
-      void renderPage(1, s);
+      reconcileVisiblePages();
 
       registerPdfView({
         pages: [...wrapsRef.current.entries()].map(([pageNo, el]) => ({ pageNo, el })),
@@ -547,7 +1257,13 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       currentPageRef.current = 1;
       onPageChangeRef.current?.(1, doc.numPages);
     },
-    [renderPage, unrenderPage, enforceCap, ensurePageRendered]
+    [
+      applyExactPageViewport,
+      ensurePageGeometry,
+      unrenderPage,
+      reconcileVisiblePages,
+      ensurePageRendered,
+    ]
   );
 
   // Load (parse) the document when the PDF bytes change - NOT on zoom.
@@ -562,28 +1278,64 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     let loadingTask: pdfjsLib.PDFDocumentLoadingTask | null = null;
     let worker: pdfjsLib.PDFWorker | null = null;
     let cancelled = false;
+    const loadAbort = new AbortController();
+    documentAbortRef.current = loadAbort;
     const destroyWorker = () => {
-      try {
-        worker?.destroy();
-      } catch {
-      }
+      const currentWorker = worker;
       worker = null;
+      if (currentWorker) destroyPdfWorker(currentWorker);
     };
     const destroyLoadingTask = () => {
-      void loadingTask?.destroy().catch(() => {});
+      const currentTask = loadingTask;
+      loadingTask = null;
+      void currentTask?.destroy().catch(() => {});
       destroyWorker();
     };
     window.addEventListener("beforeunload", destroyLoadingTask);
 
     (async () => {
+      const viewerRuntime = await loadPdfViewerRuntime();
+      if (cancelled || loadAbort.signal.aborted) return;
+      pdfViewerRuntimeRef.current = viewerRuntime;
+      linkServiceRef.current = instantiatePdfLinkService(viewerRuntime);
+      downloadManagerRef.current = new viewerRuntime.DownloadManager();
       // Worker spawns can wedge silently in occluded WebViews (CI, minimized
       // windows), hanging loadingTask.promise forever with no error. Watchdog
       // the load and retry once on a fresh task before showing an error.
       const open = async () => {
-        destroyWorker();
-        worker = await createPdfWorker();
-        loadingTask = pdfjsLib.getDocument({ data: data.slice(), worker });
-        return withTimeout(loadingTask.promise, PDF_WORKER_LOAD_TIMEOUT_MS, "pdf load");
+        destroyLoadingTask();
+        const nextWorker = await createPdfWorker(loadAbort.signal);
+        if (cancelled || loadAbort.signal.aborted) {
+          destroyPdfWorker(nextWorker);
+          throw new DOMException("PDF load cancelled", "AbortError");
+        }
+        const nextTask = pdfjsLib.getDocument({ data: data.slice(), worker: nextWorker });
+        if (cancelled || loadAbort.signal.aborted) {
+          void nextTask.destroy().catch(() => {});
+          destroyPdfWorker(nextWorker);
+          throw new DOMException("PDF load cancelled", "AbortError");
+        }
+        // Publish the pair only after both objects exist and cancellation has
+        // been checked. Cleanup therefore sees either the complete session or
+        // neither half of it.
+        worker = nextWorker;
+        loadingTask = nextTask;
+        const doc = await withTimeout(
+          nextTask.promise,
+          PDF_WORKER_LOAD_TIMEOUT_MS,
+          "pdf load",
+        );
+        if (
+          cancelled ||
+          loadAbort.signal.aborted ||
+          worker !== nextWorker ||
+          loadingTask !== nextTask
+        ) {
+          void nextTask.destroy().catch(() => {});
+          destroyPdfWorker(nextWorker);
+          throw new DOMException("PDF load cancelled", "AbortError");
+        }
+        return doc;
       };
       // Load AND confirm the text pipe is alive: a wedged worker can load the
       // doc and render the canvas while returning empty text (blank text layer,
@@ -614,15 +1366,48 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
             container.dataset.pdfError = String(e);
             if (cancelled) return;
             textContentRef.current.clear();
-            (loadingTask as pdfjsLib.PDFDocumentLoadingTask | null)?.destroy().catch(() => {});
-            destroyWorker();
+            destroyLoadingTask();
           }
         }
         if (cancelled) return;
         if (!doc) throw lastErr;
         docRef.current = doc;
+        const optionalContentConfigPromise = doc.getOptionalContentConfig({
+          intent: "display",
+        });
+        optionalContentConfigPromiseRef.current =
+          optionalContentConfigPromise;
+        const linkService = linkServiceRef.current;
+        if (!linkService) {
+          throw new Error("PDF link service was not initialized");
+        }
+        const viewerAdapter = createPdfLinkViewerAdapter({
+          pagesCount: doc.numPages,
+          getCurrentPage: () => currentPageRef.current,
+          setCurrentPage: (pageNumber) =>
+            scrollPageIntoView({ pageNumber }),
+          scrollPageIntoView,
+          optionalContentConfigPromise,
+          eventBus: linkService.eventBus,
+          getRenderedTextLayer: (pageNumber) =>
+            renderedRef.current.get(pageNumber)?.renderedTextLayer ?? null,
+          onOptionalContentConfigChange: (promise) => {
+            optionalContentConfigPromiseRef.current = promise;
+            queueMicrotask(() => {
+              if (cancelled || docRef.current !== doc) return;
+              for (const pageNumber of [...renderedRef.current.keys()]) {
+                unrenderPage(pageNumber);
+              }
+              reconcileVisiblePages();
+            });
+          },
+        });
+        linkViewerAdapterRef.current = viewerAdapter;
+        linkService.setViewer(viewerAdapter);
+        linkService.setDocument(doc);
         container.dataset.pdfState = "building-layout";
         await buildLayout(doc);
+        if (cancelled || docRef.current !== doc) return;
         container.dataset.pdfState = "ready";
       } catch (e) {
         if (!cancelled) {
@@ -636,29 +1421,50 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     return () => {
       window.removeEventListener("beforeunload", destroyLoadingTask);
       cancelled = true;
+      loadAbort.abort();
       loadSeqRef.current++;
+      geometryScanRef.current?.abort("document closed");
+      geometryScanRef.current = null;
       observerRef.current?.disconnect();
       observerRef.current = null;
-      for (const st of renderedRef.current.values()) {
-        for (const t of st.tasks) {
-          try {
-            t.cancel();
-          } catch {
-            /* ignore */
-          }
-        }
-      }
+      for (const state of renderedRef.current.values()) cancelRenderState(state);
       renderedRef.current.clear();
       wrapsRef.current.clear();
       visibleRef.current.clear();
+      pageViewportsRef.current.clear();
+      geometryPromisesRef.current.clear();
       textContentRef.current.clear();
+      if (placeholderResizeFrameRef.current) {
+        cancelAnimationFrame(placeholderResizeFrameRef.current);
+        placeholderResizeFrameRef.current = null;
+      }
       clearPdfView();
       docRef.current = null;
+      pdfViewerRuntimeRef.current = null;
+      try {
+        linkServiceRef.current?.setDocument(null);
+      } catch {
+        /* link service was already detached */
+      }
+      linkServiceRef.current = null;
+      linkViewerAdapterRef.current = null;
+      downloadManagerRef.current = null;
+      optionalContentConfigPromiseRef.current = null;
+      if (documentAbortRef.current === loadAbort) {
+        documentAbortRef.current = null;
+      }
       if (container) container.innerHTML = "";
       destroyLoadingTask();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, buildLayout, expectText]);
+  }, [
+    data,
+    buildLayout,
+    expectText,
+    reconcileVisiblePages,
+    scrollPageIntoView,
+    unrenderPage,
+  ]);
 
   // Re-render on zoom without reloading. Rasterizing pages is expensive, so a
   // pinch that fires dozens of scale changes a second must NOT rasterize on each
@@ -670,21 +1476,59 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     const doc = docRef.current;
     if (!doc) return;
     scaleRef.current = scale;
-    const w = Math.floor(baseDimsRef.current.w * scale);
-    const h = Math.floor(baseDimsRef.current.h * scale);
 
-    // Instant + cheap: keep scroll geometry correct and scale the existing
-    // bitmaps so the zoom tracks the gesture (they sharpen a moment later).
-    for (const [, wrap] of wrapsRef.current) {
-      wrap.style.width = `${w}px`;
-      wrap.style.height = `${h}px`;
-      wrap.style.setProperty("--scale-factor", String(scale));
+    // Instant + bounded: only the capped set of live rasterizations needs exact
+    // pdf.js rounding and bitmap stretching in the gesture frame.
+    for (const [pageNo] of renderedRef.current) {
+      const wrap = wrapsRef.current.get(pageNo);
+      if (!wrap) continue;
+      const baseViewport = pageViewportsRef.current.get(pageNo);
+      if (!baseViewport) continue;
+      const viewport = baseViewport.clone({ scale });
+      const geometry = applyPdfLayerViewport(
+        wrap,
+        viewport,
+        window.devicePixelRatio || 1,
+      );
       const canvas = wrap.querySelector<HTMLElement>(".pdf-canvas");
       if (canvas) {
-        canvas.style.width = `${w}px`;
-        canvas.style.height = `${h}px`;
+        canvas.style.width = geometry.cssWidth;
+        canvas.style.height = geometry.cssHeight;
       }
     }
+
+    // Resize lightweight off-screen placeholders in small animation-frame
+    // batches. Unlike one synchronous O(page) loop, a 400-page document cannot
+    // monopolize the gesture frame; unlike CSS length multiplication, this also
+    // works on older WKWebView/WebKitGTK releases.
+    if (placeholderResizeFrameRef.current) {
+      cancelAnimationFrame(placeholderResizeFrameRef.current);
+    }
+    const placeholderIterator = wrapsRef.current.entries();
+    const resizePlaceholderBatch = () => {
+      if (scaleRef.current !== scale) return;
+      const finished = visitPdfPlaceholderBatch(
+        placeholderIterator,
+        PLACEHOLDER_ZOOM_BATCH_SIZE,
+        ([pageNo, wrap]) => {
+          if (renderedRef.current.has(pageNo)) return;
+          const baseViewport =
+            pageViewportsRef.current.get(pageNo) ?? PENDING_PAGE_VIEWPORT;
+          applyPdfPlaceholderViewport(
+            wrap,
+            baseViewport,
+            scale,
+            window.devicePixelRatio || 1,
+          );
+        },
+      );
+      if (finished) {
+        placeholderResizeFrameRef.current = null;
+      } else {
+        placeholderResizeFrameRef.current = requestAnimationFrame(resizePlaceholderBatch);
+      }
+    };
+    placeholderResizeFrameRef.current = requestAnimationFrame(resizePlaceholderBatch);
 
     // Trailing: re-rasterize the visible pages at full resolution once zooming
     // stops, drop off-screen pages left at the old scale, and refresh SyncTeX's
@@ -695,7 +1539,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       for (const p of [...renderedRef.current.keys()]) {
         if (!visibleRef.current.has(p)) unrenderPage(p);
       }
-      for (const p of visibleRef.current) void renderPage(p, target);
+      reconcileVisiblePages();
       registerPdfView({
         pages: [...wrapsRef.current.entries()].map(([pageNo, el]) => ({ pageNo, el })),
         scale: target,
@@ -705,8 +1549,18 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
 
     return () => {
       if (rasterTimerRef.current) window.clearTimeout(rasterTimerRef.current);
+      if (placeholderResizeFrameRef.current) {
+        cancelAnimationFrame(placeholderResizeFrameRef.current);
+        placeholderResizeFrameRef.current = null;
+      }
     };
-  }, [scale, renderPage, unrenderPage, ensurePageRendered]);
+  }, [
+    scale,
+    renderPage,
+    unrenderPage,
+    ensurePageRendered,
+    reconcileVisiblePages,
+  ]);
 
   // Track the page at the top of the viewport as the user scrolls (rAF-throttled).
   useEffect(() => {

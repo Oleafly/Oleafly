@@ -1,5 +1,5 @@
-import { save } from "@tauri-apps/plugin-dialog";
 import { exportPdf, revealInDir, writeBytesFile } from "@/lib/tauri";
+import { pickSavePath } from "@/lib/native-file-dialog";
 import { useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
 import { notifyError, toast } from "@/lib/toast";
@@ -9,7 +9,7 @@ export async function exportCurrentPdf(): Promise<void> {
   const { pdfBytes } = useCompileStore.getState();
   if (!projectId || !pdfBytes) return;
   const name = (projectName || "document").replace(/[^\w.-]+/g, "_");
-  const dest = await save({
+  const dest = await pickSavePath({
     defaultPath: `${name}.pdf`,
     filters: [{ name: "PDF", extensions: ["pdf"] }],
   });
@@ -32,7 +32,7 @@ export async function exportCurrentImagePng(scale = 3): Promise<void> {
   const { pdfBytes } = useCompileStore.getState();
   if (!pdfBytes) return;
   const name = (projectName || "figure").replace(/[^\w.-]+/g, "_");
-  const dest = await save({
+  const dest = await pickSavePath({
     defaultPath: `${name}.png`,
     filters: [{ name: "PNG image", extensions: ["png"] }],
   });

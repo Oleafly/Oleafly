@@ -1,10 +1,11 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 
 use crate::paths;
 use crate::proc::NoConsole;
-use crate::sandbox::{guard_export_dest, is_root_delete, resolve};
+use crate::sandbox::{atomic_write, guard_export_dest, is_root_delete, resolve, AtomicFile};
 
 /// Public path resolver (sandbox). Re-exported so call sites keep importing
 /// `crate::project::resolve_in_project`.
@@ -169,9 +170,29 @@ pub fn write_meta(project_id: &str, meta: &ProjectMeta) -> Result<(), String> {
     write_meta_at(&p, meta)
 }
 
+pub(crate) fn read_compile_meta(project_id: &str, main_doc: &str) -> Result<ProjectMeta, String> {
+    let meta = read_meta(project_id)?;
+    if meta.main_doc != main_doc {
+        return Err("main document changed; refresh the project and compile again".into());
+    }
+    Ok(meta)
+}
+
+pub(crate) fn ensure_compile_meta_unchanged(
+    project_id: &str,
+    main_doc: &str,
+    expected_engine: &str,
+) -> Result<(), String> {
+    let current = read_compile_meta(project_id, main_doc)?;
+    if current.engine != expected_engine {
+        return Err("main document changed; refresh the project and compile again".into());
+    }
+    Ok(())
+}
+
 fn write_meta_at(path: &Path, meta: &ProjectMeta) -> Result<(), String> {
     let s = serde_json::to_string_pretty(meta).map_err(|e| e.to_string())?;
-    std::fs::write(path, s).map_err(|e| format!("failed to write project.json: {e}"))
+    atomic_write(path, s.as_bytes()).map_err(|e| format!("failed to write project.json: {e}"))
 }
 
 /// Relative path from `root` to `path`, always with forward-slash separators.
@@ -250,7 +271,7 @@ pub fn write_file(project_id: String, path: String, content: String) -> Result<(
     if let Some(parent) = p.parent() {
         std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
-    std::fs::write(&p, content).map_err(|e| format!("failed to write {path}: {e}"))
+    atomic_write(&p, content.as_bytes()).map_err(|e| format!("failed to write {path}: {e}"))
 }
 
 #[tauri::command]
@@ -265,7 +286,7 @@ pub fn create_file(project_id: String, path: String, is_dir: bool) -> Result<(),
         if p.exists() {
             return Err(format!("{path} already exists"));
         }
-        std::fs::write(&p, "").map_err(|e| e.to_string())
+        atomic_write(&p, &[]).map_err(|e| e.to_string())
     }
 }
 
@@ -455,6 +476,40 @@ fn unique_destination(path: &Path, is_dir: bool) -> Result<PathBuf, String> {
     Err("could not find an available destination name".into())
 }
 
+fn unique_copy_destination(path: &Path, is_dir: bool) -> Result<PathBuf, String> {
+    if portable_collision(path)?.is_none() {
+        return Ok(path.to_path_buf());
+    }
+    let parent = path
+        .parent()
+        .ok_or_else(|| "copy destination has no parent folder".to_string())?;
+    let name = path
+        .file_name()
+        .and_then(|value| value.to_str())
+        .ok_or_else(|| "copy destination name is not valid Unicode".to_string())?;
+    let (base, extension) = if is_dir {
+        (name.to_string(), String::new())
+    } else {
+        let stem = path
+            .file_stem()
+            .and_then(|value| value.to_str())
+            .unwrap_or(name);
+        let extension = path
+            .extension()
+            .and_then(|value| value.to_str())
+            .map(|value| format!(".{value}"))
+            .unwrap_or_default();
+        (stem.to_string(), extension)
+    };
+    for suffix in 2..=10_000 {
+        let candidate = parent.join(format!("{base} {suffix}{extension}"));
+        if portable_collision(&candidate)?.is_none() {
+            return Ok(candidate);
+        }
+    }
+    Err("could not find an available copy name".into())
+}
+
 fn rename_case_only(src: &Path, dst: &Path) -> Result<(), String> {
     let parent = src
         .parent()
@@ -533,6 +588,18 @@ fn unique_temporary_path(parent: &Path, prefix: &str) -> Result<PathBuf, String>
         }
     }
     Err("could not create a temporary move path".into())
+}
+
+fn create_unique_temporary_directory(parent: &Path, prefix: &str) -> Result<PathBuf, String> {
+    for suffix in 0..10_000_u32 {
+        let candidate = parent.join(format!("{prefix}-{}-{suffix}", std::process::id()));
+        match std::fs::create_dir(&candidate) {
+            Ok(()) => return Ok(candidate),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => return Err(format!("could not create a staging directory: {error}")),
+        }
+    }
+    Err("could not reserve a staging directory".into())
 }
 
 fn remove_path(path: &Path) -> std::io::Result<()> {
@@ -621,34 +688,62 @@ fn rename_exclusive(src: &Path, dst: &Path) -> std::io::Result<()> {
 }
 
 /// Copy a file or folder within a project. Files are byte-level copied (handles
-/// binaries like PDFs); folders are copied recursively (symlinks skipped, depth
-/// capped). Async + spawn_blocking so a large recursive copy never blocks the UI.
+/// binaries like PDFs); folders are copied recursively (symlinks skipped, with
+/// an explicit depth error). Async + spawn_blocking keeps large copies off UI.
 #[tauri::command]
-pub async fn copy_file(project_id: String, from: String, to: String) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
+pub async fn copy_file(project_id: String, from: String, to: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
+        let root = paths::project_dir(&project_id)?;
         let src = resolve(&project_id, &from)?;
-        let dst = resolve(&project_id, &to)?;
-        if dst == src {
-            return Err("source and destination are the same".into());
-        }
-        // Never copy a folder into itself or a descendant (would recurse forever).
-        if dst.starts_with(&src) {
-            return Err("cannot copy a folder into itself".into());
-        }
-        if let Some(parent) = dst.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-        }
-        let meta = std::fs::symlink_metadata(&src).map_err(|e| e.to_string())?;
-        if meta.is_dir() {
-            copy_dir_recursive(&src, &dst, 0)
-        } else {
-            std::fs::copy(&src, &dst)
-                .map(|_| ())
-                .map_err(|e| format!("copy failed: {e}"))
-        }
+        let requested_dst = resolve(&project_id, &to)?;
+        copy_path_in_project(&root, &src, &requested_dst)
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+fn copy_path_in_project(root: &Path, src: &Path, requested_dst: &Path) -> Result<String, String> {
+    static FILE_COPY_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    let _guard = FILE_COPY_LOCK
+        .get_or_init(|| Mutex::new(()))
+        .lock()
+        .map_err(|_| "file copy lock is unavailable".to_string())?;
+    if requested_dst == src {
+        return Err("source and destination are the same".into());
+    }
+    let meta = std::fs::symlink_metadata(src).map_err(|e| e.to_string())?;
+    if meta.file_type().is_symlink() {
+        return Err("refusing to copy a symbolic link".into());
+    }
+    if meta.is_dir() && requested_dst.starts_with(src) {
+        return Err("cannot copy a folder into itself".into());
+    }
+    let dst = unique_copy_destination(requested_dst, meta.is_dir())?;
+    let parent = dst
+        .parent()
+        .ok_or_else(|| "copy destination has no parent folder".to_string())?;
+    if !parent.exists() {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    let staged = unique_temporary_path(parent, ".oleafly-copy")?;
+    let copied = if meta.is_dir() {
+        copy_dir_recursive(src, &staged, 0)
+    } else {
+        std::fs::copy(src, &staged)
+            .map(|_| ())
+            .map_err(|e| format!("copy failed: {e}"))
+    };
+    if let Err(error) = copied {
+        if staged.exists() {
+            let _ = remove_path(&staged);
+        }
+        return Err(error);
+    }
+    if let Err(error) = rename_exclusive(&staged, &dst) {
+        let _ = remove_path(&staged);
+        return Err(format!("could not publish the copy: {error}"));
+    }
+    Ok(rel_slash(root, &dst))
 }
 
 /// Write base64-encoded bytes to a project file (used to save a compiled PDF
@@ -668,7 +763,7 @@ pub async fn save_file_base64(
         let bytes = STANDARD
             .decode(data.trim())
             .map_err(|e| format!("invalid base64: {e}"))?;
-        std::fs::write(&p, bytes).map_err(|e| format!("failed to write {path}: {e}"))
+        atomic_write(&p, &bytes).map_err(|e| format!("failed to write {path}: {e}"))
     })
     .await
     .map_err(|e| e.to_string())?
@@ -719,8 +814,28 @@ pub fn read_app_log(max_bytes: usize) -> Result<String, String> {
     Ok(String::from_utf8_lossy(&data[start..]).to_string())
 }
 
+async fn set_main_doc_synchronized(
+    state: &crate::state::AppState,
+    project_id: String,
+    main_doc: String,
+) -> Result<ProjectMeta, String> {
+    // Metadata selection and main-output publication share one lock. A main
+    // switch therefore happens wholly before or wholly after a compile, never
+    // between its final identity check and revision allocation.
+    let _guard = state.compile_lock.lock().await;
+    set_main_doc_unlocked(project_id, main_doc)
+}
+
 #[tauri::command]
-pub fn set_main_doc(project_id: String, main_doc: String) -> Result<ProjectMeta, String> {
+pub async fn set_main_doc(
+    state: tauri::State<'_, crate::state::AppState>,
+    project_id: String,
+    main_doc: String,
+) -> Result<ProjectMeta, String> {
+    set_main_doc_synchronized(&state, project_id, main_doc).await
+}
+
+fn set_main_doc_unlocked(project_id: String, main_doc: String) -> Result<ProjectMeta, String> {
     let main_doc = main_doc.trim().to_string();
     if main_doc.is_empty() {
         return Err("main document path cannot be empty".into());
@@ -827,6 +942,24 @@ pub fn open_devtools(window: tauri::WebviewWindow) {
     let _ = window;
 }
 
+fn project_meta_for_enumeration(project_id: &str, directory: &Path) -> Result<ProjectMeta, String> {
+    paths::validate_project_id(project_id)?;
+    let metadata_path = directory.join("project.json");
+    let metadata = std::fs::symlink_metadata(&metadata_path)
+        .map_err(|error| format!("project metadata is unavailable: {error}"))?;
+    if !metadata.is_file() || metadata.file_type().is_symlink() {
+        return Err("project metadata is not a regular file".into());
+    }
+    read_meta(project_id)
+}
+
+fn log_project_enumeration_skip(project_id: &str, error: &str) {
+    let message = format!("Skipping project directory {project_id:?}: {error}");
+    #[cfg(debug_assertions)]
+    eprintln!("{message}");
+    let _ = append_app_log(message);
+}
+
 #[tauri::command]
 pub fn list_projects() -> Result<Vec<ProjectInfo>, String> {
     let root = paths::projects_root()?;
@@ -837,7 +970,22 @@ pub fn list_projects() -> Result<Vec<ProjectInfo>, String> {
             continue;
         }
         let id = entry.file_name().to_string_lossy().into_owned();
-        let meta = read_meta(&id).unwrap_or_default();
+        if let Err(error) = paths::validate_project_id(&id) {
+            // Same-filesystem project transactions intentionally use
+            // dot-prefixed sibling directories. They are internal state, not
+            // malformed user projects, and are expected to exist briefly.
+            if !id.starts_with(".oleafly-") {
+                log_project_enumeration_skip(&id, &error);
+            }
+            continue;
+        }
+        let meta = match project_meta_for_enumeration(&id, &entry.path()) {
+            Ok(meta) => meta,
+            Err(error) => {
+                log_project_enumeration_skip(&id, &error);
+                continue;
+            }
+        };
         if meta.hidden {
             continue;
         }
@@ -927,6 +1075,94 @@ pub fn create_project(name: String) -> Result<String, String> {
             },
         )
     })?;
+    Ok(id)
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PdfConversionFigure {
+    pub name: String,
+    pub data_base64: String,
+}
+
+/// Publish a converted PDF as one complete project. The library never observes
+/// a project containing only `main.tex` (or only some figures): every payload
+/// is validated and staged in a sibling directory before the final rename.
+#[tauri::command]
+pub fn create_project_from_pdf_conversion(
+    name: String,
+    tex: String,
+    figures: Vec<PdfConversionFigure>,
+) -> Result<String, String> {
+    use base64::{engine::general_purpose::STANDARD, Engine};
+
+    static PDF_IMPORT_PROJECT_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    let _guard = PDF_IMPORT_PROJECT_LOCK
+        .get_or_init(|| Mutex::new(()))
+        .lock()
+        .map_err(|_| "PDF import project lock is unavailable".to_string())?;
+    let root = paths::projects_root()?;
+    let id = unique_random_slug(&root)?;
+    let destination = root.join(&id);
+    let staging = create_unique_temporary_directory(&root, ".oleafly-pdf-import")?;
+
+    let initialize = || -> Result<(), String> {
+        let mut figure_names = HashSet::new();
+        let mut decoded = Vec::with_capacity(figures.len());
+        for figure in figures {
+            let figure_path = Path::new(&figure.name);
+            let portable_name = !figure.name.is_empty()
+                && !figure.name.contains('/')
+                && !figure.name.contains('\\')
+                && figure.name != "."
+                && figure.name != ".."
+                && figure_path.file_name().and_then(|value| value.to_str())
+                    == Some(figure.name.as_str());
+            if !portable_name {
+                return Err(format!("invalid imported figure name: {}", figure.name));
+            }
+            if !figure_names.insert(figure.name.to_lowercase()) {
+                return Err(format!("duplicate imported figure name: {}", figure.name));
+            }
+            let bytes = STANDARD
+                .decode(figure.data_base64.trim())
+                .map_err(|e| format!("invalid figure data for {}: {e}", figure.name))?;
+            decoded.push((figure.name, bytes));
+        }
+
+        atomic_write(&staging.join("main.tex"), tex.as_bytes())
+            .map_err(|e| format!("could not write converted LaTeX: {e}"))?;
+        if !decoded.is_empty() {
+            let assets = staging.join("assets");
+            std::fs::create_dir(&assets).map_err(|e| format!("could not create assets: {e}"))?;
+            for (figure_name, bytes) in decoded {
+                atomic_write(&assets.join(figure_name), &bytes)
+                    .map_err(|e| format!("could not write imported figure: {e}"))?;
+            }
+        }
+        write_meta_at(
+            &staging.join("project.json"),
+            &ProjectMeta {
+                name,
+                main_doc: default_main_doc(),
+                engine: default_engine(),
+                color: String::new(),
+                kind: String::new(),
+                exports: Vec::new(),
+                hidden: false,
+                forked_from: None,
+            },
+        )?;
+        rename_exclusive(&staging, &destination)
+            .map_err(|e| format!("could not publish the imported project: {e}"))
+    };
+
+    if let Err(error) = initialize() {
+        if staging.exists() {
+            let _ = std::fs::remove_dir_all(&staging);
+        }
+        return Err(error);
+    }
     Ok(id)
 }
 
@@ -1204,13 +1440,15 @@ pub fn export_pdf(
     dest: String,
     state: tauri::State<'_, crate::state::AppState>,
 ) -> Result<(), String> {
-    guard_export_dest(&dest)?;
+    let transaction = AtomicFile::for_export(&dest)?;
     let meta = read_meta(&project_id)?;
     let pdf = crate::document_engine::compiled_pdf_path(&project_id, &meta.engine, &meta.main_doc)?;
     if !pdf.exists() {
         return Err("No compiled PDF found - recompile first.".into());
     }
-    std::fs::copy(&pdf, &dest).map_err(|e| format!("failed to write PDF: {e}"))?;
+    std::fs::copy(&pdf, transaction.staging_path())
+        .map_err(|e| format!("failed to stage PDF: {e}"))?;
+    transaction.commit()?;
     // Allow reveal_in_dir for this user-chosen export path.
     if let Ok(canon) = std::path::Path::new(&dest).canonicalize() {
         let mut allow = state.reveal_allowlist.blocking_lock();
@@ -1238,7 +1476,9 @@ pub fn export_pdf(
     if meta.exports.len() > 50 {
         meta.exports.drain(0..meta.exports.len() - 50);
     }
-    write_meta(&project_id, &meta)?;
+    // The artifact is already durably published. Export-history bookkeeping is
+    // best-effort so a metadata failure never reports a false export failure.
+    let _ = write_meta(&project_id, &meta);
     Ok(())
 }
 
@@ -1344,7 +1584,9 @@ pub async fn export_document(
         Some(p) => p,
         None => download_pandoc_impl(app, &state.pandoc_install_lock).await?,
     };
-    let mut args = vec![format!("--to={writer}"), "-o".into(), dest.clone()];
+    let transaction = AtomicFile::for_export(&dest)?;
+    let staged_dest = transaction.staging_path().to_string_lossy().into_owned();
+    let mut args = vec![format!("--to={writer}"), "-o".into(), staged_dest];
     match format.as_str() {
         "pptx" => {
             args.extend(["--slide-level".into(), "2".into()]);
@@ -1367,6 +1609,7 @@ pub async fn export_document(
     if code != Some(0) {
         return Err(format!("pandoc failed: {}", log.trim()));
     }
+    transaction.commit()?;
     if let Ok(canon) = Path::new(&reveal_dest).canonicalize() {
         let mut allow = state.reveal_allowlist.lock().await;
         if allow.len() >= 1024 {
@@ -1393,7 +1636,7 @@ pub async fn export_document(
     if meta.exports.len() > 50 {
         meta.exports.drain(0..meta.exports.len() - 50);
     }
-    write_meta(&project_id, &meta)?;
+    let _ = write_meta(&project_id, &meta);
     Ok(())
 }
 
@@ -1468,23 +1711,23 @@ pub async fn create_project_from_docx(name: String, data_base64: String) -> Resu
         })?;
     let root = paths::projects_root()?;
     let id = unique_random_slug(&root)?;
-    let dir = root.join(&id);
-    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let destination = root.join(&id);
+    let staging = create_unique_temporary_directory(&root, ".oleafly-docx-import")?;
     let result: Result<(), String> = async {
-        std::fs::write(dir.join("source.docx"), &bytes)
+        atomic_write(&staging.join("source.docx"), &bytes)
             .map_err(|e| format!("failed to write source.docx: {e}"))?;
         let (log, code) = crate::document_engine::run_supervised_external(
             Path::new(&pandoc),
             &docx_pandoc_args(),
-            &dir,
+            &staging,
         )
         .await?;
         if code != Some(0) {
             return Err(format!("pandoc failed: {}", log.trim()));
         }
-        let _ = std::fs::remove_file(dir.join("source.docx"));
+        let _ = std::fs::remove_file(staging.join("source.docx"));
         write_meta_at(
-            &dir.join("project.json"),
+            &staging.join("project.json"),
             &ProjectMeta {
                 name,
                 main_doc: default_main_doc(),
@@ -1495,11 +1738,15 @@ pub async fn create_project_from_docx(name: String, data_base64: String) -> Resu
                 hidden: false,
                 forked_from: None,
             },
-        )
+        )?;
+        rename_exclusive(&staging, &destination)
+            .map_err(|e| format!("could not publish the imported project: {e}"))
     }
     .await;
     if let Err(e) = result {
-        let _ = std::fs::remove_dir_all(&dir);
+        if staging.exists() {
+            let _ = std::fs::remove_dir_all(&staging);
+        }
         return Err(e);
     }
     Ok(id)
@@ -1905,7 +2152,17 @@ pub async fn search_docs(query: String) -> Result<Vec<SearchHit>, String> {
                 continue;
             }
             let project_id = entry.file_name().to_string_lossy().into_owned();
-            let meta = read_meta(&project_id).unwrap_or_default();
+            if paths::validate_project_id(&project_id).is_err() {
+                continue;
+            }
+            let meta = match project_meta_for_enumeration(&project_id, &entry.path()) {
+                Ok(meta) if !meta.hidden => meta,
+                Ok(_) => continue,
+                Err(error) => {
+                    log_project_enumeration_skip(&project_id, &error);
+                    continue;
+                }
+            };
             let project_name = if meta.name.is_empty() {
                 project_id.clone()
             } else {
@@ -1965,9 +2222,9 @@ pub async fn search_project(project_id: String, query: String) -> Result<Vec<Sea
 #[tauri::command]
 pub async fn download_project_zip(project_id: String, dest: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
-        guard_export_dest(&dest)?;
+        let transaction = AtomicFile::for_export(&dest)?;
         let root = paths::project_dir(&project_id)?;
-        let file = std::fs::File::create(&dest).map_err(|e| e.to_string())?;
+        let file = std::fs::File::create(transaction.staging_path()).map_err(|e| e.to_string())?;
         let mut writer = zip::ZipWriter::new(file);
         let opts = zip::write::SimpleFileOptions::default()
             .compression_method(zip::CompressionMethod::Deflated);
@@ -1980,7 +2237,9 @@ pub async fn download_project_zip(project_id: String, dest: String) -> Result<()
             depth: usize,
         ) -> Result<(), String> {
             if depth >= MAX_WALK_DEPTH {
-                return Ok(());
+                return Err(format!(
+                    "project archive exceeds the maximum folder depth of {MAX_WALK_DEPTH}"
+                ));
             }
             for entry in std::fs::read_dir(dir).map_err(|e| e.to_string())? {
                 let entry = entry.map_err(|e| e.to_string())?;
@@ -2019,7 +2278,7 @@ pub async fn download_project_zip(project_id: String, dest: String) -> Result<()
 
         add_dir(&mut writer, opts, &root, &root, 0)?;
         writer.finish().map_err(|e| e.to_string())?;
-        Ok(())
+        transaction.commit()
     })
     .await
     .map_err(|e| e.to_string())?
@@ -2052,7 +2311,9 @@ pub async fn duplicate_project(project_id: String, new_name: String) -> Result<S
 
 fn copy_dir_recursive(src: &Path, dst: &Path, depth: usize) -> Result<(), String> {
     if depth >= MAX_WALK_DEPTH {
-        return Ok(());
+        return Err(format!(
+            "copy exceeds the maximum folder depth of {MAX_WALK_DEPTH}"
+        ));
     }
     std::fs::create_dir_all(dst).map_err(|e| e.to_string())?;
     for entry in std::fs::read_dir(src).map_err(|e| e.to_string())? {
@@ -2084,58 +2345,195 @@ pub async fn import_paths_into_project(
     source_paths: Vec<String>,
 ) -> Result<Vec<String>, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<Vec<String>, String> {
+        static FILE_IMPORT_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        let _guard = FILE_IMPORT_LOCK
+            .get_or_init(|| Mutex::new(()))
+            .lock()
+            .map_err(|_| "file import lock is unavailable".to_string())?;
         let dest_parent = resolve(&project_id, &dest_dir)?;
-        std::fs::create_dir_all(&dest_parent).map_err(|e| e.to_string())?;
         let project_root = paths::project_dir(&project_id)?;
-        let mut imported = Vec::new();
-        for source_path in &source_paths {
-            let src = PathBuf::from(source_path);
-            let meta = std::fs::symlink_metadata(&src)
-                .map_err(|e| format!("cannot read {source_path}: {e}"))?;
-            if meta.file_type().is_symlink() {
-                return Err(format!("refusing to import a symlink: {source_path}"));
-            }
-            let name = src
-                .file_name()
-                .ok_or_else(|| format!("invalid source path: {source_path}"))?
-                .to_string_lossy()
-                .to_string();
-            let dest = unique_import_dest(&dest_parent, &name);
-            if meta.is_dir() {
-                copy_dir_recursive(&src, &dest, 0)?;
-            } else {
-                std::fs::copy(&src, &dest).map_err(|e| format!("import failed: {e}"))?;
-            }
-            let rel = dest
-                .strip_prefix(&project_root)
-                .map_err(|e| e.to_string())?
-                .to_string_lossy()
-                .replace('\\', "/");
-            imported.push(rel);
-        }
-        Ok(imported)
+        let sources: Vec<PathBuf> = source_paths.iter().map(PathBuf::from).collect();
+        import_paths_transactional(&project_root, &dest_parent, &sources)
     })
     .await
     .map_err(|e| e.to_string())?
 }
 
-fn unique_import_dest(dir: &Path, name: &str) -> PathBuf {
+fn validate_import_source(path: &Path, depth: usize) -> Result<(), String> {
+    if depth >= MAX_WALK_DEPTH {
+        return Err(format!(
+            "import exceeds the maximum folder depth of {MAX_WALK_DEPTH}"
+        ));
+    }
+    let metadata = std::fs::symlink_metadata(path)
+        .map_err(|e| format!("cannot read {}: {e}", path.display()))?;
+    if metadata.file_type().is_symlink() {
+        return Err(format!("refusing to import a symlink: {}", path.display()));
+    }
+    if metadata.is_file() {
+        return Ok(());
+    }
+    if !metadata.is_dir() {
+        return Err(format!(
+            "only regular files and folders can be imported: {}",
+            path.display()
+        ));
+    }
+    for entry in std::fs::read_dir(path).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        validate_import_source(&entry.path(), depth + 1)?;
+    }
+    Ok(())
+}
+
+fn unique_import_dest(
+    dir: &Path,
+    name: &str,
+    reserved: &mut HashSet<String>,
+) -> Result<PathBuf, String> {
+    let available = |candidate: &Path, reserved: &HashSet<String>| -> Result<bool, String> {
+        let key = candidate
+            .file_name()
+            .and_then(|value| value.to_str())
+            .ok_or_else(|| "import destination name is not valid Unicode".to_string())?
+            .to_lowercase();
+        Ok(!reserved.contains(&key) && portable_collision(candidate)?.is_none())
+    };
     let candidate = dir.join(name);
-    if !candidate.exists() {
-        return candidate;
+    if available(&candidate, reserved)? {
+        reserved.insert(name.to_lowercase());
+        return Ok(candidate);
     }
     let (stem, ext) = match name.rfind('.') {
         Some(i) if i > 0 => (&name[..i], &name[i..]),
         _ => (name, ""),
     };
-    let mut n = 2;
-    loop {
+    for n in 2..=10_000 {
         let candidate = dir.join(format!("{stem} ({n}){ext}"));
-        if !candidate.exists() {
-            return candidate;
+        if available(&candidate, reserved)? {
+            let key = candidate
+                .file_name()
+                .and_then(|value| value.to_str())
+                .ok_or_else(|| "import destination name is not valid Unicode".to_string())?
+                .to_lowercase();
+            reserved.insert(key);
+            return Ok(candidate);
         }
-        n += 1;
     }
+    Err("could not find an available import destination".into())
+}
+
+fn import_paths_transactional(
+    project_root: &Path,
+    dest_parent: &Path,
+    sources: &[PathBuf],
+) -> Result<Vec<String>, String> {
+    import_paths_transactional_with(project_root, dest_parent, sources, &mut |from, to| {
+        rename_exclusive(from, to)
+    })
+}
+
+fn import_paths_transactional_with<F>(
+    project_root: &Path,
+    dest_parent: &Path,
+    sources: &[PathBuf],
+    publish: &mut F,
+) -> Result<Vec<String>, String>
+where
+    F: FnMut(&Path, &Path) -> std::io::Result<()>,
+{
+    let destination_meta = std::fs::symlink_metadata(dest_parent)
+        .map_err(|e| format!("cannot read the import destination: {e}"))?;
+    if !destination_meta.is_dir() || destination_meta.file_type().is_symlink() {
+        return Err("import destination is not a real directory".into());
+    }
+    let canonical_destination = dest_parent
+        .canonicalize()
+        .map_err(|e| format!("cannot resolve the import destination: {e}"))?;
+    let canonical_root = project_root
+        .canonicalize()
+        .map_err(|e| format!("cannot resolve the project: {e}"))?;
+    if !canonical_destination.starts_with(&canonical_root) {
+        return Err("import destination escapes the project".into());
+    }
+
+    let mut reserved = HashSet::new();
+    let mut plans = Vec::with_capacity(sources.len());
+    for source in sources {
+        validate_import_source(source, 0)?;
+        let metadata = std::fs::symlink_metadata(source)
+            .map_err(|e| format!("cannot read {}: {e}", source.display()))?;
+        let canonical_source = source
+            .canonicalize()
+            .map_err(|e| format!("cannot resolve {}: {e}", source.display()))?;
+        if metadata.is_dir() && canonical_destination.starts_with(&canonical_source) {
+            return Err(format!(
+                "cannot import a folder into itself: {}",
+                source.display()
+            ));
+        }
+        let name = source
+            .file_name()
+            .and_then(|value| value.to_str())
+            .ok_or_else(|| format!("invalid source path: {}", source.display()))?;
+        let destination = unique_import_dest(dest_parent, name, &mut reserved)?;
+        plans.push((source.clone(), metadata.is_dir(), destination));
+    }
+    if plans.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let staging_root = project_root.join(".oleafly").join("import-staging");
+    ensure_private_directory(project_root, &staging_root)?;
+    let staging = unique_temporary_path(&staging_root, "batch")?;
+    std::fs::create_dir(&staging).map_err(|e| format!("cannot stage the import: {e}"))?;
+
+    let mut staged = Vec::with_capacity(plans.len());
+    for (index, (source, is_dir, destination)) in plans.iter().enumerate() {
+        let staged_path = staging.join(format!("item-{index}"));
+        let result = if *is_dir {
+            copy_dir_recursive(source, &staged_path, 0)
+        } else {
+            std::fs::copy(source, &staged_path)
+                .map(|_| ())
+                .map_err(|e| format!("import failed: {e}"))
+        };
+        if let Err(error) = result {
+            let _ = std::fs::remove_dir_all(&staging);
+            return Err(error);
+        }
+        staged.push((staged_path, destination.clone()));
+    }
+
+    let mut committed: Vec<(PathBuf, PathBuf)> = Vec::new();
+    for (staged_path, destination) in &staged {
+        if let Err(error) = publish(staged_path, destination) {
+            let mut rollback_errors = Vec::new();
+            for (published, original_stage) in committed.iter().rev() {
+                if let Err(rollback_error) = rename_exclusive(published, original_stage) {
+                    rollback_errors.push(rollback_error.to_string());
+                }
+            }
+            let _ = std::fs::remove_dir_all(&staging);
+            return if rollback_errors.is_empty() {
+                Err(format!(
+                    "could not publish the import; changes were rolled back: {error}"
+                ))
+            } else {
+                Err(format!(
+                    "could not publish the import: {error}; rollback also failed: {}",
+                    rollback_errors.join("; ")
+                ))
+            };
+        }
+        committed.push((destination.clone(), staged_path.clone()));
+    }
+
+    let _ = std::fs::remove_dir(&staging);
+    Ok(plans
+        .iter()
+        .map(|(_, _, destination)| rel_slash(project_root, destination))
+        .collect())
 }
 
 /// Clear the build cache (forces a clean rebuild on next compile).
@@ -2171,15 +2569,19 @@ pub async fn delete_project(project_id: String) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        create_diagram_project, create_image_project_in, create_markdown_project_in,
-        create_project_transaction, create_typst_project, create_typst_project_in,
-        duplicate_project, engine_for_main_document, extract_pandoc, get_or_create_scratch_project,
-        list_projects, pandoc_asset_for, pandoc_version_supported, read_meta, rel_slash,
-        rename_path_in_project, validate_conversion_export, FileConflictStrategy, ProjectMeta,
-        RenameFileResult, SCRATCH_PROJECT_ID,
+        copy_path_in_project, create_diagram_project, create_image_project_in,
+        create_markdown_project_in, create_project_from_pdf_conversion, create_project_transaction,
+        create_typst_project, create_typst_project_in, download_project_zip, duplicate_project,
+        engine_for_main_document, extract_pandoc, get_or_create_scratch_project,
+        import_paths_transactional, import_paths_transactional_with, list_projects,
+        pandoc_asset_for, pandoc_version_supported, read_meta, rel_slash, rename_exclusive,
+        rename_path_in_project, search_docs, set_main_doc_synchronized, validate_conversion_export,
+        write_meta_at, FileConflictStrategy, PdfConversionFigure, ProjectMeta, RenameFileResult,
+        SCRATCH_PROJECT_ID,
     };
     use std::io::Write;
     use std::path::Path;
+    use std::sync::Arc;
 
     fn test_dir(label: &str) -> std::path::PathBuf {
         let path = std::env::temp_dir().join(format!(
@@ -2216,6 +2618,294 @@ mod tests {
         // or the frontend file tree (which splits on "/") breaks on Windows.
         let win_like = Path::new("/proj/sections\\intro.tex");
         assert_eq!(rel_slash(root, win_like), "sections/intro.tex");
+    }
+
+    #[test]
+    fn repeated_copy_uses_portable_names_without_overwriting() {
+        let root = test_dir("copy-repeat");
+        let source = root.join("draft.tex");
+        let requested = root.join("draft copy.tex");
+        std::fs::write(&source, "original").unwrap();
+        std::fs::write(&requested, "existing copy").unwrap();
+
+        let first = copy_path_in_project(&root, &source, &requested).unwrap();
+        let second = copy_path_in_project(&root, &source, &requested).unwrap();
+
+        assert_eq!(first, "draft copy 2.tex");
+        assert_eq!(second, "draft copy 3.tex");
+        assert_eq!(
+            std::fs::read_to_string(&requested).unwrap(),
+            "existing copy"
+        );
+        assert_eq!(
+            std::fs::read_to_string(root.join(&first)).unwrap(),
+            "original"
+        );
+        assert_eq!(
+            std::fs::read_to_string(root.join(&second)).unwrap(),
+            "original"
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn concurrent_copy_requests_publish_distinct_complete_files() {
+        let root = Arc::new(test_dir("copy-concurrent"));
+        let source = root.join("draft.tex");
+        let requested = root.join("draft copy.tex");
+        let payload = "complete payload".repeat(8_192);
+        std::fs::write(&source, &payload).unwrap();
+        let mut workers = Vec::new();
+        for _ in 0..6 {
+            let root = Arc::clone(&root);
+            let source = source.clone();
+            let requested = requested.clone();
+            workers.push(std::thread::spawn(move || {
+                copy_path_in_project(&root, &source, &requested).unwrap()
+            }));
+        }
+        let mut destinations: Vec<String> = workers
+            .into_iter()
+            .map(|worker| worker.join().unwrap())
+            .collect();
+        destinations.sort();
+        destinations.dedup();
+        assert_eq!(destinations.len(), 6);
+        for destination in destinations {
+            assert_eq!(
+                std::fs::read_to_string(root.join(destination)).unwrap(),
+                payload
+            );
+        }
+        std::fs::remove_dir_all(root.as_path()).unwrap();
+    }
+
+    #[test]
+    fn deep_copy_fails_explicitly_and_removes_its_partial_stage() {
+        let root = test_dir("copy-depth");
+        let source = root.join("deep");
+        let mut cursor = source.clone();
+        std::fs::create_dir(&cursor).unwrap();
+        for index in 0..64 {
+            cursor = cursor.join(format!("d{index}"));
+            std::fs::create_dir(&cursor).unwrap();
+        }
+        std::fs::write(cursor.join("leaf.txt"), "leaf").unwrap();
+        let requested = root.join("deep copy");
+
+        let error = copy_path_in_project(&root, &source, &requested).unwrap_err();
+
+        assert!(error.contains("maximum folder depth"));
+        assert!(!requested.exists());
+        assert!(std::fs::read_dir(&root)
+            .unwrap()
+            .flatten()
+            .all(|entry| !entry
+                .file_name()
+                .to_string_lossy()
+                .starts_with(".oleafly-copy")));
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn multi_source_import_preflights_every_source_before_mutating() {
+        let project = test_dir("import-preflight-project");
+        let destination = project.join("imports");
+        std::fs::create_dir(&destination).unwrap();
+        let sources = test_dir("import-preflight-sources");
+        let valid = sources.join("valid.txt");
+        std::fs::write(&valid, "valid").unwrap();
+        let missing = sources.join("missing.txt");
+
+        let error =
+            import_paths_transactional(&project, &destination, &[valid, missing]).unwrap_err();
+
+        assert!(error.contains("cannot read"));
+        assert_eq!(std::fs::read_dir(&destination).unwrap().count(), 0);
+        assert!(!project.join(".oleafly").exists());
+        std::fs::remove_dir_all(project).unwrap();
+        std::fs::remove_dir_all(sources).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn import_rejects_nested_symlinks_before_staging_any_source() {
+        let project = test_dir("import-symlink-project");
+        let destination = project.join("imports");
+        std::fs::create_dir(&destination).unwrap();
+        let sources = test_dir("import-symlink-sources");
+        let safe = sources.join("safe.txt");
+        let folder = sources.join("folder");
+        std::fs::write(&safe, "safe").unwrap();
+        std::fs::create_dir(&folder).unwrap();
+        std::os::unix::fs::symlink(&safe, folder.join("link.txt")).unwrap();
+
+        let error =
+            import_paths_transactional(&project, &destination, &[safe, folder]).unwrap_err();
+
+        assert!(error.contains("symlink"));
+        assert_eq!(std::fs::read_dir(&destination).unwrap().count(), 0);
+        assert!(!project.join(".oleafly").exists());
+        std::fs::remove_dir_all(project).unwrap();
+        std::fs::remove_dir_all(sources).unwrap();
+    }
+
+    #[test]
+    fn multi_source_import_rolls_back_an_injected_publish_failure() {
+        let project = test_dir("import-rollback-project");
+        let destination = project.join("imports");
+        std::fs::create_dir(&destination).unwrap();
+        let sources = test_dir("import-rollback-sources");
+        let first = sources.join("first.txt");
+        let second = sources.join("second.txt");
+        std::fs::write(&first, "first").unwrap();
+        std::fs::write(&second, "second").unwrap();
+        let mut publishes = 0;
+
+        let error = import_paths_transactional_with(
+            &project,
+            &destination,
+            &[first, second],
+            &mut |from, to| {
+                publishes += 1;
+                if publishes == 2 {
+                    Err(std::io::Error::other("injected publish failure"))
+                } else {
+                    rename_exclusive(from, to)
+                }
+            },
+        )
+        .unwrap_err();
+
+        assert!(error.contains("rolled back"));
+        assert_eq!(std::fs::read_dir(&destination).unwrap().count(), 0);
+        std::fs::remove_dir_all(project).unwrap();
+        std::fs::remove_dir_all(sources).unwrap();
+    }
+
+    #[test]
+    fn import_names_are_reserved_case_insensitively_across_the_batch() {
+        let project = test_dir("import-portable-project");
+        let destination = project.join("imports");
+        std::fs::create_dir(&destination).unwrap();
+        let sources = test_dir("import-portable-sources");
+        let left = sources.join("left");
+        let right = sources.join("right");
+        std::fs::create_dir(&left).unwrap();
+        std::fs::create_dir(&right).unwrap();
+        let first = left.join("Paper.tex");
+        let second = right.join("paper.tex");
+        std::fs::write(&first, "first").unwrap();
+        std::fs::write(&second, "second").unwrap();
+
+        let imported =
+            import_paths_transactional(&project, &destination, &[first, second]).unwrap();
+
+        assert_eq!(imported, ["imports/Paper.tex", "imports/paper (2).tex"]);
+        assert_eq!(
+            std::fs::read_to_string(destination.join("Paper.tex")).unwrap(),
+            "first"
+        );
+        assert_eq!(
+            std::fs::read_to_string(destination.join("paper (2).tex")).unwrap(),
+            "second"
+        );
+        std::fs::remove_dir_all(project).unwrap();
+        std::fs::remove_dir_all(sources).unwrap();
+    }
+
+    #[test]
+    fn converted_pdf_figure_deserializes_the_frontend_ipc_contract() {
+        let figure: PdfConversionFigure = serde_json::from_value(serde_json::json!({
+            "name": "figure.png",
+            "dataBase64": "AQID"
+        }))
+        .unwrap();
+
+        assert_eq!(figure.name, "figure.png");
+        assert_eq!(figure.data_base64, "AQID");
+    }
+
+    #[test]
+    fn converted_pdf_project_is_published_only_after_every_payload_is_valid() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("converted-project");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+
+        let id = create_project_from_pdf_conversion(
+            "Imported".into(),
+            "\\documentclass{article}\\begin{document}Ready\\end{document}".into(),
+            vec![PdfConversionFigure {
+                name: "figure.png".into(),
+                data_base64: "AQID".into(),
+            }],
+        )
+        .unwrap();
+        let project = data.join("projects").join(&id);
+        assert!(project.join("project.json").is_file());
+        assert!(project.join("main.tex").is_file());
+        assert_eq!(
+            std::fs::read(project.join("assets").join("figure.png")).unwrap(),
+            [1, 2, 3]
+        );
+
+        let visible_before = std::fs::read_dir(data.join("projects")).unwrap().count();
+        let error = create_project_from_pdf_conversion(
+            "Broken".into(),
+            "partial".into(),
+            vec![PdfConversionFigure {
+                name: "bad.png".into(),
+                data_base64: "not base64".into(),
+            }],
+        )
+        .unwrap_err();
+        assert!(error.contains("invalid figure data"));
+        assert_eq!(
+            std::fs::read_dir(data.join("projects")).unwrap().count(),
+            visible_before
+        );
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
+    }
+
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn failed_deep_zip_export_preserves_the_existing_artifact() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("zip-depth");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let project_id = "deep-project";
+        let project = data.join("projects").join(project_id);
+        let mut cursor = project.clone();
+        std::fs::create_dir_all(&cursor).unwrap();
+        for index in 0..64 {
+            cursor = cursor.join(format!("d{index}"));
+            std::fs::create_dir(&cursor).unwrap();
+        }
+        std::fs::write(cursor.join("leaf.txt"), "leaf").unwrap();
+        let destination = data.join("existing.zip");
+        std::fs::write(&destination, b"previous archive").unwrap();
+
+        let error = download_project_zip(
+            project_id.into(),
+            destination.to_string_lossy().into_owned(),
+        )
+        .await
+        .unwrap_err();
+
+        assert!(error.contains("maximum folder depth"));
+        assert_eq!(std::fs::read(&destination).unwrap(), b"previous archive");
+        assert_eq!(
+            std::fs::read_dir(&data)
+                .unwrap()
+                .flatten()
+                .filter(|entry| { entry.file_name().to_string_lossy().contains(".oleafly-") })
+                .count(),
+            0
+        );
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
     }
 
     #[test]
@@ -2395,6 +3085,63 @@ mod tests {
             engine_for_main_document("markdown", "main.tex").unwrap(),
             "xetex"
         );
+    }
+
+    // Held across awaits deliberately: it serializes the shared test data-dir
+    // environment variable while proving the async compile lock ordering.
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn main_document_selection_waits_for_an_active_compile() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("main-doc-compile-race");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let project_id = "compile-race";
+        let project_dir = root.join("projects").join(project_id);
+        std::fs::create_dir_all(&project_dir).unwrap();
+        std::fs::write(project_dir.join("main.tex"), "old main").unwrap();
+        std::fs::write(project_dir.join("replacement.typ"), "new main").unwrap();
+        write_meta_at(
+            &project_dir.join("project.json"),
+            &ProjectMeta {
+                name: "Compile race".into(),
+                main_doc: "main.tex".into(),
+                engine: "xetex".into(),
+                ..ProjectMeta::default()
+            },
+        )
+        .unwrap();
+
+        let state = Arc::new(crate::state::AppState::default());
+        let compile_guard = state.compile_lock.lock().await;
+        let setter_state = Arc::clone(&state);
+        let (started_tx, started_rx) = tokio::sync::oneshot::channel();
+        let update = tokio::spawn(async move {
+            let _ = started_tx.send(());
+            set_main_doc_synchronized(
+                setter_state.as_ref(),
+                project_id.into(),
+                "replacement.typ".into(),
+            )
+            .await
+        });
+        started_rx.await.unwrap();
+        tokio::task::yield_now().await;
+
+        assert!(!update.is_finished());
+        assert_eq!(read_meta(project_id).unwrap().main_doc, "main.tex");
+
+        drop(compile_guard);
+        let selected = update.await.unwrap().unwrap();
+        assert_eq!(selected.main_doc, "replacement.typ");
+        assert_eq!(selected.engine, "typst");
+        assert_eq!(read_meta(project_id).unwrap().main_doc, "replacement.typ");
+        assert!(super::ensure_compile_meta_unchanged(project_id, "main.tex", "xetex").is_err());
+        assert!(
+            super::ensure_compile_meta_unchanged(project_id, "replacement.typ", "typst").is_ok()
+        );
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
@@ -2606,6 +3353,113 @@ mod tests {
         assert!(listed.iter().all(|p| p.id != SCRATCH_PROJECT_ID));
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn project_enumeration_excludes_internal_invalid_and_unreadable_directories() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("project-enumeration");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let projects = crate::paths::projects_root().unwrap();
+
+        let project_meta = |name: &str| ProjectMeta {
+            name: name.into(),
+            main_doc: "main.tex".into(),
+            engine: "xetex".into(),
+            color: String::new(),
+            kind: String::new(),
+            exports: Vec::new(),
+            hidden: false,
+            forked_from: None,
+        };
+
+        let valid = projects.join("valid-project");
+        std::fs::create_dir(&valid).unwrap();
+        std::fs::write(valid.join("main.tex"), "valid").unwrap();
+        write_meta_at(&valid.join("project.json"), &project_meta("Valid")).unwrap();
+
+        let missing = projects.join("missing-metadata");
+        std::fs::create_dir(&missing).unwrap();
+        let corrupt = projects.join("corrupt-metadata");
+        std::fs::create_dir(&corrupt).unwrap();
+        std::fs::write(corrupt.join("project.json"), "{not json").unwrap();
+        let invalid = projects.join("invalid.project");
+        std::fs::create_dir(&invalid).unwrap();
+        write_meta_at(
+            &invalid.join("project.json"),
+            &project_meta("Invalid identifier"),
+        )
+        .unwrap();
+
+        // Model the interval in which a conversion has finished staging every
+        // file but has not yet atomically renamed the directory to its valid
+        // project id.
+        let staging = projects.join(".oleafly-pdf-import-test");
+        let published = projects.join("published-project");
+        let ready = Arc::new(std::sync::Barrier::new(2));
+        let publish = Arc::new(std::sync::Barrier::new(2));
+        let worker = {
+            let ready = Arc::clone(&ready);
+            let publish = Arc::clone(&publish);
+            let staging = staging.clone();
+            let published = published.clone();
+            std::thread::spawn(move || {
+                std::fs::create_dir(&staging).unwrap();
+                std::fs::write(staging.join("main.tex"), "staged").unwrap();
+                write_meta_at(
+                    &staging.join("project.json"),
+                    &ProjectMeta {
+                        name: "Published".into(),
+                        main_doc: "main.tex".into(),
+                        engine: "xetex".into(),
+                        color: String::new(),
+                        kind: String::new(),
+                        exports: Vec::new(),
+                        hidden: false,
+                        forked_from: None,
+                    },
+                )
+                .unwrap();
+                ready.wait();
+                publish.wait();
+                std::fs::rename(&staging, &published).unwrap();
+            })
+        };
+
+        ready.wait();
+        let staged_listing = list_projects().unwrap();
+        assert_eq!(
+            staged_listing
+                .iter()
+                .map(|project| project.id.as_str())
+                .collect::<Vec<_>>(),
+            ["valid-project"]
+        );
+        assert!(search_docs("staged".into()).await.unwrap().is_empty());
+        assert_eq!(
+            search_docs("valid".into()).await.unwrap()[0].project_id,
+            "valid-project"
+        );
+        publish.wait();
+        worker.join().unwrap();
+
+        let published_listing = list_projects().unwrap();
+        let mut ids: Vec<_> = published_listing
+            .iter()
+            .map(|project| project.id.as_str())
+            .collect();
+        ids.sort_unstable();
+        assert_eq!(ids, ["published-project", "valid-project"]);
+
+        let log = std::fs::read_to_string(data.join("app.log")).unwrap();
+        assert!(log.contains("missing-metadata"));
+        assert!(log.contains("corrupt-metadata"));
+        assert!(log.contains("invalid.project"));
+        assert!(!log.contains(".oleafly-pdf-import-test"));
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
     }
 
     #[test]

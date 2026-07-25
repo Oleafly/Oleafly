@@ -1,4 +1,5 @@
 import { expect } from "./fixtures";
+import type { E2ePdfProbe } from "../src/lib/e2e-probe";
 
 // The plugin's page handle (structural: only what the helpers need).
 export interface Page {
@@ -9,7 +10,10 @@ export interface Page {
   waitForFunction(expression: string, timeout?: number): Promise<unknown>;
   locator(selector: string): { isVisible(): Promise<boolean>; click(): Promise<void> };
   getByTestId(id: string): unknown;
-  getByText(text: string, opts?: { exact?: boolean }): { click(): Promise<void> };
+  getByText(
+    text: string,
+    opts?: { exact?: boolean },
+  ): { click(): Promise<void>; isVisible(): Promise<boolean> };
 }
 
 // The app's own handlers for Cmd+K / Cmd+Shift+F listen on window keydown.
@@ -89,6 +93,7 @@ export async function typeInEditorAfter(
 }
 
 async function pollCompiledPdf(page: Page, predicate: string, timeoutMs: number, onTimeout: string) {
+  await ensureE2ePdfProbe(page);
   const deadline = Date.now() + timeoutMs;
   let lastError = "";
   for (;;) {
@@ -124,6 +129,157 @@ async function pollCompiledPdf(page: Page, predicate: string, timeoutMs: number,
   }
 }
 
+async function ensureE2ePdfProbe(page: Page): Promise<void> {
+  const installed = await page.evaluate<boolean>(
+    `typeof window.__e2ePdfText === "function" &&
+      typeof window.__e2ePdfProbe === "function"`,
+  );
+  if (installed) return;
+  await page.evaluate(
+    `(import("/src/lib/e2e-probe.ts")
+      .then(({ installE2ePdfProbe }) => installE2ePdfProbe()), true)`,
+  );
+  await waitLong(
+    page,
+    `typeof window.__e2ePdfText === "function" &&
+      typeof window.__e2ePdfProbe === "function"`,
+    20_000,
+  );
+}
+
+export async function getCompiledPdfProbe(
+  page: Page,
+  timeoutMs = 90_000,
+): Promise<E2ePdfProbe> {
+  await ensureE2ePdfProbe(page);
+  await page.evaluate(
+    `(() => {
+      window.__pdfSemanticProbe = null;
+      window.__pdfSemanticProbeError = null;
+      window.__e2ePdfProbe()
+        .then((probe) => { window.__pdfSemanticProbe = probe; })
+        .catch((error) => { window.__pdfSemanticProbeError = String(error); });
+      return true;
+    })()`,
+  );
+  await waitLong(
+    page,
+    `(typeof window.__pdfSemanticProbe === "object" &&
+      window.__pdfSemanticProbe !== null) ||
+      typeof window.__pdfSemanticProbeError === "string"`,
+    timeoutMs,
+  );
+  const error = await page.evaluate<string>(
+    `typeof window.__pdfSemanticProbeError === "string"
+      ? window.__pdfSemanticProbeError
+      : ""`,
+  );
+  if (error) throw new Error(`compiled PDF semantic probe failed: ${error}`);
+  return page.evaluate<E2ePdfProbe>(`window.__pdfSemanticProbe`);
+}
+
+export async function compileAndProbe(
+  page: Page,
+  timeoutMs = 120_000,
+): Promise<E2ePdfProbe> {
+  const compileButton = page.locator(
+    '[data-testid="compile-button"]',
+  ) as unknown as Parameters<typeof expect>[0];
+  type CompileSnapshot = {
+    status: string;
+    outputRevision: number;
+    disabled: boolean;
+  };
+  const snapshot = () =>
+    page.evaluate<CompileSnapshot>(
+      `(() => {
+        const button = document.querySelector('[data-testid="compile-button"]');
+        if (!(button instanceof HTMLButtonElement)) {
+          throw new Error("compile button is unavailable");
+        }
+        return {
+          status: button.dataset.e2eCompileStatus ?? "",
+          outputRevision: Number(button.dataset.e2eCompileRevision ?? "0"),
+          disabled: button.disabled,
+        };
+      })()`,
+    );
+
+  const deadline = Date.now() + timeoutMs;
+  // A project that just opened schedules its first compile from a React
+  // effect. The button can briefly be enabled before that effect starts, so
+  // waiting only for "enabled" can click into a compile-store reset. Require a
+  // short quiescent window before establishing the production checkpoint.
+  let quietSince = 0;
+  for (;;) {
+    await expect(compileButton).toBeEnabled({ timeout: 60_000 });
+    const state = await snapshot();
+    if (state.disabled || state.status === "compiling") {
+      quietSince = 0;
+    } else if (quietSince === 0) {
+      quietSince = Date.now();
+    } else if (Date.now() - quietSince >= 750) {
+      break;
+    }
+    if (Date.now() > deadline) {
+      throw new Error("compile button never reached a stable ready state");
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  const before = await snapshot();
+  let attempts = 1;
+  let attemptStartedAt = Date.now();
+  let observedCompiling = false;
+  await page.click('[data-testid="compile-button"]');
+
+  for (;;) {
+    const state = await snapshot();
+    if (state.status === "compiling") observedCompiling = true;
+    if (
+      state.status === "success" &&
+      state.outputRevision !== before.outputRevision
+    ) {
+      break;
+    }
+    if (
+      state.status === "error" &&
+      (observedCompiling || Date.now() - attemptStartedAt > 2_000)
+    ) {
+      throw new Error("semantic fixture failed to compile");
+    }
+    // A project-open effect can reset a just-started manual compile. If no
+    // compile state becomes observable, retry the real toolbar control instead
+    // of waiting until the suite timeout. The Rust output revision guarantees
+    // that a later success cannot be confused with an earlier PDF.
+    if (
+      state.status !== "compiling" &&
+      state.outputRevision === before.outputRevision &&
+      Date.now() - attemptStartedAt > 5_000 &&
+      attempts < 3
+    ) {
+      await expect(compileButton).toBeEnabled({ timeout: 60_000 });
+      await page.click('[data-testid="compile-button"]');
+      attempts++;
+      attemptStartedAt = Date.now();
+      observedCompiling = false;
+    }
+    if (Date.now() > deadline) {
+      throw new Error(
+        `semantic compile timed out: ${JSON.stringify({
+          beforeRevision: before.outputRevision,
+          status: state.status,
+          outputRevision: state.outputRevision,
+          disabled: state.disabled,
+          attempts,
+        })}`,
+      );
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  return getCompiledPdfProbe(page, timeoutMs);
+}
+
 export async function expectCompiledPdfContains(page: Page, text: string, timeoutMs = 90_000) {
   await pollCompiledPdf(
     page,
@@ -154,6 +310,18 @@ export async function createBlankProject(page: Page, name: string) {
   await expect(page.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 }
 
+export async function createProjectFromTemplate(
+  page: Page,
+  templateId: string,
+  name: string,
+) {
+  await openGallery(page);
+  await page.click(`[data-testid="template-card-${templateId}"]`);
+  await page.fill("#new-project-name", name);
+  await page.click('[data-testid="create-project"]');
+  await expect(page.locator(".cm-content")).toBeVisible({ timeout: 30_000 });
+}
+
 export async function setEditorContent(page: Page, text: string) {
   const ok = await page.evaluate<boolean>(
     `(() => {
@@ -169,6 +337,212 @@ export async function setEditorContent(page: Page, text: string) {
     })()`,
   );
   if (!ok) throw new Error("setEditorContent: could not replace editor content");
+}
+
+export async function editorSource(page: Page): Promise<string> {
+  return page.evaluate<string>(
+    `import("/src/components/editor/cm/controller.ts").then(
+      ({ getEditorView }) => getEditorView()?.state.doc.toString() ?? ""
+    )`,
+  );
+}
+
+export async function replaceEditorSource(page: Page, text: string): Promise<void> {
+  const changed = await page.evaluate<boolean>(
+    `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {
+      const view = getEditorView();
+      if (!view) return false;
+      view.focus();
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: ${JSON.stringify(text)} },
+        selection: { anchor: ${JSON.stringify(text)}.length },
+        userEvent: "input.e2e-fixture",
+      });
+      return true;
+    })`,
+  );
+  if (!changed) throw new Error("replaceEditorSource: editor is unavailable");
+}
+
+export async function selectEditorText(
+  page: Page,
+  text: string,
+  occurrence = 1,
+): Promise<void> {
+  const selected = await page.evaluate<boolean>(
+    `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {
+      const view = getEditorView();
+      if (!view) return false;
+      const source = view.state.doc.toString();
+      let from = -1;
+      let cursor = 0;
+      for (let index = 0; index < ${occurrence}; index++) {
+        from = source.indexOf(${JSON.stringify(text)}, cursor);
+        if (from < 0) return false;
+        cursor = from + ${JSON.stringify(text)}.length;
+      }
+      view.dispatch({ selection: { anchor: from, head: from + ${JSON.stringify(text)}.length } });
+      view.focus();
+      return true;
+    })`,
+  );
+  if (!selected) {
+    throw new Error(
+      `selectEditorText: ${JSON.stringify(text)} occurrence ${occurrence} not found`,
+    );
+  }
+}
+
+export async function setEditorCaretAfter(
+  page: Page,
+  text: string,
+  occurrence = 1,
+): Promise<void> {
+  await selectEditorText(page, text, occurrence);
+  const placed = await page.evaluate<boolean>(
+    `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {
+      const view = getEditorView();
+      if (!view) return false;
+      const head = view.state.selection.main.to;
+      view.dispatch({ selection: { anchor: head } });
+      view.focus();
+      return true;
+    })`,
+  );
+  if (!placed) throw new Error("setEditorCaretAfter: editor is unavailable");
+}
+
+export async function replaceEditorSelection(page: Page, text: string): Promise<void> {
+  const changed = await page.evaluate<boolean>(
+    `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {
+      const view = getEditorView();
+      if (!view) return false;
+      const selection = view.state.selection.main;
+      view.dispatch({
+        changes: { from: selection.from, to: selection.to, insert: ${JSON.stringify(text)} },
+        selection: { anchor: selection.from + ${JSON.stringify(text)}.length },
+        userEvent: "input",
+      });
+      view.focus();
+      return true;
+    })`,
+  );
+  if (!changed) throw new Error("replaceEditorSelection: editor is unavailable");
+}
+
+export async function replaceEditorLiteral(
+  page: Page,
+  before: string,
+  after: string,
+  occurrence = 1,
+): Promise<void> {
+  await selectEditorText(page, before, occurrence);
+  await replaceEditorSelection(page, after);
+}
+
+export async function writeProjectBinary(
+  page: Page,
+  path: string,
+  base64: string,
+): Promise<void> {
+  const written = await page.evaluate<boolean>(
+    `import("/src/lib/tauri.ts").then(async ({ writeProjectBytes }) => {
+      const projectId =
+        document.querySelector('[data-e2e-project-id]')?.dataset.e2eProjectId;
+      if (!projectId) return false;
+      await writeProjectBytes(projectId, ${JSON.stringify(path)}, ${JSON.stringify(base64)});
+      return true;
+    })`,
+  );
+  if (!written) throw new Error(`writeProjectBinary: no active project for ${path}`);
+}
+
+export async function readProjectText(page: Page, path: string): Promise<string> {
+  return page.evaluate<string>(
+    `import("/src/lib/tauri.ts").then(({ readFileContent }) => {
+      const projectId =
+        document.querySelector('[data-e2e-project-id]')?.dataset.e2eProjectId;
+      if (!projectId) throw new Error("no active project");
+      return readFileContent(projectId, ${JSON.stringify(path)});
+    })`,
+  );
+}
+
+export async function readProjectBase64(page: Page, path: string): Promise<string> {
+  return page.evaluate<string>(
+    `import("/src/lib/tauri.ts").then(async ({ readProjectBytes }) => {
+      const projectId =
+        document.querySelector('[data-e2e-project-id]')?.dataset.e2eProjectId;
+      if (!projectId) throw new Error("no active project");
+      const result = await readProjectBytes(projectId, ${JSON.stringify(path)});
+      const bytes = new Uint8Array(result);
+      let binary = "";
+      const chunk = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunk) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+      }
+      return btoa(binary);
+    })`,
+  );
+}
+
+export async function readCompiledPdfBase64(page: Page): Promise<string> {
+  return page.evaluate<string>(
+    `import("/src/lib/tauri.ts").then(async ({ readCompiledPdf }) => {
+      const projectId =
+        document.querySelector('[data-e2e-project-id]')?.dataset.e2eProjectId;
+      if (!projectId) throw new Error("no active project");
+      const result = await readCompiledPdf(projectId);
+      const bytes = new Uint8Array(result);
+      let binary = "";
+      const chunk = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunk) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+      }
+      return btoa(binary);
+    })`,
+  );
+}
+
+export async function listProjectEntries(
+  page: Page,
+): Promise<Array<{ path: string; is_dir: boolean }>> {
+  return page.evaluate<Array<{ path: string; is_dir: boolean }>>(
+    `import("/src/lib/tauri.ts").then(({ listFiles }) => {
+      const projectId =
+        document.querySelector('[data-e2e-project-id]')?.dataset.e2eProjectId;
+      if (!projectId) throw new Error("no active project");
+      return listFiles(projectId);
+    })`,
+  );
+}
+
+export async function setNextImportPaths(
+  page: Page,
+  paths: string[] | null,
+): Promise<void> {
+  const available = await page.evaluate<boolean>(
+    `(() => {
+      if (typeof window.__e2eSetNextImportPaths !== "function") return false;
+      window.__e2eSetNextImportPaths(${JSON.stringify(paths)});
+      return true;
+    })()`,
+  );
+  if (!available) throw new Error("DEV import-dialog adapter is unavailable");
+}
+
+export async function setNextSavePath(
+  page: Page,
+  path: string | null,
+): Promise<void> {
+  const available = await page.evaluate<boolean>(
+    `(() => {
+      if (typeof window.__e2eSetNextSavePath !== "function") return false;
+      window.__e2eSetNextSavePath(${JSON.stringify(path)});
+      return true;
+    })()`,
+  );
+  if (!available) throw new Error("DEV save-dialog adapter is unavailable");
 }
 
 // Clicking a rail tab always reveals the sidebar; re-clicking the active tab
@@ -624,7 +998,31 @@ export async function selectWord(page: Page, word: string, attempts = 3) {
 // are not reliable for controls past the first few; this checks both states.
 export async function clickToolbarControl(page: Page, barSelector: string, menuText: string) {
   const bar = page.locator(barSelector);
-  if (await bar.isVisible().catch(() => false)) {
+  // The bridge's visibility predicate does not account for clipping by the
+  // toolbar's overflow-hidden container. Verify that the control's center is
+  // actually hit-testable before asking the coordinate-based click command to
+  // use it; otherwise fall through to the rendered More-menu counterpart.
+  const barCanReceivePointer = await page.evaluate<boolean>(
+    `(() => {
+      const element = document.querySelector(${JSON.stringify(barSelector)});
+      if (!element) return false;
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      if (
+        style.display === "none" ||
+        style.visibility === "hidden" ||
+        rect.width <= 0 ||
+        rect.height <= 0
+      ) {
+        return false;
+      }
+      const x = rect.left + rect.width / 2;
+      const y = rect.top + rect.height / 2;
+      const hit = document.elementFromPoint(x, y);
+      return !!hit && (hit === element || element.contains(hit));
+    })()`,
+  );
+  if (barCanReceivePointer && (await bar.isVisible().catch(() => false))) {
     await bar.click();
     return;
   }

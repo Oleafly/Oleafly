@@ -665,11 +665,30 @@ pub struct CompileError {
 pub struct CompileResult {
     pub ok: bool,
     pub has_pdf: bool,
+    /// Fingerprint of the exact fresh PDF observed while the compile lock is
+    /// still held. The frontend verifies this before accepting IPC bytes.
+    pub output_id: Option<String>,
+    /// Assigned only to successful main-document outputs by the command layer.
+    /// Isolated figure compiles leave this unset.
+    pub output_revision: Option<u64>,
     pub log: String,
     pub errors: Vec<CompileError>,
     pub synctex_path: Option<String>,
     pub out_dir: Option<String>,
     pub compile_time_ms: u64,
+}
+
+/// Must stay byte-for-byte compatible with
+/// `fingerprintCompileOutput` in `src/lib/compile-checkpoint.ts`.
+pub(crate) fn fingerprint_compile_output(bytes: &[u8]) -> String {
+    let mut first = 0x811c_9dc5_u32;
+    let mut second = 0x9e37_79b9_u32;
+    for byte in bytes {
+        first = (first ^ u32::from(*byte)).wrapping_mul(0x0100_0193);
+        second = (second ^ u32::from(*byte)).wrapping_mul(0x85eb_ca6b);
+        second = second.rotate_left(13);
+    }
+    format!("pdf-v1:{}:{first:08x}{second:08x}", bytes.len())
 }
 
 pub struct CompileRequest<'a> {
@@ -801,22 +820,27 @@ pub async fn compile(request: CompileRequest<'_>) -> Result<CompileResult, Strin
         .and_then(|path| read_log_bounded(path).ok())
         .unwrap_or(stdout_buf);
     let pdf_path = spec.artifacts.pdf.clone();
-    let has_pdf = if capabilities.produces_pdf {
+    let output_id = if capabilities.produces_pdf {
         tokio::task::spawn_blocking(move || {
-            pdf_path
+            let path = pdf_path
                 .as_ref()
-                .is_some_and(|path| artifact_is_fresh(path, &retained_stale))
+                .filter(|path| artifact_is_fresh(path, &retained_stale))?;
+            let bytes = std::fs::read(path).ok()?;
+            Some(fingerprint_compile_output(&bytes))
         })
         .await
         .map_err(|error| format!("failed to verify compiler output: {error}"))?
     } else {
-        false
+        None
     };
+    let has_pdf = output_id.is_some();
     let errors = request.engine.parse_errors(&log);
     let has_reported_errors = errors.iter().any(|e| e.kind == "error");
     Ok(CompileResult {
         ok: has_pdf && exit_code.unwrap_or(-1) == 0 && !has_reported_errors,
         has_pdf,
+        output_id,
+        output_revision: None,
         errors,
         log,
         synctex_path: capabilities
@@ -2109,6 +2133,14 @@ mod tests {
         assert_eq!(
             candidates[2],
             PathBuf::from("/src/src-tauri/target/release/tectonic")
+        );
+    }
+
+    #[test]
+    fn compile_output_fingerprint_matches_the_frontend_contract() {
+        assert_eq!(
+            fingerprint_compile_output(&[0, 1, 2, 255]),
+            "pdf-v1:4:6fab6075b28eda84"
         );
     }
 }

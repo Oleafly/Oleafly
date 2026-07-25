@@ -21,11 +21,24 @@ import { MAX_PREVIEW_SCALE, MIN_PREVIEW_SCALE } from "./preview-zoom";
 
 // Detached PDF preview window (`?view=preview`); reloads on `preview:refresh` /
 // `preview:project` events emitted by the main window.
-export function PreviewWindow() {
+export interface PreviewWindowProps {
+  /**
+   * Component-harness seam for secondary-window coverage. Native E2E cannot
+   * attach a second WebView through the bridge, so a browser harness supplies
+   * deterministic bytes and disables only the Tauri event/read boundary.
+   */
+  harnessBytes?: Uint8Array;
+  disableNativeBridge?: boolean;
+}
+
+export function PreviewWindow({
+  harnessBytes,
+  disableNativeBridge = false,
+}: PreviewWindowProps = {}) {
   const [projectId, setProjectId] = useState<string>(() =>
     new URLSearchParams(window.location.search).get("project") ?? "",
   );
-  const [bytes, setBytes] = useState<Uint8Array | null>(null);
+  const [bytes, setBytes] = useState<Uint8Array | null>(harnessBytes ?? null);
   const [error, setError] = useState(false);
   const [scale, setScale] = useState(1.0);
   const [layout, setLayout] = useState<PdfLayout>("single");
@@ -35,33 +48,72 @@ export function PreviewWindow() {
   const [pageInput, setPageInput] = useState("1");
   const pdfRef = useRef<PdfViewerHandle>(null);
   const scrollBoxRef = useRef<HTMLDivElement>(null);
+  const projectIdRef = useRef(projectId);
+  const loadGenerationRef = useRef(0);
+  projectIdRef.current = projectId;
 
   const load = useCallback(async (id: string) => {
-    if (!id) return;
+    const generation = ++loadGenerationRef.current;
+    // Fail closed while retargeting: a window for project B must never keep
+    // displaying project A's compiled document while B is loading.
+    setBytes(null);
+    setError(false);
+    setPage(1);
+    setNumPages(0);
+    if (!id) {
+      setError(true);
+      return;
+    }
     try {
       const buf = await readCompiledPdf(id);
+      if (
+        generation !== loadGenerationRef.current ||
+        projectIdRef.current !== id
+      ) {
+        return;
+      }
       setBytes(new Uint8Array(buf));
       setError(false);
     } catch {
-      setBytes(null);
-      setError(true);
+      if (
+        generation === loadGenerationRef.current &&
+        projectIdRef.current === id
+      ) {
+        setBytes(null);
+        setError(true);
+      }
     }
   }, []);
 
-  useEffect(() => {
-    void load(projectId);
-  }, [projectId, load]);
+  const retargetProject = useCallback((id: string) => {
+    const alreadySelected = projectIdRef.current === id;
+    ++loadGenerationRef.current;
+    setBytes(null);
+    setError(false);
+    setPage(1);
+    setNumPages(0);
+    projectIdRef.current = id;
+    setProjectId(id);
+    if (alreadySelected) void load(id);
+  }, [load]);
 
   useEffect(() => {
+    if (disableNativeBridge) return;
+    void load(projectId);
+  }, [disableNativeBridge, projectId, load]);
+
+  useEffect(() => {
+    if (disableNativeBridge) return;
     const un1 = listen("preview:refresh", () => void load(projectId));
     const un2 = listen<{ projectId: string }>("preview:project", (e) => {
-      if (e.payload?.projectId) setProjectId(e.payload.projectId);
+      if (e.payload?.projectId) retargetProject(e.payload.projectId);
     });
     return () => {
+      ++loadGenerationRef.current;
       void un1.then((f) => f());
       void un2.then((f) => f());
     };
-  }, [projectId, load]);
+  }, [disableNativeBridge, projectId, load, retargetProject]);
 
   useEffect(() => setPageInput(String(page)), [page]);
 
@@ -109,25 +161,30 @@ export function PreviewWindow() {
   };
 
   return (
-    <div className="flex h-screen flex-col bg-background text-foreground">
+    <div
+      data-testid="detached-preview-window"
+      data-preview-layout={layout}
+      data-preview-page={page}
+      className="flex h-screen flex-col bg-background text-foreground"
+    >
       <div className="flex min-h-9 shrink-0 flex-wrap items-center justify-end gap-1 border-b px-2 py-1 [&_button]:shrink-0">
         {numPages > 0 && (
           <>
             <Tooltip label="Single page view">
-              <Button variant="ghost" size="icon" className={cn("size-7", layout === "single" && "bg-accent text-foreground")} onClick={() => setLayout("single")} aria-label="Single page view">
+                <Button variant="ghost" size="icon" className={cn("size-7", layout === "single" && "bg-accent text-foreground")} onClick={() => setLayout("single")} aria-label="Single page view" aria-pressed={layout === "single"}>
                 <RectangleVertical className="size-3.5" />
               </Button>
             </Tooltip>
             {numPages > 1 && (
               <Tooltip label="Two-page view">
-                <Button variant="ghost" size="icon" className={cn("size-7", layout === "double" && "bg-accent text-foreground")} onClick={() => setLayout("double")} aria-label="Two-page view">
+                <Button variant="ghost" size="icon" className={cn("size-7", layout === "double" && "bg-accent text-foreground")} onClick={() => setLayout("double")} aria-label="Two-page view" aria-pressed={layout === "double"}>
                   <Columns2 className="size-3.5" />
                 </Button>
               </Tooltip>
             )}
             <div className="mx-1 h-4 w-px bg-border" />
             <Tooltip label="Previous page">
-              <Button variant="ghost" size="icon" className="size-7" disabled={page <= 1} onClick={() => pdfRef.current?.gotoPage(page - 1)} aria-label="Previous page">
+              <Button variant="ghost" size="icon" className="size-7" disabled={page <= 1} onClick={() => pdfRef.current?.gotoPage(page - (layout === "double" ? 2 : 1))} aria-label="Previous page">
                 <ChevronUp className="size-3.5" />
               </Button>
             </Tooltip>
@@ -149,7 +206,7 @@ export function PreviewWindow() {
               <span>of {numPages}</span>
             </div>
             <Tooltip label="Next page">
-              <Button variant="ghost" size="icon" className="size-7" disabled={page >= numPages} onClick={() => pdfRef.current?.gotoPage(page + 1)} aria-label="Next page">
+              <Button variant="ghost" size="icon" className="size-7" disabled={page >= numPages} onClick={() => pdfRef.current?.gotoPage(page + (layout === "double" ? 2 : 1))} aria-label="Next page">
                 <ChevronDown className="size-3.5" />
               </Button>
             </Tooltip>
@@ -168,7 +225,12 @@ export function PreviewWindow() {
             <Minus className="size-3.5" />
           </Button>
         </Tooltip>
-        <span className="w-10 text-center text-xs tabular-nums text-muted-foreground">{Math.round(scale * 100)}%</span>
+        <span
+          data-testid="detached-preview-zoom"
+          className="w-10 text-center text-xs tabular-nums text-muted-foreground"
+        >
+          {Math.round(scale * 100)}%
+        </span>
         <Tooltip label="Zoom in">
           <Button
             variant="ghost"
@@ -190,11 +252,13 @@ export function PreviewWindow() {
 
       <div
         ref={scrollBoxRef}
+        data-testid="detached-preview-scroll"
         className="min-h-0 flex-1 overflow-auto bg-sidebar"
         style={inverted ? { filter: "invert(1) hue-rotate(180deg)" } : undefined}
       >
         {bytes ? (
           <ErrorBoundary
+            resetKey={bytes}
             fallback={<div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">The PDF preview crashed. Recompile in the main window.</div>}
           >
             <PdfViewer

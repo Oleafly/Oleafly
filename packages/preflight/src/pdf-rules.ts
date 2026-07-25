@@ -1,4 +1,4 @@
-import type { Finding, PositionedText } from "./types";
+import type { Finding, PdfExtractionStatus, PositionedText } from "./types";
 
 // Rows within this many PDF units of each other count as the same visual line.
 const ROW_TOLERANCE = 3;
@@ -82,9 +82,21 @@ export function checkSelectability(pages: PositionedText[][]): Finding[] {
   return out;
 }
 
-export function catalogFindings(meta: { lang?: string | null; title?: string | null; tagged?: boolean }): Finding[] {
+export function catalogFindings(
+  meta: { lang?: string | null; title?: string | null; tagged?: boolean | null },
+  extraction?: Pick<PdfExtractionStatus, "metadata" | "markInfo">,
+): Finding[] {
   const out: Finding[] = [];
-  if (!meta.lang || !meta.title) {
+  if (extraction?.metadata === "failed") {
+    out.push({
+      id: "pdf-metadata-extraction-failed",
+      lens: "a11y",
+      severity: "info",
+      title: "PDF metadata could not be inspected",
+      detail:
+        "Preflight could not read the PDF metadata, so it cannot verify the document title or language. This is an unknown result, not evidence that those fields are missing. Recompile and run the check again.",
+    });
+  } else if (!meta.lang || !meta.title) {
     const missing = [!meta.lang && "language", !meta.title && "title"].filter(Boolean).join(" and ");
     out.push({
       id: "pdf-lang-title",
@@ -95,14 +107,14 @@ export function catalogFindings(meta: { lang?: string | null; title?: string | n
         "Assistive tech and browsers use the PDF's language and title to announce the document correctly. Set them with hyperref, for example \\hypersetup{pdftitle={Your Name, CV}, pdflang=en-US}.",
     });
   }
-  if (meta.tagged === false) {
+  if (extraction?.markInfo === "failed" && meta.tagged !== true) {
     out.push({
-      id: "pdf-tagged",
+      id: "pdf-mark-info-extraction-failed",
       lens: "a11y",
       severity: "info",
-      title: "PDF is not tagged",
+      title: "PDF tagging status could not be inspected",
       detail:
-        "This PDF has no accessibility tags, which a formal PDF/UA or Section 508 check requires. The current compile engine does not produce tags. This is a roadmap item, not a fix you can make in the source today.",
+        "Preflight could not read the PDF's MarkInfo dictionary, so it will not claim that the output is tagged or untagged from that check alone.",
     });
   }
   return out;
@@ -110,13 +122,14 @@ export function catalogFindings(meta: { lang?: string | null; title?: string | n
 
 export function runPdfRules(
   pages: PositionedText[][],
-  meta?: { lang?: string | null; title?: string | null; tagged?: boolean },
+  meta?: { lang?: string | null; title?: string | null; tagged?: boolean | null },
+  extraction?: Pick<PdfExtractionStatus, "metadata" | "markInfo">,
 ): Finding[] {
   const text = pages.map((p) => p.map((it) => it.str).join("")).join("\n");
   return [
     ...analyzeReadingOrder(pages),
     ...detectGarbledText(text),
     ...checkSelectability(pages),
-    ...(meta ? catalogFindings(meta) : []),
+    ...(meta ? catalogFindings(meta, extraction) : []),
   ];
 }

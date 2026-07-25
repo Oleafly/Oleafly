@@ -5,7 +5,8 @@ use tauri::async_runtime::Mutex;
 
 /// Process-wide app state.
 pub struct AppState {
-    /// Serializes main-document compiles (shared build dir + LuaLaTeX).
+    /// Serializes main-document compiles (shared build dir + LuaLaTeX) and
+    /// persisted main-document selection changes.
     pub compile_lock: Mutex<()>,
     /// Serializes isolated figure compiles separately so AI figure previews
     /// never block the main document compile (and vice versa). Figure builds
@@ -15,6 +16,9 @@ pub struct AppState {
     /// Monotonic ticket for compile requests; used to skip queued compiles
     /// that a newer request for the same project has superseded.
     pub compile_ticket: AtomicU64,
+    /// Monotonic identity for successful main-document outputs. Allocated while
+    /// `compile_lock` is held so every window observes one total output order.
+    pub compile_output_revision: AtomicU64,
     /// Latest compile ticket per project id.
     pub latest_compile: Mutex<HashMap<String, u64>>,
     /// Absolute paths the user has just written via a native save/export dialog.
@@ -29,6 +33,7 @@ impl Default for AppState {
             figure_compile_lock: Mutex::new(()),
             pandoc_install_lock: Mutex::new(()),
             compile_ticket: AtomicU64::new(0),
+            compile_output_revision: AtomicU64::new(0),
             latest_compile: Mutex::new(HashMap::new()),
             reveal_allowlist: Mutex::new(VecDeque::new()),
         }

@@ -402,7 +402,7 @@ export const useChatsStore = create<ChatsState>((set, get) => ({
 }));
 
 // E2E / devtools: inspect and seed per-chat usage without a model call.
-if (typeof window !== "undefined") {
+if (typeof window !== "undefined" && import.meta.env.DEV) {
   const w = window as unknown as {
     __chatUsageAdd?: (
       chatId: string,

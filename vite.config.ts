@@ -2,6 +2,7 @@ import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "node:path";
+import { assertNoProductionDevHookTokens } from "./scripts/production-hook-audit.mjs";
 
 // Tauri expects a fixed port; if that's not available it will attempt the next one.
 const host = process.env.TAURI_DEV_HOST;
@@ -11,11 +12,40 @@ const preserveWorkerExports = (): Plugin => ({
   options: (options) => ({ ...options, preserveEntrySignatures: "strict" }),
 });
 
+const rejectProductionDevHooks = (): Plugin => ({
+  name: "reject-production-dev-hooks",
+  generateBundle(_options, bundle) {
+    const artifacts: [string, string][] = [];
+    for (const [fileName, output] of Object.entries(bundle)) {
+      if (output.type === "chunk") {
+        artifacts.push([fileName, output.code]);
+      } else if (typeof output.source === "string") {
+        artifacts.push([fileName, output.source]);
+      }
+    }
+    try {
+      assertNoProductionDevHookTokens(artifacts);
+    } catch (error) {
+      this.error(error instanceof Error ? error.message : String(error));
+    }
+  },
+});
+
 export default defineConfig(async () => ({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), rejectProductionDevHooks()],
   optimizeDeps: {
     exclude: ["harper.js"],
-    include: ["pdfjs-dist/build/pdf.worker.min.mjs"],
+    include: [
+      "pdfjs-dist/build/pdf.worker.min.mjs",
+      // PdfViewer lazy-loads the official link/structure helpers. Pre-bundle
+      // them so first use in Tauri dev/E2E does not invalidate Vite's optimized
+      // dependency graph and reload the WebView mid-render.
+      "pdfjs-dist/web/pdf_viewer.mjs",
+      // The production PdfViewer browser-evidence harness builds a deterministic
+      // real PDF in-browser. Pre-bundle its fixture generator so the first E2E
+      // navigation cannot trigger a dependency-optimizer reload mid-selection.
+      "pdf-lib",
+    ],
   },
   // pdf.js v6 loads its worker as an ES module; build ours the same way so the
   // polyfill wrapper worker (src/components/pdf/pdf.worker.ts) loads correctly.

@@ -1,8 +1,14 @@
 import type { Finding } from "./types";
+import { extractEmail, extractPhoneNumber } from "./contact";
+import {
+  ATS_SECTION_DEFINITIONS,
+  matchResumeSectionHeading,
+} from "./resume-sections";
 
 export interface ParsedSection {
   name: string;
   present: boolean;
+  required: boolean;
 }
 
 export interface AtsParse {
@@ -14,25 +20,11 @@ export interface AtsParse {
   sections: ParsedSection[];
 }
 
-const EMAIL = /[\w.+-]{1,100}@[\w-]{1,100}\.[\w.-]{1,100}/;
-const PHONE = /\+?\d[\d\s().-]{7,20}\d/;
 const URL = /https?:\/\/[^\s|)]+|(?:www\.|linkedin\.com|github\.com)[^\s|)]+/gi;
-
-// Standard resume sections and the patterns a heading line must match.
-const SECTIONS: { name: string; re: RegExp }[] = [
-  { name: "Experience", re: /^(work |professional |relevant )?experience:?$|^employment( history)?:?$/i },
-  { name: "Education", re: /^education:?$/i },
-  { name: "Skills", re: /^(technical |core |key )?skills:?$|^technologies:?$/i },
-  {
-    name: "Projects",
-    re: /^(personal |academic |selected |key |notable |side |technical |relevant |open source )?projects?:?$/i,
-  },
-  { name: "Summary", re: /^(summary|objective|profile|about):?$/i },
-];
 
 function looksLikeName(line: string): boolean {
   const t = line.trim();
-  if (!t || t.length > 40 || EMAIL.test(t) || /\d/.test(t)) return false;
+  if (!t || t.length > 40 || extractEmail(t) || /\d/.test(t)) return false;
   const words = t.split(/\s+/);
   return words.length >= 2 && words.length <= 4 && words.every((w) => /^[A-Za-z][A-Za-z.'-]*$/.test(w));
 }
@@ -41,14 +33,16 @@ export function simulateAtsParse(text: string): AtsParse {
   const lines = text.split("\n").map((l) => l.trim());
   const nonEmpty = lines.filter(Boolean);
 
-  const email = EMAIL.exec(text)?.[0] ?? null;
-  const phone = PHONE.exec(text)?.[0]?.trim() ?? null;
+  const email = extractEmail(text);
+  const phone = extractPhoneNumber(text);
   const links = Array.from(new Set(text.match(URL) ?? []));
   const name = nonEmpty.find(looksLikeName) ?? null;
+  const matchedSections = new Set(lines.map(matchResumeSectionHeading).filter(Boolean));
 
-  const sections = SECTIONS.map((s) => ({
-    name: s.name,
-    present: lines.some((l) => s.re.test(l)),
+  const sections = ATS_SECTION_DEFINITIONS.map((section) => ({
+    name: section.name,
+    present: matchedSections.has(section.id),
+    required: section.required,
   }));
 
   // A resume is identifiable by its section structure. Two or more standard

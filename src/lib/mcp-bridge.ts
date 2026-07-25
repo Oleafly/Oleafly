@@ -241,22 +241,24 @@ export async function startMcpBridge(): Promise<() => void> {
   } catch {
     useMcpActivityStore.getState().setServerRunning(false);
   }
-  // Test hook: e2e (and devtools) can resolve the head of the MCP approval
-  // queue without relying on Playwright click targeting inside the webview.
-  // Use string verbs so eval bridges cannot coerce a bare `false` argument away.
-  const w = window as unknown as {
-    __mcpDecide?: (verb: string) => string;
-    __mcpQueue?: () => string[];
-  };
-  w.__mcpDecide = (verb) => {
-    const head = useMcpApprovalStore.getState().queue[0];
-    if (!head) return "empty";
-    const ok = verb === "approve";
-    useMcpApprovalStore.getState().decide(head.id, ok);
-    return `${verb}:${head.req.tool}:id=${head.id}:left=${useMcpApprovalStore.getState().queue.length}`;
-  };
-  w.__mcpQueue = () =>
-    useMcpApprovalStore.getState().queue.map((q) => `${q.id}:${q.req.tool}`);
+  if (import.meta.env.DEV) {
+    // Test hook: e2e (and devtools) can resolve the head of the MCP approval
+    // queue without relying on Playwright click targeting inside the webview.
+    // Use string verbs so eval bridges cannot coerce a bare `false` argument away.
+    const w = window as unknown as {
+      __mcpDecide?: (verb: string) => string;
+      __mcpQueue?: () => string[];
+    };
+    w.__mcpDecide = (verb) => {
+      const head = useMcpApprovalStore.getState().queue[0];
+      if (!head) return "empty";
+      const ok = verb === "approve";
+      useMcpApprovalStore.getState().decide(head.id, ok);
+      return `${verb}:${head.req.tool}:id=${head.id}:left=${useMcpApprovalStore.getState().queue.length}`;
+    };
+    w.__mcpQueue = () =>
+      useMcpApprovalStore.getState().queue.map((q) => `${q.id}:${q.req.tool}`);
+  }
 
   // Singleton listener: Strict Mode mounts effects twice; two listeners would
   // run every tools/call twice and leave zombie approval cards in the queue.

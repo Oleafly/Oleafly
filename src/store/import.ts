@@ -9,6 +9,7 @@ import { create } from "zustand";
 import { useHomeViewStore } from "@/store/home-view";
 
 interface ImportState {
+  requestGeneration: number;
   open: boolean;
   fileName: string;
   pdfBytes: Uint8Array | null;
@@ -26,6 +27,7 @@ interface ImportState {
 }
 
 export const useImportStore = create<ImportState>((set, get) => ({
+  requestGeneration: 0,
   open: false,
   fileName: "",
   pdfBytes: null,
@@ -37,8 +39,10 @@ export const useImportStore = create<ImportState>((set, get) => ({
   view: "split",
   options: {},
   openWithPdf: async (bytes, fileName) => {
+    const requestGeneration = get().requestGeneration + 1;
     useHomeViewStore.getState().goTo("pdf-import");
     set({
+      requestGeneration,
       open: true,
       busy: true,
       error: null,
@@ -52,10 +56,12 @@ export const useImportStore = create<ImportState>((set, get) => ({
     try {
       const { extractPagesForConvert } = await import("@oleafly/pdf-to-latex/pdf-adapter");
       const { pages, figures } = await extractPagesForConvert(bytes);
-      if (!get().open) return;
+      if (!get().open || get().requestGeneration !== requestGeneration) return;
       set({ pages, figures, result: convertPages(pages, {}), busy: false });
     } catch (e) {
-      set({ busy: false, error: String(e) });
+      if (get().open && get().requestGeneration === requestGeneration) {
+        set({ busy: false, error: String(e) });
+      }
     }
   },
   rerun: (options) => {
@@ -64,12 +70,14 @@ export const useImportStore = create<ImportState>((set, get) => ({
   },
   setView: (view) => set({ view }),
   close: () =>
-    set({
+    set((state) => ({
+      requestGeneration: state.requestGeneration + 1,
       open: false,
+      busy: false,
       pdfBytes: null,
       pages: [],
       figures: [],
       result: null,
       error: null,
-    }),
+    })),
 }));
