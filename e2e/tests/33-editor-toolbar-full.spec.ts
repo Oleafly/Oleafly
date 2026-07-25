@@ -86,20 +86,8 @@ async function openListDropdown(page: Page) {
   }
 }
 
-async function openCodeIntelligence(page: Page) {
-  await clickToolbarControl(
-    page,
-    '[aria-label="Code intelligence"]',
-    "Code",
-  );
-  await page.waitForFunction(
-    `document.body.innerText.includes("Go to definition")`,
-    5_000,
-  );
-}
-
-async function clickCodeIntelligenceAction(page: Page, label: string) {
-  const buttonExpression = `Array.from(
+function codeIntelligenceButtonExpression(label: string) {
+  return `Array.from(
     document.querySelectorAll('[data-radix-popper-content-wrapper] button')
   ).find((candidate) => {
     if (!candidate.textContent?.trim().startsWith(${JSON.stringify(label)})) return false;
@@ -110,6 +98,29 @@ async function clickCodeIntelligenceAction(page: Page, label: string) {
       && rect.width > 0
       && rect.height > 0;
   })`;
+}
+
+async function openCodeIntelligence(page: Page) {
+  const actionExpression =
+    codeIntelligenceButtonExpression("Go to definition");
+  for (let attempt = 0; attempt < 5; attempt++) {
+    if (await page.evaluate<boolean>(`!!(${actionExpression})`)) return;
+    await clickToolbarControl(
+      page,
+      '[aria-label="Code intelligence"]',
+      "Code",
+    );
+    const opened = await page
+      .waitForFunction(`!!(${actionExpression})`, 3_000)
+      .then(() => true)
+      .catch(() => false);
+    if (opened) return;
+  }
+  throw new Error("Code intelligence menu did not remain open after toolbar layout settled");
+}
+
+async function clickCodeIntelligenceAction(page: Page, label: string) {
+  const buttonExpression = codeIntelligenceButtonExpression(label);
   await page.waitForFunction(`!!(${buttonExpression})`, 5_000);
   await page.evaluate(`(() => {
     const button = ${buttonExpression};
