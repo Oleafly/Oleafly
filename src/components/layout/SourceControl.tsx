@@ -455,7 +455,7 @@ export function SourceControl() {
         {status && (
           <div
             className={cn(
-              "mt-2 whitespace-pre-wrap rounded-md border p-2 text-[11px]",
+              "mt-2 whitespace-pre-wrap break-words rounded-md border p-2 text-[11px]",
               status.ok
                 ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                 : "border-destructive/30 bg-destructive/10 text-destructive"
