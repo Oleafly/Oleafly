@@ -654,13 +654,34 @@ fn create_image_project_in(
     Ok(id)
 }
 
+/// Guarantees `source` is a compilable standalone document. The Diagram
+/// Composer's "save as project" flow wraps its output before calling this
+/// command, but this is the single place every diagram project's initial
+/// file passes through, so it doubles as a safety net against ever writing
+/// a project with a bare TikZ body and no preamble/`\begin{document}`.
+fn ensure_diagram_document(source: String) -> String {
+    if source.contains("\\begin{document}") {
+        return source;
+    }
+    format!(
+        "\\documentclass[tikz,border=4pt]{{standalone}}\n\
+         \\usepackage{{tikz}}\n\
+         \\usetikzlibrary{{shapes.geometric,arrows.meta,positioning,calc,backgrounds}}\n\
+         \\begin{{document}}\n\
+         {}\n\
+         \\end{{document}}\n",
+        source.trim()
+    )
+}
+
 #[tauri::command]
 pub fn create_diagram_project(name: String, source: String) -> Result<String, String> {
     let root = paths::projects_root()?;
     let id = unique_random_slug(&root)?;
     let dir = root.join(&id);
+    let source = ensure_diagram_document(source);
     create_project_transaction(&dir, || {
-        std::fs::write(dir.join("main.tex"), source).map_err(|e| e.to_string())?;
+        std::fs::write(dir.join("main.tex"), &source).map_err(|e| e.to_string())?;
         write_meta_at(
             &dir.join("project.json"),
             &ProjectMeta {
@@ -2026,6 +2047,41 @@ mod tests {
         assert_eq!(meta.kind, "diagram");
         assert_eq!(meta.name, "My Diagram");
         assert!(!meta.hidden);
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn diagram_project_wraps_a_bare_tikz_body_into_a_compilable_document() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("diagram-project-bare-body");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let id = create_diagram_project(
+            "Bare Body".to_string(),
+            "\\definecolor{c000000}{HTML}{000000}\n\\begin{tikzpicture}\n\\end{tikzpicture}"
+                .to_string(),
+        )
+        .unwrap();
+        let dir = crate::paths::project_dir(&id).unwrap();
+        let main_tex = std::fs::read_to_string(dir.join("main.tex")).unwrap();
+        assert!(main_tex.contains("\\documentclass"));
+        assert!(main_tex.contains("\\usepackage{tikz}"));
+        assert!(main_tex.contains("\\begin{document}"));
+        assert!(main_tex.contains("\\end{document}"));
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn diagram_project_leaves_an_already_wrapped_document_untouched() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("diagram-project-already-wrapped");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let source = "\\documentclass[tikz,border=4pt]{standalone}\n\\usepackage{tikz}\n\\begin{document}\n\\begin{tikzpicture}\n\\end{tikzpicture}\n\\end{document}\n";
+        let id = create_diagram_project("Already Wrapped".to_string(), source.to_string()).unwrap();
+        let dir = crate::paths::project_dir(&id).unwrap();
+        let main_tex = std::fs::read_to_string(dir.join("main.tex")).unwrap();
+        assert_eq!(main_tex, source);
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(root).unwrap();
     }
