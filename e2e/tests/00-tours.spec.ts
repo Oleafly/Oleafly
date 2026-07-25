@@ -56,6 +56,178 @@ async function dismissAll(page: Page) {
   );
 }
 
+interface ProjectHandoffSnapshot {
+  tourTitleVisible: boolean;
+  toolbarVisible: boolean;
+  projectId: string | null;
+  projectName: string | null;
+  publishedProjectIds: string[] | null;
+  projectListError: string | null;
+  createButtonConnected: boolean;
+  createButtonVisible: boolean;
+  createButtonEnabled: boolean;
+  wizardStage: string | null;
+  alerts: string[];
+}
+
+async function projectHandoffSnapshot(
+  page: Page,
+  projectName: string,
+  attemptToken: string,
+  includeProjects = false,
+): Promise<ProjectHandoffSnapshot> {
+  return page.evaluate<ProjectHandoffSnapshot>(
+    `(async () => {
+      const visible = (element) => {
+        if (!(element instanceof HTMLElement) || element.getClientRects().length === 0) {
+          return false;
+        }
+        const style = getComputedStyle(element);
+        return style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity) > 0;
+      };
+      const createButton = document.querySelector(
+        '[data-e2e-create-attempt=${JSON.stringify(attemptToken)}]'
+      );
+      const toolbar = document.querySelector('[data-tour="project-toolbar"]');
+      const tourTitleVisible = [...document.querySelectorAll("#react-joyride-portal h2")]
+        .some((element) => visible(element) && element.textContent?.trim() === "Project toolbar");
+      const files = await import("/src/store/files.ts");
+      const fileState = files.useFilesStore.getState();
+      let publishedProjectIds = null;
+      let projectListError = null;
+      if (${includeProjects}) {
+        try {
+          const api = await import("/src/lib/tauri.ts");
+          publishedProjectIds = (await api.listProjects())
+            .filter((project) => project.name === ${JSON.stringify(projectName)})
+            .map((project) => project.id);
+        } catch (error) {
+          projectListError = String(error);
+        }
+      }
+      return {
+        tourTitleVisible,
+        toolbarVisible: visible(toolbar),
+        projectId: fileState.projectId,
+        projectName: fileState.projectName,
+        publishedProjectIds,
+        projectListError,
+        createButtonConnected: Boolean(createButton?.isConnected),
+        createButtonVisible: visible(createButton),
+        createButtonEnabled:
+          createButton instanceof HTMLButtonElement && !createButton.disabled,
+        wizardStage:
+          document.querySelector('[data-tour="project-template-gallery"]')
+            ?.getAttribute("data-tour-stage") ?? null,
+        alerts: [...document.querySelectorAll('[role="alert"]')]
+          .filter(visible)
+          .map((element) => element.textContent?.trim() ?? "")
+          .filter(Boolean),
+      };
+    })()`,
+  );
+}
+
+async function createProjectAndWaitForWorkspaceTour(page: Page, projectName: string) {
+  const attemptToken = `tour-create-${Date.now().toString(36)}`;
+  const resolved = await page.evaluate<{ liveCount: number; buttonCount: number }>(
+    `(() => {
+      const visible = (element) => {
+        if (!(element instanceof HTMLElement) || element.getClientRects().length === 0) {
+          return false;
+        }
+        const style = getComputedStyle(element);
+        return style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity) > 0;
+      };
+      const buttons = [...document.querySelectorAll('[data-tour="create-project"]')];
+      const live = buttons.filter(
+        (button) =>
+          visible(button) &&
+          button instanceof HTMLButtonElement &&
+          !button.disabled
+      );
+      if (live.length === 1) {
+        live[0].dataset.e2eCreateAttempt = ${JSON.stringify(attemptToken)};
+      }
+      return { liveCount: live.length, buttonCount: buttons.length };
+    })()`,
+  );
+  if (resolved.liveCount !== 1) {
+    throw new Error(
+      `Expected one live create-project button, found ${resolved.liveCount} live / ${resolved.buttonCount} total`,
+    );
+  }
+
+  const selector = `[data-e2e-create-attempt="${attemptToken}"]`;
+  await page.locator(selector).click();
+
+  const startedAt = Date.now();
+  const deadline = startedAt + 30_000;
+  let retriedDroppedClick = false;
+  let last = await projectHandoffSnapshot(page, projectName, attemptToken);
+  while (Date.now() < deadline) {
+    if (last.tourTitleVisible) return;
+    if (last.alerts.length > 0) {
+      const diagnostic = await projectHandoffSnapshot(
+        page,
+        projectName,
+        attemptToken,
+        true,
+      );
+      throw new Error(`Project creation reported an error: ${JSON.stringify(diagnostic)}`);
+    }
+
+    const projectOpened =
+      Boolean(last.projectId) || last.toolbarVisible;
+    if (
+      !retriedDroppedClick &&
+      !projectOpened &&
+      Date.now() - startedAt >= 1_000 &&
+      last.createButtonConnected &&
+      last.createButtonVisible &&
+      last.createButtonEnabled
+    ) {
+      const checked = await projectHandoffSnapshot(
+        page,
+        projectName,
+        attemptToken,
+        true,
+      );
+      const projectPublished = (checked.publishedProjectIds?.length ?? 0) > 0;
+      if (
+        !checked.projectId &&
+        !checked.toolbarVisible &&
+        checked.alerts.length === 0 &&
+        !projectPublished &&
+        checked.projectListError === null &&
+        checked.createButtonConnected &&
+        checked.createButtonVisible &&
+        checked.createButtonEnabled
+      ) {
+        // The bridge acknowledged the first command but the exact same button
+        // is still live and neither the store nor disk saw a project. Retry
+        // this one dropped click; never retry once creation has begun.
+        await page.locator(selector).click();
+        retriedDroppedClick = true;
+      }
+      last = checked;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    last = await projectHandoffSnapshot(page, projectName, attemptToken);
+  }
+
+  const diagnostic = await projectHandoffSnapshot(
+    page,
+    projectName,
+    attemptToken,
+    true,
+  );
+  throw new Error(
+    `Workspace tour did not start after project creation (retriedDroppedClick=${retriedDroppedClick}): ${JSON.stringify(diagnostic)}`,
+  );
+}
+
 test.afterEach(async ({ tauriPage }) => {
   await dismissAll(tauriPage);
 });
@@ -107,10 +279,7 @@ test("welcome is modal and Home creates a real project before Workspace starts",
   await expect(creamSwatch).toHaveAttribute("aria-pressed", "true");
   await expect(creamSwatch.locator("svg")).toBeVisible();
   await tauriPage.getByText("Next", { exact: true }).click();
-  await tauriPage.click('[data-tour="create-project"]');
-  await expect(tauriPage.getByText("Project toolbar", { exact: true })).toBeVisible({
-    timeout: 30_000,
-  });
+  await createProjectAndWaitForWorkspaceTour(tauriPage, projectName);
 
   await reloadNativePage(tauriPage);
   await expect(tauriPage.getByTestId("tour-welcome")).toHaveCount(0);

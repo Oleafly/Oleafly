@@ -26,6 +26,7 @@ import {
   type PdfPageViewport,
   scanPdfPageViewports,
 } from "./pdfPageGeometry";
+import { calibratePdfTextLayerWidths } from "./pdfTextLayerGeometry";
 import { registerPdfTextSelection } from "./pdfTextSelection";
 import { closestMatchingElement, wordAtHorizontalPosition, wordInText } from "./textHit";
 
@@ -271,6 +272,82 @@ export function prioritizePdfPages(
   return [...pages]
     .sort((a, b) => Math.abs(a - focusPage) - Math.abs(b - focusPage) || a - b)
     .slice(0, Math.max(0, Math.floor(limit)));
+}
+
+export interface PdfPagePosition {
+  pageNumber: number;
+  top: number;
+  bottom: number;
+}
+
+/**
+ * Pick the page that best represents the viewport.
+ *
+ * A page with only a few pixels left above the viewport must not win over the
+ * next page that fills almost all of it. Equal vertical geometry is resolved
+ * to the lower page number so a two-page spread consistently reports its left
+ * page. IntersectionObserver uses a generous render margin, so the final
+ * nearest-distance fallback also handles a callback arriving between two
+ * actually visible pages.
+ */
+export function selectCurrentPdfPage(
+  pages: Iterable<PdfPagePosition>,
+  viewportTop: number,
+  viewportBottom: number,
+  fallbackPage = 1,
+): number {
+  const candidates = [...pages]
+    .filter(
+      ({ pageNumber, top, bottom }) =>
+        Number.isFinite(pageNumber) &&
+        pageNumber >= 1 &&
+        Number.isFinite(top) &&
+        Number.isFinite(bottom) &&
+        bottom >= top,
+    )
+    .sort((a, b) => a.pageNumber - b.pageNumber);
+  if (!candidates.length) return fallbackPage;
+
+  let best = candidates[0];
+  let bestOverlap = Math.max(
+    0,
+    Math.min(best.bottom, viewportBottom) - Math.max(best.top, viewportTop),
+  );
+  let bestTopDistance = Math.abs(best.top - viewportTop);
+  let bestViewportDistance =
+    bestOverlap > 0
+      ? 0
+      : best.bottom < viewportTop
+        ? viewportTop - best.bottom
+        : best.top - viewportBottom;
+
+  for (const candidate of candidates.slice(1)) {
+    const overlap = Math.max(
+      0,
+      Math.min(candidate.bottom, viewportBottom) -
+        Math.max(candidate.top, viewportTop),
+    );
+    const topDistance = Math.abs(candidate.top - viewportTop);
+    const viewportDistance =
+      overlap > 0
+        ? 0
+        : candidate.bottom < viewportTop
+          ? viewportTop - candidate.bottom
+          : candidate.top - viewportBottom;
+    if (
+      overlap > bestOverlap ||
+      (overlap === bestOverlap &&
+        (viewportDistance < bestViewportDistance ||
+          (viewportDistance === bestViewportDistance &&
+            topDistance < bestTopDistance)))
+    ) {
+      best = candidate;
+      bestOverlap = overlap;
+      bestTopDistance = topDistance;
+      bestViewportDistance = viewportDistance;
+    }
+  }
+  return best.pageNumber;
 }
 
 type PdfOptionalContentConfig = Awaited<
@@ -851,6 +928,17 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
           textLayer.cancel();
           return;
         }
+        try {
+          calibratePdfTextLayerWidths(
+            textDiv,
+            textLayer.textDivs,
+            textContent,
+            viewport,
+          );
+        } catch {
+          // Keep pdf.js' stock geometry if a browser refuses synchronous DOM
+          // measurement; text selection is still more useful than no layer.
+        }
         accessibilityManager.setTextMapping(textLayer.textDivs);
         accessibilityManager.enable();
         state.removeTextSelection = registerPdfTextSelection(
@@ -990,27 +1078,29 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     }
   }, [renderPage, unrenderPage]);
 
-  // The "current" page is the one straddling the top of the viewport. We only
-  // scan pages the observer already flagged visible (a handful), so this is cheap
-  // even for a 400+ page book.
+  // The "current" page is the one occupying most of the viewport. Include the
+  // commanded page as well as observer candidates because a scroll event can
+  // arrive one frame before IntersectionObserver publishes its new set.
   const emitCurrentPage = useCallback(() => {
     const scrollParent = containerRef.current?.parentElement;
     const doc = docRef.current;
     if (!scrollParent || !doc) return;
-    const parentTop = scrollParent.getBoundingClientRect().top;
-    const pages = [...visibleRef.current].sort((a, b) => a - b);
-    let current = pages[0] ?? 1;
-    for (const p of pages) {
-      const wrap = wrapsRef.current.get(p);
-      if (!wrap) continue;
-      // The first visible page whose bottom is still below the viewport top is
-      // the top-most page on screen. Works for one- and two-column layouts (in a
-      // two-up spread this reports the left page of the pair).
-      if (wrap.getBoundingClientRect().bottom > parentTop + 4) {
-        current = p;
-        break;
-      }
-    }
+    const parentRect = scrollParent.getBoundingClientRect();
+    const pageNumbers = new Set([
+      currentPageRef.current,
+      ...visibleRef.current,
+    ]);
+    const current = selectCurrentPdfPage(
+      [...pageNumbers].flatMap((pageNumber) => {
+        const wrap = wrapsRef.current.get(pageNumber);
+        if (!wrap) return [];
+        const rect = wrap.getBoundingClientRect();
+        return [{ pageNumber, top: rect.top, bottom: rect.bottom }];
+      }),
+      parentRect.top,
+      parentRect.bottom,
+      currentPageRef.current,
+    );
     if (current !== currentPageRef.current) {
       currentPageRef.current = current;
       onPageChangeRef.current?.(current, doc.numPages);
