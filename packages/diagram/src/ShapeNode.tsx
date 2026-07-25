@@ -36,6 +36,17 @@ const HANDLES = [
   { id: "l", pos: Position.Left },
 ];
 
+// The parallelogram polygon ("22,0 100,0 78,100 0,100" below) slants its
+// left/right edges, so the bounding box's side midpoints (React Flow's
+// default handle positions) sit outside the drawn shape. These move each
+// handle onto the actual slanted edge instead.
+const PARALLELOGRAM_HANDLE_STYLE: Record<string, CSSProperties> = {
+  t: { left: "61%" },
+  r: { left: "89%", right: "auto" },
+  b: { left: "39%" },
+  l: { left: "11%" },
+};
+
 const RESIZE_CONTROLS: Array<{
   position: ControlPosition;
   variant: ResizeControlVariant;
@@ -211,6 +222,7 @@ export function ShapeNode({ id, data, selected }: NodeProps) {
             pointerEvents: "all",
             cursor: "crosshair",
             transition: "opacity 120ms",
+            ...(d.shape === "parallelogram" ? PARALLELOGRAM_HANDLE_STYLE[h.id] : null),
           }}
         />
       ))}
