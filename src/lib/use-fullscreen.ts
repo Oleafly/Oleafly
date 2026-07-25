@@ -1,6 +1,24 @@
 import { useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
+function safelyUnlisten(unlisten: (() => void) | undefined): void {
+  if (!unlisten) return;
+  try {
+    // Tauri types this as void, but some bridges return a promise. During a
+    // webview reload that promise can reject after the listener registry has
+    // already gone away, so absorb both synchronous and asynchronous teardown.
+    const pending = unlisten() as unknown;
+    if (
+      pending &&
+      typeof (pending as { then?: unknown }).then === "function"
+    ) {
+      void Promise.resolve(pending).catch(() => {});
+    }
+  } catch {
+    /* listener was already removed with the webview */
+  }
+}
+
 // So macOS traffic-light padding can be dropped when the lights are
 // overlaid (fullscreen).
 export function useFullscreen(): boolean {
@@ -23,11 +41,11 @@ export function useFullscreen(): boolean {
       } catch {
         /* not running in Tauri */
       }
-      if (cancelled && unlisten) unlisten();
+      if (cancelled) safelyUnlisten(unlisten);
     })();
     return () => {
       cancelled = true;
-      if (unlisten) unlisten();
+      safelyUnlisten(unlisten);
     };
   }, []);
 

@@ -266,12 +266,16 @@ pub fn read_file(project_id: String, path: String) -> Result<String, String> {
 }
 
 #[tauri::command]
-pub fn write_file(project_id: String, path: String, content: String) -> Result<(), String> {
-    let p = resolve(&project_id, &path)?;
-    if let Some(parent) = p.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-    }
-    atomic_write(&p, content.as_bytes()).map_err(|e| format!("failed to write {path}: {e}"))
+pub async fn write_file(project_id: String, path: String, content: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
+        let p = resolve(&project_id, &path)?;
+        if let Some(parent) = p.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        atomic_write(&p, content.as_bytes()).map_err(|e| format!("failed to write {path}: {e}"))
+    })
+    .await
+    .map_err(|e| format!("file write task failed: {e}"))?
 }
 
 #[tauri::command]
