@@ -1394,7 +1394,7 @@ ${sandboxedCustom}`;
 
       {/* Visible even keyless so e2e/hooks can assert it */}
       {agentTodos.length > 0 && (
-        <div className="shrink-0 border-b px-3 py-2" data-testid="agent-todos">
+        <div className="shrink-0 border-b bg-black/[0.03] px-3 py-2 dark:bg-black/20" data-testid="agent-todos">
           <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Plan
           </p>
