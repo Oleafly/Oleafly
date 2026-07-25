@@ -12,6 +12,7 @@ import {
 import { modalCoordinator } from "@oleafly/templates/modal-coordinator";
 import { LeafLogo } from "@/components/layout/LeafLogo";
 import { Button } from "@/components/ui/button";
+import { Tooltip } from "@/components/ui/tooltip";
 import { START_TOUR_EVENT } from "@/lib/tour";
 import { evaluateTour, missingTargetFallback } from "@/lib/tours/coordinator";
 import {
@@ -23,6 +24,12 @@ import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
 import { useTourStore } from "@/store/tours";
+
+// react-joyride's control-button props carry a native `title`, which renders
+// the browser's plain system tooltip; drop it and show our own Tooltip instead.
+function omitTitle<T extends { title: string }>({ title: _title, ...rest }: T) {
+  return rest;
+}
 
 function TourTooltip(props: TooltipRenderProps) {
   const {
@@ -41,6 +48,7 @@ function TourTooltip(props: TooltipRenderProps) {
   const inputReady =
     definition.kind !== "required-input" ||
     Boolean(document.querySelector<HTMLInputElement>(`${definition.target}`)?.value.trim());
+  const isWelcome = definition.id === "home-overview";
 
   return (
     <div
@@ -48,16 +56,16 @@ function TourTooltip(props: TooltipRenderProps) {
       data-tour-tooltip={definition.id}
       className="w-[min(21rem,calc(100vw-2rem))] rounded-lg border bg-popover p-4 text-popover-foreground shadow-xl"
     >
-      {definition.id === "home-overview" ? (
+      {isWelcome ? (
         <svg
           aria-hidden
-          className="pointer-events-none absolute bottom-[calc(100%+10px)] left-1/2 h-[clamp(7rem,30vh,22rem)] w-24 -translate-x-1/2 overflow-visible text-primary"
+          className="pointer-events-none absolute top-[calc(100%+10px)] left-1/2 h-[clamp(7rem,30vh,22rem)] w-24 -translate-x-1/2 overflow-visible text-primary"
           viewBox="0 0 96 320"
           preserveAspectRatio="none"
         >
-          <title>Hand-drawn arrow pointing to Home</title>
+          <title>Hand-drawn arrow pointing to the welcome paragraph</title>
           <path
-            d="M52 316 C80 258, 19 222, 55 166 C81 124, 28 88, 49 24"
+            d="M52 4 C80 62, 19 98, 55 154 C81 196, 28 232, 49 296"
             fill="none"
             stroke="currentColor"
             strokeWidth="4"
@@ -65,7 +73,7 @@ function TourTooltip(props: TooltipRenderProps) {
             strokeLinejoin="round"
           />
           <path
-            d="M31 45 L49 24 L63 51 M34 48 L49 27"
+            d="M31 275 L49 296 L63 269 M34 272 L49 293"
             fill="none"
             stroke="currentColor"
             strokeWidth="4"
@@ -136,19 +144,25 @@ function TourTooltip(props: TooltipRenderProps) {
         <span className="text-[11px] tabular-nums text-muted-foreground">
           {index + 1} / {size}
         </span>
-        <Button {...skipProps} variant="ghost" size="sm" className="ml-1">
-          Skip
-        </Button>
+        <Tooltip label={skipProps.title} className="ml-1">
+          <Button {...omitTitle(skipProps)} variant="ghost" size="sm">
+            Skip
+          </Button>
+        </Tooltip>
         <div className="ml-auto flex items-center gap-2">
           {index > 0 ? (
-            <Button {...backProps} variant="ghost" size="sm">
-              Back
-            </Button>
+            <Tooltip label={backProps.title}>
+              <Button {...omitTitle(backProps)} variant="ghost" size="sm">
+                Back
+              </Button>
+            </Tooltip>
           ) : null}
           {continuous && !requiredClick ? (
-            <Button {...primaryProps} disabled={!inputReady} size="sm">
-              {isLastStep ? "Done" : "Next"}
-            </Button>
+            <Tooltip label={primaryProps.title}>
+              <Button {...omitTitle(primaryProps)} disabled={!inputReady} size="sm">
+                {isLastStep ? "Done" : "Next"}
+              </Button>
+            </Tooltip>
           ) : null}
         </div>
       </div>
