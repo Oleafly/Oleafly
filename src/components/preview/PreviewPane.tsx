@@ -134,16 +134,29 @@ export function PreviewPane() {
   // once per project, the first time its PDF has pages to measure, so it
   // never overrides a zoom level the user picked mid-session.
   const autoFitProjectRef = useRef<string | null | undefined>(undefined);
+  const userAdjustedZoomRef = useRef(false);
   useEffect(() => {
-    if (autoFitProjectRef.current !== projectId) autoFitProjectRef.current = undefined;
+    if (autoFitProjectRef.current !== projectId) {
+      autoFitProjectRef.current = undefined;
+      userAdjustedZoomRef.current = false;
+    }
   }, [projectId]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: fitPreview reads pdfRef/setClampedScale, both stable; only numPages/projectId should retrigger this
   useEffect(() => {
-    if (numPages <= 0 || autoFitProjectRef.current === projectId) return;
+    if (numPages <= 0 || autoFitProjectRef.current === projectId || userAdjustedZoomRef.current) return;
     autoFitProjectRef.current = projectId;
     const raf = requestAnimationFrame(() => fitPreview("height"));
     return () => cancelAnimationFrame(raf);
   }, [numPages, projectId]);
+
+  // The auto-fit effect above is deferred a frame and can still be pending
+  // when the user first touches zoom, so every UI-triggered zoom change goes
+  // through this to cancel it - otherwise it silently overwrites whatever
+  // zoom level the user just picked.
+  const userZoom = (mutate: () => void) => {
+    userAdjustedZoomRef.current = true;
+    mutate();
+  };
 
   const submitSavePdf = async () => {
     if (!projectId || !pdfBytes) return;
@@ -382,7 +395,7 @@ export function PreviewPane() {
                 size="icon"
                 className="size-7"
                 disabled={scale <= MIN_PREVIEW_SCALE}
-                onClick={() => setScale((s) => Math.max(MIN_PREVIEW_SCALE, s - 0.2))}
+                onClick={() => userZoom(() => setScale((s) => Math.max(MIN_PREVIEW_SCALE, s - 0.2)))}
                 aria-label="Zoom out"
               >
                 <ZoomOut className="size-3.5" />
@@ -416,30 +429,30 @@ export function PreviewPane() {
                 <DropdownMenuGroup>
                   <DropdownMenuItem
                     disabled={scale >= MAX_PREVIEW_SCALE}
-                    onSelect={() => setScale((s) => Math.min(MAX_PREVIEW_SCALE, s + 0.2))}
+                    onSelect={() => userZoom(() => setScale((s) => Math.min(MAX_PREVIEW_SCALE, s + 0.2)))}
                   >
                     Zoom in
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     disabled={scale <= MIN_PREVIEW_SCALE}
-                    onSelect={() => setScale((s) => Math.max(MIN_PREVIEW_SCALE, s - 0.2))}
+                    onSelect={() => userZoom(() => setScale((s) => Math.max(MIN_PREVIEW_SCALE, s - 0.2)))}
                   >
                     Zoom out
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
-                  <DropdownMenuItem onSelect={() => fitPreview("width")}>
+                  <DropdownMenuItem onSelect={() => userZoom(() => fitPreview("width"))}>
                     Fit to width
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => fitPreview("height")}>
+                  <DropdownMenuItem onSelect={() => userZoom(() => fitPreview("height"))}>
                     Fit to height
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
                   {ZOOM_PRESETS.map((preset) => (
-                    <DropdownMenuItem key={preset} onSelect={() => setClampedScale(preset)}>
+                    <DropdownMenuItem key={preset} onSelect={() => userZoom(() => setClampedScale(preset))}>
                       {Math.round(preset * 100)}%
                     </DropdownMenuItem>
                   ))}
@@ -452,7 +465,7 @@ export function PreviewPane() {
                 size="icon"
                 className="size-7"
                 disabled={scale >= MAX_PREVIEW_SCALE}
-                onClick={() => setScale((s) => Math.min(MAX_PREVIEW_SCALE, s + 0.2))}
+                onClick={() => userZoom(() => setScale((s) => Math.min(MAX_PREVIEW_SCALE, s + 0.2)))}
                 aria-label="Zoom in"
               >
                 <ZoomIn className="size-3.5" />

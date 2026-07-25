@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.7] - 2026-07-24
+
+### Added
+
+- Added a Zotero integration tab (API key + user ID) alongside GitHub and
+  alphaXiv, under a new Settings → Integrations section that replaces the
+  old GitHub-only settings page.
+- Added a hover "more actions" menu on file tree rows, reusing the same
+  actions as the existing right-click context menu.
+- Added fork provenance: a fork/commit icon on project cards and a "Forked
+  from" field in Project details for projects created via duplicate.
+- Added an auto-fit-to-height preview the first time a project's PDF loads.
+- Added a "None" background pattern option, keeping Dots as the default.
+- Added a rendered table preview to the LaTeX Table Generator alongside the
+  raw code.
+- Added export history entries for DOCX/HTML/Markdown/text/PPTX/EPUB
+  exports, matching what PDF exports already recorded.
+
+### Changed
+
+- Restructured Settings' GitHub page into an Integrations section with
+  separate GitHub/alphaXiv/Zotero tabs, and moved the per-project repository
+  controls (now redundant with the Git panel and Publish dialog) out of
+  global Settings.
+- Made the local Git panel usable without a GitHub connection: status,
+  diffs, staging, commits, and discard/restore all work purely locally now;
+  only Push/Pull require a connected remote.
+- Replaced the diagram project's permanent code/canvas split view with a
+  single Code/Canvas toggle in the editor toolbar, matching the existing
+  Code/Visual pattern for other project kinds.
+- Widened the default diagram connector stroke and the project grid/filters
+  layout on large screens.
+
+### Fixed
+
+- Fixed diagram projects losing their LaTeX document wrapper on every
+  canvas edit, which was the actual cause of recurring "missing preamble"
+  compile failures.
+- Fixed diagram connector arrows rendering hidden behind grey group
+  containers, and loaded `lmodern` in compiled diagrams so fonts better
+  match the canvas preview.
+- Fixed document exports (DOCX/HTML/etc.) failing silently against a stale
+  system Pandoc install instead of auto-downloading a supported version.
+- Fixed a crash where Harper's WebAssembly spellchecker couldn't initialize
+  under the app's content security policy (#17).
+- Fixed resize-panel layout errors crashing the whole app instead of
+  falling back locally (#16).
+- Fixed the ATS check missing common heading variants for Projects,
+  Education, and Skills sections.
+- Fixed the template gallery tour tooltip blocking template clicks, and
+  replaced native title tooltips on tour buttons with the app's own
+  Tooltip component.
+- Fixed a race where the PDF preview's one-time auto-fit-to-height could
+  fire after the user had already zoomed, silently overwriting their zoom
+  level.
+
 ## [0.2.6] - 2026-07-24
 
 ### Added
