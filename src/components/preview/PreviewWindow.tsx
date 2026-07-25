@@ -182,7 +182,7 @@ export function PreviewWindow() {
           </Button>
         </Tooltip>
         <Tooltip label={inverted ? "Restore colors" : "Invert colors"}>
-          <Button variant="ghost" size="icon" className={cn("size-7", inverted && "bg-accent text-foreground")} onClick={() => setInverted((v) => !v)} aria-label="Invert colors">
+          <Button variant="ghost" size="icon" className={cn("size-7", inverted && "bg-accent text-foreground")} onClick={() => setInverted((v) => !v)} aria-label="Invert colors" aria-pressed={inverted}>
             <Contrast className={cn("size-3.5", inverted && "text-primary")} />
           </Button>
         </Tooltip>

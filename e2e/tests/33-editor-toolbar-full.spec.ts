@@ -3,7 +3,10 @@ import {
   caretIn,
   clickToolbarControl,
   openGallery,
+  openProject,
   openRailTab,
+  pressGlobal,
+  typeInEditorAfter,
   typeInEditorAtStart,
   type Page,
 } from "../helpers";
@@ -74,6 +77,20 @@ async function openListDropdown(page: Page) {
   }
 }
 
+async function openCodeIntelligence(page: Page) {
+  const trigger = page.locator('[aria-label="Code intelligence"]');
+  if (await trigger.isVisible().catch(() => false)) {
+    await trigger.click();
+  } else {
+    await page.click('[aria-label="More formatting options"]');
+    await page.click('[aria-label="Code intelligence"]');
+  }
+  await page.waitForFunction(
+    `document.body.innerText.includes("Go to definition")`,
+    5_000,
+  );
+}
+
 test("both list kinds insert their environments", async ({ tauriPage }) => {
   await openScratchProject(tauriPage);
   await openListDropdown(tauriPage);
@@ -82,6 +99,98 @@ test("both list kinds insert their environments", async ({ tauriPage }) => {
   await openListDropdown(tauriPage);
   await tauriPage.getByText("Numbered list").click();
   await editorHas(tauriPage, "\\begin{enumerate}");
+});
+
+test("every remaining formatting control inserts its LaTeX command", async ({ tauriPage }) => {
+  await openScratchProject(tauriPage);
+  const controls = [
+    ['[aria-label="Underline"]', "Underline", "\\underline{"],
+    ['[aria-label="Inline code"]', "Inline code", "\\texttt{"],
+    ['[aria-label="Insert footnote"]', "Insert footnote", "\\footnote{"],
+    ['[aria-label="Insert blockquote"]', "Insert blockquote", "\\begin{quote}"],
+    ['[aria-label="Insert align environment"]', "Align environment", "\\begin{align}"],
+    ['[aria-label="Insert equation environment"]', "Equation environment", "\\begin{equation}"],
+    ['[aria-label="Insert fraction"]', "Fraction", "\\frac{"],
+  ] as const;
+
+  for (const [selector, menuLabel, latex] of controls) {
+    await clickToolbarControl(tauriPage, selector, menuLabel);
+    await editorHas(tauriPage, latex);
+    await tauriPage.click('[aria-label^="Undo ("]');
+    await tauriPage.waitForFunction(
+      `!(document.querySelector('.cm-content')?.textContent || '').includes(${JSON.stringify(latex)})`,
+      5_000,
+    );
+  }
+});
+
+test("symbol picker searches and inserts a symbol", async ({ tauriPage }) => {
+  await openScratchProject(tauriPage);
+  await clickToolbarControl(tauriPage, '[aria-label="Insert symbol"]', "Symbols");
+  await expect(tauriPage.locator('[aria-label="Search symbols"]')).toBeVisible({
+    timeout: 5_000,
+  });
+  await tauriPage.fill('[aria-label="Search symbols"]', "alpha");
+  await tauriPage.click('button[title="alpha"]');
+  await editorHas(tauriPage, "\\alpha");
+});
+
+test("word-count toolbar popover reports the active file", async ({ tauriPage }) => {
+  await openScratchProject(tauriPage);
+  await tauriPage.click('[aria-label="Word count"]');
+  await expect(tauriPage.getByText("Words", { exact: true })).toBeVisible();
+  await expect(tauriPage.getByText("Characters", { exact: true })).toBeVisible();
+  await expect(tauriPage.getByText("Lines", { exact: true })).toBeVisible();
+  await tauriPage.press("body", "Escape");
+});
+
+test("code-intelligence toolbar menu runs definition, references, and rename actions", async ({
+  tauriPage,
+}) => {
+  await openProject(tauriPage, "E2E Doc");
+  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  const hasSeed = await tauriPage.evaluate<boolean>(
+    `(document.querySelector('.cm-content')?.textContent || '').includes('sec:e2e-toolbar')`,
+  );
+  if (!hasSeed) {
+    await typeInEditorAfter(tauriPage, "Write", "\\label{sec:e2e-toolbar} ");
+    await typeInEditorAfter(tauriPage, "here.", " See Section~\\ref{sec:e2e-toolbar}.");
+    await pressGlobal(tauriPage, "Enter", { meta: true });
+    await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute(
+      "data-severity",
+      "ok",
+      { timeout: 90_000 },
+    );
+  }
+
+  for (let attempt = 0; ; attempt++) {
+    await caretIn(tauriPage, "sec:e2e-toolbar", 2);
+    await openCodeIntelligence(tauriPage);
+    await tauriPage.getByText("Go to definition").click();
+    const landed = await tauriPage
+      .waitForFunction(
+        `(document.querySelector('.cm-activeLine')?.textContent || '').includes('label{sec:e2e-toolbar}')`,
+        5_000,
+      )
+      .then(() => true)
+      .catch(() => false);
+    if (landed) break;
+    if (attempt >= 3) throw new Error("toolbar go-to-definition never landed");
+  }
+
+  await caretIn(tauriPage, "sec:e2e-toolbar", 2);
+  await openCodeIntelligence(tauriPage);
+  await tauriPage.getByText("Rename symbol").click();
+  const renameDialog = tauriPage.locator('[role="dialog"][aria-labelledby="rename-title"]');
+  await expect(renameDialog).toBeVisible({ timeout: 5_000 });
+  await renameDialog.getByText("Cancel", { exact: true }).click();
+
+  await caretIn(tauriPage, "sec:e2e-toolbar", 2);
+  await openCodeIntelligence(tauriPage);
+  await tauriPage.getByText("Find references").click();
+  await expect(tauriPage.locator('[aria-label="References (Shift-F12)"]')).toBeVisible({
+    timeout: 10_000,
+  });
 });
 
 test("the find button opens the editor search panel", async ({ tauriPage }) => {

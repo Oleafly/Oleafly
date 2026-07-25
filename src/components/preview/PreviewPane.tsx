@@ -246,6 +246,8 @@ export function PreviewPane() {
           <button
             type="button"
             onClick={() => setTab(tab === "logs" ? "pdf" : "logs")}
+            aria-label={tab === "logs" ? "Show PDF preview" : "Show compile logs"}
+            aria-pressed={tab === "logs"}
             className={cn(
               "flex h-6 items-center gap-1.5 rounded-md px-2 text-xs font-medium",
               tab === "logs"
@@ -508,6 +510,7 @@ export function PreviewPane() {
                 disabled={!pdfBytes}
                 onClick={() => setInverted((v) => !v)}
                 aria-label="Invert PDF preview colors"
+                aria-pressed={inverted}
               >
                 {inverted ? <Contrast className="size-3.5 text-primary" /> : <Contrast className="size-3.5" />}
               </Button>

@@ -314,7 +314,7 @@ export function TopToolbar() {
       )}
     >
       <div data-tauri-drag-region className="flex min-w-0 items-center gap-2">
-        <HomeBrandButton onClick={closeProject} />
+        <HomeBrandButton onClick={() => void closeProject()} />
         <ChevronRight className="size-4 text-muted-foreground/50" />
         {editingTitle ? (
           <span ref={titleEditRef} className="flex items-center gap-1">

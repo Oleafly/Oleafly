@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
+use std::sync::{Mutex, OnceLock};
 
 use crate::paths;
 use crate::proc::NoConsole;
@@ -87,6 +88,27 @@ fn default_engine() -> String {
 pub struct FileEntry {
     pub path: String,
     pub is_dir: bool,
+}
+
+#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum FileConflictStrategy {
+    #[default]
+    Error,
+    KeepBoth,
+    Replace,
+}
+
+#[derive(Debug, PartialEq, Eq, Serialize)]
+#[serde(tag = "status", rename_all = "snake_case")]
+pub enum RenameFileResult {
+    Renamed {
+        path: String,
+    },
+    Conflict {
+        destination: String,
+        suggested_destination: String,
+    },
 }
 
 #[derive(Serialize)]
@@ -263,13 +285,339 @@ pub fn delete_file(project_id: String, path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn rename_file(project_id: String, from: String, to: String) -> Result<(), String> {
+pub fn rename_file(
+    project_id: String,
+    from: String,
+    to: String,
+    conflict_strategy: Option<FileConflictStrategy>,
+) -> Result<RenameFileResult, String> {
+    static FILE_MOVE_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    let _guard = FILE_MOVE_LOCK
+        .get_or_init(|| Mutex::new(()))
+        .lock()
+        .map_err(|_| "file move lock is unavailable".to_string())?;
+    let root = paths::project_dir(&project_id)?;
     let src = resolve(&project_id, &from)?;
     let dst = resolve(&project_id, &to)?;
-    if let Some(parent) = dst.parent() {
+    rename_path_in_project(
+        &root,
+        &src,
+        &dst,
+        &to,
+        conflict_strategy.unwrap_or_default(),
+    )
+}
+
+fn rename_path_in_project(
+    root: &Path,
+    src: &Path,
+    requested_dst: &Path,
+    requested_rel: &str,
+    strategy: FileConflictStrategy,
+) -> Result<RenameFileResult, String> {
+    if src == root || requested_dst == root {
+        return Err("refusing to move the project root".into());
+    }
+    let source_meta = std::fs::symlink_metadata(src)
+        .map_err(|e| format!("could not read the move source: {e}"))?;
+    if source_meta.file_type().is_symlink() {
+        return Err("refusing to move a symbolic link".into());
+    }
+    if source_meta.is_dir() && requested_dst.starts_with(src) {
+        return Err("cannot move a folder into itself".into());
+    }
+    if src == requested_dst {
+        return Ok(RenameFileResult::Renamed {
+            path: requested_rel.to_string(),
+        });
+    }
+
+    if let Some(parent) = requested_dst.parent() {
         std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
-    std::fs::rename(&src, &dst).map_err(|e| format!("rename failed: {e}"))
+
+    let collision = portable_collision(requested_dst)?;
+    if let Some(existing) = collision.as_ref() {
+        if same_entry(src, existing) {
+            rename_case_only(src, requested_dst)?;
+            return Ok(RenameFileResult::Renamed {
+                path: requested_rel.to_string(),
+            });
+        }
+    }
+
+    let destination = match (collision, strategy) {
+        (Some(_), FileConflictStrategy::Error) => {
+            let suggested = unique_destination(requested_dst, source_meta.is_dir())?;
+            return Ok(RenameFileResult::Conflict {
+                destination: requested_rel.to_string(),
+                suggested_destination: rel_slash(root, &suggested),
+            });
+        }
+        (Some(_), FileConflictStrategy::KeepBoth) => {
+            unique_destination(requested_dst, source_meta.is_dir())?
+        }
+        (Some(existing), FileConflictStrategy::Replace) => {
+            replace_path(root, src, &existing, requested_dst)?;
+            return Ok(RenameFileResult::Renamed {
+                path: requested_rel.to_string(),
+            });
+        }
+        (None, _) => requested_dst.to_path_buf(),
+    };
+
+    match rename_exclusive(src, &destination) {
+        Ok(()) => Ok(RenameFileResult::Renamed {
+            path: rel_slash(root, &destination),
+        }),
+        Err(_error) if portable_collision(&destination)?.is_some() => {
+            if strategy == FileConflictStrategy::KeepBoth {
+                let retry = unique_destination(&destination, source_meta.is_dir())?;
+                rename_exclusive(src, &retry)
+                    .map_err(|e| format!("move failed after choosing a unique name: {e}"))?;
+                Ok(RenameFileResult::Renamed {
+                    path: rel_slash(root, &retry),
+                })
+            } else {
+                let suggested = unique_destination(&destination, source_meta.is_dir())?;
+                Ok(RenameFileResult::Conflict {
+                    destination: rel_slash(root, &destination),
+                    suggested_destination: rel_slash(root, &suggested),
+                })
+            }
+        }
+        Err(error) => Err(format!("move failed: {error}")),
+    }
+}
+
+/// Find an existing sibling using case-insensitive comparison. This makes a
+/// project created on Linux obey the same collision rules it will encounter on
+/// the default macOS and Windows filesystems.
+fn portable_collision(path: &Path) -> Result<Option<PathBuf>, String> {
+    let Some(parent) = path.parent() else {
+        return Ok(None);
+    };
+    let Some(file_name) = path.file_name() else {
+        return Ok(None);
+    };
+    if !parent.is_dir() {
+        return Ok(None);
+    }
+    let target = file_name.to_string_lossy().to_lowercase();
+    for entry in std::fs::read_dir(parent).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        if entry.file_name().to_string_lossy().to_lowercase() == target {
+            return Ok(Some(entry.path()));
+        }
+    }
+    Ok(None)
+}
+
+fn same_entry(left: &Path, right: &Path) -> bool {
+    if left == right {
+        return true;
+    }
+    match (left.canonicalize(), right.canonicalize()) {
+        (Ok(left), Ok(right)) => left == right,
+        _ => false,
+    }
+}
+
+fn unique_destination(path: &Path, is_dir: bool) -> Result<PathBuf, String> {
+    let parent = path
+        .parent()
+        .ok_or_else(|| "destination has no parent folder".to_string())?;
+    let name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or_else(|| "destination name is not valid Unicode".to_string())?;
+    let (base, extension) = if is_dir {
+        (name.to_string(), String::new())
+    } else {
+        let stem = path
+            .file_stem()
+            .and_then(|stem| stem.to_str())
+            .unwrap_or(name);
+        let extension = path
+            .extension()
+            .and_then(|extension| extension.to_str())
+            .map(|extension| format!(".{extension}"))
+            .unwrap_or_default();
+        (stem.to_string(), extension)
+    };
+
+    for suffix in 2..=10_000 {
+        let candidate = parent.join(format!("{base} ({suffix}){extension}"));
+        if portable_collision(&candidate)?.is_none() {
+            return Ok(candidate);
+        }
+    }
+    Err("could not find an available destination name".into())
+}
+
+fn rename_case_only(src: &Path, dst: &Path) -> Result<(), String> {
+    let parent = src
+        .parent()
+        .ok_or_else(|| "move source has no parent folder".to_string())?;
+    let temporary = unique_temporary_path(parent, ".oleafly-case-rename")?;
+    rename_exclusive(src, &temporary).map_err(|e| format!("case-only move failed: {e}"))?;
+    if let Err(error) = rename_exclusive(&temporary, dst) {
+        let rollback = rename_exclusive(&temporary, src);
+        return Err(match rollback {
+            Ok(()) => format!("case-only move failed and was rolled back: {error}"),
+            Err(rollback_error) => {
+                format!("case-only move failed: {error}; rollback also failed: {rollback_error}")
+            }
+        });
+    }
+    Ok(())
+}
+
+fn replace_path(root: &Path, src: &Path, existing: &Path, dst: &Path) -> Result<(), String> {
+    let backup_root = root.join(".oleafly").join("move-backups");
+    ensure_private_directory(root, &backup_root)?;
+    let backup = unique_temporary_path(&backup_root, "replaced")?;
+    rename_exclusive(existing, &backup)
+        .map_err(|e| format!("could not stage the existing destination: {e}"))?;
+
+    if let Err(error) = rename_exclusive(src, dst) {
+        let rollback = rename_exclusive(&backup, existing);
+        return Err(match rollback {
+            Ok(()) => format!("replace failed and was rolled back: {error}"),
+            Err(rollback_error) => {
+                format!("replace failed: {error}; rollback also failed: {rollback_error}")
+            }
+        });
+    }
+
+    // The requested move already succeeded. A cleanup failure must not report
+    // the operation as failed and tempt the caller to repeat it; the backup is
+    // kept under the app-private directory and can be removed later.
+    let _ = remove_path(&backup);
+    Ok(())
+}
+
+fn ensure_private_directory(root: &Path, directory: &Path) -> Result<(), String> {
+    let internal = root.join(".oleafly");
+    match std::fs::symlink_metadata(&internal) {
+        Ok(metadata) if metadata.is_dir() && !metadata.file_type().is_symlink() => {}
+        Ok(_) => return Err("project data path is not a real directory".into()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            std::fs::create_dir(&internal).map_err(|e| e.to_string())?;
+        }
+        Err(error) => return Err(error.to_string()),
+    }
+    match std::fs::symlink_metadata(directory) {
+        Ok(metadata) if metadata.is_dir() && !metadata.file_type().is_symlink() => {}
+        Ok(_) => return Err("move backup path is not a real directory".into()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            std::fs::create_dir(directory).map_err(|e| e.to_string())?;
+        }
+        Err(error) => return Err(error.to_string()),
+    }
+    let resolved = directory.canonicalize().map_err(|e| e.to_string())?;
+    let resolved_root = root.canonicalize().map_err(|e| e.to_string())?;
+    if !resolved.starts_with(&resolved_root)
+        || resolved.parent().and_then(Path::parent) != Some(resolved_root.as_path())
+    {
+        return Err("move backup directory escapes the project".into());
+    }
+    Ok(())
+}
+
+fn unique_temporary_path(parent: &Path, prefix: &str) -> Result<PathBuf, String> {
+    for suffix in 0..10_000_u32 {
+        let candidate = parent.join(format!("{prefix}-{}-{suffix}", std::process::id()));
+        if portable_collision(&candidate)?.is_none() {
+            return Ok(candidate);
+        }
+    }
+    Err("could not create a temporary move path".into())
+}
+
+fn remove_path(path: &Path) -> std::io::Result<()> {
+    let metadata = std::fs::symlink_metadata(path)?;
+    if metadata.is_dir() {
+        std::fs::remove_dir_all(path)
+    } else {
+        std::fs::remove_file(path)
+    }
+}
+
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+fn rename_exclusive(src: &Path, dst: &Path) -> std::io::Result<()> {
+    use std::ffi::CString;
+    use std::os::unix::ffi::OsStrExt;
+
+    let src = CString::new(src.as_os_str().as_bytes())
+        .map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidInput, "NUL in source path"))?;
+    let dst = CString::new(dst.as_os_str().as_bytes()).map_err(|_| {
+        std::io::Error::new(std::io::ErrorKind::InvalidInput, "NUL in destination path")
+    })?;
+    let result = unsafe { libc::renamex_np(src.as_ptr(), dst.as_ptr(), libc::RENAME_EXCL) };
+    if result == 0 {
+        Ok(())
+    } else {
+        Err(std::io::Error::last_os_error())
+    }
+}
+
+#[cfg(any(target_os = "linux", target_os = "android"))]
+fn rename_exclusive(src: &Path, dst: &Path) -> std::io::Result<()> {
+    use std::ffi::CString;
+    use std::os::unix::ffi::OsStrExt;
+
+    let src = CString::new(src.as_os_str().as_bytes())
+        .map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidInput, "NUL in source path"))?;
+    let dst = CString::new(dst.as_os_str().as_bytes()).map_err(|_| {
+        std::io::Error::new(std::io::ErrorKind::InvalidInput, "NUL in destination path")
+    })?;
+    let result = unsafe {
+        libc::renameat2(
+            libc::AT_FDCWD,
+            src.as_ptr(),
+            libc::AT_FDCWD,
+            dst.as_ptr(),
+            libc::RENAME_NOREPLACE,
+        )
+    };
+    if result == 0 {
+        Ok(())
+    } else {
+        Err(std::io::Error::last_os_error())
+    }
+}
+
+#[cfg(windows)]
+fn rename_exclusive(src: &Path, dst: &Path) -> std::io::Result<()> {
+    use std::os::windows::ffi::OsStrExt;
+    use windows_sys::Win32::Storage::FileSystem::MoveFileExW;
+
+    let src: Vec<u16> = src.as_os_str().encode_wide().chain(Some(0)).collect();
+    let dst: Vec<u16> = dst.as_os_str().encode_wide().chain(Some(0)).collect();
+    let result = unsafe { MoveFileExW(src.as_ptr(), dst.as_ptr(), 0) };
+    if result != 0 {
+        Ok(())
+    } else {
+        Err(std::io::Error::last_os_error())
+    }
+}
+
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "ios",
+    target_os = "linux",
+    target_os = "android",
+    windows
+)))]
+fn rename_exclusive(src: &Path, dst: &Path) -> std::io::Result<()> {
+    if dst.exists() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::AlreadyExists,
+            "destination already exists",
+        ));
+    }
+    std::fs::rename(src, dst)
 }
 
 /// Copy a file or folder within a project. Files are byte-level copied (handles
@@ -1827,7 +2175,8 @@ mod tests {
         create_project_transaction, create_typst_project, create_typst_project_in,
         duplicate_project, engine_for_main_document, extract_pandoc, get_or_create_scratch_project,
         list_projects, pandoc_asset_for, pandoc_version_supported, read_meta, rel_slash,
-        validate_conversion_export, ProjectMeta, SCRATCH_PROJECT_ID,
+        rename_path_in_project, validate_conversion_export, FileConflictStrategy, ProjectMeta,
+        RenameFileResult, SCRATCH_PROJECT_ID,
     };
     use std::io::Write;
     use std::path::Path;
@@ -1867,6 +2216,161 @@ mod tests {
         // or the frontend file tree (which splits on "/") breaks on Windows.
         let win_like = Path::new("/proj/sections\\intro.tex");
         assert_eq!(rel_slash(root, win_like), "sections/intro.tex");
+    }
+
+    #[test]
+    fn rename_conflict_is_non_destructive_and_suggests_a_portable_name() {
+        let root = test_dir("rename-conflict");
+        let src = root.join("draft.tex");
+        let dst = root.join("paper.tex");
+        std::fs::write(&src, "new draft").unwrap();
+        std::fs::write(&dst, "published").unwrap();
+
+        let result =
+            rename_path_in_project(&root, &src, &dst, "paper.tex", FileConflictStrategy::Error)
+                .unwrap();
+
+        assert_eq!(
+            result,
+            RenameFileResult::Conflict {
+                destination: "paper.tex".into(),
+                suggested_destination: "paper (2).tex".into(),
+            }
+        );
+        assert_eq!(std::fs::read_to_string(src).unwrap(), "new draft");
+        assert_eq!(std::fs::read_to_string(dst).unwrap(), "published");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn keep_both_never_merges_or_overwrites_the_destination() {
+        let root = test_dir("rename-keep-both");
+        let src = root.join("draft.tex");
+        let dst = root.join("paper.tex");
+        std::fs::write(&src, "new draft").unwrap();
+        std::fs::write(&dst, "published").unwrap();
+
+        let result = rename_path_in_project(
+            &root,
+            &src,
+            &dst,
+            "paper.tex",
+            FileConflictStrategy::KeepBoth,
+        )
+        .unwrap();
+
+        assert_eq!(
+            result,
+            RenameFileResult::Renamed {
+                path: "paper (2).tex".into(),
+            }
+        );
+        assert!(!src.exists());
+        assert_eq!(std::fs::read_to_string(dst).unwrap(), "published");
+        assert_eq!(
+            std::fs::read_to_string(root.join("paper (2).tex")).unwrap(),
+            "new draft"
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn replace_stages_the_old_destination_before_moving_the_source() {
+        let root = test_dir("rename-replace");
+        let src = root.join("draft.tex");
+        let dst = root.join("paper.tex");
+        std::fs::write(&src, "new draft").unwrap();
+        std::fs::write(&dst, "published").unwrap();
+
+        let result = rename_path_in_project(
+            &root,
+            &src,
+            &dst,
+            "paper.tex",
+            FileConflictStrategy::Replace,
+        )
+        .unwrap();
+
+        assert_eq!(
+            result,
+            RenameFileResult::Renamed {
+                path: "paper.tex".into(),
+            }
+        );
+        assert!(!src.exists());
+        assert_eq!(std::fs::read_to_string(dst).unwrap(), "new draft");
+        let backups = root.join(".oleafly").join("move-backups");
+        assert_eq!(std::fs::read_dir(backups).unwrap().count(), 0);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn collisions_are_case_insensitive_even_on_case_sensitive_filesystems() {
+        let root = test_dir("rename-portable-case");
+        let target_dir = root.join("target");
+        std::fs::create_dir(&target_dir).unwrap();
+        let src = root.join("draft.tex");
+        let existing = target_dir.join("Paper.tex");
+        let requested = target_dir.join("paper.tex");
+        std::fs::write(&src, "new draft").unwrap();
+        std::fs::write(&existing, "published").unwrap();
+
+        let result = rename_path_in_project(
+            &root,
+            &src,
+            &requested,
+            "target/paper.tex",
+            FileConflictStrategy::Error,
+        )
+        .unwrap();
+
+        assert!(matches!(result, RenameFileResult::Conflict { .. }));
+        assert_eq!(std::fs::read_to_string(src).unwrap(), "new draft");
+        assert_eq!(std::fs::read_to_string(existing).unwrap(), "published");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn a_case_only_rename_uses_a_two_step_move() {
+        let root = test_dir("rename-case-only");
+        let src = root.join("Paper.tex");
+        let dst = root.join("paper.tex");
+        std::fs::write(&src, "paper").unwrap();
+
+        let result =
+            rename_path_in_project(&root, &src, &dst, "paper.tex", FileConflictStrategy::Error)
+                .unwrap();
+
+        assert_eq!(
+            result,
+            RenameFileResult::Renamed {
+                path: "paper.tex".into(),
+            }
+        );
+        assert_eq!(std::fs::read_to_string(dst).unwrap(), "paper");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn a_folder_cannot_be_moved_into_its_descendant() {
+        let root = test_dir("rename-descendant");
+        let src = root.join("chapters");
+        std::fs::create_dir(&src).unwrap();
+        std::fs::write(src.join("intro.tex"), "intro").unwrap();
+        let dst = src.join("archive");
+
+        let error = rename_path_in_project(
+            &root,
+            &src,
+            &dst,
+            "chapters/archive",
+            FileConflictStrategy::Error,
+        )
+        .unwrap_err();
+
+        assert!(error.contains("into itself"));
+        assert!(src.join("intro.tex").is_file());
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]

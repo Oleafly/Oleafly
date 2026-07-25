@@ -1,5 +1,10 @@
 import { test, expect } from "../fixtures";
-import { openProject, openRailTab } from "../helpers";
+import {
+  createBlankProject,
+  openProject,
+  openRailTab,
+  setEditorContent,
+} from "../helpers";
 
 test.beforeEach(async ({ tauriPage }) => {
   test.setTimeout(240_000);
@@ -38,32 +43,35 @@ test("zoom controls change the zoom level", async ({ tauriPage }) => {
 
 test("zoom menu applies presets and calculated fit scales", async ({ tauriPage }) => {
   const trigger = tauriPage.locator('[aria-haspopup="menu"][aria-label^="Zoom "]');
+  const openMenu = async () => {
+    await trigger.focus();
+    await trigger.press("Enter");
+    await expect(tauriPage.getByRole("menu")).toBeVisible();
+  };
 
-  await trigger.focus();
-  await trigger.press("Enter");
-  await expect(tauriPage.getByRole("menu")).toBeVisible();
-  await tauriPage.getByRole("menu").getByText("400%", { exact: true }).click();
-  await expect(trigger).toHaveText(/400%/);
+  for (const preset of ["25%", "50%", "75%", "100%", "150%", "200%", "400%"]) {
+    await openMenu();
+    await tauriPage.getByRole("menu").getByText(preset, { exact: true }).click();
+    await expect(trigger).toHaveText(new RegExp(preset.replace("%", "\\s*%")));
+  }
   await expect(tauriPage.locator('button[aria-label="Zoom in"]')).toBeDisabled();
 
-  await trigger.focus();
-  await trigger.press("Enter");
-  await expect(tauriPage.getByRole("menu")).toBeVisible();
-  await tauriPage.getByRole("menu").getByText("25%", { exact: true }).click();
-  await expect(trigger).toHaveText(/25%/);
-  await expect(tauriPage.locator('button[aria-label="Zoom out"]')).toBeDisabled();
+  await openMenu();
+  await tauriPage.getByRole("menu").getByText("100%", { exact: true }).click();
+  await openMenu();
+  await tauriPage.getByRole("menu").getByText("Zoom in", { exact: true }).click();
+  await expect(trigger).toHaveText(/120\s*%/);
+  await openMenu();
+  await tauriPage.getByRole("menu").getByText("Zoom out", { exact: true }).click();
+  await expect(trigger).toHaveText(/100\s*%/);
 
-  await trigger.focus();
-  await trigger.press("Enter");
-  await expect(tauriPage.getByRole("menu")).toBeVisible();
+  await openMenu();
   await tauriPage.getByRole("menu").getByText("Fit to width", { exact: true }).click();
   const widthScale = Number((await trigger.textContent())?.match(/\d+/)?.[0]);
   expect(widthScale).toBeGreaterThanOrEqual(25);
   expect(widthScale).toBeLessThan(400);
 
-  await trigger.focus();
-  await trigger.press("Enter");
-  await expect(tauriPage.getByRole("menu")).toBeVisible();
+  await openMenu();
   await tauriPage.getByRole("menu").getByText("Fit to height", { exact: true }).click();
   const heightScale = Number((await trigger.textContent())?.match(/\d+/)?.[0]);
   expect(heightScale).toBeGreaterThanOrEqual(25);
@@ -83,9 +91,79 @@ test("one-page documents hide two-page layout and bound page navigation", async 
   await expect(tauriPage.locator('[aria-label="Page number"]')).toHaveValue("1");
 });
 
+test("multi-page layout, previous/next, and direct page jump all navigate", async ({
+  tauriPage,
+}) => {
+  await tauriPage.click('[aria-label="Home"]');
+  await expect(tauriPage.getByTestId("library")).toBeVisible({ timeout: 30_000 });
+  await createBlankProject(tauriPage, `E2E Preview Pages ${Date.now().toString(36)}`);
+  await setEditorContent(
+    tauriPage,
+    String.raw`\documentclass{article}
+\begin{document}
+Page one
+\newpage
+Page two
+\newpage
+Page three
+\end{document}
+`,
+  );
+  await expect(tauriPage.getByTestId("compile-button")).toBeEnabled({ timeout: 30_000 });
+  await tauriPage.click('[data-testid="compile-button"]');
+  await tauriPage.waitForFunction(
+    `(document.body.innerText || '').includes('of 3')`,
+    120_000,
+  );
+
+  const page = tauriPage.locator('[aria-label="Page number"]');
+  await expect(page).toHaveValue("1");
+  await tauriPage.click('[aria-label="Next page"]');
+  await expect(page).toHaveValue("2");
+  await tauriPage.click('[aria-label="Next page"]');
+  await expect(page).toHaveValue("3");
+  await tauriPage.click('[aria-label="Previous page"]');
+  await expect(page).toHaveValue("2");
+
+  await tauriPage.fill('[aria-label="Page number"]', "1");
+  await tauriPage.press('[aria-label="Page number"]', "Enter");
+  await expect(page).toHaveValue("1");
+  await tauriPage.click('[aria-label="Two-page view"]');
+  await expect(tauriPage.locator('[aria-label="Two-page view"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await tauriPage.click('[aria-label="Next page"]');
+  await expect(page).toHaveValue("3");
+  await tauriPage.click('[aria-label="Previous page"]');
+  await expect(page).toHaveValue("1");
+  await tauriPage.click('[aria-label="Single page view"]');
+  await expect(tauriPage.locator('[aria-label="Single page view"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+});
+
 test("invert colors toggles on and off", async ({ tauriPage }) => {
   await tauriPage.click('[aria-label="Invert PDF preview colors"]');
+  await expect(
+    tauriPage.locator('[aria-label="Invert PDF preview colors"]'),
+  ).toHaveAttribute("aria-pressed", "true");
   await tauriPage.click('[aria-label="Invert PDF preview colors"]');
+  await expect(
+    tauriPage.locator('[aria-label="Invert PDF preview colors"]'),
+  ).toHaveAttribute("aria-pressed", "false");
+  await expect(tauriPage.locator(".pdf-canvas")).toBeVisible();
+});
+
+test("logs control toggles back to the PDF preview", async ({ tauriPage }) => {
+  await tauriPage.click('[aria-label="Show compile logs"]');
+  await expect(tauriPage.locator('[aria-label="Show PDF preview"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(tauriPage.getByText("Copy log")).toBeVisible();
+  await tauriPage.click('[aria-label="Show PDF preview"]');
   await expect(tauriPage.locator(".pdf-canvas")).toBeVisible();
 });
 
@@ -102,4 +180,29 @@ test("copy log gives feedback", async ({ tauriPage }) => {
   await tauriPage.getByText("Logs").click();
   await tauriPage.getByText("Copy log").click();
   await expect(tauriPage.getByText("Copied")).toBeVisible();
+});
+
+test("fullscreen controls hide, restore, and exit the preview toolbar", async ({
+  tauriPage,
+}) => {
+  await tauriPage.click('[aria-label="Fullscreen preview"]');
+  await expect(tauriPage.locator('[aria-label="Exit fullscreen"]')).toBeVisible({
+    timeout: 10_000,
+  });
+  await tauriPage.click('[aria-label="Hide toolbar"]');
+  await expect(tauriPage.locator('[aria-label="Show toolbar"]')).toBeVisible();
+  await tauriPage.click('[aria-label="Show toolbar"]');
+  await expect(tauriPage.locator('[aria-label="Exit fullscreen"]')).toBeVisible();
+  await tauriPage.click('[aria-label="Exit fullscreen"]');
+  await expect(tauriPage.locator('[aria-label="Fullscreen preview"]')).toBeVisible();
+});
+
+test("open-in-window control creates the detached preview window", async ({
+  tauriPage,
+}) => {
+  await tauriPage.click('[aria-label="Open preview in a new window"]');
+  const preview = await tauriPage.waitForWindow((window) => window.label === "preview", {
+    timeout: 20_000,
+  });
+  expect(preview.targetWindow).toBe("preview");
 });

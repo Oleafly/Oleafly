@@ -19,6 +19,7 @@ import {
   renameProjectCmd,
   setMainDocCmd,
   writeFileContent,
+  type FileConflictStrategy,
   type FileEntry,
   type ProjectInfo,
   type DocumentEngineDescriptor,
@@ -59,7 +60,7 @@ interface FilesStore {
 
   refreshProjects: () => Promise<void>;
   openProject: (id: string) => Promise<void>;
-  closeProject: () => void;
+  closeProject: () => Promise<void>;
   createProject: (name: string) => Promise<void>;
   createTypstProject: (name: string) => Promise<void>;
   createMarkdownProject: (name: string) => Promise<void>;
@@ -77,7 +78,7 @@ interface FilesStore {
   saveFile: (path: string) => Promise<void>;
   createFile: (path: string, isDir: boolean) => Promise<void>;
   deleteEntry: (path: string) => Promise<void>;
-  renameEntry: (from: string, to: string) => Promise<void>;
+  renameEntry: (from: string, to: string, conflictStrategy?: FileConflictStrategy) => Promise<string>;
   copyEntry: (path: string, isDir?: boolean) => Promise<void>;
   importPaths: (destDir: string, sourcePaths: string[]) => Promise<void>;
   applyExternalWrite: (path: string, content: string) => void;
@@ -91,6 +92,13 @@ let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
 // whole set, so editing file A then switching to B before the timer fires no
 // longer drops A's changes.
 const pendingSaves = new Set<string>();
+// Writes to the same project path must land in edit order. Without this queue,
+// a slow autosave can finish after a newer transition flush and put stale
+// content back on disk.
+const pendingWrites = new Map<string, Promise<void>>();
+// Project opens and closes are state transactions. Serializing them keeps a
+// double click or a close during an open from interleaving two project states.
+let projectTransition: Promise<void> = Promise.resolve();
 // Bumped on every openProject so an in-flight load from a previous project can
 // detect it is stale and stop writing into the newly opened project's state.
 let openSeq = 0;
@@ -108,13 +116,111 @@ function invalidatePendingFileOpen(projectId: string | null, path: string) {
   pendingFileOpens.set(fileOpenKey(projectId, path), ++fileOpenSeq);
 }
 
-function cancelPendingAutosave() {
+function stopAutosaveTimer() {
   if (autosaveTimer) {
     clearTimeout(autosaveTimer);
     autosaveTimer = null;
   }
+}
+
+function cancelPendingAutosave() {
+  stopAutosaveTimer();
   pendingSaves.clear();
 }
+
+function writeKey(projectId: string, path: string) {
+  return `${projectId}\0${path}`;
+}
+
+function enqueueWrite(projectId: string, path: string, content: string): Promise<void> {
+  const key = writeKey(projectId, path);
+  const previous = pendingWrites.get(key) ?? Promise.resolve();
+  const write = previous
+    .catch(() => {
+      // A later snapshot is still worth writing after an earlier attempt failed.
+    })
+    .then(() => writeFileContent(projectId, path, content));
+  let tracked: Promise<void>;
+  tracked = write.finally(() => {
+    if (pendingWrites.get(key) === tracked) pendingWrites.delete(key);
+  });
+  pendingWrites.set(key, tracked);
+  return tracked;
+}
+
+function scheduleAutosave(get: () => FilesStore) {
+  stopAutosaveTimer();
+  if (pendingSaves.size === 0) return;
+  autosaveTimer = setTimeout(() => {
+    autosaveTimer = null;
+    const paths = [...pendingSaves];
+    for (const path of paths) pendingSaves.delete(path);
+    for (const path of paths) {
+      get()
+        .saveFile(path)
+        .catch((error) => notifyError("autosave", error));
+    }
+  }, 1500);
+}
+
+async function flushDirtyBuffers(projectId: string, get: () => FilesStore): Promise<void> {
+  stopAutosaveTimer();
+
+  // A save can finish while the user is still editing. Loop until the current
+  // project has no dirty snapshots left, then the caller may safely reset it.
+  for (;;) {
+    const state = get();
+    if (state.projectId !== projectId) {
+      throw new Error("Project changed while its files were being saved.");
+    }
+    const paths = Object.entries(state.files)
+      .filter(([, file]) => file.dirty)
+      .map(([path]) => path);
+    if (paths.length === 0) {
+      for (const path of [...pendingSaves]) {
+        if (!state.files[path]?.dirty) pendingSaves.delete(path);
+      }
+      return;
+    }
+
+    for (const path of paths) pendingSaves.delete(path);
+    const results = await Promise.allSettled(paths.map((path) => get().saveFile(path)));
+    const failure = results.find(
+      (result): result is PromiseRejectedResult => result.status === "rejected",
+    );
+    if (failure) {
+      const current = get();
+      if (current.projectId === projectId) {
+        for (const [path, file] of Object.entries(current.files)) {
+          if (file.dirty) pendingSaves.add(path);
+        }
+      }
+      throw failure.reason;
+    }
+  }
+}
+
+function enqueueProjectTransition(operation: () => Promise<void>): Promise<void> {
+  const queued = projectTransition.catch(() => {}).then(operation);
+  projectTransition = queued.catch(() => {});
+  return queued;
+}
+
+const EMPTY_PROJECT_STATE = {
+  projectId: null,
+  projectName: "",
+  projectKind: "",
+  mainDoc: "main.tex",
+  engine: UNKNOWN_ENGINE,
+  engineLoaded: false,
+  engineError: null,
+  tree: [],
+  files: {},
+  openTabs: [],
+  tabOrder: {},
+  activePath: null,
+  loading: false,
+} satisfies Partial<FilesStore>;
 
 export const useFilesStore = create<FilesStore>((set, get) => ({
   projectId: null,
@@ -140,14 +246,27 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     set({ projects, projectsLoaded: true });
   },
 
-  openProject: async (id) => {
+  openProject: (id) => enqueueProjectTransition(async () => {
+    const previousProjectId = get().projectId;
+    if (previousProjectId) {
+      set({ loading: true });
+      try {
+        await flushDirtyBuffers(previousProjectId, get);
+      } catch (error) {
+        set({ loading: false });
+        notifyError(
+          "save before switching projects",
+          error,
+          "The project stayed open because one or more files could not be saved.",
+        );
+        return;
+      }
+      flushAutoCommit();
+    }
+
     const seq = ++openSeq;
     fileOpenEpoch++;
     mainDocSeq++;
-    // Land any pending auto-commit for the previous project, then drop pending
-    // autosaves and every buffer so its dirty tabs can't be written into this
-    // project's directory.
-    flushAutoCommit();
     cancelPendingAutosave();
     set({
       loading: true,
@@ -198,34 +317,38 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       // Surface the failure and fall back to the library rather than leaving the
       // app wedged in a half-open project with an empty tree.
       if (seq === openSeq) {
-        set({ projectId: null });
+        set(EMPTY_PROJECT_STATE);
         notifyError("open project", e, "Could not open the project. See the app log for details.");
       }
     } finally {
       if (seq === openSeq) set({ loading: false });
     }
-  },
+  }),
 
-  closeProject: () => {
+  closeProject: () => enqueueProjectTransition(async () => {
+    const projectId = get().projectId;
+    if (projectId) {
+      set({ loading: true });
+      try {
+        await flushDirtyBuffers(projectId, get);
+      } catch (error) {
+        set({ loading: false });
+        notifyError(
+          "save before closing project",
+          error,
+          "The project stayed open because one or more files could not be saved.",
+        );
+        return;
+      }
+      flushAutoCommit();
+    }
+
+    openSeq++;
     fileOpenEpoch++;
     mainDocSeq++;
-    flushAutoCommit();
     cancelPendingAutosave();
-    set({
-      projectId: null,
-      projectName: "",
-      projectKind: "",
-      mainDoc: "main.tex",
-      engine: UNKNOWN_ENGINE,
-      engineLoaded: false,
-      engineError: null,
-      tree: [],
-      files: {},
-      openTabs: [],
-      tabOrder: {},
-      activePath: null,
-    });
-  },
+    set(EMPTY_PROJECT_STATE);
+  }),
 
   createProject: async (name) => {
     const id = await apiCreateProject(name);
@@ -335,15 +458,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     // flushes them all, instead of only whichever tab happens to be active when
     // it fires (which silently lost edits to background tabs).
     pendingSaves.add(path);
-    if (autosaveTimer) clearTimeout(autosaveTimer);
-    autosaveTimer = setTimeout(() => {
-      autosaveTimer = null;
-      const paths = [...pendingSaves];
-      pendingSaves.clear();
-      for (const p of paths) {
-        get().saveFile(p).catch((e) => notifyError("autosave", e));
-      }
-    }, 1500);
+    scheduleAutosave(get);
   },
 
   bumpDocVersion: () => set((s) => ({ docVersion: s.docVersion + 1 })),
@@ -359,8 +474,16 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const state = files[path];
     if (!projectId || !state) return;
     const written = state.content;
-    await writeFileContent(projectId, path, written);
+    try {
+      await enqueueWrite(projectId, path, written);
+    } catch (error) {
+      if (get().projectId === projectId && get().files[path]?.dirty) {
+        pendingSaves.add(path);
+      }
+      throw error;
+    }
     set((s) => {
+      if (s.projectId !== projectId) return {};
       const cur = s.files[path];
       // The file was deleted while the write was in flight: do not resurrect it
       // as an entry with undefined content.
@@ -370,6 +493,13 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       if (cur.content !== written) return {};
       return { files: { ...s.files, [path]: { ...cur, dirty: false } } };
     });
+    const current = get();
+    if (current.projectId === projectId && current.files[path]?.dirty) {
+      pendingSaves.add(path);
+      scheduleAutosave(get);
+    } else {
+      pendingSaves.delete(path);
+    }
     scheduleAutoCommit(projectId);
   },
 
@@ -400,29 +530,54 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     await get().refreshTree();
   },
 
-  renameEntry: async (from, to) => {
+  renameEntry: async (from, to, conflictStrategy = "error") => {
     const { projectId } = get();
-    if (!projectId) return;
-    await apiRenameFile(projectId, from, to);
+    if (!projectId) return to;
+    // A pending write to the old path could otherwise recreate it after the
+    // filesystem move. Drain all dirty buffers through the per-path queue first.
+    await flushDirtyBuffers(projectId, get);
+    const destination = await apiRenameFile(projectId, from, to, conflictStrategy);
     // Follow the moved/renamed path in memory so an open tab, its buffer, the
     // active file, and the main-doc pointer don't go stale (also handles folder
     // moves, which carry every descendant path with them).
     const remap = (p: string) =>
-      p === from ? to : p.startsWith(`${from}/`) ? `${to}${p.slice(from.length)}` : p;
+      p === from
+        ? destination
+        : p.startsWith(`${from}/`)
+          ? `${destination}${p.slice(from.length)}`
+          : p;
+    const isWithin = (p: string, root: string) => p === root || p.startsWith(`${root}/`);
     set((s) => {
       const files: Record<string, FileState> = {};
-      for (const [k, v] of Object.entries(s.files)) files[remap(k)] = v;
+      for (const [k, v] of Object.entries(s.files)) {
+        if (conflictStrategy === "replace" && isWithin(k, to) && !isWithin(k, from)) continue;
+        files[remap(k)] = v;
+      }
       const tabOrder: Record<string, number> = {};
-      for (const [k, v] of Object.entries(s.tabOrder)) tabOrder[remap(k)] = v;
+      for (const [k, v] of Object.entries(s.tabOrder)) {
+        if (conflictStrategy === "replace" && isWithin(k, to) && !isWithin(k, from)) continue;
+        tabOrder[remap(k)] = v;
+      }
+      const openTabs = [
+        ...new Set(
+          s.openTabs
+            .filter(
+              (path) =>
+                conflictStrategy !== "replace" || !isWithin(path, to) || isWithin(path, from),
+            )
+            .map(remap),
+        ),
+      ];
       return {
         files,
-        openTabs: s.openTabs.map(remap),
+        openTabs,
         tabOrder,
         activePath: s.activePath ? remap(s.activePath) : null,
         mainDoc: remap(s.mainDoc),
       };
     });
     await get().refreshTree();
+    return destination;
   },
 
   copyEntry: async (path, isDir = false) => {
@@ -461,6 +616,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   // not clobber the edit. Cross-window broadcast is done by the AI host so
   // listeners can re-apply without echoing forever.
   applyExternalWrite: (path, content) => {
+    pendingSaves.delete(path);
     set((s) => {
       const activatesPath = !s.activePath || s.activePath === path;
       return {
@@ -576,13 +732,13 @@ export function useActiveContent(): string {
 // Flush the debounced autosave immediately when the page is going away, so an
 // edit made within the debounce window of a reload or quit is not lost.
 function flushPendingSaves() {
-  if (autosaveTimer) {
-    clearTimeout(autosaveTimer);
-    autosaveTimer = null;
-  }
-  const paths = [...pendingSaves];
-  pendingSaves.clear();
+  stopAutosaveTimer();
+  const state = useFilesStore.getState();
+  const paths = Object.entries(state.files)
+    .filter(([, file]) => file.dirty)
+    .map(([path]) => path);
   for (const p of paths) {
+    pendingSaves.delete(p);
     useFilesStore
       .getState()
       .saveFile(p)
