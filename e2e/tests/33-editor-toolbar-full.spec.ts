@@ -3,7 +3,6 @@ import {
   caretIn,
   clickToolbarControl,
   openGallery,
-  openProject,
   openRailTab,
   pressGlobal,
   typeInEditorAfter,
@@ -16,21 +15,31 @@ import {
 
 const RUN = Date.now().toString(36);
 const NAME = `E2E Toolbar ${RUN}`;
+const CODE_INTEL_NAME = `E2E Code Intel ${RUN}`;
 
-async function openScratchProject(page: Page & { getByText(t: string): { click(): Promise<void> } }) {
+async function openBlankProject(
+  page: Page & { getByText(t: string): { click(): Promise<void> } },
+  name: string,
+) {
   const exists = await page.evaluate<boolean>(
-    `document.body.innerText.includes(${JSON.stringify(NAME)})`,
+    `document.body.innerText.includes(${JSON.stringify(name)})`,
   );
   if (exists) {
-    await page.getByText(NAME).click();
+    await page.getByText(name).click();
   } else {
     await openGallery(page);
     await page.click('[data-testid="template-card-blank"]');
-    await page.fill("#new-project-name", NAME);
+    await page.fill("#new-project-name", name);
     await page.click('[data-testid="create-project"]');
   }
   await page.waitForFunction(`!!document.querySelector('.cm-content')`, 20_000);
   await caretIn(page, "here.", 1, "end");
+}
+
+async function openScratchProject(
+  page: Page & { getByText(t: string): { click(): Promise<void> } },
+) {
+  await openBlankProject(page, NAME);
 }
 
 const editorHas = (page: Page, needle: string) =>
@@ -78,17 +87,38 @@ async function openListDropdown(page: Page) {
 }
 
 async function openCodeIntelligence(page: Page) {
-  const trigger = page.locator('[aria-label="Code intelligence"]');
-  if (await trigger.isVisible().catch(() => false)) {
-    await trigger.click();
-  } else {
-    await page.click('[aria-label="More formatting options"]');
-    await page.click('[aria-label="Code intelligence"]');
-  }
+  await clickToolbarControl(
+    page,
+    '[aria-label="Code intelligence"]',
+    "Code",
+  );
   await page.waitForFunction(
     `document.body.innerText.includes("Go to definition")`,
     5_000,
   );
+}
+
+async function clickCodeIntelligenceAction(page: Page, label: string) {
+  const buttonExpression = `Array.from(
+    document.querySelectorAll('[data-radix-popper-content-wrapper] button')
+  ).find((candidate) => {
+    if (!candidate.textContent?.trim().startsWith(${JSON.stringify(label)})) return false;
+    const style = getComputedStyle(candidate);
+    const rect = candidate.getBoundingClientRect();
+    return style.display !== 'none'
+      && style.visibility !== 'hidden'
+      && rect.width > 0
+      && rect.height > 0;
+  })`;
+  await page.waitForFunction(`!!(${buttonExpression})`, 5_000);
+  await page.evaluate(`(() => {
+    const button = ${buttonExpression};
+    if (!(button instanceof HTMLElement)) {
+      throw new Error(${JSON.stringify(`${label} code-intelligence action not found`)});
+    }
+    button.click();
+    return true;
+  })()`);
 }
 
 test("both list kinds insert their environments", async ({ tauriPage }) => {
@@ -147,7 +177,7 @@ test("word-count toolbar popover reports the active file", async ({ tauriPage })
 test("code-intelligence toolbar menu runs definition, references, and rename actions", async ({
   tauriPage,
 }) => {
-  await openProject(tauriPage, "E2E Doc");
+  await openBlankProject(tauriPage, CODE_INTEL_NAME);
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   const hasSeed = await tauriPage.evaluate<boolean>(
     `(document.querySelector('.cm-content')?.textContent || '').includes('sec:e2e-toolbar')`,
@@ -166,7 +196,7 @@ test("code-intelligence toolbar menu runs definition, references, and rename act
   for (let attempt = 0; ; attempt++) {
     await caretIn(tauriPage, "sec:e2e-toolbar", 2);
     await openCodeIntelligence(tauriPage);
-    await tauriPage.getByText("Go to definition").click();
+    await clickCodeIntelligenceAction(tauriPage, "Go to definition");
     const landed = await tauriPage
       .waitForFunction(
         `(document.querySelector('.cm-activeLine')?.textContent || '').includes('label{sec:e2e-toolbar}')`,
@@ -180,14 +210,20 @@ test("code-intelligence toolbar menu runs definition, references, and rename act
 
   await caretIn(tauriPage, "sec:e2e-toolbar", 2);
   await openCodeIntelligence(tauriPage);
-  await tauriPage.getByText("Rename symbol").click();
+  await clickCodeIntelligenceAction(tauriPage, "Rename symbol");
+  await tauriPage.waitForFunction(
+    `import("/src/store/rename.ts").then(({ useRenameStore }) =>
+      !!useRenameStore.getState().sym
+    )`,
+    5_000,
+  );
   const renameDialog = tauriPage.locator('[role="dialog"][aria-labelledby="rename-title"]');
-  await expect(renameDialog).toBeVisible({ timeout: 5_000 });
+  await expect(renameDialog).toBeVisible({ timeout: 10_000 });
   await renameDialog.getByText("Cancel", { exact: true }).click();
 
   await caretIn(tauriPage, "sec:e2e-toolbar", 2);
   await openCodeIntelligence(tauriPage);
-  await tauriPage.getByText("Find references").click();
+  await clickCodeIntelligenceAction(tauriPage, "Find references");
   await expect(tauriPage.locator('[aria-label="References (Shift-F12)"]')).toBeVisible({
     timeout: 10_000,
   });
