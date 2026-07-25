@@ -20,15 +20,21 @@ automatable by design) · **—** not yet covered (listed at the bottom).
 | Project metadata dialogs | details and export history open/close without leaving a blocking layer | 21 |
 | Advanced project filters | abandoned select interaction keeps the popover open; metadata filters update the shelf | 21 |
 | Project rename (toolbar inline) | edit, save, revert | 22 |
-| Back to library / reopen | | 22 |
+| Back to library / reopen | project-close dirty-buffer flush survives reopen | 22, 50 |
+| Direct project switch | dirty editor buffer is flushed before the target project loads | 50 |
 | Change book color / open via Enter | | — (low risk; color is cosmetic) |
 
 ## Editor
 | Surface | Interactions | Spec |
 | --- | --- | --- |
 | CodeMirror | typing (anchored, real input), content round-trip across files | 03, 08 |
-| Toolbar | bold on selection (synthetic mouse-drag), undo/redo, insert figure/table, add-citation dialog | 16 |
-| Toolbar (full inventory) | italic, link, cross-reference, all 6 heading levels, both list kinds, find panel | 33 |
+| Toolbar | bold on selection, undo/redo, insert figure/table, add-citation dialog | 16 |
+| Toolbar (full inventory) | italic, underline, inline code, link, cross-reference, footnote, blockquote, align, equation, fraction, all 6 heading levels, both list kinds, symbol search/insertion, word count, find | 33 |
+| Toolbar code intelligence | go to definition, find references, rename dialog | 33 |
+| Toolbar overflow | ResizeObserver-driven overflow moves controls into the More menu and keeps them available | 47 |
+| Toolbar image transcription | synthetic PNG -> local mock vision model -> LaTeX inserted in editor | 41 |
+| Toolbar view switch | LaTeX and Markdown Code/Visual round-trip | 49 |
+| Toolbar SyncTeX | source-only view -> Go to PDF -> split view and PDF location | 47 |
 | File types | project.json/.txt open with no LaTeX toolbar; .ttf/.otf/.woff open a binary notice (was: silent failure, fixed) | 33 |
 | Code folding | fold gutter collapses and restores a region | 34 |
 | Editor tabs | close button removes the tab, main.tex stays active | 34 |
@@ -38,9 +44,10 @@ automatable by design) · **—** not yet covered (listed at the bottom).
 | Outline | section listed | 08 |
 | Spellcheck/dictionary | squiggle -> hover tooltip -> ignore -> settings chip -> un-ignore -> squiggle returns | 14 |
 | Code intel: go-to-definition, find-references, rename dialog | context menu + Shift+F12, real index over a seeded label/ref pair | 23 |
-| File tree rename/delete via context menu | | ✋ known-flaky under synthetic pointer events (26 fixme; verified manually) |
+| File tree rename/delete via context menu | create, rename, delete | 26 |
+| File tree collision handling | rename/move conflict, Cancel, Keep both, Replace, content preservation | 26 |
+| File tree drag-and-drop | move into folder and collision-safe Keep both flow | 26 |
 | Inline AI (Cmd+L) | provider-gated | ✋ [ai] |
-| Heading/list popovers, link/ref buttons | | — (menu plumbing shared with tested paths) |
 
 ## Compile & preview
 | Surface | Interactions | Spec |
@@ -48,11 +55,11 @@ automatable by design) · **—** not yet covered (listed at the bottom).
 | Compile | button + Cmd+Enter, zero-error status chip, PDF renders | 02, 10 |
 | Error loop | break -> error status -> fix -> recover | 11 |
 | Logs tab | real log shown, copy-log feedback | 11, 17 |
-| Zoom / layout / page nav / invert | 17 |
+| Preview toolbar (full inventory) | single/two-page layouts, previous/next, direct page jump, zoom in/out, all 7 presets, fit width/height, invert/restore, logs/PDF toggle, save PDF, copy log | 17 |
+| Preview window controls | fullscreen enter/exit, hide/show toolbar, detached-window creation | 17 |
 | Save PDF into project | in-app dialog -> file in tree | 17 |
 | SyncTeX forward (Cmd+Shift+J) | highlight appears on PDF | 10 |
 | SyncTeX inverse (Cmd-click PDF) | Cmd-click via text-layer coordinates lands the caret on the word | 24 |
-| Fullscreen, detached preview window, export saves | | ✋ [native] |
 | Export menu | opens, all formats listed per doc type | 22 |
 
 ## Diagram composer
@@ -116,6 +123,7 @@ automatable by design) · **—** not yet covered (listed at the bottom).
 | Destructive tool approvals | Approve clicked live in 31; a Reject path test | — |
 
 ## Known manual-only checks
-OS drag-and-drop into the window; native save/open dialogs (exports); native
-color pickers; fullscreen; the detached preview window; auto-updater; AI
-conversations end-to-end. These are exercised by release smoke-testing.
+OS drag-and-drop from outside the app; native save/open dialogs (exports);
+native color pickers; rendering and interaction inside the secondary preview
+window; auto-updater; AI conversations end-to-end. These are exercised by
+release smoke-testing.

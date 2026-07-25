@@ -49,8 +49,8 @@ Rerunning against an already-used app instance is not supported — relaunch.
 - Compile assertions: `.pdf-canvas` for a rendered page, the
   `compile-status` testid's `data-severity` attribute for zero-error runs,
   `.textLayer` for text that must appear in the PDF.
-- Skip: native dialogs (export "Save as"), AI conversations, the updater —
-  not automatable / nondeterministic by design.
+- Skip: native dialogs (export "Save as"), rendering inside secondary native
+  windows, nondeterministic live AI replies, and the updater.
 - **Idempotency**: tests may be re-run against a live app while iterating, so
   restore what you toggle (theme, vim, ignored words), use `\providecommand`
   instead of `\newcommand` for injected LaTeX, and make injected command

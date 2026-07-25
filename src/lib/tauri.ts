@@ -140,8 +140,42 @@ export const createFile = (projectId: string, path: string, isDir: boolean) =>
 export const deleteFile = (projectId: string, path: string) =>
   invoke<void>("delete_file", { projectId, path });
 
-export const renameFile = (projectId: string, from: string, to: string) =>
-  invoke<void>("rename_file", { projectId, from, to });
+export type FileConflictStrategy = "error" | "keep_both" | "replace";
+
+export type RenameFileResult =
+  | { status: "renamed"; path: string }
+  | { status: "conflict"; destination: string; suggested_destination: string };
+
+export class FileConflictError extends Error {
+  readonly destination: string;
+  readonly suggestedDestination: string;
+
+  constructor(result: Extract<RenameFileResult, { status: "conflict" }>) {
+    super(`A file or folder already exists at ${result.destination}.`);
+    this.name = "FileConflictError";
+    this.destination = result.destination;
+    this.suggestedDestination = result.suggested_destination;
+  }
+}
+
+export const isFileConflictError = (error: unknown): error is FileConflictError =>
+  error instanceof FileConflictError;
+
+export async function renameFile(
+  projectId: string,
+  from: string,
+  to: string,
+  conflictStrategy: FileConflictStrategy = "error",
+): Promise<string> {
+  const result = await invoke<RenameFileResult>("rename_file", {
+    projectId,
+    from,
+    to,
+    conflictStrategy,
+  });
+  if (result.status === "conflict") throw new FileConflictError(result);
+  return result.path;
+}
 
 export const copyFile = (projectId: string, from: string, to: string) =>
   invoke<void>("copy_file", { projectId, from, to });

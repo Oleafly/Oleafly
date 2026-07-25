@@ -6,8 +6,11 @@ const mocks = vi.hoisted(() => ({
   getProjectEngine: vi.fn(),
   listFiles: vi.fn(),
   readFileContent: vi.fn(),
+  writeFileContent: vi.fn(),
   notifyError: vi.fn(),
   setMainDocCmd: vi.fn(),
+  flushAutoCommit: vi.fn(),
+  scheduleAutoCommit: vi.fn(),
 }));
 
 vi.mock("@/lib/tauri", () => ({
@@ -15,10 +18,14 @@ vi.mock("@/lib/tauri", () => ({
   getProjectEngine: mocks.getProjectEngine,
   listFiles: mocks.listFiles,
   readFileContent: mocks.readFileContent,
+  writeFileContent: mocks.writeFileContent,
   setMainDocCmd: mocks.setMainDocCmd,
   listProjects: vi.fn(),
 }));
-vi.mock("@/lib/auto-commit", () => ({ flushAutoCommit: vi.fn(), scheduleAutoCommit: vi.fn() }));
+vi.mock("@/lib/auto-commit", () => ({
+  flushAutoCommit: mocks.flushAutoCommit,
+  scheduleAutoCommit: mocks.scheduleAutoCommit,
+}));
 vi.mock("@/lib/log", () => ({ logError: vi.fn() }));
 vi.mock("@/lib/toast", () => ({ notifyError: mocks.notifyError }));
 vi.mock("@/store/diff", () => ({ useDiffStore: { getState: () => ({ clearActiveDiff: vi.fn() }) } }));
@@ -36,14 +43,162 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 
-beforeEach(() => {
-  useFilesStore.getState().closeProject();
+beforeEach(async () => {
+  mocks.writeFileContent.mockReset().mockResolvedValue(undefined);
+  mocks.flushAutoCommit.mockReset();
+  mocks.scheduleAutoCommit.mockReset();
+  await useFilesStore.getState().closeProject();
   mocks.notifyError.mockReset();
+  mocks.writeFileContent.mockReset().mockResolvedValue(undefined);
+  mocks.flushAutoCommit.mockReset();
+  mocks.scheduleAutoCommit.mockReset();
   mocks.getProject.mockReset().mockResolvedValue({ name: "Paper", kind: "", main_doc: "main.tex" });
   mocks.listFiles.mockReset().mockResolvedValue([{ path: "main.tex", is_dir: false }]);
   mocks.readFileContent.mockReset().mockResolvedValue("hello");
   mocks.getProjectEngine.mockReset();
   mocks.setMainDocCmd.mockReset();
+});
+
+describe("transactional project transitions", () => {
+  it("writes every dirty buffer before closing and only then clears project state", async () => {
+    const first = deferred<void>();
+    const second = deferred<void>();
+    mocks.writeFileContent.mockImplementation(
+      (_projectId: string, path: string) =>
+        path === "main.tex" ? first.promise : second.promise,
+    );
+    useFilesStore.setState({
+      projectId: "old-project",
+      files: {
+        "main.tex": { content: "main changes", dirty: true },
+        "notes.tex": { content: "notes changes", dirty: true },
+      },
+      openTabs: ["main.tex", "notes.tex"],
+      activePath: "notes.tex",
+    });
+
+    const closing = useFilesStore.getState().closeProject();
+    await vi.waitFor(() => expect(mocks.writeFileContent).toHaveBeenCalledTimes(2));
+    expect(useFilesStore.getState().projectId).toBe("old-project");
+    expect(useFilesStore.getState().files["main.tex"].content).toBe("main changes");
+
+    first.resolve();
+    second.resolve();
+    await closing;
+
+    expect(mocks.writeFileContent).toHaveBeenCalledWith(
+      "old-project",
+      "main.tex",
+      "main changes",
+    );
+    expect(mocks.writeFileContent).toHaveBeenCalledWith(
+      "old-project",
+      "notes.tex",
+      "notes changes",
+    );
+    expect(mocks.flushAutoCommit).toHaveBeenCalledTimes(1);
+    expect(useFilesStore.getState().projectId).toBeNull();
+    expect(useFilesStore.getState().files).toEqual({});
+  });
+
+  it("flushes the old project before loading a different project", async () => {
+    const write = deferred<void>();
+    mocks.writeFileContent.mockReturnValue(write.promise);
+    mocks.getProject.mockResolvedValue({
+      name: "Replacement",
+      kind: "",
+      main_doc: "main.tex",
+    });
+    mocks.getProjectEngine.mockResolvedValue(LATEX_ENGINE);
+    mocks.readFileContent.mockResolvedValue("replacement content");
+    useFilesStore.setState({
+      projectId: "old-project",
+      files: { "main.tex": { content: "unsaved", dirty: true } },
+      openTabs: ["main.tex"],
+      activePath: "main.tex",
+    });
+
+    const opening = useFilesStore.getState().openProject("replacement");
+    await vi.waitFor(() =>
+      expect(mocks.writeFileContent).toHaveBeenCalledWith(
+        "old-project",
+        "main.tex",
+        "unsaved",
+      ),
+    );
+    expect(mocks.getProject).not.toHaveBeenCalled();
+    expect(useFilesStore.getState().projectId).toBe("old-project");
+
+    write.resolve();
+    await opening;
+
+    expect(mocks.getProject).toHaveBeenCalledWith("replacement");
+    expect(useFilesStore.getState().projectId).toBe("replacement");
+    expect(useFilesStore.getState().files["main.tex"].content).toBe("replacement content");
+  });
+
+  it("keeps the current project open when a transition save fails", async () => {
+    const failure = new Error("disk full");
+    mocks.writeFileContent.mockRejectedValue(failure);
+    useFilesStore.setState({
+      projectId: "old-project",
+      projectName: "Old project",
+      files: { "main.tex": { content: "must survive", dirty: true } },
+      openTabs: ["main.tex"],
+      activePath: "main.tex",
+    });
+
+    await useFilesStore.getState().closeProject();
+
+    expect(useFilesStore.getState().projectId).toBe("old-project");
+    expect(useFilesStore.getState().files["main.tex"]).toEqual({
+      content: "must survive",
+      dirty: true,
+    });
+    expect(useFilesStore.getState().loading).toBe(false);
+    expect(mocks.flushAutoCommit).not.toHaveBeenCalled();
+    expect(mocks.notifyError).toHaveBeenCalledWith(
+      "save before closing project",
+      failure,
+      expect.stringContaining("stayed open"),
+    );
+  });
+
+  it("orders a newer close flush behind an older in-flight save", async () => {
+    const oldWrite = deferred<void>();
+    const newWrite = deferred<void>();
+    mocks.writeFileContent
+      .mockImplementationOnce(() => oldWrite.promise)
+      .mockImplementationOnce(() => newWrite.promise);
+    useFilesStore.setState({
+      projectId: "project",
+      files: { "main.tex": { content: "old snapshot", dirty: true } },
+      openTabs: ["main.tex"],
+      activePath: "main.tex",
+    });
+
+    const saving = useFilesStore.getState().saveFile("main.tex");
+    await vi.waitFor(() => expect(mocks.writeFileContent).toHaveBeenCalledTimes(1));
+    useFilesStore.setState({
+      files: { "main.tex": { content: "new snapshot", dirty: true } },
+    });
+    const closing = useFilesStore.getState().closeProject();
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(mocks.writeFileContent).toHaveBeenCalledTimes(1);
+    oldWrite.resolve();
+    await saving;
+    await vi.waitFor(() => expect(mocks.writeFileContent).toHaveBeenCalledTimes(2));
+    expect(useFilesStore.getState().projectId).toBe("project");
+    newWrite.resolve();
+    await closing;
+
+    expect(mocks.writeFileContent.mock.calls.map((call) => call[2])).toEqual([
+      "old snapshot",
+      "new snapshot",
+    ]);
+    expect(useFilesStore.getState().projectId).toBeNull();
+  });
 });
 
 describe("project engine transition", () => {

@@ -24,6 +24,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useInitialFocus } from "@/components/ui/use-initial-focus";
+import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -40,6 +41,8 @@ import {
 import { useFilesStore } from "@/store/files";
 import { FileIcon } from "@/components/files/fileIcon";
 import { logError } from "@/lib/log";
+import { isFileConflictError } from "@/lib/tauri";
+import { notifyError } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 async function pickImportSources(mode: "file" | "dir"): Promise<string[]> {
@@ -148,6 +151,19 @@ export function FileTree() {
   const [renamePath, setRenamePath] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [dragOver, setDragOver] = useState<string | null>(null);
+  const [conflict, setConflict] = useState<{
+    from: string;
+    to: string;
+    suggestedDestination: string;
+  } | null>(null);
+  const [resolvingConflict, setResolvingConflict] = useState(false);
+  const closeConflict = () => {
+    if (!resolvingConflict) setConflict(null);
+  };
+  const {
+    dialogRef: conflictDialogRef,
+    onBackdropMouseDown: onConflictBackdropMouseDown,
+  } = useModalAccessibility<HTMLDivElement>(conflict !== null, closeConflict);
 
   const nodes = useMemo(() => buildTree(tree), [tree]);
 
@@ -165,6 +181,50 @@ export function FileTree() {
       return next;
     });
 
+  const renameOrPrompt = async (from: string, to: string, action: "rename" | "move") => {
+    try {
+      return await renameEntry(from, to);
+    } catch (error) {
+      if (isFileConflictError(error)) {
+        setConflict({ from, to, suggestedDestination: error.suggestedDestination });
+      } else {
+        notifyError(
+          `${action} file`,
+          error,
+          `Could not ${action} "${from}". The original path was left unchanged.`,
+        );
+      }
+      return null;
+    }
+  };
+
+  const resolveConflict = async (strategy: "keep_both" | "replace") => {
+    const pending = conflict;
+    if (!pending) return;
+    setResolvingConflict(true);
+    try {
+      const destination = await renameEntry(pending.from, pending.to, strategy);
+      setConflict(null);
+      const parent = parentOf(destination);
+      if (parent) expand(parent);
+    } catch (error) {
+      if (isFileConflictError(error)) {
+        setConflict({
+          ...pending,
+          suggestedDestination: error.suggestedDestination,
+        });
+      } else {
+        notifyError(
+          "resolve file conflict",
+          error,
+          "The original and destination paths were left unchanged.",
+        );
+      }
+    } finally {
+      setResolvingConflict(false);
+    }
+  };
+
   const commitRename = async (oldPath: string) => {
     const newName = renameValue.trim();
     setRenamePath(null);
@@ -173,11 +233,7 @@ export function FileTree() {
     const dir = parentOf(oldPath);
     const to = dir ? `${dir}/${newName}` : newName;
     if (to === oldPath) return;
-    try {
-      await renameEntry(oldPath, to);
-    } catch (e) {
-      void logError("rename file", e);
-    }
+    await renameOrPrompt(oldPath, to, "rename");
   };
 
   const startNew = (parent: string, mode: "file" | "dir") => {
@@ -218,12 +274,8 @@ export function FileTree() {
     const to = toDir ? `${toDir}/${base}` : base;
     if (to === from) return;
     if (toDir === from || toDir.startsWith(`${from}/`)) return; // into itself / a descendant
-    try {
-      await renameEntry(from, to);
-      if (toDir) expand(toDir);
-    } catch (e) {
-      void logError("move file", e);
-    }
+    const destination = await renameOrPrompt(from, to, "move");
+    if (destination && toDir) expand(toDir);
   };
 
   const importInto = async (destDir: string, mode: "file" | "dir") => {
@@ -377,6 +429,62 @@ export function FileTree() {
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
+
+      {conflict && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <button
+            type="button"
+            aria-label="Cancel file move"
+            className="absolute inset-0"
+            onMouseDown={onConflictBackdropMouseDown}
+          />
+          <div
+            ref={conflictDialogRef}
+            role="alertdialog"
+            aria-modal="true"
+            aria-label="File move conflict"
+            tabIndex={-1}
+            className="relative w-full max-w-md rounded-xl border bg-background p-5 shadow-2xl"
+          >
+            <h2 className="text-sm font-semibold">That name is already in use</h2>
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+              <span className="font-medium text-foreground">{conflict.to}</span> already exists.
+              Keep both files using{" "}
+              <span className="font-medium text-foreground">
+                {conflict.suggestedDestination}
+              </span>
+              {", or replace the existing destination. Oleafly will not replace it unless you choose Replace."}
+            </p>
+            <div className="mt-5 flex flex-wrap justify-end gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={closeConflict}
+                disabled={resolvingConflict}
+                data-modal-initial-focus
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void resolveConflict("keep_both")}
+                disabled={resolvingConflict}
+              >
+                Keep both
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => void resolveConflict("replace")}
+                disabled={resolvingConflict}
+              >
+                Replace
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -492,6 +600,7 @@ function TreeRow({ node, depth, ctx }: { node: TreeNode; depth: number; ctx: Tre
     <div
       ref={rowRef}
       role="treeitem"
+      data-path={node.path}
       tabIndex={0}
       draggable={!isRenaming}
       aria-expanded={node.isDir ? ctx.expanded.has(node.path) : undefined}
