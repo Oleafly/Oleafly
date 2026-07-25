@@ -63,7 +63,7 @@ describe("modelToTikz", () => {
     };
     const tikz = modelToTikz(handledModel);
     expect(tikz).toContain(
-      "\\draw[<->, dash pattern=on 0.038cm off 0.1cm, line cap=round, line width=0.025cm] (a.south) to[out=-90, in=0] (b.east);",
+      "\\draw[<->, dash pattern=on 0.038cm off 0.1cm, line cap=round, line width=0.05cm] (a.south) to[out=-90, in=0] (b.east);",
     );
   });
 
@@ -139,6 +139,25 @@ describe("modelToTikz", () => {
     // The edge must come after its nodes are declared, inside the scope.
     expect(t.indexOf("\\node (a)")).toBeLessThan(t.indexOf("on background layer"));
     expect(t.indexOf("on background layer")).toBeLessThan(t.indexOf("\\draw[->"));
+  });
+
+  it("paints unlabeled roundrect group containers behind edges, and labeled shapes in front", () => {
+    const grouped: DiagramModel = {
+      version: 1,
+      nodes: [
+        { id: "group", shape: "roundrect", x: -20, y: -20, w: 200, h: 200, label: "", fill: "#e5e7eb" },
+        ...model.nodes,
+      ],
+      edges: model.edges,
+    };
+    const t = modelToTikz(grouped);
+    const groupIdx = t.indexOf("\\node (group)");
+    const scopeIdx = t.indexOf("on background layer");
+    const drawIdx = t.indexOf("\\draw[->");
+    const shapeIdx = t.indexOf("\\node (a)");
+    expect(shapeIdx).toBeLessThan(scopeIdx);
+    expect(groupIdx).toBeGreaterThan(scopeIdx);
+    expect(groupIdx).toBeLessThan(drawIdx);
   });
 
   it("omits the background scope when there are no edges", () => {

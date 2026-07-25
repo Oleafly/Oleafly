@@ -115,7 +115,7 @@ function edgeToTikz(e: DiagEdge, nodes: Map<string, DiagNode>): string {
   if (a) opts.push(a);
   const edgeDash = dash(e.style);
   if (edgeDash) opts.push(edgeDash);
-  opts.push(`line width=${px2cm(1)}cm`);
+  opts.push(`line width=${px2cm(2)}cm`);
   const sourceHandle = (e.sourceHandle ?? "b") as DiagramHandle;
   const targetHandle = (e.targetHandle ?? "t") as DiagramHandle;
   if (e.routing === "orthogonal") opts.push(`rounded corners=${px2cm(5)}cm`);
@@ -166,18 +166,27 @@ export const DIAGRAM_LIBS = [
 
 // Color defs are emitted before the tikzpicture block: \definecolor is legal
 // in the surrounding body, but \node/\draw only exist inside tikzpicture.
+// An unlabeled roundrect is the "group container" convention (drawn behind a
+// cluster of other shapes), so it belongs under the edges too: otherwise a
+// connector that terminates inside the group renders hidden under the
+// container's own fill right where it should meet its target.
+function isGroupContainer(n: DiagNode): boolean {
+  return n.shape === "roundrect" && !n.label;
+}
+
 export function modelToTikz(model: DiagramModel): string {
   const defs = new Set<string>();
-  const nodes = model.nodes.map((n) => nodeToTikz(n, defs));
+  const containerNodes = model.nodes.filter(isGroupContainer);
+  const regularNodes = model.nodes.filter((n) => !isGroupContainer(n));
+  const nodes = regularNodes.map((n) => nodeToTikz(n, defs));
+  const containers = containerNodes.map((n) => nodeToTikz(n, defs));
   const nodesById = new Map(model.nodes.map((node) => [node.id, node]));
   const edges = model.edges.map((edge) => edgeToTikz(edge, nodesById));
   const defLines = [...defs].sort();
   const nodeBody = nodes.map((l) => `  ${l}`).join("\n");
-  // Nodes must be declared before edges reference them, but edges should render
-  // BEHIND the shapes (as they do on the canvas) so an arrow crossing a node is
-  // hidden by it. The background layer achieves both: declare on top, draw below.
-  const edgeBody = edges.length
-    ? `\n  \\begin{scope}[on background layer]\n${edges.map((l) => `    ${l}`).join("\n")}\n  \\end{scope}`
+  const backgroundLines = [...containers, ...edges];
+  const edgeBody = backgroundLines.length
+    ? `\n  \\begin{scope}[on background layer]\n${backgroundLines.map((l) => `    ${l}`).join("\n")}\n  \\end{scope}`
     : "";
   const pre = defLines.length ? `${defLines.join("\n")}\n` : "";
   return `${pre}\\begin{tikzpicture}[>={Triangle[length=0.313cm,width=0.313cm]}]\n${nodeBody}${edgeBody}\n\\end{tikzpicture}`;
