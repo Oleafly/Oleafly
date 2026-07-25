@@ -44,6 +44,26 @@ describe("simulateAtsParse: field extraction", () => {
     const p = simulateAtsParse(noSkills);
     expect(p.sections.find((s) => s.name === "Skills")?.present).toBe(false);
   });
+
+  it.each([
+    "Projects",
+    "Project",
+    "PROJECTS",
+    "Projects:",
+    "Personal Projects",
+    "Academic Projects",
+    "Selected Projects",
+    "Key Projects",
+    "Notable Projects",
+    "Side Projects",
+    "Technical Projects",
+    "Relevant Projects",
+    "Open Source Projects",
+  ])("recognizes %s as a Projects heading", (heading) => {
+    const withProjects = `${RESUME}\n${heading}\nBuilt a thing.`;
+    const p = simulateAtsParse(withProjects);
+    expect(p.sections.find((s) => s.name === "Projects")?.present).toBe(true);
+  });
 });
 
 describe("atsParseFindings", () => {
