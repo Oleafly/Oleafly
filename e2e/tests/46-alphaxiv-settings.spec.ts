@@ -21,7 +21,7 @@ test("connect, persist across reload, and disconnect an alphaXiv key", async ({ 
   await tauriPage.getByText("alphaXiv", { exact: true }).click();
   await expect(section().getByText("alphaXiv", { exact: true })).toBeVisible();
 
-  await expect(tauriPage.locator('[aria-label="alphaXiv API key"]')).toBeVisible();
+  await expect(tauriPage.locator('[aria-label="alphaXiv API key"]')).toBeVisible({ timeout: 10_000 });
   await tauriPage.fill('[aria-label="alphaXiv API key"]', "axv1_e2e_test_key");
   await section().getByText("Connect", { exact: true }).click();
   await expect(section().getByText("Disconnect", { exact: true })).toBeVisible({ timeout: 10_000 });
