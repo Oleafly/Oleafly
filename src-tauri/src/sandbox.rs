@@ -186,7 +186,11 @@ impl AtomicFile {
             }
         }
         std::fs::OpenOptions::new()
-            .read(true)
+            // Windows maps sync_all() to FlushFileBuffers, which rejects a
+            // handle opened without GENERIC_WRITE. A read-only reopen works
+            // on Unix but makes every atomic write fail with access denied on
+            // Windows, so reopen the completed staging file for writing.
+            .write(true)
             .open(&self.staging)
             .and_then(|file| file.sync_all())
             .map_err(|error| format!("failed to sync staged artifact: {error}"))?;

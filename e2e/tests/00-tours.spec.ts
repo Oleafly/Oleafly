@@ -63,6 +63,8 @@ interface ProjectHandoffSnapshot {
   projectName: string | null;
   publishedProjectIds: string[] | null;
   projectListError: string | null;
+  appLog: string | null;
+  appLogError: string | null;
   createButtonConnected: boolean;
   createButtonVisible: boolean;
   createButtonEnabled: boolean;
@@ -95,14 +97,21 @@ async function projectHandoffSnapshot(
       const fileState = files.useFilesStore.getState();
       let publishedProjectIds = null;
       let projectListError = null;
+      let appLog = null;
+      let appLogError = null;
       if (${includeProjects}) {
+        const api = await import("/src/lib/tauri.ts");
         try {
-          const api = await import("/src/lib/tauri.ts");
           publishedProjectIds = (await api.listProjects())
             .filter((project) => project.name === ${JSON.stringify(projectName)})
             .map((project) => project.id);
         } catch (error) {
           projectListError = String(error);
+        }
+        try {
+          appLog = await api.readAppLog(16 * 1024);
+        } catch (error) {
+          appLogError = String(error);
         }
       }
       return {
@@ -112,6 +121,8 @@ async function projectHandoffSnapshot(
         projectName: fileState.projectName,
         publishedProjectIds,
         projectListError,
+        appLog,
+        appLogError,
         createButtonConnected: Boolean(createButton?.isConnected),
         createButtonVisible: visible(createButton),
         createButtonEnabled:
@@ -168,6 +179,10 @@ async function createProjectAndWaitForWorkspaceTour(page: Page, projectName: str
   while (Date.now() < deadline) {
     if (last.tourTitleVisible) return;
     if (last.alerts.length > 0) {
+      // notifyError persists the underlying command error asynchronously.
+      // Give that diagnostic invoke a short opportunity to finish before
+      // collecting the state that will be attached to a CI failure.
+      await new Promise((resolve) => setTimeout(resolve, 250));
       const diagnostic = await projectHandoffSnapshot(
         page,
         projectName,
