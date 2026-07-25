@@ -26,7 +26,7 @@ test("settings modal opens with all sections", async ({ tauriPage }) => {
   await openSettingsProject(tauriPage);
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openSettings(tauriPage);
-  for (const s of ["appearance", "general", "ai", "github", "mcp"]) {
+  for (const s of ["appearance", "general", "ai", "integrations", "mcp"]) {
     await expect(tauriPage.locator(`[data-testid="settings-section-${s}"]`)).toBeVisible();
   }
   // The "Show advanced" toggle persists (localStorage), so only click it when

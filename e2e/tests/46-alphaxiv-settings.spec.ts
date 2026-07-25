@@ -9,16 +9,16 @@ const reload = (page: unknown) => reloadNativePage(page as TauriPage);
 // persistence rather than just in-memory store state.
 
 test("connect, persist across reload, and disconnect an alphaXiv key", async ({ tauriPage }) => {
-  // Scoped to the alphaXiv section throughout: GitHub's own section on this
-  // same settings page also has a "Disconnect" button, and when a real
-  // E2E_GITHUB_TOKEN is configured (as in CI), both are visible at once, so
-  // an unscoped getByText("Disconnect") is ambiguous.
+  // Scoped to the alphaXiv section throughout: the GitHub tab (also on this
+  // settings page) has its own "Disconnect" button, and an unscoped
+  // getByText("Disconnect") would be ambiguous if it ever renders alongside.
   const section = () => tauriPage.locator('[data-testid="alphaxiv-section"]');
 
   // Each locator below is created fresh right where it's used rather than
   // hoisted: reload(tauriPage) swaps to an entirely new window handle in this
   // bridge, so a locator captured before a reload goes stale after one.
-  await openSettings(tauriPage, "github");
+  await openSettings(tauriPage, "integrations");
+  await tauriPage.getByRole("tab", { name: "alphaXiv" }).click();
   await expect(section().getByText("alphaXiv", { exact: true })).toBeVisible();
 
   await expect(tauriPage.locator('[aria-label="alphaXiv API key"]')).toBeVisible();
@@ -28,7 +28,8 @@ test("connect, persist across reload, and disconnect an alphaXiv key", async ({ 
   await expect(tauriPage.locator('[aria-label="alphaXiv API key"]')).toBeHidden();
 
   await reload(tauriPage);
-  await openSettings(tauriPage, "github");
+  await openSettings(tauriPage, "integrations");
+  await tauriPage.getByRole("tab", { name: "alphaXiv" }).click();
   await expect(section().getByText("alphaXiv", { exact: true })).toBeVisible();
   await expect(section().getByText("Disconnect", { exact: true })).toBeVisible({ timeout: 10_000 });
 
@@ -54,7 +55,8 @@ test("connect, persist across reload, and disconnect an alphaXiv key", async ({ 
   expect(disconnected).toBe(true);
 
   await reload(tauriPage);
-  await openSettings(tauriPage, "github");
+  await openSettings(tauriPage, "integrations");
+  await tauriPage.getByRole("tab", { name: "alphaXiv" }).click();
   await waitLong(
     tauriPage,
     `!!document.querySelector('[data-testid="alphaxiv-section"] [aria-label="alphaXiv API key"]')`,
@@ -63,7 +65,8 @@ test("connect, persist across reload, and disconnect an alphaXiv key", async ({ 
 });
 
 test("Get an API key links point at alphaXiv's own site", async ({ tauriPage }) => {
-  await openSettings(tauriPage, "github");
+  await openSettings(tauriPage, "integrations");
+  await tauriPage.getByRole("tab", { name: "alphaXiv" }).click();
   const hrefs = await tauriPage.evaluate<string[]>(
     `Array.from(document.querySelectorAll('a')).filter(a => (a.textContent || '').includes('API key page') || a.textContent === 'alphaxiv.org').map(a => a.href)`,
   );
