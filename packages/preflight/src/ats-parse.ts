@@ -20,11 +20,14 @@ const URL = /https?:\/\/[^\s|)]+|(?:www\.|linkedin\.com|github\.com)[^\s|)]+/gi;
 
 // Standard resume sections and the patterns a heading line must match.
 const SECTIONS: { name: string; re: RegExp }[] = [
-  { name: "Experience", re: /^(work |professional |relevant )?experience$|^employment( history)?$/i },
-  { name: "Education", re: /^education$/i },
-  { name: "Skills", re: /^(technical |core )?skills$|^technologies$/i },
-  { name: "Projects", re: /^projects?$/i },
-  { name: "Summary", re: /^(summary|objective|profile|about)$/i },
+  { name: "Experience", re: /^(work |professional |relevant )?experience:?$|^employment( history)?:?$/i },
+  { name: "Education", re: /^education:?$/i },
+  { name: "Skills", re: /^(technical |core |key )?skills:?$|^technologies:?$/i },
+  {
+    name: "Projects",
+    re: /^(personal |academic |selected |key |notable |side |technical |relevant |open source )?projects?:?$/i,
+  },
+  { name: "Summary", re: /^(summary|objective|profile|about):?$/i },
 ];
 
 function looksLikeName(line: string): boolean {
