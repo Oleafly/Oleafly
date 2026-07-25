@@ -1,6 +1,10 @@
 # Features
 
-What Oleafly can do. All of it runs on your machine.
+What Oleafly can do. Core editing, compilation, preview, history, and analysis
+run on your machine; network-backed integrations are opt-in.
+
+For task-oriented introductions, see [Resume workflows](resume-workflows.md)
+and [Research workflows](research-workflows.md).
 
 ## Editor (CodeMirror 6)
 

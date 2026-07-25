@@ -1,15 +1,64 @@
-# Frontend architecture
+# Architecture
 
-Oleafly's frontend is a pnpm workspace: the app shell lives at the repo root
-(`src/`), and the engines it is built from live in `packages/*` as nine
-focused packages. The Rust backend (`src-tauri/`) is unchanged by this split;
-see the [README's architecture diagram](../README.md#architecture) for the
-frontend/Rust/sidecar picture and [Development](development.md) for day-to-day
-commands.
+Oleafly is a Tauri desktop application. A React and TypeScript frontend renders
+inside the operating system's webview, while a Rust backend owns privileged
+desktop operations such as project files, compilation, Git, secure
+configuration, downloads, and native process management.
 
-This document covers: what each package is, the dependency-inversion rules
-that keep them pure, the contribution registry that wires features into the
-shell, how module resolution works, and how to add or extract a package.
+The frontend is a pnpm workspace: the app shell lives at the repository root
+(`src/`), and focused feature packages live in `packages/*`. See
+[Development](development.md) for day-to-day commands.
+
+## System overview
+
+```mermaid
+flowchart LR
+  subgraph Frontend["Frontend · system webview"]
+    UI["React UI"]
+    Stores["Zustand stores"]
+    Packages["@oleafly/* packages"]
+    IPC["Tauri IPC client"]
+    UI --> Stores
+    UI --> Packages
+    Stores --> IPC
+  end
+
+  Bridge["Tauri command boundary"]
+
+  subgraph Backend["Rust backend"]
+    Commands["Command handlers"]
+    Projects["Projects and path guards"]
+    Compile["Compile and export"]
+    Git["Git and GitHub"]
+    Native["Secrets, downloads, and native services"]
+    Commands --> Projects
+    Commands --> Compile
+    Commands --> Git
+    Commands --> Native
+  end
+
+  Sidecars["Bundled or optional engines\nTectonic · Typst · Pandoc · LuaLaTeX"]
+  Disk["Local data\n~/.oleafly"]
+  Optional["Optional network services\nAI providers · research data · GitHub · updates"]
+
+  IPC --> Bridge --> Commands
+  Projects --> Disk
+  Compile --> Sidecars
+  Compile --> Disk
+  Git --> Disk
+  Git --> Optional
+  Native --> Optional
+  UI -. "opt-in provider requests" .-> Optional
+```
+
+The Tauri command boundary is the trust boundary for local resources. Project
+paths are validated in Rust, and sensitive native operations do not rely on
+arbitrary paths supplied by the webview. Some explicitly enabled integrations,
+such as hosted AI providers and research lookups, make network requests from
+their frontend clients; ordinary editing does not require them.
+
+The rest of this document covers the frontend packages, dependency-inversion
+rules, contribution registry, module resolution, and package extraction.
 
 ## Why a workspace
 
@@ -35,7 +84,9 @@ sources via aliases (see [Module resolution](#module-resolution)).
 | `@oleafly/registry` | The contribution registry: rail tabs, palette/omnibar commands, AI toolsets ([details below](#the-contribution-registry)) | none (contributions carry their own behavior) | react (types) |
 | `@oleafly/preflight` | The preflight engine: document typing, source/PDF/reference rules, ATS parsing, accessible-export prep, scoring. `pdf-extract` ships as the `@oleafly/preflight/pdf-extract` subpath so pdf.js stays out of node test graphs | none (pure) | `pdfjs-dist` (subpath only) |
 | `@oleafly/editor` | The CodeMirror LaTeX core: `CodeMirrorEditor`, the editor-view controller (`insertAtCursor`, `gotoLine`, …), language + completions, theme, folding, linters, latex-mask, math preview, search panel, spelling/grammar linters | `EditorHost` (document model + settings, hook-shaped), `SpellHost` (spellchecker/Harper/dictionary), `setBibKeysProvider`, `extraExtensions`/`extraKeymap` | `@codemirror/*`, `@replit/codemirror-vim`, `katex` |
+| `@oleafly/wysiwyg` | Tiptap extensions plus lossless parsers and serializers for supported LaTeX and Markdown structures | none (pure transforms and extensions) | `@tiptap/*`, `tiptap-markdown`, `@unified-latex/*` |
 | `@oleafly/preview` | The virtualized pdf.js viewer (`PdfViewer`), the SyncTeX page controller (`gotoRect`, `pageClickToBp`), the pdf.js worker, and the WebView polyfills (`@oleafly/preview/polyfills`, imported first in `main.tsx`) | `onOpenLink` prop (system-browser links), `setPdfLogger` | `pdfjs-dist` |
+| `@oleafly/pdf-to-latex` | Deterministic local PDF analysis and reconstruction used by the import workflow, with the pdf.js adapter exposed as a subpath | none | `pdfjs-dist`, `@oleafly/preview` |
 | `@oleafly/diagram` | The visual diagram composer: React Flow canvas, shape inspector, Draw/Code tabs, compile-preview-insert flow | `DiagramHost` (compile, file IO, editor insert, AI fix), `DiagramKit` context (Button/Tooltip/Select/toast/theme) | `@xyflow/react`, `@codemirror/*`, `@oleafly/latex` |
 | `@oleafly/ai-tools` | The AI agent toolsets: project tools (read/write/compile/search/`project_map`, approval-gated edits) and figure-studio tools (`preview_figure`, `insert_figure`) | `AiToolsHost` (files, compile, symbol index, figure pipeline, editor) | `ai`, `@oleafly/latex` |
 | `@oleafly/templates` | The new-project template gallery (two-step wizard, categories, previews, one-time asset downloads with progress) | `TemplatesHost` (previews, asset downloads, logging), `TemplatesKit` (Button/Tooltip), color options as props | none beyond UI utils |
@@ -160,9 +211,9 @@ places, and all three must stay in sync when a package is added:
    cover `packages/**/*.test.ts`. Otherwise moved tests silently drop out of
    the run.
 
-Also: the root `package.json` depends on each package via `"workspace:*"`, and
-`src/styles/globals.css` has `@source "../../packages"` so Tailwind v4 scans
-package sources for class names.
+Also: app-consumed workspace packages belong in the root `package.json` via
+`"workspace:*"`, and `src/styles/globals.css` has `@source "../../packages"`
+so Tailwind v4 scans package sources for class names.
 
 Vite-only imports (`?worker&url` workers, CSS imports) work unchanged from
 package sources because the aliases point at source. Keep anything that drags

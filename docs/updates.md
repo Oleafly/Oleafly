@@ -9,16 +9,15 @@ trigger a check from the **Oleafly → Check for Updates** menu, or from
 The same application menu provides **Reload Views** for refreshing webviews and
 **Restart Application** for a full process restart.
 
-Oleafly 0.2.5 is an unsigned developer beta. This local beta build does not
-generate updater artifacts because no release-signing private key is configured,
-and the macOS and Windows applications do not have operating-system code
-signatures. Update failure handling remains available for a future signed feed.
+Preview builds may be distributed without operating-system code signatures.
+Updater artifacts are generated only when the release workflow has access to
+the updater-signing private key. Update failure handling remains available when
+an installed build cannot use the signed feed.
 
 ## How it works
 
-1. A future signed release can build **updater artifacts** and a `latest.json`
-   manifest for the GitHub Release. The unsigned 0.2.5 developer-beta
-   configuration keeps `bundle.createUpdaterArtifacts` disabled.
+1. The release workflow builds signed **updater artifacts** and a `latest.json`
+   manifest for the GitHub Release when its signing secrets are configured.
 2. The app fetches `latest.json` from the release's
    `.../releases/latest/download/latest.json` endpoint (see the `plugins.updater`
    block in `tauri.conf.json`).
@@ -85,8 +84,8 @@ and can be retried from About or the application menu. Signature verification
 failure blocks installation. The application restarts only after
 `downloadAndInstall` completes successfully.
 
-Oleafly 0.2.5 does not provide automatic rollback after a successful update.
-To return to an earlier version, close Oleafly, download the earlier official
+Oleafly does not provide automatic rollback after a successful update. To
+return to an earlier version, close Oleafly, download the earlier official
 installer, verify its checksum, and install it over the current version. Back
 up important projects before changing application versions.
 
