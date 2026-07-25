@@ -230,7 +230,7 @@ test("reset to defaults restores factory preferences", async ({ tauriPage }) => 
     5_000,
   );
 
-  await tauriPage.click('[data-testid="settings-section-general"]');
+  await openSettings(tauriPage, "general");
   await tauriPage.getByText("Reset to defaults").click();
   await tauriPage.getByText("Reset", { exact: true }).click();
 
