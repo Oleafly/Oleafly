@@ -104,10 +104,12 @@ export function IconBtn({
 export function WysiwygModeSwitch({
   wysiwyg,
   onToggle,
+  secondLabel = "Visual",
   "data-tour": dataTour,
 }: {
   wysiwyg: boolean;
   onToggle: () => void;
+  secondLabel?: string;
   "data-tour"?: string;
 }) {
   return (
@@ -137,7 +139,7 @@ export function WysiwygModeSwitch({
           wysiwyg ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
         )}
       >
-        Visual
+        {secondLabel}
       </button>
     </div>
   );
@@ -504,7 +506,12 @@ export function EditorToolbar({
       </div>
 
       <div className="ml-auto flex shrink-0 items-center gap-0.5">
-        <WysiwygModeSwitch wysiwyg={wysiwyg} onToggle={onToggleWysiwyg} data-tour="wysiwyg-toggle" />
+        <WysiwygModeSwitch
+          wysiwyg={wysiwyg}
+          onToggle={onToggleWysiwyg}
+          secondLabel={projectKind === "diagram" ? "Canvas" : "Visual"}
+          data-tour="wysiwyg-toggle"
+        />
         <WordCountButton />
         <IconBtn onClick={editorFind} title={`Find (${shortcut("⌘F")})`}>
           <Search className="size-4" />

@@ -1,6 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { FileText, Loader2, X } from "lucide-react";
-import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { CodeMirrorEditor } from "./CodeMirrorEditor";
 import { EditorContextMenu } from "./EditorContextMenu";
 import { EditorToolbar, WysiwygModeSwitch } from "./EditorToolbar";
@@ -275,29 +274,25 @@ export function Editor() {
               Typst mode · LaTeX linting and spelling/grammar checks are disabled.
             </div>
           )}
-          {isDiagramMainFile && projectId && activePath ? (
-            <PanelGroup direction="horizontal" className="min-h-0 flex-1">
-              <Panel id="diagram-code" order={1} defaultSize={50} minSize={20}>
-                <div className="relative h-full min-h-0 overflow-hidden">
-                  <EditorContextMenu>
-                    <CodeMirrorEditor />
-                  </EditorContextMenu>
-                  <SelectionActionMenu />
-                </div>
-              </Panel>
-              <PanelResizeHandle className="w-1 shrink-0 bg-border transition-colors hover:bg-ring" />
-              <Panel id="diagram-canvas" order={2} defaultSize={50} minSize={20}>
-                <Suspense
-                  fallback={
-                    <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
-                      <Loader2 className="size-4 animate-spin" /> Loading…
-                    </div>
-                  }
-                >
-                  <DiagramMainFileView projectId={projectId} path={activePath} />
-                </Suspense>
-              </Panel>
-            </PanelGroup>
+          {isDiagramMainFile && wysiwyg && projectId && activePath ? (
+            <div className="min-h-0 flex-1 overflow-hidden">
+              <Suspense
+                fallback={
+                  <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="size-4 animate-spin" /> Loading…
+                  </div>
+                }
+              >
+                <DiagramMainFileView projectId={projectId} path={activePath} />
+              </Suspense>
+            </div>
+          ) : isDiagramMainFile ? (
+            <div className="min-h-0 flex-1 overflow-hidden">
+              <EditorContextMenu>
+                <CodeMirrorEditor />
+              </EditorContextMenu>
+              <SelectionActionMenu />
+            </div>
           ) : isPdfFile && projectId && activePath ? (
             <div className="min-h-0 flex-1 overflow-auto bg-sidebar">
               <PdfFileView projectId={projectId} path={activePath} />
