@@ -70,8 +70,7 @@ test("keyboard shortcuts Settings section opens from the home view", async ({ ta
 test("home tour opens from Help and About", async ({ tauriPage }) => {
   const back = tauriPage.locator('[title="Back to library"]');
   if (await back.isVisible()) await back.click();
-  await openSettings(tauriPage);
-  await tauriPage.click('[data-testid="settings-section-help"]');
+  await openSettings(tauriPage, "help");
   await tauriPage.getByText("Start tour", { exact: true }).click();
   await expect(tauriPage.getByRole("alertdialog")).toBeVisible({ timeout: 20_000 });
   await expect(tauriPage.locator("#react-joyride-portal h2")).toHaveText("Home");
