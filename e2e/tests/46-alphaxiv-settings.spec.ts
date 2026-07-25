@@ -21,15 +21,26 @@ test("connect, persist across reload, and disconnect an alphaXiv key", async ({ 
   await tauriPage.getByText("alphaXiv", { exact: true }).click();
   await expect(section().getByText("alphaXiv", { exact: true })).toBeVisible();
 
-  // Playwright's own toBeVisible() polling has twice timed out here under a
-  // loaded CI run despite the section itself rendering fine; switch to the
-  // same document.querySelector-polling wait already proven reliable for
-  // this exact selector later in this test (after a reload, below).
-  await waitLong(
-    tauriPage,
-    `!!document.querySelector('[data-testid="alphaxiv-section"] [aria-label="alphaXiv API key"]')`,
-    30_000,
-  );
+  // This wait has timed out here repeatedly under CI (both Playwright's own
+  // toBeVisible() and a 30s document.querySelector poll) despite the section
+  // itself rendering fine, with no reproduction in an isolated component test
+  // (jsdom + realistic user-event tab click renders the input immediately).
+  // On failure, dump the section's actual markup so the next occurrence
+  // proves what's really there instead of guessing again.
+  const keySelector = '[data-testid="alphaxiv-section"] [aria-label="alphaXiv API key"]';
+  const deadline = Date.now() + 30_000;
+  let found = false;
+  while (Date.now() < deadline) {
+    found = await tauriPage.evaluate<boolean>(`!!document.querySelector('${keySelector}')`);
+    if (found) break;
+    await new Promise((r) => setTimeout(r, 1_000));
+  }
+  if (!found) {
+    const html = await tauriPage.evaluate<string>(
+      `document.querySelector('[data-testid="alphaxiv-section"]')?.outerHTML ?? "MISSING"`,
+    );
+    throw new Error(`alphaXiv API key input never appeared after 30s. Section HTML: ${html}`);
+  }
   await tauriPage.fill('[aria-label="alphaXiv API key"]', "axv1_e2e_test_key");
   await section().getByText("Connect", { exact: true }).click();
   await expect(section().getByText("Disconnect", { exact: true })).toBeVisible({ timeout: 10_000 });
