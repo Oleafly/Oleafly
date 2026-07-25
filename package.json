@@ -7,7 +7,7 @@
   "engines": {
     "node": ">=22.13 <25"
   },
-  "description": "Oleafly - a local-first workspace for research papers, technical documents, and resumes.",
+  "description": "Oleafly - the intelligent research workspace, free, local-first, 100% open source.",
   "license": "AGPL-3.0-or-later",
   "author": "Prajwal S Venkateshmurthy",
   "scripts": {

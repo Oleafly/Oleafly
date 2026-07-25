@@ -1053,7 +1053,7 @@ function HelpSection() {
         />
         <h3 className="pr-20 text-sm font-semibold">About Oleafly</h3>
         <p className="mt-1 text-xs text-muted-foreground">
-          A local-first workspace for research papers, technical documents, and resumes.
+          The intelligent research workspace — free, local-first, 100% open source.
           {version && <span className="ml-1">· v{version}</span>}
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
