@@ -145,7 +145,13 @@ export function PreviewPane() {
   useEffect(() => {
     if (numPages <= 0 || autoFitProjectRef.current === projectId || userAdjustedZoomRef.current) return;
     autoFitProjectRef.current = projectId;
-    const raf = requestAnimationFrame(() => fitPreview("height"));
+    // Re-check at fire time, not just when scheduling: the user can zoom
+    // manually in the gap between this effect scheduling the frame and the
+    // frame actually running, and cancelAnimationFrame on unmount doesn't
+    // help there since the ref change alone doesn't retrigger this effect.
+    const raf = requestAnimationFrame(() => {
+      if (!userAdjustedZoomRef.current) fitPreview("height");
+    });
     return () => cancelAnimationFrame(raf);
   }, [numPages, projectId]);
 
