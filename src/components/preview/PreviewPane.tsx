@@ -130,6 +130,21 @@ export function PreviewPane() {
     if (next != null) setClampedScale(next);
   };
 
+  // Open a project's preview fit to page height rather than flat 100%. Fires
+  // once per project, the first time its PDF has pages to measure, so it
+  // never overrides a zoom level the user picked mid-session.
+  const autoFitProjectRef = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (autoFitProjectRef.current !== projectId) autoFitProjectRef.current = undefined;
+  }, [projectId]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: fitPreview reads pdfRef/setClampedScale, both stable; only numPages/projectId should retrigger this
+  useEffect(() => {
+    if (numPages <= 0 || autoFitProjectRef.current === projectId) return;
+    autoFitProjectRef.current = projectId;
+    const raf = requestAnimationFrame(() => fitPreview("height"));
+    return () => cancelAnimationFrame(raf);
+  }, [numPages, projectId]);
+
   const submitSavePdf = async () => {
     if (!projectId || !pdfBytes) return;
     setSaving(true);
