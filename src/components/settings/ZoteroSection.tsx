@@ -1,45 +1,45 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useAlphaXivConnectorStore } from "@/store/alphaxiv-connector";
+import { useZoteroConnectorStore } from "@/store/zotero-connector";
 
-export function AlphaXivSection() {
-  const { connected, loading, connect, disconnect, refresh } = useAlphaXivConnectorStore();
+export function ZoteroSection() {
+  const { connected, loading, connect, disconnect, refresh } = useZoteroConnectorStore();
   const [apiKey, setApiKey] = useState("");
+  const [userId, setUserId] = useState("");
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
 
   return (
-    <div data-testid="alphaxiv-section" className="space-y-2">
+    <div data-testid="zotero-section" className="space-y-2">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-medium">alphaXiv</h3>
+          <h3 className="text-sm font-medium">Zotero</h3>
           <p className="text-xs text-muted-foreground">
-            Literature search and paper analysis tools for the assistant.
+            Import citations and references from your Zotero library.
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             To get a key: sign in at{" "}
             <a
-              href="https://www.alphaxiv.org"
+              href="https://www.zotero.org"
               target="_blank"
               rel="noopener noreferrer"
               className="text-primary hover:underline"
             >
-              alphaxiv.org
+              zotero.org
             </a>
             , open your{" "}
             <a
-              href="https://www.alphaxiv.org/@api-key"
+              href="https://www.zotero.org/settings/security#applications"
               target="_blank"
               rel="noopener noreferrer"
               className="text-primary hover:underline"
             >
               API key page
             </a>
-            , generate a key (it starts with{" "}
-            <code className="rounded bg-muted px-1 py-0.5">axv1_</code>), and paste it below.
+            {" "}to create a key, and copy your numeric user ID from the same page.
           </p>
         </div>
         {connected && (
@@ -51,18 +51,28 @@ export function AlphaXivSection() {
       {!connected && (
         <div className="flex gap-2">
           <Input
+            value={userId}
+            onChange={(e) => setUserId(e.target.value)}
+            placeholder="User ID"
+            aria-label="Zotero user ID"
+            className="w-28"
+          />
+          <Input
             type="password"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
-            placeholder="alphaXiv API key"
-            aria-label="alphaXiv API key"
+            placeholder="Zotero API key"
+            aria-label="Zotero API key"
             className="max-w-xs"
           />
           <Button
             size="sm"
-            disabled={loading || !apiKey.trim()}
+            disabled={loading || !apiKey.trim() || !userId.trim()}
             onClick={() => {
-              void connect(apiKey.trim()).then(() => setApiKey(""));
+              void connect(userId.trim(), apiKey.trim()).then(() => {
+                setApiKey("");
+                setUserId("");
+              });
             }}
           >
             Connect

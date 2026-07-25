@@ -53,7 +53,7 @@ describe("tour registry", () => {
       ["settings-ai", "transition"],
       ["settings-compiler", "transition"],
       ["settings-downloads", "transition"],
-      ["settings-github", "transition"],
+      ["settings-integrations", "transition"],
       ["settings-shortcuts", "transition"],
       ["settings-mcp", "transition"],
       ["settings-help", "transition"],

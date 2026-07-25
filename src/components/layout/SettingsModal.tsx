@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  Blocks,
   BookMarked,
   BookOpen,
   Bug,
@@ -42,8 +43,7 @@ import { UpdateChecker } from "@/components/layout/UpdateChecker";
 import { EngineSection } from "@/components/settings/EngineSection";
 import { DownloadsSection } from "@/components/settings/DownloadsSection";
 import { AISection } from "@/components/settings/AISection";
-import { GitHubSection } from "@/components/settings/GitHubSection";
-import { AlphaXivSection } from "@/components/settings/AlphaXivSection";
+import { IntegrationsSection } from "@/components/settings/IntegrationsSection";
 import { McpSection } from "@/components/settings/McpSection";
 import { ShortcutsSection } from "@/components/settings/ShortcutsSection";
 import {
@@ -73,7 +73,7 @@ type Section =
   | "ai"
   | "engine"
   | "downloads"
-  | "github"
+  | "integrations"
   | "shortcuts"
   | "mcp"
   | "help";
@@ -86,7 +86,7 @@ const NAV: { id: Section; label: string; icon: typeof Palette }[] = [
   { id: "ai", label: "AI Assistant", icon: Sparkles },
   { id: "engine", label: "LaTeX Engine", icon: Cpu },
   { id: "downloads", label: "Offline & Downloads", icon: HardDriveDownload },
-  { id: "github", label: "GitHub", icon: Github },
+  { id: "integrations", label: "Integrations", icon: Blocks },
   { id: "shortcuts", label: "Keyboard Shortcuts", icon: Keyboard },
   { id: "mcp", label: "MCP", icon: Plug },
   { id: "help", label: "Help & About", icon: LifeBuoy },
@@ -100,7 +100,7 @@ const TOUR_SECTION_TARGETS: Partial<Record<Section, string>> = {
   ai: "settings-ai",
   engine: "settings-compiler",
   downloads: "settings-downloads",
-  github: "settings-github",
+  integrations: "settings-integrations",
   shortcuts: "settings-shortcuts",
   mcp: "settings-mcp",
   help: "settings-help",
@@ -207,8 +207,6 @@ export function SettingsModal() {
   const setBgPattern = useSettingsStore((s) => s.setBgPattern);
 
   const projectId = useFilesStore((s) => s.projectId);
-  const projectName = useFilesStore((s) => s.projectName);
-  const refreshTree = useFilesStore((s) => s.refreshTree);
 
   const [section, setSection] = useState<Section>("general");
   const [libRoot, setLibRoot] = useState("");
@@ -846,7 +844,7 @@ export function SettingsModal() {
                     <strong className="font-medium text-foreground">Push</strong> /{" "}
                     <strong className="font-medium text-foreground">Pull</strong> in Source Control.{" "}
                     <button type="button"
-                      onClick={() => setSection("github")}
+                      onClick={() => setSection("integrations")}
                       className="font-medium text-primary hover:underline"
                     >
                       Set up GitHub →
@@ -880,16 +878,7 @@ export function SettingsModal() {
             {section === "engine" && <EngineSection />}
             {section === "downloads" && <DownloadsSection />}
 
-            {section === "github" && (
-              <div className="space-y-5">
-                <GitHubSection
-                  projectId={projectId}
-                  projectName={projectName}
-                  onRemoteChanged={() => void refreshTree()}
-                />
-                <AlphaXivSection />
-              </div>
-            )}
+            {section === "integrations" && <IntegrationsSection />}
 
             {section === "shortcuts" && <ShortcutsSection />}
 
