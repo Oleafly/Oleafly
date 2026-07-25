@@ -997,15 +997,15 @@ export async function selectWord(page: Page, word: string, attempts = 3) {
 // CI's window can render narrower than local dev, so direct bar selectors
 // are not reliable for controls past the first few; this checks both states.
 export async function clickToolbarControl(page: Page, barSelector: string, menuText: string) {
-  const bar = page.locator(barSelector);
   // The bridge's visibility predicate does not account for clipping by the
   // toolbar's overflow-hidden container. Verify that the control's center is
-  // actually hit-testable before asking the coordinate-based click command to
-  // use it; otherwise fall through to the rendered More-menu counterpart.
-  const barCanReceivePointer = await page.evaluate<boolean>(
+  // actually hit-testable and activate it in the same browser task. Keeping
+  // those operations atomic prevents ResizeObserver from moving the control
+  // into overflow between a successful probe and a later locator click.
+  const barClicked = await page.evaluate<boolean>(
     `(() => {
       const element = document.querySelector(${JSON.stringify(barSelector)});
-      if (!element) return false;
+      if (!(element instanceof HTMLElement)) return false;
       const style = getComputedStyle(element);
       const rect = element.getBoundingClientRect();
       if (
@@ -1019,13 +1019,12 @@ export async function clickToolbarControl(page: Page, barSelector: string, menuT
       const x = rect.left + rect.width / 2;
       const y = rect.top + rect.height / 2;
       const hit = document.elementFromPoint(x, y);
-      return !!hit && (hit === element || element.contains(hit));
+      if (!hit || (hit !== element && !element.contains(hit))) return false;
+      element.click();
+      return true;
     })()`,
   );
-  if (barCanReceivePointer && (await bar.isVisible().catch(() => false))) {
-    await bar.click();
-    return;
-  }
+  if (barClicked) return;
   // The overflow popover has closeOnClick=false and stays open across a
   // nested dropdown selection (e.g. picking "Bulleted list" then reopening
   // "List" for "Numbered list"). Re-clicking its trigger while it's already
