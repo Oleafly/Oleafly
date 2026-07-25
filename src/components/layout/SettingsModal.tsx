@@ -879,14 +879,14 @@ export function SettingsModal() {
             {section === "downloads" && <DownloadsSection />}
 
             {section === "github" && (
-              <>
+              <div className="space-y-5">
                 <GitHubSection
                   projectId={projectId}
                   projectName={projectName}
                   onRemoteChanged={() => void refreshTree()}
                 />
                 <AlphaXivSection />
-              </>
+              </div>
             )}
 
             {section === "shortcuts" && <ShortcutsSection />}
