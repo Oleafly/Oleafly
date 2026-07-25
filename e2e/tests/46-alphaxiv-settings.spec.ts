@@ -21,7 +21,15 @@ test("connect, persist across reload, and disconnect an alphaXiv key", async ({ 
   await tauriPage.getByText("alphaXiv", { exact: true }).click();
   await expect(section().getByText("alphaXiv", { exact: true })).toBeVisible();
 
-  await expect(tauriPage.locator('[aria-label="alphaXiv API key"]')).toBeVisible({ timeout: 10_000 });
+  // Playwright's own toBeVisible() polling has twice timed out here under a
+  // loaded CI run despite the section itself rendering fine; switch to the
+  // same document.querySelector-polling wait already proven reliable for
+  // this exact selector later in this test (after a reload, below).
+  await waitLong(
+    tauriPage,
+    `!!document.querySelector('[data-testid="alphaxiv-section"] [aria-label="alphaXiv API key"]')`,
+    30_000,
+  );
   await tauriPage.fill('[aria-label="alphaXiv API key"]', "axv1_e2e_test_key");
   await section().getByText("Connect", { exact: true }).click();
   await expect(section().getByText("Disconnect", { exact: true })).toBeVisible({ timeout: 10_000 });
