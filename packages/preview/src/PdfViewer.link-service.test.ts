@@ -6,6 +6,7 @@ let createPdfLinkService: typeof import("./PdfViewer").createPdfLinkService;
 let createPdfLinkViewerAdapter: typeof import("./PdfViewer").createPdfLinkViewerAdapter;
 let calculatePdfFitScale: typeof import("./PdfViewer").calculatePdfFitScale;
 let prioritizePdfPages: typeof import("./PdfViewer").prioritizePdfPages;
+let selectCurrentPdfPage: typeof import("./PdfViewer").selectCurrentPdfPage;
 
 beforeAll(async () => {
   // pdf.js creates these browser primitives while its ESM bundle evaluates.
@@ -19,12 +20,72 @@ beforeAll(async () => {
     createPdfLinkService,
     createPdfLinkViewerAdapter,
     prioritizePdfPages,
+    selectCurrentPdfPage,
   } = await import("./PdfViewer"));
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
   document.body.replaceChildren();
+});
+
+describe("PdfViewer current-page geometry", () => {
+  it("selects the dominant final page over a sliver of the previous page", () => {
+    expect(
+      selectCurrentPdfPage(
+        [
+          { pageNumber: 2, top: -770, bottom: 6 },
+          { pageNumber: 3, top: 22, bottom: 798 },
+        ],
+        0,
+        800,
+        2,
+      ),
+    ).toBe(3);
+  });
+
+  it("selects the lower page number for equal two-page spread geometry", () => {
+    expect(
+      selectCurrentPdfPage(
+        [
+          { pageNumber: 2, top: 16, bottom: 784 },
+          { pageNumber: 1, top: 16, bottom: 784 },
+          { pageNumber: 3, top: 800, bottom: 1_568 },
+        ],
+        0,
+        800,
+        2,
+      ),
+    ).toBe(1);
+  });
+
+  it("falls back to the page nearest the viewport when none overlap", () => {
+    expect(
+      selectCurrentPdfPage(
+        [
+          { pageNumber: 7, top: -900, bottom: -180 },
+          { pageNumber: 8, top: 850, bottom: 1_570 },
+        ],
+        0,
+        800,
+        7,
+      ),
+    ).toBe(8);
+  });
+
+  it("uses visible area for mixed-size and rotated-page geometry", () => {
+    expect(
+      selectCurrentPdfPage(
+        [
+          { pageNumber: 4, top: -500, bottom: 140 },
+          { pageNumber: 5, top: 156, bottom: 756 },
+        ],
+        0,
+        800,
+        4,
+      ),
+    ).toBe(5);
+  });
 });
 
 describe("PdfViewer link service", () => {

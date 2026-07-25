@@ -28,10 +28,18 @@ interface ExpectedTextGeometry {
   userUnit: number;
 }
 
-function expectCssSubpixel(actual: number, expected: number): void {
+function expectCssSubpixel(
+  actual: number,
+  expected: number,
+  context = "PDF CSS geometry",
+): void {
   // WebKit exposes layout at 1/64 CSS-pixel increments, while TextLayer's
   // percentage positions are serialized to two decimal places.
-  expect(Math.abs(actual - expected)).toBeLessThanOrEqual(0.125);
+  const delta = Math.abs(actual - expected);
+  expect(
+    delta,
+    `${context}: expected ${expected}, received ${actual}, delta ${delta}`,
+  ).toBeLessThanOrEqual(0.125);
 }
 
 async function expectedTextGeometry(
@@ -448,6 +456,10 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
     userUnit: string;
     roundX: string;
     roundY: string;
+    markerScaleX: string;
+    markerTransform: string;
+    markerFontFamily: string;
+    markerFontSize: string;
   };
   const inspectPages = `(() => {
     const inspect = (pageNumber, marker) => {
@@ -465,6 +477,7 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
       const canvasRect = canvas.getBoundingClientRect();
       const layerRect = layer.getBoundingClientRect();
       const spanRect = span.getBoundingClientRect();
+      const spanStyle = getComputedStyle(span);
       return {
         width: pageRect.width,
         height: pageRect.height,
@@ -486,6 +499,10 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
         userUnit: page.dataset.pdfUserUnit || '',
         roundX: getComputedStyle(page).getPropertyValue('--scale-round-x').trim(),
         roundY: getComputedStyle(page).getPropertyValue('--scale-round-y').trim(),
+        markerScaleX: span.style.getPropertyValue('--scale-x'),
+        markerTransform: spanStyle.transform,
+        markerFontFamily: spanStyle.fontFamily,
+        markerFontSize: spanStyle.fontSize,
       };
     };
     return [
@@ -517,7 +534,11 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
     baseline[0].height,
   );
   expectCssSubpixel(baseline[0].markerLeft, firstExpected.baselineX);
-  expectCssSubpixel(baseline[0].markerWidth, firstExpected.advance);
+  expectCssSubpixel(
+    baseline[0].markerWidth,
+    firstExpected.advance,
+    `page 1 baseline marker width ${JSON.stringify(baseline[0])}`,
+  );
   expectCssSubpixel(baseline[0].markerHeight, firstExpected.fontHeight);
   expectCssSubpixel(baseline[0].markerLeft, firstExpectedRect.left);
   expectCssSubpixel(baseline[0].markerTop, firstExpectedRect.top);
@@ -542,7 +563,11 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
   );
   // Glyph dimensions use --total-scale-factor directly; only percentage
   // positions inherit the rounded page-axis ratio.
-  expectCssSubpixel(baseline[1].markerHeight, rotatedExpected.advance);
+  expectCssSubpixel(
+    baseline[1].markerHeight,
+    rotatedExpected.advance,
+    `page 2 baseline marker advance ${JSON.stringify(baseline[1])}`,
+  );
   expectCssSubpixel(baseline[1].markerWidth, rotatedExpected.fontHeight);
   expectCssSubpixel(baseline[1].markerLeft, rotatedExpectedRect.left);
   expectCssSubpixel(baseline[1].markerTop, rotatedExpectedRect.top);
@@ -619,6 +644,7 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
   expectCssSubpixel(
     transient[0].markerWidth,
     firstExpected.advance * 2,
+    `page 1 transient marker width ${JSON.stringify(transient[0])}`,
   );
   const firstTransientRect = await expectedBrowserTextRect(
     tauriPage,
@@ -640,6 +666,7 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
   expectCssSubpixel(
     transient[1].markerHeight,
     rotatedExpected.advance * 2,
+    `page 2 transient marker advance ${JSON.stringify(transient[1])}`,
   );
   const rotatedTransientRect = await expectedBrowserTextRect(
     tauriPage,

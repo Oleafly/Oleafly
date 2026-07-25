@@ -33,6 +33,7 @@ const harness = vi.hoisted(() => ({
   linkApisExercised: 0,
   structureUpdated: 0,
   getPageCalls: [] as number[],
+  throwTextGeometry: false,
   rejectedPages: new Set<number>(),
   deferredPages: new Map<
     number,
@@ -69,6 +70,7 @@ const harness = vi.hoisted(() => ({
     this.linkApisExercised = 0;
     this.structureUpdated = 0;
     this.getPageCalls = [];
+    this.throwTextGeometry = false;
     this.rejectedPages.clear();
     this.deferredPages.clear();
   },
@@ -172,8 +174,14 @@ vi.mock("pdfjs-dist", () => {
       getViewport: ({ scale }: { scale: number }) => new MockViewport(spec, scale),
       getTextContent: () =>
         Promise.resolve({
-          items: [{ str: `PAGE ${pageNumber} TEXT`, transform: [1, 0, 0, 1, 0, 0] }],
-          styles: {},
+          items: [{
+            str: `PAGE ${pageNumber} TEXT`,
+            width: 120,
+            height: 12,
+            fontName: "mock-font",
+            transform: [1, 0, 0, 1, 0, 0],
+          }],
+          styles: { "mock-font": { vertical: false } },
         }),
       render: ({
         viewport,
@@ -250,8 +258,11 @@ vi.mock("pdfjs-dist", () => {
         const span = document.createElement("span");
         span.textContent = this.options.textContentSource.items[0]?.str ?? "";
         span.setAttribute("role", "presentation");
-        span.getBoundingClientRect = () =>
-          ({
+        span.getBoundingClientRect = () => {
+          if (harness.throwTextGeometry) {
+            throw new Error("Text geometry unavailable");
+          }
+          return {
             x: 10,
             y: 10,
             width: 120,
@@ -261,7 +272,8 @@ vi.mock("pdfjs-dist", () => {
             bottom: 22,
             left: 10,
             toJSON: () => ({}),
-          }) as DOMRect;
+          } as DOMRect;
+        };
         this.textDivs.push(span);
         this.options.container.append(span);
         return Promise.resolve();
@@ -368,6 +380,87 @@ function triggerIntersection(pageNumbers: number[], isIntersecting: boolean): vo
 }
 
 describe("PdfViewer production geometry and lifecycle wiring", () => {
+  it("retains selectable text when DOM width calibration is unavailable", async () => {
+    harness.throwTextGeometry = true;
+    const view = render(
+      <PdfViewer
+        data={new Uint8Array([1])}
+        scale={1}
+        expectText={false}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(
+        view.container.querySelector("[data-page='1'] .textLayer span"),
+      ).toHaveTextContent("PAGE 1 TEXT"),
+    );
+  });
+
+  it("reports the dominant bottom-clamped page through the component callback", async () => {
+    harness.reset([
+      { width: 612, height: 792, rotation: 0, userUnit: 1 },
+      { width: 612, height: 792, rotation: 0, userUnit: 1 },
+      { width: 612, height: 792, rotation: 0, userUnit: 1 },
+    ]);
+    const onPageChange = vi.fn();
+    const view = render(
+      <PdfViewer
+        data={new Uint8Array([1])}
+        scale={1}
+        expectText={false}
+        onPageChange={onPageChange}
+      />,
+    );
+    const renderer = view.getByTestId("pdf-renderer");
+    await waitFor(() => expect(renderer.dataset.pdfState).toBe("ready"));
+    const scrollParent = renderer.parentElement as HTMLElement;
+    const page2 = view.container.querySelector<HTMLElement>("[data-page='2']")!;
+    const page3 = view.container.querySelector<HTMLElement>("[data-page='3']")!;
+    scrollParent.getBoundingClientRect = () =>
+      ({
+        top: 0,
+        bottom: 800,
+        left: 0,
+        right: 1_000,
+        width: 1_000,
+        height: 800,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }) as DOMRect;
+    page2.getBoundingClientRect = () =>
+      ({
+        top: -770,
+        bottom: 6,
+        left: 194,
+        right: 806,
+        width: 612,
+        height: 776,
+        x: 194,
+        y: -770,
+        toJSON: () => ({}),
+      }) as DOMRect;
+    page3.getBoundingClientRect = () =>
+      ({
+        top: 22,
+        bottom: 798,
+        left: 194,
+        right: 806,
+        width: 612,
+        height: 776,
+        x: 194,
+        y: 22,
+        toJSON: () => ({}),
+      }) as DOMRect;
+    act(() => triggerIntersection([2, 3], true));
+    onPageChange.mockClear();
+
+    act(() => scrollParent.dispatchEvent(new Event("scroll")));
+
+    await waitFor(() => expect(onPageChange).toHaveBeenCalledWith(3, 3));
+  });
+
   it("progressively applies each off-screen page's own exact geometry", async () => {
     const view = render(
       <PdfViewer data={new Uint8Array([1])} scale={1} expectText={false} />,
