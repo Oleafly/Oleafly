@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Bookmark, BookmarkCheck } from "lucide-react";
+import { Bookmark, BookmarkCheck, GitCommitVertical, GitFork } from "lucide-react";
+import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 type Variant = "book" | "simple" | "stripe";
@@ -53,6 +54,7 @@ export function Book({
   illustration,
   date,
   engine,
+  forkedFrom,
   kind,
   variant = "book",
   width = 150,
@@ -68,6 +70,7 @@ export function Book({
   illustration?: ReactNode;
   date?: string;
   engine?: string;
+  forkedFrom?: string | null;
   kind?: string;
   variant?: Variant;
   width?: number;
@@ -147,9 +150,16 @@ export function Book({
             <div className="relative z-10 flex flex-1 flex-col justify-end p-3">
               {engine && (
                 <span
-                  className="mb-1 text-[9px] font-semibold uppercase leading-none tracking-wide opacity-55"
+                  className="mb-1 flex items-center gap-1 text-[9px] font-semibold uppercase leading-none tracking-wide opacity-55"
                   style={{ color: ink }}
                 >
+                  <Tooltip label={forkedFrom ? `Forked from ${forkedFrom}` : "Not forked"} side="top">
+                    {forkedFrom ? (
+                      <GitFork className="size-2.5" />
+                    ) : (
+                      <GitCommitVertical className="size-2.5" />
+                    )}
+                  </Tooltip>
                   {engine}
                 </span>
               )}

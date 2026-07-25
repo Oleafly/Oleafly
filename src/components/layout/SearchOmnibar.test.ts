@@ -13,6 +13,7 @@ const project: ProjectInfo = {
   color: "#123456",
   has_preview: true,
   exports: [],
+  forked_from: null,
 };
 
 describe("project omnibar metadata matching", () => {

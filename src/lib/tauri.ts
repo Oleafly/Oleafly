@@ -92,6 +92,7 @@ export interface ProjectInfo {
     path: string;
     format: string;
   }[];
+  forked_from: string | null;
 }
 
 export const compileProject = (projectId: string, mainDoc: string, offline = false) =>
