@@ -65,6 +65,8 @@ pub struct ProjectMeta {
     pub exports: Vec<ExportRecord>,
     #[serde(default)]
     pub hidden: bool,
+    #[serde(default)]
+    pub forked_from: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Default, Clone)]
@@ -107,6 +109,7 @@ pub struct ProjectInfo {
     pub color: String,
     pub has_preview: bool,
     pub exports: Vec<ProjectExportInfo>,
+    pub forked_from: Option<String>,
 }
 
 fn meta_path(project_id: &str) -> Result<PathBuf, String> {
@@ -124,6 +127,7 @@ pub fn read_meta(project_id: &str) -> Result<ProjectMeta, String> {
             kind: String::new(),
             exports: Vec::new(),
             hidden: false,
+            forked_from: None,
         });
     }
     let s = std::fs::read_to_string(&p).map_err(|e| format!("failed to read project.json: {e}"))?;
@@ -431,6 +435,7 @@ fn create_markdown_project_in(root: &Path, name: String) -> Result<String, Strin
                 kind: String::new(),
                 exports: Vec::new(),
                 hidden: false,
+                forked_from: None,
             },
         )
     })?;
@@ -540,6 +545,7 @@ pub fn list_projects() -> Result<Vec<ProjectInfo>, String> {
             color: meta.color,
             has_preview,
             exports,
+            forked_from: meta.forked_from,
             id,
             updated_at,
         });
@@ -569,6 +575,7 @@ pub fn create_project(name: String) -> Result<String, String> {
                 kind: String::new(),
                 exports: Vec::new(),
                 hidden: false,
+                forked_from: None,
             },
         )
     })?;
@@ -596,6 +603,7 @@ fn create_typst_project_in(root: &Path, name: String) -> Result<String, String> 
                 kind: String::new(),
                 exports: Vec::new(),
                 hidden: false,
+                forked_from: None,
             },
         )
     })?;
@@ -648,6 +656,7 @@ fn create_image_project_in(
                 kind: "image".into(),
                 exports: Vec::new(),
                 hidden: false,
+                forked_from: None,
             },
         )
     })?;
@@ -692,6 +701,7 @@ pub fn create_diagram_project(name: String, source: String) -> Result<String, St
                 kind: "diagram".into(),
                 exports: Vec::new(),
                 hidden: false,
+                forked_from: None,
             },
         )
     })?;
@@ -714,6 +724,7 @@ pub fn get_or_create_scratch_project() -> Result<String, String> {
                 kind: "diagram".into(),
                 exports: Vec::new(),
                 hidden: true,
+                forked_from: None,
             },
         )?;
     }
@@ -1134,6 +1145,7 @@ pub async fn create_project_from_docx(name: String, data_base64: String) -> Resu
                 kind: String::new(),
                 exports: Vec::new(),
                 hidden: false,
+                forked_from: None,
             },
         )
     }
@@ -1420,6 +1432,7 @@ pub fn create_project_from_template(
                 kind: manifest.kind.unwrap_or_default(),
                 exports: Vec::new(),
                 hidden: false,
+                forked_from: None,
             },
         )
     })?;
@@ -1671,7 +1684,13 @@ pub async fn duplicate_project(project_id: String, new_name: String) -> Result<S
         let dst = root.join(&new_id);
         copy_dir_recursive(&src, &dst, 0)?;
         if let Ok(mut meta) = read_meta(&new_id) {
+            let source_name = if meta.name.is_empty() {
+                project_id.clone()
+            } else {
+                meta.name.clone()
+            };
             meta.name = new_name;
+            meta.forked_from = Some(source_name);
             let _ = write_meta(&new_id, &meta);
         }
         Ok(new_id)
@@ -1802,10 +1821,10 @@ pub async fn delete_project(project_id: String) -> Result<(), String> {
 mod tests {
     use super::{
         create_diagram_project, create_image_project_in, create_markdown_project_in,
-        create_project_transaction, create_typst_project_in, engine_for_main_document,
-        extract_pandoc, get_or_create_scratch_project, list_projects, pandoc_asset_for,
-        pandoc_version_supported, read_meta, rel_slash, validate_conversion_export, ProjectMeta,
-        SCRATCH_PROJECT_ID,
+        create_project_transaction, create_typst_project, create_typst_project_in,
+        duplicate_project, engine_for_main_document, extract_pandoc, get_or_create_scratch_project,
+        list_projects, pandoc_asset_for, pandoc_version_supported, read_meta, rel_slash,
+        validate_conversion_export, ProjectMeta, SCRATCH_PROJECT_ID,
     };
     use std::io::Write;
     use std::path::Path;
@@ -1881,6 +1900,7 @@ mod tests {
             kind: String::new(),
             exports: Vec::new(),
             hidden: false,
+            forked_from: None,
         };
         let json = serde_json::to_string(&meta).unwrap();
         let decoded: ProjectMeta = serde_json::from_str(&json).unwrap();
@@ -2142,5 +2162,24 @@ mod tests {
         assert!(!pandoc_version_supported(b"pandoc 1.19.2.1\nfeatures: ..."));
         assert!(!pandoc_version_supported(b""));
         assert!(!pandoc_version_supported(b"not pandoc output"));
+    }
+
+    // Held across the await deliberately: it serializes access to the shared
+    // OLEAFLY_DATA_DIR env var against other tests, single-threaded runtime.
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn duplicate_project_records_the_fork_source() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("duplicate-project-fork");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let source_id = create_typst_project("Original Paper".to_string()).unwrap();
+        let fork_id = duplicate_project(source_id, "Original Paper (copy)".to_string())
+            .await
+            .unwrap();
+        let meta = read_meta(&fork_id).unwrap();
+        assert_eq!(meta.name, "Original Paper (copy)");
+        assert_eq!(meta.forked_from.as_deref(), Some("Original Paper"));
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
     }
 }
