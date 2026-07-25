@@ -51,7 +51,7 @@ export type RailTab =
   | "mcp";
 
 export type DockPlacement = "left" | "right" | "bottom";
-export type BackgroundPattern = "dots" | "grid";
+export type BackgroundPattern = "dots" | "grid" | "none";
 export type EditorThemeId =
   | "system"
   | "linear"

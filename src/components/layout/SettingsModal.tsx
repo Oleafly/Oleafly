@@ -607,11 +607,12 @@ export function SettingsModal() {
                   <div className="mb-2 text-xs text-muted-foreground">
                     The pattern behind your project shelf.
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     {(
                       [
                         { id: "dots", label: "Dots" },
                         { id: "grid", label: "Grid" },
+                        { id: "none", label: "None" },
                       ] as const
                     ).map((opt) => {
                       const active = bgPattern === opt.id;
@@ -626,12 +627,12 @@ export function SettingsModal() {
                             active ? "border-primary bg-primary/5" : "border-border hover:bg-accent",
                           )}
                         >
-                          <div className="relative h-14 w-full overflow-hidden rounded bg-muted">
+                          <div className="relative h-14 w-full overflow-hidden rounded bg-[var(--home-background)]">
                             {opt.id === "dots" ? (
                               <DotPattern width={10} height={10} radius={0.75} />
-                            ) : (
+                            ) : opt.id === "grid" ? (
                               <GridPattern width={10} height={10} />
-                            )}
+                            ) : null}
                           </div>
                           {opt.label}
                         </button>
