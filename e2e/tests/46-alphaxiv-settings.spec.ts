@@ -25,21 +25,40 @@ test("connect, persist across reload, and disconnect an alphaXiv key", async ({ 
   // toBeVisible() and a 30s document.querySelector poll) despite the section
   // itself rendering fine, with no reproduction in an isolated component test
   // (jsdom + realistic user-event tab click renders the input immediately).
-  // On failure, dump the section's actual markup so the next occurrence
-  // proves what's really there instead of guessing again.
+  // A prior diagnostic dump showed the section's outerHTML as MISSING at the
+  // 30s mark - it existed right after the click (line 22 passed) but was gone
+  // later, meaning something un-rendered it mid-wait. Snapshot a timeline of
+  // dialog/tab/section state across the wait so a repeat failure shows WHEN
+  // and to WHAT it changed, not just a single end-of-wait snapshot.
+  const snapshotExpr = `(() => {
+    const dialog = document.querySelector('[role="dialog"]');
+    const activeTab = document.querySelector('[role="tab"][data-state="active"]');
+    const section = document.querySelector('[data-testid="alphaxiv-section"]');
+    const key = document.querySelector('[data-testid="alphaxiv-section"] [aria-label="alphaXiv API key"]');
+    return JSON.stringify({
+      dialog: !!dialog,
+      activeTab: activeTab ? activeTab.textContent : null,
+      section: !!section,
+      key: !!key,
+    });
+  })()`;
   const keySelector = '[data-testid="alphaxiv-section"] [aria-label="alphaXiv API key"]';
   const deadline = Date.now() + 30_000;
   let found = false;
+  const timeline: string[] = [];
   while (Date.now() < deadline) {
     found = await tauriPage.evaluate<boolean>(`!!document.querySelector('${keySelector}')`);
     if (found) break;
+    timeline.push(await tauriPage.evaluate<string>(snapshotExpr));
     await new Promise((r) => setTimeout(r, 1_000));
   }
   if (!found) {
     const html = await tauriPage.evaluate<string>(
       `document.querySelector('[data-testid="alphaxiv-section"]')?.outerHTML ?? "MISSING"`,
     );
-    throw new Error(`alphaXiv API key input never appeared after 30s. Section HTML: ${html}`);
+    throw new Error(
+      `alphaXiv API key input never appeared after 30s. Section HTML: ${html}\nTimeline: ${timeline.join(" -> ")}`,
+    );
   }
   await tauriPage.fill('[aria-label="alphaXiv API key"]', "axv1_e2e_test_key");
   await section().getByText("Connect", { exact: true }).click();
