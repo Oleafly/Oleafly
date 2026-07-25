@@ -352,6 +352,88 @@ export function SettingsModal() {
           <div className="flex-1 overflow-auto p-5">
             {section === "appearance" && (
               <div className="space-y-3 [&>*]:bg-card">
+                <div className="rounded-lg border bg-background p-3">
+                  <div className="text-sm font-medium">Dock placement</div>
+                  <div className="mb-2 text-xs text-muted-foreground">
+                    Where the floating home-screen dock sits.
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(
+                      [
+                        { id: "left", label: "Left" },
+                        { id: "bottom", label: "Bottom" },
+                        { id: "right", label: "Right" },
+                      ] as const
+                    ).map((opt) => {
+                      const active = dockPlacement === opt.id;
+                      return (
+                        <button
+                          type="button"
+                          key={opt.id}
+                          data-testid={`settings-dock-placement-${opt.id}`}
+                          onClick={() => setDockPlacement(opt.id)}
+                          className={cn(
+                            "flex flex-col items-center gap-2 rounded-md border p-3 text-xs font-medium transition-colors",
+                            active ? "border-primary bg-primary/5" : "border-border hover:bg-accent",
+                          )}
+                        >
+                          <div className="relative h-14 w-full overflow-hidden rounded bg-muted">
+                            {opt.id === "left" && (
+                              <div className="absolute inset-y-1 left-1 w-2 rounded bg-foreground/30" />
+                            )}
+                            {opt.id === "right" && (
+                              <div className="absolute inset-y-1 right-1 w-2 rounded bg-foreground/30" />
+                            )}
+                            {opt.id === "bottom" && (
+                              <div className="absolute inset-x-0 bottom-1 mx-auto h-2 w-10 rounded bg-foreground/30" />
+                            )}
+                          </div>
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="rounded-lg border bg-background p-3">
+                  <div className="text-sm font-medium">Background pattern</div>
+                  <div className="mb-2 text-xs text-muted-foreground">
+                    The pattern behind your project shelf.
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(
+                      [
+                        { id: "dots", label: "Dots" },
+                        { id: "grid", label: "Grid" },
+                        { id: "none", label: "None" },
+                      ] as const
+                    ).map((opt) => {
+                      const active = bgPattern === opt.id;
+                      return (
+                        <button
+                          type="button"
+                          key={opt.id}
+                          data-testid={`settings-bg-pattern-${opt.id}`}
+                          onClick={() => setBgPattern(opt.id)}
+                          className={cn(
+                            "flex flex-col items-center gap-2 rounded-md border p-3 text-xs font-medium transition-colors",
+                            active ? "border-primary bg-primary/5" : "border-border hover:bg-accent",
+                          )}
+                        >
+                          <div className="relative h-14 w-full overflow-hidden rounded bg-[var(--home-background)]">
+                            {opt.id === "dots" ? (
+                              <DotPattern width={10} height={10} radius={0.75} />
+                            ) : opt.id === "grid" ? (
+                              <GridPattern width={10} height={10} />
+                            ) : null}
+                          </div>
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 <ToggleRow
                   label="Dark mode"
                   desc="Switch between light and dark themes."
@@ -559,87 +641,6 @@ export function SettingsModal() {
                   </div>
                 </div>
 
-                <div className="rounded-lg border bg-background p-3">
-                  <div className="text-sm font-medium">Dock placement</div>
-                  <div className="mb-2 text-xs text-muted-foreground">
-                    Where the floating home-screen dock sits.
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(
-                      [
-                        { id: "left", label: "Left" },
-                        { id: "bottom", label: "Bottom" },
-                        { id: "right", label: "Right" },
-                      ] as const
-                    ).map((opt) => {
-                      const active = dockPlacement === opt.id;
-                      return (
-                        <button
-                          type="button"
-                          key={opt.id}
-                          data-testid={`settings-dock-placement-${opt.id}`}
-                          onClick={() => setDockPlacement(opt.id)}
-                          className={cn(
-                            "flex flex-col items-center gap-2 rounded-md border p-3 text-xs font-medium transition-colors",
-                            active ? "border-primary bg-primary/5" : "border-border hover:bg-accent",
-                          )}
-                        >
-                          <div className="relative h-14 w-full overflow-hidden rounded bg-muted">
-                            {opt.id === "left" && (
-                              <div className="absolute inset-y-1 left-1 w-2 rounded bg-foreground/30" />
-                            )}
-                            {opt.id === "right" && (
-                              <div className="absolute inset-y-1 right-1 w-2 rounded bg-foreground/30" />
-                            )}
-                            {opt.id === "bottom" && (
-                              <div className="absolute inset-x-0 bottom-1 mx-auto h-2 w-10 rounded bg-foreground/30" />
-                            )}
-                          </div>
-                          {opt.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="rounded-lg border bg-background p-3">
-                  <div className="text-sm font-medium">Background pattern</div>
-                  <div className="mb-2 text-xs text-muted-foreground">
-                    The pattern behind your project shelf.
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(
-                      [
-                        { id: "dots", label: "Dots" },
-                        { id: "grid", label: "Grid" },
-                        { id: "none", label: "None" },
-                      ] as const
-                    ).map((opt) => {
-                      const active = bgPattern === opt.id;
-                      return (
-                        <button
-                          type="button"
-                          key={opt.id}
-                          data-testid={`settings-bg-pattern-${opt.id}`}
-                          onClick={() => setBgPattern(opt.id)}
-                          className={cn(
-                            "flex flex-col items-center gap-2 rounded-md border p-3 text-xs font-medium transition-colors",
-                            active ? "border-primary bg-primary/5" : "border-border hover:bg-accent",
-                          )}
-                        >
-                          <div className="relative h-14 w-full overflow-hidden rounded bg-[var(--home-background)]">
-                            {opt.id === "dots" ? (
-                              <DotPattern width={10} height={10} radius={0.75} />
-                            ) : opt.id === "grid" ? (
-                              <GridPattern width={10} height={10} />
-                            ) : null}
-                          </div>
-                          {opt.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
               </div>
             )}
 
