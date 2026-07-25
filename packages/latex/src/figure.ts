@@ -4,7 +4,10 @@ export function buildStandaloneDoc(opts: {
   libraries?: string[];
   background?: string;
 }): string {
-  const packages = ["tikz", ...(opts.packages ?? [])];
+  // lmodern matches the canvas preview's "Latin Modern" font stack; without
+  // it Tectonic falls back to Computer Modern's raster fonts, which read
+  // visibly different (esp. weight/spacing) from what the canvas shows.
+  const packages = ["tikz", "lmodern", ...(opts.packages ?? [])];
   const seen = new Set<string>();
   const uniquePackages = packages.filter((p) => {
     const k = p.trim();
