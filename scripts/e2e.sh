@@ -42,6 +42,7 @@ acquire_e2e_lock
 
 APP_PID=""
 LOG=""
+DATA_DIR=""
 LOG_STREAM_PID=""
 HEARTBEAT_PID=""
 SOCK="${TAURI_PLAYWRIGHT_SOCKET:-/tmp/tauri-playwright.sock}"
@@ -69,6 +70,9 @@ cleanup() {
   remove_owned_e2e_socket "$SOCK" "$SOCK_ID"
   if [ -n "$LOG" ]; then
     mkdir -p test-results && cp "$LOG" test-results/app.log 2>/dev/null || true
+  fi
+  if [ -n "$DATA_DIR" ] && [ -f "$DATA_DIR/app.log" ]; then
+    mkdir -p test-results && cp "$DATA_DIR/app.log" test-results/user-app.log 2>/dev/null || true
   fi
   release_e2e_lock
 }

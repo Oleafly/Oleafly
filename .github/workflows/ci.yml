@@ -432,6 +432,12 @@ jobs:
         with:
           workspaces: src-tauri -> target
 
+      # Windows FlushFileBuffers requires a writable handle. Keep the
+      # filesystem transaction regression test on the platform whose API
+      # semantics exposed the bug before launching the much longer E2E suite.
+      - name: Test Windows filesystem transactions
+        run: cargo test --manifest-path src-tauri/Cargo.toml --lib sandbox::tests::atomic_write_replaces_only_after_the_staged_payload_is_complete
+
       - name: Cache Tectonic sidecar
         id: cache-tectonic-e2e-windows
         uses: actions/cache@v6

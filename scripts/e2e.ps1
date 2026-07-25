@@ -130,9 +130,13 @@ while (`$true) {
 
 function Preserve-AppLog([string]$label) {
   New-Item -ItemType Directory -Force -Path test-results | Out-Null
+  $safeLabel = $label -replace "[^A-Za-z0-9._-]", "-"
   if ($null -ne $script:log -and (Test-Path $script:log)) {
-    $safeLabel = $label -replace "[^A-Za-z0-9._-]", "-"
     Copy-Item $script:log (Join-Path "test-results" "app-$safeLabel.log") -Force
+  }
+  $userLog = Join-Path $script:dataDir "app.log"
+  if (Test-Path $userLog) {
+    Copy-Item $userLog (Join-Path "test-results" "user-app-$safeLabel.log") -Force
   }
 }
 
