@@ -1,8 +1,10 @@
 import {
   useMemo,
+  useRef,
   useState,
   type DragEvent as ReactDragEvent,
   type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
 } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import {
@@ -14,6 +16,7 @@ import {
   FolderPlus,
   FolderTree,
   Import,
+  MoreHorizontal,
   Pencil,
   Star,
   Trash2,
@@ -420,9 +423,23 @@ function TreeRow({ node, depth, ctx }: { node: TreeNode; depth: number; ctx: Tre
   const isRenaming = ctx.renamePath === node.path;
   const renameInputRef = useInitialFocus<HTMLInputElement>(isRenaming);
   const isDropTarget = ctx.dragOver === node.path && node.isDir;
+  const rowRef = useRef<HTMLDivElement>(null);
 
   // Dropping onto a folder targets that folder; onto a file targets its folder.
   const dropDir = node.isDir ? node.path : parentOf(node.path);
+
+  const openRowMenu = (e: ReactMouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    rowRef.current?.dispatchEvent(
+      new MouseEvent("contextmenu", {
+        bubbles: true,
+        cancelable: true,
+        clientX: rect.left,
+        clientY: rect.bottom,
+      })
+    );
+  };
 
   const activate = () => {
     ctx.onSelect(node.path, node.isDir);
@@ -473,6 +490,7 @@ function TreeRow({ node, depth, ctx }: { node: TreeNode; depth: number; ctx: Tre
 
   const content = (
     <div
+      ref={rowRef}
       role="treeitem"
       tabIndex={0}
       draggable={!isRenaming}
@@ -513,7 +531,17 @@ function TreeRow({ node, depth, ctx }: { node: TreeNode; depth: number; ctx: Tre
         </>
       )}
       <span className="truncate">{node.name}</span>
-      {isMain && <Star className="ml-auto size-3 shrink-0 fill-foreground text-foreground" />}
+      <span className="ml-auto flex shrink-0 items-center gap-1">
+        {isMain && <Star className="size-3 shrink-0 fill-foreground text-foreground" />}
+        <button
+          type="button"
+          aria-label={`More actions for ${node.name}`}
+          onClick={openRowMenu}
+          className="flex size-5 shrink-0 items-center justify-center rounded opacity-0 hover:bg-sidebar-accent-foreground/10 group-hover:opacity-100"
+        >
+          <MoreHorizontal className="size-3.5" />
+        </button>
+      </span>
     </div>
   );
 
