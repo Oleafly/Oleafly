@@ -8,11 +8,11 @@ export function IntegrationsSection() {
   return (
     <Tabs defaultValue="github" className="space-y-4">
       <TabsList>
-        <TabsTrigger value="github">
+        <TabsTrigger value="github" data-testid="integrations-tab-github">
           <Github className="mr-1.5 size-3.5" /> GitHub
         </TabsTrigger>
-        <TabsTrigger value="alphaxiv">alphaXiv</TabsTrigger>
-        <TabsTrigger value="zotero">Zotero</TabsTrigger>
+        <TabsTrigger value="alphaxiv" data-testid="integrations-tab-alphaxiv">alphaXiv</TabsTrigger>
+        <TabsTrigger value="zotero" data-testid="integrations-tab-zotero">Zotero</TabsTrigger>
       </TabsList>
       <TabsContent value="github">
         <GitHubSection />

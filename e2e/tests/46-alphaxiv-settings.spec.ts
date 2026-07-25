@@ -4,6 +4,19 @@ import { openSettings, waitLong } from "../helpers";
 
 const reload = (page: unknown) => reloadNativePage(page as TauriPage);
 
+// The bridge's getByText(...).click() dispatches a raw el.click() with no
+// preceding pointerdown/focus, which Radix Tabs sometimes fails to commit as
+// a real activation (confirmed via an isolated component repro: identical
+// synthetic click behavior left Tabs.Root's value unchanged). Keyboard
+// activation goes through Radix's own roving-tabindex handling instead,
+// which is reliable - the same pattern already used for the zoom menu in
+// 17-preview-controls.spec.ts.
+async function openAlphaXivTab(page: import("../helpers").Page) {
+  const tab = page.locator('[data-testid="integrations-tab-alphaxiv"]');
+  await tab.focus();
+  await tab.press("Enter");
+}
+
 // The connector key round-trips through a real connector-secrets.json on disk
 // (src-tauri/src/secrets.rs), not a mock, so a reload is the only way to prove
 // persistence rather than just in-memory store state.
@@ -18,48 +31,14 @@ test("connect, persist across reload, and disconnect an alphaXiv key", async ({ 
   // hoisted: reload(tauriPage) swaps to an entirely new window handle in this
   // bridge, so a locator captured before a reload goes stale after one.
   await openSettings(tauriPage, "integrations");
-  await tauriPage.getByText("alphaXiv", { exact: true }).click();
+  await openAlphaXivTab(tauriPage);
   await expect(section().getByText("alphaXiv", { exact: true })).toBeVisible();
 
-  // This wait has timed out here repeatedly under CI (both Playwright's own
-  // toBeVisible() and a 30s document.querySelector poll) despite the section
-  // itself rendering fine, with no reproduction in an isolated component test
-  // (jsdom + realistic user-event tab click renders the input immediately).
-  // A prior diagnostic dump showed the section's outerHTML as MISSING at the
-  // 30s mark - it existed right after the click (line 22 passed) but was gone
-  // later, meaning something un-rendered it mid-wait. Snapshot a timeline of
-  // dialog/tab/section state across the wait so a repeat failure shows WHEN
-  // and to WHAT it changed, not just a single end-of-wait snapshot.
-  const snapshotExpr = `(() => {
-    const dialog = document.querySelector('[role="dialog"]');
-    const activeTab = document.querySelector('[role="tab"][data-state="active"]');
-    const section = document.querySelector('[data-testid="alphaxiv-section"]');
-    const key = document.querySelector('[data-testid="alphaxiv-section"] [aria-label="alphaXiv API key"]');
-    return JSON.stringify({
-      dialog: !!dialog,
-      activeTab: activeTab ? activeTab.textContent : null,
-      section: !!section,
-      key: !!key,
-    });
-  })()`;
-  const keySelector = '[data-testid="alphaxiv-section"] [aria-label="alphaXiv API key"]';
-  const deadline = Date.now() + 30_000;
-  let found = false;
-  const timeline: string[] = [];
-  while (Date.now() < deadline) {
-    found = await tauriPage.evaluate<boolean>(`!!document.querySelector('${keySelector}')`);
-    if (found) break;
-    timeline.push(await tauriPage.evaluate<string>(snapshotExpr));
-    await new Promise((r) => setTimeout(r, 1_000));
-  }
-  if (!found) {
-    const html = await tauriPage.evaluate<string>(
-      `document.querySelector('[data-testid="alphaxiv-section"]')?.outerHTML ?? "MISSING"`,
-    );
-    throw new Error(
-      `alphaXiv API key input never appeared after 30s. Section HTML: ${html}\nTimeline: ${timeline.join(" -> ")}`,
-    );
-  }
+  await waitLong(
+    tauriPage,
+    `!!document.querySelector('[data-testid="alphaxiv-section"] [aria-label="alphaXiv API key"]')`,
+    10_000,
+  );
   await tauriPage.fill('[aria-label="alphaXiv API key"]', "axv1_e2e_test_key");
   await section().getByText("Connect", { exact: true }).click();
   await expect(section().getByText("Disconnect", { exact: true })).toBeVisible({ timeout: 10_000 });
@@ -67,7 +46,7 @@ test("connect, persist across reload, and disconnect an alphaXiv key", async ({ 
 
   await reload(tauriPage);
   await openSettings(tauriPage, "integrations");
-  await tauriPage.getByText("alphaXiv", { exact: true }).click();
+  await openAlphaXivTab(tauriPage);
   await expect(section().getByText("alphaXiv", { exact: true })).toBeVisible();
   await expect(section().getByText("Disconnect", { exact: true })).toBeVisible({ timeout: 10_000 });
 
@@ -94,7 +73,7 @@ test("connect, persist across reload, and disconnect an alphaXiv key", async ({ 
 
   await reload(tauriPage);
   await openSettings(tauriPage, "integrations");
-  await tauriPage.getByText("alphaXiv", { exact: true }).click();
+  await openAlphaXivTab(tauriPage);
   await waitLong(
     tauriPage,
     `!!document.querySelector('[data-testid="alphaxiv-section"] [aria-label="alphaXiv API key"]')`,
@@ -104,7 +83,7 @@ test("connect, persist across reload, and disconnect an alphaXiv key", async ({ 
 
 test("Get an API key links point at alphaXiv's own site", async ({ tauriPage }) => {
   await openSettings(tauriPage, "integrations");
-  await tauriPage.getByText("alphaXiv", { exact: true }).click();
+  await openAlphaXivTab(tauriPage);
   const hrefs = await tauriPage.evaluate<string[]>(
     `Array.from(document.querySelectorAll('a')).filter(a => (a.textContent || '').includes('API key page') || a.textContent === 'alphaxiv.org').map(a => a.href)`,
   );
