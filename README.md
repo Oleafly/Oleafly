@@ -4,13 +4,15 @@
 
 # Oleafly
 
-### A local-first workspace for research papers, technical documents, and resumes.
+### The intelligent research workspace.
 
-**Oleafly is a free, open-source, AI-native document studio for macOS, Windows,
-and Linux. Your projects stay on your machine, no account is required, and the
-default LaTeX and Typst engines ship with the app.** Every successful compile
-becomes a Git commit. AI is optional: bring your own provider, run a local
-model, or leave it disabled.
+**Oleafly is a free, 100% open-source, local-first document studio for macOS,
+Windows, and Linux, built for real research, not busywork.** Your work never
+leaves your machine: no account, no cloud lock-in, and the default LaTeX and
+Typst engines ship with the app so you can write and compile fully offline.
+Every successful compile becomes a Git commit. Experience the calm of a
+distraction-free writing environment. AI is optional: bring your own provider,
+run a local model, or leave it disabled.
 
 *Documents should outlive services.*
 
