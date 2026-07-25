@@ -1,4 +1,4 @@
-import type { PositionedText, PreflightReport } from "./types";
+import type { PdfExtractionStatus, PositionedText, PreflightReport } from "./types";
 import type { StructDoc } from "./structure";
 import { runSourceRules } from "./source-rules";
 import { runPdfRules } from "./pdf-rules";
@@ -11,22 +11,46 @@ export interface PreflightInput {
   source: string;
   sourceProfile?: "latex" | "none";
   pages?: PositionedText[][];
-  meta?: { lang?: string | null; title?: string | null; tagged?: boolean };
+  meta?: { lang?: string | null; title?: string | null; tagged?: boolean | null };
+  extraction?: PdfExtractionStatus;
   readerText?: string;
   struct?: StructDoc;
   refs?: RefsContext;
 }
 
-export function runPreflight({ source, sourceProfile = "latex", pages, meta, readerText, struct, refs }: PreflightInput): PreflightReport {
+function dedupeUntaggedFinding(findings: ReturnType<typeof runSourceRules>) {
+  let sawUntagged = false;
+  return findings.filter((finding) => {
+    if (finding.id !== "pdf-untagged-output") return true;
+    if (sawUntagged) return false;
+    sawUntagged = true;
+    return true;
+  });
+}
+
+export function runPreflight({
+  source,
+  sourceProfile = "latex",
+  pages,
+  meta,
+  extraction,
+  readerText,
+  struct,
+  refs,
+}: PreflightInput): PreflightReport {
   const atsParse = readerText !== undefined ? simulateAtsParse(readerText) : undefined;
 
-  const findings = [
+  const findings = dedupeUntaggedFinding([
     ...(sourceProfile === "latex" ? runSourceRules(source) : []),
-    ...(pages ? runPdfRules(pages, meta) : []),
-    ...(struct ? verifyStructure(struct) : []),
+    ...(pages ? runPdfRules(pages, meta, extraction) : []),
+    ...(struct
+      ? verifyStructure(struct, extraction?.structureFailedPages)
+      : meta?.tagged === false
+        ? verifyStructure({ root: null, tagged: false })
+        : []),
     ...(atsParse ? atsParseFindings(atsParse) : []),
     ...(sourceProfile === "latex" && refs ? runRefsRules(source, refs) : []),
-  ];
+  ]);
 
   const { ats, a11y, refs: refsScore } = computeScores(findings);
   const coverage = {

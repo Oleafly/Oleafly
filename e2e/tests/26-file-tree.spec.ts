@@ -6,22 +6,24 @@ import {
   type Page,
 } from "../helpers";
 
-// Menu items are selected with real plugin clicks (same as the library book
-// menu); synthetic pointer-event dispatch on Radix items is unreliable.
+// Open every row menu through its real three-dot control. The button itself
+// dispatches the context-menu event used by Radix, so this covers both the
+// visible production affordance and the menu action.
 
-async function treeContextMenu(page: Page & { getByText(t: string): unknown }, fileName: string) {
+async function openTreeRowMenu(page: Page & { getByText(t: string): unknown }, fileName: string) {
   const ok = await page.evaluate<boolean>(
     `(() => {
       const tree = document.querySelector('[aria-label="Source tree"]');
       if (!tree) return false;
-      const rows = Array.from(tree.querySelectorAll('*'));
-      const row = rows.find(el => el.children.length === 0 && el.textContent.trim() === ${JSON.stringify(fileName)});
+      const rows = Array.from(tree.querySelectorAll('[role="treeitem"]'));
+      const row = rows.find(el => el.dataset.path === ${JSON.stringify(fileName)});
       if (!row) return false;
-      const r = row.getBoundingClientRect();
-      row.dispatchEvent(new MouseEvent('contextmenu', {
-        bubbles: true, cancelable: true,
-        clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, button: 2,
-      }));
+      const button = Array.from(row.querySelectorAll('button')).find(
+        candidate => candidate.getAttribute('aria-label') ===
+          ${JSON.stringify(`More actions for ${fileName}`)}
+      );
+      if (!(button instanceof HTMLButtonElement)) return false;
+      button.click();
       return true;
     })()`,
   );
@@ -35,7 +37,7 @@ async function pickMenuItem(
   doneExpr: string,
 ) {
   for (let attempt = 0; ; attempt++) {
-    await treeContextMenu(page, fileName);
+    await openTreeRowMenu(page, fileName);
     const opened = await page
       .waitForFunction(
         `Array.from(document.querySelectorAll('[role="menuitem"]')).some(m => m.textContent.trim() === ${JSON.stringify(label)})`,
@@ -112,7 +114,7 @@ test("create a scratch file in the tree", async ({ tauriPage }) => {
   );
 });
 
-test("rename a file via the tree context menu", async ({ tauriPage }) => {
+test("rename a file via the tree three-dot menu", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openRailTab(tauriPage, "Source Tree");
@@ -155,7 +157,7 @@ test("rename a file via the tree context menu", async ({ tauriPage }) => {
   );
 });
 
-test("delete a file via the tree context menu", async ({ tauriPage }) => {
+test("delete a file via the tree three-dot menu", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openRailTab(tauriPage, "Source Tree");

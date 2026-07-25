@@ -5,7 +5,6 @@ import {
   DiagramKitContext,
   type DiagramHost,
 } from "@oleafly/diagram";
-import { save } from "@tauri-apps/plugin-dialog";
 import { KIT } from "@/components/diagram/diagram-kit";
 import { HomeBrandButton } from "@/components/layout/HomeBrandButton";
 import { useFilesStore } from "@/store/files";
@@ -33,6 +32,7 @@ import { editorTheme } from "@/components/editor/cm/theme";
 import { latexLanguage } from "@/components/editor/cm/latex";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { isMac } from "@/lib/utils";
+import { pickSavePath } from "@/lib/native-file-dialog";
 
 // E2E / devtools hook: the native bridge cannot drive a real file input, so
 // specs can queue the next pick's result here instead of opening a picker
@@ -134,7 +134,7 @@ const HOST: DiagramHost = {
     return { hash: r.hash, alreadyCached: r.alreadyCached };
   },
   saveBytesToDisk: async (defaultName, extension, dataBase64) => {
-    const dest = await save({
+    const dest = await pickSavePath({
       defaultPath: `${defaultName}.${extension}`,
       filters: [{ name: extension.toUpperCase(), extensions: [extension] }],
     });

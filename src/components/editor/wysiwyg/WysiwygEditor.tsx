@@ -22,6 +22,17 @@ function isMarkdownPath(path: string): boolean {
 
 const FLUSH_DEBOUNCE_MS = 300;
 
+function replaceContentAndResetHistory(editor: Editor, content: Parameters<Editor["commands"]["setContent"]>[0]) {
+  editor.chain().setContent(content, { emitUpdate: false }).setMeta("addToHistory", false).run();
+
+  // Loading a file is a synchronization boundary, not a user edit. Reinitialize
+  // plugin state so Undo cannot erase the loaded document or replay edits from
+  // a previously active file.
+  const plugins = editor.state.plugins;
+  const resetState = editor.state.reconfigure({ plugins: [] }).reconfigure({ plugins });
+  editor.view.updateState(resetState);
+}
+
 export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
   const activePath = useFilesStore((s) => s.activePath);
   const docVersion = useFilesStore((s) => s.docVersion);
@@ -108,7 +119,7 @@ export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
       preambleRef.current = "";
       setPreamble("");
       setHasDocumentEnv(false);
-      editor.commands.setContent(doc, { emitUpdate: false });
+      replaceContentAndResetHistory(editor, doc);
     } else {
       const split = splitLatexDocument(raw);
       latexSplitRef.current = split;
@@ -116,7 +127,7 @@ export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
       setPreamble(split.preamble);
       setHasDocumentEnv(split.hasDocumentEnv);
       frontmatterRef.current = "";
-      editor.commands.setContent(parseLatexBody(split.body), { emitUpdate: false });
+      replaceContentAndResetHistory(editor, parseLatexBody(split.body));
     }
   }, [editor, activePath, wysiwyg, docVersion]);
 

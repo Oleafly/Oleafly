@@ -44,9 +44,11 @@ import {
 function fakeWysiwygEditor() {
   const insertContent = vi.fn().mockReturnThis();
   const focus = vi.fn().mockReturnThis();
+  const undo = vi.fn().mockReturnThis();
+  const redo = vi.fn().mockReturnThis();
   const run = vi.fn();
-  const chain = vi.fn(() => ({ focus, insertContent, run }));
-  return { chain, focus, insertContent, run };
+  const chain = vi.fn(() => ({ focus, insertContent, undo, redo, run }));
+  return { chain, focus, insertContent, undo, redo, run };
 }
 
 describe("cm/controller mode-aware routing", () => {
@@ -141,5 +143,24 @@ describe("cm/controller mode-aware routing", () => {
     editorRedo();
     expect(core.editorRedo).toHaveBeenCalledOnce();
     expect(bumpDocVersion).toHaveBeenCalledTimes(2);
+  });
+
+  it("routes undo and redo to the visible WYSIWYG history", () => {
+    const editor = fakeWysiwygEditor();
+    setWysiwygEditor(editor as never);
+    setWysiwygVisible(true);
+
+    editorUndo();
+    expect(editor.focus).toHaveBeenCalled();
+    expect(editor.undo).toHaveBeenCalledOnce();
+    expect(editor.run).toHaveBeenCalledOnce();
+    expect(core.editorUndo).not.toHaveBeenCalled();
+    expect(bumpDocVersion).not.toHaveBeenCalled();
+
+    editorRedo();
+    expect(editor.redo).toHaveBeenCalledOnce();
+    expect(editor.run).toHaveBeenCalledTimes(2);
+    expect(core.editorRedo).not.toHaveBeenCalled();
+    expect(bumpDocVersion).not.toHaveBeenCalled();
   });
 });

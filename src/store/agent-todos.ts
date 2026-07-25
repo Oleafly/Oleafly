@@ -22,7 +22,7 @@ export const useAgentTodoStore = create<AgentTodoState>((set) => ({
 }));
 
 // E2E / devtools: seed a plan checklist without a model call.
-if (typeof window !== "undefined") {
+if (typeof window !== "undefined" && import.meta.env.DEV) {
   const w = window as unknown as {
     __agentTodosSet?: (todos: AgentTodo[]) => void;
     __agentTodosClear?: () => void;

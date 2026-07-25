@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PDF selection pointer harness</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 40px;
+        background: #ececec;
+      }
+
+      .page {
+        position: relative;
+        width: 612px;
+        height: 300px;
+        overflow: hidden;
+        background: white;
+      }
+
+      .textLayer {
+        position: absolute;
+        inset: 0;
+        line-height: 1;
+        text-size-adjust: none;
+        transform-origin: 0 0;
+      }
+
+      .textLayer span {
+        position: absolute;
+        color: transparent;
+        cursor: text;
+        font: 20px/1 Arial, sans-serif;
+        transform-origin: 0 0;
+        white-space: pre;
+      }
+
+      .textLayer ::selection {
+        background: rgb(0 100 255 / 35%);
+      }
+
+      .textLayer br::selection {
+        background: transparent;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page" aria-label="PDF page">
+      <div class="textLayer">
+        <span data-token="first" style="left: 72px; top: 60px">Cross-span start </span>
+        <span style="left: 240px; top: 60px">continues here</span>
+        <br role="presentation" />
+        <span data-token="last" style="left: 72px; top: 100px"
+          >and reaches another line</span
+        >
+      </div>
+    </main>
+    <script type="module">
+      import { normalizeUnicode } from "pdfjs-dist";
+      import { registerPdfTextSelection } from "/packages/preview/src/pdfTextSelection.ts";
+
+      const layer = document.querySelector(".textLayer");
+      if (!(layer instanceof HTMLDivElement)) {
+        throw new Error("Text layer fixture is missing");
+      }
+      window.__removePdfSelection = registerPdfTextSelection(
+        layer,
+        1,
+        normalizeUnicode,
+      );
+    </script>
+  </body>
+</html>

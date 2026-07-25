@@ -22,6 +22,8 @@ const ICON = {
   close: "✕",
 };
 
+let nextPanelId = 0;
+
 function btn(text: string, title: string, onClick: () => void, extraClass = ""): HTMLButtonElement {
   const b = document.createElement("button");
   b.type = "button";
@@ -34,6 +36,11 @@ function btn(text: string, title: string, onClick: () => void, extraClass = ""):
   return b;
 }
 
+function setPressed(button: HTMLButtonElement, pressed: boolean): void {
+  button.classList.toggle("active", pressed);
+  button.setAttribute("aria-pressed", String(pressed));
+}
+
 function createSearchPanel(view: EditorView): Panel {
   const q0 = getSearchQuery(view.state);
   let caseSensitive = q0.caseSensitive;
@@ -44,42 +51,52 @@ function createSearchPanel(view: EditorView): Panel {
 
   const wrap = document.createElement("div");
   wrap.className = "cm-vs-search";
+  wrap.setAttribute("role", "search");
+  wrap.setAttribute("aria-label", "Find and replace");
+  const replaceRowId = `cm-vs-replace-${++nextPanelId}`;
 
   const expandBtn = btn(ICON.chevronRight, "Toggle Replace", () => {
     expanded = !expanded;
     replaceRow.style.display = expanded ? "flex" : "none";
     expandBtn.textContent = expanded ? ICON.chevronDown : ICON.chevronRight;
+    expandBtn.setAttribute("aria-expanded", String(expanded));
     if (expanded) replaceInput.focus();
   });
   expandBtn.classList.add("cm-vs-expand");
+  expandBtn.setAttribute("aria-controls", replaceRowId);
+  expandBtn.setAttribute("aria-expanded", "false");
 
   const findInput = document.createElement("input");
   findInput.className = "cm-vs-input";
   findInput.placeholder = "Find";
+  findInput.setAttribute("aria-label", "Find");
   findInput.value = q0.search;
 
   const caseBtn = btn("Aa", "Match case", () => {
     caseSensitive = !caseSensitive;
-    caseBtn.classList.toggle("active", caseSensitive);
+    setPressed(caseBtn, caseSensitive);
     commit();
   });
-  caseBtn.classList.toggle("active", caseSensitive);
+  setPressed(caseBtn, caseSensitive);
   const wordBtn = btn("ab", "Match whole word", () => {
     wholeWord = !wholeWord;
-    wordBtn.classList.toggle("active", wholeWord);
+    setPressed(wordBtn, wholeWord);
     commit();
   });
-  wordBtn.classList.toggle("active", wholeWord);
+  setPressed(wordBtn, wholeWord);
   wordBtn.style.textDecoration = "underline";
   const reBtn = btn(".*", "Use regular expression", () => {
     regexp = !regexp;
-    reBtn.classList.toggle("active", regexp);
+    setPressed(reBtn, regexp);
     commit();
   });
-  reBtn.classList.toggle("active", regexp);
+  setPressed(reBtn, regexp);
 
   const count = document.createElement("span");
   count.className = "cm-vs-count";
+  count.setAttribute("role", "status");
+  count.setAttribute("aria-live", "polite");
+  count.setAttribute("aria-atomic", "true");
 
   const prevBtn = btn(ICON.up, "Previous match (⇧Enter)", () => {
     findPrevious(view);
@@ -102,14 +119,17 @@ function createSearchPanel(view: EditorView): Panel {
   const replaceInput = document.createElement("input");
   replaceInput.className = "cm-vs-input";
   replaceInput.placeholder = "Replace";
+  replaceInput.setAttribute("aria-label", "Replace");
   replaceInput.value = q0.replace;
   const replaceRow = document.createElement("div");
+  replaceRow.id = replaceRowId;
   replaceRow.className = "cm-vs-row";
   replaceRow.style.display = "none";
   const preserveBtn = btn("AB", "Preserve case", () => {
     preserveCaseOn = !preserveCaseOn;
-    preserveBtn.classList.toggle("active", preserveCaseOn);
+    setPressed(preserveBtn, preserveCaseOn);
   });
+  setPressed(preserveBtn, preserveCaseOn);
   const replaceBox = document.createElement("div");
   replaceBox.className = "cm-vs-box";
   replaceBox.append(replaceInput, preserveBtn);
@@ -201,7 +221,12 @@ function createSearchPanel(view: EditorView): Panel {
       return;
     }
     const capped = total >= 2000 ? "2000+" : String(total);
-    count.textContent = total === 0 ? "No results" : cur > 0 ? `${cur} of ${capped}` : `${capped} results`;
+    count.textContent =
+      total === 0
+        ? "No results"
+        : cur > 0
+          ? `${cur} of ${capped}`
+          : `${capped} ${total === 1 ? "result" : "results"}`;
   }
 
   findInput.addEventListener("input", commit);
@@ -295,6 +320,11 @@ const searchTheme = EditorView.theme({
     padding: "3px 4px",
     font: "12px system-ui, sans-serif",
   },
+  ".cm-vs-input:focus-visible": {
+    outline: "2px solid var(--ring, #2563eb)",
+    outlineOffset: "1px",
+    borderRadius: "2px",
+  },
   ".cm-vs-btn": {
     display: "flex",
     alignItems: "center",
@@ -310,6 +340,10 @@ const searchTheme = EditorView.theme({
     font: "11px system-ui, sans-serif",
   },
   ".cm-vs-btn:hover": { background: "var(--accent, rgba(128,128,128,0.15))", color: "var(--foreground, #111)" },
+  ".cm-vs-btn:focus-visible": {
+    outline: "2px solid var(--ring, #2563eb)",
+    outlineOffset: "1px",
+  },
   ".cm-vs-btn.active": { background: "color-mix(in srgb, var(--primary, #2563eb) 22%, transparent)", color: "var(--foreground, #111)" },
   ".cm-vs-count": { minWidth: "4.5rem", padding: "0 6px", color: "var(--muted-foreground, #888)", whiteSpace: "nowrap" },
 });

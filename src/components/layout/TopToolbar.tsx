@@ -22,7 +22,6 @@ import {
   SquarePen,
   X,
 } from "lucide-react";
-import { save } from "@tauri-apps/plugin-dialog";
 import { open } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,6 +55,7 @@ import { toGithubWebUrl } from "@/lib/github-url";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { notifyError, toast } from "@/lib/toast";
 import { cn, isMac, shortcut } from "@/lib/utils";
+import { pickSavePath } from "@/lib/native-file-dialog";
 
 const FMT_LABEL: Record<string, string> = {
   zip: "Zip",
@@ -140,6 +140,9 @@ export function TopToolbar() {
   const setLayoutPreset = useSettingsStore((s) => s.setLayoutPreset);
   const recompile = useCompileStore((s) => s.recompile);
   const status = useCompileStore((s) => s.status);
+  const compileRevision = useCompileStore(
+    (s) => s.lastCompileCheckpoint?.outputRevision ?? 0,
+  );
   const compiling = status === "compiling";
   const hasCompileResult = status === "success" || status === "error";
   const compileLabel = hasCompileResult ? "Recompile" : "Compile";
@@ -229,7 +232,7 @@ export function TopToolbar() {
   const doDownloadZip = async () => {
     if (!projectId) return;
     setDlOpen(false);
-    const dest = await save({
+    const dest = await pickSavePath({
       defaultPath: `${safeName()}.zip`,
       filters: [{ name: "Zip", extensions: ["zip"] }],
     });
@@ -253,7 +256,7 @@ export function TopToolbar() {
     if (!projectId) return;
     setDlOpen(false);
     const ext = format;
-    const dest = await save({
+    const dest = await pickSavePath({
       defaultPath: `${safeName()}.${ext}`,
       filters: [{ name: format.toUpperCase(), extensions: [ext] }],
     });
@@ -306,6 +309,9 @@ export function TopToolbar() {
     <header
       data-tauri-drag-region
       data-tour="project-toolbar"
+      {...(import.meta.env.DEV
+        ? { "data-e2e-project-id": projectId ?? undefined }
+        : {})}
       className={cn(
         "grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center border-b bg-background",
         isMac && "pr-3",
@@ -400,6 +406,12 @@ export function TopToolbar() {
           <Button
             data-testid="compile-button"
             data-tour="project-compile"
+            {...(import.meta.env.DEV
+              ? {
+                  "data-e2e-compile-status": status,
+                  "data-e2e-compile-revision": compileRevision,
+                }
+              : {})}
             variant="ghost"
             size="sm"
             className={cn(

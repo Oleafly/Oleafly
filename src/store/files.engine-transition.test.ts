@@ -9,6 +9,8 @@ const mocks = vi.hoisted(() => ({
   writeFileContent: vi.fn(),
   notifyError: vi.fn(),
   setMainDocCmd: vi.fn(),
+  deleteFile: vi.fn(),
+  resetCompile: vi.fn(),
   flushAutoCommit: vi.fn(),
   scheduleAutoCommit: vi.fn(),
 }));
@@ -20,6 +22,7 @@ vi.mock("@/lib/tauri", () => ({
   readFileContent: mocks.readFileContent,
   writeFileContent: mocks.writeFileContent,
   setMainDocCmd: mocks.setMainDocCmd,
+  deleteFile: mocks.deleteFile,
   listProjects: vi.fn(),
 }));
 vi.mock("@/lib/auto-commit", () => ({
@@ -30,6 +33,11 @@ vi.mock("@/lib/log", () => ({ logError: vi.fn() }));
 vi.mock("@/lib/toast", () => ({ notifyError: mocks.notifyError }));
 vi.mock("@/store/diff", () => ({ useDiffStore: { getState: () => ({ clearActiveDiff: vi.fn() }) } }));
 vi.mock("@/store/tab-order", () => ({ nextTabSeq: () => 1 }));
+vi.mock("@/store/compile", () => ({
+  useCompileStore: {
+    getState: () => ({ reset: mocks.resetCompile }),
+  },
+}));
 
 import { useFilesStore } from "./files";
 
@@ -57,6 +65,8 @@ beforeEach(async () => {
   mocks.readFileContent.mockReset().mockResolvedValue("hello");
   mocks.getProjectEngine.mockReset();
   mocks.setMainDocCmd.mockReset();
+  mocks.deleteFile.mockReset().mockResolvedValue(undefined);
+  mocks.resetCompile.mockReset();
 });
 
 describe("transactional project transitions", () => {
@@ -201,6 +211,131 @@ describe("transactional project transitions", () => {
   });
 });
 
+describe("delete and autosave coordination", () => {
+  it("keeps unrelated dirty buffers autosaving while a delete is pending", async () => {
+    vi.useFakeTimers();
+    try {
+      const deletion = deferred<void>();
+      mocks.deleteFile.mockReturnValue(deletion.promise);
+      useFilesStore.setState({
+        projectId: "project",
+        mainDoc: "main.tex",
+        tree: [
+          { path: "target.tex", is_dir: false },
+          { path: "notes.tex", is_dir: false },
+        ],
+        files: {
+          "target.tex": { content: "old target", dirty: false },
+          "notes.tex": { content: "old notes", dirty: false },
+        },
+        openTabs: ["target.tex", "notes.tex"],
+        activePath: "target.tex",
+      });
+      useFilesStore.getState().setContent("target.tex", "new target");
+      useFilesStore.getState().setContent("notes.tex", "new notes");
+
+      const deleting = useFilesStore.getState().deleteEntry("target.tex");
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(1_500);
+
+      expect(mocks.writeFileContent).toHaveBeenCalledWith(
+        "project",
+        "notes.tex",
+        "new notes",
+      );
+      expect(mocks.writeFileContent).not.toHaveBeenCalledWith(
+        "project",
+        "target.tex",
+        expect.anything(),
+      );
+      deletion.resolve();
+      await deleting;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("uses the live tab selection when a pending delete completes", async () => {
+    const deletion = deferred<void>();
+    mocks.deleteFile.mockReturnValue(deletion.promise);
+    useFilesStore.setState({
+      projectId: "project",
+      mainDoc: "main.tex",
+      tree: [],
+      files: {
+        "target.tex": { content: "target", dirty: false },
+        "notes.tex": { content: "notes", dirty: false },
+      },
+      openTabs: ["target.tex", "notes.tex"],
+      activePath: "target.tex",
+    });
+
+    const deleting = useFilesStore.getState().deleteEntry("target.tex");
+    await vi.waitFor(() => expect(mocks.deleteFile).toHaveBeenCalled());
+    useFilesStore.getState().setActive("notes.tex");
+    deletion.resolve();
+    await deleting;
+
+    expect(useFilesStore.getState().activePath).toBe("notes.tex");
+    expect(useFilesStore.getState().openTabs).toEqual(["notes.tex"]);
+  });
+
+  it("does not apply a completed delete to a replacement project", async () => {
+    const deletion = deferred<void>();
+    mocks.deleteFile.mockReturnValue(deletion.promise);
+    useFilesStore.setState({
+      projectId: "old-project",
+      files: { "target.tex": { content: "target", dirty: false } },
+      openTabs: ["target.tex"],
+      activePath: "target.tex",
+    });
+
+    const deleting = useFilesStore.getState().deleteEntry("target.tex");
+    await vi.waitFor(() => expect(mocks.deleteFile).toHaveBeenCalled());
+    useFilesStore.setState({
+      projectId: "replacement",
+      files: { "main.tex": { content: "replacement", dirty: false } },
+      openTabs: ["main.tex"],
+      activePath: "main.tex",
+      tree: [{ path: "main.tex", is_dir: false }],
+    });
+    deletion.resolve();
+    await deleting;
+
+    expect(useFilesStore.getState().projectId).toBe("replacement");
+    expect(useFilesStore.getState().activePath).toBe("main.tex");
+    expect(useFilesStore.getState().files["main.tex"].content).toBe("replacement");
+  });
+
+  it("restores a deleted subtree's dirty autosave when deletion fails", async () => {
+    vi.useFakeTimers();
+    try {
+      const failure = new Error("permission denied");
+      mocks.deleteFile.mockRejectedValue(failure);
+      useFilesStore.setState({
+        projectId: "project",
+        files: { "target.tex": { content: "unsaved", dirty: false } },
+        openTabs: ["target.tex"],
+        activePath: "target.tex",
+      });
+      useFilesStore.getState().setContent("target.tex", "must survive");
+
+      await expect(
+        useFilesStore.getState().deleteEntry("target.tex"),
+      ).rejects.toBe(failure);
+      await vi.advanceTimersByTimeAsync(1_500);
+
+      expect(mocks.writeFileContent).toHaveBeenCalledWith(
+        "project",
+        "target.tex",
+        "must survive",
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
 describe("project engine transition", () => {
   it("does not reopen a tab after it is closed while its content is loading", async () => {
     const pending = deferred<string>();
@@ -281,6 +416,7 @@ describe("project engine transition", () => {
     };
     mocks.getProjectEngine.mockResolvedValue(typst);
     await useFilesStore.getState().setMainDoc("main.typ");
+    expect(mocks.resetCompile).toHaveBeenCalledOnce();
     expect(useFilesStore.getState().mainDoc).toBe("main.typ");
     expect(useFilesStore.getState().engine).toEqual(typst);
     expect(useFilesStore.getState().engine.capabilities.supports_synctex).toBe(false);
@@ -306,6 +442,8 @@ describe("project engine transition", () => {
     mocks.getProjectEngine.mockReturnValue(pending.promise);
     const changing = useFilesStore.getState().setMainDoc("main.typ");
     await vi.waitFor(() => expect(mocks.getProjectEngine).toHaveBeenCalled());
+    expect(useFilesStore.getState().mainDoc).toBe("main.typ");
+    expect(useFilesStore.getState().engineLoaded).toBe(false);
     useFilesStore.setState({ projectId: "replacement", mainDoc: "main.md" });
     pending.resolve(LATEX_ENGINE);
     await changing;

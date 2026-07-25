@@ -7,7 +7,11 @@ vi.mock("@/components/editor/cm/controller", () => ({
   insertAtCursor: (text: string) => insertAtCursor(text),
 }));
 
-import { SymbolPicker } from "./SymbolPicker";
+import {
+  SYMBOL_CATEGORIES,
+  SymbolPicker,
+  insertToolbarSymbol,
+} from "./SymbolPicker";
 
 describe("SymbolPicker", () => {
   it("opens with the Greek tab active by default", () => {
@@ -38,5 +42,20 @@ describe("SymbolPicker", () => {
     fireEvent.click(screen.getByLabelText("Insert symbol"));
     fireEvent.click(screen.getByTitle("Omega"));
     expect(insertAtCursor).toHaveBeenCalledWith("\\Omega");
+  });
+
+  it("routes every inventory item through the production insertion function", () => {
+    insertAtCursor.mockClear();
+    const symbols = SYMBOL_CATEGORIES.flatMap((category) => category.items);
+    expect(symbols.length).toBeGreaterThan(100);
+    expect(new Set(symbols.map((symbol) => symbol.name)).size).toBe(
+      symbols.length,
+    );
+
+    for (const symbol of symbols) {
+      insertToolbarSymbol(symbol);
+      expect(insertAtCursor).toHaveBeenLastCalledWith(symbol.latex);
+    }
+    expect(insertAtCursor).toHaveBeenCalledTimes(symbols.length);
   });
 });

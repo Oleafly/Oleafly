@@ -9,7 +9,7 @@ export interface StructNode {
 
 export interface StructDoc {
   root: StructNode | null;
-  tagged: boolean;
+  tagged: boolean | null;
 }
 
 function hasRole(node: StructNode, role: string): boolean {
@@ -22,9 +22,29 @@ function walk(node: StructNode, visit: (n: StructNode) => void) {
   for (const c of node.children) walk(c, visit);
 }
 
-export function verifyStructure(doc: StructDoc): Finding[] {
-  if (!doc.tagged || !doc.root) {
+export function verifyStructure(
+  doc: StructDoc,
+  structureFailedPages: readonly number[] = [],
+): Finding[] {
+  const extractionFindings: Finding[] =
+    structureFailedPages.length > 0
+      ? [
+          {
+            id: "pdf-structure-extraction-failed",
+            lens: "a11y",
+            severity: "info",
+            title: "PDF structure could not be fully inspected",
+            detail: `The accessibility structure tree could not be extracted for page${
+              structureFailedPages.length === 1 ? "" : "s"
+            } ${structureFailedPages.join(", ")}. Preflight will not treat the unavailable structure as proof that the PDF is untagged.`,
+          },
+        ]
+      : [];
+
+  if (doc.tagged === null) return extractionFindings;
+  if (!doc.tagged) {
     return [
+      ...extractionFindings,
       {
         id: "pdf-untagged-output",
         lens: "a11y",
@@ -35,8 +55,21 @@ export function verifyStructure(doc: StructDoc): Finding[] {
       },
     ];
   }
+  if (!doc.root) {
+    if (structureFailedPages.length > 0) return extractionFindings;
+    return [
+      {
+        id: "pdf-structure-missing",
+        lens: "a11y",
+        severity: "warning",
+        title: "Tagged PDF has no readable structure tree",
+        detail:
+          "The PDF declares itself tagged, but Preflight found no document structure to navigate. Screen readers may not receive headings, lists, tables, or reading order.",
+      },
+    ];
+  }
 
-  const out: Finding[] = [];
+  const out: Finding[] = [...extractionFindings];
   const headingLevels: number[] = [];
 
   walk(doc.root, (n) => {

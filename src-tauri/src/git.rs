@@ -265,6 +265,12 @@ pub fn scrub_remote_credentials() {
         Err(_) => return,
     };
     for entry in entries.flatten() {
+        let project_id = entry.file_name().to_string_lossy().into_owned();
+        if paths::validate_project_id(&project_id).is_err()
+            || !entry.file_type().map(|kind| kind.is_dir()).unwrap_or(false)
+        {
+            continue;
+        }
         let dir = entry.path();
         if !dir.join(".git").exists() {
             continue;

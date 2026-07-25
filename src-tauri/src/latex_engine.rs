@@ -428,6 +428,8 @@ fn tlmgr_run(action: &str, packages: Vec<String>) -> Result<String, String> {
 pub struct TaggedCompileResult {
     pub success: bool,
     pub has_pdf: bool,
+    pub output_id: Option<String>,
+    pub output_revision: Option<u64>,
     pub log: String,
 }
 
@@ -449,6 +451,7 @@ pub async fn compile_tagged(
     // the spawn_blocking await below).
     let _guard = state.compile_lock.lock().await;
 
+    let meta = crate::project::read_compile_meta(&project_id, &main_doc)?;
     let engine = find_engine();
     let lualatex = engine
         .lualatex
@@ -472,40 +475,80 @@ pub async fn compile_tagged(
     let project_dir_c = project_dir.clone();
     let build_dir_c = build_dir.clone();
 
-    tauri::async_runtime::spawn_blocking(move || -> Result<TaggedCompileResult, String> {
-        let mut log = String::new();
-        let mut success = false;
-        for pass in 0..2 {
-            let out = Command::new(&lualatex)
-                .no_console()
-                .arg("-interaction=nonstopmode")
-                .arg("-file-line-error")
-                .arg(format!("-output-directory={out_dir}"))
-                .arg(format!("-jobname={}", paths::ENTRY_STEM))
-                .arg("--")
-                .arg(&main_doc_c)
-                .current_dir(&project_dir_c)
-                .output()
-                .map_err(|e| format!("failed to run lualatex: {e}"))?;
-            log = format!(
-                "{}{}",
-                String::from_utf8_lossy(&out.stdout),
-                String::from_utf8_lossy(&out.stderr)
-            );
-            success = out.status.success();
-            if !success && pass == 0 {
-                break; // a hard failure on the first pass won't be fixed by a second
+    let mut result =
+        tauri::async_runtime::spawn_blocking(move || -> Result<TaggedCompileResult, String> {
+            let pdf = build_dir_c.join(format!("{}.pdf", paths::ENTRY_STEM));
+            match std::fs::remove_file(&pdf) {
+                Ok(()) => {}
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) => {
+                    return Err(format!(
+                        "failed to clear stale tagged PDF {}: {error}",
+                        pdf.display()
+                    ));
+                }
             }
-        }
+            let mut log = String::new();
+            let mut success = false;
+            for pass in 0..2 {
+                let out = Command::new(&lualatex)
+                    .no_console()
+                    .arg("-interaction=nonstopmode")
+                    .arg("-file-line-error")
+                    .arg(format!("-output-directory={out_dir}"))
+                    .arg(format!("-jobname={}", paths::ENTRY_STEM))
+                    .arg("--")
+                    .arg(&main_doc_c)
+                    .current_dir(&project_dir_c)
+                    .output()
+                    .map_err(|e| format!("failed to run lualatex: {e}"))?;
+                log = format!(
+                    "{}{}",
+                    String::from_utf8_lossy(&out.stdout),
+                    String::from_utf8_lossy(&out.stderr)
+                );
+                success = out.status.success();
+                if !success && pass == 0 {
+                    break; // a hard failure on the first pass won't be fixed by a second
+                }
+            }
 
-        let pdf = build_dir_c.join(format!("{}.pdf", paths::ENTRY_STEM));
-        let has_pdf = pdf.exists();
-        Ok(TaggedCompileResult {
-            success: success && has_pdf,
-            has_pdf,
-            log,
+            let output_id = std::fs::read(&pdf)
+                .ok()
+                .map(|bytes| crate::document_engine::fingerprint_compile_output(&bytes));
+            let has_pdf = output_id.is_some();
+            Ok(TaggedCompileResult {
+                success: success && has_pdf,
+                has_pdf,
+                output_id,
+                output_revision: None,
+                log,
+            })
         })
-    })
-    .await
-    .map_err(|e| e.to_string())?
+        .await
+        .map_err(|e| e.to_string())??;
+    // The fingerprint above is still only a candidate. Revalidate the
+    // persisted project/main selection under the shared compile lock before
+    // publishing either the identity or a success revision.
+    if let Err(error) =
+        crate::project::ensure_compile_meta_unchanged(&project_id, &main_doc, &meta.engine)
+    {
+        result.success = false;
+        result.has_pdf = false;
+        result.output_id = None;
+        result.output_revision = None;
+        result
+            .log
+            .push_str(&format!("\nOleafly rejected the tagged output: {error}"));
+        return Ok(result);
+    }
+    if result.success {
+        result.output_revision = Some(
+            state
+                .compile_output_revision
+                .fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+                + 1,
+        );
+    }
+    Ok(result)
 }

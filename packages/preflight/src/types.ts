@@ -25,6 +25,15 @@ export interface PreflightReport {
   atsParse?: import("./ats-parse").AtsParse;
 }
 
+export type PdfExtractionState = "ok" | "failed";
+
+export interface PdfExtractionStatus {
+  metadata: PdfExtractionState;
+  markInfo: PdfExtractionState;
+  structure: PdfExtractionState;
+  structureFailedPages: number[];
+}
+
 export interface PositionedText {
   str: string;
   x: number;

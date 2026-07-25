@@ -1,6 +1,10 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { isTauri } from "@tauri-apps/api/core";
 import { emit } from "@tauri-apps/api/event";
+import {
+  COMPILE_SUCCEEDED_EVENT,
+  type CompileSuccessCheckpoint,
+} from "@/lib/compile-checkpoint";
 
 export function notifyProjectFilesChanged(
   projectId: string | null,
@@ -16,7 +20,16 @@ export function notifyProjectFilesChanged(
   }).catch(() => {});
 }
 
-export function notifyCompileDone(projectId: string | null): void {
-  if (!isTauri() || !projectId) return;
-  void emit("compile:done", { projectId, from: getCurrentWindow().label }).catch(() => {});
+export function currentCompileProducerId(): string {
+  return isTauri() ? getCurrentWindow().label : "local";
+}
+
+export function notifyCompileSucceeded(
+  checkpoint: CompileSuccessCheckpoint,
+): void {
+  if (!isTauri()) return;
+  // This event is deliberately success-only. Failed/best-effort output keeps
+  // its local log and status, but must never make another window mark a stale
+  // PDF successful.
+  void emit(COMPILE_SUCCEEDED_EVENT, checkpoint).catch(() => {});
 }

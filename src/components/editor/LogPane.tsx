@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, ArrowUpRight, Check, ChevronDown, ChevronRight, Copy } from "lucide-react";
 import { useCompileStore } from "@/store/compile";
 import type { CompileError } from "@/lib/tauri";
@@ -109,7 +109,7 @@ function LogText({ text }: { text: string }) {
 
 function extractErrorExcerpt(log: string, message: string): string {
   const lines = log.replace(/\r/g, "").split("\n");
-  const startIndex = lines.findIndex((ln) => ln === `! ${message}`);
+  const startIndex = lines.indexOf(`! ${message}`);
   if (startIndex === -1) return "";
   const excerpt: string[] = [lines[startIndex]];
   for (let i = startIndex + 1; i < lines.length && excerpt.length < 12; i++) {
@@ -132,8 +132,7 @@ function ErrorCard({ err, log }: { err: CompileError; log: string }) {
       ? `line ${err.line}`
       : "";
 
-  const copyError = async (e: MouseEvent) => {
-    e.stopPropagation();
+  const copyError = async () => {
     const text = [title, location, excerpt].filter(Boolean).join("\n");
     try {
       await navigator.clipboard.writeText(text);
@@ -146,36 +145,36 @@ function ErrorCard({ err, log }: { err: CompileError; log: string }) {
 
   return (
     <div className="overflow-hidden rounded-lg border border-sidebar-border bg-background/40">
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={() => setExpanded((v) => !v)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") setExpanded((v) => !v);
-        }}
-        className="flex w-full items-start gap-2 px-3 py-2.5 text-left"
-      >
-        {expanded ? (
-          <ChevronDown className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
-        ) : (
-          <ChevronRight className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
-        )}
-        <span
-          className={cn(
-            "mt-1.5 size-1.5 shrink-0 rounded-full",
-            err.kind === "error" ? "bg-red-500" : "bg-amber-500"
+      <div className="flex w-full items-start gap-1 px-2 py-2.5 text-left">
+        <button
+          type="button"
+          aria-expanded={expanded}
+          onClick={() => setExpanded((value) => !value)}
+          className="flex min-w-0 flex-1 items-start gap-2 rounded px-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {expanded ? (
+            <ChevronDown className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
           )}
-        />
-        <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-medium leading-snug text-foreground">{title}</p>
-          {location && <p className="mt-0.5 font-mono text-[10.5px] text-muted-foreground">{location}</p>}
-        </div>
+          <span
+            aria-hidden="true"
+            className={cn(
+              "mt-1.5 size-1.5 shrink-0 rounded-full",
+              err.kind === "error" ? "bg-red-500" : "bg-amber-500"
+            )}
+          />
+          <span className="min-w-0 flex-1">
+            <span className="block text-[13px] font-medium leading-snug text-foreground">{title}</span>
+            {location && <span className="mt-0.5 block font-mono text-[10.5px] text-muted-foreground">{location}</span>}
+          </span>
+        </button>
         <Tooltip label={copied ? "Copied" : "Copy error"} side="top">
           <button
             type="button"
             aria-label="Copy error"
-            onClick={(e) => void copyError(e)}
-            className="flex shrink-0 items-center rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            onClick={() => void copyError()}
+            className="flex shrink-0 items-center rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {copied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
           </button>
@@ -185,11 +184,8 @@ function ErrorCard({ err, log }: { err: CompileError; log: string }) {
             <button
               type="button"
               aria-label="Go to code location"
-              onClick={(e) => {
-                e.stopPropagation();
-                void openFileAndGotoLine(err.file, err.line as number);
-              }}
-              className="flex shrink-0 items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              onClick={() => void openFileAndGotoLine(err.file, err.line as number)}
+              className="flex shrink-0 items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               Open
               <ArrowUpRight className="size-3" />
@@ -262,6 +258,17 @@ export function LogPane() {
   const scrollBoxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const target = window as unknown as { __e2eRenderedCompileLog?: string };
+    target.__e2eRenderedCompileLog = log;
+    return () => {
+      if (target.__e2eRenderedCompileLog === log) {
+        delete target.__e2eRenderedCompileLog;
+      }
+    };
+  }, [log]);
+
+  useEffect(() => {
     void log;
     endRef.current?.scrollIntoView({ block: "end" });
   }, [log]);
@@ -275,7 +282,11 @@ export function LogPane() {
 
   return (
     <div className="relative flex h-full flex-col bg-sidebar">
-      <div ref={scrollBoxRef} className="flex-1 overflow-auto p-3">
+      <div
+        ref={scrollBoxRef}
+        data-testid="compile-log-scroll"
+        className="flex-1 overflow-auto p-3"
+      >
         <div className="space-y-3">
           {errors.length > 0 &&
             errors.map((err) => <ErrorCard key={objectKey(err, "compile-error")} err={err} log={log} />)}

@@ -8,7 +8,6 @@ export const WYSIWYG_EXTENSIONS: AnyExtension[] = [
   StarterKit.configure({
     codeBlock: false,
     horizontalRule: false,
-    undoRedo: false,
   }),
   Markdown,
   RawBlock,

@@ -110,6 +110,7 @@ export const usePreflightStore = create<PreflightStore>((set) => ({
           sourceProfile: files.engine.capabilities.source_preflight_profile,
           pages: ex.pages,
           meta: { lang: ex.lang, title: ex.title, tagged: ex.tagged },
+          extraction: ex.extraction,
           readerText: ex.pageText.join("\n"),
           struct: ex.struct,
           refs,

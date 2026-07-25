@@ -10,6 +10,9 @@ interface Props {
   // rather than the whole app. When provided, a caught error renders this
   // instead of the full-screen crash screen, so the rest of the UI survives.
   fallback?: ReactNode;
+  // A new render payload (for example, a newly compiled PDF) gets one fresh
+  // attempt after a scoped child crashed.
+  resetKey?: unknown;
 }
 
 interface State {
@@ -33,6 +36,15 @@ export class ErrorBoundary extends Component<Props, State> {
     }\ncomponentStack:${info.componentStack ?? ""}`;
     // Best-effort; never throw from the error handler itself.
     void appendAppLog(detail).catch(() => {});
+  }
+
+  componentDidUpdate(previousProps: Props) {
+    if (
+      this.state.error &&
+      !Object.is(previousProps.resetKey, this.props.resetKey)
+    ) {
+      this.setState({ error: null, copied: false });
+    }
   }
 
   copyStack = async () => {

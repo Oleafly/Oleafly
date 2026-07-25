@@ -1,14 +1,31 @@
 import { test, expect } from "../fixtures";
 import {
+  compileAndProbe,
   createBlankProject,
+  createProjectFromTemplate,
+  getCompiledPdfProbe,
   openProject,
-  openRailTab,
+  readCompiledPdfBase64,
+  readProjectBase64,
   setEditorContent,
 } from "../helpers";
 
 test.beforeEach(async ({ tauriPage }) => {
   test.setTimeout(240_000);
-  await openProject(tauriPage, "E2E Doc");
+  await expect(
+    tauriPage.locator('[data-testid="library"][data-projects-loaded="true"]'),
+  ).toBeVisible({ timeout: 30_000 });
+  const hasBaseline = await tauriPage.evaluate<boolean>(
+    `!!document.querySelector('button[aria-label="Open E2E Doc"]')`,
+  );
+  if (hasBaseline) {
+    await openProject(tauriPage, "E2E Doc");
+  } else {
+    // The native bridge is shared across focused local runs. Recreate the
+    // deterministic baseline if another suite intentionally reset its isolated
+    // data directory instead of making every preview assertion order-dependent.
+    await createBlankProject(tauriPage, "E2E Doc");
+  }
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok", {
     timeout: 180_000,
@@ -109,8 +126,7 @@ Page three
 \end{document}
 `,
   );
-  await expect(tauriPage.getByTestId("compile-button")).toBeEnabled({ timeout: 30_000 });
-  await tauriPage.click('[data-testid="compile-button"]');
+  await compileAndProbe(tauriPage, 150_000);
   await tauriPage.waitForFunction(
     `(document.body.innerText || '').includes('of 3')`,
     120_000,
@@ -128,6 +144,11 @@ Page three
   await tauriPage.fill('[aria-label="Page number"]', "1");
   await tauriPage.press('[aria-label="Page number"]', "Enter");
   await expect(page).toHaveValue("1");
+  for (const invalid of ["", "0", "999", "not-a-page"]) {
+    await tauriPage.fill('[aria-label="Page number"]', invalid);
+    await tauriPage.press('[aria-label="Page number"]', "Enter");
+    await expect(page).toHaveValue("1");
+  }
   await tauriPage.click('[aria-label="Two-page view"]');
   await expect(tauriPage.locator('[aria-label="Two-page view"]')).toHaveAttribute(
     "aria-pressed",
@@ -167,19 +188,135 @@ test("logs control toggles back to the PDF preview", async ({ tauriPage }) => {
   await expect(tauriPage.locator(".pdf-canvas")).toBeVisible();
 });
 
-test("save PDF into the project creates a real project file", async ({ tauriPage }) => {
+test("save PDF writes the exact compiled bytes at the requested relative path and reports failures", async ({
+  tauriPage,
+}) => {
+  const compiledBase64 = await readCompiledPdfBase64(tauriPage);
+  expect((await getCompiledPdfProbe(tauriPage)).text).toContain("Introduction");
   await tauriPage.click('[aria-label="Save PDF to project"]');
   const name = `e2e-saved-${Date.now().toString(36)}.pdf`;
-  await tauriPage.fill('input[placeholder="document.pdf"]', name);
+  const path = `exports/${name}`;
+  await tauriPage.fill('[aria-label="Project save name"]', path);
   await tauriPage.getByText("Save", { exact: true }).click();
-  await openRailTab(tauriPage, "Source Tree");
-  await expect(tauriPage.getByText(name)).toBeVisible({ timeout: 15_000 });
+  await tauriPage.waitForFunction(
+    `!document.querySelector('[role="dialog"][aria-labelledby="save-preview-title"]')`,
+    20_000,
+  );
+  const savedBase64 = await readProjectBase64(tauriPage, path);
+  expect(savedBase64).toBe(compiledBase64);
+  expect(Buffer.from(savedBase64, "base64").subarray(0, 5).toString("ascii")).toBe("%PDF-");
+
+  await tauriPage.click('[aria-label="Save PDF to project"]');
+  await tauriPage.fill('[aria-label="Project save name"]', "../outside-project.pdf");
+  await tauriPage.getByText("Save", { exact: true }).click();
+  await expect(tauriPage.getByText("Couldn't save into the project.", { exact: true })).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(tauriPage.locator('[aria-label="Project save name"]')).toBeVisible();
 });
 
-test("copy log gives feedback", async ({ tauriPage }) => {
+test("save image writes a real nonblank PNG at the requested relative path", async ({
+  tauriPage,
+}) => {
+  await tauriPage.click('[aria-label="Home"]');
+  await createProjectFromTemplate(
+    tauriPage,
+    "diagram",
+    `E2E preview image ${Date.now().toString(36)}`,
+  );
+  await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute(
+    "data-severity",
+    "ok",
+    { timeout: 180_000 },
+  );
+  await expect(tauriPage.locator(".pdf-canvas")).toBeVisible({ timeout: 30_000 });
+  await tauriPage.click('[aria-label="Save image to project"]');
+  const path = `renders/result-${Date.now().toString(36)}.png`;
+  await tauriPage.fill('[aria-label="Project save name"]', path);
+  await tauriPage.getByText("Save", { exact: true }).click();
+  await tauriPage.waitForFunction(
+    `!document.querySelector('[role="dialog"][aria-labelledby="save-preview-title"]')`,
+    30_000,
+  );
+  const png = Buffer.from(await readProjectBase64(tauriPage, path), "base64");
+  expect(png.subarray(0, 8).toString("hex")).toBe("89504e470d0a1a0a");
+  expect(png.readUInt32BE(16)).toBeGreaterThan(0);
+  expect(png.readUInt32BE(20)).toBeGreaterThan(0);
+  const nonblank = await tauriPage.evaluate<number>(
+    `(async () => {
+      const bytes = Uint8Array.from(
+        atob(${JSON.stringify(png.toString("base64"))}),
+        char => char.charCodeAt(0)
+      );
+      const bitmap = await createImageBitmap(new Blob([bytes], { type: "image/png" }));
+      const canvas = document.createElement("canvas");
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      context.drawImage(bitmap, 0, 0);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      let count = 0;
+      for (let index = 0; index < pixels.length; index += 4) {
+        if (
+          pixels[index + 3] > 0 &&
+          (pixels[index] < 245 || pixels[index + 1] < 245 || pixels[index + 2] < 245)
+        ) count += 1;
+      }
+      bitmap.close();
+      return count;
+    })()`,
+  );
+  expect(nonblank).toBeGreaterThan(100);
+});
+
+test("copy log writes the exact visible payload and log scrolling reaches both boundaries", async ({
+  tauriPage,
+}) => {
   await tauriPage.getByText("Logs").click();
+  const raw = await tauriPage.evaluate<string>(
+    `window.__e2eRenderedCompileLog ?? ""`,
+  );
+  expect(raw.length).toBeGreaterThan(0);
+  expect(await tauriPage.evaluate<boolean>(
+    `(() => {
+      window.__e2eCopiedLog = null;
+      try {
+        Object.defineProperty(navigator.clipboard, "writeText", {
+          configurable: true,
+          value: async text => { window.__e2eCopiedLog = text; }
+        });
+        return true;
+      } catch {
+        return false;
+      }
+    })()`,
+  )).toBe(true);
   await tauriPage.getByText("Copy log").click();
   await expect(tauriPage.getByText("Copied")).toBeVisible();
+  expect(await tauriPage.evaluate<string>(`window.__e2eCopiedLog ?? ""`)).toBe(raw);
+
+  await tauriPage.evaluate(
+    `(() => {
+      const box = document.querySelector('[data-testid="compile-log-scroll"]');
+      box.style.flex = "none";
+      box.style.height = "80px";
+      box.scrollTop = Math.floor(box.scrollHeight / 2);
+      return true;
+    })()`,
+  );
+  await tauriPage.click('[aria-label="Scroll to bottom"]');
+  await new Promise((resolve) => setTimeout(resolve, 900));
+  expect(await tauriPage.evaluate<boolean>(
+    `(() => {
+      const box = document.querySelector('[data-testid="compile-log-scroll"]');
+      return box.scrollTop >= box.scrollHeight - box.clientHeight - 1;
+    })()`,
+  )).toBe(true);
+  await tauriPage.click('[aria-label="Scroll to top"]');
+  await new Promise((resolve) => setTimeout(resolve, 900));
+  expect(await tauriPage.evaluate<number>(
+    `document.querySelector('[data-testid="compile-log-scroll"]').scrollTop`,
+  )).toBeLessThanOrEqual(1);
 });
 
 test("fullscreen controls hide, restore, and exit the preview toolbar", async ({

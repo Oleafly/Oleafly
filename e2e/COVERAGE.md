@@ -5,6 +5,12 @@ Every interactive surface, mapped to the spec that exercises it. Status:
 (native OS dialogs, OS drag-drop, nondeterministic AI output - not
 automatable by design) · **—** not yet covered (listed at the bottom).
 
+Editor evidence levels are intentionally separate:
+**A** activates the production control and verifies its UI/source effect;
+**C** performs a real engine compile; **R** inspects the resulting PDF through
+real pdf.js text items/coordinates/font identities, annotations, outline, or
+operator-list names. A source assertion alone is never labeled Render.
+
 ## Library & projects
 | Surface | Interactions | Spec |
 | --- | --- | --- |
@@ -28,39 +34,77 @@ automatable by design) · **—** not yet covered (listed at the bottom).
 | Surface | Interactions | Spec |
 | --- | --- | --- |
 | CodeMirror | typing (anchored, real input), content round-trip across files | 03, 08 |
-| Toolbar | bold on selection, undo/redo, insert figure/table, add-citation dialog | 16 |
-| Toolbar (full inventory) | italic, underline, inline code, link, cross-reference, footnote, blockquote, align, equation, fraction, all 6 heading levels, both list kinds, symbol search/insertion, word count, find | 33 |
-| Toolbar code intelligence | go to definition, find references, rename dialog | 33 |
+| Toolbar (legacy smoke) | bold on selection, undo/redo, insert figure/table, add-citation dialog; source/UI assertions only | 16 |
+| Toolbar inventory activation | italic, underline, inline code, link, cross-reference, footnote, blockquote, align, equation, fraction, all 6 heading levels, both list kinds, symbol search/insertion, word count, find; source/UI assertions only | 33 |
+| Toolbar compiled/rendered semantics | class-valid book Part/Chapter; article Section/Subsection/Subsubsection/Paragraph; bold/italic/underline/code; URL annotation; resolved ref; footnote; quote; undo/redo absence/presence; deterministic citation + `.bib` + bibliography; real PNG figure; toolbar-generated 2×2 table structure/captions/cells/geometry; lists; align/equation/fraction; representative symbol from every category plus every inventory macro compiled | 51 |
+| Toolbar workflow semantics | exact word-count mutation; complete Find/Replace filters, navigation, selection, disclosure, close and preserve-case actions; definition/references + committed rename + resolved compile; WYSIWYG toolbar/keyboard history; every native and raw-backed Visual formatting branch serialized and compiled | 52 |
+| Toolbar code intelligence (legacy smoke) | go to definition, find references, rename dialog cancel | 33 |
 | Toolbar overflow | ResizeObserver-driven overflow moves controls into the More menu and keeps them available | 47 |
-| Toolbar image transcription | synthetic PNG -> local mock vision model -> LaTeX inserted in editor | 41 |
-| Toolbar view switch | LaTeX and Markdown Code/Visual round-trip | 49 |
+| Toolbar image transcription | real toolbar invokes its hidden input in both Code and Visual views; valid synthetic PNG (native-picker seam) -> local mock vision model -> production transcription -> compile/render | 41 |
+| Toolbar view switch | LaTeX and Markdown Code/Visual round-trip; supported LaTeX WYSIWYG formatting compiles/renders in 52 | 49, 52 |
 | Toolbar SyncTeX | source-only view -> Go to PDF -> split view and PDF location | 47 |
 | File types | project.json/.txt open with no LaTeX toolbar; .ttf/.otf/.woff open a binary notice (was: silent failure, fixed) | 33 |
 | Code folding | fold gutter collapses and restores a region | 34 |
 | Editor tabs | close button removes the tab, main.tex stays active | 34 |
-| Context menu | opens with AI/code-intel items, insert equation | 16 |
+| Context menu | every LaTeX insertion/heading/list action; Ask AI widget; SyncTeX; definition/references/rename activation; every Typst/Markdown profile action | 53 (activation/navigation), 16 (legacy smoke) |
 | File tabs | created by file switching | 08 |
-| File tree | new file, open, switch | 08 |
+| File tree | root + nested row new file/folder, open/switch, file/folder rename, recursive copy/delete, active-file fallback, set-main marker, backend/reopen persistence | 08, 54 |
 | Outline | section listed | 08 |
 | Spellcheck/dictionary | squiggle -> hover tooltip -> ignore -> settings chip -> un-ignore -> squiggle returns | 14 |
 | Code intel: go-to-definition, find-references, rename dialog | context menu + Shift+F12, real index over a seeded label/ref pair | 23 |
-| File tree rename/delete via context menu | create, rename, delete | 26 |
+| File tree row actions | real `More actions for …` three-dot controls activate rename, copy, set-main, delete, and nested create/import actions | 26, 54 |
 | File tree collision handling | rename/move conflict, Cancel, Keep both, Replace, content preservation | 26 |
 | File tree drag-and-drop | move into folder and collision-safe Keep both flow | 26 |
+| File/folder import | real header + row import actions; DEV-only picker-result seam supplies exact external paths; root files, row files, recursive folders, binary/text byte equality, exact nested destination, reopen persistence | 54 |
+| File mutation failure/race invariants | delete keeps unrelated autosave live, restores dirty state on failure, respects a live tab/project switch; repeated/concurrent copies publish complete uniquely named entries; deep-copy failure cleans staging; multi-source import preflights all inputs and rolls back an injected mid-publish failure | `files.engine-transition.test.ts`, Rust `project::tests` |
 | Inline AI (Cmd+L) | provider-gated | ✋ [ai] |
+
+### Editor action evidence
+
+| Action group | Evidence | Spec | Notes |
+| --- | --- | --- | --- |
+| Undo / redo | A + C + R | 51, 52 | Code view checks PDF absence → presence across separate compiles; Visual view checks toolbar Undo/Redo and Ctrl/Cmd-Z/Shift-Z through serialized source and fresh PDF compiles. Loaded files and file switches reset Visual history in component tests. |
+| Part / Chapter | A + C + R | 51 | Fresh `book` fixture; PDF text and outline entries. |
+| Section / Subsection / Subsubsection / Paragraph | A + C + R | 51 | Fresh `article` fixture; rendered text and applicable outline hierarchy. |
+| Bold / italic / inline code | A + C + R | 51 | Rendered text items must use font identities distinct from regular text. |
+| Underline | A + C + R | 51 | Isolated clean baseline versus underlined compile: the text geometry stays stable while constructed-path rule operators increase. |
+| Link | A + C + R | 51 | Exact external URL appears in a real PDF link annotation. |
+| Cross-reference | A + C + R | 51 | Rendered reference is resolved and has an internal-link destination. |
+| Footnote / blockquote | A + C + R | 51 | Text coordinates prove smaller footnote text and quote indentation. |
+| Citation | A + C + R | 51 | Toolbar dialog is activated; deterministic BibTeX bypasses network lookup but calls production `addCitation`, verifies persisted `.bib`, then renders citation/bibliography. |
+| Figure / table | A + C + R | 51 | Real PNG paint operator; toolbar-generated `tabular{ll}` structure is preserved, populated, compiled, and verified through caption/cell text plus two-row/two-column coordinates. Unit coverage exhausts all 80 table-size generator outputs and picker boundaries. |
+| Bulleted / numbered list | A + C + R | 51 | Both production list controls and rendered item text. |
+| Align / equation / fraction | A + C + R | 51 | Production controls wrap/insert valid math and rendered operands are asserted. |
+| Greek / Arrows / Operators / Relations / Misc symbols | A + C + R | 51 | One real picker value per category; source macros and extracted PDF glyphs. |
+| Every symbol inventory item | C (+ exhaustive insertion unit) | 51, `SymbolPicker.test.tsx` | Every production inventory value passes through the production insertion function in unit coverage; one generated document compiles every macro and preserves a deterministic marker for each. Glyph-level Render evidence remains the representative category row above. |
+| Image to LaTeX | A + C + R | 41 | Both Code and Visual toolbar/input paths are activated. Native picker chrome is the only synthetic seam; production AI insertion, source, compile, and rendered tokens are real. |
+| Word count | A | 52 | Exact words/characters/lines before and after a source mutation; no PDF claim. |
+| Find / Replace | A | 52 | Next/previous, replace-next/all, case, whole-word, regex/invalid-regex, select-all exact ranges, preserve-case, disclosure, close button/Escape, live status and keyboard-visible focus are asserted; no PDF claim. |
+| Code intelligence | A + C + R | 52 | Definition/references and committed rename; both label/ref mutate and the recompiled PDF remains resolved. |
+| WYSIWYG native formatting | A + C + R | 52 | Bold, italic, code, Section/Subsection/Subsubsection, both list kinds, and blockquote use toolbar controls, serialize to LaTeX, then render with outline/font/coordinate evidence. |
+| WYSIWYG raw-backed actions | A + C + R | 52 | Part/Chapter/Paragraph, underline, link, ref, footnote, citation, figure, table, align, equation, fraction and symbol controls serialize after placeholder entry and compile together; word-count UI is activated. Source-only Find/code-intelligence/SyncTeX controls are hidden in Visual view and unit-asserted. |
+| Go to PDF (SyncTeX) | A | 47, 53 | Verifies source-only → split view and a PDF location highlight; it does not mutate document content. |
+| LaTeX context-menu insertions | A | 53 | Every direct action plus all six heading and both list submenu actions; semantic compile assertions are shared with 51. |
+| Typst / Markdown context menus | A | 53 | Every profile-appropriate action and Ask AI widget activation; source effects only. |
 
 ## Compile & preview
 | Surface | Interactions | Spec |
 | --- | --- | --- |
 | Compile | button + Cmd+Enter, zero-error status chip, PDF renders | 02, 10 |
 | Error loop | break -> error status -> fix -> recover | 11 |
-| Logs tab | real log shown, copy-log feedback | 11, 17 |
-| Preview toolbar (full inventory) | single/two-page layouts, previous/next, direct page jump, zoom in/out, all 7 presets, fit width/height, invert/restore, logs/PDF toggle, save PDF, copy log | 17 |
-| Preview window controls | fullscreen enter/exit, hide/show toolbar, detached-window creation | 17 |
-| Save PDF into project | in-app dialog -> file in tree | 17 |
+| Logs tab | real log shown; exact clipboard payload; animated scroll reaches exact top/bottom boundaries | 11, 17 |
+| Preview toolbar (full inventory) | single/two-page layouts, previous/next, valid + empty/non-numeric/zero/out-of-range page input, zoom in/out, all 7 presets, fit width/height, invert/restore, logs/PDF toggle, save actions | 17 |
+| Empty preview | real Recompile control invokes the compile handler | `PreviewPane.test.tsx` |
+| Preview window controls | native detached-window creation plus browser component harness for single/two-page, previous/input/next bounds, zoom +/−, invert, and layout state | 17, 56 |
+| Preview recovery/races | detached A→B retarget clears A immediately, rejects late A completion, and fails closed when B has no PDF; spread navigation advances by two; a new compiled byte payload resets a crashed scoped preview boundary | `PreviewWindow.test.tsx`, `ErrorBoundary.test.tsx` |
+| Save PDF/image into project | in-app dialog; exact requested nested relative path; PDF bytes equal compiled output and `%PDF-`; PNG signature/dimensions/nonblank pixels; invalid path surfaces standard failure UX | 17 |
 | SyncTeX forward (Cmd+Shift+J) | highlight appears on PDF | 10 |
 | SyncTeX inverse (Cmd-click PDF) | Cmd-click via text-layer coordinates lands the caret on the word | 24 |
-| Export menu | opens, all formats listed per doc type | 22 |
+| Export menu | opens, all formats listed per doc type | 22, 30 |
+| Export artifacts | real production menu actions with DEV-only one-shot save destination: ZIP entries/assets/internal exclusions; PDF signature/text marker; DOCX OOXML marker; standalone embedded-resource HTML; Markdown/TXT semantics; Beamer PPTX slide marker; book EPUB stored mimetype/package/TOC/content; vector PDF and nonblank PNG; SVG explicitly absent | 55 |
+| Converter downloads | real `.tex`, `.zip`, and extracted-figure buttons; exact source/ZIP equality, ZIP assets, PNG signature/dimensions/byte equality | 40 |
+| Converter request/project transactions | close/newer-PDF invalidation prevents stale extraction success or failure from replacing the current conversion; project creation is one staged backend publication rather than piecemeal frontend writes | `import.test.ts`, Rust staged-project command |
+| DOCX import | managed pinned Pandoc is installed on demand; real DOCX converts into an editable project without a conditional skip | 40 |
 
 ## Diagram composer
 | Surface | Interactions | Spec |
@@ -109,7 +153,8 @@ automatable by design) · **—** not yet covered (listed at the bottom).
 | Surface | Interactions | Spec |
 | --- | --- | --- |
 | Preflight tab visibility (tex vs image project) | 05 |
-| Per-category independent Run | 13 |
+| Per-category independent Run | each lens runs alone; compiled resume reader text reaches ATS parsing and accessibility findings | 13 |
+| ATS project-section aliases | a real compiled `GitHub Projects` heading is detected in reader text, store report, and accessible UI status; canonical matcher unit coverage includes singular/plural, 19 prefixes, Unicode/PDF run normalization, punctuation, and prose false positives | 13, `resume-sections.test.ts` |
 | Reader view, prep-export apply, tagged compile | | — / 🔑 [engine] |
 | AI keyless onboarding (connect buttons -> settings AI) | 20 |
 | AI provider connect (settings UI), real conversation, real tool call | `E2E_AI_TOKEN` | 28 🔑 |
@@ -123,7 +168,10 @@ automatable by design) · **—** not yet covered (listed at the bottom).
 | Destructive tool approvals | Approve clicked live in 31; a Reject path test | — |
 
 ## Known manual-only checks
-OS drag-and-drop from outside the app; native save/open dialogs (exports);
-native color pickers; rendering and interaction inside the secondary preview
-window; auto-updater; AI conversations end-to-end. These are exercised by
-release smoke-testing.
+OS drag-and-drop from outside the app; native picker chrome itself; native color
+pickers; attaching automation to the secondary Tauri WebView; auto-updater; AI
+conversations end-to-end. Picker-trigger actions and resulting files are covered
+through a DEV-only one-shot path-result seam (40, 54, 55). Secondary-preview
+creation is covered natively and the production component/handlers are covered
+in the browser harness (17, 56). The remaining OS chrome is exercised by release
+smoke-testing.

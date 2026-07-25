@@ -6,19 +6,19 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { insertAtCursor } from "@/components/editor/cm/controller";
 
-interface Symbol {
+export interface ToolbarSymbol {
   char: string;
   latex: string;
   name: string;
 }
 
-interface Category {
+export interface SymbolCategory {
   id: string;
   label: string;
-  items: Symbol[];
+  items: ToolbarSymbol[];
 }
 
-const CATEGORIES: Category[] = [
+export const SYMBOL_CATEGORIES: SymbolCategory[] = [
   {
     id: "greek",
     label: "Greek",
@@ -119,8 +119,8 @@ const CATEGORIES: Category[] = [
       { char: "≥", latex: "\\geq", name: "geq" },
       { char: "≪", latex: "\\ll", name: "ll" },
       { char: "≫", latex: "\\gg", name: "gg" },
-      { char: "<", latex: "\\lt", name: "lt" },
-      { char: ">", latex: "\\gt", name: "gt" },
+      { char: "<", latex: "<", name: "lt" },
+      { char: ">", latex: ">", name: "gt" },
       { char: "∈", latex: "\\in", name: "in" },
       { char: "∉", latex: "\\notin", name: "notin" },
       { char: "∋", latex: "\\ni", name: "ni" },
@@ -166,12 +166,17 @@ const CATEGORIES: Category[] = [
   },
 ];
 
-function SymbolButton({ symbol }: { symbol: Symbol }) {
+export function insertToolbarSymbol(symbol: ToolbarSymbol): void {
+  insertAtCursor(symbol.latex);
+}
+
+function SymbolButton({ symbol }: { symbol: ToolbarSymbol }) {
   return (
     <PopoverPrimitive.Close asChild>
       <button
         type="button"
-        onClick={() => insertAtCursor(symbol.latex)}
+        onClick={() => insertToolbarSymbol(symbol)}
+        aria-label={`Insert ${symbol.name} (${symbol.latex})`}
         title={symbol.name}
         className="flex size-9 items-center justify-center rounded-md bg-muted text-base text-foreground transition-colors hover:bg-accent"
       >
@@ -183,12 +188,12 @@ function SymbolButton({ symbol }: { symbol: Symbol }) {
 
 export function SymbolPicker({ menuRow }: { menuRow?: boolean }) {
   const [query, setQuery] = useState("");
-  const [activeTab, setActiveTab] = useState(CATEGORIES[0].id);
+  const [activeTab, setActiveTab] = useState(SYMBOL_CATEGORIES[0].id);
   const q = query.trim().toLowerCase();
 
   const visibleItems = q
-    ? CATEGORIES.flatMap((c) => c.items).filter((s) => s.name.toLowerCase().includes(q))
-    : (CATEGORIES.find((c) => c.id === activeTab) ?? CATEGORIES[0]).items;
+    ? SYMBOL_CATEGORIES.flatMap((c) => c.items).filter((s) => s.name.toLowerCase().includes(q))
+    : (SYMBOL_CATEGORIES.find((c) => c.id === activeTab) ?? SYMBOL_CATEGORIES[0]).items;
 
   return (
     <Popover
@@ -209,11 +214,12 @@ export function SymbolPicker({ menuRow }: { menuRow?: boolean }) {
     >
       <div className="flex h-80">
         <div className="flex w-28 shrink-0 flex-col gap-0.5 border-r p-2">
-          {CATEGORIES.map((c) => (
+          {SYMBOL_CATEGORIES.map((c) => (
             <button
               key={c.id}
               type="button"
               onClick={() => setActiveTab(c.id)}
+              aria-pressed={activeTab === c.id}
               className={cn(
                 "rounded px-2 py-1 text-left text-xs font-medium transition-colors",
                 !q && activeTab === c.id

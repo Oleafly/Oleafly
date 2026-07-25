@@ -193,7 +193,7 @@ importers:
         specifier: ^0.540.0
         version: 0.540.0(react@19.2.7)
       pdfjs-dist:
-        specifier: ^6.1.200
+        specifier: 6.1.200
         version: 6.1.200
       react:
         specifier: ^19.0.0
@@ -406,19 +406,19 @@ importers:
   packages/pdf-to-latex:
     dependencies:
       pdfjs-dist:
-        specifier: ^6.1.200
+        specifier: 6.1.200
         version: 6.1.200
 
   packages/preflight:
     dependencies:
       pdfjs-dist:
-        specifier: ^6.1.200
+        specifier: 6.1.200
         version: 6.1.200
 
   packages/preview:
     dependencies:
       pdfjs-dist:
-        specifier: ^6.1.200
+        specifier: 6.1.200
         version: 6.1.200
       react:
         specifier: '*'

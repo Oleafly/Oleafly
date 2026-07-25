@@ -1,18 +1,42 @@
-import { save } from "@tauri-apps/plugin-dialog";
-import { strToU8, zipSync } from "fflate";
 import type { ExtractedFigure } from "@oleafly/pdf-to-latex";
 import { logError } from "@/lib/log";
 import {
-  createProject,
+  createProjectFromPdfConversion,
   createProjectFromDocx,
   hasPandoc,
-  saveFileBase64,
   writeBytesFile,
-  writeFileContent,
 } from "@/lib/tauri";
-import { toast } from "@/lib/toast";
+import { notifyError, toast } from "@/lib/toast";
 import { useFilesStore } from "@/store/files";
 import { useImportStore } from "@/store/import";
+import { pickSavePath } from "@/lib/native-file-dialog";
+import { ensurePandoc } from "@/features/pandoc";
+
+const ZIP_EXPORT_ERROR_MESSAGE = "Could not save ZIP archive.";
+
+type ZipDownloadSnapshot = Pick<
+  ReturnType<typeof useImportStore.getState>,
+  "figures" | "fileName" | "result"
+>;
+
+type ZipCompressionModule = {
+  zipSync: (
+    entries: Record<string, Uint8Array>,
+  ) => Uint8Array;
+};
+
+export interface ZipDownloadDependencies {
+  getSnapshot: () => ZipDownloadSnapshot;
+  pickDestination: typeof pickSavePath;
+  loadZipModule: () => Promise<ZipCompressionModule>;
+  writeBytes: typeof writeBytesFile;
+}
+
+export type ZipDownloadOutcome =
+  | "saved"
+  | "cancelled"
+  | "unavailable"
+  | "failed";
 
 export function baseName(fileName: string): string {
   const last = fileName.split(/[\\/]/).pop() ?? fileName;
@@ -38,17 +62,71 @@ function bytesToBase64(bytes: Uint8Array): string {
 }
 
 export function zipEntries(tex: string, figures: ExtractedFigure[]): Record<string, Uint8Array> {
-  const entries: Record<string, Uint8Array> = { "main.tex": strToU8(tex) };
+  const entries: Record<string, Uint8Array> = { "main.tex": new TextEncoder().encode(tex) };
   for (const f of figures) {
     entries[`assets/${f.name}`] = base64ToBytes(dataUrlToBase64(f.pngDataUrl));
   }
   return entries;
 }
 
+function isZipArchive(bytes: Uint8Array): boolean {
+  if (bytes.byteLength < 4 || bytes[0] !== 0x50 || bytes[1] !== 0x4b) {
+    return false;
+  }
+  const signature = (bytes[2] << 8) | bytes[3];
+  return signature === 0x0304 || signature === 0x0506 || signature === 0x0708;
+}
+
+function reportZipExportFailure(error: unknown): void {
+  notifyError("ZIP export", error, ZIP_EXPORT_ERROR_MESSAGE);
+}
+
+export function createZipDownloader(
+  dependencies: ZipDownloadDependencies,
+): () => Promise<ZipDownloadOutcome> {
+  return async () => {
+    try {
+      const { result, figures, fileName } = dependencies.getSnapshot();
+      if (!result) return "unavailable";
+
+      const destination = await dependencies.pickDestination({
+        defaultPath: `${baseName(fileName)}.zip`,
+        filters: [{ name: "Zip archive", extensions: ["zip"] }],
+      });
+      if (!destination) return "cancelled";
+
+      // Keep compression out of the startup bundle and do not fetch its chunk
+      // until the user has committed to a destination.
+      const { zipSync } = await dependencies.loadZipModule();
+      const archive = zipSync(zipEntries(result.tex, figures));
+      if (!isZipArchive(archive)) {
+        throw new Error("ZIP compression returned invalid archive data.");
+      }
+      await dependencies.writeBytes(
+        destination,
+        bytesToBase64(archive),
+      );
+      toast.success("Saved .zip");
+      return "saved";
+    } catch (error) {
+      reportZipExportFailure(error);
+      return "failed";
+    }
+  };
+}
+
+const downloadZipArchive = createZipDownloader({
+  getSnapshot: () => useImportStore.getState(),
+  pickDestination: pickSavePath,
+  loadZipModule: () => import("fflate"),
+  writeBytes: writeBytesFile,
+});
+
 export async function handlePickedFile(file: File): Promise<void> {
   const lower = file.name.toLowerCase();
   try {
     if (lower.endsWith(".docx")) {
+      if (!(await ensurePandoc())) return;
       const bytes = new Uint8Array(await file.arrayBuffer());
       const id = await createProjectFromDocx(baseName(file.name), bytesToBase64(bytes));
       await useFilesStore.getState().refreshProjects();
@@ -71,11 +149,14 @@ export async function createProjectFromConversion(): Promise<void> {
   const { result, figures, fileName, close } = useImportStore.getState();
   if (!result) return;
   try {
-    const id = await createProject(baseName(fileName) || "Imported PDF");
-    await writeFileContent(id, "main.tex", result.tex);
-    for (const f of figures) {
-      await saveFileBase64(id, `assets/${f.name}`, dataUrlToBase64(f.pngDataUrl));
-    }
+    const id = await createProjectFromPdfConversion(
+      baseName(fileName) || "Imported PDF",
+      result.tex,
+      figures.map((figure) => ({
+        name: figure.name,
+        dataBase64: dataUrlToBase64(figure.pngDataUrl),
+      })),
+    );
     await useFilesStore.getState().refreshProjects();
     close();
     await useFilesStore.getState().openProject(id);
@@ -89,26 +170,30 @@ export async function createProjectFromConversion(): Promise<void> {
 export async function downloadTex(): Promise<void> {
   const { result, fileName } = useImportStore.getState();
   if (!result) return;
-  const dest = await save({
+  const dest = await pickSavePath({
     defaultPath: `${baseName(fileName)}.tex`,
     filters: [{ name: "LaTeX", extensions: ["tex"] }],
   });
   if (!dest) return;
-  await writeBytesFile(dest, bytesToBase64(strToU8(result.tex)));
+  await writeBytesFile(dest, bytesToBase64(new TextEncoder().encode(result.tex)));
   toast.success("Saved .tex");
 }
 
-export async function downloadZip(): Promise<void> {
-  const { result, figures, fileName } = useImportStore.getState();
-  if (!result) return;
-  const dest = await save({
-    defaultPath: `${baseName(fileName)}.zip`,
-    filters: [{ name: "Zip archive", extensions: ["zip"] }],
-  });
-  if (!dest) return;
-  const zipped = zipSync(zipEntries(result.tex, figures));
-  await writeBytesFile(dest, bytesToBase64(zipped));
-  toast.success("Saved .zip");
+export function downloadZip(): Promise<ZipDownloadOutcome> {
+  return downloadZipArchive();
+}
+
+export async function handleDownloadZipClick(
+  action: () => Promise<unknown> = downloadZip,
+): Promise<void> {
+  try {
+    await action();
+  } catch (error) {
+    // `downloadZip` contains all expected failures itself. This final boundary
+    // protects the fire-and-forget React event handler if that contract ever
+    // regresses or an unexpected caller implementation rejects.
+    reportZipExportFailure(error);
+  }
 }
 
 // E2E / devtools hook: the native test bridge cannot drive a real file input,
@@ -124,7 +209,7 @@ if (typeof window !== "undefined" && import.meta.env.DEV) {
 }
 
 export async function downloadFigure(fig: ExtractedFigure): Promise<void> {
-  const dest = await save({
+  const dest = await pickSavePath({
     defaultPath: fig.name,
     filters: [{ name: "PNG image", extensions: ["png"] }],
   });

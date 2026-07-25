@@ -39,8 +39,14 @@ describe("runPreflight", () => {
   });
 
   it("adds the untagged-output verdict when a structure tree is supplied", () => {
-    const r = runPreflight({ source: "\\documentclass{article}", struct: { root: null, tagged: false } });
-    expect(r.findings.some((f) => f.id === "pdf-untagged-output")).toBe(true);
+    const r = runPreflight({
+      source: "\\documentclass{article}",
+      pages: [[{ str: "text", x: 0, y: 0, width: 20 }]],
+      meta: { lang: "en", title: "Document", tagged: false },
+      struct: { root: null, tagged: false },
+    });
+    expect(r.findings.filter((f) => f.id === "pdf-untagged-output")).toHaveLength(1);
+    expect(r.findings.some((f) => f.id === "pdf-tagged")).toBe(false);
   });
 
   it("runs the ATS parse simulation over reader text and exposes it on the report", () => {

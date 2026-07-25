@@ -574,6 +574,7 @@ export function PreviewPane() {
             style={inverted ? { filter: "invert(1) hue-rotate(180deg)" } : undefined}
           >
             <ErrorBoundary
+              resetKey={pdfBytes}
               fallback={
                 <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
                   The PDF preview crashed. Recompile to try again.
@@ -647,7 +648,12 @@ export function PreviewPane() {
           >
             <div className="mb-3 flex items-center justify-between">
               <h2 id="save-preview-title" className="text-sm font-semibold">{isImage ? "Save image to project" : "Save PDF to project"}</h2>
-              <button type="button" onClick={closeSave} className="text-muted-foreground hover:text-foreground">
+              <button
+                type="button"
+                onClick={closeSave}
+                aria-label="Close save dialog"
+                className="text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
                 <X className="size-4" />
               </button>
             </div>
@@ -657,6 +663,7 @@ export function PreviewPane() {
             <div className="flex items-center gap-2">
               <Input
                 data-modal-initial-focus
+                aria-label="Project save name"
                 value={saveName}
                 onChange={(e) => setSaveName(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !saving) void submitSavePdf(); }}

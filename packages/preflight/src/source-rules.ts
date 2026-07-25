@@ -1,4 +1,6 @@
 import { maskComments } from "./mask";
+import { containsContactToken } from "./contact";
+import { matchResumeSectionHeading } from "./resume-sections";
 import type { Finding, Lens, Severity } from "./types";
 
 type Rule = (text: string) => Finding[];
@@ -11,9 +13,6 @@ const make = (
   detail: string,
   range?: { from: number; to: number },
 ): Finding => ({ id, lens, severity, title, detail, ...range });
-
-// A contact token: email, tel/mailto href, or a phone-like run of digits.
-const CONTACT = /[\w.+-]+@[\w-]+\.[\w.-]+|(?:mailto:|tel:)|\+?\d[\d\s().-]{7,}\d/;
 
 function documentClass(text: string): { opts: string; name: string; from: number; to: number } | null {
   const m = /\\documentclass\s*(?:\[([^\]]*)\])?\s*\{([^}]*)\}/.exec(text);
@@ -75,7 +74,7 @@ const iconNearContact: Rule = (text) => {
   let offset = 0;
   for (const line of text.split("\n")) {
     const icon = /\\fa[A-Za-z]/.exec(line);
-    if (icon && CONTACT.test(line)) {
+    if (icon && containsContactToken(line)) {
       out.push(
         make(
           "icon-near-contact",
@@ -114,7 +113,7 @@ const contactInHeader: Rule = (text) => {
   let m: RegExpExecArray | null;
   const re = new RegExp(HEADER_MACRO.source, "g");
   while ((m = re.exec(text))) {
-    if (CONTACT.test(m[1])) {
+    if (containsContactToken(m[1])) {
       out.push(
         make(
           "contact-in-header",
@@ -249,31 +248,6 @@ const headingSkip: Rule = (text) => {
   return out;
 };
 
-const RESUME_HEADINGS = new Set([
-  "experience",
-  "work experience",
-  "professional experience",
-  "education",
-  "skills",
-  "technical skills",
-  "projects",
-  "summary",
-  "objective",
-  "certifications",
-  "awards",
-  "honors",
-  "publications",
-  "activities",
-  "interests",
-  "contact",
-  "references",
-  "leadership",
-  "volunteer",
-  "volunteering",
-  "coursework",
-  "achievements",
-]);
-
 const nonstandardHeadings: Rule = (text) => {
   const re = /\\(?:section|subsection)\s*\*?\s*\{([^}]*)\}/g;
   const titles: { label: string; from: number; to: number }[] = [];
@@ -283,10 +257,10 @@ const nonstandardHeadings: Rule = (text) => {
   }
   // Only treat this as a resume (and thus flag odd headings) when at least one
   // standard resume heading is present. Avoids false positives on papers.
-  const looksLikeResume = titles.some((t) => RESUME_HEADINGS.has(t.label.toLowerCase()));
+  const looksLikeResume = titles.some((title) => matchResumeSectionHeading(title.label) !== null);
   if (!looksLikeResume) return [];
   return titles
-    .filter((t) => t.label && !RESUME_HEADINGS.has(t.label.toLowerCase()))
+    .filter((title) => title.label && matchResumeSectionHeading(title.label) === null)
     .map((t) =>
       make(
         "nonstandard-headings",

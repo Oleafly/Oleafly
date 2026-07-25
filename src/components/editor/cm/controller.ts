@@ -71,11 +71,25 @@ export function insertEnvironment(name: string) {
 }
 
 export function editorUndo() {
+  if (isWysiwygActive()) {
+    const editor = getWysiwygEditor();
+    if (editor) {
+      editor.chain().focus().undo().run();
+      return;
+    }
+  }
   coreEditorUndo();
   useFilesStore.getState().bumpDocVersion();
 }
 
 export function editorRedo() {
+  if (isWysiwygActive()) {
+    const editor = getWysiwygEditor();
+    if (editor) {
+      editor.chain().focus().redo().run();
+      return;
+    }
+  }
   coreEditorRedo();
   useFilesStore.getState().bumpDocVersion();
 }

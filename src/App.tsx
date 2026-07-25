@@ -42,6 +42,8 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { cn } from "@/lib/utils";
 import { ExternalToolApprovals } from "@/components/ai/ExternalToolApprovals";
 import { AboutModal } from "@/components/layout/AboutModal";
+import { COMPILE_SUCCEEDED_EVENT } from "@/lib/compile-checkpoint";
+import { applyRemoteCompileSuccess } from "@/lib/compile-sync";
 
 // Heavy surfaces load on demand so cold start stays lean.
 const SettingsModal = lazy(() =>
@@ -372,24 +374,8 @@ export default function App() {
         }
       },
     );
-    const unCompile = listen<{ projectId: string; from?: string }>("compile:done", (e) => {
-      if (e.payload?.from === selfLabel) return;
-      const pid = e.payload?.projectId;
-      if (!pid || pid !== useFilesStore.getState().projectId) return;
-      void import("@/lib/tauri").then(({ readCompiledPdf }) => {
-        void readCompiledPdf(pid)
-          .then((buf) => {
-            if (useFilesStore.getState().projectId !== pid) return;
-            useCompileStore.setState({
-              status: "success",
-              phase: "idle",
-              pdfBytes: new Uint8Array(buf),
-              lastCompiledAt: Date.now(),
-            });
-            void import("@/lib/preview-window").then((m) => m.refreshPreviewWindow());
-          })
-          .catch(() => {});
-      });
+    const unCompile = listen<unknown>(COMPILE_SUCCEEDED_EVENT, (event) => {
+      void applyRemoteCompileSuccess(event.payload, selfLabel);
     });
     const unSettings = listen<{ section?: string }>("settings:open", (e) => {
       const s = useSettingsStore.getState();
