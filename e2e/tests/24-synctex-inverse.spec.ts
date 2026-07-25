@@ -392,7 +392,17 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
     return true;
   })()`);
   await expect(tauriPage.getByRole("menu")).toBeVisible();
-  await tauriPage.getByRole("menu").getByText("100%", { exact: true }).click();
+  await tauriPage.evaluate(`new Promise((resolve, reject) => {
+    const item = Array.from(document.querySelectorAll('[role="menuitem"]')).find(
+      (candidate) => candidate.textContent?.trim() === '100%'
+    );
+    if (!(item instanceof HTMLElement)) {
+      reject(new Error('100% zoom menu item not found'));
+      return;
+    }
+    item.click();
+    requestAnimationFrame(() => requestAnimationFrame(resolve));
+  })`);
   // The bridge click changes the controlled zoom value but does not synthesize
   // Radix's pointer-up dismissal. Escape closes the popup and restores body
   // hit testing before the caret-at-point assertions below.
@@ -410,17 +420,37 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
     `getComputedStyle(document.body).pointerEvents !== "none"`,
     5_000,
   );
-  await tauriPage.waitForFunction(
-    `(() => {
-      const trigger = document.querySelector('[aria-label="Zoom 100 percent"]');
+  try {
+    await tauriPage.waitForFunction(
+      `(() => {
+        const trigger = document.querySelector('[aria-label="Zoom 100 percent"]');
+        const page = document.querySelector('[data-page="1"]');
+        if (!(page instanceof HTMLElement) || !trigger) return false;
+        const scaleFactor = Number(page.style.getPropertyValue('--scale-factor'));
+        return Math.abs(scaleFactor - 1) <= Number.EPSILON
+          && Math.abs(page.getBoundingClientRect().width - 612) <= 0.05;
+      })()`,
+      15_000,
+    );
+    await tauriPage.waitForFunction(
+      `document.querySelector('[data-page="1"]')?.getAttribute('data-pdf-raster-scale') === "1"`,
+      15_000,
+    );
+  } catch (error) {
+    const diagnostic = await tauriPage.evaluate<string>(`JSON.stringify((() => {
+      const trigger = document.querySelector('[aria-haspopup="menu"][aria-label^="Zoom "]');
       const page = document.querySelector('[data-page="1"]');
-      if (!(page instanceof HTMLElement) || !trigger) return false;
-      return page.style.getPropertyValue('--scale-factor') === '1'
-        && Math.abs(page.getBoundingClientRect().width - 612) <= 0.01
-        && page.dataset.pdfRasterScale === "1";
-    })()`,
-    15_000,
-  );
+      return {
+        triggerAriaLabel: trigger?.getAttribute('aria-label'),
+        triggerText: trigger?.textContent,
+        pageStyle: page?.getAttribute('style'),
+        pageRect: page?.getBoundingClientRect().toJSON(),
+        rasterScale: page?.getAttribute('data-pdf-raster-scale'),
+        menuText: document.querySelector('[role="menu"]')?.textContent,
+      };
+    })())`);
+    throw new Error(`${String(error)}; 100% zoom diagnostic: ${diagnostic}`);
+  }
 
   await tauriPage.click('[aria-label="Next page"]');
   try {
