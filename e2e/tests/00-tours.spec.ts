@@ -7,6 +7,7 @@ import {
   createBlankProject,
   openProject,
   openRailTab,
+  openSettings,
   pressGlobal,
   type Page,
 } from "../helpers";
@@ -145,7 +146,7 @@ test("Settings tour remains in the viewport and tour confirmations are atomic", 
   await tauriPage.getByText("Skip", { exact: true }).click();
   await expect(tauriPage.locator("#react-joyride-portal")).toHaveCount(0);
   await expect(tauriPage.locator(".react-joyride__overlay")).toHaveCount(0);
-  await tauriPage.click('[data-testid="settings-section-general"]');
+  await openSettings(tauriPage, "general");
   await expect(tauriPage.getByText("Enable tour guides", { exact: true })).toBeVisible();
 
   await tauriPage.click('[aria-label="Enable all tour guides"]');

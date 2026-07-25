@@ -38,7 +38,7 @@ test("settings modal opens with all sections", async ({ tauriPage }) => {
   for (const s of ["dictionary", "engine", "downloads", "data"]) {
     await expect(tauriPage.locator(`[data-testid="settings-section-${s}"]`)).toBeVisible();
   }
-  await tauriPage.click('[data-testid="settings-section-help"]');
+  await openSettings(tauriPage, "help");
   await expect(tauriPage.locator('[data-testid="about-oleafly-logo"]')).toBeVisible();
   await expect(tauriPage.getByText("About Oleafly", { exact: true })).toBeVisible();
   await tauriPage.click('[aria-label="Close settings"]');
@@ -47,8 +47,7 @@ test("settings modal opens with all sections", async ({ tauriPage }) => {
 test("keyboard shortcuts are editable from their Settings section", async ({ tauriPage }) => {
   await openSettingsProject(tauriPage);
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await openSettings(tauriPage);
-  await tauriPage.click('[data-testid="settings-section-shortcuts"]');
+  await openSettings(tauriPage, "shortcuts");
   await expect(tauriPage.getByRole("dialog", { name: "Settings" })).toBeVisible();
   await expect(
     tauriPage.getByText("Customize application shortcuts", { exact: false }),
@@ -60,8 +59,7 @@ test("keyboard shortcuts are editable from their Settings section", async ({ tau
 test("keyboard shortcuts Settings section opens from the home view", async ({ tauriPage }) => {
   const back = tauriPage.locator('[title="Back to library"]');
   if (await back.isVisible()) await back.click();
-  await openSettings(tauriPage);
-  await tauriPage.click('[data-testid="settings-section-shortcuts"]');
+  await openSettings(tauriPage, "shortcuts");
   await expect(tauriPage.getByRole("dialog", { name: "Settings" })).toBeVisible();
   await expect(tauriPage.getByText("Reset all shortcuts", { exact: true })).toBeVisible();
   await tauriPage.click('[aria-label="Close settings"]');
