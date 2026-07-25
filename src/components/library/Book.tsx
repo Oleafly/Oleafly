@@ -183,7 +183,7 @@ export function Book({
           onClick={onStarToggle}
           aria-label={starred ? "Remove from favorites" : "Add to favorites"}
           className={cn(
-            "absolute right-2 top-2 z-20 flex size-7 items-center justify-center rounded-md bg-black/15 backdrop-blur-sm transition-all hover:bg-black/25",
+            "absolute right-2 top-2 z-20 flex size-7 items-center justify-center rounded-md transition-all group-hover:bg-black/15 group-hover:backdrop-blur-sm hover:bg-black/25",
             starred ? "opacity-100" : "opacity-0 group-hover:opacity-100"
           )}
           style={{ color: starred ? "#f59e0b" : ink }}

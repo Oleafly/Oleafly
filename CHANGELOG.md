@@ -7,8 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.6] - 2026-07-24
+
 ### Added
 
+- Renamed the LaTeX Tools gallery to Oleafly Tools and moved the Conference
+  Deadlines board into it as a full page instead of a separate dock modal,
+  with matching search-omnibar commands ("Open Oleafly Tools", "Open
+  Conference Deadlines") and slash-command typeahead suggestions.
+- Added example BibTeX snippets (a valid entry, a missing required field,
+  duplicate citation keys) to the BibTeX Validator to show what it checks.
 - Renamed the app from OpenLeaf to Oleafly across the UI, packages, Rust
   crate, environment variables, and data directory.
 - Added a PDF-to-LaTeX import pipeline: upload a PDF or DOCX (via a bundled
@@ -46,6 +54,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Applied the app's editor syntax theme to the BibTeX Validator, LaTeX Table
+  Generator, PDF-to-LaTeX source viewer, and Equation Preview, including real
+  CodeMirror syntax highlighting (not just background/foreground colors) for
+  the Equation Preview and BibTeX Validator input panels.
+- Reordered the home dock so New Project is the first action, gave tool
+  gallery cards a primary-color hover outline, and gave the BibTeX
+  Validator, LaTeX Table Generator, and Lab Search pages the same icon-and-
+  subtitle header as Equation Preview.
+- Project lists in the search omnibar and Library now show a bookmark
+  indicator, sort by most recently updated, and label dates as "Updated"
+  instead of a bare date.
+- Polished the Deadlines page: consistent border radius on filters, a blue
+  hover state on the Website link, and a wider, centered search bar.
+- Made the Equation Preview's Inline mode visually distinct from Display
+  mode by rendering it within example sentence text, and removed a stale
+  "render" status bar since equations already render live.
 - Tectonic now continues past compile errors and reports all of them
   instead of stopping at the first, matching how Overleaf surfaces errors.
 - Compile errors now show as red gutter markers at the actual source line,
@@ -64,6 +88,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed the project bookmark button's background pill staying permanently
+  visible on bookmarked projects instead of only showing on cover hover.
 - Fixed compile-error line numbers not being extracted from Tectonic's V2
   CLI output, which broke the editor's gutter markers and "go to code
   location" button.
