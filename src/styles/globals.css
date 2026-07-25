@@ -691,3 +691,13 @@ select:focus-visible {
 .react-flow.dark .react-flow__controls-button:hover { background: #283445; }
 .react-flow__minimap { background: #ffffff; }
 .react-flow.dark .react-flow__minimap { background: #0d1117; }
+
+/* Tour welcome step: react-joyride positions "center" tooltips via an inline
+   transform computed from the viewport center, which we can't reach through
+   props since the library owns that wrapper. Pin it near the top instead so
+   it sits above the welcome paragraph rather than over it. */
+.react-joyride__floater:has([data-tour-tooltip="home-overview"]) {
+  top: 10vh !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+}

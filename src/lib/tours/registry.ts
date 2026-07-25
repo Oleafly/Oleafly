@@ -15,7 +15,7 @@ export interface TourStepDefinition {
   title: string;
   content: string;
   waitForTarget?: boolean;
-  placement?: "center" | "top" | "bottom" | "left" | "right" | "bottom-end";
+  placement?: "center" | "auto" | "top" | "bottom" | "left" | "right" | "bottom-end";
 }
 
 export interface TourDefinition {
@@ -58,7 +58,10 @@ export const tourRegistry = {
         title: "Find your starting point",
         content: "Browse categories, search by name, and narrow templates by compiler or offline availability.",
         waitForTarget: true,
-        placement: "center",
+        // The target is the whole near-fullscreen dialog, so a fixed side
+        // clips on smaller windows; "auto" picks whichever edge has room
+        // and always renders outside the dialog instead of on top of it.
+        placement: "auto",
       },
       {
         id: "home-template",
@@ -69,10 +72,10 @@ export const tourRegistry = {
         title: "Choose a template",
         content: "Select any real template to continue. Its files will become your new project.",
         waitForTarget: true,
-        // Same large target as home-gallery: "left"/"top" had nowhere to
-        // fit against a near-fullscreen modal and clipped above the
-        // viewport. Center like home-gallery does for the same target.
-        placement: "center",
+        // Same large target as home-gallery: "center" rendered the tooltip
+        // directly over the template grid, blocking clicks on the cards
+        // underneath it. "auto" keeps it outside the dialog's bounds.
+        placement: "auto",
       },
       {
         id: "home-name",
