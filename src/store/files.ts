@@ -52,8 +52,6 @@ interface FilesStore {
   // files and diffs interleaved by the order they were opened.
   tabOrder: Record<string, number>;
   activePath: string | null;
-  diagramCanvasView: boolean;
-  toggleDiagramCanvasView: () => void;
   projects: ProjectInfo[];
   projectsLoaded: boolean;
   loading: boolean;
@@ -131,8 +129,6 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   openTabs: [],
   tabOrder: {},
   activePath: null,
-  diagramCanvasView: true,
-  toggleDiagramCanvasView: () => set((s) => ({ diagramCanvasView: !s.diagramCanvasView })),
   projects: [],
   projectsLoaded: false,
   loading: false,
@@ -167,7 +163,6 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       openTabs: [],
       tabOrder: {},
       activePath: null,
-      diagramCanvasView: true,
     });
     try {
       const meta = await getProject(id);
@@ -229,7 +224,6 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       openTabs: [],
       tabOrder: {},
       activePath: null,
-      diagramCanvasView: true,
     });
   },
 
