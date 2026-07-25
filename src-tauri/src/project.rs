@@ -1221,7 +1221,10 @@ fn extract_pandoc(
     expected: &Path,
 ) -> Result<(), String> {
     use std::io::Read;
-    const MAX_EXECUTABLE_BYTES: u64 = 100 * 1024 * 1024;
+    // The real pandoc binary is ~150-230MB uncompressed depending on platform
+    // (Windows is the largest); this just bounds a corrupted/substituted
+    // release asset from filling the disk, with headroom for pandoc growth.
+    const MAX_EXECUTABLE_BYTES: u64 = 300 * 1024 * 1024;
     let file = std::fs::File::open(archive).map_err(|e| e.to_string())?;
     if is_targz {
         let gz = flate2::read::GzDecoder::new(file);

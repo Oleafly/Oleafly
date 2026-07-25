@@ -80,6 +80,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   scroll room on one side once it overflowed its container.
 - Fixed the sidebar Help menu's "Documentation" link pointing at Overleaf's
   docs instead of Oleafly's.
+- Fixed Pandoc auto-download failing on every platform ("invalid pandoc
+  executable member"): the extracted-binary size guard was capped at 100MB,
+  smaller than the real pandoc binary everywhere (macOS ~180MB, Linux
+  ~155-165MB, Windows ~220MB).
 
 ## [0.2.6] - 2026-07-24
 
