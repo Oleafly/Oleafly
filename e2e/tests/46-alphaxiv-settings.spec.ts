@@ -18,7 +18,7 @@ test("connect, persist across reload, and disconnect an alphaXiv key", async ({ 
   // hoisted: reload(tauriPage) swaps to an entirely new window handle in this
   // bridge, so a locator captured before a reload goes stale after one.
   await openSettings(tauriPage, "integrations");
-  await tauriPage.getByRole("tab", { name: "alphaXiv" }).click();
+  await tauriPage.getByText("alphaXiv", { exact: true }).click();
   await expect(section().getByText("alphaXiv", { exact: true })).toBeVisible();
 
   await expect(tauriPage.locator('[aria-label="alphaXiv API key"]')).toBeVisible();
@@ -29,7 +29,7 @@ test("connect, persist across reload, and disconnect an alphaXiv key", async ({ 
 
   await reload(tauriPage);
   await openSettings(tauriPage, "integrations");
-  await tauriPage.getByRole("tab", { name: "alphaXiv" }).click();
+  await tauriPage.getByText("alphaXiv", { exact: true }).click();
   await expect(section().getByText("alphaXiv", { exact: true })).toBeVisible();
   await expect(section().getByText("Disconnect", { exact: true })).toBeVisible({ timeout: 10_000 });
 
@@ -56,7 +56,7 @@ test("connect, persist across reload, and disconnect an alphaXiv key", async ({ 
 
   await reload(tauriPage);
   await openSettings(tauriPage, "integrations");
-  await tauriPage.getByRole("tab", { name: "alphaXiv" }).click();
+  await tauriPage.getByText("alphaXiv", { exact: true }).click();
   await waitLong(
     tauriPage,
     `!!document.querySelector('[data-testid="alphaxiv-section"] [aria-label="alphaXiv API key"]')`,
@@ -66,7 +66,7 @@ test("connect, persist across reload, and disconnect an alphaXiv key", async ({ 
 
 test("Get an API key links point at alphaXiv's own site", async ({ tauriPage }) => {
   await openSettings(tauriPage, "integrations");
-  await tauriPage.getByRole("tab", { name: "alphaXiv" }).click();
+  await tauriPage.getByText("alphaXiv", { exact: true }).click();
   const hrefs = await tauriPage.evaluate<string[]>(
     `Array.from(document.querySelectorAll('a')).filter(a => (a.textContent || '').includes('API key page') || a.textContent === 'alphaxiv.org').map(a => a.href)`,
   );
