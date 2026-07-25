@@ -33,11 +33,8 @@ import {
   type AheadBehind,
   type GitFileChange,
 } from "@/lib/tauri";
-import { useSettingsStore } from "@/store/settings";
 import { useGitStatusStore } from "@/store/git-status";
-import { useGithubStore } from "@/store/github";
 import { Tooltip } from "@/components/ui/tooltip";
-import { Button } from "@/components/ui/button";
 import { PublishToGitHubDialog } from "@/components/integrations/PublishToGitHubDialog";
 import { cn } from "@/lib/utils";
 
@@ -58,14 +55,6 @@ export function SourceControl() {
   const projectId = useFilesStore((s) => s.projectId);
   const projectName = useFilesStore((s) => s.projectName);
   const refreshTree = useFilesStore((s) => s.refreshTree);
-  const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
-  const setSettingsInitialSection = useSettingsStore((s) => s.setSettingsInitialSection);
-  const ghStatus = useGithubStore((s) => s.status);
-  const connected = ghStatus === "connected";
-
-  useEffect(() => {
-    if (ghStatus === "unknown") void useGithubStore.getState().refresh();
-  }, [ghStatus]);
 
   const [changes, setChanges] = useState<GitFileChange[]>([]);
   const [branch, setBranch] = useState("");
@@ -339,8 +328,7 @@ export function SourceControl() {
         </Tooltip>
       </div>
 
-      {connected ? (
-        <div className="min-h-0 flex-1 overflow-auto p-2">
+      <div className="min-h-0 flex-1 overflow-auto p-2">
         {changes.length === 0 ? (
           <p className="px-2 py-8 text-center text-xs text-muted-foreground">
             No changes. Working tree is clean.
@@ -507,38 +495,6 @@ export function SourceControl() {
           )}
         </div>
       </div>
-      ) : (
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
-          <span className="flex size-12 items-center justify-center rounded-full bg-foreground text-background">
-            <Github className="size-6" />
-          </span>
-          <div className="space-y-1">
-            <div className="text-sm font-medium">Connect GitHub to continue</div>
-            <p className="mx-auto max-w-[18rem] text-xs text-muted-foreground">
-              Back up your work, sync across devices, and keep full history. Commit, push, and
-              pull live here once you&apos;re connected.
-            </p>
-          </div>
-          <Button
-            onClick={() => {
-              setSettingsInitialSection("github");
-              setSettingsOpen(true);
-            }}
-          >
-            <Github className="size-4" />
-            Connect to GitHub
-          </Button>
-          <button type="button"
-            onClick={() => {
-              setSettingsInitialSection("github");
-              setSettingsOpen(true);
-            }}
-            className="text-[11px] text-muted-foreground hover:text-foreground"
-          >
-            Use a personal access token instead
-          </button>
-        </div>
-      )}
 
       <PublishToGitHubDialog
         open={publishOpen}
