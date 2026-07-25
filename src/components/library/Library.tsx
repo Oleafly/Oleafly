@@ -562,7 +562,7 @@ export function Library() {
       </header>
 
       <div className="relative z-10 flex-1 overflow-auto p-8">
-        <div className="mx-auto max-w-4xl xl:max-w-5xl">
+        <div className="mx-auto max-w-4xl xl:max-w-5xl 2xl:max-w-7xl">
           {projects.length === 0 ? (
             // Until the first listProjects resolves we don't know whether the
             // library is empty, so don't flash the first-run welcome.
@@ -616,7 +616,7 @@ export function Library() {
               </EmptyHeader>
             </Empty>
           ) : (
-          <div className="grid grid-cols-2 gap-x-8 gap-y-14 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-16 xl:gap-y-16">
+          <div className="grid grid-cols-2 gap-x-8 gap-y-14 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-16 xl:gap-y-16 2xl:grid-cols-5">
             {visibleProjects.map((p) => (
               <ContextMenu key={p.id}>
                 <ContextMenuTrigger asChild>
@@ -626,6 +626,7 @@ export function Library() {
                       color={projectColors[p.id] ?? (p.color || DEFAULT_BOOK_COLOR)}
                       date={projectModifiedLabel(p.updated_at)}
                       engine={projectEngineLabel(p.engine, p.main_doc)}
+                      forkedFrom={p.forked_from}
                       kind={p.kind || "document"}
                       starred={favs.includes(p.id)}
                       onStarToggle={() => toggleFav(p.id)}
@@ -734,6 +735,12 @@ export function Library() {
               <dd>{projectEngineLabel(currentDetailsProject.engine, currentDetailsProject.main_doc)}</dd>
               <dt className="text-muted-foreground">Kind</dt>
               <dd className="capitalize">{currentDetailsProject.kind || "document"}</dd>
+              {currentDetailsProject.forked_from && (
+                <>
+                  <dt className="text-muted-foreground">Forked from</dt>
+                  <dd className="min-w-0 break-words">{currentDetailsProject.forked_from}</dd>
+                </>
+              )}
               <dt className="text-muted-foreground">Main document</dt>
               <dd className="min-w-0 break-all font-mono text-xs">
                 {currentDetailsProject.main_doc}
