@@ -31,7 +31,7 @@ export function GithubMenu({
   const login = user?.login ?? "GitHub";
 
   const openSettings = () => {
-    setSettingsInitialSection("github");
+    setSettingsInitialSection("integrations");
     setSettingsOpen(true);
     setOpen(false);
   };

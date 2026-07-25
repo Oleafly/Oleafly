@@ -664,7 +664,7 @@ export function TourGuide() {
       "settings-ai": "ai",
       "settings-compiler": "engine",
       "settings-downloads": "downloads",
-      "settings-github": "github",
+      "settings-integrations": "integrations",
       "settings-shortcuts": "shortcuts",
       "settings-mcp": "mcp",
       "settings-help": "help",

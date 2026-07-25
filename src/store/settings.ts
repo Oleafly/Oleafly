@@ -8,7 +8,7 @@ const SETTINGS_SECTIONS = new Set([
   "ai",
   "engine",
   "downloads",
-  "github",
+  "integrations",
   "shortcuts",
   "mcp",
   "help",

@@ -22,6 +22,7 @@ import {
 import { logError } from "@/lib/log";
 import { cn } from "@/lib/utils";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
+import { useSettingsStore } from "@/store/settings";
 
 function slug(name: string): string {
   return name
@@ -44,6 +45,8 @@ export function PublishToGitHubDialog({
   onPublished: (remoteUrl: string) => void;
 }) {
   const status = useGithubStore((s) => s.status);
+  const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
+  const setSettingsInitialSection = useSettingsStore((s) => s.setSettingsInitialSection);
   const [tab, setTab] = useState<"new" | "existing">("new");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -152,8 +155,21 @@ export function PublishToGitHubDialog({
         </div>
 
         {status !== "connected" ? (
-          <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-muted-foreground">
-            Connect GitHub first (Settings → GitHub).
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
+            <p className="text-sm text-muted-foreground">
+              Connect GitHub to publish this project.
+            </p>
+            <Button
+              className="bg-black text-white hover:bg-zinc-800"
+              onClick={() => {
+                onClose();
+                setSettingsInitialSection("integrations");
+                setSettingsOpen(true);
+              }}
+            >
+              <Github className="size-4" />
+              Connect to GitHub
+            </Button>
           </div>
         ) : (
           <>
