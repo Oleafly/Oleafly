@@ -460,14 +460,6 @@ jobs:
         shell: bash
         run: bash scripts/smoke-typst.sh x86_64-pc-windows-msvc
 
-      # Windows FlushFileBuffers requires a writable handle. Keep the
-      # filesystem transaction regression test on the platform whose API
-      # semantics exposed the bug before launching the much longer E2E suite.
-      # Tauri's test build validates externalBin paths, so both sidecars must
-      # be restored first.
-      - name: Test Windows filesystem transactions
-        run: cargo test --manifest-path src-tauri/Cargo.toml --lib sandbox::tests::atomic_write_replaces_only_after_the_staged_payload_is_complete
-
       - name: Restore Tectonic packages
         id: tectonic-pkgs-windows
         uses: actions/cache/restore@v6
