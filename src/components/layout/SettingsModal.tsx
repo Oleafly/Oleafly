@@ -14,7 +14,8 @@ import {
   ExternalLink,
   FolderOpen,
   Github,
-  Globe,
+  // Globe, (only used by the commented-out Author row)
+  GraduationCap,
   HardDriveDownload,
   Keyboard,
   LifeBuoy,
@@ -85,7 +86,7 @@ const NAV: { id: Section; label: string; icon: typeof Palette }[] = [
   { id: "data", label: "Data Storage", icon: Database },
   { id: "ai", label: "AI Assistant", icon: Sparkles },
   { id: "engine", label: "LaTeX Engine", icon: Cpu },
-  { id: "downloads", label: "Offline & Downloads", icon: HardDriveDownload },
+  { id: "downloads", label: "Downloads", icon: HardDriveDownload },
   { id: "integrations", label: "Integrations", icon: Blocks },
   { id: "shortcuts", label: "Keyboard Shortcuts", icon: Keyboard },
   { id: "mcp", label: "MCP", icon: Plug },
@@ -432,6 +433,36 @@ export function SettingsModal() {
                   </div>
                 </div>
 
+                <div className="rounded-lg border bg-background p-3">
+                  <div className="text-sm font-medium">Accent color</div>
+                  <div className="mb-2 text-xs text-muted-foreground">
+                    The app's primary highlight color (buttons, selections, cursor).
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {ACCENTS.map((a) => {
+                      const active = accentColor === a.color;
+                      return (
+                        <button type="button"
+                          key={a.id}
+                          title={a.name}
+                          onClick={() => setAccentColor(a.color)}
+                          className={cn(
+                            "flex size-8 items-center justify-center rounded-full border transition-transform hover:scale-110",
+                            active
+                              ? "border-foreground ring-1 ring-foreground/20"
+                              : "border-border"
+                          )}
+                          style={{ backgroundColor: a.color }}
+                        >
+                          {active && (
+                            <Check className="size-3.5 text-white drop-shadow" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 <ToggleRow
                   label="Dark mode"
                   desc="Switch between light and dark themes."
@@ -608,42 +639,51 @@ export function SettingsModal() {
                   checked={hoverPreview}
                   onChange={setHoverPreview}
                 />
-
-                <div className="rounded-lg border bg-background p-3">
-                  <div className="text-sm font-medium">Accent color</div>
-                  <div className="mb-2 text-xs text-muted-foreground">
-                    The app's primary highlight color (buttons, selections, cursor).
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {ACCENTS.map((a) => {
-                      const active = accentColor === a.color;
-                      return (
-                        <button type="button"
-                          key={a.id}
-                          title={a.name}
-                          onClick={() => setAccentColor(a.color)}
-                          className={cn(
-                            "flex size-8 items-center justify-center rounded-full border transition-transform hover:scale-110",
-                            active
-                              ? "border-foreground ring-1 ring-foreground/20"
-                              : "border-border"
-                          )}
-                          style={{ backgroundColor: a.color }}
-                        >
-                          {active && (
-                            <Check className="size-3.5 text-white drop-shadow" />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
               </div>
             )}
 
             {section === "general" && (
               <div className="space-y-2 [&>[role=switch]]:bg-card">
+                <ToggleRow
+                  label="Vim mode"
+                  desc="Enable Vim keybindings in the editor."
+                  checked={vim}
+                  onChange={toggleVim}
+                />
+                <ToggleRow
+                  label="Spellcheck"
+                  desc="Underline misspelled words (English, WASM Hunspell). Used when Grammar & style is off."
+                  checked={spellcheck}
+                  onChange={toggleSpellcheck}
+                />
+                <ToggleRow
+                  label="Spelling, grammar & style (Harper)"
+                  desc="Offline spelling, grammar, and style suggestions on .tex prose (not code or math), with one-click fixes."
+                  checked={harper}
+                  onChange={setHarper}
+                />
+                {harper && (
+                  <>
+                    <ToggleRow
+                      label="Regionalism suggestions"
+                      desc="Flag British vs. American usage (e.g. suggests “wrench” for “spanner”). Turn off if you use such terms as product or code names."
+                      checked={showRegionalism}
+                      onChange={setShowRegionalism}
+                    />
+                    <ToggleRow
+                      label="Word-choice suggestions"
+                      desc="Suggest alternative words (e.g. “too” vs. “to”). Turn off to keep only spelling and grammar."
+                      checked={showWordChoice}
+                      onChange={setShowWordChoice}
+                    />
+                  </>
+                )}
+                <ToggleRow
+                  label="Offline mode"
+                  desc="Compile with --only-cached; never fetch packages over the network."
+                  checked={offline}
+                  onChange={setOffline}
+                />
                 <div className="overflow-hidden rounded-lg border bg-card">
                   <div className="flex items-center gap-2 p-3">
                     <button
@@ -737,46 +777,6 @@ export function SettingsModal() {
                     </div>
                   )}
                 </div>
-                <ToggleRow
-                  label="Vim mode"
-                  desc="Enable Vim keybindings in the editor."
-                  checked={vim}
-                  onChange={toggleVim}
-                />
-                <ToggleRow
-                  label="Spellcheck"
-                  desc="Underline misspelled words (English, WASM Hunspell). Used when Grammar & style is off."
-                  checked={spellcheck}
-                  onChange={toggleSpellcheck}
-                />
-                <ToggleRow
-                  label="Spelling, grammar & style (Harper)"
-                  desc="Offline spelling, grammar, and style suggestions on .tex prose (not code or math), with one-click fixes."
-                  checked={harper}
-                  onChange={setHarper}
-                />
-                {harper && (
-                  <>
-                    <ToggleRow
-                      label="Regionalism suggestions"
-                      desc="Flag British vs. American usage (e.g. suggests “wrench” for “spanner”). Turn off if you use such terms as product or code names."
-                      checked={showRegionalism}
-                      onChange={setShowRegionalism}
-                    />
-                    <ToggleRow
-                      label="Word-choice suggestions"
-                      desc="Suggest alternative words (e.g. “too” vs. “to”). Turn off to keep only spelling and grammar."
-                      checked={showWordChoice}
-                      onChange={setShowWordChoice}
-                    />
-                  </>
-                )}
-                <ToggleRow
-                  label="Offline mode"
-                  desc="Compile with --only-cached; never fetch packages over the network."
-                  checked={offline}
-                  onChange={setOffline}
-                />
                 <div className="mt-2 flex items-center justify-between gap-3 border-t pt-4">
                   <div>
                     <p className="text-sm">Reset settings</p>
@@ -982,8 +982,9 @@ function DictionarySection() {
 
 
 const REPO_URL = "https://github.com/Oleafly/Oleafly";
-const AUTHOR_URL = "https://prajwal.me";
+// const AUTHOR_URL = "https://prajwal.me";
 const DOCS_URL = "https://oleafly.com/docs/";
+const LEARN_URL = "https://oleafly.com/learn/";
 const ISSUES_URL = `${REPO_URL}/issues/new`;
 const CHANGELOG_URL = `${REPO_URL}/blob/main/CHANGELOG.md`;
 const LICENSE_URL = `${REPO_URL}/blob/main/LICENSE`;
@@ -1029,6 +1030,7 @@ function HelpSection() {
   }[] = [
     { icon: Compass, label: "Start tour", onClick: beginTour, external: false },
     { icon: BookOpen, label: "Documentation", onClick: ext(DOCS_URL), external: true },
+    { icon: GraduationCap, label: "Learn", onClick: ext(LEARN_URL), external: true },
     { icon: Bug, label: "Report a bug", onClick: ext(ISSUES_URL), external: true },
     {
       icon: TriangleAlert,
@@ -1051,7 +1053,7 @@ function HelpSection() {
         />
         <h3 className="pr-20 text-sm font-semibold">About Oleafly</h3>
         <p className="mt-1 text-xs text-muted-foreground">
-          A local-first, cross-platform LaTeX &amp; resume authoring app.
+          A local-first workspace for research papers, technical documents, and resumes.
           {version && <span className="ml-1">· v{version}</span>}
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -1062,11 +1064,12 @@ function HelpSection() {
             className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
           >
             {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-            {copied ? "Copied" : "Copy version & system info"}
+            {copied ? "Copied" : "Copy Info"}
           </button>
         </div>
       </div>
 
+      {/* Author row removed for now; will re-add later.
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Author</p>
@@ -1079,18 +1082,18 @@ function HelpSection() {
             <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
           </button>
         </div>
-
-        <div className="space-y-1">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Project</p>
-          <button type="button"
-            onClick={ext(REPO_URL)}
-            className="flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left text-sm hover:bg-accent"
-          >
-            <Github className="size-4 shrink-0 text-muted-foreground" />
-            <span className="flex-1 truncate">GitHub</span>
-            <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
-          </button>
-        </div>
+      </div>
+      */}
+      <div className="space-y-1">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Project</p>
+        <button type="button"
+          onClick={ext(REPO_URL)}
+          className="flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left text-sm hover:bg-accent"
+        >
+          <Github className="size-4 shrink-0 text-muted-foreground" />
+          <span className="flex-1 truncate">GitHub</span>
+          <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
+        </button>
       </div>
 
       <div className="space-y-1">

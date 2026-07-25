@@ -1,7 +1,7 @@
 [package]
 name = "oleafly"
-version = "0.2.6"
-description = "Oleafly - local-first LaTeX & resume authoring"
+version = "0.2.7"
+description = "Oleafly - a local-first workspace for research papers, technical documents, and resumes"
 authors = ["Prajwal S Venkateshmurthy and contributors"]
 license = "AGPL-3.0-or-later"
 edition = "2021"

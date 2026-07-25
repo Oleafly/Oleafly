@@ -277,7 +277,7 @@ export const tourRegistry = {
         target: '[data-tour="settings-downloads"]',
         spotlightTarget: '[data-tour="settings-downloads-panel"]',
         kind: "transition",
-        title: "Offline and downloads",
+        title: "Downloads",
         content: "Manage packages and resources available for offline work.",
         waitForTarget: true,
         placement: "left",

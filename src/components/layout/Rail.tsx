@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   BookOpen,
   CircleHelp,
+  GraduationCap,
   Mail,
   Moon,
   PanelLeft,
@@ -143,8 +144,11 @@ export function Rail() {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent side="right" align="end" className="w-44">
-              <DropdownMenuItem onSelect={() => void open("https://www.overleaf.com/learn")}>
+              <DropdownMenuItem onSelect={() => void open("https://oleafly.com/docs/")}>
                 <BookOpen className="size-4 text-muted-foreground" /> Documentation
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => void open("https://oleafly.com/learn/")}>
+                <GraduationCap className="size-4 text-muted-foreground" /> Learn
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setAboutOpen(true)}>
                 <Mail className="size-4 text-muted-foreground" /> Contact us

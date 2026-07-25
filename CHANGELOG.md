@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   raw code.
 - Added export history entries for DOCX/HTML/Markdown/text/PPTX/EPUB
   exports, matching what PDF exports already recorded.
+- Added a "Learn" link (oleafly.com/learn) alongside Documentation in the
+  Help menu and Settings → Help & About.
 
 ### Changed
 
@@ -39,6 +41,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Code/Visual pattern for other project kinds.
 - Widened the default diagram connector stroke and the project grid/filters
   layout on large screens.
+- Updated the app's tagline to "A local-first workspace for research
+  papers, technical documents, and resumes" throughout the UI and package
+  metadata, reflecting the research tooling added this cycle (alphaXiv,
+  Zotero, conference deadlines, academic lab search).
+- Renamed Settings' "Offline & Downloads" section to "Downloads" and moved
+  "Enable tour guides" to the bottom of General settings; reordered
+  Appearance settings so Accent color follows Background pattern.
+- Renamed "Copy version & system info" to "Copy Info" in Settings → Help &
+  About.
 
 ### Fixed
 
@@ -48,6 +59,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed diagram connector arrows rendering hidden behind grey group
   containers, and loaded `lmodern` in compiled diagrams so fonts better
   match the canvas preview.
+- Used a clean curved connector for the positional-encoding node in the
+  default diagram template instead of a short zigzagging orthogonal route.
 - Fixed document exports (DOCX/HTML/etc.) failing silently against a stale
   system Pandoc install instead of auto-downloading a supported version.
 - Fixed a crash where Harper's WebAssembly spellchecker couldn't initialize
@@ -62,6 +75,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed a race where the PDF preview's one-time auto-fit-to-height could
   fire after the user had already zoomed, silently overwriting their zoom
   level.
+- Fixed the PDF preview being unable to scroll fully left at high zoom
+  (single- and two-page layouts): centered flex/grid content only granted
+  scroll room on one side once it overflowed its container.
+- Fixed the sidebar Help menu's "Documentation" link pointing at Overleaf's
+  docs instead of Oleafly's.
 
 ## [0.2.6] - 2026-07-24
 
