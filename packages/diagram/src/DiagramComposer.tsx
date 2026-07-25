@@ -188,14 +188,14 @@ function starterModel(): DiagramModel {
   const edges = [
     link(encInputs, encEmbed),
     link(encEmbed, encPlusCircle),
-    link(encPosCircle, encPlusCircle, { sourceHandle: "r", targetHandle: "l" }),
+    link(encPosCircle, encPlusCircle, { routing: "curved", sourceHandle: "r", targetHandle: "l" }),
     link(encPlusCircle, encMHA),
     link(encMHA, encAddNorm1),
     link(encAddNorm1, encFF),
     link(encFF, encAddNorm2),
     link(decOutputs, decEmbed),
     link(decEmbed, decPlusCircle),
-    link(decPosCircle, decPlusCircle, { sourceHandle: "l", targetHandle: "r" }),
+    link(decPosCircle, decPlusCircle, { routing: "curved", sourceHandle: "l", targetHandle: "r" }),
     link(decPlusCircle, decMaskedMHA),
     link(decMaskedMHA, decAddNorm1),
     link(decAddNorm1, decMHA),
@@ -905,7 +905,7 @@ export function DiagramComposer({
         </div>
 
         {showPreview && (
-          <div className="flex min-h-0 min-w-0 flex-col">
+          <div data-tour="diagram-preview-panel" className="flex min-h-0 min-w-0 flex-col">
             <div className="flex min-h-[34px] shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b bg-sidebar px-3 py-1">
               <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Preview</span>
               {previewOpts}

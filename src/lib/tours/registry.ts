@@ -464,6 +464,7 @@ export const tourRegistry = {
       {
         id: "diagram-preview",
         target: '[data-tour="diagram-preview-affordance"]',
+        spotlightTarget: '[data-tour="diagram-preview-panel"]',
         kind: "informational",
         title: "Compiled preview",
         content: "Compile opens a preview beside the editor with scale and background controls.",
