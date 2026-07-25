@@ -1,6 +1,6 @@
 import { EditorView } from "@codemirror/view";
 import { EditorSelection } from "@codemirror/state";
-import { undo, redo } from "@codemirror/commands";
+import { isolateHistory, undo, redo } from "@codemirror/commands";
 import { openSearchPanel } from "@codemirror/search";
 
 let view: EditorView | null = null;
@@ -95,6 +95,7 @@ export function insertAtCursor(text: string) {
   v.dispatch({
     changes: { from: sel.from, to: sel.to, insert: text },
     selection: { anchor: sel.from + text.length },
+    annotations: isolateHistory.of("full"),
   });
   v.focus();
 }
@@ -109,6 +110,7 @@ export function replaceRange(from: number, to: number, text: string) {
   v.dispatch({
     changes: { from: a, to: b, insert: text },
     selection: { anchor: a + text.length },
+    annotations: isolateHistory.of("full"),
   });
   v.focus();
 }
@@ -128,6 +130,7 @@ export function wrapSelection(before: string, after: string) {
       anchor: sel.from + before.length,
       head: sel.to + before.length,
     },
+    annotations: isolateHistory.of("full"),
   });
   v.focus();
 }
@@ -139,6 +142,7 @@ export function insertTemplate(template: string, selStart: number, selEnd: numbe
   v.dispatch({
     changes: { from: sel.from, to: sel.to, insert: template },
     selection: { anchor: sel.from + selStart, head: sel.from + selEnd },
+    annotations: isolateHistory.of("full"),
   });
   v.focus();
 }

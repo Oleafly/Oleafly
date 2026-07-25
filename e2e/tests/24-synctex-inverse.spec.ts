@@ -411,7 +411,14 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
     5_000,
   );
   await tauriPage.waitForFunction(
-    `document.querySelector('[data-page="1"]')?.dataset.pdfRasterScale === "1"`,
+    `(() => {
+      const trigger = document.querySelector('[aria-label="Zoom 100 percent"]');
+      const page = document.querySelector('[data-page="1"]');
+      if (!(page instanceof HTMLElement) || !trigger) return false;
+      return page.style.getPropertyValue('--scale-factor') === '1'
+        && Math.abs(page.getBoundingClientRect().width - 612) <= 0.01
+        && page.dataset.pdfRasterScale === "1";
+    })()`,
     15_000,
   );
 
@@ -705,6 +712,22 @@ test("superseded PDF work cannot restore stale text after a document switch", as
 }) => {
   test.setTimeout(180_000);
   await openOrCreateE2eDoc(tauriPage);
+  // A slow open-project compile must not replace the deterministic fixtures
+  // while this test is measuring PDF lifecycle cancellation.
+  await tauriPage.waitForFunction(
+    `import("/src/store/compile.ts").then(({ useCompileStore }) => {
+      const state = useCompileStore.getState();
+      return state.status === "success" && state.phase === "idle" && !!state.pdfBytes;
+    })`,
+    90_000,
+  );
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  await tauriPage.waitForFunction(
+    `import("/src/store/compile.ts").then(({ useCompileStore }) =>
+      useCompileStore.getState().status !== "compiling"
+    )`,
+    90_000,
+  );
   const oldPdf = await makeSwitchFixture("STALE DOCUMENT", 12);
   const newPdf = await makeSwitchFixture("CURRENT DOCUMENT", 1);
   const oldExpression = setPreviewPdfExpression(oldPdf);
@@ -716,12 +739,27 @@ test("superseded PDF work cannot restore stale text after a document switch", as
     await ${newExpression};
     return true;
   })()`);
-  await tauriPage.waitForFunction(
-    `Array.from(document.querySelectorAll('.textLayer')).some(
-      (layer) => layer.textContent?.includes('CURRENT DOCUMENT')
-    )`,
-    30_000,
-  );
+  try {
+    await tauriPage.waitForFunction(
+      `Array.from(document.querySelectorAll('.textLayer')).some(
+        (layer) => layer.textContent?.includes('CURRENT DOCUMENT')
+      )`,
+      60_000,
+    );
+  } catch (error) {
+    const diagnostic = await tauriPage.evaluate<string>(`JSON.stringify((() => {
+      const renderer = document.querySelector('[data-testid="pdf-renderer"]');
+      return {
+        rendererState: renderer?.getAttribute('data-pdf-state'),
+        rendererError: renderer?.getAttribute('data-pdf-error'),
+        pageCount: document.querySelectorAll('[data-page]').length,
+        textLayers: Array.from(document.querySelectorAll('.textLayer')).map(
+          (layer) => layer.textContent || ''
+        ),
+      };
+    })())`);
+    throw new Error(`${String(error)}; switched PDF diagnostic: ${diagnostic}`);
+  }
   await new Promise((resolve) => setTimeout(resolve, 500));
 
   const text = await tauriPage.evaluate<string>(

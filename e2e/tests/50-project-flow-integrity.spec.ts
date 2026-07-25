@@ -34,6 +34,7 @@ test("toolbar edits flush on immediate close, survive reopen, and compile", asyn
     `!(document.querySelector('.cm-content')?.textContent || '').includes('image-filename')`,
     5_000,
   );
+  await waitEditorContains(tauriPage, "\\href{url}{link text}", 5_000);
 
   // Put a final edit and the Home click in the same webview task. This proves
   // project close drains the dirty buffer rather than winning a race against
