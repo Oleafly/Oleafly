@@ -27,7 +27,7 @@ localeaf/
 
 The frontend is a pnpm workspace: feature engines live in `packages/*` behind
 injected ports, and the app shell wires them together. Read
-[Frontend architecture](architecture.md) before touching `packages/`: it
+[Architecture](architecture.md) before touching `packages/`: it
 covers the port pattern, the contribution registry, and the alias wiring.
 
 ## Prerequisites
@@ -138,7 +138,7 @@ engine capability becomes truthful. Do not add extension-based UI exceptions.
 - Add a document engine → implement `DocumentEngine` in `src-tauri/src/document_engine.rs`, expose truthful capabilities, add a checksum-pinned sidecar fetch/smoke path, then consume the descriptor in UI controls.
 - Add a project template → drop a folder with a `template.json` manifest into `src-tauri/resources/templates/` (engine-general template metadata remains planned work).
 - Add a tool for the AI → `packages/ai-tools/src/tools.ts`; app services it needs go through `AiToolsHost` (adapter in `src/lib/ai-tools.ts`).
-- Add a rail tab / palette or omnibar command / AI toolset → register it in `src/contributions/` (see [Frontend architecture](architecture.md#the-contribution-registry)).
+- Add a rail tab / palette or omnibar command / AI toolset → register it in `src/contributions/` (see [Architecture](architecture.md#the-contribution-registry)).
 
 ## Sync and GitHub internals
 

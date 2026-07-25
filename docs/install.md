@@ -19,10 +19,9 @@ That's the whole install. Open the app and you're in. No account, no sign-in.
 
 ## First launch
 
-Oleafly 0.2.5 is an unsigned developer beta. The apps are not code-signed or
-notarized, so operating systems can warn or block them. Download artifacts only
-from the official releases page and verify published checksums before opening
-them.
+Current preview builds are not code-signed or notarized, so operating systems
+can warn or block them. Download artifacts only from the official releases page
+and verify published checksums before opening them.
 
 **macOS.** Double-clicking may say *"Oleafly is damaged and can't be opened"* or
 *"can't be opened because Apple cannot check it"*. Download it again from the
