@@ -6,6 +6,10 @@ import { buildLatexTable, resizeTable, type TableAlign } from "@/lib/latex-tools
 import { toast } from "@/lib/toast";
 import { useSettingsStore } from "@/store/settings";
 
+function alignToCss(align: TableAlign | undefined): "left" | "center" | "right" {
+  return align === "l" ? "left" : align === "r" ? "right" : "center";
+}
+
 export function TableGeneratorPanel() {
   const editorTheme = useSettingsStore((s) => s.editorTheme);
   const [rows, setRows] = useState(3);
@@ -137,8 +141,51 @@ export function TableGeneratorPanel() {
           className="mt-4 max-w-sm"
         />
       </div>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex items-center justify-between border-b px-4 py-2 text-xs font-medium text-muted-foreground">
+      <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
+        <div className="border-b px-4 py-2 text-xs font-medium text-muted-foreground">
+          Preview
+        </div>
+        <div className="overflow-x-auto p-4">
+          {caption && (
+            <p className="mb-2 text-center text-xs font-medium">{caption}</p>
+          )}
+          <table className="w-full border-collapse text-sm">
+            {headerRow && (
+              <thead>
+                <tr className="border-b-2 border-foreground">
+                  {cells[0]?.map((v, ci) => (
+                    <th
+                      // biome-ignore lint/suspicious/noArrayIndexKey: columns are positionally stable within a render
+                      key={`preview-head-${ci}`}
+                      className="px-3 py-1.5 font-semibold"
+                      style={{ textAlign: alignToCss(aligns[ci]) }}
+                    >
+                      {v}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+            )}
+            <tbody>
+              {(headerRow ? cells.slice(1) : cells).map((r, ri) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: rows are positionally stable within a render
+                <tr key={`preview-row-${ri}-${r.length}`} className="border-b border-border/60">
+                  {r.map((v, ci) => (
+                    <td
+                      // biome-ignore lint/suspicious/noArrayIndexKey: columns are positionally stable within a render
+                      key={`preview-cell-${ri}-${ci}`}
+                      className="px-3 py-1.5"
+                      style={{ textAlign: alignToCss(aligns[ci]) }}
+                    >
+                      {v}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="flex items-center justify-between border-y px-4 py-2 text-xs font-medium text-muted-foreground">
           <span>LaTeX output</span>
           <Button
             variant="ghost"
@@ -153,7 +200,7 @@ export function TableGeneratorPanel() {
         </div>
         <pre
           data-editor-theme={editorTheme}
-          className="min-h-0 flex-1 overflow-auto p-4 font-mono text-xs"
+          className="overflow-auto p-4 font-mono text-xs"
           style={{
             backgroundColor: "var(--cm-editor-bg, var(--background))",
             color: "var(--cm-editor-fg, var(--foreground))",
