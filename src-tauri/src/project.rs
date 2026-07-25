@@ -883,6 +883,24 @@ pub fn export_pdf(
     Ok(())
 }
 
+// `--embed-resources` requires pandoc 2.19+.
+fn pandoc_version_supported(version_stdout: &[u8]) -> bool {
+    let Some(first_line) = String::from_utf8_lossy(version_stdout)
+        .lines()
+        .next()
+        .map(str::to_string)
+    else {
+        return false;
+    };
+    let Some(version) = first_line.split_whitespace().nth(1) else {
+        return false;
+    };
+    let mut parts = version.split('.').filter_map(|p| p.parse::<u32>().ok());
+    let major = parts.next().unwrap_or(0);
+    let minor = parts.next().unwrap_or(0);
+    major > 2 || (major == 2 && minor >= 19)
+}
+
 /// Locate a usable `pandoc` binary. macOS/Linux GUI apps launch with a minimal
 /// PATH that usually excludes Homebrew and conda, so if it isn't on PATH we also
 /// probe common install locations before giving up.
@@ -894,7 +912,7 @@ pub(crate) fn find_pandoc() -> Option<String> {
             .no_console()
             .arg("--version")
             .output()
-            .map(|o| o.status.success())
+            .map(|o| o.status.success() && pandoc_version_supported(&o.stdout))
             .unwrap_or(false)
     };
     let mut candidates: Vec<PathBuf> = Vec::new();
@@ -944,6 +962,7 @@ pub(crate) fn find_pandoc() -> Option<String> {
 /// pandoc isn't installed.
 #[tauri::command]
 pub async fn export_document(
+    app: tauri::AppHandle,
     project_id: String,
     main_doc: String,
     format: String,
@@ -959,12 +978,13 @@ pub async fn export_document(
     let writer = validate_conversion_export(&meta, &format, &dest)?;
     let root = paths::project_dir(&project_id)?;
     resolve(&project_id, &main_doc)?;
-    let pandoc = tauri::async_runtime::spawn_blocking(find_pandoc)
+    let found = tauri::async_runtime::spawn_blocking(find_pandoc)
         .await
-        .map_err(|e| e.to_string())?
-        .ok_or_else(|| {
-            "pandoc is not installed. Install pandoc to export documents.".to_string()
-        })?;
+        .map_err(|e| e.to_string())?;
+    let pandoc = match found {
+        Some(p) => p,
+        None => download_pandoc_impl(app, &state.pandoc_install_lock).await?,
+    };
     let mut args = vec![format!("--to={writer}"), "-o".into(), dest.clone()];
     match format.as_str() {
         "pptx" => {
@@ -1241,11 +1261,18 @@ pub async fn download_pandoc(
     app: tauri::AppHandle,
     state: tauri::State<'_, crate::state::AppState>,
 ) -> Result<String, String> {
+    download_pandoc_impl(app, &state.pandoc_install_lock).await
+}
+
+async fn download_pandoc_impl(
+    app: tauri::AppHandle,
+    install_lock: &tauri::async_runtime::Mutex<()>,
+) -> Result<String, String> {
     use futures_util::StreamExt;
     use std::io::Write as _;
     use tauri::Emitter;
 
-    let _install = state.pandoc_install_lock.lock().await;
+    let _install = install_lock.lock().await;
     if let Some(p) = find_pandoc() {
         return Ok(p);
     }
@@ -1776,8 +1803,9 @@ mod tests {
     use super::{
         create_diagram_project, create_image_project_in, create_markdown_project_in,
         create_project_transaction, create_typst_project_in, engine_for_main_document,
-        extract_pandoc, get_or_create_scratch_project, list_projects, pandoc_asset_for, read_meta,
-        rel_slash, validate_conversion_export, ProjectMeta, SCRATCH_PROJECT_ID,
+        extract_pandoc, get_or_create_scratch_project, list_projects, pandoc_asset_for,
+        pandoc_version_supported, read_meta, rel_slash, validate_conversion_export, ProjectMeta,
+        SCRATCH_PROJECT_ID,
     };
     use std::io::Write;
     use std::path::Path;
@@ -2104,5 +2132,15 @@ mod tests {
         assert_eq!(main_tex, source);
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn pandoc_version_gate_accepts_2_19_plus_rejects_older() {
+        assert!(pandoc_version_supported(b"pandoc 2.19\nfeatures: ..."));
+        assert!(pandoc_version_supported(b"pandoc 3.9.0.2\nfeatures: ..."));
+        assert!(!pandoc_version_supported(b"pandoc 2.12\nfeatures: ..."));
+        assert!(!pandoc_version_supported(b"pandoc 1.19.2.1\nfeatures: ..."));
+        assert!(!pandoc_version_supported(b""));
+        assert!(!pandoc_version_supported(b"not pandoc output"));
     }
 }
