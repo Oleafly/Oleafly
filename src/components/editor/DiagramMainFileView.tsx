@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import { DiagramCanvas, DiagramKitContext } from "@oleafly/diagram";
-import { parseEmbeddedModel, serializeDiagram, type DiagramModel } from "@oleafly/latex";
+import {
+  buildStandaloneDoc,
+  DIAGRAM_LIBS,
+  parseEmbeddedModel,
+  serializeDiagram,
+  type DiagramModel,
+} from "@oleafly/latex";
 import { KIT } from "@/components/diagram/diagram-kit";
 import { readFileContent, writeFileContent } from "@/lib/tauri";
 
@@ -39,7 +45,12 @@ export default function DiagramMainFileView({
 
   const onModelChange = (m: DiagramModel) => {
     setModel(m);
-    void writeFileContent(projectId, path, serializeDiagram({ ...m, background }));
+    const doc = buildStandaloneDoc({
+      code: serializeDiagram({ ...m, background }),
+      libraries: DIAGRAM_LIBS,
+      background,
+    });
+    void writeFileContent(projectId, path, doc);
   };
 
   if (notDrawable) {
