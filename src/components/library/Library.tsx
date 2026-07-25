@@ -390,7 +390,7 @@ export function Library() {
                   ariaLabel="Advanced project filters"
                   align="right"
                   closeOnClick={false}
-                  className="flex w-80 flex-col gap-3 p-3"
+                  className="flex w-96 flex-col gap-3 p-3"
                   trigger={
                     <span className="relative inline-flex">
                       <SlidersHorizontal className="size-4" />
