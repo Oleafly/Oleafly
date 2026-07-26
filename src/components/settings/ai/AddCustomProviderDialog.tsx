@@ -66,7 +66,7 @@ export function AddCustomProviderDialog({ open, onOpenChange, onSubmit }: AddCus
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
+      <DialogContent className="z-[120]" overlayClassName="z-[120]">
         <DialogHeader>
           <DialogTitle>Add custom provider</DialogTitle>
           <DialogDescription>
