@@ -71,17 +71,56 @@ async function currentEditorSelection(
   );
 }
 
+function codeIntelligenceButtonExpression(label: string) {
+  return `Array.from(
+    document.querySelectorAll('[data-radix-popper-content-wrapper] button')
+  ).find((candidate) => {
+    if (!candidate.textContent?.trim().startsWith(${JSON.stringify(label)})) return false;
+    const style = getComputedStyle(candidate);
+    const rect = candidate.getBoundingClientRect();
+    return style.display !== 'none'
+      && style.visibility !== 'hidden'
+      && rect.width > 0
+      && rect.height > 0;
+  })`;
+}
+
 async function openCodeIntelligence(page: TauriPage) {
-  const trigger = page.locator('[aria-label="Code intelligence"]');
-  if (await trigger.isVisible().catch(() => false)) {
-    await trigger.click();
-  } else {
-    await page.click('[aria-label="More formatting options"]');
-    await page.click('[aria-label="Code intelligence"]');
+  const actionExpression = codeIntelligenceButtonExpression("Go to definition");
+  for (let attempt = 0; attempt < 5; attempt++) {
+    if (await page.evaluate<boolean>(`!!(${actionExpression})`)) return;
+    await clickToolbarControl(page, '[aria-label="Code intelligence"]', "Code");
+    const opened = await page
+      .waitForFunction(`!!(${actionExpression})`, 3_000)
+      .then(() => true)
+      .catch(() => false);
+    if (opened) return;
   }
-  await expect(page.getByText("Go to definition", { exact: true })).toBeVisible({
-    timeout: 5_000,
-  });
+  throw new Error("Code intelligence menu did not remain open");
+}
+
+// Find and click in one browser task; the menu can remount between a wait
+// that sees the action and a separate locator click (same race class the
+// shared clickToolbarControl fixed).
+async function clickCodeIntelligenceAction(page: TauriPage, label: string) {
+  const buttonExpression = codeIntelligenceButtonExpression(label);
+  const atomicClick = () =>
+    page.evaluate<boolean>(`(() => {
+      const button = ${buttonExpression};
+      if (!(button instanceof HTMLElement)) return false;
+      button.click();
+      return true;
+    })()`);
+  for (let attempt = 0; attempt < 5; attempt++) {
+    if (await atomicClick()) return;
+    await clickToolbarControl(page, '[aria-label="Code intelligence"]', "Code");
+    await page
+      .waitForFunction(`!!(${buttonExpression})`, 3_000)
+      .catch(() => undefined);
+  }
+  if (!(await atomicClick())) {
+    throw new Error(`${label} code-intelligence action never became clickable`);
+  }
 }
 
 async function selectWysiwygText(page: TauriPage, text: string) {
@@ -338,7 +377,7 @@ Resolved reference: \ref{sec:toolbar-original}.
 
   await caretIn(tauriPage, "sec:toolbar-original", 2);
   await openCodeIntelligence(tauriPage);
-  await tauriPage.getByText("Go to definition", { exact: true }).click();
+  await clickCodeIntelligenceAction(tauriPage, "Go to definition");
   await tauriPage.waitForFunction(
     `(document.querySelector(".cm-activeLine")?.textContent ?? "")
       .includes("label{sec:toolbar-original}")`,
@@ -347,14 +386,14 @@ Resolved reference: \ref{sec:toolbar-original}.
 
   await caretIn(tauriPage, "sec:toolbar-original", 2);
   await openCodeIntelligence(tauriPage);
-  await tauriPage.getByText("Find references", { exact: true }).click();
+  await clickCodeIntelligenceAction(tauriPage, "Find references");
   await expect(
     tauriPage.locator('[aria-label="References (Shift-F12)"]'),
   ).toBeVisible({ timeout: 10_000 });
 
   await caretIn(tauriPage, "sec:toolbar-original", 2);
   await openCodeIntelligence(tauriPage);
-  await tauriPage.getByText("Rename symbol", { exact: true }).click();
+  await clickCodeIntelligenceAction(tauriPage, "Rename symbol");
   const dialog = tauriPage.locator(
     '[role="dialog"][aria-labelledby="rename-title"]',
   );

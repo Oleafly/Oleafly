@@ -240,7 +240,26 @@ async function insertSymbol(page: Page, category: string, name: string) {
     await page.press("body", "Escape").catch(() => {});
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
-  throw new Error(`${name} never opened from the toolbar symbol picker`);
+  const pickerState = await page
+    .evaluate<string>(
+      `(() => {
+        const triggers = Array.from(
+          document.querySelectorAll('button[aria-label="Insert symbol"]')
+        ).map((trigger) => trigger.getAttribute('aria-expanded'));
+        const portals = Array.from(
+          document.querySelectorAll('[data-radix-popper-content-wrapper]')
+        ).map((portal) => ({
+          state: portal.querySelector('[data-state]')?.getAttribute('data-state') ?? null,
+          hasSearch: !!portal.querySelector('input[aria-label="Search symbols"]'),
+          text: (portal.textContent || '').slice(0, 40),
+        }));
+        return JSON.stringify({ triggers, portals });
+      })()`,
+    )
+    .catch(() => "unavailable");
+  throw new Error(
+    `${name} never opened from the toolbar symbol picker; state=${pickerState}`,
+  );
 }
 
 function allItems(probe: E2ePdfProbe): E2ePdfTextItem[] {
@@ -816,9 +835,9 @@ $SYMBOLANCHOR$
         (useCompileStore.getState().log || "")
           .split("\\n")
           .filter((line) =>
-            /missing character|warning|error|font|\\bmap\\b/i.test(line),
+            /missing character|undefined|substitut|not found|unavailable|invalid|error|warning/i.test(line),
           )
-          .slice(0, 60)
+          .slice(-60)
           .join("\\n"),
       )`,
     );
