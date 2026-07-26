@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { ChevronDown, ChevronRight, Sparkles } from "lucide-react";
-import { getConfig, setConfig, type AppConfig, type StoredModel } from "@/lib/tauri";
+import { getConfig, setConfig, type AppConfig, type CustomProvider, type StoredModel } from "@/lib/tauri";
 import { defaultModel, discoveryFor, fetchProviderModels, getProvider } from "@/lib/ai-providers";
 import { enabledModels, mergeFetchedModels, seedProviderModels } from "@/lib/ai-model-state";
 import { listOllamaModels, DEFAULT_OLLAMA_HOST } from "@/lib/ollama";
@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { ProvidersTab, type ProviderStatus } from "./ai/ProvidersTab";
 import { InstructionsTab } from "./ai/InstructionsTab";
 import { PersonasTab } from "./ai/PersonasTab";
+import { AddCustomProviderDialog, type AddCustomProviderInput } from "./ai/AddCustomProviderDialog";
 
 type AITab = "providers" | "instructions" | "personas";
 
@@ -46,6 +47,7 @@ export function AISection() {
   const [sysPromptSaved, setSysPromptSaved] = useState(false);
   // Unset falls back to "open if active", so the in-use provider stays expanded.
   const [openProviders, setOpenProviders] = useState<Record<string, boolean>>({});
+  const [customDialogOpen, setCustomDialogOpen] = useState(false);
   const [ollama, setOllama] = useState<{
     status: "idle" | "loading" | "ok" | "down";
     models: string[];
@@ -121,6 +123,10 @@ export function AISection() {
 
   // Pastes are validated by fetching the provider's live model list before
   // the key is trusted; an unreachable or rejected key never gets persisted.
+  // Custom providers are the exception: most third-party bases are
+  // OpenAI-compatible, so discovery is attempted with that shape, but a
+  // failure there only skips auto-discovered models - the key still saves
+  // and the user can add models manually via ModelManager.
   const validateAndSave = async (id: string) => {
     const value = (keys[id] ?? "").trim();
     if (!value) return;
@@ -129,15 +135,18 @@ export function AISection() {
     setStatus((s) => ({ ...s, [id]: "validating" }));
     setErrorMsg((m) => ({ ...m, [id]: "" }));
     try {
+      const custom = cfg.ai_custom_providers.find((c) => c.id === id);
       const provider = getProvider(id);
+      const baseURL = custom?.baseURL ?? provider?.baseURL;
+      const discovery = custom ? { kind: "openai" as const, modelsPath: "/models" } : discoveryFor(id);
       const res = await fetchProviderModels({
         providerId: id,
-        baseURL: provider?.baseURL,
+        baseURL,
         key: value,
-        discovery: discoveryFor(id),
+        discovery,
         seed: provider?.models ?? [],
       });
-      if (!res.ok) {
+      if (!res.ok && !custom) {
         setStatus((s) => ({ ...s, [id]: "error" }));
         setErrorMsg((m) => ({
           ...m,
@@ -147,7 +156,7 @@ export function AISection() {
       }
       const nextKeys = { ...keys, [id]: value };
       const existingModels = cfg.ai_provider_models[id] ?? seedProviderModels(id);
-      const mergedModels = mergeFetchedModels(existingModels, res.models);
+      const mergedModels = res.ok ? mergeFetchedModels(existingModels, res.models) : existingModels;
       const wasActive = Boolean(cfg.ai_provider);
       const next: AppConfig = {
         ...cfg,
@@ -162,11 +171,85 @@ export function AISection() {
       setStatus((s) => ({ ...s, [id]: "valid" }));
       setMsg({
         ok: true,
-        text: `${getProvider(id)?.name ?? id} connected.`,
+        text:
+          custom && !res.ok
+            ? `${custom.name} key saved. Add models manually below.`
+            : `${provider?.name ?? custom?.name ?? id} connected.`,
       });
     } catch (e) {
       setStatus((s) => ({ ...s, [id]: "error" }));
       setErrorMsg((m) => ({ ...m, [id]: String(e) }));
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  // Adds a user-defined OpenAI-compatible provider. Discovery is attempted
+  // but never blocks the save - a custom base that doesn't expose /models
+  // just starts with an empty model list for manual entry.
+  const addCustomProvider = async (
+    input: AddCustomProviderInput
+  ): Promise<{ ok: boolean; message?: string }> => {
+    const { id, name, apiKey } = input;
+    const baseURL = input.baseURL.replace(/\/+$/, "");
+    if (getProvider(id) || cfg.ai_custom_providers.some((c) => c.id === id)) {
+      return { ok: false, message: "That provider ID is already in use." };
+    }
+    let models: StoredModel[] = [];
+    const res = await fetchProviderModels({
+      providerId: id,
+      baseURL,
+      key: apiKey,
+      discovery: { kind: "openai", modelsPath: "/models" },
+      seed: [],
+    });
+    if (res.ok) {
+      models = res.models.map((m) => ({ id: m.id, name: m.name, enabled: true, source: "fetched" as const }));
+    }
+    const customProvider: CustomProvider = { id, name, baseURL, keyOptional: !apiKey };
+    const nextKeys = apiKey ? { ...cfg.ai_keys, [id]: apiKey } : cfg.ai_keys;
+    const next: AppConfig = {
+      ...cfg,
+      ai_custom_providers: [...cfg.ai_custom_providers, customProvider],
+      ai_provider_models: { ...cfg.ai_provider_models, [id]: models },
+      ai_keys: nextKeys,
+    };
+    try {
+      await persist(next);
+      if (apiKey) {
+        setKeys((k) => ({ ...k, [id]: apiKey }));
+        setSavedKeys((k) => ({ ...k, [id]: apiKey }));
+      }
+      setOpenProviders((m) => ({ ...m, [id]: true }));
+      setMsg({ ok: true, text: `${name} added.` });
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, message: String(e) };
+    }
+  };
+
+  const deleteCustomProvider = async (id: string) => {
+    setSaving(id);
+    setMsg(null);
+    try {
+      const nextKeys = { ...keys };
+      delete nextKeys[id];
+      const nextModels = { ...cfg.ai_provider_models };
+      delete nextModels[id];
+      const wasActive = cfg.ai_provider === id;
+      const next: AppConfig = {
+        ...cfg,
+        ai_custom_providers: cfg.ai_custom_providers.filter((c) => c.id !== id),
+        ai_provider_models: nextModels,
+        ai_keys: nextKeys,
+        ai_provider: wasActive ? "" : cfg.ai_provider,
+        ai_model: wasActive ? "" : cfg.ai_model,
+      };
+      await persist(next);
+      setKeys(nextKeys);
+      setSavedKeys(nextKeys);
+    } catch (e) {
+      setMsg({ ok: false, text: String(e) });
     } finally {
       setSaving(null);
     }
@@ -295,8 +378,16 @@ export function AISection() {
           changeModel={changeModel}
           deleteKey={deleteKey}
           persistModels={persistModels}
+          onAddCustomProvider={() => setCustomDialogOpen(true)}
+          deleteCustomProvider={deleteCustomProvider}
         />
       )}
+
+      <AddCustomProviderDialog
+        open={customDialogOpen}
+        onOpenChange={setCustomDialogOpen}
+        onSubmit={addCustomProvider}
+      />
 
       {tab === "instructions" && (
         <InstructionsTab

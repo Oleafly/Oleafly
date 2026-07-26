@@ -1,5 +1,5 @@
 import { useState, type Dispatch, type SetStateAction } from "react";
-import { Check, ChevronDown, ChevronRight, ExternalLink, Loader2, RefreshCw, Trash2 } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, ExternalLink, Loader2, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { AppConfig, StoredModel } from "@/lib/tauri";
-import { PROVIDERS, defaultModel } from "@/lib/ai-providers";
+import { defaultModel, mergeCustomProviders } from "@/lib/ai-providers";
 import { enabledModels, seedProviderModels } from "@/lib/ai-model-state";
 import { DEFAULT_OLLAMA_HOST } from "@/lib/ollama";
 import { ModelManager } from "./ModelManager";
@@ -171,6 +171,8 @@ export interface ProvidersTabProps {
   changeModel: (modelId: string) => Promise<void>;
   deleteKey: (id: string) => Promise<void>;
   persistModels: (id: string, next: StoredModel[]) => Promise<void>;
+  onAddCustomProvider: () => void;
+  deleteCustomProvider: (id: string) => Promise<void>;
 }
 
 export function ProvidersTab({
@@ -191,8 +193,11 @@ export function ProvidersTab({
   changeModel,
   deleteKey,
   persistModels,
+  onAddCustomProvider,
+  deleteCustomProvider,
 }: ProvidersTabProps) {
   const activeProvider = cfg.ai_provider;
+  const allProviders = mergeCustomProviders(cfg.ai_custom_providers);
 
   return (
     <div className="space-y-4">
@@ -203,13 +208,17 @@ export function ProvidersTab({
       </p>
 
       <div className="space-y-2.5">
-        {PROVIDERS.map((p) => {
+        {allProviders.map((p) => {
+          const isCustom = cfg.ai_custom_providers.some((c) => c.id === p.id);
           const value = keys[p.id] ?? "";
           const saved = savedKeys[p.id] ?? "";
           const dirty = value.trim().length > 0 && value !== saved;
           const hasSaved = saved.length > 0;
+          // A custom provider is usable the moment it's added, key or not
+          // (self-hosted bases may not require one).
+          const isConfigured = hasSaved || isCustom;
           const isSelected = activeProvider === p.id;
-          const isActive = isSelected && hasSaved;
+          const isActive = isSelected && isConfigured;
           // Settings never recommends or expands a provider implicitly. The
           // user chooses which card to inspect, including the active provider.
           const isOpen = openProviders[p.id] ?? false;
@@ -240,7 +249,7 @@ export function ProvidersTab({
                   <span className="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
                     <Check className="size-3" /> Active
                   </span>
-                ) : hasSaved ? (
+                ) : isConfigured ? (
                   <span className="mt-0.5 inline-flex shrink-0 items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                     Connected
                   </span>
@@ -321,7 +330,7 @@ export function ProvidersTab({
                         ) : null}
                         Save
                       </Button>
-                    ) : hasSaved && !isActive ? (
+                    ) : isConfigured && !isActive ? (
                       <Button
                         size="sm"
                         variant="secondary"
@@ -331,7 +340,18 @@ export function ProvidersTab({
                         Activate
                       </Button>
                     ) : null}
-                    {hasSaved && (
+                    {isCustom ? (
+                      <button type="button"
+                        data-testid={`ai-provider-delete-${p.id}`}
+                        aria-label={`Remove ${p.name}`}
+                        title="Remove custom provider"
+                        disabled={saving === p.id}
+                        onClick={() => void deleteCustomProvider(p.id)}
+                        className="flex size-8 shrink-0 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    ) : hasSaved ? (
                       <button type="button"
                         data-testid={`ai-provider-delete-${p.id}`}
                         aria-label={`Delete ${p.name} key`}
@@ -342,7 +362,7 @@ export function ProvidersTab({
                       >
                         <Trash2 className="size-3.5" />
                       </button>
-                    )}
+                    ) : null}
                   </div>
                   {(() => {
                     const providerStatus = status[p.id] ?? "idle";
@@ -366,7 +386,7 @@ export function ProvidersTab({
                       </p>
                     );
                   })()}
-                  {hasSaved && (
+                  {isConfigured && (
                     <ModelManager
                       providerId={p.id}
                       models={cfg.ai_provider_models[p.id] ?? seedProviderModels(p.id)}
@@ -380,6 +400,16 @@ export function ProvidersTab({
           );
         })}
       </div>
+
+      <Button
+        variant="outline"
+        size="sm"
+        data-testid="ai-add-custom-provider"
+        onClick={onAddCustomProvider}
+      >
+        <Plus className="size-3.5" />
+        Add custom provider
+      </Button>
     </div>
   );
 }

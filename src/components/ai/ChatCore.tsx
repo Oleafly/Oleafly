@@ -35,7 +35,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useFilesStore } from "@/store/files";
-import { getConfig, setConfig, gitLog, gitAutoCommit, type AppConfig, type StoredModel } from "@/lib/tauri";
+import { getConfig, setConfig, gitLog, gitAutoCommit, type AppConfig, type CustomProvider, type StoredModel } from "@/lib/tauri";
 import { listOllamaModels } from "@/lib/ollama";
 import { registry, type AiToolsetContribution } from "@oleafly/registry";
 import type { ToolApprovalRequest } from "@/lib/ai-tools";
@@ -46,7 +46,7 @@ import { ToolConfirm, isAutoApprovable } from "@/components/ai/ToolConfirm";
 import { AttachmentChips, type PendingAttachment } from "@/components/ai/AttachmentChips";
 import { ModelSelector } from "@/components/ai/ModelSelector";
 import { toast } from "@/lib/toast";
-import { buildModel as buildAiModel, defaultModel, PROVIDERS } from "@/lib/ai-providers";
+import { buildModel as buildAiModel, defaultModel, mergeCustomProviders } from "@/lib/ai-providers";
 import { enabledModels } from "@/lib/ai-model-state";
 import { useSettingsStore } from "@/store/settings";
 import { useChatsStore, type ChatMessage, type StoredChat } from "@/store/chats";
@@ -206,6 +206,9 @@ export function ChatCore() {
   // Per-provider enable/disable/custom model state from Settings; falls back
   // to the static catalog for providers that haven't been touched there yet.
   const [providerModelsMap, setProviderModelsMap] = useState<Record<string, StoredModel[]>>({});
+  // User-defined providers from Settings, so they appear in the switcher and
+  // so chat-time model construction can thread their base URL through.
+  const [customProviders, setCustomProviders] = useState<CustomProvider[]>([]);
   const [ollamaModels, setOllamaModels] = useState<string[]>([]);
   const [thinkingText, setThinkingText] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -367,10 +370,17 @@ export function ChatCore() {
         if (cfg.ai_api_key && !keys[saved]) keys[saved] = cfg.ai_api_key;
         setKeysMap(keys);
         setProviderModelsMap(cfg.ai_provider_models ?? {});
+        const customs = cfg.ai_custom_providers ?? [];
+        setCustomProviders(customs);
         // Use the saved provider if it has a key; otherwise fall back to the
         // first configured one (e.g. the saved provider's key was removed).
+        // A custom provider with keyOptional counts as configured with no key.
+        const keyOptionalIds = customs.filter((c) => c.keyOptional).map((c) => c.id);
         const configured = Object.keys(keys).filter((k) => (keys[k] ?? "").trim());
-        const provider = (keys[saved] ?? "").trim() ? saved : configured[0] ?? saved;
+        const provider =
+          (keys[saved] ?? "").trim() || keyOptionalIds.includes(saved)
+            ? saved
+            : configured[0] ?? saved;
         setProvider(provider);
         setApiKey(keys[provider] || "");
         setModel(
@@ -426,10 +436,13 @@ export function ChatCore() {
     [keysMap]
   );
 
-  // Providers the user has set up (a non-empty key/host), in catalog order.
-  const configuredProviders = PROVIDERS.filter(
-    (p) => (keysMap[p.id] ?? "").trim().length > 0
-  );
+  // Providers the user has set up (a non-empty key/host, or a custom
+  // provider with an optional key), in catalog order.
+  const allProviders = mergeCustomProviders(customProviders);
+  const configuredProviders = allProviders.filter((p) => {
+    if ((keysMap[p.id] ?? "").trim().length > 0) return true;
+    return Boolean(customProviders.find((c) => c.id === p.id)?.keyOptional);
+  });
   const modelGroups = configuredProviders.map((configuredProvider) => {
     const storedModels = providerModelsMap[configuredProvider.id];
     const catalogModels = storedModels
@@ -962,7 +975,7 @@ ${sandboxedCustom}`;
             case "error":
               errorMsg = formatError(
                 part.error,
-                PROVIDERS.find((p) => p.id === provider)?.name
+                allProviders.find((p) => p.id === provider)?.name
               );
               errorRetryable = isRetryable(part.error);
               break;
@@ -1021,7 +1034,8 @@ ${sandboxedCustom}`;
           }
         }
 
-        const modelInstance = buildAiModel(provider, model, apiKey);
+        const customBaseURL = customProviders.find((c) => c.id === provider)?.baseURL;
+        const modelInstance = buildAiModel(provider, model, apiKey, customBaseURL);
         const tools = resolveChatTools(registry.aiToolsets, figure ? "figure" : "chat", {
           confirm,
           onImage: (d: string) => pendingImagesRef.current.push(d),
@@ -1136,7 +1150,7 @@ ${sandboxedCustom}`;
           content: (m.content ? `${m.content}\n\n` : "") + note,
         }));
       } else {
-        const errMsg = formatError(e, PROVIDERS.find((p) => p.id === provider)?.name);
+        const errMsg = formatError(e, allProviders.find((p) => p.id === provider)?.name);
         updateRunLast((m) => ({
           ...m,
           content: errMsg.includes("NoOutputGenerated")
@@ -1173,7 +1187,7 @@ ${sandboxedCustom}`;
         }
       }
     }
-  }, [messages, streaming, apiKey, provider, model, projectId, projectName, currentHead, figureMode, figureModeAvailable, engineLoaded, documentEngine, projectKind, openAISettings, flushStreamPatches, updateLast]);
+  }, [messages, streaming, apiKey, provider, model, customProviders, projectId, projectName, currentHead, figureMode, figureModeAvailable, engineLoaded, documentEngine, projectKind, openAISettings, flushStreamPatches, updateLast]);
 
   useEffect(() => {
     const onSelectionAction = (e: Event) => {

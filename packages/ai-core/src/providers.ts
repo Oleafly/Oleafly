@@ -173,7 +173,12 @@ export function credentialMeta(providerId: string): { label: string; placeholder
   return { label: "API key", placeholder: "sk-…" };
 }
 
-export function buildModel(provider: string, model: string, credential: string) {
+export function buildModel(
+  provider: string,
+  model: string,
+  credential: string,
+  baseURLOverride?: string
+) {
   if (provider === "anthropic") {
     return createAnthropic({ apiKey: credential })(model);
   }
@@ -197,6 +202,16 @@ export function buildModel(provider: string, model: string, credential: string) 
   if (provider === "google") {
     return createGoogleGenerativeAI({ apiKey: credential })(model);
   }
+  // Anything not in the static catalog is a user-defined custom provider.
+  // Most self-hosted / third-party bases are OpenAI-compatible, so route
+  // those through the same reasoning-aware provider used above.
+  if (!PROVIDER_BY_ID[provider] && baseURLOverride) {
+    return createOpenAICompatible({
+      name: provider,
+      baseURL: baseURLOverride,
+      apiKey: credential,
+    }).chatModel(model);
+  }
   const baseURL = getProvider(provider)?.baseURL;
   return createOpenAI({
     apiKey: credential,
@@ -204,11 +219,30 @@ export function buildModel(provider: string, model: string, credential: string) 
   }).chat(model);
 }
 
+export interface CustomProviderLike {
+  id: string;
+  name: string;
+  baseURL: string;
+  keyOptional?: boolean;
+}
+
+export function mergeCustomProviders(customs: CustomProviderLike[]): AIProvider[] {
+  const extra: AIProvider[] = customs.map((c) => ({
+    id: c.id,
+    name: c.name,
+    blurb: "Custom provider.",
+    baseURL: c.baseURL,
+    models: [],
+  }));
+  return [...PROVIDERS, ...extra];
+}
+
 export interface AIConfigLike {
   ai_provider?: string;
   ai_model?: string;
   ai_api_key?: string;
   ai_keys?: Record<string, string>;
+  ai_custom_providers?: CustomProviderLike[];
 }
 
 export function pickActiveProvider(cfg: AIConfigLike): {
@@ -219,8 +253,17 @@ export function pickActiveProvider(cfg: AIConfigLike): {
   const saved = cfg.ai_provider || "openai";
   const keys = { ...(cfg.ai_keys ?? {}) };
   if (cfg.ai_api_key && !keys[saved]) keys[saved] = cfg.ai_api_key;
-  const configured = Object.keys(keys).filter((k) => (keys[k] ?? "").trim());
-  const providerId = (keys[saved] ?? "").trim() ? saved : configured[0] ?? saved;
+  // A custom provider with keyOptional is "configured" just by existing, even
+  // before any key/host value has been typed (e.g. an unauthenticated local
+  // server).
+  const keyOptionalIds = (cfg.ai_custom_providers ?? [])
+    .filter((c) => c.keyOptional)
+    .map((c) => c.id);
+  const configured = [...new Set([...Object.keys(keys), ...keyOptionalIds])].filter(
+    (k) => (keys[k] ?? "").trim() || keyOptionalIds.includes(k)
+  );
+  const providerId =
+    (keys[saved] ?? "").trim() || keyOptionalIds.includes(saved) ? saved : configured[0] ?? saved;
   const credential = keys[providerId] ?? "";
   const modelId =
     providerId === saved && cfg.ai_model ? cfg.ai_model : defaultModel(providerId);
@@ -228,7 +271,9 @@ export function pickActiveProvider(cfg: AIConfigLike): {
 }
 
 export function hasConfiguredProvider(cfg: AIConfigLike): boolean {
-  return pickActiveProvider(cfg).credential.trim().length > 0;
+  const { providerId, credential } = pickActiveProvider(cfg);
+  if (credential.trim().length > 0) return true;
+  return Boolean(cfg.ai_custom_providers?.find((c) => c.id === providerId)?.keyOptional);
 }
 
 export function resolveActiveModel(cfg: AIConfigLike): {
@@ -240,5 +285,11 @@ export function resolveActiveModel(cfg: AIConfigLike): {
   const { providerId, modelId, credential } = pickActiveProvider(cfg);
   const label =
     getProvider(providerId)?.models.find((m) => m.id === modelId)?.name ?? modelId;
-  return { model: buildModel(providerId, modelId, credential), providerId, modelId, label };
+  const customBaseURL = cfg.ai_custom_providers?.find((c) => c.id === providerId)?.baseURL;
+  return {
+    model: buildModel(providerId, modelId, credential, customBaseURL),
+    providerId,
+    modelId,
+    label,
+  };
 }
