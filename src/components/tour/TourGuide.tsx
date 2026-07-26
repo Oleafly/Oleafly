@@ -108,13 +108,13 @@ function TourTooltip(props: TooltipRenderProps) {
       {definition.id === "home-gallery" ? (
         <svg
           aria-hidden
-          className="pointer-events-none absolute left-[62%] top-[calc(100%+8px)] h-32 w-44 overflow-visible text-primary"
-          viewBox="0 0 176 128"
+          className="pointer-events-none absolute left-1/2 top-[calc(100%+8px)] h-24 w-12 -translate-x-1/2 overflow-visible text-primary"
+          viewBox="0 0 48 96"
           preserveAspectRatio="none"
         >
           <title>Hand-drawn arrow pointing to the template gallery</title>
           <path
-            d="M8 4 C48 18, 27 64, 78 77 C111 86, 128 103, 157 113"
+            d="M24 4 C26 28, 22 58, 24 86"
             fill="none"
             stroke="currentColor"
             strokeWidth="4"
@@ -122,7 +122,7 @@ function TourTooltip(props: TooltipRenderProps) {
             strokeLinejoin="round"
           />
           <path
-            d="M137 96 L159 114 L132 120 M139 99 L157 113"
+            d="M12 72 L24 88 L36 70"
             fill="none"
             stroke="currentColor"
             strokeWidth="4"
