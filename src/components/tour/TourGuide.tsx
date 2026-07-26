@@ -889,6 +889,14 @@ export function TourGuide() {
   }, [activeTourId]);
 
   useEffect(() => {
+    if (!activeTourId) return;
+    document.body.dataset.tourActive = "1";
+    return () => {
+      delete document.body.dataset.tourActive;
+    };
+  }, [activeTourId]);
+
+  useEffect(() => {
     if (!activeTourId || !activeStep) return;
     const suppress = (event: KeyboardEvent) => {
       if (quitConfirmOpenRef.current) return;

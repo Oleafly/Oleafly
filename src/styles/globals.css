@@ -719,3 +719,7 @@ select:focus-visible {
     transform: scale(1);
   }
 }
+
+body[data-tour-active] [data-tour-hide] {
+  display: none;
+}

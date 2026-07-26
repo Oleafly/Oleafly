@@ -424,6 +424,7 @@ export function NewProjectDialog({
                 variant="ghostPrimary"
                 size="sm"
                 data-testid="generate-template-with-ai"
+                data-tour-hide
                 onClick={onGenerateWithAi}
               >
                 <Sparkles className="size-3.5" /> Generate a template with AI
