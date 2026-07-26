@@ -211,7 +211,7 @@ export function ProvidersTab({
         panel.
       </p>
 
-      <div className="space-y-2.5">
+      <div className="space-y-2.5" data-tour="ai-settings-providers">
         {allProviders.map((p) => {
           const isCustom = cfg.ai_custom_providers.some((c) => c.id === p.id);
           const value = keys[p.id] ?? "";
@@ -406,7 +406,7 @@ export function ProvidersTab({
         })}
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex justify-end" data-tour="ai-settings-custom-provider">
         <Button data-testid="ai-add-custom-provider" onClick={onAddCustomProvider}>
           <Plus className="size-4" />
           Add custom provider

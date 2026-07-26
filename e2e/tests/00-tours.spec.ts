@@ -415,3 +415,47 @@ test("AI and Diagram tours select their eligible context without sending or comp
   await expect(tauriPage.locator('[data-tour="diagram-composer"]')).toBeVisible();
   await tauriPage.getByText("Skip", { exact: true }).click();
 });
+
+test("AI settings tour walks the tabs with keyboard navigation and Escape confirm", async ({
+  tauriPage,
+}) => {
+  await loadTours(tauriPage, { "ai-settings": "pending" });
+  await openSettings(tauriPage, "ai");
+  const title = () => tauriPage.locator("#react-joyride-portal h2");
+  await expect(title()).toHaveText("AI Assistant settings", { timeout: 30_000 });
+
+  await pressGlobal(tauriPage, "ArrowRight");
+  await expect(title()).toHaveText("Connect providers", { timeout: 10_000 });
+  await pressGlobal(tauriPage, "ArrowLeft");
+  await expect(title()).toHaveText("AI Assistant settings", { timeout: 10_000 });
+  await pressGlobal(tauriPage, "ArrowRight");
+  await expect(title()).toHaveText("Connect providers", { timeout: 10_000 });
+  await pressGlobal(tauriPage, "ArrowRight");
+  await expect(title()).toHaveText("Bring your own endpoint", { timeout: 10_000 });
+
+  await pressGlobal(tauriPage, "ArrowRight");
+  await expect(title()).toHaveText("Instructions", { timeout: 10_000 });
+  await pressGlobal(tauriPage, "ArrowRight");
+  await expect(title()).toHaveText("Instructions");
+
+  const instructionsTab = tauriPage.locator('[data-tour="ai-settings-tab-instructions"]');
+  await instructionsTab.focus();
+  await instructionsTab.press("Enter");
+  await expect(title()).toHaveText("Default model", { timeout: 15_000 });
+
+  await pressGlobal(tauriPage, "Escape");
+  await expect(tauriPage.getByText("Quit the tour?")).toBeVisible({ timeout: 10_000 });
+  await tauriPage.getByText("Cancel", { exact: true }).click();
+  await expect(tauriPage.getByText("Quit the tour?")).toBeHidden();
+  await expect(title()).toHaveText("Default model");
+
+  await pressGlobal(tauriPage, "Escape");
+  await expect(tauriPage.getByText("Quit the tour?")).toBeVisible({ timeout: 10_000 });
+  await tauriPage.getByText("Quit tour", { exact: true }).click();
+  await expect(tauriPage.getByText("Quit the tour?")).toBeHidden();
+  await tauriPage.waitForFunction(
+    `!document.querySelector("#react-joyride-portal h2")`,
+    10_000,
+  );
+  await tauriPage.click('[aria-label="Close settings"]');
+});

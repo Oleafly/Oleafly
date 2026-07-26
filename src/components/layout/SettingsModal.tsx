@@ -110,6 +110,7 @@ const TOUR_LABELS = {
   home: "Home and project creation",
   workspace: "Project workspace",
   settings: "Settings",
+  "ai-settings": "AI Assistant settings",
   ai: "AI Assistant",
   diagram: "Diagram Composer",
 } as const;

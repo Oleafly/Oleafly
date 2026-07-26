@@ -57,7 +57,7 @@ export function InstructionsTab({
           Used whenever you start a new chat. You can still switch models for an individual
           conversation from the chat panel.
         </p>
-        <div data-testid="ai-default-model">
+        <div data-testid="ai-default-model" data-tour="ai-default-model">
           <ModelSelector
             providerId={cfg.ai_provider || "openai"}
             modelId={cfg.ai_model || ""}
@@ -71,7 +71,7 @@ export function InstructionsTab({
         </div>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-2" data-tour="ai-instructions">
         <p className="font-medium">Custom instructions</p>
         <p className="text-xs text-muted-foreground">
           Added to every AI request as your personal style and preferences. The

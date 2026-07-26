@@ -348,14 +348,22 @@ export function AISection() {
   return (
     <div className="space-y-4 text-sm">
       <Tabs value={tab} onValueChange={(v) => setTab(v as AITab)} className="space-y-4">
-        <TabsList>
+        <TabsList data-tour="ai-settings-tabs">
           <TabsTrigger value="providers" data-testid="ai-settings-tab-providers">
             Providers and keys
           </TabsTrigger>
-          <TabsTrigger value="instructions" data-testid="ai-settings-tab-instructions">
+          <TabsTrigger
+            value="instructions"
+            data-testid="ai-settings-tab-instructions"
+            data-tour="ai-settings-tab-instructions"
+          >
             Instructions
           </TabsTrigger>
-          <TabsTrigger value="personas" data-testid="ai-settings-tab-personas">
+          <TabsTrigger
+            value="personas"
+            data-testid="ai-settings-tab-personas"
+            data-tour="ai-settings-tab-personas"
+          >
             Personas
           </TabsTrigger>
         </TabsList>

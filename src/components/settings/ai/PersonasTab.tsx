@@ -60,7 +60,7 @@ export function PersonasTab({ cfg, persist, setMsg }: PersonasTabProps) {
             default custom instructions.
           </p>
         </div>
-        <Button size="sm" data-testid="ai-create-persona" onClick={openCreate}>
+        <Button size="sm" data-testid="ai-create-persona" data-tour="ai-create-persona" onClick={openCreate}>
           <Plus className="size-3.5" />
           Create persona
         </Button>
