@@ -874,20 +874,38 @@ export async function openSettings(page: Page, section?: string) {
   }
   if (section) {
     const sel = `[data-testid="settings-section-${section}"]`;
-    // Verify the section actually activated (the nav button gets
-    // aria-current="page"); the section click can miss through the bridge, and
-    // an un-navigated modal leaves the wrong panel showing. Retry once.
-    const active = page.locator(`${sel}[aria-current="page"]`) as unknown as Parameters<
-      typeof expect
-    >[0];
-    await page.click(sel);
-    const navigated = await expect(active)
-      .toBeVisible({ timeout: 5_000 })
-      .then(() => true)
-      .catch(() => false);
-    if (!navigated) {
-      await page.click(sel).catch(() => {});
-      await expect(active).toBeVisible({ timeout: 5_000 });
+    // Probe-and-click in one browser task, then confirm the nav button gained
+    // aria-current="page". A bare bridge click blocks its full 20s timeout when
+    // the button is momentarily absent (modal still populating its nav), so
+    // driving it through evaluate with our own short retry loop — and
+    // reopening the modal if the whole nav vanished — is both faster and more
+    // robust than waiting on one click.
+    const activeExpr = `document.querySelector(${JSON.stringify(sel)})?.getAttribute("aria-current") === "page"`;
+    const deadline = Date.now() + 15_000;
+    for (let attempt = 0; ; attempt++) {
+      const state = await page.evaluate<string>(
+        `(() => {
+          if (${activeExpr}) return "active";
+          const button = document.querySelector(${JSON.stringify(sel)});
+          if (button instanceof HTMLElement) {
+            button.click();
+            return "clicked";
+          }
+          return document.querySelector('[data-testid="settings-section-appearance"]')
+            ? "waiting"
+            : "closed";
+        })()`,
+      );
+      if (state === "active") return;
+      if (state === "closed") {
+        // The modal lost its nav (or never fully opened); reopen and retry.
+        await page.click('[aria-label="Settings"]').catch(() => {});
+        await expect(appearance).toBeVisible({ timeout: 8_000 });
+      }
+      if (Date.now() > deadline) {
+        throw new Error(`settings section ${section} never activated (last: ${state})`);
+      }
+      await new Promise((resolve) => setTimeout(resolve, 200));
     }
   }
 }
