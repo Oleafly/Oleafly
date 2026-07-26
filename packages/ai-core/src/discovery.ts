@@ -33,3 +33,48 @@ export function parseGeminiModels(json: unknown): AIModel[] {
       return { id, name };
     });
 }
+
+export type FetchModelsResult =
+  | { ok: true; models: AIModel[] }
+  | { ok: false; reason: "invalid-key" | "network" | "bad-response"; message?: string };
+
+export async function fetchProviderModels(args: {
+  providerId: string;
+  baseURL?: string;
+  key: string;
+  discovery: ModelDiscovery;
+  seed: AIModel[];
+  fetchImpl?: typeof fetch;
+}): Promise<FetchModelsResult> {
+  const { discovery, key, seed } = args;
+  if (discovery.kind === "none" || discovery.kind === "ollama") {
+    return { ok: true, models: seed };
+  }
+  const doFetch = args.fetchImpl ?? fetch;
+  const base = (args.baseURL ?? "").replace(/\/+$/, "");
+  try {
+    let url: string;
+    const headers: Record<string, string> = { ...(discovery.extraHeaders ?? {}) };
+    if (discovery.kind === "gemini") {
+      url = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}`;
+    } else {
+      const path = discovery.modelsPath ?? "/models";
+      url = base ? `${base}${path}` : `https://api.openai.com/v1${path}`;
+      if (discovery.authHeader === "x-api-key") {
+        headers["x-api-key"] = key;
+        headers["anthropic-version"] = headers["anthropic-version"] ?? "2023-06-01";
+      } else {
+        headers["authorization"] = `Bearer ${key}`;
+      }
+    }
+    const resp = await doFetch(url, { headers });
+    if (resp.status === 401 || resp.status === 403) return { ok: false, reason: "invalid-key" };
+    if (!resp.ok) return { ok: false, reason: "bad-response", message: `HTTP ${resp.status}` };
+    const json = await resp.json();
+    const models = discovery.kind === "gemini" ? parseGeminiModels(json) : parseOpenAIModels(json);
+    if (models.length === 0) return { ok: false, reason: "bad-response", message: "no models returned" };
+    return { ok: true, models };
+  } catch (e) {
+    return { ok: false, reason: "network", message: e instanceof Error ? e.message : String(e) };
+  }
+}
