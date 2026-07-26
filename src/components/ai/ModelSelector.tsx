@@ -58,7 +58,9 @@ export function ModelSelector({
             className,
           )}
         >
-          <span className="flex min-w-0 items-center gap-1.5">
+          {/* !flex beats the trigger's [&>span]:line-clamp-1, which would
+              otherwise lay the logo and name out as a vertical -webkit-box. */}
+          <span className="!flex min-w-0 items-center gap-1.5">
             {providerId && <ProviderLogo providerId={providerId} size={compact ? 12 : 14} />}
             <span className="truncate">
               <SelectValue />

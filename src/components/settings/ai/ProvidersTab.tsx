@@ -120,8 +120,8 @@ function OllamaSetup({
             </SelectContent>
           </Select>
           {active && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-primary">
-              <Check className="size-3" /> Active
+            <span className="inline-flex items-center gap-1 text-[10px] font-medium leading-none text-primary">
+              <Check className="size-3 shrink-0" /> Active
             </span>
           )}
         </div>
@@ -253,8 +253,8 @@ export function ProvidersTab({
                   </div>
                 </button>
                 {isConfigured && (
-                  <span className="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
-                    <Check className="size-3" /> Connected
+                  <span className="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-1 text-[10px] font-medium leading-none text-emerald-600 dark:text-emerald-400">
+                    <Check className="size-3 shrink-0" /> Connected
                   </span>
                 )}
                 {p.signupUrl && isOpen && (
