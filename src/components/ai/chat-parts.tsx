@@ -197,7 +197,9 @@ export function ReasoningBlock({
   durationMs?: number;
 }) {
   const [userToggled, setUserToggled] = useState<boolean | null>(null);
-  const open = userToggled ?? !!active;
+  // Collapsed by default, even while streaming; the shimmer label carries the
+  // "thinking" signal and the user expands on demand.
+  const open = userToggled ?? false;
   const scrollRef = useRef<HTMLPreElement | null>(null);
 
   useEffect(() => {

@@ -1,9 +1,12 @@
-import type { Dispatch, SetStateAction } from "react";
+import { useState, type Dispatch, type SetStateAction } from "react";
+import { ChevronDown, ChevronRight, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { setConfig, type AppConfig } from "@/lib/tauri";
 import { mergeCustomProviders } from "@/lib/ai-providers";
 import { enabledModels } from "@/lib/ai-model-state";
+import { AiToolsGrid } from "@/components/ai/AiToolsList";
 import { ModelSelector, type ModelSelectorGroup } from "@/components/ai/ModelSelector";
 
 export interface InstructionsTabProps {
@@ -29,6 +32,7 @@ export function InstructionsTab({
   saveSystemPrompt,
   setMsg,
 }: InstructionsTabProps) {
+  const [toolsOpen, setToolsOpen] = useState(false);
   // Providers the user has actually connected (saved key, or a custom
   // provider with an optional key), same "configured" definition ChatCore
   // uses for its own model switcher.
@@ -81,14 +85,13 @@ export function InstructionsTab({
           className="w-full resize-y rounded-md border bg-background px-2.5 py-2 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-ring"
         />
         <div className="flex items-center gap-2">
-          <button
-            type="button"
+          <Button
+            size="sm"
             onClick={() => void saveSystemPrompt()}
             disabled={sysPrompt === (cfg.ai_system_prompt || "")}
-            className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-40"
           >
             Save instructions
-          </button>
+          </Button>
           {sysPromptSaved && (
             <span className="text-xs text-emerald-600 dark:text-emerald-400">Saved</span>
           )}
@@ -122,6 +125,32 @@ export function InstructionsTab({
             </span>
           </span>
         </label>
+      </div>
+
+      <div className="overflow-hidden rounded-lg border bg-card">
+        <button
+          type="button"
+          onClick={() => setToolsOpen((v) => !v)}
+          className="flex w-full items-center gap-1.5 p-3 text-left text-xs font-semibold hover:bg-accent/40"
+          aria-expanded={toolsOpen}
+        >
+          <Sparkles className="size-3.5 text-primary" />
+          The assistant currently supports these tools
+          {toolsOpen ? (
+            <ChevronDown className="ml-auto size-3.5 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="ml-auto size-3.5 text-muted-foreground" />
+          )}
+        </button>
+        {toolsOpen && (
+          <div className="border-t px-3 pb-3 pt-2">
+            <p className="mb-2 text-[11px] text-muted-foreground">
+              Ask it things like "fix the LaTeX errors", "add a Publications section", or "recompile
+              and check the PDF".
+            </p>
+            <AiToolsGrid columns={2} />
+          </div>
+        )}
       </div>
     </div>
   );

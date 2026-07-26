@@ -78,7 +78,7 @@ export function CreatePersonaDialog({ open, onOpenChange, onSubmit, editing }: C
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="z-[120]" overlayClassName="z-[120]">
         <DialogHeader>
           <DialogTitle>{editing ? "Edit persona" : "Create persona"}</DialogTitle>
           <DialogDescription>
@@ -106,7 +106,7 @@ export function CreatePersonaDialog({ open, onOpenChange, onSubmit, editing }: C
               <SelectTrigger id="persona-color" data-testid="persona-color">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[130]">
                 {PERSONA_COLORS.map((c) => (
                   <SelectItem key={c.key} value={c.key}>
                     <span className="flex items-center gap-2">

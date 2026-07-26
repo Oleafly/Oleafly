@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { ChevronDown, ChevronRight, Sparkles } from "lucide-react";
 import { getConfig, setConfig, type AppConfig, type CustomProvider, type StoredModel } from "@/lib/tauri";
 import { defaultModel, discoveryFor, fetchProviderModels, getProvider } from "@/lib/ai-providers";
 import { enabledModels, mergeFetchedModels, seedProviderModels } from "@/lib/ai-model-state";
 import { listOllamaModels, DEFAULT_OLLAMA_HOST } from "@/lib/ollama";
-import { AiToolsGrid } from "@/components/ai/AiToolsList";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { ProvidersTab, type ProviderStatus } from "./ai/ProvidersTab";
 import { InstructionsTab } from "./ai/InstructionsTab";
@@ -42,7 +41,6 @@ export function AISection() {
   const [status, setStatus] = useState<Record<string, ProviderStatus>>({});
   const [errorMsg, setErrorMsg] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const [toolsOpen, setToolsOpen] = useState(true);
   const [sysPrompt, setSysPrompt] = useState("");
   const [sysPromptSaved, setSysPromptSaved] = useState(false);
   // Unset falls back to "open if active", so the in-use provider stays expanded.
@@ -340,70 +338,67 @@ export function AISection() {
 
   return (
     <div className="space-y-4 text-sm">
-      <div className="flex gap-2 border-b">
-        {(["providers", "instructions", "personas"] as AITab[]).map((t) => (
-          <button
-            key={t}
-            type="button"
-            data-testid={`ai-settings-tab-${t}`}
-            onClick={() => setTab(t)}
-            className={cn(
-              "px-2.5 py-1.5 text-xs transition-colors",
-              tab === t
-                ? "border-b-2 border-primary font-semibold text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            {t === "providers" ? "Providers and keys" : t === "instructions" ? "Instructions" : "Personas"}
-          </button>
-        ))}
-      </div>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as AITab)} className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="providers" data-testid="ai-settings-tab-providers">
+            Providers and keys
+          </TabsTrigger>
+          <TabsTrigger value="instructions" data-testid="ai-settings-tab-instructions">
+            Instructions
+          </TabsTrigger>
+          <TabsTrigger value="personas" data-testid="ai-settings-tab-personas">
+            Personas
+          </TabsTrigger>
+        </TabsList>
 
-      {tab === "providers" && (
-        <ProvidersTab
-          cfg={cfg}
-          keys={keys}
-          savedKeys={savedKeys}
-          saving={saving}
-          openProviders={openProviders}
-          setOpenProviders={setOpenProviders}
-          setKeys={setKeys}
-          ollama={ollama}
-          refreshOllama={refreshOllama}
-          applyOllamaModel={applyOllamaModel}
-          validateAndSave={validateAndSave}
-          status={status}
-          errorMsg={errorMsg}
-          activate={activate}
-          changeModel={changeModel}
-          deleteKey={deleteKey}
-          persistModels={persistModels}
-          onAddCustomProvider={() => setCustomDialogOpen(true)}
-          deleteCustomProvider={deleteCustomProvider}
-        />
-      )}
+        <TabsContent value="providers">
+          <ProvidersTab
+            cfg={cfg}
+            keys={keys}
+            savedKeys={savedKeys}
+            saving={saving}
+            openProviders={openProviders}
+            setOpenProviders={setOpenProviders}
+            setKeys={setKeys}
+            ollama={ollama}
+            refreshOllama={refreshOllama}
+            applyOllamaModel={applyOllamaModel}
+            validateAndSave={validateAndSave}
+            status={status}
+            errorMsg={errorMsg}
+            activate={activate}
+            changeModel={changeModel}
+            deleteKey={deleteKey}
+            persistModels={persistModels}
+            onAddCustomProvider={() => setCustomDialogOpen(true)}
+            deleteCustomProvider={deleteCustomProvider}
+          />
+        </TabsContent>
+
+        <TabsContent value="instructions">
+          <InstructionsTab
+            cfg={cfg}
+            setCfg={setCfg}
+            savedKeys={savedKeys}
+            persist={persist}
+            sysPrompt={sysPrompt}
+            setSysPrompt={setSysPrompt}
+            sysPromptSaved={sysPromptSaved}
+            saveSystemPrompt={saveSystemPrompt}
+            setMsg={setMsg}
+          />
+        </TabsContent>
+
+        <TabsContent value="personas">
+          <PersonasTab cfg={cfg} persist={persist} setMsg={setMsg} />
+        </TabsContent>
+      </Tabs>
 
       <AddCustomProviderDialog
         open={customDialogOpen}
         onOpenChange={setCustomDialogOpen}
         onSubmit={addCustomProvider}
       />
-
-      {tab === "instructions" && (
-        <InstructionsTab
-          cfg={cfg}
-          setCfg={setCfg}
-          savedKeys={savedKeys}
-          persist={persist}
-          sysPrompt={sysPrompt}
-          setSysPrompt={setSysPrompt}
-          sysPromptSaved={sysPromptSaved}
-          saveSystemPrompt={saveSystemPrompt}
-          setMsg={setMsg}
-        />
-      )}
-
-      {tab === "personas" && <PersonasTab cfg={cfg} persist={persist} setMsg={setMsg} />}
 
       {msg && (
         <div
@@ -417,31 +412,6 @@ export function AISection() {
           {msg.text}
         </div>
       )}
-
-      <div className="overflow-hidden rounded-lg border bg-card">
-        <button type="button"
-          onClick={() => setToolsOpen((v) => !v)}
-          className="flex w-full items-center gap-1.5 p-3 text-left text-xs font-semibold hover:bg-accent/40"
-          aria-expanded={toolsOpen}
-        >
-          <Sparkles className="size-3.5 text-primary" />
-          The assistant currently supports these tools
-          {toolsOpen ? (
-            <ChevronDown className="ml-auto size-3.5 text-muted-foreground" />
-          ) : (
-            <ChevronRight className="ml-auto size-3.5 text-muted-foreground" />
-          )}
-        </button>
-        {toolsOpen && (
-          <div className="border-t px-3 pb-3 pt-2">
-            <p className="mb-2 text-[11px] text-muted-foreground">
-              Ask it things like "fix the LaTeX errors", "add a Publications section", or "recompile
-              and check the PDF".
-            </p>
-            <AiToolsGrid columns={2} />
-          </div>
-        )}
-      </div>
     </div>
   );
 }

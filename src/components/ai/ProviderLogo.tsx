@@ -9,6 +9,7 @@ import {
   Grok,
   Ollama,
   Perplexity,
+  ZAI,
 } from "@lobehub/icons";
 import type { IconType } from "@lobehub/icons";
 
@@ -27,6 +28,7 @@ const ICONS: Record<string, IconType> = {
   xai: Grok,
   ollama: Ollama,
   perplexity: Perplexity.Color,
+  zai: ZAI,
 };
 
 const MONO_COLORS = ["#e11d48", "#0ea5e9", "#16a34a", "#a855f7", "#f59e0b", "#64748b"];
