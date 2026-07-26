@@ -29,6 +29,9 @@ test("installing a pack adds its templates to the gallery", async ({ tauriPage }
   }
   await expect(downloadsNav).toBeVisible({ timeout: 10_000 });
   await openSettings(tauriPage, "downloads");
+  const templatesTab = tauriPage.locator('[data-testid="downloads-tab-templates"]');
+  await templatesTab.focus();
+  await templatesTab.press("Enter");
 
   await expect(tauriPage.locator('[data-testid="pack-row-fixture-pack"]')).toBeVisible({
     timeout: 30_000,
