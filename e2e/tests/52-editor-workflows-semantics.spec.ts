@@ -6,6 +6,7 @@ import {
   compileAndProbe,
   createBlankProject,
   editorSource,
+  insertSymbol,
   readProjectText,
   replaceEditorLiteral,
   replaceEditorSource,
@@ -522,13 +523,25 @@ WYSKEYBOARDSEMANTIC
   expect((await compileAndProbe(tauriPage)).text).toContain("note text");
 
   await tauriPage.click('[aria-label="Switch to WYSIWYG view"]');
-  await tauriPage.click('[aria-label^="Undo ("]');
-  await tauriPage.click('[aria-label="Switch to source view"]');
-  await waitForSource(
-    tauriPage,
-    (source) => !source.includes("\\footnote{note text}"),
-    "toolbar undo did not remove the WYSIWYG insertion",
-  );
+  // On a slow runner the first undo click can land before the shared history
+  // finished absorbing the WYSIWYG insertion; re-click until the source shows
+  // the insertion gone.
+  for (let attempt = 0; ; attempt++) {
+    await tauriPage.click('[aria-label^="Undo ("]');
+    await tauriPage.click('[aria-label="Switch to source view"]');
+    const undone = await waitForSource(
+      tauriPage,
+      (source) => !source.includes("\\footnote{note text}"),
+      "toolbar undo did not remove the WYSIWYG insertion",
+    )
+      .then(() => true)
+      .catch((error) => {
+        if (attempt >= 2) throw error;
+        return false;
+      });
+    if (undone) break;
+    await tauriPage.click('[aria-label="Switch to WYSIWYG view"]');
+  }
   expect((await compileAndProbe(tauriPage)).text).not.toContain("note text");
 
   await tauriPage.click('[aria-label="Switch to WYSIWYG view"]');
@@ -805,14 +818,9 @@ WYSRAWANCHOR
   await rawAction('[aria-label="Insert fraction"]', "Fraction");
 
   await atAnchor();
-  await clickToolbarControl(tauriPage, '[aria-label="Insert symbol"]', "Symbols");
-  await clickPortalButton(
-    tauriPage,
-    `candidate.textContent?.trim() === "Misc"
-      || Array.from(candidate.querySelectorAll("span")).some((s) => s.textContent?.trim() === "Misc")`,
-    "Misc",
-  );
-  await clickPortalButton(tauriPage, `candidate.getAttribute("title") === "hash"`, "hash symbol");
+  // The shared insertSymbol handles trigger toggling, stale exit-animation
+  // portals, and reopen retries (proven on CI in spec 51).
+  await insertSymbol(tauriPage, "Misc", "hash");
 
   await tauriPage.click('[aria-label="Word count"]');
   await expect(tauriPage.getByText("Words", { exact: true })).toBeVisible();

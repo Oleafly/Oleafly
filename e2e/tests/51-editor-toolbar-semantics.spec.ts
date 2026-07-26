@@ -1,10 +1,12 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { test, expect } from "../fixtures";
 import {
+  clickLiveToolbarPopoverTrigger,
   clickToolbarControl,
   compileAndProbe,
   createBlankProject,
   editorSource,
+  insertSymbol,
   readProjectText,
   replaceEditorLiteral,
   replaceEditorSelection,
@@ -49,74 +51,6 @@ async function chooseHeading(page: Page, label: string) {
   await page.getByText(label, { exact: true }).click();
 }
 
-async function clickLiveToolbarPopoverTrigger(page: Page, ariaLabel: string) {
-  const encodedLabel = JSON.stringify(ariaLabel);
-  const directSelector = `button[aria-label=${encodedLabel}].size-7`;
-  const menuSelector =
-    `[data-radix-popper-content-wrapper] [data-state="open"] ` +
-    `button[aria-label=${encodedLabel}].w-full`;
-  // Probe and click in the SAME browser task: a ResizeObserver relayout or
-  // Radix remount between a readiness probe and a separate click call leaves
-  // the click targeting a node that no longer exists (the race class
-  // clickToolbarControl in helpers.ts fixed).
-  const directClicked = await page.evaluate<boolean>(
-    `(() => {
-      const element = document.querySelector(${JSON.stringify(directSelector)});
-      if (!element) return false;
-      const rect = element.getBoundingClientRect();
-      const style = getComputedStyle(element);
-      if (
-        rect.width <= 0 ||
-        rect.height <= 0 ||
-        style.display === "none" ||
-        style.visibility === "hidden"
-      ) {
-        return false;
-      }
-      const hit = document.elementFromPoint(
-        rect.left + rect.width / 2,
-        rect.top + rect.height / 2
-      );
-      if (!hit || (hit !== element && !element.contains(hit))) return false;
-      element.click();
-      return true;
-    })()`,
-  );
-  if (directClicked) return;
-
-  const moreSelector = 'button[aria-label="More formatting options"]';
-  const moreExpanded = await page.evaluate<boolean>(
-    `document.querySelector(${JSON.stringify(moreSelector)})?.getAttribute("aria-expanded") === "true"`,
-  );
-  if (!moreExpanded) {
-    await page.click(moreSelector, { timeout: 3_000 });
-  }
-  const deadline = Date.now() + 3_000;
-  for (;;) {
-    // No elementFromPoint here: rows deep in a long overflow list sit below
-    // the popover's scrolled fold, where a hit-test fails forever even though
-    // a synthetic click works fine. Scroll the row near and click it.
-    const menuClicked = await page.evaluate<boolean>(
-      `(() => {
-        const elements = Array.from(
-          document.querySelectorAll(${JSON.stringify(menuSelector)})
-        );
-        if (elements.length !== 1) return false;
-        const element = elements[0];
-        element.scrollIntoView({ block: 'nearest' });
-        const rect = element.getBoundingClientRect();
-        if (rect.width <= 0 || rect.height <= 0) return false;
-        element.click();
-        return true;
-      })()`,
-    );
-    if (menuClicked) return;
-    if (Date.now() > deadline) {
-      throw new Error(`${ariaLabel} popover trigger never became clickable`);
-    }
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-}
 
 async function chooseList(page: Page, label: "Bulleted list" | "Numbered list") {
   for (let attempt = 0; attempt < 8; attempt++) {
@@ -182,85 +116,7 @@ async function insertTable2By2(page: Page) {
   throw new Error("2 by 2 toolbar table picker never inserted a table");
 }
 
-// A headless webview may never run Radix's exit animation, so a closed symbol
-// popover can stay mounted forever. Requiring EXACTLY one search input (as an
-// earlier version did) then fails every retry after the first slow attempt.
-// Scope every lookup to the portal that contains a search input inside an
-// open [data-state] subtree, and act on it atomically in one browser task.
-const openSymbolPortalExpression = `(() => {
-  const search = Array.from(document.querySelectorAll(
-    '[data-radix-popper-content-wrapper] input[aria-label="Search symbols"]'
-  )).find((candidate) => candidate.closest('[data-state="open"]'));
-  return search ? search.closest('[data-radix-popper-content-wrapper]') : null;
-})()`;
 
-async function insertSymbol(page: Page, category: string, name: string) {
-  for (let attempt = 0; attempt < 8; attempt++) {
-    const triggerClicked = await clickLiveToolbarPopoverTrigger(page, "Insert symbol")
-      .then(() => true)
-      .catch(() => false);
-    if (!triggerClicked) {
-      await page.press("body", "Escape").catch(() => {});
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      continue;
-    }
-    const categoryClicked = await page
-      .waitForFunction(
-        `(() => {
-          const portal = ${openSymbolPortalExpression};
-          if (!portal) return false;
-          const category = Array.from(portal.querySelectorAll('button')).find(
-            (candidate) => candidate.textContent?.trim() === ${JSON.stringify(category)}
-          );
-          if (!(category instanceof HTMLElement)) return false;
-          category.click();
-          return true;
-        })()`,
-        3_000,
-      )
-      .then(() => true)
-      .catch(() => false);
-    if (categoryClicked) {
-      const symbolClicked = await page
-        .waitForFunction(
-          `(() => {
-            const portal = ${openSymbolPortalExpression};
-            if (!portal) return false;
-            const button = portal.querySelector('button[title=${JSON.stringify(name)}]');
-            if (!(button instanceof HTMLElement)) return false;
-            button.click();
-            return true;
-          })()`,
-          3_000,
-        )
-        .then(() => true)
-        .catch(() => false);
-      if (symbolClicked) return;
-    }
-    await page.press("body", "Escape").catch(() => {});
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-  const pickerState = await page
-    .evaluate<string>(
-      `(() => {
-        const triggers = Array.from(
-          document.querySelectorAll('button[aria-label="Insert symbol"]')
-        ).map((trigger) => trigger.getAttribute('aria-expanded'));
-        const portals = Array.from(
-          document.querySelectorAll('[data-radix-popper-content-wrapper]')
-        ).map((portal) => ({
-          state: portal.querySelector('[data-state]')?.getAttribute('data-state') ?? null,
-          hasSearch: !!portal.querySelector('input[aria-label="Search symbols"]'),
-          text: (portal.textContent || '').slice(0, 40),
-        }));
-        return JSON.stringify({ triggers, portals });
-      })()`,
-    )
-    .catch(() => "unavailable");
-  throw new Error(
-    `${name} never opened from the toolbar symbol picker; state=${pickerState}`,
-  );
-}
 
 function allItems(probe: E2ePdfProbe): E2ePdfTextItem[] {
   return probe.pages.flatMap((page) => page.items);
