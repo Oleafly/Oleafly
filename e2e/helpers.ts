@@ -593,6 +593,31 @@ export async function openProject(page: Page & { getByText(t: string): { click()
   await page.click(`button[aria-label=${JSON.stringify(`Open ${name}`)}]`);
 }
 
+// Creating or clicking a file updates the tree before the editor finishes
+// switching documents, so typing right away can land in the previously active
+// document and silently leave the new file empty. Wait until the CM view holds
+// the target file's store content before typing.
+export async function waitEditorShowsFile(page: Page, path: string, timeoutMs = 15_000) {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const ready = await page.evaluate<boolean>(
+      `Promise.all([
+        import("/src/store/files.ts"),
+        import("/src/components/editor/cm/controller.ts"),
+      ]).then(([files, cm]) => {
+        const state = files.useFilesStore.getState();
+        if (state.activePath !== ${JSON.stringify(path)}) return false;
+        const view = cm.getEditorView();
+        if (!view) return false;
+        return view.state.doc.toString() === (state.files[${JSON.stringify(path)}]?.content ?? "");
+      })`,
+    );
+    if (ready) return;
+    if (Date.now() > deadline) throw new Error(`editor never showed ${path}`);
+    await new Promise((resolve) => setTimeout(resolve, 150));
+  }
+}
+
 export async function typeInEditorAtStart(page: Page, text: string) {
   const inserted = await page.evaluate<boolean>(
     `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {

@@ -3,6 +3,7 @@ import {
   openProject,
   openRailTab,
   typeInEditorAtStart,
+  waitEditorShowsFile,
   type Page,
 } from "../helpers";
 
@@ -54,32 +55,6 @@ async function pickMenuItem(
       if (done) return;
     }
     if (attempt >= 3) throw new Error(`menu item ${label} never took effect`);
-  }
-}
-
-// Creating a file refreshes the tree before the editor finishes opening it, so
-// a visible row is not proof the editor switched documents. Typing at that
-// moment lands in the previously active document and silently leaves the new
-// file empty (the exact "silent data loss" these tests exist to catch). Wait
-// until the CM view holds the file's store content before letting a test type.
-async function waitEditorShowsFile(page: Page, path: string, timeoutMs = 15_000) {
-  const deadline = Date.now() + timeoutMs;
-  for (;;) {
-    const ready = await page.evaluate<boolean>(
-      `Promise.all([
-        import("/src/store/files.ts"),
-        import("/src/components/editor/cm/controller.ts"),
-      ]).then(([files, cm]) => {
-        const state = files.useFilesStore.getState();
-        if (state.activePath !== ${JSON.stringify(path)}) return false;
-        const view = cm.getEditorView();
-        if (!view) return false;
-        return view.state.doc.toString() === (state.files[${JSON.stringify(path)}]?.content ?? "");
-      })`,
-    );
-    if (ready) return;
-    if (Date.now() > deadline) throw new Error(`editor never showed ${path}`);
-    await new Promise((r) => setTimeout(r, 150));
   }
 }
 

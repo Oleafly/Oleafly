@@ -123,6 +123,36 @@ async function clickCodeIntelligenceAction(page: TauriPage, label: string) {
   }
 }
 
+// Portal items can vanish between a wait and a separate locator click when
+// the toolbar relayouts or a stale exit-animation portal lingers in a
+// headless webview. Find and click inside the OPEN portal in one browser
+// task, retrying until the item exists.
+async function clickPortalButton(
+  page: TauriPage,
+  predicate: string,
+  description: string,
+) {
+  const clicked = await page
+    .waitForFunction(
+      `(() => {
+        const button = Array.from(
+          document.querySelectorAll('[data-radix-popper-content-wrapper] button')
+        )
+          .filter((candidate) => candidate.closest('[data-state="open"]'))
+          .find((candidate) => ${predicate});
+        if (!(button instanceof HTMLElement)) return false;
+        button.click();
+        return true;
+      })()`,
+      5_000,
+    )
+    .then(() => true)
+    .catch(() => false);
+  if (!clicked) {
+    throw new Error(`${description} portal button never became clickable`);
+  }
+}
+
 async function selectWysiwygText(page: TauriPage, text: string) {
   const selected = await page.evaluate<boolean>(
     `import("/src/components/editor/wysiwyg/controller.ts").then(({ getWysiwygEditor }) => {
@@ -560,10 +590,10 @@ WYSQUOTE
   await tauriPage.getByText("Subsubsection", { exact: true }).click();
   await selectWysiwygText(tauriPage, "WYSBULLET");
   await clickToolbarControl(tauriPage, '[aria-label="Insert list"]', "List");
-  await tauriPage.getByText("Bulleted list", { exact: true }).click();
+  await clickPortalButton(tauriPage, `candidate.textContent?.trim() === "Bulleted list"`, "Bulleted list");
   await selectWysiwygText(tauriPage, "WYSNUMBER");
   await clickToolbarControl(tauriPage, '[aria-label="Insert list"]', "List");
-  await tauriPage.getByText("Numbered list", { exact: true }).click();
+  await clickPortalButton(tauriPage, `candidate.textContent?.trim() === "Numbered list"`, "Numbered list");
   await selectWysiwygText(tauriPage, "WYSQUOTE");
   await clickToolbarControl(
     tauriPage,
@@ -672,7 +702,7 @@ WYSRAWANCHOR
       '[aria-label="Heading level"]',
       "Heading",
     );
-    await tauriPage.getByText(label, { exact: true }).click();
+    await clickPortalButton(tauriPage, `candidate.textContent?.trim() === ${JSON.stringify(label)}`, label);
   };
 
   // Insert in reverse structural order because every deterministic caret is
@@ -720,7 +750,7 @@ WYSRAWANCHOR
 
   await atAnchor();
   await clickToolbarControl(tauriPage, '[aria-label="Insert table"]', "Table");
-  await tauriPage.click('[aria-label="1 by 1 table"]');
+  await clickPortalButton(tauriPage, `candidate.getAttribute("aria-label") === "1 by 1 table"`, "1 by 1 table");
 
   await rawAction(
     '[aria-label="Insert align environment"]',
@@ -734,8 +764,8 @@ WYSRAWANCHOR
 
   await atAnchor();
   await clickToolbarControl(tauriPage, '[aria-label="Insert symbol"]', "Symbols");
-  await tauriPage.getByText("Misc", { exact: true }).click();
-  await tauriPage.click('button[title="hash"]');
+  await clickPortalButton(tauriPage, `candidate.textContent?.trim() === "Misc"`, "Misc");
+  await clickPortalButton(tauriPage, `candidate.getAttribute("title") === "hash"`, "hash symbol");
 
   await tauriPage.click('[aria-label="Word count"]');
   await expect(tauriPage.getByText("Words", { exact: true })).toBeVisible();
