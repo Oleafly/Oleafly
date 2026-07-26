@@ -590,10 +590,20 @@ WYSQUOTE
   await tauriPage.getByText("Subsubsection", { exact: true }).click();
   await selectWysiwygText(tauriPage, "WYSBULLET");
   await clickToolbarControl(tauriPage, '[aria-label="Insert list"]', "List");
-  await clickPortalButton(tauriPage, `candidate.textContent?.trim() === "Bulleted list"`, "Bulleted list");
+  await clickPortalButton(
+    tauriPage,
+    `candidate.textContent?.trim() === "Bulleted list"
+      || Array.from(candidate.querySelectorAll("span")).some((s) => s.textContent?.trim() === "Bulleted list")`,
+    "Bulleted list",
+  );
   await selectWysiwygText(tauriPage, "WYSNUMBER");
   await clickToolbarControl(tauriPage, '[aria-label="Insert list"]', "List");
-  await clickPortalButton(tauriPage, `candidate.textContent?.trim() === "Numbered list"`, "Numbered list");
+  await clickPortalButton(
+    tauriPage,
+    `candidate.textContent?.trim() === "Numbered list"
+      || Array.from(candidate.querySelectorAll("span")).some((s) => s.textContent?.trim() === "Numbered list")`,
+    "Numbered list",
+  );
   await selectWysiwygText(tauriPage, "WYSQUOTE");
   await clickToolbarControl(
     tauriPage,
@@ -702,7 +712,12 @@ WYSRAWANCHOR
       '[aria-label="Heading level"]',
       "Heading",
     );
-    await clickPortalButton(tauriPage, `candidate.textContent?.trim() === ${JSON.stringify(label)}`, label);
+    await clickPortalButton(
+      tauriPage,
+      `candidate.textContent?.trim() === ${JSON.stringify(label)}
+        || Array.from(candidate.querySelectorAll("span")).some((s) => s.textContent?.trim() === ${JSON.stringify(label)})`,
+      label,
+    );
   };
 
   // Insert in reverse structural order because every deterministic caret is
@@ -764,7 +779,12 @@ WYSRAWANCHOR
 
   await atAnchor();
   await clickToolbarControl(tauriPage, '[aria-label="Insert symbol"]', "Symbols");
-  await clickPortalButton(tauriPage, `candidate.textContent?.trim() === "Misc"`, "Misc");
+  await clickPortalButton(
+    tauriPage,
+    `candidate.textContent?.trim() === "Misc"
+      || Array.from(candidate.querySelectorAll("span")).some((s) => s.textContent?.trim() === "Misc")`,
+    "Misc",
+  );
   await clickPortalButton(tauriPage, `candidate.getAttribute("title") === "hash"`, "hash symbol");
 
   await tauriPage.click('[aria-label="Word count"]');
