@@ -576,7 +576,6 @@ function TourBackdropBlur({ target }: { target: string }) {
       mutationObserver?.disconnect();
       return true;
     };
-    setRect(null);
     connect();
     if (!element) {
       mutationObserver = new MutationObserver(connect);
@@ -594,6 +593,7 @@ function TourBackdropBlur({ target }: { target: string }) {
 
   if (!rect) return null;
 
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const blurStyle = {
     backdropFilter: "blur(4px)",
     WebkitBackdropFilter: "blur(4px)",
@@ -601,6 +601,7 @@ function TourBackdropBlur({ target }: { target: string }) {
     pointerEvents: "none" as const,
     position: "fixed" as const,
     zIndex: 109,
+    transition: reducedMotion ? undefined : "all 320ms cubic-bezier(0.4, 0, 0.2, 1)",
   };
 
   return (
@@ -1240,7 +1241,13 @@ export function TourGuide() {
           overlay: {
             transition: reducedMotion ? "none" : "opacity 180ms ease",
           },
-          spotlight: { style: { transition: reducedMotion ? "none" : undefined } },
+          spotlight: {
+            style: {
+              transition: reducedMotion
+                ? "none"
+                : "top 320ms cubic-bezier(0.4, 0, 0.2, 1), left 320ms cubic-bezier(0.4, 0, 0.2, 1), width 320ms cubic-bezier(0.4, 0, 0.2, 1), height 320ms cubic-bezier(0.4, 0, 0.2, 1), border-radius 320ms cubic-bezier(0.4, 0, 0.2, 1)",
+            },
+          },
           tooltip: { transition: reducedMotion ? "none" : "opacity 180ms ease" },
         }}
         tooltipComponent={TourTooltip}
