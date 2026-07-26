@@ -68,7 +68,10 @@ export async function reloadNativePage(page: TauriPage) {
   await mainWindow.evaluate(
     `import("/src/lib/tauri.ts").then(({ reloadViews }) => { void reloadViews(); })`,
   );
-  const deadline = Date.now() + 20_000;
+  // 60s, not 20s: a loaded CI runner (Windows especially) can take well over
+  // 20s to tear down and re-create the webview, and this fires between specs
+  // where nothing else bounds it.
+  const deadline = Date.now() + 60_000;
   while (Date.now() < deadline) {
     try {
       const reloadedWindow = await page.waitForWindow(
@@ -82,7 +85,7 @@ export async function reloadNativePage(page: TauriPage) {
     } catch {}
     await new Promise((resolve) => setTimeout(resolve, 25));
   }
-  throw new Error("main window did not finish reloading within 20 seconds");
+  throw new Error("main window did not finish reloading within 60 seconds");
 }
 
 async function ensureNativePageReady(page: TauriPage) {

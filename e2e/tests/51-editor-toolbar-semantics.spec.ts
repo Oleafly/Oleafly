@@ -781,6 +781,29 @@ $SYMBOLANCHOR$
   ]) {
     expect(compactText).toContain(token);
   }
+  // On CI the glyph set that survives extraction has differed from local with
+  // identical Tectonic binaries and fresh package caches, so a bare toContain
+  // failure hides the one fact that matters: what the PDF's math items
+  // actually contained. Dump every short item with its font identity.
+  const missingSymbols = ["α", "→", "×", "≤", "∞"].filter(
+    (symbol) => !probe.text.includes(symbol),
+  );
+  if (missingSymbols.length > 0) {
+    const shortItems = probe.pages.flatMap((page) =>
+      page.items
+        .filter((item) => item.str.trim().length > 0 && item.str.length <= 4)
+        .map(
+          (item) =>
+            `${JSON.stringify(item.str)}(${Array.from(item.str)
+              .map((ch) => ch.codePointAt(0)?.toString(16))
+              .join(",")})@${item.pdfFontName ?? item.fontFamily ?? item.fontName}`,
+        ),
+    );
+    throw new Error(
+      `symbols never surfaced in PDF text: ${missingSymbols.join(" ")}; ` +
+        `short items: ${shortItems.join(" | ")}`,
+    );
+  }
   for (const renderedSymbol of ["α", "→", "×", "≤", "∞"]) {
     expect(probe.text).toContain(renderedSymbol);
   }
