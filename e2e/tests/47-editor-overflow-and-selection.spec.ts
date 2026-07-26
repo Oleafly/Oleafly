@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures";
-import { caretIn, clickToolbarControl, openProject, selectWord } from "../helpers";
+import { caretIn, clickToolbarControl, openProject, pressGlobal, selectWord } from "../helpers";
 
 test("toolbar overflow menu surfaces controls that don't fit the bar", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
@@ -56,6 +56,15 @@ test("forward SyncTeX switches to split view and locates the PDF position", asyn
 }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  // The open-project auto-compile only fires in split view; a previous spec
+  // can leave the persisted layout in editor-only mode where the status chip
+  // never gains a severity.
+  await tauriPage.evaluate(
+    `import("/src/store/settings.ts").then(({ useSettingsStore }) =>
+      useSettingsStore.getState().setViewMode("split"),
+    )`,
+  );
+  await pressGlobal(tauriPage, "Enter", { meta: true });
   await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok", {
     timeout: 90_000,
   });

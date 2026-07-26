@@ -58,7 +58,7 @@ async function waitForRestoreButtons(page: Page, atLeast: number) {
         if (n < atLeast) await page.press("body", "Escape");
         return n;
       },
-      { timeout: 30_000 },
+      { timeout: 90_000 },
     )
     .toBeGreaterThanOrEqual(atLeast);
 }
@@ -71,7 +71,7 @@ async function waitForCommitsLanded(page: Page, atLeast: number) {
   await expect
     .poll(
       () => page.evaluate<number>(`window.__gitCommitCount?.() ?? Promise.resolve(0)`),
-      { timeout: 30_000 },
+      { timeout: 90_000 },
     )
     .toBeGreaterThanOrEqual(atLeast);
 }

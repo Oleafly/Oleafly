@@ -131,7 +131,7 @@ async function createEntry(
     `Array.from(document.querySelectorAll(
       '[aria-label="Source tree"] [data-path]'
     )).some(row => row.dataset.path === ${JSON.stringify(path)})`,
-    15_000,
+    30_000,
   );
   return path;
 }

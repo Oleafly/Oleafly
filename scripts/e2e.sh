@@ -74,6 +74,14 @@ cleanup() {
   if [ -n "$DATA_DIR" ] && [ -f "$DATA_DIR/app.log" ]; then
     mkdir -p test-results && cp "$DATA_DIR/app.log" test-results/user-app.log 2>/dev/null || true
   fi
+  # The per-run data dir is ~200MB of disposable app data; leaking one per
+  # run once filled a developer machine's /tmp with tens of gigabytes.
+  if [ -n "$DATA_DIR" ]; then
+    rm -rf "$DATA_DIR" 2>/dev/null || true
+  fi
+  if [ -n "$LOG" ]; then
+    rm -f "$LOG" 2>/dev/null || true
+  fi
   release_e2e_lock
 }
 trap cleanup EXIT
