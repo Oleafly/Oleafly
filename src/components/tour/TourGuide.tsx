@@ -402,6 +402,17 @@ function Welcome({ onStart }: { onStart: () => void }) {
   onStartRef.current = onStart;
   const accentColor = useSettingsStore((s) => s.accentColor);
   const setAccentColor = useSettingsStore((s) => s.setAccentColor);
+  const sparkles = useMemo(
+    () =>
+      Array.from({ length: 10 }, (_, i) => ({
+        key: `sparkle-${i}`,
+        left: Math.floor(Math.random() * 27) * 16 - 1,
+        top: Math.floor(Math.random() * 9) * 16 - 1,
+        duration: 2.3 + Math.random() * 3.1,
+        delay: Math.random() * 4.7,
+      })),
+    [],
+  );
 
   useEffect(() => {
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -463,13 +474,31 @@ function Welcome({ onStart }: { onStart: () => void }) {
           aria-hidden
           className="pointer-events-none absolute inset-x-0 top-0 h-44 text-primary"
           style={{
-            backgroundImage: "radial-gradient(currentColor 1.2px, transparent 1.2px)",
-            backgroundSize: "16px 16px",
-            opacity: 0.18,
             maskImage: "linear-gradient(to bottom, black, transparent)",
             WebkitMaskImage: "linear-gradient(to bottom, black, transparent)",
           }}
-        />
+        >
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage: "radial-gradient(currentColor 1.2px, transparent 1.2px)",
+              backgroundSize: "16px 16px",
+              opacity: 0.18,
+            }}
+          />
+          {sparkles.map((sparkle) => (
+            <span
+              key={sparkle.key}
+              className="absolute size-[3px] rounded-full bg-primary motion-reduce:hidden"
+              style={{
+                left: sparkle.left,
+                top: sparkle.top,
+                boxShadow: "0 0 5px 1px currentColor",
+                animation: `tour-sparkle ${sparkle.duration}s ease-in-out ${sparkle.delay}s infinite`,
+              }}
+            />
+          ))}
+        </div>
         <LeafLogo className="relative mx-auto size-12" />
         <h1 id="tour-welcome-title" className="mt-4 text-xl font-semibold">
           Welcome to Oleafly
