@@ -16,6 +16,10 @@ on:
       - "**.md"
       - "docs/**"
       - ".github/badges/**"
+  # Nightly full sweep: the macOS/Windows e2e jobs run only here and on manual
+  # dispatch (pre-release), keeping per-push feedback fast via Linux shards.
+  schedule:
+    - cron: "0 9 * * *"
   workflow_dispatch:
 
 # No job here writes to the repo, comments on PRs, or creates releases, so a
@@ -175,6 +179,10 @@ jobs:
     # compiles) on macOS. Tests that need credentials (GitHub PAT, AI keys) skip
     # automatically when their E2E_* env vars are absent, so CI runs the ungated
     # tests.
+    # Slow lane: nightly + manual pre-release only. Per-push signal comes from
+    # the sharded Linux lane; billed macOS minutes stay for the runs that gate
+    # releases.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     name: E2E (real app, macOS)
     runs-on: macos-14
     # Hard ceiling well under the job cap: a systemically broken environment
@@ -251,11 +259,6 @@ jobs:
             (cd "$(dirname "$f")" && "$BIN" -o /tmp/prewarm main.tex) || true
           done
 
-      # Temporary diagnostic for the spec-51 CI-only glyph loss: compare these
-      # hashes against a local cache to rule the CDN-served font files in/out.
-      - name: Hash cached math fonts (temporary diagnostic)
-        run: shasum -a 256 ~/Library/Caches/Tectonic/bundles/data/*/cmsy10.pfb ~/Library/Caches/Tectonic/bundles/data/*/cmmi10.pfb || true
-
       - name: Save Tectonic packages
         if: steps.tectonic-pkgs.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
@@ -272,7 +275,7 @@ jobs:
       - name: Run the e2e suite
         # Green runs execute every spec; a real failure stops the suite promptly.
         # --global-timeout bounds the complete suite to 50 minutes.
-        run: ./scripts/e2e.sh --suite-max-failures=10 --max-failures=1 --global-timeout=3000000
+        run: ./scripts/e2e.sh --suite-max-failures=1 --max-failures=1 --global-timeout=3000000
 
       - name: Upload failure artifacts
         if: failure()
@@ -293,7 +296,13 @@ jobs:
     # The same no-mock suite on Linux (WebKitGTK + Rust + Tectonic). The
     # socket bridge, hermetic data dir, and shortcut handling are all
     # platform-neutral; the app runs under xvfb.
-    name: E2E (real app, Linux)
+    # Fast lane: this is the per-push e2e signal, split across four parallel
+    # shards so a full sweep lands in ~15-20 minutes instead of ~50.
+    name: E2E (real app, Linux, shard ${{ matrix.shard }}/4)
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     # 24.04, not 22.04: the upstream Tectonic release binary needs glibc 2.39.
     runs-on: ubuntu-24.04
     timeout-minutes: 70
@@ -392,13 +401,13 @@ jobs:
         env:
           WEBKIT_DISABLE_COMPOSITING_MODE: "1"
           WEBKIT_DISABLE_DMABUF_RENDERER: "1"
-        run: xvfb-run -a ./scripts/e2e.sh --suite-max-failures=10 --max-failures=1 --global-timeout=3000000
+        run: xvfb-run -a ./scripts/e2e.sh --shard=${{ matrix.shard }}/4 --suite-max-failures=1 --max-failures=1 --global-timeout=3000000
 
       - name: Upload failure artifacts
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: e2e-test-results-linux
+          name: e2e-test-results-linux-shard-${{ matrix.shard }}
           # Only the small, useful debugging files. Avoids uploading the macOS
           # driver's ~1 GB per-run screencast blob that lives under test-results/.
           path: |
@@ -412,6 +421,8 @@ jobs:
     # The same suite on Windows (WebView2 + Rust + Tectonic). The plugin
     # serves TCP there (no unix sockets); e2e/fixtures.ts connects over TCP
     # via its own fixture, and scripts/e2e.ps1 is the launcher.
+    # Slow lane: nightly + manual pre-release only (see the macOS job note).
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     name: E2E (real app, Windows)
     runs-on: windows-2022
     timeout-minutes: 90
@@ -497,7 +508,7 @@ jobs:
 
       - name: Run the e2e suite
         shell: pwsh
-        run: powershell -File scripts/e2e.ps1 --suite-max-failures=10 --max-failures=1 --global-timeout=3000000
+        run: powershell -File scripts/e2e.ps1 --suite-max-failures=1 --max-failures=1 --global-timeout=3000000
 
       - name: Upload failure artifacts
         if: failure()

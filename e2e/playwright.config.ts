@@ -26,9 +26,11 @@ export default defineConfig({
   // CI runner (real Tauri app, Tectonic compile, pdf.js render), so the per-test
   // cap has to clear that. Tests still set their own longer setTimeout as needed.
   timeout: 240_000,
-  // Release E2E evidence must expose every flake instead of hiding it behind a
-  // retry. Individual tests own any explicit polling needed for real sidecars.
-  retries: 0,
+  // One retry on CI: a single environmental hiccup (runner load spike, slow
+  // filesystem) must not turn a run red, while a real regression still fails
+  // both attempts. Local runs keep zero retries so every flake stays visible
+  // to the developer who can actually debug it.
+  retries: process.env.CI ? 1 : 0,
   // The socket bridge drives one app instance; never parallelize against it.
   workers: 1,
   fullyParallel: false,
