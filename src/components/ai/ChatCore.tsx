@@ -35,7 +35,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useFilesStore } from "@/store/files";
-import { getConfig, setConfig, gitLog, gitAutoCommit, type AppConfig } from "@/lib/tauri";
+import { getConfig, setConfig, gitLog, gitAutoCommit, type AppConfig, type StoredModel } from "@/lib/tauri";
 import { listOllamaModels } from "@/lib/ollama";
 import { registry, type AiToolsetContribution } from "@oleafly/registry";
 import type { ToolApprovalRequest } from "@/lib/ai-tools";
@@ -47,6 +47,7 @@ import { AttachmentChips, type PendingAttachment } from "@/components/ai/Attachm
 import { ModelSelector } from "@/components/ai/ModelSelector";
 import { toast } from "@/lib/toast";
 import { buildModel as buildAiModel, defaultModel, PROVIDERS } from "@/lib/ai-providers";
+import { enabledModels } from "@/lib/ai-model-state";
 import { useSettingsStore } from "@/store/settings";
 import { useChatsStore, type ChatMessage, type StoredChat } from "@/store/chats";
 import { objectKey } from "@/lib/react-key";
@@ -202,6 +203,9 @@ export function ChatCore() {
   const [apiKey, setApiKey] = useState("");
   // So the switcher can offer every provider the user has set up, not just the default one.
   const [keysMap, setKeysMap] = useState<Record<string, string>>({});
+  // Per-provider enable/disable/custom model state from Settings; falls back
+  // to the static catalog for providers that haven't been touched there yet.
+  const [providerModelsMap, setProviderModelsMap] = useState<Record<string, StoredModel[]>>({});
   const [ollamaModels, setOllamaModels] = useState<string[]>([]);
   const [thinkingText, setThinkingText] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -362,6 +366,7 @@ export function ChatCore() {
         // Fold the legacy single key into the map so it counts as configured.
         if (cfg.ai_api_key && !keys[saved]) keys[saved] = cfg.ai_api_key;
         setKeysMap(keys);
+        setProviderModelsMap(cfg.ai_provider_models ?? {});
         // Use the saved provider if it has a key; otherwise fall back to the
         // first configured one (e.g. the saved provider's key was removed).
         const configured = Object.keys(keys).filter((k) => (keys[k] ?? "").trim());
@@ -426,10 +431,14 @@ export function ChatCore() {
     (p) => (keysMap[p.id] ?? "").trim().length > 0
   );
   const modelGroups = configuredProviders.map((configuredProvider) => {
+    const storedModels = providerModelsMap[configuredProvider.id];
+    const catalogModels = storedModels
+      ? enabledModels(storedModels).map((m) => ({ id: m.id, name: m.name }))
+      : [...configuredProvider.models];
     const available =
       configuredProvider.id === "ollama" && ollamaModels.length > 0
         ? ollamaModels.map((id) => ({ id, name: id }))
-        : [...configuredProvider.models];
+        : catalogModels;
     if (
       configuredProvider.id === provider &&
       model &&

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { ChevronDown, ChevronRight, Sparkles } from "lucide-react";
-import { getConfig, setConfig, type AppConfig } from "@/lib/tauri";
+import { getConfig, setConfig, type AppConfig, type StoredModel } from "@/lib/tauri";
 import { defaultModel, discoveryFor, fetchProviderModels, getProvider } from "@/lib/ai-providers";
-import { mergeFetchedModels, seedProviderModels } from "@/lib/ai-model-state";
+import { enabledModels, mergeFetchedModels, seedProviderModels } from "@/lib/ai-model-state";
 import { listOllamaModels, DEFAULT_OLLAMA_HOST } from "@/lib/ollama";
 import { AiToolsGrid } from "@/components/ai/AiToolsList";
 import { cn } from "@/lib/utils";
@@ -172,6 +172,27 @@ export function AISection() {
     }
   };
 
+  // Persists a model-manager edit (add, enable, disable, delete) for one
+  // provider; if the change drops the currently active model, fall back to
+  // the first remaining enabled model instead of leaving a dangling id.
+  const persistModels = async (id: string, next: StoredModel[]) => {
+    let nextConfig: AppConfig = {
+      ...cfg,
+      ai_provider_models: { ...cfg.ai_provider_models, [id]: next },
+    };
+    if (cfg.ai_provider === id) {
+      const stillEnabled = enabledModels(next).some((m) => m.id === cfg.ai_model);
+      if (!stillEnabled) {
+        nextConfig = { ...nextConfig, ai_model: enabledModels(next)[0]?.id ?? "" };
+      }
+    }
+    try {
+      await persist(nextConfig);
+    } catch (e) {
+      setMsg({ ok: false, text: String(e) });
+    }
+  };
+
   const activate = async (id: string) => {
     if (cfg.ai_provider === id) return;
     setSaving(id);
@@ -273,6 +294,7 @@ export function AISection() {
           activate={activate}
           changeModel={changeModel}
           deleteKey={deleteKey}
+          persistModels={persistModels}
         />
       )}
 
