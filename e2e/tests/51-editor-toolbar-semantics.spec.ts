@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { test, expect } from "../fixtures";
 import {
   clickToolbarControl,
@@ -93,6 +93,9 @@ async function clickLiveToolbarPopoverTrigger(page: Page, ariaLabel: string) {
   }
   const deadline = Date.now() + 3_000;
   for (;;) {
+    // No elementFromPoint here: rows deep in a long overflow list sit below
+    // the popover's scrolled fold, where a hit-test fails forever even though
+    // a synthetic click works fine. Scroll the row near and click it.
     const menuClicked = await page.evaluate<boolean>(
       `(() => {
         const elements = Array.from(
@@ -100,12 +103,9 @@ async function clickLiveToolbarPopoverTrigger(page: Page, ariaLabel: string) {
         );
         if (elements.length !== 1) return false;
         const element = elements[0];
+        element.scrollIntoView({ block: 'nearest' });
         const rect = element.getBoundingClientRect();
-        const hit = document.elementFromPoint(
-          rect.left + rect.width / 2,
-          rect.top + rect.height / 2
-        );
-        if (!hit || (hit !== element && !element.contains(hit))) return false;
+        if (rect.width <= 0 || rect.height <= 0) return false;
         element.click();
         return true;
       })()`,
@@ -830,6 +830,34 @@ $SYMBOLANCHOR$
               .join(",")})@${item.pdfFontName ?? item.fontFamily ?? item.fontName}`,
         ),
     );
+    // Preserve the exact compiled PDF for offline comparison; the artifact
+    // upload includes test-results/**/*.pdf on macOS.
+    try {
+      const pdfBase64 = await tauriPage.evaluate<string>(
+        `Promise.all([
+          import("/src/store/files.ts"),
+          import("/src/lib/tauri.ts"),
+        ]).then(async ([files, tauri]) => {
+          const projectId = files.useFilesStore.getState().projectId;
+          const bytes = new Uint8Array(await tauri.readCompiledPdf(projectId));
+          let binary = "";
+          for (let i = 0; i < bytes.length; i += 0x8000) {
+            binary += String.fromCharCode.apply(
+              null,
+              Array.from(bytes.subarray(i, i + 0x8000)),
+            );
+          }
+          return btoa(binary);
+        })`,
+      );
+      mkdirSync("test-results/symbol-debug", { recursive: true });
+      writeFileSync(
+        "test-results/symbol-debug/compiled.pdf",
+        Buffer.from(pdfBase64, "base64"),
+      );
+    } catch {
+      // Diagnostic only; the assertion failure below is the real signal.
+    }
     const compileLogLines = await tauriPage.evaluate<string>(
       `import("/src/store/compile.ts").then(({ useCompileStore }) =>
         (useCompileStore.getState().log || "")

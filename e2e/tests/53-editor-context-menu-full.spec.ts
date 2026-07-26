@@ -202,13 +202,22 @@ Context reference: \ref{sec:context-nav}.
     timeout: 15_000,
   });
 
-  await caretIn(tauriPage, "sec:context-nav", 2);
-  await clickContextAction(tauriPage, "Go to definition");
-  await tauriPage.waitForFunction(
-    `(document.querySelector(".cm-activeLine")?.textContent ?? "")
-      .includes("label{sec:context-nav}")`,
-    10_000,
-  );
+  // The context action can land as a silent no-op while the editor is still
+  // settling from the SyncTeX view switch; retry the whole gesture.
+  for (let attempt = 0; ; attempt++) {
+    await caretIn(tauriPage, "sec:context-nav", 2);
+    await clickContextAction(tauriPage, "Go to definition");
+    const landed = await tauriPage
+      .waitForFunction(
+        `(document.querySelector(".cm-activeLine")?.textContent ?? "")
+          .includes("label{sec:context-nav}")`,
+        5_000,
+      )
+      .then(() => true)
+      .catch(() => false);
+    if (landed) break;
+    if (attempt >= 3) throw new Error("context go-to-definition never landed");
+  }
 
   await caretIn(tauriPage, "sec:context-nav", 2);
   await clickContextAction(tauriPage, "Find references");
