@@ -66,38 +66,54 @@ async function createEntry(
   mode: "file" | "dir",
   parent?: string,
 ) {
-  if (parent) {
-    await openRowAction(page, parent, mode === "file" ? "New file" : "New folder");
-  } else {
-    await page.click(
-      mode === "file"
-        ? '[title="New file (in the selected folder)"]'
-        : '[title="New folder (in the selected folder)"]',
-    );
-  }
   const placeholder = mode === "file" ? "New file name" : "New folder name";
-  await page.waitForFunction(
-    `!!document.querySelector('input[placeholder=${JSON.stringify(placeholder)}]')`,
-    10_000,
-  );
-  const committed = await page.evaluate<boolean>(
-    `(() => {
-      const input = document.querySelector(
-        'input[placeholder=${JSON.stringify(placeholder)}]'
+  // The tree refresh that follows a preceding import/create re-renders the
+  // toolbar and rows, which can swallow the opening click or unmount the
+  // inline input between its appearance and the commit. Reopen and retry
+  // until the value-plus-Enter commit actually lands on a live input.
+  const commitDeadline = Date.now() + 30_000;
+  for (;;) {
+    if (parent) {
+      await openRowAction(page, parent, mode === "file" ? "New file" : "New folder");
+    } else {
+      await page.click(
+        mode === "file"
+          ? '[title="New file (in the selected folder)"]'
+          : '[title="New folder (in the selected folder)"]',
       );
-      if (!(input instanceof HTMLInputElement)) return false;
-      const set = Object.getOwnPropertyDescriptor(
-        HTMLInputElement.prototype, "value"
-      )?.set;
-      set?.call(input, ${JSON.stringify(name)});
-      input.dispatchEvent(new Event("input", { bubbles: true }));
-      input.dispatchEvent(new KeyboardEvent("keydown", {
-        key: "Enter", bubbles: true
-      }));
-      return true;
-    })()`,
-  );
-  expect(committed).toBe(true);
+    }
+    const appeared = await page
+      .waitForFunction(
+        `!!document.querySelector('input[placeholder=${JSON.stringify(placeholder)}]')`,
+        5_000,
+      )
+      .then(() => true)
+      .catch(() => false);
+    const committed =
+      appeared &&
+      (await page.evaluate<boolean>(
+        `(() => {
+          const input = document.querySelector(
+            'input[placeholder=${JSON.stringify(placeholder)}]'
+          );
+          if (!(input instanceof HTMLInputElement)) return false;
+          const set = Object.getOwnPropertyDescriptor(
+            HTMLInputElement.prototype, "value"
+          )?.set;
+          set?.call(input, ${JSON.stringify(name)});
+          input.dispatchEvent(new Event("input", { bubbles: true }));
+          input.dispatchEvent(new KeyboardEvent("keydown", {
+            key: "Enter", bubbles: true
+          }));
+          return true;
+        })()`,
+      ));
+    if (committed) break;
+    if (Date.now() > commitDeadline) {
+      throw new Error(`createEntry(${name}): the inline input never committed`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 300));
+  }
   const path = parent ? `${parent}/${name}` : name;
   const deadline = Date.now() + 15_000;
   let backendPaths: string[] = [];
