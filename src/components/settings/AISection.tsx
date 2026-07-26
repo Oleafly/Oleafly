@@ -283,19 +283,6 @@ export function AISection() {
     }
   };
 
-  const activate = async (id: string) => {
-    if (cfg.ai_provider === id) return;
-    setSaving(id);
-    setMsg(null);
-    try {
-      await persist({ ...cfg, ai_provider: id, ai_model: defaultModel(id) });
-    } catch (e) {
-      setMsg({ ok: false, text: String(e) });
-    } finally {
-      setSaving(null);
-    }
-  };
-
   const changeModel = async (modelId: string) => {
     try {
       await persist({ ...cfg, ai_model: modelId });
@@ -383,7 +370,6 @@ export function AISection() {
             validateAndSave={validateAndSave}
             status={status}
             errorMsg={errorMsg}
-            activate={activate}
             changeModel={changeModel}
             deleteKey={deleteKey}
             persistModels={persistModels}
