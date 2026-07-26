@@ -1,5 +1,12 @@
 import { test, expect } from "../fixtures";
-import { createBlankProject, openRailTab, openSettings, waitLong, type Page } from "../helpers";
+import {
+  createBlankProject,
+  fillTextarea,
+  openRailTab,
+  openSettings,
+  waitLong,
+  type Page,
+} from "../helpers";
 
 const TOOLS_DISCLOSURE = "The assistant currently supports these tools";
 
@@ -130,7 +137,9 @@ test("custom provider dialog validates its fields inline", async ({ tauriPage })
 
   await page.press("body", "Escape");
   await expect(page.locator('[data-testid="custom-provider-submit"]')).toBeHidden();
-  await page.click('[aria-label="Close settings"]');
+  await page.evaluate(
+    `(() => { const b = document.querySelector('[aria-label="Close settings"]'); if (b instanceof HTMLElement) b.click(); return 1; })()`,
+  );
 });
 
 test("instructions tab hosts the tools list and a working default-model picker", async ({
@@ -180,7 +189,7 @@ test("personas: deep link from prompts menu, create, switch in chat", async ({ t
   await page.click('[data-testid="ai-create-persona"]');
   await expect(page.locator('[data-testid="persona-name"]')).toBeVisible({ timeout: 8_000 });
   await page.fill('[data-testid="persona-name"]', "Copyeditor");
-  await page.fill('[data-testid="persona-prompt"]', "Fix grammar only.");
+  await fillTextarea(page, '[data-testid="persona-prompt"]', "Fix grammar only.");
   await page.click('[data-testid="persona-submit"]');
   await expect(page.locator('[data-testid="ai-persona-row-Copyeditor"]')).toBeVisible({
     timeout: 8_000,
