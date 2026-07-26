@@ -78,3 +78,21 @@ export async function fetchProviderModels(args: {
     return { ok: false, reason: "network", message: e instanceof Error ? e.message : String(e) };
   }
 }
+
+export const DISCOVERY: Record<string, ModelDiscovery> = {
+  openai: { kind: "openai", modelsPath: "/v1/models" },
+  anthropic: { kind: "openai", modelsPath: "/v1/models", authHeader: "x-api-key" },
+  google: { kind: "gemini" },
+  xai: { kind: "openai", modelsPath: "/models" },
+  openrouter: { kind: "openai", modelsPath: "/models" },
+  deepseek: { kind: "openai", modelsPath: "/v1/models" },
+  groq: { kind: "openai", modelsPath: "/models" },
+  mistral: { kind: "openai", modelsPath: "/models" },
+  zai: { kind: "openai", modelsPath: "/models" },
+  ollama: { kind: "ollama" },
+  perplexity: { kind: "none" },
+};
+
+export function discoveryFor(providerId: string): ModelDiscovery {
+  return DISCOVERY[providerId] ?? { kind: "none" };
+}
