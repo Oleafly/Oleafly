@@ -182,6 +182,18 @@ async function insertTable2By2(page: Page) {
   throw new Error("2 by 2 toolbar table picker never inserted a table");
 }
 
+// A headless webview may never run Radix's exit animation, so a closed symbol
+// popover can stay mounted forever. Requiring EXACTLY one search input (as an
+// earlier version did) then fails every retry after the first slow attempt.
+// Scope every lookup to the portal that contains a search input inside an
+// open [data-state] subtree, and act on it atomically in one browser task.
+const openSymbolPortalExpression = `(() => {
+  const search = Array.from(document.querySelectorAll(
+    '[data-radix-popper-content-wrapper] input[aria-label="Search symbols"]'
+  )).find((candidate) => candidate.closest('[data-state="open"]'));
+  return search ? search.closest('[data-radix-popper-content-wrapper]') : null;
+})()`;
+
 async function insertSymbol(page: Page, category: string, name: string) {
   for (let attempt = 0; attempt < 8; attempt++) {
     const triggerClicked = await clickLiveToolbarPopoverTrigger(page, "Insert symbol")
@@ -192,38 +204,38 @@ async function insertSymbol(page: Page, category: string, name: string) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       continue;
     }
-    const live = await page
+    const categoryClicked = await page
       .waitForFunction(
         `(() => {
-          const triggers = Array.from(
-            document.querySelectorAll('button[aria-label="Insert symbol"]')
+          const portal = ${openSymbolPortalExpression};
+          if (!portal) return false;
+          const category = Array.from(portal.querySelectorAll('button')).find(
+            (candidate) => candidate.textContent?.trim() === ${JSON.stringify(category)}
           );
-          const expanded = triggers.some(
-            (trigger) => trigger.getAttribute("aria-expanded") === "true"
-          );
-          const searches = Array.from(
-            document.querySelectorAll(
-              '[data-radix-popper-content-wrapper] input[aria-label="Search symbols"]'
-            )
-          );
-          return (
-            expanded &&
-            searches.length === 1 &&
-            Boolean(searches[0].closest('[data-state="open"]'))
-          );
+          if (!(category instanceof HTMLElement)) return false;
+          category.click();
+          return true;
         })()`,
         3_000,
       )
       .then(() => true)
       .catch(() => false);
-    if (live) {
-      const search = page.locator('[aria-label="Search symbols"]') as unknown as Parameters<
-        typeof expect
-      >[0];
-      await expect(search).toBeVisible({ timeout: 3_000 });
-      await page.getByText(category, { exact: true }).click();
-      await page.click(`button[title=${JSON.stringify(name)}]`);
-      return;
+    if (categoryClicked) {
+      const symbolClicked = await page
+        .waitForFunction(
+          `(() => {
+            const portal = ${openSymbolPortalExpression};
+            if (!portal) return false;
+            const button = portal.querySelector('button[title=${JSON.stringify(name)}]');
+            if (!(button instanceof HTMLElement)) return false;
+            button.click();
+            return true;
+          })()`,
+          3_000,
+        )
+        .then(() => true)
+        .catch(() => false);
+      if (symbolClicked) return;
     }
     await page.press("body", "Escape").catch(() => {});
     await new Promise((resolve) => setTimeout(resolve, 100));
