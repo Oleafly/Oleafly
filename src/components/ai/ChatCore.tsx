@@ -46,6 +46,15 @@ import { getEditorView } from "@/components/editor/cm/controller";
 import { ToolConfirm, isAutoApprovable } from "@/components/ai/ToolConfirm";
 import { AttachmentChips, type PendingAttachment } from "@/components/ai/AttachmentChips";
 import { ModelSelector } from "@/components/ai/ModelSelector";
+import {
+  activeChatRun,
+  beginChatRun,
+  endChatRun,
+  saveDraft,
+  savedDraft,
+  subscribeChatRun,
+  updateChatRun,
+} from "@/components/ai/chat-run-registry";
 import { personaGradient } from "@/lib/persona-colors";
 import { toast } from "@/lib/toast";
 import { buildModel as buildAiModel, defaultModel, mergeCustomProviders, resolveActiveModel } from "@/lib/ai-providers";
@@ -196,8 +205,21 @@ export function ChatCore() {
     setSettingsOpen(true);
   }, [setSettingsInitialSection, setSettingsOpen]);
 
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState("");
+  const [messages, setMessagesState] = useState<ChatMessage[]>([]);
+  const messagesRef = useRef<ChatMessage[]>([]);
+  const setMessages = useCallback(
+    (next: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])) => {
+      const resolved = typeof next === "function" ? next(messagesRef.current) : next;
+      messagesRef.current = resolved;
+      setMessagesState(resolved);
+    },
+    [],
+  );
+  const [input, setInputState] = useState(() => savedDraft(useFilesStore.getState().projectId));
+  const setInput = useCallback((text: string) => {
+    setInputState(text);
+    saveDraft(useFilesStore.getState().projectId, text);
+  }, []);
   const [streaming, setStreaming] = useState(false);
   const [provider, setProvider] = useState("openai");
   const [model, setModel] = useState("gpt-4o");
@@ -308,6 +330,7 @@ export function ChatCore() {
   const nearBottomRef = useRef(true);
   // Aborts the in-flight AI run (Stop button, project switch, unmount).
   const abortRef = useRef<AbortController | null>(null);
+  const runOwnerRef = useRef(false);
   // When true, write/replace/create/rename tools skip the prompt for this run's session.
   const sessionAutoApproveRef = useRef(false);
   // Trailing-debounce timer for persisting the streaming conversation.
@@ -345,7 +368,7 @@ export function ChatCore() {
   useEffect(() => {
     if (!streaming) return;
     const id = window.setInterval(() => {
-      const quietMs = Date.now() - lastPartAtRef.current;
+      const quietMs = Date.now() - (activeChatRun()?.lastPartAt ?? lastPartAtRef.current);
       // Hard timeout: 90s of total silence from the provider aborts the run so a
       // hung or unavailable model never spins forever.
       if (quietMs > 90000) {
@@ -601,16 +624,15 @@ export function ChatCore() {
     const patches = streamPatchesRef.current;
     if (!patches.length) return;
     streamPatchesRef.current = [];
-    setMessages((prev) => {
-      if (!prev.length) return prev;
-      const copy = [...prev];
-      let last = copy[copy.length - 1];
-      for (const patch of patches) last = patch.apply(last);
-      copy[copy.length - 1] = last;
-      persistDebounced(patches[patches.length - 1].chatId, copy);
-      return copy;
-    });
-  }, [persistDebounced]);
+    const prev = messagesRef.current;
+    if (!prev.length) return;
+    const copy = [...prev];
+    let last = copy[copy.length - 1];
+    for (const patch of patches) last = patch.apply(last);
+    copy[copy.length - 1] = last;
+    setMessages(copy);
+    persistDebounced(patches[patches.length - 1].chatId, copy);
+  }, [persistDebounced, setMessages]);
 
   // High-frequency stream deltas are coalesced to one setState per animation
   // frame; callers that need the UI to reflect a patch before the next frame
@@ -626,7 +648,7 @@ export function ChatCore() {
 
   const send = useCallback(async (text: string) => {
     const outgoing = attachmentsRef.current;
-    if ((!text.trim() && outgoing.length === 0) || streaming) return;
+    if ((!text.trim() && outgoing.length === 0) || streaming || activeChatRun()) return;
     if (!engineLoaded) {
       toast.error("Document engine details are not loaded. AI editing is disabled for safety.");
       return;
@@ -655,6 +677,8 @@ export function ChatCore() {
 
     const ac = new AbortController();
     abortRef.current = ac;
+    const runHandle = beginChatRun(ac, projectId);
+    runOwnerRef.current = true;
 
     // Human-in-the-loop gate for destructive edits: the tool's execute() awaits
     // this, which naturally pauses the stream on that tool until the user picks.
@@ -696,13 +720,16 @@ export function ChatCore() {
             }
             return { ...m, toolCalls: calls };
           });
+          updateChatRun(runHandle, { pendingApproval: null });
           if (runIsCurrent()) setPendingApproval(null);
           resolve(ok);
         };
         const onAbort = () => finish(false);
         ac.signal.addEventListener("abort", onAbort, { once: true });
-        if (runIsCurrent()) setPendingApproval({ req, resolve: finish });
-        else finish(false);
+        if (runIsCurrent()) {
+          updateChatRun(runHandle, { pendingApproval: { req, resolve: finish } });
+          setPendingApproval({ req, resolve: finish });
+        } else finish(false);
       });
 
     // Fresh plan checklist each agent run; reset last-run meter (chat totals persist).
@@ -752,6 +779,7 @@ export function ChatCore() {
     setStreaming(true);
     setRunThinking("Thinking…");
     lastPartAtRef.current = Date.now();
+    runHandle.lastPartAt = Date.now();
     timedOutRef.current = false;
 
     // Persist this conversation as a chat (creates one on the first message).
@@ -763,6 +791,7 @@ export function ChatCore() {
         chatId = created.id;
       }
       runChatId = chatId;
+      updateChatRun(runHandle, { chatId });
       if (chatId) cs.saveMessages(chatId, nextMessages);
     }
 
@@ -933,6 +962,7 @@ ${sandboxedCustom}`;
           if (ac.signal.aborted) break;
           // Any stream activity resets the stall watchdog.
           lastPartAtRef.current = Date.now();
+          runHandle.lastPartAt = Date.now();
           switch (part.type) {
             case "text-delta":
               setRunThinking(null);
@@ -1204,16 +1234,12 @@ ${sandboxedCustom}`;
           clearTimeout(persistTimerRef.current);
           persistTimerRef.current = null;
         }
-        const cs = useChatsStore.getState();
-        if (runChatId) {
-          setMessages((cur) => {
-            cs.saveMessages(runChatId, cur);
-            return cur;
-          });
-        }
+        if (runChatId) useChatsStore.getState().saveMessages(runChatId, messagesRef.current);
       }
+      runOwnerRef.current = false;
+      endChatRun(runHandle);
     }
-  }, [messages, streaming, apiKey, provider, model, customProviders, projectId, projectName, currentHead, figureMode, figureModeAvailable, engineLoaded, documentEngine, projectKind, openAISettings, flushStreamPatches, updateLast]);
+  }, [messages, streaming, apiKey, provider, model, customProviders, projectId, projectName, currentHead, figureMode, figureModeAvailable, engineLoaded, documentEngine, projectKind, openAISettings, flushStreamPatches, updateLast, setMessages, setInput]);
 
   useEffect(() => {
     const onSelectionAction = (e: Event) => {
@@ -1279,24 +1305,69 @@ ${sandboxedCustom}`;
     else setInput(h.prompt);
   }, [handoffPending, streaming, apiKey, send]);
 
-  // Abort any in-flight run when the project changes or the panel unmounts, so a
-  // stale stream can't keep spending tokens or writing into the wrong chat.
+  const prevProjectIdRef = useRef<string | null | undefined>(undefined);
   useEffect(() => {
-    void projectId;
-    setStreaming(false);
-    setThinkingText(null);
-    setPendingApproval(null);
-    pendingImagesRef.current = [];
-    return () => {
-      runIsolationRef.current.invalidate();
-      cancelChatRun(abortRef.current, persistTimerRef.current, () => {
+    const prev = prevProjectIdRef.current;
+    prevProjectIdRef.current = projectId;
+    if (prev === undefined || prev === projectId) return;
+    runIsolationRef.current.invalidate();
+    const run = activeChatRun();
+    if (run && run.projectId !== projectId) {
+      run.pendingApproval?.resolve(false);
+      cancelChatRun(run.controller, persistTimerRef.current, () => {
         if (streamRafRef.current != null) cancelAnimationFrame(streamRafRef.current);
         streamRafRef.current = null;
         streamPatchesRef.current = [];
       });
       persistTimerRef.current = null;
-    };
+    }
+    setStreaming(false);
+    setThinkingText(null);
+    setPendingApproval(null);
+    pendingImagesRef.current = [];
+    setInputState(savedDraft(projectId));
   }, [projectId]);
+
+  useEffect(() => {
+    const sync = () => {
+      const run = activeChatRun();
+      const cs = useChatsStore.getState();
+      if (run && run.projectId === projectId && cs.projectId === projectId) {
+        if (run.chatId && run.chatId === cs.activeId) {
+          abortRef.current = run.controller;
+          setStreaming(true);
+          setPendingApproval(run.pendingApproval);
+          if (!runOwnerRef.current) {
+            const chat = cs.byId(run.chatId);
+            if (chat) setMessages(chat.messages);
+          }
+        }
+      } else if (!run && !runOwnerRef.current) {
+        setStreaming(false);
+        setThinkingText(null);
+        setPendingApproval(null);
+        if (cs.projectId === projectId && cs.activeId) {
+          const chat = cs.byId(cs.activeId);
+          if (chat) setMessages(chat.messages);
+        }
+      }
+    };
+    sync();
+    const unsubRun = subscribeChatRun(sync);
+    const unsubStore = useChatsStore.subscribe(() => {
+      if (runOwnerRef.current) return;
+      const run = activeChatRun();
+      if (!run || run.projectId !== projectId || !run.chatId) return;
+      const cs = useChatsStore.getState();
+      if (cs.projectId !== projectId || run.chatId !== cs.activeId) return;
+      const chat = cs.byId(run.chatId);
+      if (chat) setMessages(chat.messages);
+    });
+    return () => {
+      unsubRun();
+      unsubStore();
+    };
+  }, [projectId, setMessages]);
 
   const chatUsage = activeChat?.usage;
   const chatTotal = chatUsage
@@ -1715,8 +1786,8 @@ ${sandboxedCustom}`;
                 rows={1}
                 className="max-h-32 min-h-[24px] w-full resize-none rounded-md border-0 bg-transparent px-1 text-sm shadow-none outline-none placeholder:text-muted-foreground"
               />
-              <div className="mt-1.5 flex items-center justify-between">
-                <div className="flex items-center gap-0.5">
+              <div className="mt-1.5 flex items-center justify-between gap-1">
+                <div className="flex shrink-0 items-center gap-0.5">
                   <button
                     data-tour="ai-attachments"
                     type="button"
@@ -1843,12 +1914,12 @@ ${sandboxedCustom}`;
                     </Popover>
                   )}
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex min-w-0 items-center gap-1">
                   {configuredProviders.length > 0 && (
-                    <div data-tour="ai-provider-model">
+                    <div data-tour="ai-provider-model" className="min-w-0">
                       <ModelSelector
                         compact
-                        className="h-7 gap-1 px-2 text-xs font-medium text-foreground hover:text-foreground"
+                        className="h-7 min-w-0 shrink gap-1 px-2 text-xs font-medium text-foreground hover:text-foreground"
                         providerId={provider}
                         modelId={model}
                         groups={modelGroups}

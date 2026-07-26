@@ -46,7 +46,7 @@ export function ModelSelector({
         onChange(nextProvider, nextModel);
       }}
     >
-      <Tooltip label="Switch provider or model">
+      <Tooltip label="Switch provider or model" className="min-w-0">
         <SelectTrigger
           aria-label="AI model"
           className={cn(

@@ -824,7 +824,7 @@ export async function ensureAiConnected(page: Page) {
   await page
     .waitForFunction(
       inProviderCard(
-        `return Array.from(card.querySelectorAll('button')).some(b => ['Save', 'Use'].includes(b.textContent.trim()));`,
+        `return Array.from(card.querySelectorAll('button')).some(b => ['Save', 'Activate'].includes(b.textContent.trim()));`,
       ),
       5_000,
     )
@@ -832,7 +832,7 @@ export async function ensureAiConnected(page: Page) {
   const clicked = await page.evaluate<boolean>(
     inProviderCard(`
       const btn = Array.from(card.querySelectorAll('button'))
-        .find(b => ['Save', 'Use'].includes(b.textContent.trim()));
+        .find(b => ['Save', 'Activate'].includes(b.textContent.trim()));
       if (!btn) return false;
       btn.click();
       return true;
@@ -840,8 +840,8 @@ export async function ensureAiConnected(page: Page) {
   );
   if (clicked) {
     await page.waitForFunction(
-      inProviderCard(`return (card.textContent || '').includes('Active');`),
-      10_000,
+      inProviderCard(`return (card.textContent || '').includes('Connected');`),
+      15_000,
     );
   }
   await page.click('[aria-label="Close settings"]');
