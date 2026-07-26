@@ -220,6 +220,20 @@ export function NewProjectDialog({
 }) {
   const { Button, Input, Tooltip, Select } = kit;
   const [step, setStep] = useState<1 | 2>(1);
+  const createChordRef = useRef<{ enabled: boolean; submit: () => Promise<void> }>({
+    enabled: false,
+    submit: async () => {},
+  });
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.key !== "Enter") return;
+      if (!createChordRef.current.enabled) return;
+      event.preventDefault();
+      void createChordRef.current.submit();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [color, setColor] = useState(defaultColor);
@@ -335,7 +349,10 @@ export function NewProjectDialog({
     [templates, selectedId],
   );
 
-  if (!open) return null;
+  if (!open) {
+    createChordRef.current.enabled = false;
+    return null;
+  }
 
   const choose = (t: TemplateInfo) => {
     setSelectedId(t.id);
@@ -364,19 +381,10 @@ export function NewProjectDialog({
   };
 
   const working = busy || setup.active;
-
-  const submitRef = useRef<() => Promise<void>>(async () => {});
-  submitRef.current = submit;
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (!(event.metaKey || event.ctrlKey) || event.key !== "Enter") return;
-      if (step !== 2 || working || !name.trim()) return;
-      event.preventDefault();
-      void submitRef.current();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [step, working, name]);
+  createChordRef.current = {
+    enabled: step === 2 && !working && Boolean(name.trim()),
+    submit,
+  };
 
   return (
     <div
