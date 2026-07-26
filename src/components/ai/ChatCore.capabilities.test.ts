@@ -1,12 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
-
-// ChatCore now renders ModelSelector, which renders ProviderLogo. This test only
-// exercises ChatCore's pure exported helpers, but importing the module still runs
-// its full top-level import graph, which drags in @lobehub/icons's fluent-emoji
-// dependency. That package ships a directory import (`./FluentEmoji` with no
-// extension) that Vitest's native ESM resolution refuses, unrelated to anything
-// under test here, so stub the logo component out before importing ChatCore.
-vi.mock("@/components/ai/ProviderLogo", () => ({ ProviderLogo: () => null }));
+import { describe, expect, it } from "vitest";
 
 import { buildAiToolInventory, buildToolContinuation, resolveChatTools } from "./ChatCore";
 
