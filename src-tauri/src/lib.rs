@@ -184,6 +184,7 @@ pub fn run() {
             template_packs::install_template_pack,
             template_packs::remove_template_pack,
             templates::save_custom_template,
+            templates::delete_custom_template,
             deadlines::read_deadlines,
             deadlines::refresh_deadlines,
             project::export_pdf,

@@ -292,8 +292,11 @@ export interface TemplateInfo {
 export const saveCustomTemplate = (
   slug: string,
   manifestJson: string,
-  files: { name: string; content: string }[]
+  files: { name: string; content: string; content_base64?: string }[]
 ) => invoke<void>("save_custom_template", { slug, manifestJson, files });
+
+export const deleteCustomTemplate = (slug: string) =>
+  invoke<void>("delete_custom_template", { slug });
 
 export const listTemplates = () => invoke<TemplateInfo[]>("list_templates");
 

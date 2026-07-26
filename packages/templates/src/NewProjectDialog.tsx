@@ -604,7 +604,7 @@ export function NewProjectDialog({
                         <div className="relative aspect-[17/22] overflow-hidden rounded-md border border-black/10 bg-white shadow-sm ring-1 ring-transparent transition-all duration-150 group-hover:-translate-y-0.5 group-hover:shadow-md group-hover:ring-primary/50 group-focus-visible:ring-primary">
                           <Preview t={t} host={host} />
                           {(t.category || "") === "AI Generated" && (
-                            <span className="absolute -right-1.5 -top-1 flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[9px] font-semibold text-white shadow-md">
+                            <span className="absolute right-1.5 top-1.5 flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[9px] font-semibold text-white shadow-md">
                               <Sparkles className="size-2.5" /> AI
                             </span>
                           )}
