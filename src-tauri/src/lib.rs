@@ -68,6 +68,19 @@ pub fn run() {
                         .window("main")
                         .permission("playwright:default"),
                 )?;
+                // CI-parity window sizing: CI runner displays are smaller than
+                // developer monitors, which pushes toolbar controls into the
+                // overflow menu and exercises entirely different interaction
+                // paths. OLEAFLY_E2E_WINDOW=WxH reproduces that locally.
+                if let Ok(spec) = std::env::var("OLEAFLY_E2E_WINDOW") {
+                    if let Some((w, h)) = spec.split_once('x') {
+                        if let (Ok(w), Ok(h)) = (w.parse::<f64>(), h.parse::<f64>()) {
+                            if let Some(window) = app.get_webview_window("main") {
+                                let _ = window.set_size(tauri::LogicalSize::new(w, h));
+                            }
+                        }
+                    }
+                }
             }
 
             // Start the MCP server on boot when the user has enabled it. Failure to

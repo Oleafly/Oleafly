@@ -10,6 +10,7 @@ set -m
 cd "$(dirname "$0")/.."
 
 SUITE_MAX_FAILURES=0
+SHARD=""
 PLAYWRIGHT_ARGS=()
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -21,12 +22,31 @@ while [ "$#" -gt 0 ]; do
       [ "$#" -gt 0 ] || { echo "e2e: --suite-max-failures requires a value" >&2; exit 2; }
       SUITE_MAX_FAILURES="$1"
       ;;
+    --shard=*)
+      SHARD="${1#*=}"
+      ;;
+    --ci-parity)
+      # Reproduce CI's smaller window locally so toolbar controls overflow the
+      # same way they do on runners (a whole class of CI-only interaction bugs
+      # reproduces in minutes with this instead of needing a CI round-trip).
+      export OLEAFLY_E2E_WINDOW="${OLEAFLY_E2E_WINDOW:-1024x700}"
+      ;;
     *)
       PLAYWRIGHT_ARGS+=("$1")
       ;;
   esac
   shift
 done
+
+if [ -n "$SHARD" ]; then
+  case "$SHARD" in
+    */*) ;;
+    *)
+      echo "e2e: --shard must look like K/N (e.g. 2/4)" >&2
+      exit 2
+      ;;
+  esac
+fi
 
 case "$SUITE_MAX_FAILURES" in
   ''|*[!0-9]*)
@@ -201,7 +221,30 @@ if [ "$has_spec" -eq 1 ]; then
 else
   suite_status=0
   suite_failures=0
-  for spec in e2e/tests/*.spec.ts; do
+  SUITE_SPECS=()
+  if [ -n "$SHARD" ]; then
+    # Round-robin split for parallel CI runners. Every shard gets
+    # 02-create-compile first: it creates the shared "E2E Doc" project and
+    # warms the compile path that later specs assume (the same convention as
+    # running a manual subset).
+    shard_index="${SHARD%%/*}"
+    shard_total="${SHARD##*/}"
+    SUITE_SPECS+=("e2e/tests/02-create-compile.spec.ts")
+    position=0
+    for spec in e2e/tests/*.spec.ts; do
+      if [ "$spec" != "e2e/tests/02-create-compile.spec.ts" ] \
+        && [ $(( position % shard_total )) -eq $(( shard_index - 1 )) ]; then
+        SUITE_SPECS+=("$spec")
+      fi
+      position=$((position + 1))
+    done
+    echo "e2e: shard ${SHARD} runs ${#SUITE_SPECS[@]} spec file(s)"
+  else
+    for spec in e2e/tests/*.spec.ts; do
+      SUITE_SPECS+=("$spec")
+    done
+  fi
+  for spec in "${SUITE_SPECS[@]}"; do
     start_app
     if ! run_playwright "$(basename "$spec")" "$@" "$spec"; then
       suite_status=1
