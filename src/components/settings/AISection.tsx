@@ -52,7 +52,6 @@ export function AISection() {
     models: string[];
   }>({ status: "idle", models: [] });
 
-  // One-shot deep link (e.g. the chat's Prompts menu) straight to a tab.
   const scrollTarget = useSettingsStore((s) => s.settingsScrollTarget);
   const setScrollTarget = useSettingsStore((s) => s.setSettingsScrollTarget);
   useEffect(() => {

@@ -22,6 +22,7 @@
         "titleBarStyle": "Overlay",
         "hiddenTitle": true,
         "fullscreen": false,
+        "maximized": true,
         "resizable": true,
         "center": true,
         "dragDropEnabled": false

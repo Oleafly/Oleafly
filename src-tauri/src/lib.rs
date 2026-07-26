@@ -76,6 +76,7 @@ pub fn run() {
                     if let Some((w, h)) = spec.split_once('x') {
                         if let (Ok(w), Ok(h)) = (w.parse::<f64>(), h.parse::<f64>()) {
                             if let Some(window) = app.get_webview_window("main") {
+                                let _ = window.unmaximize();
                                 let _ = window.set_size(tauri::LogicalSize::new(w, h));
                             }
                         }
