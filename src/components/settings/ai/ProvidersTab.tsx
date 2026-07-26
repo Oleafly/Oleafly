@@ -14,6 +14,7 @@ import type { AppConfig, StoredModel } from "@/lib/tauri";
 import { defaultModel, mergeCustomProviders } from "@/lib/ai-providers";
 import { enabledModels, seedProviderModels } from "@/lib/ai-model-state";
 import { DEFAULT_OLLAMA_HOST } from "@/lib/ollama";
+import { ProviderLogo } from "@/components/ai/ProviderLogo";
 import { ModelManager } from "./ModelManager";
 
 export type ProviderStatus = "idle" | "validating" | "valid" | "error";
@@ -241,7 +242,10 @@ export function ProvidersTab({
                     <ChevronRight className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                   )}
                   <div className="min-w-0 flex-1">
-                    <span className="font-medium">{p.name}</span>
+                    <span className="inline-flex items-center gap-1.5 font-medium">
+                      <ProviderLogo providerId={p.id} size={18} />
+                      {p.name}
+                    </span>
                     {isOpen && <p className="mt-0.5 text-xs text-muted-foreground">{p.blurb}</p>}
                   </div>
                 </button>
