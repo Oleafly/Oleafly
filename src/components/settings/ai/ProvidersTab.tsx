@@ -10,9 +10,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { AppConfig } from "@/lib/tauri";
+import type { AppConfig, StoredModel } from "@/lib/tauri";
 import { PROVIDERS, defaultModel } from "@/lib/ai-providers";
+import { enabledModels, seedProviderModels } from "@/lib/ai-model-state";
 import { DEFAULT_OLLAMA_HOST } from "@/lib/ollama";
+import { ModelManager } from "./ModelManager";
 
 export type ProviderStatus = "idle" | "validating" | "valid" | "error";
 
@@ -168,6 +170,7 @@ export interface ProvidersTabProps {
   activate: (id: string) => Promise<void>;
   changeModel: (modelId: string) => Promise<void>;
   deleteKey: (id: string) => Promise<void>;
+  persistModels: (id: string, next: StoredModel[]) => Promise<void>;
 }
 
 export function ProvidersTab({
@@ -187,6 +190,7 @@ export function ProvidersTab({
   activate,
   changeModel,
   deleteKey,
+  persistModels,
 }: ProvidersTabProps) {
   const activeProvider = cfg.ai_provider;
 
@@ -269,26 +273,33 @@ export function ProvidersTab({
                 </div>
               ) : (
                 <div className="px-3 pb-3">
-                  {isSelected && (
-                    <div className="mt-2 flex items-center gap-2">
-                      <span className="text-[11px] text-muted-foreground">Model</span>
-                      <Select
-                        value={cfg.ai_model || defaultModel(p.id)}
-                        onValueChange={(v) => void changeModel(v)}
-                      >
-                        <SelectTrigger className="h-8 flex-1">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="z-[100]">
-                          {p.models.map((m) => (
-                            <SelectItem key={m.id} value={m.id}>
-                              {m.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
+                  {(() => {
+                    const storedModels = cfg.ai_provider_models[p.id] ?? seedProviderModels(p.id);
+                    const enabled = enabledModels(storedModels);
+                    return (
+                      isSelected &&
+                      enabled.length > 0 && (
+                        <div className="mt-2 flex items-center gap-2">
+                          <span className="text-[11px] text-muted-foreground">Model</span>
+                          <Select
+                            value={cfg.ai_model || defaultModel(p.id)}
+                            onValueChange={(v) => void changeModel(v)}
+                          >
+                            <SelectTrigger className="h-8 flex-1">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="z-[100]">
+                              {enabled.map((m) => (
+                                <SelectItem key={m.id} value={m.id}>
+                                  {m.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )
+                    );
+                  })()}
                   <div className="mt-2 flex gap-2">
                     <Input
                       type="password"
@@ -355,6 +366,14 @@ export function ProvidersTab({
                       </p>
                     );
                   })()}
+                  {hasSaved && (
+                    <ModelManager
+                      providerId={p.id}
+                      models={cfg.ai_provider_models[p.id] ?? seedProviderModels(p.id)}
+                      apiKey={value}
+                      onChange={(next) => void persistModels(p.id, next)}
+                    />
+                  )}
                 </div>
               )}
             </div>
