@@ -383,8 +383,32 @@ test("AI and Diagram tours select their eligible context without sending or comp
   // The Diagram Composer is a standalone home-shell page now, not a
   // per-project modal, so reaching it means leaving the project first.
   await tauriPage.click('[title="Back to library"]');
-  await expect(tauriPage.getByTestId("library")).toBeVisible();
-  await tauriPage.click('[data-testid="open-diagram-composer"]');
+  // The dock re-renders while the project list refreshes after leaving a
+  // project, and a click landing on a pre-refresh button node is silently
+  // dropped. Wait for the loaded library, then probe-and-click atomically,
+  // re-clicking until the composer actually mounts.
+  await expect(
+    tauriPage.locator('[data-testid="library"][data-projects-loaded="true"]'),
+  ).toBeVisible({ timeout: 30_000 });
+  const composerDeadline = Date.now() + 30_000;
+  for (;;) {
+    const state = await tauriPage.evaluate<string>(
+      `(() => {
+        if (document.querySelector('[data-tour="diagram-composer"]')) return "open";
+        const button = document.querySelector('[data-testid="open-diagram-composer"]');
+        if (button instanceof HTMLElement) {
+          button.click();
+          return "clicked";
+        }
+        return "missing";
+      })()`,
+    );
+    if (state === "open") break;
+    if (Date.now() > composerDeadline) {
+      throw new Error(`Diagram Composer never opened (last state: ${state})`);
+    }
+    await new Promise((r) => setTimeout(r, 500));
+  }
   await expect(tauriPage.locator("#react-joyride-portal h2")).toHaveText("Diagram Composer", {
     timeout: 30_000,
   });
