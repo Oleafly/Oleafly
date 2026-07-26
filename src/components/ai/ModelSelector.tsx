@@ -68,6 +68,7 @@ export function ModelSelector({
                 key={model.id}
                 value={JSON.stringify([group.id, model.id])}
                 icon={<ProviderLogo providerId={group.id} size={14} />}
+                indicator="right-circle"
               >
                 {model.name}
               </SelectItem>

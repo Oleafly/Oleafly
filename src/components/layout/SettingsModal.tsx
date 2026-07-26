@@ -866,7 +866,9 @@ export function SettingsModal() {
                     </div>
                     <p className="text-xs leading-relaxed text-muted-foreground">
                       Keep projects synchronized across your devices without configuring a Git
-                      remote. Your local project folders will remain the source of truth.
+                      remote. Every transfer will be end-to-end encrypted, so your work stays
+                      private in transit. Your local project folders will remain the source of
+                      truth.
                     </p>
                   </div>
                 </div>
