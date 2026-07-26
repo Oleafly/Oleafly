@@ -16,6 +16,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { Textarea } from "@/components/ui/textarea";
 import { cn, modKey } from "@/lib/utils";
 import { notifyError, toast } from "@/lib/toast";
+import { friendlyHint } from "@/components/ai/chat-parts";
 import {
   compileGeneratedTemplate,
   generateTemplateAvailable,
@@ -181,7 +182,12 @@ export function TemplateGenerateModal({
       if (!live()) return;
       clearStepTimers();
       setPhase("prompt");
-      setError(e instanceof Error ? e.message : String(e));
+      const raw = e instanceof Error ? e.message : String(e);
+      const hint = friendlyHint(raw)?.replaceAll(
+        "from the model menu above",
+        "in Settings, AI Assistant",
+      );
+      setError(hint ?? raw);
     }
   };
 
