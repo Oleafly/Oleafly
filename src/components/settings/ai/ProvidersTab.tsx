@@ -170,7 +170,6 @@ export interface ProvidersTabProps {
   validateAndSave: (id: string) => Promise<void>;
   status: Record<string, ProviderStatus>;
   errorMsg: Record<string, string>;
-  activate: (id: string) => Promise<void>;
   changeModel: (modelId: string) => Promise<void>;
   deleteKey: (id: string) => Promise<void>;
   persistModels: (id: string, next: StoredModel[]) => Promise<void>;
@@ -192,7 +191,6 @@ export function ProvidersTab({
   validateAndSave,
   status,
   errorMsg,
-  activate,
   changeModel,
   deleteKey,
   persistModels,
@@ -332,15 +330,6 @@ export function ProvidersTab({
                           <Loader2 className="size-3.5 animate-spin" />
                         ) : null}
                         Save
-                      </Button>
-                    ) : isConfigured && !isActive ? (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        disabled={saving === p.id}
-                        onClick={() => void activate(p.id)}
-                      >
-                        Activate
                       </Button>
                     ) : null}
                     {isCustom ? (
