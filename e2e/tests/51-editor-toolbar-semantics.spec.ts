@@ -55,7 +55,11 @@ async function clickLiveToolbarPopoverTrigger(page: Page, ariaLabel: string) {
   const menuSelector =
     `[data-radix-popper-content-wrapper] [data-state="open"] ` +
     `button[aria-label=${encodedLabel}].w-full`;
-  const directReady = await page.evaluate<boolean>(
+  // Probe and click in the SAME browser task: a ResizeObserver relayout or
+  // Radix remount between a readiness probe and a separate click call leaves
+  // the click targeting a node that no longer exists (the race class
+  // clickToolbarControl in helpers.ts fixed).
+  const directClicked = await page.evaluate<boolean>(
     `(() => {
       const element = document.querySelector(${JSON.stringify(directSelector)});
       if (!element) return false;
@@ -73,13 +77,12 @@ async function clickLiveToolbarPopoverTrigger(page: Page, ariaLabel: string) {
         rect.left + rect.width / 2,
         rect.top + rect.height / 2
       );
-      return Boolean(hit && (hit === element || element.contains(hit)));
+      if (!hit || (hit !== element && !element.contains(hit))) return false;
+      element.click();
+      return true;
     })()`,
   );
-  if (directReady) {
-    await page.click(directSelector, { timeout: 3_000 });
-    return;
-  }
+  if (directClicked) return;
 
   const moreSelector = 'button[aria-label="More formatting options"]';
   const moreExpanded = await page.evaluate<boolean>(
@@ -88,23 +91,31 @@ async function clickLiveToolbarPopoverTrigger(page: Page, ariaLabel: string) {
   if (!moreExpanded) {
     await page.click(moreSelector, { timeout: 3_000 });
   }
-  await page.waitForFunction(
-    `(() => {
-      const elements = Array.from(
-        document.querySelectorAll(${JSON.stringify(menuSelector)})
-      );
-      if (elements.length !== 1) return false;
-      const element = elements[0];
-      const rect = element.getBoundingClientRect();
-      const hit = document.elementFromPoint(
-        rect.left + rect.width / 2,
-        rect.top + rect.height / 2
-      );
-      return Boolean(hit && (hit === element || element.contains(hit)));
-    })()`,
-    3_000,
-  );
-  await page.click(menuSelector, { timeout: 3_000 });
+  const deadline = Date.now() + 3_000;
+  for (;;) {
+    const menuClicked = await page.evaluate<boolean>(
+      `(() => {
+        const elements = Array.from(
+          document.querySelectorAll(${JSON.stringify(menuSelector)})
+        );
+        if (elements.length !== 1) return false;
+        const element = elements[0];
+        const rect = element.getBoundingClientRect();
+        const hit = document.elementFromPoint(
+          rect.left + rect.width / 2,
+          rect.top + rect.height / 2
+        );
+        if (!hit || (hit !== element && !element.contains(hit))) return false;
+        element.click();
+        return true;
+      })()`,
+    );
+    if (menuClicked) return;
+    if (Date.now() > deadline) {
+      throw new Error(`${ariaLabel} popover trigger never became clickable`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
 }
 
 async function chooseList(page: Page, label: "Bulleted list" | "Numbered list") {
