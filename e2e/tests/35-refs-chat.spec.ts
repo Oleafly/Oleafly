@@ -96,6 +96,9 @@ test("custom instructions steer a real reply", async ({ tauriPage }) => {
     inProviderCard(`return (card.textContent || '').includes('Connected');`),
     10_000,
   );
+  const instructionsTab = tauriPage.locator('[data-testid="ai-settings-tab-instructions"]');
+  await instructionsTab.focus();
+  await instructionsTab.press("Enter");
   const instructionTa = 'textarea[placeholder*="British English"]';
   await fillTextarea(
     tauriPage,
