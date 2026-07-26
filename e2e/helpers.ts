@@ -151,6 +151,24 @@ export async function getCompiledPdfProbe(
   page: Page,
   timeoutMs = 90_000,
 ): Promise<E2ePdfProbe> {
+  // The compiled PDF lands on disk a beat after the compile status flips on a
+  // slow filesystem (Windows CI), so a fresh probe can read ENOENT once or
+  // twice before the artifact exists. Retry those reads before failing.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await getCompiledPdfProbeOnce(page, timeoutMs);
+    } catch (error) {
+      if (!String(error).includes("no compiled PDF")) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 3_000));
+    }
+  }
+  return getCompiledPdfProbeOnce(page, timeoutMs);
+}
+
+async function getCompiledPdfProbeOnce(
+  page: Page,
+  timeoutMs: number,
+): Promise<E2ePdfProbe> {
   await ensureE2ePdfProbe(page);
   await page.evaluate(
     `(() => {
