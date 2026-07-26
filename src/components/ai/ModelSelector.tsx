@@ -8,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ProviderLogo } from "@/components/ai/ProviderLogo";
 
 export type ModelSelectorGroup = {
   id: string;
@@ -57,7 +58,12 @@ export function ModelSelector({
       <SelectContent className="max-h-[60vh] min-w-56">
         {groups.map((group) => (
           <SelectGroup key={group.id}>
-            <SelectLabel className="text-[10px] uppercase tracking-wide">{group.name}</SelectLabel>
+            <SelectLabel className="text-[10px] uppercase tracking-wide">
+              <span className="flex items-center gap-1.5">
+                <ProviderLogo providerId={group.id} size={14} />
+                {group.name}
+              </span>
+            </SelectLabel>
             {group.models.map((model) => (
               <SelectItem key={model.id} value={JSON.stringify([group.id, model.id])}>
                 {model.name}
