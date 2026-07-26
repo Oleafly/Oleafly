@@ -14,6 +14,7 @@ import {
   BadgeDollarSign,
   BookOpen,
   Brain,
+  Check,
   ChevronDown,
   Filter,
   FilePlus2,
@@ -45,7 +46,7 @@ import { getEditorView } from "@/components/editor/cm/controller";
 import { ToolConfirm, isAutoApprovable } from "@/components/ai/ToolConfirm";
 import { AttachmentChips, type PendingAttachment } from "@/components/ai/AttachmentChips";
 import { ModelSelector } from "@/components/ai/ModelSelector";
-import { PersonaPicker } from "@/components/ai/PersonaPicker";
+import { personaGradient } from "@/lib/persona-colors";
 import { toast } from "@/lib/toast";
 import { buildModel as buildAiModel, defaultModel, mergeCustomProviders, resolveActiveModel } from "@/lib/ai-providers";
 import { enabledModels } from "@/lib/ai-model-state";
@@ -180,6 +181,7 @@ export function ChatCore() {
   const projectKind = useFilesStore((s) => s.projectKind);
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
   const setSettingsInitialSection = useSettingsStore((s) => s.setSettingsInitialSection);
+  const setSettingsScrollTarget = useSettingsStore((s) => s.setSettingsScrollTarget);
   const chatFloating = useSettingsStore((s) => s.chatFloating);
   const setChatFloating = useSettingsStore((s) => s.setChatFloating);
   const chats = useChatsStore((s) => s.chats);
@@ -1783,15 +1785,65 @@ ${sandboxedCustom}`;
                           </div>
                         </div>
                       ))}
+                      <div className="mt-1 border-t py-2 pt-2.5">
+                        <span className="block px-2.5 pb-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
+                          Personas
+                        </span>
+                        {personas.length === 0 ? (
+                          <button
+                            type="button"
+                            data-testid="ai-prompts-create-persona"
+                            onClick={() => {
+                              setSettingsInitialSection("ai");
+                              setSettingsScrollTarget("ai-personas");
+                              setSettingsOpen(true);
+                            }}
+                            className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                          >
+                            <Plus className="size-3.5 shrink-0" />
+                            Create a persona in Settings
+                          </button>
+                        ) : (
+                          <div className="space-y-0.5">
+                            <button
+                              type="button"
+                              data-testid="ai-prompts-persona-none"
+                              onClick={() => setActivePersonaId(null)}
+                              className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-accent"
+                            >
+                              <span className="size-3 shrink-0 rounded-full border border-muted-foreground/40" />
+                              <span className="min-w-0 flex-1 truncate text-xs font-medium">None</span>
+                              {activePersonaId === null && (
+                                <Check className="size-3.5 shrink-0 text-emerald-500" />
+                              )}
+                            </button>
+                            {personas.map((persona) => (
+                              <button
+                                type="button"
+                                key={persona.id}
+                                data-testid={`ai-prompts-persona-${persona.name}`}
+                                onClick={() => setActivePersonaId(persona.id)}
+                                className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-accent"
+                              >
+                                <span
+                                  className="size-3 shrink-0 rounded-full"
+                                  style={{ background: personaGradient(persona.color) }}
+                                />
+                                <span className="min-w-0 flex-1 truncate text-xs font-medium">
+                                  {persona.name}
+                                </span>
+                                {activePersonaId === persona.id && (
+                                  <Check className="size-3.5 shrink-0 text-emerald-500" />
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </Popover>
                   )}
                 </div>
                 <div className="flex items-center gap-1">
-                  <PersonaPicker
-                    personas={personas}
-                    value={activePersonaId}
-                    onChange={setActivePersonaId}
-                  />
                   {configuredProviders.length > 0 && (
                     <div data-tour="ai-provider-model">
                       <ModelSelector

@@ -4,6 +4,7 @@ import { defaultModel, discoveryFor, fetchProviderModels, getProvider } from "@/
 import { enabledModels, mergeFetchedModels, seedProviderModels } from "@/lib/ai-model-state";
 import { listOllamaModels, DEFAULT_OLLAMA_HOST } from "@/lib/ollama";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useSettingsStore } from "@/store/settings";
 import { cn } from "@/lib/utils";
 import { ProvidersTab, type ProviderStatus } from "./ai/ProvidersTab";
 import { InstructionsTab } from "./ai/InstructionsTab";
@@ -50,6 +51,15 @@ export function AISection() {
     status: "idle" | "loading" | "ok" | "down";
     models: string[];
   }>({ status: "idle", models: [] });
+
+  // One-shot deep link (e.g. the chat's Prompts menu) straight to a tab.
+  const scrollTarget = useSettingsStore((s) => s.settingsScrollTarget);
+  const setScrollTarget = useSettingsStore((s) => s.setSettingsScrollTarget);
+  useEffect(() => {
+    if (scrollTarget !== "ai-personas") return;
+    setTab("personas");
+    setScrollTarget(null);
+  }, [scrollTarget, setScrollTarget]);
 
   useEffect(() => {
     void getConfig().then((c) => {
