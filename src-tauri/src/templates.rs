@@ -318,6 +318,8 @@ pub fn list_templates(app: AppHandle) -> Result<Vec<TemplateInfo>, String> {
 pub struct CustomFile {
     pub name: String,
     pub content: String,
+    #[serde(default)]
+    pub content_base64: Option<String>,
 }
 
 fn is_safe_custom_file(name: &str) -> bool {
@@ -368,7 +370,13 @@ fn save_custom_template_at(
             if let Some(parent) = p.parent() {
                 std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
             }
-            std::fs::write(&p, &f.content).map_err(|e| e.to_string())?;
+            if let Some(b64) = &f.content_base64 {
+                use base64::{engine::general_purpose::STANDARD, Engine};
+                let bytes = STANDARD.decode(b64).map_err(|e| e.to_string())?;
+                std::fs::write(&p, bytes).map_err(|e| e.to_string())?;
+            } else {
+                std::fs::write(&p, &f.content).map_err(|e| e.to_string())?;
+            }
         }
         std::fs::rename(&staging, &dest).map_err(|e| e.to_string())
     };
@@ -377,6 +385,19 @@ fn save_custom_template_at(
         return Err(e);
     }
     Ok(())
+}
+
+#[tauri::command]
+pub fn delete_custom_template(slug: String) -> Result<(), String> {
+    if !is_valid_id(&slug) {
+        return Err(format!("illegal template id: {slug}"));
+    }
+    let custom_root = crate::paths::templates_data_root()?.join("custom");
+    let dir = custom_root.join(&slug);
+    if !dir.is_dir() {
+        return Ok(());
+    }
+    std::fs::remove_dir_all(&dir).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -555,6 +576,7 @@ mod tests {
         let files = vec![super::CustomFile {
             name: "main.tex".into(),
             content: "\\documentclass{article}".into(),
+            content_base64: None,
         }];
         // slug guard
         assert!(super::save_custom_template_at(&root, "../x", manifest, &files, &[]).is_err());

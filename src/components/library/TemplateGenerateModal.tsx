@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   Bookmark,
+  BookmarkX,
   Check,
   Loader2,
   Pencil,
@@ -23,6 +24,7 @@ import { mergeCustomProviders } from "@/lib/ai-providers";
 import { getConfig, type AppConfig } from "@/lib/tauri";
 import {
   compileGeneratedTemplate,
+  deleteGeneratedTemplate,
   generateTemplateAvailable,
   generateTemplateSource,
   saveGeneratedTemplate,
@@ -61,7 +63,7 @@ function SkeletonPage({ dim }: { dim?: boolean }) {
         dim ? "opacity-60" : "opacity-100",
       )}
     >
-      <div className="flex w-full max-w-md animate-pulse flex-col gap-3 rounded-sm bg-white p-8 shadow-sm">
+      <div className="skeleton-shimmer flex w-full max-w-md flex-col gap-3 rounded-sm bg-white p-8 shadow-sm">
         <div className="mx-auto mt-4 h-3 w-1/2 rounded bg-zinc-200" />
         <div className="mx-auto h-2.5 w-1/3 rounded bg-zinc-100" />
         <div className="mt-6 h-2 w-full rounded bg-zinc-100" />
@@ -225,12 +227,27 @@ export function TemplateGenerateModal({
     }
   };
 
+  const unsave = async () => {
+    if (!parsed || saving) return;
+    setSaving(true);
+    try {
+      await deleteGeneratedTemplate(parsed.slug);
+      setSaved(false);
+      toast.success(`Removed "${parsed.name}" from your library`);
+      onSaved();
+    } catch (e) {
+      notifyError("remove the template", e, "Couldn't remove the template.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const save = async (): Promise<boolean> => {
     if (!parsed || saving) return saved;
     if (saved) return true;
     setSaving(true);
     try {
-      await saveGeneratedTemplate(parsed);
+      await saveGeneratedTemplate(parsed, previewPng);
       setSaved(true);
       toast.success(`Saved "${parsed.name}" to your library`);
       onSaved();
@@ -389,9 +406,9 @@ export function TemplateGenerateModal({
               <SkeletonPage />
             </div>
             <div className="flex min-w-0 flex-1 flex-col justify-center gap-5 pr-4">
-              <p className="flex items-center gap-2.5 text-lg font-medium text-primary">
-                <Loader2 className="size-5 animate-spin" />
-                Generating your template...
+              <p className="flex items-center gap-2.5 text-lg font-medium">
+                <Loader2 className="size-5 animate-spin text-primary" />
+                <span className="ai-shimmer !text-lg">Generating your template...</span>
               </p>
               <div className="rounded-xl border px-4 py-3 text-sm italic text-muted-foreground">
                 "{runPrompt}"
@@ -479,7 +496,7 @@ export function TemplateGenerateModal({
                       <SkeletonPage dim />
                       <p className="absolute inset-x-0 bottom-4 mx-auto w-fit rounded-full bg-black/70 px-3.5 py-1.5 text-xs text-white backdrop-blur-sm">
                         {parsed.engine === "xetex"
-                          ? "Preview unavailable, check the Source tab"
+                          ? "This draft failed to compile"
                           : "Live preview isn't available for this engine yet"}
                       </p>
                     </div>
@@ -497,6 +514,12 @@ export function TemplateGenerateModal({
                   </span>
                 </div>
                 <h3 className="text-2xl font-semibold leading-tight">{parsed.name}</h3>
+                {parsed.engine === "xetex" && !previewPng && (
+                  <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-600 dark:text-amber-400">
+                    This draft did not compile cleanly. Regenerate for a better starting point, or
+                    create the project and fix the source in the editor.
+                  </div>
+                )}
                 {editingDescription ? (
                   <Textarea
                     autoFocus
@@ -560,10 +583,17 @@ export function TemplateGenerateModal({
               </Button>
               <div className="flex items-center gap-3">
                 {saved ? (
-                  <span className="flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium text-muted-foreground">
-                    <Check className="size-4 text-emerald-500" />
-                    Saved
-                  </span>
+                  <Button
+                    variant="outline"
+                    className="group"
+                    disabled={saving}
+                    onClick={() => void unsave()}
+                  >
+                    <Check className="size-4 text-emerald-500 group-hover:hidden" />
+                    <BookmarkX className="hidden size-4 text-destructive group-hover:block" />
+                    <span className="group-hover:hidden">Saved</span>
+                    <span className="hidden group-hover:inline">Unsave</span>
+                  </Button>
                 ) : (
                   <Button
                     variant="outline"
