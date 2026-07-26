@@ -76,7 +76,7 @@ function TourTooltip(props: TooltipRenderProps) {
     <div
       {...tooltipProps}
       data-tour-tooltip={definition.id}
-      className="w-[min(21rem,calc(100vw-2rem))] rounded-lg border bg-popover p-4 text-popover-foreground shadow-xl animate-in fade-in zoom-in-95 duration-200 motion-reduce:animate-none"
+      className="w-[min(24rem,calc(100vw-2rem))] rounded-lg border bg-popover p-4 text-popover-foreground shadow-xl animate-in fade-in zoom-in-95 duration-200 motion-reduce:animate-none"
     >
       {isWelcome ? (
         <svg
@@ -1262,7 +1262,7 @@ export function TourGuide() {
           scrollDuration: reducedMotion ? 0 : 300,
           targetWaitTimeout: 10_000,
           textColor: "var(--popover-foreground)",
-          width: 336,
+          width: 384,
           zIndex: 110,
         }}
       />
