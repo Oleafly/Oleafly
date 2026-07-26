@@ -1,5 +1,5 @@
 import { generateText } from "ai";
-import { hasConfiguredProvider, resolveActiveModel } from "@/lib/ai-providers";
+import { buildModel, hasConfiguredProvider, resolveActiveModel } from "@/lib/ai-providers";
 import { pdfPageToPng } from "@/lib/pdf-image";
 import {
   compileIsolated,
@@ -73,9 +73,21 @@ export async function generateTemplateAvailable(): Promise<boolean> {
   }
 }
 
-export async function generateTemplateSource(description: string): Promise<ParsedTemplate> {
+export async function generateTemplateSource(
+  description: string,
+  override?: { providerId: string; modelId: string },
+): Promise<ParsedTemplate> {
   const cfg = await getConfig();
-  const { model } = resolveActiveModel(cfg);
+  let model: ReturnType<typeof buildModel>;
+  if (override) {
+    const credential = cfg.ai_keys?.[override.providerId] ?? "";
+    const customBaseURL = cfg.ai_custom_providers?.find(
+      (c) => c.id === override.providerId,
+    )?.baseURL;
+    model = buildModel(override.providerId, override.modelId, credential, customBaseURL);
+  } else {
+    model = resolveActiveModel(cfg).model;
+  }
   const { text } = await generateText({
     model,
     system: SYSTEM,
