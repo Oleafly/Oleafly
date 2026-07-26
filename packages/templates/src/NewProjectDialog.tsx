@@ -317,9 +317,11 @@ export function NewProjectDialog({
 
   const categories = useMemo(() => {
     const present = new Set(templates.map((t) => t.category || "Other"));
-    const ordered = CATEGORY_ORDER.filter((c) => present.has(c));
-    const rest = [...present].filter((c) => !CATEGORY_ORDER.includes(c)).sort();
-    return ["All", ...ordered, ...rest];
+    const ordered = CATEGORY_ORDER.filter((c) => present.has(c) && c !== "AI Generated");
+    const rest = [...present]
+      .filter((c) => !CATEGORY_ORDER.includes(c) && c !== "AI Generated")
+      .sort();
+    return ["All", ...(present.has("AI Generated") ? ["AI Generated"] : []), ...ordered, ...rest];
   }, [templates]);
 
   const categoryCounts = useMemo(() => {
@@ -359,6 +361,28 @@ export function NewProjectDialog({
     setColor(t.default_color || defaultColor);
     setStep(2);
   };
+
+  const pendingUseRef = useRef<string | null>(null);
+  useEffect(() => {
+    const onUse = (event: Event) => {
+      const id = (event as CustomEvent<{ id?: string }>).detail?.id;
+      if (!id) return;
+      const match = templates.find((t) => t.id === id);
+      if (match) choose(match);
+      else pendingUseRef.current = id;
+    };
+    window.addEventListener("oleafly:use-template", onUse);
+    return () => window.removeEventListener("oleafly:use-template", onUse);
+  }, [templates]);
+  useEffect(() => {
+    const id = pendingUseRef.current;
+    if (!id) return;
+    const match = templates.find((t) => t.id === id);
+    if (match) {
+      pendingUseRef.current = null;
+      choose(match);
+    }
+  }, [templates]);
 
   const submit = async () => {
     if (!selected || setup.active) return;
@@ -454,7 +478,10 @@ export function NewProjectDialog({
                       : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
                   )}
                 >
-                  <span className="truncate">{CATEGORY_LABELS[c] ?? c}</span>
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    {c === "AI Generated" && <Sparkles className="size-3.5 shrink-0 text-primary" />}
+                    <span className="truncate">{CATEGORY_LABELS[c] ?? c}</span>
+                  </span>
                   <span
                     className={cn(
                       "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium tabular-nums",
@@ -542,8 +569,27 @@ export function NewProjectDialog({
                 data-tour="project-template-list"
               >
                 {filtered.length === 0 ? (
-                  <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                    No templates match.
+                  <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+                    <span className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                      <Sparkles className="size-6" />
+                    </span>
+                    <p className="text-base font-semibold text-foreground">
+                      No templates match your filters
+                    </p>
+                    <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
+                      Try a different search, or generate a brand-new template tailored to what you
+                      need.
+                    </p>
+                    {onGenerateWithAi && (
+                      <Button
+                        className="mt-1"
+                        data-testid="generate-template-empty-state"
+                        data-tour-hide
+                        onClick={onGenerateWithAi}
+                      >
+                        <Sparkles className="size-4" /> Generate a template with AI
+                      </Button>
+                    )}
                   </div>
                 ) : (
                   <div className="grid grid-cols-3 gap-x-4 gap-y-5 sm:grid-cols-4">
@@ -559,6 +605,11 @@ export function NewProjectDialog({
                       >
                         <div className="relative aspect-[17/22] overflow-hidden rounded-md border border-black/10 bg-white shadow-sm ring-1 ring-transparent transition-all duration-150 group-hover:-translate-y-0.5 group-hover:shadow-md group-hover:ring-primary/50 group-focus-visible:ring-primary">
                           <Preview t={t} host={host} />
+                          {(t.category || "") === "AI Generated" && (
+                            <span className="absolute -right-1.5 -top-1 flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[9px] font-semibold text-white shadow-md">
+                              <Sparkles className="size-2.5" /> AI
+                            </span>
+                          )}
                           {!t.assets_ready && (
                             <span className="absolute left-1.5 top-1.5 flex items-center gap-1 rounded bg-black/65 px-1.5 py-0.5 text-[9px] font-medium text-white backdrop-blur-sm">
                               <Download className="size-2.5" /> Setup
