@@ -87,6 +87,30 @@ async function openListDropdown(page: Page) {
   }
 }
 
+// Click a list item inside the OPEN Radix portal in one browser task. A naive
+// getByText().click() times out on the reopened popover: Radix keeps the
+// previous (closing) portal mounted for its exit animation, so the bridge can
+// bind to a stale, hidden copy that never becomes clickable.
+async function pickListItem(page: Page, label: "Bulleted list" | "Numbered list") {
+  const clicked = await page
+    .waitForFunction(
+      `(() => {
+        const button = Array.from(
+          document.querySelectorAll('[data-radix-popper-content-wrapper] button')
+        )
+          .filter((candidate) => candidate.closest('[data-state="open"]'))
+          .find((candidate) => candidate.textContent?.trim() === ${JSON.stringify(label)});
+        if (!(button instanceof HTMLElement)) return false;
+        button.click();
+        return true;
+      })()`,
+      5_000,
+    )
+    .then(() => true)
+    .catch(() => false);
+  if (!clicked) throw new Error(`list item ${label} never became clickable`);
+}
+
 function codeIntelligenceButtonExpression(label: string) {
   return `Array.from(
     document.querySelectorAll('[data-radix-popper-content-wrapper] button')
@@ -148,10 +172,10 @@ async function clickCodeIntelligenceAction(page: Page, label: string) {
 test("both list kinds insert their environments", async ({ tauriPage }) => {
   await openScratchProject(tauriPage);
   await openListDropdown(tauriPage);
-  await tauriPage.getByText("Bulleted list").click();
+  await pickListItem(tauriPage, "Bulleted list");
   await editorHas(tauriPage, "\\begin{itemize}");
   await openListDropdown(tauriPage);
-  await tauriPage.getByText("Numbered list").click();
+  await pickListItem(tauriPage, "Numbered list");
   await editorHas(tauriPage, "\\begin{enumerate}");
 });
 

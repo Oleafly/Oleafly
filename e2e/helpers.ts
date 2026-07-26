@@ -891,9 +891,19 @@ export async function openSettings(page: Page, section?: string) {
             button.click();
             return "clicked";
           }
-          return document.querySelector('[data-testid="settings-section-appearance"]')
-            ? "waiting"
-            : "closed";
+          if (!document.querySelector('[data-testid="settings-section-appearance"]')) {
+            return "closed";
+          }
+          // Dictionary/Engine/Downloads/Data live behind the "Show advanced
+          // settings" toggle, persisted in localStorage. A fresh data dir (or a
+          // shard whose earlier specs never enabled it) opens with it off, so
+          // the section button legitimately isn't in the nav yet. Enable it.
+          const advanced = document.querySelector('[aria-label="Show advanced settings"]');
+          if (advanced instanceof HTMLElement && advanced.getAttribute("aria-checked") !== "true") {
+            advanced.click();
+            return "advanced";
+          }
+          return "waiting";
         })()`,
       );
       if (state === "active") return;
