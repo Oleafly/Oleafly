@@ -22,6 +22,7 @@ import {
   type TourContext,
   type TourStepDefinition,
 } from "@/lib/tours/registry";
+import { shortcut } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
@@ -166,7 +167,7 @@ function TourTooltip(props: TooltipRenderProps) {
           {index > 0 ? (
             <Tooltip label={backProps.title}>
               <Button {...omitTitle(backProps)} variant="ghost" size="sm">
-                <Kbd>←</Kbd>
+                <Kbd>{shortcut("⌘←")}</Kbd>
                 Back
               </Button>
             </Tooltip>
@@ -175,7 +176,9 @@ function TourTooltip(props: TooltipRenderProps) {
             <Tooltip label={primaryProps.title}>
               <Button {...omitTitle(primaryProps)} disabled={!inputReady} size="sm">
                 {isLastStep ? "Done" : "Next"}
-                <Kbd className="bg-primary-foreground/20 text-primary-foreground">→</Kbd>
+                <Kbd className="bg-primary-foreground/20 text-primary-foreground">
+                  {shortcut("⌘→")}
+                </Kbd>
               </Button>
             </Tooltip>
           ) : null}
@@ -759,9 +762,7 @@ export function TourGuide() {
       if (quitConfirmOpenRef.current) return;
       const tourStep = activeStep as TourStepDefinition;
       const noModifiers = !event.metaKey && !event.ctrlKey && !event.altKey;
-      const editableTarget =
-        event.target instanceof HTMLElement &&
-        Boolean(event.target.closest('input, textarea, [contenteditable="true"]'));
+      const chord = (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey;
       if (noModifiers && event.key === "Escape") {
         event.preventDefault();
         event.stopImmediatePropagation();
@@ -769,9 +770,8 @@ export function TourGuide() {
         return;
       }
       if (
-        noModifiers &&
+        chord &&
         event.key === "ArrowRight" &&
-        !editableTarget &&
         tourStep.kind !== "required-click" &&
         tourStep.kind !== "required-input"
       ) {
@@ -783,7 +783,7 @@ export function TourGuide() {
         else store.advance();
         return;
       }
-      if (noModifiers && event.key === "ArrowLeft" && !editableTarget && stepIndexRef.current > 0) {
+      if (chord && event.key === "ArrowLeft" && stepIndexRef.current > 0) {
         event.preventDefault();
         event.stopImmediatePropagation();
         navigationDirection.current = "prev";

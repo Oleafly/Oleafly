@@ -434,18 +434,18 @@ test("AI settings tour walks the tabs with keyboard navigation and Escape confir
   const title = () => tauriPage.locator("#react-joyride-portal h2");
   await expect(title()).toHaveText("AI Assistant settings", { timeout: 30_000 });
 
-  await pressGlobal(tauriPage, "ArrowRight");
+  await pressGlobal(tauriPage, "ArrowRight", { meta: true });
   await expect(title()).toHaveText("Connect providers", { timeout: 10_000 });
-  await pressGlobal(tauriPage, "ArrowLeft");
+  await pressGlobal(tauriPage, "ArrowLeft", { meta: true });
   await expect(title()).toHaveText("AI Assistant settings", { timeout: 10_000 });
-  await pressGlobal(tauriPage, "ArrowRight");
+  await pressGlobal(tauriPage, "ArrowRight", { meta: true });
   await expect(title()).toHaveText("Connect providers", { timeout: 10_000 });
-  await pressGlobal(tauriPage, "ArrowRight");
+  await pressGlobal(tauriPage, "ArrowRight", { meta: true });
   await expect(title()).toHaveText("Bring your own endpoint", { timeout: 10_000 });
 
-  await pressGlobal(tauriPage, "ArrowRight");
+  await pressGlobal(tauriPage, "ArrowRight", { meta: true });
   await expect(title()).toHaveText("Instructions", { timeout: 10_000 });
-  await pressGlobal(tauriPage, "ArrowRight");
+  await pressGlobal(tauriPage, "ArrowRight", { meta: true });
   await expect(title()).toHaveText("Instructions");
 
   const instructionsTab = tauriPage.locator('[data-tour="ai-settings-tab-instructions"]');
