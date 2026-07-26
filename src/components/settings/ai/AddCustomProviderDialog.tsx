@@ -26,14 +26,47 @@ export interface AddCustomProviderDialogProps {
 
 const EMPTY: AddCustomProviderInput = { id: "", name: "", baseURL: "", apiKey: "" };
 
+type FieldErrors = Partial<Record<"id" | "name" | "baseURL", string>>;
+
+// Accepts every base the AI SDK's OpenAI-compatible provider can take:
+// https or http (local servers like Ollama/LM Studio), hosts, IPs, ports,
+// and path suffixes like /v1. Rejects anything that isn't a parseable URL.
+function validate(form: AddCustomProviderInput): FieldErrors {
+  const errors: FieldErrors = {};
+  const id = form.id.trim();
+  if (!id) errors.id = "ID is required.";
+  else if (!/^[a-z0-9][a-z0-9-]*$/.test(id)) {
+    errors.id = "Use lowercase letters, digits, and dashes only, e.g. acme.";
+  }
+  if (!form.name.trim()) errors.name = "Name is required.";
+  const baseURL = form.baseURL.trim();
+  if (!baseURL) {
+    errors.baseURL = "Base URL is required.";
+  } else {
+    try {
+      const parsed = new URL(baseURL);
+      if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+        errors.baseURL = "Use https://, or http:// for a local server.";
+      } else if (!parsed.hostname) {
+        errors.baseURL = "The URL is missing a host.";
+      }
+    } catch {
+      errors.baseURL = "Enter a full URL, e.g. https://api.example.com/v1 or http://localhost:1234/v1.";
+    }
+  }
+  return errors;
+}
+
 export function AddCustomProviderDialog({ open, onOpenChange, onSubmit }: AddCustomProviderDialogProps) {
   const [form, setForm] = useState<AddCustomProviderInput>(EMPTY);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   const reset = () => {
     setForm(EMPTY);
     setError("");
+    setFieldErrors({});
     setBusy(false);
   };
 
@@ -42,18 +75,25 @@ export function AddCustomProviderDialog({ open, onOpenChange, onSubmit }: AddCus
     onOpenChange(next);
   };
 
+  const setField = (key: keyof AddCustomProviderInput) => (value: string) => {
+    setForm((f) => ({ ...f, [key]: value }));
+    // A field's error clears as soon as the user edits it again.
+    if (key !== "apiKey") setFieldErrors((e) => ({ ...e, [key]: undefined }));
+  };
+
   const submit = async () => {
-    const id = form.id.trim();
-    const name = form.name.trim();
-    const baseURL = form.baseURL.trim();
-    if (!id || !name || !baseURL) {
-      setError("ID, name, and base URL are required.");
-      return;
-    }
+    const errors = validate(form);
+    setFieldErrors(errors);
+    if (Object.values(errors).some(Boolean)) return;
     setBusy(true);
     setError("");
     try {
-      const res = await onSubmit({ id, name, baseURL, apiKey: form.apiKey.trim() });
+      const res = await onSubmit({
+        id: form.id.trim(),
+        name: form.name.trim(),
+        baseURL: form.baseURL.trim(),
+        apiKey: form.apiKey.trim(),
+      });
       if (!res.ok) {
         setError(res.message ?? "Could not add that provider.");
         return;
@@ -82,10 +122,16 @@ export function AddCustomProviderDialog({ open, onOpenChange, onSubmit }: AddCus
               id="custom-provider-id"
               data-testid="custom-provider-id"
               value={form.id}
-              onChange={(e) => setForm((f) => ({ ...f, id: e.target.value }))}
+              onChange={(e) => setField("id")(e.target.value)}
               placeholder="acme"
-              className="font-mono text-xs"
+              aria-invalid={Boolean(fieldErrors.id)}
+              className="font-mono text-xs aria-[invalid=true]:border-destructive"
             />
+            {fieldErrors.id && (
+              <p data-testid="custom-provider-id-error" className="text-xs text-destructive">
+                {fieldErrors.id}
+              </p>
+            )}
           </div>
           <div className="space-y-1">
             <label htmlFor="custom-provider-name" className="text-xs font-medium text-muted-foreground">
@@ -95,9 +141,16 @@ export function AddCustomProviderDialog({ open, onOpenChange, onSubmit }: AddCus
               id="custom-provider-name"
               data-testid="custom-provider-name"
               value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              onChange={(e) => setField("name")(e.target.value)}
               placeholder="Acme"
+              aria-invalid={Boolean(fieldErrors.name)}
+              className="aria-[invalid=true]:border-destructive"
             />
+            {fieldErrors.name && (
+              <p data-testid="custom-provider-name-error" className="text-xs text-destructive">
+                {fieldErrors.name}
+              </p>
+            )}
           </div>
           <div className="space-y-1">
             <label htmlFor="custom-provider-baseurl" className="text-xs font-medium text-muted-foreground">
@@ -107,10 +160,16 @@ export function AddCustomProviderDialog({ open, onOpenChange, onSubmit }: AddCus
               id="custom-provider-baseurl"
               data-testid="custom-provider-baseurl"
               value={form.baseURL}
-              onChange={(e) => setForm((f) => ({ ...f, baseURL: e.target.value }))}
+              onChange={(e) => setField("baseURL")(e.target.value)}
               placeholder="https://api.example.com/v1"
-              className="font-mono text-xs"
+              aria-invalid={Boolean(fieldErrors.baseURL)}
+              className="font-mono text-xs aria-[invalid=true]:border-destructive"
             />
+            {fieldErrors.baseURL && (
+              <p data-testid="custom-provider-baseurl-error" className="text-xs text-destructive">
+                {fieldErrors.baseURL}
+              </p>
+            )}
           </div>
           <div className="space-y-1">
             <label htmlFor="custom-provider-key" className="text-xs font-medium text-muted-foreground">
@@ -121,7 +180,7 @@ export function AddCustomProviderDialog({ open, onOpenChange, onSubmit }: AddCus
               data-testid="custom-provider-key"
               type="password"
               value={form.apiKey}
-              onChange={(e) => setForm((f) => ({ ...f, apiKey: e.target.value }))}
+              onChange={(e) => setField("apiKey")(e.target.value)}
               placeholder="Leave blank if none is required"
               className="font-mono text-xs"
             />
