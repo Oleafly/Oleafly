@@ -121,15 +121,27 @@ async function openCodeIntelligence(page: Page) {
 
 async function clickCodeIntelligenceAction(page: Page, label: string) {
   const buttonExpression = codeIntelligenceButtonExpression(label);
-  await page.waitForFunction(`!!(${buttonExpression})`, 5_000);
-  await page.evaluate(`(() => {
-    const button = ${buttonExpression};
-    if (!(button instanceof HTMLElement)) {
-      throw new Error(${JSON.stringify(`${label} code-intelligence action not found`)});
-    }
-    button.click();
-    return true;
-  })()`);
+  // Find and click in ONE evaluation: the toolbar's ResizeObserver relayout
+  // can remount the menu between a wait that sees the action and a separate
+  // click evaluation (same race class clickToolbarControl fixed). If the menu
+  // closed underneath us, reopen it and try again.
+  const atomicClick = () =>
+    page.evaluate<boolean>(`(() => {
+      const button = ${buttonExpression};
+      if (!(button instanceof HTMLElement)) return false;
+      button.click();
+      return true;
+    })()`);
+  for (let attempt = 0; attempt < 5; attempt++) {
+    if (await atomicClick()) return;
+    await clickToolbarControl(page, '[aria-label="Code intelligence"]', "Code");
+    await page
+      .waitForFunction(`!!(${buttonExpression})`, 3_000)
+      .catch(() => undefined);
+  }
+  if (!(await atomicClick())) {
+    throw new Error(`${label} code-intelligence action never became clickable`);
+  }
 }
 
 test("both list kinds insert their environments", async ({ tauriPage }) => {
@@ -219,15 +231,25 @@ test("code-intelligence toolbar menu runs definition, references, and rename act
     if (attempt >= 3) throw new Error("toolbar go-to-definition never landed");
   }
 
-  await caretIn(tauriPage, "sec:e2e-toolbar", 2);
-  await openCodeIntelligence(tauriPage);
-  await clickCodeIntelligenceAction(tauriPage, "Rename symbol");
-  await tauriPage.waitForFunction(
-    `import("/src/store/rename.ts").then(({ useRenameStore }) =>
-      !!useRenameStore.getState().sym
-    )`,
-    5_000,
-  );
+  // The action can land as a silent no-op when the menu remounts mid-click or
+  // the caret state was consumed by the prior definition jump, so retry the
+  // whole caret -> menu -> action sequence until the dialog actually opens.
+  // (A promise-returning waitForFunction is truthy immediately in this bridge,
+  // so it cannot serve as the readiness gate here.)
+  for (let attempt = 0; ; attempt++) {
+    await caretIn(tauriPage, "sec:e2e-toolbar", 2);
+    await openCodeIntelligence(tauriPage);
+    await clickCodeIntelligenceAction(tauriPage, "Rename symbol");
+    const opened = await tauriPage
+      .waitForFunction(
+        `!!document.querySelector('[role="dialog"][aria-labelledby="rename-title"]')`,
+        5_000,
+      )
+      .then(() => true)
+      .catch(() => false);
+    if (opened) break;
+    if (attempt >= 3) throw new Error("rename dialog never opened");
+  }
   const renameDialog = tauriPage.locator('[role="dialog"][aria-labelledby="rename-title"]');
   await expect(renameDialog).toBeVisible({ timeout: 10_000 });
   await renameDialog.getByText("Cancel", { exact: true }).click();
