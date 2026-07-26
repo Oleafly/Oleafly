@@ -222,7 +222,7 @@ export function SettingsModal() {
   const completedTours = TOUR_IDS.filter((id) => tours[id].status === "completed").length;
   const dismissedTours = TOUR_IDS.filter((id) => tours[id].status === "dismissed").length;
   const [showAdvanced, setShowAdvanced] = useState(
-    () => typeof localStorage !== "undefined" && localStorage.getItem("ol-settings-advanced") === "1",
+    () => typeof localStorage === "undefined" || localStorage.getItem("ol-settings-advanced") !== "0",
   );
   const setAdvanced = (v: boolean) => {
     setShowAdvanced(v);
