@@ -28,9 +28,6 @@ const EMPTY: AddCustomProviderInput = { id: "", name: "", baseURL: "", apiKey: "
 
 type FieldErrors = Partial<Record<"id" | "name" | "baseURL", string>>;
 
-// Accepts every base the AI SDK's OpenAI-compatible provider can take:
-// https or http (local servers like Ollama/LM Studio), hosts, IPs, ports,
-// and path suffixes like /v1. Rejects anything that isn't a parseable URL.
 function validate(form: AddCustomProviderInput): FieldErrors {
   const errors: FieldErrors = {};
   const id = form.id.trim();
@@ -77,7 +74,6 @@ export function AddCustomProviderDialog({ open, onOpenChange, onSubmit }: AddCus
 
   const setField = (key: keyof AddCustomProviderInput) => (value: string) => {
     setForm((f) => ({ ...f, [key]: value }));
-    // A field's error clears as soon as the user edits it again.
     if (key !== "apiKey") setFieldErrors((e) => ({ ...e, [key]: undefined }));
   };
 

@@ -34,8 +34,6 @@ export function ModelSelector({
   disabled?: boolean;
   compact?: boolean;
   className?: string;
-  // Callers rendering inside a higher-stacked surface (e.g. the Settings
-  // modal at z-[80]) pass a z bump here or the dropdown opens behind it.
   contentClassName?: string;
 }) {
   const value = JSON.stringify([providerId, modelId]);
@@ -58,8 +56,6 @@ export function ModelSelector({
             className,
           )}
         >
-          {/* !flex beats the trigger's [&>span]:line-clamp-1, which would
-              otherwise lay the logo and name out as a vertical -webkit-box. */}
           <span className="!flex min-w-0 items-center gap-1.5">
             {providerId && <ProviderLogo providerId={providerId} size={compact ? 12 : 14} />}
             <span className="truncate">

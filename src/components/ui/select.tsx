@@ -103,11 +103,7 @@ SelectLabel.displayName = SelectPrimitive.Label.displayName;
 const SelectItem = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item> & {
-    // Rendered in the dropdown row only, never inside the trigger's
-    // SelectValue (which mirrors ItemText content).
     icon?: React.ReactNode;
-    // "right-circle" moves the selected mark to the row's right edge as a
-    // green circled check (model-picker style); default keeps the left check.
     indicator?: "left" | "right-circle";
   }
 >(({ className, children, icon, indicator = "left", ...props }, ref) => (
