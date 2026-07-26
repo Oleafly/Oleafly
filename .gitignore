@@ -43,3 +43,4 @@ e2e/.env
 .claude/
 .superpowers/
 e2e-debug/
+src-tauri/tauri.windows-signing.conf.json
