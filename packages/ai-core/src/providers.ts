@@ -1,6 +1,7 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createAnthropic } from "@ai-sdk/anthropic";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 
 export interface AIModel {
   id: string;
@@ -40,6 +41,17 @@ export const PROVIDERS: AIProvider[] = [
       { id: "claude-sonnet-4-20250514", name: "Claude Sonnet 4" },
       { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet" },
       { id: "claude-3-5-haiku-20241022", name: "Claude 3.5 Haiku" },
+    ],
+  },
+  {
+    id: "google",
+    name: "Google Gemini",
+    blurb: "Gemini models from Google AI Studio.",
+    signupUrl: "https://aistudio.google.com/app/api-keys",
+    models: [
+      { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro" },
+      { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash" },
+      { id: "gemini-2.0-flash", name: "Gemini 2.0 Flash" },
     ],
   },
   {
@@ -115,6 +127,18 @@ export const PROVIDERS: AIProvider[] = [
     ],
   },
   {
+    id: "perplexity",
+    name: "Perplexity",
+    blurb: "Sonar models with live web grounding.",
+    signupUrl: "https://www.perplexity.ai/settings/api",
+    baseURL: "https://api.perplexity.ai",
+    models: [
+      { id: "sonar", name: "Sonar" },
+      { id: "sonar-pro", name: "Sonar Pro" },
+      { id: "sonar-reasoning", name: "Sonar Reasoning" },
+    ],
+  },
+  {
     id: "ollama",
     name: "Ollama (local)",
     blurb: "Runs models on your machine. No key needed - install Ollama and pull a model.",
@@ -169,6 +193,9 @@ export function buildModel(provider: string, model: string, credential: string) 
       baseURL: p?.baseURL ?? "",
       apiKey: credential,
     }).chatModel(model);
+  }
+  if (provider === "google") {
+    return createGoogleGenerativeAI({ apiKey: credential })(model);
   }
   const baseURL = getProvider(provider)?.baseURL;
   return createOpenAI({
