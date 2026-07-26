@@ -32,3 +32,11 @@ export function setModelEnabled(list: StoredModel[], id: string, enabled: boolea
 export function deleteModel(list: StoredModel[], id: string): StoredModel[] {
   return list.filter((m) => m.id !== id);
 }
+
+// Re-adds any of the provider's built-in models the user deleted, leaving
+// existing entries (and their enabled state) untouched.
+export function restoreSeedModels(list: StoredModel[], providerId: string): StoredModel[] {
+  const existing = new Set(list.map((m) => m.id));
+  const missing = seedProviderModels(providerId).filter((m) => !existing.has(m.id));
+  return missing.length ? [...list, ...missing] : list;
+}

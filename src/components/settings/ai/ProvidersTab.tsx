@@ -2,7 +2,9 @@ import { useState, type Dispatch, type SetStateAction } from "react";
 import { Check, ChevronDown, ChevronRight, ExternalLink, Loader2, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Input } from "@/components/ui/input";
+import { Tooltip } from "@/components/ui/tooltip";
 import {
   Select,
   SelectContent,
@@ -199,6 +201,7 @@ export function ProvidersTab({
 }: ProvidersTabProps) {
   const activeProvider = cfg.ai_provider;
   const allProviders = mergeCustomProviders(cfg.ai_custom_providers);
+  const [confirmRemove, setConfirmRemove] = useState<{ id: string; name: string } | null>(null);
 
   return (
     <div className="space-y-4">
@@ -341,27 +344,29 @@ export function ProvidersTab({
                       </Button>
                     ) : null}
                     {isCustom ? (
-                      <button type="button"
-                        data-testid={`ai-provider-delete-${p.id}`}
-                        aria-label={`Remove ${p.name}`}
-                        title="Remove custom provider"
-                        disabled={saving === p.id}
-                        onClick={() => void deleteCustomProvider(p.id)}
-                        className="flex size-8 shrink-0 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </button>
+                      <Tooltip label="Remove custom provider">
+                        <button type="button"
+                          data-testid={`ai-provider-delete-${p.id}`}
+                          aria-label={`Remove ${p.name}`}
+                          disabled={saving === p.id}
+                          onClick={() => setConfirmRemove({ id: p.id, name: p.name })}
+                          className="flex size-8 shrink-0 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </Tooltip>
                     ) : hasSaved ? (
-                      <button type="button"
-                        data-testid={`ai-provider-delete-${p.id}`}
-                        aria-label={`Delete ${p.name} key`}
-                        title="Delete key"
-                        disabled={saving === p.id}
-                        onClick={() => void deleteKey(p.id)}
-                        className="flex size-8 shrink-0 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </button>
+                      <Tooltip label="Delete key">
+                        <button type="button"
+                          data-testid={`ai-provider-delete-${p.id}`}
+                          aria-label={`Delete ${p.name} key`}
+                          disabled={saving === p.id}
+                          onClick={() => void deleteKey(p.id)}
+                          className="flex size-8 shrink-0 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </Tooltip>
                     ) : null}
                   </div>
                   {(() => {
@@ -407,6 +412,19 @@ export function ProvidersTab({
           Add custom provider
         </Button>
       </div>
+
+      <ConfirmationDialog
+        open={confirmRemove !== null}
+        title="Remove custom provider"
+        description={`Remove "${confirmRemove?.name ?? ""}"? Its saved key and model list are deleted with it.`}
+        confirmLabel="Remove"
+        destructive
+        onConfirm={() => {
+          if (confirmRemove) void deleteCustomProvider(confirmRemove.id);
+          setConfirmRemove(null);
+        }}
+        onCancel={() => setConfirmRemove(null)}
+      />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip } from "@/components/ui/tooltip";
 import { personaGradient } from "@/lib/persona-colors";
 import type { Persona } from "@/lib/tauri";
 
@@ -19,17 +20,18 @@ export function PersonaPicker({
       value={value ?? "none"}
       onValueChange={(next) => onChange(next === "none" ? null : next)}
     >
-      <SelectTrigger
-        data-testid="ai-persona-picker"
-        aria-label="Persona"
-        title="Switch persona"
-        className={cn(
-          "h-6 max-w-40 border-0 bg-transparent px-1.5 text-[10px] text-muted-foreground shadow-none hover:bg-accent hover:text-foreground",
-          className,
-        )}
-      >
-        <SelectValue />
-      </SelectTrigger>
+      <Tooltip label="Switch persona">
+        <SelectTrigger
+          data-testid="ai-persona-picker"
+          aria-label="Persona"
+          className={cn(
+            "h-6 max-w-40 border-0 bg-transparent px-1.5 text-[10px] text-muted-foreground shadow-none hover:bg-accent hover:text-foreground",
+            className,
+          )}
+        >
+          <SelectValue />
+        </SelectTrigger>
+      </Tooltip>
       <SelectContent className="max-h-[60vh] min-w-48">
         <SelectItem value="none">None</SelectItem>
         {personas.map((persona) => (

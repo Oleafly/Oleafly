@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { Tooltip } from "@/components/ui/tooltip";
 import type { AppConfig, Persona } from "@/lib/tauri";
 import { personaGradient } from "@/lib/persona-colors";
 import { CreatePersonaDialog } from "./CreatePersonaDialog";
@@ -14,6 +16,7 @@ export interface PersonasTabProps {
 export function PersonasTab({ cfg, persist, setMsg }: PersonasTabProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Persona | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<Persona | null>(null);
   const personas = cfg.ai_personas ?? [];
 
   const openCreate = () => {
@@ -80,26 +83,28 @@ export function PersonasTab({ cfg, persist, setMsg }: PersonasTabProps) {
                 style={{ background: personaGradient(persona.color) }}
               />
               <span className="min-w-0 flex-1 truncate text-xs font-medium">{persona.name}</span>
-              <button
-                type="button"
-                data-testid={`ai-persona-edit-${persona.name}`}
-                aria-label={`Edit persona ${persona.name}`}
-                title="Edit persona"
-                onClick={() => openEdit(persona)}
-                className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              >
-                <Pencil className="size-3" />
-              </button>
-              <button
-                type="button"
-                data-testid={`ai-persona-delete-${persona.name}`}
-                aria-label={`Delete persona ${persona.name}`}
-                title="Delete persona"
-                onClick={() => void deletePersona(persona)}
-                className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-              >
-                <Trash2 className="size-3" />
-              </button>
+              <Tooltip label="Edit persona">
+                <button
+                  type="button"
+                  data-testid={`ai-persona-edit-${persona.name}`}
+                  aria-label={`Edit persona ${persona.name}`}
+                  onClick={() => openEdit(persona)}
+                  className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  <Pencil className="size-3" />
+                </button>
+              </Tooltip>
+              <Tooltip label="Delete persona">
+                <button
+                  type="button"
+                  data-testid={`ai-persona-delete-${persona.name}`}
+                  aria-label={`Delete persona ${persona.name}`}
+                  onClick={() => setConfirmDelete(persona)}
+                  className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                >
+                  <Trash2 className="size-3" />
+                </button>
+              </Tooltip>
             </div>
           ))}
         </div>
@@ -110,6 +115,19 @@ export function PersonasTab({ cfg, persist, setMsg }: PersonasTabProps) {
         onOpenChange={setDialogOpen}
         onSubmit={savePersona}
         editing={editing}
+      />
+
+      <ConfirmationDialog
+        open={confirmDelete !== null}
+        title="Delete persona"
+        description={`Delete "${confirmDelete?.name ?? ""}"? Its prompt is removed permanently, and any chat using it falls back to your default instructions.`}
+        confirmLabel="Delete"
+        destructive
+        onConfirm={() => {
+          if (confirmDelete) void deletePersona(confirmDelete);
+          setConfirmDelete(null);
+        }}
+        onCancel={() => setConfirmDelete(null)}
       />
     </div>
   );

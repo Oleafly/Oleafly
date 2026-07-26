@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ProviderLogo } from "@/components/ai/ProviderLogo";
+import { Tooltip } from "@/components/ui/tooltip";
 
 export type ModelSelectorGroup = {
   id: string;
@@ -47,18 +48,24 @@ export function ModelSelector({
         onChange(nextProvider, nextModel);
       }}
     >
-      <SelectTrigger
-        aria-label="AI model"
-        title="Switch provider or model"
-        className={cn(
-          compact
-            ? "h-6 max-w-44 border-0 bg-transparent px-1.5 text-[10px] text-muted-foreground shadow-none hover:bg-accent hover:text-foreground"
-            : "w-48",
-          className,
-        )}
-      >
-        <SelectValue />
-      </SelectTrigger>
+      <Tooltip label="Switch provider or model">
+        <SelectTrigger
+          aria-label="AI model"
+          className={cn(
+            compact
+              ? "h-6 max-w-44 border-0 bg-transparent px-1.5 text-[10px] text-muted-foreground shadow-none hover:bg-accent hover:text-foreground"
+              : "w-48",
+            className,
+          )}
+        >
+          <span className="flex min-w-0 items-center gap-1.5">
+            {providerId && <ProviderLogo providerId={providerId} size={compact ? 12 : 14} />}
+            <span className="truncate">
+              <SelectValue />
+            </span>
+          </span>
+        </SelectTrigger>
+      </Tooltip>
       <SelectContent className={cn("max-h-[60vh] min-w-56", contentClassName)}>
         {groups.map((group) => (
           <SelectGroup key={group.id}>
