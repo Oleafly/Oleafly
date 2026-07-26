@@ -33,7 +33,20 @@ async function openBlankProject(
     await page.fill("#new-project-name", name);
     await page.click('[data-testid="create-project"]');
   }
-  await page.waitForFunction(`!!document.querySelector('.cm-content')`, 20_000);
+  // Windows WebView2 cold-mounts the editor slower than macOS/Linux; a fixed
+  // 20s wait times out on a loaded runner. Poll longer, and if the editor
+  // never appeared (an open click that missed, or a gallery that didn't
+  // dismiss), reopen the project once before giving up.
+  const editorReady = await page
+    .waitForFunction(`!!document.querySelector('.cm-content')`, 45_000)
+    .then(() => true)
+    .catch(() => false);
+  if (!editorReady) {
+    if (await page.evaluate<boolean>(`document.body.innerText.includes(${JSON.stringify(name)})`)) {
+      await page.getByText(name).click().catch(() => {});
+    }
+    await page.waitForFunction(`!!document.querySelector('.cm-content')`, 45_000);
+  }
   await caretIn(page, "here.", 1, "end");
 }
 
