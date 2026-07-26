@@ -105,12 +105,22 @@ async function chooseList(page: Page, label: "Bulleted list" | "Numbered list") 
 async function insertTable2By2(page: Page) {
   for (let attempt = 0; attempt < 8; attempt++) {
     await clickToolbarControl(page, '[aria-label="Insert table"]', "Table");
-    const available = await page
-      .waitForFunction(`!!document.querySelector('[aria-label="2 by 2 table"]')`, 3_000)
+    // Find and click in one browser task; the grid cell can be clipped or
+    // remounted between a wait and a separate bridge click.
+    const clicked = await page
+      .waitForFunction(
+        `(() => {
+          const cell = document.querySelector('[aria-label="2 by 2 table"]');
+          if (!(cell instanceof HTMLElement)) return false;
+          cell.scrollIntoView({ block: 'nearest' });
+          cell.click();
+          return true;
+        })()`,
+        3_000,
+      )
       .then(() => true)
       .catch(() => false);
-    if (!available) continue;
-    await page.click('[aria-label="2 by 2 table"]');
+    if (!clicked) continue;
     if ((await editorSource(page)).includes("\\begin{tabular}{ll}")) return;
   }
   throw new Error("2 by 2 toolbar table picker never inserted a table");

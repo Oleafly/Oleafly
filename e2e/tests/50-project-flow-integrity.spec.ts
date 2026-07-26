@@ -5,6 +5,7 @@ import {
   createBlankProject,
   openProject,
   pressGlobal,
+  readProjectText,
   selectWord,
   waitEditorContains,
 } from "../helpers";
@@ -63,8 +64,18 @@ test("toolbar edits flush on immediate close, survive reopen, and compile", asyn
 
   await openProject(tauriPage, projectName);
   await waitEditorContains(tauriPage, transitionMarker.trim(), 20_000);
-  await waitEditorContains(tauriPage, "\\textbf{Write}", 20_000);
-  await waitEditorContains(tauriPage, "\\href{url}{link text}", 20_000);
+  // On failure, capture what actually reached DISK: this distinguishes a
+  // close-flush that lost the edit (disk lacks it too - app bug) from an
+  // editor that merely loaded stale content (disk has it - load race).
+  try {
+    await waitEditorContains(tauriPage, "\\textbf{Write}", 20_000);
+    await waitEditorContains(tauriPage, "\\href{url}{link text}", 20_000);
+  } catch (error) {
+    const disk = await readProjectText(tauriPage, "main.tex").catch(
+      () => "unavailable",
+    );
+    throw new Error(`${String(error)}\non-disk main.tex:\n${disk.slice(0, 600)}`);
+  }
 
   await expect(tauriPage.getByTestId("compile-button")).toBeEnabled({ timeout: 30_000 });
   await tauriPage.click('[data-testid="compile-button"]');
