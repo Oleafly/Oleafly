@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Kbd } from "@/components/ui/kbd";
 import {
   Dialog,
   DialogContent,
@@ -102,7 +103,16 @@ export function AddCustomProviderDialog({ open, onOpenChange, onSubmit }: AddCus
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="z-[120]" overlayClassName="z-[120]">
+      <DialogContent
+        className="z-[120]"
+        overlayClassName="z-[120]"
+        onKeyDown={(event) => {
+          if (event.key === "Enter" && event.target instanceof HTMLInputElement) {
+            event.preventDefault();
+            void submit();
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Add custom provider</DialogTitle>
           <DialogDescription>
@@ -191,6 +201,7 @@ export function AddCustomProviderDialog({ open, onOpenChange, onSubmit }: AddCus
           >
             {busy ? <Loader2 className="size-3.5 animate-spin" /> : null}
             Add provider
+            <Kbd className="bg-background/25 text-current">↵</Kbd>
           </Button>
         </DialogFooter>
       </DialogContent>

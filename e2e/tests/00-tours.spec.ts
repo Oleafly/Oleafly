@@ -326,8 +326,13 @@ test("Settings tour remains in the viewport and tour confirmations are atomic", 
     20_000,
   );
   await tauriPage.press("body", "Escape");
+  await expect(tauriPage.getByText("Quit the tour?")).toBeVisible({ timeout: 10_000 });
+  await tauriPage.getByText("Cancel", { exact: true }).click();
+  await expect(tauriPage.getByText("Quit the tour?")).toBeHidden();
   await expect(tauriPage.locator("#react-joyride-portal h2")).toHaveText("Settings");
   await tauriPage.getByText("Skip", { exact: true }).click();
+  await expect(tauriPage.getByText("Quit the tour?")).toBeVisible({ timeout: 10_000 });
+  await tauriPage.getByText("Quit tour", { exact: true }).click();
   await expect(tauriPage.locator("#react-joyride-portal")).toHaveCount(0);
   await expect(tauriPage.locator(".react-joyride__overlay")).toHaveCount(0);
   await openSettings(tauriPage, "general");
@@ -379,6 +384,8 @@ test("AI and Diagram tours select their eligible context without sending or comp
     20_000,
   );
   await tauriPage.getByText("Skip", { exact: true }).click();
+  await expect(tauriPage.getByText("Quit the tour?")).toBeVisible({ timeout: 10_000 });
+  await tauriPage.getByText("Quit tour", { exact: true }).click();
 
   // The Diagram Composer is a standalone home-shell page now, not a
   // per-project modal, so reaching it means leaving the project first.
@@ -414,6 +421,9 @@ test("AI and Diagram tours select their eligible context without sending or comp
   });
   await expect(tauriPage.locator('[data-tour="diagram-composer"]')).toBeVisible();
   await tauriPage.getByText("Skip", { exact: true }).click();
+  await expect(tauriPage.getByText("Quit the tour?")).toBeVisible({ timeout: 10_000 });
+  await tauriPage.getByText("Quit tour", { exact: true }).click();
+  await expect(tauriPage.getByText("Quit the tour?")).toBeHidden();
 });
 
 test("AI settings tour walks the tabs with keyboard navigation and Escape confirm", async ({

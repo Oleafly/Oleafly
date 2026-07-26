@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Kbd } from "@/components/ui/kbd";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
@@ -78,7 +79,16 @@ export function CreatePersonaDialog({ open, onOpenChange, onSubmit, editing }: C
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="z-[120]" overlayClassName="z-[120]">
+      <DialogContent
+        className="z-[120]"
+        overlayClassName="z-[120]"
+        onKeyDown={(event) => {
+          if (event.key === "Enter" && event.target instanceof HTMLInputElement) {
+            event.preventDefault();
+            void submit();
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle>{editing ? "Edit persona" : "Create persona"}</DialogTitle>
           <DialogDescription>
@@ -141,6 +151,7 @@ export function CreatePersonaDialog({ open, onOpenChange, onSubmit, editing }: C
           <Button data-testid="persona-submit" disabled={busy} onClick={() => void submit()}>
             {busy ? <Loader2 className="size-3.5 animate-spin" /> : null}
             {editing ? "Save" : "Create"}
+            <Kbd className="bg-background/25 text-current">↵</Kbd>
           </Button>
         </DialogFooter>
       </DialogContent>

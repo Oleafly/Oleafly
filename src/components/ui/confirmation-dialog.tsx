@@ -1,5 +1,6 @@
-import { useId } from "react";
+import { useEffect, useId } from "react";
 import { Button } from "@/components/ui/button";
+import { Kbd } from "@/components/ui/kbd";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 
 interface ConfirmationDialogProps {
@@ -27,6 +28,19 @@ export function ConfirmationDialog({
     open,
     onCancel,
   );
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Enter" || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey)
+        return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      onConfirm();
+    };
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
+  }, [open, onConfirm]);
 
   if (!open) return null;
 
@@ -59,6 +73,7 @@ export function ConfirmationDialog({
         <div className="mt-5 flex justify-end gap-2">
           <Button variant="ghost" size="sm" onClick={onCancel} data-modal-initial-focus>
             Cancel
+            <Kbd>esc</Kbd>
           </Button>
           <Button
             variant={destructive ? "destructive" : "default"}
@@ -66,6 +81,7 @@ export function ConfirmationDialog({
             onClick={onConfirm}
           >
             {confirmLabel}
+            <Kbd className="bg-background/25 text-current">↵</Kbd>
           </Button>
         </div>
       </div>
