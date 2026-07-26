@@ -1813,6 +1813,7 @@ ${sandboxedCustom}`;
                     </Tooltip>
                   )}
                   {!figureMode && (
+                    <span data-tour="ai-prompts" className="inline-flex">
                     <Popover
                       align="left"
                       ariaLabel="Prompts"
@@ -1912,6 +1913,7 @@ ${sandboxedCustom}`;
                         )}
                       </div>
                     </Popover>
+                    </span>
                   )}
                 </div>
                 <div className="flex min-w-0 items-center gap-1">

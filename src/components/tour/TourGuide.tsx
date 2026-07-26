@@ -12,6 +12,8 @@ import {
 import { modalCoordinator } from "@oleafly/templates/modal-coordinator";
 import { LeafLogo } from "@/components/layout/LeafLogo";
 import { Button } from "@/components/ui/button";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { Kbd } from "@/components/ui/kbd";
 import { Tooltip } from "@/components/ui/tooltip";
 import { START_TOUR_EVENT } from "@/lib/tour";
 import { evaluateTour, missingTargetFallback } from "@/lib/tours/coordinator";
@@ -147,12 +149,14 @@ function TourTooltip(props: TooltipRenderProps) {
         <Tooltip label={skipProps.title} className="ml-1">
           <Button {...omitTitle(skipProps)} variant="ghost" size="sm">
             Skip
+            <Kbd>esc</Kbd>
           </Button>
         </Tooltip>
         <div className="ml-auto flex items-center gap-2">
           {index > 0 ? (
             <Tooltip label={backProps.title}>
               <Button {...omitTitle(backProps)} variant="ghost" size="sm">
+                <Kbd>←</Kbd>
                 Back
               </Button>
             </Tooltip>
@@ -161,6 +165,7 @@ function TourTooltip(props: TooltipRenderProps) {
             <Tooltip label={primaryProps.title}>
               <Button {...omitTitle(primaryProps)} disabled={!inputReady} size="sm">
                 {isLastStep ? "Done" : "Next"}
+                <Kbd className="bg-primary-foreground/20 text-primary-foreground">→</Kbd>
               </Button>
             </Tooltip>
           ) : null}
@@ -540,6 +545,13 @@ export function TourGuide() {
   const navigationDirection = useRef<"next" | "prev">("next");
   const definition = activeTourId ? tourRegistry[activeTourId] : null;
   const activeStep = definition?.steps[activeStepIndex];
+  const [quitConfirmOpen, setQuitConfirmOpen] = useState(false);
+  const quitConfirmOpenRef = useRef(false);
+  quitConfirmOpenRef.current = quitConfirmOpen;
+  const stepIndexRef = useRef(0);
+  stepIndexRef.current = activeStepIndex;
+  const lastStepRef = useRef(false);
+  lastStepRef.current = activeStepIndex >= (definition?.steps.length ?? 1) - 1;
   const steps = useMemo<Step[]>(
     () => {
       void inputRevision;
@@ -723,9 +735,47 @@ export function TourGuide() {
   }, [activeTourId]);
 
   useEffect(() => {
+    if (!activeTourId) return;
+    setQuitConfirmOpen(false);
+  }, [activeTourId]);
+
+  useEffect(() => {
     if (!activeTourId || !activeStep) return;
     const suppress = (event: KeyboardEvent) => {
+      if (quitConfirmOpenRef.current) return;
       const tourStep = activeStep as TourStepDefinition;
+      const noModifiers = !event.metaKey && !event.ctrlKey && !event.altKey;
+      const editableTarget =
+        event.target instanceof HTMLElement &&
+        Boolean(event.target.closest('input, textarea, [contenteditable="true"]'));
+      if (noModifiers && event.key === "Escape") {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        setQuitConfirmOpen(true);
+        return;
+      }
+      if (
+        noModifiers &&
+        event.key === "ArrowRight" &&
+        !editableTarget &&
+        tourStep.kind !== "required-click" &&
+        tourStep.kind !== "required-input"
+      ) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        navigationDirection.current = "next";
+        const store = useTourStore.getState();
+        if (lastStepRef.current) store.complete();
+        else store.advance();
+        return;
+      }
+      if (noModifiers && event.key === "ArrowLeft" && !editableTarget && stepIndexRef.current > 0) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        navigationDirection.current = "prev";
+        useTourStore.getState().back();
+        return;
+      }
       const interactionTarget =
         tourStep.interactionArea ?? tourStep.interactionTarget ?? tourStep.target;
       const target =
@@ -1085,6 +1135,17 @@ export function TourGuide() {
           width: 336,
           zIndex: 110,
         }}
+      />
+      <ConfirmationDialog
+        open={quitConfirmOpen}
+        title="Quit the tour?"
+        description="Your progress is not saved. You can restart any tour later from the Help menu."
+        confirmLabel="Quit tour"
+        onConfirm={() => {
+          setQuitConfirmOpen(false);
+          useTourStore.getState().dismiss();
+        }}
+        onCancel={() => setQuitConfirmOpen(false)}
       />
     </>
   );
