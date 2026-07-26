@@ -9,6 +9,7 @@ import {
   type Step,
   type TooltipRenderProps,
 } from "react-joyride";
+import { ArrowLeft, Check } from "lucide-react";
 import { modalCoordinator } from "@oleafly/templates/modal-coordinator";
 import { LeafLogo } from "@/components/layout/LeafLogo";
 import { Button } from "@/components/ui/button";
@@ -22,10 +23,10 @@ import {
   type TourContext,
   type TourStepDefinition,
 } from "@/lib/tours/registry";
-import { shortcut } from "@/lib/utils";
+import { modKey, shortcut } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
-import { useSettingsStore } from "@/store/settings";
+import { ACCENTS, useSettingsStore } from "@/store/settings";
 import { useTourStore } from "@/store/tours";
 
 // react-joyride's control-button props carry a native `title`, which renders
@@ -35,6 +36,21 @@ function omitTitle<T extends { title: string }>({ title: _title, ...rest }: T) {
 }
 
 let requestQuitConfirm: (() => void) | null = null;
+
+const KBD_CHIP = "h-4 min-w-4 px-1 text-[10px]";
+
+function ChordHint({ variant, back }: { variant?: "primary"; back?: boolean }) {
+  const chipClass =
+    variant === "primary"
+      ? `${KBD_CHIP} bg-primary-foreground/20 text-primary-foreground`
+      : KBD_CHIP;
+  return (
+    <span className="inline-flex items-center gap-1">
+      <Kbd className={chipClass}>{modKey}</Kbd>
+      <Kbd className={chipClass}>{back ? "←" : "→"}</Kbd>
+    </span>
+  );
+}
 
 function TourTooltip(props: TooltipRenderProps) {
   const {
@@ -48,7 +64,8 @@ function TourTooltip(props: TooltipRenderProps) {
     step,
     tooltipProps,
   } = props;
-  const definition = step.data as TourStepDefinition;
+  const definition = step.data as TourStepDefinition & { tourLabel?: string };
+  const tourLabel = definition.tourLabel;
   const requiredClick = definition.kind === "required-click";
   const inputReady =
     definition.kind !== "required-input" ||
@@ -59,7 +76,7 @@ function TourTooltip(props: TooltipRenderProps) {
     <div
       {...tooltipProps}
       data-tour-tooltip={definition.id}
-      className="w-[min(21rem,calc(100vw-2rem))] rounded-lg border bg-popover p-4 text-popover-foreground shadow-xl"
+      className="w-[min(21rem,calc(100vw-2rem))] rounded-lg border bg-popover p-4 text-popover-foreground shadow-xl animate-in fade-in zoom-in-95 duration-200 motion-reduce:animate-none"
     >
       {isWelcome ? (
         <svg
@@ -141,44 +158,66 @@ function TourTooltip(props: TooltipRenderProps) {
       ) : null}
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
-          {step.title ? <h2 className="text-sm font-semibold">{step.title}</h2> : null}
+          <span className="block text-[10px] font-semibold uppercase tracking-widest text-primary">
+            Step {index + 1}
+            {tourLabel ? ` · ${tourLabel}` : ""}
+          </span>
+          {step.title ? <h2 className="mt-1 text-sm font-semibold">{step.title}</h2> : null}
           <div className="mt-1 text-xs leading-relaxed text-muted-foreground">{step.content}</div>
         </div>
       </div>
       <div className="mt-4 flex items-center gap-2">
-        <span className="text-[11px] tabular-nums text-muted-foreground">
-          {index + 1} / {size}
-        </span>
-        <Tooltip label={skipProps.title} className="ml-1">
-          <Button
-            {...omitTitle(skipProps)}
-            onClick={(event) => {
-              event.preventDefault();
-              requestQuitConfirm?.();
-            }}
-            variant="ghost"
-            size="sm"
-          >
-            Skip
-            <Kbd>esc</Kbd>
-          </Button>
-        </Tooltip>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5">
+          <span className="sr-only">{`Step ${index + 1} of ${size}`}</span>
+          {Array.from({ length: size }, (_, dot) => (
+            <span
+              key={String(dot)}
+              className={
+                dot === index
+                  ? "h-1.5 w-5 rounded-full bg-primary transition-all"
+                  : "size-1.5 rounded-full bg-muted-foreground/30 transition-all"
+              }
+            />
+          ))}
+        </div>
+        <div className="ml-auto flex items-center gap-1.5">
+          <Tooltip label={skipProps.title}>
+            <Button
+              {...omitTitle(skipProps)}
+              onClick={(event) => {
+                event.preventDefault();
+                requestQuitConfirm?.();
+              }}
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground"
+            >
+              Skip
+              <Kbd className={KBD_CHIP}>esc</Kbd>
+            </Button>
+          </Tooltip>
           {index > 0 ? (
-            <Tooltip label={backProps.title}>
-              <Button {...omitTitle(backProps)} variant="ghost" size="sm">
-                <Kbd>{shortcut("⌘←")}</Kbd>
-                Back
+            <Tooltip label={`${backProps.title} (${shortcut("⌘←")})`}>
+              <Button
+                {...omitTitle(backProps)}
+                variant="outline"
+                size="icon"
+                className="size-8 rounded-full"
+              >
+                <ArrowLeft className="size-3.5" />
               </Button>
             </Tooltip>
           ) : null}
           {continuous && !requiredClick ? (
             <Tooltip label={primaryProps.title}>
-              <Button {...omitTitle(primaryProps)} disabled={!inputReady} size="sm">
+              <Button
+                {...omitTitle(primaryProps)}
+                disabled={!inputReady}
+                size="sm"
+                className="rounded-full px-3"
+              >
                 {isLastStep ? "Done" : "Next"}
-                <Kbd className="bg-primary-foreground/20 text-primary-foreground">
-                  {shortcut("⌘→")}
-                </Kbd>
+                <ChordHint variant="primary" />
               </Button>
             </Tooltip>
           ) : null}
@@ -269,7 +308,7 @@ function SeamlessArrow({ base, placement, size }: ArrowRenderProps) {
   );
 }
 
-export function toJoyrideStep(step: TourStepDefinition): Step {
+export function toJoyrideStep(step: TourStepDefinition, tourLabel?: string): Step {
   return {
     id: step.id,
     target: step.target,
@@ -277,7 +316,7 @@ export function toJoyrideStep(step: TourStepDefinition): Step {
     content: step.content,
     placement: step.placement ?? "bottom",
     spotlightTarget: step.spotlightTarget,
-    data: step,
+    data: { ...step, tourLabel },
     blockTargetInteraction:
       !step.interactionArea && step.kind !== "required-click" && step.kind !== "required-input",
   };
@@ -359,6 +398,10 @@ export function autoSkipAction(
 
 function Welcome({ onStart }: { onStart: () => void }) {
   const dialogRef = useRef<HTMLDivElement>(null);
+  const onStartRef = useRef(onStart);
+  onStartRef.current = onStart;
+  const accentColor = useSettingsStore((s) => s.accentColor);
+  const setAccentColor = useSettingsStore((s) => s.setAccentColor);
 
   useEffect(() => {
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -366,6 +409,12 @@ function Welcome({ onStart }: { onStart: () => void }) {
     const frame = requestAnimationFrame(() => dialogRef.current?.querySelector("button")?.focus());
     const blockEscape = (event: KeyboardEvent) => {
       if (!modalCoordinator.isTop(id)) return;
+      if ((event.metaKey || event.ctrlKey) && event.key === "ArrowRight") {
+        event.preventDefault();
+        event.stopPropagation();
+        onStartRef.current();
+        return;
+      }
       if (event.key === "Escape") {
         event.preventDefault();
         event.stopPropagation();
@@ -408,18 +457,56 @@ function Welcome({ onStart }: { onStart: () => void }) {
         aria-modal="true"
         aria-labelledby="tour-welcome-title"
         data-testid="tour-welcome"
-        className="w-full max-w-md rounded-xl border bg-popover p-7 text-center text-popover-foreground shadow-2xl"
+        className="relative w-full max-w-md overflow-hidden rounded-xl border bg-popover p-7 text-center text-popover-foreground shadow-2xl animate-in fade-in zoom-in-95 duration-300 motion-reduce:animate-none"
       >
-        <LeafLogo className="mx-auto size-12" />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-44 text-primary"
+          style={{
+            backgroundImage: "radial-gradient(currentColor 1.2px, transparent 1.2px)",
+            backgroundSize: "16px 16px",
+            opacity: 0.18,
+            maskImage: "linear-gradient(to bottom, black, transparent)",
+            WebkitMaskImage: "linear-gradient(to bottom, black, transparent)",
+          }}
+        />
+        <LeafLogo className="relative mx-auto size-12" />
         <h1 id="tour-welcome-title" className="mt-4 text-xl font-semibold">
           Welcome to Oleafly
         </h1>
         <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
-          Create, compile, and manage beautiful documents locally. Your projects stay on your
-          disk, and Oleafly guides you from a template to a finished PDF.
+          A local-first studio for LaTeX, Typst, and Markdown. Your projects live on your disk,
+          and Oleafly walks you from a blank page to a polished PDF.
         </p>
+        <div className="mt-6">
+          <p className="text-xs font-medium text-muted-foreground">Pick your accent color</p>
+          <div className="mt-2.5 flex flex-wrap items-center justify-center gap-2">
+            {ACCENTS.map((a) => {
+              const active = accentColor === a.color;
+              return (
+                <button
+                  type="button"
+                  key={a.id}
+                  title={a.name}
+                  aria-label={`Use the ${a.name} accent color`}
+                  aria-pressed={active}
+                  onClick={() => setAccentColor(a.color)}
+                  className={
+                    active
+                      ? "flex size-8 items-center justify-center rounded-full border border-foreground ring-1 ring-foreground/20 transition-transform hover:scale-110"
+                      : "flex size-8 items-center justify-center rounded-full border border-border transition-transform hover:scale-110"
+                  }
+                  style={{ backgroundColor: a.color }}
+                >
+                  {active && <Check className="size-3.5 text-white drop-shadow" />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
         <Button className="mt-6" onClick={onStart}>
           Show me around
+          <ChordHint variant="primary" />
         </Button>
       </div>
     </div>
@@ -568,7 +655,7 @@ export function TourGuide() {
   const steps = useMemo<Step[]>(
     () => {
       void inputRevision;
-      return definition?.steps.map(toJoyrideStep) ?? [];
+      return definition?.steps.map((step) => toJoyrideStep(step, definition.label)) ?? [];
     },
     [definition, inputRevision],
   );

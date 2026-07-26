@@ -151,7 +151,7 @@ export function CreatePersonaDialog({ open, onOpenChange, onSubmit, editing }: C
           <Button data-testid="persona-submit" disabled={busy} onClick={() => void submit()}>
             {busy ? <Loader2 className="size-3.5 animate-spin" /> : null}
             {editing ? "Save" : "Create"}
-            <Kbd className="bg-background/25 text-current">↵</Kbd>
+            <Kbd className="h-4 min-w-4 bg-background/25 px-1 text-[10px] text-current">↵</Kbd>
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -73,7 +73,7 @@ export function ConfirmationDialog({
         <div className="mt-5 flex justify-end gap-2">
           <Button variant="ghost" size="sm" onClick={onCancel} data-modal-initial-focus>
             Cancel
-            <Kbd>esc</Kbd>
+            <Kbd className="h-4 min-w-4 px-1 text-[10px]">esc</Kbd>
           </Button>
           <Button
             variant={destructive ? "destructive" : "default"}
@@ -81,7 +81,7 @@ export function ConfirmationDialog({
             onClick={onConfirm}
           >
             {confirmLabel}
-            <Kbd className="bg-background/25 text-current">↵</Kbd>
+            <Kbd className="h-4 min-w-4 bg-background/25 px-1 text-[10px] text-current">↵</Kbd>
           </Button>
         </div>
       </div>

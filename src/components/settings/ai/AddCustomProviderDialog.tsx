@@ -201,7 +201,7 @@ export function AddCustomProviderDialog({ open, onOpenChange, onSubmit }: AddCus
           >
             {busy ? <Loader2 className="size-3.5 animate-spin" /> : null}
             Add provider
-            <Kbd className="bg-background/25 text-current">↵</Kbd>
+            <Kbd className="h-4 min-w-4 bg-background/25 px-1 text-[10px] text-current">↵</Kbd>
           </Button>
         </DialogFooter>
       </DialogContent>
