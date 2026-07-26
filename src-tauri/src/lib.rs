@@ -57,6 +57,12 @@ pub fn run() {
         .manage(AppState::default())
         .manage(mcp::server::McpState::default())
         .setup(|app| {
+            if std::env::var("OLEAFLY_E2E_WINDOW").is_err() {
+                use tauri::Manager;
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.maximize();
+                }
+            }
             // The bridge returns eval results through a plugin command, so grant
             // its permission at runtime here; a static capabilities/ entry would
             // break normal builds, where the plugin (and its permission) doesn't exist.
@@ -76,7 +82,6 @@ pub fn run() {
                     if let Some((w, h)) = spec.split_once('x') {
                         if let (Ok(w), Ok(h)) = (w.parse::<f64>(), h.parse::<f64>()) {
                             if let Some(window) = app.get_webview_window("main") {
-                                let _ = window.unmaximize();
                                 let _ = window.set_size(tauri::LogicalSize::new(w, h));
                             }
                         }
