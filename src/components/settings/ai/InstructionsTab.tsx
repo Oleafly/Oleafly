@@ -2,10 +2,15 @@ import type { Dispatch, SetStateAction } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { setConfig, type AppConfig } from "@/lib/tauri";
+import { mergeCustomProviders } from "@/lib/ai-providers";
+import { enabledModels } from "@/lib/ai-model-state";
+import { ModelSelector, type ModelSelectorGroup } from "@/components/ai/ModelSelector";
 
 export interface InstructionsTabProps {
   cfg: AppConfig;
   setCfg: Dispatch<SetStateAction<AppConfig>>;
+  savedKeys: Record<string, string>;
+  persist: (next: AppConfig) => Promise<void>;
   sysPrompt: string;
   setSysPrompt: Dispatch<SetStateAction<string>>;
   sysPromptSaved: boolean;
@@ -16,16 +21,50 @@ export interface InstructionsTabProps {
 export function InstructionsTab({
   cfg,
   setCfg,
+  savedKeys,
+  persist,
   sysPrompt,
   setSysPrompt,
   sysPromptSaved,
   saveSystemPrompt,
   setMsg,
 }: InstructionsTabProps) {
+  // Providers the user has actually connected (saved key, or a custom
+  // provider with an optional key), same "configured" definition ChatCore
+  // uses for its own model switcher.
+  const allProviders = mergeCustomProviders(cfg.ai_custom_providers);
+  const configuredProviders = allProviders.filter((p) => {
+    if ((savedKeys[p.id] ?? "").trim().length > 0) return true;
+    return Boolean(cfg.ai_custom_providers.find((c) => c.id === p.id)?.keyOptional);
+  });
+  const defaultModelGroups: ModelSelectorGroup[] = configuredProviders.map((p) => {
+    const storedModels = cfg.ai_provider_models[p.id];
+    const models = storedModels
+      ? enabledModels(storedModels).map((m) => ({ id: m.id, name: m.name }))
+      : p.models.map((m) => ({ id: m.id, name: m.name }));
+    return { id: p.id, name: p.name, models };
+  });
+
   return (
     <div className="space-y-4">
-      {/* Filled in by a later task. */}
-      <div data-testid="ai-default-model" />
+      <div className="space-y-2">
+        <p className="font-medium">Default chat model</p>
+        <p className="text-xs text-muted-foreground">
+          Used whenever you start a new chat. You can still switch models for an individual
+          conversation from the chat panel.
+        </p>
+        <div data-testid="ai-default-model">
+          <ModelSelector
+            providerId={cfg.ai_provider || "openai"}
+            modelId={cfg.ai_model || ""}
+            groups={defaultModelGroups}
+            disabled={defaultModelGroups.length === 0}
+            onChange={(providerId, modelId) =>
+              void persist({ ...cfg, ai_provider: providerId, ai_model: modelId })
+            }
+          />
+        </div>
+      </div>
 
       <div className="space-y-2">
         <p className="font-medium">Custom instructions</p>

@@ -393,6 +393,8 @@ export function AISection() {
         <InstructionsTab
           cfg={cfg}
           setCfg={setCfg}
+          savedKeys={savedKeys}
+          persist={persist}
           sysPrompt={sysPrompt}
           setSysPrompt={setSysPrompt}
           sysPromptSaved={sysPromptSaved}
