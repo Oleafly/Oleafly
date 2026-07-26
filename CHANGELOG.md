@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.8] - 2026-07-26
+
+### Added
+
+- Added live API key validation: pasting a key checks it against the provider
+  and fetches its current model list before saving.
+- Added per-provider model management: toggle models on or off, add models by
+  id, delete with confirmation, and restore a provider's built-in models.
+- Added custom providers: connect any OpenAI-compatible endpoint by base URL,
+  including local servers such as Ollama and LM Studio, with inline field
+  validation.
+- Added Google Gemini and Perplexity as built-in providers, and the official
+  Z.AI logo.
+- Added provider logos throughout: beside each model in the model dropdown,
+  in the closed selector, and on provider cards.
+- Added personas: named, colored instruction presets managed in Settings and
+  switched from the chat's Prompts menu, with a create shortcut that deep
+  links into Settings.
+- Added a default chat model setting; the chat panel switches models
+  per conversation without changing the default.
+- Added a guided tour for the new AI settings and refreshed the AI chat tour.
+- Added keyboard navigation to all tours: right and left arrows move between
+  steps, Escape asks to quit, and the shortcuts are shown on the buttons.
+
+### Changed
+
+- Reorganized AI settings into Providers and keys, Instructions, and Personas
+  tabs; the tools catalog and PDF capture toggle now live under Instructions.
+- All connected providers show a green Connected badge.
+- Chat drafts survive layout switches, and a streaming reply keeps running
+  when the panel closes, reattaching when you come back to that chat.
+- Reasoning and tool call sections in chat start collapsed.
+- The app launches maximized.
+- macOS releases are code-signed and notarized.
+
+### Fixed
+
+- Fixed dialogs and dropdowns opening behind the Settings window.
+- Fixed the voice button overflowing the chat toolbar on narrow panels.
+
 ## [0.2.7] - 2026-07-24
 
 ### Added
