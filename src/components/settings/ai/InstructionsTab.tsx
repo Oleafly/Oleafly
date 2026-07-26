@@ -62,6 +62,7 @@ export function InstructionsTab({
             providerId={cfg.ai_provider || "openai"}
             modelId={cfg.ai_model || ""}
             groups={defaultModelGroups}
+            contentClassName="z-[100]"
             disabled={defaultModelGroups.length === 0}
             onChange={(providerId, modelId) =>
               void persist({ ...cfg, ai_provider: providerId, ai_model: modelId })
