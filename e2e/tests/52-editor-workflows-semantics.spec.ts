@@ -739,20 +739,18 @@ WYSRAWANCHOR
     "\\caption{}",
     "\\caption{VISUALTABLECAPTION}",
   );
+  // insertEnvironment (both CM and WYSIWYG raw-block paths) leaves a
+  // two-space caret line between begin/end, so the literal must include it.
   await replaceEditorLiteral(
     tauriPage,
-    String.raw`\begin{align}
-
-\end{align}`,
+    "\\begin{align}\n  \n\\end{align}",
     String.raw`\begin{align}
   \mathrm{VISUALALIGN} &= 7
 \end{align}`,
   );
   await replaceEditorLiteral(
     tauriPage,
-    String.raw`\begin{equation}
-
-\end{equation}`,
+    "\\begin{equation}\n  \n\\end{equation}",
     String.raw`\begin{equation}
   \mathrm{VISUALEQUATION} = 8
 \end{equation}`,
