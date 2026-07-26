@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Kbd } from "@/components/ui/kbd";
 import { Tooltip } from "@/components/ui/tooltip";
+import { celebrate } from "@/lib/confetti";
 import { START_TOUR_EVENT } from "@/lib/tour";
 import { evaluateTour, missingTargetFallback } from "@/lib/tours/coordinator";
 import {
@@ -174,8 +175,8 @@ function TourTooltip(props: TooltipRenderProps) {
               key={String(dot)}
               className={
                 dot === index
-                  ? "h-1.5 w-5 rounded-full bg-primary transition-all"
-                  : "size-1.5 rounded-full bg-muted-foreground/30 transition-all"
+                  ? "h-1.5 w-5 rounded-full bg-primary transition-all duration-300 ease-out"
+                  : "size-1.5 rounded-full bg-muted-foreground/30 transition-all duration-300 ease-out"
               }
             />
           ))}
@@ -200,9 +201,9 @@ function TourTooltip(props: TooltipRenderProps) {
             <Tooltip label={`${backProps.title} (${shortcut("⌘←")})`}>
               <Button
                 {...omitTitle(backProps)}
-                variant="outline"
+                variant="secondary"
                 size="icon"
-                className="size-8 rounded-full"
+                className="size-8 rounded-full text-muted-foreground hover:text-foreground"
               >
                 <ArrowLeft className="size-3.5" />
               </Button>
@@ -676,6 +677,20 @@ export function TourGuide() {
   const definition = activeTourId ? tourRegistry[activeTourId] : null;
   const activeStep = definition?.steps[activeStepIndex];
   const [quitConfirmOpen, setQuitConfirmOpen] = useState(false);
+  const prevTourStatusRef = useRef<Record<string, string> | null>(null);
+  useEffect(() => {
+    const prev = prevTourStatusRef.current;
+    prevTourStatusRef.current = Object.fromEntries(
+      Object.entries(tours).map(([id, entry]) => [id, entry.status]),
+    );
+    if (!prev) return;
+    for (const [id, entry] of Object.entries(tours)) {
+      if (prev[id] !== "completed" && entry.status === "completed") {
+        celebrate();
+        break;
+      }
+    }
+  }, [tours]);
   const quitConfirmOpenRef = useRef(false);
   quitConfirmOpenRef.current = quitConfirmOpen;
   const stepIndexRef = useRef(0);

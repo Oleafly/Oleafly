@@ -365,6 +365,19 @@ export function NewProjectDialog({
 
   const working = busy || setup.active;
 
+  const submitRef = useRef<() => Promise<void>>(async () => {});
+  submitRef.current = submit;
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.key !== "Enter") return;
+      if (step !== 2 || working || !name.trim()) return;
+      event.preventDefault();
+      void submitRef.current();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [step, working, name]);
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm"
@@ -683,6 +696,16 @@ export function NewProjectDialog({
                         ? "Setting up..."
                         : "Create project"}
                     {!working && <ArrowRight className="size-4" />}
+                    {!working && (
+                      <span className="inline-flex items-center gap-1">
+                        <kbd className="inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-white/20 px-1 font-sans text-[10px] font-medium text-white">
+                          {/Mac|iPhone|iPad/.test(navigator.platform) ? "\u2318" : "Ctrl"}
+                        </kbd>
+                        <kbd className="inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-white/20 px-1 font-sans text-[10px] font-medium text-white">
+                          {"\u21B5"}
+                        </kbd>
+                      </span>
+                    )}
                   </Button>
                 </div>
               </div>
