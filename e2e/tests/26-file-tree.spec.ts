@@ -57,24 +57,55 @@ async function pickMenuItem(
   }
 }
 
+// Creating a file refreshes the tree before the editor finishes opening it, so
+// a visible row is not proof the editor switched documents. Typing at that
+// moment lands in the previously active document and silently leaves the new
+// file empty (the exact "silent data loss" these tests exist to catch). Wait
+// until the CM view holds the file's store content before letting a test type.
+async function waitEditorShowsFile(page: Page, path: string, timeoutMs = 15_000) {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const ready = await page.evaluate<boolean>(
+      `Promise.all([
+        import("/src/store/files.ts"),
+        import("/src/components/editor/cm/controller.ts"),
+      ]).then(([files, cm]) => {
+        const state = files.useFilesStore.getState();
+        if (state.activePath !== ${JSON.stringify(path)}) return false;
+        const view = cm.getEditorView();
+        if (!view) return false;
+        return view.state.doc.toString() === (state.files[${JSON.stringify(path)}]?.content ?? "");
+      })`,
+    );
+    if (ready) return;
+    if (Date.now() > deadline) throw new Error(`editor never showed ${path}`);
+    await new Promise((r) => setTimeout(r, 150));
+  }
+}
+
 async function createRootEntry(page: Page, name: string, mode: "file" | "dir") {
   const exists = await page.evaluate<boolean>(
     `!!document.querySelector('[aria-label="Source tree"] [data-path=${JSON.stringify(name)}]')`,
   );
-  if (exists) return;
-  await page.click('[data-path="main.tex"]');
-  await page.click(
-    mode === "file"
-      ? '[title="New file (in the selected folder)"]'
-      : '[title="New folder (in the selected folder)"]',
-  );
-  const placeholder = mode === "file" ? "New file name" : "New folder name";
-  await page.fill(`input[placeholder=${JSON.stringify(placeholder)}]`, name);
-  await page.press(`input[placeholder=${JSON.stringify(placeholder)}]`, "Enter");
-  await page.waitForFunction(
-    `!!document.querySelector('[aria-label="Source tree"] [data-path=${JSON.stringify(name)}]')`,
-    15_000,
-  );
+  if (!exists) {
+    await page.click('[data-path="main.tex"]');
+    await page.click(
+      mode === "file"
+        ? '[title="New file (in the selected folder)"]'
+        : '[title="New folder (in the selected folder)"]',
+    );
+    const placeholder = mode === "file" ? "New file name" : "New folder name";
+    await page.fill(`input[placeholder=${JSON.stringify(placeholder)}]`, name);
+    await page.press(`input[placeholder=${JSON.stringify(placeholder)}]`, "Enter");
+    await page.waitForFunction(
+      `!!document.querySelector('[aria-label="Source tree"] [data-path=${JSON.stringify(name)}]')`,
+      15_000,
+    );
+  }
+  if (mode === "file") {
+    await page.click(`[data-path=${JSON.stringify(name)}]`);
+    await waitEditorShowsFile(page, name);
+  }
 }
 
 async function startInlineRename(page: Page, from: string, to: string) {
@@ -251,6 +282,7 @@ test("dragging into a folder uses the same collision-safe Keep both flow", async
     `!!document.querySelector('[data-path=${JSON.stringify(nested)}]')`,
     15_000,
   );
+  await waitEditorShowsFile(tauriPage, nested);
   await typeInEditorAtStart(tauriPage, `% existing-${run}\n`);
 
   await tauriPage.dragAndDrop(

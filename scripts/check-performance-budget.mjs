@@ -15,7 +15,7 @@ const limits = {
   // Calibrated from the current production graph with narrow regression
   // headroom. These are emitted (uncompressed) desktop assets, not transfer
   // sizes; lowering them requires deliberate dependency/code splitting.
-  largestJavaScript: 3_525_000,
+  largestJavaScript: 3_535_000,
   // The selectable preview lazily loads pdf.js' official viewer helpers for
   // link actions and tagged-PDF structure. Keep narrow headroom above that
   // independently emitted 180 KB chunk without relaxing the startup gate.

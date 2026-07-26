@@ -1975,11 +1975,16 @@ async fn download_pandoc_impl(
         std::fs::set_permissions(&staging, std::fs::Permissions::from_mode(0o755))
             .map_err(|e| e.to_string())?;
     }
+    // Windows' FlushFileBuffers rejects read-only handles with "Access is
+    // denied", so the durability sync needs a writable handle, and that handle
+    // must be closed before the binary can be executed or renamed below.
     let staging_file = std::fs::OpenOptions::new()
         .read(true)
+        .write(true)
         .open(&staging)
         .map_err(|e| e.to_string())?;
     staging_file.sync_all().map_err(|e| e.to_string())?;
+    drop(staging_file);
     let version = std::process::Command::new(&staging)
         .no_console()
         .arg("--version")
