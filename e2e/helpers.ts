@@ -997,74 +997,68 @@ export async function selectWord(page: Page, word: string, attempts = 3) {
 // CI's window can render narrower than local dev, so direct bar selectors
 // are not reliable for controls past the first few; this checks both states.
 export async function clickToolbarControl(page: Page, barSelector: string, menuText: string) {
-  // The bridge's visibility predicate does not account for clipping by the
-  // toolbar's overflow-hidden container. Verify that the control's center is
-  // actually hit-testable and activate it in the same browser task. Keeping
-  // those operations atomic prevents ResizeObserver from moving the control
-  // into overflow between a successful probe and a later locator click.
-  const barClicked = await page.evaluate<boolean>(
-    `(() => {
-      const element = document.querySelector(${JSON.stringify(barSelector)});
-      if (!(element instanceof HTMLElement)) return false;
+  // Each attempt probes AND clicks inside one browser task. Splitting "find"
+  // from "click" across evaluations is what made this flake: the toolbar's
+  // ResizeObserver-driven fitCount re-renders (and Radix re-mounts the
+  // overflow popover) between two bridge calls, so a control seen by a wait
+  // can be gone by the time a separate click evaluation runs.
+  //
+  // The overflow popover also has closeOnClick=false, so it stays open across
+  // a nested dropdown selection. Re-clicking its trigger while open toggles it
+  // CLOSED, so the trigger is only clicked when its own aria-expanded says the
+  // popover is closed - never inferred from whether the target row is visible
+  // (which is false during the popover's entrance frame too).
+  const attemptExpression = `(() => {
+    const element = document.querySelector(${JSON.stringify(barSelector)});
+    if (element instanceof HTMLElement) {
       const style = getComputedStyle(element);
       const rect = element.getBoundingClientRect();
       if (
-        style.display === "none" ||
-        style.visibility === "hidden" ||
-        rect.width <= 0 ||
-        rect.height <= 0
+        style.display !== "none" &&
+        style.visibility !== "hidden" &&
+        rect.width > 0 &&
+        rect.height > 0
       ) {
-        return false;
+        const hit = document.elementFromPoint(
+          rect.left + rect.width / 2,
+          rect.top + rect.height / 2,
+        );
+        if (hit && (hit === element || element.contains(hit))) {
+          element.click();
+          return "clicked";
+        }
       }
-      const x = rect.left + rect.width / 2;
-      const y = rect.top + rect.height / 2;
-      const hit = document.elementFromPoint(x, y);
-      if (!hit || (hit !== element && !element.contains(hit))) return false;
-      element.click();
-      return true;
-    })()`,
-  );
-  if (barClicked) return;
-  // The overflow popover has closeOnClick=false and stays open across a
-  // nested dropdown selection (e.g. picking "Bulleted list" then reopening
-  // "List" for "Numbered list"). Re-clicking its trigger while it's already
-  // open toggles it CLOSED instead of opening it, so only click the trigger
-  // when the target isn't already visible. Scope the lookup to Radix's open
-  // portal: getByText can otherwise bind to a clipped bar control, and the
-  // Tauri bridge's coordinate click can outlive the popover's entrance frame.
-  const menuButtonExpression = `Array.from(
-    document.querySelectorAll('[data-radix-popper-content-wrapper] button')
-  ).find((candidate) => {
-    if (candidate.textContent?.trim() !== ${JSON.stringify(menuText)}) return false;
-    const style = getComputedStyle(candidate);
-    const rect = candidate.getBoundingClientRect();
-    return style.display !== 'none'
-      && style.visibility !== 'hidden'
-      && rect.width > 0
-      && rect.height > 0;
-  })`;
-  const menuItemVisible = await page.evaluate<boolean>(
-    `!!(${menuButtonExpression})`,
-  );
-  if (!menuItemVisible) {
-    await page.evaluate(`(() => {
-      const trigger = document.querySelector('[aria-label="More formatting options"]');
-      if (!(trigger instanceof HTMLElement)) {
-        throw new Error('More formatting options trigger not found');
-      }
-      trigger.click();
-      return true;
-    })()`);
-  }
-  await page.waitForFunction(`!!(${menuButtonExpression})`, 5_000);
-  await page.evaluate(`(() => {
-    const button = ${menuButtonExpression};
-    if (!(button instanceof HTMLElement)) {
-      throw new Error(${JSON.stringify(`${menuText} overflow control not found`)});
     }
-    button.click();
-    return true;
-  })()`);
+    const button = Array.from(
+      document.querySelectorAll('[data-radix-popper-content-wrapper] button')
+    ).find((candidate) => {
+      if (candidate.textContent?.trim() !== ${JSON.stringify(menuText)}) return false;
+      const style = getComputedStyle(candidate);
+      const rect = candidate.getBoundingClientRect();
+      return style.display !== 'none'
+        && style.visibility !== 'hidden'
+        && rect.width > 0
+        && rect.height > 0;
+    });
+    if (button instanceof HTMLElement) {
+      button.click();
+      return "clicked";
+    }
+    const trigger = document.querySelector('[aria-label="More formatting options"]');
+    if (!(trigger instanceof HTMLElement)) return "no-trigger";
+    if (trigger.getAttribute('aria-expanded') !== 'true') trigger.click();
+    return "pending";
+  })()`;
+  const deadline = Date.now() + 10_000;
+  let last = "";
+  for (;;) {
+    last = await page.evaluate<string>(attemptExpression);
+    if (last === "clicked") return;
+    if (Date.now() > deadline) {
+      throw new Error(`toolbar control ${menuText} never became clickable (${last})`);
+    }
+    await new Promise((r) => setTimeout(r, 150));
+  }
 }
 
 export async function currentTheme(page: Page): Promise<"light" | "dark"> {
