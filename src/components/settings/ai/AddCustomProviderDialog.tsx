@@ -125,7 +125,7 @@ export function AddCustomProviderDialog({ open, onOpenChange, onSubmit }: AddCus
               onChange={(e) => setField("id")(e.target.value)}
               placeholder="acme"
               aria-invalid={Boolean(fieldErrors.id)}
-              className="font-mono text-xs aria-[invalid=true]:border-destructive"
+              className="h-10 font-mono text-sm aria-[invalid=true]:border-destructive"
             />
             {fieldErrors.id && (
               <p data-testid="custom-provider-id-error" className="text-xs text-destructive">
@@ -144,7 +144,7 @@ export function AddCustomProviderDialog({ open, onOpenChange, onSubmit }: AddCus
               onChange={(e) => setField("name")(e.target.value)}
               placeholder="Acme"
               aria-invalid={Boolean(fieldErrors.name)}
-              className="aria-[invalid=true]:border-destructive"
+              className="h-10 aria-[invalid=true]:border-destructive"
             />
             {fieldErrors.name && (
               <p data-testid="custom-provider-name-error" className="text-xs text-destructive">
@@ -163,7 +163,7 @@ export function AddCustomProviderDialog({ open, onOpenChange, onSubmit }: AddCus
               onChange={(e) => setField("baseURL")(e.target.value)}
               placeholder="https://api.example.com/v1"
               aria-invalid={Boolean(fieldErrors.baseURL)}
-              className="font-mono text-xs aria-[invalid=true]:border-destructive"
+              className="h-10 font-mono text-sm aria-[invalid=true]:border-destructive"
             />
             {fieldErrors.baseURL && (
               <p data-testid="custom-provider-baseurl-error" className="text-xs text-destructive">
@@ -182,7 +182,7 @@ export function AddCustomProviderDialog({ open, onOpenChange, onSubmit }: AddCus
               value={form.apiKey}
               onChange={(e) => setField("apiKey")(e.target.value)}
               placeholder="Leave blank if none is required"
-              className="font-mono text-xs"
+              className="h-10 font-mono text-sm"
             />
           </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
