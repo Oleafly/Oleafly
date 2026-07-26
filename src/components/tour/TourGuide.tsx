@@ -493,7 +493,7 @@ function Welcome({ onStart }: { onStart: () => void }) {
               style={{
                 left: sparkle.left,
                 top: sparkle.top,
-                boxShadow: "0 0 5px 1px currentColor",
+                boxShadow: "0 0 3px 0.5px currentColor",
                 animation: `tour-sparkle ${sparkle.duration}s ease-in-out ${sparkle.delay}s infinite`,
               }}
             />
