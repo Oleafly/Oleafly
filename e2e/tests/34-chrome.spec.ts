@@ -26,6 +26,17 @@ test("the sidebar collapses and restores from the rail", async ({ tauriPage }) =
 test("the editor/preview split resizes from the separator", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  // The h-mid handle only exists in split view; an earlier spec can leave the
+  // persisted layout in editor-only or preview-only mode.
+  await tauriPage.evaluate(
+    `import("/src/store/settings.ts").then(({ useSettingsStore }) =>
+      useSettingsStore.getState().setViewMode("split"),
+    )`,
+  );
+  await tauriPage.waitForFunction(
+    `!!document.querySelector('[data-panel-resize-handle-id="h-mid"]')`,
+    10_000,
+  );
   const editorWidth = () =>
     tauriPage.evaluate<number>(
       `Math.round(document.querySelector('.cm-editor')?.getBoundingClientRect().width || 0)`,

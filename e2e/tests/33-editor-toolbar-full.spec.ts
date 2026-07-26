@@ -7,6 +7,7 @@ import {
   pressGlobal,
   typeInEditorAfter,
   typeInEditorAtStart,
+  waitEditorShowsFile,
   type Page,
 } from "../helpers";
 
@@ -287,6 +288,7 @@ test("non-tex files get no formatting toolbar; txt files edit fine", async ({ ta
   await tauriPage.fill('input[placeholder="New file name"]', "notes.txt");
   await tauriPage.press('input[placeholder="New file name"]', "Enter");
   await tauriPage.getByText("notes.txt", { exact: true }).click();
+  await waitEditorShowsFile(tauriPage, "notes.txt");
   await typeInEditorAtStart(tauriPage, "plain text survives");
   await expect(tauriPage.locator(".cm-content")).toContainText("plain text survives");
   await tauriPage.waitForFunction(
