@@ -712,56 +712,14 @@ function CanvasInner({
     [selEdge, edges],
   );
 
+  const canvasHint = pending
+    ? "Click and Drag on the Canvas to Draw the Shape (Esc to Cancel)"
+    : spacePressed
+      ? "Drag to Pan the Canvas"
+      : "Drag Shapes to Move · Drag Handles to Connect · Space + Drag to Pan · Double-Click to Edit Text";
+
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="relative flex h-8 shrink-0 items-center gap-2 border-b bg-background px-2">
-        <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] text-muted-foreground">
-          {pending
-            ? "Click and Drag on the Canvas to Draw the Shape (Esc to Cancel)"
-            : spacePressed
-              ? "Drag to Pan the Canvas"
-              : "Drag Shapes to Move · Drag Handles to Connect · Space + Drag to Pan · Double-Click to Edit Text"}
-        </span>
-        <div className="ml-auto flex items-center gap-0.5">
-          {showPreviewAction && onShowPreview && (
-            <Tooltip label="Show compiled preview">
-              <button
-                type="button"
-                aria-label="Show preview"
-                onClick={onShowPreview}
-                className="mr-1 flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              >
-                <PanelRightOpen className="size-3.5" />
-                Preview
-              </button>
-            </Tooltip>
-          )}
-          <Tooltip label={canvasTheme === "dark" ? "Light canvas" : "Dark canvas"}>
-            <button
-              type="button"
-              aria-label="Toggle canvas theme"
-              onClick={() => setCanvasTheme((t) => (t === "dark" ? "light" : "dark"))}
-              className="flex size-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            >
-              {canvasTheme === "dark" ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
-            </button>
-          </Tooltip>
-          <Tooltip label={showMinimap ? "Hide minimap" : "Show minimap"}>
-            <button
-              type="button"
-              aria-label="Toggle minimap"
-              aria-pressed={showMinimap}
-              onClick={() => setShowMinimap((v) => !v)}
-              className={cn(
-                "flex size-6 items-center justify-center rounded transition-colors",
-                showMinimap ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground",
-              )}
-            >
-              <MapIcon className="size-3.5" />
-            </button>
-          </Tooltip>
-        </div>
-      </div>
       <div
         data-tour="diagram-canvas"
         data-tour-selection={selectedNode || selectedEdge ? "true" : "false"}
@@ -811,13 +769,73 @@ function CanvasInner({
           ))}
         </div>
 
+        <div
+          style={chromeStyle}
+          className="pointer-events-none absolute left-1/2 top-2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full border px-4 py-1.5 text-[11px] shadow-md backdrop-blur-sm transition-all duration-300"
+        >
+          <span
+            key={canvasHint}
+            className="block animate-in fade-in zoom-in-95 duration-300 motion-reduce:animate-none"
+          >
+            {canvasHint}
+          </span>
+        </div>
+        <div
+          style={chromeStyle}
+          className="absolute right-2 top-2 z-10 flex items-center gap-0.5 rounded-full border p-1 shadow-md backdrop-blur-sm"
+        >
+          {showPreviewAction && onShowPreview && (
+            <Tooltip label="Show compiled preview">
+              <button
+                type="button"
+                aria-label="Show preview"
+                onClick={onShowPreview}
+                className={cn(
+                  "mr-0.5 flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] transition-colors",
+                  chromeHover,
+                )}
+              >
+                <PanelRightOpen className="size-3.5" />
+                Preview
+              </button>
+            </Tooltip>
+          )}
+          <Tooltip label={canvasTheme === "dark" ? "Light canvas" : "Dark canvas"}>
+            <button
+              type="button"
+              aria-label="Toggle canvas theme"
+              onClick={() => setCanvasTheme((t) => (t === "dark" ? "light" : "dark"))}
+              className={cn(
+                "flex size-6 items-center justify-center rounded-full transition-colors",
+                chromeHover,
+              )}
+            >
+              {canvasTheme === "dark" ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
+            </button>
+          </Tooltip>
+          <Tooltip label={showMinimap ? "Hide minimap" : "Show minimap"}>
+            <button
+              type="button"
+              aria-label="Toggle minimap"
+              aria-pressed={showMinimap}
+              onClick={() => setShowMinimap((v) => !v)}
+              className={cn(
+                "flex size-6 items-center justify-center rounded-full transition-colors",
+                showMinimap ? (canvasDark ? "bg-white/15" : "bg-black/10") : chromeHover,
+              )}
+            >
+              <MapIcon className="size-3.5" />
+            </button>
+          </Tooltip>
+        </div>
+
         {(selectedNode || selectedEdge) && (
           <div
             data-tour="diagram-inspector"
             role="complementary"
             aria-label="Shape style"
             style={chromeStyle}
-            className="absolute right-2 top-2 z-10 max-h-[calc(100%-1rem)] w-56 overflow-y-auto rounded-lg border shadow-md backdrop-blur-sm"
+            className="absolute right-2 top-12 z-10 max-h-[calc(100%-3.5rem)] w-56 overflow-y-auto rounded-lg border shadow-md backdrop-blur-sm"
           >
             <Inspector
               node={selectedNode ? rfNodeToModel(selectedNode) : null}
