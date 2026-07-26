@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { ChevronDown, ChevronRight, Sparkles } from "lucide-react";
 import { getConfig, setConfig, type AppConfig } from "@/lib/tauri";
-import { defaultModel, getProvider } from "@/lib/ai-providers";
+import { defaultModel, discoveryFor, fetchProviderModels, getProvider } from "@/lib/ai-providers";
+import { mergeFetchedModels, seedProviderModels } from "@/lib/ai-model-state";
 import { listOllamaModels, DEFAULT_OLLAMA_HOST } from "@/lib/ollama";
 import { AiToolsGrid } from "@/components/ai/AiToolsList";
 import { cn } from "@/lib/utils";
-import { ProvidersTab } from "./ai/ProvidersTab";
+import { ProvidersTab, type ProviderStatus } from "./ai/ProvidersTab";
 import { InstructionsTab } from "./ai/InstructionsTab";
 import { PersonasTab } from "./ai/PersonasTab";
 
@@ -37,6 +38,8 @@ export function AISection() {
   // Snapshot of persisted keys, used to detect unsaved edits (dirty check below).
   const [savedKeys, setSavedKeys] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
+  const [status, setStatus] = useState<Record<string, ProviderStatus>>({});
+  const [errorMsg, setErrorMsg] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [toolsOpen, setToolsOpen] = useState(true);
   const [sysPrompt, setSysPrompt] = useState("");
@@ -116,29 +119,54 @@ export function AISection() {
     }
   };
 
-  const saveProvider = async (id: string) => {
+  // Pastes are validated by fetching the provider's live model list before
+  // the key is trusted; an unreachable or rejected key never gets persisted.
+  const validateAndSave = async (id: string) => {
     const value = (keys[id] ?? "").trim();
     if (!value) return;
     setSaving(id);
     setMsg(null);
+    setStatus((s) => ({ ...s, [id]: "validating" }));
+    setErrorMsg((m) => ({ ...m, [id]: "" }));
     try {
+      const provider = getProvider(id);
+      const res = await fetchProviderModels({
+        providerId: id,
+        baseURL: provider?.baseURL,
+        key: value,
+        discovery: discoveryFor(id),
+        seed: provider?.models ?? [],
+      });
+      if (!res.ok) {
+        setStatus((s) => ({ ...s, [id]: "error" }));
+        setErrorMsg((m) => ({
+          ...m,
+          [id]: res.reason === "invalid-key" ? "Invalid API key." : "Could not reach the provider.",
+        }));
+        return;
+      }
       const nextKeys = { ...keys, [id]: value };
-      const sameProvider = cfg.ai_provider === id;
+      const existingModels = cfg.ai_provider_models[id] ?? seedProviderModels(id);
+      const mergedModels = mergeFetchedModels(existingModels, res.models);
+      const wasActive = Boolean(cfg.ai_provider);
       const next: AppConfig = {
         ...cfg,
         ai_keys: nextKeys,
-        ai_provider: id,
-        ai_model: sameProvider ? cfg.ai_model : defaultModel(id),
+        ai_provider_models: { ...cfg.ai_provider_models, [id]: mergedModels },
+        ai_provider: cfg.ai_provider || id,
+        ai_model: wasActive ? cfg.ai_model : defaultModel(id),
       };
       await persist(next);
       setKeys(nextKeys);
       setSavedKeys(nextKeys);
+      setStatus((s) => ({ ...s, [id]: "valid" }));
       setMsg({
         ok: true,
-        text: `${getProvider(id)?.name ?? id} connected and now active.`,
+        text: `${getProvider(id)?.name ?? id} connected.`,
       });
     } catch (e) {
-      setMsg({ ok: false, text: String(e) });
+      setStatus((s) => ({ ...s, [id]: "error" }));
+      setErrorMsg((m) => ({ ...m, [id]: String(e) }));
     } finally {
       setSaving(null);
     }
@@ -239,7 +267,9 @@ export function AISection() {
           ollama={ollama}
           refreshOllama={refreshOllama}
           applyOllamaModel={applyOllamaModel}
-          saveProvider={saveProvider}
+          validateAndSave={validateAndSave}
+          status={status}
+          errorMsg={errorMsg}
           activate={activate}
           changeModel={changeModel}
           deleteKey={deleteKey}

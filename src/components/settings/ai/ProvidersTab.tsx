@@ -14,6 +14,8 @@ import type { AppConfig } from "@/lib/tauri";
 import { PROVIDERS, defaultModel } from "@/lib/ai-providers";
 import { DEFAULT_OLLAMA_HOST } from "@/lib/ollama";
 
+export type ProviderStatus = "idle" | "validating" | "valid" | "error";
+
 function OllamaSetup({
   active,
   host,
@@ -160,7 +162,9 @@ export interface ProvidersTabProps {
   ollama: { status: "idle" | "loading" | "ok" | "down"; models: string[] };
   refreshOllama: (host: string) => Promise<void>;
   applyOllamaModel: (model: string) => Promise<void>;
-  saveProvider: (id: string) => Promise<void>;
+  validateAndSave: (id: string) => Promise<void>;
+  status: Record<string, ProviderStatus>;
+  errorMsg: Record<string, string>;
   activate: (id: string) => Promise<void>;
   changeModel: (modelId: string) => Promise<void>;
   deleteKey: (id: string) => Promise<void>;
@@ -177,7 +181,9 @@ export function ProvidersTab({
   ollama,
   refreshOllama,
   applyOllamaModel,
-  saveProvider,
+  validateAndSave,
+  status,
+  errorMsg,
   activate,
   changeModel,
   deleteKey,
@@ -289,6 +295,7 @@ export function ProvidersTab({
                       value={value}
                       onChange={(e) => setKeys((k) => ({ ...k, [p.id]: e.target.value }))}
                       placeholder="Paste your API key here"
+                      data-testid={`ai-provider-key-${p.id}`}
                       className="flex-1 rounded-md border border-input bg-background px-3 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-ring"
                     />
                     {dirty ? (
@@ -296,7 +303,7 @@ export function ProvidersTab({
                         size="sm"
                         data-testid={`ai-provider-save-${p.id}`}
                         disabled={saving === p.id}
-                        onClick={() => void saveProvider(p.id)}
+                        onClick={() => void validateAndSave(p.id)}
                       >
                         {saving === p.id ? (
                           <Loader2 className="size-3.5 animate-spin" />
@@ -326,6 +333,28 @@ export function ProvidersTab({
                       </button>
                     )}
                   </div>
+                  {(() => {
+                    const providerStatus = status[p.id] ?? "idle";
+                    if (providerStatus === "idle") return null;
+                    return (
+                      <p
+                        data-testid={`ai-provider-status-${p.id}`}
+                        className={
+                          providerStatus === "valid"
+                            ? "mt-1.5 text-[11px] text-emerald-600 dark:text-emerald-500"
+                            : providerStatus === "error"
+                              ? "mt-1.5 text-[11px] text-destructive"
+                              : "mt-1.5 text-[11px] text-muted-foreground"
+                        }
+                      >
+                        {providerStatus === "validating"
+                          ? "Checking key..."
+                          : providerStatus === "valid"
+                            ? "Key valid. Models are ready below."
+                            : `Error: ${errorMsg[p.id] ?? "Could not validate the key."}`}
+                      </p>
+                    );
+                  })()}
                 </div>
               )}
             </div>
