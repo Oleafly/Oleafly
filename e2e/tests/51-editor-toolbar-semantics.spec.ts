@@ -799,9 +799,20 @@ $SYMBOLANCHOR$
               .join(",")})@${item.pdfFontName ?? item.fontFamily ?? item.fontName}`,
         ),
     );
+    const compileLogLines = await tauriPage.evaluate<string>(
+      `import("/src/store/compile.ts").then(({ useCompileStore }) =>
+        (useCompileStore.getState().log || "")
+          .split("\\n")
+          .filter((line) =>
+            /missing character|warning|error|font|\\bmap\\b/i.test(line),
+          )
+          .slice(0, 60)
+          .join("\\n"),
+      )`,
+    );
     throw new Error(
       `symbols never surfaced in PDF text: ${missingSymbols.join(" ")}; ` +
-        `short items: ${shortItems.join(" | ")}`,
+        `short items: ${shortItems.join(" | ")}\ncompile log excerpts:\n${compileLogLines}`,
     );
   }
   for (const renderedSymbol of ["α", "→", "×", "≤", "∞"]) {
