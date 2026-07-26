@@ -33,6 +33,8 @@ function omitTitle<T extends { title: string }>({ title: _title, ...rest }: T) {
   return rest;
 }
 
+let requestQuitConfirm: (() => void) | null = null;
+
 function TourTooltip(props: TooltipRenderProps) {
   const {
     backProps,
@@ -147,7 +149,15 @@ function TourTooltip(props: TooltipRenderProps) {
           {index + 1} / {size}
         </span>
         <Tooltip label={skipProps.title} className="ml-1">
-          <Button {...omitTitle(skipProps)} variant="ghost" size="sm">
+          <Button
+            {...omitTitle(skipProps)}
+            onClick={(event) => {
+              event.preventDefault();
+              requestQuitConfirm?.();
+            }}
+            variant="ghost"
+            size="sm"
+          >
             Skip
             <Kbd>esc</Kbd>
           </Button>
@@ -737,6 +747,10 @@ export function TourGuide() {
   useEffect(() => {
     if (!activeTourId) return;
     setQuitConfirmOpen(false);
+    requestQuitConfirm = () => setQuitConfirmOpen(true);
+    return () => {
+      requestQuitConfirm = null;
+    };
   }, [activeTourId]);
 
   useEffect(() => {
