@@ -684,7 +684,12 @@ export async function waitEditorContains(page: Page, needle: string, timeoutMs: 
     );
     if (ok) return;
     if (Date.now() > deadline) {
-      throw new Error(`editor never contained: ${needle}`);
+      const doc = await page
+        .evaluate<string>(`(window.__docText ?? "").slice(0, 600)`)
+        .catch(() => "unavailable");
+      throw new Error(
+        `editor never contained: ${needle}; document head:\n${doc}`,
+      );
     }
   }
 }
