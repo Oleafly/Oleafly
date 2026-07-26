@@ -240,8 +240,8 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: ~/Library/Caches/Tectonic
-          key: tectonic-pkgs-v2-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
-          restore-keys: tectonic-pkgs-v2-${{ runner.os }}-
+          key: tectonic-pkgs-v3-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
+          restore-keys: tectonic-pkgs-v3-${{ runner.os }}-
 
       - name: Pre-warm the Tectonic package cache
         run: |
@@ -256,7 +256,7 @@ jobs:
         uses: actions/cache/save@v6
         with:
           path: ~/Library/Caches/Tectonic
-          key: tectonic-pkgs-v2-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
+          key: tectonic-pkgs-v3-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
 
       # The fixture machinery needs a Playwright browser even in tauri mode.
       - name: Install Playwright browser
@@ -357,8 +357,8 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: ~/.cache/Tectonic
-          key: tectonic-pkgs-v2-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
-          restore-keys: tectonic-pkgs-v2-${{ runner.os }}-
+          key: tectonic-pkgs-v3-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
+          restore-keys: tectonic-pkgs-v3-${{ runner.os }}-
 
       - name: Pre-warm the Tectonic package cache
         run: |
@@ -373,7 +373,7 @@ jobs:
         uses: actions/cache/save@v6
         with:
           path: ~/.cache/Tectonic
-          key: tectonic-pkgs-v2-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
+          key: tectonic-pkgs-v3-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
 
       - name: Install Playwright browser
         env:
@@ -465,8 +465,8 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: ~\AppData\Local\TectonicProject
-          key: tectonic-pkgs-v2-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
-          restore-keys: tectonic-pkgs-v2-${{ runner.os }}-
+          key: tectonic-pkgs-v3-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
+          restore-keys: tectonic-pkgs-v3-${{ runner.os }}-
 
       - name: Pre-warm the Tectonic package cache
         shell: bash
@@ -482,7 +482,7 @@ jobs:
         uses: actions/cache/save@v6
         with:
           path: ~\AppData\Local\TectonicProject
-          key: tectonic-pkgs-v2-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
+          key: tectonic-pkgs-v3-${{ runner.os }}-${{ hashFiles('src-tauri/resources/templates/**/main.tex') }}
 
       - name: Install Playwright browser
         env:
