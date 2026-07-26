@@ -405,15 +405,12 @@ export function ProvidersTab({
         })}
       </div>
 
-      <Button
-        variant="outline"
-        size="sm"
-        data-testid="ai-add-custom-provider"
-        onClick={onAddCustomProvider}
-      >
-        <Plus className="size-3.5" />
-        Add custom provider
-      </Button>
+      <div className="flex justify-end">
+        <Button data-testid="ai-add-custom-provider" onClick={onAddCustomProvider}>
+          <Plus className="size-4" />
+          Add custom provider
+        </Button>
+      </div>
     </div>
   );
 }

@@ -24,6 +24,7 @@ export function ModelSelector({
   disabled,
   compact,
   className,
+  contentClassName,
 }: {
   providerId: string;
   modelId: string;
@@ -32,6 +33,9 @@ export function ModelSelector({
   disabled?: boolean;
   compact?: boolean;
   className?: string;
+  // Callers rendering inside a higher-stacked surface (e.g. the Settings
+  // modal at z-[80]) pass a z bump here or the dropdown opens behind it.
+  contentClassName?: string;
 }) {
   const value = JSON.stringify([providerId, modelId]);
   return (
@@ -55,7 +59,7 @@ export function ModelSelector({
       >
         <SelectValue />
       </SelectTrigger>
-      <SelectContent className="max-h-[60vh] min-w-56">
+      <SelectContent className={cn("max-h-[60vh] min-w-56", contentClassName)}>
         {groups.map((group) => (
           <SelectGroup key={group.id}>
             <SelectLabel className="text-[10px] uppercase tracking-wide">{group.name}</SelectLabel>
