@@ -45,7 +45,7 @@ test("connect an AI provider through the settings UI", async ({ tauriPage }) => 
   await tauriPage
     .waitForFunction(
       inProviderCard(
-        `return Array.from(card.querySelectorAll('button')).some(b => ['Save', 'Use'].includes(b.textContent.trim()));`,
+        `return Array.from(card.querySelectorAll('button')).some(b => ['Save', 'Activate'].includes(b.textContent.trim()));`,
       ),
       5_000,
     )
@@ -53,7 +53,7 @@ test("connect an AI provider through the settings UI", async ({ tauriPage }) => 
   const clicked = await tauriPage.evaluate<boolean>(
     inProviderCard(`
       const btn = Array.from(card.querySelectorAll('button'))
-        .find(b => ['Save', 'Use'].includes(b.textContent.trim()));
+        .find(b => ['Save', 'Activate'].includes(b.textContent.trim()));
       if (!btn) return false;
       btn.click();
       return true;
@@ -61,7 +61,7 @@ test("connect an AI provider through the settings UI", async ({ tauriPage }) => 
   );
   if (clicked) {
     await tauriPage.waitForFunction(
-      inProviderCard(`return (card.textContent || '').includes('Active');`),
+      inProviderCard(`return (card.textContent || '').includes('Connected');`),
       10_000,
     );
   }

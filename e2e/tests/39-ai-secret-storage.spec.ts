@@ -6,13 +6,13 @@ import { openSettings } from "../helpers";
 test("AI credentials persist encrypted across a settings remount", async ({ tauriPage }) => {
   const secret = `oleafly-e2e-secret-${Date.now()}`;
   await openSettings(tauriPage, "ai");
-  const card = tauriPage.getByTestId("ai-provider-card-openai");
-  await tauriPage.click('[data-testid="ai-provider-card-openai"] button[aria-expanded]');
+  const card = tauriPage.getByTestId("ai-provider-card-perplexity");
+  await tauriPage.click('[data-testid="ai-provider-card-perplexity"] button[aria-expanded]');
   const input = card.locator('input[type="password"]');
   await expect(input).toBeVisible();
   await input.fill(secret);
-  await tauriPage.click('[data-testid="ai-provider-save-openai"]');
-  await expect(tauriPage.getByTestId("ai-provider-delete-openai")).toBeVisible();
+  await tauriPage.click('[data-testid="ai-provider-save-perplexity"]');
+  await expect(tauriPage.getByTestId("ai-provider-delete-perplexity")).toBeVisible();
   await tauriPage.click('[aria-label="Close settings"]');
 
   const root = process.env.OLEAFLY_DATA_DIR;
@@ -23,9 +23,9 @@ test("AI credentials persist encrypted across a settings remount", async ({ taur
   expect(encrypted).not.toContain(secret);
 
   await openSettings(tauriPage, "ai");
-  const restoredCard = tauriPage.getByTestId("ai-provider-card-openai");
+  const restoredCard = tauriPage.getByTestId("ai-provider-card-perplexity");
   await expect(restoredCard.locator('input[type="password"]')).toBeVisible();
   await expect(restoredCard.locator('input[type="password"]')).toHaveValue(secret);
-  await tauriPage.click('[data-testid="ai-provider-delete-openai"]');
-  await expect(tauriPage.getByTestId("ai-provider-delete-openai")).toBeHidden();
+  await tauriPage.click('[data-testid="ai-provider-delete-perplexity"]');
+  await expect(tauriPage.getByTestId("ai-provider-delete-perplexity")).toBeHidden();
 });

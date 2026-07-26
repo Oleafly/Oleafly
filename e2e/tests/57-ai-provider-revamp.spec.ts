@@ -163,9 +163,18 @@ test("instructions tab hosts the tools list and a working default-model picker",
   await trigger.focus();
   await trigger.press("Enter");
   await waitLong(page, `document.querySelectorAll('[role="option"]').length > 0`, 8_000);
-  const option = page.locator('[role="option"]', { hasText: "Sonar Pro" });
-  await option.focus();
-  await option.press("Enter");
+  await page.evaluate(
+    `(() => {
+      const el = Array.from(document.querySelectorAll('[role="option"]'))
+        .find(o => (o.textContent || '').includes('Sonar Pro'));
+      if (!el) throw new Error('Sonar Pro option not found');
+      for (const type of ['pointerdown', 'pointerup']) {
+        el.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 1 }));
+      }
+      el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+      return 1;
+    })()`,
+  );
   await expect(trigger).toContainText("Sonar Pro", { timeout: 8_000 });
 
   await page.click('[aria-label="Close settings"]');
