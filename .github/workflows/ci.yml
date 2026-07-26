@@ -285,7 +285,7 @@ jobs:
             test-results/**/error-context.md
             test-results/**/trace.zip
             test-results/**/*.log
-            test-results/**/*.pdf
+            e2e-debug/**
           retention-days: 7
           if-no-files-found: ignore
 
