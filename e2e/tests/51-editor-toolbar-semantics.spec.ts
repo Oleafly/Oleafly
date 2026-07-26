@@ -706,9 +706,9 @@ $SYMBOLANCHOR$
           return btoa(binary);
         })`,
       );
-      mkdirSync("test-results/symbol-debug", { recursive: true });
+      mkdirSync("e2e-debug", { recursive: true });
       writeFileSync(
-        "test-results/symbol-debug/compiled.pdf",
+        "e2e-debug/symbol-compiled.pdf",
         Buffer.from(pdfBase64, "base64"),
       );
     } catch {
