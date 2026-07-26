@@ -865,8 +865,7 @@ export async function caretIn(
   occurrence = 1,
   where: "start" | "end" = "start",
 ) {
-  const ok = await page.evaluate<boolean>(
-    `(() => {
+  const placement = `(() => {
       const lines = Array.from(document.querySelectorAll('.cm-content .cm-line'));
       let seen = 0;
       for (const line of lines) {
@@ -899,16 +898,16 @@ export async function caretIn(
       }
       return false;
     })()`
-      .replaceAll("ANCHOR", JSON.stringify(anchorText))
-      .replaceAll("WHERE", JSON.stringify(where))
-      .replace("OCC", String(occurrence)),
-  );
-  if (!ok) throw new Error("caretIn: anchor " + JSON.stringify(anchorText) + " not found");
+    .replaceAll("ANCHOR", JSON.stringify(anchorText))
+    .replaceAll("WHERE", JSON.stringify(where))
+    .replace("OCC", String(occurrence));
 
   // The synthetic mouse events place the caret through CodeMirror's DOM
   // observer; verify the selection actually landed on the anchor's line so a
   // missed placement fails here instead of corrupting the document at the
-  // original caret position (e.g. inserting before \documentclass).
+  // original caret position (e.g. inserting before \documentclass). A slow
+  // webview can swallow one placement entirely, so re-dispatch it per round
+  // instead of only polling the first attempt's outcome.
   const placed = `(() => {
     const sel = window.getSelection();
     const node = sel && sel.anchorNode;
@@ -917,9 +916,13 @@ export async function caretIn(
     const line = el && el.closest ? el.closest('.cm-line') : null;
     return !!line && line.textContent.includes(${JSON.stringify(anchorText)});
   })()`;
-  for (let attempt = 0; attempt < 20; attempt++) {
-    if (await page.evaluate<boolean>(placed)) return;
-    await new Promise((resolve) => setTimeout(resolve, 100));
+  for (let round = 0; round < 4; round++) {
+    const ok = await page.evaluate<boolean>(placement);
+    if (!ok) throw new Error("caretIn: anchor " + JSON.stringify(anchorText) + " not found");
+    for (let attempt = 0; attempt < 7; attempt++) {
+      if (await page.evaluate<boolean>(placed)) return;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
   }
   throw new Error(
     "caretIn: selection did not land on the line containing " + JSON.stringify(anchorText),

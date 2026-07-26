@@ -141,15 +141,28 @@ async function clickPortalButton(
           .filter((candidate) => candidate.closest('[data-state="open"]'))
           .find((candidate) => ${predicate});
         if (!(button instanceof HTMLElement)) return false;
+        button.scrollIntoView({ block: 'nearest' });
         button.click();
         return true;
       })()`,
-      5_000,
+      10_000,
     )
     .then(() => true)
     .catch(() => false);
   if (!clicked) {
-    throw new Error(`${description} portal button never became clickable`);
+    const state = await page
+      .evaluate<string>(
+        `JSON.stringify(Array.from(
+          document.querySelectorAll('[data-radix-popper-content-wrapper]')
+        ).map((portal) => ({
+          state: portal.querySelector('[data-state]')?.getAttribute('data-state') ?? null,
+          text: (portal.textContent || '').slice(0, 40),
+        })))`,
+      )
+      .catch(() => "unavailable");
+    throw new Error(
+      `${description} portal button never became clickable; portals=${state}`,
+    );
   }
 }
 
@@ -421,9 +434,23 @@ Resolved reference: \ref{sec:toolbar-original}.
     tauriPage.locator('[aria-label="References (Shift-F12)"]'),
   ).toBeVisible({ timeout: 10_000 });
 
-  await caretIn(tauriPage, "sec:toolbar-original", 2);
-  await openCodeIntelligence(tauriPage);
-  await clickCodeIntelligenceAction(tauriPage, "Rename symbol");
+  // The action can land as a silent no-op when the menu remounts mid-click,
+  // so retry the whole caret -> menu -> action sequence until the dialog
+  // actually opens (same shape as 33-editor-toolbar-full's rename flow).
+  for (let attempt = 0; ; attempt++) {
+    await caretIn(tauriPage, "sec:toolbar-original", 2);
+    await openCodeIntelligence(tauriPage);
+    await clickCodeIntelligenceAction(tauriPage, "Rename symbol");
+    const opened = await tauriPage
+      .waitForFunction(
+        `!!document.querySelector('[role="dialog"][aria-labelledby="rename-title"]')`,
+        5_000,
+      )
+      .then(() => true)
+      .catch(() => false);
+    if (opened) break;
+    if (attempt >= 3) throw new Error("rename dialog never opened");
+  }
   const dialog = tauriPage.locator(
     '[role="dialog"][aria-labelledby="rename-title"]',
   );

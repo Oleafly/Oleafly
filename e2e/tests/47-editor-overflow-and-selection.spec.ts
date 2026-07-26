@@ -5,21 +5,27 @@ test("toolbar overflow menu surfaces controls that don't fit the bar", async ({ 
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   // The LaTeX toolbar mounts once engine/file-type detection resolves, which
-  // can land a beat after .cm-content itself; wait for Bold so the DOM
-  // manipulation below doesn't race an empty toolbar.
-  await tauriPage.waitForFunction(`!!document.querySelector('[aria-label^="Bold ("]')`, 10_000);
+  // can land a beat after .cm-content itself. On a narrow CI window Bold can
+  // already sit in overflow at mount, so accept either the bar control or the
+  // overflow trigger as proof the toolbar exists.
+  await tauriPage.waitForFunction(
+    `!!document.querySelector('[aria-label^="Bold ("]')
+      || !!document.querySelector('[aria-label="More formatting options"]')`,
+    10_000,
+  );
 
   // Force the toolbar's measured container down to a width that fits nothing,
   // so every control deterministically lands in the overflow menu (real
   // ResizeObserver-driven layout, not a mock of the fitCount logic).
   await tauriPage.evaluate(
     `(() => {
-      const bold = document.querySelector('[aria-label^="Bold ("]');
-      // Bold's direct parent is the Tooltip wrapper <span>, not the toolbar's
-      // measured flex container - walk up to the element that actually has
-      // the fitCount ResizeObserver attached (it uniquely carries both
-      // flex-1 and overflow-hidden in this toolbar).
-      const container = bold && bold.closest('.overflow-hidden');
+      const anchor = document.querySelector('[aria-label^="Bold ("]')
+        || document.querySelector('[aria-label="More formatting options"]');
+      // The anchor's direct parent is the Tooltip wrapper <span>, not the
+      // toolbar's measured flex container - walk up to the element that
+      // actually has the fitCount ResizeObserver attached (it uniquely
+      // carries both flex-1 and overflow-hidden in this toolbar).
+      const container = anchor && anchor.closest('.overflow-hidden');
       if (!container) throw new Error('toolbar container not found');
       container.style.width = '20px';
       container.style.flex = 'none';
