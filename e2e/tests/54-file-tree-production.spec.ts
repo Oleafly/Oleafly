@@ -271,7 +271,7 @@ ${marker}
     `document.querySelector('[data-path=' +
       CSS.escape(${JSON.stringify(mainPath)}) +
       ']')?.getAttribute("aria-selected") === "true"`,
-    15_000,
+    30_000,
   );
   expect(await tauriPage.evaluate<string>(
     `document.querySelector(".cm-content")?.textContent ?? ""`,

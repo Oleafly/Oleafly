@@ -527,6 +527,13 @@ WYSKEYBOARDSEMANTIC
   // finished absorbing the WYSIWYG insertion; re-click until the source shows
   // the insertion gone.
   for (let attempt = 0; ; attempt++) {
+    // Let the WYSIWYG view finish re-syncing from the shared text before
+    // undoing: an undo dispatched mid-resync can miss the insertion event.
+    await tauriPage.waitForFunction(
+      `!!document.querySelector(".ProseMirror")`,
+      10_000,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 500));
     await tauriPage.click('[aria-label^="Undo ("]');
     await tauriPage.click('[aria-label="Switch to source view"]');
     const undone = await waitForSource(
