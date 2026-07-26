@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- The JIT/unsigned-executable-memory pair is required by the system
+	     WebView's JavaScript engine (WKWebView/JavaScriptCore) under the
+	     hardened runtime, which notarization mandates. Without them a signed
+	     build launches to a blank window. -->
+	<key>com.apple.security.cs.allow-jit</key>
+	<true/>
+	<key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+	<true/>
+	<!-- The bundled Tectonic and Typst sidecars are separately-signed
+	     executables the app spawns; allow loading them without invalidating
+	     the app's own signature. -->
+	<key>com.apple.security.cs.disable-library-validation</key>
+	<true/>
+</dict>
+</plist>

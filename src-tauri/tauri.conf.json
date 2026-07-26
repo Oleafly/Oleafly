@@ -51,7 +51,12 @@
       "resources/font-packs.json",
       "resources/template-packs.json",
       "resources/deadlines-seed.json"
-    ]
+    ],
+    "macOS": {
+      "hardenedRuntime": true,
+      "entitlements": "entitlements.plist",
+      "minimumSystemVersion": "10.15"
+    }
   },
   "plugins": {
     "updater": {
