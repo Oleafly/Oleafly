@@ -1,10 +1,19 @@
 import { useState } from "react";
-import { Loader2, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Loader2, Plus, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Tooltip } from "@/components/ui/tooltip";
 import type { StoredModel } from "@/lib/tauri";
-import { addCustomModel, deleteModel, mergeFetchedModels, setModelEnabled } from "@/lib/ai-model-state";
+import {
+  addCustomModel,
+  deleteModel,
+  mergeFetchedModels,
+  restoreSeedModels,
+  seedProviderModels,
+  setModelEnabled,
+} from "@/lib/ai-model-state";
 import { discoveryFor, fetchProviderModels, getProvider } from "@/lib/ai-providers";
 
 export interface ModelManagerProps {
@@ -16,8 +25,14 @@ export interface ModelManagerProps {
 
 export function ModelManager({ providerId, models, apiKey, onChange }: ModelManagerProps) {
   const [newId, setNewId] = useState("");
+  const [addError, setAddError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState<StoredModel | null>(null);
+
+  const missingSeeds = seedProviderModels(providerId).filter(
+    (s) => !models.some((m) => m.id === s.id)
+  );
 
   async function refresh() {
     setRefreshing(true);
@@ -40,7 +55,19 @@ export function ModelManager({ providerId, models, apiKey, onChange }: ModelMana
 
   function submitNewModel() {
     const trimmed = newId.trim();
-    if (!trimmed) return;
+    if (!trimmed) {
+      setAddError("Enter a model id.");
+      return;
+    }
+    if (/\s/.test(trimmed)) {
+      setAddError("Model ids can't contain spaces.");
+      return;
+    }
+    if (models.some((m) => m.id === trimmed)) {
+      setAddError("That model is already in the list.");
+      return;
+    }
+    setAddError("");
     onChange(addCustomModel(models, { id: trimmed, name: trimmed }));
     setNewId("");
   }
@@ -49,21 +76,37 @@ export function ModelManager({ providerId, models, apiKey, onChange }: ModelMana
     <div className="mt-3 space-y-1.5 border-t pt-3">
       <div className="flex items-center justify-between">
         <span className="text-[11px] font-medium text-muted-foreground">Models</span>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-6 px-1.5 text-[11px]"
-          data-testid={`ai-refresh-models-${providerId}`}
-          disabled={refreshing}
-          onClick={() => void refresh()}
-        >
-          {refreshing ? (
-            <Loader2 className="size-3 animate-spin" />
-          ) : (
-            <RefreshCw className="size-3" />
+        <div className="flex items-center gap-1">
+          {missingSeeds.length > 0 && (
+            <Tooltip label="Re-add this provider's built-in models">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 px-1.5 text-[11px]"
+                data-testid={`ai-restore-models-${providerId}`}
+                onClick={() => onChange(restoreSeedModels(models, providerId))}
+              >
+                <RotateCcw className="size-3" />
+                Restore defaults
+              </Button>
+            </Tooltip>
           )}
-          Refresh
-        </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-6 px-1.5 text-[11px]"
+            data-testid={`ai-refresh-models-${providerId}`}
+            disabled={refreshing}
+            onClick={() => void refresh()}
+          >
+            {refreshing ? (
+              <Loader2 className="size-3 animate-spin" />
+            ) : (
+              <RefreshCw className="size-3" />
+            )}
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {refreshError && <p className="text-[11px] text-destructive">{refreshError}</p>}
@@ -86,16 +129,17 @@ export function ModelManager({ providerId, models, apiKey, onChange }: ModelMana
                 Custom
               </span>
             )}
-            <button
-              type="button"
-              data-testid={`ai-model-delete-${m.id}`}
-              aria-label={`Delete model ${m.name}`}
-              title="Delete model"
-              onClick={() => onChange(deleteModel(models, m.id))}
-              className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-            >
-              <Trash2 className="size-3" />
-            </button>
+            <Tooltip label="Delete model">
+              <button
+                type="button"
+                data-testid={`ai-model-delete-${m.id}`}
+                aria-label={`Delete model ${m.name}`}
+                onClick={() => setConfirmDelete(m)}
+                className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+              >
+                <Trash2 className="size-3" />
+              </button>
+            </Tooltip>
           </div>
         ))}
         {models.length === 0 && (
@@ -103,28 +147,52 @@ export function ModelManager({ providerId, models, apiKey, onChange }: ModelMana
         )}
       </div>
 
-      <div className="flex gap-2 pt-1">
-        <Input
-          type="text"
-          value={newId}
-          onChange={(e) => setNewId(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") submitNewModel();
-          }}
-          placeholder="Add a model id"
-          data-testid={`ai-add-model-id-${providerId}`}
-          className="h-8 flex-1 font-mono text-xs"
-        />
-        <Button
-          size="sm"
-          variant="secondary"
-          data-testid={`ai-add-model-submit-${providerId}`}
-          onClick={submitNewModel}
-        >
-          <Plus className="size-3.5" />
-          Add
-        </Button>
+      <div className="pt-1">
+        <div className="flex gap-2">
+          <Input
+            type="text"
+            value={newId}
+            onChange={(e) => {
+              setNewId(e.target.value);
+              if (addError) setAddError("");
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") submitNewModel();
+            }}
+            placeholder="Add a model id"
+            data-testid={`ai-add-model-id-${providerId}`}
+            aria-invalid={Boolean(addError)}
+            className="h-8 flex-1 font-mono text-xs aria-[invalid=true]:border-destructive"
+          />
+          <Button
+            size="sm"
+            variant="secondary"
+            data-testid={`ai-add-model-submit-${providerId}`}
+            onClick={submitNewModel}
+          >
+            <Plus className="size-3.5" />
+            Add
+          </Button>
+        </div>
+        {addError && (
+          <p data-testid={`ai-add-model-error-${providerId}`} className="mt-1 text-[11px] text-destructive">
+            {addError}
+          </p>
+        )}
       </div>
+
+      <ConfirmationDialog
+        open={confirmDelete !== null}
+        title="Delete model"
+        description={`Remove "${confirmDelete?.name ?? ""}" from this provider's model list? Built-in models can come back via Restore defaults; custom ones can be re-added by id.`}
+        confirmLabel="Delete"
+        destructive
+        onConfirm={() => {
+          if (confirmDelete) onChange(deleteModel(models, confirmDelete.id));
+          setConfirmDelete(null);
+        }}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }
