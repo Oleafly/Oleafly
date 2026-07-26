@@ -13,7 +13,8 @@ const SYSTEM = [
   "You create document templates for a LaTeX/Typst/Markdown editor.",
   'Return ONLY one JSON object, no markdown fences, with exactly these fields:',
   '{"slug": string, "name": string, "description": string, "category": string,',
-  '"engine": "xetex" | "typst" | "markdown", "main_doc": string, "source": string}.',
+  '"tags": string[], "engine": "xetex" | "typst" | "markdown", "main_doc": string, "source": string}.',
+  "tags is 2 to 4 short lowercase layout features, e.g. [\"two column\", \"abstract\"].",
   "slug is lowercase kebab-case. main_doc matches the engine (main.tex, main.typ, main.md).",
   "source is a COMPLETE compilable document with placeholder content a user edits.",
   "For LaTeX it must compile under Tectonic without shell escape. Never use em dashes.",
@@ -24,6 +25,7 @@ export interface ParsedTemplate {
   name: string;
   description: string;
   category: string;
+  tags: string[];
   engine: "xetex" | "typst" | "markdown";
   mainDoc: string;
   source: string;
@@ -54,6 +56,9 @@ export function parseGeneratedTemplate(text: string): ParsedTemplate {
     name: String(raw.name ?? slug),
     description: String(raw.description ?? ""),
     category: String(raw.category ?? "Custom"),
+    tags: Array.isArray(raw.tags)
+      ? raw.tags.filter((t): t is string => typeof t === "string").slice(0, 4)
+      : [],
     engine: engine as ParsedTemplate["engine"],
     mainDoc: String(raw.main_doc ?? (engine === "typst" ? "main.typ" : engine === "markdown" ? "main.md" : "main.tex")),
     source,
@@ -100,7 +105,7 @@ export async function saveGeneratedTemplate(parsed: ParsedTemplate): Promise<voi
     id: parsed.slug,
     name: parsed.name,
     description: parsed.description,
-    category: parsed.category,
+    category: "AI Generated",
     engine: parsed.engine,
     main_doc: parsed.mainDoc,
     license: { spdx: "CC0-1.0", author: "AI generated", url: "" },
