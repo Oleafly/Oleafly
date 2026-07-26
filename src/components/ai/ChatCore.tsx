@@ -35,7 +35,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useFilesStore } from "@/store/files";
-import { getConfig, setConfig, gitLog, gitAutoCommit, type AppConfig, type CustomProvider, type StoredModel } from "@/lib/tauri";
+import { getConfig, gitLog, gitAutoCommit, type AppConfig, type CustomProvider, type Persona, type StoredModel } from "@/lib/tauri";
 import { listOllamaModels } from "@/lib/ollama";
 import { registry, type AiToolsetContribution } from "@oleafly/registry";
 import type { ToolApprovalRequest } from "@/lib/ai-tools";
@@ -45,8 +45,9 @@ import { getEditorView } from "@/components/editor/cm/controller";
 import { ToolConfirm, isAutoApprovable } from "@/components/ai/ToolConfirm";
 import { AttachmentChips, type PendingAttachment } from "@/components/ai/AttachmentChips";
 import { ModelSelector } from "@/components/ai/ModelSelector";
+import { PersonaPicker } from "@/components/ai/PersonaPicker";
 import { toast } from "@/lib/toast";
-import { buildModel as buildAiModel, defaultModel, mergeCustomProviders } from "@/lib/ai-providers";
+import { buildModel as buildAiModel, defaultModel, mergeCustomProviders, resolveActiveModel } from "@/lib/ai-providers";
 import { enabledModels } from "@/lib/ai-model-state";
 import { useSettingsStore } from "@/store/settings";
 import { useChatsStore, type ChatMessage, type StoredChat } from "@/store/chats";
@@ -242,12 +243,23 @@ export function ChatCore() {
   const setFigureModeOpen = useSettingsStore((s) => s.setFigureModeOpen);
   // User's own system-prompt addition (sandboxed into our prompt at send time).
   const [customPrompt, setCustomPrompt] = useState("");
+  // Named, colored saved prompts from AI settings; and the one active for
+  // this session (null = use customPrompt instead).
+  const [personas, setPersonas] = useState<Persona[]>([]);
+  const [activePersonaId, setActivePersonaId] = useState<string | null>(null);
   // Always-current snapshot so `send` (a useCallback) reads the latest list
   // without depending on it.
   const attachmentsRef = useRef<PendingAttachment[]>(attachments);
   attachmentsRef.current = attachments;
   const customPromptRef = useRef("");
   customPromptRef.current = customPrompt;
+  const personasRef = useRef<Persona[]>([]);
+  personasRef.current = personas;
+  const activePersonaIdRef = useRef<string | null>(null);
+  activePersonaIdRef.current = activePersonaId;
+  // Last-loaded config, so newChat can reset the session model to the saved
+  // default without an extra async round trip.
+  const cfgRef = useRef<AppConfig | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -362,9 +374,11 @@ export function ChatCore() {
 
   useEffect(() => {
     const apply = (cfg: AppConfig) => {
+        cfgRef.current = cfg;
         const saved = cfg.ai_provider || "openai";
         setCustomPrompt(cfg.ai_system_prompt || "");
         customPromptRef.current = cfg.ai_system_prompt || "";
+        setPersonas(cfg.ai_personas ?? []);
         const keys = { ...(cfg.ai_keys ?? {}) };
         // Fold the legacy single key into the map so it counts as configured.
         if (cfg.ai_api_key && !keys[saved]) keys[saved] = cfg.ai_api_key;
@@ -420,18 +434,13 @@ export function ChatCore() {
       .catch(() => setOllamaModels([]));
   }, [keysMap.ollama]);
 
-  // Persists as the new default provider/model.
+  // Session-local only: switching models mid-chat no longer changes the
+  // saved default, so other chats/sessions keep starting on the configured one.
   const selectModel = useCallback(
-    async (pid: string, mid: string) => {
+    (pid: string, mid: string) => {
       setProvider(pid);
       setModel(mid);
       setApiKey(keysMap[pid] || "");
-      try {
-        const cfg = await getConfig();
-        await setConfig({ ...cfg, ai_provider: pid, ai_model: mid });
-      } catch {
-        /* non-fatal: the switch still applies to this session */
-      }
     },
     [keysMap]
   );
@@ -546,7 +555,17 @@ export function ChatCore() {
     if (streaming) return;
     setActiveChat(null);
     setMessages([]);
-  }, [streaming, setActiveChat]);
+    setActivePersonaId(null);
+    // Drop any mid-chat model switch too: a fresh chat starts on the
+    // configured default, not whatever the last conversation was left on.
+    const cfg = cfgRef.current;
+    if (cfg) {
+      const { providerId, modelId } = resolveActiveModel(cfg);
+      setProvider(providerId);
+      setModel(modelId);
+      setApiKey(keysMap[providerId] || "");
+    }
+  }, [streaming, setActiveChat, keysMap]);
 
   useEffect(() => {
     void messages;
@@ -745,7 +764,12 @@ export function ChatCore() {
       if (chatId) cs.saveMessages(chatId, nextMessages);
     }
 
-    const requestCustomPrompt = customPromptRef.current;
+    // An active persona replaces the user's default custom instructions for
+    // this request; otherwise fall back to those default instructions.
+    const activePersona = activePersonaIdRef.current
+      ? personasRef.current.find((p) => p.id === activePersonaIdRef.current) ?? null
+      : null;
+    const requestCustomPrompt = activePersona ? activePersona.prompt : customPromptRef.current;
     const sandboxedCustom = requestCustomPrompt.trim()
       ? `
 
@@ -1763,6 +1787,11 @@ ${sandboxedCustom}`;
                   )}
                 </div>
                 <div className="flex items-center gap-1">
+                  <PersonaPicker
+                    personas={personas}
+                    value={activePersonaId}
+                    onChange={setActivePersonaId}
+                  />
                   {configuredProviders.length > 0 && (
                     <div data-tour="ai-provider-model">
                       <ModelSelector
@@ -1772,7 +1801,7 @@ ${sandboxedCustom}`;
                         modelId={model}
                         groups={modelGroups}
                         onChange={(nextProvider, nextModel) =>
-                          void selectModel(nextProvider, nextModel)
+                          selectModel(nextProvider, nextModel)
                         }
                       />
                     </div>
