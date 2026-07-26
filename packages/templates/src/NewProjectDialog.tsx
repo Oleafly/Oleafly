@@ -237,6 +237,26 @@ export function NewProjectDialog({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [color, setColor] = useState(defaultColor);
+  const pendingUseRef = useRef<string | null>(null);
+  useEffect(() => {
+    const chooseById = (id: string): boolean => {
+      const match = templates.find((t) => t.id === id);
+      if (!match) return false;
+      setSelectedId(match.id);
+      setColor(match.default_color || defaultColor);
+      setStep(2);
+      return true;
+    };
+    const pending = pendingUseRef.current;
+    if (pending && chooseById(pending)) pendingUseRef.current = null;
+    const onUse = (event: Event) => {
+      const id = (event as CustomEvent<{ id?: string }>).detail?.id;
+      if (!id) return;
+      if (!chooseById(id)) pendingUseRef.current = id;
+    };
+    window.addEventListener("oleafly:use-template", onUse);
+    return () => window.removeEventListener("oleafly:use-template", onUse);
+  }, [templates, defaultColor]);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string>("All");
   const [atsOnly, setAtsOnly] = useState(false);
@@ -361,28 +381,6 @@ export function NewProjectDialog({
     setColor(t.default_color || defaultColor);
     setStep(2);
   };
-
-  const pendingUseRef = useRef<string | null>(null);
-  useEffect(() => {
-    const onUse = (event: Event) => {
-      const id = (event as CustomEvent<{ id?: string }>).detail?.id;
-      if (!id) return;
-      const match = templates.find((t) => t.id === id);
-      if (match) choose(match);
-      else pendingUseRef.current = id;
-    };
-    window.addEventListener("oleafly:use-template", onUse);
-    return () => window.removeEventListener("oleafly:use-template", onUse);
-  }, [templates]);
-  useEffect(() => {
-    const id = pendingUseRef.current;
-    if (!id) return;
-    const match = templates.find((t) => t.id === id);
-    if (match) {
-      pendingUseRef.current = null;
-      choose(match);
-    }
-  }, [templates]);
 
   const submit = async () => {
     if (!selected || setup.active) return;
