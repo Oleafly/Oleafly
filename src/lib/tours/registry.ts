@@ -20,6 +20,7 @@ export interface TourStepDefinition {
 
 export interface TourDefinition {
   id: TourId;
+  label: string;
   version: number;
   contexts: readonly TourContext[];
   priority: number;
@@ -29,6 +30,7 @@ export interface TourDefinition {
 export const tourRegistry = {
   home: {
     id: "home",
+    label: "Getting started",
     version: 4,
     contexts: ["home"],
     priority: 10,
@@ -109,6 +111,7 @@ export const tourRegistry = {
   },
   workspace: {
     id: "workspace",
+    label: "Your workspace",
     version: 4,
     contexts: ["project"],
     priority: 20,
@@ -198,6 +201,7 @@ export const tourRegistry = {
   },
   settings: {
     id: "settings",
+    label: "Settings",
     version: 2,
     contexts: ["settings"],
     priority: 30,
@@ -326,6 +330,7 @@ export const tourRegistry = {
   },
   "ai-settings": {
     id: "ai-settings",
+    label: "AI settings",
     version: 1,
     contexts: ["settings"],
     priority: 35,
@@ -400,6 +405,7 @@ export const tourRegistry = {
   },
   ai: {
     id: "ai",
+    label: "AI Assistant",
     version: 3,
     contexts: ["ai"],
     priority: 40,
@@ -481,6 +487,7 @@ export const tourRegistry = {
   },
   diagram: {
     id: "diagram",
+    label: "Diagram Composer",
     version: 3,
     contexts: ["diagram"],
     priority: 50,
