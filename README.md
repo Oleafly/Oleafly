@@ -2,7 +2,7 @@
 
 <img src="media/logo/png/oleafly-tile-gradient-256.png" alt="Oleafly logo" width="112" height="112" />
 
-# Oleafly
+# Oleafly <sup><em>beta</em></sup>
 
 **Write, compile, and publish research with an AI workspace you own.**
 
