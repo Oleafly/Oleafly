@@ -403,7 +403,7 @@ export function AISection() {
         />
       )}
 
-      {tab === "personas" && <PersonasTab />}
+      {tab === "personas" && <PersonasTab cfg={cfg} persist={persist} setMsg={setMsg} />}
 
       {msg && (
         <div
