@@ -251,6 +251,11 @@ jobs:
             (cd "$(dirname "$f")" && "$BIN" -o /tmp/prewarm main.tex) || true
           done
 
+      # Temporary diagnostic for the spec-51 CI-only glyph loss: compare these
+      # hashes against a local cache to rule the CDN-served font files in/out.
+      - name: Hash cached math fonts (temporary diagnostic)
+        run: shasum -a 256 ~/Library/Caches/Tectonic/bundles/data/*/cmsy10.pfb ~/Library/Caches/Tectonic/bundles/data/*/cmmi10.pfb || true
+
       - name: Save Tectonic packages
         if: steps.tectonic-pkgs.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
