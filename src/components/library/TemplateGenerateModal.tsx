@@ -17,6 +17,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn, modKey } from "@/lib/utils";
 import { notifyError, toast } from "@/lib/toast";
 import { friendlyHint } from "@/components/ai/chat-parts";
+import { ModelSelector, type ModelSelectorGroup } from "@/components/ai/ModelSelector";
+import { enabledModels } from "@/lib/ai-model-state";
+import { mergeCustomProviders } from "@/lib/ai-providers";
+import { getConfig, type AppConfig } from "@/lib/tauri";
 import {
   compileGeneratedTemplate,
   generateTemplateAvailable,
@@ -93,6 +97,9 @@ export function TemplateGenerateModal({
   const [saved, setSaved] = useState(false);
   const [using, setUsing] = useState(false);
   const [editingDescription, setEditingDescription] = useState(false);
+  const [modelGroups, setModelGroups] = useState<ModelSelectorGroup[]>([]);
+  const [genProvider, setGenProvider] = useState("");
+  const [genModel, setGenModel] = useState("");
   const runSeqRef = useRef(0);
   const stepTimersRef = useRef<number[]>([]);
 
@@ -118,6 +125,30 @@ export function TemplateGenerateModal({
     setEditingDescription(false);
     runSeqRef.current += 1;
     clearStepTimers();
+    void getConfig()
+      .then((cfg: AppConfig) => {
+        const allProviders = mergeCustomProviders(cfg.ai_custom_providers ?? []);
+        const configured = allProviders.filter((p) => {
+          if ((cfg.ai_keys?.[p.id] ?? "").trim().length > 0) return true;
+          return Boolean(cfg.ai_custom_providers?.find((c) => c.id === p.id)?.keyOptional);
+        });
+        const groups: ModelSelectorGroup[] = configured.map((p) => {
+          const stored = cfg.ai_provider_models?.[p.id];
+          const models = stored?.length
+            ? enabledModels(stored).map((m) => ({ id: m.id, name: m.name }))
+            : p.models.map((m) => ({ id: m.id, name: m.name }));
+          return { id: p.id, name: p.name, models };
+        }).filter((g) => g.models.length > 0);
+        setModelGroups(groups);
+        const active = groups.find((g) => g.id === cfg.ai_provider);
+        const provider = active ?? groups[0];
+        if (!provider) return;
+        const model =
+          provider.models.find((m) => m.id === cfg.ai_model) ?? provider.models[0];
+        setGenProvider(provider.id);
+        setGenModel(model.id);
+      })
+      .catch(() => {});
   }, [open]);
 
   useEffect(() => {
@@ -159,7 +190,10 @@ export function TemplateGenerateModal({
       window.setTimeout(() => live() && setLoadingStep((s) => Math.max(s, 2)), 2_600),
     ];
     try {
-      const result = await generateTemplateSource(text);
+      const result = await generateTemplateSource(
+        text,
+        genProvider && genModel ? { providerId: genProvider, modelId: genModel } : undefined,
+      );
       if (!live()) return;
       clearStepTimers();
       setLoadingStep(3);
@@ -276,13 +310,19 @@ export function TemplateGenerateModal({
                 rows={6}
                 className="min-h-32 w-full resize-none border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0"
               />
-              <div className="mt-3 flex items-center justify-between gap-3">
-                <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  Press
-                  <Kbd className="h-5 min-w-5">{modKey}</Kbd>
-                  <Kbd className="h-5 min-w-5">{"\u21B5"}</Kbd>
-                  to generate
-                </span>
+              <div className="mt-3 flex items-center justify-end gap-2">
+                {modelGroups.length > 0 && (
+                  <ModelSelector
+                    providerId={genProvider}
+                    modelId={genModel}
+                    groups={modelGroups}
+                    contentClassName="z-[100]"
+                    onChange={(providerId, modelId) => {
+                      setGenProvider(providerId);
+                      setGenModel(modelId);
+                    }}
+                  />
+                )}
                 <Button
                   data-testid="template-generate-run"
                   disabled={!description.trim()}
@@ -290,6 +330,14 @@ export function TemplateGenerateModal({
                 >
                   <Wand2 className="size-4" />
                   Generate
+                  <span className="inline-flex items-center gap-1">
+                    <Kbd className="h-4 min-w-4 bg-primary-foreground/20 px-1 text-[10px] text-primary-foreground">
+                      {modKey}
+                    </Kbd>
+                    <Kbd className="h-4 min-w-4 bg-primary-foreground/20 px-1 text-[10px] text-primary-foreground">
+                      {"\u21B5"}
+                    </Kbd>
+                  </span>
                 </Button>
               </div>
             </div>
@@ -311,7 +359,7 @@ export function TemplateGenerateModal({
                     className={cn(
                       "rounded-full border px-4 py-2 text-sm transition-colors",
                       description === example
-                        ? "border-foreground bg-accent text-foreground"
+                        ? "border-primary bg-primary/10 text-primary"
                         : "border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground",
                     )}
                   >
