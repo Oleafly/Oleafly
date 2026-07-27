@@ -432,7 +432,7 @@ export const tourRegistry = {
         target: '[data-tour="ai-provider-model"]',
         kind: "informational",
         title: "Provider and model",
-        content: "Switch models for this conversation. Changes here are session-only; your default lives in Settings. Logos show each model's provider.",
+        content: "Switch models for this conversation. Changes apply to this session only. Your default model is set in Settings. Logos identify each model's provider.",
         waitForTarget: true,
       },
       {
@@ -514,7 +514,7 @@ export const tourRegistry = {
         target: '[data-tour="diagram-modes"]',
         kind: "informational",
         title: "Draw and Code",
-        content: "Draw mode offers direct manipulation; Code mode exposes the generated TikZ and reusable snippets.",
+        content: "Draw mode lets you work directly on the canvas. Code mode shows the generated TikZ and reusable snippets.",
         waitForTarget: true,
       },
       {

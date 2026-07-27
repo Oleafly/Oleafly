@@ -681,7 +681,7 @@ export function SettingsModal() {
                 )}
                 <ToggleRow
                   label="Offline mode"
-                  desc="Compile with --only-cached; never fetch packages over the network."
+                  desc="Compile with --only-cached and never fetch packages over the network."
                   checked={offline}
                   onChange={setOffline}
                 />
@@ -782,7 +782,8 @@ export function SettingsModal() {
                   <div>
                     <p className="text-sm">Reset settings</p>
                     <p className="text-xs text-muted-foreground">
-                      Restore Appearance &amp; General preferences to defaults.
+                      Restore Appearance and General preferences to their
+                      defaults.
                     </p>
                   </div>
                   {confirmReset ? (
@@ -961,8 +962,8 @@ function DictionarySection() {
   return (
     <div className="space-y-4 text-sm">
       <p className="text-muted-foreground">
-        Words you told the spell &amp; grammar checker to ignore. Remove one to
-        start flagging it again.
+        Words you asked the spelling and grammar checker to ignore. Remove a
+        word to check it again.
       </p>
       <Tabs defaultValue="global" className="space-y-4">
         <TabsList>
@@ -1071,7 +1072,7 @@ function HelpSection() {
         />
         <h3 className="pr-20 text-sm font-semibold">About Oleafly</h3>
         <p className="mt-1 text-xs text-muted-foreground">
-          The intelligent research workspace — free, local-first, 100% open source.
+          An open-source workspace for research and technical writing.
           {version && <span className="ml-1">· v{version}</span>}
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">

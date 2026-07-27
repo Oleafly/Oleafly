@@ -173,7 +173,7 @@ pub fn write_meta(project_id: &str, meta: &ProjectMeta) -> Result<(), String> {
 pub(crate) fn read_compile_meta(project_id: &str, main_doc: &str) -> Result<ProjectMeta, String> {
     let meta = read_meta(project_id)?;
     if meta.main_doc != main_doc {
-        return Err("main document changed; refresh the project and compile again".into());
+        return Err("The main document changed. Refresh the project and compile again.".into());
     }
     Ok(meta)
 }
@@ -185,7 +185,7 @@ pub(crate) fn ensure_compile_meta_unchanged(
 ) -> Result<(), String> {
     let current = read_compile_meta(project_id, main_doc)?;
     if current.engine != expected_engine {
-        return Err("main document changed; refresh the project and compile again".into());
+        return Err("The main document changed. Refresh the project and compile again.".into());
     }
     Ok(())
 }
@@ -525,7 +525,7 @@ fn rename_case_only(src: &Path, dst: &Path) -> Result<(), String> {
         return Err(match rollback {
             Ok(()) => format!("case-only move failed and was rolled back: {error}"),
             Err(rollback_error) => {
-                format!("case-only move failed: {error}; rollback also failed: {rollback_error}")
+                format!("Case-only move failed: {error}. Rollback also failed: {rollback_error}")
             }
         });
     }
@@ -544,7 +544,7 @@ fn replace_path(root: &Path, src: &Path, existing: &Path, dst: &Path) -> Result<
         return Err(match rollback {
             Ok(()) => format!("replace failed and was rolled back: {error}"),
             Err(rollback_error) => {
-                format!("replace failed: {error}; rollback also failed: {rollback_error}")
+                format!("Replace failed: {error}. Rollback also failed: {rollback_error}")
             }
         });
     }
@@ -1576,7 +1576,7 @@ pub async fn export_document(
     guard_export_dest(&dest)?;
     let meta = read_meta(&project_id)?;
     if meta.main_doc != main_doc {
-        return Err("main document changed; reopen the export menu and try again".into());
+        return Err("The main document changed. Reopen the export menu and try again.".into());
     }
     let writer = validate_conversion_export(&meta, &format, &dest)?;
     let root = paths::project_dir(&project_id)?;
@@ -2526,12 +2526,12 @@ where
             let _ = std::fs::remove_dir_all(&staging);
             return if rollback_errors.is_empty() {
                 Err(format!(
-                    "could not publish the import; changes were rolled back: {error}"
+                    "Could not publish the import. Changes were rolled back: {error}"
                 ))
             } else {
                 Err(format!(
-                    "could not publish the import: {error}; rollback also failed: {}",
-                    rollback_errors.join("; ")
+                    "Could not publish the import: {error}. Rollback also failed: {}",
+                    rollback_errors.join(". ")
                 ))
             };
         }

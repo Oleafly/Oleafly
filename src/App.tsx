@@ -21,6 +21,7 @@ import { EquationToolView } from "@/components/tools/EquationToolView";
 import { BibtexToolView } from "@/components/tools/BibtexToolView";
 import { TableToolView } from "@/components/tools/TableToolView";
 import { LabSearchToolView } from "@/components/tools/LabSearchToolView";
+import { LiteratureSearchToolView } from "@/components/tools/LiteratureSearchToolView";
 import { useHomeViewStore } from "@/store/home-view";
 import { Editor } from "@/components/editor/Editor";
 import { PreviewPane } from "@/components/preview/PreviewPane";
@@ -182,9 +183,12 @@ export default function App() {
   }, [refreshProjects]);
 
   // Closing a project (or a fresh launch) always lands back on the library,
-  // never stranded on whatever home-shell page was open beforehand.
+  // unless a global tool command explicitly queued another home page.
   useEffect(() => {
-    if (!projectId) useHomeViewStore.getState().goTo("library");
+    if (!projectId) {
+      const home = useHomeViewStore.getState();
+      home.goTo(home.consumeQueuedPageAfterProjectClose() ?? "library");
+    }
   }, [projectId]);
 
   useEffect(() => {
@@ -469,6 +473,7 @@ export default function App() {
         <BibtexToolView />
         <TableToolView />
         <LabSearchToolView />
+        <LiteratureSearchToolView />
         <DeadlinesView />
         <LatexToolsView />
         <ExternalToolApprovals />

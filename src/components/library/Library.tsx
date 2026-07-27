@@ -574,8 +574,8 @@ export function Library() {
                 </EmptyMedia>
                 <EmptyTitle>Welcome to Oleafly</EmptyTitle>
                 <EmptyDescription>
-                  A local-first LaTeX &amp; resume studio. Everything stays on your disk -
-                  create your first project to get going. Your PDFs are about to get a whole lot prettier.
+                  A workspace for LaTeX documents and résumés. Create your first
+                  project to begin.
                 </EmptyDescription>
               </EmptyHeader>
               <EmptyContent className="max-w-2xl">

@@ -7,8 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added Citation Search, a desktop research tool that queries arXiv, Semantic
+  Scholar, Crossref, PubMed, and OpenAlex in parallel, combines duplicate
+  records, exports BibTeX, and saves citations.
+- Added source information, availability states, publication year and open
+  access filters, recent research topics, and a clear USPTO migration state
+  to Citation Search.
+- Added Citation Search under the Integrations section in Settings, with an
+  optional Semantic Scholar API key and locally bundled brand icons.
+- Added command palette and search omnibar aliases for every Oleafly tool,
+  including `/citations-search`, `/pdf-to-latex`, `/lab-search`, and
+  `/conference-deadlines`.
+- Added country flags, country filtering, and live OpenAlex institution
+  records to Lab Search.
+
+### Changed
+
+- Redesigned Oleafly Tools as a larger responsive gallery with colored icons,
+  command badges, neutral card borders, and full-width Convert, Validate,
+  Tables, and Research sections with headings aligned above each card group.
+- Rebuilt Lab Search with a larger search interface, structured institution
+  cards, a consistent blue institution icon, colored metrics, and direct
+  links to institution websites, ROR, and OpenAlex.
+- Redesigned Conference Deadlines with a focused page header, summary
+  metrics, improved filters, readable countdown panels, and responsive cards
+  without colored top borders.
+- Increased the visual scale and information hierarchy of Citation Search,
+  including checked source badges, a scrollable database information panel,
+  and responsive desktop and mobile layouts.
+- Revised public interface copy throughout the app for a concise,
+  institutional tone and simpler punctuation.
+
 ### Fixed
 
+- Fixed command palette searches beginning with `/` so registered tool
+  aliases resolve directly.
+- Replaced publication year number steppers with validated year selectors,
+  including safe fallbacks and prevention of invalid ranges.
+- Fixed tool navigation while a project is open by preserving the requested
+  destination until the project closes.
+- Fixed bundled deadline timestamps that displayed as raw seed metadata
+  instead of readable dates.
+- Fixed crowded tool headers on narrow screens by hiding redundant
+  subtitles when space is limited.
 - Fixed the template-gallery tour step drawing its pointer arrow into empty
   space when the window is wide enough that the tooltip sits beside the
   dialog instead of above it.

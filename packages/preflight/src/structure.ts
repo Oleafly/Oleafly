@@ -51,7 +51,7 @@ export function verifyStructure(
         severity: "info",
         title: "Not Section 508 / PDF-UA ready: this PDF is not tagged",
         detail:
-          "The compiled PDF has no accessibility tags, so it cannot pass a formal Section 508 or PDF/UA check and a screen reader has no structure to follow. The current compile engine does not produce tags. Use the source and output checks above to make the document as ready as possible; a tagged export is on the roadmap.",
+          "The compiled PDF has no accessibility tags, so it cannot pass a formal Section 508 or PDF/UA check and a screen reader has no structure to follow. The current compile engine does not produce tags. Use the source and output checks above to prepare the document as fully as possible. Tagged export is planned for a future release.",
       },
     ];
   }
