@@ -1,6 +1,6 @@
 # MCP server
 
-Oleafly can act as an MCP (Model Context Protocol) server. Any MCP client (Claude Desktop, Claude Code, Cursor, Grok CLI, and others) can read, edit, search, and compile the project you have open, using the same tools and the same approval prompts as Oleafly's built-in assistant. You do not need an API key in Oleafly for this; the external app brings its own model.
+Oleafly can act as an MCP (Model Context Protocol) server. Any MCP client (Claude Desktop, Claude Code, Cursor, Codex CLI, Grok CLI, and others) can read, edit, search, and compile the project you have open, using the same tools and the same approval prompts as Oleafly's built-in assistant. You do not need an API key in Oleafly for this; the external app brings its own model.
 
 This is useful when you already have a Claude (or similar) subscription and want that chat app to drive Oleafly, without pasting an API key into Settings.
 
@@ -61,6 +61,16 @@ In `.cursor/mcp.json` (or your client's MCP config):
     }
   }
 }
+```
+
+### Codex CLI
+
+In `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.oleafly]
+command = "npx"
+args = ["-y", "mcp-remote@latest", "http://127.0.0.1:5323/mcp", "--header", "Authorization: Bearer <token>", "--transport", "http-only"]
 ```
 
 ### Grok CLI

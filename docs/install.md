@@ -19,19 +19,14 @@ That's the whole install. Open the app and you're in. No account, no sign-in.
 
 ## First launch
 
-Current preview builds are not code-signed or notarized, so operating systems
-can warn or block them. Download artifacts only from the official releases page
-and verify published checksums before opening them.
+**macOS.** Builds from v0.2.7 onward are code-signed with a Developer ID and
+notarized by Apple, so the app opens normally: double-click it and confirm the
+standard "downloaded from the internet" prompt once. If you are on an older
+unsigned build, update to the latest release instead of bypassing Gatekeeper.
 
-**macOS.** Double-clicking may say *"Oleafly is damaged and can't be opened"* or
-*"can't be opened because Apple cannot check it"*. Download it again from the
-official release if the source is uncertain. Otherwise:
-
-- Right-click (or Control-click) the app in Applications and choose **Open**, then
-  **Open** again in the dialog.
-
-**Windows.** SmartScreen may show *"Windows protected your PC"*. Click **More info**,
-then **Run anyway**.
+**Windows.** Windows builds are not code-signed yet, so SmartScreen may show
+*"Windows protected your PC"*. Download only from the official releases page,
+then click **More info** and **Run anyway**.
 
 **Linux.** Make the AppImage executable, then run it:
 

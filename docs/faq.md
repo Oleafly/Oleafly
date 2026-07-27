@@ -59,7 +59,7 @@ Yes. Push on one, Pull on the other. See [GitHub Sync](github-sync.md).
 OpenAI, Anthropic, Groq, OpenRouter, DeepSeek, Mistral, xAI, Z.AI, and Ollama (local). See [AI Assistant](ai-assistant.md).
 
 ### The AI says it has no key / errors on send
-Open Settings → AI Assistant and make sure a provider has a saved key and is Active (blue badge). If you deleted keys, reconnect one.
+Open Settings → AI Assistant and make sure a provider shows the green Connected badge and a default model is set under the Instructions tab. If you deleted keys, reconnect one.
 
 ### Can I run it fully offline?
 Yes, use Ollama. Pull a model (`ollama pull llama3.2`), then save the Ollama host in Settings.
