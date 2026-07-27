@@ -222,7 +222,7 @@ test("symbol picker searches and inserts a symbol", async ({ tauriPage }) => {
     timeout: 5_000,
   });
   await tauriPage.fill('[aria-label="Search symbols"]', "alpha");
-  await tauriPage.click('button[title="alpha"]');
+  await tauriPage.click('button[aria-label^="Insert alpha ("]');
   await editorHas(tauriPage, "\\alpha");
 });
 

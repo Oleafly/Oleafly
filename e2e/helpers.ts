@@ -1186,7 +1186,9 @@ export async function insertSymbol(page: Page, category: string, name: string) {
           const portal = ${openSymbolPortalExpression};
           if (!portal) return false;
           const category = Array.from(portal.querySelectorAll('button')).find(
-            (candidate) => candidate.textContent?.trim() === ${JSON.stringify(category)}
+            (candidate) =>
+              (candidate.querySelector('span')?.textContent ?? candidate.textContent ?? '')
+                .trim() === ${JSON.stringify(category)}
           );
           if (!(category instanceof HTMLElement)) return false;
           category.click();
@@ -1202,7 +1204,7 @@ export async function insertSymbol(page: Page, category: string, name: string) {
           `(() => {
             const portal = ${openSymbolPortalExpression};
             if (!portal) return false;
-            const button = portal.querySelector('button[title=${JSON.stringify(name)}]');
+            const button = portal.querySelector('button[aria-label^=${JSON.stringify(`Insert ${name} (`)}]');
             if (!(button instanceof HTMLElement)) return false;
             button.click();
             return true;

@@ -14,33 +14,34 @@ import {
 } from "./SymbolPicker";
 
 describe("SymbolPicker", () => {
-  it("opens with the Greek tab active by default", () => {
+  it("opens with the All tab active, showing every category's symbols", () => {
     render(<SymbolPicker />);
     fireEvent.click(screen.getByLabelText("Insert symbol"));
-    expect(screen.getByTitle("alpha")).toBeInTheDocument();
-    expect(screen.getByTitle("Omega")).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Insert alpha \(/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Insert Omega \(/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Insert right arrow \(/)).toBeInTheDocument();
   });
 
   it("switches to the Arrows tab and shows arrow symbols instead of Greek", () => {
     render(<SymbolPicker />);
     fireEvent.click(screen.getByLabelText("Insert symbol"));
     fireEvent.click(screen.getByText("Arrows"));
-    expect(screen.getByTitle("rightarrow")).toBeInTheDocument();
-    expect(screen.queryByTitle("alpha")).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/^Insert right arrow \(/)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^Insert alpha \(/)).not.toBeInTheDocument();
   });
 
-  it("searches across all categories regardless of the active tab", () => {
+  it("searches across all categories by name or latex regardless of the active tab", () => {
     render(<SymbolPicker />);
     fireEvent.click(screen.getByLabelText("Insert symbol"));
     fireEvent.change(screen.getByLabelText("Search symbols"), { target: { value: "infty" } });
-    expect(screen.getByTitle("infty")).toBeInTheDocument();
-    expect(screen.queryByTitle("alpha")).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/^Insert infinity \(/)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^Insert alpha \(/)).not.toBeInTheDocument();
   });
 
   it("inserts the LaTeX macro for the clicked symbol", () => {
     render(<SymbolPicker />);
     fireEvent.click(screen.getByLabelText("Insert symbol"));
-    fireEvent.click(screen.getByTitle("Omega"));
+    fireEvent.click(screen.getByLabelText(/^Insert Omega \(/));
     expect(insertAtCursor).toHaveBeenCalledWith("\\Omega");
   });
 
