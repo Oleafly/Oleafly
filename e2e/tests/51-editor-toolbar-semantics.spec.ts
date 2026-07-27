@@ -640,11 +640,11 @@ $SYMBOLANCHOR$
   );
 
   await selectEditorText(tauriPage, "SYMBOLANCHOR");
-  await insertSymbol(tauriPage, "Greek", "alpha");
-  await insertSymbol(tauriPage, "Arrows", "rightarrow");
+  await insertSymbol(tauriPage, "Greek (lower)", "alpha");
+  await insertSymbol(tauriPage, "Arrows", "right arrow");
   await insertSymbol(tauriPage, "Operators", "times");
-  await insertSymbol(tauriPage, "Relations", "leq");
-  await insertSymbol(tauriPage, "Misc", "infty");
+  await insertSymbol(tauriPage, "Relations", "less or equal");
+  await insertSymbol(tauriPage, "Calculus", "infinity");
 
   const source = await editorSource(tauriPage);
   expect(source).toContain("\\begin{itemize}");
@@ -704,7 +704,7 @@ test("every symbol inventory macro compiles and exposes its deterministic PDF ma
       }))
     )`,
   );
-  expect(categories).toHaveLength(5);
+  expect(categories).toHaveLength(13);
 
   const groups = categories.map((category, categoryIndex) => {
     const entries = category.items.map((symbol, symbolIndex) => ({
@@ -720,7 +720,7 @@ test("every symbol inventory macro compiles and exposes its deterministic PDF ma
     return {
       category,
       entries,
-      source: String.raw`\section*{${category.label}}
+      source: String.raw`\section*{${category.label.replace(/&/g, "\\&")}}
 ${rows}`,
     };
   });
