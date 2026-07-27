@@ -1,13 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
-  Check,
+  Bold,
+  Columns2,
   Copy,
   Download,
   FileArchive,
   FileInput,
+  FileType2,
   FolderPlus,
+  Heading,
+  Image as ImageIcon,
+  Radical,
+  ScissorsLineDashed,
   Settings2,
+  Sigma,
   Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -31,14 +38,14 @@ import { useHomeViewStore } from "@/store/home-view";
 import { useImportStore } from "@/store/import";
 
 const HANDLES = [
-  "Headings, paragraphs, lists",
-  "Two-column layouts",
-  "Bold / italic / monospace",
-  "Inline & display math",
-  "Greek & math symbols",
-  "Figures (auto-extracted)",
-  "Header/footer stripping",
-  "Word documents (.docx), via pandoc",
+  { icon: Heading, label: "Headings, paragraphs, lists" },
+  { icon: Bold, label: "Bold / italic / monospace" },
+  { icon: Sigma, label: "Greek & math symbols" },
+  { icon: ScissorsLineDashed, label: "Header/footer stripping" },
+  { icon: Columns2, label: "Two-column layouts" },
+  { icon: Radical, label: "Inline & display math" },
+  { icon: ImageIcon, label: "Figures (auto-extracted)" },
+  { icon: FileType2, label: "Word documents (.docx), via pandoc" },
 ];
 
 function PdfDropzoneLanding() {
@@ -47,13 +54,17 @@ function PdfDropzoneLanding() {
   return (
     <div className="flex flex-1 items-center justify-center overflow-y-auto p-8">
       <div className="w-full max-w-xl">
-        {/* biome-ignore lint/a11y/noStaticElementInteractions: drag-and-drop is supplementary; the browse button below remains keyboard accessible */}
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: click/drag are supplementary; the browse button below remains keyboard accessible */}
+        {/* biome-ignore lint/a11y/useKeyWithClickEvents: the browse button inside provides the keyboard path */}
         <div
           data-testid="pdf-dropzone"
           className={cn(
-            "flex flex-col items-center gap-4 rounded-xl border-2 border-dashed px-8 py-14 text-center transition-colors",
-            dragOver ? "border-primary bg-primary/5" : "border-border bg-muted/20",
+            "flex cursor-pointer flex-col items-center gap-4 rounded-xl border-2 border-dashed px-8 py-14 text-center transition-colors",
+            dragOver
+              ? "border-primary bg-primary/5"
+              : "border-transparent bg-muted/20 hover:border-border",
           )}
+          onClick={() => inputRef.current?.click()}
           onDragOver={(e) => {
             e.preventDefault();
             setDragOver(true);
@@ -75,7 +86,11 @@ function PdfDropzoneLanding() {
                 type="button"
                 data-testid="pdf-dropzone-browse"
                 className="font-medium text-primary underline underline-offset-2"
-                onClick={() => inputRef.current?.click()}
+                onClick={(e) => {
+                  // The whole dropzone opens the picker; don't fire it twice.
+                  e.stopPropagation();
+                  inputRef.current?.click();
+                }}
               >
                 browse
               </button>{" "}
@@ -93,22 +108,18 @@ function PdfDropzoneLanding() {
               if (f) void handlePickedFile(f);
             }}
           />
-          <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 pt-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
-            <span>Client-side</span>
-            <span>·</span>
-            <span>pdf.js + KaTeX</span>
-            <span>·</span>
-            <span>Scanned PDFs: use Refine with AI</span>
-          </div>
         </div>
         <div className="mt-8">
           <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             What it handles
           </div>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
-            {HANDLES.map((h) => (
-              <div key={h} className="flex items-center gap-2">
-                <Check className="size-3.5 shrink-0 text-emerald-500" /> {h}
+          <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+            {HANDLES.map(({ icon: Icon, label }) => (
+              <div key={label} className="flex items-center gap-3 rounded-xl border p-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <Icon className="size-4" />
+                </div>
+                {label}
               </div>
             ))}
           </div>
@@ -298,6 +309,7 @@ export function PdfImportView() {
         >
           <ArrowLeft className="size-4" /> Back
         </Button>
+        <div className="h-5 w-px shrink-0 bg-border" />
         <div className="font-medium">PDF to LaTeX</div>
         {pdfBytes && (
           <>
@@ -360,6 +372,15 @@ export function PdfImportView() {
             </Button>
           </div>
         )}
+        <div
+          className={cn(
+            "flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium",
+            !pdfBytes && "ml-auto",
+          )}
+        >
+          <span className="size-1.5 rounded-full bg-emerald-500" />
+          Local
+        </div>
       </div>
       {!pdfBytes ? (
         <PdfDropzoneLanding />
