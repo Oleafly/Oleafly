@@ -730,7 +730,7 @@ function CanvasInner({
           spacePressed && !isPanning && "[&_.react-flow__pane]:cursor-grab",
           spacePressed && isPanning && "[&_.react-flow__pane]:cursor-grabbing",
         )}
-        style={{ background: canvasDark ? "#121212" : "#ffffff" }}
+        style={{ background: canvasDark ? "#121212" : "#ffffff", color: canvasDark ? "#e5e7eb" : "#0f172a" }}
         // Block the app-wide dev context menu on the canvas.
         onContextMenu={(e) => e.preventDefault()}
         onPointerDown={onFlowPointerDown}
