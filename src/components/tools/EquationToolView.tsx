@@ -1,6 +1,18 @@
 import { useState } from "react";
-import { ArrowLeft, Copy, Download, Moon, Sigma, Sun } from "lucide-react";
+import katex from "katex";
+import {
+  ArrowLeft,
+  Braces,
+  Copy,
+  Download,
+  FileCode2,
+  Image as ImageIcon,
+  Moon,
+  Sigma,
+  Sun,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverItem } from "@/components/ui/popover";
 import {
   EQUATION_EXAMPLES,
   EquationPreviewPanel,
@@ -29,10 +41,21 @@ export function EquationToolView() {
   const rendered = renderEquation(input, display);
   const wrapped = display ? `\\[ ${input} \\]` : `$${input}$`;
 
+  const buildSvgMarkup = () =>
+    `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="300"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;background:${previewTheme === "dark" ? "#111111" : "#ffffff"};color:${previewTheme === "dark" ? "#ffffff" : "#000000"};font-size:28px;padding:24px;box-sizing:border-box;">${rendered.html}</div></foreignObject></svg>`;
+
+  const downloadBlob = (content: string, type: string, filename: string) => {
+    const url = URL.createObjectURL(new Blob([content], { type }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const exportPng = () => {
     if (!rendered.html) return;
-    const svgMarkup = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="300"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;background:${previewTheme === "dark" ? "#111111" : "#ffffff"};color:${previewTheme === "dark" ? "#ffffff" : "#000000"};font-size:28px;padding:24px;box-sizing:border-box;">${rendered.html}</div></foreignObject></svg>`;
-    const svgUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgMarkup)}`;
+    const svgUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(buildSvgMarkup())}`;
     const img = new Image();
     img.onload = () => {
       const canvas = document.createElement("canvas");
@@ -43,11 +66,38 @@ export function EquationToolView() {
       ctx.drawImage(img, 0, 0);
       const a = document.createElement("a");
       a.href = canvas.toDataURL("image/png");
-      a.download = "equation.png";
+      a.download = "latex-preview.png";
       a.click();
     };
-    img.onerror = () => toast.error("Couldn't export this equation as an image");
+    img.onerror = () => toast.error("Couldn't export this snippet as an image");
     img.src = svgUrl;
+  };
+
+  const exportSvg = () => {
+    if (!rendered.html) return;
+    downloadBlob(buildSvgMarkup(), "image/svg+xml", "latex-preview.svg");
+  };
+
+  const copyMathML = () => {
+    try {
+      const markup = katex.renderToString(input, {
+        displayMode: display,
+        throwOnError: true,
+        output: "mathml",
+      });
+      const math = new DOMParser().parseFromString(markup, "text/html").querySelector("math");
+      if (!math) throw new Error("No MathML in output");
+      void navigator.clipboard.writeText(math.outerHTML);
+      toast.success("Copied MathML (pastes into Word)");
+    } catch {
+      toast.error("Couldn't convert this snippet to MathML");
+    }
+  };
+
+  const copyHtml = () => {
+    if (!rendered.html) return;
+    void navigator.clipboard.writeText(rendered.html);
+    toast.success("Copied KaTeX HTML (needs the KaTeX stylesheet)");
   };
 
   return (
@@ -99,9 +149,36 @@ export function EquationToolView() {
         >
           <Copy className="size-4" /> Copy LaTeX
         </Button>
-        <Button size="sm" onClick={exportPng} disabled={!rendered.html}>
-          <Download className="size-4" /> Export
-        </Button>
+        {rendered.html ? (
+          <Popover
+            align="right"
+            ariaLabel="Export options"
+            className="w-56"
+            triggerClassName="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
+            trigger={
+              <>
+                <Download className="size-4" /> Export
+              </>
+            }
+          >
+            <PopoverItem onClick={exportPng}>
+              <ImageIcon className="size-4" /> Download PNG
+            </PopoverItem>
+            <PopoverItem onClick={exportSvg}>
+              <FileCode2 className="size-4" /> Download SVG
+            </PopoverItem>
+            <PopoverItem onClick={copyMathML}>
+              <Braces className="size-4" /> Copy MathML for Word
+            </PopoverItem>
+            <PopoverItem onClick={copyHtml}>
+              <Copy className="size-4" /> Copy KaTeX HTML
+            </PopoverItem>
+          </Popover>
+        ) : (
+          <Button size="sm" disabled>
+            <Download className="size-4" /> Export
+          </Button>
+        )}
       </div>
 
       <EquationPreviewPanel

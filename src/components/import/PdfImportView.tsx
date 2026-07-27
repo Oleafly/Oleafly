@@ -62,7 +62,7 @@ function PdfDropzoneLanding() {
             "flex cursor-pointer flex-col items-center gap-4 rounded-xl border-2 border-dashed px-8 py-14 text-center transition-colors",
             dragOver
               ? "border-primary bg-primary/5"
-              : "border-transparent bg-muted/20 hover:border-border",
+              : "border-border bg-muted/20 hover:border-primary",
           )}
           onClick={() => inputRef.current?.click()}
           onDragOver={(e) => {
