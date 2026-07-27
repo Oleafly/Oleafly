@@ -28,7 +28,7 @@ function ToastRow({ toast }: { toast: Toast }) {
       role={toast.kind === "error" ? "alert" : "status"}
       className={cn(
         "pointer-events-auto flex w-[min(360px,90vw)] items-start gap-2.5 rounded-lg border bg-popover px-3.5 py-2.5 text-popover-foreground shadow-lg",
-        "animate-in fade-in slide-in-from-bottom-2",
+        "animate-in fade-in slide-in-from-right-2",
       )}
     >
       <Icon
@@ -70,7 +70,7 @@ export function Toaster() {
   const toasts = useToastStore((s) => s.toasts);
   if (toasts.length === 0) return null;
   return (
-    <div className="pointer-events-none fixed bottom-4 left-4 z-[100] flex flex-col gap-2">
+    <div className="pointer-events-none fixed bottom-4 right-4 z-[100] flex flex-col gap-2">
       {toasts.map((t) => (
         <ToastRow key={t.id} toast={t} />
       ))}

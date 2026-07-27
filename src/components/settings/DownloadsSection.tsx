@@ -5,7 +5,7 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
 import { logError } from "@/lib/log";
-import { notifyError } from "@/lib/toast";
+import { notifyError, toast } from "@/lib/toast";
 import { useSettingsStore } from "@/store/settings";
 import {
   deleteCustomTemplate,
@@ -439,7 +439,10 @@ export function DownloadsSection() {
           if (!target) return;
           setAiBusy(true);
           void deleteCustomTemplate(target.id)
-            .then(() => refreshAiTemplates())
+            .then(() => {
+              toast.success(`Deleted "${target.name}" from your library`);
+              return refreshAiTemplates();
+            })
             .catch((e) => notifyError("delete the template", e, "Couldn't delete the template."))
             .finally(() => setAiBusy(false));
         }}
