@@ -24,6 +24,10 @@ jobs:
   build:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
+    env:
+      # The 0.2.8 build graph exceeds Node's default ~4GB heap during vite
+      # build on the 7GB macOS arm64 runners.
+      NODE_OPTIONS: --max-old-space-size=6144
     strategy:
       fail-fast: false
       matrix:
