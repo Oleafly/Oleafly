@@ -83,16 +83,28 @@ export async function reloadNativePage(page: TauriPage) {
         { timeout: Math.min(1_000, deadline - Date.now()) },
       );
       const state = await reloadedWindow.evaluate(
-        `JSON.stringify({ readyState: document.readyState, pwActive: !!window.__PW_ACTIVE__, reloadPending: window.__E2E_RELOAD_PENDING__ === true })`,
+        `JSON.stringify({ readyState: document.readyState, pwActive: !!window.__PW_ACTIVE__, reloadPending: window.__E2E_RELOAD_PENDING__ === true, rootMounted: (document.querySelector("#root")?.childElementCount ?? 0) > 0 })`,
       );
       lastState = String(state);
       const parsed = JSON.parse(lastState) as {
         readyState: string;
         pwActive: boolean;
         reloadPending: boolean;
+        rootMounted: boolean;
       };
-      if (parsed.readyState === "complete" && parsed.pwActive && !parsed.reloadPending) return;
-      if (Date.now() >= nextNudge) {
+      // "interactive" counts as ready: a dev-mode subresource can keep
+      // readyState from ever reaching "complete" on an otherwise fully
+      // booted page, and a cleared pending flag already proves the reload
+      // navigated to a fresh document.
+      if (
+        parsed.readyState !== "loading" &&
+        parsed.pwActive &&
+        !parsed.reloadPending &&
+        parsed.rootMounted
+      ) {
+        return;
+      }
+      if (parsed.reloadPending && Date.now() >= nextNudge) {
         nextNudge = Date.now() + 20_000;
         await reloadedWindow.evaluate(
           `import("/src/lib/tauri.ts").then(({ reloadViews }) => { void reloadViews(); })`,
@@ -109,7 +121,7 @@ export async function reloadNativePage(page: TauriPage) {
 async function ensureNativePageReady(page: TauriPage) {
   try {
     await page.waitForFunction(
-      'document.readyState === "complete" && !!window.__PW_ACTIVE__',
+      'document.readyState !== "loading" && !!window.__PW_ACTIVE__ && (document.querySelector("#root")?.childElementCount ?? 0) > 0',
       10_000,
     );
   } catch {
