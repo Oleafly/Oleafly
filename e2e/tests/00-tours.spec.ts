@@ -273,7 +273,7 @@ test("welcome is modal and Home creates a real project before Workspace starts",
   await tauriPage.getByText("Next", { exact: true }).click();
   await tauriPage.click('[data-tour="new-project"]');
   await expect(tauriPage.getByText("Find your starting point", { exact: true })).toBeVisible();
-  await tauriPage.getByText("Back", { exact: true }).click();
+  await tauriPage.click('[data-testid="tour-back"]');
   await expect(tauriPage.getByText("Choose a template", { exact: true })).toHaveCount(0);
   await expect(tauriPage.getByText("Create a real project", { exact: true })).toBeVisible();
   await tauriPage.click('[data-tour="new-project"]');
@@ -347,7 +347,9 @@ test("Settings tour remains in the viewport and tour confirmations are atomic", 
   await tauriPage.getByText("Dismiss all tours", { exact: true }).click();
   await expect(tauriPage.getByText("Dismiss all tours?", { exact: true })).toBeVisible();
   await tauriPage.getByText("Dismiss all", { exact: true }).click();
-  await expect(tauriPage.getByText("5 dismissed", { exact: false })).toBeVisible();
+  await expect(
+    tauriPage.getByText(`${Object.keys(versions).length} dismissed`, { exact: false }),
+  ).toBeVisible();
 
   await tauriPage.click('[aria-label="Enable all tour guides"]');
   await expect(tauriPage.locator('[aria-label="Close settings"]')).toHaveCount(0);
@@ -448,9 +450,18 @@ test("AI settings tour walks the tabs with keyboard navigation and Escape confir
   await pressGlobal(tauriPage, "ArrowRight", { meta: true });
   await expect(title()).toHaveText("Instructions");
 
-  const instructionsTab = tauriPage.locator('[data-tour="ai-settings-tab-instructions"]');
-  await instructionsTab.focus();
-  await instructionsTab.press("Enter");
+  // A real click (mouse or trusted Enter) fires a native click event; the
+  // bridge's synthetic Enter only reaches Radix's keydown handler, which
+  // switches the tab without the click the required-click step listens for.
+  await tauriPage.evaluate(
+    `(() => {
+      const el = document.querySelector('[data-tour="ai-settings-tab-instructions"]');
+      for (const type of ['pointerdown', 'pointerup']) {
+        el.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 1 }));
+      }
+      el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    })()`,
+  );
   await expect(title()).toHaveText("Default model", { timeout: 15_000 });
 
   await pressGlobal(tauriPage, "Escape");

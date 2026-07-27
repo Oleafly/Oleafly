@@ -73,6 +73,8 @@ test("home tour opens from Help and About", async ({ tauriPage }) => {
   await expect(tauriPage.getByRole("alertdialog")).toBeVisible({ timeout: 20_000 });
   await expect(tauriPage.locator("#react-joyride-portal h2")).toHaveText("Home");
   await tauriPage.getByRole("button", { name: "Skip" }).click();
+  await expect(tauriPage.getByText("Quit the tour?")).toBeVisible({ timeout: 10_000 });
+  await tauriPage.getByText("Quit tour", { exact: true }).click();
   await expect(tauriPage.getByRole("alertdialog")).toBeHidden();
 });
 

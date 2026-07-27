@@ -49,13 +49,12 @@ const DISMISSED_TOUR_STATE = JSON.stringify({
   state: {
     schemaVersion: 1,
     enabled: false,
-    tours: {
-      home: { status: "dismissed", version: tourRegistry.home.version },
-      workspace: { status: "dismissed", version: tourRegistry.workspace.version },
-      settings: { status: "dismissed", version: tourRegistry.settings.version },
-      ai: { status: "dismissed", version: tourRegistry.ai.version },
-      diagram: { status: "dismissed", version: tourRegistry.diagram.version },
-    },
+    tours: Object.fromEntries(
+      Object.entries(tourRegistry).map(([id, definition]) => [
+        id,
+        { status: "dismissed", version: definition.version },
+      ]),
+    ),
   },
   version: 1,
 });
@@ -72,20 +71,39 @@ export async function reloadNativePage(page: TauriPage) {
   // 20s to tear down and re-create the webview, and this fires between specs
   // where nothing else bounds it.
   const deadline = Date.now() + 60_000;
+  // The eval-scheduled location.reload() is occasionally lost (the webview
+  // drops the setTimeout when it is mid-navigation or its content process was
+  // swapped), which used to burn the whole deadline; re-nudge instead.
+  let nextNudge = Date.now() + 20_000;
+  let lastState = "main window never re-acquired";
   while (Date.now() < deadline) {
     try {
       const reloadedWindow = await page.waitForWindow(
         (window) => window.label === "main",
         { timeout: Math.min(1_000, deadline - Date.now()) },
       );
-      const ready = await reloadedWindow.evaluate(
-        `document.readyState === "complete" && !!window.__PW_ACTIVE__ && window.__E2E_RELOAD_PENDING__ !== true`,
+      const state = await reloadedWindow.evaluate(
+        `JSON.stringify({ readyState: document.readyState, pwActive: !!window.__PW_ACTIVE__, reloadPending: window.__E2E_RELOAD_PENDING__ === true })`,
       );
-      if (ready) return;
+      lastState = String(state);
+      const parsed = JSON.parse(lastState) as {
+        readyState: string;
+        pwActive: boolean;
+        reloadPending: boolean;
+      };
+      if (parsed.readyState === "complete" && parsed.pwActive && !parsed.reloadPending) return;
+      if (Date.now() >= nextNudge) {
+        nextNudge = Date.now() + 20_000;
+        await reloadedWindow.evaluate(
+          `import("/src/lib/tauri.ts").then(({ reloadViews }) => { void reloadViews(); })`,
+        );
+      }
     } catch {}
     await new Promise((resolve) => setTimeout(resolve, 25));
   }
-  throw new Error("main window did not finish reloading within 60 seconds");
+  throw new Error(
+    `main window did not finish reloading within 60 seconds (last state: ${lastState})`,
+  );
 }
 
 async function ensureNativePageReady(page: TauriPage) {
