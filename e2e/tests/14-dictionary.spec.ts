@@ -61,8 +61,24 @@ test("misspellings get squiggles; ignore clears them; un-ignore brings them back
   await tauriPage.waitForFunction(`!(${targetLint})`, 30_000);
 
   await openSettings(tauriPage, "dictionary");
+  // Project-scoped ignores live in the "Project ignores" tab; the section
+  // defaults to the global tab. Enter reaches Radix's keydown tab activation.
+  const projectsTab = tauriPage.locator('[data-testid="dictionary-tab-projects"]');
+  await projectsTab.focus();
+  await projectsTab.press("Enter");
   await expect(tauriPage.locator(`[aria-label="Stop ignoring ${WORD}"]`)).toBeVisible();
-  await tauriPage.click(`[aria-label="Stop ignoring ${WORD}"]`);
+  // The webview's localStorage outlives the per-run data dir, so stale projects
+  // from earlier runs can also list this word. Scope the click to this run's
+  // project group (headed by its unique name) or a bare aria-label selector may
+  // un-ignore the word for a stale project instead.
+  await tauriPage.evaluate(`(() => {
+    const heading = Array.from(document.querySelectorAll('h4')).find(
+      (h) => h.textContent === ${JSON.stringify(NAME)}
+    );
+    const btn = heading?.parentElement?.querySelector('[aria-label="Stop ignoring ${WORD}"]');
+    if (!(btn instanceof HTMLElement)) throw new Error('Stop-ignoring button not found for ${WORD} in this project');
+    btn.click();
+  })()`);
   await tauriPage.waitForFunction(
     `Promise.all([
       import("/src/lib/dictionary.ts"),
