@@ -118,7 +118,7 @@ a readiness aid, not a formal accessibility certification.
   PT Serif) that download only when needed, so the app stays small. Creating such
   a template fetches the fonts (with progress) and copies them into the project's
   `fonts/` folder, so it stays self-contained and compiles offline. Manage these
-  in Settings, Offline & Downloads (pre-download, or remove to free space).
+  in Settings, Downloads (pre-download, or remove to free space).
 - Source tree: create files and folders (nested to any depth), rename, delete, and duplicate (files and whole folders). Right-click a folder to add a file or folder inside it, and drag files and folders in and out of folders to reorganize. Upload files, and pick the main document.
 - Multi-file support for `\input`, images (PNG/JPG/PDF/EPS), `.bib`, and editor tabs.
 - Autosave writes your changes to disk shortly after you stop typing.
