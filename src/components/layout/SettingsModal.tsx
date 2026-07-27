@@ -38,7 +38,6 @@ import { Button } from "@/components/ui/button";
 import { DotPattern } from "@/components/ui/dot-pattern";
 import { GridPattern } from "@/components/ui/grid-pattern";
 import { Tooltip } from "@/components/ui/tooltip";
-import { Separator } from "@/components/ui/separator";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { UpdateChecker } from "@/components/layout/UpdateChecker";
 import { EngineSection } from "@/components/settings/EngineSection";
@@ -46,6 +45,7 @@ import { DownloadsSection } from "@/components/settings/DownloadsSection";
 import { AISection } from "@/components/settings/AISection";
 import { IntegrationsSection } from "@/components/settings/IntegrationsSection";
 import { McpSection } from "@/components/settings/McpSection";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ShortcutsSection } from "@/components/settings/ShortcutsSection";
 import {
   Select,
@@ -110,6 +110,7 @@ const TOUR_LABELS = {
   home: "Home and project creation",
   workspace: "Project workspace",
   settings: "Settings",
+  "ai-settings": "AI Assistant settings",
   ai: "AI Assistant",
   diagram: "Diagram Composer",
 } as const;
@@ -221,7 +222,7 @@ export function SettingsModal() {
   const completedTours = TOUR_IDS.filter((id) => tours[id].status === "completed").length;
   const dismissedTours = TOUR_IDS.filter((id) => tours[id].status === "dismissed").length;
   const [showAdvanced, setShowAdvanced] = useState(
-    () => typeof localStorage !== "undefined" && localStorage.getItem("ol-settings-advanced") === "1",
+    () => typeof localStorage === "undefined" || localStorage.getItem("ol-settings-advanced") !== "0",
   );
   const setAdvanced = (v: boolean) => {
     setShowAdvanced(v);
@@ -811,7 +812,16 @@ export function SettingsModal() {
             {section === "dictionary" && <DictionarySection />}
 
             {section === "data" && (
-              <div className="space-y-3 text-sm">
+              <Tabs defaultValue="local" className="space-y-4 text-sm">
+                <TabsList>
+                  <TabsTrigger value="local" data-testid="data-tab-local">
+                    Local store
+                  </TabsTrigger>
+                  <TabsTrigger value="cloud" data-testid="data-tab-cloud">
+                    Cloud sync
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="local" className="space-y-3">
                 <p className="text-muted-foreground">
                   Oleafly is local-first. All projects live on your disk:
                 </p>
@@ -851,7 +861,8 @@ export function SettingsModal() {
                     </button>
                   </span>
                 </div>
-                <Separator className="my-5" />
+                </TabsContent>
+                <TabsContent value="cloud">
                 <div className="rounded-xl border bg-card p-5">
                   <div className="flex max-w-xl flex-col gap-2">
                     <div className="flex items-center gap-2">
@@ -866,11 +877,14 @@ export function SettingsModal() {
                     </div>
                     <p className="text-xs leading-relaxed text-muted-foreground">
                       Keep projects synchronized across your devices without configuring a Git
-                      remote. Your local project folders will remain the source of truth.
+                      remote. Every transfer will be end-to-end encrypted, so your work stays
+                      private in transit. Your local project folders will remain the source of
+                      truth.
                     </p>
                   </div>
                 </div>
-              </div>
+                </TabsContent>
+              </Tabs>
             )}
 
             {section === "ai" && <AISection />}
@@ -945,36 +959,40 @@ function DictionarySection() {
   const projectEntries = Object.entries(ignored).filter(([, words]) => words.length > 0);
 
   return (
-    <div className="space-y-5 text-sm">
+    <div className="space-y-4 text-sm">
       <p className="text-muted-foreground">
         Words you told the spell &amp; grammar checker to ignore. Remove one to
         start flagging it again.
       </p>
-      <div className="space-y-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Global ignore
-        </h3>
-        <IgnoreChips words={global} onRemove={(w) => unignoreGlobal(w)} />
-      </div>
-      <div className="space-y-4">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Project level ignores
-        </h3>
-        {projectEntries.length === 0 ? (
-          <p className="text-xs text-muted-foreground">Nothing ignored yet.</p>
-        ) : (
-          <div className="space-y-4">
-            {projectEntries.map(([id, words]) => (
-              <div key={id} className="space-y-2">
-                <h4 className="text-xs font-medium text-foreground">
-                  {projects.find((p) => p.id === id)?.name ?? id}
-                </h4>
-                <IgnoreChips words={words} onRemove={(w) => unignore(id, w)} />
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      <Tabs defaultValue="global" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="global" data-testid="dictionary-tab-global">
+            Global ignore
+          </TabsTrigger>
+          <TabsTrigger value="projects" data-testid="dictionary-tab-projects">
+            Project ignores
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="global">
+          <IgnoreChips words={global} onRemove={(w) => unignoreGlobal(w)} />
+        </TabsContent>
+        <TabsContent value="projects">
+          {projectEntries.length === 0 ? (
+            <p className="text-xs text-muted-foreground">Nothing ignored yet.</p>
+          ) : (
+            <div className="space-y-4">
+              {projectEntries.map(([id, words]) => (
+                <div key={id} className="space-y-2">
+                  <h4 className="text-xs font-medium text-foreground">
+                    {projects.find((p) => p.id === id)?.name ?? id}
+                  </h4>
+                  <IgnoreChips words={words} onRemove={(w) => unignore(id, w)} />
+                </div>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

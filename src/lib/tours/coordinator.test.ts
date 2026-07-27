@@ -35,6 +35,8 @@ describe("tour coordinator", () => {
   it("ignores completed contextual tours and disabled state", () => {
     const state = defaultPersistedTourState();
     state.tours.settings.status = "completed";
+    expect(evaluateTour(state, "settings", ready).tourId).toBe("ai-settings");
+    state.tours["ai-settings"].status = "completed";
     expect(evaluateTour(state, "settings", ready).reason).toBe("not-pending");
     expect(evaluateTour({ ...state, enabled: false }, "home", ready).reason).toBe("disabled");
   });

@@ -9,6 +9,9 @@ test("AI settings shows the agent tool catalog and PDF capture toggle", async ({
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openSettings(tauriPage, "ai");
+  const instructionsTab = tauriPage.locator('[data-testid="ai-settings-tab-instructions"]');
+  await instructionsTab.focus();
+  await instructionsTab.press("Enter");
 
   await expect(
     tauriPage.getByText("The assistant currently supports these tools"),

@@ -7,6 +7,75 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.8] - 2026-07-26
+
+### Added
+
+- Added live API key validation: pasting a key checks it against the provider
+  and fetches its current model list before saving.
+- Added per-provider model management: toggle models on or off, add models by
+  id, delete with confirmation, and restore a provider's built-in models.
+- Added custom providers: connect any OpenAI-compatible endpoint by base URL,
+  including local servers such as Ollama and LM Studio, with inline field
+  validation.
+- Added Google Gemini and Perplexity as built-in providers, and the official
+  Z.AI logo.
+- Added provider logos throughout: beside each model in the model dropdown,
+  in the closed selector, and on provider cards.
+- Added personas: named, colored instruction presets managed in Settings and
+  switched from the chat's Prompts menu, with a create shortcut that deep
+  links into Settings.
+- Added a default chat model setting; the chat panel switches models
+  per conversation without changing the default.
+- Added a guided tour for the new AI settings and refreshed the AI chat tour,
+  with a redesigned tooltip: step progress dots, an animated spotlight that
+  glides between targets, and confetti when a tour completes.
+- Added keyboard navigation to all tours: Cmd or Ctrl with the arrow keys
+  moves between steps, Escape or Skip asks before quitting, and the
+  shortcuts are shown on the buttons.
+- Added an accent color picker to the welcome screen.
+- Redesigned Generate a template with AI: example prompts, a model picker
+  for the run, staged progress with a live compiled preview, editable
+  details, Regenerate, save or unsave to the library, and Use this template
+  jumping straight into project creation.
+- Added an AI Generated category and card badge in the template gallery,
+  generation from the empty search state, and a manager in Settings,
+  Downloads to view and delete saved AI templates.
+- Added Enter to confirm and Escape to cancel in confirmation dialogs, with
+  the shortcuts shown on the buttons; Cmd+Enter creates a project from the
+  wizard and submits the AI dialogs.
+
+### Changed
+
+- Reorganized AI settings into Providers and keys, Instructions, and Personas
+  tabs; the tools catalog and PDF capture toggle now live under Instructions.
+- Reorganized more settings into tabs: Downloads (Fonts and Templates),
+  Data Storage (Local store and Cloud sync), Dictionary, Keyboard
+  Shortcuts, and the MCP connect snippets per client, now including a
+  Codex CLI config.
+- Notifications moved to the bottom right and are rendered by sonner with
+  close buttons.
+- Connected providers all show a green Connected badge; the redundant
+  Activate button is gone and the default model lives under Instructions.
+- The Diagram Composer hint floats as a centered island with the canvas
+  controls in a pill cluster, and standalone text labels adapt to the
+  canvas theme.
+- Advanced settings sections are visible by default.
+- Chat drafts survive layout switches, and a streaming reply keeps running
+  when the panel closes, reattaching when you come back to that chat.
+- Reasoning and tool call sections in chat start collapsed.
+- The app launches maximized.
+- macOS releases are code-signed and notarized.
+
+### Fixed
+
+- Fixed dialogs and dropdowns opening behind the Settings window.
+- Fixed the voice button overflowing the chat toolbar on narrow panels.
+- Fixed generated LaTeX templates referencing colors without loading xcolor,
+  and surfaced a clear warning when a generated draft fails to compile.
+- Fixed saved AI templates missing their preview in the gallery and the
+  project wizard.
+
 ## [0.2.7] - 2026-07-24
 
 ### Added

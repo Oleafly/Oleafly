@@ -14,6 +14,7 @@ import {
   BadgeDollarSign,
   BookOpen,
   Brain,
+  Check,
   ChevronDown,
   Filter,
   FilePlus2,
@@ -35,7 +36,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useFilesStore } from "@/store/files";
-import { getConfig, setConfig, gitLog, gitAutoCommit, type AppConfig } from "@/lib/tauri";
+import { getConfig, gitLog, gitAutoCommit, type AppConfig, type CustomProvider, type Persona, type StoredModel } from "@/lib/tauri";
 import { listOllamaModels } from "@/lib/ollama";
 import { registry, type AiToolsetContribution } from "@oleafly/registry";
 import type { ToolApprovalRequest } from "@/lib/ai-tools";
@@ -45,8 +46,19 @@ import { getEditorView } from "@/components/editor/cm/controller";
 import { ToolConfirm, isAutoApprovable } from "@/components/ai/ToolConfirm";
 import { AttachmentChips, type PendingAttachment } from "@/components/ai/AttachmentChips";
 import { ModelSelector } from "@/components/ai/ModelSelector";
+import {
+  activeChatRun,
+  beginChatRun,
+  endChatRun,
+  saveDraft,
+  savedDraft,
+  subscribeChatRun,
+  updateChatRun,
+} from "@/components/ai/chat-run-registry";
+import { personaGradient } from "@/lib/persona-colors";
 import { toast } from "@/lib/toast";
-import { buildModel as buildAiModel, defaultModel, PROVIDERS } from "@/lib/ai-providers";
+import { buildModel as buildAiModel, defaultModel, mergeCustomProviders, resolveActiveModel } from "@/lib/ai-providers";
+import { enabledModels } from "@/lib/ai-model-state";
 import { useSettingsStore } from "@/store/settings";
 import { useChatsStore, type ChatMessage, type StoredChat } from "@/store/chats";
 import { objectKey } from "@/lib/react-key";
@@ -178,6 +190,7 @@ export function ChatCore() {
   const projectKind = useFilesStore((s) => s.projectKind);
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
   const setSettingsInitialSection = useSettingsStore((s) => s.setSettingsInitialSection);
+  const setSettingsScrollTarget = useSettingsStore((s) => s.setSettingsScrollTarget);
   const chatFloating = useSettingsStore((s) => s.chatFloating);
   const setChatFloating = useSettingsStore((s) => s.setChatFloating);
   const chats = useChatsStore((s) => s.chats);
@@ -192,8 +205,21 @@ export function ChatCore() {
     setSettingsOpen(true);
   }, [setSettingsInitialSection, setSettingsOpen]);
 
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState("");
+  const [messages, setMessagesState] = useState<ChatMessage[]>([]);
+  const messagesRef = useRef<ChatMessage[]>([]);
+  const setMessages = useCallback(
+    (next: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])) => {
+      const resolved = typeof next === "function" ? next(messagesRef.current) : next;
+      messagesRef.current = resolved;
+      setMessagesState(resolved);
+    },
+    [],
+  );
+  const [input, setInputState] = useState(() => savedDraft(useFilesStore.getState().projectId));
+  const setInput = useCallback((text: string) => {
+    setInputState(text);
+    saveDraft(useFilesStore.getState().projectId, text);
+  }, []);
   const [streaming, setStreaming] = useState(false);
   const [provider, setProvider] = useState("openai");
   const [model, setModel] = useState("gpt-4o");
@@ -202,6 +228,12 @@ export function ChatCore() {
   const [apiKey, setApiKey] = useState("");
   // So the switcher can offer every provider the user has set up, not just the default one.
   const [keysMap, setKeysMap] = useState<Record<string, string>>({});
+  // Per-provider enable/disable/custom model state from Settings; falls back
+  // to the static catalog for providers that haven't been touched there yet.
+  const [providerModelsMap, setProviderModelsMap] = useState<Record<string, StoredModel[]>>({});
+  // User-defined providers from Settings, so they appear in the switcher and
+  // so chat-time model construction can thread their base URL through.
+  const [customProviders, setCustomProviders] = useState<CustomProvider[]>([]);
   const [ollamaModels, setOllamaModels] = useState<string[]>([]);
   const [thinkingText, setThinkingText] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -235,12 +267,23 @@ export function ChatCore() {
   const setFigureModeOpen = useSettingsStore((s) => s.setFigureModeOpen);
   // User's own system-prompt addition (sandboxed into our prompt at send time).
   const [customPrompt, setCustomPrompt] = useState("");
+  // Named, colored saved prompts from AI settings; and the one active for
+  // this session (null = use customPrompt instead).
+  const [personas, setPersonas] = useState<Persona[]>([]);
+  const [activePersonaId, setActivePersonaId] = useState<string | null>(null);
   // Always-current snapshot so `send` (a useCallback) reads the latest list
   // without depending on it.
   const attachmentsRef = useRef<PendingAttachment[]>(attachments);
   attachmentsRef.current = attachments;
   const customPromptRef = useRef("");
   customPromptRef.current = customPrompt;
+  const personasRef = useRef<Persona[]>([]);
+  personasRef.current = personas;
+  const activePersonaIdRef = useRef<string | null>(null);
+  activePersonaIdRef.current = activePersonaId;
+  // Last-loaded config, so newChat can reset the session model to the saved
+  // default without an extra async round trip.
+  const cfgRef = useRef<AppConfig | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -287,6 +330,7 @@ export function ChatCore() {
   const nearBottomRef = useRef(true);
   // Aborts the in-flight AI run (Stop button, project switch, unmount).
   const abortRef = useRef<AbortController | null>(null);
+  const runOwnerRef = useRef(false);
   // When true, write/replace/create/rename tools skip the prompt for this run's session.
   const sessionAutoApproveRef = useRef(false);
   // Trailing-debounce timer for persisting the streaming conversation.
@@ -324,7 +368,7 @@ export function ChatCore() {
   useEffect(() => {
     if (!streaming) return;
     const id = window.setInterval(() => {
-      const quietMs = Date.now() - lastPartAtRef.current;
+      const quietMs = Date.now() - (activeChatRun()?.lastPartAt ?? lastPartAtRef.current);
       // Hard timeout: 90s of total silence from the provider aborts the run so a
       // hung or unavailable model never spins forever.
       if (quietMs > 90000) {
@@ -355,17 +399,27 @@ export function ChatCore() {
 
   useEffect(() => {
     const apply = (cfg: AppConfig) => {
+        cfgRef.current = cfg;
         const saved = cfg.ai_provider || "openai";
         setCustomPrompt(cfg.ai_system_prompt || "");
         customPromptRef.current = cfg.ai_system_prompt || "";
+        setPersonas(cfg.ai_personas ?? []);
         const keys = { ...(cfg.ai_keys ?? {}) };
         // Fold the legacy single key into the map so it counts as configured.
         if (cfg.ai_api_key && !keys[saved]) keys[saved] = cfg.ai_api_key;
         setKeysMap(keys);
+        setProviderModelsMap(cfg.ai_provider_models ?? {});
+        const customs = cfg.ai_custom_providers ?? [];
+        setCustomProviders(customs);
         // Use the saved provider if it has a key; otherwise fall back to the
         // first configured one (e.g. the saved provider's key was removed).
+        // A custom provider with keyOptional counts as configured with no key.
+        const keyOptionalIds = customs.filter((c) => c.keyOptional).map((c) => c.id);
         const configured = Object.keys(keys).filter((k) => (keys[k] ?? "").trim());
-        const provider = (keys[saved] ?? "").trim() ? saved : configured[0] ?? saved;
+        const provider =
+          (keys[saved] ?? "").trim() || keyOptionalIds.includes(saved)
+            ? saved
+            : configured[0] ?? saved;
         setProvider(provider);
         setApiKey(keys[provider] || "");
         setModel(
@@ -405,31 +459,33 @@ export function ChatCore() {
       .catch(() => setOllamaModels([]));
   }, [keysMap.ollama]);
 
-  // Persists as the new default provider/model.
+  // Session-local only: switching models mid-chat no longer changes the
+  // saved default, so other chats/sessions keep starting on the configured one.
   const selectModel = useCallback(
-    async (pid: string, mid: string) => {
+    (pid: string, mid: string) => {
       setProvider(pid);
       setModel(mid);
       setApiKey(keysMap[pid] || "");
-      try {
-        const cfg = await getConfig();
-        await setConfig({ ...cfg, ai_provider: pid, ai_model: mid });
-      } catch {
-        /* non-fatal: the switch still applies to this session */
-      }
     },
     [keysMap]
   );
 
-  // Providers the user has set up (a non-empty key/host), in catalog order.
-  const configuredProviders = PROVIDERS.filter(
-    (p) => (keysMap[p.id] ?? "").trim().length > 0
-  );
+  // Providers the user has set up (a non-empty key/host, or a custom
+  // provider with an optional key), in catalog order.
+  const allProviders = mergeCustomProviders(customProviders);
+  const configuredProviders = allProviders.filter((p) => {
+    if ((keysMap[p.id] ?? "").trim().length > 0) return true;
+    return Boolean(customProviders.find((c) => c.id === p.id)?.keyOptional);
+  });
   const modelGroups = configuredProviders.map((configuredProvider) => {
+    const storedModels = providerModelsMap[configuredProvider.id];
+    const catalogModels = storedModels
+      ? enabledModels(storedModels).map((m) => ({ id: m.id, name: m.name }))
+      : [...configuredProvider.models];
     const available =
       configuredProvider.id === "ollama" && ollamaModels.length > 0
         ? ollamaModels.map((id) => ({ id, name: id }))
-        : [...configuredProvider.models];
+        : catalogModels;
     if (
       configuredProvider.id === provider &&
       model &&
@@ -524,7 +580,17 @@ export function ChatCore() {
     if (streaming) return;
     setActiveChat(null);
     setMessages([]);
-  }, [streaming, setActiveChat]);
+    setActivePersonaId(null);
+    // Drop any mid-chat model switch too: a fresh chat starts on the
+    // configured default, not whatever the last conversation was left on.
+    const cfg = cfgRef.current;
+    if (cfg) {
+      const { providerId, modelId } = resolveActiveModel(cfg);
+      setProvider(providerId);
+      setModel(modelId);
+      setApiKey(keysMap[providerId] || "");
+    }
+  }, [streaming, setActiveChat, keysMap]);
 
   useEffect(() => {
     void messages;
@@ -558,16 +624,15 @@ export function ChatCore() {
     const patches = streamPatchesRef.current;
     if (!patches.length) return;
     streamPatchesRef.current = [];
-    setMessages((prev) => {
-      if (!prev.length) return prev;
-      const copy = [...prev];
-      let last = copy[copy.length - 1];
-      for (const patch of patches) last = patch.apply(last);
-      copy[copy.length - 1] = last;
-      persistDebounced(patches[patches.length - 1].chatId, copy);
-      return copy;
-    });
-  }, [persistDebounced]);
+    const prev = messagesRef.current;
+    if (!prev.length) return;
+    const copy = [...prev];
+    let last = copy[copy.length - 1];
+    for (const patch of patches) last = patch.apply(last);
+    copy[copy.length - 1] = last;
+    setMessages(copy);
+    persistDebounced(patches[patches.length - 1].chatId, copy);
+  }, [persistDebounced, setMessages]);
 
   // High-frequency stream deltas are coalesced to one setState per animation
   // frame; callers that need the UI to reflect a patch before the next frame
@@ -583,7 +648,7 @@ export function ChatCore() {
 
   const send = useCallback(async (text: string) => {
     const outgoing = attachmentsRef.current;
-    if ((!text.trim() && outgoing.length === 0) || streaming) return;
+    if ((!text.trim() && outgoing.length === 0) || streaming || activeChatRun()) return;
     if (!engineLoaded) {
       toast.error("Document engine details are not loaded. AI editing is disabled for safety.");
       return;
@@ -612,6 +677,8 @@ export function ChatCore() {
 
     const ac = new AbortController();
     abortRef.current = ac;
+    const runHandle = beginChatRun(ac, projectId);
+    runOwnerRef.current = true;
 
     // Human-in-the-loop gate for destructive edits: the tool's execute() awaits
     // this, which naturally pauses the stream on that tool until the user picks.
@@ -653,13 +720,16 @@ export function ChatCore() {
             }
             return { ...m, toolCalls: calls };
           });
+          updateChatRun(runHandle, { pendingApproval: null });
           if (runIsCurrent()) setPendingApproval(null);
           resolve(ok);
         };
         const onAbort = () => finish(false);
         ac.signal.addEventListener("abort", onAbort, { once: true });
-        if (runIsCurrent()) setPendingApproval({ req, resolve: finish });
-        else finish(false);
+        if (runIsCurrent()) {
+          updateChatRun(runHandle, { pendingApproval: { req, resolve: finish } });
+          setPendingApproval({ req, resolve: finish });
+        } else finish(false);
       });
 
     // Fresh plan checklist each agent run; reset last-run meter (chat totals persist).
@@ -709,6 +779,7 @@ export function ChatCore() {
     setStreaming(true);
     setRunThinking("Thinking…");
     lastPartAtRef.current = Date.now();
+    runHandle.lastPartAt = Date.now();
     timedOutRef.current = false;
 
     // Persist this conversation as a chat (creates one on the first message).
@@ -720,10 +791,16 @@ export function ChatCore() {
         chatId = created.id;
       }
       runChatId = chatId;
+      updateChatRun(runHandle, { chatId });
       if (chatId) cs.saveMessages(chatId, nextMessages);
     }
 
-    const requestCustomPrompt = customPromptRef.current;
+    // An active persona replaces the user's default custom instructions for
+    // this request; otherwise fall back to those default instructions.
+    const activePersona = activePersonaIdRef.current
+      ? personasRef.current.find((p) => p.id === activePersonaIdRef.current) ?? null
+      : null;
+    const requestCustomPrompt = activePersona ? activePersona.prompt : customPromptRef.current;
     const sandboxedCustom = requestCustomPrompt.trim()
       ? `
 
@@ -885,6 +962,7 @@ ${sandboxedCustom}`;
           if (ac.signal.aborted) break;
           // Any stream activity resets the stall watchdog.
           lastPartAtRef.current = Date.now();
+          runHandle.lastPartAt = Date.now();
           switch (part.type) {
             case "text-delta":
               setRunThinking(null);
@@ -953,7 +1031,7 @@ ${sandboxedCustom}`;
             case "error":
               errorMsg = formatError(
                 part.error,
-                PROVIDERS.find((p) => p.id === provider)?.name
+                allProviders.find((p) => p.id === provider)?.name
               );
               errorRetryable = isRetryable(part.error);
               break;
@@ -1012,7 +1090,8 @@ ${sandboxedCustom}`;
           }
         }
 
-        const modelInstance = buildAiModel(provider, model, apiKey);
+        const customBaseURL = customProviders.find((c) => c.id === provider)?.baseURL;
+        const modelInstance = buildAiModel(provider, model, apiKey, customBaseURL);
         const tools = resolveChatTools(registry.aiToolsets, figure ? "figure" : "chat", {
           confirm,
           onImage: (d: string) => pendingImagesRef.current.push(d),
@@ -1127,7 +1206,7 @@ ${sandboxedCustom}`;
           content: (m.content ? `${m.content}\n\n` : "") + note,
         }));
       } else {
-        const errMsg = formatError(e, PROVIDERS.find((p) => p.id === provider)?.name);
+        const errMsg = formatError(e, allProviders.find((p) => p.id === provider)?.name);
         updateRunLast((m) => ({
           ...m,
           content: errMsg.includes("NoOutputGenerated")
@@ -1155,16 +1234,12 @@ ${sandboxedCustom}`;
           clearTimeout(persistTimerRef.current);
           persistTimerRef.current = null;
         }
-        const cs = useChatsStore.getState();
-        if (runChatId) {
-          setMessages((cur) => {
-            cs.saveMessages(runChatId, cur);
-            return cur;
-          });
-        }
+        if (runChatId) useChatsStore.getState().saveMessages(runChatId, messagesRef.current);
       }
+      runOwnerRef.current = false;
+      endChatRun(runHandle);
     }
-  }, [messages, streaming, apiKey, provider, model, projectId, projectName, currentHead, figureMode, figureModeAvailable, engineLoaded, documentEngine, projectKind, openAISettings, flushStreamPatches, updateLast]);
+  }, [messages, streaming, apiKey, provider, model, customProviders, projectId, projectName, currentHead, figureMode, figureModeAvailable, engineLoaded, documentEngine, projectKind, openAISettings, flushStreamPatches, updateLast, setMessages, setInput]);
 
   useEffect(() => {
     const onSelectionAction = (e: Event) => {
@@ -1230,24 +1305,69 @@ ${sandboxedCustom}`;
     else setInput(h.prompt);
   }, [handoffPending, streaming, apiKey, send]);
 
-  // Abort any in-flight run when the project changes or the panel unmounts, so a
-  // stale stream can't keep spending tokens or writing into the wrong chat.
+  const prevProjectIdRef = useRef<string | null | undefined>(undefined);
   useEffect(() => {
-    void projectId;
-    setStreaming(false);
-    setThinkingText(null);
-    setPendingApproval(null);
-    pendingImagesRef.current = [];
-    return () => {
-      runIsolationRef.current.invalidate();
-      cancelChatRun(abortRef.current, persistTimerRef.current, () => {
+    const prev = prevProjectIdRef.current;
+    prevProjectIdRef.current = projectId;
+    if (prev === undefined || prev === projectId) return;
+    runIsolationRef.current.invalidate();
+    const run = activeChatRun();
+    if (run && run.projectId !== projectId) {
+      run.pendingApproval?.resolve(false);
+      cancelChatRun(run.controller, persistTimerRef.current, () => {
         if (streamRafRef.current != null) cancelAnimationFrame(streamRafRef.current);
         streamRafRef.current = null;
         streamPatchesRef.current = [];
       });
       persistTimerRef.current = null;
-    };
+    }
+    setStreaming(false);
+    setThinkingText(null);
+    setPendingApproval(null);
+    pendingImagesRef.current = [];
+    setInputState(savedDraft(projectId));
   }, [projectId]);
+
+  useEffect(() => {
+    const sync = () => {
+      const run = activeChatRun();
+      const cs = useChatsStore.getState();
+      if (run && run.projectId === projectId && cs.projectId === projectId) {
+        if (run.chatId && run.chatId === cs.activeId) {
+          abortRef.current = run.controller;
+          setStreaming(true);
+          setPendingApproval(run.pendingApproval);
+          if (!runOwnerRef.current) {
+            const chat = cs.byId(run.chatId);
+            if (chat) setMessages(chat.messages);
+          }
+        }
+      } else if (!run && !runOwnerRef.current) {
+        setStreaming(false);
+        setThinkingText(null);
+        setPendingApproval(null);
+        if (cs.projectId === projectId && cs.activeId) {
+          const chat = cs.byId(cs.activeId);
+          if (chat) setMessages(chat.messages);
+        }
+      }
+    };
+    sync();
+    const unsubRun = subscribeChatRun(sync);
+    const unsubStore = useChatsStore.subscribe(() => {
+      if (runOwnerRef.current) return;
+      const run = activeChatRun();
+      if (!run || run.projectId !== projectId || !run.chatId) return;
+      const cs = useChatsStore.getState();
+      if (cs.projectId !== projectId || run.chatId !== cs.activeId) return;
+      const chat = cs.byId(run.chatId);
+      if (chat) setMessages(chat.messages);
+    });
+    return () => {
+      unsubRun();
+      unsubStore();
+    };
+  }, [projectId, setMessages]);
 
   const chatUsage = activeChat?.usage;
   const chatTotal = chatUsage
@@ -1666,8 +1786,8 @@ ${sandboxedCustom}`;
                 rows={1}
                 className="max-h-32 min-h-[24px] w-full resize-none rounded-md border-0 bg-transparent px-1 text-sm shadow-none outline-none placeholder:text-muted-foreground"
               />
-              <div className="mt-1.5 flex items-center justify-between">
-                <div className="flex items-center gap-0.5">
+              <div className="mt-1.5 flex items-center justify-between gap-1">
+                <div className="flex shrink-0 items-center gap-0.5">
                   <button
                     data-tour="ai-attachments"
                     type="button"
@@ -1693,6 +1813,7 @@ ${sandboxedCustom}`;
                     </Tooltip>
                   )}
                   {!figureMode && (
+                    <span data-tour="ai-prompts" className="inline-flex">
                     <Popover
                       align="left"
                       ariaLabel="Prompts"
@@ -1736,20 +1857,76 @@ ${sandboxedCustom}`;
                           </div>
                         </div>
                       ))}
+                      <div className="mt-1 border-t py-2 pt-2.5">
+                        <span className="block px-2.5 pb-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
+                          Personas
+                        </span>
+                        {personas.length === 0 ? (
+                          <button
+                            type="button"
+                            data-testid="ai-prompts-create-persona"
+                            onClick={() => {
+                              setSettingsInitialSection("ai");
+                              setSettingsScrollTarget("ai-personas");
+                              setSettingsOpen(true);
+                            }}
+                            className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                          >
+                            <Plus className="size-3.5 shrink-0" />
+                            Create a persona in Settings
+                          </button>
+                        ) : (
+                          <div className="space-y-0.5">
+                            <button
+                              type="button"
+                              data-testid="ai-prompts-persona-none"
+                              onClick={() => setActivePersonaId(null)}
+                              className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-accent"
+                            >
+                              <span className="size-3 shrink-0 rounded-full border border-muted-foreground/40" />
+                              <span className="min-w-0 flex-1 truncate text-xs font-medium">None</span>
+                              {activePersonaId === null && (
+                                <Check className="size-3.5 shrink-0 text-emerald-500" />
+                              )}
+                            </button>
+                            {personas.map((persona) => (
+                              <button
+                                type="button"
+                                key={persona.id}
+                                data-testid={`ai-prompts-persona-${persona.name}`}
+                                onClick={() => setActivePersonaId(persona.id)}
+                                className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-accent"
+                              >
+                                <span
+                                  className="size-3 shrink-0 rounded-full"
+                                  style={{ background: personaGradient(persona.color) }}
+                                />
+                                <span className="min-w-0 flex-1 truncate text-xs font-medium">
+                                  {persona.name}
+                                </span>
+                                {activePersonaId === persona.id && (
+                                  <Check className="size-3.5 shrink-0 text-emerald-500" />
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </Popover>
+                    </span>
                   )}
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex min-w-0 items-center gap-1">
                   {configuredProviders.length > 0 && (
-                    <div data-tour="ai-provider-model">
+                    <div data-tour="ai-provider-model" className="min-w-0">
                       <ModelSelector
                         compact
-                        className="h-7 gap-1 px-2 text-xs font-medium text-foreground hover:text-foreground"
+                        className="h-7 min-w-0 shrink gap-1 px-2 text-xs font-medium text-foreground hover:text-foreground"
                         providerId={provider}
                         modelId={model}
                         groups={modelGroups}
                         onChange={(nextProvider, nextModel) =>
-                          void selectModel(nextProvider, nextModel)
+                          selectModel(nextProvider, nextModel)
                         }
                       />
                     </div>

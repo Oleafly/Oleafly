@@ -6,6 +6,41 @@ use crate::paths;
 use crate::secrets;
 
 #[derive(Serialize, Deserialize, Clone)]
+pub struct StoredModel {
+    pub id: String,
+    pub name: String,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    /// "builtin" | "fetched" | "custom"
+    #[serde(default)]
+    pub source: String,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct CustomProvider {
+    pub id: String,
+    pub name: String,
+    #[serde(rename = "baseURL", default)]
+    pub base_url: String,
+    #[serde(default)]
+    pub key_optional: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Persona {
+    pub id: String,
+    pub name: String,
+    #[serde(default)]
+    pub color: String,
+    #[serde(default)]
+    pub prompt: String,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+#[derive(Serialize, Deserialize, Clone)]
 pub struct AppConfig {
     #[serde(default)]
     pub github_token: String,
@@ -35,6 +70,13 @@ pub struct AppConfig {
     /// (`verify_pdf_pages`). Defaults to true; users can disable for privacy.
     #[serde(default = "default_ai_pdf_capture")]
     pub ai_pdf_capture: bool,
+    /// Provider id -> per-model enable/source state (seeded from the static catalog).
+    #[serde(default)]
+    pub ai_provider_models: std::collections::HashMap<String, Vec<StoredModel>>,
+    #[serde(default)]
+    pub ai_custom_providers: Vec<CustomProvider>,
+    #[serde(default)]
+    pub ai_personas: Vec<Persona>,
     /// MCP server: expose the in-app agent tools to external MCP clients
     /// (Claude Desktop, Claude Code, Cursor, ...). Off by default.
     #[serde(default)]
@@ -79,6 +121,9 @@ impl Default for AppConfig {
             ai_keys: HashMap::new(),
             ai_system_prompt: String::new(),
             ai_pdf_capture: true,
+            ai_provider_models: std::collections::HashMap::new(),
+            ai_custom_providers: Vec::new(),
+            ai_personas: Vec::new(),
             mcp_enabled: false,
             mcp_port: default_mcp_port(),
             mcp_read_only: false,

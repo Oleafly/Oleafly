@@ -4,12 +4,14 @@ Oleafly has a built-in AI assistant that can read and edit your files, compile y
 
 ## Connect a provider
 
-Open Settings → AI Assistant. There's a card for each supported provider. Paste your key and hit Save, and that provider becomes active.
+Open Settings → AI Assistant. The section has three tabs: **Providers and keys**, **Instructions**, and **Personas**. On the Providers tab there's a card for each supported provider. Paste your key and hit Save: the key is validated live against the provider (and the provider's current model list is fetched) before anything is stored. Connected providers show a green **Connected** badge and are immediately available in the chat's model dropdown.
 
 | Provider | Type | Notes |
 |---|---|---|
 | **OpenAI** | API key | GPT-4o, GPT-4.1, o3-mini |
 | **Anthropic** | API key | Claude Sonnet 4, 3.5 Sonnet/Haiku |
+| **Google Gemini** | API key | Gemini models via the native SDK |
+| **Perplexity** | API key | Sonar models with live web grounding |
 | **Groq** | API key | Very fast Llama inference |
 | **OpenRouter** | API key | One key → many labs' models |
 | **DeepSeek** | API key | V3 / R1 reasoner |
@@ -17,6 +19,9 @@ Open Settings → AI Assistant. There's a card for each supported provider. Past
 | **xAI (Grok)** | API key | Grok 2 |
 | **Z.AI (GLM)** | API key | GLM coding models |
 | **Ollama** | Local host | Runs on your machine, no key needed |
+| **Custom** | Base URL (+ optional key) | Any OpenAI-compatible endpoint, e.g. LM Studio |
+
+Each connected card expands into a model manager: toggle models on or off, add models by id, refresh the fetched list, delete with confirmation, and restore a provider's built-in models if you removed one.
 
 Each card links out to where you can grab a key. Keys stay local and are stored
 in an authenticated encrypted owner-only local store.
@@ -34,14 +39,17 @@ Each provider is a collapsible card, so the section stays tidy when you have sev
 
 ## Switching providers and models
 
-- The active provider is marked with a badge on the right of its card. Saving any provider's key makes it active.
-- Change the model from the dropdown on the active card.
-- If you have multiple keys, use **Activate** on any saved card to switch.
-- Click the trash icon on a card to delete that key. Deleting the active key disables AI access until you connect another.
+- Every connected provider's enabled models appear in the chat panel's model dropdown, grouped by provider with logos. Switching there applies to the current conversation only.
+- Your **default chat model** (used whenever you start a new chat) lives under Settings → AI Assistant → Instructions.
+- Click the trash icon on a card to delete that key. Deleting the key of your default provider disables AI access until you connect another.
+
+## Personas
+
+The Personas tab holds named, colored instruction presets: a copyeditor, a reviewer, a LaTeX purist. Switch personas per conversation from the bottom of the chat's **Prompts** menu; the active persona replaces your default custom instructions for that chat.
 
 ## Custom instructions
 
-Settings → AI Assistant has a **Custom instructions** field for your own system prompt: a house style, a preferred tone, conventions to follow. It is layered into the assistant's behaviour as your personal preferences. It is sandboxed, so it cannot override the assistant's safety rules or the available tools, and it cannot reveal the built-in prompt.
+Settings → AI Assistant → Instructions has a **Custom instructions** field for your own system prompt: a house style, a preferred tone, conventions to follow. It is layered into the assistant's behaviour as your personal preferences. It is sandboxed, so it cannot override the assistant's safety rules or the available tools, and it cannot reveal the built-in prompt.
 
 ## What it can do
 

@@ -292,8 +292,11 @@ export interface TemplateInfo {
 export const saveCustomTemplate = (
   slug: string,
   manifestJson: string,
-  files: { name: string; content: string }[]
+  files: { name: string; content: string; content_base64?: string }[]
 ) => invoke<void>("save_custom_template", { slug, manifestJson, files });
+
+export const deleteCustomTemplate = (slug: string) =>
+  invoke<void>("delete_custom_template", { slug });
 
 export const listTemplates = () => invoke<TemplateInfo[]>("list_templates");
 
@@ -473,6 +476,25 @@ export const searchDocs = (query: string) =>
 export const searchProject = (projectId: string, query: string) =>
   invoke<SearchHit[]>("search_project", { projectId, query });
 
+export interface StoredModel {
+  id: string;
+  name: string;
+  enabled: boolean;
+  source: "builtin" | "fetched" | "custom";
+}
+export interface CustomProvider {
+  id: string;
+  name: string;
+  baseURL: string;
+  keyOptional?: boolean;
+}
+export interface Persona {
+  id: string;
+  name: string;
+  color: string;
+  prompt: string;
+}
+
 export interface AppConfig {
   // Always empty when read via `get_config` - the token never leaves the
   // Rust core. Use `github_connected` for presence; set it via `ghSetToken`.
@@ -487,6 +509,10 @@ export interface AppConfig {
   // User-authored extra instructions, sandboxed into the AI system prompt.
   ai_system_prompt: string;
   ai_pdf_capture: boolean;
+  // provider id -> per-model enable/source state (seeded from the static catalog).
+  ai_provider_models: Record<string, StoredModel[]>;
+  ai_custom_providers: CustomProvider[];
+  ai_personas: Persona[];
   mcp_enabled: boolean;
   mcp_port: number;
   mcp_read_only: boolean;
