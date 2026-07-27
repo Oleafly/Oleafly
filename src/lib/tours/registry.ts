@@ -497,7 +497,7 @@ export const tourRegistry = {
         target: '[data-tour="diagram-composer"]',
         kind: "informational",
         title: "Diagram Composer",
-        content: "Build diagrams visually or from TikZ code. The tour does not modify, compile, or save your work.",
+        content: "Build diagrams visually or from TikZ code. The tour does not modify or save your work.",
         waitForTarget: true,
         placement: "center",
       },

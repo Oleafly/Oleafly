@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed the template-gallery tour step drawing its pointer arrow into empty
+  space when the window is wide enough that the tooltip sits beside the
+  dialog instead of above it.
+- Fixed the tour footer overflowing its tooltip on long tours (Diagram,
+  Settings): tours with many steps now show a compact progress bar instead
+  of one dot per step.
+- The Diagram tour's "Compiled preview" step now compiles the starter
+  drawing so the preview pane shows a real render instead of an empty
+  placeholder.
+
 ## [0.2.8] - 2026-07-26
 
 ### Added

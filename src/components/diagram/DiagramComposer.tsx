@@ -155,10 +155,9 @@ export function DiagramComposer() {
   const [scratchId, setScratchId] = useState<string | null>(null);
   const activeTourId = useTourStore((s) => s.activeTourId);
   const activeStepIndex = useTourStore((s) => s.activeStepIndex);
-  // The tour never compiles or changes the drawing (see the diagram-composer
-  // step's own copy), so its "Compiled preview" step has to show the real
-  // (empty) preview pane layout itself rather than point at UI that only
-  // appears after a real compile.
+  // The "Compiled preview" step opens the real preview pane and the core
+  // compiles the starter drawing once (isolated; never touches user files) so
+  // the step shows an actual preview instead of the empty placeholder.
   const forcePreviewOpen =
     activeTourId === "diagram" &&
     tourRegistry.diagram.steps[activeStepIndex]?.id === "diagram-preview";

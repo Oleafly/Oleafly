@@ -256,9 +256,9 @@ export function DiagramComposer({
   codeExtensions?: Extension[];
   isMac?: boolean;
   fullscreen?: boolean;
-  // Shows the (empty, pre-compile) preview pane layout without actually
-  // compiling anything. Lets an app-level caller (e.g. a product tour) point
-  // at the real preview affordance instead of describing UI that isn't there.
+  // Opens the preview pane and compiles the current drawing once so there is
+  // something in it. Lets an app-level caller (e.g. a product tour) point at
+  // a real compiled preview instead of describing UI that isn't there.
   forcePreviewOpen?: boolean;
   // App-supplied brand/back element, rendered in place of the default back
   // button + title so this matches the app's own project toolbar.
@@ -369,6 +369,16 @@ export function DiagramComposer({
       setHasCompiled(true);
     }
   }, [projectId, busy, code, model, mode, hasDrawing, scale, background, host, toast]);
+
+  // When a caller (the product tour) forces the preview pane open, compile the
+  // starter drawing once so the pane demonstrates a real preview instead of
+  // the empty "Compile to see a preview" placeholder. Compiles are isolated
+  // and never touch the user's document, so this is safe to do unprompted.
+  useEffect(() => {
+    if (!forcePreviewOpen || hasCompiled || busy) return;
+    void compile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [forcePreviewOpen]);
 
   const confirmOverwrite = useCallback(
     async (paths: string[]): Promise<boolean> => {
