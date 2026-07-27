@@ -1,171 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  Check,
-  ChevronDown,
-  ChevronRight,
-  ExternalLink,
-  Loader2,
-  RefreshCw,
-  Sparkles,
-  Trash2,
-} from "lucide-react";
-import { open } from "@tauri-apps/plugin-shell";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { getConfig, setConfig, type AppConfig } from "@/lib/tauri";
-import {
-  PROVIDERS,
-  defaultModel,
-  getProvider,
-} from "@/lib/ai-providers";
+import { getConfig, setConfig, type AppConfig, type CustomProvider, type StoredModel } from "@/lib/tauri";
+import { defaultModel, discoveryFor, fetchProviderModels, getProvider } from "@/lib/ai-providers";
+import { enabledModels, mergeFetchedModels, seedProviderModels } from "@/lib/ai-model-state";
 import { listOllamaModels, DEFAULT_OLLAMA_HOST } from "@/lib/ollama";
-import { AiToolsGrid } from "@/components/ai/AiToolsList";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useSettingsStore } from "@/store/settings";
 import { cn } from "@/lib/utils";
+import { ProvidersTab, type ProviderStatus } from "./ai/ProvidersTab";
+import { InstructionsTab } from "./ai/InstructionsTab";
+import { PersonasTab } from "./ai/PersonasTab";
+import { AddCustomProviderDialog, type AddCustomProviderInput } from "./ai/AddCustomProviderDialog";
 
-function OllamaSetup({
-  active,
-  host,
-  onHostChange,
-  status,
-  models,
-  onDetect,
-  selectedModel,
-  onUse,
-  onDisconnect,
-}: {
-  active: boolean;
-  host: string;
-  onHostChange: (v: string) => void;
-  status: "idle" | "loading" | "ok" | "down";
-  models: string[];
-  onDetect: () => void;
-  selectedModel: string;
-  onUse: (model: string) => void;
-  onDisconnect?: () => void;
-}) {
-  const [showHost, setShowHost] = useState(false);
-  const shown = host.trim() || DEFAULT_OLLAMA_HOST;
-  return (
-    <div className="mt-2 space-y-2">
-      <div className="flex items-center gap-2">
-        <Button
-          variant="secondary"
-          size="sm"
-          disabled={status === "loading"}
-          onClick={onDetect}
-        >
-          {status === "loading" ? (
-            <Loader2 className="size-3.5 animate-spin" />
-          ) : (
-            <RefreshCw className="size-3.5" />
-          )}
-          {status === "idle" ? "Check for Ollama" : "Re-check"}
-        </Button>
-        {status === "loading" ? (
-          <span className="text-[11px] text-muted-foreground">Checking…</span>
-        ) : status === "ok" ? (
-          <span className="text-[11px] text-emerald-600 dark:text-emerald-500">
-            Running · {models.length} model{models.length === 1 ? "" : "s"}
-          </span>
-        ) : status === "down" ? (
-          <span className="text-[11px] text-amber-600 dark:text-amber-500">
-            Not detected
-          </span>
-        ) : (
-          <span className="text-[11px] text-muted-foreground">Not checked yet</span>
-        )}
-      </div>
-
-      {status === "down" && (
-        <div className="space-y-1 rounded-md border border-dashed bg-background p-3 text-[11px] text-muted-foreground">
-          <p>
-            No Ollama responding at <code>{shown}</code>.
-          </p>
-          <p>
-            1. Install from{" "}
-            <button type="button"
-              onClick={() => void open("https://ollama.com/download")}
-              className="font-medium text-primary hover:underline"
-            >
-              ollama.com <ExternalLink className="inline size-3" />
-            </button>{" "}
-            · 2. It starts automatically (or run <code>ollama serve</code>) · 3. Pull a
-            model, e.g. <code>ollama pull llama3.2</code> · 4. Re-check.
-          </p>
-        </div>
-      )}
-
-      {status === "ok" && models.length === 0 && (
-        <p className="text-[11px] text-amber-600 dark:text-amber-500">
-          Ollama is running but no models are installed. Run{" "}
-          <code>ollama pull llama3.2</code>, then Re-check.
-        </p>
-      )}
-
-      {status === "ok" && models.length > 0 && (
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] text-muted-foreground">Model</span>
-          <Select
-            value={active && models.includes(selectedModel) ? selectedModel : ""}
-            onValueChange={onUse}
-          >
-            <SelectTrigger className="h-8 flex-1">
-              <SelectValue placeholder="Choose a model to use" />
-            </SelectTrigger>
-            <SelectContent className="z-[100]">
-              {models.map((id) => (
-                <SelectItem key={id} value={id}>
-                  {id}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {active && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-primary">
-              <Check className="size-3" /> Active
-            </span>
-          )}
-        </div>
-      )}
-
-      <div className="flex items-center gap-3">
-        <button type="button"
-          onClick={() => setShowHost((s) => !s)}
-          className="text-[11px] text-muted-foreground hover:text-foreground"
-        >
-          {showHost ? "Hide host" : "Change host (advanced)"}
-        </button>
-        {onDisconnect && (
-          <button type="button"
-            onClick={onDisconnect}
-            className="text-[11px] text-muted-foreground hover:text-destructive"
-          >
-            Disconnect
-          </button>
-        )}
-      </div>
-      {showHost && (
-        <Input
-          type="text"
-          value={host}
-          onChange={(e) => onHostChange(e.target.value)}
-          placeholder={DEFAULT_OLLAMA_HOST}
-          className="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-ring"
-        />
-      )}
-    </div>
-  );
-}
-
+type AITab = "providers" | "instructions" | "personas";
 
 const DEFAULT_CFG: AppConfig = {
   github_token: "",
@@ -177,6 +23,9 @@ const DEFAULT_CFG: AppConfig = {
   ai_keys: {},
   ai_system_prompt: "",
   ai_pdf_capture: true,
+  ai_provider_models: {},
+  ai_custom_providers: [],
+  ai_personas: [],
   mcp_enabled: false,
   mcp_port: 5323,
   mcp_read_only: false,
@@ -184,21 +33,32 @@ const DEFAULT_CFG: AppConfig = {
 };
 
 export function AISection() {
+  const [tab, setTab] = useState<AITab>("providers");
   const [cfg, setCfg] = useState<AppConfig>(DEFAULT_CFG);
   const [keys, setKeys] = useState<Record<string, string>>({});
   // Snapshot of persisted keys, used to detect unsaved edits (dirty check below).
   const [savedKeys, setSavedKeys] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
+  const [status, setStatus] = useState<Record<string, ProviderStatus>>({});
+  const [errorMsg, setErrorMsg] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const [toolsOpen, setToolsOpen] = useState(true);
   const [sysPrompt, setSysPrompt] = useState("");
   const [sysPromptSaved, setSysPromptSaved] = useState(false);
   // Unset falls back to "open if active", so the in-use provider stays expanded.
   const [openProviders, setOpenProviders] = useState<Record<string, boolean>>({});
+  const [customDialogOpen, setCustomDialogOpen] = useState(false);
   const [ollama, setOllama] = useState<{
     status: "idle" | "loading" | "ok" | "down";
     models: string[];
   }>({ status: "idle", models: [] });
+
+  const scrollTarget = useSettingsStore((s) => s.settingsScrollTarget);
+  const setScrollTarget = useSettingsStore((s) => s.setSettingsScrollTarget);
+  useEffect(() => {
+    if (scrollTarget !== "ai-personas") return;
+    setTab("personas");
+    setScrollTarget(null);
+  }, [scrollTarget, setScrollTarget]);
 
   useEffect(() => {
     void getConfig().then((c) => {
@@ -221,8 +81,6 @@ export function AISection() {
     });
   }, []);
 
-  const activeProvider = cfg.ai_provider;
-
   const refreshOllama = useCallback(async (host: string) => {
     setOllama((o) => ({ ...o, status: "loading" }));
     try {
@@ -239,6 +97,13 @@ export function AISection() {
   useEffect(() => {
     void refreshOllama(savedOllamaHost || DEFAULT_OLLAMA_HOST);
   }, [savedOllamaHost, refreshOllama]);
+
+  const persist = async (next: AppConfig) => {
+    await setConfig(next);
+    setCfg(next);
+    // Notifies listeners outside this component tree, e.g. the chat panel.
+    window.dispatchEvent(new CustomEvent("oleafly:ai-config-changed", { detail: next }));
+  };
 
   // Saves the host and activates the model in one step; no separate "Save" button for Ollama.
   const applyOllamaModel = async (model: string) => {
@@ -263,34 +128,133 @@ export function AISection() {
     }
   };
 
-  const persist = async (next: AppConfig) => {
-    await setConfig(next);
-    setCfg(next);
-    // Notifies listeners outside this component tree, e.g. the chat panel.
-    window.dispatchEvent(new CustomEvent("oleafly:ai-config-changed", { detail: next }));
-  };
-
-  const saveProvider = async (id: string) => {
+  // Pastes are validated by fetching the provider's live model list before
+  // the key is trusted; an unreachable or rejected key never gets persisted.
+  // Custom providers are the exception: most third-party bases are
+  // OpenAI-compatible, so discovery is attempted with that shape, but a
+  // failure there only skips auto-discovered models - the key still saves
+  // and the user can add models manually via ModelManager.
+  const validateAndSave = async (id: string) => {
     const value = (keys[id] ?? "").trim();
     if (!value) return;
     setSaving(id);
     setMsg(null);
+    setStatus((s) => ({ ...s, [id]: "validating" }));
+    setErrorMsg((m) => ({ ...m, [id]: "" }));
     try {
+      const custom = cfg.ai_custom_providers.find((c) => c.id === id);
+      const provider = getProvider(id);
+      const baseURL = custom?.baseURL ?? provider?.baseURL;
+      const discovery = custom ? { kind: "openai" as const, modelsPath: "/models" } : discoveryFor(id);
+      const res = await fetchProviderModels({
+        providerId: id,
+        baseURL,
+        key: value,
+        discovery,
+        seed: provider?.models ?? [],
+      });
+      if (!res.ok && !custom) {
+        setStatus((s) => ({ ...s, [id]: "error" }));
+        setErrorMsg((m) => ({
+          ...m,
+          [id]: res.reason === "invalid-key" ? "Invalid API key." : "Could not reach the provider.",
+        }));
+        return;
+      }
       const nextKeys = { ...keys, [id]: value };
-      const sameProvider = cfg.ai_provider === id;
+      const existingModels = cfg.ai_provider_models[id] ?? seedProviderModels(id);
+      const mergedModels = res.ok ? mergeFetchedModels(existingModels, res.models) : existingModels;
+      const wasActive = Boolean(cfg.ai_provider);
       const next: AppConfig = {
         ...cfg,
         ai_keys: nextKeys,
-        ai_provider: id,
-        ai_model: sameProvider ? cfg.ai_model : defaultModel(id),
+        ai_provider_models: { ...cfg.ai_provider_models, [id]: mergedModels },
+        ai_provider: cfg.ai_provider || id,
+        ai_model: wasActive ? cfg.ai_model : defaultModel(id),
       };
       await persist(next);
       setKeys(nextKeys);
       setSavedKeys(nextKeys);
+      setStatus((s) => ({ ...s, [id]: "valid" }));
       setMsg({
         ok: true,
-        text: `${getProvider(id)?.name ?? id} connected and now active.`,
+        text:
+          custom && !res.ok
+            ? `${custom.name} key saved. Add models manually below.`
+            : `${provider?.name ?? custom?.name ?? id} connected.`,
       });
+    } catch (e) {
+      setStatus((s) => ({ ...s, [id]: "error" }));
+      setErrorMsg((m) => ({ ...m, [id]: String(e) }));
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  // Adds a user-defined OpenAI-compatible provider. Discovery is attempted
+  // but never blocks the save - a custom base that doesn't expose /models
+  // just starts with an empty model list for manual entry.
+  const addCustomProvider = async (
+    input: AddCustomProviderInput
+  ): Promise<{ ok: boolean; message?: string }> => {
+    const { id, name, apiKey } = input;
+    const baseURL = input.baseURL.replace(/\/+$/, "");
+    if (getProvider(id) || cfg.ai_custom_providers.some((c) => c.id === id)) {
+      return { ok: false, message: "That provider ID is already in use." };
+    }
+    let models: StoredModel[] = [];
+    const res = await fetchProviderModels({
+      providerId: id,
+      baseURL,
+      key: apiKey,
+      discovery: { kind: "openai", modelsPath: "/models" },
+      seed: [],
+    });
+    if (res.ok) {
+      models = res.models.map((m) => ({ id: m.id, name: m.name, enabled: true, source: "fetched" as const }));
+    }
+    const customProvider: CustomProvider = { id, name, baseURL, keyOptional: !apiKey };
+    const nextKeys = apiKey ? { ...cfg.ai_keys, [id]: apiKey } : cfg.ai_keys;
+    const next: AppConfig = {
+      ...cfg,
+      ai_custom_providers: [...cfg.ai_custom_providers, customProvider],
+      ai_provider_models: { ...cfg.ai_provider_models, [id]: models },
+      ai_keys: nextKeys,
+    };
+    try {
+      await persist(next);
+      if (apiKey) {
+        setKeys((k) => ({ ...k, [id]: apiKey }));
+        setSavedKeys((k) => ({ ...k, [id]: apiKey }));
+      }
+      setOpenProviders((m) => ({ ...m, [id]: true }));
+      setMsg({ ok: true, text: `${name} added.` });
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, message: String(e) };
+    }
+  };
+
+  const deleteCustomProvider = async (id: string) => {
+    setSaving(id);
+    setMsg(null);
+    try {
+      const nextKeys = { ...keys };
+      delete nextKeys[id];
+      const nextModels = { ...cfg.ai_provider_models };
+      delete nextModels[id];
+      const wasActive = cfg.ai_provider === id;
+      const next: AppConfig = {
+        ...cfg,
+        ai_custom_providers: cfg.ai_custom_providers.filter((c) => c.id !== id),
+        ai_provider_models: nextModels,
+        ai_keys: nextKeys,
+        ai_provider: wasActive ? "" : cfg.ai_provider,
+        ai_model: wasActive ? "" : cfg.ai_model,
+      };
+      await persist(next);
+      setKeys(nextKeys);
+      setSavedKeys(nextKeys);
     } catch (e) {
       setMsg({ ok: false, text: String(e) });
     } finally {
@@ -298,16 +262,24 @@ export function AISection() {
     }
   };
 
-  const activate = async (id: string) => {
-    if (cfg.ai_provider === id) return;
-    setSaving(id);
-    setMsg(null);
+  // Persists a model-manager edit (add, enable, disable, delete) for one
+  // provider; if the change drops the currently active model, fall back to
+  // the first remaining enabled model instead of leaving a dangling id.
+  const persistModels = async (id: string, next: StoredModel[]) => {
+    let nextConfig: AppConfig = {
+      ...cfg,
+      ai_provider_models: { ...cfg.ai_provider_models, [id]: next },
+    };
+    if (cfg.ai_provider === id) {
+      const stillEnabled = enabledModels(next).some((m) => m.id === cfg.ai_model);
+      if (!stillEnabled) {
+        nextConfig = { ...nextConfig, ai_model: enabledModels(next)[0]?.id ?? "" };
+      }
+    }
     try {
-      await persist({ ...cfg, ai_provider: id, ai_model: defaultModel(id) });
+      await persist(nextConfig);
     } catch (e) {
       setMsg({ ok: false, text: String(e) });
-    } finally {
-      setSaving(null);
     }
   };
 
@@ -362,211 +334,74 @@ export function AISection() {
 
   return (
     <div className="space-y-4 text-sm">
-
-      <p className="text-xs text-muted-foreground">
-        Connect any providers you use below. Keys are stored locally only. Saving one sets it as the
-        default; switch between configured providers and models anytime from the dropdown in the chat
-        panel.
-      </p>
-
-      <div className="space-y-2.5">
-        {PROVIDERS.map((p) => {
-          const value = keys[p.id] ?? "";
-          const saved = savedKeys[p.id] ?? "";
-          const dirty = value.trim().length > 0 && value !== saved;
-          const hasSaved = saved.length > 0;
-          const isSelected = activeProvider === p.id;
-          const isActive = isSelected && hasSaved;
-          // Settings never recommends or expands a provider implicitly. The
-          // user chooses which card to inspect, including the active provider.
-          const isOpen = openProviders[p.id] ?? false;
-          return (
-            <div
-              key={p.id}
-              data-testid={`ai-provider-card-${p.id}`}
-              className="rounded-lg border bg-card transition-colors"
-            >
-              <div className="flex items-start gap-2 p-3">
-                <button
-                  type="button"
-                  onClick={() => setOpenProviders((m) => ({ ...m, [p.id]: !isOpen }))}
-                  aria-expanded={isOpen}
-                  className="flex min-w-0 flex-1 items-start gap-2 text-left"
-                >
-                  {isOpen ? (
-                    <ChevronDown className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                  ) : (
-                    <ChevronRight className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <span className="font-medium">{p.name}</span>
-                    {isOpen && <p className="mt-0.5 text-xs text-muted-foreground">{p.blurb}</p>}
-                  </div>
-                </button>
-                {isActive ? (
-                  <span className="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
-                    <Check className="size-3" /> Active
-                  </span>
-                ) : hasSaved ? (
-                  <span className="mt-0.5 inline-flex shrink-0 items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                    Connected
-                  </span>
-                ) : null}
-                {p.signupUrl && isOpen && (
-                  <button type="button"
-                    onClick={() => {
-                      if (p.signupUrl) void open(p.signupUrl);
-                    }}
-                    className="flex shrink-0 items-center gap-1 text-[11px] text-primary hover:underline dark:text-primary"
-                  >
-                    {p.isHost ? "Docs" : "Get key"} <ExternalLink className="size-3" />
-                  </button>
-                )}
-              </div>
-
-              {!isOpen ? null : p.id === "ollama" ? (
-                <div className="px-3 pb-3">
-                  <OllamaSetup
-                    active={isActive}
-                    host={value}
-                    onHostChange={(v) => setKeys((k) => ({ ...k, ollama: v }))}
-                    status={ollama.status}
-                    models={ollama.models}
-                    onDetect={() => void refreshOllama(value || DEFAULT_OLLAMA_HOST)}
-                    selectedModel={cfg.ai_model || ""}
-                    onUse={(m) => void applyOllamaModel(m)}
-                    onDisconnect={hasSaved ? () => void deleteKey("ollama") : undefined}
-                  />
-                </div>
-              ) : (
-                <div className="px-3 pb-3">
-                  {isSelected && (
-                    <div className="mt-2 flex items-center gap-2">
-                      <span className="text-[11px] text-muted-foreground">Model</span>
-                      <Select
-                        value={cfg.ai_model || defaultModel(p.id)}
-                        onValueChange={(v) => void changeModel(v)}
-                      >
-                        <SelectTrigger className="h-8 flex-1">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="z-[100]">
-                          {p.models.map((m) => (
-                            <SelectItem key={m.id} value={m.id}>
-                              {m.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                  <div className="mt-2 flex gap-2">
-                    <Input
-                      type="password"
-                      value={value}
-                      onChange={(e) => setKeys((k) => ({ ...k, [p.id]: e.target.value }))}
-                      placeholder="Paste your API key here"
-                      className="flex-1 rounded-md border border-input bg-background px-3 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-ring"
-                    />
-                    {dirty ? (
-                      <Button
-                        size="sm"
-                        data-testid={`ai-provider-save-${p.id}`}
-                        disabled={saving === p.id}
-                        onClick={() => void saveProvider(p.id)}
-                      >
-                        {saving === p.id ? (
-                          <Loader2 className="size-3.5 animate-spin" />
-                        ) : null}
-                        Save
-                      </Button>
-                    ) : hasSaved && !isActive ? (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        disabled={saving === p.id}
-                        onClick={() => void activate(p.id)}
-                      >
-                        Activate
-                      </Button>
-                    ) : null}
-                    {hasSaved && (
-                      <button type="button"
-                        data-testid={`ai-provider-delete-${p.id}`}
-                        aria-label={`Delete ${p.name} key`}
-                        title="Delete key"
-                        disabled={saving === p.id}
-                        onClick={() => void deleteKey(p.id)}
-                        className="flex size-8 shrink-0 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="space-y-2 border-t pt-4">
-        <p className="font-medium">Custom instructions</p>
-        <p className="text-xs text-muted-foreground">
-          Added to every AI request as your personal style and preferences. The
-          assistant follows these on top of its built-in behavior. They can't
-          override its tools or safety rules.
-        </p>
-        <Textarea
-          value={sysPrompt}
-          onChange={(e) => setSysPrompt(e.target.value)}
-          rows={5}
-          placeholder="e.g. Always write in British English. Keep explanations short. Prefer the enumitem package for lists."
-          className="w-full resize-y rounded-md border bg-background px-2.5 py-2 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-ring"
-        />
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => void saveSystemPrompt()}
-            disabled={sysPrompt === (cfg.ai_system_prompt || "")}
-            className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-40"
+      <Tabs value={tab} onValueChange={(v) => setTab(v as AITab)} className="space-y-4">
+        <TabsList data-tour="ai-settings-tabs">
+          <TabsTrigger value="providers" data-testid="ai-settings-tab-providers">
+            Providers and keys
+          </TabsTrigger>
+          <TabsTrigger
+            value="instructions"
+            data-testid="ai-settings-tab-instructions"
+            data-tour="ai-settings-tab-instructions"
           >
-            Save instructions
-          </button>
-          {sysPromptSaved && (
-            <span className="text-xs text-emerald-600 dark:text-emerald-400">Saved</span>
-          )}
-        </div>
-      </div>
+            Instructions
+          </TabsTrigger>
+          <TabsTrigger
+            value="personas"
+            data-testid="ai-settings-tab-personas"
+            data-tour="ai-settings-tab-personas"
+          >
+            Personas
+          </TabsTrigger>
+        </TabsList>
 
-      <div className="space-y-2 border-t pt-4">
-        <p className="font-medium">Agent capabilities</p>
-        <label htmlFor="ai-pdf-capture" className="flex cursor-pointer items-start gap-2.5 text-xs">
-          <Checkbox
-            id="ai-pdf-capture"
-            className="mt-0.5"
-            checked={cfg.ai_pdf_capture !== false}
-            onCheckedChange={(checked) => {
-              const on = checked === true;
-              const next = { ...cfg, ai_pdf_capture: on };
-              setCfg(next);
-              try {
-                localStorage.setItem("oleafly:ai_pdf_capture", on ? "1" : "0");
-              } catch {
-                /* ignore */
-              }
-              void setConfig(next).catch((err) => setMsg({ ok: false, text: String(err) }));
-            }}
+        <TabsContent value="providers">
+          <ProvidersTab
+            cfg={cfg}
+            keys={keys}
+            savedKeys={savedKeys}
+            saving={saving}
+            openProviders={openProviders}
+            setOpenProviders={setOpenProviders}
+            setKeys={setKeys}
+            ollama={ollama}
+            refreshOllama={refreshOllama}
+            applyOllamaModel={applyOllamaModel}
+            validateAndSave={validateAndSave}
+            status={status}
+            errorMsg={errorMsg}
+            changeModel={changeModel}
+            deleteKey={deleteKey}
+            persistModels={persistModels}
+            onAddCustomProvider={() => setCustomDialogOpen(true)}
+            deleteCustomProvider={deleteCustomProvider}
           />
-          <span>
-            <span className="font-medium text-foreground">Allow PDF page capture for AI</span>
-            <span className="mt-0.5 block text-muted-foreground">
-              Lets the agent rasterize compiled pages (verify_pdf_pages) for vision layout checks.
-              Disable if you prefer not to send page images to your provider.
-            </span>
-          </span>
-        </label>
-      </div>
+        </TabsContent>
+
+        <TabsContent value="instructions">
+          <InstructionsTab
+            cfg={cfg}
+            setCfg={setCfg}
+            savedKeys={savedKeys}
+            persist={persist}
+            sysPrompt={sysPrompt}
+            setSysPrompt={setSysPrompt}
+            sysPromptSaved={sysPromptSaved}
+            saveSystemPrompt={saveSystemPrompt}
+            setMsg={setMsg}
+          />
+        </TabsContent>
+
+        <TabsContent value="personas">
+          <PersonasTab cfg={cfg} persist={persist} setMsg={setMsg} />
+        </TabsContent>
+      </Tabs>
+
+      <AddCustomProviderDialog
+        open={customDialogOpen}
+        onOpenChange={setCustomDialogOpen}
+        onSubmit={addCustomProvider}
+      />
 
       {msg && (
         <div
@@ -580,31 +415,6 @@ export function AISection() {
           {msg.text}
         </div>
       )}
-
-      <div className="overflow-hidden rounded-lg border bg-card">
-        <button type="button"
-          onClick={() => setToolsOpen((v) => !v)}
-          className="flex w-full items-center gap-1.5 p-3 text-left text-xs font-semibold hover:bg-accent/40"
-          aria-expanded={toolsOpen}
-        >
-          <Sparkles className="size-3.5 text-primary" />
-          The assistant currently supports these tools
-          {toolsOpen ? (
-            <ChevronDown className="ml-auto size-3.5 text-muted-foreground" />
-          ) : (
-            <ChevronRight className="ml-auto size-3.5 text-muted-foreground" />
-          )}
-        </button>
-        {toolsOpen && (
-          <div className="border-t px-3 pb-3 pt-2">
-            <p className="mb-2 text-[11px] text-muted-foreground">
-              Ask it things like "fix the LaTeX errors", "add a Publications section", or "recompile
-              and check the PDF".
-            </p>
-            <AiToolsGrid columns={2} />
-          </div>
-        )}
-      </div>
     </div>
   );
 }

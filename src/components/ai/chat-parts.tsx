@@ -197,7 +197,7 @@ export function ReasoningBlock({
   durationMs?: number;
 }) {
   const [userToggled, setUserToggled] = useState<boolean | null>(null);
-  const open = userToggled ?? !!active;
+  const open = userToggled ?? false;
   const scrollRef = useRef<HTMLPreElement | null>(null);
 
   useEffect(() => {

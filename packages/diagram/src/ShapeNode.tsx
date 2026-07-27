@@ -117,7 +117,10 @@ export function ShapeNode({ id, data, selected }: NodeProps) {
     boxSizing: "border-box",
     fontSize: d.fontSize ? `${d.fontSize}pt` : "10pt",
     fontFamily,
-    color: d.textColor || "inherit",
+    color:
+      d.shape === "text" && !d.fill && (!d.textColor || d.textColor === "#0f172a")
+        ? "inherit"
+        : d.textColor || "inherit",
     background: polygon ? "transparent" : d.fill || "transparent",
     border:
       polygon || !hasBorder

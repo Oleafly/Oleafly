@@ -1,6 +1,7 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createAnthropic } from "@ai-sdk/anthropic";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 
 export interface AIModel {
   id: string;
@@ -40,6 +41,17 @@ export const PROVIDERS: AIProvider[] = [
       { id: "claude-sonnet-4-20250514", name: "Claude Sonnet 4" },
       { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet" },
       { id: "claude-3-5-haiku-20241022", name: "Claude 3.5 Haiku" },
+    ],
+  },
+  {
+    id: "google",
+    name: "Google Gemini",
+    blurb: "Gemini models from Google AI Studio.",
+    signupUrl: "https://aistudio.google.com/app/api-keys",
+    models: [
+      { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro" },
+      { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash" },
+      { id: "gemini-2.0-flash", name: "Gemini 2.0 Flash" },
     ],
   },
   {
@@ -115,6 +127,18 @@ export const PROVIDERS: AIProvider[] = [
     ],
   },
   {
+    id: "perplexity",
+    name: "Perplexity",
+    blurb: "Sonar models with live web grounding.",
+    signupUrl: "https://www.perplexity.ai/settings/api",
+    baseURL: "https://api.perplexity.ai",
+    models: [
+      { id: "sonar", name: "Sonar" },
+      { id: "sonar-pro", name: "Sonar Pro" },
+      { id: "sonar-reasoning", name: "Sonar Reasoning" },
+    ],
+  },
+  {
     id: "ollama",
     name: "Ollama (local)",
     blurb: "Runs models on your machine. No key needed - install Ollama and pull a model.",
@@ -149,7 +173,12 @@ export function credentialMeta(providerId: string): { label: string; placeholder
   return { label: "API key", placeholder: "sk-…" };
 }
 
-export function buildModel(provider: string, model: string, credential: string) {
+export function buildModel(
+  provider: string,
+  model: string,
+  credential: string,
+  baseURLOverride?: string
+) {
   if (provider === "anthropic") {
     return createAnthropic({ apiKey: credential })(model);
   }
@@ -170,6 +199,19 @@ export function buildModel(provider: string, model: string, credential: string) 
       apiKey: credential,
     }).chatModel(model);
   }
+  if (provider === "google") {
+    return createGoogleGenerativeAI({ apiKey: credential })(model);
+  }
+  // Anything not in the static catalog is a user-defined custom provider.
+  // Most self-hosted / third-party bases are OpenAI-compatible, so route
+  // those through the same reasoning-aware provider used above.
+  if (!PROVIDER_BY_ID[provider] && baseURLOverride) {
+    return createOpenAICompatible({
+      name: provider,
+      baseURL: baseURLOverride,
+      apiKey: credential,
+    }).chatModel(model);
+  }
   const baseURL = getProvider(provider)?.baseURL;
   return createOpenAI({
     apiKey: credential,
@@ -177,11 +219,30 @@ export function buildModel(provider: string, model: string, credential: string) 
   }).chat(model);
 }
 
+export interface CustomProviderLike {
+  id: string;
+  name: string;
+  baseURL: string;
+  keyOptional?: boolean;
+}
+
+export function mergeCustomProviders(customs: CustomProviderLike[]): AIProvider[] {
+  const extra: AIProvider[] = customs.map((c) => ({
+    id: c.id,
+    name: c.name,
+    blurb: "Custom provider.",
+    baseURL: c.baseURL,
+    models: [],
+  }));
+  return [...PROVIDERS, ...extra];
+}
+
 export interface AIConfigLike {
   ai_provider?: string;
   ai_model?: string;
   ai_api_key?: string;
   ai_keys?: Record<string, string>;
+  ai_custom_providers?: CustomProviderLike[];
 }
 
 export function pickActiveProvider(cfg: AIConfigLike): {
@@ -192,8 +253,17 @@ export function pickActiveProvider(cfg: AIConfigLike): {
   const saved = cfg.ai_provider || "openai";
   const keys = { ...(cfg.ai_keys ?? {}) };
   if (cfg.ai_api_key && !keys[saved]) keys[saved] = cfg.ai_api_key;
-  const configured = Object.keys(keys).filter((k) => (keys[k] ?? "").trim());
-  const providerId = (keys[saved] ?? "").trim() ? saved : configured[0] ?? saved;
+  // A custom provider with keyOptional is "configured" just by existing, even
+  // before any key/host value has been typed (e.g. an unauthenticated local
+  // server).
+  const keyOptionalIds = (cfg.ai_custom_providers ?? [])
+    .filter((c) => c.keyOptional)
+    .map((c) => c.id);
+  const configured = [...new Set([...Object.keys(keys), ...keyOptionalIds])].filter(
+    (k) => (keys[k] ?? "").trim() || keyOptionalIds.includes(k)
+  );
+  const providerId =
+    (keys[saved] ?? "").trim() || keyOptionalIds.includes(saved) ? saved : configured[0] ?? saved;
   const credential = keys[providerId] ?? "";
   const modelId =
     providerId === saved && cfg.ai_model ? cfg.ai_model : defaultModel(providerId);
@@ -201,7 +271,9 @@ export function pickActiveProvider(cfg: AIConfigLike): {
 }
 
 export function hasConfiguredProvider(cfg: AIConfigLike): boolean {
-  return pickActiveProvider(cfg).credential.trim().length > 0;
+  const { providerId, credential } = pickActiveProvider(cfg);
+  if (credential.trim().length > 0) return true;
+  return Boolean(cfg.ai_custom_providers?.find((c) => c.id === providerId)?.keyOptional);
 }
 
 export function resolveActiveModel(cfg: AIConfigLike): {
@@ -213,5 +285,11 @@ export function resolveActiveModel(cfg: AIConfigLike): {
   const { providerId, modelId, credential } = pickActiveProvider(cfg);
   const label =
     getProvider(providerId)?.models.find((m) => m.id === modelId)?.name ?? modelId;
-  return { model: buildModel(providerId, modelId, credential), providerId, modelId, label };
+  const customBaseURL = cfg.ai_custom_providers?.find((c) => c.id === providerId)?.baseURL;
+  return {
+    model: buildModel(providerId, modelId, credential, customBaseURL),
+    providerId,
+    modelId,
+    label,
+  };
 }

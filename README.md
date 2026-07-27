@@ -38,7 +38,8 @@ the source above with media/workspace-tour.webp.
 > [!NOTE]
 > Oleafly is ready for day-to-day documents, but the project is still moving
 > quickly. Advanced package compatibility and a few platform integrations are
-> still being hardened. Current installers are not code-signed, so follow the
+> still being hardened. macOS builds are signed and notarized; Windows builds
+> are not signed yet, so see the
 > [first-launch instructions](docs/install.md#first-launch) and download only
 > from the official releases page.
 

@@ -9,10 +9,14 @@ import {
   type Step,
   type TooltipRenderProps,
 } from "react-joyride";
+import { ArrowLeft, Check } from "lucide-react";
 import { modalCoordinator } from "@oleafly/templates/modal-coordinator";
 import { LeafLogo } from "@/components/layout/LeafLogo";
 import { Button } from "@/components/ui/button";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { Kbd } from "@/components/ui/kbd";
 import { Tooltip } from "@/components/ui/tooltip";
+import { celebrate } from "@/lib/confetti";
 import { START_TOUR_EVENT } from "@/lib/tour";
 import { evaluateTour, missingTargetFallback } from "@/lib/tours/coordinator";
 import {
@@ -20,15 +24,33 @@ import {
   type TourContext,
   type TourStepDefinition,
 } from "@/lib/tours/registry";
+import { modKey, shortcut } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
-import { useSettingsStore } from "@/store/settings";
+import { ACCENTS, useSettingsStore } from "@/store/settings";
 import { useTourStore } from "@/store/tours";
 
 // react-joyride's control-button props carry a native `title`, which renders
 // the browser's plain system tooltip; drop it and show our own Tooltip instead.
 function omitTitle<T extends { title: string }>({ title: _title, ...rest }: T) {
   return rest;
+}
+
+let requestQuitConfirm: (() => void) | null = null;
+
+const KBD_CHIP = "h-4 min-w-4 px-1 text-[10px]";
+
+function ChordHint({ variant, back }: { variant?: "primary"; back?: boolean }) {
+  const chipClass =
+    variant === "primary"
+      ? `${KBD_CHIP} bg-primary-foreground/20 text-primary-foreground`
+      : KBD_CHIP;
+  return (
+    <span className="inline-flex items-center gap-1">
+      <Kbd className={chipClass}>{modKey}</Kbd>
+      <Kbd className={chipClass}>{back ? "←" : "→"}</Kbd>
+    </span>
+  );
 }
 
 function TourTooltip(props: TooltipRenderProps) {
@@ -43,7 +65,8 @@ function TourTooltip(props: TooltipRenderProps) {
     step,
     tooltipProps,
   } = props;
-  const definition = step.data as TourStepDefinition;
+  const definition = step.data as TourStepDefinition & { tourLabel?: string };
+  const tourLabel = definition.tourLabel;
   const requiredClick = definition.kind === "required-click";
   const inputReady =
     definition.kind !== "required-input" ||
@@ -54,7 +77,7 @@ function TourTooltip(props: TooltipRenderProps) {
     <div
       {...tooltipProps}
       data-tour-tooltip={definition.id}
-      className="w-[min(21rem,calc(100vw-2rem))] rounded-lg border bg-popover p-4 text-popover-foreground shadow-xl"
+      className="w-[min(24rem,calc(100vw-2rem))] rounded-lg border bg-popover p-4 text-popover-foreground shadow-xl animate-in fade-in zoom-in-95 duration-200 motion-reduce:animate-none"
     >
       {isWelcome ? (
         <svg
@@ -85,13 +108,13 @@ function TourTooltip(props: TooltipRenderProps) {
       {definition.id === "home-gallery" ? (
         <svg
           aria-hidden
-          className="pointer-events-none absolute left-[62%] top-[calc(100%+8px)] h-32 w-44 overflow-visible text-primary"
-          viewBox="0 0 176 128"
+          className="pointer-events-none absolute left-1/2 top-[calc(100%+8px)] h-24 w-12 -translate-x-1/2 overflow-visible text-primary"
+          viewBox="0 0 48 96"
           preserveAspectRatio="none"
         >
           <title>Hand-drawn arrow pointing to the template gallery</title>
           <path
-            d="M8 4 C48 18, 27 64, 78 77 C111 86, 128 103, 157 113"
+            d="M24 4 C26 28, 22 58, 24 86"
             fill="none"
             stroke="currentColor"
             strokeWidth="4"
@@ -99,7 +122,7 @@ function TourTooltip(props: TooltipRenderProps) {
             strokeLinejoin="round"
           />
           <path
-            d="M137 96 L159 114 L132 120 M139 99 L157 113"
+            d="M12 72 L24 88 L36 70"
             fill="none"
             stroke="currentColor"
             strokeWidth="4"
@@ -136,31 +159,66 @@ function TourTooltip(props: TooltipRenderProps) {
       ) : null}
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
-          {step.title ? <h2 className="text-sm font-semibold">{step.title}</h2> : null}
+          <span className="block text-[10px] font-semibold uppercase tracking-widest text-primary">
+            Step {index + 1}
+            {tourLabel ? ` · ${tourLabel}` : ""}
+          </span>
+          {step.title ? <h2 className="mt-1 text-sm font-semibold">{step.title}</h2> : null}
           <div className="mt-1 text-xs leading-relaxed text-muted-foreground">{step.content}</div>
         </div>
       </div>
       <div className="mt-4 flex items-center gap-2">
-        <span className="text-[11px] tabular-nums text-muted-foreground">
-          {index + 1} / {size}
-        </span>
-        <Tooltip label={skipProps.title} className="ml-1">
-          <Button {...omitTitle(skipProps)} variant="ghost" size="sm">
-            Skip
-          </Button>
-        </Tooltip>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5">
+          <span className="sr-only">{`Step ${index + 1} of ${size}`}</span>
+          {Array.from({ length: size }, (_, dot) => (
+            <span
+              key={String(dot)}
+              className={
+                dot === index
+                  ? "h-1.5 w-5 rounded-full bg-primary transition-all duration-300 ease-out"
+                  : "size-1.5 rounded-full bg-muted-foreground/30 transition-all duration-300 ease-out"
+              }
+            />
+          ))}
+        </div>
+        <div className="ml-auto flex items-center gap-1.5">
+          <Tooltip label={skipProps.title}>
+            <Button
+              {...omitTitle(skipProps)}
+              onClick={(event) => {
+                event.preventDefault();
+                requestQuitConfirm?.();
+              }}
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground"
+            >
+              Skip
+              <Kbd className={KBD_CHIP}>esc</Kbd>
+            </Button>
+          </Tooltip>
           {index > 0 ? (
-            <Tooltip label={backProps.title}>
-              <Button {...omitTitle(backProps)} variant="ghost" size="sm">
-                Back
+            <Tooltip label={`${backProps.title} (${shortcut("⌘←")})`}>
+              <Button
+                {...omitTitle(backProps)}
+                variant="secondary"
+                size="icon"
+                className="size-8 rounded-full text-muted-foreground hover:text-foreground"
+              >
+                <ArrowLeft className="size-3.5" />
               </Button>
             </Tooltip>
           ) : null}
           {continuous && !requiredClick ? (
             <Tooltip label={primaryProps.title}>
-              <Button {...omitTitle(primaryProps)} disabled={!inputReady} size="sm">
+              <Button
+                {...omitTitle(primaryProps)}
+                disabled={!inputReady}
+                size="sm"
+                className="rounded-full px-3"
+              >
                 {isLastStep ? "Done" : "Next"}
+                <ChordHint variant="primary" />
               </Button>
             </Tooltip>
           ) : null}
@@ -251,7 +309,7 @@ function SeamlessArrow({ base, placement, size }: ArrowRenderProps) {
   );
 }
 
-export function toJoyrideStep(step: TourStepDefinition): Step {
+export function toJoyrideStep(step: TourStepDefinition, tourLabel?: string): Step {
   return {
     id: step.id,
     target: step.target,
@@ -259,7 +317,7 @@ export function toJoyrideStep(step: TourStepDefinition): Step {
     content: step.content,
     placement: step.placement ?? "bottom",
     spotlightTarget: step.spotlightTarget,
-    data: step,
+    data: { ...step, tourLabel },
     blockTargetInteraction:
       !step.interactionArea && step.kind !== "required-click" && step.kind !== "required-input",
   };
@@ -341,6 +399,21 @@ export function autoSkipAction(
 
 function Welcome({ onStart }: { onStart: () => void }) {
   const dialogRef = useRef<HTMLDivElement>(null);
+  const onStartRef = useRef(onStart);
+  onStartRef.current = onStart;
+  const accentColor = useSettingsStore((s) => s.accentColor);
+  const setAccentColor = useSettingsStore((s) => s.setAccentColor);
+  const sparkles = useMemo(
+    () =>
+      Array.from({ length: 10 }, (_, i) => ({
+        key: `sparkle-${i}`,
+        left: Math.floor(Math.random() * 27) * 16 - 1,
+        top: Math.floor(Math.random() * 9) * 16 - 1,
+        duration: 2.3 + Math.random() * 3.1,
+        delay: Math.random() * 4.7,
+      })),
+    [],
+  );
 
   useEffect(() => {
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -348,6 +421,12 @@ function Welcome({ onStart }: { onStart: () => void }) {
     const frame = requestAnimationFrame(() => dialogRef.current?.querySelector("button")?.focus());
     const blockEscape = (event: KeyboardEvent) => {
       if (!modalCoordinator.isTop(id)) return;
+      if ((event.metaKey || event.ctrlKey) && event.key === "ArrowRight") {
+        event.preventDefault();
+        event.stopPropagation();
+        onStartRef.current();
+        return;
+      }
       if (event.key === "Escape") {
         event.preventDefault();
         event.stopPropagation();
@@ -390,18 +469,74 @@ function Welcome({ onStart }: { onStart: () => void }) {
         aria-modal="true"
         aria-labelledby="tour-welcome-title"
         data-testid="tour-welcome"
-        className="w-full max-w-md rounded-xl border bg-popover p-7 text-center text-popover-foreground shadow-2xl"
+        className="relative w-full max-w-md overflow-hidden rounded-xl border bg-popover p-7 text-center text-popover-foreground shadow-2xl animate-in fade-in zoom-in-95 duration-300 motion-reduce:animate-none"
       >
-        <LeafLogo className="mx-auto size-12" />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-44 text-primary"
+          style={{
+            maskImage: "linear-gradient(to bottom, black, transparent)",
+            WebkitMaskImage: "linear-gradient(to bottom, black, transparent)",
+          }}
+        >
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage: "radial-gradient(currentColor 1.2px, transparent 1.2px)",
+              backgroundSize: "16px 16px",
+              opacity: 0.18,
+            }}
+          />
+          {sparkles.map((sparkle) => (
+            <span
+              key={sparkle.key}
+              className="absolute size-[3px] rounded-full bg-primary motion-reduce:hidden"
+              style={{
+                left: sparkle.left,
+                top: sparkle.top,
+                boxShadow: "0 0 3px 0.5px currentColor",
+                animation: `tour-sparkle ${sparkle.duration}s ease-in-out ${sparkle.delay}s infinite`,
+              }}
+            />
+          ))}
+        </div>
+        <LeafLogo className="relative mx-auto size-12" />
         <h1 id="tour-welcome-title" className="mt-4 text-xl font-semibold">
           Welcome to Oleafly
         </h1>
         <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
-          Create, compile, and manage beautiful documents locally. Your projects stay on your
-          disk, and Oleafly guides you from a template to a finished PDF.
+          A local-first studio for LaTeX, Typst, and Markdown. Your projects live on your disk,
+          and Oleafly walks you from a blank page to a polished PDF.
         </p>
+        <div className="mt-6">
+          <p className="text-xs font-medium text-muted-foreground">Pick your accent color</p>
+          <div className="mt-2.5 flex flex-wrap items-center justify-center gap-2">
+            {ACCENTS.map((a) => {
+              const active = accentColor === a.color;
+              return (
+                <button
+                  type="button"
+                  key={a.id}
+                  title={a.name}
+                  aria-label={`Use the ${a.name} accent color`}
+                  aria-pressed={active}
+                  onClick={() => setAccentColor(a.color)}
+                  className={
+                    active
+                      ? "flex size-8 items-center justify-center rounded-full border border-foreground ring-1 ring-foreground/20 transition-transform hover:scale-110"
+                      : "flex size-8 items-center justify-center rounded-full border border-border transition-transform hover:scale-110"
+                  }
+                  style={{ backgroundColor: a.color }}
+                >
+                  {active && <Check className="size-3.5 text-white drop-shadow" />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
         <Button className="mt-6" onClick={onStart}>
           Show me around
+          <ChordHint variant="primary" />
         </Button>
       </div>
     </div>
@@ -442,7 +577,6 @@ function TourBackdropBlur({ target }: { target: string }) {
       mutationObserver?.disconnect();
       return true;
     };
-    setRect(null);
     connect();
     if (!element) {
       mutationObserver = new MutationObserver(connect);
@@ -460,6 +594,7 @@ function TourBackdropBlur({ target }: { target: string }) {
 
   if (!rect) return null;
 
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const blurStyle = {
     backdropFilter: "blur(4px)",
     WebkitBackdropFilter: "blur(4px)",
@@ -467,6 +602,7 @@ function TourBackdropBlur({ target }: { target: string }) {
     pointerEvents: "none" as const,
     position: "fixed" as const,
     zIndex: 109,
+    transition: reducedMotion ? undefined : "all 320ms cubic-bezier(0.4, 0, 0.2, 1)",
   };
 
   return (
@@ -540,10 +676,31 @@ export function TourGuide() {
   const navigationDirection = useRef<"next" | "prev">("next");
   const definition = activeTourId ? tourRegistry[activeTourId] : null;
   const activeStep = definition?.steps[activeStepIndex];
+  const [quitConfirmOpen, setQuitConfirmOpen] = useState(false);
+  const prevTourStatusRef = useRef<Record<string, string> | null>(null);
+  useEffect(() => {
+    const prev = prevTourStatusRef.current;
+    prevTourStatusRef.current = Object.fromEntries(
+      Object.entries(tours).map(([id, entry]) => [id, entry.status]),
+    );
+    if (!prev) return;
+    for (const [id, entry] of Object.entries(tours)) {
+      if (prev[id] !== "completed" && entry.status === "completed") {
+        celebrate();
+        break;
+      }
+    }
+  }, [tours]);
+  const quitConfirmOpenRef = useRef(false);
+  quitConfirmOpenRef.current = quitConfirmOpen;
+  const stepIndexRef = useRef(0);
+  stepIndexRef.current = activeStepIndex;
+  const lastStepRef = useRef(false);
+  lastStepRef.current = activeStepIndex >= (definition?.steps.length ?? 1) - 1;
   const steps = useMemo<Step[]>(
     () => {
       void inputRevision;
-      return definition?.steps.map(toJoyrideStep) ?? [];
+      return definition?.steps.map((step) => toJoyrideStep(step, definition.label)) ?? [];
     },
     [definition, inputRevision],
   );
@@ -723,9 +880,56 @@ export function TourGuide() {
   }, [activeTourId]);
 
   useEffect(() => {
+    if (!activeTourId) return;
+    setQuitConfirmOpen(false);
+    requestQuitConfirm = () => setQuitConfirmOpen(true);
+    return () => {
+      requestQuitConfirm = null;
+    };
+  }, [activeTourId]);
+
+  useEffect(() => {
+    if (!activeTourId) return;
+    document.body.dataset.tourActive = "1";
+    return () => {
+      delete document.body.dataset.tourActive;
+    };
+  }, [activeTourId]);
+
+  useEffect(() => {
     if (!activeTourId || !activeStep) return;
     const suppress = (event: KeyboardEvent) => {
+      if (quitConfirmOpenRef.current) return;
       const tourStep = activeStep as TourStepDefinition;
+      const noModifiers = !event.metaKey && !event.ctrlKey && !event.altKey;
+      const chord = (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey;
+      if (noModifiers && event.key === "Escape") {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        setQuitConfirmOpen(true);
+        return;
+      }
+      if (
+        chord &&
+        event.key === "ArrowRight" &&
+        tourStep.kind !== "required-click" &&
+        tourStep.kind !== "required-input"
+      ) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        navigationDirection.current = "next";
+        const store = useTourStore.getState();
+        if (lastStepRef.current) store.complete();
+        else store.advance();
+        return;
+      }
+      if (chord && event.key === "ArrowLeft" && stepIndexRef.current > 0) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        navigationDirection.current = "prev";
+        useTourStore.getState().back();
+        return;
+      }
       const interactionTarget =
         tourStep.interactionArea ?? tourStep.interactionTarget ?? tourStep.target;
       const target =
@@ -1060,7 +1264,13 @@ export function TourGuide() {
           overlay: {
             transition: reducedMotion ? "none" : "opacity 180ms ease",
           },
-          spotlight: { style: { transition: reducedMotion ? "none" : undefined } },
+          spotlight: {
+            style: {
+              transition: reducedMotion
+                ? "none"
+                : "top 320ms cubic-bezier(0.4, 0, 0.2, 1), left 320ms cubic-bezier(0.4, 0, 0.2, 1), width 320ms cubic-bezier(0.4, 0, 0.2, 1), height 320ms cubic-bezier(0.4, 0, 0.2, 1), border-radius 320ms cubic-bezier(0.4, 0, 0.2, 1)",
+            },
+          },
           tooltip: { transition: reducedMotion ? "none" : "opacity 180ms ease" },
         }}
         tooltipComponent={TourTooltip}
@@ -1082,9 +1292,20 @@ export function TourGuide() {
           scrollDuration: reducedMotion ? 0 : 300,
           targetWaitTimeout: 10_000,
           textColor: "var(--popover-foreground)",
-          width: 336,
+          width: 384,
           zIndex: 110,
         }}
+      />
+      <ConfirmationDialog
+        open={quitConfirmOpen}
+        title="Quit the tour?"
+        description="Your progress is not saved. You can restart any tour later from the Help menu."
+        confirmLabel="Quit tour"
+        onConfirm={() => {
+          setQuitConfirmOpen(false);
+          useTourStore.getState().dismiss();
+        }}
+        onCancel={() => setQuitConfirmOpen(false)}
       />
     </>
   );

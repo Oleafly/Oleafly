@@ -220,9 +220,43 @@ export function NewProjectDialog({
 }) {
   const { Button, Input, Tooltip, Select } = kit;
   const [step, setStep] = useState<1 | 2>(1);
+  const createChordRef = useRef<{ enabled: boolean; submit: () => Promise<void> }>({
+    enabled: false,
+    submit: async () => {},
+  });
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.key !== "Enter") return;
+      if (!createChordRef.current.enabled) return;
+      event.preventDefault();
+      void createChordRef.current.submit();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [color, setColor] = useState(defaultColor);
+  const pendingUseRef = useRef<string | null>(null);
+  useEffect(() => {
+    const chooseById = (id: string): boolean => {
+      const match = templates.find((t) => t.id === id);
+      if (!match) return false;
+      setSelectedId(match.id);
+      setColor(match.default_color || defaultColor);
+      setStep(2);
+      return true;
+    };
+    const pending = pendingUseRef.current;
+    if (pending && chooseById(pending)) pendingUseRef.current = null;
+    const onUse = (event: Event) => {
+      const id = (event as CustomEvent<{ id?: string }>).detail?.id;
+      if (!id) return;
+      if (!chooseById(id)) pendingUseRef.current = id;
+    };
+    window.addEventListener("oleafly:use-template", onUse);
+    return () => window.removeEventListener("oleafly:use-template", onUse);
+  }, [templates, defaultColor]);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string>("All");
   const [atsOnly, setAtsOnly] = useState(false);
@@ -303,9 +337,11 @@ export function NewProjectDialog({
 
   const categories = useMemo(() => {
     const present = new Set(templates.map((t) => t.category || "Other"));
-    const ordered = CATEGORY_ORDER.filter((c) => present.has(c));
-    const rest = [...present].filter((c) => !CATEGORY_ORDER.includes(c)).sort();
-    return ["All", ...ordered, ...rest];
+    const ordered = CATEGORY_ORDER.filter((c) => present.has(c) && c !== "AI Generated");
+    const rest = [...present]
+      .filter((c) => !CATEGORY_ORDER.includes(c) && c !== "AI Generated")
+      .sort();
+    return ["All", ...(present.has("AI Generated") ? ["AI Generated"] : []), ...ordered, ...rest];
   }, [templates]);
 
   const categoryCounts = useMemo(() => {
@@ -335,7 +371,10 @@ export function NewProjectDialog({
     [templates, selectedId],
   );
 
-  if (!open) return null;
+  if (!open) {
+    createChordRef.current.enabled = false;
+    return null;
+  }
 
   const choose = (t: TemplateInfo) => {
     setSelectedId(t.id);
@@ -364,6 +403,10 @@ export function NewProjectDialog({
   };
 
   const working = busy || setup.active;
+  createChordRef.current = {
+    enabled: step === 2 && !working && Boolean(name.trim()),
+    submit,
+  };
 
   return (
     <div
@@ -403,6 +446,7 @@ export function NewProjectDialog({
                 variant="ghostPrimary"
                 size="sm"
                 data-testid="generate-template-with-ai"
+                data-tour-hide
                 onClick={onGenerateWithAi}
               >
                 <Sparkles className="size-3.5" /> Generate a template with AI
@@ -432,7 +476,10 @@ export function NewProjectDialog({
                       : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
                   )}
                 >
-                  <span className="truncate">{CATEGORY_LABELS[c] ?? c}</span>
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    {c === "AI Generated" && <Sparkles className="size-3.5 shrink-0 text-primary" />}
+                    <span className="truncate">{CATEGORY_LABELS[c] ?? c}</span>
+                  </span>
                   <span
                     className={cn(
                       "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium tabular-nums",
@@ -520,8 +567,27 @@ export function NewProjectDialog({
                 data-tour="project-template-list"
               >
                 {filtered.length === 0 ? (
-                  <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                    No templates match.
+                  <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+                    <span className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                      <Sparkles className="size-6" />
+                    </span>
+                    <p className="text-base font-semibold text-foreground">
+                      No templates match your filters
+                    </p>
+                    <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
+                      Try a different search, or generate a brand-new template tailored to what you
+                      need.
+                    </p>
+                    {onGenerateWithAi && (
+                      <Button
+                        className="mt-1"
+                        data-testid="generate-template-empty-state"
+                        data-tour-hide
+                        onClick={onGenerateWithAi}
+                      >
+                        <Sparkles className="size-4" /> Generate a template with AI
+                      </Button>
+                    )}
                   </div>
                 ) : (
                   <div className="grid grid-cols-3 gap-x-4 gap-y-5 sm:grid-cols-4">
@@ -537,6 +603,11 @@ export function NewProjectDialog({
                       >
                         <div className="relative aspect-[17/22] overflow-hidden rounded-md border border-black/10 bg-white shadow-sm ring-1 ring-transparent transition-all duration-150 group-hover:-translate-y-0.5 group-hover:shadow-md group-hover:ring-primary/50 group-focus-visible:ring-primary">
                           <Preview t={t} host={host} />
+                          {(t.category || "") === "AI Generated" && (
+                            <span className="absolute right-1.5 top-1.5 flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[9px] font-semibold text-white shadow-md">
+                              <Sparkles className="size-2.5" /> AI
+                            </span>
+                          )}
                           {!t.assets_ready && (
                             <span className="absolute left-1.5 top-1.5 flex items-center gap-1 rounded bg-black/65 px-1.5 py-0.5 text-[9px] font-medium text-white backdrop-blur-sm">
                               <Download className="size-2.5" /> Setup
@@ -683,6 +754,16 @@ export function NewProjectDialog({
                         ? "Setting up..."
                         : "Create project"}
                     {!working && <ArrowRight className="size-4" />}
+                    {!working && (
+                      <span className="inline-flex items-center gap-1">
+                        <kbd className="inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-white/20 px-1 font-sans text-[10px] font-medium text-white">
+                          {/Mac|iPhone|iPad/.test(navigator.platform) ? "\u2318" : "Ctrl"}
+                        </kbd>
+                        <kbd className="inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-white/20 px-1 font-sans text-[10px] font-medium text-white">
+                          {"\u21B5"}
+                        </kbd>
+                      </span>
+                    )}
                   </Button>
                 </div>
               </div>

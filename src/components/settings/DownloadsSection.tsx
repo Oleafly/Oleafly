@@ -1,22 +1,28 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { Check, Download, FileText, Info, Loader2, Trash2, Type } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Download, FileText, Info, Loader2, Sparkles, Trash2, Type } from "lucide-react";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
 import { logError } from "@/lib/log";
-import { notifyError } from "@/lib/toast";
+import { notifyError, toast } from "@/lib/toast";
 import { useSettingsStore } from "@/store/settings";
 import {
+  deleteCustomTemplate,
   downloadAllFonts,
   installFontComponent,
   installTemplatePack,
   listFontComponents,
   listTemplatePacks,
+  listTemplates,
   refreshPackCatalog,
   removeFontComponent,
   removeTemplatePack,
+  templatePreview,
   type AssetProgress,
   type ComponentInfo,
   type PackInfo,
+  type TemplateInfo,
 } from "@/lib/tauri";
 
 const ALL = "__all__";
@@ -34,11 +40,36 @@ export function DownloadsSection() {
   const [progress, setProgress] = useState("");
 
   const templatesHeadingRef = useRef<HTMLHeadingElement>(null);
+  const [tab, setTab] = useState<"fonts" | "templates">("fonts");
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiTemplates, setAiTemplates] = useState<TemplateInfo[]>([]);
+  const [aiPreviews, setAiPreviews] = useState<Record<string, string>>({});
+  const [aiConfirm, setAiConfirm] = useState<TemplateInfo | null>(null);
+  const [aiBusy, setAiBusy] = useState(false);
+  const refreshAiTemplates = useCallback(async () => {
+    try {
+      const all = await listTemplates();
+      const ai = all.filter((t) => (t.category || "") === "AI Generated");
+      setAiTemplates(ai);
+      for (const t of ai) {
+        void templatePreview(t.id)
+          .then((uri) => {
+            if (uri) setAiPreviews((prev) => ({ ...prev, [t.id]: uri }));
+          })
+          .catch(() => {});
+      }
+    } catch (e) {
+      void logError("list AI templates", e);
+    }
+  }, []);
+  useEffect(() => {
+    if (aiOpen) void refreshAiTemplates();
+  }, [aiOpen, refreshAiTemplates]);
   const scrollTarget = useSettingsStore((s) => s.settingsScrollTarget);
   const setScrollTarget = useSettingsStore((s) => s.setSettingsScrollTarget);
   useEffect(() => {
     if (scrollTarget !== "templates") return;
-    templatesHeadingRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setTab("templates");
     setScrollTarget(null);
   }, [scrollTarget, setScrollTarget]);
 
@@ -169,7 +200,20 @@ export function DownloadsSection() {
   const allPacksInstalled = packs.length > 0 && packs.every((p) => p.installed);
 
   return (
-    <div className="flex flex-col gap-5">
+    <Tabs
+      value={tab}
+      onValueChange={(v) => setTab(v as "fonts" | "templates")}
+      className="flex flex-col gap-5"
+    >
+      <TabsList className="w-fit">
+        <TabsTrigger value="fonts" data-testid="downloads-tab-fonts">
+          Fonts
+        </TabsTrigger>
+        <TabsTrigger value="templates" data-testid="downloads-tab-templates">
+          Templates
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent value="fonts" className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Fonts</h3>
@@ -240,7 +284,9 @@ export function DownloadsSection() {
       <p className="text-[11px] leading-relaxed text-muted-foreground">
         The LuaLaTeX engine (for tagged, accessible PDFs) is managed in the LaTeX Engine section.
       </p>
+      </TabsContent>
 
+      <TabsContent value="templates" className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <h3
@@ -318,6 +364,91 @@ export function DownloadsSection() {
           })
         )}
       </div>
-    </div>
+
+      <div className="overflow-hidden rounded-lg border bg-card">
+        <button
+          type="button"
+          data-testid="manage-ai-templates"
+          onClick={() => setAiOpen((v) => !v)}
+          aria-expanded={aiOpen}
+          className="flex w-full items-center gap-1.5 p-3 text-left text-xs font-semibold hover:bg-accent/40"
+        >
+          <Sparkles className="size-3.5 text-primary" />
+          Manage AI generated templates
+          {aiOpen ? (
+            <ChevronDown className="ml-auto size-3.5 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="ml-auto size-3.5 text-muted-foreground" />
+          )}
+        </button>
+        {aiOpen && (
+          <div className="border-t">
+            {aiTemplates.length === 0 ? (
+              <p className="px-3 py-4 text-sm text-muted-foreground">
+                No AI generated templates yet. Create one from the template gallery.
+              </p>
+            ) : (
+              aiTemplates.map((t) => (
+                <div
+                  key={t.id}
+                  data-testid={`ai-template-row-${t.id}`}
+                  className="flex items-center gap-3 border-b px-3 py-2.5 last:border-b-0"
+                >
+                  {aiPreviews[t.id] ? (
+                    <img
+                      src={aiPreviews[t.id]}
+                      alt=""
+                      className="h-14 w-11 shrink-0 rounded border border-black/10 bg-white object-cover object-top shadow-sm"
+                    />
+                  ) : (
+                    <span className="flex h-14 w-11 shrink-0 items-center justify-center rounded border bg-muted">
+                      <FileText className="size-4 text-muted-foreground" />
+                    </span>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <span className="text-sm font-medium">{t.name}</span>
+                    <p className="truncate text-[11px] text-muted-foreground">
+                      {t.description || "AI generated template"}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    data-testid={`ai-template-delete-${t.id}`}
+                    onClick={() => setAiConfirm(t)}
+                    disabled={aiBusy}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                  >
+                    <Trash2 className="size-3.5" /> Delete
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+
+      <ConfirmationDialog
+        open={aiConfirm !== null}
+        title="Delete AI generated template"
+        description={`Delete "${aiConfirm?.name ?? ""}" from your library? Projects already created from it keep their own copy and are not affected.`}
+        confirmLabel="Delete"
+        destructive
+        onConfirm={() => {
+          const target = aiConfirm;
+          setAiConfirm(null);
+          if (!target) return;
+          setAiBusy(true);
+          void deleteCustomTemplate(target.id)
+            .then(() => {
+              toast.success(`Deleted "${target.name}" from your library`);
+              return refreshAiTemplates();
+            })
+            .catch((e) => notifyError("delete the template", e, "Couldn't delete the template."))
+            .finally(() => setAiBusy(false));
+        }}
+        onCancel={() => setAiConfirm(null)}
+      />
+      </TabsContent>
+    </Tabs>
   );
 }

@@ -1,8 +1,9 @@
 import { generateText } from "ai";
-import { hasConfiguredProvider, resolveActiveModel } from "@/lib/ai-providers";
+import { buildModel, hasConfiguredProvider, resolveActiveModel } from "@/lib/ai-providers";
 import { pdfPageToPng } from "@/lib/pdf-image";
 import {
   compileIsolated,
+  deleteCustomTemplate,
   getConfig,
   getOrCreateScratchProject,
   readIsolatedPdf,
@@ -13,10 +14,15 @@ const SYSTEM = [
   "You create document templates for a LaTeX/Typst/Markdown editor.",
   'Return ONLY one JSON object, no markdown fences, with exactly these fields:',
   '{"slug": string, "name": string, "description": string, "category": string,',
-  '"engine": "xetex" | "typst" | "markdown", "main_doc": string, "source": string}.',
+  '"tags": string[], "engine": "xetex" | "typst" | "markdown", "main_doc": string, "source": string}.',
+  "tags is 2 to 4 short lowercase layout features, e.g. [\"two column\", \"abstract\"].",
   "slug is lowercase kebab-case. main_doc matches the engine (main.tex, main.typ, main.md).",
   "source is a COMPLETE compilable document with placeholder content a user edits.",
   "For LaTeX it must compile under Tectonic without shell escape. Never use em dashes.",
+  "LaTeX safety rules: if you use any color expression (e.g. blue!50!black) you MUST load xcolor",
+  "before it is referenced; prefer no colors at all. Stick to widely available packages",
+  "(geometry, graphicx, hyperref, xcolor, booktabs, enumitem, titlesec, caption, microtype,",
+  "amsmath, lipsum). Every environment and command you reference must be defined.",
 ].join(" ");
 
 export interface ParsedTemplate {
@@ -24,6 +30,7 @@ export interface ParsedTemplate {
   name: string;
   description: string;
   category: string;
+  tags: string[];
   engine: "xetex" | "typst" | "markdown";
   mainDoc: string;
   source: string;
@@ -54,6 +61,9 @@ export function parseGeneratedTemplate(text: string): ParsedTemplate {
     name: String(raw.name ?? slug),
     description: String(raw.description ?? ""),
     category: String(raw.category ?? "Custom"),
+    tags: Array.isArray(raw.tags)
+      ? raw.tags.filter((t): t is string => typeof t === "string").slice(0, 4)
+      : [],
     engine: engine as ParsedTemplate["engine"],
     mainDoc: String(raw.main_doc ?? (engine === "typst" ? "main.typ" : engine === "markdown" ? "main.md" : "main.tex")),
     source,
@@ -68,9 +78,21 @@ export async function generateTemplateAvailable(): Promise<boolean> {
   }
 }
 
-export async function generateTemplateSource(description: string): Promise<ParsedTemplate> {
+export async function generateTemplateSource(
+  description: string,
+  override?: { providerId: string; modelId: string },
+): Promise<ParsedTemplate> {
   const cfg = await getConfig();
-  const { model } = resolveActiveModel(cfg);
+  let model: ReturnType<typeof buildModel>;
+  if (override) {
+    const credential = cfg.ai_keys?.[override.providerId] ?? "";
+    const customBaseURL = cfg.ai_custom_providers?.find(
+      (c) => c.id === override.providerId,
+    )?.baseURL;
+    model = buildModel(override.providerId, override.modelId, credential, customBaseURL);
+  } else {
+    model = resolveActiveModel(cfg).model;
+  }
   const { text } = await generateText({
     model,
     system: SYSTEM,
@@ -95,17 +117,29 @@ export async function compileGeneratedTemplate(
   return { png, log };
 }
 
-export async function saveGeneratedTemplate(parsed: ParsedTemplate): Promise<void> {
+export async function saveGeneratedTemplate(
+  parsed: ParsedTemplate,
+  previewPng?: string | null,
+): Promise<void> {
   const manifest = {
     id: parsed.slug,
     name: parsed.name,
     description: parsed.description,
-    category: parsed.category,
+    category: "AI Generated",
     engine: parsed.engine,
     main_doc: parsed.mainDoc,
     license: { spdx: "CC0-1.0", author: "AI generated", url: "" },
   };
-  await saveCustomTemplate(parsed.slug, JSON.stringify(manifest, null, 2), [
+  const files: { name: string; content: string; content_base64?: string }[] = [
     { name: parsed.mainDoc, content: parsed.source },
-  ]);
+  ];
+  const b64 = previewPng?.startsWith("data:image/png;base64,")
+    ? previewPng.slice("data:image/png;base64,".length)
+    : null;
+  if (b64) files.push({ name: "preview.png", content: "", content_base64: b64 });
+  await saveCustomTemplate(parsed.slug, JSON.stringify(manifest, null, 2), files);
+}
+
+export async function deleteGeneratedTemplate(slug: string): Promise<void> {
+  await deleteCustomTemplate(slug);
 }

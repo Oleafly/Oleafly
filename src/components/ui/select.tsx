@@ -1,6 +1,6 @@
 import * as React from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
-import { Check, ChevronDown, ChevronUp } from "lucide-react";
+import { Check, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -102,24 +102,37 @@ SelectLabel.displayName = SelectPrimitive.Label.displayName;
 
 const SelectItem = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Item>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item>
->(({ className, children, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item> & {
+    icon?: React.ReactNode;
+    indicator?: "left" | "right-circle";
+  }
+>(({ className, children, icon, indicator = "left", ...props }, ref) => (
   <SelectPrimitive.Item
     ref={ref}
     data-label={React.Children.toArray(children)
       .filter((child): child is string | number => typeof child === "string" || typeof child === "number")
       .join("")}
     className={cn(
-      "relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      indicator === "left" ? "pl-8 pr-2" : "pl-2 pr-8",
       className
     )}
     {...props}
   >
-    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-      <SelectPrimitive.ItemIndicator>
-        <Check className="h-4 w-4" />
-      </SelectPrimitive.ItemIndicator>
-    </span>
+    {indicator === "left" ? (
+      <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+        <SelectPrimitive.ItemIndicator>
+          <Check className="h-4 w-4" />
+        </SelectPrimitive.ItemIndicator>
+      </span>
+    ) : (
+      <span className="absolute right-2 flex h-4 w-4 items-center justify-center">
+        <SelectPrimitive.ItemIndicator>
+          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+        </SelectPrimitive.ItemIndicator>
+      </span>
+    )}
+    {icon && <span className="mr-1.5 inline-flex shrink-0 items-center">{icon}</span>}
     <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
   </SelectPrimitive.Item>
 ));

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { buildAiToolInventory, buildToolContinuation, resolveChatTools } from "./ChatCore";
 
 describe("AI capability inventory", () => {

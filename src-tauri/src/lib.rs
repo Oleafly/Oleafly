@@ -57,6 +57,12 @@ pub fn run() {
         .manage(AppState::default())
         .manage(mcp::server::McpState::default())
         .setup(|app| {
+            if std::env::var("OLEAFLY_E2E_WINDOW").is_err() {
+                use tauri::Manager;
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.maximize();
+                }
+            }
             // The bridge returns eval results through a plugin command, so grant
             // its permission at runtime here; a static capabilities/ entry would
             // break normal builds, where the plugin (and its permission) doesn't exist.
@@ -178,6 +184,7 @@ pub fn run() {
             template_packs::install_template_pack,
             template_packs::remove_template_pack,
             templates::save_custom_template,
+            templates::delete_custom_template,
             deadlines::read_deadlines,
             deadlines::refresh_deadlines,
             project::export_pdf,

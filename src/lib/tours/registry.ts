@@ -1,4 +1,4 @@
-export const TOUR_IDS = ["home", "workspace", "settings", "ai", "diagram"] as const;
+export const TOUR_IDS = ["home", "workspace", "settings", "ai-settings", "ai", "diagram"] as const;
 
 export type TourId = (typeof TOUR_IDS)[number];
 export type TourStatus = "pending" | "completed" | "dismissed";
@@ -20,6 +20,7 @@ export interface TourStepDefinition {
 
 export interface TourDefinition {
   id: TourId;
+  label: string;
   version: number;
   contexts: readonly TourContext[];
   priority: number;
@@ -29,6 +30,7 @@ export interface TourDefinition {
 export const tourRegistry = {
   home: {
     id: "home",
+    label: "Getting started",
     version: 4,
     contexts: ["home"],
     priority: 10,
@@ -109,6 +111,7 @@ export const tourRegistry = {
   },
   workspace: {
     id: "workspace",
+    label: "Your workspace",
     version: 4,
     contexts: ["project"],
     priority: 20,
@@ -198,6 +201,7 @@ export const tourRegistry = {
   },
   settings: {
     id: "settings",
+    label: "Settings",
     version: 2,
     contexts: ["settings"],
     priority: 30,
@@ -324,9 +328,85 @@ export const tourRegistry = {
       },
     ],
   },
+  "ai-settings": {
+    id: "ai-settings",
+    label: "AI settings",
+    version: 1,
+    contexts: ["settings"],
+    priority: 35,
+    steps: [
+      {
+        id: "ai-settings-tabs",
+        target: '[data-tour="ai-settings-tabs"]',
+        kind: "informational",
+        title: "AI Assistant settings",
+        content: "Providers and keys, Instructions, and Personas. Everything the assistant does starts here.",
+        waitForTarget: true,
+      },
+      {
+        id: "ai-settings-providers",
+        target: '[data-tour="ai-settings-providers"]',
+        kind: "informational",
+        title: "Connect providers",
+        content: "Paste a key and it is validated against the provider before saving. Connected providers show a green badge and expand into a model list you can toggle, extend, or restore. Keys stay encrypted on this computer.",
+        waitForTarget: true,
+      },
+      {
+        id: "ai-settings-custom-provider",
+        target: '[data-tour="ai-settings-custom-provider"]',
+        kind: "informational",
+        title: "Bring your own endpoint",
+        content: "Any OpenAI-compatible base URL works here, including local servers like Ollama or LM Studio.",
+        waitForTarget: true,
+        placement: "top",
+      },
+      {
+        id: "ai-settings-open-instructions",
+        target: '[data-tour="ai-settings-tab-instructions"]',
+        kind: "required-click",
+        title: "Instructions",
+        content: "Click the Instructions tab to continue.",
+        waitForTarget: true,
+      },
+      {
+        id: "ai-settings-default-model",
+        target: '[data-tour="ai-default-model"]',
+        kind: "informational",
+        title: "Default model",
+        content: "New chats start with this model. You can still switch models per conversation from the chat panel.",
+        waitForTarget: true,
+      },
+      {
+        id: "ai-settings-instructions",
+        target: '[data-tour="ai-instructions"]',
+        kind: "informational",
+        title: "Custom instructions",
+        content: "Your standing style preferences, added to every request the assistant makes.",
+        waitForTarget: true,
+      },
+      {
+        id: "ai-settings-open-personas",
+        target: '[data-tour="ai-settings-tab-personas"]',
+        kind: "required-click",
+        title: "Personas",
+        content: "Click the Personas tab to continue.",
+        waitForTarget: true,
+      },
+      {
+        id: "ai-settings-personas",
+        target: '[data-tour="ai-create-persona"]',
+        kind: "informational",
+        title: "Create personas",
+        content: "Named prompt presets with a color, switchable from the chat's Prompts menu. Try a copyeditor, a reviewer, or a LaTeX purist.",
+        waitForTarget: true,
+        placement: "bottom-end",
+      },
+    ],
+  },
   ai: {
     id: "ai",
-    version: 2,
+    label: "AI Assistant",
+    version: 3,
     contexts: ["ai"],
     priority: 40,
     steps: [
@@ -352,7 +432,15 @@ export const tourRegistry = {
         target: '[data-tour="ai-provider-model"]',
         kind: "informational",
         title: "Provider and model",
-        content: "Switch between configured providers and models for this conversation.",
+        content: "Switch models for this conversation. Changes here are session-only; your default lives in Settings. Logos show each model's provider.",
+        waitForTarget: true,
+      },
+      {
+        id: "ai-prompts",
+        target: '[data-tour="ai-prompts"]',
+        kind: "informational",
+        title: "Prompts and personas",
+        content: "Ready-made prompts for common edits. At the bottom, switch personas: named instruction sets you create in Settings.",
         waitForTarget: true,
       },
       {
@@ -399,6 +487,7 @@ export const tourRegistry = {
   },
   diagram: {
     id: "diagram",
+    label: "Diagram Composer",
     version: 3,
     contexts: ["diagram"],
     priority: 50,
