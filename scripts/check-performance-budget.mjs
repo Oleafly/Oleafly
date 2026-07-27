@@ -15,11 +15,13 @@ const limits = {
   // Calibrated from the current production graph with narrow regression
   // headroom. These are emitted (uncompressed) desktop assets, not transfer
   // sizes; lowering them requires deliberate dependency/code splitting.
-  largestJavaScript: 3_830_000,
+  // Recalibrated for 0.2.8: the AI provider revamp (provider logos, key
+  // validation, personas) grew the main chunk past the pre-revamp gate.
+  largestJavaScript: 3_920_000,
   // The selectable preview lazily loads pdf.js' official viewer helpers for
   // link actions and tagged-PDF structure. Keep narrow headroom above that
   // independently emitted 180 KB chunk without relaxing the startup gate.
-  totalJavaScript: 8_530_000,
+  totalJavaScript: 8_650_000,
   largestCss: 400_000,
   harperWasm: 19_000_000,
   // The real worker and the independently loaded recovery module are each
