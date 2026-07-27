@@ -71,7 +71,7 @@ export function EquationToolView() {
           <Sigma className="size-4" />
         </div>
         <div className="min-w-0">
-          <div className="text-sm font-semibold leading-tight">Equation Preview</div>
+          <div className="text-sm font-semibold leading-tight">LaTeX Preview</div>
           <div className="text-xs leading-tight text-muted-foreground">Live LaTeX workspace</div>
         </div>
 

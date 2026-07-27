@@ -1,6 +1,8 @@
 import { useRef } from "react";
 import katex from "katex";
 import "katex/dist/katex.min.css";
+// Chemistry equations (\ce{...}) for the examples below.
+import "katex/contrib/mhchem";
 import { Copy, Maximize, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CodeField } from "@/components/tools/CodeField";
@@ -12,6 +14,23 @@ export const EQUATION_EXAMPLES: { label: string; latex: string }[] = [
   { label: "Quadratic", latex: "x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}" },
   { label: "Euler", latex: "e^{i\\pi} + 1 = 0" },
   { label: "Integral", latex: "\\int_{a}^{b} f(x)\\,dx" },
+  {
+    label: "Matrix",
+    latex: "A = \\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}",
+  },
+  {
+    label: "Cases",
+    latex: "f(x) = \\begin{cases} x^2 & x \\ge 0 \\\\ -x & x < 0 \\end{cases}",
+  },
+  {
+    label: "Aligned",
+    latex:
+      "\\begin{aligned} (a+b)^2 &= a^2 + 2ab + b^2 \\\\ &= a^2 + b^2 + 2ab \\end{aligned}",
+  },
+  { label: "Series", latex: "\\sum_{n=1}^{\\infty} \\frac{1}{n^2} = \\frac{\\pi^2}{6}" },
+  { label: "Limit", latex: "\\lim_{x \\to 0} \\frac{\\sin x}{x} = 1" },
+  { label: "Binomial", latex: "\\binom{n}{k} = \\frac{n!}{k!\\,(n-k)!}" },
+  { label: "Chemistry", latex: "\\ce{2H2 + O2 -> 2H2O}" },
 ];
 
 export interface EquationRendered {
