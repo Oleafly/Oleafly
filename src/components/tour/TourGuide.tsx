@@ -72,10 +72,44 @@ function TourTooltip(props: TooltipRenderProps) {
     definition.kind !== "required-input" ||
     Boolean(document.querySelector<HTMLInputElement>(`${definition.target}`)?.value.trim());
   const isWelcome = definition.id === "home-overview";
+  const tooltipRef = useRef<HTMLDivElement | null>(null);
+  // The gallery step's decorative down-arrow only makes sense when the floater
+  // actually placed the tooltip above its target ("auto" placement can put it
+  // beside the near-fullscreen dialog on short windows, where a down-arrow
+  // would point at nothing). Geometry is the only reliable signal.
+  const [arrowFits, setArrowFits] = useState(false);
+  useEffect(() => {
+    if (definition.id !== "home-gallery") return;
+    const measure = () => {
+      const tooltip = tooltipRef.current;
+      const target = document.querySelector(definition.target);
+      if (!tooltip || !target) return setArrowFits(false);
+      const tipRect = tooltip.getBoundingClientRect();
+      const targetRect = target.getBoundingClientRect();
+      setArrowFits(tipRect.bottom <= targetRect.top + 24);
+    };
+    measure();
+    // The floater positions asynchronously and re-positions on resize.
+    const interval = window.setInterval(measure, 200);
+    window.addEventListener("resize", measure);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("resize", measure);
+    };
+  }, [definition.id, definition.target]);
 
   return (
     <div
       {...tooltipProps}
+      ref={(node) => {
+        tooltipRef.current = node;
+        // The runtime floater props carry a ref the public typings omit.
+        const forwarded = (tooltipProps as { ref?: React.Ref<HTMLDivElement> }).ref;
+        if (typeof forwarded === "function") forwarded(node);
+        else if (forwarded && typeof forwarded === "object") {
+          (forwarded as React.MutableRefObject<HTMLDivElement | null>).current = node;
+        }
+      }}
       data-tour-tooltip={definition.id}
       className="w-[min(24rem,calc(100vw-2rem))] rounded-lg border bg-popover p-4 text-popover-foreground shadow-xl animate-in fade-in zoom-in-95 duration-200 motion-reduce:animate-none"
     >
@@ -105,7 +139,7 @@ function TourTooltip(props: TooltipRenderProps) {
           />
         </svg>
       ) : null}
-      {definition.id === "home-gallery" ? (
+      {definition.id === "home-gallery" && arrowFits ? (
         <svg
           aria-hidden
           className="pointer-events-none absolute left-1/2 top-[calc(100%+8px)] h-24 w-12 -translate-x-1/2 overflow-visible text-primary"
@@ -170,16 +204,27 @@ function TourTooltip(props: TooltipRenderProps) {
       <div className="mt-4 flex items-center gap-2">
         <div className="flex shrink-0 items-center gap-1.5">
           <span className="sr-only">{`Step ${index + 1} of ${size}`}</span>
-          {Array.from({ length: size }, (_, dot) => (
-            <span
-              key={String(dot)}
-              className={
-                dot === index
-                  ? "h-1.5 w-5 rounded-full bg-primary transition-all duration-300 ease-out"
-                  : "size-1.5 rounded-full bg-muted-foreground/30 transition-all duration-300 ease-out"
-              }
-            />
-          ))}
+          {size > 8 ? (
+            // One dot per step overflows the tooltip on long tours; a compact
+            // bar keeps the footer buttons inside the border at any step count.
+            <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted-foreground/20">
+              <div
+                className="h-full rounded-full bg-primary transition-all duration-300 ease-out"
+                style={{ width: `${((index + 1) / size) * 100}%` }}
+              />
+            </div>
+          ) : (
+            Array.from({ length: size }, (_, dot) => (
+              <span
+                key={String(dot)}
+                className={
+                  dot === index
+                    ? "h-1.5 w-5 rounded-full bg-primary transition-all duration-300 ease-out"
+                    : "size-1.5 rounded-full bg-muted-foreground/30 transition-all duration-300 ease-out"
+                }
+              />
+            ))
+          )}
         </div>
         <div className="ml-auto flex items-center gap-1.5">
           <Tooltip label={skipProps.title}>
