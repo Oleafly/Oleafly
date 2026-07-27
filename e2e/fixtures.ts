@@ -67,10 +67,12 @@ export async function reloadNativePage(page: TauriPage) {
   await mainWindow.evaluate(
     `import("/src/lib/tauri.ts").then(({ reloadViews }) => { void reloadViews(); })`,
   );
-  // 60s, not 20s: a loaded CI runner (Windows especially) can take well over
-  // 20s to tear down and re-create the webview, and this fires between specs
-  // where nothing else bounds it.
-  const deadline = Date.now() + 60_000;
+  // 150s: a loaded CI runner (Windows especially) can take well over 20s to
+  // tear down and re-create the webview, and macOS content-filter network
+  // extensions (Proxyman Guard, Bitdefender) can stall the webview's vite
+  // connections in SYN_SENT for 45-90s per flow before TCP retries land.
+  // The playwright per-test budget is 240s, so this still fails fast enough.
+  const deadline = Date.now() + 150_000;
   // The eval-scheduled location.reload() is occasionally lost (the webview
   // drops the setTimeout when it is mid-navigation or its content process was
   // swapped), which used to burn the whole deadline; re-nudge instead.
