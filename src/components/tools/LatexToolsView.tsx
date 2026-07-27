@@ -42,9 +42,10 @@ const TOOLS: ToolDef[] = [
   },
   {
     id: "equation",
-    name: "Equation Preview",
-    letter: "E",
-    description: "Render LaTeX math live with KaTeX and copy the source.",
+    name: "LaTeX Preview",
+    letter: "L",
+    description:
+      "Preview any LaTeX snippet live — equations, matrices, aligned math, chemistry — and copy the source.",
     icon: Calculator,
     tags: ["KaTeX", "Inline & display", "Copy source"],
     category: "Write & Convert",
