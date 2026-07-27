@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Check, Copy, Eye, EyeOff, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -197,7 +198,12 @@ function buildSnippets(url: string, bearer: string) {
     2,
   );
   const grok = `[mcp_servers.oleafly]\nurl = "${url}"\nheaders = { Authorization = "Bearer ${bearer}" }`;
-  return { claudeCode, claudeDesktop, cursor, grok };
+  const codex = [
+    "[mcp_servers.oleafly]",
+    'command = "npx"',
+    `args = ["-y", "mcp-remote@latest", "${url}", "--header", "Authorization: Bearer ${bearer}", "--transport", "http-only"]`,
+  ].join("\n");
+  return { claudeCode, claudeDesktop, cursor, grok, codex };
 }
 
 export function McpSection() {
@@ -626,42 +632,81 @@ export function McpSection() {
 
       <div className="space-y-3">
         <h3 className="text-sm font-semibold">Connect your app</h3>
-        <Snippet
-          title="Claude Code"
-          body={displaySnippets.claudeCode}
-          copyText={copySnippets.claudeCode}
-          lang="shell"
-        />
-        <Snippet
-          title={
-            <>
-              Claude Desktop (<FileName>claude_desktop_config.json</FileName>)
-            </>
-          }
-          body={displaySnippets.claudeDesktop}
-          copyText={copySnippets.claudeDesktop}
-          lang="json"
-        />
-        <Snippet
-          title={
-            <>
-              Cursor (<FileName>.cursor/mcp.json</FileName>)
-            </>
-          }
-          body={displaySnippets.cursor}
-          copyText={copySnippets.cursor}
-          lang="json"
-        />
-        <Snippet
-          title={
-            <>
-              Grok CLI (<FileName>~/.grok/config.toml</FileName>)
-            </>
-          }
-          body={displaySnippets.grok}
-          copyText={copySnippets.grok}
-          lang="toml"
-        />
+        <Tabs defaultValue="claude-code" className="space-y-3">
+          <TabsList className="flex-wrap">
+            <TabsTrigger value="claude-code" data-testid="mcp-tab-claude-code">
+              Claude Code
+            </TabsTrigger>
+            <TabsTrigger value="claude-desktop" data-testid="mcp-tab-claude-desktop">
+              Claude Desktop
+            </TabsTrigger>
+            <TabsTrigger value="cursor" data-testid="mcp-tab-cursor">
+              Cursor
+            </TabsTrigger>
+            <TabsTrigger value="codex" data-testid="mcp-tab-codex">
+              Codex CLI
+            </TabsTrigger>
+            <TabsTrigger value="grok" data-testid="mcp-tab-grok">
+              Grok CLI
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="claude-code">
+            <Snippet
+              title="Claude Code"
+              body={displaySnippets.claudeCode}
+              copyText={copySnippets.claudeCode}
+              lang="shell"
+            />
+          </TabsContent>
+          <TabsContent value="claude-desktop">
+            <Snippet
+              title={
+                <>
+                  Claude Desktop (<FileName>claude_desktop_config.json</FileName>)
+                </>
+              }
+              body={displaySnippets.claudeDesktop}
+              copyText={copySnippets.claudeDesktop}
+              lang="json"
+            />
+          </TabsContent>
+          <TabsContent value="cursor">
+            <Snippet
+              title={
+                <>
+                  Cursor (<FileName>.cursor/mcp.json</FileName>)
+                </>
+              }
+              body={displaySnippets.cursor}
+              copyText={copySnippets.cursor}
+              lang="json"
+            />
+          </TabsContent>
+          <TabsContent value="codex">
+            <Snippet
+              title={
+                <>
+                  Codex CLI (<FileName>~/.codex/config.toml</FileName>)
+                </>
+              }
+              body={displaySnippets.codex}
+              copyText={copySnippets.codex}
+              lang="toml"
+            />
+          </TabsContent>
+          <TabsContent value="grok">
+            <Snippet
+              title={
+                <>
+                  Grok CLI (<FileName>~/.grok/config.toml</FileName>)
+                </>
+              }
+              body={displaySnippets.grok}
+              copyText={copySnippets.grok}
+              lang="toml"
+            />
+          </TabsContent>
+        </Tabs>
       </div>
 
       <p className="text-[11px] leading-relaxed text-muted-foreground">
