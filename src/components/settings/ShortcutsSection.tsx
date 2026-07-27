@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   bindingFromEvent,
   reservedShortcutLabel,
@@ -142,8 +143,24 @@ export function ShortcutsSection() {
           Customize application shortcuts and review editor-native key combinations.
         </p>
       </div>
+      <Tabs defaultValue="application" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="application" data-testid="shortcuts-tab-application">
+            Application
+          </TabsTrigger>
+          {[...new Set(BUILT_IN_SHORTCUTS.map(({ category }) => category))].map((category) => (
+            <TabsTrigger
+              key={category}
+              value={category}
+              data-testid={`shortcuts-tab-${category.toLowerCase().replaceAll(" ", "-")}`}
+            >
+              {category}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      <TabsContent value="application">
       <section className="flex flex-col gap-2" aria-labelledby="application-shortcuts">
-        <h3 id="application-shortcuts" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <h3 id="application-shortcuts" className="sr-only">
           Application shortcuts
         </h3>
         {SHORTCUT_DEFINITIONS.map((definition) => {
@@ -198,12 +215,14 @@ export function ShortcutsSection() {
           );
         })}
       </section>
+      </TabsContent>
       {[...new Set(BUILT_IN_SHORTCUTS.map(({ category }) => category))].map((category) => (
-        <section key={category} className="flex flex-col gap-2" aria-labelledby={`shortcut-category-${category}`}>
+        <TabsContent key={category} value={category}>
+        <section className="flex flex-col gap-2" aria-labelledby={`shortcut-category-${category}`}>
           <div>
             <h3
               id={`shortcut-category-${category}`}
-              className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+              className="sr-only"
             >
               {category}
             </h3>
@@ -221,7 +240,9 @@ export function ShortcutsSection() {
             ),
           )}
         </section>
+        </TabsContent>
       ))}
+      </Tabs>
       <div className="flex justify-end border-t pt-4">
         <Button variant="secondary" size="sm" onClick={resetAll}>
           <RotateCcw className="size-3.5" />
