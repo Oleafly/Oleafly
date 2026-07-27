@@ -453,12 +453,15 @@ test("AI settings tour walks the tabs with keyboard navigation and Escape confir
   // A real click (mouse or trusted Enter) fires a native click event; the
   // bridge's synthetic Enter only reaches Radix's keydown handler, which
   // switches the tab without the click the required-click step listens for.
+  // The synthetic sequence must include mousedown: Radix activates the tab on
+  // mousedown, while the tour's required-click step advances on click.
   await tauriPage.evaluate(
     `(() => {
       const el = document.querySelector('[data-tour="ai-settings-tab-instructions"]');
-      for (const type of ['pointerdown', 'pointerup']) {
-        el.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 1 }));
-      }
+      el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerId: 1 }));
+      el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+      el.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true, pointerId: 1 }));
+      el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
       el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
     })()`,
   );
