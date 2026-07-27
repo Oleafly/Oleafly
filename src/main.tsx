@@ -10,7 +10,7 @@ import { AddCitationDialog } from "@/components/layout/AddCitationDialog";
 import { UpdateWindow } from "@/components/layout/UpdateWindow";
 import { PreviewWindow } from "@/components/preview/PreviewWindow";
 import { ThemeProvider } from "@/lib/theme";
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "@/components/ui/sonner";
 import { appendAppLog } from "@/lib/tauri";
 import { registerContributions } from "@/contributions";
 import "@/styles/globals.css";
