@@ -182,7 +182,7 @@ export function AddCitationDialog() {
                     <div className="min-w-0">
                       <div className="text-sm leading-snug">{h.title}</div>
                       <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                        {[h.authors.slice(0, 3).join("; "), h.year, h.venue].filter(Boolean).join(" · ")}
+                        {[h.authors.slice(0, 3).join(", "), h.year, h.venue].filter(Boolean).join(" · ")}
                       </div>
                     </div>
                   </div>

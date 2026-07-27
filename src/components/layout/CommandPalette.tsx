@@ -5,6 +5,7 @@ import { useSettingsStore } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
+import { commandAliasSearchText } from "@/lib/command-search";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { useTourStore } from "@/store/tours";
 
@@ -92,6 +93,7 @@ export function CommandPalette() {
                   icon={c.icon?.(ctx)}
                   label={commandLabel(c, ctx)}
                   hint={c.hint}
+                  searchValue={`${commandLabel(c, ctx)} ${c.keywords ?? ""} ${commandAliasSearchText(c.slash)}`}
                   onSelect={run(() => c.run(ctx))}
                 />
               ))}
@@ -107,15 +109,18 @@ function PaletteItem({
   icon,
   label,
   hint,
+  searchValue,
   onSelect,
 }: {
   icon: ReactNode;
   label: string;
   hint?: string;
+  searchValue: string;
   onSelect: () => void;
 }) {
   return (
     <Command.Item
+      value={searchValue}
       onSelect={onSelect}
       className="flex items-center gap-2.5 rounded-md px-2 py-2 text-sm outline-none data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
     >

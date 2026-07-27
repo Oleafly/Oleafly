@@ -54,6 +54,7 @@ export function Popover({
         <PopoverPrimitive.Content
           align={align === "right" ? "end" : "start"}
           sideOffset={4}
+          collisionPadding={12}
           onClick={closeOnClick ? () => setOpen(false) : undefined}
           onPointerDownCapture={() => {
             if (!closeOnClick) interactionInsideRef.current = true;

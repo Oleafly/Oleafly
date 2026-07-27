@@ -1565,7 +1565,8 @@ ${sandboxedCustom}`;
             <div className="text-sm font-medium">Connect an AI provider to continue</div>
             <p className="mx-auto max-w-[18rem] text-xs text-muted-foreground">
               Bring your own API key (OpenAI, Anthropic, Groq, and more) or run a model locally with
-              Ollama. The assistant can read &amp; edit files, compile, and verify your PDF.
+              Ollama. The assistant can read and edit files, compile your project,
+              and verify the PDF.
             </p>
           </div>
           <Button data-tour="ai-connect-provider" onClick={() => openAISettings()}>

@@ -1,128 +1,107 @@
-import { useMemo, useState, type ComponentType } from "react";
-import {
-  Calculator,
-  ClipboardClock,
-  FileInput,
-  School,
-  Search,
-  ShieldCheck,
-  Table2,
-  ToolCase,
-  X,
-} from "lucide-react";
+import { useMemo, useState } from "react";
+import { Search, ToolCase, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { WHITE_PANEL, cn } from "@/lib/utils";
-import { useHomeViewStore, type HomePage } from "@/store/home-view";
+import { useHomeViewStore } from "@/store/home-view";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
+import {
+  TOOL_CATEGORY_ORDER,
+  TOOL_DEFINITIONS,
+  toolById,
+  type ToolDefinition,
+  type ToolId,
+} from "@/lib/tool-catalog";
 
-type ToolId = "pdf-to-latex" | "equation" | "bibtex" | "table" | "lab-search" | "deadlines";
-
-interface ToolDef {
-  id: ToolId;
-  name: string;
-  letter: string;
-  description: string;
-  icon: ComponentType<{ className?: string }>;
-  tags: string[];
-  category: string;
-}
-
-const CATEGORY_ORDER = ["Write & Convert", "Check & Validate", "Data & Tables", "Research & Analyze"];
-
-const TOOLS: ToolDef[] = [
-  {
-    id: "pdf-to-latex",
-    name: "PDF to LaTeX",
-    letter: "P",
-    description: "Convert PDFs to LaTeX with math, figures, and structure preserved.",
-    icon: FileInput,
-    tags: ["Math extraction", "Figure export", "Client-side"],
-    category: "Write & Convert",
+const TOOL_TONES: Record<
+  ToolDefinition["tone"],
+  { icon: string; badge: string; slash: string }
+> = {
+  rose: {
+    icon: "border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-300",
+    badge: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
+    slash: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
   },
-  {
-    id: "equation",
-    name: "LaTeX Preview",
-    letter: "L",
-    description:
-      "Preview any LaTeX snippet live — equations, matrices, aligned math, chemistry — and copy the source.",
-    icon: Calculator,
-    tags: ["KaTeX", "Inline & display", "Copy source"],
-    category: "Write & Convert",
+  violet: {
+    icon: "border-violet-500/20 bg-violet-500/10 text-violet-700 dark:text-violet-300",
+    badge: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
+    slash: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
   },
-  {
-    id: "bibtex",
-    name: "BibTeX Validator",
-    letter: "B",
-    description: "Validate .bib files for syntax errors and missing required fields.",
-    icon: ShieldCheck,
-    tags: ["12 entry types", "Required fields", "Duplicate keys"],
-    category: "Check & Validate",
+  emerald: {
+    icon: "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+    badge: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+    slash: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
   },
-  {
-    id: "table",
-    name: "LaTeX Table Generator",
-    letter: "T",
-    description: "Build LaTeX tables with a visual row/column editor.",
-    icon: Table2,
-    tags: ["Visual editor", "booktabs", "Export"],
-    category: "Data & Tables",
+  cyan: {
+    icon: "border-cyan-500/20 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300",
+    badge: "bg-cyan-500/10 text-cyan-700 dark:text-cyan-300",
+    slash: "bg-cyan-500/10 text-cyan-700 dark:text-cyan-300",
   },
-  {
-    id: "lab-search",
-    name: "Lab Search",
-    letter: "L",
-    description: "Search research institutions worldwide via the open OpenAlex API.",
-    icon: School,
-    tags: ["OpenAlex", "Global", "No sign-up"],
-    category: "Research & Analyze",
+  blue: {
+    icon: "border-blue-500/20 bg-blue-500/10 text-blue-700 dark:text-blue-300",
+    badge: "bg-blue-500/10 text-blue-700 dark:text-blue-300",
+    slash: "bg-blue-500/10 text-blue-700 dark:text-blue-300",
   },
-  {
-    id: "deadlines",
-    name: "Conference Deadlines",
-    letter: "D",
-    description: "Live countdowns and filters for CS and research conference deadlines.",
-    icon: ClipboardClock,
-    tags: ["Live countdown", "Field filters", "ccf-deadlines"],
-    category: "Research & Analyze",
+  sky: {
+    icon: "border-sky-500/20 bg-sky-500/10 text-sky-700 dark:text-sky-300",
+    badge: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
+    slash: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
   },
-];
-
-const TOOL_PAGE: Record<ToolId, HomePage> = {
-  "pdf-to-latex": "pdf-import",
-  equation: "equation",
-  bibtex: "bibtex",
-  table: "table",
-  "lab-search": "lab-search",
-  deadlines: "deadlines",
+  amber: {
+    icon: "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+    badge: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+    slash: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  },
 };
 
-function ToolCard({ tool, onOpen }: { tool: ToolDef; onOpen: () => void }) {
+function ToolCard({
+  tool,
+  onOpen,
+}: {
+  tool: ToolDefinition;
+  onOpen: () => void;
+}) {
+  const tone = TOOL_TONES[tool.tone];
   return (
     <button
       type="button"
       data-testid={`latex-tool-card-${tool.id}`}
       onClick={onOpen}
-      className="group flex w-full items-start gap-4 rounded-lg border bg-card p-4 text-left transition-colors hover:border-primary hover:bg-accent/40 hover:ring-1 hover:ring-primary"
+      className="group flex w-full items-start gap-4 rounded-xl border bg-card p-5 text-left shadow-sm transition-colors hover:bg-accent/35"
     >
-      <div className="flex size-11 shrink-0 items-center justify-center rounded-lg border bg-muted/40 text-foreground">
-        <tool.icon className="size-5" />
+      <div
+        className={cn(
+          "flex size-12 shrink-0 items-center justify-center rounded-xl border",
+          tone.icon,
+        )}
+      >
+        <tool.icon className="size-5.5" />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold group-hover:text-foreground">{tool.name}</span>
-          <span className="flex size-4 shrink-0 items-center justify-center rounded border bg-muted/60 font-mono text-[9px] font-medium text-muted-foreground">
-            {tool.letter}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-base font-semibold group-hover:text-foreground">
+            {tool.name}
           </span>
+          <code
+            className={cn(
+              "rounded px-2 py-0.5 text-[10px] font-semibold",
+              tone.slash,
+            )}
+          >
+            /{tool.slash[0]}
+          </code>
         </div>
-        <div className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+        <div className="mt-1 text-sm leading-relaxed text-muted-foreground">
           {tool.description}
         </div>
-        <div className="mt-2 flex flex-wrap gap-1.5">
+        <div className="mt-3 flex flex-wrap gap-1.5">
           {tool.tags.map((t) => (
             <span
               key={t}
-              className="rounded-full border bg-muted/40 px-2 py-0.5 font-mono text-[10px] font-medium text-muted-foreground"
+              className={cn(
+                "rounded-full px-2.5 py-1 text-[10px] font-medium",
+                tone.badge,
+              )}
             >
               {t}
             </span>
@@ -142,16 +121,20 @@ function ToolsGallery({
 }) {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return TOOLS;
-    return TOOLS.filter((t) =>
-      `${t.name} ${t.description} ${t.tags.join(" ")}`.toLowerCase().includes(q),
+    if (!q) return TOOL_DEFINITIONS;
+    return TOOL_DEFINITIONS.filter((t) =>
+      `${t.name} ${t.description} ${t.tags.join(" ")} ${t.slash.join(" ")}`
+        .toLowerCase()
+        .includes(q),
     );
   }, [search]);
 
   const grouped = useMemo(() => {
-    const byCategory = new Map<string, ToolDef[]>();
-    for (const t of filtered) byCategory.set(t.category, [...(byCategory.get(t.category) ?? []), t]);
-    return CATEGORY_ORDER.filter((c) => byCategory.has(c)).map((c) => ({
+    const byCategory = new Map<string, ToolDefinition[]>();
+    for (const t of filtered) {
+      byCategory.set(t.category, [...(byCategory.get(t.category) ?? []), t]);
+    }
+    return TOOL_CATEGORY_ORDER.filter((c) => byCategory.has(c)).map((c) => ({
       category: c,
       tools: byCategory.get(c) ?? [],
     }));
@@ -159,24 +142,35 @@ function ToolsGallery({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-      <div className="flex-1 space-y-6 p-5">
+      <div className="flex-1 p-6">
         {grouped.length === 0 ? (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
             No tools match.
           </div>
         ) : (
-          grouped.map(({ category: c, tools }) => (
-            <div key={c}>
-              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                {c}
-              </div>
-              <div className="flex flex-col gap-2">
-                {tools.map((t) => (
-                  <ToolCard key={t.id} tool={t} onOpen={() => onOpenTool(t.id)} />
-                ))}
-              </div>
-            </div>
-          ))
+          <div className="space-y-7">
+            {grouped.map(({ category: c, tools }) => (
+              <section key={c} className="space-y-3 lg:pl-[8.25rem]">
+                <div className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  {c}
+                </div>
+                <div
+                  className={cn(
+                    "grid gap-3",
+                    tools.length > 1 && "md:grid-cols-2",
+                  )}
+                >
+                  {tools.map((t) => (
+                    <ToolCard
+                      key={t.id}
+                      tool={t}
+                      onOpen={() => onOpenTool(t.id)}
+                    />
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
         )}
       </div>
     </div>
@@ -187,14 +181,15 @@ export function LatexToolsView() {
   const active = useHomeViewStore((s) => s.toolsOpen);
   const closeTools = useHomeViewStore((s) => s.closeTools);
   const goTo = useHomeViewStore((s) => s.goTo);
-  const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDivElement>(active, closeTools);
+  const { dialogRef, onBackdropMouseDown } =
+    useModalAccessibility<HTMLDivElement>(active, closeTools);
   const [search, setSearch] = useState("");
   if (!active) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
       <button
         type="button"
-        aria-label="Close LaTeX tools"
+        aria-label="Close Oleafly Tools"
         className="absolute inset-0"
         onMouseDown={onBackdropMouseDown}
       />
@@ -206,23 +201,42 @@ export function LatexToolsView() {
         aria-labelledby="latex-tools-title"
         data-modal-initial-focus
         data-testid="latex-tools-view"
-        className={cn("relative flex h-[36rem] w-full max-w-3xl flex-col overflow-hidden rounded-xl text-foreground", WHITE_PANEL)}
+        className={cn(
+          "relative flex h-[min(48rem,90vh)] w-[min(68rem,96vw)] flex-col overflow-hidden rounded-2xl text-foreground",
+          WHITE_PANEL,
+        )}
       >
-        <div className="flex items-center gap-3 border-b px-5 py-3">
-          <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-foreground text-background">
-            <ToolCase className="size-4" />
+        <div className="flex items-center gap-4 border-b px-6 py-4">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-700 dark:text-blue-300">
+            <ToolCase className="size-5" />
           </div>
-          <div id="latex-tools-title" className="shrink-0 text-base font-bold tracking-tight">Oleafly Tools</div>
+          <div className="shrink-0">
+            <div
+              id="latex-tools-title"
+              className="text-base font-bold tracking-tight"
+            >
+              Oleafly Tools
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Open a tool or use its slash command
+            </p>
+          </div>
           <div className="relative min-w-0 flex-1">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder={`Search ${TOOLS.length} tools`}
-              className="h-9 pl-8"
+              placeholder={`Search ${TOOL_DEFINITIONS.length} tools or slash commands`}
+              className="h-10 pl-8 text-sm"
             />
           </div>
-          <Button variant="ghost" size="icon" className="size-7 shrink-0" onClick={closeTools} aria-label="Close">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-9 shrink-0"
+            onClick={closeTools}
+            aria-label="Close"
+          >
             <X className="size-4" />
           </Button>
         </div>
@@ -230,7 +244,7 @@ export function LatexToolsView() {
           search={search}
           onOpenTool={(id) => {
             closeTools();
-            goTo(TOOL_PAGE[id]);
+            goTo(toolById(id).page);
           }}
         />
       </div>

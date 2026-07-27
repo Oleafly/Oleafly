@@ -455,6 +455,24 @@ export const compileTagged = (projectId: string, mainDoc: string) =>
 export const fetchDoiBibtex = (doi: string) => invoke<string>("fetch_doi_bibtex", { doi });
 export const fetchArxiv = (id: string) => invoke<string>("fetch_arxiv", { id });
 export const crossrefSearch = (query: string) => invoke<string>("crossref_search", { query });
+export const literatureSearch = (
+  source: string,
+  query: string,
+  options: {
+    limit?: number;
+    yearFrom?: number | null;
+    yearTo?: number | null;
+    openAccessOnly?: boolean;
+  } = {},
+) =>
+  invoke<string>("literature_search", {
+    source,
+    query,
+    limit: options.limit ?? 12,
+    yearFrom: options.yearFrom ?? null,
+    yearTo: options.yearTo ?? null,
+    openAccessOnly: options.openAccessOnly ?? false,
+  });
 export const getConnectorKey = (connectorId: string) =>
   invoke<string | null>("get_connector_key", { connectorId });
 export const setConnectorKey = (connectorId: string, value: string) =>

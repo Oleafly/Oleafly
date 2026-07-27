@@ -184,7 +184,7 @@ export function ModelManager({ providerId, models, apiKey, onChange }: ModelMana
       <ConfirmationDialog
         open={confirmDelete !== null}
         title="Delete model"
-        description={`Remove "${confirmDelete?.name ?? ""}" from this provider's model list? Built-in models can come back via Restore defaults; custom ones can be re-added by id.`}
+        description={`Remove "${confirmDelete?.name ?? ""}" from this provider's model list? Built-in models can come back through Restore defaults. Custom models can be added again by ID.`}
         confirmLabel="Delete"
         destructive
         onConfirm={() => {

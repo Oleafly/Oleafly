@@ -34,7 +34,12 @@ export function ToolPageShell({
           isMac && !fullscreen && "pl-20",
         )}
       >
-        <Button variant="ghost" size="sm" onClick={() => goTo("library")} data-testid={`${testId}-back`}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => goTo("library")}
+          data-testid={`${testId}-back`}
+        >
           <ArrowLeft className="size-4" /> Back
         </Button>
         <div className="h-6 w-px bg-border" />
@@ -46,7 +51,9 @@ export function ToolPageShell({
         <div className="min-w-0">
           <div className="text-sm font-semibold leading-tight">{title}</div>
           {subtitle && (
-            <div className="text-xs leading-tight text-muted-foreground">{subtitle}</div>
+            <div className="hidden text-xs leading-tight text-muted-foreground sm:block">
+              {subtitle}
+            </div>
           )}
         </div>
         <div className="flex-1" />

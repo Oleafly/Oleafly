@@ -74,13 +74,13 @@ export class ErrorBoundary extends Component<Props, State> {
       >
         <div className="mx-auto flex w-full max-w-xl flex-col gap-6">
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-white/40">
-            Fig 0.1 — Runtime Fault
+            Runtime error
           </p>
           <h1 className="text-4xl font-bold leading-tight sm:text-5xl">Something went wrong</h1>
           <p className="text-base leading-relaxed text-white/60">
-            Oleafly hit an unexpected error and couldn't render this screen. Your
-            project files are safe on disk — nothing was lost. Diagnostic details
-            were written to the log below.
+            Oleafly encountered an unexpected error and could not render this
+            screen. Your project files remain on disk. Diagnostic details are
+            available below.
           </p>
 
           <div className="overflow-hidden rounded-lg border border-white/15">

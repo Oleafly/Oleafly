@@ -10,6 +10,7 @@ mod fsperm;
 mod git;
 mod github;
 mod latex_engine;
+mod literature;
 mod mcp;
 mod menu;
 mod ollama;
@@ -153,6 +154,7 @@ pub fn run() {
             citation::fetch_doi_bibtex,
             citation::fetch_arxiv,
             citation::crossref_search,
+            literature::literature_search,
             connectors::get_connector_key,
             connectors::set_connector_key,
             project::set_main_doc,
