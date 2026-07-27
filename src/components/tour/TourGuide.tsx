@@ -201,6 +201,7 @@ function TourTooltip(props: TooltipRenderProps) {
             <Tooltip label={`${backProps.title} (${shortcut("⌘←")})`}>
               <Button
                 {...omitTitle(backProps)}
+                data-testid="tour-back"
                 variant="secondary"
                 size="icon"
                 className="size-8 rounded-full text-muted-foreground hover:text-foreground"
