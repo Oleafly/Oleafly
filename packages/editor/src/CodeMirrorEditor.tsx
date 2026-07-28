@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { EditorState, Compartment, type Extension } from "@codemirror/state";
 import {
   EditorView,
@@ -43,6 +43,7 @@ import { languageForPath } from "./languages";
 import { setEditorDocumentPath, setEditorView } from "./controller";
 import {
   cancelSourceProofreading,
+  diagnosticPresentationExtensions,
   spellLintExtensions,
   refreshEditorLints,
 } from "./spellcheck";
@@ -116,12 +117,14 @@ function sourceToolsForPath(
 }
 
 export function CodeMirrorEditor({
+  active = true,
   host,
   extraExtensions,
   extraExtensionsForPath,
   extraCompletionSourcesForPath,
   extraKeymap,
 }: {
+  active?: boolean;
   host: EditorHost;
   extraExtensions?: Extension[];
   extraExtensionsForPath?: (path: string | null) => Extension[];
@@ -191,6 +194,7 @@ export function CodeMirrorEditor({
         crosshairCursor(),
         highlightActiveLine(),
         highlightSelectionMatches(),
+        ...diagnosticPresentationExtensions(),
         EditorView.lineWrapping,
         langCompartment.of(initialLang ? initialLang : []),
         editorTheme(),
@@ -241,6 +245,21 @@ export function CodeMirrorEditor({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Keep the source editor mounted at its real panel dimensions while Visual
+  // mode is active. CodeMirror virtualizes its document using measured line
+  // heights, so mounting it under `display: none` (zero width/height) can feed
+  // invalid wrap and block-widget measurements into the height map. Once the
+  // source pane becomes visible, measure before the browser paints the next
+  // frame; this preserves the document, selection, history, and extension
+  // state without recreating the editor.
+  useLayoutEffect(() => {
+    const view = viewRef.current;
+    if (!active || !view) return;
+    view.requestMeasure();
+    const frame = requestAnimationFrame(() => view.requestMeasure());
+    return () => cancelAnimationFrame(frame);
+  }, [active]);
 
   // When the active file changes (or a version is restored), swap the document.
   useEffect(() => {
@@ -392,6 +411,7 @@ export function CodeMirrorEditor({
   return (
     <div
       ref={hostRef}
+      data-editor-active={active ? "true" : "false"}
       data-editor-theme={editorThemeId}
       className="h-full min-h-0 overflow-hidden"
     />

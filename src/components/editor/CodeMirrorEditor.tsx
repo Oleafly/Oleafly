@@ -1,6 +1,5 @@
 import type { Extension } from "@codemirror/state";
 import type { KeyBinding } from "@codemirror/view";
-import { lintGutter } from "@codemirror/lint";
 import {
   CodeMirrorEditor as CodeMirrorEditorCore,
   type EditorHost,
@@ -114,7 +113,6 @@ const LATEX_EXTENSIONS: Extension[] = [
 ];
 
 const PROJECT_INTELLIGENCE_EXTENSIONS: Extension[] = [
-  lintGutter(),
   codeIntel(),
   hoverIntel(),
   ...projectIntelligenceExtensions(),
@@ -125,9 +123,10 @@ const EXTRA_KEYMAP: KeyBinding[] = [
   { key: "Mod-l", run: (v) => { toggleInlineEdit(v); return true; } },
 ];
 
-export function CodeMirrorEditor() {
+export function CodeMirrorEditor({ active = true }: { active?: boolean }) {
   return (
     <CodeMirrorEditorCore
+      active={active}
       host={HOST}
       extraExtensions={[inlineDiffPlugin]}
       extraExtensionsForPath={(path) => {

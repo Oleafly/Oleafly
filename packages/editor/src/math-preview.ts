@@ -44,9 +44,15 @@ interface PreviewPayload {
 }
 
 const EDIT_PREVIEW_DEBOUNCE_MS = 160;
-const VIEWPORT_PREVIEW_DEBOUNCE_MS = 32;
-const WHOLE_DOCUMENT_SCAN_LIMIT = 262_144;
-const SCAN_OVERSCAN = 65_536;
+// CodeMirror deliberately keeps its rendered DOM viewport small. Rebuilding
+// height-changing widgets while that viewport is chasing a fast scroll can
+// expose its spacer rows for a frame. Wait for the viewport to settle and keep
+// the preview set local to it instead of installing offscreen block widgets
+// throughout a math-heavy document.
+const VIEWPORT_PREVIEW_DEBOUNCE_MS = 120;
+const SCAN_OVERSCAN = 16_384;
+const COVERAGE_OVERSCAN = 4_096;
+const MAX_RENDERED_EXPRESSIONS = 240;
 const setMathDecorations = StateEffect.define<PreviewPayload>();
 
 function protectedSyntaxRanges(
@@ -73,14 +79,14 @@ function protectedSyntaxRanges(
   return ranges;
 }
 
-function viewportWindows(view: EditorView): Array<{ from: number; to: number }> {
-  if (view.state.doc.length <= WHOLE_DOCUMENT_SCAN_LIMIT) {
-    return [{ from: 0, to: view.state.doc.length }];
-  }
+function viewportWindows(
+  view: EditorView,
+  overscan: number,
+): Array<{ from: number; to: number }> {
   const windows = view.visibleRanges
     .map((range) => {
-      const from = Math.max(0, range.from - SCAN_OVERSCAN);
-      const to = Math.min(view.state.doc.length, range.to + SCAN_OVERSCAN);
+      const from = Math.max(0, range.from - overscan);
+      const to = Math.min(view.state.doc.length, range.to + overscan);
       return {
         from: view.state.doc.lineAt(from).from,
         to: view.state.doc.lineAt(to).to,
@@ -102,7 +108,7 @@ function viewportWindows(view: EditorView): Array<{ from: number; to: number }> 
 function visibleExpressions(
   view: EditorView,
   format: MathSourceFormat,
-  windows = viewportWindows(view),
+  windows: Array<{ from: number; to: number }>,
 ): MathExpression[] {
   const seen = new Set<string>();
   const found: MathExpression[] = [];
@@ -131,18 +137,45 @@ function visibleExpressions(
       found.push(expression);
     }
   }
-  return found;
+  if (found.length <= MAX_RENDERED_EXPRESSIONS) return found;
+
+  // In a pathological math-dense window, retain the expressions nearest to
+  // what the user can actually see. The surrounding scan window still gives
+  // ordinary documents enough look-ahead for seamless scrolling.
+  const visible = view.visibleRanges;
+  const distanceToViewport = (expression: MathExpression): number => {
+    let distance = Number.POSITIVE_INFINITY;
+    for (const range of visible) {
+      if (expression.to >= range.from && expression.from <= range.to) {
+        return 0;
+      }
+      distance = Math.min(
+        distance,
+        expression.to < range.from
+          ? range.from - expression.to
+          : expression.from - range.to,
+      );
+    }
+    return distance;
+  };
+  return found
+    .map((expression) => ({
+      expression,
+      distance: distanceToViewport(expression),
+    }))
+    .sort(
+      (left, right) =>
+        left.distance - right.distance ||
+        left.expression.from - right.expression.from,
+    )
+    .slice(0, MAX_RENDERED_EXPRESSIONS)
+    .map(({ expression }) => expression)
+    .sort((left, right) => left.from - right.from);
 }
 
 class MathPreviewWidget extends WidgetType {
   private mounted = new WeakMap<HTMLElement, MountedMathPreview>();
-  /**
-   * Liveness of this widget instance, which is not the same question as
-   * "is the document unchanged". CodeMirror keeps a widget mounted across
-   * edits and calls `destroy` when it is really gone, so the preview paints
-   * and stays clickable instead of freezing on the first keystroke.
-   */
-  private alive = true;
+  private liveHosts = new WeakSet<HTMLElement>();
 
   constructor(
     readonly expression: MathExpression,
@@ -155,11 +188,20 @@ class MathPreviewWidget extends WidgetType {
   }
 
   toDOM(): HTMLElement {
-    const dom = document.createElement(this.expression.display ? "div" : "span");
+    // Keep every preview inline in CodeMirror's content flow. A block widget
+    // participates in the editor's virtual height map; rebuilding surrounding
+    // diagnostic/semantic-token marks can then force the same source region to
+    // be measured through two independent geometry layers. The compact display
+    // treatment below preserves a live preview without owning line geometry.
+    const dom = document.createElement("span");
+    // Virtual scrolling may destroy a widget DOM node and later ask the same
+    // WidgetType instance for a fresh node. Track each host independently so a
+    // previous offscreen node cannot permanently poison future remounts.
+    this.liveHosts.add(dom);
     const mounted = mountMathPreview(dom, {
       expression: this.expression,
       identity: this.identity,
-      isCurrent: () => this.alive && this.isCurrent(),
+      isCurrent: () => this.liveHosts.has(dom) && this.isCurrent(),
       // CodeMirror only mounts widgets in its rendered viewport. Rendering
       // synchronously here avoids painting a small loading label first and
       // replacing it with wider KaTeX on the next frame, which otherwise
@@ -171,7 +213,7 @@ class MathPreviewWidget extends WidgetType {
   }
 
   destroy(dom: HTMLElement): void {
-    this.alive = false;
+    this.liveHosts.delete(dom);
     this.mounted.get(dom)?.destroy();
     this.mounted.delete(dom);
   }
@@ -216,9 +258,6 @@ function buildDecorations(
         },
       }).range(expression.from, expression.to),
     );
-    const anchor = expression.display
-      ? view.state.doc.lineAt(expression.to).to
-      : expression.to;
     ranges.push(
       Decoration.widget({
         widget: new MathPreviewWidget(
@@ -229,8 +268,7 @@ function buildDecorations(
           isCurrent,
         ),
         side: 1,
-        block: expression.display,
-      }).range(anchor),
+      }).range(expression.to),
     );
   }
   return Decoration.set(ranges, true);
@@ -250,6 +288,7 @@ const mathPreviewTheme = EditorView.baseTheme({
   },
   ".math-preview": {
     boxSizing: "border-box",
+    contain: "layout paint",
     color: "var(--cm-editor-fg, var(--foreground))",
     background:
       "color-mix(in srgb, var(--cm-editor-bg, var(--background)) 88%, var(--muted))",
@@ -257,6 +296,7 @@ const mathPreviewTheme = EditorView.baseTheme({
     borderRadius: "6px",
     alignItems: "center",
     gap: "6px",
+    minWidth: "0",
     maxWidth: "min(100%, 48rem)",
   },
   ".math-preview.is-inline": {
@@ -266,17 +306,26 @@ const mathPreviewTheme = EditorView.baseTheme({
     verticalAlign: "middle",
   },
   ".math-preview.is-display": {
-    display: "flex",
+    display: "inline-flex",
     justifyContent: "center",
-    minHeight: "2.75rem",
+    height: "1.6em",
+    marginInline: "0.45em",
     overflowX: "auto",
-    padding: "0.5rem 0.75rem",
+    overflowY: "hidden",
+    padding: "0.12em 0.35em",
+    verticalAlign: "middle",
+  },
+  ".math-preview.is-display .katex-display": {
+    display: "inline-block",
+    margin: "0",
   },
   ".math-preview-output": {
     minWidth: "0",
+    maxWidth: "100%",
     overflowX: "auto",
+    overflowY: "hidden",
   },
-        ".math-preview-error": {
+  ".math-preview-error": {
     color: "var(--destructive)",
     font: "500 11px/1.35 var(--font-sans)",
   },
@@ -363,7 +412,8 @@ export function liveMathPreview(format: MathSourceFormat): Extension {
           ) {
             return;
           }
-          const coverage = viewportWindows(view);
+          const scanWindows = viewportWindows(view, SCAN_OVERSCAN);
+          const coverage = viewportWindows(view, COVERAGE_OVERSCAN);
           const identity = `${revision}`;
           const isCurrent = () =>
             !this.destroyed &&
@@ -374,7 +424,7 @@ export function liveMathPreview(format: MathSourceFormat): Extension {
             format,
             identity,
             isCurrent,
-            coverage,
+            scanWindows,
           );
           if (
             !isCurrent() ||
