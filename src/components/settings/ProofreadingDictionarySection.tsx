@@ -1,5 +1,6 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { Plus, Search, Trash2, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Input } from "@/components/ui/input";
@@ -96,29 +97,30 @@ function WordChips({
     );
   }
   return (
-    <div
-      className="flex max-h-52 flex-wrap content-start gap-1.5 overflow-y-auto"
-      role="list"
+    <ul
+      className="m-0 flex max-h-52 list-none flex-wrap content-start gap-1.5 overflow-y-auto p-0"
       aria-label="Ignored words"
     >
       {visible.map((word) => (
-        <span
-          key={word}
-          className="inline-flex items-center gap-1 rounded-md border bg-background py-1 pl-2 pr-1 text-xs"
-        >
-          <span className="font-mono">{word}</span>
-          <button
-            type="button"
-            onClick={() => onRemove(word)}
-            aria-label={`Stop ignoring ${word}`}
-            title={`Stop ignoring “${word}”`}
-            className="rounded text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        <li key={word}>
+          <Badge
+            variant="quiet"
+            className="gap-1 py-1 pl-2.5 pr-1 font-normal"
           >
-            <X className="size-3" aria-hidden />
-          </button>
-        </span>
+            <span className="font-mono">{word}</span>
+            <button
+              type="button"
+              onClick={() => onRemove(word)}
+              aria-label={`Stop ignoring ${word}`}
+              title={`Stop ignoring “${word}”`}
+              className="rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <X className="size-3" aria-hidden />
+            </button>
+          </Badge>
+        </li>
       ))}
-    </div>
+    </ul>
   );
 }
 
@@ -192,14 +194,31 @@ export function ProofreadingDictionarySection() {
       </div>
       <Tabs defaultValue="global" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="global" data-testid="dictionary-tab-global">
-            Global ({global.length})
+          <TabsTrigger
+            value="global"
+            data-testid="dictionary-tab-global"
+            className="gap-1.5"
+          >
+            Global
+            <Badge
+              variant="primaryGhost"
+              className="min-w-5 px-1.5 text-[10px] tabular-nums"
+            >
+              {global.length.toLocaleString()}
+            </Badge>
           </TabsTrigger>
           <TabsTrigger
             value="projects"
             data-testid="dictionary-tab-projects"
+            className="gap-1.5"
           >
             Projects
+            <Badge
+              variant="primaryGhost"
+              className="min-w-5 px-1.5 text-[10px] tabular-nums"
+            >
+              {projectEntries.length.toLocaleString()}
+            </Badge>
           </TabsTrigger>
         </TabsList>
         <TabsContent value="global" className="space-y-3">
@@ -208,10 +227,18 @@ export function ProofreadingDictionarySection() {
             onAdd={ignoreGlobal}
           />
           <div className="flex items-center justify-between gap-3">
-            <span className="text-xs text-muted-foreground">
-              Applies to every project · {global.length.toLocaleString()} /{" "}
-              {DICTIONARY_LIMITS.wordsPerScope.toLocaleString()}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">
+                Applies to every project
+              </span>
+              <Badge
+                variant="primaryGhost"
+                className="text-[10px] tabular-nums"
+              >
+                {global.length.toLocaleString()} /{" "}
+                {DICTIONARY_LIMITS.wordsPerScope.toLocaleString()}
+              </Badge>
+            </div>
             <Button
               type="button"
               variant="ghost"
@@ -254,10 +281,13 @@ export function ProofreadingDictionarySection() {
                     >
                       {name}
                     </h4>
-                    <p className="text-[11px] text-muted-foreground">
+                    <Badge
+                      variant="primaryGhost"
+                      className="mt-1 text-[10px] tabular-nums"
+                    >
                       {words.length.toLocaleString()} /{" "}
                       {DICTIONARY_LIMITS.wordsPerScope.toLocaleString()} terms
-                    </p>
+                    </Badge>
                   </div>
                   <Button
                     type="button"

@@ -151,7 +151,7 @@ function definitionDetail(
 function describe(
   snapshot: ProjectIntelligenceSnapshot,
   symbol: ProjectSymbol,
-): { title: string; detail: string } {
+): { title: string; detail: string } | null {
   if (isUse(symbol)) {
     const definitions = definitionsForUse(snapshot, symbol.id);
     const noun =
@@ -182,6 +182,7 @@ function describe(
   }
 
   const count = referencesFor(snapshot, symbol.id).length;
+  if (count === 0) return null;
   return {
     title: `${symbol.kind} · ${symbol.name}`,
     detail: `${count} reference${count === 1 ? "" : "s"} in the current project revision`,
@@ -192,6 +193,7 @@ const projectHover = hoverTooltip((view, position) => {
   const current = currentSymbol(view, position);
   if (!current) return null;
   const info = describe(current.snapshot, current.symbol);
+  if (!info) return null;
   return {
     pos: current.symbol.location.range.from,
     end: current.symbol.location.range.to,

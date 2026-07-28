@@ -1,5 +1,4 @@
 import type {
-  Dialect,
   LocalLinter,
   Lint,
   Span,
@@ -35,6 +34,8 @@ import {
   BUILTIN_PROOFREADING_WORDS,
   isSessionIgnoredWord,
 } from "./ignored";
+import { harperDialectFor } from "./dialects";
+import { loadHunspellDictionary } from "./hunspell";
 
 interface WorkerScope {
   addEventListener(
@@ -59,7 +60,6 @@ type WordRange = { from: number; to: number; word: string };
 const workerScope = self as unknown as WorkerScope;
 const MAX_CACHE_ENTRIES = 8;
 const MAX_CACHE_CHARACTERS = 600_000;
-const MAX_QUEUED_LANES = 4;
 const cache = new Map<string, CachedResult>();
 let cachedCharacters = 0;
 let grammarPromise: Promise<LocalLinter> | null = null;
@@ -99,12 +99,16 @@ function errorResponse(
   message: string,
   retryable: boolean,
 ): ProofreadingError {
+  const safeMessage =
+    message.length > 1_024
+      ? `${message.slice(0, 1_023)}…`
+      : message;
   return {
     protocolVersion: PROOFREADING_PROTOCOL_VERSION,
     type: "error",
     requestId: request.requestId,
     identity: request.identity,
-    error: { code, message, retryable },
+    error: { code, message: safeMessage, retryable },
   };
 }
 
@@ -112,8 +116,16 @@ function resultResponse(
   request: ProofreadingRequest,
   status: ProofreadingResult["status"],
   diagnostics: ProofreadingDiagnostic[],
-  options: { message?: string; truncated?: boolean } = {},
+  options: {
+    message?: string;
+    activeDictionaryLocale?: string;
+    truncated?: boolean;
+  } = {},
 ): ProofreadingResult {
+  const message =
+    options.message && options.message.length > 2_048
+      ? `${options.message.slice(0, 2_047)}…`
+      : options.message;
   return {
     protocolVersion: PROOFREADING_PROTOCOL_VERSION,
     type: "result",
@@ -122,6 +134,7 @@ function resultResponse(
     status,
     diagnostics,
     ...options,
+    ...(message ? { message } : {}),
   };
 }
 
@@ -154,7 +167,7 @@ function validateRequest(request: ProofreadingRequest): string | null {
     !["latex", "markdown", "plaintext", "typst"].includes(
       request.format,
     ) ||
-    (request.mode !== "grammar" && request.mode !== "spelling") ||
+    !["grammar", "spelling", "combined"].includes(request.mode) ||
     typeof request.text !== "string" ||
     !Array.isArray(request.ignoredWords) ||
     request.ignoredWords.length > PROOFREADING_LIMITS.ignoredWords ||
@@ -167,6 +180,11 @@ function validateRequest(request: ProofreadingRequest): string | null {
     request.preferences === null ||
     typeof request.preferences.showRegionalism !== "boolean" ||
     typeof request.preferences.showWordChoice !== "boolean" ||
+    (request.preferences.dictionaryLocale !== undefined &&
+      (typeof request.preferences.dictionaryLocale !== "string" ||
+        !/^[A-Za-z]{2,3}(?:[_-][A-Za-z]{2,4})?$/u.test(
+          request.preferences.dictionaryLocale,
+        ))) ||
     ![
       "american",
       "british",
@@ -297,14 +315,9 @@ async function syncGrammarDialect(
   if (!grammarDialectValues) {
     throw new Error("Harper dialects are unavailable.");
   }
-  const dialectValues: Record<ProofreadingDialect, Dialect> = {
-    american: grammarDialectValues.American,
-    british: grammarDialectValues.British,
-    australian: grammarDialectValues.Australian,
-    canadian: grammarDialectValues.Canadian,
-    indian: grammarDialectValues.Indian,
-  };
-  await linter.setDialect(dialectValues[dialect]);
+  await linter.setDialect(
+    harperDialectFor(grammarDialectValues, dialect),
+  );
   grammarDialect = dialect;
   // Be conservative if Harper rebuilds its lexicon while changing dialect.
   grammarDictionaryKey = null;
@@ -333,68 +346,16 @@ async function syncGrammarDictionary(
 }
 
 async function getSpellchecker(locale = "en_US"): Promise<Hunspell> {
-  const safeLocale = /^[A-Za-z]{2,3}(?:[_-][A-Za-z]{2,4})?$/u.test(locale)
-    ? locale.replace("-", "_")
-    : "en_US";
+  const safeLocale = locale.replace("-", "_");
   if (!spellcheckerPromise || spellcheckerLocale !== safeLocale) {
+    const previous = spellcheckerPromise;
     spellcheckerLocale = safeLocale;
     spellcheckerPromise = (async () => {
-      // hunspell-asm 4's embedded Emscripten runtime detects workers via the
-      // classic-worker `importScripts` global. Oleafly uses an ES-module
-      // worker, where that global is absent even though every API Hunspell
-      // needs (WASM, XHR, timers, typed arrays) is available. A non-loading
-      // compatibility marker selects the correct worker branch; no script can
-      // be imported through it.
-      const workerGlobals = globalThis as typeof globalThis & {
-        importScripts?: (...urls: string[]) => void;
-      };
-      if (typeof workerGlobals.importScripts !== "function") {
-        Object.defineProperty(workerGlobals, "importScripts", {
-          configurable: true,
-          value: () => {
-            throw new Error(
-              "Dynamic script loading is disabled in the proofreading worker.",
-            );
-          },
-        });
+      if (previous) {
+        const previousSpellchecker = await previous.catch(() => null);
+        previousSpellchecker?.dispose();
       }
-      const { loadModule } = await import("hunspell-asm");
-      const factory = await loadModule();
-      const dictionaryBase =
-        workerScope.location.origin &&
-        workerScope.location.origin !== "null"
-          ? `${workerScope.location.origin}/`
-          : workerScope.location.href;
-      const dictionaryUrl = (name: string) =>
-        new URL(`/dictionaries/${name}`, dictionaryBase);
-      const loadPack = async (name: string) => {
-        const [affResponse, dictionaryResponse] = await Promise.all([
-          fetch(dictionaryUrl(`${name}.aff`)),
-          fetch(dictionaryUrl(`${name}.dic`)),
-        ]);
-        return affResponse.ok && dictionaryResponse.ok
-          ? { affResponse, dictionaryResponse, name }
-          : null;
-      };
-      const pack = (await loadPack(safeLocale)) ?? (await loadPack("en_US"));
-      if (!pack) throw new Error("Dictionary assets are unavailable.");
-      const { affResponse, dictionaryResponse, name } = pack;
-      if (!affResponse.ok || !dictionaryResponse.ok) {
-        throw new Error("Dictionary assets are unavailable.");
-      }
-      const [aff, dictionary] = await Promise.all([
-        affResponse.arrayBuffer(),
-        dictionaryResponse.arrayBuffer(),
-      ]);
-      const affPath = factory.mountBuffer(
-        new Uint8Array(aff),
-        `${name}.aff`,
-      );
-      const dictionaryPath = factory.mountBuffer(
-        new Uint8Array(dictionary),
-        `${name}.dic`,
-      );
-      return factory.create(affPath, dictionaryPath);
+      return loadHunspellDictionary(safeLocale);
     })();
     spellcheckerPromise.catch(() => {
       spellcheckerPromise = null;
@@ -434,9 +395,12 @@ function freeHarperObjects(
 async function grammarDiagnostics(
   request: ProofreadingRequest,
   ignored: ReadonlySet<string>,
-): Promise<ProofreadingDiagnostic[]> {
+): Promise<{
+  diagnostics: ProofreadingDiagnostic[];
+  malformedLintCount: number;
+}> {
   const { prose, map } = proseFor(request);
-  if (!prose) return [];
+  if (!prose) return { diagnostics: [], malformedLintCount: 0 };
   const linter = await getGrammarLinter();
   await syncGrammarDialect(linter, request.preferences.dialect);
   await syncGrammarDictionary(linter, ignored);
@@ -444,24 +408,32 @@ async function grammarDiagnostics(
     language: "plaintext",
   });
   const diagnostics: ProofreadingDiagnostic[] = [];
+  let malformedLintCount = 0;
   for (const lint of lints) {
     let span: Span | null = null;
     let suggestions: Suggestion[] = [];
     try {
-      if (diagnostics.length >= PROOFREADING_LIMITS.diagnostics) {
-        continue;
-      }
       span = lint.span();
       const proseFrom = Math.max(0, Math.min(span.start, prose.length));
       const proseTo = Math.max(
         proseFrom + 1,
         Math.min(span.end, prose.length),
       );
-      if (proseFrom >= map.length) continue;
+      if (proseFrom >= map.length) {
+        malformedLintCount += 1;
+        continue;
+      }
       const from = map[proseFrom];
       const to = (map[Math.min(proseTo, map.length) - 1] ?? from) + 1;
-      if (to <= from || to > request.text.length) continue;
+      if (to <= from || to > request.text.length) {
+        malformedLintCount += 1;
+        continue;
+      }
       const kind = lint.lint_kind();
+      // Hunspell is the selected dictionary authority. Including Harper's
+      // English-only spelling lints in grammar-only mode would silently
+      // ignore the user's locale and double-report combined-mode findings.
+      if (kind === "Spelling") continue;
       if (
         (!request.preferences.showRegionalism &&
           /regional/iu.test(kind)) ||
@@ -490,12 +462,14 @@ async function grammarDiagnostics(
         suggestions: mappedSuggestions,
       });
     } catch {
-      // A malformed lint must not discard other valid diagnostics.
+      // Retain other valid diagnostics, but report the incomplete analysis to
+      // the UI instead of silently claiming a fully successful pass.
+      malformedLintCount += 1;
     } finally {
       freeHarperObjects(lint, span, suggestions);
     }
   }
-  return diagnostics;
+  return { diagnostics, malformedLintCount };
 }
 
 async function spellingDiagnostics(
@@ -527,7 +501,6 @@ async function spellingDiagnostics(
       word: range.word,
       suggestions,
     });
-    if (diagnostics.length >= PROOFREADING_LIMITS.diagnostics) break;
   }
   return diagnostics;
 }
@@ -546,6 +519,7 @@ function cacheKey(request: ProofreadingRequest, ignored: string): string {
     request.mode,
     request.format,
     request.preferences.dialect,
+    request.preferences.dictionaryLocale?.replace("-", "_") ?? "",
     request.preferences.showRegionalism ? "r1" : "r0",
     request.preferences.showWordChoice ? "w1" : "w0",
     request.text.length,
@@ -613,9 +587,14 @@ async function analyze(
     );
   }
   const limit =
-    request.mode === "grammar"
+    request.mode === "spelling"
+      ? PROOFREADING_LIMITS.spellingCharacters
+      : request.mode === "grammar"
       ? PROOFREADING_LIMITS.grammarCharacters
-      : PROOFREADING_LIMITS.spellingCharacters;
+      : Math.min(
+          PROOFREADING_LIMITS.grammarCharacters,
+          PROOFREADING_LIMITS.spellingCharacters,
+        );
   if (request.text.length > limit) {
     return resultResponse(request, "too_large", [], {
       message: `Proofreading paused for this ${request.text.length.toLocaleString()}-character document (limit ${limit.toLocaleString()}).`,
@@ -630,30 +609,133 @@ async function analyze(
   const cached = readCache(key, request.text, ignoredKey);
   if (cached) {
     return resultResponse(request, "ready", cached, {
-      truncated: cached.length >= PROOFREADING_LIMITS.diagnostics,
+      ...(request.mode !== "grammar"
+        ? {
+            activeDictionaryLocale:
+              request.preferences.dictionaryLocale?.replace("-", "_") ??
+              "en_US",
+          }
+        : {}),
     });
   }
 
-  try {
-    const ignored = new Set(normalizedIgnored);
-    const diagnostics =
-      request.mode === "grammar"
-        ? await grammarDiagnostics(request, ignored)
-        : await spellingDiagnostics(request, ignored);
-    writeCache(key, request.text, ignoredKey, diagnostics);
-    return resultResponse(request, "ready", diagnostics, {
-      truncated: diagnostics.length >= PROOFREADING_LIMITS.diagnostics,
-    });
-  } catch {
+  const ignored = new Set(normalizedIgnored);
+  if (request.mode === "grammar") {
+    try {
+      const grammar = await grammarDiagnostics(request, ignored);
+      if (grammar.malformedLintCount > 0) {
+        return resultResponse(request, "partial", grammar.diagnostics, {
+          message: `${grammar.malformedLintCount.toLocaleString()} malformed grammar finding${grammar.malformedLintCount === 1 ? " was" : "s were"} skipped; all valid findings are shown.`,
+        });
+      }
+      writeCache(
+        key,
+        request.text,
+        ignoredKey,
+        grammar.diagnostics,
+      );
+      return resultResponse(request, "ready", grammar.diagnostics);
+    } catch (error) {
+      return errorResponse(
+        request,
+        "analysis_failed",
+        error instanceof Error
+          ? `Grammar checking failed: ${error.message}`
+          : "Grammar checking could not finish.",
+        true,
+      );
+    }
+  }
+
+  if (request.mode === "spelling") {
+    try {
+      const diagnostics = await spellingDiagnostics(request, ignored);
+      writeCache(key, request.text, ignoredKey, diagnostics);
+      return resultResponse(request, "ready", diagnostics, {
+        activeDictionaryLocale:
+          request.preferences.dictionaryLocale?.replace("-", "_") ??
+          "en_US",
+      });
+    } catch (error) {
+      return errorResponse(
+        request,
+        "initialization_failed",
+        error instanceof Error
+          ? error.message
+          : `The requested ${
+              request.preferences.dictionaryLocale ?? "en_US"
+            } spelling dictionary could not start.`,
+        true,
+      );
+    }
+  }
+
+  const [grammarResult, spellingResult] = await Promise.allSettled([
+    grammarDiagnostics(request, ignored),
+    spellingDiagnostics(request, ignored),
+  ]);
+  if (
+    grammarResult.status === "rejected" &&
+    spellingResult.status === "rejected"
+  ) {
     return errorResponse(
       request,
-      "initialization_failed",
-      request.mode === "grammar"
-        ? "The offline grammar engine could not start."
-        : "The offline spelling dictionary could not start.",
+      "analysis_failed",
+      "Grammar and spelling checking could not finish.",
       true,
     );
   }
+  const diagnostics = [
+    ...(grammarResult.status === "fulfilled"
+      ? grammarResult.value.diagnostics
+      : []),
+    ...(spellingResult.status === "fulfilled"
+      ? spellingResult.value
+      : []),
+  ].sort(
+    (left, right) =>
+      left.from - right.from ||
+      left.to - right.to ||
+      left.source.localeCompare(right.source),
+  );
+  const malformedLintCount =
+    grammarResult.status === "fulfilled"
+      ? grammarResult.value.malformedLintCount
+      : 0;
+  const partialReasons: string[] = [];
+  if (grammarResult.status === "rejected") {
+    partialReasons.push("grammar checking did not finish");
+  }
+  if (spellingResult.status === "rejected") {
+    partialReasons.push(
+      `the requested ${
+        request.preferences.dictionaryLocale ?? "en_US"
+      } spelling dictionary could not start`,
+    );
+  }
+  if (malformedLintCount > 0) {
+    partialReasons.push(
+      `${malformedLintCount.toLocaleString()} malformed grammar finding${malformedLintCount === 1 ? " was" : "s were"} skipped`,
+    );
+  }
+  if (partialReasons.length > 0) {
+    return resultResponse(request, "partial", diagnostics, {
+      message: `Partial proofreading: ${partialReasons.join("; ")}. Valid findings are still shown.`,
+      ...(spellingResult.status === "fulfilled"
+        ? {
+            activeDictionaryLocale:
+              request.preferences.dictionaryLocale?.replace("-", "_") ??
+              "en_US",
+          }
+        : {}),
+    });
+  }
+  writeCache(key, request.text, ignoredKey, diagnostics);
+  return resultResponse(request, "ready", diagnostics, {
+    activeDictionaryLocale:
+      request.preferences.dictionaryLocale?.replace("-", "_") ??
+      "en_US",
+  });
 }
 
 async function drainQueue() {
@@ -717,13 +799,5 @@ workerScope.addEventListener("message", (event) => {
   const requestLane = lane(request.identity);
   queuedRequests.delete(requestLane);
   queuedRequests.set(requestLane, request);
-  while (queuedRequests.size > MAX_QUEUED_LANES) {
-    const oldestLane = queuedRequests.keys().next().value as
-      | string
-      | undefined;
-    if (!oldestLane) break;
-    queuedRequests.delete(oldestLane);
-    latestGeneration.delete(oldestLane);
-  }
   void drainQueue();
 });

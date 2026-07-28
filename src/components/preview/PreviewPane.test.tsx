@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
+import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { useTourStore } from "@/store/tours";
 
 vi.mock("@/components/pdf/PdfViewer", () => ({
@@ -34,6 +35,9 @@ describe("PreviewPane empty state", () => {
       log: "",
       errors: [],
       pdfBytes: null,
+      lastAttemptIdentity: null,
+      lastCompileCheckpoint: null,
+      failureReason: null,
       compileTimeMs: null,
       recompile,
     } as unknown as ReturnType<typeof useCompileStore.getState>);
@@ -46,6 +50,11 @@ describe("PreviewPane empty state", () => {
       refreshTree: vi.fn().mockResolvedValue(undefined),
     } as unknown as ReturnType<typeof useFilesStore.getState>);
     useTourStore.setState({ activeTourId: null });
+    useProjectAnalysisStore.getState().activateProject({
+      projectId: "preview-empty-fixture",
+      projectRevision: 2,
+      languageServiceGeneration: 0,
+    });
   });
 
   it("shows the startup state without a duplicate compile button", () => {
@@ -64,5 +73,29 @@ describe("PreviewPane empty state", () => {
     expect(
       screen.getByRole("status", { name: /Document startup: \d+ of 3 stages/ }),
     ).toBeInTheDocument();
+  });
+
+  it("never mounts unverified bytes from an older project revision", () => {
+    useCompileStore.setState({
+      status: "success",
+      pdfBytes: new Uint8Array([1, 2, 3]),
+      lastCompileCheckpoint: {
+        version: 1,
+        projectId: "preview-empty-fixture",
+        mainDocument: "main.tex",
+        projectRevision: 1,
+        requestGeneration: 1,
+        outputKind: "standard",
+        producerId: "test",
+        outputRevision: 1,
+        outputId: "pdf-v1:3:0000000000000000",
+        completedAt: 1,
+      },
+    });
+
+    render(<PreviewPane />);
+    expect(
+      screen.queryByTestId("mock-pdf-viewer"),
+    ).not.toBeInTheDocument();
   });
 });

@@ -70,6 +70,18 @@ describe("parseLatexBody", () => {
     );
   });
 
+  it("keeps document-level title and author commands out of inline layout", () => {
+    const doc = parseLatexBody(
+      "\\title{Attention Is All You Need}\n\\author{Ada Lovelace \\\\ Charles Babbage}\n\\maketitle\n",
+    );
+    expect(doc.content?.map((node) => node.type)).toEqual([
+      "rawBlock",
+      "rawBlock",
+      "rawBlock",
+    ]);
+    expect(doc.content?.[1].attrs?.source).toContain("\\author");
+  });
+
   it("preserves escaped special characters as literal text instead of dropping them", () => {
     const doc = parseLatexBody("cut p99 latency 38\\% and saved \\$14M/year\n");
     const paragraph = doc.content?.find((n) => n.type === "paragraph");

@@ -21,14 +21,12 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { CommandPalette } from "@/components/layout/CommandPalette";
 import { SearchOmnibar } from "@/components/layout/SearchOmnibar";
 import { GlobalNewProject } from "@/components/library/GlobalNewProject";
+import { BibtexToolView } from "@/components/tools/BibtexToolView";
+import { TableToolView } from "@/components/tools/TableToolView";
 import { PdfImportView } from "@/components/import/PdfImportView";
 import { DeadlinesView } from "@/components/deadlines/DeadlinesView";
 import { LatexToolsView } from "@/components/tools/LatexToolsView";
-import { EquationToolView } from "@/components/tools/EquationToolView";
-import { BibtexToolView } from "@/components/tools/BibtexToolView";
-import { TableToolView } from "@/components/tools/TableToolView";
 import { LabSearchToolView } from "@/components/tools/LabSearchToolView";
-import { LiteratureSearchToolView } from "@/components/tools/LiteratureSearchToolView";
 import { useHomeViewStore } from "@/store/home-view";
 import { Editor } from "@/components/editor/Editor";
 import {
@@ -82,6 +80,14 @@ const HotkeysModal = lazy(() =>
 );
 const TourGuide = lazy(() =>
   import("@/components/tour/TourGuide").then((m) => ({ default: m.TourGuide })),
+);
+const EquationToolView = lazy(() =>
+  import("@/components/tools/EquationToolView").then((m) => ({ default: m.EquationToolView })),
+);
+const LiteratureSearchToolView = lazy(() =>
+  import("@/components/tools/LiteratureSearchToolView").then((m) => ({
+    default: m.LiteratureSearchToolView,
+  })),
 );
 
 // fallback must stay null - a visible one blocks the whole screen (these mount unconditionally, closed by default).
@@ -168,6 +174,8 @@ function AppContent() {
   const accentColor = useSettingsStore((s) => s.accentColor);
   const chatFloating = useSettingsStore((s) => s.chatFloating);
   const railTab = useSettingsStore((s) => s.railTab);
+  const homePage = useHomeViewStore((state) => state.page);
+  const toolsOpen = useHomeViewStore((state) => state.toolsOpen);
   const sidebarPanelRef = useRef<ImperativePanelHandle>(null);
   const editorPanelRef = useRef<ImperativePanelHandle>(null);
   const pdfPanelRef = useRef<ImperativePanelHandle>(null);
@@ -614,14 +622,16 @@ function AppContent() {
         <CommandPalette />
         <SearchOmnibar />
         <GlobalNewProject />
-        <PdfImportView />
-        <EquationToolView />
-        <BibtexToolView />
-        <TableToolView />
-        <LabSearchToolView />
-        <LiteratureSearchToolView />
-        <DeadlinesView />
-        <LatexToolsView />
+        <Suspense fallback={null}>
+          {homePage === "pdf-import" && <PdfImportView />}
+          {homePage === "equation" && <EquationToolView />}
+          {homePage === "bibtex" && <BibtexToolView />}
+          {homePage === "table" && <TableToolView />}
+          {homePage === "lab-search" && <LabSearchToolView />}
+          {homePage === "literature-search" && <LiteratureSearchToolView />}
+          {homePage === "deadlines" && <DeadlinesView />}
+          {toolsOpen && <LatexToolsView />}
+        </Suspense>
         <ExternalToolApprovals />
         <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
         {chatFloating && (

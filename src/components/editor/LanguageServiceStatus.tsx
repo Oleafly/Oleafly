@@ -7,9 +7,8 @@ import {
   Download,
   ExternalLink,
   LoaderCircle,
-  RotateCcw,
-  TriangleAlert,
 } from "lucide-react";
+import { toast } from "sonner";
 import {
   LANGUAGE_SERVICE_SETUP_FAILURE_REASON,
   retryActiveLanguageService,
@@ -115,6 +114,41 @@ function LanguageServiceFailureStatus({
     failureMessage ??
     reason ??
     "The project language service could not be started.";
+  const statusMessage = setupRequired
+    ? disclosureFailure
+      ? "Language service setup details unavailable"
+      : "Language service setup required"
+    : unavailableLabel;
+  const toastId = `language-service:${kind ?? "unknown"}`;
+
+  useEffect(() => {
+    if (!visible) {
+      toast.dismiss(toastId);
+      return;
+    }
+    toast.warning(statusMessage, {
+      id: toastId,
+      duration: Number.POSITIVE_INFINITY,
+      action: {
+        label: actionLabel,
+        onClick: canSetUp
+          ? () => {
+              setInstallFailure(null);
+              setSetupOpen(true);
+            }
+          : retryActiveLanguageService,
+      },
+    });
+    return () => {
+      toast.dismiss(toastId);
+    };
+  }, [
+    actionLabel,
+    canSetUp,
+    statusMessage,
+    toastId,
+    visible,
+  ]);
 
   const install = async () => {
     if (!disclosure || installPending) return;
@@ -134,49 +168,6 @@ function LanguageServiceFailureStatus({
 
   return (
     <>
-      {visible ? (
-        <aside
-          aria-label="Language analysis status"
-          aria-live="assertive"
-          className="fixed right-3 top-14 z-50 flex max-w-sm items-center gap-2 rounded-md border border-amber-500/40 bg-background/95 p-2 text-xs shadow-md backdrop-blur"
-          role="alert"
-          title={
-            disclosureFailure ?? failureMessage ?? reason
-          }
-        >
-          <TriangleAlert
-            aria-hidden="true"
-            className="size-4 shrink-0 text-amber-600"
-          />
-          <span className="min-w-0 flex-1 truncate">
-            {setupRequired
-              ? disclosureFailure
-                ? "Language service setup details unavailable"
-                : "Language service setup required"
-              : unavailableLabel}
-          </span>
-          <button
-            type="button"
-            className="inline-flex min-h-7 items-center gap-1 rounded border px-2 font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            onClick={
-              canSetUp
-                ? () => {
-                    setInstallFailure(null);
-                    setSetupOpen(true);
-                  }
-                : retryActiveLanguageService
-            }
-          >
-            {canSetUp ? (
-              <Download aria-hidden="true" className="size-3.5" />
-            ) : (
-              <RotateCcw aria-hidden="true" className="size-3.5" />
-            )}
-            {actionLabel}
-          </button>
-        </aside>
-      ) : null}
-
       {disclosure ? (
         <Dialog open={setupOpen} onOpenChange={setSetupOpen}>
           <DialogContent className="max-w-xl">

@@ -147,6 +147,20 @@ function enqueueWrite(projectId: string, path: string, content: string): Promise
   return tracked;
 }
 
+async function drainProjectWrites(projectId: string): Promise<void> {
+  // Take repeated snapshots because completing one queued write can expose the
+  // next write for the same path. A restore must begin only after none of the
+  // old revision's writes can still land on top of it.
+  for (;;) {
+    const prefix = `${projectId}\0`;
+    const writes = [...pendingWrites.entries()]
+      .filter(([key]) => key.startsWith(prefix))
+      .map(([, write]) => write);
+    if (writes.length === 0) return;
+    await Promise.allSettled(writes);
+  }
+}
+
 function scheduleAutosave(get: () => FilesStore) {
   stopAutosaveTimer();
   if (pendingSaves.size === 0) return;
@@ -755,35 +769,82 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     }
   },
 
-  restoreFromGit: async (oid) => {
+  restoreFromGit: (oid) => enqueueProjectTransition(async () => {
     const { projectId } = get();
     if (!projectId) return;
-    await gitRestore(projectId, oid);
-    // The working tree now holds the restored revision, so every in-memory text
-    // buffer is stale. Reload them all (not just the active tab) so a background
-    // dirty tab's next autosave can't clobber the restore. Drop buffers whose
-    // file no longer exists at this revision.
+
+    set({ loading: true });
     cancelPendingAutosave();
-    await get().refreshTree();
-    const paths = Object.keys(get().files);
-    const reloaded: Record<string, FileState> = {};
-    for (const p of paths) {
-      try {
-        reloaded[p] = { content: await readFileContent(projectId, p), dirty: false };
-      } catch {
-        /* file gone at this revision: drop the stale buffer */
+    try {
+      await drainProjectWrites(projectId);
+      if (get().projectId !== projectId) return;
+
+      await gitRestore(projectId, oid);
+      if (get().projectId !== projectId) return;
+
+      // Read both the restored tree and every text buffer before publishing
+      // either. IndexKeeper observes `tree`; an earlier tree-only publish let it
+      // analyze the previous revision's buffers and briefly accept a mixed graph.
+      const tree = await listFiles(projectId);
+      if (get().projectId !== projectId) return;
+      const filePaths = new Set(
+        tree.filter((entry) => !entry.is_dir).map((entry) => entry.path),
+      );
+      const paths = Object.keys(get().files).filter((path) =>
+        filePaths.has(path),
+      );
+      const loaded = await Promise.all(
+        paths.map(async (path) => {
+          try {
+            return [
+              path,
+              {
+                content: await readFileContent(projectId, path),
+                dirty: false,
+              },
+            ] as const;
+          } catch {
+            return null;
+          }
+        }),
+      );
+      if (get().projectId !== projectId) return;
+      const reloaded: Record<string, FileState> = {};
+      for (const entry of loaded) {
+        if (entry) reloaded[entry[0]] = entry[1];
+      }
+
+      cancelPendingAutosave();
+      set((state) => {
+        if (state.projectId !== projectId) return {};
+        const openTabs = state.openTabs.filter((path) =>
+          filePaths.has(path),
+        );
+        const tabOrder = Object.fromEntries(
+          Object.entries(state.tabOrder).filter(([path]) =>
+            filePaths.has(path),
+          ),
+        );
+        const activePath =
+          state.activePath && filePaths.has(state.activePath)
+            ? state.activePath
+            : (openTabs.at(-1) ?? null);
+        return {
+          tree,
+          files: reloaded,
+          openTabs,
+          tabOrder,
+          activePath,
+          docVersion: state.docVersion + 1,
+          loading: false,
+        };
+      });
+    } finally {
+      if (get().projectId === projectId && get().loading) {
+        set({ loading: false });
       }
     }
-    set((s) => ({
-      files: reloaded,
-      docVersion: s.docVersion + 1,
-      openTabs: s.openTabs.filter((t) => reloaded[t] !== undefined || !paths.includes(t)),
-      activePath:
-        s.activePath && paths.includes(s.activePath) && reloaded[s.activePath] === undefined
-          ? null
-          : s.activePath,
-    }));
-  },
+  }),
 }));
 
 export function useActiveContent(): string {

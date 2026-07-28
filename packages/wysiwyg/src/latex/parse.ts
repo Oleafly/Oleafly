@@ -15,6 +15,18 @@ const HEADING_LEVEL: Record<string, number> = {
   subsubsection: 3,
 };
 
+const BLOCK_MACROS = new Set([
+  "appendix",
+  "author",
+  "bibliography",
+  "bibliographystyle",
+  "date",
+  "keywords",
+  "maketitle",
+  "tableofcontents",
+  "title",
+]);
+
 const MARK_MACRO: Record<string, string> = {
   textbf: "bold",
   textit: "italic",
@@ -185,6 +197,14 @@ export function parseLatexBody(
           type: "heading",
           attrs: { level: HEADING_LEVEL[node.content] },
           content: [{ type: "text", text: astToText(titleNodes) }],
+        });
+        continue;
+      }
+      if (BLOCK_MACROS.has(node.content)) {
+        flushParagraph();
+        content.push({
+          type: "rawBlock",
+          attrs: { source: printRawNode(node) },
         });
         continue;
       }

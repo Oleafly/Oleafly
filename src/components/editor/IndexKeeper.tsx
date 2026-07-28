@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 import { useActiveContent, useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
 
@@ -12,6 +12,8 @@ export function IndexKeeper() {
   // key the full rebuild on tree (not projectId) or unopened .bib files etc.
   // would be missed and citations would look unresolved.
   const tree = useFilesStore((s) => s.tree);
+  const mainDocument = useFilesStore((s) => s.mainDoc);
+  const projectLoading = useFilesStore((s) => s.loading);
   const content = useActiveContent();
 
   useEffect(() => {
@@ -19,16 +21,26 @@ export function IndexKeeper() {
     useIndexStore.getState().reset();
   }, [projectId]);
 
+  useLayoutEffect(() => {
+    if (!projectId) return;
+    // These identities intentionally define the accepted filesystem snapshot.
+    void mainDocument;
+    void tree;
+    useIndexStore.getState().invalidateFilesystem();
+  }, [mainDocument, projectId, tree]);
+
   useEffect(() => {
     // `tree` identity changes on every refreshTree, so debounce: a burst of
     // updates (e.g. an AI edit touching many files) coalesces into one rebuild.
     // Not clearing the index here avoids a go-to-def gap while editing.
-    if (!projectId || tree.length === 0) return;
+    if (!projectId || projectLoading) return;
+    void mainDocument;
+    void tree;
     const t = setTimeout(() => void useIndexStore.getState().rebuildFromDisk(), 200);
     return () => clearTimeout(t);
-  }, [projectId, tree]);
+  }, [mainDocument, projectId, projectLoading, tree]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!activePath) return;
     useIndexStore.getState().updateFile(activePath, content);
   }, [activePath, content]);

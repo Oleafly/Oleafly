@@ -8,6 +8,8 @@
   "types": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
+    "./diagnostic-card": "./src/diagnostic-card.ts",
+    "./latex-analysis": "./src/latex-analysis.ts",
     "./math-render": "./src/math-render.ts",
     "./math-source": "./src/math-source.ts"
   },
@@ -24,6 +26,7 @@
     "@codemirror/state": "*",
     "@codemirror/view": "*",
     "@lezer/highlight": "*",
+    "@lezer/markdown": "*",
     "@replit/codemirror-vim": "*",
     "katex": "*",
     "react": "*"

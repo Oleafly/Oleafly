@@ -1,10 +1,16 @@
 import {
   closeCompletion,
+  snippet,
   type Completion,
   type CompletionContext,
   type CompletionResult,
   type CompletionSource,
 } from "@codemirror/autocomplete";
+import {
+  completionRequestIsCurrent,
+  createCompletionRequestGuard,
+  type CompletionRequestGuard,
+} from "@oleafly/editor";
 import { forceLinting, linter, type Action, type Diagnostic } from "@codemirror/lint";
 import { StateEffect, type Extension } from "@codemirror/state";
 import {
@@ -13,6 +19,7 @@ import {
   type ViewUpdate,
 } from "@codemirror/view";
 import { clearProjectHoverIntel } from "./hover-intel";
+import { analyzeProjectFile } from "@/lib/project-intelligence/analyze-file";
 import { citationCompletions } from "@/lib/project-intelligence/selectors";
 import { currentSourceProjectIntelligence } from "@/lib/project-intelligence/current";
 import { navigateToProjectRange } from "@/lib/project-intelligence/navigation";
@@ -21,13 +28,17 @@ import type {
   ProjectDefinition,
   ProjectIntelligenceSnapshot,
   ProjectIntelligenceState,
+  ProjectUse,
 } from "@/lib/project-intelligence/types";
 import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
 
 const SUPPORTED_SOURCE_RE = /\.(?:tex|latex|ltx|sty|cls|md|markdown|typ|bib)$/i;
-const TOKEN_RE = /^[\p{L}\p{N}_:.+/@-]*$/u;
-const COMPLETION_LIMIT = 200;
+// This cap is applied only after the current query has filtered the complete
+// project index. Completion results deliberately omit `validFor`, so every
+// completion-query edit reruns the source and symbols beyond the initial page
+// remain reachable by narrowing.
+const FILTERED_COMPLETION_LIMIT = 200;
 const STANDARD_LATEX_ENVIRONMENTS = [
   "document",
   "abstract",
@@ -117,14 +128,21 @@ const STANDARD_LATEX_PACKAGES = [
 interface CompletionGuard {
   path: string;
   snapshot: ProjectIntelligenceSnapshot;
+  request: CompletionRequestGuard;
 }
 
-function guardedApply(guard: CompletionGuard, insert: string): NonNullable<Completion["apply"]> {
-  return (view, _completion, from, to) => {
+function guardedApply(
+  guard: CompletionGuard,
+  insert: string,
+  asSnippet = false,
+  replaceClosingBrace = false,
+): NonNullable<Completion["apply"]> {
+  return (view, completion, from, to) => {
     const current = currentSourceProjectIntelligence(
       view.state.doc.toString(),
     );
     if (
+      !completionRequestIsCurrent(guard.request, view.state) ||
       !current ||
       current.path !== guard.path ||
       current.snapshot !== guard.snapshot
@@ -132,8 +150,16 @@ function guardedApply(guard: CompletionGuard, insert: string): NonNullable<Compl
       closeCompletion(view);
       return;
     }
+    const targetTo =
+      replaceClosingBrace && view.state.sliceDoc(to, to + 1) === "}"
+        ? to + 1
+        : to;
+    if (asSnippet) {
+      snippet(insert)(view, completion, from, targetTo);
+      return;
+    }
     view.dispatch({
-      changes: { from, to, insert },
+      changes: { from, to: targetTo, insert },
       selection: { anchor: from + insert.length },
     });
   };
@@ -148,6 +174,7 @@ function definitionOptions(
   guard: CompletionGuard,
   kinds: ReadonlySet<ProjectDefinition["kind"]>,
   query: string,
+  includeEnvironmentArguments = false,
 ): Completion[] {
   const normalizedQuery = query.toLocaleLowerCase();
   const candidates = snapshot.definitions.filter(
@@ -170,11 +197,25 @@ function definitionOptions(
         left.location.file.localeCompare(right.location.file) ||
         left.location.range.from - right.location.range.from;
     })
-    .slice(0, COMPLETION_LIMIT)
+    .slice(0, FILTERED_COMPLETION_LIMIT)
     .map((definition) => {
       const duplicateCount = counts.get(definition.name) ?? 1;
       const duplicateDetail =
         duplicateCount > 1 ? ` · duplicate (${duplicateCount})` : "";
+      const appendArguments =
+        definition.kind === "macro" ||
+        (definition.kind === "environment" &&
+          includeEnvironmentArguments);
+      const argumentsSnippet = appendArguments
+        ? definition.latexArguments?.completionSnippet ?? ""
+        : "";
+      const environmentWithArguments =
+        definition.kind === "environment" &&
+        includeEnvironmentArguments &&
+        argumentsSnippet.length > 0;
+      const insertion = environmentWithArguments
+        ? `${definition.name}}${argumentsSnippet}`
+        : `${definition.name}${argumentsSnippet}`;
       return {
         label: definition.name,
         type:
@@ -185,7 +226,12 @@ function definitionOptions(
               : "variable",
         detail: `${definition.kind}${duplicateDetail} · ${basename(definition.location.file)}:${definition.location.range.startLine}`,
         info: definition.detail,
-        apply: guardedApply(guard, definition.name),
+        apply: guardedApply(
+          guard,
+          insertion,
+          argumentsSnippet.length > 0,
+          environmentWithArguments,
+        ),
       };
     });
 }
@@ -195,7 +241,11 @@ function citationOptions(
   guard: CompletionGuard,
   query: string,
 ): Completion[] {
-  return citationCompletions(snapshot, query, COMPLETION_LIMIT).map(
+  return citationCompletions(
+    snapshot,
+    query,
+    FILTERED_COMPLETION_LIMIT,
+  ).map(
     (candidate: CitationCompletion) => {
       const duplicate = candidate.duplicate
         ? ` · duplicate ${candidate.duplicateIndex + 1}/${candidate.duplicateCount}`
@@ -222,7 +272,6 @@ function completionResult(
   return {
     from,
     options,
-    validFor: TOKEN_RE,
     filter: true,
   };
 }
@@ -242,6 +291,7 @@ function latexCompletion(
       guard,
       new Set(["environment"]),
       query,
+      environment[1] === "begin",
     );
     const projectNames = new Set(
       project.map((option) => option.label),
@@ -267,7 +317,10 @@ function latexCompletion(
       } satisfies Completion));
     return completionResult(
       context.pos - query.length,
-      [...project, ...standard].slice(0, COMPLETION_LIMIT),
+      [...project, ...standard].slice(
+        0,
+        FILTERED_COMPLETION_LIMIT,
+      ),
     );
   }
 
@@ -404,7 +457,7 @@ function markdownCompletion(
     context.pos - query.length,
     [...citationOptions(snapshot, guard, query), ...definitions].slice(
       0,
-      COMPLETION_LIMIT,
+      FILTERED_COMPLETION_LIMIT,
     ),
   );
 }
@@ -415,6 +468,18 @@ function typstCompletion(
   guard: CompletionGuard,
   before: string,
 ): CompletionResult | null {
+  const explicitCitation =
+    /#cite\s*\([\s\S]{0,500}(?:<|label\s*\(\s*"|")([\p{L}\p{N}_:.+/-]*)$/u.exec(
+      before,
+    );
+  if (explicitCitation) {
+    const query = explicitCitation[1] ?? "";
+    return completionResult(
+      context.pos - query.length,
+      citationOptions(snapshot, guard, query),
+    );
+  }
+
   const explicitReference = /#(?:ref|link)\(\s*<([\p{L}\p{N}_:.+/-]*)$/u.exec(
     before,
   );
@@ -444,7 +509,7 @@ function typstCompletion(
         new Set(["label", "anchor", "section"]),
         query,
       ),
-    ].slice(0, COMPLETION_LIMIT),
+    ].slice(0, FILTERED_COMPLETION_LIMIT),
   );
 }
 
@@ -476,6 +541,7 @@ export const projectIntelligenceCompletion: CompletionSource = (
   const guard: CompletionGuard = {
     path: current.path,
     snapshot: current.snapshot,
+    request: createCompletionRequestGuard(context),
   };
   const before = context.state.sliceDoc(
     Math.max(0, context.pos - 1_000),
@@ -533,75 +599,241 @@ function diagnosticIdentity(state: ProjectIntelligenceState): string {
   ].join(":");
 }
 
-function localReferenceDiagnostics(
+const CURRENT_FILE_FALLBACK_MAX_CHARACTERS = 100_000;
+const CURRENT_FILE_FALLBACK_MAX_SYNTAX_MARKERS = 2_000;
+
+function exceedsFallbackSyntaxBudget(text: string): boolean {
+  let markers = 0;
+  for (let index = 0; index < text.length; index++) {
+    const character = text[index];
+    if (
+      character !== "\\" &&
+      character !== "@" &&
+      character !== "#" &&
+      character !== "["
+    ) {
+      continue;
+    }
+    markers++;
+    if (markers > CURRENT_FILE_FALLBACK_MAX_SYNTAX_MARKERS) {
+      return true;
+    }
+  }
+  return false;
+}
+
+interface DefinitionCountIndex {
+  readonly total: ReadonlyMap<string, number>;
+  readonly byFile: ReadonlyMap<string, ReadonlyMap<string, number>>;
+}
+
+interface FallbackLookup {
+  readonly references: DefinitionCountIndex;
+  readonly citations: DefinitionCountIndex;
+}
+
+const fallbackLookupCache = new WeakMap<
+  ProjectIntelligenceSnapshot,
+  FallbackLookup
+>();
+
+function definitionCountIndex(
+  snapshot: ProjectIntelligenceSnapshot,
+  kind: "reference" | "citation",
+): DefinitionCountIndex {
+  const total = new Map<string, number>();
+  const byFile = new Map<string, Map<string, number>>();
+  for (const definition of snapshot.definitions) {
+    const accepted =
+      kind === "citation"
+        ? definition.kind === "bibentry"
+        : definition.kind === "label" ||
+          definition.kind === "anchor";
+    if (!accepted) continue;
+    const fileCounts =
+      byFile.get(definition.location.file) ?? new Map<string, number>();
+    fileCounts.set(
+      definition.name,
+      (fileCounts.get(definition.name) ?? 0) + 1,
+    );
+    byFile.set(definition.location.file, fileCounts);
+    // Pandoc anchors are file-scoped. They remain in byFile for local and
+    // explicit cross-file links, but never enter the global reference pool.
+    if (
+      kind === "reference" &&
+      definition.engine === "markdown" &&
+      definition.kind === "anchor"
+    ) {
+      continue;
+    }
+    total.set(
+      definition.name,
+      (total.get(definition.name) ?? 0) + 1,
+    );
+  }
+  return { total, byFile };
+}
+
+function fallbackLookup(
+  snapshot: ProjectIntelligenceSnapshot,
+): FallbackLookup {
+  const cached = fallbackLookupCache.get(snapshot);
+  if (cached) return cached;
+  const lookup = {
+    references: definitionCountIndex(snapshot, "reference"),
+    citations: definitionCountIndex(snapshot, "citation"),
+  };
+  fallbackLookupCache.set(snapshot, lookup);
+  return lookup;
+}
+
+function countExceptFile(
+  index: DefinitionCountIndex,
+  key: string,
+  path: string,
+): number {
+  return Math.max(
+    0,
+    (index.total.get(key) ?? 0) -
+      (index.byFile.get(path)?.get(key) ?? 0),
+  );
+}
+
+function countCurrentDefinitions(
+  definitions: readonly ProjectDefinition[],
+  key: string,
+  kind: "reference" | "citation",
+): number {
+  return definitions.filter(
+    (definition) =>
+      definition.name === key &&
+      (kind === "citation"
+        ? definition.kind === "bibentry"
+        : definition.kind === "label" ||
+          definition.kind === "anchor"),
+  ).length;
+}
+
+function referenceCount(
+  use: ProjectUse,
+  path: string,
+  definitions: readonly ProjectDefinition[],
+  lookup: FallbackLookup,
+): number {
+  if (use.target?.includes("#")) {
+    const [targetFile, targetName] = use.target.split("#", 2);
+    if (targetFile === path) {
+      return countCurrentDefinitions(
+        definitions,
+        targetName || use.name,
+        "reference",
+      );
+    }
+    return (
+      lookup.references.byFile
+        .get(targetFile)
+        ?.get(targetName || use.name) ?? 0
+    );
+  }
+  if (use.engine === "markdown") {
+    return countCurrentDefinitions(
+      definitions,
+      use.name,
+      "reference",
+    );
+  }
+  return (
+    countExceptFile(lookup.references, use.name, path) +
+    countCurrentDefinitions(definitions, use.name, "reference")
+  );
+}
+
+function citationCount(
+  use: ProjectUse,
+  path: string,
+  definitions: readonly ProjectDefinition[],
+  lookup: FallbackLookup,
+): number {
+  return (
+    countExceptFile(lookup.citations, use.name, path) +
+    countCurrentDefinitions(definitions, use.name, "citation")
+  );
+}
+
+export function currentFileReferenceDiagnostics(
   path: string,
   text: string,
 ): Diagnostic[] {
-  if (!SUPPORTED_SOURCE_RE.test(path)) return [];
-
+  if (
+    !SUPPORTED_SOURCE_RE.test(path) ||
+    text.length > CURRENT_FILE_FALLBACK_MAX_CHARACTERS ||
+    exceedsFallbackSyntaxBudget(text)
+  ) {
+    return [];
+  }
   const files = useFilesStore.getState();
-  const indexedTexts = useIndexStore.getState().texts;
-  const sources = new Map<string, string>(Object.entries(indexedTexts));
-  for (const [file, state] of Object.entries(files.files)) {
-    sources.set(file, state.content);
+  const indexed = useIndexStore.getState();
+  const state = indexed.intelligenceState;
+  const snapshot = state.data;
+  if (
+    !files.projectId ||
+    !snapshot ||
+    state.status !== "running" ||
+    !state.stale ||
+    state.currentFileFallbackAllowed !== true ||
+    state.identity?.projectId !== files.projectId ||
+    snapshot.identity.projectId !== files.projectId ||
+    !snapshot.files[path] ||
+    indexed.texts[path] === undefined
+  ) {
+    return [];
   }
 
-  const labels = new Map<string, number>();
-  const citations = new Set<string>();
-  for (const [file, source] of sources) {
-    if (/\.(?:tex|latex|ltx|sty|cls)$/iu.test(file)) {
-      for (const match of source.matchAll(/\\label\s*\{([^{}]+)\}/gu)) {
-        const key = match[1]?.trim();
-        if (key) labels.set(key, (labels.get(key) ?? 0) + 1);
-      }
-    }
-    if (/\.bib$/iu.test(file)) {
-      for (const match of source.matchAll(/@[^\s({]+\s*[({]\s*([^,\s}]+)/giu)) {
-        const key = match[1]?.trim();
-        if (key) citations.add(key);
-      }
-    }
+  let currentFile: ReturnType<typeof analyzeProjectFile>;
+  try {
+    currentFile = analyzeProjectFile(
+      path,
+      text,
+      snapshot.files[path].sourceRevision + 1,
+    );
+  } catch {
+    // The authoritative worker owns error presentation. A fallback parser
+    // failure must never turn into guessed or unmasked findings.
+    return [];
   }
-
+  const lookup = fallbackLookup(snapshot);
   const diagnostics: Diagnostic[] = [];
-  const add = (from: number, to: number, message: string) => {
+  for (const use of currentFile.uses) {
+    if (use.kind !== "reference" && use.kind !== "citation") continue;
+    const references =
+      use.kind === "reference"
+        ? referenceCount(use, path, currentFile.definitions, lookup)
+        : 0;
+    const citations =
+      use.kind === "citation" || use.syntax === "typst-at"
+        ? citationCount(use, path, currentFile.definitions, lookup)
+        : 0;
+    const candidates = references + citations;
+    if (candidates === 1) continue;
+    const noun =
+      use.syntax === "typst-at"
+        ? "Typst label or citation"
+        : use.kind === "citation"
+          ? "Citation"
+          : "Reference";
     diagnostics.push({
-      from,
-      to: Math.max(from + 1, to),
+      from: use.location.range.from,
+      to: Math.max(
+        use.location.range.from + 1,
+        use.location.range.to,
+      ),
       severity: "warning",
-      message,
-      source: "live references",
+      message:
+        candidates === 0
+          ? `Unresolved ${noun.toLocaleLowerCase("en-US")}: ${use.name}`
+          : `${noun} "${use.name}" has ${candidates} possible definitions.`,
+      source: "live references · current file",
     });
-  };
-
-  const referencePattern = /\\(?:ref|eqref|pageref|autoref|cref|Cref|cpageref|namecref|nameref|labelcref|Vref|vref|fref|sref|labelref)\*?\s*(?:\[[^\]]*\]\s*)?\{([^{}]*)\}/gu;
-  for (const match of text.matchAll(referencePattern)) {
-    const body = match[1] ?? "";
-    const bodyStart = (match.index ?? 0) + match[0].indexOf(body);
-    for (const rawKey of body.split(",")) {
-      const key = rawKey.trim();
-      if (!key) continue;
-      const offset = bodyStart + body.indexOf(rawKey) + rawKey.search(/\S/u);
-      if (!labels.has(key)) {
-        add(offset, offset + key.length, `Unresolved reference: ${key}`);
-      } else if ((labels.get(key) ?? 0) > 1) {
-        add(offset, offset + key.length, `Duplicate label definition: ${key}`);
-      }
-    }
-  }
-
-  const citationPattern = /\\(?:[A-Za-z]*cite[A-Za-z]*|nocite)\*?(?:\[[^\]]*\]\s*)?\{([^{}]*)\}/gu;
-  for (const match of text.matchAll(citationPattern)) {
-    const body = match[1] ?? "";
-    const bodyStart = (match.index ?? 0) + match[0].indexOf(body);
-    for (const rawKey of body.split(",")) {
-      const key = rawKey.trim();
-      if (!key) continue;
-      const offset = bodyStart + body.indexOf(rawKey) + rawKey.search(/\S/u);
-      if (!citations.has(key)) {
-        add(offset, offset + key.length, `Unresolved citation: ${key}`);
-      }
-    }
   }
   return diagnostics;
 }
@@ -615,7 +847,10 @@ export function projectIntelligenceExtensions(): Extension[] {
       if (!current) {
         const path = useFilesStore.getState().activePath;
         return path
-          ? localReferenceDiagnostics(path, view.state.doc.toString())
+          ? currentFileReferenceDiagnostics(
+              path,
+              view.state.doc.toString(),
+            )
           : [];
       }
       const partial = current.snapshot.status === "partial";
@@ -661,7 +896,6 @@ export function projectIntelligenceExtensions(): Extension[] {
     let revision = diagnosticIdentity(initialState);
     let snapshot = initialState.data;
     const refresh = (requestGeneration: number) => {
-      closeCompletion(view);
       if (refreshQueued) return;
       refreshQueued = true;
       queueMicrotask(() => {

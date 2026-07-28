@@ -667,13 +667,13 @@ export function SettingsModal() {
                 />
                 <ToggleRow
                   label="Spellcheck"
-                  desc="Underline misspelled words with offline English (US) Hunspell and offer replacement suggestions. Used when Grammar & style is off."
+                  desc="Underline misspelled words with the selected offline Hunspell dictionary and offer replacement suggestions in Source and Visual editing."
                   checked={spellcheck}
                   onChange={toggleSpellcheck}
                 />
                 <ToggleRow
-                  label="Spelling, grammar & style (Harper)"
-                  desc="Check LaTeX and Markdown prose in Source and Visual editing, plus Typst prose in Source, with one-click fixes. Math, code, comments, metadata, and URLs are excluded."
+                  label="Grammar & style (Harper)"
+                  desc="Check English grammar and style in LaTeX and Markdown Source and Visual editing, plus Typst Source, with one-click fixes."
                   checked={harper}
                   onChange={setHarper}
                 />
@@ -713,27 +713,6 @@ export function SettingsModal() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
-                      <div>
-                        <div className="text-sm font-medium">Spelling dictionary</div>
-                        <div className="text-xs text-muted-foreground">
-                          Choose the offline Hunspell language pack used by source and visual spelling checks.
-                        </div>
-                      </div>
-                      <Select
-                        value={dictionaryLocale}
-                        onValueChange={(value) => setDictionaryLocale(value as DictionaryLocale)}
-                      >
-                        <SelectTrigger aria-label="Proofreading spelling dictionary" className="w-[176px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="z-[100]">
-                          {DICTIONARY_LOCALES.map((locale) => (
-                            <SelectItem key={locale.id} value={locale.id}>{locale.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
                     <ToggleRow
                       label="Regionalism suggestions"
                       desc="Flag terms that do not match the selected English dialect. Turn off if you use such terms as product or code names."
@@ -748,11 +727,44 @@ export function SettingsModal() {
                     />
                   </>
                 )}
+                {spellcheck && (
+                  <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
+                    <div>
+                      <div className="text-sm font-medium">
+                        Spelling dictionary
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Exact offline Hunspell pack used by Source and Visual
+                        spelling checks.
+                      </div>
+                    </div>
+                    <Select
+                      value={dictionaryLocale}
+                      onValueChange={(value) =>
+                        setDictionaryLocale(value as DictionaryLocale)
+                      }
+                    >
+                      <SelectTrigger
+                        aria-label="Proofreading spelling dictionary"
+                        className="w-[176px]"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="z-[100]">
+                        {DICTIONARY_LOCALES.map((locale) => (
+                          <SelectItem key={locale.id} value={locale.id}>
+                            {locale.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
                   Proofreading runs locally in a background worker. Harper
-                  follows the selected English dialect in Source and Visual
-                  editing. When Harper is off, standalone spellcheck uses the
-                  selected Hunspell dictionary pack.
+                  follows the selected English dialect; spelling always uses
+                  the exact selected Hunspell pack. Math, code, comments,
+                  citation syntax, metadata, and URLs are excluded.
                 </div>
                 <ToggleRow
                   label="Offline mode"

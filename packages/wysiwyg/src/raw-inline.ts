@@ -1,5 +1,9 @@
 import { Node, mergeAttributes } from "@tiptap/core";
 import type { MarkdownNodeSpec } from "tiptap-markdown";
+import {
+  compactRawInlineSource,
+  isRawMathSource,
+} from "./raw-presentation";
 
 export const RawInline = Node.create({
   name: "rawInline",
@@ -51,7 +55,22 @@ export const RawInline = Node.create({
 
       const source = document.createElement("code");
       source.className = "raw-inline-source";
-      source.textContent = String(currentNode.attrs.source ?? "");
+      const updatePresentation = () => {
+        const exactSource = String(currentNode.attrs.source ?? "");
+        if (isRawMathSource(exactSource)) {
+          // LIP-02: rendering is an enhancement, never a replacement for the
+          // exact editable expression. Keep the complete source in the visual
+          // document even after the preview paints.
+          source.textContent = exactSource;
+          source.title = "Exact math source";
+          dom.dataset.rawInlineKind = "math";
+        } else {
+          source.textContent = compactRawInlineSource(exactSource);
+          source.removeAttribute("title");
+          delete dom.dataset.rawInlineKind;
+        }
+      };
+      updatePresentation();
       dom.append(source);
 
       const edit = document.createElement("button");
@@ -64,7 +83,8 @@ export const RawInline = Node.create({
 
       const showSource = () => {
         editing = false;
-        source.textContent = String(currentNode.attrs.source ?? "");
+        delete dom.dataset.rawInlineEditing;
+        updatePresentation();
         source.hidden = false;
         const input = dom.querySelector<HTMLTextAreaElement>(".raw-inline-input");
         input?.remove();
@@ -88,6 +108,8 @@ export const RawInline = Node.create({
       const beginEditing = () => {
         if (editing) return;
         editing = true;
+        dom.dataset.rawInlineEditing = "true";
+        delete dom.dataset.rawInlineKind;
         source.hidden = true;
         edit.hidden = true;
 
@@ -109,7 +131,7 @@ export const RawInline = Node.create({
           if (event.key === "Escape" && !composing) {
             event.preventDefault();
             showSource();
-            view.focus();
+            view.dom.focus({ preventScroll: true });
             return;
           }
           if (
@@ -120,7 +142,7 @@ export const RawInline = Node.create({
             event.preventDefault();
             updateNodeSource(input.value);
             showSource();
-            view.focus();
+            view.dom.focus({ preventScroll: true });
           }
         });
         input.addEventListener(
@@ -133,7 +155,7 @@ export const RawInline = Node.create({
           { once: true },
         );
         dom.insertBefore(input, edit);
-        input.focus();
+        input.focus({ preventScroll: true });
         input.select();
       };
 
@@ -144,7 +166,7 @@ export const RawInline = Node.create({
         update(nextNode) {
           if (nextNode.type !== currentNode.type) return false;
           currentNode = nextNode;
-          if (!editing) source.textContent = String(nextNode.attrs.source ?? "");
+          if (!editing) updatePresentation();
           return true;
         },
         selectNode() {

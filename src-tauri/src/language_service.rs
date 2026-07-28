@@ -299,6 +299,7 @@ struct SessionMeta {
 #[derive(Clone)]
 struct SessionRecord {
     meta: SessionMeta,
+    owner_label: String,
     project_id: String,
     workspace_root: PathBuf,
     workspace_display: String,
@@ -636,6 +637,7 @@ enum Admission {
 #[tauri::command]
 pub async fn language_service_start(
     app: AppHandle,
+    window: tauri::WebviewWindow,
     state: State<'_, LanguageServiceState>,
     request: StartLanguageServiceRequest,
     on_event: Channel<LanguageServiceEvent>,
@@ -670,22 +672,24 @@ pub async fn language_service_start(
     .await
     .map_err(language_service_worker_error)??;
 
-    // A WebView reload, failed deferred-module load, or development HMR can
-    // destroy the only holder of the opaque session id before its cleanup
-    // command runs. The native process is still exclusively owned by Oleafly,
-    // so reclaim that exact project/kind slot before starting its replacement.
-    // We never attach a second protocol client to the existing process.
+    // A WebView reload, failed deferred-module load, renderer crash, or
+    // development HMR can destroy the only holder of the opaque session id
+    // before its asynchronous cleanup command runs. Sessions belong to the
+    // Tauri window that created them, so a newly mounted runtime must reclaim
+    // every session left by the previous runtime in that same window. Using
+    // the native window label avoids trusting a caller-provided owner id and
+    // preserves the global cap for genuinely independent windows.
+    let owner_label = window.label().to_owned();
     let displaced = {
         let registry = lock_unpoisoned(&state.registry.inner);
         registry
             .active
             .values()
-            .find(|record| {
-                record.meta.kind == request.kind && record.workspace_root == workspace_root
-            })
+            .filter(|record| record.owner_label == owner_label)
             .cloned()
+            .collect::<Vec<_>>()
     };
-    if let Some(record) = displaced {
+    for record in displaced {
         stop_session_record(&record).await?;
     }
 
@@ -739,6 +743,7 @@ pub async fn language_service_start(
     let pid = Arc::new(AtomicU32::new(spawned.pid));
     let record = SessionRecord {
         meta: meta.clone(),
+        owner_label,
         project_id: request.project_id,
         workspace_root,
         workspace_display,

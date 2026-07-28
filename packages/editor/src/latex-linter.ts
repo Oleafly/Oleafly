@@ -1,4 +1,9 @@
 import { linter, type Diagnostic } from "@codemirror/lint";
+import {
+  latexBalancedGroupEnd,
+  latexInlineVerbatimSpan,
+} from "./latex-lexical";
+import { validateXparseArgumentSpecification } from "./latex-xparse";
 
 interface OpenToken {
   from: number;
@@ -32,6 +37,137 @@ const whitespace = (char: string | undefined): boolean =>
   char === "\n" ||
   char === "\r";
 
+const REQUIRED_BRACED_COMMANDS = new Set([
+  "documentclass",
+  "usepackage",
+  "RequirePackage",
+  "addbibresource",
+  "newtheorem",
+]);
+
+const CLASSIC_COMMAND_DEFINITIONS = new Set([
+  "newcommand",
+  "renewcommand",
+  "providecommand",
+  "DeclareRobustCommand",
+]);
+
+const XPARSE_COMMAND_DEFINITIONS = new Set([
+  "NewDocumentCommand",
+  "RenewDocumentCommand",
+  "ProvideDocumentCommand",
+  "DeclareDocumentCommand",
+]);
+
+const CLASSIC_ENVIRONMENT_DEFINITIONS = new Set([
+  "newenvironment",
+  "renewenvironment",
+]);
+
+const XPARSE_ENVIRONMENT_DEFINITIONS = new Set([
+  "NewDocumentEnvironment",
+  "RenewDocumentEnvironment",
+  "ProvideDocumentEnvironment",
+  "DeclareDocumentEnvironment",
+]);
+
+interface ArgumentPosition {
+  start: number;
+  unclosedOptionalFrom: number | null;
+}
+
+function skipWhitespace(text: string, start: number): number {
+  let cursor = start;
+  while (whitespace(text[cursor])) cursor += 1;
+  return cursor;
+}
+
+function afterOptionalArguments(
+  text: string,
+  start: number,
+): ArgumentPosition {
+  let cursor = skipWhitespace(text, start);
+  if (text[cursor] === "*") {
+    cursor = skipWhitespace(text, cursor + 1);
+  }
+
+  while (text[cursor] === "[") {
+    const opening = cursor;
+    let braceDepth = 0;
+    cursor += 1;
+    let closed = false;
+    while (cursor < text.length) {
+      const char = text[cursor];
+      if (char === "\\") {
+        cursor += Math.min(2, text.length - cursor);
+        continue;
+      }
+      if (char === "{") braceDepth += 1;
+      else if (char === "}" && braceDepth > 0) braceDepth -= 1;
+      else if (char === "]" && braceDepth === 0) {
+        cursor = skipWhitespace(text, cursor + 1);
+        closed = true;
+        break;
+      }
+      cursor += 1;
+    }
+    if (!closed) {
+      return {
+        start: cursor,
+        unclosedOptionalFrom: opening,
+      };
+    }
+  }
+
+  return {
+    start: cursor,
+    unclosedOptionalFrom: null,
+  };
+}
+
+function balancedBraceEnd(text: string, start: number): number | null {
+  if (text[start] !== "{") return null;
+  let depth = 1;
+  for (let cursor = start + 1; cursor < text.length; cursor += 1) {
+    if (text[cursor] === "\\") {
+      cursor += 1;
+      continue;
+    }
+    if (text[cursor] === "{") depth += 1;
+    else if (text[cursor] === "}") {
+      depth -= 1;
+      if (depth === 0) return cursor;
+    }
+  }
+  return null;
+}
+
+function validDefinedCommand(value: string): boolean {
+  return /^\\(?:[A-Za-z@]+|.)$/u.test(value.trim());
+}
+
+interface DefinitionGroup {
+  content: string;
+  from: number;
+  to: number;
+}
+
+function definitionGroup(
+  text: string,
+  start: number,
+  opening = "{",
+  closing = "}",
+): DefinitionGroup | null {
+  const from = skipWhitespace(text, start);
+  const to = latexBalancedGroupEnd(text, from, opening, closing);
+  if (to === null) return null;
+  return {
+    content: text.slice(from + 1, to - 1),
+    from,
+    to,
+  };
+}
+
 function diagnostic(
   from: number,
   to: number,
@@ -53,6 +189,226 @@ function matchingMathClose(
   if (delimiter === "\\(") return "\\)";
   if (delimiter === "\\[") return "\\]";
   return delimiter;
+}
+
+function validateRequiredDefinitionGroup(
+  text: string,
+  start: number,
+  command: string,
+  description: string,
+  diagnostics: Diagnostic[],
+): DefinitionGroup | null {
+  const from = skipWhitespace(text, start);
+  if (text[from] !== "{") {
+    const markerFrom = Math.min(from, Math.max(0, text.length - 1));
+    diagnostics.push(
+      diagnostic(
+        markerFrom,
+        Math.min(text.length, markerFrom + 1),
+        "error",
+        `\\${command} requires a braced ${description}`,
+      ),
+    );
+    return null;
+  }
+  const group = definitionGroup(text, from);
+  if (!group) {
+    const markerFrom = Math.min(from, Math.max(0, text.length - 1));
+    diagnostics.push(
+      diagnostic(
+        markerFrom,
+        Math.min(text.length, markerFrom + 1),
+        "error",
+        `Unclosed ${description} for \\${command}`,
+      ),
+    );
+  }
+  return group;
+}
+
+function validateOptionalDefinitionGroup(
+  text: string,
+  start: number,
+  command: string,
+  description: string,
+  diagnostics: Diagnostic[],
+): DefinitionGroup | null | undefined {
+  const from = skipWhitespace(text, start);
+  if (text[from] !== "[") return undefined;
+  const group = definitionGroup(text, from, "[", "]");
+  if (!group) {
+    const markerFrom = Math.min(from, Math.max(0, text.length - 1));
+    diagnostics.push(
+      diagnostic(
+        markerFrom,
+        Math.min(text.length, markerFrom + 1),
+        "error",
+        `Unclosed ${description} for \\${command}`,
+      ),
+    );
+    return null;
+  }
+  return group;
+}
+
+function validateDefinition(
+  text: string,
+  commandEnd: number,
+  command: string,
+  diagnostics: Diagnostic[],
+): void {
+  const classicCommand = CLASSIC_COMMAND_DEFINITIONS.has(command);
+  const xparseCommand = XPARSE_COMMAND_DEFINITIONS.has(command);
+  const classicEnvironment =
+    CLASSIC_ENVIRONMENT_DEFINITIONS.has(command);
+  const xparseEnvironment =
+    XPARSE_ENVIRONMENT_DEFINITIONS.has(command);
+  if (
+    !classicCommand &&
+    !xparseCommand &&
+    !classicEnvironment &&
+    !xparseEnvironment
+  ) {
+    return;
+  }
+
+  let cursor = skipWhitespace(text, commandEnd);
+  if (text[cursor] === "*") {
+    cursor = skipWhitespace(text, cursor + 1);
+  }
+
+  if (classicCommand && text[cursor] === "\\") {
+    let nameEnd = cursor + 1;
+    if (!text[nameEnd]) {
+      diagnostics.push(
+        diagnostic(
+          cursor,
+          cursor + 1,
+          "error",
+          `Incomplete command name argument to \\${command}`,
+        ),
+      );
+      return;
+    }
+    if (commandCharacter(text[nameEnd])) {
+      while (commandCharacter(text[nameEnd])) nameEnd += 1;
+    } else {
+      nameEnd += 1;
+    }
+    cursor = nameEnd;
+  } else {
+    const name = validateRequiredDefinitionGroup(
+      text,
+      cursor,
+      command,
+      classicEnvironment || xparseEnvironment
+        ? "environment name"
+        : "command name",
+      diagnostics,
+    );
+    if (!name) return;
+    if (
+      (classicCommand || xparseCommand) &&
+      !validDefinedCommand(name.content)
+    ) {
+      diagnostics.push(
+        diagnostic(
+          name.from + 1,
+          name.to - 1,
+          "error",
+          `\\${command} requires a single control-sequence name`,
+        ),
+      );
+    }
+    if (
+      (classicEnvironment || xparseEnvironment) &&
+      !name.content.trim()
+    ) {
+      diagnostics.push(
+        diagnostic(
+          name.from,
+          name.to,
+          "error",
+          `\\${command} environment name cannot be empty`,
+        ),
+      );
+    }
+    cursor = name.to;
+  }
+
+  if (xparseCommand || xparseEnvironment) {
+    const specification = validateRequiredDefinitionGroup(
+      text,
+      cursor,
+      command,
+      "argument specification",
+      diagnostics,
+    );
+    if (!specification) return;
+    for (const issue of validateXparseArgumentSpecification(
+      specification.content,
+    )) {
+      diagnostics.push(
+        diagnostic(
+          specification.from + 1 + issue.from,
+          specification.from + 1 + issue.to,
+          "error",
+          issue.message,
+        ),
+      );
+    }
+    cursor = specification.to;
+  } else {
+    const count = validateOptionalDefinitionGroup(
+      text,
+      cursor,
+      command,
+      "argument count",
+      diagnostics,
+    );
+    if (count === null) return;
+    if (count) {
+      if (!/^[0-9]$/u.test(count.content.trim())) {
+        diagnostics.push(
+          diagnostic(
+            count.from + 1,
+            count.to - 1,
+            "error",
+            `\\${command} argument count must be a digit from 0 to 9`,
+          ),
+        );
+      }
+      cursor = count.to;
+      const defaultValue = validateOptionalDefinitionGroup(
+        text,
+        cursor,
+        command,
+        "default argument",
+        diagnostics,
+      );
+      if (defaultValue === null) return;
+      if (defaultValue) cursor = defaultValue.to;
+    }
+  }
+
+  const firstBody = validateRequiredDefinitionGroup(
+    text,
+    cursor,
+    command,
+    classicEnvironment || xparseEnvironment
+      ? "begin body"
+      : "replacement body",
+    diagnostics,
+  );
+  if (!firstBody) return;
+  if (!classicEnvironment && !xparseEnvironment) return;
+  validateRequiredDefinitionGroup(
+    text,
+    firstBody.to,
+    command,
+    "end body",
+    diagnostics,
+  );
 }
 
 /**
@@ -186,37 +542,86 @@ export function lintLatexText(text: string): Diagnostic[] {
     while (commandCharacter(text[commandEnd])) commandEnd += 1;
     const command = text.slice(cursor + 1, commandEnd);
 
-    if (command === "verb") {
-      if (text[commandEnd] === "*") commandEnd += 1;
-      const delimiter = text[commandEnd];
-      if (!delimiter || whitespace(delimiter)) {
+    if (
+      command === "verb" ||
+      command === "lstinline" ||
+      command === "mintinline"
+    ) {
+      const inline = latexInlineVerbatimSpan(text, cursor);
+      if (!inline) {
         diagnostics.push(
           diagnostic(
             cursor,
             commandEnd,
             "error",
-            "\\verb requires a non-whitespace delimiter",
+            `\\${command} has an invalid inline-verbatim argument`,
           ),
         );
         cursor = commandEnd;
         continue;
       }
-      const close = text.indexOf(delimiter, commandEnd + 1);
-      const newline = text.indexOf("\n", commandEnd + 1);
-      if (close < 0 || (newline >= 0 && newline < close)) {
+      if (!inline.complete) {
         diagnostics.push(
           diagnostic(
             cursor,
-            commandEnd + 1,
+            Math.min(text.length, commandEnd + 1),
             "error",
-            "Unclosed \\verb command",
+            `Unclosed \\${command} command`,
           ),
         );
-        cursor = newline < 0 ? text.length : newline + 1;
-      } else {
-        cursor = close + 1;
       }
+      cursor = Math.max(commandEnd, inline.to);
       continue;
+    }
+
+    if (
+      CLASSIC_COMMAND_DEFINITIONS.has(command) ||
+      XPARSE_COMMAND_DEFINITIONS.has(command) ||
+      CLASSIC_ENVIRONMENT_DEFINITIONS.has(command) ||
+      XPARSE_ENVIRONMENT_DEFINITIONS.has(command)
+    ) {
+      validateDefinition(
+        text,
+        commandEnd,
+        command,
+        diagnostics,
+      );
+    } else if (REQUIRED_BRACED_COMMANDS.has(command)) {
+      const argument = afterOptionalArguments(text, commandEnd);
+      if (argument.unclosedOptionalFrom !== null) {
+        diagnostics.push(
+          diagnostic(
+            argument.unclosedOptionalFrom,
+            argument.unclosedOptionalFrom + 1,
+            "error",
+            `Unclosed optional argument to \\${command}`,
+          ),
+        );
+      } else if (text[argument.start] !== "{") {
+        diagnostics.push(
+          diagnostic(
+            cursor,
+            commandEnd,
+            "error",
+            `\\${command} requires a braced argument`,
+          ),
+        );
+      } else {
+        const argumentEnd = balancedBraceEnd(text, argument.start);
+        if (
+          argumentEnd !== null &&
+          !text.slice(argument.start + 1, argumentEnd).trim()
+        ) {
+          diagnostics.push(
+            diagnostic(
+              argument.start,
+              argumentEnd + 1,
+              "error",
+              `\\${command} argument cannot be empty`,
+            ),
+          );
+        }
+      }
     }
 
     if (

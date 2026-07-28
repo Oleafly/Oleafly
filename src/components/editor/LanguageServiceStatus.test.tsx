@@ -8,6 +8,13 @@ import {
   screen,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+const sonner = vi.hoisted(() => ({
+  dismiss: vi.fn(),
+  warning: vi.fn(),
+}));
+vi.mock("sonner", () => ({
+  toast: sonner,
+}));
 import {
   LANGUAGE_SERVICE_SETUP_FAILURE_REASON,
   registerLanguageServiceLifecycleActions,
@@ -29,9 +36,35 @@ import { LanguageServiceStatus } from "./LanguageServiceStatus";
 
 afterEach(() => {
   cleanup();
+  vi.clearAllMocks();
   useFilesStore.setState({ projectId: null, activePath: null });
   useProjectAnalysisStore.getState().reset();
 });
+
+function renderStatus(node = <LanguageServiceStatus />) {
+  return render(node);
+}
+
+async function invokeToastAction(label: string) {
+  await vi.waitFor(() => {
+    expect(sonner.warning).toHaveBeenCalled();
+  });
+  const latest = sonner.warning.mock.calls.at(-1) as
+    | [
+        string,
+        {
+          action?: {
+            label: string;
+            onClick: () => void;
+          };
+        },
+      ]
+    | undefined;
+  expect(latest?.[1].action?.label).toBe(label);
+  act(() => {
+    latest?.[1].action?.onClick();
+  });
+}
 
 function activateProject() {
   useFilesStore.setState({
@@ -101,9 +134,9 @@ describe("LanguageServiceStatus", () => {
       readiness: "not_run",
       reason: "Document engine details are still loading.",
     });
-    render(<LanguageServiceStatus />);
+    renderStatus();
 
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(sonner.warning).not.toHaveBeenCalled();
 
     act(() => {
       useProjectAnalysisStore.getState().setLanguageService({
@@ -111,7 +144,7 @@ describe("LanguageServiceStatus", () => {
         reason: "No language analyzer is available for this engine.",
       });
     });
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(sonner.warning).not.toHaveBeenCalled();
   });
 
   it("stays quiet when ready and announces synchronization", () => {
@@ -119,10 +152,8 @@ describe("LanguageServiceStatus", () => {
     useProjectAnalysisStore.getState().setLanguageService({
       readiness: "ready",
     });
-    const view = render(<LanguageServiceStatus />);
-    expect(
-      screen.queryByLabelText("Language analysis status"),
-    ).not.toBeInTheDocument();
+    const view = renderStatus();
+    expect(sonner.warning).not.toHaveBeenCalled();
 
     act(() => {
       useProjectAnalysisStore.getState().setLanguageService({
@@ -130,7 +161,7 @@ describe("LanguageServiceStatus", () => {
         reason: "Synchronizing",
       });
     });
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(sonner.warning).not.toHaveBeenCalled();
     view.unmount();
   });
 
@@ -141,7 +172,7 @@ describe("LanguageServiceStatus", () => {
     const unregister =
       registerLanguageServiceLifecycleActions({ setup, retry });
     const user = userEvent.setup();
-    render(<LanguageServiceStatus />);
+    renderStatus();
 
     act(() => {
       useProjectAnalysisStore.getState().setLanguageService({
@@ -150,9 +181,7 @@ describe("LanguageServiceStatus", () => {
         reason: "Install the pinned server",
       });
     });
-    await user.click(
-      screen.getByRole("button", { name: "Set up" }),
-    );
+    await invokeToastAction("Set up");
     expect(setup).not.toHaveBeenCalled();
     const dialog = screen.getByRole("dialog", {
       name: "Install TexLab 5.26.0?",
@@ -195,9 +224,7 @@ describe("LanguageServiceStatus", () => {
     );
     expect(setup).not.toHaveBeenCalled();
 
-    await user.click(
-      screen.getByRole("button", { name: "Set up" }),
-    );
+    await invokeToastAction("Set up");
     await user.click(
       screen.getByRole("button", {
         name: "Install TexLab 5.26.0",
@@ -211,9 +238,7 @@ describe("LanguageServiceStatus", () => {
         reason: "Server crashed",
       });
     });
-    await user.click(
-      screen.getByRole("button", { name: "Retry" }),
-    );
+    await invokeToastAction("Retry");
     expect(retry).toHaveBeenCalledTimes(1);
     unregister();
   });
@@ -234,7 +259,7 @@ describe("LanguageServiceStatus", () => {
         retry: vi.fn(),
       });
     const user = userEvent.setup();
-    render(<LanguageServiceStatus />);
+    renderStatus();
     act(() => {
       useProjectAnalysisStore.getState().setLanguageService({
         kind: "texlab",
@@ -243,9 +268,7 @@ describe("LanguageServiceStatus", () => {
       });
     });
 
-    await user.click(
-      screen.getByRole("button", { name: "Set up" }),
-    );
+    await invokeToastAction("Set up");
     const install = screen.getByRole("button", {
       name: "Install TexLab 5.26.0",
     });
@@ -262,9 +285,7 @@ describe("LanguageServiceStatus", () => {
     });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
-    await user.click(
-      screen.getByRole("button", { name: "Set up" }),
-    );
+    await invokeToastAction("Set up");
     await user.click(
       screen.getByRole("button", {
         name: "Install TexLab 5.26.0",
@@ -340,23 +361,19 @@ describe("LanguageServiceStatus", () => {
       setup: () => controller.setup(),
     });
     const user = userEvent.setup();
-    const view = render(
+    const view = renderStatus(
       <StrictMode>
         <LanguageServiceStatus />
       </StrictMode>,
     );
 
-    await user.click(
-      screen.getByRole("button", { name: "Set up" }),
-    );
+    await invokeToastAction("Set up");
     await user.click(
       screen.getByRole("button", { name: "Cancel" }),
     );
     expect(install).not.toHaveBeenCalled();
 
-    await user.click(
-      screen.getByRole("button", { name: "Set up" }),
-    );
+    await invokeToastAction("Set up");
     await user.click(
       screen.getByRole("button", {
         name: "Install TexLab 5.26.0",
@@ -425,10 +442,8 @@ describe("LanguageServiceStatus", () => {
       reason: "Install the pinned server",
     });
     const user = userEvent.setup();
-    const view = render(<LanguageServiceStatus />);
-    await user.click(
-      screen.getByRole("button", { name: "Set up" }),
-    );
+    const view = renderStatus();
+    await invokeToastAction("Set up");
     await user.click(
       screen.getByRole("button", {
         name: "Install TexLab 5.26.0",
@@ -436,6 +451,7 @@ describe("LanguageServiceStatus", () => {
     );
 
     view.unmount();
+    sonner.warning.mockClear();
     useFilesStore.setState({
       projectId: "project-b",
       activePath: "main.tex",
@@ -450,7 +466,7 @@ describe("LanguageServiceStatus", () => {
       readiness: "unsupported",
       reason: "Replacement project has no language server.",
     });
-    render(<LanguageServiceStatus />);
+    renderStatus();
     await act(async () => {
       rejectInstall(
         new Error(
@@ -461,7 +477,7 @@ describe("LanguageServiceStatus", () => {
       await Promise.resolve();
     });
 
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(sonner.warning).not.toHaveBeenCalled();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(
       /signed-token|\/Users\/private/u,
@@ -475,7 +491,7 @@ describe("LanguageServiceStatus", () => {
     useProjectAnalysisStore.getState().setLanguageService({
       readiness: "ready",
     });
-    render(<LanguageServiceStatus />);
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    renderStatus();
+    expect(sonner.warning).not.toHaveBeenCalled();
   });
 });

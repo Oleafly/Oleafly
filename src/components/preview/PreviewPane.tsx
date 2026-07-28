@@ -583,13 +583,25 @@ function previewWindowState(
         }
       : null);
   if (!resolvedIdentity) return undefined;
+  const statusValue =
+    status === "idle"
+      ? "not_run"
+      : status;
+  const exactCheckpoint =
+    checkpoint &&
+    checkpoint.projectId === resolvedIdentity.projectId &&
+    checkpoint.mainDocument === resolvedIdentity.mainDocument &&
+    checkpoint.projectRevision ===
+      resolvedIdentity.projectRevision &&
+    checkpoint.requestGeneration ===
+      resolvedIdentity.requestGeneration
+      ? checkpoint
+      : null;
   return {
     identity: resolvedIdentity,
-    status:
-      status === "idle"
-        ? "not_run"
-        : status,
-    checkpoint,
+    status: statusValue,
+    checkpoint:
+      statusValue === "success" ? exactCheckpoint : null,
     ...(message ? { message } : {}),
   };
 }
@@ -719,6 +731,16 @@ export function PreviewPane() {
   useEffect(() => {
     if (!pdfBytes) {
       if (!lastReadyDocumentRef.current) setViewerDocument(null);
+      return;
+    }
+    // Compiled bytes are only a candidate when they carry the exact current
+    // project/main-document/revision checkpoint. Retained last-good output is
+    // managed separately after a successful viewer load; a delayed stale or
+    // unverified candidate must never replace it.
+    if (
+      !compileCheckpoint ||
+      !isCompileCheckpointCurrent(compileCheckpoint)
+    ) {
       return;
     }
     const identity = checkpointIdentity(compileCheckpoint, pdfBytes);
@@ -908,7 +930,9 @@ export function PreviewPane() {
       if (modifier && event.key.toLowerCase() === "f") {
         event.preventDefault();
         setSearchOpen(true);
-        requestAnimationFrame(() => searchInputRef.current?.focus());
+        requestAnimationFrame(() =>
+          searchInputRef.current?.focus({ preventScroll: true }),
+        );
         return;
       }
       if (event.key === "Escape") {
@@ -1392,7 +1416,9 @@ export function PreviewPane() {
         setSearchOpen((open) => {
           const next = !open;
           if (next) {
-            requestAnimationFrame(() => searchInputRef.current?.focus());
+            requestAnimationFrame(() =>
+              searchInputRef.current?.focus({ preventScroll: true }),
+            );
           } else {
             setSearchInput("");
           }
@@ -1772,10 +1798,11 @@ export function PreviewPane() {
                     type="button"
                     onClick={() => void recompile()}
                     data-testid="preview-stale-badge"
-                    aria-label="Preview is stale; recompile"
-                    className="flex size-7 items-center justify-center rounded-full border border-amber-500/45 bg-amber-500/15 text-amber-600 shadow-sm backdrop-blur-sm transition-colors hover:bg-amber-500/30 dark:text-amber-300"
+                    aria-label="Stale, non-current preview; recompile"
+                    className="flex h-7 items-center justify-center gap-1.5 rounded-full border border-amber-500/45 bg-amber-500/15 px-2.5 text-[11px] font-semibold text-amber-700 shadow-sm backdrop-blur-sm transition-colors hover:bg-amber-500/30 dark:text-amber-200"
                   >
                     <FileWarning className="size-3.5" />
+                    Stale
                   </button>
                 </Tooltip>
                 </div>

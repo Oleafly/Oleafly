@@ -1,6 +1,10 @@
 import { degrees, PDFDocument, PDFName, PDFNumber, StandardFonts } from "pdf-lib";
 import { test, expect } from "../fixtures";
-import { createBlankProject, openProject } from "../helpers";
+import {
+  createBlankProject,
+  expectDesktopShellAnchored,
+  openProject,
+} from "../helpers";
 
 interface GeometryFixture {
   bytes: Uint8Array;
@@ -259,6 +263,7 @@ test("clicking the PDF jumps to the word in the source", async ({ tauriPage }) =
       { timeout: 15_000 },
     )
     .toBe("Introduction");
+  await expectDesktopShellAnchored(tauriPage);
 });
 
 test("clicking after a non-collapsed PDF selection does not invoke inverse SyncTeX", async ({

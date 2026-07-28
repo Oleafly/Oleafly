@@ -21,4 +21,20 @@ describe("Markdown prose masking", () => {
     expect(prose).toBe("Alpha Beta at 50% completion.");
     expect(source.slice(map[6], map[9] + 1)).toBe("Beta");
   });
+
+  it("masks Pandoc citations without hiding neighboring prose", () => {
+    const source =
+      "Prior work [see @vaswani2017, pp. 4-5; @doe2020] supports @smith2024 today.";
+    const ranges = markdownSpellcheckRanges(source);
+    const words = ranges.map((range) => range.word);
+    expect(words).toContain("Prior");
+    expect(words).toContain("supports");
+    expect(words).toContain("today");
+    expect(words).not.toContain("vaswani");
+    expect(words).not.toContain("doe");
+    expect(words).not.toContain("smith");
+    for (const range of ranges) {
+      expect(source.slice(range.from, range.to)).toBe(range.word);
+    }
+  });
 });

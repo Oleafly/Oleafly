@@ -65,6 +65,16 @@ export type ResolutionStatus =
   | "duplicate"
   | "external";
 
+export interface LatexDefinitionArguments {
+  readonly syntax: "classic" | "xparse" | "tex-def";
+  readonly requiredCount: number;
+  readonly optionalCount: number;
+  readonly optionalDefault?: string;
+  readonly xparseSpecification?: string;
+  /** CodeMirror snippet appended after the command/environment name. */
+  readonly completionSnippet: string;
+}
+
 export interface ProjectDefinition {
   readonly id: string;
   readonly source: "local" | "texlab" | "tinymist";
@@ -74,6 +84,7 @@ export interface ProjectDefinition {
   readonly location: SourceLocation;
   readonly detail?: string;
   readonly level?: number;
+  readonly latexArguments?: LatexDefinitionArguments;
 }
 
 export interface ProjectUse {
@@ -249,6 +260,12 @@ export interface ProjectIntelligenceState {
   readonly identity: ProjectIntelligenceIdentity | null;
   readonly data: ProjectIntelligenceSnapshot | null;
   readonly stale: boolean;
+  /**
+   * True only while an active-file text edit is awaiting its authoritative
+   * worker result. Filesystem/main-document invalidations keep this false so
+   * editor fallbacks cannot resolve against an obsolete project graph.
+   */
+  readonly currentFileFallbackAllowed?: boolean;
   readonly reason?: string;
   readonly failure?: ProjectIntelligenceFailure;
 }

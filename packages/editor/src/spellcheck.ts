@@ -1,7 +1,9 @@
 import {
+  forEachDiagnostic,
   linter,
   lintGutter,
   forceLinting,
+  setDiagnostics,
   type Diagnostic,
   type Action,
 } from "@codemirror/lint";
@@ -85,8 +87,11 @@ export function cancelSourceProofreading(path?: string): void {
 const refreshLints = StateEffect.define<null>();
 
 function needsRefresh(update: ViewUpdate): boolean {
-  return update.transactions.some((tr) =>
-    tr.effects.some((e) => e.is(refreshLints))
+  return (
+    update.viewportChanged ||
+    update.transactions.some((tr) =>
+      tr.effects.some((e) => e.is(refreshLints))
+    )
   );
 }
 
@@ -152,7 +157,31 @@ function proofreadingDiagnostic(
 }
 
 function ignoreActions(h: SpellHost, projectId: string | null, word: string): Action[] {
-  const refresh = (view: Parameters<Action["apply"]>[0]) => {
+  const refresh = (
+    view: Parameters<Action["apply"]>[0],
+    from: number,
+    to: number,
+  ) => {
+    // Ignoring is an explicit local decision, so remove its current finding
+    // synchronously. The worker-backed pass below remains authoritative for
+    // every other diagnostic and repopulates from the updated dictionary.
+    const remaining: Diagnostic[] = [];
+    forEachDiagnostic(
+      view.state,
+      (diagnostic, diagnosticFrom, diagnosticTo) => {
+        if (
+          diagnosticFrom !== from ||
+          diagnosticTo !== to
+        ) {
+          remaining.push({
+            ...diagnostic,
+            from: diagnosticFrom,
+            to: diagnosticTo,
+          });
+        }
+      },
+    );
+    view.dispatch(setDiagnostics(view.state, remaining));
     view.dispatch({ effects: refreshLints.of(null) }); // mark re-lint needed
     forceLinting(view); // ...then run it now so the warning clears immediately
   };
@@ -161,17 +190,22 @@ function ignoreActions(h: SpellHost, projectId: string | null, word: string): Ac
   if (projectId) {
     actions.push({
       name: `Ignore “${short}” in this project`,
-      apply: (view) => {
-        h.ignoreWordForProject(projectId, word);
-        refresh(view);
+      apply: (view, from, to) => {
+        // Resolve the scope at action time. A lint card can remain mounted
+        // while the user switches projects; applying its captured project ID
+        // would silently mutate the previous project's dictionary.
+        const activeProjectId = h.getProjectId();
+        if (!activeProjectId) return;
+        h.ignoreWordForProject(activeProjectId, word);
+        refresh(view, from, to);
       },
     });
   }
   actions.push({
     name: `Ignore “${short}” everywhere`,
-    apply: (view) => {
+    apply: (view, from, to) => {
       h.ignoreWordGlobally(word);
-      refresh(view);
+      refresh(view, from, to);
     },
   });
   return actions;
@@ -214,7 +248,7 @@ async function proofreadWithWorker(
     preferences: h.getLintPrefs(),
   });
   if (
-    result.status !== "ready" ||
+    (result.status !== "ready" && result.status !== "partial") ||
     view.state.doc !== document ||
     h.getProjectId() !== projectId ||
     h.getActivePath() !== path
@@ -391,7 +425,7 @@ function localGrammarFallback(
   return diagnostics;
 }
 
-export function createHarperLinter() {
+export function createHarperLinter(includeSpelling = false) {
   return linter(
     async (view): Promise<Diagnostic[]> => {
       const h = host;
@@ -403,7 +437,7 @@ export function createHarperLinter() {
         workerDiagnostics = await proofreadWithWorker(
           h,
           view,
-          "grammar",
+          includeSpelling ? "combined" : "grammar",
         );
       } catch {
         // Fall through to the local grammar provider when the worker is
@@ -473,8 +507,10 @@ export const spellLintExtensions = (opts: { spell?: boolean; harper?: boolean } 
       diagnosticCardGutter(),
     );
   }
-  // Harper covers spelling too, so only run the standalone Hunspell speller when
+  // A combined worker pass keeps Harper authoritative for grammar and the
+  // selected Hunspell pack authoritative for spelling without racing two
+  // current-revision requests for the same Source surface.
   if (opts.spell && !opts.harper) exts.push(createSpellLinter());
-  if (opts.harper) exts.push(createHarperLinter());
+  if (opts.harper) exts.push(createHarperLinter(Boolean(opts.spell)));
   return exts;
 };

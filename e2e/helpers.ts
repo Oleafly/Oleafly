@@ -16,6 +16,41 @@ export interface Page {
   ): { click(): Promise<void>; isVisible(): Promise<boolean> };
 }
 
+/**
+ * The desktop shell must always remain attached to the native viewport.
+ * Editors and previews own their scroll positions; the browser document does
+ * not. This catches both scrollTop leaks and the resulting displaced root.
+ */
+export async function expectDesktopShellAnchored(page: Page) {
+  const state = await page.evaluate<{
+    scrollTop: number;
+    scrollLeft: number;
+    rootTop: number;
+    rootLeft: number;
+    rootPosition: string;
+  }>(
+    `(() => {
+      const root = document.getElementById("root");
+      if (!root) throw new Error("desktop root is unavailable");
+      const rect = root.getBoundingClientRect();
+      return {
+        scrollTop: document.scrollingElement?.scrollTop ?? -1,
+        scrollLeft: document.scrollingElement?.scrollLeft ?? -1,
+        rootTop: rect.top,
+        rootLeft: rect.left,
+        rootPosition: getComputedStyle(root).position,
+      };
+    })()`,
+  );
+  expect(state).toEqual({
+    scrollTop: 0,
+    scrollLeft: 0,
+    rootTop: 0,
+    rootLeft: 0,
+    rootPosition: "static",
+  });
+}
+
 // The app's own handlers for Cmd+K / Cmd+Shift+F listen on window keydown.
 export async function pressGlobal(
   page: Page,

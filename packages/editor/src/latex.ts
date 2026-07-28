@@ -1,11 +1,24 @@
 import { stex, stexMath } from "@codemirror/legacy-modes/mode/stex";
 import { LanguageSupport, StreamLanguage } from "@codemirror/language";
+import { type EditorState } from "@codemirror/state";
 import {
+  closeCompletion,
   snippet,
   type Completion,
   type CompletionContext,
   type CompletionResult,
 } from "@codemirror/autocomplete";
+import {
+  isLatexCompletionPosition,
+  latexBalancedGroupEnd,
+  maskLatexIgnoredRegions,
+} from "./latex-lexical";
+import {
+  completionRequestIsCurrent,
+  createCompletionRequestGuard,
+  type CompletionRequestGuard,
+} from "./completion-request";
+import { validateXparseArgumentSpecification } from "./latex-xparse";
 
 let bibKeysProvider: () => string[] = () => [];
 export function setBibKeysProvider(fn: () => string[]) {
@@ -20,12 +33,7 @@ export const latexMathLanguage = () =>
   new LanguageSupport(StreamLanguage.define(stexMath));
 
 function labelsInDocument(state: { doc: { toString: () => string } }): string[] {
-  const text = state.doc.toString();
-  const out: string[] = [];
-  const re = /\\label\s*\{([^}]{1,500})\}/gu;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(text))) out.push(m[1]);
-  return out;
+  return latexCatalog(state).labels;
 }
 
 export function bibKeysFromSources(sources: Iterable<string>): string[] {
@@ -121,6 +129,525 @@ const LATEX_COMMANDS: Completion[] = [
   cmd("\\align", "aligned math", "\\begin{align}\n  ${1}\n\\end{align}"),
 ];
 
+const STANDARD_ENVIRONMENTS = [
+  "document",
+  "abstract",
+  "itemize",
+  "enumerate",
+  "description",
+  "figure",
+  "figure*",
+  "table",
+  "table*",
+  "tabular",
+  "tabularx",
+  "equation",
+  "equation*",
+  "align",
+  "align*",
+  "gather",
+  "gather*",
+  "multline",
+  "multline*",
+  "split",
+  "cases",
+  "array",
+  "matrix",
+  "pmatrix",
+  "bmatrix",
+  "Bmatrix",
+  "vmatrix",
+  "Vmatrix",
+  "theorem",
+  "proof",
+  "center",
+  "flushleft",
+  "flushright",
+  "quote",
+  "quotation",
+  "verbatim",
+  "minipage",
+  "tikzpicture",
+] as const;
+
+const STANDARD_CLASSES = [
+  "article",
+  "report",
+  "book",
+  "letter",
+  "beamer",
+  "memoir",
+  "scrartcl",
+  "scrreprt",
+  "scrbook",
+] as const;
+
+const STANDARD_PACKAGES = [
+  "amsmath",
+  "amssymb",
+  "mathtools",
+  "graphicx",
+  "xcolor",
+  "hyperref",
+  "cleveref",
+  "geometry",
+  "booktabs",
+  "tabularx",
+  "array",
+  "microtype",
+  "biblatex",
+  "natbib",
+  "csquotes",
+  "enumitem",
+  "siunitx",
+  "tikz",
+  "pgfplots",
+  "fontspec",
+  "inputenc",
+  "fontenc",
+  "babel",
+  "polyglossia",
+  "listings",
+  "minted",
+  "algorithm2e",
+  "caption",
+  "subcaption",
+  "setspace",
+  "fancyhdr",
+  "titlesec",
+] as const;
+
+interface LocalCommand {
+  label: string;
+  detail: string;
+  template: string;
+}
+
+interface LocalLatexCatalog {
+  commands: LocalCommand[];
+  environments: string[];
+  labels: string[];
+  packages: string[];
+}
+
+const catalogCache = new WeakMap<object, LocalLatexCatalog>();
+
+function commandArgumentCount(parameterText: string): number {
+  let highest = 0;
+  for (const match of parameterText.matchAll(/#([1-9])/gu)) {
+    highest = Math.max(highest, Number(match[1]));
+  }
+  return highest;
+}
+
+interface ParsedGroup {
+  content: string;
+  from: number;
+  to: number;
+}
+
+function skipWhitespace(text: string, start: number): number {
+  let cursor = start;
+  while (/\s/u.test(text[cursor] ?? "")) cursor += 1;
+  return cursor;
+}
+
+function parsedGroup(
+  text: string,
+  start: number,
+  opening = "{",
+  closing = "}",
+): ParsedGroup | null {
+  const from = skipWhitespace(text, start);
+  const to = latexBalancedGroupEnd(text, from, opening, closing);
+  if (to === null) return null;
+  return {
+    content: text.slice(from + 1, to - 1),
+    from,
+    to,
+  };
+}
+
+function parsedControlSequence(
+  text: string,
+  start: number,
+): { label: string; to: number } | null {
+  const from = skipWhitespace(text, start);
+  if (text[from] === "{") {
+    const group = parsedGroup(text, from);
+    if (!group) return null;
+    const label = group.content.trim();
+    if (!/^\\(?:[A-Za-z@]+|.)$/u.test(label)) return null;
+    return { label, to: group.to };
+  }
+  const match = /^\\(?:[A-Za-z@]+|.)/u.exec(text.slice(from));
+  if (!match) return null;
+  return { label: match[0], to: from + match[0].length };
+}
+
+function snippetDefault(value: string): string {
+  return value.trim().replace(/[\\$}]/gu, "\\$&");
+}
+
+function argumentDetail(
+  required: number,
+  optional: number,
+  specification?: string,
+): string {
+  if (specification !== undefined) {
+    return `document macro · xparse ${specification || "no arguments"}`;
+  }
+  const total = required + optional;
+  if (total === 0) return "document macro";
+  if (optional === 0) {
+    return `document macro · ${required} argument${required === 1 ? "" : "s"}`;
+  }
+  const parts: string[] = [];
+  if (optional > 0) {
+    parts.push(`${optional} optional`);
+  }
+  if (required > 0) {
+    parts.push(`${required} required`);
+  }
+  return `document macro · ${parts.join(" + ")} argument${total === 1 ? "" : "s"}`;
+}
+
+function classicCommandDefinition(
+  text: string,
+  start: number,
+): LocalCommand | null {
+  const name = parsedControlSequence(text, start);
+  if (!name) return null;
+  let cursor = name.to;
+  let count = 0;
+  let defaultValue: string | null = null;
+  const countGroup = parsedGroup(text, cursor, "[", "]");
+  if (countGroup && /^[0-9]$/u.test(countGroup.content.trim())) {
+    count = Number(countGroup.content.trim());
+    cursor = countGroup.to;
+    const defaultGroup = parsedGroup(text, cursor, "[", "]");
+    if (defaultGroup) {
+      defaultValue = defaultGroup.content;
+      cursor = defaultGroup.to;
+    }
+  }
+  if (!parsedGroup(text, cursor)) return null;
+
+  let template = name.label;
+  let required = count;
+  let optional = 0;
+  for (let index = 1; index <= count; index += 1) {
+    if (index === 1 && defaultValue !== null) {
+      template += `[${"${"}${index}:${snippetDefault(defaultValue)}}]`;
+      required -= 1;
+      optional += 1;
+    } else {
+      template += `{${"${"}${index}}}`;
+    }
+  }
+  return {
+    label: name.label,
+    detail: argumentDetail(required, optional),
+    template,
+  };
+}
+
+function xparseDelimiter(
+  specification: string,
+  start: number,
+): { value: string; to: number } {
+  const cursor = skipWhitespace(specification, start);
+  if (specification[cursor] === "{") {
+    const group = parsedGroup(specification, cursor);
+    if (group) return { value: group.content, to: group.to };
+  }
+  if (specification[cursor] === "\\") {
+    const controlSequence = /^\\(?:[A-Za-z@]+|.)/u.exec(
+      specification.slice(cursor),
+    )?.[0];
+    if (controlSequence) {
+      return {
+        value: controlSequence,
+        to: cursor + controlSequence.length,
+      };
+    }
+  }
+  return {
+    value: specification[cursor] ?? "",
+    to: Math.min(specification.length, cursor + 1),
+  };
+}
+
+function xparseCommandTemplate(
+  label: string,
+  specification: string,
+): string {
+  let template = label;
+  let cursor = 0;
+  let placeholder = 1;
+  while (cursor < specification.length) {
+    cursor = skipWhitespace(specification, cursor);
+    const kind = specification[cursor];
+    if (!kind) break;
+    cursor += 1;
+
+    if (kind === "+" || kind === "!") continue;
+    if (kind === ">") {
+      const processor = parsedGroup(specification, cursor);
+      cursor = processor?.to ?? cursor;
+      continue;
+    }
+
+    if (kind === "m" || kind === "b" || kind === "v") {
+      template += `{${"${"}${placeholder}}}`;
+      placeholder += 1;
+      continue;
+    }
+    if (kind === "o") {
+      template += `[${"${"}${placeholder}}]`;
+      placeholder += 1;
+      continue;
+    }
+    if (kind === "O") {
+      const defaultGroup = parsedGroup(specification, cursor);
+      cursor = defaultGroup?.to ?? cursor;
+      const value = snippetDefault(defaultGroup?.content ?? "");
+      template += `[${"${"}${placeholder}${value ? `:${value}` : ""}}]`;
+      placeholder += 1;
+      continue;
+    }
+    if (kind === "s" || kind === "t") {
+      if (kind === "t") {
+        cursor = xparseDelimiter(specification, cursor).to;
+      }
+      template += `${"${"}${placeholder}}`;
+      placeholder += 1;
+      continue;
+    }
+    if (
+      kind === "r" ||
+      kind === "R" ||
+      kind === "d" ||
+      kind === "D"
+    ) {
+      const left = xparseDelimiter(specification, cursor);
+      const right = xparseDelimiter(specification, left.to);
+      cursor = right.to;
+      if (kind === "R" || kind === "D") {
+        cursor = parsedGroup(specification, cursor)?.to ?? cursor;
+      }
+      template += `${left.value}${"${"}${placeholder}}${right.value}`;
+      placeholder += 1;
+      continue;
+    }
+    if (kind === "e" || kind === "E") {
+      cursor = parsedGroup(specification, cursor)?.to ?? cursor;
+      if (kind === "E") {
+        cursor = parsedGroup(specification, cursor)?.to ?? cursor;
+      }
+      template += `${"${"}${placeholder}}`;
+      placeholder += 1;
+    }
+  }
+  return template;
+}
+
+function xparseCommandDefinition(
+  text: string,
+  start: number,
+): LocalCommand | null {
+  const name = parsedControlSequence(text, start);
+  if (!name) return null;
+  const specification = parsedGroup(text, name.to);
+  if (!specification) return null;
+  if (
+    validateXparseArgumentSpecification(specification.content).length >
+    0
+  ) {
+    return null;
+  }
+  if (!parsedGroup(text, specification.to)) return null;
+  const normalizedSpecification = specification.content.trim();
+  return {
+    label: name.label,
+    detail: argumentDetail(0, 0, normalizedSpecification),
+    template: xparseCommandTemplate(
+      name.label,
+      normalizedSpecification,
+    ),
+  };
+}
+
+/**
+ * Builds the current-revision fallback catalog in one linear pass per
+ * immutable CodeMirror document. Project intelligence can add cross-file
+ * symbols, but completion must not disappear while that service starts or
+ * while another file is malformed.
+ */
+function latexCatalog(state: {
+  doc: { toString: () => string };
+}): LocalLatexCatalog {
+  const cacheKey = state.doc as object;
+  const cached = catalogCache.get(cacheKey);
+  if (cached) return cached;
+
+  const text = state.doc.toString();
+  const catalogText = maskLatexIgnoredRegions(text);
+  const commands = new Map<string, LocalCommand>();
+  const environments = new Set<string>();
+  const labels = new Set<string>();
+  const packages = new Set<string>();
+
+  for (const match of catalogText.matchAll(
+    /\\(?:newcommand|renewcommand|providecommand|DeclareRobustCommand)\*?/gu,
+  )) {
+    const definition = classicCommandDefinition(
+      catalogText,
+      (match.index ?? 0) + match[0].length,
+    );
+    if (definition) commands.set(definition.label, definition);
+  }
+  for (const match of catalogText.matchAll(
+    /\\(?:New|Renew|Provide|Declare)DocumentCommand\*?/gu,
+  )) {
+    const definition = xparseCommandDefinition(
+      catalogText,
+      (match.index ?? 0) + match[0].length,
+    );
+    if (definition) commands.set(definition.label, definition);
+  }
+  for (const match of catalogText.matchAll(
+    /\\(?:def|gdef|edef|xdef)\s*(\\(?:[A-Za-z@]+|.))((?:\s*#[1-9])*)/gu,
+  )) {
+    const label = match[1];
+    if (!label) continue;
+    const bodyStart =
+      (match.index ?? 0) + match[0].length;
+    if (!parsedGroup(catalogText, bodyStart)) continue;
+    const argumentCount = commandArgumentCount(match[2] ?? "");
+    let template = label;
+    for (let index = 1; index <= argumentCount; index += 1) {
+      template += `{${"${"}${index}}}`;
+    }
+    commands.set(label, {
+      label,
+      detail: argumentDetail(argumentCount, 0),
+      template,
+    });
+  }
+
+  for (const match of catalogText.matchAll(
+    /\\(?:newenvironment|renewenvironment)\*?\s*\{\s*([^{}\s]+)\s*\}/gu,
+  )) {
+    if (match[1]) environments.add(match[1]);
+  }
+  for (const match of catalogText.matchAll(
+    /\\(?:New|Renew|Provide|Declare)DocumentEnvironment\s*\{\s*([^{}\s]+)\s*\}/gu,
+  )) {
+    if (match[1]) environments.add(match[1]);
+  }
+  for (const match of catalogText.matchAll(
+    /\\newtheorem\*?\s*\{\s*([^{}\s]+)\s*\}/gu,
+  )) {
+    if (match[1]) environments.add(match[1]);
+  }
+
+  for (const match of catalogText.matchAll(/\\label\s*\{([^}]{1,500})\}/gu)) {
+    const label = match[1]?.trim();
+    if (label) labels.add(label);
+  }
+  for (const match of catalogText.matchAll(
+    /\\(?:usepackage|RequirePackage)(?:\[[^\]]*\])?\{([^}]+)\}/gu,
+  )) {
+    for (const name of (match[1] ?? "").split(",")) {
+      const normalized = name.trim().toLowerCase();
+      if (normalized) packages.add(normalized);
+    }
+  }
+
+  const catalog = {
+    commands: [...commands.values()],
+    environments: [...environments],
+    labels: [...labels],
+    packages: [...packages],
+  };
+  catalogCache.set(cacheKey, catalog);
+  return catalog;
+}
+
+function guardedLocalCompletion(
+  guard: CompletionRequestGuard,
+  label: string,
+  type: Completion["type"],
+  detail: string,
+  template = label,
+): Completion {
+  return {
+    label,
+    type,
+    detail,
+    apply: (view, completion, from, to) => {
+      if (!completionRequestIsCurrent(guard, view.state)) {
+        closeCompletion(view);
+        return;
+      }
+      if (template !== label) {
+        snippet(template)(view, completion, from, to);
+        return;
+      }
+      view.dispatch({
+        changes: { from, to, insert: label },
+        selection: { anchor: from + label.length },
+        userEvent: "input.complete",
+      });
+    },
+  };
+}
+
+function guardCompletionForSource(
+  guard: CompletionRequestGuard,
+  option: Completion,
+): Completion {
+  const originalApply = option.apply;
+  return {
+    ...option,
+    apply: (view, completion, from, to) => {
+      if (!completionRequestIsCurrent(guard, view.state)) {
+        closeCompletion(view);
+        return;
+      }
+      if (typeof originalApply === "function") {
+        originalApply(view, completion, from, to);
+        return;
+      }
+      const insert =
+        typeof originalApply === "string"
+          ? originalApply
+          : String(option.label);
+      view.dispatch({
+        changes: { from, to, insert },
+        selection: { anchor: from + insert.length },
+        userEvent: "input.complete",
+      });
+    },
+  };
+}
+
+function localCommandCompletions(
+  state: EditorState,
+  guard: CompletionRequestGuard,
+): Completion[] {
+  return latexCatalog(state).commands.map(({ label, detail, template }) => {
+    return guardedLocalCompletion(
+      guard,
+      label,
+      "function",
+      detail,
+      template,
+    );
+  });
+}
+
 // Package-aware additions keep completion useful even before an LSP is
 // installed. The project language service can still contribute richer symbols
 // when TexLab is available.
@@ -133,26 +660,124 @@ const PACKAGE_COMMANDS: Record<string, Completion[]> = {
   siunitx: [cmd("\\SI", "quantity", "\\SI{${1}}{${2}}"), cmd("\\num", "number", "\\num{${1}}")],
 };
 
-function packageCompletions(state: { doc: { toString: () => string } }): Completion[] {
-  const packages = new Set<string>();
-  for (const match of state.doc.toString().matchAll(/\\(?:usepackage|RequirePackage)(?:\[[^\]]*\])?\{([^}]+)\}/gu)) {
-    for (const name of (match[1] ?? "").split(",")) packages.add(name.trim().toLowerCase());
+function packageCompletions(
+  state: EditorState,
+  guard: CompletionRequestGuard,
+): Completion[] {
+  return latexCatalog(state).packages.flatMap((name) =>
+    (PACKAGE_COMMANDS[name] ?? []).map((option) =>
+      guardCompletionForSource(guard, option),
+    ),
+  );
+}
+
+function uniqueCompletions(options: Completion[]): Completion[] {
+  const seen = new Set<string>();
+  return options.filter((option) => {
+    const key = String(option.label);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function currentArgumentQuery(text: string): string {
+  const open = text.lastIndexOf("{");
+  const value = open >= 0 ? text.slice(open + 1) : text;
+  const comma = value.lastIndexOf(",");
+  return value.slice(comma + 1).trimStart();
+}
+
+function structuralArgumentCompletions(
+  context: CompletionContext,
+  guard: CompletionRequestGuard,
+): CompletionResult | null {
+  const environmentMatch = context.matchBefore(
+    /\\(?:begin|end)\s*\{[^{}]{0,500}$/u,
+  );
+  if (environmentMatch) {
+    const query = currentArgumentQuery(environmentMatch.text);
+    const local = latexCatalog(context.state).environments.map((name) =>
+      guardedLocalCompletion(
+        guard,
+        name,
+        "type",
+        "document environment",
+      ),
+    );
+    return {
+      from: context.pos - query.length,
+      options: uniqueCompletions([
+        ...local,
+        ...STANDARD_ENVIRONMENTS.map((name) =>
+          guardCompletionForSource(guard, {
+            label: name,
+            type: "type",
+            detail: "standard LaTeX environment",
+          }),
+        ),
+      ]),
+    };
   }
-  return [...packages].flatMap((name) => PACKAGE_COMMANDS[name] ?? []);
+
+  const packageMatch = context.matchBefore(
+    /\\(?:usepackage|RequirePackage)\s*(?:\[[^\]]*\])?\{[^{}]{0,500}$/u,
+  );
+  if (packageMatch) {
+    const query = currentArgumentQuery(packageMatch.text);
+    return {
+      from: context.pos - query.length,
+      options: STANDARD_PACKAGES.map((name) =>
+        guardCompletionForSource(guard, {
+          label: name,
+          type: "namespace",
+          detail: "LaTeX package",
+        }),
+      ),
+    };
+  }
+
+  const classMatch = context.matchBefore(
+    /\\documentclass\s*(?:\[[^\]]*\])?\{[^{}]{0,500}$/u,
+  );
+  if (classMatch) {
+    const query = currentArgumentQuery(classMatch.text);
+    return {
+      from: context.pos - query.length,
+      options: STANDARD_CLASSES.map((name) =>
+        guardCompletionForSource(guard, {
+          label: name,
+          type: "type",
+          detail: "LaTeX document class",
+        }),
+      ),
+    };
+  }
+
+  return null;
 }
 
 export function latexCompletions(
   context: CompletionContext
 ): CompletionResult | null {
+  const source = context.state.doc.toString();
+  if (!isLatexCompletionPosition(source, context.pos)) return null;
+  const guard = createCompletionRequestGuard(context);
   const refMatch = context.matchBefore(
     /\\(?:ref|eqref|pageref|autoref|cref|Cref|cpageref|vref|Vref|labelcref|nameref|namecref|fref|sref|labelref)\*?\s*\{[^}]{0,500}$/u
   );
   if (refMatch) {
     const labels = labelsInDocument(context.state);
+    const query = currentArgumentQuery(refMatch.text);
     return {
-      from: refMatch.to,
-      options: labels.map((l) => ({ label: l, type: "variable", detail: "label" })),
-      validFor: /^[^}]*$/,
+      from: context.pos - query.length,
+      options: labels.map((label) =>
+        guardCompletionForSource(guard, {
+          label,
+          type: "variable",
+          detail: "label",
+        }),
+      ),
     };
   }
 
@@ -160,42 +785,62 @@ export function latexCompletions(
     /\\(?:cite|citep|citet|citeauthor|citeyear|citealt|parencite|textcite|autocite|nocite)\*?\s*(?:\[[^\]]*\])?\s*\{[^}]{0,500}$/u
   );
   if (citeMatch) {
+    const query = currentArgumentQuery(citeMatch.text);
     return {
-      from: citeMatch.to,
-      options: bibKeysProvider().map((k) => ({
-        label: k,
-        type: "constant",
-        detail: "citation",
-      })),
-      validFor: /^[^}]*$/,
+      from: context.pos - query.length,
+      options: bibKeysProvider().map((label) =>
+        guardCompletionForSource(guard, {
+          label,
+          type: "constant",
+          detail: "citation",
+        }),
+      ),
     };
   }
 
-  return commandCompletions(context, true);
+  return (
+    structuralArgumentCompletions(context, guard) ??
+    commandCompletions(context, guard, true)
+  );
 }
 
 function commandCompletions(
   context: CompletionContext,
+  guard: CompletionRequestGuard,
   explicitFallback: boolean,
 ): CompletionResult | null {
   const cmdMatch = context.matchBefore(/\\[a-zA-Z@]*$/);
   if (!cmdMatch && !(explicitFallback && context.explicit)) return null;
   return {
     from: cmdMatch ? cmdMatch.from : context.pos,
-    options: [...LATEX_COMMANDS, ...packageCompletions(context.state)],
-    validFor: /\\[a-zA-Z@]*$/,
+    options: uniqueCompletions([
+      ...localCommandCompletions(context.state, guard),
+      ...LATEX_COMMANDS.map((option) =>
+        guardCompletionForSource(guard, option),
+      ),
+      ...packageCompletions(context.state, guard),
+    ]),
   };
 }
 
 export function latexCommandCompletions(
   context: CompletionContext,
 ): CompletionResult | null {
-  return commandCompletions(context, false);
+  const source = context.state.doc.toString();
+  if (!isLatexCompletionPosition(source, context.pos)) return null;
+  const guard = createCompletionRequestGuard(context);
+  return (
+    structuralArgumentCompletions(context, guard) ??
+    commandCompletions(context, guard, false)
+  );
 }
 
 export function slashCompletions(
   context: CompletionContext
 ): CompletionResult | null {
+  const source = context.state.doc.toString();
+  if (!isLatexCompletionPosition(source, context.pos)) return null;
+  const guard = createCompletionRequestGuard(context);
   const line = context.state.doc.lineAt(context.pos);
   const before = line.text.slice(0, context.pos - line.from);
   const m = before.match(/\/([a-zA-Z]*)$/);
@@ -218,7 +863,8 @@ export function slashCompletions(
   ];
   return {
     from: context.pos - m[0].length,
-    options: slash,
-    validFor: /\/[a-zA-Z]*/,
+    options: slash.map((option) =>
+      guardCompletionForSource(guard, option),
+    ),
   };
 }

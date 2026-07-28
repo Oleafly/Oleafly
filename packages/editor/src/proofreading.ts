@@ -3,7 +3,10 @@ export const PROOFREADING_PROTOCOL_VERSION = 1 as const;
 export const PROOFREADING_LIMITS = {
   grammarCharacters: 500_000,
   spellingCharacters: 500_000,
-  diagnostics: 500,
+  // A full stress-size document can legitimately contain one finding for
+  // every source character. This is a protocol safety ceiling, not a product
+  // cutoff: the worker never truncates findings to reach it.
+  diagnostics: 500_000,
   ignoredWords: 10_000,
   wordCharacters: 128,
 } as const;
@@ -13,7 +16,7 @@ export type ProofreadingFormat =
   | "markdown"
   | "plaintext"
   | "typst";
-export type ProofreadingMode = "grammar" | "spelling";
+export type ProofreadingMode = "grammar" | "spelling" | "combined";
 export type ProofreadingSurface = "source" | "visual";
 export type ProofreadingDialect =
   | "american"
@@ -23,6 +26,7 @@ export type ProofreadingDialect =
   | "indian";
 export type ProofreadingResultStatus =
   | "ready"
+  | "partial"
   | "too_large"
   | "unsupported";
 
@@ -76,6 +80,9 @@ export interface ProofreadingResult {
   status: ProofreadingResultStatus;
   diagnostics: ProofreadingDiagnostic[];
   message?: string;
+  /** Exact Hunspell pack that produced a spelling result. */
+  activeDictionaryLocale?: string;
+  /** Retained for protocol compatibility; production results are never cut. */
   truncated?: boolean;
 }
 
@@ -176,16 +183,22 @@ export function isProofreadingWorkerResponse(
   const status = candidate.status;
   const diagnostics = candidate.diagnostics;
   const message = candidate.message;
+  const activeDictionaryLocale = candidate.activeDictionaryLocale;
   const truncated = candidate.truncated;
   if (
-    !["ready", "too_large", "unsupported"].includes(
+    !["ready", "partial", "too_large", "unsupported"].includes(
       typeof status === "string" ? status : "",
     ) ||
     !Array.isArray(diagnostics) ||
     diagnostics.length > PROOFREADING_LIMITS.diagnostics ||
-    (status !== "ready" && diagnostics.length !== 0) ||
+    (status !== "ready" &&
+      status !== "partial" &&
+      diagnostics.length !== 0) ||
     (message !== undefined &&
       (typeof message !== "string" || message.length > 2_048)) ||
+    (activeDictionaryLocale !== undefined &&
+      (typeof activeDictionaryLocale !== "string" ||
+        !/^[A-Za-z]{2,3}_[A-Za-z]{2,4}$/u.test(activeDictionaryLocale))) ||
     (truncated !== undefined && typeof truncated !== "boolean")
   ) {
     return false;

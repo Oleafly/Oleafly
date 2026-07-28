@@ -13,6 +13,7 @@ import type {
   OutlineNode,
   ProjectDefinition,
   ProjectDiagnostic,
+  ProjectUse,
 } from "./types";
 
 const DIRECTIVE_TYPES = new Set(["comment", "preamble", "string"]);
@@ -160,7 +161,9 @@ function fieldValue(
         valueStyle: "quoted",
         complete,
       },
-      next: complete ? end + 1 : source.length,
+      // If a new top-level entry starts before the quote closes, recover at
+      // that entry instead of swallowing the rest of the bibliography.
+      next: complete ? end + 1 : end,
       complete,
     };
   }
@@ -194,10 +197,24 @@ export function parseBibtexIntelligence(
   const starts = lineStarts(source);
   const entries: BibliographyEntry[] = [];
   const definitions: ProjectDefinition[] = [];
+  const uses: ProjectUse[] = [];
   const outline: OutlineNode[] = [];
   const diagnostics: ProjectDiagnostic[] = [];
   let partial = false;
   let cursor = 0;
+
+  definitions.push({
+    id: stableId("def", "local", file, 0, "file", file),
+    source: "local",
+    engine: "bibtex",
+    kind: "file",
+    name: file,
+    location: {
+      file,
+      range: rangeFromOffsets(starts, 0, 0),
+    },
+    detail: "Project bibliography file",
+  });
 
   const malformed = (
     from: number,
@@ -246,6 +263,11 @@ export function parseBibtexIntelligence(
       source.slice(at),
     );
     if (!typeMatch) {
+      malformed(
+        at,
+        Math.min(source.length, at + 1),
+        "Malformed BibTeX directive or entry type.",
+      );
       cursor = at + 1;
       continue;
     }
@@ -263,7 +285,18 @@ export function parseBibtexIntelligence(
       continue;
     }
     if (DIRECTIVE_TYPES.has(type)) {
-      cursor = findDirectiveEnd(source, position, open);
+      const directiveEnd = findDirectiveEnd(source, position, open);
+      if (
+        directiveEnd === source.length &&
+        source[directiveEnd - 1] !== closingFor(open)
+      ) {
+        malformed(
+          at,
+          directiveEnd,
+          `@${type} directive is not closed.`,
+        );
+      }
+      cursor = directiveEnd;
       continue;
     }
 
@@ -449,6 +482,58 @@ export function parseBibtexIntelligence(
           );
         }
       }
+      for (const field of fields) {
+        if (
+          ![
+            "crossref",
+            "xref",
+            "xdata",
+            "related",
+            "entryset",
+          ].includes(field.name)
+        ) {
+          continue;
+        }
+        // `field.value` is normalized for metadata display. Resolution ranges
+        // must instead be derived from the untouched source slice or whitespace
+        // folding would shift every key after the first newline.
+        const originalValue = source.slice(
+          field.valueRange.from,
+          field.valueRange.to,
+        );
+        for (const match of originalValue.matchAll(/[^,]+/g)) {
+          const raw = match[0];
+          const targetKey = raw.trim();
+          if (!targetKey) continue;
+          const leading = raw.length - raw.trimStart().length;
+          const from = field.valueRange.from + match.index + leading;
+          uses.push({
+            id: stableId(
+              "use",
+              "local",
+              file,
+              from,
+              "citation",
+              targetKey,
+            ),
+            source: "local",
+            engine: "bibtex",
+            kind: "citation",
+            name: targetKey,
+            location: {
+              file,
+              range: rangeFromOffsets(
+                starts,
+                from,
+                from + targetKey.length,
+              ),
+            },
+            syntax: "explicit",
+            resolution: "unresolved",
+            definitionIds: [],
+          });
+        }
+      }
       const year = fields.find((field) => field.name === "year");
       if (year?.value && !/^\d{4}[a-z]?$/.test(year.value)) {
         validationFinding(
@@ -503,7 +588,7 @@ export function parseBibtexIntelligence(
       : {}),
     outline,
     definitions,
-    uses: [],
+    uses,
     edges: [],
     diagnostics,
     bibliographyEntries: entries,

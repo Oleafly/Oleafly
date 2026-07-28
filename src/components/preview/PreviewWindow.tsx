@@ -176,12 +176,24 @@ function shouldAcceptPreviewState(
   if (!current || current.identity.projectId !== candidate.identity.projectId) {
     return true;
   }
+  // Project revision is shared across producers/windows even though request
+  // generation is not. Once a newer whole-project revision is announced, a
+  // delayed success for an older dependency graph cannot become current just
+  // because its backend output revision is numerically newer.
+  if (
+    candidate.identity.projectRevision <
+    current.identity.projectRevision
+  ) {
+    return false;
+  }
   // Backend output revisions are process-wide, whereas request generations
   // are local to one producer window. A successful compile from another
   // window therefore wins by output revision even when its local request
   // generation is numerically smaller.
   if (candidate.status === "success" && candidate.checkpoint) {
     return (
+      candidate.identity.projectRevision >
+        current.identity.projectRevision ||
       !current.checkpoint ||
       candidate.checkpoint.outputRevision >=
         current.checkpoint.outputRevision
@@ -485,7 +497,7 @@ export function PreviewWindow({
     void artifactRetry;
     const checkpoint = compileState?.checkpoint ?? null;
     if (
-      !compileState ||
+      compileState?.status !== "success" ||
       !checkpoint ||
       checkpoint.projectId !== projectId
     ) {
@@ -643,7 +655,9 @@ export function PreviewWindow({
       if (modifier && event.key.toLowerCase() === "f") {
         event.preventDefault();
         setSearchOpen(true);
-        requestAnimationFrame(() => searchInputRef.current?.focus());
+        requestAnimationFrame(() =>
+          searchInputRef.current?.focus({ preventScroll: true }),
+        );
         return;
       }
       if (event.key === "Escape") {
@@ -874,7 +888,9 @@ export function PreviewWindow({
             onClick={() => {
               setSearchOpen(true);
               requestAnimationFrame(() =>
-                searchInputRef.current?.focus(),
+                searchInputRef.current?.focus({
+                  preventScroll: true,
+                }),
               );
             }}
             aria-label="Search PDF"

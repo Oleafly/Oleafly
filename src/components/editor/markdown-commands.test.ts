@@ -103,7 +103,8 @@ describe("markdown source syntax", () => {
   });
 
   it("writes a heading with one hash per level", () => {
-    const h3 = MARKDOWN_HEADING_LEVELS.find((level) => level.level === 3)!;
+    const h3 = MARKDOWN_HEADING_LEVELS.find((level) => level.level === 3);
+    if (!h3) throw new Error("The Markdown heading catalog must include level 3");
     insertMarkdownHeading(h3);
     expect(controller.wrapSelectionOrPlaceholder).toHaveBeenCalledWith(
       "### ",

@@ -81,18 +81,19 @@ export function isPreviewWindowState(
   }
 
   const checkpoint = candidate.checkpoint;
-  if (checkpoint && checkpoint.projectId !== candidate.identity.projectId) {
-    return false;
-  }
-  return (
-    candidate.status !== "success" ||
-    (checkpoint !== null &&
-      checkpoint.mainDocument === candidate.identity.mainDocument &&
-      checkpoint.projectRevision ===
-        candidate.identity.projectRevision &&
-      checkpoint.requestGeneration ===
-        candidate.identity.requestGeneration)
-  );
+  const exactCheckpoint =
+    checkpoint !== null &&
+    checkpoint.projectId === candidate.identity.projectId &&
+    checkpoint.mainDocument === candidate.identity.mainDocument &&
+    checkpoint.projectRevision ===
+      candidate.identity.projectRevision &&
+    checkpoint.requestGeneration ===
+      candidate.identity.requestGeneration;
+  // A non-success attempt may retain an older PDF in the viewer, but that
+  // checkpoint must not be advertised as output from the current identity.
+  return candidate.status === "success"
+    ? exactCheckpoint
+    : checkpoint === null || exactCheckpoint;
 }
 
 // Renders `?view=preview` in its own JS context (see main.tsx) and stays in

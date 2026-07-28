@@ -40,6 +40,16 @@ function preview(editor: EditorView): HTMLElement | null {
 }
 
 describe("live math preview", () => {
+  it("paints KaTeX in the widget's first frame without a resizing placeholder", () => {
+    const editor = mount();
+    vi.advanceTimersByTime(0);
+
+    const host = preview(editor);
+    expect(host).not.toBeNull();
+    expect(host!.querySelector(".math-preview-loading")).toBeNull();
+    expect(host!.querySelector(".katex")).not.toBeNull();
+  });
+
   it("renders the expression rather than staying on the loading label", () => {
     const editor = mount();
     settle();
@@ -58,5 +68,18 @@ describe("live math preview", () => {
     const host = preview(editor);
     expect(host).not.toBeNull();
     expect(host!.querySelector(".math-preview-loading")).toBeNull();
+  });
+
+  it("does not silently omit visible expressions after an arbitrary count", () => {
+    const expressions = Array.from(
+      { length: 96 },
+      (_, index) => `$x_${index}$`,
+    ).join(" ");
+    const editor = mount(expressions);
+    settle();
+
+    expect(
+      editor.dom.querySelectorAll(".math-preview"),
+    ).toHaveLength(96);
   });
 });

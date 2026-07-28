@@ -138,6 +138,24 @@ export function maskMarkdown(text: string): string {
       blank(chars, match.index!, match.index! + match[0].length);
     }
   }
+  // Pandoc citations are metadata references, not visible prose. Mask
+  // bracketed multi-cites (including locator/prefix text) first, followed by
+  // bare @key citations. E-mail addresses have already been masked above.
+  for (const match of chars
+    .join("")
+    .matchAll(/\[[^\]\n]*@[-\p{L}\p{N}_:.#/+]+[^\]\n]*\]/gu)) {
+    blank(chars, match.index!, match.index! + match[0].length);
+  }
+  for (const match of chars
+    .join("")
+    .matchAll(/(^|[^\p{L}\p{N}._%+\-])@[-\p{L}\p{N}_:.#/+]+/gmu)) {
+    const prefix = match[1]?.length ?? 0;
+    blank(
+      chars,
+      match.index! + prefix,
+      match.index! + match[0].length,
+    );
+  }
   for (const expression of scanMathExpressions(chars.join(""), {
     format: "markdown",
   })) {

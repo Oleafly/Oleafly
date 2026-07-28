@@ -8,6 +8,11 @@ export * from "./controller";
 export { editorTheme } from "./theme";
 export { languageForPath } from "./languages";
 export {
+  createCompletionRequestGuard,
+  completionRequestIsCurrent,
+  type CompletionRequestGuard,
+} from "./completion-request";
+export {
   latexLanguage,
   latexMathLanguage,
   latexCompletions,
