@@ -12,6 +12,59 @@ import {
 
 const RUN = Date.now().toString(36);
 
+test("reopening a project in persisted Visual mode keeps the workspace chrome anchored", async ({
+  tauriPage,
+}) => {
+  test.setTimeout(240_000);
+  const projectName = `E2E Visual Reopen ${RUN}`;
+  await createBlankProject(tauriPage, projectName);
+
+  await tauriPage.click('[aria-label="Switch to WYSIWYG view"]');
+  await expect(tauriPage.locator(".ProseMirror")).toBeVisible({
+    timeout: 20_000,
+  });
+
+  await tauriPage.click('[aria-label="Home"]');
+  await expect(tauriPage.getByTestId("library")).toBeVisible({
+    timeout: 20_000,
+  });
+  await openProject(tauriPage, projectName);
+
+  await expect(tauriPage.locator(".ProseMirror")).toBeVisible({
+    timeout: 20_000,
+  });
+  await expect(
+    tauriPage.locator('[data-tour="project-toolbar"]'),
+  ).toBeVisible();
+
+  const shell = await tauriPage.evaluate<{
+    documentScrollTop: number;
+    toolbarTop: number;
+    toolbarBottom: number;
+    panelTop: number;
+  }>(
+    `(() => {
+      const toolbar = document.querySelector('[data-tour="project-toolbar"]');
+      const editor = document.querySelector('[data-tour="project-editor"]');
+      if (!(toolbar instanceof HTMLElement) || !(editor instanceof HTMLElement)) {
+        throw new Error("workspace chrome unavailable");
+      }
+      const toolbarRect = toolbar.getBoundingClientRect();
+      const editorRect = editor.getBoundingClientRect();
+      return {
+        documentScrollTop: document.scrollingElement?.scrollTop ?? -1,
+        toolbarTop: toolbarRect.top,
+        toolbarBottom: toolbarRect.bottom,
+        panelTop: editorRect.top,
+      };
+    })()`,
+  );
+  expect(shell.documentScrollTop).toBe(0);
+  expect(shell.toolbarTop).toBeGreaterThanOrEqual(0);
+  expect(shell.toolbarBottom).toBeGreaterThan(shell.toolbarTop);
+  expect(shell.panelTop).toBeGreaterThanOrEqual(shell.toolbarBottom);
+});
+
 test("toolbar edits flush on immediate close, survive reopen, and compile", async ({
   tauriPage,
 }) => {
