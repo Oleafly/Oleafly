@@ -21,6 +21,11 @@ export function createPreflightLinter() {
       }
       return diags;
     },
-    { delay: 900 },
+    {
+      delay: 900,
+      // Diagnostics render through the shared hover card, so the stock lint
+      // tooltip must not also appear.
+      tooltipFilter: () => [],
+    },
   );
 }

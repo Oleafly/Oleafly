@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
@@ -42,17 +42,27 @@ describe("PreviewPane empty state", () => {
       projectName: "Preview empty fixture",
       projectKind: "",
       mainDoc: "main.tex",
+      engineLoaded: true,
       refreshTree: vi.fn().mockResolvedValue(undefined),
     } as unknown as ReturnType<typeof useFilesStore.getState>);
     useTourStore.setState({ activeTourId: null });
   });
 
-  it("offers the real Recompile action and invokes the compile handler", () => {
+  it("shows the startup state without a duplicate compile button", () => {
     render(<PreviewPane />);
+    expect(screen.getByRole("status", { name: /Document startup/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Compile now" })).not.toBeInTheDocument();
+    expect(recompile).not.toHaveBeenCalled();
+  });
+
+  it("reports the language service and its analysis as one startup stage", () => {
+    render(<PreviewPane />);
+    // Separate rows let analysis show "complete" above a service that is still
+    // starting, which reads as an out-of-order checklist.
+    expect(screen.queryByText("Language service")).not.toBeInTheDocument();
+    expect(screen.getByText("Language analysis")).toBeInTheDocument();
     expect(
-      screen.getByText("Compile your document to render a PDF preview here."),
+      screen.getByRole("status", { name: /Document startup: \d+ of 3 stages/ }),
     ).toBeInTheDocument();
-    fireEvent.click(screen.getByLabelText("Recompile"));
-    expect(recompile).toHaveBeenCalledOnce();
   });
 });

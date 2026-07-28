@@ -1,3 +1,4 @@
+import { lazy } from "react";
 import { FileText, GitBranch, Plug, Search, SearchCode, ShieldCheck, Sparkles } from "lucide-react";
 import { registerRailTab } from "@oleafly/registry";
 import { useGitStatusStore } from "@/store/git-status";
@@ -5,9 +6,14 @@ import { useMcpActivityStore } from "@/store/mcp-activity";
 import { FilesPanel, ProjectSearch } from "@/components/layout/Sidebar";
 import { SourceControl } from "@/components/layout/SourceControl";
 import { PreflightPanel } from "@/components/preflight/PreflightPanel";
-import { ReferencesPanel } from "@/components/layout/ReferencesPanel";
 import { McpActivityPanel } from "@/components/layout/McpActivityPanel";
 import { ChatPanel } from "@/components/ai/ChatPanel";
+
+const ReferencesPanel = lazy(() =>
+  import("@/components/layout/ReferencesPanel").then((module) => ({
+    default: module.ReferencesPanel,
+  })),
+);
 
 export function registerRailTabs() {
   registerRailTab({
@@ -47,7 +53,7 @@ export function registerRailTabs() {
   });
   registerRailTab({
     id: "refs",
-    label: "References (Shift-F12)",
+    label: "References & citations (Shift-F12)",
     icon: SearchCode,
     section: "review",
     order: 50,

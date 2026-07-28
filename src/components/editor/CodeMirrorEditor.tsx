@@ -14,12 +14,23 @@ import { codeIntel } from "./cm/code-intel";
 import { hoverIntel } from "./cm/hover-intel";
 import { inlineDiffPlugin } from "./cm/inline-ai/plugin";
 import { toggleInlineEdit } from "./cm/inline-ai/openSession";
+import {
+  projectCompletionSourcesForPath,
+  projectIntelligenceExtensions,
+} from "./cm/project-intelligence";
+import {
+  languageServiceCompletion,
+  languageServiceEditorExtensions,
+} from "./cm/language-service";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { useCompileStore } from "@/store/compile";
 import { useDictionary, isWordIgnored, ignoreWordForProject, ignoreWordGlobally } from "@/lib/dictionary";
-import { getSpellchecker, isIgnored } from "@/lib/spellcheck";
-import { lintGrammar } from "@/lib/harper";
+import { isSessionIgnoredWord } from "@/lib/proofreading/ignored";
+import {
+  cancelProofreading,
+  proofreadDocument,
+} from "@/lib/proofreading/client";
 
 // Module side effect: must install before any lint runs.
 setSpellHost({
@@ -27,14 +38,39 @@ setSpellHost({
   getActivePath: () => useFilesStore.getState().activePath,
   getLintPrefs: () => {
     const s = useSettingsStore.getState();
-    return { showRegionalism: s.showRegionalism, showWordChoice: s.showWordChoice };
+    return {
+      showRegionalism: s.showRegionalism,
+      showWordChoice: s.showWordChoice,
+      dialect: s.grammarDialect,
+    };
   },
-  getSpellchecker,
-  isSessionIgnored: isIgnored,
+  proofread: (input) => {
+    const dictionary = useDictionary.getState();
+    const ignoredWords = [
+      ...dictionary.global,
+      ...(input.projectId
+        ? (dictionary.ignored[input.projectId] ?? [])
+        : []),
+    ];
+    return proofreadDocument({
+      identity: {
+        projectId: input.projectId,
+        path: input.path,
+        revision: input.revision,
+        surface: input.surface,
+      },
+      text: input.text,
+      format: input.format,
+      mode: input.mode,
+      preferences: input.preferences,
+      ignoredWords,
+    });
+  },
+  cancelProofreading,
+  isSessionIgnored: isSessionIgnoredWord,
   isWordIgnored,
   ignoreWordForProject,
   ignoreWordGlobally,
-  lintGrammar,
 });
 
 setBibKeysProvider(() => {
@@ -68,11 +104,16 @@ const HOST: EditorHost = {
 };
 
 const LATEX_EXTENSIONS: Extension[] = [
-  lintGutter(),
   createPreflightLinter(),
   createCompileErrorLinter(),
+];
+
+const PROJECT_INTELLIGENCE_EXTENSIONS: Extension[] = [
+  lintGutter(),
   codeIntel(),
   hoverIntel(),
+  ...projectIntelligenceExtensions(),
+  ...languageServiceEditorExtensions(),
 ];
 
 const EXTRA_KEYMAP: KeyBinding[] = [
@@ -84,9 +125,18 @@ export function CodeMirrorEditor() {
     <CodeMirrorEditorCore
       host={HOST}
       extraExtensions={[inlineDiffPlugin]}
-      extraExtensionsForPath={(path) =>
-        path && /\.(?:tex|latex|ltx)$/i.test(path) ? LATEX_EXTENSIONS : []
-      }
+      extraExtensionsForPath={(path) => {
+        if (!path || !/\.(?:tex|latex|ltx|sty|cls|md|markdown|typ|bib)$/i.test(path)) {
+          return [];
+        }
+        return /\.(?:tex|latex|ltx|sty|cls)$/i.test(path)
+          ? [...LATEX_EXTENSIONS, ...PROJECT_INTELLIGENCE_EXTENSIONS]
+          : PROJECT_INTELLIGENCE_EXTENSIONS;
+      }}
+      extraCompletionSourcesForPath={(path) => [
+        languageServiceCompletion,
+        ...projectCompletionSourcesForPath(path),
+      ]}
       extraKeymap={EXTRA_KEYMAP}
     />
   );

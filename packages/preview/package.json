@@ -8,6 +8,7 @@
   "types": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
+    "./controller": "./src/controller.ts",
     "./polyfills": "./src/polyfills.ts"
   },
   "dependencies": {

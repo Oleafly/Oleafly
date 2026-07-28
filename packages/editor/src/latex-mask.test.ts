@@ -105,10 +105,10 @@ describe("maskLatex", () => {
       expect(words("Senior Softwar Engineer").has("Softwar")).toBe(true);
     });
 
-    it("blanks \\href entirely (url + shown text are not prose to proofread)", () => {
+    it("keeps visible \\href text while masking its URL", () => {
       const hw = words("\\href{https://alexchen.dev}{alexchen.dev} \\href{mailto:a@b.com}{a@b.com}");
-      expect(hw.has("alexchen")).toBe(false);
-      expect(hw.has("dev")).toBe(false);
+      expect(hw.has("alexchen")).toBe(true);
+      expect(hw.has("dev")).toBe(true);
       expect(hw.has("com")).toBe(false);
     });
 

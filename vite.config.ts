@@ -7,6 +7,11 @@ import { assertNoProductionDevHookTokens } from "./scripts/production-hook-audit
 // Tauri expects a fixed port; if that's not available it will attempt the next one.
 const host = process.env.TAURI_DEV_HOST;
 
+// Keep only comments that carry distribution/licensing instructions. Terser
+// receives the comment body without `/*`/`//`, so a leading `!` covers `/*!`.
+export const LEGAL_COMMENT_PATTERN =
+  /^!|@preserve|@license|@cc_on/i;
+
 const preserveWorkerExports = (): Plugin => ({
   name: "preserve-worker-exports",
   options: (options) => ({ ...options, preserveEntrySignatures: "strict" }),
@@ -52,6 +57,17 @@ export default defineConfig(async () => ({
   worker: {
     format: "es" as const,
     plugins: () => [preserveWorkerExports()],
+  },
+  build: {
+    minify: "terser" as const,
+    terserOptions: {
+      compress: {
+        passes: 2,
+      },
+      format: {
+        comments: LEGAL_COMMENT_PATTERN,
+      },
+    },
   },
   resolve: {
     alias: {

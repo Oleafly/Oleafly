@@ -164,7 +164,7 @@ pub trait DocumentEngine: Sync {
         out_dir: &Path,
         project_dir: &Path,
         target: CompileTarget<'_>,
-        offline: bool,
+        options: CompileOptions,
     ) -> Result<EngineCompileSpec, String>;
     fn parse_errors(&self, log: &str) -> Vec<CompileError>;
 }
@@ -242,7 +242,7 @@ impl DocumentEngine for LatexEngine {
         out_dir: &Path,
         project_dir: &Path,
         target: CompileTarget<'_>,
-        offline: bool,
+        options: CompileOptions,
     ) -> Result<EngineCompileSpec, String> {
         let input = match target {
             CompileTarget::Main { main_document } => EngineInput::Generated {
@@ -266,7 +266,7 @@ impl DocumentEngine for LatexEngine {
         let entry = input.path().to_string_lossy();
         Ok(EngineCompileSpec {
             executable: EngineExecutable::BundledSidecar("tectonic"),
-            args: tectonic_args(&out, &search_path, &entry, offline),
+            args: tectonic_args(&out, &search_path, &entry, options),
             input,
             artifacts,
             working_dir: project_dir.to_owned(),
@@ -347,7 +347,7 @@ impl DocumentEngine for TypstEngine {
         out_dir: &Path,
         project_dir: &Path,
         target: CompileTarget<'_>,
-        _offline: bool,
+        _options: CompileOptions,
     ) -> Result<EngineCompileSpec, String> {
         let CompileTarget::Main { main_document } = target else {
             return Err("Typst does not support isolated compilation".into());
@@ -437,7 +437,7 @@ impl DocumentEngine for MarkdownEngine {
         out_dir: &Path,
         project_dir: &Path,
         target: CompileTarget<'_>,
-        _offline: bool,
+        _options: CompileOptions,
     ) -> Result<EngineCompileSpec, String> {
         let CompileTarget::Main { main_document } = target else {
             return Err("Markdown does not support isolated compilation".into());
@@ -676,6 +676,9 @@ pub struct CompileResult {
     pub synctex_path: Option<String>,
     pub out_dir: Option<String>,
     pub compile_time_ms: u64,
+    /// The user stopped this compile. Distinguishes an intentional stop from a
+    /// document that genuinely failed to build.
+    pub stopped: bool,
 }
 
 /// Must stay byte-for-byte compatible with
@@ -691,6 +694,17 @@ pub(crate) fn fingerprint_compile_output(bytes: &[u8]) -> String {
     format!("pdf-v1:{}:{first:08x}{second:08x}", bytes.len())
 }
 
+/// User-selected compiler behaviour for one request. Engines that cannot honour
+/// a flag ignore it; `supports_offline` already guards the offline case.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct CompileOptions {
+    pub offline: bool,
+    /// Single typesetting pass instead of reruns until the document stabilizes.
+    pub fast: bool,
+    /// Stop at the first TeX error rather than pushing on to a best-effort PDF.
+    pub halt_on_error: bool,
+}
+
 pub struct CompileRequest<'a> {
     pub app: &'a tauri::AppHandle,
     pub engine: &'a dyn DocumentEngine,
@@ -698,7 +712,10 @@ pub struct CompileRequest<'a> {
     pub project_dir: &'a Path,
     pub target: CompileTarget<'a>,
     pub log_event: &'a str,
-    pub offline: bool,
+    pub options: CompileOptions,
+    /// Set for main-document compiles so "Stop compilation" can reach them.
+    /// Figure builds run in their own lane and pass `None`.
+    pub cancel: Option<&'a crate::state::CompileCancel>,
     pub prepared_spec: Option<EngineCompileSpec>,
 }
 
@@ -707,7 +724,7 @@ pub async fn prepare_compile_spec(
     out_dir: PathBuf,
     project_dir: PathBuf,
     target: CompileTarget<'_>,
-    offline: bool,
+    options: CompileOptions,
 ) -> Result<EngineCompileSpec, String> {
     let owned_target = match target {
         CompileTarget::Main { main_document } => (Some(main_document.to_owned()), None, None),
@@ -733,7 +750,7 @@ pub async fn prepare_compile_spec(
                 CompileTarget::Main {
                     main_document: &main_document,
                 },
-                offline,
+                options,
             ),
             (None, Some(source_path), Some(output_stem)) => engine.compile_spec(
                 &out_dir,
@@ -742,7 +759,7 @@ pub async fn prepare_compile_spec(
                     source_path: &source_path,
                     output_stem: &output_stem,
                 },
-                offline,
+                options,
             ),
             _ => Err("invalid compiler target".into()),
         }
@@ -753,7 +770,7 @@ pub async fn prepare_compile_spec(
 
 pub async fn compile(request: CompileRequest<'_>) -> Result<CompileResult, String> {
     let capabilities = request.engine.capabilities();
-    if request.offline && !capabilities.supports_offline {
+    if request.options.offline && !capabilities.supports_offline {
         return Err(format!(
             "engine `{}` does not support offline compilation",
             request.engine.id().as_str()
@@ -775,7 +792,7 @@ pub async fn compile(request: CompileRequest<'_>) -> Result<CompileResult, Strin
                 request.out_dir.to_owned(),
                 request.project_dir.to_owned(),
                 request.target,
-                request.offline,
+                request.options,
             )
             .await?
         }
@@ -798,6 +815,7 @@ pub async fn compile(request: CompileRequest<'_>) -> Result<CompileResult, Strin
                 &spec.args,
                 &spec.working_dir,
                 request.log_event,
+                request.cancel,
             )
             .await?
         }
@@ -808,11 +826,13 @@ pub async fn compile(request: CompileRequest<'_>) -> Result<CompileResult, Strin
                 &spec.args,
                 &spec.working_dir,
                 request.log_event,
+                request.cancel,
             )
             .await?
         }
     };
 
+    let stopped = request.cancel.is_some_and(crate::state::CompileCancel::detach);
     let log = spec
         .artifacts
         .log
@@ -836,8 +856,13 @@ pub async fn compile(request: CompileRequest<'_>) -> Result<CompileResult, Strin
     let has_pdf = output_id.is_some();
     let errors = request.engine.parse_errors(&log);
     let has_reported_errors = errors.iter().any(|e| e.kind == "error");
+    let mut log = log;
+    if stopped {
+        append_bounded(&mut log, b"\nOleafly stopped the compile on request.\n");
+    }
     Ok(CompileResult {
-        ok: has_pdf && exit_code.unwrap_or(-1) == 0 && !has_reported_errors,
+        stopped,
+        ok: !stopped && has_pdf && exit_code.unwrap_or(-1) == 0 && !has_reported_errors,
         has_pdf,
         output_id,
         output_revision: None,
@@ -912,6 +937,7 @@ async fn run_bundled(
     args: &[String],
     working_dir: &Path,
     log_event: &str,
+    cancel: Option<&crate::state::CompileCancel>,
 ) -> Result<(String, Option<i32>), String> {
     let path = resolve_bundled_sidecar(name)?;
     run_supervised_process(
@@ -920,6 +946,7 @@ async fn run_bundled(
         working_dir,
         Some((app.clone(), log_event.to_owned())),
         COMPILE_TIMEOUT,
+        cancel,
     )
     .await
 }
@@ -985,6 +1012,7 @@ async fn run_external(
     args: &[String],
     working_dir: &Path,
     log_event: &str,
+    cancel: Option<&crate::state::CompileCancel>,
 ) -> Result<(String, Option<i32>), String> {
     run_supervised_process(
         path,
@@ -992,6 +1020,7 @@ async fn run_external(
         working_dir,
         Some((app.clone(), log_event.to_owned())),
         COMPILE_TIMEOUT,
+        cancel,
     )
     .await
 }
@@ -1001,7 +1030,7 @@ pub async fn run_supervised_external(
     args: &[String],
     working_dir: &Path,
 ) -> Result<(String, Option<i32>), String> {
-    run_supervised_process(path, args, working_dir, None, COMPILE_TIMEOUT).await
+    run_supervised_process(path, args, working_dir, None, COMPILE_TIMEOUT, None).await
 }
 
 async fn run_supervised_process(
@@ -1010,6 +1039,7 @@ async fn run_supervised_process(
     working_dir: &Path,
     emitter: Option<(tauri::AppHandle, String)>,
     timeout: std::time::Duration,
+    cancel: Option<&crate::state::CompileCancel>,
 ) -> Result<(String, Option<i32>), String> {
     use std::process::Stdio;
     let mut command = tokio::process::Command::new(path);
@@ -1023,6 +1053,13 @@ async fn run_supervised_process(
     let mut child = command
         .spawn()
         .map_err(|e| format!("failed to spawn {}: {e}", path.display()))?;
+    if let (Some(cancel), Some(pid)) = (cancel, child.id()) {
+        // A stop can land between the request and the spawn. `attach` reports
+        // that case so the child we just started is ended immediately.
+        if !cancel.attach(pid) {
+            terminate_process_tree(pid).await;
+        }
+    }
     let stdout = child.stdout.take().ok_or("stdout was not captured")?;
     let stderr = child.stderr.take().ok_or("stderr was not captured")?;
     let emitted = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
@@ -1157,24 +1194,33 @@ fn artifact_is_fresh(path: &Path, retained: &[RetainedArtifact]) -> bool {
     artifact_is_fresh_with(path, retained, Path::exists, artifact_identity)
 }
 
-fn tectonic_args(out_dir: &str, search_path: &str, entry: &str, offline: bool) -> Vec<String> {
-    let mut args = vec![
-        "-X".into(),
-        "compile".into(),
+fn tectonic_args(
+    out_dir: &str,
+    search_path: &str,
+    entry: &str,
+    options: CompileOptions,
+) -> Vec<String> {
+    let mut args: Vec<String> = vec!["-X".into(), "compile".into()];
+    if options.offline {
+        args.push("--only-cached".into());
+    }
+    args.extend([
         "--synctex".into(),
         "--keep-logs".into(),
         "--print".into(),
         "--outdir".into(),
         out_dir.into(),
-        "-Z".into(),
-        "continue-on-errors".into(),
-        "-Z".into(),
-        search_path.into(),
-        entry.into(),
-    ];
-    if offline {
-        args.insert(2, "--only-cached".into());
+    ]);
+    if options.fast {
+        // One typesetting pass instead of reruns until the document stabilizes.
+        // Cross-references, citations, and the table of contents can lag a run
+        // behind; that is the trade the draft mode is asking for.
+        args.extend(["--reruns".into(), "0".into()]);
     }
+    if !options.halt_on_error {
+        args.extend(["-Z".into(), "continue-on-errors".into()]);
+    }
+    args.extend(["-Z".into(), search_path.into(), entry.into()]);
     args
 }
 
@@ -1584,6 +1630,7 @@ mod tests {
             &root,
             None,
             std::time::Duration::from_millis(75),
+            None,
         )
         .await
         .unwrap();
@@ -1617,6 +1664,7 @@ mod tests {
             &root,
             None,
             std::time::Duration::from_millis(100),
+            None,
         )
         .await
         .unwrap();
@@ -1679,7 +1727,10 @@ mod tests {
                 CompileTarget::Main {
                     main_document: "main.tex",
                 },
-                true,
+                CompileOptions {
+                    offline: true,
+                    ..Default::default()
+                },
             )
             .unwrap();
         assert_eq!(
@@ -1754,7 +1805,7 @@ mod tests {
                     source_path: Path::new("/figbuild/_figure.tex"),
                     output_stem: "_figure",
                 },
-                false,
+                CompileOptions::default(),
             )
             .unwrap();
         assert_eq!(
@@ -1778,11 +1829,94 @@ mod tests {
                 CompileTarget::Main {
                     main_document: "main.tex",
                 },
-                false,
+                CompileOptions::default(),
             )
             .unwrap();
         assert!(!spec.args.iter().any(|arg| arg == "--only-cached"));
         assert_eq!(&spec.args[..2], ["-X", "compile"]);
+    }
+
+    fn latex_args(options: CompileOptions) -> Vec<String> {
+        engine_for("latex", "main.tex")
+            .unwrap()
+            .compile_spec(
+                Path::new("/build"),
+                Path::new("/project"),
+                CompileTarget::Main {
+                    main_document: "main.tex",
+                },
+                options,
+            )
+            .unwrap()
+            .args
+    }
+
+    fn arg_pair(args: &[String], flag: &str) -> Option<String> {
+        args.iter()
+            .position(|arg| arg == flag)
+            .and_then(|index| args.get(index + 1))
+            .cloned()
+    }
+
+    #[test]
+    fn fast_mode_requests_a_single_typesetting_pass() {
+        assert_eq!(arg_pair(&latex_args(CompileOptions::default()), "--reruns"), None);
+        assert_eq!(
+            arg_pair(
+                &latex_args(CompileOptions {
+                    fast: true,
+                    ..Default::default()
+                }),
+                "--reruns",
+            )
+            .as_deref(),
+            Some("0"),
+        );
+    }
+
+    #[test]
+    fn halting_on_the_first_error_drops_continue_on_errors() {
+        assert!(latex_args(CompileOptions::default())
+            .iter()
+            .any(|arg| arg == "continue-on-errors"));
+        assert!(!latex_args(CompileOptions {
+            halt_on_error: true,
+            ..Default::default()
+        })
+        .iter()
+        .any(|arg| arg == "continue-on-errors"));
+    }
+
+    #[test]
+    fn compiler_flags_never_displace_the_entry_file() {
+        // The entry must stay last: tectonic reads it positionally.
+        let args = latex_args(CompileOptions {
+            offline: true,
+            fast: true,
+            halt_on_error: true,
+        });
+        assert!(args.last().unwrap().ends_with(crate::paths::ENTRY_TEX));
+        assert_eq!(&args[..2], ["-X", "compile"]);
+    }
+
+    #[test]
+    fn a_stop_landing_before_the_spawn_still_reaches_the_child() {
+        let cancel = crate::state::CompileCancel::default();
+        assert_eq!(cancel.request(), None, "no compiler is running yet");
+        assert!(
+            !cancel.attach(4242),
+            "a stop requested before the spawn must terminate the new child",
+        );
+        assert!(cancel.detach(), "the stop is reported to the caller");
+        assert!(!cancel.detach(), "and is cleared for the next compile");
+    }
+
+    #[test]
+    fn a_stop_during_a_compile_returns_the_running_pid() {
+        let cancel = crate::state::CompileCancel::default();
+        assert!(cancel.attach(99), "no stop is pending");
+        assert_eq!(cancel.request(), Some(99));
+        assert!(cancel.detach());
     }
 
     #[test]
@@ -1939,7 +2073,7 @@ mod tests {
                 CompileTarget::Main {
                     main_document: "chapters/main.typ",
                 },
-                false,
+                CompileOptions::default(),
             )
             .unwrap();
         assert_eq!(spec.executable, EngineExecutable::BundledSidecar("typst"));

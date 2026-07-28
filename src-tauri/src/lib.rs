@@ -9,6 +9,7 @@ mod document_engine;
 mod fsperm;
 mod git;
 mod github;
+mod language_service;
 mod latex_engine;
 mod literature;
 mod mcp;
@@ -35,6 +36,8 @@ pub fn run() {
     let mut builder = tauri::Builder::default()
         .menu(menu::build)
         .on_menu_event(|app, event| menu::on_event(app, event.id().as_ref()))
+        .manage(language_service::LanguageServiceState::default())
+        .plugin(language_service::lifecycle_plugin())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_dialog::init());
@@ -111,8 +114,16 @@ pub fn run() {
             commands::library_root,
             commands::app_version,
             commands::project_engine,
+            language_service::language_service_start,
+            language_service::language_service_send,
+            language_service::language_service_stop,
+            language_service::language_service_status,
+            language_service::language_service_install,
+            language_service::language_service_install_status,
             commands::updater_self_installable,
             commands::compile_project,
+            commands::cancel_compile,
+            commands::clear_build_dir,
             commands::read_compiled_pdf,
             commands::compile_isolated,
             commands::read_isolated_pdf,

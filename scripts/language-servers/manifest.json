@@ -1,0 +1,245 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-07-27",
+  "supportedTargets": [
+    "aarch64-apple-darwin",
+    "aarch64-unknown-linux-gnu",
+    "x86_64-unknown-linux-gnu",
+    "x86_64-pc-windows-msvc"
+  ],
+  "allowedDownloadHosts": [
+    "github.com",
+    "release-assets.githubusercontent.com",
+    "objects.githubusercontent.com"
+  ],
+  "cacheEnvironmentVariable": "OLEAFLY_LANGUAGE_SERVER_CACHE_DIR",
+  "appDataInstallation": {
+    "applicationIdentifier": "com.oleafly.app",
+    "overrideEnvironmentVariable": "OLEAFLY_LANGUAGE_SERVER_APP_DATA_DIR",
+    "relativeDirectory": "language-servers"
+  },
+  "servers": {
+    "texlab": {
+      "displayName": "TexLab",
+      "setupPurpose": "Provide project-aware LaTeX diagnostics, navigation, completion, and structure analysis in Oleafly.",
+      "version": "5.26.0",
+      "tag": "v5.26.0",
+      "repository": "https://github.com/latex-lsp/texlab",
+      "releaseApi": "https://api.github.com/repos/latex-lsp/texlab/releases/tags/v5.26.0",
+      "binaryBaseName": "texlab",
+      "tauriExternalBin": null,
+      "versionProbe": {
+        "args": [
+          "--version"
+        ],
+        "pattern": "^texlab 5\\.26\\.0(?:\\s|$)"
+      },
+      "lsp": {
+        "args": [
+          "run"
+        ],
+        "helpArgs": [
+          "run",
+          "--help"
+        ],
+        "initializationOptions": {},
+        "didChangeConfiguration": {
+          "settings": {
+            "texlab": {
+              "build": {
+                "onSave": false
+              }
+            }
+          }
+        }
+      },
+      "license": {
+        "spdx": "GPL-3.0-only",
+        "upstreamDeclaration": "GPL-3.0",
+        "licenseUrl": "https://raw.githubusercontent.com/latex-lsp/texlab/v5.26.0/LICENSE",
+        "sourceUrl": "https://github.com/latex-lsp/texlab/tree/v5.26.0",
+        "sourceArchiveUrl": "https://github.com/latex-lsp/texlab/archive/refs/tags/v5.26.0.tar.gz",
+        "copyrightNotice": "TexLab is licensed by Eric Förster, Patrick Förster, and contributors.",
+        "upstreamNotice": {
+          "presentAtPinnedTag": false,
+          "url": null
+        },
+        "distributionObligations": [
+          "preserve copyright, license, and no-warranty notices",
+          "provide the complete GPL-3.0 license text",
+          "provide corresponding source using a GPL-3.0 section 6 method"
+        ]
+      },
+      "distribution": {
+        "defaultPolicy": "app-data-download",
+        "runtimeLocation": "app-data",
+        "requiresUserConsent": true,
+        "retryRequiresUserAction": true,
+        "redistributionApproved": false,
+        "bundleStatus": "blocked-pending-maintainer-approval",
+        "bundleOverrideFlag": null,
+        "decisionDocument": "docs/language-server-toolchain.md"
+      },
+      "targets": {
+        "aarch64-apple-darwin": {
+          "asset": "texlab-aarch64-macos.tar.gz",
+          "archiveType": "tar.gz",
+          "archiveMember": "texlab",
+          "archiveSha256": "af7972ffd230711ba04ada9b69cc32ce9111d9196ba69538062872faefdbee56",
+          "archiveSize": 10154621,
+          "binarySha256": "8a88be127caaf4da8197076efae6b953f5e00f5ca9d5fc6edb41ddb3acd41514",
+          "binarySize": 15265888,
+          "outputFilename": "texlab-aarch64-apple-darwin",
+          "url": "https://github.com/latex-lsp/texlab/releases/download/v5.26.0/texlab-aarch64-macos.tar.gz",
+          "upstreamChecksumUrl": null
+        },
+        "aarch64-unknown-linux-gnu": {
+          "asset": "texlab-aarch64-linux.tar.gz",
+          "archiveType": "tar.gz",
+          "archiveMember": "texlab",
+          "archiveSha256": "a85cdfcd22454b8d8550f4b0f0620c45ab51760f302fac7a12bc18a890f70f8c",
+          "archiveSize": 10383190,
+          "binarySha256": "4976f7a9b2f1264010616efd3bb96362dfe6edf9722dd2a32912888c06776241",
+          "binarySize": 16612520,
+          "outputFilename": "texlab-aarch64-unknown-linux-gnu",
+          "url": "https://github.com/latex-lsp/texlab/releases/download/v5.26.0/texlab-aarch64-linux.tar.gz",
+          "upstreamChecksumUrl": null
+        },
+        "x86_64-unknown-linux-gnu": {
+          "asset": "texlab-x86_64-linux.tar.gz",
+          "archiveType": "tar.gz",
+          "archiveMember": "texlab",
+          "archiveSha256": "8697bd5e479d4584b14b7eed5c320c80ec4e1d91ebefbb6801e6bf38e9971300",
+          "archiveSize": 10439323,
+          "binarySha256": "17544b8880b9869f7147777435541c481ef25ddbc6114118ef7f357f6ca7bc71",
+          "binarySize": 16832064,
+          "outputFilename": "texlab-x86_64-unknown-linux-gnu",
+          "url": "https://github.com/latex-lsp/texlab/releases/download/v5.26.0/texlab-x86_64-linux.tar.gz",
+          "upstreamChecksumUrl": null
+        },
+        "x86_64-pc-windows-msvc": {
+          "asset": "texlab-x86_64-windows.zip",
+          "archiveType": "zip",
+          "archiveMember": "texlab.exe",
+          "archiveSha256": "cb028d44c3d2b85d36a2ed52d41a0ff43a341b1f04c500c56c4524c4eb72b316",
+          "archiveSize": 9997967,
+          "binarySha256": "8dc34014a515347e23327488122a0273d0bfa249d10e9ddd356e4ac907043112",
+          "binarySize": 14595072,
+          "outputFilename": "texlab-x86_64-pc-windows-msvc.exe",
+          "url": "https://github.com/latex-lsp/texlab/releases/download/v5.26.0/texlab-x86_64-windows.zip",
+          "upstreamChecksumUrl": null
+        }
+      }
+    },
+    "tinymist": {
+      "displayName": "Tinymist",
+      "version": "0.15.2",
+      "tag": "v0.15.2",
+      "repository": "https://github.com/Myriad-Dreamin/tinymist",
+      "releaseApi": "https://api.github.com/repos/Myriad-Dreamin/tinymist/releases/tags/v0.15.2",
+      "binaryBaseName": "tinymist",
+      "tauriExternalBin": null,
+      "versionProbe": {
+        "args": [
+          "--version"
+        ],
+        "pattern": "Build Git Describe:\\s+v0\\.15\\.2(?:\\s|$)"
+      },
+      "lsp": {
+        "args": [
+          "lsp"
+        ],
+        "helpArgs": [
+          "lsp",
+          "--help"
+        ],
+        "initializationOptions": {
+          "exportPdf": "never",
+          "compileStatus": "disable"
+        },
+        "didChangeConfiguration": null
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "upstreamDeclaration": "Apache-2.0",
+        "licenseUrl": "https://raw.githubusercontent.com/Myriad-Dreamin/tinymist/v0.15.2/LICENSE",
+        "sourceUrl": "https://github.com/Myriad-Dreamin/tinymist/tree/v0.15.2",
+        "sourceArchiveUrl": "https://github.com/Myriad-Dreamin/tinymist/archive/refs/tags/v0.15.2.tar.gz",
+        "copyrightNotice": "Copyright 2023-2025 Myriad Dreamin and Nathan Varner.",
+        "upstreamNotice": {
+          "presentAtPinnedTag": false,
+          "url": null
+        },
+        "distributionObligations": [
+          "provide a copy of the Apache-2.0 license",
+          "retain copyright, patent, trademark, and attribution notices",
+          "mark modified upstream files if any are distributed"
+        ]
+      },
+      "distribution": {
+        "defaultPolicy": "resource-archive",
+        "runtimeLocation": "app-data-from-resource",
+        "requiresUserConsent": false,
+        "retryRequiresUserAction": false,
+        "redistributionApproved": true,
+        "bundleStatus": "allowed-with-license-notices",
+        "bundleOverrideFlag": null,
+        "decisionDocument": "docs/language-server-toolchain.md"
+      },
+      "targets": {
+        "aarch64-apple-darwin": {
+          "asset": "tinymist-aarch64-apple-darwin.tar.gz",
+          "archiveType": "tar.gz",
+          "archiveMember": "tinymist-aarch64-apple-darwin/tinymist",
+          "archiveSha256": "16241868c6752aa5e8f9c162562293c7cdf69e82f54687d7886336daf2c51915",
+          "archiveSize": 30068260,
+          "binarySha256": "37fe82e44a2e0bb213132449eb24fe119b918b8a4e4c86fa4faea3b09b9e23f2",
+          "binarySize": 63312448,
+          "outputFilename": "tinymist-aarch64-apple-darwin",
+          "resourceRelativePath": "resources/language-servers/tinymist/0.15.2/tinymist-aarch64-apple-darwin.tar.gz",
+          "url": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.15.2/tinymist-aarch64-apple-darwin.tar.gz",
+          "upstreamChecksumUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.15.2/tinymist-aarch64-apple-darwin.tar.gz.sha256"
+        },
+        "aarch64-unknown-linux-gnu": {
+          "asset": "tinymist-aarch64-unknown-linux-gnu.tar.gz",
+          "archiveType": "tar.gz",
+          "archiveMember": "tinymist-aarch64-unknown-linux-gnu/tinymist",
+          "archiveSha256": "eba8e14338cf211906d77be6b18102736222da6721e98161133fa0d8ff5ab599",
+          "archiveSize": 29549962,
+          "binarySha256": "b358ed82e9102c9271e9be4be8cd1f25d3ab08276b73238b3c1106e9e28e9f68",
+          "binarySize": 62351256,
+          "outputFilename": "tinymist-aarch64-unknown-linux-gnu",
+          "resourceRelativePath": "resources/language-servers/tinymist/0.15.2/tinymist-aarch64-unknown-linux-gnu.tar.gz",
+          "url": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.15.2/tinymist-aarch64-unknown-linux-gnu.tar.gz",
+          "upstreamChecksumUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.15.2/tinymist-aarch64-unknown-linux-gnu.tar.gz.sha256"
+        },
+        "x86_64-unknown-linux-gnu": {
+          "asset": "tinymist-x86_64-unknown-linux-gnu.tar.gz",
+          "archiveType": "tar.gz",
+          "archiveMember": "tinymist-x86_64-unknown-linux-gnu/tinymist",
+          "archiveSha256": "9b8a1aea6bb3fc9c39cb70496f0082bd518cfede555757bc3cb5225b05abc99b",
+          "archiveSize": 32171441,
+          "binarySha256": "f5e275c6289a5c4b45ca211abde329dd662b03f2c4aca2299d6c154b81135684",
+          "binarySize": 75682584,
+          "outputFilename": "tinymist-x86_64-unknown-linux-gnu",
+          "resourceRelativePath": "resources/language-servers/tinymist/0.15.2/tinymist-x86_64-unknown-linux-gnu.tar.gz",
+          "url": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.15.2/tinymist-x86_64-unknown-linux-gnu.tar.gz",
+          "upstreamChecksumUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.15.2/tinymist-x86_64-unknown-linux-gnu.tar.gz.sha256"
+        },
+        "x86_64-pc-windows-msvc": {
+          "asset": "tinymist-x86_64-pc-windows-msvc.zip",
+          "archiveType": "zip",
+          "archiveMember": "tinymist.exe",
+          "archiveSha256": "91edb0d21edca5841b896d702d8086622792d52b71a9b444d8befb0e937969ae",
+          "archiveSize": 29322850,
+          "binarySha256": "8780ed5076135f5afb11a03e6215d43659c193bc649634aff9b9dc91d77200a8",
+          "binarySize": 62377984,
+          "outputFilename": "tinymist-x86_64-pc-windows-msvc.exe",
+          "resourceRelativePath": "resources/language-servers/tinymist/0.15.2/tinymist-x86_64-pc-windows-msvc.zip",
+          "url": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.15.2/tinymist-x86_64-pc-windows-msvc.zip",
+          "upstreamChecksumUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.15.2/tinymist-x86_64-pc-windows-msvc.zip.sha256"
+        }
+      }
+    }
+  }
+}

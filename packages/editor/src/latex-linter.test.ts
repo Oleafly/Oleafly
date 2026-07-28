@@ -13,9 +13,8 @@ describe("lintLatexText: environments", () => {
     // also reported as unclosed.
     expect(d).toHaveLength(2);
     expect(d[0].severity).toBe("error");
-    expect(d[0].message).toContain("expected \\end{itemize}");
-    expect(d[0].message).toContain("got \\end{enumerate}");
-    expect(d[1].message).toContain("Unclosed environment \\begin{itemize}");
+    expect(d[0].message).toContain("Unclosed environment \\begin{itemize}");
+    expect(d[1].message).toContain("\\end{enumerate} has no matching \\begin{enumerate}");
   });
 
   it("flags an unclosed environment", () => {
@@ -27,7 +26,7 @@ describe("lintLatexText: environments", () => {
   it("flags an \\end with no matching \\begin", () => {
     const d = lintLatexText("hello\\end{document}");
     expect(d).toHaveLength(1);
-    expect(d[0].message).toContain("without matching \\begin");
+    expect(d[0].message).toContain("has no matching \\begin{document}");
   });
 });
 
@@ -49,7 +48,7 @@ describe("lintLatexText: inline math", () => {
   it("warns on an odd number of $ on a line", () => {
     const d = lintLatexText("the cost is $x per item");
     expect(d).toHaveLength(1);
-    expect(d[0].message).toContain("Unmatched $");
+    expect(d[0].message).toContain("Unclosed math delimiter $");
   });
 
   it("accepts balanced $ ... $", () => {

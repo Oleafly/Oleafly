@@ -26,6 +26,8 @@ export interface CompileResult {
   synctex_path: string | null;
   out_dir: string | null;
   compile_time_ms: number;
+  /// True when the user stopped this compile, as opposed to it failing.
+  stopped?: boolean;
 }
 
 export interface EngineCapabilities {
@@ -97,8 +99,28 @@ export interface ProjectInfo {
   forked_from: string | null;
 }
 
-export const compileProject = (projectId: string, mainDoc: string, offline = false) =>
-  invoke<CompileResult>("compile_project", { projectId, mainDoc, offline });
+export const compileProject = (
+  projectId: string,
+  mainDoc: string,
+  offline = false,
+  fast = false,
+  haltOnError = false,
+) =>
+  invoke<CompileResult>("compile_project", {
+    projectId,
+    mainDoc,
+    offline,
+    fast,
+    haltOnError,
+  });
+
+/// Ends the running main-document compile. Resolves to whether a compiler
+/// process was actually terminated.
+export const cancelCompile = () => invoke<boolean>("cancel_compile", {});
+
+/// Empties the project's build directory so the next compile reuses nothing.
+export const clearBuildDir = (projectId: string) =>
+  invoke<void>("clear_build_dir", { projectId });
 
 // Runs in a separate build dir from the main project compile.
 export const compileIsolated = (projectId: string, source: string, offline = false) =>

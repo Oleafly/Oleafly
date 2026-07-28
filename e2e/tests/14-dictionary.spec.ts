@@ -75,7 +75,7 @@ test("misspellings get squiggles; ignore clears them; un-ignore brings them back
     const heading = Array.from(document.querySelectorAll('h4')).find(
       (h) => h.textContent === ${JSON.stringify(NAME)}
     );
-    const btn = heading?.parentElement?.querySelector('[aria-label="Stop ignoring ${WORD}"]');
+    const btn = heading?.closest('section')?.querySelector('[aria-label="Stop ignoring ${WORD}"]');
     if (!(btn instanceof HTMLElement)) throw new Error('Stop-ignoring button not found for ${WORD} in this project');
     btn.click();
   })()`);

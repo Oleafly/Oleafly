@@ -18,6 +18,18 @@ const mocks = vi.hoisted(() => ({
     activePath: "main.tex" as string | null,
     tree: [] as { path: string; is_dir: boolean }[],
   },
+  compileCheckpoint: {
+    version: 1,
+    projectId: "proj",
+    mainDocument: "main.tex",
+    projectRevision: 0,
+    requestGeneration: 0,
+    outputKind: "standard" as const,
+    producerId: "test",
+    outputRevision: 1,
+    outputId: "pdf-v1:1:0000000000000000",
+    completedAt: 1,
+  },
 }));
 
 vi.mock("@/lib/tauri", () => ({
@@ -34,6 +46,14 @@ vi.mock("@/store/files", () => ({
   useFilesStore: { getState: () => ({ ...mocks.state, openFile: mocks.openFile }) },
 }));
 vi.mock("@/lib/log", () => ({ logError: vi.fn() }));
+vi.mock("@/store/compile", () => ({
+  isCompileCheckpointCurrent: vi.fn(() => true),
+  useCompileStore: {
+    getState: () => ({
+      lastCompileCheckpoint: mocks.compileCheckpoint,
+    }),
+  },
+}));
 
 import { inverseFromClick } from "./synctex";
 
@@ -60,6 +80,7 @@ beforeEach(() => {
     { path: "main.tex", is_dir: false },
     { path: "sections/intro.tex", is_dir: false },
   ];
+  mocks.getCurrentLine.mockReturnValue(1);
 });
 
 describe("inverseFromClick (multi-file, 0.1.1 fix)", () => {

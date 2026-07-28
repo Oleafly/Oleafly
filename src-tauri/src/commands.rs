@@ -163,6 +163,38 @@ pub fn reveal_in_dir(path: String, state: State<'_, AppState>) -> Result<(), Str
     Ok(())
 }
 
+/// Ends the running main-document compile, if any. Returns whether a compiler
+/// process was actually terminated.
+#[tauri::command]
+pub async fn cancel_compile(state: State<'_, AppState>) -> Result<bool, String> {
+    match state.compile_cancel.request() {
+        Some(pid) => {
+            crate::proc::terminate_process_tree(pid).await;
+            Ok(true)
+        }
+        // No compiler is running yet. The flag stays set so a compile that is
+        // mid-spawn still stops instead of racing past the request.
+        None => Ok(false),
+    }
+}
+
+/// Empties a project's build directory so the next compile cannot reuse any
+/// cached auxiliary file. The directory itself is recreated.
+#[tauri::command]
+pub async fn clear_build_dir(project_id: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
+        let build_dir = paths::build_dir(&project_id)?;
+        if build_dir.exists() {
+            std::fs::remove_dir_all(&build_dir)
+                .map_err(|error| format!("failed to clear build directory: {error}"))?;
+        }
+        std::fs::create_dir_all(&build_dir)
+            .map_err(|error| format!("failed to recreate build directory: {error}"))
+    })
+    .await
+    .map_err(|error| format!("failed to clear build directory: {error}"))?
+}
+
 #[tauri::command]
 pub async fn compile_project(
     app: tauri::AppHandle,
@@ -170,7 +202,14 @@ pub async fn compile_project(
     project_id: String,
     main_doc: String,
     offline: Option<bool>,
+    fast: Option<bool>,
+    halt_on_error: Option<bool>,
 ) -> Result<CompileResult, String> {
+    let options = crate::document_engine::CompileOptions {
+        offline: offline.unwrap_or(false),
+        fast: fast.unwrap_or(false),
+        halt_on_error: halt_on_error.unwrap_or(false),
+    };
     let ticket = state
         .compile_ticket
         .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
@@ -207,6 +246,7 @@ pub async fn compile_project(
                 synctex_path: None,
                 out_dir: None,
                 compile_time_ms: 0,
+                stopped: false,
             });
         }
     }
@@ -228,7 +268,7 @@ pub async fn compile_project(
         CompileTarget::Main {
             main_document: &main_doc,
         },
-        offline.unwrap_or(false),
+        options,
     )
     .await?;
     crate::project::ensure_compile_meta_unchanged(&project_id, &main_doc, &meta.engine)?;
@@ -242,7 +282,8 @@ pub async fn compile_project(
             main_document: &main_doc,
         },
         log_event: "compile:log",
-        offline: offline.unwrap_or(false),
+        options,
+        cancel: Some(&state.compile_cancel),
         prepared_spec: Some(prepared_spec),
     })
     .await?;
@@ -371,7 +412,11 @@ pub async fn compile_isolated(
             output_stem: "_figure",
         },
         log_event: "figure:log",
-        offline: offline.unwrap_or(false),
+        options: crate::document_engine::CompileOptions {
+            offline: offline.unwrap_or(false),
+            ..Default::default()
+        },
+        cancel: None,
         prepared_spec: None,
     })
     .await;

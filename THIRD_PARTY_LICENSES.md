@@ -25,6 +25,13 @@ cargo install cargo-about && cargo about generate about.hbs   # Rust / backend
 |---|---|---|
 | [Tectonic](https://tectonic-typesetting.github.io/) | LaTeX compiler (sidecar) | MIT |
 | [Typst](https://github.com/typst/typst) | Typst compiler 0.15.0 (sidecar) | Apache-2.0 |
+| [Tinymist 0.15.2](https://github.com/Myriad-Dreamin/tinymist/tree/v0.15.2) | Typst language server (checksum-pinned upstream archive resource), © 2023–2025 Myriad Dreamin and Nathan Varner | Apache-2.0 |
+
+The exact Tinymist 0.15.2 license is shipped in every application bundle at
+`resources/licenses/tinymist-0.15.2-LICENSE`, alongside exactly one
+target-specific unmodified release archive under
+`resources/language-servers/tinymist/0.15.2/`. Upstream has no `NOTICE` file
+at the pinned tag.
 
 ## Backend (Rust crates)
 

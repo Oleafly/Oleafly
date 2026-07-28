@@ -24,10 +24,18 @@ import { LabSearchToolView } from "@/components/tools/LabSearchToolView";
 import { LiteratureSearchToolView } from "@/components/tools/LiteratureSearchToolView";
 import { useHomeViewStore } from "@/store/home-view";
 import { Editor } from "@/components/editor/Editor";
+import {
+  LanguageServiceRuntimeBoundary,
+  LanguageServiceRuntimeUnavailable,
+} from "@/components/editor/LanguageServiceRuntimeBoundary";
 import { PreviewPane } from "@/components/preview/PreviewPane";
 import { Library } from "@/components/library/Library";
 import { useFilesStore, useActiveContent } from "@/store/files";
-import { useCompileStore } from "@/store/compile";
+import {
+  isCompileCheckpointCurrent,
+  useCompileStore,
+} from "@/store/compile";
+import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { usePreflightStore } from "@/store/preflight";
 import { layoutPresetViewMode, layoutPresetWantsAi, useSettingsStore } from "@/store/settings";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
@@ -119,16 +127,29 @@ function VHandle({
 
 const AUTO_COMPILE_DEBOUNCE_MS = 2500;
 
-export default function App() {
+function AppContent() {
   const [aboutOpen, setAboutOpen] = useState(false);
   const projectId = useFilesStore((s) => s.projectId);
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
+  const projectLoading = useFilesStore((state) => state.loading);
+  const mainDocument = useFilesStore((state) => state.mainDoc);
+  const mainDocumentHydrated = useFilesStore(
+    (state) =>
+      state.activePath === state.mainDoc &&
+      state.files[state.mainDoc] !== undefined,
+  );
   const refreshProjects = useFilesStore((s) => s.refreshProjects);
   const activeContent = useActiveContent();
   const activePath = useFilesStore((s) => s.activePath);
   const recompile = useCompileStore((s) => s.recompile);
   const autoCompile = useCompileStore((s) => s.autoCompile);
   const compileStatus = useCompileStore((s) => s.status);
+  const compileCheckpoint = useCompileStore(
+    (state) => state.lastCompileCheckpoint,
+  );
+  const analysisIdentity = useProjectAnalysisStore(
+    (state) => state.snapshot.identity,
+  );
   const viewMode = useSettingsStore((s) => s.viewMode);
   const setViewMode = useSettingsStore((s) => s.setViewMode);
   const showTree = useSettingsStore((s) => s.showTree);
@@ -150,7 +171,7 @@ export default function App() {
 
   const RAIL_WIDTH_PX = 48;
   const SIDEBAR_DEFAULT_PX = 340;
-  const SIDEBAR_MIN_PX = 240;
+  const SIDEBAR_MIN_PX = 250;
   const panelAreaRef = useRef<HTMLDivElement>(null);
   const [panelAreaWidth, setPanelAreaWidth] = useState(0);
   useEffect(() => {
@@ -173,6 +194,8 @@ export default function App() {
     previousShowTreeRef.current = showTree;
     const isAiTab = railTab === "ai" || railTab === "chat";
     if (showTree && !wasOpen && !isAiTab) {
+      // The assistant has its own layout effect below, which balances the
+      // sidebar against the editor and preview panels.
       window.requestAnimationFrame(() => sidebarPanelRef.current?.resize(sidebarDefaultSize));
     }
   }, [showTree, railTab, sidebarDefaultSize]);
@@ -242,14 +265,47 @@ export default function App() {
       const previousSize = sidebarSizeBeforeAiRef.current;
       sidebarSizeBeforeAiRef.current = null;
       window.requestAnimationFrame(() => {
-        if (previousSize != null) sidebarPanelRef.current?.resize(previousSize);
+        // Without a remembered size the sidebar would keep the assistant's
+        // half-width for the file tree, so fall back to its normal width.
+        sidebarPanelRef.current?.resize(previousSize ?? sidebarDefaultSize);
         if (viewMode === "split") {
           editorPanelRef.current?.resize(50);
           pdfPanelRef.current?.resize(50);
         }
       });
     }
-  }, [railTab, setViewMode, viewMode, hideEditorArea]);
+  }, [railTab, setViewMode, viewMode, hideEditorArea, sidebarDefaultSize]);
+
+  // Panels are sized in percentages, so a window resize would scale the sidebar
+  // with it and leave it far from the width it was opened at. Hold its pixel
+  // width steady and let the editor and preview absorb the change instead.
+  const lastPanelGroupWidthRef = useRef(0);
+  useEffect(() => {
+    const previousWidth = lastPanelGroupWidthRef.current;
+    lastPanelGroupWidthRef.current = panelGroupWidth;
+    if (!showTree || hideEditorArea || panelGroupWidth <= 0) return;
+    const panel = sidebarPanelRef.current;
+    if (!panel) return;
+    if (previousWidth <= 0) {
+      // The pane had not been measured when the sidebar mounted, so it opened
+      // on the flat percentage fallback rather than SIDEBAR_DEFAULT_PX. Apply
+      // the intended width now that the real width is known.
+      panel.resize(sidebarDefaultSize);
+      return;
+    }
+    const pixels = (panel.getSize() / 100) * previousWidth;
+    const next = Math.min(
+      65,
+      Math.max(sidebarMinSize, (pixels / panelGroupWidth) * 100),
+    );
+    panel.resize(next);
+  }, [
+    panelGroupWidth,
+    showTree,
+    hideEditorArea,
+    sidebarMinSize,
+    sidebarDefaultSize,
+  ]);
 
   // No-op in dev / the browser; only prompts if an update is actually available.
   useEffect(() => {
@@ -422,13 +478,96 @@ export default function App() {
   // main doc) are loaded, and compiling then would race the open.
   const tree = useFilesStore((s) => s.tree);
   const openCompiledRef = useRef<string | null>(null);
+  const openCompileInFlightRef = useRef<string | null>(null);
+  const [openCompileEpoch, setOpenCompileEpoch] = useState(0);
   useEffect(() => {
+    void openCompileEpoch;
     openCompiledRef.current = resetOpenCompileMarker(projectId, openCompiledRef.current);
-    const view = useSettingsStore.getState().viewMode;
-    if (!shouldCompileOnOpen(projectId, tree.length > 0, engineLoaded, openCompiledRef.current, view, compileStatus)) return;
-    openCompiledRef.current = projectId;
-    void recompile();
-  }, [projectId, tree, engineLoaded, compileStatus, recompile]);
+    const analysisReady =
+      analysisIdentity.projectId === projectId &&
+      analysisIdentity.projectRevision > 0;
+    const hydrated =
+      !projectLoading &&
+      mainDocumentHydrated &&
+      analysisReady;
+    const hasValidCurrentArtifact =
+      compileCheckpoint !== null &&
+      isCompileCheckpointCurrent(compileCheckpoint);
+    if (hasValidCurrentArtifact && projectId) {
+      openCompiledRef.current = projectId;
+      return;
+    }
+    if (
+      openCompileInFlightRef.current !== null ||
+      !shouldCompileOnOpen(
+        projectId,
+        tree.length > 0,
+        engineLoaded,
+        openCompiledRef.current,
+        useSettingsStore.getState().viewMode,
+        compileStatus,
+        hydrated,
+        hasValidCurrentArtifact,
+      )
+    ) {
+      return;
+    }
+
+    const requestedProjectId = projectId;
+    if (!requestedProjectId) return;
+    const requestedMainDocument = mainDocument;
+    const requestedProjectRevision =
+      analysisIdentity.projectRevision;
+    openCompileInFlightRef.current = requestedProjectId;
+    void recompile().finally(() => {
+      const files = useFilesStore.getState();
+      const analysis =
+        useProjectAnalysisStore.getState().snapshot.identity;
+      const compile = useCompileStore.getState();
+      const stillSameHydratedRevision =
+        files.projectId === requestedProjectId &&
+        files.mainDoc === requestedMainDocument &&
+        !files.loading &&
+        analysis.projectId === requestedProjectId &&
+        analysis.projectRevision === requestedProjectRevision;
+      const attempt = compile.lastAttemptIdentity;
+      const attemptStartedForRevision =
+        stillSameHydratedRevision &&
+        attempt?.projectId === requestedProjectId &&
+        attempt.mainDocument === requestedMainDocument &&
+        attempt.projectRevision === requestedProjectRevision;
+      const currentArtifact =
+        stillSameHydratedRevision &&
+        isCompileCheckpointCurrent(compile.lastCompileCheckpoint);
+
+      if (attemptStartedForRevision || currentArtifact) {
+        openCompiledRef.current = requestedProjectId;
+      }
+      if (
+        openCompileInFlightRef.current === requestedProjectId
+      ) {
+        openCompileInFlightRef.current = null;
+      }
+      if (
+        files.projectId &&
+        files.projectId !== openCompiledRef.current
+      ) {
+        setOpenCompileEpoch((epoch) => epoch + 1);
+      }
+    });
+  }, [
+    analysisIdentity,
+    compileCheckpoint,
+    compileStatus,
+    engineLoaded,
+    mainDocument,
+    mainDocumentHydrated,
+    openCompileEpoch,
+    projectId,
+    projectLoading,
+    recompile,
+    tree,
+  ]);
 
   // `activeContent` also changes on tab switch / project open, not just edits;
   // only compile when the active file is unchanged from the previous render.
@@ -590,5 +729,18 @@ export default function App() {
         </LazyModals>
       </div>
     </ThemeProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <>
+      <ErrorBoundary
+        fallback={<LanguageServiceRuntimeUnavailable />}
+      >
+        <LanguageServiceRuntimeBoundary />
+      </ErrorBoundary>
+      <AppContent />
+    </>
   );
 }

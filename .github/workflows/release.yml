@@ -85,11 +85,18 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Validate language-server manifest and fetch confinement
+        run: pnpm language-servers:test
+
       # Fetch the Tectonic LaTeX-compiler sidecar for the build target. Tauri
       # bundles it (bundle.externalBin) so the shipped app compiles offline.
       - name: Fetch checksum-pinned Tectonic sidecar
         shell: bash
         run: bash scripts/fetch-tectonic.sh ${{ matrix.rust_target }}
+
+      - name: Stage checksum-pinned Tinymist resource archive
+        shell: bash
+        run: node scripts/fetch-language-servers.mjs --server tinymist --target ${{ matrix.rust_target }} --install-mode resource
 
       - name: Fetch Typst sidecar
         shell: bash
@@ -219,19 +226,23 @@ jobs:
           prerelease: false
           args: ${{ matrix.args }} ${{ env.TAURI_SIGN_ARGS }}
 
-      - name: Verify staged runtime sidecars are sibling-resolvable
+      - name: Verify staged compiler sidecars and Tinymist resource policy
         shell: bash
         run: |
+          node scripts/fetch-language-servers.mjs --check --server tinymist --target ${{ matrix.rust_target }} --install-mode resource
           if [[ "${{ matrix.rust_target }}" == "aarch64-apple-darwin" ]]; then
             RUNTIME_DIR="src-tauri/target/${{ matrix.rust_target }}/release"
             test -f "$RUNTIME_DIR/tectonic"
+            test ! -e "$RUNTIME_DIR/tinymist"
             test -f "$RUNTIME_DIR/typst"
           elif [[ "${{ matrix.rust_target }}" == *windows* ]]; then
             RUNTIME_DIR="src-tauri/target/release"
             test -f "$RUNTIME_DIR/tectonic.exe"
+            test ! -e "$RUNTIME_DIR/tinymist.exe"
             test -f "$RUNTIME_DIR/typst.exe"
           else
             RUNTIME_DIR="src-tauri/target/release"
             test -f "$RUNTIME_DIR/tectonic"
+            test ! -e "$RUNTIME_DIR/tinymist"
             test -f "$RUNTIME_DIR/typst"
           fi

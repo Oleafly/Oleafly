@@ -150,16 +150,11 @@ function ToolsGallery({
         ) : (
           <div className="space-y-7">
             {grouped.map(({ category: c, tools }) => (
-              <section key={c} className="space-y-3 lg:pl-[8.25rem]">
+              <section key={c} className="space-y-3">
                 <div className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                   {c}
                 </div>
-                <div
-                  className={cn(
-                    "grid gap-3",
-                    tools.length > 1 && "md:grid-cols-2",
-                  )}
-                >
+                <div className="grid gap-3 md:grid-cols-2">
                   {tools.map((t) => (
                     <ToolCard
                       key={t.id}

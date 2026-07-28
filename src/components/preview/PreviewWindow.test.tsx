@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   readCompiledPdf: vi.fn(),
-  listeners: new Map<string, (event: { payload?: { projectId?: string } }) => void>(),
+  listeners: new Map<string, (event: { payload?: unknown }) => void>(),
   gotoPage: vi.fn(),
 }));
 
@@ -16,7 +16,7 @@ vi.mock("@/lib/tauri", () => ({
 vi.mock("@tauri-apps/api/event", () => ({
   listen: vi.fn(async (
     name: string,
-    listener: (event: { payload?: { projectId?: string } }) => void,
+    listener: (event: { payload?: unknown }) => void,
   ) => {
     mocks.listeners.set(name, listener);
     return () => {
@@ -49,7 +49,56 @@ vi.mock("@/components/pdf/PdfViewer", async () => {
   };
 });
 
+import {
+  COMPILE_CHECKPOINT_VERSION,
+  fingerprintCompileOutput,
+} from "@/lib/compile-checkpoint";
+import type { PreviewWindowState } from "@/lib/preview-window";
 import { PreviewWindow } from "./PreviewWindow";
+
+/**
+ * The detached window only displays output whose compile identity it can
+ * verify, so every load starts from a `preview:refresh` state rather than the
+ * project id alone. `outputRevision` orders the states the way the producing
+ * window would.
+ */
+function successState(
+  projectId: string,
+  value: number,
+  outputRevision: number,
+): PreviewWindowState {
+  const identity = {
+    projectId,
+    mainDocument: "main.tex",
+    projectRevision: outputRevision,
+    requestGeneration: outputRevision,
+  };
+  return {
+    identity,
+    status: "success",
+    checkpoint: {
+      ...identity,
+      version: COMPILE_CHECKPOINT_VERSION,
+      outputKind: "standard",
+      producerId: "test-producer",
+      outputRevision,
+      outputId: fingerprintCompileOutput(new Uint8Array([value])),
+      completedAt: outputRevision,
+    },
+  };
+}
+
+function emitRefresh(state: PreviewWindowState) {
+  act(() => {
+    mocks.listeners.get("preview:refresh")?.({ payload: state });
+  });
+}
+
+function emitProject(projectId: string) {
+  act(() => {
+    mocks.listeners.get("preview:project")?.({ payload: { projectId } });
+  });
+}
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -73,26 +122,26 @@ beforeEach(() => {
 });
 
 describe("detached preview request identity", () => {
-  it("clears the previous document immediately and ignores a stale project load", async () => {
+  it("clears the previous document immediately when the project is retargeted", async () => {
     const alpha = deferred<ArrayBuffer>();
     const beta = deferred<ArrayBuffer>();
     mocks.readCompiledPdf.mockImplementation((projectId: string) =>
       projectId === "alpha" ? alpha.promise : beta.promise,
     );
     render(<PreviewWindow />);
+    emitRefresh(successState("alpha", 1, 1));
     await vi.waitFor(() =>
       expect(mocks.readCompiledPdf).toHaveBeenCalledWith("alpha"),
     );
     alpha.resolve(buffer(1));
     await screen.findByText("1");
 
-    act(() => {
-      mocks.listeners.get("preview:project")?.({
-        payload: { projectId: "beta" },
-      });
-    });
+    emitProject("beta");
+    // The old project's PDF must not linger while the new one is unverified.
     expect(screen.queryByTestId("detached-pdf-bytes")).not.toBeInTheDocument();
-    expect(screen.getByText("Loading preview…")).toBeInTheDocument();
+    expect(screen.getByText("No verified PDF")).toBeInTheDocument();
+
+    emitRefresh(successState("beta", 2, 2));
     await vi.waitFor(() =>
       expect(mocks.readCompiledPdf).toHaveBeenCalledWith("beta"),
     );
@@ -107,14 +156,12 @@ describe("detached preview request identity", () => {
       projectId === "alpha" ? alpha.promise : beta.promise,
     );
     render(<PreviewWindow />);
+    emitRefresh(successState("alpha", 1, 1));
     await vi.waitFor(() =>
       expect(mocks.readCompiledPdf).toHaveBeenCalledWith("alpha"),
     );
-    act(() => {
-      mocks.listeners.get("preview:project")?.({
-        payload: { projectId: "beta" },
-      });
-    });
+    emitProject("beta");
+    emitRefresh(successState("beta", 2, 2));
     await vi.waitFor(() =>
       expect(mocks.readCompiledPdf).toHaveBeenCalledWith("beta"),
     );
@@ -134,17 +181,14 @@ describe("detached preview request identity", () => {
       .mockResolvedValueOnce(buffer(1))
       .mockRejectedValueOnce(new Error("missing"));
     render(<PreviewWindow />);
+    emitRefresh(successState("alpha", 1, 1));
     await screen.findByText("1");
 
-    act(() => {
-      mocks.listeners.get("preview:project")?.({
-        payload: { projectId: "beta" },
-      });
-    });
+    emitProject("beta");
     expect(screen.queryByTestId("detached-pdf-bytes")).not.toBeInTheDocument();
-    await screen.findByText(
-      "No compiled PDF yet. Compile in the main window and it will appear here.",
-    );
+
+    emitRefresh(successState("beta", 2, 2));
+    await screen.findByText("PDF unavailable");
     expect(screen.queryByTestId("detached-pdf-bytes")).not.toBeInTheDocument();
   });
 });

@@ -351,9 +351,11 @@ export function Library() {
       data-projects-loaded={projectsLoaded ? "true" : "false"}
       className="relative flex h-full flex-row bg-[var(--home-background)]"
     >
+      {/* The blue wash lifts the dark home away from flat black. In light mode
+          it only greys the top of an otherwise white page, so it stays off. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(ellipse_60%_100%_at_50%_0%,oklch(0.7_0.11_262/0.08),transparent_70%)]"
+        className="pointer-events-none absolute inset-x-0 top-0 hidden h-[420px] dark:block dark:bg-[radial-gradient(ellipse_60%_100%_at_50%_0%,oklch(0.7_0.11_262/0.08),transparent_70%)]"
       />
       {bgPattern === "grid" ? (
         <GridPattern width={22} height={22} />

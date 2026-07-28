@@ -3,9 +3,9 @@ import { Command } from "cmdk";
 import {
   Bookmark,
   FileText,
-  FolderOpen,
   Link2,
   Moon,
+  NotebookText,
   Plus,
   Search,
   Settings,
@@ -21,6 +21,8 @@ import { useSettingsStore } from "@/store/settings";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { useTourStore } from "@/store/tours";
 import { useFilesStore } from "@/store/files";
+import { useProjectColorsStore } from "@/store/project-colors";
+import { DEFAULT_BOOK_COLOR } from "@/components/library/Book";
 import { useTheme } from "@/lib/theme";
 import { searchDocs, type ProjectInfo, type SearchHit } from "@/lib/tauri";
 import { projectModifiedLabel } from "@/lib/project-format";
@@ -205,6 +207,7 @@ export function SearchOmnibar() {
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
   const setRailTab = useSettingsStore((s) => s.setRailTab);
   const projects = useFilesStore((s) => s.projects);
+  const projectColors = useProjectColorsStore((s) => s.colors);
   const favs = useFavoritesStore((s) => s.favs);
   const projectId = useFilesStore((s) => s.projectId);
   const projectKind = useFilesStore((s) => s.projectKind);
@@ -307,6 +310,14 @@ export function SearchOmnibar() {
     const q = trimmed.toLowerCase();
     return q ? all.filter((c) => (`${c.label} ${c.kw}`).toLowerCase().includes(q)) : all;
   }, [availableCommands, ctx, trimmed, mode]);
+  const generalCommands = useMemo(
+    () => commands.filter((c) => !c.id.startsWith("tool.")),
+    [commands],
+  );
+  const toolCommands = useMemo(
+    () => commands.filter((c) => c.id.startsWith("tool.")),
+    [commands],
+  );
 
   const runProject = async (id: string) => {
     close();
@@ -410,9 +421,22 @@ export function SearchOmnibar() {
             </Group>
           )}
 
-          {commands.length > 0 && (
+          {generalCommands.length > 0 && (
             <Group heading="Commands">
-              {commands.map((c) => (
+              {generalCommands.map((c) => (
+                <Row
+                  key={c.id}
+                  icon={c.icon}
+                  title={c.label}
+                  onSelect={() => runAction(c.run)}
+                />
+              ))}
+            </Group>
+          )}
+
+          {toolCommands.length > 0 && (
+            <Group heading="Tools">
+              {toolCommands.map((c) => (
                 <Row
                   key={c.id}
                   icon={c.icon}
@@ -428,7 +452,18 @@ export function SearchOmnibar() {
               {matchedProjects.map((p) => (
                 <Row
                   key={p.id}
-                  icon={<FolderOpen className="size-4" />}
+                  icon={
+                    <span className="flex items-center gap-2">
+                      <span
+                        className="size-2 shrink-0 rounded-full"
+                        style={{
+                          backgroundColor:
+                            projectColors[p.id] ?? (p.color || DEFAULT_BOOK_COLOR),
+                        }}
+                      />
+                      <NotebookText className="size-4" />
+                    </span>
+                  }
                   title={p.name}
                   starred={favs.includes(p.id)}
                   hint={projectModifiedLabel(p.updated_at)}
