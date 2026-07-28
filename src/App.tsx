@@ -654,7 +654,7 @@ function AppContent() {
               </div>
             }
           >
-          <PanelGroup direction="horizontal" className="flex-1">
+          <PanelGroup direction="horizontal" className="min-h-0 min-w-0 flex-1">
             {showTree && (
               <>
                 <Panel
@@ -678,8 +678,8 @@ function AppContent() {
             )}
 
             {!hideEditorArea && (
-            <Panel id="editorpdf" order={2} defaultSize={showTree ? 85 : 100}>
-              <PanelGroup direction="horizontal">
+            <Panel id="editorpdf" order={2} defaultSize={showTree ? 85 : 100} className="min-h-0 min-w-0">
+              <PanelGroup direction="horizontal" className="h-full min-h-0 min-w-0">
                 {viewMode !== "pdf" && (
                   <Panel
                     ref={editorPanelRef}
@@ -687,6 +687,7 @@ function AppContent() {
                     order={1}
                     defaultSize={viewMode === "editor" ? 100 : 50}
                     minSize={15}
+                    className="min-h-0 min-w-0"
                   >
                     <Editor />
                   </Panel>
@@ -699,6 +700,7 @@ function AppContent() {
                     order={2}
                     defaultSize={viewMode === "pdf" ? 100 : 50}
                     minSize={15}
+                    className="min-h-0 min-w-0"
                   >
                     <PreviewPane />
                   </Panel>

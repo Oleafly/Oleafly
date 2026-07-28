@@ -22,7 +22,7 @@ export const latexMathLanguage = () =>
 function labelsInDocument(state: { doc: { toString: () => string } }): string[] {
   const text = state.doc.toString();
   const out: string[] = [];
-  const re = /\\label\{([^}]{1,500})\}/g;
+  const re = /\\label\s*\{([^}]{1,500})\}/gu;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text))) out.push(m[1]);
   return out;
@@ -145,7 +145,7 @@ export function latexCompletions(
   context: CompletionContext
 ): CompletionResult | null {
   const refMatch = context.matchBefore(
-    /\\(ref|eqref|pageref|autoref|cref|Cref)\{[^}]{0,500}$/
+    /\\(?:ref|eqref|pageref|autoref|cref|Cref|cpageref|vref|Vref|labelcref|nameref|namecref|fref|sref|labelref)\*?\s*\{[^}]{0,500}$/u
   );
   if (refMatch) {
     const labels = labelsInDocument(context.state);
@@ -157,7 +157,7 @@ export function latexCompletions(
   }
 
   const citeMatch = context.matchBefore(
-    /\\(cite|citep|citet|citeauthor|citeyear|parencite|textcite)\{[^}]{0,500}$/
+    /\\(?:cite|citep|citet|citeauthor|citeyear|citealt|parencite|textcite|autocite|nocite)\*?\s*(?:\[[^\]]*\])?\s*\{[^}]{0,500}$/u
   );
   if (citeMatch) {
     return {

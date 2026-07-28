@@ -404,6 +404,10 @@ export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
   const showWordChoice = useSettingsStore(
     (state) => state.showWordChoice,
   );
+  const grammarDialect = useSettingsStore((state) => state.grammarDialect);
+  const dictionaryLocale = useSettingsStore(
+    (state) => state.dictionaryLocale,
+  );
   const globalDictionary = useDictionary((state) => state.global);
   const projectDictionary = useDictionary((state) => state.ignored);
   const intelligenceState = useIndexStore(
@@ -519,6 +523,8 @@ export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
   // Settings and dictionary changes invalidate worker output without changing
   // the document. A plugin refresh clears old decorations immediately and
   // schedules a current-revision pass after the typing debounce.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: settings are
+  // intentional refresh triggers for the imperative proofreading plugin.
   useEffect(() => {
     if (editor) refreshVisualProofreading(editor);
   }, [
@@ -527,6 +533,8 @@ export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
     harper,
     showRegionalism,
     showWordChoice,
+    grammarDialect,
+    dictionaryLocale,
     globalDictionary,
     projectDictionary,
   ]);
