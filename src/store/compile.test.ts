@@ -4,6 +4,9 @@ import { LATEX_ENGINE } from "@/lib/document-engine";
 const mocks = vi.hoisted(() => ({
   compileProject: vi.fn(),
   readCompiledPdf: vi.fn(),
+  readFileContent: vi.fn(),
+  cancelCompile: vi.fn(),
+  clearBuildDir: vi.fn(),
   notifyCompileSucceeded: vi.fn(),
   refreshPreviewWindow: vi.fn(),
   ensurePandoc: vi.fn(),
@@ -22,6 +25,9 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/tauri", () => ({
   compileProject: mocks.compileProject,
   readCompiledPdf: mocks.readCompiledPdf,
+  readFileContent: mocks.readFileContent,
+  cancelCompile: mocks.cancelCompile,
+  clearBuildDir: mocks.clearBuildDir,
 }));
 vi.mock("@/features/pandoc", () => ({ ensurePandoc: mocks.ensurePandoc }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(async () => () => {}) }));
@@ -67,6 +73,9 @@ function checkpoint(bytes: Uint8Array, outputRevision: number) {
 beforeEach(() => {
   mocks.compileProject.mockReset();
   mocks.readCompiledPdf.mockReset();
+  mocks.readFileContent.mockReset().mockResolvedValue("\\documentclass{article}\n");
+  mocks.cancelCompile.mockReset().mockResolvedValue(true);
+  mocks.clearBuildDir.mockReset().mockResolvedValue(undefined);
   mocks.notifyCompileSucceeded.mockReset();
   mocks.refreshPreviewWindow.mockReset();
   mocks.ensurePandoc.mockReset().mockResolvedValue(true);
@@ -79,6 +88,11 @@ beforeEach(() => {
   mocks.files.engineError = null;
   mocks.settings.offline = false;
   useCompileStore.getState().reset();
+  useCompileStore.setState({
+    compileMode: "normal",
+    checkSyntaxBeforeCompile: true,
+    stopOnFirstError: false,
+  });
 });
 
 describe("compile output lifecycle", () => {
@@ -168,7 +182,13 @@ describe("compile output lifecycle", () => {
       out_dir: null, compile_time_ms: 1,
     });
     await useCompileStore.getState().recompile();
-    expect(mocks.compileProject).toHaveBeenCalledWith("project", "main.typ", false);
+    expect(mocks.compileProject).toHaveBeenCalledWith(
+      "project",
+      "main.typ",
+      false,
+      false,
+      false,
+    );
     expect(useCompileStore.getState().log).toContain("Typst does not expose an offline compiler mode");
   });
 
@@ -187,7 +207,7 @@ describe("compile output lifecycle", () => {
     await useCompileStore.getState().recompile();
     expect(mocks.ensurePandoc).toHaveBeenCalledOnce();
     expect(mocks.compileProject).not.toHaveBeenCalled();
-    expect(useCompileStore.getState().status).toBe("idle");
+    expect(useCompileStore.getState().status).toBe("unavailable");
   });
 
   it("revalidates the captured project after awaiting Markdown installation", async () => {
@@ -447,5 +467,112 @@ describe("compile output lifecycle", () => {
     pendingSave.resolve();
     await compiling;
     expect(mocks.compileProject).not.toHaveBeenCalled();
+  });
+});
+
+describe("compile options", () => {
+  const failedResult = {
+    ok: false,
+    has_pdf: false,
+    log: "",
+    errors: [],
+    synctex_path: null,
+    out_dir: null,
+    compile_time_ms: 1,
+  };
+
+  it("forwards fast mode and stop-on-first-error to the compiler", async () => {
+    mocks.compileProject.mockResolvedValue(failedResult);
+    useCompileStore.setState({ compileMode: "fast", stopOnFirstError: true });
+
+    await useCompileStore.getState().recompile();
+
+    expect(mocks.compileProject).toHaveBeenCalledWith(
+      "project",
+      "main.tex",
+      false,
+      true,
+      true,
+    );
+  });
+
+  it("refuses to compile a main document the syntax check rejects", async () => {
+    mocks.readFileContent.mockResolvedValue(
+      "\\begin{document}\nunclosed\n",
+    );
+    mocks.compileProject.mockResolvedValue(failedResult);
+
+    await useCompileStore.getState().recompile();
+
+    expect(mocks.compileProject).not.toHaveBeenCalled();
+    const state = useCompileStore.getState();
+    expect(state.status).toBe("error");
+    expect(state.errors.length).toBeGreaterThan(0);
+    expect(state.errors[0].file).toBe("main.tex");
+    expect(state.log).toContain("the compiler was not run");
+  });
+
+  it("compiles unchecked source when the syntax check is off", async () => {
+    mocks.readFileContent.mockResolvedValue(
+      "\\begin{document}\nunclosed\n",
+    );
+    mocks.compileProject.mockResolvedValue(failedResult);
+    useCompileStore.setState({ checkSyntaxBeforeCompile: false });
+
+    await useCompileStore.getState().recompile();
+
+    expect(mocks.readFileContent).not.toHaveBeenCalled();
+    expect(mocks.compileProject).toHaveBeenCalled();
+  });
+
+  it("lets the compiler report the problem when the check cannot read the source", async () => {
+    mocks.readFileContent.mockRejectedValue(new Error("unreadable"));
+    mocks.compileProject.mockResolvedValue(failedResult);
+
+    await useCompileStore.getState().recompile();
+
+    expect(mocks.compileProject).toHaveBeenCalled();
+  });
+
+  it("clears the build directory before a from-scratch compile", async () => {
+    mocks.compileProject.mockResolvedValue(failedResult);
+
+    await useCompileStore.getState().recompile({ fromScratch: true });
+
+    expect(mocks.clearBuildDir).toHaveBeenCalledWith("project");
+    expect(mocks.compileProject).toHaveBeenCalled();
+  });
+
+  it("leaves the build directory alone for an ordinary compile", async () => {
+    mocks.compileProject.mockResolvedValue(failedResult);
+
+    await useCompileStore.getState().recompile();
+
+    expect(mocks.clearBuildDir).not.toHaveBeenCalled();
+  });
+
+  it("keeps the last good preview when the user stops a compile", async () => {
+    const bytes = new Uint8Array([4, 5]);
+    const stopped = checkpoint(bytes, 3);
+    useCompileStore.setState({
+      pdfBytes: bytes,
+      lastCompileCheckpoint: stopped,
+      lastCompiledAt: stopped.completedAt,
+    });
+    mocks.compileProject.mockResolvedValue({ ...failedResult, stopped: true });
+
+    await useCompileStore.getState().recompile();
+
+    const state = useCompileStore.getState();
+    // A stop is not a failed document: no error, and the PDF stays on screen.
+    expect(state.status).toBe("success");
+    expect(state.failureReason).toBeNull();
+    expect(state.pdfBytes).toEqual(bytes);
+    expect(state.log).toContain("Compile stopped.");
+  });
+
+  it("asks the backend to end the running compile", async () => {
+    await useCompileStore.getState().stopCompile();
+    expect(mocks.cancelCompile).toHaveBeenCalledTimes(1);
   });
 });

@@ -21,7 +21,11 @@ const limits = {
   // The selectable preview lazily loads pdf.js' official viewer helpers for
   // link actions and tagged-PDF structure. Keep narrow headroom above that
   // independently emitted 180 KB chunk without relaxing the startup gate.
-  totalJavaScript: 8_650_000,
+  // The PDF viewer emits two independently validated worker builds and the
+  // editor intelligence chunks are now shipped as first-class features. Keep
+  // the gate below the 9 MB desktop startup envelope while allowing those
+  // production-only chunks to coexist without brittle filename-specific cuts.
+  totalJavaScript: 9_000_000,
   largestCss: 400_000,
   harperWasm: 19_000_000,
   // The real worker and the independently loaded recovery module are each

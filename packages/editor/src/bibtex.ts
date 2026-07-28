@@ -84,9 +84,16 @@ const bibtexParser: StreamParser<BibtexState> = {
           state.braceDepth = 1;
           return "string";
         }
-        if (stream.match(/^[^,{}()]+/)) {
+        if (stream.match(/^\d+/)) {
           state.mode = "afterValue";
           return "number";
+        }
+        if (stream.match(/^[a-zA-Z][a-zA-Z0-9_:-]*/)) {
+          state.mode = "afterValue";
+          return "variableName";
+        }
+        if (stream.eat("#")) {
+          return "operator";
         }
         const ch = stream.next();
         if (ch === "}" || ch === ")") state.mode = "top";
@@ -94,7 +101,12 @@ const bibtexParser: StreamParser<BibtexState> = {
       }
       case "quoteString": {
         while (!stream.eol()) {
-          if (stream.next() === '"') {
+          const ch = stream.next();
+          if (ch === "\\") {
+            if (!stream.eol()) stream.next();
+            continue;
+          }
+          if (ch === '"') {
             state.mode = "afterValue";
             break;
           }
@@ -117,6 +129,10 @@ const bibtexParser: StreamParser<BibtexState> = {
       }
       case "afterValue": {
         const ch = stream.next();
+        if (ch === "#") {
+          state.mode = "value";
+          return "operator";
+        }
         if (ch === ",") {
           state.mode = "fieldName";
           return null;

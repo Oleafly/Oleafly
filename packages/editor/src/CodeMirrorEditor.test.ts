@@ -11,10 +11,10 @@ describe("isLatexSourcePath", () => {
 });
 
 describe("isProseSourcePath", () => {
-  it("enables prose checks for Markdown without enabling them for Typst", () => {
+  it("enables prose checks for Markdown, LaTeX, and Typst", () => {
     expect(isProseSourcePath("main.md")).toBe(true);
     expect(isProseSourcePath("paper.MARKDOWN")).toBe(true);
     expect(isProseSourcePath("main.tex")).toBe(true);
-    expect(isProseSourcePath("main.typ")).toBe(false);
+    expect(isProseSourcePath("main.typ")).toBe(true);
   });
 });

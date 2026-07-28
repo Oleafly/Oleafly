@@ -3,7 +3,8 @@ import { useActiveContent, useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
 
 // Keeps the project index fresh: a full rebuild from disk on project switch,
-// and a debounced in-memory re-index of the active file as it is edited.
+// and immediate active-buffer forwarding. The store owns the single analysis
+// debounce so edits are coalesced once instead of waiting through two timers.
 export function IndexKeeper() {
   const projectId = useFilesStore((s) => s.projectId);
   const activePath = useFilesStore((s) => s.activePath);
@@ -29,8 +30,7 @@ export function IndexKeeper() {
 
   useEffect(() => {
     if (!activePath) return;
-    const t = setTimeout(() => useIndexStore.getState().updateFile(activePath, content), 400);
-    return () => clearTimeout(t);
+    useIndexStore.getState().updateFile(activePath, content);
   }, [activePath, content]);
 
   return null;

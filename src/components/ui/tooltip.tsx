@@ -19,6 +19,7 @@ export function Tooltip({
   delay = 300,
   className,
   wide = false,
+  role,
 }: {
   label: ReactNode;
   children: ReactNode;
@@ -26,6 +27,11 @@ export function Tooltip({
   delay?: number;
   className?: string;
   wide?: boolean;
+  /**
+   * Role for the wrapper. Pass "none" where the extra element would otherwise
+   * break a required parent/child relationship, such as tree → treeitem.
+   */
+  role?: "none";
 }) {
   const [show, setShow] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
@@ -80,6 +86,7 @@ export function Tooltip({
     // biome-ignore lint/a11y/noStaticElementInteractions: hover is supplementary; the wrapped control remains keyboard accessible
     <span
       ref={triggerRef}
+      role={role}
       className={cn("relative inline-flex", className)}
       onMouseEnter={enter}
       onMouseLeave={leave}

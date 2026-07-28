@@ -13,21 +13,49 @@ import {
 } from "@codemirror/search";
 import { preserveCase } from "./preserve-case";
 
-const ICON = {
-  chevronRight: "›",
-  chevronDown: "⌄",
-  up: "↑",
-  down: "↓",
-  selectAll: "≡",
-  close: "✕",
-};
+// Lucide paths, matching the icon set the surrounding app uses.
+const ICON_PATHS = {
+  chevronRight: ["m9 18 6-6-6-6"],
+  chevronDown: ["m6 9 6 6 6-6"],
+  up: ["m18 15-6-6-6 6"],
+  down: ["m6 9 6 6 6-6"],
+  selectAll: ["M3 12h.01", "M3 18h.01", "M3 6h.01", "M8 12h13", "M8 18h13", "M8 6h13"],
+  close: ["M18 6 6 18", "m6 6 12 12"],
+  search: ["M11 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16", "m21 21-4.35-4.35"],
+} as const;
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+function icon(paths: readonly string[]): SVGSVGElement {
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "2");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  svg.setAttribute("aria-hidden", "true");
+  svg.classList.add("cm-vs-icon");
+  for (const d of paths) {
+    const path = document.createElementNS(SVG_NS, "path");
+    path.setAttribute("d", d);
+    svg.append(path);
+  }
+  return svg;
+}
 
 let nextPanelId = 0;
 
-function btn(text: string, title: string, onClick: () => void, extraClass = ""): HTMLButtonElement {
+function btn(
+  content: string | readonly string[],
+  title: string,
+  onClick: () => void,
+  extraClass = "",
+): HTMLButtonElement {
   const b = document.createElement("button");
   b.type = "button";
-  b.textContent = text;
+  if (typeof content === "string") b.textContent = content;
+  else b.append(icon(content));
   b.title = title;
   b.setAttribute("aria-label", title);
   b.className = `cm-vs-btn ${extraClass}`.trim();
@@ -55,10 +83,12 @@ function createSearchPanel(view: EditorView): Panel {
   wrap.setAttribute("aria-label", "Find and replace");
   const replaceRowId = `cm-vs-replace-${++nextPanelId}`;
 
-  const expandBtn = btn(ICON.chevronRight, "Toggle Replace", () => {
+  const expandBtn = btn(ICON_PATHS.chevronRight, "Toggle Replace", () => {
     expanded = !expanded;
     replaceRow.style.display = expanded ? "flex" : "none";
-    expandBtn.textContent = expanded ? ICON.chevronDown : ICON.chevronRight;
+    expandBtn.replaceChildren(
+      icon(expanded ? ICON_PATHS.chevronDown : ICON_PATHS.chevronRight),
+    );
     expandBtn.setAttribute("aria-expanded", String(expanded));
     if (expanded) replaceInput.focus();
   });
@@ -98,22 +128,24 @@ function createSearchPanel(view: EditorView): Panel {
   count.setAttribute("aria-live", "polite");
   count.setAttribute("aria-atomic", "true");
 
-  const prevBtn = btn(ICON.up, "Previous match (⇧Enter)", () => {
+  const prevBtn = btn(ICON_PATHS.up, "Previous match (⇧Enter)", () => {
     findPrevious(view);
     refresh();
   });
-  const nextBtn = btn(ICON.down, "Next match (Enter)", () => {
+  const nextBtn = btn(ICON_PATHS.down, "Next match (Enter)", () => {
     findNext(view);
     refresh();
   });
-  const selAllBtn = btn(ICON.selectAll, "Select all matches", () => selectMatches(view));
-  const closeBtn = btn(ICON.close, "Close (Esc)", () => closeSearchPanel(view));
+  const selAllBtn = btn(ICON_PATHS.selectAll, "Select all matches", () => selectMatches(view));
+  const closeBtn = btn(ICON_PATHS.close, "Close (Esc)", () => closeSearchPanel(view));
 
   const findRow = document.createElement("div");
   findRow.className = "cm-vs-row";
   const findBox = document.createElement("div");
   findBox.className = "cm-vs-box";
-  findBox.append(findInput, caseBtn, wordBtn, reBtn);
+  const findGlyph = icon(ICON_PATHS.search);
+  findGlyph.classList.add("cm-vs-lead");
+  findBox.append(findGlyph, findInput, caseBtn, wordBtn, reBtn);
   findRow.append(findBox, count, prevBtn, nextBtn, selAllBtn, closeBtn);
 
   const replaceInput = document.createElement("input");
@@ -282,70 +314,119 @@ const searchTheme = EditorView.theme({
     zIndex: "20",
     pointerEvents: "none",
   },
+  // Mirrors the PDF search bar: one popover surface, a borderless field, and
+  // ghost icon buttons, rather than boxes nested inside boxes.
   ".cm-vs-search": {
     position: "relative",
     pointerEvents: "auto",
     display: "flex",
     alignItems: "flex-start",
-    gap: "2px",
+    gap: "4px",
     marginLeft: "auto",
     width: "fit-content",
-    maxWidth: "min(32rem, calc(100% - 12px))",
-    padding: "4px 6px 4px 2px",
-    borderRadius: "6px",
+    maxWidth: "min(34rem, calc(100% - 12px))",
+    padding: "6px",
+    borderRadius: "0.5rem",
     border: "1px solid var(--border, rgba(128,128,128,0.3))",
     background: "var(--popover, #fff)",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
+    color: "var(--popover-foreground, inherit)",
+    boxShadow:
+      "0 20px 25px -5px oklch(0 0 0 / 0.1), 0 8px 10px -6px oklch(0 0 0 / 0.1)",
     font: "12px system-ui, sans-serif",
   },
-  ".cm-vs-rows": { display: "flex", flexDirection: "column", gap: "2px" },
-  ".cm-vs-expand": { alignSelf: "flex-start", padding: "3px 2px", fontSize: "13px", color: "var(--muted-foreground, #888)" },
-  ".cm-vs-row": { display: "flex", alignItems: "center", gap: "2px", margin: "1px 0" },
-  ".cm-vs-box": {
+  ".cm-vs-rows": {
+    display: "flex",
+    flex: "1 1 auto",
+    minWidth: "0",
+    flexDirection: "column",
+    gap: "4px",
+  },
+  ".cm-vs-expand": {
+    alignSelf: "flex-start",
+    width: "20px",
+    minWidth: "20px",
+    height: "28px",
+    color: "var(--muted-foreground, #888)",
+  },
+  ".cm-vs-row": {
     display: "flex",
     alignItems: "center",
-    gap: "1px",
-    padding: "0 2px",
-    borderRadius: "4px",
-    border: "1px solid var(--border, rgba(128,128,128,0.3))",
-    background: "var(--background, #fff)",
+    gap: "4px",
+    margin: "0",
+    minWidth: "0",
   },
+  ".cm-vs-box": {
+    display: "flex",
+    flex: "1 1 auto",
+    minWidth: "0",
+    alignItems: "center",
+    gap: "2px",
+    paddingLeft: "6px",
+    borderRadius: "0.375rem",
+    background: "transparent",
+  },
+  ".cm-vs-lead": {
+    width: "14px",
+    height: "14px",
+    flexShrink: "0",
+    color: "var(--muted-foreground, #888)",
+  },
+  ".cm-vs-icon": { width: "14px", height: "14px" },
   ".cm-vs-input": {
-    width: "13rem",
+    flex: "1 1 auto",
+    width: "11rem",
+    minWidth: "3.5rem",
     maxWidth: "40vw",
+    height: "28px",
     border: "none",
     outline: "none",
     background: "transparent",
     color: "inherit",
-    padding: "3px 4px",
+    padding: "0 4px",
     font: "12px system-ui, sans-serif",
   },
-  ".cm-vs-input:focus-visible": {
-    outline: "2px solid var(--ring, #2563eb)",
-    outlineOffset: "1px",
-    borderRadius: "2px",
-  },
+  ".cm-vs-input::placeholder": { color: "var(--muted-foreground, #999)" },
+  // The panel is already a distinct surface; a ring around the field inside it
+  // reads as a second box (the PDF search field has none either).
+  ".cm-vs-input:focus": { outline: "none" },
+  ".cm-vs-input:focus-visible": { outline: "none" },
   ".cm-vs-btn": {
+    flexShrink: "0",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    minWidth: "20px",
-    height: "20px",
-    padding: "0 4px",
+    minWidth: "28px",
+    height: "28px",
+    padding: "0 6px",
     border: "none",
-    borderRadius: "4px",
+    borderRadius: "0.375rem",
     background: "transparent",
     color: "var(--muted-foreground, #666)",
     cursor: "pointer",
     font: "11px system-ui, sans-serif",
   },
-  ".cm-vs-btn:hover": { background: "var(--accent, rgba(128,128,128,0.15))", color: "var(--foreground, #111)" },
+  ".cm-vs-btn:hover": {
+    background: "var(--accent, rgba(128,128,128,0.15))",
+    color: "var(--accent-foreground, #111)",
+  },
   ".cm-vs-btn:focus-visible": {
     outline: "2px solid var(--ring, #2563eb)",
     outlineOffset: "1px",
   },
-  ".cm-vs-btn.active": { background: "color-mix(in srgb, var(--primary, #2563eb) 22%, transparent)", color: "var(--foreground, #111)" },
-  ".cm-vs-count": { minWidth: "4.5rem", padding: "0 6px", color: "var(--muted-foreground, #888)", whiteSpace: "nowrap" },
+  ".cm-vs-btn.active": {
+    background: "color-mix(in srgb, var(--primary, #2563eb) 20%, transparent)",
+    color: "var(--foreground, #111)",
+  },
+  ".cm-vs-count": {
+    flexShrink: "0",
+    minWidth: "3.25rem",
+    padding: "0 4px",
+    color: "var(--muted-foreground, #888)",
+    fontSize: "11px",
+    fontVariantNumeric: "tabular-nums",
+    textAlign: "center",
+    whiteSpace: "nowrap",
+  },
 });
 
 const panelBorderOverride = EditorView.baseTheme({

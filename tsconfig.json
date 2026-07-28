@@ -33,6 +33,7 @@
       "@oleafly/preflight/pdf-extract": ["./packages/preflight/src/pdf-extract.ts"],
       "@oleafly/templates": ["./packages/templates/src/index.ts"],
       "@oleafly/preview": ["./packages/preview/src/index.ts"],
+      "@oleafly/preview/controller": ["./packages/preview/src/controller.ts"],
       "@oleafly/preview/polyfills": ["./packages/preview/src/polyfills.ts"],
       "@oleafly/preview/mainThreadWorker": ["./packages/preview/src/mainThreadWorker.ts"],
       "@oleafly/pdf-to-latex": ["./packages/pdf-to-latex/src/index.ts"],

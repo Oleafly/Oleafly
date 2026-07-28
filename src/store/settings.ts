@@ -52,6 +52,20 @@ export type RailTab =
 
 export type DockPlacement = "left" | "right" | "bottom";
 export type BackgroundPattern = "dots" | "grid" | "none";
+export type GrammarDialect =
+  | "american"
+  | "british"
+  | "australian"
+  | "canadian"
+  | "indian";
+export type DictionaryLocale = "en_US" | "en_GB" | "en_AU" | "de_DE" | "fr_FR";
+export const DICTIONARY_LOCALES: { id: DictionaryLocale; name: string }[] = [
+  { id: "en_US", name: "English (US)" },
+  { id: "en_GB", name: "English (UK)" },
+  { id: "en_AU", name: "English (Australia)" },
+  { id: "de_DE", name: "Deutsch" },
+  { id: "fr_FR", name: "Français" },
+];
 export type EditorThemeId =
   | "system"
   | "linear"
@@ -94,12 +108,32 @@ function readDefaultView(raw: string): LayoutPreset {
 function readEditorTheme(raw: string): EditorThemeId {
   return EDITOR_THEMES.some((t) => t.id === raw) ? (raw as EditorThemeId) : "system";
 }
+const GRAMMAR_DIALECT_IDS: GrammarDialect[] = [
+  "american",
+  "british",
+  "australian",
+  "canadian",
+  "indian",
+];
+function readGrammarDialect(raw: string): GrammarDialect {
+  return GRAMMAR_DIALECT_IDS.includes(raw as GrammarDialect)
+    ? (raw as GrammarDialect)
+    : "american";
+}
 function saveLs(k: string, v: string) {
   try {
     localStorage.setItem(k, v);
   } catch {
     /* ignore */
   }
+}
+function notifyProofreadingSettingsChanged(setting: string) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent("oleafly:proofreading-settings-changed", {
+      detail: { setting },
+    }),
+  );
 }
 
 // Font choices offered in Appearance. "" means the app default stack. Names
@@ -145,6 +179,17 @@ export const ACCENTS: { id: string; name: string; color: string }[] = [
   { id: "teal", name: "Teal", color: "#0d9488" },
 ];
 
+export const GRAMMAR_DIALECTS: {
+  id: GrammarDialect;
+  name: string;
+}[] = [
+  { id: "american", name: "English (US)" },
+  { id: "british", name: "English (UK)" },
+  { id: "australian", name: "English (Australia)" },
+  { id: "canadian", name: "English (Canada)" },
+  { id: "indian", name: "English (India)" },
+];
+
 interface SettingsState {
   vim: boolean;
   toggleVim: () => void;
@@ -152,6 +197,10 @@ interface SettingsState {
   toggleSpellcheck: () => void;
   harper: boolean;
   setHarper: (v: boolean) => void;
+  grammarDialect: GrammarDialect;
+  setGrammarDialect: (v: GrammarDialect) => void;
+  dictionaryLocale: DictionaryLocale;
+  setDictionaryLocale: (v: DictionaryLocale) => void;
   showRegionalism: boolean;
   setShowRegionalism: (v: boolean) => void;
   showWordChoice: boolean;
@@ -223,6 +272,8 @@ const PREF_DEFAULTS = {
   vim: false,
   spellcheck: true,
   harper: true,
+  grammarDialect: "american" as GrammarDialect,
+  dictionaryLocale: "en_US" as DictionaryLocale,
   showRegionalism: true,
   showWordChoice: true,
   offline: false,
@@ -250,22 +301,45 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   toggleSpellcheck: () =>
     set((s) => {
       saveLs("oleafly.spellcheck", s.spellcheck ? "0" : "1");
+      notifyProofreadingSettingsChanged("spellcheck");
       return { spellcheck: !s.spellcheck };
     }),
   harper: ls("oleafly.harper", "1") !== "0",
   setHarper: (v) => {
     saveLs("oleafly.harper", v ? "1" : "0");
     set({ harper: v });
+    notifyProofreadingSettingsChanged("harper");
+  },
+  grammarDialect: readGrammarDialect(
+    ls("oleafly.harper.dialect", "american"),
+  ),
+  setGrammarDialect: (v) => {
+    const dialect = readGrammarDialect(v);
+    saveLs("oleafly.harper.dialect", dialect);
+    set({ grammarDialect: dialect });
+    notifyProofreadingSettingsChanged("grammarDialect");
+  },
+  dictionaryLocale: (() => {
+    const raw = ls("oleafly.dictionary.locale", "en_US") as DictionaryLocale;
+    return DICTIONARY_LOCALES.some((locale) => locale.id === raw) ? raw : "en_US";
+  })(),
+  setDictionaryLocale: (v) => {
+    const locale = DICTIONARY_LOCALES.some((item) => item.id === v) ? v : "en_US";
+    saveLs("oleafly.dictionary.locale", locale);
+    set({ dictionaryLocale: locale });
+    notifyProofreadingSettingsChanged("dictionaryLocale");
   },
   showRegionalism: ls("oleafly.harper.regionalism", "1") !== "0",
   setShowRegionalism: (v) => {
     saveLs("oleafly.harper.regionalism", v ? "1" : "0");
     set({ showRegionalism: v });
+    notifyProofreadingSettingsChanged("regionalism");
   },
   showWordChoice: ls("oleafly.harper.wordchoice", "1") !== "0",
   setShowWordChoice: (v) => {
     saveLs("oleafly.harper.wordchoice", v ? "1" : "0");
     set({ showWordChoice: v });
+    notifyProofreadingSettingsChanged("wordChoice");
   },
   offline: false,
   setOffline: (v) => set({ offline: v }),
@@ -423,6 +497,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     saveLs("oleafly.vim", PREF_DEFAULTS.vim ? "1" : "0");
     saveLs("oleafly.spellcheck", PREF_DEFAULTS.spellcheck ? "1" : "0");
     saveLs("oleafly.harper", PREF_DEFAULTS.harper ? "1" : "0");
+    saveLs("oleafly.harper.dialect", PREF_DEFAULTS.grammarDialect);
     saveLs("oleafly.harper.regionalism", "1");
     saveLs("oleafly.harper.wordchoice", "1");
     saveLs("oleafly.fontSize", String(PREF_DEFAULTS.editorFontSize));
@@ -437,5 +512,6 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     saveLs("oleafly.dockPlacement", PREF_DEFAULTS.dockPlacement);
     saveLs("oleafly.bgPattern", PREF_DEFAULTS.bgPattern);
     set({ ...PREF_DEFAULTS });
+    notifyProofreadingSettingsChanged("reset");
   },
 }));

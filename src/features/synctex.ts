@@ -3,7 +3,17 @@ import { getCurrentLine, gotoLine, selectWordNearLine } from "@/components/edito
 import { gotoRect } from "@/components/pdf/pdfController";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
+import {
+  isCompileCheckpointCurrent,
+  useCompileStore,
+} from "@/store/compile";
 import { logError } from "@/lib/log";
+
+function currentSyncTexCheckpoint() {
+  const checkpoint =
+    useCompileStore.getState().lastCompileCheckpoint;
+  return isCompileCheckpointCurrent(checkpoint) ? checkpoint : null;
+}
 
 export function goToSyncTex() {
   const s = useSettingsStore.getState();
@@ -23,6 +33,14 @@ export async function forwardFromCursor() {
     void logError("synctex forward", "no active project/file");
     return;
   }
+  const checkpoint = currentSyncTexCheckpoint();
+  if (!checkpoint) {
+    void logError(
+      "synctex forward",
+      "SyncTeX is unavailable because the displayed PDF is not current.",
+    );
+    return;
+  }
   const line = getCurrentLine();
   if (line == null) {
     void logError("synctex forward", "could not determine cursor line");
@@ -30,6 +48,12 @@ export async function forwardFromCursor() {
   }
   try {
     const rect = await synctexForward(projectId, mainDoc, activePath, line);
+    if (
+      useCompileStore.getState().lastCompileCheckpoint !== checkpoint ||
+      !isCompileCheckpointCurrent(checkpoint)
+    ) {
+      return;
+    }
     if (!rect) {
       void logError(
         "synctex forward",
@@ -75,10 +99,18 @@ export async function inverseFromClick(page: number, x: number, y: number, word?
   const { projectId, mainDoc } = store;
   if (!projectId) return;
   if (!store.engineLoaded || !store.engine.capabilities.supports_synctex) return;
+  const checkpoint = currentSyncTexCheckpoint();
+  if (!checkpoint) return;
   const currentLine = getCurrentLine();
   if (word && currentLine != null) selectWordNearLine(currentLine, word);
   try {
     const hit = await synctexInverse(projectId, mainDoc, page, x, y);
+    if (
+      useCompileStore.getState().lastCompileCheckpoint !== checkpoint ||
+      !isCompileCheckpointCurrent(checkpoint)
+    ) {
+      return;
+    }
     if (!hit) return;
 
     const { activePath, tree } = useFilesStore.getState();

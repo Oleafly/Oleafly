@@ -18,22 +18,26 @@ test("detached preview one-page controls stay bounded and zoom/invert work", asy
 }) => {
   await openHarness(page, 1);
   await expect(page.getByLabel("Two-page view")).toBeHidden();
-  await expect(page.getByLabel("Single page view")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByLabel("Single page view")).toBeHidden();
   await expect(page.getByLabel("Previous page")).toBeDisabled();
   await expect(page.getByLabel("Next page")).toBeDisabled();
 
-  await expect(page.getByTestId("detached-preview-zoom")).toHaveText("100%");
+  // The window fits the first page to the viewport on load, so the starting
+  // zoom depends on the harness window size. Assert the step, not the origin.
+  const zoom = page.getByTestId("detached-preview-zoom");
+  const fitted = Number((await zoom.textContent())?.replace("%", ""));
+  expect(Number.isFinite(fitted)).toBe(true);
   await page.getByLabel("Zoom in").click();
-  await expect(page.getByTestId("detached-preview-zoom")).toHaveText("120%");
+  await expect(zoom).toHaveText(`${fitted + 20}%`);
   await page.getByLabel("Zoom out").click();
-  await expect(page.getByTestId("detached-preview-zoom")).toHaveText("100%");
+  await expect(zoom).toHaveText(`${fitted}%`);
 
   const scroll = page.getByTestId("detached-preview-scroll");
-  await page.getByLabel("Invert colors").click();
-  await expect(page.getByLabel("Invert colors")).toHaveAttribute("aria-pressed", "true");
+  await page.getByLabel("Invert PDF colors").click();
+  await expect(page.getByLabel("Invert PDF colors")).toHaveAttribute("aria-pressed", "true");
   await expect(scroll).toHaveCSS("filter", "invert(1) hue-rotate(180deg)");
-  await page.getByLabel("Invert colors").click();
-  await expect(page.getByLabel("Invert colors")).toHaveAttribute("aria-pressed", "false");
+  await page.getByLabel("Invert PDF colors").click();
+  await expect(page.getByLabel("Invert PDF colors")).toHaveAttribute("aria-pressed", "false");
   await expect(scroll).toHaveCSS("filter", "none");
 });
 
@@ -73,4 +77,51 @@ test("detached preview two-page layout, previous/input/next, and invalid bounds 
     "data-preview-layout",
     "single",
   );
+});
+
+test("the document outline slides in and back out", async ({ page }) => {
+  await openHarness(page, 1);
+  const outline = page.locator("#detached-pdf-outline");
+  const left = async () => Math.round((await outline.boundingBox())!.x);
+  const panelWidth = async () => Math.round((await outline.boundingBox())!.width);
+
+  // Closed: parked off the left edge, and out of reach of keyboard and pointer.
+  const hidden = await left();
+  expect(hidden).toBeLessThanOrEqual(-(await panelWidth()));
+  await expect(outline).toHaveAttribute("inert", "");
+  // An invalid arbitrary value would silently leave the panel at rest, so pin
+  // the transition that carries it on and off screen.
+  await expect(outline).toHaveCSS("transition-duration", "0.2s");
+
+  // The always-mounted panel shares this accessible name, so target the button.
+  await page.getByRole("button", { name: "Document outline", exact: true }).click();
+  await expect(outline).not.toHaveAttribute("inert", "");
+  await expect.poll(left).toBeGreaterThanOrEqual(0);
+
+  await page
+    .getByRole("button", { name: "Close document outline" })
+    .click();
+  await expect.poll(left).toBeLessThanOrEqual(-(await panelWidth()));
+  await expect(outline).toHaveAttribute("inert", "");
+});
+
+test("paging scrolls the preview pane, not the page around it", async ({ page }) => {
+  await openHarness(page, 3);
+  // Give the window an outer scrollbar, as the docked preview has inside the app.
+  await page.evaluate(() => {
+    document.body.style.minHeight = "300vh";
+    window.scrollTo(0, 0);
+  });
+
+  const scroller = page.getByTestId("detached-preview-scroll");
+  const paneTop = async () => scroller.evaluate((el) => el.scrollTop);
+  expect(await paneTop()).toBe(0);
+
+  await page.getByLabel("Next page").click();
+  await expect(page.getByLabel("Page number")).toHaveValue("2");
+
+  // The pane moved to the next page...
+  await expect.poll(paneTop).toBeGreaterThan(0);
+  // ...and `scrollIntoView` did not drag every scrollable ancestor with it.
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
 });

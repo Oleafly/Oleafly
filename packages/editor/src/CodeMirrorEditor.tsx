@@ -26,19 +26,29 @@ import {
   completionKeymap,
   closeBrackets,
   closeBracketsKeymap,
+  type CompletionSource,
 } from "@codemirror/autocomplete";
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import { vim } from "@replit/codemirror-vim";
 
 import { vscodeSearch } from "./search-panel";
 import { editorTheme } from "./theme";
-import { latexCompletions, slashCompletions } from "./latex";
+import {
+  latexCommandCompletions,
+  latexCompletions,
+  slashCompletions,
+} from "./latex";
 import { languageForPath } from "./languages";
-import { setEditorView } from "./controller";
-import { spellLintExtensions, refreshEditorLints } from "./spellcheck";
-import { mathHover } from "./math-preview";
+import { setEditorDocumentPath, setEditorView } from "./controller";
+import {
+  cancelSourceProofreading,
+  spellLintExtensions,
+  refreshEditorLints,
+} from "./spellcheck";
+import { liveMathPreview } from "./math-preview";
 import { createLatexLinter } from "./latex-linter";
 import { latexFolding } from "./latex-folding";
+import { foldMarkerDOM, foldMarkerTheme } from "./fold-marker";
 
 // The use* members are React hooks: must follow hook rules, and the host
 // object identity must stay stable across renders.
@@ -53,19 +63,68 @@ export interface EditorHost {
 }
 
 export const isLatexSourcePath = (path: string | null): boolean =>
-  !!path && /\.(?:tex|latex|ltx)$/i.test(path);
+  !!path && /\.(?:tex|latex|ltx|sty|cls)$/i.test(path);
 export const isProseSourcePath = (path: string | null): boolean =>
-  !!path && /\.(?:tex|latex|ltx|md|markdown)$/i.test(path);
+  !!path && /\.(?:tex|latex|ltx|md|markdown|typ)$/i.test(path);
+const isLatexDocumentPath = (path: string | null): boolean =>
+  !!path && /\.(?:tex|latex|ltx)$/i.test(path);
+const isMarkdownDocumentPath = (path: string | null): boolean =>
+  !!path && /\.(?:md|markdown)$/i.test(path);
+
+function sourceToolsForPath(
+  path: string | null,
+  completionSources: CompletionSource[],
+): Extension[] {
+  const mathPreview = isLatexDocumentPath(path)
+    ? [liveMathPreview("latex")]
+    : isMarkdownDocumentPath(path)
+      ? [liveMathPreview("markdown")]
+      : [];
+
+  if (isLatexSourcePath(path)) {
+    return [
+      latexFolding(),
+      autocompletion({
+        override: [
+          ...completionSources,
+          completionSources.length > 0
+            ? latexCommandCompletions
+            : latexCompletions,
+          slashCompletions,
+        ],
+        activateOnTyping: true,
+        closeOnBlur: true,
+      }),
+      ...mathPreview,
+      createLatexLinter(),
+    ];
+  }
+
+  return [
+    ...mathPreview,
+    ...(completionSources.length > 0
+      ? [
+          autocompletion({
+            override: completionSources,
+            activateOnTyping: true,
+            closeOnBlur: true,
+          }),
+        ]
+      : []),
+  ];
+}
 
 export function CodeMirrorEditor({
   host,
   extraExtensions,
   extraExtensionsForPath,
+  extraCompletionSourcesForPath,
   extraKeymap,
 }: {
   host: EditorHost;
   extraExtensions?: Extension[];
   extraExtensionsForPath?: (path: string | null) => Extension[];
+  extraCompletionSourcesForPath?: (path: string | null) => CompletionSource[];
   // Checked before the default keymaps (CodeMirror keymap precedence: earlier
   // extensions in the array win).
   extraKeymap?: KeyBinding[];
@@ -109,6 +168,8 @@ export function CodeMirrorEditor({
     hostToolsCompartmentRef.current = hostToolsCompartment;
     prevPathRef.current = initialPath;
     const initialLang = initialPath ? languageForPath(initialPath) : null;
+    const initialCompletionSources =
+      extraCompletionSourcesForPath?.(initialPath) ?? [];
 
     const state = EditorState.create({
       doc: initialContent,
@@ -116,7 +177,8 @@ export function CodeMirrorEditor({
         lineNumbers(),
         highlightActiveLineGutter(),
         highlightSpecialChars(),
-        foldGutter({ openText: "▾", closedText: "▸" }),
+        foldGutter({ markerDOM: foldMarkerDOM }),
+        foldMarkerTheme,
         drawSelection(),
         dropCursor(),
         EditorState.allowMultipleSelections.of(true),
@@ -134,18 +196,7 @@ export function CodeMirrorEditor({
         historyCompartment.of(history()),
         vscodeSearch(),
         sourceToolsCompartment.of(
-          isLatexSourcePath(initialPath)
-            ? [
-                latexFolding(),
-                autocompletion({
-                  override: [latexCompletions, slashCompletions],
-                  activateOnTyping: true,
-                  closeOnBlur: true,
-                }),
-                mathHover(),
-                createLatexLinter(),
-              ]
-            : [],
+          sourceToolsForPath(initialPath, initialCompletionSources),
         ),
         ...(extraExtensions ?? []),
         hostToolsCompartment.of(extraExtensionsForPath?.(initialPath) ?? []),
@@ -177,9 +228,12 @@ export function CodeMirrorEditor({
     const view = new EditorView({ state, parent: hostRef.current });
     viewRef.current = view;
     setEditorView(view);
+    setEditorDocumentPath(initialPath);
     view.focus();
 
     return () => {
+      cancelSourceProofreading(prevPathRef.current ?? undefined);
+      setEditorDocumentPath(null);
       view.destroy();
       setEditorView(null);
       viewRef.current = null;
@@ -193,24 +247,18 @@ export function CodeMirrorEditor({
     if (!view || !activePath) return;
     const activeContent = host.getContent(activePath);
     const pathChanged = prevPathRef.current !== activePath;
+    if (pathChanged && prevPathRef.current) {
+      cancelSourceProofreading(prevPathRef.current);
+    }
     suppressSyncRef.current = true;
     const current = view.state.doc.toString();
     const lang = languageForPath(activePath);
+    const completionSources =
+      extraCompletionSourcesForPath?.(activePath) ?? [];
     const effects = [langCompartmentRef.current!.reconfigure(lang ? lang : [])];
     effects.push(
       sourceToolsCompartmentRef.current!.reconfigure(
-        isLatexSourcePath(activePath)
-          ? [
-              latexFolding(),
-              autocompletion({
-                override: [latexCompletions, slashCompletions],
-                activateOnTyping: true,
-                closeOnBlur: true,
-              }),
-              mathHover(),
-              createLatexLinter(),
-            ]
-          : [],
+        sourceToolsForPath(activePath, completionSources),
       ),
     );
     effects.push(
@@ -241,6 +289,7 @@ export function CodeMirrorEditor({
       view.dispatch({ effects: historyCompartmentRef.current!.reconfigure(history()) });
     }
     prevPathRef.current = activePath;
+    setEditorDocumentPath(activePath);
     queueMicrotask(() => {
       suppressSyncRef.current = false;
     });
@@ -263,6 +312,9 @@ export function CodeMirrorEditor({
     const view = viewRef.current;
     const compartment = spellCompartmentRef.current;
     if (!view || !compartment) return;
+    if (!spellcheck && !harper) {
+      cancelSourceProofreading(host.getActivePath() ?? undefined);
+    }
     view.dispatch({
       effects: compartment.reconfigure(
         isProseSourcePath(host.getActivePath()) && (spellcheck || harper)
@@ -278,6 +330,18 @@ export function CodeMirrorEditor({
     refreshEditorLints(viewRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, lintDeps);
+
+  // App-level proofreading preferences that do not affect editor construction
+  // (for example, the selected English dialect) request a lightweight re-lint.
+  useEffect(() => {
+    const refresh = () => refreshEditorLints(viewRef.current);
+    window.addEventListener("oleafly:proofreading-settings-changed", refresh);
+    return () =>
+      window.removeEventListener(
+        "oleafly:proofreading-settings-changed",
+        refresh,
+      );
+  }, []);
 
   return <div ref={hostRef} data-editor-theme={editorThemeId} className="h-full overflow-auto" />;
 }

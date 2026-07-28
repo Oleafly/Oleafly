@@ -95,14 +95,11 @@ test("zoom menu applies presets and calculated fit scales", async ({ tauriPage }
   expect(heightScale).toBeLessThan(400);
 });
 
-test("one-page documents hide two-page layout and bound page navigation", async ({
+test("one-page documents hide the layout toggles and bound page navigation", async ({
   tauriPage,
 }) => {
   await expect(tauriPage.locator('[aria-label="Two-page view"]')).not.toBeVisible();
-  await expect(tauriPage.locator('[aria-label="Single page view"]')).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  await expect(tauriPage.locator('[aria-label="Single page view"]')).not.toBeVisible();
   await expect(tauriPage.locator('[aria-label="Previous page"]')).toBeDisabled();
   await expect(tauriPage.locator('[aria-label="Next page"]')).toBeDisabled();
   await expect(tauriPage.locator('[aria-label="Page number"]')).toHaveValue("1");
@@ -150,9 +147,14 @@ Page three
     await expect(page).toHaveValue("1");
   }
   await tauriPage.click('[aria-label="Two-page view"]');
+  // The layout options are a radio group: exactly one is checked.
   await expect(tauriPage.locator('[aria-label="Two-page view"]')).toHaveAttribute(
-    "aria-pressed",
+    "aria-checked",
     "true",
+  );
+  await expect(tauriPage.locator('[aria-label="Single page view"]')).toHaveAttribute(
+    "aria-checked",
+    "false",
   );
   await tauriPage.click('[aria-label="Next page"]');
   await expect(page).toHaveValue("3");
@@ -160,8 +162,12 @@ Page three
   await expect(page).toHaveValue("1");
   await tauriPage.click('[aria-label="Single page view"]');
   await expect(tauriPage.locator('[aria-label="Single page view"]')).toHaveAttribute(
-    "aria-pressed",
+    "aria-checked",
     "true",
+  );
+  await expect(tauriPage.locator('[aria-label="Two-page view"]')).toHaveAttribute(
+    "aria-checked",
+    "false",
   );
 });
 

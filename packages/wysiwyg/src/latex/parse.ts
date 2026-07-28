@@ -2,6 +2,12 @@ import { parse as parseLatexAst } from "@unified-latex/unified-latex-util-parse"
 import { printRaw } from "@unified-latex/unified-latex-util-print-raw";
 import type { JSONContent } from "@tiptap/core";
 import type { Macro, Environment, Node as LatexNode } from "@unified-latex/unified-latex-types";
+import {
+  normalizePreservedRanges,
+  protectInlineSources,
+  restoreInlineSources,
+  type PreservedInlineRange,
+} from "../preserve-inline";
 
 const HEADING_LEVEL: Record<string, number> = {
   section: 1,
@@ -25,6 +31,14 @@ const ESCAPED_CHAR_MACRO: Record<string, string> = {
   "{": "{",
   "}": "}",
 };
+
+export interface ParseLatexBodyOptions {
+  /**
+   * Exact math ranges found in this body before unified-latex parsing. Keeping
+   * them opaque prevents `$`/`$$`/`\(`/`\[` delimiter normalization.
+   */
+  preservedInlineRanges?: readonly PreservedInlineRange[];
+}
 
 function macroArgContent(node: Macro, index: number): LatexNode[] {
   const arg = node.args?.[index];
@@ -125,8 +139,20 @@ function environmentToJSON(env: Environment): JSONContent | null {
   return null;
 }
 
-export function parseLatexBody(body: string): JSONContent {
-  const ast = parseLatexAst(body);
+export function parseLatexBody(
+  body: string,
+  options: ParseLatexBodyOptions = {},
+): JSONContent {
+  const ranges = normalizePreservedRanges(
+    body,
+    0,
+    options.preservedInlineRanges ?? [],
+  );
+  const { protectedContent, tokenPrefix, sources } = protectInlineSources(
+    body,
+    ranges,
+  );
+  const ast = parseLatexAst(protectedContent);
   const content: JSONContent[] = [];
   let paragraphBuffer: LatexNode[] = [];
 
@@ -179,5 +205,12 @@ export function parseLatexBody(body: string): JSONContent {
   }
   flushParagraph();
 
-  return { type: "doc", content: content.length ? content : [{ type: "paragraph" }] };
+  return restoreInlineSources(
+    {
+      type: "doc",
+      content: content.length ? content : [{ type: "paragraph" }],
+    },
+    tokenPrefix,
+    sources,
+  );
 }
