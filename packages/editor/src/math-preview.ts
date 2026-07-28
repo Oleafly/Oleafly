@@ -180,9 +180,6 @@ class MathPreviewWidget extends WidgetType {
   constructor(
     readonly expression: MathExpression,
     readonly identity: string,
-    readonly sourceFrom: number,
-    readonly sourceTo: number,
-    readonly isCurrent: () => boolean,
   ) {
     super();
   }
@@ -201,7 +198,15 @@ class MathPreviewWidget extends WidgetType {
     const mounted = mountMathPreview(dom, {
       expression: this.expression,
       identity: this.identity,
-      isCurrent: () => this.liveHosts.has(dom) && this.isCurrent(),
+      // Source previews paint synchronously. Their lifetime is therefore tied
+      // to this concrete DOM host, not to the scan revision that originally
+      // created the WidgetType. CodeMirror deliberately retains an equal
+      // WidgetType across decoration refreshes and may call toDOM() on it
+      // again after virtual scrolling. Capturing the old revision here made
+      // that legitimate remount fail its currentness guard and permanently
+      // show the much narrower "Previewing…" placeholder, corrupting line
+      // measurements and moving the viewport.
+      isCurrent: () => this.liveHosts.has(dom),
       // CodeMirror only mounts widgets in its rendered viewport. Rendering
       // synchronously here avoids painting a small loading label first and
       // replacing it with wider KaTeX on the next frame, which otherwise
@@ -225,9 +230,6 @@ class MathPreviewWidget extends WidgetType {
 
   eq(other: MathPreviewWidget): boolean {
     return (
-      this.identity === other.identity &&
-      this.sourceFrom === other.sourceFrom &&
-      this.sourceTo === other.sourceTo &&
       this.expression.body === other.expression.body &&
       this.expression.display === other.expression.display &&
       this.expression.status === other.expression.status
@@ -239,7 +241,6 @@ function buildDecorations(
   view: EditorView,
   format: MathSourceFormat,
   identity: string,
-  isCurrent: () => boolean,
   windows: Array<{ from: number; to: number }>,
 ): DecorationSet {
   const ranges = [];
@@ -263,9 +264,6 @@ function buildDecorations(
         widget: new MathPreviewWidget(
           expression,
           identity,
-          expression.from,
-          expression.to,
-          isCurrent,
         ),
         side: 1,
       }).range(expression.to),
@@ -373,7 +371,15 @@ export function liveMathPreview(format: MathSourceFormat): Extension {
 
         if (update.docChanged) {
           this.revision++;
-          this.decorations = Decoration.none;
+          // Preserve every unaffected preview while the edited document is
+          // rescanned. Clearing the full set here made all inline widgets
+          // disappear for the debounce window and then remount together.
+          // Their widths participate in line wrapping, so math-heavy
+          // documents repeatedly collapsed and expanded above the caret while
+          // typing. Mapping keeps the existing DOM and geometry stable;
+          // the debounced scan below replaces only previews whose expression
+          // content actually changed.
+          this.decorations = this.decorations.map(update.changes);
           this.coverage = [];
           this.schedule(update.view, EDIT_PREVIEW_DEBOUNCE_MS);
         } else if (
@@ -423,7 +429,6 @@ export function liveMathPreview(format: MathSourceFormat): Extension {
             view,
             format,
             identity,
-            isCurrent,
             scanWindows,
           );
           if (
