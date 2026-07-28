@@ -2,7 +2,6 @@ import {
   lazy,
   Suspense,
   useEffect,
-  useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
@@ -196,22 +195,6 @@ function AppContent() {
   const sidebarMinSize = panelGroupWidth > 0 ? Math.min(65, (SIDEBAR_MIN_PX / panelGroupWidth) * 100) : 15;
   const sidebarDefaultSize =
     panelGroupWidth > 0 ? Math.min(65, (SIDEBAR_DEFAULT_PX / panelGroupWidth) * 100) : 15;
-
-  // Tiptap/ProseMirror restores its DOM selection when Visual mode mounts.
-  // When the project is reopened directly into persisted Visual mode, WebKit
-  // may satisfy that focus request by scrolling the document root instead of
-  // the editor's own scroll container. The application shell must never be a
-  // scroll surface, so normalize any leaked root scroll at the navigation
-  // boundary before the browser paints the reopened project.
-  useLayoutEffect(() => {
-    const scrollingElement = document.scrollingElement;
-    if (scrollingElement) {
-      scrollingElement.scrollTop = 0;
-      scrollingElement.scrollLeft = 0;
-    }
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-  }, [projectId]);
 
   useEffect(() => {
     const wasOpen = previousShowTreeRef.current;
@@ -658,12 +641,9 @@ function AppContent() {
 
   return (
     <ThemeProvider>
-      <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="flex h-full flex-col">
         <TopToolbar />
-        <div
-          ref={panelAreaRef}
-          className="relative z-0 flex h-0 min-h-0 flex-1 overflow-hidden"
-        >
+        <div ref={panelAreaRef} className="relative z-0 flex min-h-0 flex-1 overflow-hidden">
           <Rail />
           <ErrorBoundary
             key={`${showTree}-${hideEditorArea}-${viewMode}`}

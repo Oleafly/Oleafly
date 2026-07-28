@@ -68,6 +68,18 @@ function isMarkdownPath(path: string): boolean {
 const FLUSH_DEBOUNCE_MS = 300;
 const MARKDOWN_FRONTMATTER_RE = /^(---\r?\n[\s\S]*?\r?\n---)\r?\n?/u;
 
+function resetLeakedDocumentScroll() {
+  const scrollingElement = document.scrollingElement;
+  if (scrollingElement) {
+    scrollingElement.scrollTop = 0;
+    scrollingElement.scrollLeft = 0;
+  }
+  document.documentElement.scrollTop = 0;
+  document.documentElement.scrollLeft = 0;
+  document.body.scrollTop = 0;
+  document.body.scrollLeft = 0;
+}
+
 function markdownMathRanges(source: string) {
   const bodyOffset = MARKDOWN_FRONTMATTER_RE.exec(source)?.[0].length ?? 0;
   return scanMathExpressions(source, {
@@ -474,6 +486,38 @@ export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
       flushTimerRef.current = setTimeout(() => flush(editorInstance), FLUSH_DEBOUNCE_MS);
     },
   });
+
+  // ProseMirror restores its DOM selection when a project reopens directly in
+  // Visual mode. WebKit can respond by scrolling the document root even though
+  // the editor has its own scroll surface, which moves the application toolbar
+  // above the viewport. Keep the correction local to Visual-editor mount/focus
+  // and repeat it across the two following frames because selection restoration
+  // can finish after React's layout phase.
+  useLayoutEffect(() => {
+    if (!editor || !wysiwyg) return;
+
+    let firstFrame = 0;
+    let secondFrame = 0;
+    const scheduleReset = () => {
+      resetLeakedDocumentScroll();
+      cancelAnimationFrame(firstFrame);
+      cancelAnimationFrame(secondFrame);
+      firstFrame = requestAnimationFrame(() => {
+        resetLeakedDocumentScroll();
+        secondFrame = requestAnimationFrame(resetLeakedDocumentScroll);
+      });
+    };
+
+    const editorElement = editor.view.dom;
+    editorElement.addEventListener("focusin", scheduleReset);
+    scheduleReset();
+
+    return () => {
+      editorElement.removeEventListener("focusin", scheduleReset);
+      cancelAnimationFrame(firstFrame);
+      cancelAnimationFrame(secondFrame);
+    };
+  }, [activePath, editor, wysiwyg]);
 
   useEffect(() => {
     setWysiwygEditor(editor ?? null);
