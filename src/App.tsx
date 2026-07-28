@@ -636,7 +636,7 @@ function AppContent() {
     <ThemeProvider>
       <div className="flex h-full flex-col">
         <TopToolbar />
-        <div ref={panelAreaRef} className="flex min-h-0 flex-1">
+        <div ref={panelAreaRef} className="relative z-0 flex min-h-0 flex-1 overflow-hidden">
           <Rail />
           <ErrorBoundary
             key={`${showTree}-${hideEditorArea}-${viewMode}`}
