@@ -69,6 +69,7 @@ export {
 } from "./proofreading";
 export { vscodeSearch } from "./search-panel";
 export {
+  diagnosticPresentationExtensions,
   spellLintExtensions,
   refreshEditorLints,
   cancelSourceProofreading,

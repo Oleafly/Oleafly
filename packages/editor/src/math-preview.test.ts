@@ -59,6 +59,17 @@ describe("live math preview", () => {
     expect(host!.querySelector(".math-preview-loading")).toBeNull();
   });
 
+  it("keeps display previews out of CodeMirror's virtual block geometry", () => {
+    const editor = mount("Before\n\\[\n  x^2 + y^2\n\\]\nAfter\n");
+    settle();
+
+    const host = preview(editor);
+    expect(host).not.toBeNull();
+    expect(host!.tagName).toBe("SPAN");
+    expect(host).toHaveClass("is-display");
+    expect(editor.dom.querySelector(".cm-blockWidget")).toBeNull();
+  });
+
   it("keeps painting across edits", () => {
     const editor = mount();
     settle();

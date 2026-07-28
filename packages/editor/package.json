@@ -24,7 +24,7 @@
     "@codemirror/lint": "*",
     "@codemirror/search": "*",
     "@codemirror/state": "*",
-    "@codemirror/view": "*",
+    "@codemirror/view": "^6.43.6",
     "@lezer/highlight": "*",
     "@lezer/markdown": "*",
     "@replit/codemirror-vim": "*",

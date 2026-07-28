@@ -7,7 +7,7 @@ import {
   type Diagnostic,
   type Action,
 } from "@codemirror/lint";
-import { StateEffect } from "@codemirror/state";
+import { StateEffect, type Extension } from "@codemirror/state";
 import { tooltips } from "@codemirror/view";
 import type { EditorView, ViewUpdate } from "@codemirror/view";
 
@@ -87,11 +87,8 @@ export function cancelSourceProofreading(path?: string): void {
 const refreshLints = StateEffect.define<null>();
 
 function needsRefresh(update: ViewUpdate): boolean {
-  return (
-    update.viewportChanged ||
-    update.transactions.some((tr) =>
-      tr.effects.some((e) => e.is(refreshLints))
-    )
+  return update.transactions.some((tr) =>
+    tr.effects.some((e) => e.is(refreshLints))
   );
 }
 
@@ -496,17 +493,6 @@ export function createHarperLinter(includeSpelling = false) {
 
 export const spellLintExtensions = (opts: { spell?: boolean; harper?: boolean } = {}) => {
   const exts = [];
-  if (opts.spell || opts.harper) {
-    exts.push(
-      // The card replaces the stock gutter tooltip for the diagnostics it owns.
-      lintGutter({ tooltipFilter: noLintTooltip }),
-      // Absolute tooltips are clipped by the editor pane and painted under the
-      // preview beside it; a fixed tooltip escapes both.
-      tooltips({ position: "fixed", parent: document.body }),
-      diagnosticCardTooltip(),
-      diagnosticCardGutter(),
-    );
-  }
   // A combined worker pass keeps Harper authoritative for grammar and the
   // selected Hunspell pack authoritative for spelling without racing two
   // current-revision requests for the same Source surface.
@@ -514,3 +500,23 @@ export const spellLintExtensions = (opts: { spell?: boolean; harper?: boolean } 
   if (opts.harper) exts.push(createHarperLinter(Boolean(opts.spell)));
   return exts;
 };
+
+/**
+ * Stable diagnostic presentation chrome shared by syntax, language-service,
+ * compile, spelling, and grammar diagnostics.
+ *
+ * This is deliberately installed once with the editor rather than inside the
+ * spell/grammar compartment. Toggling a proofreader must only add or remove its
+ * linter—it must not add another gutter or change the content viewport width.
+ */
+export function diagnosticPresentationExtensions(): Extension[] {
+  return [
+    // The shared card replaces CodeMirror's stock gutter tooltip.
+    lintGutter({ tooltipFilter: noLintTooltip }),
+    // Fixed tooltips escape the editor pane without participating in document
+    // layout or changing any source-line measurements.
+    tooltips({ position: "fixed", parent: document.body }),
+    diagnosticCardTooltip(),
+    diagnosticCardGutter(),
+  ];
+}

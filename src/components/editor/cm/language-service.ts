@@ -42,6 +42,10 @@ const LANGUAGE_SERVICE_PATH =
 const COMPLETION_TIMEOUT_MS = 2_500;
 const HOVER_TIMEOUT_MS = 3_000;
 const SEMANTIC_TOKENS_TIMEOUT_MS = 5_000;
+// Syntax highlighting remains immediate. Semantic-token range requests wait
+// until kinetic/trackpad scrolling settles so the language service never
+// replaces decoration sets in the middle of a paint-critical scroll burst.
+const SEMANTIC_VIEWPORT_DEBOUNCE_MS = 180;
 const MAX_COMPLETION_ITEMS = 500;
 const MAX_COMPLETION_TEXT = 20_000;
 const MAX_HOVER_TEXT = 6_000;
@@ -1074,7 +1078,7 @@ function semanticTokensPlugin(): Extension {
             "semanticTokensRange",
           )
         ) {
-          schedule(80);
+          schedule(SEMANTIC_VIEWPORT_DEBOUNCE_MS);
         }
       },
       destroy() {

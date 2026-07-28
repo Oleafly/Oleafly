@@ -337,7 +337,14 @@ export function Editor() {
             </div>
           ) : (
             <div className="relative min-h-0 flex-1 overflow-hidden">
-              <div className={cn("absolute inset-0", !wysiwyg && "hidden")}>
+              <div
+                aria-hidden={!wysiwyg}
+                inert={!wysiwyg ? true : undefined}
+                className={cn(
+                  "absolute inset-0",
+                  !wysiwyg && "invisible pointer-events-none select-none",
+                )}
+              >
                 <Suspense
                   fallback={
                     <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
@@ -348,9 +355,16 @@ export function Editor() {
                   <WysiwygEditor wysiwyg={wysiwyg} />
                 </Suspense>
               </div>
-              <div className={cn("absolute inset-0", wysiwyg && "hidden")}>
+              <div
+                aria-hidden={wysiwyg}
+                inert={wysiwyg ? true : undefined}
+                className={cn(
+                  "absolute inset-0",
+                  wysiwyg && "invisible pointer-events-none select-none",
+                )}
+              >
                 <EditorContextMenu>
-                  <CodeMirrorEditor />
+                  <CodeMirrorEditor active={!wysiwyg} />
                 </EditorContextMenu>
                 <SelectionActionMenu />
               </div>
