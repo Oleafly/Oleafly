@@ -309,7 +309,7 @@ export function TopToolbar() {
         ? { "data-e2e-project-id": projectId ?? undefined }
         : {})}
       className={cn(
-        "grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center border-b bg-background",
+        "relative z-20 grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center border-b bg-background",
         isMac && "pr-3",
         isMac && !fullscreen && "pl-[78px]",
         isMac && fullscreen && "pl-2"
