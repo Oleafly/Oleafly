@@ -339,7 +339,7 @@ function latexCompletion(
     );
   }
 
-  const reference = /\\(?:ref|eqref|pageref|autoref|[cC]ref|nameref)\*?\{[^{}]*?(?:,\s*)?([^,{}]*)$/u.exec(
+  const reference = /\\(?:ref|eqref|pageref|autoref|[cC]ref|cpageref|vref|Vref|labelcref|nameref|namecref|fref|sref|labelref)\*?\s*\{[^{}]*?(?:,\s*)?([^,{}]*)$/u.exec(
     before,
   );
   if (reference) {
@@ -574,7 +574,7 @@ function localReferenceDiagnostics(
     });
   };
 
-  const referencePattern = /\\(?:ref|eqref|pageref|autoref|cref|Cref|namecref|nameref|Vref|vref|fref|sref|labelref)\*?\s*(?:\[[^\]]*\]\s*)?\{([^{}]*)\}/gu;
+  const referencePattern = /\\(?:ref|eqref|pageref|autoref|cref|Cref|cpageref|namecref|nameref|labelcref|Vref|vref|fref|sref|labelref)\*?\s*(?:\[[^\]]*\]\s*)?\{([^{}]*)\}/gu;
   for (const match of text.matchAll(referencePattern)) {
     const body = match[1] ?? "";
     const bodyStart = (match.index ?? 0) + match[0].indexOf(body);

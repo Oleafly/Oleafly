@@ -11,6 +11,16 @@ import {
   diagnosticCardSource,
 } from "./diagnostic-card";
 
+// CodeMirror's delayed lint hover asks the DOM Range for layout rectangles.
+// jsdom intentionally has no layout engine, so provide the smallest safe
+// geometry shim for this behavior-only test and avoid an unhandled timer error.
+if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
+  Object.defineProperty(Range.prototype, "getClientRects", {
+    configurable: true,
+    value: () => [],
+  });
+}
+
 let view: EditorView | null = null;
 
 afterEach(() => {
