@@ -1,7 +1,4 @@
-import {
-  PROOFREADING_LIMITS,
-  scanMathExpressions,
-} from "@oleafly/editor";
+import { maskToProse, scanMathExpressions } from "@oleafly/editor";
 import { Extension, type Editor } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import {
@@ -25,12 +22,14 @@ import {
   cancelProofreading,
   proofreadDocument,
 } from "@/lib/proofreading/client";
+import { scrollVisualSelectionLocally } from "./scroll";
 import {
   ignoreWordForProject,
   ignoreWordGlobally,
   useDictionary,
 } from "@/lib/dictionary";
 import { useFilesStore } from "@/store/files";
+import { proofreadingPresentationDiagnostics } from "@/store/proofreading";
 import { useSettingsStore } from "@/store/settings";
 import { isWysiwygActive } from "./controller";
 
@@ -42,6 +41,20 @@ export interface VisualProofreadingIssue
   documentVersion: number;
   revision: number;
   requestGeneration: number;
+  rawBlockSource?: {
+    nodePosition: number;
+    sourceFrom: number;
+    sourceTo: number;
+    sourceSnapshot: string;
+  };
+}
+
+export interface VisualProofreadingIssueGroup {
+  current: VisualProofreadingIssue;
+  index: number;
+  count: number;
+  previous: VisualProofreadingIssue | null;
+  next: VisualProofreadingIssue | null;
 }
 
 interface VisualProofreadingState {
@@ -66,6 +79,13 @@ type VisualProofreadingMeta =
 interface ExtractedProse {
   text: string;
   map: number[];
+  rawBlockIndex: number[];
+  rawSourceOffset: number[];
+  rawBlocks: {
+    nodeFrom: number;
+    nodeTo: number;
+    source: string;
+  }[];
   blockedPrefix: number[];
   gapPrefix: number[];
 }
@@ -74,7 +94,6 @@ const visualProofreadingKey =
   new PluginKey<VisualProofreadingState>("visualProofreading");
 const VISUAL_PROOFREADING_DEBOUNCE_MS = 800;
 const VISUAL_PROOFREADING_COMPOSITION_RETRY_MS = 250;
-const MAX_VISUAL_PROOFREADING_DECORATIONS = 500;
 let issueListener:
   | ((issue: VisualProofreadingIssue | null) => void)
   | null = null;
@@ -105,21 +124,47 @@ function currentIdentity(): {
     : null;
 }
 
-function extractedProse(
+export function extractVisualProofreadingProse(
   doc: ProseMirrorNode,
   format: ProofreadingFormat,
-  maxCharacters: number,
 ): ExtractedProse {
   let text = "";
   const map: number[] = [];
+  const rawBlockIndex: number[] = [];
+  const rawSourceOffset: number[] = [];
+  const rawBlocks: ExtractedProse["rawBlocks"] = [];
   const blocked: boolean[] = [];
   let previousEnd = -1;
 
   doc.descendants((node, position, parent) => {
-    if (text.length >= maxCharacters) return false;
+    if (node.type.name === "rawBlock") {
+      const source = String(node.attrs.source ?? "");
+      const prose = maskToProse(source);
+      if (!prose.prose.trim()) return false;
+      if (text && position > previousEnd) {
+        text += "\n";
+        map.push(position);
+        rawBlockIndex.push(-1);
+        rawSourceOffset.push(-1);
+        blocked.push(true);
+      }
+      const region = rawBlocks.push({
+        nodeFrom: position,
+        nodeTo: position + node.nodeSize,
+        source,
+      }) - 1;
+      for (let index = 0; index < prose.prose.length; index++) {
+        text += prose.prose[index];
+        map.push(position);
+        rawBlockIndex.push(region);
+        rawSourceOffset.push(prose.map[index] ?? -1);
+        blocked.push(false);
+      }
+      previousEnd = position + node.nodeSize;
+      return false;
+    }
     if (
       node.type.name === "rawInline" ||
-      node.type.name === "rawBlock" ||
       node.type.name === "codeBlock" ||
       (node.isAtom && !node.isText)
     ) {
@@ -136,11 +181,11 @@ function extractedProse(
     if (text && position > previousEnd) {
       text += "\n";
       map.push(position);
+      rawBlockIndex.push(-1);
+      rawSourceOffset.push(-1);
       blocked.push(true);
     }
-    const remaining = maxCharacters - text.length;
-    if (remaining <= 0) return false;
-    const visibleText = node.text.slice(0, remaining);
+    const visibleText = node.text;
     const mathRanges = scanMathExpressions(visibleText, {
       format: format === "latex" ? "latex" : "markdown",
     });
@@ -163,6 +208,8 @@ function extractedProse(
       // to ProseMirror positions.
       text += hidden ? " " : visibleText[index];
       map.push(position + index);
+      rawBlockIndex.push(-1);
+      rawSourceOffset.push(-1);
       blocked.push(hidden);
     }
     previousEnd = position + visibleText.length;
@@ -192,19 +239,32 @@ function extractedProse(
   for (let index = 0; index < map.length; index++) {
     blockedPrefix[index + 1] =
       blockedPrefix[index] + (blocked[index] ? 1 : 0);
+    const sameRawBlock =
+      index > 0 &&
+      rawBlockIndex[index] >= 0 &&
+      rawBlockIndex[index] === rawBlockIndex[index - 1] &&
+      rawSourceOffset[index] === rawSourceOffset[index - 1] + 1;
+    const contiguousDocumentText =
+      index > 0 &&
+      rawBlockIndex[index] < 0 &&
+      rawBlockIndex[index - 1] < 0 &&
+      map[index] === map[index - 1] + 1;
     gapPrefix[index + 1] =
       gapPrefix[index] +
-      (index > 0 && map[index] !== map[index - 1] + 1 ? 1 : 0);
+      (index > 0 && !sameRawBlock && !contiguousDocumentText ? 1 : 0);
   }
   return {
     text: characters.join(""),
     map,
+    rawBlockIndex,
+    rawSourceOffset,
+    rawBlocks,
     blockedPrefix,
     gapPrefix,
   };
 }
 
-function issuesAndDecorations(
+export function mapVisualProofreadingDiagnostics(
   doc: ProseMirrorNode,
   diagnostics: ProofreadingDiagnostic[],
   extraction: ExtractedProse,
@@ -221,10 +281,32 @@ function issuesAndDecorations(
 } {
   const issues: VisualProofreadingIssue[] = [];
   const decorations: Decoration[] = [];
-  for (const diagnostic of diagnostics.slice(
-    0,
-    MAX_VISUAL_PROOFREADING_DECORATIONS,
-  )) {
+  const rawBlockDecorations = new Map<
+    number,
+    {
+      from: number;
+      to: number;
+      firstIssue: VisualProofreadingIssue;
+      count: number;
+    }
+  >();
+  const decorationAttributes = (
+    issue: VisualProofreadingIssue,
+    count = 1,
+  ) => ({
+    class: `wysiwyg-proofreading is-${issue.source}`,
+    role: "button",
+    tabindex: "0",
+    "aria-label":
+      count > 1
+        ? `${count} proofreading findings in this raw block. ${issue.message}. Open suggestions.`
+        : `${issue.message}. Open proofreading suggestions.`,
+    "aria-keyshortcuts": "Enter Space",
+    "data-proofreading-issue": issue.id,
+    "data-proofreading-count": String(count),
+    title: issue.message,
+  });
+  for (const diagnostic of diagnostics) {
     if (
       diagnostic.from < 0 ||
       diagnostic.to <= diagnostic.from ||
@@ -247,8 +329,14 @@ function issuesAndDecorations(
     // ProseMirror structural boundary. A suggestion must apply to one exact,
     // contiguous, editable range.
     if (blocked > 0 || structuralGaps > 0) continue;
-    const from = extraction.map[diagnostic.from];
+    const mappedRawBlock = extraction.rawBlockIndex[diagnostic.from];
+    const rawBlock =
+      mappedRawBlock >= 0
+        ? extraction.rawBlocks[mappedRawBlock]
+        : undefined;
+    const from = rawBlock?.nodeFrom ?? extraction.map[diagnostic.from];
     const to =
+      rawBlock?.nodeTo ??
       (extraction.map[
         Math.min(diagnostic.to, extraction.map.length) - 1
       ] ?? from) + 1;
@@ -264,18 +352,46 @@ function issuesAndDecorations(
       documentVersion: identity.documentVersion,
       revision,
       requestGeneration,
+      ...(rawBlock
+        ? {
+            rawBlockSource: {
+              nodePosition: rawBlock.nodeFrom,
+              sourceFrom:
+                extraction.rawSourceOffset[diagnostic.from],
+              sourceTo:
+                extraction.rawSourceOffset[diagnostic.to - 1] + 1,
+              sourceSnapshot: rawBlock.source,
+            },
+          }
+        : {}),
     };
     issues.push(issue);
+    if (rawBlock) {
+      const existing = rawBlockDecorations.get(mappedRawBlock);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        rawBlockDecorations.set(mappedRawBlock, {
+          from,
+          to,
+          firstIssue: issue,
+          count: 1,
+        });
+      }
+    } else {
+      decorations.push(
+        Decoration.inline(from, to, decorationAttributes(issue)),
+      );
+    }
+  }
+  for (const rawBlock of rawBlockDecorations.values()) {
     decorations.push(
-      Decoration.inline(from, to, {
-        class: `wysiwyg-proofreading is-${diagnostic.source}`,
-        role: "button",
-        tabindex: "0",
-        "aria-label": `${diagnostic.message}. Open proofreading suggestions.`,
-        "aria-keyshortcuts": "Enter Space",
-        "data-proofreading-issue": id,
-        title: diagnostic.message,
-      }),
+      Decoration.node(
+        rawBlock.from,
+        rawBlock.to,
+        decorationAttributes(rawBlock.firstIssue, rawBlock.count),
+        { proofreadingCount: rawBlock.count },
+      ),
     );
   }
   return {
@@ -456,16 +572,13 @@ export const VisualProofreading = Extension.create({
               }
 
               const mode = settings.harper
-                ? "grammar"
+                ? settings.spellcheck
+                  ? "combined"
+                  : "grammar"
                 : "spelling";
-              const characterLimit =
-                mode === "grammar"
-                  ? PROOFREADING_LIMITS.grammarCharacters
-                  : PROOFREADING_LIMITS.spellingCharacters;
-              const extraction = extractedProse(
+              const extraction = extractVisualProofreadingProse(
                 doc,
                 identity.format,
-                characterLimit + 1,
               );
               const dictionary = useDictionary.getState();
               const ignoredWords = [
@@ -499,7 +612,8 @@ export const VisualProofreading = Extension.create({
                   const current = currentIdentity();
                   if (
                     destroyed ||
-                    result.status !== "ready" ||
+                    (result.status !== "ready" &&
+                      result.status !== "partial") ||
                     editorView.state.doc !== doc ||
                     requestGeneration !== request ||
                     visualProofreadingKey.getState(editorView.state)
@@ -512,6 +626,7 @@ export const VisualProofreading = Extension.create({
                   ) {
                     if (
                       result.status !== "ready" &&
+                      result.status !== "partial" &&
                       editorView.state.doc === doc &&
                       requestGeneration === request
                     ) {
@@ -519,9 +634,9 @@ export const VisualProofreading = Extension.create({
                     }
                     return;
                   }
-                  const painted = issuesAndDecorations(
+                  const painted = mapVisualProofreadingDiagnostics(
                     doc,
-                    result.diagnostics,
+                    proofreadingPresentationDiagnostics(result),
                     extraction,
                     identity,
                     revision,
@@ -571,6 +686,9 @@ export const VisualProofreading = Extension.create({
             publishIssue(null);
             schedule(0);
           };
+          const onPresentationChanged = () => {
+            schedule(0);
+          };
 
           window.addEventListener(
             "oleafly:proofreading-retry",
@@ -579,6 +697,10 @@ export const VisualProofreading = Extension.create({
           window.addEventListener(
             "oleafly:proofreading-settings-changed",
             onSettingsChanged,
+          );
+          window.addEventListener(
+            "oleafly:proofreading-presentation-changed",
+            onPresentationChanged,
           );
           schedule(0);
           return {
@@ -618,6 +740,10 @@ export const VisualProofreading = Extension.create({
               window.removeEventListener(
                 "oleafly:proofreading-settings-changed",
                 onSettingsChanged,
+              );
+              window.removeEventListener(
+                "oleafly:proofreading-presentation-changed",
+                onPresentationChanged,
               );
               cancelProofreading(
                 "visual",
@@ -673,6 +799,48 @@ function currentIssue(
   );
 }
 
+/**
+ * Groups findings sharing one semantic raw block while retaining one bounded
+ * ProseMirror node decoration for that block. The returned neighbors make
+ * every exact source-mapped finding keyboard accessible from its popover.
+ */
+export function groupVisualProofreadingIssues(
+  issues: readonly VisualProofreadingIssue[],
+  issue: VisualProofreadingIssue,
+): VisualProofreadingIssueGroup {
+  const siblings = issue.rawBlockSource
+    ? issues.filter(
+        (candidate) =>
+          candidate.rawBlockSource?.nodePosition ===
+          issue.rawBlockSource?.nodePosition,
+      )
+    : [issue];
+  const index = Math.max(
+    0,
+    siblings.findIndex((candidate) => candidate.id === issue.id),
+  );
+  return {
+    current: siblings[index] ?? issue,
+    index,
+    count: siblings.length,
+    previous: index > 0 ? (siblings[index - 1] ?? null) : null,
+    next:
+      index + 1 < siblings.length
+        ? (siblings[index + 1] ?? null)
+        : null,
+  };
+}
+
+export function visualProofreadingIssueGroup(
+  editor: Editor,
+  issue: VisualProofreadingIssue,
+): VisualProofreadingIssueGroup | null {
+  const active = currentIssue(editor, issue);
+  const state = visualProofreadingKey.getState(editor.state);
+  if (!active || !state) return null;
+  return groupVisualProofreadingIssues(state.issues, active);
+}
+
 export function isVisualProofreadingIssueCurrent(
   editor: Editor,
   issue: VisualProofreadingIssue,
@@ -687,6 +855,53 @@ export function applyVisualProofreadingSuggestion(
 ): boolean {
   const active = currentIssue(editor, issue);
   if (!active) return false;
+  if (active.rawBlockSource) {
+    const {
+      nodePosition,
+      sourceFrom,
+      sourceTo,
+      sourceSnapshot,
+    } = active.rawBlockSource;
+    const node = editor.state.doc.nodeAt(nodePosition);
+    const liveSource = String(node?.attrs.source ?? "");
+    if (
+      node?.type.name !== "rawBlock" ||
+      liveSource !== sourceSnapshot ||
+      sourceFrom < 0 ||
+      sourceTo <= sourceFrom ||
+      sourceTo > liveSource.length
+    ) {
+      return false;
+    }
+    const replacement =
+      suggestion.kind === 1 ? "" : suggestion.text;
+    const insertionPoint =
+      suggestion.kind === 2 ? sourceTo : sourceFrom;
+    const nextSource =
+      liveSource.slice(0, insertionPoint) +
+      replacement +
+      liveSource.slice(sourceTo);
+    const transaction = editor.state.tr.setNodeMarkup(
+      nodePosition,
+      undefined,
+      { ...node.attrs, source: nextSource },
+    );
+    transaction.setSelection(
+      TextSelection.near(
+        transaction.doc.resolve(
+          Math.min(
+            nodePosition + 1,
+            transaction.doc.content.size,
+          ),
+        ),
+      ),
+    );
+    editor.view.dispatch(transaction);
+    scrollVisualSelectionLocally(editor.view);
+    editor.view.focus();
+    publishIssue(null);
+    return true;
+  }
   const transaction = editor.state.tr;
   if (suggestion.kind === 2) {
     transaction.insertText(suggestion.text, active.to);
@@ -705,16 +920,15 @@ export function applyVisualProofreadingSuggestion(
       : suggestion.kind === 2
         ? active.to + suggestion.text.length
         : active.from + suggestion.text.length;
-  transaction
-    .setSelection(
-      TextSelection.near(
-        transaction.doc.resolve(
-          Math.min(cursor, transaction.doc.content.size),
-        ),
+  transaction.setSelection(
+    TextSelection.near(
+      transaction.doc.resolve(
+        Math.min(cursor, transaction.doc.content.size),
       ),
-    )
-    .scrollIntoView();
+    ),
+  );
   editor.view.dispatch(transaction);
+  scrollVisualSelectionLocally(editor.view);
   editor.view.focus();
   publishIssue(null);
   return true;

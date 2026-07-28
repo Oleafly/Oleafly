@@ -90,7 +90,7 @@ function createSearchPanel(view: EditorView): Panel {
       icon(expanded ? ICON_PATHS.chevronDown : ICON_PATHS.chevronRight),
     );
     expandBtn.setAttribute("aria-expanded", String(expanded));
-    if (expanded) replaceInput.focus();
+    if (expanded) replaceInput.focus({ preventScroll: true });
   });
   expandBtn.classList.add("cm-vs-expand");
   expandBtn.setAttribute("aria-controls", replaceRowId);
@@ -288,7 +288,7 @@ function createSearchPanel(view: EditorView): Panel {
     dom: wrap,
     top: true,
     mount() {
-      findInput.focus();
+      findInput.focus({ preventScroll: true });
       findInput.select();
       refresh();
     },

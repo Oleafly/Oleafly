@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { EditorState, type Extension } from "@codemirror/state";
 import { EditorView, lineNumbers } from "@codemirror/view";
-import { MergeView, goToNextChunk, goToPreviousChunk, unifiedMergeView } from "@codemirror/merge";
+import {
+  getChunks,
+  MergeView,
+  unifiedMergeView,
+} from "@codemirror/merge";
+import { scrollEditorPositionLocally } from "@oleafly/editor";
 import { ChevronDown, ChevronUp, Columns2, GitCompare, Rows3 } from "lucide-react";
 import { editorTheme } from "../cm/theme";
 import { languageForPath } from "../cm/languages";
@@ -167,7 +172,37 @@ export function DiffView() {
   const goChunk = (dir: "next" | "prev") => {
     const v = navViewRef.current;
     if (!v) return;
-    (dir === "next" ? goToNextChunk : goToPreviousChunk)(v);
+    const info = getChunks(v.state);
+    if (!info?.chunks.length || !info.side) return;
+    const chunks = info.chunks;
+    const head = v.state.selection.main.head;
+    let index = 0;
+    for (let i = chunks.length - 1; i >= 0; i--) {
+      const chunk = chunks[i];
+      const [from, to] =
+        info.side === "b"
+          ? [chunk.fromB, chunk.toB]
+          : [chunk.fromA, chunk.toA];
+      if (to < head) {
+        index = i + 1;
+        break;
+      }
+      if (from <= head) {
+        if (chunks.length === 1) return;
+        index = i + (dir === "prev" ? 0 : 1);
+        break;
+      }
+    }
+    const offset =
+      dir === "prev" ? chunks.length - 1 : 0;
+    const next = chunks[(index + offset) % chunks.length];
+    const from =
+      info.side === "b" ? next.fromB : next.fromA;
+    v.dispatch({
+      selection: { anchor: from },
+      userEvent: "select.byChunk",
+    });
+    scrollEditorPositionLocally(v, from);
     v.focus();
   };
 

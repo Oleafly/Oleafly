@@ -2,11 +2,16 @@
 import {
   act,
   render,
-  screen,
   waitFor,
 } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+const sonner = vi.hoisted(() => ({
+  dismiss: vi.fn(),
+  error: vi.fn(),
+}));
+vi.mock("sonner", () => ({
+  toast: sonner,
+}));
 import { LATEX_ENGINE, UNKNOWN_ENGINE } from "@/lib/document-engine";
 import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
@@ -21,6 +26,7 @@ import {
 } from "./LanguageServiceRuntimeBoundary";
 
 afterEach(() => {
+  vi.clearAllMocks();
   useFilesStore.setState({
     projectId: null,
     mainDoc: "main.tex",
@@ -47,18 +53,22 @@ function deferredRuntimeModule() {
 describe("LanguageServiceRuntimeBoundary", () => {
   it("renders an accessible, actionable unavailable state without the deferred chunk", async () => {
     const reload = vi.fn();
-    const user = userEvent.setup();
     render(<LanguageServiceRuntimeUnavailable reload={reload} />);
 
-    const alert = screen.getByRole("alert", {
-      name: "Language analysis status",
+    await waitFor(() => {
+      expect(sonner.error).toHaveBeenCalledWith(
+        expect.stringContaining("Language analysis is unavailable"),
+        expect.objectContaining({
+          action: expect.objectContaining({
+            label: "Reload Oleafly",
+          }),
+        }),
+      );
     });
-    expect(alert).toHaveTextContent(
-      "Language analysis is unavailable",
-    );
-    await user.click(
-      screen.getByRole("button", { name: "Reload Oleafly" }),
-    );
+    const latest = sonner.error.mock.calls.at(-1) as
+      | [string, { action?: { onClick: () => void } }]
+      | undefined;
+    latest?.[1].action?.onClick();
     expect(reload).toHaveBeenCalledTimes(1);
   });
 

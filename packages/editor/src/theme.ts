@@ -18,6 +18,8 @@ const chromeTheme = EditorView.theme({
   ".cm-scroller": {
     fontFamily: "var(--cm-font-family, var(--font-mono))",
     lineHeight: "1.6",
+    minHeight: "0",
+    overflow: "auto",
   },
   ".cm-content": {
     caretColor: "var(--cm-cursor, var(--primary))",

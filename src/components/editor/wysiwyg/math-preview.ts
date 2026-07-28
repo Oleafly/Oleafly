@@ -49,7 +49,6 @@ interface PreviewTarget {
 
 const VISUAL_PREVIEW_DEBOUNCE_MS = 180;
 const VISUAL_OVERSCAN_POSITIONS = 1_500;
-const MAX_VISUAL_PREVIEWS = 80;
 const visualMathPreviewKey = new PluginKey<VisualMathState>(
   "visualMathPreview",
 );
@@ -123,7 +122,6 @@ function targetsForDoc(
   const sourceDecorations: Decoration[] = [];
 
   doc.descendants((node, position) => {
-    if (targets.length >= MAX_VISUAL_PREVIEWS) return false;
     const nodeEnd = position + node.nodeSize;
     if (nodeEnd < viewport.from || position > viewport.to) return false;
 
@@ -151,7 +149,6 @@ function targetsForDoc(
           anchor: nodeEnd,
           rawInlinePosition: position,
         });
-        if (targets.length >= MAX_VISUAL_PREVIEWS) break;
       }
       return false;
     }
@@ -179,7 +176,6 @@ function targetsForDoc(
         sourceTo,
         anchor: sourceTo,
       });
-      if (targets.length >= MAX_VISUAL_PREVIEWS) break;
     }
     return false;
   });
@@ -188,30 +184,75 @@ function targetsForDoc(
 }
 
 function previewWidget(
+  view: EditorView,
   target: PreviewTarget,
   identity: string,
   isCurrent: () => boolean,
+  eager: boolean,
 ): Decoration {
+  let rawSourceNode: HTMLElement | null = null;
   return Decoration.widget(
     target.anchor,
     () => {
       const dom = document.createElement("span");
       dom.classList.add("wysiwyg-math-preview");
+      if (target.rawInlinePosition !== undefined) {
+        const sourceNode = view.nodeDOM(target.rawInlinePosition);
+        rawSourceNode =
+          sourceNode instanceof HTMLElement ? sourceNode : null;
+      }
       const mounted = mountMathPreview(dom, {
         expression: target.expression,
         identity,
         isCurrent,
+        eager,
+        onPaint: (result) => {
+          if (result.status === "ready") {
+            rawSourceNode?.setAttribute(
+              "data-math-preview-mounted",
+              "true",
+            );
+          } else {
+            rawSourceNode?.removeAttribute(
+              "data-math-preview-mounted",
+            );
+          }
+        },
       });
       mountedPreviews.set(dom, mounted);
+      if (target.rawInlinePosition !== undefined) {
+        const rawInlinePosition = target.rawInlinePosition;
+        const edit = document.createElement("button");
+        edit.type = "button";
+        edit.className = "math-preview-edit";
+        edit.textContent = "Edit";
+        edit.setAttribute("aria-label", "Edit exact math source");
+        edit.addEventListener("click", () => {
+          const sourceNode = view.nodeDOM(rawInlinePosition);
+          (
+            sourceNode instanceof HTMLElement
+              ? sourceNode.querySelector<HTMLButtonElement>(
+                  ".raw-inline-edit",
+                )
+              : null
+          )?.click();
+        });
+        dom.append(edit);
+      }
       return dom;
     },
     {
       side: 1,
       relaxedSide: true,
       key: `${identity}:${target.anchor}:${target.expression.source}`,
+      stopEvent: (event) =>
+        event.target instanceof Element &&
+        !!event.target.closest(".math-preview-edit"),
       destroy: (node) => {
         mountedPreviews.get(node)?.destroy();
         mountedPreviews.delete(node);
+        rawSourceNode?.removeAttribute("data-math-preview-mounted");
+        rawSourceNode = null;
       },
     },
   );
@@ -229,8 +270,8 @@ function decorationsForView(
     format,
     viewport,
   );
-  const widgets = targets.map((target) =>
-    previewWidget(target, identity, isCurrent),
+  const widgets = targets.map((target, index) =>
+    previewWidget(view, target, identity, isCurrent, index < 24),
   );
   return DecorationSet.create(view.state.doc, [
     ...sourceDecorations,
@@ -327,6 +368,10 @@ export const VisualMathPreview = Extension.create({
                 return;
               }
 
+              // Viewport/resize scheduling invalidates the previous
+              // `isCurrent` closure. Include its request generation in the
+              // widget key so ProseMirror cannot retain the invalidated DOM
+              // merely because the expression and document revision match.
               const identity = `${documentIdentity?.path ?? "unsupported"}:${revision}:${request}`;
               const isCurrent = () => {
                 const latestState = visualMathPreviewKey.getState(
@@ -370,9 +415,17 @@ export const VisualMathPreview = Extension.create({
           window.addEventListener("resize", onViewportChange, {
             passive: true,
           });
+          let observedWidth = editorView.dom.getBoundingClientRect().width;
           const resizeObserver =
             typeof ResizeObserver === "function"
-              ? new ResizeObserver(onViewportChange)
+              ? new ResizeObserver((entries) => {
+                  const width =
+                    entries[entries.length - 1]?.contentRect.width ??
+                    editorView.dom.getBoundingClientRect().width;
+                  if (Math.abs(width - observedWidth) < 1) return;
+                  observedWidth = width;
+                  onViewportChange();
+                })
               : null;
           resizeObserver?.observe(editorView.dom);
           schedule(0);

@@ -39,12 +39,14 @@ interface PreviewPayload {
   doc: Text;
   revision: number;
   requestGeneration: number;
+  coverage: Array<{ from: number; to: number }>;
   decorations: DecorationSet;
 }
 
-const PREVIEW_DEBOUNCE_MS = 160;
-const MAX_VISIBLE_EXPRESSIONS = 80;
-const SCAN_OVERSCAN = 8_192;
+const EDIT_PREVIEW_DEBOUNCE_MS = 160;
+const VIEWPORT_PREVIEW_DEBOUNCE_MS = 32;
+const WHOLE_DOCUMENT_SCAN_LIMIT = 262_144;
+const SCAN_OVERSCAN = 65_536;
 const setMathDecorations = StateEffect.define<PreviewPayload>();
 
 function protectedSyntaxRanges(
@@ -72,6 +74,9 @@ function protectedSyntaxRanges(
 }
 
 function viewportWindows(view: EditorView): Array<{ from: number; to: number }> {
+  if (view.state.doc.length <= WHOLE_DOCUMENT_SCAN_LIMIT) {
+    return [{ from: 0, to: view.state.doc.length }];
+  }
   const windows = view.visibleRanges
     .map((range) => {
       const from = Math.max(0, range.from - SCAN_OVERSCAN);
@@ -97,10 +102,11 @@ function viewportWindows(view: EditorView): Array<{ from: number; to: number }> 
 function visibleExpressions(
   view: EditorView,
   format: MathSourceFormat,
+  windows = viewportWindows(view),
 ): MathExpression[] {
   const seen = new Set<string>();
   const found: MathExpression[] = [];
-  for (const window of viewportWindows(view)) {
+  for (const window of windows) {
     const text = view.state.doc.sliceString(window.from, window.to);
     const excluded = protectedSyntaxRanges(view, window.from, window.to).map(
       (range) => ({
@@ -119,15 +125,10 @@ function visibleExpressions(
         bodyFrom: localExpression.bodyFrom + window.from,
         bodyTo: localExpression.bodyTo + window.from,
       };
-      const visible = view.visibleRanges.some(
-        (range) => expression.to >= range.from && expression.from <= range.to,
-      );
-      if (!visible) continue;
       const key = `${expression.from}:${expression.to}`;
       if (seen.has(key)) continue;
       seen.add(key);
       found.push(expression);
-      if (found.length >= MAX_VISIBLE_EXPRESSIONS) return found;
     }
   }
   return found;
@@ -158,7 +159,12 @@ class MathPreviewWidget extends WidgetType {
     const mounted = mountMathPreview(dom, {
       expression: this.expression,
       identity: this.identity,
-      isCurrent: () => this.alive,
+      isCurrent: () => this.alive && this.isCurrent(),
+      // CodeMirror only mounts widgets in its rendered viewport. Rendering
+      // synchronously here avoids painting a small loading label first and
+      // replacing it with wider KaTeX on the next frame, which otherwise
+      // reflows wrapped source lines during a fast scroll.
+      eager: true,
     });
     this.mounted.set(dom, mounted);
     return dom;
@@ -169,6 +175,22 @@ class MathPreviewWidget extends WidgetType {
     this.mounted.get(dom)?.destroy();
     this.mounted.delete(dom);
   }
+
+  ignoreEvent(): boolean {
+    // Let CodeMirror place the caret around the non-editable decoration.
+    return false;
+  }
+
+  eq(other: MathPreviewWidget): boolean {
+    return (
+      this.identity === other.identity &&
+      this.sourceFrom === other.sourceFrom &&
+      this.sourceTo === other.sourceTo &&
+      this.expression.body === other.expression.body &&
+      this.expression.display === other.expression.display &&
+      this.expression.status === other.expression.status
+    );
+  }
 }
 
 function buildDecorations(
@@ -176,9 +198,10 @@ function buildDecorations(
   format: MathSourceFormat,
   identity: string,
   isCurrent: () => boolean,
+  windows: Array<{ from: number; to: number }>,
 ): DecorationSet {
   const ranges = [];
-  for (const expression of visibleExpressions(view, format)) {
+  for (const expression of visibleExpressions(view, format, windows)) {
     ranges.push(
       Decoration.mark({
         class:
@@ -275,6 +298,7 @@ export function liveMathPreview(format: MathSourceFormat): Extension {
       private requestGeneration = 0;
       private timer: ReturnType<typeof setTimeout> | null = null;
       private destroyed = false;
+      private coverage: Array<{ from: number; to: number }> = [];
 
       constructor(readonly view: EditorView) {
         this.schedule(view, 0);
@@ -292,6 +316,7 @@ export function liveMathPreview(format: MathSourceFormat): Extension {
               payload.requestGeneration === this.requestGeneration
             ) {
               this.decorations = payload.decorations;
+              this.coverage = payload.coverage;
               appliedPreview = true;
             }
           }
@@ -300,13 +325,30 @@ export function liveMathPreview(format: MathSourceFormat): Extension {
         if (update.docChanged) {
           this.revision++;
           this.decorations = Decoration.none;
-          this.schedule(update.view);
-        } else if (update.viewportChanged && !appliedPreview) {
-          this.schedule(update.view);
+          this.coverage = [];
+          this.schedule(update.view, EDIT_PREVIEW_DEBOUNCE_MS);
+        } else if (
+          update.viewportChanged &&
+          !appliedPreview &&
+          !this.coversVisibleRanges(update.view)
+        ) {
+          this.schedule(update.view, VIEWPORT_PREVIEW_DEBOUNCE_MS);
         }
       }
 
-      private schedule(view: EditorView, delay = PREVIEW_DEBOUNCE_MS) {
+      private coversVisibleRanges(view: EditorView) {
+        return view.visibleRanges.every((visible) =>
+          this.coverage.some(
+            (covered) =>
+              visible.from >= covered.from && visible.to <= covered.to,
+          ),
+        );
+      }
+
+      private schedule(
+        view: EditorView,
+        delay = EDIT_PREVIEW_DEBOUNCE_MS,
+      ) {
         if (this.timer !== null) clearTimeout(this.timer);
         const doc = view.state.doc;
         const revision = this.revision;
@@ -321,24 +363,31 @@ export function liveMathPreview(format: MathSourceFormat): Extension {
           ) {
             return;
           }
-          const identity = `${revision}:${requestGeneration}`;
+          const coverage = viewportWindows(view);
+          const identity = `${revision}`;
           const isCurrent = () =>
             !this.destroyed &&
             view.state.doc === doc &&
-            this.revision === revision &&
-            this.requestGeneration === requestGeneration;
+            this.revision === revision;
           const decorations = buildDecorations(
             view,
             format,
             identity,
             isCurrent,
+            coverage,
           );
-          if (!isCurrent()) return;
+          if (
+            !isCurrent() ||
+            this.requestGeneration !== requestGeneration
+          ) {
+            return;
+          }
           view.dispatch({
             effects: setMathDecorations.of({
               doc,
               revision,
               requestGeneration,
+              coverage,
               decorations,
             }),
           });
@@ -351,6 +400,7 @@ export function liveMathPreview(format: MathSourceFormat): Extension {
         if (this.timer !== null) clearTimeout(this.timer);
         this.timer = null;
         this.decorations = Decoration.none;
+        this.coverage = [];
       }
     },
     {

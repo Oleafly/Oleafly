@@ -561,6 +561,7 @@ export interface PdfLinkScrollRequest {
   destArray?: unknown[];
   allowNegativeOffset?: boolean;
   ignoreDestinationZoom?: boolean;
+  behavior?: ScrollBehavior;
 }
 
 export interface PdfLinkViewerAdapter {
@@ -1444,10 +1445,10 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       if (pageScroller) {
         pageScroller.scrollTo({
           top: Math.max(0, wrap.offsetTop),
-          behavior: prefersReducedMotion() ? "auto" : "smooth",
+          behavior:
+            request.behavior ??
+            (prefersReducedMotion() ? "auto" : "smooth"),
         });
-      } else if (typeof wrap.scrollIntoView === "function") {
-        wrap.scrollIntoView({ block: "nearest" });
       }
 
       // Honor the vertical component of common PDF destinations after exact
@@ -1745,7 +1746,10 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         const doc = docRef.current;
         if (!doc) return;
         const clamped = Math.max(1, Math.min(doc.numPages, Math.floor(n)));
-        scrollPageIntoView({ pageNumber: clamped });
+        // Toolbar page navigation can be repeated faster than a smooth-scroll
+        // animation completes. Jump atomically so a previous animation cannot
+        // report an intermediate page and make rapid next/previous skip.
+        scrollPageIntoView({ pageNumber: clamped, behavior: "auto" });
       },
       getFitScale: (mode) => {
         const viewport = containerRef.current?.parentElement;

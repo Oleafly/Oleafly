@@ -6,6 +6,7 @@ import {
   type EditorView,
 } from "@tiptap/pm/view";
 import { currentProjectIntelligence } from "@/lib/project-intelligence/current";
+import { latexCommandKeyTokens } from "@/lib/project-intelligence/analyze-file";
 import { navigateToProjectRange } from "@/lib/project-intelligence/navigation";
 import {
   referencesFor,
@@ -27,6 +28,8 @@ interface VisualToken {
   key: string;
   kind: VisualTokenKind;
   useId?: string;
+  sourceFrom?: number;
+  sourceTo?: number;
 }
 
 interface VisualPluginState {
@@ -84,20 +87,13 @@ function lookupFor(snapshot: ProjectIntelligenceSnapshot): VisualLookup {
 }
 
 
-function tokenFromRawInline(source: string): VisualToken | null {
-  const citation = /\\(?:[A-Za-z]*cite[A-Za-z]*|nocite)\*?(?:\[[^\]]*\])*\{\s*([^,}\s]+)/u.exec(
-    source,
-  );
-  if (citation?.[1]) {
-    return { key: citation[1], kind: "citation" };
-  }
-  const reference = /\\(?:ref|eqref|pageref|autoref|[cC]ref|namecref|nameref|vref|Vref|fref|sref|labelref)\*?\{\s*([^,}\s]+)/u.exec(
-    source,
-  );
-  if (reference?.[1]) {
-    return { key: reference[1], kind: "reference" };
-  }
-  return null;
+export function tokensFromRawInline(source: string): readonly VisualToken[] {
+  return latexCommandKeyTokens(source).map((token) => ({
+    key: token.name,
+    kind: token.kind,
+    sourceFrom: token.from,
+    sourceTo: token.to,
+  }));
 }
 
 function usesForToken(
@@ -215,9 +211,63 @@ function tokenAttributes(
     title: `${noun} “${token.key}” · ${state}\nClick/F12: go to definition · Shift-click/Shift-F12: find references`,
     "data-project-intelligence-key": token.key,
     "data-project-intelligence-kind": token.kind,
+    ...(token.sourceFrom !== undefined
+      ? {
+          "data-project-intelligence-source-from": String(
+            token.sourceFrom,
+          ),
+        }
+      : {}),
+    ...(token.sourceTo !== undefined
+      ? {
+          "data-project-intelligence-source-to": String(token.sourceTo),
+        }
+      : {}),
     ...(token.useId
       ? { "data-project-intelligence-use-id": token.useId }
       : {}),
+  };
+}
+
+export function rawInlineTokenAttributes(
+  snapshot: ProjectIntelligenceSnapshot,
+  path: string,
+  source: string,
+): Record<string, string> | null {
+  const tokens = tokensFromRawInline(source);
+  if (tokens.length === 0) return null;
+  const states = tokens.map((input) => {
+    const token = resolvedToken(snapshot, path, input);
+    return {
+      token,
+      resolution: resolutionFor(snapshot, path, token),
+    };
+  });
+  const rank = {
+    unresolved: 0,
+    duplicate: 1,
+    resolved: 2,
+  } as const;
+  const selected = [...states].sort(
+    (left, right) => rank[left.resolution] - rank[right.resolution],
+  )[0];
+  return {
+    ...tokenAttributes(snapshot, path, selected.token),
+    "data-project-intelligence-token-states": JSON.stringify(
+      states.map(({ token, resolution }) => ({
+        key: token.key,
+        kind: token.kind,
+        from: token.sourceFrom,
+        to: token.sourceTo,
+        resolution,
+      })),
+    ),
+    "aria-label": states
+      .map(
+        ({ token, resolution }) =>
+          `${token.kind === "citation" ? "Citation" : "Reference"} ${token.key}, ${resolution}`,
+      )
+      .join(". "),
   };
 }
 
@@ -251,13 +301,17 @@ function decorationsFor(state: EditorState): DecorationSet {
   const decorations: Decoration[] = [];
   state.doc.descendants((node, position) => {
     if (node.type.name === "rawInline") {
-      const token = tokenFromRawInline(String(node.attrs.source ?? ""));
-      if (token) {
+      const attributes = rawInlineTokenAttributes(
+        current.snapshot,
+        current.path,
+        String(node.attrs.source ?? ""),
+      );
+      if (attributes) {
         decorations.push(
           Decoration.node(
             position,
             position + node.nodeSize,
-            tokenAttributes(current.snapshot, current.path, token),
+            attributes,
           ),
         );
       }
@@ -321,7 +375,30 @@ function tokenAtSelection(view: EditorView): VisualToken | null {
   const selection = view.state.selection;
   const node = selection.$from.nodeAfter ?? selection.$from.nodeBefore;
   if (node?.type.name === "rawInline") {
-    return tokenFromRawInline(String(node.attrs.source ?? ""));
+    const tokens = tokensFromRawInline(String(node.attrs.source ?? ""));
+    if (tokens.length === 0) return null;
+    const current = currentProjectIntelligence();
+    if (!current) return tokens[0];
+    return [...tokens].sort(
+      (left, right) => {
+        const leftResolution = resolutionFor(
+          current.snapshot,
+          current.path,
+          left,
+        );
+        const rightResolution = resolutionFor(
+          current.snapshot,
+          current.path,
+          right,
+        );
+        const rank = {
+          unresolved: 0,
+          duplicate: 1,
+          resolved: 2,
+        } as const;
+        return rank[leftResolution] - rank[rightResolution];
+      },
+    )[0];
   }
 
   const parent = selection.$from.parent;

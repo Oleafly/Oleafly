@@ -53,7 +53,10 @@ import {
   COMPILE_CHECKPOINT_VERSION,
   fingerprintCompileOutput,
 } from "@/lib/compile-checkpoint";
-import type { PreviewWindowState } from "@/lib/preview-window";
+import {
+  isPreviewWindowState,
+  type PreviewWindowState,
+} from "@/lib/preview-window";
 import { PreviewWindow } from "./PreviewWindow";
 
 /**
@@ -66,12 +69,13 @@ function successState(
   projectId: string,
   value: number,
   outputRevision: number,
+  projectRevision = outputRevision,
 ): PreviewWindowState {
   const identity = {
     projectId,
     mainDocument: "main.tex",
-    projectRevision: outputRevision,
-    requestGeneration: outputRevision,
+    projectRevision,
+    requestGeneration: projectRevision,
   };
   return {
     identity,
@@ -122,6 +126,35 @@ beforeEach(() => {
 });
 
 describe("detached preview request identity", () => {
+  it("requires checkpoints to match the advertised request identity", () => {
+    const accepted = successState("alpha", 1, 10, 10);
+    expect(isPreviewWindowState(accepted)).toBe(true);
+    expect(
+      isPreviewWindowState({
+        ...accepted,
+        status: "compiling",
+        checkpoint: null,
+      }),
+    ).toBe(true);
+    expect(
+      isPreviewWindowState({
+        ...accepted,
+        status: "compiling",
+        identity: {
+          ...accepted.identity,
+          projectRevision: 11,
+          requestGeneration: 11,
+        },
+      }),
+    ).toBe(false);
+    expect(
+      isPreviewWindowState({
+        ...accepted,
+        checkpoint: null,
+      }),
+    ).toBe(false);
+  });
+
   it("clears the previous document immediately when the project is retargeted", async () => {
     const alpha = deferred<ArrayBuffer>();
     const beta = deferred<ArrayBuffer>();
@@ -190,6 +223,39 @@ describe("detached preview request identity", () => {
     emitRefresh(successState("beta", 2, 2));
     await screen.findByText("PDF unavailable");
     expect(screen.queryByTestId("detached-pdf-bytes")).not.toBeInTheDocument();
+  });
+
+  it("rejects a delayed success after a newer project revision is announced", async () => {
+    mocks.readCompiledPdf.mockResolvedValue(buffer(1));
+    render(<PreviewWindow />);
+    const accepted = successState("alpha", 1, 10, 10);
+    emitRefresh(accepted);
+    await screen.findByText("1");
+
+    emitRefresh({
+      identity: {
+        projectId: "alpha",
+        mainDocument: "main.tex",
+        projectRevision: 12,
+        requestGeneration: 12,
+      },
+      status: "compiling",
+      // In-progress identities never claim an older success checkpoint.
+      // The viewer retains the old bytes independently and marks them stale.
+      checkpoint: null,
+    });
+
+    emitRefresh(successState("alpha", 2, 20, 11));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mocks.readCompiledPdf).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("detached-pdf-bytes")).toHaveTextContent("1");
+    expect(
+      screen.getByText("Stale · non-current preview"),
+    ).toBeInTheDocument();
   });
 });
 

@@ -1,4 +1,4 @@
-import * as React from "react";
+import type * as React from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -13,12 +13,11 @@ import { cn } from "@/lib/utils";
 export function ButtonGroup({
   className,
   ...props
-}: React.ComponentProps<"div">) {
+}: React.ComponentProps<"fieldset">) {
   return (
-    <div
-      role="group"
+    <fieldset
       className={cn(
-        "flex items-center",
+        "m-0 flex min-w-0 items-center border-0 p-0",
         "[&>button:not(:first-child)]:rounded-l-none [&>button:not(:last-child)]:rounded-r-none",
         // A focus ring must not be clipped by the neighbour that follows it.
         "[&>button:focus-visible]:relative [&>button:focus-visible]:z-10",

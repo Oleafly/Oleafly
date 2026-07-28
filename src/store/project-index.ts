@@ -38,6 +38,7 @@ export interface IndexStore {
   requestGeneration: number;
   intelligenceState: ProjectIntelligenceState;
   rebuildFromDisk: () => Promise<void>;
+  invalidateFilesystem: () => void;
   updateFile: (path: string, text: string) => void;
   deleteFile: (path: string) => void;
   renameFile: (from: string, to: string) => void;
@@ -172,6 +173,7 @@ function sameIdentity(
 function runningState(
   previous: ProjectIntelligenceState,
   identity: ProjectIntelligenceIdentity,
+  currentFileFallbackAllowed = false,
 ): ProjectIntelligenceState {
   const retained = previous.data;
   return {
@@ -179,6 +181,7 @@ function runningState(
     identity,
     data: retained,
     stale: retained !== null,
+    currentFileFallbackAllowed,
     reason: retained
       ? "Project content changed; retained analysis is stale while the current revision runs."
       : "Project intelligence is analyzing the current revision.",
@@ -332,6 +335,7 @@ export const useIndexStore = create<IndexStore>((set, get) => {
       readonly mainDocument?: string;
       readonly immediate?: boolean;
       readonly texts?: Record<string, string>;
+      readonly currentFileFallbackAllowed?: boolean;
     },
   ): ProjectIntelligenceIdentity => {
     ensureProject(projectId);
@@ -424,6 +428,7 @@ export const useIndexStore = create<IndexStore>((set, get) => {
       intelligenceState: runningState(
         state.intelligenceState,
         identity,
+        options.currentFileFallbackAllowed ?? false,
       ),
     }));
     const dispatch = () => {
@@ -444,6 +449,7 @@ export const useIndexStore = create<IndexStore>((set, get) => {
       readonly immediate?: boolean;
       readonly removedPaths?: readonly string[];
       readonly texts?: Record<string, string>;
+      readonly currentFileFallbackAllowed?: boolean;
     } = {},
   ): void => {
     const current = get();
@@ -489,6 +495,8 @@ export const useIndexStore = create<IndexStore>((set, get) => {
         ? {}
         : { immediate: options.immediate }),
       ...(options.texts ? { texts: options.texts } : {}),
+      currentFileFallbackAllowed:
+        options.currentFileFallbackAllowed ?? false,
     });
   };
 
@@ -500,6 +508,34 @@ export const useIndexStore = create<IndexStore>((set, get) => {
     projectRevision: 0,
     requestGeneration: 0,
     intelligenceState: initialIntelligenceState(),
+
+    invalidateFilesystem: () => {
+      const projectId = useFilesStore.getState().projectId;
+      if (!projectId) return;
+      ensureProject(projectId);
+      // Invalidate synchronously when the file tree changes. The debounced
+      // disk read may follow, but an old graph must not remain current during
+      // that debounce window or while an older worker response is in flight.
+      rebuildSequence++;
+      stopAnalysisTimer();
+      projectRevision = Math.max(1, projectRevision + 1);
+      externalContribution = null;
+      const identity: ProjectIntelligenceIdentity = {
+        projectId,
+        projectRevision,
+        requestGeneration: ++requestGeneration,
+      };
+      set((state) => ({
+        building: true,
+        projectRevision,
+        requestGeneration,
+        intelligenceState: {
+          ...runningState(state.intelligenceState, identity),
+          reason:
+            "Project files changed; the source graph is being refreshed.",
+        },
+      }));
+    },
 
     rebuildFromDisk: async () => {
       const sequence = ++rebuildSequence;
@@ -654,13 +690,21 @@ export const useIndexStore = create<IndexStore>((set, get) => {
       ensureProject(projectId);
       const current = get();
       if (current.texts[path] === text) return;
+      const currentFileFallbackAllowed =
+        current.intelligenceState.currentFileFallbackAllowed === true ||
+        (!current.intelligenceState.stale &&
+          (current.intelligenceState.status === "success" ||
+            current.intelligenceState.status === "partial"));
       rebuildSequence++;
       nextSourceRevision(path);
       projectRevision = Math.max(1, projectRevision + 1);
       externalContribution = null;
       unreadableFiles.delete(path);
       const texts = { ...current.texts, [path]: text };
-      scheduleCurrentTexts(projectId, [path], { texts });
+      scheduleCurrentTexts(projectId, [path], {
+        texts,
+        currentFileFallbackAllowed,
+      });
     },
 
     deleteFile: (rawPath) => {

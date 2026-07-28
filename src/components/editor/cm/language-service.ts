@@ -480,10 +480,7 @@ export const languageServiceCompletion: CompletionSource = async (
   }
   const text = context.state.doc.toString();
   const current = currentDocument(path, text);
-  if (
-    !current ||
-    !current.session.client.supports("completion")
-  ) {
+  if (!current?.session.client.supports("completion")) {
     return null;
   }
   const token = context.matchBefore(
@@ -594,7 +591,7 @@ const languageServiceHoverSource = async (
   if (!path || !LANGUAGE_SERVICE_PATH.test(path)) return null;
   const text = view.state.doc.toString();
   const current = currentDocument(path, text);
-  if (!current || !current.session.client.supports("hover")) {
+  if (!current?.session.client.supports("hover")) {
     return null;
   }
   const abort = new AbortController();
@@ -665,8 +662,7 @@ function currentLanguageServiceDiagnostics(
   const entry =
     snapshot.diagnosticsByUri[current.document.uri];
   if (
-    !entry ||
-    entry.status !== "acknowledged" ||
+    entry?.status !== "acknowledged" ||
     snapshot.identity.projectId !== current.session.projectId ||
     snapshot.identity.projectRevision !==
       current.session.projectRevision ||
@@ -976,10 +972,7 @@ function semanticTokensPlugin(): Extension {
         return;
       }
       const current = currentDocument(path, text);
-      if (
-        !current ||
-        !current.session.client.supports("semanticTokensFull")
-      ) {
+      if (!current?.session.client.supports("semanticTokensFull")) {
         view.dispatch({ effects: installSemanticTokens.of(null) });
         return;
       }

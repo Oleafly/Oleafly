@@ -71,16 +71,71 @@ export function getCurrentLine(): number | null {
   return v.state.doc.lineAt(v.state.selection.main.head).number;
 }
 
+/**
+ * Centers a document position by moving only CodeMirror's own scroll surface.
+ * This also serves embedded and diff editors that aren't the global editor.
+ */
+export function scrollEditorPositionLocally(
+  v: EditorView,
+  position: number,
+) {
+  const target = Math.min(
+    Math.max(0, position),
+    v.state.doc.length,
+  );
+  v.requestMeasure({
+    read(currentView) {
+      const block = currentView.lineBlockAt(target);
+      return Math.max(
+        0,
+        block.top -
+          (currentView.scrollDOM.clientHeight - block.height) / 2,
+      );
+    },
+    write(scrollTop, currentView) {
+      currentView.scrollDOM.scrollTop = scrollTop;
+    },
+  });
+}
+
+/**
+ * Reveal a source range without invoking the browser's ancestor-scrolling
+ * algorithm.
+ *
+ * CodeMirror's `scrollIntoView` effect is useful in ordinary pages, but a
+ * desktop split-pane shell must never allow a source jump to move the document
+ * root. In WebKit, a far-away PDF/outline jump can otherwise center the editor
+ * by scrolling every scrollable ancestor, which pulls the application toolbar
+ * above the viewport. Measure the document position through CodeMirror, then
+ * move only its own `.cm-scroller`.
+ */
+export function revealEditorRange(
+  v: EditorView,
+  from: number,
+  to: number = from,
+) {
+  const max = v.state.doc.length;
+  const a = Math.min(Math.max(0, from), max);
+  const b = Math.min(Math.max(a, to), max);
+
+  v.dispatch({
+    selection: EditorSelection.single(a, b),
+  });
+
+  scrollEditorPositionLocally(v, a);
+
+  // Focusing the content DOM directly lets us request the platform's
+  // prevent-scroll behavior. The selection and editor-local scroll have
+  // already been handled above.
+  v.contentDOM.focus({ preventScroll: true });
+}
+
 export function gotoLine(line: number) {
   const v = getEditorView();
   if (!v) return;
   const n = Math.min(Math.max(1, line), v.state.doc.lines);
   const lineObj = v.state.doc.line(n);
-  v.dispatch({
-    selection: EditorSelection.single(lineObj.from),
-    effects: EditorView.scrollIntoView(lineObj.from, { y: "center" }),
-  });
-  v.focus();
+  revealEditorRange(v, lineObj.from);
 }
 
 export function selectWordNearLine(line: number, word: string): boolean {
@@ -115,11 +170,7 @@ export function selectWordNearLine(line: number, word: string): boolean {
     for (const ln of d === 0 ? [target] : [target - d, target + d]) {
       const m = findInLine(ln);
       if (m) {
-        v.dispatch({
-          selection: EditorSelection.single(m.from, m.to),
-          effects: EditorView.scrollIntoView(m.from, { y: "center" }),
-        });
-        v.focus();
+        revealEditorRange(v, m.from, m.to);
         return true;
       }
     }
@@ -133,11 +184,7 @@ export function gotoRange(from: number, to: number) {
   const max = v.state.doc.length;
   const a = Math.min(Math.max(0, from), max);
   const b = Math.min(Math.max(0, to), max);
-  v.dispatch({
-    selection: EditorSelection.single(a, b),
-    effects: EditorView.scrollIntoView(a, { y: "center" }),
-  });
-  v.focus();
+  revealEditorRange(v, a, b);
 }
 
 export function insertAtCursor(text: string) {

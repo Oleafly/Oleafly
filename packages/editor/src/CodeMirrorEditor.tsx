@@ -29,6 +29,7 @@ import {
   type CompletionSource,
 } from "@codemirror/autocomplete";
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
+import { setDiagnostics } from "@codemirror/lint";
 import { vim } from "@replit/codemirror-vim";
 
 import { vscodeSearch } from "./search-panel";
@@ -244,7 +245,43 @@ export function CodeMirrorEditor({
   // When the active file changes (or a version is restored), swap the document.
   useEffect(() => {
     const view = viewRef.current;
-    if (!view || !activePath) return;
+    if (!view) return;
+    if (!activePath) {
+      // A direct project switch keeps this React component mounted while the
+      // files store intentionally passes through an empty state. Treat that
+      // as a hard document boundary: otherwise the previous project's
+      // diagnostics and pending proofreading actions can survive until the
+      // next project opens another file with the same path (usually
+      // `main.tex`).
+      cancelSourceProofreading(prevPathRef.current ?? undefined);
+      suppressSyncRef.current = true;
+      view.dispatch(setDiagnostics(view.state, []));
+      view.dispatch({
+        changes: {
+          from: 0,
+          to: view.state.doc.length,
+          insert: "",
+        },
+        effects: [
+          langCompartmentRef.current!.reconfigure([]),
+          sourceToolsCompartmentRef.current!.reconfigure([]),
+          hostToolsCompartmentRef.current!.reconfigure([]),
+          spellCompartmentRef.current!.reconfigure([]),
+          historyCompartmentRef.current!.reconfigure([]),
+        ],
+      });
+      view.dispatch({
+        effects: historyCompartmentRef.current!.reconfigure(
+          history(),
+        ),
+      });
+      prevPathRef.current = null;
+      setEditorDocumentPath(null);
+      queueMicrotask(() => {
+        suppressSyncRef.current = false;
+      });
+      return;
+    }
     const activeContent = host.getContent(activePath);
     const pathChanged = prevPathRef.current !== activePath;
     if (pathChanged && prevPathRef.current) {
@@ -336,12 +373,27 @@ export function CodeMirrorEditor({
   useEffect(() => {
     const refresh = () => refreshEditorLints(viewRef.current);
     window.addEventListener("oleafly:proofreading-settings-changed", refresh);
-    return () =>
+    window.addEventListener(
+      "oleafly:proofreading-presentation-changed",
+      refresh,
+    );
+    return () => {
       window.removeEventListener(
         "oleafly:proofreading-settings-changed",
         refresh,
       );
+      window.removeEventListener(
+        "oleafly:proofreading-presentation-changed",
+        refresh,
+      );
+    };
   }, []);
 
-  return <div ref={hostRef} data-editor-theme={editorThemeId} className="h-full overflow-auto" />;
+  return (
+    <div
+      ref={hostRef}
+      data-editor-theme={editorThemeId}
+      className="h-full min-h-0 overflow-hidden"
+    />
+  );
 }

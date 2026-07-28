@@ -1,4 +1,10 @@
-import { lazy, Suspense, type ComponentType } from "react";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  type ComponentType,
+} from "react";
+import { toast } from "sonner";
 
 export interface LanguageServiceRuntimeModule {
   LanguageServiceRuntime: ComponentType;
@@ -18,25 +24,24 @@ export interface LanguageServiceRuntimeUnavailableProps {
 export function LanguageServiceRuntimeUnavailable({
   reload = () => window.location.reload(),
 }: LanguageServiceRuntimeUnavailableProps = {}) {
-  return (
-    <aside
-      aria-label="Language analysis status"
-      className="fixed right-3 top-14 z-50 flex max-w-sm items-center gap-2 rounded-md border border-amber-500/40 bg-background/95 p-2 text-xs shadow-md backdrop-blur"
-      role="alert"
-    >
-      <span className="min-w-0 flex-1">
-        Language analysis is unavailable because its runtime could not
-        load.
-      </span>
-      <button
-        type="button"
-        className="inline-flex min-h-7 items-center rounded border px-2 font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        onClick={reload}
-      >
-        Reload Oleafly
-      </button>
-    </aside>
-  );
+  useEffect(() => {
+    const toastId = "language-service-runtime-unavailable";
+    toast.error(
+      "Language analysis is unavailable because its runtime could not load.",
+      {
+        id: toastId,
+        duration: Number.POSITIVE_INFINITY,
+        action: {
+          label: "Reload Oleafly",
+          onClick: reload,
+        },
+      },
+    );
+    return () => {
+      toast.dismiss(toastId);
+    };
+  }, [reload]);
+  return null;
 }
 
 /**

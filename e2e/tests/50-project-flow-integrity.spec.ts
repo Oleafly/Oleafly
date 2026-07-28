@@ -3,14 +3,48 @@ import {
   caretIn,
   clickToolbarControl,
   createBlankProject,
+  expectDesktopShellAnchored,
   openProject,
   pressGlobal,
   readProjectText,
+  replaceEditorSource,
   selectWord,
+  setEditorCaretAfter,
   waitEditorContains,
 } from "../helpers";
 
 const RUN = Date.now().toString(36);
+
+test("local LaTeX command completion survives project-intelligence refresh", async ({
+  tauriPage,
+}) => {
+  const projectName = `E2E Local Completion ${RUN}`;
+  await createBlankProject(tauriPage, projectName);
+
+  await replaceEditorSource(
+    tauriPage,
+    "\\documentclass{article}\n\\begin{document}\n\\te\n\\end{document}\n",
+  );
+  await setEditorCaretAfter(tauriPage, "\\te");
+  await tauriPage.evaluate(
+    `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {
+      const view = getEditorView();
+      if (!view) throw new Error("CodeMirror is unavailable");
+      const from = view.state.selection.main.from;
+      view.dispatch({
+        changes: { from, insert: "x" },
+        selection: { anchor: from + 1 },
+        userEvent: "input.type",
+      });
+    })`,
+  );
+
+  const completion = tauriPage.locator(".cm-tooltip-autocomplete");
+  await expect(completion).toBeVisible({ timeout: 5_000 });
+  await expect(completion).toContainText("\\textbf");
+  await expect(completion).toContainText("\\textit");
+  await expect(completion).toContainText("\\texttt");
+});
 
 test("reopening a project in persisted Visual mode keeps the workspace chrome anchored", async ({
   tauriPage,
@@ -63,6 +97,7 @@ test("reopening a project in persisted Visual mode keeps the workspace chrome an
   expect(shell.toolbarTop).toBeGreaterThanOrEqual(0);
   expect(shell.toolbarBottom).toBeGreaterThan(shell.toolbarTop);
   expect(shell.panelTop).toBeGreaterThanOrEqual(shell.toolbarBottom);
+  await expectDesktopShellAnchored(tauriPage);
 });
 
 test("toolbar edits flush on immediate close, survive reopen, and compile", async ({

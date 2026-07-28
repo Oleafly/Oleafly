@@ -50,6 +50,11 @@ export default defineConfig(async () => ({
       // real PDF in-browser. Pre-bundle its fixture generator so the first E2E
       // navigation cannot trigger a dependency-optimizer reload mid-selection.
       "pdf-lib",
+      // Proofreading starts when the first prose project opens. Pre-bundle the
+      // Hunspell Emscripten wrapper at dev-server startup so that first use
+      // cannot invalidate Vite's dependency graph and blank/reload the Tauri
+      // WebView in the middle of project startup.
+      "hunspell-asm",
     ],
   },
   // pdf.js v6 loads its worker as an ES module; build ours the same way so the

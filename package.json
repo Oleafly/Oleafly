@@ -18,6 +18,7 @@
     "language-servers:fetch": "node scripts/fetch-language-servers.mjs",
     "language-servers:smoke": "node scripts/smoke-language-servers.mjs",
     "language-servers:test": "node --test scripts/fetch-language-servers.node-tests.mjs",
+    "proofreading:node-test": "node --test scripts/hunspell.node-tests.mjs",
     "preview": "vite preview",
     "tauri": "tauri",
     "lint": "biome lint src",

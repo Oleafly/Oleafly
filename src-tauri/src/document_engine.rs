@@ -832,7 +832,9 @@ pub async fn compile(request: CompileRequest<'_>) -> Result<CompileResult, Strin
         }
     };
 
-    let stopped = request.cancel.is_some_and(crate::state::CompileCancel::detach);
+    let stopped = request
+        .cancel
+        .is_some_and(crate::state::CompileCancel::detach);
     let log = spec
         .artifacts
         .log
@@ -1860,7 +1862,10 @@ mod tests {
 
     #[test]
     fn fast_mode_requests_a_single_typesetting_pass() {
-        assert_eq!(arg_pair(&latex_args(CompileOptions::default()), "--reruns"), None);
+        assert_eq!(
+            arg_pair(&latex_args(CompileOptions::default()), "--reruns"),
+            None
+        );
         assert_eq!(
             arg_pair(
                 &latex_args(CompileOptions {

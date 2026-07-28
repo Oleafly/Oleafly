@@ -42,6 +42,12 @@ function definitionKey(
   definition: ProjectDefinition,
 ): string | null {
   if (definition.kind === "label" || definition.kind === "anchor") {
+    if (
+      definition.engine === "markdown" &&
+      definition.kind === "anchor"
+    ) {
+      return `reference:${definition.location.file}:${definition.name}`;
+    }
     return `reference:${definition.name}`;
   }
   if (definition.kind === "bibentry") {
@@ -125,6 +131,7 @@ function diagnosticForUse(
 }
 
 function diagnosticForEdge(edge: ProjectEdge): ProjectDiagnostic {
+  const duplicate = edge.resolution === "duplicate";
   return {
     id: stableId(
       "diag",
@@ -136,9 +143,26 @@ function diagnosticForEdge(edge: ProjectEdge): ProjectDiagnostic {
     source: "project-intelligence",
     severity: "error",
     code: "unresolved-target",
-    message: `${edge.kind} target "${edge.rawTarget}" could not be resolved.`,
+    message: duplicate
+      ? `${edge.kind} target "${edge.rawTarget}" matches ${edge.candidateFiles.length} project files.`
+      : `${edge.kind} target "${edge.rawTarget}" could not be resolved.`,
     location: edge.location,
-    related: [],
+    related: duplicate
+      ? edge.candidateFiles.map((file) => ({
+          message: `Possible target: ${file}`,
+          location: {
+            file,
+            range: {
+              from: 0,
+              to: 0,
+              startLine: 1,
+              startColumn: 0,
+              endLine: 1,
+              endColumn: 0,
+            },
+          },
+        }))
+      : [],
   };
 }
 
@@ -212,12 +236,21 @@ function definitionCandidatesForUse(
   byKey: ReadonlyMap<string, readonly ProjectDefinition[]>,
 ): readonly ProjectDefinition[] {
   if (use.kind === "reference") {
-    let candidates = byKey.get(`reference:${use.name}`) ?? [];
+    let candidates =
+      use.engine === "markdown"
+        ? byKey.get(
+            `reference:${use.location.file}:${use.name}`,
+          ) ?? []
+        : byKey.get(`reference:${use.name}`) ?? [];
     if (use.target?.includes("#")) {
       const [file, anchor] = use.target.split("#", 2);
-      candidates = (
-        byKey.get(`reference:${anchor || use.name}`) ?? []
-      ).filter((definition) => definition.location.file === file);
+      candidates =
+        byKey.get(
+          `reference:${file}:${anchor || use.name}`,
+        ) ??
+        (byKey.get(`reference:${anchor || use.name}`) ?? []).filter(
+          (definition) => definition.location.file === file,
+        );
     }
     if (use.syntax === "typst-at") {
       const citations = byKey.get(`citation:${use.name}`) ?? [];
@@ -514,7 +547,10 @@ export function assembleProjectIntelligence(
     );
   }
   for (const edge of edges) {
-    if (edge.resolution === "unresolved") {
+    if (
+      edge.resolution === "unresolved" ||
+      edge.resolution === "duplicate"
+    ) {
       diagnostics.push(diagnosticForEdge(edge));
     }
   }

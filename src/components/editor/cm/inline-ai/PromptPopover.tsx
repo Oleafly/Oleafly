@@ -32,7 +32,7 @@ export function PromptPopover({
 }) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
-    inputRef.current?.focus();
+    inputRef.current?.focus({ preventScroll: true });
   }, []);
   // biome-ignore lint/correctness/useExhaustiveDependencies: instruction is the resize trigger, not read in the body.
   useEffect(() => {

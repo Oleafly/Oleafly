@@ -31,6 +31,7 @@ import {
   cancelProofreading,
   proofreadDocument,
 } from "@/lib/proofreading/client";
+import { proofreadingPresentationDiagnostics } from "@/store/proofreading";
 
 // Module side effect: must install before any lint runs.
 setSpellHost({
@@ -44,7 +45,7 @@ setSpellHost({
       dialect: s.grammarDialect,
     };
   },
-  proofread: (input) => {
+  proofread: async (input) => {
     const dictionary = useDictionary.getState();
     const ignoredWords = [
       ...dictionary.global,
@@ -52,7 +53,7 @@ setSpellHost({
         ? (dictionary.ignored[input.projectId] ?? [])
         : []),
     ];
-    return proofreadDocument({
+    const result = await proofreadDocument({
       identity: {
         projectId: input.projectId,
         path: input.path,
@@ -65,6 +66,10 @@ setSpellHost({
       preferences: input.preferences,
       ignoredWords,
     });
+    return {
+      ...result,
+      diagnostics: proofreadingPresentationDiagnostics(result),
+    };
   },
   cancelProofreading,
   isSessionIgnored: isSessionIgnoredWord,

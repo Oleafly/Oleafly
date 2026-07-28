@@ -27,6 +27,7 @@ import {
   projectIssueCount,
 } from "@/components/layout/project-intelligence-view";
 import { navigateToProjectRange } from "@/lib/project-intelligence/navigation";
+import { acceptedProjectSnapshot } from "@/lib/project-intelligence/current";
 import {
   definitionsForUse,
   referencesFor,
@@ -166,8 +167,7 @@ function AnalysisNotice({ state }: { state: ProjectIntelligenceState }) {
         role="status"
         className="border-b border-amber-500/20 bg-amber-500/8 px-2.5 py-1.5 text-[10px] leading-relaxed text-amber-800 dark:text-amber-200"
       >
-        Updating — browse data is from the previous revision. Saved query
-        results are withheld.
+        Updating — previous-revision citations, symbols, and ranges are hidden.
       </div>
     );
   }
@@ -264,10 +264,10 @@ export function ReferencesPanel() {
   const [filter, setFilter] = useState("");
   const filterRef = useRef<HTMLInputElement>(null);
 
-  const snapshot =
-    intelligenceState.data?.identity.projectId === projectId
-      ? intelligenceState.data
-      : null;
+  const snapshot = acceptedProjectSnapshot(
+    intelligenceState,
+    projectId,
+  );
   const citationNodes = useMemo(
     () => (snapshot ? buildCitationNodes(snapshot) : []),
     [snapshot],
@@ -282,7 +282,7 @@ export function ReferencesPanel() {
     if (!query || focusRequest < 1) return;
     setView("results");
     setFilter("");
-    filterRef.current?.focus();
+    filterRef.current?.focus({ preventScroll: true });
   }, [focusRequest, query]);
 
   const navigate = useCallback((node: IntelligenceTreeNode) => {

@@ -464,7 +464,11 @@ function Welcome({ onStart }: { onStart: () => void }) {
   useEffect(() => {
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const id = modalCoordinator.add(opener);
-    const frame = requestAnimationFrame(() => dialogRef.current?.querySelector("button")?.focus());
+    const frame = requestAnimationFrame(() =>
+      dialogRef.current
+        ?.querySelector("button")
+        ?.focus({ preventScroll: true }),
+    );
     const blockEscape = (event: KeyboardEvent) => {
       if (!modalCoordinator.isTop(id)) return;
       if ((event.metaKey || event.ctrlKey) && event.key === "ArrowRight") {
@@ -484,18 +488,22 @@ function Welcome({ onStart }: { onStart: () => void }) {
       if (!first || !last) return;
       if (!dialogRef.current?.contains(document.activeElement)) {
         event.preventDefault();
-        (event.shiftKey ? last : first).focus();
+        (event.shiftKey ? last : first).focus({
+          preventScroll: true,
+        });
       } else if (event.shiftKey && document.activeElement === first) {
         event.preventDefault();
-        last.focus();
+        last.focus({ preventScroll: true });
       } else if (!event.shiftKey && document.activeElement === last) {
         event.preventDefault();
-        first.focus();
+        first.focus({ preventScroll: true });
       }
     };
     const containFocus = (event: FocusEvent) => {
       if (!modalCoordinator.isTop(id) || dialogRef.current?.contains(event.target as Node)) return;
-      dialogRef.current?.querySelector<HTMLElement>("button")?.focus();
+      dialogRef.current
+        ?.querySelector<HTMLElement>("button")
+        ?.focus({ preventScroll: true });
     };
     document.addEventListener("keydown", blockEscape, true);
     document.addEventListener("focusin", containFocus);
@@ -503,7 +511,7 @@ function Welcome({ onStart }: { onStart: () => void }) {
       cancelAnimationFrame(frame);
       document.removeEventListener("keydown", blockEscape, true);
       document.removeEventListener("focusin", containFocus);
-      modalCoordinator.remove(id)?.focus();
+      modalCoordinator.remove(id)?.focus({ preventScroll: true });
     };
   }, []);
 
@@ -1054,8 +1062,11 @@ export function TourGuide() {
     observer.observe(document.body, { childList: true, subtree: true });
     return () => {
       observer.disconnect();
-      if (id) modalCoordinator.remove(id)?.focus();
-      else focused?.focus();
+      if (id) {
+        modalCoordinator.remove(id)?.focus({ preventScroll: true });
+      } else {
+        focused?.focus({ preventScroll: true });
+      }
     };
   }, [activeTourId, newProjectOpen]);
 

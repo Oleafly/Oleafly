@@ -58,7 +58,9 @@ import {
   setVisualProofreadingIssueListener,
   type VisualProofreadingIssue,
   VisualProofreading,
+  visualProofreadingIssueGroup,
 } from "./proofreading";
+import { scrollVisualSelectionLocally } from "./scroll";
 
 function isMarkdownPath(path: string): boolean {
   const p = path.toLowerCase();
@@ -118,14 +120,25 @@ function VisualProofreadingPopover({
   editor,
   issue,
   onClose,
+  onNavigate,
 }: {
   editor: Editor;
   issue: VisualProofreadingIssue;
   onClose: () => void;
+  onNavigate: (issue: VisualProofreadingIssue) => void;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] =
     useState<ProofreadingPopoverPosition | null>(null);
+  const issueGroup = visualProofreadingIssueGroup(editor, issue);
+  const suggestions = [
+    ...new Map(
+      issue.suggestions.map((suggestion) => [
+        `${suggestion.kind}:${suggestion.text}`,
+        suggestion,
+      ]),
+    ).values(),
+  ].slice(0, 8);
 
   useLayoutEffect(() => {
     const place = () => {
@@ -185,11 +198,18 @@ function VisualProofreadingPopover({
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
+      if (
+        panelRef.current?.dataset.proofreadingPanelIssue !== issue.id
+      ) {
+        return;
+      }
       const firstAction =
         panelRef.current?.querySelector<HTMLButtonElement>(
           '[data-proofreading-primary="true"]',
         );
-      (firstAction ?? panelRef.current)?.focus();
+      (firstAction ?? panelRef.current)?.focus({
+        preventScroll: true,
+      });
     });
     return () => cancelAnimationFrame(frame);
   }, [issue.id]);
@@ -200,9 +220,7 @@ function VisualProofreadingPopover({
       if (
         panelRef.current?.contains(target as Node) ||
         (target instanceof Element &&
-          target
-            .closest<HTMLElement>("[data-proofreading-issue]")
-            ?.dataset.proofreadingIssue === issue.id)
+          target.closest("[data-proofreading-issue]"))
       ) {
         return;
       }
@@ -211,7 +229,7 @@ function VisualProofreadingPopover({
     document.addEventListener("pointerdown", pointerDown, true);
     return () =>
       document.removeEventListener("pointerdown", pointerDown, true);
-  }, [issue.id, onClose]);
+  }, [onClose]);
 
   const closeAndFocus = () => {
     onClose();
@@ -258,7 +276,7 @@ function VisualProofreadingPopover({
     ];
     if (actions.length === 0) return;
     const active = document.activeElement;
-    const current = actions.findIndex((action) => action === active);
+    const current = actions.indexOf(active as HTMLButtonElement);
     const next =
       event.key === "Home"
         ? 0
@@ -268,7 +286,7 @@ function VisualProofreadingPopover({
             ? (Math.max(current, -1) + 1) % actions.length
             : (current <= 0 ? actions.length : current) - 1;
     event.preventDefault();
-    actions[next]?.focus();
+    actions[next]?.focus({ preventScroll: true });
   };
 
   return createPortal(
@@ -276,6 +294,7 @@ function VisualProofreadingPopover({
       ref={panelRef}
       role="dialog"
       aria-label="Proofreading suggestions"
+      data-proofreading-panel-issue={issue.id}
       tabIndex={-1}
       className="fixed z-[70] w-80 max-w-[calc(100vw-1rem)] rounded-lg border bg-popover p-2.5 text-popover-foreground shadow-xl outline-none"
       style={
@@ -310,12 +329,53 @@ function VisualProofreadingPopover({
         </Button>
       </div>
 
-      {issue.suggestions.length > 0 && (
+      {issueGroup && issueGroup.count > 1 && (
+        <div className="mt-2 flex items-center justify-between border-t pt-2">
+          <span
+            className="text-xs text-muted-foreground"
+            aria-live="polite"
+          >
+            Finding {issueGroup.index + 1} of {issueGroup.count}
+          </span>
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-7"
+              aria-label="Previous finding in this raw block"
+              disabled={!issueGroup.previous}
+              onClick={() => {
+                if (issueGroup.previous) {
+                  onNavigate(issueGroup.previous);
+                }
+              }}
+            >
+              <ChevronUp className="size-3.5" aria-hidden />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-7"
+              aria-label="Next finding in this raw block"
+              disabled={!issueGroup.next}
+              onClick={() => {
+                if (issueGroup.next) onNavigate(issueGroup.next);
+              }}
+            >
+              <ChevronDown className="size-3.5" aria-hidden />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {suggestions.length > 0 && (
         <fieldset
           className="mt-2 grid max-h-40 gap-1 overflow-y-auto"
         >
           <legend className="sr-only">Suggested fixes</legend>
-          {issue.suggestions.slice(0, 8).map((suggestion, index) => {
+          {suggestions.map((suggestion, index) => {
             const Icon =
               suggestion.kind === 1
                 ? Trash2
@@ -324,7 +384,7 @@ function VisualProofreadingPopover({
                   : Check;
             return (
               <Button
-                key={`${suggestion.kind}:${suggestion.text}:${index}`}
+                key={`${suggestion.kind}:${suggestion.text}`}
                 type="button"
                 variant="ghost"
                 size="sm"
@@ -354,7 +414,7 @@ function VisualProofreadingPopover({
             variant="ghost"
             size="xs"
             data-proofreading-primary={
-              issue.suggestions.length === 0 ? "true" : undefined
+              suggestions.length === 0 ? "true" : undefined
             }
             onClick={() => ignore("project")}
           >
@@ -366,7 +426,7 @@ function VisualProofreadingPopover({
           variant="ghost"
           size="xs"
           data-proofreading-primary={
-            issue.suggestions.length === 0 && !issue.projectId
+            suggestions.length === 0 && !issue.projectId
               ? "true"
               : undefined
           }
@@ -465,6 +525,8 @@ export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
     content: { type: "doc", content: [{ type: "paragraph" }] },
     immediatelyRender: false,
     editorProps: {
+      handleScrollToSelection:
+        scrollVisualSelectionLocally,
       handleKeyDown: (_view, event) => {
         if (!(event.metaKey || event.ctrlKey)) return false;
         const key = event.key.toLowerCase();
@@ -487,18 +549,19 @@ export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
     },
   });
 
-  // ProseMirror restores its DOM selection when a project reopens directly in
-  // Visual mode. WebKit can respond by scrolling the document root even though
-  // the editor has its own scroll surface, which moves the application toolbar
-  // above the viewport. Keep the correction local to Visual-editor mount/focus
-  // and repeat it across the two following frames because selection restoration
-  // can finish after React's layout phase.
+  // WebKit restores ProseMirror's DOM selection after a persisted Visual
+  // editor remount. That platform operation can finish after React layout and
+  // scroll the browser document by the toolbar height even though ProseMirror's
+  // own scroll-to-selection hook is editor-local. Correct only this Visual
+  // mount/focus boundary; the application root remains an ordinary DOM layer,
+  // so this cannot reproduce the blank WKWebView compositing failure caused by
+  // fixed/absolute root positioning and global focus interception.
   useLayoutEffect(() => {
     if (!editor || !wysiwyg) return;
 
     let firstFrame = 0;
     let secondFrame = 0;
-    const scheduleReset = () => {
+    const restoreShell = () => {
       resetLeakedDocumentScroll();
       cancelAnimationFrame(firstFrame);
       cancelAnimationFrame(secondFrame);
@@ -509,11 +572,11 @@ export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
     };
 
     const editorElement = editor.view.dom;
-    editorElement.addEventListener("focusin", scheduleReset);
-    scheduleReset();
+    editorElement.addEventListener("focusin", restoreShell);
+    restoreShell();
 
     return () => {
-      editorElement.removeEventListener("focusin", scheduleReset);
+      editorElement.removeEventListener("focusin", restoreShell);
       cancelAnimationFrame(firstFrame);
       cancelAnimationFrame(secondFrame);
     };
@@ -567,8 +630,9 @@ export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
   // Settings and dictionary changes invalidate worker output without changing
   // the document. A plugin refresh clears old decorations immediately and
   // schedules a current-revision pass after the typing debounce.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: settings are
-  // intentional refresh triggers for the imperative proofreading plugin.
+  // Settings are intentional refresh triggers for the imperative proofreading
+  // plugin even though they are read by that plugin rather than this effect.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: see above.
   useEffect(() => {
     if (editor) refreshVisualProofreading(editor);
   }, [
@@ -717,6 +781,9 @@ export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
           editor={editor}
           issue={proofreadingIssue}
           onClose={closeProofreading}
+          onNavigate={(nextIssue) =>
+            setProofreadingIssue(nextIssue)
+          }
         />
       )}
     </>

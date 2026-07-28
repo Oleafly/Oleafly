@@ -27,6 +27,28 @@ function sameIdentity(
 }
 
 /**
+ * Returns only an accepted current-revision project snapshot. Unlike the PDF
+ * preview, navigation surfaces must never retain stale ranges because a click
+ * could jump to the wrong source after an edit or filesystem mutation.
+ */
+export function acceptedProjectSnapshot(
+  state: ProjectIntelligenceState,
+  projectId: string | null,
+): ProjectIntelligenceSnapshot | null {
+  const snapshot = state.data;
+  if (
+    !projectId ||
+    !snapshot ||
+    state.stale ||
+    (state.status !== "success" && state.status !== "partial") ||
+    !sameIdentity(state, snapshot, projectId)
+  ) {
+    return null;
+  }
+  return snapshot;
+}
+
+/**
  * Returns analysis only when it belongs to the active project and the exact
  * active-file text. Retained running/error snapshots are deliberately
  * unavailable to editor decorations, completion, and navigation.
@@ -41,15 +63,8 @@ export function currentProjectIntelligence(
 
   const indexed = useIndexStore.getState();
   const state = indexed.intelligenceState;
-  const snapshot = state.data;
-  if (
-    !snapshot ||
-    state.stale ||
-    (state.status !== "success" && state.status !== "partial") ||
-    !sameIdentity(state, snapshot, projectId)
-  ) {
-    return null;
-  }
+  const snapshot = acceptedProjectSnapshot(state, projectId);
+  if (!snapshot) return null;
 
   const text = editorText ?? files.files[path]?.content;
   if (

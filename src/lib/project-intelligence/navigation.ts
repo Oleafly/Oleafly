@@ -1,5 +1,7 @@
-import { waitForEditorDocument } from "@oleafly/editor";
-import { EditorView } from "@codemirror/view";
+import {
+  revealEditorRange,
+  waitForEditorDocument,
+} from "@oleafly/editor";
 import { revealSourceEditor } from "@/components/editor/wysiwyg/controller";
 import type { SourceRange } from "@/lib/project-intelligence/types";
 import { useFilesStore } from "@/store/files";
@@ -63,11 +65,7 @@ export async function navigateToProjectRange(
     const max = view.state.doc.length;
     const from = Math.min(Math.max(0, target.range.from), max);
     const to = Math.min(Math.max(from, target.range.to), max);
-    view.dispatch({
-      selection: { anchor: from, head: to },
-      effects: EditorView.scrollIntoView(from, { y: "center" }),
-    });
-    view.focus();
+    revealEditorRange(view, from, to);
   } finally {
     unsubscribe();
   }

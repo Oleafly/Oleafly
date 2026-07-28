@@ -7,6 +7,7 @@ import {
   type IntelligenceTreeNode,
 } from "@/components/layout/IntelligenceTree";
 import { buildProjectStructureNodes } from "@/components/layout/project-intelligence-view";
+import { acceptedProjectSnapshot } from "@/lib/project-intelligence/current";
 import { navigateToProjectRange } from "@/lib/project-intelligence/navigation";
 import type { ProjectIntelligenceState } from "@/lib/project-intelligence/types";
 import { useFilesStore } from "@/store/files";
@@ -114,7 +115,8 @@ function StatusStrip({ state }: { state: ProjectIntelligenceState }) {
         role="status"
         className="border-b border-amber-500/20 bg-amber-500/8 px-2.5 py-1.5 text-[10px] leading-relaxed text-amber-800 dark:text-amber-200"
       >
-        Updating — the visible map is from the previous project revision.
+        Updating — previous-revision structure is hidden until current source
+        ranges are ready.
       </div>
     );
   }
@@ -139,10 +141,10 @@ export function Outline() {
   const [collapsed, setCollapsed] = useState(false);
   const [filter, setFilter] = useState("");
 
-  const snapshot =
-    intelligenceState.data?.identity.projectId === projectId
-      ? intelligenceState.data
-      : null;
+  const snapshot = acceptedProjectSnapshot(
+    intelligenceState,
+    projectId,
+  );
 
   const nodes = useMemo(
     () => (snapshot ? buildProjectStructureNodes(snapshot) : []),

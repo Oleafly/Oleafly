@@ -60,7 +60,6 @@ export class ProofreadingWorkerError extends Error {
 }
 
 const TIMEOUT_MS = 25_000;
-const MAX_PENDING_REQUESTS = 4;
 
 function laneFor(
   identity: Omit<
@@ -114,20 +113,6 @@ class ProofreadingWorkerClient {
     };
 
     this.supersedeLane(lane);
-    while (this.pending.size >= MAX_PENDING_REQUESTS) {
-      const oldest = this.pending.keys().next().value as
-        | number
-        | undefined;
-      if (oldest === undefined) break;
-      this.rejectRequest(
-        oldest,
-        new ProofreadingWorkerError(
-          "A newer proofreading request replaced this one.",
-          "superseded",
-          true,
-        ),
-      );
-    }
     useProofreadingStore.getState().begin(identity);
 
     let worker: WorkerLike;
@@ -209,7 +194,13 @@ class ProofreadingWorkerClient {
 
   retry(surface: ProofreadingSurface) {
     const status = useProofreadingStore.getState()[surface];
-    if (status.phase !== "unavailable") return;
+    if (
+      status.phase !== "unavailable" &&
+      status.phase !== "error" &&
+      status.phase !== "partial"
+    ) {
+      return;
+    }
     this.worker?.terminate();
     this.worker = null;
     const restartError = new ProofreadingWorkerError(
@@ -335,7 +326,13 @@ class ProofreadingWorkerClient {
       );
       useProofreadingStore
         .getState()
-        .fail(event.data.identity, error.message);
+        .fail(
+          event.data.identity,
+          error.message,
+          event.data.error.code === "initialization_failed"
+            ? "unavailable"
+            : "error",
+        );
       pending.reject(error);
       return;
     }

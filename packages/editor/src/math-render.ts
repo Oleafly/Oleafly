@@ -16,6 +16,8 @@ export interface MountMathPreviewOptions {
   expression: MathExpression;
   identity: string;
   isCurrent(): boolean;
+  eager?: boolean;
+  onPaint?(result: MathRenderResult): void;
 }
 
 const MAX_EXPRESSION_INPUT = 8_192;
@@ -386,7 +388,11 @@ export function mountMathPreview(
   host.setAttribute("contenteditable", "false");
   host.setAttribute(
     "aria-label",
-    `${expression.display ? "Display" : "Inline"} math preview`,
+    `${expression.display ? "Display" : "Inline"} math preview: ${
+      expression.body.length > 240
+        ? `${expression.body.slice(0, 239)}…`
+        : expression.body
+    }`,
   );
 
   const output = document.createElement("span");
@@ -423,8 +429,14 @@ export function mountMathPreview(
       return;
     }
     applyPreviewResult(output, expression, result);
+    options.onPaint?.(result);
   };
-  const stopObserving = observePreviewVisibility(host, paint);
+  let stopObserving = () => {};
+  if (options.eager) {
+    paint();
+  } else {
+    stopObserving = observePreviewVisibility(host, paint);
+  }
 
   return {
     destroy() {
