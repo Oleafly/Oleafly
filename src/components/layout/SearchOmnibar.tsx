@@ -284,6 +284,19 @@ export function SearchOmnibar() {
     return () => window.removeEventListener("keydown", onKey);
   }, [setSearchOpen]);
 
+  useEffect(() => {
+    if (!import.meta.env.DEV || !open) return;
+    const setE2eQuery = (event: Event) => {
+      if (!(event instanceof CustomEvent) || typeof event.detail !== "string") {
+        return;
+      }
+      setQuery(event.detail);
+    };
+    window.addEventListener("oleafly:e2e-command-query", setE2eQuery);
+    return () =>
+      window.removeEventListener("oleafly:e2e-command-query", setE2eQuery);
+  }, [open]);
+
   const close = () => {
     setSearchOpen(false);
     setQuery("");

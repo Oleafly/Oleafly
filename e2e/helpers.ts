@@ -1001,11 +1001,10 @@ export async function paletteItems(page: Page): Promise<string[]> {
 }
 
 /**
- * cmdk is a controlled React input. The native Tauri bridge's fill/type
- * commands update its DOM value on Linux without reliably notifying React,
- * leaving the command list unfiltered. Use the platform input setter and the
- * same bubbling events a browser fill emits, then verify the value survived
- * the controlled render.
+ * The native Tauri bridge's fill/type commands can update an input's DOM value
+ * on Linux without notifying React, leaving cmdk's filtered state unchanged.
+ * Development builds expose this narrow event seam so E2E drives the same
+ * controlled query state used by real keyboard input.
  */
 export async function fillCommandPalette(
   page: Page,
@@ -1019,41 +1018,10 @@ export async function fillCommandPalette(
     `(() => {
       const input = document.querySelector('[cmdk-input]');
       if (!(input instanceof HTMLInputElement)) return false;
-      const setter = Object.getOwnPropertyDescriptor(
-        HTMLInputElement.prototype,
-        "value",
-      )?.set;
-      if (!setter) return false;
       input.focus();
-      setter.call(input, ${JSON.stringify(text)});
-      const inputEvent = new InputEvent("input", {
-        bubbles: true,
-        cancelable: true,
-        data: ${JSON.stringify(text)},
-        inputType: "insertText",
-      });
-      input.dispatchEvent(inputEvent);
-      input.dispatchEvent(new Event("change", { bubbles: true }));
-
-      // Linux WebKit marks bridge-created DOM events as untrusted and React's
-      // change-event plugin can discard them. Invoke the already-mounted
-      // input's React onChange handler as the deterministic bridge fallback;
-      // this is test-only and exercises cmdk's real state/filtering path.
-      const reactPropsKey = Object.keys(input).find((key) =>
-        key.startsWith("__reactProps$"),
-      );
-      const reactOnChange = reactPropsKey
-        ? input[reactPropsKey]?.onChange
-        : undefined;
-      if (typeof reactOnChange === "function") {
-        reactOnChange({
-          target: input,
-          currentTarget: input,
-          nativeEvent: inputEvent,
-          type: "change",
-        });
-      }
-      if (typeof reactOnChange !== "function") return false;
+      window.dispatchEvent(new CustomEvent("oleafly:e2e-command-query", {
+        detail: ${JSON.stringify(text)},
+      }));
       return new Promise((resolve) => {
         requestAnimationFrame(() => {
           requestAnimationFrame(() => resolve(input.value === ${JSON.stringify(text)}));

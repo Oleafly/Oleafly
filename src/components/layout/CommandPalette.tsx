@@ -1,4 +1,4 @@
-import { useEffect, useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Command } from "cmdk";
 import { commandsFor, commandLabel, type AppContext } from "@oleafly/registry";
 import { useSettingsStore } from "@/store/settings";
@@ -12,6 +12,7 @@ import { useTourStore } from "@/store/tours";
 export function CommandPalette() {
   const open = useSettingsStore((s) => s.paletteOpen);
   const setPaletteOpen = useSettingsStore((s) => s.setPaletteOpen);
+  const [query, setQuery] = useState("");
   const projectId = useFilesStore((s) => s.projectId);
   const projectKind = useFilesStore((s) => s.projectKind);
   const engine = useFilesStore((s) => s.engine);
@@ -36,6 +37,23 @@ export function CommandPalette() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [setPaletteOpen]);
+
+  useEffect(() => {
+    if (!open) setQuery("");
+  }, [open]);
+
+  useEffect(() => {
+    if (!import.meta.env.DEV || !open) return;
+    const setE2eQuery = (event: Event) => {
+      if (!(event instanceof CustomEvent) || typeof event.detail !== "string") {
+        return;
+      }
+      setQuery(event.detail);
+    };
+    window.addEventListener("oleafly:e2e-command-query", setE2eQuery);
+    return () =>
+      window.removeEventListener("oleafly:e2e-command-query", setE2eQuery);
+  }, [open]);
 
   const ctx = useMemo<AppContext>(
     () => ({
@@ -72,6 +90,8 @@ export function CommandPalette() {
     >
       <div className="overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-2xl">
         <Command.Input
+          value={query}
+          onValueChange={setQuery}
           autoFocus
           placeholder="Type a command or search…"
           className="flex h-12 w-full border-b border-border bg-transparent px-4 text-sm outline-none placeholder:text-muted-foreground"
