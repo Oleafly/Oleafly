@@ -1,4 +1,5 @@
 import { test, expect } from "../fixtures";
+import type { TauriPage } from "@srsholmes/tauri-playwright";
 import {
   compileAndProbe,
   createBlankProject,
@@ -9,6 +10,29 @@ import {
   readProjectBase64,
   setEditorContent,
 } from "../helpers";
+
+async function selectPageLayout(
+  tauriPage: TauriPage,
+  label: "Single page view" | "Two-page view",
+  value: "single" | "double",
+) {
+  const inlineControl = tauriPage.locator(
+    `[role="radio"][aria-label="${label}"]`,
+  );
+  if (await inlineControl.isVisible()) {
+    await inlineControl.click();
+  } else {
+    await tauriPage.click('[aria-label="More preview controls"]');
+    await tauriPage.getByText("Page layout", { exact: true }).click();
+    await tauriPage
+      .getByRole("menuitemradio", { name: label, exact: true })
+      .click();
+  }
+  await expect(tauriPage.getByTestId("preview-pane")).toHaveAttribute(
+    "data-preview-layout",
+    value,
+  );
+}
 
 test.beforeEach(async ({ tauriPage }) => {
   test.setTimeout(240_000);
@@ -146,29 +170,15 @@ Page three
     await tauriPage.press('[aria-label="Page number"]', "Enter");
     await expect(page).toHaveValue("1");
   }
-  await tauriPage.click('[aria-label="Two-page view"]');
-  // The layout options are a radio group: exactly one is checked.
-  await expect(tauriPage.locator('[aria-label="Two-page view"]')).toHaveAttribute(
-    "aria-checked",
-    "true",
-  );
-  await expect(tauriPage.locator('[aria-label="Single page view"]')).toHaveAttribute(
-    "aria-checked",
-    "false",
-  );
+  // Narrow split panes move page layout into the measured overflow menu.
+  // Exercise whichever production presentation is active, then assert the
+  // preview's actual layout state rather than assuming the inline buttons fit.
+  await selectPageLayout(tauriPage, "Two-page view", "double");
   await tauriPage.click('[aria-label="Next page"]');
   await expect(page).toHaveValue("3");
   await tauriPage.click('[aria-label="Previous page"]');
   await expect(page).toHaveValue("1");
-  await tauriPage.click('[aria-label="Single page view"]');
-  await expect(tauriPage.locator('[aria-label="Single page view"]')).toHaveAttribute(
-    "aria-checked",
-    "true",
-  );
-  await expect(tauriPage.locator('[aria-label="Two-page view"]')).toHaveAttribute(
-    "aria-checked",
-    "false",
-  );
+  await selectPageLayout(tauriPage, "Single page view", "single");
 });
 
 test("invert colors toggles on and off", async ({ tauriPage }) => {

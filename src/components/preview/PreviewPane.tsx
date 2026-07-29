@@ -1651,6 +1651,8 @@ export function PreviewPane() {
     <div
       ref={rootRef}
       data-tour="project-preview"
+      data-testid="preview-pane"
+      data-preview-layout={layout}
       className="relative flex h-full flex-col bg-background"
     >
       {isFs && fsToolbarHidden && (

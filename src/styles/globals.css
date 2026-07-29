@@ -678,6 +678,19 @@
   #root {
     height: 100%;
   }
+  html {
+    /*
+     * Oleafly is a fixed desktop shell: the editor, preview, sidebars, and
+     * dialogs each own their scrolling. The document viewport must therefore
+     * never become a scroll container. `body { overflow: hidden }` alone still
+     * leaves the root `html` scrolling element movable when WebKit focuses a
+     * deeply positioned editor or dialog control. `clip` removes that root
+     * scroll container entirely, preventing focus restoration and diagnostic
+     * actions from displacing the application chrome.
+     */
+    overflow: clip;
+    overscroll-behavior: none;
+  }
   body {
     margin: 0;
     background-color: var(--background);

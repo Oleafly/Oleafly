@@ -10,11 +10,18 @@ test("Cmd+K opens the palette and the theme command toggles the real theme", asy
   await tauriPage.fill("[cmdk-input]", "theme");
   await tauriPage.press("[cmdk-input]", "Enter");
   await expect(tauriPage.locator("[cmdk-input]")).toBeHidden();
-  expect(await currentTheme(tauriPage)).not.toBe(before);
+  await expect
+    .poll(() => currentTheme(tauriPage), { timeout: 10_000 })
+    .not.toBe(before);
   await pressGlobal(tauriPage, "k", { meta: true });
   await tauriPage.fill("[cmdk-input]", "theme");
+  await expect(
+    tauriPage.getByText(`Switch to ${before} theme`, { exact: true }),
+  ).toBeVisible();
   await tauriPage.press("[cmdk-input]", "Enter");
-  expect(await currentTheme(tauriPage)).toBe(before);
+  await expect
+    .poll(() => currentTheme(tauriPage), { timeout: 10_000 })
+    .toBe(before);
 });
 
 test("Cmd+Shift+F opens the omnibar with registered commands", async ({ tauriPage }) => {
