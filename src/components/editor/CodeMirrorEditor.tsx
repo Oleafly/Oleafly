@@ -30,20 +30,10 @@ import { useDictionary, isWordIgnored, ignoreWordForProject, ignoreWordGlobally 
 import { isSessionIgnoredWord } from "@/lib/proofreading/ignored";
 import {
   cancelProofreading,
+  getRetainedProofreadingResult,
   proofreadDocument,
 } from "@/lib/proofreading/client";
 import { proofreadingPresentationDiagnostics } from "@/store/proofreading";
-
-interface RetainedSourceProofreading {
-  contextKey: string;
-  projectId: string | null;
-  path: string;
-  text: string;
-  mode: "grammar" | "spelling" | "combined";
-  result: Awaited<ReturnType<typeof proofreadDocument>>;
-}
-
-let retainedSourceProofreading: RetainedSourceProofreading | null = null;
 
 function sourceProofreadingContextKey(
   projectId: string | null,
@@ -77,7 +67,7 @@ setSpellHost({
       dialect: s.grammarDialect,
     };
   },
-  proofread: async (input) => {
+  proofread: (input) => {
     const contextKey = sourceProofreadingContextKey(
       input.projectId,
     );
@@ -88,7 +78,8 @@ setSpellHost({
         ? (dictionary.ignored[input.projectId] ?? [])
         : []),
     ];
-    const result = await proofreadDocument({
+    return proofreadDocument({
+      cacheKey: contextKey,
       identity: {
         projectId: input.projectId,
         path: input.path,
@@ -101,34 +92,16 @@ setSpellHost({
       preferences: input.preferences,
       ignoredWords,
     });
-    if (
-      sourceProofreadingContextKey(input.projectId) === contextKey
-    ) {
-      retainedSourceProofreading = {
-        contextKey,
-        projectId: input.projectId,
-        path: input.path,
-        text: input.text,
-        mode: input.mode,
-        result,
-      };
-    }
-    return result;
   },
-  getRetainedProofreading: (input) => {
-    const retained = retainedSourceProofreading;
-    if (
-      !retained ||
-      retained.contextKey !== input.contextKey ||
-      retained.projectId !== input.projectId ||
-      retained.path !== input.path ||
-      retained.text !== input.text ||
-      retained.mode !== input.mode
-    ) {
-      return null;
-    }
-    return retained.result;
-  },
+  getRetainedProofreading: (input) =>
+    getRetainedProofreadingResult({
+      cacheKey: input.contextKey,
+      projectId: input.projectId,
+      path: input.path,
+      text: input.text,
+      mode: input.mode,
+      surface: "source",
+    }),
   presentDiagnostics: proofreadingPresentationDiagnostics,
   cancelProofreading,
   isSessionIgnored: isSessionIgnoredWord,
@@ -208,7 +181,6 @@ export function CodeMirrorEditor({ active = true }: { active?: boolean }) {
         // surfaces synchronously with the settings store update so a completed
         // worker generation cannot remain visible while React reconfigures
         // the Source and Visual editors.
-        retainedSourceProofreading = null;
         cancelProofreading("source");
         cancelProofreading("visual");
       }),
