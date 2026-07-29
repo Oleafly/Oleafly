@@ -41,7 +41,7 @@ import { goToDefinition, findReferences, startRename } from "@/lib/index/nav";
 import { imageToLatex, imageToLatexAvailable } from "@/features/image-to-latex";
 import { goToSyncTex } from "@/features/synctex";
 import { countWords } from "@/lib/wordcount";
-import { useActiveContent, useFilesStore } from "@/store/files";
+import { useFilesStore } from "@/store/files";
 import { cn, shortcut } from "@/lib/utils";
 import {
   HEADING_LEVELS,
@@ -324,16 +324,31 @@ function CodeIntelDropdown({ variant }: { variant: "bar" | "menu" }) {
 }
 
 export function WordCountButton() {
-  const content = useActiveContent();
   const activePath = useFilesStore((s) => s.activePath);
-  const stats = useMemo(() => countWords(content), [content]);
+  const [stats, setStats] = useState({
+    words: 0,
+    characters: 0,
+    lines: 0,
+  });
   const rows: [string, number][] = [
     ["Words", stats.words],
     ["Characters", stats.characters],
     ["Lines", stats.lines],
   ];
   return (
-    <Popover ariaLabel="Word count" className="w-56 p-3" trigger={<Info className="size-4" />}>
+    <Popover
+      ariaLabel="Word count"
+      className="w-56 p-3"
+      trigger={<Info className="size-4" />}
+      onOpenChange={(open) => {
+        if (!open) return;
+        const files = useFilesStore.getState();
+        const content = files.activePath
+          ? (files.files[files.activePath]?.content ?? "")
+          : "";
+        setStats(countWords(content));
+      }}
+    >
       <p className="mb-1 text-sm font-semibold text-foreground">Word count</p>
       <p className="mb-2 truncate text-xs text-muted-foreground">{activePath ?? "no file"}</p>
       <div className="divide-y divide-border">

@@ -17,6 +17,7 @@ export {
   latexMathLanguage,
   latexCompletions,
   latexCommandCompletions,
+  latexReferenceCitationCompletions,
   slashCompletions,
   setBibKeysProvider,
   bibKeysFromSources,

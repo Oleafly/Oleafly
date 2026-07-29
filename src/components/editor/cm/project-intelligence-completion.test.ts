@@ -13,6 +13,7 @@ import { EditorState, Transaction } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import {
   latexCommandCompletions,
+  setBibKeysProvider,
   setEditorDocumentPath,
   slashCompletions,
 } from "@oleafly/editor";
@@ -130,6 +131,7 @@ function apply(
 }
 
 afterEach(() => {
+  setBibKeysProvider(() => []);
   setEditorDocumentPath(null);
   useIndexStore.getState().reset();
   useFilesStore.setState({
@@ -142,6 +144,22 @@ afterEach(() => {
 });
 
 describe("project LaTeX completion revisions and argument parity", () => {
+  it("keeps citation completion available while the typed query is ahead of project analysis", () => {
+    installProject({
+      "main.tex": "CompletionAnchor",
+      "refs.bib": "@article{edge-source, title={Stable source}}",
+    });
+    setBibKeysProvider(() => ["edge-source"]);
+    const source = String.raw`CompletionAnchor \cite{edge`;
+    const state = EditorState.create({ doc: source });
+    const result = synchronousProjectCompletion(
+      new CompletionContext(state, state.doc.length, false),
+    );
+
+    expect(option(result, "edge-source")).toBeTruthy();
+    expect(result?.from).toBe(source.length - "edge".length);
+  });
+
   it("keeps a project macro valid through later app-order override sources", () => {
     const source = "\\clas";
     installProject({

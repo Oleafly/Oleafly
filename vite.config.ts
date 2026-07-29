@@ -66,8 +66,9 @@ export default defineConfig(async () => ({
   build: {
     minify: "terser" as const,
     terserOptions: {
+      ecma: 2020 as const,
       compress: {
-        passes: 2,
+        passes: 4,
       },
       format: {
         comments: LEGAL_COMMENT_PATTERN,

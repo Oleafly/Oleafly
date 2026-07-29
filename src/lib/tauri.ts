@@ -752,3 +752,16 @@ export const synctexInverse = (
     x,
     y,
   });
+
+export const synctexMapLine = (
+  compiledSource: string,
+  currentSource: string,
+  line: number,
+  currentToCompiled: boolean,
+) =>
+  invoke<number | null>("synctex_map_line", {
+    compiledSource,
+    currentSource,
+    line,
+    currentToCompiled,
+  });

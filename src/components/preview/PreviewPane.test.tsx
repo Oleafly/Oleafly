@@ -13,6 +13,7 @@ vi.mock("@/components/editor/LogPane", () => ({
   LogPane: () => <div data-testid="mock-log-pane" />,
 }));
 vi.mock("@/features/synctex", () => ({
+  canUseSyncTexForCheckpoint: vi.fn(() => false),
   inverseFromClick: vi.fn(),
 }));
 vi.mock("@/features/ask-ai-compile-errors", () => ({

@@ -34,6 +34,20 @@ export interface CompileSuccessCheckpoint {
   completedAt: number;
 }
 
+export function sameCompileOutput(
+  left: CompileSuccessCheckpoint | null,
+  right: CompileSuccessCheckpoint | null,
+): boolean {
+  return (
+    left !== null &&
+    right !== null &&
+    left.projectId === right.projectId &&
+    left.mainDocument === right.mainDocument &&
+    left.outputRevision === right.outputRevision &&
+    left.outputId === right.outputId
+  );
+}
+
 interface CreateCompileSuccessCheckpointInput {
   projectId: string;
   mainDocument: string;

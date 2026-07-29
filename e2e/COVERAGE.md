@@ -52,6 +52,8 @@ operator-list names. A source assertion alone is never labeled Render.
 | Outline | section listed | 08 |
 | Spellcheck/dictionary | squiggle -> hover tooltip -> ignore -> settings chip -> un-ignore -> squiggle returns | 14 |
 | Code intel: go-to-definition, find-references, rename dialog | context menu + Shift+F12, real index over a seeded label/ref pair | 23 |
+| Book-scale editor stability | realistic 6,200-line, 450–500k-character LaTeX book with 99% distinct nonempty lines, 16+ chapters, 70+ sections, ten formula families, theorems, proofs, tables, lists, quotes, footnotes, citations and cross-references; a real Tectonic compile produces the multi-page PDF while Source Tree, split editor, PDF preview, project intelligence, Harper, Hunspell and inline math remain mounted. The test performs repeated long-distance scrolling plus 252 measured navigation, character-typing, multiline-paste, delete, undo and redo actions, enforces per-action and aggregate p95 ceilings, restores the source byte-for-byte, and permits zero blank frames, line/gutter drift, missing surfaces or document-scroll leaks. Slow `\tex` typing also keeps caret/scroll position stable and opens completion. | 58 |
+| Unified editor intelligence | one real multi-file project proves Source/Visual structure, resolved references, resolved citations, LaTeX completion, citation completion, grammar, spelling, live inline math and the integrated PDF controls all agree on the same project revision | 58 |
 | File tree row actions | real `More actions for …` three-dot controls activate rename, copy, set-main, delete, and nested create/import actions | 26, 54 |
 | File tree collision handling | rename/move conflict, Cancel, Keep both, Replace, content preservation | 26 |
 | File tree drag-and-drop | move into folder and collision-safe Keep both flow | 26 |
@@ -100,6 +102,7 @@ operator-list names. A source assertion alone is never labeled Render.
 | Save PDF/image into project | in-app dialog; exact requested nested relative path; PDF bytes equal compiled output and `%PDF-`; PNG signature/dimensions/nonblank pixels; invalid path surfaces standard failure UX | 17 |
 | SyncTeX forward (Cmd+Shift+J) | highlight appears on PDF | 10 |
 | SyncTeX inverse (Cmd-click PDF) | Cmd-click via text-layer coordinates lands the caret on the word | 24 |
+| Stale and exact-reversion SyncTeX | stale forward mapping and nearest unchanged-anchor inverse mapping remain productive without recompiling; restoring the exact compiled source clears the stale state without changing the output revision | 58 |
 | Export menu | opens, all formats listed per doc type | 22, 30 |
 | Export artifacts | real production menu actions with DEV-only one-shot save destination: ZIP entries/assets/internal exclusions; PDF signature/text marker; DOCX OOXML marker; standalone embedded-resource HTML; Markdown/TXT semantics; Beamer PPTX slide marker; book EPUB stored mimetype/package/TOC/content; vector PDF and nonblank PNG; SVG explicitly absent | 55 |
 | Converter downloads | real `.tex`, `.zip`, and extracted-figure buttons; exact source/ZIP equality, ZIP assets, PNG signature/dimensions/byte equality | 40 |

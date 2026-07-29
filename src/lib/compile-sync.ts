@@ -81,6 +81,10 @@ export async function applyRemoteCompileSuccess(
         payload.completedAt,
       ),
       lastCompileCheckpoint: payload,
+      // Source contents are intentionally runtime-local and are not sent over
+      // the cross-window event. Keep remote output revision-gated until this
+      // window performs its own compile.
+      compiledSources: null,
     });
     void import("@/lib/preview-window")
       .then((module) =>

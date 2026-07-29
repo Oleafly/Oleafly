@@ -9,6 +9,7 @@ import {
 import {
   completionRequestIsCurrent,
   createCompletionRequestGuard,
+  latexReferenceCitationCompletions,
   type CompletionRequestGuard,
 } from "@oleafly/editor";
 import { forceLinting, linter, type Action, type Diagnostic } from "@codemirror/lint";
@@ -536,7 +537,13 @@ export const projectIntelligenceCompletion: CompletionSource = (
   const current = currentSourceProjectIntelligence(
     context.state.doc.toString(),
   );
-  if (!current || !SUPPORTED_SOURCE_RE.test(current.path)) return null;
+  const path = current?.path ?? useFilesStore.getState().activePath;
+  if (!path || !SUPPORTED_SOURCE_RE.test(path)) return null;
+  if (!current) {
+    return /\.(?:tex|latex|ltx|sty|cls)$/i.test(path)
+      ? latexReferenceCitationCompletions(context)
+      : null;
+  }
 
   const guard: CompletionGuard = {
     path: current.path,
@@ -547,17 +554,17 @@ export const projectIntelligenceCompletion: CompletionSource = (
     Math.max(0, context.pos - 1_000),
     context.pos,
   );
-  const path = current.path.toLocaleLowerCase();
-  if (/\.(?:tex|latex|ltx|sty|cls)$/.test(path)) {
+  const normalizedPath = current.path.toLocaleLowerCase();
+  if (/\.(?:tex|latex|ltx|sty|cls)$/.test(normalizedPath)) {
     return latexCompletion(context, current.snapshot, guard, before);
   }
-  if (/\.(?:md|markdown)$/.test(path)) {
+  if (/\.(?:md|markdown)$/.test(normalizedPath)) {
     return markdownCompletion(context, current.snapshot, guard, before);
   }
-  if (path.endsWith(".typ")) {
+  if (normalizedPath.endsWith(".typ")) {
     return typstCompletion(context, current.snapshot, guard, before);
   }
-  if (path.endsWith(".bib")) {
+  if (normalizedPath.endsWith(".bib")) {
     return bibtexCompletion(context, current.snapshot, guard, before);
   }
   return null;

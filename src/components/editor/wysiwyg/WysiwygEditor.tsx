@@ -556,6 +556,7 @@ export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
   // mount/focus boundary; the application root remains an ordinary DOM layer,
   // so this cannot reproduce the blank WKWebView compositing failure caused by
   // fixed/absolute root positioning and global focus interception.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: activePath intentionally retriggers the WebKit shell guard when a persisted Visual editor is rebound to another file
   useLayoutEffect(() => {
     if (!editor || !wysiwyg) return;
 
