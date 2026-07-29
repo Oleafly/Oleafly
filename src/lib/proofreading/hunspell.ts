@@ -1,6 +1,13 @@
 import type { Hunspell } from "hunspell-asm";
 
 const DICTIONARY_LOCALE = /^[A-Za-z]{2,3}_[A-Za-z]{2,4}$/u;
+const SHIPPED_DICTIONARY_LOCALES = new Set([
+  "de_DE",
+  "en_AU",
+  "en_GB",
+  "en_US",
+  "fr_FR",
+]);
 
 function dictionaryBaseUrl(): string {
   const current = globalThis.location;
@@ -38,6 +45,15 @@ export async function loadHunspellDictionary(
   const safeLocale = locale.replace("-", "_");
   if (!DICTIONARY_LOCALE.test(safeLocale)) {
     throw new Error("Invalid spelling dictionary locale.");
+  }
+  // Development servers commonly serve index.html with a successful status
+  // for unknown asset paths. Reject anything outside the packaged manifest
+  // before fetching so a missing dictionary can never masquerade as a valid
+  // Hunspell pack.
+  if (!SHIPPED_DICTIONARY_LOCALES.has(safeLocale)) {
+    throw new Error(
+      `The requested ${safeLocale} spelling dictionary is unavailable.`,
+    );
   }
   installModuleWorkerCompatibilityMarker();
   const { loadModule } = await import("hunspell-asm");

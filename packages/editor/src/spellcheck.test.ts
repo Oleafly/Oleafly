@@ -121,6 +121,77 @@ describe("proofreading presentation refresh", () => {
     expect(proofread).toHaveBeenCalledOnce();
   });
 
+  it("keeps the requested page when an older lint result settles afterward", async () => {
+    const text = "qwertzuiopz remains observable";
+    let requestedPage = false;
+    let injectedPageChange = false;
+    const result: ProofreadingResult = {
+      protocolVersion: PROOFREADING_PROTOCOL_VERSION,
+      type: "result",
+      requestId: 1,
+      identity: {
+        projectId: "project",
+        path: "main.tex",
+        revision: 1,
+        requestGeneration: 1,
+        surface: "source",
+      },
+      status: "ready",
+      diagnostics: [
+        {
+          from: 0,
+          to: "qwertzuiopz".length,
+          message: "Possible misspelling",
+          kind: "Spelling",
+          source: "hunspell",
+          word: "qwertzuiopz",
+          suggestions: [],
+        },
+      ],
+    };
+    const proofread = vi.fn(async () => result);
+    setSpellHost({
+      getProjectId: () => "project",
+      getActivePath: () => "main.tex",
+      getLintPrefs: () => ({
+        showRegionalism: true,
+        showWordChoice: true,
+        dialect: "american",
+      }),
+      proofread,
+      presentDiagnostics: (workerResult) => {
+        if (!injectedPageChange) {
+          injectedPageChange = true;
+          requestedPage = true;
+          refreshEditorProofreadingPresentation(view);
+          // This represents the older page that was already being returned
+          // when the user selected the new bounded diagnostics page.
+          return [];
+        }
+        return requestedPage ? workerResult.diagnostics : [];
+      },
+      isSessionIgnored: () => false,
+      isWordIgnored: () => false,
+      ignoreWordForProject: () => undefined,
+      ignoreWordGlobally: () => undefined,
+    });
+
+    view = new EditorView({
+      state: EditorState.create({
+        doc: text,
+        extensions: [createHarperLinter(true)],
+      }),
+      parent: document.body,
+    });
+    forceLinting(view);
+
+    await vi.waitFor(
+      () => expect(diagnosticCardSource(view!, 1)).not.toBeNull(),
+      { timeout: 2_000 },
+    );
+    expect(proofread).toHaveBeenCalledOnce();
+  });
+
   it("coalesces a presentation refresh with an in-flight document pass", async () => {
     const text = "qwertzuiopz remains observable";
     let showRequestedPage = false;
