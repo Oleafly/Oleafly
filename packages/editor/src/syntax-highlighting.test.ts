@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { syntaxTree } from "@codemirror/language";
+import { ensureSyntaxTree, syntaxTree } from "@codemirror/language";
 import { EditorState } from "@codemirror/state";
 import { classHighlighter, highlightTree } from "@lezer/highlight";
 import { describe, expect, it } from "vitest";
@@ -30,9 +30,13 @@ function highlightedState(path: string, text: string): {
     doc: text,
     extensions: [language],
   });
+  const tree = ensureSyntaxTree(state, state.doc.length, 1_000);
+  if (!tree) {
+    throw new Error(`Syntax tree did not finish parsing ${path}`);
+  }
   const spans: HighlightSpan[] = [];
   highlightTree(
-    syntaxTree(state),
+    tree,
     classHighlighter,
     (from, to, classes) => spans.push({ from, to, classes }),
   );

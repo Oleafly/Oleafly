@@ -95,7 +95,7 @@ test("compile button becomes recompile after the first result", async ({ tauriPa
 
 test("vim mode: enable via the palette (persistence part 1)", async ({ tauriPage }) => {
   await pressGlobal(tauriPage, "k", { meta: true });
-  await tauriPage.fill("[cmdk-input]", "vim");
+  await tauriPage.getByRole("combobox").fill("vim");
   const alreadyEnabled = await tauriPage.evaluate<boolean>(
     `document.body.innerText.includes('Disable vim mode')`,
   );
@@ -106,7 +106,7 @@ test("vim mode: enable via the palette (persistence part 1)", async ({ tauriPage
     await tauriPage.press("[cmdk-input]", "Enter");
     await expect(tauriPage.locator("[cmdk-input]")).toBeHidden();
     await pressGlobal(tauriPage, "k", { meta: true });
-    await tauriPage.fill("[cmdk-input]", "vim");
+    await tauriPage.getByRole("combobox").fill("vim");
   }
   await expect(
     tauriPage.locator('[cmdk-item][aria-selected="true"]'),
@@ -123,7 +123,7 @@ test("vim mode: enable via the palette (persistence part 1)", async ({ tauriPage
     )
     .toBe("1");
   await pressGlobal(tauriPage, "k", { meta: true });
-  await tauriPage.fill("[cmdk-input]", "vim");
+  await tauriPage.getByRole("combobox").fill("vim");
   await expect(
     tauriPage.locator('[cmdk-item][aria-selected="true"]'),
   ).toHaveText("Disable vim mode", { timeout: 10_000 });
@@ -142,7 +142,7 @@ test("vim mode survived the app restart, then disable it (part 2)", async ({ tau
     )
     .toBe("1");
   await pressGlobal(tauriPage, "k", { meta: true });
-  await tauriPage.fill("[cmdk-input]", "vim");
+  await tauriPage.getByRole("combobox").fill("vim");
   await expect(
     tauriPage.locator('[cmdk-item][aria-selected="true"]'),
   ).toHaveText("Disable vim mode", { timeout: 10_000 });
@@ -157,7 +157,7 @@ test("vim mode survived the app restart, then disable it (part 2)", async ({ tau
     )
     .toBe("0");
   await pressGlobal(tauriPage, "k", { meta: true });
-  await tauriPage.fill("[cmdk-input]", "vim");
+  await tauriPage.getByRole("combobox").fill("vim");
   await expect(
     tauriPage.locator('[cmdk-item][aria-selected="true"]'),
   ).toHaveText("Enable vim mode", { timeout: 10_000 });

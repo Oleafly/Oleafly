@@ -10,6 +10,16 @@ export interface Page {
   waitForFunction(expression: string, timeout?: number): Promise<unknown>;
   locator(selector: string): { isVisible(): Promise<boolean>; click(): Promise<void> };
   getByTestId(id: string): unknown;
+  getByRole(
+    role: string,
+    opts?: { name?: string; exact?: boolean },
+  ): {
+    click(): Promise<void>;
+    fill(text: string): Promise<void>;
+    focus(): Promise<void>;
+    isVisible(): Promise<boolean>;
+    press(key: string): Promise<void>;
+  };
   getByText(
     text: string,
     opts?: { exact?: boolean },
@@ -47,7 +57,7 @@ export async function expectDesktopShellAnchored(page: Page) {
     scrollLeft: 0,
     rootTop: 0,
     rootLeft: 0,
-    rootPosition: "static",
+    rootPosition: "fixed",
   });
 }
 
