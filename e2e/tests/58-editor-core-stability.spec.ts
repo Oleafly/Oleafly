@@ -572,7 +572,11 @@ test("a realistic 6,200-line book keeps the full authoring workspace stable unde
     fixture.source.slice(0, fixture.source.indexOf("qwertzuiopz")).split("\n")
       .length;
   await goToLine(tauriPage, firstTypoLine);
-  await tauriPage.waitForFunction(
+  // The Tauri bridge caps a single wait_for_function command at 30 seconds
+  // even when a longer timeout is supplied. Poll through the shared helper so
+  // a loaded Linux runner can finish the book-scale proofreading pass.
+  await waitLong(
+    tauriPage,
     `window.__e2eHasProofreadingDiagnostic?.("qwertzuiopz") === true`,
     90_000,
   );

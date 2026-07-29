@@ -1,5 +1,11 @@
 import { test, expect } from "../fixtures";
-import { openProject, openSettings, pressGlobal, type Page } from "../helpers";
+import {
+  compileAndWait,
+  createBlankProject,
+  openProject,
+  openSettings,
+  type Page,
+} from "../helpers";
 
 async function pickOption(page: Page, rowText: string, optionText: string) {
   const rowId = rowText
@@ -18,6 +24,20 @@ async function pickOption(page: Page, rowText: string, optionText: string) {
     `document.querySelector(${JSON.stringify(optionSelector)}).scrollIntoView({ block: "nearest" })`,
   );
   await page.click(optionSelector);
+}
+
+async function setOfflineMode(page: Page, enabled: boolean) {
+  await openSettings(page, "general");
+  const selector = '[role="switch"][aria-label="Offline mode"]';
+  const checked = await page.evaluate<boolean>(
+    `document.querySelector(${JSON.stringify(selector)})?.getAttribute("aria-checked") === "true"`,
+  );
+  if (checked !== enabled) await page.click(selector);
+  await page.waitForFunction(
+    `document.querySelector(${JSON.stringify(selector)})?.getAttribute("aria-checked") === ${JSON.stringify(String(enabled))}`,
+    5_000,
+  );
+  await page.click('[aria-label="Close settings"]');
 }
 
 test("every editor font size option restyles the editor", async ({ tauriPage }) => {
@@ -193,21 +213,26 @@ test("show-file-tree-on-open controls the sidebar", async ({ tauriPage }) => {
 });
 
 test("offline mode compiles from the local cache", async ({ tauriPage }) => {
+  test.setTimeout(300_000);
+  // This is a compiler-policy test, so give it a fresh immutable fixture
+  // instead of inheriting the shared E2E Doc after earlier editing specs.
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await openSettings(tauriPage, "general");
-  await tauriPage.click('[role="switch"][aria-label="Offline mode"]');
-  await tauriPage.click('[aria-label="Close settings"]');
-
-  // The document only uses already-cached packages, so --only-cached succeeds.
-  await pressGlobal(tauriPage, "Enter", { meta: true });
-  await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok", {
-    timeout: 120_000,
-  });
-
-  await openSettings(tauriPage, "general");
-  await tauriPage.click('[role="switch"][aria-label="Offline mode"]');
-  await tauriPage.click('[aria-label="Close settings"]');
+  await setOfflineMode(tauriPage, false);
+  await createBlankProject(
+    tauriPage,
+    `E2E Offline Cache ${Date.now().toString(36)}`,
+  );
+  // First compile online to populate exactly the resources used by this
+  // document, then require a new verified output while Tectonic is
+  // constrained to --only-cached.
+  await compileAndWait(tauriPage, 120_000);
+  await setOfflineMode(tauriPage, true);
+  try {
+    await compileAndWait(tauriPage, 120_000);
+  } finally {
+    await setOfflineMode(tauriPage, false);
+  }
 });
 
 test("the shortcuts settings section exposes configurable app shortcuts", async ({ tauriPage }) => {
