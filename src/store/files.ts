@@ -27,6 +27,7 @@ import {
 import { UNKNOWN_ENGINE } from "@/lib/document-engine";
 import { flushAutoCommit, scheduleAutoCommit } from "@/lib/auto-commit";
 import { notifyError } from "@/lib/toast";
+import { cancelProofreading } from "@/lib/proofreading/client";
 import { useDiffStore } from "@/store/diff";
 import { nextTabSeq } from "@/store/tab-order";
 
@@ -281,6 +282,12 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     fileOpenEpoch++;
     mainDocSeq++;
     cancelPendingAutosave();
+    // Project identity is a hard proofreading boundary. Clear both surfaces
+    // synchronously with the store transition rather than waiting for React
+    // editor effects, which may run after a fast library -> project reopen and
+    // leave the previous project's authoritative result visible.
+    cancelProofreading("source");
+    cancelProofreading("visual");
     set({
       loading: true,
       projectId: id,
@@ -360,6 +367,8 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     fileOpenEpoch++;
     mainDocSeq++;
     cancelPendingAutosave();
+    cancelProofreading("source");
+    cancelProofreading("visual");
     set(EMPTY_PROJECT_STATE);
   }),
 

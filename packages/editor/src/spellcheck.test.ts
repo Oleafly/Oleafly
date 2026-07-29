@@ -23,6 +23,81 @@ afterEach(() => {
 });
 
 describe("proofreading presentation refresh", () => {
+  it("coalesces a presentation refresh with an in-flight document pass", async () => {
+    const text = "qwertzuiopz remains observable";
+    let showRequestedPage = false;
+    let finishProofreading = (_result: ProofreadingResult): void => {
+      throw new Error("proofreading did not start");
+    };
+    const proofread = vi.fn(
+      () =>
+        new Promise<ProofreadingResult>((resolve) => {
+          finishProofreading = resolve;
+        }),
+    );
+    setSpellHost({
+      getProjectId: () => "project",
+      getActivePath: () => "main.tex",
+      getLintPrefs: () => ({
+        showRegionalism: true,
+        showWordChoice: true,
+        dialect: "american",
+      }),
+      proofread,
+      presentDiagnostics: (result) =>
+        showRequestedPage ? result.diagnostics : [],
+      isSessionIgnored: () => false,
+      isWordIgnored: () => false,
+      ignoreWordForProject: () => undefined,
+      ignoreWordGlobally: () => undefined,
+    });
+
+    view = new EditorView({
+      state: EditorState.create({
+        doc: text,
+        extensions: [createHarperLinter(true)],
+      }),
+      parent: document.body,
+    });
+    forceLinting(view);
+    await vi.waitFor(() => expect(proofread).toHaveBeenCalledOnce(), {
+      timeout: 2_000,
+    });
+
+    showRequestedPage = true;
+    refreshEditorProofreadingPresentation(view);
+    finishProofreading({
+      protocolVersion: PROOFREADING_PROTOCOL_VERSION,
+      type: "result",
+      requestId: 1,
+      identity: {
+        projectId: "project",
+        path: "main.tex",
+        revision: 1,
+        requestGeneration: 1,
+        surface: "source",
+      },
+      status: "ready",
+      diagnostics: [
+        {
+          from: 0,
+          to: "qwertzuiopz".length,
+          message: "Possible misspelling",
+          kind: "Spelling",
+          source: "hunspell",
+          word: "qwertzuiopz",
+          suggestions: [],
+        },
+      ],
+    });
+
+    await vi.waitFor(
+      () => expect(diagnosticCardSource(view!, 1)).not.toBeNull(),
+      { timeout: 2_000 },
+    );
+    expect(proofread).toHaveBeenCalledOnce();
+  });
+
   it("repaints an exact retained result after CodeMirror replaces its document object", async () => {
     const text = "qwertzuiopz remains observable";
     let finishProofreading = (_result: ProofreadingResult): void => {

@@ -63,11 +63,13 @@ export interface SpellHost {
     };
   }): Promise<ProofreadingResult>;
   getRetainedProofreading?(input: {
+    contextKey: string;
     projectId: string | null;
     path: string;
     text: string;
     mode: ProofreadingMode;
   }): ProofreadingResult | null;
+  getProofreadingContextKey?(projectId: string | null): string;
   presentDiagnostics?(
     result: ProofreadingResult,
   ): ProofreadingResult["diagnostics"];
@@ -108,6 +110,7 @@ export function refreshEditorLints(view: EditorView | null): void {
 }
 
 interface PresentedProofreadingCache {
+  contextKey: string;
   document: EditorView["state"]["doc"];
   mode: ProofreadingMode;
   path: string;
@@ -120,6 +123,60 @@ const presentedProofreadingCache = new WeakMap<
   PresentedProofreadingCache
 >();
 const presentationRefreshViews = new WeakSet<EditorView>();
+
+interface PendingProofreadingRequest {
+  contextKey: string;
+  mode: ProofreadingMode;
+  path: string;
+  projectId: string | null;
+  text: string;
+  promise: Promise<ProofreadingResult>;
+}
+
+const pendingProofreadingRequests = new WeakMap<
+  EditorView,
+  PendingProofreadingRequest
+>();
+
+interface CoordinatedProofreadingRun {
+  latest: Promise<Diagnostic[]>;
+}
+
+const coordinatedProofreadingRuns = new WeakMap<
+  EditorView,
+  CoordinatedProofreadingRun
+>();
+
+/**
+ * CodeMirror may start a second lint pass while an earlier pass for the same
+ * immutable document is still resolving. Its lint plugin accepts both results,
+ * so a slower obsolete pass could otherwise overwrite the newer diagnostics.
+ * Make every overlapping pass settle to the newest pass's output.
+ */
+async function coordinateProofreadingRun(
+  view: EditorView,
+  run: () => Promise<Diagnostic[]>,
+): Promise<Diagnostic[]> {
+  let state = coordinatedProofreadingRuns.get(view);
+  if (!state) {
+    state = {
+      latest: Promise.resolve([]),
+    };
+    coordinatedProofreadingRuns.set(view, state);
+  }
+  let current = Promise.resolve().then(run);
+  state.latest = current;
+  for (;;) {
+    let diagnostics: Diagnostic[];
+    try {
+      diagnostics = await current;
+    } catch {
+      diagnostics = [];
+    }
+    if (state.latest === current) return diagnostics;
+    current = state.latest;
+  }
+}
 
 /**
  * Repaints a different bounded page from the last authoritative proofreading
@@ -269,41 +326,84 @@ async function proofreadWithWorker(
   if (!format) return [];
   const document = view.state.doc;
   const text = document.toString();
+  const contextKey =
+    h.getProofreadingContextKey?.(projectId) ?? "";
   const presentationOnly = presentationRefreshViews.delete(view);
   const cached = presentedProofreadingCache.get(view);
   const canReusePresentedResult =
     presentationOnly &&
     cached?.document === document &&
+    cached.contextKey === contextKey &&
     cached.mode === mode &&
     cached.path === path &&
     cached.projectId === projectId;
+  const pending = pendingProofreadingRequests.get(view);
+  const canReusePendingResult =
+    presentationOnly &&
+    !canReusePresentedResult &&
+    pending?.contextKey === contextKey &&
+    pending.mode === mode &&
+    pending.path === path &&
+    pending.projectId === projectId &&
+    pending.text === text;
   const retainedResult =
-    presentationOnly && !canReusePresentedResult
+    presentationOnly &&
+    !canReusePresentedResult &&
+    !canReusePendingResult
       ? (h.getRetainedProofreading?.({
+          contextKey,
           projectId,
           path,
           text,
           mode,
         }) ?? null)
       : null;
+  const requestWorker = () => {
+    const promise = h.proofread!({
+      projectId,
+      path,
+      revision: ++sourceRevision,
+      surface: "source",
+      text,
+      format,
+      mode,
+      preferences: h.getLintPrefs(),
+    });
+    const request: PendingProofreadingRequest = {
+      contextKey,
+      mode,
+      path,
+      projectId,
+      text,
+      promise,
+    };
+    pendingProofreadingRequests.set(view, request);
+    void promise.then(
+      () => {
+        if (pendingProofreadingRequests.get(view) === request) {
+          pendingProofreadingRequests.delete(view);
+        }
+      },
+      () => {
+        if (pendingProofreadingRequests.get(view) === request) {
+          pendingProofreadingRequests.delete(view);
+        }
+      },
+    );
+    return promise;
+  };
   const result = canReusePresentedResult
     ? cached.result
-    : (retainedResult ??
-      (await h.proofread({
-          projectId,
-          path,
-          revision: ++sourceRevision,
-          surface: "source",
-          text,
-          format,
-          mode,
-          preferences: h.getLintPrefs(),
-        })));
+    : (canReusePendingResult
+      ? await pending.promise
+      : (retainedResult ?? (await requestWorker())));
   if (
     (result.status !== "ready" && result.status !== "partial") ||
     view.state.doc !== document ||
     h.getProjectId() !== projectId ||
-    h.getActivePath() !== path
+    h.getActivePath() !== path ||
+    (h.getProofreadingContextKey?.(projectId) ?? "") !==
+      contextKey
   ) {
     return [];
   }
@@ -312,6 +412,7 @@ async function proofreadWithWorker(
   // object while an unchanged worker request is in flight; binding the result
   // to the current object makes every later presentation-page repaint local.
   presentedProofreadingCache.set(view, {
+    contextKey,
     document,
     mode,
     path,
@@ -352,48 +453,49 @@ async function proofreadWithWorker(
 
 export function createSpellLinter() {
   return linter(
-    async (view): Promise<Diagnostic[]> => {
-      const h = host;
-      if (!h) return [];
-      try {
-        const workerDiagnostics = await proofreadWithWorker(
-          h,
-          view,
-          "spelling",
-        );
-        if (workerDiagnostics) return workerDiagnostics;
-        if (!h.getSpellchecker) return [];
-        const hunspell = await h.getSpellchecker();
-        const projectId = h.getProjectId();
-        const path = h.getActivePath() ?? "";
-        const text = view.state.doc.toString();
-        const ranges = /\.(?:md|markdown)$/i.test(path)
-          ? markdownSpellcheckRanges(text)
-          : spellcheckRanges(text);
-        const diags: Diagnostic[] = [];
-        for (const r of ranges) {
-          if (r.word.length < 2 || h.isSessionIgnored(r.word)) continue;
-          if (h.isWordIgnored(projectId, r.word)) continue;
-          try {
-            if (!hunspell.spell(r.word)) {
-              diags.push(
-                proofreadingDiagnostic(h, projectId, r.word, [], {
-                  from: r.from,
-                  to: r.to,
-                  severity: "warning",
-                  message: `Possible misspelling: "${r.word}"`,
-                }),
-              );
+    async (view): Promise<Diagnostic[]> =>
+      coordinateProofreadingRun(view, async () => {
+        const h = host;
+        if (!h) return [];
+        try {
+          const workerDiagnostics = await proofreadWithWorker(
+            h,
+            view,
+            "spelling",
+          );
+          if (workerDiagnostics) return workerDiagnostics;
+          if (!h.getSpellchecker) return [];
+          const hunspell = await h.getSpellchecker();
+          const projectId = h.getProjectId();
+          const path = h.getActivePath() ?? "";
+          const text = view.state.doc.toString();
+          const ranges = /\.(?:md|markdown)$/i.test(path)
+            ? markdownSpellcheckRanges(text)
+            : spellcheckRanges(text);
+          const diags: Diagnostic[] = [];
+          for (const r of ranges) {
+            if (r.word.length < 2 || h.isSessionIgnored(r.word)) continue;
+            if (h.isWordIgnored(projectId, r.word)) continue;
+            try {
+              if (!hunspell.spell(r.word)) {
+                diags.push(
+                  proofreadingDiagnostic(h, projectId, r.word, [], {
+                    from: r.from,
+                    to: r.to,
+                    severity: "warning",
+                    message: `Possible misspelling: "${r.word}"`,
+                  }),
+                );
+              }
+            } catch {
+              /* skip */
             }
-          } catch {
-            /* skip */
           }
+          return diags;
+        } catch {
+          return [];
         }
-        return diags;
-      } catch {
-        return [];
-      }
-    },
+      }),
     // Longer debounce on large docs reduces main-thread pressure while typing.
     { delay: 700, needsRefresh, tooltipFilter: noLintTooltip }
   );
@@ -492,67 +594,71 @@ function localGrammarFallback(
 
 export function createHarperLinter(includeSpelling = false) {
   return linter(
-    async (view): Promise<Diagnostic[]> => {
-      const h = host;
-      if (!h) return [];
-      const path = h.getActivePath() ?? "";
-      if (!/\.(tex|ltx|latex|md|markdown|typ)$/i.test(path)) return [];
-      let workerDiagnostics: Diagnostic[] | null = null;
-      try {
-        workerDiagnostics = await proofreadWithWorker(
-          h,
-          view,
-          includeSpelling ? "combined" : "grammar",
-        );
-      } catch {
-        // Fall through to the local grammar provider when the worker is
-        // unavailable or a request is interrupted during project switching.
-      }
-      if (workerDiagnostics) return workerDiagnostics;
-      try {
-        if (!h.lintGrammar) {
+    async (view): Promise<Diagnostic[]> =>
+      coordinateProofreadingRun(view, async () => {
+        const h = host;
+        if (!h) return [];
+        const path = h.getActivePath() ?? "";
+        if (!/\.(tex|ltx|latex|md|markdown|typ)$/i.test(path)) return [];
+        let workerDiagnostics: Diagnostic[] | null = null;
+        try {
+          workerDiagnostics = await proofreadWithWorker(
+            h,
+            view,
+            includeSpelling ? "combined" : "grammar",
+          );
+        } catch {
+          // Fall through to the local grammar provider when the worker is
+          // unavailable or a request is interrupted during project switching.
+        }
+        if (workerDiagnostics) return workerDiagnostics;
+        try {
+          if (!h.lintGrammar) {
+            return localGrammarFallback(view.state.doc.toString(), path, h);
+          }
+          const projectId = h.getProjectId();
+          const { showRegionalism, showWordChoice } = h.getLintPrefs();
+          const text = view.state.doc.toString();
+          // Guard: masking + WASM grammar linting both run on the main thread,
+          // so on a very large document they would jank the editor after the
+          // debounce. Skip the pass above a generous cap (covers normal
+          // single-file docs).
+          if (text.length > MAX_GRAMMAR_CHARS) {
+            return localGrammarFallback(text, path, h);
+          }
+          // Lint compacted prose (no masking gaps), then map spans back to the
+          // document.
+          const { prose, map } = /\.(?:md|markdown)$/i.test(path)
+            ? markdownToProse(text)
+            : maskToProse(text);
+          const diags = await h.lintGrammar(prose, prose.length);
+          const out: Diagnostic[] = [];
+          for (const d of diags) {
+            // Category mutes from Settings (e.g. hide all
+            // regionalism/word-choice).
+            if (!showRegionalism && /regional/i.test(d.kind)) continue;
+            if (!showWordChoice && /word.?choice/i.test(d.kind)) continue;
+            if (d.from >= map.length) continue;
+            const from = map[d.from];
+            const to = (map[Math.min(d.to, map.length) - 1] ?? from) + 1;
+            if (to <= from) continue;
+            const word = text.slice(from, to);
+            if (h.isWordIgnored(projectId, word)) continue;
+            // regionalism ("Spanner"), word choice, or any style suggestion.
+            out.push(
+              proofreadingDiagnostic(h, projectId, word, d.suggestions, {
+                from,
+                to,
+                severity: "warning",
+                message: d.message,
+              }),
+            );
+          }
+          return out;
+        } catch {
           return localGrammarFallback(view.state.doc.toString(), path, h);
         }
-        const projectId = h.getProjectId();
-        const { showRegionalism, showWordChoice } = h.getLintPrefs();
-        const text = view.state.doc.toString();
-        // Guard: masking + WASM grammar linting both run on the main thread, so
-        // on a very large document they would jank the editor after the debounce.
-        // Skip the pass above a generous cap (covers normal single-file docs).
-        if (text.length > MAX_GRAMMAR_CHARS) {
-          return localGrammarFallback(text, path, h);
-        }
-        // Lint compacted prose (no masking gaps), then map spans back to the doc.
-        const { prose, map } = /\.(?:md|markdown)$/i.test(path)
-          ? markdownToProse(text)
-          : maskToProse(text);
-        const diags = await h.lintGrammar(prose, prose.length);
-        const out: Diagnostic[] = [];
-        for (const d of diags) {
-          // Category mutes from Settings (e.g. hide all regionalism/word-choice).
-          if (!showRegionalism && /regional/i.test(d.kind)) continue;
-          if (!showWordChoice && /word.?choice/i.test(d.kind)) continue;
-          if (d.from >= map.length) continue;
-          const from = map[d.from];
-          const to = (map[Math.min(d.to, map.length) - 1] ?? from) + 1;
-          if (to <= from) continue;
-          const word = text.slice(from, to);
-          if (h.isWordIgnored(projectId, word)) continue;
-          // regionalism ("Spanner"), word choice, or any style suggestion.
-          out.push(
-            proofreadingDiagnostic(h, projectId, word, d.suggestions, {
-              from,
-              to,
-              severity: "warning",
-              message: d.message,
-            }),
-          );
-        }
-        return out;
-      } catch {
-        return localGrammarFallback(view.state.doc.toString(), path, h);
-      }
-    },
+      }),
     // Idle-friendly: wait until typing pauses so Harper WASM does not fight
     // CodeMirror for the main thread mid-keystroke.
     { delay: 900, needsRefresh, tooltipFilter: noLintTooltip }

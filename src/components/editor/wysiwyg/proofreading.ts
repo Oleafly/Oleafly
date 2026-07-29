@@ -720,10 +720,13 @@ export const VisualProofreading = Extension.create({
                   view.state.doc !== previousState.doc ||
                   current?.revision !== previous?.revision
                 ) {
-                  cancelProofreading(
-                    "visual",
-                    requestedPath ?? undefined,
-                  );
+                  // This plugin owns only the request it recorded. Passing an
+                  // undefined path would cancel every Visual proofreading
+                  // lane, including a newer request started by another
+                  // mounted surface during a document transition.
+                  if (requestedPath) {
+                    cancelProofreading("visual", requestedPath);
+                  }
                 }
                 schedule();
               }
