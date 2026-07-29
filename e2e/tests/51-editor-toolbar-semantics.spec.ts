@@ -706,6 +706,21 @@ test("every symbol inventory macro compiles and exposes its deterministic PDF ma
   );
   expect(categories).toHaveLength(13);
 
+  const latexText = (value: string) => {
+    const escaped: Record<string, string> = {
+      "\\": String.raw`\textbackslash{}`,
+      "{": String.raw`\{`,
+      "}": String.raw`\}`,
+      "&": String.raw`\&`,
+      "%": String.raw`\%`,
+      "$": String.raw`\$`,
+      "#": String.raw`\#`,
+      "_": String.raw`\_`,
+    };
+    return [...value]
+      .map((character) => escaped[character] ?? character)
+      .join("");
+  };
   const groups = categories.map((category, categoryIndex) => {
     const entries = category.items.map((symbol, symbolIndex) => ({
       ...symbol,
@@ -720,7 +735,7 @@ test("every symbol inventory macro compiles and exposes its deterministic PDF ma
     return {
       category,
       entries,
-      source: String.raw`\section*{${category.label.replace(/&/g, "\\&")}}
+      source: String.raw`\section*{${latexText(category.label)}}
 ${rows}`,
     };
   });

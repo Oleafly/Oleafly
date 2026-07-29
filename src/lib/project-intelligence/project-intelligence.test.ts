@@ -336,6 +336,21 @@ email@example.com and \@escaped
     expect(value.diagnostics).toEqual([]);
   });
 
+  it("strips malformed nested-looking HTML tags before creating Markdown anchors", () => {
+    const file = analyzeProjectFile(
+      "article.md",
+      "# <<script>alert</script> Safe\n",
+      1,
+    );
+    const anchors = file.definitions
+      .filter((definition) => definition.kind === "anchor")
+      .map((definition) => definition.name);
+    expect(anchors).toContain("alert-safe");
+    expect(anchors.every((anchor) => !anchor.includes("<"))).toBe(
+      true,
+    );
+  });
+
   it("resolves Typst markup and explicit multi-key citations without turning cite labels into definitions", () => {
     const value = snapshot({
       "main.typ": `#bibliography("refs.bib")

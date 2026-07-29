@@ -299,6 +299,34 @@ describe("recovery-oriented LaTeX completion", () => {
     );
   });
 
+  it("handles optional package, class, and citation arguments without backtracking", () => {
+    const packageSource =
+      "\\RequirePackage [draft] {graphicx}\n\\rot";
+    expect(option(completion(packageSource), "\\rotatebox")).toBeTruthy();
+
+    const classSource = "\\documentclass[11pt]{scr";
+    expect(option(completion(classSource), "scrartcl")).toBeTruthy();
+
+    setBibKeysProvider(() => ["knuth1984"]);
+    const citationSource = "\\cite*[see]{knu";
+    const citation = completion(citationSource, true);
+    expect(citation?.from).toBe(
+      citationSource.length - "knu".length,
+    );
+    expect(option(citation, "knuth1984")).toBeTruthy();
+  });
+
+  it("bounds malformed structural completion input", () => {
+    const repeated = 1_000;
+    expect(completion("\\usepackage[".repeat(repeated))).toBeNull();
+    expect(
+      completion("\\documentclass[".repeat(repeated)),
+    ).toBeNull();
+    expect(
+      completion("\\cite[".repeat(repeated), true),
+    ).toBeNull();
+  });
+
   it("replaces only the incomplete reference/citation query", () => {
     setBibKeysProvider(() => ["knuth1984", "lamport1994"]);
     const referenceSource =

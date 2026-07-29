@@ -104,6 +104,45 @@ function proseLine(
   return `${subject[0].toUpperCase()}${subject.slice(1)} ${action}; case ${chapter}.${section}.${sequence}.`;
 }
 
+function countInlineDollarMath(source: string): number {
+  let count = 0;
+  for (let start = 0; start < source.length; start += 1) {
+    if (
+      source[start] !== "$" ||
+      source[start - 1] === "\\" ||
+      source[start - 1] === "$" ||
+      source[start + 1] === "$"
+    ) {
+      continue;
+    }
+    let hasContent = false;
+    for (let cursor = start + 1; cursor < source.length; cursor += 1) {
+      const character = source[cursor];
+      if (character === "\n") break;
+      if (character === "\\") {
+        if (
+          cursor + 1 >= source.length ||
+          source[cursor + 1] === "\n"
+        ) {
+          break;
+        }
+        cursor += 1;
+        hasContent = true;
+        continue;
+      }
+      if (character === "$") {
+        if (hasContent) {
+          count += 1;
+          start = cursor;
+        }
+        break;
+      }
+      hasContent = true;
+    }
+  }
+  return count;
+}
+
 function displayFormula(
   formulaIndex: number,
 ): { readonly kind: string; readonly lines: readonly string[] } {
@@ -398,8 +437,7 @@ export function buildLargeLatexBook(
   const nonEmptyLines = lines.filter((line) => line.trim().length > 0);
   const distinctNonEmptyLineRatio =
     new Set(nonEmptyLines).size / nonEmptyLines.length;
-  const mathCount =
-    source.match(/(?<!\\)\$(?!\$)(?:\\.|[^$\n])+(?<!\\)\$/gu)?.length ?? 0;
+  const mathCount = countInlineDollarMath(source);
 
   return {
     source,

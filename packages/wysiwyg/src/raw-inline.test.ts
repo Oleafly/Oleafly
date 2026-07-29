@@ -3,8 +3,19 @@ import { describe, expect, it } from "vitest";
 import { Editor } from "@tiptap/core";
 import { StarterKit } from "@tiptap/starter-kit";
 import { RawInline } from "./raw-inline";
+import { isRawMathSource } from "./raw-presentation";
 
 describe("RawInline math presentation", () => {
+  it("recognizes supported math delimiters with a linear scanner", () => {
+    expect(isRawMathSource("$x + y$")).toBe(true);
+    expect(isRawMathSource("$$x + y$$")).toBe(true);
+    expect(isRawMathSource("\\(x + y\\)")).toBe(true);
+    expect(isRawMathSource("\\[x + y\\]")).toBe(true);
+    expect(isRawMathSource("$x$ trailing")).toBe(false);
+    expect(isRawMathSource("$x$y$")).toBe(false);
+    expect(isRawMathSource(`$${"\\#".repeat(20_000)}$`)).toBe(true);
+  });
+
   it("keeps the complete math expression visible and directly editable", () => {
     const source =
       "$\\frac{attention_{query}}{\\sqrt{dimension_{key}}}$";
