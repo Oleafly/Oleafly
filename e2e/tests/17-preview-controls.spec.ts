@@ -29,11 +29,10 @@ async function selectPageLayout(
     await moreControls.press("Enter");
     const layoutMenu = tauriPage.getByText("Page layout", { exact: true });
     await expect(layoutMenu).toBeVisible();
-    await layoutMenu.focus();
-    await layoutMenu.press("ArrowRight");
-    await tauriPage
-      .getByRole("menuitemradio", { name: label, exact: true })
-      .click();
+    await layoutMenu.click();
+    const layoutOption = tauriPage.getByText(label, { exact: true });
+    await expect(layoutOption).toBeVisible();
+    await layoutOption.click();
   }
   await expect(tauriPage.getByTestId("preview-pane")).toHaveAttribute(
     "data-preview-layout",
