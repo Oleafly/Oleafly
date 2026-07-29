@@ -119,6 +119,28 @@ describe("proofreading presentation refresh", () => {
     });
     expect(messages).toContain("Independent syntax diagnostic");
     expect(proofread).toHaveBeenCalledOnce();
+
+    // Simulate CodeMirror applying a lint result that was already resolving
+    // when the presentation page changed. The requested page must be
+    // reasserted after that asynchronous last write without another worker
+    // request.
+    view.dispatch(
+      setDiagnostics(view.state, [
+        {
+          from: 12,
+          to: 19,
+          severity: "error",
+          message: "Independent syntax diagnostic",
+          source: "syntax",
+        },
+      ]),
+    );
+    expect(diagnosticCardSource(view, 1)).toBeNull();
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => resolve());
+    });
+    expect(diagnosticCardSource(view, 1)).not.toBeNull();
+    expect(proofread).toHaveBeenCalledOnce();
   });
 
   it("keeps the requested page when an older lint result settles afterward", async () => {
