@@ -497,22 +497,23 @@ test("a realistic 6,200-line book keeps the full authoring workspace stable unde
   await expect(tauriPage.locator(".pdf-canvas").first()).toBeVisible({
     timeout: 60_000,
   });
-  await tauriPage.waitForFunction(
-    `Array.from(document.querySelectorAll("span")).some(
-      (element) => /^of \\d+$/.test(element.textContent?.trim() ?? ""),
-    )`,
+  await waitLong(
+    tauriPage,
+    `Number(
+      document.querySelector('[data-testid="pdf-renderer"]')
+        ?.getAttribute("data-pdf-page-count") ?? "0"
+    ) > 0`,
     60_000,
   );
   const renderedPageCount = await tauriPage.evaluate<number>(
-    `(() => {
-      const label = Array.from(document.querySelectorAll("span")).find(
-        (element) => /^of \\d+$/.test(element.textContent?.trim() ?? ""),
-      );
-      return Number(label?.textContent?.trim().slice(3) ?? "0");
-    })()`,
+    `Number(
+      document.querySelector('[data-testid="pdf-renderer"]')
+        ?.getAttribute("data-pdf-page-count") ?? "0"
+    )`,
   );
   expect(renderedPageCount).toBeGreaterThan(40);
-  await tauriPage.waitForFunction(
+  await waitLong(
+    tauriPage,
     `Array.from(document.querySelectorAll(".textLayer span")).some(
       (element) =>
         element.textContent?.includes(

@@ -193,14 +193,42 @@ async function makeSwitchFixture(marker: string, pageCount: number): Promise<Uin
 
 function setPreviewPdfExpression(bytes: Uint8Array): string {
   const base64 = Buffer.from(bytes).toString("base64");
-  return `import("/src/store/compile.ts").then(({ useCompileStore }) => {
+  return `Promise.all([
+    import("/src/store/compile.ts"),
+    import("/src/store/files.ts"),
+    import("/src/store/project-analysis.ts"),
+    import("/src/lib/compile-checkpoint.ts"),
+  ]).then(([{ useCompileStore }, { useFilesStore }, { useProjectAnalysisStore }, checkpoint]) => {
     const binary = atob(${JSON.stringify(base64)});
     const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+    const files = useFilesStore.getState();
+    const analysis = useProjectAnalysisStore.getState().snapshot;
+    if (!files.projectId || analysis.identity.projectId !== files.projectId) {
+      throw new Error("Current project analysis is unavailable for the PDF fixture");
+    }
+    const previous = useCompileStore.getState().lastCompileCheckpoint;
     // Invalidate any open-project compile that is still between saveActive()
     // and its first status update. Without this, that late compile can replace
     // the deterministic fixture after it has been installed.
     useCompileStore.getState().reset();
-    useCompileStore.setState({ pdfBytes: bytes, status: "success" });
+    const verified = checkpoint.createCompileSuccessCheckpoint({
+      projectId: files.projectId,
+      mainDocument: files.mainDoc || "main.tex",
+      projectRevision: analysis.identity.projectRevision,
+      requestGeneration: (previous?.requestGeneration ?? 0) + 1,
+      outputKind: "standard",
+      producerId: "e2e-pdf-fixture",
+      outputRevision: (previous?.outputRevision ?? 0) + 1,
+      outputId: checkpoint.fingerprintCompileOutput(bytes),
+      previousCompletedAt: previous?.completedAt ?? null,
+    });
+    useCompileStore.setState({
+      pdfBytes: bytes,
+      status: "success",
+      phase: "idle",
+      lastCompiledAt: verified.completedAt,
+      lastCompileCheckpoint: verified,
+    });
     return true;
   })`;
 }
