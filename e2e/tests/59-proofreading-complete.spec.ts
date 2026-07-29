@@ -236,9 +236,12 @@ async function activateDictionaryTab(
   page: TauriPage,
   tab: "global" | "projects",
 ): Promise<void> {
-  const locator = page.locator(`[data-testid="dictionary-tab-${tab}"]`);
-  await locator.focus();
-  await locator.press("Enter");
+  const selector = `[data-testid="dictionary-tab-${tab}"]`;
+  await page.click(selector);
+  await page.waitForFunction(
+    `document.querySelector(${JSON.stringify(selector)})?.getAttribute("data-state") === "active"`,
+    8_000,
+  );
 }
 
 async function addDictionaryWord(
@@ -248,6 +251,20 @@ async function addDictionaryWord(
 ): Promise<void> {
   const selector = `[aria-label=${JSON.stringify(inputLabel)}]`;
   await page.fill(selector, word);
+  // The native bridge can issue Enter in the same render turn as fill.
+  // Wait until React has committed the controlled value and enabled this
+  // form's submit button so the test exercises a real accepted submission.
+  await page.waitForFunction(
+    `(() => {
+      const input = document.querySelector(${JSON.stringify(selector)});
+      const submit = input?.closest("form")?.querySelector('button[type="submit"]');
+      return input instanceof HTMLInputElement &&
+        input.value === ${JSON.stringify(word)} &&
+        submit instanceof HTMLButtonElement &&
+        !submit.disabled;
+    })()`,
+    8_000,
+  );
   await page.press(selector, "Enter");
   await expect(
     page.locator(`[aria-label=${JSON.stringify(`Stop ignoring ${word}`)}]`),
