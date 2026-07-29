@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   readCompiledPdf: vi.fn(),
   listeners: new Map<string, (event: { payload?: unknown }) => void>(),
   gotoPage: vi.fn(),
+  getFitScale: vi.fn(() => 1),
 }));
 
 vi.mock("@/lib/tauri", () => ({
@@ -36,9 +37,15 @@ vi.mock("@/components/pdf/PdfViewer", async () => {
         data: Uint8Array;
         onPageChange?: (current: number, total: number) => void;
       },
-      ref: React.ForwardedRef<{ gotoPage: (page: number) => void }>,
+      ref: React.ForwardedRef<{
+        gotoPage: (page: number) => void;
+        getFitScale: (mode: "width" | "height") => number;
+      }>,
     ) {
-      React.useImperativeHandle(ref, () => ({ gotoPage: mocks.gotoPage }));
+      React.useImperativeHandle(ref, () => ({
+        gotoPage: mocks.gotoPage,
+        getFitScale: mocks.getFitScale,
+      }));
       React.useEffect(() => onPageChange?.(1, 3), [onPageChange]);
       return (
         <div data-testid="detached-pdf-bytes">
@@ -123,6 +130,7 @@ beforeEach(() => {
   mocks.readCompiledPdf.mockReset();
   mocks.listeners.clear();
   mocks.gotoPage.mockReset();
+  mocks.getFitScale.mockClear();
 });
 
 describe("detached preview request identity", () => {
