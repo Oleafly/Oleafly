@@ -559,6 +559,8 @@ test("a realistic 6,200-line book keeps the full authoring workspace stable unde
             proofreading.PROOFREADING_PRESENTATION_PAGE_SIZE,
         ),
       );
+      window.__e2eProofreadingTargetOffset =
+        source.diagnostics[diagnosticIndex].from;
       window.dispatchEvent(
         new CustomEvent("oleafly:proofreading-presentation-changed", {
           detail: { surface: "source", path: "main.tex" },
@@ -568,16 +570,19 @@ test("a realistic 6,200-line book keeps the full authoring workspace stable unde
     })`,
     90_000,
   );
-  const firstTypoLine =
-    fixture.source.slice(0, fixture.source.indexOf("qwertzuiopz")).split("\n")
-      .length;
-  await goToLine(tauriPage, firstTypoLine);
+  const proofreadingTargetOffset = await tauriPage.evaluate<number>(
+    `window.__e2eProofreadingTargetOffset`,
+  );
+  expect(proofreadingTargetOffset).toBeGreaterThanOrEqual(0);
+  const proofreadingTargetLine =
+    fixture.source.slice(0, proofreadingTargetOffset).split("\n").length;
+  await goToLine(tauriPage, proofreadingTargetLine);
   // The Tauri bridge caps a single wait_for_function command at 30 seconds
   // even when a longer timeout is supplied. Poll through the shared helper so
   // a loaded Linux runner can finish the book-scale proofreading pass.
   await waitLong(
     tauriPage,
-    `window.__e2eHasProofreadingDiagnostic?.("qwertzuiopz") === true`,
+    `window.__e2eHasProofreadingDiagnosticAt?.(${proofreadingTargetOffset}) === true`,
     90_000,
   );
   await expect(
