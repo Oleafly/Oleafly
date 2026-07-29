@@ -337,16 +337,62 @@ function repaintCachedProofreadingPresentation(
   view: EditorView,
 ): boolean {
   const h = host;
-  const cached = presentedProofreadingCache.get(view);
-  if (!h || !cached || cached.document !== view.state.doc) return false;
-  if (
-    h.getProjectId() !== cached.projectId ||
-    h.getActivePath() !== cached.path ||
-    (h.getProofreadingContextKey?.(cached.projectId) ?? "") !==
-      cached.contextKey
-  ) {
-    return false;
+  if (!h) return false;
+  const projectId = h.getProjectId();
+  const path = h.getActivePath() ?? "";
+  const contextKey =
+    h.getProofreadingContextKey?.(projectId) ?? "";
+  let cached = presentedProofreadingCache.get(view);
+  const cacheIsCurrent =
+    cached?.document === view.state.doc &&
+    cached.projectId === projectId &&
+    cached.path === path &&
+    cached.contextKey === contextKey;
+  if (!cacheIsCurrent) {
+    const text = view.state.doc.toString();
+    const preferredMode = cached?.mode;
+    const modes: ProofreadingMode[] = [
+      ...(preferredMode ? [preferredMode] : []),
+      "combined",
+      "grammar",
+      "spelling",
+    ];
+    const visited = new Set<ProofreadingMode>();
+    cached = undefined;
+    for (const mode of modes) {
+      if (visited.has(mode)) continue;
+      visited.add(mode);
+      const result =
+        h.getRetainedProofreading?.({
+          contextKey,
+          projectId,
+          path,
+          text,
+          mode,
+        }) ?? null;
+      if (
+        !result ||
+        (result.status !== "ready" &&
+          result.status !== "partial") ||
+        result.identity.projectId !== projectId ||
+        result.identity.path !== path ||
+        result.identity.surface !== "source"
+      ) {
+        continue;
+      }
+      cached = {
+        contextKey,
+        document: view.state.doc,
+        mode,
+        path,
+        projectId,
+        result,
+      };
+      presentedProofreadingCache.set(view, cached);
+      break;
+    }
   }
+  if (!cached) return false;
   const retainedDiagnostics: Diagnostic[] = [];
   forEachDiagnostic(
     view.state,

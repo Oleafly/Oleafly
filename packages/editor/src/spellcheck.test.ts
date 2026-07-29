@@ -378,6 +378,7 @@ describe("proofreading presentation refresh", () => {
 
     expect(diagnosticCardSource(view, 1)).toBeNull();
     refreshEditorProofreadingPresentation(view);
+    expect(diagnosticCardSource(view, 1)).not.toBeNull();
     await vi.waitFor(
       () => expect(diagnosticCardSource(view!, 1)).not.toBeNull(),
       { timeout: 2_000 },
