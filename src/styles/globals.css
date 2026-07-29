@@ -694,16 +694,6 @@
     overscroll-behavior: none;
   }
   body {
-    /*
-     * WebKit can make `body` an independently scrollable box when the root
-     * viewport is clipped, then scroll that box to reveal a deeply focused
-     * CodeMirror/ProseMirror control. Pinning the desktop body to the native
-     * viewport keeps the application shell stationary while its editor,
-     * preview, and sidebar descendants retain their own scroll surfaces.
-     */
-    position: fixed;
-    inset: 0;
-    width: 100%;
     margin: 0;
     background-color: var(--background);
     color: var(--foreground);
@@ -715,13 +705,11 @@
   #root {
     /*
      * The React tree is the desktop viewport, not document flow content.
-     * WebKit may still programmatically scroll an overflow-hidden fixed body
-     * when a deeply positioned editor diagnostic regains focus. Anchoring the
-     * application root to the viewport makes that browser-internal body scroll
-     * irrelevant and guarantees that application chrome cannot move.
+     * Keep this as an ordinary DOM layer. Fixed or transformed roots can make
+     * WKWebView promote the entire application into a stale compositing layer,
+     * leaving a fully mounted and accessible project visually blank. Visual
+     * selection restoration is contained at the editor boundary instead.
      */
-    position: fixed;
-    inset: 0;
     overflow: hidden;
     overscroll-behavior: none;
   }

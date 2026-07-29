@@ -13,6 +13,7 @@ export function CommandPalette() {
   const open = useSettingsStore((s) => s.paletteOpen);
   const setPaletteOpen = useSettingsStore((s) => s.setPaletteOpen);
   const [query, setQuery] = useState("");
+  const [selectedValue, setSelectedValue] = useState("");
   const projectId = useFilesStore((s) => s.projectId);
   const projectKind = useFilesStore((s) => s.projectKind);
   const engine = useFilesStore((s) => s.engine);
@@ -72,12 +73,19 @@ export function CommandPalette() {
     const cmds = commandsFor("palette", ctx);
     const search = query.trim();
     const visibleCommands = search
-      ? cmds.filter((command) => {
-          const label = commandLabel(command, ctx);
-          const searchValue =
-            `${label} ${command.keywords ?? ""} ${commandAliasSearchText(command.slash)}`;
-          return defaultFilter(searchValue, search) > 0;
-        })
+      ? cmds
+          .map((command) => {
+            const label = commandLabel(command, ctx);
+            const searchValue =
+              `${label} ${command.keywords ?? ""} ${commandAliasSearchText(command.slash)}`;
+            return {
+              command,
+              score: defaultFilter(searchValue, search),
+            };
+          })
+          .filter(({ score }) => score > 0)
+          .sort((left, right) => right.score - left.score)
+          .map(({ command }) => command)
       : cmds;
     const byGroup = new Map<string, typeof cmds>();
     for (const c of visibleCommands) {
@@ -89,12 +97,24 @@ export function CommandPalette() {
     return [...byGroup.entries()];
   }, [ctx, query]);
 
+  const bestMatchValue = useMemo(() => {
+    const command = groups[0]?.[1][0];
+    if (!command) return "";
+    return `${commandLabel(command, ctx)} ${command.keywords ?? ""} ${commandAliasSearchText(command.slash)}`;
+  }, [ctx, groups]);
+
+  useEffect(() => {
+    setSelectedValue(bestMatchValue);
+  }, [bestMatchValue]);
+
   return (
     <Command.Dialog
       open={open}
       onOpenChange={setPaletteOpen}
       label="Command Palette"
       shouldFilter={false}
+      value={selectedValue}
+      onValueChange={setSelectedValue}
       overlayClassName="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm"
       className={cn("fixed left-1/2 top-[20%] z-50 w-[min(560px,92vw)] -translate-x-1/2")}
     >
