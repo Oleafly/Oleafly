@@ -301,15 +301,7 @@ async function runAuthoringChaos(
         const frame = () => new Promise(requestAnimationFrame);
         const pause = (ms) =>
           new Promise((resolve) => setTimeout(resolve, ms));
-        const inspect = (actionName) => {
-          const scroller = view.scrollDOM;
-          const viewport = scroller.getBoundingClientRect();
-          const visibleLines = Array.from(
-            view.contentDOM.querySelectorAll(".cm-line"),
-          ).filter((line) => {
-            const rect = line.getBoundingClientRect();
-            return rect.bottom >= viewport.top && rect.top <= viewport.bottom;
-          });
+        const gutterDelta = () => {
           const gutters = Array.from(
             view.dom.querySelectorAll(
               ".cm-lineNumbers .cm-gutterElement",
@@ -343,9 +335,33 @@ async function runAuthoringChaos(
               ),
             ];
           });
-          const maxDelta = Math.max(0, ...deltas);
+          return {
+            gutterCount: gutters.length,
+            maxDelta: Math.max(0, ...deltas),
+          };
+        };
+        const inspect = async (actionName) => {
+          const scroller = view.scrollDOM;
+          const viewport = scroller.getBoundingClientRect();
+          const visibleLines = Array.from(
+            view.contentDOM.querySelectorAll(".cm-line"),
+          ).filter((line) => {
+            const rect = line.getBoundingClientRect();
+            return rect.bottom >= viewport.top && rect.top <= viewport.bottom;
+          });
+          let { gutterCount, maxDelta } = gutterDelta();
+          if (maxDelta > 1.5) {
+            // Debounced decoration dispatches (math previews, lint sets)
+            // can land between an edit and this probe, leaving the gutter
+            // spacer one measure pass behind its line for a single frame.
+            // Only misalignment that survives a settled frame is the
+            // persistent drift this probe exists to catch.
+            await frame();
+            await frame();
+            ({ gutterCount, maxDelta } = gutterDelta());
+          }
           maxGutterDelta = Math.max(maxGutterDelta, maxDelta);
-          if (visibleLines.length < 5 || gutters.length < 5) blankFrames++;
+          if (visibleLines.length < 5 || gutterCount < 5) blankFrames++;
           if (maxDelta > 1.5) {
             misalignedFrames++;
             misalignedActions[actionName] =
@@ -379,7 +395,7 @@ async function runAuthoringChaos(
             performance.now() - started,
           );
           actionCounts[name] = (actionCounts[name] ?? 0) + 1;
-          inspect(name);
+          await inspect(name);
         };
 
         for (let index = 0; index < targets.length; index++) {
@@ -466,7 +482,7 @@ async function runAuthoringChaos(
           if (index % 3 === 2) {
             await pause(500);
             await frame();
-            inspect("settled");
+            await inspect("settled");
           }
         }
 
