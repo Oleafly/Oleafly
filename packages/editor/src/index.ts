@@ -74,6 +74,7 @@ export {
   spellLintExtensions,
   refreshEditorLints,
   refreshEditorProofreadingPresentation,
+  clearEditorProofreadingDiagnostics,
   cancelSourceProofreading,
   createSpellLinter,
   createHarperLinter,

@@ -16,6 +16,7 @@ import {
   attachProofreadingCard,
   diagnosticCardGutter,
   diagnosticCardTooltip,
+  hasProofreadingCard,
 } from "./diagnostic-card";
 import { markdownSpellcheckRanges, markdownToProse } from "./markdown-mask";
 import type {
@@ -109,6 +110,27 @@ export function refreshEditorLints(view: EditorView | null): void {
   forceLinting(view);
 }
 
+export function clearEditorProofreadingDiagnostics(
+  view: EditorView | null,
+): void {
+  if (!view) return;
+  const retainedDiagnostics: Diagnostic[] = [];
+  forEachDiagnostic(
+    view.state,
+    (diagnostic, from, to) => {
+      if (hasProofreadingCard(diagnostic)) return;
+      retainedDiagnostics.push({
+        ...diagnostic,
+        from,
+        to,
+      });
+    },
+  );
+  presentedProofreadingCache.delete(view);
+  pendingProofreadingRequests.delete(view);
+  view.dispatch(setDiagnostics(view.state, retainedDiagnostics));
+}
+
 interface PresentedProofreadingCache {
   contextKey: string;
   document: EditorView["state"]["doc"];
@@ -164,7 +186,22 @@ async function coordinateProofreadingRun(
     };
     coordinatedProofreadingRuns.set(view, state);
   }
-  let current = Promise.resolve().then(run);
+  const activeHost = host;
+  const projectId = activeHost?.getProjectId() ?? null;
+  const contextKey =
+    activeHost?.getProofreadingContextKey?.(projectId) ?? "";
+  let current = Promise.resolve()
+    .then(run)
+    .then((diagnostics) => {
+      if (
+        host !== activeHost ||
+        (activeHost?.getProofreadingContextKey?.(projectId) ?? "") !==
+          contextKey
+      ) {
+        return [];
+      }
+      return diagnostics;
+    });
   state.latest = current;
   for (;;) {
     let diagnostics: Diagnostic[];
@@ -186,6 +223,7 @@ export function refreshEditorProofreadingPresentation(
   view: EditorView | null,
 ): void {
   if (!view) return;
+  if (repaintCachedProofreadingPresentation(view)) return;
   presentationRefreshViews.add(view);
   refreshEditorLints(view);
 }
@@ -243,6 +281,94 @@ function proofreadingDiagnostic(
     },
     { word, suggestions: suggestionList, ignores: ignoreList },
   );
+}
+
+function presentedProofreadingDiagnostics(
+  h: SpellHost,
+  view: EditorView,
+  result: ProofreadingResult,
+  projectId: string | null,
+  text: string,
+): Diagnostic[] {
+  const output: Diagnostic[] = [];
+  const presentedDiagnostics =
+    h.presentDiagnostics?.(result) ?? result.diagnostics;
+  for (const diagnostic of presentedDiagnostics) {
+    const from = Math.max(
+      0,
+      Math.min(diagnostic.from, view.state.doc.length),
+    );
+    const to = Math.max(
+      from,
+      Math.min(diagnostic.to, view.state.doc.length),
+    );
+    if (to <= from) continue;
+    const word = diagnostic.word || text.slice(from, to);
+    if (
+      h.isSessionIgnored(word) ||
+      h.isWordIgnored(projectId, word)
+    ) {
+      continue;
+    }
+    output.push(
+      proofreadingDiagnostic(h, projectId, word, diagnostic.suggestions, {
+        from,
+        to,
+        severity: "warning",
+        message: diagnostic.message,
+      }),
+    );
+  }
+  return output;
+}
+
+/**
+ * A presentation-page change is local UI state, not a new analysis pass.
+ * Replace only the proofreading-owned diagnostics synchronously so an
+ * unrelated asynchronous CodeMirror lint batch cannot delay or erase the
+ * requested page. Syntax, compile, reference, and language-service
+ * diagnostics keep their existing objects and ranges.
+ */
+function repaintCachedProofreadingPresentation(
+  view: EditorView,
+): boolean {
+  const h = host;
+  const cached = presentedProofreadingCache.get(view);
+  if (!h || !cached || cached.document !== view.state.doc) return false;
+  if (
+    h.getProjectId() !== cached.projectId ||
+    h.getActivePath() !== cached.path ||
+    (h.getProofreadingContextKey?.(cached.projectId) ?? "") !==
+      cached.contextKey
+  ) {
+    return false;
+  }
+  const retainedDiagnostics: Diagnostic[] = [];
+  forEachDiagnostic(
+    view.state,
+    (diagnostic, from, to) => {
+      if (hasProofreadingCard(diagnostic)) return;
+      retainedDiagnostics.push({
+        ...diagnostic,
+        from,
+        to,
+      });
+    },
+  );
+  const proofreadingDiagnostics = presentedProofreadingDiagnostics(
+    h,
+    view,
+    cached.result,
+    cached.projectId,
+    view.state.doc.toString(),
+  );
+  view.dispatch(
+    setDiagnostics(view.state, [
+      ...retainedDiagnostics,
+      ...proofreadingDiagnostics,
+    ]),
+  );
+  return true;
 }
 
 function ignoreActions(h: SpellHost, projectId: string | null, word: string): Action[] {
@@ -419,36 +545,13 @@ async function proofreadWithWorker(
     projectId,
     result,
   });
-  const output: Diagnostic[] = [];
-  const presentedDiagnostics =
-    h.presentDiagnostics?.(result) ?? result.diagnostics;
-  for (const diagnostic of presentedDiagnostics) {
-    const from = Math.max(
-      0,
-      Math.min(diagnostic.from, view.state.doc.length),
-    );
-    const to = Math.max(
-      from,
-      Math.min(diagnostic.to, view.state.doc.length),
-    );
-    if (to <= from) continue;
-    const word = diagnostic.word || text.slice(from, to);
-    if (
-      h.isSessionIgnored(word) ||
-      h.isWordIgnored(projectId, word)
-    ) {
-      continue;
-    }
-    output.push(
-      proofreadingDiagnostic(h, projectId, word, diagnostic.suggestions, {
-        from,
-        to,
-        severity: "warning",
-        message: diagnostic.message,
-      }),
-    );
-  }
-  return output;
+  return presentedProofreadingDiagnostics(
+    h,
+    view,
+    result,
+    projectId,
+    text,
+  );
 }
 
 export function createSpellLinter() {

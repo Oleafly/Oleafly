@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import type { Extension } from "@codemirror/state";
 import type { KeyBinding } from "@codemirror/view";
 import {
@@ -195,6 +196,25 @@ const EXTRA_KEYMAP: KeyBinding[] = [
 ];
 
 export function CodeMirrorEditor({ active = true }: { active?: boolean }) {
+  useEffect(
+    () =>
+      useSettingsStore.subscribe((settings, previous) => {
+        const disabled =
+          !settings.spellcheck && !settings.harper;
+        const wasEnabled =
+          previous.spellcheck || previous.harper;
+        if (!disabled || !wasEnabled) return;
+        // This transition removes the final proofreading provider. Clear both
+        // surfaces synchronously with the settings store update so a completed
+        // worker generation cannot remain visible while React reconfigures
+        // the Source and Visual editors.
+        retainedSourceProofreading = null;
+        cancelProofreading("source");
+        cancelProofreading("visual");
+      }),
+    [],
+  );
+
   return (
     <CodeMirrorEditorCore
       active={active}

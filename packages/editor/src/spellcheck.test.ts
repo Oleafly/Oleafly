@@ -1,7 +1,11 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { forceLinting } from "@codemirror/lint";
+import {
+  forceLinting,
+  forEachDiagnostic,
+  setDiagnostics,
+} from "@codemirror/lint";
 import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { diagnosticCardSource } from "./diagnostic-card";
@@ -23,6 +27,100 @@ afterEach(() => {
 });
 
 describe("proofreading presentation refresh", () => {
+  it("repaints a cached presentation page synchronously", async () => {
+    const text = "qwertzuiopz remains observable";
+    let showRequestedPage = false;
+    let finishProofreading = (_result: ProofreadingResult): void => {
+      throw new Error("proofreading did not start");
+    };
+    const proofread = vi.fn(
+      () =>
+        new Promise<ProofreadingResult>((resolve) => {
+          finishProofreading = resolve;
+        }),
+    );
+    setSpellHost({
+      getProjectId: () => "project",
+      getActivePath: () => "main.tex",
+      getLintPrefs: () => ({
+        showRegionalism: true,
+        showWordChoice: true,
+        dialect: "american",
+      }),
+      proofread,
+      presentDiagnostics: (result) =>
+        showRequestedPage ? result.diagnostics : [],
+      isSessionIgnored: () => false,
+      isWordIgnored: () => false,
+      ignoreWordForProject: () => undefined,
+      ignoreWordGlobally: () => undefined,
+    });
+
+    view = new EditorView({
+      state: EditorState.create({
+        doc: text,
+        extensions: [createHarperLinter(true)],
+      }),
+      parent: document.body,
+    });
+    forceLinting(view);
+    await vi.waitFor(() => expect(proofread).toHaveBeenCalledOnce(), {
+      timeout: 2_000,
+    });
+    finishProofreading({
+      protocolVersion: PROOFREADING_PROTOCOL_VERSION,
+      type: "result",
+      requestId: 1,
+      identity: {
+        projectId: "project",
+        path: "main.tex",
+        revision: 1,
+        requestGeneration: 1,
+        surface: "source",
+      },
+      status: "ready",
+      diagnostics: [
+        {
+          from: 0,
+          to: "qwertzuiopz".length,
+          message: "Possible misspelling",
+          kind: "Spelling",
+          source: "hunspell",
+          word: "qwertzuiopz",
+          suggestions: [],
+        },
+      ],
+    });
+    await vi.waitFor(
+      () => expect(proofread).toHaveBeenCalledOnce(),
+      { timeout: 2_000 },
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(diagnosticCardSource(view, 1)).toBeNull();
+    view.dispatch(
+      setDiagnostics(view.state, [
+        {
+          from: 12,
+          to: 19,
+          severity: "error",
+          message: "Independent syntax diagnostic",
+          source: "syntax",
+        },
+      ]),
+    );
+
+    showRequestedPage = true;
+    refreshEditorProofreadingPresentation(view);
+
+    expect(diagnosticCardSource(view, 1)).not.toBeNull();
+    const messages: string[] = [];
+    forEachDiagnostic(view.state, (diagnostic) => {
+      messages.push(diagnostic.message);
+    });
+    expect(messages).toContain("Independent syntax diagnostic");
+    expect(proofread).toHaveBeenCalledOnce();
+  });
+
   it("coalesces a presentation refresh with an in-flight document pass", async () => {
     const text = "qwertzuiopz remains observable";
     let showRequestedPage = false;
