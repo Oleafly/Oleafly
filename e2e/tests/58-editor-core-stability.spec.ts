@@ -543,14 +543,42 @@ test("a realistic 6,200-line book keeps the full authoring workspace stable unde
     })`,
     90_000,
   );
+  await tauriPage.evaluate(
+    `import("/src/store/proofreading.ts").then((proofreading) => {
+      const state = proofreading.useProofreadingStore.getState();
+      const diagnosticIndex = state.source.diagnostics.findIndex(
+        (diagnostic) =>
+          diagnostic.word.toLowerCase() === "qwertzuiopz",
+      );
+      if (diagnosticIndex < 0) {
+        throw new Error("large-book typo diagnostic is unavailable");
+      }
+      state.setPresentationPage(
+        "source",
+        Math.floor(
+          diagnosticIndex /
+            proofreading.PROOFREADING_PRESENTATION_PAGE_SIZE,
+        ),
+      );
+      window.dispatchEvent(
+        new CustomEvent("oleafly:proofreading-presentation-changed", {
+          detail: { surface: "source", path: "main.tex" },
+        }),
+      );
+      return true;
+    })`,
+  );
   const firstTypoLine =
     fixture.source.slice(0, fixture.source.indexOf("qwertzuiopz")).split("\n")
       .length;
   await goToLine(tauriPage, firstTypoLine);
   await tauriPage.waitForFunction(
-    `document.querySelectorAll(".cm-lintRange").length > 0`,
-    30_000,
+    `window.__e2eHasProofreadingDiagnostic?.("qwertzuiopz") === true`,
+    90_000,
   );
+  await expect(
+    tauriPage.locator(".cm-lintRange").first(),
+  ).toBeVisible({ timeout: 30_000 });
   await expectFullAuthoringWorkspace(tauriPage);
 
   for (const line of [1_100, 3_100, 5_100]) {
