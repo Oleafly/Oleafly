@@ -59,11 +59,8 @@ test("toolbar inserts figure and table environments", async ({ tauriPage }) => {
 test("citation button opens the add-citation dialog", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await clickToolbarControl(
-    tauriPage,
-    '[aria-label="Add citation (DOI, arXiv, or title)"]',
-    "Add citation",
-  );
+  await clickToolbarControl(tauriPage, '[aria-label="Cite from project"]', "Cite from project");
+  await tauriPage.getByText("Find and add a new citation…").click();
   await expect(
     tauriPage.locator('input[placeholder="DOI, arXiv id, URL, or a paper title…"]'),
   ).toBeVisible();
