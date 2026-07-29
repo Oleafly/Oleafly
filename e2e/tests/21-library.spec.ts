@@ -150,7 +150,7 @@ test("delete the forked copy from the context menu", async ({ tauriPage }) => {
   await expect(confirmation).toContainText(/Delete “E2E Fork.*”\?/u);
   await confirmation.getByText("Cancel").click();
   await expect(confirmation).not.toBeVisible();
-  await expect(tauriPage.getByText(/E2E Fork/u).first()).toBeVisible();
+  await expect(tauriPage.locator('button[aria-label^="Open E2E Fork"]').first()).toBeVisible();
 
   await tauriPage.evaluate(
     `(() => {

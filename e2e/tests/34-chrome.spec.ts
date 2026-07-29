@@ -100,14 +100,15 @@ test("editor tabs close from their x button", async ({ tauriPage }) => {
 test("code folding collapses and restores a region", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  // The blank template's document environment is foldable (gutter shows ▾).
+  // The blank template's document environment is foldable. Target the
+  // marker's semantic state instead of its visual implementation.
   await tauriPage.waitForFunction(
-    `Array.from(document.querySelectorAll('.cm-foldGutter span')).some(s => s.textContent === '▾')`,
+    `document.querySelector('.cm-foldGutter .cm-fold-marker[data-fold-state="open"]')`,
     10_000,
   );
   await tauriPage.evaluate(
     `(() => {
-      const m = Array.from(document.querySelectorAll('.cm-foldGutter span')).find(s => s.textContent === '▾');
+      const m = document.querySelector('.cm-foldGutter .cm-fold-marker[data-fold-state="open"]');
       const r = m.getBoundingClientRect();
       m.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2 }));
       return 1;

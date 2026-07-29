@@ -13,6 +13,7 @@ import { ThemeProvider } from "@/lib/theme";
 import { Toaster } from "@/components/ui/sonner";
 import { appendAppLog } from "@/lib/tauri";
 import { registerContributions } from "@/contributions";
+import { installDesktopViewportGuard } from "@/lib/desktop-viewport";
 import "@/styles/globals.css";
 
 // Must run before the shell mounts and reads the registry.
@@ -35,6 +36,10 @@ window.addEventListener("error", (e) => {
 const viewParam = new URLSearchParams(window.location.search).get("view");
 const isUpdateWindow = viewParam === "update";
 const isPreviewWindow = viewParam === "preview";
+
+if (!isUpdateWindow && !isPreviewWindow) {
+  installDesktopViewportGuard();
+}
 
 // The update window is transparent so its rounded card defines the window
 // shape; clear the opaque page background the main app sets.

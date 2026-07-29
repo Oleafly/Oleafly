@@ -48,6 +48,7 @@ export function foldMarkerDOM(open: boolean): HTMLElement {
   const button = document.createElement("span");
   button.className = "cm-fold-marker";
   button.setAttribute("aria-hidden", "true");
+  button.dataset.foldState = open ? "open" : "closed";
 
   const svg = document.createElementNS(SVG_NS, "svg");
   svg.setAttribute("viewBox", "0 0 24 24");
