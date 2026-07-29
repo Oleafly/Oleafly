@@ -1026,14 +1026,39 @@ export async function fillCommandPalette(
       if (!setter) return false;
       input.focus();
       setter.call(input, ${JSON.stringify(text)});
-      input.dispatchEvent(new InputEvent("input", {
+      const inputEvent = new InputEvent("input", {
         bubbles: true,
         cancelable: true,
         data: ${JSON.stringify(text)},
         inputType: "insertText",
-      }));
+      });
+      input.dispatchEvent(inputEvent);
       input.dispatchEvent(new Event("change", { bubbles: true }));
-      return input.value === ${JSON.stringify(text)};
+
+      // Linux WebKit marks bridge-created DOM events as untrusted and React's
+      // change-event plugin can discard them. Invoke the already-mounted
+      // input's React onChange handler as the deterministic bridge fallback;
+      // this is test-only and exercises cmdk's real state/filtering path.
+      const reactPropsKey = Object.keys(input).find((key) =>
+        key.startsWith("__reactProps$"),
+      );
+      const reactOnChange = reactPropsKey
+        ? input[reactPropsKey]?.onChange
+        : undefined;
+      if (typeof reactOnChange === "function") {
+        reactOnChange({
+          target: input,
+          currentTarget: input,
+          nativeEvent: inputEvent,
+          type: "change",
+        });
+      }
+      if (typeof reactOnChange !== "function") return false;
+      return new Promise((resolve) => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => resolve(input.value === ${JSON.stringify(text)}));
+        });
+      });
     })()`,
   );
   if (!accepted) {

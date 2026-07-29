@@ -40,6 +40,26 @@ async function selectPageLayout(
   );
 }
 
+async function activatePreviewControl(
+  tauriPage: TauriPage,
+  label: string,
+) {
+  const direct = tauriPage.locator(
+    `[aria-label=${JSON.stringify(label)}]`,
+  );
+  if (await direct.isVisible()) {
+    await direct.click();
+    return;
+  }
+
+  const moreControls = tauriPage.locator(
+    '[aria-label="More preview controls"]',
+  );
+  await expect(moreControls).toBeVisible();
+  await moreControls.click();
+  await tauriPage.getByRole("menu").getByText(label, { exact: true }).click();
+}
+
 test.beforeEach(async ({ tauriPage }) => {
   test.setTimeout(240_000);
   await expect(
@@ -217,7 +237,7 @@ test("save PDF writes the exact compiled bytes at the requested relative path an
 }) => {
   const compiledBase64 = await readCompiledPdfBase64(tauriPage);
   expect((await getCompiledPdfProbe(tauriPage)).text).toContain("Introduction");
-  await tauriPage.click('[aria-label="Save PDF to project"]');
+  await activatePreviewControl(tauriPage, "Save PDF to project");
   const name = `e2e-saved-${Date.now().toString(36)}.pdf`;
   const path = `exports/${name}`;
   await tauriPage.fill('[aria-label="Project save name"]', path);
@@ -230,7 +250,7 @@ test("save PDF writes the exact compiled bytes at the requested relative path an
   expect(savedBase64).toBe(compiledBase64);
   expect(Buffer.from(savedBase64, "base64").subarray(0, 5).toString("ascii")).toBe("%PDF-");
 
-  await tauriPage.click('[aria-label="Save PDF to project"]');
+  await activatePreviewControl(tauriPage, "Save PDF to project");
   await tauriPage.fill('[aria-label="Project save name"]', "../outside-project.pdf");
   await tauriPage.getByText("Save", { exact: true }).click();
   await expect(tauriPage.getByText("Couldn't save into the project.", { exact: true })).toBeVisible({
@@ -254,7 +274,7 @@ test("save image writes a real nonblank PNG at the requested relative path", asy
     { timeout: 180_000 },
   );
   await expect(tauriPage.locator(".pdf-canvas")).toBeVisible({ timeout: 30_000 });
-  await tauriPage.click('[aria-label="Save image to project"]');
+  await activatePreviewControl(tauriPage, "Save image to project");
   const path = `renders/result-${Date.now().toString(36)}.png`;
   await tauriPage.fill('[aria-label="Project save name"]', path);
   await tauriPage.getByText("Save", { exact: true }).click();
