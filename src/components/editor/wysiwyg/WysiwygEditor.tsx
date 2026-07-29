@@ -61,6 +61,7 @@ import {
   visualProofreadingIssueGroup,
 } from "./proofreading";
 import { scrollVisualSelectionLocally } from "./scroll";
+import { resetDesktopDocumentScroll } from "@/lib/desktop-viewport";
 
 function isMarkdownPath(path: string): boolean {
   const p = path.toLowerCase();
@@ -69,18 +70,6 @@ function isMarkdownPath(path: string): boolean {
 
 const FLUSH_DEBOUNCE_MS = 300;
 const MARKDOWN_FRONTMATTER_RE = /^(---\r?\n[\s\S]*?\r?\n---)\r?\n?/u;
-
-function resetLeakedDocumentScroll() {
-  const scrollingElement = document.scrollingElement;
-  if (scrollingElement) {
-    scrollingElement.scrollTop = 0;
-    scrollingElement.scrollLeft = 0;
-  }
-  document.documentElement.scrollTop = 0;
-  document.documentElement.scrollLeft = 0;
-  document.body.scrollTop = 0;
-  document.body.scrollLeft = 0;
-}
 
 function markdownMathRanges(source: string) {
   const bodyOffset = MARKDOWN_FRONTMATTER_RE.exec(source)?.[0].length ?? 0;
@@ -563,12 +552,12 @@ export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
     let firstFrame = 0;
     let secondFrame = 0;
     const restoreShell = () => {
-      resetLeakedDocumentScroll();
+      resetDesktopDocumentScroll();
       cancelAnimationFrame(firstFrame);
       cancelAnimationFrame(secondFrame);
       firstFrame = requestAnimationFrame(() => {
-        resetLeakedDocumentScroll();
-        secondFrame = requestAnimationFrame(resetLeakedDocumentScroll);
+        resetDesktopDocumentScroll();
+        secondFrame = requestAnimationFrame(() => resetDesktopDocumentScroll());
       });
     };
 

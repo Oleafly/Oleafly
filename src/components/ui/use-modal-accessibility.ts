@@ -12,32 +12,6 @@ const FOCUSABLE = [
   "[tabindex]:not([tabindex='-1'])",
 ].join(",");
 
-interface DocumentScrollPosition {
-  left: number;
-  top: number;
-}
-
-function readDocumentScrollPosition(): DocumentScrollPosition {
-  const scrollingElement = document.scrollingElement;
-  return {
-    left: scrollingElement?.scrollLeft ?? document.documentElement.scrollLeft ?? document.body.scrollLeft,
-    top: scrollingElement?.scrollTop ?? document.documentElement.scrollTop ?? document.body.scrollTop,
-  };
-}
-
-function restoreDocumentScrollPosition(position: DocumentScrollPosition): void {
-  const scrollingElement = document.scrollingElement;
-  const targets = new Set<Element>([
-    ...(scrollingElement ? [scrollingElement] : []),
-    document.documentElement,
-    document.body,
-  ]);
-  for (const target of targets) {
-    target.scrollLeft = position.left;
-    target.scrollTop = position.top;
-  }
-}
-
 export function useModalAccessibility<T extends HTMLElement>(
   open: boolean,
   onClose: () => void,
@@ -52,11 +26,6 @@ export function useModalAccessibility<T extends HTMLElement>(
 
   useEffect(() => {
     if (!open) return;
-    // A focused element inside a removed dialog can make WebKit scroll the
-    // document while it resolves focus. The app shell is intentionally its own
-    // scroll boundary, so preserve the document viewport across the complete
-    // modal lifecycle instead of allowing focus restoration to move it.
-    const documentScrollPosition = readDocumentScrollPosition();
     const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const modalId = modalCoordinator.add(previouslyFocused);
     modalIdRef.current = modalId;
@@ -106,11 +75,6 @@ export function useModalAccessibility<T extends HTMLElement>(
       const restore = modalCoordinator.remove(modalId);
       if (modalIdRef.current === modalId) modalIdRef.current = null;
       if (restore) restore.focus({ preventScroll: true });
-      restoreDocumentScrollPosition(documentScrollPosition);
-      requestAnimationFrame(() => {
-        restoreDocumentScrollPosition(documentScrollPosition);
-        requestAnimationFrame(() => restoreDocumentScrollPosition(documentScrollPosition));
-      });
     };
   }, [open]);
 
