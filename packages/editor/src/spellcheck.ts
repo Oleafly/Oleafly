@@ -4,12 +4,12 @@ import {
   lintGutter,
   forceLinting,
   setDiagnostics,
+  setDiagnosticsEffect,
   type Diagnostic,
   type Action,
 } from "@codemirror/lint";
 import { StateEffect, type Extension } from "@codemirror/state";
-import { tooltips } from "@codemirror/view";
-import type { EditorView, ViewUpdate } from "@codemirror/view";
+import { EditorView, tooltips, type ViewUpdate } from "@codemirror/view";
 
 import { maskToProse, spellcheckRanges } from "./latex-mask";
 import {
@@ -455,6 +455,38 @@ function repaintCachedProofreadingPresentation(
     cached.projectId,
     view.state.doc.toString(),
   );
+  const currentProofreadingDiagnostics: Array<{
+    from: number;
+    to: number;
+    message: string;
+    actions: string;
+  }> = [];
+  forEachDiagnostic(view.state, (diagnostic, from, to) => {
+    if (!hasProofreadingCard(diagnostic)) return;
+    currentProofreadingDiagnostics.push({
+      from,
+      to,
+      message: diagnostic.message,
+      actions: (diagnostic.actions ?? [])
+        .map((action) => action.name)
+        .join("\0"),
+    });
+  });
+  const alreadyCurrent =
+    currentProofreadingDiagnostics.length ===
+      proofreadingDiagnostics.length &&
+    currentProofreadingDiagnostics.every((diagnostic, index) => {
+      const expected = proofreadingDiagnostics[index];
+      return (
+        expected?.from === diagnostic.from &&
+        expected.to === diagnostic.to &&
+        expected.message === diagnostic.message &&
+        (expected.actions ?? [])
+          .map((action) => action.name)
+          .join("\0") === diagnostic.actions
+      );
+    });
+  if (alreadyCurrent) return true;
   view.dispatch(
     setDiagnostics(view.state, [
       ...retainedDiagnostics,
@@ -881,6 +913,28 @@ export const spellLintExtensions = (opts: { spell?: boolean; harper?: boolean } 
  */
 export function diagnosticPresentationExtensions(): Extension[] {
   return [
+    // A presentation-page selection remains authoritative for the unchanged
+    // document. CodeMirror can apply a lint-source promise long after the
+    // selection event's browser frame; observe every diagnostics transaction
+    // and repair only a mismatched proofreading slice. The equality guard in
+    // repaintCachedProofreadingPresentation prevents feedback dispatches.
+    EditorView.updateListener.of((update) => {
+      if (
+        !presentationRefreshGenerations.has(update.view) ||
+        !update.transactions.some((transaction) =>
+          transaction.effects.some((effect) =>
+            effect.is(setDiagnosticsEffect)
+          )
+        )
+      ) {
+        return;
+      }
+      queueMicrotask(() => {
+        if (update.view.dom.isConnected) {
+          repaintCachedProofreadingPresentation(update.view);
+        }
+      });
+    }),
     // The shared card replaces CodeMirror's stock gutter tooltip.
     lintGutter({ tooltipFilter: noLintTooltip }),
     // Fixed tooltips escape the editor pane without participating in document
