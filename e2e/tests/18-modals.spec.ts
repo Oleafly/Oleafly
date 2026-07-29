@@ -28,7 +28,7 @@ test("settings and template modals close through user interactions and restore f
 
 test("word count modal opens from the palette and closes", async ({ tauriPage }) => {
   await pressGlobal(tauriPage, "k", { meta: true });
-  await tauriPage.getByRole("combobox").fill("word"); // cmdk matches single terms
+  await tauriPage.type("[cmdk-input]", "word"); // cmdk matches single terms
   await tauriPage.press("[cmdk-input]", "Enter");
   await tauriPage.waitForFunction(
     `document.body.innerText.includes('Word count')`,
@@ -43,7 +43,7 @@ test("word count modal opens from the palette and closes", async ({ tauriPage })
 
 test("history modal opens from the palette", async ({ tauriPage }) => {
   await pressGlobal(tauriPage, "k", { meta: true });
-  await tauriPage.getByRole("combobox").fill("history");
+  await tauriPage.type("[cmdk-input]", "history");
   await tauriPage.press("[cmdk-input]", "Enter");
   // The modal heading renders (history may be empty for a fresh repo).
   await tauriPage.waitForFunction(

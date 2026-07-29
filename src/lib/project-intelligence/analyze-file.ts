@@ -1524,9 +1524,23 @@ function latexAdditionalSyntax(
   }
 }
 
+function markdownTextWithoutHtmlTags(title: string): string {
+  let result = "";
+  let insideTag = false;
+  for (const character of title) {
+    if (character === "<") {
+      insideTag = true;
+    } else if (character === ">" && insideTag) {
+      insideTag = false;
+    } else if (!insideTag) {
+      result += character;
+    }
+  }
+  return result;
+}
+
 function markdownSlug(title: string): string {
-  return title
-    .replace(/<[^>]+>/g, "")
+  return markdownTextWithoutHtmlTags(title)
     .replace(/[`*_~[\]()]/g, "")
     .toLocaleLowerCase("en-US")
     .replace(/[^\p{Letter}\p{Number}\s_-]/gu, "")

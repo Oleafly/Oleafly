@@ -478,6 +478,33 @@ function xparseCommandDefinition(
   };
 }
 
+function collectPackageNames(
+  text: string,
+  packages: Set<string>,
+): void {
+  const directive = /\\(?:usepackage|RequirePackage)/gu;
+  let match: RegExpExecArray | null;
+  while ((match = directive.exec(text))) {
+    let cursor = skipWhitespace(text, match.index + match[0].length);
+    if (text[cursor] === "[") {
+      const optionsEnd = latexBalancedGroupEnd(text, cursor, "[", "]");
+      // An unclosed option group owns the rest of the source. Stop instead of
+      // repeatedly rescanning that suffix from every command-like substring.
+      if (optionsEnd === null) break;
+      cursor = skipWhitespace(text, optionsEnd);
+    }
+    if (text[cursor] !== "{") continue;
+    const namesEnd = latexBalancedGroupEnd(text, cursor);
+    if (namesEnd === null) break;
+    const names = text.slice(cursor + 1, namesEnd - 1);
+    for (const name of names.split(",")) {
+      const normalized = name.trim().toLowerCase();
+      if (normalized) packages.add(normalized);
+    }
+    directive.lastIndex = namesEnd;
+  }
+}
+
 /**
  * Builds the current-revision fallback catalog in one linear pass per
  * immutable CodeMirror document. Project intelligence can add cross-file
@@ -556,14 +583,7 @@ function latexCatalog(state: {
     const label = match[1]?.trim();
     if (label) labels.add(label);
   }
-  for (const match of catalogText.matchAll(
-    /\\(?:usepackage|RequirePackage)(?:\[[^\]]*\])?\{([^}]+)\}/gu,
-  )) {
-    for (const name of (match[1] ?? "").split(",")) {
-      const normalized = name.trim().toLowerCase();
-      if (normalized) packages.add(normalized);
-    }
-  }
+  collectPackageNames(catalogText, packages);
 
   const catalog = {
     commands: [...commands.values()],
@@ -688,6 +708,80 @@ function currentArgumentQuery(text: string): string {
   return value.slice(comma + 1).trimStart();
 }
 
+interface OpenCommandArgument {
+  readonly text: string;
+}
+
+function openCommandArgument(
+  context: CompletionContext,
+  commands: ReadonlySet<string>,
+  options: {
+    readonly allowStar?: boolean;
+    readonly optionalGroups?: number;
+  } = {},
+): OpenCommandArgument | null {
+  const line = context.state.doc.lineAt(context.pos);
+  const sliceFrom = Math.max(line.from, context.pos - 2_048);
+  const prefix = context.state.doc.sliceString(sliceFrom, context.pos);
+  let commandStart = prefix.lastIndexOf("\\");
+
+  while (commandStart >= 0) {
+    let cursor = commandStart + 1;
+    while (/[A-Za-z@]/u.test(prefix[cursor] ?? "")) cursor += 1;
+    const command = prefix.slice(commandStart + 1, cursor);
+    if (commands.has(command)) {
+      if (options.allowStar && prefix[cursor] === "*") cursor += 1;
+      cursor = skipWhitespace(prefix, cursor);
+
+      let valid = true;
+      for (
+        let group = 0;
+        group < (options.optionalGroups ?? 0) && prefix[cursor] === "[";
+        group += 1
+      ) {
+        const groupEnd = latexBalancedGroupEnd(prefix, cursor, "[", "]");
+        if (groupEnd === null) {
+          valid = false;
+          break;
+        }
+        cursor = skipWhitespace(prefix, groupEnd);
+      }
+
+      if (valid && prefix[cursor] === "{") {
+        const argument = prefix.slice(cursor + 1);
+        if (
+          argument.length <= 500 &&
+          !argument.includes("{") &&
+          !argument.includes("}")
+        ) {
+          return { text: prefix.slice(commandStart) };
+        }
+      }
+    }
+    if (commandStart === 0) break;
+    commandStart = prefix.lastIndexOf("\\", commandStart - 1);
+  }
+  return null;
+}
+
+const PACKAGE_ARGUMENT_COMMANDS = new Set([
+  "usepackage",
+  "RequirePackage",
+]);
+const CLASS_ARGUMENT_COMMANDS = new Set(["documentclass"]);
+const CITATION_ARGUMENT_COMMANDS = new Set([
+  "cite",
+  "citep",
+  "citet",
+  "citeauthor",
+  "citeyear",
+  "citealt",
+  "parencite",
+  "textcite",
+  "autocite",
+  "nocite",
+]);
+
 function structuralArgumentCompletions(
   context: CompletionContext,
   guard: CompletionRequestGuard,
@@ -720,8 +814,10 @@ function structuralArgumentCompletions(
     };
   }
 
-  const packageMatch = context.matchBefore(
-    /\\(?:usepackage|RequirePackage)\s*(?:\[[^\]]*\])?\{[^{}]{0,500}$/u,
+  const packageMatch = openCommandArgument(
+    context,
+    PACKAGE_ARGUMENT_COMMANDS,
+    { optionalGroups: 1 },
   );
   if (packageMatch) {
     const query = currentArgumentQuery(packageMatch.text);
@@ -737,8 +833,10 @@ function structuralArgumentCompletions(
     };
   }
 
-  const classMatch = context.matchBefore(
-    /\\documentclass\s*(?:\[[^\]]*\])?\{[^{}]{0,500}$/u,
+  const classMatch = openCommandArgument(
+    context,
+    CLASS_ARGUMENT_COMMANDS,
+    { optionalGroups: 1 },
   );
   if (classMatch) {
     const query = currentArgumentQuery(classMatch.text);
@@ -779,8 +877,10 @@ function referenceCitationCompletions(
     };
   }
 
-  const citeMatch = context.matchBefore(
-    /\\(?:cite|citep|citet|citeauthor|citeyear|citealt|parencite|textcite|autocite|nocite)\*?\s*(?:\[[^\]]*\])?\s*\{[^}]{0,500}$/u
+  const citeMatch = openCommandArgument(
+    context,
+    CITATION_ARGUMENT_COMMANDS,
+    { allowStar: true, optionalGroups: 1 },
   );
   if (citeMatch) {
     const query = currentArgumentQuery(citeMatch.text);

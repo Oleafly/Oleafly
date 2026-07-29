@@ -158,10 +158,28 @@ export function compactRawInlineSource(source: string): string {
 
 export function isRawMathSource(source: string): boolean {
   const trimmed = source.trim();
-  return (
-    /^\$\$[\s\S]*\$\$$/u.test(trimmed) ||
-    /^\$(?:\\.|[^$])+\$$/u.test(trimmed) ||
-    /^\\\([\s\S]*\\\)$/u.test(trimmed) ||
-    /^\\\[[\s\S]*\\\]$/u.test(trimmed)
-  );
+  if (
+    (trimmed.startsWith("$$") && trimmed.endsWith("$$")) ||
+    (trimmed.startsWith("\\(") && trimmed.endsWith("\\)")) ||
+    (trimmed.startsWith("\\[") && trimmed.endsWith("\\]"))
+  ) {
+    return trimmed.length >= 4;
+  }
+  if (
+    trimmed.length < 3 ||
+    trimmed[0] !== "$" ||
+    trimmed.at(-1) !== "$"
+  ) {
+    return false;
+  }
+  let hasContent = false;
+  for (let cursor = 1; cursor < trimmed.length - 1; cursor += 1) {
+    if (trimmed[cursor] === "$") return false;
+    if (trimmed[cursor] === "\\") {
+      if (cursor + 1 >= trimmed.length - 1) return false;
+      cursor += 1;
+    }
+    hasContent = true;
+  }
+  return hasContent;
 }

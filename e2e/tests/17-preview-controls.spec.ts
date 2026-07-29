@@ -99,7 +99,9 @@ test("zoom menu applies presets and calculated fit scales", async ({ tauriPage }
   for (const preset of ["25%", "50%", "75%", "100%", "150%", "200%", "400%"]) {
     await openMenu();
     await tauriPage.getByRole("menu").getByText(preset, { exact: true }).click();
-    await expect(trigger).toHaveText(new RegExp(preset.replace("%", "\\s*%")));
+    await expect(trigger).toHaveText(
+      new RegExp(`${preset.slice(0, -1)}\\s*%`),
+    );
   }
   await expect(tauriPage.locator('button[aria-label="Zoom in"]')).toBeDisabled();
 

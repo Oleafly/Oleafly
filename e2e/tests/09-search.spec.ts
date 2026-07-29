@@ -14,7 +14,7 @@ test("omnibar /docs scope searches inside documents", async ({ tauriPage }) => {
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await pressGlobal(tauriPage, "f", { meta: true, shift: true });
   await expect(tauriPage.locator("[cmdk-input]")).toBeVisible();
-  await tauriPage.getByRole("combobox").fill("/docs Introduction");
+  await tauriPage.type("[cmdk-input]", "/docs Introduction");
   await expect(tauriPage.getByText("main.tex")).toBeVisible({ timeout: 15_000 });
   await tauriPage.press("[cmdk-input]", "Escape");
 });
@@ -22,7 +22,7 @@ test("omnibar /docs scope searches inside documents", async ({ tauriPage }) => {
 test("omnibar finds projects by name", async ({ tauriPage }) => {
   await pressGlobal(tauriPage, "f", { meta: true, shift: true });
   await expect(tauriPage.locator("[cmdk-input]")).toBeVisible();
-  await tauriPage.getByRole("combobox").fill("/projects E2E");
+  await tauriPage.type("[cmdk-input]", "/projects E2E");
   await expect(tauriPage.getByText("E2E Doc")).toBeVisible({ timeout: 10_000 });
   await tauriPage.press("[cmdk-input]", "Escape");
 });

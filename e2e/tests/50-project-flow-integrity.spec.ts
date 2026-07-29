@@ -185,7 +185,7 @@ test("a direct project switch flushes an edit made in the same event turn", asyn
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
   await pressGlobal(tauriPage, "f", { meta: true, shift: true });
-  await tauriPage.getByRole("combobox").fill(`/projects ${targetName}`);
+  await tauriPage.type("[cmdk-input]", `/projects ${targetName}`);
   await expect(tauriPage.getByText(targetName, { exact: true })).toBeVisible();
 
   // Dispatch the edit and select the already-rendered project result without
@@ -210,7 +210,7 @@ test("a direct project switch flushes an edit made in the same event turn", asyn
   });
 
   await pressGlobal(tauriPage, "f", { meta: true, shift: true });
-  await tauriPage.getByRole("combobox").fill("/projects E2E Doc");
+  await tauriPage.type("[cmdk-input]", "/projects E2E Doc");
   await tauriPage.getByText("E2E Doc", { exact: true }).click();
   await waitEditorContains(tauriPage, marker.trim(), 20_000);
 });

@@ -5,21 +5,12 @@ import type { E2ePdfProbe } from "../src/lib/e2e-probe";
 export interface Page {
   click(selector: string, opts?: { timeout?: number }): Promise<void>;
   fill(selector: string, text: string): Promise<void>;
+  type(selector: string, text: string): Promise<void>;
   press(selector: string, key: string): Promise<void>;
   evaluate<T = unknown>(expression: string): Promise<T>;
   waitForFunction(expression: string, timeout?: number): Promise<unknown>;
   locator(selector: string): { isVisible(): Promise<boolean>; click(): Promise<void> };
   getByTestId(id: string): unknown;
-  getByRole(
-    role: string,
-    opts?: { name?: string; exact?: boolean },
-  ): {
-    click(): Promise<void>;
-    fill(text: string): Promise<void>;
-    focus(): Promise<void>;
-    isVisible(): Promise<boolean>;
-    press(key: string): Promise<void>;
-  };
   getByText(
     text: string,
     opts?: { exact?: boolean },
@@ -1010,78 +1001,44 @@ export async function paletteItems(page: Page): Promise<string[]> {
   );
 }
 
-// Uses a coordinate mouse click (CodeMirror's own mouse handling; never
-// mutates the document) and searches line-level text, so lint/decoration
-// spans that split text nodes (e.g. spellcheck squiggles) cannot hide the
-// anchor.
+// Place the caret through CodeMirror's public state API. This never mutates
+// the document and is independent of viewport rendering, text-node splitting,
+// lint decorations, and WebKit's synthetic mouse-event handling.
 export async function caretIn(
   page: Page,
   anchorText: string,
   occurrence = 1,
   where: "start" | "end" = "start",
 ) {
-  const placement = `(() => {
-      const lines = Array.from(document.querySelectorAll('.cm-content .cm-line'));
-      let seen = 0;
-      for (const line of lines) {
-        let idx = -1;
-        while ((idx = line.textContent.indexOf(ANCHOR, idx + 1)) >= 0) {
-          if (++seen !== OCC) continue;
-          // Map the line-level offset back to a concrete text node.
-          const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
-          let node, acc = 0;
-          const target = WHERE === 'end' ? idx + ANCHOR.length - 1 : idx + 1;
-          while ((node = walker.nextNode())) {
-            const len = node.textContent.length;
-            if (acc + len > target) {
-              const range = document.createRange();
-              range.setStart(node, target - acc);
-              range.setEnd(node, Math.min(target - acc + 1, len));
-              const r = range.getClientRects()[0] || range.getBoundingClientRect();
-              const x = WHERE === 'end' ? r.right - 1 : r.left + 1;
-              const y = r.top + r.height / 2;
-              const opts = { bubbles: true, cancelable: true, clientX: x, clientY: y, buttons: 1, detail: 1 };
-              const t = document.elementFromPoint(x, y) || line;
-              t.dispatchEvent(new MouseEvent('mousedown', opts));
-              document.dispatchEvent(new MouseEvent('mouseup', Object.assign({}, opts, { buttons: 0 })));
-              return true;
-            }
-            acc += len;
-          }
-          return false;
-        }
+  const placed = await page.evaluate<boolean>(
+    `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {
+      const view = getEditorView();
+      if (!view) return false;
+      const source = view.state.doc.toString();
+      const anchor = ${JSON.stringify(anchorText)};
+      let from = -1;
+      let cursor = 0;
+      for (let index = 0; index < ${occurrence}; index += 1) {
+        from = source.indexOf(anchor, cursor);
+        if (from < 0) return false;
+        cursor = from + anchor.length;
       }
-      return false;
-    })()`
-    .replaceAll("ANCHOR", JSON.stringify(anchorText))
-    .replaceAll("WHERE", JSON.stringify(where))
-    .replace("OCC", String(occurrence));
-
-  // The synthetic mouse events place the caret through CodeMirror's DOM
-  // observer; verify the selection actually landed on the anchor's line so a
-  // missed placement fails here instead of corrupting the document at the
-  // original caret position (e.g. inserting before \documentclass). A slow
-  // webview can swallow one placement entirely, so re-dispatch it per round
-  // instead of only polling the first attempt's outcome.
-  const placed = `(() => {
-    const sel = window.getSelection();
-    const node = sel && sel.anchorNode;
-    if (!node) return false;
-    const el = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
-    const line = el && el.closest ? el.closest('.cm-line') : null;
-    return !!line && line.textContent.includes(${JSON.stringify(anchorText)});
-  })()`;
-  for (let round = 0; round < 4; round++) {
-    const ok = await page.evaluate<boolean>(placement);
-    if (!ok) throw new Error("caretIn: anchor " + JSON.stringify(anchorText) + " not found");
-    for (let attempt = 0; attempt < 7; attempt++) {
-      if (await page.evaluate<boolean>(placed)) return;
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    }
-  }
-  throw new Error(
-    "caretIn: selection did not land on the line containing " + JSON.stringify(anchorText),
+      const position = ${JSON.stringify(where)} === "end"
+        ? from + anchor.length
+        : from;
+      view.dispatch({
+        selection: { anchor: position },
+        scrollIntoView: true,
+      });
+      view.focus();
+      return view.state.selection.main.head === position;
+    })`,
   );
+  if (!placed) {
+    throw new Error(
+      `caretIn: ${JSON.stringify(anchorText)} occurrence ${occurrence} not found or editor unavailable`,
+    );
+  }
 }
 
 // The Diagram Composer is now a standalone home-shell page (not a per-project
