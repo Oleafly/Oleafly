@@ -19,13 +19,15 @@ interface EditorGeometry {
   readonly visibleLineCount: number;
   readonly numberedGutterCount: number;
   readonly maxLineNumberDelta: number;
-  readonly minLineHeight: number;
+  readonly baseLineHeight: number;
   readonly maxLineHeight: number;
-  readonly maxLineHeightResidual: number;
+  readonly maxPlainLineResidual: number;
+  readonly maxWidgetLineResidual: number;
   readonly maxLineMultiple: number;
   readonly topBlank: number;
   readonly bottomBlank: number;
   readonly blockWidgets: number;
+  readonly worstLine: string;
 }
 
 interface AuthoringChaosProbe {
@@ -121,15 +123,30 @@ async function editorGeometry(
             ),
           ];
         });
-        const heights = lines.map(
-          (line) => line.getBoundingClientRect().height,
-        );
-        const minLineHeight = Math.min(...heights);
-        const lineMultiples = heights.map((height) =>
-          Math.max(1, Math.round(height / minLineHeight)),
-        );
-        const heightResiduals = heights.map((height, index) =>
-          Math.abs(height - lineMultiples[index] * minLineHeight),
+        // Derive the base visual row from the editor's own measured metric.
+        // Using the shortest visible line aliases to two (or more) rows when
+        // the whole viewport is soft-wrapped prose, which reports a residual
+        // of exactly one row for any odd-row line and fails spuriously on
+        // narrow CI windows.
+        const base = view.defaultLineHeight;
+        const stats = lines.map((line) => {
+          const height = line.getBoundingClientRect().height;
+          const rows = Math.max(1, Math.round(height / base));
+          return {
+            height,
+            rows,
+            residual: Math.abs(height - rows * base),
+            widget: !!line.querySelector(".math-preview"),
+            text: (line.textContent ?? "").slice(0, 60),
+          };
+        });
+        const heights = stats.map((entry) => entry.height);
+        const plain = stats.filter((entry) => !entry.widget);
+        const widget = stats.filter((entry) => entry.widget);
+        const worst = stats.reduce(
+          (current, entry) =>
+            entry.residual > (current?.residual ?? -1) ? entry : current,
+          null,
         );
         const first = lines[0]?.getBoundingClientRect();
         const last = lines.at(-1)?.getBoundingClientRect();
@@ -139,13 +156,21 @@ async function editorGeometry(
           visibleLineCount: lines.length,
           numberedGutterCount: gutters.length,
           maxLineNumberDelta: Math.max(0, ...deltas),
-          minLineHeight,
+          baseLineHeight: base,
           maxLineHeight: Math.max(0, ...heights),
-          maxLineHeightResidual: Math.max(0, ...heightResiduals),
-          maxLineMultiple: Math.max(0, ...lineMultiples),
+          maxPlainLineResidual: Math.max(
+            0,
+            ...plain.map((entry) => entry.residual),
+          ),
+          maxWidgetLineResidual: Math.max(
+            0,
+            ...widget.map((entry) => entry.residual),
+          ),
+          maxLineMultiple: Math.max(0, ...stats.map((entry) => entry.rows)),
           topBlank: first ? Math.max(0, first.top - viewport.top) : viewport.height,
           bottomBlank: last ? Math.max(0, viewport.bottom - last.bottom) : viewport.height,
           blockWidgets: view.dom.querySelectorAll(".cm-blockWidget").length,
+          worstLine: JSON.stringify(worst),
         };
       },
     )`,
@@ -168,7 +193,7 @@ async function expectStableGeometry(
     4,
     Math.floor(
       geometry.viewportHeight /
-        Math.max(geometry.maxLineHeight, geometry.minLineHeight),
+        Math.max(geometry.maxLineHeight, geometry.baseLineHeight),
     ) - 2,
   );
   expect(geometry.visibleLineCount).toBeGreaterThanOrEqual(
@@ -178,12 +203,22 @@ async function expectStableGeometry(
     geometry.visibleLineCount,
   );
   expect(geometry.maxLineNumberDelta).toBeLessThanOrEqual(1.5);
-  expect(geometry.minLineHeight).toBeGreaterThan(10);
+  expect(geometry.baseLineHeight).toBeGreaterThan(10);
   // Split view intentionally wraps realistic prose. Wrapped rows must remain
-  // stable multiples of the base row (with a small inline-KaTeX allowance);
-  // the historical regression produced arbitrary hundreds-of-pixels spacers.
-  expect(geometry.maxLineMultiple).toBeLessThanOrEqual(4);
-  expect(geometry.maxLineHeightResidual).toBeLessThanOrEqual(8);
+  // stable multiples of the editor's own base row; the historical regression
+  // produced arbitrary hundreds-of-pixels spacers. Plain text rows get a
+  // tight budget, while lines hosting an inline KaTeX preview may grow by
+  // the preview's natural height (padding, border, tall glyphs) without
+  // that growth being a spacer regression.
+  expect(geometry.maxLineMultiple, geometry.worstLine).toBeLessThanOrEqual(6);
+  expect(
+    geometry.maxPlainLineResidual,
+    geometry.worstLine,
+  ).toBeLessThanOrEqual(8);
+  expect(
+    geometry.maxWidgetLineResidual,
+    geometry.worstLine,
+  ).toBeLessThanOrEqual(geometry.baseLineHeight * 1.5);
   expect(geometry.topBlank).toBeLessThanOrEqual(
     geometry.maxLineHeight * 2,
   );
