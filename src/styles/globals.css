@@ -692,6 +692,16 @@
     overscroll-behavior: none;
   }
   body {
+    /*
+     * WebKit can make `body` an independently scrollable box when the root
+     * viewport is clipped, then scroll that box to reveal a deeply focused
+     * CodeMirror/ProseMirror control. Pinning the desktop body to the native
+     * viewport keeps the application shell stationary while its editor,
+     * preview, and sidebar descendants retain their own scroll surfaces.
+     */
+    position: fixed;
+    inset: 0;
+    width: 100%;
     margin: 0;
     background-color: var(--background);
     color: var(--foreground);

@@ -8,6 +8,9 @@ test("Cmd+K opens the palette and the theme command toggles the real theme", asy
   await pressGlobal(tauriPage, "k", { meta: true });
   await expect(tauriPage.locator("[cmdk-input]")).toBeVisible();
   await tauriPage.fill("[cmdk-input]", "theme");
+  await expect(
+    tauriPage.locator('[cmdk-item][aria-selected="true"]'),
+  ).toHaveText(`Switch to ${before === "light" ? "dark" : "light"} theme`);
   await tauriPage.press("[cmdk-input]", "Enter");
   await expect(tauriPage.locator("[cmdk-input]")).toBeHidden();
   await expect
@@ -16,8 +19,8 @@ test("Cmd+K opens the palette and the theme command toggles the real theme", asy
   await pressGlobal(tauriPage, "k", { meta: true });
   await tauriPage.fill("[cmdk-input]", "theme");
   await expect(
-    tauriPage.getByText(`Switch to ${before} theme`, { exact: true }),
-  ).toBeVisible();
+    tauriPage.locator('[cmdk-item][aria-selected="true"]'),
+  ).toHaveText(`Switch to ${before} theme`);
   await tauriPage.press("[cmdk-input]", "Enter");
   await expect
     .poll(() => currentTheme(tauriPage), { timeout: 10_000 })

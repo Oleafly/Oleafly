@@ -22,8 +22,15 @@ async function selectPageLayout(
   if (await inlineControl.isVisible()) {
     await inlineControl.click();
   } else {
-    await tauriPage.click('[aria-label="More preview controls"]');
-    await tauriPage.getByText("Page layout", { exact: true }).click();
+    const moreControls = tauriPage.locator(
+      '[aria-label="More preview controls"]',
+    );
+    await moreControls.focus();
+    await moreControls.press("Enter");
+    const layoutMenu = tauriPage.getByText("Page layout", { exact: true });
+    await expect(layoutMenu).toBeVisible();
+    await layoutMenu.focus();
+    await layoutMenu.press("ArrowRight");
     await tauriPage
       .getByRole("menuitemradio", { name: label, exact: true })
       .click();
