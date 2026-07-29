@@ -44,14 +44,19 @@ export async function expectDesktopShellAnchored(page: Page) {
       };
     })()`,
   );
-  expect(state).toEqual({
+  const { bodyPosition, ...anchoredState } = state;
+  expect(anchoredState).toEqual({
     scrollTop: 0,
     scrollLeft: 0,
     rootTop: 0,
     rootLeft: 0,
     rootPosition: "static",
-    bodyPosition: "static",
   });
+  // Radix temporarily establishes the body as a containing block while a
+  // portalled Select finishes its exit transition. `relative` does not move
+  // the shell; fixed/absolute positioning would. Keep the displacement checks
+  // exact while accepting both valid, anchored body states.
+  expect(["static", "relative"]).toContain(bodyPosition);
 }
 
 // The app's own handlers for Cmd+K / Cmd+Shift+F listen on window keydown.

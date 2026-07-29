@@ -14,6 +14,11 @@ type ProofreadingDocumentInput = Omit<
   ProofreadingInput,
   "identity" | "preferences"
 > & {
+  /**
+   * App-owned settings/dictionary identity. It is retained locally for an
+   * exact synchronous presentation repaint and is never sent to the worker.
+   */
+  cacheKey?: string;
   identity: Omit<ProofreadingInput["identity"], "requestGeneration">;
   preferences: Omit<
     ProofreadingInput["preferences"],
@@ -42,10 +47,20 @@ interface PendingRequest {
     protocolVersion: typeof PROOFREADING_PROTOCOL_VERSION;
     type: "proofread";
   };
+  cacheKey: string;
   lane: string;
   resolve: (result: ProofreadingResult) => void;
   reject: (error: ProofreadingWorkerError) => void;
   timeout: ReturnType<typeof setTimeout>;
+}
+
+interface RetainedProofreading {
+  cacheKey: string;
+  projectId: string | null;
+  path: string;
+  text: string;
+  mode: ProofreadingInput["mode"];
+  result: ProofreadingResult;
 }
 
 export class ProofreadingWorkerError extends Error {
@@ -76,28 +91,33 @@ class ProofreadingWorkerClient {
   private generation = 0;
   private readonly pending = new Map<number, PendingRequest>();
   private readonly pendingByLane = new Map<string, number>();
+  private readonly retained = new Map<
+    ProofreadingSurface,
+    RetainedProofreading
+  >();
 
   proofread(
     input: ProofreadingDocumentInput,
   ): Promise<ProofreadingResult> {
-    const lane = laneFor(input.identity);
+    const { cacheKey = "", ...workerInput } = input;
+    const lane = laneFor(workerInput.identity);
     const identity = {
-      ...input.identity,
+      ...workerInput.identity,
       requestGeneration: ++this.generation,
     };
     const request = {
       protocolVersion: PROOFREADING_PROTOCOL_VERSION,
       type: "proofread" as const,
       requestId: ++this.requestId,
-      ...input,
+      ...workerInput,
       identity,
       preferences: {
-        ...input.preferences,
+        ...workerInput.preferences,
         dialect:
-          input.preferences.dialect ??
+          workerInput.preferences.dialect ??
           useSettingsStore.getState().grammarDialect,
         dictionaryLocale:
-          input.preferences.dictionaryLocale ??
+          workerInput.preferences.dictionaryLocale ??
           useSettingsStore.getState().dictionaryLocale ??
           ({
             american: "en_US",
@@ -106,7 +126,7 @@ class ProofreadingWorkerClient {
             canadian: "en_CA",
             indian: "en_IN",
           } as const)[
-            input.preferences.dialect ??
+            workerInput.preferences.dialect ??
               useSettingsStore.getState().grammarDialect
           ],
       },
@@ -151,6 +171,7 @@ class ProofreadingWorkerClient {
       }, TIMEOUT_MS);
       this.pending.set(request.requestId, {
         request,
+        cacheKey,
         lane,
         resolve,
         reject,
@@ -189,6 +210,10 @@ class ProofreadingWorkerClient {
         );
       }
     }
+    const retained = this.retained.get(surface);
+    if (retained && (!path || retained.path === path)) {
+      this.retained.delete(surface);
+    }
     useProofreadingStore.getState().clear(surface, path);
   }
 
@@ -217,6 +242,7 @@ class ProofreadingWorkerClient {
           pending.request.identity.path,
         );
     }
+    this.retained.delete(surface);
     useProofreadingStore.getState().clear(surface);
   }
 
@@ -241,6 +267,7 @@ class ProofreadingWorkerClient {
     for (const requestId of [...this.pending.keys()]) {
       this.rejectRequest(requestId, error);
     }
+    this.retained.clear();
     useProofreadingStore.getState().clear("source");
     useProofreadingStore.getState().clear("visual");
   }
@@ -336,8 +363,42 @@ class ProofreadingWorkerClient {
       pending.reject(error);
       return;
     }
+    // Publish the exact immutable result before the observable store becomes
+    // ready. Presentation-page changes may be dispatched synchronously by a
+    // store consumer; they must never observe "ready" without also being able
+    // to repaint from the matching worker result.
+    this.retained.set(event.data.identity.surface, {
+      cacheKey: pending.cacheKey,
+      projectId: pending.request.identity.projectId,
+      path: pending.request.identity.path,
+      text: pending.request.text,
+      mode: pending.request.mode,
+      result: event.data,
+    });
     useProofreadingStore.getState().complete(event.data);
     pending.resolve(event.data);
+  }
+
+  getRetained(input: {
+    cacheKey: string;
+    projectId: string | null;
+    path: string;
+    text: string;
+    mode: ProofreadingInput["mode"];
+    surface: ProofreadingSurface;
+  }): ProofreadingResult | null {
+    const retained = this.retained.get(input.surface);
+    if (
+      !retained ||
+      retained.cacheKey !== input.cacheKey ||
+      retained.projectId !== input.projectId ||
+      retained.path !== input.path ||
+      retained.text !== input.text ||
+      retained.mode !== input.mode
+    ) {
+      return null;
+    }
+    return retained.result;
   }
 
   private supersedeLane(lane: string) {
@@ -395,6 +456,17 @@ export function proofreadDocument(
   input: ProofreadingDocumentInput,
 ): Promise<ProofreadingResult> {
   return client.proofread(input);
+}
+
+export function getRetainedProofreadingResult(input: {
+  cacheKey: string;
+  projectId: string | null;
+  path: string;
+  text: string;
+  mode: ProofreadingInput["mode"];
+  surface: ProofreadingSurface;
+}): ProofreadingResult | null {
+  return client.getRetained(input);
 }
 
 export function cancelProofreading(
