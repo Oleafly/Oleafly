@@ -53,7 +53,7 @@ vi.stubGlobal("Worker", WorkerMock);
 
 afterEach(() => {
   cancelProofreading("source");
-  WorkerMock.current = null;
+  vi.useRealTimers();
 });
 
 describe("proofreading client retention", () => {
@@ -124,5 +124,45 @@ describe("proofreading client retention", () => {
     expect(getRetainedProofreadingResult(retainedInput)).toEqual(
       response,
     );
+  });
+
+  it("does not terminate supported book-sized analysis at the short-document deadline", async () => {
+    vi.useFakeTimers();
+    const input = {
+      identity: {
+        projectId: "large-project",
+        path: "book.tex",
+        revision: 1,
+        surface: "source" as const,
+      },
+      format: "latex" as const,
+      mode: "combined" as const,
+      text: "prose ".repeat(75_000),
+      ignoredWords: [],
+      preferences: {
+        showRegionalism: true,
+        showWordChoice: true,
+        dialect: "american" as const,
+        dictionaryLocale: "en_US",
+      },
+    };
+    const promise = proofreadDocument(input);
+    const worker = WorkerMock.current;
+    expect(worker?.request?.type).toBe("proofread");
+    if (worker?.request?.type !== "proofread") return;
+
+    await vi.advanceTimersByTimeAsync(25_001);
+    expect(useProofreadingStore.getState().source.phase).toBe("loading");
+
+    const response = {
+      protocolVersion: PROOFREADING_PROTOCOL_VERSION,
+      type: "result" as const,
+      requestId: worker.request.requestId,
+      identity: worker.request.identity,
+      status: "ready" as const,
+      diagnostics: [],
+    };
+    worker.respond(response);
+    await expect(promise).resolves.toEqual(response);
   });
 });
