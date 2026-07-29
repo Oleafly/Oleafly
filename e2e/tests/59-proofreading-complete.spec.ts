@@ -265,7 +265,11 @@ async function addDictionaryWord(
     })()`,
     8_000,
   );
-  await page.press(selector, "Enter");
+  // GTK WebKit's native automation bridge can update the controlled input
+  // without synthesizing the implicit form submit for Enter. Click the real
+  // enabled submit control so this follows the same reliable UI path on every
+  // desktop platform.
+  await page.click(`${selector} + button[type="submit"]`);
   await expect(
     page.locator(`[aria-label=${JSON.stringify(`Stop ignoring ${word}`)}]`),
   ).toBeVisible({ timeout: 10_000 });
