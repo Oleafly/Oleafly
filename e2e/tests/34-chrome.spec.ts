@@ -16,11 +16,71 @@ test("the rail theme button flips the real theme", async ({ tauriPage }) => {
 test("the sidebar collapses and restores from the rail", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  await tauriPage.evaluate(
+    `import("/src/store/settings.ts").then(({ useSettingsStore }) =>
+      useSettingsStore.getState().setViewMode("split"),
+    )`,
+  );
+  await tauriPage.waitForFunction(
+    `Promise.all([
+      import("/src/store/compile.ts"),
+    ]).then(([{ useCompileStore }]) => {
+      const compile = useCompileStore.getState();
+      return compile.status === "success"
+        && compile.lastCompileCheckpoint !== null
+        && !!document.querySelector('[data-testid="pdf-renderer"]');
+    })`,
+    60_000,
+  );
   await openRailTab(tauriPage, "Source Tree");
+  const before = await tauriPage.evaluate<{
+    lastCompiledAt: number | null;
+    outputRevision: number | null;
+  }>(
+    `import("/src/store/compile.ts").then(({ useCompileStore }) => {
+      const renderer = document.querySelector('[data-testid="pdf-renderer"]');
+      if (!renderer) throw new Error("PDF renderer is missing");
+      renderer.setAttribute("data-e2e-sidebar-renderer", "stable");
+      const compile = useCompileStore.getState();
+      return {
+        lastCompiledAt: compile.lastCompiledAt,
+        outputRevision: compile.lastCompileCheckpoint?.outputRevision ?? null,
+      };
+    })`,
+  );
   await tauriPage.click('[aria-label="Hide sidebar"]');
   await expect(tauriPage.locator('[aria-label="Show sidebar"]')).toBeVisible();
+  await expect(
+    tauriPage.locator('[data-testid="pdf-renderer"][data-e2e-sidebar-renderer="stable"]'),
+  ).toBeVisible();
   await tauriPage.click('[aria-label="Show sidebar"]');
   await expect(tauriPage.locator('[aria-label="Hide sidebar"]')).toBeVisible();
+  await expect(
+    tauriPage.locator('[data-testid="pdf-renderer"][data-e2e-sidebar-renderer="stable"]'),
+  ).toBeVisible();
+  // Auto-compile is debounced by 2.5 seconds. Wait beyond that boundary so
+  // the assertion also catches a delayed compile request from the layout-only
+  // interaction.
+  await tauriPage.waitForTimeout(2_800);
+  const after = await tauriPage.evaluate<{
+    status: string;
+    lastCompiledAt: number | null;
+    outputRevision: number | null;
+  }>(
+    `import("/src/store/compile.ts").then(({ useCompileStore }) => {
+      const compile = useCompileStore.getState();
+      return {
+        status: compile.status,
+        lastCompiledAt: compile.lastCompiledAt,
+        outputRevision: compile.lastCompileCheckpoint?.outputRevision ?? null,
+      };
+    })`,
+  );
+  expect(after.status).not.toBe("compiling");
+  expect({
+    lastCompiledAt: after.lastCompiledAt,
+    outputRevision: after.outputRevision,
+  }).toEqual(before);
 });
 
 test("the editor/preview split resizes from the separator", async ({ tauriPage }) => {

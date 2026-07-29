@@ -1,4 +1,5 @@
 import {
+  Fragment,
   lazy,
   Suspense,
   useEffect,
@@ -623,7 +624,7 @@ function AppContent() {
         <div ref={panelAreaRef} className="relative z-0 flex min-h-0 flex-1 overflow-hidden">
           <Rail />
           <ErrorBoundary
-            key={`${showTree}-${hideEditorArea}-${viewMode}`}
+            resetKey={projectId}
             fallback={
               <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center text-sm text-muted-foreground">
                 <p>The panel layout hit a snag. Your project files are safe on disk.</p>
@@ -638,61 +639,69 @@ function AppContent() {
               </div>
             }
           >
-          <PanelGroup direction="horizontal" className="min-h-0 min-w-0 flex-1">
-            {showTree && (
-              <>
-                <Panel
-                  ref={sidebarPanelRef}
-                  id="sidebar"
-                  order={1}
-                  defaultSize={hideEditorArea ? 100 : sidebarDefaultSize}
-                  minSize={hideEditorArea ? 100 : sidebarMinSize}
-                  maxSize={hideEditorArea ? 100 : 65}
-                  collapsible={!hideEditorArea}
-                  collapsedSize={0}
-                  onCollapse={() => {
-                    if (useSettingsStore.getState().showTree) useSettingsStore.getState().toggleTree();
-                  }}
-                  className="bg-sidebar"
-                >
-                  <Sidebar />
-                </Panel>
-                {!hideEditorArea && <VHandle id="h-tree" />}
-              </>
-            )}
-
-            {!hideEditorArea && (
-            <Panel id="editorpdf" order={2} defaultSize={showTree ? 85 : 100} className="min-h-0 min-w-0">
-              <PanelGroup direction="horizontal" className="h-full min-h-0 min-w-0">
-                {viewMode !== "pdf" && (
+            <PanelGroup direction="horizontal" className="min-h-0 min-w-0 flex-1">
+              {showTree && (
+                <Fragment key="sidebar">
                   <Panel
-                    ref={editorPanelRef}
-                    id="editor"
+                    ref={sidebarPanelRef}
+                    id="sidebar"
                     order={1}
-                    defaultSize={viewMode === "editor" ? 100 : 50}
-                    minSize={15}
-                    className="min-h-0 min-w-0"
+                    defaultSize={hideEditorArea ? 100 : sidebarDefaultSize}
+                    minSize={hideEditorArea ? 100 : sidebarMinSize}
+                    maxSize={hideEditorArea ? 100 : 65}
+                    collapsible={!hideEditorArea}
+                    collapsedSize={0}
+                    onCollapse={() => {
+                      if (useSettingsStore.getState().showTree) {
+                        useSettingsStore.getState().toggleTree();
+                      }
+                    }}
+                    className="bg-sidebar"
                   >
-                    <Editor />
+                    <Sidebar />
                   </Panel>
-                )}
-                {viewMode === "split" && <VHandle id="h-mid" placement="top" />}
-                {viewMode !== "editor" && (
-                  <Panel
-                    ref={pdfPanelRef}
-                    id="pdf"
-                    order={2}
-                    defaultSize={viewMode === "pdf" ? 100 : 50}
-                    minSize={15}
-                    className="min-h-0 min-w-0"
-                  >
-                    <PreviewPane />
-                  </Panel>
-                )}
-              </PanelGroup>
-            </Panel>
-            )}
-          </PanelGroup>
+                  {!hideEditorArea && <VHandle id="h-tree" />}
+                </Fragment>
+              )}
+
+              {!hideEditorArea && (
+                <Panel
+                  key="editorpdf"
+                  id="editorpdf"
+                  order={2}
+                  defaultSize={showTree ? 85 : 100}
+                  className="min-h-0 min-w-0"
+                >
+                  <PanelGroup direction="horizontal" className="h-full min-h-0 min-w-0">
+                    {viewMode !== "pdf" && (
+                      <Panel
+                        ref={editorPanelRef}
+                        id="editor"
+                        order={1}
+                        defaultSize={viewMode === "editor" ? 100 : 50}
+                        minSize={15}
+                        className="min-h-0 min-w-0"
+                      >
+                        <Editor />
+                      </Panel>
+                    )}
+                    {viewMode === "split" && <VHandle id="h-mid" placement="top" />}
+                    {viewMode !== "editor" && (
+                      <Panel
+                        ref={pdfPanelRef}
+                        id="pdf"
+                        order={2}
+                        defaultSize={viewMode === "pdf" ? 100 : 50}
+                        minSize={15}
+                        className="min-h-0 min-w-0"
+                      >
+                        <PreviewPane />
+                      </Panel>
+                    )}
+                  </PanelGroup>
+                </Panel>
+              )}
+            </PanelGroup>
           </ErrorBoundary>
         </div>
 
