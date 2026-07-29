@@ -94,10 +94,11 @@ export async function openGallery(page: Page) {
   await expect(gallery).toBeVisible({ timeout: 30_000 });
 }
 
-// Positions the caret with the DOM Selection API (which CodeMirror syncs
-// into its own state) and inserts via execCommand('insertText'), which
-// CodeMirror 6 treats as real user input - so the store sync, autosave,
-// and linters all fire exactly as if the user typed it.
+// Insert through CodeMirror's authoritative state rather than searching its
+// virtualized DOM. Off-screen lines are intentionally absent from `.cm-content`
+// and a loaded runner can move the target outside the mounted viewport between
+// edits. The input annotation preserves the same store sync, autosave, and lint
+// behavior as keyboard input without depending on viewport realization.
 export async function typeInEditorAfter(
   page: Page,
   anchorText: string,
@@ -105,27 +106,26 @@ export async function typeInEditorAfter(
   occurrence = 1,
 ) {
   const ok = await page.evaluate<boolean>(
-    `(() => {
-      const content = document.querySelector('.cm-content');
-      if (!content) return false;
-      content.focus();
-      const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
-      let node;
-      let seen = 0;
-      while ((node = walker.nextNode())) {
-        const i = node.textContent.indexOf(${JSON.stringify(anchorText)});
-        if (i >= 0 && ++seen === ${occurrence}) {
-          const range = document.createRange();
-          range.setStart(node, i + ${JSON.stringify(anchorText)}.length);
-          range.collapse(true);
-          const sel = window.getSelection();
-          sel.removeAllRanges();
-          sel.addRange(range);
-          return document.execCommand('insertText', false, ${JSON.stringify(text)});
-        }
+    `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {
+      const view = getEditorView();
+      if (!view) return false;
+      const source = view.state.doc.toString();
+      let anchor = -1;
+      let cursor = 0;
+      for (let index = 0; index < ${occurrence}; index++) {
+        anchor = source.indexOf(${JSON.stringify(anchorText)}, cursor);
+        if (anchor < 0) return false;
+        cursor = anchor + ${JSON.stringify(anchorText)}.length;
       }
-      return false;
-    })()`,
+      view.dispatch({
+        changes: { from: cursor, insert: ${JSON.stringify(text)} },
+        selection: { anchor: cursor + ${JSON.stringify(text)}.length },
+        scrollIntoView: true,
+        userEvent: "input.type",
+      });
+      view.focus();
+      return true;
+    })`,
   );
   if (!ok) throw new Error("typeInEditorAfter: anchor " + JSON.stringify(anchorText) + " not found in editor");
 }
