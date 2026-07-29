@@ -237,7 +237,10 @@ async function activateDictionaryTab(
   tab: "global" | "projects",
 ): Promise<void> {
   const selector = `[data-testid="dictionary-tab-${tab}"]`;
-  await page.click(selector);
+  // Radix Tabs changes value from pointer-down or keyboard activation. GTK's
+  // bridge can emit a terminal click without the preceding pointer-down, so
+  // use the trigger's accessible Enter path for a deterministic real UI event.
+  await page.press(selector, "Enter");
   await page.waitForFunction(
     `document.querySelector(${JSON.stringify(selector)})?.getAttribute("data-state") === "active"`,
     8_000,

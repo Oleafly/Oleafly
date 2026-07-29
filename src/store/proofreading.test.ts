@@ -96,4 +96,34 @@ describe("proofreading presentation pages", () => {
       useProofreadingStore.getState().source.presentationPage,
     ).toBe(1);
   });
+
+  it("uses the newest retained diagnostics when a presentation repaint was seeded by an older request", () => {
+    const olderIdentity = identity(1);
+    const older = result(
+      olderIdentity,
+      PROOFREADING_PRESENTATION_PAGE_SIZE * 2,
+    );
+    const currentIdentity = identity(2);
+    const current = result(
+      currentIdentity,
+      PROOFREADING_PRESENTATION_PAGE_SIZE * 2,
+    );
+    const currentDiagnostic =
+      current.diagnostics[PROOFREADING_PRESENTATION_PAGE_SIZE];
+    if (!currentDiagnostic) {
+      throw new Error("expected the second presentation page");
+    }
+    current.diagnostics[PROOFREADING_PRESENTATION_PAGE_SIZE] = {
+      ...currentDiagnostic,
+      message: "Current retained issue",
+    };
+    useProofreadingStore.getState().begin(currentIdentity);
+    useProofreadingStore.getState().complete(current);
+    useProofreadingStore.getState().setPresentationPage("source", 1);
+
+    const page = proofreadingPresentationDiagnostics(older);
+
+    expect(page).toHaveLength(PROOFREADING_PRESENTATION_PAGE_SIZE);
+    expect(page[0]?.message).toBe("Current retained issue");
+  });
 });
