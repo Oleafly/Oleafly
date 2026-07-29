@@ -160,6 +160,22 @@ describe("proofreading worker outcomes", () => {
     expect(response.message).toContain("dictionary could not start");
   });
 
+  it("rejects a well-formed locale that is not in the packaged dictionary manifest", async () => {
+    const unsupportedLocale = request(31, "combined");
+    unsupportedLocale.preferences.dictionaryLocale = "zz_ZZ";
+    const response = await analyze(unsupportedLocale);
+
+    expect(response.type).toBe("result");
+    if (response.type !== "result") return;
+    expect(response.status).toBe("partial");
+    expect(response.diagnostics).toHaveLength(1);
+    expect(response.diagnostics[0]?.kind).toBe("WordChoice");
+    expect(response.activeDictionaryLocale).toBeUndefined();
+    expect(response.message).toContain(
+      "the requested zz_ZZ spelling dictionary could not start",
+    );
+  });
+
   it("reports malformed engine findings as partial instead of silent success", async () => {
     mocks.includeMalformed = true;
     const malformedRequest = request(4, "grammar");

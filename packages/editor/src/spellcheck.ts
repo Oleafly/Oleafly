@@ -223,7 +223,11 @@ export function refreshEditorProofreadingPresentation(
   view: EditorView | null,
 ): void {
   if (!view) return;
-  if (repaintCachedProofreadingPresentation(view)) return;
+  // Paint the requested page immediately when possible, then schedule a
+  // retained-result lint pass as the newest coordinated run. Without the
+  // latter, an older lint promise can settle after this dispatch and restore
+  // the previous presentation page on large documents.
+  repaintCachedProofreadingPresentation(view);
   presentationRefreshViews.add(view);
   refreshEditorLints(view);
 }
