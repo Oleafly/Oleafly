@@ -467,9 +467,12 @@ CITATIONANCHOR
   await setEditorCaretAfter(tauriPage, "CITATIONANCHOR");
   await clickToolbarControl(
     tauriPage,
-    '[aria-label="Add citation (DOI, arXiv, or title)"]',
-    "Add citation",
+    '[aria-label="Cite from project"]',
+    "Cite from project",
   );
+  await tauriPage
+    .getByText("Find and add a new citation…", { exact: true })
+    .click();
   await expect(
     tauriPage.locator(
       'input[placeholder="DOI, arXiv id, URL, or a paper title…"]',

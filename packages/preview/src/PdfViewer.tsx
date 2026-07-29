@@ -1969,6 +1969,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     const container = containerRef.current;
     if (!container || !data) return;
     const identityAtStart = documentIdentity;
+    delete container.dataset.pdfPageCount;
     if (data.byteLength === 0) {
       container.dataset.pdfState = "empty";
       container.replaceChildren();
@@ -2142,6 +2143,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
           throw new Error("The PDF contains no pages");
         }
         docRef.current = doc;
+        container.dataset.pdfPageCount = String(doc.numPages);
         const optionalContentConfigPromise = doc.getOptionalContentConfig({
           intent: "display",
         });
@@ -2261,7 +2263,10 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       if (documentAbortRef.current === loadAbort) {
         documentAbortRef.current = null;
       }
-      if (container) container.innerHTML = "";
+      if (container) {
+        delete container.dataset.pdfPageCount;
+        container.innerHTML = "";
+      }
       destroyLoadingTask();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
