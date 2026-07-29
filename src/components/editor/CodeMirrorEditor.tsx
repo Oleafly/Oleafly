@@ -66,11 +66,9 @@ setSpellHost({
       preferences: input.preferences,
       ignoredWords,
     });
-    return {
-      ...result,
-      diagnostics: proofreadingPresentationDiagnostics(result),
-    };
+    return result;
   },
+  presentDiagnostics: proofreadingPresentationDiagnostics,
   cancelProofreading,
   isSessionIgnored: isSessionIgnoredWord,
   isWordIgnored,
