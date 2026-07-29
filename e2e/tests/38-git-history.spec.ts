@@ -1,5 +1,11 @@
 import { test, expect } from "../fixtures";
-import { openGallery, pressGlobal, typeInEditorAfter, type Page } from "../helpers";
+import {
+  fillCommandPalette,
+  openGallery,
+  pressGlobal,
+  typeInEditorAfter,
+  type Page,
+} from "../helpers";
 
 // Local git history with NO GitHub token: compile auto-commits, so we compile
 // twice and restore each snapshot by position (both auto-commit messages are
@@ -14,7 +20,7 @@ const restoreCount = `Array.from(document.querySelectorAll('button')).filter((b)
 
 async function openHistory(page: Page) {
   await pressGlobal(page, "k", { meta: true });
-  await page.type("[cmdk-input]", "history");
+  await fillCommandPalette(page, "history");
   await page.press("[cmdk-input]", "Enter");
   await page.waitForFunction(
     `Array.from(document.querySelectorAll('h2')).some((h) => h.textContent.trim() === 'Version History')`,

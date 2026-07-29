@@ -5,7 +5,6 @@ import type { E2ePdfProbe } from "../src/lib/e2e-probe";
 export interface Page {
   click(selector: string, opts?: { timeout?: number }): Promise<void>;
   fill(selector: string, text: string): Promise<void>;
-  type(selector: string, text: string): Promise<void>;
   press(selector: string, key: string): Promise<void>;
   evaluate<T = unknown>(expression: string): Promise<T>;
   waitForFunction(expression: string, timeout?: number): Promise<unknown>;
@@ -999,6 +998,49 @@ export async function paletteItems(page: Page): Promise<string[]> {
   return page.evaluate<string[]>(
     `Array.from(document.querySelectorAll('[cmdk-item]')).map(e => e.textContent.trim())`,
   );
+}
+
+/**
+ * cmdk is a controlled React input. The native Tauri bridge's fill/type
+ * commands update its DOM value on Linux without reliably notifying React,
+ * leaving the command list unfiltered. Use the platform input setter and the
+ * same bubbling events a browser fill emits, then verify the value survived
+ * the controlled render.
+ */
+export async function fillCommandPalette(
+  page: Page,
+  text: string,
+): Promise<void> {
+  await page.waitForFunction(
+    `document.querySelector('[cmdk-input]') instanceof HTMLInputElement`,
+    10_000,
+  );
+  const accepted = await page.evaluate<boolean>(
+    `(() => {
+      const input = document.querySelector('[cmdk-input]');
+      if (!(input instanceof HTMLInputElement)) return false;
+      const setter = Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value",
+      )?.set;
+      if (!setter) return false;
+      input.focus();
+      setter.call(input, ${JSON.stringify(text)});
+      input.dispatchEvent(new InputEvent("input", {
+        bubbles: true,
+        cancelable: true,
+        data: ${JSON.stringify(text)},
+        inputType: "insertText",
+      }));
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      return input.value === ${JSON.stringify(text)};
+    })()`,
+  );
+  if (!accepted) {
+    throw new Error(
+      `fillCommandPalette: controlled input rejected ${JSON.stringify(text)}`,
+    );
+  }
 }
 
 // Place the caret through CodeMirror's public state API. This never mutates
