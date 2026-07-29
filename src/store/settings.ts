@@ -127,11 +127,18 @@ function saveLs(k: string, v: string) {
     /* ignore */
   }
 }
-function notifyProofreadingSettingsChanged(setting: string) {
+function notifyProofreadingSettingsChanged(
+  setting: string,
+  settings: { spellcheck: boolean; harper: boolean },
+) {
   if (typeof window === "undefined") return;
   window.dispatchEvent(
     new CustomEvent("oleafly:proofreading-settings-changed", {
-      detail: { setting },
+      detail: {
+        setting,
+        spellcheck: settings.spellcheck,
+        harper: settings.harper,
+      },
     }),
   );
 }
@@ -290,7 +297,7 @@ const PREF_DEFAULTS = {
   bgPattern: "dots" as BackgroundPattern,
 } as const;
 
-export const useSettingsStore = create<SettingsState>((set) => ({
+export const useSettingsStore = create<SettingsState>((set, get) => ({
   vim: ls("oleafly.vim", "0") === "1",
   toggleVim: () =>
     set((s) => {
@@ -298,17 +305,17 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       return { vim: !s.vim };
     }),
   spellcheck: ls("oleafly.spellcheck", "1") !== "0",
-  toggleSpellcheck: () =>
-    set((s) => {
-      saveLs("oleafly.spellcheck", s.spellcheck ? "0" : "1");
-      notifyProofreadingSettingsChanged("spellcheck");
-      return { spellcheck: !s.spellcheck };
-    }),
+  toggleSpellcheck: () => {
+    const spellcheck = !get().spellcheck;
+    saveLs("oleafly.spellcheck", spellcheck ? "1" : "0");
+    set({ spellcheck });
+    notifyProofreadingSettingsChanged("spellcheck", get());
+  },
   harper: ls("oleafly.harper", "1") !== "0",
   setHarper: (v) => {
     saveLs("oleafly.harper", v ? "1" : "0");
     set({ harper: v });
-    notifyProofreadingSettingsChanged("harper");
+    notifyProofreadingSettingsChanged("harper", get());
   },
   grammarDialect: readGrammarDialect(
     ls("oleafly.harper.dialect", "american"),
@@ -317,7 +324,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     const dialect = readGrammarDialect(v);
     saveLs("oleafly.harper.dialect", dialect);
     set({ grammarDialect: dialect });
-    notifyProofreadingSettingsChanged("grammarDialect");
+    notifyProofreadingSettingsChanged("grammarDialect", get());
   },
   dictionaryLocale: (() => {
     const raw = ls("oleafly.dictionary.locale", "en_US") as DictionaryLocale;
@@ -327,19 +334,19 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     const locale = DICTIONARY_LOCALES.some((item) => item.id === v) ? v : "en_US";
     saveLs("oleafly.dictionary.locale", locale);
     set({ dictionaryLocale: locale });
-    notifyProofreadingSettingsChanged("dictionaryLocale");
+    notifyProofreadingSettingsChanged("dictionaryLocale", get());
   },
   showRegionalism: ls("oleafly.harper.regionalism", "1") !== "0",
   setShowRegionalism: (v) => {
     saveLs("oleafly.harper.regionalism", v ? "1" : "0");
     set({ showRegionalism: v });
-    notifyProofreadingSettingsChanged("regionalism");
+    notifyProofreadingSettingsChanged("regionalism", get());
   },
   showWordChoice: ls("oleafly.harper.wordchoice", "1") !== "0",
   setShowWordChoice: (v) => {
     saveLs("oleafly.harper.wordchoice", v ? "1" : "0");
     set({ showWordChoice: v });
-    notifyProofreadingSettingsChanged("wordChoice");
+    notifyProofreadingSettingsChanged("wordChoice", get());
   },
   offline: false,
   setOffline: (v) => set({ offline: v }),
@@ -512,6 +519,6 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     saveLs("oleafly.dockPlacement", PREF_DEFAULTS.dockPlacement);
     saveLs("oleafly.bgPattern", PREF_DEFAULTS.bgPattern);
     set({ ...PREF_DEFAULTS });
-    notifyProofreadingSettingsChanged("reset");
+    notifyProofreadingSettingsChanged("reset", get());
   },
 }));

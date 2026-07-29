@@ -1,5 +1,6 @@
 import { test, expect } from "../fixtures";
 import {
+  compileAndWait,
   fillCommandPalette,
   openGallery,
   pressGlobal,
@@ -47,22 +48,6 @@ async function restoreByIndex(page: Page, index: number) {
   );
 }
 
-async function compileOk(page: Page) {
-  const previousRevision = await page.evaluate<number>(
-    `Number(document.querySelector('[data-testid="compile-button"]')?.getAttribute('data-e2e-compile-revision') || 0)`,
-  );
-  await page.click('[data-testid="compile-button"]');
-  await page.waitForFunction(
-    `(() => {
-      const button = document.querySelector('[data-testid="compile-button"]');
-      const status = document.querySelector('[data-testid="compile-status"]');
-      return Number(button?.getAttribute('data-e2e-compile-revision') || 0) >
-        ${previousRevision} && status?.getAttribute('data-severity') === 'ok';
-    })()`,
-    120_000,
-  );
-}
-
 // Leaves the History modal OPEN.
 async function waitForRestoreButtons(page: Page, atLeast: number) {
   await expect
@@ -106,14 +91,14 @@ test("auto-commit history: restore rolls the document back and forward (no token
     `window.__gitCommitCount?.() ?? Promise.resolve(0)`,
   );
   await typeInEditorAfter(tauriPage, "here.", ` ${BASE}`);
-  await compileOk(tauriPage);
+  await compileAndWait(tauriPage);
   await waitForCommitsLanded(tauriPage, commitsBeforeBase + 1);
 
   const commitsBeforeEdit = await tauriPage.evaluate<number>(
     `window.__gitCommitCount?.() ?? Promise.resolve(0)`,
   );
   await typeInEditorAfter(tauriPage, BASE, ` ${EDIT}`);
-  await compileOk(tauriPage);
+  await compileAndWait(tauriPage);
   await waitForCommitsLanded(tauriPage, commitsBeforeEdit + 1);
   await waitForRestoreButtons(tauriPage, 2);
 

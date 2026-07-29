@@ -393,7 +393,27 @@ export function CodeMirrorEditor({
   // App-level proofreading preferences that do not affect editor construction
   // (for example, the selected English dialect) request a lightweight re-lint.
   useEffect(() => {
-    const refreshSettings = () => refreshEditorLints(viewRef.current);
+    const refreshSettings = (event: Event) => {
+      const detail = (
+        event as CustomEvent<{
+          spellcheck?: boolean;
+          harper?: boolean;
+        }>
+      ).detail;
+      if (
+        detail?.spellcheck === false &&
+        detail.harper === false
+      ) {
+        // The Settings event is synchronous, while React applies the
+        // compartment reconfiguration later. Do not force the still-mounted
+        // previous linter to start one final request after both providers have
+        // been disabled.
+        cancelSourceProofreading();
+        clearEditorProofreadingDiagnostics(viewRef.current);
+        return;
+      }
+      refreshEditorLints(viewRef.current);
+    };
     const refreshPresentation = () =>
       refreshEditorProofreadingPresentation(viewRef.current);
     window.addEventListener(
