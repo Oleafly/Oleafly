@@ -34,6 +34,7 @@ import {
 import { proofreadingPresentationDiagnostics } from "@/store/proofreading";
 
 interface RetainedSourceProofreading {
+  contextKey: string;
   projectId: string | null;
   path: string;
   text: string;
@@ -43,10 +44,30 @@ interface RetainedSourceProofreading {
 
 let retainedSourceProofreading: RetainedSourceProofreading | null = null;
 
+function sourceProofreadingContextKey(
+  projectId: string | null,
+): string {
+  const settings = useSettingsStore.getState();
+  const dictionary = useDictionary.getState();
+  return JSON.stringify([
+    settings.spellcheck,
+    settings.harper,
+    settings.grammarDialect,
+    settings.dictionaryLocale,
+    settings.showRegionalism,
+    settings.showWordChoice,
+    [...dictionary.global].sort(),
+    projectId
+      ? [...(dictionary.ignored[projectId] ?? [])].sort()
+      : [],
+  ]);
+}
+
 // Module side effect: must install before any lint runs.
 setSpellHost({
   getProjectId: () => useFilesStore.getState().projectId,
   getActivePath: () => useFilesStore.getState().activePath,
+  getProofreadingContextKey: sourceProofreadingContextKey,
   getLintPrefs: () => {
     const s = useSettingsStore.getState();
     return {
@@ -56,6 +77,9 @@ setSpellHost({
     };
   },
   proofread: async (input) => {
+    const contextKey = sourceProofreadingContextKey(
+      input.projectId,
+    );
     const dictionary = useDictionary.getState();
     const ignoredWords = [
       ...dictionary.global,
@@ -76,19 +100,25 @@ setSpellHost({
       preferences: input.preferences,
       ignoredWords,
     });
-    retainedSourceProofreading = {
-      projectId: input.projectId,
-      path: input.path,
-      text: input.text,
-      mode: input.mode,
-      result,
-    };
+    if (
+      sourceProofreadingContextKey(input.projectId) === contextKey
+    ) {
+      retainedSourceProofreading = {
+        contextKey,
+        projectId: input.projectId,
+        path: input.path,
+        text: input.text,
+        mode: input.mode,
+        result,
+      };
+    }
     return result;
   },
   getRetainedProofreading: (input) => {
     const retained = retainedSourceProofreading;
     if (
       !retained ||
+      retained.contextKey !== input.contextKey ||
       retained.projectId !== input.projectId ||
       retained.path !== input.path ||
       retained.text !== input.text ||
