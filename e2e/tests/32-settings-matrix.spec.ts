@@ -216,13 +216,11 @@ test("offline mode compiles from the local cache", async ({ tauriPage }) => {
   test.setTimeout(300_000);
   // This is a compiler-policy test, so give it a fresh immutable fixture
   // instead of inheriting the shared E2E Doc after earlier editing specs.
-  await openProject(tauriPage, "E2E Doc");
-  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await setOfflineMode(tauriPage, false);
   await createBlankProject(
     tauriPage,
     `E2E Offline Cache ${Date.now().toString(36)}`,
   );
+  await setOfflineMode(tauriPage, false);
   // First compile online to populate exactly the resources used by this
   // document, then require a new verified output while Tectonic is
   // constrained to --only-cached.

@@ -73,6 +73,7 @@ export {
   diagnosticPresentationExtensions,
   spellLintExtensions,
   refreshEditorLints,
+  refreshEditorProofreadingPresentation,
   cancelSourceProofreading,
   createSpellLinter,
   createHarperLinter,

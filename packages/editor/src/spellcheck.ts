@@ -62,6 +62,9 @@ export interface SpellHost {
       dialect?: ProofreadingDialect;
     };
   }): Promise<ProofreadingResult>;
+  presentDiagnostics?(
+    result: ProofreadingResult,
+  ): ProofreadingResult["diagnostics"];
   cancelProofreading?(surface: "source", path?: string): void;
   getSpellchecker?(): Promise<{ spell(word: string): boolean }>;
   isSessionIgnored(word: string): boolean;
@@ -96,6 +99,32 @@ export function refreshEditorLints(view: EditorView | null): void {
   if (!view) return;
   view.dispatch({ effects: refreshLints.of(null) });
   forceLinting(view);
+}
+
+interface PresentedProofreadingCache {
+  document: EditorView["state"]["doc"];
+  mode: ProofreadingMode;
+  path: string;
+  projectId: string | null;
+  result: ProofreadingResult;
+}
+
+const presentedProofreadingCache = new WeakMap<
+  EditorView,
+  PresentedProofreadingCache
+>();
+const presentationRefreshViews = new WeakSet<EditorView>();
+
+/**
+ * Repaints a different bounded page from the last authoritative proofreading
+ * result without sending the unchanged document through Harper/Hunspell again.
+ */
+export function refreshEditorProofreadingPresentation(
+  view: EditorView | null,
+): void {
+  if (!view) return;
+  presentationRefreshViews.add(view);
+  refreshEditorLints(view);
 }
 
 /** Short labels for the card footer; the stock tooltip needs the full sentence. */
@@ -234,16 +263,26 @@ async function proofreadWithWorker(
   if (!format) return [];
   const document = view.state.doc;
   const text = document.toString();
-  const result = await h.proofread({
-    projectId,
-    path,
-    revision: ++sourceRevision,
-    surface: "source",
-    text,
-    format,
-    mode,
-    preferences: h.getLintPrefs(),
-  });
+  const presentationOnly = presentationRefreshViews.delete(view);
+  const cached = presentedProofreadingCache.get(view);
+  const canReusePresentedResult =
+    presentationOnly &&
+    cached?.document === document &&
+    cached.mode === mode &&
+    cached.path === path &&
+    cached.projectId === projectId;
+  const result = canReusePresentedResult
+    ? cached.result
+    : await h.proofread({
+        projectId,
+        path,
+        revision: ++sourceRevision,
+        surface: "source",
+        text,
+        format,
+        mode,
+        preferences: h.getLintPrefs(),
+      });
   if (
     (result.status !== "ready" && result.status !== "partial") ||
     view.state.doc !== document ||
@@ -252,8 +291,19 @@ async function proofreadWithWorker(
   ) {
     return [];
   }
+  if (!canReusePresentedResult) {
+    presentedProofreadingCache.set(view, {
+      document,
+      mode,
+      path,
+      projectId,
+      result,
+    });
+  }
   const output: Diagnostic[] = [];
-  for (const diagnostic of result.diagnostics) {
+  const presentedDiagnostics =
+    h.presentDiagnostics?.(result) ?? result.diagnostics;
+  for (const diagnostic of presentedDiagnostics) {
     const from = Math.max(
       0,
       Math.min(diagnostic.from, view.state.doc.length),

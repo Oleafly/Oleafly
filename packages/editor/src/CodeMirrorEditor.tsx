@@ -44,6 +44,7 @@ import { setEditorDocumentPath, setEditorView } from "./controller";
 import {
   cancelSourceProofreading,
   diagnosticPresentationExtensions,
+  refreshEditorProofreadingPresentation,
   spellLintExtensions,
   refreshEditorLints,
 } from "./spellcheck";
@@ -390,20 +391,25 @@ export function CodeMirrorEditor({
   // App-level proofreading preferences that do not affect editor construction
   // (for example, the selected English dialect) request a lightweight re-lint.
   useEffect(() => {
-    const refresh = () => refreshEditorLints(viewRef.current);
-    window.addEventListener("oleafly:proofreading-settings-changed", refresh);
+    const refreshSettings = () => refreshEditorLints(viewRef.current);
+    const refreshPresentation = () =>
+      refreshEditorProofreadingPresentation(viewRef.current);
+    window.addEventListener(
+      "oleafly:proofreading-settings-changed",
+      refreshSettings,
+    );
     window.addEventListener(
       "oleafly:proofreading-presentation-changed",
-      refresh,
+      refreshPresentation,
     );
     return () => {
       window.removeEventListener(
         "oleafly:proofreading-settings-changed",
-        refresh,
+        refreshSettings,
       );
       window.removeEventListener(
         "oleafly:proofreading-presentation-changed",
-        refresh,
+        refreshPresentation,
       );
     };
   }, []);
