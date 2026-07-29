@@ -51,17 +51,28 @@ type E2eProbeWindow = Window & {
   __e2ePdfText?: () => Promise<string>;
   __e2ePdfProbe?: () => Promise<E2ePdfProbe>;
   __e2eHasProofreadingDiagnostic?: (text: string) => boolean;
+  __e2eHasProofreadingDiagnosticAt?: (from: number) => boolean;
   __e2eMountProofreadingCard?: (text: string) => boolean;
   __e2eRefreshEditorLints?: () => void;
 };
 
+function proofreadingTooltipAt(from: number) {
+  const view = getEditorView();
+  if (!view || from < 0 || from >= view.state.doc.length) return null;
+  return diagnosticCardSource(view, from + 1);
+}
+
 function proofreadingTooltip(text: string) {
   const view = getEditorView();
   if (!view) return null;
-  const from = view.state.doc.toString().indexOf(text);
-  return from < 0
-    ? null
-    : diagnosticCardSource(view, from + 1);
+  const source = view.state.doc.toString();
+  let from = source.indexOf(text);
+  while (from >= 0) {
+    const tooltip = proofreadingTooltipAt(from);
+    if (tooltip) return tooltip;
+    from = source.indexOf(text, from + Math.max(1, text.length));
+  }
+  return null;
 }
 
 function mountProofreadingCard(text: string): boolean {
@@ -248,6 +259,8 @@ export function installE2ePdfProbe() {
   target.__e2ePdfText = async () => (await readCompiledPdfProbe()).text;
   target.__e2eHasProofreadingDiagnostic = (text) =>
     proofreadingTooltip(text) !== null;
+  target.__e2eHasProofreadingDiagnosticAt = (from) =>
+    proofreadingTooltipAt(from) !== null;
   target.__e2eMountProofreadingCard = mountProofreadingCard;
   target.__e2eRefreshEditorLints = () =>
     refreshEditorLints(getEditorView());
