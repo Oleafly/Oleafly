@@ -676,22 +676,7 @@
   html,
   body,
   #root {
-    width: 100%;
     height: 100%;
-    min-height: 0;
-  }
-  html {
-    /*
-     * Oleafly is a fixed desktop shell: the editor, preview, sidebars, and
-     * dialogs each own their scrolling. The document viewport must therefore
-     * never become a scroll container. `body { overflow: hidden }` alone still
-     * leaves the root `html` scrolling element movable when WebKit focuses a
-     * deeply positioned editor or dialog control. `clip` removes that root
-     * scroll container entirely, preventing focus restoration and diagnostic
-     * actions from displacing the application chrome.
-     */
-    overflow: clip;
-    overscroll-behavior: none;
   }
   body {
     margin: 0;
@@ -702,18 +687,6 @@
     text-rendering: optimizeLegibility;
     overflow: hidden;
   }
-  #root {
-    /*
-     * The React tree is the desktop viewport, not document flow content.
-     * Keep this as an ordinary DOM layer. Fixed or transformed roots can make
-     * WKWebView promote the entire application into a stale compositing layer,
-     * leaving a fully mounted and accessible project visually blank. Visual
-     * selection restoration is contained at the editor boundary instead.
-     */
-    overflow: hidden;
-    overscroll-behavior: none;
-  }
-
   /* Cursors: every interactive control gets an appropriate pointer. */
   button,
   summary,
