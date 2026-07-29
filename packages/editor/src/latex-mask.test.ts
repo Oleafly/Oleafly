@@ -40,6 +40,15 @@ describe("maskLatex", () => {
       expect(w.has("fig")).toBe(false);
     });
 
+    it("drops preamble document metadata", () => {
+      const w = words(
+        "\\title{MetadataQwertzuiopz}\\author{AuthorQwertzuiopz}\\date{DateQwertzuiopz}",
+      );
+      expect(w.has("MetadataQwertzuiopz")).toBe(false);
+      expect(w.has("AuthorQwertzuiopz")).toBe(false);
+      expect(w.has("DateQwertzuiopz")).toBe(false);
+    });
+
     it("masks math environments (equation, align)", () => {
       const w = words("\\begin{align}\\mathrm{Attention}(Q,K,V) = \\mathrm{softmax}(QK)V\\end{align}");
       expect(w.has("Attention")).toBe(false);

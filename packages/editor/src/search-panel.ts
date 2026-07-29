@@ -380,16 +380,24 @@ const searchTheme = EditorView.theme({
     height: "28px",
     border: "none",
     outline: "none",
+    borderRadius: "0.25rem",
     background: "transparent",
     color: "inherit",
     padding: "0 4px",
     font: "12px system-ui, sans-serif",
   },
   ".cm-vs-input::placeholder": { color: "var(--muted-foreground, #999)" },
-  // The panel is already a distinct surface; a ring around the field inside it
-  // reads as a second box (the PDF search field has none either).
-  ".cm-vs-input:focus": { outline: "none" },
-  ".cm-vs-input:focus-visible": { outline: "none" },
+  // Keyboard users need a persistent focus target even though the search panel
+  // is already a distinct surface. Keep the ring inside the borderless field
+  // so it does not resize the panel or read as a second nested input box.
+  ".cm-vs-input:focus": {
+    outline: "2px solid var(--ring, #2563eb)",
+    outlineOffset: "-2px",
+  },
+  ".cm-vs-input:focus-visible": {
+    outline: "2px solid var(--ring, #2563eb)",
+    outlineOffset: "-2px",
+  },
   ".cm-vs-btn": {
     flexShrink: "0",
     display: "flex",

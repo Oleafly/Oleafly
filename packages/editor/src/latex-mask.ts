@@ -44,6 +44,11 @@ const OPAQUE_ARG_CMDS = new Set([
   "Acrlong", "acrfull", "Acrfull", "index",
   // Spacing/length commands whose arguments are dimensions ("2pt", "0.5in").
   "vspace", "hspace", "vskip", "hskip", "addvspace", "addtolength",
+  // Preamble metadata is not body prose. Names, affiliations, dates, and PDF
+  // metadata frequently contain proper nouns or machine-oriented values that
+  // should not produce document-body spelling and grammar diagnostics.
+  "title", "subtitle", "author", "date", "subject", "keywords",
+  "institute", "affiliation",
 ]);
 
 // Commands whose FIRST argument is opaque but the rest is prose, e.g.
