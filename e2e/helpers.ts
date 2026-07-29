@@ -28,6 +28,7 @@ export async function expectDesktopShellAnchored(page: Page) {
     rootTop: number;
     rootLeft: number;
     rootPosition: string;
+    bodyPosition: string;
   }>(
     `(() => {
       const root = document.getElementById("root");
@@ -39,6 +40,7 @@ export async function expectDesktopShellAnchored(page: Page) {
         rootTop: rect.top,
         rootLeft: rect.left,
         rootPosition: getComputedStyle(root).position,
+        bodyPosition: getComputedStyle(document.body).position,
       };
     })()`,
   );
@@ -47,7 +49,8 @@ export async function expectDesktopShellAnchored(page: Page) {
     scrollLeft: 0,
     rootTop: 0,
     rootLeft: 0,
-    rootPosition: "fixed",
+    rootPosition: "static",
+    bodyPosition: "static",
   });
 }
 
