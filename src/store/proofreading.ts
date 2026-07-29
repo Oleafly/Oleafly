@@ -188,13 +188,23 @@ export function proofreadingPresentationDiagnostics(
 ): ProofreadingDiagnostic[] {
   const state =
     useProofreadingStore.getState()[result.identity.surface];
-  const page =
-    state.identity &&
-    sameProofreadingIdentity(state.identity, result.identity)
-      ? state.presentationPage
-      : 0;
+  const hasAuthoritativeDocumentResult =
+    (state.phase === "ready" || state.phase === "partial") &&
+    state.identity?.projectId === result.identity.projectId &&
+    state.identity.path === result.identity.path &&
+    state.identity.surface === result.identity.surface;
+  // A presentation repaint can be seeded by an older worker response for the
+  // exact same document text after CodeMirror replaces its immutable Text
+  // object. Always render the central store's newer authoritative diagnostics
+  // for that document so request-generation churn cannot reset the page to 0.
+  const diagnostics = hasAuthoritativeDocumentResult
+    ? state.diagnostics
+    : result.diagnostics;
+  const page = hasAuthoritativeDocumentResult
+    ? state.presentationPage
+    : 0;
   const from = page * PROOFREADING_PRESENTATION_PAGE_SIZE;
-  return result.diagnostics.slice(
+  return diagnostics.slice(
     from,
     from + PROOFREADING_PRESENTATION_PAGE_SIZE,
   );
