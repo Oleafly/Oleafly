@@ -15,6 +15,7 @@ import { buildLargeLatexBookProject } from "../../test/fixtures/editor-support/l
 
 interface EditorGeometry {
   readonly currentLine: number;
+  readonly viewportHeight: number;
   readonly visibleLineCount: number;
   readonly numberedGutterCount: number;
   readonly maxLineNumberDelta: number;
@@ -134,6 +135,7 @@ async function editorGeometry(
         const last = lines.at(-1)?.getBoundingClientRect();
         return {
           currentLine: getCurrentLine() ?? 0,
+          viewportHeight: viewport.height,
           visibleLineCount: lines.length,
           numberedGutterCount: gutters.length,
           maxLineNumberDelta: Math.max(0, ...deltas),
@@ -157,8 +159,24 @@ async function expectStableGeometry(
   await goToLine(page, line);
   const geometry = await editorGeometry(page);
   expect(geometry.currentLine).toBe(line);
-  expect(geometry.visibleLineCount).toBeGreaterThan(15);
-  expect(geometry.numberedGutterCount).toBeGreaterThan(15);
+  // A fixed source-line count is invalid in split view: ordinary prose can
+  // wrap to multiple visual rows as the native window width changes. Require
+  // enough lines to fill the measured viewport at the tallest legitimate row
+  // height, while the blank-space and row-multiple checks below remain the
+  // authoritative guards against the historical giant-spacer regression.
+  const minimumVisibleLines = Math.max(
+    4,
+    Math.floor(
+      geometry.viewportHeight /
+        Math.max(geometry.maxLineHeight, geometry.minLineHeight),
+    ) - 2,
+  );
+  expect(geometry.visibleLineCount).toBeGreaterThanOrEqual(
+    minimumVisibleLines,
+  );
+  expect(geometry.numberedGutterCount).toBeGreaterThanOrEqual(
+    geometry.visibleLineCount,
+  );
   expect(geometry.maxLineNumberDelta).toBeLessThanOrEqual(1.5);
   expect(geometry.minLineHeight).toBeGreaterThan(10);
   // Split view intentionally wraps realistic prose. Wrapped rows must remain
