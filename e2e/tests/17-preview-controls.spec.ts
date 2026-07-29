@@ -386,7 +386,7 @@ test("fullscreen controls hide, restore, and exit the preview toolbar", async ({
 test("open-in-window control creates the detached preview window", async ({
   tauriPage,
 }) => {
-  await tauriPage.click('[aria-label="Open preview in a new window"]');
+  await activatePreviewControl(tauriPage, "Open preview in a new window");
   const preview = await tauriPage.waitForWindow((window) => window.label === "preview", {
     timeout: 20_000,
   });
