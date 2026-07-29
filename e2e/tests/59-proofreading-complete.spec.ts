@@ -489,7 +489,7 @@ test("Spellcheck and Harper Settings toggles remove and restore their editor dec
     tauriPage,
     String.raw`\documentclass{article}
 \begin{document}
-This could of changed. Qwertzuiopz.
+This could of changed. TypeScript.
 \end{document}
 `,
   );
@@ -503,7 +503,7 @@ This could of changed. Qwertzuiopz.
     "combined proofreading did not finish",
   );
   await expect
-    .poll(() => diagnosticCardVisible(tauriPage, "Qwertzuiopz"), {
+    .poll(() => diagnosticCardVisible(tauriPage, "TypeScript"), {
       timeout: 20_000,
     })
     .toBe(true);
@@ -520,7 +520,7 @@ This could of changed. Qwertzuiopz.
     "spellcheck decorations were not removed",
   );
   await expect
-    .poll(() => diagnosticCardVisible(tauriPage, "Qwertzuiopz"), {
+    .poll(() => diagnosticCardVisible(tauriPage, "TypeScript"), {
       timeout: 20_000,
     })
     .toBe(false);
@@ -546,11 +546,11 @@ This could of changed. Qwertzuiopz.
       state.phase === "ready" &&
       providers(state).has("hunspell") &&
       !providers(state).has("harper") &&
-      hasDiagnostic(state, "hunspell", "Qwertzuiopz"),
+      hasDiagnostic(state, "hunspell", "TypeScript"),
     "spellcheck decorations did not return",
   );
   await expect
-    .poll(() => diagnosticCardVisible(tauriPage, "Qwertzuiopz"), {
+    .poll(() => diagnosticCardVisible(tauriPage, "TypeScript"), {
       timeout: 20_000,
     })
     .toBe(true);

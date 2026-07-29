@@ -55,7 +55,7 @@ test("the sidebar collapses and restores from the rail", async ({ tauriPage }) =
   // Auto-compile is debounced by 2.5 seconds. Wait beyond that boundary so
   // the assertion also catches a delayed compile request from the layout-only
   // interaction.
-  await tauriPage.waitForTimeout(2_800);
+  await new Promise((resolve) => setTimeout(resolve, 2_800));
   const after = await tauriPage.evaluate<{
     status: string;
     lastCompiledAt: number | null;
