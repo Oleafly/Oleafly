@@ -122,4 +122,14 @@ test("selecting text in the editor reveals the Ask AI action bubble", async ({ t
   await tauriPage.waitForFunction(`typeof window.__lastAiSelectionPrompt === 'string'`, 5_000);
   const detail = await tauriPage.evaluate<string>(`window.__lastAiSelectionPrompt`);
   expect(detail).toContain("Write");
+  await tauriPage.waitForFunction(
+    `import("/src/store/settings.ts").then(({ useSettingsStore }) =>
+      useSettingsStore.getState().railTab === "ai" &&
+      useSettingsStore.getState().showTree
+    )`,
+    5_000,
+  );
+  await expect(
+    tauriPage.locator('[data-tour="ai-assistant"]'),
+  ).toBeVisible({ timeout: 10_000 });
 });
