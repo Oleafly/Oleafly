@@ -62,6 +62,12 @@ export interface SpellHost {
       dialect?: ProofreadingDialect;
     };
   }): Promise<ProofreadingResult>;
+  getRetainedProofreading?(input: {
+    projectId: string | null;
+    path: string;
+    text: string;
+    mode: ProofreadingMode;
+  }): ProofreadingResult | null;
   presentDiagnostics?(
     result: ProofreadingResult,
   ): ProofreadingResult["diagnostics"];
@@ -271,18 +277,28 @@ async function proofreadWithWorker(
     cached.mode === mode &&
     cached.path === path &&
     cached.projectId === projectId;
+  const retainedResult =
+    presentationOnly && !canReusePresentedResult
+      ? (h.getRetainedProofreading?.({
+          projectId,
+          path,
+          text,
+          mode,
+        }) ?? null)
+      : null;
   const result = canReusePresentedResult
     ? cached.result
-    : await h.proofread({
-        projectId,
-        path,
-        revision: ++sourceRevision,
-        surface: "source",
-        text,
-        format,
-        mode,
-        preferences: h.getLintPrefs(),
-      });
+    : (retainedResult ??
+      (await h.proofread({
+          projectId,
+          path,
+          revision: ++sourceRevision,
+          surface: "source",
+          text,
+          format,
+          mode,
+          preferences: h.getLintPrefs(),
+        })));
   if (
     (result.status !== "ready" && result.status !== "partial") ||
     view.state.doc !== document ||
@@ -291,15 +307,17 @@ async function proofreadWithWorker(
   ) {
     return [];
   }
-  if (!canReusePresentedResult) {
-    presentedProofreadingCache.set(view, {
-      document,
-      mode,
-      path,
-      projectId,
-      result,
-    });
-  }
+  // Cache after validation even when this result came from the app's retained
+  // source state. CodeMirror can legitimately replace its immutable Text
+  // object while an unchanged worker request is in flight; binding the result
+  // to the current object makes every later presentation-page repaint local.
+  presentedProofreadingCache.set(view, {
+    document,
+    mode,
+    path,
+    projectId,
+    result,
+  });
   const output: Diagnostic[] = [];
   const presentedDiagnostics =
     h.presentDiagnostics?.(result) ?? result.diagnostics;

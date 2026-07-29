@@ -33,6 +33,16 @@ import {
 } from "@/lib/proofreading/client";
 import { proofreadingPresentationDiagnostics } from "@/store/proofreading";
 
+interface RetainedSourceProofreading {
+  projectId: string | null;
+  path: string;
+  text: string;
+  mode: "grammar" | "spelling" | "combined";
+  result: Awaited<ReturnType<typeof proofreadDocument>>;
+}
+
+let retainedSourceProofreading: RetainedSourceProofreading | null = null;
+
 // Module side effect: must install before any lint runs.
 setSpellHost({
   getProjectId: () => useFilesStore.getState().projectId,
@@ -66,7 +76,27 @@ setSpellHost({
       preferences: input.preferences,
       ignoredWords,
     });
+    retainedSourceProofreading = {
+      projectId: input.projectId,
+      path: input.path,
+      text: input.text,
+      mode: input.mode,
+      result,
+    };
     return result;
+  },
+  getRetainedProofreading: (input) => {
+    const retained = retainedSourceProofreading;
+    if (
+      !retained ||
+      retained.projectId !== input.projectId ||
+      retained.path !== input.path ||
+      retained.text !== input.text ||
+      retained.mode !== input.mode
+    ) {
+      return null;
+    }
+    return retained.result;
   },
   presentDiagnostics: proofreadingPresentationDiagnostics,
   cancelProofreading,
