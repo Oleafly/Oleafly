@@ -1199,7 +1199,7 @@ test("worker startup failure, partial analysis, retry, and recovery remain usabl
       return Promise.all([
         import("/src/lib/proofreading/client.ts"),
         import("/src/components/editor/cm/controller.ts"),
-        import("@oleafly/editor"),
+        import("/packages/editor/src/index.ts"),
       ]).then(([client, controller, editor]) => {
         client.retryProofreading("source");
         editor.refreshEditorLints(controller.getEditorView());
