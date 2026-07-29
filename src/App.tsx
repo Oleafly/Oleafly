@@ -152,10 +152,7 @@ function AppContent() {
       state.files[state.mainDoc] !== undefined,
   );
   const refreshProjects = useFilesStore((s) => s.refreshProjects);
-  const activeContent = useActiveContent();
-  const activePath = useFilesStore((s) => s.activePath);
   const recompile = useCompileStore((s) => s.recompile);
-  const autoCompile = useCompileStore((s) => s.autoCompile);
   const compileStatus = useCompileStore((s) => s.status);
   const compileCheckpoint = useCompileStore(
     (state) => state.lastCompileCheckpoint,
@@ -584,37 +581,6 @@ function AppContent() {
     tree,
   ]);
 
-  // `activeContent` also changes on tab switch / project open, not just edits;
-  // only compile when the active file is unchanged from the previous render.
-  const autoCompilePathRef = useRef<string | null>(null);
-  useEffect(() => {
-    void activeContent;
-    if (!autoCompile || !projectId) {
-      autoCompilePathRef.current = activePath;
-      return;
-    }
-    if (autoCompilePathRef.current !== activePath) {
-      autoCompilePathRef.current = activePath;
-      return;
-    }
-    let timer: ReturnType<typeof setTimeout>;
-    let cancelled = false;
-    const attempt = () => {
-      if (cancelled) return;
-      // Retry shortly instead of silently skipping the newest edits.
-      if (useCompileStore.getState().status === "compiling") {
-        timer = setTimeout(attempt, 500);
-        return;
-      }
-      void recompile();
-    };
-    timer = setTimeout(attempt, AUTO_COMPILE_DEBOUNCE_MS);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [activeContent, activePath, autoCompile, recompile, projectId]);
-
   if (!projectId) {
     return (
       <ThemeProvider>
@@ -751,6 +717,51 @@ function AppContent() {
   );
 }
 
+/**
+ * Watches document text without making the complete AppContent layout a
+ * subscriber. A book-sized edit should reschedule auto-compile, not re-render
+ * the toolbar, panel tree, editor shell and PDF preview on every keystroke.
+ */
+function AutoCompileKeeper() {
+  const projectId = useFilesStore((state) => state.projectId);
+  const activePath = useFilesStore((state) => state.activePath);
+  const activeContent = useActiveContent();
+  const autoCompile = useCompileStore((state) => state.autoCompile);
+  const recompile = useCompileStore((state) => state.recompile);
+  const pathRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    void activeContent;
+    if (!autoCompile || !projectId) {
+      pathRef.current = activePath;
+      return;
+    }
+    // Active content changes on a file switch as well as an edit. Establish
+    // the new file identity without compiling merely because it was opened.
+    if (pathRef.current !== activePath) {
+      pathRef.current = activePath;
+      return;
+    }
+    let timer: ReturnType<typeof setTimeout>;
+    let cancelled = false;
+    const attempt = () => {
+      if (cancelled) return;
+      if (useCompileStore.getState().status === "compiling") {
+        timer = setTimeout(attempt, 500);
+        return;
+      }
+      void recompile();
+    };
+    timer = setTimeout(attempt, AUTO_COMPILE_DEBOUNCE_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [activeContent, activePath, autoCompile, projectId, recompile]);
+
+  return null;
+}
+
 export default function App() {
   return (
     <>
@@ -759,6 +770,7 @@ export default function App() {
       >
         <LanguageServiceRuntimeBoundary />
       </ErrorBoundary>
+      <AutoCompileKeeper />
       <AppContent />
     </>
   );

@@ -44,6 +44,7 @@ import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
   fingerprintCompileOutput,
+  sameCompileOutput,
   type CompileSuccessCheckpoint,
 } from "@/lib/compile-checkpoint";
 import { pickSavePath } from "@/lib/native-file-dialog";
@@ -141,19 +142,6 @@ function previewStateKey(state: PreviewWindowState): string {
   });
 }
 
-function sameOutput(
-  left: CompileSuccessCheckpoint | null,
-  right: CompileSuccessCheckpoint | null,
-): boolean {
-  return (
-    left !== null &&
-    right !== null &&
-    left.projectId === right.projectId &&
-    left.outputRevision === right.outputRevision &&
-    left.outputId === right.outputId
-  );
-}
-
 function checkpointMatchesCurrentState(
   checkpoint: CompileSuccessCheckpoint | null,
   state: PreviewWindowState | null,
@@ -162,7 +150,7 @@ function checkpointMatchesCurrentState(
     checkpoint !== null &&
     state?.status === "success" &&
     state.checkpoint !== null &&
-    sameOutput(checkpoint, state.checkpoint) &&
+    sameCompileOutput(checkpoint, state.checkpoint) &&
     checkpoint.mainDocument === state.identity.mainDocument &&
     checkpoint.projectRevision === state.identity.projectRevision &&
     checkpoint.requestGeneration === state.identity.requestGeneration
@@ -505,7 +493,7 @@ export function PreviewWindow({
       return;
     }
     if (
-      sameOutput(
+      sameCompileOutput(
         previewDocumentRef.current?.checkpoint ?? null,
         checkpoint,
       )

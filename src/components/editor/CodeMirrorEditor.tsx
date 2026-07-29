@@ -22,6 +22,7 @@ import {
   languageServiceEditorExtensions,
 } from "./cm/language-service";
 import { useFilesStore } from "@/store/files";
+import { useIndexStore } from "@/store/project-index";
 import { useSettingsStore } from "@/store/settings";
 import { useCompileStore } from "@/store/compile";
 import { useDictionary, isWordIgnored, ignoreWordForProject, ignoreWordGlobally } from "@/lib/dictionary";
@@ -78,11 +79,23 @@ setSpellHost({
 });
 
 setBibKeysProvider(() => {
-  const files = useFilesStore.getState().files;
-  const bibs = Object.entries(files)
+  const filesState = useFilesStore.getState();
+  const bibs = Object.entries(filesState.files)
     .filter(([path]) => path.endsWith(".bib"))
     .map(([, state]) => state.content);
-  return bibKeysFromSources(bibs);
+  const intelligence = useIndexStore.getState().intelligenceState;
+  const retainedProjectKeys =
+    intelligence.identity?.projectId === filesState.projectId
+      ? (intelligence.data?.bibliography.entries.map(
+          (entry) => entry.key,
+        ) ?? [])
+      : [];
+  return [
+    ...new Set([
+      ...bibKeysFromSources(bibs),
+      ...retainedProjectKeys,
+    ]),
+  ];
 });
 
 // Module-level so the host identity is stable across renders (its use* members are hooks).

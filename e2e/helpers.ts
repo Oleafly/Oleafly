@@ -255,6 +255,20 @@ export async function compileAndProbe(
   page: Page,
   timeoutMs = 120_000,
 ): Promise<E2ePdfProbe> {
+  await compileAndWait(page, timeoutMs);
+  return getCompiledPdfProbe(page, timeoutMs);
+}
+
+/**
+ * Compiles through the real toolbar and waits for a new verified output
+ * revision without extracting every PDF page. Book-scale rendering tests use
+ * this path so the measurement covers the product viewer, not an E2E-only
+ * full-document semantic traversal on the WebView main thread.
+ */
+export async function compileAndWait(
+  page: Page,
+  timeoutMs = 120_000,
+): Promise<number> {
   const compileButton = page.locator(
     '[data-testid="compile-button"]',
   ) as unknown as Parameters<typeof expect>[0];
@@ -350,7 +364,7 @@ export async function compileAndProbe(
     }
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
-  return getCompiledPdfProbe(page, timeoutMs);
+  return (await snapshot()).outputRevision;
 }
 
 export async function expectCompiledPdfContains(page: Page, text: string, timeoutMs = 90_000) {
@@ -539,6 +553,31 @@ export async function readProjectText(page: Page, path: string): Promise<string>
       return readFileContent(projectId, ${JSON.stringify(path)});
     })`,
   );
+}
+
+export async function writeProjectText(
+  page: Page,
+  path: string,
+  content: string,
+): Promise<void> {
+  const written = await page.evaluate<boolean>(
+    `Promise.all([
+      import("/src/lib/tauri.ts"),
+      import("/src/store/files.ts"),
+    ]).then(async ([tauri, files]) => {
+      const projectId =
+        document.querySelector('[data-e2e-project-id]')?.dataset.e2eProjectId;
+      if (!projectId) return false;
+      await tauri.writeFileContent(
+        projectId,
+        ${JSON.stringify(path)},
+        ${JSON.stringify(content)},
+      );
+      await files.useFilesStore.getState().refreshTree();
+      return true;
+    })`,
+  );
+  if (!written) throw new Error(`writeProjectText: no active project for ${path}`);
 }
 
 export async function readProjectBase64(page: Page, path: string): Promise<string> {

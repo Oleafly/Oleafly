@@ -93,6 +93,11 @@ jobs:
       - name: Test
         run: pnpm test
 
+      # Deterministic p95 gates for the core editor's book-scale synchronous
+      # paths. The native E2E jobs below cover WebView rendering and scrolling.
+      - name: Test book-scale editor performance
+        run: pnpm test:editor:performance
+
   rust:
     name: Rust (test + clippy)
     runs-on: ubuntu-22.04

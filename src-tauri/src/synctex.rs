@@ -44,6 +44,281 @@ pub struct SynctexHit {
     pub column: i32,
 }
 
+#[derive(Serialize, Debug, PartialEq, Eq)]
+pub struct SynctexMappedLine {
+    pub line: usize,
+    pub exact: bool,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct LinePair {
+    compiled: usize,
+    current: usize,
+}
+
+const MAX_LCS_CELLS_PER_GAP: usize = 100_000;
+const MAX_LCS_CELLS_TOTAL: usize = 400_000;
+
+fn unique_line_anchors(compiled: &[&str], current: &[&str]) -> Vec<LinePair> {
+    let mut compiled_occurrences: HashMap<&str, (usize, usize)> = HashMap::new();
+    let mut current_occurrences: HashMap<&str, (usize, usize)> = HashMap::new();
+    for (index, line) in compiled.iter().copied().enumerate() {
+        let entry = compiled_occurrences.entry(line).or_insert((0, index));
+        entry.0 += 1;
+        entry.1 = index;
+    }
+    for (index, line) in current.iter().copied().enumerate() {
+        let entry = current_occurrences.entry(line).or_insert((0, index));
+        entry.0 += 1;
+        entry.1 = index;
+    }
+    let mut candidates: Vec<LinePair> = compiled_occurrences
+        .iter()
+        .filter_map(|(line, &(count, compiled_index))| {
+            let &(current_count, current_index) = current_occurrences.get(line)?;
+            (count == 1 && current_count == 1).then_some(LinePair {
+                compiled: compiled_index,
+                current: current_index,
+            })
+        })
+        .collect();
+    candidates.sort_by_key(|pair| pair.compiled);
+    if candidates.len() < 2 {
+        return candidates;
+    }
+
+    // Patience diff: retain the longest increasing sequence of current line
+    // positions so moved unique lines cannot become misleading anchors.
+    let mut tails: Vec<usize> = Vec::new();
+    let mut tail_candidates: Vec<usize> = Vec::new();
+    let mut previous = vec![None; candidates.len()];
+    for (index, candidate) in candidates.iter().enumerate() {
+        let position = tails.partition_point(|value| *value < candidate.current);
+        if position > 0 {
+            previous[index] = Some(tail_candidates[position - 1]);
+        }
+        if position == tails.len() {
+            tails.push(candidate.current);
+            tail_candidates.push(index);
+        } else {
+            tails[position] = candidate.current;
+            tail_candidates[position] = index;
+        }
+    }
+    let mut anchors = Vec::with_capacity(tails.len());
+    let Some(mut cursor) = tail_candidates.last().copied() else {
+        return anchors;
+    };
+    loop {
+        anchors.push(candidates[cursor]);
+        let Some(prior) = previous[cursor] else {
+            break;
+        };
+        cursor = prior;
+    }
+    anchors.reverse();
+    anchors
+}
+
+fn lcs_pairs(
+    compiled: &[&str],
+    current: &[&str],
+    compiled_start: usize,
+    compiled_end: usize,
+    current_start: usize,
+    current_end: usize,
+) -> Vec<LinePair> {
+    let compiled_count = compiled_end - compiled_start;
+    let current_count = current_end - current_start;
+    if compiled_count == 0 || current_count == 0 {
+        return Vec::new();
+    }
+    let columns = current_count + 1;
+    let mut table = vec![0u32; (compiled_count + 1) * columns];
+    for compiled_offset in (0..compiled_count).rev() {
+        for current_offset in (0..current_count).rev() {
+            let cell = compiled_offset * columns + current_offset;
+            table[cell] = if compiled[compiled_start + compiled_offset]
+                == current[current_start + current_offset]
+            {
+                table[(compiled_offset + 1) * columns + current_offset + 1] + 1
+            } else {
+                table[(compiled_offset + 1) * columns + current_offset]
+                    .max(table[compiled_offset * columns + current_offset + 1])
+            };
+        }
+    }
+
+    let mut pairs = Vec::new();
+    let mut compiled_offset = 0;
+    let mut current_offset = 0;
+    while compiled_offset < compiled_count && current_offset < current_count {
+        if compiled[compiled_start + compiled_offset] == current[current_start + current_offset] {
+            pairs.push(LinePair {
+                compiled: compiled_start + compiled_offset,
+                current: current_start + current_offset,
+            });
+            compiled_offset += 1;
+            current_offset += 1;
+        } else if table[(compiled_offset + 1) * columns + current_offset]
+            >= table[compiled_offset * columns + current_offset + 1]
+        {
+            compiled_offset += 1;
+        } else {
+            current_offset += 1;
+        }
+    }
+    pairs
+}
+
+#[allow(clippy::too_many_arguments)]
+fn add_gap_matches(
+    compiled: &[&str],
+    current: &[&str],
+    mut compiled_start: usize,
+    mut compiled_end: usize,
+    mut current_start: usize,
+    mut current_end: usize,
+    pairs: &mut Vec<LinePair>,
+    lcs_budget: &mut usize,
+) {
+    while compiled_start < compiled_end
+        && current_start < current_end
+        && compiled[compiled_start] == current[current_start]
+    {
+        pairs.push(LinePair {
+            compiled: compiled_start,
+            current: current_start,
+        });
+        compiled_start += 1;
+        current_start += 1;
+    }
+    let mut suffix = Vec::new();
+    while compiled_start < compiled_end
+        && current_start < current_end
+        && compiled[compiled_end - 1] == current[current_end - 1]
+    {
+        compiled_end -= 1;
+        current_end -= 1;
+        suffix.push(LinePair {
+            compiled: compiled_end,
+            current: current_end,
+        });
+    }
+    let cells = (compiled_end - compiled_start).saturating_mul(current_end - current_start);
+    if cells > 0 && cells <= MAX_LCS_CELLS_PER_GAP && cells <= *lcs_budget {
+        *lcs_budget -= cells;
+        pairs.extend(lcs_pairs(
+            compiled,
+            current,
+            compiled_start,
+            compiled_end,
+            current_start,
+            current_end,
+        ));
+    }
+    suffix.reverse();
+    pairs.extend(suffix);
+}
+
+fn source_line_map(compiled_source: &str, current_source: &str) -> Vec<LinePair> {
+    let compiled: Vec<&str> = compiled_source.split('\n').collect();
+    let current: Vec<&str> = current_source.split('\n').collect();
+    let anchors = unique_line_anchors(&compiled, &current);
+    let mut pairs = Vec::new();
+    let mut compiled_start = 0;
+    let mut current_start = 0;
+    let mut lcs_budget = MAX_LCS_CELLS_TOTAL;
+    for anchor in anchors {
+        add_gap_matches(
+            &compiled,
+            &current,
+            compiled_start,
+            anchor.compiled,
+            current_start,
+            anchor.current,
+            &mut pairs,
+            &mut lcs_budget,
+        );
+        pairs.push(anchor);
+        compiled_start = anchor.compiled + 1;
+        current_start = anchor.current + 1;
+    }
+    add_gap_matches(
+        &compiled,
+        &current,
+        compiled_start,
+        compiled.len(),
+        current_start,
+        current.len(),
+        &mut pairs,
+        &mut lcs_budget,
+    );
+    pairs.sort_by_key(|pair| (pair.compiled, pair.current));
+    pairs
+}
+
+fn map_source_line(
+    compiled_source: &str,
+    current_source: &str,
+    line: usize,
+    current_to_compiled: bool,
+) -> Option<SynctexMappedLine> {
+    let pairs = source_line_map(compiled_source, current_source);
+    if pairs.is_empty() {
+        return None;
+    }
+    let source_line_count = if current_to_compiled {
+        current_source.split('\n').count()
+    } else {
+        compiled_source.split('\n').count()
+    };
+    let source_index = line
+        .saturating_sub(1)
+        .min(source_line_count.saturating_sub(1));
+    let source_position = |pair: &LinePair| {
+        if current_to_compiled {
+            pair.current
+        } else {
+            pair.compiled
+        }
+    };
+    let target_position = |pair: &LinePair| {
+        if current_to_compiled {
+            pair.compiled
+        } else {
+            pair.current
+        }
+    };
+    let insertion = pairs.partition_point(|pair| source_position(pair) < source_index);
+    if let Some(pair) = pairs.get(insertion) {
+        if source_position(pair) == source_index {
+            return Some(SynctexMappedLine {
+                line: target_position(pair) + 1,
+                exact: true,
+            });
+        }
+    }
+    let before = insertion.checked_sub(1).and_then(|index| pairs.get(index));
+    let after = pairs.get(insertion);
+    let nearest = match (before, after) {
+        (Some(before), Some(after)) => {
+            if source_index - source_position(before) <= source_position(after) - source_index {
+                before
+            } else {
+                after
+            }
+        }
+        (Some(before), None) => before,
+        (None, Some(after)) => after,
+        (None, None) => return None,
+    };
+    Some(SynctexMappedLine {
+        line: target_position(nearest) + 1,
+        exact: false,
+    })
+}
+
 fn read_synctex_text(project_id: &str, _main_doc: &str) -> Result<String, String> {
     let build = paths::build_dir(project_id)?;
     // Compiles run through the `_oleafly_entry` wrapper, so the synctex file
@@ -253,6 +528,21 @@ pub async fn synctex_inverse(
     .map_err(|e| e.to_string())?
 }
 
+#[tauri::command]
+pub async fn synctex_map_line(
+    compiled_source: String,
+    current_source: String,
+    line: usize,
+    current_to_compiled: bool,
+) -> Result<Option<usize>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        map_source_line(&compiled_source, &current_source, line, current_to_compiled)
+            .map(|mapped| mapped.line)
+    })
+    .await
+    .map_err(|error| error.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -304,5 +594,55 @@ mod tests {
         let hit = inverse(&doc, rect.page, cx, cy).expect("inverse should hit");
         assert_eq!(hit.file, "main.tex");
         assert_eq!(hit.line, line, "inverse should round-trip to line {line}");
+    }
+
+    #[test]
+    fn stale_line_map_translates_insertions_in_both_directions() {
+        let compiled = "alpha\nbeta\ngamma";
+        let current = "alpha\ninserted\nbeta\ngamma";
+        assert_eq!(
+            map_source_line(compiled, current, 4, true),
+            Some(SynctexMappedLine {
+                line: 3,
+                exact: true
+            })
+        );
+        assert_eq!(
+            map_source_line(compiled, current, 3, false),
+            Some(SynctexMappedLine {
+                line: 4,
+                exact: true
+            })
+        );
+        assert_eq!(
+            map_source_line(compiled, current, 2, true),
+            Some(SynctexMappedLine {
+                line: 1,
+                exact: false
+            })
+        );
+    }
+
+    #[test]
+    fn stale_line_map_refuses_unrelated_documents() {
+        assert_eq!(map_source_line("alpha\nbeta", "one\ntwo", 1, true), None);
+    }
+
+    #[test]
+    fn stale_line_map_handles_large_small_delta_documents() {
+        let compiled = (0..20_000)
+            .map(|index| format!("unique source line {index}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let mut current_lines = compiled.lines().map(str::to_owned).collect::<Vec<_>>();
+        current_lines.insert(10_000, "one local insertion".to_string());
+        let current = current_lines.join("\n");
+        assert_eq!(
+            map_source_line(&compiled, &current, 19_000, true),
+            Some(SynctexMappedLine {
+                line: 18_999,
+                exact: true
+            })
+        );
     }
 }

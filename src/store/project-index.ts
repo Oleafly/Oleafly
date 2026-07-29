@@ -61,6 +61,7 @@ interface ScheduledAnalysis {
 let rebuildSequence = 0;
 let activeProjectId: string | null = null;
 let projectRevision = 0;
+let filesystemEpoch = 0;
 let requestGeneration = 0;
 let workerProjectId: string | null = null;
 let workerNeedsReset = true;
@@ -100,6 +101,7 @@ function resetRuntimeState(): void {
   stopAnalysisTimer();
   activeProjectId = null;
   projectRevision = 0;
+  filesystemEpoch = 0;
   requestGeneration = 0;
   workerProjectId = null;
   workerNeedsReset = true;
@@ -115,6 +117,7 @@ function ensureProject(projectId: string): void {
   stopAnalysisTimer();
   activeProjectId = projectId;
   projectRevision = 0;
+  filesystemEpoch = 0;
   requestGeneration = 0;
   workerNeedsReset = true;
   workerKnownSourceFiles = new Set();
@@ -156,6 +159,16 @@ function sourcePathsFromKnown(
   knownFiles: readonly string[],
 ): string[] {
   return knownFiles.filter(isProjectIntelligencePath);
+}
+
+export function currentProjectSourcePaths(
+  extraPath?: string,
+): string[] {
+  return sourcePathsFromKnown(currentKnownFiles(extraPath));
+}
+
+export function projectFilesystemEpoch(): number {
+  return filesystemEpoch;
 }
 
 function sameIdentity(
@@ -222,9 +235,10 @@ function normalizedKnownSignature(paths: readonly string[]): string {
   return paths.join("\0");
 }
 
-async function readProjectSources(
+export async function readProjectSources(
   projectId: string,
   paths: readonly string[],
+  options: { readonly diskForDirty?: boolean } = {},
 ): Promise<{
   texts: Record<string, string>;
   unreadable: Set<string>;
@@ -240,9 +254,9 @@ async function readProjectSources(
         const index = cursor++;
         if (index >= paths.length) return;
         const path = paths[index];
-        const open = files.files[path]?.content;
-        if (open !== undefined) {
-          texts[path] = open;
+        const open = files.files[path];
+        if (open && (!options.diskForDirty || !open.dirty)) {
+          texts[path] = open.content;
           continue;
         }
         try {
@@ -519,6 +533,7 @@ export const useIndexStore = create<IndexStore>((set, get) => {
       rebuildSequence++;
       stopAnalysisTimer();
       projectRevision = Math.max(1, projectRevision + 1);
+      filesystemEpoch++;
       externalContribution = null;
       const identity: ProjectIntelligenceIdentity = {
         projectId,
@@ -720,6 +735,7 @@ export const useIndexStore = create<IndexStore>((set, get) => {
       nextSourceRevision(path);
       unreadableFiles.delete(path);
       projectRevision = Math.max(1, projectRevision + 1);
+      filesystemEpoch++;
       externalContribution = null;
       scheduleCurrentTexts(projectId, [], {
         removedPaths: [path],
@@ -751,6 +767,7 @@ export const useIndexStore = create<IndexStore>((set, get) => {
       }
       unreadableFiles.delete(from);
       projectRevision = Math.max(1, projectRevision + 1);
+      filesystemEpoch++;
       externalContribution = null;
       rebuildSequence++;
       scheduleCurrentTexts(

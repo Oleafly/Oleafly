@@ -140,6 +140,7 @@ pub fn run() {
             ollama::ollama_list_models,
             synctex::synctex_forward,
             synctex::synctex_inverse,
+            synctex::synctex_map_line,
             project::list_files,
             project::read_file,
             project::write_file,

@@ -16,7 +16,6 @@ import {
   editorRedo as coreEditorRedo,
   editorFind,
 } from "@oleafly/editor";
-import { useFilesStore } from "@/store/files";
 import { getWysiwygEditor, isWysiwygActive } from "@/components/editor/wysiwyg/controller";
 
 export {
@@ -79,7 +78,6 @@ export function editorUndo() {
     }
   }
   coreEditorUndo();
-  useFilesStore.getState().bumpDocVersion();
 }
 
 export function editorRedo() {
@@ -91,5 +89,4 @@ export function editorRedo() {
     }
   }
   coreEditorRedo();
-  useFilesStore.getState().bumpDocVersion();
 }

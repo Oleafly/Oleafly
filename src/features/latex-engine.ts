@@ -2,6 +2,7 @@ import { compileTagged, readCompiledPdf } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import {
   beginCompileRequestIdentity,
+  captureCompileSourceSnapshot,
   isCompileRequestIdentityCurrent,
   useCompileStore,
 } from "@/store/compile";
@@ -57,6 +58,17 @@ export async function compileTaggedAndVerify(): Promise<void> {
 
   try {
     await files.saveActive();
+    if (
+      !matchesAttemptIdentity() ||
+      hasCompileCheckpointAdvanced(
+        checkpointAtStart,
+        useCompileStore.getState().lastCompileCheckpoint,
+      )
+    ) {
+      return;
+    }
+    const compiledSourceSnapshot =
+      await captureCompileSourceSnapshot(projectId);
     if (
       !matchesAttemptIdentity() ||
       hasCompileCheckpointAdvanced(
@@ -151,6 +163,9 @@ export async function compileTaggedAndVerify(): Promise<void> {
               checkpoint?.completedAt ?? state.lastCompiledAt,
             lastCompileCheckpoint:
               checkpoint ?? state.lastCompileCheckpoint,
+            compiledSources: checkpoint
+              ? compiledSourceSnapshot
+              : state.compiledSources,
           };
         });
         if (outcomeApplied && checkpoint) {

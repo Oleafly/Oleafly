@@ -18,7 +18,6 @@ import {
   Contrast,
   Download,
   FileText,
-  FileWarning,
   ListTree,
   Loader2,
   MoreHorizontal,
@@ -81,7 +80,10 @@ import { useFilesStore } from "@/store/files";
 import { usePdfViewStore } from "@/store/pdf-view";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { useTourStore } from "@/store/tours";
-import { inverseFromClick } from "@/features/synctex";
+import {
+  canUseSyncTexForCheckpoint,
+  inverseFromClick,
+} from "@/features/synctex";
 import { askAiAboutCompileErrors } from "@/features/ask-ai-compile-errors";
 import {
   revealInDir,
@@ -781,6 +783,9 @@ export function PreviewPane() {
     displayedCheckpoint !== null &&
     isCompileCheckpointCurrent(displayedCheckpoint);
   const pdfIsStale = viewerDocument !== null && !pdfIsCurrent;
+  const syncTexAvailable =
+    canUseSyncTexForCheckpoint(displayedCheckpoint);
+  const staleSyncTexAvailable = pdfIsStale && syncTexAvailable;
   const displayedBytes = viewerDocument?.bytes ?? null;
   const currentRevisionExplanation = pdfIsStale
     ? displayedCheckpoint
@@ -1791,7 +1796,11 @@ export function PreviewPane() {
                     retainedLoadFailure ??
                     currentRevisionExplanation ??
                     "This PDF does not represent the active project revision."
-                  } SyncTeX navigation is disabled until the current revision compiles and loads successfully. Click to recompile.`}
+                  } ${
+                    staleSyncTexAvailable
+                      ? "SyncTeX uses the nearest unchanged line for edits."
+                      : "SyncTeX requires a current compile."
+                  } Click to recompile.`}
                   side="left"
                 >
                   <button
@@ -1799,9 +1808,12 @@ export function PreviewPane() {
                     onClick={() => void recompile()}
                     data-testid="preview-stale-badge"
                     aria-label="Stale, non-current preview; recompile"
-                    className="flex h-7 items-center justify-center gap-1.5 rounded-full border border-amber-500/45 bg-amber-500/15 px-2.5 text-[11px] font-semibold text-amber-700 shadow-sm backdrop-blur-sm transition-colors hover:bg-amber-500/30 dark:text-amber-200"
+                    className="flex h-7 items-center justify-center gap-1.5 rounded-full border border-neutral-300 bg-neutral-100 px-2.5 text-[11px] font-semibold text-neutral-700 shadow-sm transition-colors hover:bg-neutral-200 dark:border-neutral-700 dark:bg-[#181818] dark:text-neutral-300 dark:hover:bg-[#222222]"
                   >
-                    <FileWarning className="size-3.5" />
+                    <span
+                      aria-hidden="true"
+                      className="size-1.5 rounded-full bg-amber-500 dark:bg-amber-400"
+                    />
                     Stale
                   </button>
                 </Tooltip>
@@ -1985,7 +1997,16 @@ export function PreviewPane() {
                     onSearchStateChange={setSearchState}
                     onOutlineStateChange={setOutlineState}
                     onInverse={
-                      pdfIsCurrent ? inverseFromClick : undefined
+                      syncTexAvailable
+                        ? (pageNumber, clickX, clickY, word) =>
+                            void inverseFromClick(
+                              pageNumber,
+                              clickX,
+                              clickY,
+                              word,
+                              displayedCheckpoint,
+                            )
+                        : undefined
                     }
                     onPageChange={(current, total) => {
                       setPage(current);

@@ -135,14 +135,14 @@ describe("cm/controller mode-aware routing", () => {
     expect(core.insertAtCursor).toHaveBeenCalledWith("\\alpha");
   });
 
-  it("undo and redo call the CodeMirror core and bump the shared doc version", () => {
+  it("undo and redo delegate to CodeMirror without rebuilding editor compartments", () => {
     editorUndo();
     expect(core.editorUndo).toHaveBeenCalledOnce();
-    expect(bumpDocVersion).toHaveBeenCalledOnce();
+    expect(bumpDocVersion).not.toHaveBeenCalled();
 
     editorRedo();
     expect(core.editorRedo).toHaveBeenCalledOnce();
-    expect(bumpDocVersion).toHaveBeenCalledTimes(2);
+    expect(bumpDocVersion).not.toHaveBeenCalled();
   });
 
   it("routes undo and redo to the visible WYSIWYG history", () => {

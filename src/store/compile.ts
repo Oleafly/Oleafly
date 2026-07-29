@@ -20,12 +20,19 @@ import {
   createCompileSuccessCheckpoint,
   fingerprintCompileOutput,
   hasCompileCheckpointAdvanced,
+  sameCompileOutput,
   type CompileSuccessCheckpoint,
 } from "@/lib/compile-checkpoint";
 import {
   currentCompileProducerId,
   notifyCompileSucceeded,
 } from "@/lib/cross-window";
+import {
+  currentProjectSourcePaths,
+  projectFilesystemEpoch,
+  readProjectSources,
+  useIndexStore,
+} from "@/store/project-index";
 
 // Bumped on every recompile so a compile that finishes after the project was
 // switched (or a newer compile started) can detect it is stale and not overwrite
@@ -40,6 +47,11 @@ export interface CompileRequestIdentity {
   mainDocument: string;
   projectRevision: number;
   requestGeneration: number;
+}
+
+export interface CompileSourceSnapshot {
+  readonly fsEpoch: number;
+  readonly texts: Readonly<Record<string, string>>;
 }
 
 export type CompileStatus =
@@ -110,16 +122,104 @@ export function isCompileRequestIdentityCurrent(
   );
 }
 
+function currentSourcePaths(projectId: string): string[] | null {
+  const files = useFilesStore.getState();
+  if (files.projectId !== projectId || files.loading) return null;
+  return currentProjectSourcePaths(files.mainDoc || "main.tex");
+}
+
+function samePaths(
+  left: readonly string[],
+  right: readonly string[],
+): boolean {
+  return (
+    left.length === right.length &&
+    left.every((path, index) => path === right[index])
+  );
+}
+
+/**
+ * Captures the exact source inputs visible to the compiler. Clean buffers and
+ * indexed unopened files are already disk-backed and retain their string
+ * identity; only missing/dirty non-active inputs require an IPC read.
+ */
+export async function captureCompileSourceSnapshot(
+  projectId: string,
+): Promise<CompileSourceSnapshot | null> {
+  const paths = currentSourcePaths(projectId);
+  if (!paths) return null;
+  const epoch = projectFilesystemEpoch();
+  const loaded = await readProjectSources(projectId, paths, {
+    diskForDirty: true,
+  });
+  if (loaded.unreadable.size > 0) return null;
+  const currentPaths = currentSourcePaths(projectId);
+  if (
+    !currentPaths ||
+    !samePaths(paths, currentPaths) ||
+    projectFilesystemEpoch() !== epoch
+  ) {
+    return null;
+  }
+  return {
+    fsEpoch: epoch,
+    texts: loaded.texts,
+  };
+}
+
+function sourceSnapshotMatchesCurrent(
+  snapshot: CompileSourceSnapshot,
+  projectId: string,
+): boolean {
+  const paths = currentSourcePaths(projectId);
+  if (!paths) return false;
+  const snapshotPaths = Object.keys(snapshot.texts).sort();
+  if (!samePaths(paths, snapshotPaths)) return false;
+
+  const indexed = useIndexStore.getState();
+  if (projectFilesystemEpoch() !== snapshot.fsEpoch) {
+    return false;
+  }
+  const files = useFilesStore.getState();
+  return paths.every((path) => {
+    const current =
+      files.files[path]?.content ?? indexed.texts[path];
+    return (
+      current !== undefined &&
+      current === snapshot.texts[path]
+    );
+  });
+}
+
 export function isCompileCheckpointCurrent(
   checkpoint: CompileSuccessCheckpoint | null,
 ): checkpoint is CompileSuccessCheckpoint {
   if (!checkpoint) return false;
   const files = useFilesStore.getState();
-  return (
-    files.projectId === checkpoint.projectId &&
-    (files.mainDoc || "main.tex") === checkpoint.mainDocument &&
+  if (
+    files.projectId !== checkpoint.projectId ||
+    (files.mainDoc || "main.tex") !== checkpoint.mainDocument
+  ) {
+    return false;
+  }
+  if (
     projectRevisionFor(checkpoint.projectId) ===
-      checkpoint.projectRevision
+    checkpoint.projectRevision
+  ) {
+    return true;
+  }
+
+  // Revisions remain monotonic for async race rejection. Freshness may still
+  // recover when edit + undo/backspace restores the byte-for-byte source set
+  // that produced the currently displayed output.
+  const compile = useCompileStore.getState();
+  return (
+    sameCompileOutput(checkpoint, compile.lastCompileCheckpoint) &&
+    compile.compiledSources !== null &&
+    sourceSnapshotMatchesCurrent(
+      compile.compiledSources,
+      checkpoint.projectId,
+    )
   );
 }
 
@@ -133,6 +233,7 @@ export interface CompileState {
   failureReason: string | null;
   lastCompiledAt: number | null;
   lastCompileCheckpoint: CompileSuccessCheckpoint | null;
+  compiledSources: CompileSourceSnapshot | null;
   compileTimeMs: number | null;
   autoCompile: boolean;
   setAutoCompile: (v: boolean) => void;
@@ -235,6 +336,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
   failureReason: null,
   lastCompiledAt: null,
   lastCompileCheckpoint: null,
+  compiledSources: null,
   compileTimeMs: null,
   autoCompile: readStoredFlag(AUTO_COMPILE_KEY, false),
   setAutoCompile: (v) => {
@@ -285,6 +387,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       failureReason: null,
       lastCompiledAt: null,
       lastCompileCheckpoint: null,
+      compiledSources: null,
       compileTimeMs: null,
     });
   },
@@ -496,6 +599,12 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       abortIntent();
       return undefined;
     }
+    const compiledSourceSnapshot =
+      await captureCompileSourceSnapshot(projectId);
+    if (!isCompileRequestIdentityCurrent(requestIdentity)) {
+      abortIntent();
+      return undefined;
+    }
     const offlinePolicy = compileOfflineForEngine(
       files.engine,
       useSettingsStore.getState().offline,
@@ -668,6 +777,9 @@ export const useCompileStore = create<CompileState>((set, get) => ({
           lastCompiledAt: checkpoint?.completedAt ?? state.lastCompiledAt,
           lastCompileCheckpoint:
             checkpoint ?? state.lastCompileCheckpoint,
+          compiledSources: checkpoint
+            ? compiledSourceSnapshot
+            : state.compiledSources,
           compileTimeMs: checkpoint
             ? (result.compile_time_ms ?? 0)
             : state.compileTimeMs,

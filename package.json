@@ -24,6 +24,7 @@
     "lint": "biome lint src",
     "lint:fix": "biome lint --write src",
     "test": "vitest run",
+    "test:editor:performance": "vitest run --config vitest.editor-performance.config.ts",
     "test:watch": "vitest",
     "prepare": "git config core.hooksPath .githooks || true",
     "test:e2e": "playwright test -c e2e/playwright.config.ts",

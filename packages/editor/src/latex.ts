@@ -757,12 +757,10 @@ function structuralArgumentCompletions(
   return null;
 }
 
-export function latexCompletions(
-  context: CompletionContext
+function referenceCitationCompletions(
+  context: CompletionContext,
+  guard: CompletionRequestGuard,
 ): CompletionResult | null {
-  const source = context.state.doc.toString();
-  if (!isLatexCompletionPosition(source, context.pos)) return null;
-  const guard = createCompletionRequestGuard(context);
   const refMatch = context.matchBefore(
     /\\(?:ref|eqref|pageref|autoref|cref|Cref|cpageref|vref|Vref|labelcref|nameref|namecref|fref|sref|labelref)\*?\s*\{[^}]{0,500}$/u
   );
@@ -798,7 +796,33 @@ export function latexCompletions(
     };
   }
 
+  return null;
+}
+
+/**
+ * Lightweight current-document reference/citation fallback. App hosts can
+ * compose this after a revision-strict project source so autocomplete remains
+ * useful while a newly typed query is waiting for project re-indexing.
+ */
+export function latexReferenceCitationCompletions(
+  context: CompletionContext,
+): CompletionResult | null {
+  const source = context.state.doc.toString();
+  if (!isLatexCompletionPosition(source, context.pos)) return null;
+  return referenceCitationCompletions(
+    context,
+    createCompletionRequestGuard(context),
+  );
+}
+
+export function latexCompletions(
+  context: CompletionContext
+): CompletionResult | null {
+  const source = context.state.doc.toString();
+  if (!isLatexCompletionPosition(source, context.pos)) return null;
+  const guard = createCompletionRequestGuard(context);
   return (
+    referenceCitationCompletions(context, guard) ??
     structuralArgumentCompletions(context, guard) ??
     commandCompletions(context, guard, true)
   );

@@ -11,13 +11,28 @@ const mocks = vi.hoisted(() => ({
   refreshPreviewWindow: vi.fn(),
   ensurePandoc: vi.fn(),
   saveActive: vi.fn(),
+  readProjectSources: vi.fn(),
   settings: { offline: false },
+  index: {
+    texts: {
+      "main.tex": "\\documentclass{article}\n",
+    } as Record<string, string>,
+    filesystemEpoch: 0,
+  },
   files: {
     projectId: "project" as string | null,
     mainDoc: "main.tex",
     engine: null as unknown,
     engineLoaded: true,
     engineError: null as string | null,
+    loading: false,
+    tree: [{ path: "main.tex", is_dir: false }],
+    files: {
+      "main.tex": {
+        content: "\\documentclass{article}\n",
+        dirty: false,
+      },
+    } as Record<string, { content: string; dirty: boolean }>,
     saveActive: vi.fn(),
   },
 }));
@@ -32,6 +47,20 @@ vi.mock("@/lib/tauri", () => ({
 vi.mock("@/features/pandoc", () => ({ ensurePandoc: mocks.ensurePandoc }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(async () => () => {}) }));
 vi.mock("@/store/files", () => ({ useFilesStore: { getState: () => mocks.files } }));
+vi.mock("@/store/project-index", () => ({
+  currentProjectSourcePaths: () =>
+    [
+      ...new Set([
+        ...mocks.files.tree
+          .filter((entry) => !entry.is_dir)
+          .map((entry) => entry.path),
+        mocks.files.mainDoc,
+      ]),
+    ].sort(),
+  projectFilesystemEpoch: () => mocks.index.filesystemEpoch,
+  readProjectSources: mocks.readProjectSources,
+  useIndexStore: { getState: () => mocks.index },
+}));
 vi.mock("@/store/settings", () => ({ useSettingsStore: { getState: () => mocks.settings } }));
 vi.mock("@/lib/toast", () => ({ notifyError: vi.fn() }));
 vi.mock("@/lib/log", () => ({ logError: vi.fn() }));
@@ -43,7 +72,11 @@ vi.mock("@/lib/cross-window", () => ({
   notifyCompileSucceeded: mocks.notifyCompileSucceeded,
 }));
 
-import { useCompileStore } from "./compile";
+import {
+  isCompileCheckpointCurrent,
+  useCompileStore,
+} from "./compile";
+import { useProjectAnalysisStore } from "@/store/project-analysis";
 import {
   createCompileSuccessCheckpoint,
   fingerprintCompileOutput,
@@ -80,13 +113,44 @@ beforeEach(() => {
   mocks.refreshPreviewWindow.mockReset();
   mocks.ensurePandoc.mockReset().mockResolvedValue(true);
   mocks.saveActive.mockReset().mockResolvedValue(undefined);
+  mocks.readProjectSources.mockReset().mockImplementation(
+    async (_projectId: string, paths: readonly string[]) => ({
+      texts: Object.fromEntries(
+        paths.map((path) => [
+          path,
+          mocks.files.files[path]?.content ??
+            mocks.index.texts[path] ??
+            "",
+        ]),
+      ),
+      unreadable: new Set<string>(),
+    }),
+  );
   mocks.files.saveActive = mocks.saveActive;
   mocks.files.projectId = "project";
   mocks.files.mainDoc = "main.tex";
   mocks.files.engine = LATEX_ENGINE;
   mocks.files.engineLoaded = true;
   mocks.files.engineError = null;
+  mocks.files.loading = false;
+  mocks.files.tree = [{ path: "main.tex", is_dir: false }];
+  mocks.files.files = {
+    "main.tex": {
+      content: "\\documentclass{article}\n",
+      dirty: false,
+    },
+  };
+  mocks.index.texts = {
+    "main.tex": "\\documentclass{article}\n",
+  };
+  mocks.index.filesystemEpoch = 0;
   mocks.settings.offline = false;
+  useProjectAnalysisStore.getState().reset();
+  useProjectAnalysisStore.getState().activateProject({
+    projectId: "project",
+    projectRevision: 0,
+    languageServiceGeneration: 0,
+  });
   useCompileStore.getState().reset();
   useCompileStore.setState({
     compileMode: "normal",
@@ -134,6 +198,63 @@ describe("compile output lifecycle", () => {
     expect(mocks.notifyCompileSucceeded).toHaveBeenCalledWith(
       state.lastCompileCheckpoint,
     );
+  });
+
+  it("restores preview and SyncTeX freshness after source text is exactly reverted", async () => {
+    const original = "\\documentclass{article}\n";
+    const bytes = new Uint8Array([1, 2, 3]);
+    mocks.compileProject.mockResolvedValue({
+      ok: true,
+      has_pdf: true,
+      output_id: fingerprintCompileOutput(bytes),
+      output_revision: 7,
+      log: "ok",
+      errors: [],
+      synctex_path: null,
+      out_dir: "/build",
+      compile_time_ms: 12,
+    });
+    mocks.readCompiledPdf.mockResolvedValue(bytes.buffer);
+
+    await useCompileStore.getState().recompile();
+    const checkpoint =
+      useCompileStore.getState().lastCompileCheckpoint;
+    expect(isCompileCheckpointCurrent(checkpoint)).toBe(true);
+
+    mocks.files.files["main.tex"].content = `${original}abc`;
+    mocks.files.files["main.tex"].dirty = true;
+    mocks.index.texts["main.tex"] = `${original}abc`;
+    useProjectAnalysisStore.getState().setProjectRevision(1);
+    expect(isCompileCheckpointCurrent(checkpoint)).toBe(false);
+
+    mocks.files.files["main.tex"].content = original;
+    mocks.index.texts["main.tex"] = original;
+    useProjectAnalysisStore.getState().setProjectRevision(2);
+    expect(isCompileCheckpointCurrent(checkpoint)).toBe(true);
+  });
+
+  it("does not restore freshness across a project filesystem invalidation", async () => {
+    const bytes = new Uint8Array([1, 2, 3]);
+    mocks.compileProject.mockResolvedValue({
+      ok: true,
+      has_pdf: true,
+      output_id: fingerprintCompileOutput(bytes),
+      output_revision: 7,
+      log: "ok",
+      errors: [],
+      synctex_path: null,
+      out_dir: "/build",
+      compile_time_ms: 12,
+    });
+    mocks.readCompiledPdf.mockResolvedValue(bytes.buffer);
+
+    await useCompileStore.getState().recompile();
+    const checkpoint =
+      useCompileStore.getState().lastCompileCheckpoint;
+    mocks.index.filesystemEpoch++;
+    useProjectAnalysisStore.getState().setProjectRevision(1);
+
+    expect(isCompileCheckpointCurrent(checkpoint)).toBe(false);
   });
 
   it("releases intent when the engine is unloaded so a loaded retry can compile", async () => {
