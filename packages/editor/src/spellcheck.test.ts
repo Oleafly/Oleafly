@@ -11,6 +11,7 @@ import { EditorView } from "@codemirror/view";
 import { diagnosticCardSource } from "./diagnostic-card";
 import {
   createHarperLinter,
+  diagnosticPresentationExtensions,
   refreshEditorProofreadingPresentation,
   setSpellHost,
 } from "./spellcheck";
@@ -59,7 +60,10 @@ describe("proofreading presentation refresh", () => {
     view = new EditorView({
       state: EditorState.create({
         doc: text,
-        extensions: [createHarperLinter(true)],
+        extensions: [
+          createHarperLinter(true),
+          diagnosticPresentationExtensions(),
+        ],
       }),
       parent: document.body,
     });
@@ -140,6 +144,27 @@ describe("proofreading presentation refresh", () => {
       requestAnimationFrame(() => resolve());
     });
     expect(diagnosticCardSource(view, 1)).not.toBeNull();
+
+    // A separate linter can publish much later than the presentation event,
+    // after all event-owned frames and promises have settled. The persistent
+    // diagnostics transaction guard must still keep the selected page.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    view.dispatch(
+      setDiagnostics(view.state, [
+        {
+          from: 12,
+          to: 19,
+          severity: "error",
+          message: "Independent syntax diagnostic",
+          source: "syntax",
+        },
+      ]),
+    );
+    expect(diagnosticCardSource(view, 1)).toBeNull();
+    await vi.waitFor(
+      () => expect(diagnosticCardSource(view!, 1)).not.toBeNull(),
+      { timeout: 2_000 },
+    );
     expect(proofread).toHaveBeenCalledOnce();
   });
 
