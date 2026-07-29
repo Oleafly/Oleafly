@@ -1011,21 +1011,42 @@ export async function fillCommandPalette(
   text: string,
 ): Promise<void> {
   await page.waitForFunction(
-    `document.querySelector('[cmdk-input]') instanceof HTMLInputElement`,
+    `Array.from(document.querySelectorAll('[cmdk-input]')).some(
+      (element) =>
+        element instanceof HTMLInputElement &&
+        element.getClientRects().length > 0
+    )`,
     10_000,
   );
   const accepted = await page.evaluate<boolean>(
     `(() => {
-      const input = document.querySelector('[cmdk-input]');
+      const input = Array.from(document.querySelectorAll('[cmdk-input]')).find(
+        (element) =>
+          element instanceof HTMLInputElement &&
+          element.getClientRects().length > 0
+      );
       if (!(input instanceof HTMLInputElement)) return false;
       input.focus();
-      window.dispatchEvent(new CustomEvent("oleafly:e2e-command-query", {
-        detail: ${JSON.stringify(text)},
-      }));
       return new Promise((resolve) => {
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => resolve(input.value === ${JSON.stringify(text)}));
-        });
+        let attempts = 0;
+        const update = () => {
+          window.dispatchEvent(new CustomEvent("oleafly:e2e-command-query", {
+            detail: ${JSON.stringify(text)},
+          }));
+          requestAnimationFrame(() => {
+            if (input.value === ${JSON.stringify(text)}) {
+              requestAnimationFrame(() => resolve(true));
+              return;
+            }
+            attempts += 1;
+            if (attempts >= 30) {
+              resolve(false);
+              return;
+            }
+            update();
+          });
+        };
+        update();
       });
     })()`,
   );

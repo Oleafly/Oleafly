@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Command } from "cmdk";
+import { Command, defaultFilter } from "cmdk";
 import { commandsFor, commandLabel, type AppContext } from "@oleafly/registry";
 import { useSettingsStore } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
@@ -70,21 +70,31 @@ export function CommandPalette() {
   // Map preserves insertion order, so groups render in registration order.
   const groups = useMemo(() => {
     const cmds = commandsFor("palette", ctx);
+    const search = query.trim();
+    const visibleCommands = search
+      ? cmds.filter((command) => {
+          const label = commandLabel(command, ctx);
+          const searchValue =
+            `${label} ${command.keywords ?? ""} ${commandAliasSearchText(command.slash)}`;
+          return defaultFilter(searchValue, search) > 0;
+        })
+      : cmds;
     const byGroup = new Map<string, typeof cmds>();
-    for (const c of cmds) {
+    for (const c of visibleCommands) {
       const g = c.group ?? "Commands";
       const list = byGroup.get(g);
       if (list) list.push(c);
       else byGroup.set(g, [c]);
     }
     return [...byGroup.entries()];
-  }, [ctx]);
+  }, [ctx, query]);
 
   return (
     <Command.Dialog
       open={open}
       onOpenChange={setPaletteOpen}
       label="Command Palette"
+      shouldFilter={false}
       overlayClassName="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm"
       className={cn("fixed left-1/2 top-[20%] z-50 w-[min(560px,92vw)] -translate-x-1/2")}
     >
