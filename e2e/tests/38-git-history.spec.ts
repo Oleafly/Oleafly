@@ -48,10 +48,19 @@ async function restoreByIndex(page: Page, index: number) {
 }
 
 async function compileOk(page: Page) {
+  const previousRevision = await page.evaluate<number>(
+    `Number(document.querySelector('[data-testid="compile-button"]')?.getAttribute('data-e2e-compile-revision') || 0)`,
+  );
   await page.click('[data-testid="compile-button"]');
-  await expect(page.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok", {
-    timeout: 120_000,
-  });
+  await page.waitForFunction(
+    `(() => {
+      const button = document.querySelector('[data-testid="compile-button"]');
+      const status = document.querySelector('[data-testid="compile-status"]');
+      return Number(button?.getAttribute('data-e2e-compile-revision') || 0) >
+        ${previousRevision} && status?.getAttribute('data-severity') === 'ok';
+    })()`,
+    120_000,
+  );
 }
 
 // Leaves the History modal OPEN.
@@ -93,18 +102,24 @@ test("auto-commit history: restore rolls the document back and forward (no token
   await tauriPage.click('[data-testid="create-project"]');
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
+  const commitsBeforeBase = await tauriPage.evaluate<number>(
+    `window.__gitCommitCount?.() ?? Promise.resolve(0)`,
+  );
   await typeInEditorAfter(tauriPage, "here.", ` ${BASE}`);
   await compileOk(tauriPage);
-  await waitForCommitsLanded(tauriPage, 1);
+  await waitForCommitsLanded(tauriPage, commitsBeforeBase + 1);
 
+  const commitsBeforeEdit = await tauriPage.evaluate<number>(
+    `window.__gitCommitCount?.() ?? Promise.resolve(0)`,
+  );
   await typeInEditorAfter(tauriPage, BASE, ` ${EDIT}`);
   await compileOk(tauriPage);
-  await waitForCommitsLanded(tauriPage, 2);
+  await waitForCommitsLanded(tauriPage, commitsBeforeEdit + 1);
   await waitForRestoreButtons(tauriPage, 2);
 
-  // Restore the oldest (last button); the editor reloads from the restored tree.
-  const n = await tauriPage.evaluate<number>(restoreCount);
-  await restoreByIndex(tauriPage, n - 1);
+  // The two explicit compile checkpoints are the newest entries. Restore the
+  // earlier one without assuming whether project creation also made a commit.
+  await restoreByIndex(tauriPage, 1);
   await tauriPage.waitForFunction(
     `(() => {
       const t = document.querySelector('.cm-content')?.textContent || '';

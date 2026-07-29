@@ -299,6 +299,13 @@ export function DiagramComposer({
   }, []);
 
   const applyLoadedContent = useCallback((content: string) => {
+    // A React Flow change can leave a debounced model-to-code update pending.
+    // Imported/loaded content is authoritative, so cancel that older write
+    // before replacing the editor document.
+    if (codeTimerRef.current) {
+      clearTimeout(codeTimerRef.current);
+      codeTimerRef.current = null;
+    }
     const m = parseEmbeddedModel(content);
     if (m) {
       setModel(m);

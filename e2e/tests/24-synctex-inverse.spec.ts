@@ -247,6 +247,22 @@ async function openOrCreateE2eDoc(page: Parameters<typeof openProject>[0]): Prom
   }
 }
 
+async function waitForCurrentProjectAnalysis(
+  page: Parameters<typeof openProject>[0],
+): Promise<void> {
+  await page.waitForFunction(
+    `Promise.all([
+      import("/src/store/files.ts"),
+      import("/src/store/project-analysis.ts"),
+    ]).then(([{ useFilesStore }, { useProjectAnalysisStore }]) => {
+      const projectId = useFilesStore.getState().projectId;
+      const identity = useProjectAnalysisStore.getState().snapshot.identity;
+      return !!projectId && identity.projectId === projectId;
+    })`,
+    30_000,
+  );
+}
+
 test("clicking the PDF jumps to the word in the source", async ({ tauriPage }) => {
   test.setTimeout(180_000); // cold text-layer render can be slow
   await openOrCreateE2eDoc(tauriPage);
@@ -365,6 +381,7 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
     )`,
     90_000,
   );
+  await waitForCurrentProjectAnalysis(tauriPage);
 
   const fixture = await makeGeometryFixture();
   await tauriPage.evaluate(
@@ -791,6 +808,7 @@ test("superseded PDF work cannot restore stale text after a document switch", as
     )`,
     90_000,
   );
+  await waitForCurrentProjectAnalysis(tauriPage);
   const oldPdf = await makeSwitchFixture("STALE DOCUMENT", 12);
   const newPdf = await makeSwitchFixture("CURRENT DOCUMENT", 1);
   const oldExpression = setPreviewPdfExpression(oldPdf);
