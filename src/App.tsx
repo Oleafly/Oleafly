@@ -432,14 +432,25 @@ function AppContent() {
           ? e.payload.paths
           : Object.keys(fs.files);
         for (const path of paths) {
-          if (!fs.files[path]?.dirty) {
+          const contentBeforeRead = fs.files[path]?.content;
+          if (contentBeforeRead !== undefined && !fs.files[path]?.dirty) {
             void import("@/lib/tauri").then(({ readFileContent }) => {
               void readFileContent(pid, path)
                 .then((content) => {
                   const cur = useFilesStore.getState();
                   if (cur.projectId !== pid) return;
-                  // Skip if the user typed while we were reading.
-                  if (cur.files[path]?.dirty) return;
+                  // A read started for an older filesystem notification can
+                  // finish after a local edit has already been saved. At that
+                  // point `dirty` is false again, so checking it alone can
+                  // overwrite the newer editor buffer with the stale read.
+                  // Apply only if the local snapshot is exactly the one that
+                  // existed when this read began.
+                  if (
+                    cur.files[path]?.dirty ||
+                    cur.files[path]?.content !== contentBeforeRead
+                  ) {
+                    return;
+                  }
                   cur.applyExternalWrite(path, content);
                 })
                 .catch(() => {});
