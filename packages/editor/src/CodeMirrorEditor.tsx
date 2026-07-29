@@ -43,6 +43,7 @@ import { languageForPath } from "./languages";
 import { setEditorDocumentPath, setEditorView } from "./controller";
 import {
   cancelSourceProofreading,
+  clearEditorProofreadingDiagnostics,
   diagnosticPresentationExtensions,
   refreshEditorProofreadingPresentation,
   spellLintExtensions,
@@ -371,6 +372,7 @@ export function CodeMirrorEditor({
     if (!view || !compartment) return;
     if (!spellcheck && !harper) {
       cancelSourceProofreading(host.getActivePath() ?? undefined);
+      clearEditorProofreadingDiagnostics(view);
     }
     view.dispatch({
       effects: compartment.reconfigure(
