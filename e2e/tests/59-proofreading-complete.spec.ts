@@ -37,7 +37,20 @@ interface ProofreadingSnapshot {
   diagnostics: ProofreadingDiagnosticSnapshot[];
 }
 
-const RUN = Date.now().toString(36);
+function alphabeticRunId(value: number): string {
+  let remaining = value;
+  let id = "";
+  do {
+    id = String.fromCharCode(97 + (remaining % 26)) + id;
+    remaining = Math.floor(remaining / 26);
+  } while (remaining > 0);
+  return id;
+}
+
+// Dictionary fixtures must remain one lexical token. Base-36 timestamps can
+// contain digits, which Hunspell correctly treats as a token boundary and
+// would make an assertion for the un-split alphanumeric string impossible.
+const RUN = alphabeticRunId(Date.now());
 const LATEX_PROSE = String.raw`\documentclass{article}
 \begin{document}
 The colour of this aluminum artifact could of changed. Qwertzuiopz.

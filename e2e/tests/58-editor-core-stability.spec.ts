@@ -534,24 +534,23 @@ test("a realistic 6,200-line book keeps the full authoring workspace stable unde
   );
   await waitLong(
     tauriPage,
-    `import("/src/store/proofreading.ts").then(({ useProofreadingStore }) => {
-      const source = useProofreadingStore.getState().source;
-      return (source.phase === "ready" || source.phase === "partial")
-        && source.diagnostics.some(
-          (diagnostic) => diagnostic.word.toLowerCase() === "qwertzuiopz",
-        );
-    })`,
-    90_000,
-  );
-  await tauriPage.evaluate(
-    `import("/src/store/proofreading.ts").then((proofreading) => {
+    `Promise.all([
+      import("/src/store/proofreading.ts"),
+      import("/src/store/files.ts"),
+    ]).then(([proofreading, files]) => {
       const state = proofreading.useProofreadingStore.getState();
-      const diagnosticIndex = state.source.diagnostics.findIndex(
+      const source = state.source;
+      const diagnosticIndex = source.diagnostics.findIndex(
         (diagnostic) =>
           diagnostic.word.toLowerCase() === "qwertzuiopz",
       );
-      if (diagnosticIndex < 0) {
-        throw new Error("large-book typo diagnostic is unavailable");
+      if (
+        (source.phase !== "ready" && source.phase !== "partial") ||
+        source.identity?.projectId !== files.useFilesStore.getState().projectId ||
+        source.identity?.path !== "main.tex" ||
+        diagnosticIndex < 0
+      ) {
+        return false;
       }
       state.setPresentationPage(
         "source",
@@ -567,6 +566,7 @@ test("a realistic 6,200-line book keeps the full authoring workspace stable unde
       );
       return true;
     })`,
+    90_000,
   );
   const firstTypoLine =
     fixture.source.slice(0, fixture.source.indexOf("qwertzuiopz")).split("\n")
