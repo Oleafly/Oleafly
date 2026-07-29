@@ -147,7 +147,7 @@ test("delete the forked copy from the context menu", async ({ tauriPage }) => {
   await tauriPage.getByText("Delete project").click();
   let confirmation = tauriPage.getByRole("alertdialog");
   await expect(confirmation).toBeVisible({ timeout: 10_000 });
-  await expect(confirmation.getByText(/Delete “E2E Fork.*”\?/u)).toBeVisible();
+  await expect(confirmation).toContainText(/Delete “E2E Fork.*”\?/u);
   await confirmation.getByText("Cancel").click();
   await expect(confirmation).not.toBeVisible();
   await expect(tauriPage.getByText(/E2E Fork/u).first()).toBeVisible();
