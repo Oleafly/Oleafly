@@ -760,7 +760,14 @@ export async function typeInEditorAtStart(page: Page, text: string) {
 export async function waitLong(page: Page, expression: string, timeoutMs: number) {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
-    const ok = await page.evaluate<boolean>(`!!(${expression})`);
+    // Many app-state predicates use dynamic import(...).then(...). Coercing
+    // that expression directly with `!!` treats the pending Promise itself as
+    // true and lets the test continue before its callback has run. Normalize
+    // both synchronous and asynchronous predicates through Promise.resolve so
+    // this helper observes the resolved boolean value.
+    const ok = await page.evaluate<boolean>(
+      `Promise.resolve(${expression}).then((value) => !!value)`,
+    );
     if (ok) return;
     if (Date.now() > deadline) throw new Error(`waitLong timeout: ${expression}`);
     await new Promise((r) => setTimeout(r, 1000));
