@@ -116,22 +116,40 @@ beforeAll(async () => {
 });
 
 describe("proofreading worker outcomes", () => {
-  it("excludes Harper spelling diagnostics from grammar-only results", async () => {
+  it("retains Harper dialect findings in grammar-only results", async () => {
     const response = await analyze(request(1, "grammar"));
 
     expect(response.type).toBe("result");
     if (response.type !== "result") return;
     expect(response.status).toBe("ready");
+    expect(response.diagnostics).toEqual([
+      expect.objectContaining({
+        kind: "Spelling",
+        message: "Harper spelling",
+        source: "harper",
+      }),
+      expect.objectContaining({
+        kind: "WordChoice",
+        message: "Grammar finding",
+        source: "harper",
+      }),
+    ]);
+  });
+
+  it("hides Harper dialect findings when regionalism suggestions are disabled", async () => {
+    const value = request(2, "grammar");
+    value.preferences.showRegionalism = false;
+    const response = await analyze(value);
+
+    expect(response.type).toBe("result");
+    if (response.type !== "result") return;
+    expect(response.status).toBe("ready");
     expect(response.diagnostics).toHaveLength(1);
-    expect(response.diagnostics[0]).toMatchObject({
-      kind: "WordChoice",
-      message: "Grammar finding",
-      source: "harper",
-    });
+    expect(response.diagnostics[0]?.kind).toBe("WordChoice");
   });
 
   it("retains valid grammar findings as partial when the selected dictionary fails", async () => {
-    const response = await analyze(request(2, "combined"));
+    const response = await analyze(request(3, "combined"));
 
     expect(response.type).toBe("result");
     if (response.type !== "result") return;
@@ -144,7 +162,7 @@ describe("proofreading worker outcomes", () => {
 
   it("reports malformed engine findings as partial instead of silent success", async () => {
     mocks.includeMalformed = true;
-    const malformedRequest = request(3, "grammar");
+    const malformedRequest = request(4, "grammar");
     malformedRequest.text = "alpha beta gamma";
     const response = await analyze(malformedRequest);
     mocks.includeMalformed = false;
@@ -152,7 +170,7 @@ describe("proofreading worker outcomes", () => {
     expect(response.type).toBe("result");
     if (response.type !== "result") return;
     expect(response.status).toBe("partial");
-    expect(response.diagnostics).toHaveLength(1);
+    expect(response.diagnostics).toHaveLength(2);
     expect(response.message).toContain("malformed grammar finding");
   });
 });

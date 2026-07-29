@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures";
-import { openProject, openRailTab } from "../helpers";
+import { openProject, openRailTab, waitLong } from "../helpers";
 
 test("the rail theme button flips the real theme", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
@@ -21,18 +21,12 @@ test("the sidebar collapses and restores from the rail", async ({ tauriPage }) =
       useSettingsStore.getState().setViewMode("split"),
     )`,
   );
-  await tauriPage.waitForFunction(
-    `Promise.all([
-      import("/src/store/compile.ts"),
-    ]).then(([{ useCompileStore }]) => {
-      const compile = useCompileStore.getState();
-      return compile.status === "success"
-        && compile.lastCompileCheckpoint !== null
-        && !!document.querySelector('[data-testid="pdf-renderer"]');
-    })`,
+  await openRailTab(tauriPage, "Source Tree");
+  await waitLong(
+    tauriPage,
+    `!!document.querySelector('[data-testid="pdf-renderer"]')`,
     60_000,
   );
-  await openRailTab(tauriPage, "Source Tree");
   const before = await tauriPage.evaluate<{
     lastCompiledAt: number | null;
     outputRevision: number | null;

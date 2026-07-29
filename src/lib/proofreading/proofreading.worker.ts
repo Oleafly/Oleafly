@@ -430,10 +430,18 @@ async function grammarDiagnostics(
         continue;
       }
       const kind = lint.lint_kind();
-      // Hunspell is the selected dictionary authority. Including Harper's
-      // English-only spelling lints in grammar-only mode would silently
-      // ignore the user's locale and double-report combined-mode findings.
-      if (kind === "Spelling") continue;
+      // Harper classifies dialect mismatches such as colour/color as
+      // "Spelling". Preserve those findings in Harper-only mode so the
+      // selected English dialect and Regionalism setting have an observable
+      // effect. In combined mode Hunspell remains the spelling authority,
+      // avoiding duplicate findings and respecting its selected locale.
+      if (
+        kind === "Spelling" &&
+        (request.mode !== "grammar" ||
+          !request.preferences.showRegionalism)
+      ) {
+        continue;
+      }
       if (
         (!request.preferences.showRegionalism &&
           /regional/iu.test(kind)) ||

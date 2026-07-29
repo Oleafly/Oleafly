@@ -292,7 +292,11 @@ function CountdownUnit({
   label: string;
 }) {
   return (
-    <div className="min-w-0">
+    <div
+      className="min-w-0"
+      data-countdown-unit={label.toLowerCase()}
+      data-countdown-value={value}
+    >
       <div className="font-mono text-xl font-semibold tabular-nums">
         {pad(value)}
       </div>
