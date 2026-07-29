@@ -9,6 +9,9 @@ import {
 const mocks = vi.hoisted(() => ({
   postMessage: vi.fn(),
   includeMalformed: false,
+  dictionaryAvailable: false,
+  spell: vi.fn<(word: string) => boolean>(),
+  suggest: vi.fn<(word: string) => string[]>(),
 }));
 
 function fakeLint(
@@ -63,7 +66,17 @@ vi.mock("harper.js", () => ({
 vi.mock("harper.js/binary", () => ({ binary: new Uint8Array() }));
 vi.mock("hunspell-asm", () => ({
   loadModule: async () => {
-    throw new Error("Requested dictionary unavailable");
+    if (!mocks.dictionaryAvailable) {
+      throw new Error("Requested dictionary unavailable");
+    }
+    return {
+      mountBuffer: () => "/dictionary",
+      create: () => ({
+        spell: mocks.spell,
+        suggest: mocks.suggest,
+        dispose: vi.fn(),
+      }),
+    };
   },
 }));
 
@@ -188,5 +201,34 @@ describe("proofreading worker outcomes", () => {
     expect(response.status).toBe("partial");
     expect(response.diagnostics).toHaveLength(2);
     expect(response.message).toContain("malformed grammar finding");
+  });
+
+  it("reuses Hunspell results for repeated tokens without dropping their diagnostics", async () => {
+    mocks.dictionaryAvailable = true;
+    mocks.spell.mockImplementation((word) => word !== "qwertzuiopz");
+    mocks.suggest.mockReturnValue(["quartz"]);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(new Uint8Array([1]))),
+    );
+    const repeated = request(5, "spelling");
+    repeated.preferences.dictionaryLocale = "en_US";
+    repeated.text = "qwertzuiopz alpha qwertzuiopz qwertzuiopz";
+    const response = await analyze(repeated);
+
+    expect(response.type).toBe("result");
+    if (response.type !== "result") return;
+    expect(response.status).toBe("ready");
+    expect(response.diagnostics).toHaveLength(3);
+    expect(
+      response.diagnostics.map((diagnostic) => diagnostic.from),
+    ).toEqual([0, 18, 30]);
+    expect(mocks.spell).toHaveBeenCalledWith("qwertzuiopz");
+    expect(
+      mocks.spell.mock.calls.filter(
+        ([word]) => word === "qwertzuiopz",
+      ),
+    ).toHaveLength(1);
+    expect(mocks.suggest).toHaveBeenCalledTimes(1);
   });
 });

@@ -74,7 +74,32 @@ export class ProofreadingWorkerError extends Error {
   }
 }
 
-const TIMEOUT_MS = 25_000;
+const MIN_REQUEST_TIMEOUT_MS = 25_000;
+const MAX_REQUEST_TIMEOUT_MS = 120_000;
+
+/**
+ * Keep short-document failure detection fast without killing valid
+ * book-sized work. Harper and Hunspell both scale with document length, and a
+ * combined pass performs both engines. The previous fixed 25-second deadline
+ * routinely terminated supported near-500k documents on slower machines
+ * before either engine could publish its result.
+ */
+function requestTimeoutMs(
+  request: Pick<ProofreadingInput, "mode" | "text">,
+): number {
+  const millisecondsPerCharacter =
+    request.mode === "combined" ? 0.2 : 0.12;
+  return Math.min(
+    MAX_REQUEST_TIMEOUT_MS,
+    Math.max(
+      MIN_REQUEST_TIMEOUT_MS,
+      Math.ceil(
+        MIN_REQUEST_TIMEOUT_MS +
+          request.text.length * millisecondsPerCharacter,
+      ),
+    ),
+  );
+}
 
 function laneFor(
   identity: Omit<
@@ -168,7 +193,7 @@ class ProofreadingWorkerClient {
             true,
           ),
         );
-      }, TIMEOUT_MS);
+      }, requestTimeoutMs(request));
       this.pending.set(request.requestId, {
         request,
         cacheKey,

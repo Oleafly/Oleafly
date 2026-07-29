@@ -486,20 +486,45 @@ async function spellingDiagnostics(
 ): Promise<ProofreadingDiagnostic[]> {
   const spellchecker = await getSpellchecker(request.preferences.dictionaryLocale);
   const diagnostics: ProofreadingDiagnostic[] = [];
+  // Hunspell suggestions are substantially more expensive than its boolean
+  // lookup. Long manuscripts naturally repeat vocabulary, so calculate each
+  // exact token once per request and reuse the immutable result at every
+  // source range. This preserves every diagnostic and suggestion while
+  // avoiding tens of thousands of duplicate WASM calls in book-sized files.
+  const tokenResults = new Map<
+    string,
+    {
+      correct: boolean;
+      suggestions: ProofreadingSuggestion[];
+    }
+  >();
   for (const range of spellingRanges(request)) {
     if (
       range.word.length < 2 ||
       range.word.length > PROOFREADING_LIMITS.wordCharacters ||
-      isIgnoredToken(range.word, ignored) ||
-      spellchecker.spell(range.word)
+      isIgnoredToken(range.word, ignored)
     ) {
       continue;
     }
-    const suggestions = spellchecker
-      .suggest(range.word)
-      .slice(0, 8)
-      .filter((text) => text.length > 0)
-      .map<ProofreadingSuggestion>((text) => ({ text, kind: 0 }));
+    let tokenResult = tokenResults.get(range.word);
+    if (!tokenResult) {
+      const correct = spellchecker.spell(range.word);
+      tokenResult = {
+        correct,
+        suggestions: correct
+          ? []
+          : spellchecker
+              .suggest(range.word)
+              .slice(0, 8)
+              .filter((text) => text.length > 0)
+              .map<ProofreadingSuggestion>((text) => ({
+                text,
+                kind: 0,
+              })),
+      };
+      tokenResults.set(range.word, tokenResult);
+    }
+    if (tokenResult.correct) continue;
     diagnostics.push({
       from: range.from,
       to: range.to,
@@ -507,7 +532,7 @@ async function spellingDiagnostics(
       kind: "Spelling",
       source: "hunspell",
       word: range.word,
-      suggestions,
+      suggestions: tokenResult.suggestions,
     });
   }
   return diagnostics;
