@@ -1243,15 +1243,6 @@ ${sandboxedCustom}`;
     }
   }, [messages, streaming, apiKey, provider, model, customProviders, projectId, projectName, currentHead, figureMode, figureModeAvailable, engineLoaded, documentEngine, projectKind, openAISettings, flushStreamPatches, updateLast, setMessages, setInput, activeProviderName]);
 
-  useEffect(() => {
-    const onSelectionAction = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { prompt?: string };
-      if (detail?.prompt) void send(detail.prompt);
-    };
-    window.addEventListener("oleafly:ai-selection-action", onSelectionAction);
-    return () => window.removeEventListener("oleafly:ai-selection-action", onSelectionAction);
-  }, [send]);
-
   const stop = useCallback(() => {
     abortRef.current?.abort();
   }, []);
@@ -1402,7 +1393,7 @@ ${sandboxedCustom}`;
           ? "true"
           : "false"
       }
-      className="flex h-full flex-col bg-sidebar"
+      className="ai-chat-shell flex h-full flex-col bg-sidebar"
     >
       <div className="flex h-9 shrink-0 items-center gap-1.5 border-b px-2">
         {apiKey && activeChat?.headOid && currentHead && activeChat.headOid !== currentHead && (
@@ -1816,7 +1807,10 @@ ${sandboxedCustom}`;
                     </Tooltip>
                   )}
                   {!figureMode && (
-                    <span data-tour="ai-prompts" className="inline-flex">
+                    <span
+                      data-tour="ai-prompts"
+                      className="ai-composer-prompts inline-flex"
+                    >
                     <Popover
                       align="left"
                       ariaLabel="Prompts"
@@ -1925,7 +1919,10 @@ ${sandboxedCustom}`;
                 </div>
                 <div className="flex min-w-0 items-center gap-1">
                   {configuredProviders.length > 0 && (
-                    <div data-tour="ai-provider-model" className="min-w-0">
+                    <div
+                      data-tour="ai-provider-model"
+                      className="ai-composer-model min-w-0"
+                    >
                       <ModelSelector
                         compact
                         className="h-7 min-w-0 shrink gap-1 px-2 text-xs font-medium text-foreground hover:text-foreground"

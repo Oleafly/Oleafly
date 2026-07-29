@@ -13,7 +13,11 @@ export function DiffActionBar({
   onOpenInAgent?: () => void;
 }) {
   return (
-    <AiChrome className="w-full" contentClassName="flex flex-wrap items-center gap-1 p-1 text-popover-foreground">
+    <AiChrome
+      borderVariant="primary"
+      className="w-full"
+      contentClassName="flex flex-wrap items-center gap-1 p-1 text-popover-foreground"
+    >
       <button
         type="button"
         onClick={onAccept}
@@ -61,7 +65,11 @@ export function DiffErrorBar({
   onDismiss: () => void;
 }) {
   return (
-    <AiChrome className="w-full" contentClassName="p-2 text-popover-foreground">
+    <AiChrome
+      borderVariant="primary"
+      className="w-full"
+      contentClassName="p-2 text-popover-foreground"
+    >
       <p className="flex items-start gap-1.5 text-xs text-destructive">
         <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
         <span className="min-w-0 flex-1 break-words">Couldn't generate the edit. {message}</span>

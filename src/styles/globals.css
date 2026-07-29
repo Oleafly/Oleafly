@@ -1207,3 +1207,78 @@ body[data-tour-active] [data-tour-hide] {
 .dark .cm-fold-label {
   background: #181818;
 }
+
+/*
+ * The assistant can live in a resizable dock or a floating panel, so its
+ * composer responds to its own inline size rather than the window viewport.
+ * At narrow widths, keep the two essential actions (model and send) available
+ * without letting secondary labels collide with them.
+ */
+.ai-chat-shell {
+  container-name: ai-chat;
+  container-type: inline-size;
+}
+
+/*
+ * A restrained animated spectrum for tool-approval prompts. The prompt
+ * surface remains opaque while the existing two-pixel chrome exposes the
+ * moving background as its border.
+ */
+@keyframes ai-tool-approval-border-shine {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.ai-tool-approval-chrome {
+  --ai-tool-approval-border-duration: 14s;
+  background: radial-gradient(
+    circle,
+    #1abc9c,
+    #a07cfe,
+    #fe8fb5,
+    #ffbe7b,
+    #16a34a,
+    #ffffff
+  );
+  background-position: 0% 50%;
+  background-size: 300% 300%;
+  will-change: background-position;
+  animation: ai-tool-approval-border-shine var(--ai-tool-approval-border-duration) linear infinite;
+}
+
+@container ai-chat (max-width: 22rem) {
+  .ai-composer-prompts {
+    display: none;
+  }
+
+  .ai-composer-model .ai-model-selector-trigger {
+    width: 1.75rem;
+    min-width: 1.75rem;
+    max-width: 1.75rem;
+    justify-content: center;
+    gap: 0;
+    padding-inline: 0;
+  }
+
+  .ai-composer-model .ai-model-selector-value,
+  .ai-composer-model .ai-model-selector-trigger > svg:last-child {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-tool-approval-chrome {
+    animation: none;
+    background-position: 50% 50%;
+    will-change: auto;
+  }
+}

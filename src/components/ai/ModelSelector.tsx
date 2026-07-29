@@ -50,6 +50,7 @@ export function ModelSelector({
         <SelectTrigger
           aria-label="AI model"
           className={cn(
+            "ai-model-selector-trigger",
             compact
               ? "h-6 max-w-44 border-0 bg-transparent px-1.5 text-[10px] text-muted-foreground shadow-none hover:bg-accent hover:text-foreground"
               : "w-48",
@@ -58,7 +59,7 @@ export function ModelSelector({
         >
           <span className="!flex min-w-0 items-center gap-1.5">
             {providerId && <ProviderLogo providerId={providerId} size={compact ? 12 : 14} />}
-            <span className="truncate">
+            <span className="ai-model-selector-value truncate">
               <SelectValue />
             </span>
           </span>

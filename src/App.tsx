@@ -187,6 +187,7 @@ function AppContent() {
   const panelAreaRef = useRef<HTMLDivElement>(null);
   const [panelAreaWidth, setPanelAreaWidth] = useState(0);
   useEffect(() => {
+    if (!projectId) return;
     const el = panelAreaRef.current;
     if (!el) return;
     const observer = new ResizeObserver((entries) => {
@@ -195,7 +196,7 @@ function AppContent() {
     });
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [projectId]);
   const panelGroupWidth = Math.max(0, panelAreaWidth - RAIL_WIDTH_PX);
   const sidebarMinSize = panelGroupWidth > 0 ? Math.min(65, (SIDEBAR_MIN_PX / panelGroupWidth) * 100) : 15;
   const sidebarDefaultSize =

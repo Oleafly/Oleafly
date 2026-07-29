@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeftRight, BookMarked, Check, Maximize2, Sparkles } from "lucide-react";
 import { getEditorView } from "@/components/editor/cm/controller";
+import { useAgentHandoffStore } from "@/store/agent-handoff";
+import { useSettingsStore } from "@/store/settings";
 
 interface Action {
   icon: typeof Sparkles;
@@ -63,9 +65,19 @@ export function SelectionActionMenu() {
   if (!pos) return null;
 
   const runAction = (action: Action) => {
+    const prompt = `${action.prompt}:\n\n${text}`;
+    useAgentHandoffStore.getState().handoff(prompt, {
+      autoSend: true,
+    });
+    const settings = useSettingsStore.getState();
+    settings.setRailTab("ai");
+    if (!settings.showTree) settings.toggleTree();
+    // Keep the public event for integrations and the deterministic E2E probe.
+    // Delivery to ChatCore is handled by the durable handoff above so the
+    // prompt cannot be lost while selecting the AI rail mounts that panel.
     window.dispatchEvent(
       new CustomEvent("oleafly:ai-selection-action", {
-        detail: { prompt: `${action.prompt}:\n\n${text}` },
+        detail: { prompt },
       }),
     );
     setPos(null);

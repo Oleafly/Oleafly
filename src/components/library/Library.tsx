@@ -17,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Input } from "@/components/ui/input";
 import { Popover } from "@/components/ui/popover";
 import {
@@ -224,6 +225,10 @@ export function Library() {
   const [filters, setFilters] = useState<ProjectFilters>(DEFAULT_PROJECT_FILTERS);
   const [detailsProject, setDetailsProject] = useState<ProjectInfo | null>(null);
   const [historyProject, setHistoryProject] = useState<ProjectInfo | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const currentDetailsProject =
     detailsProject && projects.find((project) => project.id === detailsProject.id) || detailsProject;
   const currentHistoryProject =
@@ -245,6 +250,28 @@ export function Library() {
   const closeFork = () => {
     setForkTarget(null);
     setForkName("");
+  };
+  const confirmProjectDeletion = async () => {
+    const target = deleteTarget;
+    if (!target) return;
+
+    // Close the confirmation before invoking the destructive backend command.
+    // This also makes repeated Enter/click events harmless.
+    setDeleteTarget(null);
+    try {
+      cancelAutoCommit(target.id);
+      await deleteProject(target.id);
+      removeFav(target.id);
+      removeProjectColor(target.id);
+      await refreshProjects();
+      toast.success(`Deleted "${target.name}".`);
+    } catch (error) {
+      notifyError(
+        "delete project",
+        error,
+        `Couldn't delete "${target.name}".`,
+      );
+    }
   };
   const { dialogRef: forkDialogRef, onBackdropMouseDown: onForkBackdropMouseDown } =
     useModalAccessibility<HTMLDivElement>(!!forkTarget, closeFork);
@@ -684,18 +711,13 @@ export function Library() {
                   </ContextMenuItem>
                   <ContextMenuItem
                     className="text-destructive focus:text-destructive"
-                    onClick={async () => {
-                      if (!window.confirm(`Delete "${p.name}"? This cannot be undone.`)) return;
-                      try {
-                        cancelAutoCommit(p.id);
-                        await deleteProject(p.id);
-                        removeFav(p.id);
-                        removeProjectColor(p.id);
-                        await refreshProjects();
-                        toast.success(`Deleted "${p.name}".`);
-                      } catch (e) {
-                        notifyError("delete project", e, `Couldn't delete "${p.name}".`);
-                      }
+                    onClick={() => {
+                      // Let Radix finish closing the context menu before
+                      // mounting the modal focus trap.
+                      window.setTimeout(
+                        () => setDeleteTarget({ id: p.id, name: p.name }),
+                        0,
+                      );
                     }}
                   >
                     <Trash2 className="mr-2 size-4" /> Delete project
@@ -867,6 +889,15 @@ export function Library() {
           </div>
         </div>
       )}
+      <ConfirmationDialog
+        open={deleteTarget !== null}
+        title={`Delete “${deleteTarget?.name ?? "project"}”?`}
+        description="This permanently deletes the project and all of its files. This action cannot be undone."
+        confirmLabel="Delete permanently"
+        destructive
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => void confirmProjectDeletion()}
+      />
     </div>
   );
 }

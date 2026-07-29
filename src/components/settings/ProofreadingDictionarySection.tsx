@@ -201,7 +201,7 @@ export function ProofreadingDictionarySection() {
           >
             Global
             <Badge
-              variant="primaryGhost"
+              variant="default"
               className="min-w-5 px-1.5 text-[10px] tabular-nums"
             >
               {global.length.toLocaleString()}
@@ -214,7 +214,7 @@ export function ProofreadingDictionarySection() {
           >
             Projects
             <Badge
-              variant="primaryGhost"
+              variant="default"
               className="min-w-5 px-1.5 text-[10px] tabular-nums"
             >
               {projectEntries.length.toLocaleString()}

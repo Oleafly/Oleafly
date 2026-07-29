@@ -266,7 +266,7 @@ const TreeRow = memo(function TreeRow({
       }
       data-intelligence-row={row.node.id}
       className={cn(
-        "group flex min-h-7 w-full cursor-pointer items-center gap-1.5 rounded-[5px] py-1 pr-2 text-left text-sm outline-none",
+        "group flex min-h-7 w-full cursor-pointer items-center gap-1.5 rounded-[5px] py-1 pr-2 text-left text-[13px] leading-5 outline-none",
         "hover:bg-sidebar-accent focus-visible:bg-sidebar-accent focus-visible:ring-1 focus-visible:ring-ring",
         "aria-selected:bg-sidebar-accent aria-selected:text-sidebar-accent-foreground",
         "[content-visibility:auto] [contain-intrinsic-size:auto_28px]",
@@ -322,7 +322,9 @@ const TreeRow = memo(function TreeRow({
           )}
         />
       )}
-      <span className="min-w-0 flex-1 truncate">{row.node.label}</span>
+      <span className="min-w-0 flex-1 truncate text-[13px] leading-5">
+        {row.node.label}
+      </span>
       {row.node.badge ? (
         <span
           aria-hidden

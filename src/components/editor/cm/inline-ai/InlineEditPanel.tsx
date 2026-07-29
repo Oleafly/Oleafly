@@ -211,7 +211,11 @@ export function InlineEditPanel() {
   return (
     <div className="my-1 w-full">
       {!providerReady ? (
-        <AiChrome className="w-full" contentClassName="p-3 text-popover-foreground">
+        <AiChrome
+          borderVariant="primary"
+          className="w-full"
+          contentClassName="p-3 text-popover-foreground"
+        >
           <p className="flex items-center gap-1.5 text-sm font-medium">
             <AiMark /> Set up an AI provider
           </p>
