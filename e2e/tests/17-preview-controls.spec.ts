@@ -56,8 +56,13 @@ async function activatePreviewControl(
     '[aria-label="More preview controls"]',
   );
   await expect(moreControls).toBeVisible();
-  await moreControls.click();
-  await tauriPage.getByRole("menu").getByText(label, { exact: true }).click();
+  // Radix opens this trigger from keyboard activation consistently across
+  // WebKitGTK; the bridge's synthetic pointer click can be discarded.
+  await moreControls.focus();
+  await moreControls.press("Enter");
+  const menu = tauriPage.getByRole("menu");
+  await expect(menu).toBeVisible();
+  await menu.getByText(label, { exact: true }).click();
 }
 
 test.beforeEach(async ({ tauriPage }) => {
