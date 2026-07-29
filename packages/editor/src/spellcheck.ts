@@ -145,6 +145,10 @@ const presentedProofreadingCache = new WeakMap<
   PresentedProofreadingCache
 >();
 const presentationRefreshViews = new WeakSet<EditorView>();
+const presentationRefreshGenerations = new WeakMap<
+  EditorView,
+  number
+>();
 
 interface PendingProofreadingRequest {
   contextKey: string;
@@ -223,13 +227,52 @@ export function refreshEditorProofreadingPresentation(
   view: EditorView | null,
 ): void {
   if (!view) return;
+  const generation =
+    (presentationRefreshGenerations.get(view) ?? 0) + 1;
+  presentationRefreshGenerations.set(view, generation);
+  const repaintIfCurrent = () => {
+    if (
+      presentationRefreshGenerations.get(view) !== generation ||
+      !view.dom.isConnected
+    ) {
+      return;
+    }
+    repaintCachedProofreadingPresentation(view);
+  };
+  const repaintAfterBrowserTurn = () => {
+    requestAnimationFrame(repaintIfCurrent);
+  };
   // Paint the requested page immediately when possible, then schedule a
   // retained-result lint pass as the newest coordinated run. Without the
   // latter, an older lint promise can settle after this dispatch and restore
   // the previous presentation page on large documents.
-  repaintCachedProofreadingPresentation(view);
+  repaintIfCurrent();
   presentationRefreshViews.add(view);
   refreshEditorLints(view);
+  // CodeMirror owns the asynchronous application of lint-source results. A
+  // result that was already resolving when the user changed page can therefore
+  // be applied after the synchronous repaint above. Reassert the authoritative
+  // page after both the worker request and the coordinated linter settle. The
+  // animation-frame boundary runs after CodeMirror's promise continuations, so
+  // presentation selection—not completion timing—is always the last writer.
+  queueMicrotask(() => {
+    repaintAfterBrowserTurn();
+    const pending = pendingProofreadingRequests.get(view)?.promise;
+    if (pending) {
+      void pending.then(
+        repaintAfterBrowserTurn,
+        repaintAfterBrowserTurn,
+      );
+    }
+    const coordinated =
+      coordinatedProofreadingRuns.get(view)?.latest;
+    if (coordinated) {
+      void coordinated.then(
+        repaintAfterBrowserTurn,
+        repaintAfterBrowserTurn,
+      );
+    }
+  });
 }
 
 /** Short labels for the card footer; the stock tooltip needs the full sentence. */
