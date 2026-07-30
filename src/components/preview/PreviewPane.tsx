@@ -694,6 +694,15 @@ export function PreviewPane() {
   );
   const [pdfPassword, setPdfPassword] = useState("");
   const [pdfReloadGeneration, setPdfReloadGeneration] = useState(0);
+  // Rotation is a dependency of PdfViewer's document-load effect, so turning
+  // the page re-parses the PDF. That work belongs on the rotate button, not
+  // behind the startup overlay.
+  const [rotationPending, setRotationPending] = useState(false);
+  // Whether this pane has ever completed a render for the current project. The
+  // multi-stage startup panel explains a wait with nothing on screen; once a
+  // page is up, replacing it with that panel on every recompile is a flicker,
+  // so later loads keep the previous render visible instead.
+  const [hasRendered, setHasRendered] = useState(false);
   const [passwordDraft, setPasswordDraft] = useState("");
   const [viewerDocument, setViewerDocument] =
     useState<PreviewDocument | null>(null);
@@ -728,6 +737,10 @@ export function PreviewPane() {
     setPdfReloadGeneration(0);
     setPasswordDraft("");
     setRotation(0);
+    setRotationPending(false);
+    // A different project has nothing on screen to preserve, so its first load
+    // gets the explanatory startup panel again.
+    setHasRendered(false);
   }, [projectId]);
 
   useEffect(() => {
@@ -1098,7 +1111,11 @@ export function PreviewPane() {
     const current = viewerDocument;
     if (!current || next.documentIdentity !== current.identity) return;
     setPdfLoadState(next);
+    // Anything that settles the load also settles a rotation: a failed rotate
+    // must not leave the button spinning forever.
+    if (next.status !== "loading") setRotationPending(false);
     if (next.status === "ready") {
+      setHasRendered(true);
       lastReadyDocumentRef.current = current;
       rejectedDocumentIdentitiesRef.current.delete(current.identity);
       if (current.checkpoint === compileCheckpoint) {
@@ -1176,7 +1193,14 @@ export function PreviewPane() {
     Icon: typeof ZoomIn,
     label: string,
     onClick: () => void,
-    options: { disabled?: boolean; active?: boolean; tooltip?: string } = {},
+    options: {
+      disabled?: boolean;
+      active?: boolean;
+      tooltip?: string;
+      // Swaps the icon for a spinner in place. Work a single control owns
+      // belongs on that control, not behind a pane-sized overlay.
+      busy?: boolean;
+    } = {},
   ): ToolbarControl => ({
     id,
     width: ICON_BUTTON_WIDTH,
@@ -1186,12 +1210,17 @@ export function PreviewPane() {
           variant="ghost"
           size="icon"
           className={cn("size-7", options.active && "bg-accent text-foreground")}
-          disabled={options.disabled}
+          disabled={options.disabled || options.busy}
           onClick={onClick}
           aria-label={label}
+          {...(options.busy ? { "aria-busy": true } : {})}
           {...(options.active === undefined ? {} : { "aria-pressed": options.active })}
         >
-          <Icon className="size-3.5" />
+          {options.busy ? (
+            <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
+          ) : (
+            <Icon className="size-3.5" />
+          )}
         </Button>
       </Tooltip>
     ),
@@ -1582,10 +1611,14 @@ export function PreviewPane() {
         "rotate",
         RotateCw,
         "Rotate clockwise",
-        () => setRotation((current) => ((current + 90) % 360) as PdfRotation),
+        () => {
+          setRotationPending(true);
+          setRotation((current) => ((current + 90) % 360) as PdfRotation);
+        },
         {
           disabled: !displayedBytes,
-          tooltip: `Rotate PDF clockwise; currently ${rotation} degrees`,
+          busy: rotationPending,
+          tooltip: `Rotate PDF clockwise (90°); currently ${rotation}°`,
         },
       ),
     );
@@ -1985,7 +2018,14 @@ export function PreviewPane() {
                   }
                 >
                   <PdfViewer
-                    key={`${viewerDocument.identity}:${pdfReloadGeneration}`}
+                    // Deliberately NOT keyed on the document identity. That
+                    // remounted the whole viewer on every recompile, tearing the
+                    // rendered canvases out before a replacement existed - the
+                    // blank flash between builds. The viewer already reloads on
+                    // a `documentIdentity` change and now swaps its pages only
+                    // once the new layout is ready. `pdfReloadGeneration` stays:
+                    // retry-after-failure does want a clean instance.
+                    key={pdfReloadGeneration}
                     ref={pdfRef}
                     data={displayedBytes}
                     documentIdentity={viewerDocument.identity}
@@ -2022,7 +2062,13 @@ export function PreviewPane() {
               {pdfLoadState.documentIdentity ===
                 viewerDocument.identity &&
                 pdfLoadState.status !== "ready" &&
-                pdfLoadState.status !== "idle" && (
+                pdfLoadState.status !== "idle" &&
+                // Once a page has been rendered, a reload (recompile, rotate,
+                // password retry) keeps that page on screen. Covering it with
+                // the startup panel and uncovering it a moment later is the
+                // flicker; failures still take over, because then there is
+                // something the user has to act on.
+                (!hasRendered || pdfLoadState.status !== "loading") && (
                   <div className="absolute inset-0 z-20 flex items-center justify-center bg-sidebar/90 p-6 backdrop-blur-[1px]">
                     {pdfLoadState.status === "password_required" ? (
                       <form

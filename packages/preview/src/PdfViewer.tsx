@@ -869,6 +869,24 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
   // Exact scale-1 viewports retain mixed media boxes, rotation and UserUnit.
   const pageViewportsRef = useRef<Map<number, PdfPageViewport>>(new Map());
   const geometryPromisesRef = useRef<Map<number, Promise<PdfPageViewport>>>(new Map());
+  // Render states whose bookkeeping has been dropped but whose canvases are
+  // still on screen. Releasing a state removes its nodes, so doing it when a
+  // reload *starts* empties the pane for the whole parse; these are held until
+  // the replacement layout is ready to swap in, or until the load is abandoned
+  // with no successor. Nothing else may read them: they are already detached
+  // from `renderedRef`.
+  const pendingReleaseRef = useRef<RenderState[]>([]);
+  const releasePendingRenders = useCallback(() => {
+    const pending = pendingReleaseRef.current;
+    pendingReleaseRef.current = [];
+    for (const state of pending) cancelRenderState(state);
+  }, []);
+  const retirePendingRenders = useCallback(() => {
+    for (const state of renderedRef.current.values()) {
+      pendingReleaseRef.current.push(state);
+    }
+    renderedRef.current.clear();
+  }, []);
   const geometryScanRef = useRef<PdfPageGeometryScan | null>(null);
   const documentAbortRef = useRef<AbortController | null>(null);
   // Debounce for crisp re-rasterization: zoom resizes instantly (cheap) and only
@@ -1804,14 +1822,16 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         placeholderResizeFrameRef.current = null;
       }
 
-      for (const state of renderedRef.current.values()) cancelRenderState(state);
       observerRef.current?.disconnect();
       observerRef.current = null;
       geometryScanRef.current?.abort("layout rebuilt");
       geometryScanRef.current = null;
-      container.innerHTML = "";
+      // The bookkeeping for the outgoing layout is dropped now, but its DOM
+      // stays until the replacement is ready to go in. Releasing or clearing
+      // here instead would blank the pane for the whole of
+      // `ensurePageGeometry` - the flicker a recompile or a rotate used to show.
+      retirePendingRenders();
       wrapsRef.current.clear();
-      renderedRef.current.clear();
       visibleRef.current.clear();
       pageViewportsRef.current.clear();
       geometryPromisesRef.current.clear();
@@ -1824,8 +1844,16 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         seq !== loadSeqRef.current ||
         docRef.current !== doc
       ) {
+        // Superseded: this layout will never be built, so the retained pages
+        // have no swap to wait for. Whoever superseded us owns the pane.
+        releasePendingRenders();
         return;
       }
+
+      // Geometry is in hand, so the replacement can be built: release and drop
+      // the previous pages only now, immediately before the new ones go in.
+      releasePendingRenders();
+      container.innerHTML = "";
 
       const s = scaleRef.current;
       const observer = new IntersectionObserver(
@@ -1958,6 +1986,8 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     [
       applyExactPageViewport,
       ensurePageGeometry,
+      releasePendingRenders,
+      retirePendingRenders,
       unrenderPage,
       reconcileVisiblePages,
       ensurePageRendered,
@@ -2237,8 +2267,11 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       geometryScanRef.current = null;
       observerRef.current?.disconnect();
       observerRef.current = null;
-      for (const state of renderedRef.current.values()) cancelRenderState(state);
-      renderedRef.current.clear();
+      // Retain, don't release: on a recompile or rotate this cleanup runs
+      // immediately before the successor's effect body, and releasing here
+      // would strip the canvases for the whole of the new parse. The deferred
+      // check below releases them when nothing takes over.
+      retirePendingRenders();
       wrapsRef.current.clear();
       visibleRef.current.clear();
       pageViewportsRef.current.clear();
@@ -2265,7 +2298,19 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       }
       if (container) {
         delete container.dataset.pdfPageCount;
-        container.innerHTML = "";
+        // Only blank the pane when nothing takes over. A recompile or a rotate
+        // re-runs this effect, and clearing here would show an empty pane for
+        // the whole parse; `buildLayout` swaps the pages instead. A close
+        // (project switch, unmount) has no successor, so the stale pages of a
+        // document the user has navigated away from must not survive: the
+        // successor bumps `loadSeqRef` synchronously in the next effect body,
+        // so a task later tells the two cases apart.
+        const closedAt = loadSeqRef.current;
+        window.setTimeout(() => {
+          if (loadSeqRef.current !== closedAt) return;
+          releasePendingRenders();
+          container.innerHTML = "";
+        }, 0);
       }
       destroyLoadingTask();
     };
@@ -2278,11 +2323,20 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     loadOutline,
     password,
     reconcileVisiblePages,
+    releasePendingRenders,
+    retirePendingRenders,
     rotation,
     runSearch,
     scrollPageIntoView,
     unrenderPage,
   ]);
+
+  // Unmount releases synchronously. The deferred path above exists only so a
+  // reload can hand its canvases to the next layout; a torn-down viewer has no
+  // successor, and its pdf.js pages, annotation layers and canvas memory must
+  // go with it. Declared after the load effect so React runs this cleanup last,
+  // once that effect has retired its render states.
+  useEffect(() => () => releasePendingRenders(), [releasePendingRenders]);
 
   useEffect(() => {
     void runSearch(searchQuery);
