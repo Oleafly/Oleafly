@@ -502,7 +502,57 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
     throw new Error(`${String(error)}; 100% zoom diagnostic: ${diagnostic}`);
   }
 
-  await tauriPage.click('[aria-label="Next page"]');
+  // Inline when the toolbar fits, otherwise via the overflow menu's page
+  // submenu. WebView2 lays the bar out wider than WebKit, so Windows collapses
+  // at window sizes where Linux and macOS do not, and a direct click on the
+  // inline control finds nothing there.
+  const inlineNext = tauriPage.locator('[aria-label="Next page"]');
+  if (await inlineNext.isVisible()) {
+    await inlineNext.click();
+  } else {
+    await tauriPage.evaluate(
+      `(() => {
+        const trigger = document.querySelector('[aria-label="More preview controls"]');
+        if (!(trigger instanceof HTMLElement)) return false;
+        trigger.focus();
+        trigger.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+        return true;
+      })()`,
+    );
+    await tauriPage.waitForFunction(
+      `[...document.querySelectorAll('[role="menuitem"]')].some(
+        (el) => /^Page \\d+ of \\d+$/.test((el.textContent || "").trim()),
+      )`,
+      10_000,
+    );
+    await tauriPage.evaluate(
+      `(() => {
+        const trigger = [...document.querySelectorAll('[role="menuitem"]')].find(
+          (el) => /^Page \\d+ of \\d+$/.test((el.textContent || "").trim()),
+        );
+        trigger?.click();
+        return !!trigger;
+      })()`,
+    );
+    await tauriPage.waitForFunction(
+      `[...document.querySelectorAll('[role="menuitem"]')].some(
+        (el) => (el.textContent || "").trim() === "Next page",
+      )`,
+      10_000,
+    );
+    await tauriPage.evaluate(
+      `(() => {
+        const item = [...document.querySelectorAll('[role="menuitem"]')].find(
+          (el) => (el.textContent || "").trim() === "Next page",
+        );
+        item?.click();
+        return !!item;
+      })()`,
+    );
+    await tauriPage.evaluate(
+      `document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))`,
+    );
+  }
   try {
     await tauriPage.waitForFunction(
       `document.querySelector('[data-page="2"]')?.textContent?.includes('ROTATED USER UNIT PAGE')`,
