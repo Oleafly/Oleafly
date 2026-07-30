@@ -38,6 +38,13 @@ interface AuthoringChaosProbe {
   readonly missingSurfaceFrames: number;
   readonly misalignedFrames: number;
   readonly misalignedActions: Readonly<Record<string, number>>;
+  readonly maxSettleFrames: number;
+  readonly misalignedSamples: ReadonlyArray<{
+    readonly action: string;
+    readonly line: number;
+    readonly delta: number;
+    readonly settleFrames: number;
+  }>;
   readonly maxGutterDelta: number;
   readonly documentScrollLeaks: number;
   readonly sourceRestored: boolean;
@@ -303,7 +310,9 @@ async function runAuthoringChaos(
         let blankFrames = 0;
         let missingSurfaceFrames = 0;
         let misalignedFrames = 0;
+        let maxSettleFrames = 0;
         const misalignedActions = {};
+        const misalignedSamples = [];
         let maxGutterDelta = 0;
         let documentScrollLeaks = 0;
         const targets = [
@@ -341,15 +350,27 @@ async function runAuthoringChaos(
             const line = element?.closest?.(".cm-line");
             if (!line) return [];
             return [
-              Math.abs(
-                gutter.getBoundingClientRect().top -
-                  line.getBoundingClientRect().top,
-              ),
+              {
+                lineNumber,
+                delta: Math.abs(
+                  gutter.getBoundingClientRect().top -
+                    line.getBoundingClientRect().top,
+                ),
+              },
             ];
           });
+          let worst = 0;
+          let worstLineNumber = 0;
+          for (const entry of deltas) {
+            if (entry.delta > worst) {
+              worst = entry.delta;
+              worstLineNumber = entry.lineNumber;
+            }
+          }
           return {
             gutterCount: gutters.length,
-            maxDelta: Math.max(0, ...deltas),
+            maxDelta: worst,
+            worstLineNumber,
           };
         };
         const inspect = async (actionName) => {
@@ -361,23 +382,37 @@ async function runAuthoringChaos(
             const rect = line.getBoundingClientRect();
             return rect.bottom >= viewport.top && rect.top <= viewport.bottom;
           });
-          let { gutterCount, maxDelta } = gutterDelta();
-          if (maxDelta > 1.5) {
-            // Debounced decoration dispatches (math previews, lint sets)
-            // can land between an edit and this probe, leaving the gutter
-            // spacer one measure pass behind its line for a single frame.
-            // Only misalignment that survives a settled frame is the
-            // persistent drift this probe exists to catch.
+          let { gutterCount, maxDelta, worstLineNumber } = gutterDelta();
+          let settleFrames = 0;
+          // Debounced decoration dispatches (math previews, lint sets) can land
+          // between an edit and this probe, leaving the gutter spacer one
+          // measure pass behind its line. Only misalignment that SURVIVES
+          // settling is the persistent drift this probe exists to catch, so
+          // wait for the measurement to stop changing rather than for a fixed
+          // number of frames - two is a count tuned on a fast machine, and a
+          // loaded CI runner needs more.
+          while (maxDelta > 1.5 && settleFrames < 24) {
             await frame();
-            await frame();
-            ({ gutterCount, maxDelta } = gutterDelta());
+            settleFrames++;
+            ({ gutterCount, maxDelta, worstLineNumber } = gutterDelta());
           }
           maxGutterDelta = Math.max(maxGutterDelta, maxDelta);
+          maxSettleFrames = Math.max(maxSettleFrames, settleFrames);
           if (visibleLines.length < 5 || gutterCount < 5) blankFrames++;
           if (maxDelta > 1.5) {
             misalignedFrames++;
             misalignedActions[actionName] =
               (misalignedActions[actionName] ?? 0) + 1;
+            // Persisted past every frame we were willing to wait: record what
+            // actually moved so a CI-only failure is diagnosable from its log.
+            if (misalignedSamples.length < 5) {
+              misalignedSamples.push({
+                action: actionName,
+                line: worstLineNumber,
+                delta: Math.round(maxDelta * 100) / 100,
+                settleFrames,
+              });
+            }
           }
           const tree = document.querySelector('[role="tree"]');
           const pdf = document.querySelector(".pdf-canvas");
@@ -517,6 +552,8 @@ async function runAuthoringChaos(
           missingSurfaceFrames,
           misalignedFrames,
           misalignedActions,
+          maxSettleFrames,
+          misalignedSamples,
           maxGutterDelta,
           documentScrollLeaks,
           sourceRestored: view.state.doc.toString() === original,
