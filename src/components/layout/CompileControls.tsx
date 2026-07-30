@@ -104,7 +104,12 @@ export function CompileControls() {
             "rounded-md rounded-l-none bg-primary text-white shadow-sm hover:bg-primary",
             "h-7 border-l border-white/25 px-1.5",
           )}
-          disabled={compiling || !engineLoaded}
+          // Openable while compiling, otherwise "Stop compilation" inside is
+          // unreachable: it is the one item that requires a running compile,
+          // and the trigger used to close the menu off for exactly that state.
+          // Everything else here is a preference that applies to the next
+          // compile, and "Recompile from scratch" disables itself.
+          disabled={!engineLoaded}
           aria-label="Compile options"
         >
           <ChevronDown className="size-3.5" />
