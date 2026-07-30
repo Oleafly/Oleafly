@@ -74,6 +74,24 @@ export async function expectDesktopShellAnchored(page: Page) {
   expect(["static", "relative"]).toContain(bodyPosition);
 }
 
+/**
+ * Predicate expression: does the line the caret sits on contain `needle`?
+ *
+ * Read the editor state, not `.cm-activeLine`. That decoration is deliberately
+ * suppressed while a selection exists, so the selection colour stays uniform
+ * across every selected line - and navigation actions such as Go to definition
+ * land with the symbol selected, which is exactly when these probes run.
+ */
+export function caretLineIncludes(needle: string): string {
+  return `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {
+    const view = getEditorView();
+    if (!view) return false;
+    return view.state.doc
+      .lineAt(view.state.selection.main.head)
+      .text.includes(${JSON.stringify(needle)});
+  })`;
+}
+
 // The app's own handlers for Cmd+K / Cmd+Shift+F listen on window keydown.
 export async function pressGlobal(
   page: Page,

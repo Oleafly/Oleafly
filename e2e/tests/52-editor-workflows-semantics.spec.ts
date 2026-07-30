@@ -2,16 +2,17 @@ import type { TauriPage } from "@srsholmes/tauri-playwright";
 import { test, expect } from "../fixtures";
 import {
   caretIn,
+  caretLineIncludes,
   clickToolbarControl,
   compileAndProbe,
   createBlankProject,
   editorSource,
   insertSymbol,
+  type Page,
   readProjectText,
   replaceEditorLiteral,
   replaceEditorSource,
   writeProjectBinary,
-  type Page,
 } from "../helpers";
 import type {
   E2ePdfProbe,
@@ -423,8 +424,7 @@ Resolved reference: \ref{sec:toolbar-original}.
   await openCodeIntelligence(tauriPage);
   await clickCodeIntelligenceAction(tauriPage, "Go to definition");
   await tauriPage.waitForFunction(
-    `(document.querySelector(".cm-activeLine")?.textContent ?? "")
-      .includes("label{sec:toolbar-original}")`,
+    caretLineIncludes("label{sec:toolbar-original}"),
     10_000,
   );
 
