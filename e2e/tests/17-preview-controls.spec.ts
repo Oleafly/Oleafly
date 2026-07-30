@@ -51,6 +51,23 @@ async function pageValue(tauriPage: TauriPage): Promise<string> {
   return reported;
 }
 
+/**
+ * Poll until the toolbar reports `expected`. Navigation is asynchronous, so
+ * this must retry the way `expect(locator).toHaveValue()` does - reading once
+ * races the update and fails on a slower machine.
+ */
+async function expectPage(tauriPage: TauriPage, expected: string) {
+  const deadline = Date.now() + 15_000;
+  let seen = "";
+  for (;;) {
+    seen = await pageValue(tauriPage);
+    if (seen === expected) return;
+    if (Date.now() > deadline) break;
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  expect(seen).toBe(expected);
+}
+
 /** Step one page in whichever presentation the toolbar is currently using. */
 async function stepPage(tauriPage: TauriPage, label: "Next page" | "Previous page") {
   const inline = tauriPage.locator(`[aria-label="${label}"]`);
@@ -281,13 +298,13 @@ Page three
     120_000,
   );
 
-  expect(await pageValue(tauriPage)).toBe("1");
+  await expectPage(tauriPage, "1");
   await stepPage(tauriPage, "Next page");
-  expect(await pageValue(tauriPage)).toBe("2");
+  await expectPage(tauriPage, "2");
   await stepPage(tauriPage, "Next page");
-  expect(await pageValue(tauriPage)).toBe("3");
+  await expectPage(tauriPage, "3");
   await stepPage(tauriPage, "Previous page");
-  expect(await pageValue(tauriPage)).toBe("2");
+  await expectPage(tauriPage, "2");
 
   // Typing a destination only exists in the expanded toolbar - the collapsed
   // form has no input to type into - so exercise it only when it is rendered.
@@ -295,24 +312,24 @@ Page three
   if (await pageField.isVisible()) {
     await tauriPage.fill('[aria-label="Page number"]', "1");
     await tauriPage.press('[aria-label="Page number"]', "Enter");
-    expect(await pageValue(tauriPage)).toBe("1");
+    await expectPage(tauriPage, "1");
     for (const invalid of ["", "0", "999", "not-a-page"]) {
       await tauriPage.fill('[aria-label="Page number"]', invalid);
       await tauriPage.press('[aria-label="Page number"]', "Enter");
-      expect(await pageValue(tauriPage)).toBe("1");
+      await expectPage(tauriPage, "1");
     }
   } else {
     await stepPage(tauriPage, "Previous page");
-    expect(await pageValue(tauriPage)).toBe("1");
+    await expectPage(tauriPage, "1");
   }
   // Narrow split panes move page layout into the measured overflow menu.
   // Exercise whichever production presentation is active, then assert the
   // preview's actual layout state rather than assuming the inline buttons fit.
   await selectPageLayout(tauriPage, "Two-page view", "double");
   await stepPage(tauriPage, "Next page");
-  expect(await pageValue(tauriPage)).toBe("3");
+  await expectPage(tauriPage, "3");
   await stepPage(tauriPage, "Previous page");
-  expect(await pageValue(tauriPage)).toBe("1");
+  await expectPage(tauriPage, "1");
   await selectPageLayout(tauriPage, "Single page view", "single");
 });
 
