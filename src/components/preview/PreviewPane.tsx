@@ -2018,14 +2018,14 @@ export function PreviewPane() {
                   }
                 >
                   <PdfViewer
-                    // Keyed on the document identity so each compile output
-                    // gets a fresh viewer. Dropping this key (and buffering the
-                    // page swap inside the viewer) removed the last blank frame
-                    // between builds, but coincided with `numPages` never
-                    // reaching this component on WebView2, which hides the whole
-                    // page-navigation group. Reinstated until that is understood
-                    // on a Windows runner.
-                    key={`${viewerDocument.identity}:${pdfReloadGeneration}`}
+                    // Deliberately NOT keyed on the document identity. That
+                    // remounted the whole viewer on every recompile, tearing the
+                    // rendered canvases out before a replacement existed - the
+                    // blank flash between builds. The viewer already reloads on
+                    // a `documentIdentity` change and now swaps its pages only
+                    // once the new layout is ready. `pdfReloadGeneration` stays:
+                    // retry-after-failure does want a clean instance.
+                    key={pdfReloadGeneration}
                     ref={pdfRef}
                     data={displayedBytes}
                     documentIdentity={viewerDocument.identity}
