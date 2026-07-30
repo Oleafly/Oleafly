@@ -122,6 +122,32 @@ export function isCompileRequestIdentityCurrent(
   );
 }
 
+/**
+ * Whether a finished compile's output still belongs to the surface that asked
+ * for it.
+ *
+ * Deliberately ignores `projectRevision`. That counter advances on every edit
+ * (`useIndexStore.updateFile`), so including it here discarded a completed
+ * compile whenever the user typed while it ran - one keystroke during a long
+ * book build threw the PDF away with nothing requeued. Editing during a
+ * compile makes the result *stale*, not worthless: the checkpoint records the
+ * revision it was built from, and the preview already labels a non-current PDF
+ * as stale rather than hiding it.
+ *
+ * What genuinely invalidates an output is still checked: a different project, a
+ * different main document, or a newer compile having superseded this one.
+ */
+export function isCompileOutputStillWanted(
+  identity: CompileRequestIdentity,
+): boolean {
+  const files = useFilesStore.getState();
+  return (
+    files.projectId === identity.projectId &&
+    (files.mainDoc || "main.tex") === identity.mainDocument &&
+    compileIntentGeneration === identity.requestGeneration
+  );
+}
+
 function currentSourcePaths(projectId: string): string[] | null {
   const files = useFilesStore.getState();
   if (files.projectId !== projectId || files.loading) return null;
@@ -613,10 +639,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
     // True once this compile's result is no longer the one the UI should show
     // (project switched, or a newer compile started).
     const identityStale = () => {
-      return (
-        seq !== compileSeq ||
-        !isCompileRequestIdentityCurrent(requestIdentity)
-      );
+      return seq !== compileSeq || !isCompileOutputStillWanted(requestIdentity);
     };
 
     let started = false;

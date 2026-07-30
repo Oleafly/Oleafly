@@ -3,7 +3,7 @@ import { useFilesStore } from "@/store/files";
 import {
   beginCompileRequestIdentity,
   captureCompileSourceSnapshot,
-  isCompileRequestIdentityCurrent,
+  isCompileOutputStillWanted,
   useCompileStore,
 } from "@/store/compile";
 import { usePreflightStore } from "@/store/preflight";
@@ -35,12 +35,16 @@ export async function compileTaggedAndVerify(): Promise<void> {
   const requestIdentity = beginCompileRequestIdentity(projectId, main);
   const checkpointAtStart =
     useCompileStore.getState().lastCompileCheckpoint;
+  // Same rule as the main compile store: an edit during the build makes the
+  // tagged output stale, not worthless, so it must not be discarded here.
+  // The project and main-document checks stay local and explicit - they are
+  // what this lane is actually guarding.
   const matchesAttemptIdentity = () => {
     const currentFiles = useFilesStore.getState();
     return (
       currentFiles.projectId === capturedProjectId &&
       (currentFiles.mainDoc || "main.tex") === main &&
-      isCompileRequestIdentityCurrent(requestIdentity)
+      isCompileOutputStillWanted(requestIdentity)
     );
   };
   const canContinueAfterBackendResult = (
@@ -219,7 +223,7 @@ export async function compileTaggedAndVerify(): Promise<void> {
       toast.error("Tagged compile finished with errors. Check the log.");
     }
   } catch (e) {
-    if (isCompileRequestIdentityCurrent(requestIdentity)) {
+    if (isCompileOutputStillWanted(requestIdentity)) {
       useCompileStore.setState({
         status: "error",
         phase: "idle",
