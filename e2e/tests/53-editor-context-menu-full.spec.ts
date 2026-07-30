@@ -2,13 +2,14 @@ import type { TauriPage } from "@srsholmes/tauri-playwright";
 import { test, expect } from "../fixtures";
 import {
   caretIn,
+  caretLineIncludes,
   compileAndProbe,
   createBlankProject,
   createProjectFromTemplate,
   editorSource,
+  type Page,
   replaceEditorSource,
   setEditorCaretAfter,
-  type Page,
 } from "../helpers";
 
 const RUN = Date.now().toString(36);
@@ -221,8 +222,7 @@ Context reference: \ref{sec:context-nav}.
     await clickContextAction(tauriPage, "Go to definition");
     const landed = await tauriPage
       .waitForFunction(
-        `(document.querySelector(".cm-activeLine")?.textContent ?? "")
-          .includes("label{sec:context-nav}")`,
+        caretLineIncludes("label{sec:context-nav}"),
         5_000,
       )
       .then(() => true)

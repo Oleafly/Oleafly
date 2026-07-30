@@ -1,14 +1,15 @@
 import { test, expect } from "../fixtures";
 import {
   caretIn,
+  caretLineIncludes,
   clickToolbarControl,
-  openGallery,
-  openRailTab,
-  pressGlobal,
   typeInEditorAfter,
   typeInEditorAtStart,
-  waitEditorShowsFile,
+  openGallery,
+  openRailTab,
   type Page,
+  pressGlobal,
+  waitEditorShowsFile,
 } from "../helpers";
 
 // Runs in a throwaway project: snippets like \href{}{} would break the
@@ -260,7 +261,7 @@ test("code-intelligence toolbar menu runs definition, references, and rename act
     await clickCodeIntelligenceAction(tauriPage, "Go to definition");
     const landed = await tauriPage
       .waitForFunction(
-        `(document.querySelector('.cm-activeLine')?.textContent || '').includes('label{sec:e2e-toolbar}')`,
+        caretLineIncludes("label{sec:e2e-toolbar}"),
         5_000,
       )
       .then(() => true)
