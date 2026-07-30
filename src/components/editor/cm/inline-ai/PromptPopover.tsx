@@ -46,7 +46,7 @@ export function PromptPopover({
     <AiChrome
       borderVariant="primary"
       className="w-full"
-      contentClassName="p-2 text-popover-foreground"
+      contentClassName="ai-surface-elevated p-2 text-popover-foreground"
     >
       <div className="flex items-start gap-2">
         <AiMark className="mt-0.5" />

@@ -316,6 +316,14 @@
   background: var(--background);
 }
 
+/* The inline-AI widgets float over the editor rather than sitting in a panel,
+ * so in dark mode they take the same elevated surface as the app's modals
+ * instead of the composer's flatter --neutral-900. */
+.dark .ai-prompt-surface.ai-surface-elevated {
+  --background: #181818;
+  background: #181818;
+}
+
 .wysiwyg-content .ProseMirror {
   outline: none;
   max-width: 42rem;
