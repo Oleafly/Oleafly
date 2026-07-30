@@ -62,9 +62,13 @@ src-tauri/src/       Rust backend (Tauri commands)
   git.rs             git integration
   github.rs          GitHub OAuth device flow
   paths.rs           path helpers + project-id validation
-docs/                user-facing documentation
+docs/                public engineering and product documentation
 scripts/             tooling (Tectonic fetch, icon gen)
 ```
+
+Start with the [documentation index](docs/README.md). Feature inventories in
+that index describe product behavior and implementation boundaries; the
+lowercase engineering references contain deeper contracts and release policy.
 
 ## Tests
 

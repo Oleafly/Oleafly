@@ -1,4 +1,4 @@
-// See docs/planning/specs/2026-07-09-project-index-language-service-design.md for design rationale.
+// The index types are the stable contract shared by parser, query, and UI layers.
 
 export type DefKind = "label" | "macro" | "bibentry" | "theorem" | "glossary" | "environment" | "section" | "file";
 export type UseKind = "ref" | "cite" | "atuse" | "macrouse" | "envuse" | "glossaryuse" | "inputedge";
