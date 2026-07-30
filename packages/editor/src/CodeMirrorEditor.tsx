@@ -10,7 +10,6 @@ import {
   dropCursor,
   rectangularSelection,
   crosshairCursor,
-  highlightActiveLine,
   type KeyBinding,
 } from "@codemirror/view";
 import {
@@ -32,6 +31,7 @@ import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import { setDiagnostics } from "@codemirror/lint";
 import { vim } from "@replit/codemirror-vim";
 
+import { highlightActiveLineWhenCollapsed } from "./active-line";
 import { vscodeSearch } from "./search-panel";
 import { editorTheme } from "./theme";
 import {
@@ -194,7 +194,7 @@ export function CodeMirrorEditor({
         closeBrackets(),
         rectangularSelection(),
         crosshairCursor(),
-        highlightActiveLine(),
+        highlightActiveLineWhenCollapsed(),
         highlightSelectionMatches(),
         ...diagnosticPresentationExtensions(),
         EditorView.lineWrapping,
