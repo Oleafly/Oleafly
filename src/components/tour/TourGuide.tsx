@@ -355,10 +355,30 @@ function SeamlessArrow({ base, placement, size }: ArrowRenderProps) {
   );
 }
 
-export function toJoyrideStep(step: TourStepDefinition, tourLabel?: string): Step {
+// Joyride scrolls the target's nearest scrollable ancestor on every step, and
+// it treats "scrollable" as `scrollHeight > clientHeight` — which an
+// off-viewport stray element can satisfy for the document itself even though
+// `body { overflow: hidden }` hides the scrollbar. The result is a whole-app
+// scroll animation on each step that immediately snaps back: a visible jump.
+// Every tour target here is on-screen chrome, so scroll only when the target's
+// leading edge genuinely sits outside the viewport.
+export function stepNeedsScroll(element: Element | null): boolean {
+  if (!element) return false;
+  const rect = element.getBoundingClientRect();
+  if (rect.width === 0 && rect.height === 0) return false;
+  const leadIn = Math.min(rect.height, 48);
+  return rect.top < 0 || rect.top + leadIn > window.innerHeight;
+}
+
+export function toJoyrideStep(
+  step: TourStepDefinition,
+  tourLabel?: string,
+  needsScroll = false,
+): Step {
   return {
     id: step.id,
     target: step.target,
+    skipScroll: !needsScroll,
     title: step.title,
     content: step.content,
     placement: step.placement ?? "bottom",
@@ -754,9 +774,21 @@ export function TourGuide() {
   const steps = useMemo<Step[]>(
     () => {
       void inputRevision;
-      return definition?.steps.map((step) => toJoyrideStep(step, definition.label)) ?? [];
+      // Rebuilt per step: `toJoyrideStep` measures each target to decide whether
+      // Joyride may scroll for it, and a target's position is only meaningful
+      // once the tour has actually reached it.
+      void activeStepIndex;
+      return (
+        definition?.steps.map((step) =>
+          toJoyrideStep(
+            step,
+            definition.label,
+            stepNeedsScroll(document.querySelector(step.target)),
+          ),
+        ) ?? []
+      );
     },
-    [definition, inputRevision],
+    [activeStepIndex, definition, inputRevision],
   );
 
   const showWelcome =
