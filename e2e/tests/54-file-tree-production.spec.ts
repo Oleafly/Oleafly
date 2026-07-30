@@ -133,6 +133,20 @@ async function createEntry(
     )).some(row => row.dataset.path === ${JSON.stringify(path)})`,
     30_000,
   );
+  if (mode === "file") {
+    // The tree row appearing does NOT mean the editor is showing the new file:
+    // the React/CodeMirror file-swap is a separate effect, and
+    // `replaceEditorSource` writes into whichever document the shared view
+    // currently holds. Returning early therefore risks writing the fixture into
+    // the *previous* file and saving empty content here. The editor publishes a
+    // document-ready signal for exactly this; wait for it rather than guessing.
+    await page.waitForFunction(
+      `import("/packages/editor/src/controller.ts").then(
+        ({ getEditorDocumentPath }) => getEditorDocumentPath() === ${JSON.stringify(path)},
+      )`,
+      30_000,
+    );
+  }
   return path;
 }
 
