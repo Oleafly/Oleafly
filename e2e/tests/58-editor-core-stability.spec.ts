@@ -210,7 +210,19 @@ async function expectStableGeometry(
   // tight budget, while lines hosting an inline KaTeX preview may grow by
   // the preview's natural height (padding, border, tall glyphs) without
   // that growth being a spacer regression.
-  expect(geometry.maxLineMultiple, geometry.worstLine).toBeLessThanOrEqual(6);
+  // A coarse sanity bound, not the structural guard: how many rows a line
+  // wraps to is a property of the pane width, so this number has to clear the
+  // narrowest supported layout. Measured on the same fixture line, the one
+  // carrying an inline KaTeX preview: 6 rows in a default-width split, 8 at
+  // 1024x700, 9 on WebView2, which lays text out wider than WebKit at the same
+  // window size. The regression this exists to catch produced spacers of
+  // *hundreds* of pixels - 15+ rows at this base height - so 12 still fails on
+  // it while leaving room for legitimate wrapping.
+  //
+  // The real anti-spacer guard is the residual assertion below: it proves each
+  // line is an exact multiple of the editor's own base row, which a phantom
+  // spacer never is.
+  expect(geometry.maxLineMultiple, geometry.worstLine).toBeLessThanOrEqual(12);
   expect(
     geometry.maxPlainLineResidual,
     geometry.worstLine,
