@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeftRight, BookMarked, Check, Maximize2, Sparkles } from "lucide-react";
 import { getEditorView } from "@/components/editor/cm/controller";
+import { openInlineEditWithInstruction } from "@/components/editor/cm/inline-ai/openSession";
 import { useAgentHandoffStore } from "@/store/agent-handoff";
 import { useSettingsStore } from "@/store/settings";
 
@@ -66,18 +67,22 @@ export function SelectionActionMenu() {
 
   const runAction = (action: Action) => {
     const prompt = `${action.prompt}:\n\n${text}`;
-    useAgentHandoffStore.getState().handoff(prompt, {
-      autoSend: true,
-    });
-    const settings = useSettingsStore.getState();
-    settings.setRailTab("ai");
-    if (!settings.showTree) settings.toggleTree();
-    // Keep the public event for integrations and the deterministic E2E probe.
-    // Delivery to ChatCore is handled by the durable handoff above so the
-    // prompt cannot be lost while selecting the AI rail mounts that panel.
+    const view = getEditorView();
+    // These actions rewrite the selection, so they belong inline: the editor
+    // shows the shimmer while streaming and then a strikethrough/insert diff to
+    // accept or reject. Only fall back to the agent panel when no inline
+    // session can start (no editor, or one already running).
+    const inline = view ? openInlineEditWithInstruction(view, action.prompt) : false;
+    if (!inline) {
+      useAgentHandoffStore.getState().handoff(prompt, { autoSend: true });
+      const settings = useSettingsStore.getState();
+      settings.setRailTab("ai");
+      if (!settings.showTree) settings.toggleTree();
+    }
+    // Public event for integrations and the deterministic E2E probe.
     window.dispatchEvent(
       new CustomEvent("oleafly:ai-selection-action", {
-        detail: { prompt },
+        detail: { prompt, target: inline ? "inline" : "agent" },
       }),
     );
     setPos(null);

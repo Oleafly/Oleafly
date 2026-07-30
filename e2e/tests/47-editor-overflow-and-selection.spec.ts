@@ -122,14 +122,29 @@ test("selecting text in the editor reveals the Ask AI action bubble", async ({ t
   await tauriPage.waitForFunction(`typeof window.__lastAiSelectionPrompt === 'string'`, 5_000);
   const detail = await tauriPage.evaluate<string>(`window.__lastAiSelectionPrompt`);
   expect(detail).toContain("Write");
+
+  // The presets rewrite the selection, so they open an inline edit over it
+  // rather than handing off to the agent panel: the session carries the
+  // preset's instruction and targets exactly the selected range.
   await tauriPage.waitForFunction(
-    `import("/src/store/settings.ts").then(({ useSettingsStore }) =>
-      useSettingsStore.getState().railTab === "ai" &&
-      useSettingsStore.getState().showTree
-    )`,
+    `import("/src/store/inlineEdit.ts").then(({ useInlineEditStore }) => {
+      const session = useInlineEditStore.getState().session;
+      return !!session && session.original === "Write"
+        && session.instruction.startsWith("Improve the clarity");
+    })`,
     5_000,
   );
-  await expect(
-    tauriPage.locator('[data-tour="ai-assistant"]'),
-  ).toBeVisible({ timeout: 10_000 });
+  // ...and it must not have switched the rail over to the chat panel.
+  expect(
+    await tauriPage.evaluate<string>(
+      `import("/src/store/settings.ts").then(({ useSettingsStore }) =>
+        useSettingsStore.getState().railTab)`,
+    ),
+  ).not.toBe("ai");
+
+  // Leave no session behind for the next test in this file.
+  await tauriPage.evaluate(
+    `import("/src/store/inlineEdit.ts").then(({ useInlineEditStore }) =>
+      useInlineEditStore.getState().reset())`,
+  );
 });

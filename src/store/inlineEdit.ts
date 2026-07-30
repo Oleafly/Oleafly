@@ -12,11 +12,21 @@ export interface Session {
   instruction: string;
   proposed: string;
   error?: string;
+  // Set when the instruction was chosen up front (the selection menu's
+  // presets). The panel streams immediately instead of showing the prompt box,
+  // and clears the flag so a retry still lets the instruction be edited.
+  autoRun?: boolean;
 }
 
 interface InlineEditState {
   session: Session | null;
-  open: (r: { from: number; to: number; original: string }) => void;
+  open: (r: {
+    from: number;
+    to: number;
+    original: string;
+    instruction?: string;
+    autoRun?: boolean;
+  }) => void;
   setInstruction: (s: string) => void;
   startStreaming: () => void;
   appendProposed: (full: string) => void;
@@ -34,8 +44,9 @@ export const useInlineEditStore = create<InlineEditState>((set) => ({
         from: r.from,
         to: r.to,
         original: r.original,
-        instruction: "",
+        instruction: r.instruction ?? "",
         proposed: "",
+        autoRun: r.autoRun ?? false,
       },
     }),
   setInstruction: (instruction) =>
