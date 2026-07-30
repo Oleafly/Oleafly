@@ -29,8 +29,15 @@ export function ConfirmationDialog({
     onCancel,
   );
 
+  // Enter-to-confirm is a document-level capture handler, so it fires whatever
+  // is focused - including Cancel, which takes the initial focus. On a
+  // destructive dialog that turns "press Enter to back out" into the
+  // irreversible action, so the shortcut is limited to non-destructive
+  // confirmations. Destructive ones let focus decide: Enter activates the
+  // focused button, which is Cancel until the user deliberately moves to
+  // the confirm button.
   useEffect(() => {
-    if (!open) return;
+    if (!open || destructive) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Enter" || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey)
         return;
@@ -40,7 +47,7 @@ export function ConfirmationDialog({
     };
     document.addEventListener("keydown", onKey, true);
     return () => document.removeEventListener("keydown", onKey, true);
-  }, [open, onConfirm]);
+  }, [open, destructive, onConfirm]);
 
   if (!open) return null;
 
@@ -81,7 +88,10 @@ export function ConfirmationDialog({
             onClick={onConfirm}
           >
             {confirmLabel}
-            <Kbd className="h-4 min-w-4 bg-background/25 px-1 text-[10px] text-current">↵</Kbd>
+            {/* Only advertise the shortcut where it actually exists. */}
+            {destructive ? null : (
+              <Kbd className="h-4 min-w-4 bg-background/25 px-1 text-[10px] text-current">↵</Kbd>
+            )}
           </Button>
         </div>
       </div>
