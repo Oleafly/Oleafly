@@ -159,7 +159,26 @@ test("one-page documents hide the layout toggles and bound page navigation", asy
   await expect(tauriPage.locator('[aria-label="Single page view"]')).not.toBeVisible();
   await expect(tauriPage.locator('[aria-label="Previous page"]')).toBeDisabled();
   await expect(tauriPage.locator('[aria-label="Next page"]')).toBeDisabled();
-  await expect(tauriPage.locator('[aria-label="Page number"]')).toHaveValue("1");
+
+  // The page position, however the toolbar is currently showing it. Below the
+  // collapse threshold the navigation group moves into the overflow menu, and
+  // that form deliberately has no page-number input - it reports "Page N of M"
+  // instead (see the renderMenu comment in PreviewPane). Asserting on the input
+  // alone therefore fails purely because the window is narrow, which is what
+  // WebView2 does at the same size that WebKit still fits.
+  const pageField = tauriPage.locator('[aria-label="Page number"]');
+  if (await pageField.isVisible()) {
+    await expect(pageField).toHaveValue("1");
+    return;
+  }
+  const moreControls = tauriPage.locator('[aria-label="More preview controls"]');
+  await expect(moreControls).toBeVisible();
+  await moreControls.press("Enter");
+  await expect(tauriPage.getByRole("menu")).toBeVisible();
+  await expect(tauriPage.getByText("Page 1 of 1", { exact: true })).toBeVisible();
+  await tauriPage.evaluate(
+    `document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))`,
+  );
 });
 
 test("multi-page layout, previous/next, and direct page jump all navigate", async ({
