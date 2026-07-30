@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-30
+
 ### Added
 
 - Added project-aware editor intelligence for LaTeX, Markdown, Typst, and
@@ -1079,7 +1081,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   compilation, SyncTeX, Git integration, GitHub sync, and bring-your-own-key AI
   assistance.
 
-[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.2.5...HEAD
+[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/Oleafly/Oleafly/compare/v0.2.8...v0.3.0
+[0.2.8]: https://github.com/Oleafly/Oleafly/compare/v0.2.7...v0.2.8
+[0.2.7]: https://github.com/Oleafly/Oleafly/compare/v0.2.6...v0.2.7
+[0.2.6]: https://github.com/Oleafly/Oleafly/compare/v0.2.5...v0.2.6
 [0.2.5]: https://github.com/Oleafly/Oleafly/compare/v0.2.3...v0.2.5
 [0.2.3]: https://github.com/Oleafly/Oleafly/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/Oleafly/Oleafly/compare/v0.2.1...v0.2.2
