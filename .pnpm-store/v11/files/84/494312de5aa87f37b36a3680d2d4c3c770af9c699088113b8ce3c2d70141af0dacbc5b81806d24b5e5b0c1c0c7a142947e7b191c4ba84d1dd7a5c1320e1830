@@ -1,0 +1,17 @@
+import Avatar from "./components/Avatar";
+import Brand from "./components/Brand";
+import BrandColor from "./components/BrandColor";
+import Combine from "./components/Combine";
+import Mono from "./components/Mono";
+import Text from "./components/Text";
+import { COLOR_GRADIENT, COLOR_PRIMARY, TITLE } from "./style";
+var Icons = Mono;
+Icons.Text = Text;
+Icons.Brand = Brand;
+Icons.BrandColor = BrandColor;
+Icons.Combine = Combine;
+Icons.Avatar = Avatar;
+Icons.colorPrimary = COLOR_PRIMARY;
+Icons.colorGradient = COLOR_GRADIENT;
+Icons.title = TITLE;
+export default Icons;

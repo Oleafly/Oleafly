@@ -1,0 +1,43 @@
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.getPseudoElementBounds = getPseudoElementBounds;
+var _owner = require("@base-ui/utils/owner");
+var _platform = require("@base-ui/utils/platform");
+function getPseudoElementBounds(element) {
+  const elementRect = element.getBoundingClientRect();
+  const win = (0, _owner.ownerWindow)(element);
+
+  // Avoid "Not implemented: window.getComputedStyle(elt, pseudoElt)" in jsdom.
+  if (_platform.platform.env.jsdom) {
+    return elementRect;
+  }
+  const beforeStyles = win.getComputedStyle(element, '::before');
+  const afterStyles = win.getComputedStyle(element, '::after');
+  const hasPseudoElements = beforeStyles.content !== 'none' || afterStyles.content !== 'none';
+  if (!hasPseudoElements) {
+    return elementRect;
+  }
+
+  // Get dimensions of pseudo-elements
+  const beforeWidth = parseFloat(beforeStyles.width) || 0;
+  const beforeHeight = parseFloat(beforeStyles.height) || 0;
+  const afterWidth = parseFloat(afterStyles.width) || 0;
+  const afterHeight = parseFloat(afterStyles.height) || 0;
+
+  // Calculate max dimensions including pseudo-elements
+  const totalWidth = Math.max(elementRect.width, beforeWidth, afterWidth);
+  const totalHeight = Math.max(elementRect.height, beforeHeight, afterHeight);
+
+  // Calculate the differences to extend the bounds
+  const widthDiff = totalWidth - elementRect.width;
+  const heightDiff = totalHeight - elementRect.height;
+  return {
+    left: elementRect.left - widthDiff / 2,
+    right: elementRect.right + widthDiff / 2,
+    top: elementRect.top - heightDiff / 2,
+    bottom: elementRect.bottom + heightDiff / 2
+  };
+}

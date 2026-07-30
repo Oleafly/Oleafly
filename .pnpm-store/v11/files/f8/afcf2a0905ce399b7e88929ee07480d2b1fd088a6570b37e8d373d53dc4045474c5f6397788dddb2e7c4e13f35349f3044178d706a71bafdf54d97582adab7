@@ -1,0 +1,109 @@
+{
+  "name": "@gilbarbara/hooks",
+  "version": "0.11.0",
+  "description": "Collection of useful React hooks",
+  "author": "Gil Barbara <gilbarbara@gmail.com>",
+  "keywords": [
+    "react",
+    "hooks"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/gilbarbara/hooks.git"
+  },
+  "bugs": {
+    "url": "https://github.com/gilbarbara/hooks/issues"
+  },
+  "homepage": "https://github.com/gilbarbara/hooks#readme",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "types": "dist/index.d.ts",
+  "sideEffects": false,
+  "peerDependencies": {
+    "react": "16.8 - 19"
+  },
+  "dependencies": {
+    "@gilbarbara/deep-equal": "^0.4.1"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.2",
+    "@gilbarbara/eslint-config": "^1.0.4",
+    "@gilbarbara/prettier-config": "^1.0.0",
+    "@gilbarbara/tsconfig": "^1.0.0",
+    "@size-limit/preset-small-lib": "^12.0.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^22.19.8",
+    "@types/node-fetch": "^2.6.13",
+    "@types/react": "^19.2.10",
+    "@types/react-dom": "^19.2.3",
+    "@vitest/coverage-v8": "^4.0.18",
+    "del-cli": "^7.0.0",
+    "eslint": "^9.39.2",
+    "husky": "^9.1.7",
+    "jest-extended": "^7.0.0",
+    "jsdom": "^28.0.0",
+    "jsdom-testing-mocks": "^1.16.0",
+    "prettier": "^3.8.1",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "repo-tools": "^0.3.1",
+    "serve": "^14.2.5",
+    "size-limit": "^12.0.0",
+    "tsx": "^4.21.0",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  },
+  "scripts": {
+    "build": "npm run clean && tsup",
+    "watch": "tsup --watch",
+    "clean": "del dist/*",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest watch",
+    "lint": "eslint --fix src test",
+    "typecheck": "tsc -p test/tsconfig.json",
+    "typevalidation": "attw -P",
+    "format": "prettier \"**/*.{js,jsx,json,yml,yaml,css,less,scss,ts,tsx,md,graphql,mdx}\" --write",
+    "validate": "npm run lint && npm run test:coverage && npm run build && npm run size && npm run typevalidation",
+    "size": "size-limit",
+    "prepare": "husky"
+  },
+  "tsup": {
+    "dts": true,
+    "entry": [
+      "src/index.ts"
+    ],
+    "format": [
+      "cjs",
+      "esm"
+    ],
+    "sourcemap": true,
+    "splitting": false
+  },
+  "prettier": "@gilbarbara/prettier-config",
+  "size-limit": [
+    {
+      "name": "esm",
+      "path": "./dist/index.mjs",
+      "limit": "6 kB"
+    },
+    {
+      "name": "commonjs",
+      "path": "./dist/index.js",
+      "limit": "6 kB"
+    }
+  ]
+}

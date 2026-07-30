@@ -1,0 +1,1 @@
+{"version":3,"file":"getNow.mjs","names":[],"sources":["../../src/utils/getNow.ts"],"sourcesContent":["export const getNow = (): number => {\n  return typeof performance === 'undefined' ? Date.now() : performance.now();\n};\n"],"mappings":";AAAA,MAAa,eAAuB;CAClC,OAAO,OAAO,gBAAgB,cAAc,KAAK,IAAI,IAAI,YAAY,IAAI;AAC3E"}

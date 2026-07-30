@@ -1,0 +1,1 @@
+{"version":3,"file":"cleanLastNewline.js","names":[],"sources":["../../src/utils/cleanLastNewline.ts"],"sourcesContent":["export function cleanLastNewline(contents: string): string {\n  return contents.replace(/\\n$|\\r\\n$/, '');\n}\n"],"mappings":";AAAA,SAAgB,iBAAiB,UAA0B;CACzD,OAAO,SAAS,QAAQ,aAAa,EAAE;AACzC"}

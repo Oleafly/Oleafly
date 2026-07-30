@@ -1,0 +1,87 @@
+{
+  "name": "remark-cjk-friendly",
+  "version": "2.3.1",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./parseOnly": {
+      "types": "./dist/parseOnly.d.ts",
+      "default": "./dist/parseOnly.js"
+    },
+    "./serializeOnly": {
+      "types": "./dist/serializeOnly.d.ts",
+      "default": "./dist/serializeOnly.js"
+    },
+    "./bidi": {
+      "types": "./dist/bidi.d.ts",
+      "default": "./dist/bidi.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "repository": {
+    "url": "https://github.com/tats-u/markdown-cjk-friendly"
+  },
+  "license": "MIT",
+  "author": "Tatsunori Uchino <tats.u@live.jp> (https://github.com/tats-u)",
+  "bugs": "https://github.com/tats-u/markdown-cjk-friendly/issues",
+  "keywords": [
+    "remark-plugin",
+    "remark",
+    "markdown",
+    "japanese",
+    "chinese",
+    "korean",
+    "cjk",
+    "mdast",
+    "unified"
+  ],
+  "description": "remark plugin to make Markdown emphasis (`**`) in CommonMark (and MDX) more friendly with Chinese, Japanese, and Korean (CJK)",
+  "sideEffects": false,
+  "dependencies": {
+    "mdast-util-to-markdown-cjk-friendly": "1.0.0",
+    "micromark-extension-cjk-friendly": "2.0.1"
+  },
+  "devDependencies": {
+    "@mdx-js/mdx": "^3.1.1",
+    "rehype-stringify": "^10.0.1",
+    "remark": "^15.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
+    "remark-rehype": "^11.1.2",
+    "unified": "^11.0.5"
+  },
+  "peerDependencies": {
+    "@types/mdast": "^4.0.0",
+    "unified": "^11.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@types/mdast": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "build:lib": "tsdown",
+    "dev": "tsdown --watch --sourcemaps",
+    "dev:lib": "tsdown --watch --sourcemaps",
+    "test": "vitest run",
+    "test:lib": "vitest run",
+    "test:up": "vitest -u",
+    "test:watch": "vitest watch",
+    "test:lib:watch": "vitest watch",
+    "lint:type": "tsc --noEmit"
+  }
+}

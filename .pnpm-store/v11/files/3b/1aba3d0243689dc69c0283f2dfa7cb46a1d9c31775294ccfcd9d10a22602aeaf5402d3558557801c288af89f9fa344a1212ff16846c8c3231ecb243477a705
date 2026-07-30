@@ -1,0 +1,1 @@
+{"version":3,"file":"controlSize.mjs","names":[],"sources":["../../src/base-ui/controlSize.ts"],"sourcesContent":["export const controlHeight = {\n  large: 40,\n  middle: 32,\n  small: 24,\n} as const;\n\nexport type ControlSize = keyof typeof controlHeight;\n"],"mappings":";AAAA,MAAa,gBAAgB;CAC3B,OAAO;CACP,QAAQ;CACR,OAAO;AACT"}

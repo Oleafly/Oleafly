@@ -1,0 +1,38 @@
+{
+  "name": "@lobehub/fluent-emoji",
+  "version": "4.1.0",
+  "description": "Fluent Emoji are a collection of familiar, friendly, and modern emoji from Microsoft",
+  "keywords": [
+    "emoji",
+    "fluent-emoji"
+  ],
+  "homepage": "https://github.com/lobehub/fluent-emoji",
+  "bugs": {
+    "url": "https://github.com/lobehub/fluent-emoji/issues/new"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lobehub/fluent-emoji.git"
+  },
+  "license": "MIT",
+  "author": "LobeHub <i@lobehub.com>",
+  "sideEffects": false,
+  "main": "es/index.js",
+  "module": "es/index.js",
+  "types": "es/index.d.ts",
+  "files": [
+    "es"
+  ],
+  "dependencies": {
+    "@lobehub/emojilib": "^1.0.0",
+    "antd-style": "^4.1.0",
+    "emoji-regex": "^10.6.0",
+    "es-toolkit": "^1.43.0",
+    "lucide-react": "^0.562.0",
+    "url-join": "^5.0.0"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}

@@ -1,0 +1,13 @@
+export * from 'prosemirror-changeset';
+import 'prosemirror-commands';
+import 'prosemirror-dropcursor';
+import 'prosemirror-gapcursor';
+import 'prosemirror-history';
+import 'prosemirror-inputrules';
+import 'prosemirror-model';
+import 'prosemirror-keymap';
+import 'prosemirror-schema-list';
+import 'prosemirror-state';
+import 'prosemirror-tables';
+import 'prosemirror-transform';
+import 'prosemirror-view';

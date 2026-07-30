@@ -1,0 +1,53 @@
+{
+    "name": "@unified-latex/unified-latex-util-comments",
+    "version": "1.8.4",
+    "description": "Tools for manipulating unified-latex ASTs",
+    "main": "index.js",
+    "type": "module",
+    "dependencies": {
+        "@unified-latex/unified-latex-types": "^1.8.4",
+        "@unified-latex/unified-latex-util-match": "^1.8.4",
+        "@unified-latex/unified-latex-util-replace": "^1.8.4"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/siefkenj/unified-latex.git"
+    },
+    "keywords": [
+        "pegjs",
+        "latex",
+        "parser",
+        "prettier",
+        "unified-latex",
+        "unified"
+    ],
+    "author": "Jason Siefken",
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/siefkenj/unified-latex/issues"
+    },
+    "homepage": "https://github.com/siefkenj/unified-latex#readme",
+    "exports": {
+        ".": {
+            "import": "./index.js",
+            "require": "./index.cjs",
+            "types": "./index.d.ts"
+        },
+        "./*js": "./*js",
+        "./*": {
+            "import": "./*/index.js",
+            "require": "./*/index.cjs",
+            "types": "./*/index.d.ts"
+        },
+        "./*/index": {
+            "import": "./*/index.js",
+            "require": "./*/index.cjs"
+        }
+    },
+    "files": [
+        "**/*ts",
+        "**/*js",
+        "**/*.map",
+        "**/*.json"
+    ]
+}

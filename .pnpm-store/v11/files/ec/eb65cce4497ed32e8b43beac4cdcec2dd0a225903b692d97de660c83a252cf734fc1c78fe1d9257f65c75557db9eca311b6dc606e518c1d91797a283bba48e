@@ -1,0 +1,82 @@
+/* src/styling/css/index.css */
+:root {
+  --rehype-github-alerts-default-color: rgb(89, 99, 110);
+  --rehype-github-alerts-note-color: rgb(9, 105, 218);
+  --rehype-github-alerts-tip-color: rgb(26, 127, 55);
+  --rehype-github-alerts-important-color: rgb(130, 80, 223);
+  --rehype-github-alerts-warning-color: rgb(154, 103, 0);
+  --rehype-github-alerts-caution-color: rgb(209, 36, 47);
+  --rehype-github-alerts-default-space: 1rem;
+  --rehype-github-alerts-default-fontFamily:
+    -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji";
+  --rehype-github-alerts-default-fontWeight: 500;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --rehype-github-alerts-default-color: rgb(145, 152, 161);
+    --rehype-github-alerts-note-color: rgb(68, 147, 248);
+    --rehype-github-alerts-tip-color: rgb(63, 185, 80);
+    --rehype-github-alerts-important-color: rgb(171, 125, 248);
+    --rehype-github-alerts-warning-color: rgb(210, 153, 34);
+    --rehype-github-alerts-caution-color: rgb(248, 81, 73);
+  }
+}
+.markdown-alert {
+  padding: calc(var(--rehype-github-alerts-default-space) / 2) var(--rehype-github-alerts-default-space);
+  margin-bottom: var(--rehype-github-alerts-default-space);
+  border-left: calc(var(--rehype-github-alerts-default-space) / 4) solid var(--rehype-github-alerts-default-color);
+  font-family: var(--rehype-github-alerts-default-fontFamily);
+}
+.markdown-alert > :first-child {
+  margin-top: 0;
+}
+.markdown-alert > :last-child {
+  margin-bottom: 0;
+}
+.markdown-alert-note {
+  border-left-color: var(--rehype-github-alerts-note-color);
+}
+.markdown-alert-tip {
+  border-left-color: var(--rehype-github-alerts-tip-color);
+}
+.markdown-alert-important {
+  border-left-color: var(--rehype-github-alerts-important-color);
+}
+.markdown-alert-warning {
+  border-left-color: var(--rehype-github-alerts-warning-color);
+}
+.markdown-alert-caution {
+  border-left-color: var(--rehype-github-alerts-caution-color);
+}
+.markdown-alert-title {
+  display: flex;
+  margin-bottom: calc(var(--rehype-github-alerts-default-space) / 4);
+  align-items: center;
+  font-weight: var(--rehype-github-alerts-default-fontWeight, 500);
+}
+.markdown-alert-note .markdown-alert-title {
+  color: var(--rehype-github-alerts-note-color);
+  fill: var(--rehype-github-alerts-note-color);
+}
+.markdown-alert-tip .markdown-alert-title {
+  color: var(--rehype-github-alerts-tip-color);
+  fill: var(--rehype-github-alerts-tip-color);
+}
+.markdown-alert-important .markdown-alert-title {
+  color: var(--rehype-github-alerts-important-color);
+  fill: var(--rehype-github-alerts-important-color);
+}
+.markdown-alert-warning .markdown-alert-title {
+  color: var(--rehype-github-alerts-warning-color);
+  fill: var(--rehype-github-alerts-warning-color);
+}
+.markdown-alert-caution .markdown-alert-title {
+  color: var(--rehype-github-alerts-caution-color);
+  fill: var(--rehype-github-alerts-caution-color);
+}
+.octicon {
+  margin-right: calc(var(--rehype-github-alerts-default-space) / 2);
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+}

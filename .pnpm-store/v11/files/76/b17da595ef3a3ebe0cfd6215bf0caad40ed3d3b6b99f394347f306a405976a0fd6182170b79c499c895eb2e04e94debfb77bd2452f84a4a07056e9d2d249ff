@@ -1,0 +1,371 @@
+.rc-notification {
+  position: fixed;
+  z-index: 1000;
+  width: 360px;
+  height: 100vh;
+  padding: 24px;
+  box-sizing: border-box;
+  pointer-events: none;
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+.rc-notification-topRight {
+  top: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+}
+.rc-notification-topRight .rc-notification-notice {
+  top: var(--notification-y, 0);
+  right: 0;
+  transform-origin: center bottom;
+}
+.rc-notification-topRight .rc-notification-fade-appear-prepare,
+.rc-notification-topRight .rc-notification-fade-enter-prepare {
+  opacity: 0;
+  transform: translateX(64px) scale(var(--notification-scale, 1));
+  transition: none;
+}
+.rc-notification-topRight .rc-notification-fade-appear-start,
+.rc-notification-topRight .rc-notification-fade-enter-start {
+  opacity: 0;
+  transform: translateX(64px) scale(var(--notification-scale, 1));
+}
+.rc-notification-topRight .rc-notification-fade-appear-active,
+.rc-notification-topRight .rc-notification-fade-enter-active {
+  opacity: 1;
+  transform: translateX(0) scale(var(--notification-scale, 1));
+}
+.rc-notification-topRight .rc-notification-fade-leave-start {
+  opacity: 1;
+  transform: translateX(0) scale(var(--notification-scale, 1));
+}
+.rc-notification-topRight .rc-notification-fade-leave-active {
+  opacity: 0;
+  transform: translateX(64px) scale(var(--notification-scale, 1));
+}
+.rc-notification-topRight.rc-notification-stack:not(.rc-notification-stack-expanded) .rc-notification-notice {
+  clip-path: inset(50% -50% -50% -50%);
+}
+.rc-notification-topRight.rc-notification-stack:not(.rc-notification-stack-expanded) .rc-notification-notice[data-notification-index='0'] {
+  clip-path: inset(-50% -50% -50% -50%);
+}
+.rc-notification-bottomRight {
+  bottom: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column-reverse;
+}
+.rc-notification-bottomRight .rc-notification-notice {
+  bottom: var(--notification-y, 0);
+  right: 0;
+  transform-origin: center top;
+}
+.rc-notification-bottomRight .rc-notification-fade-appear-prepare,
+.rc-notification-bottomRight .rc-notification-fade-enter-prepare {
+  opacity: 0;
+  transform: translateX(64px) scale(var(--notification-scale, 1));
+  transition: none;
+}
+.rc-notification-bottomRight .rc-notification-fade-appear-start,
+.rc-notification-bottomRight .rc-notification-fade-enter-start {
+  opacity: 0;
+  transform: translateX(64px) scale(var(--notification-scale, 1));
+}
+.rc-notification-bottomRight .rc-notification-fade-appear-active,
+.rc-notification-bottomRight .rc-notification-fade-enter-active {
+  opacity: 1;
+  transform: translateX(0) scale(var(--notification-scale, 1));
+}
+.rc-notification-bottomRight .rc-notification-fade-leave-start {
+  opacity: 1;
+  transform: translateX(0) scale(var(--notification-scale, 1));
+}
+.rc-notification-bottomRight .rc-notification-fade-leave-active {
+  opacity: 0;
+  transform: translateX(64px) scale(var(--notification-scale, 1));
+}
+.rc-notification-bottomRight.rc-notification-stack:not(.rc-notification-stack-expanded) .rc-notification-notice {
+  clip-path: inset(-50% -50% 50% -50%);
+}
+.rc-notification-bottomRight.rc-notification-stack:not(.rc-notification-stack-expanded) .rc-notification-notice[data-notification-index='0'] {
+  clip-path: inset(-50% -50% -50% -50%);
+}
+.rc-notification-topLeft {
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+}
+.rc-notification-topLeft .rc-notification-notice {
+  top: var(--notification-y, 0);
+  left: 0;
+  transform-origin: center bottom;
+}
+.rc-notification-topLeft .rc-notification-fade-appear-prepare,
+.rc-notification-topLeft .rc-notification-fade-enter-prepare {
+  opacity: 0;
+  transform: translateX(-64px) scale(var(--notification-scale, 1));
+  transition: none;
+}
+.rc-notification-topLeft .rc-notification-fade-appear-start,
+.rc-notification-topLeft .rc-notification-fade-enter-start {
+  opacity: 0;
+  transform: translateX(-64px) scale(var(--notification-scale, 1));
+}
+.rc-notification-topLeft .rc-notification-fade-appear-active,
+.rc-notification-topLeft .rc-notification-fade-enter-active {
+  opacity: 1;
+  transform: translateX(0) scale(var(--notification-scale, 1));
+}
+.rc-notification-topLeft .rc-notification-fade-leave-start {
+  opacity: 1;
+  transform: translateX(0) scale(var(--notification-scale, 1));
+}
+.rc-notification-topLeft .rc-notification-fade-leave-active {
+  opacity: 0;
+  transform: translateX(-64px) scale(var(--notification-scale, 1));
+}
+.rc-notification-topLeft.rc-notification-stack:not(.rc-notification-stack-expanded) .rc-notification-notice {
+  clip-path: inset(50% -50% -50% -50%);
+}
+.rc-notification-topLeft.rc-notification-stack:not(.rc-notification-stack-expanded) .rc-notification-notice[data-notification-index='0'] {
+  clip-path: inset(-50% -50% -50% -50%);
+}
+.rc-notification-bottomLeft {
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column-reverse;
+}
+.rc-notification-bottomLeft .rc-notification-notice {
+  bottom: var(--notification-y, 0);
+  left: 0;
+  transform-origin: center top;
+}
+.rc-notification-bottomLeft .rc-notification-fade-appear-prepare,
+.rc-notification-bottomLeft .rc-notification-fade-enter-prepare {
+  opacity: 0;
+  transform: translateX(-64px) scale(var(--notification-scale, 1));
+  transition: none;
+}
+.rc-notification-bottomLeft .rc-notification-fade-appear-start,
+.rc-notification-bottomLeft .rc-notification-fade-enter-start {
+  opacity: 0;
+  transform: translateX(-64px) scale(var(--notification-scale, 1));
+}
+.rc-notification-bottomLeft .rc-notification-fade-appear-active,
+.rc-notification-bottomLeft .rc-notification-fade-enter-active {
+  opacity: 1;
+  transform: translateX(0) scale(var(--notification-scale, 1));
+}
+.rc-notification-bottomLeft .rc-notification-fade-leave-start {
+  opacity: 1;
+  transform: translateX(0) scale(var(--notification-scale, 1));
+}
+.rc-notification-bottomLeft .rc-notification-fade-leave-active {
+  opacity: 0;
+  transform: translateX(-64px) scale(var(--notification-scale, 1));
+}
+.rc-notification-bottomLeft.rc-notification-stack:not(.rc-notification-stack-expanded) .rc-notification-notice {
+  clip-path: inset(-50% -50% 50% -50%);
+}
+.rc-notification-bottomLeft.rc-notification-stack:not(.rc-notification-stack-expanded) .rc-notification-notice[data-notification-index='0'] {
+  clip-path: inset(-50% -50% -50% -50%);
+}
+.rc-notification-top {
+  top: 0;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(-50%);
+}
+.rc-notification-top .rc-notification-notice {
+  top: var(--notification-y, 0);
+  left: 0;
+  transform-origin: center bottom;
+}
+.rc-notification-top .rc-notification-fade-appear-prepare,
+.rc-notification-top .rc-notification-fade-enter-prepare {
+  opacity: 0;
+  transform: translateY(-64px) scale(var(--notification-scale, 1));
+  transition: none;
+}
+.rc-notification-top .rc-notification-fade-appear-start,
+.rc-notification-top .rc-notification-fade-enter-start {
+  opacity: 0;
+  transform: translateY(-64px) scale(var(--notification-scale, 1));
+}
+.rc-notification-top .rc-notification-fade-appear-active,
+.rc-notification-top .rc-notification-fade-enter-active {
+  opacity: 1;
+  transform: translateY(0) scale(var(--notification-scale, 1));
+}
+.rc-notification-top .rc-notification-fade-leave-start {
+  opacity: 1;
+  transform: translateY(0) scale(var(--notification-scale, 1));
+}
+.rc-notification-top .rc-notification-fade-leave-active {
+  opacity: 0;
+  transform: translateY(-64px) scale(var(--notification-scale, 1));
+}
+.rc-notification-top.rc-notification-stack:not(.rc-notification-stack-expanded) .rc-notification-notice {
+  clip-path: inset(50% -50% -50% -50%);
+}
+.rc-notification-top.rc-notification-stack:not(.rc-notification-stack-expanded) .rc-notification-notice[data-notification-index='0'] {
+  clip-path: inset(-50% -50% -50% -50%);
+}
+.rc-notification-bottom {
+  bottom: 0;
+  left: 50%;
+  display: flex;
+  flex-direction: column-reverse;
+  transform: translateX(-50%);
+}
+.rc-notification-bottom .rc-notification-notice {
+  bottom: var(--notification-y, 0);
+  left: 0;
+  transform-origin: center top;
+}
+.rc-notification-bottom .rc-notification-fade-appear-prepare,
+.rc-notification-bottom .rc-notification-fade-enter-prepare {
+  opacity: 0;
+  transform: translateY(64px) scale(var(--notification-scale, 1));
+  transition: none;
+}
+.rc-notification-bottom .rc-notification-fade-appear-start,
+.rc-notification-bottom .rc-notification-fade-enter-start {
+  opacity: 0;
+  transform: translateY(64px) scale(var(--notification-scale, 1));
+}
+.rc-notification-bottom .rc-notification-fade-appear-active,
+.rc-notification-bottom .rc-notification-fade-enter-active {
+  opacity: 1;
+  transform: translateY(0) scale(var(--notification-scale, 1));
+}
+.rc-notification-bottom .rc-notification-fade-leave-start {
+  opacity: 1;
+  transform: translateY(0) scale(var(--notification-scale, 1));
+}
+.rc-notification-bottom .rc-notification-fade-leave-active {
+  opacity: 0;
+  transform: translateY(64px) scale(var(--notification-scale, 1));
+}
+.rc-notification-bottom.rc-notification-stack:not(.rc-notification-stack-expanded) .rc-notification-notice {
+  clip-path: inset(-50% -50% 50% -50%);
+}
+.rc-notification-bottom.rc-notification-stack:not(.rc-notification-stack-expanded) .rc-notification-notice[data-notification-index='0'] {
+  clip-path: inset(-50% -50% -50% -50%);
+}
+.rc-notification-list {
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.rc-notification-list::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+.rc-notification-list-content {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  pointer-events: none;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+.rc-notification-stack-expanded {
+  pointer-events: auto;
+}
+.rc-notification-stack-expanded .rc-notification-list-content {
+  transition: none;
+}
+.rc-notification-notice {
+  position: absolute;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid #111;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffffff 0%, #f4f9ff 100%);
+  box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.16);
+  color: #111;
+  font-size: 14px;
+  line-height: 1.5;
+  pointer-events: auto;
+  transform: scale(var(--notification-scale, 1));
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), inset 0.3s cubic-bezier(0.22, 1, 0.36, 1), clip-path 0.3s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.rc-notification-notice-section {
+  padding-right: 36px;
+  white-space: pre-wrap;
+}
+.rc-notification-notice:not(.rc-notification-notice-closable) .rc-notification-notice-section {
+  padding-right: 0;
+}
+.rc-notification-notice-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 2px solid #111;
+  border-radius: 999px;
+  background: #fff;
+  color: #111;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.rc-notification-notice-close:hover {
+  background: #f4f9ff;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.12);
+}
+.rc-notification-notice-progress {
+  position: absolute;
+  right: 16px;
+  bottom: 8px;
+  left: 16px;
+  display: block;
+  inline-size: auto;
+  block-size: 2px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 1px;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.rc-notification-notice-progress,
+.rc-notification-notice-progress::-webkit-progress-bar {
+  background-color: rgba(0, 0, 0, 0.08);
+}
+.rc-notification-notice-progress::-moz-progress-bar {
+  background-color: #31afff;
+}
+.rc-notification-notice-progress::-webkit-progress-value {
+  background-color: #31afff;
+}
+.rc-notification-stack .rc-notification-notice {
+  clip-path: inset(-50% -50% -50% -50%);
+}
+.rc-notification-stack:not(.rc-notification-stack-expanded) .rc-notification-notice {
+  --notification-scale: calc(1 - min(var(--notification-index, 0), 2) * 0.06);
+}
+.rc-notification-stack:not(.rc-notification-stack-expanded) .rc-notification-notice:not(.rc-notification-notice-stack-in-threshold) {
+  opacity: 0;
+  pointer-events: none;
+}
+.rc-notification-fade {
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+}

@@ -1,0 +1,46 @@
+"use client";
+
+import * as React from 'react';
+import { clsx } from 'clsx';
+import { ConfigContext } from '../config-provider';
+import useSize from '../config-provider/hooks/useSize';
+import Element from './Element';
+import useStyle from './style';
+const SkeletonButton = props => {
+  const {
+    prefixCls: customizePrefixCls,
+    className,
+    rootClassName,
+    classNames,
+    active,
+    style,
+    styles,
+    block = false,
+    size: customSize,
+    ...rest
+  } = props;
+  const {
+    getPrefixCls
+  } = React.useContext(ConfigContext);
+  const prefixCls = getPrefixCls('skeleton', customizePrefixCls);
+  const [hashId, cssVarCls] = useStyle(prefixCls);
+  const mergedSize = useSize(ctx => customSize ?? ctx);
+  const cls = clsx(prefixCls, `${prefixCls}-element`, {
+    [`${prefixCls}-active`]: active,
+    [`${prefixCls}-block`]: block
+  }, classNames?.root, className, rootClassName, hashId, cssVarCls);
+  return /*#__PURE__*/React.createElement("div", {
+    className: cls,
+    style: styles?.root
+  }, /*#__PURE__*/React.createElement(Element, {
+    prefixCls: `${prefixCls}-button`,
+    className: classNames?.content,
+    style: {
+      ...styles?.content,
+      ...style
+    },
+    size: mergedSize,
+    ...rest
+  }));
+};
+export default SkeletonButton;

@@ -1,0 +1,84 @@
+{
+  "name": "emscripten-wasm-loader",
+  "version": "3.0.3",
+  "description": "Common interface to load wasm module into isomorphic environment",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "browser": {
+    "./dist/cjs/path/mountDirectory.js": "./dist/cjs/path/mountBuffer.js",
+    "./dist/esm/path/mountDirectory.js": "./dist/esm/path/mountBuffer.js"
+  },
+  "config": {
+    "commitizen": {
+      "path": "cz-conventional-changelog"
+    }
+  },
+  "lint-staged": {
+    "*.ts": [
+      "prettier --write --single-quote --print-width 120 --jsx-bracket-same-line true",
+      "tslint --fix --type-check --project tsconfig.json",
+      "git add"
+    ]
+  },
+  "scripts": {
+    "prepublishOnly": "npm-run-all build:clean build test",
+    "test": "jest --config jest.json --coverage",
+    "lint": "tslint src/**/*.ts test/**/*.ts --type-check --project tsconfig.json",
+    "lint:staged": "lint-staged",
+    "build": "tsc -b --verbose ./src/tsconfig.cjs.json ./src/tsconfig.esm.json ./src/tsconfig.types.json ./spec/tsconfig.json",
+    "build:clean": "shx rm -rf ./dist",
+    "commit": "git-cz -S",
+    "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kwonoj/emscripten-wasm-loader.git"
+  },
+  "author": "OJ Kwon <kwon.ohjoong@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/kwonoj/emscripten-wasm-loader/issues"
+  },
+  "homepage": "https://github.com/kwonoj/emscripten-wasm-loader#readme",
+  "devDependencies": {
+    "@commitlint/cli": "^8.0.0",
+    "@commitlint/config-angular": "^8.0.0",
+    "@types/chai": "^4.1.7",
+    "@types/jest": "^24.0.13",
+    "@types/lodash": "^4.14.134",
+    "@types/node": "^12.0.8",
+    "chai": "^4.2.0",
+    "commitizen": "^3.1.1",
+    "conventional-changelog": "^3.1.8",
+    "conventional-changelog-cli": "^2.0.21",
+    "husky": "^2.4.1",
+    "jest": "^24.8.0",
+    "jest-spin-reporter": "^1.0.2",
+    "lint-staged": "^8.2.0",
+    "lodash": "^4.17.11",
+    "npm-run-all": "^4.1.5",
+    "prettier": "^1.18.2",
+    "shx": "^0.3.2",
+    "ts-jest": "^24.0.2",
+    "ts-node": "^8.2.0",
+    "tslint": "^5.17.0",
+    "tslint-no-unused-expression-chai": "0.1.4",
+    "typescript": "^3.5.1"
+  },
+  "dependencies": {
+    "getroot": "^1.0.0",
+    "nanoid": "^2.0.3",
+    "unixify": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=10"
+  },
+  "husky": {
+    "hooks": {
+      "commit-msg": "commitlint -e",
+      "pre-commit": "lint-staged",
+      "pre-push": "npm-run-all build test"
+    }
+  }
+}

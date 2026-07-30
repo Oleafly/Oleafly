@@ -1,0 +1,1 @@
+export declare function subscribeToVisualViewportResize(element: Element, visualScaleRef: React.RefObject<number>): () => void;

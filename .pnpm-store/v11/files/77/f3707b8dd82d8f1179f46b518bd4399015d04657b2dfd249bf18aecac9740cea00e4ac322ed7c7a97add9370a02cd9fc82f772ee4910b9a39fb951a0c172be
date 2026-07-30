@@ -1,0 +1,1 @@
+export declare function getElementAtPoint(doc: Document | null | undefined, x: number, y: number): Element | null;

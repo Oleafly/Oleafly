@@ -1,0 +1,138 @@
+'use client';
+
+function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
+var _excluded = ["size", "style"];
+function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
+function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
+function _defineProperty(obj, key, value) { key = _toPropertyKey(key); if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : String(i); }
+function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
+function _slicedToArray(arr, i) { return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _unsupportedIterableToArray(arr, i) || _nonIterableRest(); }
+function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
+function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen); }
+function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) arr2[i] = arr[i]; return arr2; }
+function _iterableToArrayLimit(r, l) { var t = null == r ? null : "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (null != t) { var e, n, i, u, a = [], f = !0, o = !1; try { if (i = (t = t.call(r)).next, 0 === l) { if (Object(t) !== t) return; f = !1; } else for (; !(f = (e = i.call(t)).done) && (a.push(e.value), a.length !== l); f = !0); } catch (r) { o = !0, n = r; } finally { try { if (!f && null != t.return && (u = t.return(), Object(u) !== u)) return; } finally { if (o) throw n; } } return a; } }
+function _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }
+function _objectWithoutProperties(source, excluded) { if (source == null) return {}; var target = _objectWithoutPropertiesLoose(source, excluded); var key, i; if (Object.getOwnPropertySymbols) { var sourceSymbolKeys = Object.getOwnPropertySymbols(source); for (i = 0; i < sourceSymbolKeys.length; i++) { key = sourceSymbolKeys[i]; if (excluded.indexOf(key) >= 0) continue; if (!Object.prototype.propertyIsEnumerable.call(source, key)) continue; target[key] = source[key]; } } return target; }
+function _objectWithoutPropertiesLoose(source, excluded) { if (source == null) return {}; var target = {}; var sourceKeys = Object.keys(source); var key, i; for (i = 0; i < sourceKeys.length; i++) { key = sourceKeys[i]; if (excluded.indexOf(key) >= 0) continue; target[key] = source[key]; } return target; }
+import { memo } from 'react';
+import { useFillIds } from "../../hooks/useFillId";
+import { TITLE } from "../style";
+import { jsx as _jsx } from "react/jsx-runtime";
+import { jsxs as _jsxs } from "react/jsx-runtime";
+var Icon = /*#__PURE__*/memo(function (_ref) {
+  var _ref$size = _ref.size,
+    size = _ref$size === void 0 ? '1em' : _ref$size,
+    style = _ref.style,
+    rest = _objectWithoutProperties(_ref, _excluded);
+  var _useFillIds = useFillIds(TITLE, 5),
+    _useFillIds2 = _slicedToArray(_useFillIds, 5),
+    a = _useFillIds2[0],
+    b = _useFillIds2[1],
+    c = _useFillIds2[2],
+    d = _useFillIds2[3],
+    e = _useFillIds2[4];
+  return /*#__PURE__*/_jsxs("svg", _objectSpread(_objectSpread({
+    height: size,
+    style: _objectSpread({
+      flex: 'none',
+      lineHeight: 1
+    }, style),
+    viewBox: "0 0 24 24",
+    width: size,
+    xmlns: "http://www.w3.org/2000/svg"
+  }, rest), {}, {
+    children: [/*#__PURE__*/_jsx("title", {
+      children: TITLE
+    }), /*#__PURE__*/_jsx("path", {
+      d: "M8.968 11.147a.408.408 0 110 .816.408.408 0 010-.816z",
+      fill: a.fill
+    }), /*#__PURE__*/_jsx("path", {
+      clipRule: "evenodd",
+      d: "M7.21 8.748c.045-.012.087.003.128.044.195.2.39.398.587.596a.15.15 0 00.061.035l.81.209c.056.014.09.043.102.088.013.046-.002.09-.043.13l-.596.585a.139.139 0 00-.021.03.134.134 0 00-.015.033c-.07.27-.14.54-.208.81-.014.055-.044.09-.09.102-.045.012-.088-.003-.128-.045-.195-.199-.39-.397-.587-.595a.158.158 0 00-.062-.035l-.81-.209c-.056-.014-.09-.044-.103-.09-.011-.044.004-.087.045-.128.2-.194.398-.39.596-.585a.12.12 0 00.022-.03.134.134 0 00.014-.032c.07-.27.14-.54.208-.81.014-.056.044-.09.09-.103z",
+      fill: b.fill,
+      fillRule: "evenodd"
+    }), /*#__PURE__*/_jsx("path", {
+      d: "M15.827 9.31a.409.409 0 110 .817.409.409 0 010-.818z",
+      fill: c.fill
+    }), /*#__PURE__*/_jsx("path", {
+      clipRule: "evenodd",
+      d: "M14.071 6.915c.046-.012.09.003.13.044.194.2.388.398.583.596a.155.155 0 00.062.036l.807.21c.056.014.09.045.103.09.012.045-.003.088-.045.128l-.596.583a.168.168 0 00-.036.061l-.21.808c-.014.056-.044.09-.09.103-.045.011-.088-.004-.128-.045-.194-.2-.389-.398-.583-.596a.12.12 0 00-.03-.022.12.12 0 00-.032-.014l-.808-.21c-.056-.014-.09-.044-.102-.09-.012-.045.003-.087.044-.128.2-.194.398-.388.596-.583a.119.119 0 00.022-.03.132.132 0 00.015-.032l.21-.806c.014-.057.043-.09.088-.103z",
+      fill: d.fill,
+      fillRule: "evenodd"
+    }), /*#__PURE__*/_jsx("path", {
+      clipRule: "evenodd",
+      d: "M8.086.457a6.102 6.102 0 013.046-.415c1.333.153 2.521.72 3.564 1.7a.116.116 0 00.107.029c1.409-.346 2.762-.224 4.062.366l.061.029.155.077c1.357.703 2.33 1.769 2.918 3.197.278.68.418 1.388.421 2.127a5.65 5.65 0 01-.18 1.631.164.164 0 00.04.154 5.98 5.98 0 011.577 2.892c.386 1.901-.008 3.614-1.182 5.14l-.181.22a6.062 6.062 0 01-2.936 1.85.16.16 0 00-.106.103c-.255.736-.512 1.364-.988 1.992-1.199 1.582-2.962 2.462-4.948 2.45-1.583-.007-2.986-.586-4.21-1.736a.142.142 0 00-.14-.031c-.518.167-1.04.191-1.605.185a5.923 5.923 0 01-2.594-.622 6.057 6.057 0 01-2.146-1.781c-.203-.27-.404-.522-.552-.821a7.742 7.742 0 01-.494-1.283 6.108 6.108 0 01-.017-3.065.163.163 0 00.007-.074.112.112 0 00-.036-.063 5.954 5.954 0 01-1.38-2.202 5.193 5.193 0 01-.333-1.59 6.911 6.911 0 01.188-2.13c.45-1.485 1.309-2.65 2.578-3.494.282-.188.549-.334.8-.439a8.21 8.21 0 01.862-.303.128.128 0 00.087-.087 6.014 6.014 0 011.104-2.155C6.315 1.463 7.132.846 8.086.457zm.965 7.647c-1.154-.82-2.73-.413-3.311.875-.301.666-.36 1.368-.178 2.106l.145.586.26.95c.105.533.31 1.02.612 1.462l.03.043c.16.189.335.362.524.518 1.386 1.139 3.275.379 3.652-1.323l.05-.213.012-.08c.06-.4.042-.792-.053-1.175a47.673 47.673 0 00-.546-2.024c-.217-.738-.616-1.313-1.197-1.725zm7.104-1.646c-.862-.802-2.191-.831-3.047-.026-.334.314-.566.736-.697 1.265a3.47 3.47 0 000 1.635l.014.054.055.18c.127.42.245.834.353 1.241.112.423.202.706.27.85.574 1.206 1.82 2.074 3.177 1.522 1.261-.514 1.641-2.01 1.355-3.22-.043-.183-.09-.365-.14-.546a34.426 34.426 0 00-.428-1.573c-.162-.508-.466-.968-.912-1.382z",
+      fill: e.fill,
+      fillRule: "evenodd"
+    }), /*#__PURE__*/_jsxs("defs", {
+      children: [/*#__PURE__*/_jsxs("linearGradient", {
+        gradientUnits: "userSpaceOnUse",
+        id: a.id,
+        x1: "9.145",
+        x2: "14.959",
+        y1: "0",
+        y2: "24.022",
+        children: [/*#__PURE__*/_jsx("stop", {
+          stopColor: "#fff"
+        }), /*#__PURE__*/_jsx("stop", {
+          offset: "1",
+          stopColor: "#6BB6FE"
+        })]
+      }), /*#__PURE__*/_jsxs("linearGradient", {
+        gradientUnits: "userSpaceOnUse",
+        id: b.id,
+        x1: "9.145",
+        x2: "14.959",
+        y1: "0",
+        y2: "24.022",
+        children: [/*#__PURE__*/_jsx("stop", {
+          stopColor: "#fff"
+        }), /*#__PURE__*/_jsx("stop", {
+          offset: "1",
+          stopColor: "#6BB6FE"
+        })]
+      }), /*#__PURE__*/_jsxs("linearGradient", {
+        gradientUnits: "userSpaceOnUse",
+        id: c.id,
+        x1: "9.145",
+        x2: "14.959",
+        y1: "0",
+        y2: "24.022",
+        children: [/*#__PURE__*/_jsx("stop", {
+          stopColor: "#fff"
+        }), /*#__PURE__*/_jsx("stop", {
+          offset: "1",
+          stopColor: "#6BB6FE"
+        })]
+      }), /*#__PURE__*/_jsxs("linearGradient", {
+        gradientUnits: "userSpaceOnUse",
+        id: d.id,
+        x1: "9.145",
+        x2: "14.959",
+        y1: "0",
+        y2: "24.022",
+        children: [/*#__PURE__*/_jsx("stop", {
+          stopColor: "#fff"
+        }), /*#__PURE__*/_jsx("stop", {
+          offset: "1",
+          stopColor: "#6BB6FE"
+        })]
+      }), /*#__PURE__*/_jsxs("linearGradient", {
+        gradientUnits: "userSpaceOnUse",
+        id: e.id,
+        x1: "9.145",
+        x2: "14.959",
+        y1: "0",
+        y2: "24.022",
+        children: [/*#__PURE__*/_jsx("stop", {
+          stopColor: "#fff"
+        }), /*#__PURE__*/_jsx("stop", {
+          offset: "1",
+          stopColor: "#6BB6FE"
+        })]
+      })]
+    })]
+  }));
+});
+export default Icon;

@@ -1,0 +1,1 @@
+{"version":3,"file":"constants.mjs","names":[],"sources":["../../../src/base-ui/zIndex/constants.ts"],"sourcesContent":["export const Z_INDEX_LAYER = {\n  floating: 1100,\n  modal: 1200,\n  toast: 100_000,\n  step: 10,\n} as const;\n\nexport type LayerTier = 'floating' | 'modal' | 'toast';\n"],"mappings":";AAAA,MAAa,gBAAgB;CAC3B,UAAU;CACV,OAAO;CACP,OAAO;CACP,MAAM;AACR"}

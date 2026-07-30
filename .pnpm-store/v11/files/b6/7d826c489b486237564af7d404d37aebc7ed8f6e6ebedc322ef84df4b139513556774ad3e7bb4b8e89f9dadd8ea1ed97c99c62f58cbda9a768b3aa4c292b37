@@ -1,0 +1,9 @@
+import { ButtonProps } from "./type.mjs";
+//#region src/base-ui/Button/Button.d.ts
+declare const Button: {
+  ({ block, children, className, classNames, danger, disabled, ghost, href, htmlType, icon, iconPosition, loading, onClick, ref, shape, size, styles: userStyles, target, type, ...rest }: ButtonProps): import("react").JSX.Element;
+  displayName: string;
+};
+//#endregion
+export { Button as default };
+//# sourceMappingURL=Button.d.mts.map

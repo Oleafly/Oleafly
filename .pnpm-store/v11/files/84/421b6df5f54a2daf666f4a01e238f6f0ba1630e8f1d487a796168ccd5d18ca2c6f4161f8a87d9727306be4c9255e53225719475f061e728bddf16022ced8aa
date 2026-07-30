@@ -1,0 +1,124 @@
+{
+  "name": "is-lite",
+  "version": "2.0.0",
+  "description": "A tiny javascript type testing tool",
+  "author": "Gil Barbara <gilbarbara@gmail.com>",
+  "keywords": [
+    "type",
+    "check",
+    "assertion",
+    "validation",
+    "test",
+    "typeguard",
+    "typeof",
+    "instanceof"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gilbarbara/is-lite.git"
+  },
+  "bugs": {
+    "url": "https://github.com/gilbarbara/is-lite/issues"
+  },
+  "homepage": "https://github.com/gilbarbara/is-lite#readme",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./standalone": {
+      "import": "./dist/standalone.mjs",
+      "require": "./dist/standalone.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "typesVersions": {
+    "*": {
+      "standalone": [
+        "dist/standalone.d.ts"
+      ]
+    }
+  },
+  "types": "dist/index.d.ts",
+  "sideEffects": false,
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.2",
+    "@gilbarbara/esbuilder": "^0.2.0",
+    "@gilbarbara/eslint-config": "^1.0.1",
+    "@gilbarbara/prettier-config": "^1.0.0",
+    "@gilbarbara/tsconfig": "^1.0.0",
+    "@size-limit/preset-small-lib": "^11.2.0",
+    "@types/node": "^20.10.6",
+    "@vitest/coverage-v8": "^4.0.13",
+    "del-cli": "^7.0.0",
+    "eslint": "^9.39.1",
+    "happy-dom": "^20.0.10",
+    "husky": "^9.1.7",
+    "prettier": "^3.6.2",
+    "repo-tools": "^0.3.1",
+    "size-limit": "^11.2.0",
+    "ts-node": "^10.9.2",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.13"
+  },
+  "scripts": {
+    "build": "npm run clean && tsup",
+    "watch": "tsup --watch",
+    "clean": "del dist/*",
+    "lint": "eslint --fix src test",
+    "test": "TZ=UTC vitest run",
+    "test:coverage": "TZ=UTC vitest run --typecheck --coverage",
+    "test:watch": "TZ=UTC vitest watch",
+    "typecheck": "tsc",
+    "typevalidation": "attw -Pq",
+    "format": "prettier \"**/*.{js,jsx,json,yml,yaml,css,less,scss,ts,tsx,md,graphql,mdx}\" --write",
+    "validate": "npm run lint && npm run typecheck && npm run test:coverage && npm run build && npm run typevalidation && npm run size",
+    "size": "size-limit",
+    "prepublishOnly": "npm run validate",
+    "prepare": "husky install"
+  },
+  "tsup": {
+    "cjsInterop": true,
+    "dts": true,
+    "entry": [
+      "src/index.ts",
+      "src/standalone.ts"
+    ],
+    "format": [
+      "cjs",
+      "esm"
+    ],
+    "sourcemap": true,
+    "splitting": false
+  },
+  "prettier": "@gilbarbara/prettier-config",
+  "size-limit": [
+    {
+      "name": "commonjs",
+      "path": "./dist/index.js",
+      "limit": "1.5 kB"
+    },
+    {
+      "name": "esm",
+      "path": "./dist/index.mjs",
+      "limit": "1.5 kB"
+    },
+    {
+      "name": "standalone-commonjs",
+      "path": "./dist/standalone.js",
+      "limit": "1.5 kB"
+    },
+    {
+      "name": "standalone-esm",
+      "path": "./dist/standalone.mjs",
+      "limit": "1.5 kB"
+    }
+  ]
+}

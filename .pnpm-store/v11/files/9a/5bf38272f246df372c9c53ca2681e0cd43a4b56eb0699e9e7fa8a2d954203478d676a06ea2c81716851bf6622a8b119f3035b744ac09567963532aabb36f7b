@@ -1,0 +1,154 @@
+"use strict";
+
+var _interopRequireDefault = require("@babel/runtime/helpers/interopRequireDefault").default;
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+var _ur_PK = _interopRequireDefault(require("@rc-component/pagination/locale/ur_PK"));
+var _ur_PK2 = _interopRequireDefault(require("../calendar/locale/ur_PK"));
+var _ur_PK3 = _interopRequireDefault(require("../date-picker/locale/ur_PK"));
+var _ur_PK4 = _interopRequireDefault(require("../time-picker/locale/ur_PK"));
+const typeTemplate = '${label} درست نہیں ہے ${type}';
+const localeValues = {
+  locale: 'ur',
+  Pagination: _ur_PK.default,
+  DatePicker: _ur_PK3.default,
+  TimePicker: _ur_PK4.default,
+  Calendar: _ur_PK2.default,
+  global: {
+    placeholder: 'منتخب کریں',
+    close: 'بند کریں',
+    show: 'دکھائیں',
+    hide: 'چھپائیں',
+    sortable: 'قابل ترتیب'
+  },
+  Table: {
+    filterTitle: 'فلٹر مینو',
+    filterConfirm: 'ٹھیک ہے',
+    filterReset: 'ری سیٹ کریں',
+    filterEmptyText: 'فلٹرز نہیں',
+    emptyText: 'کوئی ڈیٹا نہیں',
+    selectAll: 'موجودہ صفحہ منتخب کریں',
+    selectInvert: 'موجودہ صفحے کو الٹ دیں',
+    selectNone: 'تمام ڈیٹا صاف کریں',
+    selectionAll: 'تمام ڈیٹا کو منتخب کریں',
+    sortTitle: 'ترتیب دیں',
+    expand: 'پھیلائیں',
+    collapse: 'سمیٹیں',
+    triggerDesc: 'نزولی کو ترتیب دینے کیلئے کلک کریں',
+    triggerAsc: 'چڑھنے کو ترتیب دینے کیلئے کلک کریں',
+    cancelSort: 'ترتیب کو منسوخ کرنے کیلئے دبائیں',
+    filterCheckAll: 'تمام اشیاء کو منتخب کریں۔',
+    filterSearchPlaceholder: 'فلٹرز میں تلاش کریں۔'
+  },
+  Tour: {
+    Next: 'اگلا',
+    Previous: 'پچھلا',
+    Finish: 'ختم کریں'
+  },
+  Modal: {
+    okText: 'ٹھیک ہے',
+    cancelText: 'منسوخ کریں',
+    justOkText: 'ٹھیک ہے'
+  },
+  Popconfirm: {
+    okText: 'ٹھیک ہے',
+    cancelText: 'منسوخ کریں'
+  },
+  Transfer: {
+    titles: ['', ''],
+    searchPlaceholder: 'یہاں تلاش کریں',
+    itemUnit: 'شے',
+    itemsUnit: 'اشیاء',
+    remove: 'ہٹائیں',
+    selectCurrent: 'موجودہ صفحہ منتخب کریں',
+    removeCurrent: 'موجودہ صفحہ ہٹائیں',
+    selectAll: 'تمام ڈیٹا کو منتخب کریں',
+    removeAll: 'تمام ڈیٹا کو ہٹا دیں',
+    selectInvert: 'موجودہ صفحے کو الٹ دیں',
+    deselectAll: 'تمام ڈیٹا کو غیر منتخب کریں۔'
+  },
+  Upload: {
+    uploading: 'اپ لوڈ ہو رہا ہے…',
+    removeFile: 'فائل کو ہٹا دیں',
+    uploadError: 'اپ لوڈ کی خرابی',
+    previewFile: 'پیش نظار فائل',
+    downloadFile: 'فائل ڈاؤن لوڈ کریں'
+  },
+  Empty: {
+    description: 'کوئی ڈیٹا نہیں'
+  },
+  Icon: {
+    icon: 'آئیکن'
+  },
+  Text: {
+    edit: 'ترمیم',
+    copy: 'کاپی',
+    copied: 'کاپی ہوگیا',
+    expand: 'پھیلائیں',
+    collapse: 'سمٹنا'
+  },
+  Form: {
+    optional: '(اختیاری)',
+    defaultValidateMessages: {
+      default: ' ${label} کیلئے فیلڈ کی توثیق میں نقص',
+      required: 'درج کریں ${label}',
+      enum: '${label} ایک ہونا ضروری ہے [${enum}]',
+      whitespace: '${label} خالی نہیں ہوسکتا',
+      date: {
+        format: '${label} تاریخ کی شکل غلط ہے',
+        parse: '${label} تاریخ میں تبدیل نہیں کیا جاسکتا',
+        invalid: '${label} غلط تاریخ ہے'
+      },
+      types: {
+        string: typeTemplate,
+        method: typeTemplate,
+        array: typeTemplate,
+        object: typeTemplate,
+        number: typeTemplate,
+        date: typeTemplate,
+        boolean: typeTemplate,
+        integer: typeTemplate,
+        float: typeTemplate,
+        regexp: typeTemplate,
+        email: typeTemplate,
+        url: typeTemplate,
+        hex: typeTemplate
+      },
+      string: {
+        len: '${label} ضروری ہے ${len} حروف',
+        min: '${label} کم از کم ہونا چاہئے ${min} حروف',
+        max: '${label} تک ہونا چاہئے ${max} حروف',
+        range: '${label} کے درمیان ہونا چاہئے ${min}-${max} حروف'
+      },
+      number: {
+        len: '${label} کے برابر ہونا چاہئے ${len}',
+        min: '${label} کم از کم ہونا چاہئے ${min}',
+        max: '${label} زیادہ سے زیادہ ہونا چاہئے ${max}',
+        range: '${label} کے درمیان ہونا چاہئے ${min}-${max}'
+      },
+      array: {
+        len: 'ضروری ہے ${len} ${label}',
+        min: 'کم از کم ${min} ${label}',
+        max: 'زیادہ سے زیادہ ${max} ${label}',
+        range: 'کی رقم ${label} کے درمیان ہونا چاہئے ${min}-${max}'
+      },
+      pattern: {
+        mismatch: '${label} پیٹرن سے ملتا نہیں ہے ${pattern}'
+      }
+    }
+  },
+  QRCode: {
+    expired: 'QR کوڈ کی میعاد ختم ہو گئی۔',
+    refresh: 'ریفریش کریں۔',
+    scanned: 'سکین کیا گیا۔'
+  },
+  ColorPicker: {
+    presetEmpty: 'خالی',
+    transparent: 'شفاف',
+    singleColor: 'سنگل رنگ',
+    gradientColor: 'تدریجی رنگ'
+  }
+};
+var _default = exports.default = localeValues;

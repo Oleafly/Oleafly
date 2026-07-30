@@ -1,0 +1,91 @@
+{
+  "name": "@pierre/diffs",
+  "version": "1.2.12",
+  "license": "apache-2.0",
+  "files": [
+    "dist",
+    "LICENSE.md",
+    "README.md"
+  ],
+  "type": "module",
+  "sideEffects": [
+    "dist/components/web-components.js"
+  ],
+  "typesVersions": {
+    "*": {
+      "*": [
+        "dist/*"
+      ],
+      "react": [
+        "dist/react/index.d.ts"
+      ],
+      "ssr": [
+        "dist/ssr/index.d.ts"
+      ],
+      "worker": [
+        "dist/worker/index.d.ts"
+      ]
+    }
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./react": {
+      "types": "./dist/react/index.d.ts",
+      "import": "./dist/react/index.js"
+    },
+    "./ssr": {
+      "types": "./dist/ssr/index.d.ts",
+      "import": "./dist/ssr/index.js"
+    },
+    "./worker": {
+      "types": "./dist/worker/index.d.ts",
+      "import": "./dist/worker/index.js"
+    },
+    "./worker/worker.js": {
+      "types": "./dist/worker/worker.d.ts",
+      "import": "./dist/worker/worker.js"
+    },
+    "./worker/worker-portable.js": {
+      "types": "./dist/worker/worker-portable.d.ts",
+      "import": "./dist/worker/worker-portable.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@shikijs/transformers": "^3.0.0 || ^4.0.0",
+    "diff": "9.0.0",
+    "hast-util-to-html": "9.0.5",
+    "lru_map": "0.4.1",
+    "shiki": "^3.0.0 || ^4.0.0",
+    "@pierre/theming": "0.0.2",
+    "@pierre/theme": "1.1.0"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/core": "0.18.2",
+    "@tsdown/css": "0.22.3",
+    "@types/hast": "3.0.4",
+    "@types/jsdom": "28.0.1",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
+    "autoprefixer": "10.4.22",
+    "jsdom": "26.1.0",
+    "lightningcss": "1.32.0",
+    "postcss": "8.5.6",
+    "postcss-calc": "10.1.1",
+    "postcss-nesting": "14.0.0",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "tsdown": "0.22.3",
+    "typescript": "6.0.3"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1 || ^19.0.0",
+    "react-dom": "^18.3.1 || ^19.0.0"
+  },
+  "scripts": {}
+}

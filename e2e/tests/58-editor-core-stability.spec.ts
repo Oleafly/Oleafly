@@ -44,6 +44,7 @@ interface AuthoringChaosProbe {
     readonly line: number;
     readonly delta: number;
     readonly settleFrames: number;
+    readonly detail: unknown;
   }>;
   readonly maxGutterDelta: number;
   readonly documentScrollLeaks: number;
@@ -349,28 +350,46 @@ async function runAuthoringChaos(
                 : domPosition.node.parentElement;
             const line = element?.closest?.(".cm-line");
             if (!line) return [];
+            const gutterRect = gutter.getBoundingClientRect();
+            const lineRect = line.getBoundingClientRect();
             return [
               {
                 lineNumber,
-                delta: Math.abs(
-                  gutter.getBoundingClientRect().top -
-                    line.getBoundingClientRect().top,
-                ),
+                delta: Math.abs(gutterRect.top - lineRect.top),
+                // Captured so a persistent offset can be identified from a CI
+                // log: a constant delta points at a fixed-size element, not a
+                // timing race, and the resolved line's own text says whether
+                // domAtPos landed on the row the gutter is numbering.
+                detail: {
+                  gutterTop: Math.round(gutterRect.top * 10) / 10,
+                  lineTop: Math.round(lineRect.top * 10) / 10,
+                  signed: Math.round((gutterRect.top - lineRect.top) * 10) / 10,
+                  gutterHeight: Math.round(gutterRect.height * 10) / 10,
+                  lineHeight: Math.round(lineRect.height * 10) / 10,
+                  widget: !!line.querySelector(".math-preview"),
+                  blockWidget: !!line.querySelector(".cm-widgetBuffer, .cm-blockWidget"),
+                  resolved: (line.textContent ?? "").slice(0, 40),
+                  expected: view.state.doc.line(lineNumber).text.slice(0, 40),
+                  docLines: view.state.doc.lines,
+                },
               },
             ];
           });
           let worst = 0;
           let worstLineNumber = 0;
+          let worstDetail = null;
           for (const entry of deltas) {
             if (entry.delta > worst) {
               worst = entry.delta;
               worstLineNumber = entry.lineNumber;
+              worstDetail = entry.detail;
             }
           }
           return {
             gutterCount: gutters.length,
             maxDelta: worst,
             worstLineNumber,
+            worstDetail,
           };
         };
         const inspect = async (actionName) => {
@@ -382,7 +401,7 @@ async function runAuthoringChaos(
             const rect = line.getBoundingClientRect();
             return rect.bottom >= viewport.top && rect.top <= viewport.bottom;
           });
-          let { gutterCount, maxDelta, worstLineNumber } = gutterDelta();
+          let { gutterCount, maxDelta, worstLineNumber, worstDetail } = gutterDelta();
           let settleFrames = 0;
           // Debounced decoration dispatches (math previews, lint sets) can land
           // between an edit and this probe, leaving the gutter spacer one
@@ -394,7 +413,7 @@ async function runAuthoringChaos(
           while (maxDelta > 1.5 && settleFrames < 24) {
             await frame();
             settleFrames++;
-            ({ gutterCount, maxDelta, worstLineNumber } = gutterDelta());
+            ({ gutterCount, maxDelta, worstLineNumber, worstDetail } = gutterDelta());
           }
           maxGutterDelta = Math.max(maxGutterDelta, maxDelta);
           maxSettleFrames = Math.max(maxSettleFrames, settleFrames);
@@ -411,6 +430,7 @@ async function runAuthoringChaos(
                 line: worstLineNumber,
                 delta: Math.round(maxDelta * 100) / 100,
                 settleFrames,
+                detail: worstDetail,
               });
             }
           }

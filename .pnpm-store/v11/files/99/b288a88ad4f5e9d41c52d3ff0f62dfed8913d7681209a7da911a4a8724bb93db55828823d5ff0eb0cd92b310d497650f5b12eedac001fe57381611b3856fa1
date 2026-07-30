@@ -1,0 +1,9 @@
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.START_AUTO_CHANGE_DELAY = exports.SCROLLING_POINTER_MOVE_DISTANCE = exports.CHANGE_VALUE_TICK_DELAY = void 0;
+const CHANGE_VALUE_TICK_DELAY = exports.CHANGE_VALUE_TICK_DELAY = 60;
+const START_AUTO_CHANGE_DELAY = exports.START_AUTO_CHANGE_DELAY = 400;
+const SCROLLING_POINTER_MOVE_DISTANCE = exports.SCROLLING_POINTER_MOVE_DISTANCE = 8;

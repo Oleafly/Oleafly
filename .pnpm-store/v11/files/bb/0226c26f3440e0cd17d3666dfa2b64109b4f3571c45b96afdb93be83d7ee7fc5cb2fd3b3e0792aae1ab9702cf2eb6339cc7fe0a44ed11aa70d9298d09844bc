@@ -1,0 +1,82 @@
+{
+    "name": "rehype-github-alerts",
+    "version": "4.2.0",
+    "description": "rehype plugin to create alerts (admonitions/callouts)",
+    "main": "./dist/index.js",
+    "scripts": {
+        "build": "npm run build-css && esbuild ./src/index.ts --format=esm --target=es2022 --outdir=dist && npm run types",
+        "build-css": "esbuild --bundle ./src/styling/css/index.css --outfile=dist/styling/css/index.css",
+        "lint": "eslint src/",
+        "lint-fix": "eslint src/ --fix",
+        "types": "tsc --declaration --emitDeclarationOnly --declarationDir dist --project tsconfig.build.json",
+        "test": "npm run build && npm run test-coverage",
+        "test-api": "node --conditions development test/index.js",
+        "test-coverage": "c8 --99 --check-coverage --reporter lcov npm run test-api"
+    },
+    "author": "chrisweb (https://chris.lu)",
+    "license": "MIT",
+    "keywords": [
+        "rehype-plugin",
+        "github",
+        "alerts",
+        "admonitions",
+        "callouts",
+        "rehype",
+        "hast",
+        "mdx",
+        "markdown",
+        "typescript"
+    ],
+    "type": "module",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        },
+        "./styling/css/index.css": "./dist/styling/css/index.css"
+    },
+    "files": [
+        "package*.json",
+        "dist/*"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/chrisweb/rehype-github-alerts.git"
+    },
+    "bugs": "https://github.com/chrisweb/rehype-github-alerts/issues",
+    "dependencies": {
+        "hast-util-from-html": "^2.0.3",
+        "hast-util-is-element": "^3.0.0",
+        "unist-util-visit": "^5.0.0",
+        "@primer/octicons": "^19.20.0"
+    },
+    "devDependencies": {
+        "@eslint/js": "^9.23.0",
+        "@stylistic/eslint-plugin": "^5.5.0",
+        "@types/hast": "^3.0.4",
+        "@types/node": "^24.10.0",
+        "@types/primer__octicons": "^19.11.0",
+        "c8": "^10.1.3",
+        "create-gfm-fixtures": "^2.2.0",
+        "dotenv": "^17.2.3",
+        "esbuild": "^0.27.0",
+        "eslint": "^9.23.0",
+        "globals": "^16.0.0",
+        "jiti": "^2.4.2",
+        "rehype-stringify": "^10.0.1",
+        "remark-gfm": "^4.0.1",
+        "remark-parse": "^11.0.0",
+        "remark-rehype": "^11.1.1",
+        "typescript": "^5.8.2",
+        "typescript-eslint": "^8.27.0",
+        "unified": "^11.0.5"
+    },
+    "typeCoverage": {
+        "atLeast": 100,
+        "detail": true,
+        "strict": true
+    },
+    "funding": {
+        "url": "https://github.com/sponsors/chrisweb"
+    }
+}

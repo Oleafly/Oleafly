@@ -1,0 +1,15 @@
+Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
+const require_xcolor = require("../../xcolor-kzYzOAhs.cjs");
+exports.DVI_PS_NAMES = require_xcolor.DVI_PS_NAMES;
+exports.PREDEFINED_XCOLOR_COLORS = require_xcolor.PREDEFINED_XCOLOR_COLORS;
+exports.SVG_NAMES = require_xcolor.SVG_NAMES;
+exports.X11_NAMES = require_xcolor.X11_NAMES;
+exports.XColorCoreModelToColor = require_xcolor.XColorCoreModelToColor;
+exports.colorToTextcolorMacro = require_xcolor.colorToTextcolorMacro;
+exports.computeColor = require_xcolor.computeColor;
+exports.environments = require_xcolor.environments;
+exports.macros = require_xcolor.macros;
+exports.parse = require_xcolor.parse;
+exports.printRaw = require_xcolor.printRaw;
+exports.xcolorColorToHex = require_xcolor.xcolorColorToHex;
+exports.xcolorMacroToHex = require_xcolor.xcolorMacroToHex;

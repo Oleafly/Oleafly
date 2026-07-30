@@ -1,0 +1,99 @@
+{
+  "name": "@gilbarbara/deep-equal",
+  "version": "0.4.1",
+  "description": "Tiny deep equal comparator",
+  "author": "Gil Barbara <gilbarbara@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/gilbarbara/deep-equal.git"
+  },
+  "bugs": {
+    "url": "https://github.com/gilbarbara/deep-equal/issues"
+  },
+  "homepage": "https://github.com/gilbarbara/deep-equal#readme",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "types": "dist/index.d.ts",
+  "sideEffects": false,
+  "license": "MIT",
+  "keywords": [
+    "equal",
+    "deep-equal",
+    "typescript"
+  ],
+  "devDependencies": {
+    "@gilbarbara/eslint-config": "^1.0.4",
+    "@gilbarbara/prettier-config": "^1.0.0",
+    "@gilbarbara/tsconfig": "^1.0.0",
+    "@size-limit/preset-small-lib": "^12.0.0",
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^22.19.8",
+    "@types/react": "^19.2.10",
+    "@types/react-dom": "^19.2.3",
+    "@vitest/coverage-v8": "^4.0.18",
+    "del-cli": "^7.0.0",
+    "eslint": "^9.39.2",
+    "happy-dom": "^20.5.0",
+    "husky": "^9.1.7",
+    "jest-extended": "^7.0.0",
+    "prettier": "^3.8.1",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "repo-tools": "^0.3.1",
+    "size-limit": "^12.0.0",
+    "ts-node": "^10.9.2",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  },
+  "scripts": {
+    "build": "pnpm clean && tsup",
+    "watch": "tsup --watch",
+    "clean": "del dist/*",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest watch",
+    "lint": "eslint --fix src test",
+    "typecheck": "tsc --p test/tsconfig.json",
+    "format": "prettier \"**/*.{css,graphql,js,json,jsx,less,md,mdx,scss,ts,tsx,yaml,yml}\" --write",
+    "validate": "pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm build && pnpm size",
+    "size": "size-limit",
+    "prepare": "husky"
+  },
+  "tsup": {
+    "cjsInterop": true,
+    "dts": true,
+    "entry": [
+      "src/index.ts"
+    ],
+    "format": [
+      "cjs",
+      "esm"
+    ],
+    "sourcemap": true,
+    "splitting": false
+  },
+  "prettier": "@gilbarbara/prettier-config",
+  "size-limit": [
+    {
+      "name": "commonjs",
+      "path": "./dist/index.js",
+      "limit": "1 kB"
+    },
+    {
+      "name": "esm",
+      "path": "./dist/index.mjs",
+      "limit": "1 kB"
+    }
+  ]
+}

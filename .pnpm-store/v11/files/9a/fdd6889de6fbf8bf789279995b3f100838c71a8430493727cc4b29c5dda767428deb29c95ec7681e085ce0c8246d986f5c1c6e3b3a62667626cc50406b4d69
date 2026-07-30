@@ -1,0 +1,1 @@
+export const themeNames = ["pierre-light","pierre-light-protanopia-deuteranopia","pierre-light-soft","pierre-light-tritanopia","pierre-light-vibrant","pierre-dark","pierre-dark-protanopia-deuteranopia","pierre-dark-soft","pierre-dark-tritanopia","pierre-dark-vibrant"]

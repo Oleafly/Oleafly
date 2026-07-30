@@ -1,0 +1,125 @@
+"use client";
+import { useMotionComponent } from "../../MotionProvider/index.mjs";
+import Icon from "../../Icon/Icon.mjs";
+import { styles } from "./style.mjs";
+import { isValidElement } from "react";
+import { Fragment as Fragment$1, jsx, jsxs } from "react/jsx-runtime";
+import { cx } from "antd-style";
+//#region src/base-ui/Button/Button.tsx
+const resolveIconNode = (node) => {
+	if (node === void 0 || node === null) return null;
+	if (isValidElement(node) || typeof node === "string" || typeof node === "number") return node;
+	return /* @__PURE__ */ jsx(Icon, {
+		icon: node,
+		size: "small"
+	});
+};
+const resolveSizeCls = (size) => {
+	if (size === "small") return styles.sizeSmall;
+	if (size === "large") return styles.sizeLarge;
+	return styles.sizeMiddle;
+};
+const resolveIconOnlySizeCls = (size) => {
+	if (size === "small") return styles.iconOnlySmall;
+	if (size === "large") return styles.iconOnlyLarge;
+	return styles.iconOnlyMiddle;
+};
+const resolveVariantCls = ({ danger, ghost, type }) => {
+	if (ghost) {
+		if (danger) return styles.ghostDanger;
+		if (type === "primary") return styles.ghostPrimary;
+		if (type === "dashed") return cx(styles.ghostDefault, styles.ghostDashed);
+		return styles.ghostDefault;
+	}
+	switch (type) {
+		case "primary": return danger ? styles.dangerSolid : styles.variantPrimary;
+		case "dashed": return danger ? cx(styles.variantDashed, styles.dangerOutlined) : styles.variantDashed;
+		case "fill": return danger ? styles.dangerFill : styles.variantFill;
+		case "text": return danger ? cx(styles.variantText, styles.dangerInline) : styles.variantText;
+		case "link": return danger ? cx(styles.variantLink, styles.dangerInline) : styles.variantLink;
+		default: return danger ? cx(styles.variantDefault, styles.dangerOutlined) : styles.variantDefault;
+	}
+};
+const tapAnim = { scale: .98 };
+const motionTransition = {
+	damping: 26,
+	mass: .6,
+	stiffness: 600,
+	type: "spring"
+};
+const Button = ({ block, children, className, classNames, danger = false, disabled, ghost = false, href, htmlType = "button", icon, iconPosition = "start", loading, onClick, ref, shape = "default", size = "middle", styles: userStyles, target, type = "default", ...rest }) => {
+	const Motion = useMotionComponent();
+	const isInteractionDisabled = disabled || loading;
+	const sizeCls = resolveSizeCls(size);
+	const variantCls = resolveVariantCls({
+		danger,
+		ghost,
+		type
+	});
+	const shapeCls = shape === "circle" ? styles.shapeCircle : shape === "round" ? styles.shapeRound : void 0;
+	const iconOnlySizeCls = !(children !== void 0 && children !== null && children !== false && children !== "") && !!(loading || icon) ? resolveIconOnlySizeCls(size) : void 0;
+	const composedClassName = cx(styles.base, sizeCls, variantCls, shapeCls, block && styles.block, iconPosition === "end" && styles.iconEnd, iconOnlySizeCls, className);
+	const inner = /* @__PURE__ */ jsxs(Fragment$1, { children: [
+		/* @__PURE__ */ jsx("span", {
+			"aria-hidden": !loading,
+			style: userStyles?.icon,
+			className: cx(styles.iconBox, styles.spinnerSlot, loading && styles.spinnerSlotShow, iconPosition === "end" && styles.spinnerSlotEnd, classNames?.icon),
+			children: /* @__PURE__ */ jsx("span", { className: styles.spinner })
+		}),
+		icon && !loading ? /* @__PURE__ */ jsx("span", {
+			className: cx(styles.iconBox, classNames?.icon),
+			style: userStyles?.icon,
+			children: resolveIconNode(icon)
+		}) : null,
+		children
+	] });
+	const motionGestures = isInteractionDisabled ? {} : {
+		transition: motionTransition,
+		whileTap: tapAnim
+	};
+	if (href !== void 0) {
+		const handleAnchorClick = (e) => {
+			if (isInteractionDisabled) {
+				e.preventDefault();
+				return;
+			}
+			onClick?.(e);
+		};
+		return /* @__PURE__ */ jsx(Motion.a, {
+			"aria-busy": loading || void 0,
+			"aria-disabled": isInteractionDisabled || void 0,
+			href: disabled ? void 0 : href,
+			target,
+			...rest,
+			className: composedClassName,
+			ref,
+			onClick: handleAnchorClick,
+			...motionGestures,
+			children: inner
+		});
+	}
+	const handleButtonClick = (e) => {
+		if (isInteractionDisabled) {
+			e.preventDefault();
+			return;
+		}
+		onClick?.(e);
+	};
+	return /* @__PURE__ */ jsx(Motion.button, {
+		type: htmlType,
+		...rest,
+		"aria-busy": loading || void 0,
+		"aria-disabled": isInteractionDisabled || void 0,
+		className: composedClassName,
+		disabled,
+		ref,
+		onClick: handleButtonClick,
+		...motionGestures,
+		children: inner
+	});
+};
+Button.displayName = "BaseButton";
+//#endregion
+export { Button as default };
+
+//# sourceMappingURL=Button.mjs.map

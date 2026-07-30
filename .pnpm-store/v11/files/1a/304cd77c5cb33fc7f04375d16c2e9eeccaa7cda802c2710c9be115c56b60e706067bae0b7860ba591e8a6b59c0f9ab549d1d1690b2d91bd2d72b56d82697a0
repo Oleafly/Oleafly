@@ -1,0 +1,1 @@
+{"version":3,"file":"jsx.d.ts","names":["JSX","IntrinsicElements","DIFFS_TAG_NAME","React","DetailedHTMLProps","HTMLAttributes","HTMLElement"],"sources":["../../src/react/jsx.d.ts"],"mappings":";;;YAIYA,GAAAA;IAAAA,UACEC,iBAAAA;MAAAA,CACP,cAAA,GAAiB,KAAA,CAAM,iBAAA,CACtB,KAAA,CAAM,cAAA,CAAe,WAAA,GACrB,WAAA;IAAA;EAAA;AAAA"}

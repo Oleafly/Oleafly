@@ -1,0 +1,153 @@
+{
+  "name": "react-joyride",
+  "version": "3.2.0",
+  "description": "Create guided tours for your apps",
+  "author": "Gil Barbara <gilbarbara@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gilbarbara/react-joyride.git"
+  },
+  "bugs": {
+    "url": "https://github.com/gilbarbara/react-joyride/issues"
+  },
+  "homepage": "https://react-joyride.com/",
+  "keywords": [
+    "react",
+    "react-component",
+    "tooltips",
+    "joyride",
+    "walkthroughs",
+    "tour"
+  ],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "types": "dist/index.d.cts",
+  "sideEffects": false,
+  "license": "MIT",
+  "peerDependencies": {
+    "react": "16.8 - 19",
+    "react-dom": "16.8 - 19"
+  },
+  "dependencies": {
+    "@fastify/deepmerge": "^3.2.1",
+    "@floating-ui/react-dom": "^2.1.8",
+    "@gilbarbara/deep-equal": "^0.4.1",
+    "@gilbarbara/hooks": "^0.11.0",
+    "@gilbarbara/types": "^0.2.2",
+    "is-lite": "^2.0.0",
+    "react-innertext": "^1.1.5",
+    "scroll": "^3.0.1",
+    "scrollparent": "^2.1.0",
+    "use-sync-external-store": "^1.6.0"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.4",
+    "@gilbarbara/eslint-config": "^1.2.3",
+    "@gilbarbara/prettier-config": "^1.0.0",
+    "@gilbarbara/tsconfig": "^1.0.0",
+    "@playwright/test": "^1.61.1",
+    "@size-limit/preset-big-lib": "^12.1.0",
+    "@swc/core": "^1.15.43",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@total-typescript/shoehorn": "^0.1.2",
+    "@types/node": "^24.13.2",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@types/scroll": "^3.0.3",
+    "@types/scrollparent": "^2.0.3",
+    "@types/use-sync-external-store": "^1.5.0",
+    "@vitejs/plugin-react": "^6.0.3",
+    "@vitest/coverage-v8": "^4.1.10",
+    "cross-env": "^10.1.0",
+    "del-cli": "^7.0.0",
+    "eslint": "^9.39.4",
+    "husky": "^9.1.7",
+    "jest-extended": "^7.0.0",
+    "jsdom": "^29.1.1",
+    "prettier": "^3.9.4",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "repo-tools": "^0.3.1",
+    "size-limit": "^12.1.0",
+    "tsdown": "^0.22.3",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.10"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "watch": "tsdown --watch",
+    "clean": "del dist/*",
+    "website": "pnpm --dir website dev",
+    "website:build": "pnpm --dir website build",
+    "website:start": "pnpm --dir website start",
+    "website:serve": "pnpm website:build && pnpm website:start",
+    "lint": "eslint --fix src test e2e",
+    "typecheck": "tsc -p test/tsconfig.json",
+    "typevalidation": "attw -P",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest watch",
+    "e2e": "playwright test",
+    "e2e:chromium": "pnpm e2e --project=chromium",
+    "e2e:debug": "pnpm e2e --project=chromium --debug",
+    "e2e:ui": "pnpm e2e --ui",
+    "e2e:headed": "pnpm e2e --headed",
+    "e2e:report": "playwright show-report",
+    "format": "prettier \"**/*.{js,jsx,ts,tsx}\" --write",
+    "check": "pnpm lint && pnpm typecheck && pnpm test:coverage",
+    "validate": "pnpm check && pnpm build && pnpm size && pnpm typevalidation",
+    "size": "size-limit",
+    "prepare": "husky"
+  },
+  "tsdown": {
+    "entry": [
+      "src/index.tsx"
+    ],
+    "format": [
+      "cjs",
+      "esm"
+    ],
+    "dts": true,
+    "target": "es2022",
+    "sourcemap": true,
+    "banner": "'use client';",
+    "inputOptions": {
+      "transform": {
+        "jsx": "react",
+        "inject": {
+          "React": [
+            "react",
+            "default"
+          ]
+        }
+      }
+    }
+  },
+  "prettier": "@gilbarbara/prettier-config",
+  "size-limit": [
+    {
+      "name": "commonjs",
+      "path": "./dist/index.cjs",
+      "limit": "30 kB"
+    },
+    {
+      "name": "esm",
+      "path": "./dist/index.mjs",
+      "limit": "30 kB",
+      "import": "*"
+    }
+  ],
+  "packageManager": "pnpm@11.10.0+sha512.0b7f8b98060031904c017e3a41eb187a16d40eeb829b95c4f8cb03681761fc4ab53dd219115b9b447f4dce1a05a214764461e7d3703392a9f32f9511ce8c86c8"
+}

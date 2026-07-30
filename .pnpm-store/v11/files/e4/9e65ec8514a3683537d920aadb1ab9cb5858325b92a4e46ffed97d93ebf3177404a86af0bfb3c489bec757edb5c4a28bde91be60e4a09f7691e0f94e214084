@@ -1,0 +1,4 @@
+import { ScrollAreaContent, ScrollAreaContentProps, ScrollAreaCorner, ScrollAreaCornerProps, ScrollAreaRoot, ScrollAreaRootProps, ScrollAreaScrollbar, ScrollAreaScrollbarProps, ScrollAreaThumb, ScrollAreaThumbProps, ScrollAreaViewport, ScrollAreaViewportProps } from "./atoms.mjs";
+import { ScrollAreaProps } from "./type.mjs";
+import { ScrollArea } from "./ScrollArea.mjs";
+export { ScrollArea, ScrollAreaContent, type ScrollAreaContentProps, ScrollAreaCorner, type ScrollAreaCornerProps, type ScrollAreaProps, ScrollAreaRoot, type ScrollAreaRootProps, ScrollAreaScrollbar, type ScrollAreaScrollbarProps, ScrollAreaThumb, type ScrollAreaThumbProps, ScrollAreaViewport, type ScrollAreaViewportProps };

@@ -1,0 +1,1 @@
+{"version":3,"sources":["../src/index.ts"],"sourcesContent":["import { ListKeymap } from '@tiptap/extension-list'\n\nexport type { ListKeymapOptions } from '@tiptap/extension-list'\nexport { listHelpers, ListKeymap } from '@tiptap/extension-list'\n\nexport default ListKeymap\n"],"mappings":";AAAA,SAAS,kBAAkB;AAG3B,SAAS,aAAa,cAAAA,mBAAkB;AAExC,IAAO,gBAAQ;","names":["ListKeymap"]}

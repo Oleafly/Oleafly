@@ -1,0 +1,40 @@
+'use client';
+
+function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
+var _excluded = ["size", "style"];
+function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
+function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
+function _defineProperty(obj, key, value) { key = _toPropertyKey(key); if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : String(i); }
+function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
+function _objectWithoutProperties(source, excluded) { if (source == null) return {}; var target = _objectWithoutPropertiesLoose(source, excluded); var key, i; if (Object.getOwnPropertySymbols) { var sourceSymbolKeys = Object.getOwnPropertySymbols(source); for (i = 0; i < sourceSymbolKeys.length; i++) { key = sourceSymbolKeys[i]; if (excluded.indexOf(key) >= 0) continue; if (!Object.prototype.propertyIsEnumerable.call(source, key)) continue; target[key] = source[key]; } } return target; }
+function _objectWithoutPropertiesLoose(source, excluded) { if (source == null) return {}; var target = {}; var sourceKeys = Object.keys(source); var key, i; for (i = 0; i < sourceKeys.length; i++) { key = sourceKeys[i]; if (excluded.indexOf(key) >= 0) continue; target[key] = source[key]; } return target; }
+import { memo } from 'react';
+import { TITLE } from "../style";
+import { jsx as _jsx } from "react/jsx-runtime";
+import { jsxs as _jsxs } from "react/jsx-runtime";
+var Icon = /*#__PURE__*/memo(function (_ref) {
+  var _ref$size = _ref.size,
+    size = _ref$size === void 0 ? '1em' : _ref$size,
+    style = _ref.style,
+    rest = _objectWithoutProperties(_ref, _excluded);
+  return /*#__PURE__*/_jsxs("svg", _objectSpread(_objectSpread({
+    fill: "currentColor",
+    fillRule: "evenodd",
+    height: size,
+    style: _objectSpread({
+      flex: 'none',
+      lineHeight: 1
+    }, style),
+    viewBox: "0 0 128 24",
+    xmlns: "http://www.w3.org/2000/svg"
+  }, rest), {}, {
+    children: [/*#__PURE__*/_jsx("title", {
+      children: TITLE
+    }), /*#__PURE__*/_jsx("path", {
+      clipRule: "evenodd",
+      d: "M127.807.569a.57.57 0 00-.569-.569H64.181a.57.57 0 00-.568.569v22.808a.57.57 0 00.568.569h63.057a.57.57 0 00.569-.57V.57zM96.135 4.031h-8.636v14.916c-1.364-1.031-2.336-2.707-3.032-4.738.745-.504 1.57-1.162 2.395-1.82.193-.154.387-.309.58-.461l-1.297-1.34c-.541.638-1.36 1.44-2.134 2.121a35.04 35.04 0 01-.76-3.999 26.3 26.3 0 002.916-.84l-1.44-1.462c-1.396.6-3.754 1.16-5.83 1.5v9.98c0 .783-.42 1.16-.76 1.341.26.362.6 1.122.717 1.52.026-.02.058-.047.09-.074l.027-.02c.148-.113.361-.24.749-.437l.122-.058c.648-.325 1.742-.814 3.68-1.649-.122-.361-.298-1-.361-1.5l-2.656 1.059V9.232c.218-.044.436-.081.657-.12.184-.03.37-.062.56-.098.621 5.062 1.859 9.359 4.572 11.598a7.37 7.37 0 011.195-1.436v1.016h8.608v-.181c.34.34.68.76.877 1.08 1.779-1.74 2.756-3.76 3.313-5.723.797 2.26 1.96 3.978 3.718 5.563.239-.5.759-1.08 1.216-1.42-2.417-1.978-3.574-4.28-4.312-8.1.032-.411.036-.827.04-1.203l.002-.179V8.391h-1.7v1.442c0 2.6-.297 6.498-3.154 9.518v-.861h-6.792v-1.521c.377.282.84.68 1.057.899.919-1.08 1.758-2.383 2.538-3.861.659 1.218 1.2 2.34 1.556 3.26l1.599-.862c-.478-1.202-1.28-2.68-2.257-4.26.78-1.68 1.418-3.52 1.96-5.397l-1.657-.34a30.022 30.022 0 01-1.36 4.057 71.59 71.59 0 00-2.38-3.382l-1.056.543v-1.92h6.83V4.031zm-20.616.595c3.356-.436 7.233-1.18 9.469-1.978v-.005l1.497 1.5c-2.554.856-6.07 1.478-9.288 1.898v3.744c-.01 3.297-.356 8.072-2.438 11.257-.318-.297-1.056-.739-1.476-.898 2.034-3.08 2.236-7.419 2.236-10.519V4.626zm29.378 5.026h17.705v1.898h-9.288a40 40 0 01-4.233 6.302l9.087-.66a85.73 85.73 0 00-2.236-3.238l1.7-.899c1.657 2.218 3.616 5.079 4.593 6.919l-1.795 1.079c-.281-.6-.701-1.319-1.179-2.1l-3.853.32c-6.973.579-8.016.666-8.807.977-.117-.42-.436-1.478-.717-2.08.499-.116.935-.616 1.556-1.398.563-.643 2.082-2.823 3.298-5.222h-5.831V9.652zm-35.432 9.694c.919-1.5 2.22-4.02 3.218-6.259l1.216 1.26a89.24 89.24 0 01-3.016 6.28l-1.418-1.281zm22.474-7.057a63.436 63.436 0 00-2.618-3.999v8.078c.982-1.117 1.859-2.52 2.618-4.079zM69.03 9.593l.898-1.382.005.005c1.116.5 2.635 1.34 3.415 1.94l-.94 1.559c-.722-.643-2.241-1.542-3.377-2.122zM98.047 2.57c-.398 2.978-1.237 5.86-2.618 7.641.42.218 1.216.702 1.54.963.717-1.021 1.296-2.34 1.795-3.84h4.493c-.281 1.282-.637 2.6-.961 3.52l1.46.442c.579-1.361 1.158-3.5 1.577-5.36l-1.237-.362-.297.058h-4.557c.218-.898.42-1.84.558-2.802l-1.753-.26zM70.028 4.233l.919-1.361v.005c1.136.558 2.692 1.478 3.473 2.138l-.977 1.5c-.739-.66-2.279-1.644-3.415-2.282zm37.062-.144h13.462v1.899H107.09V4.089zM4.92 13.81v7.184H2V2.951h7.748c1.668 0 2.958.49 3.871 1.473.914.984 1.37 2.303 1.37 3.957s-.456 2.972-1.37 3.956c-.913.984-2.203 1.473-3.871 1.473H4.921zm0-2.563h4.648c.743 0 1.316-.191 1.73-.58.415-.388.622-.946.622-1.67V7.76c0-.729-.207-1.282-.621-1.67-.415-.388-.993-.58-1.731-.58H4.92v5.738zm16.187 2.563v7.184h-2.921V2.951h7.749c1.667 0 2.957.49 3.871 1.473.913.984 1.37 2.303 1.37 3.957s-.457 2.972-1.37 3.956c-.914.984-2.204 1.473-3.871 1.473h-4.828zm0-2.563h4.647c.743 0 1.317-.191 1.731-.58.415-.388.622-.946.622-1.67V7.76c0-.729-.207-1.282-.622-1.67-.414-.388-.993-.58-1.731-.58h-4.647v5.738zm20.345 7.37v2.377h-7.849v-2.377h2.454V5.335h-2.454V2.957h7.849v2.377h-2.48v13.284h2.48zm13.823 1.793c-.95.388-2.018.584-3.186.584-1.169 0-2.23-.196-3.186-.584a6.553 6.553 0 01-2.454-1.723c-.68-.76-1.205-1.702-1.577-2.824-.372-1.127-.558-2.42-.558-3.887 0-1.468.186-2.766.558-3.888.372-1.122.898-2.063 1.577-2.823a6.676 6.676 0 012.454-1.723c.95-.389 2.017-.585 3.186-.585 1.168 0 2.23.191 3.186.585a6.554 6.554 0 012.454 1.723c.68.76 1.205 1.701 1.577 2.823.372 1.128.557 2.42.557 3.888 0 1.467-.185 2.765-.557 3.887-.372 1.122-.897 2.063-1.577 2.824a6.656 6.656 0 01-2.454 1.723zm-5.161-2.367c.589.229 1.248.346 1.975.346a5.42 5.42 0 001.96-.346 4.141 4.141 0 001.518-1c.415-.436.744-.962.972-1.59.228-.627.345-1.334.345-2.121V10.62c0-.793-.111-1.5-.345-2.122a4.494 4.494 0 00-.972-1.59 4.095 4.095 0 00-1.518-1 5.337 5.337 0 00-1.96-.346c-.733 0-1.386.117-1.975.346a4.139 4.139 0 00-1.509 1 4.651 4.651 0 00-.971 1.59c-.229.627-.346 1.335-.346 2.122v2.712c0 .792.117 1.5.346 2.121.228.623.552 1.154.971 1.59.42.437.919.771 1.509 1z"
+    })]
+  }));
+});
+export default Icon;

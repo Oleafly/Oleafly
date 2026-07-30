@@ -1,0 +1,1 @@
+export declare function valueArrayToPercentages(values: number[], min: number, max: number): number[];

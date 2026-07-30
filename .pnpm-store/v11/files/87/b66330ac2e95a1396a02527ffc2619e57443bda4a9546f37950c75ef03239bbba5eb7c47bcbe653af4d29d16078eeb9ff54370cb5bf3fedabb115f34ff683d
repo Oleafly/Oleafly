@@ -1,0 +1,1 @@
+{"version":3,"file":"messageModal.mjs","names":[],"sources":["../../../../src/i18n/resources/zhCn/messageModal.ts"],"sourcesContent":["export default {\n  'messageModal.cancel': '取消',\n  'messageModal.confirm': '确认',\n  'messageModal.edit': '编辑',\n} as const;\n"],"mappings":";AAAA,IAAA,uBAAe;CACb,uBAAuB;CACvB,wBAAwB;CACxB,qBAAqB;AACvB"}

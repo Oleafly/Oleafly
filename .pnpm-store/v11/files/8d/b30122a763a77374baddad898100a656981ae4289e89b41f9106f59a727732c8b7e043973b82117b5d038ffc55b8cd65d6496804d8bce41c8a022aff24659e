@@ -1,0 +1,44 @@
+'use client';
+
+function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
+var _excluded = ["size", "style"];
+function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
+function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
+function _defineProperty(obj, key, value) { key = _toPropertyKey(key); if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : String(i); }
+function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
+function _objectWithoutProperties(source, excluded) { if (source == null) return {}; var target = _objectWithoutPropertiesLoose(source, excluded); var key, i; if (Object.getOwnPropertySymbols) { var sourceSymbolKeys = Object.getOwnPropertySymbols(source); for (i = 0; i < sourceSymbolKeys.length; i++) { key = sourceSymbolKeys[i]; if (excluded.indexOf(key) >= 0) continue; if (!Object.prototype.propertyIsEnumerable.call(source, key)) continue; target[key] = source[key]; } } return target; }
+function _objectWithoutPropertiesLoose(source, excluded) { if (source == null) return {}; var target = {}; var sourceKeys = Object.keys(source); var key, i; for (i = 0; i < sourceKeys.length; i++) { key = sourceKeys[i]; if (excluded.indexOf(key) >= 0) continue; target[key] = source[key]; } return target; }
+import { memo } from 'react';
+import { TITLE } from "../style";
+import { jsx as _jsx } from "react/jsx-runtime";
+import { jsxs as _jsxs } from "react/jsx-runtime";
+var Icon = /*#__PURE__*/memo(function (_ref) {
+  var _ref$size = _ref.size,
+    size = _ref$size === void 0 ? '1em' : _ref$size,
+    style = _ref.style,
+    rest = _objectWithoutProperties(_ref, _excluded);
+  return /*#__PURE__*/_jsxs("svg", _objectSpread(_objectSpread({
+    fill: "currentColor",
+    fillRule: "evenodd",
+    height: size,
+    style: _objectSpread({
+      flex: 'none',
+      lineHeight: 1
+    }, style),
+    viewBox: "0 0 24 24",
+    width: size,
+    xmlns: "http://www.w3.org/2000/svg"
+  }, rest), {}, {
+    children: [/*#__PURE__*/_jsx("title", {
+      children: TITLE
+    }), /*#__PURE__*/_jsx("path", {
+      d: "M5.223 9.692c.652 1.795 1.925 3.376 3.396 4.573 1.482 1.229 3.254 2.17 5.122 2.653a9.99 9.99 0 002.033.302c1.302.05 2.713-.206 3.758-1.04 1.297-1.036 1.651-2.625 1.318-4.21-.209-.993-.641-1.93-1.205-2.787a10.284 10.284 0 00-.366-.525.008.008 0 01.005-.007h.004c.002 0 .004 0 .006.002l.394.405a17.227 17.227 0 012.484 3.262c.579.993 1.023 2.046 1.255 3.144.369 1.747.07 3.546-1.306 4.777-.724.648-1.655 1.041-2.59 1.235-1.297.267-2.649.228-3.965.007-.669-.112-1.315-.26-1.937-.443-2.576-.756-5.012-2.051-7.143-3.677a20.968 20.968 0 01-3.484-3.296C1.949 12.813 1.046 11.396.487 9.853.12 8.845-.087 7.725.035 6.663c.267-2.306 1.98-3.654 4.174-4.06 1.265-.234 2.594-.186 3.879.037a17.71 17.71 0 013.978 1.192v.004a.006.006 0 01-.004.004h-.004a8.907 8.907 0 00-2.869-.29c-.807.048-1.666.263-2.357.656-1.034.588-1.67 1.463-1.907 2.625a4.567 4.567 0 00-.069 1.1c.025.58.163 1.198.367 1.761z"
+    }), /*#__PURE__*/_jsx("path", {
+      d: "M18.02 7.235a.05.05 0 01-.007.03c-.461.916-.923 1.832-1.386 2.747-.424.837-.745 1.437-.965 1.8a17.877 17.877 0 01-2.98 3.707.027.027 0 01-.03.005 12.678 12.678 0 01-4.205-2.777c-.14-.14-.28-.288-.42-.447a.024.024 0 01-.005-.013c0-.005 0-.01.003-.014a17.718 17.718 0 011.68-2.379 18.27 18.27 0 012.7-2.606c.408-.32 1.39-1.094 2.95-2.323L21.652.002a.008.008 0 01.01 0 .01.01 0 01.004.005.01.01 0 010 .006l-3.648 7.222z"
+    }), /*#__PURE__*/_jsx("path", {
+      d: "M2.027 24c.002 0 .004 0 .005-.002l5.843-4.58a.02.02 0 00.008-.017.02.02 0 00-.01-.016 26.743 26.743 0 01-2.584-1.842h-.006a.014.014 0 00-.005.002.012.012 0 00-.004.005L2.02 23.987a.01.01 0 000 .006c0 .002 0 .004.002.005a.009.009 0 00.006.002z"
+    })]
+  }));
+});
+export default Icon;

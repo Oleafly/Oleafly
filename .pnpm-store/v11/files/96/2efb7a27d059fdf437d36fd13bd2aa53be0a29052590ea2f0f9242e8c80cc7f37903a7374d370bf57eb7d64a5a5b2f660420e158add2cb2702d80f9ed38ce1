@@ -1,0 +1,65 @@
+{
+    "name": "@unified-latex/unified-latex-ctan",
+    "version": "1.8.4",
+    "description": "unified-latex tools relating to specific CTAN packages",
+    "main": "index.js",
+    "type": "module",
+    "dependencies": {
+        "@unified-latex/unified-latex-builder": "^1.8.4",
+        "@unified-latex/unified-latex-types": "^1.8.4",
+        "@unified-latex/unified-latex-util-argspec": "^1.8.4",
+        "@unified-latex/unified-latex-util-arguments": "^1.8.4",
+        "@unified-latex/unified-latex-util-comments": "^1.8.4",
+        "@unified-latex/unified-latex-util-match": "^1.8.4",
+        "@unified-latex/unified-latex-util-pegjs": "^1.8.4",
+        "@unified-latex/unified-latex-util-print-raw": "^1.8.4",
+        "@unified-latex/unified-latex-util-render-info": "^1.8.4",
+        "@unified-latex/unified-latex-util-replace": "^1.8.4",
+        "@unified-latex/unified-latex-util-scan": "^1.8.4",
+        "@unified-latex/unified-latex-util-split": "^1.8.4",
+        "@unified-latex/unified-latex-util-trim": "^1.8.4",
+        "@unified-latex/unified-latex-util-visit": "^1.8.4",
+        "color": "^4.2.3"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/siefkenj/unified-latex.git"
+    },
+    "keywords": [
+        "pegjs",
+        "latex",
+        "parser",
+        "prettier",
+        "unified-latex",
+        "unified"
+    ],
+    "author": "Jason Siefken",
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/siefkenj/unified-latex/issues"
+    },
+    "homepage": "https://github.com/siefkenj/unified-latex#readme",
+    "exports": {
+        ".": {
+            "import": "./index.js",
+            "require": "./index.cjs",
+            "types": "./index.d.ts"
+        },
+        "./*js": "./*js",
+        "./*": {
+            "import": "./*/index.js",
+            "require": "./*/index.cjs",
+            "types": "./*/index.d.ts"
+        },
+        "./*/index": {
+            "import": "./*/index.js",
+            "require": "./*/index.cjs"
+        }
+    },
+    "files": [
+        "**/*ts",
+        "**/*js",
+        "**/*.map",
+        "**/*.json"
+    ]
+}

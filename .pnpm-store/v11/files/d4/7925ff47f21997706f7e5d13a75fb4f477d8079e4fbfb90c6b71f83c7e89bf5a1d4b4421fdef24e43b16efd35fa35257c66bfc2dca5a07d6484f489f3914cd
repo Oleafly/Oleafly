@@ -1,0 +1,282 @@
+"use strict";
+'use client';
+
+var _interopRequireWildcard = require("@babel/runtime/helpers/interopRequireWildcard").default;
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.useFieldValidation = useFieldValidation;
+var React = _interopRequireWildcard(require("react"));
+var _empty = require("@base-ui/utils/empty");
+var _useTimeout = require("@base-ui/utils/useTimeout");
+var _useStableCallback = require("@base-ui/utils/useStableCallback");
+var _useRefWithInit = require("@base-ui/utils/useRefWithInit");
+var _LabelableContext = require("../../internals/labelable-provider/LabelableContext");
+var _mergeProps = require("../../merge-props");
+var _constants = require("../../internals/field-constants/constants");
+var _FormContext = require("../../internals/form-context/FormContext");
+var _getCombinedFieldValidityData = require("../utils/getCombinedFieldValidityData");
+const validityKeys = Object.keys(_constants.DEFAULT_VALIDITY_STATE);
+function isOnlyValueMissing(state) {
+  if (!state || state.valid || !state.valueMissing) {
+    return false;
+  }
+  let onlyValueMissing = false;
+  for (const key of validityKeys) {
+    if (key === 'valid') {
+      continue;
+    }
+    if (key === 'valueMissing') {
+      onlyValueMissing = state[key];
+    } else if (state[key]) {
+      onlyValueMissing = false;
+    }
+  }
+  return onlyValueMissing;
+}
+
+/**
+ * Picks the input whose native validity should represent a field that owns several inputs (such as a
+ * checkbox group). Prefers the first enabled currently-invalid input, where "first" follows Set
+ * insertion order (mount order), and otherwise returns the first enabled input. Disabled inputs are
+ * skipped because they don't participate in native constraint validation.
+ */
+function findRepresentativeInput(inputs) {
+  let fallback = null;
+  for (const input of inputs) {
+    if (input.disabled) {
+      continue;
+    }
+    if (!input.validity.valid) {
+      return input;
+    }
+    fallback ??= input;
+  }
+  return fallback;
+}
+function clearCustomValidity(element, inputs) {
+  let didClearElement = false;
+  for (const input of inputs) {
+    input.setCustomValidity('');
+    didClearElement ||= input === element;
+  }
+  if (!didClearElement) {
+    element.setCustomValidity('');
+  }
+}
+function useFieldValidation(params) {
+  const {
+    formRef
+  } = (0, _FormContext.useFormContext)();
+  const {
+    setValidityData,
+    validate,
+    validityData,
+    validationDebounceTime,
+    invalid,
+    markedDirtyRef,
+    state,
+    shouldValidateOnChange,
+    getRegisteredFieldId
+  } = params;
+  const {
+    controlId,
+    getDescriptionProps
+  } = (0, _LabelableContext.useLabelableContext)();
+  const timeout = (0, _useTimeout.useTimeout)();
+  const inputRef = React.useRef(null);
+  const registeredInputs = (0, _useRefWithInit.useRefWithInit)(() => new Set()).current;
+  const validationCommitIdRef = React.useRef(0);
+
+  // Checkbox groups register several inputs against a single field. Track them so a `required`
+  // checkbox can't be satisfied by another input in the group, matching native per-checkbox behavior.
+  const registerInput = React.useCallback(element => {
+    if (!element) {
+      return undefined;
+    }
+    registeredInputs.add(element);
+    return () => {
+      registeredInputs.delete(element);
+    };
+  }, [registeredInputs]);
+  const commit = (0, _useStableCallback.useStableCallback)(async (value, revalidate = false) => {
+    // A field can own several inputs (a checkbox group), but only the last-mounted one wins the shared
+    // `inputRef`. Validate against the registry instead so every input counts; `inputRef` is the
+    // fallback only when no registered input applies (none registered, or all of them disabled).
+    const element = findRepresentativeInput(registeredInputs) ?? inputRef.current;
+    if (!element) {
+      return;
+    }
+    validationCommitIdRef.current += 1;
+    const validationCommitId = validationCommitIdRef.current;
+    function updateRegisteredFieldValidity(nextValidityData, externalInvalid = invalid) {
+      const fieldId = getRegisteredFieldId() ?? controlId;
+      if (fieldId == null) {
+        return;
+      }
+      const currentFieldData = formRef.current.fields.get(fieldId);
+      if (!currentFieldData) {
+        return;
+      }
+      const validityDataWithFormErrors = (0, _getCombinedFieldValidityData.getCombinedFieldValidityData)(nextValidityData, externalInvalid);
+      formRef.current.fields.set(fieldId, {
+        ...currentFieldData,
+        validityData: validityDataWithFormErrors
+      });
+    }
+    if (revalidate) {
+      if (state.valid !== false) {
+        return;
+      }
+      const currentNativeValidity = element.validity;
+      if (!currentNativeValidity.valueMissing) {
+        // The 'valueMissing' (required) condition has been resolved by the user typing.
+        // Temporarily mark the field as valid for this onChange event.
+        // Other native errors (e.g., typeMismatch) will be caught by full validation on blur or submit.
+        const nextValidityData = {
+          value,
+          state: {
+            ..._constants.DEFAULT_VALIDITY_STATE,
+            valid: true
+          },
+          error: '',
+          errors: [],
+          initialValue: validityData.initialValue
+        };
+        clearCustomValidity(element, registeredInputs);
+
+        // The required value is now present; ignore stale external invalid state for this pass.
+        updateRegisteredFieldValidity(nextValidityData, false);
+        setValidityData(nextValidityData);
+        return;
+      }
+
+      // Value is still missing, or other conditions apply.
+      // Let's use a representation of current validity for isOnlyValueMissing.
+      const currentNativeValidityObject = validityKeys.reduce((acc, key) => {
+        acc[key] = currentNativeValidity[key];
+        return acc;
+      }, {});
+
+      // If it's (still) natively invalid due to something other than just valueMissing,
+      // then bail from this revalidation on change to avoid "scolding" for other errors.
+      if (!currentNativeValidityObject.valid && !isOnlyValueMissing(currentNativeValidityObject)) {
+        return;
+      }
+
+      // If valueMissing is still true AND it's the only issue, or if the field is now natively valid,
+      // let it fall through to the main validation logic below.
+    }
+    function getState(el) {
+      const computedState = validityKeys.reduce((acc, key) => {
+        acc[key] = el.validity[key];
+        return acc;
+      }, {});
+      let hasOnlyValueMissingError = false;
+      for (const key of validityKeys) {
+        if (key === 'valid') {
+          continue;
+        }
+        if (key === 'valueMissing' && computedState[key]) {
+          hasOnlyValueMissingError = true;
+        } else if (computedState[key]) {
+          return computedState;
+        }
+      }
+
+      // Only make `valueMissing` mark the field invalid if it's been changed
+      // to reduce error noise.
+      if (hasOnlyValueMissingError && !markedDirtyRef.current) {
+        computedState.valid = true;
+        computedState.valueMissing = false;
+      }
+      return computedState;
+    }
+    timeout.clear();
+    let result = null;
+    let validationErrors = [];
+    const nextState = getState(element);
+    let defaultValidationMessage;
+    const isValidatingOnChange = shouldValidateOnChange();
+    if (element.validationMessage && !isValidatingOnChange) {
+      // not validating on change, if there is a `validationMessage` from
+      // native validity, set errors and skip calling the custom validate fn
+      defaultValidationMessage = element.validationMessage;
+      validationErrors = [element.validationMessage];
+    } else {
+      // call the validate function because either
+      // - validating on change, or
+      // - native constraint validations passed, custom validity check is next
+      const formValues = Array.from(formRef.current.fields.values()).reduce((acc, field) => {
+        if (field.name) {
+          acc[field.name] = field.getValue();
+        }
+        return acc;
+      }, {});
+      const resultOrPromise = validate(value, formValues);
+      if (typeof resultOrPromise === 'object' && resultOrPromise !== null && 'then' in resultOrPromise) {
+        result = await resultOrPromise;
+        if (validationCommitId !== validationCommitIdRef.current) {
+          return;
+        }
+      } else {
+        result = resultOrPromise;
+      }
+      if (result !== null) {
+        nextState.valid = false;
+        nextState.customError = true;
+        if (Array.isArray(result)) {
+          validationErrors = result;
+          element.setCustomValidity(result.join('\n'));
+        } else if (result) {
+          validationErrors = [result];
+          element.setCustomValidity(result);
+        }
+      } else if (isValidatingOnChange) {
+        // validate function returned no errors, if validating on change
+        // we need to clear the custom validity state
+        clearCustomValidity(element, registeredInputs);
+        nextState.customError = false;
+        if (element.validationMessage) {
+          defaultValidationMessage = element.validationMessage;
+          validationErrors = [element.validationMessage];
+        } else if (element.validity.valid && !nextState.valid) {
+          nextState.valid = true;
+        }
+      }
+    }
+    const nextValidityData = {
+      value,
+      state: nextState,
+      error: defaultValidationMessage ?? (Array.isArray(result) ? result[0] : result ?? ''),
+      errors: validationErrors,
+      initialValue: validityData.initialValue
+    };
+
+    // Keep Form-level errors part of overall field validity for submit blocking/focus logic.
+    updateRegisteredFieldValidity(nextValidityData);
+    setValidityData(nextValidityData);
+  });
+  const change = (0, _useStableCallback.useStableCallback)(value => {
+    timeout.clear();
+    const validateOnChange = shouldValidateOnChange();
+    if (validateOnChange && value !== '' && validationDebounceTime) {
+      validationCommitIdRef.current += 1;
+      timeout.start(validationDebounceTime, () => {
+        commit(value);
+      });
+    } else {
+      commit(value, !validateOnChange);
+    }
+  });
+  const getValidationProps = React.useCallback((disabled, externalProps = {}) => (0, _mergeProps.mergeProps)(getDescriptionProps(externalProps), state.valid === false && !state.disabled && !disabled ? {
+    'aria-invalid': true
+  } : _empty.EMPTY_OBJECT), [getDescriptionProps, state.disabled, state.valid]);
+  return React.useMemo(() => ({
+    getValidationProps,
+    inputRef,
+    registerInput,
+    commit,
+    change
+  }), [getValidationProps, registerInput, commit, change]);
+}

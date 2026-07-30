@@ -1,0 +1,86 @@
+# Diffs, from Pierre
+
+`@pierre/diffs` is an open source diff and file rendering library built on
+[Shiki](https://shiki.style/). It's super customizable and packed with the
+features you need. Made with love by
+[The Pierre Computer Company](https://pierre.computer). Available as vanilla
+JavaScript and React components.
+
+**View examples and read documentation on [Diffs.com](https://diffs.com).**
+
+## Features
+
+- Diff file versions, patches, and arbitrary files
+- Split or stacked layout
+- Automatically adapts to Shiki themes
+- Supports light and dark mode
+- Options for diff highlight styles, in-line highlighting, wrapping, line
+  numbers, and more
+- Supports custom fonts and `font-feature-settings`
+- Flexible annotation framework for injecting comments, annotations, and more
+- Add your own accept/reject changes UI
+- Select and highlight lines
+
+## Install
+
+```bash
+pnpm add @pierre/diffs
+```
+
+## Development
+
+We use pnpm for workspace package management and Bun for tests.
+
+```bash
+# From the root of the monorepo: setup dependencies
+pnpm install
+
+# Start the demo vite test server
+moonx demo:dev
+
+# To run the docs (diffs site)
+moonx docs:dev-diffs
+```
+
+### Testing
+
+```bash
+# Run tests and related command from within the package directory
+bun test
+
+# Update snapshots
+bun test --update-snapshots
+
+# Type checking
+moonx diffs:typecheck
+```
+
+Tests are located in the `test/` folder and use Bun's native testing framework
+with snapshot support.
+
+## Publishing
+
+**Applicable to the Pierre team only.**
+
+```bash
+# You may need to login first:
+pnpm login
+
+# Always run publish from within the package directory.
+cd packages/diffs
+pnpm publish
+# In a CI-marked shell: CI= pnpm publish
+```
+
+## Building the sprite
+
+The diff UI uses an SVG sprite built from `@pierre/icons`. From the monorepo
+root:
+
+```bash
+moonx root:icons
+```
+
+This reads SVGs from `node_modules/@pierre/icons/svg` and writes
+`packages/diffs/src/sprite.ts`. Run after updating `@pierre/icons` or changing
+`sprite.config.js`.

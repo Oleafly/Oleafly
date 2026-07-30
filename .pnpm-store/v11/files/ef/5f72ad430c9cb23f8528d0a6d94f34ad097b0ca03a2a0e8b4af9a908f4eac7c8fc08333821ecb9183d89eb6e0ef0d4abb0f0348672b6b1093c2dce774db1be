@@ -1,0 +1,74 @@
+{
+  "name": "getroot",
+  "version": "1.0.0",
+  "description": "Get isomorphic global object on node.js and browser",
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
+  "engines": {
+    "npm": ">=3.0.0",
+    "node": ">=4.2.4"
+  },
+  "config": {
+    "commitizen": {
+      "path": "cz-conventional-changelog"
+    }
+  },
+  "lint-staged": {
+    "*.{ts,js}": [
+      "prettier --write --single-quote --print-width 120 --jsx-bracket-same-line true",
+      "tslint --fix",
+      "git add"
+    ]
+  },
+  "scripts": {
+    "prepublishOnly": "npm-run-all build test",
+    "precommit": "lint-staged",
+    "prepush": "npm-run-all build test",
+    "commitmsg": "commitlint -e",
+    "test": "jest --config jest.json --coverage",
+    "lint": "tslint --type-check -c tslint.json -p tsconfig.json \"src/**/*.ts\" \"spec/**/*.ts\"",
+    "lint:staged": "lint-staged",
+    "build": "shx rm -rf ./dist && tsc",
+    "build:clean": "shx rm -rf ./dist",
+    "commit": "git-cz -S",
+    "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kwonoj/getroot.git"
+  },
+  "keywords": [],
+  "author": "OJ Kwon <kwon.ohjoong@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/kwonoj/getroot/issues"
+  },
+  "homepage": "https://github.com/kwonoj/getroot#readme",
+  "devDependencies": {
+    "@commitlint/cli": "^3.1.2",
+    "@commitlint/config-angular": "^3.1.1",
+    "@types/chai": "^4.0.3",
+    "@types/jest": "^20.0.8",
+    "@types/lodash": "^4.14.74",
+    "@types/node": "^8.0.25",
+    "chai": "^4.1.1",
+    "commitizen": "2.9.6",
+    "conventional-changelog-cli": "^1.3.2",
+    "cz-conventional-changelog": "2.0.0",
+    "husky": "^0.14.3",
+    "jest": "^21.0.2",
+    "lint-staged": "^4.0.3",
+    "lodash": "^4.17.4",
+    "npm-run-all": "^4.0.2",
+    "prettier": "^1.5.3",
+    "shx": "^0.2.2",
+    "ts-jest": "^21.0.0",
+    "ts-node": "^3.3.0",
+    "tslint": "^5.6.0",
+    "tslint-no-unused-expression-chai": "0.0.2",
+    "typescript": "^2.5.2"
+  },
+  "dependencies": {
+    "tslib": "^1.7.1"
+  }
+}

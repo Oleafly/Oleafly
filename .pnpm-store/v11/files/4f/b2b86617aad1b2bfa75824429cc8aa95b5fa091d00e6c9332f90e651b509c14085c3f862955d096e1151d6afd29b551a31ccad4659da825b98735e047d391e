@@ -1,0 +1,27 @@
+{
+  "name": "@lobehub/emojilib",
+  "version": "1.0.0",
+  "description": "Emoji data from unicode.org",
+  "keywords": [
+    "unicode-emoji"
+  ],
+  "homepage": "https://github.com/lobehub/lobe-assets",
+  "bugs": {
+    "url": "https://github.com/lobehub/lobe-assets/issues/new"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lobehub/lobe-assets.git"
+  },
+  "license": "MIT",
+  "author": "LobeHub <i@lobehub.com>",
+  "sideEffects": false,
+  "main": "index.json",
+  "files": [
+    "index.json"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

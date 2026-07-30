@@ -1,0 +1,342 @@
+import scroll from 'scroll';
+import scrollParent from 'scrollparent';
+
+import { LIFECYCLE } from '~/literals';
+
+import type { Lifecycle, StepMerged, StepTarget } from '~/types';
+
+interface NeedsScrollingOptions {
+  isFirstStep: boolean;
+  scrollToFirstStep: boolean;
+  step: StepMerged;
+  target: HTMLElement | null;
+  targetLifecycle?: Lifecycle;
+}
+
+export function canUseDOM() {
+  return !!(typeof window !== 'undefined' && window.document?.createElement);
+}
+
+/**
+ * Find the bounding client rect
+ */
+export function getClientRect(element: HTMLElement | null) {
+  if (!element) {
+    return null;
+  }
+
+  return element.getBoundingClientRect();
+}
+
+/**
+ * Helper function to get the browser-normalized "document height"
+ */
+export function getDocumentHeight(median = false): number {
+  const { body, documentElement } = document;
+
+  if (!body || !documentElement) {
+    return 0;
+  }
+
+  if (median) {
+    const heights = [
+      body.scrollHeight,
+      body.offsetHeight,
+      documentElement.clientHeight,
+      documentElement.scrollHeight,
+      documentElement.offsetHeight,
+    ].sort((a, b) => a - b);
+    const middle = Math.floor(heights.length / 2);
+
+    if (heights.length % 2 === 0) {
+      return (heights[middle - 1] + heights[middle]) / 2;
+    }
+
+    return heights[middle];
+  }
+
+  return Math.max(
+    body.scrollHeight,
+    body.offsetHeight,
+    documentElement.clientHeight,
+    documentElement.scrollHeight,
+    documentElement.offsetHeight,
+  );
+}
+
+/**
+ * Find and return the target DOM element based on a step's 'target'.
+ */
+export function getElement(element?: StepTarget): HTMLElement | null {
+  if (!element) {
+    return null;
+  }
+
+  if (typeof element === 'function') {
+    try {
+      return element();
+    } catch (error: any) {
+      if (process.env.NODE_ENV !== 'production') {
+        // eslint-disable-next-line no-console
+        console.error(error);
+      }
+
+      return null;
+    }
+  }
+
+  if (typeof element === 'object' && 'current' in element) {
+    return element.current;
+  }
+
+  if (typeof element === 'string') {
+    try {
+      return document.querySelector(element);
+    } catch (error: any) {
+      if (process.env.NODE_ENV !== 'production') {
+        // eslint-disable-next-line no-console
+        console.error(error);
+      }
+
+      return null;
+    }
+  }
+
+  return element;
+}
+
+/**
+ * Return the target's top position in document space (viewport top + scroll − offset).
+ */
+export function getElementPosition(
+  element: HTMLElement | null,
+  offset: number,
+  isFixed?: boolean,
+): number {
+  const elementRect = getClientRect(element);
+  const parent = getScrollParent(element);
+  const hasScrollParent = parent ? !parent.isSameNode(scrollDocument()) : false;
+  const isFixedTarget = isFixed ?? hasPosition(element);
+  let parentTop = 0;
+  let top = elementRect?.top ?? 0;
+
+  if (hasScrollParent && isFixedTarget) {
+    top = elementRect?.top ?? 0;
+  } else if (parent instanceof HTMLElement) {
+    parentTop = parent.scrollTop;
+
+    if (!hasScrollParent && !isFixedTarget) {
+      top += parentTop;
+    }
+
+    if (!parent.isSameNode(scrollDocument())) {
+      top += scrollDocument().scrollTop;
+    }
+  }
+
+  return Math.floor(top - offset);
+}
+
+/**
+ * Get the scroll parent of an element.
+ * If the detected parent doesn't actually scroll, fall back to the document.
+ */
+export function getScrollParent(element: HTMLElement | null, forListener?: boolean) {
+  if (!element) {
+    return scrollDocument();
+  }
+
+  const parent = scrollParent(element) as HTMLElement;
+
+  if (parent) {
+    if (parent.isSameNode(scrollDocument())) {
+      if (forListener) {
+        return document;
+      }
+
+      return scrollDocument();
+    }
+
+    const hasScrolling = parent.scrollHeight > parent.offsetHeight;
+
+    if (!hasScrolling) {
+      return scrollDocument();
+    }
+  }
+
+  return parent;
+}
+
+export function getScrollTargetToCenter(element: Element): number {
+  const rect = element.getBoundingClientRect();
+  const documentElement = scrollDocument();
+  const containerCenter = rect.top + rect.height / 2;
+  const viewportCenter = window.innerHeight / 2;
+
+  return Math.max(0, documentElement.scrollTop + containerCenter - viewportCenter);
+}
+
+/**
+ * Get the scrollTop position
+ */
+export function getScrollTo(element: HTMLElement | null, offset: number): number {
+  if (!element) {
+    return 0;
+  }
+
+  const parentElement = scrollParent(element) ?? (scrollDocument() as HTMLElement);
+  const scrollMarginTop = parseFloat(getComputedStyle(element).scrollMarginTop) || 0;
+
+  const parentRect = getClientRect(parentElement);
+  const parentScrollTop = parentElement.scrollTop ?? 0;
+
+  const { offsetTop = 0, scrollTop = 0 } = parentElement;
+  let top = element.getBoundingClientRect().top + scrollTop;
+
+  if (!!offsetTop && (hasCustomScrollParent(element) || hasCustomOffsetParent(element))) {
+    const elementRect = element.getBoundingClientRect();
+    const elementTopInContainer = elementRect.top - (parentRect?.top ?? 0);
+    const elementBottomInContainer = elementTopInContainer + elementRect.height;
+    const containerHeight = parentElement.clientHeight;
+    const margin = containerHeight * 0.2;
+
+    // eslint-disable-next-line unicorn/prefer-ternary
+    if (elementTopInContainer >= margin && elementBottomInContainer <= containerHeight - margin) {
+      top = parentScrollTop;
+    } else {
+      top = elementTopInContainer + parentScrollTop;
+    }
+  }
+
+  const output = Math.floor(top - offset - scrollMarginTop);
+
+  return output < 0 ? 0 : output;
+}
+
+/**
+ * Check if the element has custom offset parent
+ */
+export function hasCustomOffsetParent(element: HTMLElement): boolean {
+  return element.offsetParent !== document.body;
+}
+
+/**
+ * Check if the element has custom scroll parent
+ */
+export function hasCustomScrollParent(element: HTMLElement | null): boolean {
+  if (!element) {
+    return false;
+  }
+
+  const parent = getScrollParent(element);
+
+  return parent ? !parent.isSameNode(scrollDocument()) : false;
+}
+
+/**
+ * Check if an element has fixed/sticky position
+ */
+export function hasPosition(el: Element | Node | null, type: string = 'fixed'): boolean {
+  if (!el || !(el instanceof Element)) {
+    return false;
+  }
+
+  const { nodeName } = el;
+
+  if (nodeName === 'BODY' || nodeName === 'HTML') {
+    return false;
+  }
+
+  if (getComputedStyle(el).position === type) {
+    return true;
+  }
+
+  if (!el.parentNode) {
+    return false;
+  }
+
+  return hasPosition(el.parentNode, type);
+}
+
+/**
+ * Check if the element is visible
+ */
+export function isElementVisible(element: HTMLElement): boolean {
+  if (!element) {
+    return false;
+  }
+
+  let parentElement: HTMLElement | null = element;
+
+  while (parentElement) {
+    if (parentElement === document.body) {
+      break;
+    }
+
+    if (parentElement instanceof HTMLElement) {
+      const { display, visibility } = getComputedStyle(parentElement);
+
+      if (display === 'none' || visibility === 'hidden') {
+        return false;
+      }
+    }
+
+    parentElement = parentElement.parentElement ?? null;
+  }
+
+  return true;
+}
+
+export function needsScrolling(options: NeedsScrollingOptions): boolean {
+  const { isFirstStep, scrollToFirstStep, step, target, targetLifecycle } = options;
+
+  if (
+    step.skipScroll ||
+    (isFirstStep && !scrollToFirstStep && targetLifecycle !== LIFECYCLE.TOOLTIP) ||
+    step.placement === 'center'
+  ) {
+    return false;
+  }
+
+  const parent = (target?.isConnected ? getScrollParent(target) : scrollDocument()) as Element;
+  const isCustomScrollParent = parent ? !parent.isSameNode(scrollDocument()) : false;
+
+  if ((step.isFixed || hasPosition(target)) && !isCustomScrollParent) {
+    return false;
+  }
+
+  return parent.scrollHeight > parent.clientHeight;
+}
+
+export function scrollDocument(): Element | HTMLElement {
+  return document.scrollingElement ?? document.documentElement;
+}
+
+/**
+ * Scroll to position
+ */
+export function scrollTo(
+  value: number,
+  options: { duration?: number; element: Element | HTMLElement },
+): { cancel: () => void; promise: Promise<void> } {
+  const { duration, element } = options;
+
+  let cancel: () => void = () => {};
+
+  const promise = new Promise<void>(resolve => {
+    const { scrollTop } = element;
+
+    const limit = value > scrollTop ? value - scrollTop : scrollTop - value;
+
+    cancel = scroll.top(
+      element as HTMLElement,
+      value,
+      { duration: limit < 100 ? 50 : duration },
+      () => {
+        resolve();
+      },
+    );
+  });
+
+  return { cancel, promise };
+}

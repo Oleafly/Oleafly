@@ -1,0 +1,1 @@
+export declare function replaceArrayItemAtIndex(array: readonly number[], index: number, newValue: number): number[];

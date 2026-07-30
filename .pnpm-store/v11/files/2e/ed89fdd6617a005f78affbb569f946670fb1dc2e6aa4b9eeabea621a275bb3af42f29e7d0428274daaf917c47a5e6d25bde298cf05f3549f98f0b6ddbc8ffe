@@ -1,0 +1,1 @@
+{"version":3,"file":"formatCSSVariablePrefix.js","names":[],"sources":["../../src/utils/formatCSSVariablePrefix.ts"],"sourcesContent":["export function formatCSSVariablePrefix(type: 'global' | 'token') {\n  return `--${type === 'token' ? 'diffs-token' : 'diffs'}-`;\n}\n"],"mappings":";AAAA,SAAgB,wBAAwB,MAA0B;CAChE,OAAO,KAAK,SAAS,UAAU,gBAAgB,QAAQ;AACzD"}

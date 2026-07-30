@@ -1,0 +1,1 @@
+{"version":3,"file":"style.mjs","names":[],"sources":["../../../src/icons/DingTalk/style.ts"],"sourcesContent":["export const TITLE = 'DingTalk';\nexport const COLOR_PRIMARY = '#3296FA';\n"],"mappings":";AAAA,MAAa,QAAQ;AACrB,MAAa,gBAAgB"}

@@ -1,0 +1,96 @@
+{
+  "name": "hunspell-asm",
+  "version": "4.0.2",
+  "description": "WebAssembly based Javascript bindings for hunspell spellchecker",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "browser": {
+    "./dist/cjs/lib/node/hunspell.js": "./dist/cjs/lib/browser/hunspell.js",
+    "./dist/esm/lib/node/hunspell.js": "./dist/esm/lib/browser/hunspell.js"
+  },
+  "config": {
+    "commitizen": {
+      "path": "cz-conventional-changelog"
+    },
+    "hunspell-version": "fc6a952-200131"
+  },
+  "lint-staged": {
+    "*.ts": [
+      "prettier --write --single-quote --print-width 120 --jsx-bracket-same-line true --ignore-path ./src/lib/*.js",
+      "tslint --fix",
+      "git add"
+    ]
+  },
+  "scripts": {
+    "prepare": "node -r ts-node/register bootstrap.ts",
+    "prepublishOnly": "npm-run-all build:clean build build:lib test",
+    "test:hunspell": "jest --config jest-hunspell.json",
+    "test:hunspell-asm": "jest --config jest-hunspell-asm.json --coverage",
+    "test": "npm-run-all test:*",
+    "lint": "tslint src/**/*.ts test/**/*.ts --project tsconfig.json",
+    "lint:staged": "lint-staged",
+    "build": "tsc -b --verbose ./src/tsconfig.cjs.json ./src/tsconfig.esm.json ./src/tsconfig.types.json ./spec/tsconfig.json",
+    "build:clean": "shx rm -rf ./dist",
+    "build:lib": "shx cp -r ./src/lib ./dist/cjs && shx cp -r ./src/lib ./dist/esm",
+    "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kwonoj/hunspell-asm.git"
+  },
+  "author": "OJ Kwon <kwon.ohjoong@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/kwonoj/hunspell-asm/issues"
+  },
+  "keywords": [
+    "WebAssembly",
+    "Wasm",
+    "Spellchecker",
+    "Hunspell",
+    "Language"
+  ],
+  "homepage": "https://github.com/kwonoj/hunspell-asm#readme",
+  "devDependencies": {
+    "@babel/core": "^7.6.4",
+    "@commitlint/cli": "^8.2.0",
+    "@commitlint/config-angular": "^8.2.0",
+    "@types/chai": "^4.2.4",
+    "@types/jest": "^24.0.19",
+    "@types/lodash": "^4.14.144",
+    "@types/node": "^12.11.6",
+    "@types/shelljs": "^0.8.5",
+    "chai": "^4.2.0",
+    "conventional-changelog-cli": "^2.0.25",
+    "husky": "^3.0.9",
+    "jest": "^24.9.0",
+    "jest-spin-reporter": "^2.0.0",
+    "lint-staged": "^9.4.2",
+    "lodash": "^4.17.15",
+    "npm-run-all": "^4.1.5",
+    "prettier": "^1.18.2",
+    "rxjs": "^6.5.3",
+    "shelljs": "^0.8.3",
+    "shx": "^0.3.2",
+    "ts-jest": "^24.1.0",
+    "ts-node": "^8.4.1",
+    "tslint": "^5.20.0",
+    "tslint-no-unused-expression-chai": "0.1.4",
+    "typescript": "^3.6.4"
+  },
+  "dependencies": {
+    "emscripten-wasm-loader": "^3.0.3",
+    "nanoid": "^2.1.5"
+  },
+  "engines": {
+    "node": ">=4"
+  },
+  "husky": {
+    "hooks": {
+      "commit-msg": "commitlint -e",
+      "pre-commit": "lint-staged",
+      "pre-push": "npm-run-all build test"
+    }
+  }
+}

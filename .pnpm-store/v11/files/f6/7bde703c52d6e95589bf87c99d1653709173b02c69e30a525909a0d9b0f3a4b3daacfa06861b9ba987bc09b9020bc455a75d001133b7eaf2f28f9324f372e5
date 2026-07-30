@@ -1,0 +1,1 @@
+{"version":3,"file":"VirtulizerDevelopment.d.ts","names":["global","Window","__INSTANCE","CodeView","Virtualizer","__TOGGLE","__LOG"],"sources":["../../src/components/VirtulizerDevelopment.d.ts"],"mappings":";;;;;QAIQA,MAAAA;EAAAA,UACIC,MAAAA;IAAAA;IAERC,UAAAA,GAAa,QAAA,QAAgB,WAAW;IACxCG,QAAAA;IACAC,KAAAA;EAAAA;AAAAA"}

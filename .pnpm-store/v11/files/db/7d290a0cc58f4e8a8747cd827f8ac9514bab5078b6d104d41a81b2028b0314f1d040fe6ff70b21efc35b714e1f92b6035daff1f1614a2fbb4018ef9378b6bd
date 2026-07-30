@@ -1,0 +1,1801 @@
+// src/fixture.ts
+import { test as base, chromium } from "@playwright/test";
+
+// src/expect.ts
+import { expect as baseExpect } from "@playwright/test";
+async function pollUntil(fn, check, timeout, interval = 100) {
+  const deadline = Date.now() + timeout;
+  let lastValue = void 0;
+  while (Date.now() < deadline) {
+    try {
+      lastValue = await fn();
+      if (check(lastValue)) return { pass: true, value: lastValue };
+    } catch {
+    }
+    await new Promise((r) => setTimeout(r, interval));
+  }
+  return { pass: false, value: lastValue };
+}
+var DEFAULT_TIMEOUT = 5e3;
+function getTimeout(options) {
+  return options?.timeout ?? DEFAULT_TIMEOUT;
+}
+var tauriExpect = baseExpect.extend({
+  // ── State assertions ──────────────────────────────────────────────
+  async toBeVisible(locator, options) {
+    const assertionName = "toBeVisible";
+    const timeout = getTimeout(options);
+    const { pass } = await pollUntil(
+      () => locator.isVisible(),
+      (v) => v === true,
+      timeout
+    );
+    return {
+      pass,
+      name: assertionName,
+      message: () => this.isNot ? `expected element not to be visible` : `expected element to be visible within ${timeout}ms`
+    };
+  },
+  async toBeHidden(locator, options) {
+    const timeout = getTimeout(options);
+    const { pass } = await pollUntil(
+      () => locator.isHidden(),
+      (v) => v === true,
+      timeout
+    );
+    return {
+      pass,
+      name: "toBeHidden",
+      message: () => this.isNot ? `expected element not to be hidden` : `expected element to be hidden within ${timeout}ms`
+    };
+  },
+  async toBeEnabled(locator, options) {
+    const timeout = getTimeout(options);
+    const { pass } = await pollUntil(
+      () => locator.isEnabled(),
+      (v) => v === true,
+      timeout
+    );
+    return {
+      pass,
+      name: "toBeEnabled",
+      message: () => this.isNot ? `expected element not to be enabled` : `expected element to be enabled within ${timeout}ms`
+    };
+  },
+  async toBeDisabled(locator, options) {
+    const timeout = getTimeout(options);
+    const { pass } = await pollUntil(
+      () => locator.isDisabled(),
+      (v) => v === true,
+      timeout
+    );
+    return {
+      pass,
+      name: "toBeDisabled",
+      message: () => this.isNot ? `expected element not to be disabled` : `expected element to be disabled within ${timeout}ms`
+    };
+  },
+  async toBeEditable(locator, options) {
+    const timeout = getTimeout(options);
+    const { pass } = await pollUntil(
+      () => locator.isEditable(),
+      (v) => v === true,
+      timeout
+    );
+    return {
+      pass,
+      name: "toBeEditable",
+      message: () => this.isNot ? `expected element not to be editable` : `expected element to be editable within ${timeout}ms`
+    };
+  },
+  async toBeChecked(locator, options) {
+    const timeout = getTimeout(options);
+    const { pass } = await pollUntil(
+      () => locator.isChecked(),
+      (v) => v === true,
+      timeout
+    );
+    return {
+      pass,
+      name: "toBeChecked",
+      message: () => this.isNot ? `expected element not to be checked` : `expected element to be checked within ${timeout}ms`
+    };
+  },
+  async toBeAttached(locator, options) {
+    const timeout = getTimeout(options);
+    const { pass } = await pollUntil(
+      () => locator.count(),
+      (c) => c > 0,
+      timeout
+    );
+    return {
+      pass,
+      name: "toBeAttached",
+      message: () => this.isNot ? `expected element not to be attached` : `expected element to be attached within ${timeout}ms`
+    };
+  },
+  async toBeEmpty(locator, options) {
+    const timeout = getTimeout(options);
+    const { pass, value } = await pollUntil(
+      async () => {
+        try {
+          return await locator.inputValue();
+        } catch {
+          return await locator.textContent() ?? "";
+        }
+      },
+      (v) => v.trim() === "",
+      timeout
+    );
+    return {
+      pass,
+      name: "toBeEmpty",
+      message: () => this.isNot ? `expected element not to be empty, got "${value}"` : `expected element to be empty, got "${value}"`
+    };
+  },
+  // ── Content assertions ────────────────────────────────────────────
+  async toContainText(locator, expected, options) {
+    const timeout = getTimeout(options);
+    const { pass, value } = await pollUntil(
+      () => locator.textContent(),
+      (text) => {
+        if (!text) return false;
+        return typeof expected === "string" ? text.includes(expected) : expected.test(text);
+      },
+      timeout
+    );
+    return {
+      pass,
+      name: "toContainText",
+      message: () => this.isNot ? `expected "${value}" not to contain "${expected}"` : `expected "${value}" to contain "${expected}"`
+    };
+  },
+  async toHaveText(locator, expected, options) {
+    const timeout = getTimeout(options);
+    const { pass, value } = await pollUntil(
+      async () => (await locator.textContent() ?? "").trim(),
+      (text) => {
+        return typeof expected === "string" ? text === expected : expected.test(text);
+      },
+      timeout
+    );
+    return {
+      pass,
+      name: "toHaveText",
+      message: () => this.isNot ? `expected "${value}" not to equal "${expected}"` : `expected "${value}" to equal "${expected}"`
+    };
+  },
+  async toHaveValue(locator, expected, options) {
+    const timeout = getTimeout(options);
+    const { pass, value } = await pollUntil(
+      () => locator.inputValue(),
+      (val) => typeof expected === "string" ? val === expected : expected.test(val),
+      timeout
+    );
+    return {
+      pass,
+      name: "toHaveValue",
+      message: () => this.isNot ? `expected value "${value}" not to be "${expected}"` : `expected value "${value}" to be "${expected}"`
+    };
+  },
+  // ── Attribute/CSS assertions ──────────────────────────────────────
+  async toHaveAttribute(locator, name, value, options) {
+    const timeout = getTimeout(options);
+    const { pass, value: actual } = await pollUntil(
+      () => locator.getAttribute(name),
+      (attr) => {
+        if (attr === null) return false;
+        if (value === void 0) return true;
+        return typeof value === "string" ? attr === value : value.test(attr);
+      },
+      timeout
+    );
+    return {
+      pass,
+      name: "toHaveAttribute",
+      message: () => this.isNot ? `expected attribute "${name}" not to be "${actual}"` : `expected attribute "${name}" to be "${value}", got "${actual}"`
+    };
+  },
+  async toHaveClass(locator, expected, options) {
+    const timeout = getTimeout(options);
+    const { pass, value } = await pollUntil(
+      () => locator.getAttribute("class"),
+      (cls) => {
+        if (!cls) return false;
+        return typeof expected === "string" ? cls.split(/\s+/).includes(expected) : expected.test(cls);
+      },
+      timeout
+    );
+    return {
+      pass,
+      name: "toHaveClass",
+      message: () => this.isNot ? `expected class "${value}" not to contain "${expected}"` : `expected class "${value}" to contain "${expected}"`
+    };
+  },
+  async toHaveId(locator, expected, options) {
+    const timeout = getTimeout(options);
+    const { pass, value } = await pollUntil(
+      () => locator.getAttribute("id"),
+      (id) => id === expected,
+      timeout
+    );
+    return {
+      pass,
+      name: "toHaveId",
+      message: () => this.isNot ? `expected id "${value}" not to be "${expected}"` : `expected id "${value}" to be "${expected}"`
+    };
+  },
+  // ── Collection assertions ─────────────────────────────────────────
+  async toHaveCount(locator, expected, options) {
+    const timeout = getTimeout(options);
+    const { pass, value } = await pollUntil(
+      () => locator.count(),
+      (c) => c === expected,
+      timeout
+    );
+    return {
+      pass,
+      name: "toHaveCount",
+      message: () => this.isNot ? `expected count ${value} not to be ${expected}` : `expected count ${value} to be ${expected}`
+    };
+  },
+  // ── Focus assertion ───────────────────────────────────────────────
+  async toBeFocused(locator, options) {
+    const timeout = getTimeout(options);
+    const fn = locator.isFocused ? () => locator.isFocused() : async () => false;
+    const { pass } = await pollUntil(fn, (v) => v === true, timeout);
+    return {
+      pass,
+      name: "toBeFocused",
+      message: () => this.isNot ? `expected element not to be focused` : `expected element to be focused within ${timeout}ms`
+    };
+  },
+  // ── CSS assertion ─────────────────────────────────────────────────
+  async toHaveCSS(locator, property, expected, options) {
+    const timeout = getTimeout(options);
+    const { pass, value } = await pollUntil(
+      () => locator.getAttribute("style").then(() => {
+        if ("evaluate" in locator && typeof locator.evaluate === "function") {
+          return locator.evaluate(
+            `(el) => getComputedStyle(el).getPropertyValue(${JSON.stringify(property)})`
+          );
+        }
+        return Promise.resolve("");
+      }),
+      (val) => {
+        if (!val) return false;
+        return typeof expected === "string" ? val.trim() === expected : expected.test(val);
+      },
+      timeout
+    );
+    return {
+      pass,
+      name: "toHaveCSS",
+      message: () => this.isNot ? `expected CSS "${property}" not to be "${expected}", got "${value}"` : `expected CSS "${property}" to be "${expected}", got "${value}"`
+    };
+  },
+  // ── Page-level assertions ─────────────────────────────────────────
+  async toHaveURL(page, expected, options) {
+    const timeout = getTimeout(options);
+    const { pass, value } = await pollUntil(
+      () => page.url(),
+      (url) => typeof expected === "string" ? url.includes(expected) : expected.test(url),
+      timeout
+    );
+    return {
+      pass,
+      name: "toHaveURL",
+      message: () => this.isNot ? `expected URL "${value}" not to match "${expected}"` : `expected URL "${value}" to match "${expected}"`
+    };
+  },
+  async toHaveTitle(page, expected, options) {
+    const timeout = getTimeout(options);
+    const { pass, value } = await pollUntil(
+      () => page.title(),
+      (title) => typeof expected === "string" ? title === expected : expected.test(title),
+      timeout
+    );
+    return {
+      pass,
+      name: "toHaveTitle",
+      message: () => this.isNot ? `expected title "${value}" not to match "${expected}"` : `expected title "${value}" to match "${expected}"`
+    };
+  }
+});
+
+// src/ipc-mock.ts
+function generateIpcMockScript(mocks, context) {
+  const contextDeclarations = context ? Object.entries(context).map(([name, value]) => `  var ${name} = ${JSON.stringify(value)};`).join("\n") : "";
+  const mockEntries = Object.entries(mocks).map(([cmd, handler]) => {
+    return `    ${JSON.stringify(cmd)}: ${handler.toString()}`;
+  });
+  return `
+(function() {
+  "use strict";
+
+${contextDeclarations}
+
+  var mockHandlers = {
+${mockEntries.join(",\n")}
+  };
+
+  // Track all invoke calls for test assertions
+  window.__TAURI_MOCK_CALLS__ = [];
+
+  // Track event listeners for mock event emission
+  window.__TAURI_MOCK_LISTENERS__ = {};
+
+  // Internal invoke handler
+  function handleInvoke(cmd, args) {
+    // Intercept event plugin commands
+    if (cmd === "plugin:event|listen") {
+      var event = args && args.event;
+      var handler = args && args.handler;
+      if (event && handler) {
+        if (!window.__TAURI_MOCK_LISTENERS__[event]) {
+          window.__TAURI_MOCK_LISTENERS__[event] = [];
+        }
+        window.__TAURI_MOCK_LISTENERS__[event].push(handler);
+      }
+      return Promise.resolve(Math.floor(Math.random() * 1000000));
+    }
+    if (cmd === "plugin:event|unlisten") {
+      return Promise.resolve();
+    }
+
+    // Record the call
+    window.__TAURI_MOCK_CALLS__.push({
+      cmd: cmd,
+      args: args || {},
+      timestamp: Date.now()
+    });
+
+    // Return mock response \u2014 call the handler with args for dynamic mocks
+    if (cmd in mockHandlers) {
+      try {
+        var response = mockHandlers[cmd](args);
+        return Promise.resolve(
+          response !== null && typeof response === "object"
+            ? JSON.parse(JSON.stringify(response))
+            : response
+        );
+      } catch (e) {
+        console.error("[tauri-playwright] Mock handler error for", cmd, e);
+        return Promise.reject(e);
+      }
+    }
+
+    console.warn("[tauri-playwright] Unhandled invoke:", cmd, args);
+    return Promise.resolve(null);
+  }
+
+  // Set up the mock global
+  window.__TAURI_INTERNALS__ = {
+    invoke: handleInvoke,
+    convertFileSrc: function(path) { return path; },
+    transformCallback: function(callback) {
+      var id = Math.random().toString(36).slice(2);
+      window["_" + id] = callback;
+      return id;
+    },
+    metadata: {
+      currentWindow: { label: "main" },
+      currentWebview: { label: "main" }
+    }
+  };
+
+  // Helper: emit a mock Tauri event from test code
+  window.__TAURI_EMIT_MOCK_EVENT__ = function(event, payload) {
+    var listeners = window.__TAURI_MOCK_LISTENERS__[event] || [];
+    listeners.forEach(function(handlerId) {
+      var callback = window["_" + handlerId];
+      if (callback) {
+        callback({ event: event, payload: payload });
+      }
+    });
+  };
+
+  // Helper: get all captured invoke calls (for assertions)
+  window.__TAURI_GET_MOCK_CALLS__ = function() {
+    return window.__TAURI_MOCK_CALLS__;
+  };
+
+  // Helper: clear captured invoke calls
+  window.__TAURI_CLEAR_MOCK_CALLS__ = function() {
+    window.__TAURI_MOCK_CALLS__ = [];
+  };
+})();
+`;
+}
+
+// src/socket-client.ts
+import { createConnection } from "net";
+import { createInterface } from "readline";
+var PluginClient = class {
+  constructor(socketPath, tcpPort) {
+    this.socketPath = socketPath;
+    this.tcpPort = tcpPort;
+    this.socket = null;
+    this.readline = null;
+    this.pending = /* @__PURE__ */ new Map();
+    this.seq = 0;
+    this.responseQueue = [];
+    this.waitingForResponse = null;
+  }
+  /** Connect to the plugin's socket server. */
+  async connect() {
+    return new Promise((resolve, reject) => {
+      if (this.socketPath) {
+        this.socket = createConnection({ path: this.socketPath });
+      } else if (this.tcpPort) {
+        this.socket = createConnection({ host: "127.0.0.1", port: this.tcpPort });
+      } else {
+        reject(new Error("No socket path or TCP port specified"));
+        return;
+      }
+      this.socket.on("connect", () => {
+        this.readline = createInterface({ input: this.socket });
+        this.readline.on("line", (line) => {
+          if (this.waitingForResponse) {
+            const cb = this.waitingForResponse;
+            this.waitingForResponse = null;
+            cb(line);
+          } else {
+            this.responseQueue.push(line);
+          }
+        });
+        resolve();
+      });
+      this.socket.on("error", (err) => {
+        reject(err);
+      });
+    });
+  }
+  /** Disconnect from the server. */
+  disconnect() {
+    this.readline?.close();
+    this.socket?.destroy();
+    this.socket = null;
+    this.readline = null;
+  }
+  /** Send a command and wait for the response. */
+  async send(command) {
+    if (!this.socket) {
+      throw new Error("Not connected");
+    }
+    const json = JSON.stringify(command) + "\n";
+    return new Promise((resolve, reject) => {
+      this.socket.write(json, (err) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        this.waitForLine().then((line) => {
+          try {
+            const response = JSON.parse(line);
+            resolve(response);
+          } catch {
+            reject(new Error(`Invalid JSON response: ${line}`));
+          }
+        }).catch(reject);
+      });
+    });
+  }
+  waitForLine() {
+    if (this.responseQueue.length > 0) {
+      return Promise.resolve(this.responseQueue.shift());
+    }
+    return new Promise((resolve) => {
+      this.waitingForResponse = resolve;
+    });
+  }
+};
+
+// src/tauri-page.ts
+import { Buffer } from "buffer";
+var TauriPage = class _TauriPage {
+  /**
+   * @param client Shared socket client. When forking via `.window(label)`,
+   *               the new page reuses this same client (no new connection).
+   * @param defaultWindow Optional webview window label. When set, every
+   *                      command sent through this page targets that window;
+   *                      otherwise the plugin's configured default applies.
+   */
+  constructor(client, defaultWindow) {
+    this.client = client;
+    this.defaultWindow = defaultWindow;
+    this._defaultTimeout = 5e3;
+    // ── Keyboard & Mouse ────────────────────────────────────────────────────
+    this.keyboard = new TauriKeyboard(this);
+    this.mouse = new TauriMouse(this);
+  }
+  /** Set the default timeout for all auto-waiting operations (ms). */
+  setDefaultTimeout(timeout) {
+    this._defaultTimeout = timeout;
+  }
+  _t(options) {
+    return options?.timeout ?? this._defaultTimeout;
+  }
+  // ── Evaluation ──────────────────────────────────────────────────────────
+  /** Execute arbitrary JavaScript in the webview and return the result. */
+  async evaluate(script) {
+    const resp = await this.command("eval", { script });
+    return resp.data;
+  }
+  // ── Interactions ────────────────────────────────────────────────────────
+  /** Click an element matching the CSS selector. Auto-waits. */
+  async click(selector, options) {
+    await this.command("click", { selector, timeout_ms: this._t(options) });
+  }
+  /** Double-click an element. Auto-waits. */
+  async dblclick(selector, options) {
+    await this.command("dblclick", { selector, timeout_ms: this._t(options) });
+  }
+  /** Hover over an element. Auto-waits. */
+  async hover(selector, options) {
+    await this.command("hover", { selector, timeout_ms: this._t(options) });
+  }
+  /** Clear and fill an input element with text. Auto-waits. */
+  async fill(selector, text, options) {
+    await this.command("fill", { selector, text, timeout_ms: this._t(options) });
+  }
+  /** Type text character by character into an element. Auto-waits. */
+  async type(selector, text, options) {
+    await this.command("type_text", { selector, text, timeout_ms: this._t(options) });
+  }
+  /** Press a key on an element (e.g., 'Enter', 'Tab', 'Escape'). Auto-waits. */
+  async press(selector, key, options) {
+    await this.command("press", { selector, key, timeout_ms: this._t(options) });
+  }
+  /** Check a checkbox or radio button. Auto-waits. */
+  async check(selector, options) {
+    await this.command("check", { selector, timeout_ms: this._t(options) });
+  }
+  /** Uncheck a checkbox. Auto-waits. */
+  async uncheck(selector, options) {
+    await this.command("uncheck", { selector, timeout_ms: this._t(options) });
+  }
+  /** Select an option from a <select> element by value. Auto-waits. */
+  async selectOption(selector, value, options) {
+    const resp = await this.command("select_option", {
+      selector,
+      value,
+      timeout_ms: this._t(options)
+    });
+    return resp.data;
+  }
+  /** Focus an element. Auto-waits. */
+  async focus(selector, options) {
+    await this.command("focus", { selector, timeout_ms: this._t(options) });
+  }
+  /** Blur (unfocus) an element. Auto-waits. */
+  async blur(selector, options) {
+    await this.command("blur", { selector, timeout_ms: this._t(options) });
+  }
+  // ── Queries ─────────────────────────────────────────────────────────────
+  /** Get the text content of an element. Auto-waits for element. */
+  async textContent(selector, options) {
+    const resp = await this.command("text_content", { selector, timeout_ms: this._t(options) });
+    return resp.data;
+  }
+  /** Get the innerHTML of an element. Auto-waits for element. */
+  async innerHTML(selector, options) {
+    const resp = await this.command("inner_html", { selector, timeout_ms: this._t(options) });
+    return resp.data;
+  }
+  /** Get the innerText of an element (visible text only). Auto-waits for element. */
+  async innerText(selector, options) {
+    const resp = await this.command("inner_text", { selector, timeout_ms: this._t(options) });
+    return resp.data;
+  }
+  /** Get textContent of all elements matching a selector. No wait (works on zero matches). */
+  async allTextContents(selector) {
+    const resp = await this.command("all_text_contents", { selector });
+    return resp.data;
+  }
+  /** Get innerText of all elements matching a selector. No wait (works on zero matches). */
+  async allInnerTexts(selector) {
+    const resp = await this.command("all_inner_texts", { selector });
+    return resp.data;
+  }
+  /** Get an attribute value from an element. Auto-waits for element. */
+  async getAttribute(selector, name, options) {
+    const resp = await this.command("get_attribute", {
+      selector,
+      name,
+      timeout_ms: this._t(options)
+    });
+    return resp.data;
+  }
+  /** Get the input value of a form element. Auto-waits for element. */
+  async inputValue(selector, options) {
+    const resp = await this.command("input_value", { selector, timeout_ms: this._t(options) });
+    return resp.data ?? "";
+  }
+  /** Get the bounding box of an element. Auto-waits for element. */
+  async boundingBox(selector, options) {
+    const resp = await this.command("bounding_box", { selector, timeout_ms: this._t(options) });
+    return resp.data;
+  }
+  // ── State checks ────────────────────────────────────────────────────────
+  /** Check if an element matching the selector is visible. */
+  async isVisible(selector) {
+    const resp = await this.command("is_visible", { selector });
+    return resp.data;
+  }
+  /** Check if an element is checked (checkbox/radio). */
+  async isChecked(selector) {
+    const resp = await this.command("is_checked", { selector });
+    return resp.data;
+  }
+  /** Check if an element is disabled. */
+  async isDisabled(selector) {
+    const resp = await this.command("is_disabled", { selector });
+    return resp.data;
+  }
+  /** Check if an element is editable. */
+  async isEditable(selector) {
+    const resp = await this.command("is_editable", { selector });
+    return resp.data;
+  }
+  /** Check if an element is hidden. */
+  async isHidden(selector) {
+    return !await this.isVisible(selector);
+  }
+  /** Check if an element is enabled. */
+  async isEnabled(selector) {
+    return !await this.isDisabled(selector);
+  }
+  // ── Waiting ─────────────────────────────────────────────────────────────
+  /** Wait for an element matching the selector to become visible. */
+  async waitForSelector(selector, timeout = 5e3) {
+    await this.command("wait_for_selector", { selector, timeout_ms: timeout });
+  }
+  /** Wait for a JS expression to return truthy. */
+  async waitForFunction(expression, timeout = 5e3) {
+    await this.command("wait_for_function", { expression, timeout_ms: timeout });
+  }
+  // ── Counting ────────────────────────────────────────────────────────────
+  /** Count elements matching a selector. */
+  async count(selector) {
+    const resp = await this.command("count", { selector });
+    return resp.data;
+  }
+  // ── Page info ───────────────────────────────────────────────────────────
+  /** Get the page title. */
+  async title() {
+    const resp = await this.command("title", {});
+    return resp.data;
+  }
+  /** Get the current URL. */
+  async url() {
+    const resp = await this.command("url", {});
+    return resp.data;
+  }
+  /** Get the full page HTML. */
+  async content() {
+    const resp = await this.command("content", {});
+    return resp.data;
+  }
+  // ── Navigation ──────────────────────────────────────────────────────────
+  /** Navigate to a URL. */
+  async goto(url) {
+    await this.command("goto", { url });
+  }
+  /** Reload the page. */
+  async reload() {
+    await this.command("reload", {});
+  }
+  /** Navigate back in history. */
+  async goBack() {
+    await this.command("go_back", {});
+  }
+  /** Navigate forward in history. */
+  async goForward() {
+    await this.command("go_forward", {});
+  }
+  /** Wait for the URL to contain or match a pattern. */
+  async waitForURL(pattern, options) {
+    await this.command("wait_for_url", { pattern, timeout_ms: this._t(options) });
+  }
+  /** Check if an element is the active/focused element. */
+  async isFocused(selector) {
+    const resp = await this.command("is_focused", { selector });
+    return resp.data;
+  }
+  /** Get a computed CSS style value from an element. Auto-waits. */
+  async getComputedStyle(selector, property, options) {
+    const resp = await this.command("get_computed_style", {
+      selector,
+      property,
+      timeout_ms: this._t(options)
+    });
+    return resp.data;
+  }
+  /** Dispatch a custom DOM event on an element. Auto-waits. */
+  async dispatchEvent(selector, eventType, options) {
+    await this.command("dispatch_event", {
+      selector,
+      event_type: eventType,
+      timeout_ms: this._t(options)
+    });
+  }
+  // ── Drag and drop ───────────────────────────────────────────────────────
+  /** Drag one element onto another. Auto-waits. */
+  async dragAndDrop(source, target, options) {
+    await this.command("drag_and_drop", { source, target, timeout_ms: this._t(options) });
+  }
+  // ── File upload ─────────────────────────────────────────────────────────
+  /** Set files on a file input element. */
+  async setInputFiles(selector, files, options) {
+    const payload = files.map((f) => ({
+      name: f.name,
+      mime_type: f.mimeType,
+      base64: f.buffer.toString("base64")
+    }));
+    const resp = await this.command("set_input_files", {
+      selector,
+      files: payload,
+      timeout_ms: this._t(options)
+    });
+    return resp.data;
+  }
+  // ── Dialog handling ─────────────────────────────────────────────────────
+  /** Install dialog interception (alert/confirm/prompt). */
+  async installDialogHandler(options) {
+    await this.command("install_dialog_handler", {
+      default_confirm: options?.defaultConfirm ?? true,
+      default_prompt_text: options?.defaultPromptText
+    });
+  }
+  /** Get captured dialogs since last check. */
+  async getDialogs() {
+    const resp = await this.command("get_dialogs", {});
+    return resp.data ?? [];
+  }
+  /** Clear captured dialogs. */
+  async clearDialogs() {
+    await this.command("clear_dialogs", {});
+  }
+  // ── Network mocking ─────────────────────────────────────────────────────
+  /** Add a network route that intercepts matching fetch/XHR requests. */
+  async route(pattern, response) {
+    await this.command("add_network_route", {
+      pattern,
+      status: response.status ?? 200,
+      body: response.body ?? "",
+      content_type: response.contentType
+    });
+  }
+  /** Remove a network route. */
+  async unroute(pattern) {
+    await this.command("remove_network_route", { pattern });
+  }
+  /** Clear all network routes. */
+  async clearRoutes() {
+    await this.command("clear_network_routes", {});
+  }
+  /** Get captured network requests. */
+  async getNetworkRequests() {
+    const resp = await this.command("get_network_requests", {});
+    return resp.data ?? [];
+  }
+  /** Clear captured network requests. */
+  async clearNetworkRequests() {
+    await this.command("clear_network_requests", {});
+  }
+  // ── Capture ─────────────────────────────────────────────────────────────
+  /** Take a native screenshot of the Tauri window. Returns PNG buffer. */
+  async screenshot(options) {
+    const resp = await this.command("native_screenshot", {
+      path: options?.path
+    });
+    const data = resp.data;
+    if (options?.path) {
+      return Buffer.alloc(0);
+    }
+    return Buffer.from(data.base64, "base64");
+  }
+  /** Start recording the Tauri window as video (native frame capture). */
+  async startRecording(options) {
+    const dir = options?.path ?? `/tmp/tauri-playwright-recording-${Date.now()}`;
+    const resp = await this.command("start_recording", {
+      path: dir,
+      fps: options?.fps ?? 10
+    });
+    return resp.data;
+  }
+  /** Stop recording and return the video path (if ffmpeg is available). */
+  async stopRecording() {
+    const resp = await this.command("stop_recording", {});
+    return resp.data;
+  }
+  // ── Locator ─────────────────────────────────────────────────────────────
+  /** Create a locator for chained operations. */
+  locator(selector) {
+    return new TauriLocator(this, selector);
+  }
+  // ── Semantic selectors ──────────────────────────────────────────────────
+  getByTestId(testId) {
+    return new TauriLocator(this, `[data-testid="${testId}"]`);
+  }
+  getByPlaceholder(text, options) {
+    return new TauriLocator(
+      this,
+      options?.exact ? `[placeholder="${text}"]` : `[placeholder*="${text}"]`
+    );
+  }
+  getByAltText(text, options) {
+    return new TauriLocator(this, options?.exact ? `[alt="${text}"]` : `[alt*="${text}"]`);
+  }
+  getByTitle(text, options) {
+    return new TauriLocator(this, options?.exact ? `[title="${text}"]` : `[title*="${text}"]`);
+  }
+  getByRole(role, options) {
+    if (options?.name) {
+      return new TauriLocator(this, `[role="${role}"][aria-label="${options.name}"]`);
+    }
+    return new TauriLocator(this, `[role="${role}"]`);
+  }
+  getByText(text, options) {
+    const escaped = JSON.stringify(text);
+    const exact = options?.exact ?? false;
+    const jsSelector = exact ? `[data-pw-text-exact=${escaped}]` : `[data-pw-text=${escaped}]`;
+    return new TauriLocator(this, jsSelector, {
+      jsFind: `Array.from(document.querySelectorAll('*')).find(el => {
+        if (el.children.length > 0 && el.querySelector('*:not(br):not(wbr)')) {
+          var direct = Array.from(el.childNodes).filter(n => n.nodeType === 3).map(n => n.textContent).join('');
+          if (!direct.trim()) return false;
+          return ${exact} ? direct.trim() === ${escaped} : direct.includes(${escaped});
+        }
+        var t = el.textContent || '';
+        return ${exact} ? t.trim() === ${escaped} : t.includes(${escaped});
+      })`
+    });
+  }
+  getByLabel(text, options) {
+    const escaped = JSON.stringify(text);
+    const exact = options?.exact ?? false;
+    return new TauriLocator(this, `[data-pw-label=${escaped}]`, {
+      jsFind: `(function() {
+        var labels = document.querySelectorAll('label');
+        for (var i = 0; i < labels.length; i++) {
+          var t = labels[i].textContent || '';
+          if (${exact} ? t.trim() === ${escaped} : t.includes(${escaped})) {
+            var f = labels[i].getAttribute('for');
+            if (f) return document.getElementById(f);
+            return labels[i].querySelector('input,textarea,select');
+          }
+        }
+        return null;
+      })()`
+    });
+  }
+  /** Send a command to the plugin and handle errors. */
+  async command(type, params) {
+    const payload = { type, ...params };
+    if (this.defaultWindow !== void 0) {
+      payload.window = this.defaultWindow;
+    }
+    const resp = await this.client.send(payload);
+    if (!resp.ok) {
+      throw new Error(`TauriPage command '${type}' failed: ${resp.error}`);
+    }
+    return resp;
+  }
+  // ── Multi-window ────────────────────────────────────────────────────────
+  /**
+   * Return a new `TauriPage` that targets `label` for every command.
+   * Shares the same underlying socket — no new connection is opened.
+   */
+  window(label) {
+    const scoped = new _TauriPage(this.client, label);
+    scoped._defaultTimeout = this._defaultTimeout;
+    return scoped;
+  }
+  /** The webview window label this page targets, if any. */
+  get targetWindow() {
+    return this.defaultWindow;
+  }
+  /** List all open webview windows. */
+  async listWindows() {
+    const resp = await this.command("list_windows", {});
+    return resp.data ?? [];
+  }
+  /**
+   * Poll `listWindows()` every 50 ms until a window matches `predicate`.
+   * Returns a new `TauriPage` scoped to that window.
+   *
+   * Any error from `listWindows` (`invalid command`, dropped socket, bad JSON)
+   * is fatal — no amount of polling will fix it, so we surface it immediately
+   * instead of waiting out the timeout. `invalid command` gets an extra hint
+   * about the plugin version since that's the most common cause.
+   *
+   * @throws on timeout (default 5000 ms) or any `listWindows` failure.
+   */
+  async waitForWindow(predicate, options) {
+    const timeout = options?.timeout ?? 5e3;
+    const deadline = Date.now() + timeout;
+    while (Date.now() < deadline) {
+      let windows;
+      try {
+        windows = await this.listWindows();
+      } catch (err) {
+        const msg = String(err);
+        if (msg.includes("invalid command")) {
+          throw new Error(
+            `waitForWindow: plugin does not support list_windows \u2014 upgrade tauri-plugin-playwright to >=0.3.0 (${msg})`
+          );
+        }
+        throw new Error(`waitForWindow: list_windows failed \u2014 ${msg}`);
+      }
+      const match = windows.find(predicate);
+      if (match) return this.window(match.label);
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    throw new Error(`waitForWindow: no matching window within ${timeout}ms`);
+  }
+};
+var TauriLocator = class _TauriLocator {
+  constructor(page, selector, options) {
+    this.page = page;
+    this.selector = selector;
+    this._jsFind = options?.jsFind;
+  }
+  /** Whether this locator uses JS-based element resolution. */
+  get isJsBased() {
+    return !!this._jsFind;
+  }
+  /**
+   * Execute an action/query. For CSS selectors, delegates to TauriPage.
+   * For JS-based selectors, uses evaluate with the JS find expression.
+   */
+  async _eval(script) {
+    if (!this._jsFind) throw new Error("_eval only for JS-based locators");
+    return this.page.evaluate(script);
+  }
+  _actionScript(actionBody, timeout = 5e3) {
+    const find = this._jsFind;
+    return `(async function(){ var dl=Date.now()+${timeout}; while(Date.now()<dl){ var el=${find}; if(el){ var r=el.getBoundingClientRect(); var st=getComputedStyle(el); if(r.width>0&&r.height>0&&st.visibility!=='hidden'&&st.display!=='none'&&parseFloat(st.opacity)>0){ ${actionBody}; }} await new Promise(function(r){setTimeout(r,50)}); } throw new Error('timeout waiting for element'); })()`;
+  }
+  _queryScript(returnExpr, timeout = 5e3) {
+    const find = this._jsFind;
+    return `(async function(){ var dl=Date.now()+${timeout}; while(Date.now()<dl){ var el=${find}; if(el){ return ${returnExpr}; } await new Promise(function(r){setTimeout(r,50)}); } throw new Error('timeout waiting for element'); })()`;
+  }
+  // ── Actions ─────────────────────────────────────────────────────────
+  async click(options) {
+    if (!this._jsFind) return this.page.click(this.selector, options);
+    await this._eval(
+      this._actionScript('el.scrollIntoView({block:"center"}); el.click(); return null')
+    );
+  }
+  async dblclick(options) {
+    if (!this._jsFind) return this.page.dblclick(this.selector, options);
+    await this._eval(
+      this._actionScript(
+        'el.scrollIntoView({block:"center"}); el.dispatchEvent(new MouseEvent("dblclick",{bubbles:true})); return null'
+      )
+    );
+  }
+  async hover(options) {
+    if (!this._jsFind) return this.page.hover(this.selector, options);
+    await this._eval(
+      this._actionScript(
+        'el.scrollIntoView({block:"center"}); el.dispatchEvent(new MouseEvent("mouseenter",{bubbles:true})); el.dispatchEvent(new MouseEvent("mouseover",{bubbles:true})); return null'
+      )
+    );
+  }
+  async fill(text, options) {
+    if (!this._jsFind) return this.page.fill(this.selector, text, options);
+    const t = JSON.stringify(text);
+    await this._eval(
+      this._actionScript(
+        `el.focus(); var desc=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value'); if(desc&&desc.set) desc.set.call(el,${t}); else el.value=${t}; el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); return null`
+      )
+    );
+  }
+  async press(key, options) {
+    if (!this._jsFind) return this.page.press(this.selector, key, options);
+    const k = JSON.stringify(key);
+    await this._eval(
+      this._actionScript(
+        `el.focus(); var o={key:${k},bubbles:true}; el.dispatchEvent(new KeyboardEvent('keydown',o)); el.dispatchEvent(new KeyboardEvent('keypress',o)); el.dispatchEvent(new KeyboardEvent('keyup',o)); return null`
+      )
+    );
+  }
+  async check(options) {
+    if (!this._jsFind) return this.page.check(this.selector, options);
+    await this._eval(this._actionScript("if(!el.checked){ el.click(); } return null"));
+  }
+  async uncheck(options) {
+    if (!this._jsFind) return this.page.uncheck(this.selector, options);
+    await this._eval(this._actionScript("if(el.checked){ el.click(); } return null"));
+  }
+  async selectOption(value, options) {
+    if (!this._jsFind) return this.page.selectOption(this.selector, value, options);
+    const v = JSON.stringify(value);
+    return this._eval(
+      this._actionScript(
+        `el.value=${v}; el.dispatchEvent(new Event('change',{bubbles:true})); return el.value`
+      )
+    );
+  }
+  async focus(options) {
+    if (!this._jsFind) return this.page.focus(this.selector, options);
+    await this._eval(this._queryScript("(function(){ el.focus(); return null; })()"));
+  }
+  async blur(options) {
+    if (!this._jsFind) return this.page.blur(this.selector, options);
+    await this._eval(this._queryScript("(function(){ el.blur(); return null; })()"));
+  }
+  async clear() {
+    return this.fill("");
+  }
+  /** Type text character-by-character (Playwright's replacement for deprecated type()). */
+  async pressSequentially(text, options) {
+    if (!this._jsFind) {
+      return this.page.type(this.selector, text);
+    }
+    for (const char of text) {
+      await this.press(char);
+      if (options?.delay) await new Promise((r) => setTimeout(r, options.delay));
+    }
+  }
+  /** Dispatch a custom DOM event on the element. */
+  async dispatchEvent(eventType, options) {
+    if (!this._jsFind) return this.page.dispatchEvent(this.selector, eventType, options);
+    const e = JSON.stringify(eventType);
+    await this._eval(
+      this._actionScript(`el.dispatchEvent(new Event(${e},{bubbles:true})); return null`)
+    );
+  }
+  /** Run a JS function on the matched element. The function receives `el` as argument. */
+  async evaluate(fn) {
+    if (!this._jsFind) {
+      return this.page.evaluate(
+        `(function(){ var el=document.querySelector(${JSON.stringify(this.selector)}); if(!el) throw new Error('not found'); return (${fn})(el); })()`
+      );
+    }
+    return this._eval(
+      `(function(){ var el=${this._jsFind}; if(!el) throw new Error('not found'); return (${fn})(el); })()`
+    );
+  }
+  /** Check if this element is the active/focused element. */
+  async isFocused() {
+    if (!this._jsFind) return this.page.isFocused(this.selector);
+    return this._eval(
+      `(function(){ var el=${this._jsFind}; return el!==null&&document.activeElement===el; })()`
+    );
+  }
+  async scrollIntoViewIfNeeded() {
+    if (!this._jsFind) {
+      await this.page.evaluate(
+        `document.querySelector(${JSON.stringify(this.selector)})?.scrollIntoView({block:'center'})`
+      );
+    } else {
+      await this._eval(
+        `(function(){ var el=${this._jsFind}; if(el) el.scrollIntoView({block:'center'}); return null; })()`
+      );
+    }
+  }
+  // ── Queries ─────────────────────────────────────────────────────────
+  async textContent(options) {
+    if (!this._jsFind) return this.page.textContent(this.selector, options);
+    return this._eval(this._queryScript("el.textContent"));
+  }
+  async innerHTML(options) {
+    if (!this._jsFind) return this.page.innerHTML(this.selector, options);
+    return this._eval(this._queryScript("el.innerHTML"));
+  }
+  async innerText(options) {
+    if (!this._jsFind) return this.page.innerText(this.selector, options);
+    return this._eval(this._queryScript("el.innerText"));
+  }
+  async getAttribute(name, options) {
+    if (!this._jsFind) return this.page.getAttribute(this.selector, name, options);
+    return this._eval(this._queryScript(`el.getAttribute(${JSON.stringify(name)})`));
+  }
+  async inputValue(options) {
+    if (!this._jsFind) return this.page.inputValue(this.selector, options);
+    return this._eval(this._queryScript("el.value||''"));
+  }
+  async boundingBox() {
+    if (!this._jsFind) return this.page.boundingBox(this.selector);
+    return this._eval(
+      `(function(){ var el=${this._jsFind}; if(!el) return null; var r=el.getBoundingClientRect(); return {x:r.left,y:r.top,width:r.width,height:r.height}; })()`
+    );
+  }
+  // ── State ───────────────────────────────────────────────────────────
+  async isVisible() {
+    if (!this._jsFind) return this.page.isVisible(this.selector);
+    return this._eval(
+      `(function(){ var el=${this._jsFind}; if(!el) return false; var r=el.getBoundingClientRect(); var st=getComputedStyle(el); return r.width>0&&r.height>0&&st.visibility!=='hidden'&&st.display!=='none'&&parseFloat(st.opacity)>0; })()`
+    );
+  }
+  async isHidden() {
+    return !await this.isVisible();
+  }
+  async isChecked() {
+    if (!this._jsFind) return this.page.isChecked(this.selector);
+    return this._eval(
+      `(function(){ var el=${this._jsFind}; if(!el) return false; return !!el.checked; })()`
+    );
+  }
+  async isDisabled() {
+    if (!this._jsFind) return this.page.isDisabled(this.selector);
+    return this._eval(
+      `(function(){ var el=${this._jsFind}; if(!el) return true; return el.disabled===true||el.hasAttribute('disabled'); })()`
+    );
+  }
+  async isEditable() {
+    if (!this._jsFind) return this.page.isEditable(this.selector);
+    return this._eval(
+      `(function(){ var el=${this._jsFind}; if(!el) return false; if(el.disabled||el.readOnly) return false; var tag=el.tagName; return tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT'||el.isContentEditable; })()`
+    );
+  }
+  async isEnabled() {
+    return !await this.isDisabled();
+  }
+  // ── Waiting ─────────────────────────────────────────────────────────
+  async waitFor(timeout = 5e3) {
+    if (!this._jsFind) return this.page.waitForSelector(this.selector, timeout);
+    await this._eval(this._queryScript("true", timeout));
+  }
+  // ── Counting ────────────────────────────────────────────────────────
+  async count() {
+    if (!this._jsFind) return this.page.count(this.selector);
+    return this._eval(`document.querySelectorAll(${JSON.stringify(this.selector)}).length`);
+  }
+  // ── Refinement ──────────────────────────────────────────────────────
+  nth(index) {
+    return new _TauriLocator(this.page, `${this.selector}:nth-match(${index})`, {
+      jsFind: `document.querySelectorAll(${JSON.stringify(this.selector)})[${index}]`
+    });
+  }
+  first() {
+    return this.nth(0);
+  }
+  last() {
+    return new _TauriLocator(this.page, this.selector, {
+      jsFind: `(function(){ var all=document.querySelectorAll(${JSON.stringify(this.selector)}); return all[all.length-1]||null; })()`
+    });
+  }
+  filter(options) {
+    const sel = JSON.stringify(this.selector);
+    if (options.hasText) {
+      const match = typeof options.hasText === "string" ? `t.includes(${JSON.stringify(options.hasText)})` : `${options.hasText.toString()}.test(t)`;
+      return new _TauriLocator(this.page, this.selector, {
+        jsFind: `Array.from(document.querySelectorAll(${sel})).find(function(el){ var t=el.textContent||''; return ${match}; })`
+      });
+    }
+    return this;
+  }
+  async all() {
+    const c = await this.count();
+    return Array.from({ length: c }, (_, i) => this.nth(i));
+  }
+  // ── Semantic selectors (scoped to this locator) ─────────────────────
+  getByTestId(testId) {
+    return new _TauriLocator(this.page, `${this.selector} [data-testid="${testId}"]`);
+  }
+  getByPlaceholder(text, options) {
+    const attr = options?.exact ? `="${text}"` : `*="${text}"`;
+    return new _TauriLocator(this.page, `${this.selector} [placeholder${attr}]`);
+  }
+  getByText(text, options) {
+    return this.page.getByText(text, options);
+  }
+  getByRole(role, options) {
+    return this.page.getByRole(role, options);
+  }
+  locator(selector) {
+    return new _TauriLocator(this.page, `${this.selector} ${selector}`);
+  }
+};
+var TauriKeyboard = class {
+  constructor(page) {
+    this.page = page;
+    this._modifiers = /* @__PURE__ */ new Set();
+  }
+  async press(key) {
+    const parts = key.split("+");
+    const modifiers = parts.slice(0, -1);
+    const mainKey = parts[parts.length - 1];
+    for (const mod of modifiers) await this.down(mod);
+    const k = JSON.stringify(mainKey);
+    await this.page.evaluate(`(function(){
+      var el=document.activeElement||document.body;
+      var o={key:${k},bubbles:true,ctrlKey:${this._modifiers.has("Control")},shiftKey:${this._modifiers.has("Shift")},altKey:${this._modifiers.has("Alt")},metaKey:${this._modifiers.has("Meta")}};
+      el.dispatchEvent(new KeyboardEvent('keydown',o));
+      el.dispatchEvent(new KeyboardEvent('keypress',o));
+      el.dispatchEvent(new KeyboardEvent('keyup',o));
+    })()`);
+    for (const mod of modifiers) await this.up(mod);
+  }
+  async down(key) {
+    this._modifiers.add(key);
+    await this.page.evaluate(
+      `(function(){ var el=document.activeElement||document.body; el.dispatchEvent(new KeyboardEvent('keydown',{key:${JSON.stringify(key)},bubbles:true})); })()`
+    );
+  }
+  async up(key) {
+    this._modifiers.delete(key);
+    await this.page.evaluate(
+      `(function(){ var el=document.activeElement||document.body; el.dispatchEvent(new KeyboardEvent('keyup',{key:${JSON.stringify(key)},bubbles:true})); })()`
+    );
+  }
+  async type(text, options) {
+    for (const char of text) {
+      const c = JSON.stringify(char);
+      await this.page.evaluate(`(function(){
+        var el=document.activeElement||document.body;
+        el.dispatchEvent(new KeyboardEvent('keydown',{key:${c},bubbles:true}));
+        if(el.tagName==='INPUT'||el.tagName==='TEXTAREA'){
+          var desc=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value');
+          if(desc&&desc.set) desc.set.call(el,el.value+${c}); else el.value+=${c};
+          el.dispatchEvent(new Event('input',{bubbles:true}));
+        }
+        el.dispatchEvent(new KeyboardEvent('keyup',{key:${c},bubbles:true}));
+      })()`);
+      if (options?.delay) await new Promise((r) => setTimeout(r, options.delay));
+    }
+  }
+  async insertText(text) {
+    await this.page.evaluate(`document.execCommand('insertText', false, ${JSON.stringify(text)})`);
+  }
+};
+var TauriMouse = class {
+  constructor(page) {
+    this.page = page;
+  }
+  async click(x, y, options) {
+    const btn = options?.button === "right" ? 2 : options?.button === "middle" ? 1 : 0;
+    await this.page.evaluate(`(function(){
+      var el=document.elementFromPoint(${x},${y}); if(!el) return;
+      var o={bubbles:true,clientX:${x},clientY:${y},button:${btn}};
+      el.dispatchEvent(new MouseEvent('mousedown',o));
+      el.dispatchEvent(new MouseEvent('mouseup',o));
+      el.dispatchEvent(new MouseEvent('click',o));
+    })()`);
+  }
+  async dblclick(x, y) {
+    await this.page.evaluate(`(function(){
+      var el=document.elementFromPoint(${x},${y}); if(!el) return;
+      var o={bubbles:true,clientX:${x},clientY:${y}};
+      el.dispatchEvent(new MouseEvent('dblclick',o));
+    })()`);
+  }
+  async move(x, y) {
+    await this.page.evaluate(`(function(){
+      var el=document.elementFromPoint(${x},${y})||document.body;
+      el.dispatchEvent(new MouseEvent('mousemove',{bubbles:true,clientX:${x},clientY:${y}}));
+    })()`);
+  }
+  async down(options) {
+    const btn = options?.button === "right" ? 2 : options?.button === "middle" ? 1 : 0;
+    await this.page.evaluate(
+      `document.activeElement?.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,button:${btn}}))`
+    );
+  }
+  async up(options) {
+    const btn = options?.button === "right" ? 2 : options?.button === "middle" ? 1 : 0;
+    await this.page.evaluate(
+      `document.activeElement?.dispatchEvent(new MouseEvent('mouseup',{bubbles:true,button:${btn}}))`
+    );
+  }
+  async wheel(deltaX, deltaY) {
+    await this.page.evaluate(
+      `document.activeElement?.dispatchEvent(new WheelEvent('wheel',{bubbles:true,deltaX:${deltaX},deltaY:${deltaY}}))`
+    );
+  }
+};
+
+// src/browser-page-adapter.ts
+var BrowserPageAdapter = class {
+  constructor(page) {
+    this.page = page;
+    // ── Dialog handling ─────────────────────────────────────────────────
+    this.dialogHandler = null;
+    this.capturedDialogs = [];
+    // ── Network mocking ─────────────────────────────────────────────────
+    this.capturedRequests = [];
+    this.activeRoutes = [];
+  }
+  /** Set the default timeout for all auto-waiting operations (ms). */
+  setDefaultTimeout(timeout) {
+    this.page.setDefaultTimeout(timeout);
+  }
+  // ── Expose the underlying Playwright Page for direct access ─────────
+  get playwrightPage() {
+    return this.page;
+  }
+  // ── Evaluation ──────────────────────────────────────────────────────
+  async evaluate(script) {
+    return this.page.evaluate(script);
+  }
+  // ── Interactions ────────────────────────────────────────────────────
+  async click(selector) {
+    await this.page.click(selector);
+  }
+  async dblclick(selector) {
+    await this.page.dblclick(selector);
+  }
+  async hover(selector) {
+    await this.page.hover(selector);
+  }
+  async fill(selector, text) {
+    await this.page.fill(selector, text);
+  }
+  async type(selector, text) {
+    await this.page.locator(selector).pressSequentially(text);
+  }
+  async press(selector, key) {
+    await this.page.press(selector, key);
+  }
+  async check(selector) {
+    await this.page.check(selector);
+  }
+  async uncheck(selector) {
+    await this.page.uncheck(selector);
+  }
+  async selectOption(selector, value) {
+    const result = await this.page.selectOption(selector, value);
+    return Array.isArray(result) ? result[0] : result;
+  }
+  async focus(selector) {
+    await this.page.focus(selector);
+  }
+  async blur(selector) {
+    await this.page.locator(selector).blur();
+  }
+  // ── Queries ─────────────────────────────────────────────────────────
+  async textContent(selector) {
+    return this.page.textContent(selector);
+  }
+  async innerHTML(selector) {
+    return this.page.innerHTML(selector);
+  }
+  async innerText(selector) {
+    return this.page.innerText(selector);
+  }
+  async allTextContents(selector) {
+    return this.page.locator(selector).allTextContents();
+  }
+  async allInnerTexts(selector) {
+    return this.page.locator(selector).allInnerTexts();
+  }
+  async getAttribute(selector, name) {
+    return this.page.getAttribute(selector, name);
+  }
+  async inputValue(selector) {
+    return this.page.inputValue(selector);
+  }
+  async boundingBox(selector) {
+    return this.page.locator(selector).boundingBox();
+  }
+  // ── State checks ────────────────────────────────────────────────────
+  async isVisible(selector) {
+    return this.page.isVisible(selector);
+  }
+  async isChecked(selector) {
+    return this.page.isChecked(selector);
+  }
+  async isDisabled(selector) {
+    return this.page.isDisabled(selector);
+  }
+  async isEditable(selector) {
+    return this.page.isEditable(selector);
+  }
+  async isHidden(selector) {
+    return this.page.isHidden(selector);
+  }
+  async isEnabled(selector) {
+    return this.page.isEnabled(selector);
+  }
+  // ── Waiting ─────────────────────────────────────────────────────────
+  async waitForSelector(selector, timeout = 5e3) {
+    await this.page.waitForSelector(selector, { timeout });
+  }
+  async waitForFunction(expression, timeout = 5e3) {
+    await this.page.waitForFunction(expression, void 0, { timeout });
+  }
+  // ── Counting ────────────────────────────────────────────────────────
+  async count(selector) {
+    return this.page.locator(selector).count();
+  }
+  // ── Page info ───────────────────────────────────────────────────────
+  async title() {
+    return this.page.title();
+  }
+  async url() {
+    return this.page.url();
+  }
+  async content() {
+    return this.page.content();
+  }
+  // ── Navigation ──────────────────────────────────────────────────────
+  async goto(url) {
+    await this.page.goto(url);
+  }
+  async reload() {
+    await this.page.reload();
+  }
+  async goBack() {
+    await this.page.goBack();
+  }
+  async goForward() {
+    await this.page.goForward();
+  }
+  async waitForURL(pattern, options) {
+    await this.page.waitForURL(`**${pattern}**`, options);
+  }
+  async isFocused(selector) {
+    return this.page.locator(selector).evaluate((el) => document.activeElement === el);
+  }
+  async getComputedStyle(selector, property) {
+    return this.page.locator(selector).evaluate((el, prop) => getComputedStyle(el).getPropertyValue(prop), property);
+  }
+  async dispatchEvent(selector, eventType) {
+    await this.page.locator(selector).dispatchEvent(eventType);
+  }
+  // ── Drag and drop ───────────────────────────────────────────────────
+  async dragAndDrop(source, target) {
+    await this.page.dragAndDrop(source, target);
+  }
+  // ── File upload ─────────────────────────────────────────────────────
+  async setInputFiles(selector, files) {
+    await this.page.setInputFiles(
+      selector,
+      files.map((f) => ({ name: f.name, mimeType: f.mimeType, buffer: f.buffer }))
+    );
+    return files.length;
+  }
+  async installDialogHandler(options) {
+    const confirm = options?.defaultConfirm ?? true;
+    const promptText = options?.defaultPromptText;
+    if (this.dialogHandler) {
+      this.page.removeListener("dialog", this.dialogHandler);
+    }
+    this.dialogHandler = async (dialog) => {
+      this.capturedDialogs.push({
+        type: dialog.type(),
+        message: dialog.message(),
+        default: dialog.defaultValue?.() ?? ""
+      });
+      if (dialog.type() === "prompt") {
+        await dialog.accept(promptText ?? "");
+      } else if (dialog.type() === "confirm") {
+        if (confirm) await dialog.accept();
+        else await dialog.dismiss();
+      } else {
+        await dialog.accept();
+      }
+    };
+    this.page.on("dialog", this.dialogHandler);
+  }
+  async getDialogs() {
+    return this.capturedDialogs;
+  }
+  async clearDialogs() {
+    this.capturedDialogs = [];
+  }
+  async route(pattern, response) {
+    const handler = async (route) => {
+      this.capturedRequests.push({
+        url: route.request().url(),
+        method: route.request().method(),
+        timestamp: Date.now()
+      });
+      await route.fulfill({
+        status: response.status ?? 200,
+        body: response.body ?? "",
+        contentType: response.contentType ?? "application/json"
+      });
+    };
+    this.activeRoutes.push({ pattern, handler });
+    await this.page.route(`**${pattern}**`, handler);
+  }
+  async unroute(pattern) {
+    const route = this.activeRoutes.find((r) => r.pattern === pattern);
+    if (route) {
+      await this.page.unroute(`**${pattern}**`, route.handler);
+      this.activeRoutes = this.activeRoutes.filter((r) => r.pattern !== pattern);
+    }
+  }
+  async clearRoutes() {
+    for (const route of this.activeRoutes) {
+      await this.page.unroute(`**${route.pattern}**`, route.handler);
+    }
+    this.activeRoutes = [];
+  }
+  async getNetworkRequests() {
+    return this.capturedRequests;
+  }
+  async clearNetworkRequests() {
+    this.capturedRequests = [];
+  }
+  // ── Semantic selectors ───────────────────────────────────────────────
+  getByTestId(testId) {
+    return this.page.getByTestId(testId);
+  }
+  getByPlaceholder(text, options) {
+    return this.page.getByPlaceholder(text, options);
+  }
+  getByAltText(text, options) {
+    return this.page.getByAltText(text, options);
+  }
+  getByTitle(text, options) {
+    return this.page.getByTitle(text, options);
+  }
+  getByRole(role, options) {
+    return this.page.getByRole(role, options);
+  }
+  getByText(text, options) {
+    return this.page.getByText(text, options);
+  }
+  getByLabel(text, options) {
+    return this.page.getByLabel(text, options);
+  }
+  // ── Keyboard & Mouse ────────────────────────────────────────────────
+  get keyboard() {
+    return this.page.keyboard;
+  }
+  get mouse() {
+    return this.page.mouse;
+  }
+  // ── Capture ─────────────────────────────────────────────────────────
+  async screenshot(options) {
+    return this.page.screenshot({ path: options?.path });
+  }
+  async startRecording() {
+    return { dir: "", fps: 0 };
+  }
+  async stopRecording() {
+    return { dir: "", frame_count: 0, fps: 0, video: null };
+  }
+  // ── Locator ─────────────────────────────────────────────────────────
+  locator(selector) {
+    return this.page.locator(selector);
+  }
+};
+
+// src/process-manager.ts
+import { spawn } from "child_process";
+import { existsSync } from "fs";
+var TauriProcessManager = class {
+  constructor(config) {
+    this.config = config;
+    this.process = null;
+    this.socketPath = config.socketPath ?? "/tmp/tauri-playwright.sock";
+    this.tcpPort = config.tcpPort;
+  }
+  /**
+   * Start the Tauri app and wait for the plugin socket to become available.
+   * Returns the socket path or TCP port to connect to.
+   */
+  async start() {
+    const cmd = this.config.command ?? "cargo";
+    const args = this.config.args ?? ["tauri", "dev"];
+    if (this.config.features?.length) {
+      args.push("--features", this.config.features.join(","));
+    }
+    return new Promise((resolve, reject) => {
+      const cwd = this.config.cwd ?? process.cwd();
+      this.process = spawn(cmd, args, {
+        cwd,
+        stdio: ["ignore", "pipe", "pipe"],
+        env: {
+          ...process.env,
+          // Ensure the plugin knows where to listen
+          TAURI_PLAYWRIGHT_SOCKET: this.socketPath
+        }
+      });
+      const timeout = setTimeout(
+        () => {
+          reject(new Error(`Tauri app did not start within ${this.config.startTimeout ?? 120}s`));
+          this.stop();
+        },
+        (this.config.startTimeout ?? 120) * 1e3
+      );
+      const onData = (data) => {
+        const text = data.toString();
+        if (text.includes("tauri-plugin-playwright: listening on unix:")) {
+          clearTimeout(timeout);
+          resolve({ socketPath: this.socketPath });
+        } else if (text.includes("tauri-plugin-playwright: listening on tcp://")) {
+          clearTimeout(timeout);
+          const match = text.match(/tcp:\/\/127\.0\.0\.1:(\d+)/);
+          const port = match ? parseInt(match[1]) : this.tcpPort ?? 6274;
+          resolve({ tcpPort: port });
+        }
+      };
+      this.process.stdout?.on("data", onData);
+      this.process.stderr?.on("data", onData);
+      this.process.on("error", (err) => {
+        clearTimeout(timeout);
+        reject(err);
+      });
+      this.process.on("exit", (code) => {
+        if (code !== null && code !== 0) {
+          clearTimeout(timeout);
+          reject(new Error(`Tauri process exited with code ${code}`));
+        }
+      });
+    });
+  }
+  /**
+   * Also supports connecting to an already-running Tauri app.
+   * Just waits for the socket file to appear.
+   */
+  async waitForSocket(timeoutMs = 3e4) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      if (existsSync(this.socketPath)) {
+        return;
+      }
+      await new Promise((r) => setTimeout(r, 200));
+    }
+    throw new Error(`Socket ${this.socketPath} did not appear within ${timeoutMs}ms`);
+  }
+  /** Kill the Tauri process. */
+  stop() {
+    if (this.process) {
+      this.process.kill("SIGTERM");
+      setTimeout(() => {
+        if (this.process && !this.process.killed) {
+          this.process.kill("SIGKILL");
+        }
+      }, 5e3);
+      this.process = null;
+    }
+  }
+};
+
+// src/fixture.ts
+function createTauriTest(config) {
+  const tauriTest = base.extend({
+    mode: ["browser", { option: true }],
+    tauriPage: async ({ page, mode }, use, testInfo) => {
+      if (mode === "browser") {
+        if (config.ipcMocks) {
+          await page.addInitScript(generateIpcMockScript(config.ipcMocks, config.ipcContext));
+        } else {
+          await page.addInitScript(generateIpcMockScript({}, config.ipcContext));
+        }
+        await page.goto(config.devUrl);
+        await page.waitForLoadState("networkidle");
+        const adapter = new BrowserPageAdapter(page);
+        await use(adapter);
+      } else if (mode === "cdp") {
+        const endpoint = config.cdpEndpoint ?? "http://localhost:9222";
+        let browser;
+        try {
+          browser = await chromium.connectOverCDP(endpoint);
+          const context = browser.contexts()[0];
+          if (!context)
+            throw new Error(
+              "No browser context found \u2014 is the Tauri app running with CDP enabled?"
+            );
+          const cdpPage = context.pages()[0] ?? await context.newPage();
+          await cdpPage.waitForLoadState("domcontentloaded");
+          const adapter = new BrowserPageAdapter(cdpPage);
+          await use(adapter);
+        } finally {
+          browser?.close().catch(() => {
+          });
+        }
+      } else {
+        let processManager = null;
+        let client = null;
+        let tauriPage;
+        try {
+          const socketPath = config.mcpSocket ?? "/tmp/tauri-playwright.sock";
+          if (config.tauriCommand) {
+            const parts = config.tauriCommand.split(" ");
+            processManager = new TauriProcessManager({
+              command: parts[0],
+              args: parts.slice(1),
+              cwd: config.tauriCwd,
+              features: config.tauriFeatures,
+              socketPath,
+              startTimeout: config.startTimeout ?? 120
+            });
+            await processManager.start();
+          } else {
+            const pm = new TauriProcessManager({ socketPath });
+            await pm.waitForSocket(3e4);
+          }
+          client = new PluginClient(socketPath);
+          await client.connect();
+          const ping = await client.send({ type: "ping" });
+          if (!ping.ok) {
+            throw new Error("Plugin ping failed");
+          }
+          tauriPage = new TauriPage(client);
+          if (config.devUrl) {
+            await tauriPage.evaluate(`window.location.href = ${JSON.stringify(config.devUrl)}`);
+            await new Promise((r) => setTimeout(r, 500));
+            await tauriPage.waitForFunction(
+              'document.readyState === "complete" && !!window.__PW_ACTIVE__'
+            );
+          }
+          let recordingDir = null;
+          try {
+            const rec = await tauriPage.startRecording({
+              path: testInfo.outputPath("recording"),
+              fps: 15
+            });
+            recordingDir = rec.dir;
+          } catch {
+          }
+          await use(tauriPage);
+          let videoPath = null;
+          if (recordingDir) {
+            try {
+              const result = await tauriPage.stopRecording();
+              videoPath = result.video;
+            } catch {
+            }
+          }
+          if (testInfo.status !== testInfo.expectedStatus) {
+            try {
+              const screenshotBuffer = await tauriPage.screenshot();
+              if (screenshotBuffer.length > 0) {
+                await testInfo.attach("native-screenshot", {
+                  body: screenshotBuffer,
+                  contentType: "image/png"
+                });
+              }
+            } catch {
+            }
+          }
+          if (videoPath) {
+            try {
+              const { readFile } = await import("fs/promises");
+              const videoBuffer = await readFile(videoPath);
+              await testInfo.attach("video", {
+                body: videoBuffer,
+                contentType: "video/mp4"
+              });
+            } catch {
+            }
+          }
+        } finally {
+          client?.disconnect();
+          processManager?.stop();
+        }
+      }
+    }
+  });
+  return {
+    test: tauriTest,
+    expect: tauriExpect
+  };
+}
+async function getCapturedInvokes(page) {
+  return page.evaluate(() => window.__TAURI_GET_MOCK_CALLS__());
+}
+async function clearCapturedInvokes(page) {
+  await page.evaluate(() => window.__TAURI_CLEAR_MOCK_CALLS__());
+}
+async function emitMockEvent(page, event, payload) {
+  await page.evaluate(({ event: event2, payload: payload2 }) => window.__TAURI_EMIT_MOCK_EVENT__(event2, payload2), {
+    event,
+    payload
+  });
+}
+export {
+  BrowserPageAdapter,
+  PluginClient,
+  TauriKeyboard,
+  TauriLocator,
+  TauriMouse,
+  TauriPage,
+  TauriProcessManager,
+  clearCapturedInvokes,
+  createTauriTest,
+  emitMockEvent,
+  generateIpcMockScript,
+  getCapturedInvokes,
+  tauriExpect
+};

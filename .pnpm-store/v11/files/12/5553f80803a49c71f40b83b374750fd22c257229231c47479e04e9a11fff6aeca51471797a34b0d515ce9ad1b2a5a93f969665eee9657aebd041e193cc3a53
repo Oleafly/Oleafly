@@ -1,0 +1,1 @@
+{"version":3,"file":"getHighlighterOptions.d.ts","names":[],"sources":["../../src/utils/getHighlighterOptions.ts"],"mappings":";;;UAQU,uBAAA;EACR,KAAA,GAAQ,eAAA,GAAkB,UAAA;EAC1B,oBAAA,GAAuB,gBAAA;AAAA;AAAA,UAGf,2BAAA;EACR,KAAA,EAAO,kBAAA;EACP,MAAA,EAAQ,eAAA;EACR,oBAAA,EAAsB,gBAAA;AAAA;AAAA,iBAGR,qBAAA,CACd,IAAA,EAAM,kBAAA;EACJ,KAAA;EAAO;AAAA,GAAqC,uBAAA,GAC7C,2BAAA"}

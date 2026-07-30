@@ -1,0 +1,59 @@
+import { cornerRadiusProps } from '../../../utils/border-radius.mjs';
+
+const pxValues = new Set([
+    // Border props
+    "borderWidth",
+    "borderTopWidth",
+    "borderRightWidth",
+    "borderBottomWidth",
+    "borderLeftWidth",
+    "borderRadius",
+    ...cornerRadiusProps,
+    // Positioning props
+    "width",
+    "maxWidth",
+    "height",
+    "maxHeight",
+    "top",
+    "right",
+    "bottom",
+    "left",
+    "inset",
+    "insetBlock",
+    "insetBlockStart",
+    "insetBlockEnd",
+    "insetInline",
+    "insetInlineStart",
+    "insetInlineEnd",
+    // Spacing props
+    "padding",
+    "paddingTop",
+    "paddingRight",
+    "paddingBottom",
+    "paddingLeft",
+    "paddingBlock",
+    "paddingBlockStart",
+    "paddingBlockEnd",
+    "paddingInline",
+    "paddingInlineStart",
+    "paddingInlineEnd",
+    "margin",
+    "marginTop",
+    "marginRight",
+    "marginBottom",
+    "marginLeft",
+    "marginBlock",
+    "marginBlockStart",
+    "marginBlockEnd",
+    "marginInline",
+    "marginInlineStart",
+    "marginInlineEnd",
+    // Typography
+    "fontSize",
+    // Misc
+    "backgroundPositionX",
+    "backgroundPositionY",
+]);
+
+export { pxValues };
+//# sourceMappingURL=px-values.mjs.map

@@ -1,0 +1,1 @@
+{"version":3,"file":"isWasmEnabled.js","sourceRoot":"","sources":["../../../src/util/isWasmEnabled.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,IAAI,EAAE,MAAM,SAAS,CAAC;AAE/B;;GAEG;AACH,MAAM,CAAC,MAAM,aAAa,GAAG,GAAG,EAAE,CAAC,CAAC,CAAC,IAAI,CAAC,WAAW,IAAI,CAAC,CAAC,IAAI,CAAC,WAAW,CAAC,OAAO,IAAI,CAAC,CAAC,IAAI,CAAC,WAAW,CAAC,WAAW,CAAC"}

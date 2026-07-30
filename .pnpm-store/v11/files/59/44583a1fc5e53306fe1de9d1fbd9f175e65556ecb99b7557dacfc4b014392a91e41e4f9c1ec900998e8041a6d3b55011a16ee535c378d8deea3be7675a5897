@@ -1,0 +1,7 @@
+export let SelectValueDataAttributes = /*#__PURE__*/function (SelectValueDataAttributes) {
+  /**
+   * Present when the select doesn't have a value.
+   */
+  SelectValueDataAttributes["placeholder"] = "data-placeholder";
+  return SelectValueDataAttributes;
+}({});

@@ -1,0 +1,83 @@
+import { ReactZoomPanPinchContext } from "../../models/context.model";
+import { boundLimiter } from "../bounds/bounds.utils";
+
+export const isVelocityCalculationAllowed = (
+  contextInstance: ReactZoomPanPinchContext,
+): boolean => {
+  const { mounted, wrapperComponent, contentComponent } = contextInstance;
+  const { disabled, velocityAnimation, limitToBounds } = contextInstance.setup;
+  const { scale } = contextInstance.state;
+  const { disabled: disabledVelocity } = velocityAnimation;
+
+  if (disabledVelocity || disabled || !mounted) return false;
+  if (!wrapperComponent || !contentComponent) return false;
+
+  if (!limitToBounds) return true;
+
+  const contentOverflows =
+    wrapperComponent.offsetWidth < contentComponent.offsetWidth * scale ||
+    wrapperComponent.offsetHeight < contentComponent.offsetHeight * scale;
+
+  return contentOverflows;
+};
+
+export const isVelocityAllowed = (
+  contextInstance: ReactZoomPanPinchContext,
+): boolean => {
+  const { mounted, velocity, bounds } = contextInstance;
+  const { disabled, velocityAnimation } = contextInstance.setup;
+  const { disabled: disabledVelocity } = velocityAnimation;
+
+  const isAllowed = !disabledVelocity && !disabled && mounted;
+
+  if (!isAllowed) return false;
+  if (!velocity || !bounds) return false;
+
+  return true;
+};
+
+export function getVelocityMoveTime(
+  contextInstance: ReactZoomPanPinchContext,
+  velocity: number,
+): number {
+  const { velocityAnimation } = contextInstance.setup;
+  const { animationTime, maxAnimationTime, inertia } = velocityAnimation;
+
+  return Math.min(
+    animationTime * Math.max(1, Math.abs(velocity / inertia)),
+    maxAnimationTime,
+  );
+}
+
+export function getVelocityPosition(
+  newPosition: number,
+  startPosition: number,
+  currentPosition: number,
+  isLocked: boolean,
+  limitToBounds: boolean,
+  minPosition: number,
+  maxPosition: number,
+  minTarget: number,
+  maxTarget: number,
+  step: number,
+): number {
+  if (limitToBounds) {
+    if (startPosition > maxPosition && currentPosition > maxPosition) {
+      const calculatedPosition =
+        maxPosition + (newPosition - maxPosition) * step;
+
+      if (calculatedPosition > maxTarget) return maxTarget;
+      if (calculatedPosition < maxPosition) return maxPosition;
+      return calculatedPosition;
+    }
+    if (startPosition < minPosition && currentPosition < minPosition) {
+      const calculatedPosition =
+        minPosition + (newPosition - minPosition) * step;
+      if (calculatedPosition < minTarget) return minTarget;
+      if (calculatedPosition > minPosition) return minPosition;
+      return calculatedPosition;
+    }
+  }
+  if (isLocked) return startPosition;
+  return boundLimiter(newPosition, minPosition, maxPosition, limitToBounds);
+}

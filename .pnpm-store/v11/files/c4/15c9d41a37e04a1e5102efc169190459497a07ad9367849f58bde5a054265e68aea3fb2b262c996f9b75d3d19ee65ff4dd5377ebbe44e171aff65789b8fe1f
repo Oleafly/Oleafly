@@ -1,0 +1,1 @@
+{"version":3,"file":"types.d.ts","names":[],"sources":["../../src/shiki-stream/types.ts"],"mappings":";;;;;AAYA;;;UAAiB,WAAA;EAIT;AAGR;;EAHE,MAAM;AAAA;AAAA,KAGI,iCAAA,GAAoC,2BAA2B;EAW/D;;;;;;;EAHV,YAAY;AAAA;AAAA,KAGF,2BAAA,GAA8B,mBAAA;EAKxC,WAAA,EAAa,eAAA,GAAkB,kBAAA;AAAA;AAAA,UAGhB,iCAAA;EAHkC;AAGnD;;EAIE,MAAA;EAQqB;;;EAJrB,MAAA,EAAQ,WAAA;EAIR;;;EAAA,QAAA,EAAU,WAAW;AAAA"}

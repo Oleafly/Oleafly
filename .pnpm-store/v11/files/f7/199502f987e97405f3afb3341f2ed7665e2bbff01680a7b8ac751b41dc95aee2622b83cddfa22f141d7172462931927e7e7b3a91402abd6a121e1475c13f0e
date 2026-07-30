@@ -1,0 +1,64 @@
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = useInvalidate;
+var _util = require("@rc-component/util");
+/**
+ * Check if provided date is valid for the `disabledDate` & `showTime.disabledTime`.
+ */
+function useInvalidate(generateConfig, picker, disabledDate, showTime) {
+  // Check disabled date
+  const isInvalidate = (0, _util.useEvent)((date, info) => {
+    const outsideInfo = {
+      type: picker,
+      ...info
+    };
+    delete outsideInfo.activeIndex;
+    if (
+    // Date object is invalid
+    !generateConfig.isValidate(date) ||
+    // Date is disabled by `disabledDate`
+    disabledDate && disabledDate(date, outsideInfo)) {
+      return true;
+    }
+    if ((picker === 'date' || picker === 'time') && showTime) {
+      const range = info && info.activeIndex === 1 ? 'end' : 'start';
+      const {
+        disabledHours,
+        disabledMinutes,
+        disabledSeconds,
+        disabledMilliseconds
+      } = showTime.disabledTime?.(date, range, {
+        from: outsideInfo.from
+      }) || {};
+      const {
+        disabledHours: legacyDisabledHours,
+        disabledMinutes: legacyDisabledMinutes,
+        disabledSeconds: legacyDisabledSeconds
+      } = showTime;
+      const mergedDisabledHours = disabledHours || legacyDisabledHours;
+      const mergedDisabledMinutes = disabledMinutes || legacyDisabledMinutes;
+      const mergedDisabledSeconds = disabledSeconds || legacyDisabledSeconds;
+      const hour = generateConfig.getHour(date);
+      const minute = generateConfig.getMinute(date);
+      const second = generateConfig.getSecond(date);
+      const millisecond = generateConfig.getMillisecond(date);
+      if (mergedDisabledHours && mergedDisabledHours().includes(hour)) {
+        return true;
+      }
+      if (mergedDisabledMinutes && mergedDisabledMinutes(hour).includes(minute)) {
+        return true;
+      }
+      if (mergedDisabledSeconds && mergedDisabledSeconds(hour, minute).includes(second)) {
+        return true;
+      }
+      if (disabledMilliseconds && disabledMilliseconds(hour, minute, second).includes(millisecond)) {
+        return true;
+      }
+    }
+    return false;
+  });
+  return isInvalidate;
+}

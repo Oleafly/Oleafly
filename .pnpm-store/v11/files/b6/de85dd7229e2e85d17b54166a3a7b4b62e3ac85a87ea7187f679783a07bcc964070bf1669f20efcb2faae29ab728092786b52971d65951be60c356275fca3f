@@ -1,0 +1,69 @@
+{
+  "name": "mdast-util-to-markdown-cjk-friendly",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "repository": {
+    "url": "https://github.com/tats-u/markdown-cjk-friendly"
+  },
+  "license": "MIT",
+  "author": "Tatsunori Uchino <tats.u@live.jp> (https://github.com/tats-u)",
+  "bugs": "https://github.com/tats-u/markdown-cjk-friendly/issues",
+  "keywords": [
+    "mdast-util",
+    "mdast",
+    "markdown",
+    "remark-stringify",
+    "japanese",
+    "chinese",
+    "korean",
+    "cjk"
+  ],
+  "description": "mdast-util-to-markdown extension to make Markdown emphasis output more friendly with Chinese, Japanese, and Korean (CJK)",
+  "sideEffects": false,
+  "dependencies": {
+    "mdast-util-to-markdown": "^2.1.2",
+    "micromark-util-symbol": "^2.0.1",
+    "micromark-extension-cjk-friendly-util": "3.0.1"
+  },
+  "peerDependencies": {
+    "@types/mdast": "*"
+  },
+  "peerDependenciesMeta": {
+    "@types/mdast": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@types/mdast": "^4.0.4",
+    "mdast-util-from-markdown": "^2.0.3"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "build:lib": "tsdown",
+    "dev": "tsdown --watch --sourcemaps",
+    "dev:lib": "tsdown --watch --sourcemaps",
+    "test": "vitest run",
+    "test:lib": "vitest run",
+    "test:up": "vitest -u",
+    "test:watch": "vitest watch",
+    "test:lib:watch": "vitest watch",
+    "lint:type": "tsc --noEmit"
+  }
+}

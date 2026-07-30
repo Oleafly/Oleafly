@@ -1,0 +1,36 @@
+//#region src/base-ui/Button/style.d.ts
+declare const styles: {
+  base: string;
+  sizeSmall: string;
+  sizeMiddle: string;
+  sizeLarge: string;
+  shapeCircle: string;
+  shapeRound: string;
+  block: string;
+  iconEnd: string;
+  iconOnlySmall: string;
+  iconOnlyMiddle: string;
+  iconOnlyLarge: string;
+  iconBox: string;
+  spinnerSlot: string;
+  spinnerSlotEnd: string;
+  spinnerSlotShow: string;
+  variantDefault: string;
+  variantPrimary: string;
+  variantDashed: string;
+  variantFill: string;
+  variantText: string;
+  variantLink: string;
+  dangerOutlined: string;
+  dangerSolid: string;
+  dangerFill: string;
+  dangerInline: string;
+  ghostDefault: string;
+  ghostDashed: string;
+  ghostPrimary: string;
+  ghostDanger: string;
+  spinner: string;
+};
+//#endregion
+export { styles };
+//# sourceMappingURL=style.d.mts.map

@@ -1,0 +1,1 @@
+{"version":3,"file":"constants.mjs","names":[],"sources":["../../src/ThemeProvider/constants.ts"],"sourcesContent":["export const LOBE_THEME_APP_ID = 'lobe-ui-theme-app';\n"],"mappings":";AAAA,MAAa,oBAAoB"}

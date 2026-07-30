@@ -1,0 +1,15 @@
+import * as React from 'react';
+import type { AnimatedConfig, TabPosition } from '../interface';
+export interface TabPanelListProps {
+    activeKey: string;
+    id: string;
+    animated: AnimatedConfig;
+    tabPosition: TabPosition;
+    destroyOnHidden?: boolean;
+    bodyStyle?: React.CSSProperties;
+    bodyClassName?: string;
+    contentStyle?: React.CSSProperties;
+    contentClassName?: string;
+}
+declare const TabPanelList: React.FC<TabPanelListProps>;
+export default TabPanelList;

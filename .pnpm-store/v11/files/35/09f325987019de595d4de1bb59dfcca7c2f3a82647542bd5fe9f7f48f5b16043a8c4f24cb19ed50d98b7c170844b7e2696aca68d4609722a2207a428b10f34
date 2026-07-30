@@ -1,0 +1,1 @@
+{"version":3,"file":"form.mjs","names":[],"sources":["../../../../src/i18n/resources/zhCn/form.ts"],"sourcesContent":["export default {\n  'form.reset': '重置',\n  'form.submit': '提交',\n  'form.unsavedChanges': '未保存的更改',\n  'form.unsavedWarning': '您有未保存的更改。确定要离开吗？',\n} as const;\n"],"mappings":";AAAA,IAAA,eAAe;CACb,cAAc;CACd,eAAe;CACf,uBAAuB;CACvB,uBAAuB;AACzB"}

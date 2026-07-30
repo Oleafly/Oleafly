@@ -1,0 +1,397 @@
+import type {
+  JSONContent,
+  MarkdownLexerConfiguration,
+  MarkdownParseHelpers,
+  MarkdownToken,
+} from '@tiptap/core'
+
+import {
+  areOrderedListMarkersSequential,
+  buildOrderedListAttrsFromMarker,
+  detectMarkerType,
+  markerToStart,
+  ORDERED_LIST_MARKER_PATTERN,
+} from './roman.js'
+
+export { ORDERED_LIST_MARKER_PATTERN }
+
+/**
+ * Matches an ordered list item line with optional leading whitespace.
+ * Captures: (1) indentation spaces, (2) item marker (number, letter, or roman numeral),
+ * (3) separator (. or )), (4) content after marker
+ *
+ * Examples: "1. Item", "  a) Nested item", "    I. Roman item", "iii. Another", "aa. Item 27"
+ */
+export const ORDERED_LIST_ITEM_REGEX = new RegExp(
+  `^(\\s*)(${ORDERED_LIST_MARKER_PATTERN})([.)])\\s+(.*)$`,
+)
+
+/**
+ * Matches any line that starts with whitespace (indented content).
+ * Used to identify continuation content that belongs to a list item.
+ */
+const INDENTED_LINE_REGEX = /^\s/
+
+/**
+ * This are blocks that can interrupt a paragraph, so a line starting with one of
+ * them can never be lazy continuation text of a list item
+ */
+const PARAGRAPH_INTERRUPTERS = {
+  heading: /^#{1,6}(?:\s|$)/,
+  bulletItem: /^[-+*]\s+/,
+  codeFence: /^(?:```|~~~)/,
+  thematicBreak: /^(?:(?:-[ \t]*){3,}|(?:_[ \t]*){3,}|(?:\*[ \t]*){3,})$/,
+}
+
+/**
+ * Represents a parsed ordered list item with indentation information
+ */
+export interface OrderedListItem {
+  indent: number
+  number: number
+  type?: string
+  content: string
+  contentLines: string[]
+  raw: string
+}
+
+function isOrderedListMarkerLine(line: string): boolean {
+  return ORDERED_LIST_ITEM_REGEX.test(line.trimStart())
+}
+
+function isBlockContentLine(line: string): boolean {
+  const trimmedLine = line.trimStart()
+
+  return (
+    PARAGRAPH_INTERRUPTERS.bulletItem.test(trimmedLine) ||
+    isOrderedListMarkerLine(trimmedLine) ||
+    PARAGRAPH_INTERRUPTERS.heading.test(trimmedLine) ||
+    // dash breaks are excluded: "---" directly below paragraph text is a
+    // setext heading underline, not a thematic break
+    (PARAGRAPH_INTERRUPTERS.thematicBreak.test(trimmedLine) && !trimmedLine.startsWith('-')) ||
+    // oxlint-disable-next-line prefer-string-starts-ends-with
+    /^>\s?/.test(trimmedLine) ||
+    PARAGRAPH_INTERRUPTERS.codeFence.test(trimmedLine)
+  )
+}
+
+function interruptsLazyContinuation(line: string): boolean {
+  return Object.values(PARAGRAPH_INTERRUPTERS).some(pattern => pattern.test(line))
+}
+
+function splitItemContent(contentLines: string[]): {
+  paragraphLines: string[]
+  blockLines: string[]
+} {
+  const paragraphLines: string[] = []
+  const blockLines: string[] = []
+  let reachedBlockBoundary = false
+
+  contentLines.forEach(line => {
+    if (reachedBlockBoundary) {
+      blockLines.push(line)
+      return
+    }
+
+    if (line.trim() === '') {
+      reachedBlockBoundary = true
+      blockLines.push(line)
+      return
+    }
+
+    if (paragraphLines.length > 0 && isBlockContentLine(line)) {
+      reachedBlockBoundary = true
+      blockLines.push(line)
+      return
+    }
+
+    paragraphLines.push(line)
+  })
+
+  return {
+    paragraphLines,
+    blockLines,
+  }
+}
+
+/**
+ * Collects all ordered list items from lines, parsing them into a flat array
+ * with indentation information. Stops collecting continuation content when
+ * encountering nested list items, allowing them to be processed separately.
+ *
+ * @param lines - Array of source lines to parse
+ * @returns Tuple of [listItems array, number of lines consumed]
+ */
+export function collectOrderedListItems(lines: string[]): [OrderedListItem[], number] {
+  const listItems: OrderedListItem[] = []
+  let currentLineIndex = 0
+  let consumed = 0
+
+  while (currentLineIndex < lines.length) {
+    const line = lines[currentLineIndex]
+    const match = line.match(ORDERED_LIST_ITEM_REGEX)
+
+    if (!match) {
+      break
+    }
+
+    const [, indent, marker, _separator, content] = match
+    const indentLevel = indent.length
+    const number = parseInt(marker, 10)
+
+    const markerType = isNaN(number) ? detectMarkerType(marker) : undefined
+    const itemNumber = isNaN(number) ? markerToStart(marker) : number
+
+    const itemContentLines = [content]
+    let nextLineIndex = currentLineIndex + 1
+    const itemLines = [line]
+    let sawBlankLine = false
+
+    // Collect continuation lines for this item (but NOT nested list items)
+    while (nextLineIndex < lines.length) {
+      const nextLine = lines[nextLineIndex]
+      const nextMatch = nextLine.match(ORDERED_LIST_ITEM_REGEX)
+
+      // If it's another list item (nested or not), stop collecting
+      if (nextMatch) {
+        break
+      }
+
+      // Check for continuation content (non-list content)
+      if (nextLine.trim() === '') {
+        // Empty line
+        itemLines.push(nextLine)
+        itemContentLines.push('')
+        sawBlankLine = true
+        nextLineIndex += 1
+      } else if (nextLine.match(INDENTED_LINE_REGEX)) {
+        // Indented content - part of this item (but not a list item).
+        // Strip the indentation only up to the whitespace that is actually present,
+        // so an under-indented line (e.g. a single leading space) keeps its first character.
+        const leadingWhitespace = nextLine.length - nextLine.trimStart().length
+        const contentIndent = indentLevel + marker.length + 1
+        itemLines.push(nextLine)
+        itemContentLines.push(nextLine.slice(Math.min(leadingWhitespace, contentIndent)))
+        nextLineIndex += 1
+      } else {
+        if (sawBlankLine || interruptsLazyContinuation(nextLine)) {
+          break
+        }
+
+        itemLines.push(nextLine)
+        itemContentLines.push(nextLine)
+        nextLineIndex += 1
+      }
+    }
+
+    listItems.push({
+      indent: indentLevel,
+      number: itemNumber,
+      type: markerType,
+      content: itemContentLines.join('\n').trim(),
+      contentLines: itemContentLines,
+      raw: itemLines.join('\n'),
+    })
+
+    consumed = nextLineIndex
+    currentLineIndex = nextLineIndex
+  }
+
+  return [listItems, consumed]
+}
+
+const PLAIN_TEXT_ORDERED_LIST_LINE_REGEX = new RegExp(
+  `^(${ORDERED_LIST_MARKER_PATTERN})([.)])\\s+(.+)$`,
+)
+
+/**
+ * Parse plain-text pasted ordered list lines into JSONContent, or null if not a typed list.
+ */
+export function parsePlainTextOrderedListPaste(text: string): JSONContent | null {
+  const lines = text.split('\n').filter(l => l.trim().length > 0)
+
+  if (lines.length === 0) {
+    return null
+  }
+
+  const parsedItems: Array<{ marker: string; content: string }> = []
+
+  for (const line of lines) {
+    const match = line.trim().match(PLAIN_TEXT_ORDERED_LIST_LINE_REGEX)
+
+    if (!match) {
+      return null
+    }
+
+    parsedItems.push({
+      marker: match[1],
+      content: match[3],
+    })
+  }
+
+  const markers = parsedItems.map(item => item.marker)
+
+  if (!areOrderedListMarkersSequential(markers)) {
+    return null
+  }
+
+  const attrs = buildOrderedListAttrsFromMarker(parsedItems[0].marker)
+
+  return {
+    type: 'orderedList',
+    attrs,
+    content: parsedItems.map(item => ({
+      type: 'listItem',
+      content: [
+        {
+          type: 'paragraph',
+          content: [{ type: 'text', text: item.content }],
+        },
+      ],
+    })),
+  }
+}
+
+/**
+ * Recursively builds a nested structure from a flat array of list items
+ * based on their indentation levels. Creates proper markdown tokens with
+ * nested lists where appropriate.
+ *
+ * @param items - Flat array of list items with indentation info
+ * @param baseIndent - The indentation level to process at this recursion level
+ * @param lexer - Markdown lexer for parsing inline and block content
+ * @returns Array of list_item tokens with proper nesting
+ */
+export function buildNestedStructure(
+  items: OrderedListItem[],
+  baseIndent: number,
+  lexer: MarkdownLexerConfiguration,
+): unknown[] {
+  const result: unknown[] = []
+  let currentIndex = 0
+
+  while (currentIndex < items.length) {
+    const item = items[currentIndex]
+
+    if (item.indent === baseIndent) {
+      // This item belongs at the current level
+      const { paragraphLines, blockLines } = splitItemContent(item.contentLines)
+      const mainText = paragraphLines.join('\n').trim()
+
+      const tokens = []
+
+      // Always wrap the main text in a paragraph token
+      if (mainText) {
+        tokens.push({
+          type: 'paragraph',
+          raw: mainText,
+          tokens: lexer.inlineTokens(mainText),
+        })
+      }
+
+      const additionalContent = blockLines.join('\n').trim()
+      if (additionalContent) {
+        const blockTokens = lexer.blockTokens(additionalContent)
+        tokens.push(...blockTokens)
+      }
+
+      // Look ahead to find nested items at deeper indent levels
+      let lookAheadIndex = currentIndex + 1
+      const nestedItems = []
+
+      while (lookAheadIndex < items.length && items[lookAheadIndex].indent > baseIndent) {
+        nestedItems.push(items[lookAheadIndex])
+        lookAheadIndex += 1
+      }
+
+      // If we have nested items, recursively build their structure
+      if (nestedItems.length > 0) {
+        // Find the next indent level (immediate children)
+        const nextIndent = Math.min(...nestedItems.map(nestedItem => nestedItem.indent))
+
+        // Build the nested list recursively with all nested items
+        // The recursive call will handle further nesting
+        const nestedListItems = buildNestedStructure(nestedItems, nextIndent, lexer)
+
+        // Create a nested list token
+        tokens.push({
+          type: 'list',
+          ordered: true,
+          start: nestedItems[0].number,
+          typeMarker: nestedItems[0].type,
+          items: nestedListItems,
+          raw: nestedItems.map(nestedItem => nestedItem.raw).join('\n'),
+        })
+      }
+
+      result.push({
+        type: 'list_item',
+        raw: item.raw,
+        tokens,
+      })
+
+      // Skip the nested items we just processed
+      currentIndex = lookAheadIndex
+    } else {
+      // This item has deeper indent than we're currently processing
+      // It should be handled by a recursive call
+      currentIndex += 1
+    }
+  }
+
+  return result
+}
+
+/**
+ * Parses markdown list item tokens into Tiptap JSONContent structure,
+ * ensuring text content is properly wrapped in paragraph nodes.
+ *
+ * @param items - Array of markdown tokens representing list items
+ * @param helpers - Markdown parse helpers for recursive parsing
+ * @returns Array of listItem JSONContent nodes
+ */
+export function parseListItems(
+  items: MarkdownToken[],
+  helpers: MarkdownParseHelpers,
+): JSONContent[] {
+  return items.map(item => {
+    if (item.type !== 'list_item') {
+      return helpers.parseChildren([item])[0]
+    }
+
+    // Parse the tokens within the list item
+    const content: JSONContent[] = []
+
+    if (item.tokens && item.tokens.length > 0) {
+      item.tokens.forEach(itemToken => {
+        // If it's already a proper block node (paragraph, list, etc.), parse it directly
+        if (
+          itemToken.type === 'paragraph' ||
+          itemToken.type === 'list' ||
+          itemToken.type === 'blockquote' ||
+          itemToken.type === 'code'
+        ) {
+          content.push(...helpers.parseChildren([itemToken]))
+        } else if (itemToken.type === 'text' && itemToken.tokens) {
+          // If it's inline text tokens, wrap them in a paragraph
+          const inlineContent = helpers.parseChildren([itemToken])
+          content.push({
+            type: 'paragraph',
+            content: inlineContent,
+          })
+        } else {
+          // For any other content, try to parse it
+          const parsed = helpers.parseChildren([itemToken])
+          if (parsed.length > 0) {
+            content.push(...parsed)
+          }
+        }
+      })
+    }
+
+    return {
+      type: 'listItem',
+      content,
+    }
+  })
+}

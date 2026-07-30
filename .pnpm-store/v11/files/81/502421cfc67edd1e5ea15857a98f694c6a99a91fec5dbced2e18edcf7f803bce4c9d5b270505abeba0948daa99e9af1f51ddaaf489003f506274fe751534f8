@@ -1,0 +1,1 @@
+{"version":3,"file":"messageModal.mjs","names":[],"sources":["../../../../src/i18n/resources/en/messageModal.ts"],"sourcesContent":["export default {\n  'messageModal.cancel': 'Cancel',\n  'messageModal.confirm': 'Confirm',\n  'messageModal.edit': 'Edit',\n} as const;\n"],"mappings":";AAAA,IAAA,uBAAe;CACb,uBAAuB;CACvB,wBAAwB;CACxB,qBAAqB;AACvB"}

@@ -1,0 +1,1 @@
+{"version":3,"file":"computeVirtualFileMetrics.d.ts","names":[],"sources":["../../src/utils/computeVirtualFileMetrics.ts"],"mappings":";;;iBAGgB,yBAAA,CACd,OAAA,GAAU,OAAA,CAAQ,kBAAA,IACjB,kBAAA;AAAA,iBAOa,0BAAA,CACd,OAAA,EAAS,kBAAkB,EAC3B,iBAAA;AAAA,iBAMc,wBAAA,CACd,OAAA,EAAS,kBAAkB,EAC3B,iBAAA;AAAA,iBAKc,2BAAA,CACd,OAA2B,EAAlB,kBAAkB;AAAA,iBAKb,6BAAA,CAA8B,IAAoB,EAAd,cAAc"}
