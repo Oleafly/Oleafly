@@ -164,6 +164,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and responsive desktop and mobile layouts.
 - Revised public interface copy throughout the app for a concise,
   institutional tone and simpler punctuation.
+- Deepened the editor selection colour in every theme. Selection now mixes the
+  accent into the editor surface instead of washing it over with alpha, which
+  desaturated toward grey on dark backgrounds.
+- Ask AI selection presets (Paraphrase, Improve Writing, Fix Grammar & Style,
+  Expand & Elaborate, Find References) now run as inline edits with a
+  strikethrough/insert diff to accept or reject, instead of opening a chat and
+  switching away from the editor.
+- Restyled the inline AI accept/reject/retry controls as a compact icon group
+  behind the animated AI outline, with the keyboard shortcuts still active but
+  no longer printed on the buttons.
 
 ### Fixed
 
@@ -264,11 +274,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   space when the window is wide enough that the tooltip sits beside the
   dialog instead of above it.
 - Fixed the tour footer overflowing its tooltip on long tours (Diagram,
-  Settings): tours with many steps now show a compact progress bar instead
-  of one dot per step.
+  Settings). Every tour keeps one dot per step and slides a fixed seven-slot
+  window over them, so the row's width never changes as the step advances.
 - The Diagram tour's "Compiled preview" step now compiles the starter
   drawing so the preview pane shows a real render instead of an empty
   placeholder.
+- Fixed Enter confirming a destructive dialog regardless of which button had
+  focus. Initial focus is Cancel, so pressing Enter to back out of deleting a
+  project performed the deletion. The shortcut is now limited to
+  non-destructive confirmations.
+- Fixed a completed compile being discarded when the source was edited while it
+  ran. Editing during a compile marks the result stale, which the preview
+  already labels, rather than throwing away a finished PDF with nothing
+  requeued.
+- Fixed "Stop compilation" being unreachable: the compile options menu was
+  disabled while compiling, which is the only state in which that item applies.
+- Fixed the whole application being scrollable behind `body { overflow:
+  hidden }`. The editor theme sized CodeMirror's body-level tooltip host to a
+  full viewport, doubling the document height, which let tour steps and focus
+  reveals shift the entire window and snap it back.
+- Fixed tour steps scrolling the app for targets that were already on screen.
+- Fixed the line under the cursor showing a different selection colour from the
+  rest of a multi-line selection; the active-line highlight now yields while
+  text is selected.
+- Fixed the PDF preview replacing a rendered page with the multi-stage startup
+  panel on every recompile, and showing that panel before a rotation. Rotation
+  now reports progress on its own control.
 
 ### Security
 
@@ -297,6 +328,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added CSP-compatible WebAssembly loading for local proofreaders and hardened
   PDF link and action handling so unsupported or unsafe targets cannot execute
   through the integrated viewer.
+- Refused language-server configuration from the webview that selects an
+  executable, its arguments or its environment. The JSON-RPC bridge forwards
+  arbitrary methods, and `workspace/didChangeConfiguration` could otherwise
+  point a language server at any binary and have it spawned.
 
 ## [0.2.8] - 2026-07-26
 
