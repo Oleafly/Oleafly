@@ -103,19 +103,47 @@
   background-color: #181818;
 }
 
+/* Selection for the default ("system") editor theme, where --cm-selection is
+ * unset. --primary is the user's accent (App.tsx sets it), so this has to hold
+ * for any hue: mix the accent into the surface rather than washing it over the
+ * surface with alpha, which desaturates toward grey on a near-black editor.
+ *
+ * `in srgb`, NOT `in oklch`: --background is achromatic, Chrome resolves its
+ * oklch hue as 0deg (red), and oklch interpolation then drags a blue accent
+ * around the hue wheel - the mix comes out magenta. sRGB has no hue to rotate.
+ *
+ * Dark mode also darkens the surface first, so a stronger accent share buys
+ * chroma without lifting the band off the page. */
+:root,
+.light {
+  --cm-selection-default: color-mix(in srgb, var(--primary) 30%, var(--background));
+}
+.dark {
+  --cm-selection-default: color-mix(
+    in srgb,
+    var(--primary) 28%,
+    color-mix(in srgb, var(--background) 74%, #000)
+  );
+}
+
 /* Editor color themes: independent of the app's light/dark mode. Each
  * scopes --cm-editor-bg/fg/gutter-fg/active-line/selection/cursor (the
  * editor's own surface, unset otherwise so it falls back to the app's
  * --background/--foreground) plus the --cm-* syntax token vars that
  * packages/editor/src/theme.ts's highlightStyle already reads. Chrome
  * shared with the rest of the app (panels, tooltips, buttons) is
- * intentionally left alone. */
+ * intentionally left alone.
+ *
+ * --cm-selection is an opaque mix of the palette's own blue into that
+ * palette's --cm-editor-bg, not a translucent wash. Alpha over a near-black
+ * surface desaturates toward grey, which is what made the selection band read
+ * as a washed-out smudge; mixing keeps the hue's chroma while staying dark. */
 [data-editor-theme="linear"] {
   --cm-editor-bg: #08090a;
   --cm-editor-fg: #d0d6e0;
   --cm-gutter-fg: #52565f;
   --cm-active-line: rgba(255, 255, 255, 0.035);
-  --cm-selection: rgba(94, 106, 210, 0.25);
+  --cm-selection: #1c203d;
   --cm-cursor: #5e6ad2;
   --cm-comment: #6b7280;
   --cm-keyword: #5e6ad2;
@@ -133,7 +161,7 @@
   --cm-editor-fg: #c9d1d9;
   --cm-gutter-fg: #6e7681;
   --cm-active-line: rgba(110, 118, 129, 0.1);
-  --cm-selection: rgba(56, 139, 253, 0.15);
+  --cm-selection: #0f223c;
   --cm-cursor: #58a6ff;
   --cm-comment: #8b949e;
   --cm-keyword: #ff7b72;
@@ -151,7 +179,7 @@
   --cm-editor-fg: #f8f8f2;
   --cm-gutter-fg: #6272a4;
   --cm-active-line: rgba(68, 71, 90, 0.5);
-  --cm-selection: rgba(68, 71, 90, 0.7);
+  --cm-selection: #343c56;
   --cm-cursor: #f8f8f2;
   --cm-comment: #6272a4;
   --cm-keyword: #ff79c6;
@@ -169,7 +197,7 @@
   --cm-editor-fg: #d8dee9;
   --cm-gutter-fg: #4c566a;
   --cm-active-line: rgba(76, 86, 106, 0.3);
-  --cm-selection: rgba(67, 76, 94, 0.6);
+  --cm-selection: #314156;
   --cm-cursor: #d8dee9;
   --cm-comment: #616e88;
   --cm-keyword: #81a1c1;
@@ -187,7 +215,7 @@
   --cm-editor-fg: #a9b1d6;
   --cm-gutter-fg: #3b4261;
   --cm-active-line: rgba(41, 46, 66, 0.6);
-  --cm-selection: rgba(51, 64, 109, 0.6);
+  --cm-selection: #212f53;
   --cm-cursor: #c0caf5;
   --cm-comment: #565f89;
   --cm-keyword: #bb9af7;
@@ -205,7 +233,7 @@
   --cm-editor-fg: #e0def4;
   --cm-gutter-fg: #6e6a86;
   --cm-active-line: rgba(38, 35, 58, 0.6);
-  --cm-selection: rgba(64, 61, 82, 0.6);
+  --cm-selection: #183340;
   --cm-cursor: #e0def4;
   --cm-comment: #6e6a86;
   --cm-keyword: #31748f;
@@ -223,7 +251,7 @@
   --cm-editor-fg: #cdd6f4;
   --cm-gutter-fg: #6c7086;
   --cm-active-line: rgba(49, 50, 68, 0.6);
-  --cm-selection: rgba(69, 71, 90, 0.6);
+  --cm-selection: #2b364d;
   --cm-cursor: #f5e0dc;
   --cm-comment: #6c7086;
   --cm-keyword: #cba6f7;
@@ -241,7 +269,7 @@
   --cm-editor-fg: #abb2bf;
   --cm-gutter-fg: #636d83;
   --cm-active-line: rgba(255, 255, 255, 0.04);
-  --cm-selection: rgba(97, 175, 239, 0.25);
+  --cm-selection: #2d4c67;
   --cm-cursor: #528bff;
   --cm-comment: #5c6370;
   --cm-keyword: #c678dd;

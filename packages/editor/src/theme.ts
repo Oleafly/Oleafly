@@ -47,9 +47,14 @@ const chromeTheme = EditorView.theme({
   ".cm-activeLine": {
     backgroundColor: "var(--cm-active-line, color-mix(in oklch, var(--muted) 45%, transparent))",
   },
+  // Named editor themes set --cm-selection; the "system" theme falls back to
+  // --cm-selection-default, defined per light/dark in globals.css. The literal
+  // is only reached when the editor is mounted outside the app shell (tests,
+  // isolated stories) - it mirrors the light-mode default. See globals.css for
+  // why these mix in srgb rather than oklch.
   "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection": {
     backgroundColor:
-      "var(--cm-selection, color-mix(in oklch, var(--primary) 18%, transparent)) !important",
+      "var(--cm-selection, var(--cm-selection-default, color-mix(in srgb, var(--primary) 30%, var(--background)))) !important",
   },
   ".cm-cursor, .cm-dropCursor": {
     borderLeftColor: "var(--cm-cursor, var(--primary))",
