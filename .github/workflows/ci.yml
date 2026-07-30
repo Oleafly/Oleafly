@@ -295,9 +295,14 @@ jobs:
         run: pnpm exec playwright install chromium
 
       - name: Run the e2e suite
-        # Green runs execute every spec; a real failure stops the suite promptly.
-        # --global-timeout bounds the complete suite to 50 minutes.
-        run: ./scripts/e2e.sh --suite-max-failures=1 --max-failures=1 --global-timeout=3000000
+        # This lane exists to report the state of a platform the per-push Linux
+        # shards never exercise, so it keeps going after a failure and lists
+        # every broken spec. Stopping at the first one turned three macOS
+        # regressions into three separate hour-long rounds, because each fix
+        # only unmasked the next. The caps still abandon a systemically broken
+        # environment rather than timing out spec by spec, and --global-timeout
+        # bounds the complete suite to 50 minutes.
+        run: ./scripts/e2e.sh --suite-max-failures=6 --max-failures=10 --global-timeout=3000000
 
       - name: Upload failure artifacts
         if: failure()
@@ -537,7 +542,9 @@ jobs:
 
       - name: Run the e2e suite
         shell: pwsh
-        run: powershell -File scripts/e2e.ps1 --suite-max-failures=1 --max-failures=1 --global-timeout=3000000
+        # Same reasoning as the macOS lane: report every failing spec in one
+        # run instead of one per round.
+        run: powershell -File scripts/e2e.ps1 --suite-max-failures=6 --max-failures=10 --global-timeout=3000000
 
       - name: Upload failure artifacts
         if: failure()
