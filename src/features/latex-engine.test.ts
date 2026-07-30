@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   })),
   captureCompileSourceSnapshot: vi.fn(async () => null),
   isCompileRequestIdentityCurrent: vi.fn(() => true),
+  isCompileOutputStillWanted: vi.fn(() => true),
   refreshPreviewWindow: vi.fn(),
   compileState: {} as Record<string, unknown>,
   files: {
@@ -41,6 +42,7 @@ vi.mock("@/store/compile", () => ({
   beginCompileRequestIdentity: mocks.beginCompileRequestIdentity,
   captureCompileSourceSnapshot: mocks.captureCompileSourceSnapshot,
   isCompileRequestIdentityCurrent: mocks.isCompileRequestIdentityCurrent,
+  isCompileOutputStillWanted: mocks.isCompileOutputStillWanted,
   useCompileStore: {
     getState: () => mocks.compileState,
     setState: (
