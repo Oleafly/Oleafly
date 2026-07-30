@@ -25,29 +25,44 @@ export async function expectDesktopShellAnchored(page: Page) {
   const state = await page.evaluate<{
     scrollTop: number;
     scrollLeft: number;
+    scrollRange: number;
     rootTop: number;
     rootLeft: number;
     rootPosition: string;
     bodyPosition: string;
+    overflowing: string[];
   }>(
     `(() => {
       const root = document.getElementById("root");
       if (!root) throw new Error("desktop root is unavailable");
       const rect = root.getBoundingClientRect();
+      const doc = document.documentElement;
+      // Anything sticking out below the viewport is what makes the document
+      // scrollable; name it so a failure points at the offender directly.
+      const overflowing = [...document.querySelectorAll("body > *")]
+        .filter((el) => el.getBoundingClientRect().bottom > doc.clientHeight + 1)
+        .map((el) => el.tagName + (el.id ? "#" + el.id : "") + "." + String(el.className || ""));
       return {
         scrollTop: document.scrollingElement?.scrollTop ?? -1,
         scrollLeft: document.scrollingElement?.scrollLeft ?? -1,
+        scrollRange: Math.max(0, Math.round(doc.scrollHeight - doc.clientHeight)),
         rootTop: rect.top,
         rootLeft: rect.left,
         rootPosition: getComputedStyle(root).position,
         bodyPosition: getComputedStyle(document.body).position,
+        overflowing,
       };
     })()`,
   );
-  const { bodyPosition, ...anchoredState } = state;
-  expect(anchoredState).toEqual({
+  const { bodyPosition, overflowing, ...anchoredState } = state;
+  // scrollRange must be 0. `body { overflow: hidden }` only hides the
+  // scrollbar - it still permits programmatic scrolling, so any element that
+  // extends past the viewport leaves the whole app scrollable and lets a
+  // library (react-joyride's step scroll, a focus reveal) shift the shell.
+  expect(anchoredState, `overflowing body children: ${overflowing.join(", ")}`).toEqual({
     scrollTop: 0,
     scrollLeft: 0,
+    scrollRange: 0,
     rootTop: 0,
     rootLeft: 0,
     rootPosition: "static",

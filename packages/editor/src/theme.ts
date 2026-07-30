@@ -6,11 +6,20 @@ import { tags as t } from "@lezer/highlight";
 // theme adapts to both light and dark automatically, no compartment swapping
 // needed.
 const chromeTheme = EditorView.theme({
+  // Paint properties belong on the bare theme class: CodeMirror copies the
+  // theme classes onto the tooltip host it mounts under `tooltips({ parent })`
+  // so tooltips inherit the editor's colors and type scale.
   "&": {
     backgroundColor: "var(--cm-editor-bg, var(--background))",
     color: "var(--cm-editor-fg, var(--foreground))",
-    height: "100%",
     fontSize: "var(--cm-font-size, 13px)",
+  },
+  // Layout must NOT: `&` compiles to the bare generated class, so `height:100%`
+  // there also sized that body-level tooltip host to a full viewport, doubling
+  // the document height and leaving the whole app programmatically scrollable
+  // behind `body { overflow: hidden }`. Scope it to the editor element itself.
+  "&.cm-editor": {
+    height: "100%",
   },
   "&.cm-focused": {
     outline: "none",
