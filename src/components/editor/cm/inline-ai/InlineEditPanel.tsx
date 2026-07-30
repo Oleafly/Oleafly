@@ -230,7 +230,7 @@ export function InlineEditPanel() {
         <AiChrome
           borderVariant="primary"
           className="w-full"
-          contentClassName="p-3 text-popover-foreground"
+          contentClassName="ai-surface-elevated p-3 text-popover-foreground"
         >
           <p className="flex items-center gap-1.5 text-sm font-medium">
             <AiMark /> Set up an AI provider
