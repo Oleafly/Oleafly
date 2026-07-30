@@ -1,6 +1,10 @@
 import { degrees, PDFDocument, PDFName, PDFNumber, StandardFonts } from "pdf-lib";
 import { test, expect } from "../fixtures";
-import { createBlankProject, openProject } from "../helpers";
+import {
+  createBlankProject,
+  expectDesktopShellAnchored,
+  openProject,
+} from "../helpers";
 
 interface GeometryFixture {
   bytes: Uint8Array;
@@ -189,14 +193,42 @@ async function makeSwitchFixture(marker: string, pageCount: number): Promise<Uin
 
 function setPreviewPdfExpression(bytes: Uint8Array): string {
   const base64 = Buffer.from(bytes).toString("base64");
-  return `import("/src/store/compile.ts").then(({ useCompileStore }) => {
+  return `Promise.all([
+    import("/src/store/compile.ts"),
+    import("/src/store/files.ts"),
+    import("/src/store/project-analysis.ts"),
+    import("/src/lib/compile-checkpoint.ts"),
+  ]).then(([{ useCompileStore }, { useFilesStore }, { useProjectAnalysisStore }, checkpoint]) => {
     const binary = atob(${JSON.stringify(base64)});
     const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+    const files = useFilesStore.getState();
+    const analysis = useProjectAnalysisStore.getState().snapshot;
+    if (!files.projectId || analysis.identity.projectId !== files.projectId) {
+      throw new Error("Current project analysis is unavailable for the PDF fixture");
+    }
+    const previous = useCompileStore.getState().lastCompileCheckpoint;
     // Invalidate any open-project compile that is still between saveActive()
     // and its first status update. Without this, that late compile can replace
     // the deterministic fixture after it has been installed.
     useCompileStore.getState().reset();
-    useCompileStore.setState({ pdfBytes: bytes, status: "success" });
+    const verified = checkpoint.createCompileSuccessCheckpoint({
+      projectId: files.projectId,
+      mainDocument: files.mainDoc || "main.tex",
+      projectRevision: analysis.identity.projectRevision,
+      requestGeneration: (previous?.requestGeneration ?? 0) + 1,
+      outputKind: "standard",
+      producerId: "e2e-pdf-fixture",
+      outputRevision: (previous?.outputRevision ?? 0) + 1,
+      outputId: checkpoint.fingerprintCompileOutput(bytes),
+      previousCompletedAt: previous?.completedAt ?? null,
+    });
+    useCompileStore.setState({
+      pdfBytes: bytes,
+      status: "success",
+      phase: "idle",
+      lastCompiledAt: verified.completedAt,
+      lastCompileCheckpoint: verified,
+    });
     return true;
   })`;
 }
@@ -213,6 +245,22 @@ async function openOrCreateE2eDoc(page: Parameters<typeof openProject>[0]): Prom
   } else {
     await createBlankProject(page, "E2E Doc");
   }
+}
+
+async function waitForCurrentProjectAnalysis(
+  page: Parameters<typeof openProject>[0],
+): Promise<void> {
+  await page.waitForFunction(
+    `Promise.all([
+      import("/src/store/files.ts"),
+      import("/src/store/project-analysis.ts"),
+    ]).then(([{ useFilesStore }, { useProjectAnalysisStore }]) => {
+      const projectId = useFilesStore.getState().projectId;
+      const identity = useProjectAnalysisStore.getState().snapshot.identity;
+      return !!projectId && identity.projectId === projectId;
+    })`,
+    30_000,
+  );
 }
 
 test("clicking the PDF jumps to the word in the source", async ({ tauriPage }) => {
@@ -259,6 +307,7 @@ test("clicking the PDF jumps to the word in the source", async ({ tauriPage }) =
       { timeout: 15_000 },
     )
     .toBe("Introduction");
+  await expectDesktopShellAnchored(tauriPage);
 });
 
 test("clicking after a non-collapsed PDF selection does not invoke inverse SyncTeX", async ({
@@ -332,6 +381,7 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
     )`,
     90_000,
   );
+  await waitForCurrentProjectAnalysis(tauriPage);
 
   const fixture = await makeGeometryFixture();
   await tauriPage.evaluate(
@@ -758,6 +808,7 @@ test("superseded PDF work cannot restore stale text after a document switch", as
     )`,
     90_000,
   );
+  await waitForCurrentProjectAnalysis(tauriPage);
   const oldPdf = await makeSwitchFixture("STALE DOCUMENT", 12);
   const newPdf = await makeSwitchFixture("CURRENT DOCUMENT", 1);
   const oldExpression = setPreviewPdfExpression(oldPdf);

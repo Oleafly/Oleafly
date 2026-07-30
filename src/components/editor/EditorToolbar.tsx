@@ -1,9 +1,8 @@
-import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowRight,
   ArrowRightToLine,
-  AtSign,
   Asterisk,
   Bold,
   Braces,
@@ -33,12 +32,16 @@ import {
 import { Popover, PopoverItem } from "@/components/ui/popover";
 import { Tooltip } from "@/components/ui/tooltip";
 import { editorFind, editorRedo, editorUndo, getEditorView } from "./cm/controller";
+import {
+  findWysiwygReferences,
+  goToWysiwygDefinition,
+  isWysiwygActive,
+} from "./wysiwyg/controller";
 import { goToDefinition, findReferences, startRename } from "@/lib/index/nav";
 import { imageToLatex, imageToLatexAvailable } from "@/features/image-to-latex";
 import { goToSyncTex } from "@/features/synctex";
 import { countWords } from "@/lib/wordcount";
-import { useCitationStore } from "@/store/citation";
-import { useActiveContent, useFilesStore } from "@/store/files";
+import { useFilesStore } from "@/store/files";
 import { cn, shortcut } from "@/lib/utils";
 import {
   HEADING_LEVELS,
@@ -60,13 +63,35 @@ import {
 } from "@/components/editor/latex-commands";
 import { SymbolPicker } from "@/components/editor/SymbolPicker";
 import { TableSizePicker } from "@/components/editor/TableSizePicker";
+import { ProjectCitationPicker } from "@/components/editor/ProjectCitationPicker";
+import { toast } from "@/lib/toast";
+import {
+  DIVIDER_WIDTH,
+  DROPDOWN_TRIGGER_WIDTH,
+  ICON_BUTTON_WIDTH,
+  fitCount,
+  useAvailableWidth,
+  type ToolbarControl,
+} from "@/components/ui/toolbar-overflow";
 
-function withView(fn: (v: import("@codemirror/view").EditorView) => void) {
+function withProjectSymbol(
+  sourceAction: (view: import("@codemirror/view").EditorView) => void,
+  visualAction?: () => boolean,
+) {
+  if (isWysiwygActive()) {
+    if (visualAction?.()) return;
+    toast.info(
+      visualAction
+        ? "Select a citation or reference in Visual mode first."
+        : "Rename is available in Source mode.",
+    );
+    return;
+  }
   const v = getEditorView();
-  if (v) fn(v);
+  if (v) sourceAction(v);
 }
 
-function Divider() {
+export function Divider() {
   return <span className="mx-1 h-5 w-px shrink-0 bg-border" />;
 }
 
@@ -145,7 +170,7 @@ export function WysiwygModeSwitch({
   );
 }
 
-function MenuRow({
+export function MenuRow({
   icon,
   label,
   onClick,
@@ -166,17 +191,8 @@ function MenuRow({
   );
 }
 
-interface ToolbarControl {
-  id: string;
-  width: number;
-  render: () => ReactNode;
-  renderMenu: () => ReactNode;
-}
 
-const ICON_BUTTON_WIDTH = 28;
-const DROPDOWN_TRIGGER_WIDTH = 44;
-
-function btnControl(
+export function btnControl(
   id: string,
   Icon: LucideIcon,
   label: string,
@@ -195,9 +211,7 @@ function btnControl(
   };
 }
 
-const DIVIDER_WIDTH = 9;
-
-function dividerControl(id: string): ToolbarControl {
+export function dividerControl(id: string): ToolbarControl {
   return {
     id,
     width: DIVIDER_WIDTH,
@@ -285,15 +299,23 @@ function CodeIntelDropdown({ variant }: { variant: "bar" | "menu" }) {
       }
     >
       <div className="px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">Code</div>
-      <PopoverItem onClick={() => withView(goToDefinition)}>
+      <PopoverItem
+        onClick={() =>
+          withProjectSymbol(goToDefinition, goToWysiwygDefinition)
+        }
+      >
         <ArrowRightToLine className="size-4" /> Go to definition
         <span className="ml-auto text-[10px] text-muted-foreground">F12</span>
       </PopoverItem>
-      <PopoverItem onClick={() => withView(findReferences)}>
+      <PopoverItem
+        onClick={() =>
+          withProjectSymbol(findReferences, findWysiwygReferences)
+        }
+      >
         <SearchCode className="size-4" /> Find references
         <span className="ml-auto text-[10px] text-muted-foreground">⇧F12</span>
       </PopoverItem>
-      <PopoverItem onClick={() => withView(startRename)}>
+      <PopoverItem onClick={() => withProjectSymbol(startRename)}>
         <Pencil className="size-4" /> Rename symbol
         <span className="ml-auto text-[10px] text-muted-foreground">F2</span>
       </PopoverItem>
@@ -301,17 +323,32 @@ function CodeIntelDropdown({ variant }: { variant: "bar" | "menu" }) {
   );
 }
 
-function WordCountButton() {
-  const content = useActiveContent();
+export function WordCountButton() {
   const activePath = useFilesStore((s) => s.activePath);
-  const stats = useMemo(() => countWords(content), [content]);
+  const [stats, setStats] = useState({
+    words: 0,
+    characters: 0,
+    lines: 0,
+  });
   const rows: [string, number][] = [
     ["Words", stats.words],
     ["Characters", stats.characters],
     ["Lines", stats.lines],
   ];
   return (
-    <Popover ariaLabel="Word count" className="w-56 p-3" trigger={<Info className="size-4" />}>
+    <Popover
+      ariaLabel="Word count"
+      className="w-56 p-3"
+      trigger={<Info className="size-4" />}
+      onOpenChange={(open) => {
+        if (!open) return;
+        const files = useFilesStore.getState();
+        const content = files.activePath
+          ? (files.files[files.activePath]?.content ?? "")
+          : "";
+        setStats(countWords(content));
+      }}
+    >
       <p className="mb-1 text-sm font-semibold text-foreground">Word count</p>
       <p className="mb-2 truncate text-xs text-muted-foreground">{activePath ?? "no file"}</p>
       <div className="divide-y divide-border">
@@ -326,35 +363,6 @@ function WordCountButton() {
   );
 }
 
-const MORE_BUTTON_WIDTH = 32;
-const CONTROL_GAP = 2;
-
-function useAvailableWidth() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [availableWidth, setAvailableWidth] = useState(Number.POSITIVE_INFINITY);
-
-  useLayoutEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    const recompute = () => setAvailableWidth(container.clientWidth);
-    recompute();
-    const ro = new ResizeObserver(recompute);
-    ro.observe(container);
-    return () => ro.disconnect();
-  }, []);
-
-  return { containerRef, availableWidth };
-}
-
-function fitCount(controls: ToolbarControl[], availableWidth: number): number {
-  let total = 0;
-  for (let i = 0; i < controls.length; i++) {
-    total += controls[i].width + (i > 0 ? CONTROL_GAP : 0);
-    const reserve = i < controls.length - 1 ? MORE_BUTTON_WIDTH + CONTROL_GAP : 0;
-    if (total + reserve > availableWidth) return i;
-  }
-  return controls.length;
-}
 
 export function EditorToolbar({
   wysiwyg,
@@ -389,13 +397,14 @@ export function EditorToolbar({
       dividerControl("divider-2"),
       btnControl("code", Code, "Inline code", insertCode),
       btnControl("link", LinkIcon, "Insert link", insertLink),
-      btnControl(
-        "cite",
-        AtSign,
-        "Add citation",
-        () => useCitationStore.getState().setOpen(true),
-        "Add citation (DOI, arXiv, or title)"
-      ),
+      {
+        id: "cite",
+        width: ICON_BUTTON_WIDTH,
+        render: () => <ProjectCitationPicker variant="bar" />,
+        renderMenu: () => (
+          <ProjectCitationPicker key="cite" variant="menu" />
+        ),
+      },
       btnControl("ref", Tag, "Insert cross-reference", insertRef),
       btnControl("footnote", Asterisk, "Insert footnote", insertFootnote),
       btnControl("blockquote", Quote, "Insert blockquote", insertBlockquote),

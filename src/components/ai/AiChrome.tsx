@@ -20,16 +20,22 @@ export function AiChrome({
   children,
   className,
   contentClassName,
+  borderVariant = "gradient",
 }: {
   children: ReactNode;
   className?: string;
   contentClassName?: string;
+  borderVariant?: "gradient" | "primary" | "animated";
 }) {
   return (
     <div
       className={cn(
-        "rounded-xl bg-gradient-to-br p-0.5 shadow-lg shadow-[#9B72CB]/20",
-        AI_GRADIENT,
+        "rounded-xl p-0.5 shadow-lg",
+        borderVariant === "gradient" &&
+          cn("bg-gradient-to-br shadow-[#9B72CB]/20", AI_GRADIENT),
+        borderVariant === "primary" && "bg-primary shadow-primary/15",
+        borderVariant === "animated" &&
+          "ai-tool-approval-chrome shadow-[#9B72CB]/20",
         className,
       )}
     >

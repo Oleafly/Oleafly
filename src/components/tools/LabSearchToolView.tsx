@@ -7,7 +7,7 @@ export function LabSearchToolView() {
     <ToolPageShell
       page="lab-search"
       title="Lab Search"
-      subtitle="OpenAlex institution search"
+      subtitle="Find institutions and review OpenAlex records"
       icon={School}
       testId="lab-search-tool-view"
     >

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   Bookmark,
@@ -105,10 +105,10 @@ export function TemplateGenerateModal({
   const runSeqRef = useRef(0);
   const stepTimersRef = useRef<number[]>([]);
 
-  const clearStepTimers = () => {
+  const clearStepTimers = useCallback(() => {
     for (const id of stepTimersRef.current) window.clearTimeout(id);
     stepTimersRef.current = [];
-  };
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -151,17 +151,17 @@ export function TemplateGenerateModal({
         setGenModel(model.id);
       })
       .catch(() => {});
-  }, [open]);
+  }, [open, clearStepTimers]);
 
   useEffect(() => {
     if (!open) return;
     const id = modalCoordinator.add(document.activeElement as HTMLElement | null);
     return () => {
-      modalCoordinator.remove(id)?.focus();
+      modalCoordinator.remove(id)?.focus({ preventScroll: true });
     };
   }, [open]);
 
-  useEffect(() => () => clearStepTimers(), []);
+  useEffect(() => () => clearStepTimers(), [clearStepTimers]);
 
   if (!open) return null;
 

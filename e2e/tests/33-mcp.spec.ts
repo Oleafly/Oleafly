@@ -45,10 +45,25 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
 
   await openSettings(tauriPage, "mcp");
   await expect(tauriPage.locator('[data-testid="settings-section-mcp"]')).toBeVisible();
-  await tauriPage.click('[data-testid="mcp-enable-toggle"]');
+  const enableToggle = tauriPage.locator('[data-testid="mcp-enable-toggle"]');
+  await expect(enableToggle).toHaveAttribute("aria-checked", /^(?:true|false)$/);
+  // Retries reuse the same isolated app data directory. Drive the switch to
+  // the desired state instead of blindly inverting the persisted value.
+  if ((await enableToggle.getAttribute("aria-checked")) !== "true") {
+    await enableToggle.click();
+  }
+  await expect(enableToggle).toHaveAttribute("aria-checked", "true");
   await expect(tauriPage.locator('[data-testid="mcp-status"]')).toContainText("Running", {
     timeout: 15_000,
   });
+  // "Running" renders as soon as the native start command returns, while the
+  // registry/token refresh still owns the busy lock. Wait for the real restart
+  // control before navigating away so the following command cannot race it.
+  await expect(
+    tauriPage.locator(
+      '[aria-label="Restart MCP server and select an available port"]',
+    ),
+  ).toBeEnabled({ timeout: 15_000 });
   await tauriPage.click('[aria-label="Close settings"]');
 
   const dataDir = process.env.OLEAFLY_DATA_DIR;
@@ -62,7 +77,11 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
 
   await openSettings(tauriPage, "mcp");
   const discoveryPath = join(dataDir!, "mcp.json");
-  await tauriPage.click('[aria-label="Restart MCP server and select an available port"]');
+  const restartButton = tauriPage.locator(
+    '[aria-label="Restart MCP server and select an available port"]',
+  );
+  await expect(restartButton).toBeEnabled({ timeout: 15_000 });
+  await restartButton.click();
   await expect(tauriPage.locator('[data-testid="mcp-status"]')).toContainText(
     "Restarted at http://127.0.0.1:",
     { timeout: 15_000 },

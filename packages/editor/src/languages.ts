@@ -1,8 +1,6 @@
 import { LanguageSupport, StreamLanguage } from "@codemirror/language";
 import { json } from "@codemirror/lang-json";
-import { markdown } from "@codemirror/lang-markdown";
 import { css } from "@codemirror/lang-css";
-import { stex } from "@codemirror/legacy-modes/mode/stex";
 import { properties } from "@codemirror/legacy-modes/mode/properties";
 import { yaml } from "@codemirror/legacy-modes/mode/yaml";
 import { toml } from "@codemirror/legacy-modes/mode/toml";
@@ -10,16 +8,18 @@ import { dockerFile } from "@codemirror/legacy-modes/mode/dockerfile";
 import { shell } from "@codemirror/legacy-modes/mode/shell";
 import { latexLanguage } from "./latex";
 import { typstLanguage } from "./typst";
+import { bibtexLanguage } from "./bibtex";
+import { markdownLanguage } from "./markdown";
 
 export function languageForPath(path: string): LanguageSupport | null {
   const p = path.toLowerCase();
   const base = p.slice(p.lastIndexOf("/") + 1);
 
-  if (/\.(tex|latex|sty|cls|ltx|bst)$/.test(p)) return latexLanguage();
+  if (/\.(tex|latex|sty|cls|ltx)$/.test(p)) return latexLanguage();
   if (p.endsWith(".typ")) return typstLanguage();
-  if (p.endsWith(".bib")) return new LanguageSupport(StreamLanguage.define(stex));
+  if (p.endsWith(".bib")) return bibtexLanguage();
   if (p.endsWith(".json")) return json();
-  if (/\.(md|markdown)$/.test(p)) return markdown();
+  if (/\.(md|markdown)$/.test(p)) return markdownLanguage();
   if (p.endsWith(".css")) return css();
   if (base === ".gitignore" || base.endsWith(".gitignore") || p.endsWith(".env"))
     return new LanguageSupport(StreamLanguage.define(properties));

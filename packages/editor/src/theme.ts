@@ -6,11 +6,20 @@ import { tags as t } from "@lezer/highlight";
 // theme adapts to both light and dark automatically, no compartment swapping
 // needed.
 const chromeTheme = EditorView.theme({
+  // Paint properties belong on the bare theme class: CodeMirror copies the
+  // theme classes onto the tooltip host it mounts under `tooltips({ parent })`
+  // so tooltips inherit the editor's colors and type scale.
   "&": {
     backgroundColor: "var(--cm-editor-bg, var(--background))",
     color: "var(--cm-editor-fg, var(--foreground))",
-    height: "100%",
     fontSize: "var(--cm-font-size, 13px)",
+  },
+  // Layout must NOT: `&` compiles to the bare generated class, so `height:100%`
+  // there also sized that body-level tooltip host to a full viewport, doubling
+  // the document height and leaving the whole app programmatically scrollable
+  // behind `body { overflow: hidden }`. Scope it to the editor element itself.
+  "&.cm-editor": {
+    height: "100%",
   },
   "&.cm-focused": {
     outline: "none",
@@ -18,6 +27,8 @@ const chromeTheme = EditorView.theme({
   ".cm-scroller": {
     fontFamily: "var(--cm-font-family, var(--font-mono))",
     lineHeight: "1.6",
+    minHeight: "0",
+    overflow: "auto",
   },
   ".cm-content": {
     caretColor: "var(--cm-cursor, var(--primary))",
@@ -36,20 +47,24 @@ const chromeTheme = EditorView.theme({
   ".cm-activeLine": {
     backgroundColor: "var(--cm-active-line, color-mix(in oklch, var(--muted) 45%, transparent))",
   },
+  // Named editor themes set --cm-selection; the "system" theme falls back to
+  // --cm-selection-default, defined per light/dark in globals.css. The literal
+  // is only reached when the editor is mounted outside the app shell (tests,
+  // isolated stories) - it mirrors the light-mode default. See globals.css for
+  // why these mix in srgb rather than oklch.
   "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection": {
     backgroundColor:
-      "var(--cm-selection, color-mix(in oklch, var(--primary) 18%, transparent)) !important",
+      "var(--cm-selection, var(--cm-selection-default, color-mix(in srgb, var(--primary) 30%, var(--background)))) !important",
   },
   ".cm-cursor, .cm-dropCursor": {
     borderLeftColor: "var(--cm-cursor, var(--primary))",
     borderLeftWidth: "1px",
   },
+  // The search panel is a floating widget that draws its own surface, so the
+  // panel container stays transparent. Painting it here put an opaque strip
+  // across the editor and ruled a line under the widget.
   ".cm-panels": {
-    backgroundColor: "var(--popover)",
     color: "var(--popover-foreground)",
-  },
-  "& .cm-panels.cm-panels-top": {
-    borderBottom: "1px solid var(--border)",
   },
   ".cm-textfield": {
     backgroundColor: "var(--background)",
@@ -81,12 +96,54 @@ const chromeTheme = EditorView.theme({
     borderRadius: "var(--radius-md)",
     boxShadow: "0 4px 12px rgba(0,0,0,.12)",
   },
+  // Completion list: one padded row per option — a type badge, the label with
+  // the typed prefix highlighted, and the source pushed to the right — rather
+  // than three runs of text butted against each other.
+  ".cm-tooltip-autocomplete": {
+    padding: "4px",
+    borderRadius: "0.625rem",
+  },
+  ".cm-tooltip-autocomplete > ul": {
+    fontFamily: "inherit",
+    maxHeight: "18rem",
+  },
+  ".cm-tooltip-autocomplete > ul > li": {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    height: "auto",
+    padding: "5px 8px",
+    borderRadius: "0.375rem",
+    lineHeight: "1.3",
+  },
   ".cm-tooltip-autocomplete > ul > li[aria-selected]": {
-    backgroundColor: "var(--accent)",
-    color: "var(--accent-foreground)",
+    backgroundColor: "color-mix(in oklch, var(--primary) 22%, transparent)",
+    color: "var(--foreground)",
+  },
+  ".cm-tooltip-autocomplete > ul > li .cm-completionLabel": {
+    color: "var(--foreground)",
+  },
+  // The characters already typed, so the eye can see why a row matched.
+  ".cm-tooltip-autocomplete > ul > li .cm-completionMatchedText": {
+    color: "var(--primary)",
+    fontWeight: "600",
+    textDecoration: "none",
+  },
+  ".cm-tooltip-autocomplete > ul > li[aria-selected] .cm-completionMatchedText": {
+    color: "var(--foreground)",
   },
   ".cm-tooltip-autocomplete ul li .cm-completionDetail": {
+    marginLeft: "auto",
+    paddingLeft: "12px",
     color: "var(--muted-foreground)",
+    fontStyle: "italic",
+    fontSize: "0.9em",
+    whiteSpace: "nowrap",
+  },
+  // No type badge: the command name and its source already say what a row is,
+  // and the column only added noise.
+  ".cm-tooltip-autocomplete > ul > li .cm-completionIcon": {
+    display: "none",
   },
   ".cm-foldPlaceholder": {
     backgroundColor: "var(--muted)",

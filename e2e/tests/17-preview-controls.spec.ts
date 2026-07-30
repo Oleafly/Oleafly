@@ -1,4 +1,5 @@
 import { test, expect } from "../fixtures";
+import type { TauriPage } from "@srsholmes/tauri-playwright";
 import {
   compileAndProbe,
   createBlankProject,
@@ -9,6 +10,60 @@ import {
   readProjectBase64,
   setEditorContent,
 } from "../helpers";
+
+async function selectPageLayout(
+  tauriPage: TauriPage,
+  label: "Single page view" | "Two-page view",
+  value: "single" | "double",
+) {
+  const inlineControl = tauriPage.locator(
+    `[role="radio"][aria-label="${label}"]`,
+  );
+  if (await inlineControl.isVisible()) {
+    await inlineControl.click();
+  } else {
+    const moreControls = tauriPage.locator(
+      '[aria-label="More preview controls"]',
+    );
+    await moreControls.focus();
+    await moreControls.press("Enter");
+    const layoutMenu = tauriPage.getByText("Page layout", { exact: true });
+    await expect(layoutMenu).toBeVisible();
+    await layoutMenu.click();
+    const layoutOption = tauriPage.getByText(label, { exact: true });
+    await expect(layoutOption).toBeVisible();
+    await layoutOption.click();
+  }
+  await expect(tauriPage.getByTestId("preview-pane")).toHaveAttribute(
+    "data-preview-layout",
+    value,
+  );
+}
+
+async function activatePreviewControl(
+  tauriPage: TauriPage,
+  label: string,
+) {
+  const direct = tauriPage.locator(
+    `[aria-label=${JSON.stringify(label)}]`,
+  );
+  if (await direct.isVisible()) {
+    await direct.click();
+    return;
+  }
+
+  const moreControls = tauriPage.locator(
+    '[aria-label="More preview controls"]',
+  );
+  await expect(moreControls).toBeVisible();
+  // Radix opens this trigger from keyboard activation consistently across
+  // WebKitGTK; the bridge's synthetic pointer click can be discarded.
+  await moreControls.focus();
+  await moreControls.press("Enter");
+  const menu = tauriPage.getByRole("menu");
+  await expect(menu).toBeVisible();
+  await menu.getByText(label, { exact: true }).click();
+}
 
 test.beforeEach(async ({ tauriPage }) => {
   test.setTimeout(240_000);
@@ -69,7 +124,9 @@ test("zoom menu applies presets and calculated fit scales", async ({ tauriPage }
   for (const preset of ["25%", "50%", "75%", "100%", "150%", "200%", "400%"]) {
     await openMenu();
     await tauriPage.getByRole("menu").getByText(preset, { exact: true }).click();
-    await expect(trigger).toHaveText(new RegExp(preset.replace("%", "\\s*%")));
+    await expect(trigger).toHaveText(
+      new RegExp(`${preset.slice(0, -1)}\\s*%`),
+    );
   }
   await expect(tauriPage.locator('button[aria-label="Zoom in"]')).toBeDisabled();
 
@@ -95,14 +152,11 @@ test("zoom menu applies presets and calculated fit scales", async ({ tauriPage }
   expect(heightScale).toBeLessThan(400);
 });
 
-test("one-page documents hide two-page layout and bound page navigation", async ({
+test("one-page documents hide the layout toggles and bound page navigation", async ({
   tauriPage,
 }) => {
   await expect(tauriPage.locator('[aria-label="Two-page view"]')).not.toBeVisible();
-  await expect(tauriPage.locator('[aria-label="Single page view"]')).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  await expect(tauriPage.locator('[aria-label="Single page view"]')).not.toBeVisible();
   await expect(tauriPage.locator('[aria-label="Previous page"]')).toBeDisabled();
   await expect(tauriPage.locator('[aria-label="Next page"]')).toBeDisabled();
   await expect(tauriPage.locator('[aria-label="Page number"]')).toHaveValue("1");
@@ -149,20 +203,15 @@ Page three
     await tauriPage.press('[aria-label="Page number"]', "Enter");
     await expect(page).toHaveValue("1");
   }
-  await tauriPage.click('[aria-label="Two-page view"]');
-  await expect(tauriPage.locator('[aria-label="Two-page view"]')).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  // Narrow split panes move page layout into the measured overflow menu.
+  // Exercise whichever production presentation is active, then assert the
+  // preview's actual layout state rather than assuming the inline buttons fit.
+  await selectPageLayout(tauriPage, "Two-page view", "double");
   await tauriPage.click('[aria-label="Next page"]');
   await expect(page).toHaveValue("3");
   await tauriPage.click('[aria-label="Previous page"]');
   await expect(page).toHaveValue("1");
-  await tauriPage.click('[aria-label="Single page view"]');
-  await expect(tauriPage.locator('[aria-label="Single page view"]')).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  await selectPageLayout(tauriPage, "Single page view", "single");
 });
 
 test("invert colors toggles on and off", async ({ tauriPage }) => {
@@ -193,7 +242,7 @@ test("save PDF writes the exact compiled bytes at the requested relative path an
 }) => {
   const compiledBase64 = await readCompiledPdfBase64(tauriPage);
   expect((await getCompiledPdfProbe(tauriPage)).text).toContain("Introduction");
-  await tauriPage.click('[aria-label="Save PDF to project"]');
+  await activatePreviewControl(tauriPage, "Save PDF to project");
   const name = `e2e-saved-${Date.now().toString(36)}.pdf`;
   const path = `exports/${name}`;
   await tauriPage.fill('[aria-label="Project save name"]', path);
@@ -206,7 +255,7 @@ test("save PDF writes the exact compiled bytes at the requested relative path an
   expect(savedBase64).toBe(compiledBase64);
   expect(Buffer.from(savedBase64, "base64").subarray(0, 5).toString("ascii")).toBe("%PDF-");
 
-  await tauriPage.click('[aria-label="Save PDF to project"]');
+  await activatePreviewControl(tauriPage, "Save PDF to project");
   await tauriPage.fill('[aria-label="Project save name"]', "../outside-project.pdf");
   await tauriPage.getByText("Save", { exact: true }).click();
   await expect(tauriPage.getByText("Couldn't save into the project.", { exact: true })).toBeVisible({
@@ -230,7 +279,7 @@ test("save image writes a real nonblank PNG at the requested relative path", asy
     { timeout: 180_000 },
   );
   await expect(tauriPage.locator(".pdf-canvas")).toBeVisible({ timeout: 30_000 });
-  await tauriPage.click('[aria-label="Save image to project"]');
+  await activatePreviewControl(tauriPage, "Save image to project");
   const path = `renders/result-${Date.now().toString(36)}.png`;
   await tauriPage.fill('[aria-label="Project save name"]', path);
   await tauriPage.getByText("Save", { exact: true }).click();
@@ -337,7 +386,7 @@ test("fullscreen controls hide, restore, and exit the preview toolbar", async ({
 test("open-in-window control creates the detached preview window", async ({
   tauriPage,
 }) => {
-  await tauriPage.click('[aria-label="Open preview in a new window"]');
+  await activatePreviewControl(tauriPage, "Open preview in a new window");
   const preview = await tauriPage.waitForWindow((window) => window.label === "preview", {
     timeout: 20_000,
   });

@@ -3,16 +3,19 @@ export function shouldCompileOnOpen(
   hasFiles: boolean,
   engineLoaded: boolean,
   alreadyCompiledProjectId: string | null,
-  viewMode: string,
+  _viewMode: string,
   compileStatus: string,
+  projectHydrated = true,
+  hasValidCurrentArtifact = false,
 ) {
   return (
     !!projectId &&
     hasFiles &&
     engineLoaded &&
+    projectHydrated &&
+    !hasValidCurrentArtifact &&
     compileStatus !== "compiling" &&
-    alreadyCompiledProjectId !== projectId &&
-    (viewMode === "split" || viewMode === "pdf")
+    alreadyCompiledProjectId !== projectId
   );
 }
 

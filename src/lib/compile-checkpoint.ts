@@ -15,6 +15,18 @@ export interface CompileSuccessCheckpoint {
   version: typeof COMPILE_CHECKPOINT_VERSION;
   projectId: string;
   mainDocument: string;
+  /**
+   * The complete project dependency-graph revision that produced this PDF.
+   * This is deliberately distinct from `outputRevision`, which only orders
+   * backend output files.
+   */
+  projectRevision: number;
+  /**
+   * Identifies the compile request within the producing app runtime. Together
+   * with the project fields above it is the acceptance identity used by the
+   * preview and detached preview window.
+   */
+  requestGeneration: number;
   outputKind: CompileOutputKind;
   producerId: string;
   outputRevision: number;
@@ -22,9 +34,25 @@ export interface CompileSuccessCheckpoint {
   completedAt: number;
 }
 
+export function sameCompileOutput(
+  left: CompileSuccessCheckpoint | null,
+  right: CompileSuccessCheckpoint | null,
+): boolean {
+  return (
+    left !== null &&
+    right !== null &&
+    left.projectId === right.projectId &&
+    left.mainDocument === right.mainDocument &&
+    left.outputRevision === right.outputRevision &&
+    left.outputId === right.outputId
+  );
+}
+
 interface CreateCompileSuccessCheckpointInput {
   projectId: string;
   mainDocument: string;
+  projectRevision?: number;
+  requestGeneration?: number;
   outputKind: CompileOutputKind;
   producerId: string;
   outputRevision: number;
@@ -46,6 +74,8 @@ export function nextSuccessfulCompileTimestamp(
 export function createCompileSuccessCheckpoint({
   projectId,
   mainDocument,
+  projectRevision = 0,
+  requestGeneration = 0,
   outputKind,
   producerId,
   outputRevision,
@@ -57,6 +87,8 @@ export function createCompileSuccessCheckpoint({
     version: COMPILE_CHECKPOINT_VERSION,
     projectId,
     mainDocument,
+    projectRevision,
+    requestGeneration,
     outputKind,
     producerId,
     outputRevision,
@@ -94,6 +126,12 @@ export function isCompileSuccessCheckpoint(
     candidate.projectId.length > 0 &&
     typeof candidate.mainDocument === "string" &&
     candidate.mainDocument.length > 0 &&
+    typeof candidate.projectRevision === "number" &&
+    Number.isSafeInteger(candidate.projectRevision) &&
+    candidate.projectRevision >= 0 &&
+    typeof candidate.requestGeneration === "number" &&
+    Number.isSafeInteger(candidate.requestGeneration) &&
+    candidate.requestGeneration >= 0 &&
     (candidate.outputKind === "standard" || candidate.outputKind === "tagged") &&
     typeof candidate.producerId === "string" &&
     candidate.producerId.length > 0 &&

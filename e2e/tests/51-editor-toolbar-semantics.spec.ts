@@ -467,9 +467,12 @@ CITATIONANCHOR
   await setEditorCaretAfter(tauriPage, "CITATIONANCHOR");
   await clickToolbarControl(
     tauriPage,
-    '[aria-label="Add citation (DOI, arXiv, or title)"]',
-    "Add citation",
+    '[aria-label="Cite from project"]',
+    "Cite from project",
   );
+  await tauriPage
+    .getByText("Find and add a new citation…", { exact: true })
+    .click();
   await expect(
     tauriPage.locator(
       'input[placeholder="DOI, arXiv id, URL, or a paper title…"]',
@@ -706,6 +709,21 @@ test("every symbol inventory macro compiles and exposes its deterministic PDF ma
   );
   expect(categories).toHaveLength(13);
 
+  const latexText = (value: string) => {
+    const escaped: Record<string, string> = {
+      "\\": String.raw`\textbackslash{}`,
+      "{": String.raw`\{`,
+      "}": String.raw`\}`,
+      "&": String.raw`\&`,
+      "%": String.raw`\%`,
+      "$": String.raw`\$`,
+      "#": String.raw`\#`,
+      "_": String.raw`\_`,
+    };
+    return [...value]
+      .map((character) => escaped[character] ?? character)
+      .join("");
+  };
   const groups = categories.map((category, categoryIndex) => {
     const entries = category.items.map((symbol, symbolIndex) => ({
       ...symbol,
@@ -720,7 +738,7 @@ test("every symbol inventory macro compiles and exposes its deterministic PDF ma
     return {
       category,
       entries,
-      source: String.raw`\section*{${category.label.replace(/&/g, "\\&")}}
+      source: String.raw`\section*{${latexText(category.label)}}
 ${rows}`,
     };
   });

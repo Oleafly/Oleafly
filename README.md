@@ -20,8 +20,8 @@ your computer.
 [![Stars](https://img.shields.io/github/stars/Oleafly/Oleafly?style=social)](https://github.com/Oleafly/Oleafly)
 
 **[Download Oleafly](https://github.com/Oleafly/Oleafly/releases/latest) ·
-[Read the docs](https://oleafly.com/docs/) ·
-[Build from source](docs/install.md)**
+[Read the engineering docs](docs/README.md) ·
+[Build from source](docs/development.md)**
 
 </div>
 
@@ -39,9 +39,9 @@ the source above with media/workspace-tour.webp.
 > Oleafly is ready for day-to-day documents, but the project is still moving
 > quickly. Advanced package compatibility and a few platform integrations are
 > still being hardened. macOS builds are signed and notarized; Windows builds
-> are not signed yet, so see the
-> [first-launch instructions](docs/install.md#first-launch) and download only
-> from the official releases page.
+> are not signed yet. Download only from the official releases page and review
+> the release notes
+> before installing an unsigned preview build.
 
 ## Research has enough moving parts already
 
@@ -175,8 +175,8 @@ Cursor, and other MCP clients. MCP connections support read-only mode and
 three approval policies: confirm every change, auto-approve writes while
 confirming deletes, or trust the client's own approval gate.
 
-See the [AI Assistant guide](docs/ai-assistant.md) and
-[MCP setup](docs/mcp.md) for the current providers, tools, and security model.
+See the [feature reference](docs/features.md) and [MCP setup](docs/mcp.md) for
+the current providers, tools, and security model.
 
 ## Local-first, with a clear network boundary
 
@@ -221,29 +221,26 @@ pnpm install
 pnpm tauri dev
 ```
 
-See the [installation guide](docs/install.md) for prerequisites, platform
-instructions, and production builds.
+See the [development guide](docs/development.md) for prerequisites, platform
+setup, and production builds.
 
 ## Documentation
 
-User guides are available at [oleafly.com/docs](https://oleafly.com/docs/).
-The repository keeps the contributor and implementation references close to
-the code.
+The repository keeps public engineering and product references close to the
+code. End-user task guides are maintained separately from this public index.
 
-| Guide | Covers |
+| Reference | Covers |
 | --- | --- |
-| [Getting started](docs/getting-started.md) | First project, first edit, first PDF |
-| [Feature reference](docs/features.md) | The full product surface |
-| [Install](docs/install.md) | Releases, first launch, source builds |
+| [Product-engineering catalog](docs/README.md) | Feature inventories and engineering contracts |
+| [Feature reference](docs/features.md) | The product surface and supported workflows |
 | [Document engines](docs/document-engines.md) | LaTeX, Typst, and Markdown capabilities |
-| [AI assistant](docs/ai-assistant.md) | Providers, local models, tools, and approvals |
-| [MCP server](docs/mcp.md) | External clients, access tokens, and approval policies |
-| [GitHub sync](docs/github-sync.md) | Publish, link, push, and pull |
-| [Keyboard shortcuts](docs/keyboard-shortcuts.md) | Editing and navigation shortcuts |
-| [Research workflows](docs/research-workflows.md) | Papers, theses, references, and figures |
-| [Resume workflows](docs/resume-workflows.md) | Templates, ATS checks, tailoring, and variants |
-| [Architecture](docs/architecture.md) | System boundaries and extension points |
+| [Product architecture](docs/Architecture.md) | System boundaries, package ownership, and extension points |
 | [Development](docs/development.md) | Local setup, tests, and contribution workflow |
+| [Language-server toolchain](docs/language-server-toolchain.md) | Fetching, integrity, and distribution policy |
+| [MCP integration](docs/mcp.md) | External clients, access tokens, and approval policies |
+| [Releasing](docs/releasing.md) | Release workflow and artifact checks |
+| [Code signing](docs/signing.md) | Platform signing requirements |
+| [Auto-updates](docs/updates.md) | Update manifests, signatures, and rollback |
 
 ## Contributing
 

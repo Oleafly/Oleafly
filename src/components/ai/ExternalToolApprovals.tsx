@@ -1,5 +1,5 @@
 import { useMcpApprovalStore } from "@/store/mcp-approvals";
-import { AI_GRADIENT, AI_PROMPT_SURFACE } from "@/components/ai/AiChrome";
+import { AI_PROMPT_SURFACE } from "@/components/ai/AiChrome";
 import { ToolConfirm, isAutoApprovable } from "@/components/ai/ToolConfirm";
 import { cn } from "@/lib/utils";
 
@@ -16,8 +16,7 @@ export function ExternalToolApprovals() {
     <div
       data-testid="mcp-approval-panel"
       className={cn(
-        "fixed bottom-4 right-4 z-50 w-[420px] max-w-[calc(100vw-2rem)] rounded-xl bg-gradient-to-br p-0.5 shadow-2xl shadow-[#9B72CB]/25",
-        AI_GRADIENT,
+        "ai-tool-approval-chrome fixed bottom-4 right-4 z-50 w-[420px] max-w-[calc(100vw-2rem)] rounded-xl p-0.5 shadow-2xl shadow-[#9B72CB]/25",
       )}
     >
       <div

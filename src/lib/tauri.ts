@@ -26,6 +26,8 @@ export interface CompileResult {
   synctex_path: string | null;
   out_dir: string | null;
   compile_time_ms: number;
+  /// True when the user stopped this compile, as opposed to it failing.
+  stopped?: boolean;
 }
 
 export interface EngineCapabilities {
@@ -97,8 +99,28 @@ export interface ProjectInfo {
   forked_from: string | null;
 }
 
-export const compileProject = (projectId: string, mainDoc: string, offline = false) =>
-  invoke<CompileResult>("compile_project", { projectId, mainDoc, offline });
+export const compileProject = (
+  projectId: string,
+  mainDoc: string,
+  offline = false,
+  fast = false,
+  haltOnError = false,
+) =>
+  invoke<CompileResult>("compile_project", {
+    projectId,
+    mainDoc,
+    offline,
+    fast,
+    haltOnError,
+  });
+
+/// Ends the running main-document compile. Resolves to whether a compiler
+/// process was actually terminated.
+export const cancelCompile = () => invoke<boolean>("cancel_compile", {});
+
+/// Empties the project's build directory so the next compile reuses nothing.
+export const clearBuildDir = (projectId: string) =>
+  invoke<void>("clear_build_dir", { projectId });
 
 // Runs in a separate build dir from the main project compile.
 export const compileIsolated = (projectId: string, source: string, offline = false) =>
@@ -455,6 +477,24 @@ export const compileTagged = (projectId: string, mainDoc: string) =>
 export const fetchDoiBibtex = (doi: string) => invoke<string>("fetch_doi_bibtex", { doi });
 export const fetchArxiv = (id: string) => invoke<string>("fetch_arxiv", { id });
 export const crossrefSearch = (query: string) => invoke<string>("crossref_search", { query });
+export const literatureSearch = (
+  source: string,
+  query: string,
+  options: {
+    limit?: number;
+    yearFrom?: number | null;
+    yearTo?: number | null;
+    openAccessOnly?: boolean;
+  } = {},
+) =>
+  invoke<string>("literature_search", {
+    source,
+    query,
+    limit: options.limit ?? 12,
+    yearFrom: options.yearFrom ?? null,
+    yearTo: options.yearTo ?? null,
+    openAccessOnly: options.openAccessOnly ?? false,
+  });
 export const getConnectorKey = (connectorId: string) =>
   invoke<string | null>("get_connector_key", { connectorId });
 export const setConnectorKey = (connectorId: string, value: string) =>
@@ -711,4 +751,17 @@ export const synctexInverse = (
     page,
     x,
     y,
+  });
+
+export const synctexMapLine = (
+  compiledSource: string,
+  currentSource: string,
+  line: number,
+  currentToCompiled: boolean,
+) =>
+  invoke<number | null>("synctex_map_line", {
+    compiledSource,
+    currentSource,
+    line,
+    currentToCompiled,
   });

@@ -4,7 +4,7 @@ export function useInitialFocus<T extends HTMLElement>(active = true): RefObject
   const ref = useRef<T>(null);
 
   useEffect(() => {
-    if (active) ref.current?.focus();
+    if (active) ref.current?.focus({ preventScroll: true });
   }, [active]);
 
   return ref;

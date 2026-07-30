@@ -1,0 +1,775 @@
+{
+  "schemaVersion": 2,
+  "definition": {
+    "scorePercent": 100,
+    "requiresAllAcceptanceCriteria": true
+  },
+  "releasePlatforms": ["macos", "windows", "linux"],
+  "surfaces": ["source", "visual", "pdf"],
+  "evidenceTypes": [
+    {
+      "id": "unit",
+      "meaning": "Isolated logic and state behavior"
+    },
+    {
+      "id": "integration",
+      "meaning": "Behavior across production components or workers"
+    },
+    {
+      "id": "end-to-end",
+      "meaning": "User-visible behavior on a supported application surface"
+    },
+    {
+      "id": "fixture",
+      "meaning": "Deterministic representative-corpus coverage"
+    },
+    {
+      "id": "performance",
+      "meaning": "Measurement on the pinned reference hardware and methodology"
+    }
+  ],
+  "features": [
+    {
+      "id": "advanced-syntax-highlighting",
+      "name": "Advanced Syntax Highlighting",
+      "required": true,
+      "applicability": [
+        {
+          "engine": "latex",
+          "surfaces": ["source"],
+          "extensions": [".tex", ".ltx", ".latex", ".sty", ".cls"]
+        },
+        {
+          "engine": "markdown",
+          "surfaces": ["source"],
+          "extensions": [".md", ".markdown"]
+        },
+        {
+          "engine": "typst",
+          "surfaces": ["source"],
+          "extensions": [".typ"]
+        },
+        {
+          "engine": "bibtex",
+          "surfaces": ["source"],
+          "extensions": [".bib"]
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "ASH-01",
+          "statement": "Constructs covered by the representative corpus and feature grammar suites receive engine-correct token classes in every declared source extension.",
+          "requiredEvidence": ["unit", "integration", "fixture"]
+        },
+        {
+          "id": "ASH-02",
+          "statement": "Incomplete and malformed input retains useful highlighting around damage, stays editable, and shows a diagnostic or partial state without crashing.",
+          "requiredEvidence": ["unit", "integration", "fixture"]
+        },
+        {
+          "id": "ASH-03",
+          "statement": "Incremental highlighting paints only the current revision and meets the visible-syntax and main-thread budgets.",
+          "requiredEvidence": ["integration", "performance"]
+        },
+        {
+          "id": "ASH-04",
+          "statement": "Extension routing is case-insensitive for declared extensions and does not grant full support to lookalike or explicitly excluded suffixes.",
+          "requiredEvidence": ["unit", "fixture"]
+        }
+      ]
+    },
+    {
+      "id": "live-reference-checking",
+      "name": "Live Reference Checking",
+      "required": true,
+      "applicability": [
+        {
+          "engine": "latex",
+          "surfaces": ["source", "visual"],
+          "extensions": [".tex", ".ltx", ".latex"]
+        },
+        {
+          "engine": "latex",
+          "surfaces": ["source"],
+          "extensions": [".sty", ".cls"]
+        },
+        {
+          "engine": "markdown",
+          "surfaces": ["source", "visual"],
+          "extensions": [".md", ".markdown"]
+        },
+        {
+          "engine": "typst",
+          "surfaces": ["source"],
+          "extensions": [".typ"]
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "LRC-01",
+          "statement": "Local and cross-file labels, anchors, links, includes, imports, and relevant asset targets resolve with engine-correct syntax.",
+          "requiredEvidence": ["unit", "integration", "fixture"]
+        },
+        {
+          "id": "LRC-02",
+          "statement": "Missing and duplicate targets are reported at every affected range, while valid targets produce no false error.",
+          "requiredEvidence": ["unit", "integration", "fixture"]
+        },
+        {
+          "id": "LRC-03",
+          "statement": "Malformed/unreadable files yield visible partial/error states and never a false \"no issues\" result.",
+          "requiredEvidence": ["integration", "end-to-end", "fixture"]
+        },
+        {
+          "id": "LRC-04",
+          "statement": "File create, edit, rename, move, and delete invalidate affected project state, reject stale results, and pass project-analysis budgets.",
+          "requiredEvidence": ["integration", "end-to-end", "performance"]
+        }
+      ]
+    },
+    {
+      "id": "integrated-pdf-viewer",
+      "name": "Integrated PDF Viewer",
+      "required": true,
+      "applicability": [
+        {
+          "engine": "latex",
+          "surfaces": ["pdf"],
+          "extensions": [".tex", ".ltx", ".latex"]
+        },
+        {
+          "engine": "markdown",
+          "surfaces": ["pdf"],
+          "extensions": [".md", ".markdown"]
+        },
+        {
+          "engine": "typst",
+          "surfaces": ["pdf"],
+          "extensions": [".typ"]
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "PDF-01",
+          "statement": "The latest successful PDF bytes from each supported engine render without engine-specific viewer regressions.",
+          "requiredEvidence": ["integration", "end-to-end", "fixture"]
+        },
+        {
+          "id": "PDF-02",
+          "statement": "Page navigation, zoom/fit, scrolling, text selection/search, links, and download work on representative single- and multi-page documents.",
+          "requiredEvidence": ["end-to-end"]
+        },
+        {
+          "id": "PDF-03",
+          "statement": "Missing, invalid, unavailable, and failed loads show truthful visible states rather than blank success.",
+          "requiredEvidence": ["integration", "end-to-end"]
+        },
+        {
+          "id": "PDF-04",
+          "statement": "A stale compile or PDF load can never replace the accepted PDF. A retained last-good PDF for a pending or failed newer project revision is prominently marked stale and is never represented as current.",
+          "requiredEvidence": ["integration", "end-to-end"]
+        }
+      ]
+    },
+    {
+      "id": "live-inline-preview",
+      "name": "Live Inline Preview",
+      "required": true,
+      "applicability": [
+        {
+          "engine": "latex",
+          "surfaces": ["source", "visual"],
+          "extensions": [".tex", ".ltx", ".latex"]
+        },
+        {
+          "engine": "markdown",
+          "surfaces": ["source", "visual"],
+          "extensions": [".md", ".markdown"]
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "LIP-01",
+          "statement": "Supported inline and display math forms render their exact source and refresh after edits in both engines.",
+          "requiredEvidence": ["unit", "integration", "fixture"]
+        },
+        {
+          "id": "LIP-02",
+          "statement": "Preview decorations never alter source, block cursor/selection operations, hide the editable expression, or create an inaccessible focus trap.",
+          "requiredEvidence": ["integration", "end-to-end"]
+        },
+        {
+          "id": "LIP-03",
+          "statement": "Incomplete or invalid math stays editable and shows a visible, non-destructive fallback instead of throwing or disappearing silently.",
+          "requiredEvidence": ["unit", "integration", "end-to-end"]
+        },
+        {
+          "id": "LIP-04",
+          "statement": "Only current-revision output is painted, and refresh meets inline and main-thread budgets.",
+          "requiredEvidence": ["integration", "performance"]
+        }
+      ]
+    },
+    {
+      "id": "latex-commands-completion-and-syntax-checking",
+      "name": "LaTeX Commands Completion and Syntax Checking",
+      "required": true,
+      "applicability": [
+        {
+          "engine": "latex",
+          "surfaces": ["source"],
+          "extensions": [".tex", ".ltx", ".latex", ".sty", ".cls"]
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "LCS-01",
+          "statement": "Commands, environments, argument forms, document classes/packages, and project-defined macros/environments complete in valid contexts.",
+          "requiredEvidence": ["unit", "integration", "fixture"]
+        },
+        {
+          "id": "LCS-02",
+          "statement": "Unclosed or mismatched delimiters/environments, malformed command forms, and parser errors receive accurate current-revision diagnostics.",
+          "requiredEvidence": ["unit", "integration", "fixture"]
+        },
+        {
+          "id": "LCS-03",
+          "statement": "Completion remains available at incomplete command/argument sites; damaged neighboring source degrades visibly to partial results instead of disabling the file.",
+          "requiredEvidence": ["unit", "integration"]
+        },
+        {
+          "id": "LCS-04",
+          "statement": "Cached and project-backed completion meet their latency gates, and a stale completion item cannot be committed.",
+          "requiredEvidence": ["integration", "performance"]
+        }
+      ]
+    },
+    {
+      "id": "live-grammar-checking",
+      "name": "Live Grammar Checking",
+      "required": true,
+      "applicability": [
+        {
+          "engine": "latex",
+          "surfaces": ["source", "visual"],
+          "extensions": [".tex", ".ltx", ".latex"]
+        },
+        {
+          "engine": "markdown",
+          "surfaces": ["source", "visual"],
+          "extensions": [".md", ".markdown"]
+        },
+        {
+          "engine": "typst",
+          "surfaces": ["source"],
+          "extensions": [".typ"]
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "LGC-01",
+          "statement": "Harper checks English prose under all five declared dialects, and diagnostics/suggestions reflect the active dialect.",
+          "requiredEvidence": ["unit", "integration", "fixture"]
+        },
+        {
+          "id": "LGC-02",
+          "statement": "Engine markup, URLs, code, citation syntax, math, and excluded comments are masked without offset drift or synthetic grammar errors.",
+          "requiredEvidence": ["unit", "fixture"]
+        },
+        {
+          "id": "LGC-03",
+          "statement": "Suggestions, ignores/categories, unsupported languages, loading failures, and partial analysis all have truthful visible states.",
+          "requiredEvidence": ["integration", "end-to-end"]
+        },
+        {
+          "id": "LGC-04",
+          "statement": "Full-input proofing runs off the main thread, rejects stale revisions, uses no silent cutoff, and passes both normal and stress budgets.",
+          "requiredEvidence": ["integration", "performance"]
+        }
+      ]
+    },
+    {
+      "id": "local-and-global-structure-view",
+      "name": "Local and Global Structure View",
+      "required": true,
+      "applicability": [
+        {
+          "engine": "latex",
+          "surfaces": ["source", "visual"],
+          "extensions": [".tex", ".ltx", ".latex"]
+        },
+        {
+          "engine": "latex",
+          "surfaces": ["source"],
+          "extensions": [".sty", ".cls"]
+        },
+        {
+          "engine": "markdown",
+          "surfaces": ["source", "visual"],
+          "extensions": [".md", ".markdown"]
+        },
+        {
+          "engine": "typst",
+          "surfaces": ["source"],
+          "extensions": [".typ"]
+        },
+        {
+          "engine": "bibtex",
+          "surfaces": ["source"],
+          "extensions": [".bib"]
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "SGV-01",
+          "statement": "The active file exposes an ordered, navigable, engine-correct local outline with stable source ranges.",
+          "requiredEvidence": ["unit", "integration", "fixture"]
+        },
+        {
+          "id": "SGV-02",
+          "statement": "The project view merges all supported files into a navigable hierarchy and include/import/link graph without losing duplicate or unresolved nodes.",
+          "requiredEvidence": ["integration", "fixture"]
+        },
+        {
+          "id": "SGV-03",
+          "statement": "Project-defined LaTeX symbols and BibTeX entries retain defining file/range and feed navigation and completion consumers.",
+          "requiredEvidence": ["unit", "integration"]
+        },
+        {
+          "id": "SGV-04",
+          "statement": "Content/file mutations invalidate affected nodes, malformed files remain partially represented, stale graphs are rejected, and the 200-file/500,000 character project gate passes.",
+          "requiredEvidence": ["integration", "fixture", "performance"]
+        }
+      ]
+    },
+    {
+      "id": "citations-checking-and-completion",
+      "name": "Citations Checking and Completion",
+      "required": true,
+      "applicability": [
+        {
+          "engine": "latex",
+          "surfaces": ["source", "visual"],
+          "extensions": [".tex", ".ltx", ".latex"]
+        },
+        {
+          "engine": "latex",
+          "surfaces": ["source"],
+          "extensions": [".sty", ".cls"]
+        },
+        {
+          "engine": "markdown",
+          "surfaces": ["source", "visual"],
+          "extensions": [".md", ".markdown"]
+        },
+        {
+          "engine": "typst",
+          "surfaces": ["source"],
+          "extensions": [".typ"]
+        },
+        {
+          "engine": "bibtex",
+          "surfaces": ["source"],
+          "extensions": [".bib"]
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "CCC-01",
+          "statement": "LaTeX, Pandoc Markdown, and Typst citation forms resolve against every project bibliography declared or discovered by the engine.",
+          "requiredEvidence": ["unit", "integration", "fixture"]
+        },
+        {
+          "id": "CCC-02",
+          "statement": "BibTeX entry types, fields, braces/quotes, keys, duplicates, and incomplete/malformed entries are highlighted, cataloged, and linted with recoverable partial results.",
+          "requiredEvidence": ["unit", "fixture"]
+        },
+        {
+          "id": "CCC-03",
+          "statement": "Current keys and useful metadata appear in supported Source/Visual completion; duplicate keys are distinguished and missing keys diagnosed.",
+          "requiredEvidence": ["integration", "end-to-end"]
+        },
+        {
+          "id": "CCC-04",
+          "statement": "Bibliography and citing-file edits/moves invalidate affected diagnostics and completions, reject stale catalogs, and pass project-analysis budgets.",
+          "requiredEvidence": ["integration", "performance"]
+        }
+      ]
+    },
+    {
+      "id": "spellchecking",
+      "name": "Spellchecking",
+      "required": true,
+      "applicability": [
+        {
+          "engine": "latex",
+          "surfaces": ["source", "visual"],
+          "extensions": [".tex", ".ltx", ".latex"]
+        },
+        {
+          "engine": "markdown",
+          "surfaces": ["source", "visual"],
+          "extensions": [".md", ".markdown"]
+        },
+        {
+          "engine": "typst",
+          "surfaces": ["source"],
+          "extensions": [".typ"]
+        }
+      ],
+      "acceptanceCriteria": [
+        {
+          "id": "SPC-01",
+          "statement": "Every shipped paired dictionary passes load, known-word, known-misspelling, and suggestion smoke coverage; en-US is always present.",
+          "requiredEvidence": ["unit", "integration"]
+        },
+        {
+          "id": "SPC-02",
+          "statement": "Engine markup, commands, URLs, code, citation syntax, math, and excluded comments are skipped without offset drift or false positives from masking.",
+          "requiredEvidence": ["unit", "fixture"]
+        },
+        {
+          "id": "SPC-03",
+          "statement": "Global/project ignore, un-ignore, suggestions, and diagnostic refresh work across Source and supported Visual surfaces.",
+          "requiredEvidence": ["integration", "end-to-end"]
+        },
+        {
+          "id": "SPC-04",
+          "statement": "Missing packs and load failures are visible; full-input worker results reject stale revisions, use no silent cutoff, and pass performance gates.",
+          "requiredEvidence": ["integration", "performance"]
+        }
+      ]
+    }
+  ],
+  "engines": {
+    "latex": {
+      "surfaceExtensions": {
+        "source": [".tex", ".ltx", ".latex", ".sty", ".cls"],
+        "visual": [".tex", ".ltx", ".latex"],
+        "pdf": [".tex", ".ltx", ".latex"]
+      }
+    },
+    "markdown": {
+      "surfaceExtensions": {
+        "source": [".md", ".markdown"],
+        "visual": [".md", ".markdown"],
+        "pdf": [".md", ".markdown"]
+      }
+    },
+    "typst": {
+      "surfaceExtensions": {
+        "source": [".typ"],
+        "pdf": [".typ"]
+      },
+      "excludedCapabilities": ["visual", "inline-preview"]
+    },
+    "bibtex": {
+      "surfaceExtensions": {
+        "source": [".bib"]
+      }
+    },
+    "excludedExtensions": [".bst"]
+  },
+  "proofing": {
+    "grammar": {
+      "language": "English",
+      "dialects": [
+        {
+          "name": "American English",
+          "locale": "en-US"
+        },
+        {
+          "name": "British English",
+          "locale": "en-GB"
+        },
+        {
+          "name": "Australian English",
+          "locale": "en-AU"
+        },
+        {
+          "name": "Canadian English",
+          "locale": "en-CA"
+        },
+        {
+          "name": "Indian English",
+          "locale": "en-IN"
+        }
+      ]
+    },
+    "spelling": {
+      "baselinePack": "en-US",
+      "dictionaryDirectory": "public/dictionaries",
+      "shippedPackDefinition": {
+        "requiredFiles": [".aff", ".dic"],
+        "sameBasename": true
+      },
+      "releaseScope": "all-shipped-paired-packs",
+      "requiredChecks": [
+        "load",
+        "known-word",
+        "known-misspelling",
+        "suggestions",
+        "user-dictionary"
+      ],
+      "releaseBlockingConditions": [
+        "missing-baseline-pack",
+        "orphaned-aff",
+        "orphaned-dic",
+        "pack-load-failure"
+      ],
+      "requestedUnavailablePackState": "unavailable",
+      "fallbackPolicy": "allowed-only-with-truthful-active-pack-label"
+    }
+  },
+  "visibleStateTaxonomy": [
+    {
+      "id": "unsupported",
+      "kind": "state",
+      "meaning": "The requested cell is explicitly outside this contract",
+      "requiredPresentation": "Show an unsupported label and the reason"
+    },
+    {
+      "id": "unavailable",
+      "kind": "state",
+      "meaning": "A supported capability or required local asset could not load",
+      "requiredPresentation": "Name the unavailable capability and offer retry or setup where actionable"
+    },
+    {
+      "id": "not_run",
+      "kind": "state",
+      "meaning": "No current-revision result has completed",
+      "requiredPresentation": "Show not run or pending; never show success or \"no issues\""
+    },
+    {
+      "id": "error",
+      "kind": "state",
+      "meaning": "The current-revision operation failed",
+      "requiredPresentation": "Show the failure at the affected surface with actionable detail and retry"
+    },
+    {
+      "id": "partial",
+      "kind": "state",
+      "meaning": "Recovery produced incomplete current-revision results",
+      "requiredPresentation": "Show recovered results together with a partial-analysis indicator and syntax diagnostics"
+    },
+    {
+      "id": "success",
+      "kind": "state",
+      "meaning": "A complete current-revision operation succeeded",
+      "requiredPresentation": "Show current results; an empty result may say \"no issues\""
+    },
+    {
+      "id": "stale",
+      "kind": "modifier",
+      "meaning": "Accepted output belongs to an older project revision",
+      "requiredPresentation": "Mark the retained output prominently as stale"
+    },
+    {
+      "id": "non_current",
+      "kind": "modifier",
+      "meaning": "Displayed output does not represent the active project revision",
+      "requiredPresentation": "Explicitly identify that the output is not current"
+    }
+  ],
+  "resultPolicies": {
+    "analysisProofingParse": {
+      "staleResponseDisposition": "reject-without-commit"
+    },
+    "compilePdfLoad": {
+      "revisionIdentity": {
+        "field": "projectRevision",
+        "scope": "whole-project",
+        "appliesTo": ["compile-result", "pdf-load-result"],
+        "acceptOnlyWhenCapturedEqualsCurrent": true,
+        "advancesOnChangesTo": [
+          "main-document",
+          "included-files",
+          "imported-files",
+          "bibliographies",
+          "assets"
+        ]
+      },
+      "staleResponseDisposition": "reject-without-replacing-accepted-pdf",
+      "lastGoodPdf": {
+        "retentionAllowedWhileNewerRevision": ["pending", "failed"],
+        "requiredVisibleModifiers": ["stale", "non_current"],
+        "currentRevisionClaim": "forbidden"
+      }
+    },
+    "limits": {
+      "silentCutoffs": "forbidden",
+      "timeouts": "error",
+      "emptySuccessRequires": "complete-current-revision-run"
+    }
+  },
+  "performance": {
+    "referenceHardware": {
+      "machine": "Mac mini",
+      "chip": "M1",
+      "modelYear": 2020,
+      "cpuCores": 8,
+      "memoryGiB": 16,
+      "storage": "SSD",
+      "operatingSystem": "macOS 15",
+      "power": "AC"
+    },
+    "methodology": {
+      "warmupRuns": 3,
+      "measuredRuns": 20,
+      "statistic": "p95"
+    },
+    "functionalCrossPlatformGates": "separate",
+    "referenceProject": {
+      "maxFiles": 200,
+      "totalCharacters": 500000
+    },
+    "singleDocumentStressCharacters": 500000,
+    "maxMainThreadTaskMs": 50,
+    "completionCachedP95Ms": 100,
+    "completionProjectBackedP95Ms": 250,
+    "syntaxVisibleUpdateP95Ms": 50,
+    "diagnosticsStructureP95Ms": 750,
+    "idleDebounceMs": 300,
+    "proofing100kMs": 2000,
+    "proofing500kMs": 8000,
+    "inlineMathIdleMs": 500,
+    "autoCompileStartMs": 3000
+  },
+  "fixtures": [
+    {
+      "path": "project/main.tex",
+      "engine": "latex",
+      "markers": [
+        "include",
+        "reference",
+        "citation",
+        "inline-math",
+        "display-math",
+        "proofing"
+      ],
+      "relationships": [
+        {
+          "kind": "include",
+          "name": "chapters/analysis",
+          "target": "project/chapters/analysis.tex"
+        },
+        {
+          "kind": "reference",
+          "name": "sec:analysis",
+          "target": "project/chapters/analysis.tex"
+        },
+        {
+          "kind": "citation",
+          "name": "knuth1984",
+          "target": "project/references.bib"
+        },
+        {
+          "kind": "bibliography",
+          "name": "references",
+          "target": "project/references.bib"
+        }
+      ]
+    },
+    {
+      "path": "project/chapters/analysis.tex",
+      "engine": "latex",
+      "markers": ["reference", "citation"],
+      "relationships": [
+        {
+          "kind": "reference",
+          "name": "sec:introduction",
+          "target": "project/main.tex"
+        },
+        {
+          "kind": "citation",
+          "name": "lamport1994",
+          "target": "project/references.bib"
+        }
+      ]
+    },
+    {
+      "path": "project/notes.md",
+      "engine": "markdown",
+      "markers": [
+        "reference",
+        "citation",
+        "inline-math",
+        "display-math",
+        "proofing"
+      ],
+      "relationships": [
+        {
+          "kind": "reference",
+          "name": "sec:introduction",
+          "target": "project/main.tex"
+        },
+        {
+          "kind": "citation",
+          "name": "knuth1984",
+          "target": "project/references.bib"
+        },
+        {
+          "kind": "citation",
+          "name": "lamport1994",
+          "target": "project/references.bib"
+        }
+      ]
+    },
+    {
+      "path": "project/paper.typ",
+      "engine": "typst",
+      "markers": [
+        "reference",
+        "citation",
+        "inline-math",
+        "display-math",
+        "proofing"
+      ],
+      "relationships": [
+        {
+          "kind": "reference",
+          "name": "typst-analysis",
+          "target": "project/paper.typ"
+        },
+        {
+          "kind": "reference",
+          "name": "typst-introduction",
+          "target": "project/paper.typ"
+        },
+        {
+          "kind": "citation",
+          "name": "knuth1984",
+          "target": "project/references.bib"
+        },
+        {
+          "kind": "bibliography",
+          "name": "references.bib",
+          "target": "project/references.bib"
+        }
+      ]
+    },
+    {
+      "path": "project/references.bib",
+      "engine": "bibtex",
+      "markers": ["bib-entry"],
+      "relationships": [
+        {
+          "kind": "bib-entry",
+          "name": "knuth1984",
+          "target": "project/references.bib"
+        },
+        {
+          "kind": "bib-entry",
+          "name": "lamport1994",
+          "target": "project/references.bib"
+        }
+      ]
+    },
+    {
+      "path": "project/malformed.tex",
+      "engine": "latex",
+      "markers": ["malformed/incomplete"],
+      "relationships": []
+    }
+  ]
+}

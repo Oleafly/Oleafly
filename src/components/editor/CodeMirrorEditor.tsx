@@ -1,6 +1,6 @@
+import { useEffect } from "react";
 import type { Extension } from "@codemirror/state";
 import type { KeyBinding } from "@codemirror/view";
-import { lintGutter } from "@codemirror/lint";
 import {
   CodeMirrorEditor as CodeMirrorEditorCore,
   type EditorHost,
@@ -14,35 +14,120 @@ import { codeIntel } from "./cm/code-intel";
 import { hoverIntel } from "./cm/hover-intel";
 import { inlineDiffPlugin } from "./cm/inline-ai/plugin";
 import { toggleInlineEdit } from "./cm/inline-ai/openSession";
+import {
+  projectCompletionSourcesForPath,
+  projectIntelligenceExtensions,
+} from "./cm/project-intelligence";
+import {
+  languageServiceCompletion,
+  languageServiceEditorExtensions,
+} from "./cm/language-service";
 import { useFilesStore } from "@/store/files";
+import { useIndexStore } from "@/store/project-index";
 import { useSettingsStore } from "@/store/settings";
 import { useCompileStore } from "@/store/compile";
 import { useDictionary, isWordIgnored, ignoreWordForProject, ignoreWordGlobally } from "@/lib/dictionary";
-import { getSpellchecker, isIgnored } from "@/lib/spellcheck";
-import { lintGrammar } from "@/lib/harper";
+import { isSessionIgnoredWord } from "@/lib/proofreading/ignored";
+import {
+  cancelProofreading,
+  getRetainedProofreadingResult,
+  proofreadDocument,
+} from "@/lib/proofreading/client";
+import { proofreadingPresentationDiagnostics } from "@/store/proofreading";
+
+function sourceProofreadingContextKey(
+  projectId: string | null,
+): string {
+  const settings = useSettingsStore.getState();
+  const dictionary = useDictionary.getState();
+  return JSON.stringify([
+    settings.spellcheck,
+    settings.harper,
+    settings.grammarDialect,
+    settings.dictionaryLocale,
+    settings.showRegionalism,
+    settings.showWordChoice,
+    [...dictionary.global].sort(),
+    projectId
+      ? [...(dictionary.ignored[projectId] ?? [])].sort()
+      : [],
+  ]);
+}
 
 // Module side effect: must install before any lint runs.
 setSpellHost({
   getProjectId: () => useFilesStore.getState().projectId,
   getActivePath: () => useFilesStore.getState().activePath,
+  getProofreadingContextKey: sourceProofreadingContextKey,
   getLintPrefs: () => {
     const s = useSettingsStore.getState();
-    return { showRegionalism: s.showRegionalism, showWordChoice: s.showWordChoice };
+    return {
+      showRegionalism: s.showRegionalism,
+      showWordChoice: s.showWordChoice,
+      dialect: s.grammarDialect,
+    };
   },
-  getSpellchecker,
-  isSessionIgnored: isIgnored,
+  proofread: (input) => {
+    const contextKey = sourceProofreadingContextKey(
+      input.projectId,
+    );
+    const dictionary = useDictionary.getState();
+    const ignoredWords = [
+      ...dictionary.global,
+      ...(input.projectId
+        ? (dictionary.ignored[input.projectId] ?? [])
+        : []),
+    ];
+    return proofreadDocument({
+      cacheKey: contextKey,
+      identity: {
+        projectId: input.projectId,
+        path: input.path,
+        revision: input.revision,
+        surface: input.surface,
+      },
+      text: input.text,
+      format: input.format,
+      mode: input.mode,
+      preferences: input.preferences,
+      ignoredWords,
+    });
+  },
+  getRetainedProofreading: (input) =>
+    getRetainedProofreadingResult({
+      cacheKey: input.contextKey,
+      projectId: input.projectId,
+      path: input.path,
+      text: input.text,
+      mode: input.mode,
+      surface: "source",
+    }),
+  presentDiagnostics: proofreadingPresentationDiagnostics,
+  cancelProofreading,
+  isSessionIgnored: isSessionIgnoredWord,
   isWordIgnored,
   ignoreWordForProject,
   ignoreWordGlobally,
-  lintGrammar,
 });
 
 setBibKeysProvider(() => {
-  const files = useFilesStore.getState().files;
-  const bibs = Object.entries(files)
+  const filesState = useFilesStore.getState();
+  const bibs = Object.entries(filesState.files)
     .filter(([path]) => path.endsWith(".bib"))
     .map(([, state]) => state.content);
-  return bibKeysFromSources(bibs);
+  const intelligence = useIndexStore.getState().intelligenceState;
+  const retainedProjectKeys =
+    intelligence.identity?.projectId === filesState.projectId
+      ? (intelligence.data?.bibliography.entries.map(
+          (entry) => entry.key,
+        ) ?? [])
+      : [];
+  return [
+    ...new Set([
+      ...bibKeysFromSources(bibs),
+      ...retainedProjectKeys,
+    ]),
+  ];
 });
 
 // Module-level so the host identity is stable across renders (its use* members are hooks).
@@ -68,25 +153,57 @@ const HOST: EditorHost = {
 };
 
 const LATEX_EXTENSIONS: Extension[] = [
-  lintGutter(),
   createPreflightLinter(),
   createCompileErrorLinter(),
+];
+
+const PROJECT_INTELLIGENCE_EXTENSIONS: Extension[] = [
   codeIntel(),
   hoverIntel(),
+  ...projectIntelligenceExtensions(),
+  ...languageServiceEditorExtensions(),
 ];
 
 const EXTRA_KEYMAP: KeyBinding[] = [
   { key: "Mod-l", run: (v) => { toggleInlineEdit(v); return true; } },
 ];
 
-export function CodeMirrorEditor() {
+export function CodeMirrorEditor({ active = true }: { active?: boolean }) {
+  useEffect(
+    () =>
+      useSettingsStore.subscribe((settings, previous) => {
+        const disabled =
+          !settings.spellcheck && !settings.harper;
+        const wasEnabled =
+          previous.spellcheck || previous.harper;
+        if (!disabled || !wasEnabled) return;
+        // This transition removes the final proofreading provider. Clear both
+        // surfaces synchronously with the settings store update so a completed
+        // worker generation cannot remain visible while React reconfigures
+        // the Source and Visual editors.
+        cancelProofreading("source");
+        cancelProofreading("visual");
+      }),
+    [],
+  );
+
   return (
     <CodeMirrorEditorCore
+      active={active}
       host={HOST}
       extraExtensions={[inlineDiffPlugin]}
-      extraExtensionsForPath={(path) =>
-        path && /\.(?:tex|latex|ltx)$/i.test(path) ? LATEX_EXTENSIONS : []
-      }
+      extraExtensionsForPath={(path) => {
+        if (!path || !/\.(?:tex|latex|ltx|sty|cls|md|markdown|typ|bib)$/i.test(path)) {
+          return [];
+        }
+        return /\.(?:tex|latex|ltx|sty|cls)$/i.test(path)
+          ? [...LATEX_EXTENSIONS, ...PROJECT_INTELLIGENCE_EXTENSIONS]
+          : PROJECT_INTELLIGENCE_EXTENSIONS;
+      }}
+      extraCompletionSourcesForPath={(path) => [
+        languageServiceCompletion,
+        ...projectCompletionSourcesForPath(path),
+      ]}
       extraKeymap={EXTRA_KEYMAP}
     />
   );

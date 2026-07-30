@@ -1,0 +1,61 @@
+diff --git a/dist/cjs/hunspellLoader.js b/dist/cjs/hunspellLoader.js
+index a76850cd22ac738faf20d3bc959fb69089f40808..cfb540c3bc6afaa6c6ab981332b247e1d3fa67fd 100644
+--- a/dist/cjs/hunspellLoader.js
++++ b/dist/cjs/hunspellLoader.js
+@@ -17,7 +17,8 @@ exports.hunspellLoader = (asmModule) => {
+     const { cwrap, FS, _free, allocateUTF8, _malloc, getValue, UTF8ToString } = asmModule;
+     const hunspellInterface = wrapHunspellInterface_1.wrapHunspellInterface(cwrap);
+     //creating top-level path to mount files
+-    const memPathId = `/${nanoid(45)}`;
++    const createId = typeof nanoid === "function" ? nanoid : nanoid.nanoid;
++    const memPathId = `/${createId(45)}`;
+     FS.mkdir(memPathId);
+     logger_1.log(`hunspellLoader: mount path for bufferFile created at ${memPathId}`);
+     /**
+diff --git a/dist/esm/hunspellLoader.js b/dist/esm/hunspellLoader.js
+index a95a3d39912df63dd8bfdaf531b2b5997d82efa2..b20df8314f1f0688a69c9df93eeb73b7d502e1cc 100644
+--- a/dist/esm/hunspellLoader.js
++++ b/dist/esm/hunspellLoader.js
+@@ -1,5 +1,5 @@
+ import { mountBuffer, unmount } from 'emscripten-wasm-loader';
+-import * as nanoid from 'nanoid';
++import { nanoid } from 'nanoid';
+ import { log } from './util/logger';
+ import { wrapHunspellInterface } from './wrapHunspellInterface';
+ /**
+diff --git a/dist/esm/lib/browser/hunspell.js b/dist/esm/lib/browser/hunspell.js
+index 23cddf62de965a9e87dc75a16ea5244cc35aa85b..01d577c17e0d659c8912cad31e4b171c707f0c28 100644
+--- a/dist/esm/lib/browser/hunspell.js
++++ b/dist/esm/lib/browser/hunspell.js
+@@ -19,4 +19,6 @@ if (typeof exports === 'object' && typeof module === 'object')
+       define([], function() { return Module; });
+     else if (typeof exports === 'object')
+       exports["Module"] = Module;
++
++export default Module;
+     
+\ No newline at end of file
+diff --git a/dist/esm/lib/node/hunspell.js b/dist/esm/lib/node/hunspell.js
+index ac270d82568e8050a3230f5b730703f18fb5e21c..f24614ac66e1e8e662a6e1cdebbf3c670f05beee 100644
+--- a/dist/esm/lib/node/hunspell.js
++++ b/dist/esm/lib/node/hunspell.js
+@@ -19,4 +19,6 @@ if (typeof exports === 'object' && typeof module === 'object')
+       define([], function() { return Module; });
+     else if (typeof exports === 'object')
+       exports["Module"] = Module;
++
++export default Module;
+     
+diff --git a/dist/esm/loadModule.js b/dist/esm/loadModule.js
+index 0bb04bb9be8d45c3f6351728e51ec9c5ee7a7364..6d5eb8673fa5171589b8ec3c6ee447b90494d80c 100644
+--- a/dist/esm/loadModule.js
++++ b/dist/esm/loadModule.js
+@@ -2,7 +2,7 @@ import { getModuleLoader } from 'emscripten-wasm-loader';
+ import { hunspellLoader } from './hunspellLoader';
+ import { log } from './util/logger';
+ //imports MODULARIZED emscripten preamble
+-import * as runtime from './lib/node/hunspell';
++import runtime from './lib/node/hunspell';
+ /**
+  * Load, initialize wasm binary to use actual hunspell wasm instances.
+  *

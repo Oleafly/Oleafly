@@ -3,7 +3,11 @@ import { openProject, pressGlobal, typeInEditorAfter, type Page } from "../helpe
 
 // Unique per run: leftovers from earlier runs colliding would themselves
 // cause a LaTeX error (redefining the same \newcommand).
-const CMD = `notacmd${Date.now().toString(36)}`;
+// TeX control words may contain letters only, so translate base-36 digits
+// instead of accidentally creating a different command at the first digit.
+const CMD = `notacmd${Date.now()
+  .toString(36)
+  .replace(/\d/g, (digit) => String.fromCharCode("a".charCodeAt(0) + Number(digit)))}`;
 
 async function recoverDocument(tauriPage: Page) {
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });

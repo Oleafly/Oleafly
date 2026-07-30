@@ -54,9 +54,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useSettingsStore, ACCENTS, APP_FONTS, EDITOR_FONTS, EDITOR_THEMES } from "@/store/settings";
+import {
+  useSettingsStore,
+  ACCENTS,
+  APP_FONTS,
+  EDITOR_FONTS,
+  EDITOR_THEMES,
+  GRAMMAR_DIALECTS,
+  DICTIONARY_LOCALES,
+  type GrammarDialect,
+  type DictionaryLocale,
+} from "@/store/settings";
 import { useFilesStore } from "@/store/files";
-import { useDictionary } from "@/lib/dictionary";
 import { useTheme } from "@/lib/theme";
 import { appVersion, libraryRoot } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
@@ -65,6 +74,7 @@ import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import { startTour } from "@/lib/tour";
 import { TOUR_IDS } from "@/lib/tours/registry";
 import { useTourStore } from "@/store/tours";
+import { ProofreadingDictionarySection } from "@/components/settings/ProofreadingDictionarySection";
 
 type Section =
   | "appearance"
@@ -179,6 +189,10 @@ export function SettingsModal() {
   const toggleSpellcheck = useSettingsStore((s) => s.toggleSpellcheck);
   const harper = useSettingsStore((s) => s.harper);
   const setHarper = useSettingsStore((s) => s.setHarper);
+  const grammarDialect = useSettingsStore((s) => s.grammarDialect);
+  const setGrammarDialect = useSettingsStore((s) => s.setGrammarDialect);
+  const dictionaryLocale = useSettingsStore((s) => s.dictionaryLocale);
+  const setDictionaryLocale = useSettingsStore((s) => s.setDictionaryLocale);
   const showRegionalism = useSettingsStore((s) => s.showRegionalism);
   const setShowRegionalism = useSettingsStore((s) => s.setShowRegionalism);
   const showWordChoice = useSettingsStore((s) => s.showWordChoice);
@@ -653,21 +667,55 @@ export function SettingsModal() {
                 />
                 <ToggleRow
                   label="Spellcheck"
-                  desc="Underline misspelled words (English, WASM Hunspell). Used when Grammar & style is off."
+                  desc="Underline misspelled words with the selected offline Hunspell dictionary and offer replacement suggestions in Source and Visual editing."
                   checked={spellcheck}
                   onChange={toggleSpellcheck}
                 />
                 <ToggleRow
-                  label="Spelling, grammar & style (Harper)"
-                  desc="Offline spelling, grammar, and style suggestions on .tex prose (not code or math), with one-click fixes."
+                  label="Grammar & style (Harper)"
+                  desc="Check English grammar and style in LaTeX and Markdown Source and Visual editing, plus Typst Source, with one-click fixes."
                   checked={harper}
                   onChange={setHarper}
                 />
                 {harper && (
                   <>
+                    <div
+                      data-testid="settings-row-grammar-dialect"
+                      className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
+                    >
+                      <div>
+                        <div className="text-sm font-medium">
+                          English dialect
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Apply the selected spelling, grammar, and regional
+                          conventions.
+                        </div>
+                      </div>
+                      <Select
+                        value={grammarDialect}
+                        onValueChange={(value) =>
+                          setGrammarDialect(value as GrammarDialect)
+                        }
+                      >
+                        <SelectTrigger
+                          aria-label="Proofreading English dialect"
+                          className="w-[176px]"
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="z-[100]">
+                          {GRAMMAR_DIALECTS.map((dialect) => (
+                            <SelectItem key={dialect.id} value={dialect.id}>
+                              {dialect.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <ToggleRow
                       label="Regionalism suggestions"
-                      desc="Flag British vs. American usage (e.g. suggests “wrench” for “spanner”). Turn off if you use such terms as product or code names."
+                      desc="Flag terms that do not match the selected English dialect. Turn off if you use such terms as product or code names."
                       checked={showRegionalism}
                       onChange={setShowRegionalism}
                     />
@@ -679,9 +727,48 @@ export function SettingsModal() {
                     />
                   </>
                 )}
+                {spellcheck && (
+                  <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
+                    <div>
+                      <div className="text-sm font-medium">
+                        Spelling dictionary
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Exact offline Hunspell pack used by Source and Visual
+                        spelling checks.
+                      </div>
+                    </div>
+                    <Select
+                      value={dictionaryLocale}
+                      onValueChange={(value) =>
+                        setDictionaryLocale(value as DictionaryLocale)
+                      }
+                    >
+                      <SelectTrigger
+                        aria-label="Proofreading spelling dictionary"
+                        className="w-[176px]"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="z-[100]">
+                        {DICTIONARY_LOCALES.map((locale) => (
+                          <SelectItem key={locale.id} value={locale.id}>
+                            {locale.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <div className="rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                  Proofreading runs locally in a background worker. Harper
+                  follows the selected English dialect; spelling always uses
+                  the exact selected Hunspell pack. Math, code, comments,
+                  citation syntax, metadata, and URLs are excluded.
+                </div>
                 <ToggleRow
                   label="Offline mode"
-                  desc="Compile with --only-cached; never fetch packages over the network."
+                  desc="Compile with --only-cached and never fetch packages over the network."
                   checked={offline}
                   onChange={setOffline}
                 />
@@ -782,7 +869,8 @@ export function SettingsModal() {
                   <div>
                     <p className="text-sm">Reset settings</p>
                     <p className="text-xs text-muted-foreground">
-                      Restore Appearance &amp; General preferences to defaults.
+                      Restore Appearance and General preferences to their
+                      defaults.
                     </p>
                   </div>
                   {confirmReset ? (
@@ -918,83 +1006,8 @@ export function SettingsModal() {
   );
 }
 
-function IgnoreChips({
-  words,
-  onRemove,
-}: {
-  words: string[];
-  onRemove: (w: string) => void;
-}) {
-  if (words.length === 0) {
-    return <p className="text-xs text-muted-foreground">Nothing ignored yet.</p>;
-  }
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {words.map((w) => (
-        <span
-          key={w}
-          className="inline-flex items-center gap-1 rounded-md border bg-background py-1 pl-2 pr-1 text-xs"
-        >
-          <span className="font-mono">{w}</span>
-          <button type="button"
-            onClick={() => onRemove(w)}
-            aria-label={`Stop ignoring ${w}`}
-            title={`Stop ignoring “${w}”`}
-            className="rounded text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            <X className="size-3" />
-          </button>
-        </span>
-      ))}
-    </div>
-  );
-}
-
 function DictionarySection() {
-  const global = useDictionary((s) => s.global);
-  const ignored = useDictionary((s) => s.ignored);
-  const unignore = useDictionary((s) => s.unignore);
-  const unignoreGlobal = useDictionary((s) => s.unignoreGlobal);
-  const projects = useFilesStore((s) => s.projects);
-  const projectEntries = Object.entries(ignored).filter(([, words]) => words.length > 0);
-
-  return (
-    <div className="space-y-4 text-sm">
-      <p className="text-muted-foreground">
-        Words you told the spell &amp; grammar checker to ignore. Remove one to
-        start flagging it again.
-      </p>
-      <Tabs defaultValue="global" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="global" data-testid="dictionary-tab-global">
-            Global ignore
-          </TabsTrigger>
-          <TabsTrigger value="projects" data-testid="dictionary-tab-projects">
-            Project ignores
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="global">
-          <IgnoreChips words={global} onRemove={(w) => unignoreGlobal(w)} />
-        </TabsContent>
-        <TabsContent value="projects">
-          {projectEntries.length === 0 ? (
-            <p className="text-xs text-muted-foreground">Nothing ignored yet.</p>
-          ) : (
-            <div className="space-y-4">
-              {projectEntries.map(([id, words]) => (
-                <div key={id} className="space-y-2">
-                  <h4 className="text-xs font-medium text-foreground">
-                    {projects.find((p) => p.id === id)?.name ?? id}
-                  </h4>
-                  <IgnoreChips words={words} onRemove={(w) => unignore(id, w)} />
-                </div>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
+  return <ProofreadingDictionarySection />;
 }
 
 
@@ -1071,7 +1084,7 @@ function HelpSection() {
         />
         <h3 className="pr-20 text-sm font-semibold">About Oleafly</h3>
         <p className="mt-1 text-xs text-muted-foreground">
-          The intelligent research workspace — free, local-first, 100% open source.
+          An open-source workspace for research and technical writing.
           {version && <span className="ml-1">· v{version}</span>}
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">

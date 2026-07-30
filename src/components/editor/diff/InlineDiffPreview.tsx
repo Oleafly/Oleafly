@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { EditorState } from "@codemirror/state";
 import { EditorView, lineNumbers } from "@codemirror/view";
 import { getChunks, unifiedMergeView } from "@codemirror/merge";
+import { scrollEditorPositionLocally } from "@oleafly/editor";
 import { editorTheme } from "../cm/theme";
 import { languageForPath } from "../cm/languages";
 import { cn } from "@/lib/utils";
@@ -74,9 +75,7 @@ export function InlineDiffPreview({
       if (pos == null) return;
       const max = view.state.doc.length;
       const target = Math.min(Math.max(0, pos), max);
-      view.dispatch({
-        effects: EditorView.scrollIntoView(target, { y: "center" }),
-      });
+      scrollEditorPositionLocally(view, target);
     };
 
     // Merge decorations / layout need a frame (sometimes two) before positions are stable.

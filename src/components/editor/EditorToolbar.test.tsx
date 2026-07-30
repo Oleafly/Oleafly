@@ -1,8 +1,12 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import { useFilesStore } from "@/store/files";
+
+const countWordsMock = vi.hoisted(() =>
+  vi.fn(() => ({ words: 7, characters: 44, lines: 3 })),
+);
 
 vi.mock("@oleafly/preview", () => ({
   registerPdfView: vi.fn(),
@@ -10,6 +14,10 @@ vi.mock("@oleafly/preview", () => ({
   gotoRect: vi.fn(),
   pageClickToBp: vi.fn(),
   setPdfLogger: vi.fn(),
+}));
+
+vi.mock("@/lib/wordcount", () => ({
+  countWords: countWordsMock,
 }));
 
 import { EditorToolbar } from "./EditorToolbar";
@@ -22,6 +30,10 @@ class ResizeObserverStub {
 vi.stubGlobal("ResizeObserver", ResizeObserverStub);
 
 describe("EditorToolbar wysiwyg toggle", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("shows a Code/Visual segmented switch and calls onToggleWysiwyg when the Visual segment is clicked while off", () => {
     const onToggleWysiwyg = vi.fn();
     render(<EditorToolbar wysiwyg={false} onToggleWysiwyg={onToggleWysiwyg} />);
@@ -57,5 +69,37 @@ describe("EditorToolbar wysiwyg toggle", () => {
     expect(screen.queryByLabelText(/^Find \(/u)).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Go to PDF (SyncTeX)")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Word count")).toBeInTheDocument();
+  });
+
+  it("computes book-sized word counts only when the popover is opened", () => {
+    useFilesStore.setState({
+      activePath: "book.tex",
+      files: {
+        "book.tex": {
+          content: "Initial manuscript text.",
+          dirty: false,
+        },
+      },
+    });
+    render(<EditorToolbar wysiwyg={false} onToggleWysiwyg={vi.fn()} />);
+    expect(countWordsMock).not.toHaveBeenCalled();
+
+    useFilesStore.setState({
+      files: {
+        "book.tex": {
+          content: "The latest complete manuscript text.",
+          dirty: true,
+        },
+      },
+    });
+    expect(countWordsMock).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByLabelText("Word count"));
+
+    expect(countWordsMock).toHaveBeenCalledOnce();
+    expect(countWordsMock).toHaveBeenCalledWith(
+      "The latest complete manuscript text.",
+    );
+    expect(screen.getByText("44")).toBeInTheDocument();
   });
 });

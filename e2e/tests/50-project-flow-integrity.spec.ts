@@ -3,14 +3,103 @@ import {
   caretIn,
   clickToolbarControl,
   createBlankProject,
+  expectDesktopShellAnchored,
+  fillCommandPalette,
   openProject,
   pressGlobal,
   readProjectText,
+  replaceEditorSource,
   selectWord,
+  setEditorCaretAfter,
   waitEditorContains,
 } from "../helpers";
 
 const RUN = Date.now().toString(36);
+
+test("local LaTeX command completion survives project-intelligence refresh", async ({
+  tauriPage,
+}) => {
+  const projectName = `E2E Local Completion ${RUN}`;
+  await createBlankProject(tauriPage, projectName);
+
+  await replaceEditorSource(
+    tauriPage,
+    "\\documentclass{article}\n\\begin{document}\n\\te\n\\end{document}\n",
+  );
+  await setEditorCaretAfter(tauriPage, "\\te");
+  await tauriPage.evaluate(
+    `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {
+      const view = getEditorView();
+      if (!view) throw new Error("CodeMirror is unavailable");
+      const from = view.state.selection.main.from;
+      view.dispatch({
+        changes: { from, insert: "x" },
+        selection: { anchor: from + 1 },
+        userEvent: "input.type",
+      });
+    })`,
+  );
+
+  const completion = tauriPage.locator(".cm-tooltip-autocomplete");
+  await expect(completion).toBeVisible({ timeout: 5_000 });
+  await expect(completion).toContainText("\\textbf");
+  await expect(completion).toContainText("\\textit");
+  await expect(completion).toContainText("\\texttt");
+});
+
+test("reopening a project in persisted Visual mode keeps the workspace chrome anchored", async ({
+  tauriPage,
+}) => {
+  test.setTimeout(240_000);
+  const projectName = `E2E Visual Reopen ${RUN}`;
+  await createBlankProject(tauriPage, projectName);
+
+  await tauriPage.click('[aria-label="Switch to WYSIWYG view"]');
+  await expect(tauriPage.locator(".ProseMirror")).toBeVisible({
+    timeout: 20_000,
+  });
+
+  await tauriPage.click('[aria-label="Home"]');
+  await expect(tauriPage.getByTestId("library")).toBeVisible({
+    timeout: 20_000,
+  });
+  await openProject(tauriPage, projectName);
+
+  await expect(tauriPage.locator(".ProseMirror")).toBeVisible({
+    timeout: 20_000,
+  });
+  await expect(
+    tauriPage.locator('[data-tour="project-toolbar"]'),
+  ).toBeVisible();
+
+  const shell = await tauriPage.evaluate<{
+    documentScrollTop: number;
+    toolbarTop: number;
+    toolbarBottom: number;
+    panelTop: number;
+  }>(
+    `(() => {
+      const toolbar = document.querySelector('[data-tour="project-toolbar"]');
+      const editor = document.querySelector('[data-tour="project-editor"]');
+      if (!(toolbar instanceof HTMLElement) || !(editor instanceof HTMLElement)) {
+        throw new Error("workspace chrome unavailable");
+      }
+      const toolbarRect = toolbar.getBoundingClientRect();
+      const editorRect = editor.getBoundingClientRect();
+      return {
+        documentScrollTop: document.scrollingElement?.scrollTop ?? -1,
+        toolbarTop: toolbarRect.top,
+        toolbarBottom: toolbarRect.bottom,
+        panelTop: editorRect.top,
+      };
+    })()`,
+  );
+  expect(shell.documentScrollTop).toBe(0);
+  expect(shell.toolbarTop).toBeGreaterThanOrEqual(0);
+  expect(shell.toolbarBottom).toBeGreaterThan(shell.toolbarTop);
+  expect(shell.panelTop).toBeGreaterThanOrEqual(shell.toolbarBottom);
+  await expectDesktopShellAnchored(tauriPage);
+});
 
 test("toolbar edits flush on immediate close, survive reopen, and compile", async ({
   tauriPage,
@@ -97,7 +186,7 @@ test("a direct project switch flushes an edit made in the same event turn", asyn
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
   await pressGlobal(tauriPage, "f", { meta: true, shift: true });
-  await tauriPage.fill("[cmdk-input]", `/projects ${targetName}`);
+  await fillCommandPalette(tauriPage, `/projects ${targetName}`);
   await expect(tauriPage.getByText(targetName, { exact: true })).toBeVisible();
 
   // Dispatch the edit and select the already-rendered project result without
@@ -122,7 +211,7 @@ test("a direct project switch flushes an edit made in the same event turn", asyn
   });
 
   await pressGlobal(tauriPage, "f", { meta: true, shift: true });
-  await tauriPage.fill("[cmdk-input]", "/projects E2E Doc");
+  await fillCommandPalette(tauriPage, "/projects E2E Doc");
   await tauriPage.getByText("E2E Doc", { exact: true }).click();
   await waitEditorContains(tauriPage, marker.trim(), 20_000);
 });

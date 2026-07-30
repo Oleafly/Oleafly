@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeftRight, BookMarked, Check, Maximize2, Sparkles } from "lucide-react";
 import { getEditorView } from "@/components/editor/cm/controller";
+import { openInlineEditWithInstruction } from "@/components/editor/cm/inline-ai/openSession";
+import { useAgentHandoffStore } from "@/store/agent-handoff";
+import { useSettingsStore } from "@/store/settings";
 
 interface Action {
   icon: typeof Sparkles;
@@ -63,9 +66,23 @@ export function SelectionActionMenu() {
   if (!pos) return null;
 
   const runAction = (action: Action) => {
+    const prompt = `${action.prompt}:\n\n${text}`;
+    const view = getEditorView();
+    // These actions rewrite the selection, so they belong inline: the editor
+    // shows the shimmer while streaming and then a strikethrough/insert diff to
+    // accept or reject. Only fall back to the agent panel when no inline
+    // session can start (no editor, or one already running).
+    const inline = view ? openInlineEditWithInstruction(view, action.prompt) : false;
+    if (!inline) {
+      useAgentHandoffStore.getState().handoff(prompt, { autoSend: true });
+      const settings = useSettingsStore.getState();
+      settings.setRailTab("ai");
+      if (!settings.showTree) settings.toggleTree();
+    }
+    // Public event for integrations and the deterministic E2E probe.
     window.dispatchEvent(
       new CustomEvent("oleafly:ai-selection-action", {
-        detail: { prompt: `${action.prompt}:\n\n${text}` },
+        detail: { prompt, target: inline ? "inline" : "agent" },
       }),
     );
     setPos(null);

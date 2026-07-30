@@ -97,6 +97,20 @@ export function assembleIndex(
     }
   }
 
+  return indexFromSymbols(defs, uses);
+}
+
+/**
+ * Hydrates the closure-based compatibility index from immutable symbols.
+ * Project-scale parsers can run in a worker and use this inexpensive main-
+ * thread step without rescanning source text.
+ */
+export function indexFromSymbols(
+  definitionSymbols: readonly Sym[],
+  useSymbols: readonly Sym[],
+): ProjectIndex {
+  const defs = [...definitionSymbols];
+  const uses = [...useSymbols];
   const defByKindName = new Map<string, Sym>();
   for (const d of defs) {
     const key = `${d.kind}:${d.name}`;
@@ -164,5 +178,13 @@ export function assembleIndex(
     return { edits, fileCount, collision };
   };
 
-  return { defs, uses, symbolAt, definitionFor, references, allReferences, renamePlan };
+  return {
+    defs,
+    uses,
+    symbolAt,
+    definitionFor,
+    references,
+    allReferences,
+    renamePlan,
+  };
 }

@@ -24,6 +24,37 @@ One command (builds, launches, tests, tears down):
 pnpm test:e2e:app
 ```
 
+Run the book-scale editor performance gate independently:
+
+```bash
+pnpm test:editor:performance
+```
+
+The fixture is a deterministic, compilable manuscript rather than one copied
+line repeated thousands of times. Its 6,200 lines contain 99% distinct
+nonempty lines, more than 450,000 characters, 16+ chapters, 70+ sections, ten
+formula families, theorems and proofs, tables, lists, quotations, footnotes,
+citations, cross-references, prose, and deliberately detectable proofreading
+findings. A surrounding project tree adds front matter, an appendix, editorial
+notes, and a bibliography.
+
+The deterministic performance gate uses three warm-up runs followed by 20
+measured runs and enforces p95 budgets for that manuscript, a 200-file project
+near 500,000 characters, project-backed citation completion, syntax
+diagnostics, proofreading extraction, inline-math scanning, and completion at
+the end of the book.
+
+The native companion in `58-editor-core-stability.spec.ts` opens the Source
+Tree and split workspace, compiles the real book with Tectonic, renders its PDF
+beside CodeMirror, and keeps project intelligence, Harper, Hunspell, and inline
+math active. It then measures repeated distant scrolling and 252 mixed
+navigation, slow character-typing, multiline-paste, delete, undo, and redo
+actions. Aggregate and per-action p95 ceilings are enforced, the source must be
+restored byte-for-byte, and the run allows no blank viewport frames,
+line-number drift, missing tree/editor/PDF surfaces, or browser-document scroll
+leaks. The same spec also verifies completion stability, feature-surface
+agreement, PDF controls, and current/stale SyncTeX behavior.
+
 Or manually, keeping the app open between runs while writing tests:
 
 ```bash

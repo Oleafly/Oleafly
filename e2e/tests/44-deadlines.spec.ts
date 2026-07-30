@@ -30,14 +30,36 @@ test("deadlines view refreshes, counts down, and filters", async ({ tauriPage })
     `!!document.querySelector('[data-testid="deadline-card-aaai33"]')`,
     30_000,
   );
-  const card = await tauriPage.evaluate<string>(
-    `document.querySelector('[data-testid="deadline-card-aaai33"]')?.textContent ?? ""`,
+  const card = await tauriPage.evaluate<{
+    text: string;
+    countdown: { unit: string; value: string }[];
+  }>(
+    `(() => {
+      const card = document.querySelector('[data-testid="deadline-card-aaai33"]');
+      return {
+        text: card?.textContent ?? "",
+        countdown: Array.from(
+          card?.querySelectorAll("[data-countdown-unit]") ?? [],
+        ).map((element) => ({
+          unit: element.getAttribute("data-countdown-unit") ?? "",
+          value: element.getAttribute("data-countdown-value") ?? "",
+        })),
+      };
+    })()`,
   );
-  expect(card).toContain("AAAI 2033");
-  expect(card).toContain("A*");
-  expect(card).toMatch(/\d+d : \d+h : \d+m : \d+s/);
+  expect(card.text).toContain("AAAI 2033");
+  expect(card.text).toContain("A*");
+  expect(card.countdown.map(({ unit }) => unit)).toEqual([
+    "days",
+    "hours",
+    "minutes",
+    "seconds",
+  ]);
+  for (const { value } of card.countdown) {
+    expect(value).toMatch(/^\d+$/);
+  }
   // sub filter (a Select dropdown, not a toggle button) narrows to the SE venue only
-  await tauriPage.click('[aria-label="Filter by field"]');
+  await tauriPage.click('[aria-label="Filter by research area"]');
   await tauriPage.waitForFunction(
     `!!document.querySelector('[data-testid="deadlines-sub-SE"]')`,
     5_000,
@@ -49,8 +71,8 @@ test("deadlines view refreshes, counts down, and filters", async ({ tauriPage })
     10_000,
   );
   // reset back to "All" before checking search works across the full name
-  await tauriPage.click('[aria-label="Filter by field"]');
-  await tauriPage.getByText("All", { exact: true }).click();
+  await tauriPage.click('[aria-label="Filter by research area"]');
+  await tauriPage.getByText("All research areas", { exact: true }).click();
   await waitLong(
     tauriPage,
     `!!document.querySelector('[data-testid="deadline-card-aaai33"]')`,

@@ -16,6 +16,82 @@ export interface Page {
   ): { click(): Promise<void>; isVisible(): Promise<boolean> };
 }
 
+/**
+ * The desktop shell must always remain attached to the native viewport.
+ * Editors and previews own their scroll positions; the browser document does
+ * not. This catches both scrollTop leaks and the resulting displaced root.
+ */
+export async function expectDesktopShellAnchored(page: Page) {
+  const state = await page.evaluate<{
+    scrollTop: number;
+    scrollLeft: number;
+    scrollRange: number;
+    rootTop: number;
+    rootLeft: number;
+    rootPosition: string;
+    bodyPosition: string;
+    overflowing: string[];
+  }>(
+    `(() => {
+      const root = document.getElementById("root");
+      if (!root) throw new Error("desktop root is unavailable");
+      const rect = root.getBoundingClientRect();
+      const doc = document.documentElement;
+      // Anything sticking out below the viewport is what makes the document
+      // scrollable; name it so a failure points at the offender directly.
+      const overflowing = [...document.querySelectorAll("body > *")]
+        .filter((el) => el.getBoundingClientRect().bottom > doc.clientHeight + 1)
+        .map((el) => el.tagName + (el.id ? "#" + el.id : "") + "." + String(el.className || ""));
+      return {
+        scrollTop: document.scrollingElement?.scrollTop ?? -1,
+        scrollLeft: document.scrollingElement?.scrollLeft ?? -1,
+        scrollRange: Math.max(0, Math.round(doc.scrollHeight - doc.clientHeight)),
+        rootTop: rect.top,
+        rootLeft: rect.left,
+        rootPosition: getComputedStyle(root).position,
+        bodyPosition: getComputedStyle(document.body).position,
+        overflowing,
+      };
+    })()`,
+  );
+  const { bodyPosition, overflowing, ...anchoredState } = state;
+  // scrollRange must be 0. `body { overflow: hidden }` only hides the
+  // scrollbar - it still permits programmatic scrolling, so any element that
+  // extends past the viewport leaves the whole app scrollable and lets a
+  // library (react-joyride's step scroll, a focus reveal) shift the shell.
+  expect(anchoredState, `overflowing body children: ${overflowing.join(", ")}`).toEqual({
+    scrollTop: 0,
+    scrollLeft: 0,
+    scrollRange: 0,
+    rootTop: 0,
+    rootLeft: 0,
+    rootPosition: "static",
+  });
+  // Radix temporarily establishes the body as a containing block while a
+  // portalled Select finishes its exit transition. `relative` does not move
+  // the shell; fixed/absolute positioning would. Keep the displacement checks
+  // exact while accepting both valid, anchored body states.
+  expect(["static", "relative"]).toContain(bodyPosition);
+}
+
+/**
+ * Predicate expression: does the line the caret sits on contain `needle`?
+ *
+ * Read the editor state, not `.cm-activeLine`. That decoration is deliberately
+ * suppressed while a selection exists, so the selection colour stays uniform
+ * across every selected line - and navigation actions such as Go to definition
+ * land with the symbol selected, which is exactly when these probes run.
+ */
+export function caretLineIncludes(needle: string): string {
+  return `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {
+    const view = getEditorView();
+    if (!view) return false;
+    return view.state.doc
+      .lineAt(view.state.selection.main.head)
+      .text.includes(${JSON.stringify(needle)});
+  })`;
+}
+
 // The app's own handlers for Cmd+K / Cmd+Shift+F listen on window keydown.
 export async function pressGlobal(
   page: Page,
@@ -56,10 +132,11 @@ export async function openGallery(page: Page) {
   await expect(gallery).toBeVisible({ timeout: 30_000 });
 }
 
-// Positions the caret with the DOM Selection API (which CodeMirror syncs
-// into its own state) and inserts via execCommand('insertText'), which
-// CodeMirror 6 treats as real user input - so the store sync, autosave,
-// and linters all fire exactly as if the user typed it.
+// Insert through CodeMirror's authoritative state rather than searching its
+// virtualized DOM. Off-screen lines are intentionally absent from `.cm-content`
+// and a loaded runner can move the target outside the mounted viewport between
+// edits. The input annotation preserves the same store sync, autosave, and lint
+// behavior as keyboard input without depending on viewport realization.
 export async function typeInEditorAfter(
   page: Page,
   anchorText: string,
@@ -67,27 +144,26 @@ export async function typeInEditorAfter(
   occurrence = 1,
 ) {
   const ok = await page.evaluate<boolean>(
-    `(() => {
-      const content = document.querySelector('.cm-content');
-      if (!content) return false;
-      content.focus();
-      const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
-      let node;
-      let seen = 0;
-      while ((node = walker.nextNode())) {
-        const i = node.textContent.indexOf(${JSON.stringify(anchorText)});
-        if (i >= 0 && ++seen === ${occurrence}) {
-          const range = document.createRange();
-          range.setStart(node, i + ${JSON.stringify(anchorText)}.length);
-          range.collapse(true);
-          const sel = window.getSelection();
-          sel.removeAllRanges();
-          sel.addRange(range);
-          return document.execCommand('insertText', false, ${JSON.stringify(text)});
-        }
+    `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {
+      const view = getEditorView();
+      if (!view) return false;
+      const source = view.state.doc.toString();
+      let anchor = -1;
+      let cursor = 0;
+      for (let index = 0; index < ${occurrence}; index++) {
+        anchor = source.indexOf(${JSON.stringify(anchorText)}, cursor);
+        if (anchor < 0) return false;
+        cursor = anchor + ${JSON.stringify(anchorText)}.length;
       }
-      return false;
-    })()`,
+      view.dispatch({
+        changes: { from: cursor, insert: ${JSON.stringify(text)} },
+        selection: { anchor: cursor + ${JSON.stringify(text)}.length },
+        scrollIntoView: true,
+        userEvent: "input.type",
+      });
+      view.focus();
+      return true;
+    })`,
   );
   if (!ok) throw new Error("typeInEditorAfter: anchor " + JSON.stringify(anchorText) + " not found in editor");
 }
@@ -220,6 +296,20 @@ export async function compileAndProbe(
   page: Page,
   timeoutMs = 120_000,
 ): Promise<E2ePdfProbe> {
+  await compileAndWait(page, timeoutMs);
+  return getCompiledPdfProbe(page, timeoutMs);
+}
+
+/**
+ * Compiles through the real toolbar and waits for a new verified output
+ * revision without extracting every PDF page. Book-scale rendering tests use
+ * this path so the measurement covers the product viewer, not an E2E-only
+ * full-document semantic traversal on the WebView main thread.
+ */
+export async function compileAndWait(
+  page: Page,
+  timeoutMs = 120_000,
+): Promise<number> {
   const compileButton = page.locator(
     '[data-testid="compile-button"]',
   ) as unknown as Parameters<typeof expect>[0];
@@ -315,7 +405,7 @@ export async function compileAndProbe(
     }
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
-  return getCompiledPdfProbe(page, timeoutMs);
+  return (await snapshot()).outputRevision;
 }
 
 export async function expectCompiledPdfContains(page: Page, text: string, timeoutMs = 90_000) {
@@ -506,6 +596,31 @@ export async function readProjectText(page: Page, path: string): Promise<string>
   );
 }
 
+export async function writeProjectText(
+  page: Page,
+  path: string,
+  content: string,
+): Promise<void> {
+  const written = await page.evaluate<boolean>(
+    `Promise.all([
+      import("/src/lib/tauri.ts"),
+      import("/src/store/files.ts"),
+    ]).then(async ([tauri, files]) => {
+      const projectId =
+        document.querySelector('[data-e2e-project-id]')?.dataset.e2eProjectId;
+      if (!projectId) return false;
+      await tauri.writeFileContent(
+        projectId,
+        ${JSON.stringify(path)},
+        ${JSON.stringify(content)},
+      );
+      await files.useFilesStore.getState().refreshTree();
+      return true;
+    })`,
+  );
+  if (!written) throw new Error(`writeProjectText: no active project for ${path}`);
+}
+
 export async function readProjectBase64(page: Page, path: string): Promise<string> {
   return page.evaluate<string>(
     `import("/src/lib/tauri.ts").then(async ({ readProjectBytes }) => {
@@ -678,7 +793,14 @@ export async function typeInEditorAtStart(page: Page, text: string) {
 export async function waitLong(page: Page, expression: string, timeoutMs: number) {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
-    const ok = await page.evaluate<boolean>(`!!(${expression})`);
+    // Many app-state predicates use dynamic import(...).then(...). Coercing
+    // that expression directly with `!!` treats the pending Promise itself as
+    // true and lets the test continue before its callback has run. Normalize
+    // both synchronous and asynchronous predicates through Promise.resolve so
+    // this helper observes the resolved boolean value.
+    const ok = await page.evaluate<boolean>(
+      `Promise.resolve(${expression}).then((value) => !!value)`,
+    );
     if (ok) return;
     if (Date.now() > deadline) throw new Error(`waitLong timeout: ${expression}`);
     await new Promise((r) => setTimeout(r, 1000));
@@ -926,78 +1048,101 @@ export async function paletteItems(page: Page): Promise<string[]> {
   );
 }
 
-// Uses a coordinate mouse click (CodeMirror's own mouse handling; never
-// mutates the document) and searches line-level text, so lint/decoration
-// spans that split text nodes (e.g. spellcheck squiggles) cannot hide the
-// anchor.
+/**
+ * The native Tauri bridge's fill/type commands can update an input's DOM value
+ * on Linux without notifying React, leaving cmdk's filtered state unchanged.
+ * Development builds expose this narrow event seam so E2E drives the same
+ * controlled query state used by real keyboard input.
+ */
+export async function fillCommandPalette(
+  page: Page,
+  text: string,
+): Promise<void> {
+  await page.waitForFunction(
+    `Array.from(document.querySelectorAll('[cmdk-input]')).some(
+      (element) =>
+        element instanceof HTMLInputElement &&
+        element.getClientRects().length > 0
+    )`,
+    10_000,
+  );
+  const accepted = await page.evaluate<boolean>(
+    `(() => {
+      const input = Array.from(document.querySelectorAll('[cmdk-input]')).find(
+        (element) =>
+          element instanceof HTMLInputElement &&
+          element.getClientRects().length > 0
+      );
+      if (!(input instanceof HTMLInputElement)) return false;
+      input.focus();
+      return new Promise((resolve) => {
+        let attempts = 0;
+        const update = () => {
+          window.dispatchEvent(new CustomEvent("oleafly:e2e-command-query", {
+            detail: ${JSON.stringify(text)},
+          }));
+          requestAnimationFrame(() => {
+            if (input.value === ${JSON.stringify(text)}) {
+              requestAnimationFrame(() => resolve(true));
+              return;
+            }
+            attempts += 1;
+            if (attempts >= 30) {
+              resolve(false);
+              return;
+            }
+            update();
+          });
+        };
+        update();
+      });
+    })()`,
+  );
+  if (!accepted) {
+    throw new Error(
+      `fillCommandPalette: controlled input rejected ${JSON.stringify(text)}`,
+    );
+  }
+}
+
+// Place the caret through CodeMirror's public state API. This never mutates
+// the document and is independent of viewport rendering, text-node splitting,
+// lint decorations, and WebKit's synthetic mouse-event handling.
 export async function caretIn(
   page: Page,
   anchorText: string,
   occurrence = 1,
   where: "start" | "end" = "start",
 ) {
-  const placement = `(() => {
-      const lines = Array.from(document.querySelectorAll('.cm-content .cm-line'));
-      let seen = 0;
-      for (const line of lines) {
-        let idx = -1;
-        while ((idx = line.textContent.indexOf(ANCHOR, idx + 1)) >= 0) {
-          if (++seen !== OCC) continue;
-          // Map the line-level offset back to a concrete text node.
-          const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
-          let node, acc = 0;
-          const target = WHERE === 'end' ? idx + ANCHOR.length - 1 : idx + 1;
-          while ((node = walker.nextNode())) {
-            const len = node.textContent.length;
-            if (acc + len > target) {
-              const range = document.createRange();
-              range.setStart(node, target - acc);
-              range.setEnd(node, Math.min(target - acc + 1, len));
-              const r = range.getClientRects()[0] || range.getBoundingClientRect();
-              const x = WHERE === 'end' ? r.right - 1 : r.left + 1;
-              const y = r.top + r.height / 2;
-              const opts = { bubbles: true, cancelable: true, clientX: x, clientY: y, buttons: 1, detail: 1 };
-              const t = document.elementFromPoint(x, y) || line;
-              t.dispatchEvent(new MouseEvent('mousedown', opts));
-              document.dispatchEvent(new MouseEvent('mouseup', Object.assign({}, opts, { buttons: 0 })));
-              return true;
-            }
-            acc += len;
-          }
-          return false;
-        }
+  const placed = await page.evaluate<boolean>(
+    `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {
+      const view = getEditorView();
+      if (!view) return false;
+      const source = view.state.doc.toString();
+      const anchor = ${JSON.stringify(anchorText)};
+      let from = -1;
+      let cursor = 0;
+      for (let index = 0; index < ${occurrence}; index += 1) {
+        from = source.indexOf(anchor, cursor);
+        if (from < 0) return false;
+        cursor = from + anchor.length;
       }
-      return false;
-    })()`
-    .replaceAll("ANCHOR", JSON.stringify(anchorText))
-    .replaceAll("WHERE", JSON.stringify(where))
-    .replace("OCC", String(occurrence));
-
-  // The synthetic mouse events place the caret through CodeMirror's DOM
-  // observer; verify the selection actually landed on the anchor's line so a
-  // missed placement fails here instead of corrupting the document at the
-  // original caret position (e.g. inserting before \documentclass). A slow
-  // webview can swallow one placement entirely, so re-dispatch it per round
-  // instead of only polling the first attempt's outcome.
-  const placed = `(() => {
-    const sel = window.getSelection();
-    const node = sel && sel.anchorNode;
-    if (!node) return false;
-    const el = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
-    const line = el && el.closest ? el.closest('.cm-line') : null;
-    return !!line && line.textContent.includes(${JSON.stringify(anchorText)});
-  })()`;
-  for (let round = 0; round < 4; round++) {
-    const ok = await page.evaluate<boolean>(placement);
-    if (!ok) throw new Error("caretIn: anchor " + JSON.stringify(anchorText) + " not found");
-    for (let attempt = 0; attempt < 7; attempt++) {
-      if (await page.evaluate<boolean>(placed)) return;
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    }
-  }
-  throw new Error(
-    "caretIn: selection did not land on the line containing " + JSON.stringify(anchorText),
+      const position = ${JSON.stringify(where)} === "end"
+        ? from + anchor.length
+        : from;
+      view.dispatch({
+        selection: { anchor: position },
+        scrollIntoView: true,
+      });
+      view.focus();
+      return view.state.selection.main.head === position;
+    })`,
   );
+  if (!placed) {
+    throw new Error(
+      `caretIn: ${JSON.stringify(anchorText)} occurrence ${occurrence} not found or editor unavailable`,
+    );
+  }
 }
 
 // The Diagram Composer is now a standalone home-shell page (not a per-project

@@ -11,6 +11,7 @@ import {
   autoSkipAction,
   toJoyrideStep,
   tourArrowSide,
+  tourDotWindowStart,
 } from "./TourGuide";
 import { createTourState } from "@/store/tours";
 
@@ -113,6 +114,31 @@ describe("tour step conversion", () => {
         spotlightTarget: '[data-tour="settings-navigation-panel"]',
       }).spotlightTarget,
     ).toBe('[data-tour="settings-navigation-panel"]');
+  });
+});
+
+describe("tour progress dots", () => {
+  it("shows every dot when the tour fits the window", () => {
+    for (let index = 0; index < 7; index += 1) {
+      expect(tourDotWindowStart(index, 7)).toBe(0);
+    }
+  });
+
+  it("slides a fixed window that always contains the current step", () => {
+    const size = 12;
+    for (let index = 0; index < size; index += 1) {
+      const start = tourDotWindowStart(index, size);
+      expect(start).toBeGreaterThanOrEqual(0);
+      expect(start + 7).toBeLessThanOrEqual(size);
+      expect(index).toBeGreaterThanOrEqual(start);
+      expect(index).toBeLessThan(start + 7);
+    }
+  });
+
+  it("pins the window at both ends instead of overscrolling", () => {
+    expect(tourDotWindowStart(0, 12)).toBe(0);
+    expect(tourDotWindowStart(1, 12)).toBe(0);
+    expect(tourDotWindowStart(11, 12)).toBe(5);
   });
 });
 

@@ -131,12 +131,6 @@ test("delete the forked copy from the context menu", async ({ tauriPage }) => {
     60_000,
   );
 
-  // Override the native confirm, but only accept a dialog naming the fork;
-  // anything else is a mis-targeted delete. (Comma-expression: evaluate
-  // needs a serializable return value.)
-  await tauriPage.evaluate(
-    `(window.confirm = (msg) => typeof msg === 'string' && msg.includes('E2E Fork'), 1)`,
-  );
   await tauriPage.evaluate(
     `(() => {
       const books = Array.from(document.querySelectorAll('button[aria-label^="Open "]'));
@@ -151,6 +145,29 @@ test("delete the forked copy from the context menu", async ({ tauriPage }) => {
   );
   await expect(tauriPage.getByText("Delete project")).toBeVisible({ timeout: 10_000 });
   await tauriPage.getByText("Delete project").click();
+  let confirmation = tauriPage.getByRole("alertdialog");
+  await expect(confirmation).toBeVisible({ timeout: 10_000 });
+  await expect(confirmation).toContainText(/Delete “E2E Fork.*”\?/u);
+  await confirmation.getByText("Cancel").click();
+  await expect(confirmation).not.toBeVisible();
+  await expect(tauriPage.locator('button[aria-label^="Open E2E Fork"]').first()).toBeVisible();
+
+  await tauriPage.evaluate(
+    `(() => {
+      const books = Array.from(document.querySelectorAll('button[aria-label^="Open "]'));
+      const copy = books.find(b => b.textContent.includes('E2E Fork'));
+      const r = copy.getBoundingClientRect();
+      copy.dispatchEvent(new MouseEvent('contextmenu', {
+        bubbles: true, cancelable: true,
+        clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, button: 2,
+      }));
+      return 1;
+    })()`,
+  );
+  await tauriPage.getByText("Delete project").click();
+  confirmation = tauriPage.getByRole("alertdialog");
+  await expect(confirmation).toBeVisible({ timeout: 10_000 });
+  await confirmation.getByText("Delete permanently").click();
   await tauriPage.waitForFunction(
     `!Array.from(document.querySelectorAll('button[aria-label^="Open "]')).some(b => b.textContent.includes('E2E Fork'))`,
     20_000,

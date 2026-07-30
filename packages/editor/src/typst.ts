@@ -1,13 +1,43 @@
-import { LanguageSupport, StreamLanguage, type StreamParser } from "@codemirror/language";
+import {
+  LanguageSupport,
+  StreamLanguage,
+  type StreamParser,
+  type StringStream,
+} from "@codemirror/language";
 
 interface TypstState {
-  blockComment: boolean;
+  blockCommentDepth: number;
   rawFence: number;
+  headingLine: boolean;
+}
+
+function consumeBlockComment(
+  stream: StringStream,
+  state: TypstState,
+): string {
+  while (!stream.eol()) {
+    if (stream.match("/*")) {
+      state.blockCommentDepth += 1;
+      continue;
+    }
+    if (stream.match("*/")) {
+      state.blockCommentDepth -= 1;
+      if (state.blockCommentDepth === 0) break;
+      continue;
+    }
+    stream.next();
+  }
+  return "comment";
 }
 
 const typstMode: StreamParser<TypstState> = {
-  startState: () => ({ blockComment: false, rawFence: 0 }),
+  startState: () => ({
+    blockCommentDepth: 0,
+    rawFence: 0,
+    headingLine: false,
+  }),
   token(stream, state) {
+    if (stream.sol()) state.headingLine = false;
     if (state.rawFence > 0) {
       const fence = "`".repeat(state.rawFence);
       if (stream.match(fence)) {
@@ -22,22 +52,28 @@ const typstMode: StreamParser<TypstState> = {
       }
       return "string";
     }
-    if (state.blockComment) {
-      if (stream.skipTo("*/")) {
-        stream.match("*/");
-        state.blockComment = false;
-      } else {
-        stream.skipToEnd();
+    if (state.blockCommentDepth > 0) {
+      return consumeBlockComment(stream, state);
+    }
+    if (state.headingLine) {
+      if (stream.match(/^<[^>\n]+>/)) {
+        state.headingLine = false;
+        return "labelName";
       }
-      return "comment";
+      if (stream.match(/^.+?(?=<[^>\n]+>(?:\s|$))/)) {
+        return "heading";
+      }
+      stream.skipToEnd();
+      state.headingLine = false;
+      return "heading";
     }
     if (stream.match("//")) {
       stream.skipToEnd();
       return "comment";
     }
     if (stream.match("/*")) {
-      state.blockComment = true;
-      return "comment";
+      state.blockCommentDepth = 1;
+      return consumeBlockComment(stream, state);
     }
     if (stream.peek() === "`") {
       let ticks = 0;
@@ -48,7 +84,10 @@ const typstMode: StreamParser<TypstState> = {
       state.rawFence = ticks;
       return "string";
     }
-    if (stream.sol() && stream.match(/^=+(?=[ \t])/)) return "heading";
+    if (stream.sol() && stream.match(/^=+(?=[ \t])/)) {
+      state.headingLine = true;
+      return "heading";
+    }
     if (stream.match(/^[-+](?=\s)/) || stream.match(/^\d+[.)](?=\s)/)) return "list";
     if (stream.match(/^#(?:let|set|show|import|include|if|else|for|while|return|context)\b/)) {
       return "keyword";
@@ -57,7 +96,7 @@ const typstMode: StreamParser<TypstState> = {
     if (stream.match(/^<[^>\n]+>/)) return "labelName";
     if (stream.match(/^@[\w:-]+/)) return "link";
     if (stream.match(/^"(?:[^"\\]|\\.)*"?/)) return "string";
-    if (stream.match(/^\$[^$\n]*\$?/)) return "special(string)";
+    if (stream.match(/^\$[^$\n]*\$?/)) return "string-2";
     if (stream.match(/^(?:true|false|none|auto)\b/)) return "bool";
     if (stream.match(/^\d+(?:\.\d+)?(?:pt|mm|cm|in|em|fr|%|deg)?\b/)) return "number";
     stream.next();

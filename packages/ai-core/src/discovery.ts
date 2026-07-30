@@ -51,7 +51,8 @@ export async function fetchProviderModels(args: {
     return { ok: true, models: seed };
   }
   const doFetch = args.fetchImpl ?? fetch;
-  const base = (args.baseURL ?? "").replace(/\/+$/, "");
+  let base = args.baseURL ?? "";
+  while (base.endsWith("/")) base = base.slice(0, -1);
   try {
     let url: string;
     const headers: Record<string, string> = { ...(discovery.extraHeaders ?? {}) };

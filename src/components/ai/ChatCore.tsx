@@ -287,6 +287,7 @@ export function ChatCore() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the controlled value changes the textarea's intrinsic scrollHeight even though it is read through the DOM ref
   useEffect(() => {
     const t = textareaRef.current;
     if (!t) return;
@@ -395,7 +396,7 @@ export function ChatCore() {
     };
     window.addEventListener("oleafly:figure-from-selection", onFromSelection);
     return () => window.removeEventListener("oleafly:figure-from-selection", onFromSelection);
-  }, []);
+  }, [setInput]);
 
   useEffect(() => {
     const apply = (cfg: AppConfig) => {
@@ -473,6 +474,7 @@ export function ChatCore() {
   // Providers the user has set up (a non-empty key/host, or a custom
   // provider with an optional key), in catalog order.
   const allProviders = mergeCustomProviders(customProviders);
+  const activeProviderName = allProviders.find((item) => item.id === provider)?.name;
   const configuredProviders = allProviders.filter((p) => {
     if ((keysMap[p.id] ?? "").trim().length > 0) return true;
     return Boolean(customProviders.find((c) => c.id === p.id)?.keyOptional);
@@ -538,7 +540,7 @@ export function ChatCore() {
     return () => {
       cancelled = true;
     };
-  }, [projectId, loadChats, setActiveChat]);
+  }, [projectId, loadChats, setActiveChat, setMessages]);
 
   // Immediate write (see persistDebounced below for the streaming path).
   const persist = useCallback((chatId: string | null, msgs: ChatMessage[]) => {
@@ -573,7 +575,7 @@ export function ChatCore() {
       setMessages(chat.messages);
       setHistoryOpen(false);
     },
-    [streaming, setActiveChat]
+    [streaming, setActiveChat, setMessages]
   );
 
   const newChat = useCallback(() => {
@@ -590,7 +592,7 @@ export function ChatCore() {
       setModel(modelId);
       setApiKey(keysMap[providerId] || "");
     }
-  }, [streaming, setActiveChat, keysMap]);
+  }, [streaming, setActiveChat, keysMap, setMessages]);
 
   useEffect(() => {
     void messages;
@@ -1031,7 +1033,7 @@ ${sandboxedCustom}`;
             case "error":
               errorMsg = formatError(
                 part.error,
-                allProviders.find((p) => p.id === provider)?.name
+                activeProviderName
               );
               errorRetryable = isRetryable(part.error);
               break;
@@ -1206,7 +1208,7 @@ ${sandboxedCustom}`;
           content: (m.content ? `${m.content}\n\n` : "") + note,
         }));
       } else {
-        const errMsg = formatError(e, allProviders.find((p) => p.id === provider)?.name);
+        const errMsg = formatError(e, activeProviderName);
         updateRunLast((m) => ({
           ...m,
           content: errMsg.includes("NoOutputGenerated")
@@ -1239,16 +1241,7 @@ ${sandboxedCustom}`;
       runOwnerRef.current = false;
       endChatRun(runHandle);
     }
-  }, [messages, streaming, apiKey, provider, model, customProviders, projectId, projectName, currentHead, figureMode, figureModeAvailable, engineLoaded, documentEngine, projectKind, openAISettings, flushStreamPatches, updateLast, setMessages, setInput]);
-
-  useEffect(() => {
-    const onSelectionAction = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { prompt?: string };
-      if (detail?.prompt) void send(detail.prompt);
-    };
-    window.addEventListener("oleafly:ai-selection-action", onSelectionAction);
-    return () => window.removeEventListener("oleafly:ai-selection-action", onSelectionAction);
-  }, [send]);
+  }, [messages, streaming, apiKey, provider, model, customProviders, projectId, projectName, currentHead, figureMode, figureModeAvailable, engineLoaded, documentEngine, projectKind, openAISettings, flushStreamPatches, updateLast, setMessages, setInput, activeProviderName]);
 
   const stop = useCallback(() => {
     abortRef.current?.abort();
@@ -1292,7 +1285,7 @@ ${sandboxedCustom}`;
         setRestoringCheckpoint(null);
       }
     },
-    [activeChatId, projectId, restoringCheckpoint],
+    [activeChatId, projectId, restoringCheckpoint, setMessages],
   );
 
   // Inline AI (and other UIs) can hand a prompt into the agent chat.
@@ -1303,7 +1296,7 @@ ${sandboxedCustom}`;
     if (h.images.length) pendingImagesRef.current.push(...h.images);
     if (h.autoSend) void send(h.prompt);
     else setInput(h.prompt);
-  }, [handoffPending, streaming, apiKey, send]);
+  }, [handoffPending, streaming, apiKey, send, setInput]);
 
   const prevProjectIdRef = useRef<string | null | undefined>(undefined);
   useEffect(() => {
@@ -1400,7 +1393,7 @@ ${sandboxedCustom}`;
           ? "true"
           : "false"
       }
-      className="flex h-full flex-col bg-sidebar"
+      className="ai-chat-shell flex h-full flex-col bg-sidebar"
     >
       <div className="flex h-9 shrink-0 items-center gap-1.5 border-b px-2">
         {apiKey && activeChat?.headOid && currentHead && activeChat.headOid !== currentHead && (
@@ -1565,7 +1558,8 @@ ${sandboxedCustom}`;
             <div className="text-sm font-medium">Connect an AI provider to continue</div>
             <p className="mx-auto max-w-[18rem] text-xs text-muted-foreground">
               Bring your own API key (OpenAI, Anthropic, Groq, and more) or run a model locally with
-              Ollama. The assistant can read &amp; edit files, compile, and verify your PDF.
+              Ollama. The assistant can read and edit files, compile your project,
+              and verify the PDF.
             </p>
           </div>
           <Button data-tour="ai-connect-provider" onClick={() => openAISettings()}>
@@ -1813,7 +1807,10 @@ ${sandboxedCustom}`;
                     </Tooltip>
                   )}
                   {!figureMode && (
-                    <span data-tour="ai-prompts" className="inline-flex">
+                    <span
+                      data-tour="ai-prompts"
+                      className="ai-composer-prompts inline-flex"
+                    >
                     <Popover
                       align="left"
                       ariaLabel="Prompts"
@@ -1841,7 +1838,11 @@ ${sandboxedCustom}`;
                                 key={item.label}
                                 onClick={() => {
                                   setInput(item.prompt);
-                                  requestAnimationFrame(() => textareaRef.current?.focus());
+                                  requestAnimationFrame(() =>
+                                    textareaRef.current?.focus({
+                                      preventScroll: true,
+                                    }),
+                                  );
                                 }}
                                 className="flex w-full items-start gap-2.5 rounded-md px-2.5 py-2.5 text-left transition-colors hover:bg-accent"
                               >
@@ -1918,7 +1919,10 @@ ${sandboxedCustom}`;
                 </div>
                 <div className="flex min-w-0 items-center gap-1">
                   {configuredProviders.length > 0 && (
-                    <div data-tour="ai-provider-model" className="min-w-0">
+                    <div
+                      data-tour="ai-provider-model"
+                      className="ai-composer-model min-w-0"
+                    >
                       <ModelSelector
                         compact
                         className="h-7 min-w-0 shrink gap-1 px-2 text-xs font-medium text-foreground hover:text-foreground"

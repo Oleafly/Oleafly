@@ -205,8 +205,8 @@ export function ProvidersTab({
     <div className="space-y-4">
       <p className="text-xs text-muted-foreground">
         Connect any providers you use below. Keys are stored locally only. Saving one sets it as the
-        default; switch between configured providers and models anytime from the dropdown in the chat
-        panel.
+        default. You can switch between configured providers and models from the dropdown in the
+        chat panel.
       </p>
 
       <div className="space-y-2.5" data-tour="ai-settings-providers">

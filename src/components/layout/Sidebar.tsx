@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 import { FileText, Loader2, Search } from "lucide-react";
 import { useFilesStore } from "@/store/files";
@@ -7,11 +7,16 @@ import { searchDocs, type SearchHit } from "@/lib/tauri";
 import { gotoLine } from "@/components/editor/cm/controller";
 import { registry } from "@oleafly/registry";
 import { FileTree } from "@/components/files/FileTree";
-import { Outline } from "@/components/layout/Outline";
 import { cn } from "@/lib/utils";
 import { objectKey } from "@/lib/react-key";
 import { useInitialFocus } from "@/components/ui/use-initial-focus";
 import { Input } from "@/components/ui/input";
+
+const Outline = lazy(() =>
+  import("@/components/layout/Outline").then((module) => ({
+    default: module.Outline,
+  })),
+);
 
 function basename(p: string) {
   const i = p.lastIndexOf("/");
@@ -116,7 +121,9 @@ export function FilesPanel() {
         <span className="h-0.5 w-8 rounded-full bg-border transition-colors group-hover:bg-ring" />
       </PanelResizeHandle>
       <Panel id="outline-v" order={2} defaultSize={30} minSize={5}>
-        <Outline />
+        <Suspense fallback={<SidebarPanelFallback />}>
+          <Outline />
+        </Suspense>
       </Panel>
     </PanelGroup>
   );

@@ -24,7 +24,7 @@ import {
   type TourContext,
   type TourStepDefinition,
 } from "@/lib/tours/registry";
-import { modKey, shortcut } from "@/lib/utils";
+import { cn, modKey, shortcut } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { ACCENTS, useSettingsStore } from "@/store/settings";
@@ -50,6 +50,46 @@ function ChordHint({ variant, back }: { variant?: "primary"; back?: boolean }) {
       <Kbd className={chipClass}>{modKey}</Kbd>
       <Kbd className={chipClass}>{back ? "←" : "→"}</Kbd>
     </span>
+  );
+}
+
+// Dots read as "how far along am I" far better than a bar, but one dot per
+// step overflows the footer on the longer tours (settings has 12 steps). Keep
+// the dots and slide a fixed-size window over them instead: every dot occupies
+// the same slot, so the row's width never changes as the step advances, and the
+// slots at a truncated edge shrink to signal that more steps exist beyond them.
+const DOT_WINDOW = 7;
+
+export function tourDotWindowStart(index: number, size: number) {
+  if (size <= DOT_WINDOW) return 0;
+  const centered = index - Math.floor(DOT_WINDOW / 2);
+  return Math.max(0, Math.min(centered, size - DOT_WINDOW));
+}
+
+function TourProgress({ index, size }: { index: number; size: number }) {
+  const slots = Math.min(size, DOT_WINDOW);
+  const start = tourDotWindowStart(index, size);
+  return (
+    <div className="flex shrink-0 items-center gap-1.5">
+      <span className="sr-only">{`Step ${index + 1} of ${size}`}</span>
+      {Array.from({ length: slots }, (_, slot) => {
+        const dot = start + slot;
+        const truncated =
+          (slot === 0 && start > 0) || (slot === slots - 1 && start + slots < size);
+        return (
+          <span
+            key={String(dot)}
+            className={cn(
+              "rounded-full transition-all duration-300 ease-out",
+              dot === index
+                ? "h-1.5 w-5 bg-primary"
+                : "size-1.5 bg-muted-foreground/30",
+              truncated && dot !== index && "scale-[0.6]",
+            )}
+          />
+        );
+      })}
+    </div>
   );
 }
 
@@ -202,30 +242,7 @@ function TourTooltip(props: TooltipRenderProps) {
         </div>
       </div>
       <div className="mt-4 flex items-center gap-2">
-        <div className="flex shrink-0 items-center gap-1.5">
-          <span className="sr-only">{`Step ${index + 1} of ${size}`}</span>
-          {size > 8 ? (
-            // One dot per step overflows the tooltip on long tours; a compact
-            // bar keeps the footer buttons inside the border at any step count.
-            <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted-foreground/20">
-              <div
-                className="h-full rounded-full bg-primary transition-all duration-300 ease-out"
-                style={{ width: `${((index + 1) / size) * 100}%` }}
-              />
-            </div>
-          ) : (
-            Array.from({ length: size }, (_, dot) => (
-              <span
-                key={String(dot)}
-                className={
-                  dot === index
-                    ? "h-1.5 w-5 rounded-full bg-primary transition-all duration-300 ease-out"
-                    : "size-1.5 rounded-full bg-muted-foreground/30 transition-all duration-300 ease-out"
-                }
-              />
-            ))
-          )}
-        </div>
+        <TourProgress index={index} size={size} />
         <div className="ml-auto flex items-center gap-1.5">
           <Tooltip label={skipProps.title}>
             <Button
@@ -355,10 +372,30 @@ function SeamlessArrow({ base, placement, size }: ArrowRenderProps) {
   );
 }
 
-export function toJoyrideStep(step: TourStepDefinition, tourLabel?: string): Step {
+// Joyride scrolls the target's nearest scrollable ancestor on every step, and
+// it treats "scrollable" as `scrollHeight > clientHeight` — which an
+// off-viewport stray element can satisfy for the document itself even though
+// `body { overflow: hidden }` hides the scrollbar. The result is a whole-app
+// scroll animation on each step that immediately snaps back: a visible jump.
+// Every tour target here is on-screen chrome, so scroll only when the target's
+// leading edge genuinely sits outside the viewport.
+export function stepNeedsScroll(element: Element | null): boolean {
+  if (!element) return false;
+  const rect = element.getBoundingClientRect();
+  if (rect.width === 0 && rect.height === 0) return false;
+  const leadIn = Math.min(rect.height, 48);
+  return rect.top < 0 || rect.top + leadIn > window.innerHeight;
+}
+
+export function toJoyrideStep(
+  step: TourStepDefinition,
+  tourLabel?: string,
+  needsScroll = false,
+): Step {
   return {
     id: step.id,
     target: step.target,
+    skipScroll: !needsScroll,
     title: step.title,
     content: step.content,
     placement: step.placement ?? "bottom",
@@ -464,7 +501,11 @@ function Welcome({ onStart }: { onStart: () => void }) {
   useEffect(() => {
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const id = modalCoordinator.add(opener);
-    const frame = requestAnimationFrame(() => dialogRef.current?.querySelector("button")?.focus());
+    const frame = requestAnimationFrame(() =>
+      dialogRef.current
+        ?.querySelector("button")
+        ?.focus({ preventScroll: true }),
+    );
     const blockEscape = (event: KeyboardEvent) => {
       if (!modalCoordinator.isTop(id)) return;
       if ((event.metaKey || event.ctrlKey) && event.key === "ArrowRight") {
@@ -484,18 +525,22 @@ function Welcome({ onStart }: { onStart: () => void }) {
       if (!first || !last) return;
       if (!dialogRef.current?.contains(document.activeElement)) {
         event.preventDefault();
-        (event.shiftKey ? last : first).focus();
+        (event.shiftKey ? last : first).focus({
+          preventScroll: true,
+        });
       } else if (event.shiftKey && document.activeElement === first) {
         event.preventDefault();
-        last.focus();
+        last.focus({ preventScroll: true });
       } else if (!event.shiftKey && document.activeElement === last) {
         event.preventDefault();
-        first.focus();
+        first.focus({ preventScroll: true });
       }
     };
     const containFocus = (event: FocusEvent) => {
       if (!modalCoordinator.isTop(id) || dialogRef.current?.contains(event.target as Node)) return;
-      dialogRef.current?.querySelector<HTMLElement>("button")?.focus();
+      dialogRef.current
+        ?.querySelector<HTMLElement>("button")
+        ?.focus({ preventScroll: true });
     };
     document.addEventListener("keydown", blockEscape, true);
     document.addEventListener("focusin", containFocus);
@@ -503,7 +548,7 @@ function Welcome({ onStart }: { onStart: () => void }) {
       cancelAnimationFrame(frame);
       document.removeEventListener("keydown", blockEscape, true);
       document.removeEventListener("focusin", containFocus);
-      modalCoordinator.remove(id)?.focus();
+      modalCoordinator.remove(id)?.focus({ preventScroll: true });
     };
   }, []);
 
@@ -746,9 +791,21 @@ export function TourGuide() {
   const steps = useMemo<Step[]>(
     () => {
       void inputRevision;
-      return definition?.steps.map((step) => toJoyrideStep(step, definition.label)) ?? [];
+      // Rebuilt per step: `toJoyrideStep` measures each target to decide whether
+      // Joyride may scroll for it, and a target's position is only meaningful
+      // once the tour has actually reached it.
+      void activeStepIndex;
+      return (
+        definition?.steps.map((step) =>
+          toJoyrideStep(
+            step,
+            definition.label,
+            stepNeedsScroll(document.querySelector(step.target)),
+          ),
+        ) ?? []
+      );
     },
-    [definition, inputRevision],
+    [activeStepIndex, definition, inputRevision],
   );
 
   const showWelcome =
@@ -1054,8 +1111,11 @@ export function TourGuide() {
     observer.observe(document.body, { childList: true, subtree: true });
     return () => {
       observer.disconnect();
-      if (id) modalCoordinator.remove(id)?.focus();
-      else focused?.focus();
+      if (id) {
+        modalCoordinator.remove(id)?.focus({ preventScroll: true });
+      } else {
+        focused?.focus({ preventScroll: true });
+      }
     };
   }, [activeTourId, newProjectOpen]);
 

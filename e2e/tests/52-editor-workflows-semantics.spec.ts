@@ -2,16 +2,17 @@ import type { TauriPage } from "@srsholmes/tauri-playwright";
 import { test, expect } from "../fixtures";
 import {
   caretIn,
+  caretLineIncludes,
   clickToolbarControl,
   compileAndProbe,
   createBlankProject,
   editorSource,
   insertSymbol,
+  type Page,
   readProjectText,
   replaceEditorLiteral,
   replaceEditorSource,
   writeProjectBinary,
-  type Page,
 } from "../helpers";
 import type {
   E2ePdfProbe,
@@ -423,8 +424,7 @@ Resolved reference: \ref{sec:toolbar-original}.
   await openCodeIntelligence(tauriPage);
   await clickCodeIntelligenceAction(tauriPage, "Go to definition");
   await tauriPage.waitForFunction(
-    `(document.querySelector(".cm-activeLine")?.textContent ?? "")
-      .includes("label{sec:toolbar-original}")`,
+    caretLineIncludes("label{sec:toolbar-original}"),
     10_000,
   );
 
@@ -766,6 +766,54 @@ WYSRAWANCHOR
       label,
     );
   };
+  const insertRawTable = async () => {
+    for (let attempt = 0; attempt < 8; attempt++) {
+      await atAnchor();
+      await tauriPage.press("body", "Escape").catch(() => {});
+      await clickToolbarControl(
+        tauriPage,
+        '[aria-label="Insert table"]',
+        "Table",
+      );
+      const clicked = await tauriPage
+        .waitForFunction(
+          `(() => {
+            const button = Array.from(
+              document.querySelectorAll('[data-radix-popper-content-wrapper] button')
+            )
+              .filter((candidate) => candidate.closest('[data-state="open"]'))
+              .find((candidate) => candidate.getAttribute("aria-label") === "1 by 1 table");
+            if (!(button instanceof HTMLElement)) return false;
+            button.scrollIntoView({ block: "nearest" });
+            button.click();
+            return true;
+          })()`,
+          2_000,
+        )
+        .then(() => true)
+        .catch(() => false);
+      if (!clicked) continue;
+      const inserted = await tauriPage
+        .waitForFunction(
+          `Promise.all([
+            import("/src/components/editor/wysiwyg/controller.ts"),
+            import("/packages/wysiwyg/src/latex/serialize.ts"),
+          ]).then(([{ getWysiwygEditor }, { serializeLatexBody }]) => {
+            const editor = getWysiwygEditor();
+            return editor
+              ? serializeLatexBody(editor.getJSON()).includes("\\\\begin{table}")
+              : false;
+          })`,
+          2_000,
+        )
+        .then(() => true)
+        .catch(() => false);
+      if (inserted) return;
+    }
+    throw new Error(
+      "1 by 1 WYSIWYG table picker never inserted a table after 8 complete attempts",
+    );
+  };
 
   // Insert in reverse structural order because every deterministic caret is
   // immediately after the same anchor.
@@ -783,9 +831,12 @@ WYSRAWANCHOR
   await atAnchor();
   await clickToolbarControl(
     tauriPage,
-    '[aria-label="Add citation (DOI, arXiv, or title)"]',
-    "Add citation",
+    '[aria-label="Cite from project"]',
+    "Cite from project",
   );
+  await tauriPage
+    .getByText("Find and add a new citation…", { exact: true })
+    .click();
   await expect(
     tauriPage.locator(
       'input[placeholder="DOI, arXiv id, URL, or a paper title…"]',
@@ -810,9 +861,7 @@ WYSRAWANCHOR
 
   await rawAction('[aria-label="Insert figure"]', "Insert figure");
 
-  await atAnchor();
-  await clickToolbarControl(tauriPage, '[aria-label="Insert table"]', "Table");
-  await clickPortalButton(tauriPage, `candidate.getAttribute("aria-label") === "1 by 1 table"`, "1 by 1 table");
+  await insertRawTable();
 
   await rawAction(
     '[aria-label="Insert align environment"]',

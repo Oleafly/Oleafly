@@ -381,7 +381,7 @@ export function McpSection() {
       <div>
         <h2 className="text-base font-semibold">MCP</h2>
         <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-          Expose Oleafly&apos;s AI tools to external apps over the Model Context Protocol. Claude
+          Expose Oleafly’s AI tools to external apps over the Model Context Protocol. Claude
           Desktop, Claude Code, Cursor, and other MCP clients can then read, edit, and compile the
           open project, with your approval for every change.
         </p>
@@ -712,7 +712,7 @@ export function McpSection() {
       <p className="text-[11px] leading-relaxed text-muted-foreground">
         The server only listens on this computer (127.0.0.1) and requires the token above. Under
         the first two policies, deleting files always asks for your confirmation in Oleafly.
-        claude.ai in the browser cannot reach a local server; use Claude Desktop instead.
+        claude.ai in the browser cannot reach a local server. Use Claude Desktop instead.
       </p>
 
       {error && (

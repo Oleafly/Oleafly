@@ -36,6 +36,7 @@ export interface CommandContribution {
   icon?: (ctx: AppContext) => ReactNode;
   hint?: string;
   keywords?: string;
+  slash?: readonly string[];
   when?: (ctx: AppContext) => boolean;
   order: number;
   run: (ctx: AppContext) => void;

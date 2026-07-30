@@ -7,8 +7,257 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added project-aware editor intelligence for LaTeX, Markdown, Typst, and
+  BibTeX, with engine-specific syntax highlighting, recoverable parsing,
+  diagnostics, completion, navigation, and symbol information.
+- Added full LaTeX source support for `.tex`, `.ltx`, `.latex`, `.sty`, and
+  `.cls` files, including command and environment completion, argument
+  snippets, delimiter and environment checks, package and document-class
+  suggestions, and project-defined macros.
+- Added project-defined LaTeX command support for classic `\newcommand` and
+  `\newenvironment` forms, modern xparse declarations, optional arguments,
+  delimited arguments, and completion snippets that preserve each definition's
+  argument shape.
+- Added live project-wide reference checking for LaTeX, Markdown, and Typst,
+  including duplicate and unresolved targets, includes and imports, links,
+  assets, Markdown anchors, and broad LaTeX forms such as `\eqref`,
+  `\pageref`, `\autoref`, `\cref`, `\nameref`, and range references.
+- Added definition and reference navigation across files from Source and
+  Visual mode, with keyboard navigation, context-menu actions, hover details,
+  exact source ranges, and project-revision-aware results.
+- Added citation checking and completion for LaTeX, Pandoc Markdown, Typst,
+  and BibTeX, including multi-key citations, duplicate-key diagnostics,
+  recoverable malformed-entry parsing, bibliography metadata, and a Visual
+  citation picker.
+- Added Local and Project structure views for document headings, sections,
+  labels, commands, environments, includes, bibliography entries, and other
+  engine-specific symbols, with filtering and direct navigation to source.
+- Added live inline and display math previews in LaTeX and Markdown Source and
+  Visual mode, rendered with KaTeX while keeping the original expression
+  directly editable.
+- Added an integrated PDF workspace for LaTeX, Markdown, and Typst with page
+  navigation, zoom and fit modes, continuous scrolling, text selection,
+  document search, an outline, links, download and save actions, and a
+  detachable preview window.
+- Added forward and inverse SyncTeX navigation between source and the
+  integrated PDF, including cross-file jumps for included documents.
+- Added useful SyncTeX navigation while the visible PDF is stale. Oleafly maps
+  unchanged lines exactly and modified regions to the nearest unchanged source
+  anchor, while retaining revision and displayed-output guards.
+- Added live English grammar checking with Harper in Source and Visual mode
+  for LaTeX and Markdown and in Source mode for Typst, with American, British,
+  Australian, Canadian, and Indian English dialects.
+- Added offline Hunspell spellchecking with suggestions for American English,
+  British English, Australian English, German, and French.
+- Added global and per-project dictionaries with add, remove, ignore,
+  un-ignore, searchable project groups, locale selection, availability
+  reporting, and immediate diagnostic refresh after dictionary changes.
+- Added source-aware prose extraction for LaTeX, Markdown, and Typst so
+  grammar and spelling ignore commands, code, comments, URLs, citations, math,
+  and other non-prose syntax without shifting diagnostic positions.
+- Added native language-service integration for TexLab 5.26.0 and Tinymist
+  0.15.2, including semantic tokens, diagnostics, completion, hover,
+  definitions, references, document symbols, and workspace symbols where the
+  server supports them.
+- Added a consent-based TexLab setup flow and a verified, bundled Tinymist
+  resource for supported macOS, Windows, and Linux release targets.
+- Added visible analysis states for starting, ready, partial, unavailable,
+  unsupported, failed, stale, and not-yet-run capabilities, with actionable
+  retry or setup actions where appropriate.
+- Added an executable editor-support contract, multi-engine fixture project,
+  language-server smoke tools, release checks, and performance budgets for the
+  editor, proofreaders, project index, PDF viewer, and native services.
+- Added book-scale regression and performance coverage built around a
+  compilable 6,200-line manuscript with mostly unique prose, ten families of
+  mathematics, chapters, cross-references, citations, theorems, tables, lists,
+  footnotes, and proofreading findings. Native tests keep the Source Tree,
+  editor, and rendered PDF open while exercising distant scrolling, slow
+  typing, multiline paste, undo, redo, completion, recompilation, and SyncTeX.
+- Added Citation Search, a desktop research tool that queries arXiv, Semantic
+  Scholar, Crossref, PubMed, and OpenAlex in parallel, combines duplicate
+  records, exports BibTeX, and saves citations.
+- Added source information, availability states, publication year and open
+  access filters, recent research topics, and a clear USPTO migration state
+  to Citation Search.
+- Added Citation Search under the Integrations section in Settings, with an
+  optional Semantic Scholar API key and locally bundled brand icons.
+- Added command palette and search omnibar aliases for every Oleafly tool,
+  including `/citations-search`, `/pdf-to-latex`, `/lab-search`, and
+  `/conference-deadlines`.
+- Added country flags, country filtering, and live OpenAlex institution
+  records to Lab Search.
+
+### Changed
+
+- Rebuilt editor analysis around revisioned project snapshots and dedicated
+  workers. File edits, creates, renames, moves, and deletes now invalidate only
+  affected results, while stale asynchronous responses are rejected before
+  they can update the editor or sidebar.
+- Unified lexical analysis, project intelligence, and native language-server
+  results into one diagnostics and completion pipeline. Local analysis remains
+  useful while an optional native service is starting or unavailable.
+- Moved grammar checking, spellchecking, and project indexing off the main
+  thread, with cancellation, request generations, bounded result sizes, and
+  full-source processing rather than silent character or issue cutoffs.
+- Made syntax highlighting immediate while expensive semantic-token,
+  proofreading, and inline-preview refreshes wait for active scrolling or
+  typing to settle.
+- Reworked editor diagnostics as a single stable presentation layer shared by
+  syntax, compilation, language-service, reference, citation, spelling, and
+  grammar findings. Diagnostic gutters and cards no longer alter source-line
+  geometry.
+- Kept Source and Visual editors mounted at valid panel dimensions when
+  switching modes, preserving history, selection, focus, measured line
+  heights, and scroll position without rebuilding the editor.
+- Preserved unsupported or custom LaTeX constructs in Visual mode as
+  source-owned inline and block content, with clearer editing affordances and
+  lossless round-tripping back to Source mode.
+- Reworked compilation startup into a single staged preview state covering
+  language service, language analysis, compilation, and PDF rendering. The
+  latest successful PDF remains visible while a newer revision is pending or
+  fails.
+- Made PDF freshness content-aware. If an edit is removed with Undo or
+  Backspace and the complete source set again matches the compiled inputs,
+  Oleafly immediately restores the preview to current without recompiling.
+- Refined the stale-preview badge to use a neutral surface in light and dark
+  themes with a compact status dot, clearer contrast, and no translucent
+  document icon.
+- Moved language-service, compiler, and proofreading notices to the standard
+  Sonner notification system and removed competing custom notification
+  surfaces.
+- Improved PDF controls for compact windows and single-page documents,
+  including responsive overflow handling and hiding controls that have no
+  effect when only one page exists.
+- Made the project intelligence, references, structure, and dictionary
+  interfaces responsive, keyboard accessible, and explicit about loading,
+  current-revision, empty, partial, and unavailable states.
+- Replaced zero-value reference hover cards with no popover, so symbols without
+  references no longer open an empty “0 references” panel.
+- Standardized editor popovers, badges, and suggestion surfaces on primary and
+  neutral theme colors, including a consistent dark surface for reference
+  details.
+- Split and lazy-loaded heavy editor, PDF, language-service, proofreading, and
+  dictionary code paths, and tightened the production JavaScript bundle
+  budget without delaying the initial workspace render.
+- Isolated auto-compile observation from the main application layout so a
+  book-sized keystroke reschedules compilation without rerendering the toolbar,
+  panel tree, editor shell, and PDF preview. Word count is likewise computed
+  only when its popover is opened.
+- Updated release packaging and CI to validate the language-server manifest,
+  dictionary pairs, third-party notices, frontend bundle budget, and
+  target-specific Tinymist resource before distribution.
+- Redesigned Oleafly Tools as a larger responsive gallery with colored icons,
+  command badges, neutral card borders, and full-width Convert, Validate,
+  Tables, and Research sections with headings aligned above each card group.
+- Rebuilt Lab Search with a larger search interface, structured institution
+  cards, a consistent blue institution icon, colored metrics, and direct
+  links to institution websites, ROR, and OpenAlex.
+- Redesigned Conference Deadlines with a focused page header, summary
+  metrics, improved filters, readable countdown panels, and responsive cards
+  without colored top borders.
+- Increased the visual scale and information hierarchy of Citation Search,
+  including checked source badges, a scrollable database information panel,
+  and responsive desktop and mobile layouts.
+- Revised public interface copy throughout the app for a concise,
+  institutional tone and simpler punctuation.
+
 ### Fixed
 
+- Fixed projects intermittently opening to a blank workspace while native
+  language services initialized, retried, or replaced a previous project
+  session.
+- Fixed repeated project opens and mode switches leaking native
+  language-service sessions until the session limit was reached. Sessions now
+  close, serialize, and reconnect against the active project lifecycle.
+- Fixed the “Language service unavailable” state persisting during normal
+  startup and improved retry behavior after a missing, declined, interrupted,
+  or failed native service setup.
+- Fixed a project opening without automatically compiling its current main
+  document and aligned first-open compilation with the active document engine
+  and project revision.
+- Fixed redundant compiler, language-service, and proofreading notifications
+  appearing above the central compilation state.
+- Fixed the manual “Compile now” action flashing for a frame during automatic
+  compilation and other transient preview-state changes.
+- Fixed compilation progress replacing the PDF workspace with an oversized
+  card, excessive accent color, or inconsistent icons. Progress now uses the
+  application primary color and completed steps use a clear success state.
+- Fixed Source and Visual project reopens scrolling the browser document
+  instead of the editor, pulling the workspace under the title bar, hiding the
+  top toolbar, or leaving the application shell displaced.
+- Fixed Visual mode reopening to a blank screen after returning to the home
+  view, including focus and selection restoration that previously scrolled
+  document-level containers.
+- Fixed editor-to-PDF and PDF-to-editor navigation scrolling the entire
+  project layout when selecting a table, reference, diagnostic, or SyncTeX
+  target.
+- Fixed the application toolbar being covered by resizable editor and preview
+  panels and hardened panel sizing against zero-height, oversized, and
+  off-screen workspace states.
+- Fixed fast editor scrolling exposing large blank gaps, detached line
+  numbers, temporary font-size changes, duplicated scrollbars, or source lines
+  that appeared only after scrolling stopped.
+- Fixed Source-mode Undo and Redo redundantly invalidating the document
+  version and rebuilding language, completion, proofreading, and editor-tool
+  compartments after CodeMirror had already applied the history transaction.
+  Large-book history operations now preserve line geometry and remain inside
+  the editor action latency budget.
+- Fixed proofing, semantic tokens, diagnostics, and inline previews rebuilding
+  decorations during kinetic scrolling and destabilizing CodeMirror's
+  virtualized height map.
+- Fixed display-math previews becoming block widgets that changed line
+  geometry, shifted the cursor line upward while typing, disappeared during
+  edits, or restored the editor to a different scroll position.
+- Fixed live math previews rendering a wider loading placeholder before KaTeX
+  output, rescanning entire large documents, or retaining stale widget state
+  after a virtualized remount.
+- Fixed diagnostic hover cards overlapping source text, painting duplicate
+  tooltips, escaping panel bounds, or contributing height to the document.
+- Fixed LaTeX backslash completion disappearing after the language-service and
+  project-completion layers were enabled.
+- Fixed broad reference and citation forms being omitted from live fallback
+  completion and diagnostics while the project index or native service was
+  still starting.
+- Fixed proofreading for Typst being reported as unsupported and added
+  offset-preserving Typst prose masking for grammar and spelling.
+- Fixed dictionary changes, dialect changes, and ignored-word edits leaving
+  stale proofreading decorations in Source or Visual mode.
+- Fixed Visual-mode raw LaTeX leaking into prose styling, receiving unrelated
+  rounded backgrounds, or losing preserved constructs during round trips.
+- Fixed stale compile and PDF-load responses replacing a newer accepted PDF,
+  and fixed detached preview windows accepting output from the wrong
+  generation or main document.
+- Fixed a stale badge remaining after the document was restored byte-for-byte
+  to the exact source set that produced the displayed PDF.
+- Fixed SyncTeX being disabled for every stale preview, even when a safe exact
+  or nearest-unchanged mapping was available.
+- Fixed cross-file SyncTeX jumps resolving the wrong file when projects
+  contained similarly named paths, and added displayed-checkpoint guards so
+  an older PDF cannot use a newer compile's mapping.
+- Fixed PDF search, outline, selection, page count, and loading state races
+  when switching projects, recompiling rapidly, or opening a detached preview.
+- Fixed the page-layout toggle appearing in the PDF toolbar when the document
+  contains only one page.
+- Fixed malformed LaTeX, Markdown, Typst, and BibTeX files collapsing into
+  empty “no issues” results instead of retaining partial structure and useful
+  diagnostics around the damaged source.
+- Fixed compiler and language-service failures presenting as a successful
+  empty preview or analysis state.
+- Fixed several jsdom geometry assumptions, dictionary end-to-end selectors,
+  stale test mocks, lint regressions, and bundle-budget expectations uncovered
+  by the expanded editor test suite.
+- Fixed command palette searches beginning with `/` so registered tool
+  aliases resolve directly.
+- Replaced publication year number steppers with validated year selectors,
+  including safe fallbacks and prevention of invalid ranges.
+- Fixed tool navigation while a project is open by preserving the requested
+  destination until the project closes.
+- Fixed bundled deadline timestamps that displayed as raw seed metadata
+  instead of readable dates.
+- Fixed crowded tool headers on narrow screens by hiding redundant
+  subtitles when space is limited.
 - Fixed the template-gallery tour step drawing its pointer arrow into empty
   space when the window is wide enough that the tooltip sits beside the
   dialog instead of above it.
@@ -18,6 +267,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The Diagram tour's "Compiled preview" step now compiles the starter
   drawing so the preview pane shows a real render instead of an empty
   placeholder.
+
+### Security
+
+- Pinned every supported TexLab and Tinymist archive, executable, target,
+  runtime argument, initialization option, byte length, and SHA-256 digest in
+  one fail-closed manifest shared by development, CI, packaging, and runtime.
+- Hardened language-server downloads and extraction against unsafe redirects,
+  unapproved hosts, path traversal, absolute paths, links, reparse points,
+  duplicate archive entries, unexpected members, tampered files, and
+  time-of-check/time-of-use path replacement.
+- Installed verified native services atomically into versioned app-local-data
+  paths, with containment and file-type checks repeated before launch and
+  repair of corrupt regular-file installs.
+- Disabled native language-server build and PDF export side effects during
+  document analysis, bounded concurrent sessions and message sizes, and tied
+  process ownership to the active project lifecycle.
+- Kept TexLab out of application bundles pending explicit redistribution
+  approval; setup requires informed user consent and identifies the pinned
+  version, license, source, purpose, and local destination.
+- Bundled Tinymist only as its immutable, checksum-pinned upstream archive and
+  included the corresponding Apache 2.0 license and attribution in each
+  supported release.
+- Kept grammar and spelling local and offline. Harper, Hunspell, dictionaries,
+  ignored words, and document prose run in application workers without sending
+  manuscript text to a remote proofreading service.
+- Added CSP-compatible WebAssembly loading for local proofreaders and hardened
+  PDF link and action handling so unsupported or unsafe targets cannot execute
+  through the integrated viewer.
 
 ## [0.2.8] - 2026-07-26
 

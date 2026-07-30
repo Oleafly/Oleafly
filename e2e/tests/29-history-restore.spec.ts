@@ -1,6 +1,7 @@
 import { test, expect } from "../fixtures";
 import {
   ensureGithubConnected,
+  fillCommandPalette,
   openProject,
   openRailTab,
   pressGlobal,
@@ -62,7 +63,7 @@ async function commitAll(page: import("../helpers").Page, message: string) {
 
 async function openHistory(page: import("../helpers").Page) {
   await pressGlobal(page, "k", { meta: true });
-  await page.fill("[cmdk-input]", "history");
+  await fillCommandPalette(page, "history");
   await page.press("[cmdk-input]", "Enter");
   await page.waitForFunction(
     `Array.from(document.querySelectorAll('h2')).some(h => h.textContent.trim() === 'Version History')`,

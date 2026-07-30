@@ -7,6 +7,11 @@ import { assertNoProductionDevHookTokens } from "./scripts/production-hook-audit
 // Tauri expects a fixed port; if that's not available it will attempt the next one.
 const host = process.env.TAURI_DEV_HOST;
 
+// Keep only comments that carry distribution/licensing instructions. Terser
+// receives the comment body without `/*`/`//`, so a leading `!` covers `/*!`.
+export const LEGAL_COMMENT_PATTERN =
+  /^!|@preserve|@license|@cc_on/i;
+
 const preserveWorkerExports = (): Plugin => ({
   name: "preserve-worker-exports",
   options: (options) => ({ ...options, preserveEntrySignatures: "strict" }),
@@ -45,6 +50,11 @@ export default defineConfig(async () => ({
       // real PDF in-browser. Pre-bundle its fixture generator so the first E2E
       // navigation cannot trigger a dependency-optimizer reload mid-selection.
       "pdf-lib",
+      // Proofreading starts when the first prose project opens. Pre-bundle the
+      // Hunspell Emscripten wrapper at dev-server startup so that first use
+      // cannot invalidate Vite's dependency graph and blank/reload the Tauri
+      // WebView in the middle of project startup.
+      "hunspell-asm",
     ],
   },
   // pdf.js v6 loads its worker as an ES module; build ours the same way so the
@@ -52,6 +62,18 @@ export default defineConfig(async () => ({
   worker: {
     format: "es" as const,
     plugins: () => [preserveWorkerExports()],
+  },
+  build: {
+    minify: "terser" as const,
+    terserOptions: {
+      ecma: 2020 as const,
+      compress: {
+        passes: 4,
+      },
+      format: {
+        comments: LEGAL_COMMENT_PATTERN,
+      },
+    },
   },
   resolve: {
     alias: {

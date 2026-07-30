@@ -254,7 +254,6 @@ function RawLogSection({ log, defaultOpen }: { log: string; defaultOpen: boolean
 export function LogPane() {
   const log = useCompileStore((s) => s.log);
   const errors = useCompileStore((s) => s.errors);
-  const endRef = useRef<HTMLDivElement>(null);
   const scrollBoxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -270,7 +269,8 @@ export function LogPane() {
 
   useEffect(() => {
     void log;
-    endRef.current?.scrollIntoView({ block: "end" });
+    const scrollBox = scrollBoxRef.current;
+    if (scrollBox) scrollBox.scrollTop = scrollBox.scrollHeight;
   }, [log]);
 
   const scrollToTop = () => {
@@ -301,7 +301,7 @@ export function LogPane() {
             />
           )}
         </div>
-        <div ref={endRef} />
+        <div />
       </div>
       {log && (
         <div className="absolute bottom-3 right-3 flex flex-col gap-1">

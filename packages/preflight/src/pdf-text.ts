@@ -49,6 +49,19 @@ function needsGeometrySpace(
   return gap >= Math.max(0.75, referenceHeight * 0.12);
 }
 
+function removeHorizontalSpaceBeforeLineBreaks(source: string): string {
+  const output: string[] = [];
+  for (const character of source) {
+    if (character === "\n") {
+      while (output.at(-1) === " " || output.at(-1) === "\t") {
+        output.pop();
+      }
+    }
+    output.push(character);
+  }
+  return output.join("");
+}
+
 /**
  * Reconstruct reader text in the content-stream order supplied by PDF.js.
  * Geometry is used only to add missing separators, never to sort runs, because
@@ -97,6 +110,6 @@ export function reconstructPdfPageText(values: readonly unknown[]): Reconstructe
 
   return {
     items,
-    text: chunks.join("").replace(/[ \t]+\n/gu, "\n").trim(),
+    text: removeHorizontalSpaceBeforeLineBreaks(chunks.join("")).trim(),
   };
 }

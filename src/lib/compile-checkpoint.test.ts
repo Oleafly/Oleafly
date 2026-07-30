@@ -37,6 +37,8 @@ describe("compile success checkpoint contract", () => {
       producerId: "main-window",
       outputRevision: 7,
       outputId: fingerprintCompileOutput(new Uint8Array([7, 8])),
+      projectRevision: 0,
+      requestGeneration: 0,
       completedAt: 207,
     });
   });
