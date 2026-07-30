@@ -34,30 +34,20 @@ displays.
 
 ## One-time maintainer setup (required)
 
-The signing **key pair** was generated already. The **public** key is committed
-in `src-tauri/tauri.conf.json` (`plugins.updater.pubkey`). The **private** key is
-NOT in the repo. It lives at:
+The updater public key is committed in `src-tauri/tauri.conf.json`
+(`plugins.updater.pubkey`). The matching private key must remain in a secure
+password manager or CI secret store. It must never be committed, copied into
+this repository, or pasted into an issue, chat, shell history, or log.
 
-    ~/.oleafly-keys/oleafly-updater.key      (private, keep secret, 0600)
-    ~/.oleafly-keys/oleafly-updater.key.pub  (public, already in the repo)
+Configure the following GitHub Actions secrets through the repository's secret
+management UI (or an equivalent approved secret-management workflow):
 
-Add the private key to the repo's **GitHub Actions secrets** so the release
-workflow can sign. From a machine with `gh` authenticated to the repo:
+- `TAURI_SIGNING_PRIVATE_KEY`: the complete private signing key value.
+- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`: the key password, if one is configured.
 
-```sh
-# The private key contents (this file is the whole secret):
-gh secret set TAURI_SIGNING_PRIVATE_KEY < ~/.oleafly-keys/oleafly-updater.key
-
-# The key was generated WITHOUT a password, so set the password secret to empty:
-printf '' | gh secret set TAURI_SIGNING_PRIVATE_KEY_PASSWORD
-```
-
-Or via the web UI: **Settings → Secrets and variables → Actions → New
-repository secret**, names `TAURI_SIGNING_PRIVATE_KEY` (paste the full file
-contents) and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (leave empty).
-
-That's it. `.github/workflows/release.yml` already passes both to
-`tauri-apps/tauri-action`.
+The release workflow passes these values to `tauri-apps/tauri-action`. Do not
+document local key paths or secret values. Keep a documented owner and rotation
+procedure in the team's private operations runbook.
 
 ## Cutting a release
 
@@ -92,13 +82,13 @@ up important projects before changing application versions.
 ## Security notes
 
 - **Never commit the private key** or paste it anywhere public. If it leaks,
-  generate a new pair (`pnpm tauri signer generate -w <path>`), replace the
-  `pubkey` in `tauri.conf.json`, and update the `TAURI_SIGNING_PRIVATE_KEY`
-  secret. Existing installs can only auto-update to releases signed by the key
-  matching their embedded public key, so a rotation requires users on the old
-  key to update once manually.
-- The key currently has **no password**. For extra defense-in-depth you can
-  regenerate it with `-p <password>` and set `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
-  to that value.
+  generate a new pair (`pnpm tauri signer generate -w <secure-path>`), replace
+  the `pubkey` in `tauri.conf.json`, and update the CI secrets. Existing installs
+  can only auto-update to releases signed by the key matching their embedded
+  public key, so a rotation requires users on the old key to update once
+  manually.
+- Keep the private key protected by the organization's approved secret-storage
+  and access-control policy. The repository documents the secret names only,
+  never their values or local storage paths.
 - macOS/Windows **code signing** (Gatekeeper/SmartScreen) is a separate concern
   from updater signing and is still TODO.

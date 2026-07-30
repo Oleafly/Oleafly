@@ -28,6 +28,17 @@ import {
 } from "./pdfPageGeometry";
 import { calibratePdfTextLayerWidths } from "./pdfTextLayerGeometry";
 import { registerPdfTextSelection } from "./pdfTextSelection";
+import {
+  normalizePdfOutline,
+  type PdfOutlineItem,
+  type PdfOutlineTarget,
+} from "./pdfOutline";
+import {
+  searchPdfDocument,
+  type PdfSearchMatch,
+  type PdfSearchProgress,
+} from "./pdfSearch";
+import { safePdfExternalUrl } from "./pdfSecurity";
 import { closestMatchingElement, wordAtHorizontalPosition, wordInText } from "./textHit";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
@@ -44,6 +55,83 @@ const TEXT_CONTENT_PARAMS = {
   includeMarkedContent: true,
   disableNormalization: true,
 } as const;
+
+const PDF_SEARCH_PROGRESS_INTERVAL_MS = 100;
+
+function normalizeRotation(value: number): 0 | 90 | 180 | 270 {
+  return (((Math.round(value / 90) * 90) % 360 + 360) % 360) as
+    | 0
+    | 90
+    | 180
+    | 270;
+}
+
+class PdfPasswordRequiredError extends Error {
+  readonly incorrect: boolean;
+
+  constructor(incorrect: boolean) {
+    super(
+      incorrect
+        ? "The PDF password was not accepted."
+        : "This PDF is password protected.",
+    );
+    this.name = "PdfPasswordRequiredError";
+    this.incorrect = incorrect;
+  }
+}
+
+function pdfLoadFailure(
+  error: unknown,
+): {
+  status: Extract<
+    PdfLoadStatus,
+    | "password_required"
+    | "invalid"
+    | "unavailable"
+    | "error"
+  >;
+  message: string;
+} {
+  if (error instanceof PdfPasswordRequiredError) {
+    return {
+      status: "password_required",
+      message: error.message,
+    };
+  }
+  const name =
+    error instanceof Error
+      ? error.name
+      : typeof error === "object" && error && "name" in error
+        ? String(error.name)
+        : "";
+  if (
+    name === "InvalidPDFException" ||
+    name === "FormatError" ||
+    /invalid pdf|corrupt|bad xref|missing pdf header/iu.test(String(error))
+  ) {
+    return {
+      status: "invalid",
+      message:
+        "The compiled output is not a valid PDF. Recompile or inspect the compile log.",
+    };
+  }
+  if (
+    name === "MissingPDFException" ||
+    name === "UnexpectedResponseException" ||
+    /worker setup|main-thread pdf worker|failed to fetch/iu.test(String(error))
+  ) {
+    return {
+      status: "unavailable",
+      message:
+        "The PDF renderer is unavailable in this window. Retry after restoring the window or restarting the app.",
+    };
+  }
+  return {
+    status: "error",
+    message:
+      "The PDF could not be loaded. Recompile the current revision and try again.",
+  };
+}
 
 async function forceMainThreadWorker(): Promise<void> {
   if (!mainThreadWorkerInstall) {
@@ -214,6 +302,17 @@ const PENDING_PAGE_VIEWPORT = {
   rotation: 0,
 } as const;
 
+function pendingPageViewport(rotation: PdfRotation) {
+  return rotation === 90 || rotation === 270
+    ? {
+        ...PENDING_PAGE_VIEWPORT,
+        width: PENDING_PAGE_VIEWPORT.height,
+        height: PENDING_PAGE_VIEWPORT.width,
+        rotation,
+      }
+    : { ...PENDING_PAGE_VIEWPORT, rotation };
+}
+
 interface RenderState {
   renderScale: number;
   tasks: pdfjsLib.RenderTask[];
@@ -225,9 +324,16 @@ interface RenderState {
   page: pdfjsLib.PDFPageProxy | null;
   removeTextSelection: (() => void) | null;
   nodes: HTMLElement[];
+  searchNodes: HTMLElement[];
+}
+
+function clearPdfSearchHighlights(state: RenderState): void {
+  for (const node of state.searchNodes) node.remove();
+  state.searchNodes.length = 0;
 }
 
 function cancelRenderState(state: RenderState): void {
+  clearPdfSearchHighlights(state);
   state.removeTextSelection?.();
   state.removeTextSelection = null;
   try {
@@ -262,6 +368,80 @@ function cancelRenderState(state: RenderState): void {
   }
   state.page = null;
   releasePdfRenderNodes(state.nodes);
+}
+
+function firstTextNode(element: HTMLElement): Text | null {
+  const walker = document.createTreeWalker(
+    element,
+    NodeFilter.SHOW_TEXT,
+  );
+  const node = walker.nextNode();
+  return node instanceof Text ? node : null;
+}
+
+function paintPdfSearchHighlights(
+  wrap: HTMLElement,
+  state: RenderState,
+  textDivs: HTMLElement[],
+  matches: Array<{ match: PdfSearchMatch; index: number }>,
+  activeIndex: number,
+): void {
+  clearPdfSearchHighlights(state);
+  if (!matches.length) return;
+  const wrapRect = wrap.getBoundingClientRect();
+  for (const { match, index } of matches) {
+    const first = textDivs[match.startItem];
+    const last = textDivs[match.endItem];
+    if (!first || !last) continue;
+    const firstNode = firstTextNode(first);
+    const lastNode = firstTextNode(last);
+    if (!firstNode || !lastNode) continue;
+    const range = document.createRange();
+    try {
+      range.setStart(
+        firstNode,
+        Math.max(0, Math.min(firstNode.length, match.startOffset)),
+      );
+      range.setEnd(
+        lastNode,
+        Math.max(0, Math.min(lastNode.length, match.endOffset)),
+      );
+      for (const rect of range.getClientRects()) {
+        if (rect.width <= 0 || rect.height <= 0) continue;
+        const marker = document.createElement("div");
+        marker.className =
+          index === activeIndex
+            ? "pdf-search-highlight pdf-search-highlight-current"
+            : "pdf-search-highlight";
+        marker.setAttribute("aria-hidden", "true");
+        Object.assign(marker.style, {
+          position: "absolute",
+          left: `${rect.left - wrapRect.left}px`,
+          top: `${rect.top - wrapRect.top}px`,
+          width: `${rect.width}px`,
+          height: `${rect.height}px`,
+          pointerEvents: "none",
+          zIndex: "2",
+          borderRadius: "2px",
+          background:
+            index === activeIndex
+              ? "rgba(245, 158, 11, 0.56)"
+              : "rgba(250, 204, 21, 0.32)",
+          boxShadow:
+            index === activeIndex
+              ? "0 0 0 1px rgba(180, 83, 9, 0.82)"
+              : "none",
+        } as Partial<CSSStyleDeclaration>);
+        wrap.appendChild(marker);
+        state.searchNodes.push(marker);
+      }
+    } catch {
+      // A virtualized text layer may be released while range geometry is
+      // resolving. The next page render/search navigation repaints it.
+    } finally {
+      range.detach();
+    }
+  }
 }
 
 export function prioritizePdfPages(
@@ -381,6 +561,7 @@ export interface PdfLinkScrollRequest {
   destArray?: unknown[];
   allowNegativeOffset?: boolean;
   ignoreDestinationZoom?: boolean;
+  behavior?: ScrollBehavior;
 }
 
 export interface PdfLinkViewerAdapter {
@@ -550,14 +731,62 @@ export function calculatePdfFitScale({
 }
 
 export type PdfLayout = "single" | "double";
+export type PdfRotation = 0 | 90 | 180 | 270;
+
+export type PdfLoadStatus =
+  | "idle"
+  | "loading"
+  | "ready"
+  | "empty"
+  | "password_required"
+  | "invalid"
+  | "unavailable"
+  | "error";
+
+export interface PdfLoadState {
+  status: PdfLoadStatus;
+  documentIdentity: string;
+  message?: string;
+  progress?: number;
+}
+
+export type PdfSearchStatus =
+  | "idle"
+  | "searching"
+  | "success"
+  | "error";
+
+export interface PdfSearchState {
+  status: PdfSearchStatus;
+  query: string;
+  current: number;
+  total: number;
+  scannedPages: number;
+  totalPages: number;
+  message?: string;
+}
+
+export interface PdfOutlineState {
+  status: "idle" | "loading" | "success" | "unavailable" | "error";
+  items: PdfOutlineItem[];
+  message?: string;
+}
 
 export interface PdfViewerProps {
   data: Uint8Array | null;
+  /** Exact compile/PDF-load identity; never use a filename as this value. */
+  documentIdentity?: string;
   scale: number;
   onInverse?: (page: number, x: number, y: number, word?: string) => void;
   onPageChange?: (current: number, total: number) => void;
   layout?: PdfLayout;
   onOpenLink?: (url: string) => void;
+  onLoadStateChange?: (state: PdfLoadState) => void;
+  searchQuery?: string;
+  onSearchStateChange?: (state: PdfSearchState) => void;
+  onOutlineStateChange?: (state: PdfOutlineState) => void;
+  password?: string;
+  rotation?: PdfRotation;
   // true (default): the loader probes the text pipe and recovers a wedged
   // worker. false: skip the probe so a legitimately text-less page (image/figure
   // projects) doesn't force the session onto the main-thread worker.
@@ -567,10 +796,37 @@ export interface PdfViewerProps {
 export interface PdfViewerHandle {
   gotoPage: (n: number) => void;
   getFitScale: (mode: "width" | "height") => number | null;
+  findNext: () => void;
+  findPrevious: () => void;
+  activateOutlineItem: (id: string) => void;
+}
+
+/** Honours the OS "reduce motion" setting for preview scrolling. */
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
 }
 
 export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function PdfViewer(
-  { data, scale, onInverse, onPageChange, layout = "single", onOpenLink, expectText = true },
+  {
+    data,
+    documentIdentity = "unidentified-pdf",
+    scale,
+    onInverse,
+    onPageChange,
+    layout = "single",
+    onOpenLink,
+    onLoadStateChange,
+    searchQuery = "",
+    onSearchStateChange,
+    onOutlineStateChange,
+    password,
+    rotation = 0,
+    expectText = true,
+  },
   ref
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -580,6 +836,18 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
   onPageChangeRef.current = onPageChange;
   const onOpenLinkRef = useRef(onOpenLink);
   onOpenLinkRef.current = onOpenLink;
+  const onLoadStateChangeRef = useRef(onLoadStateChange);
+  onLoadStateChangeRef.current = onLoadStateChange;
+  const onSearchStateChangeRef = useRef(onSearchStateChange);
+  onSearchStateChangeRef.current = onSearchStateChange;
+  const onOutlineStateChangeRef = useRef(onOutlineStateChange);
+  onOutlineStateChangeRef.current = onOutlineStateChange;
+  const documentIdentityRef = useRef(documentIdentity);
+  documentIdentityRef.current = documentIdentity;
+  const searchQueryRef = useRef(searchQuery);
+  searchQueryRef.current = searchQuery;
+  const rotationRef = useRef<PdfRotation>(normalizeRotation(rotation));
+  rotationRef.current = normalizeRotation(rotation);
   // Last page we reported, so scroll churn doesn't spam setState.
   const currentPageRef = useRef(1);
 
@@ -601,6 +869,24 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
   // Exact scale-1 viewports retain mixed media boxes, rotation and UserUnit.
   const pageViewportsRef = useRef<Map<number, PdfPageViewport>>(new Map());
   const geometryPromisesRef = useRef<Map<number, Promise<PdfPageViewport>>>(new Map());
+  // Render states whose bookkeeping has been dropped but whose canvases are
+  // still on screen. Releasing a state removes its nodes, so doing it when a
+  // reload *starts* empties the pane for the whole parse; these are held until
+  // the replacement layout is ready to swap in, or until the load is abandoned
+  // with no successor. Nothing else may read them: they are already detached
+  // from `renderedRef`.
+  const pendingReleaseRef = useRef<RenderState[]>([]);
+  const releasePendingRenders = useCallback(() => {
+    const pending = pendingReleaseRef.current;
+    pendingReleaseRef.current = [];
+    for (const state of pending) cancelRenderState(state);
+  }, []);
+  const retirePendingRenders = useCallback(() => {
+    for (const state of renderedRef.current.values()) {
+      pendingReleaseRef.current.push(state);
+    }
+    renderedRef.current.clear();
+  }, []);
   const geometryScanRef = useRef<PdfPageGeometryScan | null>(null);
   const documentAbortRef = useRef<AbortController | null>(null);
   // Debounce for crisp re-rasterization: zoom resizes instantly (cheap) and only
@@ -608,6 +894,18 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
   const rasterTimerRef = useRef<number | null>(null);
   const placeholderResizeFrameRef = useRef<number | null>(null);
   const textContentRef = useRef<Map<number, PageTextContent>>(new Map());
+  const searchAbortRef = useRef<AbortController | null>(null);
+  const searchSequenceRef = useRef(0);
+  const searchMatchesRef = useRef<PdfSearchMatch[]>([]);
+  const searchMatchesByPageRef = useRef<
+    Map<number, Array<{ match: PdfSearchMatch; index: number }>>
+  >(new Map());
+  const searchActiveIndexRef = useRef(-1);
+  const outlineSequenceRef = useRef(0);
+  const outlineTargetsRef = useRef<Map<string, PdfOutlineTarget>>(
+    new Map(),
+  );
+  const outlineItemsRef = useRef<PdfOutlineItem[]>([]);
 
   // pdf.js' real PDFLinkService is bound to our lightweight viewer adapter once
   // the document opens. This keeps internal destinations, named actions, OCG
@@ -685,6 +983,8 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         doc,
         pageNumber,
         lifecycle.signal,
+        undefined,
+        rotationRef.current,
       )
         .then((viewport) => {
           if (
@@ -810,6 +1110,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       page: null,
       removeTextSelection: null,
       nodes: [],
+      searchNodes: [],
     };
     renderedRef.current.set(pageNo, state);
     const isCurrent = () =>
@@ -827,10 +1128,20 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         return;
       }
 
-      const viewport = page.getViewport({ scale: renderScale });
+      const viewport = page.getViewport({
+        scale: renderScale,
+        rotation: normalizeRotation(
+          page.rotate + rotationRef.current,
+        ),
+      });
       const dpr = window.devicePixelRatio || 1;
       const geometry = applyPdfLayerViewport(wrap, viewport, dpr);
-      const baseViewport = page.getViewport({ scale: 1 });
+      const baseViewport = page.getViewport({
+        scale: 1,
+        rotation: normalizeRotation(
+          page.rotate + rotationRef.current,
+        ),
+      });
       applyExactPageViewport(pageNo, baseViewport);
       wrap.dataset.pdfRasterScale = String(renderScale);
       wrap.dataset.pdfCanvasScaling = geometry.restrictedScaling
@@ -955,6 +1266,13 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
           pageNo,
           state.renderedTextLayer,
         );
+        paintPdfSearchHighlights(
+          wrap,
+          state,
+          textLayer.textDivs,
+          searchMatchesByPageRef.current.get(pageNo) ?? [],
+          searchActiveIndexRef.current,
+        );
       } catch {
         state.textLayer = null;
         state.renderedTextLayer = null;
@@ -1023,14 +1341,23 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         if (!isCurrent()) return;
         annotDiv.querySelectorAll<HTMLAnchorElement>("a[href]").forEach((a) => {
           const href = a.getAttribute("href") ?? "";
-          if (/^(https?:|mailto:|tel:)/i.test(href)) {
-            a.addEventListener("click", (e) => {
-              const open = onOpenLinkRef.current;
-              if (!open) return; // no injected opener: keep the anchor's default
-              e.preventDefault();
-              open(href);
-            });
+          if (href.startsWith("#")) return;
+          const safeUrl = safePdfExternalUrl(href);
+          if (!safeUrl) {
+            a.removeAttribute("href");
+            a.setAttribute("aria-disabled", "true");
+            a.setAttribute(
+              "title",
+              "This PDF link uses a blocked URL scheme.",
+            );
+            return;
           }
+          a.href = safeUrl;
+          a.rel = "noopener noreferrer nofollow";
+          a.addEventListener("click", (event) => {
+            event.preventDefault();
+            onOpenLinkRef.current?.(safeUrl);
+          });
         });
       } catch {
         /* annotation rendering is a non-fatal enhancement */
@@ -1039,7 +1366,15 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       if (!String(err).includes("RenderingCancelled")) {
         const container = containerRef.current;
         if (container && isCurrent() && renderedRef.current.size === 1) {
-          container.textContent = `Failed to render PDF: ${String(err)}`;
+          container.dataset.pdfRenderError = String(err);
+          container.textContent =
+            "The PDF opened, but its first page could not be rendered.";
+          onLoadStateChangeRef.current?.({
+            status: "error",
+            documentIdentity: documentIdentityRef.current,
+            message:
+              "The PDF opened, but its first page could not be rendered.",
+          });
         }
       }
       if (renderedRef.current.get(pageNo) === state) {
@@ -1122,8 +1457,16 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       currentPageRef.current = pageNumber;
       onPageChangeRef.current?.(pageNumber, doc.numPages);
       void renderPage(pageNumber, scaleRef.current);
-      if (typeof wrap.scrollIntoView === "function") {
-        wrap.scrollIntoView({ block: "start" });
+      // Scroll this pane only. `scrollIntoView` walks every scrollable ancestor,
+      // which drags the whole app window when the preview sits inside one.
+      const pageScroller = containerRef.current?.parentElement;
+      if (pageScroller) {
+        pageScroller.scrollTo({
+          top: Math.max(0, wrap.offsetTop),
+          behavior:
+            request.behavior ??
+            (prefersReducedMotion() ? "auto" : "smooth"),
+        });
       }
 
       // Honor the vertical component of common PDF destinations after exact
@@ -1162,6 +1505,256 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     [ensurePageGeometry, renderPage],
   );
 
+  const repaintSearchHighlights = useCallback(() => {
+    for (const [pageNumber, state] of renderedRef.current) {
+      const wrap = wrapsRef.current.get(pageNumber);
+      const textDivs = state.textLayer?.textDivs;
+      if (!wrap || !textDivs) {
+        clearPdfSearchHighlights(state);
+        continue;
+      }
+      paintPdfSearchHighlights(
+        wrap,
+        state,
+        textDivs,
+        searchMatchesByPageRef.current.get(pageNumber) ?? [],
+        searchActiveIndexRef.current,
+      );
+    }
+  }, []);
+
+  const publishSearchState = useCallback(
+    (
+      status: PdfSearchStatus,
+      progress?: Partial<PdfSearchProgress>,
+      message?: string,
+    ) => {
+      const matches = searchMatchesRef.current;
+      const active = searchActiveIndexRef.current;
+      onSearchStateChangeRef.current?.({
+        status,
+        query: searchQueryRef.current.trim(),
+        current: active >= 0 && matches.length ? active + 1 : 0,
+        total: matches.length,
+        scannedPages: progress?.scannedPages ?? 0,
+        totalPages: progress?.totalPages ?? docRef.current?.numPages ?? 0,
+        ...(message ? { message } : {}),
+      });
+    },
+    [],
+  );
+
+  const goToSearchIndex = useCallback(
+    (requestedIndex: number) => {
+      const matches = searchMatchesRef.current;
+      if (!matches.length) {
+        searchActiveIndexRef.current = -1;
+        publishSearchState("success", {
+          scannedPages: docRef.current?.numPages ?? 0,
+          totalPages: docRef.current?.numPages ?? 0,
+        });
+        return;
+      }
+      const index =
+        ((requestedIndex % matches.length) + matches.length) %
+        matches.length;
+      searchActiveIndexRef.current = index;
+      repaintSearchHighlights();
+      const match = matches[index];
+      scrollPageIntoView({ pageNumber: match.pageNumber });
+      publishSearchState("success", {
+        scannedPages: docRef.current?.numPages ?? 0,
+        totalPages: docRef.current?.numPages ?? 0,
+      });
+    },
+    [
+      publishSearchState,
+      repaintSearchHighlights,
+      scrollPageIntoView,
+    ],
+  );
+
+  const runSearch = useCallback(
+    async (requestedQuery: string) => {
+      const query = requestedQuery.trim();
+      searchAbortRef.current?.abort("A newer PDF search started");
+      const controller = new AbortController();
+      searchAbortRef.current = controller;
+      const sequence = ++searchSequenceRef.current;
+      const documentSequence = loadSeqRef.current;
+      const document = docRef.current;
+      searchMatchesRef.current = [];
+      searchMatchesByPageRef.current.clear();
+      searchActiveIndexRef.current = -1;
+      repaintSearchHighlights();
+
+      if (!query) {
+        publishSearchState("idle");
+        return;
+      }
+      if (!document) {
+        publishSearchState("searching");
+        return;
+      }
+
+      let lastProgressAt = 0;
+      publishSearchState("searching", {
+        scannedPages: 0,
+        totalPages: document.numPages,
+      });
+      try {
+        const matches = await searchPdfDocument(
+          document,
+          query,
+          controller.signal,
+          (progress) => {
+            if (
+              controller.signal.aborted ||
+              sequence !== searchSequenceRef.current ||
+              documentSequence !== loadSeqRef.current ||
+              docRef.current !== document ||
+              searchQueryRef.current.trim() !== query
+            ) {
+              return;
+            }
+            const now = performance.now();
+            if (
+              progress.scannedPages !== progress.totalPages &&
+              now - lastProgressAt < PDF_SEARCH_PROGRESS_INTERVAL_MS
+            ) {
+              return;
+            }
+            lastProgressAt = now;
+            publishSearchState("searching", progress);
+          },
+        );
+        if (
+          controller.signal.aborted ||
+          sequence !== searchSequenceRef.current ||
+          documentSequence !== loadSeqRef.current ||
+          docRef.current !== document ||
+          searchQueryRef.current.trim() !== query
+        ) {
+          return;
+        }
+
+        searchMatchesRef.current = matches;
+        const byPage = new Map<
+          number,
+          Array<{ match: PdfSearchMatch; index: number }>
+        >();
+        matches.forEach((match, index) => {
+          const pageMatches = byPage.get(match.pageNumber) ?? [];
+          pageMatches.push({ match, index });
+          byPage.set(match.pageNumber, pageMatches);
+        });
+        searchMatchesByPageRef.current = byPage;
+        searchActiveIndexRef.current = matches.length ? 0 : -1;
+        repaintSearchHighlights();
+        publishSearchState("success", {
+          scannedPages: document.numPages,
+          totalPages: document.numPages,
+        });
+        if (matches.length) {
+          scrollPageIntoView({ pageNumber: matches[0].pageNumber });
+        }
+      } catch (error) {
+        if (
+          controller.signal.aborted ||
+          sequence !== searchSequenceRef.current ||
+          documentSequence !== loadSeqRef.current
+        ) {
+          return;
+        }
+        publishSearchState(
+          "error",
+          {
+            scannedPages: 0,
+            totalPages: document.numPages,
+          },
+          "Search could not read every page. Retry after reloading the PDF.",
+        );
+      }
+    },
+    [
+      publishSearchState,
+      repaintSearchHighlights,
+      scrollPageIntoView,
+    ],
+  );
+
+  const loadOutline = useCallback(
+    async (
+      document: pdfjsLib.PDFDocumentProxy,
+      documentSequence: number,
+    ) => {
+      const sequence = ++outlineSequenceRef.current;
+      outlineTargetsRef.current.clear();
+      outlineItemsRef.current = [];
+      onOutlineStateChangeRef.current?.({
+        status: "loading",
+        items: [],
+      });
+      try {
+        const normalized = normalizePdfOutline(
+          await document.getOutline(),
+        );
+        if (
+          sequence !== outlineSequenceRef.current ||
+          documentSequence !== loadSeqRef.current ||
+          docRef.current !== document
+        ) {
+          return;
+        }
+        outlineTargetsRef.current = normalized.targets;
+        outlineItemsRef.current = normalized.items;
+        onOutlineStateChangeRef.current?.({
+          status: "success",
+          items: normalized.items,
+          ...(normalized.items.length
+            ? {}
+            : { message: "This PDF does not contain a document outline." }),
+        });
+      } catch {
+        if (
+          sequence !== outlineSequenceRef.current ||
+          documentSequence !== loadSeqRef.current ||
+          docRef.current !== document
+        ) {
+          return;
+        }
+        outlineTargetsRef.current.clear();
+        outlineItemsRef.current = [];
+        onOutlineStateChangeRef.current?.({
+          status: "error",
+          items: [],
+          message: "The PDF outline could not be loaded.",
+        });
+      }
+    },
+    [],
+  );
+
+  const activateOutlineItem = useCallback((id: string) => {
+    const target = outlineTargetsRef.current.get(id);
+    if (!target) return;
+    if (target.externalUrl) {
+      onOpenLinkRef.current?.(target.externalUrl);
+      return;
+    }
+    if (target.destination) {
+      void linkServiceRef.current
+        ?.goToDestination(target.destination)
+        .catch(() => {
+          onOutlineStateChangeRef.current?.({
+            status: "error",
+            items: outlineItemsRef.current,
+            message: "That outline destination is unavailable.",
+          });
+        });
+    }
+  }, []);
+
   // Scroll the viewer to a page (prev/next/jump from the toolbar), rendering it
   // on demand since virtualization may not have rasterized it yet.
   useImperativeHandle(
@@ -1171,7 +1764,10 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         const doc = docRef.current;
         if (!doc) return;
         const clamped = Math.max(1, Math.min(doc.numPages, Math.floor(n)));
-        scrollPageIntoView({ pageNumber: clamped });
+        // Toolbar page navigation can be repeated faster than a smooth-scroll
+        // animation completes. Jump atomically so a previous animation cannot
+        // report an intermediate page and make rapid next/previous skip.
+        scrollPageIntoView({ pageNumber: clamped, behavior: "auto" });
       },
       getFitScale: (mode) => {
         const viewport = containerRef.current?.parentElement;
@@ -1200,8 +1796,19 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         }
         return null;
       },
+      findNext: () =>
+        goToSearchIndex(searchActiveIndexRef.current + 1),
+      findPrevious: () =>
+        goToSearchIndex(searchActiveIndexRef.current - 1),
+      activateOutlineItem,
     }),
-    [ensurePageGeometry, layout, scrollPageIntoView]
+    [
+      activateOutlineItem,
+      ensurePageGeometry,
+      goToSearchIndex,
+      layout,
+      scrollPageIntoView,
+    ]
   );
 
   // Build the placeholder layout for every page and start observing them.
@@ -1215,12 +1822,16 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         placeholderResizeFrameRef.current = null;
       }
 
-      for (const state of renderedRef.current.values()) cancelRenderState(state);
+      observerRef.current?.disconnect();
+      observerRef.current = null;
       geometryScanRef.current?.abort("layout rebuilt");
       geometryScanRef.current = null;
-      container.innerHTML = "";
+      // The bookkeeping for the outgoing layout is dropped now, but its DOM
+      // stays until the replacement is ready to go in. Releasing or clearing
+      // here instead would blank the pane for the whole of
+      // `ensurePageGeometry` - the flicker a recompile or a rotate used to show.
+      retirePendingRenders();
       wrapsRef.current.clear();
-      renderedRef.current.clear();
       visibleRef.current.clear();
       pageViewportsRef.current.clear();
       geometryPromisesRef.current.clear();
@@ -1233,8 +1844,16 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         seq !== loadSeqRef.current ||
         docRef.current !== doc
       ) {
+        // Superseded: this layout will never be built, so the retained pages
+        // have no swap to wait for. Whoever superseded us owns the pane.
+        releasePendingRenders();
         return;
       }
+
+      // Geometry is in hand, so the replacement can be built: release and drop
+      // the previous pages only now, immediately before the new ones go in.
+      releasePendingRenders();
+      container.innerHTML = "";
 
       const s = scaleRef.current;
       const observer = new IntersectionObserver(
@@ -1270,7 +1889,15 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         wrap.className =
           "relative mx-auto shadow-md ring-1 ring-black/5 rounded-sm overflow-hidden bg-white";
         wrap.dataset.page = String(p);
-        const viewport = p === 1 ? firstViewport : PENDING_PAGE_VIEWPORT;
+        wrap.setAttribute("role", "group");
+        wrap.setAttribute(
+          "aria-label",
+          `PDF page ${p} of ${doc.numPages}`,
+        );
+        const viewport =
+          p === 1
+            ? firstViewport
+            : pendingPageViewport(rotationRef.current);
         wrap.dataset.pdfGeometry = p === 1 ? "exact" : "pending";
         wrap.dataset.pdfRotation = String(viewport.rotation);
         wrap.dataset.pdfUserUnit = String(viewport.userUnit);
@@ -1310,6 +1937,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         const scan = scanPdfPageViewports(doc, {
           signal: lifecycle.signal,
           startPage: 2,
+          rotationOffset: rotationRef.current,
           onViewport: (pageNumber, viewport) => {
             if (
               seq !== loadSeqRef.current ||
@@ -1358,6 +1986,8 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     [
       applyExactPageViewport,
       ensurePageGeometry,
+      releasePendingRenders,
+      retirePendingRenders,
       unrenderPage,
       reconcileVisiblePages,
       ensurePageRendered,
@@ -1368,11 +1998,28 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
   useEffect(() => {
     const container = containerRef.current;
     if (!container || !data) return;
+    const identityAtStart = documentIdentity;
+    delete container.dataset.pdfPageCount;
+    if (data.byteLength === 0) {
+      container.dataset.pdfState = "empty";
+      container.replaceChildren();
+      onLoadStateChangeRef.current?.({
+        status: "empty",
+        documentIdentity: identityAtStart,
+        message: "The compiled PDF is empty.",
+      });
+      return;
+    }
     container.dataset.pdfState = "loading-primary";
     container.dataset.pdfEnvironment = `${document.visibilityState}:${document.hasFocus() ? "focused" : "unfocused"}`;
     delete container.dataset.pdfError;
+    onLoadStateChangeRef.current?.({
+      status: "loading",
+      documentIdentity: identityAtStart,
+      message: "Loading PDF…",
+    });
 
-    loadSeqRef.current++;
+    const loadSequence = ++loadSeqRef.current;
     let loadingTask: pdfjsLib.PDFDocumentLoadingTask | null = null;
     let worker: pdfjsLib.PDFWorker | null = null;
     let cancelled = false;
@@ -1407,7 +2054,47 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
           destroyPdfWorker(nextWorker);
           throw new DOMException("PDF load cancelled", "AbortError");
         }
-        const nextTask = pdfjsLib.getDocument({ data: data.slice(), worker: nextWorker });
+        const nextTask = pdfjsLib.getDocument({
+          data: data.slice(),
+          worker: nextWorker,
+          ...(password ? { password } : {}),
+        });
+        let passwordFailure: PdfPasswordRequiredError | null = null;
+        nextTask.onPassword = (
+          _updatePassword: (nextPassword: string) => void,
+          reason: number,
+        ) => {
+          passwordFailure = new PdfPasswordRequiredError(
+            reason === pdfjsLib.PasswordResponses.INCORRECT_PASSWORD,
+          );
+          void nextTask.destroy().catch(() => {});
+        };
+        nextTask.onProgress = ({
+          loaded,
+          total,
+        }: {
+          loaded: number;
+          total: number;
+        }) => {
+          if (
+            cancelled ||
+            loadAbort.signal.aborted ||
+            loadSequence !== loadSeqRef.current ||
+            documentIdentityRef.current !== identityAtStart
+          ) {
+            return;
+          }
+          const progress =
+            Number.isFinite(total) && total > 0
+              ? Math.max(0, Math.min(1, loaded / total))
+              : undefined;
+          onLoadStateChangeRef.current?.({
+            status: "loading",
+            documentIdentity: identityAtStart,
+            message: "Loading PDF…",
+            ...(progress === undefined ? {} : { progress }),
+          });
+        };
         if (cancelled || loadAbort.signal.aborted) {
           void nextTask.destroy().catch(() => {});
           destroyPdfWorker(nextWorker);
@@ -1418,11 +2105,17 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         // neither half of it.
         worker = nextWorker;
         loadingTask = nextTask;
-        const doc = await withTimeout(
-          nextTask.promise,
-          PDF_WORKER_LOAD_TIMEOUT_MS,
-          "pdf load",
-        );
+        let doc: pdfjsLib.PDFDocumentProxy;
+        try {
+          doc = await withTimeout(
+            nextTask.promise,
+            PDF_WORKER_LOAD_TIMEOUT_MS,
+            "pdf load",
+          );
+        } catch (error) {
+          if (passwordFailure) throw passwordFailure;
+          throw error;
+        }
         if (
           cancelled ||
           loadAbort.signal.aborted ||
@@ -1465,11 +2158,22 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
             if (cancelled) return;
             textContentRef.current.clear();
             destroyLoadingTask();
+            const failure = pdfLoadFailure(e);
+            if (
+              failure.status === "password_required" ||
+              failure.status === "invalid"
+            ) {
+              break;
+            }
           }
         }
         if (cancelled) return;
         if (!doc) throw lastErr;
+        if (doc.numPages < 1) {
+          throw new Error("The PDF contains no pages");
+        }
         docRef.current = doc;
+        container.dataset.pdfPageCount = String(doc.numPages);
         const optionalContentConfigPromise = doc.getOptionalContentConfig({
           intent: "display",
         });
@@ -1505,13 +2209,42 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         linkService.setDocument(doc);
         container.dataset.pdfState = "building-layout";
         await buildLayout(doc);
-        if (cancelled || docRef.current !== doc) return;
+        if (
+          cancelled ||
+          loadAbort.signal.aborted ||
+          loadSequence !== loadSeqRef.current ||
+          docRef.current !== doc ||
+          documentIdentityRef.current !== identityAtStart
+        ) {
+          return;
+        }
         container.dataset.pdfState = "ready";
+        onLoadStateChangeRef.current?.({
+          status: "ready",
+          documentIdentity: identityAtStart,
+        });
+        void loadOutline(doc, loadSequence);
+        void runSearch(searchQueryRef.current);
       } catch (e) {
-        if (!cancelled) {
-          container.dataset.pdfState = "error";
+        if (
+          !cancelled &&
+          !loadAbort.signal.aborted &&
+          loadSequence === loadSeqRef.current &&
+          documentIdentityRef.current === identityAtStart
+        ) {
+          const failure = pdfLoadFailure(e);
+          container.dataset.pdfState = failure.status;
           container.dataset.pdfError = String(e);
-          container.textContent = `Failed to render PDF: ${String(e)}`;
+          const error = document.createElement("div");
+          error.setAttribute("role", "alert");
+          error.style.padding = "24px";
+          error.style.textAlign = "center";
+          error.textContent = failure.message;
+          container.replaceChildren(error);
+          onLoadStateChangeRef.current?.({
+            ...failure,
+            documentIdentity: identityAtStart,
+          });
         }
       }
     })();
@@ -1521,12 +2254,24 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       cancelled = true;
       loadAbort.abort();
       loadSeqRef.current++;
+      searchAbortRef.current?.abort("PDF document closed");
+      searchAbortRef.current = null;
+      searchSequenceRef.current++;
+      searchMatchesRef.current = [];
+      searchMatchesByPageRef.current.clear();
+      searchActiveIndexRef.current = -1;
+      outlineSequenceRef.current++;
+      outlineTargetsRef.current.clear();
+      outlineItemsRef.current = [];
       geometryScanRef.current?.abort("document closed");
       geometryScanRef.current = null;
       observerRef.current?.disconnect();
       observerRef.current = null;
-      for (const state of renderedRef.current.values()) cancelRenderState(state);
-      renderedRef.current.clear();
+      // Retain, don't release: on a recompile or rotate this cleanup runs
+      // immediately before the successor's effect body, and releasing here
+      // would strip the canvases for the whole of the new parse. The deferred
+      // check below releases them when nothing takes over.
+      retirePendingRenders();
       wrapsRef.current.clear();
       visibleRef.current.clear();
       pageViewportsRef.current.clear();
@@ -1551,18 +2296,51 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       if (documentAbortRef.current === loadAbort) {
         documentAbortRef.current = null;
       }
-      if (container) container.innerHTML = "";
+      if (container) {
+        delete container.dataset.pdfPageCount;
+        // Only blank the pane when nothing takes over. A recompile or a rotate
+        // re-runs this effect, and clearing here would show an empty pane for
+        // the whole parse; `buildLayout` swaps the pages instead. A close
+        // (project switch, unmount) has no successor, so the stale pages of a
+        // document the user has navigated away from must not survive: the
+        // successor bumps `loadSeqRef` synchronously in the next effect body,
+        // so a task later tells the two cases apart.
+        const closedAt = loadSeqRef.current;
+        window.setTimeout(() => {
+          if (loadSeqRef.current !== closedAt) return;
+          releasePendingRenders();
+          container.innerHTML = "";
+        }, 0);
+      }
       destroyLoadingTask();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     data,
     buildLayout,
+    documentIdentity,
     expectText,
+    loadOutline,
+    password,
     reconcileVisiblePages,
+    releasePendingRenders,
+    retirePendingRenders,
+    rotation,
+    runSearch,
     scrollPageIntoView,
     unrenderPage,
   ]);
+
+  // Unmount releases synchronously. The deferred path above exists only so a
+  // reload can hand its canvases to the next layout; a torn-down viewer has no
+  // successor, and its pdf.js pages, annotation layers and canvas memory must
+  // go with it. Declared after the load effect so React runs this cleanup last,
+  // once that effect has retired its render states.
+  useEffect(() => () => releasePendingRenders(), [releasePendingRenders]);
+
+  useEffect(() => {
+    void runSearch(searchQuery);
+  }, [runSearch, searchQuery]);
 
   // Re-render on zoom without reloading. Rasterizing pages is expensive, so a
   // pinch that fires dozens of scale changes a second must NOT rasterize on each
@@ -1608,6 +2386,13 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
             textContent,
             viewport,
           );
+          paintPdfSearchHighlights(
+            wrap,
+            state,
+            state.textLayer.textDivs,
+            searchMatchesByPageRef.current.get(pageNo) ?? [],
+            searchActiveIndexRef.current,
+          );
         } catch {
           // Preserve pdf.js' previous calibration if synchronous layout is
           // temporarily unavailable during a browser resize.
@@ -1631,7 +2416,8 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         ([pageNo, wrap]) => {
           if (renderedRef.current.has(pageNo)) return;
           const baseViewport =
-            pageViewportsRef.current.get(pageNo) ?? PENDING_PAGE_VIEWPORT;
+            pageViewportsRef.current.get(pageNo) ??
+            pendingPageViewport(rotationRef.current);
           applyPdfPlaceholderViewport(
             wrap,
             baseViewport,
@@ -1708,6 +2494,8 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     <div
       ref={containerRef}
       data-testid="pdf-renderer"
+      role="document"
+      aria-label="PDF document preview"
       className={
         layout === "double"
           ? // Centered via `w-max mx-auto` (a shrink-to-fit block centered by

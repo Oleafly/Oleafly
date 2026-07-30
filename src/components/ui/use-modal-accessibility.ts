@@ -36,7 +36,7 @@ export function useModalAccessibility<T extends HTMLElement>(
         ? dialog
         : dialog.querySelector<HTMLElement>("[data-modal-initial-focus]")
           ?? dialog.querySelector<HTMLElement>(FOCUSABLE);
-      (initial ?? dialog).focus();
+      (initial ?? dialog).focus({ preventScroll: true });
     });
 
     const onKeyDown = (event: KeyboardEvent) => {
@@ -52,20 +52,20 @@ export function useModalAccessibility<T extends HTMLElement>(
       const focusable = visibleFocusable([...dialog.querySelectorAll<HTMLElement>(FOCUSABLE)]);
       if (focusable.length === 0) {
         event.preventDefault();
-        dialog.focus();
+        dialog.focus({ preventScroll: true });
         return;
       }
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
       if (!dialog.contains(document.activeElement)) {
         event.preventDefault();
-        (event.shiftKey ? last : first).focus();
+        (event.shiftKey ? last : first).focus({ preventScroll: true });
       } else if (event.shiftKey && document.activeElement === first) {
         event.preventDefault();
-        last.focus();
+        last.focus({ preventScroll: true });
       } else if (!event.shiftKey && document.activeElement === last) {
         event.preventDefault();
-        first.focus();
+        first.focus({ preventScroll: true });
       }
     };
     document.addEventListener("keydown", onKeyDown, true);
@@ -74,7 +74,7 @@ export function useModalAccessibility<T extends HTMLElement>(
       document.removeEventListener("keydown", onKeyDown, true);
       const restore = modalCoordinator.remove(modalId);
       if (modalIdRef.current === modalId) modalIdRef.current = null;
-      if (restore) restore.focus();
+      if (restore) restore.focus({ preventScroll: true });
     };
   }, [open]);
 

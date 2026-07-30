@@ -90,6 +90,7 @@ export function TableGeneratorPanel() {
             <thead>
               <tr>
                 {aligns.map((a, c) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: a table column's coordinate is its stable identity while resizing this positional grid
                   <th key={`align-${c}-${a}`} className="p-1">
                     <select
                       value={a}
@@ -111,8 +112,10 @@ export function TableGeneratorPanel() {
             </thead>
             <tbody>
               {cells.map((r, ri) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: a table row's coordinate is its stable identity while resizing this positional grid
                 <tr key={`row-${ri}-${r.length}`}>
                   {r.map((v, ci) => (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: a table cell's row/column coordinate is its stable identity
                     <td key={`cell-${ri}-${ci}`} className="p-1">
                       <Input
                         value={v}

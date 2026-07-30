@@ -94,7 +94,7 @@ function PdfDropzoneLanding() {
               >
                 browse
               </button>{" "}
-              to upload. PDFs convert locally on your device; nothing is uploaded anywhere.
+              to upload. PDF conversion runs on your device. No files are uploaded.
             </p>
           </div>
           <input

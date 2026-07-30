@@ -29,6 +29,14 @@ describe("reconstructPdfPageText", () => {
     expect(page.text).toBe("GitHub Projects\nCompiler");
   });
 
+  it("removes horizontal padding before line breaks in linear time", () => {
+    const page = reconstructPdfPageText([
+      run(`First${" ".repeat(20_000)}`, 72, 700, 100, true),
+      run("Second", 72, 680, 45),
+    ]);
+    expect(page.text).toBe("First\nSecond");
+  });
+
   it("infers a word separator from a visible same-line geometry gap", () => {
     const page = reconstructPdfPageText([
       run("GitHub", 72, 700, 42),

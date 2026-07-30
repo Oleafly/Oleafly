@@ -93,7 +93,7 @@ export function ShortcutsSection() {
 
   useEffect(() => {
     if (!editing) return;
-    captureRef.current?.focus();
+    captureRef.current?.focus({ preventScroll: true });
     const dismiss = (event: PointerEvent) => {
       if (captureRef.current?.contains(event.target as Node)) return;
       setEditing(null);

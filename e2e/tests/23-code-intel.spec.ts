@@ -1,5 +1,12 @@
 import { test, expect } from "../fixtures";
-import { caretIn, openProject, pressGlobal, typeInEditorAfter, type Page } from "../helpers";
+import {
+  caretIn,
+  caretLineIncludes,
+  openProject,
+  pressGlobal,
+  typeInEditorAfter,
+  type Page,
+} from "../helpers";
 
 // CodeMirror keymaps listen on its own DOM, so dispatch directly to it.
 async function editorKey(page: Page, key: string, mods: { shift?: boolean } = {}) {
@@ -53,7 +60,7 @@ test("go-to-definition on a \\ref jumps to its \\label", async ({ tauriPage }) =
     await contextMenuAction(tauriPage, "Go to definition");
     const landed = await tauriPage
       .waitForFunction(
-        `window.getSelection().toString().includes('sec:e2eintro') || (document.querySelector('.cm-activeLine')?.textContent ?? '').includes('label{sec:e2eintro}')`,
+        caretLineIncludes("label{sec:e2eintro}"),
         5_000,
       )
       .then(() => true)

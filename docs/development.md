@@ -17,17 +17,18 @@ localeaf/
 │   └── editor/  preview/  diagram/  ai-tools/  templates/
 ├── src-tauri/
 │   ├── src/                rust: commands, DocumentEngine, config, git, paths, project, synctex
-│   ├── binaries/           tectonic-/typst-<triple>[.exe] sidecars (fetched)
-│   ├── resources/          templates, dictionaries, tex bundle
+│   ├── binaries/           target-suffixed compiler sidecars
+│   ├── resources/          templates, licenses, and pinned runtime archives
 │   └── tauri.conf.json
 ├── scripts/fetch-tectonic.sh
 ├── scripts/fetch-typst.sh
+├── scripts/fetch-language-servers.mjs
 └── docs/
 ```
 
 The frontend is a pnpm workspace: feature engines live in `packages/*` behind
 injected ports, and the app shell wires them together. Read
-[Architecture](architecture.md) before touching `packages/`: it
+[Architecture](Architecture.md) before touching `packages/`: it
 covers the port pattern, the contribution registry, and the alias wiring.
 
 ## Prerequisites
@@ -44,10 +45,22 @@ covers the port pattern, the contribution registry, and the alias wiring.
 ./scripts/fetch-tectonic.sh all     # fetch compiler sidecars for all platforms
 ./scripts/fetch-typst.sh all
 pnpm install
+pnpm language-servers:fetch         # current-host policy; see note below
 pnpm tauri dev
 ```
 
 For a single platform, pass the same host triple to both fetch scripts (use `rustc -vV` to find it).
+
+TexLab and Tinymist use the separate checksum-pinned language-server fetcher.
+Its default installs TexLab under the current user's app-data directory as an
+explicit development setup action and stages Tinymist's exact upstream archive
+as a Tauri resource. Neither language server is an `externalBin`: TexLab's
+GPL object-distribution checklist awaits a
+separate maintainer decision, and normal Tauri release builds neither require
+nor package it. The app's first-run path must display the pinned license/source
+and wait for user consent before downloading. See
+[Language-server toolchain](language-server-toolchain.md). `pnpm build` does
+not fetch or require any sidecar.
 
 ## Day-to-day
 
@@ -64,6 +77,7 @@ Make sure both pass:
 ```bash
 pnpm build                                # frontend typecheck (noUnusedLocals/Parameters on)
 pnpm test                                 # vitest across src/ and packages/
+pnpm language-servers:test                # manifest, checksum, target, URL, and license policy
 pnpm audit --prod --audit-level high      # registry-backed npm advisory check
 cd src-tauri && cargo check               # backend compiles
 cd src-tauri && cargo deny check           # Rust advisories, licenses, and sources
@@ -106,6 +120,16 @@ Tectonic 0.16.9 release archives are checksum-pinned from the official GitHub
 Releases API `digest` fields. `scripts/fetch-tectonic.sh` verifies SHA256 before
 extracting exactly the root `tectonic`/`tectonic.exe` regular-file member. The
 same script is used by CI and every release target, including Windows.
+
+TexLab 5.26.0 and Tinymist 0.15.2 have a separate machine-readable manifest,
+secure Node fetcher, and distribution policy. Neither language server is a
+Tauri `externalBin`. TexLab resolves from its consent-gated, checksum-pinned
+app-local-data installation. Tinymist's target-specific upstream archive is a
+Tauri resource; Rust verifies and extracts it atomically into the same
+versioned app-local-data layout on first use. Keeping the archive immutable is
+important because macOS and Windows signing may modify executable bytes. See
+[Language-server toolchain](language-server-toolchain.md) for the target
+matrix, integrity checks, CLI modes, and license obligations.
 6. All engines stream normalized log/error events. Rust returns compile metadata through JSON IPC. The PDF itself is fetched separately as raw binary IPC rather than embedded as base64 in the result.
 7. The frontend renders PDF bytes with pdf.js and publishes normalized diagnostics to CodeMirror.
 
@@ -122,14 +146,12 @@ engine capability becomes truthful. Do not add extension-based UI exceptions.
 
 ## Where state lives
 
-- Config: `~/.oleafly/config.json` (`0600` on Unix). Non-secret preferences
-  live here.
-- Secrets: `~/.oleafly/ai-secrets.json` and
-  `~/.oleafly/app-secrets.json`, encrypted with the owner-only
-  `~/.oleafly/ai-secrets.key`. GitHub and MCP share `app-secrets.json`. AI
-  provider credentials use `ai-secrets.json`.
-- Projects: `~/.oleafly/projects/<id>/`, plain folders with `.git`.
-- App log: `~/.oleafly/app.log`.
+Oleafly stores app-managed state beneath the user's `~/.oleafly/` directory.
+The application keeps preferences separate from owner-only encrypted
+credentials; do not copy, publish, or commit files from this directory. The
+directory also contains project folders (each with its own `.git` repository)
+and the application log. Exact credential filenames and key material are
+intentionally omitted from public documentation.
 
 ## Key extension points
 

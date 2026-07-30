@@ -1,8 +1,9 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { FileText, Loader2, X } from "lucide-react";
 import { CodeMirrorEditor } from "./CodeMirrorEditor";
 import { EditorContextMenu } from "./EditorContextMenu";
-import { EditorToolbar, WysiwygModeSwitch } from "./EditorToolbar";
+import { EditorToolbar } from "./EditorToolbar";
+import { MarkdownToolbar } from "./MarkdownToolbar";
 import { SelectionActionMenu } from "./SelectionActionMenu";
 import { DiffView } from "./diff/DiffView";
 import { PdfViewer } from "@/components/pdf/PdfViewer";
@@ -14,6 +15,8 @@ import { base64ToUint8Array, readFileBase64 } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { formattingForEngine, pathUsesEngineSource } from "@/lib/document-engine";
 import { getWysiwygMode, setWysiwygMode } from "@/lib/wysiwyg-mode";
+import { setWysiwygVisibilityController } from "./wysiwyg/controller";
+import { ProofreadingStatus } from "./ProofreadingStatus";
 const WysiwygEditor = lazy(() =>
   import("./wysiwyg/WysiwygEditor").then((m) => ({ default: m.WysiwygEditor })),
 );
@@ -161,22 +164,30 @@ export function Editor() {
   const engine = useFilesStore((s) => s.engine);
   const formattingProfile = useFilesStore((s) => s.engine.capabilities.formatting_profile);
   const showLatexToolbar = engineLoaded && formattingProfile === "latex" && pathUsesEngineSource(engine, activePath);
-  const showMarkdownWysiwygToggle =
+  const showMarkdownToolbar =
     engineLoaded && formattingProfile === "markdown" && pathUsesEngineSource(engine, activePath);
 
   const [wysiwyg, setWysiwygState] = useState(() => (projectId ? getWysiwygMode(projectId) : false));
   useEffect(() => {
     if (projectId) setWysiwygState(getWysiwygMode(projectId));
   }, [projectId]);
-  const toggleWysiwyg = () => {
+  const setWysiwyg = useCallback((next: boolean) => {
     if (!projectId) return;
-    const next = !wysiwyg;
     setWysiwygMode(projectId, next);
     setWysiwygState(next);
-  };
+  }, [projectId]);
+  const toggleWysiwyg = () => setWysiwyg(!wysiwyg);
+
+  useEffect(() => {
+    setWysiwygVisibilityController(setWysiwyg);
+    return () => setWysiwygVisibilityController(null);
+  }, [setWysiwyg]);
 
   return (
-    <div data-tour="project-editor" className="flex h-full flex-col bg-background">
+    <div
+      data-tour="project-editor"
+      className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background"
+    >
       <div className="flex h-9 shrink-0 items-center gap-1 overflow-x-auto border-b px-2">
         {tabs.length === 0 && (
           <span className="px-2 text-xs text-muted-foreground">No file open</span>
@@ -247,6 +258,12 @@ export function Editor() {
           )
         )}
       </div>
+      {!diffFocused ? (
+        <ProofreadingStatus
+          path={activePath}
+          surface={wysiwyg ? "visual" : "source"}
+        />
+      ) : null}
       {diffFocused ? (
         <ErrorBoundary
           fallback={
@@ -264,14 +281,15 @@ export function Editor() {
               <EditorToolbar wysiwyg={wysiwyg} onToggleWysiwyg={toggleWysiwyg} />
             </div>
           )}
-          {showMarkdownWysiwygToggle && (
-            <div className="flex h-9 shrink-0 items-center justify-end border-b px-2">
-              <WysiwygModeSwitch wysiwyg={wysiwyg} onToggle={toggleWysiwyg} data-tour="wysiwyg-toggle" />
+          {showMarkdownToolbar && (
+            <div className="shrink-0">
+              <MarkdownToolbar wysiwyg={wysiwyg} onToggleWysiwyg={toggleWysiwyg} />
             </div>
           )}
           {isTypstFile && (
             <div className="shrink-0 border-b bg-muted/30 px-3 py-1 text-[10px] text-muted-foreground">
-              Typst mode · LaTeX linting and spelling/grammar checks are disabled.
+              Typst source mode · KaTeX inline preview and Visual editing are not
+              available; use the compiled PDF preview.
             </div>
           )}
           {isDiagramMainFile && wysiwyg && projectId && activePath ? (
@@ -319,7 +337,14 @@ export function Editor() {
             </div>
           ) : (
             <div className="relative min-h-0 flex-1 overflow-hidden">
-              <div className={cn("absolute inset-0", !wysiwyg && "hidden")}>
+              <div
+                aria-hidden={!wysiwyg}
+                inert={!wysiwyg ? true : undefined}
+                className={cn(
+                  "absolute inset-0",
+                  !wysiwyg && "invisible pointer-events-none select-none",
+                )}
+              >
                 <Suspense
                   fallback={
                     <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
@@ -330,9 +355,16 @@ export function Editor() {
                   <WysiwygEditor wysiwyg={wysiwyg} />
                 </Suspense>
               </div>
-              <div className={cn("absolute inset-0", wysiwyg && "hidden")}>
+              <div
+                aria-hidden={wysiwyg}
+                inert={wysiwyg ? true : undefined}
+                className={cn(
+                  "absolute inset-0",
+                  wysiwyg && "invisible pointer-events-none select-none",
+                )}
+              >
                 <EditorContextMenu>
-                  <CodeMirrorEditor />
+                  <CodeMirrorEditor active={!wysiwyg} />
                 </EditorContextMenu>
                 <SelectionActionMenu />
               </div>

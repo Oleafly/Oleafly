@@ -1,46 +1,101 @@
-import { EditorView, Decoration, hoverTooltip, type DecorationSet } from "@codemirror/view";
-import { StateField, StateEffect } from "@codemirror/state";
-import { useFilesStore } from "@/store/files";
+import { StateEffect, StateField } from "@codemirror/state";
+import {
+  Decoration,
+  EditorView,
+  hoverTooltip,
+  type DecorationSet,
+} from "@codemirror/view";
+import { currentSourceProjectIntelligence } from "@/lib/project-intelligence/current";
+import {
+  definitionsForUse,
+  referencesFor,
+  safeLinePreview,
+  symbolAt,
+  type ProjectSymbol,
+} from "@/lib/project-intelligence/selectors";
+import type {
+  ProjectDefinition,
+  ProjectIntelligenceSnapshot,
+  ProjectUse,
+} from "@/lib/project-intelligence/types";
 import { useIndexStore } from "@/store/project-index";
-import type { Sym } from "@/lib/index/types";
 
-// Index may be a few ms stale here; fine for hover.
-function symbolAtPos(pos: number): Sym | null {
-  const path = useFilesStore.getState().activePath;
-  if (!path) return null;
-  return useIndexStore.getState().index?.symbolAt(path, pos) ?? null;
+function isUse(symbol: ProjectSymbol): symbol is ProjectUse {
+  return "definitionIds" in symbol;
 }
 
-function clickable(sym: Sym): boolean {
-  return !!useIndexStore.getState().index?.definitionFor(sym);
+function currentSymbol(
+  view: EditorView,
+  position: number,
+): {
+  snapshot: ProjectIntelligenceSnapshot;
+  symbol: ProjectSymbol;
+} | null {
+  const current = currentSourceProjectIntelligence(
+    view.state.doc.toString(),
+  );
+  if (!current) return null;
+  const symbol =
+    symbolAt(current.snapshot, current.path, position) ??
+    (position > 0
+      ? symbolAt(current.snapshot, current.path, position - 1)
+      : null);
+  return symbol ? { snapshot: current.snapshot, symbol } : null;
+}
+
+function isClickable(
+  snapshot: ProjectIntelligenceSnapshot,
+  symbol: ProjectSymbol,
+): boolean {
+  return !isUse(symbol) || definitionsForUse(snapshot, symbol.id).length > 0;
 }
 
 const setLink = StateEffect.define<{ from: number; to: number } | null>();
+export const clearProjectHoverIntel = StateEffect.define<null>();
 
-const linkField = StateField.define<{ deco: DecorationSet; range: { from: number; to: number } | null }>({
+const linkField = StateField.define<{
+  deco: DecorationSet;
+  range: { from: number; to: number } | null;
+}>({
   create: () => ({ deco: Decoration.none, range: null }),
-  update(value, tr) {
+  update(value, transaction) {
     let { deco, range } = value;
-    // Keep decorations aligned with edits.
-    deco = deco.map(tr.changes);
-    for (const e of tr.effects) {
-      if (e.is(setLink)) {
-        range = e.value;
+    deco = deco.map(transaction.changes);
+    for (const effect of transaction.effects) {
+      if (effect.is(setLink)) {
+        range = effect.value;
         deco = range
-          ? Decoration.set([Decoration.mark({ class: "cm-cmd-link" }).range(range.from, range.to)])
+          ? Decoration.set([
+              Decoration.mark({ class: "cm-cmd-link" }).range(
+                range.from,
+                range.to,
+              ),
+            ])
           : Decoration.none;
+      }
+      if (effect.is(clearProjectHoverIntel)) {
+        range = null;
+        deco = Decoration.none;
       }
     }
     return { deco, range };
   },
-  provide: (f) => EditorView.decorations.from(f, (v) => v.deco),
+  provide: (field) =>
+    EditorView.decorations.from(field, (value) => value.deco),
 });
 
-function updateLink(view: EditorView, range: { from: number; to: number } | null) {
-  const cur = view.state.field(linkField).range;
-  const same = cur === range || (cur && range && cur.from === range.from && cur.to === range.to);
-  if (same) return;
-  view.dispatch({ effects: setLink.of(range) });
+function updateLink(
+  view: EditorView,
+  range: { from: number; to: number } | null,
+) {
+  const current = view.state.field(linkField).range;
+  const same =
+    current === range ||
+    (current &&
+      range &&
+      current.from === range.from &&
+      current.to === range.to);
+  if (!same) view.dispatch({ effects: setLink.of(range) });
 }
 
 const linkHandlers = EditorView.domEventHandlers({
@@ -49,13 +104,23 @@ const linkHandlers = EditorView.domEventHandlers({
       updateLink(view, null);
       return false;
     }
-    const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
-    if (pos == null) {
+    const position = view.posAtCoords({
+      x: event.clientX,
+      y: event.clientY,
+    });
+    if (position == null) {
       updateLink(view, null);
       return false;
     }
-    const sym = symbolAtPos(pos);
-    updateLink(view, sym && clickable(sym) ? { from: sym.from, to: sym.to } : null);
+    const current = currentSymbol(view, position);
+    const range =
+      current && isClickable(current.snapshot, current.symbol)
+        ? current.symbol.location.range
+        : null;
+    updateLink(
+      view,
+      range ? { from: range.from, to: range.to } : null,
+    );
     return false;
   },
   mouseleave(_event, view) {
@@ -63,61 +128,75 @@ const linkHandlers = EditorView.domEventHandlers({
     return false;
   },
   keyup(event, view) {
-    if (event.key === "Meta" || event.key === "Control") updateLink(view, null);
+    if (event.key === "Meta" || event.key === "Control") {
+      updateLink(view, null);
+    }
     return false;
   },
 });
 
-function previewLine(file: string, line: number): string {
-  const text = useIndexStore.getState().texts[file];
-  return (text?.split("\n")[line - 1] ?? "").trim();
+function basename(path: string): string {
+  return path.slice(path.lastIndexOf("/") + 1);
 }
 
-function basename(p: string): string {
-  const i = p.lastIndexOf("/");
-  return i >= 0 ? p.slice(i + 1) : p;
+function definitionDetail(
+  definition: ProjectDefinition,
+  texts: Readonly<Record<string, string>>,
+): string {
+  const preview = safeLinePreview(texts, definition.location, 180);
+  const where = `${basename(definition.location.file)}:${definition.location.range.startLine}`;
+  return [definition.detail, preview, where].filter(Boolean).join("\n");
 }
 
-function describe(sym: Sym): { title: string; detail: string } | null {
-  const index = useIndexStore.getState().index;
-  if (!index) return null;
-
-  if (sym.kind === "ref" || sym.kind === "cite" || sym.kind === "atuse" || sym.kind === "macrouse" || sym.kind === "glossaryuse" || sym.kind === "envuse") {
-    const def = index.definitionFor(sym);
-    if (def) {
-      const where = `${basename(def.file)}:${def.line}`;
-      return { title: `${def.kind} · ${def.name}`, detail: `${previewLine(def.file, def.line)}\n${where}` };
+function describe(
+  snapshot: ProjectIntelligenceSnapshot,
+  symbol: ProjectSymbol,
+): { title: string; detail: string } | null {
+  if (isUse(symbol)) {
+    const definitions = definitionsForUse(snapshot, symbol.id);
+    const noun =
+      symbol.kind === "citation"
+        ? "citation"
+        : symbol.kind === "macro"
+          ? "macro"
+          : symbol.kind === "environment"
+            ? "environment"
+            : "reference";
+    if (definitions.length === 0) {
+      return {
+        title: `Unresolved ${noun}: ${symbol.name}`,
+        detail: "No definition was found in the current project revision.",
+      };
     }
-    // Only call it unresolved if that definition kind exists in the project;
-    // otherwise the index may still be loading (or there's no .bib yet).
-    const TARGETS: Record<string, string[]> = {
-      cite: ["bibentry"],
-      ref: ["label"],
-      macrouse: ["macro"],
-      glossaryuse: ["glossary"],
-      envuse: ["theorem", "environment"],
+    if (definitions.length > 1) {
+      return {
+        title: `Duplicate ${noun}: ${symbol.name}`,
+        detail: `${definitions.length} definitions · press F12 to inspect every candidate`,
+      };
+    }
+    const texts = useIndexStore.getState().texts;
+    return {
+      title: `${definitions[0].kind} · ${definitions[0].name}`,
+      detail: definitionDetail(definitions[0], texts),
     };
-    const noun = sym.kind === "cite" ? "citation" : sym.kind === "macrouse" ? "macro" : "reference";
-    const anyTargets = index.defs.some((d) => (TARGETS[sym.kind] ?? []).includes(d.kind));
-    if (!anyTargets) return { title: `${noun} · ${sym.name}`, detail: "" };
-    return { title: `Unresolved ${noun}: ${sym.name}`, detail: "No definition found in the project." };
   }
-  if (sym.kind === "inputedge") {
-    return { title: `includes ${sym.target ?? sym.name}`, detail: "" };
-  }
-  // A definition: show how many references point at it.
-  const refs = index.allReferences(sym).filter((s) => s !== sym);
-  return { title: `${sym.kind} · ${sym.name}`, detail: `${refs.length} reference${refs.length === 1 ? "" : "s"} in the project` };
+
+  const count = referencesFor(snapshot, symbol.id).length;
+  if (count === 0) return null;
+  return {
+    title: `${symbol.kind} · ${symbol.name}`,
+    detail: `${count} reference${count === 1 ? "" : "s"} in the current project revision`,
+  };
 }
 
-const codeHover = hoverTooltip((_view, pos) => {
-  const sym = symbolAtPos(pos);
-  if (!sym) return null;
-  const info = describe(sym);
+const projectHover = hoverTooltip((view, position) => {
+  const current = currentSymbol(view, position);
+  if (!current) return null;
+  const info = describe(current.snapshot, current.symbol);
   if (!info) return null;
   return {
-    pos: sym.from,
-    end: sym.to,
+    pos: current.symbol.location.range.from,
+    end: current.symbol.location.range.to,
     above: true,
     create() {
       const dom = document.createElement("div");
@@ -136,7 +215,11 @@ const codeHover = hoverTooltip((_view, pos) => {
 });
 
 const theme = EditorView.baseTheme({
-  ".cm-cmd-link": { textDecoration: "underline", textUnderlineOffset: "2px", cursor: "pointer" },
+  ".cm-cmd-link": {
+    textDecoration: "underline",
+    textUnderlineOffset: "2px",
+    cursor: "pointer",
+  },
   ".cm-code-hover": {
     maxWidth: "22rem",
     padding: "6px 8px",
@@ -145,9 +228,14 @@ const theme = EditorView.baseTheme({
     whiteSpace: "pre-wrap",
   },
   ".cm-code-hover-title": { fontWeight: "600" },
-  ".cm-code-hover-detail": { marginTop: "3px", opacity: "0.75", fontFamily: "monospace", fontSize: "11px" },
+  ".cm-code-hover-detail": {
+    marginTop: "3px",
+    opacity: "0.75",
+    fontFamily: "monospace",
+    fontSize: "11px",
+  },
 });
 
 export function hoverIntel() {
-  return [linkField, linkHandlers, codeHover, theme];
+  return [linkField, linkHandlers, projectHover, theme];
 }

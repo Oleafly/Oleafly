@@ -1,0 +1,30 @@
+const ALPHAXIV_ICON =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAARGVYSWZNTQAqAAAACAABh2kABAAAAAEAAAAaAAAAAAADoAEAAwAAAAEAAQAAoAIABAAAAAEAAAAgoAMABAAAAAEAAAAgAAAAAKyGYvMAAAOWSURBVFgJ7VZLSFRRGD73XGfGF2aSD3QhDCWpYExiigYNiBgtlCDatGgVQYq1UXElpCguFJRZqFsrSyTc2BNTEYcwiJooeyk9TGcaX4nzvOfRObfupDP3zoy2cDMH7pyZe////775/se5AmULHOCCB4gtQ8cIxBSIKRAXbRu6HQ6yMjMDfBsbNPXYMZBVUQGhTidE8t9aWEDx6elQn5KiqnZUBH5MTKC5mzchIwEBm1uCKNLM0lJS3tUFEjIyRC0S62/eoKlr14TDBQWkvLMTGNLSQkiE3AgOtvT0KZptbobetTUIDQagT02ljIDgeP5cnK6rox6HAwf78N8cfLqhQWCKiT8mJ0X73JyqXVgCHNza0gKx1wtFg4Gcam1FZ0dGSO65c4jP7/V37+Km6+up227fFVwB9zqdXB16srER5VZXq6vNzwK19f3JE+lecTG+U1hI75pM+Mv4uKTYEYyxtbnZf+v4ccqvRxcvSpLLhfnzNZtNum82I+7HLvJ2cNCv+KntLKWhKxz4p5ERv2d1FROEsLWx0X87Px+/HxqSye0VnCOHEAgH/rq31z909Ch5fOkScjudGHk82D47K//D/YBzAoEa4GS+PngQyDnU60lZezvPt5w7W1+f9HZgII7VguBeXgbS1hYV4+NhZnm5LjjnJ65fRwVXruh4MUZaAQJcCtbn1Le5CbXAWTAhMTsbm/v7QYrRKLff/4DL5LgMyuKSWpua/AtjY3JOCXvAZb/D+phddKyqCm18+IAUey3ZN+bnKWtR5FpZCdgqPsF7SA3sNLBZLBIrsj2Bby8tkbHKSspqhT68cEFiLRqWxL8UBCXL+fIlbyGRD52knBx8xmIBqXl5EWXXHzpE000mSdDpAnNCa1hxSE0CS8+eAeT1CrrERHq6uzsqcB5Ql5wMyzo6RGNNjUQJ+UOCTcztb992DStuy5cmAeRyyQZxSUm84ORDh+VcHq/KhNOqdnZIwdK2NtFYWytRhACrG/hrcZHIAYM+1McjMzpSVEQ/Dg8DdgYIs01NJK2wEH8eHYUMnJOmWuBK/L8kgAChlFFSAnLMZtW2FHjRKU47dzZa6dTVq+Tnixe8DgCXk+9MCnrixo2o+3xnTLXvmgS4scfpJK96eqjdahWwzyckZGXR/MuXqfH8ec0jWA0k3L2wBBRH3/o6kdxugZ39QNTrI76EKH7R7FERiCbQfm00u2C/AffqFyMQU+A3RpR8w2reMDUAAAAASUVORK5CYII=";
+
+export function AlphaXivBrandIcon({
+  className,
+}: {
+  className?: string;
+}) {
+  return (
+    <img
+      src={ALPHAXIV_ICON}
+      alt=""
+      aria-hidden="true"
+      className={className}
+    />
+  );
+}
+
+export function ZoteroBrandIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className={className}
+      fill="currentColor"
+    >
+      <path d="M21.231 2.462 7.18 20.923h14.564V24H2.256v-2.462L16.308 3.076H2.975V0h18.256v2.462z" />
+    </svg>
+  );
+}

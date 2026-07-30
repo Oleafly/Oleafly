@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures";
-import { openProject, openRailTab } from "../helpers";
+import { openProject, openRailTab, waitLong } from "../helpers";
 
 test("the rail theme button flips the real theme", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
@@ -16,11 +16,65 @@ test("the rail theme button flips the real theme", async ({ tauriPage }) => {
 test("the sidebar collapses and restores from the rail", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  await tauriPage.evaluate(
+    `import("/src/store/settings.ts").then(({ useSettingsStore }) =>
+      useSettingsStore.getState().setViewMode("split"),
+    )`,
+  );
   await openRailTab(tauriPage, "Source Tree");
+  await waitLong(
+    tauriPage,
+    `!!document.querySelector('[data-testid="pdf-renderer"]')`,
+    60_000,
+  );
+  const before = await tauriPage.evaluate<{
+    lastCompiledAt: number | null;
+    outputRevision: number | null;
+  }>(
+    `import("/src/store/compile.ts").then(({ useCompileStore }) => {
+      const renderer = document.querySelector('[data-testid="pdf-renderer"]');
+      if (!renderer) throw new Error("PDF renderer is missing");
+      renderer.setAttribute("data-e2e-sidebar-renderer", "stable");
+      const compile = useCompileStore.getState();
+      return {
+        lastCompiledAt: compile.lastCompiledAt,
+        outputRevision: compile.lastCompileCheckpoint?.outputRevision ?? null,
+      };
+    })`,
+  );
   await tauriPage.click('[aria-label="Hide sidebar"]');
   await expect(tauriPage.locator('[aria-label="Show sidebar"]')).toBeVisible();
+  await expect(
+    tauriPage.locator('[data-testid="pdf-renderer"][data-e2e-sidebar-renderer="stable"]'),
+  ).toBeVisible();
   await tauriPage.click('[aria-label="Show sidebar"]');
   await expect(tauriPage.locator('[aria-label="Hide sidebar"]')).toBeVisible();
+  await expect(
+    tauriPage.locator('[data-testid="pdf-renderer"][data-e2e-sidebar-renderer="stable"]'),
+  ).toBeVisible();
+  // Auto-compile is debounced by 2.5 seconds. Wait beyond that boundary so
+  // the assertion also catches a delayed compile request from the layout-only
+  // interaction.
+  await new Promise((resolve) => setTimeout(resolve, 2_800));
+  const after = await tauriPage.evaluate<{
+    status: string;
+    lastCompiledAt: number | null;
+    outputRevision: number | null;
+  }>(
+    `import("/src/store/compile.ts").then(({ useCompileStore }) => {
+      const compile = useCompileStore.getState();
+      return {
+        status: compile.status,
+        lastCompiledAt: compile.lastCompiledAt,
+        outputRevision: compile.lastCompileCheckpoint?.outputRevision ?? null,
+      };
+    })`,
+  );
+  expect(after.status).not.toBe("compiling");
+  expect({
+    lastCompiledAt: after.lastCompiledAt,
+    outputRevision: after.outputRevision,
+  }).toEqual(before);
 });
 
 test("the editor/preview split resizes from the separator", async ({ tauriPage }) => {
@@ -100,14 +154,15 @@ test("editor tabs close from their x button", async ({ tauriPage }) => {
 test("code folding collapses and restores a region", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  // The blank template's document environment is foldable (gutter shows ▾).
+  // The blank template's document environment is foldable. Target the
+  // marker's semantic state instead of its visual implementation.
   await tauriPage.waitForFunction(
-    `Array.from(document.querySelectorAll('.cm-foldGutter span')).some(s => s.textContent === '▾')`,
+    `document.querySelector('.cm-foldGutter .cm-fold-marker[data-fold-state="open"]')`,
     10_000,
   );
   await tauriPage.evaluate(
     `(() => {
-      const m = Array.from(document.querySelectorAll('.cm-foldGutter span')).find(s => s.textContent === '▾');
+      const m = document.querySelector('.cm-foldGutter .cm-fold-marker[data-fold-state="open"]');
       const r = m.getBoundingClientRect();
       m.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2 }));
       return 1;

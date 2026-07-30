@@ -4,18 +4,27 @@ import { useFilesStore } from "@/store/files";
 import { useReferencesStore } from "@/store/references";
 import { useRenameStore } from "@/store/rename";
 import { useSettingsStore } from "@/store/settings";
-import { gotoRange } from "@/components/editor/cm/controller";
+import { currentSourceProjectIntelligence } from "@/lib/project-intelligence/current";
+import { navigateToProjectRange } from "@/lib/project-intelligence/navigation";
+import {
+  definitionsForUse,
+  referencesFor,
+  symbolAt,
+} from "@/lib/project-intelligence/selectors";
+import type {
+  ProjectDefinition,
+  ProjectIntelligenceSnapshot,
+  ProjectUse,
+} from "@/lib/project-intelligence/types";
 import { writeFileContent } from "@/lib/tauri";
 import { toast } from "@/lib/toast";
 import type { DefKind, Sym } from "./types";
 
-const DEF_KINDS = new Set<string>(["label", "macro", "bibentry", "theorem", "glossary", "environment", "section", "file"]);
 const RENAMABLE = new Set<DefKind>(["label", "macro", "bibentry", "theorem", "glossary", "environment"]);
-const isDef = (s: Sym) => DEF_KINDS.has(s.kind);
 
 // Flushes the active file into the index first (pure, fast) so offsets are current
 // before looking up the cursor token.
-function symbolAtCursor(view: EditorView): Sym | null {
+function legacySymbolAtCursor(view: EditorView): Sym | null {
   const path = useFilesStore.getState().activePath;
   if (!path) return null;
   useIndexStore.getState().updateFile(path, view.state.doc.toString());
@@ -23,46 +32,141 @@ function symbolAtCursor(view: EditorView): Sym | null {
   return index?.symbolAt(path, view.state.selection.main.head) ?? null;
 }
 
-function jumpTo(sym: Sym) {
-  const files = useFilesStore.getState();
-  if (sym.file === files.activePath) {
-    gotoRange(sym.from, sym.to);
+function isUse(
+  symbol: ProjectDefinition | ProjectUse,
+): symbol is ProjectUse {
+  return "definitionIds" in symbol;
+}
+
+function intelligenceAtCursor(view: EditorView): {
+  snapshot: ProjectIntelligenceSnapshot;
+  symbol: ProjectDefinition | ProjectUse | null;
+} | null {
+  const current = currentSourceProjectIntelligence(
+    view.state.doc.toString(),
+  );
+  if (!current) return null;
+  const offset = view.state.selection.main.head;
+  const symbol =
+    symbolAt(current.snapshot, current.path, offset) ??
+    (offset > 0
+      ? symbolAt(current.snapshot, current.path, offset - 1)
+      : null);
+  return { snapshot: current.snapshot, symbol };
+}
+
+function showReferenceQuery(
+  snapshot: ProjectIntelligenceSnapshot,
+  mode: "references" | "definitions",
+  targetId: string,
+  title: string,
+) {
+  useReferencesStore.getState().show({
+    ...snapshot.identity,
+    mode,
+    targetId,
+    title,
+  });
+  const settings = useSettingsStore.getState();
+  settings.setRailTab("refs");
+  if (!settings.showTree) settings.toggleTree();
+}
+
+function notifyAnalysisUnavailable(): void {
+  const state = useIndexStore.getState().intelligenceState;
+  if (state.status === "error" || state.status === "unavailable") {
+    toast.error(
+      state.failure?.message ??
+        state.reason ??
+        "Project reference analysis is unavailable.",
+    );
   } else {
-    void files.openFile(sym.file).then(() => window.setTimeout(() => gotoRange(sym.from, sym.to), 80));
+    toast.info("Project references are updating.");
   }
 }
 
+function definitionsForSymbol(
+  snapshot: ProjectIntelligenceSnapshot,
+  symbol: ProjectDefinition | ProjectUse,
+): readonly ProjectDefinition[] {
+  return isUse(symbol)
+    ? definitionsForUse(snapshot, symbol.id)
+    : [symbol];
+}
+
 export function goToDefinition(view: EditorView): boolean {
-  const sym = symbolAtCursor(view);
-  if (!sym) return false;
+  const current = intelligenceAtCursor(view);
+  if (!current) {
+    notifyAnalysisUnavailable();
+    return false;
+  }
+  const { snapshot, symbol } = current;
+  if (!symbol) return false;
   // On a definition, F12 acts as find-references (IDE convention).
-  if (isDef(sym)) return findReferences(view);
-  const def = useIndexStore.getState().index?.definitionFor(sym) ?? null;
-  if (!def) {
-    toast.info(`No definition found for "${sym.name}"`);
+  if (!isUse(symbol)) return findReferences(view);
+
+  const definitions = definitionsForUse(snapshot, symbol.id);
+  if (definitions.length === 0) {
+    toast.info(`No definition found for "${symbol.name}"`);
     return true;
   }
-  jumpTo(def);
+  if (definitions.length > 1) {
+    showReferenceQuery(
+      snapshot,
+      "definitions",
+      symbol.id,
+      `Definitions for ${symbol.name}`,
+    );
+    return true;
+  }
+  const definition = definitions[0];
+  void navigateToProjectRange({
+    path: definition.location.file,
+    range: definition.location.range,
+    source: "editor",
+  });
   return true;
 }
 
 export function findReferences(view: EditorView): boolean {
-  const sym = symbolAtCursor(view);
-  if (!sym) return false;
-  const results = useIndexStore.getState().index?.allReferences(sym) ?? [];
-  if (results.length === 0) {
-    toast.info(`No references to "${sym.name}"`);
+  const current = intelligenceAtCursor(view);
+  if (!current) {
+    notifyAnalysisUnavailable();
+    return false;
+  }
+  const { snapshot, symbol } = current;
+  if (!symbol) return false;
+  const definitions = definitionsForSymbol(snapshot, symbol);
+  if (definitions.length === 0) {
+    toast.info(`No definition found for "${symbol.name}"`);
     return true;
   }
-  useReferencesStore.getState().show(`References to ${sym.name}`, results);
-  const s = useSettingsStore.getState();
-  s.setRailTab("refs");
-  if (!s.showTree) s.toggleTree();
+  if (definitions.length > 1 && isUse(symbol)) {
+    showReferenceQuery(
+      snapshot,
+      "definitions",
+      symbol.id,
+      `Definitions for ${symbol.name}`,
+    );
+    return true;
+  }
+  const definition = definitions[0];
+  const references = referencesFor(snapshot, definition.id);
+  if (references.length === 0) {
+    toast.info(`No references to "${definition.name}"`);
+    return true;
+  }
+  showReferenceQuery(
+    snapshot,
+    "references",
+    definition.id,
+    `References to ${definition.name}`,
+  );
   return true;
 }
 
 export function startRename(view: EditorView): boolean {
-  const sym = symbolAtCursor(view);
+  const sym = legacySymbolAtCursor(view);
   if (!sym) return false;
   const index = useIndexStore.getState().index;
   const def = (index?.definitionFor(sym) ?? sym) as Sym;

@@ -16,8 +16,6 @@ import {
   ImagePlay,
   Keyboard,
   Maximize,
-  Play,
-  RefreshCw,
   Sparkles,
   SquarePen,
   X,
@@ -35,6 +33,7 @@ import {
 import { Tooltip } from "@/components/ui/tooltip";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import { useInitialFocus } from "@/components/ui/use-initial-focus";
+import { CompileControls } from "@/components/layout/CompileControls";
 import { HomeBrandButton } from "@/components/layout/HomeBrandButton";
 import { GithubMenu } from "@/components/layout/GithubMenu";
 import { useFilesStore } from "@/store/files";
@@ -129,7 +128,6 @@ export function TopToolbar() {
   const projectKind = useFilesStore((s) => s.projectKind);
   const isSingleFigureProject = projectKind === "image" || projectKind === "diagram";
   const engine = useFilesStore((s) => s.engine);
-  const engineLoaded = useFilesStore((s) => s.engineLoaded);
   const engineError = useFilesStore((s) => s.engineError);
   const closeProject = useFilesStore((s) => s.closeProject);
   const refreshProjects = useFilesStore((s) => s.refreshProjects);
@@ -144,14 +142,6 @@ export function TopToolbar() {
   const showTree = useSettingsStore((s) => s.showTree);
   const hideEditorArea = useSettingsStore((s) => s.hideEditorArea);
   const setLayoutPreset = useSettingsStore((s) => s.setLayoutPreset);
-  const recompile = useCompileStore((s) => s.recompile);
-  const status = useCompileStore((s) => s.status);
-  const compileRevision = useCompileStore(
-    (s) => s.lastCompileCheckpoint?.outputRevision ?? 0,
-  );
-  const compiling = status === "compiling";
-  const hasCompileResult = status === "success" || status === "error";
-  const compileLabel = hasCompileResult ? "Recompile" : "Compile";
   const fullscreen = useFullscreen();
 
   const [forkOpen, setForkOpen] = useState(false);
@@ -319,7 +309,7 @@ export function TopToolbar() {
         ? { "data-e2e-project-id": projectId ?? undefined }
         : {})}
       className={cn(
-        "grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center border-b bg-background",
+        "relative z-20 grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center border-b bg-background",
         isMac && "pr-3",
         isMac && !fullscreen && "pl-[78px]",
         isMac && fullscreen && "pl-2"
@@ -408,40 +398,7 @@ export function TopToolbar() {
 
       <div data-tauri-drag-region className="flex items-center justify-end gap-1.5">
 
-        <Tooltip label={`${compileLabel} ${engine.label} (${shortcut("⌘↵")})`}>
-          <Button
-            data-testid="compile-button"
-            data-tour="project-compile"
-            {...(import.meta.env.DEV
-              ? {
-                  "data-e2e-compile-status": status,
-                  "data-e2e-compile-revision": compileRevision,
-                }
-              : {})}
-            variant="ghost"
-            size="sm"
-            className={cn(
-              "rounded-md bg-primary text-white shadow-sm hover:bg-primary",
-              "h-7 gap-1.5 px-2.5",
-            )}
-            disabled={compiling || !engineLoaded}
-            onClick={() => {
-              // If the PDF pane is hidden (editor-only), reveal it so the result shows.
-              if (viewMode === "editor") setViewMode("split");
-              void recompile();
-            }}
-            aria-label={compileLabel}
-          >
-            {compiling ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : hasCompileResult ? (
-              <RefreshCw className="size-3.5" />
-            ) : (
-              <Play className="size-3.5" />
-            )}
-            <span className="text-xs font-medium">{compileLabel}</span>
-          </Button>
-        </Tooltip>
+        <CompileControls />
 
         {engineError && <span className="max-w-48 truncate text-xs text-destructive" title={engineError}>{engineError}</span>}
 

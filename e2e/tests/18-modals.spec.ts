@@ -1,5 +1,9 @@
 import { test, expect } from "../fixtures";
-import { openProject, pressGlobal } from "../helpers";
+import {
+  fillCommandPalette,
+  openProject,
+  pressGlobal,
+} from "../helpers";
 
 test.beforeEach(async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
@@ -28,7 +32,7 @@ test("settings and template modals close through user interactions and restore f
 
 test("word count modal opens from the palette and closes", async ({ tauriPage }) => {
   await pressGlobal(tauriPage, "k", { meta: true });
-  await tauriPage.fill("[cmdk-input]", "word"); // cmdk matches single terms
+  await fillCommandPalette(tauriPage, "word"); // cmdk matches single terms
   await tauriPage.press("[cmdk-input]", "Enter");
   await tauriPage.waitForFunction(
     `document.body.innerText.includes('Word count')`,
@@ -43,7 +47,7 @@ test("word count modal opens from the palette and closes", async ({ tauriPage })
 
 test("history modal opens from the palette", async ({ tauriPage }) => {
   await pressGlobal(tauriPage, "k", { meta: true });
-  await tauriPage.fill("[cmdk-input]", "history");
+  await fillCommandPalette(tauriPage, "history");
   await tauriPage.press("[cmdk-input]", "Enter");
   // The modal heading renders (history may be empty for a fresh repo).
   await tauriPage.waitForFunction(

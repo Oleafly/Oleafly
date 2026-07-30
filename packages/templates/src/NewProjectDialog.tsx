@@ -313,12 +313,17 @@ export function NewProjectDialog({
         const first = elements[0];
         const last = elements[elements.length - 1];
         const wrap = wrappedModalFocus(document.activeElement, first, last, event.shiftKey);
-        if (wrap) { event.preventDefault(); (wrap === "first" ? first : last).focus(); }
+        if (wrap) {
+          event.preventDefault();
+          (wrap === "first" ? first : last).focus({
+            preventScroll: true,
+          });
+        }
       }
     };
     const onFocus = (event: FocusEvent) => {
       if (!isTopmost() || dialogRef.current?.contains(event.target as Node)) return;
-      focusable()[0]?.focus();
+      focusable()[0]?.focus({ preventScroll: true });
     };
     window.addEventListener("keydown", onKey);
     document.addEventListener("focusin", onFocus);
@@ -326,13 +331,16 @@ export function NewProjectDialog({
       window.removeEventListener("keydown", onKey);
       document.removeEventListener("focusin", onFocus);
       const restore = modalCoordinator.remove(registeredId);
-      if (restore) restore.focus();
+      if (restore) restore.focus({ preventScroll: true });
     };
   }, [open]);
 
   useEffect(() => {
-    if (step === 2) nameRef.current?.focus();
-    else if (open) searchRef.current?.focus();
+    if (step === 2) {
+      nameRef.current?.focus({ preventScroll: true });
+    } else if (open) {
+      searchRef.current?.focus({ preventScroll: true });
+    }
   }, [step, open]);
 
   const categories = useMemo(() => {

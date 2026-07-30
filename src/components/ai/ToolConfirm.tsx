@@ -193,7 +193,7 @@ export function ToolConfirm({
   }
 
   return (
-    <AiChrome className="mx-3 mb-2" contentClassName="p-3.5">
+    <AiChrome borderVariant="animated" className="mx-3 mb-2" contentClassName="p-3.5">
       <div role="alertdialog" aria-modal="true" aria-label="Confirm AI edit">
         {body}
       </div>

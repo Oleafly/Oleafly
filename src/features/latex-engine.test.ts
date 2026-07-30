@@ -7,6 +7,14 @@ const mocks = vi.hoisted(() => ({
   runPreflight: vi.fn(),
   notifyCompileSucceeded: vi.fn(),
   notifyError: vi.fn(),
+  beginCompileRequestIdentity: vi.fn(() => ({
+    projectId: "project",
+    mainDocument: "main.tex",
+    projectRevision: 0,
+    requestGeneration: 0,
+  })),
+  captureCompileSourceSnapshot: vi.fn(async () => null),
+  isCompileRequestIdentityCurrent: vi.fn(() => true),
   refreshPreviewWindow: vi.fn(),
   compileState: {} as Record<string, unknown>,
   files: {
@@ -30,6 +38,9 @@ vi.mock("@/store/files", () => ({
   useFilesStore: { getState: () => mocks.files },
 }));
 vi.mock("@/store/compile", () => ({
+  beginCompileRequestIdentity: mocks.beginCompileRequestIdentity,
+  captureCompileSourceSnapshot: mocks.captureCompileSourceSnapshot,
+  isCompileRequestIdentityCurrent: mocks.isCompileRequestIdentityCurrent,
   useCompileStore: {
     getState: () => mocks.compileState,
     setState: (
@@ -143,7 +154,7 @@ describe("tagged compile checkpoints", () => {
       }),
     );
     expect(mocks.notifyCompileSucceeded).toHaveBeenCalledTimes(1);
-    expect(mocks.refreshPreviewWindow).toHaveBeenCalledTimes(1);
+    expect(mocks.refreshPreviewWindow).toHaveBeenCalledTimes(2);
     expect(mocks.runPreflight).toHaveBeenCalledTimes(1);
     expect(mocks.toast.success).toHaveBeenCalledTimes(1);
   });
@@ -228,7 +239,7 @@ describe("tagged compile checkpoints", () => {
       }),
     );
     expect(mocks.notifyCompileSucceeded).not.toHaveBeenCalled();
-    expect(mocks.refreshPreviewWindow).not.toHaveBeenCalled();
+    expect(mocks.refreshPreviewWindow).toHaveBeenCalledTimes(1);
     expect(mocks.runPreflight).not.toHaveBeenCalled();
     expect(mocks.toast.error).not.toHaveBeenCalled();
   });
@@ -270,7 +281,7 @@ describe("tagged compile checkpoints", () => {
       }),
     );
     expect(mocks.notifyCompileSucceeded).not.toHaveBeenCalled();
-    expect(mocks.refreshPreviewWindow).not.toHaveBeenCalled();
+    expect(mocks.refreshPreviewWindow).toHaveBeenCalledTimes(1);
     expect(mocks.runPreflight).not.toHaveBeenCalled();
     expect(mocks.toast.error).not.toHaveBeenCalled();
   });
@@ -293,11 +304,11 @@ describe("tagged compile checkpoints", () => {
     pendingRead.resolve(bytes.buffer);
     await compiling;
 
-    expect(mocks.compileState.status).toBe("success");
+    expect(mocks.compileState.status).toBe("compiling");
     expect(mocks.compileState.pdfBytes).toEqual(new Uint8Array([9]));
     expect(mocks.compileState.log).toBe("prior success");
     expect(mocks.notifyCompileSucceeded).not.toHaveBeenCalled();
-    expect(mocks.refreshPreviewWindow).not.toHaveBeenCalled();
+    expect(mocks.refreshPreviewWindow).toHaveBeenCalledTimes(1);
   });
 
   it("contains save failures inside the standard log-and-toast error boundary", async () => {

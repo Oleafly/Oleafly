@@ -2,13 +2,14 @@ import type { TauriPage } from "@srsholmes/tauri-playwright";
 import { test, expect } from "../fixtures";
 import {
   caretIn,
+  caretLineIncludes,
   compileAndProbe,
   createBlankProject,
   createProjectFromTemplate,
   editorSource,
+  type Page,
   replaceEditorSource,
   setEditorCaretAfter,
-  type Page,
 } from "../helpers";
 
 const RUN = Date.now().toString(36);
@@ -29,13 +30,17 @@ async function freshLatex(page: Page, suffix: string, source = LATEX_SOURCE) {
 
 async function openContextMenu(page: TauriPage) {
   await page.evaluate(
-    `(() => {
+    `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {
       const editor = document.querySelector(".cm-content");
       const cursor =
         document.querySelector(".cm-cursor-primary") ??
         document.querySelector(".cm-cursor");
       const rect = cursor?.getBoundingClientRect();
-      if (!editor || !rect) throw new Error("editor cursor is unavailable");
+      const view = getEditorView();
+      if (!editor || !rect || !view) {
+        throw new Error("editor cursor is unavailable");
+      }
+      const intendedPosition = view.state.selection.main.head;
       editor.dispatchEvent(new MouseEvent("contextmenu", {
         bubbles: true,
         cancelable: true,
@@ -43,8 +48,16 @@ async function openContextMenu(page: TauriPage) {
         clientY: rect.top + Math.max(1, rect.height / 2),
         button: 2,
       }));
+      // A zero-width CodeMirror caret sits on the boundary between two
+      // characters. WebKitGTK can resolve that synthetic point to the
+      // preceding character, while a user right-click has a non-zero glyph
+      // target. Restore the exact public editor selection after opening the
+      // real context menu so code-intelligence actions run on the symbol the
+      // test deliberately selected.
+      view.dispatch({ selection: { anchor: intendedPosition } });
+      view.focus();
       return true;
-    })()`,
+    })`,
   );
   await expect(page.getByRole("menu")).toBeVisible({ timeout: 5_000 });
 }
@@ -209,8 +222,7 @@ Context reference: \ref{sec:context-nav}.
     await clickContextAction(tauriPage, "Go to definition");
     const landed = await tauriPage
       .waitForFunction(
-        `(document.querySelector(".cm-activeLine")?.textContent ?? "")
-          .includes("label{sec:context-nav}")`,
+        caretLineIncludes("label{sec:context-nav}"),
         5_000,
       )
       .then(() => true)

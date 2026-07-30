@@ -32,7 +32,7 @@ export function PromptPopover({
 }) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
-    inputRef.current?.focus();
+    inputRef.current?.focus({ preventScroll: true });
   }, []);
   // biome-ignore lint/correctness/useExhaustiveDependencies: instruction is the resize trigger, not read in the body.
   useEffect(() => {
@@ -43,7 +43,11 @@ export function PromptPopover({
   }, [instruction]);
 
   return (
-    <AiChrome className="w-full" contentClassName="p-2 text-popover-foreground">
+    <AiChrome
+      borderVariant="primary"
+      className="w-full"
+      contentClassName="ai-surface-elevated p-2 text-popover-foreground"
+    >
       <div className="flex items-start gap-2">
         <AiMark className="mt-0.5" />
         <Textarea
@@ -78,7 +82,7 @@ export function PromptPopover({
               key={p.id}
               type="button"
               onClick={() => onPreset(p.instruction)}
-              className="flex-1 whitespace-nowrap rounded-full px-2 py-0.5 text-center text-xs text-primary hover:bg-primary/10"
+              className="flex-1 whitespace-nowrap rounded-full border border-border bg-muted px-2.5 py-1 text-center text-xs font-medium text-foreground transition-colors hover:border-primary/50 hover:bg-accent"
             >
               {p.label}
             </button>

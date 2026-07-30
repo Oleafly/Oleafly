@@ -1,9 +1,32 @@
 import { test, expect } from "../fixtures";
-import { caretIn, clickToolbarControl, openProject, selectWord } from "../helpers";
+import {
+  caretIn,
+  clickToolbarControl,
+  editorSource,
+  openProject,
+  selectWord,
+  type Page,
+} from "../helpers";
+
+async function expectSourceRestoredAndSaved(page: Page, expected: string) {
+  await page.waitForFunction(
+    `import("/src/components/editor/cm/controller.ts").then(
+      ({ getEditorView }) =>
+        getEditorView()?.state.doc.toString() === ${JSON.stringify(expected)}
+    )`,
+    10_000,
+  );
+  await page.evaluate(
+    `import("/src/store/files.ts").then(
+      ({ useFilesStore }) => useFilesStore.getState().saveActive()
+    )`,
+  );
+}
 
 test("bold wraps the selection; undo and redo round-trip", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  const original = await editorSource(tauriPage);
 
   await selectWord(tauriPage, "Write");
   await clickToolbarControl(tauriPage, '[aria-label^="Bold ("]', "Bold");
@@ -18,16 +41,19 @@ test("bold wraps the selection; undo and redo round-trip", async ({ tauriPage })
   await expect(tauriPage.locator(".cm-content")).toContainText("\\textbf{Write}");
   // Leave the document as we found it.
   await tauriPage.click('[aria-label^="Undo ("]');
+  await expectSourceRestoredAndSaved(tauriPage, original);
 });
 
 test("toolbar inserts figure and table environments", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  const original = await editorSource(tauriPage);
   await caretIn(tauriPage, "here.", 1, "end");
 
   await clickToolbarControl(tauriPage, '[aria-label="Insert figure"]', "Insert figure");
   await expect(tauriPage.locator(".cm-content")).toContainText("includegraphics");
   await tauriPage.click('[aria-label^="Undo ("]');
+  await expectSourceRestoredAndSaved(tauriPage, original);
 
   // On a narrow CI window "Insert table" can land in the toolbar's overflow
   // menu, where the size-grid popover (nested inside that menu's own popover)
@@ -54,16 +80,14 @@ test("toolbar inserts figure and table environments", async ({ tauriPage }) => {
     `!(document.querySelector('.cm-content')?.textContent || '').includes('tabular')`,
     5_000,
   );
+  await expectSourceRestoredAndSaved(tauriPage, original);
 });
 
 test("citation button opens the add-citation dialog", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await clickToolbarControl(
-    tauriPage,
-    '[aria-label="Add citation (DOI, arXiv, or title)"]',
-    "Add citation",
-  );
+  await clickToolbarControl(tauriPage, '[aria-label="Cite from project"]', "Cite from project");
+  await tauriPage.getByText("Find and add a new citation…").click();
   await expect(
     tauriPage.locator('input[placeholder="DOI, arXiv id, URL, or a paper title…"]'),
   ).toBeVisible();
@@ -75,6 +99,7 @@ test("right-click context menu offers editor actions and inserts an equation", a
 }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  const original = await editorSource(tauriPage);
   await caretIn(tauriPage, "here.", 1, "end");
   await tauriPage.evaluate(
     `(() => {
@@ -95,4 +120,5 @@ test("right-click context menu offers editor actions and inserts an equation", a
     `!(document.querySelector('.cm-content')?.textContent || '').includes('begin{equation}')`,
     5_000,
   );
+  await expectSourceRestoredAndSaved(tauriPage, original);
 });

@@ -4,13 +4,65 @@ import { isolateHistory, undo, redo } from "@codemirror/commands";
 import { openSearchPanel } from "@codemirror/search";
 
 let view: EditorView | null = null;
+let documentPath: string | null = null;
+
+type DocumentReadyListener = (path: string | null, view: EditorView | null) => void;
+const documentReadyListeners = new Set<DocumentReadyListener>();
+
+function publishDocumentReady() {
+  for (const listener of documentReadyListeners) listener(documentPath, view);
+}
 
 export function setEditorView(v: EditorView | null) {
   view = v;
+  if (!v) documentPath = null;
+  publishDocumentReady();
 }
 
 export function getEditorView(): EditorView | null {
   return view;
+}
+
+/**
+ * Marks the source document currently installed in the shared EditorView.
+ *
+ * File navigation must wait for this signal instead of guessing how long the
+ * React/CodeMirror file-swap effect will take. Callers can therefore select a
+ * project range immediately after the matching document is actually ready.
+ */
+export function setEditorDocumentPath(path: string | null) {
+  documentPath = path;
+  publishDocumentReady();
+}
+
+export function getEditorDocumentPath(): string | null {
+  return documentPath;
+}
+
+export function waitForEditorDocument(
+  path: string,
+  signal?: AbortSignal,
+): Promise<EditorView | null> {
+  if (documentPath === path && view) return Promise.resolve(view);
+  if (signal?.aborted) return Promise.resolve(null);
+
+  return new Promise((resolve) => {
+    const finish = (readyView: EditorView | null) => {
+      documentReadyListeners.delete(onReady);
+      signal?.removeEventListener("abort", onAbort);
+      resolve(readyView);
+    };
+    const onReady: DocumentReadyListener = (readyPath, readyView) => {
+      if (readyPath === path && readyView) finish(readyView);
+    };
+    const onAbort = () => finish(null);
+    documentReadyListeners.add(onReady);
+    signal?.addEventListener("abort", onAbort, { once: true });
+
+    // Close the subscribe/check race if the editor became ready between the
+    // first check and listener registration.
+    if (documentPath === path && view) finish(view);
+  });
 }
 
 export function getCurrentLine(): number | null {
@@ -19,16 +71,71 @@ export function getCurrentLine(): number | null {
   return v.state.doc.lineAt(v.state.selection.main.head).number;
 }
 
+/**
+ * Centers a document position by moving only CodeMirror's own scroll surface.
+ * This also serves embedded and diff editors that aren't the global editor.
+ */
+export function scrollEditorPositionLocally(
+  v: EditorView,
+  position: number,
+) {
+  const target = Math.min(
+    Math.max(0, position),
+    v.state.doc.length,
+  );
+  v.requestMeasure({
+    read(currentView) {
+      const block = currentView.lineBlockAt(target);
+      return Math.max(
+        0,
+        block.top -
+          (currentView.scrollDOM.clientHeight - block.height) / 2,
+      );
+    },
+    write(scrollTop, currentView) {
+      currentView.scrollDOM.scrollTop = scrollTop;
+    },
+  });
+}
+
+/**
+ * Reveal a source range without invoking the browser's ancestor-scrolling
+ * algorithm.
+ *
+ * CodeMirror's `scrollIntoView` effect is useful in ordinary pages, but a
+ * desktop split-pane shell must never allow a source jump to move the document
+ * root. In WebKit, a far-away PDF/outline jump can otherwise center the editor
+ * by scrolling every scrollable ancestor, which pulls the application toolbar
+ * above the viewport. Measure the document position through CodeMirror, then
+ * move only its own `.cm-scroller`.
+ */
+export function revealEditorRange(
+  v: EditorView,
+  from: number,
+  to: number = from,
+) {
+  const max = v.state.doc.length;
+  const a = Math.min(Math.max(0, from), max);
+  const b = Math.min(Math.max(a, to), max);
+
+  v.dispatch({
+    selection: EditorSelection.single(a, b),
+  });
+
+  scrollEditorPositionLocally(v, a);
+
+  // Focusing the content DOM directly lets us request the platform's
+  // prevent-scroll behavior. The selection and editor-local scroll have
+  // already been handled above.
+  v.contentDOM.focus({ preventScroll: true });
+}
+
 export function gotoLine(line: number) {
   const v = getEditorView();
   if (!v) return;
   const n = Math.min(Math.max(1, line), v.state.doc.lines);
   const lineObj = v.state.doc.line(n);
-  v.dispatch({
-    selection: EditorSelection.single(lineObj.from),
-    effects: EditorView.scrollIntoView(lineObj.from, { y: "center" }),
-  });
-  v.focus();
+  revealEditorRange(v, lineObj.from);
 }
 
 export function selectWordNearLine(line: number, word: string): boolean {
@@ -63,11 +170,7 @@ export function selectWordNearLine(line: number, word: string): boolean {
     for (const ln of d === 0 ? [target] : [target - d, target + d]) {
       const m = findInLine(ln);
       if (m) {
-        v.dispatch({
-          selection: EditorSelection.single(m.from, m.to),
-          effects: EditorView.scrollIntoView(m.from, { y: "center" }),
-        });
-        v.focus();
+        revealEditorRange(v, m.from, m.to);
         return true;
       }
     }
@@ -81,11 +184,7 @@ export function gotoRange(from: number, to: number) {
   const max = v.state.doc.length;
   const a = Math.min(Math.max(0, from), max);
   const b = Math.min(Math.max(0, to), max);
-  v.dispatch({
-    selection: EditorSelection.single(a, b),
-    effects: EditorView.scrollIntoView(a, { y: "center" }),
-  });
-  v.focus();
+  revealEditorRange(v, a, b);
 }
 
 export function insertAtCursor(text: string) {

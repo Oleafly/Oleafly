@@ -1,6 +1,5 @@
 import {
   Bold,
-  ClipboardClock,
   Command as CommandIcon,
   Crosshair,
   Download,
@@ -33,12 +32,16 @@ import { insertAtCursor, wrapSelection } from "@/components/editor/cm/controller
 import { forwardFromCursor } from "@/features/synctex";
 import { exportCurrentPdf } from "@/features/export";
 import { useFilesStore } from "@/store/files";
-import { useHomeViewStore } from "@/store/home-view";
+import { useHomeViewStore, type HomePage } from "@/store/home-view";
 import {
   formattingForEngine,
   pathUsesEngineSource,
   type EngineFormattingAction,
 } from "@/lib/document-engine";
+import {
+  TOOL_DEFINITIONS,
+  type ToolDefinition,
+} from "@/lib/tool-catalog";
 
 const engine = () => useFilesStore.getState().engine;
 const engineLoaded = () => useFilesStore.getState().engineLoaded;
@@ -65,10 +68,45 @@ export const runEngineFormatting = (action: EngineFormattingAction) => {
 
 const toggleTheme = () => window.dispatchEvent(new CustomEvent("oleafly:toggle-theme"));
 const openNewProject = () => useSettingsStore.getState().setNewProjectOpen(true);
+const openHomePage = async (page: HomePage) => {
+  const files = useFilesStore.getState();
+  const home = useHomeViewStore.getState();
+  home.closeTools();
+  if (!files.projectId) {
+    home.goTo(page);
+    return;
+  }
+
+  home.queuePageAfterProjectClose(page);
+  await files.closeProject();
+  if (useFilesStore.getState().projectId) {
+    useHomeViewStore.getState().clearQueuedPageAfterProjectClose();
+  }
+};
+const openToolsGallery = async () => {
+  const files = useFilesStore.getState();
+  const home = useHomeViewStore.getState();
+  home.openTools();
+  if (!files.projectId) return;
+
+  await files.closeProject();
+  if (useFilesStore.getState().projectId) {
+    useHomeViewStore.getState().closeTools();
+  }
+};
 const themeLabel = (ctx: AppContext) =>
   `Switch to ${ctx.theme === "dark" ? "light" : "dark"} theme`;
 const themeIcon = (ctx: AppContext) =>
   ctx.theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />;
+const TOOL_COMMAND_ICON_COLOR: Record<ToolDefinition["tone"], string> = {
+  rose: "text-rose-600 dark:text-rose-300",
+  violet: "text-violet-600 dark:text-violet-300",
+  emerald: "text-emerald-600 dark:text-emerald-300",
+  cyan: "text-cyan-600 dark:text-cyan-300",
+  blue: "text-blue-600 dark:text-blue-300",
+  sky: "text-sky-600 dark:text-sky-300",
+  amber: "text-amber-600 dark:text-amber-300",
+};
 
 export function registerOmnibarCommands() {
   registerCommand({
@@ -107,30 +145,45 @@ export function registerOmnibarCommands() {
   });
   registerCommand({
     id: "omnibar.diagram-composer",
-    surfaces: ["omnibar"],
+    surfaces: ["omnibar", "palette"],
+    group: "Tools",
     label: "Open Diagram Composer",
     keywords: "diagram figure tikz composer draw canvas",
+    slash: ["diagram-composer", "diagram"],
+    hint: "/diagram-composer",
     icon: () => <PenTool className="size-4" />,
-    order: 40,
-    run: () => useHomeViewStore.getState().goTo("diagram-composer"),
+    order: 325,
+    run: () => void openHomePage("diagram-composer"),
   });
   registerCommand({
     id: "omnibar.tools",
-    surfaces: ["omnibar"],
+    surfaces: ["omnibar", "palette"],
+    group: "Tools",
     label: "Open Oleafly Tools",
     keywords: "tools latex pdf equation bibtex table lab search deadlines gallery",
+    slash: ["tools"],
+    hint: "/tools",
     icon: () => <ToolCase className="size-4" />,
-    order: 42,
-    run: () => useHomeViewStore.getState().openTools(),
+    order: 290,
+    run: () => void openToolsGallery(),
   });
-  registerCommand({
-    id: "omnibar.deadlines",
-    surfaces: ["omnibar"],
-    label: "Open Conference Deadlines",
-    keywords: "deadlines conference ccf venue submission countdown",
-    icon: () => <ClipboardClock className="size-4" />,
-    order: 44,
-    run: () => useHomeViewStore.getState().goTo("deadlines"),
+  TOOL_DEFINITIONS.forEach((tool, index) => {
+    registerCommand({
+      id: `tool.${tool.id}`,
+      surfaces: ["omnibar", "palette"],
+      group: "Tools",
+      label: `Open ${tool.name}`,
+      keywords: `${tool.name} ${tool.description} ${tool.tags.join(" ")} ${tool.slash.join(" ")}`,
+      slash: tool.slash,
+      hint: `/${tool.slash[0]}`,
+      icon: () => (
+        <tool.icon
+          className={`size-4 ${TOOL_COMMAND_ICON_COLOR[tool.tone]}`}
+        />
+      ),
+      order: 330 + index,
+      run: () => void openHomePage(tool.page),
+    });
   });
   registerCommand({
     id: "omnibar.settings",

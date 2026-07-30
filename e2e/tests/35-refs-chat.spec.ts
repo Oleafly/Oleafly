@@ -42,7 +42,7 @@ async function askForConcat(
 test("references panel guides toward Shift-F12", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await openRailTab(tauriPage, "References (Shift-F12)");
+  await openRailTab(tauriPage, "References & citations (Shift-F12)");
   // Only the guidance empty-state; populated results are covered by the
   // code-intel spec's real find-references.
   await tauriPage.waitForFunction(

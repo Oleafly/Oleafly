@@ -1,12 +1,11 @@
 import { Editor } from "@tiptap/core";
-import { StarterKit } from "@tiptap/starter-kit";
-import { Markdown } from "tiptap-markdown";
 import type { JSONContent } from "@tiptap/core";
+import { WYSIWYG_EXTENSIONS } from "../schema";
 
 export function serializeMarkdownBody(doc: JSONContent): string {
   const editor = new Editor({
     element: document.createElement("div"),
-    extensions: [StarterKit.configure({ codeBlock: false, horizontalRule: false }), Markdown],
+    extensions: WYSIWYG_EXTENSIONS,
     content: doc,
   });
   const markdown = editor.storage.markdown.getMarkdown();

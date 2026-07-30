@@ -11,6 +11,7 @@ interface PopoverProps {
   triggerClassName?: string;
   ariaLabel?: string;
   closeOnClick?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function Popover({
@@ -21,6 +22,7 @@ export function Popover({
   triggerClassName,
   ariaLabel,
   closeOnClick = true,
+  onOpenChange: onOpenChangeProp,
 }: PopoverProps) {
   const [open, setOpen] = useState(false);
   const interactionInsideRef = useRef(false);
@@ -29,6 +31,7 @@ export function Popover({
       open={open}
       onOpenChange={(next) => {
         if (!next && !closeOnClick && interactionInsideRef.current) return;
+        onOpenChangeProp?.(next);
         setOpen(next);
       }}
     >
@@ -54,6 +57,7 @@ export function Popover({
         <PopoverPrimitive.Content
           align={align === "right" ? "end" : "start"}
           sideOffset={4}
+          collisionPadding={12}
           onClick={closeOnClick ? () => setOpen(false) : undefined}
           onPointerDownCapture={() => {
             if (!closeOnClick) interactionInsideRef.current = true;

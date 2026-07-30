@@ -1,5 +1,12 @@
 import { test, expect } from "../fixtures";
-import { openGallery, pressGlobal, typeInEditorAfter, type Page } from "../helpers";
+import {
+  compileAndWait,
+  fillCommandPalette,
+  openGallery,
+  pressGlobal,
+  typeInEditorAfter,
+  type Page,
+} from "../helpers";
 
 // Local git history with NO GitHub token: compile auto-commits, so we compile
 // twice and restore each snapshot by position (both auto-commit messages are
@@ -14,7 +21,7 @@ const restoreCount = `Array.from(document.querySelectorAll('button')).filter((b)
 
 async function openHistory(page: Page) {
   await pressGlobal(page, "k", { meta: true });
-  await page.fill("[cmdk-input]", "history");
+  await fillCommandPalette(page, "history");
   await page.press("[cmdk-input]", "Enter");
   await page.waitForFunction(
     `Array.from(document.querySelectorAll('h2')).some((h) => h.textContent.trim() === 'Version History')`,
@@ -39,13 +46,6 @@ async function restoreByIndex(page: Page, index: number) {
     `!Array.from(document.querySelectorAll('h2')).some((h) => h.textContent.trim() === 'Version History')`,
     15_000,
   );
-}
-
-async function compileOk(page: Page) {
-  await page.click('[data-testid="compile-button"]');
-  await expect(page.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok", {
-    timeout: 120_000,
-  });
 }
 
 // Leaves the History modal OPEN.
@@ -87,18 +87,24 @@ test("auto-commit history: restore rolls the document back and forward (no token
   await tauriPage.click('[data-testid="create-project"]');
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
+  const commitsBeforeBase = await tauriPage.evaluate<number>(
+    `window.__gitCommitCount?.() ?? Promise.resolve(0)`,
+  );
   await typeInEditorAfter(tauriPage, "here.", ` ${BASE}`);
-  await compileOk(tauriPage);
-  await waitForCommitsLanded(tauriPage, 1);
+  await compileAndWait(tauriPage);
+  await waitForCommitsLanded(tauriPage, commitsBeforeBase + 1);
 
+  const commitsBeforeEdit = await tauriPage.evaluate<number>(
+    `window.__gitCommitCount?.() ?? Promise.resolve(0)`,
+  );
   await typeInEditorAfter(tauriPage, BASE, ` ${EDIT}`);
-  await compileOk(tauriPage);
-  await waitForCommitsLanded(tauriPage, 2);
+  await compileAndWait(tauriPage);
+  await waitForCommitsLanded(tauriPage, commitsBeforeEdit + 1);
   await waitForRestoreButtons(tauriPage, 2);
 
-  // Restore the oldest (last button); the editor reloads from the restored tree.
-  const n = await tauriPage.evaluate<number>(restoreCount);
-  await restoreByIndex(tauriPage, n - 1);
+  // The two explicit compile checkpoints are the newest entries. Restore the
+  // earlier one without assuming whether project creation also made a commit.
+  await restoreByIndex(tauriPage, 1);
   await tauriPage.waitForFunction(
     `(() => {
       const t = document.querySelector('.cm-content')?.textContent || '';

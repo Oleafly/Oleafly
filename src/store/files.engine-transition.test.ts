@@ -4,6 +4,7 @@ import { canUseFigureMode, LATEX_ENGINE } from "@/lib/document-engine";
 const mocks = vi.hoisted(() => ({
   getProject: vi.fn(),
   getProjectEngine: vi.fn(),
+  gitRestore: vi.fn(),
   listFiles: vi.fn(),
   readFileContent: vi.fn(),
   writeFileContent: vi.fn(),
@@ -18,6 +19,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/tauri", () => ({
   getProject: mocks.getProject,
   getProjectEngine: mocks.getProjectEngine,
+  gitRestore: mocks.gitRestore,
   listFiles: mocks.listFiles,
   readFileContent: mocks.readFileContent,
   writeFileContent: mocks.writeFileContent,
@@ -64,12 +66,87 @@ beforeEach(async () => {
   mocks.listFiles.mockReset().mockResolvedValue([{ path: "main.tex", is_dir: false }]);
   mocks.readFileContent.mockReset().mockResolvedValue("hello");
   mocks.getProjectEngine.mockReset();
+  mocks.gitRestore.mockReset().mockResolvedValue(undefined);
   mocks.setMainDocCmd.mockReset();
   mocks.deleteFile.mockReset().mockResolvedValue(undefined);
   mocks.resetCompile.mockReset();
 });
 
 describe("transactional project transitions", () => {
+  it("drains old writes and publishes restored buffers with the restored tree atomically", async () => {
+    const write = deferred<void>();
+    const restoredRead = deferred<string>();
+    const oldTree = [{ path: "main.tex", is_dir: false }];
+    const restoredTree = [
+      { path: "main.tex", is_dir: false },
+      { path: "restored.tex", is_dir: false },
+    ];
+    mocks.writeFileContent.mockReturnValue(write.promise);
+    mocks.listFiles.mockResolvedValue(restoredTree);
+    mocks.readFileContent.mockReturnValue(restoredRead.promise);
+    useFilesStore.setState({
+      projectId: "project",
+      tree: oldTree,
+      files: {
+        "main.tex": { content: "stale buffer", dirty: true },
+      },
+      openTabs: ["main.tex"],
+      tabOrder: { "main.tex": 1 },
+      activePath: "main.tex",
+      loading: false,
+    });
+
+    const saving = useFilesStore.getState().saveFile("main.tex");
+    await vi.waitFor(() =>
+      expect(mocks.writeFileContent).toHaveBeenCalledWith(
+        "project",
+        "main.tex",
+        "stale buffer",
+      ),
+    );
+    const restoring =
+      useFilesStore.getState().restoreFromGit("restored-oid");
+    await Promise.resolve();
+    expect(mocks.gitRestore).not.toHaveBeenCalled();
+
+    write.resolve();
+    await saving;
+    await vi.waitFor(() =>
+      expect(mocks.readFileContent).toHaveBeenCalledWith(
+        "project",
+        "main.tex",
+      ),
+    );
+    expect(useFilesStore.getState()).toMatchObject({
+      tree: oldTree,
+      files: {
+        "main.tex": {
+          content: "stale buffer",
+        },
+      },
+      loading: true,
+    });
+
+    restoredRead.resolve("restored buffer");
+    await restoring;
+    expect(mocks.gitRestore).toHaveBeenCalledWith(
+      "project",
+      "restored-oid",
+    );
+    expect(useFilesStore.getState()).toMatchObject({
+      tree: restoredTree,
+      files: {
+        "main.tex": {
+          content: "restored buffer",
+          dirty: false,
+        },
+      },
+      openTabs: ["main.tex"],
+      activePath: "main.tex",
+      loading: false,
+    });
+  });
+
   it("writes every dirty buffer before closing and only then clears project state", async () => {
     const first = deferred<void>();
     const second = deferred<void>();

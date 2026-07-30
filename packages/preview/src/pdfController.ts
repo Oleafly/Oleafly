@@ -7,6 +7,37 @@ export interface SynctexRect {
 }
 
 let logMiss: (scope: string, message: string) => void = () => {};
+/**
+ * Centres `target` in its own scroll container.
+ *
+ * `scrollIntoView` scrolls every scrollable ancestor, so inside a docked
+ * preview it drags the whole app window along with the pane.
+ */
+function scrollWithinPane(target: HTMLElement): void {
+  let scroller: HTMLElement | null = target.parentElement;
+  while (scroller) {
+    const style = getComputedStyle(scroller);
+    if (
+      /(auto|scroll|overlay)/u.test(style.overflowY) &&
+      scroller.scrollHeight > scroller.clientHeight
+    ) {
+      break;
+    }
+    scroller = scroller.parentElement;
+  }
+  if (!scroller) return;
+  const targetBox = target.getBoundingClientRect();
+  const scrollerBox = scroller.getBoundingClientRect();
+  const delta =
+    targetBox.top -
+    scrollerBox.top -
+    (scroller.clientHeight - targetBox.height) / 2;
+  scroller.scrollTo({
+    top: Math.max(0, scroller.scrollTop + delta),
+    behavior: "smooth",
+  });
+}
+
 export function setPdfLogger(fn: (scope: string, message: string) => void) {
   logMiss = fn;
 }
@@ -80,7 +111,7 @@ export function gotoRect(rect: SynctexRect, attempt = 0) {
   } as Partial<CSSStyleDeclaration>);
   wrap.appendChild(hl);
 
-  hl.scrollIntoView({ block: "center", behavior: "smooth" });
+  scrollWithinPane(hl);
   hl.animate([{ opacity: 0 }, { opacity: 1 }], {
     duration: 120,
     fill: "forwards",

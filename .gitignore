@@ -25,6 +25,8 @@ src-tauri/gen
 
 # Oleafly local data (never commit a real TeX bundle)
 src-tauri/resources/*.ttb
+src-tauri/resources/language-servers/*
+!src-tauri/resources/language-servers/.gitkeep
 src-tauri/binaries/*
 !src-tauri/binaries/.gitkeep
 

@@ -1,0 +1,24 @@
+diff --git a/dist/cjs/path/mountBuffer.js b/dist/cjs/path/mountBuffer.js
+index 86d8d65f384c98f50e78b117b6c1d4354e76320d..b9709864c45405fa1bfbaae9b06e02f6b431d55e 100644
+--- a/dist/cjs/path/mountBuffer.js
++++ b/dist/cjs/path/mountBuffer.js
+@@ -16,7 +16,8 @@ const isMounted_1 = require("./isMounted");
+  * does not validate contents of buffer to find out already mounted one.
+  */
+ const mountBuffer = (FS, memPathId) => (contents, fileName) => {
+-    const file = fileName || nanoid(45);
++    const createId = typeof nanoid === "function" ? nanoid : nanoid.nanoid;
++    const file = fileName || createId(45);
+     const mountedFilePath = `${memPathId}/${file}`;
+     if (isMounted_1.isMounted(FS, mountedFilePath, 'file')) {
+         logger_1.log(`mountTypedArrayFile: file is already mounted, return it`);
+diff --git a/dist/esm/path/mountBuffer.js b/dist/esm/path/mountBuffer.js
+index a494e92439fa467745f010df220b3b131d0ce868..1f9926436c095b9f0e82c0893ad535735a16279f 100644
+--- a/dist/esm/path/mountBuffer.js
++++ b/dist/esm/path/mountBuffer.js
+@@ -1,4 +1,4 @@
+-import * as nanoid from 'nanoid';
++import { nanoid } from 'nanoid';
+ import { log } from '../util/logger';
+ import { isMounted } from './isMounted';
+ /**

@@ -230,7 +230,7 @@ export function PublishToGitHubDialog({
                     ) : (
                       <Github className="size-4" />
                     )}
-                    Create &amp; push
+                    Create and push
                   </Button>
                 </div>
               ) : (
@@ -289,7 +289,7 @@ export function PublishToGitHubDialog({
                       ) : (
                         <GitBranch className="size-4" />
                       )}
-                      Link &amp; push
+                      Link and push
                     </Button>
                   </Tooltip>
                 </div>

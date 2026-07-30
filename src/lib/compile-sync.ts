@@ -7,6 +7,7 @@ import {
 } from "@/lib/compile-checkpoint";
 import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
+import { useProjectAnalysisStore } from "@/store/project-analysis";
 
 /**
  * Apply a successful compile produced by another window only when the event
@@ -23,7 +24,11 @@ export async function applyRemoteCompileSuccess(
   const files = useFilesStore.getState();
   if (
     files.projectId !== payload.projectId ||
-    files.mainDoc !== payload.mainDocument
+    files.mainDoc !== payload.mainDocument ||
+    useProjectAnalysisStore.getState().snapshot.identity.projectId !==
+      payload.projectId ||
+    useProjectAnalysisStore.getState().snapshot.identity.projectRevision !==
+      payload.projectRevision
   ) {
     return false;
   }
@@ -42,6 +47,10 @@ export async function applyRemoteCompileSuccess(
     if (
       currentFiles.projectId !== payload.projectId ||
       currentFiles.mainDoc !== payload.mainDocument ||
+      useProjectAnalysisStore.getState().snapshot.identity.projectId !==
+        payload.projectId ||
+      useProjectAnalysisStore.getState().snapshot.identity.projectRevision !==
+        payload.projectRevision ||
       fingerprintCompileOutput(bytes) !== payload.outputId
     ) {
       return false;
@@ -55,6 +64,13 @@ export async function applyRemoteCompileSuccess(
       status: "success",
       phase: "idle",
       pdfBytes: bytes,
+      lastAttemptIdentity: {
+        projectId: payload.projectId,
+        mainDocument: payload.mainDocument,
+        projectRevision: payload.projectRevision,
+        requestGeneration: payload.requestGeneration,
+      },
+      failureReason: null,
       errors: [],
       log:
         payload.outputKind === "tagged"
@@ -65,9 +81,24 @@ export async function applyRemoteCompileSuccess(
         payload.completedAt,
       ),
       lastCompileCheckpoint: payload,
+      // Source contents are intentionally runtime-local and are not sent over
+      // the cross-window event. Keep remote output revision-gated until this
+      // window performs its own compile.
+      compiledSources: null,
     });
     void import("@/lib/preview-window")
-      .then((module) => module.refreshPreviewWindow())
+      .then((module) =>
+        module.refreshPreviewWindow({
+          identity: {
+            projectId: payload.projectId,
+            mainDocument: payload.mainDocument,
+            projectRevision: payload.projectRevision,
+            requestGeneration: payload.requestGeneration,
+          },
+          status: "success",
+          checkpoint: payload,
+        }),
+      )
       .catch(() => {});
     return true;
   } catch {

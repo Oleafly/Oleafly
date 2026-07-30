@@ -22,6 +22,7 @@ const OPAQUE_ENVS = new Set([
   "math", "displaymath", "equation", "align", "gather", "multline", "eqnarray",
   "alignat", "flalign", "gathered", "aligned", "split", "cases", "array",
   "verbatim", "Verbatim", "lstlisting", "minted", "alltt", "tikzpicture",
+  "comment", "luacode", "pycode", "python", "asy", "filecontents",
 ]);
 
 // Commands whose arguments are identifiers, keys, paths, or URLs (never prose).
@@ -31,20 +32,35 @@ const OPAQUE_ARG_CMDS = new Set([
   "cite", "citep", "citet", "citeauthor", "citeyear", "citealt", "nocite",
   "usepackage", "RequirePackage", "documentclass", "includegraphics",
   "input", "include", "includeonly", "bibliography", "bibliographystyle",
-  "addbibresource", "printbibliography", "url", "href", "hypersetup", "geometry",
+  "lstinputlisting", "inputminted",
+  "addbibresource", "printbibliography", "url", "path", "email", "hypersetup", "geometry",
   "usetikzlibrary", "setlength", "setlist", "titleformat", "titlespacing",
   "pagenumbering", "pagestyle", "thispagestyle", "newcommand", "renewcommand",
   "providecommand", "newenvironment", "def", "definecolor", "graphicspath",
   "usetheme", "IEEEkeywords",
+  "SI", "SIrange", "qty", "qtyrange", "num", "numrange", "unit", "ang",
+  "ce", "ch", "chemfig",
+  "gls", "Gls", "glspl", "Glspl", "acrshort", "Acrshort", "acrlong",
+  "Acrlong", "acrfull", "Acrfull", "index",
   // Spacing/length commands whose arguments are dimensions ("2pt", "0.5in").
   "vspace", "hspace", "vskip", "hskip", "addvspace", "addtolength",
+  // Preamble metadata is not body prose. Names, affiliations, dates, and PDF
+  // metadata frequently contain proper nouns or machine-oriented values that
+  // should not produce document-body spelling and grammar diagnostics.
+  "title", "subtitle", "author", "date", "subject", "keywords",
+  "institute", "affiliation",
 ]);
 
 // Commands whose FIRST argument is opaque but the rest is prose, e.g.
-// \textcolor{red}{text}, \hyperref[key]{text}. (\href is fully opaque above:
-// its shown text is almost always a URL/email, not prose to proofread.)
+// \textcolor{red}{text}, \hyperref[key]{text}, \href{url}{shown prose}.
 const FIRST_ARG_OPAQUE_CMDS = new Set([
-  "textcolor", "colorbox", "fcolorbox", "hyperref",
+  "textcolor", "colorbox", "fcolorbox", "hyperref", "href",
+]);
+const OPAQUE_BRACE_PREFIX_COUNTS = new Map<string, number>([
+  ["textcolor", 1],
+  ["colorbox", 1],
+  ["fcolorbox", 2],
+  ["href", 1],
 ]);
 
 const LATEX_SPECIAL = new Set(["{", "}", "[", "]", "~", "&", "#", "^", "_"]);
@@ -95,6 +111,19 @@ export function maskLatex(text: string): string {
   let inComment = false;
   let math = 0; // 0 none | 1 $ | 2 $$ | 3 \( | 4 \[
 
+  // URLs and email addresses can appear without \url/\href. Blank them before
+  // parsing so URL punctuation cannot be mistaken for comments or commands.
+  for (const pattern of [
+    /(?:https?:\/\/|www\.)[^\s<>{}\\]+/giu,
+    /\b[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.[\p{L}]{2,}\b/giu,
+  ]) {
+    for (const match of text.matchAll(pattern)) {
+      if (match.index !== undefined) {
+        blankRun(chars, match.index, match.index + match[0].length);
+      }
+    }
+  }
+
   const skipInlineSpace = (k: number): number => {
     while (k < n && (chars[k] === " " || chars[k] === "\t")) k++;
     return k;
@@ -120,6 +149,44 @@ export function maskLatex(text: string): string {
       k = end;
     }
     return k;
+  };
+
+  const consumeOpaquePrefix = (k: number, name: string): number => {
+    if (chars[k] === "*") {
+      blankRun(chars, k, k + 1);
+      k++;
+    }
+    // \hyperref[key]{visible prose}: the first group, regardless of bracket
+    // type, is the only opaque prefix.
+    if (name === "hyperref") {
+      const start = skipInlineSpace(k);
+      if (chars[start] !== "{" && chars[start] !== "[") return k;
+      const end = matchGroup(chars, start);
+      blankRun(chars, start, end);
+      return end;
+    }
+    // Color/href commands may have leading optional configuration. Blank all
+    // option groups plus the command-specific number of identifier/URL braces,
+    // then leave the displayed prose argument intact.
+    const braces = OPAQUE_BRACE_PREFIX_COUNTS.get(name) ?? 1;
+    let consumedBraces = 0;
+    for (;;) {
+      const start = skipInlineSpace(k);
+      if (chars[start] === "[") {
+        const end = matchGroup(chars, start);
+        blankRun(chars, start, end);
+        k = end;
+        continue;
+      }
+      if (chars[start] === "{" && consumedBraces < braces) {
+        const end = matchGroup(chars, start);
+        blankRun(chars, start, end);
+        consumedBraces++;
+        k = end;
+        continue;
+      }
+      return k;
+    }
   };
 
   while (i < n) {
@@ -201,6 +268,44 @@ export function maskLatex(text: string): string {
       while (j < n && /[a-zA-Z@]/.test(chars[j])) j++;
       const name = text.slice(i + 1, j);
 
+      // Inline verbatim/code commands use an arbitrary delimiter and their
+      // payload is never prose. The starred/optional/language arguments are
+      // included in the same opaque run.
+      if (
+        name === "verb" ||
+        name === "Verb" ||
+        name === "lstinline" ||
+        name === "mintinline"
+      ) {
+        let k = j;
+        if (chars[k] === "*") k++;
+        k = skipInlineSpace(k);
+        if (chars[k] === "[") k = matchGroup(chars, k);
+        k = skipInlineSpace(k);
+        if (name === "mintinline" && chars[k] === "{") {
+          k = matchGroup(chars, k);
+          k = skipInlineSpace(k);
+        }
+        if (chars[k] === "{") {
+          k = matchGroup(chars, k);
+        } else {
+          const delimiter = chars[k];
+          if (delimiter && delimiter !== "\n") {
+            k++;
+            while (k < n && chars[k] !== "\n") {
+              if (chars[k] === delimiter && chars[k - 1] !== "\\") {
+                k++;
+                break;
+              }
+              k++;
+            }
+          }
+        }
+        blankRun(chars, i, k);
+        i = Math.max(k, j);
+        continue;
+      }
+
       if (name === "begin") {
         const s = skipInlineSpace(j);
         if (chars[s] === "{") {
@@ -230,12 +335,15 @@ export function maskLatex(text: string): string {
 
       // Blank the command token itself.
       blankRun(chars, i, j);
-      if (OPAQUE_ARG_CMDS.has(name)) {
+      if (
+        OPAQUE_ARG_CMDS.has(name) ||
+        /(?:^cite|cites?$)/iu.test(name)
+      ) {
         i = consumeArgs(j, "all");
         continue;
       }
       if (FIRST_ARG_OPAQUE_CMDS.has(name)) {
-        i = consumeArgs(j, "first");
+        i = consumeOpaquePrefix(j, name);
         continue;
       }
       // Default: keep the (prose) arguments. Braces get blanked below; the text

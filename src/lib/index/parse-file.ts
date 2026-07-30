@@ -176,7 +176,7 @@ export function parseFile(path: string, rawText: string): FileSymbols {
     }
   };
 
-  const ref = /\\(?:ref|eqref|autoref|cref|Cref|cpageref|pageref|vref|labelcref)\s*\{([^}]*)\}/g;
+  const ref = /\\(?:ref|eqref|autoref|cref|Cref|cpageref|pageref|vref|Vref|labelcref|nameref|namecref|fref|sref|labelref)\*?\s*\{([^}]*)\}/g;
   for (const m of text.matchAll(ref)) pushKeys(m[0], m.index, m[1], "ref");
 
   const cite = /\\(?:cite|citep|citet|citeauthor|citeyear|citealt|parencite|textcite|autocite|nocite)\*?\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}/g;

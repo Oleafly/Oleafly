@@ -310,7 +310,7 @@ pub fn stage_template_fonts(
         let pack = find_pack(app, id)?;
         if !pack_installed(&pack) {
             return Err(format!(
-                "font pack '{id}' is not installed; download it first"
+                "Font pack '{id}' is not installed. Download it first."
             ));
         }
         let src = pack_dir(&pack.id)?;

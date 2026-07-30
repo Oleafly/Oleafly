@@ -1,6 +1,7 @@
 import { test, expect } from "../fixtures";
 import {
   createBlankProject,
+  fillCommandPalette,
   openProject,
   openSettings,
   pressGlobal,
@@ -95,29 +96,72 @@ test("compile button becomes recompile after the first result", async ({ tauriPa
 
 test("vim mode: enable via the palette (persistence part 1)", async ({ tauriPage }) => {
   await pressGlobal(tauriPage, "k", { meta: true });
-  await tauriPage.fill("[cmdk-input]", "vim");
+  await fillCommandPalette(tauriPage, "vim");
   const alreadyEnabled = await tauriPage.evaluate<boolean>(
     `document.body.innerText.includes('Disable vim mode')`,
   );
   if (alreadyEnabled) {
+    await expect(
+      tauriPage.locator('[cmdk-item][aria-selected="true"]'),
+    ).toHaveText("Disable vim mode");
     await tauriPage.press("[cmdk-input]", "Enter");
     await expect(tauriPage.locator("[cmdk-input]")).toBeHidden();
     await pressGlobal(tauriPage, "k", { meta: true });
-    await tauriPage.fill("[cmdk-input]", "vim");
+    await fillCommandPalette(tauriPage, "vim");
   }
-  await expect(tauriPage.getByText("Enable vim mode")).toBeVisible();
+  await expect(
+    tauriPage.locator('[cmdk-item][aria-selected="true"]'),
+  ).toHaveText("Enable vim mode");
   await tauriPage.press("[cmdk-input]", "Enter");
+  await expect(tauriPage.locator("[cmdk-input]")).toBeHidden();
+  await expect
+    .poll(
+      () =>
+        tauriPage.evaluate<string>(
+          `localStorage.getItem("oleafly.vim") ?? ""`,
+        ),
+      { timeout: 10_000 },
+    )
+    .toBe("1");
+  await pressGlobal(tauriPage, "k", { meta: true });
+  await fillCommandPalette(tauriPage, "vim");
+  await expect(
+    tauriPage.locator('[cmdk-item][aria-selected="true"]'),
+  ).toHaveText("Disable vim mode", { timeout: 10_000 });
+  await tauriPage.press("[cmdk-input]", "Escape");
 });
 
 test("vim mode survived the app restart, then disable it (part 2)", async ({ tauriPage }) => {
   // The fixture reloaded the entire app between these two tests.
+  await expect
+    .poll(
+      () =>
+        tauriPage.evaluate<string>(
+          `localStorage.getItem("oleafly.vim") ?? ""`,
+        ),
+      { timeout: 10_000 },
+    )
+    .toBe("1");
   await pressGlobal(tauriPage, "k", { meta: true });
-  await tauriPage.fill("[cmdk-input]", "vim");
-  await expect(tauriPage.getByText("Disable vim mode")).toBeVisible();
+  await fillCommandPalette(tauriPage, "vim");
+  await expect(
+    tauriPage.locator('[cmdk-item][aria-selected="true"]'),
+  ).toHaveText("Disable vim mode", { timeout: 10_000 });
   await tauriPage.press("[cmdk-input]", "Enter"); // restore off
+  await expect
+    .poll(
+      () =>
+        tauriPage.evaluate<string>(
+          `localStorage.getItem("oleafly.vim") ?? ""`,
+        ),
+      { timeout: 10_000 },
+    )
+    .toBe("0");
   await pressGlobal(tauriPage, "k", { meta: true });
-  await tauriPage.fill("[cmdk-input]", "vim");
-  await expect(tauriPage.getByText("Enable vim mode")).toBeVisible();
+  await fillCommandPalette(tauriPage, "vim");
+  await expect(
+    tauriPage.locator('[cmdk-item][aria-selected="true"]'),
+  ).toHaveText("Enable vim mode", { timeout: 10_000 });
   await tauriPage.press("[cmdk-input]", "Escape");
 });
 

@@ -54,7 +54,7 @@ export function AboutModal({ open: isOpen, onClose }: { open: boolean; onClose: 
             <span className="mt-0.5 text-xs text-muted-foreground">Version {version}</span>
           )}
           <p className="mt-2 text-xs text-muted-foreground">
-            The intelligent research workspace — free, local-first, 100% open source.
+            An open-source workspace for research and technical writing.
           </p>
           <UpdateChecker className="mt-3 flex flex-col items-center" />
         </div>

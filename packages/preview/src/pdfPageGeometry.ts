@@ -5,6 +5,10 @@ export type PdfPageViewport = ReturnType<pdfjsLib.PDFPageProxy["getViewport"]>;
 export const PDF_PAGE_GEOMETRY_TIMEOUT_MS = 8_000;
 export const PDF_PAGE_GEOMETRY_CONCURRENCY = 8;
 
+function normalizedRotation(value: number): number {
+  return ((Math.round(value / 90) * 90) % 360 + 360) % 360;
+}
+
 function abortError(signal: AbortSignal, fallback: string): DOMException {
   const reason = signal.reason;
   if (reason instanceof DOMException) return reason;
@@ -65,6 +69,7 @@ export async function loadPdfPageViewport(
   pageNumber: number,
   signal: AbortSignal,
   timeoutMs = PDF_PAGE_GEOMETRY_TIMEOUT_MS,
+  rotationOffset = 0,
 ): Promise<PdfPageViewport> {
   let abandoned = false;
   const pagePromise = Promise.resolve(doc.getPage(pageNumber));
@@ -97,7 +102,10 @@ export async function loadPdfPageViewport(
     if (signal.aborted) {
       throw abortError(signal, `PDF page ${pageNumber} geometry cancelled`);
     }
-    return page.getViewport({ scale: 1 });
+    return page.getViewport({
+      scale: 1,
+      rotation: normalizedRotation(page.rotate + rotationOffset),
+    });
   } finally {
     page.cleanup();
   }
@@ -113,6 +121,7 @@ export interface ScanPdfPageViewportsOptions {
   startPage?: number;
   concurrency?: number;
   timeoutMs?: number;
+  rotationOffset?: number;
   onViewport: (pageNumber: number, viewport: PdfPageViewport) => void;
   onError?: (error: unknown, pageNumber: number) => void;
 }
@@ -161,6 +170,7 @@ export function scanPdfPageViewports(
                 pageNumber,
                 scanAbort.signal,
                 timeoutMs,
+                options.rotationOffset,
               );
               if (scanAbort.signal.aborted) return;
               options.onViewport(pageNumber, viewport);

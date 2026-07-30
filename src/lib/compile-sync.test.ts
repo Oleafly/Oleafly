@@ -22,6 +22,7 @@ import {
 import { applyRemoteCompileSuccess } from "./compile-sync";
 import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
+import { useProjectAnalysisStore } from "@/store/project-analysis";
 
 function checkpoint(
   bytes: Uint8Array,
@@ -47,6 +48,13 @@ beforeEach(() => {
     projectId: "project",
     mainDoc: "main.tex",
     engine: LATEX_ENGINE,
+  });
+  // The analysis snapshot is the canonical project revision, so an event is
+  // only current when it names the revision this window has activated.
+  useProjectAnalysisStore.getState().activateProject({
+    projectId: "project",
+    projectRevision: 0,
+    languageServiceGeneration: 0,
   });
   useCompileStore.getState().reset();
 });
@@ -109,6 +117,18 @@ describe("cross-window successful output synchronization", () => {
     ).resolves.toBe(false);
     await expect(
       applyRemoteCompileSuccess(current, "main-window"),
+    ).resolves.toBe(false);
+    expect(mocks.readCompiledPdf).not.toHaveBeenCalled();
+  });
+
+  it("rejects an event announcing a revision this window has not activated", async () => {
+    const stale = checkpoint(new Uint8Array([4]), 4);
+
+    await expect(
+      applyRemoteCompileSuccess(
+        { ...stale, projectRevision: stale.projectRevision + 1 },
+        "main-window",
+      ),
     ).resolves.toBe(false);
     expect(mocks.readCompiledPdf).not.toHaveBeenCalled();
   });

@@ -1,6 +1,11 @@
 import { compileTagged, readCompiledPdf } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
-import { useCompileStore } from "@/store/compile";
+import {
+  beginCompileRequestIdentity,
+  captureCompileSourceSnapshot,
+  isCompileRequestIdentityCurrent,
+  useCompileStore,
+} from "@/store/compile";
 import { usePreflightStore } from "@/store/preflight";
 import { useEngineStore } from "@/store/engine";
 import { notifyError, toast } from "@/lib/toast";
@@ -27,13 +32,15 @@ export async function compileTaggedAndVerify(): Promise<void> {
   const capturedProjectId = files.projectId;
   const projectId = files.projectId ?? "default";
   const main = files.mainDoc || "main.tex";
+  const requestIdentity = beginCompileRequestIdentity(projectId, main);
   const checkpointAtStart =
     useCompileStore.getState().lastCompileCheckpoint;
   const matchesAttemptIdentity = () => {
     const currentFiles = useFilesStore.getState();
     return (
       currentFiles.projectId === capturedProjectId &&
-      (currentFiles.mainDoc || "main.tex") === main
+      (currentFiles.mainDoc || "main.tex") === main &&
+      isCompileRequestIdentityCurrent(requestIdentity)
     );
   };
   const canContinueAfterBackendResult = (
@@ -49,7 +56,6 @@ export async function compileTaggedAndVerify(): Promise<void> {
     );
   };
 
-  let id: number | null = null;
   try {
     await files.saveActive();
     if (
@@ -61,8 +67,30 @@ export async function compileTaggedAndVerify(): Promise<void> {
     ) {
       return;
     }
+    const compiledSourceSnapshot =
+      await captureCompileSourceSnapshot(projectId);
+    if (
+      !matchesAttemptIdentity() ||
+      hasCompileCheckpointAdvanced(
+        checkpointAtStart,
+        useCompileStore.getState().lastCompileCheckpoint,
+      )
+    ) {
+      return;
+    }
 
-    id = toast.info("Compiling a tagged PDF with LuaLaTeX…", undefined, true);
+    useCompileStore.setState({
+      status: "compiling",
+      phase: "building",
+      errors: [],
+      failureReason: null,
+      lastAttemptIdentity: requestIdentity,
+    });
+    refreshPreviewWindow({
+      identity: requestIdentity,
+      status: "compiling",
+      checkpoint: null,
+    });
     const res = await compileTagged(projectId, main);
     // The tagged compile can take minutes; don't paint its result into a
     // different project/main document the user may have switched to meanwhile.
@@ -73,8 +101,6 @@ export async function compileTaggedAndVerify(): Promise<void> {
         ? res.output_revision
         : null;
     if (!canContinueAfterBackendResult(resultRevision)) {
-      toast.dismiss(id);
-      id = null;
       return;
     }
     let acceptedSuccess = false;
@@ -101,6 +127,8 @@ export async function compileTaggedAndVerify(): Promise<void> {
             ? createCompileSuccessCheckpoint({
                 projectId,
                 mainDocument: main,
+                projectRevision: requestIdentity.projectRevision,
+                requestGeneration: requestIdentity.requestGeneration,
                 outputKind: "tagged",
                 producerId: currentCompileProducerId(),
                 outputRevision: successfulRevision,
@@ -124,6 +152,10 @@ export async function compileTaggedAndVerify(): Promise<void> {
             pdfBytes: verified ? bytes : state.pdfBytes,
             status: checkpoint ? "success" : "error",
             phase: "idle",
+            lastAttemptIdentity: requestIdentity,
+            failureReason: checkpoint
+              ? null
+              : "The tagged PDF changed before it could be verified.",
             log: verified
               ? res.log
               : `${res.log}\nTagged PDF changed before it could be verified. Keeping the prior preview.`,
@@ -131,11 +163,18 @@ export async function compileTaggedAndVerify(): Promise<void> {
               checkpoint?.completedAt ?? state.lastCompiledAt,
             lastCompileCheckpoint:
               checkpoint ?? state.lastCompileCheckpoint,
+            compiledSources: checkpoint
+              ? compiledSourceSnapshot
+              : state.compiledSources,
           };
         });
         if (outcomeApplied && checkpoint) {
           acceptedSuccess = true;
-          refreshPreviewWindow();
+          refreshPreviewWindow({
+            identity: requestIdentity,
+            status: "success",
+            checkpoint,
+          });
           notifyCompileSucceeded(checkpoint);
           await usePreflightStore.getState().run();
         }
@@ -156,24 +195,44 @@ export async function compileTaggedAndVerify(): Promise<void> {
         return {
           status: "error",
           phase: "idle",
+          lastAttemptIdentity: requestIdentity,
+          failureReason:
+            "The tagged compile did not produce a valid PDF.",
           log: res.log,
         };
       });
+      if (outcomeApplied) {
+        refreshPreviewWindow({
+          identity: requestIdentity,
+          status: "error",
+          checkpoint: null,
+          message: "The tagged compile did not produce a valid PDF.",
+        });
+      }
     }
     if (!outcomeApplied) {
-      toast.dismiss(id);
-      id = null;
       return;
     }
-    toast.dismiss(id);
-    id = null;
     if (acceptedSuccess) {
       toast.success("Tagged PDF compiled. See the accessibility verdict below.");
     } else {
       toast.error("Tagged compile finished with errors. Check the log.");
     }
   } catch (e) {
-    if (id !== null) toast.dismiss(id);
+    if (isCompileRequestIdentityCurrent(requestIdentity)) {
+      useCompileStore.setState({
+        status: "error",
+        phase: "idle",
+        failureReason: `Tagged compile failed: ${String(e)}`,
+        lastAttemptIdentity: requestIdentity,
+      });
+      refreshPreviewWindow({
+        identity: requestIdentity,
+        status: "error",
+        checkpoint: null,
+        message: `Tagged compile failed: ${String(e)}`,
+      });
+    }
     notifyError(
       "compile tagged",
       e,

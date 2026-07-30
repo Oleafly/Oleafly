@@ -74,6 +74,9 @@ jobs:
       - name: Audit production dependencies
         run: pnpm audit --prod --audit-level high
 
+      - name: Validate language-server manifest and fetch confinement
+        run: pnpm language-servers:test
+
       # Biome lint gate. Blocks on correctness errors; the existing a11y/style
       # backlog is reported as (non-blocking) warnings. See biome.json.
       - name: Lint
@@ -90,11 +93,21 @@ jobs:
       - name: Test
         run: pnpm test
 
+      # Deterministic p95 gates for the core editor's book-scale synchronous
+      # paths. The native E2E jobs below cover WebView rendering and scrolling.
+      - name: Test book-scale editor performance
+        run: pnpm test:editor:performance
+
   rust:
     name: Rust (test + clippy)
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v7
+
+      - name: Install Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
 
       - name: Install Linux system dependencies (Tauri)
         run: |
@@ -118,8 +131,8 @@ jobs:
         with:
           workspaces: src-tauri -> target
 
-      # The Tauri build verifies the configured `externalBin` sidecar exists for
-      # the host target, so fetch it before compiling. Cached across runs.
+      # Tauri externalBin compilers must exist before compiling. Tinymist is
+      # staged separately as an immutable resource archive below.
       - name: Cache Tectonic sidecar
         id: cache-tectonic
         uses: actions/cache@v6
@@ -141,6 +154,12 @@ jobs:
       - name: Fetch Typst sidecar
         if: steps.cache-typst.outputs.cache-hit != 'true'
         run: bash scripts/fetch-typst.sh x86_64-unknown-linux-gnu
+
+      - name: Stage checksum-pinned Tinymist resource archive
+        run: node scripts/fetch-language-servers.mjs --server tinymist --target x86_64-unknown-linux-gnu --install-mode resource
+
+      - name: Smoke-test Tinymist resource extraction and LSP handshake
+        run: node scripts/smoke-language-servers.mjs --server tinymist
 
       - name: Smoke-test Typst sidecar
         run: bash scripts/smoke-typst.sh x86_64-unknown-linux-gnu
@@ -233,6 +252,9 @@ jobs:
       - name: Fetch Typst sidecar
         if: steps.cache-typst-e2e.outputs.cache-hit != 'true'
         run: bash scripts/fetch-typst.sh aarch64-apple-darwin
+
+      - name: Stage checksum-pinned Tinymist resource archive
+        run: node scripts/fetch-language-servers.mjs --server tinymist --target aarch64-apple-darwin --install-mode resource
 
       - name: Smoke-test Typst sidecar
         run: bash scripts/smoke-typst.sh aarch64-apple-darwin
@@ -364,6 +386,9 @@ jobs:
         if: steps.cache-typst-e2e-linux.outputs.cache-hit != 'true'
         run: bash scripts/fetch-typst.sh x86_64-unknown-linux-gnu
 
+      - name: Stage checksum-pinned Tinymist resource archive
+        run: node scripts/fetch-language-servers.mjs --server tinymist --target x86_64-unknown-linux-gnu --install-mode resource
+
       - name: Smoke-test Typst sidecar
         run: bash scripts/smoke-typst.sh x86_64-unknown-linux-gnu
 
@@ -472,6 +497,10 @@ jobs:
         if: steps.cache-typst-e2e-windows.outputs.cache-hit != 'true'
         shell: bash
         run: bash scripts/fetch-typst.sh x86_64-pc-windows-msvc
+
+      - name: Stage checksum-pinned Tinymist resource archive
+        shell: bash
+        run: node scripts/fetch-language-servers.mjs --server tinymist --target x86_64-pc-windows-msvc --install-mode resource
 
       - name: Smoke-test Typst sidecar
         shell: bash

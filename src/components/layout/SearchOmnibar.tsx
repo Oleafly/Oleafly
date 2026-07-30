@@ -3,19 +3,26 @@ import { Command } from "cmdk";
 import {
   Bookmark,
   FileText,
-  FolderOpen,
   Link2,
   Moon,
+  NotebookText,
   Plus,
   Search,
   Settings,
   Sun,
 } from "lucide-react";
-import { commandsFor, commandLabel, type AppContext } from "@oleafly/registry";
+import {
+  commandsFor,
+  commandLabel,
+  type AppContext,
+  type CommandContribution,
+} from "@oleafly/registry";
 import { useSettingsStore } from "@/store/settings";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { useTourStore } from "@/store/tours";
 import { useFilesStore } from "@/store/files";
+import { useProjectColorsStore } from "@/store/project-colors";
+import { DEFAULT_BOOK_COLOR } from "@/components/library/Book";
 import { useTheme } from "@/lib/theme";
 import { searchDocs, type ProjectInfo, type SearchHit } from "@/lib/tauri";
 import { projectModifiedLabel } from "@/lib/project-format";
@@ -112,26 +119,84 @@ export function projectMatches(project: ProjectInfo, query: string, bookmarked: 
     });
 }
 
-type Mode = "all" | "projects" | "docs" | "refs" | "create" | "theme" | "settings" | "help";
+type Mode =
+  | "all"
+  | "projects"
+  | "docs"
+  | "refs"
+  | "create"
+  | "theme"
+  | "settings"
+  | "command"
+  | "help";
 
 // `/create`, `/theme`, `/settings` run immediately on Enter; `/projects`,
 // `/docs`, `/refs` scope the search instead.
-const SLASH: { keys: string[]; mode: Mode; hint: string }[] = [
+interface SlashEntry {
+  keys: readonly string[];
+  mode: Mode;
+  hint: string;
+  command?: CommandContribution;
+}
+
+const BUILT_IN_SLASH: SlashEntry[] = [
   { keys: ["create", "new"], mode: "create", hint: "open the template gallery" },
   { keys: ["projects", "p"], mode: "projects", hint: "search your projects" },
   { keys: ["docs", "search"], mode: "docs", hint: "search inside documents" },
   { keys: ["refs"], mode: "refs", hint: "open references for this project" },
-  { keys: ["theme"], mode: "theme", hint: "toggle light / dark" },
+  { keys: ["theme"], mode: "theme", hint: "switch the color theme" },
   { keys: ["settings"], mode: "settings", hint: "open settings" },
 ];
 
-function parse(q: string): { mode: Mode; term: string; cmd: string } {
-  if (!q.startsWith("/")) return { mode: "all", term: q, cmd: "" };
+function commandSlashEntries(
+  commands: CommandContribution[],
+  ctx: AppContext,
+): SlashEntry[] {
+  return commands.flatMap((command) =>
+    command.slash?.length
+      ? [
+          {
+            keys: command.slash,
+            mode: "command" as const,
+            hint: commandLabel(command, ctx),
+            command,
+          },
+        ]
+      : [],
+  );
+}
+
+export function slashAliasesFor(
+  commands: CommandContribution[],
+  ctx: AppContext,
+): string[] {
+  return commandSlashEntries(commands, ctx).flatMap((entry) => [...entry.keys]);
+}
+
+function parse(
+  q: string,
+  slashEntries: SlashEntry[],
+): {
+  mode: Mode;
+  term: string;
+  cmd: string;
+  action?: CommandContribution;
+} {
+  if (!q.startsWith("/")) {
+    return { mode: "all", term: q, cmd: "" };
+  }
   const m = q.slice(1).match(/^(\S*)\s*([\s\S]*)$/);
   const cmd = (m?.[1] ?? "").toLowerCase();
   const term = m?.[2] ?? "";
-  const found = SLASH.find((s) => s.keys.includes(cmd));
-  if (found) return { mode: found.mode, term, cmd };
+  const found = slashEntries.find((entry) => entry.keys.includes(cmd));
+  if (found) {
+    return {
+      mode: found.mode,
+      term,
+      cmd,
+      action: found.command,
+    };
+  }
   return { mode: "help", term: q, cmd };
 }
 
@@ -142,6 +207,7 @@ export function SearchOmnibar() {
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
   const setRailTab = useSettingsStore((s) => s.setRailTab);
   const projects = useFilesStore((s) => s.projects);
+  const projectColors = useProjectColorsStore((s) => s.colors);
   const favs = useFavoritesStore((s) => s.favs);
   const projectId = useFilesStore((s) => s.projectId);
   const projectKind = useFilesStore((s) => s.projectKind);
@@ -153,11 +219,34 @@ export function SearchOmnibar() {
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const { mode, term, cmd } = useMemo(() => parse(query), [query]);
+  const ctx = useMemo<AppContext>(
+    () => ({ projectId, projectKind, theme }),
+    [projectId, projectKind, theme],
+  );
+  const availableCommands = useMemo(
+    () => commandsFor("omnibar", ctx),
+    [ctx],
+  );
+  const slashEntries = useMemo(
+    () => [
+      ...BUILT_IN_SLASH,
+      ...commandSlashEntries(availableCommands, ctx),
+    ],
+    [availableCommands, ctx],
+  );
+  const { mode, term, cmd, action } = useMemo(
+    () => parse(query, slashEntries),
+    [query, slashEntries],
+  );
   const trimmed = term.trim();
   const slashSuggestions = useMemo(
-    () => (mode === "help" ? SLASH.filter((s) => s.keys.some((k) => k.startsWith(cmd))) : []),
-    [mode, cmd],
+    () =>
+      mode === "help"
+        ? slashEntries.filter((entry) =>
+            entry.keys.some((key) => key.startsWith(cmd)),
+          )
+        : [],
+    [cmd, mode, slashEntries],
   );
 
   useEffect(() => {
@@ -195,6 +284,19 @@ export function SearchOmnibar() {
     return () => window.removeEventListener("keydown", onKey);
   }, [setSearchOpen]);
 
+  useEffect(() => {
+    if (!import.meta.env.DEV || !open) return;
+    const setE2eQuery = (event: Event) => {
+      if (!(event instanceof CustomEvent) || typeof event.detail !== "string") {
+        return;
+      }
+      setQuery(event.detail);
+    };
+    window.addEventListener("oleafly:e2e-command-query", setE2eQuery);
+    return () =>
+      window.removeEventListener("oleafly:e2e-command-query", setE2eQuery);
+  }, [open]);
+
   const close = () => {
     setSearchOpen(false);
     setQuery("");
@@ -210,18 +312,25 @@ export function SearchOmnibar() {
   }, [favs, projects, trimmed, mode]);
 
   const commands = useMemo(() => {
-    const ctx: AppContext = { projectId, projectKind, theme };
-    const all = commandsFor("omnibar", ctx).map((c) => ({
+    const all = availableCommands.map((c) => ({
       id: c.id,
       label: commandLabel(c, ctx),
-      kw: c.keywords ?? "",
+      kw: `${c.keywords ?? ""} ${c.slash?.join(" ") ?? ""}`,
       icon: c.icon?.(ctx),
       run: () => c.run(ctx),
     }));
     if (mode !== "all") return [];
     const q = trimmed.toLowerCase();
     return q ? all.filter((c) => (`${c.label} ${c.kw}`).toLowerCase().includes(q)) : all;
-  }, [trimmed, mode, theme, projectId, projectKind]);
+  }, [availableCommands, ctx, trimmed, mode]);
+  const generalCommands = useMemo(
+    () => commands.filter((c) => !c.id.startsWith("tool.")),
+    [commands],
+  );
+  const toolCommands = useMemo(
+    () => commands.filter((c) => c.id.startsWith("tool.")),
+    [commands],
+  );
 
   const runProject = async (id: string) => {
     close();
@@ -300,6 +409,16 @@ export function SearchOmnibar() {
               />
             </Group>
           )}
+          {mode === "command" && action && (
+            <Group heading="Action">
+              <Row
+                icon={action.icon?.(ctx)}
+                title={commandLabel(action, ctx)}
+                hint="Enter"
+                onSelect={() => runAction(() => action.run(ctx))}
+              />
+            </Group>
+          )}
           {mode === "refs" && (
             <Group heading="References">
               {projectId ? (
@@ -315,9 +434,22 @@ export function SearchOmnibar() {
             </Group>
           )}
 
-          {commands.length > 0 && (
+          {generalCommands.length > 0 && (
             <Group heading="Commands">
-              {commands.map((c) => (
+              {generalCommands.map((c) => (
+                <Row
+                  key={c.id}
+                  icon={c.icon}
+                  title={c.label}
+                  onSelect={() => runAction(c.run)}
+                />
+              ))}
+            </Group>
+          )}
+
+          {toolCommands.length > 0 && (
+            <Group heading="Tools">
+              {toolCommands.map((c) => (
                 <Row
                   key={c.id}
                   icon={c.icon}
@@ -333,7 +465,18 @@ export function SearchOmnibar() {
               {matchedProjects.map((p) => (
                 <Row
                   key={p.id}
-                  icon={<FolderOpen className="size-4" />}
+                  icon={
+                    <span className="flex items-center gap-2">
+                      <span
+                        className="size-2 shrink-0 rounded-full"
+                        style={{
+                          backgroundColor:
+                            projectColors[p.id] ?? (p.color || DEFAULT_BOOK_COLOR),
+                        }}
+                      />
+                      <NotebookText className="size-4" />
+                    </span>
+                  }
                   title={p.name}
                   starred={favs.includes(p.id)}
                   hint={projectModifiedLabel(p.updated_at)}
@@ -373,20 +516,33 @@ export function SearchOmnibar() {
               {slashSuggestions.map((s) => (
                 <Row
                   key={s.keys[0]}
-                  icon={<code className="text-xs">/{s.keys[0]}</code>}
+                  icon={
+                    s.command?.icon?.(ctx) ?? (
+                      <code className="text-xs">/{s.keys[0]}</code>
+                    )
+                  }
                   title={s.hint}
-                  onSelect={() => setQuery(`/${s.keys[0]} `)}
+                  hint={`/${s.keys[0]}`}
+                  onSelect={() => {
+                    if (s.command) {
+                      runAction(() => s.command?.run(ctx));
+                    } else {
+                      setQuery(`/${s.keys[0]} `);
+                    }
+                  }}
                 />
               ))}
             </Group>
           )}
           {mode === "help" && slashSuggestions.length === 0 && (
-            <Hint>Unknown command. Try /create, /projects, /docs, /refs, /theme, or /settings.</Hint>
+            <Hint>Unknown command. Type / to view available commands.</Hint>
           )}
           {mode === "all" &&
             !trimmed &&
             commands.length === 0 &&
-            matchedProjects.length === 0 && <SlashHelp />}
+            matchedProjects.length === 0 && (
+              <SlashHelp entries={slashEntries} />
+            )}
           {(mode === "all" || mode === "docs" || mode === "projects") &&
             trimmed &&
             !loading &&
@@ -454,11 +610,11 @@ function Hint({ children }: { children: ReactNode }) {
   return <div className="px-3 py-6 text-center text-sm text-muted-foreground">{children}</div>;
 }
 
-function SlashHelp() {
+function SlashHelp({ entries }: { entries: SlashEntry[] }) {
   return (
     <div className="px-2 py-2">
       <p className="px-1 pb-1.5 text-xs font-medium text-muted-foreground">Try a command</p>
-      {SLASH.map((s) => (
+      {entries.map((s) => (
         <div key={s.keys[0]} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm">
           <code className="rounded bg-muted px-1.5 py-0.5 text-xs">/{s.keys[0]}</code>
           <span className="text-xs text-muted-foreground">{s.hint}</span>

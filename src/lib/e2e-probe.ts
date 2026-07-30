@@ -1,4 +1,9 @@
 import { useFilesStore } from "@/store/files";
+import {
+  getEditorView,
+  refreshEditorLints,
+} from "@oleafly/editor";
+import { diagnosticCardSource } from "@oleafly/editor/diagnostic-card";
 
 export interface E2ePdfTextItem {
   str: string;
@@ -45,7 +50,44 @@ export interface E2ePdfProbe {
 type E2eProbeWindow = Window & {
   __e2ePdfText?: () => Promise<string>;
   __e2ePdfProbe?: () => Promise<E2ePdfProbe>;
+  __e2eHasProofreadingDiagnostic?: (text: string) => boolean;
+  __e2eHasProofreadingDiagnosticAt?: (from: number) => boolean;
+  __e2eMountProofreadingCard?: (text: string) => boolean;
+  __e2eRefreshEditorLints?: () => void;
 };
+
+function proofreadingTooltipAt(from: number) {
+  const view = getEditorView();
+  if (!view || from < 0 || from >= view.state.doc.length) return null;
+  return diagnosticCardSource(view, from + 1);
+}
+
+function proofreadingTooltip(text: string) {
+  const view = getEditorView();
+  if (!view) return null;
+  const source = view.state.doc.toString();
+  let from = source.indexOf(text);
+  while (from >= 0) {
+    const tooltip = proofreadingTooltipAt(from);
+    if (tooltip) return tooltip;
+    from = source.indexOf(text, from + Math.max(1, text.length));
+  }
+  return null;
+}
+
+function mountProofreadingCard(text: string): boolean {
+  const view = getEditorView();
+  const tooltip = proofreadingTooltip(text);
+  if (!view || !tooltip) return false;
+  const mounted = tooltip.create(view).dom;
+  mounted.dataset.e2eProofreadingCard = "true";
+  mounted.style.position = "fixed";
+  mounted.style.left = "16px";
+  mounted.style.top = "72px";
+  mounted.style.zIndex = "100";
+  document.body.append(mounted);
+  return true;
+}
 
 function destinationLabel(destination: unknown): string | null {
   if (typeof destination === "string") return destination;
@@ -215,4 +257,11 @@ export function installE2ePdfProbe() {
   const target = window as unknown as E2eProbeWindow;
   target.__e2ePdfProbe = readCompiledPdfProbe;
   target.__e2ePdfText = async () => (await readCompiledPdfProbe()).text;
+  target.__e2eHasProofreadingDiagnostic = (text) =>
+    proofreadingTooltip(text) !== null;
+  target.__e2eHasProofreadingDiagnosticAt = (from) =>
+    proofreadingTooltipAt(from) !== null;
+  target.__e2eMountProofreadingCard = mountProofreadingCard;
+  target.__e2eRefreshEditorLints = () =>
+    refreshEditorLints(getEditorView());
 }
