@@ -24,7 +24,7 @@ import {
   type TourContext,
   type TourStepDefinition,
 } from "@/lib/tours/registry";
-import { modKey, shortcut } from "@/lib/utils";
+import { cn, modKey, shortcut } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { ACCENTS, useSettingsStore } from "@/store/settings";
@@ -50,6 +50,46 @@ function ChordHint({ variant, back }: { variant?: "primary"; back?: boolean }) {
       <Kbd className={chipClass}>{modKey}</Kbd>
       <Kbd className={chipClass}>{back ? "←" : "→"}</Kbd>
     </span>
+  );
+}
+
+// Dots read as "how far along am I" far better than a bar, but one dot per
+// step overflows the footer on the longer tours (settings has 12 steps). Keep
+// the dots and slide a fixed-size window over them instead: every dot occupies
+// the same slot, so the row's width never changes as the step advances, and the
+// slots at a truncated edge shrink to signal that more steps exist beyond them.
+const DOT_WINDOW = 7;
+
+export function tourDotWindowStart(index: number, size: number) {
+  if (size <= DOT_WINDOW) return 0;
+  const centered = index - Math.floor(DOT_WINDOW / 2);
+  return Math.max(0, Math.min(centered, size - DOT_WINDOW));
+}
+
+function TourProgress({ index, size }: { index: number; size: number }) {
+  const slots = Math.min(size, DOT_WINDOW);
+  const start = tourDotWindowStart(index, size);
+  return (
+    <div className="flex shrink-0 items-center gap-1.5">
+      <span className="sr-only">{`Step ${index + 1} of ${size}`}</span>
+      {Array.from({ length: slots }, (_, slot) => {
+        const dot = start + slot;
+        const truncated =
+          (slot === 0 && start > 0) || (slot === slots - 1 && start + slots < size);
+        return (
+          <span
+            key={String(dot)}
+            className={cn(
+              "rounded-full transition-all duration-300 ease-out",
+              dot === index
+                ? "h-1.5 w-5 bg-primary"
+                : "size-1.5 bg-muted-foreground/30",
+              truncated && dot !== index && "scale-[0.6]",
+            )}
+          />
+        );
+      })}
+    </div>
   );
 }
 
@@ -202,30 +242,7 @@ function TourTooltip(props: TooltipRenderProps) {
         </div>
       </div>
       <div className="mt-4 flex items-center gap-2">
-        <div className="flex shrink-0 items-center gap-1.5">
-          <span className="sr-only">{`Step ${index + 1} of ${size}`}</span>
-          {size > 8 ? (
-            // One dot per step overflows the tooltip on long tours; a compact
-            // bar keeps the footer buttons inside the border at any step count.
-            <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted-foreground/20">
-              <div
-                className="h-full rounded-full bg-primary transition-all duration-300 ease-out"
-                style={{ width: `${((index + 1) / size) * 100}%` }}
-              />
-            </div>
-          ) : (
-            Array.from({ length: size }, (_, dot) => (
-              <span
-                key={String(dot)}
-                className={
-                  dot === index
-                    ? "h-1.5 w-5 rounded-full bg-primary transition-all duration-300 ease-out"
-                    : "size-1.5 rounded-full bg-muted-foreground/30 transition-all duration-300 ease-out"
-                }
-              />
-            ))
-          )}
-        </div>
+        <TourProgress index={index} size={size} />
         <div className="ml-auto flex items-center gap-1.5">
           <Tooltip label={skipProps.title}>
             <Button
