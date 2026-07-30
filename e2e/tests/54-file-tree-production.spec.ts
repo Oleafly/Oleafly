@@ -134,15 +134,28 @@ async function createEntry(
     30_000,
   );
   if (mode === "file") {
-    // The tree row appearing does NOT mean the editor is showing the new file:
-    // the React/CodeMirror file-swap is a separate effect, and
-    // `replaceEditorSource` writes into whichever document the shared view
-    // currently holds. Returning early therefore risks writing the fixture into
-    // the *previous* file and saving empty content here. The editor publishes a
-    // document-ready signal for exactly this; wait for it rather than guessing.
+    // The tree row appearing does NOT mean the new file is the one that edits
+    // and saves will land on. Three things carry a notion of "current file" and
+    // they settle independently:
+    //
+    //   - the editor controller's document path (the CodeMirror swap),
+    //   - the files store's `activePath`.
+    //
+    // `replaceEditorSource` writes through the shared view, while the update
+    // listener attributes that text with `host.getActivePath()` and `saveActive`
+    // saves `activePath`. Waiting on the controller alone is not enough: if the
+    // store still points at the previous file, the fixture is stored against it
+    // and the new file is saved empty - which is the "content was not persisted"
+    // failure. Wait for both.
     await page.waitForFunction(
       `import("/packages/editor/src/controller.ts").then(
         ({ getEditorDocumentPath }) => getEditorDocumentPath() === ${JSON.stringify(path)},
+      )`,
+      30_000,
+    );
+    await page.waitForFunction(
+      `import("/src/store/files.ts").then(
+        ({ useFilesStore }) => useFilesStore.getState().activePath === ${JSON.stringify(path)},
       )`,
       30_000,
     );
@@ -171,6 +184,38 @@ async function renameEntry(page: Page, from: string, toName: string) {
 }
 
 async function saveEditor(page: Page, expectedPath: string, expected: string) {
+  // CodeMirror's editor->store sync is suppressed while the component swaps
+  // documents (`suppressSyncRef`, released in a queueMicrotask), so a fixture
+  // dispatched inside that window never reaches the store - and Cmd+S then
+  // saves the file's original, empty content. Waiting on the active path is not
+  // enough because the path is set before the swap finishes. Confirm the store
+  // actually holds the text, re-applying through the view if it does not, and
+  // only then save.
+  const stored = `import("/src/store/files.ts").then(
+    ({ useFilesStore }) =>
+      useFilesStore.getState().files[${JSON.stringify(expectedPath)}]?.content ===
+      ${JSON.stringify(expected)},
+  )`;
+  const syncDeadline = Date.now() + 15_000;
+  for (;;) {
+    if (await page.evaluate<boolean>(stored)) break;
+    if (Date.now() > syncDeadline) {
+      throw new Error(`editor content never reached the store for ${expectedPath}`);
+    }
+    await page.evaluate(
+      `import("/packages/editor/src/controller.ts").then(({ getEditorView }) => {
+        const view = getEditorView();
+        if (!view) return false;
+        view.dispatch({
+          changes: { from: 0, to: view.state.doc.length, insert: ${JSON.stringify(expected)} },
+          userEvent: "input.e2e-fixture",
+        });
+        return true;
+      })`,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 150));
+  }
+
   await pressGlobal(page, "s", { meta: true });
   const deadline = Date.now() + 20_000;
   for (;;) {
