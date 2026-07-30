@@ -28,7 +28,7 @@ localeaf/
 
 The frontend is a pnpm workspace: feature engines live in `packages/*` behind
 injected ports, and the app shell wires them together. Read
-[Architecture](architecture.md) before touching `packages/`: it
+[Architecture](Architecture.md) before touching `packages/`: it
 covers the port pattern, the contribution registry, and the alias wiring.
 
 ## Prerequisites
@@ -146,14 +146,12 @@ engine capability becomes truthful. Do not add extension-based UI exceptions.
 
 ## Where state lives
 
-- Config: `~/.oleafly/config.json` (`0600` on Unix). Non-secret preferences
-  live here.
-- Secrets: `~/.oleafly/ai-secrets.json` and
-  `~/.oleafly/app-secrets.json`, encrypted with the owner-only
-  `~/.oleafly/ai-secrets.key`. GitHub and MCP share `app-secrets.json`. AI
-  provider credentials use `ai-secrets.json`.
-- Projects: `~/.oleafly/projects/<id>/`, plain folders with `.git`.
-- App log: `~/.oleafly/app.log`.
+Oleafly stores app-managed state beneath the user's `~/.oleafly/` directory.
+The application keeps preferences separate from owner-only encrypted
+credentials; do not copy, publish, or commit files from this directory. The
+directory also contains project folders (each with its own `.git` repository)
+and the application log. Exact credential filenames and key material are
+intentionally omitted from public documentation.
 
 ## Key extension points
 
