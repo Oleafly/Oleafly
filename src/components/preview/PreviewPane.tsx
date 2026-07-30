@@ -1686,6 +1686,10 @@ export function PreviewPane() {
       data-tour="project-preview"
       data-testid="preview-pane"
       data-preview-layout={layout}
+      // Like data-preview-layout: the toolbar collapses its controls into an
+      // overflow menu below a width threshold, so the pane reports the state
+      // itself rather than making assertions depend on which form is rendered.
+      data-preview-inverted={inverted ? "true" : "false"}
       className="relative flex h-full flex-col bg-background"
     >
       {isFs && fsToolbarHidden && (

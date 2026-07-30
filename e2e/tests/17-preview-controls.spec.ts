@@ -11,6 +11,82 @@ import {
   setEditorContent,
 } from "../helpers";
 
+const OPEN_OVERFLOW = `(() => {
+  const trigger = document.querySelector('[aria-label="More preview controls"]');
+  if (!(trigger instanceof HTMLElement)) return false;
+  trigger.focus();
+  trigger.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  return true;
+})()`;
+
+const CLOSE_OVERFLOW = `document.dispatchEvent(
+  new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+)`;
+
+/**
+ * The current page, however the toolbar is presenting it. Below the collapse
+ * threshold the navigation group moves into the overflow menu, which reports
+ * "Page N of M" on a submenu trigger and has no page-number input (see the
+ * renderMenu comment in PreviewPane). WebView2 lays the bar out wider than
+ * WebKit, so Windows collapses at window sizes where Linux and macOS do not.
+ */
+async function pageValue(tauriPage: TauriPage): Promise<string> {
+  const field = tauriPage.locator('[aria-label="Page number"]');
+  if (await field.isVisible()) {
+    return await tauriPage.evaluate<string>(
+      `document.querySelector('[aria-label="Page number"]').value`,
+    );
+  }
+  await tauriPage.evaluate(OPEN_OVERFLOW);
+  await expect(tauriPage.getByRole("menu")).toBeVisible();
+  const reported = await tauriPage.evaluate<string>(
+    `(() => {
+      const item = [...document.querySelectorAll('[role="menuitem"]')].find(
+        (el) => /^Page \\d+ of \\d+$/.test((el.textContent || "").trim()),
+      );
+      return item ? (item.textContent || "").trim().split(" ")[1] : "";
+    })()`,
+  );
+  await tauriPage.evaluate(CLOSE_OVERFLOW);
+  return reported;
+}
+
+/** Step one page in whichever presentation the toolbar is currently using. */
+async function stepPage(tauriPage: TauriPage, label: "Next page" | "Previous page") {
+  const inline = tauriPage.locator(`[aria-label="${label}"]`);
+  if (await inline.isVisible()) {
+    await inline.click();
+    return;
+  }
+  await tauriPage.evaluate(OPEN_OVERFLOW);
+  await expect(tauriPage.getByRole("menu")).toBeVisible();
+  await tauriPage.evaluate(
+    `(() => {
+      const trigger = [...document.querySelectorAll('[role="menuitem"]')].find(
+        (el) => /^Page \\d+ of \\d+$/.test((el.textContent || "").trim()),
+      );
+      trigger?.click();
+      return !!trigger;
+    })()`,
+  );
+  await tauriPage.waitForFunction(
+    `[...document.querySelectorAll('[role="menuitem"]')].some(
+      (el) => (el.textContent || "").trim() === ${JSON.stringify(label)},
+    )`,
+    10_000,
+  );
+  await tauriPage.evaluate(
+    `(() => {
+      const item = [...document.querySelectorAll('[role="menuitem"]')].find(
+        (el) => (el.textContent || "").trim() === ${JSON.stringify(label)},
+      );
+      item?.click();
+      return !!item;
+    })()`,
+  );
+  await tauriPage.evaluate(CLOSE_OVERFLOW);
+}
+
 async function selectPageLayout(
   tauriPage: TauriPage,
   label: "Single page view" | "Two-page view",
@@ -205,43 +281,50 @@ Page three
     120_000,
   );
 
-  const page = tauriPage.locator('[aria-label="Page number"]');
-  await expect(page).toHaveValue("1");
-  await tauriPage.click('[aria-label="Next page"]');
-  await expect(page).toHaveValue("2");
-  await tauriPage.click('[aria-label="Next page"]');
-  await expect(page).toHaveValue("3");
-  await tauriPage.click('[aria-label="Previous page"]');
-  await expect(page).toHaveValue("2");
+  expect(await pageValue(tauriPage)).toBe("1");
+  await stepPage(tauriPage, "Next page");
+  expect(await pageValue(tauriPage)).toBe("2");
+  await stepPage(tauriPage, "Next page");
+  expect(await pageValue(tauriPage)).toBe("3");
+  await stepPage(tauriPage, "Previous page");
+  expect(await pageValue(tauriPage)).toBe("2");
 
-  await tauriPage.fill('[aria-label="Page number"]', "1");
-  await tauriPage.press('[aria-label="Page number"]', "Enter");
-  await expect(page).toHaveValue("1");
-  for (const invalid of ["", "0", "999", "not-a-page"]) {
-    await tauriPage.fill('[aria-label="Page number"]', invalid);
+  // Typing a destination only exists in the expanded toolbar - the collapsed
+  // form has no input to type into - so exercise it only when it is rendered.
+  const pageField = tauriPage.locator('[aria-label="Page number"]');
+  if (await pageField.isVisible()) {
+    await tauriPage.fill('[aria-label="Page number"]', "1");
     await tauriPage.press('[aria-label="Page number"]', "Enter");
-    await expect(page).toHaveValue("1");
+    expect(await pageValue(tauriPage)).toBe("1");
+    for (const invalid of ["", "0", "999", "not-a-page"]) {
+      await tauriPage.fill('[aria-label="Page number"]', invalid);
+      await tauriPage.press('[aria-label="Page number"]', "Enter");
+      expect(await pageValue(tauriPage)).toBe("1");
+    }
+  } else {
+    await stepPage(tauriPage, "Previous page");
+    expect(await pageValue(tauriPage)).toBe("1");
   }
   // Narrow split panes move page layout into the measured overflow menu.
   // Exercise whichever production presentation is active, then assert the
   // preview's actual layout state rather than assuming the inline buttons fit.
   await selectPageLayout(tauriPage, "Two-page view", "double");
-  await tauriPage.click('[aria-label="Next page"]');
-  await expect(page).toHaveValue("3");
-  await tauriPage.click('[aria-label="Previous page"]');
-  await expect(page).toHaveValue("1");
+  await stepPage(tauriPage, "Next page");
+  expect(await pageValue(tauriPage)).toBe("3");
+  await stepPage(tauriPage, "Previous page");
+  expect(await pageValue(tauriPage)).toBe("1");
   await selectPageLayout(tauriPage, "Single page view", "single");
 });
 
 test("invert colors toggles on and off", async ({ tauriPage }) => {
-  await tauriPage.click('[aria-label="Invert PDF preview colors"]');
-  await expect(
-    tauriPage.locator('[aria-label="Invert PDF preview colors"]'),
-  ).toHaveAttribute("aria-pressed", "true");
-  await tauriPage.click('[aria-label="Invert PDF preview colors"]');
-  await expect(
-    tauriPage.locator('[aria-label="Invert PDF preview colors"]'),
-  ).toHaveAttribute("aria-pressed", "false");
+  // Toggle through whichever form the toolbar is showing and assert the pane's
+  // own state: the collapsed menu item carries no aria-pressed.
+  const pane = tauriPage.getByTestId("preview-pane");
+  await expect(pane).toHaveAttribute("data-preview-inverted", "false");
+  await activatePreviewControl(tauriPage, "Invert PDF preview colors");
+  await expect(pane).toHaveAttribute("data-preview-inverted", "true");
+  await activatePreviewControl(tauriPage, "Invert PDF preview colors");
+  await expect(pane).toHaveAttribute("data-preview-inverted", "false");
   await expect(tauriPage.locator(".pdf-canvas")).toBeVisible();
 });
 
