@@ -7,6 +7,7 @@ import {
 } from "@oleafly/diagram";
 import { KIT } from "@/components/diagram/diagram-kit";
 import { HomeBrandButton } from "@/components/layout/HomeBrandButton";
+import { WindowControls } from "@/components/layout/WindowControls";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
@@ -181,6 +182,7 @@ export function DiagramComposer() {
         fullscreen={fullscreen}
         forcePreviewOpen={forcePreviewOpen}
         brand={<HomeBrandButton onClick={() => goTo("library")} />}
+        windowControls={<WindowControls />}
       />
     </DiagramKitContext.Provider>
   );

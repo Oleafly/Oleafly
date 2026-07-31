@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/select";
 import { HomeDock } from "@/components/library/HomeDock";
 import { LeafLogo } from "@/components/layout/LeafLogo";
+import { WindowControls } from "@/components/layout/WindowControls";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import { Book, BOOK_COLOR_OPTIONS, DEFAULT_BOOK_COLOR } from "@/components/library/Book";
@@ -587,6 +588,7 @@ export function Library() {
               </Tooltip>
             </>
           )}
+          <WindowControls />
         </div>
       </header>
 

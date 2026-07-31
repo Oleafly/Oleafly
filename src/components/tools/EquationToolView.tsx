@@ -23,6 +23,7 @@ import { useSettingsStore } from "@/store/settings";
 import { useTheme } from "@/lib/theme";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { cn, isMac } from "@/lib/utils";
+import { WindowControls } from "@/components/layout/WindowControls";
 import { toast } from "@/lib/toast";
 
 export function EquationToolView() {
@@ -103,6 +104,7 @@ export function EquationToolView() {
   return (
     <div data-testid="equation-tool-view" className="flex h-full flex-col bg-background">
       <div
+        data-tauri-drag-region
         className={cn(
           "flex items-center gap-3 border-b px-4 py-2.5",
           isMac && !fullscreen && "pl-20",
@@ -179,6 +181,7 @@ export function EquationToolView() {
             <Download className="size-4" /> Export
           </Button>
         )}
+        <WindowControls />
       </div>
 
       <EquationPreviewPanel

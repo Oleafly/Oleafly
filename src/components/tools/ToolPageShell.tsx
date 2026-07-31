@@ -2,6 +2,7 @@ import type { ComponentType, ReactNode } from "react";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn, isMac } from "@/lib/utils";
+import { WindowControls } from "@/components/layout/WindowControls";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { useHomeViewStore, type HomePage } from "@/store/home-view";
 
@@ -29,6 +30,7 @@ export function ToolPageShell({
   return (
     <div data-testid={testId} className="flex h-full flex-col bg-background">
       <div
+        data-tauri-drag-region
         className={cn(
           "flex items-center gap-3 border-b px-4 py-2.5",
           isMac && !fullscreen && "pl-20",
@@ -58,6 +60,7 @@ export function ToolPageShell({
         </div>
         <div className="flex-1" />
         {actions}
+        <WindowControls />
       </div>
       <div className="flex min-h-0 flex-1">{children}</div>
     </div>
