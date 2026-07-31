@@ -51,6 +51,7 @@ import {
   revealInDir,
 } from "@/lib/tauri";
 import { toGithubWebUrl } from "@/lib/github-url";
+import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { notifyError, toast } from "@/lib/toast";
 import { cn, isMac, shortcut } from "@/lib/utils";
@@ -189,7 +190,9 @@ export function TopToolbar() {
   const setExportMenuOpen = (open: boolean) => {
     if (open) {
       const f = useFilesStore.getState();
-      const src = f.files[f.mainDoc]?.content ?? "";
+      // Classify the document that would actually be exported, which a
+      // `% !TEX root` comment in the active file may redirect.
+      const src = f.files[resolveEffectiveMainDoc().mainDoc]?.content ?? "";
       setExportKind(classifyDoc(src));
     }
     setDlOpen(open);
@@ -260,7 +263,7 @@ export function TopToolbar() {
     setExporting(format);
     try {
       if (!(await ensurePandoc())) return;
-      await exportDocument(projectId, useFilesStore.getState().mainDoc || "main.tex", format, dest);
+      await exportDocument(projectId, resolveEffectiveMainDoc().mainDoc, format, dest);
       toast.success(
         `Export ${FMT_LABEL[format] ?? format} complete`,
         { label: "View File", onClick: () => void revealInDir(dest) },
