@@ -167,6 +167,7 @@ pub fn run() {
             citation::fetch_arxiv,
             citation::crossref_search,
             literature::literature_search,
+            literature::literature_arxiv_lookup,
             connectors::get_connector_key,
             connectors::set_connector_key,
             project::set_main_doc,

@@ -36,7 +36,8 @@ test("Citation Search exposes From document and Review modes; e2e hooks seed res
   );
   expect(hookReady, "__e2eDocumentCitation hook must be present in DEV").toBe(true);
 
-  await tauriPage.evaluate(`
+  // The bridge evaluates a single expression; multi-statement scripts hang.
+  await tauriPage.evaluate(`(() => {
     window.__e2eDocumentCitation.setSourceOverride(
       "Graph neural networks are used for molecule generation in this work.\\n\\n" +
       "Transformers also appear in related protein folding research."
@@ -72,7 +73,8 @@ test("Citation Search exposes From document and Review modes; e2e hooks seed res
         ],
       },
     ]);
-  `);
+    return true;
+  })()`);
 
   await expect(tauriPage.getByText("Paragraph 1", { exact: false })).toBeVisible({
     timeout: 5_000,
@@ -82,7 +84,9 @@ test("Citation Search exposes From document and Review modes; e2e hooks seed res
       exact: false,
     }),
   ).toBeVisible();
-  await expect(tauriPage.getByText("88", { exact: false })).toBeVisible();
+  await expect(
+    tauriPage.locator('[title="Relevance score"]'),
+  ).toContainText("88");
 
   // Review mode
   await tauriPage.click('[data-testid="citation-search-mode-review"]');
@@ -97,12 +101,10 @@ test("Citation Search exposes From document and Review modes; e2e hooks seed res
   );
   expect(reviewHook, "__e2ePaperReview hook must be present in DEV").toBe(true);
 
-  await tauriPage.evaluate(`
-    window.__e2ePaperReview.seed(
-      "friendly",
-      "## Summary\\n\\nA solid contribution with clear strengths.\\n\\n## Strengths\\n\\n- Clear motivation"
-    );
-  `);
+  await tauriPage.evaluate(`(window.__e2ePaperReview.seed(
+    "friendly",
+    "## Summary\\n\\nA solid contribution with clear strengths.\\n\\n## Strengths\\n\\n- Clear motivation"
+  ), true)`);
   await expect(tauriPage.getByText("A solid contribution", { exact: false })).toBeVisible({
     timeout: 5_000,
   });

@@ -48,8 +48,11 @@ export function parseBibliographyIdentities(bibText: string): BibliographyIdenti
   const fieldRe =
     /\b(doi|eprint|title|url|note)\s*=\s*(?:\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}|"([^"]*)")/gi;
 
-  let match: RegExpExecArray | null;
-  while ((match = fieldRe.exec(bibText)) !== null) {
+  for (
+    let match = fieldRe.exec(bibText);
+    match !== null;
+    match = fieldRe.exec(bibText)
+  ) {
     const key = match[1].toLowerCase();
     const value = (match[2] ?? match[3] ?? "").trim();
     if (!value) continue;
@@ -78,7 +81,11 @@ export function parseBibliographyIdentities(bibText: string): BibliographyIdenti
 
   // Also catch bare arxiv.org/abs|pdf links anywhere in the bib text
   const absRe = /arxiv\.org\/(?:abs|pdf)\/([^\s"'<>?#]+)/gi;
-  while ((match = absRe.exec(bibText)) !== null) {
+  for (
+    let match = absRe.exec(bibText);
+    match !== null;
+    match = absRe.exec(bibText)
+  ) {
     const id = match[1].replace(/\.pdf$/i, "");
     arxivIds.add(normalizeArxivId(id));
   }

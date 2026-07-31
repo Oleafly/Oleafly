@@ -9,6 +9,7 @@ import {
   parseBibliographyIdentities,
 } from "./bibliography-filter";
 import { heuristicScore, rankLiteraturePapers } from "./debate-ranker";
+import { enrichAuthorlessRecords, type ArxivLookupFn } from "./enrich";
 import { extractKeywords, splitIntoParagraphs } from "./latex-paragraphs";
 import { completeChatWithActiveModel } from "./llm-complete";
 import {
@@ -85,6 +86,7 @@ export async function scanDocumentForCitations(args: {
   settings?: DocumentCitationSettings;
   search?: typeof searchLiterature;
   completeChat?: CompleteChatFn;
+  arxivLookup?: ArxivLookupFn;
   /** When `"heuristic"`, skip LLM and score with citation/rank heuristics. */
   rankMode?: DocumentScanRankMode;
   signal?: AbortSignal;
@@ -149,7 +151,13 @@ export async function scanDocumentForCitations(args: {
 
       throwIfAborted(signal);
 
-      const papers = filterNewLiteratureRecords(response.results, bibIds);
+      const filtered = filterNewLiteratureRecords(response.results, bibIds);
+      // Backfill authors for title-only sources (Google Scholar via Serper).
+      const papers = await enrichAuthorlessRecords(
+        filtered,
+        args.arxivLookup ?? undefined,
+      );
+      throwIfAborted(signal);
       const sourceErrors = sourceErrorMessages(response.runs);
 
       const ranked =

@@ -147,6 +147,36 @@ async fn search_semantic_scholar(
     })
 }
 
+/// Look up a single arXiv paper on Semantic Scholar to backfill authors and
+/// venue for sources that return bare titles (e.g. Google Scholar via Serper).
+#[tauri::command]
+pub async fn literature_arxiv_lookup(arxiv_id: String) -> Result<String, String> {
+    let id = arxiv_id.trim();
+    let valid = !id.is_empty()
+        && id.len() <= 32
+        && id
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '/'));
+    if !valid {
+        return Err("invalid arXiv id".to_string());
+    }
+    let mut request = client()?
+        .get(format!(
+            "https://api.semanticscholar.org/graph/v1/paper/arXiv:{id}"
+        ))
+        .query(&[(
+            "fields",
+            "title,authors,year,venue,externalIds,citationCount",
+        )]);
+    if let Some(key) = crate::secrets::read_connector_secrets()?
+        .get("semantic-scholar")
+        .filter(|key| !key.trim().is_empty())
+    {
+        request = request.header("x-api-key", key);
+    }
+    response_text("Semantic Scholar", request).await
+}
+
 async fn search_crossref(
     query: &str,
     limit: u8,
