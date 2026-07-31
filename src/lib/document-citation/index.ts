@@ -28,3 +28,10 @@ export {
   type DocumentCitationSettings,
 } from "./settings";
 export { completeChatWithActiveModel } from "./llm-complete";
+export {
+  scanDocumentForCitations,
+  type DocumentScanProgress,
+  type DocumentScanRankMode,
+  type DocumentScanResult,
+  type ParagraphCitationResult,
+} from "./document-scan";
