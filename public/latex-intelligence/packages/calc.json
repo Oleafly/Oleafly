@@ -1,0 +1,60 @@
+{
+  "args": [],
+  "deps": [],
+  "envs": [],
+  "keys": {},
+  "macros": [
+    {
+      "name": "addtocounter",
+      "snippet": "addtocounter{${1:ctr}}{${2:num}}"
+    },
+    {
+      "name": "addtolength",
+      "snippet": "addtolength{${1:cmd}}{${2:len}}"
+    },
+    {
+      "name": "depthof",
+      "snippet": "depthof{${1:text}}"
+    },
+    {
+      "name": "heightof",
+      "snippet": "heightof{${1:text}}"
+    },
+    {
+      "name": "maxof",
+      "snippet": "maxof{${1:type expression}}{${2:type expression}}"
+    },
+    {
+      "name": "minof",
+      "snippet": "minof{${1:type expression}}{${2:type expression}}"
+    },
+    {
+      "name": "ratio",
+      "snippet": "ratio{${1:dimen expression}}{${2:dimen expression}}"
+    },
+    {
+      "name": "real",
+      "snippet": "real{${1:decimal constant}}"
+    },
+    {
+      "name": "setcounter",
+      "snippet": "setcounter{${1:ctr}}{${2:num}}"
+    },
+    {
+      "name": "setlength",
+      "snippet": "setlength{${1:cmd}}{${2:len}}"
+    },
+    {
+      "name": "settototalheight",
+      "snippet": "settototalheight{${1:cmd}}{${2:text}}"
+    },
+    {
+      "name": "totalheightof",
+      "snippet": "totalheightof{${1:text}}"
+    },
+    {
+      "name": "widthof",
+      "snippet": "widthof{${1:text}}"
+    }
+  ]
+}

@@ -2,3 +2,7 @@ export * from "./model";
 export * from "./diagram-routing";
 export * from "./tikz-serializer";
 export * from "./figure";
+export * from "./compile-log/types";
+export * from "./compile-log/latex-log";
+export * from "./compile-log/bibtex-log";
+export * from "./compile-log/biber-log";

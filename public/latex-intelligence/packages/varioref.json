@@ -1,0 +1,223 @@
+{
+  "args": [
+    "\\usepackage/varioref#c"
+  ],
+  "deps": [],
+  "envs": [],
+  "keys": {
+    "\\usepackage/varioref#c": [
+      "afrikaans",
+      "american",
+      "arabic",
+      "austrian",
+      "naustrian",
+      "basque",
+      "bahasam",
+      "brazil",
+      "breton",
+      "bulgarian",
+      "catalan",
+      "croatian",
+      "czech",
+      "danish",
+      "dutch",
+      "english",
+      "esperanto",
+      "finnish",
+      "french",
+      "galician",
+      "german",
+      "ngerman",
+      "greek",
+      "icelandic",
+      "italian",
+      "japanese",
+      "magyar",
+      "norsk",
+      "nynorsk",
+      "polish",
+      "portuges",
+      "romanian",
+      "russian",
+      "slovak",
+      "slovene",
+      "spanish",
+      "swedish",
+      "turkish",
+      "ukrainian",
+      "francais",
+      "germanb",
+      "draft",
+      "final",
+      "space",
+      "nospace"
+    ]
+  },
+  "macros": [
+    {
+      "name": "Ref",
+      "snippet": "Ref{${1:label}}"
+    },
+    {
+      "name": "Vref",
+      "snippet": "Vref{${1:label}}"
+    },
+    {
+      "name": "Vref*",
+      "snippet": "Vref*{${1:label}}"
+    },
+    {
+      "name": "Vrefdefaultformat",
+      "unusual": true
+    },
+    {
+      "name": "Vrefformat",
+      "unusual": true
+    },
+    {
+      "name": "fullref",
+      "snippet": "fullref{${1:label}}"
+    },
+    {
+      "name": "fullrefdefaultformat",
+      "unusual": true
+    },
+    {
+      "name": "fullrefformat",
+      "unusual": true
+    },
+    {
+      "name": "labelformat",
+      "snippet": "labelformat{${1:counter}}{${2:argument}}"
+    },
+    {
+      "name": "reftextafter"
+    },
+    {
+      "name": "reftextbefore"
+    },
+    {
+      "name": "reftextcurrent"
+    },
+    {
+      "name": "reftextfaceafter"
+    },
+    {
+      "name": "reftextfacebefore"
+    },
+    {
+      "name": "reftextfaraway",
+      "snippet": "reftextfaraway{${1:label}}"
+    },
+    {
+      "name": "reftextlabelrange",
+      "snippet": "reftextlabelrange{${1:label1}}{${2:label2}}"
+    },
+    {
+      "name": "reftextpagerange",
+      "snippet": "reftextpagerange{${1:label1}}{${2:label2}}"
+    },
+    {
+      "name": "reftextvario",
+      "snippet": "reftextvario{${1:text1}}{${2:text2}}"
+    },
+    {
+      "name": "thevpagerefnum"
+    },
+    {
+      "name": "vpageref",
+      "snippet": "vpageref[${2:samepage}][${3:otherpage}]{${1:label}}"
+    },
+    {
+      "name": "vpageref",
+      "snippet": "vpageref[${2:samepage}]{${1:label}}"
+    },
+    {
+      "name": "vpageref",
+      "snippet": "vpageref{${1:label}}"
+    },
+    {
+      "name": "vpageref*",
+      "snippet": "vpageref*[${2:samepage}][${3:otherpage}]{${1:label}}"
+    },
+    {
+      "name": "vpageref*",
+      "snippet": "vpageref*[${2:samepage}]{${1:label}}"
+    },
+    {
+      "name": "vpageref*",
+      "snippet": "vpageref*{${1:label}}"
+    },
+    {
+      "name": "vpagerefcompare",
+      "snippet": "vpagerefcompare{${1:label1}}{${2:label2}}{${3:true}}{${4:false}}"
+    },
+    {
+      "name": "vpagerefcomparenearby",
+      "snippet": "vpagerefcomparenearby{${1:label1}}{${2:label2}}{${3:true}}{${4:false}}",
+      "unusual": true
+    },
+    {
+      "name": "vpagerefnearby",
+      "snippet": "vpagerefnearby{${1:label}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "vpagerefrange",
+      "snippet": "vpagerefrange[${3:same page text}]{${1:fromlabel}}{${2:tolabel}}"
+    },
+    {
+      "name": "vpagerefrange",
+      "snippet": "vpagerefrange{${1:fromlabel}}{${2:tolabel}}"
+    },
+    {
+      "name": "vpagerefrange*",
+      "snippet": "vpagerefrange*[${3:same page text}]{${1:fromlabel}}{${2:tolabel}}"
+    },
+    {
+      "name": "vpagerefrange*",
+      "snippet": "vpagerefrange*{${1:fromlabel}}{${2:tolabel}}"
+    },
+    {
+      "name": "vref",
+      "snippet": "vref{${1:label}}"
+    },
+    {
+      "name": "vref*",
+      "snippet": "vref*{${1:label}}"
+    },
+    {
+      "name": "vrefdefaultformat",
+      "unusual": true
+    },
+    {
+      "name": "vrefformat",
+      "unusual": true
+    },
+    {
+      "name": "vrefpagenum",
+      "snippet": "vrefpagenum{${1:cmd}}{${2:label}}"
+    },
+    {
+      "name": "vrefrange",
+      "snippet": "vrefrange[${3:same page text}]{${1:fromlabel}}{${2:tolabel}}"
+    },
+    {
+      "name": "vrefrange",
+      "snippet": "vrefrange{${1:fromlabel}}{${2:tolabel}}"
+    },
+    {
+      "name": "vrefrangedefaultformat",
+      "unusual": true
+    },
+    {
+      "name": "vrefrangeformat",
+      "unusual": true
+    },
+    {
+      "name": "vrefshowerrors"
+    },
+    {
+      "name": "vrefwarning"
+    }
+  ]
+}

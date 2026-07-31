@@ -1,0 +1,376 @@
+{
+  "args": [
+    "\\usepackage/empheq#c"
+  ],
+  "deps": [
+    "mathtools"
+  ],
+  "envs": [
+    {
+      "name": "AmSalign",
+      "unusual": true
+    },
+    {
+      "name": "AmSalign*",
+      "unusual": true
+    },
+    {
+      "name": "AmSalignat",
+      "snippet": "{${1:ncols}}",
+      "unusual": true
+    },
+    {
+      "name": "AmSalignat*",
+      "snippet": "{${1:ncols}}",
+      "unusual": true
+    },
+    {
+      "name": "AmSequation",
+      "unusual": true
+    },
+    {
+      "name": "AmSequation*",
+      "unusual": true
+    },
+    {
+      "name": "AmSflalign",
+      "unusual": true
+    },
+    {
+      "name": "AmSflalign*",
+      "unusual": true
+    },
+    {
+      "name": "AmSgather",
+      "unusual": true
+    },
+    {
+      "name": "AmSgather*",
+      "unusual": true
+    },
+    {
+      "name": "AmSmultline",
+      "unusual": true
+    },
+    {
+      "name": "AmSmultline*",
+      "unusual": true
+    },
+    {
+      "name": "MTmultlined"
+    },
+    {
+      "name": "MTmultlined",
+      "snippet": "[${1:pos}][${2:width}]"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\begin{align},\\begin{align*},\\begin{alignat}{ncols},\\begin{alignat*}{ncols},\\begin{equation},\\begin{equation*},\\begin{flalign},\\begin{flalign*},\\begin{gather},\\begin{gather*},\\begin{multline},\\begin{multline*}"
+      ],
+      "name": "align",
+      "snippet": "[${1:markup instructions}]"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\begin{align},\\begin{align*},\\begin{alignat}{ncols},\\begin{alignat*}{ncols},\\begin{equation},\\begin{equation*},\\begin{flalign},\\begin{flalign*},\\begin{gather},\\begin{gather*},\\begin{multline},\\begin{multline*}"
+      ],
+      "name": "align*",
+      "snippet": "[${1:markup instructions}]"
+    },
+    {
+      "name": "alignat",
+      "snippet": "{${1:ncols}}[${2:markup instructions}]"
+    },
+    {
+      "name": "alignat*",
+      "snippet": "{${1:ncols}}[${2:markup instructions}]"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\begin{empheq},\\empheqset"
+      ],
+      "name": "empheq",
+      "snippet": "[${2:markup instructions}]{${1:AMS env name}}"
+    },
+    {
+      "name": "empheq",
+      "snippet": "{${1:AMS env name}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\begin{align},\\begin{align*},\\begin{alignat}{ncols},\\begin{alignat*}{ncols},\\begin{equation},\\begin{equation*},\\begin{flalign},\\begin{flalign*},\\begin{gather},\\begin{gather*},\\begin{multline},\\begin{multline*}"
+      ],
+      "name": "equation",
+      "snippet": "[${1:markup instructions}]"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\begin{align},\\begin{align*},\\begin{alignat}{ncols},\\begin{alignat*}{ncols},\\begin{equation},\\begin{equation*},\\begin{flalign},\\begin{flalign*},\\begin{gather},\\begin{gather*},\\begin{multline},\\begin{multline*}"
+      ],
+      "name": "equation*",
+      "snippet": "[${1:markup instructions}]"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\begin{align},\\begin{align*},\\begin{alignat}{ncols},\\begin{alignat*}{ncols},\\begin{equation},\\begin{equation*},\\begin{flalign},\\begin{flalign*},\\begin{gather},\\begin{gather*},\\begin{multline},\\begin{multline*}"
+      ],
+      "name": "flalign",
+      "snippet": "[${1:markup instructions}]"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\begin{align},\\begin{align*},\\begin{alignat}{ncols},\\begin{alignat*}{ncols},\\begin{equation},\\begin{equation*},\\begin{flalign},\\begin{flalign*},\\begin{gather},\\begin{gather*},\\begin{multline},\\begin{multline*}"
+      ],
+      "name": "flalign*",
+      "snippet": "[${1:markup instructions}]"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\begin{align},\\begin{align*},\\begin{alignat}{ncols},\\begin{alignat*}{ncols},\\begin{equation},\\begin{equation*},\\begin{flalign},\\begin{flalign*},\\begin{gather},\\begin{gather*},\\begin{multline},\\begin{multline*}"
+      ],
+      "name": "gather",
+      "snippet": "[${1:markup instructions}]"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\begin{align},\\begin{align*},\\begin{alignat}{ncols},\\begin{alignat*}{ncols},\\begin{equation},\\begin{equation*},\\begin{flalign},\\begin{flalign*},\\begin{gather},\\begin{gather*},\\begin{multline},\\begin{multline*}"
+      ],
+      "name": "gather*",
+      "snippet": "[${1:markup instructions}]"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\begin{align},\\begin{align*},\\begin{alignat}{ncols},\\begin{alignat*}{ncols},\\begin{equation},\\begin{equation*},\\begin{flalign},\\begin{flalign*},\\begin{gather},\\begin{gather*},\\begin{multline},\\begin{multline*}"
+      ],
+      "name": "multline",
+      "snippet": "[${1:markup instructions}]"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\begin{align},\\begin{align*},\\begin{alignat}{ncols},\\begin{alignat*}{ncols},\\begin{equation},\\begin{equation*},\\begin{flalign},\\begin{flalign*},\\begin{gather},\\begin{gather*},\\begin{multline},\\begin{multline*}"
+      ],
+      "name": "multline*",
+      "snippet": "[${1:markup instructions}]"
+    }
+  ],
+  "keys": {
+    "\\begin{align},\\begin{align*},\\begin{alignat}{ncols},\\begin{alignat*}{ncols},\\begin{equation},\\begin{equation*},\\begin{flalign},\\begin{flalign*},\\begin{gather},\\begin{gather*},\\begin{multline},\\begin{multline*}": [
+      "box=${1:box cmd}",
+      "innerbox=${1:box cmd}",
+      "left=${1:math}",
+      "right=${1:math}",
+      "outerbox=${1:box cmd}",
+      "marginbox=${1:box cmd}",
+      "box=${1:box cmd}",
+      "innerbox=${1:box cmd}",
+      "left=${1:math}",
+      "right=${1:math}",
+      "outerbox=${1:box cmd}",
+      "marginbox=${1:box cmd}"
+    ],
+    "\\begin{empheq},\\empheqset": [
+      "box=${1:box cmd}",
+      "innerbox=${1:box cmd}",
+      "left=${1:math}",
+      "right=${1:math}",
+      "outerbox=${1:box cmd}",
+      "marginbox=${1:box cmd}"
+    ],
+    "\\usepackage/empheq#c": [
+      "overload",
+      "overload2",
+      "oldmultline",
+      "newmultline",
+      "ntheorem",
+      "fixamsmath",
+      "donotfixamsmathbugs",
+      "allowspaces",
+      "disallowspaces",
+      "intlimits",
+      "nointlimits",
+      "sumlimits",
+      "nosumlimits",
+      "namelimits",
+      "nonamelimits",
+      "leqno",
+      "reqno",
+      "centertags",
+      "tbtags",
+      "cmex10",
+      "fleqn",
+      "alignedleftspaceyes",
+      "alignedleftspaceno",
+      "alignedleftspaceyesifneg"
+    ]
+  },
+  "macros": [
+    {
+      "name": "DeclareLeftDelimiter",
+      "snippet": "DeclareLeftDelimiter[${2:space adjustment}]{${1:delimiter}}",
+      "unusual": true
+    },
+    {
+      "name": "DeclareLeftDelimiter",
+      "snippet": "DeclareLeftDelimiter{${1:delimiter}}",
+      "unusual": true
+    },
+    {
+      "name": "DeclareRightDelimiter",
+      "snippet": "DeclareRightDelimiter[${2:space adjustment}]{${1:delimiter}}",
+      "unusual": true
+    },
+    {
+      "name": "DeclareRightDelimiter",
+      "snippet": "DeclareRightDelimiter{${1:delimiter}}",
+      "unusual": true
+    },
+    {
+      "name": "EmphEqMainEnv",
+      "unusual": true
+    },
+    {
+      "name": "EmphEqdelimiterfactor",
+      "unusual": true
+    },
+    {
+      "name": "EmphEqdelimitershortfall",
+      "unusual": true
+    },
+    {
+      "name": "EmphEqdisplaydepth",
+      "unusual": true
+    },
+    {
+      "name": "EmphEqdisplayheight",
+      "unusual": true
+    },
+    {
+      "name": "empheqbiglVert"
+    },
+    {
+      "name": "empheqbiglangle"
+    },
+    {
+      "name": "empheqbiglbrace"
+    },
+    {
+      "name": "empheqbiglbrack"
+    },
+    {
+      "name": "empheqbiglceil"
+    },
+    {
+      "name": "empheqbiglfloor"
+    },
+    {
+      "name": "empheqbiglparen"
+    },
+    {
+      "name": "empheqbiglvert"
+    },
+    {
+      "name": "empheqbigrVert"
+    },
+    {
+      "name": "empheqbigrangle"
+    },
+    {
+      "name": "empheqbigrbrace"
+    },
+    {
+      "name": "empheqbigrbrack"
+    },
+    {
+      "name": "empheqbigrceil"
+    },
+    {
+      "name": "empheqbigrfloor"
+    },
+    {
+      "name": "empheqbigrparen"
+    },
+    {
+      "name": "empheqbigrvert"
+    },
+    {
+      "name": "empheqlVert"
+    },
+    {
+      "name": "empheqlangle"
+    },
+    {
+      "name": "empheqlbrace"
+    },
+    {
+      "name": "empheqlbrack"
+    },
+    {
+      "name": "empheqlceil"
+    },
+    {
+      "name": "empheqlfloor"
+    },
+    {
+      "name": "empheqlparen"
+    },
+    {
+      "name": "empheqlvert"
+    },
+    {
+      "name": "empheqrVert"
+    },
+    {
+      "name": "empheqrangle"
+    },
+    {
+      "name": "empheqrbrace"
+    },
+    {
+      "name": "empheqrbrack"
+    },
+    {
+      "name": "empheqrceil"
+    },
+    {
+      "name": "empheqrfloor"
+    },
+    {
+      "name": "empheqrparen"
+    },
+    {
+      "name": "empheqrvert"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\begin{empheq},\\empheqset"
+      ],
+      "name": "empheqset",
+      "snippet": "empheqset{${1:markup instructions}}"
+    },
+    {
+      "name": "endEmphEqMainEnv",
+      "unusual": true
+    },
+    {
+      "name": "mintagvsep",
+      "unusual": true
+    },
+    {
+      "name": "shadowbox*",
+      "snippet": "shadowbox*{${1:arg}}",
+      "unusual": true
+    }
+  ]
+}

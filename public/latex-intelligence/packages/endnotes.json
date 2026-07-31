@@ -1,0 +1,69 @@
+{
+  "args": [],
+  "deps": [],
+  "envs": [],
+  "keys": {},
+  "macros": [
+    {
+      "name": "addtoendnotes",
+      "snippet": "addtoendnotes{${1:text}}"
+    },
+    {
+      "name": "endnote",
+      "snippet": "endnote[${2:number}]{${1:text}}"
+    },
+    {
+      "name": "endnote",
+      "snippet": "endnote{${1:text}}"
+    },
+    {
+      "name": "endnotemark"
+    },
+    {
+      "name": "endnotemark",
+      "snippet": "endnotemark[${1:number}]"
+    },
+    {
+      "name": "endnotesep",
+      "unusual": true
+    },
+    {
+      "name": "endnotetext",
+      "snippet": "endnotetext[${2:number}]{${1:text}}"
+    },
+    {
+      "name": "endnotetext",
+      "snippet": "endnotetext{${1:text}}"
+    },
+    {
+      "name": "enoteformat",
+      "unusual": true
+    },
+    {
+      "name": "enoteheading",
+      "unusual": true
+    },
+    {
+      "name": "enotesize"
+    },
+    {
+      "name": "makeenmark",
+      "unusual": true
+    },
+    {
+      "name": "notesname",
+      "unusual": true
+    },
+    {
+      "name": "theendnote",
+      "unusual": true
+    },
+    {
+      "name": "theendnotes"
+    },
+    {
+      "name": "theenmark",
+      "unusual": true
+    }
+  ]
+}

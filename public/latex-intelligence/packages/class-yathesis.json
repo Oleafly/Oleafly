@@ -1,0 +1,962 @@
+{
+  "args": [],
+  "deps": [
+    "adjustbox",
+    "array",
+    "babel",
+    "biblatex",
+    "bookmark",
+    "class-book",
+    "colophon",
+    "csquotes",
+    "datatool",
+    "datetime2",
+    "draftwatermark",
+    "environ",
+    "epigraph",
+    "etoc",
+    "etoolbox",
+    "fncychap",
+    "geometry",
+    "graphicx",
+    "hypcap",
+    "ifdraft",
+    "iflang",
+    "iftex",
+    "letltxmacro",
+    "marvosym",
+    "morewrites",
+    "nonumonpart",
+    "pgfopts",
+    "setspace",
+    "tabularx",
+    "tcolorbox",
+    "tcolorboxlibraryskins",
+    "textcase",
+    "titleps",
+    "titlesec",
+    "tocbibind",
+    "translator",
+    "twoopt",
+    "xcolor",
+    "xifthen",
+    "xkeyval",
+    "xpatch",
+    "xstring"
+  ],
+  "envs": [
+    {
+      "name": "abstract"
+    },
+    {
+      "name": "abstract",
+      "snippet": "[${1:⟨titre alternatif⟩}]"
+    },
+    {
+      "name": "descriptionFB"
+    },
+    {
+      "name": "enumerateFB"
+    },
+    {
+      "name": "itemizeFB"
+    },
+    {
+      "name": "listFB",
+      "snippet": "{${1:symbol}}"
+    },
+    {
+      "name": "listORI",
+      "snippet": "{${1:symbol}}"
+    }
+  ],
+  "keys": {
+    "0": [
+      "ShowOptions",
+      "StandardLayout",
+      "GlobalLayoutFrench",
+      "IndentFirst",
+      "PartNameFull",
+      "ListItemsAsPar",
+      "StandardListSpacing",
+      "StandardItemizeEnv",
+      "StandardEnumerateEnv",
+      "StandardItemLabels",
+      "ItemLabels=",
+      "ItemLabeli=",
+      "ItemLabelii=",
+      "ItemLabeliii=",
+      "ItemLabeliv=",
+      "StandardLists",
+      "ListOldLayout",
+      "FrenchFootnotes",
+      "AutoSpaceFootnotes",
+      "AutoSpacePunctuation",
+      "ThinColonSpace",
+      "OriginalTypewriter",
+      "UnicodeNoBreakSpaces",
+      "og=",
+      "fg=",
+      "INGuillSpace",
+      "EveryParGuill=${1|open,close,none|}",
+      "EveryLineGuill=${1|open,close,none|}",
+      "InnerGuillSingle",
+      "ThinSpaceInFrenchNumbers",
+      "SmallCapsFigTabCaptions",
+      "CustomiseFigTabCaptions",
+      "OldFigTabCaptions",
+      "FrenchSuperscripts",
+      "LowercaseSuperscripts",
+      "SuppressWarning"
+    ]
+  },
+  "macros": [
+    {
+      "name": "AddThinSpaceBeforeFootnotes"
+    },
+    {
+      "name": "AutoSpaceBeforeFDP"
+    },
+    {
+      "name": "CaptionSeparator"
+    },
+    {
+      "name": "DecimalMathComma"
+    },
+    {
+      "name": "FBFrenchFootnotesfalse"
+    },
+    {
+      "name": "FBFrenchFootnotestrue"
+    },
+    {
+      "name": "FBFrenchSuperscriptstrue"
+    },
+    {
+      "name": "FBGlobalLayoutFrenchtrue"
+    },
+    {
+      "name": "FBInnerGuillSinglefalse"
+    },
+    {
+      "name": "FBInnerGuillSingletrue"
+    },
+    {
+      "name": "FBListItemsAsParfalse"
+    },
+    {
+      "name": "FBListItemsAsPartrue"
+    },
+    {
+      "name": "FBLowercaseSuperscriptstrue"
+    },
+    {
+      "name": "FBPartNameFulltrue"
+    },
+    {
+      "name": "FBSmallCapsFigTabCaptionstrue"
+    },
+    {
+      "name": "FBStandardEnumerateEnvtrue"
+    },
+    {
+      "name": "FBStandardItemLabelstrue"
+    },
+    {
+      "name": "FBStandardItemizeEnvtrue"
+    },
+    {
+      "name": "FBStandardLayouttrue"
+    },
+    {
+      "name": "FBStandardListSpacingtrue"
+    },
+    {
+      "name": "FBStandardListstrue"
+    },
+    {
+      "name": "FBWarning",
+      "snippet": "FBWarning{${1:message}}"
+    },
+    {
+      "name": "FBcolonspace"
+    },
+    {
+      "name": "FBdatebox"
+    },
+    {
+      "name": "FBdatespace"
+    },
+    {
+      "name": "FBeverylineguill"
+    },
+    {
+      "name": "FBfigtabshape"
+    },
+    {
+      "name": "FBfnindent"
+    },
+    {
+      "name": "FBgspchar"
+    },
+    {
+      "name": "FBguillopen"
+    },
+    {
+      "name": "FBguillspace"
+    },
+    {
+      "name": "FBmedkern"
+    },
+    {
+      "name": "FBsetspaces",
+      "snippet": "FBsetspaces[${5:language}]{${1:type}}{${2:width}}{${3:stretch}}{${4:shrink}}"
+    },
+    {
+      "name": "FBsetspaces",
+      "snippet": "FBsetspaces{${1:type}}{${2:width}}{${3:stretch}}{${4:shrink}}"
+    },
+    {
+      "name": "FBsupR"
+    },
+    {
+      "name": "FBsupS"
+    },
+    {
+      "name": "FBtextellipsis"
+    },
+    {
+      "name": "FBthickkern"
+    },
+    {
+      "name": "FBthinspace"
+    },
+    {
+      "name": "FBthousandsep"
+    },
+    {
+      "name": "FrenchEnumerate",
+      "snippet": "FrenchEnumerate{${1:arg}}"
+    },
+    {
+      "name": "FrenchFootnotes"
+    },
+    {
+      "name": "FrenchLabelItem"
+    },
+    {
+      "name": "FrenchPopularEnumerate",
+      "snippet": "FrenchPopularEnumerate{${1:arg}}"
+    },
+    {
+      "name": "Frlabelitemi"
+    },
+    {
+      "name": "Frlabelitemii"
+    },
+    {
+      "name": "Frlabelitemiii"
+    },
+    {
+      "name": "Frlabelitemiv"
+    },
+    {
+      "name": "No"
+    },
+    {
+      "name": "NoAutoSpaceBeforeFDP"
+    },
+    {
+      "name": "NoAutoSpacing"
+    },
+    {
+      "name": "NoEveryParQuote"
+    },
+    {
+      "name": "Nos"
+    },
+    {
+      "name": "StandardFootnotes"
+    },
+    {
+      "name": "StandardMathComma"
+    },
+    {
+      "name": "academicfield",
+      "snippet": "academicfield[${2:⟨discipline dans la langue secondaire⟩}]{${1:⟨discipline dans la langue principale⟩}}"
+    },
+    {
+      "name": "academicfield",
+      "snippet": "academicfield{${1:⟨discipline⟩}}"
+    },
+    {
+      "name": "alsoname"
+    },
+    {
+      "name": "at"
+    },
+    {
+      "name": "author",
+      "snippet": "author[${3:⟨email⟩}]{${1:⟨prénom⟩}}{${2:⟨nom⟩}}"
+    },
+    {
+      "name": "author",
+      "snippet": "author{${1:⟨prénom⟩}}{${2:⟨nom⟩}}"
+    },
+    {
+      "name": "bibname"
+    },
+    {
+      "name": "bname",
+      "snippet": "bname{${1:text}}"
+    },
+    {
+      "name": "boi"
+    },
+    {
+      "name": "bsc",
+      "snippet": "bsc{${1:text}}"
+    },
+    {
+      "name": "captionsfrench"
+    },
+    {
+      "name": "ccname"
+    },
+    {
+      "name": "chapter",
+      "snippet": "chapter[${2:⟨titre alt. pour TdM⟩}][${3:⟨titre alt. pour entête⟩}]{${1:⟨titre⟩}}"
+    },
+    {
+      "name": "chapter*",
+      "snippet": "chapter*[${2:⟨titre alt. pour TdM et entête⟩}]{${1:⟨titre⟩}}"
+    },
+    {
+      "name": "chapter*",
+      "snippet": "chapter*[${2:⟨titre alt. pour TdM⟩}][${3:⟨titre alt. pour entête⟩}]{${1:⟨titre⟩}}"
+    },
+    {
+      "name": "chaptername"
+    },
+    {
+      "name": "circonflexe"
+    },
+    {
+      "name": "coinstitute",
+      "snippet": "coinstitute[${2:⟨précisions⟩}]{${1:⟨nom de l'institut de cotutelle⟩}}"
+    },
+    {
+      "name": "coinstitute",
+      "snippet": "coinstitute{${1:⟨nom de l'institut de cotutelle⟩}}"
+    },
+    {
+      "name": "colophontext",
+      "snippet": "colophontext{${1:⟨texte⟩}}"
+    },
+    {
+      "name": "committeepresident",
+      "snippet": "committeepresident[${3:⟨précisions⟩}]{${1:⟨prénom⟩}}{${2:⟨nom⟩}}"
+    },
+    {
+      "name": "committeepresident",
+      "snippet": "committeepresident{${1:⟨prénom⟩}}{${2:⟨nom⟩}}"
+    },
+    {
+      "name": "comonitor",
+      "snippet": "comonitor[${3:⟨précisions⟩}]{${1:⟨prénom⟩}}{${2:⟨nom⟩}}"
+    },
+    {
+      "name": "comonitor",
+      "snippet": "comonitor{${1:⟨prénom⟩}}{${2:⟨nom⟩}}"
+    },
+    {
+      "name": "company",
+      "snippet": "company[${2:⟨précisions⟩}]{${1:⟨nom de l'entreprise⟩}}"
+    },
+    {
+      "name": "company",
+      "snippet": "company{${1:⟨nom de l'entreprise⟩}}"
+    },
+    {
+      "name": "comue",
+      "snippet": "comue[${2:⟨précisions⟩}]{${1:⟨nom de la ComUE⟩}}"
+    },
+    {
+      "name": "comue",
+      "snippet": "comue{${1:⟨nom de la ComUE⟩}}"
+    },
+    {
+      "name": "cosupervisor",
+      "snippet": "cosupervisor[${3:⟨précisions⟩}]{${1:⟨prénom⟩}}{${2:⟨nom⟩}}"
+    },
+    {
+      "name": "cosupervisor",
+      "snippet": "cosupervisor{${1:⟨prénom⟩}}{${2:⟨nom⟩}}"
+    },
+    {
+      "name": "date",
+      "snippet": "date{${1:⟨jour⟩}}{${2:⟨mois⟩}}{${3:⟨année⟩}}"
+    },
+    {
+      "name": "dateacadian"
+    },
+    {
+      "name": "datefrench"
+    },
+    {
+      "name": "dedication",
+      "snippet": "dedication{${1:⟨dédicace⟩}}"
+    },
+    {
+      "name": "degre"
+    },
+    {
+      "name": "degres"
+    },
+    {
+      "name": "descindentFB"
+    },
+    {
+      "name": "disclaimertext",
+      "snippet": "disclaimertext{${1:⟨clause⟩}}"
+    },
+    {
+      "name": "doctoralschool",
+      "snippet": "doctoralschool[${2:⟨précisions⟩}]{${1:⟨nom de l'école doctorale⟩}}"
+    },
+    {
+      "name": "doctoralschool",
+      "snippet": "doctoralschool{${1:⟨nom de l'école doctorale⟩}}"
+    },
+    {
+      "name": "dotFFN"
+    },
+    {
+      "name": "enclname"
+    },
+    {
+      "name": "examiner",
+      "snippet": "examiner[${3:⟨précisions⟩}]{${1:⟨prénom⟩}}{${2:⟨nom⟩}}"
+    },
+    {
+      "name": "examiner",
+      "snippet": "examiner{${1:⟨prénom⟩}}{${2:⟨nom⟩}}"
+    },
+    {
+      "name": "expression",
+      "snippet": "expression{${1:⟨label⟩}}{${2:⟨valeur en français⟩}}{${3:⟨valeur en anglais⟩}}"
+    },
+    {
+      "name": "extrasfrench"
+    },
+    {
+      "name": "fg"
+    },
+    {
+      "name": "fgi"
+    },
+    {
+      "name": "fgii"
+    },
+    {
+      "name": "fprimo)"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "0"
+      ],
+      "name": "frenchbsetup",
+      "snippet": "frenchbsetup{${1:options}}"
+    },
+    {
+      "name": "frenchdate",
+      "snippet": "frenchdate{${1:day}}{${2:month}}{${3:year}}"
+    },
+    {
+      "name": "frenchpartfirst"
+    },
+    {
+      "name": "frenchpartsecond"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "0"
+      ],
+      "name": "frenchsetup",
+      "snippet": "frenchsetup{${1:options}}"
+    },
+    {
+      "name": "frenchtoday"
+    },
+    {
+      "name": "frontepigraph",
+      "snippet": "frontepigraph[${3:⟨langue⟩}]{${1:⟨épigraphe⟩}}{${2:⟨auteur⟩}}"
+    },
+    {
+      "name": "frontepigraph",
+      "snippet": "frontepigraph{${1:⟨épigraphe⟩}}{${2:⟨auteur⟩}}"
+    },
+    {
+      "name": "frquote",
+      "snippet": "frquote{${1:text}}"
+    },
+    {
+      "name": "fup",
+      "snippet": "fup{${1:text}}"
+    },
+    {
+      "name": "glossaryname"
+    },
+    {
+      "name": "guest",
+      "snippet": "guest[${3:⟨précisions⟩}]{${1:⟨prénom⟩}}{${2:⟨nom⟩}}"
+    },
+    {
+      "name": "guest",
+      "snippet": "guest{${1:⟨prénom⟩}}{${2:⟨nom⟩}}"
+    },
+    {
+      "name": "headtoname"
+    },
+    {
+      "name": "ieme"
+    },
+    {
+      "name": "iemes"
+    },
+    {
+      "name": "ier"
+    },
+    {
+      "name": "iere"
+    },
+    {
+      "name": "ieres"
+    },
+    {
+      "name": "iers"
+    },
+    {
+      "name": "ifFBAutoSpaceFootnotes"
+    },
+    {
+      "name": "ifFBCompactItemize"
+    },
+    {
+      "name": "ifFBCustomiseFigTabCaptions"
+    },
+    {
+      "name": "ifFBFrenchFootnotes"
+    },
+    {
+      "name": "ifFBFrenchSuperscripts"
+    },
+    {
+      "name": "ifFBGlobalLayoutFrench"
+    },
+    {
+      "name": "ifFBINGuillSpace"
+    },
+    {
+      "name": "ifFBIndentFirst"
+    },
+    {
+      "name": "ifFBListItemsAsPar"
+    },
+    {
+      "name": "ifFBListOldLayout"
+    },
+    {
+      "name": "ifFBLowercaseSuperscripts"
+    },
+    {
+      "name": "ifFBLuaTeX"
+    },
+    {
+      "name": "ifFBOldFigTabCaptions"
+    },
+    {
+      "name": "ifFBOriginalTypewriter"
+    },
+    {
+      "name": "ifFBPartNameFull"
+    },
+    {
+      "name": "ifFBReduceListSpacing"
+    },
+    {
+      "name": "ifFBShowOptions"
+    },
+    {
+      "name": "ifFBSmallCapsFigTabCaptions"
+    },
+    {
+      "name": "ifFBStandardEnumerateEnv"
+    },
+    {
+      "name": "ifFBStandardItemLabels"
+    },
+    {
+      "name": "ifFBStandardItemizeEnv"
+    },
+    {
+      "name": "ifFBStandardLayout"
+    },
+    {
+      "name": "ifFBStandardListSpacing"
+    },
+    {
+      "name": "ifFBStandardLists"
+    },
+    {
+      "name": "ifFBSuppressWarning"
+    },
+    {
+      "name": "ifFBThinColonSpace"
+    },
+    {
+      "name": "ifFBThinSpaceInFrenchNumbers"
+    },
+    {
+      "name": "ifFBXeTeX"
+    },
+    {
+      "name": "ifFBfrench"
+    },
+    {
+      "name": "ifFBunicode"
+    },
+    {
+      "name": "ifLaTeXe"
+    },
+    {
+      "name": "institute",
+      "snippet": "institute[${2:⟨précisions⟩}]{${1:⟨nom de l'institut⟩}}"
+    },
+    {
+      "name": "institute",
+      "snippet": "institute{${1:⟨nom de l'institut⟩}}"
+    },
+    {
+      "name": "kernFFN"
+    },
+    {
+      "name": "keywords",
+      "snippet": "keywords{${1:⟨mots clés dans la langue principale⟩}}{${2:⟨mots clés dans la langue secondaire⟩}}"
+    },
+    {
+      "name": "labelindentFB"
+    },
+    {
+      "name": "labelwidthFB"
+    },
+    {
+      "name": "laboratory",
+      "snippet": "laboratory[${3:⟨précisions⟩}]{${1:⟨nom du laboratoire⟩}}{${2:⟨adresse du laboratoire⟩}}"
+    },
+    {
+      "name": "laboratory",
+      "snippet": "laboratory{${1:⟨nom du laboratoire⟩}}{${2:⟨adresse du laboratoire⟩}}"
+    },
+    {
+      "name": "leadchapter",
+      "snippet": "leadchapter{${1:⟨texte⟩}}"
+    },
+    {
+      "name": "leftmarginFB"
+    },
+    {
+      "name": "listfigurename"
+    },
+    {
+      "name": "listindentFB"
+    },
+    {
+      "name": "makeabstract"
+    },
+    {
+      "name": "makebackcover"
+    },
+    {
+      "name": "makededications"
+    },
+    {
+      "name": "makededications*"
+    },
+    {
+      "name": "makedisclaimer"
+    },
+    {
+      "name": "makedisclaimer*"
+    },
+    {
+      "name": "makefrontepigraphs"
+    },
+    {
+      "name": "makefrontepigraphs*"
+    },
+    {
+      "name": "makekeywords"
+    },
+    {
+      "name": "makekeywords*"
+    },
+    {
+      "name": "makelaboratory"
+    },
+    {
+      "name": "makelaboratory*"
+    },
+    {
+      "name": "maketitle",
+      "snippet": "maketitle[${1:⟨options⟩}]"
+    },
+    {
+      "name": "newglssymbol",
+      "snippet": "newglssymbol[${5:⟨classement⟩}]{${1:⟨label⟩}}{${2:⟨symbole⟩}}{${3:⟨nom⟩}}{${4:⟨description⟩}}"
+    },
+    {
+      "name": "newglssymbol",
+      "snippet": "newglssymbol{${1:⟨label⟩}}{${2:⟨symbole⟩}}{${3:⟨nom⟩}}{${4:⟨description⟩}}"
+    },
+    {
+      "name": "nextwithlocaltoc"
+    },
+    {
+      "name": "nextwithoutlocaltoc"
+    },
+    {
+      "name": "no"
+    },
+    {
+      "name": "noextrasfrench"
+    },
+    {
+      "name": "nombre",
+      "snippet": "nombre{${1:arg}}"
+    },
+    {
+      "name": "nos"
+    },
+    {
+      "name": "og"
+    },
+    {
+      "name": "ogi"
+    },
+    {
+      "name": "ogii"
+    },
+    {
+      "name": "ordernumber"
+    },
+    {
+      "name": "ordernumber",
+      "snippet": "ordernumber[${1:⟨numéro d'ordre⟩}]"
+    },
+    {
+      "name": "paragraph*",
+      "snippet": "paragraph*[${2:⟨titre alt. pour TdM et entête⟩}]{${1:⟨titre⟩}}"
+    },
+    {
+      "name": "parindentFFN"
+    },
+    {
+      "name": "partfirst"
+    },
+    {
+      "name": "partnameord"
+    },
+    {
+      "name": "partsecond"
+    },
+    {
+      "name": "prefacename"
+    },
+    {
+      "name": "pres",
+      "snippet": "pres[${2:⟨précisions⟩}]{${1:⟨nom du PRES⟩}}"
+    },
+    {
+      "name": "pres",
+      "snippet": "pres{${1:⟨nom du PRES⟩}}"
+    },
+    {
+      "name": "primo"
+    },
+    {
+      "name": "printsymbols",
+      "snippet": "printsymbols[${1:⟨options⟩}]"
+    },
+    {
+      "name": "proofname"
+    },
+    {
+      "name": "quarto"
+    },
+    {
+      "name": "referee",
+      "snippet": "referee[${3:⟨précisions⟩}]{${1:⟨prénom⟩}}{${2:⟨nom⟩}}"
+    },
+    {
+      "name": "referee",
+      "snippet": "referee{${1:⟨prénom⟩}}{${2:⟨nom⟩}}"
+    },
+    {
+      "name": "rmfamilyFB"
+    },
+    {
+      "name": "section",
+      "snippet": "section[${2:⟨titre alt. pour TdM⟩}][${3:⟨titre alt. pour entête⟩}]{${1:⟨titre⟩}}"
+    },
+    {
+      "name": "section*",
+      "snippet": "section*[${2:⟨titre alt. pour TdM et entête⟩}]{${1:⟨titre⟩}}"
+    },
+    {
+      "name": "section*",
+      "snippet": "section*[${2:⟨titre alt. pour TdM⟩}][${3:⟨titre alt. pour entête⟩}]{${1:⟨titre⟩}}"
+    },
+    {
+      "name": "secundo"
+    },
+    {
+      "name": "seename"
+    },
+    {
+      "name": "sffamilyFB"
+    },
+    {
+      "name": "speciality",
+      "snippet": "speciality[${2:⟨spécialité dans la langue secondaire⟩}]{${1:⟨spécialité dans la langue principale⟩}}"
+    },
+    {
+      "name": "speciality",
+      "snippet": "speciality{${1:⟨spécialité⟩}}"
+    },
+    {
+      "name": "startlocaltocs"
+    },
+    {
+      "name": "stoplocaltocs"
+    },
+    {
+      "name": "subject",
+      "snippet": "subject[${2:⟨sujet dans la langue secondaire⟩}]{${1:⟨sujet dans la langue principale⟩}}"
+    },
+    {
+      "name": "subject",
+      "snippet": "subject{${1:⟨sujet⟩}}"
+    },
+    {
+      "name": "submissiondate",
+      "snippet": "submissiondate{${1:⟨jour⟩}}{${2:⟨mois⟩}}{${3:⟨année⟩}}"
+    },
+    {
+      "name": "subsection*",
+      "snippet": "subsection*[${2:⟨titre alt. pour TdM et entête⟩}]{${1:⟨titre⟩}}"
+    },
+    {
+      "name": "subsubsection*",
+      "snippet": "subsubsection*[${2:⟨titre alt. pour TdM et entête⟩}]{${1:⟨titre⟩}}"
+    },
+    {
+      "name": "subtitle",
+      "snippet": "subtitle[${2:⟨sous-titre dans la langue secondaire⟩}]{${1:⟨sous-titre dans la langue principale⟩}}"
+    },
+    {
+      "name": "subtitle",
+      "snippet": "subtitle{${1:⟨sous-titre⟩}}"
+    },
+    {
+      "name": "supervisor",
+      "snippet": "supervisor[${3:⟨précisions⟩}]{${1:⟨prénom⟩}}{${2:⟨nom⟩}}"
+    },
+    {
+      "name": "supervisor",
+      "snippet": "supervisor{${1:⟨prénom⟩}}{${2:⟨nom⟩}}"
+    },
+    {
+      "name": "tableofcontents",
+      "snippet": "tableofcontents[${1:⟨précisions⟩}]"
+    },
+    {
+      "name": "tertio"
+    },
+    {
+      "name": "tild"
+    },
+    {
+      "name": "title",
+      "snippet": "title[${2:⟨titre dans la langue secondaire⟩}]{${1:⟨titre dans la langue principale⟩}}"
+    },
+    {
+      "name": "ttfamilyFB"
+    },
+    {
+      "name": "up",
+      "snippet": "up{${1:text}}"
+    },
+    {
+      "name": "xspace"
+    },
+    {
+      "name": "yadsetup",
+      "snippet": "yadsetup{${1:⟨options⟩}}"
+    }
+  ],
+  "options": [
+    "mainlanguage=${1|french,english|}",
+    "secnumdepth=${1|part,chapter,section,subsection,subsubsection,paragraph,subparagraph|}",
+    "space=${1|single,onehalf,double|}",
+    "chap-style=${1|Sonny,Lenny,Glenn,Conny,Rejne,Bjarne,PetersLenny,Bjornstrup,none|}",
+    "fncychap=${1|Sonny,Lenny,Glenn,Conny,Rejne,Bjarne,PetersLenny,Bjornstrup,none|}",
+    "nofrontcover",
+    "sepcorpaffilfrench=",
+    "sepcorpaffilenglish=",
+    "version=${1|inprogress,inprogress*,submitted,submitted*,final,draft|}",
+    "output=${1|screen,paper,paper*|}",
+    "colophon-location=${1|verso-frontcover,recto-backcover,nowhere|}",
+    "hdr",
+    "numlaboratories=${1:⟨nombre de laboratoires affichés⟩}",
+    "localtocs",
+    "localtocs/depth=${1|section,subsection,subsubsection,paragraph,subparagraph|}",
+    "localbibs",
+    "localbibs*",
+    "10pt",
+    "11pt",
+    "12pt",
+    "leqno",
+    "fleqn",
+    "oneside",
+    "noerror",
+    "noauthor",
+    "notitle",
+    "noacademicfield",
+    "nodate",
+    "noinstitute",
+    "nodoctoralschool",
+    "nolaboratory",
+    "nolaboratoryaddress",
+    "nosupervisor",
+    "nomaketitle",
+    "nokeywords",
+    "noabstract",
+    "nomakeabstract",
+    "notableofcontents",
+    "noprintbibliography",
+    "graphicx={${1:⟨options du package graphicx⟩}}",
+    "adjustbox={${1:⟨options du package adjustbox⟩}}",
+    "setspace={${1:⟨options du package setspace⟩}}",
+    "xcolor={${1:⟨options du package xcolor⟩}}",
+    "datatool={${1:⟨options du package datatool⟩}}",
+    "titlesec={${1:⟨options du package titlesec⟩}}",
+    "draftwatermark={${1:⟨options du package draftwatermark⟩}}",
+    "babel={${1:⟨options du package babel⟩}}",
+    "datetime2={${1:⟨options du package datetime2⟩}}",
+    "corps=${1:⟨corporation⟩}",
+    "role=${1:⟨role⟩}"
+  ]
+}

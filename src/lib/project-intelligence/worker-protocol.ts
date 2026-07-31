@@ -219,6 +219,8 @@ function isSnapshotShell(
         "hierarchy",
         "bibliography",
         "stats",
+        "detectedPackages",
+        "documentClasses",
       ],
       ["reason"],
     ) &&
@@ -232,7 +234,9 @@ function isSnapshotShell(
     isRecord(value.outlines) &&
     isRecord(value.hierarchy) &&
     isRecord(value.bibliography) &&
-    isRecord(value.stats)
+    isRecord(value.stats) &&
+    Array.isArray(value.detectedPackages) &&
+    Array.isArray(value.documentClasses)
   );
 }
 

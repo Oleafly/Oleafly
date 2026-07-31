@@ -46,6 +46,7 @@ export type ProjectDefinitionKind =
   | "anchor"
   | "macro"
   | "environment"
+  | "glossary"
   | "bibentry";
 
 export type ProjectUseKind =
@@ -57,7 +58,8 @@ export type ProjectUseKind =
   | "asset"
   | "bibliography"
   | "macro"
-  | "environment";
+  | "environment"
+  | "glossary";
 
 export type ResolutionStatus =
   | "resolved"
@@ -111,6 +113,7 @@ export interface OutlineNode {
     | "anchor"
     | "macro"
     | "environment"
+    | "glossary"
     | "bibentry";
   readonly level: number;
   readonly parentId: string | null;
@@ -206,6 +209,12 @@ export interface BibliographyCatalog {
   readonly declarationUseIds: readonly string[];
 }
 
+export interface PackageReference {
+  readonly name: string;
+  readonly kind: "package" | "class";
+  readonly location: SourceLocation;
+}
+
 export interface FileIntelligence {
   readonly file: string;
   readonly engine: ProjectIntelligenceEngine;
@@ -219,6 +228,7 @@ export interface FileIntelligence {
   readonly edges: readonly ProjectEdge[];
   readonly diagnostics: readonly ProjectDiagnostic[];
   readonly bibliographyEntries: readonly BibliographyEntry[];
+  readonly packageRefs?: readonly PackageReference[];
 }
 
 export interface ProjectIntelligenceStats {
@@ -242,6 +252,8 @@ export interface ProjectIntelligenceSnapshot {
   readonly hierarchy: ProjectHierarchy;
   readonly bibliography: BibliographyCatalog;
   readonly stats: ProjectIntelligenceStats;
+  readonly detectedPackages: readonly string[];
+  readonly documentClasses: readonly string[];
 }
 
 export interface ProjectIntelligenceFailure {

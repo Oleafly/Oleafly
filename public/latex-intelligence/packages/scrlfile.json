@@ -1,0 +1,10 @@
+{
+  "args": [],
+  "deps": [
+    "scrlfile-hook",
+    "scrlogo"
+  ],
+  "envs": [],
+  "keys": {},
+  "macros": []
+}

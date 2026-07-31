@@ -1,0 +1,42 @@
+{
+  "args": [
+    "\\usepackage/cases#c"
+  ],
+  "deps": [],
+  "envs": [
+    {
+      "name": "numcases",
+      "snippet": "{${1:left side}}"
+    },
+    {
+      "name": "subeqnarray"
+    },
+    {
+      "name": "subequations"
+    },
+    {
+      "name": "subnumcases",
+      "snippet": "{${1:left side}}"
+    }
+  ],
+  "keys": {
+    "\\usepackage/cases#c": [
+      "subnum",
+      "fleqn",
+      "leqno",
+      "amsstyle",
+      "casesstyle",
+      "cases"
+    ]
+  },
+  "macros": [
+    {
+      "name": "themainequation",
+      "unusual": true
+    },
+    {
+      "name": "thesubequation",
+      "unusual": true
+    }
+  ]
+}

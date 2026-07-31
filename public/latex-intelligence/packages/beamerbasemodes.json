@@ -1,0 +1,45 @@
+{
+  "args": [],
+  "deps": [
+    "beamerbasedecode",
+    "etoolbox"
+  ],
+  "envs": [],
+  "keys": {},
+  "macros": [
+    {
+      "name": "includeslide",
+      "snippet": "includeslide[${2:options}]{${1:label name}}"
+    },
+    {
+      "name": "includeslide",
+      "snippet": "includeslide{${1:label name}}"
+    },
+    {
+      "name": "jobnamebeamerversion",
+      "unusual": true
+    },
+    {
+      "name": "mode",
+      "snippet": "mode{${1:text}}"
+    },
+    {
+      "name": "mode*"
+    },
+    {
+      "name": "mode<mode specification>"
+    },
+    {
+      "name": "mode<mode specification>",
+      "snippet": "mode<mode specification>{${1:text}}"
+    },
+    {
+      "name": "setjobnamebeamerversion",
+      "snippet": "setjobnamebeamerversion{${1:filename without extension}}"
+    },
+    {
+      "name": "thebeamerpauses",
+      "unusual": true
+    }
+  ]
+}

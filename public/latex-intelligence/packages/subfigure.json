@@ -1,0 +1,198 @@
+{
+  "args": [
+    "\\usepackage/subfigure#c"
+  ],
+  "deps": [],
+  "envs": [],
+  "keys": {
+    "\\usepackage/subfigure#c": [
+      "normal",
+      "hang",
+      "center",
+      "centerlast",
+      "nooneline",
+      "raggedright",
+      "isu",
+      "anne",
+      "scriptsize",
+      "footnotesize",
+      "small",
+      "normalsize",
+      "large",
+      "Large",
+      "rm",
+      "sf",
+      "tt",
+      "md",
+      "bf",
+      "up",
+      "it",
+      "sl",
+      "sc",
+      "RM",
+      "SF",
+      "TT",
+      "MD",
+      "BF",
+      "IT",
+      "SL",
+      "SC",
+      "UP",
+      "figbotcap",
+      "figtopcap",
+      "tabbotcap",
+      "tabtopcap",
+      "FIGBOTCAP",
+      "FIGTOPCAP",
+      "TABBOTCAP",
+      "TABTOPCAP",
+      "loose",
+      "tight"
+    ]
+  },
+  "macros": [
+    {
+      "name": "Subref",
+      "snippet": "Subref{${1:label}}"
+    },
+    {
+      "name": "figureotopcapfalse",
+      "unusual": true
+    },
+    {
+      "name": "figuretopcapfalse",
+      "unusual": true
+    },
+    {
+      "name": "figuretopcaptrue",
+      "unusual": true
+    },
+    {
+      "name": "iffiguretopcap",
+      "unusual": true
+    },
+    {
+      "name": "ifsubfiguretopcap",
+      "unusual": true
+    },
+    {
+      "name": "ifsubtabletopcap",
+      "unusual": true
+    },
+    {
+      "name": "iftabletopcap",
+      "unusual": true
+    },
+    {
+      "name": "label",
+      "snippet": "label(${2:bookmark}){${1:key}}"
+    },
+    {
+      "name": "listsubcaptions"
+    },
+    {
+      "name": "subcapfont",
+      "unusual": true
+    },
+    {
+      "name": "subcaplabelfont",
+      "unusual": true
+    },
+    {
+      "name": "subcapsize",
+      "unusual": true
+    },
+    {
+      "name": "subfigbottomskip",
+      "unusual": true
+    },
+    {
+      "name": "subfigcapmargin",
+      "unusual": true
+    },
+    {
+      "name": "subfigcapskip",
+      "unusual": true
+    },
+    {
+      "name": "subfigcaptopadj",
+      "unusual": true
+    },
+    {
+      "name": "subfiglabelskip",
+      "unusual": true
+    },
+    {
+      "name": "subfigtopskip",
+      "unusual": true
+    },
+    {
+      "name": "subfigure",
+      "snippet": "subfigure[${2:caption}]{${1:figure}}"
+    },
+    {
+      "name": "subfigure",
+      "snippet": "subfigure[${2:listentry}][${3:caption}]{${1:figure}}"
+    },
+    {
+      "name": "subfigure",
+      "snippet": "subfigure{${1:figure}}"
+    },
+    {
+      "name": "subfiguretopcapfalse",
+      "unusual": true
+    },
+    {
+      "name": "subfiguretopcaptrue",
+      "unusual": true
+    },
+    {
+      "name": "subref",
+      "snippet": "subref{${1:label}}"
+    },
+    {
+      "name": "subtable",
+      "snippet": "subtable[${2:caption}]{${1:figure}}"
+    },
+    {
+      "name": "subtable",
+      "snippet": "subtable[${2:listentry}][${3:caption}]{${1:figure}}"
+    },
+    {
+      "name": "subtable",
+      "snippet": "subtable{${1:figure}}"
+    },
+    {
+      "name": "subtabletopcapfalse",
+      "unusual": true
+    },
+    {
+      "name": "subtabletopcaptrue",
+      "unusual": true
+    },
+    {
+      "name": "tabletopcapfalse",
+      "unusual": true
+    },
+    {
+      "name": "tabletopcaptrue",
+      "unusual": true
+    },
+    {
+      "name": "thelofdepth",
+      "unusual": true
+    },
+    {
+      "name": "thelotdepth",
+      "unusual": true
+    },
+    {
+      "name": "thesubfigure",
+      "unusual": true
+    },
+    {
+      "name": "thesubtable",
+      "unusual": true
+    }
+  ]
+}

@@ -1,0 +1,160 @@
+{
+  "args": [
+    "\\usepackage/currfile#c"
+  ],
+  "deps": [
+    "currfile-abspath",
+    "filehook",
+    "kvoptions"
+  ],
+  "envs": [],
+  "keys": {
+    "\\usepackage/currfile#c": [
+      "mainext=${1:extension}",
+      "maindir=${1:directory}",
+      "fink",
+      "abspath",
+      "realmainfile"
+    ]
+  },
+  "macros": [
+    {
+      "name": "currfilebase",
+      "unusual": true
+    },
+    {
+      "name": "currfiledir",
+      "unusual": true
+    },
+    {
+      "name": "currfileext",
+      "unusual": true
+    },
+    {
+      "name": "currfilegetparents",
+      "unusual": true
+    },
+    {
+      "name": "currfilename",
+      "unusual": true
+    },
+    {
+      "name": "currfilepath",
+      "unusual": true
+    },
+    {
+      "name": "ifcurrfile",
+      "snippet": "ifcurrfile{${1:macro or text}}{${2:text}}{${3:true}}{${4:false}}",
+      "unusual": true
+    },
+    {
+      "name": "ifcurrfilebase",
+      "snippet": "ifcurrfilebase{${1:text}}{${2:true}}{${3:false}}",
+      "unusual": true
+    },
+    {
+      "name": "ifcurrfiledir",
+      "snippet": "ifcurrfiledir{${1:text}}{${2:true}}{${3:false}}",
+      "unusual": true
+    },
+    {
+      "name": "ifcurrfileext",
+      "snippet": "ifcurrfileext{${1:text}}{${2:true}}{${3:false}}",
+      "unusual": true
+    },
+    {
+      "name": "ifcurrfilename",
+      "snippet": "ifcurrfilename{${1:text}}{${2:true}}{${3:false}}",
+      "unusual": true
+    },
+    {
+      "name": "ifcurrfilepath",
+      "snippet": "ifcurrfilepath{${1:text}}{${2:true}}{${3:false}}",
+      "unusual": true
+    },
+    {
+      "name": "parentfileabsdir",
+      "unusual": true
+    },
+    {
+      "name": "parentfileabsdiri",
+      "unusual": true
+    },
+    {
+      "name": "parentfileabsdirii",
+      "unusual": true
+    },
+    {
+      "name": "parentfileabspath",
+      "unusual": true
+    },
+    {
+      "name": "parentfileabspathi",
+      "unusual": true
+    },
+    {
+      "name": "parentfileabspathii",
+      "unusual": true
+    },
+    {
+      "name": "parentfilebase",
+      "unusual": true
+    },
+    {
+      "name": "parentfilebasei",
+      "unusual": true
+    },
+    {
+      "name": "parentfilebaseii",
+      "unusual": true
+    },
+    {
+      "name": "parentfiledir",
+      "unusual": true
+    },
+    {
+      "name": "parentfilediri",
+      "unusual": true
+    },
+    {
+      "name": "parentfiledirii",
+      "unusual": true
+    },
+    {
+      "name": "parentfileext",
+      "unusual": true
+    },
+    {
+      "name": "parentfileexti",
+      "unusual": true
+    },
+    {
+      "name": "parentfileextii",
+      "unusual": true
+    },
+    {
+      "name": "parentfilename",
+      "unusual": true
+    },
+    {
+      "name": "parentfilenamei",
+      "unusual": true
+    },
+    {
+      "name": "parentfilenameii",
+      "unusual": true
+    },
+    {
+      "name": "parentfilepath",
+      "unusual": true
+    },
+    {
+      "name": "parentfilepathi",
+      "unusual": true
+    },
+    {
+      "name": "parentfilepathii",
+      "unusual": true
+    }
+  ]
+}

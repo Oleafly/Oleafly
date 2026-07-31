@@ -3,7 +3,17 @@ import { Button } from "@/components/ui/button";
 import { useSettingsStore } from "@/store/settings";
 import { useFilesStore, useActiveContent } from "@/store/files";
 import { countWords } from "@/lib/wordcount";
+import { getEditorView } from "@/components/editor/cm/controller";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
+
+/** Text of the editor's primary selection, or null when it is empty. */
+export function activeSelectionText(): string | null {
+  const view = getEditorView();
+  if (!view) return null;
+  const sel = view.state.selection.main;
+  if (sel.empty) return null;
+  return view.state.sliceDoc(sel.from, sel.to);
+}
 
 export function WordCountModal() {
   const open = useSettingsStore((s) => s.wordCountOpen);
@@ -11,16 +21,22 @@ export function WordCountModal() {
   const content = useActiveContent();
   const activePath = useFilesStore((s) => s.activePath);
 
-  const stats = useMemo(() => countWords(content), [content]);
+  const stats = useMemo(() => (open ? countWords(content) : null), [open, content]);
+  const selectionWords = useMemo(() => {
+    if (!open) return null;
+    const selected = activeSelectionText();
+    return selected === null ? null : countWords(selected).words;
+  }, [open]);
   const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDivElement>(open, () => setOpen(false));
 
-  if (!open) return null;
+  if (!open || !stats) return null;
 
   const rows: [string, number][] = [
     ["Words", stats.words],
     ["Characters", stats.characters],
     ["Lines", stats.lines],
   ];
+  if (selectionWords !== null) rows.push(["Selection", selectionWords]);
 
   return (
     <div

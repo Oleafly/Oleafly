@@ -1,0 +1,158 @@
+{
+  "args": [
+    "\\documentclass/letter#c"
+  ],
+  "deps": [],
+  "envs": [
+    {
+      "name": "letter",
+      "snippet": "{${1:name}}"
+    }
+  ],
+  "keys": {
+    "\\documentclass/letter#c": [
+      "a4paper",
+      "a5paper",
+      "b5paper",
+      "letterpaper",
+      "legalpaper",
+      "executivepaper",
+      "landscape",
+      "10pt",
+      "11pt",
+      "12pt",
+      "twoside",
+      "oneside",
+      "draft",
+      "final",
+      "leqno",
+      "fleqn"
+    ]
+  },
+  "macros": [
+    {
+      "name": "address",
+      "snippet": "address{${1:returnaddress}}"
+    },
+    {
+      "name": "cc",
+      "snippet": "cc{${1:text}}"
+    },
+    {
+      "name": "ccname",
+      "unusual": true
+    },
+    {
+      "name": "closing",
+      "snippet": "closing{${1:text}}"
+    },
+    {
+      "name": "encl",
+      "snippet": "encl{${1:text}}"
+    },
+    {
+      "name": "enclname",
+      "unusual": true
+    },
+    {
+      "name": "fromaddress",
+      "unusual": true
+    },
+    {
+      "name": "fromlocation",
+      "unusual": true
+    },
+    {
+      "name": "fromname",
+      "unusual": true
+    },
+    {
+      "name": "fromsig",
+      "unusual": true
+    },
+    {
+      "name": "headtoname",
+      "unusual": true
+    },
+    {
+      "name": "indentedwidth",
+      "unusual": true
+    },
+    {
+      "name": "labelcount",
+      "unusual": true
+    },
+    {
+      "name": "location",
+      "snippet": "location{${1:address}}"
+    },
+    {
+      "name": "longindentation",
+      "unusual": true
+    },
+    {
+      "name": "makelabels"
+    },
+    {
+      "name": "mlabel",
+      "snippet": "mlabel{${1:return address}}{${2:to address}}",
+      "unusual": true
+    },
+    {
+      "name": "name",
+      "snippet": "name{${1:text}}"
+    },
+    {
+      "name": "opening",
+      "snippet": "opening{${1:text}}"
+    },
+    {
+      "name": "ps",
+      "snippet": "ps{${1:text}}"
+    },
+    {
+      "name": "returnaddress",
+      "unusual": true
+    },
+    {
+      "name": "signature",
+      "snippet": "signature{${1:yourname}}"
+    },
+    {
+      "name": "startbreaks",
+      "unusual": true
+    },
+    {
+      "name": "startlabels",
+      "unusual": true
+    },
+    {
+      "name": "stopbreaks",
+      "unusual": true
+    },
+    {
+      "name": "stopletter",
+      "unusual": true
+    },
+    {
+      "name": "subject",
+      "snippet": "subject{${1:text}}"
+    },
+    {
+      "name": "telephone",
+      "snippet": "telephone{${1:number}}"
+    },
+    {
+      "name": "telephonenum",
+      "unusual": true
+    },
+    {
+      "name": "toaddress",
+      "unusual": true
+    },
+    {
+      "name": "toname",
+      "unusual": true
+    }
+  ]
+}

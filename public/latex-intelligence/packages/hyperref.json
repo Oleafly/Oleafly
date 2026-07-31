@@ -1,0 +1,860 @@
+{
+  "args": [
+    "\\hypersetup,\\usepackage/hyperref#c"
+  ],
+  "deps": [
+    "atbegshi",
+    "atveryend",
+    "backref",
+    "bigintcalc",
+    "bitset",
+    "color",
+    "etoolbox",
+    "hycolor",
+    "iftex",
+    "intcalc",
+    "keyval",
+    "kvdefinekeys",
+    "kvoptions",
+    "kvsetkeys",
+    "nameref",
+    "pdfescape",
+    "rerunfilecheck",
+    "stringenc",
+    "url"
+  ],
+  "envs": [
+    {
+      "name": "Form"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\begin{Form}"
+      ],
+      "name": "Form",
+      "snippet": "[${1:options}]"
+    },
+    {
+      "name": "NoHyper"
+    }
+  ],
+  "keys": {
+    "\\TextField,\\CheckBox,\\ChoiceMenu,\\PushButton,\\Submit,\\Reset": [
+      "accesskey=${1:key}",
+      "align=${1|0,1,2|}",
+      "altname=${1:altname}",
+      "backgroundcolor=",
+      "bordercolor=",
+      "bordersep=",
+      "borderstyle=${1|S,B,D,I,U|}",
+      "borderwidth=",
+      "calculate={${1:JavaScript code}}",
+      "calculatesortkey=${1:key}",
+      "charsize=",
+      "checkboxsymbol=${1:symbol}",
+      "checked",
+      "color=",
+      "combo",
+      "default=${1:default value}",
+      "disabled",
+      "format={${1:JavaScript code}}",
+      "height=",
+      "hidden",
+      "keystroke={${1:JavaScript code}}",
+      "mappingname=${1:name}",
+      "maxlen=${1:number}",
+      "menulength=${1:number}",
+      "multiline",
+      "name=${1:name}",
+      "onblur={${1:JavaScript code}}",
+      "onchange={${1:JavaScript code}}",
+      "onclick={${1:JavaScript code}}",
+      "ondbclick={${1:JavaScript code}}",
+      "onfocus={${1:JavaScript code}}",
+      "onkeydown={${1:JavaScript code}}",
+      "onkeypress={${1:JavaScript code}}",
+      "onkeyup={${1:JavaScript code}}",
+      "onmousedown={${1:JavaScript code}}",
+      "onmousemove={${1:JavaScript code}}",
+      "onmouseout={${1:JavaScript code}}",
+      "onmouseover={${1:JavaScript code}}",
+      "onmouseup={${1:JavaScript code}}",
+      "onselect={${1:JavaScript code}}",
+      "password",
+      "popdown",
+      "radio",
+      "radiosymbol=${1:symbol}",
+      "readonly",
+      "rotation=${1:multiple of 90}",
+      "tabkey=${1:key}",
+      "validate={${1:JavaScript code}}",
+      "value=${1:init value}",
+      "width="
+    ],
+    "\\begin{Form}": [
+      "action=${1:URL}",
+      "encoding=${1:encoding}",
+      "method=${1|post,get|}"
+    ],
+    "\\href": [
+      "pdfremotestartview=${1|XYZ,Fit,FitH,FitV,FitR,FitB,FitBH,FitBV|}",
+      "pdfnewwindow",
+      "page=${1:number}",
+      "ismap",
+      "nextactionraw={${1:PDF code}}"
+    ],
+    "\\hypersetup,\\usepackage/hyperref#c": [
+      "addtopdfcreator=${1:text}",
+      "allbordercolors=",
+      "allcolors=",
+      "anchorcolor=",
+      "backref=${1|section,slide,page,none,false|}",
+      "baseurl=${1:URL}",
+      "bookmarks",
+      "bookmarksdepth",
+      "bookmarksdepth=${1:number}",
+      "bookmarksnumbered",
+      "bookmarksopen",
+      "bookmarksopenlevel=${1:level}",
+      "bookmarkstype=",
+      "breaklinks",
+      "citebordercolor=",
+      "citecolor=",
+      "CJKbookmarks",
+      "colorlinks",
+      "customdriver=${1:file}",
+      "debug",
+      "destlabel",
+      "draft",
+      "driverfallback=${1:driver}",
+      "dvipdfm",
+      "dvipdfmx",
+      "dvipdfmx-outline-open",
+      "dvips",
+      "dvipsone",
+      "dviwindo",
+      "encap=${1:character}",
+      "extension=${1:file ext}",
+      "filebordercolor=",
+      "filecolor=",
+      "final",
+      "frenchlinks",
+      "hidelinks",
+      "hitex",
+      "hyperfigures",
+      "hyperfootnotes",
+      "hyperindex",
+      "hypertex",
+      "hypertexnames",
+      "implicit",
+      "linkbordercolor=",
+      "linkcolor=",
+      "linkfileprefix=${1:prefix}",
+      "linktoc=${1|section,page,all,none|}",
+      "linktocpage",
+      "luatex",
+      "menubordercolor=",
+      "menucolor=",
+      "nativepdf",
+      "naturalnames",
+      "nesting",
+      "next-anchor=${1:anchor name}",
+      "ocgcolorlinks",
+      "pageanchor",
+      "pagebackref",
+      "pdfa",
+      "pdfauthor=${1:author}",
+      "pdfborder=",
+      "pdfborderstyle=",
+      "pdfcenterwindow",
+      "pdfcreationdate=${1:date}",
+      "pdfcreator=${1:creator}",
+      "pdfdirection=${1|L2R,R2L|}",
+      "pdfdisplaydoctitle",
+      "pdfduplex=${1|Simplex,DuplexFlipShortEdge,DuplexFlipLongEdge|}",
+      "pdfencoding=${1|pdfdoc,unicode,auto|}",
+      "pdfescapeform",
+      "pdffitwindow",
+      "pdfhighlight=${1|/I,/N,/O,/P|}",
+      "pdfinfo={${1:info keys}}",
+      "pdfkeywords={${1:keyword list}}",
+      "pdflang=${1:lang id}",
+      "pdflinkmargin=",
+      "pdfmark",
+      "pdfmenubar",
+      "pdfmoddate=${1:date}",
+      "pdfnewwindow",
+      "pdfnonfullscreenpagemode",
+      "pdfnumcopies=${1:integer}",
+      "pdfpageduration=",
+      "pdfpagelabels",
+      "pdfpagelayout=${1|SinglePage,OneColumn,TwoColumnLeft,TwoColumnRight,TwoPageLeft,TwoPageRight|}",
+      "pdfpagemode=${1|FullScreen,UseNone,UseOutlines,UseOC,UseAttachments,UseThumbs|}",
+      "pdfpagescrop=${1:n1 n2 n3 n4}",
+      "pdfpagetransition=${1|Split,Blinds,Box,Wipe,Dissolve,Glitter,R,Fly,Push,Cover,Uncover,Fade|}",
+      "pdfpicktraybypdfsize",
+      "pdfprintarea=${1|Mediabox,CropBox,BleedBox,TrimBox,ArtBox|}",
+      "pdfprintclip=${1|Mediabox,CropBox,BleedBox,TrimBox,ArtBox|}",
+      "pdfprintpagerange=${1:n1 n2}",
+      "pdfprintscaling=${1|None,AppDefault|}",
+      "pdfproducer=${1:producer}",
+      "pdfremotestartview=${1|XYZ,Fit,FitH,FitV,FitR,FitB,FitBH,FitBV|}",
+      "pdfstartpage=${1:page number}",
+      "pdfstartview=${1|XYZ,Fit,FitH,FitV,FitR,FitB,FitBH,FitBV|}",
+      "pdfsubject=${1:subject}",
+      "pdftex",
+      "pdftitle=${1:title}",
+      "pdftoolbar",
+      "pdftrapped=${1|True,False,Unknown|}",
+      "pdfusetitle",
+      "pdfversion=${1:version}",
+      "pdfview=${1|XYZ,Fit,FitH,FitV,FitR,FitB,FitBH,FitBV|}",
+      "pdfviewarea=${1|Mediabox,CropBox,BleedBox,TrimBox,ArtBox|}",
+      "pdfviewclip=${1|Mediabox,CropBox,BleedBox,TrimBox,ArtBox|}",
+      "pdfwindowui",
+      "plainpages",
+      "ps2pdf",
+      "psdextra",
+      "raiselinks",
+      "runbordercolor=",
+      "runcolor=",
+      "setpagesize",
+      "tex4ht",
+      "textures",
+      "unicode",
+      "urlbordercolor=",
+      "urlcolor=",
+      "verbose",
+      "vtex",
+      "vtexpdfmark",
+      "xetex"
+    ]
+  },
+  "macros": [
+    {
+      "name": "AMSautorefname",
+      "unusual": true
+    },
+    {
+      "name": "Acrobatmenu",
+      "snippet": "Acrobatmenu{${1:menuoption}}{${2:text}}"
+    },
+    {
+      "name": "AddToDocumentProperties",
+      "snippet": "AddToDocumentProperties[${3:category}]{${1:property}}{${2:value}}",
+      "unusual": true
+    },
+    {
+      "name": "AddToDocumentProperties",
+      "snippet": "AddToDocumentProperties{${1:property}}{${2:value}}",
+      "unusual": true
+    },
+    {
+      "name": "AfterBeginDocument",
+      "snippet": "AfterBeginDocument{${1:code}}",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\TextField,\\CheckBox,\\ChoiceMenu,\\PushButton,\\Submit,\\Reset"
+      ],
+      "name": "CheckBox",
+      "snippet": "CheckBox[${2:parameters}]{${1:label}}"
+    },
+    {
+      "name": "CheckBox",
+      "snippet": "CheckBox{${1:label}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\TextField,\\CheckBox,\\ChoiceMenu,\\PushButton,\\Submit,\\Reset"
+      ],
+      "name": "ChoiceMenu",
+      "snippet": "ChoiceMenu[${3:parameters}]{${1:label}}{${2:choices}}"
+    },
+    {
+      "name": "ChoiceMenu",
+      "snippet": "ChoiceMenu{${1:label}}{${2:choices}}"
+    },
+    {
+      "name": "DefaultHeightofCheckBox",
+      "unusual": true
+    },
+    {
+      "name": "DefaultHeightofChoiceMenu",
+      "unusual": true
+    },
+    {
+      "name": "DefaultHeightofReset",
+      "unusual": true
+    },
+    {
+      "name": "DefaultHeightofSubmit",
+      "unusual": true
+    },
+    {
+      "name": "DefaultHeightofText",
+      "unusual": true
+    },
+    {
+      "name": "DefaultHeightofTextMultiline",
+      "unusual": true
+    },
+    {
+      "name": "DefaultOptionsofCheckBox",
+      "unusual": true
+    },
+    {
+      "name": "DefaultOptionsofComboBox",
+      "unusual": true
+    },
+    {
+      "name": "DefaultOptionsofListBox",
+      "unusual": true
+    },
+    {
+      "name": "DefaultOptionsofPopdownBox",
+      "unusual": true
+    },
+    {
+      "name": "DefaultOptionsofPushButton",
+      "unusual": true
+    },
+    {
+      "name": "DefaultOptionsofRadio",
+      "unusual": true
+    },
+    {
+      "name": "DefaultOptionsofReset",
+      "unusual": true
+    },
+    {
+      "name": "DefaultOptionsofSubmit",
+      "unusual": true
+    },
+    {
+      "name": "DefaultOptionsofText",
+      "unusual": true
+    },
+    {
+      "name": "DefaultWidthofCheckBox",
+      "unusual": true
+    },
+    {
+      "name": "DefaultWidthofChoiceMenu",
+      "unusual": true
+    },
+    {
+      "name": "DefaultWidthofReset",
+      "unusual": true
+    },
+    {
+      "name": "DefaultWidthofSubmit",
+      "unusual": true
+    },
+    {
+      "name": "DefaultWidthofText",
+      "unusual": true
+    },
+    {
+      "name": "FancyVerbLineautorefname",
+      "unusual": true
+    },
+    {
+      "name": "GetDocumentProperties",
+      "snippet": "GetDocumentProperties{${1:property}}",
+      "unusual": true
+    },
+    {
+      "name": "Hfootnoteautorefname",
+      "unusual": true
+    },
+    {
+      "name": "Hurl",
+      "snippet": "Hurl{${1:URL}}",
+      "unusual": true
+    },
+    {
+      "name": "HyperDestLabelReplace",
+      "snippet": "HyperDestLabelReplace{${1:dest}}",
+      "unusual": true
+    },
+    {
+      "name": "HyperDestNameFilter",
+      "snippet": "HyperDestNameFilter{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "HyperDestRename",
+      "snippet": "HyperDestRename{${1:destination}}{${2:newname}}"
+    },
+    {
+      "name": "HyperRaiseLinkDefault",
+      "unusual": true
+    },
+    {
+      "name": "HyperRaiseLinkHook",
+      "unusual": true
+    },
+    {
+      "name": "IfHyperBoolean",
+      "snippet": "IfHyperBoolean{${1:options}}{${2:true}}{${3:false}}",
+      "unusual": true
+    },
+    {
+      "name": "IfHyperBooleanExists",
+      "snippet": "IfHyperBooleanExists{${1:option}}{${2:true}}{${3:false}}",
+      "unusual": true
+    },
+    {
+      "name": "Itemautorefname",
+      "unusual": true
+    },
+    {
+      "name": "LayoutCheckField",
+      "snippet": "LayoutCheckField{${1:label}}{${2:field}}",
+      "unusual": true
+    },
+    {
+      "name": "LayoutChoiceField",
+      "snippet": "LayoutChoiceField{${1:label}}{${2:field}}",
+      "unusual": true
+    },
+    {
+      "name": "LayoutTextField",
+      "snippet": "LayoutTextField{${1:label}}{${2:field}}",
+      "unusual": true
+    },
+    {
+      "name": "MakeButtonField",
+      "snippet": "MakeButtonField{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "MakeCheckField",
+      "snippet": "MakeCheckField{${1:width}}{${2:height}}",
+      "unusual": true
+    },
+    {
+      "name": "MakeChoiceField",
+      "snippet": "MakeChoiceField{${1:width}}{${2:height}}",
+      "unusual": true
+    },
+    {
+      "name": "MakeLowercaseUnsupportedInPdfStrings",
+      "snippet": "MakeLowercaseUnsupportedInPdfStrings{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "MakeRadioField",
+      "snippet": "MakeRadioField{${1:width}}{${2:height}}",
+      "unusual": true
+    },
+    {
+      "name": "MakeTextField",
+      "snippet": "MakeTextField{${1:width}}{${2:height}}",
+      "unusual": true
+    },
+    {
+      "name": "MakeUppercaseUnsupportedInPdfStrings",
+      "snippet": "MakeUppercaseUnsupportedInPdfStrings{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "MaybeStopEarly",
+      "unusual": true
+    },
+    {
+      "name": "MaybeStopNow",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\TextField,\\CheckBox,\\ChoiceMenu,\\PushButton,\\Submit,\\Reset"
+      ],
+      "name": "PushButton",
+      "snippet": "PushButton[${2:parameters}]{${1:label}}"
+    },
+    {
+      "name": "PushButton",
+      "snippet": "PushButton{${1:label}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\TextField,\\CheckBox,\\ChoiceMenu,\\PushButton,\\Submit,\\Reset"
+      ],
+      "name": "Reset",
+      "snippet": "Reset[${2:parameters}]{${1:label}}"
+    },
+    {
+      "name": "Reset",
+      "snippet": "Reset{${1:label}}"
+    },
+    {
+      "name": "SetLinkTargetFilter",
+      "snippet": "SetLinkTargetFilter{${1:filter code}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\TextField,\\CheckBox,\\ChoiceMenu,\\PushButton,\\Submit,\\Reset"
+      ],
+      "name": "Submit",
+      "snippet": "Submit[${2:parameters}]{${1:label}}"
+    },
+    {
+      "name": "Submit",
+      "snippet": "Submit{${1:label}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\TextField,\\CheckBox,\\ChoiceMenu,\\PushButton,\\Submit,\\Reset"
+      ],
+      "name": "TextField",
+      "snippet": "TextField[${2:parameters}]{${1:label}}"
+    },
+    {
+      "name": "TextField",
+      "snippet": "TextField{${1:label}}"
+    },
+    {
+      "name": "XeTeXLinkBox",
+      "snippet": "XeTeXLinkBox{${1:contents}}",
+      "unusual": true
+    },
+    {
+      "name": "XeTeXLinkMargin",
+      "unusual": true
+    },
+    {
+      "name": "appendixautorefname",
+      "unusual": true
+    },
+    {
+      "name": "autopageref",
+      "snippet": "autopageref{${1:label}}"
+    },
+    {
+      "name": "autopageref*",
+      "snippet": "autopageref*{${1:label}}"
+    },
+    {
+      "name": "autoref",
+      "snippet": "autoref{${1:label}}"
+    },
+    {
+      "name": "autoref*",
+      "snippet": "autoref*{${1:label}}"
+    },
+    {
+      "name": "belowpdfbookmark",
+      "snippet": "belowpdfbookmark{${1:text}}{${2:name}}"
+    },
+    {
+      "name": "chapterautorefname",
+      "unusual": true
+    },
+    {
+      "name": "currentpdfbookmark",
+      "snippet": "currentpdfbookmark{${1:text}}{${2:name}}"
+    },
+    {
+      "name": "equationautorefname",
+      "unusual": true
+    },
+    {
+      "name": "figureautorefname",
+      "unusual": true
+    },
+    {
+      "name": "footnoteautorefname",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\href"
+      ],
+      "name": "href",
+      "snippet": "href[${3:options}]{${1:URL}}{${2:text}}"
+    },
+    {
+      "name": "href",
+      "snippet": "href{${1:URL}}{${2:text}}"
+    },
+    {
+      "name": "hyperbaseurl",
+      "snippet": "hyperbaseurl{${1:URL}}"
+    },
+    {
+      "name": "hypercalcbp",
+      "snippet": "hypercalcbp{${1:dimen specification}}"
+    },
+    {
+      "name": "hyperdef",
+      "snippet": "hyperdef{${1:category}}{${2:name}}{${3:text}}"
+    },
+    {
+      "name": "hyperget",
+      "snippet": "hyperget{${1:anchor}}{${2:label}}"
+    },
+    {
+      "name": "hypergetpageref",
+      "snippet": "hypergetpageref{${1:label}}",
+      "unusual": true
+    },
+    {
+      "name": "hypergetref",
+      "snippet": "hypergetref{${1:label}}",
+      "unusual": true
+    },
+    {
+      "name": "hyperimage",
+      "snippet": "hyperimage{${1:imageURL%URL}}{${2:text}}"
+    },
+    {
+      "name": "hyperindexformat",
+      "snippet": "hyperindexformat{${1:arg1}}{${2:arg2}}",
+      "unusual": true
+    },
+    {
+      "name": "hyperlink",
+      "snippet": "hyperlink{${1:target name}}{${2:link text}}"
+    },
+    {
+      "name": "hyperlinkfileprefix",
+      "snippet": "hyperlinkfileprefix{${1:prefix}}",
+      "unusual": true
+    },
+    {
+      "name": "hyperpage",
+      "snippet": "hyperpage{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "hyperref",
+      "snippet": "hyperref[${2:label}]{${1:text}}"
+    },
+    {
+      "name": "hyperref",
+      "snippet": "hyperref[${5:label}]{${1:URL}}{${2:category}}{${3:name}}{${4:text}}"
+    },
+    {
+      "name": "hyperref",
+      "snippet": "hyperref{${1:URL}}{${2:category}}{${3:name}}{${4:text}}"
+    },
+    {
+      "name": "hyperref",
+      "snippet": "hyperref{${1:text}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\hypersetup,\\usepackage/hyperref#c"
+      ],
+      "name": "hypersetup",
+      "snippet": "hypersetup{${1:keyvals}}"
+    },
+    {
+      "name": "hypertarget",
+      "snippet": "hypertarget{${1:target name}}{${2:anchor text}}"
+    },
+    {
+      "name": "ifpdfstringunicode",
+      "snippet": "ifpdfstringunicode{${1:unicode chars}}{${2:chars}}",
+      "unusual": true
+    },
+    {
+      "name": "itemautorefname",
+      "unusual": true
+    },
+    {
+      "name": "nohyperpage",
+      "snippet": "nohyperpage{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "nolinkurl",
+      "snippet": "nolinkurl{${1:URL}}"
+    },
+    {
+      "name": "pageautorefname",
+      "unusual": true
+    },
+    {
+      "name": "paragraphautorefname",
+      "unusual": true
+    },
+    {
+      "name": "partautorefname",
+      "unusual": true
+    },
+    {
+      "name": "pdfbookmark",
+      "snippet": "pdfbookmark[${3:level}]{${1:text}}{${2:name}}"
+    },
+    {
+      "name": "pdfbookmark",
+      "snippet": "pdfbookmark{${1:text}}{${2:name}}"
+    },
+    {
+      "name": "pdfstringdef",
+      "snippet": "pdfstringdef{${1:macroname}}{${2:TeXstring}}"
+    },
+    {
+      "name": "pdfstringdefDisableCommands",
+      "snippet": "pdfstringdefDisableCommands{${1:hooks}}"
+    },
+    {
+      "name": "pdfstringdefPostHook",
+      "unusual": true
+    },
+    {
+      "name": "pdfstringdefPreHook",
+      "unusual": true
+    },
+    {
+      "name": "pdfstringdefWarn",
+      "snippet": "pdfstringdefWarn{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "phantomsection"
+    },
+    {
+      "name": "sectionautorefname",
+      "unusual": true
+    },
+    {
+      "name": "setpdflinkmargin",
+      "snippet": "setpdflinkmargin{${1:length}}",
+      "unusual": true
+    },
+    {
+      "name": "subparagraphautorefname",
+      "unusual": true
+    },
+    {
+      "name": "subpdfbookmark",
+      "snippet": "subpdfbookmark{${1:text}}{${2:name}}"
+    },
+    {
+      "name": "subsectionautorefname",
+      "unusual": true
+    },
+    {
+      "name": "subsubsectionautorefname",
+      "unusual": true
+    },
+    {
+      "name": "tableautorefname",
+      "unusual": true
+    },
+    {
+      "name": "texorpdfstring",
+      "snippet": "texorpdfstring{${1:TEXstring}}{${2:PDFstring}}"
+    },
+    {
+      "name": "theHHfootnote",
+      "unusual": true
+    },
+    {
+      "name": "theHHmpfootnote",
+      "unusual": true
+    },
+    {
+      "name": "theHItem",
+      "unusual": true
+    },
+    {
+      "name": "theHchapter",
+      "unusual": true
+    },
+    {
+      "name": "theHenumi",
+      "unusual": true
+    },
+    {
+      "name": "theHenumii",
+      "unusual": true
+    },
+    {
+      "name": "theHenumiii",
+      "unusual": true
+    },
+    {
+      "name": "theHenumiv",
+      "unusual": true
+    },
+    {
+      "name": "theHequation",
+      "unusual": true
+    },
+    {
+      "name": "theHfigure",
+      "unusual": true
+    },
+    {
+      "name": "theHmpfootnote",
+      "unusual": true
+    },
+    {
+      "name": "theHparagraph",
+      "unusual": true
+    },
+    {
+      "name": "theHpart",
+      "unusual": true
+    },
+    {
+      "name": "theHsection",
+      "unusual": true
+    },
+    {
+      "name": "theHsubparagraph",
+      "unusual": true
+    },
+    {
+      "name": "theHsubsection",
+      "unusual": true
+    },
+    {
+      "name": "theHsubsubsection",
+      "unusual": true
+    },
+    {
+      "name": "theHtable",
+      "unusual": true
+    },
+    {
+      "name": "theHtheorem",
+      "unusual": true
+    },
+    {
+      "name": "theHthm",
+      "unusual": true
+    },
+    {
+      "name": "theoremautorefname",
+      "unusual": true
+    },
+    {
+      "name": "thispdfpagelabel"
+    },
+    {
+      "name": "unichar",
+      "snippet": "unichar{${1:char num}}",
+      "unusual": true
+    },
+    {
+      "name": "url",
+      "snippet": "url{${1:URL}}"
+    }
+  ]
+}

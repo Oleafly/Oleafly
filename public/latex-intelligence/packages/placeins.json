@@ -1,0 +1,20 @@
+{
+  "args": [
+    "\\usepackage/placeins#c"
+  ],
+  "deps": [],
+  "envs": [],
+  "keys": {
+    "\\usepackage/placeins#c": [
+      "section",
+      "above",
+      "below",
+      "verbose"
+    ]
+  },
+  "macros": [
+    {
+      "name": "FloatBarrier"
+    }
+  ]
+}

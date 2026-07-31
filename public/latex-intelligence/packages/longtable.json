@@ -1,0 +1,69 @@
+{
+  "args": [
+    "\\usepackage/longtable#c"
+  ],
+  "deps": [],
+  "envs": [
+    {
+      "name": "longtable",
+      "snippet": "[${2:alignment}]{${1:preamble}}"
+    },
+    {
+      "name": "longtable",
+      "snippet": "{${1:preamble}}"
+    }
+  ],
+  "keys": {
+    "\\usepackage/longtable#c": [
+      "errorshow",
+      "pausing",
+      "set",
+      "final"
+    ]
+  },
+  "macros": [
+    {
+      "name": "LTcapwidth"
+    },
+    {
+      "name": "LTchunksize"
+    },
+    {
+      "name": "LTleft"
+    },
+    {
+      "name": "LTpost"
+    },
+    {
+      "name": "LTpre"
+    },
+    {
+      "name": "LTright"
+    },
+    {
+      "name": "caption*",
+      "snippet": "caption*{${1:text}}"
+    },
+    {
+      "name": "endfirstfoot"
+    },
+    {
+      "name": "endfirsthead"
+    },
+    {
+      "name": "endfoot"
+    },
+    {
+      "name": "endhead"
+    },
+    {
+      "name": "endlastfoot"
+    },
+    {
+      "name": "setlongtables"
+    },
+    {
+      "name": "tabularnewline"
+    }
+  ]
+}

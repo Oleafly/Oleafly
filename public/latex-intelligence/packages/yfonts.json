@@ -1,0 +1,70 @@
+{
+  "args": [
+    "\\usepackage/yfonts#c"
+  ],
+  "deps": [],
+  "envs": [],
+  "keys": {
+    "\\usepackage/yfonts#c": [
+      "varumlaut"
+    ]
+  },
+  "macros": [
+    {
+      "name": "etc"
+    },
+    {
+      "name": "frakdefault",
+      "unusual": true
+    },
+    {
+      "name": "frakfamily"
+    },
+    {
+      "name": "fraklines"
+    },
+    {
+      "name": "gothdefault",
+      "unusual": true
+    },
+    {
+      "name": "gothfamily"
+    },
+    {
+      "name": "initdefault",
+      "unusual": true
+    },
+    {
+      "name": "initfamily"
+    },
+    {
+      "name": "swabdefault",
+      "unusual": true
+    },
+    {
+      "name": "swabfamily"
+    },
+    {
+      "name": "textfrak",
+      "snippet": "textfrak{${1:text}}"
+    },
+    {
+      "name": "textgoth",
+      "snippet": "textgoth{${1:text}}"
+    },
+    {
+      "name": "textinit",
+      "snippet": "textinit{${1:text}}"
+    },
+    {
+      "name": "textswab",
+      "snippet": "textswab{${1:text}}"
+    },
+    {
+      "name": "yinipar"
+    },
+    {
+      "name": "yinitpar"
+    }
+  ]
+}

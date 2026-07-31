@@ -1,0 +1,35 @@
+{
+  "args": [
+    "\\usepackage/tabulary#c"
+  ],
+  "deps": [],
+  "envs": [
+    {
+      "name": "tabulary",
+      "snippet": "{${1:width}}{${2:preamble}}"
+    }
+  ],
+  "keys": {
+    "\\usepackage/tabulary#c": [
+      "debugshow"
+    ]
+  },
+  "macros": [
+    {
+      "name": "arraybackslash",
+      "unusual": true
+    },
+    {
+      "name": "tyformat",
+      "unusual": true
+    },
+    {
+      "name": "tymax",
+      "unusual": true
+    },
+    {
+      "name": "tymin",
+      "unusual": true
+    }
+  ]
+}

@@ -1,0 +1,736 @@
+{
+  "args": [
+    "\\usepackage/xy#c,\\xyoption#c,\\xyrequire#c,\\xywithoption#c,\\xyeverywithoption#c,\\xyeveryrequest#c"
+  ],
+  "deps": [
+    "ifpdf"
+  ],
+  "envs": [
+    {
+      "name": "xy"
+    }
+  ],
+  "keys": {
+    "\\usepackage/xy#c,\\xyoption#c,\\xyrequire#c,\\xywithoption#c,\\xyeverywithoption#c,\\xyeveryrequest#c": [
+      "curve",
+      "frame",
+      "tips",
+      "line",
+      "rotate",
+      "color",
+      "tile",
+      "import",
+      "movie",
+      "ps",
+      "tpic",
+      "emtex",
+      "necula",
+      "picture",
+      "all",
+      "dummy",
+      "arrow",
+      "2cell",
+      "matrix",
+      "graph",
+      "poly",
+      "web",
+      "arc",
+      "knot",
+      "smart",
+      "barr",
+      "dvidrv",
+      "dvips",
+      "dvitops",
+      "oztex",
+      "17oztex",
+      "textures",
+      "16textures",
+      "xdvi",
+      "pdf",
+      "v2"
+    ]
+  },
+  "macros": [
+    {
+      "name": "AliasPattern",
+      "snippet": "AliasPattern{${1:alias}}{${2:name}}{${3:file}}"
+    },
+    {
+      "name": "Col"
+    },
+    {
+      "name": "CompileFixPoint",
+      "snippet": "CompileFixPoint{${1:id}}"
+    },
+    {
+      "name": "CompileMatrices"
+    },
+    {
+      "name": "CompilePrefix",
+      "snippet": "CompilePrefix{${1:prefix}}"
+    },
+    {
+      "name": "Direction",
+      "unusual": true
+    },
+    {
+      "name": "LoadAllPatterns",
+      "snippet": "LoadAllPatterns{${1:file}}"
+    },
+    {
+      "name": "LoadPattern",
+      "snippet": "LoadPattern{${1:name}}{${2:file}}"
+    },
+    {
+      "name": "MakeOutlines"
+    },
+    {
+      "name": "MovieSetup",
+      "snippet": "MovieSetup{${1:width=width,height=height}}"
+    },
+    {
+      "name": "MultipleDrivers",
+      "unusual": true
+    },
+    {
+      "name": "NoCompileMatrices"
+    },
+    {
+      "name": "NoEMspecials"
+    },
+    {
+      "name": "NoOutlines"
+    },
+    {
+      "name": "NoPScolor"
+    },
+    {
+      "name": "NoPSframes"
+    },
+    {
+      "name": "NoPSlines"
+    },
+    {
+      "name": "NoPSrotate"
+    },
+    {
+      "name": "NoPSspecials"
+    },
+    {
+      "name": "NoPStiles"
+    },
+    {
+      "name": "NoResizing"
+    },
+    {
+      "name": "NoRules"
+    },
+    {
+      "name": "NoTPICframes"
+    },
+    {
+      "name": "NoTPICspecials"
+    },
+    {
+      "name": "NoTips"
+    },
+    {
+      "name": "OnlyOutlines"
+    },
+    {
+      "name": "PATH"
+    },
+    {
+      "name": "PATHafterPOS"
+    },
+    {
+      "name": "POS"
+    },
+    {
+      "name": "Row"
+    },
+    {
+      "name": "SelectTips",
+      "snippet": "SelectTips{${1:family}}{${2:size}}"
+    },
+    {
+      "name": "ShowOutlines"
+    },
+    {
+      "name": "SilentMatrices"
+    },
+    {
+      "name": "SloppyCurves"
+    },
+    {
+      "name": "UseAllTwocells"
+    },
+    {
+      "name": "UseCompositeMaps"
+    },
+    {
+      "name": "UseCrayolaColors"
+    },
+    {
+      "name": "UseCurvedFrames"
+    },
+    {
+      "name": "UseEMspecials"
+    },
+    {
+      "name": "UseFontFrames"
+    },
+    {
+      "name": "UseHalfTwocells"
+    },
+    {
+      "name": "UsePScolor"
+    },
+    {
+      "name": "UsePSframes"
+    },
+    {
+      "name": "UsePSheader",
+      "snippet": "UsePSheader{${1:file}}"
+    },
+    {
+      "name": "UsePSlines"
+    },
+    {
+      "name": "UsePSrotate"
+    },
+    {
+      "name": "UsePSspecials",
+      "snippet": "UsePSspecials{${1:driver}}"
+    },
+    {
+      "name": "UsePStiles"
+    },
+    {
+      "name": "UsePatternFile",
+      "snippet": "UsePatternFile{${1:file}}"
+    },
+    {
+      "name": "UseResizing"
+    },
+    {
+      "name": "UseRules"
+    },
+    {
+      "name": "UseSingleDriver",
+      "unusual": true
+    },
+    {
+      "name": "UseTPICframes"
+    },
+    {
+      "name": "UseTPICspecials"
+    },
+    {
+      "name": "UseTips"
+    },
+    {
+      "name": "UseTwocells"
+    },
+    {
+      "name": "Xy",
+      "unusual": true
+    },
+    {
+      "name": "afterPATH",
+      "snippet": "afterPATH{${1:decor}}"
+    },
+    {
+      "name": "afterPOS",
+      "snippet": "afterPOS{${1:decor}}"
+    },
+    {
+      "name": "ar",
+      "snippet": "ar[${1:hop}]"
+    },
+    {
+      "name": "arrowobject",
+      "snippet": "arrowobject{${1:object}}"
+    },
+    {
+      "name": "cir",
+      "snippet": "cir{${1:spec}}"
+    },
+    {
+      "name": "cir<radius>",
+      "snippet": "cir<radius>{${1:spec}}"
+    },
+    {
+      "name": "circleEdge",
+      "unusual": true
+    },
+    {
+      "name": "composite",
+      "snippet": "composite{${1:objects}}"
+    },
+    {
+      "name": "connect"
+    },
+    {
+      "name": "croplattice",
+      "snippet": "croplattice{${1:pt1}}{${2:pt2}}{${3:pt3}}{${4:pt4}}{${5:pt5}}{${6:pt6}}{${7:pt7}}{${8:pt8}}"
+    },
+    {
+      "name": "crv",
+      "snippet": "crv{${1:poslist}}"
+    },
+    {
+      "name": "crvs",
+      "snippet": "crvs{${1:dir}}"
+    },
+    {
+      "name": "curve",
+      "snippet": "curve{${1:poslist}}"
+    },
+    {
+      "name": "curveobject",
+      "snippet": "curveobject{${1:object}}"
+    },
+    {
+      "name": "ddtwocell"
+    },
+    {
+      "name": "defaultlatticebody",
+      "unusual": true
+    },
+    {
+      "name": "dir",
+      "snippet": "dir{${1:dir}}"
+    },
+    {
+      "name": "dltwocell"
+    },
+    {
+      "name": "drop"
+    },
+    {
+      "name": "drtwocell"
+    },
+    {
+      "name": "dtwocell"
+    },
+    {
+      "name": "dumpPSdict",
+      "snippet": "dumpPSdict{${1:filename}}",
+      "unusual": true
+    },
+    {
+      "name": "dutwocell"
+    },
+    {
+      "name": "ellipse",
+      "snippet": "ellipse{${1:style}}"
+    },
+    {
+      "name": "ellipse<dimen>",
+      "snippet": "ellipse<dimen>{${1:style}}"
+    },
+    {
+      "name": "endxy",
+      "unusual": true
+    },
+    {
+      "name": "frm",
+      "snippet": "frm{${1:frame}}"
+    },
+    {
+      "name": "halfrootthree",
+      "unusual": true
+    },
+    {
+      "name": "halfroottwo",
+      "unusual": true
+    },
+    {
+      "name": "knotSTYLE",
+      "snippet": "knotSTYLE{${1:code}}"
+    },
+    {
+      "name": "knotstyle",
+      "snippet": "knotstyle{${1:char}}"
+    },
+    {
+      "name": "knotstyles",
+      "snippet": "knotstyles{${1:char1}}{${2:char2}}"
+    },
+    {
+      "name": "labelbox",
+      "unusual": true
+    },
+    {
+      "name": "labelmargin"
+    },
+    {
+      "name": "labelstyle",
+      "unusual": true
+    },
+    {
+      "name": "latticeA",
+      "unusual": true
+    },
+    {
+      "name": "latticeB",
+      "unusual": true
+    },
+    {
+      "name": "latticeX",
+      "unusual": true
+    },
+    {
+      "name": "latticeY",
+      "unusual": true
+    },
+    {
+      "name": "latticebody",
+      "unusual": true
+    },
+    {
+      "name": "ldtwocell"
+    },
+    {
+      "name": "lltwocell"
+    },
+    {
+      "name": "lowercurveobject",
+      "snippet": "lowercurveobject{${1:object}}"
+    },
+    {
+      "name": "lrtwocell"
+    },
+    {
+      "name": "ltwocell"
+    },
+    {
+      "name": "lutwocell"
+    },
+    {
+      "name": "maxTPICpoints",
+      "snippet": "maxTPICpoints{${1:number}}"
+    },
+    {
+      "name": "modmapobject",
+      "snippet": "modmapobject{${1:object}}"
+    },
+    {
+      "name": "newdir",
+      "snippet": "newdir{${1:directional}}{${2:composite}}"
+    },
+    {
+      "name": "newgraphescape",
+      "snippet": "newgraphescape{${1:letter}}{${2:graph}}"
+    },
+    {
+      "name": "newxycolor",
+      "snippet": "newxycolor{${1:name}}{${2:code}}"
+    },
+    {
+      "name": "newxypattern",
+      "snippet": "newxypattern{${1:name}}{${2:data}}"
+    },
+    {
+      "name": "object"
+    },
+    {
+      "name": "objectbox",
+      "snippet": "objectbox{${1:text}}"
+    },
+    {
+      "name": "objectheight"
+    },
+    {
+      "name": "objectmargin"
+    },
+    {
+      "name": "objectstyle",
+      "unusual": true
+    },
+    {
+      "name": "objectwidth"
+    },
+    {
+      "name": "partroottwo",
+      "unusual": true
+    },
+    {
+      "name": "qspline",
+      "snippet": "qspline{${1:style}}"
+    },
+    {
+      "name": "rdtwocell"
+    },
+    {
+      "name": "rectangleEdge",
+      "unusual": true
+    },
+    {
+      "name": "restore"
+    },
+    {
+      "name": "rltwocell"
+    },
+    {
+      "name": "rrtwocell"
+    },
+    {
+      "name": "rtwocell"
+    },
+    {
+      "name": "rutwocell"
+    },
+    {
+      "name": "save"
+    },
+    {
+      "name": "scene"
+    },
+    {
+      "name": "splinetolerance",
+      "snippet": "splinetolerance{${1:dimen}}"
+    },
+    {
+      "name": "turnradius"
+    },
+    {
+      "name": "twocell"
+    },
+    {
+      "name": "twocellhead",
+      "snippet": "twocellhead{${1:object}}"
+    },
+    {
+      "name": "twocellstyle",
+      "unusual": true
+    },
+    {
+      "name": "twocelltail",
+      "snippet": "twocelltail{${1:object}}"
+    },
+    {
+      "name": "txt",
+      "snippet": "txt{${1:text}}"
+    },
+    {
+      "name": "txt<width>",
+      "snippet": "txt<width>{${1:text}}"
+    },
+    {
+      "name": "udtwocell"
+    },
+    {
+      "name": "ultwocell"
+    },
+    {
+      "name": "uppercurveobject",
+      "snippet": "uppercurveobject{${1:object}}"
+    },
+    {
+      "name": "urtwocell"
+    },
+    {
+      "name": "utwocell"
+    },
+    {
+      "name": "uutwocell"
+    },
+    {
+      "name": "xtwocell",
+      "snippet": "xtwocell[${2:hop}]{${1:displace}}"
+    },
+    {
+      "name": "xtwocell",
+      "snippet": "xtwocell{${1:displace}}"
+    },
+    {
+      "name": "xy",
+      "unusual": true
+    },
+    {
+      "name": "xyPSdefaultdict",
+      "unusual": true
+    },
+    {
+      "name": "xyReloadDrivers",
+      "unusual": true
+    },
+    {
+      "name": "xyShowDrivers",
+      "unusual": true
+    },
+    {
+      "name": "xyatipfont",
+      "unusual": true
+    },
+    {
+      "name": "xybox",
+      "snippet": "xybox{${1:<pos><${2:decor}>}}"
+    },
+    {
+      "name": "xybsqlfont",
+      "unusual": true
+    },
+    {
+      "name": "xybtipfont",
+      "unusual": true
+    },
+    {
+      "name": "xycircfont",
+      "unusual": true
+    },
+    {
+      "name": "xycircle",
+      "snippet": "xycircle(${2:x},${3:y}){${1:style}}"
+    },
+    {
+      "name": "xycircle<radius>",
+      "snippet": "xycircle<radius>{${1:style}}"
+    },
+    {
+      "name": "xycompile",
+      "snippet": "xycompile{${1:<pos><${2:decor}>}}"
+    },
+    {
+      "name": "xycompileto",
+      "snippet": "xycompileto{${1:name}}{${2:<pos><${3:decor}>}}"
+    },
+    {
+      "name": "xydashfont",
+      "unusual": true
+    },
+    {
+      "name": "xyecho",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\usepackage/xy#c,\\xyoption#c,\\xyrequire#c,\\xywithoption#c,\\xyeverywithoption#c,\\xyeveryrequest#c"
+      ],
+      "name": "xyeveryrequest",
+      "snippet": "xyeveryrequest{${1:option}}{${2:code}}",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\usepackage/xy#c,\\xyoption#c,\\xyrequire#c,\\xywithoption#c,\\xyeverywithoption#c,\\xyeveryrequest#c"
+      ],
+      "name": "xyeverywithoption",
+      "snippet": "xyeverywithoption{${1:option}}{${2:code}}",
+      "unusual": true
+    },
+    {
+      "name": "xygraph",
+      "snippet": "xygraph{${1:graph}}"
+    },
+    {
+      "name": "xyignore",
+      "snippet": "xyignore{${1:<pos><${2:decor}>}}"
+    },
+    {
+      "name": "xyimport",
+      "snippet": "xyimport(${2:width},${3:height})(${4:xoffset},${5:yoffset}){${1:graphics code}}"
+    },
+    {
+      "name": "xyimport",
+      "snippet": "xyimport(${2:width},${3:height}){${1:graphics code}}"
+    },
+    {
+      "name": "xylattice",
+      "snippet": "xylattice{${1:pt1}}{${2:pt2}}{${3:pt3}}{${4:pt4}}"
+    },
+    {
+      "name": "xymatrix",
+      "snippet": "xymatrix{${1:xy code}}"
+    },
+    {
+      "name": "xymatrixcolsep"
+    },
+    {
+      "name": "xymatrixcompile",
+      "snippet": "xymatrixcompile{${1:xy code}}",
+      "unusual": true
+    },
+    {
+      "name": "xymatrixnocompile",
+      "snippet": "xymatrixnocompile{${1:xy code}}",
+      "unusual": true
+    },
+    {
+      "name": "xymatrixrowsep"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\usepackage/xy#c,\\xyoption#c,\\xyrequire#c,\\xywithoption#c,\\xyeverywithoption#c,\\xyeveryrequest#c"
+      ],
+      "name": "xyoption",
+      "snippet": "xyoption{${1:option}}"
+    },
+    {
+      "name": "xypolygon"
+    },
+    {
+      "name": "xypolyline",
+      "snippet": "xypolyline{${1:toks}}"
+    },
+    {
+      "name": "xypolyname",
+      "unusual": true
+    },
+    {
+      "name": "xypolynode"
+    },
+    {
+      "name": "xypolynum",
+      "unusual": true
+    },
+    {
+      "name": "xyprovide",
+      "snippet": "xyprovide{${1:option}}{${2:name}}{${3:version}}{${4:author}}{${5:email}}{${6:address}}",
+      "unusual": true
+    },
+    {
+      "name": "xyquiet",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\usepackage/xy#c,\\xyoption#c,\\xyrequire#c,\\xywithoption#c,\\xyeverywithoption#c,\\xyeveryrequest#c"
+      ],
+      "name": "xyrequire",
+      "snippet": "xyrequire{${1:option}}"
+    },
+    {
+      "name": "xyresetcatcodes",
+      "unusual": true
+    },
+    {
+      "name": "xytracing",
+      "unusual": true
+    },
+    {
+      "name": "xyverbose",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\usepackage/xy#c,\\xyoption#c,\\xyrequire#c,\\xywithoption#c,\\xyeverywithoption#c,\\xyeveryrequest#c"
+      ],
+      "name": "xywithoption",
+      "snippet": "xywithoption{${1:option}}{${2:code}}",
+      "unusual": true
+    },
+    {
+      "name": "zeroDivideLimit",
+      "snippet": "zeroDivideLimit{${1:number}}",
+      "unusual": true
+    }
+  ]
+}

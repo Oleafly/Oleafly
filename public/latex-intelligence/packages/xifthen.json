@@ -1,0 +1,48 @@
+{
+  "args": [],
+  "deps": [
+    "calc",
+    "ifmtarg",
+    "ifthen"
+  ],
+  "envs": [],
+  "keys": {},
+  "macros": [
+    {
+      "name": "cnttest",
+      "snippet": "cnttest{${1:counter-expr1}}{${2:comparison}}{${3:counter-expr2}}"
+    },
+    {
+      "name": "dimtest",
+      "snippet": "dimtest{${1:dimen-expr1}}{${2:comparison}}{${3:dimen-expr2}}"
+    },
+    {
+      "name": "endswith",
+      "snippet": "endswith{${1:string}}{${2:substring}}"
+    },
+    {
+      "name": "isempty",
+      "snippet": "isempty{${1:content}}"
+    },
+    {
+      "name": "isequivalentto",
+      "snippet": "isequivalentto{${1:command1}}{${2:command2}}"
+    },
+    {
+      "name": "isin",
+      "snippet": "isin{${1:substring}}{${2:string}}"
+    },
+    {
+      "name": "isnamedefined",
+      "snippet": "isnamedefined{${1:command name}}"
+    },
+    {
+      "name": "newtest",
+      "snippet": "newtest{${1:command}}[${3:args}]{${2:test-expr}}"
+    },
+    {
+      "name": "newtest",
+      "snippet": "newtest{${1:command}}{${2:test-expr}}"
+    }
+  ]
+}

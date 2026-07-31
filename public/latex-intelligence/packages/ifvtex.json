@@ -1,0 +1,25 @@
+{
+  "args": [],
+  "deps": [
+    "iftex"
+  ],
+  "envs": [],
+  "keys": {},
+  "macros": [
+    {
+      "name": "ifvtexdvi"
+    },
+    {
+      "name": "ifvtexgex"
+    },
+    {
+      "name": "ifvtexhtml"
+    },
+    {
+      "name": "ifvtexpdf"
+    },
+    {
+      "name": "ifvtexps"
+    }
+  ]
+}

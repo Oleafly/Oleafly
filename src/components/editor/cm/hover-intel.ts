@@ -5,6 +5,8 @@ import {
   hoverTooltip,
   type DecorationSet,
 } from "@codemirror/view";
+import { renderMathExpression } from "@oleafly/editor";
+import { auxNumberFor, type LabelNumber } from "@/lib/aux-numbers";
 import { currentSourceProjectIntelligence } from "@/lib/project-intelligence/current";
 import {
   definitionsForUse,
@@ -18,7 +20,10 @@ import type {
   ProjectIntelligenceSnapshot,
   ProjectUse,
 } from "@/lib/project-intelligence/types";
+import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
+import { loadAssetThumbnail, THUMBNAIL_TARGET_RE } from "./hover-asset";
+import { enclosingMathEnvironment } from "./hover-math";
 
 function isUse(symbol: ProjectSymbol): symbol is ProjectUse {
   return "definitionIds" in symbol;
@@ -148,10 +153,45 @@ function definitionDetail(
   return [definition.detail, preview, where].filter(Boolean).join("\n");
 }
 
+interface HoverExtras {
+  /** Display-math body rendered under the card (resolved label in math). */
+  math?: string;
+  /** Project-relative image/PDF path thumbnailed under the card. */
+  assetPath?: string;
+  /** Number from the last successful compile's .aux files. */
+  aux?: LabelNumber;
+}
+
+function mathBodyForDefinition(
+  definition: ProjectDefinition,
+): string | undefined {
+  if (definition.kind !== "label" && definition.kind !== "anchor") {
+    return undefined;
+  }
+  const text = useIndexStore.getState().texts[definition.location.file];
+  if (!text) return undefined;
+  return enclosingMathEnvironment(text, definition.location.range.from)
+    ?.body;
+}
+
 function describe(
   snapshot: ProjectIntelligenceSnapshot,
   symbol: ProjectSymbol,
-): { title: string; detail: string } | null {
+): { title: string; detail: string; extras?: HoverExtras } | null {
+  if (isUse(symbol) && symbol.kind === "asset") {
+    const target =
+      symbol.resolution === "resolved" && symbol.target
+        ? symbol.target
+        : null;
+    if (target && THUMBNAIL_TARGET_RE.test(target)) {
+      return {
+        title: `figure · ${basename(target)}`,
+        detail: target,
+        extras: { assetPath: target },
+      };
+    }
+    return null;
+  }
   if (isUse(symbol)) {
     const definitions = definitionsForUse(snapshot, symbol.id);
     const noun =
@@ -175,9 +215,14 @@ function describe(
       };
     }
     const texts = useIndexStore.getState().texts;
+    const definition = definitions[0];
     return {
-      title: `${definitions[0].kind} · ${definitions[0].name}`,
-      detail: definitionDetail(definitions[0], texts),
+      title: `${definition.kind} · ${definition.name}`,
+      detail: definitionDetail(definition, texts),
+      extras: {
+        math: mathBodyForDefinition(definition),
+        aux: auxNumberFor(definition.name) ?? undefined,
+      },
     };
   }
 
@@ -186,6 +231,10 @@ function describe(
   return {
     title: `${symbol.kind} · ${symbol.name}`,
     detail: `${count} reference${count === 1 ? "" : "s"} in the current project revision`,
+    extras:
+      symbol.kind === "label" || symbol.kind === "anchor"
+        ? { aux: auxNumberFor(symbol.name) ?? undefined }
+        : undefined,
   };
 }
 
@@ -204,10 +253,49 @@ const projectHover = hoverTooltip((view, position) => {
       const title = dom.appendChild(document.createElement("div"));
       title.className = "cm-code-hover-title";
       title.textContent = info.title;
+      const extras = info.extras;
+      if (extras?.math) {
+        const rendered = renderMathExpression(extras.math, true);
+        if (rendered.status === "ready") {
+          const math = dom.appendChild(document.createElement("div"));
+          math.className = "cm-code-hover-math";
+          // renderMathExpression output is KaTeX HTML already sanitized
+          // against SAFE_KATEX_ELEMENTS with trust disabled.
+          math.innerHTML = rendered.html;
+        }
+      }
       if (info.detail) {
         const detail = dom.appendChild(document.createElement("div"));
         detail.className = "cm-code-hover-detail";
         detail.textContent = info.detail;
+      }
+      if (extras?.aux) {
+        const aux = dom.appendChild(document.createElement("div"));
+        aux.className = "cm-code-hover-aux";
+        aux.textContent = `№ ${extras.aux.number} · p. ${extras.aux.page} — last compile`;
+      }
+      if (extras?.assetPath) {
+        const thumb = dom.appendChild(document.createElement("div"));
+        thumb.className = "cm-code-hover-thumb";
+        thumb.textContent = "Loading preview…";
+        const projectId = useFilesStore.getState().projectId;
+        if (projectId) {
+          void loadAssetThumbnail(projectId, extras.assetPath).then(
+            (url) => {
+              if (!thumb.isConnected) return;
+              if (!url) {
+                thumb.textContent = "Preview unavailable";
+                return;
+              }
+              const image = document.createElement("img");
+              image.src = url;
+              image.alt = "";
+              thumb.replaceChildren(image);
+            },
+          );
+        } else {
+          thumb.textContent = "Preview unavailable";
+        }
       }
       return { dom };
     },
@@ -233,6 +321,25 @@ const theme = EditorView.baseTheme({
     opacity: "0.75",
     fontFamily: "monospace",
     fontSize: "11px",
+  },
+  ".cm-code-hover-math": {
+    marginTop: "4px",
+    overflowX: "auto",
+  },
+  ".cm-code-hover-aux": {
+    marginTop: "3px",
+    opacity: "0.85",
+    fontSize: "11px",
+  },
+  ".cm-code-hover-thumb": {
+    marginTop: "4px",
+    opacity: "0.9",
+  },
+  ".cm-code-hover-thumb img": {
+    maxWidth: "20rem",
+    maxHeight: "12rem",
+    display: "block",
+    borderRadius: "3px",
   },
 });
 

@@ -1,0 +1,2984 @@
+{
+  "args": [
+    "\\usepackage/tkz-euclide#c"
+  ],
+  "deps": [
+    "luacode",
+    "tikz",
+    "tikzlibraryangles",
+    "tikzlibrarybackgrounds",
+    "tikzlibrarycalc",
+    "tikzlibrarydecorations",
+    "tikzlibrarydecorations.markings",
+    "tikzlibrarydecorations.pathmorphing",
+    "tikzlibrarydecorations.pathreplacing",
+    "tikzlibrarydecorations.shapes",
+    "tikzlibrarydecorations.text",
+    "tikzlibraryintersections",
+    "tikzlibrarymath",
+    "tikzlibraryplotmarks",
+    "tikzlibrarypositioning",
+    "tikzlibraryquotes",
+    "tikzlibraryshapes.misc",
+    "tikzlibrarythrough",
+    "xpatch"
+  ],
+  "envs": [],
+  "keys": {
+    "\\tkzAutoLabelPoints#c": [
+      "center=${1:point}",
+      "dist=${1:number}"
+    ],
+    "\\tkzCalcLength#c": [
+      "cm"
+    ],
+    "\\tkzClip#c": [
+      "space=${1:number}"
+    ],
+    "\\tkzClipCircle#c": [
+      "out"
+    ],
+    "\\tkzClipPolygon#c": [
+      "out"
+    ],
+    "\\tkzClipSector#c": [
+      "towards",
+      "rotate",
+      "R"
+    ],
+    "\\tkzCompass#c,\\tkzCompasss#c": [
+      "delta=${1:degrees}",
+      "length=${1:number}",
+      "color=",
+      "%color",
+      "solid",
+      "dotted",
+      "densely dotted",
+      "loosely dotted",
+      "dashed",
+      "densely dashed",
+      "loosely dashed",
+      "dash dot",
+      "densely dash dot",
+      "loosely dash dot",
+      "dash dot dot",
+      "densely dash dot dot",
+      "loosely dash dot dot",
+      "line width=",
+      "style={${1:TikZ options}}",
+      "line width=",
+      "ultra thin",
+      "very thin",
+      "thin",
+      "semithick",
+      "thick",
+      "very thick",
+      "ultra thick"
+    ],
+    "\\tkzDefCircle#c": [
+      "R",
+      "diameter",
+      "circum",
+      "in",
+      "ex",
+      "euler",
+      "nine",
+      "spieker",
+      "apollonius",
+      "orthogonal from=${1:point}",
+      "orthogonal through=${1:point1} and ${2:point2}",
+      "K=${1:number}"
+    ],
+    "\\tkzDefCircleBy#c": [
+      "translation=from ${1:point1} to ${2:point2}",
+      "homothety=center ${1:point} ratio ${2:number}",
+      "reflection=over ${1:point1}--${2:point2}",
+      "symmetry=center ${1:point}",
+      "projection=onto ${1:point1}--${2:point2}",
+      "rotation=center ${1:point} angle ${2:degrees}",
+      "inversion=center ${1:point1} through ${2:point2}"
+    ],
+    "\\tkzDefEquiPoints#c": [
+      "dist=",
+      "from=${1:point}",
+      "show",
+      "/tkzcompass/delta=${1:number}"
+    ],
+    "\\tkzDefHarmonic#c": [
+      "both",
+      "ext",
+      "int"
+    ],
+    "\\tkzDefLine#c": [
+      "mediator",
+      "perpendicular=through ${1:point}",
+      "orthogonal=through ${1:point}",
+      "parallel=through ${1:point}",
+      "bisector",
+      "bisector out",
+      "symmedian",
+      "altitude",
+      "euler",
+      "tangent at=${1:point}",
+      "tangent from=${1:point}",
+      "K=${1:number}",
+      "normed"
+    ],
+    "\\tkzDefPoint#c,\\tkzDefPoints#c": [
+      "label=${1:text}",
+      "shift=(${1:x},${2:y})",
+      "shift=(${1:angle}:${2:radius})"
+    ],
+    "\\tkzDefPointBy#c,\\tkzDefPointsBy#c": [
+      "translation=from ${1:point1} to ${2:point2}",
+      "homothety=center ${1:point} ratio ${2:number}",
+      "reflection=over ${1:point1}--${2:point2}",
+      "symmetry=center ${1:point}",
+      "projection=onto ${1:point1}--${2:point2}",
+      "rotation=center ${1:point} angle ${2:degrees}",
+      "rotation in rad=center ${1:point} angle ${2:radians}",
+      "inversion=center ${1:point1} through ${2:point2}",
+      "inversion negative=center ${1:point1} through ${2:point2}"
+    ],
+    "\\tkzDefPointOnCircle#c": [
+      "through=center ${1:point1} angle ${2:degrees} point ${3:point2}",
+      "R=center ${1:point} angle ${2:degrees} radius ${3:radius}",
+      "through in rad=center ${1:point1} angle ${2:radians} point ${3:point2}",
+      "R in rad=center ${1:point} angle ${2:radians} radius ${3:radius}"
+    ],
+    "\\tkzDefPointOnLine#c": [
+      "pos=${1:number}"
+    ],
+    "\\tkzDefPointWith#c": [
+      "orthogonal",
+      "orthogonal normed",
+      "linear",
+      "linear normed",
+      "colinear=at ${1:point}",
+      "colinear normed=at ${1:point}",
+      "K=${1:number}"
+    ],
+    "\\tkzDefProjExcenter#c": [
+      "name=${1:name}"
+    ],
+    "\\tkzDefRandPointOn#c": [
+      "rectangle=${1:point1} and ${2:point2}",
+      "segment=${1:point1}--${2:point2}",
+      "line=${1:point1}--${2:point2}",
+      "circle=center ${1:point} radius ${2:number}",
+      "circle through=center ${1:point1} through ${2:point2}",
+      "disk through=center ${1:point1} through ${2:point2}"
+    ],
+    "\\tkzDefRegPolygon#c": [
+      "name=${1:name}",
+      "sides=${1:integer}",
+      "center",
+      "side"
+    ],
+    "\\tkzDefSimilitudeCenter#c": [
+      "ext",
+      "int"
+    ],
+    "\\tkzDefSpcTriangle#c": [
+      "orthic",
+      "centroid",
+      "medial",
+      "in",
+      "incentral",
+      "ex",
+      "excentral",
+      "extouch",
+      "intouch",
+      "contact",
+      "euler",
+      "symmedial",
+      "tangential",
+      "feuerbach",
+      "name=${1:name}",
+      "ortho"
+    ],
+    "\\tkzDefTangent#c": [
+      "at=${1:point}",
+      "from=${1:point}",
+      "from with R=${1:point}"
+    ],
+    "\\tkzDefTriangle#c": [
+      "two angles=${1:angle1} and ${2:angle2}",
+      "equilateral",
+      "isosceles right",
+      "pythagore",
+      "pythagoras",
+      "egyptian",
+      "school",
+      "gold",
+      "euclid",
+      "golden",
+      "cheops",
+      "swap"
+    ],
+    "\\tkzDefTriangleCenter#c": [
+      "ortho",
+      "orthic",
+      "centroid",
+      "median",
+      "circum",
+      "in",
+      "ex",
+      "euler",
+      "gergonne",
+      "symmedian",
+      "lemoine",
+      "grebe",
+      "spieker",
+      "nagel",
+      "mittenpunkt",
+      "feuerbach"
+    ],
+    "\\tkzDrawArc#c": [
+      "towards",
+      "rotate",
+      "R",
+      "R with nodes",
+      "angles",
+      "delta=${1:number}",
+      "reverse",
+      "color=",
+      "%color",
+      "solid",
+      "dotted",
+      "densely dotted",
+      "loosely dotted",
+      "dashed",
+      "densely dashed",
+      "loosely dashed",
+      "dash dot",
+      "densely dash dot",
+      "loosely dash dot",
+      "dash dot dot",
+      "densely dash dot dot",
+      "loosely dash dot dot",
+      "line width=",
+      "style={${1:TikZ options}}",
+      "line width=",
+      "ultra thin",
+      "very thin",
+      "thin",
+      "semithick",
+      "thick",
+      "very thick",
+      "ultra thick",
+      "double",
+      "double distance="
+    ],
+    "\\tkzDrawCircle#c,\\tkzDrawCircles#c": [
+      "through",
+      "R",
+      "color=",
+      "%color",
+      "fill=",
+      "opacity=${1:factor}",
+      "solid",
+      "dotted",
+      "densely dotted",
+      "loosely dotted",
+      "dashed",
+      "densely dashed",
+      "loosely dashed",
+      "dash dot",
+      "densely dash dot",
+      "loosely dash dot",
+      "dash dot dot",
+      "densely dash dot dot",
+      "loosely dash dot dot",
+      "line width=",
+      "ultra thin",
+      "very thin",
+      "thin",
+      "semithick",
+      "thick",
+      "very thick",
+      "ultra thick",
+      "double",
+      "double distance="
+    ],
+    "\\tkzDrawLine#c,\\tkzDrawLines#c": [
+      "add=${1:num1} and ${2:num2}",
+      "color=",
+      "%color",
+      "solid",
+      "dotted",
+      "densely dotted",
+      "loosely dotted",
+      "dashed",
+      "densely dashed",
+      "loosely dashed",
+      "dash dot",
+      "densely dash dot",
+      "loosely dash dot",
+      "dash dot dot",
+      "densely dash dot dot",
+      "loosely dash dot dot",
+      "style={${1:TikZ options}}",
+      "->",
+      "<-",
+      "<->",
+      "ultra thin",
+      "very thin",
+      "thin",
+      "semithick",
+      "thick",
+      "very thick",
+      "ultra thick",
+      "line width=",
+      "double",
+      "double distance="
+    ],
+    "\\tkzDrawPoint#c,\\tkzDrawPoints#c": [
+      "shape=${1|circle,cross,cross out|}",
+      "size=${1:number}",
+      "color=",
+      "%color",
+      "fill=",
+      "draw=",
+      "opacity=${1:factor}",
+      "ultra thin",
+      "very thin",
+      "thin",
+      "semithick",
+      "thick",
+      "very thick",
+      "ultra thick"
+    ],
+    "\\tkzDrawPolygon#c,\\tkzDrawPolySeg#c": [
+      "color=",
+      "%color",
+      "fill=",
+      "draw=",
+      "opacity=${1:factor}",
+      "solid",
+      "dotted",
+      "densely dotted",
+      "loosely dotted",
+      "dashed",
+      "densely dashed",
+      "loosely dashed",
+      "dash dot",
+      "densely dash dot",
+      "loosely dash dot",
+      "dash dot dot",
+      "densely dash dot dot",
+      "loosely dash dot dot",
+      "style={${1:TikZ options}}",
+      "->",
+      "<-",
+      "<->",
+      "ultra thin",
+      "very thin",
+      "thin",
+      "semithick",
+      "thick",
+      "very thick",
+      "ultra thick",
+      "line width=",
+      "line join=${1|round,bevel,miter|}",
+      "double",
+      "double distance="
+    ],
+    "\\tkzDrawSector#c,\\tkzFillSector#c": [
+      "towards",
+      "rotate",
+      "R",
+      "R with nodes",
+      "fill=",
+      "opacity=${1:factor}",
+      "color=",
+      "%color",
+      "draw=",
+      "solid",
+      "dotted",
+      "densely dotted",
+      "loosely dotted",
+      "dashed",
+      "densely dashed",
+      "loosely dashed",
+      "dash dot",
+      "densely dash dot",
+      "loosely dash dot",
+      "dash dot dot",
+      "densely dash dot dot",
+      "loosely dash dot dot",
+      "line width=",
+      "style={${1:TikZ options}}",
+      "line width=",
+      "ultra thin",
+      "very thin",
+      "thin",
+      "semithick",
+      "thick",
+      "very thick",
+      "ultra thick",
+      "double",
+      "double distance="
+    ],
+    "\\tkzDrawSegment#c,\\tkzDrawSegments#c": [
+      "add=${1:num1} and ${2:num2}",
+      "dim={${1:label},${2:dim},${3:option}}",
+      "color=",
+      "%color",
+      "opacity=${1:factor}",
+      "solid",
+      "dotted",
+      "densely dotted",
+      "loosely dotted",
+      "dashed",
+      "densely dashed",
+      "loosely dashed",
+      "dash dot",
+      "densely dash dot",
+      "loosely dash dot",
+      "dash dot dot",
+      "densely dash dot dot",
+      "loosely dash dot dot",
+      "style={${1:TikZ options}}",
+      "->",
+      "<-",
+      "<->",
+      "ultra thin",
+      "very thin",
+      "thin",
+      "semithick",
+      "thick",
+      "very thick",
+      "ultra thick",
+      "line width=",
+      "double",
+      "double distance="
+    ],
+    "\\tkzDrawSemiCircle#c,\\tkzDrawSemiCircles#c": [
+      "through",
+      "diameter",
+      "color=",
+      "%color",
+      "fill=",
+      "solid",
+      "dotted",
+      "densely dotted",
+      "loosely dotted",
+      "dashed",
+      "densely dashed",
+      "loosely dashed",
+      "dash dot",
+      "densely dash dot",
+      "loosely dash dot",
+      "dash dot dot",
+      "densely dash dot dot",
+      "loosely dash dot dot",
+      "line width=",
+      "ultra thin",
+      "very thin",
+      "thin",
+      "semithick",
+      "thick",
+      "very thick",
+      "ultra thick",
+      "double",
+      "double distance="
+    ],
+    "\\tkzDrawX#c": [
+      "color=",
+      "noticks",
+      "right space=",
+      "left space=",
+      "label=${1:text}",
+      "trig=${1:integer}",
+      "tickwd=",
+      "tickup=",
+      "tickdn=",
+      ">=${1:end arrow spec}"
+    ],
+    "\\tkzDrawY#c": [
+      "color=",
+      "noticks",
+      "up space=",
+      "down space=",
+      "label=${1:text}",
+      "trig=${1:integer}",
+      "tickwd=",
+      "ticklt=",
+      "tickrt="
+    ],
+    "\\tkzFillAngle#c,\\tkzFillAngles#c": [
+      "size=${1:number}",
+      "color=",
+      "%color",
+      "opacity=${1:factor}",
+      "fill=",
+      "left color=",
+      "right color="
+    ],
+    "\\tkzFillCircle#c,\\tkzFillCircles#c": [
+      "radius",
+      "R",
+      "color=",
+      "%color",
+      "fill=",
+      "opacity=${1:factor}"
+    ],
+    "\\tkzFillPolygon#c": [
+      "color=",
+      "%color",
+      "opacity=${1:factor}",
+      "fill="
+    ],
+    "\\tkzGrid#c": [
+      "sub",
+      "color=",
+      "%color",
+      "subxstep=${1:number}",
+      "subystep=${1:number}",
+      "line width="
+    ],
+    "\\tkzInit#c": [
+      "xmin=${1:number}",
+      "xmax=${1:number}",
+      "xstep=${1:number}",
+      "ymin=${1:number}",
+      "ymax=${1:number}",
+      "ystep=${1:number}"
+    ],
+    "\\tkzInterLC#c,\\tkzInterCC#c": [
+      "N",
+      "R",
+      "with nodes"
+    ],
+    "\\tkzLabelAngle#c,\\tkzLabelAngles#c": [
+      "pos=${1:number}",
+      "circle",
+      "draw",
+      "fill=",
+      "font=${1:font commands}"
+    ],
+    "\\tkzLabelArc#c": [
+      "pos=${1:number}",
+      "below=",
+      "above=",
+      "left=",
+      "right=",
+      "below left=",
+      "below right=",
+      "above left=",
+      "above right=",
+      "color=",
+      "%color"
+    ],
+    "\\tkzLabelCircle#c": [
+      "radius",
+      "R",
+      "below=",
+      "above=",
+      "left=",
+      "right=",
+      "below left=",
+      "below right=",
+      "above left=",
+      "above right=",
+      "color=",
+      "%color",
+      "fill=",
+      "font=${1:font commands}",
+      "draw",
+      "text width=",
+      "text centered"
+    ],
+    "\\tkzLabelLine#c,\\tkzLabelSegment#c,\\tkzLabelSegments#c": [
+      "pos=${1:number}",
+      "swap",
+      "auto",
+      "below=",
+      "above=",
+      "left=",
+      "right=",
+      "below left=",
+      "below right=",
+      "above left=",
+      "above right=",
+      "sloped",
+      "midway",
+      "near start",
+      "near end",
+      "very near start",
+      "very near end",
+      "at start",
+      "at end",
+      "color=",
+      "%color"
+    ],
+    "\\tkzLabelPoint#c,\\tkzLabelPoints#c,\\tkzAutoLabelPoints#c": [
+      "left",
+      "right",
+      "above",
+      "below",
+      "above right",
+      "above left",
+      "below right",
+      "below left",
+      "color=",
+      "%color",
+      "font=${1:font commands}",
+      "label=${1:text}",
+      "centered"
+    ],
+    "\\tkzLegend#c": [
+      "line"
+    ],
+    "\\tkzMarkAngle#c,\\tkzMarkAngles#c": [
+      "arc=${1|l,ll,lll|}",
+      "size=",
+      "mark=${1:mark}",
+      "mksize=",
+      "mkcolor=",
+      "color=",
+      "mkpos=${1:number}"
+    ],
+    "\\tkzMarkRightAngle#c,\\tkzMarkRightAngles#c": [
+      "german",
+      "size=${1:number}",
+      "fill=",
+      "opacity=${1:factor}",
+      "draw=",
+      "color=",
+      "%color",
+      "line width="
+    ],
+    "\\tkzMarkSegment#c,\\tkzMarkSegments#c,\\tkzMarkArc#c": [
+      "pos=${1:number}",
+      "color=",
+      "%color",
+      "mark=${1:mark}",
+      "size=",
+      "line width=",
+      "ultra thin",
+      "very thin",
+      "thin",
+      "semithick",
+      "thick",
+      "very thick",
+      "ultra thick"
+    ],
+    "\\tkzPointShowCoord#c,\\tkzShowPointCoord#c": [
+      "xlabel=${1:text}",
+      "xstyle=",
+      "noxdraw",
+      "ylabel=${1:text}",
+      "ystyle=",
+      "noydraw"
+    ],
+    "\\tkzProtractor#c": [
+      "lw=",
+      "scale=${1:factor}",
+      "return"
+    ],
+    "\\tkzSetUpArc#c,\\tkzSetUpCompass#c": [
+      "delta=${1:number}"
+    ],
+    "\\tkzSetUpColors#c": [
+      "background=",
+      "text="
+    ],
+    "\\tkzSetUpLine#c": [
+      "add=${1:num1} and ${2:num2}"
+    ],
+    "\\tkzSetUpLine#c,\\tkzSetUpArc#c,\\tkzSetUpCompass#c": [
+      "color=",
+      "line width=",
+      "style=${1|solid,dotted,densely dotted,loosely dotted,dashed,densely dashed,loosely dashed,dash dot,densely dash dot,loosely dash dot,dash dot dot,densely dash dot dot ,loosely dash dot dot|}",
+      "add=${1:num1} and ${2:num2}"
+    ],
+    "\\tkzSetUpPoint#c": [
+      "color=",
+      "size=${1:number}",
+      "fill=",
+      "shape=${1|circle,cross,cross out|}"
+    ],
+    "\\tkzShowBB#c": [
+      "line width=",
+      "fill=",
+      "opacity=${1:factor}",
+      "color=",
+      "%color"
+    ],
+    "\\tkzShowLine#c": [
+      "mediator",
+      "parallel=through ${1:point}",
+      "perpendicular=through ${1:point}",
+      "orthogonal",
+      "bisector",
+      "K=${1:number}",
+      "length=${1:number}",
+      "ratio=${1:number}",
+      "gap=${1:number}",
+      "size=${1:number}",
+      "color=",
+      "%color",
+      "solid",
+      "dotted",
+      "densely dotted",
+      "loosely dotted",
+      "dashed",
+      "densely dashed",
+      "loosely dashed",
+      "dash dot",
+      "densely dash dot",
+      "loosely dash dot",
+      "dash dot dot",
+      "densely dash dot dot",
+      "loosely dash dot dot",
+      "line width=",
+      "style={${1:TikZ options}}",
+      "line width=",
+      "ultra thin",
+      "very thin",
+      "thin",
+      "semithick",
+      "thick",
+      "very thick",
+      "ultra thick"
+    ],
+    "\\tkzShowTransformation#c": [
+      "reflection=over ${1:point1}--${2:point2}",
+      "symmetry=center ${1:point}",
+      "projection=onto ${1:point1}--${2:point2}",
+      "translation=from ${1:point1} to ${2:point2}",
+      "K=${1:number}",
+      "length=${1:number}",
+      "ratio=${1:number}",
+      "gap=${1:number}",
+      "size=${1:number}",
+      "color=",
+      "%color"
+    ],
+    "\\tkzText#c": [
+      "draw",
+      "color=",
+      "text=",
+      "fill=",
+      "opacity=${1:factor}",
+      "line width=",
+      "rotate=${1:degrees}",
+      "inner sep=",
+      "text width="
+    ],
+    "\\usepackage/tkz-euclide#c": [
+      "lua"
+    ]
+  },
+  "macros": [
+    {
+      "name": "CountToken",
+      "snippet": "CountToken{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "DisabledNumprint",
+      "unusual": true
+    },
+    {
+      "name": "EnabledNumprint",
+      "unusual": true
+    },
+    {
+      "name": "FirstPointInList",
+      "snippet": "FirstPointInList{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "FullProtractor",
+      "unusual": true
+    },
+    {
+      "name": "FullProtractorReturn",
+      "unusual": true
+    },
+    {
+      "name": "RecursionMacroEnd",
+      "snippet": "RecursionMacroEnd{${1:arg1}}{${2:arg2}}{${3:arg3}}",
+      "unusual": true
+    },
+    {
+      "name": "ReplaceSubStrings",
+      "snippet": "ReplaceSubStrings{${1:arg1}}{${2:arg2}}{${3:arg3}}{${4:arg4}}",
+      "unusual": true
+    },
+    {
+      "name": "SetUpPTTR",
+      "snippet": "SetUpPTTR{${1:options}}",
+      "unusual": true
+    },
+    {
+      "name": "SubStringConditional",
+      "snippet": "SubStringConditional{${1:arg1}}{${2:arg2}}",
+      "unusual": true
+    },
+    {
+      "name": "extractxy",
+      "snippet": "extractxy{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "ifinteger",
+      "unusual": true
+    },
+    {
+      "name": "iftkzClipOutCircle",
+      "unusual": true
+    },
+    {
+      "name": "iftkzClipOutPoly",
+      "unusual": true
+    },
+    {
+      "name": "iftkzFlagCC",
+      "unusual": true
+    },
+    {
+      "name": "iftkzFlagLC",
+      "unusual": true
+    },
+    {
+      "name": "iftkzLinear",
+      "unusual": true
+    },
+    {
+      "name": "iftkzOrtho",
+      "unusual": true
+    },
+    {
+      "name": "iftkznodedefined",
+      "snippet": "iftkznodedefined{${1:node}}{${2:true}}{${3:false}}",
+      "unusual": true
+    },
+    {
+      "name": "integerfalse",
+      "unusual": true
+    },
+    {
+      "name": "integertrue",
+      "unusual": true
+    },
+    {
+      "name": "removedot",
+      "unusual": true
+    },
+    {
+      "name": "setupcolorkeys",
+      "snippet": "setupcolorkeys{${1:options}}",
+      "unusual": true
+    },
+    {
+      "name": "tkzActivOff",
+      "unusual": true
+    },
+    {
+      "name": "tkzActivOn",
+      "unusual": true
+    },
+    {
+      "name": "tkzAddName",
+      "snippet": "tkzAddName[${2:options}]{${1:name}}",
+      "unusual": true
+    },
+    {
+      "name": "tkzAngleResult"
+    },
+    {
+      "name": "tkzAutoLabelPoints",
+      "snippet": "tkzAutoLabelPoints(${1:point1},${2:point2},${3:...})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzLabelPoint#c,\\tkzLabelPoints#c,\\tkzAutoLabelPoints#c",
+        "\\tkzAutoLabelPoints#c"
+      ],
+      "name": "tkzAutoLabelPoints",
+      "snippet": "tkzAutoLabelPoints[${1:options}](${2:point1},${3:point2},${4:...})"
+    },
+    {
+      "name": "tkzBaryCenter",
+      "snippet": "tkzBaryCenter(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzCSym",
+      "snippet": "tkzCSym(${2:arg1})(${3:arg2}){${1:arg3}}",
+      "unusual": true
+    },
+    {
+      "name": "tkzCalcLength",
+      "snippet": "tkzCalcLength(${1:point1},${2:point2})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzCalcLength#c"
+      ],
+      "name": "tkzCalcLength",
+      "snippet": "tkzCalcLength[${1:options}](${2:point1},${3:point2})"
+    },
+    {
+      "name": "tkzCentroid",
+      "snippet": "tkzCentroid(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzCircumCenter",
+      "snippet": "tkzCircumCenter(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzClip"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzClip#c"
+      ],
+      "name": "tkzClip",
+      "snippet": "tkzClip[${1:options}]"
+    },
+    {
+      "name": "tkzClipBB"
+    },
+    {
+      "name": "tkzClipCircle",
+      "snippet": "tkzClipCircle(${1:point1},${2:point2})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzClipCircle#c"
+      ],
+      "name": "tkzClipCircle",
+      "snippet": "tkzClipCircle[${1:options}](${2:point1},${3:point2})"
+    },
+    {
+      "name": "tkzClipOutCirclefalse",
+      "unusual": true
+    },
+    {
+      "name": "tkzClipOutCircletrue",
+      "unusual": true
+    },
+    {
+      "name": "tkzClipOutPolyfalse",
+      "unusual": true
+    },
+    {
+      "name": "tkzClipOutPolytrue",
+      "unusual": true
+    },
+    {
+      "name": "tkzClipPolygon",
+      "snippet": "tkzClipPolygon(${1:point1},${2:point2},${3:...})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzClipPolygon#c"
+      ],
+      "name": "tkzClipPolygon",
+      "snippet": "tkzClipPolygon[${1:options}](${2:point1},${3:point2},${4:...})"
+    },
+    {
+      "name": "tkzClipSector",
+      "snippet": "tkzClipSector(${1:point1},${2:point2})(${3:point3})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzClipSector#c"
+      ],
+      "name": "tkzClipSector",
+      "snippet": "tkzClipSector[${1:options}](${2:point1},${3:point2})(${4:point3})"
+    },
+    {
+      "name": "tkzCoeffSubColor",
+      "unusual": true
+    },
+    {
+      "name": "tkzCoeffSubLw",
+      "unusual": true
+    },
+    {
+      "name": "tkzCompass",
+      "snippet": "tkzCompass(${1:point1},${2:point2})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzCompass#c,\\tkzCompasss#c"
+      ],
+      "name": "tkzCompass",
+      "snippet": "tkzCompass[${1:options}](${2:point1},${3:point2})"
+    },
+    {
+      "name": "tkzCompasss",
+      "snippet": "tkzCompasss(${1:pt1},${2:pt2 pt3},${3:pt4 ...})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzCompass#c,\\tkzCompasss#c"
+      ],
+      "name": "tkzCompasss",
+      "snippet": "tkzCompasss[${1:options}](${2:pt1},${3:pt2 pt3},${4:pt4 ...})"
+    },
+    {
+      "name": "tkzCos",
+      "snippet": "tkzCos{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefAltitudeLine",
+      "snippet": "tkzDefAltitudeLine(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefAltitudeTriangle",
+      "snippet": "tkzDefAltitudeTriangle[${1:options}](${2:point1},${3:point2},${4:point3})(${5:ref1},${6:ref2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefApolloniusCircle",
+      "snippet": "tkzDefApolloniusCircle(${1:point1},${2:point2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefBCPoint",
+      "snippet": "tkzDefBCPoint(${1:point1=num1},${2:point2=num2},${3:...})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefBarycentricPoint",
+      "snippet": "tkzDefBarycentricPoint(${1:point1=num1},${2:point2=num2},${3:...})"
+    },
+    {
+      "name": "tkzDefBisectorLine",
+      "snippet": "tkzDefBisectorLine(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefBisectorOutLine",
+      "snippet": "tkzDefBisectorOutLine(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefCentroidTriangle",
+      "snippet": "tkzDefCentroidTriangle[${1:options}](${2:point1},${3:point2},${4:point3})(${5:ref1},${6:ref2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefCheopsTriangle",
+      "snippet": "tkzDefCheopsTriangle(${1:point1},${2:point2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefCircle",
+      "snippet": "tkzDefCircle(${1:point1},${2:point2})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDefCircle#c"
+      ],
+      "name": "tkzDefCircle",
+      "snippet": "tkzDefCircle[${1:options}](${2:point1},${3:point2})"
+    },
+    {
+      "name": "tkzDefCircleBy",
+      "snippet": "tkzDefCircleBy(${1:point1},${2:point2})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDefCircleBy#c"
+      ],
+      "name": "tkzDefCircleBy",
+      "snippet": "tkzDefCircleBy[${1:options}](${2:point1},${3:point2})"
+    },
+    {
+      "name": "tkzDefCircleD",
+      "snippet": "tkzDefCircleD(${1:point1},${2:point2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefCircleHomothety",
+      "snippet": "tkzDefCircleHomothety(${1:point1},${2:point2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefCircleR",
+      "snippet": "tkzDefCircleR(${1:point1},${2:point2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefCircleReflection",
+      "snippet": "tkzDefCircleReflection(${1:point1},${2:point2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefCircleRotation",
+      "snippet": "tkzDefCircleRotation(${1:point1},${2:point2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefCircleSymmetry",
+      "snippet": "tkzDefCircleSymmetry(${1:point1},${2:point2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefCircleTranslation",
+      "snippet": "tkzDefCircleTranslation(${1:point1},${2:point2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefCircumCenter",
+      "snippet": "tkzDefCircumCenter(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefCircumCircle",
+      "snippet": "tkzDefCircumCircle(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefContactTriangle",
+      "snippet": "tkzDefContactTriangle[${1:options}](${2:point1},${3:point2},${4:point3})(${5:ref1},${6:ref2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefEquiPoints",
+      "snippet": "tkzDefEquiPoints(${1:point1},${2:point2})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDefEquiPoints#c"
+      ],
+      "name": "tkzDefEquiPoints",
+      "snippet": "tkzDefEquiPoints[${1:options}](${2:point1},${3:point2})"
+    },
+    {
+      "name": "tkzDefEquilateral",
+      "snippet": "tkzDefEquilateral(${1:point1},${2:point2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefEuclideTriangle",
+      "snippet": "tkzDefEuclideTriangle(${1:point1},${2:point2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefEulerCenter",
+      "snippet": "tkzDefEulerCenter(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefEulerCircle",
+      "snippet": "tkzDefEulerCircle(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefEulerLine",
+      "snippet": "tkzDefEulerLine(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefEulerRadius",
+      "snippet": "tkzDefEulerRadius(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefEulerTriangle",
+      "snippet": "tkzDefEulerTriangle[${1:options}](${2:point1},${3:point2},${4:point3})(${5:ref1},${6:ref2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefExCenter",
+      "snippet": "tkzDefExCenter(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefExCircle",
+      "snippet": "tkzDefExCircle(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefExRadius",
+      "snippet": "tkzDefExRadius(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefExcentralTriangle",
+      "snippet": "tkzDefExcentralTriangle[${1:options}](${2:point1},${3:point2},${4:point3})(${5:ref1},${6:ref2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefFeuerbachCenter",
+      "snippet": "tkzDefFeuerbachCenter(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefFeuerbachTriangle",
+      "snippet": "tkzDefFeuerbachTriangle[${1:options}](${2:point1},${3:point2},${4:point3})(${5:ref1},${6:ref2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefGergonneCenter",
+      "snippet": "tkzDefGergonneCenter(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefGoldRectangle",
+      "snippet": "tkzDefGoldRectangle(${1:point1},${2:point2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefGoldTriangle",
+      "snippet": "tkzDefGoldTriangle(${1:point1},${2:point2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefGoldenRatio",
+      "snippet": "tkzDefGoldenRatio(${1:point1},${2:point2})"
+    },
+    {
+      "name": "tkzDefGoldenRectangle",
+      "snippet": "tkzDefGoldenRectangle(${1:point1},${2:point2})"
+    },
+    {
+      "name": "tkzDefGoldenTriangle",
+      "snippet": "tkzDefGoldenTriangle(${1:point1},${2:point2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefHarmonic",
+      "snippet": "tkzDefHarmonic(${1:A},${2:B},${3:C})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDefHarmonic#c"
+      ],
+      "name": "tkzDefHarmonic",
+      "snippet": "tkzDefHarmonic[${1:options}](${2:pt1},${3:pt2},${4:pt3})"
+    },
+    {
+      "name": "tkzDefInCenter",
+      "snippet": "tkzDefInCenter(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefInCircle",
+      "snippet": "tkzDefInCircle(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefIncentralTriangle",
+      "snippet": "tkzDefIncentralTriangle[${1:options}](${2:point1},${3:point2},${4:point3})(${5:ref1},${6:ref2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefIntouchTriangle",
+      "snippet": "tkzDefIntouchTriangle[${1:options}](${2:point1},${3:point2},${4:point3})(${5:ref1},${6:ref2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefInversionCircle",
+      "snippet": "tkzDefInversionCircle(${1:point1},${2:point2},${3:point3},${4:point4})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefIsoscelesRightTriangle",
+      "snippet": "tkzDefIsoscelesRightTriangle(${1:point1},${2:point2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefIsoscelesRightTriangle",
+      "snippet": "tkzDefIsoscelesRightTriangle[${1:options}](${2:point1},${3:point2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefLemoinePoint",
+      "snippet": "tkzDefLemoinePoint(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefLine",
+      "snippet": "tkzDefLine(${1:point1},${2:point2})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDefLine#c"
+      ],
+      "name": "tkzDefLine",
+      "snippet": "tkzDefLine[${1:options}](${2:point1},${3:point2})"
+    },
+    {
+      "name": "tkzDefLineLL",
+      "snippet": "tkzDefLineLL[${1:options}](${2:point1},${3:point2},${4:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefMedialTriangle",
+      "snippet": "tkzDefMedialTriangle[${1:options}](${2:point1},${3:point2},${4:point3})(${5:ref1},${6:ref2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefMediatorLine",
+      "snippet": "tkzDefMediatorLine[${1:options}](${2:point1},${3:point2},${4:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefMidArc",
+      "snippet": "tkzDefMidArc(${1:A},${2:B},${3:C})"
+    },
+    {
+      "name": "tkzDefMidPoint",
+      "snippet": "tkzDefMidPoint(${1:point1},${2:point2})"
+    },
+    {
+      "name": "tkzDefMiddlespoint",
+      "snippet": "tkzDefMiddlespoint(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefMidpointTriangle",
+      "snippet": "tkzDefMidpointTriangle[${1:options}](${2:point1},${3:point2},${4:point3})(${5:ref1},${6:ref2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefMittenpunktCenter",
+      "snippet": "tkzDefMittenpunktCenter(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefNagelCenter",
+      "snippet": "tkzDefNagelCenter(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefNinePointsCircle",
+      "snippet": "tkzDefNinePointsCircle(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefOrthLine",
+      "snippet": "tkzDefOrthLine[${1:options}](${2:point1},${3:point2},${4:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefOrthicTriangle",
+      "snippet": "tkzDefOrthicTriangle[${1:options}](${2:point1},${3:point2},${4:point3})(${5:ref1},${6:ref2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefOrthoCenter",
+      "snippet": "tkzDefOrthoCenter(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefOrthoThroughCircle",
+      "snippet": "tkzDefOrthoThroughCircle(${1:point1},${2:point2},${3:point3},${4:point4})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefOrthogonalCircle",
+      "snippet": "tkzDefOrthogonalCircle(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefParallelogram",
+      "snippet": "tkzDefParallelogram(${1:point1},${2:point2},${3:point3})"
+    },
+    {
+      "name": "tkzDefPoint",
+      "snippet": "tkzDefPoint(${2:%<angle%>:%<radius%>}){${1:ref}}"
+    },
+    {
+      "name": "tkzDefPoint",
+      "snippet": "tkzDefPoint(${2:%<x%>},${3:%<y%>}){${1:ref}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDefPoint#c,\\tkzDefPoints#c"
+      ],
+      "name": "tkzDefPoint",
+      "snippet": "tkzDefPoint[${2:options}](${3:%<angle%>:%<radius%>}){${1:ref}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDefPoint#c,\\tkzDefPoints#c"
+      ],
+      "name": "tkzDefPoint",
+      "snippet": "tkzDefPoint[${2:options}](${3:%<x%>},${4:%<y%>}){${1:ref}}"
+    },
+    {
+      "name": "tkzDefPointBy",
+      "snippet": "tkzDefPointBy(${1:point})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDefPointBy#c,\\tkzDefPointsBy#c"
+      ],
+      "name": "tkzDefPointBy",
+      "snippet": "tkzDefPointBy[${1:options}](${2:point})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDefPointOnCircle#c"
+      ],
+      "name": "tkzDefPointOnCircle",
+      "snippet": "tkzDefPointOnCircle[${1:options}]"
+    },
+    {
+      "name": "tkzDefPointOnLine",
+      "snippet": "tkzDefPointOnLine(${1:point1},${2:point2})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDefPointOnLine#c"
+      ],
+      "name": "tkzDefPointOnLine",
+      "snippet": "tkzDefPointOnLine[${1:options}](${2:point1},${3:point2})"
+    },
+    {
+      "name": "tkzDefPointWith",
+      "snippet": "tkzDefPointWith(${1:point1},${2:point2})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDefPointWith#c"
+      ],
+      "name": "tkzDefPointWith",
+      "snippet": "tkzDefPointWith[${1:options}](${2:point1},${3:point2})"
+    },
+    {
+      "name": "tkzDefPoints",
+      "snippet": "tkzDefPoints[${2:options}]{${1:x1/y1/name1,x2/y2/name2,...}}"
+    },
+    {
+      "name": "tkzDefPoints",
+      "snippet": "tkzDefPoints{${1:x1/y1/name1,x2/y2/name2,...}}"
+    },
+    {
+      "name": "tkzDefPointsBy",
+      "snippet": "tkzDefPointsBy(${2:point1},${3:point2},${4:...}){${1:point1,point2,...}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDefPointBy#c,\\tkzDefPointsBy#c"
+      ],
+      "name": "tkzDefPointsBy",
+      "snippet": "tkzDefPointsBy[${2:options}](${3:point1},${4:point2},${5:...}){${1:point1,point2,...}}"
+    },
+    {
+      "name": "tkzDefProjExcenter",
+      "snippet": "tkzDefProjExcenter(${2:A},${3:B},${4:C})(${5:a},${6:b},${7:c}){${1:X,Y,Z}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDefProjExcenter#c"
+      ],
+      "name": "tkzDefProjExcenter",
+      "snippet": "tkzDefProjExcenter[${2:options}](${3:A},${4:B},${5:C})(${6:a},${7:b},${8:c}){${1:X,Y,Z}}"
+    },
+    {
+      "name": "tkzDefPythagore",
+      "snippet": "tkzDefPythagore(${1:point1},${2:point2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefRadicalAxis",
+      "snippet": "tkzDefRadicalAxis(${1:A},${2:B})(${3:C},${4:D})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDefRandPointOn#c"
+      ],
+      "name": "tkzDefRandPointOn",
+      "snippet": "tkzDefRandPointOn[${1:options}]"
+    },
+    {
+      "name": "tkzDefRectangle",
+      "snippet": "tkzDefRectangle(${1:point1},${2:point2})"
+    },
+    {
+      "name": "tkzDefRegPolygon",
+      "snippet": "tkzDefRegPolygon(${1:point1},${2:point2})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDefRegPolygon#c"
+      ],
+      "name": "tkzDefRegPolygon",
+      "snippet": "tkzDefRegPolygon[${1:options}](${2:point1},${3:point2})"
+    },
+    {
+      "name": "tkzDefSchoolTriangle",
+      "snippet": "tkzDefSchoolTriangle(${1:point1},${2:point2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefShiftPoint",
+      "snippet": "tkzDefShiftPoint[${2:point}](${3:%<angle%>:%<radius%>}){${1:ref}}"
+    },
+    {
+      "name": "tkzDefShiftPoint",
+      "snippet": "tkzDefShiftPoint[${2:point}](${3:%<x%>},${4:%<y%>}){${1:ref}}"
+    },
+    {
+      "name": "tkzDefShiftPointCoord",
+      "snippet": "tkzDefShiftPointCoord[${2:point1}](${3:angle:radius}){${1:point2}}",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefSimilitudeCenter",
+      "snippet": "tkzDefSimilitudeCenter(${1:O},${2:A})(${3:O'},${4:B})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDefSimilitudeCenter#c"
+      ],
+      "name": "tkzDefSimilitudeCenter",
+      "snippet": "tkzDefSimilitudeCenter[${1:options}](${2:O},${3:A})(${4:O'},${5:B})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDefSpcTriangle#c"
+      ],
+      "name": "tkzDefSpcTriangle",
+      "snippet": "tkzDefSpcTriangle[${2:options}](${3:point1},${4:point2},${5:point3}){${1:ref1,ref2,ref3}}"
+    },
+    {
+      "name": "tkzDefSpiekerCenter",
+      "snippet": "tkzDefSpiekerCenter(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefSpiekerCircle",
+      "snippet": "tkzDefSpiekerCircle(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefSquare",
+      "snippet": "tkzDefSquare(${1:point1},${2:point2})"
+    },
+    {
+      "name": "tkzDefSymmedialTriangle",
+      "snippet": "tkzDefSymmedialTriangle[${1:options}](${2:point1},${3:point2},${4:point3})(${5:ref1},${6:ref2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefSymmedianLine",
+      "snippet": "tkzDefSymmedianLine(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefTangent",
+      "snippet": "tkzDefTangent(${1:point1},${2:point2})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDefTangent#c"
+      ],
+      "name": "tkzDefTangent",
+      "snippet": "tkzDefTangent[${1:options}](${2:point1},${3:point2})"
+    },
+    {
+      "name": "tkzDefTangentialTriangle",
+      "snippet": "tkzDefTangentialTriangle[${1:options}](${2:point1},${3:point2},${4:point3})(${5:ref1},${6:ref2})",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDefTriangle#c"
+      ],
+      "name": "tkzDefTriangle",
+      "snippet": "tkzDefTriangle[${1:options}](${2:point1},${3:point2})"
+    },
+    {
+      "name": "tkzDefTriangleCenter",
+      "snippet": "tkzDefTriangleCenter(${1:point1},${2:point2},${3:point3})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDefTriangleCenter#c"
+      ],
+      "name": "tkzDefTriangleCenter",
+      "snippet": "tkzDefTriangleCenter[${1:options}](${2:point1},${3:point2},${4:point3})"
+    },
+    {
+      "name": "tkzDefTwoAnglesTriangle",
+      "snippet": "tkzDefTwoAnglesTriangle(${1:point1},${2:point2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDefTwoOne",
+      "snippet": "tkzDefTwoOne(${1:point1},${2:point2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDivHarmonic",
+      "snippet": "tkzDivHarmonic(${1:pt1},${2:pt2},${3:pt3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDivHarmonic",
+      "snippet": "tkzDivHarmonic[${1:options}](${2:pt1},${3:pt2},${4:pt3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDotProduct",
+      "snippet": "tkzDotProduct(${1:A},${2:B},${3:C})"
+    },
+    {
+      "name": "tkzDrawArc",
+      "snippet": "tkzDrawArc(${1:point1},${2:point2})(${3:point3})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDrawArc#c"
+      ],
+      "name": "tkzDrawArc",
+      "snippet": "tkzDrawArc[${1:options}](${2:point1},${3:point2})(${4:point3})"
+    },
+    {
+      "name": "tkzDrawArcAngles",
+      "snippet": "tkzDrawArcAngles[${1:options}](${2:point1},${3:point2})(${4:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDrawArcR",
+      "snippet": "tkzDrawArcR[${1:options}](${2:point1},${3:point2})(${4:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDrawArcRAN",
+      "snippet": "tkzDrawArcRAN[${1:options}](${2:point1},${3:point2})(${4:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDrawArcRAngles",
+      "snippet": "tkzDrawArcRAngles[${1:options}](${2:point1},${3:point2})(${4:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDrawArcRotate",
+      "snippet": "tkzDrawArcRotate[${1:options}](${2:point1},${3:point2})(${4:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDrawArcRwithNodes",
+      "snippet": "tkzDrawArcRwithNodes[${1:options}](${2:point1},${3:point2})(${4:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDrawArcTowards",
+      "snippet": "tkzDrawArcTowards[${1:options}](${2:point1},${3:point2})(${4:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDrawCircle",
+      "snippet": "tkzDrawCircle(${1:point1},${2:point2})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDrawCircle#c,\\tkzDrawCircles#c"
+      ],
+      "name": "tkzDrawCircle",
+      "snippet": "tkzDrawCircle[${1:options}](${2:point1},${3:point2})"
+    },
+    {
+      "name": "tkzDrawCircles",
+      "snippet": "tkzDrawCircles(${1:pt1},${2:pt2 pt3},${3:pt4 ...})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDrawCircle#c,\\tkzDrawCircles#c"
+      ],
+      "name": "tkzDrawCircles",
+      "snippet": "tkzDrawCircles[${1:options}](${2:pt1},${3:pt2 pt3},${4:pt4 ...})"
+    },
+    {
+      "name": "tkzDrawEquilateral",
+      "snippet": "tkzDrawEquilateral[${1:options}](${2:point1},${3:point2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDrawLine",
+      "snippet": "tkzDrawLine(${1:point1},${2:point2})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDrawLine#c,\\tkzDrawLines#c"
+      ],
+      "name": "tkzDrawLine",
+      "snippet": "tkzDrawLine[${1:options}](${2:point1},${3:point2})"
+    },
+    {
+      "name": "tkzDrawLines",
+      "snippet": "tkzDrawLines(${1:point1},${2:point2},${3:...})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDrawLine#c,\\tkzDrawLines#c"
+      ],
+      "name": "tkzDrawLines",
+      "snippet": "tkzDrawLines[${1:options}](${2:point1},${3:point2},${4:...})"
+    },
+    {
+      "name": "tkzDrawPoint",
+      "snippet": "tkzDrawPoint(${1:name})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDrawPoint#c,\\tkzDrawPoints#c"
+      ],
+      "name": "tkzDrawPoint",
+      "snippet": "tkzDrawPoint[${1:options}](${2:name})"
+    },
+    {
+      "name": "tkzDrawPoints",
+      "snippet": "tkzDrawPoints(${1:name1},${2:name2},${3:...})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDrawPoint#c,\\tkzDrawPoints#c"
+      ],
+      "name": "tkzDrawPoints",
+      "snippet": "tkzDrawPoints[${1:options}](${2:name1},${3:name2},${4:...})"
+    },
+    {
+      "name": "tkzDrawPolySeg",
+      "snippet": "tkzDrawPolySeg(${1:point1},${2:point2},${3:...})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDrawPolygon#c,\\tkzDrawPolySeg#c"
+      ],
+      "name": "tkzDrawPolySeg",
+      "snippet": "tkzDrawPolySeg[${1:options}](${2:point1},${3:point2},${4:...})"
+    },
+    {
+      "name": "tkzDrawPolygon",
+      "snippet": "tkzDrawPolygon(${1:point1},${2:point2},${3:...})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDrawPolygon#c,\\tkzDrawPolySeg#c"
+      ],
+      "name": "tkzDrawPolygon",
+      "snippet": "tkzDrawPolygon[${1:options}](${2:point1},${3:point2},${4:...})"
+    },
+    {
+      "name": "tkzDrawPolygons",
+      "snippet": "tkzDrawPolygons(${1:point1},${2:point2},${3:...})"
+    },
+    {
+      "name": "tkzDrawPolygons",
+      "snippet": "tkzDrawPolygons[${1:options}](${2:point1},${3:point2},${4:...})"
+    },
+    {
+      "name": "tkzDrawSector",
+      "snippet": "tkzDrawSector(${1:point1},${2:point2})(${3:point3})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDrawSector#c,\\tkzFillSector#c"
+      ],
+      "name": "tkzDrawSector",
+      "snippet": "tkzDrawSector[${1:options}](${2:point1},${3:point2})(${4:point3})"
+    },
+    {
+      "name": "tkzDrawSectorAngles",
+      "snippet": "tkzDrawSectorAngles[${1:options}](${2:point1},${3:point2})(${4:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDrawSectorN",
+      "snippet": "tkzDrawSectorN[${1:options}](${2:point1},${3:point2})(${4:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDrawSectorR",
+      "snippet": "tkzDrawSectorR[${1:options}](${2:point1},${3:point2})(${4:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDrawSectorRAngles",
+      "snippet": "tkzDrawSectorRAngles[${1:options}](${2:point1},${3:point2})(${4:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDrawSectorRotate",
+      "snippet": "tkzDrawSectorRotate[${1:options}](${2:point1},${3:point2})(${4:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDrawSectorRwithNodesAngles",
+      "snippet": "tkzDrawSectorRwithNodesAngles[${1:options}](${2:point1},${3:point2})(${4:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDrawSegment",
+      "snippet": "tkzDrawSegment(${1:point1},${2:point2})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDrawSegment#c,\\tkzDrawSegments#c"
+      ],
+      "name": "tkzDrawSegment",
+      "snippet": "tkzDrawSegment[${1:options}](${2:point1},${3:point2})"
+    },
+    {
+      "name": "tkzDrawSegments",
+      "snippet": "tkzDrawSegments(${1:pt1},${2:pt2 pt3},${3:pt4 ...})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDrawSegment#c,\\tkzDrawSegments#c"
+      ],
+      "name": "tkzDrawSegments",
+      "snippet": "tkzDrawSegments[${1:options}](${2:pt1},${3:pt2 pt3},${4:pt4 ...})"
+    },
+    {
+      "name": "tkzDrawSemiCircle",
+      "snippet": "tkzDrawSemiCircle(${1:point1},${2:point2})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDrawSemiCircle#c,\\tkzDrawSemiCircles#c"
+      ],
+      "name": "tkzDrawSemiCircle",
+      "snippet": "tkzDrawSemiCircle[${1:options}](${2:point1},${3:point2})"
+    },
+    {
+      "name": "tkzDrawSemiCircles",
+      "snippet": "tkzDrawSemiCircles(${1:pt1},${2:pt2 pt3},${3:pt4 ...})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDrawSemiCircle#c,\\tkzDrawSemiCircles#c"
+      ],
+      "name": "tkzDrawSemiCircles",
+      "snippet": "tkzDrawSemiCircles[${1:options}](${2:pt1},${3:pt2 pt3},${4:pt4 ...})"
+    },
+    {
+      "name": "tkzDrawX"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDrawX#c"
+      ],
+      "name": "tkzDrawX",
+      "snippet": "tkzDrawX[${1:options}]"
+    },
+    {
+      "name": "tkzDrawY"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzDrawY#c"
+      ],
+      "name": "tkzDrawY",
+      "snippet": "tkzDrawY[${1:options}]"
+    },
+    {
+      "name": "tkzDuplicateLength",
+      "snippet": "tkzDuplicateLength(${1:point1},${2:point2})(${3:point3},${4:point4})",
+      "unusual": true
+    },
+    {
+      "name": "tkzDuplicateLength",
+      "snippet": "tkzDuplicateLength(${2:point1},${3:point2})(${4:point3},${5:point4}){${1:point5}}",
+      "unusual": true
+    },
+    {
+      "name": "tkzDuplicateSegment",
+      "snippet": "tkzDuplicateSegment(${1:point1},${2:point2})(${3:point3},${4:point4})"
+    },
+    {
+      "name": "tkzDuplicateSegment",
+      "snippet": "tkzDuplicateSegment(${2:point1},${3:point2})(${4:point3},${5:point4}){${1:point5}}"
+    },
+    {
+      "name": "tkzEuler",
+      "unusual": true
+    },
+    {
+      "name": "tkzEulerCenter",
+      "snippet": "tkzEulerCenter(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzExCenter",
+      "snippet": "tkzExCenter(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzExcentralTriangle",
+      "snippet": "tkzExcentralTriangle[${1:options}](${2:point1},${3:point2},${4:point3})(${5:ref1},${6:ref2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzExp",
+      "snippet": "tkzExp{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "tkzFeuerBachCircle",
+      "snippet": "tkzFeuerBachCircle(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzFeuerbachCenter",
+      "snippet": "tkzFeuerbachCenter(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzFillAngle",
+      "snippet": "tkzFillAngle(${1:point1},${2:point2},${3:point3})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzFillAngle#c,\\tkzFillAngles#c"
+      ],
+      "name": "tkzFillAngle",
+      "snippet": "tkzFillAngle[${1:options}](${2:point1},${3:point2},${4:point3})"
+    },
+    {
+      "name": "tkzFillCircle",
+      "snippet": "tkzFillCircle(${1:point1},${2:point2})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzFillCircle#c,\\tkzFillCircles#c"
+      ],
+      "name": "tkzFillCircle",
+      "snippet": "tkzFillCircle[${1:options}](${2:point1},${3:point2})"
+    },
+    {
+      "name": "tkzFillCircles",
+      "snippet": "tkzFillCircles(${1:pt1},${2:pt2 pt3},${3:pt4 ...})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzFillCircle#c,\\tkzFillCircles#c"
+      ],
+      "name": "tkzFillCircles",
+      "snippet": "tkzFillCircles[${1:options}](${2:pt1},${3:pt2 pt3},${4:pt4 ...})"
+    },
+    {
+      "name": "tkzFillPolygon",
+      "snippet": "tkzFillPolygon(${1:point1},${2:point2},${3:...})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzFillPolygon#c"
+      ],
+      "name": "tkzFillPolygon",
+      "snippet": "tkzFillPolygon[${1:options}](${2:point1},${3:point2},${4:...})"
+    },
+    {
+      "name": "tkzFillSector",
+      "snippet": "tkzFillSector(${1:point1},${2:point2})(${3:point3})"
+    },
+    {
+      "name": "tkzFillSector",
+      "snippet": "tkzFillSector[${1:options}](${2:point1},${3:point2})(${4:point3})"
+    },
+    {
+      "name": "tkzFillSectorAngles",
+      "snippet": "tkzFillSectorAngles[${1:options}](${2:point1},${3:point2})(${4:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzFillSectorN",
+      "snippet": "tkzFillSectorN[${1:options}](${2:point1},${3:point2})(${4:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzFillSectorR",
+      "snippet": "tkzFillSectorR[${1:options}](${2:point1},${3:point2})(${4:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzFillSectorRAngles",
+      "snippet": "tkzFillSectorRAngles[${1:options}](${2:point1},${3:point2})(${4:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzFillSectorRotate",
+      "snippet": "tkzFillSectorRotate[${1:options}](${2:point1},${3:point2})(${4:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzFindAngle",
+      "snippet": "tkzFindAngle(${1:point1},${2:point2},${3:point3})"
+    },
+    {
+      "name": "tkzFindSlopeAngle",
+      "snippet": "tkzFindSlopeAngle(${1:point1},${2:point2})"
+    },
+    {
+      "name": "tkzFlagCCfalse",
+      "unusual": true
+    },
+    {
+      "name": "tkzFlagCCtrue",
+      "unusual": true
+    },
+    {
+      "name": "tkzFlagLCfalse",
+      "unusual": true
+    },
+    {
+      "name": "tkzFlagLCtrue",
+      "unusual": true
+    },
+    {
+      "name": "tkzGergonneCenter",
+      "snippet": "tkzGergonneCenter(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzGetAngle",
+      "snippet": "tkzGetAngle(${1:csname})"
+    },
+    {
+      "name": "tkzGetFirstPoint",
+      "snippet": "tkzGetFirstPoint{${1:ref1}}"
+    },
+    {
+      "name": "tkzGetLength",
+      "snippet": "tkzGetLength{${1:csname}}"
+    },
+    {
+      "name": "tkzGetPoint",
+      "snippet": "tkzGetPoint{${1:ref}}"
+    },
+    {
+      "name": "tkzGetPointCoord",
+      "snippet": "tkzGetPointCoord(${2:point}){${1:csname}}"
+    },
+    {
+      "name": "tkzGetPoints",
+      "snippet": "tkzGetPoints{${1:ref1}}{${2:ref2}}"
+    },
+    {
+      "name": "tkzGetPointxy",
+      "snippet": "tkzGetPointxy(${2:arg1}){${1:arg2}}",
+      "unusual": true
+    },
+    {
+      "name": "tkzGetResult",
+      "snippet": "tkzGetResult{${1:csname}}"
+    },
+    {
+      "name": "tkzGetSecondPoint",
+      "snippet": "tkzGetSecondPoint{${1:ref2}}"
+    },
+    {
+      "name": "tkzGetThirdPoint",
+      "snippet": "tkzGetThirdPoint{${1:ref3}}",
+      "unusual": true
+    },
+    {
+      "name": "tkzGetVectxy",
+      "snippet": "tkzGetVectxy(${2:point1},${3:point2}){${1:text}}"
+    },
+    {
+      "name": "tkzGrebePoint",
+      "snippet": "tkzGrebePoint(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzGrid#c"
+      ],
+      "name": "tkzGrid",
+      "snippet": "tkzGrid[${1:options}]"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzGrid#c"
+      ],
+      "name": "tkzGrid",
+      "snippet": "tkzGrid[${1:options}](${2:%<x1%>},${3:%<y1%>})(${4:%<x2%>},${5:%<y2%>})"
+    },
+    {
+      "name": "tkzHelpGrid",
+      "unusual": true
+    },
+    {
+      "name": "tkzHomo",
+      "snippet": "tkzHomo(${2:arg1})(${3:arg2}){${1:arg3}}",
+      "unusual": true
+    },
+    {
+      "name": "tkzInCenter",
+      "snippet": "tkzInCenter(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzInit#c"
+      ],
+      "name": "tkzInit",
+      "snippet": "tkzInit[${1:options}]"
+    },
+    {
+      "name": "tkzInterCC",
+      "snippet": "tkzInterCC(${1:point1},${2:point2})(${3:point3},${4:point4})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzInterLC#c,\\tkzInterCC#c"
+      ],
+      "name": "tkzInterCC",
+      "snippet": "tkzInterCC[${1:options}](${2:point1},${3:point2})(${4:point3},${5:point4})"
+    },
+    {
+      "name": "tkzInterCCN",
+      "snippet": "tkzInterCCN(${1:point1},${2:point2})(${3:point3},${4:point4})"
+    },
+    {
+      "name": "tkzInterCCR",
+      "snippet": "tkzInterCCR(${1:point1},${2:radius1})(${3:point2},${4:radius2})"
+    },
+    {
+      "name": "tkzInterCCWithNodes",
+      "snippet": "tkzInterCCWithNodes(${3:arg1})(${4:arg2}){${1:arg3}}{${2:arg4}}",
+      "unusual": true
+    },
+    {
+      "name": "tkzInterLC",
+      "snippet": "tkzInterLC(${1:point1},${2:point2})(${3:point3},${4:point4})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzInterLC#c,\\tkzInterCC#c"
+      ],
+      "name": "tkzInterLC",
+      "snippet": "tkzInterLC[${1:options}](${2:point1},${3:point2})(${4:point3},${5:point4})"
+    },
+    {
+      "name": "tkzInterLCR",
+      "snippet": "tkzInterLCR(${3:arg1})(${4:arg2}){${1:arg3}}{${2:arg4}}",
+      "unusual": true
+    },
+    {
+      "name": "tkzInterLCWithNodes",
+      "snippet": "tkzInterLCWithNodes(${3:arg1})(${4:arg2}){${1:arg3}}{${2:arg4}}",
+      "unusual": true
+    },
+    {
+      "name": "tkzInterLL",
+      "snippet": "tkzInterLL(${1:point1},${2:point2})(${3:point3},${4:point4})"
+    },
+    {
+      "name": "tkzInterLLxy",
+      "snippet": "tkzInterLLxy(${1:point1},${2:point2})(${3:point3},${4:point4})",
+      "unusual": true
+    },
+    {
+      "name": "tkzInvPhi",
+      "unusual": true
+    },
+    {
+      "name": "tkzInverseNegativePoint",
+      "snippet": "tkzInverseNegativePoint(${2:arg1})(${3:arg2}){${1:arg3}}",
+      "unusual": true
+    },
+    {
+      "name": "tkzInversePoint",
+      "snippet": "tkzInversePoint(${2:arg1})(${3:arg2}){${1:arg3}}",
+      "unusual": true
+    },
+    {
+      "name": "tkzIsLinear",
+      "snippet": "tkzIsLinear(${1:A},${2:B},${3:C})"
+    },
+    {
+      "name": "tkzIsOrtho",
+      "snippet": "tkzIsOrtho(${1:A},${2:B},${3:C})"
+    },
+    {
+      "name": "tkzLabelAngle",
+      "snippet": "tkzLabelAngle(${1:point1},${2:point2},${3:point3})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzLabelAngle#c,\\tkzLabelAngles#c"
+      ],
+      "name": "tkzLabelAngle",
+      "snippet": "tkzLabelAngle[${1:options}](${2:point1},${3:point2},${4:point3})"
+    },
+    {
+      "name": "tkzLabelArc",
+      "snippet": "tkzLabelArc(${2:point1},${3:point2},${4:point3}){${1:label}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzLabelArc#c"
+      ],
+      "name": "tkzLabelArc",
+      "snippet": "tkzLabelArc[${2:options}](${3:point1},${4:point2},${5:point3}){${1:label}}"
+    },
+    {
+      "name": "tkzLabelCircle",
+      "snippet": "tkzLabelCircle(${2:point1},${3:point2})(${4:angle}){${1:label}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzLabelCircle#c"
+      ],
+      "name": "tkzLabelCircle",
+      "snippet": "tkzLabelCircle[${2:options}](${3:point1},${4:point2})(${5:angle}){${1:label}}"
+    },
+    {
+      "name": "tkzLabelLine",
+      "snippet": "tkzLabelLine(${2:point1},${3:point2}){${1:label}}"
+    },
+    {
+      "name": "tkzLabelLine",
+      "snippet": "tkzLabelLine[${2:options}](${3:point1},${4:point2}){${1:label}}"
+    },
+    {
+      "name": "tkzLabelPoint",
+      "snippet": "tkzLabelPoint(${2:point}){${1:label}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzLabelPoint#c,\\tkzLabelPoints#c,\\tkzAutoLabelPoints#c"
+      ],
+      "name": "tkzLabelPoint",
+      "snippet": "tkzLabelPoint[${2:options}](${3:point}){${1:label}}"
+    },
+    {
+      "name": "tkzLabelPoints",
+      "snippet": "tkzLabelPoints(${1:point1},${2:point2},${3:...})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzLabelPoint#c,\\tkzLabelPoints#c,\\tkzAutoLabelPoints#c"
+      ],
+      "name": "tkzLabelPoints",
+      "snippet": "tkzLabelPoints[${1:options}](${2:point1},${3:point2},${4:...})"
+    },
+    {
+      "name": "tkzLabelRegPolygon",
+      "snippet": "tkzLabelRegPolygon(${2:point}){${1:label1,label2,...}}",
+      "unusual": true
+    },
+    {
+      "name": "tkzLabelRegPolygon",
+      "snippet": "tkzLabelRegPolygon[${2:options}](${3:point}){${1:label1,label2,...}}",
+      "unusual": true
+    },
+    {
+      "name": "tkzLabelSegment",
+      "snippet": "tkzLabelSegment(${2:point1},${3:point2}){${1:label}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzLabelLine#c,\\tkzLabelSegment#c,\\tkzLabelSegments#c"
+      ],
+      "name": "tkzLabelSegment",
+      "snippet": "tkzLabelSegment[${2:options}](${3:point1},${4:point2}){${1:label}}"
+    },
+    {
+      "name": "tkzLabelSegments",
+      "snippet": "tkzLabelSegments(${2:pt1},${3:pt2 pt3},${4:pt4 ...}){${1:label}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzLabelLine#c,\\tkzLabelSegment#c,\\tkzLabelSegments#c"
+      ],
+      "name": "tkzLabelSegments",
+      "snippet": "tkzLabelSegments[${2:options}](${3:pt1},${4:pt2 pt3},${5:pt4 ...}){${1:label}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzLegend#c"
+      ],
+      "name": "tkzLegend",
+      "snippet": "tkzLegend[${2:options}]{${1:style/size/color/text}}"
+    },
+    {
+      "name": "tkzLegend",
+      "snippet": "tkzLegend{${1:style/size/color/text}}"
+    },
+    {
+      "name": "tkzLemoinePoint",
+      "snippet": "tkzLemoinePoint(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzLength",
+      "unusual": true
+    },
+    {
+      "name": "tkzLengthResult",
+      "unusual": true
+    },
+    {
+      "name": "tkzLinearfalse",
+      "unusual": true
+    },
+    {
+      "name": "tkzLineartrue",
+      "unusual": true
+    },
+    {
+      "name": "tkzLog",
+      "snippet": "tkzLog{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "tkzMarkAngle",
+      "snippet": "tkzMarkAngle(${1:point1},${2:point2},${3:point3})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzMarkAngle#c,\\tkzMarkAngles#c"
+      ],
+      "name": "tkzMarkAngle",
+      "snippet": "tkzMarkAngle[${1:options}](${2:point1},${3:point2},${4:point3})"
+    },
+    {
+      "name": "tkzMarkArc",
+      "snippet": "tkzMarkArc(${1:point1},${2:point2},${3:point3})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzMarkSegment#c,\\tkzMarkSegments#c,\\tkzMarkArc#c"
+      ],
+      "name": "tkzMarkArc",
+      "snippet": "tkzMarkArc[${1:options}](${2:point1},${3:point2},${4:point3})"
+    },
+    {
+      "name": "tkzMarkRightAngle",
+      "snippet": "tkzMarkRightAngle(${1:point1},${2:point2},${3:point3})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzMarkRightAngle#c,\\tkzMarkRightAngles#c"
+      ],
+      "name": "tkzMarkRightAngle",
+      "snippet": "tkzMarkRightAngle[${1:options}](${2:point1},${3:point2},${4:point3})"
+    },
+    {
+      "name": "tkzMarkSegment",
+      "snippet": "tkzMarkSegment(${1:point1},${2:point2})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzMarkSegment#c,\\tkzMarkSegments#c,\\tkzMarkArc#c"
+      ],
+      "name": "tkzMarkSegment",
+      "snippet": "tkzMarkSegment[${1:options}](${2:point1},${3:point2})"
+    },
+    {
+      "name": "tkzMarkSegments",
+      "snippet": "tkzMarkSegments(${1:pt1},${2:pt2 pt3},${3:pt4 ...})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzMarkSegment#c,\\tkzMarkSegments#c,\\tkzMarkArc#c"
+      ],
+      "name": "tkzMarkSegments",
+      "snippet": "tkzMarkSegments[${1:options}](${2:pt1},${3:pt2 pt3},${4:pt4 ...})"
+    },
+    {
+      "name": "tkzMathResult",
+      "unusual": true
+    },
+    {
+      "name": "tkzMittenpunktCenter",
+      "snippet": "tkzMittenpunktCenter(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzNagelCenter",
+      "snippet": "tkzNagelCenter(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzNinePointCenter",
+      "snippet": "tkzNinePointCenter(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzNormalizeAngle",
+      "snippet": "tkzNormalizeAngle(${1:arg})",
+      "unusual": true
+    },
+    {
+      "name": "tkzOrthoCenter",
+      "snippet": "tkzOrthoCenter(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzOrthofalse",
+      "unusual": true
+    },
+    {
+      "name": "tkzOrthogonalCenter",
+      "snippet": "tkzOrthogonalCenter(${1:point1},${2:point2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzOrthotrue",
+      "unusual": true
+    },
+    {
+      "name": "tkzPathArcRAN",
+      "snippet": "tkzPathArcRAN[${1:options}](${2:point1},${3:point2})(${4:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzPermute",
+      "snippet": "tkzPermute(${1:A},${2:B},${3:C})"
+    },
+    {
+      "name": "tkzPhi",
+      "unusual": true
+    },
+    {
+      "name": "tkzPi",
+      "unusual": true
+    },
+    {
+      "name": "tkzPicAngle",
+      "snippet": "tkzPicAngle(${1:A},${2:O},${3:B})"
+    },
+    {
+      "name": "tkzPicAngle",
+      "snippet": "tkzPicAngle[${1:TikZ options}](${2:A},${3:O},${4:B})"
+    },
+    {
+      "name": "tkzPicRightAngle",
+      "snippet": "tkzPicRightAngle(${1:A},${2:O},${3:B})"
+    },
+    {
+      "name": "tkzPicRightAngle",
+      "snippet": "tkzPicRightAngle[${1:TikZ options}](${2:A},${3:O},${4:B})"
+    },
+    {
+      "name": "tkzPointShowCoord",
+      "snippet": "tkzPointShowCoord(${1:point})",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzPointShowCoord#c,\\tkzShowPointCoord#c"
+      ],
+      "name": "tkzPointShowCoord",
+      "snippet": "tkzPointShowCoord[${1:options}](${2:point})",
+      "unusual": true
+    },
+    {
+      "name": "tkzPowerCircle",
+      "snippet": "tkzPowerCircle(${1:A})(${2:O},${3:M})"
+    },
+    {
+      "name": "tkzProjection",
+      "snippet": "tkzProjection(${2:arg1})(${3:arg2}){${1:arg3}}",
+      "unusual": true
+    },
+    {
+      "name": "tkzProtractor",
+      "snippet": "tkzProtractor(${1:point1},${2:point2})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzProtractor#c"
+      ],
+      "name": "tkzProtractor",
+      "snippet": "tkzProtractor[${1:options}](${2:point1},${3:point2})"
+    },
+    {
+      "name": "tkzRadius",
+      "unusual": true
+    },
+    {
+      "name": "tkzRandPointOnCircle",
+      "snippet": "tkzRandPointOnCircle(${1:point1},${2:point2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzRandPointOnCircleThrough",
+      "snippet": "tkzRandPointOnCircleThrough(${1:point1},${2:point2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzRandPointOnDisk",
+      "snippet": "tkzRandPointOnDisk(${1:point1},${2:point2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzRandPointOnLine",
+      "snippet": "tkzRandPointOnLine(${1:point1},${2:point2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzRandPointOnRect",
+      "snippet": "tkzRandPointOnRect(${1:point1},${2:point2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzRandPointOnSegment",
+      "snippet": "tkzRandPointOnSegment(${1:point1},${2:point2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzRatioLineGrid",
+      "unusual": true
+    },
+    {
+      "name": "tkzRegPolygonCenter",
+      "snippet": "tkzRegPolygonCenter(${1:point1},${2:point2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzRegPolygonSide",
+      "snippet": "tkzRegPolygonSide(${1:point1},${2:point2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzRenamePoint",
+      "snippet": "tkzRenamePoint(${2:arg1}){${1:arg2}}",
+      "unusual": true
+    },
+    {
+      "name": "tkzRotateAngle",
+      "snippet": "tkzRotateAngle(${2:arg1})(${3:arg2}){${1:arg3}}",
+      "unusual": true
+    },
+    {
+      "name": "tkzRotateInRad",
+      "snippet": "tkzRotateInRad(${2:arg1})(${3:arg2}){${1:arg3}}",
+      "unusual": true
+    },
+    {
+      "name": "tkzSetUpAllColors",
+      "snippet": "tkzSetUpAllColors[${1:options}]",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzSetUpLine#c,\\tkzSetUpArc#c,\\tkzSetUpCompass#c",
+        "\\tkzSetUpArc#c,\\tkzSetUpCompass#c"
+      ],
+      "name": "tkzSetUpArc",
+      "snippet": "tkzSetUpArc[${1:options}]"
+    },
+    {
+      "name": "tkzSetUpAxis",
+      "snippet": "tkzSetUpAxis[${1:options}]",
+      "unusual": true
+    },
+    {
+      "name": "tkzSetUpCircle",
+      "snippet": "tkzSetUpCircle[${1:options}]",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzSetUpColors#c"
+      ],
+      "name": "tkzSetUpColors",
+      "snippet": "tkzSetUpColors[${1:options}]"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzSetUpLine#c,\\tkzSetUpArc#c,\\tkzSetUpCompass#c",
+        "\\tkzSetUpArc#c,\\tkzSetUpCompass#c"
+      ],
+      "name": "tkzSetUpCompass",
+      "snippet": "tkzSetUpCompass[${1:options}]"
+    },
+    {
+      "name": "tkzSetUpGrid",
+      "snippet": "tkzSetUpGrid[${1:options}]",
+      "unusual": true
+    },
+    {
+      "name": "tkzSetUpLabel",
+      "snippet": "tkzSetUpLabel[${1:TikZ options}]"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzSetUpLine#c,\\tkzSetUpArc#c,\\tkzSetUpCompass#c",
+        "\\tkzSetUpLine#c"
+      ],
+      "name": "tkzSetUpLine",
+      "snippet": "tkzSetUpLine[${1:options}]"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzSetUpPoint#c"
+      ],
+      "name": "tkzSetUpPoint",
+      "snippet": "tkzSetUpPoint[${1:options}]"
+    },
+    {
+      "name": "tkzSetUpStyle",
+      "snippet": "tkzSetUpStyle[${2:TikZ options}]{${1:style name}}"
+    },
+    {
+      "name": "tkzShowBB"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzShowBB#c"
+      ],
+      "name": "tkzShowBB",
+      "snippet": "tkzShowBB[${1:options}]"
+    },
+    {
+      "name": "tkzShowBisectorLine",
+      "snippet": "tkzShowBisectorLine[${1:opts}](${2:arg1})(${3:arg2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzShowCSym",
+      "snippet": "tkzShowCSym[${1:opts}](${2:arg1})(${3:arg2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzShowLLLine",
+      "snippet": "tkzShowLLLine[${1:opts}](${2:arg1})(${3:arg2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzShowLine",
+      "snippet": "tkzShowLine(${1:point1},${2:point2})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzShowLine#c"
+      ],
+      "name": "tkzShowLine",
+      "snippet": "tkzShowLine[${1:options}](${2:point1},${3:point2})"
+    },
+    {
+      "name": "tkzShowMediatorLine",
+      "snippet": "tkzShowMediatorLine[${1:opts}](${2:arg})",
+      "unusual": true
+    },
+    {
+      "name": "tkzShowOrthLine",
+      "snippet": "tkzShowOrthLine[${1:opts}](${2:arg1})(${3:arg2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzShowPointCoord",
+      "snippet": "tkzShowPointCoord(${1:point})",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzPointShowCoord#c,\\tkzShowPointCoord#c"
+      ],
+      "name": "tkzShowPointCoord",
+      "snippet": "tkzShowPointCoord[${1:options}](${2:point})",
+      "unusual": true
+    },
+    {
+      "name": "tkzShowProjection",
+      "snippet": "tkzShowProjection[${1:opts}](${2:arg1})(${3:arg2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzShowSymOrth",
+      "snippet": "tkzShowSymOrth[${1:opts}](${2:arg1})(${3:arg2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzShowTransformation",
+      "snippet": "tkzShowTransformation(${1:point1},${2:point2})"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzShowTransformation#c"
+      ],
+      "name": "tkzShowTransformation",
+      "snippet": "tkzShowTransformation[${1:options}](${2:point1},${3:point2})"
+    },
+    {
+      "name": "tkzShowTranslation",
+      "snippet": "tkzShowTranslation[${1:opts}](${2:arg1})(${3:arg2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzSin",
+      "snippet": "tkzSin{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "tkzSpiekerCenter",
+      "snippet": "tkzSpiekerCenter(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzSqrFive",
+      "unusual": true
+    },
+    {
+      "name": "tkzSqrThree",
+      "unusual": true
+    },
+    {
+      "name": "tkzSqrTwo",
+      "unusual": true
+    },
+    {
+      "name": "tkzSqrTwobyTwo",
+      "unusual": true
+    },
+    {
+      "name": "tkzSqrt",
+      "snippet": "tkzSqrt{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "tkzSqrtPhi",
+      "unusual": true
+    },
+    {
+      "name": "tkzSwapPoints",
+      "snippet": "tkzSwapPoints(${1:A},${2:B})"
+    },
+    {
+      "name": "tkzSymOrth",
+      "snippet": "tkzSymOrth(${2:arg1})(${3:arg2}){${1:arg3}}",
+      "unusual": true
+    },
+    {
+      "name": "tkzSymmedianCenter",
+      "snippet": "tkzSymmedianCenter(${1:point1},${2:point2},${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzTestInterCC",
+      "snippet": "tkzTestInterCC(${1:O},${2:A})(${3:O'},${4:B})"
+    },
+    {
+      "name": "tkzTestInterLC",
+      "snippet": "tkzTestInterLC(${1:point1},${2:point2})(${3:point3},${4:point4})",
+      "unusual": true
+    },
+    {
+      "name": "tkzText",
+      "snippet": "tkzText(${2:x},${3:y}){${1:text}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\tkzText#c"
+      ],
+      "name": "tkzText",
+      "snippet": "tkzText[${2:options}](${3:x},${4:y}){${1:text}}"
+    },
+    {
+      "name": "tkzTgtAt",
+      "snippet": "tkzTgtAt(${1:point1})(${2:point2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzTgtFromP",
+      "snippet": "tkzTgtFromP(${1:point1},${2:point2})(${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzTgtFromPR",
+      "snippet": "tkzTgtFromPR(${1:point1},${2:point2})(${3:point3})",
+      "unusual": true
+    },
+    {
+      "name": "tkzTranslation",
+      "snippet": "tkzTranslation(${2:arg1})(${3:arg2}){${1:arg3}}",
+      "unusual": true
+    },
+    {
+      "name": "tkzUCSym",
+      "snippet": "tkzUCSym(${1:arg1})(${2:arg2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzUHomo",
+      "snippet": "tkzUHomo(${1:arg1})(${2:arg2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzUInverseNegativePoint",
+      "snippet": "tkzUInverseNegativePoint(${1:arg1})(${2:arg2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzUInversePoint",
+      "snippet": "tkzUInversePoint(${1:arg1})(${2:arg2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzUProjection",
+      "snippet": "tkzUProjection(${1:arg1})(${2:arg2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzURotateAngle",
+      "snippet": "tkzURotateAngle(${1:arg1})(${2:arg2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzURotateInRad",
+      "snippet": "tkzURotateInRad(${1:arg1})(${2:arg2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzUSymOrth",
+      "snippet": "tkzUSymOrth(${1:arg1})(${2:arg2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzUTranslation",
+      "snippet": "tkzUTranslation(${1:arg1})(${2:arg2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzVecK",
+      "snippet": "tkzVecK[${1:options}](${2:point1},${3:point2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzVecKNorm",
+      "snippet": "tkzVecKNorm[${1:options}](${2:point1},${3:point2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzVecKOrth",
+      "snippet": "tkzVecKOrth[${1:options}](${2:point1},${3:point2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzVecKOrthNorm",
+      "snippet": "tkzVecKOrthNorm[${1:options}](${2:point1},${3:point2})",
+      "unusual": true
+    },
+    {
+      "name": "tkzcmtopt",
+      "snippet": "tkzcmtopt(${2:number}){${1:csname}}"
+    },
+    {
+      "name": "tkzmathanglebetweenpoints",
+      "snippet": "tkzmathanglebetweenpoints{${1:arg1}}{${2:arg2}}",
+      "unusual": true
+    },
+    {
+      "name": "tkzmathrotatepointaround",
+      "snippet": "tkzmathrotatepointaround{${1:arg1}}{${2:arg2}}{${3:arg3}}",
+      "unusual": true
+    },
+    {
+      "name": "tkzmathstyle",
+      "unusual": true
+    },
+    {
+      "name": "tkzpointnormalised",
+      "snippet": "tkzpointnormalised{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "tkzpttocm",
+      "snippet": "tkzpttocm(${2:number}){${1:csname}}"
+    },
+    {
+      "name": "usetkzobj",
+      "snippet": "usetkzobj{${1:list of objects}}",
+      "unusual": true
+    },
+    {
+      "name": "usetkztool",
+      "snippet": "usetkztool{${1:list of tools}}",
+      "unusual": true
+    }
+  ]
+}
