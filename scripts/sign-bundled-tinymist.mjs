@@ -30,6 +30,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { resourceArchivePath } from "./fetch-language-servers.mjs";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..");
@@ -57,7 +58,9 @@ const manifest = JSON.parse(readFileSync(MANIFEST_PATH, "utf8"));
 const entry = manifest.servers.tinymist.targets[TARGET];
 if (!entry) throw new Error(`manifest has no ${TARGET} entry for tinymist`);
 
-const archivePath = join(REPO_ROOT, entry.resourceRelativePath);
+// resourceRelativePath is relative to src-tauri, and the safety checks that
+// resolver applies are worth keeping rather than re-deriving the path here.
+const archivePath = resourceArchivePath(entry);
 const staged = readFileSync(archivePath);
 // Refuse to touch anything other than the exact bytes the fetch step verified
 // against upstream. Signing an archive we cannot vouch for would launder an
@@ -91,7 +94,15 @@ run("codesign", ["--verify", "--strict", "--verbose=2", binaryPath]);
 // Rebuild with the same internal layout the manifest pins, so extraction at
 // runtime still finds `archiveMember` exactly where it expects it.
 const memberRoot = entry.archiveMember.split("/")[0];
-run("tar", ["-czf", archivePath, "-C", workspace, memberRoot]);
+run("tar", ["--format", "ustar", "-czf", archivePath, "-C", workspace, memberRoot], {
+  // codesign attaches extended attributes, and macOS tar then emits an
+  // AppleDouble "._" sidecar entry for the signed file. The archive verifier
+  // rejects those as unsafe entries, and macOS tar hides them from -t listings,
+  // so the archive looks correct while failing verification. ustar is requested
+  // for the same reason: macOS tar writes pax extended headers eagerly, and the
+  // verifier accepts only regular-file and directory entries.
+  env: { ...process.env, COPYFILE_DISABLE: "1" },
+});
 
 const resigned = readFileSync(archivePath);
 const signedBinary = readFileSync(binaryPath);
