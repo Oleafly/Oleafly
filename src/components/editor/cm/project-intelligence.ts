@@ -283,6 +283,34 @@ function citationOptions(
   );
 }
 
+/**
+ * Info panel for corpus package/class entries: the CTAN description plus a
+ * documentation link derived from the package id.
+ */
+function corpusNameInfo(
+  name: string,
+  description: string | undefined,
+): Completion["info"] {
+  return () => {
+    const dom = document.createElement("div");
+    if (description) {
+      const paragraph = document.createElement("p");
+      paragraph.textContent = description;
+      paragraph.style.margin = "0 0 0.4rem";
+      dom.appendChild(paragraph);
+    }
+    const anchor = document.createElement("a");
+    anchor.href = `https://ctan.org/pkg/${name}`;
+    anchor.target = "_blank";
+    anchor.rel = "noreferrer";
+    anchor.textContent = `ctan.org/pkg/${name}`;
+    anchor.style.textDecoration = "underline";
+    anchor.style.textUnderlineOffset = "2px";
+    dom.appendChild(anchor);
+    return dom;
+  };
+}
+
 function completionResult(
   from: number,
   options: Completion[],
@@ -422,6 +450,9 @@ function latexCompletion(
           label: name,
           type: "namespace",
           detail: names?.details[name] ?? "LaTeX package",
+          ...(names
+            ? { info: corpusNameInfo(name, names.details[name]) }
+            : {}),
           apply: guardedApply(guard, name),
         })),
     );
@@ -445,6 +476,9 @@ function latexCompletion(
           label: name,
           type: "type",
           detail: names?.details[name] ?? "LaTeX document class",
+          ...(names
+            ? { info: corpusNameInfo(name, names.details[name]) }
+            : {}),
           apply: guardedApply(guard, name),
         })),
     );
