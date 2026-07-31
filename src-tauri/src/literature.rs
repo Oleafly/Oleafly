@@ -11,6 +11,32 @@ use serde_json::{json, Value};
 
 const UA: &str = "Oleafly/0.2 (https://github.com/Oleafly/Oleafly; literature search)";
 
+/// Trim and validate an OpenAlex polite-pool contact email.
+fn sanitize_openalex_email(raw: &str) -> Option<&str> {
+    let email = raw.trim();
+    if email.is_empty() || !email.contains('@') {
+        None
+    } else {
+        Some(email)
+    }
+}
+
+/// User-Agent for OpenAlex only: appends mailto when a contact email is configured.
+fn literature_user_agent() -> String {
+    let mut ua = UA.to_string();
+    if let Ok(secrets) = crate::secrets::read_connector_secrets() {
+        if let Some(email) = secrets
+            .get("openalex-email")
+            .map(|s| s.as_str())
+            .and_then(sanitize_openalex_email)
+        {
+            // OpenAlex polite pool: contact in User-Agent
+            ua = format!("{UA} (mailto:{email})");
+        }
+    }
+    ua
+}
+
 fn client() -> Result<reqwest::Client, String> {
     reqwest::Client::builder()
         .user_agent(UA)
@@ -81,6 +107,7 @@ async fn search_openalex(
         "OpenAlex",
         client()?
             .get("https://api.openalex.org/works")
+            .header("User-Agent", literature_user_agent())
             .query(&params),
     )
     .await
@@ -277,12 +304,19 @@ pub async fn literature_search(
 
 #[cfg(test)]
 mod tests {
-    use super::year_range;
+    use super::{sanitize_openalex_email, year_range};
 
     #[test]
     fn normalizes_partial_and_reversed_year_ranges() {
         assert_eq!(year_range(Some(2024), Some(2020)), Some((2020, 2024)));
         assert_eq!(year_range(Some(2018), None), Some((2018, 2200)));
         assert_eq!(year_range(None, None), None);
+    }
+
+    #[test]
+    fn openalex_email_requires_at_sign() {
+        assert_eq!(sanitize_openalex_email("  a@b.co  "), Some("a@b.co"));
+        assert_eq!(sanitize_openalex_email("not-an-email"), None);
+        assert_eq!(sanitize_openalex_email(""), None);
     }
 }
