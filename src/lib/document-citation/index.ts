@@ -1,4 +1,8 @@
-export type { DocumentParagraph } from "./types";
+export type {
+  CompleteChatFn,
+  DocumentParagraph,
+  RankedLiteraturePaper,
+} from "./types";
 export {
   cleanLatex,
   extractKeywords,
@@ -12,3 +16,8 @@ export {
   parseBibliographyIdentities,
   type BibliographyIdentities,
 } from "./bibliography-filter";
+export {
+  heuristicScore,
+  parseDebateResponse,
+  rankLiteraturePapers,
+} from "./debate-ranker";
