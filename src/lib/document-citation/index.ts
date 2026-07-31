@@ -35,3 +35,9 @@ export {
   type DocumentScanResult,
   type ParagraphCitationResult,
 } from "./document-scan";
+export {
+  systemPromptForReview,
+  userPromptForReview,
+  type PaperReviewMode,
+} from "./review-prompts";
+export { runPaperReview } from "./review-paper";

@@ -164,9 +164,17 @@ export const PROMPT_CATEGORIES: PromptCategory[] = [
     items: [
       {
         icon: MessageSquare,
-        label: "Quick review",
-        description: "In-chat reviewer feedback",
-        prompt: "Give me quick reviewer-style feedback on this document.",
+        label: "Friendly review",
+        description: "Constructive mentor-style feedback on this paper",
+        prompt:
+          "Review the current document in Friendly mode: supportive, specific, structured (Summary, Strengths, Suggestions, Minor issues, Overall). Use the full paper content available to you.",
+      },
+      {
+        icon: MessageSquare,
+        label: "Fire review",
+        description: "Strict Reviewer #2 stress-test of claims and methods",
+        prompt:
+          "Review the current document in Fire mode (Reviewer #2): rigorous, technically precise, structured (Summary, Major issues, Minor issues, Questions, Verdict). Every criticism must be substantive.",
       },
     ],
   },
