@@ -319,3 +319,36 @@ Do not edit only the version string. A pin update requires:
 6. rechecking the pinned license, source tag, and upstream `NOTICE` status;
 7. running `pnpm language-servers:test`; and
 8. fetching, checking, and smoking the current host before release.
+
+## Known gap: the bundled macOS Tinymist is pinned to ourselves
+
+Apple's notary service unpacks archives inside the app bundle and validates
+every Mach-O it finds. Upstream ships Tinymist unsigned, so notarizing a build
+that carries the archive as-is fails outright:
+
+    The binary is not signed with a valid Developer ID certificate.
+    The signature does not include a secure timestamp.
+    The executable does not have the hardened runtime enabled.
+
+`scripts/sign-bundled-tinymist.mjs` therefore runs on the macOS release leg. It
+verifies the staged archive against the upstream pin, extracts the binary, signs
+it with our Developer ID under the hardened runtime with a secure timestamp,
+rebuilds the archive with the same internal layout, and rewrites the manifest
+entry to the digests of what we now ship.
+
+**The gap.** After that rewrite, `archiveSha256` and `binarySha256` for
+`aarch64-apple-darwin` describe our re-signed artifact, not upstream's published
+one. The original digests are preserved as `upstreamArchiveSha256` and
+`upstreamBinarySha256`, but nothing enforces them past the signing step, so the
+supply-chain guarantee for that one target is weaker than for the others: the
+bundled copy is verified against ourselves.
+
+The signing script does check the staged bytes against the upstream pin before
+touching them, so an archive that never matched upstream cannot be laundered
+into a signed bundle. What is missing is enforcement *after* re-signing.
+
+**The fix worth doing.** Carry both digests as first-class manifest fields and
+verify each where it belongs - the download against upstream, the bundled copy
+against the re-signed hash - rather than overwriting one with the other. That
+keeps upstream verification intact end to end and removes the asymmetry between
+macOS and the other targets.
