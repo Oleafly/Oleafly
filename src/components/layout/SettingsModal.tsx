@@ -75,6 +75,8 @@ import { startTour } from "@/lib/tour";
 import { TOUR_IDS } from "@/lib/tours/registry";
 import { useTourStore } from "@/store/tours";
 import { ProofreadingDictionarySection } from "@/components/settings/ProofreadingDictionarySection";
+import { changeLocale } from "@/i18n";
+import type { LocalePreference } from "@/i18n/locale";
 
 type Section =
   | "appearance"
@@ -181,6 +183,8 @@ function ToggleRow({
 export function SettingsModal() {
   const open = useSettingsStore((s) => s.settingsOpen);
   const setOpen = useSettingsStore((s) => s.setSettingsOpen);
+  const uiLocalePreference = useSettingsStore((s) => s.uiLocalePreference);
+  const setUiLocalePreference = useSettingsStore((s) => s.setUiLocalePreference);
   const resetToDefaults = useSettingsStore((s) => s.resetToDefaults);
   const { theme, setTheme, toggleTheme } = useTheme();
   const vim = useSettingsStore((s) => s.vim);
@@ -260,6 +264,12 @@ export function SettingsModal() {
       window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light",
     );
     setConfirmReset(false);
+  };
+
+  const onLocaleChange = (value: string) => {
+    const preference = value as LocalePreference;
+    setUiLocalePreference(preference);
+    void changeLocale(preference);
   };
 
   useEffect(() => {
@@ -659,6 +669,26 @@ export function SettingsModal() {
 
             {section === "general" && (
               <div className="space-y-2 [&>[role=switch]]:bg-card">
+                <div
+                  data-testid="settings-row-language"
+                  className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
+                >
+                  <div>
+                    <div className="text-sm font-medium">Language</div>
+                    <div className="text-xs text-muted-foreground">
+                      Choose the interface language. System default follows your operating system language.
+                    </div>
+                  </div>
+                  <Select value={uiLocalePreference} onValueChange={onLocaleChange}>
+                    <SelectTrigger aria-label="Interface language" className="w-[176px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="z-[100]">
+                      <SelectItem value="system">System default</SelectItem>
+                      <SelectItem value="en">English</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <ToggleRow
                   label="Vim mode"
                   desc="Enable Vim keybindings in the editor."

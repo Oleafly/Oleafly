@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { isLocalePreference, type LocalePreference } from "@/i18n/locale";
 
 const SETTINGS_SECTIONS = new Set([
   "general",
@@ -198,6 +199,8 @@ export const GRAMMAR_DIALECTS: {
 ];
 
 interface SettingsState {
+  uiLocalePreference: LocalePreference;
+  setUiLocalePreference: (v: LocalePreference) => void;
   vim: boolean;
   toggleVim: () => void;
   spellcheck: boolean;
@@ -276,6 +279,7 @@ interface SettingsState {
 }
 
 const PREF_DEFAULTS = {
+  uiLocalePreference: "system" as LocalePreference,
   vim: false,
   spellcheck: true,
   harper: true,
@@ -297,7 +301,16 @@ const PREF_DEFAULTS = {
   bgPattern: "dots" as BackgroundPattern,
 } as const;
 
+function readLocalePreference(raw: string): LocalePreference {
+  return isLocalePreference(raw) ? raw : PREF_DEFAULTS.uiLocalePreference;
+}
+
 export const useSettingsStore = create<SettingsState>((set, get) => ({
+  uiLocalePreference: readLocalePreference(ls("oleafly.locale", "system")),
+  setUiLocalePreference: (v) => {
+    saveLs("oleafly.locale", v);
+    set({ uiLocalePreference: v });
+  },
   vim: ls("oleafly.vim", "0") === "1",
   toggleVim: () =>
     set((s) => {
@@ -501,6 +514,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
   resetToDefaults: () => {
     // Drop the persisted copies so a restart doesn't resurrect old values.
+    saveLs("oleafly.locale", PREF_DEFAULTS.uiLocalePreference);
     saveLs("oleafly.vim", PREF_DEFAULTS.vim ? "1" : "0");
     saveLs("oleafly.spellcheck", PREF_DEFAULTS.spellcheck ? "1" : "0");
     saveLs("oleafly.harper", PREF_DEFAULTS.harper ? "1" : "0");

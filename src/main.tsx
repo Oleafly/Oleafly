@@ -14,13 +14,9 @@ import { Toaster } from "@/components/ui/sonner";
 import { appendAppLog } from "@/lib/tauri";
 import { registerContributions } from "@/contributions";
 import { installDesktopViewportGuard } from "@/lib/desktop-viewport";
+import { initializeI18n } from "@/i18n";
+import { useSettingsStore } from "@/store/settings";
 import "@/styles/globals.css";
-
-// Must run before the shell mounts and reads the registry.
-registerContributions();
-if (import.meta.env.DEV) {
-  void import("@/lib/e2e-probe").then(({ installE2ePdfProbe }) => installE2ePdfProbe());
-}
 
 // Log otherwise-invisible failures so they can be diagnosed from a bug report.
 window.addEventListener("unhandledrejection", (e) => {
@@ -49,31 +45,46 @@ if (isUpdateWindow) {
   }
 }
 
-const root = document.getElementById("root");
-if (!root) throw new Error("Oleafly root element is missing");
+async function bootstrap() {
+  await initializeI18n(useSettingsStore.getState().uiLocalePreference);
 
-createRoot(root).render(
-  <StrictMode>
-    <ErrorBoundary>
-      {isUpdateWindow ? (
-        <ThemeProvider>
-          <UpdateWindow />
-        </ThemeProvider>
-      ) : isPreviewWindow ? (
-        <ThemeProvider>
-          <PreviewWindow />
-          <Toaster />
-        </ThemeProvider>
-      ) : (
-        <>
-          <App />
-          <Toaster />
-          <DevContextMenu />
-          <IndexKeeper />
-          <RenameDialog />
-          <AddCitationDialog />
-        </>
-      )}
-    </ErrorBoundary>
-  </StrictMode>,
-);
+  // Must run after localization is ready and before the shell reads the registry.
+  registerContributions();
+  if (import.meta.env.DEV) {
+    void import("@/lib/e2e-probe").then(({ installE2ePdfProbe }) => installE2ePdfProbe());
+  }
+
+  const root = document.getElementById("root");
+  if (!root) throw new Error("Oleafly root element is missing");
+
+  createRoot(root).render(
+    <StrictMode>
+      <ErrorBoundary>
+        {isUpdateWindow ? (
+          <ThemeProvider>
+            <UpdateWindow />
+          </ThemeProvider>
+        ) : isPreviewWindow ? (
+          <ThemeProvider>
+            <PreviewWindow />
+            <Toaster />
+          </ThemeProvider>
+        ) : (
+          <>
+            <App />
+            <Toaster />
+            <DevContextMenu />
+            <IndexKeeper />
+            <RenameDialog />
+            <AddCitationDialog />
+          </>
+        )}
+      </ErrorBoundary>
+    </StrictMode>,
+  );
+}
+
+void bootstrap().catch((error) => {
+  const message = error instanceof Error ? error.stack ?? error.message : String(error);
+  void appendAppLog(`Localization bootstrap failed: ${message}`).catch(() => {});
+});
