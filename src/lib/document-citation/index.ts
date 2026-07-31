@@ -5,3 +5,10 @@ export {
   splitIntoParagraphs,
   type SplitParagraphOptions,
 } from "./latex-paragraphs";
+export {
+  filterNewLiteratureRecords,
+  isRecordInBibliography,
+  normalizeTitleKey,
+  parseBibliographyIdentities,
+  type BibliographyIdentities,
+} from "./bibliography-filter";
