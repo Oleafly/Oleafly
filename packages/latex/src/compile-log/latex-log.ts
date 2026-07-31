@@ -40,7 +40,10 @@ const UNDEFINED_REFERENCE =
 // line number and then a space. After that it shows the line with the error but
 // only up to the position of the error. If the error comes very late in the
 // line, the error output will start with 3 dots.
-const messageLine = /^l\.\d+\s(\.\.\.)?(.*)$/;
+// Upstream leaves bang-form errors on their default line; capturing the
+// `l.<n>` number here is an intentional port addition so error cards can
+// navigate to the failing line.
+const messageLine = /^l\.(\d+)\s(\.\.\.)?(.*)$/;
 
 const MAX_ERROR_CONTEXT_LINES = 12;
 
@@ -151,6 +154,9 @@ function parseLine(line: string, state: ParserState) {
         const match = messageLine.exec(line);
         if (match && match.length >= 2) {
           // The `l.<n>` excerpt ends the error message; skip the rest.
+          if (state.current !== null && state.current.line === null) {
+            state.current.line = parseInt(match[1], 10);
+          }
           state.searchEmptyLine = false;
           state.insideError = false;
         } else if (state.current !== null) {

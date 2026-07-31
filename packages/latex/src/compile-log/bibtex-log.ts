@@ -10,6 +10,10 @@ import { type LogDiagnostic, MAX_COMPILE_LOG_BYTES } from "./types";
 
 const multiLineWarning = /^Warning--(.+)\n--line (\d+) of file (.+)$/gm;
 const singleLineWarning = /^Warning--(.+) in ([^\s]+)\s*$/gm;
+// Real BibTeX prints missing-entry warnings on one line with the key quoted;
+// upstream becabe2 misses this shape, so it is an intentional port addition.
+const missingEntryWarning =
+  /^Warning--I didn't find a database entry for "([^"]+)"(?![^\n])(?!\n--line )/gm;
 const multiLineError =
   /^(.*)---line (\d+) of file (.*)\n([^]+?)\nI'm skipping whatever remains of this entry$/gm;
 const badCrossReference =
@@ -41,6 +45,15 @@ export function parseBibtexLog(log: string): LogDiagnostic[] {
 
   try {
     let result: RegExpExecArray | null;
+    missingEntryWarning.lastIndex = 0;
+    while ((result = missingEntryWarning.exec(text))) {
+      push(
+        "warning",
+        null,
+        `I didn't find a database entry for "${result[1]}"`,
+        null,
+      );
+    }
     singleLineWarning.lastIndex = 0;
     while ((result = singleLineWarning.exec(text))) {
       push("warning", null, `${result[1]} in ${result[2]}`, null);
