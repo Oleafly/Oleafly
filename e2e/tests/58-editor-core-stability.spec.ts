@@ -19,6 +19,7 @@ interface EditorGeometry {
   readonly visibleLineCount: number;
   readonly numberedGutterCount: number;
   readonly maxLineNumberDelta: number;
+  readonly hiddenGutterSpacers: number;
   readonly baseLineHeight: number;
   readonly maxLineHeight: number;
   readonly maxPlainLineResidual: number;
@@ -102,9 +103,19 @@ async function editorGeometry(
           const rect = element.getBoundingClientRect();
           return rect.bottom >= viewport.top && rect.top <= viewport.bottom;
         });
-        const gutters = Array.from(
+        const allNumberedGutters = Array.from(
           view.dom.querySelectorAll(".cm-lineNumbers .cm-gutterElement"),
         ).filter((element) => /^\\d+$/.test(element.textContent?.trim() ?? ""));
+        const gutters = allNumberedGutters.filter(
+          (element) =>
+            /^\\d+$/.test(element.textContent?.trim() ?? "") &&
+            // The line-number gutter ends with a hidden spacer element that
+            // carries the highest line number purely to reserve width. It is a
+            // .cm-gutterElement with numeric text, so it matches the filter, but
+            // it is aligned to nothing - its rect sits at the gutter's top. Left
+            // in, it reports the top row's scroll offset as gutter drift.
+            element.style.visibility !== "hidden",
+        );
         const deltas = gutters.flatMap((gutter) => {
           const lineNumber = Number(gutter.textContent?.trim());
           if (
@@ -164,6 +175,10 @@ async function editorGeometry(
           visibleLineCount: lines.length,
           numberedGutterCount: gutters.length,
           maxLineNumberDelta: Math.max(0, ...deltas),
+          // Expected to be exactly 1: CodeMirror's width-reserving spacer. If
+          // this ever reads 0 the filter has stopped matching it and the probe
+          // is measuring a phantom row again.
+          hiddenGutterSpacers: allNumberedGutters.length - gutters.length,
           baseLineHeight: base,
           maxLineHeight: Math.max(0, ...heights),
           maxPlainLineResidual: Math.max(
@@ -210,6 +225,11 @@ async function expectStableGeometry(
   expect(geometry.numberedGutterCount).toBeGreaterThanOrEqual(
     geometry.visibleLineCount,
   );
+  // Exactly one hidden spacer must have been excluded. Counting it as a real
+  // row is what made this probe report a phantom sub-row offset on loaded CI
+  // machines; if CodeMirror ever stops emitting it, fail here with a clear
+  // reason rather than silently drifting back to measuring nothing.
+  expect(geometry.hiddenGutterSpacers).toBe(1);
   expect(geometry.maxLineNumberDelta).toBeLessThanOrEqual(1.5);
   expect(geometry.baseLineHeight).toBeGreaterThan(10);
   // Split view intentionally wraps realistic prose. Wrapped rows must remain
@@ -328,8 +348,11 @@ async function runAuthoringChaos(
             view.dom.querySelectorAll(
               ".cm-lineNumbers .cm-gutterElement",
             ),
-          ).filter((element) =>
-            /^\\d+$/.test(element.textContent?.trim() ?? ""),
+          ).filter(
+            (element) =>
+              /^\\d+$/.test(element.textContent?.trim() ?? "") &&
+              // Same hidden width-reserving spacer as the geometry probe above.
+              element.style.visibility !== "hidden",
           );
           const deltas = gutters.flatMap((gutter) => {
             const lineNumber = Number(gutter.textContent?.trim());
@@ -392,6 +415,7 @@ async function runAuthoringChaos(
             worstDetail,
           };
         };
+        let geometrySample = null;
         const inspect = async (actionName) => {
           const scroller = view.scrollDOM;
           const viewport = scroller.getBoundingClientRect();
@@ -417,6 +441,7 @@ async function runAuthoringChaos(
           }
           maxGutterDelta = Math.max(maxGutterDelta, maxDelta);
           maxSettleFrames = Math.max(maxSettleFrames, settleFrames);
+          if (!geometrySample && worstDetail) geometrySample = JSON.stringify(worstDetail);
           if (visibleLines.length < 5 || gutterCount < 5) blankFrames++;
           if (maxDelta > 1.5) {
             misalignedFrames++;
@@ -577,6 +602,7 @@ async function runAuthoringChaos(
           misalignedFrames,
           misalignedActions,
           maxSettleFrames,
+          geometrySample,
           misalignedSamples,
           maxGutterDelta,
           documentScrollLeaks,
