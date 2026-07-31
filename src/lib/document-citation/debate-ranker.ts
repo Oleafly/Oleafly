@@ -202,8 +202,15 @@ export async function rankLiteraturePapers(args: {
       for (const [k, v] of batchMap) {
         scoreMap.set(k, v);
       }
-    } catch {
-      // Batch-level failure: leave entries missing → heuristic below.
+    } catch (err) {
+      // Abort must propagate so callers can cancel ranking mid-scan.
+      if (
+        (err instanceof DOMException && err.name === "AbortError") ||
+        (err instanceof Error && err.name === "AbortError")
+      ) {
+        throw err;
+      }
+      // Non-abort batch failure: leave entries missing → heuristic below.
     }
   }
 

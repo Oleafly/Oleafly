@@ -80,6 +80,65 @@ SCORE: 20
     expect(ranked.every((r) => r.reasoning === null)).toBe(true);
     expect(ranked[0].score).toBeGreaterThan(0);
   });
+
+  it("rethrows AbortError instead of falling back to heuristic", async () => {
+    const abortErr = new Error("The operation was aborted");
+    abortErr.name = "AbortError";
+    await expect(
+      rankLiteraturePapers({
+        paragraphText: "x",
+        papers: [paper("A", 100), paper("B", 0)],
+        completeChat: async () => {
+          throw abortErr;
+        },
+      }),
+    ).rejects.toMatchObject({ name: "AbortError" });
+  });
+
+  it("remaps batch-local indices across multiple batches", async () => {
+    const papers = Array.from({ length: 11 }, (_, i) =>
+      paper(`P${i}`, 10 + i),
+    );
+    let calls = 0;
+    const ranked = await rankLiteraturePapers({
+      paragraphText: "multi batch",
+      papers,
+      batchSize: 10,
+      completeChat: async ({ user }) => {
+        calls += 1;
+        // Second batch has only paper 11 (local 1. → global index 10)
+        if (calls === 1) {
+          return `
+1.
+FOR: First batch paper zero.
+AGAINST: None.
+SCORE: 91
+
+10.
+FOR: First batch paper nine.
+AGAINST: Weak.
+SCORE: 55
+`;
+        }
+        expect(user).toMatch(/1\. Title: P10/);
+        return `
+1.
+FOR: Second batch only paper.
+AGAINST: Sparse.
+SCORE: 72
+`;
+      },
+    });
+    expect(calls).toBe(2);
+    expect(ranked).toHaveLength(11);
+    expect(ranked[0].score).toBe(91);
+    expect(ranked[0].reasoning?.for).toMatch(/First batch paper zero/i);
+    expect(ranked[9].score).toBe(55);
+    expect(ranked[10].score).toBe(72);
+    expect(ranked[10].reasoning?.for).toMatch(/Second batch only paper/i);
+    // Unparsed papers in batch 1 fall back to heuristic with null reasoning
+    expect(ranked[1].reasoning).toBeNull();
+  });
 });
 
 describe("heuristicScore", () => {
