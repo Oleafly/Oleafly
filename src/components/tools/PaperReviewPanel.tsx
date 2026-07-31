@@ -7,8 +7,6 @@ import {
   Square,
   Trash2,
 } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -23,6 +21,46 @@ import { hasConfiguredProvider } from "@/lib/ai-providers";
 
 function isLatexPath(path: string): boolean {
   return path.toLowerCase().endsWith(".tex");
+}
+
+/** Lightweight review renderer — avoids pulling remark-gfm into the literature chunk. */
+function ReviewMarkdown({ text }: { text: string }) {
+  const blocks = text.split(/\n{2,}/);
+  return (
+    <div className="space-y-3 text-sm leading-relaxed">
+      {blocks.map((block, index) => {
+        const trimmed = block.trim();
+        if (!trimmed) return null;
+        if (/^#{1,3}\s+/.test(trimmed)) {
+          const level = (trimmed.match(/^#+/)?.[0].length ?? 1) as 1 | 2 | 3;
+          const title = trimmed.replace(/^#{1,3}\s+/, "");
+          const Tag = (`h${Math.min(level + 1, 4)}` as "h2" | "h3" | "h4");
+          return (
+            <Tag key={index} className="font-semibold tracking-tight">
+              {title}
+            </Tag>
+          );
+        }
+        if (/^[-*]\s+/m.test(trimmed)) {
+          const items = trimmed.split(/\n/).filter((line) => line.trim());
+          return (
+            <ul key={index} className="list-disc space-y-1 pl-5">
+              {items.map((line, itemIndex) => (
+                <li key={itemIndex}>
+                  {line.replace(/^[-*]\s+/, "").replace(/\*\*(.+?)\*\*/g, "$1")}
+                </li>
+              ))}
+            </ul>
+          );
+        }
+        return (
+          <p key={index} className="whitespace-pre-wrap">
+            {trimmed.replace(/\*\*(.+?)\*\*/g, "$1")}
+          </p>
+        );
+      })}
+    </div>
+  );
 }
 
 /**
@@ -268,7 +306,7 @@ export function PaperReviewPanel() {
                 : "Fire mode is Reviewer #2: rigorous, claim-stressing, technically precise."}
             </p>
           ) : (
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+            <ReviewMarkdown text={text} />
           )}
           {reviewing && !text ? (
             <p className="text-muted-foreground not-prose text-sm">

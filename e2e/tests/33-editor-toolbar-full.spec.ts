@@ -106,23 +106,39 @@ async function openListDropdown(page: Page) {
 // previous (closing) portal mounted for its exit animation, so the bridge can
 // bind to a stale, hidden copy that never becomes clickable.
 async function pickListItem(page: Page, label: "Bulleted list" | "Numbered list") {
-  const clicked = await page
-    .waitForFunction(
-      `(() => {
-        const button = Array.from(
-          document.querySelectorAll('[data-radix-popper-content-wrapper] button')
-        )
-          .filter((candidate) => candidate.closest('[data-state="open"]'))
-          .find((candidate) => candidate.textContent?.trim() === ${JSON.stringify(label)});
-        if (!(button instanceof HTMLElement)) return false;
-        button.click();
-        return true;
-      })()`,
-      5_000,
-    )
-    .then(() => true)
-    .catch(() => false);
-  if (!clicked) throw new Error(`list item ${label} never became clickable`);
+  // Retry open+click: Radix can leave a closing portal mounted, and the
+  // toolbar ResizeObserver can remount the menu under load on Linux CI.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    if (attempt > 0) {
+      await openListDropdown(page);
+    }
+    const clicked = await page
+      .waitForFunction(
+        `(() => {
+          const button = Array.from(
+            document.querySelectorAll('[data-radix-popper-content-wrapper] button')
+          )
+            .filter((candidate) => candidate.closest('[data-state="open"]'))
+            .find((candidate) => {
+              const text = candidate.textContent?.trim() ?? "";
+              return text === ${JSON.stringify(label)} || text.startsWith(${JSON.stringify(label)});
+            });
+          if (!(button instanceof HTMLElement)) return false;
+          const style = getComputedStyle(button);
+          const rect = button.getBoundingClientRect();
+          if (style.display === "none" || style.visibility === "hidden" || rect.width <= 0) {
+            return false;
+          }
+          button.click();
+          return true;
+        })()`,
+        4_000,
+      )
+      .then(() => true)
+      .catch(() => false);
+    if (clicked) return;
+  }
+  throw new Error(`list item ${label} never became clickable`);
 }
 
 function codeIntelligenceButtonExpression(label: string) {

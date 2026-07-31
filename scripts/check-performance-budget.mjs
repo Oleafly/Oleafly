@@ -26,12 +26,12 @@ const limits = {
   // link actions and tagged-PDF structure. Keep narrow headroom above that
   // independently emitted 180 KB chunk without relaxing the startup gate.
   // The PDF viewer emits two independently validated worker builds and the
-  // editor intelligence chunks are now shipped as first-class features. Keep
-  // the gate within a narrow 9.01 MB desktop envelope while allowing those
-  // production-only chunks to coexist without brittle filename-specific cuts.
-  // The 10 KB margin also avoids a false regression when deterministic
-  // minifier output shifts by a few hundred bytes across supported Node builds.
-  totalJavaScript: 9_010_000,
+  // editor intelligence chunks are now shipped as first-class features.
+  // Recalibrated for document-citation (paragraph scan, debate ranker,
+  // Review panel, Google Scholar parser): measured ~9.05 MB after that
+  // surface. Keep a narrow ceiling at 9.10 MB so further growth fails
+  // loudly without blocking a few-dozen-kilobyte minifier delta.
+  totalJavaScript: 9_100_000,
   largestCss: 400_000,
   harperWasm: 19_000_000,
   // The real worker and the independently loaded recovery module are each
