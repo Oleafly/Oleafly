@@ -51,7 +51,11 @@ const EXPECTED_DOWNLOAD_HOSTS = [
 ];
 const SHA256_RE = /^[a-f0-9]{64}$/;
 
-function workflowJobBlocks(source) {
+function workflowJobBlocks(rawSource) {
+  // Git hands Windows checkouts CRLF, and every marker below is written in
+  // terms of "\n". Normalise once so this parses YAML shape rather than
+  // whichever platform checked the file out.
+  const source = rawSource.replace(/\r\n/gu, "\n");
   const jobsMarker = "\njobs:\n";
   const jobsStart = source.indexOf(jobsMarker);
   assert.notEqual(jobsStart, -1, "workflow must contain a jobs mapping");

@@ -239,3 +239,65 @@ jobs:
             test ! -e "$RUNTIME_DIR/tinymist"
             test -f "$RUNTIME_DIR/typst"
           fi
+
+  # A tag must never yield a half-published release. Each matrix leg uploads its
+  # own assets, so a leg that fails simply contributes nothing - which on its own
+  # leaves a release carrying only the platforms that happened to succeed. These
+  # two jobs make the outcome all-or-nothing.
+  publish:
+    name: Publish (all platforms present)
+    needs: build
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - name: Require every platform artifact, then publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          assets="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')"
+          echo "$assets"
+          missing=()
+          # One representative artifact per platform, plus the updater feed.
+          grep -qE '\.dmg$'                  <<<"$assets" || missing+=("macOS .dmg")
+          grep -qE '\.(msi|exe)$'            <<<"$assets" || missing+=("Windows .msi/.exe")
+          grep -qE '\.AppImage$'             <<<"$assets" || missing+=("Linux .AppImage")
+          grep -qE '\.deb$'                  <<<"$assets" || missing+=("Linux .deb")
+          grep -qE '^latest\.json$'          <<<"$assets" || missing+=("latest.json")
+          if ((${#missing[@]})); then
+            printf 'refusing to publish %s; missing: %s\n' "$TAG" "${missing[*]}" >&2
+            exit 1
+          fi
+          # The updater feed must offer every platform too, or clients on a
+          # missing one silently never see the release.
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" -p latest.json -D . --clobber
+          for platform in darwin-aarch64 windows-x86_64 linux-x86_64; do
+            jq -e --arg p "$platform" '.platforms | has($p)' latest.json >/dev/null \
+              || { echo "latest.json is missing platform: $platform" >&2; exit 1; }
+          done
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false
+          echo "published $TAG with all platform artifacts"
+
+  guard-incomplete:
+    name: Keep an incomplete release unpublished
+    needs: [build, publish]
+    if: always() && (needs.build.result != 'success' || needs.publish.result != 'success')
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - name: Force the release back to draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=true
+            echo "kept $TAG as a draft: not every platform produced artifacts"
+          fi
+          exit 1
