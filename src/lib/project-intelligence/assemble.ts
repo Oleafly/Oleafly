@@ -625,6 +625,24 @@ export function assembleProjectIntelligence(
     edges,
     input.mainDocument,
   );
+  const detectedPackages = [
+    ...new Set(
+      Object.values(orderedFiles).flatMap((file) =>
+        (file.packageRefs ?? [])
+          .filter((ref) => ref.kind === "package")
+          .map((ref) => ref.name),
+      ),
+    ),
+  ].sort();
+  const documentClasses = [
+    ...new Set(
+      Object.values(orderedFiles).flatMap((file) =>
+        (file.packageRefs ?? [])
+          .filter((ref) => ref.kind === "class")
+          .map((ref) => ref.name),
+      ),
+    ),
+  ].sort();
 
   return {
     protocolVersion: 1,
@@ -643,6 +661,8 @@ export function assembleProjectIntelligence(
     hierarchy,
     bibliography,
     stats: { ...input.stats },
+    detectedPackages,
+    documentClasses,
   };
 }
 
