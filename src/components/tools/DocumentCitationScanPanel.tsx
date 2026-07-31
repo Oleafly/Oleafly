@@ -317,7 +317,8 @@ export function DocumentCitationScanPanel() {
   const [settings, setSettings] = useState<DocumentCitationSettings>(() =>
     loadDocumentCitationSettings(),
   );
-  const [providerReady, setProviderReady] = useState(true);
+  /** null until getConfig resolves; unknown is treated as heuristic. */
+  const [providerReady, setProviderReady] = useState<boolean | null>(null);
   const [scanning, setScanning] = useState(false);
   const [progress, setProgress] = useState<DocumentScanProgress | null>(null);
   const [paragraphs, setParagraphs] = useState<ParagraphCitationResult[]>([]);
@@ -342,7 +343,10 @@ export function DocumentCitationScanPanel() {
     };
     check();
     window.addEventListener("oleafly:ai-config-changed", check);
-    return () => window.removeEventListener("oleafly:ai-config-changed", check);
+    return () => {
+      window.removeEventListener("oleafly:ai-config-changed", check);
+      abortRef.current?.abort();
+    };
   }, []);
 
   const { sourcePath, sourceText } = useMemo(() => {
@@ -374,7 +378,8 @@ export function DocumentCitationScanPanel() {
     !!projectId &&
     !offline &&
     sourceText.trim().length > 0 &&
-    !scanning;
+    !scanning &&
+    providerReady !== null;
 
   const updateSetting = useCallback(
     <K extends keyof DocumentCitationSettings>(
@@ -422,7 +427,7 @@ export function DocumentCitationScanPanel() {
       message: "Splitting document into paragraphs…",
     });
 
-    const rankMode = providerReady ? "llm" : "heuristic";
+    const rankMode = providerReady === true ? "llm" : "heuristic";
 
     try {
       await scanDocumentForCitations({
@@ -610,7 +615,7 @@ export function DocumentCitationScanPanel() {
               <span className="font-mono">.tex</span> file to scan.
             </div>
           )}
-          {!providerReady && !offline && (
+          {providerReady === false && !offline && (
             <div className="flex items-start gap-2.5 rounded-md border border-sky-500/30 bg-sky-500/10 px-3.5 py-2.5 text-sm text-sky-900 dark:text-sky-300">
               <Info className="mt-0.5 size-4 shrink-0" />
               Ranking will use citation counts only until an AI provider is
