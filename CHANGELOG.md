@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- New "Experimentation" settings section (under Advanced) for beta features,
+  with a callout noting they are experimental and not fully tested.
+
+### Changed
+
+- The Visual/Code editor toggle is now gated behind a "Visual editor"
+  experimental setting (off by default). When off, documents open in the code
+  editor only; diagrams keep their own canvas toggle.
+- The Oleafly Tools gallery, the individual LaTeX tools (PDF import,
+  equations, tables, BibTeX, lab and literature search, deadlines), and their
+  slash commands are gated behind a "LaTeX tools" experimental setting
+  (off by default).
+- Reordered the top omnibar commands to Create, Open Diagram Composer, theme,
+  then settings.
+
 ## [0.3.0] - 2026-07-30
 
 ### Added

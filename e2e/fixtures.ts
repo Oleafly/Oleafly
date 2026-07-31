@@ -171,6 +171,11 @@ function createNativeTest(dismissTours: boolean) {
       await ensureNativePageReady(page);
       if (firstPage) {
         await page.evaluate(`localStorage.removeItem("oleafly.shortcuts")`);
+        // Visual editor and LaTeX tools are gated behind Experimentation and
+        // default off; enable both for the e2e suite so the gated specs run.
+        await page.evaluate(
+          `localStorage.setItem("oleafly.visualEditor", "1"); localStorage.setItem("oleafly.latexTools", "1");`,
+        );
         await reloadNativePage(page);
       }
       if (dismissTours) {

@@ -16,16 +16,22 @@ import { HomeDock } from "./HomeDock";
 
 beforeEach(() => {
   useHomeViewStore.setState({ page: "library", toolsOpen: false });
-  useSettingsStore.setState({ dockPlacement: "left" });
+  useSettingsStore.setState({ dockPlacement: "left", latexTools: true });
 });
 
 describe("HomeDock", () => {
-  it("renders all four always-visible actions", () => {
+  it("renders the dock actions including LaTeX tools when enabled", () => {
     render(<HomeDock />);
     expect(screen.getByTestId("new-project")).toBeInTheDocument();
     expect(screen.getByTestId("open-latex-tools")).toBeInTheDocument();
     expect(screen.getByTestId("toggle-theme")).toBeInTheDocument();
     expect(screen.getByTestId("open-settings")).toBeInTheDocument();
+  });
+
+  it("hides the LaTeX tools action when the experimental setting is off", () => {
+    useSettingsStore.setState({ latexTools: false });
+    render(<HomeDock />);
+    expect(screen.queryByTestId("open-latex-tools")).not.toBeInTheDocument();
   });
 
   it("clicking Tools opens the tools modal", () => {
