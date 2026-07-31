@@ -46,6 +46,7 @@ export type ProjectDefinitionKind =
   | "anchor"
   | "macro"
   | "environment"
+  | "glossary"
   | "bibentry";
 
 export type ProjectUseKind =
@@ -57,7 +58,8 @@ export type ProjectUseKind =
   | "asset"
   | "bibliography"
   | "macro"
-  | "environment";
+  | "environment"
+  | "glossary";
 
 export type ResolutionStatus =
   | "resolved"
@@ -111,6 +113,7 @@ export interface OutlineNode {
     | "anchor"
     | "macro"
     | "environment"
+    | "glossary"
     | "bibentry";
   readonly level: number;
   readonly parentId: string | null;

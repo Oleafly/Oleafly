@@ -5,6 +5,7 @@ import {
   maskLatexIgnoredRegions,
   validateXparseArgumentSpecification,
 } from "@oleafly/editor/latex-analysis";
+import { astAugmentLatexFile } from "./latex-ast";
 import { parseBibtexIntelligence } from "./parse-bibtex";
 import {
   engineForPath,
@@ -1384,6 +1385,31 @@ function latexAdditionalSyntax(
     );
   }
 
+  const glossaryUses =
+    /\\(glssymbol|glsdesc|glslink|glspl|Glspl|GLSpl|gls|Gls|GLS|acrshort|acrlong|acrfull|acs|acl|acf|Acs|Acl|Acf|ac|Ac)\*?(?![A-Za-z@])/g;
+  for (const match of masked.matchAll(glossaryUses)) {
+    const group = commandGroups(
+      masked,
+      match.index + match[0].length,
+      closingByOpening,
+    ).find((candidate) => candidate.open === "{");
+    if (!group) continue;
+    for (const token of latexLogicalGroupTokens(source, group, false)) {
+      addUse(
+        uses,
+        "latex",
+        file,
+        starts,
+        "glossary",
+        token.name,
+        token.from,
+        token.to,
+        undefined,
+        "explicit",
+      );
+    }
+  }
+
   const inputCommands =
     /\\(input|include|subfile|InputIfFileExists)\s*\{([^}]*)\}/g;
   for (const match of masked.matchAll(inputCommands)) {
@@ -2318,6 +2344,8 @@ export function analyzeProjectFile(
       starts,
       buildCommandGroupIndex(masked),
     );
+    const ast = astAugmentLatexFile(file, source, starts);
+    if (ast) definitions.push(...ast.definitions);
     const delimiterPartial = addDelimiterDiagnostics(
       file,
       source,
