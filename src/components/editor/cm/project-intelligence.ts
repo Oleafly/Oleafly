@@ -21,11 +21,22 @@ import {
 } from "@codemirror/view";
 import { clearProjectHoverIntel } from "./hover-intel";
 import {
+  fileTargetAccepts,
+  keyvalKeysForCommand,
+  optionKeysForCatalog,
+  recognizeFileTarget,
+  recognizeGlossaryKey,
+  recognizeImportPath,
+  recognizeKeyval,
+  recognizePackageOption,
+} from "./latex-contexts";
+import {
   catalogNamesForSnapshot,
   corpusClassNames,
   corpusCore,
   corpusPackageNames,
   loadedCatalogsFor,
+  requestPackageCatalogs,
 } from "@/lib/latex-corpus";
 import { analyzeProjectFile } from "@/lib/project-intelligence/analyze-file";
 import { citationCompletions } from "@/lib/project-intelligence/selectors";
@@ -348,6 +359,49 @@ function latexCompletion(
     );
   }
 
+  const packageOption = recognizePackageOption(
+    before,
+    context.state.sliceDoc(
+      context.pos,
+      Math.min(context.state.doc.length, context.pos + 200),
+    ),
+  );
+  if (packageOption) {
+    const catalogName =
+      packageOption.kind === "class"
+        ? `class-${packageOption.name}`
+        : packageOption.name;
+    requestPackageCatalogs([catalogName]);
+    const options = loadedCatalogsFor([catalogName]).flatMap(
+      (catalog) =>
+        optionKeysForCatalog(
+          catalog,
+          packageOption.kind,
+          packageOption.name,
+        ),
+    );
+    const query = packageOption.query;
+    const filtered = options
+      .filter((option) =>
+        option
+          .toLocaleLowerCase()
+          .includes(query.toLocaleLowerCase()),
+      )
+      .slice(0, FILTERED_COMPLETION_LIMIT)
+      .map((option) => ({
+        label: option,
+        type: "property",
+        detail: `${packageOption.name} option`,
+        apply: guardedApply(guard, option),
+      } satisfies Completion));
+    if (filtered.length) {
+      return completionResult(
+        context.pos - query.length,
+        filtered,
+      );
+    }
+  }
+
   const packageName =
     /\\usepackage\s*(?:\[[^\]]*\])?\{[^{}]*?(?:,\s*)?([^,{}]*)$/u.exec(
       before,
@@ -396,12 +450,28 @@ function latexCompletion(
     );
   }
 
-  const fileTarget =
-    /\\(?:input|include|subfile|includegraphics|bibliography|addbibresource)\s*(?:\[[^\]]*\])?\{([^{}]*)$/u.exec(
-      before,
+  const importPath = recognizeImportPath(before);
+  if (importPath) {
+    const query = importPath.query;
+    const prefix = importPath.directory
+      ? `${importPath.directory}/`
+      : "";
+    return completionResult(
+      context.pos - query.length,
+      definitionOptions(
+        snapshot,
+        guard,
+        new Set(["file"]),
+        `${prefix}${query}`,
+      ).filter((option) =>
+        fileTargetAccepts("input", String(option.label)),
+      ),
     );
+  }
+
+  const fileTarget = recognizeFileTarget(before);
   if (fileTarget) {
-    const query = fileTarget[1] ?? "";
+    const query = fileTarget.query;
     return completionResult(
       context.pos - query.length,
       definitionOptions(
@@ -409,6 +479,8 @@ function latexCompletion(
         guard,
         new Set(["file"]),
         query,
+      ).filter((option) =>
+        fileTargetAccepts(fileTarget.command, String(option.label)),
       ),
     );
   }
@@ -438,6 +510,42 @@ function latexCompletion(
         query,
       ),
     );
+  }
+
+  const glossaryKey = recognizeGlossaryKey(before);
+  if (glossaryKey) {
+    return completionResult(
+      context.pos - glossaryKey.query.length,
+      definitionOptions(
+        snapshot,
+        guard,
+        new Set(["glossary"]),
+        glossaryKey.query,
+      ),
+    );
+  }
+
+  const keyval = recognizeKeyval(before);
+  if (keyval) {
+    const keys = keyvalKeysForCommand(
+      loadedCatalogsFor(catalogNamesForSnapshot(snapshot)),
+      keyval.command,
+    ).filter((key) =>
+      key
+        .toLocaleLowerCase()
+        .includes(keyval.query.toLocaleLowerCase()),
+    );
+    if (keys.length) {
+      return completionResult(
+        context.pos - keyval.query.length,
+        keys.slice(0, FILTERED_COMPLETION_LIMIT).map((key) => ({
+          label: key,
+          type: "property",
+          detail: `\\${keyval.command} key`,
+          apply: guardedApply(guard, key),
+        } satisfies Completion)),
+      );
+    }
   }
 
   const command = /\\([A-Za-z@]*)$/u.exec(before);
