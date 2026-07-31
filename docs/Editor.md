@@ -40,6 +40,18 @@ are exercised by `src/lib/editor-support-contract.test.ts`.
   they do not infer behavior from a file extension alone.
 - Vim mode, find and replace, code folding, multi-file tabs, and slash-command
   insertion are application contributions rather than editor parser logic.
+- LaTeX structural helpers: Enter continues `\item` lists (an empty item
+  exits), `Mod-Alt-.` closes the innermost open environment, and
+  `Mod-Alt-e` surrounds the selection with an environment (both also in the
+  command palette). `@`-prefixed math shortcuts complete Greek letters and
+  symbols inside math contexts.
+- Rich hovers: references whose label sits in a math environment render the
+  equation (KaTeX), `\includegraphics` targets show a thumbnail, and labels
+  display their number and page from the last successful compile. Label
+  completions carry the same compile-derived number.
+- Word count (toolbar popover and command palette) uses the spellchecker's
+  prose mask, so math bodies, verbatim blocks, and machine arguments are not
+  counted; a non-empty selection adds a selection count.
 
 ## Engineering boundaries
 

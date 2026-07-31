@@ -5,8 +5,9 @@ import { LATEX_ENGINE } from "@/lib/document-engine";
 import { useFilesStore } from "@/store/files";
 
 const countWordsMock = vi.hoisted(() =>
-  vi.fn(() => ({ words: 7, characters: 44, lines: 3 })),
+  vi.fn(() => ({ words: 7, characters: 44, lines: 3, method: "masked" as const })),
 );
+const getEditorViewMock = vi.hoisted(() => vi.fn((): unknown => null));
 
 vi.mock("@oleafly/preview", () => ({
   registerPdfView: vi.fn(),
@@ -18,6 +19,11 @@ vi.mock("@oleafly/preview", () => ({
 
 vi.mock("@/lib/wordcount", () => ({
   countWords: countWordsMock,
+}));
+
+vi.mock("@/components/editor/cm/controller", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  getEditorView: getEditorViewMock,
 }));
 
 import { EditorToolbar } from "./EditorToolbar";
@@ -101,5 +107,47 @@ describe("EditorToolbar wysiwyg toggle", () => {
       "The latest complete manuscript text.",
     );
     expect(screen.getByText("44")).toBeInTheDocument();
+  });
+
+  it("adds a Selection row counting only the primary editor selection", () => {
+    const doc = "Alpha beta gamma delta.";
+    useFilesStore.setState({
+      activePath: "book.tex",
+      files: {
+        "book.tex": { content: doc, dirty: false },
+      },
+    });
+    getEditorViewMock.mockReturnValueOnce({
+      state: {
+        selection: { main: { from: 0, to: 10, empty: false } },
+        sliceDoc: (from: number, to: number) => doc.slice(from, to),
+      },
+    });
+    render(<EditorToolbar wysiwyg={false} onToggleWysiwyg={vi.fn()} />);
+    fireEvent.click(screen.getByLabelText("Word count"));
+
+    expect(countWordsMock).toHaveBeenCalledTimes(2);
+    expect(countWordsMock).toHaveBeenLastCalledWith("Alpha beta");
+    expect(screen.getByText("Selection")).toBeInTheDocument();
+  });
+
+  it("does not add a Selection row when the primary selection is empty", () => {
+    useFilesStore.setState({
+      activePath: "book.tex",
+      files: {
+        "book.tex": { content: "Some text.", dirty: false },
+      },
+    });
+    getEditorViewMock.mockReturnValueOnce({
+      state: {
+        selection: { main: { from: 3, to: 3, empty: true } },
+        sliceDoc: () => "",
+      },
+    });
+    render(<EditorToolbar wysiwyg={false} onToggleWysiwyg={vi.fn()} />);
+    fireEvent.click(screen.getByLabelText("Word count"));
+
+    expect(countWordsMock).toHaveBeenCalledOnce();
+    expect(screen.queryByText("Selection")).not.toBeInTheDocument();
   });
 });

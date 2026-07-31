@@ -28,7 +28,11 @@ import { useSettingsStore } from "@/store/settings";
 import { useCompileStore } from "@/store/compile";
 import { useCitationStore } from "@/store/citation";
 import { clearBuildCache } from "@/lib/tauri";
-import { insertAtCursor, wrapSelection } from "@/components/editor/cm/controller";
+import { getEditorView, insertAtCursor, wrapSelection } from "@/components/editor/cm/controller";
+import {
+  closeEnvironmentAtCursor,
+  surroundSelectionWithEnvironment,
+} from "@oleafly/editor";
 import { forwardFromCursor } from "@/features/synctex";
 import { exportCurrentPdf } from "@/features/export";
 import { useFilesStore } from "@/store/files";
@@ -376,6 +380,38 @@ export function registerPaletteCommands() {
     order: 470,
     when: activeIsLatexSource,
     run: ins("\\label{}"),
+  });
+
+  palette({
+    id: "palette.close-environment",
+    group: "Editor",
+    label: "Close LaTeX environment",
+    keywords: "close end environment begin latex",
+    icon: () => <Square className="size-4" />,
+    order: 480,
+    when: activeIsLatexSource,
+    run: () => {
+      const view = getEditorView();
+      if (!view) return;
+      const spec = closeEnvironmentAtCursor(view.state);
+      if (!spec) return;
+      view.dispatch(spec);
+      view.focus();
+    },
+  });
+  palette({
+    id: "palette.surround-environment",
+    group: "Editor",
+    label: "Surround with environment",
+    keywords: "surround wrap environment begin end latex",
+    icon: () => <PenTool className="size-4" />,
+    order: 490,
+    when: activeIsLatexSource,
+    run: () => {
+      const view = getEditorView();
+      if (!view) return;
+      if (surroundSelectionWithEnvironment(view)) view.focus();
+    },
   });
 
   palette({

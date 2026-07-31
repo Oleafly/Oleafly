@@ -7,6 +7,8 @@ import {
   setSpellHost,
   setBibKeysProvider,
   bibKeysFromSources,
+  latexListKeymap,
+  latexStructureKeymap,
 } from "@oleafly/editor";
 import { createPreflightLinter } from "./cm/preflight-linter";
 import { createCompileErrorLinter } from "./cm/compile-error-linter";
@@ -27,6 +29,7 @@ import { useIndexStore } from "@/store/project-index";
 import { useSettingsStore } from "@/store/settings";
 import { useCompileStore } from "@/store/compile";
 import { useDictionary, isWordIgnored, ignoreWordForProject, ignoreWordGlobally } from "@/lib/dictionary";
+import { installAuxNumbers } from "@/lib/aux-numbers";
 import { installLatexCorpus } from "@/lib/latex-corpus";
 import { isSessionIgnoredWord } from "@/lib/proofreading/ignored";
 import {
@@ -132,6 +135,7 @@ setBibKeysProvider(() => {
 });
 
 installLatexCorpus();
+installAuxNumbers();
 
 // Module-level so the host identity is stable across renders (its use* members are hooks).
 const HOST: EditorHost = {
@@ -168,6 +172,9 @@ const PROJECT_INTELLIGENCE_EXTENSIONS: Extension[] = [
 ];
 
 const EXTRA_KEYMAP: KeyBinding[] = [
+  // List keymap first so its Enter binding is checked before defaults.
+  ...latexListKeymap,
+  ...latexStructureKeymap,
   { key: "Mod-l", run: (v) => { toggleInlineEdit(v); return true; } },
 ];
 

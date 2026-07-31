@@ -76,10 +76,10 @@ export function requestPackageCatalogs(names: readonly string[]): void {
   }
 }
 
-/** Already-loaded catalogs for the given names plus their loaded deps. */
+/** Already-loaded catalogs (name → catalog) for the given names plus deps. */
 export function loadedCatalogsFor(
   names: readonly string[],
-): PackageCatalog[] {
+): Map<string, PackageCatalog> {
   const result = new Map<string, PackageCatalog>();
   for (const name of names) {
     const catalog = loadedCatalogs.get(name);
@@ -90,7 +90,7 @@ export function loadedCatalogsFor(
       if (dependency) result.set(dep, dependency);
     }
   }
-  return [...result.values()];
+  return result;
 }
 
 export function catalogNamesForSnapshot(snapshot: {
@@ -111,6 +111,9 @@ function completionForCorpusMacro(
     label: `\\${macro.name}`,
     type: "function",
     detail: macro.detail || detail,
+    ...(macro.documentation
+      ? { info: macro.documentation }
+      : {}),
     apply: macro.snippet ? snippet(`\\${macro.snippet}`) : undefined,
   };
 }
