@@ -107,6 +107,10 @@ jobs:
         env:
           SIGN_APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           SIGN_APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          # Read straight from secrets rather than the environment: the step
+          # that exports APPLE_SIGNING_IDENTITY into $GITHUB_ENV runs after this
+          # one, so relying on it meant signing was silently skipped.
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
         run: |
           set -euo pipefail
           if [ -z "${SIGN_APPLE_CERTIFICATE:-}" ]; then
