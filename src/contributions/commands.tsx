@@ -308,9 +308,10 @@ export function registerPaletteCommands() {
     icon: () => <LibraryBig className="size-4 text-blue-600 dark:text-blue-300" />,
     order: 322,
     run: () => {
-      // Capture selection (or active/main .tex content) before openHomePage
-      // closes the project and clears the files store.
+      // Capture selection (or active/main .tex content) and .bib filter text
+      // before openHomePage closes the project and clears the files store.
       const view = getEditorView();
+      const files = useFilesStore.getState();
       let source: string | undefined;
       if (view) {
         const sel = view.state.selection.main;
@@ -320,7 +321,6 @@ export function registerPaletteCommands() {
         }
       }
       if (!source) {
-        const files = useFilesStore.getState();
         const active = files.activePath;
         if (active && /\.tex$/i.test(active)) {
           const content = files.files[active]?.content?.trim();
@@ -331,7 +331,15 @@ export function registerPaletteCommands() {
           if (content) source = content;
         }
       }
-      useDocumentCitationUiStore.getState().requestDocumentScan(source);
+      const bibOverride =
+        files.tree
+          .filter((entry) => !entry.is_dir && entry.path.endsWith(".bib"))
+          .map((entry) => files.files[entry.path]?.content ?? "")
+          .filter(Boolean)
+          .join("\n\n") || null;
+      useDocumentCitationUiStore
+        .getState()
+        .requestDocumentScan(source, bibOverride);
       void openHomePage("literature-search");
     },
   });

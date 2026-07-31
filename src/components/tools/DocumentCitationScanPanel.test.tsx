@@ -8,6 +8,9 @@ const scanDocumentForCitations = vi.fn(async (_args?: unknown) => ({
   paragraphs: [],
   totalParagraphs: 0,
 }));
+const addCitation = vi.fn();
+const toastSuccess = vi.fn();
+const toastError = vi.fn();
 
 vi.mock("@/lib/tauri", () => ({
   getConfig: () => getConfig(),
@@ -18,7 +21,17 @@ vi.mock("@/lib/ai-providers", () => ({
 }));
 
 vi.mock("@/features/citation", () => ({
-  addCitation: vi.fn(),
+  addCitation: (...args: unknown[]) => addCitation(...args),
+}));
+
+vi.mock("@/lib/toast", () => ({
+  toast: {
+    success: (...args: unknown[]) => toastSuccess(...args),
+    error: (...args: unknown[]) => toastError(...args),
+    info: vi.fn(),
+    update: vi.fn(),
+    dismiss: vi.fn(),
+  },
 }));
 
 vi.mock("@/lib/document-citation", async () => {
@@ -37,6 +50,26 @@ import { DocumentCitationScanPanel } from "@/components/tools/DocumentCitationSc
 import { useSettingsStore } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
 import { useDocumentCitationUiStore } from "@/store/document-citation-ui";
+import { useLiteratureLibraryStore } from "@/store/literature";
+import type { LiteratureRecord } from "@/lib/literature-search";
+
+const sampleRecord: LiteratureRecord = {
+  id: "s2:paper-1",
+  sourceIds: { "semantic-scholar": "paper-1" },
+  sources: ["semantic-scholar"],
+  title: "Attention Is All You Need",
+  authors: ["Vaswani"],
+  year: 2017,
+  publicationDate: null,
+  venue: "NeurIPS",
+  type: "article",
+  doi: "10.1000/test",
+  url: null,
+  pdfUrl: null,
+  abstract: null,
+  citationCount: 100,
+  openAccess: null,
+};
 
 beforeEach(() => {
   getConfig.mockReset();
@@ -48,12 +81,17 @@ beforeEach(() => {
     paragraphs: [],
     totalParagraphs: 0,
   });
+  addCitation.mockReset();
+  toastSuccess.mockReset();
+  toastError.mockReset();
 
   useSettingsStore.setState({ offline: false });
   useDocumentCitationUiStore.setState({
     modeRequest: "search",
     selectionOverride: null,
+    bibOverride: null,
   });
+  useLiteratureLibraryStore.setState({ saved: [] });
   useFilesStore.setState({
     projectId: "proj-1",
     activePath: "main.tex",
@@ -68,6 +106,36 @@ beforeEach(() => {
     },
   });
 });
+
+async function runScanWithSuggestion() {
+  scanDocumentForCitations.mockImplementation(async (args?: unknown) => {
+    const onParagraph = (
+      args as { onParagraph?: (result: unknown) => void } | undefined
+    )?.onParagraph;
+    onParagraph?.({
+      paragraphIndex: 0,
+      paragraphPreview: "Transformers improve sequence modeling.",
+      query: "transformers",
+      sourceErrors: [],
+      suggestions: [
+        {
+          record: sampleRecord,
+          score: 88,
+          reasoning: null,
+        },
+      ],
+    });
+    return { paragraphs: [], totalParagraphs: 1 };
+  });
+
+  render(<DocumentCitationScanPanel />);
+  const button = screen.getByTestId("document-citation-scan");
+  await waitFor(() => expect(button).not.toBeDisabled());
+  fireEvent.click(button);
+  await waitFor(() => {
+    expect(screen.getByTestId("document-citation-save")).toBeInTheDocument();
+  });
+}
 
 describe("DocumentCitationScanPanel", () => {
   it("renders Find citations control", async () => {
@@ -125,6 +193,87 @@ describe("DocumentCitationScanPanel", () => {
         rankMode: "llm",
       }),
     );
+  });
+
+  it("Save citation uses literature library when no project is open", async () => {
+    useFilesStore.setState({
+      projectId: null,
+      activePath: null,
+      mainDoc: "",
+      tree: [],
+      files: {},
+    });
+    useDocumentCitationUiStore
+      .getState()
+      .requestDocumentScan("Selected prose about transformers for citations.");
+
+    await runScanWithSuggestion();
+
+    fireEvent.click(screen.getByTestId("document-citation-save"));
+
+    expect(useLiteratureLibraryStore.getState().saved).toHaveLength(1);
+    expect(useLiteratureLibraryStore.getState().saved[0]?.record.title).toBe(
+      sampleRecord.title,
+    );
+    expect(toastSuccess).toHaveBeenCalledWith("Citation saved");
+    expect(addCitation).not.toHaveBeenCalled();
+    expect(toastSuccess).not.toHaveBeenCalledWith(
+      expect.stringMatching(/Added \\cite/),
+    );
+  });
+
+  it("Add to .bib without project toasts error and does not claim success", async () => {
+    useFilesStore.setState({
+      projectId: null,
+      activePath: null,
+      mainDoc: "",
+      tree: [],
+      files: {},
+    });
+    useDocumentCitationUiStore
+      .getState()
+      .requestDocumentScan("Selected prose about transformers for citations.");
+
+    await runScanWithSuggestion();
+
+    fireEvent.click(screen.getByTestId("document-citation-add-bib"));
+
+    expect(toastError).toHaveBeenCalledWith(
+      "Open a project to append to a bibliography file",
+    );
+    expect(addCitation).not.toHaveBeenCalled();
+    expect(toastSuccess).not.toHaveBeenCalled();
+  });
+
+  it("uses bibOverride when set from command path", async () => {
+    useFilesStore.setState({
+      projectId: null,
+      activePath: null,
+      mainDoc: "",
+      tree: [],
+      files: {},
+    });
+    useDocumentCitationUiStore
+      .getState()
+      .requestDocumentScan(
+        "Selected prose about transformers for citations.",
+        "@article{existing,\n  title={Existing Work},\n}",
+      );
+
+    render(<DocumentCitationScanPanel />);
+    const button = screen.getByTestId("document-citation-scan");
+    await waitFor(() => expect(button).not.toBeDisabled());
+    fireEvent.click(button);
+
+    await waitFor(() => {
+      expect(scanDocumentForCitations).toHaveBeenCalledTimes(1);
+    });
+    expect(scanDocumentForCitations).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bibText: "@article{existing,\n  title={Existing Work},\n}",
+      }),
+    );
+    expect(useDocumentCitationUiStore.getState().bibOverride).toBeNull();
   });
 });
 

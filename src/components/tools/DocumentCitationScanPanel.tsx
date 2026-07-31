@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
+  Bookmark,
+  BookmarkCheck,
   ChevronDown,
   ChevronRight,
   Copy,
@@ -34,6 +36,7 @@ import { addCitation } from "@/features/citation";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { useFilesStore } from "@/store/files";
 import { useDocumentCitationUiStore } from "@/store/document-citation-ui";
+import { useLiteratureLibraryStore } from "@/store/literature";
 import { useSettingsStore } from "@/store/settings";
 import { getConfig } from "@/lib/tauri";
 import { hasConfiguredProvider } from "@/lib/ai-providers";
@@ -109,6 +112,9 @@ function SuggestionCard({
   const { record, score, reasoning } = suggestion;
   const [reasoningOpen, setReasoningOpen] = useState(false);
   const [adding, setAdding] = useState(false);
+  const projectId = useFilesStore((state) => state.projectId);
+  const saved = useLiteratureLibraryStore((state) => state.has(record));
+  const saveCitation = useLiteratureLibraryStore((state) => state.save);
 
   const primaryUrl =
     record.url ||
@@ -117,7 +123,20 @@ function SuggestionCard({
       ? `https://arxiv.org/abs/${record.sourceIds.arxiv}`
       : null);
 
-  const handleAdd = async () => {
+  const handleSave = () => {
+    const already = useLiteratureLibraryStore.getState().has(record);
+    saveCitation(record);
+    toast.success(already ? "Saved citation updated" : "Citation saved");
+  };
+
+  const handleAddToBib = async () => {
+    // Citation Search is a home tool; after closeProject there is no open
+    // project/.bib. Never toast success unless a project can actually receive
+    // the write (addCitation otherwise returns { key } without persisting).
+    if (!useFilesStore.getState().projectId) {
+      toast.error("Open a project to append to a bibliography file");
+      return;
+    }
     setAdding(true);
     try {
       const result = await addCitation(bibtexForLiteratureRecord(record));
@@ -222,13 +241,13 @@ function SuggestionCard({
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
         <Button
           type="button"
-          variant="outline"
+          variant={saved ? "secondary" : "outline"}
           size="sm"
-          disabled={adding}
-          onClick={() => void handleAdd()}
+          data-testid="document-citation-save"
+          onClick={handleSave}
         >
-          {adding ? <Loader2 className="animate-spin" /> : <Plus />}
-          Add
+          {saved ? <BookmarkCheck /> : <Bookmark />}
+          {saved ? "Saved" : "Save citation"}
         </Button>
         <Button
           type="button"
@@ -239,6 +258,22 @@ function SuggestionCard({
           }
         >
           <Copy /> Copy BibTeX
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          data-testid="document-citation-add-bib"
+          disabled={adding}
+          onClick={() => void handleAddToBib()}
+          title={
+            projectId
+              ? "Append to project bibliography and insert \\cite"
+              : "Open a project to append to a bibliography file"
+          }
+        >
+          {adding ? <Loader2 className="animate-spin" /> : <Plus />}
+          Add to .bib
         </Button>
       </div>
     </article>
@@ -326,12 +361,17 @@ export function DocumentCitationScanPanel() {
   const [error, setError] = useState<string | null>(null);
   /** Editor selection (or captured doc text) passed via command entry points. */
   const [selectionSource, setSelectionSource] = useState<string | null>(null);
+  /** .bib snapshot from command palette path (before closeProject clears files). */
+  const [bibSource, setBibSource] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const override =
       useDocumentCitationUiStore.getState().consumeSelectionOverride();
     if (override) setSelectionSource(override);
+    const bib =
+      useDocumentCitationUiStore.getState().consumeBibOverride();
+    if (bib) setBibSource(bib);
   }, []);
 
   useEffect(() => {
@@ -382,12 +422,13 @@ export function DocumentCitationScanPanel() {
   }, [activePath, files, selectionSource]);
 
   const bibText = useMemo(() => {
+    if (bibSource) return bibSource;
     return tree
       .filter((entry) => !entry.is_dir && entry.path.endsWith(".bib"))
       .map((entry) => files[entry.path]?.content ?? "")
       .filter(Boolean)
       .join("\n\n");
-  }, [tree, files]);
+  }, [bibSource, tree, files]);
 
   // Selection/doc overrides remain scannable after the home-tool navigation
   // closes the open project (files store is cleared).
@@ -693,8 +734,8 @@ export function DocumentCitationScanPanel() {
             </h2>
             <p className="mt-3 text-base leading-relaxed text-muted-foreground">
               Each paragraph is searched across scholarly indexes, filtered
-              against your bibliography, and ranked for relevance. Add a result
-              with one click to insert BibTeX.
+              against your bibliography, and ranked for relevance. Save a result
+              to your literature library, or copy BibTeX.
             </p>
           </div>
         ) : (

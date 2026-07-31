@@ -6,6 +6,7 @@ beforeEach(() => {
   useDocumentCitationUiStore.setState({
     modeRequest: "search",
     selectionOverride: null,
+    bibOverride: null,
   });
 });
 
@@ -40,5 +41,36 @@ describe("useDocumentCitationUiStore", () => {
     );
     expect(useDocumentCitationUiStore.getState().consumeSelectionOverride()).toBeNull();
     expect(useDocumentCitationUiStore.getState().selectionOverride).toBeNull();
+  });
+
+  it("requestDocumentScan stores non-empty bibOverride", () => {
+    useDocumentCitationUiStore
+      .getState()
+      .requestDocumentScan("sel", "@article{a,\n  title={T},\n}");
+    const state = useDocumentCitationUiStore.getState();
+    expect(state.bibOverride).toBe("@article{a,\n  title={T},\n}");
+  });
+
+  it("requestDocumentScan ignores whitespace-only bibOverride", () => {
+    useDocumentCitationUiStore
+      .getState()
+      .requestDocumentScan("sel", "  \n\t  ");
+    expect(useDocumentCitationUiStore.getState().bibOverride).toBeNull();
+  });
+
+  it("requestDocumentScan without bibOverride leaves it null", () => {
+    useDocumentCitationUiStore.getState().requestDocumentScan("sel");
+    expect(useDocumentCitationUiStore.getState().bibOverride).toBeNull();
+  });
+
+  it("consumeBibOverride returns once then clears", () => {
+    useDocumentCitationUiStore
+      .getState()
+      .requestDocumentScan(undefined, "@misc{x,}");
+    expect(useDocumentCitationUiStore.getState().consumeBibOverride()).toBe(
+      "@misc{x,}",
+    );
+    expect(useDocumentCitationUiStore.getState().consumeBibOverride()).toBeNull();
+    expect(useDocumentCitationUiStore.getState().bibOverride).toBeNull();
   });
 });
