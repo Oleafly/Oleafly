@@ -46,6 +46,7 @@ interface AuthoringChaosProbe {
     readonly delta: number;
     readonly settleFrames: number;
     readonly detail: string;
+    readonly heightMismatch: string | null;
   }>;
   readonly maxGutterDelta: number;
   readonly documentScrollLeaks: number;
@@ -398,6 +399,26 @@ async function runAuthoringChaos(
               },
             ];
           });
+          // A gutter element sitting above its own correctly-resolved line means
+          // the columns disagree about some earlier line's height: CodeMirror
+          // sizes each gutter element from its heightmap, so a line whose real
+          // rendered height outgrew the recorded one shifts everything below by
+          // the difference. Find the first row where the two columns diverge -
+          // that line, not the sampled one, is the culprit.
+          let heightMismatch = null;
+          for (const entry of deltas) {
+            const d = entry.detail;
+            if (Math.abs(d.gutterHeight - d.lineHeight) > 1) {
+              heightMismatch = {
+                lineNumber: entry.lineNumber,
+                gutterHeight: d.gutterHeight,
+                lineHeight: d.lineHeight,
+                widget: d.widget,
+                text: d.expected,
+              };
+              break;
+            }
+          }
           let worst = 0;
           let worstLineNumber = 0;
           let worstDetail = null;
@@ -413,6 +434,7 @@ async function runAuthoringChaos(
             maxDelta: worst,
             worstLineNumber,
             worstDetail,
+            heightMismatch: heightMismatch ? JSON.stringify(heightMismatch) : null,
           };
         };
         let geometrySample = null;
@@ -425,7 +447,8 @@ async function runAuthoringChaos(
             const rect = line.getBoundingClientRect();
             return rect.bottom >= viewport.top && rect.top <= viewport.bottom;
           });
-          let { gutterCount, maxDelta, worstLineNumber, worstDetail } = gutterDelta();
+          let { gutterCount, maxDelta, worstLineNumber, worstDetail, heightMismatch } =
+            gutterDelta();
           let settleFrames = 0;
           // Debounced decoration dispatches (math previews, lint sets) can land
           // between an edit and this probe, leaving the gutter spacer one
@@ -437,7 +460,8 @@ async function runAuthoringChaos(
           while (maxDelta > 1.5 && settleFrames < 24) {
             await frame();
             settleFrames++;
-            ({ gutterCount, maxDelta, worstLineNumber, worstDetail } = gutterDelta());
+            ({ gutterCount, maxDelta, worstLineNumber, worstDetail, heightMismatch } =
+              gutterDelta());
           }
           maxGutterDelta = Math.max(maxGutterDelta, maxDelta);
           maxSettleFrames = Math.max(maxSettleFrames, settleFrames);
@@ -460,6 +484,7 @@ async function runAuthoringChaos(
                 // deeper object as "[Object]" - which is exactly what a CI log
                 // showed the first time round.
                 detail: JSON.stringify(worstDetail),
+                heightMismatch,
               });
             }
           }
