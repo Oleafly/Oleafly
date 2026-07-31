@@ -60,6 +60,7 @@ export function HomeDock() {
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
   const setSearchOpen = useSettingsStore((s) => s.setSearchOpen);
   const dockPlacement = useSettingsStore((s) => s.dockPlacement);
+  const latexTools = useSettingsStore((s) => s.latexTools);
   const hasProjects = useFilesStore((s) => s.projects.length > 0);
   const { theme, toggleTheme } = useTheme();
   const fullscreen = useFullscreen();
@@ -98,14 +99,16 @@ export function HomeDock() {
         testId="open-diagram-composer"
         tooltipSide={tooltipSide}
       />
-      <DockButton
-        label="Oleafly Tools"
-        icon={<ToolCase className="size-4" />}
-        onClick={openTools}
-        active={toolsOpen}
-        testId="open-latex-tools"
-        tooltipSide={tooltipSide}
-      />
+      {latexTools && (
+        <DockButton
+          label="Oleafly Tools"
+          icon={<ToolCase className="size-4" />}
+          onClick={openTools}
+          active={toolsOpen}
+          testId="open-latex-tools"
+          tooltipSide={tooltipSide}
+        />
+      )}
       <DockButton
         label={theme === "dark" ? "Light theme" : "Dark theme"}
         icon={theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}

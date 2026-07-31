@@ -373,9 +373,11 @@ export function WordCountButton() {
 export function EditorToolbar({
   wysiwyg,
   onToggleWysiwyg,
+  showVisualToggle = true,
 }: {
   wysiwyg: boolean;
   onToggleWysiwyg: () => void;
+  showVisualToggle?: boolean;
 }) {
   const [visionReady, setVisionReady] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -523,12 +525,14 @@ export function EditorToolbar({
       </div>
 
       <div className="ml-auto flex shrink-0 items-center gap-0.5">
-        <WysiwygModeSwitch
-          wysiwyg={wysiwyg}
-          onToggle={onToggleWysiwyg}
-          secondLabel={projectKind === "diagram" ? "Canvas" : "Visual"}
-          data-tour="wysiwyg-toggle"
-        />
+        {showVisualToggle && (
+          <WysiwygModeSwitch
+            wysiwyg={wysiwyg}
+            onToggle={onToggleWysiwyg}
+            secondLabel={projectKind === "diagram" ? "Canvas" : "Visual"}
+            data-tour="wysiwyg-toggle"
+          />
+        )}
         <WordCountButton />
         {!wysiwyg && (
           <IconBtn onClick={editorFind} title={`Find (${shortcut("⌘F")})`}>
