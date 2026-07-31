@@ -1,0 +1,382 @@
+{
+  "args": [],
+  "deps": [],
+  "envs": [],
+  "keys": {},
+  "macros": [
+    {
+      "name": "beamerbutton",
+      "snippet": "beamerbutton{${1:button text}}"
+    },
+    {
+      "name": "beamergotobutton",
+      "snippet": "beamergotobutton{${1:button text}}"
+    },
+    {
+      "name": "beamerreturnbutton",
+      "snippet": "beamerreturnbutton{${1:button text}}"
+    },
+    {
+      "name": "beamerskipbutton",
+      "snippet": "beamerskipbutton{${1:button text}}"
+    },
+    {
+      "name": "hyperlinkappendixend",
+      "snippet": "hyperlinkappendixend{${1:link text}}"
+    },
+    {
+      "name": "hyperlinkappendixend<overlay specification>",
+      "snippet": "hyperlinkappendixend<overlay specification>{${1:link text}}"
+    },
+    {
+      "name": "hyperlinkappendixstart",
+      "snippet": "hyperlinkappendixstart{${1:link text}}"
+    },
+    {
+      "name": "hyperlinkappendixstart<overlay specification>",
+      "snippet": "hyperlinkappendixstart<overlay specification>{${1:link text}}"
+    },
+    {
+      "name": "hyperlinkdocumentend",
+      "snippet": "hyperlinkdocumentend{${1:link text}}"
+    },
+    {
+      "name": "hyperlinkdocumentend<overlay specification>",
+      "snippet": "hyperlinkdocumentend<overlay specification>{${1:link text}}"
+    },
+    {
+      "name": "hyperlinkdocumentstart",
+      "snippet": "hyperlinkdocumentstart{${1:link text}}"
+    },
+    {
+      "name": "hyperlinkdocumentstart<overlay specification>",
+      "snippet": "hyperlinkdocumentstart<overlay specification>{${1:link text}}"
+    },
+    {
+      "name": "hyperlinkframeend",
+      "snippet": "hyperlinkframeend{${1:link text}}"
+    },
+    {
+      "name": "hyperlinkframeend<overlay specification>",
+      "snippet": "hyperlinkframeend<overlay specification>{${1:link text}}"
+    },
+    {
+      "name": "hyperlinkframeendprev",
+      "snippet": "hyperlinkframeendprev{${1:link text}}"
+    },
+    {
+      "name": "hyperlinkframeendprev<overlay specification>",
+      "snippet": "hyperlinkframeendprev<overlay specification>{${1:link text}}"
+    },
+    {
+      "name": "hyperlinkframestart",
+      "snippet": "hyperlinkframestart{${1:link text}}"
+    },
+    {
+      "name": "hyperlinkframestart<overlay specification>",
+      "snippet": "hyperlinkframestart<overlay specification>{${1:link text}}"
+    },
+    {
+      "name": "hyperlinkframestartnext",
+      "snippet": "hyperlinkframestartnext{${1:link text}}"
+    },
+    {
+      "name": "hyperlinkframestartnext<overlay specification>",
+      "snippet": "hyperlinkframestartnext<overlay specification>{${1:link text}}"
+    },
+    {
+      "name": "hyperlinkpartend",
+      "snippet": "hyperlinkpartend{${1:link text}}",
+      "unusual": true
+    },
+    {
+      "name": "hyperlinkpartend<overlay specification>",
+      "snippet": "hyperlinkpartend<overlay specification>{${1:link text}}",
+      "unusual": true
+    },
+    {
+      "name": "hyperlinkpartendprev",
+      "snippet": "hyperlinkpartendprev{${1:link text}}",
+      "unusual": true
+    },
+    {
+      "name": "hyperlinkpartendprev<overlay specification>",
+      "snippet": "hyperlinkpartendprev<overlay specification>{${1:link text}}",
+      "unusual": true
+    },
+    {
+      "name": "hyperlinkpartstart",
+      "snippet": "hyperlinkpartstart{${1:link text}}",
+      "unusual": true
+    },
+    {
+      "name": "hyperlinkpartstart<overlay specification>",
+      "snippet": "hyperlinkpartstart<overlay specification>{${1:link text}}",
+      "unusual": true
+    },
+    {
+      "name": "hyperlinkpartstartnext",
+      "snippet": "hyperlinkpartstartnext{${1:link text}}",
+      "unusual": true
+    },
+    {
+      "name": "hyperlinkpartstartnext<overlay specification>",
+      "snippet": "hyperlinkpartstartnext<overlay specification>{${1:link text}}",
+      "unusual": true
+    },
+    {
+      "name": "hyperlinkpresentationend",
+      "snippet": "hyperlinkpresentationend{${1:link text}}"
+    },
+    {
+      "name": "hyperlinkpresentationend<overlay specification>",
+      "snippet": "hyperlinkpresentationend<overlay specification>{${1:link text}}"
+    },
+    {
+      "name": "hyperlinkpresentationstart",
+      "snippet": "hyperlinkpresentationstart{${1:link text}}"
+    },
+    {
+      "name": "hyperlinkpresentationstart<overlay specification>",
+      "snippet": "hyperlinkpresentationstart<overlay specification>{${1:link text}}"
+    },
+    {
+      "name": "hyperlinksectionend",
+      "snippet": "hyperlinksectionend{${1:link text}}",
+      "unusual": true
+    },
+    {
+      "name": "hyperlinksectionend<overlay specification>",
+      "snippet": "hyperlinksectionend<overlay specification>{${1:link text}}",
+      "unusual": true
+    },
+    {
+      "name": "hyperlinksectionendprev",
+      "snippet": "hyperlinksectionendprev{${1:link text}}",
+      "unusual": true
+    },
+    {
+      "name": "hyperlinksectionendprev<overlay specification>",
+      "snippet": "hyperlinksectionendprev<overlay specification>{${1:link text}}",
+      "unusual": true
+    },
+    {
+      "name": "hyperlinksectionstart",
+      "snippet": "hyperlinksectionstart{${1:link text}}",
+      "unusual": true
+    },
+    {
+      "name": "hyperlinksectionstart<overlay specification>",
+      "snippet": "hyperlinksectionstart<overlay specification>{${1:link text}}",
+      "unusual": true
+    },
+    {
+      "name": "hyperlinksectionstartnext",
+      "snippet": "hyperlinksectionstartnext{${1:link text}}",
+      "unusual": true
+    },
+    {
+      "name": "hyperlinksectionstartnext<overlay specification>",
+      "snippet": "hyperlinksectionstartnext<overlay specification>{${1:link text}}",
+      "unusual": true
+    },
+    {
+      "name": "hyperlinkslidenext",
+      "snippet": "hyperlinkslidenext{${1:link text}}"
+    },
+    {
+      "name": "hyperlinkslidenext<overlay specification>",
+      "snippet": "hyperlinkslidenext<overlay specification>{${1:link text}}"
+    },
+    {
+      "name": "hyperlinkslideprev",
+      "snippet": "hyperlinkslideprev{${1:link text}}"
+    },
+    {
+      "name": "hyperlinkslideprev<overlay specification>",
+      "snippet": "hyperlinkslideprev<overlay specification>{${1:link text}}"
+    },
+    {
+      "name": "hyperlinksubsectionend",
+      "snippet": "hyperlinksubsectionend{${1:link text}}",
+      "unusual": true
+    },
+    {
+      "name": "hyperlinksubsectionend<overlay specification>",
+      "snippet": "hyperlinksubsectionend<overlay specification>{${1:link text}}",
+      "unusual": true
+    },
+    {
+      "name": "hyperlinksubsectionendprev",
+      "snippet": "hyperlinksubsectionendprev{${1:link text}}",
+      "unusual": true
+    },
+    {
+      "name": "hyperlinksubsectionendprev<overlay specification>",
+      "snippet": "hyperlinksubsectionendprev<overlay specification>{${1:link text}}",
+      "unusual": true
+    },
+    {
+      "name": "hyperlinksubsectionstart",
+      "snippet": "hyperlinksubsectionstart{${1:link text}}",
+      "unusual": true
+    },
+    {
+      "name": "hyperlinksubsectionstart<overlay specification>",
+      "snippet": "hyperlinksubsectionstart<overlay specification>{${1:link text}}",
+      "unusual": true
+    },
+    {
+      "name": "hyperlinksubsectionstartnext",
+      "snippet": "hyperlinksubsectionstartnext{${1:link text}}",
+      "unusual": true
+    },
+    {
+      "name": "hyperlinksubsectionstartnext<overlay specification>",
+      "snippet": "hyperlinksubsectionstartnext<overlay specification>{${1:link text}}",
+      "unusual": true
+    },
+    {
+      "name": "insertappendixendpage",
+      "unusual": true
+    },
+    {
+      "name": "insertappendixstartpage",
+      "unusual": true
+    },
+    {
+      "name": "insertbackfindforwardnavigationsymbol",
+      "unusual": true
+    },
+    {
+      "name": "insertbuttontext",
+      "unusual": true
+    },
+    {
+      "name": "insertdocnavigationsymbol",
+      "unusual": true
+    },
+    {
+      "name": "insertdocumentendpage",
+      "unusual": true
+    },
+    {
+      "name": "insertdocumentstartpage",
+      "unusual": true
+    },
+    {
+      "name": "insertframeendpage",
+      "unusual": true
+    },
+    {
+      "name": "insertframenavigationsymbol",
+      "unusual": true
+    },
+    {
+      "name": "insertframestartpage",
+      "unusual": true
+    },
+    {
+      "name": "insertgotosymbol",
+      "unusual": true
+    },
+    {
+      "name": "insertnavigation",
+      "snippet": "insertnavigation{${1:width}}",
+      "unusual": true
+    },
+    {
+      "name": "insertpartendpage",
+      "unusual": true
+    },
+    {
+      "name": "insertpartheadnumber",
+      "unusual": true
+    },
+    {
+      "name": "insertpartstartpage",
+      "unusual": true
+    },
+    {
+      "name": "insertpresentationendpage",
+      "unusual": true
+    },
+    {
+      "name": "insertpresentationstartpage",
+      "unusual": true
+    },
+    {
+      "name": "insertreturnsymbol",
+      "unusual": true
+    },
+    {
+      "name": "insertsectionendpage",
+      "unusual": true
+    },
+    {
+      "name": "insertsectionheadnumber",
+      "unusual": true
+    },
+    {
+      "name": "insertsectionnavigation",
+      "snippet": "insertsectionnavigation{${1:width}}",
+      "unusual": true
+    },
+    {
+      "name": "insertsectionnavigationhorizontal",
+      "snippet": "insertsectionnavigationhorizontal{${1:width}}{${2:left insert}}{${3:right insert}}",
+      "unusual": true
+    },
+    {
+      "name": "insertsectionnavigationsymbol",
+      "unusual": true
+    },
+    {
+      "name": "insertsectionstartpage",
+      "unusual": true
+    },
+    {
+      "name": "insertskipsymbol",
+      "unusual": true
+    },
+    {
+      "name": "insertslidenavigationsymbol",
+      "unusual": true
+    },
+    {
+      "name": "insertsubsectionendpage",
+      "unusual": true
+    },
+    {
+      "name": "insertsubsectionheadnumber",
+      "unusual": true
+    },
+    {
+      "name": "insertsubsectionnavigation",
+      "snippet": "insertsubsectionnavigation{${1:width}}",
+      "unusual": true
+    },
+    {
+      "name": "insertsubsectionnavigationhorizontal",
+      "snippet": "insertsubsectionnavigationhorizontal{${1:width}}{${2:left insert}}{${3:right insert}}",
+      "unusual": true
+    },
+    {
+      "name": "insertsubsectionnavigationsymbol",
+      "unusual": true
+    },
+    {
+      "name": "insertsubsectionstartpage",
+      "unusual": true
+    },
+    {
+      "name": "insertsubsubsectionheadnumber",
+      "unusual": true
+    },
+    {
+      "name": "insertverticalnavigation",
+      "snippet": "insertverticalnavigation{${1:width}}",
+      "unusual": true
+    }
+  ]
+}

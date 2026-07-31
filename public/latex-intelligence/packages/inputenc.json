@@ -1,0 +1,72 @@
+{
+  "args": [
+    "\\usepackage/inputenc#c,\\inputencoding#c"
+  ],
+  "deps": [
+    "ucs"
+  ],
+  "envs": [],
+  "keys": {
+    "\\usepackage/inputenc#c,\\inputencoding#c": [
+      "ascii",
+      "latin1",
+      "latin2",
+      "latin3",
+      "latin4",
+      "latin5",
+      "latin9",
+      "latin10",
+      "decmulti",
+      "cp850",
+      "cp852",
+      "cp858",
+      "cp437",
+      "cp437de",
+      "cp865",
+      "applemac",
+      "macce",
+      "next",
+      "cp1250",
+      "cp1252",
+      "cp1257",
+      "ansinew",
+      "utf8",
+      "utf8x",
+      "armscii8"
+    ]
+  },
+  "macros": [
+    {
+      "name": "DeclareInputMath",
+      "snippet": "DeclareInputMath{${1:slot}}{${2:text}}",
+      "unusual": true
+    },
+    {
+      "name": "DeclareInputText",
+      "snippet": "DeclareInputText{${1:slot}}{${2:math}}",
+      "unusual": true
+    },
+    {
+      "name": "DeclareUnicodeCharacter",
+      "snippet": "DeclareUnicodeCharacter{${1:slot}}{${2:text}}",
+      "unusual": true
+    },
+    {
+      "name": "definearmew",
+      "snippet": "definearmew{${1:character}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\usepackage/inputenc#c,\\inputencoding#c"
+      ],
+      "name": "inputencoding",
+      "snippet": "inputencoding{${1:encoding name}}",
+      "unusual": true
+    },
+    {
+      "name": "inputencodingname",
+      "unusual": true
+    }
+  ]
+}

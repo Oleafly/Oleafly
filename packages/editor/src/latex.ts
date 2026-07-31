@@ -25,6 +25,22 @@ export function setBibKeysProvider(fn: () => string[]) {
   bibKeysProvider = fn;
 }
 
+/**
+ * Corpus-backed completion data supplied by the host application. Getters
+ * return null while the corpus is still loading so callers can fall back to
+ * the built-in lists.
+ */
+export interface LatexCorpusProvider {
+  coreCommands(): readonly Completion[] | null;
+}
+
+let corpusProvider: LatexCorpusProvider | null = null;
+export function setLatexCorpusProvider(
+  provider: LatexCorpusProvider | null,
+) {
+  corpusProvider = provider;
+}
+
 export const latexLanguage = () =>
   new LanguageSupport(StreamLanguage.define(stex));
 
@@ -943,6 +959,9 @@ function commandCompletions(
         guardCompletionForSource(guard, option),
       ),
       ...packageCompletions(context.state, guard),
+      ...(corpusProvider?.coreCommands() ?? []).map((option) =>
+        guardCompletionForSource(guard, option),
+      ),
     ]),
   };
 }

@@ -1,0 +1,47 @@
+{
+  "args": [],
+  "deps": [],
+  "envs": [],
+  "keys": {
+    "\\floatstyle": [
+      "plain",
+      "plaintop",
+      "boxed",
+      "ruled"
+    ]
+  },
+  "macros": [
+    {
+      "name": "floatname",
+      "snippet": "floatname{${1:float type}}{${2:name}}"
+    },
+    {
+      "name": "floatplacement",
+      "snippet": "floatplacement{${1:float type}}{${2:default placement}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\floatstyle"
+      ],
+      "name": "floatstyle",
+      "snippet": "floatstyle{${1:default style}}"
+    },
+    {
+      "name": "listof",
+      "snippet": "listof{${1:float type}}{${2:title}}"
+    },
+    {
+      "name": "newfloat",
+      "snippet": "newfloat{${1:float type}}{${2:placement}}{${3:ext}}"
+    },
+    {
+      "name": "newfloat",
+      "snippet": "newfloat{${1:float type}}{${2:placement}}{${3:ext}}[${4:within}]"
+    },
+    {
+      "name": "restylefloat",
+      "snippet": "restylefloat{${1:float type}}"
+    }
+  ]
+}

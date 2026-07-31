@@ -1,0 +1,51 @@
+{
+  "args": [],
+  "deps": [],
+  "envs": [
+    {
+      "name": "description*"
+    },
+    {
+      "name": "enumerate*"
+    },
+    {
+      "name": "itemize*"
+    }
+  ],
+  "keys": {},
+  "macros": [
+    {
+      "name": "desclabelstyle",
+      "snippet": "desclabelstyle{${1:style}}"
+    },
+    {
+      "name": "desclabelwidth",
+      "snippet": "desclabelwidth{${1:length}}"
+    },
+    {
+      "name": "multilinelabel"
+    },
+    {
+      "name": "nextlinelabel"
+    },
+    {
+      "name": "pushlabel"
+    },
+    {
+      "name": "resume",
+      "snippet": "resume[${2:magicname}]{${1:envname}}"
+    },
+    {
+      "name": "resume",
+      "snippet": "resume{${1:envname}}"
+    },
+    {
+      "name": "suspend",
+      "snippet": "suspend[${2:magicname}]{${1:envname}}"
+    },
+    {
+      "name": "suspend",
+      "snippet": "suspend{${1:envname}}"
+    }
+  ]
+}

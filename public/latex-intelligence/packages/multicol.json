@@ -1,0 +1,114 @@
+{
+  "args": [
+    "\\usepackage/multicol#c"
+  ],
+  "deps": [],
+  "envs": [
+    {
+      "name": "multicols",
+      "snippet": "{${1:n}}"
+    },
+    {
+      "name": "multicols",
+      "snippet": "{${1:n}}[${2:preface}]"
+    },
+    {
+      "name": "multicols",
+      "snippet": "{${1:n}}[${2:preface}][${3:skip}]"
+    },
+    {
+      "name": "multicols*",
+      "snippet": "{${1:n}}"
+    },
+    {
+      "name": "multicols*",
+      "snippet": "{${1:n}}[${2:preface}]"
+    },
+    {
+      "name": "multicols*",
+      "snippet": "{${1:n}}[${2:preface}][${3:skip}]"
+    }
+  ],
+  "keys": {
+    "\\usepackage/multicol#c": [
+      "errorshow",
+      "infoshow",
+      "balancingshow",
+      "markshow",
+      "debugshow",
+      "grid",
+      "colaction"
+    ]
+  },
+  "macros": [
+    {
+      "name": "LRmulticolcolumns",
+      "unusual": true
+    },
+    {
+      "name": "RLmulticolcolumns",
+      "unusual": true
+    },
+    {
+      "name": "columnbreak"
+    },
+    {
+      "name": "columnseprulecolor",
+      "unusual": true
+    },
+    {
+      "name": "docolaction",
+      "snippet": "docolaction{${1:first}}{${2:middle}}{${3:last}}"
+    },
+    {
+      "name": "flushcolumns"
+    },
+    {
+      "name": "maxbalancingoverflow",
+      "unusual": true
+    },
+    {
+      "name": "multicolbaselineskip",
+      "unusual": true
+    },
+    {
+      "name": "multicolmindepthstring",
+      "unusual": true
+    },
+    {
+      "name": "multicolpretolerance",
+      "unusual": true
+    },
+    {
+      "name": "multicolsep",
+      "unusual": true
+    },
+    {
+      "name": "multicoltolerance",
+      "unusual": true
+    },
+    {
+      "name": "newcolumn"
+    },
+    {
+      "name": "postmulticols",
+      "unusual": true
+    },
+    {
+      "name": "premulticols",
+      "unusual": true
+    },
+    {
+      "name": "raggedcolumns"
+    },
+    {
+      "name": "setemergencystretch",
+      "snippet": "setemergencystretch{${1:num of cols}}{${2:hsize}}",
+      "unusual": true
+    },
+    {
+      "name": "vfilmaxdepth",
+      "unusual": true
+    }
+  ]
+}

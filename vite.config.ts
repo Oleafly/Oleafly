@@ -89,6 +89,7 @@ export default defineConfig(async () => ({
       "@oleafly/templates": path.resolve(__dirname, "./packages/templates/src"),
       "@oleafly/preview": path.resolve(__dirname, "./packages/preview/src"),
       "@oleafly/pdf-to-latex": path.resolve(__dirname, "./packages/pdf-to-latex/src"),
+      "@oleafly/latex-intelligence": path.resolve(__dirname, "./packages/latex-intelligence/src"),
     },
   },
   // Vite options tailored for Tauri development

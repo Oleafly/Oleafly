@@ -85,6 +85,9 @@ importers:
       '@oleafly/latex':
         specifier: workspace:*
         version: link:packages/latex
+      '@oleafly/latex-intelligence':
+        specifier: workspace:*
+        version: link:packages/latex-intelligence
       '@oleafly/preflight':
         specifier: workspace:*
         version: link:packages/preflight
@@ -427,6 +430,8 @@ importers:
         version: 19.2.7
 
   packages/latex: {}
+
+  packages/latex-intelligence: {}
 
   packages/pdf-to-latex:
     dependencies:

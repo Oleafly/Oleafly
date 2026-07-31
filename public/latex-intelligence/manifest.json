@@ -1,0 +1,1286 @@
+{
+  "commit": "becabe238d3539105dd5bb9b7b3571d26e5d43e0",
+  "files": {
+    "UPSTREAM-NOTICES.md": {
+      "from": [
+        "data/README.md"
+      ]
+    },
+    "at-suggestions.json": {
+      "from": [
+        "data/at-suggestions.json"
+      ]
+    },
+    "bibtex.json": {
+      "from": [
+        "data/bibtex-entries.json",
+        "data/bibtex-optional-entries.json"
+      ]
+    },
+    "class-names.json": {
+      "from": [
+        "data/classnames.json"
+      ]
+    },
+    "core.json": {
+      "from": [
+        "data/commands.json",
+        "data/environments.json"
+      ]
+    },
+    "package-names.json": {
+      "from": [
+        "data/packagenames.json"
+      ]
+    },
+    "packages/abntcite.json": {
+      "from": [
+        "data/packages/abntcite.json"
+      ]
+    },
+    "packages/acro.json": {
+      "from": [
+        "data/packages/acro.json"
+      ]
+    },
+    "packages/acronym.json": {
+      "from": [
+        "data/packages/acronym.json"
+      ]
+    },
+    "packages/afterpage.json": {
+      "from": [
+        "data/packages/afterpage.json"
+      ]
+    },
+    "packages/algorithm2e.json": {
+      "from": [
+        "data/packages/algorithm2e.json"
+      ]
+    },
+    "packages/allrunes.json": {
+      "from": [
+        "data/packages/allrunes.json"
+      ]
+    },
+    "packages/amsbsy.json": {
+      "from": [
+        "data/packages/amsbsy.json"
+      ]
+    },
+    "packages/amsfonts.json": {
+      "from": [
+        "data/packages/amsfonts.json"
+      ]
+    },
+    "packages/amsmath.json": {
+      "from": [
+        "data/packages/amsmath.json"
+      ]
+    },
+    "packages/amsopn.json": {
+      "from": [
+        "data/packages/amsopn.json"
+      ]
+    },
+    "packages/amssymb.json": {
+      "from": [
+        "data/packages/amssymb.json"
+      ]
+    },
+    "packages/amsthm.json": {
+      "from": [
+        "data/packages/amsthm.json"
+      ]
+    },
+    "packages/apacite.json": {
+      "from": [
+        "data/packages/apacite.json"
+      ]
+    },
+    "packages/appendix.json": {
+      "from": [
+        "data/packages/appendix.json"
+      ]
+    },
+    "packages/array.json": {
+      "from": [
+        "data/packages/array.json"
+      ]
+    },
+    "packages/attachfile.json": {
+      "from": [
+        "data/packages/attachfile.json"
+      ]
+    },
+    "packages/babel.json": {
+      "from": [
+        "data/packages/babel.json"
+      ]
+    },
+    "packages/beamerbaseauxtemplates.json": {
+      "from": [
+        "data/packages/beamerbaseauxtemplates.json"
+      ]
+    },
+    "packages/beamerbaseboxes.json": {
+      "from": [
+        "data/packages/beamerbaseboxes.json"
+      ]
+    },
+    "packages/beamerbasecolor.json": {
+      "from": [
+        "data/packages/beamerbasecolor.json"
+      ]
+    },
+    "packages/beamerbasecompatibility.json": {
+      "from": [
+        "data/packages/beamerbasecompatibility.json"
+      ]
+    },
+    "packages/beamerbasefont.json": {
+      "from": [
+        "data/packages/beamerbasefont.json"
+      ]
+    },
+    "packages/beamerbaseframe.json": {
+      "from": [
+        "data/packages/beamerbaseframe.json"
+      ]
+    },
+    "packages/beamerbaseframecomponents.json": {
+      "from": [
+        "data/packages/beamerbaseframecomponents.json"
+      ]
+    },
+    "packages/beamerbaseframesize.json": {
+      "from": [
+        "data/packages/beamerbaseframesize.json"
+      ]
+    },
+    "packages/beamerbaselocalstructure.json": {
+      "from": [
+        "data/packages/beamerbaselocalstructure.json"
+      ]
+    },
+    "packages/beamerbasemisc.json": {
+      "from": [
+        "data/packages/beamerbasemisc.json"
+      ]
+    },
+    "packages/beamerbasemodes.json": {
+      "from": [
+        "data/packages/beamerbasemodes.json"
+      ]
+    },
+    "packages/beamerbasenavigation.json": {
+      "from": [
+        "data/packages/beamerbasenavigation.json"
+      ]
+    },
+    "packages/beamerbasenotes.json": {
+      "from": [
+        "data/packages/beamerbasenotes.json"
+      ]
+    },
+    "packages/beamerbaseoptions.json": {
+      "from": [
+        "data/packages/beamerbaseoptions.json"
+      ]
+    },
+    "packages/beamerbaseoverlay.json": {
+      "from": [
+        "data/packages/beamerbaseoverlay.json"
+      ]
+    },
+    "packages/beamerbaserequires.json": {
+      "from": [
+        "data/packages/beamerbaserequires.json"
+      ]
+    },
+    "packages/beamerbasesection.json": {
+      "from": [
+        "data/packages/beamerbasesection.json"
+      ]
+    },
+    "packages/beamerbasetemplates.json": {
+      "from": [
+        "data/packages/beamerbasetemplates.json"
+      ]
+    },
+    "packages/beamerbasethemes.json": {
+      "from": [
+        "data/packages/beamerbasethemes.json"
+      ]
+    },
+    "packages/beamerbasetheorems.json": {
+      "from": [
+        "data/packages/beamerbasetheorems.json"
+      ]
+    },
+    "packages/beamerbasetitle.json": {
+      "from": [
+        "data/packages/beamerbasetitle.json"
+      ]
+    },
+    "packages/beamerbasetoc.json": {
+      "from": [
+        "data/packages/beamerbasetoc.json"
+      ]
+    },
+    "packages/beamerbasetranslator.json": {
+      "from": [
+        "data/packages/beamerbasetranslator.json"
+      ]
+    },
+    "packages/beamerbasetwoscreens.json": {
+      "from": [
+        "data/packages/beamerbasetwoscreens.json"
+      ]
+    },
+    "packages/beamerbaseverbatim.json": {
+      "from": [
+        "data/packages/beamerbaseverbatim.json"
+      ]
+    },
+    "packages/biblatex.json": {
+      "from": [
+        "data/packages/biblatex.json"
+      ]
+    },
+    "packages/bidi.json": {
+      "from": [
+        "data/packages/bidi.json"
+      ]
+    },
+    "packages/blindtext.json": {
+      "from": [
+        "data/packages/blindtext.json"
+      ]
+    },
+    "packages/bm.json": {
+      "from": [
+        "data/packages/bm.json"
+      ]
+    },
+    "packages/booktabs.json": {
+      "from": [
+        "data/packages/booktabs.json"
+      ]
+    },
+    "packages/braket.json": {
+      "from": [
+        "data/packages/braket.json"
+      ]
+    },
+    "packages/calc.json": {
+      "from": [
+        "data/packages/calc.json"
+      ]
+    },
+    "packages/cancel.json": {
+      "from": [
+        "data/packages/cancel.json"
+      ]
+    },
+    "packages/caption.json": {
+      "from": [
+        "data/packages/caption.json"
+      ]
+    },
+    "packages/cases.json": {
+      "from": [
+        "data/packages/cases.json"
+      ]
+    },
+    "packages/chemformula.json": {
+      "from": [
+        "data/packages/chemformula.json"
+      ]
+    },
+    "packages/chemstyle.json": {
+      "from": [
+        "data/packages/chemstyle.json"
+      ]
+    },
+    "packages/circuitikz.json": {
+      "from": [
+        "data/packages/circuitikz.json"
+      ]
+    },
+    "packages/class-altacv.json": {
+      "from": [
+        "data/packages/class-altacv.json"
+      ]
+    },
+    "packages/class-beamer.json": {
+      "from": [
+        "data/packages/class-beamer.json"
+      ]
+    },
+    "packages/class-book.json": {
+      "from": [
+        "data/packages/class-book.json"
+      ]
+    },
+    "packages/class-ctexart.json": {
+      "from": [
+        "data/packages/class-ctexart.json"
+      ]
+    },
+    "packages/class-ctexbeamer.json": {
+      "from": [
+        "data/packages/class-ctexbeamer.json"
+      ]
+    },
+    "packages/class-ctexbook.json": {
+      "from": [
+        "data/packages/class-ctexbook.json"
+      ]
+    },
+    "packages/class-ctexrep.json": {
+      "from": [
+        "data/packages/class-ctexrep.json"
+      ]
+    },
+    "packages/class-exam.json": {
+      "from": [
+        "data/packages/class-exam.json"
+      ]
+    },
+    "packages/class-letter.json": {
+      "from": [
+        "data/packages/class-letter.json"
+      ]
+    },
+    "packages/class-memoir.json": {
+      "from": [
+        "data/packages/class-memoir.json"
+      ]
+    },
+    "packages/class-moderncv.json": {
+      "from": [
+        "data/packages/class-moderncv.json"
+      ]
+    },
+    "packages/class-scrartcl.json": {
+      "from": [
+        "data/packages/class-scrartcl.json"
+      ]
+    },
+    "packages/class-scrbook.json": {
+      "from": [
+        "data/packages/class-scrbook.json"
+      ]
+    },
+    "packages/class-scrlttr2.json": {
+      "from": [
+        "data/packages/class-scrlttr2.json"
+      ]
+    },
+    "packages/class-scrreprt.json": {
+      "from": [
+        "data/packages/class-scrreprt.json"
+      ]
+    },
+    "packages/class-yathesis.json": {
+      "from": [
+        "data/packages/class-yathesis.json"
+      ]
+    },
+    "packages/cleveref.json": {
+      "from": [
+        "data/packages/cleveref.json"
+      ]
+    },
+    "packages/color.json": {
+      "from": [
+        "data/packages/color.json"
+      ]
+    },
+    "packages/colortbl.json": {
+      "from": [
+        "data/packages/colortbl.json"
+      ]
+    },
+    "packages/commath.json": {
+      "from": [
+        "data/packages/commath.json"
+      ]
+    },
+    "packages/comment.json": {
+      "from": [
+        "data/packages/comment.json"
+      ]
+    },
+    "packages/coordsys.json": {
+      "from": [
+        "data/packages/coordsys.json"
+      ]
+    },
+    "packages/cquthesis.json": {
+      "from": [
+        "data/packages/cquthesis.json"
+      ]
+    },
+    "packages/csquotes.json": {
+      "from": [
+        "data/packages/csquotes.json"
+      ]
+    },
+    "packages/ctex.json": {
+      "from": [
+        "data/packages/ctex.json"
+      ]
+    },
+    "packages/currfile.json": {
+      "from": [
+        "data/packages/currfile.json"
+      ]
+    },
+    "packages/currvita.json": {
+      "from": [
+        "data/packages/currvita.json"
+      ]
+    },
+    "packages/cyrillic.json": {
+      "from": [
+        "data/packages/cyrillic.json"
+      ]
+    },
+    "packages/datatool-base.json": {
+      "from": [
+        "data/packages/datatool-base.json"
+      ]
+    },
+    "packages/datatool.json": {
+      "from": [
+        "data/packages/datatool.json"
+      ]
+    },
+    "packages/doi.json": {
+      "from": [
+        "data/packages/doi.json"
+      ]
+    },
+    "packages/easy-todo.json": {
+      "from": [
+        "data/packages/easy-todo.json"
+      ]
+    },
+    "packages/empheq.json": {
+      "from": [
+        "data/packages/empheq.json"
+      ]
+    },
+    "packages/endnotes.json": {
+      "from": [
+        "data/packages/endnotes.json"
+      ]
+    },
+    "packages/enumerate.json": {
+      "from": [
+        "data/packages/enumerate.json"
+      ]
+    },
+    "packages/epigraph.json": {
+      "from": [
+        "data/packages/epigraph.json"
+      ]
+    },
+    "packages/epstopdf.json": {
+      "from": [
+        "data/packages/epstopdf.json"
+      ]
+    },
+    "packages/esint.json": {
+      "from": [
+        "data/packages/esint.json"
+      ]
+    },
+    "packages/etoolbox.json": {
+      "from": [
+        "data/packages/etoolbox.json"
+      ]
+    },
+    "packages/eurosym.json": {
+      "from": [
+        "data/packages/eurosym.json"
+      ]
+    },
+    "packages/expl3.json": {
+      "from": [
+        "data/packages/expl3.json"
+      ]
+    },
+    "packages/fancybox.json": {
+      "from": [
+        "data/packages/fancybox.json"
+      ]
+    },
+    "packages/fancyhdr.json": {
+      "from": [
+        "data/packages/fancyhdr.json"
+      ]
+    },
+    "packages/fancyref.json": {
+      "from": [
+        "data/packages/fancyref.json"
+      ]
+    },
+    "packages/fancyunits-base.json": {
+      "from": [
+        "data/packages/fancyunits-base.json"
+      ]
+    },
+    "packages/fancyunits-np.json": {
+      "from": [
+        "data/packages/fancyunits-np.json"
+      ]
+    },
+    "packages/fancyunits-per.json": {
+      "from": [
+        "data/packages/fancyunits-per.json"
+      ]
+    },
+    "packages/fancyunits_big-fractions.json": {
+      "from": [
+        "data/packages/fancyunits_big-fractions.json"
+      ]
+    },
+    "packages/fancyunits_medium-fractions.json": {
+      "from": [
+        "data/packages/fancyunits_medium-fractions.json"
+      ]
+    },
+    "packages/fancyunits_small-fractions.json": {
+      "from": [
+        "data/packages/fancyunits_small-fractions.json"
+      ]
+    },
+    "packages/fancyvrb.json": {
+      "from": [
+        "data/packages/fancyvrb.json"
+      ]
+    },
+    "packages/fhgtechdoku_additional.json": {
+      "from": [
+        "data/packages/fhgtechdoku_additional.json"
+      ]
+    },
+    "packages/fixme.json": {
+      "from": [
+        "data/packages/fixme.json"
+      ]
+    },
+    "packages/float.json": {
+      "from": [
+        "data/packages/float.json"
+      ]
+    },
+    "packages/fontspec.json": {
+      "from": [
+        "data/packages/fontspec.json"
+      ]
+    },
+    "packages/geometry.json": {
+      "from": [
+        "data/packages/geometry.json"
+      ]
+    },
+    "packages/german.json": {
+      "from": [
+        "data/packages/german.json"
+      ]
+    },
+    "packages/glossaries.json": {
+      "from": [
+        "data/packages/glossaries.json"
+      ]
+    },
+    "packages/glosstex.json": {
+      "from": [
+        "data/packages/glosstex.json"
+      ]
+    },
+    "packages/graphicx.json": {
+      "from": [
+        "data/packages/graphicx.json"
+      ]
+    },
+    "packages/harvard.json": {
+      "from": [
+        "data/packages/harvard.json"
+      ]
+    },
+    "packages/hyperref.json": {
+      "from": [
+        "data/packages/hyperref.json"
+      ]
+    },
+    "packages/ifluatex.json": {
+      "from": [
+        "data/packages/ifluatex.json"
+      ]
+    },
+    "packages/ifpdf.json": {
+      "from": [
+        "data/packages/ifpdf.json"
+      ]
+    },
+    "packages/ifplatform.json": {
+      "from": [
+        "data/packages/ifplatform.json"
+      ]
+    },
+    "packages/iftex.json": {
+      "from": [
+        "data/packages/iftex.json"
+      ]
+    },
+    "packages/ifthen.json": {
+      "from": [
+        "data/packages/ifthen.json"
+      ]
+    },
+    "packages/ifvtex.json": {
+      "from": [
+        "data/packages/ifvtex.json"
+      ]
+    },
+    "packages/ifxetex.json": {
+      "from": [
+        "data/packages/ifxetex.json"
+      ]
+    },
+    "packages/import.json": {
+      "from": [
+        "data/packages/import.json"
+      ]
+    },
+    "packages/inputenc.json": {
+      "from": [
+        "data/packages/inputenc.json"
+      ]
+    },
+    "packages/jurabib.json": {
+      "from": [
+        "data/packages/jurabib.json"
+      ]
+    },
+    "packages/kantlipsum.json": {
+      "from": [
+        "data/packages/kantlipsum.json"
+      ]
+    },
+    "packages/latex-209.json": {
+      "from": [
+        "data/packages/latex-209.json"
+      ]
+    },
+    "packages/latex-dev.json": {
+      "from": [
+        "data/packages/latex-dev.json"
+      ]
+    },
+    "packages/latex-document.json": {
+      "from": [
+        "data/packages/latex-document.json"
+      ]
+    },
+    "packages/latex-l2tabu.json": {
+      "from": [
+        "data/packages/latex-l2tabu.json"
+      ]
+    },
+    "packages/layout.json": {
+      "from": [
+        "data/packages/layout.json"
+      ]
+    },
+    "packages/letltxmacro.json": {
+      "from": [
+        "data/packages/letltxmacro.json"
+      ]
+    },
+    "packages/libertine.json": {
+      "from": [
+        "data/packages/libertine.json"
+      ]
+    },
+    "packages/lipsum.json": {
+      "from": [
+        "data/packages/lipsum.json"
+      ]
+    },
+    "packages/listings.json": {
+      "from": [
+        "data/packages/listings.json"
+      ]
+    },
+    "packages/logsys.json": {
+      "from": [
+        "data/packages/logsys.json"
+      ]
+    },
+    "packages/longtable.json": {
+      "from": [
+        "data/packages/longtable.json"
+      ]
+    },
+    "packages/lscape.json": {
+      "from": [
+        "data/packages/lscape.json"
+      ]
+    },
+    "packages/ltxtable.json": {
+      "from": [
+        "data/packages/ltxtable.json"
+      ]
+    },
+    "packages/luatex.json": {
+      "from": [
+        "data/packages/luatex.json"
+      ]
+    },
+    "packages/luatodonotes.json": {
+      "from": [
+        "data/packages/luatodonotes.json"
+      ]
+    },
+    "packages/manyfoot.json": {
+      "from": [
+        "data/packages/manyfoot.json"
+      ]
+    },
+    "packages/marvosym.json": {
+      "from": [
+        "data/packages/marvosym.json"
+      ]
+    },
+    "packages/mathtools.json": {
+      "from": [
+        "data/packages/mathtools.json"
+      ]
+    },
+    "packages/mdframed.json": {
+      "from": [
+        "data/packages/mdframed.json"
+      ]
+    },
+    "packages/mdwlist.json": {
+      "from": [
+        "data/packages/mdwlist.json"
+      ]
+    },
+    "packages/memhfixc.json": {
+      "from": [
+        "data/packages/memhfixc.json"
+      ]
+    },
+    "packages/menukeys.json": {
+      "from": [
+        "data/packages/menukeys.json"
+      ]
+    },
+    "packages/metrix.json": {
+      "from": [
+        "data/packages/metrix.json"
+      ]
+    },
+    "packages/mhchem.json": {
+      "from": [
+        "data/packages/mhchem.json"
+      ]
+    },
+    "packages/microtype.json": {
+      "from": [
+        "data/packages/microtype.json"
+      ]
+    },
+    "packages/minted.json": {
+      "from": [
+        "data/packages/minted.json"
+      ]
+    },
+    "packages/multicol.json": {
+      "from": [
+        "data/packages/multicol.json"
+      ]
+    },
+    "packages/multido.json": {
+      "from": [
+        "data/packages/multido.json"
+      ]
+    },
+    "packages/multimedia.json": {
+      "from": [
+        "data/packages/multimedia.json"
+      ]
+    },
+    "packages/multirow.json": {
+      "from": [
+        "data/packages/multirow.json"
+      ]
+    },
+    "packages/nameref.json": {
+      "from": [
+        "data/packages/nameref.json"
+      ]
+    },
+    "packages/natbib.json": {
+      "from": [
+        "data/packages/natbib.json"
+      ]
+    },
+    "packages/needspace.json": {
+      "from": [
+        "data/packages/needspace.json"
+      ]
+    },
+    "packages/newclude.json": {
+      "from": [
+        "data/packages/newclude.json"
+      ]
+    },
+    "packages/ngerman.json": {
+      "from": [
+        "data/packages/ngerman.json"
+      ]
+    },
+    "packages/nicefrac.json": {
+      "from": [
+        "data/packages/nicefrac.json"
+      ]
+    },
+    "packages/nomencl.json": {
+      "from": [
+        "data/packages/nomencl.json"
+      ]
+    },
+    "packages/nth.json": {
+      "from": [
+        "data/packages/nth.json"
+      ]
+    },
+    "packages/paracol.json": {
+      "from": [
+        "data/packages/paracol.json"
+      ]
+    },
+    "packages/parskip.json": {
+      "from": [
+        "data/packages/parskip.json"
+      ]
+    },
+    "packages/pdfpages.json": {
+      "from": [
+        "data/packages/pdfpages.json"
+      ]
+    },
+    "packages/pgf.json": {
+      "from": [
+        "data/packages/pgf.json"
+      ]
+    },
+    "packages/pgfcore.json": {
+      "from": [
+        "data/packages/pgfcore.json"
+      ]
+    },
+    "packages/pgfplots.json": {
+      "from": [
+        "data/packages/pgfplots.json"
+      ]
+    },
+    "packages/physics.json": {
+      "from": [
+        "data/packages/physics.json"
+      ]
+    },
+    "packages/physics2.json": {
+      "from": [
+        "data/packages/physics2.json"
+      ]
+    },
+    "packages/pifont.json": {
+      "from": [
+        "data/packages/pifont.json"
+      ]
+    },
+    "packages/placeins.json": {
+      "from": [
+        "data/packages/placeins.json"
+      ]
+    },
+    "packages/psfrag.json": {
+      "from": [
+        "data/packages/psfrag.json"
+      ]
+    },
+    "packages/pst-3d.json": {
+      "from": [
+        "data/packages/pst-3d.json"
+      ]
+    },
+    "packages/pst-blur.json": {
+      "from": [
+        "data/packages/pst-blur.json"
+      ]
+    },
+    "packages/pst-char.json": {
+      "from": [
+        "data/packages/pst-char.json"
+      ]
+    },
+    "packages/pst-coil.json": {
+      "from": [
+        "data/packages/pst-coil.json"
+      ]
+    },
+    "packages/pst-eps.json": {
+      "from": [
+        "data/packages/pst-eps.json"
+      ]
+    },
+    "packages/pst-fill.json": {
+      "from": [
+        "data/packages/pst-fill.json"
+      ]
+    },
+    "packages/pst-node.json": {
+      "from": [
+        "data/packages/pst-node.json"
+      ]
+    },
+    "packages/pst-plot.json": {
+      "from": [
+        "data/packages/pst-plot.json"
+      ]
+    },
+    "packages/pst-text.json": {
+      "from": [
+        "data/packages/pst-text.json"
+      ]
+    },
+    "packages/pst-tree.json": {
+      "from": [
+        "data/packages/pst-tree.json"
+      ]
+    },
+    "packages/pstricks.json": {
+      "from": [
+        "data/packages/pstricks.json"
+      ]
+    },
+    "packages/rotating.json": {
+      "from": [
+        "data/packages/rotating.json"
+      ]
+    },
+    "packages/scraddr.json": {
+      "from": [
+        "data/packages/scraddr.json"
+      ]
+    },
+    "packages/scrdate.json": {
+      "from": [
+        "data/packages/scrdate.json"
+      ]
+    },
+    "packages/scrlfile.json": {
+      "from": [
+        "data/packages/scrlfile.json"
+      ]
+    },
+    "packages/scrpage2.json": {
+      "from": [
+        "data/packages/scrpage2.json"
+      ]
+    },
+    "packages/scrtime.json": {
+      "from": [
+        "data/packages/scrtime.json"
+      ]
+    },
+    "packages/secsty.json": {
+      "from": [
+        "data/packages/secsty.json"
+      ]
+    },
+    "packages/sectsty.json": {
+      "from": [
+        "data/packages/sectsty.json"
+      ]
+    },
+    "packages/setspace.json": {
+      "from": [
+        "data/packages/setspace.json"
+      ]
+    },
+    "packages/siunitx-special.json": {
+      "from": [
+        "data/packages/siunitx-special.json"
+      ]
+    },
+    "packages/siunitx.json": {
+      "from": [
+        "data/packages/siunitx.json"
+      ]
+    },
+    "packages/soul.json": {
+      "from": [
+        "data/packages/soul.json"
+      ]
+    },
+    "packages/subcaption.json": {
+      "from": [
+        "data/packages/subcaption.json"
+      ]
+    },
+    "packages/subfig.json": {
+      "from": [
+        "data/packages/subfig.json"
+      ]
+    },
+    "packages/subfigure.json": {
+      "from": [
+        "data/packages/subfigure.json"
+      ]
+    },
+    "packages/subfiles.json": {
+      "from": [
+        "data/packages/subfiles.json"
+      ]
+    },
+    "packages/supertabular.json": {
+      "from": [
+        "data/packages/supertabular.json"
+      ]
+    },
+    "packages/svn-multi.json": {
+      "from": [
+        "data/packages/svn-multi.json"
+      ]
+    },
+    "packages/svninfo.json": {
+      "from": [
+        "data/packages/svninfo.json"
+      ]
+    },
+    "packages/tabu.json": {
+      "from": [
+        "data/packages/tabu.json"
+      ]
+    },
+    "packages/tabularray.json": {
+      "from": [
+        "data/packages/tabularray.json"
+      ]
+    },
+    "packages/tabularx.json": {
+      "from": [
+        "data/packages/tabularx.json"
+      ]
+    },
+    "packages/tabulary.json": {
+      "from": [
+        "data/packages/tabulary.json"
+      ]
+    },
+    "packages/tcolorbox.json": {
+      "from": [
+        "data/packages/tcolorbox.json"
+      ]
+    },
+    "packages/tensor.json": {
+      "from": [
+        "data/packages/tensor.json"
+      ]
+    },
+    "packages/tex.json": {
+      "from": [
+        "data/packages/tex.json"
+      ]
+    },
+    "packages/textcomp.json": {
+      "from": [
+        "data/packages/textcomp.json"
+      ]
+    },
+    "packages/theorem.json": {
+      "from": [
+        "data/packages/theorem.json"
+      ]
+    },
+    "packages/tikz-cd.json": {
+      "from": [
+        "data/packages/tikz-cd.json"
+      ]
+    },
+    "packages/tikz-timing.json": {
+      "from": [
+        "data/packages/tikz-timing.json"
+      ]
+    },
+    "packages/tikz.json": {
+      "from": [
+        "data/packages/tikz.json"
+      ]
+    },
+    "packages/titlesec.json": {
+      "from": [
+        "data/packages/titlesec.json"
+      ]
+    },
+    "packages/tkz-euclide.json": {
+      "from": [
+        "data/packages/tkz-euclide.json"
+      ]
+    },
+    "packages/tocbibind.json": {
+      "from": [
+        "data/packages/tocbibind.json"
+      ]
+    },
+    "packages/tocloft.json": {
+      "from": [
+        "data/packages/tocloft.json"
+      ]
+    },
+    "packages/todonotes.json": {
+      "from": [
+        "data/packages/todonotes.json"
+      ]
+    },
+    "packages/ulem.json": {
+      "from": [
+        "data/packages/ulem.json"
+      ]
+    },
+    "packages/units.json": {
+      "from": [
+        "data/packages/units.json"
+      ]
+    },
+    "packages/upgreek.json": {
+      "from": [
+        "data/packages/upgreek.json"
+      ]
+    },
+    "packages/url.json": {
+      "from": [
+        "data/packages/url.json"
+      ]
+    },
+    "packages/varioref.json": {
+      "from": [
+        "data/packages/varioref.json"
+      ]
+    },
+    "packages/verse.json": {
+      "from": [
+        "data/packages/verse.json"
+      ]
+    },
+    "packages/virginialake.json": {
+      "from": [
+        "data/packages/virginialake.json"
+      ]
+    },
+    "packages/wasysym.json": {
+      "from": [
+        "data/packages/wasysym.json"
+      ]
+    },
+    "packages/watermark.json": {
+      "from": [
+        "data/packages/watermark.json"
+      ]
+    },
+    "packages/xcolor.json": {
+      "from": [
+        "data/packages/xcolor.json"
+      ]
+    },
+    "packages/xeCJK.json": {
+      "from": [
+        "data/packages/xeCJK.json"
+      ]
+    },
+    "packages/xeCJKfntef.json": {
+      "from": [
+        "data/packages/xeCJKfntef.json"
+      ]
+    },
+    "packages/xepersian.json": {
+      "from": [
+        "data/packages/xepersian.json"
+      ]
+    },
+    "packages/xetex.json": {
+      "from": [
+        "data/packages/xetex.json"
+      ]
+    },
+    "packages/xifthen.json": {
+      "from": [
+        "data/packages/xifthen.json"
+      ]
+    },
+    "packages/xltxtra.json": {
+      "from": [
+        "data/packages/xltxtra.json"
+      ]
+    },
+    "packages/xparse.json": {
+      "from": [
+        "data/packages/xparse.json"
+      ]
+    },
+    "packages/xspace.json": {
+      "from": [
+        "data/packages/xspace.json"
+      ]
+    },
+    "packages/xtab.json": {
+      "from": [
+        "data/packages/xtab.json"
+      ]
+    },
+    "packages/xy.json": {
+      "from": [
+        "data/packages/xy.json"
+      ]
+    },
+    "packages/yathesis.json": {
+      "from": [
+        "data/packages/yathesis.json"
+      ]
+    },
+    "packages/yfonts.json": {
+      "from": [
+        "data/packages/yfonts.json"
+      ]
+    },
+    "packages/zhnumber.json": {
+      "from": [
+        "data/packages/zhnumber.json"
+      ]
+    },
+    "unimath.json": {
+      "from": [
+        "data/unimathsymbols.json"
+      ]
+    }
+  },
+  "generatedBy": "scripts/latex-intelligence-extract.mjs",
+  "license": "MIT",
+  "notices": [
+    "MIT (c) James Yu and LaTeX Workshop contributors",
+    "packages/*.json derived from TeXStudio CWL data (texstudio-org/texstudio completion files)",
+    "package/class name lists derived from CTAN package metadata",
+    "unimath.json derived from unimathsymbols.txt (c) Guenter Milde, LPPL"
+  ],
+  "source": "https://github.com/James-Yu/LaTeX-Workshop"
+}

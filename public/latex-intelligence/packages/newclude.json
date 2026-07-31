@@ -1,0 +1,194 @@
+{
+  "args": [
+    "\\usepackage/newclude#c"
+  ],
+  "deps": [
+    "afterpage",
+    "moredefs"
+  ],
+  "envs": [],
+  "keys": {
+    "\\usepackage/newclude#c": [
+      "simple",
+      "tag",
+      "allocate"
+    ]
+  },
+  "macros": [
+    {
+      "name": "AddSpokes",
+      "snippet": "AddSpokes{${1:wheel}}{${2:spokes}}",
+      "unusual": true
+    },
+    {
+      "name": "AtBeginInclude",
+      "snippet": "AtBeginInclude{${1:tokens}}",
+      "unusual": true
+    },
+    {
+      "name": "AtEndInclude",
+      "snippet": "AtEndInclude{${1:tokens}}",
+      "unusual": true
+    },
+    {
+      "name": "DeclareFormattingPackage",
+      "snippet": "DeclareFormattingPackage{${1:package name}}",
+      "unusual": true
+    },
+    {
+      "name": "DefWheel",
+      "snippet": "DefWheel{${1:cmd}}{${2:spokes}}",
+      "unusual": true
+    },
+    {
+      "name": "DefaultIncludeSurround",
+      "unusual": true
+    },
+    {
+      "name": "Disable",
+      "snippet": "Disable{${1:tokens}}",
+      "unusual": true
+    },
+    {
+      "name": "DisableAll",
+      "unusual": true
+    },
+    {
+      "name": "DynamicAux",
+      "unusual": true
+    },
+    {
+      "name": "IfAllowed",
+      "snippet": "IfAllowed{${1:part name}}{${2:true}}{${3:false}}",
+      "unusual": true
+    },
+    {
+      "name": "IfTop",
+      "snippet": "IfTop{${1:wheel}}{${2:spoke}}{${3:true}}{${4:false}}",
+      "unusual": true
+    },
+    {
+      "name": "IncludeEnv",
+      "snippet": "IncludeEnv[${4:prehook}]{${1:file}}{${2:envname}}{${3:instance}}",
+      "unusual": true
+    },
+    {
+      "name": "IncludeEnv",
+      "snippet": "IncludeEnv[${4:prehook}]{${1:file}}{${2:envname}}{${3:instance}}[${5:posthook}]",
+      "unusual": true
+    },
+    {
+      "name": "IncludeEnv",
+      "snippet": "IncludeEnv{${1:file}}{${2:envname}}{${3:instance}}",
+      "unusual": true
+    },
+    {
+      "name": "IncludeEnv*",
+      "snippet": "IncludeEnv*[${4:prehook}]{${1:file}}{${2:envname}}{${3:instance}}",
+      "unusual": true
+    },
+    {
+      "name": "IncludeEnv*",
+      "snippet": "IncludeEnv*[${4:prehook}]{${1:file}}{${2:envname}}{${3:instance}}[${5:posthook}]",
+      "unusual": true
+    },
+    {
+      "name": "IncludeEnv*",
+      "snippet": "IncludeEnv*{${1:file}}{${2:envname}}{${3:instance}}",
+      "unusual": true
+    },
+    {
+      "name": "IncludeName",
+      "unusual": true
+    },
+    {
+      "name": "IncludeSurround",
+      "unusual": true
+    },
+    {
+      "name": "InitWheel",
+      "snippet": "InitWheel{${1:cmd}}",
+      "unusual": true
+    },
+    {
+      "name": "NextAux",
+      "unusual": true
+    },
+    {
+      "name": "ParentName",
+      "unusual": true
+    },
+    {
+      "name": "Roll",
+      "snippet": "Roll{${1:wheel}}",
+      "unusual": true
+    },
+    {
+      "name": "SkipPreamblefalse",
+      "unusual": true
+    },
+    {
+      "name": "SkipPreambletrue",
+      "unusual": true
+    },
+    {
+      "name": "StaticAux",
+      "snippet": "StaticAux{${1:number of streams}}",
+      "unusual": true
+    },
+    {
+      "name": "Top",
+      "snippet": "Top{${1:wheel}}",
+      "unusual": true
+    },
+    {
+      "name": "ifSkipPreamble",
+      "unusual": true
+    },
+    {
+      "name": "include",
+      "snippet": "include[${2:prehook}]{${1:file}}"
+    },
+    {
+      "name": "include",
+      "snippet": "include[${2:prehook}]{${1:file}}[${3:posthook}]"
+    },
+    {
+      "name": "include*",
+      "snippet": "include*[${2:prehook}]{${1:file}}"
+    },
+    {
+      "name": "include*",
+      "snippet": "include*[${2:prehook}]{${1:file}}[${3:posthook}]"
+    },
+    {
+      "name": "includeall"
+    },
+    {
+      "name": "includedoc",
+      "snippet": "includedoc[${2:prehook}]{${1:file}}"
+    },
+    {
+      "name": "includedoc",
+      "snippet": "includedoc[${2:prehook}]{${1:file}}[${3:posthook}]"
+    },
+    {
+      "name": "includedoc*",
+      "snippet": "includedoc*[${2:prehook}]{${1:file}}"
+    },
+    {
+      "name": "includedoc*",
+      "snippet": "includedoc*[${2:prehook}]{${1:file}}[${3:posthook}]"
+    },
+    {
+      "name": "includedocskip",
+      "snippet": "includedocskip[${2:prehook}]{${1:file}}[${3:posthook}]",
+      "unusual": true
+    },
+    {
+      "name": "includedocskip*",
+      "snippet": "includedocskip*[${2:prehook}]{${1:file}}[${3:posthook}]",
+      "unusual": true
+    }
+  ]
+}

@@ -1,0 +1,95 @@
+{
+  "args": [],
+  "deps": [],
+  "envs": [],
+  "keys": {},
+  "macros": [
+    {
+      "name": "aboverulesep",
+      "unusual": true
+    },
+    {
+      "name": "abovetopsep",
+      "unusual": true
+    },
+    {
+      "name": "addlinespace"
+    },
+    {
+      "name": "addlinespace",
+      "snippet": "addlinespace[${1:vspace}]"
+    },
+    {
+      "name": "belowbottomsep",
+      "unusual": true
+    },
+    {
+      "name": "belowrulesep",
+      "unusual": true
+    },
+    {
+      "name": "bottomrule"
+    },
+    {
+      "name": "bottomrule",
+      "snippet": "bottomrule[${1:line width}]"
+    },
+    {
+      "name": "cmidrule",
+      "snippet": "cmidrule(${2:trim}){${1:a-b}}"
+    },
+    {
+      "name": "cmidrule",
+      "snippet": "cmidrule[${2:line width}](${3:trim}){${1:a-b}}"
+    },
+    {
+      "name": "cmidrule",
+      "snippet": "cmidrule{${1:a-b}}"
+    },
+    {
+      "name": "cmidrulekern",
+      "unusual": true
+    },
+    {
+      "name": "cmidrulesep",
+      "unusual": true
+    },
+    {
+      "name": "cmidrulewidth",
+      "unusual": true
+    },
+    {
+      "name": "defaultaddspace",
+      "unusual": true
+    },
+    {
+      "name": "heavyrulewidth",
+      "unusual": true
+    },
+    {
+      "name": "lightrulewidth",
+      "unusual": true
+    },
+    {
+      "name": "midrule"
+    },
+    {
+      "name": "midrule",
+      "snippet": "midrule[${1:line width}]"
+    },
+    {
+      "name": "morecmidrules"
+    },
+    {
+      "name": "specialrule",
+      "snippet": "specialrule{${1:line width}}{${2:above space}}{${3:below space}}"
+    },
+    {
+      "name": "toprule"
+    },
+    {
+      "name": "toprule",
+      "snippet": "toprule[${1:line width}]"
+    }
+  ]
+}

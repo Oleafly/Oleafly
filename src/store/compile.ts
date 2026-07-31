@@ -33,6 +33,7 @@ import {
   readProjectSources,
   useIndexStore,
 } from "@/store/project-index";
+import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 
 // Bumped on every recompile so a compile that finishes after the project was
 // switched (or a newer compile started) can detect it is stale and not overwrite
@@ -116,7 +117,7 @@ export function isCompileRequestIdentityCurrent(
   const files = useFilesStore.getState();
   return (
     files.projectId === identity.projectId &&
-    (files.mainDoc || "main.tex") === identity.mainDocument &&
+    resolveEffectiveMainDoc().mainDoc === identity.mainDocument &&
     projectRevisionFor(identity.projectId) === identity.projectRevision &&
     compileIntentGeneration === identity.requestGeneration
   );
@@ -143,7 +144,7 @@ export function isCompileOutputStillWanted(
   const files = useFilesStore.getState();
   return (
     files.projectId === identity.projectId &&
-    (files.mainDoc || "main.tex") === identity.mainDocument &&
+    resolveEffectiveMainDoc().mainDoc === identity.mainDocument &&
     compileIntentGeneration === identity.requestGeneration
   );
 }
@@ -151,7 +152,7 @@ export function isCompileOutputStillWanted(
 function currentSourcePaths(projectId: string): string[] | null {
   const files = useFilesStore.getState();
   if (files.projectId !== projectId || files.loading) return null;
-  return currentProjectSourcePaths(files.mainDoc || "main.tex");
+  return currentProjectSourcePaths(resolveEffectiveMainDoc().mainDoc);
 }
 
 function samePaths(
@@ -224,7 +225,7 @@ export function isCompileCheckpointCurrent(
   const files = useFilesStore.getState();
   if (
     files.projectId !== checkpoint.projectId ||
-    (files.mainDoc || "main.tex") !== checkpoint.mainDocument
+    resolveEffectiveMainDoc().mainDoc !== checkpoint.mainDocument
   ) {
     return false;
   }
@@ -453,14 +454,17 @@ export const useCompileStore = create<CompileState>((set, get) => ({
 
     const files = useFilesStore.getState();
     const capturedProjectId = files.projectId;
-    const mainDoc = files.mainDoc || "main.tex";
+    // The effective main document honours an active `% !TEX root` override,
+    // falling back to the stored main doc. Every identity check below must
+    // agree with this resolution or the compile invalidates itself.
+    const mainDoc = resolveEffectiveMainDoc().mainDoc;
     const checkpointAtStart = get().lastCompileCheckpoint;
     const matchesProjectAndMain = () => {
       const currentFiles = useFilesStore.getState();
       return (
         activeCompileIntent === intent &&
         currentFiles.projectId === capturedProjectId &&
-        (currentFiles.mainDoc || "main.tex") === mainDoc
+        resolveEffectiveMainDoc().mainDoc === mainDoc
       );
     };
     const checkpointAdvanced = (

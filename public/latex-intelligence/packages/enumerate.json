@@ -1,0 +1,12 @@
+{
+  "args": [],
+  "deps": [],
+  "envs": [
+    {
+      "name": "enumerate",
+      "snippet": "[${1:option}]"
+    }
+  ],
+  "keys": {},
+  "macros": []
+}

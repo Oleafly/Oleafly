@@ -1,0 +1,60 @@
+{
+  "args": [
+    "\\usepackage/setspace#c"
+  ],
+  "deps": [],
+  "envs": [
+    {
+      "name": "doublespace"
+    },
+    {
+      "name": "onehalfspace"
+    },
+    {
+      "name": "singlespace"
+    },
+    {
+      "name": "singlespace*",
+      "unusual": true
+    },
+    {
+      "name": "spacing",
+      "snippet": "{${1:factor}}"
+    }
+  ],
+  "keys": {
+    "\\usepackage/setspace#c": [
+      "nodisplayskipstretch",
+      "singlespacing",
+      "onehalfspacing",
+      "doublespacing"
+    ]
+  },
+  "macros": [
+    {
+      "name": "SetSinglespace",
+      "snippet": "SetSinglespace{${1:factor}}"
+    },
+    {
+      "name": "displayskipstretch",
+      "unusual": true
+    },
+    {
+      "name": "doublespacing"
+    },
+    {
+      "name": "onehalfspacing"
+    },
+    {
+      "name": "setdisplayskipstretch",
+      "snippet": "setdisplayskipstretch{${1:factor}}"
+    },
+    {
+      "name": "setstretch",
+      "snippet": "setstretch{${1:factor}}"
+    },
+    {
+      "name": "singlespacing"
+    }
+  ]
+}

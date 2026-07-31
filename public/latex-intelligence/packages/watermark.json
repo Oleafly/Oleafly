@@ -1,0 +1,28 @@
+{
+  "args": [],
+  "deps": [],
+  "envs": [],
+  "keys": {},
+  "macros": [
+    {
+      "name": "leftwatermark",
+      "snippet": "leftwatermark{${1:body}}"
+    },
+    {
+      "name": "rightwatermark",
+      "snippet": "rightwatermark{${1:body}}"
+    },
+    {
+      "name": "thispageheading",
+      "snippet": "thispageheading{${1:heading}}"
+    },
+    {
+      "name": "thiswatermark",
+      "snippet": "thiswatermark{${1:body}}"
+    },
+    {
+      "name": "watermark",
+      "snippet": "watermark{${1:body}}"
+    }
+  ]
+}

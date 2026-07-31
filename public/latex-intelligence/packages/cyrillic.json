@@ -1,0 +1,479 @@
+{
+  "args": [],
+  "deps": [],
+  "envs": [],
+  "keys": {},
+  "macros": [
+    {
+      "name": "CYRA"
+    },
+    {
+      "name": "CYRABHCH"
+    },
+    {
+      "name": "CYRABHCHDSC"
+    },
+    {
+      "name": "CYRABHDZE"
+    },
+    {
+      "name": "CYRABHHA"
+    },
+    {
+      "name": "CYRAE"
+    },
+    {
+      "name": "CYRB"
+    },
+    {
+      "name": "CYRC"
+    },
+    {
+      "name": "CYRCH"
+    },
+    {
+      "name": "CYRCHLDSC"
+    },
+    {
+      "name": "CYRCHRDSC"
+    },
+    {
+      "name": "CYRCHVCRS"
+    },
+    {
+      "name": "CYRD"
+    },
+    {
+      "name": "CYRDJE"
+    },
+    {
+      "name": "CYRDZE"
+    },
+    {
+      "name": "CYRDZHE"
+    },
+    {
+      "name": "CYRE"
+    },
+    {
+      "name": "CYREREV"
+    },
+    {
+      "name": "CYRERY"
+    },
+    {
+      "name": "CYRF"
+    },
+    {
+      "name": "CYRG"
+    },
+    {
+      "name": "CYRGHCRS"
+    },
+    {
+      "name": "CYRGHK"
+    },
+    {
+      "name": "CYRGUP"
+    },
+    {
+      "name": "CYRH"
+    },
+    {
+      "name": "CYRHDSC"
+    },
+    {
+      "name": "CYRHRDSN"
+    },
+    {
+      "name": "CYRI"
+    },
+    {
+      "name": "CYRIE"
+    },
+    {
+      "name": "CYRII"
+    },
+    {
+      "name": "CYRISHRT"
+    },
+    {
+      "name": "CYRJE"
+    },
+    {
+      "name": "CYRK"
+    },
+    {
+      "name": "CYRKDSC"
+    },
+    {
+      "name": "CYRKHCRS"
+    },
+    {
+      "name": "CYRKHK"
+    },
+    {
+      "name": "CYRKVCRS"
+    },
+    {
+      "name": "CYRL"
+    },
+    {
+      "name": "CYRLDSC"
+    },
+    {
+      "name": "CYRLJE"
+    },
+    {
+      "name": "CYRM"
+    },
+    {
+      "name": "CYRMDSC"
+    },
+    {
+      "name": "CYRN"
+    },
+    {
+      "name": "CYRNDSC"
+    },
+    {
+      "name": "CYRNG"
+    },
+    {
+      "name": "CYRNHK"
+    },
+    {
+      "name": "CYRNJE"
+    },
+    {
+      "name": "CYRO"
+    },
+    {
+      "name": "CYROTLD"
+    },
+    {
+      "name": "CYRP"
+    },
+    {
+      "name": "CYRPHK"
+    },
+    {
+      "name": "CYRR"
+    },
+    {
+      "name": "CYRRTICK"
+    },
+    {
+      "name": "CYRS"
+    },
+    {
+      "name": "CYRSCHWA"
+    },
+    {
+      "name": "CYRSDSC"
+    },
+    {
+      "name": "CYRSEMISFTSN"
+    },
+    {
+      "name": "CYRSFTSN"
+    },
+    {
+      "name": "CYRSH"
+    },
+    {
+      "name": "CYRSHCH"
+    },
+    {
+      "name": "CYRSHHA"
+    },
+    {
+      "name": "CYRT"
+    },
+    {
+      "name": "CYRTDSC"
+    },
+    {
+      "name": "CYRTETSE"
+    },
+    {
+      "name": "CYRTSHE"
+    },
+    {
+      "name": "CYRU"
+    },
+    {
+      "name": "CYRUSHRT"
+    },
+    {
+      "name": "CYRV"
+    },
+    {
+      "name": "CYRY"
+    },
+    {
+      "name": "CYRYA"
+    },
+    {
+      "name": "CYRYHCRS"
+    },
+    {
+      "name": "CYRYI"
+    },
+    {
+      "name": "CYRYO"
+    },
+    {
+      "name": "CYRYU"
+    },
+    {
+      "name": "CYRZ"
+    },
+    {
+      "name": "CYRZDSC"
+    },
+    {
+      "name": "CYRZH"
+    },
+    {
+      "name": "CYRZHDSC"
+    },
+    {
+      "name": "CYRpalochka"
+    },
+    {
+      "name": "cyra"
+    },
+    {
+      "name": "cyrabhch"
+    },
+    {
+      "name": "cyrabhchdsc"
+    },
+    {
+      "name": "cyrabhdze"
+    },
+    {
+      "name": "cyrabhha"
+    },
+    {
+      "name": "cyrae"
+    },
+    {
+      "name": "cyrb"
+    },
+    {
+      "name": "cyrc"
+    },
+    {
+      "name": "cyrch"
+    },
+    {
+      "name": "cyrchldsc"
+    },
+    {
+      "name": "cyrchrdsc"
+    },
+    {
+      "name": "cyrchvcrs"
+    },
+    {
+      "name": "cyrd"
+    },
+    {
+      "name": "cyrdje"
+    },
+    {
+      "name": "cyrdze"
+    },
+    {
+      "name": "cyrdzhe"
+    },
+    {
+      "name": "cyre"
+    },
+    {
+      "name": "cyrerev"
+    },
+    {
+      "name": "cyrery"
+    },
+    {
+      "name": "cyrf"
+    },
+    {
+      "name": "cyrg"
+    },
+    {
+      "name": "cyrghcrs"
+    },
+    {
+      "name": "cyrghk"
+    },
+    {
+      "name": "cyrgup"
+    },
+    {
+      "name": "cyrh"
+    },
+    {
+      "name": "cyrhdsc"
+    },
+    {
+      "name": "cyrhrdsn"
+    },
+    {
+      "name": "cyri"
+    },
+    {
+      "name": "cyrie"
+    },
+    {
+      "name": "cyrii"
+    },
+    {
+      "name": "cyrishrt"
+    },
+    {
+      "name": "cyrje"
+    },
+    {
+      "name": "cyrk"
+    },
+    {
+      "name": "cyrkdsc"
+    },
+    {
+      "name": "cyrkhcrs"
+    },
+    {
+      "name": "cyrkhk"
+    },
+    {
+      "name": "cyrkvcrs"
+    },
+    {
+      "name": "cyrl"
+    },
+    {
+      "name": "cyrldsc"
+    },
+    {
+      "name": "cyrlje"
+    },
+    {
+      "name": "cyrm"
+    },
+    {
+      "name": "cyrmdsc"
+    },
+    {
+      "name": "cyrn"
+    },
+    {
+      "name": "cyrndsc"
+    },
+    {
+      "name": "cyrng"
+    },
+    {
+      "name": "cyrnhk"
+    },
+    {
+      "name": "cyrnje"
+    },
+    {
+      "name": "cyro"
+    },
+    {
+      "name": "cyrotld"
+    },
+    {
+      "name": "cyrp"
+    },
+    {
+      "name": "cyrphk"
+    },
+    {
+      "name": "cyrr"
+    },
+    {
+      "name": "cyrrtick"
+    },
+    {
+      "name": "cyrs"
+    },
+    {
+      "name": "cyrschwa"
+    },
+    {
+      "name": "cyrsdsc"
+    },
+    {
+      "name": "cyrsemisftsn"
+    },
+    {
+      "name": "cyrsftsn"
+    },
+    {
+      "name": "cyrsh"
+    },
+    {
+      "name": "cyrshch"
+    },
+    {
+      "name": "cyrshha"
+    },
+    {
+      "name": "cyrt"
+    },
+    {
+      "name": "cyrtdsc"
+    },
+    {
+      "name": "cyrtetse"
+    },
+    {
+      "name": "cyrtshe"
+    },
+    {
+      "name": "cyru"
+    },
+    {
+      "name": "cyrushrt"
+    },
+    {
+      "name": "cyrv"
+    },
+    {
+      "name": "cyry"
+    },
+    {
+      "name": "cyrya"
+    },
+    {
+      "name": "cyryhcrs"
+    },
+    {
+      "name": "cyryi"
+    },
+    {
+      "name": "cyryo"
+    },
+    {
+      "name": "cyryu"
+    },
+    {
+      "name": "cyrz"
+    },
+    {
+      "name": "cyrzdsc"
+    },
+    {
+      "name": "cyrzh"
+    },
+    {
+      "name": "cyrzhdsc"
+    }
+  ]
+}

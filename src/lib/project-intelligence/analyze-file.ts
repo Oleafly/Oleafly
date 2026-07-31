@@ -5,6 +5,7 @@ import {
   maskLatexIgnoredRegions,
   validateXparseArgumentSpecification,
 } from "@oleafly/editor/latex-analysis";
+import { astAugmentLatexFile } from "./latex-ast";
 import { parseBibtexIntelligence } from "./parse-bibtex";
 import {
   engineForPath,
@@ -27,6 +28,7 @@ import type {
   ProjectUse,
   ProjectUseKind,
   LatexDefinitionArguments,
+  PackageReference,
   SourceRange,
 } from "./types";
 
@@ -1281,6 +1283,37 @@ function addLatexDefinitions(
   }
 }
 
+function latexPackageReferences(
+  file: string,
+  source: string,
+  masked: string,
+  starts: readonly number[],
+  closingByOpening: CommandGroupIndex,
+): PackageReference[] {
+  const refs: PackageReference[] = [];
+  const packageCommands =
+    /\\(usepackage|RequirePackage|RequirePackageWithOptions|documentclass|LoadClass|LoadClassWithOptions)\*?(?![A-Za-z@])/g;
+  for (const match of masked.matchAll(packageCommands)) {
+    const kind = match[1].toLowerCase().includes("class")
+      ? "class"
+      : "package";
+    const group = commandGroups(
+      masked,
+      match.index + match[0].length,
+      closingByOpening,
+    ).find((candidate) => candidate.open === "{");
+    if (!group) continue;
+    for (const token of latexLogicalGroupTokens(source, group, true)) {
+      refs.push({
+        name: token.name,
+        kind,
+        location: location(file, starts, token.from, token.to),
+      });
+    }
+  }
+  return refs;
+}
+
 function latexAdditionalSyntax(
   file: string,
   source: string,
@@ -1350,6 +1383,31 @@ function latexAdditionalSyntax(
       undefined,
       "explicit",
     );
+  }
+
+  const glossaryUses =
+    /\\(glssymbol|glsdesc|glslink|glspl|Glspl|GLSpl|gls|Gls|GLS|acrshort|acrlong|acrfull|acs|acl|acf|Acs|Acl|Acf|ac|Ac)\*?(?![A-Za-z@])/g;
+  for (const match of masked.matchAll(glossaryUses)) {
+    const group = commandGroups(
+      masked,
+      match.index + match[0].length,
+      closingByOpening,
+    ).find((candidate) => candidate.open === "{");
+    if (!group) continue;
+    for (const token of latexLogicalGroupTokens(source, group, false)) {
+      addUse(
+        uses,
+        "latex",
+        file,
+        starts,
+        "glossary",
+        token.name,
+        token.from,
+        token.to,
+        undefined,
+        "explicit",
+      );
+    }
   }
 
   const inputCommands =
@@ -2267,6 +2325,7 @@ export function analyzeProjectFile(
   }
 
   let partial = false;
+  let packageRefs: PackageReference[] = [];
   if (engine === "latex") {
     const masked = maskLatexIgnoredRegions(source);
     latexAdditionalSyntax(
@@ -2278,6 +2337,15 @@ export function analyzeProjectFile(
       uses,
       edges,
     );
+    packageRefs = latexPackageReferences(
+      file,
+      source,
+      masked,
+      starts,
+      buildCommandGroupIndex(masked),
+    );
+    const ast = astAugmentLatexFile(file, source, starts);
+    if (ast) definitions.push(...ast.definitions);
     const delimiterPartial = addDelimiterDiagnostics(
       file,
       source,
@@ -2383,5 +2451,6 @@ export function analyzeProjectFile(
     edges: uniqueEdges,
     diagnostics,
     bibliographyEntries,
+    ...(packageRefs.length ? { packageRefs } : {}),
   };
 }

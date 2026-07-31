@@ -1,0 +1,19 @@
+{
+  "args": [
+    "\\usepackage/lscape#c"
+  ],
+  "deps": [
+    "graphics"
+  ],
+  "envs": [
+    {
+      "name": "landscape"
+    }
+  ],
+  "keys": {
+    "\\usepackage/lscape#c": [
+      "pdftex"
+    ]
+  },
+  "macros": []
+}

@@ -1,0 +1,117 @@
+{
+  "args": [],
+  "deps": [
+    "ifpdf",
+    "keyval"
+  ],
+  "envs": [],
+  "keys": {
+    "\\hyperlinkmovie": [
+      "duration=${1:time}s",
+      "loop",
+      "once",
+      "palindrome",
+      "pause",
+      "play",
+      "repeat",
+      "resume",
+      "showcontrols",
+      "start=${1:time}s",
+      "stop"
+    ],
+    "\\hyperlinksound": [
+      "loop",
+      "mixsound",
+      "repeat"
+    ],
+    "\\movie": [
+      "autostart",
+      "borderwidth=",
+      "depth=",
+      "duration=${1:time}s",
+      "externalviewer",
+      "height=",
+      "label=",
+      "loop",
+      "once",
+      "open",
+      "palindrome",
+      "poster",
+      "repeat",
+      "showcontrols",
+      "start=${1:time}s",
+      "width="
+    ],
+    "\\sound": [
+      "autostart",
+      "automute",
+      "bitspersample=${1|8,16|}",
+      "channels=${1|1,2|}",
+      "depth=",
+      "encoding=${1|Raw,Signed,muLaw,aLaw|}",
+      "externalviewer",
+      "height=",
+      "inlinesound",
+      "label=",
+      "loop",
+      "mixsound",
+      "repeat",
+      "samplingrate=${1:number}",
+      "width="
+    ]
+  },
+  "macros": [
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\hyperlinkmovie"
+      ],
+      "name": "hyperlinkmovie",
+      "snippet": "hyperlinkmovie[${3:options}]{${1:movie label}}{${2:text}}"
+    },
+    {
+      "name": "hyperlinkmovie",
+      "snippet": "hyperlinkmovie{${1:movie label}}{${2:text}}"
+    },
+    {
+      "name": "hyperlinkmute",
+      "snippet": "hyperlinkmute{${1:text}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\hyperlinksound"
+      ],
+      "name": "hyperlinksound",
+      "snippet": "hyperlinksound[${3:options}]{${1:sound label}}{${2:text}}"
+    },
+    {
+      "name": "hyperlinksound",
+      "snippet": "hyperlinksound{${1:sound label}}{${2:text}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\movie"
+      ],
+      "name": "movie",
+      "snippet": "movie[${3:options}]{${1:poster text}}{${2:movie filename}}"
+    },
+    {
+      "name": "movie",
+      "snippet": "movie{${1:poster text}}{${2:movie filename}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\sound"
+      ],
+      "name": "sound",
+      "snippet": "sound[${3:options}]{${1:sound poster text}}{${2:sound filename}}"
+    },
+    {
+      "name": "sound",
+      "snippet": "sound{${1:sound poster text}}{${2:sound filename}}"
+    }
+  ]
+}

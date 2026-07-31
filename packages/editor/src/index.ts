@@ -20,6 +20,8 @@ export {
   latexReferenceCitationCompletions,
   slashCompletions,
   setBibKeysProvider,
+  setLatexCorpusProvider,
+  type LatexCorpusProvider,
   bibKeysFromSources,
 } from "./latex";
 export { bibtexLanguage } from "./bibtex";
@@ -30,6 +32,13 @@ export {
   type TypstWordRange,
 } from "./typst-mask";
 export { latexFolding } from "./latex-folding";
+export {
+  continueListOnEnter,
+  closeEnvironmentAtCursor,
+  surroundSelectionWithEnvironment,
+  latexListKeymap,
+  latexStructureKeymap,
+} from "./latex-structure-commands";
 export { createLatexLinter, lintLatexText } from "./latex-linter";
 export * from "./latex-mask";
 export {

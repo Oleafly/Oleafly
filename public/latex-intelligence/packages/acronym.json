@@ -1,0 +1,563 @@
+{
+  "args": [
+    "\\usepackage/acronym#c"
+  ],
+  "deps": [
+    "relsize",
+    "suffix",
+    "xstring"
+  ],
+  "envs": [
+    {
+      "name": "acronym"
+    },
+    {
+      "name": "acronym",
+      "snippet": "[${1:longest}]"
+    }
+  ],
+  "keys": {
+    "\\usepackage/acronym#c": [
+      "footnote",
+      "nohyperlinks",
+      "noforwardlinks",
+      "noacroprefix",
+      "printonlyused",
+      "printonlyreused",
+      "withpage",
+      "smaller",
+      "dua",
+      "nolist",
+      "nolinebreak"
+    ]
+  },
+  "macros": [
+    {
+      "name": "Ac",
+      "snippet": "Ac[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "Ac",
+      "snippet": "Ac{${1:acronym}}"
+    },
+    {
+      "name": "Ac*",
+      "snippet": "Ac*[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "Ac*",
+      "snippet": "Ac*{${1:acronym}}"
+    },
+    {
+      "name": "Acf",
+      "snippet": "Acf[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "Acf",
+      "snippet": "Acf{${1:acronym}}"
+    },
+    {
+      "name": "Acf*",
+      "snippet": "Acf*[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "Acf*",
+      "snippet": "Acf*{${1:acronym}}"
+    },
+    {
+      "name": "Acfa",
+      "snippet": "Acfa[${2:linebreak penalty}]{${1:acronym}}",
+      "unusual": true
+    },
+    {
+      "name": "Acfa",
+      "snippet": "Acfa{${1:acronym}}",
+      "unusual": true
+    },
+    {
+      "name": "Acfi",
+      "snippet": "Acfi[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "Acfi",
+      "snippet": "Acfi{${1:acronym}}"
+    },
+    {
+      "name": "Acfi*",
+      "snippet": "Acfi*[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "Acfi*",
+      "snippet": "Acfi*{${1:acronym}}"
+    },
+    {
+      "name": "Acfia",
+      "snippet": "Acfia[${2:linebreak penalty}]{${1:acronym}}",
+      "unusual": true
+    },
+    {
+      "name": "Acfia",
+      "snippet": "Acfia{${1:acronym}}",
+      "unusual": true
+    },
+    {
+      "name": "Acfip",
+      "snippet": "Acfip[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "Acfip",
+      "snippet": "Acfip{${1:acronym}}"
+    },
+    {
+      "name": "Acfip*",
+      "snippet": "Acfip*[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "Acfip*",
+      "snippet": "Acfip*{${1:acronym}}"
+    },
+    {
+      "name": "Acfp",
+      "snippet": "Acfp[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "Acfp",
+      "snippet": "Acfp{${1:acronym}}"
+    },
+    {
+      "name": "Acfpa",
+      "snippet": "Acfpa[${2:linebreak penalty}]{${1:acronym}}",
+      "unusual": true
+    },
+    {
+      "name": "Acfpa",
+      "snippet": "Acfpa{${1:acronym}}",
+      "unusual": true
+    },
+    {
+      "name": "Acl",
+      "snippet": "Acl[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "Acl",
+      "snippet": "Acl{${1:acronym}}"
+    },
+    {
+      "name": "Acl*",
+      "snippet": "Acl*[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "Acl*",
+      "snippet": "Acl*{${1:acronym}}"
+    },
+    {
+      "name": "Aclp",
+      "snippet": "Aclp[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "Aclp",
+      "snippet": "Aclp{${1:acronym}}"
+    },
+    {
+      "name": "Aclp*",
+      "snippet": "Aclp*[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "Aclp*",
+      "snippet": "Aclp*{${1:acronym}}"
+    },
+    {
+      "name": "Aclu",
+      "snippet": "Aclu[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "Aclu",
+      "snippet": "Aclu{${1:acronym}}"
+    },
+    {
+      "name": "Aclu*",
+      "snippet": "Aclu*[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "Aclu*",
+      "snippet": "Aclu*{${1:acronym}}"
+    },
+    {
+      "name": "Aclua",
+      "snippet": "Aclua[${2:linebreak penalty}]{${1:acronym}}",
+      "unusual": true
+    },
+    {
+      "name": "Aclua",
+      "snippet": "Aclua{${1:acronym}}",
+      "unusual": true
+    },
+    {
+      "name": "Acp",
+      "snippet": "Acp[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "Acp",
+      "snippet": "Acp{${1:acronym}}"
+    },
+    {
+      "name": "Acp*",
+      "snippet": "Acp*[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "Acp*",
+      "snippet": "Acp*{${1:acronym}}"
+    },
+    {
+      "name": "Iac",
+      "snippet": "Iac{${1:acronym}}"
+    },
+    {
+      "name": "ac",
+      "snippet": "ac[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "ac",
+      "snippet": "ac{${1:acronym}}"
+    },
+    {
+      "name": "ac*",
+      "snippet": "ac*[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "ac*",
+      "snippet": "ac*{${1:acronym}}"
+    },
+    {
+      "name": "acf",
+      "snippet": "acf[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "acf",
+      "snippet": "acf{${1:acronym}}"
+    },
+    {
+      "name": "acf*",
+      "snippet": "acf*[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "acf*",
+      "snippet": "acf*{${1:acronym}}"
+    },
+    {
+      "name": "acfa",
+      "snippet": "acfa[${2:linebreak penalty}]{${1:acronym}}",
+      "unusual": true
+    },
+    {
+      "name": "acfa",
+      "snippet": "acfa{${1:acronym}}",
+      "unusual": true
+    },
+    {
+      "name": "acffont",
+      "snippet": "acffont{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "acfi",
+      "snippet": "acfi[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "acfi",
+      "snippet": "acfi{${1:acronym}}"
+    },
+    {
+      "name": "acfi*",
+      "snippet": "acfi*[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "acfi*",
+      "snippet": "acfi*{${1:acronym}}"
+    },
+    {
+      "name": "acfia",
+      "snippet": "acfia[${2:linebreak penalty}]{${1:acronym}}",
+      "unusual": true
+    },
+    {
+      "name": "acfia",
+      "snippet": "acfia{${1:acronym}}",
+      "unusual": true
+    },
+    {
+      "name": "acfip",
+      "snippet": "acfip[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "acfip",
+      "snippet": "acfip{${1:acronym}}"
+    },
+    {
+      "name": "acfip*",
+      "snippet": "acfip*[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "acfip*",
+      "snippet": "acfip*{${1:acronym}}"
+    },
+    {
+      "name": "acfp",
+      "snippet": "acfp[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "acfp",
+      "snippet": "acfp{${1:acronym}}"
+    },
+    {
+      "name": "acfp*",
+      "snippet": "acfp*[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "acfp*",
+      "snippet": "acfp*{${1:acronym}}"
+    },
+    {
+      "name": "acfpa",
+      "snippet": "acfpa[${2:linebreak penalty}]{${1:acronym}}",
+      "unusual": true
+    },
+    {
+      "name": "acfpa",
+      "snippet": "acfpa{${1:acronym}}",
+      "unusual": true
+    },
+    {
+      "name": "acfsfont",
+      "snippet": "acfsfont{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "acl",
+      "snippet": "acl[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "acl",
+      "snippet": "acl{${1:acronym}}"
+    },
+    {
+      "name": "acl*",
+      "snippet": "acl*[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "acl*",
+      "snippet": "acl*{${1:acronym}}"
+    },
+    {
+      "name": "aclabelfont",
+      "snippet": "aclabelfont{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "aclp",
+      "snippet": "aclp[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "aclp",
+      "snippet": "aclp{${1:acronym}}"
+    },
+    {
+      "name": "aclp*",
+      "snippet": "aclp*[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "aclp*",
+      "snippet": "aclp*{${1:acronym}}"
+    },
+    {
+      "name": "aclu",
+      "snippet": "aclu[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "aclu",
+      "snippet": "aclu{${1:acronym}}"
+    },
+    {
+      "name": "aclu*",
+      "snippet": "aclu*[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "aclu*",
+      "snippet": "aclu*{${1:acronym}}"
+    },
+    {
+      "name": "aclua",
+      "snippet": "aclua[${2:linebreak penalty}]{${1:acronym}}",
+      "unusual": true
+    },
+    {
+      "name": "aclua",
+      "snippet": "aclua{${1:acronym}}",
+      "unusual": true
+    },
+    {
+      "name": "acp",
+      "snippet": "acp[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "acp",
+      "snippet": "acp{${1:acronym}}"
+    },
+    {
+      "name": "acp*",
+      "snippet": "acp*[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "acp*",
+      "snippet": "acp*{${1:acronym}}"
+    },
+    {
+      "name": "acresetall"
+    },
+    {
+      "name": "acro",
+      "snippet": "acro{${1:acronym}}[${3:short name}]{${2:full name}}"
+    },
+    {
+      "name": "acro",
+      "snippet": "acro{${1:acronym}}{${2:full name}}"
+    },
+    {
+      "name": "acrodef",
+      "snippet": "acrodef{${1:acronym}}[${3:short name}]{${2:full name}}"
+    },
+    {
+      "name": "acrodef",
+      "snippet": "acrodef{${1:acronym}}{${2:full name}}"
+    },
+    {
+      "name": "acrodefindefinite",
+      "snippet": "acrodefindefinite{${1:acronym}}{${2:short indefinite article}}{${3:long indefinite article}}"
+    },
+    {
+      "name": "acrodefplural",
+      "snippet": "acrodefplural{${1:acronym}}[${3:short plural name}]{${2:full plural name}}"
+    },
+    {
+      "name": "acrodefplural",
+      "snippet": "acrodefplural{${1:acronym}}{${2:full plural name}}"
+    },
+    {
+      "name": "acroextra",
+      "snippet": "acroextra{${1:additional info}}"
+    },
+    {
+      "name": "acroindefinite",
+      "snippet": "acroindefinite{${1:acronym}}{${2:short indefinite article}}{${3:long indefinite article}}"
+    },
+    {
+      "name": "acroplural",
+      "snippet": "acroplural{${1:acronym}}[${3:short plural name}]{${2:full plural name}}"
+    },
+    {
+      "name": "acroplural",
+      "snippet": "acroplural{${1:acronym}}{${2:full plural name}}"
+    },
+    {
+      "name": "acs",
+      "snippet": "acs[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "acs",
+      "snippet": "acs{${1:acronym}}"
+    },
+    {
+      "name": "acs*",
+      "snippet": "acs*[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "acs*",
+      "snippet": "acs*{${1:acronym}}"
+    },
+    {
+      "name": "acsfont",
+      "snippet": "acsfont{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "acsp",
+      "snippet": "acsp[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "acsp",
+      "snippet": "acsp{${1:acronym}}"
+    },
+    {
+      "name": "acsp*",
+      "snippet": "acsp*[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "acsp*",
+      "snippet": "acsp*{${1:acronym}}"
+    },
+    {
+      "name": "acspa",
+      "snippet": "acspa[${2:linebreak penalty}]{${1:acronym}}",
+      "unusual": true
+    },
+    {
+      "name": "acspa",
+      "snippet": "acspa{${1:acronym}}",
+      "unusual": true
+    },
+    {
+      "name": "acsu",
+      "snippet": "acsu[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "acsu",
+      "snippet": "acsu{${1:acronym}}"
+    },
+    {
+      "name": "acsu*",
+      "snippet": "acsu*[${2:linebreak penalty}]{${1:acronym}}"
+    },
+    {
+      "name": "acsu*",
+      "snippet": "acsu*{${1:acronym}}"
+    },
+    {
+      "name": "acsua",
+      "snippet": "acsua[${2:linebreak penalty}]{${1:acronym}}",
+      "unusual": true
+    },
+    {
+      "name": "acsua",
+      "snippet": "acsua{${1:acronym}}",
+      "unusual": true
+    },
+    {
+      "name": "acused",
+      "snippet": "acused{${1:acronym}}"
+    },
+    {
+      "name": "iac",
+      "snippet": "iac{${1:acronym}}"
+    },
+    {
+      "name": "newacro",
+      "snippet": "newacro{${1:acronym}}[${3:short name}]{${2:full name}}"
+    },
+    {
+      "name": "newacro",
+      "snippet": "newacro{${1:acronym}}{${2:full name}}"
+    },
+    {
+      "name": "newacroindefinite",
+      "snippet": "newacroindefinite{${1:acronym}}{${2:short indefinite article}}{${3:long indefinite article}}"
+    },
+    {
+      "name": "newacroplural",
+      "snippet": "newacroplural{${1:acronym}}[${3:short plural name}]{${2:full plural name}}"
+    },
+    {
+      "name": "newacroplural",
+      "snippet": "newacroplural{${1:acronym}}{${2:full plural name}}"
+    }
+  ]
+}

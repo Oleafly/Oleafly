@@ -1,9 +1,12 @@
 import {
+  AlertTriangle,
   ChevronDown,
+  FileText,
   Loader2,
   Play,
   RefreshCw,
 } from "lucide-react";
+import { useShallow } from "zustand/react/shallow";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import {
@@ -20,7 +23,64 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
+import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { cn, shortcut } from "@/lib/utils";
+
+function basename(path: string): string {
+  const slash = path.lastIndexOf("/");
+  return slash >= 0 ? path.slice(slash + 1) : path;
+}
+
+/**
+ * Shows which document a compile would actually build when the active file's
+ * `% !TEX root` magic comment overrides the stored main document, and warns
+ * when that comment points at a file that does not exist.
+ */
+function TexRootIndicator() {
+  // Flattened so the shallow comparison only re-renders when the effective
+  // root, its provenance, or the broken-target details really change.
+  const [mainDoc, overriddenBy, brokenIn, brokenTarget] = useFilesStore(
+    useShallow(() => {
+      const effective = resolveEffectiveMainDoc();
+      return [
+        effective.mainDoc,
+        effective.overriddenBy,
+        effective.brokenRoot?.declaredIn ?? null,
+        effective.brokenRoot?.target ?? null,
+      ] as const;
+    }),
+  );
+
+  if (brokenIn !== null) {
+    return (
+      <Tooltip
+        label={`% !TEX root in ${brokenIn} points to a missing file (${brokenTarget})`}
+      >
+        <span
+          data-testid="tex-root-broken"
+          className="flex max-w-40 items-center gap-1 truncate text-xs text-amber-600 dark:text-amber-400"
+        >
+          <AlertTriangle className="size-3.5 shrink-0" />
+          <span className="truncate">TEX root</span>
+        </span>
+      </Tooltip>
+    );
+  }
+  if (overriddenBy === null) return null;
+  return (
+    <Tooltip
+      label={`root: ${mainDoc} — set by % !TEX root in ${overriddenBy}`}
+    >
+      <span
+        data-testid="tex-root-indicator"
+        className="flex max-w-40 items-center gap-1 truncate text-xs text-muted-foreground"
+      >
+        <FileText className="size-3.5 shrink-0" />
+        <span className="truncate">root: {basename(mainDoc)}</span>
+      </span>
+    </Tooltip>
+  );
+}
 
 /**
  * The compile action and its options menu, joined as one split control.
@@ -56,6 +116,8 @@ export function CompileControls() {
   const compileLabel = hasCompileResult ? "Recompile" : "Compile";
 
   return (
+  <>
+  <TexRootIndicator />
   <ButtonGroup>
     <Tooltip label={`${compileLabel} ${engine.label} (${shortcut("⌘↵")})`}>
       <Button
@@ -193,5 +255,6 @@ export function CompileControls() {
       </DropdownMenuContent>
     </DropdownMenu>
   </ButtonGroup>
+  </>
   );
 }

@@ -1,0 +1,491 @@
+{
+  "args": [
+    "\\usepackage/pst-plot#c"
+  ],
+  "deps": [
+    "multido",
+    "pst-tools",
+    "pst-xkey",
+    "pstricks",
+    "pstricks-add"
+  ],
+  "envs": [
+    {
+      "name": "psgraph",
+      "snippet": "(${3:x0},${4:y0})(${5:x1},${6:y1})(${7:x2},${8:y2}){${1:xlength}}{${2:ylength}}"
+    },
+    {
+      "name": "psgraph",
+      "snippet": "[${3:options}](${4:x0},${5:y0})(${6:x1},${7:y1})(${8:x2},${9:y2}){${1:xlength}}{${2:ylength}}"
+    },
+    {
+      "name": "psgraph",
+      "snippet": "[${4:options}]{${1:arrows}}(${5:x0},${6:y0})(${7:x1},${8:y1})(${9:x2},${10:y2}){${2:xlength}}{${3:ylength}}"
+    },
+    {
+      "name": "psgraph",
+      "snippet": "{${1:arrows}}(${4:x0},${5:y0})(${6:x1},${7:y1})(${8:x2},${9:y2}){${2:xlength}}{${3:ylength}}"
+    },
+    {
+      "name": "psgraph*",
+      "snippet": "(${3:x0},${4:y0})(${5:x1},${6:y1})(${7:x2},${8:y2}){${1:xlength}}{${2:ylength}}",
+      "unusual": true
+    },
+    {
+      "name": "psgraph*",
+      "snippet": "[${3:options}](${4:x0},${5:y0})(${6:x1},${7:y1})(${8:x2},${9:y2}){${1:xlength}}{${2:ylength}}",
+      "unusual": true
+    },
+    {
+      "name": "psgraph*",
+      "snippet": "[${4:options}]{${1:arrows}}(${5:x0},${6:y0})(${7:x1},${8:y1})(${9:x2},${10:y2}){${2:xlength}}{${3:ylength}}",
+      "unusual": true
+    },
+    {
+      "name": "psgraph*",
+      "snippet": "{${1:arrows}}(${4:x0},${5:y0})(${6:x1},${7:y1})(${8:x2},${9:y2}){${2:xlength}}{${3:ylength}}",
+      "unusual": true
+    }
+  ],
+  "keys": {
+    "\\readdata#c": [
+      "ignoreLines=${1:integer}",
+      "nStep=${1:integer}"
+    ],
+    "\\usepackage/pst-plot#c": [
+      "97"
+    ]
+  },
+  "macros": [
+    {
+      "name": "SpecialLabelsDonefalse",
+      "unusual": true
+    },
+    {
+      "name": "SpecialLabelsDonetrue",
+      "unusual": true
+    },
+    {
+      "name": "dataplot",
+      "snippet": "dataplot[${2:options}]{${1:macro}}"
+    },
+    {
+      "name": "dataplot",
+      "snippet": "dataplot{${1:macro}}"
+    },
+    {
+      "name": "endpsgraph",
+      "unusual": true
+    },
+    {
+      "name": "fileplot",
+      "snippet": "fileplot[${2:options}]{${1:file}}"
+    },
+    {
+      "name": "fileplot",
+      "snippet": "fileplot{${1:file}}"
+    },
+    {
+      "name": "ifSpecialLabelsDone",
+      "unusual": true
+    },
+    {
+      "name": "listplot",
+      "snippet": "listplot[${2:options}]{${1:list}}"
+    },
+    {
+      "name": "listplot",
+      "snippet": "listplot{${1:data}}"
+    },
+    {
+      "name": "parametricplot",
+      "snippet": "parametricplot[${4:options}]{${1:tmin}}{${2:tmax}}[${5:PS commands}]{${3:function}}"
+    },
+    {
+      "name": "parametricplot",
+      "snippet": "parametricplot[${4:options}]{${1:tmin}}{${2:tmax}}{${3:function}}"
+    },
+    {
+      "name": "parametricplot",
+      "snippet": "parametricplot{${1:tmin}}{${2:tmax}}[${4:PS commands}]{${3:function}}",
+      "unusual": true
+    },
+    {
+      "name": "parametricplot",
+      "snippet": "parametricplot{${1:tmin}}{${2:tmax}}{${3:function}}"
+    },
+    {
+      "name": "psBoxplot",
+      "snippet": "psBoxplot[${2:options}]{${1:macro}}"
+    },
+    {
+      "name": "psBoxplot",
+      "snippet": "psBoxplot{${1:macro}}"
+    },
+    {
+      "name": "psCoordinates",
+      "snippet": "psCoordinates(${1:x},${2:y})"
+    },
+    {
+      "name": "psCoordinates",
+      "snippet": "psCoordinates[${1:options}](${2:x},${3:y})"
+    },
+    {
+      "name": "psFixpoint",
+      "snippet": "psFixpoint[${4:options}]{${1:x0}}{${2:f(${5:x})}}{${3:n}}"
+    },
+    {
+      "name": "psFixpoint",
+      "snippet": "psFixpoint{${1:x0}}{${2:f(${4:x})}}{${3:n}}"
+    },
+    {
+      "name": "psNewton",
+      "snippet": "psNewton[${4:options}]{${1:x0}}{${2:f(${6:x})}}[${5:f'(${7:x})}]{${3:n}}"
+    },
+    {
+      "name": "psNewton",
+      "snippet": "psNewton[${4:options}]{${1:x_0}}{${2:f(${5:x})}}{${3:n}}"
+    },
+    {
+      "name": "psNewton",
+      "snippet": "psNewton{${1:x0}}{${2:f(${4:x})}}{${3:n}}"
+    },
+    {
+      "name": "psNewton",
+      "snippet": "psNewton{${1:x0}}{${2:f(${5:x})}}[${4:f'(${6:x})}]{${3:n}}"
+    },
+    {
+      "name": "psPi",
+      "unusual": true
+    },
+    {
+      "name": "psPiFour",
+      "unusual": true
+    },
+    {
+      "name": "psPiH",
+      "unusual": true
+    },
+    {
+      "name": "psPiTwo",
+      "unusual": true
+    },
+    {
+      "name": "psPutXLabel",
+      "snippet": "psPutXLabel{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "psPutYLabel",
+      "snippet": "psPutYLabel{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "psResetPlotValues",
+      "unusual": true
+    },
+    {
+      "name": "psVectorfield",
+      "snippet": "psVectorfield(${2:%<x0},${3:y0%>})(${4:%<x1},${5:y1%>}){${1:f'(${6:x},${7:y})}}"
+    },
+    {
+      "name": "psVectorfield",
+      "snippet": "psVectorfield[${2:options}](${3:%<x0},${4:y0%>})(${5:%<x1},${6:y1%>}){${1:f'(${7:x},${8:y})}}"
+    },
+    {
+      "name": "psaxes",
+      "snippet": "psaxes(${1:x0},${2:y0})(${3:x1},${4:y1})(${5:x2},${6:y2})"
+    },
+    {
+      "name": "psaxes",
+      "snippet": "psaxes(${3:x0},${4:y0})(${5:x1},${6:y1})(${7:x2},${8:y2})[${1:Xlabel,Xangle}][${2:Ylabel,Yangle}]",
+      "unusual": true
+    },
+    {
+      "name": "psaxes",
+      "snippet": "psaxes[${1:options}](${2:x0},${3:y0})(${4:x1},${5:y1})(${6:x2},${7:y2})"
+    },
+    {
+      "name": "psaxes",
+      "snippet": "psaxes[${1:options}](${4:x0},${5:y0})(${6:x1},${7:y1})(${8:x2},${9:y2})[${2:Xlabel,Xangle}][${3:Ylabel,Yangle}]"
+    },
+    {
+      "name": "psaxes",
+      "snippet": "psaxes[${2:options}]{${1:arrows}}(${3:x0},${4:y0})(${5:x1},${6:y1})(${7:x2},${8:y2})"
+    },
+    {
+      "name": "psaxes",
+      "snippet": "psaxes[${2:options}]{${1:arrows}}(${5:x0},${6:y0})(${7:x1},${8:y1})(${9:x2},${10:y2})[${3:Xlabel,Xangle}][${4:Ylabel,Yangle}]"
+    },
+    {
+      "name": "psaxes",
+      "snippet": "psaxes{${1:arrows}}(${2:x0},${3:y0})(${4:x1},${5:y1})(${6:x2},${7:y2})"
+    },
+    {
+      "name": "psaxes",
+      "snippet": "psaxes{${1:arrows}}(${4:x0},${5:y0})(${6:x1},${7:y1})(${8:x2},${9:y2})[${2:Xlabel,Xangle}][${3:Ylabel,Yangle}]",
+      "unusual": true
+    },
+    {
+      "name": "psdataplot",
+      "snippet": "psdataplot[${2:options}]{${1:macro}}",
+      "unusual": true
+    },
+    {
+      "name": "psdataplot",
+      "snippet": "psdataplot{${1:macro}}",
+      "unusual": true
+    },
+    {
+      "name": "psfileplot",
+      "snippet": "psfileplot[${2:options}]{${1:file}}",
+      "unusual": true
+    },
+    {
+      "name": "psfileplot",
+      "snippet": "psfileplot{${1:file}}",
+      "unusual": true
+    },
+    {
+      "name": "psgraph",
+      "snippet": "psgraph(${3:x0},${4:y0})(${5:x1},${6:y1})(${7:x2},${8:y2}){${1:xlength}}{${2:ylength}}",
+      "unusual": true
+    },
+    {
+      "name": "psgraph",
+      "snippet": "psgraph[${3:options}](${4:x0},${5:y0})(${6:x1},${7:y1})(${8:x2},${9:y2}){${1:xlength}}{${2:ylength}}",
+      "unusual": true
+    },
+    {
+      "name": "psgraph",
+      "snippet": "psgraph[${4:options}]{${1:arrows}}(${5:x0},${6:y0})(${7:x1},${8:y1})(${9:x2},${10:y2}){${2:xlength}}{${3:ylength}}",
+      "unusual": true
+    },
+    {
+      "name": "psgraph",
+      "snippet": "psgraph{${1:arrows}}(${4:x0},${5:y0})(${6:x1},${7:y1})(${8:x2},${9:y2}){${2:xlength}}{${3:ylength}}",
+      "unusual": true
+    },
+    {
+      "name": "psgraphLLx"
+    },
+    {
+      "name": "psgraphLLy"
+    },
+    {
+      "name": "psgraphURx"
+    },
+    {
+      "name": "psgraphURy"
+    },
+    {
+      "name": "pshlabel"
+    },
+    {
+      "name": "pslegend",
+      "snippet": "pslegend[${2:reference}](${3:xoffset},${4:yoffset}){${1:text}}"
+    },
+    {
+      "name": "pslegend",
+      "snippet": "pslegend[${2:reference}]{${1:text}}"
+    },
+    {
+      "name": "pslegend",
+      "snippet": "pslegend{${1:text}}"
+    },
+    {
+      "name": "pslistplot",
+      "snippet": "pslistplot[${2:options}]{${1:list}}",
+      "unusual": true
+    },
+    {
+      "name": "pslistplot",
+      "snippet": "pslistplot{${1:data}}",
+      "unusual": true
+    },
+    {
+      "name": "psparametricplot",
+      "snippet": "psparametricplot[${4:options}]{${1:tmin}}{${2:tmax}}[${5:PS commands}]{${3:function}}",
+      "unusual": true
+    },
+    {
+      "name": "psparametricplot",
+      "snippet": "psparametricplot[${4:options}]{${1:tmin}}{${2:tmax}}{${3:function}}",
+      "unusual": true
+    },
+    {
+      "name": "psparametricplot",
+      "snippet": "psparametricplot{${1:tmin}}{${2:tmax}}[${4:PS commands}]{${3:function}}",
+      "unusual": true
+    },
+    {
+      "name": "psparametricplot",
+      "snippet": "psparametricplot{${1:tmin}}{${2:tmax}}{${3:function}}",
+      "unusual": true
+    },
+    {
+      "name": "psplot",
+      "snippet": "psplot[${4:options}]{${1:xmin}}{${2:xmax}}[${5:PS commands}]{${3:function}}"
+    },
+    {
+      "name": "psplot",
+      "snippet": "psplot[${4:options}]{${1:xmin}}{${2:xmax}}{${3:function}}"
+    },
+    {
+      "name": "psplot",
+      "snippet": "psplot{${1:xmin}}{${2:xmax}}[${4:PS commands}]{${3:function}}",
+      "unusual": true
+    },
+    {
+      "name": "psplot",
+      "snippet": "psplot{${1:xmin}}{${2:xmax}}{${3:function}}"
+    },
+    {
+      "name": "psplotinit",
+      "snippet": "psplotinit{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "psplotstyle",
+      "unusual": true
+    },
+    {
+      "name": "psreadDataColumn",
+      "snippet": "psreadDataColumn[${5:options}]{${1:colNo}}{${2:delim}}{${3:macro}}{${4:file}}"
+    },
+    {
+      "name": "psreadDataColumn",
+      "snippet": "psreadDataColumn{${1:colNo}}{${2:delim}}{${3:macro}}{${4:file}}"
+    },
+    {
+      "name": "psrotatebox",
+      "snippet": "psrotatebox{${1:angle}}{${2:contents}}",
+      "unusual": true
+    },
+    {
+      "name": "pstRadUnit"
+    },
+    {
+      "name": "pstRadUnitInv"
+    },
+    {
+      "name": "pstScalePoints",
+      "snippet": "pstScalePoints(${3:xscale},${4:yscale}){${1:xPS}}{${2:yPS}}"
+    },
+    {
+      "name": "pstXPSScale",
+      "unusual": true
+    },
+    {
+      "name": "pstXScale",
+      "unusual": true
+    },
+    {
+      "name": "pstYPSScale",
+      "unusual": true
+    },
+    {
+      "name": "pstYScale",
+      "unusual": true
+    },
+    {
+      "name": "psvlabel"
+    },
+    {
+      "name": "psxTick",
+      "snippet": "psxTick(${2:x value}){${1:label}}"
+    },
+    {
+      "name": "psxTick",
+      "snippet": "psxTick[${2:options}](${3:x value}){${1:label}}"
+    },
+    {
+      "name": "psxTick",
+      "snippet": "psxTick[${3:options}]{${1:rotation}}(${4:x value}){${2:label}}"
+    },
+    {
+      "name": "psxTick",
+      "snippet": "psxTick{${1:rotation}}(${3:x value}){${2:label}}"
+    },
+    {
+      "name": "psxlabelsep",
+      "unusual": true
+    },
+    {
+      "name": "psxsubticklinestyle",
+      "unusual": true
+    },
+    {
+      "name": "psxticklinestyle",
+      "unusual": true
+    },
+    {
+      "name": "psyTick",
+      "snippet": "psyTick(${2:y value}){${1:label}}"
+    },
+    {
+      "name": "psyTick",
+      "snippet": "psyTick[${2:options}](${3:y value}){${1:label}}"
+    },
+    {
+      "name": "psyTick",
+      "snippet": "psyTick[${3:options}]{${1:rotation}}(${4:y value}){${2:label}}"
+    },
+    {
+      "name": "psyTick",
+      "snippet": "psyTick{${1:rotation}}(${3:y value}){${2:label}}"
+    },
+    {
+      "name": "psylabelsep",
+      "unusual": true
+    },
+    {
+      "name": "psysubticklinestyle",
+      "unusual": true
+    },
+    {
+      "name": "psyticklinestyle",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\readdata#c"
+      ],
+      "name": "readdata",
+      "snippet": "readdata[${3:options}]{${1:macro}}{${2:file}}"
+    },
+    {
+      "name": "readdata",
+      "snippet": "readdata{${1:macro}}{${2:file}}"
+    },
+    {
+      "name": "savedata",
+      "snippet": "savedata{${1:macro}}[${2:data}]"
+    },
+    {
+      "name": "setDefaulthLabels",
+      "unusual": true
+    },
+    {
+      "name": "setDefaultvLabels",
+      "unusual": true
+    },
+    {
+      "name": "setFractionhLabels",
+      "unusual": true
+    },
+    {
+      "name": "setFractionvLabels",
+      "unusual": true
+    },
+    {
+      "name": "setTrighLabels",
+      "unusual": true
+    },
+    {
+      "name": "setTrigvLabels",
+      "unusual": true
+    }
+  ]
+}

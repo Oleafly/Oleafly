@@ -1,0 +1,82 @@
+{
+  "args": [],
+  "deps": [],
+  "envs": [],
+  "keys": {
+    "\\insertshortauthor,\\insertshortdate,\\insertshortinstitute,\\insertshortpart,\\insertshorttitle,\\insertshortsubtitle,\\insertshortframetitle": [
+      "respectlinebreaks",
+      "width=",
+      "center",
+      "spill"
+    ]
+  },
+  "macros": [
+    {
+      "name": "algorithmname",
+      "unusual": true
+    },
+    {
+      "name": "bibname",
+      "unusual": true
+    },
+    {
+      "name": "chaptername",
+      "unusual": true
+    },
+    {
+      "name": "dohead",
+      "unusual": true
+    },
+    {
+      "name": "headcommand",
+      "snippet": "headcommand{${1:code}}",
+      "unusual": true
+    },
+    {
+      "name": "includegraphics<overlay specification>",
+      "snippet": "includegraphics<overlay specification>[${2:options}]{${1:imagefile}}"
+    },
+    {
+      "name": "includegraphics<overlay specification>",
+      "snippet": "includegraphics<overlay specification>{${1:imagefile}}"
+    },
+    {
+      "name": "insertmainframenumber",
+      "unusual": true
+    },
+    {
+      "name": "inserttotalframenumber",
+      "unusual": true
+    },
+    {
+      "name": "partentry",
+      "snippet": "partentry{${1:arg1}}{${2:arg2}}",
+      "unusual": true
+    },
+    {
+      "name": "pgfimage<overlay specification>",
+      "snippet": "pgfimage<overlay specification>[${2:options}]{${1:imagefile}}",
+      "unusual": true
+    },
+    {
+      "name": "pgfimage<overlay specification>",
+      "snippet": "pgfimage<overlay specification>{${1:imagefile}}",
+      "unusual": true
+    },
+    {
+      "name": "pgfuseimage<overlay specification>",
+      "snippet": "pgfuseimage<overlay specification>{${1:image name}}",
+      "unusual": true
+    },
+    {
+      "name": "sectionentry",
+      "snippet": "sectionentry{${1:arg1}}{${2:arg2}}{${3:arg3}}{${4:arg4}}{${5:arg5}}",
+      "unusual": true
+    },
+    {
+      "name": "slideentry",
+      "snippet": "slideentry{${1:arg1}}{${2:arg2}}{${3:arg3}}{${4:arg4}}{${5:arg5}}{${6:arg6}}",
+      "unusual": true
+    }
+  ]
+}
