@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { normalizeSnippet, parseArgs } from "./latex-intelligence-extract.mjs";
+import {
+  normalizeAtSuggestions,
+  normalizeSnippet,
+  parseArgs,
+} from "./latex-intelligence-extract.mjs";
 
 test("normalizeSnippet keeps already-normalized CodeMirror fields untouched", () => {
   assert.equal(
@@ -55,6 +59,81 @@ test("normalizeSnippet re-decodes backslash escapes on a second pass", () => {
   const once = normalizeSnippet("Bigl\\\\\\{${1}\\\\\\}");
   assert.equal(once, "Bigl\\\\{${1}\\}");
   assert.equal(normalizeSnippet(once), "Bigl\\{${1}}");
+});
+
+test("normalizeAtSuggestions maps entries to sorted trigger/replacement/detail", () => {
+  assert.deepEqual(
+    normalizeAtSuggestions({
+      infinity: { prefix: "@8", body: "\\infty", description: "infinity symbol" },
+      alpha: { prefix: "@a", body: "\\alpha", description: "alpha" },
+    }),
+    [
+      { trigger: "@8", replacement: "\\infty", detail: "infinity symbol" },
+      { trigger: "@a", replacement: "\\alpha", detail: "alpha" },
+    ],
+  );
+});
+
+test("normalizeAtSuggestions snippet-normalizes bodies via normalizeSnippet", () => {
+  assert.deepEqual(
+    normalizeAtSuggestions({
+      fraction: { prefix: "@/", body: "\\frac{$1}{$2}$0", description: "fraction" },
+      hat: { prefix: "@^", body: "\\hat{${1:${TM_SELECTED_TEXT}}}$0", description: "hat" },
+    }),
+    [
+      { trigger: "@/", replacement: "\\frac{${1}}{${2}}${}", detail: "fraction" },
+      { trigger: "@^", replacement: "\\hat{${1:${}}}${}", detail: "hat" },
+    ],
+  );
+});
+
+test("normalizeAtSuggestions keeps duplicate triggers in deterministic order", () => {
+  // Upstream really has two `@|` entries (Big| and left|...right|).
+  const result = normalizeAtSuggestions({
+    "Big|": { prefix: "@|", body: "\\Big|", description: "Big |" },
+    "|": { prefix: "@|", body: "\\left| $1 \\right|", description: "left| ... right|" },
+  });
+  assert.deepEqual(
+    result,
+    [
+      { trigger: "@|", replacement: "\\Big|", detail: "Big |" },
+      { trigger: "@|", replacement: "\\left| ${1} \\right|", detail: "left| ... right|" },
+    ],
+  );
+});
+
+test("normalizeAtSuggestions omits detail only when description is absent", () => {
+  assert.deepEqual(normalizeAtSuggestions({ x: { prefix: "@x", body: "\\chi" } }), [
+    { trigger: "@x", replacement: "\\chi" },
+  ]);
+});
+
+test("normalizeAtSuggestions hard-fails on unknown upstream fields", () => {
+  assert.throws(
+    () =>
+      normalizeAtSuggestions({
+        x: { prefix: "@x", body: "\\chi", description: "chi", scope: "math" },
+      }),
+    /at-suggestions\.json\[x\]: unhandled key "scope"/,
+  );
+});
+
+test("normalizeAtSuggestions hard-fails on prefixes without a leading @", () => {
+  assert.throws(
+    () => normalizeAtSuggestions({ x: { prefix: "x", body: "\\chi", description: "chi" } }),
+    /at-suggestions\.json\[x\]\.prefix: expected a leading "@"/,
+  );
+});
+
+test("normalizeAtSuggestions hard-fails on non-string prefix or body", () => {
+  assert.throws(
+    () => normalizeAtSuggestions({ x: { prefix: 1, body: "\\chi" } }),
+    /at-suggestions\.json\[x\]\.prefix: expected a string/,
+  );
+  assert.throws(
+    () => normalizeAtSuggestions({ x: { prefix: "@x", body: null } }),
+    /at-suggestions\.json\[x\]\.body: expected a string/,
+  );
 });
 
 test("parseArgs accepts --tarball and --out with values", () => {

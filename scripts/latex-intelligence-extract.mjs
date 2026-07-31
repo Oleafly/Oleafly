@@ -15,7 +15,7 @@ const UPSTREAM_COMMIT = "becabe238d3539105dd5bb9b7b3571d26e5d43e0";
 const TARBALL_URL = `https://codeload.github.com/James-Yu/LaTeX-Workshop/tar.gz/${UPSTREAM_COMMIT}`;
 const ALLOWED_DOWNLOAD_HOST = "codeload.github.com";
 const DOWNLOAD_TIMEOUT_MS = 60_000;
-const DEFAULT_OUT_DIR = join("packages", "latex-intelligence", "data");
+const DEFAULT_OUT_DIR = join("public", "latex-intelligence");
 const PACKAGE_BASENAME_RE = /^[A-Za-z0-9@_+-]+$/;
 
 function usage() {
@@ -287,6 +287,44 @@ function normalizeUnimath(raw) {
   return symbols;
 }
 
+/**
+ * Normalize upstream at-suggestions.json (math-mode `@` shortcut snippets)
+ * into a sorted array of { trigger, replacement, detail? }. Triggers keep
+ * their leading `@`; duplicate triggers (upstream has two `@|` entries) are
+ * kept and disambiguated by the sort tiebreakers.
+ */
+export function normalizeAtSuggestions(raw) {
+  assertPlainObject(raw, "at-suggestions.json");
+  const suggestions = [];
+  for (const [name, entry] of Object.entries(raw)) {
+    const context = `at-suggestions.json[${name}]`;
+    assertPlainObject(entry, context);
+    assertOnlyKeys(entry, ["prefix", "body", "description"], context);
+    const trigger = assertString(entry.prefix, `${context}.prefix`);
+    if (!trigger.startsWith("@")) {
+      fail(`${context}.prefix: expected a leading "@", got ${JSON.stringify(trigger)}`);
+    }
+    suggestions.push(
+      withoutUndefined({
+        trigger,
+        replacement: normalizeSnippet(assertString(entry.body, `${context}.body`)),
+        detail:
+          entry.description === undefined
+            ? undefined
+            : assertString(entry.description, `${context}.description`),
+      }),
+    );
+  }
+  suggestions.sort((a, b) => {
+    return (
+      compareStrings(a.trigger, b.trigger) ||
+      compareStrings(a.replacement, b.replacement) ||
+      compareStrings(a.detail ?? "", b.detail ?? "")
+    );
+  });
+  return suggestions;
+}
+
 function normalizeBibtexEntries(raw, sourceName) {
   assertPlainObject(raw, sourceName);
   for (const [entryType, fields] of Object.entries(raw)) {
@@ -526,6 +564,12 @@ async function buildOutputs(dataDir) {
     "unimath.json",
     stableStringify(normalizeUnimath(await readJson(join(dataDir, "unimathsymbols.json")))),
     ["data/unimathsymbols.json"],
+  );
+
+  record(
+    "at-suggestions.json",
+    stableStringify(normalizeAtSuggestions(await readJson(join(dataDir, "at-suggestions.json")))),
+    ["data/at-suggestions.json"],
   );
 
   record(

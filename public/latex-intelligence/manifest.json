@@ -6,6 +6,11 @@
         "data/README.md"
       ]
     },
+    "at-suggestions.json": {
+      "from": [
+        "data/at-suggestions.json"
+      ]
+    },
     "bibtex.json": {
       "from": [
         "data/bibtex-entries.json",

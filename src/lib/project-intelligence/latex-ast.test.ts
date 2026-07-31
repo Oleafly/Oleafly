@@ -1,9 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { analyzeProjectFile } from "./analyze-file";
 import { assembleProjectIntelligence } from "./assemble";
-import { astAugmentLatexFile } from "./latex-ast";
+import { astAugmentLatexFile, latexAstReady } from "./latex-ast";
 import { lineStarts } from "./source";
 import type { ProjectIntelligenceSnapshot } from "./types";
+
+// The AST parser loads lazily in production; tests wait for it so the
+// augmentation path is exercised deterministically.
+beforeAll(async () => {
+  await latexAstReady();
+});
 
 function augment(source: string) {
   return astAugmentLatexFile("main.tex", source, lineStarts(source));

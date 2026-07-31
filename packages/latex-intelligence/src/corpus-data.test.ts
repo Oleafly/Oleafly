@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
-import { loadCore, loadPackageCatalog } from "./index";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { loadCore, loadPackageCatalog, setCorpusTransport } from "./index";
 import type { CoreCatalog, Manifest, NameList, PackageCatalog } from "./types";
 import {
   validateCoreCatalog,
@@ -10,12 +10,30 @@ import {
   validatePackageCatalog,
 } from "./validate";
 
-const DATA_DIR = fileURLToPath(new URL("../data/", import.meta.url));
-const PACKAGES_DIR = fileURLToPath(new URL("../data/packages/", import.meta.url));
+const DATA_DIR = fileURLToPath(
+  new URL("../../../public/latex-intelligence/", import.meta.url),
+);
+const PACKAGES_DIR = `${DATA_DIR}packages/`;
 
 function readJson(name: string): unknown {
   return JSON.parse(readFileSync(`${DATA_DIR}${name}`, "utf8"));
 }
+
+// The production loaders fetch the corpus over HTTP from public/. Tests run
+// under Node, so back the transport with the filesystem copy instead.
+beforeAll(() => {
+  setCorpusTransport(async (relativePath) => {
+    try {
+      return JSON.parse(readFileSync(`${DATA_DIR}${relativePath}`, "utf8")) as unknown;
+    } catch {
+      return null;
+    }
+  });
+});
+
+afterAll(() => {
+  setCorpusTransport(null);
+});
 
 /**
  * Assert a snippet carries no raw VS Code snippet-grammar artifacts that
@@ -90,7 +108,7 @@ describe.each([
   });
 });
 
-describe("data/packages", () => {
+describe("packages", () => {
   const fileNames = readdirSync(PACKAGES_DIR).filter((name) => name.endsWith(".json"));
 
   it("contains exactly 247 catalogs and nothing else", () => {

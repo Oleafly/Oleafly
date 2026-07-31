@@ -13,10 +13,14 @@ import {
 } from "@codemirror/autocomplete";
 import { EditorState } from "@codemirror/state";
 import { setEditorDocumentPath } from "@oleafly/editor";
+import { readFile } from "node:fs/promises";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   loadCore,
   loadPackageCatalog,
   loadPackageNames,
+  setCorpusTransport,
 } from "@oleafly/latex-intelligence";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import {
@@ -25,6 +29,7 @@ import {
 } from "@/lib/latex-corpus";
 import { analyzeProjectFile } from "@/lib/project-intelligence/analyze-file";
 import { assembleProjectIntelligence } from "@/lib/project-intelligence/assemble";
+import { latexAstReady } from "@/lib/project-intelligence/latex-ast";
 import type { ProjectIntelligenceSnapshot } from "@/lib/project-intelligence/types";
 import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
@@ -124,8 +129,25 @@ function option(
 }
 
 beforeAll(async () => {
-  // Corpus caches load asynchronously in production; tests warm them
-  // deterministically through the same promise-cached loaders.
+  // Corpus caches and the AST parser load asynchronously in production;
+  // tests warm them deterministically through the same promises, with an
+  // fs-backed transport standing in for the fetch of public/ assets.
+  // Plain paths, not URL objects: jsdom swaps the global URL class and
+  // node:fs does not accept foreign URL instances.
+  const corpusDir = resolve(
+    dirname(fileURLToPath(import.meta.url)),
+    "../../../../public/latex-intelligence",
+  );
+  setCorpusTransport(async (relativePath) => {
+    try {
+      return JSON.parse(
+        await readFile(join(corpusDir, relativePath), "utf8"),
+      ) as unknown;
+    } catch {
+      return null;
+    }
+  });
+  await latexAstReady();
   corpusCore();
   requestPackageCatalogs([
     "siunitx",

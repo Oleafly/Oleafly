@@ -2,10 +2,42 @@ import type {
   Node as LatexNode,
   Macro,
 } from "@unified-latex/unified-latex-types";
-import { parse } from "@unified-latex/unified-latex-util-parse";
-import { printRaw } from "@unified-latex/unified-latex-util-print-raw";
 import { location, stableId } from "./source";
 import type { ProjectDefinition } from "./types";
+
+// unified-latex is ~200 KB minified and must stay out of the synchronous
+// main-thread bundle (performance budget). The parser loads lazily; until it
+// arrives, astAugmentLatexFile returns null and callers keep lexical-only
+// results — the next analysis pass picks the AST facts up.
+interface UnifiedLatexApi {
+  parse: typeof import("@unified-latex/unified-latex-util-parse").parse;
+  printRaw: typeof import("@unified-latex/unified-latex-util-print-raw").printRaw;
+}
+
+let unifiedLatex: UnifiedLatexApi | null = null;
+let unifiedLatexLoad: Promise<void> | null = null;
+
+function ensureUnifiedLatexLoaded(): Promise<void> {
+  unifiedLatexLoad ??= Promise.all([
+    import("@unified-latex/unified-latex-util-parse"),
+    import("@unified-latex/unified-latex-util-print-raw"),
+  ])
+    .then(([parseModule, printModule]) => {
+      unifiedLatex = {
+        parse: parseModule.parse,
+        printRaw: printModule.printRaw,
+      };
+    })
+    .catch((error: unknown) => {
+      console.debug("[latex-ast] parser failed to load", error);
+    });
+  return unifiedLatexLoad;
+}
+
+/** Resolves when the AST parser is available (or has failed to load). */
+export function latexAstReady(): Promise<void> {
+  return ensureUnifiedLatexLoaded();
+}
 
 // The lexical scanner stays authoritative for macro/environment/label
 // extraction; this pass only contributes what regexes cannot express
@@ -44,8 +76,11 @@ function isGroup(node: LatexNode): node is LatexNode & GroupLike {
   return node.type === "group";
 }
 
-function trimmedRaw(nodes: readonly LatexNode[]): string {
-  return printRaw(nodes as LatexNode[]).trim();
+function trimmedRaw(
+  api: UnifiedLatexApi,
+  nodes: readonly LatexNode[],
+): string {
+  return api.printRaw(nodes as LatexNode[]).trim();
 }
 
 /**
@@ -91,6 +126,7 @@ function siblingGroups(
 }
 
 function glossaryDefinition(
+  api: UnifiedLatexApi,
   file: string,
   starts: readonly number[],
   macro: Macro,
@@ -105,7 +141,7 @@ function glossaryDefinition(
     : siblingGroups(siblings, index + 1, 3);
   const keyGroup = groups[0];
   if (!keyGroup) return null;
-  const name = trimmedRaw(keyGroup.content);
+  const name = trimmedRaw(api, keyGroup.content);
   if (!name || /[\\{}]/.test(name)) return null;
   const position = keyGroup.position;
   if (!position) return null;
@@ -116,10 +152,10 @@ function glossaryDefinition(
     macro.content === "newabbreviation";
   let detail = "glossary entry";
   if (isAcronym && groups.length >= 3) {
-    detail = `${trimmedRaw(groups[1].content)} — ${trimmedRaw(groups[2].content)}`;
+    detail = `${trimmedRaw(api, groups[1].content)} — ${trimmedRaw(api, groups[2].content)}`;
   } else if (!isAcronym && groups.length >= 2) {
     const nameField = /name\s*=\s*\{?([^,{}]+)/u.exec(
-      trimmedRaw(groups[1].content),
+      trimmedRaw(api, groups[1].content),
     );
     if (nameField) detail = nameField[1].trim();
   }
@@ -135,6 +171,7 @@ function glossaryDefinition(
 }
 
 function walk(
+  api: UnifiedLatexApi,
   file: string,
   starts: readonly number[],
   nodes: readonly LatexNode[],
@@ -147,6 +184,7 @@ function walk(
       GLOSSARY_DEFINITION_MACROS.has(node.content)
     ) {
       const definition = glossaryDefinition(
+        api,
         file,
         starts,
         node,
@@ -161,7 +199,7 @@ function walk(
         ? (node.content as LatexNode[])
         : null;
     if (children) {
-      walk(file, starts, children, definitions);
+      walk(api, file, starts, children, definitions);
     }
   }
 }
@@ -180,10 +218,15 @@ export function astAugmentLatexFile(
   if (!/\\(?:new(?:glossaryentry|acronym|abbreviation)|longnewglossaryentry)/.test(source)) {
     return null;
   }
+  const api = unifiedLatex;
+  if (!api) {
+    void ensureUnifiedLatexLoaded();
+    return null;
+  }
   try {
-    const ast = parse(source);
+    const ast = api.parse(source);
     const definitions: ProjectDefinition[] = [];
-    walk(file, starts, ast.content, definitions);
+    walk(api, file, starts, ast.content, definitions);
     return definitions.length ? { definitions } : null;
   } catch {
     return null;
