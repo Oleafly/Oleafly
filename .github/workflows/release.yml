@@ -98,6 +98,14 @@ jobs:
         shell: bash
         run: node scripts/fetch-language-servers.mjs --server tinymist --target ${{ matrix.rust_target }} --install-mode resource
 
+      # Notarization walks inside bundled archives, and upstream ships Tinymist
+      # unsigned. Sign it before Tauri bundles the resource, or the whole app is
+      # rejected. No-op on other platforms and on unsigned builds.
+      - name: Sign the bundled Tinymist binary (macOS)
+        if: matrix.os == 'macos-14'
+        shell: bash
+        run: node scripts/sign-bundled-tinymist.mjs
+
       - name: Fetch Typst sidecar
         shell: bash
         run: bash scripts/fetch-typst.sh ${{ matrix.rust_target }}
