@@ -20,6 +20,8 @@ export {
   latexReferenceCitationCompletions,
   slashCompletions,
   setBibKeysProvider,
+  setLatexCorpusProvider,
+  type LatexCorpusProvider,
   bibKeysFromSources,
 } from "./latex";
 export { bibtexLanguage } from "./bibtex";

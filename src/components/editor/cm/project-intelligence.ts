@@ -20,6 +20,13 @@ import {
   type ViewUpdate,
 } from "@codemirror/view";
 import { clearProjectHoverIntel } from "./hover-intel";
+import {
+  catalogNamesForSnapshot,
+  corpusClassNames,
+  corpusCore,
+  corpusPackageNames,
+  loadedCatalogsFor,
+} from "@/lib/latex-corpus";
 import { analyzeProjectFile } from "@/lib/project-intelligence/analyze-file";
 import { citationCompletions } from "@/lib/project-intelligence/selectors";
 import { currentSourceProjectIntelligence } from "@/lib/project-intelligence/current";
@@ -297,7 +304,23 @@ function latexCompletion(
     const projectNames = new Set(
       project.map((option) => option.label),
     );
-    const standard = STANDARD_LATEX_ENVIRONMENTS
+    const core = corpusCore();
+    const packageEnvironments = loadedCatalogsFor(
+      catalogNamesForSnapshot(snapshot),
+    ).flatMap((catalog) =>
+      catalog.envs
+        .filter((env) => !env.unusual)
+        .map((env) => env.name),
+    );
+    const standardNames = core
+      ? [
+          ...new Set([
+            ...packageEnvironments,
+            ...core.environments.map((env) => env.name),
+          ]),
+        ]
+      : [...STANDARD_LATEX_ENVIRONMENTS];
+    const standard = standardNames
       .filter(
         (name) =>
           !projectNames.has(name) &&
@@ -331,18 +354,22 @@ function latexCompletion(
     );
   if (packageName) {
     const query = (packageName[1] ?? "").trimStart();
+    const names = corpusPackageNames();
     return completionResult(
       context.pos - query.length,
-      STANDARD_LATEX_PACKAGES.filter((name) =>
-        name
-          .toLocaleLowerCase()
-          .includes(query.toLocaleLowerCase()),
-      ).map((name) => ({
-        label: name,
-        type: "namespace",
-        detail: "LaTeX package",
-        apply: guardedApply(guard, name),
-      })),
+      (names ? names.names : STANDARD_LATEX_PACKAGES)
+        .filter((name) =>
+          name
+            .toLocaleLowerCase()
+            .includes(query.toLocaleLowerCase()),
+        )
+        .slice(0, FILTERED_COMPLETION_LIMIT)
+        .map((name) => ({
+          label: name,
+          type: "namespace",
+          detail: names?.details[name] ?? "LaTeX package",
+          apply: guardedApply(guard, name),
+        })),
     );
   }
 
@@ -350,18 +377,22 @@ function latexCompletion(
     /\\documentclass\s*(?:\[[^\]]*\])?\{([^{}]*)$/u.exec(before);
   if (documentClass) {
     const query = documentClass[1] ?? "";
+    const names = corpusClassNames();
     return completionResult(
       context.pos - query.length,
-      STANDARD_LATEX_CLASSES.filter((name) =>
-        name
-          .toLocaleLowerCase()
-          .includes(query.toLocaleLowerCase()),
-      ).map((name) => ({
-        label: name,
-        type: "type",
-        detail: "LaTeX document class",
-        apply: guardedApply(guard, name),
-      })),
+      (names ? names.names : STANDARD_LATEX_CLASSES)
+        .filter((name) =>
+          name
+            .toLocaleLowerCase()
+            .includes(query.toLocaleLowerCase()),
+        )
+        .slice(0, FILTERED_COMPLETION_LIMIT)
+        .map((name) => ({
+          label: name,
+          type: "type",
+          detail: names?.details[name] ?? "LaTeX document class",
+          apply: guardedApply(guard, name),
+        })),
     );
   }
 
@@ -412,13 +443,49 @@ function latexCompletion(
   const command = /\\([A-Za-z@]*)$/u.exec(before);
   if (command) {
     const query = command[1] ?? "";
+    const project = definitionOptions(
+      snapshot,
+      guard,
+      new Set(["macro"]),
+      query,
+    );
+    const projectNames = new Set(
+      project.map((option) => option.label),
+    );
+    const queryLower = query.toLocaleLowerCase();
+    const seenMacros = new Set<string>();
+    const packageMacros = loadedCatalogsFor(
+      catalogNamesForSnapshot(snapshot),
+    ).flatMap((catalog) =>
+      catalog.macros
+        .filter((macro) => {
+          if (
+            macro.unusual ||
+            projectNames.has(macro.name) ||
+            seenMacros.has(macro.name) ||
+            !macro.name.toLocaleLowerCase().includes(queryLower)
+          ) {
+            return false;
+          }
+          seenMacros.add(macro.name);
+          return true;
+        })
+        .map((macro) => ({
+          label: macro.name,
+          type: "function",
+          detail: macro.detail ?? "package command",
+          apply: guardedApply(
+            guard,
+            macro.snippet ?? macro.name,
+            macro.snippet !== undefined,
+          ),
+        } satisfies Completion)),
+    );
     return completionResult(
       context.pos - query.length,
-      definitionOptions(
-        snapshot,
-        guard,
-        new Set(["macro"]),
-        query,
+      [...project, ...packageMacros].slice(
+        0,
+        FILTERED_COMPLETION_LIMIT,
       ),
     );
   }

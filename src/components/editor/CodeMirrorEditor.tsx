@@ -27,6 +27,7 @@ import { useIndexStore } from "@/store/project-index";
 import { useSettingsStore } from "@/store/settings";
 import { useCompileStore } from "@/store/compile";
 import { useDictionary, isWordIgnored, ignoreWordForProject, ignoreWordGlobally } from "@/lib/dictionary";
+import { installLatexCorpus } from "@/lib/latex-corpus";
 import { isSessionIgnoredWord } from "@/lib/proofreading/ignored";
 import {
   cancelProofreading,
@@ -129,6 +130,8 @@ setBibKeysProvider(() => {
     ]),
   ];
 });
+
+installLatexCorpus();
 
 // Module-level so the host identity is stable across renders (its use* members are hooks).
 const HOST: EditorHost = {
