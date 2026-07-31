@@ -21,3 +21,10 @@ export {
   parseDebateResponse,
   rankLiteraturePapers,
 } from "./debate-ranker";
+export {
+  DEFAULT_DOCUMENT_CITATION_SETTINGS,
+  loadDocumentCitationSettings,
+  saveDocumentCitationSettings,
+  type DocumentCitationSettings,
+} from "./settings";
+export { completeChatWithActiveModel } from "./llm-complete";
