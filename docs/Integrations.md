@@ -11,7 +11,7 @@ preflight do not require an account.
 | GitHub | OAuth login, repository listing, publish, push, pull | Network calls use GitHub APIs only after the user connects an account |
 | MCP | Expose project tools to external clients | Localhost HTTP with a short-lived bearer token and the same approval model |
 | AI providers | Chat, edits, compilation assistance, and figure generation | User-selected hosted provider or local Ollama model; credentials stay local |
-| Citation services | DOI, arXiv, and Crossref metadata | Sends the requested identifier or title only |
+| Citation services | DOI, arXiv, Crossref, multi-source literature, optional Serper (Google Scholar), OpenAlex email | Sends the requested identifier, title, or search keywords only |
 | OpenAlex contact email | Improves OpenAlex rate limits (polite pool) | Optional; stored locally as connector value `openalex-email`; used only in OpenAlex request User-Agent |
 | Optional downloads | Engines, language servers, templates, fonts, and Pandoc | Checksum or manifest policy applies before installation |
 | Update feed | Release metadata and signed artifacts | The embedded updater public key must validate the feed artifact |

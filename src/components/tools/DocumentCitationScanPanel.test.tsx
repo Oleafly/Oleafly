@@ -51,6 +51,7 @@ import { useSettingsStore } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
 import { useDocumentCitationUiStore } from "@/store/document-citation-ui";
 import { useLiteratureLibraryStore } from "@/store/literature";
+import { clearDocumentScanCache } from "@/lib/document-citation";
 import type { LiteratureRecord } from "@/lib/literature-search";
 
 const sampleRecord: LiteratureRecord = {
@@ -72,6 +73,8 @@ const sampleRecord: LiteratureRecord = {
 };
 
 beforeEach(() => {
+  clearDocumentScanCache();
+  localStorage.clear();
   getConfig.mockReset();
   getConfig.mockResolvedValue({});
   hasConfiguredProvider.mockReset();

@@ -30,6 +30,10 @@ export function CitationSearchIntegrationSection() {
   );
   const [openAlexBusy, setOpenAlexBusy] = useState(false);
 
+  const [serperKey, setSerperKey] = useState("");
+  const [serperConnected, setSerperConnected] = useState<boolean | null>(null);
+  const [serperBusy, setSerperBusy] = useState(false);
+
   useEffect(() => {
     let cancelled = false;
     void getConnectorKey("semantic-scholar")
@@ -45,6 +49,13 @@ export function CitationSearchIntegrationSection() {
       })
       .catch(() => {
         if (!cancelled) setOpenAlexConnected(false);
+      });
+    void getConnectorKey("serper")
+      .then((key) => {
+        if (!cancelled) setSerperConnected(Boolean(key));
+      })
+      .catch(() => {
+        if (!cancelled) setSerperConnected(false);
       });
     return () => {
       cancelled = true;
@@ -106,6 +117,35 @@ export function CitationSearchIntegrationSection() {
       toast.error("Could not remove the OpenAlex contact email.");
     } finally {
       setOpenAlexBusy(false);
+    }
+  };
+
+  const saveSerper = async () => {
+    const nextKey = serperKey.trim();
+    if (!nextKey) return;
+    setSerperBusy(true);
+    try {
+      await setConnectorKey("serper", nextKey);
+      setSerperKey("");
+      setSerperConnected(true);
+      toast.success("Serper API key saved");
+    } catch {
+      toast.error("Could not save the Serper API key.");
+    } finally {
+      setSerperBusy(false);
+    }
+  };
+
+  const removeSerper = async () => {
+    setSerperBusy(true);
+    try {
+      await setConnectorKey("serper", "");
+      setSerperConnected(false);
+      toast.success("Serper API key removed");
+    } catch {
+      toast.error("Could not remove the Serper API key.");
+    } finally {
+      setSerperBusy(false);
     }
   };
 
@@ -251,6 +291,71 @@ export function CitationSearchIntegrationSection() {
             >
               {openAlexBusy && <Loader2 className="animate-spin" />}
               Save email
+            </Button>
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-lg border bg-background p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="max-w-md">
+            <div className="flex items-center gap-2">
+              <KeyRound className="size-4 text-emerald-600 dark:text-emerald-300" />
+              <h4 className="text-sm font-medium">Google Scholar (Serper)</h4>
+              {serperConnected && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
+                  <Check className="size-3" />
+                  Connected
+                </span>
+              )}
+            </div>
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+              Optional. Enables the Google Scholar source in Citation Search
+              via Serper. Without a key, that source is skipped when selected.
+            </p>
+            <a
+              href="https://serper.dev"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+            >
+              Serper API
+              <ExternalLink className="size-3" />
+            </a>
+          </div>
+          {serperConnected && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={serperBusy}
+              onClick={() => void removeSerper()}
+            >
+              {serperBusy && <Loader2 className="animate-spin" />}
+              Remove key
+            </Button>
+          )}
+        </div>
+        {!serperConnected && (
+          <div className="mt-4 flex max-w-md gap-2">
+            <Input
+              type="password"
+              data-testid="serper-api-key-input"
+              value={serperKey}
+              onChange={(event) => setSerperKey(event.target.value)}
+              placeholder="Serper API key"
+              aria-label="Serper API key"
+              className="h-9"
+            />
+            <Button
+              type="button"
+              size="sm"
+              data-testid="serper-api-key-save"
+              disabled={serperBusy || !serperKey.trim()}
+              onClick={() => void saveSerper()}
+            >
+              {serperBusy && <Loader2 className="animate-spin" />}
+              Save key
             </Button>
           </div>
         )}

@@ -65,6 +65,7 @@ import {
   publicationYearRange,
 } from "@/lib/publication-year";
 import { DocumentCitationScanPanel } from "@/components/tools/DocumentCitationScanPanel";
+import { PaperReviewPanel } from "@/components/tools/PaperReviewPanel";
 
 const SUGGESTIONS = [
   {
@@ -97,6 +98,7 @@ const SOURCE_DOT: Record<LiteratureSource, string> = {
   crossref: "bg-cyan-600",
   pubmed: "bg-indigo-600",
   openalex: "bg-violet-500",
+  "google-scholar": "bg-emerald-600",
   uspto: "bg-orange-600",
 };
 
@@ -603,7 +605,7 @@ export function LiteratureSearchPanel() {
   const saveCitation = useLiteratureLibraryStore((state) => state.save);
   const removeCitation = useLiteratureLibraryStore((state) => state.remove);
   const modeRequest = useDocumentCitationUiStore((state) => state.modeRequest);
-  const [mode, setMode] = useState<"search" | "document">(() =>
+  const [mode, setMode] = useState<"search" | "document" | "review">(() =>
     useDocumentCitationUiStore.getState().modeRequest === "document"
       ? "document"
       : "search",
@@ -736,7 +738,7 @@ export function LiteratureSearchPanel() {
           </div>
 
           <div
-            className="mt-4 flex gap-1 rounded-lg border p-1 w-fit"
+            className="mt-4 flex flex-wrap gap-1 rounded-lg border p-1 w-fit"
             data-testid="citation-search-mode"
           >
             <Button
@@ -761,6 +763,18 @@ export function LiteratureSearchPanel() {
               }}
             >
               From document
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={mode === "review" ? "secondary" : "ghost"}
+              data-testid="citation-search-mode-review"
+              onClick={() => {
+                setMode("review");
+                setTab("search");
+              }}
+            >
+              Review
             </Button>
           </div>
 
@@ -963,6 +977,8 @@ export function LiteratureSearchPanel() {
             </TabsContent>
           </Tabs>
         </div>
+      ) : mode === "review" ? (
+        <PaperReviewPanel />
       ) : (
         <Tabs
           value={tab}

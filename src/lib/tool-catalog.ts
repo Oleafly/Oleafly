@@ -95,9 +95,9 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
     id: "literature-search",
     name: "Citation Search",
     description:
-      "Manual multi-source search and document paragraph scan for ranked citation suggestions. Duplicates are combined automatically.",
+      "Manual multi-source search, document paragraph scan with scored suggestions, and Friendly/Fire paper review. Duplicates are combined automatically.",
     icon: LibraryBig,
-    tags: ["5 available indexes", "From document", "Saved citations"],
+    tags: ["Scholar indexes", "From document", "Review", "Saved citations"],
     category: "Research",
     page: "literature-search",
     slash: ["citations-search", "citation-search", "literature-search"],

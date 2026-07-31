@@ -267,6 +267,28 @@ async fn search_arxiv(query: &str, limit: u8, years: Option<(u16, u16)>) -> Resu
     .await
 }
 
+/// Google Scholar via Serper (`google.serper.dev/scholar`). Requires connector secret `serper`.
+async fn search_google_scholar(query: &str, limit: u8) -> Result<String, String> {
+    let key = crate::secrets::read_connector_secrets()?
+        .get("serper")
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| {
+            "Google Scholar via Serper needs an API key. Add it under Settings → Integrations → Citation Search."
+                .to_string()
+        })?;
+    let body = json!({ "q": query, "num": limit });
+    response_text(
+        "Google Scholar",
+        client()?
+            .post("https://google.serper.dev/scholar")
+            .header("X-API-KEY", key)
+            .header("Content-Type", "application/json")
+            .json(&body),
+    )
+    .await
+}
+
 /// Search one reviewed scholarly source. The frontend invokes this once per
 /// selected source with `Promise.allSettled`, so one slow or unavailable index
 /// never suppresses results from the others.
@@ -294,6 +316,7 @@ pub async fn literature_search(
         "crossref" => search_crossref(query, limit, years).await,
         "pubmed" => search_pubmed(query, limit, years, open_access_only).await,
         "arxiv" => search_arxiv(query, limit, years).await,
+        "google-scholar" => search_google_scholar(query, limit).await,
         "uspto" => Err(
             "USPTO has temporarily paused PatentsView search APIs during its Open Data Portal migration."
                 .to_string(),

@@ -19,8 +19,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import {
+  clearDocumentScanCache,
+  documentScanCacheKey,
   loadDocumentCitationSettings,
+  loadDocumentScanCache,
   saveDocumentCitationSettings,
+  saveDocumentScanCache,
   scanDocumentForCitations,
   type DocumentCitationSettings,
   type DocumentScanProgress,
@@ -33,7 +37,6 @@ import {
   type LiteratureSource,
 } from "@/lib/literature-search";
 import { addCitation } from "@/features/citation";
-import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { useFilesStore } from "@/store/files";
 import { useDocumentCitationUiStore } from "@/store/document-citation-ui";
 import { useLiteratureLibraryStore } from "@/store/literature";
@@ -48,6 +51,7 @@ const SOURCE_DOT: Record<LiteratureSource, string> = {
   crossref: "bg-cyan-600",
   pubmed: "bg-indigo-600",
   openalex: "bg-violet-500",
+  "google-scholar": "bg-emerald-600",
   uspto: "bg-orange-600",
 };
 
@@ -347,6 +351,7 @@ export function DocumentCitationScanPanel() {
   const offline = useSettingsStore((state) => state.offline);
   const projectId = useFilesStore((state) => state.projectId);
   const activePath = useFilesStore((state) => state.activePath);
+  const mainDoc = useFilesStore((state) => state.mainDoc);
   const files = useFilesStore((state) => state.files);
   const tree = useFilesStore((state) => state.tree);
 
@@ -414,12 +419,11 @@ export function DocumentCitationScanPanel() {
         };
       }
     }
-    const mainDoc = resolveEffectiveMainDoc().mainDoc;
     return {
       sourcePath: mainDoc,
       sourceText: files[mainDoc]?.content ?? "",
     };
-  }, [activePath, files, selectionSource]);
+  }, [activePath, files, mainDoc, selectionSource]);
 
   const bibText = useMemo(() => {
     if (bibSource) return bibSource;
@@ -454,13 +458,14 @@ export function DocumentCitationScanPanel() {
     setParagraphs([]);
     setProgress(null);
     setError(null);
+    clearDocumentScanCache();
   };
 
   const cancelScan = () => {
     abortRef.current?.abort();
   };
 
-  const runScan = async () => {
+  const runScan = async (opts?: { ignoreCache?: boolean }) => {
     if (!canScan) return;
     if (offline) {
       setError(
@@ -471,6 +476,29 @@ export function DocumentCitationScanPanel() {
     if (!sourceText.trim()) {
       setError("No LaTeX source text is available to scan.");
       return;
+    }
+
+    const rankMode = providerReady === true ? "llm" : "heuristic";
+    const cacheKey = documentScanCacheKey({
+      sourceText,
+      bibText,
+      settings,
+      rankMode,
+    });
+
+    if (!opts?.ignoreCache) {
+      const cached = loadDocumentScanCache(cacheKey);
+      if (cached) {
+        setParagraphs(cached.paragraphs);
+        setProgress({
+          phase: "complete",
+          completedParagraphs: cached.totalParagraphs,
+          totalParagraphs: cached.totalParagraphs,
+          message: "Restored cached scan results",
+        });
+        setError(null);
+        return;
+      }
     }
 
     const controller = new AbortController();
@@ -485,20 +513,19 @@ export function DocumentCitationScanPanel() {
       message: "Splitting document into paragraphs…",
     });
 
-    const rankMode = providerReady === true ? "llm" : "heuristic";
-
     try {
-      await scanDocumentForCitations({
+      const result = await scanDocumentForCitations({
         sourceText,
         bibText,
         settings,
         rankMode,
         signal: controller.signal,
         onProgress: (next) => setProgress(next),
-        onParagraph: (result) => {
-          setParagraphs((current) => [...current, result]);
+        onParagraph: (paragraph) => {
+          setParagraphs((current) => [...current, paragraph]);
         },
       });
+      saveDocumentScanCache(cacheKey, result);
     } catch (scanError) {
       const isAbort =
         scanError instanceof Error && scanError.name === "AbortError";
@@ -526,6 +553,38 @@ export function DocumentCitationScanPanel() {
       }
     }
   };
+
+  // E2E / DEV: inject canned scan results without network or LLM.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const w = window as unknown as {
+      __e2eDocumentCitation?: {
+        seedResults: (results: ParagraphCitationResult[]) => void;
+        setSourceOverride: (text: string) => void;
+        getParagraphCount: () => number;
+      };
+    };
+    w.__e2eDocumentCitation = {
+      seedResults: (results) => {
+        setParagraphs(results);
+        setProgress({
+          phase: "complete",
+          completedParagraphs: results.length,
+          totalParagraphs: results.length,
+          message: "Seeded e2e results",
+        });
+        setError(null);
+        setScanning(false);
+      },
+      setSourceOverride: (text) => {
+        setSelectionSource(text);
+      },
+      getParagraphCount: () => paragraphs.length,
+    };
+    return () => {
+      delete w.__e2eDocumentCitation;
+    };
+  }, [paragraphs.length]);
 
   return (
     <div

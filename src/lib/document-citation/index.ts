@@ -41,3 +41,9 @@ export {
   type PaperReviewMode,
 } from "./review-prompts";
 export { runPaperReview } from "./review-paper";
+export {
+  clearDocumentScanCache,
+  documentScanCacheKey,
+  loadDocumentScanCache,
+  saveDocumentScanCache,
+} from "./scan-cache";

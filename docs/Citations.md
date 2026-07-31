@@ -7,7 +7,8 @@ BibTeX source remains the authority; external services only supply metadata.
 
 - DOI, arXiv ID, URL, and title-based citation lookup.
 - Crossref, arXiv, and Semantic Scholar metadata adapters where configured.
-- Multi-source Citation Search (manual query across scholarly indexes).
+- Multi-source Citation Search (manual query across arXiv, Semantic Scholar,
+  Crossref, PubMed, OpenAlex; optional Google Scholar via Serper).
 - Deduplicated BibTeX insertion keyed by DOI when available.
 - Citation-key completion from the project index.
 - Undefined citation, duplicate key, and duplicate DOI diagnostics.
@@ -30,13 +31,24 @@ bibliography, and ranks candidates with a score badge.
 - Scan settings (score threshold, max results per paragraph, max paragraphs)
   persist locally. Already-cited records are filtered out when bibliography
   identities are available.
+- Successful scans are **cached locally** (same source text, bibliography
+  snapshot, and scan settings) for about a day; Clear discards the cache.
 
-## OpenAlex contact email
+## Paper review
+
+Citation Search **Review** mode streams Friendly (constructive mentor) or Fire
+(Reviewer #2) feedback for the active document or captured selection, using the
+configured AI provider.
+
+## OpenAlex contact email and Serper
 
 Optional OpenAlex polite-pool contact email is stored under Integrations as
 connector value `openalex-email`. When set, OpenAlex requests send a
 `mailto:` suffix in the User-Agent so rate limits improve. The email stays on
 the machine; it is not written into project files.
+
+Optional Serper API key (`serper`) enables the Google Scholar source. Without
+it, that source reports a clear configuration error if selected.
 
 ## Network and provenance
 
@@ -53,6 +65,7 @@ and incomplete metadata are reported as states rather than silently guessed.
 - `src/lib/document-citation/`: paragraph split, bibliography filter, ranking,
   document scan orchestration, and paper-review helpers.
 - `src/components/tools/DocumentCitationScanPanel.tsx`: From document UI.
+- `src/components/tools/PaperReviewPanel.tsx`: Friendly/Fire review UI.
 - `src/store/project-index.ts`: bibliography and reference indexing.
 - `packages/preflight/src/refs-rules.ts`: reference diagnostics.
 - `src/contributions/tabs.tsx`: references rail tab.
