@@ -5,7 +5,10 @@
 # Vendored upstream payloads are checksum-pinned against what upstream
 # published. Any end-of-line translation changes their bytes and the pin fails
 # on Windows checkouts only.
-resources/licenses/** -text
+# Anchored patterns: a gitattributes pattern containing a slash matches from
+# the repo root, so `resources/licenses/**` silently misses the real location
+# under src-tauri/.
+**/resources/licenses/** -text
 *.tar.gz binary
 *.zip binary
 
