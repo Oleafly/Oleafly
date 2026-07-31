@@ -476,6 +476,8 @@ export const compileTagged = (projectId: string, mainDoc: string) =>
 
 export const fetchDoiBibtex = (doi: string) => invoke<string>("fetch_doi_bibtex", { doi });
 export const fetchArxiv = (id: string) => invoke<string>("fetch_arxiv", { id });
+export const literatureArxivLookup = (arxivId: string) =>
+  invoke<string>("literature_arxiv_lookup", { arxivId });
 export const crossrefSearch = (query: string) => invoke<string>("crossref_search", { query });
 export const literatureSearch = (
   source: string,

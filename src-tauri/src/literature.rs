@@ -11,6 +11,32 @@ use serde_json::{json, Value};
 
 const UA: &str = "Oleafly/0.2 (https://github.com/Oleafly/Oleafly; literature search)";
 
+/// Trim and validate an OpenAlex polite-pool contact email.
+fn sanitize_openalex_email(raw: &str) -> Option<&str> {
+    let email = raw.trim();
+    if email.is_empty() || !email.contains('@') {
+        None
+    } else {
+        Some(email)
+    }
+}
+
+/// User-Agent for OpenAlex only: appends mailto when a contact email is configured.
+fn literature_user_agent() -> String {
+    let mut ua = UA.to_string();
+    if let Ok(secrets) = crate::secrets::read_connector_secrets() {
+        if let Some(email) = secrets
+            .get("openalex-email")
+            .map(|s| s.as_str())
+            .and_then(sanitize_openalex_email)
+        {
+            // OpenAlex polite pool: contact in User-Agent
+            ua = format!("{UA} (mailto:{email})");
+        }
+    }
+    ua
+}
+
 fn client() -> Result<reqwest::Client, String> {
     reqwest::Client::builder()
         .user_agent(UA)
@@ -81,6 +107,7 @@ async fn search_openalex(
         "OpenAlex",
         client()?
             .get("https://api.openalex.org/works")
+            .header("User-Agent", literature_user_agent())
             .query(&params),
     )
     .await
@@ -118,6 +145,36 @@ async fn search_semantic_scholar(
             error
         }
     })
+}
+
+/// Look up a single arXiv paper on Semantic Scholar to backfill authors and
+/// venue for sources that return bare titles (e.g. Google Scholar via Serper).
+#[tauri::command]
+pub async fn literature_arxiv_lookup(arxiv_id: String) -> Result<String, String> {
+    let id = arxiv_id.trim();
+    let valid = !id.is_empty()
+        && id.len() <= 32
+        && id
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '/'));
+    if !valid {
+        return Err("invalid arXiv id".to_string());
+    }
+    let mut request = client()?
+        .get(format!(
+            "https://api.semanticscholar.org/graph/v1/paper/arXiv:{id}"
+        ))
+        .query(&[(
+            "fields",
+            "title,authors,year,venue,externalIds,citationCount",
+        )]);
+    if let Some(key) = crate::secrets::read_connector_secrets()?
+        .get("semantic-scholar")
+        .filter(|key| !key.trim().is_empty())
+    {
+        request = request.header("x-api-key", key);
+    }
+    response_text("Semantic Scholar", request).await
 }
 
 async fn search_crossref(
@@ -240,6 +297,28 @@ async fn search_arxiv(query: &str, limit: u8, years: Option<(u16, u16)>) -> Resu
     .await
 }
 
+/// Google Scholar via Serper (`google.serper.dev/scholar`). Requires connector secret `serper`.
+async fn search_google_scholar(query: &str, limit: u8) -> Result<String, String> {
+    let key = crate::secrets::read_connector_secrets()?
+        .get("serper")
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| {
+            "Google Scholar via Serper needs an API key. Add it under Settings → Integrations → Citation Search."
+                .to_string()
+        })?;
+    let body = json!({ "q": query, "num": limit });
+    response_text(
+        "Google Scholar",
+        client()?
+            .post("https://google.serper.dev/scholar")
+            .header("X-API-KEY", key)
+            .header("Content-Type", "application/json")
+            .json(&body),
+    )
+    .await
+}
+
 /// Search one reviewed scholarly source. The frontend invokes this once per
 /// selected source with `Promise.allSettled`, so one slow or unavailable index
 /// never suppresses results from the others.
@@ -267,6 +346,7 @@ pub async fn literature_search(
         "crossref" => search_crossref(query, limit, years).await,
         "pubmed" => search_pubmed(query, limit, years, open_access_only).await,
         "arxiv" => search_arxiv(query, limit, years).await,
+        "google-scholar" => search_google_scholar(query, limit).await,
         "uspto" => Err(
             "USPTO has temporarily paused PatentsView search APIs during its Open Data Portal migration."
                 .to_string(),
@@ -277,12 +357,19 @@ pub async fn literature_search(
 
 #[cfg(test)]
 mod tests {
-    use super::year_range;
+    use super::{sanitize_openalex_email, year_range};
 
     #[test]
     fn normalizes_partial_and_reversed_year_ranges() {
         assert_eq!(year_range(Some(2024), Some(2020)), Some((2020, 2024)));
         assert_eq!(year_range(Some(2018), None), Some((2018, 2200)));
         assert_eq!(year_range(None, None), None);
+    }
+
+    #[test]
+    fn openalex_email_requires_at_sign() {
+        assert_eq!(sanitize_openalex_email("  a@b.co  "), Some("a@b.co"));
+        assert_eq!(sanitize_openalex_email("not-an-email"), None);
+        assert_eq!(sanitize_openalex_email(""), None);
     }
 }

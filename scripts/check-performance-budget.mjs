@@ -27,17 +27,19 @@ const limits = {
   // independently emitted 180 KB chunk without relaxing the startup gate.
   // The PDF viewer emits two independently validated worker builds and the
   // editor intelligence chunks are now shipped as first-class features. Keep
-  // the gate within a narrow 9.01 MB desktop envelope while allowing those
+  // the gate within a narrow desktop envelope while allowing those
   // production-only chunks to coexist without brittle filename-specific cuts.
-  // The 10 KB margin also avoids a false regression when deterministic
-  // minifier output shifts by a few hundred bytes across supported Node builds.
+  // The margin also avoids a false regression when deterministic minifier
+  // output shifts by a few hundred bytes across supported Node builds.
   // +200 KB for the project-intelligence worker's own lazy unified-latex
   // parser chunk (workers cannot share main-thread chunks; the AST glossary
   // pass needs the parser inside the worker).
   // +10 KB headroom for the Windows window-controls feature.
   // +10 KB headroom for the Experimentation settings (Visual editor / LaTeX
   // tools gating) and the omnibar command wiring.
-  totalJavaScript: 9_230_000,
+  // +50 KB for document-citation (paragraph scan, debate ranker, Review
+  // panel, Google Scholar parser): combined graph measures 9.25 MB.
+  totalJavaScript: 9_260_000,
   largestCss: 400_000,
   harperWasm: 19_000_000,
   // The real worker and the independently loaded recovery module are each
