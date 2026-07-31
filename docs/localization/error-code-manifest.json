@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "scope": "desktop",
+  "review_status": "reviewed-phase-0-inventory",
+  "identity_policy": "Codes are derived from domain conditions or stable structural boundaries. English wording is never part of code identity.",
+  "allowed_statuses": [
+    "semantic",
+    "fallback-surface",
+    "fallback-module",
+    "fallback-diagnostic-wrapper",
+    "fallback-command"
+  ],
+  "semantic_codes": [
+    {
+      "code": "project.name_conflict",
+      "status": "semantic",
+      "owner": "desktop-rust-project",
+      "condition": "A requested project or file name conflicts with an existing entry.",
+      "source_contract": "src-tauri/src/project.rs RenameFileResult::Conflict"
+    },
+    {
+      "code": "errors.common.unexpected",
+      "status": "semantic",
+      "owner": "desktop-core",
+      "condition": "The client receives an unknown or unmapped product error code.",
+      "source_contract": "Future desktop presentation fallback"
+    }
+  ],
+  "fallback_templates": [
+    {
+      "id": "frontend-surface-fallback",
+      "template": "errors.{surface}.operation_failed",
+      "status": "fallback-surface",
+      "purpose": "Temporary grouping for frontend error prose that does not yet have a reviewed domain code.",
+      "replacement_required": true
+    },
+    {
+      "id": "rust-module-fallback",
+      "template": "errors.{module}.operation_failed",
+      "status": "fallback-module",
+      "purpose": "Temporary grouping for nested Rust helper failures before the command adapter maps a typed domain error.",
+      "replacement_required": true
+    },
+    {
+      "id": "raw-diagnostic-wrapper",
+      "template": "errors.{surface}.raw_diagnostic",
+      "status": "fallback-diagnostic-wrapper",
+      "purpose": "Localized framing around exact compiler, process, network, or upstream diagnostic detail.",
+      "replacement_required": true
+    },
+    {
+      "id": "tauri-command-fallback",
+      "template": "errors.{module}.{command}",
+      "status": "fallback-command",
+      "purpose": "Command-derived transport fallback when a registered Result value still uses String as its error type.",
+      "replacement_required": true
+    }
+  ]
+}
