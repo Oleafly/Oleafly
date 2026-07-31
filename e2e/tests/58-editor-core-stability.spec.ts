@@ -44,7 +44,7 @@ interface AuthoringChaosProbe {
     readonly line: number;
     readonly delta: number;
     readonly settleFrames: number;
-    readonly detail: unknown;
+    readonly detail: string;
   }>;
   readonly maxGutterDelta: number;
   readonly documentScrollLeaks: number;
@@ -430,7 +430,11 @@ async function runAuthoringChaos(
                 line: worstLineNumber,
                 delta: Math.round(maxDelta * 100) / 100,
                 settleFrames,
-                detail: worstDetail,
+                // A string, not an object: this lands nested inside the probe
+                // result, and console.log's default inspect depth prints a
+                // deeper object as "[Object]" - which is exactly what a CI log
+                // showed the first time round.
+                detail: JSON.stringify(worstDetail),
               });
             }
           }
