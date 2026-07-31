@@ -36,6 +36,7 @@ import { LiteratureSearchPanel } from "@/components/tools/LiteratureSearchPanel"
 import { DocumentCitationScanPanel } from "@/components/tools/DocumentCitationScanPanel";
 import { useSettingsStore } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
+import { useDocumentCitationUiStore } from "@/store/document-citation-ui";
 
 beforeEach(() => {
   getConfig.mockReset();
@@ -49,6 +50,10 @@ beforeEach(() => {
   });
 
   useSettingsStore.setState({ offline: false });
+  useDocumentCitationUiStore.setState({
+    modeRequest: "search",
+    selectionOverride: null,
+  });
   useFilesStore.setState({
     projectId: "proj-1",
     activePath: "main.tex",
@@ -132,5 +137,46 @@ describe("LiteratureSearchPanel mode toggle", () => {
     await waitFor(() =>
       expect(screen.getByTestId("document-citation-scan")).not.toBeDisabled(),
     );
+  });
+
+  it("opens From document mode when modeRequest is document", async () => {
+    useDocumentCitationUiStore.getState().requestDocumentScan("Selected prose about transformers.");
+    render(<LiteratureSearchPanel />);
+    expect(screen.getByTestId("document-citation-scan")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByTestId("document-citation-scan")).not.toBeDisabled(),
+    );
+    expect(screen.getByText(/editor selection/i)).toBeInTheDocument();
+    expect(useDocumentCitationUiStore.getState().modeRequest).toBe("search");
+  });
+});
+
+describe("DocumentCitationScanPanel selection override", () => {
+  it("uses selectionOverride as sourceText without a project", async () => {
+    useFilesStore.setState({
+      projectId: null,
+      activePath: null,
+      mainDoc: "",
+      tree: [],
+      files: {},
+    });
+    useDocumentCitationUiStore
+      .getState()
+      .requestDocumentScan("Selected prose about transformers for citations.");
+
+    render(<DocumentCitationScanPanel />);
+    const button = screen.getByTestId("document-citation-scan");
+    await waitFor(() => expect(button).not.toBeDisabled());
+    fireEvent.click(button);
+
+    await waitFor(() => {
+      expect(scanDocumentForCitations).toHaveBeenCalledTimes(1);
+    });
+    expect(scanDocumentForCitations).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceText: "Selected prose about transformers for citations.",
+      }),
+    );
+    expect(useDocumentCitationUiStore.getState().selectionOverride).toBeNull();
   });
 });

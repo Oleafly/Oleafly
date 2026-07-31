@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useMemo,
   useState,
   type FormEvent,
@@ -55,6 +56,7 @@ import {
   useLiteratureLibraryStore,
   type SavedLiteratureCitation,
 } from "@/store/literature";
+import { useDocumentCitationUiStore } from "@/store/document-citation-ui";
 import { useSettingsStore } from "@/store/settings";
 import { toast } from "@/lib/toast";
 import {
@@ -600,7 +602,12 @@ export function LiteratureSearchPanel() {
   const saved = useLiteratureLibraryStore((state) => state.saved);
   const saveCitation = useLiteratureLibraryStore((state) => state.save);
   const removeCitation = useLiteratureLibraryStore((state) => state.remove);
-  const [mode, setMode] = useState<"search" | "document">("search");
+  const modeRequest = useDocumentCitationUiStore((state) => state.modeRequest);
+  const [mode, setMode] = useState<"search" | "document">(() =>
+    useDocumentCitationUiStore.getState().modeRequest === "document"
+      ? "document"
+      : "search",
+  );
   const [tab, setTab] = useState("search");
   const [query, setQuery] = useState("");
   const [selectedSources, setSelectedSources] = useState<LiteratureSource[]>(
@@ -615,6 +622,15 @@ export function LiteratureSearchPanel() {
   const [response, setResponse] =
     useState<LiteratureSearchResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Honor command-palette / selection entry points that request document mode.
+  useEffect(() => {
+    if (modeRequest !== "document") return;
+    setMode("document");
+    setTab("search");
+    // Reset so a later manual open of Citation Search defaults to search.
+    useDocumentCitationUiStore.setState({ modeRequest: "search" });
+  }, [modeRequest]);
 
   const savedIds = useMemo(
     () => new Set(saved.map((citation) => citation.id)),

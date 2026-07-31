@@ -33,6 +33,7 @@ import {
 import { addCitation } from "@/features/citation";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { useFilesStore } from "@/store/files";
+import { useDocumentCitationUiStore } from "@/store/document-citation-ui";
 import { useSettingsStore } from "@/store/settings";
 import { getConfig } from "@/lib/tauri";
 import { hasConfiguredProvider } from "@/lib/ai-providers";
@@ -323,7 +324,15 @@ export function DocumentCitationScanPanel() {
   const [progress, setProgress] = useState<DocumentScanProgress | null>(null);
   const [paragraphs, setParagraphs] = useState<ParagraphCitationResult[]>([]);
   const [error, setError] = useState<string | null>(null);
+  /** Editor selection (or captured doc text) passed via command entry points. */
+  const [selectionSource, setSelectionSource] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    const override =
+      useDocumentCitationUiStore.getState().consumeSelectionOverride();
+    if (override) setSelectionSource(override);
+  }, []);
 
   useEffect(() => {
     const apply = (configured: boolean) => setProviderReady(configured);
@@ -350,6 +359,12 @@ export function DocumentCitationScanPanel() {
   }, []);
 
   const { sourcePath, sourceText } = useMemo(() => {
+    if (selectionSource) {
+      return {
+        sourcePath: "selection",
+        sourceText: selectionSource,
+      };
+    }
     if (activePath && isLatexPath(activePath)) {
       const content = files[activePath]?.content;
       if (content != null) {
@@ -364,7 +379,7 @@ export function DocumentCitationScanPanel() {
       sourcePath: mainDoc,
       sourceText: files[mainDoc]?.content ?? "",
     };
-  }, [activePath, files]);
+  }, [activePath, files, selectionSource]);
 
   const bibText = useMemo(() => {
     return tree
@@ -374,12 +389,14 @@ export function DocumentCitationScanPanel() {
       .join("\n\n");
   }, [tree, files]);
 
+  // Selection/doc overrides remain scannable after the home-tool navigation
+  // closes the open project (files store is cleared).
   const canScan =
-    !!projectId &&
     !offline &&
     sourceText.trim().length > 0 &&
     !scanning &&
-    providerReady !== null;
+    providerReady !== null &&
+    (!!projectId || !!selectionSource);
 
   const updateSetting = useCallback(
     <K extends keyof DocumentCitationSettings>(
@@ -482,10 +499,24 @@ export function DocumentCitationScanPanel() {
                 From document
               </p>
               <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                Scan prose paragraphs in{" "}
-                <span className="font-mono text-foreground/90">
-                  {sourcePath || "main.tex"}
-                </span>{" "}
+                Scan prose paragraphs
+                {selectionSource ? (
+                  <>
+                    {" "}
+                    from{" "}
+                    <span className="font-medium text-foreground/90">
+                      editor selection
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    {" "}
+                    in{" "}
+                    <span className="font-mono text-foreground/90">
+                      {sourcePath || "main.tex"}
+                    </span>
+                  </>
+                )}{" "}
                 and rank literature suggestions for each.
               </p>
             </div>
@@ -602,13 +633,14 @@ export function DocumentCitationScanPanel() {
               access.
             </div>
           )}
-          {!offline && !projectId && (
+          {!offline && !projectId && !selectionSource && (
             <div className="flex items-start gap-2.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-sm text-amber-800 dark:text-amber-300">
               <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-              Open a LaTeX project to scan document paragraphs for citations.
+              Open a LaTeX project to scan document paragraphs for citations, or
+              run Find citations in document from the editor.
             </div>
           )}
-          {!offline && projectId && !sourceText.trim() && (
+          {!offline && !sourceText.trim() && (projectId || selectionSource) && (
             <div className="flex items-start gap-2.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-sm text-amber-800 dark:text-amber-300">
               <AlertTriangle className="mt-0.5 size-4 shrink-0" />
               Source document is empty or not loaded. Open a{" "}
