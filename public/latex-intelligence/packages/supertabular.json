@@ -1,0 +1,91 @@
+{
+  "args": [
+    "\\usepackage/supertabular#c"
+  ],
+  "deps": [],
+  "envs": [
+    {
+      "name": "mpsupertabular",
+      "snippet": "{${1:preamble}}"
+    },
+    {
+      "name": "mpsupertabular*",
+      "snippet": "{${1:preamble}}"
+    },
+    {
+      "name": "supertabular",
+      "snippet": "{${1:preamble}}"
+    },
+    {
+      "name": "supertabular*",
+      "snippet": "{${1:preamble}}"
+    }
+  ],
+  "keys": {
+    "\\usepackage/supertabular#c": [
+      "errorshow",
+      "pageshow",
+      "debugshow",
+      "estimate",
+      "calculate"
+    ]
+  },
+  "macros": [
+    {
+      "name": "bottomcaption",
+      "snippet": "bottomcaption[${2:short}]{${1:text}}"
+    },
+    {
+      "name": "bottomcaption",
+      "snippet": "bottomcaption{${1:text}}"
+    },
+    {
+      "name": "setSTheight",
+      "snippet": "setSTheight{${1:value}}"
+    },
+    {
+      "name": "shrinkheight",
+      "snippet": "shrinkheight{${1:length}}"
+    },
+    {
+      "name": "sttraceoff",
+      "unusual": true
+    },
+    {
+      "name": "sttraceon",
+      "unusual": true
+    },
+    {
+      "name": "tablecaption",
+      "snippet": "tablecaption[${2:short}]{${1:text}}"
+    },
+    {
+      "name": "tablecaption",
+      "snippet": "tablecaption{${1:text}}"
+    },
+    {
+      "name": "tablefirsthead",
+      "snippet": "tablefirsthead{${1:text}}"
+    },
+    {
+      "name": "tablehead",
+      "snippet": "tablehead{${1:text}}"
+    },
+    {
+      "name": "tablelasttail",
+      "snippet": "tablelasttail{${1:text}}"
+    },
+    {
+      "name": "tabletail",
+      "snippet": "tabletail{${1:text}}"
+    },
+    {
+      "name": "topcaption",
+      "snippet": "topcaption[${2:short}]{${1:text}}"
+    },
+    {
+      "name": "topcaption",
+      "snippet": "topcaption{${1:text}}"
+    }
+  ]
+}

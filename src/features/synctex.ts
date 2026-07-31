@@ -20,6 +20,7 @@ import {
   currentProjectSourcePaths,
   useIndexStore,
 } from "@/store/project-index";
+import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { logError } from "@/lib/log";
 
 type SyncTexContext = readonly [
@@ -38,7 +39,7 @@ function currentSyncTexContext(
     (expectedCheckpoint &&
       !sameCompileOutput(checkpoint, expectedCheckpoint)) ||
     files.projectId !== checkpoint.projectId ||
-    (files.mainDoc || "main.tex") !== checkpoint.mainDocument
+    resolveEffectiveMainDoc().mainDoc !== checkpoint.mainDocument
   ) {
     return null;
   }
@@ -135,7 +136,8 @@ export function goToSyncTex() {
 
 export async function forwardFromCursor() {
   const files = useFilesStore.getState();
-  const { projectId, mainDoc, activePath } = files;
+  const { projectId, activePath } = files;
+  const mainDoc = resolveEffectiveMainDoc().mainDoc;
   if (!files.engineLoaded || !files.engine.capabilities.supports_synctex) return;
   if (!projectId || !activePath) {
     void logError("synctex forward", "no active project/file");
@@ -216,7 +218,8 @@ export async function inverseFromClick(
   expectedCheckpoint: CompileSuccessCheckpoint | null = null,
 ) {
   const store = useFilesStore.getState();
-  const { projectId, mainDoc } = store;
+  const { projectId } = store;
+  const mainDoc = resolveEffectiveMainDoc().mainDoc;
   if (!projectId) return;
   if (!store.engineLoaded || !store.engine.capabilities.supports_synctex) return;
   const context = currentSyncTexContext(expectedCheckpoint);

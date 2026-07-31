@@ -1,0 +1,74 @@
+{
+  "args": [
+    "\\usepackage/ulem#c"
+  ],
+  "deps": [],
+  "envs": [],
+  "keys": {
+    "\\usepackage/ulem#c": [
+      "normalem",
+      "ULforem",
+      "normalbf",
+      "UWforbf"
+    ]
+  },
+  "macros": [
+    {
+      "name": "ULdepth",
+      "unusual": true
+    },
+    {
+      "name": "ULforem",
+      "unusual": true
+    },
+    {
+      "name": "ULon",
+      "unusual": true
+    },
+    {
+      "name": "ULthickness",
+      "unusual": true
+    },
+    {
+      "name": "dashuline",
+      "snippet": "dashuline{${1:dashing}}"
+    },
+    {
+      "name": "dotuline",
+      "snippet": "dotuline{${1:dotty}}"
+    },
+    {
+      "name": "markoverwith",
+      "snippet": "markoverwith{${1:something}}",
+      "unusual": true
+    },
+    {
+      "name": "normalem"
+    },
+    {
+      "name": "sout",
+      "snippet": "sout{${1:text}}"
+    },
+    {
+      "name": "uline",
+      "snippet": "uline{${1:text}}"
+    },
+    {
+      "name": "useunder",
+      "snippet": "useunder{${1:underline command}}{${2:font declaration}}{${3:font command}}",
+      "unusual": true
+    },
+    {
+      "name": "uuline",
+      "snippet": "uuline{${1:text}}"
+    },
+    {
+      "name": "uwave",
+      "snippet": "uwave{${1:text}}"
+    },
+    {
+      "name": "xout",
+      "snippet": "xout{${1:text}}"
+    }
+  ]
+}

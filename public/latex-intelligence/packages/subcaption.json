@@ -1,0 +1,243 @@
+{
+  "args": [
+    "\\usepackage/subcaption#c",
+    "\\captionsetup#c,\\captionsetup*#c,\\usepackage/subcaption#c,\\DeclareCaptionStyle#c,\\subcaptionsetup#c,\\subcaptionsetup*#c"
+  ],
+  "deps": [
+    "caption",
+    "ragged2e",
+    "sansmath",
+    "setspace"
+  ],
+  "envs": [
+    {
+      "name": "subcaptionblock",
+      "snippet": "[${2:position}][${3:height}][${4:inner pos}]{${1:width}}",
+      "unusual": true
+    },
+    {
+      "name": "subcaptionblock",
+      "snippet": "[${2:position}][${3:height}]{${1:width}}"
+    },
+    {
+      "name": "subcaptionblock",
+      "snippet": "[${2:position}]{${1:width}}"
+    },
+    {
+      "name": "subcaptionblock",
+      "snippet": "{${1:width}}"
+    },
+    {
+      "name": "subcaptiongroup"
+    },
+    {
+      "name": "subcaptiongroup*"
+    },
+    {
+      "name": "subfigure",
+      "snippet": "[${2:position}][${3:height}][${4:inner pos}]{${1:width}}"
+    },
+    {
+      "name": "subfigure",
+      "snippet": "[${2:position}][${3:height}]{${1:width}}"
+    },
+    {
+      "name": "subfigure",
+      "snippet": "[${2:position}]{${1:width}}"
+    },
+    {
+      "name": "subfigure",
+      "snippet": "{${1:width}}"
+    },
+    {
+      "name": "subtable",
+      "snippet": "[${2:position}][${3:height}][${4:inner pos}]{${1:width}}"
+    },
+    {
+      "name": "subtable",
+      "snippet": "[${2:position}][${3:height}]{${1:width}}"
+    },
+    {
+      "name": "subtable",
+      "snippet": "[${2:position}]{${1:width}}"
+    },
+    {
+      "name": "subtable",
+      "snippet": "{${1:width}}"
+    }
+  ],
+  "keys": {
+    "\\captionsetup#c,\\captionsetup*#c,\\usepackage/subcaption#c,\\DeclareCaptionStyle#c,\\subcaptionsetup#c,\\subcaptionsetup*#c": [
+      "labelformat=${1|original,empty,simple,brace,parens,autodot,unnumbered,subsimple,subparens|}",
+      "subrefformat=${1|original,empty,simple,brace,parens,autodot,unnumbered,subsimple,subparens|}"
+    ],
+    "\\usepackage/subcaption#c": [
+      "aboveskip=",
+      "belowskip=",
+      "box=${1|empty,none,parbox,colorbox|}",
+      "boxcolor=",
+      "boxsep=",
+      "calcmargin*=",
+      "calcmargin=",
+      "calcwidth*=",
+      "calcwidth=",
+      "debug",
+      "figurename=${1:name}",
+      "figureposition=${1|top,above,bottom,below,auto|}",
+      "figurewithin=${1:counter}",
+      "figurewithout",
+      "font+=${4|scriptsize,footnotesize,small,normalsize,large,Large,LARGE,huge,Huge,smaller,larger,none,normalfont,up,it,sl,sc,md,bf,rm,sf,tt,singlespacing,onehalfspacing,doublespacing,{stretch=${1:factor}},normalcolor,{color=${2:color}},normal,{hypersetup=${3:options}},sansmath|}",
+      "font=${4|scriptsize,footnotesize,small,normalsize,large,Large,LARGE,huge,Huge,smaller,larger,none,normalfont,up,it,sl,sc,md,bf,rm,sf,tt,singlespacing,onehalfspacing,doublespacing,{stretch=${1:factor}},normalcolor,{color=${2:color}},normal,{hypersetup=${3:options}},sansmath|}",
+      "format=${1|plain,hang|}",
+      "hangindent=",
+      "indention=",
+      "justification=${1|justified,centering,centerlast,centerfirst,raggedright,raggedleft,Justified,Centering,RaggedRight,RaggedLeft|}",
+      "labelfont+=${4|scriptsize,footnotesize,small,normalsize,large,Large,LARGE,huge,Huge,smaller,larger,none,normalfont,up,it,sl,sc,md,bf,rm,sf,tt,singlespacing,onehalfspacing,doublespacing,{stretch=${1:factor}},normalcolor,{color=${2:color}},normal,{hypersetup=${3:options}},sansmath|}",
+      "labelfont=${4|scriptsize,footnotesize,small,normalsize,large,Large,LARGE,huge,Huge,smaller,larger,none,normalfont,up,it,sl,sc,md,bf,rm,sf,tt,singlespacing,onehalfspacing,doublespacing,{stretch=${1:factor}},normalcolor,{color=${2:color}},normal,{hypersetup=${3:options}},sansmath|}",
+      "labelsep=${1|none,colon,period,space,quad,newline,endash,gobble,gobbletwo|}",
+      "list=${1|on,off,true,false|}",
+      "listfigurename=${1:name}",
+      "listformat=${1|empty,simple,parens,subsimple,subparens,period,subperiod|}",
+      "listtablename=${1:name}",
+      "listtype=${1:list type}",
+      "listtype+=${1:list type ext}",
+      "lofdepth=${1:integer}",
+      "lotdepth=${1:integer}",
+      "margin*=",
+      "margin=",
+      "maxmargin=",
+      "minmargin=",
+      "name=${1:name}",
+      "oneside",
+      "parbox=${1|empty,none,parbox,colorbox|}",
+      "parindent=",
+      "parskip=",
+      "position=${1|top,above,bottom,below,auto|}",
+      "singlelinecheck",
+      "skip=",
+      "strut=${1|on,off|}",
+      "style=",
+      "style*=",
+      "tablename=${1:name}",
+      "tableposition=${1|top,above,bottom,below,auto|}",
+      "tablewithin=${1:counter}",
+      "tablewithout",
+      "textfont+=${4|scriptsize,footnotesize,small,normalsize,large,Large,LARGE,huge,Huge,smaller,larger,none,normalfont,up,it,sl,sc,md,bf,rm,sf,tt,singlespacing,onehalfspacing,doublespacing,{stretch=${1:factor}},normalcolor,{color=${2:color}},normal,{hypersetup=${3:options}},sansmath|}",
+      "textfont=${4|scriptsize,footnotesize,small,normalsize,large,Large,LARGE,huge,Huge,smaller,larger,none,normalfont,up,it,sl,sc,md,bf,rm,sf,tt,singlespacing,onehalfspacing,doublespacing,{stretch=${1:factor}},normalcolor,{color=${2:color}},normal,{hypersetup=${3:options}},sansmath|}",
+      "textformat=${1|empty,simple,period|}",
+      "twoside",
+      "width*=",
+      "width=",
+      "within=${1:counter}",
+      "without",
+      "list-entry=${1|default,list-entry,entry|}",
+      "hypcap",
+      "hypcapspace=",
+      "type=${1:float type}",
+      "type*=${1:float type}",
+      "subtype=${1:float type}",
+      "subtype*=${1:float type}",
+      "compatibility",
+      "config=${1:file name}"
+    ]
+  },
+  "macros": [
+    {
+      "name": "phantomsubcaption"
+    },
+    {
+      "name": "subcaption",
+      "snippet": "subcaption[${2:list entry}]{${1:heading}}"
+    },
+    {
+      "name": "subcaption",
+      "snippet": "subcaption{${1:heading}}"
+    },
+    {
+      "name": "subcaption*",
+      "snippet": "subcaption*{${1:heading}}"
+    },
+    {
+      "name": "subcaptionbox",
+      "snippet": "subcaptionbox[${3:list entry}]{${1:heading}}[${4:width}][${5:inner-pos}]{${2:content}}"
+    },
+    {
+      "name": "subcaptionbox",
+      "snippet": "subcaptionbox[${3:list entry}]{${1:heading}}[${4:width}]{${2:content}}"
+    },
+    {
+      "name": "subcaptionbox",
+      "snippet": "subcaptionbox[${3:list entry}]{${1:heading}}{${2:content}}"
+    },
+    {
+      "name": "subcaptionbox",
+      "snippet": "subcaptionbox{${1:heading}}[${3:width}][${4:inner-pos}]{${2:content}}"
+    },
+    {
+      "name": "subcaptionbox",
+      "snippet": "subcaptionbox{${1:heading}}[${3:width}]{${2:content}}"
+    },
+    {
+      "name": "subcaptionbox",
+      "snippet": "subcaptionbox{${1:heading}}{${2:content}}"
+    },
+    {
+      "name": "subcaptionbox*",
+      "snippet": "subcaptionbox*{${1:heading}}[${3:width}][${4:inner-pos}]{${2:content}}"
+    },
+    {
+      "name": "subcaptionbox*",
+      "snippet": "subcaptionbox*{${1:heading}}[${3:width}]{${2:content}}"
+    },
+    {
+      "name": "subcaptionbox*",
+      "snippet": "subcaptionbox*{${1:heading}}{${2:content}}"
+    },
+    {
+      "name": "subcaptionlistentry",
+      "snippet": "subcaptionlistentry{${1:list entry}}"
+    },
+    {
+      "name": "subcaptiontext",
+      "snippet": "subcaptiontext[${2:number}]{${1:text}}"
+    },
+    {
+      "name": "subcaptiontext",
+      "snippet": "subcaptiontext{${1:text}}"
+    },
+    {
+      "name": "subcaptiontext*",
+      "snippet": "subcaptiontext*[${2:number}]{${1:text}}"
+    },
+    {
+      "name": "subcaptiontext*",
+      "snippet": "subcaptiontext*{${1:text}}"
+    },
+    {
+      "name": "subfloat",
+      "snippet": "subfloat[${2:list entry}][${3:sub-caption}]{${1:body}}"
+    },
+    {
+      "name": "subfloat",
+      "snippet": "subfloat[${2:sub-caption}]{${1:body}}"
+    },
+    {
+      "name": "subfloat",
+      "snippet": "subfloat{${1:body}}"
+    },
+    {
+      "name": "subref",
+      "snippet": "subref{${1:key}}"
+    },
+    {
+      "name": "subref*",
+      "snippet": "subref*{${1:key}}"
+    },
+    {
+      "name": "thesubfigure"
+    },
+    {
+      "name": "thesubtable"
+    }
+  ]
+}

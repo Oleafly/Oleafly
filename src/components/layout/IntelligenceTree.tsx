@@ -44,6 +44,7 @@ export type IntelligenceNodeKind =
   | "label"
   | "macro"
   | "environment"
+  | "glossary"
   | "bibentry"
   | "citation"
   | "reference"
@@ -92,6 +93,7 @@ const KIND_ICON: Record<
   label: Hash,
   macro: Braces,
   environment: Box,
+  glossary: Tags,
   bibentry: BookOpenText,
   citation: Quote,
   reference: Link2,

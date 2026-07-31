@@ -30,7 +30,8 @@ export interface AssembleProjectIntelligenceInput {
   readonly stats: ProjectIntelligenceStats;
 }
 
-const TARGET_DEFINITION_KINDS = new Set([
+const TARGET_DEFINITION_KINDS: ReadonlySet<string> = new Set([
+  "glossary",
   "label",
   "anchor",
   "bibentry",
@@ -56,6 +57,9 @@ function definitionKey(
   if (definition.kind === "macro") return `macro:${definition.name}`;
   if (definition.kind === "environment") {
     return `environment:${definition.name}`;
+  }
+  if (definition.kind === "glossary") {
+    return `glossary:${definition.name}`;
   }
   return null;
 }
@@ -277,6 +281,9 @@ function definitionCandidatesForUse(
   if (use.kind === "environment") {
     return byKey.get(`environment:${use.name}`) ?? [];
   }
+  if (use.kind === "glossary") {
+    return byKey.get(`glossary:${use.name}`) ?? [];
+  }
   return [];
 }
 
@@ -301,11 +308,14 @@ function resolvedUse(
   }
   const candidates = definitionCandidatesForUse(original, byKey);
   if (
-    (original.kind === "macro" || original.kind === "environment") &&
+    (original.kind === "macro" ||
+      original.kind === "environment" ||
+      original.kind === "glossary") &&
     candidates.length === 0
   ) {
     // The local index intentionally knows only project definitions. Package,
     // class, and language built-ins remain the language server's domain.
+    // Glossary keys may also live in external resources the index never sees.
     return null;
   }
   let kind = original.kind;
@@ -625,6 +635,24 @@ export function assembleProjectIntelligence(
     edges,
     input.mainDocument,
   );
+  const detectedPackages = [
+    ...new Set(
+      Object.values(orderedFiles).flatMap((file) =>
+        (file.packageRefs ?? [])
+          .filter((ref) => ref.kind === "package")
+          .map((ref) => ref.name),
+      ),
+    ),
+  ].sort();
+  const documentClasses = [
+    ...new Set(
+      Object.values(orderedFiles).flatMap((file) =>
+        (file.packageRefs ?? [])
+          .filter((ref) => ref.kind === "class")
+          .map((ref) => ref.name),
+      ),
+    ),
+  ].sort();
 
   return {
     protocolVersion: 1,
@@ -643,6 +671,8 @@ export function assembleProjectIntelligence(
     hierarchy,
     bibliography,
     stats: { ...input.stats },
+    detectedPackages,
+    documentClasses,
   };
 }
 

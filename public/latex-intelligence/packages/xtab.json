@@ -1,0 +1,181 @@
+{
+  "args": [
+    "\\usepackage/xtab#c"
+  ],
+  "deps": [],
+  "envs": [
+    {
+      "name": "mpxtabular",
+      "snippet": "[${2:pos}]{${1:preamble}}"
+    },
+    {
+      "name": "mpxtabular",
+      "snippet": "{${1:preamble}}"
+    },
+    {
+      "name": "mpxtabular*",
+      "snippet": "[${2:pos}]{${1:preamble}}"
+    },
+    {
+      "name": "mpxtabular*",
+      "snippet": "{${1:preamble}}"
+    },
+    {
+      "name": "xtabular",
+      "snippet": "[${2:pos}]{${1:preamble}}"
+    },
+    {
+      "name": "xtabular",
+      "snippet": "{${1:preamble}}"
+    },
+    {
+      "name": "xtabular*",
+      "snippet": "[${2:pos}]{${1:preamble}}"
+    },
+    {
+      "name": "xtabular*",
+      "snippet": "{${1:preamble}}"
+    }
+  ],
+  "keys": {
+    "\\usepackage/xtab#c": [
+      "errorshow",
+      "pageshow",
+      "debugshow"
+    ]
+  },
+  "macros": [
+    {
+      "name": "PWSTcalchtlines",
+      "unusual": true
+    },
+    {
+      "name": "PWSTcalnextpageht",
+      "unusual": true
+    },
+    {
+      "name": "PWSTcapht",
+      "unusual": true
+    },
+    {
+      "name": "PWSTcurpage",
+      "unusual": true
+    },
+    {
+      "name": "PWSThead",
+      "unusual": true
+    },
+    {
+      "name": "PWSTinit",
+      "unusual": true
+    },
+    {
+      "name": "PWSTlasthead",
+      "unusual": true
+    },
+    {
+      "name": "PWSTlastpage",
+      "unusual": true
+    },
+    {
+      "name": "PWSTlines",
+      "unusual": true
+    },
+    {
+      "name": "PWSToplastpagenum",
+      "unusual": true
+    },
+    {
+      "name": "PWSTpenultimate",
+      "unusual": true
+    },
+    {
+      "name": "PWSTsethead",
+      "unusual": true
+    },
+    {
+      "name": "PWSTtempc",
+      "unusual": true
+    },
+    {
+      "name": "bottomcaption",
+      "snippet": "bottomcaption[${2:short}]{${1:text}}"
+    },
+    {
+      "name": "bottomcaption",
+      "snippet": "bottomcaption{${1:text}}"
+    },
+    {
+      "name": "firstcallfalse",
+      "unusual": true
+    },
+    {
+      "name": "firstcalltrue",
+      "unusual": true
+    },
+    {
+      "name": "iffirstcall",
+      "unusual": true
+    },
+    {
+      "name": "notablelasthead"
+    },
+    {
+      "name": "setSTheight",
+      "snippet": "setSTheight{${1:dimen}}",
+      "unusual": true
+    },
+    {
+      "name": "shrinkheight",
+      "snippet": "shrinkheight{${1:length}}"
+    },
+    {
+      "name": "sttraceoff",
+      "unusual": true
+    },
+    {
+      "name": "sttraceon",
+      "unusual": true
+    },
+    {
+      "name": "tablecaption",
+      "snippet": "tablecaption[${2:short}]{${1:text}}"
+    },
+    {
+      "name": "tablecaption",
+      "snippet": "tablecaption{${1:text}}"
+    },
+    {
+      "name": "tablefirsthead",
+      "snippet": "tablefirsthead{${1:text}}"
+    },
+    {
+      "name": "tablehead",
+      "snippet": "tablehead{${1:text}}"
+    },
+    {
+      "name": "tablelasthead",
+      "snippet": "tablelasthead{${1:text}}"
+    },
+    {
+      "name": "tablelasttail",
+      "snippet": "tablelasttail{${1:text}}"
+    },
+    {
+      "name": "tabletail",
+      "snippet": "tabletail{${1:text}}"
+    },
+    {
+      "name": "topcaption",
+      "snippet": "topcaption[${2:short}]{${1:text}}"
+    },
+    {
+      "name": "topcaption",
+      "snippet": "topcaption{${1:text}}"
+    },
+    {
+      "name": "xentrystretch",
+      "snippet": "xentrystretch{${1:decimal-fraction}}"
+    }
+  ]
+}

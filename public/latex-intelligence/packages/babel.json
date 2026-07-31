@@ -1,0 +1,5953 @@
+{
+  "args": [
+    "\\usepackage/babel#c"
+  ],
+  "deps": [
+    "bidi",
+    "fontspec"
+  ],
+  "envs": [
+    {
+      "name": "descriptionFB"
+    },
+    {
+      "name": "enumerateFB"
+    },
+    {
+      "name": "hyphenrules",
+      "snippet": "{${1:language}}"
+    },
+    {
+      "name": "itemizeFB"
+    },
+    {
+      "name": "listFB",
+      "snippet": "{${1:symbol}}"
+    },
+    {
+      "name": "listORI",
+      "snippet": "{${1:symbol}}",
+      "unusual": true
+    },
+    {
+      "name": "otherlanguage",
+      "snippet": "{${1:language}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\foreignlanguage,\\begin{otherlanguage*}"
+      ],
+      "name": "otherlanguage*",
+      "snippet": "[${2:options}]{${1:language}}"
+    },
+    {
+      "name": "otherlanguage*",
+      "snippet": "{${1:language}}"
+    },
+    {
+      "name": "quoting"
+    },
+    {
+      "name": "selectlanguage",
+      "snippet": "{${1:language}}",
+      "unusual": true
+    }
+  ],
+  "keys": {
+    "\\babeladjust": [
+      "bidi.mapdigits=${1|on,off|}",
+      "bidi.mirroring=${1|on,off|}",
+      "bidi.text=${1|on,off|}",
+      "bidi.math=${1|on,off|}",
+      "linebreak.sea=${1|on,off|}",
+      "linebreak.cjk=${1|on,off|}",
+      "justify.arabic=${1|on,off|}",
+      "layout.tabular=${1|on,off|}",
+      "layout.lists=${1|on,off|}",
+      "autoload.bcp47=${1|on,off|}",
+      "bcp47.toname=${1|on,off|}",
+      "autoload.options=",
+      "autoload.bcp47.prefix=",
+      "autoload.bcp47.options=",
+      "prehyphenation.disable=${1|nohyphenation,off|}",
+      "select.write=${1|shift,keep,omit|}",
+      "select.encoding=${1|off|}"
+    ],
+    "\\babelensure": [
+      "include=${1:commands}",
+      "exclude=${1:commands}",
+      "fontenc=${1:encoding}"
+    ],
+    "\\babelfont#c": [
+      "Alternate=${1:feature}",
+      "Annotation=",
+      "AutoFakeBold=${1:number}",
+      "AutoFakeSlant=${1:number}",
+      "BoldFeatures={${1:features}}",
+      "BoldFont=${1:font name}",
+      "BoldItalicFeatures={${1:features}}",
+      "BoldItalicFont=${1:font name}",
+      "BoldSlantedFeatures={${1:features}}",
+      "BoldSlantedFont=${1:font name}",
+      "BoldSwashFeatures={${1:features}}",
+      "BoldSwashFont=${1:font name}",
+      "CJKShape=${1|Traditional,Simplified,JIS1978,JIS1983,JIS1990,Expert,NLC|}",
+      "CharacterVariant={${1:glyph num list}:${2:variety num}}",
+      "CharacterWidth=${1|Proportional,Full,Half,Thurd,Quarter,AlternateProportional,AlternateHalf,ResetAll|}",
+      "Color=",
+      "Colour=",
+      "Contextuals=${1|Swash,SwashOff,Alternate,AlternateOff,WordInitial,WordInitialOff,WordFinal,WordFinalOff,LineFinal,LineFinalOff,Inner,InnerOff,ResetAll|}",
+      "Diacritics=${1|MarkToBase,MarkToMark,AboveBase,BelowBase,ResetAll|}",
+      "Extension=${1:extension}",
+      "FakeBold=${1:number}",
+      "FakeSlant=${1:number}",
+      "FakeStretch=${1:number}",
+      "Font=${1:font name}",
+      "FontFace={${1:series}}{${2:shape}}{${3:font name}}",
+      "Fractions=${1|On,Off,Reset,Alternate,ResetAll|}",
+      "HyphenChar=${1:character}",
+      "IgnoreFontspecFile",
+      "ItalicFeatures={${1:features}}",
+      "ItalicFont=${1:font name}",
+      "Kerning=${1|On,Off,Reset,Uppercase,ResetAll|}",
+      "Language=${1:language}",
+      "LetterSpace=${1:number}",
+      "Letters=${1|SmallCaps,PetiteCaps,UppercaseSmallCaps,UppercasePetiteCaps,Unicase,ResetAll|}",
+      "Ligatures=${1|Required,Common,Contextual,Rare,Discretionary,Historic,TeX|}",
+      "LocalForms=${1|On,Off,Reset|}",
+      "NFSSFamily=${1:font family}",
+      "Numbers=${1|Uppercase,UppercaseOff,Lowercase,LowercaseOff,Lining,LiningOff,OldStyle,OldStyleOff,Proportional,ProportionalOff,Monospaced,MonospacedOff,SlashedZero,SlashedZeroOff,Arabic,ArabicOff,ResetAll|}",
+      "Opacity=${1:factor}",
+      "OpticalSize=${1:size}",
+      "Ornament=",
+      "Path=${1:file path}",
+      "PunctuationSpace=${1:number}",
+      "RawFeature=${1:feature tag}",
+      "Scale=${1:number}",
+      "ScaleAgain=${1:number}",
+      "Script=${1:name}",
+      "Size=${1:number}",
+      "SizeFeatures={${1:features}}",
+      "SlantedFeatures={${1:features}}",
+      "SlantedFont=${1:font name}",
+      "SmallCapsFeatures={${1:features}}",
+      "SmallCapsFont=${1:font name}",
+      "Style=${1|Alternate,Italic,Ruby,Swash,Cursive,Historic,Titling,Uppercase,HorizontalKana,VerticalKana,ResetAll|}",
+      "StylisticAlternates=${1:feature}",
+      "StylisticSet=${1:set number}",
+      "SwashFeatures={${1:features}}",
+      "SwashFont=${1:font name}",
+      "UprightFeatures={${1:features}}",
+      "UprightFont=${1:font name}",
+      "Variant=${1:integer}",
+      "Vertical=${1|RotatedGlyphs,AlternatesForRotation,Alternates,KanaAlternates,Kerning,AlternateMetrics,HalfMetrics,ProportionalMetrics,ResetAll|}",
+      "VerticalPosition=${1|Superior,Inferior,Numerator,Denominator,ScientificInferior,Ordinal,ResetAll|}",
+      "WordSpace=${1:number}",
+      "Mapping=${1:xetex-only feature}",
+      "Renderer=${1:renderer}"
+    ],
+    "\\babelinterchar": [
+      "label=${1:label}"
+    ],
+    "\\babelposthyphenation#c,\\babelprehyphenation#c": [
+      "label=${1|transliteration.dad,digraphs.ligatures,hyphen.repeat,oneletter.nobreak,prehyphen.nobreak,punctuation.space,diaeresis.hyphen,transliteration.omega,sigma.final,transliteration.hk,punctuation.space,digraphs.hyphen,danda.nobreak,letters.noj,letters.uv,transliteration.iast,transliteration.gajica,kashida.plain|}",
+      "fonts=${1:tag1 tag2 ...}",
+      "attribute=${1:attribute}"
+    ],
+    "\\babelprovide#c": [
+      "import",
+      "import=${1:language tag}",
+      "captions=${1:language tag}",
+      "hyphenrules=${1:language list}",
+      "main",
+      "script=${1:script name}",
+      "language=${1:language name}",
+      "alph=${1:counter}",
+      "Alph=${1:counter}",
+      "onchar=${1|ids,fonts,letters|}",
+      "intraspace=${1:base shrink stretch}",
+      "intrapenalty=${1:penalty}",
+      "transforms=${1|transliteration.dad,digraphs.ligatures,hyphen.repeat,oneletter.nobreak,prehyphen.nobreak,diaeresis.hyphen,transliteration.omega,sigma.final,transliteration.hk,punctuation.space,digraphs.hyphen,danda.nobreak,letters.noj,letters.uv,transliteration.iast,transliteration.gajica,kashida.plain|}",
+      "justification=${1|kashida,elongated,unhyphenated,padding|}",
+      "linebreaking=${1|kashida,elongated,unhyphenated,padding|}",
+      "mapfont=",
+      "maparabic",
+      "mapdigits",
+      "calendar=${1:calendar}",
+      "calendar=${1:calendar}.${2:variant}",
+      "casing=${1|yiwn,eszett,iota,nouv,uv|}",
+      "interchar=${1:interchar-list}"
+    ],
+    "\\enablelocaletransform,\\disablelocaletransform": [
+      "transliteration.dad",
+      "digraphs.ligatures",
+      "hyphen.repeat",
+      "oneletter.nobreak",
+      "prehyphen.nobreak",
+      "diaeresis.hyphen",
+      "transliteration.omega",
+      "sigma.final",
+      "transliteration.hk",
+      "punctuation.space",
+      "digraphs.hyphen",
+      "danda.nobreak",
+      "letters.noj",
+      "letters.uv",
+      "transliteration.iast",
+      "transliteration.gajica",
+      "kashida.plain"
+    ],
+    "\\footnotestyle": [
+      "reset=${1|none,section,chapter,page,page-resume,page-cont|}",
+      "resume",
+      "indent=${1|article-nosp,article-sp,hulist|}",
+      "rule=${1|none,one-line,fourth,choose|}",
+      "marksize=max-normal",
+      "mark=${1|arabic,stars,stars-max|}",
+      "mpmark=${1|arabic,stars,stars-max|}",
+      "plain",
+      "huplain",
+      "starplain",
+      "editor",
+      "reset=${1|none,section,chapter,page,page-resume,page-cont|}",
+      "resume",
+      "indent=${1|article-nosp,article-sp,hulist|}",
+      "rule=${1|none,one-line,fourth,choose|}",
+      "marksize=max-normal",
+      "mark=${1|arabic,stars,stars-max|}",
+      "mpmark=${1|arabic,stars,stars-max|}",
+      "plain",
+      "huplain",
+      "starplain",
+      "editor"
+    ],
+    "\\foreignlanguage,\\begin{otherlanguage*}": [
+      "date",
+      "captions"
+    ],
+    "\\frenchsetup,\\frenchbsetup": [
+      "ShowOptions",
+      "StandardLayout",
+      "GlobalLayoutFrench",
+      "IndentFirst",
+      "PartNameFull",
+      "ListItemsAsPar",
+      "StandardListSpacing",
+      "StandardItemizeEnv",
+      "StandardEnumerateEnv",
+      "StandardItemLabels",
+      "ItemLabels=",
+      "ItemLabeli=",
+      "ItemLabelii=",
+      "ItemLabeliii=",
+      "ItemLabeliv=",
+      "StandardLists",
+      "ListOldLayout",
+      "FrenchFootnotes",
+      "AutoSpaceFootnotes",
+      "AutoSpacePunctuation",
+      "ThinColonSpace",
+      "OriginalTypewriter",
+      "UnicodeNoBreakSpaces",
+      "og=",
+      "fg=",
+      "INGuillSpace",
+      "EveryParGuill=${1|open,close,none|}",
+      "EveryLineGuill=${1|open,close,none|}",
+      "InnerGuillSingle",
+      "ThinSpaceInFrenchNumbers",
+      "SmallCapsFigTabCaptions",
+      "CustomiseFigTabCaptions",
+      "OldFigTabCaptions",
+      "FrenchSuperscripts",
+      "LowercaseSuperscripts",
+      "SuppressWarning",
+      "ShowOptions",
+      "StandardLayout",
+      "GlobalLayoutFrench",
+      "IndentFirst",
+      "PartNameFull",
+      "ListItemsAsPar",
+      "StandardListSpacing",
+      "StandardItemizeEnv",
+      "StandardEnumerateEnv",
+      "StandardItemLabels",
+      "ItemLabels=",
+      "ItemLabeli=",
+      "ItemLabelii=",
+      "ItemLabeliii=",
+      "ItemLabeliv=",
+      "StandardLists",
+      "ListOldLayout",
+      "FrenchFootnotes",
+      "AutoSpaceFootnotes",
+      "AutoSpacePunctuation",
+      "ThinColonSpace",
+      "OriginalTypewriter",
+      "UnicodeNoBreakSpaces",
+      "og=",
+      "fg=",
+      "INGuillSpace",
+      "EveryParGuill=${1|open,close,none|}",
+      "EveryLineGuill=${1|open,close,none|}",
+      "InnerGuillSingle",
+      "ThinSpaceInFrenchNumbers",
+      "SmallCapsFigTabCaptions",
+      "CustomiseFigTabCaptions",
+      "OldFigTabCaptions",
+      "FrenchSuperscripts",
+      "LowercaseSuperscripts",
+      "SuppressWarning"
+    ],
+    "\\localedate": [
+      "calendar=${1:calendar}",
+      "variant=${1:variant}",
+      "convert"
+    ],
+    "\\localeinfo#c,\\localeinfo*#c": [
+      "name.english",
+      "tag.ini",
+      "tag.bcp47",
+      "language.tag.bcp47",
+      "tag.opentype",
+      "script.name",
+      "script.tag.bcp47",
+      "script.tag.opentype",
+      "region.tag.bcp47",
+      "variant.tag.bcp47",
+      "extension.x.tag.bcp47",
+      "extension.t.tag.bcp47",
+      "extension.u.tag.bcp47"
+    ],
+    "\\usepackage/babel#c": [
+      "${1:language}",
+      "modifiers.${1:language}=${2:modifiers}",
+      "KeepShorthandsActive",
+      "activeacute",
+      "activegrave",
+      "shorthands=${2|${1:chars},off|}",
+      "safe=${1|none,ref,bib|}",
+      "math=${1|active,normal|}",
+      "config=${1:file}",
+      "main=${1:language}",
+      "headfoot=${1:language}",
+      "noconfigs",
+      "showlanguages",
+      "silent",
+      "hyphenmap=${1|off,first,select,other,other*|}",
+      "bidi=${1|default,basic,basic-r,bidi-l,bidi-r|}",
+      "layout=${1|sectioning,counters,counters*,contents,footnotes,captions,columns,graphics,extras|}",
+      "provide=*",
+      "provide+=*",
+      "provide*=*",
+      "base",
+      "ensureinfo=off",
+      "es-lcroman",
+      "es-minimal",
+      "es-nodecimaldot",
+      "es-noenumerate",
+      "es-noindentfirst",
+      "es-noitemize",
+      "es-nolayout",
+      "es-nolists",
+      "es-noquoting",
+      "es-nosectiondot",
+      "es-noshorthands",
+      "es-notilde",
+      "es-preindex",
+      "es-sloppy",
+      "es-tabla",
+      "es-tilden",
+      "es-ucroman",
+      "es-uppernames",
+      "mexico",
+      "mexico-com"
+    ]
+  },
+  "macros": [
+    {
+      "name": "ABREVE"
+    },
+    {
+      "name": "ACIRCUMFLEX"
+    },
+    {
+      "name": "Abreve"
+    },
+    {
+      "name": "Acircumflex"
+    },
+    {
+      "name": "Acite",
+      "snippet": "Acite{${1:keylist}}"
+    },
+    {
+      "name": "Acite*",
+      "snippet": "Acite*{${1:keylist}}"
+    },
+    {
+      "name": "AddBabelHook",
+      "snippet": "AddBabelHook[${4:language}]{${1:name}}{${2:event}}{${3:code}}",
+      "unusual": true
+    },
+    {
+      "name": "AddBabelHook",
+      "snippet": "AddBabelHook{${1:name}}{${2:event}}{${3:code}}",
+      "unusual": true
+    },
+    {
+      "name": "AddThinSpaceBeforeFootnotes",
+      "unusual": true
+    },
+    {
+      "name": "AfterBabelLanguage",
+      "snippet": "AfterBabelLanguage{${1:option_name}}{${2:code}}"
+    },
+    {
+      "name": "Aob"
+    },
+    {
+      "name": "Apageref",
+      "snippet": "Apageref{${1:label}}"
+    },
+    {
+      "name": "Apageref*",
+      "snippet": "Apageref*{${1:label}}"
+    },
+    {
+      "name": "Aref",
+      "snippet": "Aref({${1:label}})"
+    },
+    {
+      "name": "Aref",
+      "snippet": "Aref{${1:label}}"
+    },
+    {
+      "name": "Aref*",
+      "snippet": "Aref*{${1:label}}"
+    },
+    {
+      "name": "Asbuk",
+      "snippet": "Asbuk{${1:counter}}"
+    },
+    {
+      "name": "AutoSpaceBeforeFDP",
+      "unusual": true
+    },
+    {
+      "name": "Az",
+      "snippet": "Az{${1:szó}}"
+    },
+    {
+      "name": "Az*",
+      "snippet": "Az*{${1:szó}}"
+    },
+    {
+      "name": "Azc",
+      "snippet": "Azc{${1:keylist}}",
+      "unusual": true
+    },
+    {
+      "name": "Azerbaijanischwa"
+    },
+    {
+      "name": "Azp",
+      "snippet": "Azp{${1:label}}",
+      "unusual": true
+    },
+    {
+      "name": "Azr",
+      "snippet": "Azr{${1:label}}",
+      "unusual": true
+    },
+    {
+      "name": "BabelContentsFiles",
+      "unusual": true
+    },
+    {
+      "name": "BabelEnsureInfo",
+      "unusual": true
+    },
+    {
+      "name": "BabelFootnote",
+      "snippet": "BabelFootnote{${1:cmd}}{${2:language}}{${3:before}}{${4:after}}",
+      "unusual": true
+    },
+    {
+      "name": "BabelGreekPreviousFontEncoding",
+      "unusual": true
+    },
+    {
+      "name": "BabelGreekRestoreFontEncoding",
+      "unusual": true
+    },
+    {
+      "name": "BabelLowercaseMapping",
+      "snippet": "BabelLowercaseMapping{${1:locale-name}}{${2:codepoint}}{${3:output}}",
+      "unusual": true
+    },
+    {
+      "name": "BabelPatchSection",
+      "snippet": "BabelPatchSection{${1:section-name}}",
+      "unusual": true
+    },
+    {
+      "name": "BabelUppercaseMapping",
+      "snippet": "BabelUppercaseMapping{${1:locale-name}}{${2:codepoint}}{${3:output}}",
+      "unusual": true
+    },
+    {
+      "name": "Belarusian"
+    },
+    {
+      "name": "Bg",
+      "unusual": true
+    },
+    {
+      "name": "Bul",
+      "unusual": true
+    },
+    {
+      "name": "Bulgarian"
+    },
+    {
+      "name": "C",
+      "snippet": "C{${1:arg}}"
+    },
+    {
+      "name": "CYRA",
+      "unusual": true
+    },
+    {
+      "name": "CYRA"
+    },
+    {
+      "name": "CYRAE"
+    },
+    {
+      "name": "CYRB",
+      "unusual": true
+    },
+    {
+      "name": "CYRB"
+    },
+    {
+      "name": "CYRC",
+      "unusual": true
+    },
+    {
+      "name": "CYRC"
+    },
+    {
+      "name": "CYRCH",
+      "unusual": true
+    },
+    {
+      "name": "CYRCH"
+    },
+    {
+      "name": "CYRCHRDSC"
+    },
+    {
+      "name": "CYRCHVCRS"
+    },
+    {
+      "name": "CYRD",
+      "unusual": true
+    },
+    {
+      "name": "CYRD"
+    },
+    {
+      "name": "CYRDJE"
+    },
+    {
+      "name": "CYRDZE"
+    },
+    {
+      "name": "CYRDZHE"
+    },
+    {
+      "name": "CYRE",
+      "unusual": true
+    },
+    {
+      "name": "CYRE"
+    },
+    {
+      "name": "CYREREV"
+    },
+    {
+      "name": "CYRERY",
+      "unusual": true
+    },
+    {
+      "name": "CYRERY"
+    },
+    {
+      "name": "CYRF",
+      "unusual": true
+    },
+    {
+      "name": "CYRF"
+    },
+    {
+      "name": "CYRG",
+      "unusual": true
+    },
+    {
+      "name": "CYRG"
+    },
+    {
+      "name": "CYRGHCRS"
+    },
+    {
+      "name": "CYRGUP",
+      "unusual": true
+    },
+    {
+      "name": "CYRGUP"
+    },
+    {
+      "name": "CYRH",
+      "unusual": true
+    },
+    {
+      "name": "CYRH"
+    },
+    {
+      "name": "CYRHDSC"
+    },
+    {
+      "name": "CYRHRDSN"
+    },
+    {
+      "name": "CYRI",
+      "unusual": true
+    },
+    {
+      "name": "CYRI"
+    },
+    {
+      "name": "CYRIE",
+      "unusual": true
+    },
+    {
+      "name": "CYRIE"
+    },
+    {
+      "name": "CYRII",
+      "unusual": true
+    },
+    {
+      "name": "CYRII"
+    },
+    {
+      "name": "CYRISHRT",
+      "unusual": true
+    },
+    {
+      "name": "CYRISHRT"
+    },
+    {
+      "name": "CYRJE"
+    },
+    {
+      "name": "CYRK",
+      "unusual": true
+    },
+    {
+      "name": "CYRK"
+    },
+    {
+      "name": "CYRKBEAK"
+    },
+    {
+      "name": "CYRKDSC"
+    },
+    {
+      "name": "CYRKVCRS"
+    },
+    {
+      "name": "CYRL",
+      "unusual": true
+    },
+    {
+      "name": "CYRL"
+    },
+    {
+      "name": "CYRLJE"
+    },
+    {
+      "name": "CYRM",
+      "unusual": true
+    },
+    {
+      "name": "CYRM"
+    },
+    {
+      "name": "CYRN",
+      "unusual": true
+    },
+    {
+      "name": "CYRN"
+    },
+    {
+      "name": "CYRNDSC"
+    },
+    {
+      "name": "CYRNG"
+    },
+    {
+      "name": "CYRNJE"
+    },
+    {
+      "name": "CYRO",
+      "unusual": true
+    },
+    {
+      "name": "CYRO"
+    },
+    {
+      "name": "CYROTLD"
+    },
+    {
+      "name": "CYRP",
+      "unusual": true
+    },
+    {
+      "name": "CYRP"
+    },
+    {
+      "name": "CYRQ"
+    },
+    {
+      "name": "CYRR",
+      "unusual": true
+    },
+    {
+      "name": "CYRR"
+    },
+    {
+      "name": "CYRS",
+      "unusual": true
+    },
+    {
+      "name": "CYRS"
+    },
+    {
+      "name": "CYRSCHWA"
+    },
+    {
+      "name": "CYRSDSC"
+    },
+    {
+      "name": "CYRSFTSN",
+      "unusual": true
+    },
+    {
+      "name": "CYRSFTSN"
+    },
+    {
+      "name": "CYRSH",
+      "unusual": true
+    },
+    {
+      "name": "CYRSH"
+    },
+    {
+      "name": "CYRSHCH",
+      "unusual": true
+    },
+    {
+      "name": "CYRSHCH"
+    },
+    {
+      "name": "CYRSHHA"
+    },
+    {
+      "name": "CYRT",
+      "unusual": true
+    },
+    {
+      "name": "CYRT"
+    },
+    {
+      "name": "CYRTSHE"
+    },
+    {
+      "name": "CYRU",
+      "unusual": true
+    },
+    {
+      "name": "CYRU"
+    },
+    {
+      "name": "CYRUSHRT"
+    },
+    {
+      "name": "CYRV",
+      "unusual": true
+    },
+    {
+      "name": "CYRV"
+    },
+    {
+      "name": "CYRW"
+    },
+    {
+      "name": "CYRY"
+    },
+    {
+      "name": "CYRYA",
+      "unusual": true
+    },
+    {
+      "name": "CYRYA"
+    },
+    {
+      "name": "CYRYHCRS"
+    },
+    {
+      "name": "CYRYI",
+      "unusual": true
+    },
+    {
+      "name": "CYRYI"
+    },
+    {
+      "name": "CYRYO"
+    },
+    {
+      "name": "CYRYU",
+      "unusual": true
+    },
+    {
+      "name": "CYRYU"
+    },
+    {
+      "name": "CYRZ",
+      "unusual": true
+    },
+    {
+      "name": "CYRZ"
+    },
+    {
+      "name": "CYRZDSC"
+    },
+    {
+      "name": "CYRZH",
+      "unusual": true
+    },
+    {
+      "name": "CYRZH"
+    },
+    {
+      "name": "CYRZHDSC"
+    },
+    {
+      "name": "CYRpalochka"
+    },
+    {
+      "name": "CaporaliFrom",
+      "snippet": "CaporaliFrom{${1:encoding}}{${2:family}}{${3:open guill slot}}{${4:close guill slot}}",
+      "unusual": true
+    },
+    {
+      "name": "CaptionSeparator",
+      "unusual": true
+    },
+    {
+      "name": "DJ"
+    },
+    {
+      "name": "DecimalMathComma"
+    },
+    {
+      "name": "Digamma"
+    },
+    {
+      "name": "DisableBabelHook",
+      "snippet": "DisableBabelHook{${1:name}}",
+      "unusual": true
+    },
+    {
+      "name": "ECIRCUMFLEX"
+    },
+    {
+      "name": "EEob"
+    },
+    {
+      "name": "Ecircumflex"
+    },
+    {
+      "name": "EnableBabelHook",
+      "snippet": "EnableBabelHook{${1:name}}",
+      "unusual": true
+    },
+    {
+      "name": "Eng",
+      "unusual": true
+    },
+    {
+      "name": "English"
+    },
+    {
+      "name": "EnsureStandardFontEncoding",
+      "unusual": true
+    },
+    {
+      "name": "Eob"
+    },
+    {
+      "name": "Esper",
+      "snippet": "Esper{${1:counter}}"
+    },
+    {
+      "name": "Expect"
+    },
+    {
+      "name": "FBFrenchFootnotesfalse",
+      "unusual": true
+    },
+    {
+      "name": "FBFrenchFootnotestrue",
+      "unusual": true
+    },
+    {
+      "name": "FBFrenchSuperscriptstrue",
+      "unusual": true
+    },
+    {
+      "name": "FBGlobalLayoutFrenchtrue",
+      "unusual": true
+    },
+    {
+      "name": "FBInnerGuillSinglefalse",
+      "unusual": true
+    },
+    {
+      "name": "FBInnerGuillSingletrue",
+      "unusual": true
+    },
+    {
+      "name": "FBListItemsAsParfalse",
+      "unusual": true
+    },
+    {
+      "name": "FBListItemsAsPartrue",
+      "unusual": true
+    },
+    {
+      "name": "FBLowercaseSuperscriptstrue",
+      "unusual": true
+    },
+    {
+      "name": "FBPartNameFulltrue",
+      "unusual": true
+    },
+    {
+      "name": "FBSmallCapsFigTabCaptionstrue",
+      "unusual": true
+    },
+    {
+      "name": "FBStandardEnumerateEnvtrue",
+      "unusual": true
+    },
+    {
+      "name": "FBStandardItemLabelstrue",
+      "unusual": true
+    },
+    {
+      "name": "FBStandardItemizeEnvtrue",
+      "unusual": true
+    },
+    {
+      "name": "FBStandardLayouttrue",
+      "unusual": true
+    },
+    {
+      "name": "FBStandardListSpacingtrue",
+      "unusual": true
+    },
+    {
+      "name": "FBStandardListstrue",
+      "unusual": true
+    },
+    {
+      "name": "FBWarning",
+      "snippet": "FBWarning{${1:message}}",
+      "unusual": true
+    },
+    {
+      "name": "FBcolonspace"
+    },
+    {
+      "name": "FBdatebox",
+      "unusual": true
+    },
+    {
+      "name": "FBdatespace",
+      "unusual": true
+    },
+    {
+      "name": "FBeverylineguill",
+      "unusual": true
+    },
+    {
+      "name": "FBfigtabshape",
+      "unusual": true
+    },
+    {
+      "name": "FBfnindent",
+      "unusual": true
+    },
+    {
+      "name": "FBfnmarkspace",
+      "unusual": true
+    },
+    {
+      "name": "FBgspchar",
+      "unusual": true
+    },
+    {
+      "name": "FBguillopen",
+      "unusual": true
+    },
+    {
+      "name": "FBguillspace"
+    },
+    {
+      "name": "FBmedkern",
+      "unusual": true
+    },
+    {
+      "name": "FBsetspaces",
+      "snippet": "FBsetspaces[${5:language}]{${1:type}}{${2:width}}{${3:stretch}}{${4:shrink}}",
+      "unusual": true
+    },
+    {
+      "name": "FBsetspaces",
+      "snippet": "FBsetspaces{${1:type}}{${2:width}}{${3:stretch}}{${4:shrink}}",
+      "unusual": true
+    },
+    {
+      "name": "FBsupR",
+      "unusual": true
+    },
+    {
+      "name": "FBsupS",
+      "unusual": true
+    },
+    {
+      "name": "FBtextellipsis",
+      "unusual": true
+    },
+    {
+      "name": "FBthickkern",
+      "unusual": true
+    },
+    {
+      "name": "FBthinspace"
+    },
+    {
+      "name": "FBthousandsep",
+      "unusual": true
+    },
+    {
+      "name": "FrenchEnumerate",
+      "snippet": "FrenchEnumerate{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "FrenchFootnotes",
+      "unusual": true
+    },
+    {
+      "name": "FrenchLabelItem",
+      "unusual": true
+    },
+    {
+      "name": "FrenchPopularEnumerate",
+      "snippet": "FrenchPopularEnumerate{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "Frlabelitemi",
+      "unusual": true
+    },
+    {
+      "name": "Frlabelitemii",
+      "unusual": true
+    },
+    {
+      "name": "Frlabelitemiii",
+      "unusual": true
+    },
+    {
+      "name": "Frlabelitemiv",
+      "unusual": true
+    },
+    {
+      "name": "Greeknumeral",
+      "snippet": "Greeknumeral{${1:number}}"
+    },
+    {
+      "name": "Grtoday"
+    },
+    {
+      "name": "HuComma",
+      "unusual": true
+    },
+    {
+      "name": "Hunumeral",
+      "snippet": "Hunumeral{${1:counter}}"
+    },
+    {
+      "name": "Huordinal",
+      "snippet": "Huordinal{${1:counter}}"
+    },
+    {
+      "name": "IfBabelIntercharT",
+      "snippet": "IfBabelIntercharT{${1:interchar-list}}{${2:code}}",
+      "unusual": true
+    },
+    {
+      "name": "IfItalic",
+      "snippet": "IfItalic{${1:arg1}}{${2:arg2}}",
+      "unusual": true
+    },
+    {
+      "name": "IntelligentComma"
+    },
+    {
+      "name": "Lcaron",
+      "unusual": true
+    },
+    {
+      "name": "Lcaron"
+    },
+    {
+      "name": "Lgem"
+    },
+    {
+      "name": "LocaleForEach",
+      "snippet": "LocaleForEach{${1:code}}",
+      "unusual": true
+    },
+    {
+      "name": "Lpb"
+    },
+    {
+      "name": "LtxSymbCaporali",
+      "unusual": true
+    },
+    {
+      "name": "Macedonian"
+    },
+    {
+      "name": "MathBrk",
+      "snippet": "MathBrk{${1:szimbólum}}"
+    },
+    {
+      "name": "MathBrkAll",
+      "snippet": "MathBrkAll{${1:szimbólum}}"
+    },
+    {
+      "name": "MathReal",
+      "snippet": "MathReal{${1:képlet tizedestörtekkel}}"
+    },
+    {
+      "name": "Mk",
+      "unusual": true
+    },
+    {
+      "name": "Mkd",
+      "unusual": true
+    },
+    {
+      "name": "Mon",
+      "unusual": true
+    },
+    {
+      "name": "Mongolian"
+    },
+    {
+      "name": "NAD"
+    },
+    {
+      "name": "NAK"
+    },
+    {
+      "name": "NOD"
+    },
+    {
+      "name": "NOK"
+    },
+    {
+      "name": "NSD"
+    },
+    {
+      "name": "NSK"
+    },
+    {
+      "name": "NZD"
+    },
+    {
+      "name": "NZS"
+    },
+    {
+      "name": "No"
+    },
+    {
+      "name": "NoAutoSpaceBeforeFDP",
+      "unusual": true
+    },
+    {
+      "name": "NoAutoSpacing"
+    },
+    {
+      "name": "NoEveryParQuote",
+      "unusual": true
+    },
+    {
+      "name": "NoIntelligentComma"
+    },
+    {
+      "name": "Nos"
+    },
+    {
+      "name": "OCIRCUMFLEX"
+    },
+    {
+      "name": "OHORN"
+    },
+    {
+      "name": "OOob"
+    },
+    {
+      "name": "Ocircumflex"
+    },
+    {
+      "name": "Ohorn"
+    },
+    {
+      "name": "Oob"
+    },
+    {
+      "name": "Prob"
+    },
+    {
+      "name": "Proj"
+    },
+    {
+      "name": "ProsodicMarksOff"
+    },
+    {
+      "name": "ProsodicMarksOn"
+    },
+    {
+      "name": "Romannumeral",
+      "snippet": "Romannumeral{${1:number}}"
+    },
+    {
+      "name": "Russian"
+    },
+    {
+      "name": "SafeToday"
+    },
+    {
+      "name": "Serbianc"
+    },
+    {
+      "name": "ShowLocaleProperties",
+      "snippet": "ShowLocaleProperties{${1:language}}",
+      "unusual": true
+    },
+    {
+      "name": "StandardFootnotes",
+      "unusual": true
+    },
+    {
+      "name": "StandardMathComma"
+    },
+    {
+      "name": "Today"
+    },
+    {
+      "name": "U",
+      "snippet": "U{${1:arg}}"
+    },
+    {
+      "name": "UHORN"
+    },
+    {
+      "name": "Uhorn"
+    },
+    {
+      "name": "Ukrainian"
+    },
+    {
+      "name": "Useg",
+      "snippet": "Useg{${1:counter}}"
+    },
+    {
+      "name": "Variance"
+    },
+    {
+      "name": "XXIletters"
+    },
+    {
+      "name": "XXVIletters"
+    },
+    {
+      "name": "Zkb"
+    },
+    {
+      "name": "abbgyear",
+      "unusual": true
+    },
+    {
+      "name": "abreve"
+    },
+    {
+      "name": "abvoff"
+    },
+    {
+      "name": "abvon"
+    },
+    {
+      "name": "acadiandate",
+      "snippet": "acadiandate{${1:day}}{${2:month}}{${3:year}}"
+    },
+    {
+      "name": "acadiantoday"
+    },
+    {
+      "name": "accbrevebelow",
+      "snippet": "accbrevebelow{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "accdasia",
+      "snippet": "accdasia{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "accdasiaoxia",
+      "snippet": "accdasiaoxia{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "accdasiaoxia",
+      "snippet": "accdasiaoxia{${1:a}}",
+      "unusual": true
+    },
+    {
+      "name": "accdasiaperispomeni",
+      "snippet": "accdasiaperispomeni{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "accdasiavaria",
+      "snippet": "accdasiavaria{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "accdialytika",
+      "snippet": "accdialytika{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "accdialytikaperispomeni",
+      "snippet": "accdialytikaperispomeni{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "accdialytikatonos",
+      "snippet": "accdialytikatonos{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "accdialytikavaria",
+      "snippet": "accdialytikavaria{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "accentedoperators",
+      "unusual": true
+    },
+    {
+      "name": "accentedoperators"
+    },
+    {
+      "name": "accinvertedbrevebelow",
+      "snippet": "accinvertedbrevebelow{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "accperispomeni",
+      "snippet": "accperispomeni{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "accpsili",
+      "snippet": "accpsili{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "accpsilioxia",
+      "snippet": "accpsilioxia{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "accpsiliperispomeni",
+      "snippet": "accpsiliperispomeni{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "accpsiliperispomeni",
+      "snippet": "accpsiliperispomeni{${1:a}}",
+      "unusual": true
+    },
+    {
+      "name": "accpsilivaria",
+      "snippet": "accpsilivaria{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "acctonos",
+      "snippet": "acctonos{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "accvaria",
+      "snippet": "accvaria{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "acircumflex"
+    },
+    {
+      "name": "acite",
+      "snippet": "acite{${1:keylist}}"
+    },
+    {
+      "name": "acite*",
+      "snippet": "acite*{${1:keylist}}"
+    },
+    {
+      "name": "acronymname",
+      "unusual": true
+    },
+    {
+      "name": "activatequoting",
+      "unusual": true
+    },
+    {
+      "name": "activatequoting"
+    },
+    {
+      "name": "afrikaanshyphenmins",
+      "unusual": true
+    },
+    {
+      "name": "alsoname",
+      "unusual": true
+    },
+    {
+      "name": "alsoname"
+    },
+    {
+      "name": "anwtonos"
+    },
+    {
+      "name": "aob"
+    },
+    {
+      "name": "ap",
+      "snippet": "ap{${1:text}}"
+    },
+    {
+      "name": "apageref",
+      "snippet": "apageref{${1:label}}"
+    },
+    {
+      "name": "apageref*",
+      "snippet": "apageref*{${1:label}}"
+    },
+    {
+      "name": "aprilname"
+    },
+    {
+      "name": "arccosec"
+    },
+    {
+      "name": "arcctg"
+    },
+    {
+      "name": "arch"
+    },
+    {
+      "name": "arcosech"
+    },
+    {
+      "name": "arcsec"
+    },
+    {
+      "name": "arcsen"
+    },
+    {
+      "name": "arctg"
+    },
+    {
+      "name": "arcth"
+    },
+    {
+      "name": "aref",
+      "snippet": "aref({${1:label}})"
+    },
+    {
+      "name": "aref",
+      "snippet": "aref{${1:label}}"
+    },
+    {
+      "name": "aref*",
+      "snippet": "aref*{${1:label}}"
+    },
+    {
+      "name": "arsech"
+    },
+    {
+      "name": "arsh"
+    },
+    {
+      "name": "arth"
+    },
+    {
+      "name": "asbuk",
+      "snippet": "asbuk{${1:counter}}"
+    },
+    {
+      "name": "asciiencoding",
+      "unusual": true
+    },
+    {
+      "name": "at"
+    },
+    {
+      "name": "atcctg"
+    },
+    {
+      "name": "augustname"
+    },
+    {
+      "name": "authorname",
+      "unusual": true
+    },
+    {
+      "name": "authorname"
+    },
+    {
+      "name": "az",
+      "snippet": "az{${1:szó}}"
+    },
+    {
+      "name": "az*",
+      "snippet": "az*{${1:szó}}"
+    },
+    {
+      "name": "azc",
+      "snippet": "azc{${1:keylist}}",
+      "unusual": true
+    },
+    {
+      "name": "azerbaijanischwa"
+    },
+    {
+      "name": "azp",
+      "snippet": "azp{${1:label}}",
+      "unusual": true
+    },
+    {
+      "name": "azr",
+      "snippet": "azr{${1:label}}",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\babeladjust"
+      ],
+      "name": "babeladjust",
+      "snippet": "babeladjust{${1:keyvals}}"
+    },
+    {
+      "name": "babelcalendar",
+      "snippet": "babelcalendar[${5:YYYY-MM-DD}]{${1:calendar}}{${2:year-macro}}{${3:month-macro}}{${4:day-macro}}"
+    },
+    {
+      "name": "babelcalendar",
+      "snippet": "babelcalendar{${1:calendar}}{${2:year-macro}}{${3:month-macro}}{${4:day-macro}}"
+    },
+    {
+      "name": "babelcharclass",
+      "snippet": "babelcharclass{${1:locale}}{${2:name}}{${3:char-list}}",
+      "unusual": true
+    },
+    {
+      "name": "babelcharproperty",
+      "snippet": "babelcharproperty{${1:char-code}}[${4:to-char-code}]{${2:property}}{${3:value}}",
+      "unusual": true
+    },
+    {
+      "name": "babelcharproperty",
+      "snippet": "babelcharproperty{${1:char-code}}{${2:property}}{${3:value}}",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\babelensure"
+      ],
+      "name": "babelensure",
+      "snippet": "babelensure[${2:options}]{${1:language}}"
+    },
+    {
+      "name": "babelensure",
+      "snippet": "babelensure{${1:language}}"
+    },
+    {
+      "keyPos": 2,
+      "keys": [
+        "\\babelfont#c"
+      ],
+      "name": "babelfont",
+      "snippet": "babelfont[${3:lang1,lang2,...}]{${1:font_family}}[${4:font_options}]{${2:font_name}}"
+    },
+    {
+      "name": "babelfont",
+      "snippet": "babelfont[${3:lang1,lang2,...}]{${1:font_family}}{${2:font_name}}"
+    },
+    {
+      "keyPos": 1,
+      "keys": [
+        "\\babelfont#c"
+      ],
+      "name": "babelfont",
+      "snippet": "babelfont{${1:font_family}}[${3:font_options}]{${2:font_name}}"
+    },
+    {
+      "name": "babelfont",
+      "snippet": "babelfont{${1:font_family}}{${2:font_name}}"
+    },
+    {
+      "name": "babelhyphen",
+      "snippet": "babelhyphen{${1:text}}"
+    },
+    {
+      "name": "babelhyphen*",
+      "snippet": "babelhyphen*{${1:text}}"
+    },
+    {
+      "name": "babelhyphenation",
+      "snippet": "babelhyphenation[${2:lang1,lang2,...}]{${1:exceptions}}",
+      "unusual": true
+    },
+    {
+      "name": "babelhyphenation",
+      "snippet": "babelhyphenation{${1:exceptions}}",
+      "unusual": true
+    },
+    {
+      "name": "babelhyphenmins",
+      "snippet": "babelhyphenmins[${3:lang1,lang2,...}]{${1:left}}{${2:right}}",
+      "unusual": true
+    },
+    {
+      "name": "babelhyphenmins",
+      "snippet": "babelhyphenmins[${3:lang1,lang2,...}]{${1:left}}{${2:right}}[${4:hyphenationmin}]",
+      "unusual": true
+    },
+    {
+      "name": "babelhyphenmins",
+      "snippet": "babelhyphenmins{${1:left}}{${2:right}}",
+      "unusual": true
+    },
+    {
+      "name": "babelhyphenmins",
+      "snippet": "babelhyphenmins{${1:left}}{${2:right}}[${3:hyphenationmin}]",
+      "unusual": true
+    },
+    {
+      "name": "babelhyphenmins*",
+      "snippet": "babelhyphenmins*[${3:lang1,lang2,...}]{${1:left}}{${2:right}}",
+      "unusual": true
+    },
+    {
+      "name": "babelhyphenmins*",
+      "snippet": "babelhyphenmins*[${3:lang1,lang2,...}]{${1:left}}{${2:right}}[${4:hyphenationmin}]",
+      "unusual": true
+    },
+    {
+      "name": "babelhyphenmins*",
+      "snippet": "babelhyphenmins*{${1:left}}{${2:right}}",
+      "unusual": true
+    },
+    {
+      "name": "babelhyphenmins*",
+      "snippet": "babelhyphenmins*{${1:left}}{${2:right}}[${3:hyphenationmin}]",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\babelinterchar"
+      ],
+      "name": "babelinterchar",
+      "snippet": "babelinterchar[${5:options}]{${1:locale}}{${2:class-first}}{${3:class-second}}{${4:code}}",
+      "unusual": true
+    },
+    {
+      "name": "babelinterchar",
+      "snippet": "babelinterchar{${1:locale}}{${2:class-first}}{${3:class-second}}{${4:code}}",
+      "unusual": true
+    },
+    {
+      "name": "babelnullhyphen",
+      "unusual": true
+    },
+    {
+      "name": "babelpatterns",
+      "snippet": "babelpatterns[${2:lang1,lang2,...}]{${1:patterns}}",
+      "unusual": true
+    },
+    {
+      "name": "babelpatterns",
+      "snippet": "babelpatterns{${1:patterns}}",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\babelposthyphenation#c,\\babelprehyphenation#c"
+      ],
+      "name": "babelposthyphenation",
+      "snippet": "babelposthyphenation[${4:options}]{${1:hypenrules-name}}{${2:lua-pattern}}{${3:replacement}}",
+      "unusual": true
+    },
+    {
+      "name": "babelposthyphenation",
+      "snippet": "babelposthyphenation{${1:hypenrules-name}}{${2:lua-pattern}}{${3:replacement}}",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\babelposthyphenation#c,\\babelprehyphenation#c"
+      ],
+      "name": "babelprehyphenation",
+      "snippet": "babelprehyphenation[${4:options}]{${1:locale-name}}{${2:lua-pattern}}{${3:replacement}}",
+      "unusual": true
+    },
+    {
+      "name": "babelprehyphenation",
+      "snippet": "babelprehyphenation{${1:locale-name}}{${2:lua-pattern}}{${3:replacement}}",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\babelprovide#c"
+      ],
+      "name": "babelprovide",
+      "snippet": "babelprovide[${2:options}]{${1:language}}"
+    },
+    {
+      "name": "babelshorthand",
+      "snippet": "babelshorthand{${1:shorthand}}"
+    },
+    {
+      "name": "babelsublr",
+      "snippet": "babelsublr{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "babeltags",
+      "snippet": "babeltags{${1:tag1=lang1,tag2=lang2,...}}"
+    },
+    {
+      "name": "basquehyphenmins",
+      "unusual": true
+    },
+    {
+      "name": "bibname",
+      "unusual": true
+    },
+    {
+      "name": "bibname"
+    },
+    {
+      "name": "bname",
+      "snippet": "bname{${1:text}}"
+    },
+    {
+      "name": "boi"
+    },
+    {
+      "name": "bsc",
+      "snippet": "bsc{${1:text}}"
+    },
+    {
+      "name": "captionsUKenglish",
+      "unusual": true
+    },
+    {
+      "name": "captionsUSenglish",
+      "unusual": true
+    },
+    {
+      "name": "captionsacadian",
+      "unusual": true
+    },
+    {
+      "name": "captionsafrikaans",
+      "unusual": true
+    },
+    {
+      "name": "captionsalbanian",
+      "unusual": true
+    },
+    {
+      "name": "captionsamerican",
+      "unusual": true
+    },
+    {
+      "name": "captionsancientgreek",
+      "unusual": true
+    },
+    {
+      "name": "captionsaustralian",
+      "unusual": true
+    },
+    {
+      "name": "captionsaustrian",
+      "unusual": true
+    },
+    {
+      "name": "captionsazerbaijani",
+      "unusual": true
+    },
+    {
+      "name": "captionsbahasa",
+      "unusual": true
+    },
+    {
+      "name": "captionsbahasai",
+      "unusual": true
+    },
+    {
+      "name": "captionsbahasam",
+      "unusual": true
+    },
+    {
+      "name": "captionsbasque",
+      "unusual": true
+    },
+    {
+      "name": "captionsbelarusian",
+      "unusual": true
+    },
+    {
+      "name": "captionsbosnian",
+      "unusual": true
+    },
+    {
+      "name": "captionsbrazil",
+      "unusual": true
+    },
+    {
+      "name": "captionsbrazilian",
+      "unusual": true
+    },
+    {
+      "name": "captionsbreton",
+      "unusual": true
+    },
+    {
+      "name": "captionsbritish",
+      "unusual": true
+    },
+    {
+      "name": "captionsbulgarian",
+      "unusual": true
+    },
+    {
+      "name": "captionscanadian",
+      "unusual": true
+    },
+    {
+      "name": "captionscatalan",
+      "unusual": true
+    },
+    {
+      "name": "captionsclassiclatin",
+      "unusual": true
+    },
+    {
+      "name": "captionscroatian",
+      "unusual": true
+    },
+    {
+      "name": "captionsczech",
+      "unusual": true
+    },
+    {
+      "name": "captionsdanish",
+      "unusual": true
+    },
+    {
+      "name": "captionsdutch",
+      "unusual": true
+    },
+    {
+      "name": "captionsecclesiasticlatin",
+      "unusual": true
+    },
+    {
+      "name": "captionsenglish",
+      "unusual": true
+    },
+    {
+      "name": "captionsesperanto",
+      "unusual": true
+    },
+    {
+      "name": "captionsestonian",
+      "unusual": true
+    },
+    {
+      "name": "captionsfinnish",
+      "unusual": true
+    },
+    {
+      "name": "captionsfrench",
+      "unusual": true
+    },
+    {
+      "name": "captionsfriulan",
+      "unusual": true
+    },
+    {
+      "name": "captionsgalician",
+      "unusual": true
+    },
+    {
+      "name": "captionsgerman",
+      "unusual": true
+    },
+    {
+      "name": "captionsgreek",
+      "unusual": true
+    },
+    {
+      "name": "captionshungarian",
+      "unusual": true
+    },
+    {
+      "name": "captionsicelandic",
+      "unusual": true
+    },
+    {
+      "name": "captionsindon",
+      "unusual": true
+    },
+    {
+      "name": "captionsindonesian",
+      "unusual": true
+    },
+    {
+      "name": "captionsinterlingua",
+      "unusual": true
+    },
+    {
+      "name": "captionsirish",
+      "unusual": true
+    },
+    {
+      "name": "captionsitalian",
+      "unusual": true
+    },
+    {
+      "name": "captionsjapanese",
+      "unusual": true
+    },
+    {
+      "name": "captionskurmanji",
+      "unusual": true
+    },
+    {
+      "name": "captionslatin",
+      "unusual": true
+    },
+    {
+      "name": "captionslatvian",
+      "unusual": true
+    },
+    {
+      "name": "captionslithuanian",
+      "unusual": true
+    },
+    {
+      "name": "captionslowersorbian",
+      "unusual": true
+    },
+    {
+      "name": "captionslsorbian",
+      "unusual": true
+    },
+    {
+      "name": "captionsmacedonian",
+      "unusual": true
+    },
+    {
+      "name": "captionsmagyar",
+      "unusual": true
+    },
+    {
+      "name": "captionsmalay",
+      "unusual": true
+    },
+    {
+      "name": "captionsmedievallatin",
+      "unusual": true
+    },
+    {
+      "name": "captionsmelayu",
+      "unusual": true
+    },
+    {
+      "name": "captionsmeyalu",
+      "unusual": true
+    },
+    {
+      "name": "captionsmongolian",
+      "unusual": true
+    },
+    {
+      "name": "captionsnaustrian",
+      "unusual": true
+    },
+    {
+      "name": "captionsnewzealand",
+      "unusual": true
+    },
+    {
+      "name": "captionsngerman",
+      "unusual": true
+    },
+    {
+      "name": "captionsnorsk",
+      "unusual": true
+    },
+    {
+      "name": "captionsnswissgerman",
+      "unusual": true
+    },
+    {
+      "name": "captionspiedmontese",
+      "unusual": true
+    },
+    {
+      "name": "captionspinyin",
+      "unusual": true
+    },
+    {
+      "name": "captionspolish",
+      "unusual": true
+    },
+    {
+      "name": "captionspolutonikogreek",
+      "unusual": true
+    },
+    {
+      "name": "captionsportuges",
+      "unusual": true
+    },
+    {
+      "name": "captionsportuguese",
+      "unusual": true
+    },
+    {
+      "name": "captionsromanian",
+      "unusual": true
+    },
+    {
+      "name": "captionsromansh",
+      "unusual": true
+    },
+    {
+      "name": "captionsrussian",
+      "unusual": true
+    },
+    {
+      "name": "captionssamin",
+      "unusual": true
+    },
+    {
+      "name": "captionsscottish",
+      "unusual": true
+    },
+    {
+      "name": "captionsserbian",
+      "unusual": true
+    },
+    {
+      "name": "captionsserbianc",
+      "unusual": true
+    },
+    {
+      "name": "captionsslovak",
+      "unusual": true
+    },
+    {
+      "name": "captionsslovene",
+      "unusual": true
+    },
+    {
+      "name": "captionsspanish",
+      "unusual": true
+    },
+    {
+      "name": "captionsswedish",
+      "unusual": true
+    },
+    {
+      "name": "captionsswissgerman",
+      "unusual": true
+    },
+    {
+      "name": "captionsthai",
+      "unusual": true
+    },
+    {
+      "name": "captionsthaicjk",
+      "unusual": true
+    },
+    {
+      "name": "captionsturkish",
+      "unusual": true
+    },
+    {
+      "name": "captionsukrainian",
+      "unusual": true
+    },
+    {
+      "name": "captionsuppersorbian",
+      "unusual": true
+    },
+    {
+      "name": "captionsusorbian",
+      "unusual": true
+    },
+    {
+      "name": "captionsvietnamese",
+      "unusual": true
+    },
+    {
+      "name": "captionswelsh",
+      "unusual": true
+    },
+    {
+      "name": "catalanhyphenmins",
+      "unusual": true
+    },
+    {
+      "name": "ccname",
+      "unusual": true
+    },
+    {
+      "name": "ccname"
+    },
+    {
+      "name": "cdash",
+      "unusual": true
+    },
+    {
+      "name": "ch"
+    },
+    {
+      "name": "chaptername",
+      "unusual": true
+    },
+    {
+      "name": "chaptername"
+    },
+    {
+      "name": "circonflexe"
+    },
+    {
+      "name": "ck",
+      "unusual": true
+    },
+    {
+      "name": "clq"
+    },
+    {
+      "name": "clqq"
+    },
+    {
+      "name": "corollaryname",
+      "unusual": true
+    },
+    {
+      "name": "cosec"
+    },
+    {
+      "name": "cosech"
+    },
+    {
+      "name": "crq"
+    },
+    {
+      "name": "crqq"
+    },
+    {
+      "name": "csprimesoff"
+    },
+    {
+      "name": "csprimeson"
+    },
+    {
+      "name": "ctg"
+    },
+    {
+      "name": "cth"
+    },
+    {
+      "name": "cyr",
+      "unusual": true
+    },
+    {
+      "name": "cyra",
+      "unusual": true
+    },
+    {
+      "name": "cyra"
+    },
+    {
+      "name": "cyrae"
+    },
+    {
+      "name": "cyrb",
+      "unusual": true
+    },
+    {
+      "name": "cyrb"
+    },
+    {
+      "name": "cyrc",
+      "unusual": true
+    },
+    {
+      "name": "cyrc"
+    },
+    {
+      "name": "cyrch",
+      "unusual": true
+    },
+    {
+      "name": "cyrch"
+    },
+    {
+      "name": "cyrchrdsc"
+    },
+    {
+      "name": "cyrchvcrs"
+    },
+    {
+      "name": "cyrd",
+      "unusual": true
+    },
+    {
+      "name": "cyrd"
+    },
+    {
+      "name": "cyrdash"
+    },
+    {
+      "name": "cyrdje"
+    },
+    {
+      "name": "cyrdze"
+    },
+    {
+      "name": "cyrdzhe"
+    },
+    {
+      "name": "cyre",
+      "unusual": true
+    },
+    {
+      "name": "cyre"
+    },
+    {
+      "name": "cyrerev"
+    },
+    {
+      "name": "cyrery",
+      "unusual": true
+    },
+    {
+      "name": "cyrery"
+    },
+    {
+      "name": "cyrf",
+      "unusual": true
+    },
+    {
+      "name": "cyrf"
+    },
+    {
+      "name": "cyrg",
+      "unusual": true
+    },
+    {
+      "name": "cyrg"
+    },
+    {
+      "name": "cyrghcrs"
+    },
+    {
+      "name": "cyrgup",
+      "unusual": true
+    },
+    {
+      "name": "cyrgup"
+    },
+    {
+      "name": "cyrh",
+      "unusual": true
+    },
+    {
+      "name": "cyrh"
+    },
+    {
+      "name": "cyrhdsc"
+    },
+    {
+      "name": "cyrhrdsn"
+    },
+    {
+      "name": "cyri",
+      "unusual": true
+    },
+    {
+      "name": "cyri"
+    },
+    {
+      "name": "cyrie",
+      "unusual": true
+    },
+    {
+      "name": "cyrie"
+    },
+    {
+      "name": "cyrii",
+      "unusual": true
+    },
+    {
+      "name": "cyrii"
+    },
+    {
+      "name": "cyrillicencoding",
+      "unusual": true
+    },
+    {
+      "name": "cyrillictext",
+      "unusual": true
+    },
+    {
+      "name": "cyrishrt",
+      "unusual": true
+    },
+    {
+      "name": "cyrishrt"
+    },
+    {
+      "name": "cyrje"
+    },
+    {
+      "name": "cyrk",
+      "unusual": true
+    },
+    {
+      "name": "cyrk"
+    },
+    {
+      "name": "cyrkbeak"
+    },
+    {
+      "name": "cyrkdsc"
+    },
+    {
+      "name": "cyrkvcrs"
+    },
+    {
+      "name": "cyrl",
+      "unusual": true
+    },
+    {
+      "name": "cyrl"
+    },
+    {
+      "name": "cyrlangle"
+    },
+    {
+      "name": "cyrlje"
+    },
+    {
+      "name": "cyrm",
+      "unusual": true
+    },
+    {
+      "name": "cyrm"
+    },
+    {
+      "name": "cyrn",
+      "unusual": true
+    },
+    {
+      "name": "cyrn"
+    },
+    {
+      "name": "cyrndsc"
+    },
+    {
+      "name": "cyrng"
+    },
+    {
+      "name": "cyrnje"
+    },
+    {
+      "name": "cyro",
+      "unusual": true
+    },
+    {
+      "name": "cyro"
+    },
+    {
+      "name": "cyrotld"
+    },
+    {
+      "name": "cyrp",
+      "unusual": true
+    },
+    {
+      "name": "cyrp"
+    },
+    {
+      "name": "cyrq"
+    },
+    {
+      "name": "cyrr",
+      "unusual": true
+    },
+    {
+      "name": "cyrr"
+    },
+    {
+      "name": "cyrrangle"
+    },
+    {
+      "name": "cyrs",
+      "unusual": true
+    },
+    {
+      "name": "cyrs"
+    },
+    {
+      "name": "cyrschwa"
+    },
+    {
+      "name": "cyrsdsc"
+    },
+    {
+      "name": "cyrsftsn",
+      "unusual": true
+    },
+    {
+      "name": "cyrsftsn"
+    },
+    {
+      "name": "cyrsh",
+      "unusual": true
+    },
+    {
+      "name": "cyrsh"
+    },
+    {
+      "name": "cyrshch",
+      "unusual": true
+    },
+    {
+      "name": "cyrshch"
+    },
+    {
+      "name": "cyrshha"
+    },
+    {
+      "name": "cyrt",
+      "unusual": true
+    },
+    {
+      "name": "cyrt"
+    },
+    {
+      "name": "cyrtshe"
+    },
+    {
+      "name": "cyru",
+      "unusual": true
+    },
+    {
+      "name": "cyru"
+    },
+    {
+      "name": "cyrushrt"
+    },
+    {
+      "name": "cyrv",
+      "unusual": true
+    },
+    {
+      "name": "cyrv"
+    },
+    {
+      "name": "cyrw"
+    },
+    {
+      "name": "cyrxtounicode",
+      "unusual": true
+    },
+    {
+      "name": "cyry"
+    },
+    {
+      "name": "cyrya",
+      "unusual": true
+    },
+    {
+      "name": "cyrya"
+    },
+    {
+      "name": "cyryhcrs"
+    },
+    {
+      "name": "cyryi",
+      "unusual": true
+    },
+    {
+      "name": "cyryi"
+    },
+    {
+      "name": "cyryo"
+    },
+    {
+      "name": "cyryu",
+      "unusual": true
+    },
+    {
+      "name": "cyryu"
+    },
+    {
+      "name": "cyrz",
+      "unusual": true
+    },
+    {
+      "name": "cyrz"
+    },
+    {
+      "name": "cyrzdsc"
+    },
+    {
+      "name": "cyrzh",
+      "unusual": true
+    },
+    {
+      "name": "cyrzh"
+    },
+    {
+      "name": "cyrzhdsc"
+    },
+    {
+      "name": "dateUKenglish",
+      "unusual": true
+    },
+    {
+      "name": "dateUSenglish",
+      "unusual": true
+    },
+    {
+      "name": "dateacadian",
+      "unusual": true
+    },
+    {
+      "name": "dateafrikaans",
+      "unusual": true
+    },
+    {
+      "name": "datealbanian",
+      "unusual": true
+    },
+    {
+      "name": "dateamerican",
+      "unusual": true
+    },
+    {
+      "name": "dateaustralian",
+      "unusual": true
+    },
+    {
+      "name": "dateaustrian",
+      "unusual": true
+    },
+    {
+      "name": "dateazerbaijani",
+      "unusual": true
+    },
+    {
+      "name": "datebahasa",
+      "unusual": true
+    },
+    {
+      "name": "datebahasai",
+      "unusual": true
+    },
+    {
+      "name": "datebahasam",
+      "unusual": true
+    },
+    {
+      "name": "datebasque",
+      "unusual": true
+    },
+    {
+      "name": "datebelarusian",
+      "unusual": true
+    },
+    {
+      "name": "datebosnian",
+      "unusual": true
+    },
+    {
+      "name": "datebrazil",
+      "unusual": true
+    },
+    {
+      "name": "datebrazilian",
+      "unusual": true
+    },
+    {
+      "name": "datebreton",
+      "unusual": true
+    },
+    {
+      "name": "datebritish",
+      "unusual": true
+    },
+    {
+      "name": "datebulgarian",
+      "unusual": true
+    },
+    {
+      "name": "datecanadian",
+      "unusual": true
+    },
+    {
+      "name": "datecatalan",
+      "unusual": true
+    },
+    {
+      "name": "dateclassiclatin",
+      "unusual": true
+    },
+    {
+      "name": "datecroatian",
+      "unusual": true
+    },
+    {
+      "name": "dateczech",
+      "unusual": true
+    },
+    {
+      "name": "datedanish",
+      "unusual": true
+    },
+    {
+      "name": "datedutch",
+      "unusual": true
+    },
+    {
+      "name": "dateecclesiasticlatin",
+      "unusual": true
+    },
+    {
+      "name": "dateenglish",
+      "unusual": true
+    },
+    {
+      "name": "dateesperanto",
+      "unusual": true
+    },
+    {
+      "name": "dateestonian",
+      "unusual": true
+    },
+    {
+      "name": "datefinnish",
+      "unusual": true
+    },
+    {
+      "name": "datefrench",
+      "unusual": true
+    },
+    {
+      "name": "datefriulan",
+      "unusual": true
+    },
+    {
+      "name": "dategalician",
+      "unusual": true
+    },
+    {
+      "name": "dategdmy"
+    },
+    {
+      "name": "dategerman",
+      "unusual": true
+    },
+    {
+      "name": "dategreek",
+      "unusual": true
+    },
+    {
+      "name": "datehungarian",
+      "unusual": true
+    },
+    {
+      "name": "dateicelandic",
+      "unusual": true
+    },
+    {
+      "name": "dateindon",
+      "unusual": true
+    },
+    {
+      "name": "dateindonesian",
+      "unusual": true
+    },
+    {
+      "name": "dateinterlingua",
+      "unusual": true
+    },
+    {
+      "name": "dateirish",
+      "unusual": true
+    },
+    {
+      "name": "dateitalian",
+      "unusual": true
+    },
+    {
+      "name": "datejapanese",
+      "unusual": true
+    },
+    {
+      "name": "datekurmanji",
+      "unusual": true
+    },
+    {
+      "name": "datekurmanjialternate"
+    },
+    {
+      "name": "datelatin",
+      "unusual": true
+    },
+    {
+      "name": "datelatvian",
+      "unusual": true
+    },
+    {
+      "name": "datelithuanian",
+      "unusual": true
+    },
+    {
+      "name": "datelowersorbian",
+      "unusual": true
+    },
+    {
+      "name": "datelsorbian",
+      "unusual": true
+    },
+    {
+      "name": "datemacedonian",
+      "unusual": true
+    },
+    {
+      "name": "datemagyar",
+      "unusual": true
+    },
+    {
+      "name": "datemalay",
+      "unusual": true
+    },
+    {
+      "name": "datemedievallatin",
+      "unusual": true
+    },
+    {
+      "name": "datemelayu",
+      "unusual": true
+    },
+    {
+      "name": "datemeyalu",
+      "unusual": true
+    },
+    {
+      "name": "datemongolian",
+      "unusual": true
+    },
+    {
+      "name": "datenaustrian",
+      "unusual": true
+    },
+    {
+      "name": "datenewzealand",
+      "unusual": true
+    },
+    {
+      "name": "datengerman",
+      "unusual": true
+    },
+    {
+      "name": "datenorsk",
+      "unusual": true
+    },
+    {
+      "name": "datenswissgerman",
+      "unusual": true
+    },
+    {
+      "name": "datepiedmontese",
+      "unusual": true
+    },
+    {
+      "name": "datepinyin",
+      "unusual": true
+    },
+    {
+      "name": "datepolish",
+      "unusual": true
+    },
+    {
+      "name": "datepolutonikogreek",
+      "unusual": true
+    },
+    {
+      "name": "dateportuges",
+      "unusual": true
+    },
+    {
+      "name": "dateportuguese",
+      "unusual": true
+    },
+    {
+      "name": "dateromanian",
+      "unusual": true
+    },
+    {
+      "name": "dateromansh",
+      "unusual": true
+    },
+    {
+      "name": "daterussian",
+      "unusual": true
+    },
+    {
+      "name": "datesamin",
+      "unusual": true
+    },
+    {
+      "name": "datescottish",
+      "unusual": true
+    },
+    {
+      "name": "datesdmy"
+    },
+    {
+      "name": "dateserbian",
+      "unusual": true
+    },
+    {
+      "name": "dateserbianc",
+      "unusual": true
+    },
+    {
+      "name": "dateslovak",
+      "unusual": true
+    },
+    {
+      "name": "dateslovene",
+      "unusual": true
+    },
+    {
+      "name": "datespanish",
+      "unusual": true
+    },
+    {
+      "name": "dateswedish",
+      "unusual": true
+    },
+    {
+      "name": "dateswissgerman",
+      "unusual": true
+    },
+    {
+      "name": "datesymd"
+    },
+    {
+      "name": "datethai",
+      "unusual": true
+    },
+    {
+      "name": "datethaicjk",
+      "unusual": true
+    },
+    {
+      "name": "dateturkish",
+      "unusual": true
+    },
+    {
+      "name": "dateukrainian",
+      "unusual": true
+    },
+    {
+      "name": "dateuppersorbian",
+      "unusual": true
+    },
+    {
+      "name": "dateusorbian",
+      "unusual": true
+    },
+    {
+      "name": "datevietnamese",
+      "unusual": true
+    },
+    {
+      "name": "datewelsh",
+      "unusual": true
+    },
+    {
+      "name": "datumaa"
+    },
+    {
+      "name": "datums"
+    },
+    {
+      "name": "ddigamma"
+    },
+    {
+      "name": "deactivatequoting",
+      "unusual": true
+    },
+    {
+      "name": "deactivatequoting"
+    },
+    {
+      "name": "deactivatetilden",
+      "unusual": true
+    },
+    {
+      "name": "decembername"
+    },
+    {
+      "name": "decimalcomma"
+    },
+    {
+      "name": "decimalpoint"
+    },
+    {
+      "name": "defineshorthand",
+      "snippet": "defineshorthand[${3:lang1,lang2,...}]{${1:shorthand}}{${2:code}}"
+    },
+    {
+      "name": "defineshorthand",
+      "snippet": "defineshorthand{${1:shorthand}}{${2:code}}"
+    },
+    {
+      "name": "degre",
+      "unusual": true
+    },
+    {
+      "name": "degre"
+    },
+    {
+      "name": "degres"
+    },
+    {
+      "name": "descindentFB",
+      "unusual": true
+    },
+    {
+      "name": "dieresia",
+      "snippet": "dieresia{${1:arg}}"
+    },
+    {
+      "name": "dieresis",
+      "snippet": "dieresis{${1:arg}}"
+    },
+    {
+      "name": "disablelocaleinterchar",
+      "snippet": "disablelocaleinterchar{${1:label}}",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\enablelocaletransform,\\disablelocaletransform"
+      ],
+      "name": "disablelocaletransform",
+      "snippet": "disablelocaletransform{${1:transform}}"
+    },
+    {
+      "name": "dj"
+    },
+    {
+      "name": "dotFFN",
+      "unusual": true
+    },
+    {
+      "name": "dotlessi"
+    },
+    {
+      "name": "dq"
+    },
+    {
+      "name": "dutchhyphenmins",
+      "unusual": true
+    },
+    {
+      "name": "ecircumflex"
+    },
+    {
+      "name": "editorfootnote",
+      "snippet": "editorfootnote{${1:lábjegyzet-szöveg}}"
+    },
+    {
+      "name": "eeob"
+    },
+    {
+      "name": "eil"
+    },
+    {
+      "name": "emitdate",
+      "snippet": "emitdate[${3:toldalék}]{${1:formátum}}{${2:dátum}}"
+    },
+    {
+      "name": "emitdate",
+      "snippet": "emitdate{${1:formátum}}{${2:dátum}}"
+    },
+    {
+      "name": "enablelocaleinterchar",
+      "snippet": "enablelocaleinterchar{${1:label}}",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\enablelocaletransform,\\disablelocaletransform"
+      ],
+      "name": "enablelocaletransform",
+      "snippet": "enablelocaletransform{${1:transform}}"
+    },
+    {
+      "name": "enclname",
+      "unusual": true
+    },
+    {
+      "name": "enclname"
+    },
+    {
+      "name": "ensureascii",
+      "snippet": "ensureascii{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "ensuregreek",
+      "snippet": "ensuregreek{${1:text}}"
+    },
+    {
+      "name": "enumCyr"
+    },
+    {
+      "name": "enumEng"
+    },
+    {
+      "name": "enumLat"
+    },
+    {
+      "name": "eob"
+    },
+    {
+      "name": "esper",
+      "snippet": "esper{${1:counter}}"
+    },
+    {
+      "detail": "€",
+      "documentation": "Euro sign",
+      "name": "euro"
+    },
+    {
+      "name": "extrasUKenglish",
+      "unusual": true
+    },
+    {
+      "name": "extrasUSenglish",
+      "unusual": true
+    },
+    {
+      "name": "extrasacadian",
+      "unusual": true
+    },
+    {
+      "name": "extrasafrikaans",
+      "unusual": true
+    },
+    {
+      "name": "extrasalbanian",
+      "unusual": true
+    },
+    {
+      "name": "extrasamerican",
+      "unusual": true
+    },
+    {
+      "name": "extrasancientgreek",
+      "unusual": true
+    },
+    {
+      "name": "extrasaustralian",
+      "unusual": true
+    },
+    {
+      "name": "extrasaustrian",
+      "unusual": true
+    },
+    {
+      "name": "extrasazerbaijani",
+      "unusual": true
+    },
+    {
+      "name": "extrasbahasa",
+      "unusual": true
+    },
+    {
+      "name": "extrasbahasai",
+      "unusual": true
+    },
+    {
+      "name": "extrasbahasam",
+      "unusual": true
+    },
+    {
+      "name": "extrasbasque",
+      "unusual": true
+    },
+    {
+      "name": "extrasbelarusian",
+      "unusual": true
+    },
+    {
+      "name": "extrasbosnian",
+      "unusual": true
+    },
+    {
+      "name": "extrasbrazil",
+      "unusual": true
+    },
+    {
+      "name": "extrasbrazilian",
+      "unusual": true
+    },
+    {
+      "name": "extrasbreton",
+      "unusual": true
+    },
+    {
+      "name": "extrasbritish",
+      "unusual": true
+    },
+    {
+      "name": "extrasbulgarian",
+      "unusual": true
+    },
+    {
+      "name": "extrascanadian",
+      "unusual": true
+    },
+    {
+      "name": "extrascatalan",
+      "unusual": true
+    },
+    {
+      "name": "extrasclassiclatin",
+      "unusual": true
+    },
+    {
+      "name": "extrascroatian",
+      "unusual": true
+    },
+    {
+      "name": "extrasczech",
+      "unusual": true
+    },
+    {
+      "name": "extrasdanish",
+      "unusual": true
+    },
+    {
+      "name": "extrasdutch",
+      "unusual": true
+    },
+    {
+      "name": "extrasecclesiasticlatin",
+      "unusual": true
+    },
+    {
+      "name": "extrasenglish",
+      "unusual": true
+    },
+    {
+      "name": "extrasesperanto",
+      "unusual": true
+    },
+    {
+      "name": "extrasestonian",
+      "unusual": true
+    },
+    {
+      "name": "extrasfinnish",
+      "unusual": true
+    },
+    {
+      "name": "extrasfrench",
+      "unusual": true
+    },
+    {
+      "name": "extrasfriulan",
+      "unusual": true
+    },
+    {
+      "name": "extrasgalician",
+      "unusual": true
+    },
+    {
+      "name": "extrasgerman",
+      "unusual": true
+    },
+    {
+      "name": "extrasgreek",
+      "unusual": true
+    },
+    {
+      "name": "extrashungarian",
+      "unusual": true
+    },
+    {
+      "name": "extrasicelandic",
+      "unusual": true
+    },
+    {
+      "name": "extrasindon",
+      "unusual": true
+    },
+    {
+      "name": "extrasindonesian",
+      "unusual": true
+    },
+    {
+      "name": "extrasinterlingua",
+      "unusual": true
+    },
+    {
+      "name": "extrasirish",
+      "unusual": true
+    },
+    {
+      "name": "extrasitalian",
+      "unusual": true
+    },
+    {
+      "name": "extrasjapanese",
+      "unusual": true
+    },
+    {
+      "name": "extraskurmanji",
+      "unusual": true
+    },
+    {
+      "name": "extraslatin",
+      "unusual": true
+    },
+    {
+      "name": "extraslatvian",
+      "unusual": true
+    },
+    {
+      "name": "extraslithuanian",
+      "unusual": true
+    },
+    {
+      "name": "extraslowersorbian",
+      "unusual": true
+    },
+    {
+      "name": "extraslsorbian",
+      "unusual": true
+    },
+    {
+      "name": "extrasmacedonian",
+      "unusual": true
+    },
+    {
+      "name": "extrasmagyar",
+      "unusual": true
+    },
+    {
+      "name": "extrasmalay",
+      "unusual": true
+    },
+    {
+      "name": "extrasmedievallatin",
+      "unusual": true
+    },
+    {
+      "name": "extrasmelayu",
+      "unusual": true
+    },
+    {
+      "name": "extrasmeyalu",
+      "unusual": true
+    },
+    {
+      "name": "extrasmongolian",
+      "unusual": true
+    },
+    {
+      "name": "extrasnaustrian",
+      "unusual": true
+    },
+    {
+      "name": "extrasnewzealand",
+      "unusual": true
+    },
+    {
+      "name": "extrasngerman",
+      "unusual": true
+    },
+    {
+      "name": "extrasnorsk",
+      "unusual": true
+    },
+    {
+      "name": "extrasnswissgerman",
+      "unusual": true
+    },
+    {
+      "name": "extraspiedmontese",
+      "unusual": true
+    },
+    {
+      "name": "extraspinyin",
+      "unusual": true
+    },
+    {
+      "name": "extraspolish",
+      "unusual": true
+    },
+    {
+      "name": "extraspolutonikogreek",
+      "unusual": true
+    },
+    {
+      "name": "extrasportuges",
+      "unusual": true
+    },
+    {
+      "name": "extrasportuguese",
+      "unusual": true
+    },
+    {
+      "name": "extrasromanian",
+      "unusual": true
+    },
+    {
+      "name": "extrasromansh",
+      "unusual": true
+    },
+    {
+      "name": "extrasrussian",
+      "unusual": true
+    },
+    {
+      "name": "extrassamin",
+      "unusual": true
+    },
+    {
+      "name": "extrasscottish",
+      "unusual": true
+    },
+    {
+      "name": "extrasserbian",
+      "unusual": true
+    },
+    {
+      "name": "extrasserbianc",
+      "unusual": true
+    },
+    {
+      "name": "extrasslovak",
+      "unusual": true
+    },
+    {
+      "name": "extrasslovene",
+      "unusual": true
+    },
+    {
+      "name": "extrasspanish",
+      "unusual": true
+    },
+    {
+      "name": "extrasswedish",
+      "unusual": true
+    },
+    {
+      "name": "extrasswissgerman",
+      "unusual": true
+    },
+    {
+      "name": "extrasthai",
+      "unusual": true
+    },
+    {
+      "name": "extrasthaicjk",
+      "unusual": true
+    },
+    {
+      "name": "extrasturkish",
+      "unusual": true
+    },
+    {
+      "name": "extrasukrainian",
+      "unusual": true
+    },
+    {
+      "name": "extrasuppersorbian",
+      "unusual": true
+    },
+    {
+      "name": "extrasusorbian",
+      "unusual": true
+    },
+    {
+      "name": "extrasvietnamese",
+      "unusual": true
+    },
+    {
+      "name": "extraswelsh",
+      "unusual": true
+    },
+    {
+      "name": "f",
+      "snippet": "f{${1:arg}}"
+    },
+    {
+      "name": "factorial"
+    },
+    {
+      "name": "februaryname"
+    },
+    {
+      "name": "fg"
+    },
+    {
+      "name": "fgi",
+      "unusual": true
+    },
+    {
+      "name": "fgii",
+      "unusual": true
+    },
+    {
+      "name": "firstGregorianDatebulgarian",
+      "snippet": "firstGregorianDatebulgarian{${1:number}}",
+      "unusual": true
+    },
+    {
+      "name": "flq"
+    },
+    {
+      "name": "flqq"
+    },
+    {
+      "name": "fmtname",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\footnotestyle"
+      ],
+      "name": "footnotestyle",
+      "snippet": "footnotestyle{${1:előírás}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\foreignlanguage,\\begin{otherlanguage*}"
+      ],
+      "name": "foreignlanguage",
+      "snippet": "foreignlanguage[${3:options}]{${1:language}}{${2:text}}"
+    },
+    {
+      "name": "foreignlanguage",
+      "snippet": "foreignlanguage{${1:language}}{${2:text}}"
+    },
+    {
+      "name": "fprimo)"
+    },
+    {
+      "name": "frenchdate",
+      "snippet": "frenchdate{${1:day}}{${2:month}}{${3:year}}",
+      "unusual": true
+    },
+    {
+      "name": "frenchdate",
+      "snippet": "frenchdate{${1:day}}{${2:month}}{${3:year}}"
+    },
+    {
+      "name": "frenchpartfirst",
+      "unusual": true
+    },
+    {
+      "name": "frenchpartsecond",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\frenchsetup,\\frenchbsetup"
+      ],
+      "name": "frenchsetup",
+      "snippet": "frenchsetup{${1:options}}"
+    },
+    {
+      "name": "frenchtoday"
+    },
+    {
+      "name": "frq"
+    },
+    {
+      "name": "frqq"
+    },
+    {
+      "name": "frquote",
+      "snippet": "frquote{${1:text}}"
+    },
+    {
+      "name": "fup",
+      "snippet": "fup{${1:text}}"
+    },
+    {
+      "name": "galiciandatede"
+    },
+    {
+      "name": "galiciandatedo"
+    },
+    {
+      "name": "galiciandeactivate",
+      "snippet": "galiciandeactivate{${1:characters}}",
+      "unusual": true
+    },
+    {
+      "name": "galiciandecimal",
+      "snippet": "galiciandecimal{${1:math}}"
+    },
+    {
+      "name": "getlocaleproperty",
+      "snippet": "getlocaleproperty{${1:cmd}}{${2:locale}}{${3:property}}",
+      "unusual": true
+    },
+    {
+      "name": "getlocaleproperty*",
+      "snippet": "getlocaleproperty*{${1:cmd}}{${2:locale}}{${3:property}}",
+      "unusual": true
+    },
+    {
+      "name": "glossaryname",
+      "unusual": true
+    },
+    {
+      "name": "glossaryname"
+    },
+    {
+      "name": "glq"
+    },
+    {
+      "name": "glqq"
+    },
+    {
+      "name": "grada",
+      "snippet": "grada{${1:arg}}"
+    },
+    {
+      "name": "gradur",
+      "snippet": "gradur{${1:arg}}"
+    },
+    {
+      "name": "greekfontencoding",
+      "unusual": true
+    },
+    {
+      "name": "greekhyphenmins",
+      "unusual": true
+    },
+    {
+      "name": "greeknumeral",
+      "snippet": "greeknumeral{${1:number}}"
+    },
+    {
+      "name": "greeknumeralNinety",
+      "unusual": true
+    },
+    {
+      "name": "greeknumeralSix",
+      "unusual": true
+    },
+    {
+      "name": "greeknumeralninety",
+      "unusual": true
+    },
+    {
+      "name": "greeknumeralsix",
+      "unusual": true
+    },
+    {
+      "name": "greekscript"
+    },
+    {
+      "name": "greektext"
+    },
+    {
+      "name": "grq"
+    },
+    {
+      "name": "grqq"
+    },
+    {
+      "name": "guillemetleft"
+    },
+    {
+      "name": "guillemetright"
+    },
+    {
+      "name": "guillemotleft",
+      "unusual": true
+    },
+    {
+      "name": "guillemotleft"
+    },
+    {
+      "name": "guillemotright",
+      "unusual": true
+    },
+    {
+      "name": "guillemotright"
+    },
+    {
+      "name": "guilsinglleft"
+    },
+    {
+      "name": "guilsinglright"
+    },
+    {
+      "name": "h",
+      "snippet": "h{${1:arg}}"
+    },
+    {
+      "name": "hang",
+      "snippet": "hang{${1:bekezdéskezdő jel}}"
+    },
+    {
+      "name": "headingfootnote",
+      "snippet": "headingfootnote[${2:szám}]{${1:lábjegyzet-szöveg}}"
+    },
+    {
+      "name": "headingfootnote",
+      "snippet": "headingfootnote{${1:lábjegyzet-szöveg}}"
+    },
+    {
+      "name": "headpagename",
+      "unusual": true
+    },
+    {
+      "name": "headtoname",
+      "unusual": true
+    },
+    {
+      "name": "headtoname"
+    },
+    {
+      "name": "hodiau"
+    },
+    {
+      "name": "hodiaun"
+    },
+    {
+      "name": "hunnewlabel",
+      "unusual": true
+    },
+    {
+      "name": "hunumeral",
+      "snippet": "hunumeral{${1:counter}}"
+    },
+    {
+      "name": "huordinal",
+      "snippet": "huordinal{${1:counter}}"
+    },
+    {
+      "name": "ieme"
+    },
+    {
+      "name": "iemes"
+    },
+    {
+      "name": "ier"
+    },
+    {
+      "name": "iere"
+    },
+    {
+      "name": "ieres"
+    },
+    {
+      "name": "iers"
+    },
+    {
+      "name": "ifFBAutoSpaceFootnotes",
+      "unusual": true
+    },
+    {
+      "name": "ifFBCompactItemize",
+      "unusual": true
+    },
+    {
+      "name": "ifFBCustomiseFigTabCaptions",
+      "unusual": true
+    },
+    {
+      "name": "ifFBFrenchFootnotes",
+      "unusual": true
+    },
+    {
+      "name": "ifFBFrenchSuperscripts",
+      "unusual": true
+    },
+    {
+      "name": "ifFBGlobalLayoutFrench",
+      "unusual": true
+    },
+    {
+      "name": "ifFBINGuillSpace",
+      "unusual": true
+    },
+    {
+      "name": "ifFBIndentFirst",
+      "unusual": true
+    },
+    {
+      "name": "ifFBListItemsAsPar",
+      "unusual": true
+    },
+    {
+      "name": "ifFBListOldLayout",
+      "unusual": true
+    },
+    {
+      "name": "ifFBLowercaseSuperscripts",
+      "unusual": true
+    },
+    {
+      "name": "ifFBLuaTeX",
+      "unusual": true
+    },
+    {
+      "name": "ifFBOldFigTabCaptions",
+      "unusual": true
+    },
+    {
+      "name": "ifFBOriginalTypewriter",
+      "unusual": true
+    },
+    {
+      "name": "ifFBPartNameFull",
+      "unusual": true
+    },
+    {
+      "name": "ifFBShowOptions",
+      "unusual": true
+    },
+    {
+      "name": "ifFBSmallCapsFigTabCaptions",
+      "unusual": true
+    },
+    {
+      "name": "ifFBStandardEnumerateEnv",
+      "unusual": true
+    },
+    {
+      "name": "ifFBStandardItemLabels",
+      "unusual": true
+    },
+    {
+      "name": "ifFBStandardItemizeEnv",
+      "unusual": true
+    },
+    {
+      "name": "ifFBStandardLayout",
+      "unusual": true
+    },
+    {
+      "name": "ifFBStandardListSpacing",
+      "unusual": true
+    },
+    {
+      "name": "ifFBStandardLists",
+      "unusual": true
+    },
+    {
+      "name": "ifFBSuppressWarning",
+      "unusual": true
+    },
+    {
+      "name": "ifFBThinColonSpace",
+      "unusual": true
+    },
+    {
+      "name": "ifFBThinSpaceInFrenchNumbers",
+      "unusual": true
+    },
+    {
+      "name": "ifFBXeTeX",
+      "unusual": true
+    },
+    {
+      "name": "ifFBfrench",
+      "unusual": true
+    },
+    {
+      "name": "ifFBunicode",
+      "unusual": true
+    },
+    {
+      "name": "ifLaTeXe",
+      "unusual": true
+    },
+    {
+      "name": "ifbabelshorthand",
+      "snippet": "ifbabelshorthand{${1:character}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "ifcapsz",
+      "unusual": true
+    },
+    {
+      "name": "iflanguage",
+      "snippet": "iflanguage{${1:language}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "iflq"
+    },
+    {
+      "name": "iflqq"
+    },
+    {
+      "name": "ifrq"
+    },
+    {
+      "name": "ifrqq"
+    },
+    {
+      "name": "ilq"
+    },
+    {
+      "name": "ilqq"
+    },
+    {
+      "name": "irq"
+    },
+    {
+      "name": "irqq"
+    },
+    {
+      "name": "januaryname"
+    },
+    {
+      "name": "julyname"
+    },
+    {
+      "name": "junename"
+    },
+    {
+      "name": "k",
+      "snippet": "k{${1:arg}}"
+    },
+    {
+      "name": "katwtonos"
+    },
+    {
+      "name": "kentan"
+    },
+    {
+      "name": "kernFFN",
+      "unusual": true
+    },
+    {
+      "name": "labelindentFB",
+      "unusual": true
+    },
+    {
+      "name": "labelwidthFB",
+      "unusual": true
+    },
+    {
+      "name": "languageattribute",
+      "snippet": "languageattribute{${1:language}}{${2:list of attributes}}"
+    },
+    {
+      "name": "languagename",
+      "unusual": true
+    },
+    {
+      "name": "languageshorthands",
+      "snippet": "languageshorthands{${1:language}}"
+    },
+    {
+      "name": "lastJulianDatebulgarian",
+      "snippet": "lastJulianDatebulgarian{${1:number}}",
+      "unusual": true
+    },
+    {
+      "detail": "⪫",
+      "documentation": "Larger than",
+      "name": "lat",
+      "unusual": true
+    },
+    {
+      "detail": "⪫",
+      "documentation": "Larger than",
+      "name": "lat"
+    },
+    {
+      "name": "latinencoding",
+      "unusual": true
+    },
+    {
+      "name": "latintext"
+    },
+    {
+      "name": "latviangada",
+      "unusual": true
+    },
+    {
+      "name": "latviantoday"
+    },
+    {
+      "name": "layoutgalician",
+      "unusual": true
+    },
+    {
+      "name": "lcaron",
+      "unusual": true
+    },
+    {
+      "name": "lcaron"
+    },
+    {
+      "name": "leftmarginFB",
+      "unusual": true
+    },
+    {
+      "name": "lemmaname",
+      "unusual": true
+    },
+    {
+      "name": "lgem"
+    },
+    {
+      "name": "lgrfont",
+      "snippet": "lgrfont{${1:text}}"
+    },
+    {
+      "name": "listfigurename",
+      "unusual": true
+    },
+    {
+      "name": "listindentFB",
+      "unusual": true
+    },
+    {
+      "name": "localebox",
+      "snippet": "localebox{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "localecounter",
+      "snippet": "localecounter{${1:style}}{${2:counter}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\localedate"
+      ],
+      "name": "localedate",
+      "snippet": "localedate[${4:options}]{${1:year}}{${2:month}}{${3:day}}"
+    },
+    {
+      "name": "localedate",
+      "snippet": "localedate{${1:year}}{${2:month}}{${3:day}}"
+    },
+    {
+      "name": "localeid",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\localeinfo#c,\\localeinfo*#c"
+      ],
+      "name": "localeinfo",
+      "snippet": "localeinfo{${1:field}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\localeinfo#c,\\localeinfo*#c"
+      ],
+      "name": "localeinfo*",
+      "snippet": "localeinfo*{${1:field}}"
+    },
+    {
+      "name": "localename"
+    },
+    {
+      "name": "localenumeral",
+      "snippet": "localenumeral{${1:style}}{${2:number}}"
+    },
+    {
+      "name": "localeprehyphenation",
+      "snippet": "localeprehyphenation{${1:string}}",
+      "unusual": true
+    },
+    {
+      "name": "localerestoredirs",
+      "unusual": true
+    },
+    {
+      "name": "localfootnote",
+      "snippet": "localfootnote{${1:text}}"
+    },
+    {
+      "name": "localfootnotetext",
+      "unusual": true
+    },
+    {
+      "name": "lpb"
+    },
+    {
+      "name": "lquoti"
+    },
+    {
+      "name": "lquotii"
+    },
+    {
+      "name": "lquotiii"
+    },
+    {
+      "name": "lsc",
+      "snippet": "lsc{${1:text}}"
+    },
+    {
+      "name": "lstlistingname",
+      "unusual": true
+    },
+    {
+      "name": "lstlistlistingname",
+      "unusual": true
+    },
+    {
+      "name": "magyarDumpHuMin",
+      "unusual": true
+    },
+    {
+      "name": "mainfootnote",
+      "snippet": "mainfootnote{${1:text}}"
+    },
+    {
+      "name": "mainfootnotetext",
+      "unusual": true
+    },
+    {
+      "name": "mainlocalename"
+    },
+    {
+      "name": "makeFootnotable",
+      "snippet": "makeFootnotable{${1:környezet-név}}"
+    },
+    {
+      "name": "marchname"
+    },
+    {
+      "name": "mathgalician",
+      "unusual": true
+    },
+    {
+      "name": "mathspanish",
+      "unusual": true
+    },
+    {
+      "name": "mayname"
+    },
+    {
+      "name": "mdqoff",
+      "unusual": true
+    },
+    {
+      "name": "mdqon",
+      "unusual": true
+    },
+    {
+      "name": "mkngender",
+      "unusual": true
+    },
+    {
+      "name": "msc",
+      "snippet": "msc{${1:text}}"
+    },
+    {
+      "name": "nad"
+    },
+    {
+      "name": "nak"
+    },
+    {
+      "name": "newdatelowersorbian"
+    },
+    {
+      "name": "newdatelsorbian"
+    },
+    {
+      "name": "newdateuppersorbian"
+    },
+    {
+      "name": "newdateusorbian"
+    },
+    {
+      "name": "no"
+    },
+    {
+      "name": "nod"
+    },
+    {
+      "name": "noextrasUKenglish",
+      "unusual": true
+    },
+    {
+      "name": "noextrasUSenglish",
+      "unusual": true
+    },
+    {
+      "name": "noextrasacadian",
+      "unusual": true
+    },
+    {
+      "name": "noextrasafrikaans",
+      "unusual": true
+    },
+    {
+      "name": "noextrasalbanian",
+      "unusual": true
+    },
+    {
+      "name": "noextrasamerican",
+      "unusual": true
+    },
+    {
+      "name": "noextrasaustralian",
+      "unusual": true
+    },
+    {
+      "name": "noextrasaustrian",
+      "unusual": true
+    },
+    {
+      "name": "noextrasazerbaijani",
+      "unusual": true
+    },
+    {
+      "name": "noextrasbahasa",
+      "unusual": true
+    },
+    {
+      "name": "noextrasbahasai",
+      "unusual": true
+    },
+    {
+      "name": "noextrasbahasam",
+      "unusual": true
+    },
+    {
+      "name": "noextrasbasque",
+      "unusual": true
+    },
+    {
+      "name": "noextrasbelarusian",
+      "unusual": true
+    },
+    {
+      "name": "noextrasbosnian",
+      "unusual": true
+    },
+    {
+      "name": "noextrasbrazil",
+      "unusual": true
+    },
+    {
+      "name": "noextrasbrazilian",
+      "unusual": true
+    },
+    {
+      "name": "noextrasbreton",
+      "unusual": true
+    },
+    {
+      "name": "noextrasbritish",
+      "unusual": true
+    },
+    {
+      "name": "noextrasbulgarian",
+      "unusual": true
+    },
+    {
+      "name": "noextrascanadian",
+      "unusual": true
+    },
+    {
+      "name": "noextrascatalan",
+      "unusual": true
+    },
+    {
+      "name": "noextrasclassiclatin",
+      "unusual": true
+    },
+    {
+      "name": "noextrascroatian",
+      "unusual": true
+    },
+    {
+      "name": "noextrasczech",
+      "unusual": true
+    },
+    {
+      "name": "noextrasdanish",
+      "unusual": true
+    },
+    {
+      "name": "noextrasdutch",
+      "unusual": true
+    },
+    {
+      "name": "noextrasecclesiasticlatin",
+      "unusual": true
+    },
+    {
+      "name": "noextrasenglish",
+      "unusual": true
+    },
+    {
+      "name": "noextrasesperanto",
+      "unusual": true
+    },
+    {
+      "name": "noextrasestonian",
+      "unusual": true
+    },
+    {
+      "name": "noextrasfinnish",
+      "unusual": true
+    },
+    {
+      "name": "noextrasfrench",
+      "unusual": true
+    },
+    {
+      "name": "noextrasfriulan",
+      "unusual": true
+    },
+    {
+      "name": "noextrasgalician",
+      "unusual": true
+    },
+    {
+      "name": "noextrasgerman",
+      "unusual": true
+    },
+    {
+      "name": "noextrasgreek",
+      "unusual": true
+    },
+    {
+      "name": "noextrashungarian",
+      "unusual": true
+    },
+    {
+      "name": "noextrasicelandic",
+      "unusual": true
+    },
+    {
+      "name": "noextrasindon",
+      "unusual": true
+    },
+    {
+      "name": "noextrasindonesian",
+      "unusual": true
+    },
+    {
+      "name": "noextrasinterlingua",
+      "unusual": true
+    },
+    {
+      "name": "noextrasirish",
+      "unusual": true
+    },
+    {
+      "name": "noextrasitalian",
+      "unusual": true
+    },
+    {
+      "name": "noextrasjapanese",
+      "unusual": true
+    },
+    {
+      "name": "noextraskurmanji",
+      "unusual": true
+    },
+    {
+      "name": "noextraslatin",
+      "unusual": true
+    },
+    {
+      "name": "noextraslatvian",
+      "unusual": true
+    },
+    {
+      "name": "noextraslithuanian",
+      "unusual": true
+    },
+    {
+      "name": "noextraslowersorbian",
+      "unusual": true
+    },
+    {
+      "name": "noextraslsorbian",
+      "unusual": true
+    },
+    {
+      "name": "noextrasmacedonian",
+      "unusual": true
+    },
+    {
+      "name": "noextrasmagyar",
+      "unusual": true
+    },
+    {
+      "name": "noextrasmalay",
+      "unusual": true
+    },
+    {
+      "name": "noextrasmedievallatin",
+      "unusual": true
+    },
+    {
+      "name": "noextrasmelayu",
+      "unusual": true
+    },
+    {
+      "name": "noextrasmeyalu",
+      "unusual": true
+    },
+    {
+      "name": "noextrasmongolian",
+      "unusual": true
+    },
+    {
+      "name": "noextrasnaustrian",
+      "unusual": true
+    },
+    {
+      "name": "noextrasnewzealand",
+      "unusual": true
+    },
+    {
+      "name": "noextrasngerman",
+      "unusual": true
+    },
+    {
+      "name": "noextrasnorsk",
+      "unusual": true
+    },
+    {
+      "name": "noextrasnswissgerman",
+      "unusual": true
+    },
+    {
+      "name": "noextraspiedmontese",
+      "unusual": true
+    },
+    {
+      "name": "noextraspinyin",
+      "unusual": true
+    },
+    {
+      "name": "noextraspolish",
+      "unusual": true
+    },
+    {
+      "name": "noextraspolutonikogreek",
+      "unusual": true
+    },
+    {
+      "name": "noextrasportuges",
+      "unusual": true
+    },
+    {
+      "name": "noextrasportuguese",
+      "unusual": true
+    },
+    {
+      "name": "noextrasromanian",
+      "unusual": true
+    },
+    {
+      "name": "noextrasromansh",
+      "unusual": true
+    },
+    {
+      "name": "noextrasrussian",
+      "unusual": true
+    },
+    {
+      "name": "noextrassamin",
+      "unusual": true
+    },
+    {
+      "name": "noextrasscottish",
+      "unusual": true
+    },
+    {
+      "name": "noextrasserbian",
+      "unusual": true
+    },
+    {
+      "name": "noextrasserbianc",
+      "unusual": true
+    },
+    {
+      "name": "noextrasslovak",
+      "unusual": true
+    },
+    {
+      "name": "noextrasslovene",
+      "unusual": true
+    },
+    {
+      "name": "noextrasspanish",
+      "unusual": true
+    },
+    {
+      "name": "noextrasswedish",
+      "unusual": true
+    },
+    {
+      "name": "noextrasswissgerman",
+      "unusual": true
+    },
+    {
+      "name": "noextrasthai",
+      "unusual": true
+    },
+    {
+      "name": "noextrasthaicjk",
+      "unusual": true
+    },
+    {
+      "name": "noextrasturkish",
+      "unusual": true
+    },
+    {
+      "name": "noextrasukrainian",
+      "unusual": true
+    },
+    {
+      "name": "noextrasuppersorbian",
+      "unusual": true
+    },
+    {
+      "name": "noextrasusorbian",
+      "unusual": true
+    },
+    {
+      "name": "noextrasvietnamese",
+      "unusual": true
+    },
+    {
+      "name": "noextraswelsh",
+      "unusual": true
+    },
+    {
+      "name": "nok"
+    },
+    {
+      "name": "nombre",
+      "snippet": "nombre{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "nomname",
+      "unusual": true
+    },
+    {
+      "name": "nos"
+    },
+    {
+      "name": "notesname",
+      "unusual": true
+    },
+    {
+      "name": "notextspanish",
+      "unusual": true
+    },
+    {
+      "name": "novembername"
+    },
+    {
+      "name": "nsd"
+    },
+    {
+      "name": "nsk"
+    },
+    {
+      "name": "ntossfalse",
+      "unusual": true
+    },
+    {
+      "name": "ntosstrue",
+      "unusual": true
+    },
+    {
+      "name": "nzd"
+    },
+    {
+      "name": "nzs"
+    },
+    {
+      "name": "ocircumflex"
+    },
+    {
+      "name": "octobername"
+    },
+    {
+      "name": "og"
+    },
+    {
+      "name": "ogi",
+      "unusual": true
+    },
+    {
+      "name": "ogii",
+      "unusual": true
+    },
+    {
+      "name": "ohorn"
+    },
+    {
+      "name": "olddatelowersorbian"
+    },
+    {
+      "name": "olddatelsorbian"
+    },
+    {
+      "name": "olddateuppersorbian"
+    },
+    {
+      "name": "olddateusorbian"
+    },
+    {
+      "name": "ondatehungarian"
+    },
+    {
+      "name": "ondatemagyar"
+    },
+    {
+      "name": "ontoday"
+    },
+    {
+      "name": "oob"
+    },
+    {
+      "name": "ooob"
+    },
+    {
+      "name": "ord"
+    },
+    {
+      "name": "orda"
+    },
+    {
+      "name": "outlfamily",
+      "unusual": true
+    },
+    {
+      "detail": " ̅",
+      "documentation": "Overbar embellishment",
+      "name": "overbar",
+      "snippet": "overbar{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "overbarshort",
+      "snippet": "overbarshort{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "parindentFFN",
+      "unusual": true
+    },
+    {
+      "name": "partfirst",
+      "unusual": true
+    },
+    {
+      "name": "partnameord",
+      "unusual": true
+    },
+    {
+      "name": "partsecond",
+      "unusual": true
+    },
+    {
+      "name": "ped",
+      "snippet": "ped{${1:text}}"
+    },
+    {
+      "name": "pempvet"
+    },
+    {
+      "name": "percentsign",
+      "unusual": true
+    },
+    {
+      "name": "permill"
+    },
+    {
+      "name": "pevare"
+    },
+    {
+      "name": "polishrz",
+      "unusual": true
+    },
+    {
+      "name": "polishzx",
+      "unusual": true
+    },
+    {
+      "name": "postchaptername",
+      "unusual": true
+    },
+    {
+      "name": "postpartname",
+      "unusual": true
+    },
+    {
+      "name": "postsectionname",
+      "unusual": true
+    },
+    {
+      "name": "prechaptername",
+      "unusual": true
+    },
+    {
+      "name": "prefacename",
+      "unusual": true
+    },
+    {
+      "name": "prefacename"
+    },
+    {
+      "name": "prepartname",
+      "unusual": true
+    },
+    {
+      "name": "presectionname",
+      "unusual": true
+    },
+    {
+      "name": "primo"
+    },
+    {
+      "name": "proofname",
+      "unusual": true
+    },
+    {
+      "name": "proofname"
+    },
+    {
+      "name": "prosgegrammeni",
+      "unusual": true
+    },
+    {
+      "name": "q",
+      "snippet": "q{${1:arg}}"
+    },
+    {
+      "name": "qoppa"
+    },
+    {
+      "name": "quarto"
+    },
+    {
+      "name": "quotedblbase"
+    },
+    {
+      "name": "quotesinglbase"
+    },
+    {
+      "name": "ra",
+      "unusual": true
+    },
+    {
+      "name": "re"
+    },
+    {
+      "name": "refstruc",
+      "snippet": "refstruc{${1:label}}"
+    },
+    {
+      "name": "refstrucparen",
+      "snippet": "refstrucparen{${1:label}}",
+      "unusual": true
+    },
+    {
+      "name": "rmfamilyFB",
+      "unusual": true
+    },
+    {
+      "name": "ro",
+      "unusual": true
+    },
+    {
+      "name": "rquoti"
+    },
+    {
+      "name": "rquotii"
+    },
+    {
+      "name": "rquotiii"
+    },
+    {
+      "name": "sampi"
+    },
+    {
+      "name": "sech"
+    },
+    {
+      "name": "secundo"
+    },
+    {
+      "name": "seename",
+      "unusual": true
+    },
+    {
+      "name": "seename"
+    },
+    {
+      "name": "selectbglanguage",
+      "unusual": true
+    },
+    {
+      "name": "selectenglanguage",
+      "unusual": true
+    },
+    {
+      "name": "selectgalician"
+    },
+    {
+      "name": "selectgalician*"
+    },
+    {
+      "name": "selectlanguage",
+      "snippet": "selectlanguage{${1:language}}"
+    },
+    {
+      "name": "selectspanish"
+    },
+    {
+      "name": "sen"
+    },
+    {
+      "name": "septembername"
+    },
+    {
+      "name": "setISOcompliance",
+      "unusual": true
+    },
+    {
+      "name": "setactivedoublequote"
+    },
+    {
+      "name": "setlocalecaption",
+      "snippet": "setlocalecaption{${1:language}}{${2:caption_name}}{${3:string}}",
+      "unusual": true
+    },
+    {
+      "name": "sffamilyFB",
+      "unusual": true
+    },
+    {
+      "name": "sh"
+    },
+    {
+      "name": "shorthandoff",
+      "snippet": "shorthandoff{${1:characters}}"
+    },
+    {
+      "name": "shorthandoff*",
+      "snippet": "shorthandoff*{${1:characters}}"
+    },
+    {
+      "name": "shorthandon",
+      "snippet": "shorthandon{${1:characters}}"
+    },
+    {
+      "name": "shorthandsgalician",
+      "unusual": true
+    },
+    {
+      "name": "shorthandsspanish",
+      "unusual": true
+    },
+    {
+      "name": "skb",
+      "unusual": true
+    },
+    {
+      "name": "sob",
+      "unusual": true
+    },
+    {
+      "name": "spacedoperators",
+      "unusual": true
+    },
+    {
+      "name": "spacedoperators"
+    },
+    {
+      "name": "spanishDate",
+      "snippet": "spanishDate{${1:año}}{${2:mes}}{${3:día}}"
+    },
+    {
+      "name": "spanishabstractname",
+      "unusual": true
+    },
+    {
+      "name": "spanishalsoname",
+      "unusual": true
+    },
+    {
+      "name": "spanishappendixname",
+      "unusual": true
+    },
+    {
+      "name": "spanishbibname",
+      "unusual": true
+    },
+    {
+      "name": "spanishccname",
+      "unusual": true
+    },
+    {
+      "name": "spanishchaptername",
+      "unusual": true
+    },
+    {
+      "name": "spanishcontentsname",
+      "unusual": true
+    },
+    {
+      "name": "spanishdashitems",
+      "unusual": true
+    },
+    {
+      "name": "spanishdate",
+      "snippet": "spanishdate{${1:año}}{${2:mes}}{${3:día}}"
+    },
+    {
+      "name": "spanishdatede"
+    },
+    {
+      "name": "spanishdatedel"
+    },
+    {
+      "name": "spanishdatefirst",
+      "snippet": "spanishdatefirst{${1:día-uno}}"
+    },
+    {
+      "name": "spanishdeactivate",
+      "snippet": "spanishdeactivate{${1:caracteres}}"
+    },
+    {
+      "name": "spanishdecimal",
+      "snippet": "spanishdecimal{${1:math}}"
+    },
+    {
+      "name": "spanishenclname",
+      "unusual": true
+    },
+    {
+      "name": "spanishfigurename",
+      "unusual": true
+    },
+    {
+      "name": "spanishglossaryname",
+      "unusual": true
+    },
+    {
+      "name": "spanishheadtoname",
+      "unusual": true
+    },
+    {
+      "name": "spanishindexchars",
+      "snippet": "spanishindexchars{${1:encap}}{${2:open}}{${3:close}}",
+      "unusual": true
+    },
+    {
+      "name": "spanishindexname",
+      "unusual": true
+    },
+    {
+      "name": "spanishlcroman"
+    },
+    {
+      "name": "spanishlistfigurename",
+      "unusual": true
+    },
+    {
+      "name": "spanishlisttablename",
+      "unusual": true
+    },
+    {
+      "name": "spanishoperators",
+      "unusual": true
+    },
+    {
+      "name": "spanishoptions",
+      "unusual": true
+    },
+    {
+      "name": "spanishpagename",
+      "unusual": true
+    },
+    {
+      "name": "spanishpartname",
+      "unusual": true
+    },
+    {
+      "name": "spanishplainpercent"
+    },
+    {
+      "name": "spanishprefacename",
+      "unusual": true
+    },
+    {
+      "name": "spanishproofname",
+      "unusual": true
+    },
+    {
+      "name": "spanishrefname",
+      "unusual": true
+    },
+    {
+      "name": "spanishreverseddate"
+    },
+    {
+      "name": "spanishscroman"
+    },
+    {
+      "name": "spanishseename",
+      "unusual": true
+    },
+    {
+      "name": "spanishsignitems",
+      "unusual": true
+    },
+    {
+      "name": "spanishsymbitems",
+      "unusual": true
+    },
+    {
+      "name": "spanishtablename",
+      "unusual": true
+    },
+    {
+      "name": "spanishucroman"
+    },
+    {
+      "name": "spb",
+      "unusual": true
+    },
+    {
+      "name": "splithyphens",
+      "unusual": true
+    },
+    {
+      "name": "sptext",
+      "snippet": "sptext{${1:arg}}"
+    },
+    {
+      "name": "sptext",
+      "snippet": "sptext{${1:text}}"
+    },
+    {
+      "name": "sptextfont",
+      "unusual": true
+    },
+    {
+      "name": "sq"
+    },
+    {
+      "name": "standardhyphens",
+      "unusual": true
+    },
+    {
+      "name": "stigma"
+    },
+    {
+      "name": "subjectname",
+      "unusual": true
+    },
+    {
+      "name": "tala",
+      "snippet": "tala{${1:arg}}"
+    },
+    {
+      "name": "tbar",
+      "snippet": "tbar{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "telepl",
+      "unusual": true
+    },
+    {
+      "name": "tertio"
+    },
+    {
+      "name": "textAlpha",
+      "unusual": true
+    },
+    {
+      "name": "textBeta",
+      "unusual": true
+    },
+    {
+      "name": "textChi",
+      "unusual": true
+    },
+    {
+      "name": "textDelta",
+      "unusual": true
+    },
+    {
+      "name": "textDigamma",
+      "unusual": true
+    },
+    {
+      "name": "textDigammagreek",
+      "unusual": true
+    },
+    {
+      "name": "textEpsilon",
+      "unusual": true
+    },
+    {
+      "name": "textEta",
+      "unusual": true
+    },
+    {
+      "name": "textGamma",
+      "unusual": true
+    },
+    {
+      "name": "textIota",
+      "unusual": true
+    },
+    {
+      "name": "textKappa",
+      "unusual": true
+    },
+    {
+      "name": "textKoppa",
+      "unusual": true
+    },
+    {
+      "name": "textLambda",
+      "unusual": true
+    },
+    {
+      "name": "textMu",
+      "unusual": true
+    },
+    {
+      "name": "textNu",
+      "unusual": true
+    },
+    {
+      "name": "textOmega",
+      "unusual": true
+    },
+    {
+      "name": "textOmicron",
+      "unusual": true
+    },
+    {
+      "name": "textPhi",
+      "unusual": true
+    },
+    {
+      "name": "textPi",
+      "unusual": true
+    },
+    {
+      "name": "textPsi",
+      "unusual": true
+    },
+    {
+      "name": "textQoppa",
+      "unusual": true
+    },
+    {
+      "name": "textRho",
+      "unusual": true
+    },
+    {
+      "name": "textSampi",
+      "unusual": true
+    },
+    {
+      "name": "textSampigreek",
+      "unusual": true
+    },
+    {
+      "name": "textSigma",
+      "unusual": true
+    },
+    {
+      "name": "textStigma",
+      "unusual": true
+    },
+    {
+      "name": "textStigmagreek",
+      "unusual": true
+    },
+    {
+      "name": "textTau",
+      "unusual": true
+    },
+    {
+      "name": "textTheta",
+      "unusual": true
+    },
+    {
+      "name": "textThoThanPali"
+    },
+    {
+      "name": "textUpsilon",
+      "unusual": true
+    },
+    {
+      "name": "textXi",
+      "unusual": true
+    },
+    {
+      "name": "textYoYingPali"
+    },
+    {
+      "name": "textZeta",
+      "unusual": true
+    },
+    {
+      "name": "textalpha",
+      "unusual": true
+    },
+    {
+      "name": "textampersand"
+    },
+    {
+      "name": "textangkhankhu"
+    },
+    {
+      "name": "textanoteleia",
+      "unusual": true
+    },
+    {
+      "name": "textaristerikeraia",
+      "unusual": true
+    },
+    {
+      "name": "textautosigma",
+      "unusual": true
+    },
+    {
+      "name": "textbaht"
+    },
+    {
+      "name": "textbeta",
+      "unusual": true
+    },
+    {
+      "name": "textchi",
+      "unusual": true
+    },
+    {
+      "name": "textcyrillic",
+      "snippet": "textcyrillic{${1:text}}"
+    },
+    {
+      "name": "textdelta",
+      "unusual": true
+    },
+    {
+      "name": "textdexiakeraia",
+      "unusual": true
+    },
+    {
+      "name": "textdigamma",
+      "unusual": true
+    },
+    {
+      "name": "textdigammagreek",
+      "unusual": true
+    },
+    {
+      "name": "textepsilon",
+      "unusual": true
+    },
+    {
+      "name": "texterotimatiko",
+      "unusual": true
+    },
+    {
+      "name": "texteta",
+      "unusual": true
+    },
+    {
+      "name": "textfinalsigma",
+      "unusual": true
+    },
+    {
+      "name": "textfongmun"
+    },
+    {
+      "name": "textgalician",
+      "unusual": true
+    },
+    {
+      "name": "textgamma",
+      "unusual": true
+    },
+    {
+      "name": "textgreek",
+      "snippet": "textgreek{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "textgreek",
+      "snippet": "textgreek{${1:text}}"
+    },
+    {
+      "name": "textiota",
+      "unusual": true
+    },
+    {
+      "name": "textkappa",
+      "unusual": true
+    },
+    {
+      "name": "textkhomut"
+    },
+    {
+      "name": "textkoppa",
+      "unusual": true
+    },
+    {
+      "name": "textkoppagreek",
+      "unusual": true
+    },
+    {
+      "name": "textlambda",
+      "unusual": true
+    },
+    {
+      "name": "textlatin",
+      "snippet": "textlatin{${1:text}}"
+    },
+    {
+      "name": "textmicro",
+      "unusual": true
+    },
+    {
+      "name": "textmu",
+      "unusual": true
+    },
+    {
+      "name": "textnu",
+      "unusual": true
+    },
+    {
+      "name": "textnumeralsigngreek",
+      "unusual": true
+    },
+    {
+      "name": "textnumeralsignlowergreek",
+      "unusual": true
+    },
+    {
+      "name": "textol",
+      "snippet": "textol{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "textomega",
+      "unusual": true
+    },
+    {
+      "name": "textomicron",
+      "unusual": true
+    },
+    {
+      "name": "textormath",
+      "snippet": "textormath{${1:text code}}{${2:math code}}",
+      "unusual": true
+    },
+    {
+      "name": "textoverline",
+      "snippet": "textoverline{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "textoverlineshort",
+      "snippet": "textoverlineshort{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "textpali",
+      "snippet": "textpali{${1:text}}"
+    },
+    {
+      "name": "textpentedeka",
+      "unusual": true
+    },
+    {
+      "name": "textpentehekaton",
+      "unusual": true
+    },
+    {
+      "name": "textpentemuria",
+      "unusual": true
+    },
+    {
+      "name": "textpenteqilioi",
+      "unusual": true
+    },
+    {
+      "name": "textpercent",
+      "unusual": true
+    },
+    {
+      "name": "textphi",
+      "unusual": true
+    },
+    {
+      "name": "textpi",
+      "unusual": true
+    },
+    {
+      "name": "textpl",
+      "unusual": true
+    },
+    {
+      "name": "textpsi",
+      "unusual": true
+    },
+    {
+      "name": "textqoppa",
+      "unusual": true
+    },
+    {
+      "name": "textqq",
+      "snippet": "textqq{${1:szövegközti idézet}}"
+    },
+    {
+      "name": "textquotedbl"
+    },
+    {
+      "name": "textrho",
+      "unusual": true
+    },
+    {
+      "name": "textsampi",
+      "unusual": true
+    },
+    {
+      "name": "textsampigreek",
+      "unusual": true
+    },
+    {
+      "name": "textschwa",
+      "unusual": true
+    },
+    {
+      "name": "textsigma",
+      "unusual": true
+    },
+    {
+      "name": "textspanish",
+      "unusual": true
+    },
+    {
+      "name": "textstigma",
+      "unusual": true
+    },
+    {
+      "name": "textstigmagreek",
+      "unusual": true
+    },
+    {
+      "name": "textsubarch",
+      "snippet": "textsubarch{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "texttau",
+      "unusual": true
+    },
+    {
+      "name": "textthai",
+      "snippet": "textthai{${1:text}}"
+    },
+    {
+      "name": "texttheta",
+      "unusual": true
+    },
+    {
+      "name": "texttilde",
+      "snippet": "texttilde{${1:arg}}"
+    },
+    {
+      "name": "textupsilon",
+      "unusual": true
+    },
+    {
+      "name": "textvarTheta",
+      "unusual": true
+    },
+    {
+      "name": "textvarbeta",
+      "unusual": true
+    },
+    {
+      "name": "textvarepsilon",
+      "unusual": true
+    },
+    {
+      "name": "textvarkappa",
+      "unusual": true
+    },
+    {
+      "name": "textvarphi",
+      "unusual": true
+    },
+    {
+      "name": "textvarpi",
+      "unusual": true
+    },
+    {
+      "name": "textvarrho",
+      "unusual": true
+    },
+    {
+      "name": "textvarsigma",
+      "unusual": true
+    },
+    {
+      "name": "textvarstigma",
+      "unusual": true
+    },
+    {
+      "name": "textvartheta",
+      "unusual": true
+    },
+    {
+      "name": "textviet",
+      "snippet": "textviet{${1:text}}"
+    },
+    {
+      "name": "textxi",
+      "unusual": true
+    },
+    {
+      "name": "textyamakkan"
+    },
+    {
+      "name": "textzeta",
+      "unusual": true
+    },
+    {
+      "name": "tg"
+    },
+    {
+      "name": "th"
+    },
+    {
+      "name": "thaiAlph",
+      "snippet": "thaiAlph{${1:counter}}"
+    },
+    {
+      "name": "thaiAngkhankhu"
+    },
+    {
+      "name": "thaiBoBaimai"
+    },
+    {
+      "name": "thaiChoChan"
+    },
+    {
+      "name": "thaiChoChang"
+    },
+    {
+      "name": "thaiChoChing"
+    },
+    {
+      "name": "thaiChoChoe"
+    },
+    {
+      "name": "thaiDoChada"
+    },
+    {
+      "name": "thaiDoDek"
+    },
+    {
+      "name": "thaiFoFa"
+    },
+    {
+      "name": "thaiFoFan"
+    },
+    {
+      "name": "thaiFongman"
+    },
+    {
+      "name": "thaiHoHip"
+    },
+    {
+      "name": "thaiHoNokhuk"
+    },
+    {
+      "name": "thaiKhoKhai"
+    },
+    {
+      "name": "thaiKhoKhon"
+    },
+    {
+      "name": "thaiKhoKhuat"
+    },
+    {
+      "name": "thaiKhoKhwai"
+    },
+    {
+      "name": "thaiKhoRakhang"
+    },
+    {
+      "name": "thaiKhomut"
+    },
+    {
+      "name": "thaiKoKai"
+    },
+    {
+      "name": "thaiLakkhangyao"
+    },
+    {
+      "name": "thaiLoChula"
+    },
+    {
+      "name": "thaiLoLing"
+    },
+    {
+      "name": "thaiLu"
+    },
+    {
+      "name": "thaiMaiChattawa"
+    },
+    {
+      "name": "thaiMaiEk"
+    },
+    {
+      "name": "thaiMaiHanakat"
+    },
+    {
+      "name": "thaiMaiTho"
+    },
+    {
+      "name": "thaiMaiTri"
+    },
+    {
+      "name": "thaiMaitaikhu"
+    },
+    {
+      "name": "thaiMaiyamok"
+    },
+    {
+      "name": "thaiMoMa"
+    },
+    {
+      "name": "thaiNgoNgu"
+    },
+    {
+      "name": "thaiNikhahit"
+    },
+    {
+      "name": "thaiNoNen"
+    },
+    {
+      "name": "thaiNoNu"
+    },
+    {
+      "name": "thaiOAng"
+    },
+    {
+      "name": "thaiPaiyannoi"
+    },
+    {
+      "name": "thaiPhinthu"
+    },
+    {
+      "name": "thaiPhoPhan"
+    },
+    {
+      "name": "thaiPhoPhung"
+    },
+    {
+      "name": "thaiPhoSamphao"
+    },
+    {
+      "name": "thaiPoPla"
+    },
+    {
+      "name": "thaiRoRua"
+    },
+    {
+      "name": "thaiRu"
+    },
+    {
+      "name": "thaiSaraA"
+    },
+    {
+      "name": "thaiSaraAa"
+    },
+    {
+      "name": "thaiSaraAe"
+    },
+    {
+      "name": "thaiSaraAiMaimalai"
+    },
+    {
+      "name": "thaiSaraAiMaimuan"
+    },
+    {
+      "name": "thaiSaraAm"
+    },
+    {
+      "name": "thaiSaraE"
+    },
+    {
+      "name": "thaiSaraI"
+    },
+    {
+      "name": "thaiSaraIi"
+    },
+    {
+      "name": "thaiSaraO"
+    },
+    {
+      "name": "thaiSaraU"
+    },
+    {
+      "name": "thaiSaraUe"
+    },
+    {
+      "name": "thaiSaraUee"
+    },
+    {
+      "name": "thaiSaraUu"
+    },
+    {
+      "name": "thaiSoRusi"
+    },
+    {
+      "name": "thaiSoSala"
+    },
+    {
+      "name": "thaiSoSo"
+    },
+    {
+      "name": "thaiSoSua"
+    },
+    {
+      "name": "thaiThanthakhat"
+    },
+    {
+      "name": "thaiThoNangmontho"
+    },
+    {
+      "name": "thaiThoPhuthao"
+    },
+    {
+      "name": "thaiThoThahan"
+    },
+    {
+      "name": "thaiThoThan"
+    },
+    {
+      "name": "thaiThoThong"
+    },
+    {
+      "name": "thaiThoThung"
+    },
+    {
+      "name": "thaiToPatak"
+    },
+    {
+      "name": "thaiToTao"
+    },
+    {
+      "name": "thaiWoWaen"
+    },
+    {
+      "name": "thaiYamakkan"
+    },
+    {
+      "name": "thaiYoYak"
+    },
+    {
+      "name": "thaiYoYing"
+    },
+    {
+      "name": "thaialph",
+      "snippet": "thaialph{${1:counter}}"
+    },
+    {
+      "name": "thaibracenum",
+      "snippet": "thaibracenum{${1:counter}}"
+    },
+    {
+      "name": "thaieight"
+    },
+    {
+      "name": "thaifive"
+    },
+    {
+      "name": "thaifour"
+    },
+    {
+      "name": "thainine"
+    },
+    {
+      "name": "thainum",
+      "snippet": "thainum{${1:counter}}"
+    },
+    {
+      "name": "thaione"
+    },
+    {
+      "name": "thaiseven"
+    },
+    {
+      "name": "thaisix"
+    },
+    {
+      "name": "thaitext"
+    },
+    {
+      "name": "thaithree"
+    },
+    {
+      "name": "thaitwo"
+    },
+    {
+      "name": "thaizero"
+    },
+    {
+      "name": "theoremname",
+      "unusual": true
+    },
+    {
+      "name": "tild"
+    },
+    {
+      "name": "tocname",
+      "unusual": true
+    },
+    {
+      "name": "today*"
+    },
+    {
+      "name": "todayRoman"
+    },
+    {
+      "name": "todayRoman*"
+    },
+    {
+      "name": "tossfalse",
+      "unusual": true
+    },
+    {
+      "name": "tosstrue",
+      "unusual": true
+    },
+    {
+      "name": "trede"
+    },
+    {
+      "name": "ttfamilyFB",
+      "unusual": true
+    },
+    {
+      "name": "uhorn"
+    },
+    {
+      "name": "umlauthigh",
+      "unusual": true
+    },
+    {
+      "name": "umlautlow",
+      "unusual": true
+    },
+    {
+      "name": "unaccentedoperators",
+      "unusual": true
+    },
+    {
+      "name": "unaccentedoperators"
+    },
+    {
+      "name": "unit",
+      "snippet": "unit{${1:unit}}"
+    },
+    {
+      "name": "unspacedoperators",
+      "unusual": true
+    },
+    {
+      "name": "unspacedoperators"
+    },
+    {
+      "name": "up",
+      "snippet": "up{${1:arg}}"
+    },
+    {
+      "name": "up",
+      "snippet": "up{${1:text}}"
+    },
+    {
+      "name": "upp",
+      "snippet": "upp{${1:arg}}"
+    },
+    {
+      "name": "useg",
+      "snippet": "useg{${1:counter}}"
+    },
+    {
+      "name": "useshorthands",
+      "snippet": "useshorthands{${1:char}}"
+    },
+    {
+      "name": "useshorthands*",
+      "snippet": "useshorthands*{${1:char}}"
+    },
+    {
+      "name": "uv",
+      "snippet": "uv{${1:arg}}"
+    },
+    {
+      "name": "varqoppa"
+    },
+    {
+      "name": "vet"
+    },
+    {
+      "name": "viet",
+      "unusual": true
+    },
+    {
+      "name": "viettext"
+    },
+    {
+      "name": "virgola"
+    },
+    {
+      "name": "virgoladecimale"
+    },
+    {
+      "name": "w",
+      "snippet": "w{${1:arg}}"
+    },
+    {
+      "name": "wbr"
+    },
+    {
+      "name": "weekdaynamebulgarian",
+      "snippet": "weekdaynamebulgarian{${1:number}}"
+    },
+    {
+      "name": "xspace"
+    },
+    {
+      "name": "ypogegrammeni",
+      "unusual": true
+    },
+    {
+      "name": "zkb"
+    }
+  ]
+}

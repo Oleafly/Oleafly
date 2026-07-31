@@ -22,6 +22,7 @@ import type {
   ProjectUnreadableFile,
 } from "@/lib/project-intelligence/worker-protocol";
 import { readFileContent } from "@/lib/tauri";
+import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { useFilesStore } from "@/store/files";
 
 const PROJECT_ANALYSIS_IDLE_MS = 300;
@@ -504,7 +505,7 @@ export const useIndexStore = create<IndexStore>((set, get) => {
           sourceRevision: currentSourceRevision(file),
           message: "The project file could not be read.",
         })),
-      mainDocument: useFilesStore.getState().mainDoc,
+      mainDocument: resolveEffectiveMainDoc().mainDoc,
       ...(options.immediate === undefined
         ? {}
         : { immediate: options.immediate }),
@@ -666,7 +667,7 @@ export const useIndexStore = create<IndexStore>((set, get) => {
             sourceRevision: currentSourceRevision(file),
             message: "The project file could not be read.",
           })),
-          mainDocument: useFilesStore.getState().mainDoc,
+          mainDocument: resolveEffectiveMainDoc().mainDoc,
           immediate: true,
           texts: loaded.texts,
         });

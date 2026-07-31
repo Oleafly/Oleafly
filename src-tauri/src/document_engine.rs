@@ -1209,6 +1209,9 @@ fn tectonic_args(
     args.extend([
         "--synctex".into(),
         "--keep-logs".into(),
+        // Write .aux/.toc to the build dir: reference numbering reads
+        // \newlabel entries from the last compile's aux files.
+        "--keep-intermediates".into(),
         "--print".into(),
         "--outdir".into(),
         out_dir.into(),
@@ -1762,6 +1765,7 @@ mod tests {
                 "--only-cached",
                 "--synctex",
                 "--keep-logs",
+                "--keep-intermediates",
                 "--print",
                 "--outdir",
                 "/build",

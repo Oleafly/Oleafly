@@ -23,6 +23,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (off by default).
 - Reordered the top omnibar commands to Create, Open Diagram Composer, theme,
   then settings.
+- Windows now runs in a frameless window. The native OS menu bar and title bar
+  are removed, and custom minimize / maximize-restore / close controls — with a
+  divider separating them from app controls — are rendered in the toolbar and in
+  every fullscreen tool surface (library, editor, PDF/equation/biblatex/table/
+  search/deadlines tools, and the diagram composer). macOS and Linux keep their
+  native menu bar and title bar unchanged.
 
 ## [0.3.0] - 2026-07-30
 

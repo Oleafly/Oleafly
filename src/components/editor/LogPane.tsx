@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, ArrowUpRight, Check, ChevronDown, ChevronRight, Copy } from "lucide-react";
+import { parseLatexLog, type LogDiagnostic } from "@oleafly/latex";
 import { useCompileStore } from "@/store/compile";
+import { useFilesStore } from "@/store/files";
 import type { CompileError } from "@/lib/tauri";
 import { openFileAndGotoLine } from "@/features/synctex";
 import { cn } from "@/lib/utils";
@@ -204,6 +206,89 @@ function ErrorCard({ err, log }: { err: CompileError; log: string }) {
   );
 }
 
+const SEVERITY_DOT: Record<LogDiagnostic["severity"], string> = {
+  error: "bg-red-500",
+  warning: "bg-amber-500",
+  typesetting: "bg-sky-500",
+  info: "bg-muted-foreground/50",
+};
+
+function DiagnosticCard({ d }: { d: LogDiagnostic }) {
+  const hasLocation = d.file != null && d.line != null;
+  const location = d.file
+    ? `${d.file}${d.line != null ? `:${d.line}` : ""}`
+    : d.line != null
+      ? `line ${d.line}`
+      : "";
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-sidebar-border bg-background/40">
+      <div className="flex w-full items-start gap-2 px-3 py-2.5 text-left">
+        <span
+          aria-hidden="true"
+          className={cn("mt-1.5 size-1.5 shrink-0 rounded-full", SEVERITY_DOT[d.severity])}
+        />
+        <span className="min-w-0 flex-1">
+          <span className="block whitespace-pre-wrap break-words text-[13px] font-medium leading-snug text-foreground">
+            {d.message}
+          </span>
+          {hasLocation ? (
+            <Tooltip label="Go to code location" side="top">
+              <button
+                type="button"
+                onClick={() => void openFileAndGotoLine(d.file, d.line as number)}
+                className="mt-0.5 flex items-center gap-0.5 rounded font-mono text-[10.5px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {location}
+                <ArrowUpRight className="size-3" />
+              </button>
+            </Tooltip>
+          ) : (
+            location && (
+              <span className="mt-0.5 block font-mono text-[10.5px] text-muted-foreground">{location}</span>
+            )
+          )}
+        </span>
+      </div>
+      {d.errorContext && (
+        <div className="mx-3 mb-3 overflow-hidden rounded-md border border-sidebar-border/70 bg-background/80">
+          <pre className="whitespace-pre-wrap break-words p-2.5 font-mono text-[10.5px] leading-relaxed">
+            <LogText text={d.errorContext} />
+          </pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DiagnosticGroup({ label, items }: { label: string; items: LogDiagnostic[] }) {
+  const [open, setOpen] = useState(false);
+  if (items.length === 0) return null;
+  return (
+    <div className="overflow-hidden rounded-lg border border-sidebar-border bg-background/40">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-1.5 px-3 py-2.5 text-left text-[13px] font-medium text-sidebar-foreground"
+      >
+        {open ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
+        {label}
+        <span className="ml-auto rounded-full bg-accent px-1.5 py-0.5 text-[10.5px] font-medium text-muted-foreground">
+          {items.length}
+        </span>
+      </button>
+      {open && (
+        <div className="space-y-2 border-t border-sidebar-border px-3 py-3">
+          {items.map((d) => (
+            <DiagnosticCard key={objectKey(d, "log-diagnostic")} d={d} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RawLogSection({ log, defaultOpen }: { log: string; defaultOpen: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   const [copied, setCopied] = useState(false);
@@ -254,7 +339,33 @@ function RawLogSection({ log, defaultOpen }: { log: string; defaultOpen: boolean
 export function LogPane() {
   const log = useCompileStore((s) => s.log);
   const errors = useCompileStore((s) => s.errors);
+  const mainDoc = useFilesStore((s) => s.mainDoc);
   const scrollBoxRef = useRef<HTMLDivElement>(null);
+
+  const structured = useMemo(() => (log ? parseLatexLog(log, mainDoc) : []), [log, mainDoc]);
+  const groups = useMemo(() => {
+    const existing = new Set(errors.map((e) => e.message));
+    const errs: LogDiagnostic[] = [];
+    const refs: LogDiagnostic[] = [];
+    const warns: LogDiagnostic[] = [];
+    const boxes: LogDiagnostic[] = [];
+    const infos: LogDiagnostic[] = [];
+    for (const d of structured) {
+      if (d.severity === "error") {
+        // Rust-side errors[] cards stay authoritative; skip duplicates.
+        if (!existing.has(d.message)) errs.push(d);
+      } else if (d.category === "undefined-reference" || d.category === "undefined-citation") {
+        refs.push(d);
+      } else if (d.severity === "typesetting") {
+        boxes.push(d);
+      } else if (d.severity === "info") {
+        infos.push(d);
+      } else {
+        warns.push(d);
+      }
+    }
+    return { errs, refs, warns, boxes, infos };
+  }, [structured, errors]);
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
@@ -290,6 +401,11 @@ export function LogPane() {
         <div className="space-y-3">
           {errors.length > 0 &&
             errors.map((err) => <ErrorCard key={objectKey(err, "compile-error")} err={err} log={log} />)}
+          {[...groups.errs, ...groups.refs, ...groups.warns].map((d) => (
+            <DiagnosticCard key={objectKey(d, "log-diagnostic")} d={d} />
+          ))}
+          <DiagnosticGroup label="Typesetting" items={groups.boxes} />
+          <DiagnosticGroup label="Info" items={groups.infos} />
           {!log && errors.length === 0 && (
             <p className="text-[11px] text-muted-foreground">Compile output will appear here.</p>
           )}

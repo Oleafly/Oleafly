@@ -1,0 +1,1392 @@
+{
+  "commands": [
+    {
+      "detail": "inline math \\( ... \\)",
+      "name": "(",
+      "snippet": "(${1}\\)"
+    },
+    {
+      "detail": "\\Biggl( ... \\Biggr)",
+      "name": "Biggl(",
+      "snippet": "Biggl(${1}\\Biggr)"
+    },
+    {
+      "detail": "\\Biggl[ ... \\Biggr]",
+      "name": "Biggl[",
+      "snippet": "Biggl[${1}\\Biggr]"
+    },
+    {
+      "detail": "\\Biggl\\{ ... \\Biggr\\}",
+      "name": "Biggl{",
+      "snippet": "Biggl\\{${1}\\Biggr\\}"
+    },
+    {
+      "detail": "\\Bigl( ... \\Bigr)",
+      "name": "Bigl(",
+      "snippet": "Bigl(${1}\\Bigr)"
+    },
+    {
+      "detail": "\\Bigl[ ... \\Bigr]",
+      "name": "Bigl[",
+      "snippet": "Bigl[${1}\\Bigr]"
+    },
+    {
+      "detail": "\\Bigl\\{ ... \\Bigr\\}",
+      "name": "Bigl{",
+      "snippet": "Bigl\\{${1}\\Bigr\\}"
+    },
+    {
+      "detail": "Δ, shortcut @D",
+      "name": "Delta"
+    },
+    {
+      "detail": "Γ, shortcut @G",
+      "name": "Gamma"
+    },
+    {
+      "name": "Huge"
+    },
+    {
+      "name": "LARGE"
+    },
+    {
+      "name": "LaTeX"
+    },
+    {
+      "detail": "Λ, shortcut @L",
+      "name": "Lambda"
+    },
+    {
+      "name": "Large"
+    },
+    {
+      "detail": "⇐",
+      "name": "Leftarrow"
+    },
+    {
+      "detail": "⇔",
+      "name": "Leftrightarrow"
+    },
+    {
+      "detail": "Ω, shortcut @W",
+      "name": "Omega"
+    },
+    {
+      "detail": "Φ, shortcut @F",
+      "name": "Phi"
+    },
+    {
+      "detail": "Π, shortcut @P",
+      "name": "Pi"
+    },
+    {
+      "detail": "Ψ, shortcut @Y",
+      "name": "Psi"
+    },
+    {
+      "detail": "⇒",
+      "name": "Rightarrow"
+    },
+    {
+      "name": "Roman{}",
+      "snippet": "Roman{${1:counter}}"
+    },
+    {
+      "detail": "Σ, shortcut @S",
+      "name": "Sigma"
+    },
+    {
+      "detail": "Θ, shortcut @Q",
+      "name": "Theta"
+    },
+    {
+      "detail": "Υ, shortcut @U",
+      "name": "Upsilon"
+    },
+    {
+      "detail": "Ξ, shortcut @X",
+      "name": "Xi"
+    },
+    {
+      "detail": "display math \\[ ... \\]",
+      "name": "[",
+      "snippet": "[${1}\\]"
+    },
+    {
+      "detail": " ́",
+      "documentation": "acute accent",
+      "name": "acute{}",
+      "snippet": "acute{${1}}"
+    },
+    {
+      "name": "addcontentsline{}{}{}",
+      "snippet": "addcontentsline{${1:file}}{${2:secunit}}{${3:entry}}"
+    },
+    {
+      "detail": "α, shortcut @a",
+      "name": "alpha"
+    },
+    {
+      "name": "appendix"
+    },
+    {
+      "name": "appendixname"
+    },
+    {
+      "detail": "≈",
+      "name": "approx"
+    },
+    {
+      "name": "arabic{}",
+      "snippet": "arabic{${1:counter}}"
+    },
+    {
+      "name": "author{}",
+      "snippet": "author{${1}}"
+    },
+    {
+      "detail": "¯, shortcut @_",
+      "name": "bar{}",
+      "snippet": "bar{${1}}"
+    },
+    {
+      "detail": "Begin a new environment",
+      "name": "begin",
+      "snippet": "begin{"
+    },
+    {
+      "detail": "Insert \\begin/\\end",
+      "documentation": "Insert a `\\begin{} / \\end{}` pair and wrap the selected text if any. Autocompletion is automatically triggered to complete the environment name",
+      "name": "beginend",
+      "snippet": "begin{${1}}\n\t${0:${}}\n\\end{${1}}"
+    },
+    {
+      "detail": "β, shortcut @b",
+      "name": "beta"
+    },
+    {
+      "name": "bibitem[]{}",
+      "snippet": "bibitem[${2:label}]{${1:citekey}}"
+    },
+    {
+      "name": "bibitem{}",
+      "snippet": "bibitem{${1:citekey}}"
+    },
+    {
+      "name": "bibliographystyle{}",
+      "snippet": "bibliographystyle{${1}}"
+    },
+    {
+      "name": "bibliography{}",
+      "snippet": "bibliography{${1}}"
+    },
+    {
+      "detail": "∩, shortcut @-",
+      "name": "bigcap"
+    },
+    {
+      "detail": "∪, shortcut @+",
+      "name": "bigcup"
+    },
+    {
+      "detail": "\\biggl( ... \\biggr)",
+      "name": "biggl(",
+      "snippet": "biggl(${1}\\biggr)"
+    },
+    {
+      "detail": "\\biggl[ ... \\biggr]",
+      "name": "biggl[",
+      "snippet": "biggl[${1}\\biggr]"
+    },
+    {
+      "detail": "\\biggl\\{ ... \\biggr\\}",
+      "name": "biggl{",
+      "snippet": "biggl\\{${1}\\biggr\\}"
+    },
+    {
+      "detail": "\\bigl( ... \\bigr)",
+      "name": "bigl(",
+      "snippet": "bigl(${1}\\bigr)"
+    },
+    {
+      "detail": "\\bigl[ ... \\bigr]",
+      "name": "bigl[",
+      "snippet": "bigl[${1}\\bigr]"
+    },
+    {
+      "detail": "\\bigl\\{ ... \\bigr\\}",
+      "name": "bigl{",
+      "snippet": "bigl\\{${1}\\bigr\\}"
+    },
+    {
+      "detail": " ̆",
+      "documentation": "breve",
+      "name": "breve{}",
+      "snippet": "breve{${1}}"
+    },
+    {
+      "detail": "∩",
+      "name": "cap"
+    },
+    {
+      "name": "caption[]{}",
+      "snippet": "caption[${2:short}]{${1:title}}"
+    },
+    {
+      "name": "caption{}",
+      "snippet": "caption{${1}}"
+    },
+    {
+      "detail": "·, shortcut @.",
+      "name": "cdot"
+    },
+    {
+      "detail": "···",
+      "name": "cdots"
+    },
+    {
+      "name": "centering"
+    },
+    {
+      "name": "chapter*{}",
+      "snippet": "chapter*{${1:title}}"
+    },
+    {
+      "name": "chapter[]{}",
+      "snippet": "chapter[${2:short}]{${1:title}}"
+    },
+    {
+      "name": "chaptermark{}",
+      "snippet": "chaptermark{${1:code}}"
+    },
+    {
+      "name": "chaptername{}",
+      "snippet": "chaptername{${1:name}}"
+    },
+    {
+      "name": "chapter{}",
+      "snippet": "chapter{${1}}"
+    },
+    {
+      "detail": " ̌",
+      "documentation": "caron",
+      "name": "check{}",
+      "snippet": "check{${1}}"
+    },
+    {
+      "detail": "χ, shortcut @c",
+      "name": "chi"
+    },
+    {
+      "detail": "°, shortcut @@",
+      "name": "circ"
+    },
+    {
+      "name": "cite[]{}",
+      "snippet": "cite[${2:text}]{${1:keylist}}"
+    },
+    {
+      "name": "citeyear{}",
+      "snippet": "citeyear{${1}}"
+    },
+    {
+      "detail": "reference",
+      "name": "cite{}",
+      "snippet": "cite{${1}}"
+    },
+    {
+      "name": "cleardoublepage"
+    },
+    {
+      "name": "clearpage"
+    },
+    {
+      "name": "cline{}",
+      "snippet": "cline{${1:x}-${2:y}}"
+    },
+    {
+      "name": "contentsline{}{}{}",
+      "snippet": "contentsline{${1:type}}{${2:text}}{${3:page}}"
+    },
+    {
+      "name": "contentsname{}",
+      "snippet": "contentsname{${1:name}}"
+    },
+    {
+      "detail": "∪",
+      "name": "cup"
+    },
+    {
+      "name": "date",
+      "snippet": "date{${1}}"
+    },
+    {
+      "detail": "⋱",
+      "name": "ddots"
+    },
+    {
+      "detail": "¨, shortcut @: ",
+      "name": "ddot{}",
+      "snippet": "ddot{${1}}"
+    },
+    {
+      "detail": "δ, shortcut @d",
+      "name": "delta"
+    },
+    {
+      "name": "displaystyle"
+    },
+    {
+      "detail": "division",
+      "name": "div"
+    },
+    {
+      "name": "documentclass[]{}",
+      "snippet": "documentclass[${2:options}]{${1:style}}"
+    },
+    {
+      "name": "documentclass{}",
+      "snippet": "documentclass{${1}}"
+    },
+    {
+      "detail": "˙, shortcut @;",
+      "name": "dot{}",
+      "snippet": "dot{${1}}"
+    },
+    {
+      "name": "emph{}",
+      "snippet": "emph{${1}}"
+    },
+    {
+      "name": "ensuremath{}",
+      "snippet": "ensuremath{${1:text}}"
+    },
+    {
+      "detail": "ϵ, shortcut @e",
+      "name": "epsilon"
+    },
+    {
+      "detail": "≡, shortcut @=",
+      "name": "equiv"
+    },
+    {
+      "detail": "η, shortcut @h",
+      "name": "eta"
+    },
+    {
+      "detail": "∃",
+      "name": "exists"
+    },
+    {
+      "name": "fbox{}",
+      "snippet": "fbox{${1:text}}"
+    },
+    {
+      "name": "figurename{}",
+      "snippet": "figurename{${1:name}}"
+    },
+    {
+      "name": "footnote[]{}",
+      "snippet": "footnote[${2:number}]{${1:text}}"
+    },
+    {
+      "name": "footnotemark"
+    },
+    {
+      "name": "footnotemark[]",
+      "snippet": "footnotemark[${1:number}]"
+    },
+    {
+      "name": "footnotesize"
+    },
+    {
+      "name": "footnotetext[]{}",
+      "snippet": "footnotetext[${2:number}]{${1:text}}"
+    },
+    {
+      "name": "footnotetext{}",
+      "snippet": "footnotetext{${1:text}}"
+    },
+    {
+      "name": "footnote{}",
+      "snippet": "footnote{${1}}"
+    },
+    {
+      "detail": "∀",
+      "name": "forall"
+    },
+    {
+      "detail": "Insert fraction, shortcuts @/ or @%",
+      "name": "frac{}{}",
+      "snippet": "frac{${1}}{${2}}"
+    },
+    {
+      "detail": "Insert a frame \\begin{frame} ... \\end{frame}",
+      "name": "frame",
+      "snippet": "begin{frame}\n\t\\frametitle{${1:<title>}}\n\n\t${}\n\n\\end{frame}"
+    },
+    {
+      "name": "framebox[][]{}",
+      "snippet": "framebox[${2:width}][${3:position}]{${1:text}}"
+    },
+    {
+      "name": "framebox[]{}",
+      "snippet": "framebox[${2:width}]{${1:text}}"
+    },
+    {
+      "detail": "γ, shortcut @g",
+      "name": "gamma"
+    },
+    {
+      "detail": "≥, shortcut @>",
+      "name": "geq"
+    },
+    {
+      "name": "glossary",
+      "snippet": "glossary{${1:text}}"
+    },
+    {
+      "name": "glossaryentry{}{}",
+      "snippet": "glossaryentry{${1:text}}{${2:pagenum}}"
+    },
+    {
+      "detail": " ̀",
+      "documentation": "grave accent",
+      "name": "grave{}",
+      "snippet": "grave{${1}}"
+    },
+    {
+      "detail": " ̂, shortcut @^",
+      "documentation": "circumflex accent",
+      "name": "hat{}",
+      "snippet": "hat{${1}}"
+    },
+    {
+      "name": "hline"
+    },
+    {
+      "name": "hlinefill"
+    },
+    {
+      "name": "hspace*{}",
+      "snippet": "hspace*{${1:l}}"
+    },
+    {
+      "name": "hspace{}",
+      "snippet": "hspace{${1:l}}"
+    },
+    {
+      "name": "huge"
+    },
+    {
+      "detail": "∈",
+      "name": "in"
+    },
+    {
+      "name": "includegraphics[]{}",
+      "snippet": "includegraphics[${2:options}]{${1:name}}"
+    },
+    {
+      "name": "includegraphics{}",
+      "snippet": "includegraphics{${1}}"
+    },
+    {
+      "name": "includeonly{}",
+      "snippet": "includeonly{${1:filelist}}"
+    },
+    {
+      "name": "include{}",
+      "snippet": "include{${1}}"
+    },
+    {
+      "name": "indexname{}",
+      "snippet": "indexname{${1:name}}"
+    },
+    {
+      "name": "index{}",
+      "snippet": "index{${1:entry}}"
+    },
+    {
+      "detail": "∞, shortcut @8",
+      "name": "infty"
+    },
+    {
+      "name": "input",
+      "snippet": "input{${1}}"
+    },
+    {
+      "name": "inputlineno"
+    },
+    {
+      "detail": "ι, shortcut @i",
+      "name": "iota"
+    },
+    {
+      "name": "item",
+      "snippet": "item ${}"
+    },
+    {
+      "name": "item[]",
+      "snippet": "item[${1:label}]"
+    },
+    {
+      "name": "itshape"
+    },
+    {
+      "detail": "κ, shortcut @k",
+      "name": "kappa"
+    },
+    {
+      "name": "kill"
+    },
+    {
+      "name": "label{}",
+      "snippet": "label{${1}}"
+    },
+    {
+      "detail": "λ, shortcut @l",
+      "name": "lambda"
+    },
+    {
+      "name": "large"
+    },
+    {
+      "name": "ldots"
+    },
+    {
+      "detail": "\\left( ... \\right), shortcut @(",
+      "name": "left(",
+      "snippet": "left(${1}\\right)"
+    },
+    {
+      "detail": "\\left[ ... \\right], shortcut @[",
+      "name": "left[",
+      "snippet": "left[${1}\\right]"
+    },
+    {
+      "detail": "←",
+      "name": "leftarrow"
+    },
+    {
+      "detail": "\\left\\{ ... \\right\\}, shortcut @{",
+      "name": "left{",
+      "snippet": "left\\{${1}\\right\\}"
+    },
+    {
+      "detail": "≤, shortcut @<",
+      "name": "leq"
+    },
+    {
+      "name": "linebreak"
+    },
+    {
+      "name": "linebreak[]",
+      "snippet": "linebreak[${1:number}]"
+    },
+    {
+      "name": "linespread{}",
+      "snippet": "linespread{${1:x}}"
+    },
+    {
+      "name": "listoffigures"
+    },
+    {
+      "name": "listoftables"
+    },
+    {
+      "name": "makeatletter"
+    },
+    {
+      "name": "makeatother"
+    },
+    {
+      "name": "makeglossary"
+    },
+    {
+      "name": "makeindex"
+    },
+    {
+      "name": "maketitle"
+    },
+    {
+      "name": "marginpar[]{}",
+      "snippet": "marginpar[${2:left}]{${1:right}}"
+    },
+    {
+      "name": "marginpar{}",
+      "snippet": "marginpar{${1:right}}"
+    },
+    {
+      "name": "markboth{}{}",
+      "snippet": "markboth{${1:lefthead}}{${2:righthead}}"
+    },
+    {
+      "name": "markright{}",
+      "snippet": "markright{${1:righthead}}"
+    },
+    {
+      "name": "mathbb{}",
+      "snippet": "mathbb{${1:text}}"
+    },
+    {
+      "name": "mathbf{}",
+      "snippet": "mathbf{${1:text}}"
+    },
+    {
+      "name": "mathcal{}",
+      "snippet": "mathcal{${1:text}}"
+    },
+    {
+      "name": "mathds{}",
+      "snippet": "mathds{${1:text}}"
+    },
+    {
+      "name": "mathit{}",
+      "snippet": "mathit{${1:text}}"
+    },
+    {
+      "name": "mathnormal{}",
+      "snippet": "mathnormal{${1:text}}"
+    },
+    {
+      "name": "mathrm{}",
+      "snippet": "mathrm{${1:text}}"
+    },
+    {
+      "name": "mathscr{}",
+      "snippet": "mathscr{${1:text}}"
+    },
+    {
+      "name": "mathsf{}",
+      "snippet": "mathsf{${1:text}}"
+    },
+    {
+      "name": "mathtt{}",
+      "snippet": "mathtt{${1:text}}"
+    },
+    {
+      "name": "mbox{}",
+      "snippet": "mbox{${1:text}}"
+    },
+    {
+      "detail": "∣",
+      "name": "mid"
+    },
+    {
+      "detail": "μ, shortcut @m",
+      "name": "mu"
+    },
+    {
+      "name": "multicolumn{}{}{}",
+      "snippet": "multicolumn{${1:n}}{${2:cols}}{${3:text}}"
+    },
+    {
+      "detail": "¬",
+      "name": "neg"
+    },
+    {
+      "detail": "≠",
+      "name": "neq"
+    },
+    {
+      "name": "newcommand{}[][]{}",
+      "snippet": "newcommand{${1:cmd}}[${2:args}][${3:default}]{${4:def}}"
+    },
+    {
+      "name": "newcommand{}[]{}",
+      "snippet": "newcommand{${1:cmd}}[${2:args}]{${3:def}}"
+    },
+    {
+      "name": "newcommand{}{}",
+      "snippet": "newcommand{${1:cmd}}{${2:def}}"
+    },
+    {
+      "name": "newenvironment{}[][]{}{}",
+      "snippet": "newenvironment{${1:nam}}[${2:args}][${3:default}]{${4:begdef}}{${5:enddef}}"
+    },
+    {
+      "name": "newenvironment{}[]{}{}",
+      "snippet": "newenvironment{${1:nam}}[${2:args}]{${3:begdef}}{${4:enddef}}"
+    },
+    {
+      "name": "newenvironment{}{}{}",
+      "snippet": "newenvironment{${1:name}}{${2:begdef}}{${3:enddef}}"
+    },
+    {
+      "name": "newline"
+    },
+    {
+      "name": "newpage"
+    },
+    {
+      "name": "newtheorem{}[]{}",
+      "snippet": "newtheorem{${1:envname}}[${2:numberedlike}]{${3:caption}}"
+    },
+    {
+      "name": "newtheorem{}{}",
+      "snippet": "newtheorem{${1:envname}}{${2:caption}}"
+    },
+    {
+      "name": "newtheorem{}{}[]",
+      "snippet": "newtheorem{${1:envname}}{${2:caption}}[${3:within}]"
+    },
+    {
+      "name": "nocite{}",
+      "snippet": "nocite{${1:keylist}}"
+    },
+    {
+      "name": "noindent"
+    },
+    {
+      "name": "nolinebreak"
+    },
+    {
+      "name": "nolinebreak[]",
+      "snippet": "nolinebreak[${1:number}]"
+    },
+    {
+      "detail": "Insert nonumber, shortcut @,",
+      "name": "nonumber"
+    },
+    {
+      "name": "nopagebreak"
+    },
+    {
+      "name": "nopagebreak[]",
+      "snippet": "nopagebreak[${1:number}]"
+    },
+    {
+      "name": "normalsize"
+    },
+    {
+      "detail": "∉",
+      "name": "notin"
+    },
+    {
+      "detail": "ν, shortcut @n",
+      "name": "nu"
+    },
+    {
+      "detail": "ω, shortcut @o",
+      "name": "omega"
+    },
+    {
+      "detail": "⏞",
+      "documentation": "TOP CURLY BRACKET",
+      "name": "overbrace{}",
+      "snippet": "overbrace{${1:text}}"
+    },
+    {
+      "detail": " ̅",
+      "documentation": "overbar embellishment",
+      "name": "overline{}",
+      "snippet": "overline{${1:text}}"
+    },
+    {
+      "name": "pagebreak"
+    },
+    {
+      "name": "pagebreak[]",
+      "snippet": "pagebreak[${1:number}]"
+    },
+    {
+      "name": "pagename"
+    },
+    {
+      "name": "pagenumbering{}",
+      "snippet": "pagenumbering{${1:numstyle}}"
+    },
+    {
+      "name": "pageref{}",
+      "snippet": "pageref{${1}}"
+    },
+    {
+      "name": "pagestyle{}",
+      "snippet": "pagestyle{${1}}"
+    },
+    {
+      "name": "paragraph*{}",
+      "snippet": "paragraph*{${1:title}}"
+    },
+    {
+      "name": "paragraph[]{}",
+      "snippet": "paragraph[${2:short}]{${1:title}}"
+    },
+    {
+      "name": "paragraph{}",
+      "snippet": "paragraph{${1}}"
+    },
+    {
+      "name": "parbox[]{}{}",
+      "snippet": "parbox[${3:position}]{${1:width}}{${2:text}}"
+    },
+    {
+      "name": "parbox{}{}",
+      "snippet": "parbox{${1:width}}{${2:text}}"
+    },
+    {
+      "detail": "reference",
+      "name": "parencite{}",
+      "snippet": "parencite{${1}}"
+    },
+    {
+      "name": "part*{}",
+      "snippet": "part*{${1:title}}"
+    },
+    {
+      "name": "part[]{}",
+      "snippet": "part[${2:short}]{${1:title}}"
+    },
+    {
+      "detail": "∂, shortcut @6",
+      "name": "partial"
+    },
+    {
+      "name": "part{}",
+      "snippet": "part{${1}}"
+    },
+    {
+      "detail": "φ, shortcut @f",
+      "name": "phi"
+    },
+    {
+      "detail": "π, shortcut @p",
+      "name": "pi"
+    },
+    {
+      "detail": "±",
+      "name": "pm"
+    },
+    {
+      "detail": "′",
+      "name": "prime"
+    },
+    {
+      "detail": "∏",
+      "name": "prod"
+    },
+    {
+      "name": "providecommand{}[][]{}",
+      "snippet": "providecommand{${1:cmd}}[${2:args}][${3:default}]{${4:def}}"
+    },
+    {
+      "name": "providecommand{}[]{}",
+      "snippet": "providecommand{${1:cmd}}[${2:args}]{${3:def}}"
+    },
+    {
+      "name": "providecommand{}{}",
+      "snippet": "providecommand{${1:cmd}}{${2:def}}"
+    },
+    {
+      "detail": "ψ, shortcut @y",
+      "name": "psi"
+    },
+    {
+      "name": "raggedleft"
+    },
+    {
+      "name": "raggedright"
+    },
+    {
+      "name": "ref{}",
+      "snippet": "ref{${1}}"
+    },
+    {
+      "name": "renewcommand{}[][]{}",
+      "snippet": "renewcommand{${1:cmd}}[${2:args}][${3:default}]{${4:def}}"
+    },
+    {
+      "name": "renewcommand{}[]{}",
+      "snippet": "renewcommand{${1:cmd}}[${2:args}]{${3:def}}"
+    },
+    {
+      "name": "renewcommand{}{}",
+      "snippet": "renewcommand{${1:cmd}}{${2:def}}"
+    },
+    {
+      "name": "renewenvironment{}[][]{}{}",
+      "snippet": "renewenvironment{${1:name}}[${2:args}][${3:default}]{${4:begdef}}{${5:enddef}}"
+    },
+    {
+      "name": "renewenvironment{}[]{}{}",
+      "snippet": "renewenvironment{${1:name}}[${2:args}]{${3:begdef}}{${4:enddef}}"
+    },
+    {
+      "name": "renewenvironment{}{}{}",
+      "snippet": "renewenvironment{${1:name}}{${2:begdef}}{${3:enddef}}"
+    },
+    {
+      "detail": "ρ, shortcut @r",
+      "name": "rho"
+    },
+    {
+      "detail": "→",
+      "name": "rightarrow"
+    },
+    {
+      "name": "roman{}",
+      "snippet": "roman{${1:counter}}"
+    },
+    {
+      "name": "rule[]{}{}",
+      "snippet": "rule[${3:lift}]{${1:width}}{${2:thickness}}"
+    },
+    {
+      "name": "rule{}{}",
+      "snippet": "rule{${1:width}}{${2:height}}"
+    },
+    {
+      "name": "scriptsize"
+    },
+    {
+      "name": "section*{}",
+      "snippet": "section*{${1:title}}"
+    },
+    {
+      "name": "section[]{}",
+      "snippet": "section[${2:short}]{${1:title}}"
+    },
+    {
+      "name": "section{}",
+      "snippet": "section{${1}}"
+    },
+    {
+      "detail": "∖",
+      "name": "setminus"
+    },
+    {
+      "name": "shortcite{}",
+      "snippet": "shortcite{${1}}"
+    },
+    {
+      "detail": "σ, shortcut @s",
+      "name": "sigma"
+    },
+    {
+      "name": "small"
+    },
+    {
+      "detail": "√, shortcut @2",
+      "name": "sqrt{}",
+      "snippet": "sqrt{${1}}"
+    },
+    {
+      "name": "stackrel{}{}",
+      "snippet": "stackrel{${1:above}}{${2:under}}"
+    },
+    {
+      "name": "subparagraph*{}",
+      "snippet": "subparagraph*{${1:title}}"
+    },
+    {
+      "name": "subparagraph[]{}",
+      "snippet": "subparagraph[${2:short}]{${1:title}}"
+    },
+    {
+      "name": "subparagraph{}",
+      "snippet": "subparagraph{${1}}"
+    },
+    {
+      "name": "subsection*{}",
+      "snippet": "subsection*{${1:title}}"
+    },
+    {
+      "name": "subsection[]{}",
+      "snippet": "subsection[${2:short}]{${1:title}}"
+    },
+    {
+      "name": "subsection{}",
+      "snippet": "subsection{${1}}"
+    },
+    {
+      "detail": "⊂",
+      "name": "subset"
+    },
+    {
+      "name": "subsubsection*{}",
+      "snippet": "subsubsection*{${1:title}}"
+    },
+    {
+      "name": "subsubsection[]{}",
+      "snippet": "subsubsection[${2:short}]{${1:title}}"
+    },
+    {
+      "name": "subsubsection{}",
+      "snippet": "subsubsection{${1}}"
+    },
+    {
+      "detail": "∑",
+      "name": "sum"
+    },
+    {
+      "detail": "⊃",
+      "name": "supset"
+    },
+    {
+      "name": "tableofcontents"
+    },
+    {
+      "detail": "τ, shortcut @t",
+      "name": "tau"
+    },
+    {
+      "name": "textbf{}",
+      "snippet": "textbf{${1}}"
+    },
+    {
+      "detail": "reference",
+      "name": "textcite{}",
+      "snippet": "textcite{${1}}"
+    },
+    {
+      "name": "textit{}",
+      "snippet": "textit{${1}}"
+    },
+    {
+      "name": "textmd{}",
+      "snippet": "textmd{${1}}"
+    },
+    {
+      "name": "textnormal{}",
+      "snippet": "textnormal{${1}}"
+    },
+    {
+      "name": "textrm{}",
+      "snippet": "textrm{${1}}"
+    },
+    {
+      "name": "textsc{}",
+      "snippet": "textsc{${1}}"
+    },
+    {
+      "name": "textsf{}",
+      "snippet": "textsf{${1}}"
+    },
+    {
+      "detail": "slanted text",
+      "name": "textsl{}",
+      "snippet": "textsl{${1}}"
+    },
+    {
+      "name": "texttt{}",
+      "snippet": "texttt{${1}}"
+    },
+    {
+      "name": "textup{}",
+      "snippet": "textup{${1}}"
+    },
+    {
+      "name": "textwidth"
+    },
+    {
+      "name": "text{}",
+      "snippet": "text{${1}}"
+    },
+    {
+      "name": "thanks{}",
+      "snippet": "thanks{${1:text}}"
+    },
+    {
+      "detail": "θ, shortcut @q",
+      "name": "theta"
+    },
+    {
+      "name": "thispagestyle",
+      "snippet": "thispagestyle{${1:empty/plain/headings/myheadings}}"
+    },
+    {
+      "detail": " ̃",
+      "documentation": "tilde",
+      "name": "tilde{}",
+      "snippet": "tilde{${1}}"
+    },
+    {
+      "detail": "×, shortcut @*",
+      "name": "times"
+    },
+    {
+      "name": "tiny"
+    },
+    {
+      "name": "title{}",
+      "snippet": "title{${1:title}}"
+    },
+    {
+      "name": "today"
+    },
+    {
+      "name": "ttfamily"
+    },
+    {
+      "name": "underbrace{}",
+      "snippet": "underbrace{${1:text}}"
+    },
+    {
+      "detail": " ̲",
+      "documentation": "COMBINING LOW LINE",
+      "name": "underline{}",
+      "snippet": "underline{${1}}"
+    },
+    {
+      "detail": "υ, shortcut @u",
+      "name": "upsilon"
+    },
+    {
+      "name": "usepackage[]{}",
+      "snippet": "usepackage[${2:options}]{${1:package}}"
+    },
+    {
+      "name": "usepackage{}",
+      "snippet": "usepackage{${1}}"
+    },
+    {
+      "detail": "ε, shortcut @ve",
+      "name": "varepsilon"
+    },
+    {
+      "detail": "ϕ, shortcut @vf",
+      "name": "varphi"
+    },
+    {
+      "detail": "ϖ, shortcut @vp",
+      "name": "varpi"
+    },
+    {
+      "detail": "ϱ, shortcut @vr",
+      "name": "varrho"
+    },
+    {
+      "detail": "ς, shortcut @vs",
+      "name": "varsigma"
+    },
+    {
+      "detail": "ϑ, shortcut @vq",
+      "name": "vartheta"
+    },
+    {
+      "name": "vec{}",
+      "snippet": "vec{${1}}"
+    },
+    {
+      "detail": "∨",
+      "name": "vee"
+    },
+    {
+      "name": "vspace*{}",
+      "snippet": "vspace*{${1:l}}"
+    },
+    {
+      "name": "vspace{}",
+      "snippet": "vspace{${1:l}}"
+    },
+    {
+      "detail": "∧, shortcut @&",
+      "name": "wedge"
+    },
+    {
+      "detail": " ̂",
+      "documentation": "wide circumflex accent",
+      "name": "widehat{}",
+      "snippet": "widehat{${1}}"
+    },
+    {
+      "detail": " ̃",
+      "documentation": "wide tilde",
+      "name": "widetilde{}",
+      "snippet": "widetilde{${1}}"
+    },
+    {
+      "detail": "ξ, shortcut @x",
+      "name": "xi"
+    },
+    {
+      "detail": "ζ, shortcut @z",
+      "name": "zeta"
+    },
+    {
+      "detail": "curly brackets \\{ ... \\}",
+      "name": "{",
+      "snippet": "{${1}\\}"
+    }
+  ],
+  "environments": [
+    {
+      "name": "Bmatrix"
+    },
+    {
+      "name": "Vmatrix"
+    },
+    {
+      "name": "align"
+    },
+    {
+      "name": "align*"
+    },
+    {
+      "name": "aligned"
+    },
+    {
+      "name": "alignedat"
+    },
+    {
+      "name": "array",
+      "snippet": "{${1:cols}}"
+    },
+    {
+      "name": "bmatrix"
+    },
+    {
+      "name": "cases"
+    },
+    {
+      "name": "center"
+    },
+    {
+      "name": "corollary"
+    },
+    {
+      "name": "definition"
+    },
+    {
+      "name": "description",
+      "snippet": "\n\t\\item[${1}] ${}"
+    },
+    {
+      "name": "displaymath"
+    },
+    {
+      "name": "document",
+      "snippet": "\n${}"
+    },
+    {
+      "name": "enumerate",
+      "snippet": "\n\t\\item ${}"
+    },
+    {
+      "name": "eqnarray"
+    },
+    {
+      "name": "equation"
+    },
+    {
+      "name": "equation*"
+    },
+    {
+      "name": "example"
+    },
+    {
+      "name": "flalign"
+    },
+    {
+      "name": "flalign*"
+    },
+    {
+      "name": "flushleft"
+    },
+    {
+      "name": "flushright"
+    },
+    {
+      "name": "gather"
+    },
+    {
+      "name": "gather*"
+    },
+    {
+      "name": "gathered"
+    },
+    {
+      "name": "itemize",
+      "snippet": "\n\t\\item ${}"
+    },
+    {
+      "name": "lemma"
+    },
+    {
+      "name": "math"
+    },
+    {
+      "name": "matrix"
+    },
+    {
+      "name": "minipage"
+    },
+    {
+      "name": "multline"
+    },
+    {
+      "name": "multline*"
+    },
+    {
+      "name": "picture"
+    },
+    {
+      "name": "pmatrix"
+    },
+    {
+      "name": "proof"
+    },
+    {
+      "name": "proposition"
+    },
+    {
+      "name": "quotation"
+    },
+    {
+      "name": "quote"
+    },
+    {
+      "name": "remark"
+    },
+    {
+      "name": "smallmatrix"
+    },
+    {
+      "name": "split"
+    },
+    {
+      "name": "subarray",
+      "snippet": "{${1:align}}"
+    },
+    {
+      "name": "subequations"
+    },
+    {
+      "name": "subequations*"
+    },
+    {
+      "name": "tabbing"
+    },
+    {
+      "name": "table"
+    },
+    {
+      "name": "tabular",
+      "snippet": "{${1:cols}}"
+    },
+    {
+      "name": "thebibliography"
+    },
+    {
+      "name": "theorem"
+    },
+    {
+      "name": "titlepage"
+    },
+    {
+      "name": "verbatim"
+    },
+    {
+      "name": "verse"
+    },
+    {
+      "name": "vmatrix"
+    },
+    {
+      "name": "xalignat"
+    },
+    {
+      "name": "xalignat*"
+    }
+  ]
+}

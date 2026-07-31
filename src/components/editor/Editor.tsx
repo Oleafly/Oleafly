@@ -13,6 +13,7 @@ import { useFilesStore } from "@/store/files";
 import { useDiffStore, diffKey } from "@/store/diff";
 import { useSettingsStore } from "@/store/settings";
 import { base64ToUint8Array, readFileBase64 } from "@/lib/tauri";
+import { IMAGE_EXTS, imageMime } from "@/lib/image-mime";
 import { cn } from "@/lib/utils";
 import { formattingForEngine, pathUsesEngineSource } from "@/lib/document-engine";
 import { getWysiwygMode, setWysiwygMode } from "@/lib/wysiwyg-mode";
@@ -52,18 +53,6 @@ function PdfFileView({ projectId, path }: { projectId: string; path: string }) {
   if (err) return <div className="p-6 text-sm text-destructive">Failed to load PDF: {err}</div>;
   if (!bytes) return <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
   return <PdfViewer data={bytes} scale={1} />;
-}
-
-const IMAGE_EXTS = [".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg"];
-
-function imageMime(path: string): string {
-  const p = path.toLowerCase();
-  if (p.endsWith(".jpg") || p.endsWith(".jpeg")) return "image/jpeg";
-  if (p.endsWith(".gif")) return "image/gif";
-  if (p.endsWith(".webp")) return "image/webp";
-  if (p.endsWith(".bmp")) return "image/bmp";
-  if (p.endsWith(".svg")) return "image/svg+xml";
-  return "image/png";
 }
 
 // data: URLs, not blob:, because the CSP only allows img-src data:.

@@ -1,0 +1,544 @@
+{
+  "args": [],
+  "deps": [],
+  "envs": [
+    {
+      "name": "actionenv"
+    },
+    {
+      "name": "actionenv",
+      "snippet": "<${1:action specification}>"
+    },
+    {
+      "name": "altenv",
+      "snippet": "<${5:overlay specification}>{${1:begin text}}{${2:end text}}{${3:alternate begin text}}{${4:alternate end text}}"
+    },
+    {
+      "name": "altenv",
+      "snippet": "{${1:begin text}}{${2:end text}}{${3:alternate begin text}}{${4:alternate end text}}"
+    },
+    {
+      "name": "altenv",
+      "snippet": "{${1:begin text}}{${2:end text}}{${3:alternate begin text}}{${4:alternate end text}}<${5:overlay specification}>"
+    },
+    {
+      "name": "invisibleenv"
+    },
+    {
+      "name": "invisibleenv",
+      "snippet": "<${1:overlay specification}>"
+    },
+    {
+      "name": "onlyenv"
+    },
+    {
+      "name": "onlyenv",
+      "snippet": "<${1:overlay specification}>"
+    },
+    {
+      "name": "overlayarea",
+      "snippet": "{${1:area width}}{${2:area height}}"
+    },
+    {
+      "name": "overprint"
+    },
+    {
+      "name": "overprint",
+      "snippet": "[${1:area width}]"
+    },
+    {
+      "name": "uncoverenv"
+    },
+    {
+      "name": "uncoverenv",
+      "snippet": "<${1:overlay specification}>"
+    },
+    {
+      "name": "visibleenv"
+    },
+    {
+      "name": "visibleenv",
+      "snippet": "<${1:overlay specification}>"
+    }
+  ],
+  "keys": {
+    "\\setbeamercovered": [
+      "invisible",
+      "transparent",
+      "transparent=${1:opaqueness}",
+      "dynamic",
+      "highly dynamic",
+      "still covered=${1:not yet list}",
+      "again covered=${1:once more list}"
+    ],
+    "\\transblindshorizontal,\\transblindsvertical,\\transboxin,\\transboxout,\\transcover,\\transdissolve,\\transfade,\\transglitter,\\transpush,\\transreplace,\\transsplitverticalin,\\transsplitverticalout,\\transsplithorizontalin,\\transsplithorizontalout,\\transuncover,\\transwipe,\\transfly": [
+      "direction=${1:degrees}",
+      "duration=${1:seconds}"
+    ]
+  },
+  "macros": [
+    {
+      "name": "action",
+      "snippet": "action{${1:text}}"
+    },
+    {
+      "name": "action<action specification>",
+      "snippet": "action<action specification>{${1:text}}"
+    },
+    {
+      "name": "alt",
+      "snippet": "alt{${1:default text}}{${2:alternative text}}"
+    },
+    {
+      "name": "alt",
+      "snippet": "alt{${1:default text}}{${2:alternative text}}<${3:overlay specification}>"
+    },
+    {
+      "name": "alt<overlay specification>",
+      "snippet": "alt<overlay specification>{${1:default text}}{${2:alternative text}}"
+    },
+    {
+      "name": "animate<overlay specification>"
+    },
+    {
+      "name": "beamerdefaultoverlayspecification",
+      "snippet": "beamerdefaultoverlayspecification{${1:default overlay specification}}"
+    },
+    {
+      "name": "beameroriginal",
+      "snippet": "beameroriginal{${1:command}}",
+      "unusual": true
+    },
+    {
+      "name": "beamerpause",
+      "unusual": true
+    },
+    {
+      "name": "color<overlay specification>",
+      "snippet": "color<overlay specification>{${1:color}}"
+    },
+    {
+      "name": "emph<overlay specification>",
+      "snippet": "emph<overlay specification>{${1:text}}"
+    },
+    {
+      "name": "hyperlink<overlay specification>",
+      "snippet": "hyperlink<overlay specification>{${1:target name}}{${2:link text}}"
+    },
+    {
+      "name": "hypertarget<overlay specification>",
+      "snippet": "hypertarget<overlay specification>{${1:target name}}{${2:anchor text}}"
+    },
+    {
+      "name": "invisible",
+      "snippet": "invisible{${1:text}}"
+    },
+    {
+      "name": "invisible<overlay specification>",
+      "snippet": "invisible<overlay specification>{${1:text}}"
+    },
+    {
+      "name": "item",
+      "snippet": "item[${1:item label}]<${2:alert specification}>"
+    },
+    {
+      "name": "item<alert specification>"
+    },
+    {
+      "name": "item<alert specification>",
+      "snippet": "item<alert specification>[${1:item label}]"
+    },
+    {
+      "name": "label<overlay specification>",
+      "snippet": "label<overlay specification>{${1:key}}"
+    },
+    {
+      "name": "music",
+      "unusual": true
+    },
+    {
+      "name": "newcommand<>",
+      "snippet": "newcommand<>{${1:cmd}}[${3:args}][${4:default}]{${2:def}}",
+      "unusual": true
+    },
+    {
+      "name": "newcommand<>",
+      "snippet": "newcommand<>{${1:cmd}}[${3:args}]{${2:def}}",
+      "unusual": true
+    },
+    {
+      "name": "newcommand<>",
+      "snippet": "newcommand<>{${1:cmd}}{${2:def}}",
+      "unusual": true
+    },
+    {
+      "name": "newenvironment<>",
+      "snippet": "newenvironment<>{${1:envname}}[${4:args}][${5:default}]{${2:begdef}}{${3:enddef}}",
+      "unusual": true
+    },
+    {
+      "name": "newenvironment<>",
+      "snippet": "newenvironment<>{${1:envname}}[${4:args}]{${2:begdef}}{${3:enddef}}",
+      "unusual": true
+    },
+    {
+      "name": "newenvironment<>",
+      "snippet": "newenvironment<>{${1:envname}}{${2:begdef}}{${3:enddef}}",
+      "unusual": true
+    },
+    {
+      "name": "only",
+      "snippet": "only{${1:text}}"
+    },
+    {
+      "name": "only",
+      "snippet": "only{${1:text}}<${2:overlay specification}>"
+    },
+    {
+      "name": "only<overlay specification>",
+      "snippet": "only<overlay specification>{${1:text}}"
+    },
+    {
+      "name": "onslide"
+    },
+    {
+      "name": "onslide*<overlay specification>"
+    },
+    {
+      "name": "onslide*<overlay specification>",
+      "snippet": "onslide*<overlay specification>{${1:text}}"
+    },
+    {
+      "name": "onslide<overlay specification>"
+    },
+    {
+      "name": "onslide<overlay specification>",
+      "snippet": "onslide<overlay specification>{${1:text}}"
+    },
+    {
+      "name": "opaqueness<overlay specification>",
+      "snippet": "opaqueness<overlay specification>{${1:percentage of opaqueness}}"
+    },
+    {
+      "name": "pause"
+    },
+    {
+      "name": "pause",
+      "snippet": "pause[${1:number}]"
+    },
+    {
+      "name": "renewcommand<>",
+      "snippet": "renewcommand<>{${1:cmd}}[${3:args}][${4:default}]{${2:def}}",
+      "unusual": true
+    },
+    {
+      "name": "renewcommand<>",
+      "snippet": "renewcommand<>{${1:cmd}}[${3:args}]{${2:def}}",
+      "unusual": true
+    },
+    {
+      "name": "renewcommand<>",
+      "snippet": "renewcommand<>{${1:cmd}}{${2:def}}",
+      "unusual": true
+    },
+    {
+      "name": "renewenvironment<>",
+      "snippet": "renewenvironment<>{${1:envname}}[${4:args}][${5:default}]{${2:begdef}}{${3:enddef}}",
+      "unusual": true
+    },
+    {
+      "name": "renewenvironment<>",
+      "snippet": "renewenvironment<>{${1:envname}}[${4:args}]{${2:begdef}}{${3:enddef}}",
+      "unusual": true
+    },
+    {
+      "name": "renewenvironment<>",
+      "snippet": "renewenvironment<>{${1:envname}}{${2:begdef}}{${3:enddef}}",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\setbeamercovered"
+      ],
+      "name": "setbeamercovered",
+      "snippet": "setbeamercovered{${1:options}}"
+    },
+    {
+      "name": "temporal",
+      "snippet": "temporal{${1:before slide text}}{${2:default text}}{${3:after slide text}}"
+    },
+    {
+      "name": "temporal<overlay specification>",
+      "snippet": "temporal<overlay specification>{${1:before slide text}}{${2:default text}}{${3:after slide text}}"
+    },
+    {
+      "name": "textbf<overlay specification>",
+      "snippet": "textbf<overlay specification>{${1:text}}"
+    },
+    {
+      "name": "textit<overlay specification>",
+      "snippet": "textit<overlay specification>{${1:text}}"
+    },
+    {
+      "name": "textmd<overlay specification>",
+      "snippet": "textmd<overlay specification>{${1:text}}"
+    },
+    {
+      "name": "textnormal<overlay specification>",
+      "snippet": "textnormal<overlay specification>{${1:text}}"
+    },
+    {
+      "name": "textrm<overlay specification>",
+      "snippet": "textrm<overlay specification>{${1:text}}"
+    },
+    {
+      "name": "textsc<overlay specification>",
+      "snippet": "textsc<overlay specification>{${1:text}}"
+    },
+    {
+      "name": "textsf<overlay specification>",
+      "snippet": "textsf<overlay specification>{${1:text}}"
+    },
+    {
+      "name": "textsl<overlay specification>",
+      "snippet": "textsl<overlay specification>{${1:text}}"
+    },
+    {
+      "name": "texttt<overlay specification>",
+      "snippet": "texttt<overlay specification>{${1:text}}"
+    },
+    {
+      "name": "textup<overlay specification>",
+      "snippet": "textup<overlay specification>{${1:text}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\transblindshorizontal,\\transblindsvertical,\\transboxin,\\transboxout,\\transcover,\\transdissolve,\\transfade,\\transglitter,\\transpush,\\transreplace,\\transsplitverticalin,\\transsplitverticalout,\\transsplithorizontalin,\\transsplithorizontalout,\\transuncover,\\transwipe,\\transfly"
+      ],
+      "name": "transblindshorizontal",
+      "snippet": "transblindshorizontal[${1:options}]"
+    },
+    {
+      "name": "transblindshorizontal<overlay specification>",
+      "snippet": "transblindshorizontal<overlay specification>[${1:options}]"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\transblindshorizontal,\\transblindsvertical,\\transboxin,\\transboxout,\\transcover,\\transdissolve,\\transfade,\\transglitter,\\transpush,\\transreplace,\\transsplitverticalin,\\transsplitverticalout,\\transsplithorizontalin,\\transsplithorizontalout,\\transuncover,\\transwipe,\\transfly"
+      ],
+      "name": "transblindsvertical",
+      "snippet": "transblindsvertical[${1:options}]"
+    },
+    {
+      "name": "transblindsvertical<overlay specification>",
+      "snippet": "transblindsvertical<overlay specification>[${1:options}]"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\transblindshorizontal,\\transblindsvertical,\\transboxin,\\transboxout,\\transcover,\\transdissolve,\\transfade,\\transglitter,\\transpush,\\transreplace,\\transsplitverticalin,\\transsplitverticalout,\\transsplithorizontalin,\\transsplithorizontalout,\\transuncover,\\transwipe,\\transfly"
+      ],
+      "name": "transboxin",
+      "snippet": "transboxin[${1:options}]"
+    },
+    {
+      "name": "transboxin<overlay specification>",
+      "snippet": "transboxin<overlay specification>[${1:options}]"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\transblindshorizontal,\\transblindsvertical,\\transboxin,\\transboxout,\\transcover,\\transdissolve,\\transfade,\\transglitter,\\transpush,\\transreplace,\\transsplitverticalin,\\transsplitverticalout,\\transsplithorizontalin,\\transsplithorizontalout,\\transuncover,\\transwipe,\\transfly"
+      ],
+      "name": "transboxout",
+      "snippet": "transboxout[${1:options}]"
+    },
+    {
+      "name": "transboxout<overlay specification>",
+      "snippet": "transboxout<overlay specification>[${1:options}]"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\transblindshorizontal,\\transblindsvertical,\\transboxin,\\transboxout,\\transcover,\\transdissolve,\\transfade,\\transglitter,\\transpush,\\transreplace,\\transsplitverticalin,\\transsplitverticalout,\\transsplithorizontalin,\\transsplithorizontalout,\\transuncover,\\transwipe,\\transfly"
+      ],
+      "name": "transcover",
+      "snippet": "transcover[${1:options}]"
+    },
+    {
+      "name": "transcover<overlay specification>",
+      "snippet": "transcover<overlay specification>[${1:options}]"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\transblindshorizontal,\\transblindsvertical,\\transboxin,\\transboxout,\\transcover,\\transdissolve,\\transfade,\\transglitter,\\transpush,\\transreplace,\\transsplitverticalin,\\transsplitverticalout,\\transsplithorizontalin,\\transsplithorizontalout,\\transuncover,\\transwipe,\\transfly"
+      ],
+      "name": "transdissolve",
+      "snippet": "transdissolve[${1:options}]"
+    },
+    {
+      "name": "transdissolve<overlay specification>",
+      "snippet": "transdissolve<overlay specification>[${1:options}]"
+    },
+    {
+      "name": "transduration",
+      "snippet": "transduration{${1:number of seconds}}"
+    },
+    {
+      "name": "transduration<overlay specification>",
+      "snippet": "transduration<overlay specification>{${1:number of seconds}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\transblindshorizontal,\\transblindsvertical,\\transboxin,\\transboxout,\\transcover,\\transdissolve,\\transfade,\\transglitter,\\transpush,\\transreplace,\\transsplitverticalin,\\transsplitverticalout,\\transsplithorizontalin,\\transsplithorizontalout,\\transuncover,\\transwipe,\\transfly"
+      ],
+      "name": "transfade",
+      "snippet": "transfade[${1:options}]"
+    },
+    {
+      "name": "transfade<overlay specification>",
+      "snippet": "transfade<overlay specification>[${1:options}]"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\transblindshorizontal,\\transblindsvertical,\\transboxin,\\transboxout,\\transcover,\\transdissolve,\\transfade,\\transglitter,\\transpush,\\transreplace,\\transsplitverticalin,\\transsplitverticalout,\\transsplithorizontalin,\\transsplithorizontalout,\\transuncover,\\transwipe,\\transfly"
+      ],
+      "name": "transfly",
+      "snippet": "transfly[${1:options}]"
+    },
+    {
+      "name": "transfly<overlay specification>",
+      "snippet": "transfly<overlay specification>[${1:options}]"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\transblindshorizontal,\\transblindsvertical,\\transboxin,\\transboxout,\\transcover,\\transdissolve,\\transfade,\\transglitter,\\transpush,\\transreplace,\\transsplitverticalin,\\transsplitverticalout,\\transsplithorizontalin,\\transsplithorizontalout,\\transuncover,\\transwipe,\\transfly"
+      ],
+      "name": "transglitter",
+      "snippet": "transglitter[${1:options}]"
+    },
+    {
+      "name": "transglitter<overlay specification>",
+      "snippet": "transglitter<overlay specification>[${1:options}]"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\transblindshorizontal,\\transblindsvertical,\\transboxin,\\transboxout,\\transcover,\\transdissolve,\\transfade,\\transglitter,\\transpush,\\transreplace,\\transsplitverticalin,\\transsplitverticalout,\\transsplithorizontalin,\\transsplithorizontalout,\\transuncover,\\transwipe,\\transfly"
+      ],
+      "name": "transpush",
+      "snippet": "transpush[${1:options}]"
+    },
+    {
+      "name": "transpush<overlay specification>",
+      "snippet": "transpush<overlay specification>[${1:options}]"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\transblindshorizontal,\\transblindsvertical,\\transboxin,\\transboxout,\\transcover,\\transdissolve,\\transfade,\\transglitter,\\transpush,\\transreplace,\\transsplitverticalin,\\transsplitverticalout,\\transsplithorizontalin,\\transsplithorizontalout,\\transuncover,\\transwipe,\\transfly"
+      ],
+      "name": "transreplace",
+      "snippet": "transreplace[${1:options}]"
+    },
+    {
+      "name": "transreplace<overlay specification>",
+      "snippet": "transreplace<overlay specification>[${1:options}]"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\transblindshorizontal,\\transblindsvertical,\\transboxin,\\transboxout,\\transcover,\\transdissolve,\\transfade,\\transglitter,\\transpush,\\transreplace,\\transsplitverticalin,\\transsplitverticalout,\\transsplithorizontalin,\\transsplithorizontalout,\\transuncover,\\transwipe,\\transfly"
+      ],
+      "name": "transsplithorizontalin",
+      "snippet": "transsplithorizontalin[${1:options}]"
+    },
+    {
+      "name": "transsplithorizontalin<overlay specification>",
+      "snippet": "transsplithorizontalin<overlay specification>[${1:options}]"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\transblindshorizontal,\\transblindsvertical,\\transboxin,\\transboxout,\\transcover,\\transdissolve,\\transfade,\\transglitter,\\transpush,\\transreplace,\\transsplitverticalin,\\transsplitverticalout,\\transsplithorizontalin,\\transsplithorizontalout,\\transuncover,\\transwipe,\\transfly"
+      ],
+      "name": "transsplithorizontalout",
+      "snippet": "transsplithorizontalout[${1:options}]"
+    },
+    {
+      "name": "transsplithorizontalout<overlay specification>",
+      "snippet": "transsplithorizontalout<overlay specification>[${1:options}]"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\transblindshorizontal,\\transblindsvertical,\\transboxin,\\transboxout,\\transcover,\\transdissolve,\\transfade,\\transglitter,\\transpush,\\transreplace,\\transsplitverticalin,\\transsplitverticalout,\\transsplithorizontalin,\\transsplithorizontalout,\\transuncover,\\transwipe,\\transfly"
+      ],
+      "name": "transsplitverticalin",
+      "snippet": "transsplitverticalin[${1:options}]"
+    },
+    {
+      "name": "transsplitverticalin<overlay specification>",
+      "snippet": "transsplitverticalin<overlay specification>[${1:options}]"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\transblindshorizontal,\\transblindsvertical,\\transboxin,\\transboxout,\\transcover,\\transdissolve,\\transfade,\\transglitter,\\transpush,\\transreplace,\\transsplitverticalin,\\transsplitverticalout,\\transsplithorizontalin,\\transsplithorizontalout,\\transuncover,\\transwipe,\\transfly"
+      ],
+      "name": "transsplitverticalout",
+      "snippet": "transsplitverticalout[${1:options}]"
+    },
+    {
+      "name": "transsplitverticalout<overlay specification>",
+      "snippet": "transsplitverticalout<overlay specification>[${1:options}]"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\transblindshorizontal,\\transblindsvertical,\\transboxin,\\transboxout,\\transcover,\\transdissolve,\\transfade,\\transglitter,\\transpush,\\transreplace,\\transsplitverticalin,\\transsplitverticalout,\\transsplithorizontalin,\\transsplithorizontalout,\\transuncover,\\transwipe,\\transfly"
+      ],
+      "name": "transuncover",
+      "snippet": "transuncover[${1:options}]"
+    },
+    {
+      "name": "transuncover<overlay specification>",
+      "snippet": "transuncover<overlay specification>[${1:options}]"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\transblindshorizontal,\\transblindsvertical,\\transboxin,\\transboxout,\\transcover,\\transdissolve,\\transfade,\\transglitter,\\transpush,\\transreplace,\\transsplitverticalin,\\transsplitverticalout,\\transsplithorizontalin,\\transsplithorizontalout,\\transuncover,\\transwipe,\\transfly"
+      ],
+      "name": "transwipe",
+      "snippet": "transwipe[${1:options}]"
+    },
+    {
+      "name": "transwipe<overlay specification>",
+      "snippet": "transwipe<overlay specification>[${1:options}]"
+    },
+    {
+      "name": "uncover",
+      "snippet": "uncover{${1:text}}"
+    },
+    {
+      "name": "uncover<overlay specification>",
+      "snippet": "uncover<overlay specification>{${1:text}}"
+    },
+    {
+      "name": "visible",
+      "snippet": "visible{${1:text}}"
+    },
+    {
+      "name": "visible<overlay specification>",
+      "snippet": "visible<overlay specification>{${1:text}}"
+    }
+  ]
+}

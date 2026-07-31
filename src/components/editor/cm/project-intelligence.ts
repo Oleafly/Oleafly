@@ -19,7 +19,30 @@ import {
   ViewPlugin,
   type ViewUpdate,
 } from "@codemirror/view";
+import { auxNumberFor } from "@/lib/aux-numbers";
+import {
+  atSuggestionCompletion,
+  warmAtSuggestions,
+} from "./at-suggestions";
 import { clearProjectHoverIntel } from "./hover-intel";
+import {
+  fileTargetAccepts,
+  keyvalKeysForCommand,
+  optionKeysForCatalog,
+  recognizeFileTarget,
+  recognizeGlossaryKey,
+  recognizeImportPath,
+  recognizeKeyval,
+  recognizePackageOption,
+} from "./latex-contexts";
+import {
+  catalogNamesForSnapshot,
+  corpusClassNames,
+  corpusCore,
+  corpusPackageNames,
+  loadedCatalogsFor,
+  requestPackageCatalogs,
+} from "@/lib/latex-corpus";
 import { analyzeProjectFile } from "@/lib/project-intelligence/analyze-file";
 import { citationCompletions } from "@/lib/project-intelligence/selectors";
 import { currentSourceProjectIntelligence } from "@/lib/project-intelligence/current";
@@ -201,8 +224,14 @@ function definitionOptions(
     .slice(0, FILTERED_COMPLETION_LIMIT)
     .map((definition) => {
       const duplicateCount = counts.get(definition.name) ?? 1;
-      const duplicateDetail =
-        duplicateCount > 1 ? ` · duplicate (${duplicateCount})` : "";
+      const auxNumber =
+        definition.kind === "label" || definition.kind === "anchor"
+          ? auxNumberFor(definition.name)
+          : null;
+      const auxDetail = auxNumber ? ` · №${auxNumber.number}` : "";
+      const duplicateDetail = `${auxDetail}${
+        duplicateCount > 1 ? ` · duplicate (${duplicateCount})` : ""
+      }`;
       const appendArguments =
         definition.kind === "macro" ||
         (definition.kind === "environment" &&
@@ -265,6 +294,60 @@ function citationOptions(
   );
 }
 
+/**
+ * Shared completion info panel: optional description paragraph, optional
+ * muted meta line, optional external link. Returns undefined when empty so
+ * callers can spread it conditionally.
+ */
+export function completionInfoPanel(options: {
+  description?: string;
+  meta?: string;
+  link?: { href: string; label: string };
+}): Completion["info"] | undefined {
+  const { description, meta, link } = options;
+  if (!description && !meta && !link) return undefined;
+  return () => {
+    const dom = document.createElement("div");
+    if (description) {
+      const paragraph = document.createElement("p");
+      paragraph.textContent = description;
+      paragraph.style.margin = "0 0 0.4rem";
+      dom.appendChild(paragraph);
+    }
+    if (meta) {
+      const line = document.createElement("p");
+      line.textContent = meta;
+      line.style.margin = "0 0 0.4rem";
+      line.style.opacity = "0.75";
+      dom.appendChild(line);
+    }
+    if (link) {
+      const anchor = document.createElement("a");
+      anchor.href = link.href;
+      anchor.target = "_blank";
+      anchor.rel = "noreferrer";
+      anchor.textContent = link.label;
+      anchor.style.textDecoration = "underline";
+      anchor.style.textUnderlineOffset = "2px";
+      dom.appendChild(anchor);
+    }
+    return dom;
+  };
+}
+
+function corpusNameInfo(
+  name: string,
+  description: string | undefined,
+): Completion["info"] {
+  return completionInfoPanel({
+    description,
+    link: {
+      href: `https://ctan.org/pkg/${name}`,
+      label: `ctan.org/pkg/${name}`,
+    },
+  });
+}
+
 function completionResult(
   from: number,
   options: Completion[],
@@ -297,7 +380,25 @@ function latexCompletion(
     const projectNames = new Set(
       project.map((option) => option.label),
     );
-    const standard = STANDARD_LATEX_ENVIRONMENTS
+    const core = corpusCore();
+    const packageEnvironments = [
+      ...loadedCatalogsFor(
+        catalogNamesForSnapshot(snapshot),
+      ).values(),
+    ].flatMap((catalog) =>
+      catalog.envs
+        .filter((env) => !env.unusual)
+        .map((env) => env.name),
+    );
+    const standardNames = core
+      ? [
+          ...new Set([
+            ...packageEnvironments,
+            ...core.environments.map((env) => env.name),
+          ]),
+        ]
+      : [...STANDARD_LATEX_ENVIRONMENTS];
+    const standard = standardNames
       .filter(
         (name) =>
           !projectNames.has(name) &&
@@ -325,24 +426,75 @@ function latexCompletion(
     );
   }
 
+  const packageOption = recognizePackageOption(
+    before,
+    context.state.sliceDoc(
+      context.pos,
+      Math.min(context.state.doc.length, context.pos + 200),
+    ),
+  );
+  if (packageOption) {
+    const catalogName =
+      packageOption.kind === "class"
+        ? `class-${packageOption.name}`
+        : packageOption.name;
+    requestPackageCatalogs([catalogName]);
+    const options = [
+      ...loadedCatalogsFor([catalogName]).values(),
+    ].flatMap((catalog) =>
+      optionKeysForCatalog(
+        catalog,
+        packageOption.kind,
+        packageOption.name,
+      ),
+    );
+    const query = packageOption.query;
+    const filtered = options
+      .filter((option) =>
+        option
+          .toLocaleLowerCase()
+          .includes(query.toLocaleLowerCase()),
+      )
+      .slice(0, FILTERED_COMPLETION_LIMIT)
+      .map((option) => ({
+        label: option,
+        type: "property",
+        detail: `${packageOption.name} option`,
+        apply: guardedApply(guard, option),
+      } satisfies Completion));
+    if (filtered.length) {
+      return completionResult(
+        context.pos - query.length,
+        filtered,
+      );
+    }
+  }
+
   const packageName =
     /\\usepackage\s*(?:\[[^\]]*\])?\{[^{}]*?(?:,\s*)?([^,{}]*)$/u.exec(
       before,
     );
   if (packageName) {
     const query = (packageName[1] ?? "").trimStart();
+    const names = corpusPackageNames();
     return completionResult(
       context.pos - query.length,
-      STANDARD_LATEX_PACKAGES.filter((name) =>
-        name
-          .toLocaleLowerCase()
-          .includes(query.toLocaleLowerCase()),
-      ).map((name) => ({
-        label: name,
-        type: "namespace",
-        detail: "LaTeX package",
-        apply: guardedApply(guard, name),
-      })),
+      (names ? names.names : STANDARD_LATEX_PACKAGES)
+        .filter((name) =>
+          name
+            .toLocaleLowerCase()
+            .includes(query.toLocaleLowerCase()),
+        )
+        .slice(0, FILTERED_COMPLETION_LIMIT)
+        .map((name) => ({
+          label: name,
+          type: "namespace",
+          detail: names?.details[name] ?? "LaTeX package",
+          ...(names
+            ? { info: corpusNameInfo(name, names.details[name]) }
+            : {}),
+          apply: guardedApply(guard, name),
+        })),
     );
   }
 
@@ -350,27 +502,50 @@ function latexCompletion(
     /\\documentclass\s*(?:\[[^\]]*\])?\{([^{}]*)$/u.exec(before);
   if (documentClass) {
     const query = documentClass[1] ?? "";
+    const names = corpusClassNames();
     return completionResult(
       context.pos - query.length,
-      STANDARD_LATEX_CLASSES.filter((name) =>
-        name
-          .toLocaleLowerCase()
-          .includes(query.toLocaleLowerCase()),
-      ).map((name) => ({
-        label: name,
-        type: "type",
-        detail: "LaTeX document class",
-        apply: guardedApply(guard, name),
-      })),
+      (names ? names.names : STANDARD_LATEX_CLASSES)
+        .filter((name) =>
+          name
+            .toLocaleLowerCase()
+            .includes(query.toLocaleLowerCase()),
+        )
+        .slice(0, FILTERED_COMPLETION_LIMIT)
+        .map((name) => ({
+          label: name,
+          type: "type",
+          detail: names?.details[name] ?? "LaTeX document class",
+          ...(names
+            ? { info: corpusNameInfo(name, names.details[name]) }
+            : {}),
+          apply: guardedApply(guard, name),
+        })),
     );
   }
 
-  const fileTarget =
-    /\\(?:input|include|subfile|includegraphics|bibliography|addbibresource)\s*(?:\[[^\]]*\])?\{([^{}]*)$/u.exec(
-      before,
+  const importPath = recognizeImportPath(before);
+  if (importPath) {
+    const query = importPath.query;
+    const prefix = importPath.directory
+      ? `${importPath.directory}/`
+      : "";
+    return completionResult(
+      context.pos - query.length,
+      definitionOptions(
+        snapshot,
+        guard,
+        new Set(["file"]),
+        `${prefix}${query}`,
+      ).filter((option) =>
+        fileTargetAccepts("input", String(option.label)),
+      ),
     );
+  }
+
+  const fileTarget = recognizeFileTarget(before);
   if (fileTarget) {
-    const query = fileTarget[1] ?? "";
+    const query = fileTarget.query;
     return completionResult(
       context.pos - query.length,
       definitionOptions(
@@ -378,6 +553,8 @@ function latexCompletion(
         guard,
         new Set(["file"]),
         query,
+      ).filter((option) =>
+        fileTargetAccepts(fileTarget.command, String(option.label)),
       ),
     );
   }
@@ -409,16 +586,106 @@ function latexCompletion(
     );
   }
 
-  const command = /\\([A-Za-z@]*)$/u.exec(before);
-  if (command) {
-    const query = command[1] ?? "";
+  const glossaryKey = recognizeGlossaryKey(before);
+  if (glossaryKey) {
     return completionResult(
-      context.pos - query.length,
+      context.pos - glossaryKey.query.length,
       definitionOptions(
         snapshot,
         guard,
-        new Set(["macro"]),
-        query,
+        new Set(["glossary"]),
+        glossaryKey.query,
+      ),
+    );
+  }
+
+  const keyval = recognizeKeyval(before);
+  if (keyval) {
+    const keys = keyvalKeysForCommand(
+      [
+        ...loadedCatalogsFor(
+          catalogNamesForSnapshot(snapshot),
+        ).values(),
+      ],
+      keyval.command,
+    ).filter((key) =>
+      key
+        .toLocaleLowerCase()
+        .includes(keyval.query.toLocaleLowerCase()),
+    );
+    if (keys.length) {
+      return completionResult(
+        context.pos - keyval.query.length,
+        keys.slice(0, FILTERED_COMPLETION_LIMIT).map((key) => ({
+          label: key,
+          type: "property",
+          detail: `\\${keyval.command} key`,
+          apply: guardedApply(guard, key),
+        } satisfies Completion)),
+      );
+    }
+  }
+
+  const command = /\\([A-Za-z@]*)$/u.exec(before);
+  if (command) {
+    const query = command[1] ?? "";
+    const project = definitionOptions(
+      snapshot,
+      guard,
+      new Set(["macro"]),
+      query,
+    );
+    const projectNames = new Set(
+      project.map((option) => option.label),
+    );
+    const queryLower = query.toLocaleLowerCase();
+    const seenMacros = new Set<string>();
+    const packageMacros = [
+      ...loadedCatalogsFor(
+        catalogNamesForSnapshot(snapshot),
+      ).entries(),
+    ].flatMap(([catalogName, catalog]) =>
+      catalog.macros
+        .filter((macro) => {
+          if (
+            macro.unusual ||
+            projectNames.has(macro.name) ||
+            seenMacros.has(macro.name) ||
+            !macro.name.toLocaleLowerCase().includes(queryLower)
+          ) {
+            return false;
+          }
+          seenMacros.add(macro.name);
+          return true;
+        })
+        .map((macro) => {
+          const packageName = catalogName.replace(/^class-/, "");
+          const info = completionInfoPanel({
+            description: macro.documentation,
+            meta: `from ${packageName}`,
+            link: {
+              href: `https://ctan.org/pkg/${packageName}`,
+              label: `ctan.org/pkg/${packageName}`,
+            },
+          });
+          return {
+            label: macro.name,
+            type: "function",
+            detail: macro.detail ?? "package command",
+            ...(info ? { info } : {}),
+            apply: guardedApply(
+              guard,
+              macro.snippet ?? macro.name,
+              macro.snippet !== undefined,
+            ),
+          } satisfies Completion;
+        }),
+    );
+    return completionResult(
+      context.pos - query.length,
+      [...project, ...packageMacros].slice(
+        0,
+        FILTERED_COMPLETION_LIMIT,
       ),
     );
   }
@@ -945,10 +1212,15 @@ export function projectIntelligenceExtensions(): Extension[] {
   return [diagnostics, lifecycle];
 }
 
+const LATEX_SOURCE_RE = /\.(?:tex|latex|ltx|sty|cls)$/i;
+
 export function projectCompletionSourcesForPath(
   path: string | null,
 ): CompletionSource[] {
-  return path && SUPPORTED_SOURCE_RE.test(path)
-    ? [projectIntelligenceCompletion]
-    : [];
+  if (!path || !SUPPORTED_SOURCE_RE.test(path)) return [];
+  if (LATEX_SOURCE_RE.test(path)) {
+    warmAtSuggestions();
+    return [projectIntelligenceCompletion, atSuggestionCompletion];
+  }
+  return [projectIntelligenceCompletion];
 }

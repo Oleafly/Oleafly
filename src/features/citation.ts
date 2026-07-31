@@ -10,6 +10,7 @@ import { parseBib } from "@/lib/latex-tools";
 import { parseRis } from "@/lib/citation/ris";
 import { parseEndNoteXml } from "@/lib/citation/endnote-xml";
 import { parseZoteroRdf } from "@/lib/citation/zotero-rdf";
+import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { useIndexStore } from "@/store/project-index";
@@ -65,7 +66,10 @@ export function ensureTypstBibliography(source: string, path: string): string {
 
 function pickTargetBib(): { path: string; content: string } {
   const files = useFilesStore.getState();
-  const mainContent = files.files[files.mainDoc]?.content ?? "";
+  // Look for \bibliography in the document that actually compiles, which a
+  // `% !TEX root` comment in the active file may redirect.
+  const mainContent =
+    files.files[resolveEffectiveMainDoc().mainDoc]?.content ?? "";
   const bibPaths = files.tree.filter((f) => !f.is_dir && f.path.endsWith(".bib")).map((f) => f.path);
 
   let path: string | null = null;

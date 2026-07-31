@@ -1,0 +1,234 @@
+{
+  "args": [
+    "\\usepackage/fancyref#c"
+  ],
+  "deps": [
+    "varioref"
+  ],
+  "envs": [],
+  "keys": {
+    "\\fref,\\Fref,\\frefformat,\\Frefformat": [
+      "vario",
+      "plain",
+      "margin",
+      "main"
+    ],
+    "\\usepackage/fancyref#c": [
+      "german",
+      "english",
+      "loose",
+      "margin",
+      "paren",
+      "plain",
+      "tight",
+      "vario"
+    ]
+  },
+  "macros": [
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\fref,\\Fref,\\frefformat,\\Frefformat"
+      ],
+      "name": "Fref",
+      "snippet": "Fref[${2:format}]{${1:label}}"
+    },
+    {
+      "name": "Fref",
+      "snippet": "Fref{${1:label}}"
+    },
+    {
+      "name": "Frefchapname",
+      "unusual": true
+    },
+    {
+      "name": "Frefenumname",
+      "unusual": true
+    },
+    {
+      "name": "Frefeqname",
+      "unusual": true
+    },
+    {
+      "name": "Freffigname",
+      "unusual": true
+    },
+    {
+      "name": "Freffigshortname",
+      "unusual": true
+    },
+    {
+      "name": "Freffnname",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\fref,\\Fref,\\frefformat,\\Frefformat"
+      ],
+      "name": "Frefformat",
+      "snippet": "Frefformat{${1:format}}{${2:preﬁx macro}}{${3:output}}"
+    },
+    {
+      "name": "Frefonname",
+      "unusual": true
+    },
+    {
+      "name": "Frefpgname",
+      "unusual": true
+    },
+    {
+      "name": "Frefpgshortname",
+      "unusual": true
+    },
+    {
+      "name": "Frefsecname",
+      "unusual": true
+    },
+    {
+      "name": "Frefseename",
+      "unusual": true
+    },
+    {
+      "name": "Freftabname",
+      "unusual": true
+    },
+    {
+      "name": "Freftabshortname",
+      "unusual": true
+    },
+    {
+      "name": "fancyrefaddcaptions",
+      "snippet": "fancyrefaddcaptions{${1:language}}{${2:string defs}}"
+    },
+    {
+      "name": "fancyrefargdelim",
+      "unusual": true
+    },
+    {
+      "name": "fancyrefchangeprefix",
+      "snippet": "fancyrefchangeprefix{${1:prefix macro}}{${2:preﬁx}}"
+    },
+    {
+      "name": "fancyrefchaplabelprefix",
+      "unusual": true
+    },
+    {
+      "name": "fancyrefdefaultformat",
+      "unusual": true
+    },
+    {
+      "name": "fancyrefdefaultspacing",
+      "unusual": true
+    },
+    {
+      "name": "fancyrefenumlabelprefix",
+      "unusual": true
+    },
+    {
+      "name": "fancyrefeqlabelprefix",
+      "unusual": true
+    },
+    {
+      "name": "fancyreffiglabelprefix",
+      "unusual": true
+    },
+    {
+      "name": "fancyreffnlabelprefix",
+      "unusual": true
+    },
+    {
+      "name": "fancyrefhook",
+      "snippet": "fancyrefhook{${1:output of format}}",
+      "unusual": true
+    },
+    {
+      "name": "fancyrefloosespacing",
+      "unusual": true
+    },
+    {
+      "name": "fancyrefseclabelprefix",
+      "unusual": true
+    },
+    {
+      "name": "fancyreftablabelprefix",
+      "unusual": true
+    },
+    {
+      "name": "fancyreftightspacing",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\fref,\\Fref,\\frefformat,\\Frefformat"
+      ],
+      "name": "fref",
+      "snippet": "fref[${2:format}]{${1:label}}"
+    },
+    {
+      "name": "fref",
+      "snippet": "fref{${1:label}}"
+    },
+    {
+      "name": "frefchapname",
+      "unusual": true
+    },
+    {
+      "name": "frefenumname",
+      "unusual": true
+    },
+    {
+      "name": "frefeqname",
+      "unusual": true
+    },
+    {
+      "name": "freffigname",
+      "unusual": true
+    },
+    {
+      "name": "freffigshortname",
+      "unusual": true
+    },
+    {
+      "name": "freffnname",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\fref,\\Fref,\\frefformat,\\Frefformat"
+      ],
+      "name": "frefformat",
+      "snippet": "frefformat{${1:format}}{${2:preﬁx macro}}{${3:output}}"
+    },
+    {
+      "name": "frefonname",
+      "unusual": true
+    },
+    {
+      "name": "frefpgname",
+      "unusual": true
+    },
+    {
+      "name": "frefpgshortname",
+      "unusual": true
+    },
+    {
+      "name": "frefsecname",
+      "unusual": true
+    },
+    {
+      "name": "frefseename",
+      "unusual": true
+    },
+    {
+      "name": "freftabname",
+      "unusual": true
+    },
+    {
+      "name": "freftabshortname",
+      "unusual": true
+    }
+  ]
+}

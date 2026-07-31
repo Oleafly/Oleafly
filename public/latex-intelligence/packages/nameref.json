@@ -1,0 +1,28 @@
+{
+  "args": [],
+  "deps": [
+    "gettitlestring",
+    "refcount"
+  ],
+  "envs": [],
+  "keys": {},
+  "macros": [
+    {
+      "name": "Nameref",
+      "snippet": "Nameref{${1:label}}"
+    },
+    {
+      "name": "Sectionformat",
+      "snippet": "Sectionformat{${1:arg1}}{${2:arg2}}",
+      "unusual": true
+    },
+    {
+      "name": "nameref",
+      "snippet": "nameref{${1:label}}"
+    },
+    {
+      "name": "nameref*",
+      "snippet": "nameref*{${1:label}}"
+    }
+  ]
+}

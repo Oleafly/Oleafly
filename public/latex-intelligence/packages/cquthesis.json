@@ -1,0 +1,69 @@
+{
+  "args": [],
+  "deps": [
+    "dirtree"
+  ],
+  "envs": [],
+  "keys": {},
+  "macros": [
+    {
+      "name": "cmd",
+      "snippet": "cmd{${1:cmd}}"
+    },
+    {
+      "name": "cs",
+      "snippet": "cs{${1:csname}}"
+    },
+    {
+      "name": "csgo",
+      "snippet": "csgo{${1:csname}}{${2:arg}}"
+    },
+    {
+      "name": "figref",
+      "snippet": "figref{${1:label}}"
+    },
+    {
+      "name": "marg",
+      "snippet": "marg{${1:arg}}"
+    },
+    {
+      "name": "meta",
+      "snippet": "meta{${1:arg}}"
+    },
+    {
+      "name": "myfolder",
+      "snippet": "myfolder{${1:color}}{${2:folder}}"
+    },
+    {
+      "name": "myicon",
+      "snippet": "myicon{${1:color}}"
+    },
+    {
+      "name": "oarg",
+      "snippet": "oarg{${1:arg}}"
+    },
+    {
+      "name": "parg",
+      "snippet": "parg{${1:arg}}"
+    },
+    {
+      "name": "pkg",
+      "snippet": "pkg{${1:package}}"
+    },
+    {
+      "name": "qthis",
+      "snippet": "qthis{${1:text}}"
+    },
+    {
+      "name": "speakyourlove"
+    },
+    {
+      "name": "speakyourlove",
+      "snippet": "speakyourlove[${1:name}]"
+    },
+    {
+      "name": "tabref",
+      "snippet": "tabref{${1:label}}"
+    }
+  ]
+}
