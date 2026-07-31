@@ -46,12 +46,26 @@ if (process.platform !== "darwin") {
   process.exit(0);
 }
 
+// Skipping has to be explicit. This previously exited 0 whenever the identity
+// was absent, which is exactly what happened on CI: the identity is exported by
+// a later workflow step, so this ran with none set, reported success, changed
+// nothing, and the failure only surfaced in notarization at the end of the
+// build. A signing step that silently does nothing is worse than one that
+// fails.
+const allowUnsigned = process.argv.includes("--allow-unsigned");
 const identity = process.env.APPLE_SIGNING_IDENTITY?.trim();
 if (!identity) {
-  console.log(
-    "sign-bundled-tinymist: APPLE_SIGNING_IDENTITY unset, leaving the archive as fetched",
+  if (allowUnsigned) {
+    console.log(
+      "sign-bundled-tinymist: no identity and --allow-unsigned given; leaving the archive as fetched",
+    );
+    process.exit(0);
+  }
+  throw new Error(
+    "APPLE_SIGNING_IDENTITY is not set. Notarization rejects the bundled " +
+      "Tinymist binary unless it is signed, so refusing to continue. Pass " +
+      "--allow-unsigned for a local build that will not be notarized.",
   );
-  process.exit(0);
 }
 
 const manifest = JSON.parse(readFileSync(MANIFEST_PATH, "utf8"));
