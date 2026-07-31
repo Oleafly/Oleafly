@@ -4,10 +4,11 @@ Oleafly ships with an in-app updater (Tauri's `plugin-updater`). On launch it
 quietly checks the latest GitHub Release; if a newer version is available it
 opens a dedicated, branded update window (not a native OS dialog) that shows the
 changelog and offers to download, verify, install, and restart. Users can also
-trigger a check from the **Oleafly → Check for Updates** menu, or from
-**About → Check for updates** (which reports the result inline).
-The same application menu provides **Reload Views** for refreshing webviews and
-**Restart Application** for a full process restart.
+trigger a check from **About → Check for updates** (which reports the result
+inline), or on macOS and Linux from the **Oleafly → Check for Updates** menu.
+That application menu (macOS and Linux only — Windows has no menu bar) also
+offers **Reload Views** for refreshing webviews and **Restart Application** for
+a full process restart.
 
 Preview builds may be distributed without operating-system code signatures.
 Updater artifacts are generated only when the release workflow has access to

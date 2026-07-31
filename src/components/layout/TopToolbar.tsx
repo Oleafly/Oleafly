@@ -36,6 +36,7 @@ import { useInitialFocus } from "@/components/ui/use-initial-focus";
 import { CompileControls } from "@/components/layout/CompileControls";
 import { HomeBrandButton } from "@/components/layout/HomeBrandButton";
 import { GithubMenu } from "@/components/layout/GithubMenu";
+import { WindowControls } from "@/components/layout/WindowControls";
 import { useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
 import { useProjectColorsStore } from "@/store/project-colors";
@@ -557,6 +558,7 @@ export function TopToolbar() {
             })}
           </DropdownMenuContent>
         </DropdownMenu>
+        <WindowControls />
       </div>
     </header>
 
