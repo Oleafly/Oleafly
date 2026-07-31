@@ -128,7 +128,7 @@ export function registerOmnibarCommands() {
     label: themeLabel,
     keywords: "theme dark light appearance mode",
     icon: themeIcon,
-    order: 20,
+    order: 40,
     run: toggleTheme,
   });
   // Figures insert into an open document, so only offer this with a project open.
@@ -156,7 +156,7 @@ export function registerOmnibarCommands() {
     slash: ["diagram-composer", "diagram"],
     hint: "/diagram-composer",
     icon: () => <PenTool className="size-4" />,
-    order: 325,
+    order: 20,
     run: () => void openHomePage("diagram-composer"),
   });
   registerCommand({
@@ -169,6 +169,7 @@ export function registerOmnibarCommands() {
     hint: "/tools",
     icon: () => <ToolCase className="size-4" />,
     order: 290,
+    when: () => useSettingsStore.getState().latexTools,
     run: () => void openToolsGallery(),
   });
   TOOL_DEFINITIONS.forEach((tool, index) => {
@@ -186,6 +187,7 @@ export function registerOmnibarCommands() {
         />
       ),
       order: 330 + index,
+      when: () => useSettingsStore.getState().latexTools,
       run: () => void openHomePage(tool.page),
     });
   });

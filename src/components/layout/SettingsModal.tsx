@@ -12,6 +12,7 @@ import {
   Cpu,
   Database,
   ExternalLink,
+  FlaskConical,
   FolderOpen,
   Github,
   // Globe, (only used by the commented-out Author row)
@@ -87,6 +88,7 @@ type Section =
   | "integrations"
   | "shortcuts"
   | "mcp"
+  | "experimentation"
   | "help";
 
 const NAV: { id: Section; label: string; icon: typeof Palette }[] = [
@@ -100,9 +102,10 @@ const NAV: { id: Section; label: string; icon: typeof Palette }[] = [
   { id: "integrations", label: "Integrations", icon: Blocks },
   { id: "shortcuts", label: "Keyboard Shortcuts", icon: Keyboard },
   { id: "mcp", label: "MCP", icon: Plug },
+  { id: "experimentation", label: "Experimentation", icon: FlaskConical },
   { id: "help", label: "Help & About", icon: LifeBuoy },
 ];
-const ADVANCED: Section[] = ["dictionary", "engine", "downloads", "data"];
+const ADVANCED: Section[] = ["dictionary", "engine", "downloads", "data", "experimentation"];
 const TOUR_SECTION_TARGETS: Partial<Record<Section, string>> = {
   general: "settings-general",
   appearance: "settings-appearance",
@@ -199,6 +202,10 @@ export function SettingsModal() {
   const setShowWordChoice = useSettingsStore((s) => s.setShowWordChoice);
   const offline = useSettingsStore((s) => s.offline);
   const setOffline = useSettingsStore((s) => s.setOffline);
+  const visualEditor = useSettingsStore((s) => s.visualEditor);
+  const setVisualEditor = useSettingsStore((s) => s.setVisualEditor);
+  const latexTools = useSettingsStore((s) => s.latexTools);
+  const setLatexTools = useSettingsStore((s) => s.setLatexTools);
   const editorFontSize = useSettingsStore((s) => s.editorFontSize);
   const setEditorFontSize = useSettingsStore((s) => s.setEditorFontSize);
   const appFontSize = useSettingsStore((s) => s.appFontSize);
@@ -985,6 +992,32 @@ export function SettingsModal() {
             {section === "shortcuts" && <ShortcutsSection />}
 
             {section === "mcp" && <McpSection />}
+
+            {section === "experimentation" && (
+              <div className="space-y-2">
+                <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/10 p-3 text-xs text-foreground">
+                  <TriangleAlert className="mt-0.5 size-4 shrink-0 text-primary" />
+                  <span>
+                    These features are experimental and still in beta. They are
+                    not fully tested yet and may change, break, or be removed in a
+                    future release. Turn them on only if you want to try work in
+                    progress.
+                  </span>
+                </div>
+                <ToggleRow
+                  label="Visual editor"
+                  desc="Show the Visual/Code toggle in the document editor. Off by default, so documents open in the code editor only. Diagrams always keep their own canvas toggle."
+                  checked={visualEditor}
+                  onChange={setVisualEditor}
+                />
+                <ToggleRow
+                  label="LaTeX tools"
+                  desc="Show the Oleafly Tools gallery and the individual tools (PDF import, equations, tables, BibTeX, lab and literature search, deadlines) plus their slash commands. Off by default while still in beta."
+                  checked={latexTools}
+                  onChange={setLatexTools}
+                />
+              </div>
+            )}
 
             {section === "help" && <HelpSection />}
           </div>
