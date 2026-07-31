@@ -1,0 +1,64 @@
+{
+  "args": [],
+  "deps": [],
+  "envs": [],
+  "keys": {},
+  "macros": [
+    {
+      "name": "Bra",
+      "snippet": "Bra{${1:text}}"
+    },
+    {
+      "name": "BraDoubleVert",
+      "unusual": true
+    },
+    {
+      "name": "BraVert",
+      "unusual": true
+    },
+    {
+      "name": "Braket",
+      "snippet": "Braket{${1:text}}"
+    },
+    {
+      "name": "Ket",
+      "snippet": "Ket{${1:text}}"
+    },
+    {
+      "name": "SavedDoubleVert",
+      "unusual": true
+    },
+    {
+      "name": "Set",
+      "snippet": "Set{${1:text}}"
+    },
+    {
+      "name": "SetDoubleVert",
+      "unusual": true
+    },
+    {
+      "name": "SetVert",
+      "unusual": true
+    },
+    {
+      "name": "bra",
+      "snippet": "bra{${1:text}}"
+    },
+    {
+      "name": "braket",
+      "snippet": "braket{${1:text}}"
+    },
+    {
+      "name": "ket",
+      "snippet": "ket{${1:text}}"
+    },
+    {
+      "name": "midvert",
+      "unusual": true
+    },
+    {
+      "name": "set",
+      "snippet": "set{${1:text}}"
+    }
+  ]
+}

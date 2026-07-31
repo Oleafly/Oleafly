@@ -1,0 +1,36 @@
+{
+  "args": [
+    "\\usepackage/units#c"
+  ],
+  "deps": [
+    "ifthen",
+    "nicefrac"
+  ],
+  "envs": [],
+  "keys": {
+    "\\usepackage/units#c": [
+      "tight",
+      "loose",
+      "nice",
+      "ugly"
+    ]
+  },
+  "macros": [
+    {
+      "name": "unit",
+      "snippet": "unit[${2:value}]{${1:dimension}}"
+    },
+    {
+      "name": "unit",
+      "snippet": "unit{${1:dimension}}"
+    },
+    {
+      "name": "unitfrac",
+      "snippet": "unitfrac[${3:value%:translatable}]{${1:num%:translatable}}{${2:den%:translatable}}"
+    },
+    {
+      "name": "unitfrac",
+      "snippet": "unitfrac{${1:num%:translatable}}{${2:den%:translatable}}"
+    }
+  ]
+}

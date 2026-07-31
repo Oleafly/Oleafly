@@ -1,0 +1,60 @@
+{
+  "args": [],
+  "deps": [],
+  "envs": [
+    {
+      "name": "charclip",
+      "snippet": "[${2:par}]{${1:text}}"
+    },
+    {
+      "name": "charclip",
+      "snippet": "{${1:text}}"
+    },
+    {
+      "name": "charclip*",
+      "snippet": "[${2:par}]{${1:text}}"
+    },
+    {
+      "name": "charclip*",
+      "snippet": "{${1:text}}"
+    }
+  ],
+  "keys": {},
+  "macros": [
+    {
+      "name": "endpscharclip"
+    },
+    {
+      "name": "pscharclip",
+      "snippet": "pscharclip[${2:par}]{${1:text}}"
+    },
+    {
+      "name": "pscharclip",
+      "snippet": "pscharclip{${1:text}}"
+    },
+    {
+      "name": "pscharclip*",
+      "snippet": "pscharclip*[${2:par}]{${1:text}}"
+    },
+    {
+      "name": "pscharclip*",
+      "snippet": "pscharclip*{${1:text}}"
+    },
+    {
+      "name": "pscharpath",
+      "snippet": "pscharpath[${2:par}]{${1:text}}"
+    },
+    {
+      "name": "pscharpath",
+      "snippet": "pscharpath{${1:text}}"
+    },
+    {
+      "name": "pscharpath*",
+      "snippet": "pscharpath*[${2:par}]{${1:text}}"
+    },
+    {
+      "name": "pscharpath*",
+      "snippet": "pscharpath*{${1:text}}"
+    }
+  ]
+}

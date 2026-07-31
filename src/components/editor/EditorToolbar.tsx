@@ -41,6 +41,7 @@ import { goToDefinition, findReferences, startRename } from "@/lib/index/nav";
 import { imageToLatex, imageToLatexAvailable } from "@/features/image-to-latex";
 import { goToSyncTex } from "@/features/synctex";
 import { countWords } from "@/lib/wordcount";
+import { activeSelectionText } from "@/components/editor/WordCountModal";
 import { useFilesStore } from "@/store/files";
 import { cn, shortcut } from "@/lib/utils";
 import {
@@ -330,23 +331,28 @@ export function WordCountButton() {
     characters: 0,
     lines: 0,
   });
+  const [selectionWords, setSelectionWords] = useState<number | null>(null);
   const rows: [string, number][] = [
     ["Words", stats.words],
     ["Characters", stats.characters],
     ["Lines", stats.lines],
   ];
+  if (selectionWords !== null) rows.push(["Selection", selectionWords]);
   return (
     <Popover
       ariaLabel="Word count"
       className="w-56 p-3"
       trigger={<Info className="size-4" />}
       onOpenChange={(open) => {
+        // Counting stays lazy: nothing is computed until the popover opens.
         if (!open) return;
         const files = useFilesStore.getState();
         const content = files.activePath
           ? (files.files[files.activePath]?.content ?? "")
           : "";
         setStats(countWords(content));
+        const selected = activeSelectionText();
+        setSelectionWords(selected === null ? null : countWords(selected).words);
       }}
     >
       <p className="mb-1 text-sm font-semibold text-foreground">Word count</p>
@@ -367,9 +373,11 @@ export function WordCountButton() {
 export function EditorToolbar({
   wysiwyg,
   onToggleWysiwyg,
+  showVisualToggle = true,
 }: {
   wysiwyg: boolean;
   onToggleWysiwyg: () => void;
+  showVisualToggle?: boolean;
 }) {
   const [visionReady, setVisionReady] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -517,12 +525,14 @@ export function EditorToolbar({
       </div>
 
       <div className="ml-auto flex shrink-0 items-center gap-0.5">
-        <WysiwygModeSwitch
-          wysiwyg={wysiwyg}
-          onToggle={onToggleWysiwyg}
-          secondLabel={projectKind === "diagram" ? "Canvas" : "Visual"}
-          data-tour="wysiwyg-toggle"
-        />
+        {showVisualToggle && (
+          <WysiwygModeSwitch
+            wysiwyg={wysiwyg}
+            onToggle={onToggleWysiwyg}
+            secondLabel={projectKind === "diagram" ? "Canvas" : "Visual"}
+            data-tour="wysiwyg-toggle"
+          />
+        )}
         <WordCountButton />
         {!wysiwyg && (
           <IconBtn onClick={editorFind} title={`Find (${shortcut("⌘F")})`}>

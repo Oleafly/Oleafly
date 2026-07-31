@@ -1,0 +1,53 @@
+{
+  "args": [],
+  "deps": [
+    "amssymb",
+    "sansmathaccent"
+  ],
+  "envs": [],
+  "keys": {
+    "\\setbeamerfont,\\setbeamerfont*": [
+      "size=${1:size command}",
+      "size*={${1:size in pt}}{${2:baselineskip}}",
+      "shape=${1:shape command}",
+      "shape*={${1:shape attribute abbreviation}}",
+      "series=${1:series command}",
+      "series*={${1:series attribute abbreviation}}",
+      "family=${1:family command}",
+      "family*={${1:family name}}",
+      "parent={${1:parent list}}"
+    ]
+  },
+  "macros": [
+    {
+      "name": "TINY"
+    },
+    {
+      "name": "Tiny"
+    },
+    {
+      "keyPos": 1,
+      "keys": [
+        "\\setbeamerfont,\\setbeamerfont*"
+      ],
+      "name": "setbeamerfont",
+      "snippet": "setbeamerfont{${1:beamer-font name}}{${2:attributes}}"
+    },
+    {
+      "keyPos": 1,
+      "keys": [
+        "\\setbeamerfont,\\setbeamerfont*"
+      ],
+      "name": "setbeamerfont*",
+      "snippet": "setbeamerfont*{${1:beamer-font name}}{${2:attributes}}"
+    },
+    {
+      "name": "usebeamerfont",
+      "snippet": "usebeamerfont{${1:beamer-font name}}"
+    },
+    {
+      "name": "usebeamerfont*",
+      "snippet": "usebeamerfont*{${1:beamer-font name}}"
+    }
+  ]
+}

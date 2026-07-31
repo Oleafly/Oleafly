@@ -1,0 +1,92 @@
+{
+  "args": [
+    "\\usepackage/rotating#c"
+  ],
+  "deps": [
+    "graphicx",
+    "ifthen"
+  ],
+  "envs": [
+    {
+      "name": "rotate",
+      "snippet": "{${1:angle}}"
+    },
+    {
+      "name": "sideways"
+    },
+    {
+      "name": "sidewaysfigure"
+    },
+    {
+      "name": "sidewaysfigure*"
+    },
+    {
+      "name": "sidewaystable"
+    },
+    {
+      "name": "sidewaystable*"
+    },
+    {
+      "name": "turn",
+      "snippet": "{${1:angle}}"
+    }
+  ],
+  "keys": {
+    "\\usepackage/rotating#c": [
+      "clockwise",
+      "counterclockwise",
+      "anticlockwise",
+      "figuresleft",
+      "figuresright",
+      "quiet",
+      "log",
+      "chatter",
+      "unknownkeysallowed",
+      "draft",
+      "final",
+      "hiresbb",
+      "demo",
+      "setpagesize",
+      "nosetpagesize",
+      "dvips",
+      "xdvi",
+      "dvipdf",
+      "dvipdfm",
+      "dvipdfmx",
+      "xetex",
+      "pdftex",
+      "luatex",
+      "dvisvgm",
+      "dvipsone",
+      "dviwindo",
+      "emtex",
+      "dviwin",
+      "oztex",
+      "textures",
+      "pctexps",
+      "pctexwin",
+      "pctexhp",
+      "pctex32",
+      "truetex",
+      "tcidvi",
+      "vtex",
+      "debugshow",
+      "hiderotate",
+      "hidescale"
+    ]
+  },
+  "macros": [
+    {
+      "name": "rotFPbot",
+      "unusual": true
+    },
+    {
+      "name": "rotFPtop",
+      "unusual": true
+    },
+    {
+      "name": "turnbox",
+      "snippet": "turnbox{${1:angle}}{${2:contents}}"
+    }
+  ]
+}

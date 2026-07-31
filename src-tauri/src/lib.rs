@@ -13,6 +13,7 @@ mod language_service;
 mod latex_engine;
 mod literature;
 mod mcp;
+#[cfg(not(target_os = "windows"))]
 mod menu;
 mod ollama;
 mod paths;
@@ -34,13 +35,18 @@ pub fn run() {
     git::scrub_remote_credentials();
 
     let mut builder = tauri::Builder::default()
-        .menu(menu::build)
-        .on_menu_event(|app, event| menu::on_event(app, event.id().as_ref()))
         .manage(language_service::LanguageServiceState::default())
         .plugin(language_service::lifecycle_plugin())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_dialog::init());
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        builder = builder
+            .menu(menu::build)
+            .on_menu_event(|app, event| menu::on_event(app, event.id().as_ref()));
+    }
 
     // The updater and process plugins are desktop-only.
     #[cfg(desktop)]
@@ -64,6 +70,10 @@ pub fn run() {
             if std::env::var("OLEAFLY_E2E_WINDOW").is_err() {
                 use tauri::Manager;
                 if let Some(window) = app.get_webview_window("main") {
+                    #[cfg(target_os = "windows")]
+                    {
+                        let _ = window.set_decorations(false);
+                    }
                     let _ = window.maximize();
                 }
             }

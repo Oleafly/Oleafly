@@ -1,0 +1,33 @@
+{
+  "args": [],
+  "deps": [
+    "scrkbase",
+    "scrlogo"
+  ],
+  "envs": [],
+  "keys": {
+    "\\KOMAoptions#c": [
+      "12h=${1|true,on,yes,false,off,no|}"
+    ]
+  },
+  "macros": [
+    {
+      "name": "settime",
+      "snippet": "settime{${1:time}}"
+    },
+    {
+      "name": "thistime"
+    },
+    {
+      "name": "thistime",
+      "snippet": "thistime[${1:delimiter}]"
+    },
+    {
+      "name": "thistime*"
+    },
+    {
+      "name": "thistime*",
+      "snippet": "thistime*[${1:delimiter}]"
+    }
+  ]
+}

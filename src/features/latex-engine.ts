@@ -20,6 +20,7 @@ import {
   notifyCompileSucceeded,
 } from "@/lib/cross-window";
 import { refreshPreviewWindow } from "@/lib/preview-window";
+import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 
 export async function compileTaggedAndVerify(): Promise<void> {
   const engine = useEngineStore.getState().info;
@@ -31,7 +32,8 @@ export async function compileTaggedAndVerify(): Promise<void> {
   const files = useFilesStore.getState();
   const capturedProjectId = files.projectId;
   const projectId = files.projectId ?? "default";
-  const main = files.mainDoc || "main.tex";
+  // Honour an active `% !TEX root` override, like the main compile lane.
+  const main = resolveEffectiveMainDoc().mainDoc;
   const requestIdentity = beginCompileRequestIdentity(projectId, main);
   const checkpointAtStart =
     useCompileStore.getState().lastCompileCheckpoint;
@@ -43,7 +45,7 @@ export async function compileTaggedAndVerify(): Promise<void> {
     const currentFiles = useFilesStore.getState();
     return (
       currentFiles.projectId === capturedProjectId &&
-      (currentFiles.mainDoc || "main.tex") === main &&
+      resolveEffectiveMainDoc().mainDoc === main &&
       isCompileOutputStillWanted(requestIdentity)
     );
   };

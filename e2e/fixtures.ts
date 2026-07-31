@@ -170,7 +170,15 @@ function createNativeTest(dismissTours: boolean) {
       }
       await ensureNativePageReady(page);
       if (firstPage) {
-        await page.evaluate(`localStorage.removeItem("oleafly.shortcuts")`);
+        // Enable the experimental Visual editor and LaTeX tools (default off)
+        // so the gated e2e specs run. Wrapped as an IIFE expression, the form
+        // this bridge evaluates reliably (bare multi-statement strings time out).
+        await page.evaluate(`(function(){
+          localStorage.removeItem("oleafly.shortcuts");
+          localStorage.setItem("oleafly.visualEditor", "1");
+          localStorage.setItem("oleafly.latexTools", "1");
+          return true;
+        })()`);
         await reloadNativePage(page);
       }
       if (dismissTours) {

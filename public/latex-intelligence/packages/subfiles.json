@@ -1,0 +1,35 @@
+{
+  "args": [
+    "\\usepackage/subfiles#c"
+  ],
+  "deps": [
+    "import"
+  ],
+  "envs": [],
+  "keys": {
+    "\\usepackage/subfiles#c": [
+      "v1"
+    ]
+  },
+  "macros": [
+    {
+      "name": "ifSubfilesClassLoaded",
+      "snippet": "ifSubfilesClassLoaded{${1:then}}{${2:else}}",
+      "unusual": true
+    },
+    {
+      "name": "subfile",
+      "snippet": "subfile{${1:file}}"
+    },
+    {
+      "name": "subfileinclude",
+      "snippet": "subfileinclude{${1:file}}",
+      "unusual": true
+    },
+    {
+      "name": "subfix",
+      "snippet": "subfix{${1:file}}",
+      "unusual": true
+    }
+  ]
+}

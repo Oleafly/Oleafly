@@ -11,6 +11,7 @@ const SETTINGS_SECTIONS = new Set([
   "integrations",
   "shortcuts",
   "mcp",
+  "experimentation",
   "help",
 ]);
 
@@ -272,6 +273,10 @@ interface SettingsState {
   setDockPlacement: (v: DockPlacement) => void;
   bgPattern: BackgroundPattern;
   setBgPattern: (v: BackgroundPattern) => void;
+  visualEditor: boolean;
+  setVisualEditor: (v: boolean) => void;
+  latexTools: boolean;
+  setLatexTools: (v: boolean) => void;
   resetToDefaults: () => void;
 }
 
@@ -295,6 +300,8 @@ const PREF_DEFAULTS = {
   accentColor: "#2563eb",
   dockPlacement: "left" as DockPlacement,
   bgPattern: "dots" as BackgroundPattern,
+  visualEditor: false,
+  latexTools: false,
 } as const;
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -431,6 +438,16 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.bgPattern", v);
     set({ bgPattern: v });
   },
+  visualEditor: ls("oleafly.visualEditor", "0") === "1",
+  setVisualEditor: (v) => {
+    saveLs("oleafly.visualEditor", v ? "1" : "0");
+    set({ visualEditor: v });
+  },
+  latexTools: ls("oleafly.latexTools", "0") === "1",
+  setLatexTools: (v) => {
+    saveLs("oleafly.latexTools", v ? "1" : "0");
+    set({ latexTools: v });
+  },
   showTree: true,
   toggleTree: () => set((s) => ({ showTree: !s.showTree })),
   hotkeysOpen: false,
@@ -518,6 +535,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.accent", PREF_DEFAULTS.accentColor);
     saveLs("oleafly.dockPlacement", PREF_DEFAULTS.dockPlacement);
     saveLs("oleafly.bgPattern", PREF_DEFAULTS.bgPattern);
+    saveLs("oleafly.visualEditor", PREF_DEFAULTS.visualEditor ? "1" : "0");
+    saveLs("oleafly.latexTools", PREF_DEFAULTS.latexTools ? "1" : "0");
     set({ ...PREF_DEFAULTS });
     notifyProofreadingSettingsChanged("reset", get());
   },

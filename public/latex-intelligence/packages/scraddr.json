@@ -1,0 +1,79 @@
+{
+  "args": [
+    "\\usepackage/scraddr#c"
+  ],
+  "deps": [
+    "scrlogo"
+  ],
+  "envs": [],
+  "keys": {
+    "\\usepackage/scraddr#c": [
+      "adrFreeIVempty",
+      "adrFreeIVshow",
+      "adrFreeIVwarn",
+      "adrFreeIVstop"
+    ]
+  },
+  "macros": [
+    {
+      "name": "Address",
+      "snippet": "Address{${1:Key}}"
+    },
+    {
+      "name": "Comment",
+      "snippet": "Comment{${1:Key}}"
+    },
+    {
+      "name": "FirstName",
+      "snippet": "FirstName{${1:Key}}"
+    },
+    {
+      "name": "FreeI",
+      "snippet": "FreeI{${1:Key}}"
+    },
+    {
+      "name": "FreeII",
+      "snippet": "FreeII{${1:Key}}"
+    },
+    {
+      "name": "FreeIII",
+      "snippet": "FreeIII{${1:Key}}"
+    },
+    {
+      "name": "FreeIV",
+      "snippet": "FreeIV{${1:Key}}"
+    },
+    {
+      "name": "InputAddressFile",
+      "snippet": "InputAddressFile{${1:file}}"
+    },
+    {
+      "name": "LastName",
+      "snippet": "LastName{${1:Key}}"
+    },
+    {
+      "name": "Name",
+      "snippet": "Name{${1:Key}}"
+    },
+    {
+      "name": "Telephone",
+      "snippet": "Telephone{${1:Key}}"
+    },
+    {
+      "name": "addrchar",
+      "snippet": "addrchar{${1:initial}}"
+    },
+    {
+      "name": "addrentry",
+      "snippet": "addrentry{${1:LastName}}{${2:FirstName}}{${3:Address}}{${4:Phone}}{${5:F1}}{${6:F2}}{${7:F3}}{${8:F4}}{${9:Key}}"
+    },
+    {
+      "name": "adrchar",
+      "snippet": "adrchar{${1:initial}}"
+    },
+    {
+      "name": "adrentry",
+      "snippet": "adrentry{${1:LastName}}{${2:FirstName}}{${3:Address}}{${4:Phone}}{${5:F1}}{${6:F2}}{${7:Comment}}{${8:Key}}"
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "args": [
+    "\\usepackage/currvita#c"
+  ],
+  "deps": [
+    "ifthen"
+  ],
+  "envs": [
+    {
+      "name": "cv",
+      "snippet": "{${1:heading of the curriculum vitae}}"
+    }
+  ],
+  "keys": {
+    "\\usepackage/currvita#c": [
+      "LabelsAligned",
+      "TextAligned",
+      "openbib",
+      "ManyBibs",
+      "NoDate"
+    ]
+  },
+  "macros": [
+    {
+      "name": "cvbibname"
+    },
+    {
+      "name": "cvheadingfont"
+    },
+    {
+      "name": "cvlabelfont"
+    },
+    {
+      "name": "cvlabelsep"
+    },
+    {
+      "name": "cvlabelskip"
+    },
+    {
+      "name": "cvlabelwidth"
+    },
+    {
+      "name": "cvlistheadingfont"
+    },
+    {
+      "name": "cvplace",
+      "snippet": "cvplace{${1:location}}"
+    }
+  ]
+}

@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Document citation scan: a "From document" mode in Citation Search splits the
+  manuscript into paragraphs, searches arXiv, Semantic Scholar, Crossref,
+  PubMed, and OpenAlex (Google Scholar via an optional Serper key), hides
+  papers already in the bibliography, scores candidates 0–100 with FOR/AGAINST
+  reasoning from your configured AI provider (citation-count heuristics when
+  no provider is set), and adds picks straight to the library or `.bib`.
+- Friendly / Fire paper review: a Review tab that streams a structured
+  manuscript review in a supportive-mentor or hardened Reviewer #2 voice.
+- Package-aware LaTeX intelligence vendored from LaTeX Workshop (MIT, with
+  attribution): completions for 2,800+ package and 600+ class names with CTAN
+  descriptions, per-package commands, environments, options, and key=value
+  arguments for the packages a project actually uses, plus `@` math shortcuts,
+  glossary intelligence, and structured compile-log parsing with
+  nested-file error attribution.
+- `% !TEX root` magic comments now set the effective main document across
+  compile, SyncTeX, export, and project intelligence, with a toolbar
+  indicator and a warning when the target is missing.
+- Editor UX density: equation previews when hovering references whose label
+  sits in math, `\includegraphics` thumbnails on hover, reference numbers
+  from the last compile in hovers and completions, Enter continues `\item`
+  lists, shortcuts to close or surround with environments, and a
+  mask-accurate word count that skips math and code.
+- New "Experimentation" settings section (under Advanced) for beta features,
+  with a callout noting they are experimental and not fully tested.
+
+### Changed
+
+- The Visual/Code editor toggle is now gated behind a "Visual editor"
+  experimental setting (off by default). When off, documents open in the code
+  editor only; diagrams keep their own canvas toggle.
+- The Oleafly Tools gallery, the individual LaTeX tools (PDF import,
+  equations, tables, BibTeX, lab and literature search, deadlines), and their
+  slash commands are gated behind a "LaTeX tools" experimental setting
+  (off by default).
+- Reordered the top omnibar commands to Create, Open Diagram Composer, theme,
+  then settings.
+- Windows now runs in a frameless window. The native OS menu bar and title bar
+  are removed, and custom minimize / maximize-restore / close controls — with a
+  divider separating them from app controls — are rendered in the toolbar and in
+  every fullscreen tool surface (library, editor, PDF/equation/biblatex/table/
+  search/deadlines tools, and the diagram composer). macOS and Linux keep their
+  native menu bar and title bar unchanged.
+
 ## [0.3.0] - 2026-07-30
 
 ### Added

@@ -30,6 +30,10 @@ import { useCompileStore } from "@/store/compile";
 import { useCitationStore } from "@/store/citation";
 import { clearBuildCache } from "@/lib/tauri";
 import { getEditorView, insertAtCursor, wrapSelection } from "@/components/editor/cm/controller";
+import {
+  closeEnvironmentAtCursor,
+  surroundSelectionWithEnvironment,
+} from "@oleafly/editor";
 import { forwardFromCursor } from "@/features/synctex";
 import { exportCurrentPdf } from "@/features/export";
 import { useFilesStore } from "@/store/files";
@@ -126,7 +130,7 @@ export function registerOmnibarCommands() {
     label: themeLabel,
     keywords: "theme dark light appearance mode",
     icon: themeIcon,
-    order: 20,
+    order: 40,
     run: toggleTheme,
   });
   // Figures insert into an open document, so only offer this with a project open.
@@ -154,7 +158,7 @@ export function registerOmnibarCommands() {
     slash: ["diagram-composer", "diagram"],
     hint: "/diagram-composer",
     icon: () => <PenTool className="size-4" />,
-    order: 325,
+    order: 20,
     run: () => void openHomePage("diagram-composer"),
   });
   registerCommand({
@@ -167,6 +171,7 @@ export function registerOmnibarCommands() {
     hint: "/tools",
     icon: () => <ToolCase className="size-4" />,
     order: 290,
+    when: () => useSettingsStore.getState().latexTools,
     run: () => void openToolsGallery(),
   });
   TOOL_DEFINITIONS.forEach((tool, index) => {
@@ -184,6 +189,7 @@ export function registerOmnibarCommands() {
         />
       ),
       order: 330 + index,
+      when: () => useSettingsStore.getState().latexTools,
       run: () => void openHomePage(tool.page),
     });
   });
@@ -421,6 +427,38 @@ export function registerPaletteCommands() {
     order: 470,
     when: activeIsLatexSource,
     run: ins("\\label{}"),
+  });
+
+  palette({
+    id: "palette.close-environment",
+    group: "Editor",
+    label: "Close LaTeX environment",
+    keywords: "close end environment begin latex",
+    icon: () => <Square className="size-4" />,
+    order: 480,
+    when: activeIsLatexSource,
+    run: () => {
+      const view = getEditorView();
+      if (!view) return;
+      const spec = closeEnvironmentAtCursor(view.state);
+      if (!spec) return;
+      view.dispatch(spec);
+      view.focus();
+    },
+  });
+  palette({
+    id: "palette.surround-environment",
+    group: "Editor",
+    label: "Surround with environment",
+    keywords: "surround wrap environment begin end latex",
+    icon: () => <PenTool className="size-4" />,
+    order: 490,
+    when: activeIsLatexSource,
+    run: () => {
+      const view = getEditorView();
+      if (!view) return;
+      if (surroundSelectionWithEnvironment(view)) view.focus();
+    },
   });
 
   palette({

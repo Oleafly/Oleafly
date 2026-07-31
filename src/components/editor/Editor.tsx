@@ -11,7 +11,9 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { wrapSelection } from "./cm/controller";
 import { useFilesStore } from "@/store/files";
 import { useDiffStore, diffKey } from "@/store/diff";
+import { useSettingsStore } from "@/store/settings";
 import { base64ToUint8Array, readFileBase64 } from "@/lib/tauri";
+import { IMAGE_EXTS, imageMime } from "@/lib/image-mime";
 import { cn } from "@/lib/utils";
 import { formattingForEngine, pathUsesEngineSource } from "@/lib/document-engine";
 import { getWysiwygMode, setWysiwygMode } from "@/lib/wysiwyg-mode";
@@ -51,18 +53,6 @@ function PdfFileView({ projectId, path }: { projectId: string; path: string }) {
   if (err) return <div className="p-6 text-sm text-destructive">Failed to load PDF: {err}</div>;
   if (!bytes) return <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
   return <PdfViewer data={bytes} scale={1} />;
-}
-
-const IMAGE_EXTS = [".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg"];
-
-function imageMime(path: string): string {
-  const p = path.toLowerCase();
-  if (p.endsWith(".jpg") || p.endsWith(".jpeg")) return "image/jpeg";
-  if (p.endsWith(".gif")) return "image/gif";
-  if (p.endsWith(".webp")) return "image/webp";
-  if (p.endsWith(".bmp")) return "image/bmp";
-  if (p.endsWith(".svg")) return "image/svg+xml";
-  return "image/png";
 }
 
 // data: URLs, not blob:, because the CSP only allows img-src data:.
@@ -158,6 +148,8 @@ export function Editor() {
     /\.(zip|gz|eps|ttf|otf|woff2?)$/i.test(activePath);
   const projectId = useFilesStore((s) => s.projectId);
   const projectKind = useFilesStore((s) => s.projectKind);
+  const visualEditor = useSettingsStore((s) => s.visualEditor);
+  const visualEnabled = projectKind === "diagram" || visualEditor;
   const mainDoc = useFilesStore((s) => s.mainDoc);
   const isDiagramMainFile = projectKind === "diagram" && activePath === mainDoc;
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
@@ -167,7 +159,7 @@ export function Editor() {
   const showMarkdownToolbar =
     engineLoaded && formattingProfile === "markdown" && pathUsesEngineSource(engine, activePath);
 
-  const [wysiwyg, setWysiwygState] = useState(() => (projectId ? getWysiwygMode(projectId) : false));
+  const [wysiwygState, setWysiwygState] = useState(() => (projectId ? getWysiwygMode(projectId) : false));
   useEffect(() => {
     if (projectId) setWysiwygState(getWysiwygMode(projectId));
   }, [projectId]);
@@ -176,7 +168,8 @@ export function Editor() {
     setWysiwygMode(projectId, next);
     setWysiwygState(next);
   }, [projectId]);
-  const toggleWysiwyg = () => setWysiwyg(!wysiwyg);
+  const toggleWysiwyg = () => setWysiwyg(!wysiwygState);
+  const wysiwyg = visualEnabled && wysiwygState;
 
   useEffect(() => {
     setWysiwygVisibilityController(setWysiwyg);
@@ -278,12 +271,12 @@ export function Editor() {
         <>
           {showLatexToolbar && (
             <div className="shrink-0">
-              <EditorToolbar wysiwyg={wysiwyg} onToggleWysiwyg={toggleWysiwyg} />
+              <EditorToolbar wysiwyg={wysiwyg} onToggleWysiwyg={toggleWysiwyg} showVisualToggle={visualEnabled} />
             </div>
           )}
           {showMarkdownToolbar && (
             <div className="shrink-0">
-              <MarkdownToolbar wysiwyg={wysiwyg} onToggleWysiwyg={toggleWysiwyg} />
+              <MarkdownToolbar wysiwyg={wysiwyg} onToggleWysiwyg={toggleWysiwyg} showVisualToggle={visualEnabled} />
             </div>
           )}
           {isTypstFile && (

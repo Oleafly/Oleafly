@@ -1,0 +1,150 @@
+{
+  "args": [
+    "\\usepackage/esint#c"
+  ],
+  "deps": [],
+  "envs": [],
+  "keys": {
+    "\\usepackage/esint#c": [
+      "intlimits",
+      "nointlimits"
+    ]
+  },
+  "macros": [
+    {
+      "name": "dotsint",
+      "unusual": true
+    },
+    {
+      "name": "dotsintop",
+      "unusual": true
+    },
+    {
+      "detail": "⨏ (\"esint wrisym\" command)",
+      "documentation": "Integral average with slash",
+      "name": "fint"
+    },
+    {
+      "name": "fintop",
+      "unusual": true
+    },
+    {
+      "name": "idotsint"
+    },
+    {
+      "detail": "⨌ (\"amsmath esint\" command)",
+      "documentation": "Quadruple integral operator",
+      "name": "iiiint"
+    },
+    {
+      "name": "iiiintop",
+      "unusual": true
+    },
+    {
+      "detail": "∭ (\"amsmath fourier esint wasysym\" command)",
+      "documentation": "Triple integral operator",
+      "name": "iiint"
+    },
+    {
+      "name": "iiintop",
+      "unusual": true
+    },
+    {
+      "detail": "∬ (\"amsmath fourier esint wasysym\" command)",
+      "documentation": "Double integral operator",
+      "name": "iint"
+    },
+    {
+      "name": "iintop",
+      "unusual": true
+    },
+    {
+      "detail": "∫",
+      "documentation": "Integral operator",
+      "name": "int"
+    },
+    {
+      "name": "landdownint"
+    },
+    {
+      "name": "landdownintop",
+      "unusual": true
+    },
+    {
+      "name": "landupint"
+    },
+    {
+      "name": "landupintop",
+      "unusual": true
+    },
+    {
+      "detail": "∯ (\"esint wasysym fourier\" command)",
+      "documentation": "\\dbloint (wrisym), double contour integral operator",
+      "name": "oiint"
+    },
+    {
+      "name": "oiintop",
+      "unusual": true
+    },
+    {
+      "detail": "∮",
+      "documentation": "Contour integral operator",
+      "name": "oint"
+    },
+    {
+      "name": "ointclockwise"
+    },
+    {
+      "name": "ointclockwiseop",
+      "unusual": true
+    },
+    {
+      "detail": "∳ (\"esint\" command)",
+      "documentation": "\\cntclockoint (wrisym), contour integral, anticlockwise",
+      "name": "ointctrclockwise"
+    },
+    {
+      "name": "ointctrclockwiseop",
+      "unusual": true
+    },
+    {
+      "name": "sqiint"
+    },
+    {
+      "name": "sqiintop",
+      "unusual": true
+    },
+    {
+      "detail": "⨖ (\"esint\" command)",
+      "documentation": "\\sqrint (wrisym), quaternion integral operator",
+      "name": "sqint"
+    },
+    {
+      "name": "sqintop",
+      "unusual": true
+    },
+    {
+      "name": "varoiint"
+    },
+    {
+      "name": "varoiintop",
+      "unusual": true
+    },
+    {
+      "detail": "∲ (\"esint\" command)",
+      "documentation": "\\clockoint (wrisym), contour integral, clockwise",
+      "name": "varointclockwise"
+    },
+    {
+      "name": "varointclockwiseop",
+      "unusual": true
+    },
+    {
+      "name": "varointctrclockwise"
+    },
+    {
+      "name": "varointctrclockwiseop",
+      "unusual": true
+    }
+  ]
+}

@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect } from "react";
+import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { useActiveContent, useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
 
@@ -12,7 +13,11 @@ export function IndexKeeper() {
   // key the full rebuild on tree (not projectId) or unopened .bib files etc.
   // would be missed and citations would look unresolved.
   const tree = useFilesStore((s) => s.tree);
-  const mainDocument = useFilesStore((s) => s.mainDoc);
+  // The effective main document: an active-file `% !TEX root` override wins
+  // over the stored main doc. Cheap to derive (parses at most 10 lines), and
+  // the string only changes identity when the effective root really moves, so
+  // switching tabs between files that agree on the root does not re-analyze.
+  const mainDocument = useFilesStore(() => resolveEffectiveMainDoc().mainDoc);
   const projectLoading = useFilesStore((s) => s.loading);
   const content = useActiveContent();
 

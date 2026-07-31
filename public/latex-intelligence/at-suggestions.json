@@ -1,0 +1,332 @@
+[
+  {
+    "detail": "fraction",
+    "replacement": "\\frac{${1}}{${2}}${}",
+    "trigger": "@%"
+  },
+  {
+    "detail": "wedge",
+    "replacement": "\\wedge",
+    "trigger": "@&"
+  },
+  {
+    "detail": "left( ... right)",
+    "replacement": "\\left( ${1:${}} \\right)",
+    "trigger": "@("
+  },
+  {
+    "detail": "times symbol",
+    "replacement": "\\times",
+    "trigger": "@*"
+  },
+  {
+    "detail": "bigcup",
+    "replacement": "\\bigcup",
+    "trigger": "@+"
+  },
+  {
+    "detail": "nonumber",
+    "replacement": "\\nonumber",
+    "trigger": "@,"
+  },
+  {
+    "detail": "bigcap",
+    "replacement": "\\bigcap",
+    "trigger": "@-"
+  },
+  {
+    "detail": "\\cdot",
+    "replacement": "\\cdot",
+    "trigger": "@."
+  },
+  {
+    "detail": "fraction",
+    "replacement": "\\frac{${1}}{${2}}${}",
+    "trigger": "@/"
+  },
+  {
+    "detail": "superscript circ",
+    "replacement": "^\\circ",
+    "trigger": "@0"
+  },
+  {
+    "detail": "sqrt command",
+    "replacement": "\\sqrt{${1:${}}}${}",
+    "trigger": "@2"
+  },
+  {
+    "detail": "partial derivative symbol",
+    "replacement": "\\partial",
+    "trigger": "@6"
+  },
+  {
+    "detail": "infinity symbol",
+    "replacement": "\\infty",
+    "trigger": "@8"
+  },
+  {
+    "detail": "ddot",
+    "replacement": "\\ddot{${1:${}}}${}",
+    "trigger": "@:"
+  },
+  {
+    "detail": "dot",
+    "replacement": "\\dot{${1:${}}}${}",
+    "trigger": "@;"
+  },
+  {
+    "detail": "leq symbol",
+    "replacement": "\\leq",
+    "trigger": "@<"
+  },
+  {
+    "detail": "equiv symbol",
+    "replacement": "\\equiv",
+    "trigger": "@="
+  },
+  {
+    "detail": "geq symbol",
+    "replacement": "\\geq",
+    "trigger": "@>"
+  },
+  {
+    "detail": "circ",
+    "replacement": "\\circ",
+    "trigger": "@@"
+  },
+  {
+    "detail": "Delta",
+    "replacement": "\\Delta",
+    "trigger": "@D"
+  },
+  {
+    "detail": "Phi",
+    "replacement": "\\Phi",
+    "trigger": "@F"
+  },
+  {
+    "detail": "Gamma",
+    "replacement": "\\Gamma",
+    "trigger": "@G"
+  },
+  {
+    "detail": "integral",
+    "replacement": "\\int_{${1}}^{${2}}${}",
+    "trigger": "@I"
+  },
+  {
+    "detail": "Lambda",
+    "replacement": "\\Lambda",
+    "trigger": "@L"
+  },
+  {
+    "detail": "Pi",
+    "replacement": "\\Pi",
+    "trigger": "@P"
+  },
+  {
+    "detail": "Theta",
+    "replacement": "\\Theta",
+    "trigger": "@Q"
+  },
+  {
+    "detail": "Sigma",
+    "replacement": "\\Sigma",
+    "trigger": "@S"
+  },
+  {
+    "detail": "Upsilon",
+    "replacement": "\\Upsilon",
+    "trigger": "@U"
+  },
+  {
+    "detail": "Omega",
+    "replacement": "\\Omega",
+    "trigger": "@W"
+  },
+  {
+    "detail": "Xi",
+    "replacement": "\\Xi",
+    "trigger": "@X"
+  },
+  {
+    "detail": "Psi",
+    "replacement": "\\Psi",
+    "trigger": "@Y"
+  },
+  {
+    "detail": "left[ ... right]",
+    "replacement": "\\left[ ${1:${}} \\right]",
+    "trigger": "@["
+  },
+  {
+    "detail": "hat",
+    "replacement": "\\hat{${1:${}}}${}",
+    "trigger": "@^"
+  },
+  {
+    "detail": "bar",
+    "replacement": "\\bar{${1:${}}}${}",
+    "trigger": "@_"
+  },
+  {
+    "detail": "alpha",
+    "replacement": "\\alpha",
+    "trigger": "@a"
+  },
+  {
+    "detail": "beta",
+    "replacement": "\\beta",
+    "trigger": "@b"
+  },
+  {
+    "detail": "chi",
+    "replacement": "\\chi",
+    "trigger": "@c"
+  },
+  {
+    "detail": "delta",
+    "replacement": "\\delta",
+    "trigger": "@d"
+  },
+  {
+    "detail": "epsilon",
+    "replacement": "\\epsilon",
+    "trigger": "@e"
+  },
+  {
+    "detail": "phi",
+    "replacement": "\\phi",
+    "trigger": "@f"
+  },
+  {
+    "detail": "gamma",
+    "replacement": "\\gamma",
+    "trigger": "@g"
+  },
+  {
+    "detail": "eta",
+    "replacement": "\\eta",
+    "trigger": "@h"
+  },
+  {
+    "detail": "iota",
+    "replacement": "\\iota",
+    "trigger": "@i"
+  },
+  {
+    "detail": "kappa",
+    "replacement": "\\kappa",
+    "trigger": "@k"
+  },
+  {
+    "detail": "lambda",
+    "replacement": "\\lambda",
+    "trigger": "@l"
+  },
+  {
+    "detail": "mu",
+    "replacement": "\\mu",
+    "trigger": "@m"
+  },
+  {
+    "detail": "nu",
+    "replacement": "\\nu",
+    "trigger": "@n"
+  },
+  {
+    "detail": "omega",
+    "replacement": "\\omega",
+    "trigger": "@o"
+  },
+  {
+    "detail": "pi",
+    "replacement": "\\pi",
+    "trigger": "@p"
+  },
+  {
+    "detail": "theta",
+    "replacement": "\\theta",
+    "trigger": "@q"
+  },
+  {
+    "detail": "rho",
+    "replacement": "\\rho",
+    "trigger": "@r"
+  },
+  {
+    "detail": "sigma",
+    "replacement": "\\sigma",
+    "trigger": "@s"
+  },
+  {
+    "detail": "tau",
+    "replacement": "\\tau",
+    "trigger": "@t"
+  },
+  {
+    "detail": "upsilon",
+    "replacement": "\\upsilon",
+    "trigger": "@u"
+  },
+  {
+    "detail": "varepsilon",
+    "replacement": "\\varepsilon",
+    "trigger": "@ve"
+  },
+  {
+    "detail": "varphi",
+    "replacement": "\\varphi",
+    "trigger": "@vf"
+  },
+  {
+    "detail": "varpi",
+    "replacement": "\\varpi",
+    "trigger": "@vp"
+  },
+  {
+    "detail": "vartheta",
+    "replacement": "\\vartheta",
+    "trigger": "@vq"
+  },
+  {
+    "detail": "varrho",
+    "replacement": "\\varrho",
+    "trigger": "@vr"
+  },
+  {
+    "detail": "varsigma",
+    "replacement": "\\varsigma",
+    "trigger": "@vs"
+  },
+  {
+    "detail": "xi",
+    "replacement": "\\xi",
+    "trigger": "@x"
+  },
+  {
+    "detail": "psi",
+    "replacement": "\\psi",
+    "trigger": "@y"
+  },
+  {
+    "detail": "zeta",
+    "replacement": "\\zeta",
+    "trigger": "@z"
+  },
+  {
+    "detail": "left{ ... right}",
+    "replacement": "\\left\\{ ${1:${}} \\right\\}",
+    "trigger": "@{"
+  },
+  {
+    "detail": "Big |",
+    "replacement": "\\Big|",
+    "trigger": "@|"
+  },
+  {
+    "detail": "left| ... right|",
+    "replacement": "\\left| ${1:${}} \\right|",
+    "trigger": "@|"
+  }
+]

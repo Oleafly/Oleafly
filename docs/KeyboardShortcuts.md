@@ -13,6 +13,8 @@ Windows and Linux.
 | Search all documents | Command-Shift-F | Ctrl-Shift-F |
 | Go to PDF (SyncTeX) | Command-Shift-J | Ctrl-Shift-J |
 | Shortcut reference | Command-/ | Ctrl-/ |
+| Close LaTeX environment | Command-Option-. | Ctrl-Alt-. |
+| Surround with environment | Command-Option-E | Ctrl-Alt-E |
 
 The reference list is generated from `SHORTCUT_DEFINITIONS` in
 `src/store/shortcuts.ts`; it is the source of truth for labels and defaults.

@@ -1,0 +1,1013 @@
+{
+  "args": [
+    "\\documentclass/moderncv#c"
+  ],
+  "deps": [
+    "calc",
+    "colortbl",
+    "etoolbox",
+    "fancyhdr",
+    "graphicx",
+    "hyperref",
+    "iftex",
+    "ifthen",
+    "microtype",
+    "moderncvcollection",
+    "moderncvcompatibility",
+    "tweaklist",
+    "url",
+    "xcolor"
+  ],
+  "envs": [
+    {
+      "name": "cvcolumns"
+    }
+  ],
+  "keys": {
+    "\\documentclass/moderncv#c": [
+      "a4paper",
+      "a5paper",
+      "b5paper",
+      "letterpaper",
+      "legalpaper",
+      "executivepaper",
+      "landscape",
+      "10pt",
+      "11pt",
+      "12pt",
+      "sans",
+      "roman",
+      "draft",
+      "final"
+    ],
+    "\\moderncvcolor#c": [
+      "black",
+      "blue",
+      "burgundy",
+      "green",
+      "grey",
+      "orange",
+      "purple",
+      "red"
+    ],
+    "\\moderncvicons": [
+      "academic",
+      "awesome",
+      "letters",
+      "marvosym",
+      "symbols",
+      "tikz"
+    ],
+    "\\moderncvstyle#c": [
+      "banking",
+      "casual",
+      "classic",
+      "empty",
+      "fancy",
+      "oldstyle"
+    ],
+    "\\phone": [
+      "fixed",
+      "mobile",
+      "fax"
+    ],
+    "\\social": [
+      "linkedin",
+      "xing",
+      "twitter",
+      "mastodon",
+      "github",
+      "gitlab",
+      "stackoverflow",
+      "bitbucket",
+      "skype",
+      "orcid",
+      "researchgate",
+      "researcherid",
+      "telegram",
+      "whatsapp",
+      "signal",
+      "matrix",
+      "googlescholar",
+      "codeberg",
+      "discord",
+      "twitch",
+      "youtube",
+      "tiktok",
+      "instagram",
+      "soundcloud",
+      "steam",
+      "xbox",
+      "playstation",
+      "battlenet",
+      "arxiv",
+      "inspire"
+    ]
+  },
+  "macros": [
+    {
+      "name": "address",
+      "snippet": "address{${1:street}}{${2:city}}{${3:country}}"
+    },
+    {
+      "name": "addressfont",
+      "unusual": true
+    },
+    {
+      "name": "addressstyle",
+      "snippet": "addressstyle{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "addresssymbol",
+      "unusual": true
+    },
+    {
+      "name": "addtofoot",
+      "snippet": "addtofoot[${2:symbol}]{${1:element}}",
+      "unusual": true
+    },
+    {
+      "name": "addtofoot",
+      "snippet": "addtofoot{${1:element}}",
+      "unusual": true
+    },
+    {
+      "name": "addtomakeheaddetails",
+      "snippet": "addtomakeheaddetails[${2:symbol}]{${1:element}}",
+      "unusual": true
+    },
+    {
+      "name": "addtomakeheaddetails",
+      "snippet": "addtomakeheaddetails{${1:element}}",
+      "unusual": true
+    },
+    {
+      "name": "arxivsocialsymbol",
+      "unusual": true
+    },
+    {
+      "name": "battlenetsocialsymbol",
+      "unusual": true
+    },
+    {
+      "name": "bibindent",
+      "unusual": true
+    },
+    {
+      "name": "bibliographyhead",
+      "snippet": "bibliographyhead{${1:title}}"
+    },
+    {
+      "name": "bitbucketsocialsymbol",
+      "unusual": true
+    },
+    {
+      "name": "born",
+      "snippet": "born{${1:date}}"
+    },
+    {
+      "name": "bornsymbol",
+      "unusual": true
+    },
+    {
+      "name": "closing",
+      "snippet": "closing{${1:closing}}"
+    },
+    {
+      "name": "codebergsocialsymbol",
+      "unusual": true
+    },
+    {
+      "name": "cvcolumn",
+      "snippet": "cvcolumn[${3:width}]{${1:head}}{${2:content}}"
+    },
+    {
+      "name": "cvcolumn",
+      "snippet": "cvcolumn{${1:head}}{${2:content}}"
+    },
+    {
+      "name": "cvcolumnautowidth",
+      "unusual": true
+    },
+    {
+      "name": "cvcolumncell",
+      "snippet": "cvcolumncell{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "cvcolumnsautowidth",
+      "unusual": true
+    },
+    {
+      "name": "cvcolumnsdummywidth",
+      "unusual": true
+    },
+    {
+      "name": "cvcolumnswidth",
+      "unusual": true
+    },
+    {
+      "name": "cvdoubleitem",
+      "snippet": "cvdoubleitem[${5:spacing}]{${1:heading1}}{${2:text1}}{${3:heading2}}{${4:text2}}"
+    },
+    {
+      "name": "cvdoubleitem",
+      "snippet": "cvdoubleitem{${1:heading1}}{${2:text1}}{${3:heading2}}{${4:text2}}"
+    },
+    {
+      "name": "cventry",
+      "snippet": "cventry[${7:spacing}]{${1:years}}{${2:degree or job title}}{${3:institution or employer}}{${4:city}}{${5:grade}}{${6:description}}"
+    },
+    {
+      "name": "cventry",
+      "snippet": "cventry{${1:years}}{${2:degree or job title}}{${3:institution or employer}}{${4:city}}{${5:grade}}{${6:description}}"
+    },
+    {
+      "name": "cventrytitleboxwidth",
+      "unusual": true
+    },
+    {
+      "name": "cventryyearbox",
+      "unusual": true
+    },
+    {
+      "name": "cvitem",
+      "snippet": "cvitem[${3:spacing}]{${1:heading}}{${2:text}}"
+    },
+    {
+      "name": "cvitem",
+      "snippet": "cvitem{${1:heading}}{${2:text}}"
+    },
+    {
+      "name": "cvitemwithcomment",
+      "snippet": "cvitemwithcomment{${1:item}}{${2:item description}}{${3:comment}}"
+    },
+    {
+      "name": "cvlistdoubleitem",
+      "snippet": "cvlistdoubleitem[${3:spacing}]{${1:item1}}{${2:item2}}"
+    },
+    {
+      "name": "cvlistdoubleitem",
+      "snippet": "cvlistdoubleitem{${1:item1}}{${2:item2}}"
+    },
+    {
+      "name": "cvlistitem",
+      "snippet": "cvlistitem[${2:spacing}]{${1:item}}"
+    },
+    {
+      "name": "cvlistitem",
+      "snippet": "cvlistitem{${1:item}}"
+    },
+    {
+      "name": "cvskill",
+      "snippet": "cvskill{${1:integer}}"
+    },
+    {
+      "name": "cvskillentry",
+      "snippet": "cvskillentry[${6:padding}]{${1:category}}{${2:level}}{${3:name}}{${4:years}}{${5:comment}}"
+    },
+    {
+      "name": "cvskillentry",
+      "snippet": "cvskillentry{${1:category}}{${2:level}}{${3:name}}{${4:years}}{${5:comment}}"
+    },
+    {
+      "name": "cvskillentry*",
+      "snippet": "cvskillentry*[${6:padding}]{${1:category}}{${2:level}}{${3:name}}{${4:years}}{${5:comment}}"
+    },
+    {
+      "name": "cvskillentry*",
+      "snippet": "cvskillentry*{${1:category}}{${2:level}}{${3:name}}{${4:years}}{${5:comment}}"
+    },
+    {
+      "name": "cvskillhead",
+      "snippet": "cvskillhead[${1:padding}]"
+    },
+    {
+      "name": "cvskillhead",
+      "snippet": "cvskillhead[${1:padding}][${2:name1}][${3:name2}][${4:name3}][${5:name4}]",
+      "unusual": true
+    },
+    {
+      "name": "cvskilllegend",
+      "snippet": "cvskilllegend[${2:padding}][${3:1st}][${4:2nd}][${5:3rd}][${6:4th}][${7:5th}]{${1:name}}",
+      "unusual": true
+    },
+    {
+      "name": "cvskilllegend",
+      "snippet": "cvskilllegend[${2:padding}]{${1:name}}"
+    },
+    {
+      "name": "cvskilllegend",
+      "snippet": "cvskilllegend{${1:name}}"
+    },
+    {
+      "name": "cvskilllegend*",
+      "snippet": "cvskilllegend*[${2:padding}][${3:1st}][${4:2nd}][${5:3rd}][${6:4th}][${7:5th}]{${1:name}}",
+      "unusual": true
+    },
+    {
+      "name": "cvskilllegend*",
+      "snippet": "cvskilllegend*[${2:padding}]{${1:name}}"
+    },
+    {
+      "name": "cvskilllegend*",
+      "snippet": "cvskilllegend*{${1:name}}"
+    },
+    {
+      "name": "cvskillplainlegend",
+      "snippet": "cvskillplainlegend[${2:padding}][${3:1st}][${4:2nd}][${5:3rd}][${6:4th}][${7:5th}]{${1:name}}",
+      "unusual": true
+    },
+    {
+      "name": "cvskillplainlegend",
+      "snippet": "cvskillplainlegend[${2:padding}]{${1:name}}"
+    },
+    {
+      "name": "cvskillplainlegend",
+      "snippet": "cvskillplainlegend{${1:name}}"
+    },
+    {
+      "name": "cvskillplainlegend*",
+      "snippet": "cvskillplainlegend*[${2:padding}][${3:1st}][${4:2nd}][${5:3rd}][${6:4th}][${7:5th}]{${1:name}}",
+      "unusual": true
+    },
+    {
+      "name": "cvskillplainlegend*",
+      "snippet": "cvskillplainlegend*[${2:padding}]{${1:name}}"
+    },
+    {
+      "name": "cvskillplainlegend*",
+      "snippet": "cvskillplainlegend*{${1:name}}"
+    },
+    {
+      "name": "cvtripleitem",
+      "snippet": "cvtripleitem[${7:spacing}]{${1:heading1}}{${2:text1}}{${3:heading2}}{${4:text2}}{${5:heading3}}{${6:text3}}"
+    },
+    {
+      "name": "cvtripleitem",
+      "snippet": "cvtripleitem{${1:heading1}}{${2:text1}}{${3:heading2}}{${4:text2}}{${5:heading3}}{${6:text3}}"
+    },
+    {
+      "name": "discordsocialsymbol",
+      "unusual": true
+    },
+    {
+      "name": "doubleitemcolumnwidth",
+      "unusual": true
+    },
+    {
+      "name": "email",
+      "snippet": "email{${1:address%URL}}"
+    },
+    {
+      "name": "emaillink",
+      "snippet": "emaillink[${2:text}]{${1:address%URL}}"
+    },
+    {
+      "name": "emaillink",
+      "snippet": "emaillink{${1:address%URL}}"
+    },
+    {
+      "name": "emailsymbol",
+      "unusual": true
+    },
+    {
+      "name": "enclname",
+      "unusual": true
+    },
+    {
+      "name": "enclosure",
+      "snippet": "enclosure[${2:alternative name}]{${1:enclosure}}"
+    },
+    {
+      "name": "enclosure",
+      "snippet": "enclosure{${1:enclosure}}"
+    },
+    {
+      "name": "extrainfo",
+      "snippet": "extrainfo{${1:extra info}}"
+    },
+    {
+      "name": "faxphonesymbol",
+      "unusual": true
+    },
+    {
+      "name": "firstnamestyle",
+      "snippet": "firstnamestyle{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "fixedphonesymbol",
+      "unusual": true
+    },
+    {
+      "name": "flushfoot",
+      "unusual": true
+    },
+    {
+      "name": "flushmakeheaddetails",
+      "unusual": true
+    },
+    {
+      "name": "footbox",
+      "unusual": true
+    },
+    {
+      "name": "footboxwidth",
+      "unusual": true
+    },
+    {
+      "name": "footsymbol",
+      "unusual": true
+    },
+    {
+      "name": "foottempbox",
+      "unusual": true
+    },
+    {
+      "name": "githubsocialsymbol",
+      "unusual": true
+    },
+    {
+      "name": "gitlabsocialsymbol",
+      "unusual": true
+    },
+    {
+      "name": "googlescholarsocialsymbol",
+      "unusual": true
+    },
+    {
+      "name": "hintfont",
+      "unusual": true
+    },
+    {
+      "name": "hintscolumnwidth",
+      "unusual": true
+    },
+    {
+      "name": "hintstyle",
+      "snippet": "hintstyle{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "homepage",
+      "snippet": "homepage[${2:protocol}]{${1:URL}}"
+    },
+    {
+      "name": "homepage",
+      "snippet": "homepage{${1:URL}}"
+    },
+    {
+      "name": "homepagesymbol",
+      "unusual": true
+    },
+    {
+      "name": "httplink",
+      "snippet": "httplink[${2:text}]{${1:URL}}"
+    },
+    {
+      "name": "httplink",
+      "snippet": "httplink{${1:URL}}"
+    },
+    {
+      "name": "httpslink",
+      "snippet": "httpslink[${2:text}]{${1:URL}}"
+    },
+    {
+      "name": "httpslink",
+      "snippet": "httpslink{${1:URL}}"
+    },
+    {
+      "name": "ifxetexorluatex",
+      "unusual": true
+    },
+    {
+      "name": "inspiresocialsymbol",
+      "unusual": true
+    },
+    {
+      "name": "instagramsocialsymbol",
+      "unusual": true
+    },
+    {
+      "name": "lastnamestyle",
+      "snippet": "lastnamestyle{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "link",
+      "snippet": "link[${2:text}]{${1:URL}}"
+    },
+    {
+      "name": "link",
+      "snippet": "link{${1:URL}}"
+    },
+    {
+      "name": "linkedinsocialsymbol",
+      "unusual": true
+    },
+    {
+      "name": "listdoubleitemcolumnwidth",
+      "unusual": true
+    },
+    {
+      "name": "listitemcolumnwidth",
+      "unusual": true
+    },
+    {
+      "name": "listitemsymbol",
+      "unusual": true
+    },
+    {
+      "name": "listitemsymbolspace",
+      "unusual": true
+    },
+    {
+      "name": "listitemsymbolwidth",
+      "unusual": true
+    },
+    {
+      "name": "maincolumnwidth",
+      "unusual": true
+    },
+    {
+      "name": "makecvfoot",
+      "unusual": true
+    },
+    {
+      "name": "makecvhead",
+      "unusual": true
+    },
+    {
+      "name": "makecvheaddetailswidth",
+      "unusual": true
+    },
+    {
+      "name": "makecvheadinfo",
+      "snippet": "makecvheadinfo{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "makecvheadinfobox",
+      "unusual": true
+    },
+    {
+      "name": "makecvheadinfoheight",
+      "unusual": true
+    },
+    {
+      "name": "makecvheadnamebox",
+      "unusual": true
+    },
+    {
+      "name": "makecvheadnamewidth",
+      "unusual": true
+    },
+    {
+      "name": "makecvheadpicturebox",
+      "unusual": true
+    },
+    {
+      "name": "makecvheadpicturewidth",
+      "unusual": true
+    },
+    {
+      "name": "makecvtitle"
+    },
+    {
+      "name": "makefooter"
+    },
+    {
+      "name": "makehead",
+      "unusual": true
+    },
+    {
+      "name": "makeheaddetailsbox",
+      "unusual": true
+    },
+    {
+      "name": "makeheaddetailsboxwidth",
+      "unusual": true
+    },
+    {
+      "name": "makeheaddetailssymbol",
+      "unusual": true
+    },
+    {
+      "name": "makeheaddetailstempbox",
+      "unusual": true
+    },
+    {
+      "name": "makeheaddetailswidth",
+      "unusual": true
+    },
+    {
+      "name": "makeletterclosing"
+    },
+    {
+      "name": "makeletterfoot",
+      "unusual": true
+    },
+    {
+      "name": "makeletterhead",
+      "unusual": true
+    },
+    {
+      "name": "makelettertitle"
+    },
+    {
+      "name": "makenewline",
+      "unusual": true
+    },
+    {
+      "name": "mastodonsocialsymbol",
+      "unusual": true
+    },
+    {
+      "name": "matrixsocialsymbol",
+      "unusual": true
+    },
+    {
+      "name": "mobilephonesymbol",
+      "unusual": true
+    },
+    {
+      "name": "moderncvbody",
+      "snippet": "moderncvbody[${2:options}]{${1:body variant number}}",
+      "unusual": true
+    },
+    {
+      "name": "moderncvbody",
+      "snippet": "moderncvbody{${1:body variant number}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\moderncvcolor#c"
+      ],
+      "name": "moderncvcolor",
+      "snippet": "moderncvcolor{${1:color-scheme}}"
+    },
+    {
+      "name": "moderncvfoot",
+      "snippet": "moderncvfoot[${2:options}]{${1:foot variant number}}",
+      "unusual": true
+    },
+    {
+      "name": "moderncvfoot",
+      "snippet": "moderncvfoot{${1:foot variant number}}"
+    },
+    {
+      "name": "moderncvhead",
+      "snippet": "moderncvhead[${2:options}]{${1:header variant number}}",
+      "unusual": true
+    },
+    {
+      "name": "moderncvhead",
+      "snippet": "moderncvhead{${1:header variant number}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\moderncvicons"
+      ],
+      "name": "moderncvicons",
+      "snippet": "moderncvicons{${1:icon set}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\moderncvstyle#c"
+      ],
+      "name": "moderncvstyle",
+      "snippet": "moderncvstyle[${2:options}]{${1:style}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\moderncvstyle#c"
+      ],
+      "name": "moderncvstyle",
+      "snippet": "moderncvstyle{${1:style}}"
+    },
+    {
+      "name": "name",
+      "snippet": "name{${1:first name}}{${2:last name}}"
+    },
+    {
+      "name": "namefont",
+      "unusual": true
+    },
+    {
+      "name": "namestyle",
+      "snippet": "namestyle{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "nopagenumbers"
+    },
+    {
+      "name": "onlynumberslink",
+      "snippet": "onlynumberslink{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "opening",
+      "snippet": "opening{${1:opening}}"
+    },
+    {
+      "name": "orcidsocialsymbol",
+      "unusual": true
+    },
+    {
+      "name": "pagenumberfont",
+      "unusual": true
+    },
+    {
+      "name": "pagenumberstyle",
+      "snippet": "pagenumberstyle{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "pagenumberwidth",
+      "unusual": true
+    },
+    {
+      "name": "pdfpagemode",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\phone"
+      ],
+      "name": "phone",
+      "snippet": "phone[${2:type}]{${1:number}}"
+    },
+    {
+      "name": "phone",
+      "snippet": "phone{${1:number}}"
+    },
+    {
+      "name": "photo",
+      "snippet": "photo[${2:width}][${3:frame thickness}]{${1:imagefile}}"
+    },
+    {
+      "name": "photo",
+      "snippet": "photo[${2:width}]{${1:imagefile}}"
+    },
+    {
+      "name": "photo",
+      "snippet": "photo{${1:imagefile}}"
+    },
+    {
+      "name": "playstationsocialsymbol",
+      "unusual": true
+    },
+    {
+      "name": "quote",
+      "snippet": "quote{${1:text}}"
+    },
+    {
+      "name": "quotefont",
+      "unusual": true
+    },
+    {
+      "name": "quotestyle",
+      "snippet": "quotestyle{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "quotewidth",
+      "unusual": true
+    },
+    {
+      "name": "recipient",
+      "snippet": "recipient{${1:recipient}}{${2:recipient address}}"
+    },
+    {
+      "name": "recomputebodylengths",
+      "unusual": true
+    },
+    {
+      "name": "recomputecvbodylengths",
+      "unusual": true
+    },
+    {
+      "name": "recomputecvfootlengths",
+      "unusual": true
+    },
+    {
+      "name": "recomputecvheadlengths",
+      "unusual": true
+    },
+    {
+      "name": "recomputecvlengths",
+      "unusual": true
+    },
+    {
+      "name": "recomputefootlengths",
+      "unusual": true
+    },
+    {
+      "name": "recomputeheadlengths",
+      "unusual": true
+    },
+    {
+      "name": "recomputelengths",
+      "unusual": true
+    },
+    {
+      "name": "recomputeletterbodylengths",
+      "unusual": true
+    },
+    {
+      "name": "recomputeletterfootlengths",
+      "unusual": true
+    },
+    {
+      "name": "recomputeletterheadlengths",
+      "unusual": true
+    },
+    {
+      "name": "recomputeletterlengths",
+      "unusual": true
+    },
+    {
+      "name": "researcheridsocialsymbol",
+      "unusual": true
+    },
+    {
+      "name": "researchgatesocialsymbol",
+      "unusual": true
+    },
+    {
+      "name": "sectionfont",
+      "unusual": true
+    },
+    {
+      "name": "sectionstyle",
+      "snippet": "sectionstyle{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "separatorcolumnwidth",
+      "unusual": true
+    },
+    {
+      "name": "separatorrulewidth",
+      "unusual": true
+    },
+    {
+      "name": "setcvskillcolumns",
+      "snippet": "setcvskillcolumns[${1:width}]"
+    },
+    {
+      "name": "setcvskillcolumns",
+      "snippet": "setcvskillcolumns[${1:width}][${2:factor}]"
+    },
+    {
+      "name": "setcvskillcolumns",
+      "snippet": "setcvskillcolumns[${1:width}][${2:factor}][${3:exp-width}]"
+    },
+    {
+      "name": "setcvskilllegendcolumns",
+      "snippet": "setcvskilllegendcolumns[${1:width}]"
+    },
+    {
+      "name": "setcvskilllegendcolumns",
+      "snippet": "setcvskilllegendcolumns[${1:width}][${2:factor}]"
+    },
+    {
+      "name": "signalsocialsymbol",
+      "unusual": true
+    },
+    {
+      "name": "signature",
+      "snippet": "signature{${1:scale}}{${2:imagefile}}"
+    },
+    {
+      "name": "skypesocialsymbol",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\social"
+      ],
+      "name": "social",
+      "snippet": "social[${2:type}][${3:URL}]{${1:user name}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\social"
+      ],
+      "name": "social",
+      "snippet": "social[${2:type}]{${1:user name}}"
+    },
+    {
+      "name": "social",
+      "snippet": "social{${1:user name}}"
+    },
+    {
+      "name": "soundcloudsocialsymbol",
+      "unusual": true
+    },
+    {
+      "name": "stackoverflowsocialsymbol",
+      "unusual": true
+    },
+    {
+      "name": "steamsocialsymbol",
+      "unusual": true
+    },
+    {
+      "name": "subject",
+      "snippet": "subject{${1:subject}}"
+    },
+    {
+      "name": "subsectionfont",
+      "unusual": true
+    },
+    {
+      "name": "subsectionstyle",
+      "snippet": "subsectionstyle{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "telegramsocialsymbol",
+      "unusual": true
+    },
+    {
+      "name": "tellink",
+      "snippet": "tellink[${2:text}]{${1:phone number}}"
+    },
+    {
+      "name": "tellink",
+      "snippet": "tellink{${1:phone number}}"
+    },
+    {
+      "name": "thecvcolumnsautowidthcounter",
+      "unusual": true
+    },
+    {
+      "name": "thecvcolumnscounter",
+      "unusual": true
+    },
+    {
+      "name": "thetmpiteratorcounter",
+      "unusual": true
+    },
+    {
+      "name": "tiktoksocialsymbol",
+      "unusual": true
+    },
+    {
+      "name": "titlefont",
+      "unusual": true
+    },
+    {
+      "name": "titlestyle",
+      "snippet": "titlestyle{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "tripleitemcolumnwidth",
+      "unusual": true
+    },
+    {
+      "name": "twitchsocialsymbol",
+      "unusual": true
+    },
+    {
+      "name": "twittersocialsymbol",
+      "unusual": true
+    },
+    {
+      "name": "whatsappsocialsymbol",
+      "unusual": true
+    },
+    {
+      "name": "xboxsocialsymbol",
+      "unusual": true
+    },
+    {
+      "name": "xetexorluatexfalse",
+      "unusual": true
+    },
+    {
+      "name": "xetexorluatextrue",
+      "unusual": true
+    },
+    {
+      "name": "xingsocialsymbol",
+      "unusual": true
+    },
+    {
+      "name": "youtubesocialsymbol",
+      "unusual": true
+    }
+  ]
+}

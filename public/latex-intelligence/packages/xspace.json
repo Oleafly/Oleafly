@@ -1,0 +1,21 @@
+{
+  "args": [],
+  "deps": [],
+  "envs": [],
+  "keys": {},
+  "macros": [
+    {
+      "name": "xspace"
+    },
+    {
+      "name": "xspaceaddexceptions",
+      "snippet": "xspaceaddexceptions{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "xspaceremoveexception",
+      "snippet": "xspaceremoveexception{${1:arg}}",
+      "unusual": true
+    }
+  ]
+}

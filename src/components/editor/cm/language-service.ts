@@ -34,6 +34,10 @@ import {
   TextPositionIndex,
   type PositionEncoding,
 } from "@/lib/language-service";
+import {
+  corpusClassNames,
+  corpusPackageNames,
+} from "@/lib/latex-corpus";
 import { useFilesStore } from "@/store/files";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 
@@ -126,6 +130,32 @@ function completionType(kind: unknown): string | undefined {
 function completionDetail(detail: unknown): string | undefined {
   const text = boundedText(detail, 1_000);
   return text ? text.replace(/\.sty$/u, "") : undefined;
+}
+
+const PACKAGE_ARGUMENT_CONTEXT_RE =
+  /\\(?:usepackage|RequirePackage)\s*(?:\[[^\]]*\])?\{[^{}]*$/u;
+const CLASS_ARGUMENT_CONTEXT_RE =
+  /\\documentclass\s*(?:\[[^\]]*\])?\{[^{}]*$/u;
+
+/**
+ * Inside `\usepackage{}` / `\documentclass{}` the language service offers
+ * workspace directories (including hidden ones like `.git`) and repeats
+ * names the corpus already provides with richer descriptions. Keep only its
+ * unique contributions, e.g. project-local `.sty` files.
+ */
+function packageArgumentLabelFilter(
+  before: string,
+): ((label: string) => boolean) | null {
+  const packageContext = PACKAGE_ARGUMENT_CONTEXT_RE.test(before);
+  const classContext =
+    !packageContext && CLASS_ARGUMENT_CONTEXT_RE.test(before);
+  if (!packageContext && !classContext) return null;
+  const corpus = packageContext
+    ? corpusPackageNames()
+    : corpusClassNames();
+  const known = corpus ? new Set(corpus.names) : null;
+  return (label) =>
+    !label.startsWith(".") && !(known?.has(label) ?? false);
 }
 
 function completionDocumentation(value: unknown): string | undefined {
@@ -525,7 +555,7 @@ export const languageServiceCompletion: CompletionSource = async (
     ) {
       return null;
     }
-    const options = normalizeCompletion(
+    const normalized = normalizeCompletion(
       response,
       current.session,
       current.document,
@@ -533,6 +563,14 @@ export const languageServiceCompletion: CompletionSource = async (
       fallbackFrom,
       context.pos,
     );
+    const argumentFilter = packageArgumentLabelFilter(
+      text.slice(Math.max(0, context.pos - 200), context.pos),
+    );
+    const options = argumentFilter
+      ? normalized.filter((option) =>
+          argumentFilter(String(option.label)),
+        )
+      : normalized;
     return options.length > 0
       ? { from: fallbackFrom, options, filter: false }
       : null;
@@ -570,9 +608,38 @@ function hoverText(value: unknown): string | null {
   return null;
 }
 
+/**
+ * The hovered `\usepackage`/`\documentclass` argument doubles as a CTAN
+ * package id, which gives the hover card a stable documentation link.
+ */
+function hoverCtanUrl(
+  text: string,
+  position: number,
+): string | null {
+  const lineStart = text.lastIndexOf("\n", position - 1) + 1;
+  const lineEnd =
+    text.indexOf("\n", position) === -1
+      ? text.length
+      : text.indexOf("\n", position);
+  const line = text.slice(lineStart, lineEnd);
+  if (
+    !/\\(?:usepackage|RequirePackage|documentclass)/u.test(line)
+  ) {
+    return null;
+  }
+  const column = position - lineStart;
+  const head =
+    /[A-Za-z0-9@_+-]*$/u.exec(line.slice(0, column))?.[0] ?? "";
+  const tail =
+    /^[A-Za-z0-9@_+-]*/u.exec(line.slice(column))?.[0] ?? "";
+  const name = `${head}${tail}`;
+  return name ? `https://ctan.org/pkg/${name}` : null;
+}
+
 function hoverTooltipForText(
   position: number,
   text: string,
+  link: string | null,
 ): Tooltip {
   return {
     pos: position,
@@ -580,7 +647,21 @@ function hoverTooltipForText(
     create: () => {
       const dom = document.createElement("div");
       dom.className = "cm-language-service-hover";
-      dom.textContent = text;
+      for (const block of text.split(/\n{2,}/u)) {
+        const paragraph = document.createElement("p");
+        paragraph.className = "cm-language-service-hover-block";
+        paragraph.textContent = block;
+        dom.appendChild(paragraph);
+      }
+      if (link) {
+        const anchor = document.createElement("a");
+        anchor.className = "cm-language-service-hover-link";
+        anchor.href = link;
+        anchor.target = "_blank";
+        anchor.rel = "noreferrer";
+        anchor.textContent = link.replace(/^https:\/\//u, "");
+        dom.appendChild(anchor);
+      }
       return { dom };
     },
   };
@@ -629,7 +710,11 @@ const languageServiceHoverSource = async (
     }
     const content = hoverText(response.contents);
     return content
-      ? hoverTooltipForText(position, content)
+      ? hoverTooltipForText(
+          position,
+          content,
+          hoverCtanUrl(text, position),
+        )
       : null;
   } catch {
     return null;
@@ -953,6 +1038,18 @@ const semanticTheme = EditorView.baseTheme({
     fontFamily: "var(--font-mono)",
     fontSize: "0.75rem",
     lineHeight: "1.45",
+  },
+  ".cm-language-service-hover-block": {
+    margin: "0 0 0.5rem",
+  },
+  ".cm-language-service-hover-block:last-child": {
+    marginBottom: "0",
+  },
+  ".cm-language-service-hover-link": {
+    display: "inline-block",
+    color: "var(--cm-link, #4da3ff)",
+    textDecoration: "underline",
+    textUnderlineOffset: "2px",
   },
 });
 

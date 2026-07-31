@@ -1,0 +1,59 @@
+{
+  "args": [],
+  "deps": [],
+  "envs": [],
+  "keys": {},
+  "macros": [
+    {
+      "name": "AND"
+    },
+    {
+      "name": "NOT"
+    },
+    {
+      "name": "OR"
+    },
+    {
+      "name": "boolean",
+      "snippet": "boolean{${1:name}}"
+    },
+    {
+      "detail": "=",
+      "documentation": "Equals sign r:",
+      "name": "equal",
+      "snippet": "equal{${1:string}}{${2:string}}"
+    },
+    {
+      "name": "ifthenelse",
+      "snippet": "ifthenelse{${1:test}}{${2:then clause}}{${3:else clause}}"
+    },
+    {
+      "name": "isodd",
+      "snippet": "isodd{${1:number}}"
+    },
+    {
+      "name": "isundefined",
+      "snippet": "isundefined{${1:command}}"
+    },
+    {
+      "name": "lengthtest",
+      "snippet": "lengthtest{${1:dimen operator dimen}}"
+    },
+    {
+      "name": "newboolean",
+      "snippet": "newboolean{${1:name}}"
+    },
+    {
+      "name": "provideboolean",
+      "snippet": "provideboolean{${1:name}}"
+    },
+    {
+      "name": "setboolean",
+      "snippet": "setboolean{${1:name}}{${2:truth value}}"
+    },
+    {
+      "name": "whiledo",
+      "snippet": "whiledo{${1:test}}{${2:while clause}}"
+    }
+  ]
+}

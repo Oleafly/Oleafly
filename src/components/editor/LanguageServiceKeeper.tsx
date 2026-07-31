@@ -4,6 +4,7 @@ import {
   type LanguageServiceProjectSnapshot,
 } from "@/lib/analysis/language-service-controller";
 import { registerLanguageServiceLifecycleActions } from "@/lib/analysis/language-service-actions";
+import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
 
@@ -41,7 +42,10 @@ function currentProjectSnapshot(): LanguageServiceProjectSnapshot {
     projectId: files.projectId,
     engineId: files.engine.id,
     engineLoaded: files.engineLoaded,
-    mainDoc: files.mainDoc,
+    // The effective main document: an active-file `% !TEX root` override wins
+    // over the stored main doc. The snapshot comparison sees it as a plain
+    // string, so tab switches that change the effective root re-publish.
+    mainDoc: resolveEffectiveMainDoc().mainDoc,
     tree: files.tree,
     files: files.files,
     indexTexts: index.texts,

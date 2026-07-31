@@ -146,9 +146,11 @@ function MarkdownListDropdown({ variant }: { variant: "bar" | "menu" }) {
 export function MarkdownToolbar({
   wysiwyg,
   onToggleWysiwyg,
+  showVisualToggle = true,
 }: {
   wysiwyg: boolean;
   onToggleWysiwyg: () => void;
+  showVisualToggle?: boolean;
 }) {
   const controls = useMemo<ToolbarControl[]>(() => {
     const list: ToolbarControl[] = [
@@ -293,11 +295,13 @@ export function MarkdownToolbar({
       </div>
 
       <div className="ml-auto flex shrink-0 items-center gap-0.5">
-        <WysiwygModeSwitch
-          wysiwyg={wysiwyg}
-          onToggle={onToggleWysiwyg}
-          data-tour="wysiwyg-toggle"
-        />
+        {showVisualToggle && (
+          <WysiwygModeSwitch
+            wysiwyg={wysiwyg}
+            onToggle={onToggleWysiwyg}
+            data-tour="wysiwyg-toggle"
+          />
+        )}
         <WordCountButton />
         {!wysiwyg && (
           <IconBtn onClick={editorFind} title={`Find (${shortcut("⌘F")})`}>
