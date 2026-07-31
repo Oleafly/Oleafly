@@ -12,6 +12,7 @@ preflight do not require an account.
 | MCP | Expose project tools to external clients | Localhost HTTP with a short-lived bearer token and the same approval model |
 | AI providers | Chat, edits, compilation assistance, and figure generation | User-selected hosted provider or local Ollama model; credentials stay local |
 | Citation services | DOI, arXiv, and Crossref metadata | Sends the requested identifier or title only |
+| OpenAlex contact email | Improves OpenAlex rate limits (polite pool) | Optional; stored locally as connector value `openalex-email`; used only in OpenAlex request User-Agent |
 | Optional downloads | Engines, language servers, templates, fonts, and Pandoc | Checksum or manifest policy applies before installation |
 | Update feed | Release metadata and signed artifacts | The embedded updater public key must validate the feed artifact |
 
