@@ -34,7 +34,8 @@ const limits = {
   // +200 KB for the project-intelligence worker's own lazy unified-latex
   // parser chunk (workers cannot share main-thread chunks; the AST glossary
   // pass needs the parser inside the worker).
-  totalJavaScript: 9_210_000,
+  // +10 KB headroom for the Windows window-controls feature.
+  totalJavaScript: 9_220_000,
   largestCss: 400_000,
   harperWasm: 19_000_000,
   // The real worker and the independently loaded recovery module are each

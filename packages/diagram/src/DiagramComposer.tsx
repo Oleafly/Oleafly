@@ -247,6 +247,7 @@ export function DiagramComposer({
   fullscreen = false,
   forcePreviewOpen = false,
   brand,
+  windowControls,
 }: {
   open: boolean;
   projectId: string | null;
@@ -263,6 +264,9 @@ export function DiagramComposer({
   // App-supplied brand/back element, rendered in place of the default back
   // button + title so this matches the app's own project toolbar.
   brand?: ReactNode;
+  // App-supplied OS window controls (min/max/close), rendered at the far right
+  // of the toolbar on platforms that draw a frameless window (e.g. Windows).
+  windowControls?: ReactNode;
 }) {
   const { Button, Input, ColorPicker, Tooltip, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, toast } =
     useDiagramKit();
@@ -624,6 +628,7 @@ export function DiagramComposer({
       className="fixed inset-0 z-50 flex flex-col bg-background"
     >
       <div
+        data-tauri-drag-region
         className={cn(
           "relative flex h-12 shrink-0 items-center gap-2 border-b bg-background pr-4",
           isMac && !fullscreen && "pl-[78px]",
@@ -868,6 +873,7 @@ export function DiagramComposer({
             )}
           </div>
         </div>
+        {windowControls}
       </div>
 
       <div

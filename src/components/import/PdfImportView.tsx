@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover } from "@/components/ui/popover";
 import { Tooltip } from "@/components/ui/tooltip";
+import { WindowControls } from "@/components/layout/WindowControls";
 import {
   createProjectFromConversion,
   downloadFigure,
@@ -293,6 +294,7 @@ export function PdfImportView() {
   return (
     <div data-testid="pdf-import-view" className="flex h-full flex-col bg-background">
       <div
+        data-tauri-drag-region
         className={cn(
           "flex items-center gap-3 border-b px-4 py-2",
           isMac && !fullscreen && "pl-20",
@@ -381,6 +383,7 @@ export function PdfImportView() {
           <span className="size-1.5 rounded-full bg-emerald-500" />
           Local
         </div>
+        <WindowControls />
       </div>
       {!pdfBytes ? (
         <PdfDropzoneLanding />
