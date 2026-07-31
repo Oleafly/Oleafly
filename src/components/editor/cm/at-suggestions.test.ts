@@ -176,8 +176,11 @@ describe("atSuggestionCompletion", () => {
       expect(result).not.toBeNull();
       const alpha = option(result, "@a");
       expect(alpha).toBeTruthy();
-      expect(typeof alpha?.apply).toBe("function");
-      (alpha?.apply as (
+      const applyAlpha = alpha?.apply;
+      if (typeof applyAlpha !== "function") {
+        throw new Error("expected a function apply");
+      }
+      (applyAlpha as (
         view: EditorView,
         completion: Completion,
         from: number,
@@ -204,7 +207,11 @@ describe("atSuggestionCompletion", () => {
       expect(alpha).toBeTruthy();
       // The document changes before the completion is applied.
       view.dispatch({ changes: { from: 0, to: 0, insert: "z" } });
-      (alpha?.apply as (
+      const applyStale = alpha?.apply;
+      if (typeof applyStale !== "function") {
+        throw new Error("expected a function apply");
+      }
+      (applyStale as (
         view: EditorView,
         completion: Completion,
         from: number,
