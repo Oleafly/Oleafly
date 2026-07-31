@@ -11,7 +11,7 @@
     },
     {
       "name": "afterpage",
-      "snippet": "afterpage{${1:command%plain}}"
+      "snippet": "afterpage{${1:command}}"
     }
   ]
 }

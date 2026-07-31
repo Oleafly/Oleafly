@@ -215,7 +215,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "addfontfeature",
-      "snippet": "addfontfeature{${1:font features%keyvals}}"
+      "snippet": "addfontfeature{${1:font features}}"
     },
     {
       "keyPos": 0,
@@ -223,7 +223,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "addfontfeatures",
-      "snippet": "addfontfeatures{${1:font features%keyvals}}"
+      "snippet": "addfontfeatures{${1:font features}}"
     },
     {
       "name": "aliasfontfeature",
@@ -243,7 +243,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "defaultfontfeatures",
-      "snippet": "defaultfontfeatures[${2:font name list}]{${1:font features%keyvals}}"
+      "snippet": "defaultfontfeatures[${2:font name list}]{${1:font features}}"
     },
     {
       "keyPos": 0,
@@ -251,7 +251,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "defaultfontfeatures",
-      "snippet": "defaultfontfeatures{${1:font features%keyvals}}"
+      "snippet": "defaultfontfeatures{${1:font features}}"
     },
     {
       "name": "dh"
@@ -275,7 +275,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "fontspec",
-      "snippet": "fontspec[${2:font features}]{${1:font}}[${3:font features%keyvals}]",
+      "snippet": "fontspec[${2:font features}]{${1:font}}[${3:font features}]",
       "unusual": true
     },
     {
@@ -288,7 +288,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "fontspec",
-      "snippet": "fontspec{${1:font}}[${2:font features%keyvals}]"
+      "snippet": "fontspec{${1:font}}[${2:font features}]"
     },
     {
       "name": "guillemetleft"
@@ -341,7 +341,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "newfontface",
-      "snippet": "newfontface{${1:cmd}}[${3:font features}]{${2:font}}[${4:font features%keyvals}]",
+      "snippet": "newfontface{${1:cmd}}[${3:font features}]{${2:font}}[${4:font features}]",
       "unusual": true
     },
     {
@@ -354,7 +354,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "newfontface",
-      "snippet": "newfontface{${1:cmd}}{${2:font}}[${3:font features%keyvals}]"
+      "snippet": "newfontface{${1:cmd}}{${2:font}}[${3:font features}]"
     },
     {
       "name": "newfontfamily",
@@ -367,7 +367,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "newfontfamily",
-      "snippet": "newfontfamily{${1:cmd}}[${3:font features}]{${2:font}}[${4:font features%keyvals}]",
+      "snippet": "newfontfamily{${1:cmd}}[${3:font features}]{${2:font}}[${4:font features}]",
       "unusual": true
     },
     {
@@ -380,7 +380,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "newfontfamily",
-      "snippet": "newfontfamily{${1:cmd}}{${2:font}}[${3:font features%keyvals}]"
+      "snippet": "newfontfamily{${1:cmd}}{${2:font}}[${3:font features}]"
     },
     {
       "name": "newfontfeature",
@@ -412,7 +412,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "providefontface",
-      "snippet": "providefontface{${1:cmd}}[${3:font features}]{${2:font}}[${4:font features%keyvals}]",
+      "snippet": "providefontface{${1:cmd}}[${3:font features}]{${2:font}}[${4:font features}]",
       "unusual": true
     },
     {
@@ -425,7 +425,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "providefontface",
-      "snippet": "providefontface{${1:cmd}}{${2:font}}[${3:font features%keyvals}]"
+      "snippet": "providefontface{${1:cmd}}{${2:font}}[${3:font features}]"
     },
     {
       "name": "providefontfamily",
@@ -438,7 +438,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "providefontfamily",
-      "snippet": "providefontfamily{${1:cmd}}[${3:font features}]{${2:font}}[${4:font features%keyvals}]",
+      "snippet": "providefontfamily{${1:cmd}}[${3:font features}]{${2:font}}[${4:font features}]",
       "unusual": true
     },
     {
@@ -451,7 +451,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "providefontfamily",
-      "snippet": "providefontfamily{${1:cmd}}{${2:font}}[${3:font features%keyvals}]"
+      "snippet": "providefontfamily{${1:cmd}}{${2:font}}[${3:font features}]"
     },
     {
       "name": "quotedblbase"
@@ -470,7 +470,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "renewfontface",
-      "snippet": "renewfontface{${1:cmd}}[${3:font features}]{${2:font}}[${4:font features%keyvals}]",
+      "snippet": "renewfontface{${1:cmd}}[${3:font features}]{${2:font}}[${4:font features}]",
       "unusual": true
     },
     {
@@ -483,7 +483,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "renewfontface",
-      "snippet": "renewfontface{${1:cmd}}{${2:font}}[${3:font features%keyvals}]"
+      "snippet": "renewfontface{${1:cmd}}{${2:font}}[${3:font features}]"
     },
     {
       "name": "renewfontfamily",
@@ -496,7 +496,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "renewfontfamily",
-      "snippet": "renewfontfamily{${1:cmd}}[${3:font features}]{${2:font}}[${4:font features%keyvals}]",
+      "snippet": "renewfontfamily{${1:cmd}}[${3:font features}]{${2:font}}[${4:font features}]",
       "unusual": true
     },
     {
@@ -509,7 +509,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "renewfontfamily",
-      "snippet": "renewfontfamily{${1:cmd}}{${2:font}}[${3:font features%keyvals}]"
+      "snippet": "renewfontfamily{${1:cmd}}{${2:font}}[${3:font features}]"
     },
     {
       "name": "scitdefault",
@@ -534,7 +534,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "setboldmathrm",
-      "snippet": "setboldmathrm[${2:font features}]{${1:font}}[${3:font features%keyvals}]",
+      "snippet": "setboldmathrm[${2:font features}]{${1:font}}[${3:font features}]",
       "unusual": true
     },
     {
@@ -547,7 +547,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "setboldmathrm",
-      "snippet": "setboldmathrm{${1:font}}[${2:font features%keyvals}]"
+      "snippet": "setboldmathrm{${1:font}}[${2:font features}]"
     },
     {
       "name": "setfontface",
@@ -560,7 +560,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "setfontface",
-      "snippet": "setfontface{${1:cmd}}[${3:font features}]{${2:font}}[${4:font features%keyvals}]",
+      "snippet": "setfontface{${1:cmd}}[${3:font features}]{${2:font}}[${4:font features}]",
       "unusual": true
     },
     {
@@ -573,7 +573,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "setfontface",
-      "snippet": "setfontface{${1:cmd}}{${2:font}}[${3:font features%keyvals}]"
+      "snippet": "setfontface{${1:cmd}}{${2:font}}[${3:font features}]"
     },
     {
       "name": "setfontfamily",
@@ -586,7 +586,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "setfontfamily",
-      "snippet": "setfontfamily{${1:cmd}}[${3:font features}]{${2:font}}[${4:font features%keyvals}]",
+      "snippet": "setfontfamily{${1:cmd}}[${3:font features}]{${2:font}}[${4:font features}]",
       "unusual": true
     },
     {
@@ -599,7 +599,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "setfontfamily",
-      "snippet": "setfontfamily{${1:cmd}}{${2:font}}[${3:font features%keyvals}]"
+      "snippet": "setfontfamily{${1:cmd}}{${2:font}}[${3:font features}]"
     },
     {
       "name": "setmainfont",
@@ -612,7 +612,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "setmainfont",
-      "snippet": "setmainfont[${2:font features}]{${1:font}}[${3:font features%keyvals}]",
+      "snippet": "setmainfont[${2:font features}]{${1:font}}[${3:font features}]",
       "unusual": true
     },
     {
@@ -625,7 +625,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "setmainfont",
-      "snippet": "setmainfont{${1:font}}[${2:font features%keyvals}]"
+      "snippet": "setmainfont{${1:font}}[${2:font features}]"
     },
     {
       "name": "setmathrm",
@@ -638,7 +638,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "setmathrm",
-      "snippet": "setmathrm[${2:font features}]{${1:font}}[${3:font features%keyvals}]",
+      "snippet": "setmathrm[${2:font features}]{${1:font}}[${3:font features}]",
       "unusual": true
     },
     {
@@ -651,7 +651,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "setmathrm",
-      "snippet": "setmathrm{${1:font}}[${2:font features%keyvals}]"
+      "snippet": "setmathrm{${1:font}}[${2:font features}]"
     },
     {
       "name": "setmathsf",
@@ -664,7 +664,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "setmathsf",
-      "snippet": "setmathsf[${2:font features}]{${1:font}}[${3:font features%keyvals}]",
+      "snippet": "setmathsf[${2:font features}]{${1:font}}[${3:font features}]",
       "unusual": true
     },
     {
@@ -677,7 +677,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "setmathsf",
-      "snippet": "setmathsf{${1:font}}[${2:font features%keyvals}]"
+      "snippet": "setmathsf{${1:font}}[${2:font features}]"
     },
     {
       "name": "setmathtt",
@@ -690,7 +690,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "setmathtt",
-      "snippet": "setmathtt[${2:font features}]{${1:font}}[${3:font features%keyvals}]",
+      "snippet": "setmathtt[${2:font features}]{${1:font}}[${3:font features}]",
       "unusual": true
     },
     {
@@ -703,7 +703,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "setmathtt",
-      "snippet": "setmathtt{${1:font}}[${2:font features%keyvals}]"
+      "snippet": "setmathtt{${1:font}}[${2:font features}]"
     },
     {
       "name": "setmonofont",
@@ -716,7 +716,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "setmonofont",
-      "snippet": "setmonofont[${2:font features}]{${1:font}}[${3:font features%keyvals}]",
+      "snippet": "setmonofont[${2:font features}]{${1:font}}[${3:font features}]",
       "unusual": true
     },
     {
@@ -729,7 +729,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "setmonofont",
-      "snippet": "setmonofont{${1:font}}[${2:font features%keyvals}]"
+      "snippet": "setmonofont{${1:font}}[${2:font features}]"
     },
     {
       "name": "setromanfont",
@@ -742,7 +742,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "setromanfont",
-      "snippet": "setromanfont[${2:font features}]{${1:font}}[${3:font features%keyvals}]",
+      "snippet": "setromanfont[${2:font features}]{${1:font}}[${3:font features}]",
       "unusual": true
     },
     {
@@ -755,7 +755,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "setromanfont",
-      "snippet": "setromanfont{${1:font}}[${2:font features%keyvals}]"
+      "snippet": "setromanfont{${1:font}}[${2:font features}]"
     },
     {
       "name": "setsansfont",
@@ -768,7 +768,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "setsansfont",
-      "snippet": "setsansfont[${2:font features}]{${1:font}}[${3:font features%keyvals}]",
+      "snippet": "setsansfont[${2:font features}]{${1:font}}[${3:font features}]",
       "unusual": true
     },
     {
@@ -781,7 +781,7 @@
         "\\addfontfeature,\\addfontfeatures,\\defaultfontfeatures,\\fontspec,\\newfontface,\\newfontfamily,\\providefontface,\\providefontfamily,\\renewfontface,\\renewfontfamily,\\setboldmathrm,\\setfontface,\\setfontfamily,\\setmainfont,\\setmathrm,\\setmathsf,\\setmathtt,\\setmonofont,\\setromanfont,\\setsansfont"
       ],
       "name": "setsansfont",
-      "snippet": "setsansfont{${1:font}}[${2:font features%keyvals}]"
+      "snippet": "setsansfont{${1:font}}[${2:font features}]"
     },
     {
       "name": "strong",

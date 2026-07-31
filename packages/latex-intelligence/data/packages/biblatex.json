@@ -39,7 +39,7 @@
         "\\DeclareRefcontext,\\begin{refcontext},\\newrefcontext,\\localrefcontext,\\assignrefcontextkeyws,\\assignrefcontextkeyws*,\\assignrefcontextcats,\\assignrefcontextcats*,\\assignrefcontextentries,\\assignrefcontextentries*,\\GenRefcontextData"
       ],
       "name": "refcontext",
-      "snippet": "[${2:options%keyvals}]{${1:name}}"
+      "snippet": "[${2:options}]{${1:name}}"
     },
     {
       "name": "refcontext",
@@ -1841,7 +1841,7 @@
     },
     {
       "name": "BibliographyWarning",
-      "snippet": "BibliographyWarning{${1:message%text}}",
+      "snippet": "BibliographyWarning{${1:message}}",
       "unusual": true
     },
     {
@@ -2148,7 +2148,7 @@
         "\\DeclareAutoCiteCommand"
       ],
       "name": "DeclareAutoCiteCommand",
-      "snippet": "DeclareAutoCiteCommand{${1:name}}[${4:position%keyvals}]{${2:cite}}{${3:multicite}}",
+      "snippet": "DeclareAutoCiteCommand{${1:name}}[${4:position}]{${2:cite}}{${3:multicite}}",
       "unusual": true
     },
     {
@@ -2168,22 +2168,22 @@
     },
     {
       "name": "DeclareBiblatexOption",
-      "snippet": "DeclareBiblatexOption{${1:scope}}[${4:datatype}]{${2:key%plain}}[${5:value}]{${3:code}}",
+      "snippet": "DeclareBiblatexOption{${1:scope}}[${4:datatype}]{${2:key}}[${5:value}]{${3:code}}",
       "unusual": true
     },
     {
       "name": "DeclareBiblatexOption",
-      "snippet": "DeclareBiblatexOption{${1:scope}}[${4:datatype}]{${2:key%plain}}{${3:code}}",
+      "snippet": "DeclareBiblatexOption{${1:scope}}[${4:datatype}]{${2:key}}{${3:code}}",
       "unusual": true
     },
     {
       "name": "DeclareBiblatexOption",
-      "snippet": "DeclareBiblatexOption{${1:scope}}{${2:key%plain}}[${4:value}]{${3:code}}",
+      "snippet": "DeclareBiblatexOption{${1:scope}}{${2:key}}[${4:value}]{${3:code}}",
       "unusual": true
     },
     {
       "name": "DeclareBiblatexOption",
-      "snippet": "DeclareBiblatexOption{${1:scope}}{${2:key%plain}}{${3:code}}",
+      "snippet": "DeclareBiblatexOption{${1:scope}}{${2:key}}{${3:code}}",
       "unusual": true
     },
     {
@@ -2202,22 +2202,22 @@
     },
     {
       "name": "DeclareBibliographyOption",
-      "snippet": "DeclareBibliographyOption[${3:datatype}]{${1:key%plain}}[${4:value}]{${2:code}}",
+      "snippet": "DeclareBibliographyOption[${3:datatype}]{${1:key}}[${4:value}]{${2:code}}",
       "unusual": true
     },
     {
       "name": "DeclareBibliographyOption",
-      "snippet": "DeclareBibliographyOption[${3:datatype}]{${1:key%plain}}{${2:code}}",
+      "snippet": "DeclareBibliographyOption[${3:datatype}]{${1:key}}{${2:code}}",
       "unusual": true
     },
     {
       "name": "DeclareBibliographyOption",
-      "snippet": "DeclareBibliographyOption{${1:key%plain}}[${3:value}]{${2:code}}",
+      "snippet": "DeclareBibliographyOption{${1:key}}[${3:value}]{${2:code}}",
       "unusual": true
     },
     {
       "name": "DeclareBibliographyOption",
-      "snippet": "DeclareBibliographyOption{${1:key%plain}}{${2:code}}",
+      "snippet": "DeclareBibliographyOption{${1:key}}{${2:code}}",
       "unusual": true
     },
     {
@@ -2276,7 +2276,7 @@
         "\\DeclareCitePunctuationPosition"
       ],
       "name": "DeclareCitePunctuationPosition",
-      "snippet": "DeclareCitePunctuationPosition{${1:cmd}}{${2:position%keyvals}}",
+      "snippet": "DeclareCitePunctuationPosition{${1:cmd}}{${2:position}}",
       "unusual": true
     },
     {
@@ -2285,7 +2285,7 @@
         "\\DeclareDataInheritance"
       ],
       "name": "DeclareDataInheritance",
-      "snippet": "DeclareDataInheritance[${4:options%keyvals}]{${1:source}}{${2:target}}{${3:rules}}",
+      "snippet": "DeclareDataInheritance[${4:options}]{${1:source}}{${2:target}}{${3:rules}}",
       "unusual": true
     },
     {
@@ -2304,7 +2304,7 @@
         "\\DeclareDatamodelConstant"
       ],
       "name": "DeclareDatamodelConstant",
-      "snippet": "DeclareDatamodelConstant[${3:options%keyvals}]{${1:name}}{${2:constantdef}}",
+      "snippet": "DeclareDatamodelConstant[${3:options}]{${1:name}}{${2:constantdef}}",
       "unusual": true
     },
     {
@@ -2338,7 +2338,7 @@
         "\\DeclareDatamodelEntrytypes"
       ],
       "name": "DeclareDatamodelEntrytypes",
-      "snippet": "DeclareDatamodelEntrytypes[${2:options%keyvals}]{${1:entrytypes}}",
+      "snippet": "DeclareDatamodelEntrytypes[${2:options}]{${1:entrytypes}}",
       "unusual": true
     },
     {
@@ -2352,7 +2352,7 @@
         "\\DeclareDatamodelFields"
       ],
       "name": "DeclareDatamodelFields",
-      "snippet": "DeclareDatamodelFields[${2:options%keyvals}]{${1:fields}}",
+      "snippet": "DeclareDatamodelFields[${2:options}]{${1:fields}}",
       "unusual": true
     },
     {
@@ -2412,22 +2412,22 @@
     },
     {
       "name": "DeclareEntryOption",
-      "snippet": "DeclareEntryOption[${3:datatype}]{${1:key%plain}}[${4:value}]{${2:code}}",
+      "snippet": "DeclareEntryOption[${3:datatype}]{${1:key}}[${4:value}]{${2:code}}",
       "unusual": true
     },
     {
       "name": "DeclareEntryOption",
-      "snippet": "DeclareEntryOption[${3:datatype}]{${1:key%plain}}{${2:code}}",
+      "snippet": "DeclareEntryOption[${3:datatype}]{${1:key}}{${2:code}}",
       "unusual": true
     },
     {
       "name": "DeclareEntryOption",
-      "snippet": "DeclareEntryOption{${1:key%plain}}[${3:value}]{${2:code}}",
+      "snippet": "DeclareEntryOption{${1:key}}[${3:value}]{${2:code}}",
       "unusual": true
     },
     {
       "name": "DeclareEntryOption",
-      "snippet": "DeclareEntryOption{${1:key%plain}}{${2:code}}",
+      "snippet": "DeclareEntryOption{${1:key}}{${2:code}}",
       "unusual": true
     },
     {
@@ -2804,7 +2804,7 @@
         "\\DeclarePrintbibliographyDefaults"
       ],
       "name": "DeclarePrintbibliographyDefaults",
-      "snippet": "DeclarePrintbibliographyDefaults{${1:options%keyvals}}"
+      "snippet": "DeclarePrintbibliographyDefaults{${1:options}}"
     },
     {
       "name": "DeclarePunctuationPairs",
@@ -2842,7 +2842,7 @@
         "\\DeclareRefcontext,\\begin{refcontext},\\newrefcontext,\\localrefcontext,\\assignrefcontextkeyws,\\assignrefcontextkeyws*,\\assignrefcontextcats,\\assignrefcontextcats*,\\assignrefcontextentries,\\assignrefcontextentries*,\\GenRefcontextData"
       ],
       "name": "DeclareRefcontext",
-      "snippet": "DeclareRefcontext{${1:name}}{${2:options%keyvals}}"
+      "snippet": "DeclareRefcontext{${1:name}}{${2:options}}"
     },
     {
       "name": "DeclareSortExclusion",
@@ -2880,7 +2880,7 @@
         "\\DeclareSortingTemplate"
       ],
       "name": "DeclareSortingTemplate",
-      "snippet": "DeclareSortingTemplate[${3:options%keyvals}]{${1:name}}{${2:specification}}",
+      "snippet": "DeclareSortingTemplate[${3:options}]{${1:name}}{${2:specification}}",
       "unusual": true
     },
     {
@@ -2900,22 +2900,22 @@
     },
     {
       "name": "DeclareTypeOption",
-      "snippet": "DeclareTypeOption[${3:datatype}]{${1:key%plain}}[${4:value}]{${2:code}}",
+      "snippet": "DeclareTypeOption[${3:datatype}]{${1:key}}[${4:value}]{${2:code}}",
       "unusual": true
     },
     {
       "name": "DeclareTypeOption",
-      "snippet": "DeclareTypeOption[${3:datatype}]{${1:key%plain}}{${2:code}}",
+      "snippet": "DeclareTypeOption[${3:datatype}]{${1:key}}{${2:code}}",
       "unusual": true
     },
     {
       "name": "DeclareTypeOption",
-      "snippet": "DeclareTypeOption{${1:key%plain}}[${3:value}]{${2:code}}",
+      "snippet": "DeclareTypeOption{${1:key}}[${3:value}]{${2:code}}",
       "unusual": true
     },
     {
       "name": "DeclareTypeOption",
-      "snippet": "DeclareTypeOption{${1:key%plain}}{${2:code}}",
+      "snippet": "DeclareTypeOption{${1:key}}{${2:code}}",
       "unusual": true
     },
     {
@@ -2934,7 +2934,7 @@
         "\\DefaultInheritance,\\except"
       ],
       "name": "DefaultInheritance",
-      "snippet": "DefaultInheritance[${2:exceptions}]{${1:options%keyvals}}",
+      "snippet": "DefaultInheritance[${2:exceptions}]{${1:options}}",
       "unusual": true
     },
     {
@@ -2943,7 +2943,7 @@
         "\\DefaultInheritance,\\except"
       ],
       "name": "DefaultInheritance",
-      "snippet": "DefaultInheritance{${1:options%keyvals}}",
+      "snippet": "DefaultInheritance{${1:options}}",
       "unusual": true
     },
     {
@@ -3080,7 +3080,7 @@
         "\\usepackage/biblatex#c,\\ExecuteBibliographyOptions#c,\\ExecutePublistOptions#c"
       ],
       "name": "ExecuteBibliographyOptions",
-      "snippet": "ExecuteBibliographyOptions[${2:entrytype list}]{${1:options%keyvals}}"
+      "snippet": "ExecuteBibliographyOptions[${2:entrytype list}]{${1:options}}"
     },
     {
       "keyPos": 0,
@@ -3090,7 +3090,7 @@
         "\\usepackage/biblatex#c,\\ExecuteBibliographyOptions#c,\\ExecutePublistOptions#c"
       ],
       "name": "ExecuteBibliographyOptions",
-      "snippet": "ExecuteBibliographyOptions{${1:options%keyvals}}"
+      "snippet": "ExecuteBibliographyOptions{${1:options}}"
     },
     {
       "keyPos": 0,
@@ -3098,7 +3098,7 @@
         "\\usepackage/biblatex#c,\\ExecuteBibliographyOptions#c,\\ExecutePublistOptions#c"
       ],
       "name": "ExecutePublistOptions",
-      "snippet": "ExecutePublistOptions{${1:options%keyvals}}"
+      "snippet": "ExecutePublistOptions{${1:options}}"
     },
     {
       "name": "FirstWord",
@@ -3909,7 +3909,7 @@
         "\\addbibresource,\\addglobalbib,\\addsectionbib"
       ],
       "name": "addbibresource",
-      "snippet": "addbibresource[${2:options%keyvals}]{${1:bibliographic resource}}"
+      "snippet": "addbibresource[${2:options}]{${1:bibliographic resource}}"
     },
     {
       "name": "addbibresource",
@@ -3941,7 +3941,7 @@
         "\\addbibresource,\\addglobalbib,\\addsectionbib"
       ],
       "name": "addglobalbib",
-      "snippet": "addglobalbib[${2:options%keyvals}]{${1:bibliographic resource}}"
+      "snippet": "addglobalbib[${2:options}]{${1:bibliographic resource}}"
     },
     {
       "name": "addglobalbib",
@@ -3990,7 +3990,7 @@
         "\\addbibresource,\\addglobalbib,\\addsectionbib"
       ],
       "name": "addsectionbib",
-      "snippet": "addsectionbib[${2:options%keyvals}]{${1:bibliographic resource}}"
+      "snippet": "addsectionbib[${2:options}]{${1:bibliographic resource}}"
     },
     {
       "name": "addsectionbib",
@@ -4071,7 +4071,7 @@
         "\\antecedent,\\consequent"
       ],
       "name": "antecedent",
-      "snippet": "antecedent[${2:options%keyvals}]{${1:fields}}",
+      "snippet": "antecedent[${2:options}]{${1:fields}}",
       "unusual": true
     },
     {
@@ -4147,7 +4147,7 @@
         "\\assignrefcontextkeyws,\\assignrefcontextkeyws*,\\assignrefcontextcats,\\assignrefcontextcats*,\\assignrefcontextentries,\\assignrefcontextentries*"
       ],
       "name": "assignrefcontextcats",
-      "snippet": "assignrefcontextcats[${2:options%keyvals}]{${1:category1,category2,...}}",
+      "snippet": "assignrefcontextcats[${2:options}]{${1:category1,category2,...}}",
       "unusual": true
     },
     {
@@ -4157,7 +4157,7 @@
         "\\assignrefcontextkeyws,\\assignrefcontextkeyws*,\\assignrefcontextcats,\\assignrefcontextcats*,\\assignrefcontextentries,\\assignrefcontextentries*"
       ],
       "name": "assignrefcontextcats*",
-      "snippet": "assignrefcontextcats*[${2:options%keyvals}]{${1:category1,category2,...}}",
+      "snippet": "assignrefcontextcats*[${2:options}]{${1:category1,category2,...}}",
       "unusual": true
     },
     {
@@ -4167,7 +4167,7 @@
         "\\assignrefcontextkeyws,\\assignrefcontextkeyws*,\\assignrefcontextcats,\\assignrefcontextcats*,\\assignrefcontextentries,\\assignrefcontextentries*"
       ],
       "name": "assignrefcontextentries",
-      "snippet": "assignrefcontextentries[${2:options%keyvals}]{${1:entrykey1,entrykey2,...}}",
+      "snippet": "assignrefcontextentries[${2:options}]{${1:entrykey1,entrykey2,...}}",
       "unusual": true
     },
     {
@@ -4177,7 +4177,7 @@
         "\\assignrefcontextkeyws,\\assignrefcontextkeyws*,\\assignrefcontextcats,\\assignrefcontextcats*,\\assignrefcontextentries,\\assignrefcontextentries*"
       ],
       "name": "assignrefcontextentries*",
-      "snippet": "assignrefcontextentries*[${2:options%keyvals}]{${1:entrykey1,entrykey2,...}}",
+      "snippet": "assignrefcontextentries*[${2:options}]{${1:entrykey1,entrykey2,...}}",
       "unusual": true
     },
     {
@@ -4187,7 +4187,7 @@
         "\\assignrefcontextkeyws,\\assignrefcontextkeyws*,\\assignrefcontextcats,\\assignrefcontextcats*,\\assignrefcontextentries,\\assignrefcontextentries*"
       ],
       "name": "assignrefcontextkeyws",
-      "snippet": "assignrefcontextkeyws[${2:options%keyvals}]{${1:keyword1,keyword2,...}}",
+      "snippet": "assignrefcontextkeyws[${2:options}]{${1:keyword1,keyword2,...}}",
       "unusual": true
     },
     {
@@ -4197,7 +4197,7 @@
         "\\assignrefcontextkeyws,\\assignrefcontextkeyws*,\\assignrefcontextcats,\\assignrefcontextcats*,\\assignrefcontextentries,\\assignrefcontextentries*"
       ],
       "name": "assignrefcontextkeyws*",
-      "snippet": "assignrefcontextkeyws*[${2:options%keyvals}]{${1:keyword1,keyword2,...}}",
+      "snippet": "assignrefcontextkeyws*[${2:options}]{${1:keyword1,keyword2,...}}",
       "unusual": true
     },
     {
@@ -4434,7 +4434,7 @@
         "\\bibbysection,\\bibbysegment,\\bibbycategory"
       ],
       "name": "bibbycategory",
-      "snippet": "bibbycategory[${1:options%keyvals}]"
+      "snippet": "bibbycategory[${1:options}]"
     },
     {
       "name": "bibbysection"
@@ -4445,7 +4445,7 @@
         "\\bibbysection,\\bibbysegment,\\bibbycategory"
       ],
       "name": "bibbysection",
-      "snippet": "bibbysection[${1:options%keyvals}]"
+      "snippet": "bibbysection[${1:options}]"
     },
     {
       "name": "bibbysegment"
@@ -4456,7 +4456,7 @@
         "\\bibbysection,\\bibbysegment,\\bibbycategory"
       ],
       "name": "bibbysegment",
-      "snippet": "bibbysegment[${1:options%keyvals}]"
+      "snippet": "bibbysegment[${1:options}]"
     },
     {
       "name": "bibclosebracket",
@@ -4937,12 +4937,12 @@
     },
     {
       "name": "blxcitecmd",
-      "snippet": "blxcitecmd{${1:name}}{${2:prenote}}{${3:postnote}}{${4:citekey%plain}}{${5:punct}}",
+      "snippet": "blxcitecmd{${1:name}}{${2:prenote}}{${3:postnote}}{${4:citekey}}{${5:punct}}",
       "unusual": true
     },
     {
       "name": "blxciteicmd",
-      "snippet": "blxciteicmd{${1:name}}{${2:prenote}}{${3:postnote}}{${4:citekey%plain}}{${5:punct}}",
+      "snippet": "blxciteicmd{${1:name}}{${2:prenote}}{${3:postnote}}{${4:citekey}}{${5:punct}}",
       "unusual": true
     },
     {
@@ -4951,7 +4951,7 @@
     },
     {
       "name": "blxmciteicmd",
-      "snippet": "blxmciteicmd{${1:multicitecount}}{${2:<name>}}{${3:prenote}}{${4:postnote}}{${5:citekey%plain}}{${6:punct}}",
+      "snippet": "blxmciteicmd{${1:multicitecount}}{${2:<name>}}{${3:prenote}}{${4:postnote}}{${5:citekey}}{${6:punct}}",
       "unusual": true
     },
     {
@@ -5848,7 +5848,7 @@
         "\\antecedent,\\consequent"
       ],
       "name": "consequent",
-      "snippet": "consequent[${2:options%keyvals}]{${1:fields}}",
+      "snippet": "consequent[${2:options}]{${1:fields}}",
       "unusual": true
     },
     {
@@ -5862,7 +5862,7 @@
         "\\constraint"
       ],
       "name": "constraint",
-      "snippet": "constraint[${2:options%keyvals}]{${1:elements}}",
+      "snippet": "constraint[${2:options}]{${1:elements}}",
       "unusual": true
     },
     {
@@ -5982,7 +5982,7 @@
     },
     {
       "name": "defbibheading",
-      "snippet": "defbibheading{${1:name}}[${3:title%text}]{${2:code}}"
+      "snippet": "defbibheading{${1:name}}[${3:title}]{${2:code}}"
     },
     {
       "name": "defbibheading",
@@ -6112,12 +6112,12 @@
     },
     {
       "name": "entrydata",
-      "snippet": "entrydata{${1:key%plain}}{${2:code}}",
+      "snippet": "entrydata{${1:key}}{${2:code}}",
       "unusual": true
     },
     {
       "name": "entrydata*",
-      "snippet": "entrydata*{${1:key%plain}}{${2:code}}",
+      "snippet": "entrydata*{${1:key}}{${2:code}}",
       "unusual": true
     },
     {
@@ -6223,7 +6223,7 @@
         "\\DefaultInheritance,\\except"
       ],
       "name": "except",
-      "snippet": "except{${1:source}}{${2:target}}{${3:options%keyvals}}",
+      "snippet": "except{${1:source}}{${2:target}}{${3:options}}",
       "unusual": true
     },
     {
@@ -6306,7 +6306,7 @@
         "\\field"
       ],
       "name": "field",
-      "snippet": "field[${2:options%keyvals}]{${1:field}}",
+      "snippet": "field[${2:options}]{${1:field}}",
       "unusual": true
     },
     {
@@ -6333,7 +6333,7 @@
         "\\filter"
       ],
       "name": "filter",
-      "snippet": "filter[${2:filterspec%keyvals}]{${1:filter}}",
+      "snippet": "filter[${2:filterspec}]{${1:filter}}",
       "unusual": true
     },
     {
@@ -6838,7 +6838,7 @@
     },
     {
       "name": "getcomputableequivalent",
-      "snippet": "getcomputableequivalent{${1:string}}{${2:macro%cmd}}",
+      "snippet": "getcomputableequivalent{${1:string}}{${2:macro}}",
       "unusual": true
     },
     {
@@ -7913,7 +7913,7 @@
         "\\inherit"
       ],
       "name": "inherit",
-      "snippet": "inherit[${3:options%keyvals}]{${1:source}}{${2:target}}",
+      "snippet": "inherit[${3:options}]{${1:source}}{${2:target}}",
       "unusual": true
     },
     {
@@ -8108,7 +8108,7 @@
         "\\DeclareRefcontext,\\begin{refcontext},\\newrefcontext,\\localrefcontext,\\assignrefcontextkeyws,\\assignrefcontextkeyws*,\\assignrefcontextcats,\\assignrefcontextcats*,\\assignrefcontextentries,\\assignrefcontextentries*,\\GenRefcontextData"
       ],
       "name": "localrefcontext",
-      "snippet": "localrefcontext[${2:options%keyvals}]{${1:name}}"
+      "snippet": "localrefcontext[${2:options}]{${1:name}}"
     },
     {
       "name": "localrefcontext",
@@ -8202,7 +8202,7 @@
         "\\map"
       ],
       "name": "map",
-      "snippet": "map[${2:options%keyvals}]{${1:restrictions,steps}}",
+      "snippet": "map[${2:options}]{${1:restrictions,steps}}",
       "unusual": true
     },
     {
@@ -8216,7 +8216,7 @@
         "\\maps"
       ],
       "name": "maps",
-      "snippet": "maps[${2:options%keyvals}]{${1:elements}}",
+      "snippet": "maps[${2:options}]{${1:elements}}",
       "unusual": true
     },
     {
@@ -8286,7 +8286,7 @@
         "\\member"
       ],
       "name": "member",
-      "snippet": "member[${1:options%keyvals}]",
+      "snippet": "member[${1:options}]",
       "unusual": true
     },
     {
@@ -9190,7 +9190,7 @@
         "\\namepart"
       ],
       "name": "namepart",
-      "snippet": "namepart[${2:options%keyvals}]{${1:namepart}}",
+      "snippet": "namepart[${2:options}]{${1:namepart}}",
       "unusual": true
     },
     {
@@ -9294,7 +9294,7 @@
         "\\DeclareRefcontext,\\begin{refcontext},\\newrefcontext,\\localrefcontext,\\assignrefcontextkeyws,\\assignrefcontextkeyws*,\\assignrefcontextcats,\\assignrefcontextcats*,\\assignrefcontextentries,\\assignrefcontextentries*,\\GenRefcontextData"
       ],
       "name": "newrefcontext",
-      "snippet": "newrefcontext[${2:options%keyvals}]{${1:name}}"
+      "snippet": "newrefcontext[${2:options}]{${1:name}}"
     },
     {
       "name": "newrefcontext",
@@ -9805,7 +9805,7 @@
         "\\printbibheading"
       ],
       "name": "printbibheading",
-      "snippet": "printbibheading[${1:options%keyvals}]"
+      "snippet": "printbibheading[${1:options}]"
     },
     {
       "name": "printbibliography"
@@ -9817,7 +9817,7 @@
         "\\usepackage/biblatex#c,\\ExecuteBibliographyOptions#c,\\printbibliography"
       ],
       "name": "printbibliography",
-      "snippet": "printbibliography[${1:options%keyvals}]"
+      "snippet": "printbibliography[${1:options}]"
     },
     {
       "keyPos": 0,
@@ -9825,7 +9825,7 @@
         "\\printbiblist,\\printshorthands"
       ],
       "name": "printbiblist",
-      "snippet": "printbiblist[${2:options%keyvals}]{${1:biblist}}"
+      "snippet": "printbiblist[${2:options}]{${1:biblist}}"
     },
     {
       "name": "printbiblist",
@@ -9948,7 +9948,7 @@
         "\\printbiblist,\\printshorthands"
       ],
       "name": "printshorthands",
-      "snippet": "printshorthands[${1:options%keyvals}]"
+      "snippet": "printshorthands[${1:options}]"
     },
     {
       "name": "printtext",
@@ -10628,7 +10628,7 @@
         "\\sort"
       ],
       "name": "sort",
-      "snippet": "sort[${2:options%keyvals}]{${1:elements}}",
+      "snippet": "sort[${2:options}]{${1:elements}}",
       "unusual": true
     },
     {
@@ -10671,7 +10671,7 @@
         "\\step"
       ],
       "name": "step",
-      "snippet": "step[${1:options%keyvals}]",
+      "snippet": "step[${1:options}]",
       "unusual": true
     },
     {

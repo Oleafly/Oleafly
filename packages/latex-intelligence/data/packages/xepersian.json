@@ -500,7 +500,7 @@
         "\\settextfont,\\settextdigitfont,\\setdigitfont,\\setlatintextfont,\\setpersiansansfont,\\setpersianmonofont,\\setiranicfont,\\setnavarfont,\\setpookfont,\\setsayehfont,\\setlatinsansfont,\\setlatinmonofont"
       ],
       "name": "setdigitfont",
-      "snippet": "setdigitfont[${2:Options%keyvals}]{${1:font name}}",
+      "snippet": "setdigitfont[${2:Options}]{${1:font name}}",
       "unusual": true
     },
     {
@@ -524,7 +524,7 @@
         "\\settextfont,\\settextdigitfont,\\setdigitfont,\\setlatintextfont,\\setpersiansansfont,\\setpersianmonofont,\\setiranicfont,\\setnavarfont,\\setpookfont,\\setsayehfont,\\setlatinsansfont,\\setlatinmonofont"
       ],
       "name": "setiranicfont",
-      "snippet": "setiranicfont[${2:Options%keyvals}]{${1:font name}}"
+      "snippet": "setiranicfont[${2:Options}]{${1:font name}}"
     },
     {
       "name": "setiranicfont",
@@ -536,7 +536,7 @@
         "\\settextfont,\\settextdigitfont,\\setdigitfont,\\setlatintextfont,\\setpersiansansfont,\\setpersianmonofont,\\setiranicfont,\\setnavarfont,\\setpookfont,\\setsayehfont,\\setlatinsansfont,\\setlatinmonofont"
       ],
       "name": "setlatinmonofont",
-      "snippet": "setlatinmonofont[${2:Options%keyvals}]{${1:font name}}"
+      "snippet": "setlatinmonofont[${2:Options}]{${1:font name}}"
     },
     {
       "name": "setlatinmonofont",
@@ -548,7 +548,7 @@
         "\\settextfont,\\settextdigitfont,\\setdigitfont,\\setlatintextfont,\\setpersiansansfont,\\setpersianmonofont,\\setiranicfont,\\setnavarfont,\\setpookfont,\\setsayehfont,\\setlatinsansfont,\\setlatinmonofont"
       ],
       "name": "setlatinsansfont",
-      "snippet": "setlatinsansfont[${2:Options%keyvals}]{${1:font name}}"
+      "snippet": "setlatinsansfont[${2:Options}]{${1:font name}}"
     },
     {
       "name": "setlatinsansfont",
@@ -560,7 +560,7 @@
         "\\settextfont,\\settextdigitfont,\\setdigitfont,\\setlatintextfont,\\setpersiansansfont,\\setpersianmonofont,\\setiranicfont,\\setnavarfont,\\setpookfont,\\setsayehfont,\\setlatinsansfont,\\setlatinmonofont"
       ],
       "name": "setlatintextfont",
-      "snippet": "setlatintextfont[${2:Options%keyvals}]{${1:font name}}"
+      "snippet": "setlatintextfont[${2:Options}]{${1:font name}}"
     },
     {
       "name": "setlatintextfont",
@@ -572,7 +572,7 @@
         "\\settextfont,\\settextdigitfont,\\setdigitfont,\\setlatintextfont,\\setpersiansansfont,\\setpersianmonofont,\\setiranicfont,\\setnavarfont,\\setpookfont,\\setsayehfont,\\setlatinsansfont,\\setlatinmonofont"
       ],
       "name": "setnavarfont",
-      "snippet": "setnavarfont[${2:Options%keyvals}]{${1:font name}}",
+      "snippet": "setnavarfont[${2:Options}]{${1:font name}}",
       "unusual": true
     },
     {
@@ -590,7 +590,7 @@
         "\\settextfont,\\settextdigitfont,\\setdigitfont,\\setlatintextfont,\\setpersiansansfont,\\setpersianmonofont,\\setiranicfont,\\setnavarfont,\\setpookfont,\\setsayehfont,\\setlatinsansfont,\\setlatinmonofont"
       ],
       "name": "setpersianmonofont",
-      "snippet": "setpersianmonofont[${2:Options%keyvals}]{${1:font name}}"
+      "snippet": "setpersianmonofont[${2:Options}]{${1:font name}}"
     },
     {
       "name": "setpersianmonofont",
@@ -602,7 +602,7 @@
         "\\settextfont,\\settextdigitfont,\\setdigitfont,\\setlatintextfont,\\setpersiansansfont,\\setpersianmonofont,\\setiranicfont,\\setnavarfont,\\setpookfont,\\setsayehfont,\\setlatinsansfont,\\setlatinmonofont"
       ],
       "name": "setpersiansansfont",
-      "snippet": "setpersiansansfont[${2:Options%keyvals}]{${1:font name}}"
+      "snippet": "setpersiansansfont[${2:Options}]{${1:font name}}"
     },
     {
       "name": "setpersiansansfont",
@@ -614,7 +614,7 @@
         "\\settextfont,\\settextdigitfont,\\setdigitfont,\\setlatintextfont,\\setpersiansansfont,\\setpersianmonofont,\\setiranicfont,\\setnavarfont,\\setpookfont,\\setsayehfont,\\setlatinsansfont,\\setlatinmonofont"
       ],
       "name": "setpookfont",
-      "snippet": "setpookfont[${2:Options%keyvals}]{${1:font name}}",
+      "snippet": "setpookfont[${2:Options}]{${1:font name}}",
       "unusual": true
     },
     {
@@ -628,7 +628,7 @@
         "\\settextfont,\\settextdigitfont,\\setdigitfont,\\setlatintextfont,\\setpersiansansfont,\\setpersianmonofont,\\setiranicfont,\\setnavarfont,\\setpookfont,\\setsayehfont,\\setlatinsansfont,\\setlatinmonofont"
       ],
       "name": "setsayehfont",
-      "snippet": "setsayehfont[${2:Options%keyvals}]{${1:font name}}",
+      "snippet": "setsayehfont[${2:Options}]{${1:font name}}",
       "unusual": true
     },
     {
@@ -642,7 +642,7 @@
         "\\settextfont,\\settextdigitfont,\\setdigitfont,\\setlatintextfont,\\setpersiansansfont,\\setpersianmonofont,\\setiranicfont,\\setnavarfont,\\setpookfont,\\setsayehfont,\\setlatinsansfont,\\setlatinmonofont"
       ],
       "name": "settextdigitfont",
-      "snippet": "settextdigitfont[${2:Options%keyvals}]{${1:font name}}",
+      "snippet": "settextdigitfont[${2:Options}]{${1:font name}}",
       "unusual": true
     },
     {
@@ -656,7 +656,7 @@
         "\\settextfont,\\settextdigitfont,\\setdigitfont,\\setlatintextfont,\\setpersiansansfont,\\setpersianmonofont,\\setiranicfont,\\setnavarfont,\\setpookfont,\\setsayehfont,\\setlatinsansfont,\\setlatinmonofont"
       ],
       "name": "settextfont",
-      "snippet": "settextfont[${2:Options%keyvals}]{${1:font name}}"
+      "snippet": "settextfont[${2:Options}]{${1:font name}}"
     },
     {
       "name": "settextfont",

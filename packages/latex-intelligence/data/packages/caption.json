@@ -60,63 +60,63 @@
     },
     {
       "name": "caption*",
-      "snippet": "caption*{${1:heading%text}}"
+      "snippet": "caption*{${1:heading}}"
     },
     {
       "name": "captionbox",
-      "snippet": "captionbox[${3:list entry}]{${1:heading%text}}[${4:width}][${5:inner-pos}]{${2:content%text}}"
+      "snippet": "captionbox[${3:list entry}]{${1:heading}}[${4:width}][${5:inner-pos}]{${2:content}}"
     },
     {
       "name": "captionbox",
-      "snippet": "captionbox[${3:list entry}]{${1:heading%text}}[${4:width}]{${2:content%text}}"
+      "snippet": "captionbox[${3:list entry}]{${1:heading}}[${4:width}]{${2:content}}"
     },
     {
       "name": "captionbox",
-      "snippet": "captionbox[${3:list entry}]{${1:heading%text}}{${2:content%text}}"
+      "snippet": "captionbox[${3:list entry}]{${1:heading}}{${2:content}}"
     },
     {
       "name": "captionbox",
-      "snippet": "captionbox{${1:heading%text}}[${3:width}][${4:inner-pos}]{${2:content%text}}"
+      "snippet": "captionbox{${1:heading}}[${3:width}][${4:inner-pos}]{${2:content}}"
     },
     {
       "name": "captionbox",
-      "snippet": "captionbox{${1:heading%text}}[${3:width}]{${2:content%text}}"
+      "snippet": "captionbox{${1:heading}}[${3:width}]{${2:content}}"
     },
     {
       "name": "captionbox",
-      "snippet": "captionbox{${1:heading%text}}{${2:content%text}}"
+      "snippet": "captionbox{${1:heading}}{${2:content}}"
     },
     {
       "name": "captionbox*",
-      "snippet": "captionbox*{${1:heading%text}}[${3:width}][${4:inner-pos}]{${2:content%text}}"
+      "snippet": "captionbox*{${1:heading}}[${3:width}][${4:inner-pos}]{${2:content}}"
     },
     {
       "name": "captionbox*",
-      "snippet": "captionbox*{${1:heading%text}}[${3:width}]{${2:content%text}}"
+      "snippet": "captionbox*{${1:heading}}[${3:width}]{${2:content}}"
     },
     {
       "name": "captionbox*",
-      "snippet": "captionbox*{${1:heading%text}}{${2:content%text}}"
+      "snippet": "captionbox*{${1:heading}}{${2:content}}"
     },
     {
       "name": "captionlistentry",
-      "snippet": "captionlistentry[${2:float type}]{${1:list entry%text}}"
+      "snippet": "captionlistentry[${2:float type}]{${1:list entry}}"
     },
     {
       "name": "captionlistentry",
-      "snippet": "captionlistentry{${1:list entry%text}}"
+      "snippet": "captionlistentry{${1:list entry}}"
     },
     {
       "name": "captionof",
-      "snippet": "captionof{${1:float type}}[${3:list entry%text}]{${2:heading%text}}"
+      "snippet": "captionof{${1:float type}}[${3:list entry}]{${2:heading}}"
     },
     {
       "name": "captionof",
-      "snippet": "captionof{${1:float type}}{${2:heading%text}}"
+      "snippet": "captionof{${1:float type}}{${2:heading}}"
     },
     {
       "name": "captionof*",
-      "snippet": "captionof*{${1:float type}}{${2:heading%text}}"
+      "snippet": "captionof*{${1:float type}}{${2:heading}}"
     },
     {
       "name": "captiontext",
@@ -168,20 +168,20 @@
     },
     {
       "name": "subcaptionsetup",
-      "snippet": "subcaptionsetup[${2:float type}]{${1:options%keyvals}}"
+      "snippet": "subcaptionsetup[${2:float type}]{${1:options}}"
     },
     {
       "name": "subcaptionsetup",
-      "snippet": "subcaptionsetup{${1:options%keyvals}}"
+      "snippet": "subcaptionsetup{${1:options}}"
     },
     {
       "name": "subcaptionsetup*",
-      "snippet": "subcaptionsetup*[${2:float type}]{${1:options%keyvals}}",
+      "snippet": "subcaptionsetup*[${2:float type}]{${1:options}}",
       "unusual": true
     },
     {
       "name": "subcaptionsetup*",
-      "snippet": "subcaptionsetup*{${1:options%keyvals}}",
+      "snippet": "subcaptionsetup*{${1:options}}",
       "unusual": true
     },
     {

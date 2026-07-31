@@ -15,7 +15,7 @@
         "\\lstset,\\lstinline,\\begin{lstlisting},\\lstinputlisting,\\lstMakeShortInline,\\lstdefinelanguage,\\lstdefinestyle"
       ],
       "name": "lstlisting",
-      "snippet": "[${1:options%keyvals}]"
+      "snippet": "[${1:options}]"
     }
   ],
   "keys": {
@@ -493,7 +493,7 @@
         "\\lstset,\\lstinline,\\begin{lstlisting},\\lstinputlisting,\\lstMakeShortInline,\\lstdefinelanguage,\\lstdefinestyle"
       ],
       "name": "lstinputlisting",
-      "snippet": "lstinputlisting[${2:options%keyvals}]{${1:file}}"
+      "snippet": "lstinputlisting[${2:options}]{${1:file}}"
     },
     {
       "name": "lstinputlisting",
@@ -532,7 +532,7 @@
         "\\lstloadlanguages#c"
       ],
       "name": "lstloadlanguages",
-      "snippet": "lstloadlanguages{${1:lang1,lang2,...%keyvals}}"
+      "snippet": "lstloadlanguages{${1:lang1,lang2,...}}"
     },
     {
       "name": "lstname",

@@ -23,7 +23,7 @@
         "\\DeclareBoldMathCommand#c"
       ],
       "name": "DeclareBoldMathCommand",
-      "snippet": "DeclareBoldMathCommand[${3:math version%keyvals}]{${1:cmd}}{${2:def}}"
+      "snippet": "DeclareBoldMathCommand[${3:math version}]{${1:cmd}}{${2:def}}"
     },
     {
       "name": "DeclareBoldMathCommand",

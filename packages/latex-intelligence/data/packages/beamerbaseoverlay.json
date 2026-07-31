@@ -11,15 +11,15 @@
     },
     {
       "name": "altenv",
-      "snippet": "<${5:overlay specification}>{${1:begin text%text}}{${2:end text%text}}{${3:alternate begin text%text}}{${4:alternate end text%text}}"
+      "snippet": "<${5:overlay specification}>{${1:begin text}}{${2:end text}}{${3:alternate begin text}}{${4:alternate end text}}"
     },
     {
       "name": "altenv",
-      "snippet": "{${1:begin text%text}}{${2:end text%text}}{${3:alternate begin text%text}}{${4:alternate end text%text}}"
+      "snippet": "{${1:begin text}}{${2:end text}}{${3:alternate begin text}}{${4:alternate end text}}"
     },
     {
       "name": "altenv",
-      "snippet": "{${1:begin text%text}}{${2:end text%text}}{${3:alternate begin text%text}}{${4:alternate end text%text}}<${5:overlay specification}>"
+      "snippet": "{${1:begin text}}{${2:end text}}{${3:alternate begin text}}{${4:alternate end text}}<${5:overlay specification}>"
     },
     {
       "name": "invisibleenv"
@@ -37,14 +37,14 @@
     },
     {
       "name": "overlayarea",
-      "snippet": "{${1:area width%l}}{${2:area height%l}}"
+      "snippet": "{${1:area width}}{${2:area height}}"
     },
     {
       "name": "overprint"
     },
     {
       "name": "overprint",
-      "snippet": "[${1:area width%l}]"
+      "snippet": "[${1:area width}]"
     },
     {
       "name": "uncoverenv"
@@ -87,15 +87,15 @@
     },
     {
       "name": "alt",
-      "snippet": "alt{${1:default text%text}}{${2:alternative text%text}}"
+      "snippet": "alt{${1:default text}}{${2:alternative text}}"
     },
     {
       "name": "alt",
-      "snippet": "alt{${1:default text%text}}{${2:alternative text%text}}<${3:overlay specification}>"
+      "snippet": "alt{${1:default text}}{${2:alternative text}}<${3:overlay specification}>"
     },
     {
       "name": "alt<overlay specification>",
-      "snippet": "alt<overlay specification>{${1:default text%text}}{${2:alternative text%text}}"
+      "snippet": "alt<overlay specification>{${1:default text}}{${2:alternative text}}"
     },
     {
       "name": "animate<overlay specification>"
@@ -123,11 +123,11 @@
     },
     {
       "name": "hyperlink<overlay specification>",
-      "snippet": "hyperlink<overlay specification>{${1:target name}}{${2:link text%text}}"
+      "snippet": "hyperlink<overlay specification>{${1:target name}}{${2:link text}}"
     },
     {
       "name": "hypertarget<overlay specification>",
-      "snippet": "hypertarget<overlay specification>{${1:target name}}{${2:anchor text%text}}"
+      "snippet": "hypertarget<overlay specification>{${1:target name}}{${2:anchor text}}"
     },
     {
       "name": "invisible",
@@ -150,7 +150,7 @@
     },
     {
       "name": "label<overlay specification>",
-      "snippet": "label<overlay specification>{${1:key%labeldef}}"
+      "snippet": "label<overlay specification>{${1:key}}"
     },
     {
       "name": "music",
@@ -262,15 +262,15 @@
         "\\setbeamercovered"
       ],
       "name": "setbeamercovered",
-      "snippet": "setbeamercovered{${1:options%keyvals}}"
+      "snippet": "setbeamercovered{${1:options}}"
     },
     {
       "name": "temporal",
-      "snippet": "temporal{${1:before slide text%text}}{${2:default text%text}}{${3:after slide text%text}}"
+      "snippet": "temporal{${1:before slide text}}{${2:default text}}{${3:after slide text}}"
     },
     {
       "name": "temporal<overlay specification>",
-      "snippet": "temporal<overlay specification>{${1:before slide text%text}}{${2:default text%text}}{${3:after slide text%text}}"
+      "snippet": "temporal<overlay specification>{${1:before slide text}}{${2:default text}}{${3:after slide text}}"
     },
     {
       "name": "textbf<overlay specification>",
@@ -318,11 +318,11 @@
         "\\transblindshorizontal,\\transblindsvertical,\\transboxin,\\transboxout,\\transcover,\\transdissolve,\\transfade,\\transglitter,\\transpush,\\transreplace,\\transsplitverticalin,\\transsplitverticalout,\\transsplithorizontalin,\\transsplithorizontalout,\\transuncover,\\transwipe,\\transfly"
       ],
       "name": "transblindshorizontal",
-      "snippet": "transblindshorizontal[${1:options%keyvals}]"
+      "snippet": "transblindshorizontal[${1:options}]"
     },
     {
       "name": "transblindshorizontal<overlay specification>",
-      "snippet": "transblindshorizontal<overlay specification>[${1:options%keyvals}]"
+      "snippet": "transblindshorizontal<overlay specification>[${1:options}]"
     },
     {
       "keyPos": 0,
@@ -330,11 +330,11 @@
         "\\transblindshorizontal,\\transblindsvertical,\\transboxin,\\transboxout,\\transcover,\\transdissolve,\\transfade,\\transglitter,\\transpush,\\transreplace,\\transsplitverticalin,\\transsplitverticalout,\\transsplithorizontalin,\\transsplithorizontalout,\\transuncover,\\transwipe,\\transfly"
       ],
       "name": "transblindsvertical",
-      "snippet": "transblindsvertical[${1:options%keyvals}]"
+      "snippet": "transblindsvertical[${1:options}]"
     },
     {
       "name": "transblindsvertical<overlay specification>",
-      "snippet": "transblindsvertical<overlay specification>[${1:options%keyvals}]"
+      "snippet": "transblindsvertical<overlay specification>[${1:options}]"
     },
     {
       "keyPos": 0,
@@ -342,11 +342,11 @@
         "\\transblindshorizontal,\\transblindsvertical,\\transboxin,\\transboxout,\\transcover,\\transdissolve,\\transfade,\\transglitter,\\transpush,\\transreplace,\\transsplitverticalin,\\transsplitverticalout,\\transsplithorizontalin,\\transsplithorizontalout,\\transuncover,\\transwipe,\\transfly"
       ],
       "name": "transboxin",
-      "snippet": "transboxin[${1:options%keyvals}]"
+      "snippet": "transboxin[${1:options}]"
     },
     {
       "name": "transboxin<overlay specification>",
-      "snippet": "transboxin<overlay specification>[${1:options%keyvals}]"
+      "snippet": "transboxin<overlay specification>[${1:options}]"
     },
     {
       "keyPos": 0,
@@ -354,11 +354,11 @@
         "\\transblindshorizontal,\\transblindsvertical,\\transboxin,\\transboxout,\\transcover,\\transdissolve,\\transfade,\\transglitter,\\transpush,\\transreplace,\\transsplitverticalin,\\transsplitverticalout,\\transsplithorizontalin,\\transsplithorizontalout,\\transuncover,\\transwipe,\\transfly"
       ],
       "name": "transboxout",
-      "snippet": "transboxout[${1:options%keyvals}]"
+      "snippet": "transboxout[${1:options}]"
     },
     {
       "name": "transboxout<overlay specification>",
-      "snippet": "transboxout<overlay specification>[${1:options%keyvals}]"
+      "snippet": "transboxout<overlay specification>[${1:options}]"
     },
     {
       "keyPos": 0,
@@ -366,11 +366,11 @@
         "\\transblindshorizontal,\\transblindsvertical,\\transboxin,\\transboxout,\\transcover,\\transdissolve,\\transfade,\\transglitter,\\transpush,\\transreplace,\\transsplitverticalin,\\transsplitverticalout,\\transsplithorizontalin,\\transsplithorizontalout,\\transuncover,\\transwipe,\\transfly"
       ],
       "name": "transcover",
-      "snippet": "transcover[${1:options%keyvals}]"
+      "snippet": "transcover[${1:options}]"
     },
     {
       "name": "transcover<overlay specification>",
-      "snippet": "transcover<overlay specification>[${1:options%keyvals}]"
+      "snippet": "transcover<overlay specification>[${1:options}]"
     },
     {
       "keyPos": 0,
@@ -378,11 +378,11 @@
         "\\transblindshorizontal,\\transblindsvertical,\\transboxin,\\transboxout,\\transcover,\\transdissolve,\\transfade,\\transglitter,\\transpush,\\transreplace,\\transsplitverticalin,\\transsplitverticalout,\\transsplithorizontalin,\\transsplithorizontalout,\\transuncover,\\transwipe,\\transfly"
       ],
       "name": "transdissolve",
-      "snippet": "transdissolve[${1:options%keyvals}]"
+      "snippet": "transdissolve[${1:options}]"
     },
     {
       "name": "transdissolve<overlay specification>",
-      "snippet": "transdissolve<overlay specification>[${1:options%keyvals}]"
+      "snippet": "transdissolve<overlay specification>[${1:options}]"
     },
     {
       "name": "transduration",
@@ -398,11 +398,11 @@
         "\\transblindshorizontal,\\transblindsvertical,\\transboxin,\\transboxout,\\transcover,\\transdissolve,\\transfade,\\transglitter,\\transpush,\\transreplace,\\transsplitverticalin,\\transsplitverticalout,\\transsplithorizontalin,\\transsplithorizontalout,\\transuncover,\\transwipe,\\transfly"
       ],
       "name": "transfade",
-      "snippet": "transfade[${1:options%keyvals}]"
+      "snippet": "transfade[${1:options}]"
     },
     {
       "name": "transfade<overlay specification>",
-      "snippet": "transfade<overlay specification>[${1:options%keyvals}]"
+      "snippet": "transfade<overlay specification>[${1:options}]"
     },
     {
       "keyPos": 0,
@@ -410,11 +410,11 @@
         "\\transblindshorizontal,\\transblindsvertical,\\transboxin,\\transboxout,\\transcover,\\transdissolve,\\transfade,\\transglitter,\\transpush,\\transreplace,\\transsplitverticalin,\\transsplitverticalout,\\transsplithorizontalin,\\transsplithorizontalout,\\transuncover,\\transwipe,\\transfly"
       ],
       "name": "transfly",
-      "snippet": "transfly[${1:options%keyvals}]"
+      "snippet": "transfly[${1:options}]"
     },
     {
       "name": "transfly<overlay specification>",
-      "snippet": "transfly<overlay specification>[${1:options%keyvals}]"
+      "snippet": "transfly<overlay specification>[${1:options}]"
     },
     {
       "keyPos": 0,
@@ -422,11 +422,11 @@
         "\\transblindshorizontal,\\transblindsvertical,\\transboxin,\\transboxout,\\transcover,\\transdissolve,\\transfade,\\transglitter,\\transpush,\\transreplace,\\transsplitverticalin,\\transsplitverticalout,\\transsplithorizontalin,\\transsplithorizontalout,\\transuncover,\\transwipe,\\transfly"
       ],
       "name": "transglitter",
-      "snippet": "transglitter[${1:options%keyvals}]"
+      "snippet": "transglitter[${1:options}]"
     },
     {
       "name": "transglitter<overlay specification>",
-      "snippet": "transglitter<overlay specification>[${1:options%keyvals}]"
+      "snippet": "transglitter<overlay specification>[${1:options}]"
     },
     {
       "keyPos": 0,
@@ -434,11 +434,11 @@
         "\\transblindshorizontal,\\transblindsvertical,\\transboxin,\\transboxout,\\transcover,\\transdissolve,\\transfade,\\transglitter,\\transpush,\\transreplace,\\transsplitverticalin,\\transsplitverticalout,\\transsplithorizontalin,\\transsplithorizontalout,\\transuncover,\\transwipe,\\transfly"
       ],
       "name": "transpush",
-      "snippet": "transpush[${1:options%keyvals}]"
+      "snippet": "transpush[${1:options}]"
     },
     {
       "name": "transpush<overlay specification>",
-      "snippet": "transpush<overlay specification>[${1:options%keyvals}]"
+      "snippet": "transpush<overlay specification>[${1:options}]"
     },
     {
       "keyPos": 0,
@@ -446,11 +446,11 @@
         "\\transblindshorizontal,\\transblindsvertical,\\transboxin,\\transboxout,\\transcover,\\transdissolve,\\transfade,\\transglitter,\\transpush,\\transreplace,\\transsplitverticalin,\\transsplitverticalout,\\transsplithorizontalin,\\transsplithorizontalout,\\transuncover,\\transwipe,\\transfly"
       ],
       "name": "transreplace",
-      "snippet": "transreplace[${1:options%keyvals}]"
+      "snippet": "transreplace[${1:options}]"
     },
     {
       "name": "transreplace<overlay specification>",
-      "snippet": "transreplace<overlay specification>[${1:options%keyvals}]"
+      "snippet": "transreplace<overlay specification>[${1:options}]"
     },
     {
       "keyPos": 0,
@@ -458,11 +458,11 @@
         "\\transblindshorizontal,\\transblindsvertical,\\transboxin,\\transboxout,\\transcover,\\transdissolve,\\transfade,\\transglitter,\\transpush,\\transreplace,\\transsplitverticalin,\\transsplitverticalout,\\transsplithorizontalin,\\transsplithorizontalout,\\transuncover,\\transwipe,\\transfly"
       ],
       "name": "transsplithorizontalin",
-      "snippet": "transsplithorizontalin[${1:options%keyvals}]"
+      "snippet": "transsplithorizontalin[${1:options}]"
     },
     {
       "name": "transsplithorizontalin<overlay specification>",
-      "snippet": "transsplithorizontalin<overlay specification>[${1:options%keyvals}]"
+      "snippet": "transsplithorizontalin<overlay specification>[${1:options}]"
     },
     {
       "keyPos": 0,
@@ -470,11 +470,11 @@
         "\\transblindshorizontal,\\transblindsvertical,\\transboxin,\\transboxout,\\transcover,\\transdissolve,\\transfade,\\transglitter,\\transpush,\\transreplace,\\transsplitverticalin,\\transsplitverticalout,\\transsplithorizontalin,\\transsplithorizontalout,\\transuncover,\\transwipe,\\transfly"
       ],
       "name": "transsplithorizontalout",
-      "snippet": "transsplithorizontalout[${1:options%keyvals}]"
+      "snippet": "transsplithorizontalout[${1:options}]"
     },
     {
       "name": "transsplithorizontalout<overlay specification>",
-      "snippet": "transsplithorizontalout<overlay specification>[${1:options%keyvals}]"
+      "snippet": "transsplithorizontalout<overlay specification>[${1:options}]"
     },
     {
       "keyPos": 0,
@@ -482,11 +482,11 @@
         "\\transblindshorizontal,\\transblindsvertical,\\transboxin,\\transboxout,\\transcover,\\transdissolve,\\transfade,\\transglitter,\\transpush,\\transreplace,\\transsplitverticalin,\\transsplitverticalout,\\transsplithorizontalin,\\transsplithorizontalout,\\transuncover,\\transwipe,\\transfly"
       ],
       "name": "transsplitverticalin",
-      "snippet": "transsplitverticalin[${1:options%keyvals}]"
+      "snippet": "transsplitverticalin[${1:options}]"
     },
     {
       "name": "transsplitverticalin<overlay specification>",
-      "snippet": "transsplitverticalin<overlay specification>[${1:options%keyvals}]"
+      "snippet": "transsplitverticalin<overlay specification>[${1:options}]"
     },
     {
       "keyPos": 0,
@@ -494,11 +494,11 @@
         "\\transblindshorizontal,\\transblindsvertical,\\transboxin,\\transboxout,\\transcover,\\transdissolve,\\transfade,\\transglitter,\\transpush,\\transreplace,\\transsplitverticalin,\\transsplitverticalout,\\transsplithorizontalin,\\transsplithorizontalout,\\transuncover,\\transwipe,\\transfly"
       ],
       "name": "transsplitverticalout",
-      "snippet": "transsplitverticalout[${1:options%keyvals}]"
+      "snippet": "transsplitverticalout[${1:options}]"
     },
     {
       "name": "transsplitverticalout<overlay specification>",
-      "snippet": "transsplitverticalout<overlay specification>[${1:options%keyvals}]"
+      "snippet": "transsplitverticalout<overlay specification>[${1:options}]"
     },
     {
       "keyPos": 0,
@@ -506,11 +506,11 @@
         "\\transblindshorizontal,\\transblindsvertical,\\transboxin,\\transboxout,\\transcover,\\transdissolve,\\transfade,\\transglitter,\\transpush,\\transreplace,\\transsplitverticalin,\\transsplitverticalout,\\transsplithorizontalin,\\transsplithorizontalout,\\transuncover,\\transwipe,\\transfly"
       ],
       "name": "transuncover",
-      "snippet": "transuncover[${1:options%keyvals}]"
+      "snippet": "transuncover[${1:options}]"
     },
     {
       "name": "transuncover<overlay specification>",
-      "snippet": "transuncover<overlay specification>[${1:options%keyvals}]"
+      "snippet": "transuncover<overlay specification>[${1:options}]"
     },
     {
       "keyPos": 0,
@@ -518,11 +518,11 @@
         "\\transblindshorizontal,\\transblindsvertical,\\transboxin,\\transboxout,\\transcover,\\transdissolve,\\transfade,\\transglitter,\\transpush,\\transreplace,\\transsplitverticalin,\\transsplitverticalout,\\transsplithorizontalin,\\transsplithorizontalout,\\transuncover,\\transwipe,\\transfly"
       ],
       "name": "transwipe",
-      "snippet": "transwipe[${1:options%keyvals}]"
+      "snippet": "transwipe[${1:options}]"
     },
     {
       "name": "transwipe<overlay specification>",
-      "snippet": "transwipe<overlay specification>[${1:options%keyvals}]"
+      "snippet": "transwipe<overlay specification>[${1:options}]"
     },
     {
       "name": "uncover",

@@ -181,7 +181,7 @@
     },
     {
       "name": "label",
-      "snippet": "label[${2:type}]{${1:key%labeldef}}"
+      "snippet": "label[${2:type}]{${1:key}}"
     },
     {
       "name": "labelcpageref",

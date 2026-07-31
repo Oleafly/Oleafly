@@ -52,7 +52,7 @@
         "\\begin{pgftransparencygroup},\\pgftransparencygroup"
       ],
       "name": "pgftransparencygroup",
-      "snippet": "[${1:options%keyvals}]",
+      "snippet": "[${1:options}]",
       "unusual": true
     },
     {
@@ -411,22 +411,22 @@
     },
     {
       "name": "pgfarrowshullpoint",
-      "snippet": "pgfarrowshullpoint{${1:x-dimen%l}}{${2:y-dimen%l}}",
+      "snippet": "pgfarrowshullpoint{${1:x-dimen}}{${2:y-dimen}}",
       "unusual": true
     },
     {
       "name": "pgfarrowslengthdependent",
-      "snippet": "pgfarrowslengthdependent{${1:dimen%l}}{${2:length factor}}{${3:dummy}}",
+      "snippet": "pgfarrowslengthdependent{${1:dimen}}{${2:length factor}}{${3:dummy}}",
       "unusual": true
     },
     {
       "name": "pgfarrowslinewidthdependent",
-      "snippet": "pgfarrowslinewidthdependent{${1:dimen%l}}{${2:line width factor}}{${3:outer factor}}",
+      "snippet": "pgfarrowslinewidthdependent{${1:dimen}}{${2:line width factor}}{${3:outer factor}}",
       "unusual": true
     },
     {
       "name": "pgfarrowssave",
-      "snippet": "pgfarrowssave{${1:macro%cmd}}",
+      "snippet": "pgfarrowssave{${1:macro}}",
       "unusual": true
     },
     {
@@ -436,27 +436,27 @@
     },
     {
       "name": "pgfarrowssetbackend",
-      "snippet": "pgfarrowssetbackend{${1:dimen%l}}",
+      "snippet": "pgfarrowssetbackend{${1:dimen}}",
       "unusual": true
     },
     {
       "name": "pgfarrowssetlineend",
-      "snippet": "pgfarrowssetlineend{${1:dimen%l}}",
+      "snippet": "pgfarrowssetlineend{${1:dimen}}",
       "unusual": true
     },
     {
       "name": "pgfarrowssettipend",
-      "snippet": "pgfarrowssettipend{${1:dimen%l}}",
+      "snippet": "pgfarrowssettipend{${1:dimen}}",
       "unusual": true
     },
     {
       "name": "pgfarrowssetvisualbackend",
-      "snippet": "pgfarrowssetvisualbackend{${1:dimen%l}}",
+      "snippet": "pgfarrowssetvisualbackend{${1:dimen}}",
       "unusual": true
     },
     {
       "name": "pgfarrowssetvisualtipend",
-      "snippet": "pgfarrowssetvisualtipend{${1:dimen%l}}",
+      "snippet": "pgfarrowssetvisualtipend{${1:dimen}}",
       "unusual": true
     },
     {
@@ -470,7 +470,7 @@
     },
     {
       "name": "pgfarrowsupperhullpoint",
-      "snippet": "pgfarrowsupperhullpoint{${1:x-dimen%l}}{${2:y-dimen%l}}",
+      "snippet": "pgfarrowsupperhullpoint{${1:x-dimen}}{${2:y-dimen}}",
       "unusual": true
     },
     {
@@ -496,7 +496,7 @@
         "\\pgfdeclarearrow#c"
       ],
       "name": "pgfdeclarearrow",
-      "snippet": "pgfdeclarearrow{${1:config%keyvals}}",
+      "snippet": "pgfdeclarearrow{${1:config}}",
       "unusual": true
     },
     {
@@ -530,7 +530,7 @@
         "\\pgfdeclareimage,\\pgfimage"
       ],
       "name": "pgfdeclareimage",
-      "snippet": "pgfdeclareimage[${3:options%keyvals}]{${1:image name}}{${2:imagefile}}",
+      "snippet": "pgfdeclareimage[${3:options}]{${1:image name}}{${2:imagefile}}",
       "unusual": true
     },
     {
@@ -549,7 +549,7 @@
         "\\pgfdeclaremask"
       ],
       "name": "pgfdeclaremask",
-      "snippet": "pgfdeclaremask[${3:options%keyvals}]{${1:mask name}}{${2:imagefile}}",
+      "snippet": "pgfdeclaremask[${3:options}]{${1:mask name}}{${2:imagefile}}",
       "unusual": true
     },
     {
@@ -685,22 +685,22 @@
     },
     {
       "name": "pgfgetlastxy",
-      "snippet": "pgfgetlastxy{${1:macro for x%cmd}}{${2:macro for y%cmd}}",
+      "snippet": "pgfgetlastxy{${1:macro for x}}{${2:macro for y}}",
       "unusual": true
     },
     {
       "name": "pgfgetpath",
-      "snippet": "pgfgetpath{${1:macro%cmd}}",
+      "snippet": "pgfgetpath{${1:macro}}",
       "unusual": true
     },
     {
       "name": "pgfgettransform",
-      "snippet": "pgfgettransform{${1:macro%cmd}}",
+      "snippet": "pgfgettransform{${1:macro}}",
       "unusual": true
     },
     {
       "name": "pgfgettransformentries",
-      "snippet": "pgfgettransformentries{${1:macro1%cmd}}{${2:macro2%cmd}}{${3:macro3%cmd}}{${4:macro4%cmd}}{${5:xshift-macro%cmd}}{${6:yshift-macro%cmd}}",
+      "snippet": "pgfgettransformentries{${1:macro1}}{${2:macro2}}{${3:macro3}}{${4:macro4}}{${5:xshift-macro}}{${6:yshift-macro}}",
       "unusual": true
     },
     {
@@ -732,7 +732,7 @@
         "\\pgfdeclareimage,\\pgfimage"
       ],
       "name": "pgfimage",
-      "snippet": "pgfimage[${2:options%keyvals}]{${1:imagefile}}",
+      "snippet": "pgfimage[${2:options}]{${1:imagefile}}",
       "unusual": true
     },
     {
@@ -906,7 +906,7 @@
         "\\pgfpathgrid#c"
       ],
       "name": "pgfpathgrid",
-      "snippet": "pgfpathgrid[${3:options%keyvals}]{${1:corner1}}{${2:corner2}}",
+      "snippet": "pgfpathgrid[${3:options}]{${1:corner1}}{${2:corner2}}",
       "unusual": true
     },
     {
@@ -931,22 +931,22 @@
     },
     {
       "name": "pgfpathqcircle",
-      "snippet": "pgfpathqcircle{${1:radius%l}}",
+      "snippet": "pgfpathqcircle{${1:radius}}",
       "unusual": true
     },
     {
       "name": "pgfpathqcurveto",
-      "snippet": "pgfpathqcurveto{${1:x-dimen1%l}}{${2:y-dimen1%l}}{${3:x-dimen2%l}}{${4:y-dimen2%l}}{${5:target-x-dimen%l}}{${6:target-y-dimen%l}}",
+      "snippet": "pgfpathqcurveto{${1:x-dimen1}}{${2:y-dimen1}}{${3:x-dimen2}}{${4:y-dimen2}}{${5:target-x-dimen}}{${6:target-y-dimen}}",
       "unusual": true
     },
     {
       "name": "pgfpathqlineto",
-      "snippet": "pgfpathqlineto{${1:x-dimen%l}}{${2:y-dimen%l}}",
+      "snippet": "pgfpathqlineto{${1:x-dimen}}{${2:y-dimen}}",
       "unusual": true
     },
     {
       "name": "pgfpathqmoveto",
-      "snippet": "pgfpathqmoveto{${1:x-dimen%l}}{${2:y-dimen%l}}",
+      "snippet": "pgfpathqmoveto{${1:x-dimen}}{${2:y-dimen}}",
       "unusual": true
     },
     {
@@ -1113,12 +1113,12 @@
     },
     {
       "name": "pgfprocesscheckclosed",
-      "snippet": "pgfprocesscheckclosed{${1:macro%cmd}}{${2:code}}",
+      "snippet": "pgfprocesscheckclosed{${1:macro}}{${2:code}}",
       "unusual": true
     },
     {
       "name": "pgfprocesspathextractpoints",
-      "snippet": "pgfprocesspathextractpoints{${1:macro%cmd}}",
+      "snippet": "pgfprocesspathextractpoints{${1:macro}}",
       "unusual": true
     },
     {
@@ -1136,17 +1136,17 @@
     },
     {
       "name": "pgfprocessround",
-      "snippet": "pgfprocessround{${1:macro1%cmd}}{${2:macro2%cmd}}",
+      "snippet": "pgfprocessround{${1:macro1}}{${2:macro2}}",
       "unusual": true
     },
     {
       "name": "pgfprocesssplitpath",
-      "snippet": "pgfprocesssplitpath{${1:macro%cmd}}",
+      "snippet": "pgfprocesssplitpath{${1:macro}}",
       "unusual": true
     },
     {
       "name": "pgfprocesssplitsubpath",
-      "snippet": "pgfprocesssplitsubpath{${1:macro%cmd}}",
+      "snippet": "pgfprocesssplitsubpath{${1:macro}}",
       "unusual": true
     },
     {
@@ -1303,7 +1303,7 @@
     },
     {
       "name": "pgfsetbaseline",
-      "snippet": "pgfsetbaseline{${1:dimen%l}}",
+      "snippet": "pgfsetbaseline{${1:dimen}}",
       "unusual": true
     },
     {
@@ -1326,7 +1326,7 @@
         "\\pgfsetblendmode"
       ],
       "name": "pgfsetblendmode",
-      "snippet": "pgfsetblendmode{${1:mode%keyvals}}",
+      "snippet": "pgfsetblendmode{${1:mode}}",
       "unusual": true
     },
     {
@@ -1429,12 +1429,12 @@
     },
     {
       "name": "pgfsetshortenend",
-      "snippet": "pgfsetshortenend{${1:dimen%l}}",
+      "snippet": "pgfsetshortenend{${1:dimen}}",
       "unusual": true
     },
     {
       "name": "pgfsetshortenstart",
-      "snippet": "pgfsetshortenstart{${1:dimen%l}}",
+      "snippet": "pgfsetshortenstart{${1:dimen}}",
       "unusual": true
     },
     {
@@ -1504,17 +1504,17 @@
     },
     {
       "name": "pgfshadecolortocmyk",
-      "snippet": "pgfshadecolortocmyk{${1:color}}{${2:macro%cmd}}",
+      "snippet": "pgfshadecolortocmyk{${1:color}}{${2:macro}}",
       "unusual": true
     },
     {
       "name": "pgfshadecolortogray",
-      "snippet": "pgfshadecolortogray{${1:color}}{${2:macro%cmd}}",
+      "snippet": "pgfshadecolortogray{${1:color}}{${2:macro}}",
       "unusual": true
     },
     {
       "name": "pgfshadecolortorgb",
-      "snippet": "pgfshadecolortorgb{${1:color}}{${2:macro%cmd}}",
+      "snippet": "pgfshadecolortorgb{${1:color}}{${2:macro}}",
       "unusual": true
     },
     {
@@ -1560,7 +1560,7 @@
         "\\pgftext#c"
       ],
       "name": "pgftext",
-      "snippet": "pgftext[${2:options%keyvals}]{${1:text}}",
+      "snippet": "pgftext[${2:options}]{${1:text}}",
       "unusual": true
     },
     {
@@ -1641,7 +1641,7 @@
     },
     {
       "name": "pgftransformxshift",
-      "snippet": "pgftransformxshift{${1:dimen%l}}",
+      "snippet": "pgftransformxshift{${1:dimen}}",
       "unusual": true
     },
     {
@@ -1656,7 +1656,7 @@
     },
     {
       "name": "pgftransformyshift",
-      "snippet": "pgftransformyshift{${1:dimen%l}}",
+      "snippet": "pgftransformyshift{${1:dimen}}",
       "unusual": true
     },
     {
@@ -1674,7 +1674,7 @@
         "\\begin{pgftransparencygroup},\\pgftransparencygroup"
       ],
       "name": "pgftransparencygroup",
-      "snippet": "pgftransparencygroup[${1:options%keyvals}]",
+      "snippet": "pgftransparencygroup[${1:options}]",
       "unusual": true
     },
     {
@@ -1703,7 +1703,7 @@
         "\\pgfusepath#c"
       ],
       "name": "pgfusepath",
-      "snippet": "pgfusepath{${1:actions%keyvals}}",
+      "snippet": "pgfusepath{${1:actions}}",
       "unusual": true
     },
     {

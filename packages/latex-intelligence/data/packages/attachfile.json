@@ -160,7 +160,7 @@
         "\\attachfile,\\attachfilesetup,\\noattachfile,\\notextattachfile,\\textattachfile"
       ],
       "name": "attachfile",
-      "snippet": "attachfile[${2:options%keyvals}]{${1:file}}"
+      "snippet": "attachfile[${2:options}]{${1:file}}"
     },
     {
       "name": "attachfile",
@@ -172,7 +172,7 @@
         "\\attachfile,\\attachfilesetup,\\noattachfile,\\notextattachfile,\\textattachfile"
       ],
       "name": "attachfilesetup",
-      "snippet": "attachfilesetup{${1:options%keyvals}}"
+      "snippet": "attachfilesetup{${1:options}}"
     },
     {
       "name": "noattachfile"
@@ -183,7 +183,7 @@
         "\\attachfile,\\attachfilesetup,\\noattachfile,\\notextattachfile,\\textattachfile"
       ],
       "name": "noattachfile",
-      "snippet": "noattachfile[${1:options%keyvals}]"
+      "snippet": "noattachfile[${1:options}]"
     },
     {
       "keyPos": 0,
@@ -191,7 +191,7 @@
         "\\attachfile,\\attachfilesetup,\\noattachfile,\\notextattachfile,\\textattachfile"
       ],
       "name": "notextattachfile",
-      "snippet": "notextattachfile[${2:options%keyvals}]{${1:text}}"
+      "snippet": "notextattachfile[${2:options}]{${1:text}}"
     },
     {
       "name": "notextattachfile",
@@ -203,7 +203,7 @@
         "\\attachfile,\\attachfilesetup,\\noattachfile,\\notextattachfile,\\textattachfile"
       ],
       "name": "textattachfile",
-      "snippet": "textattachfile[${3:options%keyvals}]{${1:file}}{${2:text}}"
+      "snippet": "textattachfile[${3:options}]{${1:file}}{${2:text}}"
     },
     {
       "name": "textattachfile",

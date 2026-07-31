@@ -12,7 +12,7 @@
     },
     {
       "name": "skiplevels",
-      "snippet": "[${2:options%keyvals}]{${1:n}}",
+      "snippet": "[${2:options}]{${1:n}}",
       "unusual": true
     },
     {
@@ -32,18 +32,18 @@
     },
     {
       "name": "TC",
-      "snippet": "TC[${1:options%keyvals}]"
+      "snippet": "TC[${1:options}]"
     },
     {
       "name": "TC*"
     },
     {
       "name": "TC*",
-      "snippet": "TC*[${1:options%keyvals}]"
+      "snippet": "TC*[${1:options}]"
     },
     {
       "name": "TCircle",
-      "snippet": "TCircle[${2:options%keyvals}]{${1:stuff}}"
+      "snippet": "TCircle[${2:options}]{${1:stuff}}"
     },
     {
       "name": "TCircle",
@@ -51,7 +51,7 @@
     },
     {
       "name": "TCircle*",
-      "snippet": "TCircle*[${2:options%keyvals}]{${1:stuff}}"
+      "snippet": "TCircle*[${2:options}]{${1:stuff}}"
     },
     {
       "name": "TCircle*",
@@ -59,7 +59,7 @@
     },
     {
       "name": "TR",
-      "snippet": "TR[${2:options%keyvals}]{${1:stuff}}"
+      "snippet": "TR[${2:options}]{${1:stuff}}"
     },
     {
       "name": "TR",
@@ -67,7 +67,7 @@
     },
     {
       "name": "TR*",
-      "snippet": "TR*[${2:options%keyvals}]{${1:stuff}}"
+      "snippet": "TR*[${2:options}]{${1:stuff}}"
     },
     {
       "name": "TR*",
@@ -75,7 +75,7 @@
     },
     {
       "name": "Tc",
-      "snippet": "Tc[${2:options%keyvals}]{${1:dim}}"
+      "snippet": "Tc[${2:options}]{${1:dim}}"
     },
     {
       "name": "Tc",
@@ -83,7 +83,7 @@
     },
     {
       "name": "Tc*",
-      "snippet": "Tc*[${2:options%keyvals}]{${1:dim}}"
+      "snippet": "Tc*[${2:options}]{${1:dim}}"
     },
     {
       "name": "Tc*",
@@ -91,7 +91,7 @@
     },
     {
       "name": "Tcircle",
-      "snippet": "Tcircle[${2:options%keyvals}]{${1:stuff}}"
+      "snippet": "Tcircle[${2:options}]{${1:stuff}}"
     },
     {
       "name": "Tcircle",
@@ -99,7 +99,7 @@
     },
     {
       "name": "Tcircle*",
-      "snippet": "Tcircle*[${2:options%keyvals}]{${1:stuff}}"
+      "snippet": "Tcircle*[${2:options}]{${1:stuff}}"
     },
     {
       "name": "Tcircle*",
@@ -107,7 +107,7 @@
     },
     {
       "name": "Tdia",
-      "snippet": "Tdia[${2:options%keyvals}]{${1:stuff}}"
+      "snippet": "Tdia[${2:options}]{${1:stuff}}"
     },
     {
       "name": "Tdia",
@@ -115,7 +115,7 @@
     },
     {
       "name": "Tdia*",
-      "snippet": "Tdia*[${2:options%keyvals}]{${1:stuff}}"
+      "snippet": "Tdia*[${2:options}]{${1:stuff}}"
     },
     {
       "name": "Tdia*",
@@ -126,49 +126,49 @@
     },
     {
       "name": "Tdot",
-      "snippet": "Tdot[${1:options%keyvals}]"
+      "snippet": "Tdot[${1:options}]"
     },
     {
       "name": "Tdot*"
     },
     {
       "name": "Tdot*",
-      "snippet": "Tdot*[${1:options%keyvals}]"
+      "snippet": "Tdot*[${1:options}]"
     },
     {
       "name": "Tf"
     },
     {
       "name": "Tf",
-      "snippet": "Tf[${1:options%keyvals}]"
+      "snippet": "Tf[${1:options}]"
     },
     {
       "name": "Tf*"
     },
     {
       "name": "Tf*",
-      "snippet": "Tf*[${1:options%keyvals}]"
+      "snippet": "Tf*[${1:options}]"
     },
     {
       "name": "Tfan"
     },
     {
       "name": "Tfan",
-      "snippet": "Tfan[${1:options%keyvals}]"
+      "snippet": "Tfan[${1:options}]"
     },
     {
       "name": "Tfan*"
     },
     {
       "name": "Tfan*",
-      "snippet": "Tfan*[${1:options%keyvals}]"
+      "snippet": "Tfan*[${1:options}]"
     },
     {
       "name": "Tn"
     },
     {
       "name": "Toval",
-      "snippet": "Toval[${2:options%keyvals}]{${1:stuff}}"
+      "snippet": "Toval[${2:options}]{${1:stuff}}"
     },
     {
       "name": "Toval",
@@ -176,7 +176,7 @@
     },
     {
       "name": "Toval*",
-      "snippet": "Toval*[${2:options%keyvals}]{${1:stuff}}"
+      "snippet": "Toval*[${2:options}]{${1:stuff}}"
     },
     {
       "name": "Toval*",
@@ -187,18 +187,18 @@
     },
     {
       "name": "Tp",
-      "snippet": "Tp[${1:options%keyvals}]"
+      "snippet": "Tp[${1:options}]"
     },
     {
       "name": "Tp*"
     },
     {
       "name": "Tp*",
-      "snippet": "Tp*[${1:options%keyvals}]"
+      "snippet": "Tp*[${1:options}]"
     },
     {
       "name": "Tr",
-      "snippet": "Tr[${2:options%keyvals}]{${1:stuff}}"
+      "snippet": "Tr[${2:options}]{${1:stuff}}"
     },
     {
       "name": "Tr",
@@ -206,7 +206,7 @@
     },
     {
       "name": "Tr*",
-      "snippet": "Tr*[${2:options%keyvals}]{${1:stuff}}"
+      "snippet": "Tr*[${2:options}]{${1:stuff}}"
     },
     {
       "name": "Tr*",
@@ -214,7 +214,7 @@
     },
     {
       "name": "Ttri",
-      "snippet": "Ttri[${2:options%keyvals}]{${1:stuff}}"
+      "snippet": "Ttri[${2:options}]{${1:stuff}}"
     },
     {
       "name": "Ttri",
@@ -222,7 +222,7 @@
     },
     {
       "name": "Ttri*",
-      "snippet": "Ttri*[${2:options%keyvals}]{${1:stuff}}"
+      "snippet": "Ttri*[${2:options}]{${1:stuff}}"
     },
     {
       "name": "Ttri*",
@@ -255,7 +255,7 @@
     },
     {
       "name": "pstree",
-      "snippet": "pstree[${3:options%keyvals}]{${1:root}}{${2:successors}}"
+      "snippet": "pstree[${3:options}]{${1:root}}{${2:successors}}"
     },
     {
       "name": "pstree",
@@ -271,7 +271,7 @@
     },
     {
       "name": "skiplevel",
-      "snippet": "skiplevel[${2:options%keyvals}]{${1:subtrees}}"
+      "snippet": "skiplevel[${2:options}]{${1:subtrees}}"
     },
     {
       "name": "skiplevel",
@@ -279,7 +279,7 @@
     },
     {
       "name": "skiplevel*",
-      "snippet": "skiplevel*[${2:options%keyvals}]{${1:subtrees}}"
+      "snippet": "skiplevel*[${2:options}]{${1:subtrees}}"
     },
     {
       "name": "skiplevel*",
@@ -287,7 +287,7 @@
     },
     {
       "name": "skiplevels",
-      "snippet": "skiplevels[${2:options%keyvals}]{${1:n}}"
+      "snippet": "skiplevels[${2:options}]{${1:n}}"
     },
     {
       "name": "skiplevels",
@@ -295,7 +295,7 @@
     },
     {
       "name": "skiplevels*",
-      "snippet": "skiplevels*[${2:options%keyvals}]{${1:n}}"
+      "snippet": "skiplevels*[${2:options}]{${1:n}}"
     },
     {
       "name": "skiplevels*",

@@ -50,7 +50,7 @@
   "macros": [
     {
       "name": "usecolortheme",
-      "snippet": "usecolortheme[${2:options%keyvals}]{${1:beamer color theme}}"
+      "snippet": "usecolortheme[${2:options}]{${1:beamer color theme}}"
     },
     {
       "name": "usecolortheme",
@@ -58,7 +58,7 @@
     },
     {
       "name": "usefonttheme",
-      "snippet": "usefonttheme[${2:options%keyvals}]{${1:beamer font theme}}"
+      "snippet": "usefonttheme[${2:options}]{${1:beamer font theme}}"
     },
     {
       "name": "usefonttheme",
@@ -66,7 +66,7 @@
     },
     {
       "name": "useinnertheme",
-      "snippet": "useinnertheme[${2:options%keyvals}]{${1:beamer inner theme}}"
+      "snippet": "useinnertheme[${2:options}]{${1:beamer inner theme}}"
     },
     {
       "name": "useinnertheme",
@@ -74,7 +74,7 @@
     },
     {
       "name": "useoutertheme",
-      "snippet": "useoutertheme[${2:options%keyvals}]{${1:beamer outer theme}}"
+      "snippet": "useoutertheme[${2:options}]{${1:beamer outer theme}}"
     },
     {
       "name": "useoutertheme",
@@ -82,7 +82,7 @@
     },
     {
       "name": "usetheme",
-      "snippet": "usetheme[${2:options%keyvals}]{${1:beamertheme}}"
+      "snippet": "usetheme[${2:options}]{${1:beamertheme}}"
     },
     {
       "name": "usetheme",

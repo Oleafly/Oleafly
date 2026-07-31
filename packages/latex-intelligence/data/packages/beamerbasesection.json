@@ -14,7 +14,7 @@
     },
     {
       "name": "AtBeginSection",
-      "snippet": "AtBeginSection[${2:special star text%text}]{${1:text}}"
+      "snippet": "AtBeginSection[${2:special star text}]{${1:text}}"
     },
     {
       "name": "AtBeginSection",
@@ -22,7 +22,7 @@
     },
     {
       "name": "AtBeginSubsection",
-      "snippet": "AtBeginSubsection[${2:special star text%text}]{${1:text}}"
+      "snippet": "AtBeginSubsection[${2:special star text}]{${1:text}}"
     },
     {
       "name": "AtBeginSubsection",
@@ -30,7 +30,7 @@
     },
     {
       "name": "AtBeginSubsubsection",
-      "snippet": "AtBeginSubsubsection[${2:special star text%text}]{${1:text}}"
+      "snippet": "AtBeginSubsubsection[${2:special star text}]{${1:text}}"
     },
     {
       "name": "AtBeginSubsubsection",
@@ -93,7 +93,7 @@
     },
     {
       "name": "insertshortlecture",
-      "snippet": "insertshortlecture[${1:options%keyvals}]",
+      "snippet": "insertshortlecture[${1:options}]",
       "unusual": true
     },
     {
@@ -102,7 +102,7 @@
     },
     {
       "name": "insertshortpart",
-      "snippet": "insertshortpart[${1:options%keyvals}]",
+      "snippet": "insertshortpart[${1:options}]",
       "unusual": true
     },
     {
@@ -143,11 +143,11 @@
     },
     {
       "name": "lecture",
-      "snippet": "lecture[${3:short lecture name%text}]{${1:lecture name%text}}{${2:lecture label}}"
+      "snippet": "lecture[${3:short lecture name}]{${1:lecture name}}{${2:lecture label}}"
     },
     {
       "name": "lecture",
-      "snippet": "lecture{${1:lecture name%text}}{${2:lecture label}}"
+      "snippet": "lecture{${1:lecture name}}{${2:lecture label}}"
     },
     {
       "name": "part<mode specification>",

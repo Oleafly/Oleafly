@@ -18,7 +18,7 @@
         "\\begin{axis}#c,\\begin{loglogaxis}#c,\\begin{semilogxaxis}#c,\\begin{semilogyaxis}#c,\\addplot#c,\\addplot3#c,\\addplot+#c,\\pgfplotsset#c,\\begin{groupplot}#c,\\nextgroupplot#c,\\begin{smithchart}#c,\\begin{polaraxis}#c,\\begin{ternaryaxis}#c"
       ],
       "name": "axis",
-      "snippet": "[${1:options%keyvals}]"
+      "snippet": "[${1:options}]"
     },
     {
       "name": "loglogaxis"
@@ -29,7 +29,7 @@
         "\\begin{axis}#c,\\begin{loglogaxis}#c,\\begin{semilogxaxis}#c,\\begin{semilogyaxis}#c,\\addplot#c,\\addplot3#c,\\addplot+#c,\\pgfplotsset#c,\\begin{groupplot}#c,\\nextgroupplot#c,\\begin{smithchart}#c,\\begin{polaraxis}#c,\\begin{ternaryaxis}#c"
       ],
       "name": "loglogaxis",
-      "snippet": "[${1:options%keyvals}]"
+      "snippet": "[${1:options}]"
     },
     {
       "name": "pgfplotsinterruptdatabb"
@@ -43,7 +43,7 @@
         "\\begin{axis}#c,\\begin{loglogaxis}#c,\\begin{semilogxaxis}#c,\\begin{semilogyaxis}#c,\\addplot#c,\\addplot3#c,\\addplot+#c,\\pgfplotsset#c,\\begin{groupplot}#c,\\nextgroupplot#c,\\begin{smithchart}#c,\\begin{polaraxis}#c,\\begin{ternaryaxis}#c"
       ],
       "name": "semilogxaxis",
-      "snippet": "[${1:options%keyvals}]"
+      "snippet": "[${1:options}]"
     },
     {
       "name": "semilogyaxis"
@@ -54,7 +54,7 @@
         "\\begin{axis}#c,\\begin{loglogaxis}#c,\\begin{semilogxaxis}#c,\\begin{semilogyaxis}#c,\\addplot#c,\\addplot3#c,\\addplot+#c,\\pgfplotsset#c,\\begin{groupplot}#c,\\nextgroupplot#c,\\begin{smithchart}#c,\\begin{polaraxis}#c,\\begin{ternaryaxis}#c"
       ],
       "name": "semilogyaxis",
-      "snippet": "[${1:options%keyvals}]"
+      "snippet": "[${1:options}]"
     }
   ],
   "keys": {
@@ -712,12 +712,12 @@
     },
     {
       "name": "getthisrow",
-      "snippet": "getthisrow{${1:name}}{${2:macro%cmd}}",
+      "snippet": "getthisrow{${1:name}}{${2:macro}}",
       "unusual": true
     },
     {
       "name": "getthisrowno",
-      "snippet": "getthisrowno{${1:name}}{${2:macro%cmd}}",
+      "snippet": "getthisrowno{${1:name}}{${2:macro}}",
       "unusual": true
     },
     {
@@ -807,7 +807,7 @@
     },
     {
       "name": "pgfplotsapplistXXedefcontenttomacro",
-      "snippet": "pgfplotsapplistXXedefcontenttomacro{${1:list}}{${2:macro%cmd}}",
+      "snippet": "pgfplotsapplistXXedefcontenttomacro{${1:list}}{${2:macro}}",
       "unusual": true
     },
     {
@@ -831,7 +831,7 @@
     },
     {
       "name": "pgfplotsapplistXXglobaledefcontenttomacro",
-      "snippet": "pgfplotsapplistXXglobaledefcontenttomacro{${1:list}}{${2:macro%cmd}}",
+      "snippet": "pgfplotsapplistXXglobaledefcontenttomacro{${1:list}}{${2:macro}}",
       "unusual": true
     },
     {
@@ -846,12 +846,12 @@
     },
     {
       "name": "pgfplotsapplistXXgloballet",
-      "snippet": "pgfplotsapplistXXgloballet{${1:macro%cmd}}",
+      "snippet": "pgfplotsapplistXXgloballet{${1:macro}}",
       "unusual": true
     },
     {
       "name": "pgfplotsapplistXXglobalnewempty",
-      "snippet": "pgfplotsapplistXXglobalnewempty{${1:macro%cmd}}",
+      "snippet": "pgfplotsapplistXXglobalnewempty{${1:macro}}",
       "unusual": true
     },
     {
@@ -861,17 +861,17 @@
     },
     {
       "name": "pgfplotsapplistXXglobalxdefcontenttomacro",
-      "snippet": "pgfplotsapplistXXglobalxdefcontenttomacro{${1:list}}{${2:macro%cmd}}",
+      "snippet": "pgfplotsapplistXXglobalxdefcontenttomacro{${1:list}}{${2:macro}}",
       "unusual": true
     },
     {
       "name": "pgfplotsapplistXXlet",
-      "snippet": "pgfplotsapplistXXlet{${1:macro%cmd}}",
+      "snippet": "pgfplotsapplistXXlet{${1:macro}}",
       "unusual": true
     },
     {
       "name": "pgfplotsapplistXXnewempty",
-      "snippet": "pgfplotsapplistXXnewempty{${1:macro%cmd}}",
+      "snippet": "pgfplotsapplistXXnewempty{${1:macro}}",
       "unusual": true
     },
     {
@@ -881,7 +881,7 @@
     },
     {
       "name": "pgfplotsapplistXXxdefcontenttomacro",
-      "snippet": "pgfplotsapplistXXxdefcontenttomacro{${1:list}}{${2:macro%cmd}}",
+      "snippet": "pgfplotsapplistXXxdefcontenttomacro{${1:list}}{${2:macro}}",
       "unusual": true
     },
     {
@@ -901,12 +901,12 @@
     },
     {
       "name": "pgfplotsapplistXglobalnewempty",
-      "snippet": "pgfplotsapplistXglobalnewempty{${1:macro%cmd}}",
+      "snippet": "pgfplotsapplistXglobalnewempty{${1:macro}}",
       "unusual": true
     },
     {
       "name": "pgfplotsapplistXnewempty",
-      "snippet": "pgfplotsapplistXnewempty{${1:macro%cmd}}",
+      "snippet": "pgfplotsapplistXnewempty{${1:macro}}",
       "unusual": true
     },
     {
@@ -916,7 +916,7 @@
     },
     {
       "name": "pgfplotsapplistnewempty",
-      "snippet": "pgfplotsapplistnewempty{${1:macro%cmd}}",
+      "snippet": "pgfplotsapplistnewempty{${1:macro}}",
       "unusual": true
     },
     {
@@ -958,17 +958,17 @@
     },
     {
       "name": "pgfplotsarraynew",
-      "snippet": "pgfplotsarraynew{${1:macro%cmd}}{${2:array}}",
+      "snippet": "pgfplotsarraynew{${1:macro}}{${2:array}}",
       "unusual": true
     },
     {
       "name": "pgfplotsarraynewempty",
-      "snippet": "pgfplotsarraynewempty{${1:macro%cmd}}",
+      "snippet": "pgfplotsarraynewempty{${1:macro}}",
       "unusual": true
     },
     {
       "name": "pgfplotsarraynewemptyglobal",
-      "snippet": "pgfplotsarraynewemptyglobal{${1:macro%cmd}}",
+      "snippet": "pgfplotsarraynewemptyglobal{${1:macro}}",
       "unusual": true
     },
     {
@@ -1304,22 +1304,22 @@
     },
     {
       "name": "pgfplotscolormapreversedtoshadingspec",
-      "snippet": "pgfplotscolormapreversedtoshadingspec{${1:colormap}}{${2:pgf size}}{${3:macro%cmd}}",
+      "snippet": "pgfplotscolormapreversedtoshadingspec{${1:colormap}}{${2:pgf size}}{${3:macro}}",
       "unusual": true
     },
     {
       "name": "pgfplotscolormapserializeXtomacro",
-      "snippet": "pgfplotscolormapserializeXtomacro{${1:colormap}}{${2:macro%cmd}}",
+      "snippet": "pgfplotscolormapserializeXtomacro{${1:colormap}}{${2:macro}}",
       "unusual": true
     },
     {
       "name": "pgfplotscolormapserializecomponentstomacro",
-      "snippet": "pgfplotscolormapserializecomponentstomacro{${1:colormap}}{${2:macro%cmd}}",
+      "snippet": "pgfplotscolormapserializecomponentstomacro{${1:colormap}}{${2:macro}}",
       "unusual": true
     },
     {
       "name": "pgfplotscolormapserializetomacro",
-      "snippet": "pgfplotscolormapserializetomacro{${1:colormap}}{${2:macro%cmd}}",
+      "snippet": "pgfplotscolormapserializetomacro{${1:colormap}}{${2:macro}}",
       "unusual": true
     },
     {
@@ -1338,12 +1338,12 @@
         "\\pgfplotscolormaptodatafile"
       ],
       "name": "pgfplotscolormaptodatafile",
-      "snippet": "pgfplotscolormaptodatafile[${3:options%keyvals}]{${1:colormap}}{${2:data file%file}}",
+      "snippet": "pgfplotscolormaptodatafile[${3:options}]{${1:colormap}}{${2:data file}}",
       "unusual": true
     },
     {
       "name": "pgfplotscolormaptodatafile",
-      "snippet": "pgfplotscolormaptodatafile{${1:colormap}}{${2:data file%file}}",
+      "snippet": "pgfplotscolormaptodatafile{${1:colormap}}{${2:data file}}",
       "unusual": true
     },
     {
@@ -1353,7 +1353,7 @@
     },
     {
       "name": "pgfplotscolormaptoshadingspec",
-      "snippet": "pgfplotscolormaptoshadingspec{${1:colormap}}{${2:pgf size}}{${3:macro%cmd}}",
+      "snippet": "pgfplotscolormaptoshadingspec{${1:colormap}}{${2:pgf size}}{${3:macro}}",
       "unusual": true
     },
     {
@@ -1400,7 +1400,7 @@
     },
     {
       "name": "pgfplotscommandtostring",
-      "snippet": "pgfplotscommandtostring{${1:cmd1}}{${2:cmd2%cmd}}",
+      "snippet": "pgfplotscommandtostring{${1:cmd1}}{${2:cmd2}}",
       "unusual": true
     },
     {
@@ -1413,7 +1413,7 @@
     },
     {
       "name": "pgfplotsconvertunittocoordinate",
-      "snippet": "pgfplotsconvertunittocoordinate{${1:axis}}{${2:dimen%l}}",
+      "snippet": "pgfplotsconvertunittocoordinate{${1:axis}}{${2:dimen}}",
       "unusual": true
     },
     {
@@ -1519,12 +1519,12 @@
     },
     {
       "name": "pgfplotsforeachentryinCSV",
-      "snippet": "pgfplotsforeachentryinCSV{${1:macro%cmd}}{${2:list}}{${3:code}}",
+      "snippet": "pgfplotsforeachentryinCSV{${1:macro}}{${2:list}}{${3:code}}",
       "unusual": true
     },
     {
       "name": "pgfplotsforeachentryinCSVisterminated",
-      "snippet": "pgfplotsforeachentryinCSVisterminated{${1:macro%cmd}}{${2:list}}{${3:code}}",
+      "snippet": "pgfplotsforeachentryinCSVisterminated{${1:macro}}{${2:list}}{${3:code}}",
       "unusual": true
     },
     {
@@ -1633,7 +1633,7 @@
         "\\usepgfplotslibrary#c,\\pgfplotsiflibraryloaded#c"
       ],
       "name": "pgfplotsiflibraryloaded",
-      "snippet": "pgfplotsiflibraryloaded{${1:library%keyvals}}{${2:true}}{${3:false}}",
+      "snippet": "pgfplotsiflibraryloaded{${1:library}}{${2:true}}{${3:false}}",
       "unusual": true
     },
     {
@@ -1700,12 +1700,12 @@
     },
     {
       "name": "pgfplotslistnew",
-      "snippet": "pgfplotslistnew{${1:macro%cmd}}{${2:list}}",
+      "snippet": "pgfplotslistnew{${1:macro}}{${2:list}}",
       "unusual": true
     },
     {
       "name": "pgfplotslistnewempty",
-      "snippet": "pgfplotslistnewempty{${1:macro%cmd}}",
+      "snippet": "pgfplotslistnewempty{${1:macro}}",
       "unusual": true
     },
     {
@@ -1723,17 +1723,17 @@
     },
     {
       "name": "pgfplotsmatchcubeparts",
-      "snippet": "pgfplotsmatchcubeparts{${1:cube part}}{${2:surface}}{${3:macro%cmd}}",
+      "snippet": "pgfplotsmatchcubeparts{${1:cube part}}{${2:surface}}{${3:macro}}",
       "unusual": true
     },
     {
       "name": "pgfplotsmathcarttopol",
-      "snippet": "pgfplotsmathcarttopol{${1:x}}{${2:y}}{${3:angle macro%cmd}}{${4:radius macro%cmd}}",
+      "snippet": "pgfplotsmathcarttopol{${1:x}}{${2:y}}{${3:angle macro}}{${4:radius macro}}",
       "unusual": true
     },
     {
       "name": "pgfplotsmathcarttopolbasic",
-      "snippet": "pgfplotsmathcarttopolbasic{${1:x}}{${2:y}}{${3:angle macro%cmd}}{${4:radius macro%cmd}}",
+      "snippet": "pgfplotsmathcarttopolbasic{${1:x}}{${2:y}}{${3:angle macro}}{${4:radius macro}}",
       "unusual": true
     },
     {
@@ -1743,7 +1743,7 @@
     },
     {
       "name": "pgfplotsmathdefinemacrolnbase",
-      "snippet": "pgfplotsmathdefinemacrolnbase{${1:macro%cmd}}{${2:number}}",
+      "snippet": "pgfplotsmathdefinemacrolnbase{${1:macro}}{${2:number}}",
       "unusual": true
     },
     {
@@ -1778,12 +1778,12 @@
     },
     {
       "name": "pgfplotsmathpoltocart",
-      "snippet": "pgfplotsmathpoltocart{${1:angle}}{${2:radius}}{${3:x macro%cmd}}{${4:y macro%cmd}}",
+      "snippet": "pgfplotsmathpoltocart{${1:angle}}{${2:radius}}{${3:x macro}}{${4:y macro}}",
       "unusual": true
     },
     {
       "name": "pgfplotsmathpoltocartbasic",
-      "snippet": "pgfplotsmathpoltocartbasic{${1:angle}}{${2:radius}}{${3:x macro%cmd}}{${4:y macro%cmd}}",
+      "snippet": "pgfplotsmathpoltocartbasic{${1:angle}}{${2:radius}}{${3:x macro}}{${4:y macro}}",
       "unusual": true
     },
     {
@@ -1884,7 +1884,7 @@
     },
     {
       "name": "pgfplotsmatrixnewempty",
-      "snippet": "pgfplotsmatrixnewempty{${1:macro%cmd}}",
+      "snippet": "pgfplotsmatrixnewempty{${1:macro}}",
       "unusual": true
     },
     {
@@ -2077,12 +2077,12 @@
     },
     {
       "name": "pgfplotsplothandlerserializepointto",
-      "snippet": "pgfplotsplothandlerserializepointto{${1:macro%cmd}}",
+      "snippet": "pgfplotsplothandlerserializepointto{${1:macro}}",
       "unusual": true
     },
     {
       "name": "pgfplotsplothandlerserializestateto",
-      "snippet": "pgfplotsplothandlerserializestateto{${1:macro%cmd}}",
+      "snippet": "pgfplotsplothandlerserializestateto{${1:macro}}",
       "unusual": true
     },
     {
@@ -2284,12 +2284,12 @@
     },
     {
       "name": "pgfplotspointonorientedsurfaceabgetcontainedaxisline",
-      "snippet": "pgfplotspointonorientedsurfaceabgetcontainedaxisline{${1:value}}{${2:macro%cmd}}",
+      "snippet": "pgfplotspointonorientedsurfaceabgetcontainedaxisline{${1:value}}{${2:macro}}",
       "unusual": true
     },
     {
       "name": "pgfplotspointonorientedsurfaceabmatchaxisline",
-      "snippet": "pgfplotspointonorientedsurfaceabmatchaxisline{${1:surface}}{${2:macro%cmd}}",
+      "snippet": "pgfplotspointonorientedsurfaceabmatchaxisline{${1:surface}}{${2:macro}}",
       "unusual": true
     },
     {
@@ -2482,32 +2482,32 @@
     },
     {
       "name": "pgfplotsqpointoutsideofaxis",
-      "snippet": "pgfplotsqpointoutsideofaxis{${1:axis}}{${2:coord}}{${3:dimen%l}}",
+      "snippet": "pgfplotsqpointoutsideofaxis{${1:axis}}{${2:coord}}{${3:dimen}}",
       "unusual": true
     },
     {
       "name": "pgfplotsqpointoutsideofaxisrel",
-      "snippet": "pgfplotsqpointoutsideofaxisrel{${1:axis}}{${2:coord}}{${3:dimen%l}}",
+      "snippet": "pgfplotsqpointoutsideofaxisrel{${1:axis}}{${2:coord}}{${3:dimen}}",
       "unusual": true
     },
     {
       "name": "pgfplotsqpointoutsideofaxistransformed",
-      "snippet": "pgfplotsqpointoutsideofaxistransformed{${1:axis}}{${2:coord}}{${3:dimen%l}}",
+      "snippet": "pgfplotsqpointoutsideofaxistransformed{${1:axis}}{${2:coord}}{${3:dimen}}",
       "unusual": true
     },
     {
       "name": "pgfplotsqpointoutsideofticklabelaxis",
-      "snippet": "pgfplotsqpointoutsideofticklabelaxis{${1:x, y, or z}}{${2:coord}}{${3:dimen%l}}",
+      "snippet": "pgfplotsqpointoutsideofticklabelaxis{${1:x, y, or z}}{${2:coord}}{${3:dimen}}",
       "unusual": true
     },
     {
       "name": "pgfplotsqpointoutsideofticklabelaxisrel",
-      "snippet": "pgfplotsqpointoutsideofticklabelaxisrel{${1:x, y, or z}}{${2:coord}}{${3:dimen%l}}",
+      "snippet": "pgfplotsqpointoutsideofticklabelaxisrel{${1:x, y, or z}}{${2:coord}}{${3:dimen}}",
       "unusual": true
     },
     {
       "name": "pgfplotsqpointoutsideofticklabelaxistransformed",
-      "snippet": "pgfplotsqpointoutsideofticklabelaxistransformed{${1:x, y, or z}}{${2:coord}}{${3:dimen%l}}",
+      "snippet": "pgfplotsqpointoutsideofticklabelaxistransformed{${1:x, y, or z}}{${2:coord}}{${3:dimen}}",
       "unusual": true
     },
     {
@@ -2600,11 +2600,11 @@
         "\\begin{axis}#c,\\begin{loglogaxis}#c,\\begin{semilogxaxis}#c,\\begin{semilogyaxis}#c,\\addplot#c,\\addplot3#c,\\addplot+#c,\\pgfplotsset#c,\\begin{groupplot}#c,\\nextgroupplot#c,\\begin{smithchart}#c,\\begin{polaraxis}#c,\\begin{ternaryaxis}#c"
       ],
       "name": "pgfplotsset",
-      "snippet": "pgfplotsset{${1:options%keyvals}}"
+      "snippet": "pgfplotsset{${1:options}}"
     },
     {
       "name": "pgfplotssetaxesfromazel",
-      "snippet": "pgfplotssetaxesfromazel{${1:azimuth}}{${2:elevation}}{${3:macro%cmd}}",
+      "snippet": "pgfplotssetaxesfromazel{${1:azimuth}}{${2:elevation}}{${3:macro}}",
       "unusual": true
     },
     {
@@ -2657,7 +2657,7 @@
     },
     {
       "name": "pgfplotstablecreatecol",
-      "snippet": "pgfplotstablecreatecol[${3:options%keyvals}]{${1:name}}{${2:table}}",
+      "snippet": "pgfplotstablecreatecol[${3:options}]{${1:name}}{${2:table}}",
       "unusual": true
     },
     {
@@ -2676,7 +2676,7 @@
     },
     {
       "name": "pgfplotstablegetname",
-      "snippet": "pgfplotstablegetname{${1:table}}{${2:macro%cmd}}",
+      "snippet": "pgfplotstablegetname{${1:table}}{${2:macro}}",
       "unusual": true
     },
     {
@@ -2686,7 +2686,7 @@
     },
     {
       "name": "pgfplotstablegetscanlinelength",
-      "snippet": "pgfplotstablegetscanlinelength{${1:table}}{${2:macro%cmd}}",
+      "snippet": "pgfplotstablegetscanlinelength{${1:table}}{${2:macro}}",
       "unusual": true
     },
     {
@@ -2731,12 +2731,12 @@
     },
     {
       "name": "pgfplotstablereadgetptrtocolindex",
-      "snippet": "pgfplotstablereadgetptrtocolindex{${1:index}}{${2:macro%cmd}}",
+      "snippet": "pgfplotstablereadgetptrtocolindex{${1:index}}{${2:macro}}",
       "unusual": true
     },
     {
       "name": "pgfplotstablereadgetptrtocolname",
-      "snippet": "pgfplotstablereadgetptrtocolname{${1:name}}{${2:macro%cmd}}",
+      "snippet": "pgfplotstablereadgetptrtocolname{${1:name}}{${2:macro}}",
       "unusual": true
     },
     {
@@ -2769,12 +2769,12 @@
     },
     {
       "name": "pgfplotstableset",
-      "snippet": "pgfplotstableset{${1:options%keyvals}}",
+      "snippet": "pgfplotstableset{${1:options}}",
       "unusual": true
     },
     {
       "name": "pgfplotstabletypeset",
-      "snippet": "pgfplotstabletypeset[${2:options%keyvals}]{${1:table}}",
+      "snippet": "pgfplotstabletypeset[${2:options}]{${1:table}}",
       "unusual": true
     },
     {
@@ -2784,7 +2784,7 @@
     },
     {
       "name": "pgfplotstabletypesetfile",
-      "snippet": "pgfplotstabletypesetfile[${2:options%keyvals}]{${1:file}}",
+      "snippet": "pgfplotstabletypesetfile[${2:options}]{${1:file}}",
       "unusual": true
     },
     {
@@ -2974,7 +2974,7 @@
         "\\usepgfplotslibrary#c,\\pgfplotsiflibraryloaded#c"
       ],
       "name": "usepgfplotslibrary",
-      "snippet": "usepgfplotslibrary{${1:library list%keyvals}}"
+      "snippet": "usepgfplotslibrary{${1:library list}}"
     }
   ]
 }

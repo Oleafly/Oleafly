@@ -14,7 +14,7 @@
     },
     {
       "name": "thispageheading",
-      "snippet": "thispageheading{${1:heading%text}}"
+      "snippet": "thispageheading{${1:heading}}"
     },
     {
       "name": "thiswatermark",

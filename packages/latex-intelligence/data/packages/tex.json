@@ -1666,7 +1666,7 @@
     },
     {
       "name": "mathchoice",
-      "snippet": "mathchoice{${1:display}}{${2:text%plain}}{${3:subscript}}{${4:subsubscript}}",
+      "snippet": "mathchoice{${1:display}}{${2:text}}{${3:subscript}}{${4:subsubscript}}",
       "unusual": true
     },
     {
@@ -2093,11 +2093,11 @@
       "detail": "x⃖ (\"wrisym\" command)",
       "documentation": "\\overleftarrow, combining left arrow above",
       "name": "overleftarrow",
-      "snippet": "overleftarrow{${1:text%plain}}"
+      "snippet": "overleftarrow{${1:text}}"
     },
     {
       "name": "overrightarrow",
-      "snippet": "overrightarrow{${1:text%plain}}"
+      "snippet": "overrightarrow{${1:text}}"
     },
     {
       "name": "overwithdelims",
@@ -3030,7 +3030,7 @@
     },
     {
       "name": "wlog",
-      "snippet": "wlog{${1:token list%text}}",
+      "snippet": "wlog{${1:token list}}",
       "unusual": true
     },
     {

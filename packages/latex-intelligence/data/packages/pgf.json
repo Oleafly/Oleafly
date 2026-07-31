@@ -186,7 +186,7 @@
         "\\pgfdeclareplothandler#c"
       ],
       "name": "pgfdeclareplothandler",
-      "snippet": "pgfdeclareplothandler{${1:macro%cmd}}{${2:args}}{${3:options%keyvals}}",
+      "snippet": "pgfdeclareplothandler{${1:macro}}{${2:args}}{${3:options}}",
       "unusual": true
     },
     {
@@ -243,7 +243,7 @@
     },
     {
       "name": "pgfplotfunction",
-      "snippet": "pgfplotfunction{${1:variable%cmd}}{${2:sample list}}{${3:point}}",
+      "snippet": "pgfplotfunction{${1:variable}}{${2:sample list}}{${3:point}}",
       "unusual": true
     },
     {
@@ -270,7 +270,7 @@
     },
     {
       "name": "pgfplothandlerrecord",
-      "snippet": "pgfplothandlerrecord{${1:macro%cmd}}",
+      "snippet": "pgfplothandlerrecord{${1:macro}}",
       "unusual": true
     },
     {

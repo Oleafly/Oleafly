@@ -95,11 +95,11 @@
         "\\todo,\\missingfigure,\\setuptodonotes,\\todostyle"
       ],
       "name": "missingfigure",
-      "snippet": "missingfigure[${2:options%keyvals}]{${1:text%todo}}"
+      "snippet": "missingfigure[${2:options}]{${1:text}}"
     },
     {
       "name": "missingfigure",
-      "snippet": "missingfigure{${1:text%todo}}"
+      "snippet": "missingfigure{${1:text}}"
     },
     {
       "keyPos": 0,
@@ -109,7 +109,7 @@
         "\\todo,\\missingfigure,\\setuptodonotes,\\todostyle"
       ],
       "name": "setuptodonotes",
-      "snippet": "setuptodonotes{${1:options%keyvals}}"
+      "snippet": "setuptodonotes{${1:options}}"
     },
     {
       "keyPos": 0,
@@ -118,11 +118,11 @@
         "\\todo,\\missingfigure,\\setuptodonotes,\\todostyle"
       ],
       "name": "todo",
-      "snippet": "todo[${2:options%keyvals}]{${1:text%todo}}"
+      "snippet": "todo[${2:options}]{${1:text}}"
     },
     {
       "name": "todo",
-      "snippet": "todo{${1:text%todo}}"
+      "snippet": "todo{${1:text}}"
     },
     {
       "name": "todoformat",
@@ -137,7 +137,7 @@
         "\\todo,\\missingfigure,\\setuptodonotes,\\todostyle"
       ],
       "name": "todostyle",
-      "snippet": "todostyle{${1:name%specialDef}}{${2:options%keyvals}}"
+      "snippet": "todostyle{${1:name%specialDef}}{${2:options}}"
     },
     {
       "name": "todototoc"

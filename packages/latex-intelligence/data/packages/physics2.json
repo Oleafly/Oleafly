@@ -52,7 +52,7 @@
         "\\xmat,\\pxmat,\\bxmat,\\Bxmat,\\vxmat,\\Vxmat"
       ],
       "name": "Bxmat",
-      "snippet": "Bxmat[${4:options%keyvals}]{${1:entry}}{${2:rows shown}}{${3:cols shown}}"
+      "snippet": "Bxmat[${4:options}]{${1:entry}}{${2:rows shown}}{${3:cols shown}}"
     },
     {
       "name": "Bxmat",
@@ -96,7 +96,7 @@
         "\\xmat,\\pxmat,\\bxmat,\\Bxmat,\\vxmat,\\Vxmat"
       ],
       "name": "Vxmat",
-      "snippet": "Vxmat[${4:options%keyvals}]{${1:entry}}{${2:rows shown}}{${3:cols shown}}"
+      "snippet": "Vxmat[${4:options}]{${1:entry}}{${2:rows shown}}{${3:cols shown}}"
     },
     {
       "name": "Vxmat",
@@ -199,7 +199,7 @@
         "\\xmat,\\pxmat,\\bxmat,\\Bxmat,\\vxmat,\\Vxmat"
       ],
       "name": "bxmat",
-      "snippet": "bxmat[${4:options%keyvals}]{${1:entry}}{${2:rows shown}}{${3:cols shown}}"
+      "snippet": "bxmat[${4:options}]{${1:entry}}{${2:rows shown}}{${3:cols shown}}"
     },
     {
       "name": "bxmat",
@@ -333,7 +333,7 @@
         "\\xmat,\\pxmat,\\bxmat,\\Bxmat,\\vxmat,\\Vxmat"
       ],
       "name": "pxmat",
-      "snippet": "pxmat[${4:options%keyvals}]{${1:entry}}{${2:rows shown}}{${3:cols shown}}"
+      "snippet": "pxmat[${4:options}]{${1:entry}}{${2:rows shown}}{${3:cols shown}}"
     },
     {
       "name": "pxmat",
@@ -455,7 +455,7 @@
         "\\usephysicsmodule"
       ],
       "name": "usephysicsmodule",
-      "snippet": "usephysicsmodule[${2:options}]{${1:modules%keyvals}}"
+      "snippet": "usephysicsmodule[${2:options}]{${1:modules}}"
     },
     {
       "keyPos": 0,
@@ -463,7 +463,7 @@
         "\\usephysicsmodule"
       ],
       "name": "usephysicsmodule",
-      "snippet": "usephysicsmodule{${1:modules%keyvals}}"
+      "snippet": "usephysicsmodule{${1:modules}}"
     },
     {
       "name": "vab",
@@ -491,7 +491,7 @@
         "\\xmat,\\pxmat,\\bxmat,\\Bxmat,\\vxmat,\\Vxmat"
       ],
       "name": "vxmat",
-      "snippet": "vxmat[${4:options%keyvals}]{${1:entry}}{${2:rows shown}}{${3:cols shown}}"
+      "snippet": "vxmat[${4:options}]{${1:entry}}{${2:rows shown}}{${3:cols shown}}"
     },
     {
       "name": "vxmat",
@@ -503,7 +503,7 @@
         "\\xmat,\\pxmat,\\bxmat,\\Bxmat,\\vxmat,\\Vxmat"
       ],
       "name": "xmat",
-      "snippet": "xmat[${4:options%keyvals}]{${1:entry}}{${2:rows shown}}{${3:cols shown}}"
+      "snippet": "xmat[${4:options}]{${1:entry}}{${2:rows shown}}{${3:cols shown}}"
     },
     {
       "name": "xmat",

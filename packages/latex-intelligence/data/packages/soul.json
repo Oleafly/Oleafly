@@ -16,7 +16,7 @@
     },
     {
       "name": "capsdef",
-      "snippet": "capsdef{${1:enc/fam/series/shape/size}}{${2:optcmd}}{${3:innerletter%l}}{${4:inner%l}}{${5:outer%l}}",
+      "snippet": "capsdef{${1:enc/fam/series/shape/size}}{${2:optcmd}}{${3:innerletter}}{${4:inner}}{${5:outer}}",
       "unusual": true
     },
     {
@@ -63,7 +63,7 @@
     },
     {
       "name": "setul",
-      "snippet": "setul{${1:ul-depth%l}}{${2:ul-thickness%l}}"
+      "snippet": "setul{${1:ul-depth}}{${2:ul-thickness}}"
     },
     {
       "name": "setulcolor",
@@ -75,7 +75,7 @@
     },
     {
       "name": "setuloverlap",
-      "snippet": "setuloverlap{${1:dimen%l}}"
+      "snippet": "setuloverlap{${1:dimen}}"
     },
     {
       "name": "sloppyword",
@@ -88,7 +88,7 @@
     },
     {
       "name": "sodef",
-      "snippet": "sodef{${1:cmd}}{${2:font}}{${3:innerletter%l}}{${4:inner%l}}{${5:outer%l}}",
+      "snippet": "sodef{${1:cmd}}{${2:font}}{${3:innerletter}}{${4:inner}}{${5:outer}}",
       "unusual": true
     },
     {

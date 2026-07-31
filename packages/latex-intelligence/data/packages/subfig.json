@@ -70,15 +70,15 @@
     },
     {
       "name": "subfigure",
-      "snippet": "subfigure[${2:listentry%text}][${3:subcaption%text}]{${1:body%text}}"
+      "snippet": "subfigure[${2:listentry}][${3:subcaption}]{${1:body}}"
     },
     {
       "name": "subfigure",
-      "snippet": "subfigure[${2:subcaption%text}]{${1:body%text}}"
+      "snippet": "subfigure[${2:subcaption}]{${1:body}}"
     },
     {
       "name": "subfigure",
-      "snippet": "subfigure{${1:body%text}}"
+      "snippet": "subfigure{${1:body}}"
     },
     {
       "name": "subfigurename",
@@ -86,15 +86,15 @@
     },
     {
       "name": "subfloat",
-      "snippet": "subfloat[${2:listentry%text}][${3:subcaption%text}]{${1:body%text}}"
+      "snippet": "subfloat[${2:listentry}][${3:subcaption}]{${1:body}}"
     },
     {
       "name": "subfloat",
-      "snippet": "subfloat[${2:subcaption%text}]{${1:body%text}}"
+      "snippet": "subfloat[${2:subcaption}]{${1:body}}"
     },
     {
       "name": "subfloat",
-      "snippet": "subfloat{${1:body%text}}"
+      "snippet": "subfloat{${1:body}}"
     },
     {
       "name": "subref",
@@ -106,15 +106,15 @@
     },
     {
       "name": "subtable",
-      "snippet": "subtable[${2:listentry%text}][${3:subcaption%text}]{${1:body%text}}"
+      "snippet": "subtable[${2:listentry}][${3:subcaption}]{${1:body}}"
     },
     {
       "name": "subtable",
-      "snippet": "subtable[${2:subcaption%text}]{${1:body%text}}"
+      "snippet": "subtable[${2:subcaption}]{${1:body}}"
     },
     {
       "name": "subtable",
-      "snippet": "subtable{${1:body%text}}"
+      "snippet": "subtable{${1:body}}"
     },
     {
       "name": "subtablename",

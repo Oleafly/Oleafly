@@ -39,7 +39,7 @@
         "\\setbeameroption#c"
       ],
       "name": "setbeameroption",
-      "snippet": "setbeameroption{${1:options%keyvals}}"
+      "snippet": "setbeameroption{${1:options}}"
     }
   ]
 }

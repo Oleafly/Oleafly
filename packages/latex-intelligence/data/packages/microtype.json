@@ -14,7 +14,7 @@
         "\\microtypecontext,\\begin{microtypecontext},\\textmicrotypecontext,\\DeclareMicrotypeBabelHook"
       ],
       "name": "microtypecontext",
-      "snippet": "{${1:context%keyvals}}"
+      "snippet": "{${1:context}}"
     }
   ],
   "keys": {
@@ -116,7 +116,7 @@
         "\\DeclareMicrotypeSet,\\DeclareMicrotypeSet*,\\DeclareCharacterInheritance,\\DisableLigatures"
       ],
       "name": "DeclareCharacterInheritance",
-      "snippet": "DeclareCharacterInheritance[${3:features}]{${1:fonts%keyvals}}{${2:list}}"
+      "snippet": "DeclareCharacterInheritance[${3:features}]{${1:fonts}}{${2:list}}"
     },
     {
       "keyPos": 0,
@@ -124,7 +124,7 @@
         "\\DeclareMicrotypeSet,\\DeclareMicrotypeSet*,\\DeclareCharacterInheritance,\\DisableLigatures"
       ],
       "name": "DeclareCharacterInheritance",
-      "snippet": "DeclareCharacterInheritance{${1:fonts%keyvals}}{${2:list}}"
+      "snippet": "DeclareCharacterInheritance{${1:fonts}}{${2:list}}"
     },
     {
       "name": "DeclareMicrotypeAlias",
@@ -136,7 +136,7 @@
         "\\microtypecontext,\\begin{microtypecontext},\\textmicrotypecontext,\\DeclareMicrotypeBabelHook"
       ],
       "name": "DeclareMicrotypeBabelHook",
-      "snippet": "DeclareMicrotypeBabelHook{${1:languages}}{${2:context%keyvals}}"
+      "snippet": "DeclareMicrotypeBabelHook{${1:languages}}{${2:context}}"
     },
     {
       "name": "DeclareMicrotypeFilePrefix",
@@ -148,7 +148,7 @@
         "\\DeclareMicrotypeSet,\\DeclareMicrotypeSet*,\\DeclareCharacterInheritance,\\DisableLigatures"
       ],
       "name": "DeclareMicrotypeSet",
-      "snippet": "DeclareMicrotypeSet[${3:features}]{${1:name%specialDef}}{${2:fonts%keyvals}}"
+      "snippet": "DeclareMicrotypeSet[${3:features}]{${1:name%specialDef}}{${2:fonts}}"
     },
     {
       "keyPos": 1,
@@ -156,7 +156,7 @@
         "\\DeclareMicrotypeSet,\\DeclareMicrotypeSet*,\\DeclareCharacterInheritance,\\DisableLigatures"
       ],
       "name": "DeclareMicrotypeSet",
-      "snippet": "DeclareMicrotypeSet{${1:name%specialDef}}{${2:fonts%keyvals}}"
+      "snippet": "DeclareMicrotypeSet{${1:name%specialDef}}{${2:fonts}}"
     },
     {
       "keyPos": 2,
@@ -164,7 +164,7 @@
         "\\DeclareMicrotypeSet,\\DeclareMicrotypeSet*,\\DeclareCharacterInheritance,\\DisableLigatures"
       ],
       "name": "DeclareMicrotypeSet*",
-      "snippet": "DeclareMicrotypeSet*[${3:features}]{${1:name%specialDef}}{${2:fonts%keyvals}}"
+      "snippet": "DeclareMicrotypeSet*[${3:features}]{${1:name%specialDef}}{${2:fonts}}"
     },
     {
       "keyPos": 1,
@@ -172,7 +172,7 @@
         "\\DeclareMicrotypeSet,\\DeclareMicrotypeSet*,\\DeclareCharacterInheritance,\\DisableLigatures"
       ],
       "name": "DeclareMicrotypeSet*",
-      "snippet": "DeclareMicrotypeSet*{${1:name%specialDef}}{${2:fonts%keyvals}}"
+      "snippet": "DeclareMicrotypeSet*{${1:name%specialDef}}{${2:fonts}}"
     },
     {
       "name": "DeclareMicrotypeSetDefault",
@@ -196,7 +196,7 @@
         "\\DeclareMicrotypeSet,\\DeclareMicrotypeSet*,\\DeclareCharacterInheritance,\\DisableLigatures"
       ],
       "name": "DisableLigatures",
-      "snippet": "DisableLigatures[${2:characters}]{${1:fonts%keyvals}}"
+      "snippet": "DisableLigatures[${2:characters}]{${1:fonts}}"
     },
     {
       "keyPos": 0,
@@ -204,7 +204,7 @@
         "\\DeclareMicrotypeSet,\\DeclareMicrotypeSet*,\\DeclareCharacterInheritance,\\DisableLigatures"
       ],
       "name": "DisableLigatures",
-      "snippet": "DisableLigatures{${1:fonts%keyvals}}"
+      "snippet": "DisableLigatures{${1:fonts}}"
     },
     {
       "name": "LoadMicrotypeFile",
@@ -216,7 +216,7 @@
         "\\SetExpansion"
       ],
       "name": "SetExpansion",
-      "snippet": "SetExpansion[${3:options%keyvals}]{${1:fonts}}{${2:settings}}"
+      "snippet": "SetExpansion[${3:options}]{${1:fonts}}{${2:settings}}"
     },
     {
       "name": "SetExpansion",
@@ -228,7 +228,7 @@
         "\\SetExtraKerning"
       ],
       "name": "SetExtraKerning",
-      "snippet": "SetExtraKerning[${3:options%keyvals}]{${1:fonts}}{${2:settings}}"
+      "snippet": "SetExtraKerning[${3:options}]{${1:fonts}}{${2:settings}}"
     },
     {
       "name": "SetExtraKerning",
@@ -240,7 +240,7 @@
         "\\SetExtraSpacing"
       ],
       "name": "SetExtraSpacing",
-      "snippet": "SetExtraSpacing[${3:options%keyvals}]{${1:fonts}}{${2:settings}}"
+      "snippet": "SetExtraSpacing[${3:options}]{${1:fonts}}{${2:settings}}"
     },
     {
       "name": "SetExtraSpacing",
@@ -252,7 +252,7 @@
         "\\SetProtrusion"
       ],
       "name": "SetProtrusion",
-      "snippet": "SetProtrusion[${3:options%keyvals}]{${1:fonts}}{${2:settings}}"
+      "snippet": "SetProtrusion[${3:options}]{${1:fonts}}{${2:settings}}"
     },
     {
       "name": "SetProtrusion",
@@ -264,7 +264,7 @@
         "\\SetTracking"
       ],
       "name": "SetTracking",
-      "snippet": "SetTracking[${3:options%keyvals}]{${1:fonts}}{${2:settings}}"
+      "snippet": "SetTracking[${3:options}]{${1:fonts}}{${2:settings}}"
     },
     {
       "name": "SetTracking",
@@ -295,7 +295,7 @@
         "\\microtypecontext,\\begin{microtypecontext},\\textmicrotypecontext,\\DeclareMicrotypeBabelHook"
       ],
       "name": "microtypecontext",
-      "snippet": "microtypecontext{${1:context%keyvals}}"
+      "snippet": "microtypecontext{${1:context}}"
     },
     {
       "keyPos": 0,
@@ -303,7 +303,7 @@
         "\\microtypesetup,\\usepackage/microtype#c"
       ],
       "name": "microtypesetup",
-      "snippet": "microtypesetup{${1:options%keyvals}}"
+      "snippet": "microtypesetup{${1:options}}"
     },
     {
       "name": "noprotrusionifhmode",
@@ -335,7 +335,7 @@
         "\\microtypecontext,\\begin{microtypecontext},\\textmicrotypecontext,\\DeclareMicrotypeBabelHook"
       ],
       "name": "textmicrotypecontext",
-      "snippet": "textmicrotypecontext{${1:context%keyvals}}{${2:text}}"
+      "snippet": "textmicrotypecontext{${1:context}}{${2:text}}"
     }
   ]
 }

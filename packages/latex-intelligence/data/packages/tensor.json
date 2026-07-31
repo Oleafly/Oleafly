@@ -31,15 +31,15 @@
     },
     {
       "name": "nuclide",
-      "snippet": "nuclide[${2:mass no%formula}][${3:atomic no%formula}]{${1:symbol%formula}}"
+      "snippet": "nuclide[${2:mass no}][${3:atomic no}]{${1:symbol}}"
     },
     {
       "name": "nuclide",
-      "snippet": "nuclide[${2:mass no%formula}]{${1:symbol%formula}}"
+      "snippet": "nuclide[${2:mass no}]{${1:symbol}}"
     },
     {
       "name": "nuclide",
-      "snippet": "nuclide{${1:symbol%formula}}"
+      "snippet": "nuclide{${1:symbol}}"
     },
     {
       "name": "nuclideFont",

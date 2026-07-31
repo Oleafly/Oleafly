@@ -31,7 +31,7 @@
         "\\setbeamerfont,\\setbeamerfont*"
       ],
       "name": "setbeamerfont",
-      "snippet": "setbeamerfont{${1:beamer-font name}}{${2:attributes%keyvals}}"
+      "snippet": "setbeamerfont{${1:beamer-font name}}{${2:attributes}}"
     },
     {
       "keyPos": 1,
@@ -39,7 +39,7 @@
         "\\setbeamerfont,\\setbeamerfont*"
       ],
       "name": "setbeamerfont*",
-      "snippet": "setbeamerfont*{${1:beamer-font name}}{${2:attributes%keyvals}}"
+      "snippet": "setbeamerfont*{${1:beamer-font name}}{${2:attributes}}"
     },
     {
       "name": "usebeamerfont",

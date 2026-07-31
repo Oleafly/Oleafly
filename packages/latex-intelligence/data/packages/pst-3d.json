@@ -13,11 +13,11 @@
     },
     {
       "name": "ThreeDput",
-      "snippet": "ThreeDput[${2:options%keyvals}](${3:x},${4:y},${5:z}){${1:stuff}}"
+      "snippet": "ThreeDput[${2:options}](${3:x},${4:y},${5:z}){${1:stuff}}"
     },
     {
       "name": "psAffinTransform",
-      "snippet": "psAffinTransform[${3:options%keyvals}]{${1:transformation matrix}}{${2:stuff}}"
+      "snippet": "psAffinTransform[${3:options}]{${1:transformation matrix}}{${2:stuff}}"
     },
     {
       "name": "psAffinTransform",
@@ -25,7 +25,7 @@
     },
     {
       "name": "psTilt",
-      "snippet": "psTilt[${3:options%keyvals}]{${1:angle}}{${2:stuff}}"
+      "snippet": "psTilt[${3:options}]{${1:angle}}{${2:stuff}}"
     },
     {
       "name": "psTilt",
@@ -38,7 +38,7 @@
     },
     {
       "name": "psshadow",
-      "snippet": "psshadow[${2:options%keyvals}]{${1:stuff}}"
+      "snippet": "psshadow[${2:options}]{${1:stuff}}"
     },
     {
       "name": "psshadow",
@@ -46,7 +46,7 @@
     },
     {
       "name": "pstilt",
-      "snippet": "pstilt[${3:options%keyvals}]{${1:angle}}{${2:stuff}}"
+      "snippet": "pstilt[${3:options}]{${1:angle}}{${2:stuff}}"
     },
     {
       "name": "pstilt",

@@ -41,11 +41,11 @@
     },
     {
       "name": "adjustwidth",
-      "snippet": "{${1:left%l}}{${2:right%l}}"
+      "snippet": "{${1:left}}{${2:right}}"
     },
     {
       "name": "adjustwidth*",
-      "snippet": "{${1:left%l}}{${2:right%l}}"
+      "snippet": "{${1:left}}{${2:right}}"
     },
     {
       "name": "altverse"
@@ -126,43 +126,43 @@
     },
     {
       "name": "sidecaption",
-      "snippet": "[${2:fortoc}]{${1:title%text}}"
+      "snippet": "[${2:fortoc}]{${1:title}}"
     },
     {
       "name": "sidecaption",
-      "snippet": "[${2:fortoc}]{${1:title%text}}[${3:label%labeldef}]"
+      "snippet": "[${2:fortoc}]{${1:title}}[${3:label}]"
     },
     {
       "name": "sidecaption",
-      "snippet": "{${1:title%text}}"
+      "snippet": "{${1:title}}"
     },
     {
       "name": "sidecaption",
-      "snippet": "{${1:title%text}}[${2:label%labeldef}]"
+      "snippet": "{${1:title}}[${2:label}]"
     },
     {
       "name": "sidecontcaption",
-      "snippet": "{${1:title%text}}"
+      "snippet": "{${1:title}}"
     },
     {
       "name": "sidecontcaption",
-      "snippet": "{${1:title%text}}[${2:label%labeldef}]"
+      "snippet": "{${1:title}}[${2:label}]"
     },
     {
       "name": "sidelegend",
-      "snippet": "{${1:title%text}}"
+      "snippet": "{${1:title}}"
     },
     {
       "name": "sidelegend",
-      "snippet": "{${1:title%text}}[${2:label%labeldef}]"
+      "snippet": "{${1:title}}[${2:label}]"
     },
     {
       "name": "sidenamedlegend",
-      "snippet": "{${1:title%text}}"
+      "snippet": "{${1:title}}"
     },
     {
       "name": "sidenamedlegend",
-      "snippet": "{${1:title%text}}[${2:label%labeldef}]"
+      "snippet": "{${1:title}}[${2:label}]"
     },
     {
       "name": "snugshade"
@@ -567,12 +567,12 @@
     },
     {
       "name": "PoemTitle",
-      "snippet": "PoemTitle[${2:for toc%text}][${3:for head%text}]{${1:title}}",
+      "snippet": "PoemTitle[${2:for toc}][${3:for head}]{${1:title}}",
       "unusual": true
     },
     {
       "name": "PoemTitle",
-      "snippet": "PoemTitle[${2:for toc%text}]{${1:title}}",
+      "snippet": "PoemTitle[${2:for toc}]{${1:title}}",
       "unusual": true
     },
     {
@@ -582,12 +582,12 @@
     },
     {
       "name": "PoemTitle*",
-      "snippet": "PoemTitle*[${2:for toc%text}][${3:for head%text}]{${1:title}}",
+      "snippet": "PoemTitle*[${2:for toc}][${3:for head}]{${1:title}}",
       "unusual": true
     },
     {
       "name": "PoemTitle*",
-      "snippet": "PoemTitle*[${2:for toc%text}]{${1:title}}",
+      "snippet": "PoemTitle*[${2:for toc}]{${1:title}}",
       "unusual": true
     },
     {
@@ -744,7 +744,7 @@
         "\\pagestyle#c,\\thispagestyle#c,\\addtopsmarks#c,\\aliaspagestyle#c,\\copypagestyle#c,\\makeevenfoot#c,\\makeevenhead#c,\\makefootrule#c,\\makeheadfootruleprefix#c,\\makeheadfootstrut#c,\\makeheadfootvposition#c,\\makeheadposition#c,\\makeheadrule#c,\\makeoddfoot#c,\\makeoddhead#c,\\makepsmarks#c,\\makerunningfootwidth#c,\\makerunningheadwidth#c,\\makerunningwidth#c,\\makerunningwidth#c,\\memleadpageinfo#c,\\memleadpagestarinfo#c,\\newleadpage#c,\\newleadpage*#c,\\renewleadpage#c,\\renewleadpage*#c"
       ],
       "name": "addtopsmarks",
-      "snippet": "addtopsmarks{${1:pagestyle%keyvals}}{${2:prepend}}{${3:append}}",
+      "snippet": "addtopsmarks{${1:pagestyle}}{${2:prepend}}{${3:append}}",
       "unusual": true
     },
     {
@@ -830,7 +830,7 @@
         "\\pagestyle#c,\\thispagestyle#c,\\addtopsmarks#c,\\aliaspagestyle#c,\\copypagestyle#c,\\makeevenfoot#c,\\makeevenhead#c,\\makefootrule#c,\\makeheadfootruleprefix#c,\\makeheadfootstrut#c,\\makeheadfootvposition#c,\\makeheadposition#c,\\makeheadrule#c,\\makeoddfoot#c,\\makeoddhead#c,\\makepsmarks#c,\\makerunningfootwidth#c,\\makerunningheadwidth#c,\\makerunningwidth#c,\\makerunningwidth#c,\\memleadpageinfo#c,\\memleadpagestarinfo#c,\\newleadpage#c,\\newleadpage*#c,\\renewleadpage#c,\\renewleadpage*#c"
       ],
       "name": "aliaspagestyle",
-      "snippet": "aliaspagestyle{${1:alias%keyvals}}{${2:original}}",
+      "snippet": "aliaspagestyle{${1:alias}}{${2:original}}",
       "unusual": true
     },
     {
@@ -875,7 +875,7 @@
     },
     {
       "name": "arraytostring",
-      "snippet": "arraytostring{${1:array name}}{${2:result%cmd}}",
+      "snippet": "arraytostring{${1:array name}}{${2:result}}",
       "unusual": true
     },
     {
@@ -888,19 +888,19 @@
     },
     {
       "name": "autocols",
-      "snippet": "autocols[${5:width}]{${1:preamble}}{${2:numOfCols}}{${3:style}}{${4:entries%text}}"
+      "snippet": "autocols[${5:width}]{${1:preamble}}{${2:numOfCols}}{${3:style}}{${4:entries}}"
     },
     {
       "name": "autocols",
-      "snippet": "autocols{${1:preamble}}{${2:numOfCols}}{${3:style}}{${4:entries%text}}"
+      "snippet": "autocols{${1:preamble}}{${2:numOfCols}}{${3:style}}{${4:entries}}"
     },
     {
       "name": "autorows",
-      "snippet": "autorows[${5:width}]{${1:preamble}}{${2:numOfCols}}{${3:style}}{${4:entries%text}}"
+      "snippet": "autorows[${5:width}]{${1:preamble}}{${2:numOfCols}}{${3:style}}{${4:entries}}"
     },
     {
       "name": "autorows",
-      "snippet": "autorows{${1:preamble}}{${2:numOfCols}}{${3:style}}{${4:entries%text}}"
+      "snippet": "autorows{${1:preamble}}{${2:numOfCols}}{${3:style}}{${4:entries}}"
     },
     {
       "name": "backmatter"
@@ -979,15 +979,15 @@
     },
     {
       "name": "bicaption",
-      "snippet": "bicaption[${5:label%labeldef}]{${1:short1%text}}{${2:long1%text}}{${3:name%text}}{${4:long2%text}}"
+      "snippet": "bicaption[${5:label}]{${1:short1}}{${2:long1}}{${3:name}}{${4:long2}}"
     },
     {
       "name": "bicaption",
-      "snippet": "bicaption{${1:short1%text}}{${2:long1%text}}{${3:name%text}}{${4:long2%text}}"
+      "snippet": "bicaption{${1:short1}}{${2:long1}}{${3:name}}{${4:long2}}"
     },
     {
       "name": "bicontcaption",
-      "snippet": "bicontcaption{${1:long1%text}}{${2:name%text}}{${3:long2%text}}"
+      "snippet": "bicontcaption{${1:long1}}{${2:name}}{${3:long2}}"
     },
     {
       "name": "binding",
@@ -995,22 +995,22 @@
     },
     {
       "name": "bionenumcaption",
-      "snippet": "bionenumcaption[${6:label%labeldef}]{${1:short1%text}}{${2:long1%text}}{${3:name%text}}{${4:short2%text}}{${5:long2%text}}",
+      "snippet": "bionenumcaption[${6:label}]{${1:short1}}{${2:long1}}{${3:name}}{${4:short2}}{${5:long2}}",
       "unusual": true
     },
     {
       "name": "bionenumcaption",
-      "snippet": "bionenumcaption{${1:short1%text}}{${2:long1%text}}{${3:name%text}}{${4:short2%text}}{${5:long2%text}}",
+      "snippet": "bionenumcaption{${1:short1}}{${2:long1}}{${3:name}}{${4:short2}}{${5:long2}}",
       "unusual": true
     },
     {
       "name": "bitwonumcaption",
-      "snippet": "bitwonumcaption[${6:label%labeldef}]{${1:short1%text}}{${2:long1%text}}{${3:name%text}}{${4:short2%text}}{${5:long2%text}}",
+      "snippet": "bitwonumcaption[${6:label}]{${1:short1}}{${2:long1}}{${3:name}}{${4:short2}}{${5:long2}}",
       "unusual": true
     },
     {
       "name": "bitwonumcaption",
-      "snippet": "bitwonumcaption{${1:short1%text}}{${2:long1%text}}{${3:name%text}}{${4:short2%text}}{${5:long2%text}}",
+      "snippet": "bitwonumcaption{${1:short1}}{${2:long1}}{${3:name}}{${4:short2}}{${5:long2}}",
       "unusual": true
     },
     {
@@ -1067,7 +1067,7 @@
     },
     {
       "name": "bookpagemark",
-      "snippet": "bookpagemark{${1:title%text}}",
+      "snippet": "bookpagemark{${1:title}}",
       "unusual": true
     },
     {
@@ -1239,12 +1239,12 @@
     },
     {
       "name": "cftaddnumtitleline",
-      "snippet": "cftaddnumtitleline{${1:ext}}{${2:kind}}{${3:num}}{${4:title%text}}{${5:page}}",
+      "snippet": "cftaddnumtitleline{${1:ext}}{${2:kind}}{${3:num}}{${4:title}}{${5:page}}",
       "unusual": true
     },
     {
       "name": "cftaddtitleline",
-      "snippet": "cftaddtitleline{${1:ext}}{${2:kind}}{${3:title%text}}{${4:page}}",
+      "snippet": "cftaddtitleline{${1:ext}}{${2:kind}}{${3:title}}{${4:page}}",
       "unusual": true
     },
     {
@@ -2039,7 +2039,7 @@
     },
     {
       "name": "chapter",
-      "snippet": "chapter[${2:toc-title%text}][${3:head-title%text}]{${1:title}}"
+      "snippet": "chapter[${2:toc-title}][${3:head-title}]{${1:title}}"
     },
     {
       "name": "chapterheadstart",
@@ -2092,7 +2092,7 @@
         "\\chapterstyle"
       ],
       "name": "chapterstyle",
-      "snippet": "chapterstyle{${1:style%keyvals}}"
+      "snippet": "chapterstyle{${1:style}}"
     },
     {
       "name": "chaptitlefont",
@@ -2108,7 +2108,7 @@
         "\\checkandfixthelayout"
       ],
       "name": "checkandfixthelayout",
-      "snippet": "checkandfixthelayout[${1:algorithm%keyvals}]",
+      "snippet": "checkandfixthelayout[${1:algorithm}]",
       "unusual": true
     },
     {
@@ -2135,7 +2135,7 @@
         "\\checkthelayout"
       ],
       "name": "checkthelayout",
-      "snippet": "checkthelayout[${1:algorithm%keyvals}]",
+      "snippet": "checkthelayout[${1:algorithm}]",
       "unusual": true
     },
     {
@@ -2234,11 +2234,11 @@
     },
     {
       "name": "contsubbottom",
-      "snippet": "contsubbottom[${2:short text%text}][${3:subtitle%text}]{${1:text}}"
+      "snippet": "contsubbottom[${2:short text}][${3:subtitle}]{${1:text}}"
     },
     {
       "name": "contsubbottom",
-      "snippet": "contsubbottom[${2:short text%text}]{${1:text}}"
+      "snippet": "contsubbottom[${2:short text}]{${1:text}}"
     },
     {
       "name": "contsubbottom",
@@ -2246,7 +2246,7 @@
     },
     {
       "name": "contsubcaption",
-      "snippet": "contsubcaption[${2:short text%text}]{${1:text}}"
+      "snippet": "contsubcaption[${2:short text}]{${1:text}}"
     },
     {
       "name": "contsubcaption",
@@ -2254,11 +2254,11 @@
     },
     {
       "name": "contsubtop",
-      "snippet": "contsubtop[${2:short text%text}][${3:subtitle%text}]{${1:text}}"
+      "snippet": "contsubtop[${2:short text}][${3:subtitle}]{${1:text}}"
     },
     {
       "name": "contsubtop",
-      "snippet": "contsubtop[${2:short text%text}]{${1:text}}"
+      "snippet": "contsubtop[${2:short text}]{${1:text}}"
     },
     {
       "name": "contsubtop",
@@ -2270,7 +2270,7 @@
         "\\pagestyle#c,\\thispagestyle#c,\\addtopsmarks#c,\\aliaspagestyle#c,\\copypagestyle#c,\\makeevenfoot#c,\\makeevenhead#c,\\makefootrule#c,\\makeheadfootruleprefix#c,\\makeheadfootstrut#c,\\makeheadfootvposition#c,\\makeheadposition#c,\\makeheadrule#c,\\makeoddfoot#c,\\makeoddhead#c,\\makepsmarks#c,\\makerunningfootwidth#c,\\makerunningheadwidth#c,\\makerunningwidth#c,\\makerunningwidth#c,\\memleadpageinfo#c,\\memleadpagestarinfo#c,\\newleadpage#c,\\newleadpage*#c,\\renewleadpage#c,\\renewleadpage*#c"
       ],
       "name": "copypagestyle",
-      "snippet": "copypagestyle{${1:copy%specialDef}}{${2:original%keyvals}}",
+      "snippet": "copypagestyle{${1:copy%specialDef}}{${2:original}}",
       "unusual": true
     },
     {
@@ -2283,7 +2283,7 @@
         "\\createmark,\\createplainmark"
       ],
       "name": "createmark",
-      "snippet": "createmark{${1:sec}}{${2:marks%keyvals}}{${3:show}}{${4:prefix}}{${5:postfix}}",
+      "snippet": "createmark{${1:sec}}{${2:marks}}{${3:show}}{${4:prefix}}{${5:postfix}}",
       "unusual": true
     },
     {
@@ -2292,7 +2292,7 @@
         "\\createmark,\\createplainmark"
       ],
       "name": "createplainmark",
-      "snippet": "createplainmark{${1:type}}{${2:marks%keyvals}}{${3:text}}",
+      "snippet": "createplainmark{${1:type}}{${2:marks}}{${3:text}}",
       "unusual": true
     },
     {
@@ -2372,7 +2372,7 @@
     },
     {
       "name": "epigraphforheader",
-      "snippet": "epigraphforheader[${2:distance%l}]{${1:text}}",
+      "snippet": "epigraphforheader[${2:distance}]{${1:text}}",
       "unusual": true
     },
     {
@@ -2382,7 +2382,7 @@
     },
     {
       "name": "epigraphhead",
-      "snippet": "epigraphhead[${2:distance%l}]{${1:text}}",
+      "snippet": "epigraphhead[${2:distance}]{${1:text}}",
       "unusual": true
     },
     {
@@ -2523,12 +2523,12 @@
     },
     {
       "name": "flegtocfigure",
-      "snippet": "flegtocfigure{${1:title%text}}",
+      "snippet": "flegtocfigure{${1:title}}",
       "unusual": true
     },
     {
       "name": "flegtoctable",
-      "snippet": "flegtoctable{${1:title%text}}",
+      "snippet": "flegtoctable{${1:title}}",
       "unusual": true
     },
     {
@@ -2639,17 +2639,17 @@
     },
     {
       "name": "glossary",
-      "snippet": "glossary[${3:file}](${4:key%plain}){${1:term}}{${2:description%text}}",
+      "snippet": "glossary[${3:file}](${4:key}){${1:term}}{${2:description}}",
       "unusual": true
     },
     {
       "name": "glossary",
-      "snippet": "glossary[${3:file}]{${1:term}}{${2:description%text}}",
+      "snippet": "glossary[${3:file}]{${1:term}}{${2:description}}",
       "unusual": true
     },
     {
       "name": "glossary",
-      "snippet": "glossary{${1:term}}{${2:description%text}}",
+      "snippet": "glossary{${1:term}}{${2:description}}",
       "unusual": true
     },
     {
@@ -2678,7 +2678,7 @@
     },
     {
       "name": "glossitem",
-      "snippet": "glossitem{${1:term}}{${2:description%text}}{${3:ref}}{${4:num}}",
+      "snippet": "glossitem{${1:term}}{${2:description}}{${3:ref}}{${4:num}}",
       "unusual": true
     },
     {
@@ -2697,7 +2697,7 @@
     },
     {
       "name": "hangpara",
-      "snippet": "hangpara{${1:indent%l}}{${2:number}}",
+      "snippet": "hangpara{${1:indent}}{${2:number}}",
       "unusual": true
     },
     {
@@ -2735,7 +2735,7 @@
     },
     {
       "name": "hyperlink",
-      "snippet": "hyperlink{${1:target name}}{${2:link text%text}}",
+      "snippet": "hyperlink{${1:target name}}{${2:link text}}",
       "unusual": true
     },
     {
@@ -2866,7 +2866,7 @@
     },
     {
       "name": "isopage",
-      "snippet": "isopage{${1:spine%l}}",
+      "snippet": "isopage{${1:spine}}",
       "unusual": true
     },
     {
@@ -2899,7 +2899,7 @@
     },
     {
       "name": "label",
-      "snippet": "label(${2:bookmark}){${1:label%labeldef}}"
+      "snippet": "label(${2:bookmark}){${1:label}}"
     },
     {
       "name": "lastlineparrule",
@@ -3013,7 +3013,7 @@
         "\\pagestyle#c,\\thispagestyle#c,\\addtopsmarks#c,\\aliaspagestyle#c,\\copypagestyle#c,\\makeevenfoot#c,\\makeevenhead#c,\\makefootrule#c,\\makeheadfootruleprefix#c,\\makeheadfootstrut#c,\\makeheadfootvposition#c,\\makeheadposition#c,\\makeheadrule#c,\\makeoddfoot#c,\\makeoddhead#c,\\makepsmarks#c,\\makerunningfootwidth#c,\\makerunningheadwidth#c,\\makerunningwidth#c,\\makerunningwidth#c,\\memleadpageinfo#c,\\memleadpagestarinfo#c,\\newleadpage#c,\\newleadpage*#c,\\renewleadpage#c,\\renewleadpage*#c"
       ],
       "name": "makeevenfoot",
-      "snippet": "makeevenfoot{${1:pagestyle%keyvals}}{${2:left}}{${3:center}}{${4:right}}",
+      "snippet": "makeevenfoot{${1:pagestyle}}{${2:left}}{${3:center}}{${4:right}}",
       "unusual": true
     },
     {
@@ -3022,7 +3022,7 @@
         "\\pagestyle#c,\\thispagestyle#c,\\addtopsmarks#c,\\aliaspagestyle#c,\\copypagestyle#c,\\makeevenfoot#c,\\makeevenhead#c,\\makefootrule#c,\\makeheadfootruleprefix#c,\\makeheadfootstrut#c,\\makeheadfootvposition#c,\\makeheadposition#c,\\makeheadrule#c,\\makeoddfoot#c,\\makeoddhead#c,\\makepsmarks#c,\\makerunningfootwidth#c,\\makerunningheadwidth#c,\\makerunningwidth#c,\\makerunningwidth#c,\\memleadpageinfo#c,\\memleadpagestarinfo#c,\\newleadpage#c,\\newleadpage*#c,\\renewleadpage#c,\\renewleadpage*#c"
       ],
       "name": "makeevenhead",
-      "snippet": "makeevenhead{${1:pagestyle%keyvals}}{${2:left}}{${3:center}}{${4:right}}",
+      "snippet": "makeevenhead{${1:pagestyle}}{${2:left}}{${3:center}}{${4:right}}",
       "unusual": true
     },
     {
@@ -3040,7 +3040,7 @@
         "\\pagestyle#c,\\thispagestyle#c,\\addtopsmarks#c,\\aliaspagestyle#c,\\copypagestyle#c,\\makeevenfoot#c,\\makeevenhead#c,\\makefootrule#c,\\makeheadfootruleprefix#c,\\makeheadfootstrut#c,\\makeheadfootvposition#c,\\makeheadposition#c,\\makeheadrule#c,\\makeoddfoot#c,\\makeoddhead#c,\\makepsmarks#c,\\makerunningfootwidth#c,\\makerunningheadwidth#c,\\makerunningwidth#c,\\makerunningwidth#c,\\memleadpageinfo#c,\\memleadpagestarinfo#c,\\newleadpage#c,\\newleadpage*#c,\\renewleadpage#c,\\renewleadpage*#c"
       ],
       "name": "makefootrule",
-      "snippet": "makefootrule{${1:pagestyle%keyvals}}{${2:width}}{${3:thickness%l}}{${4:skip%l}}",
+      "snippet": "makefootrule{${1:pagestyle}}{${2:width}}{${3:thickness}}{${4:skip}}",
       "unusual": true
     },
     {
@@ -3049,7 +3049,7 @@
         "\\pagestyle#c,\\thispagestyle#c,\\addtopsmarks#c,\\aliaspagestyle#c,\\copypagestyle#c,\\makeevenfoot#c,\\makeevenhead#c,\\makefootrule#c,\\makeheadfootruleprefix#c,\\makeheadfootstrut#c,\\makeheadfootvposition#c,\\makeheadposition#c,\\makeheadrule#c,\\makeoddfoot#c,\\makeoddhead#c,\\makepsmarks#c,\\makerunningfootwidth#c,\\makerunningheadwidth#c,\\makerunningwidth#c,\\makerunningwidth#c,\\memleadpageinfo#c,\\memleadpagestarinfo#c,\\newleadpage#c,\\newleadpage*#c,\\renewleadpage#c,\\renewleadpage*#c"
       ],
       "name": "makeheadfootruleprefix",
-      "snippet": "makeheadfootruleprefix{${1:pagestyle%keyvals}}{${2:for headrule}}{${3:for footrule}}",
+      "snippet": "makeheadfootruleprefix{${1:pagestyle}}{${2:for headrule}}{${3:for footrule}}",
       "unusual": true
     },
     {
@@ -3058,7 +3058,7 @@
         "\\pagestyle#c,\\thispagestyle#c,\\addtopsmarks#c,\\aliaspagestyle#c,\\copypagestyle#c,\\makeevenfoot#c,\\makeevenhead#c,\\makefootrule#c,\\makeheadfootruleprefix#c,\\makeheadfootstrut#c,\\makeheadfootvposition#c,\\makeheadposition#c,\\makeheadrule#c,\\makeoddfoot#c,\\makeoddhead#c,\\makepsmarks#c,\\makerunningfootwidth#c,\\makerunningheadwidth#c,\\makerunningwidth#c,\\makerunningwidth#c,\\memleadpageinfo#c,\\memleadpagestarinfo#c,\\newleadpage#c,\\newleadpage*#c,\\renewleadpage#c,\\renewleadpage*#c"
       ],
       "name": "makeheadfootstrut",
-      "snippet": "makeheadfootstrut{${1:pagestyle%keyvals}}{${2:head strut}}{${3:foot strut}}",
+      "snippet": "makeheadfootstrut{${1:pagestyle}}{${2:head strut}}{${3:foot strut}}",
       "unusual": true
     },
     {
@@ -3067,7 +3067,7 @@
         "\\pagestyle#c,\\thispagestyle#c,\\addtopsmarks#c,\\aliaspagestyle#c,\\copypagestyle#c,\\makeevenfoot#c,\\makeevenhead#c,\\makefootrule#c,\\makeheadfootruleprefix#c,\\makeheadfootstrut#c,\\makeheadfootvposition#c,\\makeheadposition#c,\\makeheadrule#c,\\makeoddfoot#c,\\makeoddhead#c,\\makepsmarks#c,\\makerunningfootwidth#c,\\makerunningheadwidth#c,\\makerunningwidth#c,\\makerunningwidth#c,\\memleadpageinfo#c,\\memleadpagestarinfo#c,\\newleadpage#c,\\newleadpage*#c,\\renewleadpage#c,\\renewleadpage*#c"
       ],
       "name": "makeheadfootvposition",
-      "snippet": "makeheadfootvposition{${1:pagestyle%keyvals}}{${2:arg2}}{${3:arg3}}",
+      "snippet": "makeheadfootvposition{${1:pagestyle}}{${2:arg2}}{${3:arg3}}",
       "unusual": true
     },
     {
@@ -3076,12 +3076,12 @@
         "\\pagestyle#c,\\thispagestyle#c,\\addtopsmarks#c,\\aliaspagestyle#c,\\copypagestyle#c,\\makeevenfoot#c,\\makeevenhead#c,\\makefootrule#c,\\makeheadfootruleprefix#c,\\makeheadfootstrut#c,\\makeheadfootvposition#c,\\makeheadposition#c,\\makeheadrule#c,\\makeoddfoot#c,\\makeoddhead#c,\\makepsmarks#c,\\makerunningfootwidth#c,\\makerunningheadwidth#c,\\makerunningwidth#c,\\makerunningwidth#c,\\memleadpageinfo#c,\\memleadpagestarinfo#c,\\newleadpage#c,\\newleadpage*#c,\\renewleadpage#c,\\renewleadpage*#c"
       ],
       "name": "makeheadposition",
-      "snippet": "makeheadposition{${1:pagestyle%keyvals}}{${2:eheadpos}}{${3:oheadpos}}{${4:efootpos}}{${5:ofootpos}}",
+      "snippet": "makeheadposition{${1:pagestyle}}{${2:eheadpos}}{${3:oheadpos}}{${4:efootpos}}{${5:ofootpos}}",
       "unusual": true
     },
     {
       "name": "makeheadrule",
-      "snippet": "makeheadrule{${1:pagestyle}}{${2:width}}{${3:thickness%l}}",
+      "snippet": "makeheadrule{${1:pagestyle}}{${2:width}}{${3:thickness}}",
       "unusual": true
     },
     {
@@ -3108,7 +3108,7 @@
         "\\pagestyle#c,\\thispagestyle#c,\\addtopsmarks#c,\\aliaspagestyle#c,\\copypagestyle#c,\\makeevenfoot#c,\\makeevenhead#c,\\makefootrule#c,\\makeheadfootruleprefix#c,\\makeheadfootstrut#c,\\makeheadfootvposition#c,\\makeheadposition#c,\\makeheadrule#c,\\makeoddfoot#c,\\makeoddhead#c,\\makepsmarks#c,\\makerunningfootwidth#c,\\makerunningheadwidth#c,\\makerunningwidth#c,\\makerunningwidth#c,\\memleadpageinfo#c,\\memleadpagestarinfo#c,\\newleadpage#c,\\newleadpage*#c,\\renewleadpage#c,\\renewleadpage*#c"
       ],
       "name": "makeoddfoot",
-      "snippet": "makeoddfoot{${1:pagestyle%keyvals}}{${2:left}}{${3:center}}{${4:right}}",
+      "snippet": "makeoddfoot{${1:pagestyle}}{${2:left}}{${3:center}}{${4:right}}",
       "unusual": true
     },
     {
@@ -3117,7 +3117,7 @@
         "\\pagestyle#c,\\thispagestyle#c,\\addtopsmarks#c,\\aliaspagestyle#c,\\copypagestyle#c,\\makeevenfoot#c,\\makeevenhead#c,\\makefootrule#c,\\makeheadfootruleprefix#c,\\makeheadfootstrut#c,\\makeheadfootvposition#c,\\makeheadposition#c,\\makeheadrule#c,\\makeoddfoot#c,\\makeoddhead#c,\\makepsmarks#c,\\makerunningfootwidth#c,\\makerunningheadwidth#c,\\makerunningwidth#c,\\makerunningwidth#c,\\memleadpageinfo#c,\\memleadpagestarinfo#c,\\newleadpage#c,\\newleadpage*#c,\\renewleadpage#c,\\renewleadpage*#c"
       ],
       "name": "makeoddhead",
-      "snippet": "makeoddhead{${1:pagestyle%keyvals}}{${2:left}}{${3:center}}{${4:right}}",
+      "snippet": "makeoddhead{${1:pagestyle}}{${2:left}}{${3:center}}{${4:right}}",
       "unusual": true
     },
     {
@@ -3135,7 +3135,7 @@
         "\\pagestyle#c,\\thispagestyle#c,\\addtopsmarks#c,\\aliaspagestyle#c,\\copypagestyle#c,\\makeevenfoot#c,\\makeevenhead#c,\\makefootrule#c,\\makeheadfootruleprefix#c,\\makeheadfootstrut#c,\\makeheadfootvposition#c,\\makeheadposition#c,\\makeheadrule#c,\\makeoddfoot#c,\\makeoddhead#c,\\makepsmarks#c,\\makerunningfootwidth#c,\\makerunningheadwidth#c,\\makerunningwidth#c,\\makerunningwidth#c,\\memleadpageinfo#c,\\memleadpagestarinfo#c,\\newleadpage#c,\\newleadpage*#c,\\renewleadpage#c,\\renewleadpage*#c"
       ],
       "name": "makepsmarks",
-      "snippet": "makepsmarks{${1:pagestyle%keyvals}}{${2:code}}",
+      "snippet": "makepsmarks{${1:pagestyle}}{${2:code}}",
       "unusual": true
     },
     {
@@ -3144,7 +3144,7 @@
         "\\pagestyle#c,\\thispagestyle#c,\\addtopsmarks#c,\\aliaspagestyle#c,\\copypagestyle#c,\\makeevenfoot#c,\\makeevenhead#c,\\makefootrule#c,\\makeheadfootruleprefix#c,\\makeheadfootstrut#c,\\makeheadfootvposition#c,\\makeheadposition#c,\\makeheadrule#c,\\makeoddfoot#c,\\makeoddhead#c,\\makepsmarks#c,\\makerunningfootwidth#c,\\makerunningheadwidth#c,\\makerunningwidth#c,\\makerunningwidth#c,\\memleadpageinfo#c,\\memleadpagestarinfo#c,\\newleadpage#c,\\newleadpage*#c,\\renewleadpage#c,\\renewleadpage*#c"
       ],
       "name": "makerunningfootwidth",
-      "snippet": "makerunningfootwidth{${1:pagestyle%keyvals}}{${2:width}}",
+      "snippet": "makerunningfootwidth{${1:pagestyle}}{${2:width}}",
       "unusual": true
     },
     {
@@ -3153,7 +3153,7 @@
         "\\pagestyle#c,\\thispagestyle#c,\\addtopsmarks#c,\\aliaspagestyle#c,\\copypagestyle#c,\\makeevenfoot#c,\\makeevenhead#c,\\makefootrule#c,\\makeheadfootruleprefix#c,\\makeheadfootstrut#c,\\makeheadfootvposition#c,\\makeheadposition#c,\\makeheadrule#c,\\makeoddfoot#c,\\makeoddhead#c,\\makepsmarks#c,\\makerunningfootwidth#c,\\makerunningheadwidth#c,\\makerunningwidth#c,\\makerunningwidth#c,\\memleadpageinfo#c,\\memleadpagestarinfo#c,\\newleadpage#c,\\newleadpage*#c,\\renewleadpage#c,\\renewleadpage*#c"
       ],
       "name": "makerunningheadwidth",
-      "snippet": "makerunningheadwidth{${1:pagestyle%keyvals}}{${2:width}}",
+      "snippet": "makerunningheadwidth{${1:pagestyle}}{${2:width}}",
       "unusual": true
     },
     {
@@ -3162,7 +3162,7 @@
         "\\pagestyle#c,\\thispagestyle#c,\\addtopsmarks#c,\\aliaspagestyle#c,\\copypagestyle#c,\\makeevenfoot#c,\\makeevenhead#c,\\makefootrule#c,\\makeheadfootruleprefix#c,\\makeheadfootstrut#c,\\makeheadfootvposition#c,\\makeheadposition#c,\\makeheadrule#c,\\makeoddfoot#c,\\makeoddhead#c,\\makepsmarks#c,\\makerunningfootwidth#c,\\makerunningheadwidth#c,\\makerunningwidth#c,\\makerunningwidth#c,\\memleadpageinfo#c,\\memleadpagestarinfo#c,\\newleadpage#c,\\newleadpage*#c,\\renewleadpage#c,\\renewleadpage*#c"
       ],
       "name": "makerunningwidth",
-      "snippet": "makerunningwidth{${1:pagestyle%keyvals}}[${3:footwidth%l}]{${2:headwidth%l}}",
+      "snippet": "makerunningwidth{${1:pagestyle}}[${3:footwidth}]{${2:headwidth}}",
       "unusual": true
     },
     {
@@ -3171,7 +3171,7 @@
         "\\pagestyle#c,\\thispagestyle#c,\\addtopsmarks#c,\\aliaspagestyle#c,\\copypagestyle#c,\\makeevenfoot#c,\\makeevenhead#c,\\makefootrule#c,\\makeheadfootruleprefix#c,\\makeheadfootstrut#c,\\makeheadfootvposition#c,\\makeheadposition#c,\\makeheadrule#c,\\makeoddfoot#c,\\makeoddhead#c,\\makepsmarks#c,\\makerunningfootwidth#c,\\makerunningheadwidth#c,\\makerunningwidth#c,\\makerunningwidth#c,\\memleadpageinfo#c,\\memleadpagestarinfo#c,\\newleadpage#c,\\newleadpage*#c,\\renewleadpage#c,\\renewleadpage*#c"
       ],
       "name": "makerunningwidth",
-      "snippet": "makerunningwidth{${1:pagestyle%keyvals}}{${2:headwidth%l}}",
+      "snippet": "makerunningwidth{${1:pagestyle}}{${2:headwidth}}",
       "unusual": true
     },
     {
@@ -3226,7 +3226,7 @@
         "\\maxsecnumdepth"
       ],
       "name": "maxsecnumdepth",
-      "snippet": "maxsecnumdepth{${1:secname%keyvals}}",
+      "snippet": "maxsecnumdepth{${1:secname}}",
       "unusual": true
     },
     {
@@ -3236,7 +3236,7 @@
     },
     {
       "name": "medievalpage",
-      "snippet": "medievalpage{${1:spine%l}}",
+      "snippet": "medievalpage{${1:spine}}",
       "unusual": true
     },
     {
@@ -3245,12 +3245,12 @@
     },
     {
       "name": "memPoemTitleinfo",
-      "snippet": "memPoemTitleinfo{${1:thepoem}}{${2:for toc}}{${3:for head}}{${4:title%text}}",
+      "snippet": "memPoemTitleinfo{${1:thepoem}}{${2:for toc}}{${3:for head}}{${4:title}}",
       "unusual": true
     },
     {
       "name": "memPoemTitlestarinfo",
-      "snippet": "memPoemTitlestarinfo{${1:for toc}}{${2:title%text}}",
+      "snippet": "memPoemTitlestarinfo{${1:for toc}}{${2:title}}",
       "unusual": true
     },
     {
@@ -3291,22 +3291,22 @@
     },
     {
       "name": "memappchapinfo",
-      "snippet": "memappchapinfo{${1:chapter}}{${2:for toc}}{${3:for head}}{${4:title%text}}",
+      "snippet": "memappchapinfo{${1:chapter}}{${2:for toc}}{${3:for head}}{${4:title}}",
       "unusual": true
     },
     {
       "name": "memappchapstarinfo",
-      "snippet": "memappchapstarinfo{${1:for toc}}{${2:title%text}}",
+      "snippet": "memappchapstarinfo{${1:for toc}}{${2:title}}",
       "unusual": true
     },
     {
       "name": "memapppageinfo",
-      "snippet": "memapppageinfo{${1:title%text}}",
+      "snippet": "memapppageinfo{${1:title}}",
       "unusual": true
     },
     {
       "name": "memapppagestarinfo",
-      "snippet": "memapppagestarinfo{${1:title%text}}",
+      "snippet": "memapppagestarinfo{${1:title}}",
       "unusual": true
     },
     {
@@ -3326,27 +3326,27 @@
     },
     {
       "name": "membookinfo",
-      "snippet": "membookinfo{${1:thebook}}{${2:for toc}}{${3:title%text}}",
+      "snippet": "membookinfo{${1:thebook}}{${2:for toc}}{${3:title}}",
       "unusual": true
     },
     {
       "name": "membookstarinfo",
-      "snippet": "membookstarinfo{${1:title%text}}",
+      "snippet": "membookstarinfo{${1:title}}",
       "unusual": true
     },
     {
       "name": "memcaptioninfo",
-      "snippet": "memcaptioninfo{${1:type}}{${2:thetype}}{${3:for toc}}{${4:title%text}}",
+      "snippet": "memcaptioninfo{${1:type}}{${2:thetype}}{${3:for toc}}{${4:title}}",
       "unusual": true
     },
     {
       "name": "memchapinfo",
-      "snippet": "memchapinfo{${1:chapter}}{${2:for toc}}{${3:for head}}{${4:title%text}}",
+      "snippet": "memchapinfo{${1:chapter}}{${2:for toc}}{${3:for head}}{${4:title}}",
       "unusual": true
     },
     {
       "name": "memchapstarinfo",
-      "snippet": "memchapstarinfo{${1:for toc}}{${2:title%text}}",
+      "snippet": "memchapstarinfo{${1:for toc}}{${2:title}}",
       "unusual": true
     },
     {
@@ -3442,7 +3442,7 @@
         "\\pagestyle#c,\\thispagestyle#c,\\addtopsmarks#c,\\aliaspagestyle#c,\\copypagestyle#c,\\makeevenfoot#c,\\makeevenhead#c,\\makefootrule#c,\\makeheadfootruleprefix#c,\\makeheadfootstrut#c,\\makeheadfootvposition#c,\\makeheadposition#c,\\makeheadrule#c,\\makeoddfoot#c,\\makeoddhead#c,\\makepsmarks#c,\\makerunningfootwidth#c,\\makerunningheadwidth#c,\\makerunningwidth#c,\\makerunningwidth#c,\\memleadpageinfo#c,\\memleadpagestarinfo#c,\\newleadpage#c,\\newleadpage*#c,\\renewleadpage#c,\\renewleadpage*#c"
       ],
       "name": "memleadpageinfo",
-      "snippet": "memleadpageinfo{${1:pagestyle%keyvals}}{${2:name}}{${3:title%text}}",
+      "snippet": "memleadpageinfo{${1:pagestyle}}{${2:name}}{${3:title}}",
       "unusual": true
     },
     {
@@ -3451,12 +3451,12 @@
         "\\pagestyle#c,\\thispagestyle#c,\\addtopsmarks#c,\\aliaspagestyle#c,\\copypagestyle#c,\\makeevenfoot#c,\\makeevenhead#c,\\makefootrule#c,\\makeheadfootruleprefix#c,\\makeheadfootstrut#c,\\makeheadfootvposition#c,\\makeheadposition#c,\\makeheadrule#c,\\makeoddfoot#c,\\makeoddhead#c,\\makepsmarks#c,\\makerunningfootwidth#c,\\makerunningheadwidth#c,\\makerunningwidth#c,\\makerunningwidth#c,\\memleadpageinfo#c,\\memleadpagestarinfo#c,\\newleadpage#c,\\newleadpage*#c,\\renewleadpage#c,\\renewleadpage*#c"
       ],
       "name": "memleadpagestarinfo",
-      "snippet": "memleadpagestarinfo{${1:pagestyle%keyvals}}{${2:name}}{${3:title%text}}",
+      "snippet": "memleadpagestarinfo{${1:pagestyle}}{${2:name}}{${3:title}}",
       "unusual": true
     },
     {
       "name": "memlegendinfo",
-      "snippet": "memlegendinfo{${1:title%text}}",
+      "snippet": "memlegendinfo{${1:title}}",
       "unusual": true
     },
     {
@@ -3480,7 +3480,7 @@
     },
     {
       "name": "memnamedlegendinfo",
-      "snippet": "memnamedlegendinfo{${1:for toc}}{${2:title%text}}",
+      "snippet": "memnamedlegendinfo{${1:for toc}}{${2:title}}",
       "unusual": true
     },
     {
@@ -3497,12 +3497,12 @@
     },
     {
       "name": "mempartinfo",
-      "snippet": "mempartinfo{${1:part}}{${2:for toc}}{${3:title%text}}",
+      "snippet": "mempartinfo{${1:part}}{${2:for toc}}{${3:title}}",
       "unusual": true
     },
     {
       "name": "mempartstarinfo",
-      "snippet": "mempartstarinfo{${1:title%text}}",
+      "snippet": "mempartstarinfo{${1:title}}",
       "unusual": true
     },
     {
@@ -3511,12 +3511,12 @@
     },
     {
       "name": "mempoeminfo",
-      "snippet": "mempoeminfo{${1:title%text}}",
+      "snippet": "mempoeminfo{${1:title}}",
       "unusual": true
     },
     {
       "name": "mempoemstarinfo",
-      "snippet": "mempoemstarinfo{${1:title%text}}",
+      "snippet": "mempoemstarinfo{${1:title}}",
       "unusual": true
     },
     {
@@ -3553,12 +3553,12 @@
     },
     {
       "name": "memsecinfo",
-      "snippet": "memsecinfo{${1:name}}{${2:thename}}{${3:for toc}}{${4:for head}}{${5:title%text}}",
+      "snippet": "memsecinfo{${1:name}}{${2:thename}}{${3:for toc}}{${4:for head}}{${5:title}}",
       "unusual": true
     },
     {
       "name": "memsecstarinfo",
-      "snippet": "memsecstarinfo{${1:name}}{${2:title%text}}",
+      "snippet": "memsecstarinfo{${1:name}}{${2:title}}",
       "unusual": true
     },
     {
@@ -3592,7 +3592,7 @@
     },
     {
       "name": "memwritetoglo",
-      "snippet": "memwritetoglo{${1:key%plain}}{${2:name}}{${3:desc}}{${4:ref}}{${5:number}}",
+      "snippet": "memwritetoglo{${1:key}}{${2:name}}{${3:desc}}{${4:ref}}{${5:number}}",
       "unusual": true
     },
     {
@@ -3874,7 +3874,7 @@
         "\\pagestyle#c,\\thispagestyle#c,\\addtopsmarks#c,\\aliaspagestyle#c,\\copypagestyle#c,\\makeevenfoot#c,\\makeevenhead#c,\\makefootrule#c,\\makeheadfootruleprefix#c,\\makeheadfootstrut#c,\\makeheadfootvposition#c,\\makeheadposition#c,\\makeheadrule#c,\\makeoddfoot#c,\\makeoddhead#c,\\makepsmarks#c,\\makerunningfootwidth#c,\\makerunningheadwidth#c,\\makerunningwidth#c,\\makerunningwidth#c,\\memleadpageinfo#c,\\memleadpagestarinfo#c,\\newleadpage#c,\\newleadpage*#c,\\renewleadpage#c,\\renewleadpage*#c"
       ],
       "name": "newleadpage",
-      "snippet": "newleadpage[${3:pagestyle%keyvals}]{${1:cmd}}{${2:title}}",
+      "snippet": "newleadpage[${3:pagestyle}]{${1:cmd}}{${2:title}}",
       "unusual": true
     },
     {
@@ -3888,7 +3888,7 @@
         "\\pagestyle#c,\\thispagestyle#c,\\addtopsmarks#c,\\aliaspagestyle#c,\\copypagestyle#c,\\makeevenfoot#c,\\makeevenhead#c,\\makefootrule#c,\\makeheadfootruleprefix#c,\\makeheadfootstrut#c,\\makeheadfootvposition#c,\\makeheadposition#c,\\makeheadrule#c,\\makeoddfoot#c,\\makeoddhead#c,\\makepsmarks#c,\\makerunningfootwidth#c,\\makerunningheadwidth#c,\\makerunningwidth#c,\\makerunningwidth#c,\\memleadpageinfo#c,\\memleadpagestarinfo#c,\\newleadpage#c,\\newleadpage*#c,\\renewleadpage#c,\\renewleadpage*#c"
       ],
       "name": "newleadpage*",
-      "snippet": "newleadpage*[${3:pagestyle%keyvals}]{${1:cmd}}{${2:title}}",
+      "snippet": "newleadpage*[${3:pagestyle}]{${1:cmd}}{${2:title}}",
       "unusual": true
     },
     {
@@ -4207,7 +4207,7 @@
     },
     {
       "name": "overridescapmargin",
-      "snippet": "overridescapmargin{${1:margin%l}}",
+      "snippet": "overridescapmargin{${1:margin}}",
       "unusual": true
     },
     {
@@ -4363,12 +4363,12 @@
     },
     {
       "name": "pagenotesubhead",
-      "snippet": "pagenotesubhead{${1:chapapp}}{${2:number}}{${3:title%text}}",
+      "snippet": "pagenotesubhead{${1:chapapp}}{${2:number}}{${3:title}}",
       "unusual": true
     },
     {
       "name": "pagenotesubheadstarred",
-      "snippet": "pagenotesubheadstarred{${1:chapapp}}{${2:number}}{${3:title%text}}",
+      "snippet": "pagenotesubheadstarred{${1:chapapp}}{${2:number}}{${3:title}}",
       "unusual": true
     },
     {
@@ -4377,7 +4377,7 @@
         "\\pagenumbering*#c"
       ],
       "name": "pagenumbering*",
-      "snippet": "pagenumbering*{${1:numstyle%keyvals}}"
+      "snippet": "pagenumbering*{${1:numstyle}}"
     },
     {
       "name": "pageold",
@@ -4421,7 +4421,7 @@
     },
     {
       "name": "paragraph",
-      "snippet": "paragraph[${2:toc-title%text}][${3:head-title%text}]{${1:title}}"
+      "snippet": "paragraph[${2:toc-title}][${3:head-title}]{${1:title}}"
     },
     {
       "name": "paragraphfootnotes",
@@ -4743,7 +4743,7 @@
     },
     {
       "name": "printPoemTitletitle",
-      "snippet": "printPoemTitletitle{${1:title%text}}",
+      "snippet": "printPoemTitletitle{${1:title}}",
       "unusual": true
     },
     {
@@ -4756,7 +4756,7 @@
     },
     {
       "name": "printbooktitle",
-      "snippet": "printbooktitle{${1:title%text}}",
+      "snippet": "printbooktitle{${1:title}}",
       "unusual": true
     },
     {
@@ -4773,7 +4773,7 @@
     },
     {
       "name": "printchaptertitle",
-      "snippet": "printchaptertitle{${1:title%text}}",
+      "snippet": "printchaptertitle{${1:title}}",
       "unusual": true
     },
     {
@@ -4796,12 +4796,12 @@
     },
     {
       "name": "printloftitle",
-      "snippet": "printloftitle{${1:title%text}}",
+      "snippet": "printloftitle{${1:title}}",
       "unusual": true
     },
     {
       "name": "printlottitle",
-      "snippet": "printlottitle{${1:title%text}}",
+      "snippet": "printlottitle{${1:title}}",
       "unusual": true
     },
     {
@@ -4832,7 +4832,7 @@
     },
     {
       "name": "printparttitle",
-      "snippet": "printparttitle{${1:title%text}}",
+      "snippet": "printparttitle{${1:title}}",
       "unusual": true
     },
     {
@@ -4845,7 +4845,7 @@
     },
     {
       "name": "printtoctitle",
-      "snippet": "printtoctitle{${1:title%text}}",
+      "snippet": "printtoctitle{${1:title}}",
       "unusual": true
     },
     {
@@ -4895,7 +4895,7 @@
     },
     {
       "name": "qitem",
-      "snippet": "qitem{${1:text}}{${2:source%text}}",
+      "snippet": "qitem{${1:text}}{${2:source}}",
       "unusual": true
     },
     {
@@ -4925,7 +4925,7 @@
     },
     {
       "name": "raggedyright",
-      "snippet": "raggedyright[${1:space%l}]",
+      "snippet": "raggedyright[${1:space}]",
       "unusual": true
     },
     {
@@ -4987,12 +4987,12 @@
         "\\pagestyle#c,\\thispagestyle#c,\\addtopsmarks#c,\\aliaspagestyle#c,\\copypagestyle#c,\\makeevenfoot#c,\\makeevenhead#c,\\makefootrule#c,\\makeheadfootruleprefix#c,\\makeheadfootstrut#c,\\makeheadfootvposition#c,\\makeheadposition#c,\\makeheadrule#c,\\makeoddfoot#c,\\makeoddhead#c,\\makepsmarks#c,\\makerunningfootwidth#c,\\makerunningheadwidth#c,\\makerunningwidth#c,\\makerunningwidth#c,\\memleadpageinfo#c,\\memleadpagestarinfo#c,\\newleadpage#c,\\newleadpage*#c,\\renewleadpage#c,\\renewleadpage*#c"
       ],
       "name": "renewleadpage",
-      "snippet": "renewleadpage[${3:pagestyle%keyvals}]{${1:cmd}}{${2:title%text}}",
+      "snippet": "renewleadpage[${3:pagestyle}]{${1:cmd}}{${2:title}}",
       "unusual": true
     },
     {
       "name": "renewleadpage",
-      "snippet": "renewleadpage{${1:cmd}}{${2:title%text}}",
+      "snippet": "renewleadpage{${1:cmd}}{${2:title}}",
       "unusual": true
     },
     {
@@ -5001,12 +5001,12 @@
         "\\pagestyle#c,\\thispagestyle#c,\\addtopsmarks#c,\\aliaspagestyle#c,\\copypagestyle#c,\\makeevenfoot#c,\\makeevenhead#c,\\makefootrule#c,\\makeheadfootruleprefix#c,\\makeheadfootstrut#c,\\makeheadfootvposition#c,\\makeheadposition#c,\\makeheadrule#c,\\makeoddfoot#c,\\makeoddhead#c,\\makepsmarks#c,\\makerunningfootwidth#c,\\makerunningheadwidth#c,\\makerunningwidth#c,\\makerunningwidth#c,\\memleadpageinfo#c,\\memleadpagestarinfo#c,\\newleadpage#c,\\newleadpage*#c,\\renewleadpage#c,\\renewleadpage*#c"
       ],
       "name": "renewleadpage*",
-      "snippet": "renewleadpage*[${3:pagestyle%keyvals}]{${1:cmd}}{${2:title%text}}",
+      "snippet": "renewleadpage*[${3:pagestyle}]{${1:cmd}}{${2:title}}",
       "unusual": true
     },
     {
       "name": "renewleadpage*",
-      "snippet": "renewleadpage*{${1:cmd}}{${2:title%text}}",
+      "snippet": "renewleadpage*{${1:cmd}}{${2:title}}",
       "unusual": true
     },
     {
@@ -5075,7 +5075,7 @@
     },
     {
       "name": "section",
-      "snippet": "section[${2:toc-title%text}][${3:head-title%text}]{${1:title}}"
+      "snippet": "section[${2:toc-title}][${3:head-title}]{${1:title}}"
     },
     {
       "name": "sectionrefname",
@@ -5101,7 +5101,7 @@
     },
     {
       "name": "semiisopage",
-      "snippet": "semiisopage[${1:spine%l}]",
+      "snippet": "semiisopage[${1:spine}]",
       "unusual": true
     },
     {
@@ -5136,27 +5136,27 @@
     },
     {
       "name": "setafterparaskip",
-      "snippet": "setafterparaskip{${1:skip%l}}",
+      "snippet": "setafterparaskip{${1:skip}}",
       "unusual": true
     },
     {
       "name": "setaftersecskip",
-      "snippet": "setaftersecskip{${1:skip%l}}",
+      "snippet": "setaftersecskip{${1:skip}}",
       "unusual": true
     },
     {
       "name": "setaftersubparaskip",
-      "snippet": "setaftersubparaskip{${1:skip%l}}",
+      "snippet": "setaftersubparaskip{${1:skip}}",
       "unusual": true
     },
     {
       "name": "setaftersubsecskip",
-      "snippet": "setaftersubsecskip{${1:skip%l}}",
+      "snippet": "setaftersubsecskip{${1:skip}}",
       "unusual": true
     },
     {
       "name": "setaftersubsubsecskip",
-      "snippet": "setaftersubsubsecskip{${1:skip%l}}",
+      "snippet": "setaftersubsubsecskip{${1:skip}}",
       "unusual": true
     },
     {
@@ -5166,27 +5166,27 @@
     },
     {
       "name": "setbeforeparaskip",
-      "snippet": "setbeforeparaskip{${1:skip%l}}",
+      "snippet": "setbeforeparaskip{${1:skip}}",
       "unusual": true
     },
     {
       "name": "setbeforesecskip",
-      "snippet": "setbeforesecskip{${1:skip%l}}",
+      "snippet": "setbeforesecskip{${1:skip}}",
       "unusual": true
     },
     {
       "name": "setbeforesubparaskip",
-      "snippet": "setbeforesubparaskip{${1:skip%l}}",
+      "snippet": "setbeforesubparaskip{${1:skip}}",
       "unusual": true
     },
     {
       "name": "setbeforesubsecskip",
-      "snippet": "setbeforesubsecskip{${1:skip%l}}",
+      "snippet": "setbeforesubsecskip{${1:skip}}",
       "unusual": true
     },
     {
       "name": "setbeforesubsubsecskip",
-      "snippet": "setbeforesubsubsecskip{${1:skip%l}}",
+      "snippet": "setbeforesubsubsecskip{${1:skip}}",
       "unusual": true
     },
     {
@@ -5206,7 +5206,7 @@
     },
     {
       "name": "setcolsepandrule",
-      "snippet": "setcolsepandrule{${1:colsep%l}}{${2:thickness}}",
+      "snippet": "setcolsepandrule{${1:colsep}}{${2:thickness}}",
       "unusual": true
     },
     {
@@ -5241,22 +5241,22 @@
     },
     {
       "name": "setheaderspaces",
-      "snippet": "setheaderspaces{${1:headdrop%l}}{${2:headsep%l}}{${3:ratio}}",
+      "snippet": "setheaderspaces{${1:headdrop}}{${2:headsep}}{${3:ratio}}",
       "unusual": true
     },
     {
       "name": "setheadfoot",
-      "snippet": "setheadfoot{${1:headheight%l}}{${2:footskip%l}}",
+      "snippet": "setheadfoot{${1:headheight}}{${2:footskip}}",
       "unusual": true
     },
     {
       "name": "setlrmargins",
-      "snippet": "setlrmargins{${1:spine%l}}{${2:edge%l}}{${3:ratio}}",
+      "snippet": "setlrmargins{${1:spine}}{${2:edge}}{${3:ratio}}",
       "unusual": true
     },
     {
       "name": "setlrmarginsandblock",
-      "snippet": "setlrmarginsandblock{${1:spine%l}}{${2:edge%l}}{${3:ratio}}",
+      "snippet": "setlrmarginsandblock{${1:spine}}{${2:edge}}{${3:ratio}}",
       "unusual": true
     },
     {
@@ -5275,7 +5275,7 @@
     },
     {
       "name": "setmarginnotes",
-      "snippet": "setmarginnotes{${1:separation%l}}{${2:width}}{${3:psuh%l}}",
+      "snippet": "setmarginnotes{${1:separation}}{${2:width}}{${3:psuh}}",
       "unusual": true
     },
     {
@@ -5387,7 +5387,7 @@
         "\\setsecnumdepth"
       ],
       "name": "setsecnumdepth",
-      "snippet": "setsecnumdepth{${1:secname%keyvals}}",
+      "snippet": "setsecnumdepth{${1:secname}}",
       "unusual": true
     },
     {
@@ -5519,12 +5519,12 @@
     },
     {
       "name": "setulmargins",
-      "snippet": "setulmargins{${1:upper%l}}{${2:lower%l}}{${3:ratio}}",
+      "snippet": "setulmargins{${1:upper}}{${2:lower}}{${3:ratio}}",
       "unusual": true
     },
     {
       "name": "setulmarginsandblock",
-      "snippet": "setulmarginsandblock{${1:upper%l}}{${2:lower%l}}{${3:ratio}}",
+      "snippet": "setulmarginsandblock{${1:upper}}{${2:lower}}{${3:ratio}}",
       "unusual": true
     },
     {
@@ -5601,7 +5601,7 @@
     },
     {
       "name": "sidebarmargin",
-      "snippet": "sidebarmargin{${1:margin%l}}",
+      "snippet": "sidebarmargin{${1:margin}}",
       "unusual": true
     },
     {
@@ -5622,7 +5622,7 @@
     },
     {
       "name": "sidecapmargin",
-      "snippet": "sidecapmargin{${1:margin%l}}",
+      "snippet": "sidecapmargin{${1:margin}}",
       "unusual": true
     },
     {
@@ -5675,7 +5675,7 @@
     },
     {
       "name": "sidefootmargin",
-      "snippet": "sidefootmargin{${1:margin%l}}",
+      "snippet": "sidefootmargin{${1:margin}}",
       "unusual": true
     },
     {
@@ -5757,7 +5757,7 @@
     },
     {
       "name": "sideparmargin",
-      "snippet": "sideparmargin{${1:margin%l}}",
+      "snippet": "sideparmargin{${1:margin}}",
       "unusual": true
     },
     {
@@ -5979,11 +5979,11 @@
     },
     {
       "name": "subbottom",
-      "snippet": "subbottom[${2:short text%text}][${3:subtitle%text}]{${1:text}}"
+      "snippet": "subbottom[${2:short text}][${3:subtitle}]{${1:text}}"
     },
     {
       "name": "subbottom",
-      "snippet": "subbottom[${2:short text%text}]{${1:text}}"
+      "snippet": "subbottom[${2:short text}]{${1:text}}"
     },
     {
       "name": "subbottom",
@@ -5991,7 +5991,7 @@
     },
     {
       "name": "subcaption",
-      "snippet": "subcaption[${2:short text%text}]{${1:text}}"
+      "snippet": "subcaption[${2:short text}]{${1:text}}"
     },
     {
       "name": "subcaption",
@@ -6051,7 +6051,7 @@
     },
     {
       "name": "subparagraph",
-      "snippet": "subparagraph[${2:toc-title%text}][${3:head-title%text}]{${1:title}}"
+      "snippet": "subparagraph[${2:toc-title}][${3:head-title}]{${1:title}}"
     },
     {
       "name": "subparaheadstyle",
@@ -6079,7 +6079,7 @@
     },
     {
       "name": "subsection",
-      "snippet": "subsection[${2:toc-title%text}][${3:head-title%text}]{${1:title}}"
+      "snippet": "subsection[${2:toc-title}][${3:head-title}]{${1:title}}"
     },
     {
       "name": "subsubsecheadstyle",
@@ -6095,15 +6095,15 @@
     },
     {
       "name": "subsubsection",
-      "snippet": "subsubsection[${2:toc-title%text}][${3:head-title%text}]{${1:title}}"
+      "snippet": "subsubsection[${2:toc-title}][${3:head-title}]{${1:title}}"
     },
     {
       "name": "subtop",
-      "snippet": "subtop[${2:short text%text}][${3:subtitle%text}]{${1:text}}"
+      "snippet": "subtop[${2:short text}][${3:subtitle}]{${1:text}}"
     },
     {
       "name": "subtop",
-      "snippet": "subtop[${2:short text%text}]{${1:text}}"
+      "snippet": "subtop[${2:short text}]{${1:text}}"
     },
     {
       "name": "subtop",
@@ -6169,7 +6169,7 @@
     },
     {
       "name": "thanksgap",
-      "snippet": "thanksgap{${1:gap%l}}",
+      "snippet": "thanksgap{${1:gap}}",
       "unusual": true
     },
     {
@@ -6368,7 +6368,7 @@
     },
     {
       "name": "tocskip",
-      "snippet": "tocskip{${1:skip%l}}",
+      "snippet": "tocskip{${1:skip}}",
       "unusual": true
     },
     {

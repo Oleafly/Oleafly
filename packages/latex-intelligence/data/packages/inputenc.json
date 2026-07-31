@@ -61,7 +61,7 @@
         "\\usepackage/inputenc#c,\\inputencoding#c"
       ],
       "name": "inputencoding",
-      "snippet": "inputencoding{${1:encoding name%keyvals}}",
+      "snippet": "inputencoding{${1:encoding name}}",
       "unusual": true
     },
     {

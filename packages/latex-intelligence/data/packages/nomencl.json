@@ -131,7 +131,7 @@
     },
     {
       "name": "printnomenclature",
-      "snippet": "printnomenclature[${1:space%l}]"
+      "snippet": "printnomenclature[${1:space}]"
     },
     {
       "name": "setnomtableformat",

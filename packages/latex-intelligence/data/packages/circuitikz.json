@@ -16,7 +16,7 @@
     },
     {
       "name": "circuitikz",
-      "snippet": "[${1:options%keyvals}]"
+      "snippet": "[${1:options}]"
     }
   ],
   "keys": {
@@ -80,15 +80,15 @@
     },
     {
       "name": "ctikzflipx",
-      "snippet": "ctikzflipx{${1:text%plain}}"
+      "snippet": "ctikzflipx{${1:text}}"
     },
     {
       "name": "ctikzflipxy",
-      "snippet": "ctikzflipxy{${1:text%plain}}"
+      "snippet": "ctikzflipxy{${1:text}}"
     },
     {
       "name": "ctikzflipy",
-      "snippet": "ctikzflipy{${1:text%plain}}"
+      "snippet": "ctikzflipy{${1:text}}"
     },
     {
       "name": "ctikzgetanchor",
@@ -104,11 +104,11 @@
         "\\ctikzloadstyle#c,\\ctikzsetstyle#c"
       ],
       "name": "ctikzloadstyle",
-      "snippet": "ctikzloadstyle{${1:style%keyvals}}"
+      "snippet": "ctikzloadstyle{${1:style}}"
     },
     {
       "name": "ctikzset",
-      "snippet": "ctikzset{${1:options%keyvals}}"
+      "snippet": "ctikzset{${1:options}}"
     },
     {
       "keyPos": 0,
@@ -116,7 +116,7 @@
         "\\ctikzloadstyle#c,\\ctikzsetstyle#c"
       ],
       "name": "ctikzsetstyle",
-      "snippet": "ctikzsetstyle{${1:style%keyvals}}"
+      "snippet": "ctikzsetstyle{${1:style}}"
     },
     {
       "name": "ctikzsetvalof",
@@ -132,7 +132,7 @@
     },
     {
       "name": "ctikztextnot",
-      "snippet": "ctikztextnot{${1:text%plain}}"
+      "snippet": "ctikztextnot{${1:text}}"
     },
     {
       "name": "ctikztunablearrow",

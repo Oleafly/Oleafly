@@ -178,7 +178,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "Ac",
-      "snippet": "Ac[${2:options%keyvals}]{${1:id}}"
+      "snippet": "Ac[${2:options}]{${1:id}}"
     },
     {
       "name": "Ac",
@@ -190,7 +190,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "Ac*",
-      "snippet": "Ac*[${2:options%keyvals}]{${1:id}}"
+      "snippet": "Ac*[${2:options}]{${1:id}}"
     },
     {
       "name": "Ac*",
@@ -202,7 +202,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "Aca",
-      "snippet": "Aca[${2:options%keyvals}]{${1:id}}"
+      "snippet": "Aca[${2:options}]{${1:id}}"
     },
     {
       "name": "Aca",
@@ -214,7 +214,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "Aca*",
-      "snippet": "Aca*[${2:options%keyvals}]{${1:id}}"
+      "snippet": "Aca*[${2:options}]{${1:id}}"
     },
     {
       "name": "Aca*",
@@ -226,7 +226,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "Acap",
-      "snippet": "Acap[${2:options%keyvals}]{${1:id}}"
+      "snippet": "Acap[${2:options}]{${1:id}}"
     },
     {
       "name": "Acap",
@@ -238,7 +238,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "Acap*",
-      "snippet": "Acap*[${2:options%keyvals}]{${1:id}}"
+      "snippet": "Acap*[${2:options}]{${1:id}}"
     },
     {
       "name": "Acap*",
@@ -250,7 +250,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "Acf",
-      "snippet": "Acf[${2:options%keyvals}]{${1:id}}"
+      "snippet": "Acf[${2:options}]{${1:id}}"
     },
     {
       "name": "Acf",
@@ -262,7 +262,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "Acf*",
-      "snippet": "Acf*[${2:options%keyvals}]{${1:id}}"
+      "snippet": "Acf*[${2:options}]{${1:id}}"
     },
     {
       "name": "Acf*",
@@ -274,7 +274,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "Acfp",
-      "snippet": "Acfp[${2:options%keyvals}]{${1:id}}"
+      "snippet": "Acfp[${2:options}]{${1:id}}"
     },
     {
       "name": "Acfp",
@@ -286,7 +286,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "Acfp*",
-      "snippet": "Acfp*[${2:options%keyvals}]{${1:id}}"
+      "snippet": "Acfp*[${2:options}]{${1:id}}"
     },
     {
       "name": "Acfp*",
@@ -298,7 +298,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "Acl",
-      "snippet": "Acl[${2:options%keyvals}]{${1:id}}"
+      "snippet": "Acl[${2:options}]{${1:id}}"
     },
     {
       "name": "Acl",
@@ -310,7 +310,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "Acl*",
-      "snippet": "Acl*[${2:options%keyvals}]{${1:id}}"
+      "snippet": "Acl*[${2:options}]{${1:id}}"
     },
     {
       "name": "Acl*",
@@ -322,7 +322,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "Aclp",
-      "snippet": "Aclp[${2:options%keyvals}]{${1:id}}"
+      "snippet": "Aclp[${2:options}]{${1:id}}"
     },
     {
       "name": "Aclp",
@@ -334,7 +334,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "Aclp*",
-      "snippet": "Aclp*[${2:options%keyvals}]{${1:id}}"
+      "snippet": "Aclp*[${2:options}]{${1:id}}"
     },
     {
       "name": "Aclp*",
@@ -346,7 +346,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "Acp",
-      "snippet": "Acp[${2:options%keyvals}]{${1:id}}"
+      "snippet": "Acp[${2:options}]{${1:id}}"
     },
     {
       "name": "Acp",
@@ -358,7 +358,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "Acp*",
-      "snippet": "Acp*[${2:options%keyvals}]{${1:id}}"
+      "snippet": "Acp*[${2:options}]{${1:id}}"
     },
     {
       "name": "Acp*",
@@ -385,7 +385,7 @@
     },
     {
       "name": "AcroModule",
-      "snippet": "AcroModule{${1:name}}{${2:description%text}}",
+      "snippet": "AcroModule{${1:name}}{${2:description}}",
       "unusual": true
     },
     {
@@ -438,7 +438,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "Acs",
-      "snippet": "Acs[${2:options%keyvals}]{${1:id}}"
+      "snippet": "Acs[${2:options}]{${1:id}}"
     },
     {
       "name": "Acs",
@@ -450,7 +450,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "Acs*",
-      "snippet": "Acs*[${2:options%keyvals}]{${1:id}}"
+      "snippet": "Acs*[${2:options}]{${1:id}}"
     },
     {
       "name": "Acs*",
@@ -462,7 +462,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "Acsp",
-      "snippet": "Acsp[${2:options%keyvals}]{${1:id}}"
+      "snippet": "Acsp[${2:options}]{${1:id}}"
     },
     {
       "name": "Acsp",
@@ -474,7 +474,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "Acsp*",
-      "snippet": "Acsp*[${2:options%keyvals}]{${1:id}}"
+      "snippet": "Acsp*[${2:options}]{${1:id}}"
     },
     {
       "name": "Acsp*",
@@ -482,7 +482,7 @@
     },
     {
       "name": "AddAcroTranslations",
-      "snippet": "AddAcroTranslations{${1:key%plain}}{${2:language-translation list}}",
+      "snippet": "AddAcroTranslations{${1:key}}{${2:language-translation list}}",
       "unusual": true
     },
     {
@@ -507,7 +507,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "DeclareAcroPreset",
-      "snippet": "DeclareAcroPreset{${1:set name}}{${2:properties%keyvals}}"
+      "snippet": "DeclareAcroPreset{${1:set name}}{${2:properties}}"
     },
     {
       "name": "DeclareAcroProperty",
@@ -526,7 +526,7 @@
     },
     {
       "name": "DeclareAcroTranslation",
-      "snippet": "DeclareAcroTranslation{${1:key%plain}}{${2:language-translation list}}",
+      "snippet": "DeclareAcroTranslation{${1:key}}{${2:language-translation list}}",
       "unusual": true
     },
     {
@@ -536,7 +536,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "DeclareAcronym",
-      "snippet": "DeclareAcronym{${1:id}}{${2:properties%keyvals}}"
+      "snippet": "DeclareAcronym{${1:id}}{${2:properties}}"
     },
     {
       "keyPos": 0,
@@ -544,7 +544,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "Iac",
-      "snippet": "Iac[${2:options%keyvals}]{${1:id}}"
+      "snippet": "Iac[${2:options}]{${1:id}}"
     },
     {
       "name": "Iac",
@@ -556,7 +556,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "Iac*",
-      "snippet": "Iac*[${2:options%keyvals}]{${1:id}}"
+      "snippet": "Iac*[${2:options}]{${1:id}}"
     },
     {
       "name": "Iac*",
@@ -568,7 +568,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "Iaca",
-      "snippet": "Iaca[${2:options%keyvals}]{${1:id}}"
+      "snippet": "Iaca[${2:options}]{${1:id}}"
     },
     {
       "name": "Iaca",
@@ -580,7 +580,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "Iaca*",
-      "snippet": "Iaca*[${2:options%keyvals}]{${1:id}}"
+      "snippet": "Iaca*[${2:options}]{${1:id}}"
     },
     {
       "name": "Iaca*",
@@ -592,7 +592,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "Iacf",
-      "snippet": "Iacf[${2:options%keyvals}]{${1:id}}"
+      "snippet": "Iacf[${2:options}]{${1:id}}"
     },
     {
       "name": "Iacf",
@@ -604,7 +604,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "Iacf*",
-      "snippet": "Iacf*[${2:options%keyvals}]{${1:id}}"
+      "snippet": "Iacf*[${2:options}]{${1:id}}"
     },
     {
       "name": "Iacf*",
@@ -616,7 +616,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "Iacl",
-      "snippet": "Iacl[${2:options%keyvals}]{${1:id}}"
+      "snippet": "Iacl[${2:options}]{${1:id}}"
     },
     {
       "name": "Iacl",
@@ -628,7 +628,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "Iacl*",
-      "snippet": "Iacl*[${2:options%keyvals}]{${1:id}}"
+      "snippet": "Iacl*[${2:options}]{${1:id}}"
     },
     {
       "name": "Iacl*",
@@ -640,7 +640,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "Iacs",
-      "snippet": "Iacs[${2:options%keyvals}]{${1:id}}"
+      "snippet": "Iacs[${2:options}]{${1:id}}"
     },
     {
       "name": "Iacs",
@@ -652,7 +652,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "Iacs*",
-      "snippet": "Iacs*[${2:options%keyvals}]{${1:id}}"
+      "snippet": "Iacs*[${2:options}]{${1:id}}"
     },
     {
       "name": "Iacs*",
@@ -675,7 +675,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "NewAcroPreset",
-      "snippet": "NewAcroPreset{${1:set name}}{${2:properties%keyvals}}"
+      "snippet": "NewAcroPreset{${1:set name}}{${2:properties}}"
     },
     {
       "name": "NewAcroTemplate",
@@ -704,7 +704,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "RenewAcroPreset",
-      "snippet": "RenewAcroPreset{${1:set name}}{${2:properties%keyvals}}"
+      "snippet": "RenewAcroPreset{${1:set name}}{${2:properties}}"
     },
     {
       "name": "RenewAcroTemplate",
@@ -756,7 +756,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "ac",
-      "snippet": "ac[${2:options%keyvals}]{${1:id}}"
+      "snippet": "ac[${2:options}]{${1:id}}"
     },
     {
       "name": "ac",
@@ -768,7 +768,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "ac*",
-      "snippet": "ac*[${2:options%keyvals}]{${1:id}}"
+      "snippet": "ac*[${2:options}]{${1:id}}"
     },
     {
       "name": "ac*",
@@ -780,7 +780,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "aca",
-      "snippet": "aca[${2:options%keyvals}]{${1:id}}"
+      "snippet": "aca[${2:options}]{${1:id}}"
     },
     {
       "name": "aca",
@@ -792,7 +792,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "aca*",
-      "snippet": "aca*[${2:options%keyvals}]{${1:id}}"
+      "snippet": "aca*[${2:options}]{${1:id}}"
     },
     {
       "name": "aca*",
@@ -804,7 +804,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "acap",
-      "snippet": "acap[${2:options%keyvals}]{${1:id}}"
+      "snippet": "acap[${2:options}]{${1:id}}"
     },
     {
       "name": "acap",
@@ -816,7 +816,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "acap*",
-      "snippet": "acap*[${2:options%keyvals}]{${1:id}}"
+      "snippet": "acap*[${2:options}]{${1:id}}"
     },
     {
       "name": "acap*",
@@ -836,7 +836,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "acf",
-      "snippet": "acf[${2:options%keyvals}]{${1:id}}"
+      "snippet": "acf[${2:options}]{${1:id}}"
     },
     {
       "name": "acf",
@@ -848,7 +848,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "acf*",
-      "snippet": "acf*[${2:options%keyvals}]{${1:id}}"
+      "snippet": "acf*[${2:options}]{${1:id}}"
     },
     {
       "name": "acf*",
@@ -865,7 +865,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "acfp",
-      "snippet": "acfp[${2:options%keyvals}]{${1:id}}"
+      "snippet": "acfp[${2:options}]{${1:id}}"
     },
     {
       "name": "acfp",
@@ -877,7 +877,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "acfp*",
-      "snippet": "acfp*[${2:options%keyvals}]{${1:id}}"
+      "snippet": "acfp*[${2:options}]{${1:id}}"
     },
     {
       "name": "acfp*",
@@ -898,7 +898,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "acl",
-      "snippet": "acl[${2:options%keyvals}]{${1:id}}"
+      "snippet": "acl[${2:options}]{${1:id}}"
     },
     {
       "name": "acl",
@@ -910,7 +910,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "acl*",
-      "snippet": "acl*[${2:options%keyvals}]{${1:id}}"
+      "snippet": "acl*[${2:options}]{${1:id}}"
     },
     {
       "name": "acl*",
@@ -922,7 +922,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "aclp",
-      "snippet": "aclp[${2:options%keyvals}]{${1:id}}"
+      "snippet": "aclp[${2:options}]{${1:id}}"
     },
     {
       "name": "aclp",
@@ -934,7 +934,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "aclp*",
-      "snippet": "aclp*[${2:options%keyvals}]{${1:id}}"
+      "snippet": "aclp*[${2:options}]{${1:id}}"
     },
     {
       "name": "aclp*",
@@ -946,7 +946,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "acp",
-      "snippet": "acp[${2:options%keyvals}]{${1:id}}"
+      "snippet": "acp[${2:options}]{${1:id}}"
     },
     {
       "name": "acp",
@@ -958,7 +958,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "acp*",
-      "snippet": "acp*[${2:options%keyvals}]{${1:id}}"
+      "snippet": "acp*[${2:options}]{${1:id}}"
     },
     {
       "name": "acp*",
@@ -1285,7 +1285,7 @@
     },
     {
       "name": "acrotranslate",
-      "snippet": "acrotranslate{${1:key%plain}}",
+      "snippet": "acrotranslate{${1:key}}",
       "unusual": true
     },
     {
@@ -1303,7 +1303,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "acs",
-      "snippet": "acs[${2:options%keyvals}]{${1:id}}"
+      "snippet": "acs[${2:options}]{${1:id}}"
     },
     {
       "name": "acs",
@@ -1315,7 +1315,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "acs*",
-      "snippet": "acs*[${2:options%keyvals}]{${1:id}}"
+      "snippet": "acs*[${2:options}]{${1:id}}"
     },
     {
       "name": "acs*",
@@ -1327,7 +1327,7 @@
         "\\acsetup#c"
       ],
       "name": "acsetup",
-      "snippet": "acsetup{${1:options%keyvals}}"
+      "snippet": "acsetup{${1:options}}"
     },
     {
       "name": "acshow",
@@ -1350,7 +1350,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "acsp",
-      "snippet": "acsp[${2:options%keyvals}]{${1:id}}"
+      "snippet": "acsp[${2:options}]{${1:id}}"
     },
     {
       "name": "acsp",
@@ -1362,7 +1362,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "acsp*",
-      "snippet": "acsp*[${2:options%keyvals}]{${1:id}}"
+      "snippet": "acsp*[${2:options}]{${1:id}}"
     },
     {
       "name": "acsp*",
@@ -1395,7 +1395,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "iac",
-      "snippet": "iac[${2:options%keyvals}]{${1:id}}"
+      "snippet": "iac[${2:options}]{${1:id}}"
     },
     {
       "name": "iac",
@@ -1407,7 +1407,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "iac*",
-      "snippet": "iac*[${2:options%keyvals}]{${1:id}}"
+      "snippet": "iac*[${2:options}]{${1:id}}"
     },
     {
       "name": "iac*",
@@ -1419,7 +1419,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "iaca",
-      "snippet": "iaca[${2:options%keyvals}]{${1:id}}"
+      "snippet": "iaca[${2:options}]{${1:id}}"
     },
     {
       "name": "iaca",
@@ -1431,7 +1431,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "iaca*",
-      "snippet": "iaca*[${2:options%keyvals}]{${1:id}}"
+      "snippet": "iaca*[${2:options}]{${1:id}}"
     },
     {
       "name": "iaca*",
@@ -1443,7 +1443,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "iacf",
-      "snippet": "iacf[${2:options%keyvals}]{${1:id}}"
+      "snippet": "iacf[${2:options}]{${1:id}}"
     },
     {
       "name": "iacf",
@@ -1455,7 +1455,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "iacf*",
-      "snippet": "iacf*[${2:options%keyvals}]{${1:id}}"
+      "snippet": "iacf*[${2:options}]{${1:id}}"
     },
     {
       "name": "iacf*",
@@ -1467,7 +1467,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "iacl",
-      "snippet": "iacl[${2:options%keyvals}]{${1:id}}"
+      "snippet": "iacl[${2:options}]{${1:id}}"
     },
     {
       "name": "iacl",
@@ -1479,7 +1479,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "iacl*",
-      "snippet": "iacl*[${2:options%keyvals}]{${1:id}}"
+      "snippet": "iacl*[${2:options}]{${1:id}}"
     },
     {
       "name": "iacl*",
@@ -1491,7 +1491,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "iacs",
-      "snippet": "iacs[${2:options%keyvals}]{${1:id}}"
+      "snippet": "iacs[${2:options}]{${1:id}}"
     },
     {
       "name": "iacs",
@@ -1503,7 +1503,7 @@
         "\\DeclareAcronym#c,\\NewAcroPreset#c,\\RenewAcroPreset#c,\\DeclareAcroPreset#c,\\ac#c,\\ac*#c,\\Ac#c,\\Ac*#c,\\acp#c,\\acp*#c,\\Acp#c,\\Acp*#c,\\iac#c,\\iac*#c,\\Iac#c,\\Iac*#c,\\acs#c,\\acs*#c,\\Acs#c,\\Acs*#c,\\acsp#c,\\acsp*#c,\\Acsp#c,\\Acsp*#c,\\iacs#c,\\iacs*#c,\\Iacs#c,\\Iacs*#c,\\acl#c,\\acl*#c,\\Acl#c,\\Acl*#c,\\aclp#c,\\aclp*#c,\\Aclp#c,\\Aclp*#c,\\iacl#c,\\iacl*#c,\\Iacl#c,\\Iacl*#c,\\aca#c,\\aca*#c,\\Aca#c,\\Aca*#c,\\acap#c,\\acap*#c,\\Acap#c,\\Acap*#c,\\iaca#c,\\iaca*#c,\\Iaca#c,\\Iaca*#c,\\acf#c,\\acf*#c,\\Acf#c,\\Acf*#c,\\acfp#c,\\acfp*#c,\\Acfp#c,\\Acfp*#c,\\iacf#c,\\iacf*#c,\\Iacf#c,\\Iacf*#c"
       ],
       "name": "iacs*",
-      "snippet": "iacs*[${2:options%keyvals}]{${1:id}}"
+      "snippet": "iacs*[${2:options}]{${1:id}}"
     },
     {
       "name": "iacs*",
@@ -1519,7 +1519,7 @@
         "\\printacronyms#c"
       ],
       "name": "printacronyms",
-      "snippet": "printacronyms[${1:options%keyvals}]"
+      "snippet": "printacronyms[${1:options}]"
     }
   ]
 }

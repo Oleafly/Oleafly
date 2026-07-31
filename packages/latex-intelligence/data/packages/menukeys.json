@@ -83,7 +83,7 @@
         "\\arrowkey#c"
       ],
       "name": "arrowkey",
-      "snippet": "arrowkey{${1:direction%keyvals}}"
+      "snippet": "arrowkey{${1:direction}}"
     },
     {
       "name": "arrowkeydown"
@@ -112,7 +112,7 @@
         "\\changemenucolor"
       ],
       "name": "changemenucolor",
-      "snippet": "changemenucolor{${1:name}}{${2:element%keyvals}}{${3:model}}{${4:color definition}}",
+      "snippet": "changemenucolor{${1:name}}{${2:element}}{${3:model}}{${4:color definition}}",
       "unusual": true
     },
     {
@@ -126,7 +126,7 @@
         "\\changemenuelement,\\changemenuelement*"
       ],
       "name": "changemenuelement",
-      "snippet": "changemenuelement{${1:name}}{${2:element%keyvals}}{${3:definition}}",
+      "snippet": "changemenuelement{${1:name}}{${2:element}}{${3:definition}}",
       "unusual": true
     },
     {
@@ -135,7 +135,7 @@
         "\\changemenuelement,\\changemenuelement*"
       ],
       "name": "changemenuelement*",
-      "snippet": "changemenuelement*{${1:name}}{${2:element%keyvals}}{${3:definition}}",
+      "snippet": "changemenuelement*{${1:name}}{${2:element}}{${3:definition}}",
       "unusual": true
     },
     {
@@ -179,12 +179,12 @@
     },
     {
       "name": "drawtikzfolder",
-      "snippet": "drawtikzfolder[${1:front fill color%color}]",
+      "snippet": "drawtikzfolder[${1:front fill color}]",
       "unusual": true
     },
     {
       "name": "drawtikzfolder",
-      "snippet": "drawtikzfolder[${1:front fill color%color}][${2:draw color%color}]",
+      "snippet": "drawtikzfolder[${1:front fill color}][${2:draw color}]",
       "unusual": true
     },
     {
@@ -220,7 +220,7 @@
         "\\renewmenustylesimple,\\renewmenustyle,\\newmenumacro,\\renewmenumacro,\\providemenumacro"
       ],
       "name": "newmenumacro",
-      "snippet": "newmenumacro{${1:macro%cmd}}[${3:input sep}]{${2:style%keyvals}}",
+      "snippet": "newmenumacro{${1:macro}}[${3:input sep}]{${2:style}}",
       "unusual": true
     },
     {
@@ -252,7 +252,7 @@
         "\\renewmenustylesimple,\\renewmenustyle,\\newmenumacro,\\renewmenumacro,\\providemenumacro"
       ],
       "name": "providemenumacro",
-      "snippet": "providemenumacro{${1:macro%cmd}}[${3:input sep}]{${2:style%keyvals}}",
+      "snippet": "providemenumacro{${1:macro}}[${3:input sep}]{${2:style}}",
       "unusual": true
     },
     {
@@ -286,7 +286,7 @@
         "\\renewmenustylesimple,\\renewmenustyle,\\newmenumacro,\\renewmenumacro,\\providemenumacro"
       ],
       "name": "renewmenumacro",
-      "snippet": "renewmenumacro{${1:macro}}[${3:input sep}]{${2:style%keyvals}}",
+      "snippet": "renewmenumacro{${1:macro}}[${3:input sep}]{${2:style}}",
       "unusual": true
     },
     {
@@ -295,12 +295,12 @@
         "\\renewmenustylesimple,\\renewmenustyle,\\newmenumacro,\\renewmenumacro,\\providemenumacro"
       ],
       "name": "renewmenustyle",
-      "snippet": "renewmenustyle{${1:name}}[${7:pre}]{${2:first}}[${8:sep}]{${3:mid}}{${4:last}}{${5:single%keyvals}}[${9:post}]{${6:theme}}",
+      "snippet": "renewmenustyle{${1:name}}[${7:pre}]{${2:first}}[${8:sep}]{${3:mid}}{${4:last}}{${5:single}}[${9:post}]{${6:theme}}",
       "unusual": true
     },
     {
       "name": "renewmenustyle*",
-      "snippet": "renewmenustyle*{${1:name}}[${7:pre}]{${2:first}}[${8:sep}]{${3:mid}}{${4:last}}{${5:single%keyvals}}[${9:post}]{${6:theme}}",
+      "snippet": "renewmenustyle*{${1:name}}[${7:pre}]{${2:first}}[${8:sep}]{${3:mid}}{${4:last}}{${5:single}}[${9:post}]{${6:theme}}",
       "unusual": true
     },
     {
@@ -309,12 +309,12 @@
         "\\renewmenustylesimple,\\renewmenustyle,\\newmenumacro,\\renewmenumacro,\\providemenumacro"
       ],
       "name": "renewmenustylesimple",
-      "snippet": "renewmenustylesimple{${1:name}}[${4:pre}]{${2:style%keyvals}}[${5:sep}][${6:post}]{${3:theme}}",
+      "snippet": "renewmenustylesimple{${1:name}}[${4:pre}]{${2:style}}[${5:sep}][${6:post}]{${3:theme}}",
       "unusual": true
     },
     {
       "name": "renewmenustylesimple*",
-      "snippet": "renewmenustylesimple*{${1:name}}[${4:pre}]{${2:style%keyvals}}[${5:sep}][${6:post}]{${3:theme}}",
+      "snippet": "renewmenustylesimple*{${1:name}}[${4:pre}]{${2:style}}[${5:sep}][${6:post}]{${3:theme}}",
       "unusual": true
     },
     {

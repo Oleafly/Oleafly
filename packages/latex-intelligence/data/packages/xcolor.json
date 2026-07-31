@@ -163,7 +163,7 @@
         "\\definecolorseries"
       ],
       "name": "definecolorseries",
-      "snippet": "definecolorseries{${1:name}}{${2:core-model}}{${3:method%keyvals}}[${6:b-model}]{${4:b-spec}}[${7:s-model}]{${5:s-spec}}",
+      "snippet": "definecolorseries{${1:name}}{${2:core-model}}{${3:method}}[${6:b-model}]{${4:b-spec}}[${7:s-model}]{${5:s-spec}}",
       "unusual": true
     },
     {
@@ -172,7 +172,7 @@
         "\\definecolorseries"
       ],
       "name": "definecolorseries",
-      "snippet": "definecolorseries{${1:name}}{${2:core-model}}{${3:method%keyvals}}{${4:b-spec}}{${5:s-spec}}",
+      "snippet": "definecolorseries{${1:name}}{${2:core-model}}{${3:method}}{${4:b-spec}}{${5:s-spec}}",
       "unusual": true
     },
     {
@@ -195,7 +195,7 @@
     },
     {
       "name": "extractcolorspecs",
-      "snippet": "extractcolorspecs{${1:color}}{${2:model-cmd%cmd}}{${3:color-cmd%cmd}}",
+      "snippet": "extractcolorspecs{${1:color}}{${2:model-cmd}}{${3:color-cmd}}",
       "unusual": true
     },
     {

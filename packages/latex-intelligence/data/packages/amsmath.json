@@ -239,7 +239,7 @@
     },
     {
       "name": "genfrac",
-      "snippet": "genfrac{${1:left-delim}}{${2:right-delim}}{${3:thickness%l}}{${4:mathstyle}}{${5:numerator}}{${6:denominator}}"
+      "snippet": "genfrac{${1:left-delim}}{${2:right-delim}}{${3:thickness}}{${4:mathstyle}}{${5:numerator}}{${6:denominator}}"
     },
     {
       "name": "hdots",
@@ -279,7 +279,7 @@
     },
     {
       "name": "intertext",
-      "snippet": "intertext{${1:word or phrase%text}}"
+      "snippet": "intertext{${1:word or phrase}}"
     },
     {
       "name": "lVert"

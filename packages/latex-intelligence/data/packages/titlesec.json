@@ -85,7 +85,7 @@
     },
     {
       "name": "assignpagestyle",
-      "snippet": "assignpagestyle{${1:command%plain}}{${2:pagestyle}}"
+      "snippet": "assignpagestyle{${1:command}}{${2:pagestyle}}"
     },
     {
       "name": "beforetitleunit",
@@ -158,7 +158,7 @@
         "\\titleclass"
       ],
       "name": "titleclass",
-      "snippet": "titleclass{${1:name%cmd}}[${3:start-level-num}]{${2:class%keyvals}}",
+      "snippet": "titleclass{${1:name}}[${3:start-level-num}]{${2:class}}",
       "unusual": true
     },
     {
@@ -167,7 +167,7 @@
         "\\titleclass"
       ],
       "name": "titleclass",
-      "snippet": "titleclass{${1:name%cmd}}{${2:class%keyvals}}"
+      "snippet": "titleclass{${1:name}}{${2:class}}"
     },
     {
       "keyPos": 1,
@@ -175,7 +175,7 @@
         "\\titleclass"
       ],
       "name": "titleclass",
-      "snippet": "titleclass{${1:name%cmd}}{${2:class%keyvals}}[${3:super-level-cmd}]"
+      "snippet": "titleclass{${1:name}}{${2:class}}[${3:super-level-cmd}]"
     },
     {
       "keyPos": 1,
@@ -183,7 +183,7 @@
         "\\titleformat#c"
       ],
       "name": "titleformat",
-      "snippet": "titleformat{${1:command%plain}}[${6:shape%keyvals}]{${2:format}}{${3:label}}{${4:sep%l}}{${5:before-code}}"
+      "snippet": "titleformat{${1:command}}[${6:shape}]{${2:format}}{${3:label}}{${4:sep}}{${5:before-code}}"
     },
     {
       "keyPos": 1,
@@ -191,15 +191,15 @@
         "\\titleformat#c"
       ],
       "name": "titleformat",
-      "snippet": "titleformat{${1:command%plain}}[${6:shape%keyvals}]{${2:format}}{${3:label}}{${4:sep%l}}{${5:before-code}}[${7:after-code}]"
+      "snippet": "titleformat{${1:command}}[${6:shape}]{${2:format}}{${3:label}}{${4:sep}}{${5:before-code}}[${7:after-code}]"
     },
     {
       "name": "titleformat",
-      "snippet": "titleformat{${1:command%plain}}{${2:format}}{${3:label}}{${4:sep%l}}{${5:before-code}}"
+      "snippet": "titleformat{${1:command}}{${2:format}}{${3:label}}{${4:sep}}{${5:before-code}}"
     },
     {
       "name": "titleformat*",
-      "snippet": "titleformat*{${1:command%plain}}{${2:format}}"
+      "snippet": "titleformat*{${1:command}}{${2:format}}"
     },
     {
       "name": "titlelabel",
@@ -211,11 +211,11 @@
         "\\titleline,\\titleline*"
       ],
       "name": "titleline",
-      "snippet": "titleline[${2:align%keyvals}]{${1:horizontal material%text}}"
+      "snippet": "titleline[${2:align}]{${1:horizontal material}}"
     },
     {
       "name": "titleline",
-      "snippet": "titleline{${1:horizontal material%text}}"
+      "snippet": "titleline{${1:horizontal material}}"
     },
     {
       "keyPos": 0,
@@ -223,11 +223,11 @@
         "\\titleline,\\titleline*"
       ],
       "name": "titleline*",
-      "snippet": "titleline*[${2:align%keyvals}]{${1:horizontal material%text}}"
+      "snippet": "titleline*[${2:align}]{${1:horizontal material}}"
     },
     {
       "name": "titleline*",
-      "snippet": "titleline*{${1:horizontal material%text}}"
+      "snippet": "titleline*{${1:horizontal material}}"
     },
     {
       "name": "titlerule"
@@ -246,19 +246,19 @@
     },
     {
       "name": "titlespacing",
-      "snippet": "titlespacing{${1:command%plain}}{${2:left%l}}{${3:before-sep%l}}{${4:after-sep%l}}"
+      "snippet": "titlespacing{${1:command}}{${2:left}}{${3:before-sep}}{${4:after-sep}}"
     },
     {
       "name": "titlespacing",
-      "snippet": "titlespacing{${1:command%plain}}{${2:left%l}}{${3:before-sep%l}}{${4:after-sep%l}}[${5:right-sep%l}]"
+      "snippet": "titlespacing{${1:command}}{${2:left}}{${3:before-sep}}{${4:after-sep}}[${5:right-sep}]"
     },
     {
       "name": "titlespacing*",
-      "snippet": "titlespacing*{${1:command%plain}}{${2:left%l}}{${3:before-sep%l}}{${4:after-sep%l}}"
+      "snippet": "titlespacing*{${1:command}}{${2:left}}{${3:before-sep}}{${4:after-sep}}"
     },
     {
       "name": "titlespacing*",
-      "snippet": "titlespacing*{${1:command%plain}}{${2:left%l}}{${3:before-sep%l}}{${4:after-sep%l}}[${5:right-sep%l}]"
+      "snippet": "titlespacing*{${1:command}}{${2:left}}{${3:before-sep}}{${4:after-sep}}[${5:right-sep}]"
     },
     {
       "name": "titlewidth",

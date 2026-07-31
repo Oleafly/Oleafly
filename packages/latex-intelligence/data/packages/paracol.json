@@ -77,7 +77,7 @@
         "\\addcontentsonly"
       ],
       "name": "addcontentsonly",
-      "snippet": "addcontentsonly{${1:file%keyvals}}{${2:column}}"
+      "snippet": "addcontentsonly{${1:file}}{${2:column}}"
     },
     {
       "name": "backgroundcolor",

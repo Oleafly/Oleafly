@@ -11,7 +11,7 @@
   "envs": [
     {
       "name": "addmargin",
-      "snippet": "[${2:left indent%l}]{${1:indent%l}}"
+      "snippet": "[${2:left indent}]{${1:indent}}"
     },
     {
       "name": "addmargin",
@@ -20,16 +20,16 @@
     },
     {
       "name": "addmargin",
-      "snippet": "{${1:indent%l}}"
-    },
-    {
-      "name": "addmargin",
       "snippet": "{${1:indent}}",
       "unusual": true
     },
     {
+      "name": "addmargin",
+      "snippet": "{${1:indent}}"
+    },
+    {
       "name": "addmargin*",
-      "snippet": "[${2:inner indent%l}]{${1:indent%l}}"
+      "snippet": "[${2:inner indent}]{${1:indent}}"
     },
     {
       "name": "addmargin*",
@@ -38,16 +38,16 @@
     },
     {
       "name": "addmargin*",
-      "snippet": "{${1:indent%l}}"
-    },
-    {
-      "name": "addmargin*",
       "snippet": "{${1:indent}}",
       "unusual": true
     },
     {
+      "name": "addmargin*",
+      "snippet": "{${1:indent}}"
+    },
+    {
       "name": "captionbeside",
-      "snippet": "[${2:short title}]{${1:caption text%text}}[${3:placement}][${4:width}][${5:offset%l}]"
+      "snippet": "[${2:short title}]{${1:caption text}}[${3:placement}][${4:width}][${5:offset}]"
     },
     {
       "name": "captionbeside",
@@ -63,7 +63,7 @@
     },
     {
       "name": "captionbeside",
-      "snippet": "{${1:caption text%text}}"
+      "snippet": "{${1:caption text}}"
     },
     {
       "name": "captionbeside",
@@ -83,11 +83,11 @@
     },
     {
       "name": "captionofbeside",
-      "snippet": "{${1:float type}}[${3:short title}]{${2:caption text%text}}[${4:placement}][${5:width}][${6:offset%l}]"
+      "snippet": "{${1:float type}}[${3:short title}]{${2:caption text}}[${4:placement}][${5:width}][${6:offset}]"
     },
     {
       "name": "captionofbeside",
-      "snippet": "{${1:float type}}{${2:caption text%text}}"
+      "snippet": "{${1:float type}}{${2:caption text}}"
     },
     {
       "name": "labeling",
@@ -230,7 +230,7 @@
   "macros": [
     {
       "name": "AddToSectionCommandOptionsDoList",
-      "snippet": "AddToSectionCommandOptionsDoList{${1:key%plain}}",
+      "snippet": "AddToSectionCommandOptionsDoList{${1:key}}",
       "unusual": true
     },
     {
@@ -258,7 +258,7 @@
         "\\DeclareSectionCommand#c,\\DeclareNewSectionCommand#c,\\RedeclareSectionCommand#c,\\ProvideSectionCommand#c,\\DeclareSectionCommands#c,\\DeclareNewSectionCommands#c,\\RedeclareSectionCommands#c,\\ProvideSectionCommands#c"
       ],
       "name": "DeclareNewSectionCommand",
-      "snippet": "DeclareNewSectionCommand[${2:attributes%keyvals}]{${1:name}}",
+      "snippet": "DeclareNewSectionCommand[${2:attributes}]{${1:name}}",
       "unusual": true
     },
     {
@@ -272,7 +272,7 @@
         "\\DeclareSectionCommand#c,\\DeclareNewSectionCommand#c,\\RedeclareSectionCommand#c,\\ProvideSectionCommand#c,\\DeclareSectionCommands#c,\\DeclareNewSectionCommands#c,\\RedeclareSectionCommands#c,\\ProvideSectionCommands#c"
       ],
       "name": "DeclareNewSectionCommands",
-      "snippet": "DeclareNewSectionCommands[${2:attributes%keyvals}]{${1:list of names}}",
+      "snippet": "DeclareNewSectionCommands[${2:attributes}]{${1:list of names}}",
       "unusual": true
     },
     {
@@ -286,7 +286,7 @@
         "\\DeclareSectionCommand#c,\\DeclareNewSectionCommand#c,\\RedeclareSectionCommand#c,\\ProvideSectionCommand#c,\\DeclareSectionCommands#c,\\DeclareNewSectionCommands#c,\\RedeclareSectionCommands#c,\\ProvideSectionCommands#c"
       ],
       "name": "DeclareSectionCommand",
-      "snippet": "DeclareSectionCommand[${2:attributes%keyvals}]{${1:name}}"
+      "snippet": "DeclareSectionCommand[${2:attributes}]{${1:name}}"
     },
     {
       "name": "DeclareSectionCommand",
@@ -294,27 +294,27 @@
     },
     {
       "name": "DeclareSectionCommandStyleFontOption",
-      "snippet": "DeclareSectionCommandStyleFontOption{${1:section level}}{${2:key%plain}}{${3:prefix}}{${4:postfix}}",
+      "snippet": "DeclareSectionCommandStyleFontOption{${1:section level}}{${2:key}}{${3:prefix}}{${4:postfix}}",
       "unusual": true
     },
     {
       "name": "DeclareSectionCommandStyleFuzzyOption",
-      "snippet": "DeclareSectionCommandStyleFuzzyOption{${1:section level}}{${2:key%plain}}{${3:prefix}}{${4:postfix}}{${5:alt}}",
+      "snippet": "DeclareSectionCommandStyleFuzzyOption{${1:section level}}{${2:key}}{${3:prefix}}{${4:postfix}}{${5:alt}}",
       "unusual": true
     },
     {
       "name": "DeclareSectionCommandStyleLengthOption",
-      "snippet": "DeclareSectionCommandStyleLengthOption{${1:section level}}{${2:key%plain}}{${3:prefix}}{${4:postfix}}",
+      "snippet": "DeclareSectionCommandStyleLengthOption{${1:section level}}{${2:key}}{${3:prefix}}{${4:postfix}}",
       "unusual": true
     },
     {
       "name": "DeclareSectionCommandStyleNumberOption",
-      "snippet": "DeclareSectionCommandStyleNumberOption{${1:section level}}{${2:key%plain}}{${3:prefix}}{${4:postfix}}",
+      "snippet": "DeclareSectionCommandStyleNumberOption{${1:section level}}{${2:key}}{${3:prefix}}{${4:postfix}}",
       "unusual": true
     },
     {
       "name": "DeclareSectionCommandStyleOption",
-      "snippet": "DeclareSectionCommandStyleOption{${1:section level}}{${2:key%plain}}{${3:code}}",
+      "snippet": "DeclareSectionCommandStyleOption{${1:section level}}{${2:key}}{${3:code}}",
       "unusual": true
     },
     {
@@ -323,7 +323,7 @@
         "\\DeclareSectionCommand#c,\\DeclareNewSectionCommand#c,\\RedeclareSectionCommand#c,\\ProvideSectionCommand#c,\\DeclareSectionCommands#c,\\DeclareNewSectionCommands#c,\\RedeclareSectionCommands#c,\\ProvideSectionCommands#c"
       ],
       "name": "DeclareSectionCommands",
-      "snippet": "DeclareSectionCommands[${2:attributes%keyvals}]{${1:list of names}}"
+      "snippet": "DeclareSectionCommands[${2:attributes}]{${1:list of names}}"
     },
     {
       "name": "DeclareSectionCommands",
@@ -387,7 +387,7 @@
         "\\DeclareSectionCommand#c,\\DeclareNewSectionCommand#c,\\RedeclareSectionCommand#c,\\ProvideSectionCommand#c,\\DeclareSectionCommands#c,\\DeclareNewSectionCommands#c,\\RedeclareSectionCommands#c,\\ProvideSectionCommands#c"
       ],
       "name": "ProvideSectionCommand",
-      "snippet": "ProvideSectionCommand[${2:attributes%keyvals}]{${1:name}}"
+      "snippet": "ProvideSectionCommand[${2:attributes}]{${1:name}}"
     },
     {
       "name": "ProvideSectionCommand",
@@ -399,7 +399,7 @@
         "\\DeclareSectionCommand#c,\\DeclareNewSectionCommand#c,\\RedeclareSectionCommand#c,\\ProvideSectionCommand#c,\\DeclareSectionCommands#c,\\DeclareNewSectionCommands#c,\\RedeclareSectionCommands#c,\\ProvideSectionCommands#c"
       ],
       "name": "ProvideSectionCommands",
-      "snippet": "ProvideSectionCommands[${2:attributes%keyvals}]{${1:list of names}}"
+      "snippet": "ProvideSectionCommands[${2:attributes}]{${1:list of names}}"
     },
     {
       "name": "ProvideSectionCommands",
@@ -411,7 +411,7 @@
         "\\DeclareSectionCommand#c,\\DeclareNewSectionCommand#c,\\RedeclareSectionCommand#c,\\ProvideSectionCommand#c,\\DeclareSectionCommands#c,\\DeclareNewSectionCommands#c,\\RedeclareSectionCommands#c,\\ProvideSectionCommands#c"
       ],
       "name": "RedeclareSectionCommand",
-      "snippet": "RedeclareSectionCommand[${2:attributes%keyvals}]{${1:name}}"
+      "snippet": "RedeclareSectionCommand[${2:attributes}]{${1:name}}"
     },
     {
       "name": "RedeclareSectionCommand",
@@ -423,7 +423,7 @@
         "\\DeclareSectionCommand#c,\\DeclareNewSectionCommand#c,\\RedeclareSectionCommand#c,\\ProvideSectionCommand#c,\\DeclareSectionCommands#c,\\DeclareNewSectionCommands#c,\\RedeclareSectionCommands#c,\\ProvideSectionCommands#c"
       ],
       "name": "RedeclareSectionCommands",
-      "snippet": "RedeclareSectionCommands[${2:attributes%keyvals}]{${1:list of names}}"
+      "snippet": "RedeclareSectionCommands[${2:attributes}]{${1:list of names}}"
     },
     {
       "name": "RedeclareSectionCommands",
@@ -471,12 +471,12 @@
     },
     {
       "name": "addchaptertocentry",
-      "snippet": "addchaptertocentry{${1:number}}{${2:heading%text}}",
+      "snippet": "addchaptertocentry{${1:number}}{${2:heading}}",
       "unusual": true
     },
     {
       "name": "addparagraphtocentry",
-      "snippet": "addparagraphtocentry{${1:number}}{${2:heading%text}}",
+      "snippet": "addparagraphtocentry{${1:number}}{${2:heading}}",
       "unusual": true
     },
     {
@@ -502,7 +502,7 @@
     },
     {
       "name": "addparttocentry",
-      "snippet": "addparttocentry{${1:number}}{${2:heading%text}}",
+      "snippet": "addparttocentry{${1:number}}{${2:heading}}",
       "unusual": true
     },
     {
@@ -528,27 +528,27 @@
     },
     {
       "name": "addsectiontocentry",
-      "snippet": "addsectiontocentry{${1:number}}{${2:heading%text}}",
+      "snippet": "addsectiontocentry{${1:number}}{${2:heading}}",
       "unusual": true
     },
     {
       "name": "addsubparagraphtocentry",
-      "snippet": "addsubparagraphtocentry{${1:number}}{${2:heading%text}}",
+      "snippet": "addsubparagraphtocentry{${1:number}}{${2:heading}}",
       "unusual": true
     },
     {
       "name": "addsubsectiontocentry",
-      "snippet": "addsubsectiontocentry{${1:number}}{${2:heading%text}}",
+      "snippet": "addsubsectiontocentry{${1:number}}{${2:heading}}",
       "unusual": true
     },
     {
       "name": "addsubsubsectiontocentry",
-      "snippet": "addsubsubsectiontocentry{${1:number}}{${2:heading%text}}",
+      "snippet": "addsubsubsectiontocentry{${1:number}}{${2:heading}}",
       "unusual": true
     },
     {
       "name": "addtocentrydefault",
-      "snippet": "addtocentrydefault{${1:level}}{${2:number}}{${3:heading%text}}",
+      "snippet": "addtocentrydefault{${1:level}}{${2:number}}{${3:heading}}",
       "unusual": true
     },
     {
@@ -601,7 +601,7 @@
     },
     {
       "name": "captionabove",
-      "snippet": "captionabove[${2:entry}]{${1:title%text}}"
+      "snippet": "captionabove[${2:entry}]{${1:title}}"
     },
     {
       "name": "captionabove",
@@ -609,15 +609,15 @@
     },
     {
       "name": "captionabove",
-      "snippet": "captionabove{${1:title%text}}"
+      "snippet": "captionabove{${1:title}}"
     },
     {
       "name": "captionaboveof",
-      "snippet": "captionaboveof{${1:float type}}[${3:entry}]{${2:title%text}}"
+      "snippet": "captionaboveof{${1:float type}}[${3:entry}]{${2:title}}"
     },
     {
       "name": "captionaboveof",
-      "snippet": "captionaboveof{${1:float type}}{${2:title%text}}"
+      "snippet": "captionaboveof{${1:float type}}{${2:title}}"
     },
     {
       "name": "captionbelow",
@@ -629,15 +629,15 @@
     },
     {
       "name": "captionbelow",
-      "snippet": "captionbelow{${1:title%text}}"
+      "snippet": "captionbelow{${1:title}}"
     },
     {
       "name": "captionbelowof",
-      "snippet": "captionbelowof{${1:float type}}[${3:entry}]{${2:title%text}}"
+      "snippet": "captionbelowof{${1:float type}}[${3:entry}]{${2:title}}"
     },
     {
       "name": "captionbelowof",
-      "snippet": "captionbelowof{${1:float type}}{${2:title%text}}"
+      "snippet": "captionbelowof{${1:float type}}{${2:title}}"
     },
     {
       "name": "captionformat",
@@ -649,15 +649,15 @@
     },
     {
       "name": "captionof",
-      "snippet": "captionof{${1:float type}}[${3:entry}]{${2:title%text}}"
+      "snippet": "captionof{${1:float type}}[${3:entry}]{${2:title}}"
     },
     {
       "name": "captionof",
-      "snippet": "captionof{${1:float type}}{${2:title%text}}"
+      "snippet": "captionof{${1:float type}}{${2:title}}"
     },
     {
       "name": "changefontsizes",
-      "snippet": "changefontsizes{${1:font size%l}}",
+      "snippet": "changefontsizes{${1:font size}}",
       "unusual": true
     },
     {
@@ -727,7 +727,7 @@
         "\\cleardoublepageusingstyle#c,\\cleardoubleoddpageusingstyle#c,\\cleardoubleevenpageusingstyle#c"
       ],
       "name": "cleardoubleevenpageusingstyle",
-      "snippet": "cleardoubleevenpageusingstyle{${1:pagestyle%keyvals}}"
+      "snippet": "cleardoubleevenpageusingstyle{${1:pagestyle}}"
     },
     {
       "name": "cleardoubleevenplainpage"
@@ -737,7 +737,7 @@
     },
     {
       "name": "cleardoubleevenusingstyle",
-      "snippet": "cleardoubleevenusingstyle{${1:pagestyle%special}}"
+      "snippet": "cleardoubleevenusingstyle{${1:pagestyle}}"
     },
     {
       "name": "cleardoubleoddemptypage"
@@ -751,7 +751,7 @@
         "\\cleardoublepageusingstyle#c,\\cleardoubleoddpageusingstyle#c,\\cleardoubleevenpageusingstyle#c"
       ],
       "name": "cleardoubleoddpageusingstyle",
-      "snippet": "cleardoubleoddpageusingstyle{${1:pagestyle%keyvals}}"
+      "snippet": "cleardoubleoddpageusingstyle{${1:pagestyle}}"
     },
     {
       "name": "cleardoubleoddplainpage"
@@ -761,7 +761,7 @@
     },
     {
       "name": "cleardoubleoddusingstyle",
-      "snippet": "cleardoubleoddusingstyle{${1:pagestyle%special}}"
+      "snippet": "cleardoubleoddusingstyle{${1:pagestyle}}"
     },
     {
       "keyPos": 0,
@@ -769,11 +769,11 @@
         "\\cleardoublepageusingstyle#c,\\cleardoubleoddpageusingstyle#c,\\cleardoubleevenpageusingstyle#c"
       ],
       "name": "cleardoublepageusingstyle",
-      "snippet": "cleardoublepageusingstyle{${1:pagestyle%keyvals}}"
+      "snippet": "cleardoublepageusingstyle{${1:pagestyle}}"
     },
     {
       "name": "cleardoublepageusingstyle",
-      "snippet": "cleardoublepageusingstyle{${1:pagestyle%special}}"
+      "snippet": "cleardoublepageusingstyle{${1:pagestyle}}"
     },
     {
       "name": "cleardoubleplainpage"
@@ -803,7 +803,7 @@
     },
     {
       "name": "dedication",
-      "snippet": "dedication{${1:dedication%text}}"
+      "snippet": "dedication{${1:dedication}}"
     },
     {
       "name": "dedication",
@@ -814,17 +814,12 @@
     },
     {
       "name": "deffootnote",
-      "snippet": "deffootnote[${4:mark width%l}]{${1:indent%l}}{${2:parindent%l}}{${3:definition}}",
+      "snippet": "deffootnote[${4:mark width}]{${1:indent}}{${2:parindent}}{${3:definition}}",
       "unusual": true
     },
     {
       "name": "deffootnote",
       "snippet": "deffootnote[${4:width}]{${1:indent}}{${2:parindent}}{${3:definition}}",
-      "unusual": true
-    },
-    {
-      "name": "deffootnote",
-      "snippet": "deffootnote{${1:indent%l}}{${2:parindent%l}}{${3:definition}}",
       "unusual": true
     },
     {
@@ -892,7 +887,7 @@
     },
     {
       "name": "frontispiece",
-      "snippet": "frontispiece{${1:frontispiece%text}}"
+      "snippet": "frontispiece{${1:frontispiece}}"
     },
     {
       "name": "frontmatter"
@@ -946,7 +941,7 @@
     },
     {
       "name": "lowertitleback",
-      "snippet": "lowertitleback{${1:titlebackfoot%text}}"
+      "snippet": "lowertitleback{${1:titlebackfoot}}"
     },
     {
       "name": "mainmatter"
@@ -961,7 +956,7 @@
     },
     {
       "name": "marginline",
-      "snippet": "marginline{${1:margin note%text}}"
+      "snippet": "marginline{${1:margin note}}"
     },
     {
       "name": "marginline",
@@ -1161,7 +1156,7 @@
     },
     {
       "name": "sectioncatchphraseformat",
-      "snippet": "sectioncatchphraseformat{${1:level}}{${2:indent%l}}{${3:number}}{${4:text}}",
+      "snippet": "sectioncatchphraseformat{${1:level}}{${2:indent}}{${3:number}}{${4:text}}",
       "unusual": true
     },
     {
@@ -1170,7 +1165,7 @@
     },
     {
       "name": "sectionlinesformat",
-      "snippet": "sectionlinesformat{${1:level}}{${2:indent%l}}{${3:number}}{${4:text}}",
+      "snippet": "sectionlinesformat{${1:level}}{${2:indent}}{${3:number}}{${4:text}}",
       "unusual": true
     },
     {
@@ -1187,7 +1182,7 @@
     },
     {
       "name": "setbibpreamble",
-      "snippet": "setbibpreamble{${1:preamble%text}}"
+      "snippet": "setbibpreamble{${1:preamble}}"
     },
     {
       "name": "setbibpreamble",
@@ -1199,7 +1194,7 @@
         "\\setcapwidth,\\setcapdynwidth"
       ],
       "name": "setcapdynwidth",
-      "snippet": "setcapdynwidth[${2:justification%keyvals}]{${1:width}}",
+      "snippet": "setcapdynwidth[${2:justification}]{${1:width}}",
       "unusual": true
     },
     {
@@ -1213,17 +1208,7 @@
     },
     {
       "name": "setcapindent",
-      "snippet": "setcapindent{${1:indent%l}}",
-      "unusual": true
-    },
-    {
-      "name": "setcapindent",
       "snippet": "setcapindent{${1:indent}}",
-      "unusual": true
-    },
-    {
-      "name": "setcapindent*",
-      "snippet": "setcapindent*{${1:indent%l}}",
       "unusual": true
     },
     {
@@ -1233,7 +1218,7 @@
     },
     {
       "name": "setcapmargin",
-      "snippet": "setcapmargin[${2:left margin%l}]{${1:margin%l}}",
+      "snippet": "setcapmargin[${2:left margin}]{${1:margin}}",
       "unusual": true
     },
     {
@@ -1248,12 +1233,12 @@
     },
     {
       "name": "setcapmargin",
-      "snippet": "setcapmargin{${1:margin%l}}",
+      "snippet": "setcapmargin{${1:margin}}",
       "unusual": true
     },
     {
       "name": "setcapmargin*",
-      "snippet": "setcapmargin*[${2:inner margin%l}]{${1:margin%l}}",
+      "snippet": "setcapmargin*[${2:inner margin}]{${1:margin}}",
       "unusual": true
     },
     {
@@ -1268,7 +1253,7 @@
     },
     {
       "name": "setcapmargin*",
-      "snippet": "setcapmargin*{${1:margin%l}}",
+      "snippet": "setcapmargin*{${1:margin}}",
       "unusual": true
     },
     {
@@ -1277,7 +1262,7 @@
         "\\setcaptionalignment"
       ],
       "name": "setcaptionalignment",
-      "snippet": "setcaptionalignment[${2:float type}]{${1:alignment%keyvals}}",
+      "snippet": "setcaptionalignment[${2:float type}]{${1:alignment}}",
       "unusual": true
     },
     {
@@ -1286,7 +1271,7 @@
         "\\setcaptionalignment"
       ],
       "name": "setcaptionalignment",
-      "snippet": "setcaptionalignment{${1:alignment%keyvals}}",
+      "snippet": "setcaptionalignment{${1:alignment}}",
       "unusual": true
     },
     {
@@ -1300,7 +1285,7 @@
         "\\setcapwidth,\\setcapdynwidth"
       ],
       "name": "setcapwidth",
-      "snippet": "setcapwidth[${2:justification%keyvals}]{${1:width}}",
+      "snippet": "setcapwidth[${2:justification}]{${1:width}}",
       "unusual": true
     },
     {
@@ -1314,7 +1299,7 @@
         "\\setpartpreamble,\\setchapterpreamble"
       ],
       "name": "setchapterpreamble",
-      "snippet": "setchapterpreamble[${2:position%keyvals}][${3:width}]{${1:preamble%text}}"
+      "snippet": "setchapterpreamble[${2:position}][${3:width}]{${1:preamble}}"
     },
     {
       "keyPos": 0,
@@ -1322,7 +1307,7 @@
         "\\setpartpreamble,\\setchapterpreamble"
       ],
       "name": "setchapterpreamble",
-      "snippet": "setchapterpreamble[${2:position%keyvals}]{${1:preamble%text}}"
+      "snippet": "setchapterpreamble[${2:position}]{${1:preamble}}"
     },
     {
       "name": "setchapterpreamble",
@@ -1336,7 +1321,7 @@
     },
     {
       "name": "setchapterpreamble",
-      "snippet": "setchapterpreamble{${1:preamble%text}}"
+      "snippet": "setchapterpreamble{${1:preamble}}"
     },
     {
       "name": "setchapterpreamble",
@@ -1355,7 +1340,7 @@
     },
     {
       "name": "setindexpreamble",
-      "snippet": "setindexpreamble{${1:preamble%text}}"
+      "snippet": "setindexpreamble{${1:preamble}}"
     },
     {
       "name": "setindexpreamble",
@@ -1369,7 +1354,7 @@
     },
     {
       "name": "setparsizes",
-      "snippet": "setparsizes{${1:indent%l}}{${2:distance%l}}{${3:last-line end space}}",
+      "snippet": "setparsizes{${1:indent}}{${2:distance}}{${3:last-line end space}}",
       "unusual": true
     },
     {
@@ -1378,7 +1363,7 @@
         "\\setpartpreamble,\\setchapterpreamble"
       ],
       "name": "setpartpreamble",
-      "snippet": "setpartpreamble[${2:position%keyvals}][${3:width}]{${1:preamble%text}}"
+      "snippet": "setpartpreamble[${2:position}][${3:width}]{${1:preamble}}"
     },
     {
       "keyPos": 0,
@@ -1386,7 +1371,7 @@
         "\\setpartpreamble,\\setchapterpreamble"
       ],
       "name": "setpartpreamble",
-      "snippet": "setpartpreamble[${2:position%keyvals}]{${1:preamble%text}}"
+      "snippet": "setpartpreamble[${2:position}]{${1:preamble}}"
     },
     {
       "name": "setpartpreamble",
@@ -1400,7 +1385,7 @@
     },
     {
       "name": "setpartpreamble",
-      "snippet": "setpartpreamble{${1:preamble%text}}"
+      "snippet": "setpartpreamble{${1:preamble}}"
     },
     {
       "name": "setpartpreamble",
@@ -1409,7 +1394,7 @@
     },
     {
       "name": "subject",
-      "snippet": "subject{${1:subject%text}}"
+      "snippet": "subject{${1:subject}}"
     },
     {
       "name": "subject",
@@ -1457,7 +1442,7 @@
     },
     {
       "name": "subtitle",
-      "snippet": "subtitle{${1:subtitle%text}}"
+      "snippet": "subtitle{${1:subtitle}}"
     },
     {
       "name": "subtitle",
@@ -1505,7 +1490,7 @@
     },
     {
       "name": "titlehead",
-      "snippet": "titlehead{${1:title head%text}}"
+      "snippet": "titlehead{${1:title head}}"
     },
     {
       "name": "titlepagestyle",
@@ -1527,7 +1512,7 @@
     },
     {
       "name": "uppertitleback",
-      "snippet": "uppertitleback{${1:titlebackhead%text}}"
+      "snippet": "uppertitleback{${1:titlebackhead}}"
     },
     {
       "name": "usekomafont",

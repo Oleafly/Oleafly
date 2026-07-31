@@ -147,51 +147,51 @@
     },
     {
       "name": "subcaption",
-      "snippet": "subcaption[${2:list entry}]{${1:heading%text}}"
+      "snippet": "subcaption[${2:list entry}]{${1:heading}}"
     },
     {
       "name": "subcaption",
-      "snippet": "subcaption{${1:heading%text}}"
+      "snippet": "subcaption{${1:heading}}"
     },
     {
       "name": "subcaption*",
-      "snippet": "subcaption*{${1:heading%text}}"
+      "snippet": "subcaption*{${1:heading}}"
     },
     {
       "name": "subcaptionbox",
-      "snippet": "subcaptionbox[${3:list entry}]{${1:heading%text}}[${4:width}][${5:inner-pos}]{${2:content%text}}"
+      "snippet": "subcaptionbox[${3:list entry}]{${1:heading}}[${4:width}][${5:inner-pos}]{${2:content}}"
     },
     {
       "name": "subcaptionbox",
-      "snippet": "subcaptionbox[${3:list entry}]{${1:heading%text}}[${4:width}]{${2:content%text}}"
+      "snippet": "subcaptionbox[${3:list entry}]{${1:heading}}[${4:width}]{${2:content}}"
     },
     {
       "name": "subcaptionbox",
-      "snippet": "subcaptionbox[${3:list entry}]{${1:heading%text}}{${2:content%text}}"
+      "snippet": "subcaptionbox[${3:list entry}]{${1:heading}}{${2:content}}"
     },
     {
       "name": "subcaptionbox",
-      "snippet": "subcaptionbox{${1:heading%text}}[${3:width}][${4:inner-pos}]{${2:content%text}}"
+      "snippet": "subcaptionbox{${1:heading}}[${3:width}][${4:inner-pos}]{${2:content}}"
     },
     {
       "name": "subcaptionbox",
-      "snippet": "subcaptionbox{${1:heading%text}}[${3:width}]{${2:content%text}}"
+      "snippet": "subcaptionbox{${1:heading}}[${3:width}]{${2:content}}"
     },
     {
       "name": "subcaptionbox",
-      "snippet": "subcaptionbox{${1:heading%text}}{${2:content%text}}"
+      "snippet": "subcaptionbox{${1:heading}}{${2:content}}"
     },
     {
       "name": "subcaptionbox*",
-      "snippet": "subcaptionbox*{${1:heading%text}}[${3:width}][${4:inner-pos}]{${2:content%text}}"
+      "snippet": "subcaptionbox*{${1:heading}}[${3:width}][${4:inner-pos}]{${2:content}}"
     },
     {
       "name": "subcaptionbox*",
-      "snippet": "subcaptionbox*{${1:heading%text}}[${3:width}]{${2:content%text}}"
+      "snippet": "subcaptionbox*{${1:heading}}[${3:width}]{${2:content}}"
     },
     {
       "name": "subcaptionbox*",
-      "snippet": "subcaptionbox*{${1:heading%text}}{${2:content%text}}"
+      "snippet": "subcaptionbox*{${1:heading}}{${2:content}}"
     },
     {
       "name": "subcaptionlistentry",
@@ -215,15 +215,15 @@
     },
     {
       "name": "subfloat",
-      "snippet": "subfloat[${2:list entry}][${3:sub-caption}]{${1:body%text}}"
+      "snippet": "subfloat[${2:list entry}][${3:sub-caption}]{${1:body}}"
     },
     {
       "name": "subfloat",
-      "snippet": "subfloat[${2:sub-caption}]{${1:body%text}}"
+      "snippet": "subfloat[${2:sub-caption}]{${1:body}}"
     },
     {
       "name": "subfloat",
-      "snippet": "subfloat{${1:body%text}}"
+      "snippet": "subfloat{${1:body}}"
     },
     {
       "name": "subref",

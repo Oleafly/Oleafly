@@ -240,7 +240,7 @@
   "macros": [
     {
       "name": "CJKfontspec",
-      "snippet": "CJKfontspec[${2:font features%keyvals}]{${1:font name}}"
+      "snippet": "CJKfontspec[${2:font features}]{${1:font name}}"
     },
     {
       "name": "CJKfontspec",
@@ -305,22 +305,22 @@
     },
     {
       "name": "addCJKfontfeatures",
-      "snippet": "addCJKfontfeatures[${2:blocks}]{${1:font features%keyvals}}",
+      "snippet": "addCJKfontfeatures[${2:blocks}]{${1:font features}}",
       "unusual": true
     },
     {
       "name": "addCJKfontfeatures",
-      "snippet": "addCJKfontfeatures{${1:font features%keyvals}}",
+      "snippet": "addCJKfontfeatures{${1:font features}}",
       "unusual": true
     },
     {
       "name": "addCJKfontfeatures*",
-      "snippet": "addCJKfontfeatures*[${2:blocks}]{${1:font features%keyvals}}",
+      "snippet": "addCJKfontfeatures*[${2:blocks}]{${1:font features}}",
       "unusual": true
     },
     {
       "name": "addCJKfontfeatures*",
-      "snippet": "addCJKfontfeatures*{${1:font features%keyvals}}",
+      "snippet": "addCJKfontfeatures*{${1:font features}}",
       "unusual": true
     },
     {
@@ -337,11 +337,11 @@
         "\\ctexset"
       ],
       "name": "ctexset",
-      "snippet": "ctexset{${1:options%keyvals}}"
+      "snippet": "ctexset{${1:options}}"
     },
     {
       "name": "defaultCJKfontfeatures",
-      "snippet": "defaultCJKfontfeatures{${1:font features%keyvals}}",
+      "snippet": "defaultCJKfontfeatures{${1:font features}}",
       "unusual": true
     },
     {
@@ -358,7 +358,7 @@
     },
     {
       "name": "newCJKfontfamily",
-      "snippet": "newCJKfontfamily[${3:family}]{${1:cmd}}[${4:font features%keyvals}]{${2:font name}}"
+      "snippet": "newCJKfontfamily[${3:family}]{${1:cmd}}[${4:font features}]{${2:font name}}"
     },
     {
       "name": "newCJKfontfamily",
@@ -367,7 +367,7 @@
     },
     {
       "name": "newCJKfontfamily",
-      "snippet": "newCJKfontfamily{${1:cmd}}[${3:font features%keyvals}]{${2:font name}}"
+      "snippet": "newCJKfontfamily{${1:cmd}}[${3:font features}]{${2:font name}}"
     },
     {
       "name": "newCJKfontfamily",
@@ -378,7 +378,7 @@
     },
     {
       "name": "setCJKfamilyfont",
-      "snippet": "setCJKfamilyfont{${1:family}}[${3:font features%keyvals}]{${2:font name}}"
+      "snippet": "setCJKfamilyfont{${1:family}}[${3:font features}]{${2:font name}}"
     },
     {
       "name": "setCJKfamilyfont",
@@ -391,7 +391,7 @@
     },
     {
       "name": "setCJKmainfont",
-      "snippet": "setCJKmainfont[${2:font features%keyvals}]{${1:font name}}"
+      "snippet": "setCJKmainfont[${2:font features}]{${1:font name}}"
     },
     {
       "name": "setCJKmainfont",
@@ -404,7 +404,7 @@
     },
     {
       "name": "setCJKmathfont",
-      "snippet": "setCJKmathfont[${2:font features%keyvals}]{${1:font name}}",
+      "snippet": "setCJKmathfont[${2:font features}]{${1:font name}}",
       "unusual": true
     },
     {
@@ -419,7 +419,7 @@
     },
     {
       "name": "setCJKmonofont",
-      "snippet": "setCJKmonofont[${2:font features%keyvals}]{${1:font name}}"
+      "snippet": "setCJKmonofont[${2:font features}]{${1:font name}}"
     },
     {
       "name": "setCJKmonofont",
@@ -432,7 +432,7 @@
     },
     {
       "name": "setCJKsansfont",
-      "snippet": "setCJKsansfont[${2:font features%keyvals}]{${1:font name}}"
+      "snippet": "setCJKsansfont[${2:font features}]{${1:font name}}"
     },
     {
       "name": "setCJKsansfont",

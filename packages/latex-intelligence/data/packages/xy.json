@@ -422,7 +422,7 @@
     },
     {
       "name": "newgraphescape",
-      "snippet": "newgraphescape{${1:letter}}{${2:graph%formula}}"
+      "snippet": "newgraphescape{${1:letter}}{${2:graph}}"
     },
     {
       "name": "newxycolor",
@@ -490,7 +490,7 @@
     },
     {
       "name": "splinetolerance",
-      "snippet": "splinetolerance{${1:dimen%l}}"
+      "snippet": "splinetolerance{${1:dimen}}"
     },
     {
       "name": "turnradius"
@@ -611,7 +611,7 @@
         "\\usepackage/xy#c,\\xyoption#c,\\xyrequire#c,\\xywithoption#c,\\xyeverywithoption#c,\\xyeveryrequest#c"
       ],
       "name": "xyeveryrequest",
-      "snippet": "xyeveryrequest{${1:option%keyvals}}{${2:code}}",
+      "snippet": "xyeveryrequest{${1:option}}{${2:code}}",
       "unusual": true
     },
     {
@@ -620,12 +620,12 @@
         "\\usepackage/xy#c,\\xyoption#c,\\xyrequire#c,\\xywithoption#c,\\xyeverywithoption#c,\\xyeveryrequest#c"
       ],
       "name": "xyeverywithoption",
-      "snippet": "xyeverywithoption{${1:option%keyvals}}{${2:code}}",
+      "snippet": "xyeverywithoption{${1:option}}{${2:code}}",
       "unusual": true
     },
     {
       "name": "xygraph",
-      "snippet": "xygraph{${1:graph%formula}}"
+      "snippet": "xygraph{${1:graph}}"
     },
     {
       "name": "xyignore",
@@ -645,19 +645,19 @@
     },
     {
       "name": "xymatrix",
-      "snippet": "xymatrix{${1:xy code%formula}}"
+      "snippet": "xymatrix{${1:xy code}}"
     },
     {
       "name": "xymatrixcolsep"
     },
     {
       "name": "xymatrixcompile",
-      "snippet": "xymatrixcompile{${1:xy code%formula}}",
+      "snippet": "xymatrixcompile{${1:xy code}}",
       "unusual": true
     },
     {
       "name": "xymatrixnocompile",
-      "snippet": "xymatrixnocompile{${1:xy code%formula}}",
+      "snippet": "xymatrixnocompile{${1:xy code}}",
       "unusual": true
     },
     {
@@ -669,7 +669,7 @@
         "\\usepackage/xy#c,\\xyoption#c,\\xyrequire#c,\\xywithoption#c,\\xyeverywithoption#c,\\xyeveryrequest#c"
       ],
       "name": "xyoption",
-      "snippet": "xyoption{${1:option%keyvals}}"
+      "snippet": "xyoption{${1:option}}"
     },
     {
       "name": "xypolygon"
@@ -704,7 +704,7 @@
         "\\usepackage/xy#c,\\xyoption#c,\\xyrequire#c,\\xywithoption#c,\\xyeverywithoption#c,\\xyeveryrequest#c"
       ],
       "name": "xyrequire",
-      "snippet": "xyrequire{${1:option%keyvals}}"
+      "snippet": "xyrequire{${1:option}}"
     },
     {
       "name": "xyresetcatcodes",
@@ -724,7 +724,7 @@
         "\\usepackage/xy#c,\\xyoption#c,\\xyrequire#c,\\xywithoption#c,\\xyeverywithoption#c,\\xyeveryrequest#c"
       ],
       "name": "xywithoption",
-      "snippet": "xywithoption{${1:option%keyvals}}{${2:code}}",
+      "snippet": "xywithoption{${1:option}}{${2:code}}",
       "unusual": true
     },
     {

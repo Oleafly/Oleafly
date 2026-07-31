@@ -122,7 +122,7 @@
     },
     {
       "name": "setSTheight",
-      "snippet": "setSTheight{${1:dimen%l}}",
+      "snippet": "setSTheight{${1:dimen}}",
       "unusual": true
     },
     {

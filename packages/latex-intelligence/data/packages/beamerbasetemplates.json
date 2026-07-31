@@ -8,7 +8,7 @@
   "macros": [
     {
       "name": "addtobeamertemplate",
-      "snippet": "addtobeamertemplate{${1:element name}}{${2:pre-text%text}}{${3:post-text%text}}"
+      "snippet": "addtobeamertemplate{${1:element name}}{${2:pre-text}}{${3:post-text}}"
     },
     {
       "name": "defbeamertemplate",

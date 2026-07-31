@@ -11,19 +11,19 @@
   "envs": [
     {
       "name": "addmargin",
-      "snippet": "[${2:left indent%l}]{${1:indent%l}}"
+      "snippet": "[${2:left indent}]{${1:indent}}"
     },
     {
       "name": "addmargin",
-      "snippet": "{${1:indent%l}}"
+      "snippet": "{${1:indent}}"
     },
     {
       "name": "addmargin*",
-      "snippet": "[${2:inner indent%l}]{${1:indent%l}}"
+      "snippet": "[${2:inner indent}]{${1:indent}}"
     },
     {
       "name": "addmargin*",
-      "snippet": "{${1:indent%l}}"
+      "snippet": "{${1:indent}}"
     },
     {
       "name": "labeling",
@@ -35,7 +35,7 @@
     },
     {
       "name": "letter",
-      "snippet": "[${2:options%keyvals}]{${1:recipient}}"
+      "snippet": "[${2:options}]{${1:recipient}}"
     },
     {
       "name": "letter",
@@ -306,7 +306,7 @@
         "\\LoadLetterOption#c,\\LoadLetterOptions#c"
       ],
       "name": "LoadLetterOption",
-      "snippet": "LoadLetterOption{${1:name%keyvals}}"
+      "snippet": "LoadLetterOption{${1:name}}"
     },
     {
       "keyPos": 0,
@@ -314,7 +314,7 @@
         "\\LoadLetterOption#c,\\LoadLetterOptions#c"
       ],
       "name": "LoadLetterOptions",
-      "snippet": "LoadLetterOptions{${1:list of names%keyvals}}"
+      "snippet": "LoadLetterOptions{${1:list of names}}"
     },
     {
       "name": "addrchar",
@@ -322,7 +322,7 @@
     },
     {
       "name": "addrentry",
-      "snippet": "addrentry{${1:last name}}{${2:first name}}{${3:address}}{${4:phone}}{${5:F1}}{${6:F2}}{${7:F3}}{${8:F4}}{${9:key%plain}}"
+      "snippet": "addrentry{${1:last name}}{${2:first name}}{${3:address}}{${4:phone}}{${5:F1}}{${6:F2}}{${7:F3}}{${8:F4}}{${9:key}}"
     },
     {
       "keyPos": 2,
@@ -330,7 +330,7 @@
         "\\useplength#c,\\setplength#c,\\addtoplength#c,\\setlengthtoplength#c,\\addtolengthplength#c,\\setplengthtowidth#c,\\setplengthtoheight#c,\\setplengthtodepth#c,\\setplengthtototalheight#c"
       ],
       "name": "addtolengthplength",
-      "snippet": "addtolengthplength[${3:factor}]{${1:length}}{${2:pseudo-length%keyvals}}"
+      "snippet": "addtolengthplength[${3:factor}]{${1:length}}{${2:pseudo-length}}"
     },
     {
       "keyPos": 1,
@@ -338,7 +338,7 @@
         "\\useplength#c,\\setplength#c,\\addtoplength#c,\\setlengthtoplength#c,\\addtolengthplength#c,\\setplengthtowidth#c,\\setplengthtoheight#c,\\setplengthtodepth#c,\\setplengthtototalheight#c"
       ],
       "name": "addtolengthplength",
-      "snippet": "addtolengthplength{${1:length}}{${2:pseudo-length%keyvals}}"
+      "snippet": "addtolengthplength{${1:length}}{${2:pseudo-length}}"
     },
     {
       "keyPos": 1,
@@ -346,7 +346,7 @@
         "\\useplength#c,\\setplength#c,\\addtoplength#c,\\setlengthtoplength#c,\\addtolengthplength#c,\\setplengthtowidth#c,\\setplengthtoheight#c,\\setplengthtodepth#c,\\setplengthtototalheight#c"
       ],
       "name": "addtoplength",
-      "snippet": "addtoplength[${3:factor}]{${1:pseudo-length%keyvals}}{${2:value}}"
+      "snippet": "addtoplength[${3:factor}]{${1:pseudo-length}}{${2:value}}"
     },
     {
       "keyPos": 0,
@@ -354,7 +354,7 @@
         "\\useplength#c,\\setplength#c,\\addtoplength#c,\\setlengthtoplength#c,\\addtolengthplength#c,\\setplengthtowidth#c,\\setplengthtoheight#c,\\setplengthtodepth#c,\\setplengthtototalheight#c"
       ],
       "name": "addtoplength",
-      "snippet": "addtoplength{${1:pseudo-length%keyvals}}{${2:value}}"
+      "snippet": "addtoplength{${1:pseudo-length}}{${2:value}}"
     },
     {
       "name": "addtoreffields",
@@ -366,7 +366,7 @@
     },
     {
       "name": "cc",
-      "snippet": "cc{${1:distribution list%text}}"
+      "snippet": "cc{${1:distribution list}}"
     },
     {
       "name": "ccname",
@@ -387,7 +387,7 @@
         "\\cleardoublepageusingstyle#c,\\cleardoubleoddpageusingstyle#c,\\cleardoubleevenpageusingstyle#c"
       ],
       "name": "cleardoubleevenpageusingstyle",
-      "snippet": "cleardoubleevenpageusingstyle{${1:pagestyle%keyvals}}"
+      "snippet": "cleardoubleevenpageusingstyle{${1:pagestyle}}"
     },
     {
       "name": "cleardoubleevenplainpage"
@@ -407,7 +407,7 @@
         "\\cleardoublepageusingstyle#c,\\cleardoubleoddpageusingstyle#c,\\cleardoubleevenpageusingstyle#c"
       ],
       "name": "cleardoubleoddpageusingstyle",
-      "snippet": "cleardoubleoddpageusingstyle{${1:pagestyle%keyvals}}"
+      "snippet": "cleardoubleoddpageusingstyle{${1:pagestyle}}"
     },
     {
       "name": "cleardoubleoddplainpage"
@@ -421,7 +421,7 @@
         "\\cleardoublepageusingstyle#c,\\cleardoubleoddpageusingstyle#c,\\cleardoubleevenpageusingstyle#c"
       ],
       "name": "cleardoublepageusingstyle",
-      "snippet": "cleardoublepageusingstyle{${1:pagestyle%keyvals}}"
+      "snippet": "cleardoublepageusingstyle{${1:pagestyle}}"
     },
     {
       "name": "cleardoubleplainpage"
@@ -431,7 +431,7 @@
     },
     {
       "name": "closing",
-      "snippet": "closing{${1:concluding text%text}}"
+      "snippet": "closing{${1:concluding text}}"
     },
     {
       "name": "copyname",
@@ -450,12 +450,12 @@
     },
     {
       "name": "deffootnote",
-      "snippet": "deffootnote[${4:mark width%l}]{${1:indent%l}}{${2:parindent%l}}{${3:definition}}",
+      "snippet": "deffootnote[${4:mark width}]{${1:indent}}{${2:parindent}}{${3:definition}}",
       "unusual": true
     },
     {
       "name": "deffootnote",
-      "snippet": "deffootnote{${1:indent%l}}{${2:parindent%l}}{${3:definition}}",
+      "snippet": "deffootnote{${1:indent}}{${2:parindent}}{${3:definition}}",
       "unusual": true
     },
     {
@@ -480,7 +480,7 @@
     },
     {
       "name": "encl",
-      "snippet": "encl{${1:enclosures%text}}"
+      "snippet": "encl{${1:enclosures}}"
     },
     {
       "name": "enclname",
@@ -560,7 +560,7 @@
     },
     {
       "name": "marginline",
-      "snippet": "marginline{${1:margin note%text}}"
+      "snippet": "marginline{${1:margin note}}"
     },
     {
       "name": "maybesffamily"
@@ -618,7 +618,7 @@
     },
     {
       "name": "opening",
-      "snippet": "opening{${1:salutation%text}}"
+      "snippet": "opening{${1:salutation}}"
     },
     {
       "name": "phonename",
@@ -652,7 +652,7 @@
         "\\selectlabeltype#c"
       ],
       "name": "selectlabeltype",
-      "snippet": "selectlabeltype[${2:integer}]{${1:type%keyvals}}"
+      "snippet": "selectlabeltype[${2:integer}]{${1:type}}"
     },
     {
       "keyPos": 0,
@@ -660,7 +660,7 @@
         "\\selectlabeltype#c"
       ],
       "name": "selectlabeltype",
-      "snippet": "selectlabeltype{${1:type%keyvals}}"
+      "snippet": "selectlabeltype{${1:type}}"
     },
     {
       "name": "setfootnoterule",
@@ -678,7 +678,7 @@
         "\\setkomavar#c,\\setkomavar*#c,\\usekomavar#c,\\usekomavar*#c"
       ],
       "name": "setkomavar",
-      "snippet": "setkomavar{${1:name%keyvals}}[${3:description%text}]{${2:content%text}}"
+      "snippet": "setkomavar{${1:name}}[${3:description}]{${2:content}}"
     },
     {
       "keyPos": 0,
@@ -686,7 +686,7 @@
         "\\setkomavar#c,\\setkomavar*#c,\\usekomavar#c,\\usekomavar*#c"
       ],
       "name": "setkomavar",
-      "snippet": "setkomavar{${1:name%keyvals}}{${2:content%text}}"
+      "snippet": "setkomavar{${1:name}}{${2:content}}"
     },
     {
       "keyPos": 0,
@@ -694,7 +694,7 @@
         "\\setkomavar#c,\\setkomavar*#c,\\usekomavar#c,\\usekomavar*#c"
       ],
       "name": "setkomavar*",
-      "snippet": "setkomavar*{${1:name%keyvals}}{${2:description%text}}"
+      "snippet": "setkomavar*{${1:name}}{${2:description}}"
     },
     {
       "keyPos": 2,
@@ -702,7 +702,7 @@
         "\\useplength#c,\\setplength#c,\\addtoplength#c,\\setlengthtoplength#c,\\addtolengthplength#c,\\setplengthtowidth#c,\\setplengthtoheight#c,\\setplengthtodepth#c,\\setplengthtototalheight#c"
       ],
       "name": "setlengthtoplength",
-      "snippet": "setlengthtoplength[${3:factor}]{${1:length}}{${2:pseudo-length%keyvals}}"
+      "snippet": "setlengthtoplength[${3:factor}]{${1:length}}{${2:pseudo-length}}"
     },
     {
       "keyPos": 1,
@@ -710,11 +710,11 @@
         "\\useplength#c,\\setplength#c,\\addtoplength#c,\\setlengthtoplength#c,\\addtolengthplength#c,\\setplengthtowidth#c,\\setplengthtoheight#c,\\setplengthtodepth#c,\\setplengthtototalheight#c"
       ],
       "name": "setlengthtoplength",
-      "snippet": "setlengthtoplength{${1:length}}{${2:pseudo-length%keyvals}}"
+      "snippet": "setlengthtoplength{${1:length}}{${2:pseudo-length}}"
     },
     {
       "name": "setparsizes",
-      "snippet": "setparsizes{${1:indent%l}}{${2:distance%l}}{${3:last-line end space}}",
+      "snippet": "setparsizes{${1:indent}}{${2:distance}}{${3:last-line end space}}",
       "unusual": true
     },
     {
@@ -723,7 +723,7 @@
         "\\useplength#c,\\setplength#c,\\addtoplength#c,\\setlengthtoplength#c,\\addtolengthplength#c,\\setplengthtowidth#c,\\setplengthtoheight#c,\\setplengthtodepth#c,\\setplengthtototalheight#c"
       ],
       "name": "setplength",
-      "snippet": "setplength[${3:factor}]{${1:pseudo-length%keyvals}}{${2:value}}"
+      "snippet": "setplength[${3:factor}]{${1:pseudo-length}}{${2:value}}"
     },
     {
       "keyPos": 0,
@@ -731,7 +731,7 @@
         "\\useplength#c,\\setplength#c,\\addtoplength#c,\\setlengthtoplength#c,\\addtolengthplength#c,\\setplengthtowidth#c,\\setplengthtoheight#c,\\setplengthtodepth#c,\\setplengthtototalheight#c"
       ],
       "name": "setplength",
-      "snippet": "setplength{${1:pseudo-length%keyvals}}{${2:value}}"
+      "snippet": "setplength{${1:pseudo-length}}{${2:value}}"
     },
     {
       "keyPos": 1,
@@ -739,7 +739,7 @@
         "\\useplength#c,\\setplength#c,\\addtoplength#c,\\setlengthtoplength#c,\\addtolengthplength#c,\\setplengthtowidth#c,\\setplengthtoheight#c,\\setplengthtodepth#c,\\setplengthtototalheight#c"
       ],
       "name": "setplengthtodepth",
-      "snippet": "setplengthtodepth[${3:factor}]{${1:pseudo-length%keyvals}}{${2:content}}"
+      "snippet": "setplengthtodepth[${3:factor}]{${1:pseudo-length}}{${2:content}}"
     },
     {
       "keyPos": 0,
@@ -747,7 +747,7 @@
         "\\useplength#c,\\setplength#c,\\addtoplength#c,\\setlengthtoplength#c,\\addtolengthplength#c,\\setplengthtowidth#c,\\setplengthtoheight#c,\\setplengthtodepth#c,\\setplengthtototalheight#c"
       ],
       "name": "setplengthtodepth",
-      "snippet": "setplengthtodepth{${1:pseudo-length%keyvals}}{${2:content}}"
+      "snippet": "setplengthtodepth{${1:pseudo-length}}{${2:content}}"
     },
     {
       "keyPos": 1,
@@ -755,7 +755,7 @@
         "\\useplength#c,\\setplength#c,\\addtoplength#c,\\setlengthtoplength#c,\\addtolengthplength#c,\\setplengthtowidth#c,\\setplengthtoheight#c,\\setplengthtodepth#c,\\setplengthtototalheight#c"
       ],
       "name": "setplengthtoheight",
-      "snippet": "setplengthtoheight[${3:factor}]{${1:pseudo-length%keyvals}}{${2:content}}"
+      "snippet": "setplengthtoheight[${3:factor}]{${1:pseudo-length}}{${2:content}}"
     },
     {
       "keyPos": 0,
@@ -763,7 +763,7 @@
         "\\useplength#c,\\setplength#c,\\addtoplength#c,\\setlengthtoplength#c,\\addtolengthplength#c,\\setplengthtowidth#c,\\setplengthtoheight#c,\\setplengthtodepth#c,\\setplengthtototalheight#c"
       ],
       "name": "setplengthtoheight",
-      "snippet": "setplengthtoheight{${1:pseudo-length%keyvals}}{${2:content}}"
+      "snippet": "setplengthtoheight{${1:pseudo-length}}{${2:content}}"
     },
     {
       "keyPos": 1,
@@ -771,7 +771,7 @@
         "\\useplength#c,\\setplength#c,\\addtoplength#c,\\setlengthtoplength#c,\\addtolengthplength#c,\\setplengthtowidth#c,\\setplengthtoheight#c,\\setplengthtodepth#c,\\setplengthtototalheight#c"
       ],
       "name": "setplengthtototalheight",
-      "snippet": "setplengthtototalheight[${3:factor}]{${1:pseudo-length%keyvals}}{${2:content}}"
+      "snippet": "setplengthtototalheight[${3:factor}]{${1:pseudo-length}}{${2:content}}"
     },
     {
       "keyPos": 0,
@@ -779,7 +779,7 @@
         "\\useplength#c,\\setplength#c,\\addtoplength#c,\\setlengthtoplength#c,\\addtolengthplength#c,\\setplengthtowidth#c,\\setplengthtoheight#c,\\setplengthtodepth#c,\\setplengthtototalheight#c"
       ],
       "name": "setplengthtototalheight",
-      "snippet": "setplengthtototalheight{${1:pseudo-length%keyvals}}{${2:content}}"
+      "snippet": "setplengthtototalheight{${1:pseudo-length}}{${2:content}}"
     },
     {
       "keyPos": 1,
@@ -787,7 +787,7 @@
         "\\useplength#c,\\setplength#c,\\addtoplength#c,\\setlengthtoplength#c,\\addtolengthplength#c,\\setplengthtowidth#c,\\setplengthtoheight#c,\\setplengthtodepth#c,\\setplengthtototalheight#c"
       ],
       "name": "setplengthtowidth",
-      "snippet": "setplengthtowidth[${3:factor}]{${1:pseudo-length%keyvals}}{${2:content}}"
+      "snippet": "setplengthtowidth[${3:factor}]{${1:pseudo-length}}{${2:content}}"
     },
     {
       "keyPos": 0,
@@ -795,7 +795,7 @@
         "\\useplength#c,\\setplength#c,\\addtoplength#c,\\setlengthtoplength#c,\\addtolengthplength#c,\\setplengthtowidth#c,\\setplengthtoheight#c,\\setplengthtodepth#c,\\setplengthtototalheight#c"
       ],
       "name": "setplengthtowidth",
-      "snippet": "setplengthtowidth{${1:pseudo-length%keyvals}}{${2:content}}"
+      "snippet": "setplengthtowidth{${1:pseudo-length}}{${2:content}}"
     },
     {
       "keyPos": 0,
@@ -803,12 +803,12 @@
         "\\setshowstyle"
       ],
       "name": "setshowstyle",
-      "snippet": "setshowstyle{${1:style%keyvals}}",
+      "snippet": "setshowstyle{${1:style}}",
       "unusual": true
     },
     {
       "name": "setshowstyle",
-      "snippet": "setshowstyle{${1:style%keyvals}}"
+      "snippet": "setshowstyle{${1:style}}"
     },
     {
       "keyPos": 0,
@@ -816,12 +816,12 @@
         "\\showISOenvelope#c"
       ],
       "name": "showISOenvelope",
-      "snippet": "showISOenvelope{${1:format%keyvals}}",
+      "snippet": "showISOenvelope{${1:format}}",
       "unusual": true
     },
     {
       "name": "showISOenvelope",
-      "snippet": "showISOenvelope{${1:format%keyvals}}"
+      "snippet": "showISOenvelope{${1:format}}"
     },
     {
       "keyPos": 0,
@@ -829,12 +829,12 @@
         "\\showISOenvelope#c"
       ],
       "name": "showISOenvelope",
-      "snippet": "showISOenvelope{${1:format%keyvals}}[${2:instructions}]",
+      "snippet": "showISOenvelope{${1:format}}[${2:instructions}]",
       "unusual": true
     },
     {
       "name": "showISOenvelope",
-      "snippet": "showISOenvelope{${1:format%keyvals}}[${2:instructions}]"
+      "snippet": "showISOenvelope{${1:format}}[${2:instructions}]"
     },
     {
       "name": "showUScheck",
@@ -858,12 +858,12 @@
         "\\showUScommercial#c"
       ],
       "name": "showUScommercial",
-      "snippet": "showUScommercial{${1:format%keyvals}}",
+      "snippet": "showUScommercial{${1:format}}",
       "unusual": true
     },
     {
       "name": "showUScommercial",
-      "snippet": "showUScommercial{${1:format%keyvals}}"
+      "snippet": "showUScommercial{${1:format}}"
     },
     {
       "keyPos": 0,
@@ -871,12 +871,12 @@
         "\\showUScommercial#c"
       ],
       "name": "showUScommercial",
-      "snippet": "showUScommercial{${1:format%keyvals}}[${2:instructions}]",
+      "snippet": "showUScommercial{${1:format}}[${2:instructions}]",
       "unusual": true
     },
     {
       "name": "showUScommercial",
-      "snippet": "showUScommercial{${1:format%keyvals}}[${2:instructions}]"
+      "snippet": "showUScommercial{${1:format}}[${2:instructions}]"
     },
     {
       "name": "showenvelope",
@@ -902,12 +902,12 @@
         "\\showfields"
       ],
       "name": "showfields",
-      "snippet": "showfields{${1:field list%keyvals}}",
+      "snippet": "showfields{${1:field list}}",
       "unusual": true
     },
     {
       "name": "showfields",
-      "snippet": "showfields{${1:field list%keyvals}}"
+      "snippet": "showfields{${1:field list}}"
     },
     {
       "name": "startbreaks",
@@ -962,7 +962,7 @@
         "\\setkomavar#c,\\setkomavar*#c,\\usekomavar#c,\\usekomavar*#c"
       ],
       "name": "usekomavar",
-      "snippet": "usekomavar[${2:command}]{${1:name%keyvals}}"
+      "snippet": "usekomavar[${2:command}]{${1:name}}"
     },
     {
       "keyPos": 0,
@@ -970,7 +970,7 @@
         "\\setkomavar#c,\\setkomavar*#c,\\usekomavar#c,\\usekomavar*#c"
       ],
       "name": "usekomavar",
-      "snippet": "usekomavar{${1:name%keyvals}}"
+      "snippet": "usekomavar{${1:name}}"
     },
     {
       "keyPos": 1,
@@ -978,7 +978,7 @@
         "\\setkomavar#c,\\setkomavar*#c,\\usekomavar#c,\\usekomavar*#c"
       ],
       "name": "usekomavar*",
-      "snippet": "usekomavar*[${2:command}]{${1:name%keyvals}}"
+      "snippet": "usekomavar*[${2:command}]{${1:name}}"
     },
     {
       "keyPos": 0,
@@ -986,7 +986,7 @@
         "\\setkomavar#c,\\setkomavar*#c,\\usekomavar#c,\\usekomavar*#c"
       ],
       "name": "usekomavar*",
-      "snippet": "usekomavar*{${1:name%keyvals}}"
+      "snippet": "usekomavar*{${1:name}}"
     },
     {
       "keyPos": 0,
@@ -994,7 +994,7 @@
         "\\useplength#c,\\setplength#c,\\addtoplength#c,\\setlengthtoplength#c,\\addtolengthplength#c,\\setplengthtowidth#c,\\setplengthtoheight#c,\\setplengthtodepth#c,\\setplengthtototalheight#c"
       ],
       "name": "useplength",
-      "snippet": "useplength{${1:pseudo-length%keyvals}}"
+      "snippet": "useplength{${1:pseudo-length}}"
     },
     {
       "name": "wwwname",

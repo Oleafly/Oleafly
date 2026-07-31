@@ -255,7 +255,7 @@
         "\\citestyle#c"
       ],
       "name": "citestyle",
-      "snippet": "citestyle{${1:style%keyvals}}"
+      "snippet": "citestyle{${1:style}}"
     },
     {
       "name": "citet",
@@ -295,7 +295,7 @@
         "\\setcitestyle"
       ],
       "name": "setcitestyle",
-      "snippet": "setcitestyle{${1:options%keyvals}}"
+      "snippet": "setcitestyle{${1:options}}"
     },
     {
       "name": "shortcites",

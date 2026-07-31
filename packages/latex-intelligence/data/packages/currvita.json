@@ -8,7 +8,7 @@
   "envs": [
     {
       "name": "cv",
-      "snippet": "{${1:heading of the curriculum vitae%text}}"
+      "snippet": "{${1:heading of the curriculum vitae}}"
     }
   ],
   "keys": {

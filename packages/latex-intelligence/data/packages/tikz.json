@@ -18,7 +18,7 @@
         "\\begin{tikzpicture}#c,\\tikz#c,\\begin{scope}#c,\\tikzset#c,\\scoped#c,\\matrix#c"
       ],
       "name": "scope",
-      "snippet": "[${1:options%keyvals}]"
+      "snippet": "[${1:options}]"
     },
     {
       "name": "tikzpicture"
@@ -33,7 +33,7 @@
         "\\begin{tikzpicture}#c,\\tikz#c,\\begin{scope}#c,\\tikzset#c,\\scoped#c,\\matrix#c"
       ],
       "name": "tikzpicture",
-      "snippet": "[${1:options%keyvals}]"
+      "snippet": "[${1:options}]"
     }
   ],
   "keys": {
@@ -532,7 +532,7 @@
         "\\node#c,\\coordinate#c,\\nodepart#c,\\pic#c"
       ],
       "name": "nodepart",
-      "snippet": "nodepart[${2:options%keyvals}]{${1:part name}}"
+      "snippet": "nodepart[${2:options}]{${1:part name}}"
     },
     {
       "name": "nodepart",
@@ -696,7 +696,7 @@
     },
     {
       "name": "pgfplotxzerolevelstreamconstant",
-      "snippet": "pgfplotxzerolevelstreamconstant{${1:dimen%l}}",
+      "snippet": "pgfplotxzerolevelstreamconstant{${1:dimen}}",
       "unusual": true
     },
     {
@@ -713,7 +713,7 @@
     },
     {
       "name": "pgfplotyzerolevelstreamconstant",
-      "snippet": "pgfplotyzerolevelstreamconstant{${1:dimen%l}}",
+      "snippet": "pgfplotyzerolevelstreamconstant{${1:dimen}}",
       "unusual": true
     },
     {
@@ -750,7 +750,7 @@
     },
     {
       "name": "pgfsetplotmarksize",
-      "snippet": "pgfsetplotmarksize{${1:size%l}}",
+      "snippet": "pgfsetplotmarksize{${1:size}}",
       "unusual": true
     },
     {
@@ -776,7 +776,7 @@
         "\\begin{tikzpicture}#c,\\tikz#c,\\begin{scope}#c,\\tikzset#c,\\scoped#c,\\matrix#c"
       ],
       "name": "scoped",
-      "snippet": "scoped[${1:options%keyvals}]"
+      "snippet": "scoped[${1:options}]"
     },
     {
       "name": "tikz"
@@ -791,16 +791,16 @@
         "\\begin{tikzpicture}#c,\\tikz#c,\\begin{scope}#c,\\tikzset#c,\\scoped#c,\\matrix#c"
       ],
       "name": "tikz",
-      "snippet": "tikz[${1:options%keyvals}]"
+      "snippet": "tikz[${1:options}]"
     },
     {
       "name": "tikzaddtikzonlycommandshortcutdef",
-      "snippet": "tikzaddtikzonlycommandshortcutdef{${1:short cmd%cmd}}{${2:def}}",
+      "snippet": "tikzaddtikzonlycommandshortcutdef{${1:short cmd}}{${2:def}}",
       "unusual": true
     },
     {
       "name": "tikzaddtikzonlycommandshortcutlet",
-      "snippet": "tikzaddtikzonlycommandshortcutlet{${1:short cmd%cmd}}{${2:cmd}}",
+      "snippet": "tikzaddtikzonlycommandshortcutlet{${1:short cmd}}{${2:cmd}}",
       "unusual": true
     },
     {
@@ -844,7 +844,7 @@
     },
     {
       "name": "tikzoption",
-      "snippet": "tikzoption{${1:key%plain}}{${2:value}}",
+      "snippet": "tikzoption{${1:key}}{${2:value}}",
       "unusual": true
     },
     {
@@ -875,7 +875,7 @@
         "\\begin{tikzpicture}#c,\\tikz#c,\\begin{scope}#c,\\tikzset#c,\\scoped#c,\\matrix#c"
       ],
       "name": "tikzset",
-      "snippet": "tikzset{${1:options%keyvals}}"
+      "snippet": "tikzset{${1:options}}"
     },
     {
       "name": "tikzsiblingdistance",
@@ -903,7 +903,7 @@
         "\\usetikzlibrary#c"
       ],
       "name": "usetikzlibrary",
-      "snippet": "usetikzlibrary{${1:library list%keyvals}}"
+      "snippet": "usetikzlibrary{${1:library list}}"
     }
   ]
 }

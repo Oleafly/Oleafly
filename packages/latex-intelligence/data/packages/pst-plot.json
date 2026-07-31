@@ -12,38 +12,38 @@
   "envs": [
     {
       "name": "psgraph",
-      "snippet": "(${3:x0},${4:y0})(${5:x1},${6:y1})(${7:x2},${8:y2}){${1:xlength%l}}{${2:ylength%l}}"
+      "snippet": "(${3:x0},${4:y0})(${5:x1},${6:y1})(${7:x2},${8:y2}){${1:xlength}}{${2:ylength}}"
     },
     {
       "name": "psgraph",
-      "snippet": "[${3:options%keyvals}](${4:x0},${5:y0})(${6:x1},${7:y1})(${8:x2},${9:y2}){${1:xlength%l}}{${2:ylength%l}}"
+      "snippet": "[${3:options}](${4:x0},${5:y0})(${6:x1},${7:y1})(${8:x2},${9:y2}){${1:xlength}}{${2:ylength}}"
     },
     {
       "name": "psgraph",
-      "snippet": "[${4:options%keyvals}]{${1:arrows}}(${5:x0},${6:y0})(${7:x1},${8:y1})(${9:x2},${10:y2}){${2:xlength%l}}{${3:ylength%l}}"
+      "snippet": "[${4:options}]{${1:arrows}}(${5:x0},${6:y0})(${7:x1},${8:y1})(${9:x2},${10:y2}){${2:xlength}}{${3:ylength}}"
     },
     {
       "name": "psgraph",
-      "snippet": "{${1:arrows}}(${4:x0},${5:y0})(${6:x1},${7:y1})(${8:x2},${9:y2}){${2:xlength%l}}{${3:ylength%l}}"
+      "snippet": "{${1:arrows}}(${4:x0},${5:y0})(${6:x1},${7:y1})(${8:x2},${9:y2}){${2:xlength}}{${3:ylength}}"
     },
     {
       "name": "psgraph*",
-      "snippet": "(${3:x0},${4:y0})(${5:x1},${6:y1})(${7:x2},${8:y2}){${1:xlength%l}}{${2:ylength%l}}",
+      "snippet": "(${3:x0},${4:y0})(${5:x1},${6:y1})(${7:x2},${8:y2}){${1:xlength}}{${2:ylength}}",
       "unusual": true
     },
     {
       "name": "psgraph*",
-      "snippet": "[${3:options%keyvals}](${4:x0},${5:y0})(${6:x1},${7:y1})(${8:x2},${9:y2}){${1:xlength%l}}{${2:ylength%l}}",
+      "snippet": "[${3:options}](${4:x0},${5:y0})(${6:x1},${7:y1})(${8:x2},${9:y2}){${1:xlength}}{${2:ylength}}",
       "unusual": true
     },
     {
       "name": "psgraph*",
-      "snippet": "[${4:options%keyvals}]{${1:arrows}}(${5:x0},${6:y0})(${7:x1},${8:y1})(${9:x2},${10:y2}){${2:xlength%l}}{${3:ylength%l}}",
+      "snippet": "[${4:options}]{${1:arrows}}(${5:x0},${6:y0})(${7:x1},${8:y1})(${9:x2},${10:y2}){${2:xlength}}{${3:ylength}}",
       "unusual": true
     },
     {
       "name": "psgraph*",
-      "snippet": "{${1:arrows}}(${4:x0},${5:y0})(${6:x1},${7:y1})(${8:x2},${9:y2}){${2:xlength%l}}{${3:ylength%l}}",
+      "snippet": "{${1:arrows}}(${4:x0},${5:y0})(${6:x1},${7:y1})(${8:x2},${9:y2}){${2:xlength}}{${3:ylength}}",
       "unusual": true
     }
   ],
@@ -67,7 +67,7 @@
     },
     {
       "name": "dataplot",
-      "snippet": "dataplot[${2:options%keyvals}]{${1:macro}}"
+      "snippet": "dataplot[${2:options}]{${1:macro}}"
     },
     {
       "name": "dataplot",
@@ -79,7 +79,7 @@
     },
     {
       "name": "fileplot",
-      "snippet": "fileplot[${2:options%keyvals}]{${1:file}}"
+      "snippet": "fileplot[${2:options}]{${1:file}}"
     },
     {
       "name": "fileplot",
@@ -91,7 +91,7 @@
     },
     {
       "name": "listplot",
-      "snippet": "listplot[${2:options%keyvals}]{${1:list}}"
+      "snippet": "listplot[${2:options}]{${1:list}}"
     },
     {
       "name": "listplot",
@@ -99,24 +99,24 @@
     },
     {
       "name": "parametricplot",
-      "snippet": "parametricplot[${4:options%keyvals}]{${1:tmin}}{${2:tmax}}[${5:PS commands}]{${3:function%definition}}"
+      "snippet": "parametricplot[${4:options}]{${1:tmin}}{${2:tmax}}[${5:PS commands}]{${3:function}}"
     },
     {
       "name": "parametricplot",
-      "snippet": "parametricplot[${4:options%keyvals}]{${1:tmin}}{${2:tmax}}{${3:function%definition}}"
+      "snippet": "parametricplot[${4:options}]{${1:tmin}}{${2:tmax}}{${3:function}}"
     },
     {
       "name": "parametricplot",
-      "snippet": "parametricplot{${1:tmin}}{${2:tmax}}[${4:PS commands}]{${3:function%definition}}",
+      "snippet": "parametricplot{${1:tmin}}{${2:tmax}}[${4:PS commands}]{${3:function}}",
       "unusual": true
     },
     {
       "name": "parametricplot",
-      "snippet": "parametricplot{${1:tmin}}{${2:tmax}}{${3:function%definition}}"
+      "snippet": "parametricplot{${1:tmin}}{${2:tmax}}{${3:function}}"
     },
     {
       "name": "psBoxplot",
-      "snippet": "psBoxplot[${2:options%keyvals}]{${1:macro}}"
+      "snippet": "psBoxplot[${2:options}]{${1:macro}}"
     },
     {
       "name": "psBoxplot",
@@ -128,7 +128,7 @@
     },
     {
       "name": "psCoordinates",
-      "snippet": "psCoordinates[${1:options%keyvals}](${2:x},${3:y})"
+      "snippet": "psCoordinates[${1:options}](${2:x},${3:y})"
     },
     {
       "name": "psFixpoint",
@@ -203,19 +203,19 @@
     },
     {
       "name": "psaxes",
-      "snippet": "psaxes[${1:options%keyvals}](${2:x0},${3:y0})(${4:x1},${5:y1})(${6:x2},${7:y2})"
+      "snippet": "psaxes[${1:options}](${2:x0},${3:y0})(${4:x1},${5:y1})(${6:x2},${7:y2})"
     },
     {
       "name": "psaxes",
-      "snippet": "psaxes[${1:options%keyvals}](${4:x0},${5:y0})(${6:x1},${7:y1})(${8:x2},${9:y2})[${2:Xlabel,Xangle}][${3:Ylabel,Yangle}]"
+      "snippet": "psaxes[${1:options}](${4:x0},${5:y0})(${6:x1},${7:y1})(${8:x2},${9:y2})[${2:Xlabel,Xangle}][${3:Ylabel,Yangle}]"
     },
     {
       "name": "psaxes",
-      "snippet": "psaxes[${2:options%keyvals}]{${1:arrows}}(${3:x0},${4:y0})(${5:x1},${6:y1})(${7:x2},${8:y2})"
+      "snippet": "psaxes[${2:options}]{${1:arrows}}(${3:x0},${4:y0})(${5:x1},${6:y1})(${7:x2},${8:y2})"
     },
     {
       "name": "psaxes",
-      "snippet": "psaxes[${2:options%keyvals}]{${1:arrows}}(${5:x0},${6:y0})(${7:x1},${8:y1})(${9:x2},${10:y2})[${3:Xlabel,Xangle}][${4:Ylabel,Yangle}]"
+      "snippet": "psaxes[${2:options}]{${1:arrows}}(${5:x0},${6:y0})(${7:x1},${8:y1})(${9:x2},${10:y2})[${3:Xlabel,Xangle}][${4:Ylabel,Yangle}]"
     },
     {
       "name": "psaxes",
@@ -228,7 +228,7 @@
     },
     {
       "name": "psdataplot",
-      "snippet": "psdataplot[${2:options%keyvals}]{${1:macro}}",
+      "snippet": "psdataplot[${2:options}]{${1:macro}}",
       "unusual": true
     },
     {
@@ -238,7 +238,7 @@
     },
     {
       "name": "psfileplot",
-      "snippet": "psfileplot[${2:options%keyvals}]{${1:file}}",
+      "snippet": "psfileplot[${2:options}]{${1:file}}",
       "unusual": true
     },
     {
@@ -248,22 +248,22 @@
     },
     {
       "name": "psgraph",
-      "snippet": "psgraph(${3:x0},${4:y0})(${5:x1},${6:y1})(${7:x2},${8:y2}){${1:xlength%l}}{${2:ylength%l}}",
+      "snippet": "psgraph(${3:x0},${4:y0})(${5:x1},${6:y1})(${7:x2},${8:y2}){${1:xlength}}{${2:ylength}}",
       "unusual": true
     },
     {
       "name": "psgraph",
-      "snippet": "psgraph[${3:options%keyvals}](${4:x0},${5:y0})(${6:x1},${7:y1})(${8:x2},${9:y2}){${1:xlength%l}}{${2:ylength%l}}",
+      "snippet": "psgraph[${3:options}](${4:x0},${5:y0})(${6:x1},${7:y1})(${8:x2},${9:y2}){${1:xlength}}{${2:ylength}}",
       "unusual": true
     },
     {
       "name": "psgraph",
-      "snippet": "psgraph[${4:options%keyvals}]{${1:arrows}}(${5:x0},${6:y0})(${7:x1},${8:y1})(${9:x2},${10:y2}){${2:xlength%l}}{${3:ylength%l}}",
+      "snippet": "psgraph[${4:options}]{${1:arrows}}(${5:x0},${6:y0})(${7:x1},${8:y1})(${9:x2},${10:y2}){${2:xlength}}{${3:ylength}}",
       "unusual": true
     },
     {
       "name": "psgraph",
-      "snippet": "psgraph{${1:arrows}}(${4:x0},${5:y0})(${6:x1},${7:y1})(${8:x2},${9:y2}){${2:xlength%l}}{${3:ylength%l}}",
+      "snippet": "psgraph{${1:arrows}}(${4:x0},${5:y0})(${6:x1},${7:y1})(${8:x2},${9:y2}){${2:xlength}}{${3:ylength}}",
       "unusual": true
     },
     {
@@ -295,7 +295,7 @@
     },
     {
       "name": "pslistplot",
-      "snippet": "pslistplot[${2:options%keyvals}]{${1:list}}",
+      "snippet": "pslistplot[${2:options}]{${1:list}}",
       "unusual": true
     },
     {
@@ -305,40 +305,40 @@
     },
     {
       "name": "psparametricplot",
-      "snippet": "psparametricplot[${4:options%keyvals}]{${1:tmin}}{${2:tmax}}[${5:PS commands}]{${3:function%definition}}",
+      "snippet": "psparametricplot[${4:options}]{${1:tmin}}{${2:tmax}}[${5:PS commands}]{${3:function}}",
       "unusual": true
     },
     {
       "name": "psparametricplot",
-      "snippet": "psparametricplot[${4:options%keyvals}]{${1:tmin}}{${2:tmax}}{${3:function%definition}}",
+      "snippet": "psparametricplot[${4:options}]{${1:tmin}}{${2:tmax}}{${3:function}}",
       "unusual": true
     },
     {
       "name": "psparametricplot",
-      "snippet": "psparametricplot{${1:tmin}}{${2:tmax}}[${4:PS commands}]{${3:function%definition}}",
+      "snippet": "psparametricplot{${1:tmin}}{${2:tmax}}[${4:PS commands}]{${3:function}}",
       "unusual": true
     },
     {
       "name": "psparametricplot",
-      "snippet": "psparametricplot{${1:tmin}}{${2:tmax}}{${3:function%definition}}",
+      "snippet": "psparametricplot{${1:tmin}}{${2:tmax}}{${3:function}}",
       "unusual": true
     },
     {
       "name": "psplot",
-      "snippet": "psplot[${4:options%keyvals}]{${1:xmin}}{${2:xmax}}[${5:PS commands}]{${3:function%definition}}"
+      "snippet": "psplot[${4:options}]{${1:xmin}}{${2:xmax}}[${5:PS commands}]{${3:function}}"
     },
     {
       "name": "psplot",
-      "snippet": "psplot[${4:options%keyvals}]{${1:xmin}}{${2:xmax}}{${3:function%definition}}"
+      "snippet": "psplot[${4:options}]{${1:xmin}}{${2:xmax}}{${3:function}}"
     },
     {
       "name": "psplot",
-      "snippet": "psplot{${1:xmin}}{${2:xmax}}[${4:PS commands}]{${3:function%definition}}",
+      "snippet": "psplot{${1:xmin}}{${2:xmax}}[${4:PS commands}]{${3:function}}",
       "unusual": true
     },
     {
       "name": "psplot",
-      "snippet": "psplot{${1:xmin}}{${2:xmax}}{${3:function%definition}}"
+      "snippet": "psplot{${1:xmin}}{${2:xmax}}{${3:function}}"
     },
     {
       "name": "psplotinit",
@@ -351,11 +351,11 @@
     },
     {
       "name": "psreadDataColumn",
-      "snippet": "psreadDataColumn[${5:options%keyvals}]{${1:colNo}}{${2:delim}}{${3:macro%cmd}}{${4:file%file}}"
+      "snippet": "psreadDataColumn[${5:options}]{${1:colNo}}{${2:delim}}{${3:macro}}{${4:file}}"
     },
     {
       "name": "psreadDataColumn",
-      "snippet": "psreadDataColumn{${1:colNo}}{${2:delim}}{${3:macro%cmd}}{${4:file%file}}"
+      "snippet": "psreadDataColumn{${1:colNo}}{${2:delim}}{${3:macro}}{${4:file}}"
     },
     {
       "name": "psrotatebox",
@@ -397,11 +397,11 @@
     },
     {
       "name": "psxTick",
-      "snippet": "psxTick[${2:options%keyvals}](${3:x value}){${1:label}}"
+      "snippet": "psxTick[${2:options}](${3:x value}){${1:label}}"
     },
     {
       "name": "psxTick",
-      "snippet": "psxTick[${3:options%keyvals}]{${1:rotation}}(${4:x value}){${2:label}}"
+      "snippet": "psxTick[${3:options}]{${1:rotation}}(${4:x value}){${2:label}}"
     },
     {
       "name": "psxTick",
@@ -425,11 +425,11 @@
     },
     {
       "name": "psyTick",
-      "snippet": "psyTick[${2:options%keyvals}](${3:y value}){${1:label}}"
+      "snippet": "psyTick[${2:options}](${3:y value}){${1:label}}"
     },
     {
       "name": "psyTick",
-      "snippet": "psyTick[${3:options%keyvals}]{${1:rotation}}(${4:y value}){${2:label}}"
+      "snippet": "psyTick[${3:options}]{${1:rotation}}(${4:y value}){${2:label}}"
     },
     {
       "name": "psyTick",
@@ -453,15 +453,15 @@
         "\\readdata#c"
       ],
       "name": "readdata",
-      "snippet": "readdata[${3:options%keyvals}]{${1:macro%cmd}}{${2:file%file}}"
+      "snippet": "readdata[${3:options}]{${1:macro}}{${2:file}}"
     },
     {
       "name": "readdata",
-      "snippet": "readdata{${1:macro%cmd}}{${2:file%file}}"
+      "snippet": "readdata{${1:macro}}{${2:file}}"
     },
     {
       "name": "savedata",
-      "snippet": "savedata{${1:macro%cmd}}[${2:data}]"
+      "snippet": "savedata{${1:macro}}[${2:data}]"
     },
     {
       "name": "setDefaulthLabels",

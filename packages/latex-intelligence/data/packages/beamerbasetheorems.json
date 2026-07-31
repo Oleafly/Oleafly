@@ -16,17 +16,17 @@
     },
     {
       "name": "Beispiel",
-      "snippet": "<${2:action specification}>[${1:additional text%text}]",
+      "snippet": "<${2:action specification}>[${1:additional text}]",
       "unusual": true
     },
     {
       "name": "Beispiel",
-      "snippet": "[${1:additional text%text}]",
+      "snippet": "[${1:additional text}]",
       "unusual": true
     },
     {
       "name": "Beispiel",
-      "snippet": "[${1:additional text%text}]<${2:action specification}>",
+      "snippet": "[${1:additional text}]<${2:action specification}>",
       "unusual": true
     },
     {
@@ -40,17 +40,17 @@
     },
     {
       "name": "Beispiele",
-      "snippet": "<${2:action specification}>[${1:additional text%text}]",
+      "snippet": "<${2:action specification}>[${1:additional text}]",
       "unusual": true
     },
     {
       "name": "Beispiele",
-      "snippet": "[${1:additional text%text}]",
+      "snippet": "[${1:additional text}]",
       "unusual": true
     },
     {
       "name": "Beispiele",
-      "snippet": "[${1:additional text%text}]<${2:action specification}>",
+      "snippet": "[${1:additional text}]<${2:action specification}>",
       "unusual": true
     },
     {
@@ -64,17 +64,17 @@
     },
     {
       "name": "Beweis",
-      "snippet": "<${2:action specification}>[${1:additional text%text}]",
+      "snippet": "<${2:action specification}>[${1:additional text}]",
       "unusual": true
     },
     {
       "name": "Beweis",
-      "snippet": "[${1:additional text%text}]",
+      "snippet": "[${1:additional text}]",
       "unusual": true
     },
     {
       "name": "Beweis",
-      "snippet": "[${1:additional text%text}]<${2:action specification}>",
+      "snippet": "[${1:additional text}]<${2:action specification}>",
       "unusual": true
     },
     {
@@ -88,17 +88,17 @@
     },
     {
       "name": "Fakt",
-      "snippet": "<${2:action specification}>[${1:additional text%text}]",
+      "snippet": "<${2:action specification}>[${1:additional text}]",
       "unusual": true
     },
     {
       "name": "Fakt",
-      "snippet": "[${1:additional text%text}]",
+      "snippet": "[${1:additional text}]",
       "unusual": true
     },
     {
       "name": "Fakt",
-      "snippet": "[${1:additional text%text}]<${2:action specification}>",
+      "snippet": "[${1:additional text}]<${2:action specification}>",
       "unusual": true
     },
     {
@@ -112,17 +112,17 @@
     },
     {
       "name": "Folgerung",
-      "snippet": "<${2:action specification}>[${1:additional text%text}]",
+      "snippet": "<${2:action specification}>[${1:additional text}]",
       "unusual": true
     },
     {
       "name": "Folgerung",
-      "snippet": "[${1:additional text%text}]",
+      "snippet": "[${1:additional text}]",
       "unusual": true
     },
     {
       "name": "Folgerung",
-      "snippet": "[${1:additional text%text}]<${2:action specification}>",
+      "snippet": "[${1:additional text}]<${2:action specification}>",
       "unusual": true
     },
     {
@@ -136,17 +136,17 @@
     },
     {
       "name": "Loesung",
-      "snippet": "<${2:action specification}>[${1:additional text%text}]",
+      "snippet": "<${2:action specification}>[${1:additional text}]",
       "unusual": true
     },
     {
       "name": "Loesung",
-      "snippet": "[${1:additional text%text}]",
+      "snippet": "[${1:additional text}]",
       "unusual": true
     },
     {
       "name": "Loesung",
-      "snippet": "[${1:additional text%text}]<${2:action specification}>",
+      "snippet": "[${1:additional text}]<${2:action specification}>",
       "unusual": true
     },
     {
@@ -160,17 +160,17 @@
     },
     {
       "name": "Satz",
-      "snippet": "<${2:action specification}>[${1:additional text%text}]",
+      "snippet": "<${2:action specification}>[${1:additional text}]",
       "unusual": true
     },
     {
       "name": "Satz",
-      "snippet": "[${1:additional text%text}]",
+      "snippet": "[${1:additional text}]",
       "unusual": true
     },
     {
       "name": "Satz",
-      "snippet": "[${1:additional text%text}]<${2:action specification}>",
+      "snippet": "[${1:additional text}]<${2:action specification}>",
       "unusual": true
     },
     {
@@ -182,15 +182,15 @@
     },
     {
       "name": "corollary",
-      "snippet": "<${2:action specification}>[${1:additional text%text}]"
+      "snippet": "<${2:action specification}>[${1:additional text}]"
     },
     {
       "name": "corollary",
-      "snippet": "[${1:additional text%text}]"
+      "snippet": "[${1:additional text}]"
     },
     {
       "name": "corollary",
-      "snippet": "[${1:additional text%text}]<${2:action specification}>",
+      "snippet": "[${1:additional text}]<${2:action specification}>",
       "unusual": true
     },
     {
@@ -202,15 +202,15 @@
     },
     {
       "name": "definition",
-      "snippet": "<${2:action specification}>[${1:additional text%text}]"
+      "snippet": "<${2:action specification}>[${1:additional text}]"
     },
     {
       "name": "definition",
-      "snippet": "[${1:additional text%text}]"
+      "snippet": "[${1:additional text}]"
     },
     {
       "name": "definition",
-      "snippet": "[${1:additional text%text}]<${2:action specification}>",
+      "snippet": "[${1:additional text}]<${2:action specification}>",
       "unusual": true
     },
     {
@@ -222,15 +222,15 @@
     },
     {
       "name": "definitions",
-      "snippet": "<${2:action specification}>[${1:additional text%text}]"
+      "snippet": "<${2:action specification}>[${1:additional text}]"
     },
     {
       "name": "definitions",
-      "snippet": "[${1:additional text%text}]"
+      "snippet": "[${1:additional text}]"
     },
     {
       "name": "definitions",
-      "snippet": "[${1:additional text%text}]<${2:action specification}>",
+      "snippet": "[${1:additional text}]<${2:action specification}>",
       "unusual": true
     },
     {
@@ -242,15 +242,15 @@
     },
     {
       "name": "example",
-      "snippet": "<${2:action specification}>[${1:additional text%text}]"
+      "snippet": "<${2:action specification}>[${1:additional text}]"
     },
     {
       "name": "example",
-      "snippet": "[${1:additional text%text}]"
+      "snippet": "[${1:additional text}]"
     },
     {
       "name": "example",
-      "snippet": "[${1:additional text%text}]<${2:action specification}>",
+      "snippet": "[${1:additional text}]<${2:action specification}>",
       "unusual": true
     },
     {
@@ -262,15 +262,15 @@
     },
     {
       "name": "examples",
-      "snippet": "<${2:action specification}>[${1:additional text%text}]"
+      "snippet": "<${2:action specification}>[${1:additional text}]"
     },
     {
       "name": "examples",
-      "snippet": "[${1:additional text%text}]"
+      "snippet": "[${1:additional text}]"
     },
     {
       "name": "examples",
-      "snippet": "[${1:additional text%text}]<${2:action specification}>",
+      "snippet": "[${1:additional text}]<${2:action specification}>",
       "unusual": true
     },
     {
@@ -282,15 +282,15 @@
     },
     {
       "name": "fact",
-      "snippet": "<${2:action specification}>[${1:additional text%text}]"
+      "snippet": "<${2:action specification}>[${1:additional text}]"
     },
     {
       "name": "fact",
-      "snippet": "[${1:additional text%text}]"
+      "snippet": "[${1:additional text}]"
     },
     {
       "name": "fact",
-      "snippet": "[${1:additional text%text}]<${2:action specification}>",
+      "snippet": "[${1:additional text}]<${2:action specification}>",
       "unusual": true
     },
     {
@@ -302,15 +302,15 @@
     },
     {
       "name": "lemma",
-      "snippet": "<${2:action specification}>[${1:additional text%text}]"
+      "snippet": "<${2:action specification}>[${1:additional text}]"
     },
     {
       "name": "lemma",
-      "snippet": "[${1:additional text%text}]"
+      "snippet": "[${1:additional text}]"
     },
     {
       "name": "lemma",
-      "snippet": "[${1:additional text%text}]<${2:action specification}>",
+      "snippet": "[${1:additional text}]<${2:action specification}>",
       "unusual": true
     },
     {
@@ -322,15 +322,15 @@
     },
     {
       "name": "problem",
-      "snippet": "<${2:action specification}>[${1:additional text%text}]"
+      "snippet": "<${2:action specification}>[${1:additional text}]"
     },
     {
       "name": "problem",
-      "snippet": "[${1:additional text%text}]"
+      "snippet": "[${1:additional text}]"
     },
     {
       "name": "problem",
-      "snippet": "[${1:additional text%text}]<${2:action specification}>",
+      "snippet": "[${1:additional text}]<${2:action specification}>",
       "unusual": true
     },
     {
@@ -339,11 +339,11 @@
     },
     {
       "name": "proof",
-      "snippet": "<${2:action specification}>[${1:proof name%text}]"
+      "snippet": "<${2:action specification}>[${1:proof name}]"
     },
     {
       "name": "proof",
-      "snippet": "[${1:proof name%text}]<${2:action specification}>"
+      "snippet": "[${1:proof name}]<${2:action specification}>"
     },
     {
       "name": "solution"
@@ -354,15 +354,15 @@
     },
     {
       "name": "solution",
-      "snippet": "<${2:action specification}>[${1:additional text%text}]"
+      "snippet": "<${2:action specification}>[${1:additional text}]"
     },
     {
       "name": "solution",
-      "snippet": "[${1:additional text%text}]"
+      "snippet": "[${1:additional text}]"
     },
     {
       "name": "solution",
-      "snippet": "[${1:additional text%text}]<${2:action specification}>",
+      "snippet": "[${1:additional text}]<${2:action specification}>",
       "unusual": true
     },
     {
@@ -374,15 +374,15 @@
     },
     {
       "name": "theorem",
-      "snippet": "<${2:action specification}>[${1:additional text%text}]"
+      "snippet": "<${2:action specification}>[${1:additional text}]"
     },
     {
       "name": "theorem",
-      "snippet": "[${1:additional text%text}]"
+      "snippet": "[${1:additional text}]"
     },
     {
       "name": "theorem",
-      "snippet": "[${1:additional text%text}]<${2:action specification}>",
+      "snippet": "[${1:additional text}]<${2:action specification}>",
       "unusual": true
     }
   ],

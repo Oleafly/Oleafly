@@ -73,7 +73,7 @@
     },
     {
       "name": "bibAnnotePath",
-      "snippet": "bibAnnotePath{${1:file-path%file}}"
+      "snippet": "bibAnnotePath{${1:file-path}}"
     },
     {
       "name": "bibansep",
@@ -278,7 +278,7 @@
         "\\biburlfont"
       ],
       "name": "biburlfont",
-      "snippet": "biburlfont{${1:choice%keyvals}}"
+      "snippet": "biburlfont{${1:choice}}"
     },
     {
       "name": "biburlprefix",
@@ -805,7 +805,7 @@
         "\\jurabibsetup#c,\\usepackage/jurabib#c"
       ],
       "name": "jurabibsetup",
-      "snippet": "jurabibsetup{${1:options%keyvals}}"
+      "snippet": "jurabibsetup{${1:options}}"
     },
     {
       "name": "lookatprefix",

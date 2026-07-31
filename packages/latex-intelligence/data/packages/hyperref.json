@@ -33,7 +33,7 @@
         "\\begin{Form}"
       ],
       "name": "Form",
-      "snippet": "[${1:options%keyvals}]"
+      "snippet": "[${1:options}]"
     },
     {
       "name": "NoHyper"
@@ -261,7 +261,7 @@
         "\\TextField,\\CheckBox,\\ChoiceMenu,\\PushButton,\\Submit,\\Reset"
       ],
       "name": "CheckBox",
-      "snippet": "CheckBox[${2:parameters%keyvals}]{${1:label}}"
+      "snippet": "CheckBox[${2:parameters}]{${1:label}}"
     },
     {
       "name": "CheckBox",
@@ -273,7 +273,7 @@
         "\\TextField,\\CheckBox,\\ChoiceMenu,\\PushButton,\\Submit,\\Reset"
       ],
       "name": "ChoiceMenu",
-      "snippet": "ChoiceMenu[${3:parameters%keyvals}]{${1:label}}{${2:choices}}"
+      "snippet": "ChoiceMenu[${3:parameters}]{${1:label}}{${2:choices}}"
     },
     {
       "name": "ChoiceMenu",
@@ -477,7 +477,7 @@
         "\\TextField,\\CheckBox,\\ChoiceMenu,\\PushButton,\\Submit,\\Reset"
       ],
       "name": "PushButton",
-      "snippet": "PushButton[${2:parameters%keyvals}]{${1:label}}"
+      "snippet": "PushButton[${2:parameters}]{${1:label}}"
     },
     {
       "name": "PushButton",
@@ -489,7 +489,7 @@
         "\\TextField,\\CheckBox,\\ChoiceMenu,\\PushButton,\\Submit,\\Reset"
       ],
       "name": "Reset",
-      "snippet": "Reset[${2:parameters%keyvals}]{${1:label}}"
+      "snippet": "Reset[${2:parameters}]{${1:label}}"
     },
     {
       "name": "Reset",
@@ -505,7 +505,7 @@
         "\\TextField,\\CheckBox,\\ChoiceMenu,\\PushButton,\\Submit,\\Reset"
       ],
       "name": "Submit",
-      "snippet": "Submit[${2:parameters%keyvals}]{${1:label}}"
+      "snippet": "Submit[${2:parameters}]{${1:label}}"
     },
     {
       "name": "Submit",
@@ -517,7 +517,7 @@
         "\\TextField,\\CheckBox,\\ChoiceMenu,\\PushButton,\\Submit,\\Reset"
       ],
       "name": "TextField",
-      "snippet": "TextField[${2:parameters%keyvals}]{${1:label}}"
+      "snippet": "TextField[${2:parameters}]{${1:label}}"
     },
     {
       "name": "TextField",
@@ -582,11 +582,11 @@
         "\\href"
       ],
       "name": "href",
-      "snippet": "href[${3:options%keyvals}]{${1:URL}}{${2:text%plain}}"
+      "snippet": "href[${3:options}]{${1:URL}}{${2:text}}"
     },
     {
       "name": "href",
-      "snippet": "href{${1:URL}}{${2:text%plain}}"
+      "snippet": "href{${1:URL}}{${2:text}}"
     },
     {
       "name": "hyperbaseurl",
@@ -625,7 +625,7 @@
     },
     {
       "name": "hyperlink",
-      "snippet": "hyperlink{${1:target name}}{${2:link text%text}}"
+      "snippet": "hyperlink{${1:target name}}{${2:link text}}"
     },
     {
       "name": "hyperlinkfileprefix",
@@ -639,11 +639,11 @@
     },
     {
       "name": "hyperref",
-      "snippet": "hyperref[${2:label%ref}]{${1:text}}"
+      "snippet": "hyperref[${2:label}]{${1:text}}"
     },
     {
       "name": "hyperref",
-      "snippet": "hyperref[${5:label%ref}]{${1:URL}}{${2:category}}{${3:name}}{${4:text}}"
+      "snippet": "hyperref[${5:label}]{${1:URL}}{${2:category}}{${3:name}}{${4:text}}"
     },
     {
       "name": "hyperref",
@@ -663,7 +663,7 @@
     },
     {
       "name": "hypertarget",
-      "snippet": "hypertarget{${1:target name}}{${2:anchor text%text}}"
+      "snippet": "hypertarget{${1:target name}}{${2:anchor text}}"
     },
     {
       "name": "ifpdfstringunicode",
@@ -705,7 +705,7 @@
     },
     {
       "name": "pdfstringdef",
-      "snippet": "pdfstringdef{${1:macroname%cmd}}{${2:TeXstring}}"
+      "snippet": "pdfstringdef{${1:macroname}}{${2:TeXstring}}"
     },
     {
       "name": "pdfstringdefDisableCommands",

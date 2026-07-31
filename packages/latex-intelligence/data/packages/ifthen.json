@@ -33,7 +33,7 @@
     },
     {
       "name": "isundefined",
-      "snippet": "isundefined{${1:command%plain}}"
+      "snippet": "isundefined{${1:command}}"
     },
     {
       "name": "lengthtest",

@@ -19,7 +19,7 @@
     },
     {
       "name": "intervalthickness",
-      "snippet": "intervalthickness[${2:offset%l}]{${1:width}}"
+      "snippet": "intervalthickness[${2:offset}]{${1:width}}"
     },
     {
       "name": "intervalthickness",

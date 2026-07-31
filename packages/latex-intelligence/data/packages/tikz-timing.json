@@ -179,11 +179,11 @@
     },
     {
       "name": "tableheader",
-      "snippet": "tableheader[${3:TikZ keys}]{${1:description title%text}}{${2:signal title%text}}"
+      "snippet": "tableheader[${3:TikZ keys}]{${1:description title}}{${2:signal title}}"
     },
     {
       "name": "tableheader",
-      "snippet": "tableheader{${1:description title%text}}{${2:signal title%text}}"
+      "snippet": "tableheader{${1:description title}}{${2:signal title}}"
     },
     {
       "name": "tablerules"
@@ -299,7 +299,7 @@
         "\\usetikztiminglibrary"
       ],
       "name": "usetikztiminglibrary",
-      "snippet": "usetikztiminglibrary[${2:options}]{${1:libraries%keyvals}}",
+      "snippet": "usetikztiminglibrary[${2:options}]{${1:libraries}}",
       "unusual": true
     },
     {
@@ -308,7 +308,7 @@
         "\\usetikztiminglibrary"
       ],
       "name": "usetikztiminglibrary",
-      "snippet": "usetikztiminglibrary[${2:options}]{${1:libraries%keyvals}}[${3:date}]",
+      "snippet": "usetikztiminglibrary[${2:options}]{${1:libraries}}[${3:date}]",
       "unusual": true
     },
     {
@@ -317,7 +317,7 @@
         "\\usetikztiminglibrary"
       ],
       "name": "usetikztiminglibrary",
-      "snippet": "usetikztiminglibrary{${1:libraries%keyvals}}"
+      "snippet": "usetikztiminglibrary{${1:libraries}}"
     },
     {
       "name": "vertlines",

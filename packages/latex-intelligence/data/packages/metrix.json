@@ -98,7 +98,7 @@
         "\\setmetrixvar,\\usemetrixvar"
       ],
       "name": "setmetrixvar",
-      "snippet": "setmetrixvar{${1:variable%keyvals}}{${2:value}}"
+      "snippet": "setmetrixvar{${1:variable}}{${2:value}}"
     },
     {
       "keyPos": 0,
@@ -106,7 +106,7 @@
         "\\setmetrixvar,\\usemetrixvar"
       ],
       "name": "usemetrixvar",
-      "snippet": "usemetrixvar{${1:variable%keyvals}}"
+      "snippet": "usemetrixvar{${1:variable}}"
     },
     {
       "name": "verseref",

@@ -28,7 +28,7 @@
     },
     {
       "name": "todo",
-      "snippet": "todo{${1:note%todo}}"
+      "snippet": "todo{${1:note}}"
     },
     {
       "name": "todocolor",
@@ -36,11 +36,11 @@
     },
     {
       "name": "todoi",
-      "snippet": "todoi{${1:note%todo}}"
+      "snippet": "todoi{${1:note}}"
     },
     {
       "name": "todoii",
-      "snippet": "todoii{${1:note%todo}}{${2:information%text}}"
+      "snippet": "todoii{${1:note}}{${2:information}}"
     },
     {
       "name": "todoindexpagetitle",

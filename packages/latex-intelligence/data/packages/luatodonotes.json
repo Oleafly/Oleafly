@@ -105,11 +105,11 @@
         "\\missingfigure"
       ],
       "name": "missingfigure",
-      "snippet": "missingfigure[${2:options%keyvals}]{${1:text%todo}}"
+      "snippet": "missingfigure[${2:options}]{${1:text}}"
     },
     {
       "name": "missingfigure",
-      "snippet": "missingfigure{${1:text%todo}}"
+      "snippet": "missingfigure{${1:text}}"
     },
     {
       "keyPos": 0,
@@ -117,11 +117,11 @@
         "\\todo,\\todoarea"
       ],
       "name": "todo",
-      "snippet": "todo[${2:options%keyvals}]{${1:text%todo}}"
+      "snippet": "todo[${2:options}]{${1:text}}"
     },
     {
       "name": "todo",
-      "snippet": "todo{${1:text%todo}}"
+      "snippet": "todo{${1:text}}"
     },
     {
       "keyPos": 0,
@@ -129,11 +129,11 @@
         "\\todo,\\todoarea"
       ],
       "name": "todoarea",
-      "snippet": "todoarea[${3:options%keyvals}]{${1:note text%todo}}{${2:highlighted text}}"
+      "snippet": "todoarea[${3:options}]{${1:note text}}{${2:highlighted text}}"
     },
     {
       "name": "todoarea",
-      "snippet": "todoarea{${1:note text%todo}}{${2:highlighted text}}"
+      "snippet": "todoarea{${1:note text}}{${2:highlighted text}}"
     },
     {
       "name": "todototoc"

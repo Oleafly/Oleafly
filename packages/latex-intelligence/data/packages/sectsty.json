@@ -86,7 +86,7 @@
     },
     {
       "name": "sectionrule",
-      "snippet": "sectionrule{${1:raise top%l}}{${2:top rule%l}}{${3:raise bottom%l}}{${4:bottom rule%l}}"
+      "snippet": "sectionrule{${1:raise top}}{${2:top rule}}{${3:raise bottom}}{${4:bottom rule}}"
     },
     {
       "name": "subparagraphfont",

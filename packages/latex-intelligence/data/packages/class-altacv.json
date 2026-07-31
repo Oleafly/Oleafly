@@ -47,14 +47,14 @@
     },
     {
       "name": "description*",
-      "snippet": "[${1:options%keyvals}]"
+      "snippet": "[${1:options}]"
     },
     {
       "name": "enumerate*"
     },
     {
       "name": "enumerate*",
-      "snippet": "[${1:options%keyvals}]"
+      "snippet": "[${1:options}]"
     },
     {
       "name": "fullwidth"
@@ -64,7 +64,7 @@
     },
     {
       "name": "itemize*",
-      "snippet": "[${1:options%keyvals}]"
+      "snippet": "[${1:options}]"
     }
   ],
   "keys": {
@@ -141,11 +141,11 @@
     },
     {
       "name": "cvachievement",
-      "snippet": "cvachievement{${1:icon}}{${2:name%text}}{${3:description%text}}"
+      "snippet": "cvachievement{${1:icon}}{${2:name}}{${3:description}}"
     },
     {
       "name": "cvevent",
-      "snippet": "cvevent{${1:title%text}}{${2:company or institution}}{${3:time period}}{${4:location}}"
+      "snippet": "cvevent{${1:title}}{${2:company or institution}}{${3:time period}}{${4:location}}"
     },
     {
       "name": "cvref",
@@ -153,7 +153,7 @@
     },
     {
       "name": "cvsection",
-      "snippet": "cvsection[${2:sidebar file%file}]{${1:title}}"
+      "snippet": "cvsection[${2:sidebar file}]{${1:title}}"
     },
     {
       "name": "cvsection",

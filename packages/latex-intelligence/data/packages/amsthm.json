@@ -76,7 +76,7 @@
         "\\theoremstyle#c"
       ],
       "name": "theoremstyle",
-      "snippet": "theoremstyle{${1:style%keyvals}}"
+      "snippet": "theoremstyle{${1:style}}"
     },
     {
       "name": "thmhead",

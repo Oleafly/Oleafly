@@ -74,6 +74,12 @@ export function normalizeSnippet(snippet) {
   out = out.replace(/\$(\d+)/g, (_match, digits) =>
     Number(digits) === 0 ? "${}" : `\${${digits}}`,
   );
+  // TeXStudio CWL placeholder classifiers (`options%keyvals`, `unit%formula`)
+  // are metadata, not display text — strip them from placeholder labels.
+  out = out.replace(
+    /\$\{(\d+):([^{}]*?)%[a-z|]+\}/g,
+    (_match, digits, label) => `\${${digits}:${label}}`,
+  );
   return out;
 }
 

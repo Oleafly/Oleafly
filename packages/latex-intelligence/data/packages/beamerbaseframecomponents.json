@@ -8,7 +8,7 @@
         "\\begin{column},\\column"
       ],
       "name": "column",
-      "snippet": "<${3:overlay specification}>[${2:placement%keyvals}]{${1:column width%l}}"
+      "snippet": "<${3:overlay specification}>[${2:placement}]{${1:column width}}"
     },
     {
       "keyPos": 0,
@@ -16,11 +16,11 @@
         "\\begin{column},\\column"
       ],
       "name": "column",
-      "snippet": "[${2:placement%keyvals}]{${1:column width%l}}"
+      "snippet": "[${2:placement}]{${1:column width}}"
     },
     {
       "name": "column",
-      "snippet": "{${1:column width%l}}"
+      "snippet": "{${1:column width}}"
     },
     {
       "name": "columns"
@@ -31,7 +31,7 @@
         "\\begin{columns}"
       ],
       "name": "columns",
-      "snippet": "<${2:overlay specification}>[${1:options%keyvals}]"
+      "snippet": "<${2:overlay specification}>[${1:options}]"
     },
     {
       "keyPos": 0,
@@ -39,7 +39,7 @@
         "\\begin{columns}"
       ],
       "name": "columns",
-      "snippet": "[${1:options%keyvals}]"
+      "snippet": "[${1:options}]"
     }
   ],
   "keys": {
@@ -79,19 +79,19 @@
         "\\begin{column},\\column"
       ],
       "name": "column",
-      "snippet": "column[${2:placement%keyvals}]{${1:column width%l}}"
+      "snippet": "column[${2:placement}]{${1:column width}}"
     },
     {
       "name": "column",
-      "snippet": "column{${1:column width%l}}"
+      "snippet": "column{${1:column width}}"
     },
     {
       "name": "column<overlay specification>",
-      "snippet": "column<overlay specification>[${2:placement%keyvals}]{${1:column width%l}}"
+      "snippet": "column<overlay specification>[${2:placement}]{${1:column width}}"
     },
     {
       "name": "footnote<overlay specification>",
-      "snippet": "footnote<overlay specification>[${2:options%keyvals}]{${1:text}}"
+      "snippet": "footnote<overlay specification>[${2:options}]{${1:text}}"
     },
     {
       "name": "footnote<overlay specification>",
@@ -115,7 +115,7 @@
         "\\setbeamersize"
       ],
       "name": "setbeamersize",
-      "snippet": "setbeamersize{${1:options%keyvals}}"
+      "snippet": "setbeamersize{${1:options}}"
     }
   ]
 }

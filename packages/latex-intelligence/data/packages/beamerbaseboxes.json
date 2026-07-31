@@ -8,11 +8,11 @@
         "\\begin{beamerboxesrounded}"
       ],
       "name": "beamerboxesrounded",
-      "snippet": "[${2:options%keyvals}]{${1:head%text}}"
+      "snippet": "[${2:options}]{${1:head}}"
     },
     {
       "name": "beamerboxesrounded",
-      "snippet": "{${1:head%text}}"
+      "snippet": "{${1:head}}"
     }
   ],
   "keys": {

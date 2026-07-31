@@ -518,12 +518,12 @@
     },
     {
       "name": "Unosubscript",
-      "snippet": "Unosubscript{${1:text%plain}}",
+      "snippet": "Unosubscript{${1:text}}",
       "unusual": true
     },
     {
       "name": "Unosuperscript",
-      "snippet": "Unosuperscript{${1:text%plain}}",
+      "snippet": "Unosuperscript{${1:text}}",
       "unusual": true
     },
     {
@@ -656,7 +656,7 @@
     },
     {
       "name": "directlua",
-      "snippet": "directlua{${1:lua code%definition}}"
+      "snippet": "directlua{${1:lua code}}"
     },
     {
       "name": "dviextension",
@@ -796,7 +796,7 @@
     },
     {
       "name": "latelua",
-      "snippet": "latelua{${1:lua code%definition}}"
+      "snippet": "latelua{${1:lua code}}"
     },
     {
       "name": "leftghost",
@@ -869,22 +869,22 @@
     },
     {
       "name": "newattribute",
-      "snippet": "newattribute{${1:attribute%cmd}}",
+      "snippet": "newattribute{${1:attribute}}",
       "unusual": true
     },
     {
       "name": "newcatcodetable",
-      "snippet": "newcatcodetable{${1:catcodetable%cmd}}",
+      "snippet": "newcatcodetable{${1:catcodetable}}",
       "unusual": true
     },
     {
       "name": "newluabytecode",
-      "snippet": "newluabytecode{${1:bytecode%cmd}}",
+      "snippet": "newluabytecode{${1:bytecode}}",
       "unusual": true
     },
     {
       "name": "newluachunkname",
-      "snippet": "newluachunkname{${1:chunkname%cmd}}",
+      "snippet": "newluachunkname{${1:chunkname}}",
       "unusual": true
     },
     {
@@ -904,7 +904,7 @@
     },
     {
       "name": "newwhatsit",
-      "snippet": "newwhatsit{${1:whatsit%cmd}}",
+      "snippet": "newwhatsit{${1:whatsit}}",
       "unusual": true
     },
     {

@@ -8,7 +8,7 @@
         "\\begin{beamercolorbox}"
       ],
       "name": "beamercolorbox",
-      "snippet": "[${2:options%keyvals}]{${1:beamer color}}"
+      "snippet": "[${2:options}]{${1:beamer color}}"
     },
     {
       "name": "beamercolorbox",
@@ -59,7 +59,7 @@
         "\\ifbeamercolorempty,\\usebeamercolor,\\usebeamercolor*"
       ],
       "name": "ifbeamercolorempty",
-      "snippet": "ifbeamercolorempty[${4:fg or bg%keyvals}]{${1:beamer-color name}}{${2:if undefined}}{${3:if defined}}"
+      "snippet": "ifbeamercolorempty[${4:fg or bg}]{${1:beamer-color name}}{${2:if undefined}}{${3:if defined}}"
     },
     {
       "name": "ifbeamercolorempty",
@@ -71,7 +71,7 @@
         "\\setbeamercolor,\\setbeamercolor*"
       ],
       "name": "setbeamercolor",
-      "snippet": "setbeamercolor{${1:beamer-color name}}{${2:options%keyvals}}"
+      "snippet": "setbeamercolor{${1:beamer-color name}}{${2:options}}"
     },
     {
       "keyPos": 1,
@@ -79,7 +79,7 @@
         "\\setbeamercolor,\\setbeamercolor*"
       ],
       "name": "setbeamercolor*",
-      "snippet": "setbeamercolor*{${1:beamer-color name}}{${2:options%keyvals}}"
+      "snippet": "setbeamercolor*{${1:beamer-color name}}{${2:options}}"
     },
     {
       "keyPos": 0,
@@ -87,7 +87,7 @@
         "\\ifbeamercolorempty,\\usebeamercolor,\\usebeamercolor*"
       ],
       "name": "usebeamercolor",
-      "snippet": "usebeamercolor[${2:fg or bg%keyvals}]{${1:beamer-color name}}"
+      "snippet": "usebeamercolor[${2:fg or bg}]{${1:beamer-color name}}"
     },
     {
       "name": "usebeamercolor",
@@ -99,7 +99,7 @@
         "\\ifbeamercolorempty,\\usebeamercolor,\\usebeamercolor*"
       ],
       "name": "usebeamercolor*",
-      "snippet": "usebeamercolor*[${2:fg or bg%keyvals}]{${1:beamer-color name}}"
+      "snippet": "usebeamercolor*[${2:fg or bg}]{${1:beamer-color name}}"
     },
     {
       "name": "usebeamercolor*",

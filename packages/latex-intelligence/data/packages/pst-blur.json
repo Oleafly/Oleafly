@@ -13,7 +13,7 @@
     },
     {
       "name": "psblurbox",
-      "snippet": "psblurbox[${2:options%keyvals}]{${1:stuff}}"
+      "snippet": "psblurbox[${2:options}]{${1:stuff}}"
     },
     {
       "name": "psblurbox",

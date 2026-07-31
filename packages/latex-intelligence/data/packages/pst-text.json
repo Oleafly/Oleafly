@@ -6,7 +6,7 @@
   "envs": [
     {
       "name": "pscharclip",
-      "snippet": "[${2:options%keyvals}]{${1:text}}"
+      "snippet": "[${2:options}]{${1:text}}"
     },
     {
       "name": "pscharclip",
@@ -14,7 +14,7 @@
     },
     {
       "name": "pscharclip*",
-      "snippet": "[${2:options%keyvals}]{${1:text}}"
+      "snippet": "[${2:options}]{${1:text}}"
     },
     {
       "name": "pscharclip*",
@@ -37,11 +37,11 @@
     },
     {
       "name": "psCircleText",
-      "snippet": "psCircleText[${2:options%keyvals}](${3:x},${4:y}){${1:text}}"
+      "snippet": "psCircleText[${2:options}](${3:x},${4:y}){${1:text}}"
     },
     {
       "name": "psCircleText",
-      "snippet": "psCircleText[${2:options%keyvals}]{${1:text}}"
+      "snippet": "psCircleText[${2:options}]{${1:text}}"
     },
     {
       "name": "psCircleText",
@@ -53,11 +53,11 @@
     },
     {
       "name": "psWarp",
-      "snippet": "psWarp[${2:options%keyvals}](${3:x},${4:y}){${1:text}}"
+      "snippet": "psWarp[${2:options}](${3:x},${4:y}){${1:text}}"
     },
     {
       "name": "psWarp",
-      "snippet": "psWarp[${2:options%keyvals}]{${1:text}}"
+      "snippet": "psWarp[${2:options}]{${1:text}}"
     },
     {
       "name": "psWarp",
@@ -65,7 +65,7 @@
     },
     {
       "name": "pscharclip",
-      "snippet": "pscharclip[${2:options%keyvals}]{${1:text}}",
+      "snippet": "pscharclip[${2:options}]{${1:text}}",
       "unusual": true
     },
     {
@@ -75,7 +75,7 @@
     },
     {
       "name": "pscharclip*",
-      "snippet": "pscharclip*[${2:options%keyvals}]{${1:text}}",
+      "snippet": "pscharclip*[${2:options}]{${1:text}}",
       "unusual": true
     },
     {
@@ -85,7 +85,7 @@
     },
     {
       "name": "pscharpath",
-      "snippet": "pscharpath[${2:options%keyvals}]{${1:text}}"
+      "snippet": "pscharpath[${2:options}]{${1:text}}"
     },
     {
       "name": "pscharpath",
@@ -93,7 +93,7 @@
     },
     {
       "name": "pscharpath*",
-      "snippet": "pscharpath*[${2:options%keyvals}]{${1:text}}"
+      "snippet": "pscharpath*[${2:options}]{${1:text}}"
     },
     {
       "name": "pscharpath*",

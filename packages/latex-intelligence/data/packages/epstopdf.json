@@ -41,7 +41,7 @@
     },
     {
       "name": "epstopdfDeclareGraphicsRule",
-      "snippet": "epstopdfDeclareGraphicsRule{${1:ext}}{${2:type}}{${3:read-file}}{${4:command%plain}}"
+      "snippet": "epstopdfDeclareGraphicsRule{${1:ext}}{${2:type}}{${3:read-file}}{${4:command}}"
     },
     {
       "name": "epstopdfcall",
@@ -53,7 +53,7 @@
         "\\epstopdfsetup,\\usepackage/epstopdf#c"
       ],
       "name": "epstopdfsetup",
-      "snippet": "epstopdfsetup{${1:key-value-list%keyvals}}"
+      "snippet": "epstopdfsetup{${1:key-value-list}}"
     }
   ]
 }

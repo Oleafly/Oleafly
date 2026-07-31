@@ -46,7 +46,7 @@
     },
     {
       "name": "appto",
-      "snippet": "appto{${1:hook%cmd}}{${2:code}}"
+      "snippet": "appto{${1:hook}}{${2:code}}"
     },
     {
       "name": "apptocmd",
@@ -162,7 +162,7 @@
     },
     {
       "name": "deflength",
-      "snippet": "deflength{${1:length%cmd}}{${2:glue expression}}"
+      "snippet": "deflength{${1:length}}{${2:glue expression}}"
     },
     {
       "name": "dimdef",
@@ -186,11 +186,11 @@
     },
     {
       "name": "eappto",
-      "snippet": "eappto{${1:hook%cmd}}{${2:code}}"
+      "snippet": "eappto{${1:hook}}{${2:code}}"
     },
     {
       "name": "epreto",
-      "snippet": "epreto{${1:hook%cmd}}{${2:code}}"
+      "snippet": "epreto{${1:hook}}{${2:code}}"
     },
     {
       "name": "expandonce",
@@ -210,7 +210,7 @@
     },
     {
       "name": "gappto",
-      "snippet": "gappto{${1:hook%cmd}}{${2:code}}"
+      "snippet": "gappto{${1:hook}}{${2:code}}"
     },
     {
       "name": "gluedef",
@@ -222,7 +222,7 @@
     },
     {
       "name": "gpreto",
-      "snippet": "gpreto{${1:hook%cmd}}{${2:code}}"
+      "snippet": "gpreto{${1:hook}}{${2:code}}"
     },
     {
       "name": "gundef",
@@ -561,7 +561,7 @@
     },
     {
       "name": "preto",
-      "snippet": "preto{${1:hook%cmd}}{${2:code}}"
+      "snippet": "preto{${1:hook}}{${2:code}}"
     },
     {
       "name": "pretocmd",
@@ -668,7 +668,7 @@
     },
     {
       "name": "xappto",
-      "snippet": "xappto{${1:hook%cmd}}{${2:code}}"
+      "snippet": "xappto{${1:hook}}{${2:code}}"
     },
     {
       "name": "xifinlist",
@@ -680,7 +680,7 @@
     },
     {
       "name": "xpreto",
-      "snippet": "xpreto{${1:hook%cmd}}{${2:code}}"
+      "snippet": "xpreto{${1:hook}}{${2:code}}"
     }
   ]
 }

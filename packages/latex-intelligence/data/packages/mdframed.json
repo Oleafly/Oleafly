@@ -22,7 +22,7 @@
         "\\begin{mdframed},\\newmdenv,\\renewmdenv,\\surroundwithmdframed,\\mdfsetup,\\mmdfdefinestyle,\\mdfapptodefinestyle,\\mdfsubtitle,\\mdfsubsubtitle,\\newmdtheoremenv,\\mdtheorem"
       ],
       "name": "mdframed",
-      "snippet": "[${1:options%keyvals}]"
+      "snippet": "[${1:options}]"
     }
   ],
   "keys": {
@@ -199,7 +199,7 @@
         "\\begin{mdframed},\\newmdenv,\\renewmdenv,\\surroundwithmdframed,\\mdfsetup,\\mmdfdefinestyle,\\mdfapptodefinestyle,\\mdfsubtitle,\\mdfsubsubtitle,\\newmdtheoremenv,\\mdtheorem"
       ],
       "name": "mdfapptodefinestyle",
-      "snippet": "mdfapptodefinestyle{${1:style name}}{${2:options%keyvals}}",
+      "snippet": "mdfapptodefinestyle{${1:style name}}{${2:options}}",
       "unusual": true
     },
     {
@@ -224,7 +224,7 @@
     },
     {
       "name": "mdfdefinestyle",
-      "snippet": "mdfdefinestyle{${1:style name}}{${2:options%keyvals}}",
+      "snippet": "mdfdefinestyle{${1:style name}}{${2:options}}",
       "unusual": true
     },
     {
@@ -278,7 +278,7 @@
         "\\mdflength"
       ],
       "name": "mdflength",
-      "snippet": "mdflength{${1:options%keyvals}}",
+      "snippet": "mdflength{${1:options}}",
       "unusual": true
     },
     {
@@ -287,7 +287,7 @@
         "\\begin{mdframed},\\newmdenv,\\renewmdenv,\\surroundwithmdframed,\\mdfsetup,\\mmdfdefinestyle,\\mdfapptodefinestyle,\\mdfsubtitle,\\mdfsubsubtitle,\\newmdtheoremenv,\\mdtheorem"
       ],
       "name": "mdfsetup",
-      "snippet": "mdfsetup{${1:options%keyvals}}"
+      "snippet": "mdfsetup{${1:options}}"
     },
     {
       "name": "mdfsplitboxdepth",
@@ -315,7 +315,7 @@
         "\\begin{mdframed},\\newmdenv,\\renewmdenv,\\surroundwithmdframed,\\mdfsetup,\\mmdfdefinestyle,\\mdfapptodefinestyle,\\mdfsubtitle,\\mdfsubsubtitle,\\newmdtheoremenv,\\mdtheorem"
       ],
       "name": "mdfsubsubtitle",
-      "snippet": "mdfsubsubtitle[${2:options%keyvals}]{${1:subtitle}}"
+      "snippet": "mdfsubsubtitle[${2:options}]{${1:subtitle}}"
     },
     {
       "name": "mdfsubsubtitle",
@@ -331,7 +331,7 @@
         "\\begin{mdframed},\\newmdenv,\\renewmdenv,\\surroundwithmdframed,\\mdfsetup,\\mmdfdefinestyle,\\mdfapptodefinestyle,\\mdfsubtitle,\\mdfsubsubtitle,\\newmdtheoremenv,\\mdtheorem"
       ],
       "name": "mdfsubtitle",
-      "snippet": "mdfsubtitle[${2:options%keyvals}]{${1:subtitle}}"
+      "snippet": "mdfsubtitle[${2:options}]{${1:subtitle}}"
     },
     {
       "name": "mdfsubtitle",
@@ -351,7 +351,7 @@
         "\\begin{mdframed},\\newmdenv,\\renewmdenv,\\surroundwithmdframed,\\mdfsetup,\\mmdfdefinestyle,\\mdfapptodefinestyle,\\mdfsubtitle,\\mdfsubsubtitle,\\newmdtheoremenv,\\mdtheorem"
       ],
       "name": "mdtheorem",
-      "snippet": "mdtheorem[${3:options%keyvals}]{${1:envname}}[${4:numbered like}]{${2:caption}}"
+      "snippet": "mdtheorem[${3:options}]{${1:envname}}[${4:numbered like}]{${2:caption}}"
     },
     {
       "keyPos": 0,
@@ -359,7 +359,7 @@
         "\\begin{mdframed},\\newmdenv,\\renewmdenv,\\surroundwithmdframed,\\mdfsetup,\\mmdfdefinestyle,\\mdfapptodefinestyle,\\mdfsubtitle,\\mdfsubsubtitle,\\newmdtheoremenv,\\mdtheorem"
       ],
       "name": "mdtheorem",
-      "snippet": "mdtheorem[${3:options%keyvals}]{${1:envname}}{${2:caption}}"
+      "snippet": "mdtheorem[${3:options}]{${1:envname}}{${2:caption}}"
     },
     {
       "keyPos": 0,
@@ -367,7 +367,7 @@
         "\\begin{mdframed},\\newmdenv,\\renewmdenv,\\surroundwithmdframed,\\mdfsetup,\\mmdfdefinestyle,\\mdfapptodefinestyle,\\mdfsubtitle,\\mdfsubsubtitle,\\newmdtheoremenv,\\mdtheorem"
       ],
       "name": "mdtheorem",
-      "snippet": "mdtheorem[${3:options%keyvals}]{${1:envname}}{${2:caption}}[${4:within}]"
+      "snippet": "mdtheorem[${3:options}]{${1:envname}}{${2:caption}}[${4:within}]"
     },
     {
       "name": "mdtheorem",
@@ -387,7 +387,7 @@
         "\\begin{mdframed},\\newmdenv,\\renewmdenv,\\surroundwithmdframed,\\mdfsetup,\\mmdfdefinestyle,\\mdfapptodefinestyle,\\mdfsubtitle,\\mdfsubsubtitle,\\newmdtheoremenv,\\mdtheorem"
       ],
       "name": "newmdenv",
-      "snippet": "newmdenv[${2:options%keyvals}]{${1:envname}}"
+      "snippet": "newmdenv[${2:options}]{${1:envname}}"
     },
     {
       "name": "newmdenv",
@@ -399,7 +399,7 @@
         "\\begin{mdframed},\\newmdenv,\\renewmdenv,\\surroundwithmdframed,\\mdfsetup,\\mmdfdefinestyle,\\mdfapptodefinestyle,\\mdfsubtitle,\\mdfsubsubtitle,\\newmdtheoremenv,\\mdtheorem"
       ],
       "name": "newmdtheoremenv",
-      "snippet": "newmdtheoremenv[${3:options%keyvals}]{${1:envname}}[${4:numbered like}]{${2:caption}}"
+      "snippet": "newmdtheoremenv[${3:options}]{${1:envname}}[${4:numbered like}]{${2:caption}}"
     },
     {
       "keyPos": 0,
@@ -407,7 +407,7 @@
         "\\begin{mdframed},\\newmdenv,\\renewmdenv,\\surroundwithmdframed,\\mdfsetup,\\mmdfdefinestyle,\\mdfapptodefinestyle,\\mdfsubtitle,\\mdfsubsubtitle,\\newmdtheoremenv,\\mdtheorem"
       ],
       "name": "newmdtheoremenv",
-      "snippet": "newmdtheoremenv[${3:options%keyvals}]{${1:envname}}{${2:caption}}"
+      "snippet": "newmdtheoremenv[${3:options}]{${1:envname}}{${2:caption}}"
     },
     {
       "keyPos": 0,
@@ -415,7 +415,7 @@
         "\\begin{mdframed},\\newmdenv,\\renewmdenv,\\surroundwithmdframed,\\mdfsetup,\\mmdfdefinestyle,\\mdfapptodefinestyle,\\mdfsubtitle,\\mdfsubsubtitle,\\newmdtheoremenv,\\mdtheorem"
       ],
       "name": "newmdtheoremenv",
-      "snippet": "newmdtheoremenv[${3:options%keyvals}]{${1:envname}}{${2:caption}}[${4:within}]"
+      "snippet": "newmdtheoremenv[${3:options}]{${1:envname}}{${2:caption}}[${4:within}]"
     },
     {
       "name": "newmdtheoremenv",
@@ -435,7 +435,7 @@
         "\\begin{mdframed},\\newmdenv,\\renewmdenv,\\surroundwithmdframed,\\mdfsetup,\\mmdfdefinestyle,\\mdfapptodefinestyle,\\mdfsubtitle,\\mdfsubsubtitle,\\newmdtheoremenv,\\mdtheorem"
       ],
       "name": "renewmdenv",
-      "snippet": "renewmdenv[${2:options%keyvals}]{${1:envname}}"
+      "snippet": "renewmdenv[${2:options}]{${1:envname}}"
     },
     {
       "name": "renewmdenv",
@@ -447,7 +447,7 @@
         "\\begin{mdframed},\\newmdenv,\\renewmdenv,\\surroundwithmdframed,\\mdfsetup,\\mmdfdefinestyle,\\mdfapptodefinestyle,\\mdfsubtitle,\\mdfsubsubtitle,\\newmdtheoremenv,\\mdtheorem"
       ],
       "name": "surroundwithmdframed",
-      "snippet": "surroundwithmdframed[${2:options%keyvals}]{${1:env}}"
+      "snippet": "surroundwithmdframed[${2:options}]{${1:env}}"
     },
     {
       "name": "surroundwithmdframed",

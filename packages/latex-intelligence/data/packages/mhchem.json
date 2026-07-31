@@ -81,7 +81,7 @@
         "\\mhchemoptions"
       ],
       "name": "mhchemoptions",
-      "snippet": "mhchemoptions{${1:options%keyvals}}"
+      "snippet": "mhchemoptions{${1:options}}"
     },
     {
       "name": "sbond"

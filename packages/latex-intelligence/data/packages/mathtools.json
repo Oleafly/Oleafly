@@ -224,15 +224,15 @@
     },
     {
       "name": "DeclarePairedDelimiter",
-      "snippet": "DeclarePairedDelimiter{${1:cmd}}{${2:left delim%formula}}{${3:right delim%formula}}"
+      "snippet": "DeclarePairedDelimiter{${1:cmd}}{${2:left delim}}{${3:right delim}}"
     },
     {
       "name": "DeclarePairedDelimiterX",
-      "snippet": "DeclarePairedDelimiterX{${1:cmd}}[${5:args}]{${2:left delim%formula}}{${3:right delim%formula}}{${4:body%formula}}"
+      "snippet": "DeclarePairedDelimiterX{${1:cmd}}[${5:args}]{${2:left delim}}{${3:right delim}}{${4:body}}"
     },
     {
       "name": "DeclarePairedDelimiterXPP",
-      "snippet": "DeclarePairedDelimiterXPP{${1:cmd}}[${7:args}]{${2:pre code%formula}}{${3:left delim%formula}}{${4:right delim%formula}}{${5:post code%formula}}{${6:body%formula}}"
+      "snippet": "DeclarePairedDelimiterXPP{${1:cmd}}[${7:args}]{${2:pre code}}{${3:left delim}}{${4:right delim}}{${5:post code}}{${6:body}}"
     },
     {
       "name": "Eqcolon"
@@ -486,7 +486,7 @@
         "\\reDeclarePairedDelimiterInnerWrapper"
       ],
       "name": "reDeclarePairedDelimiterInnerWrapper",
-      "snippet": "reDeclarePairedDelimiterInnerWrapper{${1:cmd}}{${2:star option%keyvals}}{${3:code%definition}}"
+      "snippet": "reDeclarePairedDelimiterInnerWrapper{${1:cmd}}{${2:star option}}{${3:code}}"
     },
     {
       "name": "refeq",
@@ -551,7 +551,7 @@
         "\\smashoperator"
       ],
       "name": "smashoperator",
-      "snippet": "smashoperator[${2:pos%keyvals}]{${1:operator with limits}}"
+      "snippet": "smashoperator[${2:pos}]{${1:operator with limits}}"
     },
     {
       "name": "smashoperator",

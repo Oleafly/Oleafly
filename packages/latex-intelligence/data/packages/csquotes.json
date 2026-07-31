@@ -179,7 +179,7 @@
         "\\usepackage/csquotes#c,\\ExecuteQuoteOptions#c"
       ],
       "name": "ExecuteQuoteOptions",
-      "snippet": "ExecuteQuoteOptions{${1:options%keyvals}}",
+      "snippet": "ExecuteQuoteOptions{${1:options}}",
       "unusual": true
     },
     {

@@ -14,7 +14,7 @@
         "\\begin{BVerbatim},\\begin{BVerbatim*},\\fvset,\\DefineVerbatimEnvironment,\\RecustomVerbatimEnvironment,\\CustomVerbatimCommand,\\RecustomVerbatimCommand,\\BUseVerbatim,\\BVerbatimInput"
       ],
       "name": "BVerbatim",
-      "snippet": "[${1:options%keyvals}]"
+      "snippet": "[${1:options}]"
     },
     {
       "name": "BVerbatim*"
@@ -26,7 +26,7 @@
         "\\begin{BVerbatim},\\begin{BVerbatim*},\\fvset,\\DefineVerbatimEnvironment,\\RecustomVerbatimEnvironment,\\CustomVerbatimCommand,\\RecustomVerbatimCommand,\\BUseVerbatim,\\BVerbatimInput"
       ],
       "name": "BVerbatim*",
-      "snippet": "[${1:options%keyvals}]"
+      "snippet": "[${1:options}]"
     },
     {
       "name": "LVerbatim"
@@ -37,7 +37,7 @@
         "\\Verb,\\Verb*,\\DefineShortVerb,\\begin{Verbatim},\\begin{Verbatim*},\\begin{BVerbatim},\\begin{BVerbatim*},\\begin{LVerbatim},\\begin{LVerbatim*},\\fvset,\\DefineVerbatimEnvironment,\\CustomVerbatimEnvironment,\\RecustomVerbatimEnvironment,\\CustomVerbatimCommand,\\RecustomVerbatimCommand,\\SaveVerb,\\SaveVerb*,\\UseVerb,\\UseVerb*,\\begin{SaveVerbatim},\\UseVerbatim,\\BUseVerbatim,\\LUseVerbatim,\\VerbatimInput,\\BVerbatimInput,\\LLVerbatimInput"
       ],
       "name": "LVerbatim",
-      "snippet": "[${1:options%keyvals}]"
+      "snippet": "[${1:options}]"
     },
     {
       "name": "LVerbatim*"
@@ -48,7 +48,7 @@
         "\\Verb,\\Verb*,\\DefineShortVerb,\\begin{Verbatim},\\begin{Verbatim*},\\begin{BVerbatim},\\begin{BVerbatim*},\\begin{LVerbatim},\\begin{LVerbatim*},\\fvset,\\DefineVerbatimEnvironment,\\CustomVerbatimEnvironment,\\RecustomVerbatimEnvironment,\\CustomVerbatimCommand,\\RecustomVerbatimCommand,\\SaveVerb,\\SaveVerb*,\\UseVerb,\\UseVerb*,\\begin{SaveVerbatim},\\UseVerbatim,\\BUseVerbatim,\\LUseVerbatim,\\VerbatimInput,\\BVerbatimInput,\\LLVerbatimInput"
       ],
       "name": "LVerbatim*",
-      "snippet": "[${1:options%keyvals}]"
+      "snippet": "[${1:options}]"
     },
     {
       "keyPos": 0,
@@ -56,7 +56,7 @@
         "\\Verb,\\Verb*,\\DefineShortVerb,\\begin{Verbatim},\\begin{Verbatim*},\\begin{BVerbatim},\\begin{BVerbatim*},\\begin{LVerbatim},\\begin{LVerbatim*},\\fvset,\\DefineVerbatimEnvironment,\\CustomVerbatimEnvironment,\\RecustomVerbatimEnvironment,\\CustomVerbatimCommand,\\RecustomVerbatimCommand,\\SaveVerb,\\SaveVerb*,\\UseVerb,\\UseVerb*,\\begin{SaveVerbatim},\\UseVerbatim,\\BUseVerbatim,\\LUseVerbatim,\\VerbatimInput,\\BVerbatimInput,\\LLVerbatimInput"
       ],
       "name": "SaveVerbatim",
-      "snippet": "[${2:options%keyvals}]{${1:name}}"
+      "snippet": "[${2:options}]{${1:name}}"
     },
     {
       "name": "SaveVerbatim",
@@ -71,7 +71,7 @@
         "\\Verb,\\Verb*,\\DefineShortVerb,\\begin{Verbatim},\\begin{Verbatim*},\\begin{BVerbatim},\\begin{BVerbatim*},\\begin{LVerbatim},\\begin{LVerbatim*},\\fvset,\\DefineVerbatimEnvironment,\\CustomVerbatimEnvironment,\\RecustomVerbatimEnvironment,\\CustomVerbatimCommand,\\RecustomVerbatimCommand,\\SaveVerb,\\SaveVerb*,\\UseVerb,\\UseVerb*,\\begin{SaveVerbatim},\\UseVerbatim,\\BUseVerbatim,\\LUseVerbatim,\\VerbatimInput,\\BVerbatimInput,\\LLVerbatimInput"
       ],
       "name": "Verbatim",
-      "snippet": "[${1:options%keyvals}]"
+      "snippet": "[${1:options}]"
     },
     {
       "name": "Verbatim*"
@@ -82,11 +82,11 @@
         "\\Verb,\\Verb*,\\DefineShortVerb,\\begin{Verbatim},\\begin{Verbatim*},\\begin{BVerbatim},\\begin{BVerbatim*},\\begin{LVerbatim},\\begin{LVerbatim*},\\fvset,\\DefineVerbatimEnvironment,\\CustomVerbatimEnvironment,\\RecustomVerbatimEnvironment,\\CustomVerbatimCommand,\\RecustomVerbatimCommand,\\SaveVerb,\\SaveVerb*,\\UseVerb,\\UseVerb*,\\begin{SaveVerbatim},\\UseVerbatim,\\BUseVerbatim,\\LUseVerbatim,\\VerbatimInput,\\BVerbatimInput,\\LLVerbatimInput"
       ],
       "name": "Verbatim*",
-      "snippet": "[${1:options%keyvals}]"
+      "snippet": "[${1:options}]"
     },
     {
       "name": "VerbatimOut",
-      "snippet": "{${1:file name%file}}"
+      "snippet": "{${1:file name}}"
     }
   ],
   "keys": {
@@ -149,7 +149,7 @@
         "\\begin{BVerbatim},\\begin{BVerbatim*},\\fvset,\\DefineVerbatimEnvironment,\\RecustomVerbatimEnvironment,\\CustomVerbatimCommand,\\RecustomVerbatimCommand,\\BUseVerbatim,\\BVerbatimInput"
       ],
       "name": "BUseVerbatim",
-      "snippet": "BUseVerbatim[${2:options%keyvals}]{${1:name}}"
+      "snippet": "BUseVerbatim[${2:options}]{${1:name}}"
     },
     {
       "name": "BUseVerbatim",
@@ -157,7 +157,7 @@
     },
     {
       "name": "BUseVerbatim*",
-      "snippet": "BUseVerbatim*[${2:options%keyvals}]{${1:name}}"
+      "snippet": "BUseVerbatim*[${2:options}]{${1:name}}"
     },
     {
       "name": "BUseVerbatim*",
@@ -170,7 +170,7 @@
         "\\begin{BVerbatim},\\begin{BVerbatim*},\\fvset,\\DefineVerbatimEnvironment,\\RecustomVerbatimEnvironment,\\CustomVerbatimCommand,\\RecustomVerbatimCommand,\\BUseVerbatim,\\BVerbatimInput"
       ],
       "name": "BVerbatimInput",
-      "snippet": "BVerbatimInput[${2:options%keyvals}]{${1:file}}"
+      "snippet": "BVerbatimInput[${2:options}]{${1:file}}"
     },
     {
       "name": "BVerbatimInput",
@@ -178,7 +178,7 @@
     },
     {
       "name": "BVerbatimInput*",
-      "snippet": "BVerbatimInput*[${2:options%keyvals}]{${1:file}}"
+      "snippet": "BVerbatimInput*[${2:options}]{${1:file}}"
     },
     {
       "name": "BVerbatimInput*",
@@ -191,7 +191,7 @@
         "\\begin{BVerbatim},\\begin{BVerbatim*},\\fvset,\\DefineVerbatimEnvironment,\\RecustomVerbatimEnvironment,\\CustomVerbatimCommand,\\RecustomVerbatimCommand,\\BUseVerbatim,\\BVerbatimInput"
       ],
       "name": "CustomVerbatimCommand",
-      "snippet": "CustomVerbatimCommand{${1:command}}{${2:cmd type}}{${3:options%keyvals}}"
+      "snippet": "CustomVerbatimCommand{${1:command}}{${2:cmd type}}{${3:options}}"
     },
     {
       "keyPos": 2,
@@ -199,7 +199,7 @@
         "\\Verb,\\Verb*,\\DefineShortVerb,\\begin{Verbatim},\\begin{Verbatim*},\\begin{BVerbatim},\\begin{BVerbatim*},\\begin{LVerbatim},\\begin{LVerbatim*},\\fvset,\\DefineVerbatimEnvironment,\\CustomVerbatimEnvironment,\\RecustomVerbatimEnvironment,\\CustomVerbatimCommand,\\RecustomVerbatimCommand,\\SaveVerb,\\SaveVerb*,\\UseVerb,\\UseVerb*,\\begin{SaveVerbatim},\\UseVerbatim,\\BUseVerbatim,\\LUseVerbatim,\\VerbatimInput,\\BVerbatimInput,\\LLVerbatimInput"
       ],
       "name": "CustomVerbatimEnvironment",
-      "snippet": "CustomVerbatimEnvironment{${1:envname}}{${2:env type}}{${3:options%keyvals}}",
+      "snippet": "CustomVerbatimEnvironment{${1:envname}}{${2:env type}}{${3:options}}",
       "unusual": true
     },
     {
@@ -221,7 +221,7 @@
         "\\begin{BVerbatim},\\begin{BVerbatim*},\\fvset,\\DefineVerbatimEnvironment,\\RecustomVerbatimEnvironment,\\CustomVerbatimCommand,\\RecustomVerbatimCommand,\\BUseVerbatim,\\BVerbatimInput"
       ],
       "name": "DefineVerbatimEnvironment",
-      "snippet": "DefineVerbatimEnvironment{${1:envname}}{${2:env type}}{${3:options%keyvals}}"
+      "snippet": "DefineVerbatimEnvironment{${1:envname}}{${2:env type}}{${3:options}}"
     },
     {
       "name": "FancyVerbAfterSave",
@@ -305,7 +305,7 @@
         "\\Verb,\\Verb*,\\DefineShortVerb,\\begin{Verbatim},\\begin{Verbatim*},\\begin{BVerbatim},\\begin{BVerbatim*},\\begin{LVerbatim},\\begin{LVerbatim*},\\fvset,\\DefineVerbatimEnvironment,\\CustomVerbatimEnvironment,\\RecustomVerbatimEnvironment,\\CustomVerbatimCommand,\\RecustomVerbatimCommand,\\SaveVerb,\\SaveVerb*,\\UseVerb,\\UseVerb*,\\begin{SaveVerbatim},\\UseVerbatim,\\BUseVerbatim,\\LUseVerbatim,\\VerbatimInput,\\BVerbatimInput,\\LLVerbatimInput"
       ],
       "name": "LUseVerbatim",
-      "snippet": "LUseVerbatim[${2:options%keyvals}]{${1:name}}"
+      "snippet": "LUseVerbatim[${2:options}]{${1:name}}"
     },
     {
       "name": "LUseVerbatim",
@@ -313,7 +313,7 @@
     },
     {
       "name": "LUseVerbatim*",
-      "snippet": "LUseVerbatim*[${2:options%keyvals}]{${1:name}}"
+      "snippet": "LUseVerbatim*[${2:options}]{${1:name}}"
     },
     {
       "name": "LUseVerbatim*",
@@ -321,7 +321,7 @@
     },
     {
       "name": "LVerbatimInput",
-      "snippet": "LVerbatimInput[${2:options%keyvals}]{${1:file}}"
+      "snippet": "LVerbatimInput[${2:options}]{${1:file}}"
     },
     {
       "name": "LVerbatimInput",
@@ -329,7 +329,7 @@
     },
     {
       "name": "LVerbatimInput*",
-      "snippet": "LVerbatimInput*[${2:options%keyvals}]{${1:file}}"
+      "snippet": "LVerbatimInput*[${2:options}]{${1:file}}"
     },
     {
       "name": "LVerbatimInput*",
@@ -342,7 +342,7 @@
         "\\begin{BVerbatim},\\begin{BVerbatim*},\\fvset,\\DefineVerbatimEnvironment,\\RecustomVerbatimEnvironment,\\CustomVerbatimCommand,\\RecustomVerbatimCommand,\\BUseVerbatim,\\BVerbatimInput"
       ],
       "name": "RecustomVerbatimCommand",
-      "snippet": "RecustomVerbatimCommand{${1:command}}{${2:cmd type}}{${3:options%keyvals}}"
+      "snippet": "RecustomVerbatimCommand{${1:command}}{${2:cmd type}}{${3:options}}"
     },
     {
       "keyPos": 2,
@@ -351,7 +351,7 @@
         "\\begin{BVerbatim},\\begin{BVerbatim*},\\fvset,\\DefineVerbatimEnvironment,\\RecustomVerbatimEnvironment,\\CustomVerbatimCommand,\\RecustomVerbatimCommand,\\BUseVerbatim,\\BVerbatimInput"
       ],
       "name": "RecustomVerbatimEnvironment",
-      "snippet": "RecustomVerbatimEnvironment{${1:envname}}{${2:env type}}{${3:options%keyvals}}"
+      "snippet": "RecustomVerbatimEnvironment{${1:envname}}{${2:env type}}{${3:options}}"
     },
     {
       "name": "SaveGVerb",
@@ -403,7 +403,7 @@
         "\\Verb,\\Verb*,\\DefineShortVerb,\\begin{Verbatim},\\begin{Verbatim*},\\begin{BVerbatim},\\begin{BVerbatim*},\\begin{LVerbatim},\\begin{LVerbatim*},\\fvset,\\DefineVerbatimEnvironment,\\CustomVerbatimEnvironment,\\RecustomVerbatimEnvironment,\\CustomVerbatimCommand,\\RecustomVerbatimCommand,\\SaveVerb,\\SaveVerb*,\\UseVerb,\\UseVerb*,\\begin{SaveVerbatim},\\UseVerbatim,\\BUseVerbatim,\\LUseVerbatim,\\VerbatimInput,\\BVerbatimInput,\\LLVerbatimInput"
       ],
       "name": "UseVerb",
-      "snippet": "UseVerb[${2:options%keyvals}]{${1:name}}"
+      "snippet": "UseVerb[${2:options}]{${1:name}}"
     },
     {
       "name": "UseVerb",
@@ -415,7 +415,7 @@
         "\\Verb,\\Verb*,\\DefineShortVerb,\\begin{Verbatim},\\begin{Verbatim*},\\begin{BVerbatim},\\begin{BVerbatim*},\\begin{LVerbatim},\\begin{LVerbatim*},\\fvset,\\DefineVerbatimEnvironment,\\CustomVerbatimEnvironment,\\RecustomVerbatimEnvironment,\\CustomVerbatimCommand,\\RecustomVerbatimCommand,\\SaveVerb,\\SaveVerb*,\\UseVerb,\\UseVerb*,\\begin{SaveVerbatim},\\UseVerbatim,\\BUseVerbatim,\\LUseVerbatim,\\VerbatimInput,\\BVerbatimInput,\\LLVerbatimInput"
       ],
       "name": "UseVerb*",
-      "snippet": "UseVerb*[${2:options%keyvals}]{${1:name}}"
+      "snippet": "UseVerb*[${2:options}]{${1:name}}"
     },
     {
       "name": "UseVerb*",
@@ -427,7 +427,7 @@
         "\\Verb,\\Verb*,\\DefineShortVerb,\\begin{Verbatim},\\begin{Verbatim*},\\begin{BVerbatim},\\begin{BVerbatim*},\\begin{LVerbatim},\\begin{LVerbatim*},\\fvset,\\DefineVerbatimEnvironment,\\CustomVerbatimEnvironment,\\RecustomVerbatimEnvironment,\\CustomVerbatimCommand,\\RecustomVerbatimCommand,\\SaveVerb,\\SaveVerb*,\\UseVerb,\\UseVerb*,\\begin{SaveVerbatim},\\UseVerbatim,\\BUseVerbatim,\\LUseVerbatim,\\VerbatimInput,\\BVerbatimInput,\\LLVerbatimInput"
       ],
       "name": "UseVerbatim",
-      "snippet": "UseVerbatim[${2:options%keyvals}]{${1:name}}"
+      "snippet": "UseVerbatim[${2:options}]{${1:name}}"
     },
     {
       "name": "UseVerbatim",
@@ -435,7 +435,7 @@
     },
     {
       "name": "UseVerbatim*",
-      "snippet": "UseVerbatim*[${2:options%keyvals}]{${1:name}}"
+      "snippet": "UseVerbatim*[${2:options}]{${1:name}}"
     },
     {
       "name": "UseVerbatim*",
@@ -478,7 +478,7 @@
         "\\Verb,\\Verb*,\\DefineShortVerb,\\begin{Verbatim},\\begin{Verbatim*},\\begin{BVerbatim},\\begin{BVerbatim*},\\begin{LVerbatim},\\begin{LVerbatim*},\\fvset,\\DefineVerbatimEnvironment,\\CustomVerbatimEnvironment,\\RecustomVerbatimEnvironment,\\CustomVerbatimCommand,\\RecustomVerbatimCommand,\\SaveVerb,\\SaveVerb*,\\UseVerb,\\UseVerb*,\\begin{SaveVerbatim},\\UseVerbatim,\\BUseVerbatim,\\LUseVerbatim,\\VerbatimInput,\\BVerbatimInput,\\LLVerbatimInput"
       ],
       "name": "VerbatimInput",
-      "snippet": "VerbatimInput[${2:options%keyvals}]{${1:file}}"
+      "snippet": "VerbatimInput[${2:options}]{${1:file}}"
     },
     {
       "name": "VerbatimInput",
@@ -486,7 +486,7 @@
     },
     {
       "name": "VerbatimInput*",
-      "snippet": "VerbatimInput*[${2:options%keyvals}]{${1:file}}"
+      "snippet": "VerbatimInput*[${2:options}]{${1:file}}"
     },
     {
       "name": "VerbatimInput*",
@@ -500,7 +500,7 @@
         "\\begin{BVerbatim},\\begin{BVerbatim*},\\fvset,\\DefineVerbatimEnvironment,\\RecustomVerbatimEnvironment,\\CustomVerbatimCommand,\\RecustomVerbatimCommand,\\BUseVerbatim,\\BVerbatimInput"
       ],
       "name": "fvset",
-      "snippet": "fvset{${1:options%keyvals}}"
+      "snippet": "fvset{${1:options}}"
     },
     {
       "name": "pUseMVerb",

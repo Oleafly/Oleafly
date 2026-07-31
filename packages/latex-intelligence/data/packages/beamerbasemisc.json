@@ -34,7 +34,7 @@
     },
     {
       "name": "includegraphics<overlay specification>",
-      "snippet": "includegraphics<overlay specification>[${2:options%keyvals}]{${1:imagefile}}"
+      "snippet": "includegraphics<overlay specification>[${2:options}]{${1:imagefile}}"
     },
     {
       "name": "includegraphics<overlay specification>",
@@ -55,7 +55,7 @@
     },
     {
       "name": "pgfimage<overlay specification>",
-      "snippet": "pgfimage<overlay specification>[${2:options%keyvals}]{${1:imagefile}}",
+      "snippet": "pgfimage<overlay specification>[${2:options}]{${1:imagefile}}",
       "unusual": true
     },
     {

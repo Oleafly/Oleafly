@@ -7,7 +7,7 @@
     },
     {
       "name": "BVerbatim",
-      "snippet": "[${1:alignment%keyvals}]"
+      "snippet": "[${1:alignment}]"
     },
     {
       "name": "Bcenter"
@@ -18,7 +18,7 @@
         "\\begin{Bcenter},\\begin{Bflushleft},\\begin{Bflushright},\\begin{Bitemize},\\begin{Benumerate},\\begin{Bdescription},\\begin{Blist},\\begin{BVerbatim},\\BVerbatimInput"
       ],
       "name": "Bcenter",
-      "snippet": "[${1:alignment%keyvals}]"
+      "snippet": "[${1:alignment}]"
     },
     {
       "name": "Beqnarray"
@@ -35,7 +35,7 @@
         "\\begin{Bcenter},\\begin{Bflushleft},\\begin{Bflushright},\\begin{Bitemize},\\begin{Benumerate},\\begin{Bdescription},\\begin{Blist},\\begin{BVerbatim},\\BVerbatimInput"
       ],
       "name": "Bflushleft",
-      "snippet": "[${1:alignment%keyvals}]"
+      "snippet": "[${1:alignment}]"
     },
     {
       "name": "Bflushright"
@@ -46,7 +46,7 @@
         "\\begin{Bcenter},\\begin{Bflushleft},\\begin{Bflushright},\\begin{Bitemize},\\begin{Benumerate},\\begin{Bdescription},\\begin{Blist},\\begin{BVerbatim},\\BVerbatimInput"
       ],
       "name": "Bflushright",
-      "snippet": "[${1:alignment%keyvals}]"
+      "snippet": "[${1:alignment}]"
     },
     {
       "name": "Blist",
@@ -59,7 +59,7 @@
         "\\begin{Bcenter},\\begin{Bflushleft},\\begin{Bflushright},\\begin{Bitemize},\\begin{Benumerate},\\begin{Bdescription},\\begin{Blist},\\begin{BVerbatim},\\BVerbatimInput"
       ],
       "name": "Blist",
-      "snippet": "{${1:item_type}}{${2:code}}[${3:alignment%keyvals}]",
+      "snippet": "{${1:item_type}}{${2:code}}[${3:alignment}]",
       "unusual": true
     },
     {
@@ -72,12 +72,12 @@
     },
     {
       "name": "Landscape",
-      "snippet": "{${1:paperwidth%l}}{${2:paperheight%l}}{${3:cmd}}",
+      "snippet": "{${1:paperwidth}}{${2:paperheight}}{${3:cmd}}",
       "unusual": true
     },
     {
       "name": "Landscape*",
-      "snippet": "{${1:paperwidth%l}}{${2:paperheight%l}}{${3:cmd}}",
+      "snippet": "{${1:paperwidth}}{${2:paperheight}}{${3:cmd}}",
       "unusual": true
     },
     {
@@ -122,7 +122,7 @@
     },
     {
       "name": "BUseVerbatim",
-      "snippet": "BUseVerbatim[${2:alignment%keyvals}]{${1:cmd}}",
+      "snippet": "BUseVerbatim[${2:alignment}]{${1:cmd}}",
       "unusual": true
     },
     {
@@ -132,7 +132,7 @@
     },
     {
       "name": "BVerbatimInput",
-      "snippet": "BVerbatimInput[${2:alignment%keyvals}]{${1:file}}",
+      "snippet": "BVerbatimInput[${2:alignment}]{${1:file}}",
       "unusual": true
     },
     {
@@ -194,12 +194,12 @@
     },
     {
       "name": "Landscape",
-      "snippet": "Landscape{${1:paperwidth%l}}{${2:paperheight%l}}{${3:cmd}}",
+      "snippet": "Landscape{${1:paperwidth}}{${2:paperheight}}{${3:cmd}}",
       "unusual": true
     },
     {
       "name": "Landscape*",
-      "snippet": "Landscape*{${1:paperwidth%l}}{${2:paperheight%l}}{${3:cmd}}",
+      "snippet": "Landscape*{${1:paperwidth}}{${2:paperheight}}{${3:cmd}}",
       "unusual": true
     },
     {
@@ -307,7 +307,7 @@
     },
     {
       "name": "cornersize*",
-      "snippet": "cornersize*{${1:dimen%l}}",
+      "snippet": "cornersize*{${1:dimen}}",
       "unusual": true
     },
     {
@@ -324,7 +324,7 @@
         "\\fancyoval"
       ],
       "name": "fancyoval",
-      "snippet": "fancyoval(${2:width},${3:height})[${1:portion%keyvals}]"
+      "snippet": "fancyoval(${2:width},${3:height})[${1:portion}]"
     },
     {
       "name": "fancypage",
@@ -340,12 +340,12 @@
     },
     {
       "name": "item",
-      "snippet": "item(${1:vspace%l})",
+      "snippet": "item(${1:vspace})",
       "unusual": true
     },
     {
       "name": "item",
-      "snippet": "item(${2:vspace%l})[${1:label%plain}]",
+      "snippet": "item(${2:vspace})[${1:label}]",
       "unusual": true
     },
     {

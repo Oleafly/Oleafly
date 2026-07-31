@@ -41,7 +41,7 @@
         "\\note"
       ],
       "name": "note",
-      "snippet": "note[${2:options%keyvals}]<${3:overlay specification}>{${1:note text%text}}"
+      "snippet": "note[${2:options}]<${3:overlay specification}>{${1:note text}}"
     },
     {
       "keyPos": 0,
@@ -49,15 +49,15 @@
         "\\note"
       ],
       "name": "note",
-      "snippet": "note[${2:options%keyvals}]{${1:note text%text}}"
+      "snippet": "note[${2:options}]{${1:note text}}"
     },
     {
       "name": "note",
-      "snippet": "note{${1:note text%text}}"
+      "snippet": "note{${1:note text}}"
     },
     {
       "name": "note<overlay specification>",
-      "snippet": "note<overlay specification>{${1:note text%text}}"
+      "snippet": "note<overlay specification>{${1:note text}}"
     }
   ]
 }

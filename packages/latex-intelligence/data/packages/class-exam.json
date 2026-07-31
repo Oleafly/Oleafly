@@ -50,39 +50,39 @@
     },
     {
       "name": "solution",
-      "snippet": "[${1:space%l}]"
+      "snippet": "[${1:space}]"
     },
     {
       "name": "solutionbox",
-      "snippet": "{${1:size%l}}"
+      "snippet": "{${1:size}}"
     },
     {
       "name": "solutionorbox"
     },
     {
       "name": "solutionorbox",
-      "snippet": "[${1:space%l}]"
+      "snippet": "[${1:space}]"
     },
     {
       "name": "solutionordottedlines"
     },
     {
       "name": "solutionordottedlines",
-      "snippet": "[${1:space%l}]"
+      "snippet": "[${1:space}]"
     },
     {
       "name": "solutionorgrid"
     },
     {
       "name": "solutionorgrid",
-      "snippet": "[${1:space%l}]"
+      "snippet": "[${1:space}]"
     },
     {
       "name": "solutionorlines"
     },
     {
       "name": "solutionorlines",
-      "snippet": "[${1:space%l}]"
+      "snippet": "[${1:space}]"
     },
     {
       "name": "subparts"
@@ -141,7 +141,7 @@
     },
     {
       "name": "answerline",
-      "snippet": "answerline[${1:answer%text}]"
+      "snippet": "answerline[${1:answer}]"
     },
     {
       "name": "answerlinelength",
@@ -193,7 +193,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "bonusgradetable",
-      "snippet": "bonusgradetable[${1:h or v}][${2:type%keyvals}]"
+      "snippet": "bonusgradetable[${1:h or v}][${2:type}]"
     },
     {
       "name": "bonuspart"
@@ -212,7 +212,7 @@
     },
     {
       "name": "bonuspointpoints",
-      "snippet": "bonuspointpoints{${1:singular text%text}}{${2:plural text%text}}"
+      "snippet": "bonuspointpoints{${1:singular text}}{${2:plural text}}"
     },
     {
       "name": "bonuspoints",
@@ -243,7 +243,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "bonuspointtable",
-      "snippet": "bonuspointtable[${1:h or v}][${2:type%keyvals}]"
+      "snippet": "bonuspointtable[${1:h or v}][${2:type}]"
     },
     {
       "name": "bonusqformat",
@@ -272,11 +272,11 @@
     },
     {
       "name": "bonustitledquestion",
-      "snippet": "bonustitledquestion{${1:title%text}}"
+      "snippet": "bonustitledquestion{${1:title}}"
     },
     {
       "name": "bonustitledquestion",
-      "snippet": "bonustitledquestion{${1:title%text}}[${2:points}]"
+      "snippet": "bonustitledquestion{${1:title}}[${2:points}]"
     },
     {
       "name": "bonustotalformat",
@@ -330,7 +330,7 @@
     },
     {
       "name": "cfoot",
-      "snippet": "cfoot[${2:first page text%text}]{${1:text}}"
+      "snippet": "cfoot[${2:first page text}]{${1:text}}"
     },
     {
       "name": "cfoot",
@@ -343,7 +343,7 @@
     },
     {
       "name": "chead",
-      "snippet": "chead[${2:first page text%text}]{${1:text}}"
+      "snippet": "chead[${2:first page text}]{${1:text}}"
     },
     {
       "name": "chead",
@@ -427,7 +427,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "combinedgradetable",
-      "snippet": "combinedgradetable[${1:h or v}][${2:type%keyvals}]"
+      "snippet": "combinedgradetable[${1:h or v}][${2:type}]"
     },
     {
       "name": "combinedpointtable"
@@ -442,7 +442,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "combinedpointtable",
-      "snippet": "combinedpointtable[${1:h or v}][${2:type%keyvals}]"
+      "snippet": "combinedpointtable[${1:h or v}][${2:type}]"
     },
     {
       "name": "correctchoice",
@@ -455,7 +455,7 @@
     },
     {
       "name": "covercfoot",
-      "snippet": "covercfoot[${2:first page text%text}]{${1:text}}"
+      "snippet": "covercfoot[${2:first page text}]{${1:text}}"
     },
     {
       "name": "covercfoot",
@@ -463,7 +463,7 @@
     },
     {
       "name": "coverchead",
-      "snippet": "coverchead[${2:first page text%text}]{${1:text}}"
+      "snippet": "coverchead[${2:first page text}]{${1:text}}"
     },
     {
       "name": "coverchead",
@@ -471,7 +471,7 @@
     },
     {
       "name": "coverextrafootheight",
-      "snippet": "coverextrafootheight[${2:first page height%l}]{${1:height}}"
+      "snippet": "coverextrafootheight[${2:first page height}]{${1:height}}"
     },
     {
       "name": "coverextrafootheight",
@@ -479,7 +479,7 @@
     },
     {
       "name": "coverextraheadheight",
-      "snippet": "coverextraheadheight[${2:first page height%l}]{${1:height}}"
+      "snippet": "coverextraheadheight[${2:first page height}]{${1:height}}"
     },
     {
       "name": "coverextraheadheight",
@@ -487,7 +487,7 @@
     },
     {
       "name": "coverfirstpagefooter",
-      "snippet": "coverfirstpagefooter{${1:left%text}}{${2:center%text}}{${3:right%text}}"
+      "snippet": "coverfirstpagefooter{${1:left}}{${2:center}}{${3:right}}"
     },
     {
       "name": "coverfirstpagefootrule",
@@ -495,7 +495,7 @@
     },
     {
       "name": "coverfirstpageheader",
-      "snippet": "coverfirstpageheader{${1:left%text}}{${2:center%text}}{${3:right%text}}"
+      "snippet": "coverfirstpageheader{${1:left}}{${2:center}}{${3:right}}"
     },
     {
       "name": "coverfirstpageheadrule",
@@ -503,7 +503,7 @@
     },
     {
       "name": "coverfooter",
-      "snippet": "coverfooter{${1:left%text}}{${2:center%text}}{${3:right%text}}"
+      "snippet": "coverfooter{${1:left}}{${2:center}}{${3:right}}"
     },
     {
       "name": "coverfootrule",
@@ -511,7 +511,7 @@
     },
     {
       "name": "coverheader",
-      "snippet": "coverheader{${1:left%text}}{${2:center%text}}{${3:right%text}}"
+      "snippet": "coverheader{${1:left}}{${2:center}}{${3:right}}"
     },
     {
       "name": "coverheadrule",
@@ -519,7 +519,7 @@
     },
     {
       "name": "coverlfoot",
-      "snippet": "coverlfoot[${2:first page text%text}]{${1:text}}"
+      "snippet": "coverlfoot[${2:first page text}]{${1:text}}"
     },
     {
       "name": "coverlfoot",
@@ -527,7 +527,7 @@
     },
     {
       "name": "coverlhead",
-      "snippet": "coverlhead[${2:first page text%text}]{${1:text}}"
+      "snippet": "coverlhead[${2:first page text}]{${1:text}}"
     },
     {
       "name": "coverlhead",
@@ -535,7 +535,7 @@
     },
     {
       "name": "coverrfoot",
-      "snippet": "coverrfoot[${2:first page text%text}]{${1:text}}"
+      "snippet": "coverrfoot[${2:first page text}]{${1:text}}"
     },
     {
       "name": "coverrfoot",
@@ -543,7 +543,7 @@
     },
     {
       "name": "coverrhead",
-      "snippet": "coverrhead[${2:first page text%text}]{${1:text}}"
+      "snippet": "coverrhead[${2:first page text}]{${1:text}}"
     },
     {
       "name": "coverrhead",
@@ -551,7 +551,7 @@
     },
     {
       "name": "coverrunningfooter",
-      "snippet": "coverrunningfooter{${1:left%text}}{${2:center%text}}{${3:right%text}}"
+      "snippet": "coverrunningfooter{${1:left}}{${2:center}}{${3:right}}"
     },
     {
       "name": "coverrunningfootrule",
@@ -559,7 +559,7 @@
     },
     {
       "name": "coverrunningheader",
-      "snippet": "coverrunningheader{${1:left%text}}{${2:center%text}}{${3:right%text}}"
+      "snippet": "coverrunningheader{${1:left}}{${2:center}}{${3:right}}"
     },
     {
       "name": "coverrunningheadrule",
@@ -614,7 +614,7 @@
     },
     {
       "name": "extrafootheight",
-      "snippet": "extrafootheight[${2:first page height%l}]{${1:height}}"
+      "snippet": "extrafootheight[${2:first page height}]{${1:height}}"
     },
     {
       "name": "extrafootheight",
@@ -622,7 +622,7 @@
     },
     {
       "name": "extraheadheight",
-      "snippet": "extraheadheight[${2:first page height%l}]{${1:height}}"
+      "snippet": "extraheadheight[${2:first page height}]{${1:height}}"
     },
     {
       "name": "extraheadheight",
@@ -637,11 +637,11 @@
     },
     {
       "name": "fillin",
-      "snippet": "fillin[${1:answer%text}]"
+      "snippet": "fillin[${1:answer}]"
     },
     {
       "name": "fillin",
-      "snippet": "fillin[${1:answer%text}][${2:length}]"
+      "snippet": "fillin[${1:answer}][${2:length}]"
     },
     {
       "name": "fillinlinelength",
@@ -661,14 +661,14 @@
     },
     {
       "name": "firstpagefooter",
-      "snippet": "firstpagefooter{${1:left%text}}{${2:center%text}}{${3:right%text}}"
+      "snippet": "firstpagefooter{${1:left}}{${2:center}}{${3:right}}"
     },
     {
       "name": "firstpagefootrule"
     },
     {
       "name": "firstpageheader",
-      "snippet": "firstpageheader{${1:left%text}}{${2:center%text}}{${3:right%text}}"
+      "snippet": "firstpageheader{${1:left}}{${2:center}}{${3:right}}"
     },
     {
       "name": "firstpageheadrule"
@@ -679,7 +679,7 @@
     },
     {
       "name": "footer",
-      "snippet": "footer{${1:left%text}}{${2:center%text}}{${3:right%text}}"
+      "snippet": "footer{${1:left}}{${2:center}}{${3:right}}"
     },
     {
       "name": "footrule"
@@ -704,7 +704,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "gradetable",
-      "snippet": "gradetable[${1:h or v}][${2:type%keyvals}]"
+      "snippet": "gradetable[${1:h or v}][${2:type}]"
     },
     {
       "name": "gradetablestretch",
@@ -727,7 +727,7 @@
     },
     {
       "name": "header",
-      "snippet": "header{${1:left%text}}{${2:center%text}}{${3:right%text}}"
+      "snippet": "header{${1:left}}{${2:center}}{${3:right}}"
     },
     {
       "name": "headrule"
@@ -759,15 +759,15 @@
     },
     {
       "name": "ifcontinuation",
-      "snippet": "ifcontinuation{${1:true text%text}}{${2:false text%text}}"
+      "snippet": "ifcontinuation{${1:true text}}{${2:false text}}"
     },
     {
       "name": "ifincomplete",
-      "snippet": "ifincomplete{${1:true text%text}}{${2:false text%text}}"
+      "snippet": "ifincomplete{${1:true text}}{${2:false text}}"
     },
     {
       "name": "iflastpage",
-      "snippet": "iflastpage{${1:true text%text}}{${2:false text%text}}"
+      "snippet": "iflastpage{${1:true text}}{${2:false text}}"
     },
     {
       "name": "ifprintanswers"
@@ -778,7 +778,7 @@
     },
     {
       "name": "lfoot",
-      "snippet": "lfoot[${2:first page text%text}]{${1:text}}"
+      "snippet": "lfoot[${2:first page text}]{${1:text}}"
     },
     {
       "name": "lfoot",
@@ -786,7 +786,7 @@
     },
     {
       "name": "lhead",
-      "snippet": "lhead[${2:first page text%text}]{${1:text}}"
+      "snippet": "lhead[${2:first page text}]{${1:text}}"
     },
     {
       "name": "lhead",
@@ -833,7 +833,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "multicolumnbonusgradetable",
-      "snippet": "multicolumnbonusgradetable{${1:numcols}}[${2:type%keyvals}]"
+      "snippet": "multicolumnbonusgradetable{${1:numcols}}[${2:type}]"
     },
     {
       "name": "multicolumnbonuspointtable",
@@ -845,7 +845,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "multicolumnbonuspointtable",
-      "snippet": "multicolumnbonuspointtable{${1:numcols}}[${2:type%keyvals}]"
+      "snippet": "multicolumnbonuspointtable{${1:numcols}}[${2:type}]"
     },
     {
       "name": "multicolumncombinedgradetable",
@@ -857,7 +857,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "multicolumncombinedgradetable",
-      "snippet": "multicolumncombinedgradetable{${1:numcols}}[${2:type%keyvals}]"
+      "snippet": "multicolumncombinedgradetable{${1:numcols}}[${2:type}]"
     },
     {
       "name": "multicolumncombinedpointtable",
@@ -869,7 +869,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "multicolumncombinedpointtable",
-      "snippet": "multicolumncombinedpointtable{${1:numcols}}[${2:type%keyvals}]"
+      "snippet": "multicolumncombinedpointtable{${1:numcols}}[${2:type}]"
     },
     {
       "name": "multicolumngradetable",
@@ -881,7 +881,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "multicolumngradetable",
-      "snippet": "multicolumngradetable{${1:numcols}}[${2:type%keyvals}]"
+      "snippet": "multicolumngradetable{${1:numcols}}[${2:type}]"
     },
     {
       "name": "multicolumnpartialbonusgradetable",
@@ -893,7 +893,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "multicolumnpartialbonusgradetable",
-      "snippet": "multicolumnpartialbonusgradetable{${1:numcols}}{${2:range name}}[${3:type%keyvals}]"
+      "snippet": "multicolumnpartialbonusgradetable{${1:numcols}}{${2:range name}}[${3:type}]"
     },
     {
       "name": "multicolumnpartialbonuspointtable",
@@ -905,7 +905,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "multicolumnpartialbonuspointtable",
-      "snippet": "multicolumnpartialbonuspointtable{${1:numcols}}{${2:range name}}[${3:type%keyvals}]"
+      "snippet": "multicolumnpartialbonuspointtable{${1:numcols}}{${2:range name}}[${3:type}]"
     },
     {
       "name": "multicolumnpartialcombinedgradetable",
@@ -917,7 +917,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "multicolumnpartialcombinedgradetable",
-      "snippet": "multicolumnpartialcombinedgradetable{${1:numcols}}{${2:rangename}}[${3:type%keyvals}]"
+      "snippet": "multicolumnpartialcombinedgradetable{${1:numcols}}{${2:rangename}}[${3:type}]"
     },
     {
       "name": "multicolumnpartialcombinedpointtable",
@@ -929,7 +929,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "multicolumnpartialcombinedpointtable",
-      "snippet": "multicolumnpartialcombinedpointtable{${1:numcols}}{${2:rangename}}[${3:type%keyvals}]"
+      "snippet": "multicolumnpartialcombinedpointtable{${1:numcols}}{${2:rangename}}[${3:type}]"
     },
     {
       "name": "multicolumnpartialgradetable",
@@ -941,7 +941,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "multicolumnpartialgradetable",
-      "snippet": "multicolumnpartialgradetable{${1:numcols}}{${2:range name}}[${3:type%keyvals}]"
+      "snippet": "multicolumnpartialgradetable{${1:numcols}}{${2:range name}}[${3:type}]"
     },
     {
       "name": "multicolumnpartialpointtable",
@@ -953,7 +953,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "multicolumnpartialpointtable",
-      "snippet": "multicolumnpartialpointtable{${1:numcols}}{${2:range name}}[${3:type%keyvals}]"
+      "snippet": "multicolumnpartialpointtable{${1:numcols}}{${2:range name}}[${3:type}]"
     },
     {
       "name": "multicolumnpointtable",
@@ -965,7 +965,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "multicolumnpointtable",
-      "snippet": "multicolumnpointtable{${1:numcols}}[${2:type%keyvals}]"
+      "snippet": "multicolumnpointtable{${1:numcols}}[${2:type}]"
     },
     {
       "name": "multirowbonusgradetable",
@@ -977,7 +977,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "multirowbonusgradetable",
-      "snippet": "multirowbonusgradetable{${1:numrows}}[${2:type%keyvals}]"
+      "snippet": "multirowbonusgradetable{${1:numrows}}[${2:type}]"
     },
     {
       "name": "multirowbonuspointtable",
@@ -989,7 +989,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "multirowbonuspointtable",
-      "snippet": "multirowbonuspointtable{${1:numrows}}[${2:type%keyvals}]"
+      "snippet": "multirowbonuspointtable{${1:numrows}}[${2:type}]"
     },
     {
       "name": "multirowcombinedgradetable",
@@ -1001,7 +1001,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "multirowcombinedgradetable",
-      "snippet": "multirowcombinedgradetable{${1:numrows}}[${2:type%keyvals}]"
+      "snippet": "multirowcombinedgradetable{${1:numrows}}[${2:type}]"
     },
     {
       "name": "multirowcombinedpointtable",
@@ -1013,7 +1013,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "multirowcombinedpointtable",
-      "snippet": "multirowcombinedpointtable{${1:numrows}}[${2:type%keyvals}]"
+      "snippet": "multirowcombinedpointtable{${1:numrows}}[${2:type}]"
     },
     {
       "name": "multirowgradetable",
@@ -1025,7 +1025,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "multirowgradetable",
-      "snippet": "multirowgradetable{${1:numrows}}[${2:type%keyvals}]"
+      "snippet": "multirowgradetable{${1:numrows}}[${2:type}]"
     },
     {
       "name": "multirowpartialbonusgradetable",
@@ -1037,7 +1037,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "multirowpartialbonusgradetable",
-      "snippet": "multirowpartialbonusgradetable{${1:numrows}}{${2:range name}}[${3:type%keyvals}]"
+      "snippet": "multirowpartialbonusgradetable{${1:numrows}}{${2:range name}}[${3:type}]"
     },
     {
       "name": "multirowpartialbonuspointtable",
@@ -1049,7 +1049,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "multirowpartialbonuspointtable",
-      "snippet": "multirowpartialbonuspointtable{${1:numrows}}{${2:range name}}[${3:type%keyvals}]"
+      "snippet": "multirowpartialbonuspointtable{${1:numrows}}{${2:range name}}[${3:type}]"
     },
     {
       "name": "multirowpartialcombinedgradetable",
@@ -1061,7 +1061,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "multirowpartialcombinedgradetable",
-      "snippet": "multirowpartialcombinedgradetable{${1:numrows}}{${2:rangename}}[${3:type%keyvals}]"
+      "snippet": "multirowpartialcombinedgradetable{${1:numrows}}{${2:rangename}}[${3:type}]"
     },
     {
       "name": "multirowpartialcombinedpointtable",
@@ -1073,7 +1073,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "multirowpartialcombinedpointtable",
-      "snippet": "multirowpartialcombinedpointtable{${1:numrows}}{${2:rangename}}[${3:type%keyvals}]"
+      "snippet": "multirowpartialcombinedpointtable{${1:numrows}}{${2:rangename}}[${3:type}]"
     },
     {
       "name": "multirowpartialgradetable",
@@ -1085,7 +1085,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "multirowpartialgradetable",
-      "snippet": "multirowpartialgradetable{${1:numrows}}{${2:range name}}[${3:type%keyvals}]"
+      "snippet": "multirowpartialgradetable{${1:numrows}}{${2:range name}}[${3:type}]"
     },
     {
       "name": "multirowpartialpointtable",
@@ -1097,7 +1097,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "multirowpartialpointtable",
-      "snippet": "multirowpartialpointtable{${1:numrows}}{${2:range name}}[${3:type%keyvals}]"
+      "snippet": "multirowpartialpointtable{${1:numrows}}{${2:range name}}[${3:type}]"
     },
     {
       "name": "multirowpointtable",
@@ -1109,7 +1109,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "multirowpointtable",
-      "snippet": "multirowpointtable{${1:numrows}}[${2:type%keyvals}]"
+      "snippet": "multirowpointtable{${1:numrows}}[${2:type}]"
     },
     {
       "name": "noaddpoints"
@@ -1248,7 +1248,7 @@
     },
     {
       "name": "oddeven",
-      "snippet": "oddeven{${1:odd text%text}}{${2:even text%text}}"
+      "snippet": "oddeven{${1:odd text}}{${2:even text}}"
     },
     {
       "name": "part"
@@ -1271,7 +1271,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "partialbonusgradetable",
-      "snippet": "partialbonusgradetable{${1:range name}}[${2:h or v}][${3:type%keyvals}]"
+      "snippet": "partialbonusgradetable{${1:range name}}[${2:h or v}][${3:type}]"
     },
     {
       "name": "partialbonuspointtable",
@@ -1287,7 +1287,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "partialbonuspointtable",
-      "snippet": "partialbonuspointtable{${1:range name}}[${2:h or v}][${3:type%keyvals}]"
+      "snippet": "partialbonuspointtable{${1:range name}}[${2:h or v}][${3:type}]"
     },
     {
       "name": "partialcombinedgradetable",
@@ -1303,7 +1303,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "partialcombinedgradetable",
-      "snippet": "partialcombinedgradetable{${1:range name}}[${2:h or v}][${3:type%keyvals}]"
+      "snippet": "partialcombinedgradetable{${1:range name}}[${2:h or v}][${3:type}]"
     },
     {
       "name": "partialcombinedpointtable",
@@ -1319,7 +1319,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "partialcombinedpointtable",
-      "snippet": "partialcombinedpointtable{${1:range name}}[${2:h or v}][${3:type%keyvals}]"
+      "snippet": "partialcombinedpointtable{${1:range name}}[${2:h or v}][${3:type}]"
     },
     {
       "name": "partialgradetable",
@@ -1335,7 +1335,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "partialgradetable",
-      "snippet": "partialgradetable{${1:range name}}[${2:h or v}][${3:type%keyvals}]"
+      "snippet": "partialgradetable{${1:range name}}[${2:h or v}][${3:type}]"
     },
     {
       "name": "partialpointtable",
@@ -1351,7 +1351,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "partialpointtable",
-      "snippet": "partialpointtable{${1:range name}}[${2:h or v}][${3:type%keyvals}]"
+      "snippet": "partialpointtable{${1:range name}}[${2:h or v}][${3:type}]"
     },
     {
       "name": "partlabel",
@@ -1371,7 +1371,7 @@
     },
     {
       "name": "pointpoints",
-      "snippet": "pointpoints{${1:singular text%text}}{${2:plural text%text}}"
+      "snippet": "pointpoints{${1:singular text}}{${2:plural text}}"
     },
     {
       "name": "points"
@@ -1420,7 +1420,7 @@
         "\\gradetable,\\multirowgradetable,\\multicolumngradetable,\\pointtable,\\multirowpointtable,\\multicolumnpointtable,\\partialgradetable,\\partialpointtable,\\multirowpartialgradetable,\\multirowpartialpointtable,\\multicolumnpartialgradetable,\\multicolumnpartialpointtable,\\bonusgradetable,\\bonuspointtable,\\combinedgradetable,\\combinedpointtable,\\multicolumnbonusgradetable,\\multicolumnbonuspointtable,\\multicolumncombinedgradetable,\\multicolumncombinedpointtable,\\multicolumnpartialbonusgradetable,\\multicolumnpartialbonuspointtable,\\multicolumnpartialcombinedgradetable,\\multicolumnpartialcombinedpointtable,\\multirowbonusgradetable,\\multirowbonuspointtable,\\multirowcombinedgradetable,\\multirowcombinedpointtable,\\multirowpartialbonusgradetable,\\multirowpartialbonuspointtable,\\multirowpartialcombinedgradetable,\\multirowpartialcombinedpointtable,\\partialbonusgradetable,\\partialbonuspointtable,\\partialcombinedgradetable,\\partialcombinedpointtable"
       ],
       "name": "pointtable",
-      "snippet": "pointtable[${1:h or v}][${2:type%keyvals}]"
+      "snippet": "pointtable[${1:h or v}][${2:type}]"
     },
     {
       "name": "printanswers"
@@ -1458,7 +1458,7 @@
     },
     {
       "name": "rfoot",
-      "snippet": "rfoot[${2:first page text%text}]{${1:text}}"
+      "snippet": "rfoot[${2:first page text}]{${1:text}}"
     },
     {
       "name": "rfoot",
@@ -1466,7 +1466,7 @@
     },
     {
       "name": "rhead",
-      "snippet": "rhead[${2:first page text%text}]{${1:text}}"
+      "snippet": "rhead[${2:first page text}]{${1:text}}"
     },
     {
       "name": "rhead",
@@ -1478,14 +1478,14 @@
     },
     {
       "name": "runningfooter",
-      "snippet": "runningfooter{${1:left%text}}{${2:center%text}}{${3:right%text}}"
+      "snippet": "runningfooter{${1:left}}{${2:center}}{${3:right}}"
     },
     {
       "name": "runningfootrule"
     },
     {
       "name": "runningheader",
-      "snippet": "runningheader{${1:left%text}}{${2:center%text}}{${3:right%text}}"
+      "snippet": "runningheader{${1:left}}{${2:center}}{${3:right}}"
     },
     {
       "name": "runningheadrule"
@@ -1580,11 +1580,11 @@
     },
     {
       "name": "titledquestion",
-      "snippet": "titledquestion{${1:title%text}}"
+      "snippet": "titledquestion{${1:title}}"
     },
     {
       "name": "titledquestion",
-      "snippet": "titledquestion{${1:title%text}}[${2:points}]"
+      "snippet": "titledquestion{${1:title}}[${2:points}]"
     },
     {
       "name": "totalbonuspoints"

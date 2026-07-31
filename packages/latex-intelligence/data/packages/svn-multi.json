@@ -152,7 +152,7 @@
     },
     {
       "name": "svnconsidergraphic",
-      "snippet": "svnconsidergraphic{${1:file path/name%file}}"
+      "snippet": "svnconsidergraphic{${1:file path/name}}"
     },
     {
       "name": "svndate"
@@ -217,7 +217,7 @@
     },
     {
       "name": "svng",
-      "snippet": "svng{${1:group name}}{${2:key%plain}}"
+      "snippet": "svng{${1:group name}}{${2:key}}"
     },
     {
       "name": "svnglobalrow",
@@ -252,7 +252,7 @@
     },
     {
       "name": "svnignoregraphic",
-      "snippet": "svnignoregraphic{${1:file path/name%file}}"
+      "snippet": "svnignoregraphic{${1:file path/name}}"
     },
     {
       "name": "svnkw",
@@ -319,7 +319,7 @@
     },
     {
       "name": "svntabfile",
-      "snippet": "svntabfile{${1:nesting level}}{${2:file path/name%file}}"
+      "snippet": "svntabfile{${1:nesting level}}{${2:file path/name}}"
     },
     {
       "name": "svntabglobal",

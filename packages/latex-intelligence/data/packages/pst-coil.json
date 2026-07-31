@@ -10,11 +10,11 @@
   "macros": [
     {
       "name": "nccoil",
-      "snippet": "nccoil[${3:options%keyvals}]{${1:nodeA}}{${2:nodeB}}"
+      "snippet": "nccoil[${3:options}]{${1:nodeA}}{${2:nodeB}}"
     },
     {
       "name": "nccoil",
-      "snippet": "nccoil[${4:options%keyvals}]{${1:arrows}}{${2:nodeA}}{${3:nodeB}}"
+      "snippet": "nccoil[${4:options}]{${1:arrows}}{${2:nodeA}}{${3:nodeB}}"
     },
     {
       "name": "nccoil",
@@ -26,11 +26,11 @@
     },
     {
       "name": "nccoil*",
-      "snippet": "nccoil*[${3:options%keyvals}]{${1:nodeA}}{${2:nodeB}}"
+      "snippet": "nccoil*[${3:options}]{${1:nodeA}}{${2:nodeB}}"
     },
     {
       "name": "nccoil*",
-      "snippet": "nccoil*[${4:options%keyvals}]{${1:arrows}}{${2:nodeA}}{${3:nodeB}}"
+      "snippet": "nccoil*[${4:options}]{${1:arrows}}{${2:nodeA}}{${3:nodeB}}"
     },
     {
       "name": "nccoil*",
@@ -42,11 +42,11 @@
     },
     {
       "name": "ncsin",
-      "snippet": "ncsin[${3:options%keyvals}]{${1:nodeA}}{${2:nodeB}}"
+      "snippet": "ncsin[${3:options}]{${1:nodeA}}{${2:nodeB}}"
     },
     {
       "name": "ncsin",
-      "snippet": "ncsin[${4:options%keyvals}]{${1:arrows}}{${2:nodeA}}{${3:nodeB}}"
+      "snippet": "ncsin[${4:options}]{${1:arrows}}{${2:nodeA}}{${3:nodeB}}"
     },
     {
       "name": "ncsin",
@@ -58,11 +58,11 @@
     },
     {
       "name": "ncsin*",
-      "snippet": "ncsin*[${3:options%keyvals}]{${1:nodeA}}{${2:nodeB}}"
+      "snippet": "ncsin*[${3:options}]{${1:nodeA}}{${2:nodeB}}"
     },
     {
       "name": "ncsin*",
-      "snippet": "ncsin*[${4:options%keyvals}]{${1:arrows}}{${2:nodeA}}{${3:nodeB}}"
+      "snippet": "ncsin*[${4:options}]{${1:arrows}}{${2:nodeA}}{${3:nodeB}}"
     },
     {
       "name": "ncsin*",
@@ -74,11 +74,11 @@
     },
     {
       "name": "nczigzag",
-      "snippet": "nczigzag[${3:options%keyvals}]{${1:nodeA}}{${2:nodeB}}"
+      "snippet": "nczigzag[${3:options}]{${1:nodeA}}{${2:nodeB}}"
     },
     {
       "name": "nczigzag",
-      "snippet": "nczigzag[${4:options%keyvals}]{${1:arrows}}{${2:nodeA}}{${3:nodeB}}"
+      "snippet": "nczigzag[${4:options}]{${1:arrows}}{${2:nodeA}}{${3:nodeB}}"
     },
     {
       "name": "nczigzag",
@@ -90,11 +90,11 @@
     },
     {
       "name": "nczigzag*",
-      "snippet": "nczigzag*[${3:options%keyvals}]{${1:nodeA}}{${2:nodeB}}"
+      "snippet": "nczigzag*[${3:options}]{${1:nodeA}}{${2:nodeB}}"
     },
     {
       "name": "nczigzag*",
-      "snippet": "nczigzag*[${4:options%keyvals}]{${1:arrows}}{${2:nodeA}}{${3:nodeB}}"
+      "snippet": "nczigzag*[${4:options}]{${1:arrows}}{${2:nodeA}}{${3:nodeB}}"
     },
     {
       "name": "nczigzag*",
@@ -106,11 +106,11 @@
     },
     {
       "name": "pccoil",
-      "snippet": "pccoil[${3:options%keyvals}]{${1:nodeA}}{${2:nodeB}}"
+      "snippet": "pccoil[${3:options}]{${1:nodeA}}{${2:nodeB}}"
     },
     {
       "name": "pccoil",
-      "snippet": "pccoil[${4:options%keyvals}]{${1:arrows}}{${2:nodeA}}{${3:nodeB}}"
+      "snippet": "pccoil[${4:options}]{${1:arrows}}{${2:nodeA}}{${3:nodeB}}"
     },
     {
       "name": "pccoil",
@@ -122,11 +122,11 @@
     },
     {
       "name": "pccoil*",
-      "snippet": "pccoil*[${3:options%keyvals}]{${1:nodeA}}{${2:nodeB}}"
+      "snippet": "pccoil*[${3:options}]{${1:nodeA}}{${2:nodeB}}"
     },
     {
       "name": "pccoil*",
-      "snippet": "pccoil*[${4:options%keyvals}]{${1:arrows}}{${2:nodeA}}{${3:nodeB}}"
+      "snippet": "pccoil*[${4:options}]{${1:arrows}}{${2:nodeA}}{${3:nodeB}}"
     },
     {
       "name": "pccoil*",
@@ -138,11 +138,11 @@
     },
     {
       "name": "pcsin",
-      "snippet": "pcsin[${3:options%keyvals}]{${1:nodeA}}{${2:nodeB}}"
+      "snippet": "pcsin[${3:options}]{${1:nodeA}}{${2:nodeB}}"
     },
     {
       "name": "pcsin",
-      "snippet": "pcsin[${4:options%keyvals}]{${1:arrows}}{${2:nodeA}}{${3:nodeB}}"
+      "snippet": "pcsin[${4:options}]{${1:arrows}}{${2:nodeA}}{${3:nodeB}}"
     },
     {
       "name": "pcsin",
@@ -154,11 +154,11 @@
     },
     {
       "name": "pcsin*",
-      "snippet": "pcsin*[${3:options%keyvals}]{${1:nodeA}}{${2:nodeB}}"
+      "snippet": "pcsin*[${3:options}]{${1:nodeA}}{${2:nodeB}}"
     },
     {
       "name": "pcsin*",
-      "snippet": "pcsin*[${4:options%keyvals}]{${1:arrows}}{${2:nodeA}}{${3:nodeB}}"
+      "snippet": "pcsin*[${4:options}]{${1:arrows}}{${2:nodeA}}{${3:nodeB}}"
     },
     {
       "name": "pcsin*",
@@ -170,11 +170,11 @@
     },
     {
       "name": "pczigzag",
-      "snippet": "pczigzag[${3:options%keyvals}]{${1:nodeA}}{${2:nodeB}}"
+      "snippet": "pczigzag[${3:options}]{${1:nodeA}}{${2:nodeB}}"
     },
     {
       "name": "pczigzag",
-      "snippet": "pczigzag[${4:options%keyvals}]{${1:arrows}}{${2:nodeA}}{${3:nodeB}}"
+      "snippet": "pczigzag[${4:options}]{${1:arrows}}{${2:nodeA}}{${3:nodeB}}"
     },
     {
       "name": "pczigzag",
@@ -186,11 +186,11 @@
     },
     {
       "name": "pczigzag*",
-      "snippet": "pczigzag*[${3:options%keyvals}]{${1:nodeA}}{${2:nodeB}}"
+      "snippet": "pczigzag*[${3:options}]{${1:nodeA}}{${2:nodeB}}"
     },
     {
       "name": "pczigzag*",
-      "snippet": "pczigzag*[${4:options%keyvals}]{${1:arrows}}{${2:nodeA}}{${3:nodeB}}"
+      "snippet": "pczigzag*[${4:options}]{${1:arrows}}{${2:nodeA}}{${3:nodeB}}"
     },
     {
       "name": "pczigzag*",
@@ -206,11 +206,11 @@
     },
     {
       "name": "psAltCoil",
-      "snippet": "psAltCoil[${1:options%keyvals}](${2:x0},${3:y0})(${4:x1},${5:y1})"
+      "snippet": "psAltCoil[${1:options}](${2:x0},${3:y0})(${4:x1},${5:y1})"
     },
     {
       "name": "psAltCoil",
-      "snippet": "psAltCoil[${2:options%keyvals}]{${1:arrows}}(${3:x0},${4:y0})(${5:x1},${6:y1})"
+      "snippet": "psAltCoil[${2:options}]{${1:arrows}}(${3:x0},${4:y0})(${5:x1},${6:y1})"
     },
     {
       "name": "psAltCoil",
@@ -218,7 +218,7 @@
     },
     {
       "name": "psCoil",
-      "snippet": "psCoil[${3:options%keyvals}]{${1:angle1}}{${2:angle2}}"
+      "snippet": "psCoil[${3:options}]{${1:angle1}}{${2:angle2}}"
     },
     {
       "name": "psCoil",
@@ -226,7 +226,7 @@
     },
     {
       "name": "psCoil*",
-      "snippet": "psCoil*[${3:options%keyvals}]{${1:angle1}}{${2:angle2}}"
+      "snippet": "psCoil*[${3:options}]{${1:angle1}}{${2:angle2}}"
     },
     {
       "name": "psCoil*",
@@ -238,11 +238,11 @@
     },
     {
       "name": "pscoil",
-      "snippet": "pscoil[${1:options%keyvals}](${2:x0},${3:y0})(${4:x1},${5:y1})"
+      "snippet": "pscoil[${1:options}](${2:x0},${3:y0})(${4:x1},${5:y1})"
     },
     {
       "name": "pscoil",
-      "snippet": "pscoil[${2:options%keyvals}]{${1:arrows}}(${3:x0},${4:y0})(${5:x1},${6:y1})"
+      "snippet": "pscoil[${2:options}]{${1:arrows}}(${3:x0},${4:y0})(${5:x1},${6:y1})"
     },
     {
       "name": "pscoil",
@@ -254,11 +254,11 @@
     },
     {
       "name": "pscoil*",
-      "snippet": "pscoil*[${1:options%keyvals}](${2:x0},${3:y0})(${4:x1},${5:y1})"
+      "snippet": "pscoil*[${1:options}](${2:x0},${3:y0})(${4:x1},${5:y1})"
     },
     {
       "name": "pscoil*",
-      "snippet": "pscoil*[${2:options%keyvals}]{${1:arrows}}(${3:x0},${4:y0})(${5:x1},${6:y1})"
+      "snippet": "pscoil*[${2:options}]{${1:arrows}}(${3:x0},${4:y0})(${5:x1},${6:y1})"
     },
     {
       "name": "pscoil*",
@@ -270,11 +270,11 @@
     },
     {
       "name": "pssin",
-      "snippet": "pssin[${1:options%keyvals}](${2:x0},${3:y0})(${4:x1},${5:y1})"
+      "snippet": "pssin[${1:options}](${2:x0},${3:y0})(${4:x1},${5:y1})"
     },
     {
       "name": "pssin",
-      "snippet": "pssin[${2:options%keyvals}]{${1:arrows}}(${3:x0},${4:y0})(${5:x1},${6:y1})"
+      "snippet": "pssin[${2:options}]{${1:arrows}}(${3:x0},${4:y0})(${5:x1},${6:y1})"
     },
     {
       "name": "pssin",
@@ -286,11 +286,11 @@
     },
     {
       "name": "pssin*",
-      "snippet": "pssin*[${1:options%keyvals}](${2:x0},${3:y0})(${4:x1},${5:y1})"
+      "snippet": "pssin*[${1:options}](${2:x0},${3:y0})(${4:x1},${5:y1})"
     },
     {
       "name": "pssin*",
-      "snippet": "pssin*[${2:options%keyvals}]{${1:arrows}}(${3:x0},${4:y0})(${5:x1},${6:y1})"
+      "snippet": "pssin*[${2:options}]{${1:arrows}}(${3:x0},${4:y0})(${5:x1},${6:y1})"
     },
     {
       "name": "pssin*",
@@ -302,11 +302,11 @@
     },
     {
       "name": "pszigzag",
-      "snippet": "pszigzag[${1:options%keyvals}](${2:x0},${3:y0})(${4:x1},${5:y1})"
+      "snippet": "pszigzag[${1:options}](${2:x0},${3:y0})(${4:x1},${5:y1})"
     },
     {
       "name": "pszigzag",
-      "snippet": "pszigzag[${2:options%keyvals}]{${1:arrows}}(${3:x0},${4:y0})(${5:x1},${6:y1})"
+      "snippet": "pszigzag[${2:options}]{${1:arrows}}(${3:x0},${4:y0})(${5:x1},${6:y1})"
     },
     {
       "name": "pszigzag",
@@ -318,11 +318,11 @@
     },
     {
       "name": "pszigzag*",
-      "snippet": "pszigzag*[${1:options%keyvals}](${2:x0},${3:y0})(${4:x1},${5:y1})"
+      "snippet": "pszigzag*[${1:options}](${2:x0},${3:y0})(${4:x1},${5:y1})"
     },
     {
       "name": "pszigzag*",
-      "snippet": "pszigzag*[${2:options%keyvals}]{${1:arrows}}(${3:x0},${4:y0})(${5:x1},${6:y1})"
+      "snippet": "pszigzag*[${2:options}]{${1:arrows}}(${3:x0},${4:y0})(${5:x1},${6:y1})"
     },
     {
       "name": "pszigzag*",

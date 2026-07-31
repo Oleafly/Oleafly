@@ -6,27 +6,27 @@
   "macros": [
     {
       "name": "import",
-      "snippet": "import{${1:full path%definition}}{${2:file}}"
+      "snippet": "import{${1:full path}}{${2:file}}"
     },
     {
       "name": "includefrom",
-      "snippet": "includefrom{${1:full path%definition}}{${2:file}}"
+      "snippet": "includefrom{${1:full path}}{${2:file}}"
     },
     {
       "name": "inputfrom",
-      "snippet": "inputfrom{${1:full path%definition}}{${2:file}}"
+      "snippet": "inputfrom{${1:full path}}{${2:file}}"
     },
     {
       "name": "subimport",
-      "snippet": "subimport{${1:relative path%definition}}{${2:file}}"
+      "snippet": "subimport{${1:relative path}}{${2:file}}"
     },
     {
       "name": "subincludefrom*",
-      "snippet": "subincludefrom*{${1:relative path%definition}}{${2:file}}"
+      "snippet": "subincludefrom*{${1:relative path}}{${2:file}}"
     },
     {
       "name": "subinputfrom",
-      "snippet": "subinputfrom{${1:relative path%definition}}{${2:file}}"
+      "snippet": "subinputfrom{${1:relative path}}{${2:file}}"
     }
   ]
 }

@@ -220,7 +220,7 @@
     },
     {
       "name": "SetLipsumText",
-      "snippet": "SetLipsumText{${1:lipsum text definition filename%file}}",
+      "snippet": "SetLipsumText{${1:lipsum text definition filename}}",
       "unusual": true
     },
     {

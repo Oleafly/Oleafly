@@ -923,7 +923,7 @@
         "\\RestyleAlgo"
       ],
       "name": "RestyleAlgo",
-      "snippet": "RestyleAlgo{${1:style%keyvals}}"
+      "snippet": "RestyleAlgo{${1:style}}"
     },
     {
       "name": "Resultado",
@@ -1082,7 +1082,7 @@
     },
     {
       "name": "SetAlgoRefName",
-      "snippet": "SetAlgoRefName{${1:text%plain}}"
+      "snippet": "SetAlgoRefName{${1:text}}"
     },
     {
       "name": "SetAlgoRefRelativeSize",
@@ -1140,7 +1140,7 @@
     },
     {
       "name": "SetInd",
-      "snippet": "SetInd{${1:before space%l}}{${2:after space%l}}"
+      "snippet": "SetInd{${1:before space}}{${2:after space}}"
     },
     {
       "name": "SetKw",
@@ -1268,7 +1268,7 @@
     },
     {
       "name": "ShowLnLabel",
-      "snippet": "ShowLnLabel{${1:text%plain}}",
+      "snippet": "ShowLnLabel{${1:text}}",
       "unusual": true
     },
     {
@@ -2014,7 +2014,7 @@
     },
     {
       "name": "lnlset",
-      "snippet": "lnlset{${1:text%plain}}{${2:label}}",
+      "snippet": "lnlset{${1:text}}{${2:label}}",
       "unusual": true
     },
     {
@@ -2031,7 +2031,7 @@
     },
     {
       "name": "nlset",
-      "snippet": "nlset{${1:text%plain}}"
+      "snippet": "nlset{${1:text}}"
     },
     {
       "name": "procedureautorefname",
@@ -2075,32 +2075,32 @@
     },
     {
       "name": "tcc",
-      "snippet": "tcc{${1:comments%text}}",
+      "snippet": "tcc{${1:comments}}",
       "unusual": true
     },
     {
       "name": "tcc*",
-      "snippet": "tcc*[${2:alignment}]{${1:comments%text}}",
+      "snippet": "tcc*[${2:alignment}]{${1:comments}}",
       "unusual": true
     },
     {
       "name": "tcc*",
-      "snippet": "tcc*{${1:comments%text}}",
+      "snippet": "tcc*{${1:comments}}",
       "unusual": true
     },
     {
       "name": "tcp",
-      "snippet": "tcp{${1:comments%text}}",
+      "snippet": "tcp{${1:comments}}",
       "unusual": true
     },
     {
       "name": "tcp*",
-      "snippet": "tcp*[${2:alignment}]{${1:comments%text}}",
+      "snippet": "tcp*[${2:alignment}]{${1:comments}}",
       "unusual": true
     },
     {
       "name": "tcp*",
-      "snippet": "tcp*{${1:comments%text}}",
+      "snippet": "tcp*{${1:comments}}",
       "unusual": true
     },
     {

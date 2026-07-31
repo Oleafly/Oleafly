@@ -39,7 +39,7 @@
         "\\foreignlanguage,\\begin{otherlanguage*}"
       ],
       "name": "otherlanguage*",
-      "snippet": "[${2:options%keyvals}]{${1:language}}"
+      "snippet": "[${2:options}]{${1:language}}"
     },
     {
       "name": "otherlanguage*",
@@ -977,7 +977,7 @@
     },
     {
       "name": "FBWarning",
-      "snippet": "FBWarning{${1:message%text}}",
+      "snippet": "FBWarning{${1:message}}",
       "unusual": true
     },
     {
@@ -1156,7 +1156,7 @@
     },
     {
       "name": "MathReal",
-      "snippet": "MathReal{${1:képlet tizedestörtekkel%formula}}"
+      "snippet": "MathReal{${1:képlet tizedestörtekkel}}"
     },
     {
       "name": "Mk",
@@ -1467,7 +1467,7 @@
     },
     {
       "name": "ap",
-      "snippet": "ap{${1:text%plain}}"
+      "snippet": "ap{${1:text}}"
     },
     {
       "name": "apageref",
@@ -1585,11 +1585,11 @@
     },
     {
       "name": "babelcalendar",
-      "snippet": "babelcalendar[${5:YYYY-MM-DD}]{${1:calendar}}{${2:year-macro%cmd}}{${3:month-macro%cmd}}{${4:day-macro%cmd}}"
+      "snippet": "babelcalendar[${5:YYYY-MM-DD}]{${1:calendar}}{${2:year-macro}}{${3:month-macro}}{${4:day-macro}}"
     },
     {
       "name": "babelcalendar",
-      "snippet": "babelcalendar{${1:calendar}}{${2:year-macro%cmd}}{${3:month-macro%cmd}}{${4:day-macro%cmd}}"
+      "snippet": "babelcalendar{${1:calendar}}{${2:year-macro}}{${3:month-macro}}{${4:day-macro}}"
     },
     {
       "name": "babelcharclass",
@@ -1612,7 +1612,7 @@
         "\\babelensure"
       ],
       "name": "babelensure",
-      "snippet": "babelensure[${2:options%keyvals}]{${1:language}}"
+      "snippet": "babelensure[${2:options}]{${1:language}}"
     },
     {
       "name": "babelensure",
@@ -1624,7 +1624,7 @@
         "\\babelfont#c"
       ],
       "name": "babelfont",
-      "snippet": "babelfont[${3:lang1,lang2,...}]{${1:font_family}}[${4:font_options%keyvals}]{${2:font_name}}"
+      "snippet": "babelfont[${3:lang1,lang2,...}]{${1:font_family}}[${4:font_options}]{${2:font_name}}"
     },
     {
       "name": "babelfont",
@@ -1636,7 +1636,7 @@
         "\\babelfont#c"
       ],
       "name": "babelfont",
-      "snippet": "babelfont{${1:font_family}}[${3:font_options%keyvals}]{${2:font_name}}"
+      "snippet": "babelfont{${1:font_family}}[${3:font_options}]{${2:font_name}}"
     },
     {
       "name": "babelfont",
@@ -1706,7 +1706,7 @@
         "\\babelinterchar"
       ],
       "name": "babelinterchar",
-      "snippet": "babelinterchar[${5:options%keyvals}]{${1:locale}}{${2:class-first}}{${3:class-second}}{${4:code}}",
+      "snippet": "babelinterchar[${5:options}]{${1:locale}}{${2:class-first}}{${3:class-second}}{${4:code}}",
       "unusual": true
     },
     {
@@ -1734,7 +1734,7 @@
         "\\babelposthyphenation#c,\\babelprehyphenation#c"
       ],
       "name": "babelposthyphenation",
-      "snippet": "babelposthyphenation[${4:options%keyvals}]{${1:hypenrules-name}}{${2:lua-pattern}}{${3:replacement}}",
+      "snippet": "babelposthyphenation[${4:options}]{${1:hypenrules-name}}{${2:lua-pattern}}{${3:replacement}}",
       "unusual": true
     },
     {
@@ -1748,7 +1748,7 @@
         "\\babelposthyphenation#c,\\babelprehyphenation#c"
       ],
       "name": "babelprehyphenation",
-      "snippet": "babelprehyphenation[${4:options%keyvals}]{${1:locale-name}}{${2:lua-pattern}}{${3:replacement}}",
+      "snippet": "babelprehyphenation[${4:options}]{${1:locale-name}}{${2:lua-pattern}}{${3:replacement}}",
       "unusual": true
     },
     {
@@ -1762,7 +1762,7 @@
         "\\babelprovide#c"
       ],
       "name": "babelprovide",
-      "snippet": "babelprovide[${2:options%keyvals}]{${1:language}}"
+      "snippet": "babelprovide[${2:options}]{${1:language}}"
     },
     {
       "name": "babelshorthand",
@@ -3019,7 +3019,7 @@
         "\\enablelocaletransform,\\disablelocaletransform"
       ],
       "name": "disablelocaletransform",
-      "snippet": "disablelocaletransform{${1:transform%keyvals}}"
+      "snippet": "disablelocaletransform{${1:transform}}"
     },
     {
       "name": "dj"
@@ -3043,7 +3043,7 @@
     },
     {
       "name": "editorfootnote",
-      "snippet": "editorfootnote{${1:lábjegyzet-szöveg%text}}"
+      "snippet": "editorfootnote{${1:lábjegyzet-szöveg}}"
     },
     {
       "name": "eeob"
@@ -3070,7 +3070,7 @@
         "\\enablelocaletransform,\\disablelocaletransform"
       ],
       "name": "enablelocaletransform",
-      "snippet": "enablelocaletransform{${1:transform%keyvals}}"
+      "snippet": "enablelocaletransform{${1:transform}}"
     },
     {
       "name": "enclname",
@@ -3511,7 +3511,7 @@
         "\\footnotestyle"
       ],
       "name": "footnotestyle",
-      "snippet": "footnotestyle{${1:előírás%keyvals}}"
+      "snippet": "footnotestyle{${1:előírás}}"
     },
     {
       "keyPos": 0,
@@ -3519,7 +3519,7 @@
         "\\foreignlanguage,\\begin{otherlanguage*}"
       ],
       "name": "foreignlanguage",
-      "snippet": "foreignlanguage[${3:options%keyvals}]{${1:language}}{${2:text}}"
+      "snippet": "foreignlanguage[${3:options}]{${1:language}}{${2:text}}"
     },
     {
       "name": "foreignlanguage",
@@ -3551,7 +3551,7 @@
         "\\frenchsetup,\\frenchbsetup"
       ],
       "name": "frenchsetup",
-      "snippet": "frenchsetup{${1:options%keyvals}}"
+      "snippet": "frenchsetup{${1:options}}"
     },
     {
       "name": "frenchtoday"
@@ -3692,11 +3692,11 @@
     },
     {
       "name": "headingfootnote",
-      "snippet": "headingfootnote[${2:szám}]{${1:lábjegyzet-szöveg%text}}"
+      "snippet": "headingfootnote[${2:szám}]{${1:lábjegyzet-szöveg}}"
     },
     {
       "name": "headingfootnote",
-      "snippet": "headingfootnote{${1:lábjegyzet-szöveg%text}}"
+      "snippet": "headingfootnote{${1:lábjegyzet-szöveg}}"
     },
     {
       "name": "headpagename",
@@ -4023,7 +4023,7 @@
         "\\localedate"
       ],
       "name": "localedate",
-      "snippet": "localedate[${4:options%keyvals}]{${1:year}}{${2:month}}{${3:day}}"
+      "snippet": "localedate[${4:options}]{${1:year}}{${2:month}}{${3:day}}"
     },
     {
       "name": "localedate",
@@ -4039,7 +4039,7 @@
         "\\localeinfo#c,\\localeinfo*#c"
       ],
       "name": "localeinfo",
-      "snippet": "localeinfo{${1:field%keyvals}}"
+      "snippet": "localeinfo{${1:field}}"
     },
     {
       "keyPos": 0,
@@ -4047,7 +4047,7 @@
         "\\localeinfo#c,\\localeinfo*#c"
       ],
       "name": "localeinfo*",
-      "snippet": "localeinfo*{${1:field%keyvals}}"
+      "snippet": "localeinfo*{${1:field}}"
     },
     {
       "name": "localename"
@@ -4659,7 +4659,7 @@
     },
     {
       "name": "ped",
-      "snippet": "ped{${1:text%plain}}"
+      "snippet": "ped{${1:text}}"
     },
     {
       "name": "pempvet"
@@ -4929,7 +4929,7 @@
     },
     {
       "name": "spanishdecimal",
-      "snippet": "spanishdecimal{${1:math%formula}}"
+      "snippet": "spanishdecimal{${1:math}}"
     },
     {
       "name": "spanishenclname",
@@ -5358,7 +5358,7 @@
     },
     {
       "name": "textormath",
-      "snippet": "textormath{${1:text code}}{${2:math code%formula}}",
+      "snippet": "textormath{${1:text code}}{${2:math code}}",
       "unusual": true
     },
     {
@@ -5417,7 +5417,7 @@
     },
     {
       "name": "textqq",
-      "snippet": "textqq{${1:szövegközti idézet%text}}"
+      "snippet": "textqq{${1:szövegközti idézet}}"
     },
     {
       "name": "textquotedbl"

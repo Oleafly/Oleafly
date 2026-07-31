@@ -312,30 +312,30 @@
     },
     {
       "name": "DeclareBinaryPrefix",
-      "snippet": "DeclareBinaryPrefix{${1:prefix macro%cmd}}{${2:symbol}}{${3:power of 2}}",
+      "snippet": "DeclareBinaryPrefix{${1:prefix macro}}{${2:symbol}}{${3:power of 2}}",
       "unusual": true
     },
     {
       "name": "DeclareSIPostPower",
-      "snippet": "DeclareSIPostPower{${1:power macro%cmd}}{${2:number}}",
+      "snippet": "DeclareSIPostPower{${1:power macro}}{${2:number}}",
       "unusual": true
     },
     {
       "name": "DeclareSIPower",
-      "snippet": "DeclareSIPower{${1:symbol-before%cmd}}{${2:symbol-after%cmd}}{${3:power}}"
+      "snippet": "DeclareSIPower{${1:symbol-before}}{${2:symbol-after}}{${3:power}}"
     },
     {
       "name": "DeclareSIPrePower",
-      "snippet": "DeclareSIPrePower{${1:power macro%cmd}}{${2:number}}",
+      "snippet": "DeclareSIPrePower{${1:power macro}}{${2:number}}",
       "unusual": true
     },
     {
       "name": "DeclareSIPrefix",
-      "snippet": "DeclareSIPrefix{${1:prefix macro%cmd}}{${2:symbol}}{${3:power of 10}}"
+      "snippet": "DeclareSIPrefix{${1:prefix macro}}{${2:symbol}}{${3:power of 10}}"
     },
     {
       "name": "DeclareSIQualifier",
-      "snippet": "DeclareSIQualifier{${1:qualifier%cmd}}{${2:symbol}}"
+      "snippet": "DeclareSIQualifier{${1:qualifier}}{${2:symbol}}"
     },
     {
       "keyPos": 0,
@@ -354,11 +354,11 @@
         "\\sisetup,\\DeclareSIUnit"
       ],
       "name": "DeclareSIUnit",
-      "snippet": "DeclareSIUnit[${3:options%keyvals}]{${1:unit%cmd}}{${2:definition}}"
+      "snippet": "DeclareSIUnit[${3:options}]{${1:unit}}{${2:definition}}"
     },
     {
       "name": "DeclareSIUnit",
-      "snippet": "DeclareSIUnit{${1:unit%cmd}}{${2:definition}}"
+      "snippet": "DeclareSIUnit{${1:unit}}{${2:definition}}"
     },
     {
       "name": "F",
@@ -443,7 +443,7 @@
         "\\sisetup,\\DeclareSIUnit,\\SI,\\SIlist"
       ],
       "name": "SI",
-      "snippet": "SI[${3:options%keyvals}]{${1:value}}[${4:pre-unit%formula}]{${2:unit commands%formula}}",
+      "snippet": "SI[${3:options}]{${1:value}}[${4:pre-unit}]{${2:unit commands}}",
       "unusual": true
     },
     {
@@ -461,17 +461,17 @@
         "\\sisetup,\\DeclareSIUnit,\\SI,\\SIlist"
       ],
       "name": "SI",
-      "snippet": "SI[${3:options%keyvals}]{${1:value}}{${2:unit commands%formula}}",
+      "snippet": "SI[${3:options}]{${1:value}}{${2:unit commands}}",
       "unusual": true
     },
     {
       "name": "SI",
-      "snippet": "SI{${1:value}}[${3:pre-unit%formula}]{${2:unit commands%formula}}",
+      "snippet": "SI{${1:value}}[${3:pre-unit}]{${2:unit commands}}",
       "unusual": true
     },
     {
       "name": "SI",
-      "snippet": "SI{${1:value}}{${2:unit commands%formula}}",
+      "snippet": "SI{${1:value}}{${2:unit commands}}",
       "unusual": true
     },
     {
@@ -490,12 +490,12 @@
         "\\sisetup,\\DeclareSIUnit,\\SI,\\SIlist"
       ],
       "name": "SIlist",
-      "snippet": "SIlist[${3:options%keyvals}]{${1:values}}{${2:unit commands%formula}}",
+      "snippet": "SIlist[${3:options}]{${1:values}}{${2:unit commands}}",
       "unusual": true
     },
     {
       "name": "SIlist",
-      "snippet": "SIlist{${1:values}}{${2:unit commands%formula}}",
+      "snippet": "SIlist{${1:values}}{${2:unit commands}}",
       "unusual": true
     },
     {
@@ -512,12 +512,12 @@
         "\\sisetup,\\DeclareSIUnit,\\SI,\\SIlist,\\SIrange"
       ],
       "name": "SIrange",
-      "snippet": "SIrange[${4:options%keyvals}]{${1:value1}}{${2:value2}}{${3:unit commands%formula}}",
+      "snippet": "SIrange[${4:options}]{${1:value1}}{${2:value2}}{${3:unit commands}}",
       "unusual": true
     },
     {
       "name": "SIrange",
-      "snippet": "SIrange{${1:value1}}{${2:value2}}{${3:unit commands%formula}}",
+      "snippet": "SIrange{${1:value1}}{${2:value2}}{${3:unit commands}}",
       "unusual": true
     },
     {
@@ -624,11 +624,11 @@
         "\\sisetup,\\complexnum,\\complexqty"
       ],
       "name": "complexqty",
-      "snippet": "complexqty[${3:options%keyvals}]{${1:number}}{${2:unit%formula}}"
+      "snippet": "complexqty[${3:options}]{${1:number}}{${2:unit}}"
     },
     {
       "name": "complexqty",
-      "snippet": "complexqty{${1:number}}{${2:unit%formula}}"
+      "snippet": "complexqty{${1:number}}{${2:unit}}"
     },
     {
       "name": "coulomb"
@@ -1071,7 +1071,7 @@
     },
     {
       "name": "of",
-      "snippet": "of{${1:text%plain}}"
+      "snippet": "of{${1:text}}"
     },
     {
       "name": "ohm"
@@ -1133,11 +1133,11 @@
         "\\sisetup,\\DeclareSIUnit,\\qty,\\qtylist,\\qtyproduct,\\qtyrange,\\SI,\\SIlist,\\SIrange"
       ],
       "name": "qty",
-      "snippet": "qty[${3:options%keyvals}]{${1:number}}{${2:unit%formula}}"
+      "snippet": "qty[${3:options}]{${1:number}}{${2:unit}}"
     },
     {
       "name": "qty",
-      "snippet": "qty{${1:number}}{${2:unit%formula}}"
+      "snippet": "qty{${1:number}}{${2:unit}}"
     },
     {
       "keyPos": 0,
@@ -1149,11 +1149,11 @@
         "\\sisetup,\\DeclareSIUnit,\\qty,\\qtylist,\\qtyproduct,\\qtyrange,\\SI,\\SIlist,\\SIrange"
       ],
       "name": "qtylist",
-      "snippet": "qtylist[${3:options%keyvals}]{${1:numbers}}{${2:unit%formula}}"
+      "snippet": "qtylist[${3:options}]{${1:numbers}}{${2:unit}}"
     },
     {
       "name": "qtylist",
-      "snippet": "qtylist{${1:numbers}}{${2:unit%formula}}"
+      "snippet": "qtylist{${1:numbers}}{${2:unit}}"
     },
     {
       "keyPos": 0,
@@ -1165,11 +1165,11 @@
         "\\sisetup,\\DeclareSIUnit,\\qty,\\qtylist,\\qtyproduct,\\qtyrange,\\SI,\\SIlist,\\SIrange"
       ],
       "name": "qtyproduct",
-      "snippet": "qtyproduct[${3:options%keyvals}]{${1:numbers}}{${2:unit%formula}}"
+      "snippet": "qtyproduct[${3:options}]{${1:numbers}}{${2:unit}}"
     },
     {
       "name": "qtyproduct",
-      "snippet": "qtyproduct{${1:numbers}}{${2:unit%formula}}"
+      "snippet": "qtyproduct{${1:numbers}}{${2:unit}}"
     },
     {
       "keyPos": 0,
@@ -1181,11 +1181,11 @@
         "\\sisetup,\\DeclareSIUnit,\\qty,\\qtylist,\\qtyproduct,\\qtyrange,\\SI,\\SIlist,\\SIrange"
       ],
       "name": "qtyrange",
-      "snippet": "qtyrange[${4:options%keyvals}]{${1:number1}}{${2:number2}}{${3:unit%formula}}"
+      "snippet": "qtyrange[${4:options}]{${1:number1}}{${2:number2}}{${3:unit}}"
     },
     {
       "name": "qtyrange",
-      "snippet": "qtyrange{${1:number1}}{${2:number2}}{${3:unit%formula}}"
+      "snippet": "qtyrange{${1:number1}}{${2:number2}}{${3:unit}}"
     },
     {
       "name": "quecto"
@@ -1224,12 +1224,12 @@
         "\\sisetup,\\DeclareSIUnit,\\SI,\\si,\\SIlist,\\SIrange"
       ],
       "name": "si",
-      "snippet": "si[${2:options%keyvals}]{${1:unit%formula}}",
+      "snippet": "si[${2:options}]{${1:unit}}",
       "unusual": true
     },
     {
       "name": "si",
-      "snippet": "si{${1:unit%formula}}",
+      "snippet": "si{${1:unit}}",
       "unusual": true
     },
     {
@@ -1362,11 +1362,11 @@
         "\\sisetup,\\DeclareSIUnit,\\qty,\\qtylist,\\qtyproduct,\\qtyrange,\\unit,\\si"
       ],
       "name": "unit",
-      "snippet": "unit[${2:options%keyvals}]{${1:unit%formula}}"
+      "snippet": "unit[${2:options}]{${1:unit}}"
     },
     {
       "name": "unit",
-      "snippet": "unit{${1:unit%formula}}"
+      "snippet": "unit{${1:unit}}"
     },
     {
       "name": "us",

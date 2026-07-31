@@ -178,7 +178,7 @@
     },
     {
       "name": "APACorigbooknote",
-      "snippet": "APACorigbooknote{${1:year}}{${2:editor}}{${3:title%text}}{${4:edition}}{${5:volume}}{${6:pages}}{${7:address}}{${8:publisher}}{${9:note}}",
+      "snippet": "APACorigbooknote{${1:year}}{${2:editor}}{${3:title}}{${4:edition}}{${5:volume}}{${6:pages}}{${7:address}}{${8:publisher}}{${9:note}}",
       "unusual": true
     },
     {
@@ -1450,11 +1450,11 @@
     },
     {
       "name": "masktext",
-      "snippet": "masktext[${2:mask-mode text%text}]{${1:masked text%text}}"
+      "snippet": "masktext[${2:mask-mode text}]{${1:masked text}}"
     },
     {
       "name": "masktext",
-      "snippet": "masktext{${1:masked text%text}}"
+      "snippet": "masktext{${1:masked text}}"
     },
     {
       "name": "nocitemeta",

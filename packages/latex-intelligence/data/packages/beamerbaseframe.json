@@ -94,7 +94,7 @@
     },
     {
       "name": "framelatex",
-      "snippet": "framelatex{${1:contents%text}}",
+      "snippet": "framelatex{${1:contents}}",
       "unusual": true
     },
     {

@@ -110,11 +110,11 @@
         "\\includepdf,includepdfmerge,\\includepdfset"
       ],
       "name": "includepdf",
-      "snippet": "includepdf[${2:options%keyvals}]{${1:filename%file}}"
+      "snippet": "includepdf[${2:options}]{${1:filename}}"
     },
     {
       "name": "includepdf",
-      "snippet": "includepdf{${1:filename%file}}"
+      "snippet": "includepdf{${1:filename}}"
     },
     {
       "keyPos": 0,
@@ -122,11 +122,11 @@
         "\\includepdf,includepdfmerge,\\includepdfset"
       ],
       "name": "includepdfmerge",
-      "snippet": "includepdfmerge[${2:options%keyvals}]{${1:file-list%definition}}"
+      "snippet": "includepdfmerge[${2:options}]{${1:file-list}}"
     },
     {
       "name": "includepdfmerge",
-      "snippet": "includepdfmerge{${1:file-list%definition}}"
+      "snippet": "includepdfmerge{${1:file-list}}"
     },
     {
       "keyPos": 0,
@@ -134,7 +134,7 @@
         "\\includepdf,includepdfmerge,\\includepdfset"
       ],
       "name": "includepdfset",
-      "snippet": "includepdfset{${1:global options%keyvals}}"
+      "snippet": "includepdfset{${1:global options}}"
     },
     {
       "name": "threadinfodict",

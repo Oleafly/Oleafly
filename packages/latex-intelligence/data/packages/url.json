@@ -92,7 +92,7 @@
         "\\urlstyle#c"
       ],
       "name": "urlstyle",
-      "snippet": "urlstyle{${1:style%keyvals}}",
+      "snippet": "urlstyle{${1:style}}",
       "unusual": true
     }
   ]

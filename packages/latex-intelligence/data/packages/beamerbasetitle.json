@@ -34,7 +34,7 @@
     },
     {
       "name": "insertshortauthor",
-      "snippet": "insertshortauthor[${1:options%keyvals}]",
+      "snippet": "insertshortauthor[${1:options}]",
       "unusual": true
     },
     {
@@ -43,7 +43,7 @@
     },
     {
       "name": "insertshortdate",
-      "snippet": "insertshortdate[${1:options%keyvals}]",
+      "snippet": "insertshortdate[${1:options}]",
       "unusual": true
     },
     {
@@ -52,7 +52,7 @@
     },
     {
       "name": "insertshortinstitute",
-      "snippet": "insertshortinstitute[${1:options%keyvals}]",
+      "snippet": "insertshortinstitute[${1:options}]",
       "unusual": true
     },
     {
@@ -61,7 +61,7 @@
     },
     {
       "name": "insertshortsubtitle",
-      "snippet": "insertshortsubtitle[${1:options%keyvals}]",
+      "snippet": "insertshortsubtitle[${1:options}]",
       "unusual": true
     },
     {
@@ -70,7 +70,7 @@
     },
     {
       "name": "insertshorttitle",
-      "snippet": "insertshorttitle[${1:options%keyvals}]",
+      "snippet": "insertshorttitle[${1:options}]",
       "unusual": true
     },
     {
@@ -103,7 +103,7 @@
     },
     {
       "name": "logo",
-      "snippet": "logo{${1:logo text%text}}"
+      "snippet": "logo{${1:logo text}}"
     },
     {
       "name": "partpage"
@@ -120,15 +120,15 @@
     },
     {
       "name": "subtitle",
-      "snippet": "subtitle[${2:short subtitle%text}]{${1:subtitle%text}}"
+      "snippet": "subtitle[${2:short subtitle}]{${1:subtitle}}"
     },
     {
       "name": "subtitle",
-      "snippet": "subtitle{${1:subtitle%text}}"
+      "snippet": "subtitle{${1:subtitle}}"
     },
     {
       "name": "title",
-      "snippet": "title[${2:short title%text}]{${1:title%text}}"
+      "snippet": "title[${2:short title}]{${1:title}}"
     },
     {
       "name": "titlegraphic",

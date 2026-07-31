@@ -256,7 +256,7 @@
     },
     {
       "name": "acffont",
-      "snippet": "acffont{${1:text%plain}}",
+      "snippet": "acffont{${1:text}}",
       "unusual": true
     },
     {
@@ -329,7 +329,7 @@
     },
     {
       "name": "acfsfont",
-      "snippet": "acfsfont{${1:text%plain}}",
+      "snippet": "acfsfont{${1:text}}",
       "unusual": true
     },
     {
@@ -350,7 +350,7 @@
     },
     {
       "name": "aclabelfont",
-      "snippet": "aclabelfont{${1:text%plain}}",
+      "snippet": "aclabelfont{${1:text}}",
       "unusual": true
     },
     {
@@ -476,7 +476,7 @@
     },
     {
       "name": "acsfont",
-      "snippet": "acsfont{${1:text%plain}}",
+      "snippet": "acsfont{${1:text}}",
       "unusual": true
     },
     {

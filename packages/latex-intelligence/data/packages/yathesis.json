@@ -52,7 +52,7 @@
     },
     {
       "name": "abstract",
-      "snippet": "[${1:⟨titre alternatif⟩%text}]",
+      "snippet": "[${1:⟨titre alternatif⟩}]",
       "unusual": true
     },
     {
@@ -292,7 +292,7 @@
     },
     {
       "name": "FBWarning",
-      "snippet": "FBWarning{${1:message%text}}",
+      "snippet": "FBWarning{${1:message}}",
       "unusual": true
     },
     {
@@ -426,11 +426,11 @@
     },
     {
       "name": "academicfield",
-      "snippet": "academicfield[${2:⟨discipline dans la langue secondaire⟩%text}]{${1:⟨discipline dans la langue principale⟩%text}}"
+      "snippet": "academicfield[${2:⟨discipline dans la langue secondaire⟩}]{${1:⟨discipline dans la langue principale⟩}}"
     },
     {
       "name": "academicfield",
-      "snippet": "academicfield{${1:⟨discipline⟩%text}}"
+      "snippet": "academicfield{${1:⟨discipline⟩}}"
     },
     {
       "name": "alsoname",
@@ -472,15 +472,15 @@
     },
     {
       "name": "chapter",
-      "snippet": "chapter[${2:⟨titre alt. pour TdM⟩%short title}][${3:⟨titre alt. pour entête⟩%short title}]{${1:⟨titre⟩%title}}"
+      "snippet": "chapter[${2:⟨titre alt. pour TdM⟩%short title}][${3:⟨titre alt. pour entête⟩%short title}]{${1:⟨titre⟩}}"
     },
     {
       "name": "chapter*",
-      "snippet": "chapter*[${2:⟨titre alt. pour TdM et entête⟩%short title}]{${1:⟨titre⟩%title}}"
+      "snippet": "chapter*[${2:⟨titre alt. pour TdM et entête⟩%short title}]{${1:⟨titre⟩}}"
     },
     {
       "name": "chapter*",
-      "snippet": "chapter*[${2:⟨titre alt. pour TdM⟩%short title}][${3:⟨titre alt. pour entête⟩%short title}]{${1:⟨titre⟩%title}}"
+      "snippet": "chapter*[${2:⟨titre alt. pour TdM⟩%short title}][${3:⟨titre alt. pour entête⟩%short title}]{${1:⟨titre⟩}}"
     },
     {
       "name": "chaptername",
@@ -495,15 +495,15 @@
         "\\pres,\\comue,\\doctoralschool,\\institute,\\coinstitute,\\company"
       ],
       "name": "coinstitute",
-      "snippet": "coinstitute[${2:⟨précisions⟩%keyvals}]{${1:⟨nom de l'institut de cotutelle⟩%text}}"
+      "snippet": "coinstitute[${2:⟨précisions⟩}]{${1:⟨nom de l'institut de cotutelle⟩}}"
     },
     {
       "name": "coinstitute",
-      "snippet": "coinstitute{${1:⟨nom de l'institut de cotutelle⟩%text}}"
+      "snippet": "coinstitute{${1:⟨nom de l'institut de cotutelle⟩}}"
     },
     {
       "name": "colophontext",
-      "snippet": "colophontext{${1:⟨texte⟩%text}}",
+      "snippet": "colophontext{${1:⟨texte⟩}}",
       "unusual": true
     },
     {
@@ -512,7 +512,7 @@
         "\\supervisor,\\cosupervisor,\\comonitor,\\referee,\\examiner,\\committeepresident,\\guest"
       ],
       "name": "committeepresident",
-      "snippet": "committeepresident[${3:⟨précisions⟩%keyvals}]{${1:⟨prénom⟩}}{${2:⟨nom⟩}}"
+      "snippet": "committeepresident[${3:⟨précisions⟩}]{${1:⟨prénom⟩}}{${2:⟨nom⟩}}"
     },
     {
       "name": "committeepresident",
@@ -524,7 +524,7 @@
         "\\supervisor,\\cosupervisor,\\comonitor,\\referee,\\examiner,\\committeepresident,\\guest"
       ],
       "name": "comonitor",
-      "snippet": "comonitor[${3:⟨précisions⟩%keyvals}]{${1:⟨prénom⟩}}{${2:⟨nom⟩}}"
+      "snippet": "comonitor[${3:⟨précisions⟩}]{${1:⟨prénom⟩}}{${2:⟨nom⟩}}"
     },
     {
       "name": "comonitor",
@@ -536,7 +536,7 @@
         "\\pres,\\comue,\\doctoralschool,\\institute,\\coinstitute,\\company"
       ],
       "name": "company",
-      "snippet": "company[${2:⟨précisions⟩%keyvals}]{${1:⟨nom de l'entreprise⟩}}"
+      "snippet": "company[${2:⟨précisions⟩}]{${1:⟨nom de l'entreprise⟩}}"
     },
     {
       "name": "company",
@@ -548,7 +548,7 @@
         "\\pres,\\comue,\\doctoralschool,\\institute,\\coinstitute,\\company"
       ],
       "name": "comue",
-      "snippet": "comue[${2:⟨précisions⟩%keyvals}]{${1:⟨nom de la ComUE⟩}}"
+      "snippet": "comue[${2:⟨précisions⟩}]{${1:⟨nom de la ComUE⟩}}"
     },
     {
       "name": "comue",
@@ -560,7 +560,7 @@
         "\\supervisor,\\cosupervisor,\\comonitor,\\referee,\\examiner,\\committeepresident,\\guest"
       ],
       "name": "cosupervisor",
-      "snippet": "cosupervisor[${3:⟨précisions⟩%keyvals}]{${1:⟨prénom⟩}}{${2:⟨nom⟩}}"
+      "snippet": "cosupervisor[${3:⟨précisions⟩}]{${1:⟨prénom⟩}}{${2:⟨nom⟩}}"
     },
     {
       "name": "cosupervisor",
@@ -580,7 +580,7 @@
     },
     {
       "name": "dedication",
-      "snippet": "dedication{${1:⟨dédicace⟩%text}}"
+      "snippet": "dedication{${1:⟨dédicace⟩}}"
     },
     {
       "name": "degre",
@@ -595,7 +595,7 @@
     },
     {
       "name": "disclaimertext",
-      "snippet": "disclaimertext{${1:⟨clause⟩%text}}"
+      "snippet": "disclaimertext{${1:⟨clause⟩}}"
     },
     {
       "keyPos": 0,
@@ -603,11 +603,11 @@
         "\\pres,\\comue,\\doctoralschool,\\institute,\\coinstitute,\\company"
       ],
       "name": "doctoralschool",
-      "snippet": "doctoralschool[${2:⟨précisions⟩%keyvals}]{${1:⟨nom de l'école doctorale⟩%text}}"
+      "snippet": "doctoralschool[${2:⟨précisions⟩}]{${1:⟨nom de l'école doctorale⟩}}"
     },
     {
       "name": "doctoralschool",
-      "snippet": "doctoralschool{${1:⟨nom de l'école doctorale⟩%text}}"
+      "snippet": "doctoralschool{${1:⟨nom de l'école doctorale⟩}}"
     },
     {
       "name": "dotFFN",
@@ -623,7 +623,7 @@
         "\\supervisor,\\cosupervisor,\\comonitor,\\referee,\\examiner,\\committeepresident,\\guest"
       ],
       "name": "examiner",
-      "snippet": "examiner[${3:⟨précisions⟩%keyvals}]{${1:⟨prénom⟩}}{${2:⟨nom⟩}}"
+      "snippet": "examiner[${3:⟨précisions⟩}]{${1:⟨prénom⟩}}{${2:⟨nom⟩}}"
     },
     {
       "name": "examiner",
@@ -631,7 +631,7 @@
     },
     {
       "name": "expression",
-      "snippet": "expression{${1:⟨label⟩%labeldef}}{${2:⟨valeur en français⟩%text}}{${3:⟨valeur en anglais⟩%text}}",
+      "snippet": "expression{${1:⟨label⟩}}{${2:⟨valeur en français⟩}}{${3:⟨valeur en anglais⟩}}",
       "unusual": true
     },
     {
@@ -670,7 +670,7 @@
         "\\frenchsetup,\\frenchbsetup"
       ],
       "name": "frenchsetup",
-      "snippet": "frenchsetup{${1:options%keyvals}}"
+      "snippet": "frenchsetup{${1:options}}"
     },
     {
       "name": "frenchtoday",
@@ -678,11 +678,11 @@
     },
     {
       "name": "frontepigraph",
-      "snippet": "frontepigraph[${3:⟨langue⟩}]{${1:⟨épigraphe⟩%text}}{${2:⟨auteur⟩}}"
+      "snippet": "frontepigraph[${3:⟨langue⟩}]{${1:⟨épigraphe⟩}}{${2:⟨auteur⟩}}"
     },
     {
       "name": "frontepigraph",
-      "snippet": "frontepigraph{${1:⟨épigraphe⟩%text}}{${2:⟨auteur⟩}}"
+      "snippet": "frontepigraph{${1:⟨épigraphe⟩}}{${2:⟨auteur⟩}}"
     },
     {
       "name": "frquote",
@@ -702,7 +702,7 @@
         "\\supervisor,\\cosupervisor,\\comonitor,\\referee,\\examiner,\\committeepresident,\\guest"
       ],
       "name": "guest",
-      "snippet": "guest[${3:⟨précisions⟩%keyvals}]{${1:⟨prénom⟩}}{${2:⟨nom⟩}}"
+      "snippet": "guest[${3:⟨précisions⟩}]{${1:⟨prénom⟩}}{${2:⟨nom⟩}}"
     },
     {
       "name": "guest",
@@ -860,11 +860,11 @@
         "\\pres,\\comue,\\doctoralschool,\\institute,\\coinstitute,\\company"
       ],
       "name": "institute",
-      "snippet": "institute[${2:⟨précisions⟩%keyvals}]{${1:⟨nom de l'institut⟩%text}}"
+      "snippet": "institute[${2:⟨précisions⟩}]{${1:⟨nom de l'institut⟩}}"
     },
     {
       "name": "institute",
-      "snippet": "institute{${1:⟨nom de l'institut⟩%text}}"
+      "snippet": "institute{${1:⟨nom de l'institut⟩}}"
     },
     {
       "name": "kernFFN",
@@ -872,7 +872,7 @@
     },
     {
       "name": "keywords",
-      "snippet": "keywords{${1:⟨mots clés dans la langue principale⟩%text}}{${2:⟨mots clés dans la langue secondaire⟩%text}}"
+      "snippet": "keywords{${1:⟨mots clés dans la langue principale⟩}}{${2:⟨mots clés dans la langue secondaire⟩}}"
     },
     {
       "name": "labelindentFB",
@@ -888,7 +888,7 @@
         "\\laboratory"
       ],
       "name": "laboratory",
-      "snippet": "laboratory[${3:⟨précisions⟩%keyvals}]{${1:⟨nom du laboratoire⟩}}{${2:⟨adresse du laboratoire⟩}}"
+      "snippet": "laboratory[${3:⟨précisions⟩}]{${1:⟨nom du laboratoire⟩}}{${2:⟨adresse du laboratoire⟩}}"
     },
     {
       "name": "laboratory",
@@ -896,7 +896,7 @@
     },
     {
       "name": "leadchapter",
-      "snippet": "leadchapter{${1:⟨texte⟩%text}}"
+      "snippet": "leadchapter{${1:⟨texte⟩}}"
     },
     {
       "name": "leftmarginFB",
@@ -952,15 +952,15 @@
         "\\maketitle"
       ],
       "name": "maketitle",
-      "snippet": "maketitle[${1:⟨options⟩%keyvals}]"
+      "snippet": "maketitle[${1:⟨options⟩}]"
     },
     {
       "name": "newglssymbol",
-      "snippet": "newglssymbol[${5:⟨classement⟩}]{${1:⟨label⟩%labeldef}}{${2:⟨symbole⟩}}{${3:⟨nom⟩}}{${4:⟨description⟩%text}}"
+      "snippet": "newglssymbol[${5:⟨classement⟩}]{${1:⟨label⟩}}{${2:⟨symbole⟩}}{${3:⟨nom⟩}}{${4:⟨description⟩}}"
     },
     {
       "name": "newglssymbol",
-      "snippet": "newglssymbol{${1:⟨label⟩%labeldef}}{${2:⟨symbole⟩}}{${3:⟨nom⟩}}{${4:⟨description⟩%text}}"
+      "snippet": "newglssymbol{${1:⟨label⟩}}{${2:⟨symbole⟩}}{${3:⟨nom⟩}}{${4:⟨description⟩}}"
     },
     {
       "name": "nextwithlocaltoc"
@@ -1004,7 +1004,7 @@
     },
     {
       "name": "paragraph*",
-      "snippet": "paragraph*[${2:⟨titre alt. pour TdM et entête⟩%short title}]{${1:⟨titre⟩%title}}"
+      "snippet": "paragraph*[${2:⟨titre alt. pour TdM et entête⟩%short title}]{${1:⟨titre⟩}}"
     },
     {
       "name": "parindentFFN",
@@ -1032,7 +1032,7 @@
         "\\pres,\\comue,\\doctoralschool,\\institute,\\coinstitute,\\company"
       ],
       "name": "pres",
-      "snippet": "pres[${2:⟨précisions⟩%keyvals}]{${1:⟨nom du PRES⟩}}"
+      "snippet": "pres[${2:⟨précisions⟩}]{${1:⟨nom du PRES⟩}}"
     },
     {
       "name": "pres",
@@ -1047,7 +1047,7 @@
         "\\printsymbols"
       ],
       "name": "printsymbols",
-      "snippet": "printsymbols[${1:⟨options⟩%keyvals}]"
+      "snippet": "printsymbols[${1:⟨options⟩}]"
     },
     {
       "name": "proofname",
@@ -1062,7 +1062,7 @@
         "\\supervisor,\\cosupervisor,\\comonitor,\\referee,\\examiner,\\committeepresident,\\guest"
       ],
       "name": "referee",
-      "snippet": "referee[${3:⟨précisions⟩%keyvals}]{${1:⟨prénom⟩}}{${2:⟨nom⟩}}"
+      "snippet": "referee[${3:⟨précisions⟩}]{${1:⟨prénom⟩}}{${2:⟨nom⟩}}"
     },
     {
       "name": "referee",
@@ -1074,15 +1074,15 @@
     },
     {
       "name": "section",
-      "snippet": "section[${2:⟨titre alt. pour TdM⟩%short title}][${3:⟨titre alt. pour entête⟩%short title}]{${1:⟨titre⟩%title}}"
+      "snippet": "section[${2:⟨titre alt. pour TdM⟩%short title}][${3:⟨titre alt. pour entête⟩%short title}]{${1:⟨titre⟩}}"
     },
     {
       "name": "section*",
-      "snippet": "section*[${2:⟨titre alt. pour TdM et entête⟩%short title}]{${1:⟨titre⟩%title}}"
+      "snippet": "section*[${2:⟨titre alt. pour TdM et entête⟩%short title}]{${1:⟨titre⟩}}"
     },
     {
       "name": "section*",
-      "snippet": "section*[${2:⟨titre alt. pour TdM⟩%short title}][${3:⟨titre alt. pour entête⟩%short title}]{${1:⟨titre⟩%title}}"
+      "snippet": "section*[${2:⟨titre alt. pour TdM⟩%short title}][${3:⟨titre alt. pour entête⟩%short title}]{${1:⟨titre⟩}}"
     },
     {
       "name": "secundo"
@@ -1097,11 +1097,11 @@
     },
     {
       "name": "speciality",
-      "snippet": "speciality[${2:⟨spécialité dans la langue secondaire⟩%text}]{${1:⟨spécialité dans la langue principale⟩%text}}"
+      "snippet": "speciality[${2:⟨spécialité dans la langue secondaire⟩}]{${1:⟨spécialité dans la langue principale⟩}}"
     },
     {
       "name": "speciality",
-      "snippet": "speciality{${1:⟨spécialité⟩%text}}"
+      "snippet": "speciality{${1:⟨spécialité⟩}}"
     },
     {
       "name": "startlocaltocs"
@@ -1111,11 +1111,11 @@
     },
     {
       "name": "subject",
-      "snippet": "subject[${2:⟨sujet dans la langue secondaire⟩%text}]{${1:⟨sujet dans la langue principale⟩%text}}"
+      "snippet": "subject[${2:⟨sujet dans la langue secondaire⟩}]{${1:⟨sujet dans la langue principale⟩}}"
     },
     {
       "name": "subject",
-      "snippet": "subject{${1:⟨sujet⟩%text}}"
+      "snippet": "subject{${1:⟨sujet⟩}}"
     },
     {
       "name": "submissiondate",
@@ -1123,19 +1123,19 @@
     },
     {
       "name": "subsection*",
-      "snippet": "subsection*[${2:⟨titre alt. pour TdM et entête⟩%short title}]{${1:⟨titre⟩%title}}"
+      "snippet": "subsection*[${2:⟨titre alt. pour TdM et entête⟩%short title}]{${1:⟨titre⟩}}"
     },
     {
       "name": "subsubsection*",
-      "snippet": "subsubsection*[${2:⟨titre alt. pour TdM et entête⟩%short title}]{${1:⟨titre⟩%title}}"
+      "snippet": "subsubsection*[${2:⟨titre alt. pour TdM et entête⟩%short title}]{${1:⟨titre⟩}}"
     },
     {
       "name": "subtitle",
-      "snippet": "subtitle[${2:⟨sous-titre dans la langue secondaire⟩%text}]{${1:⟨sous-titre dans la langue principale⟩%text}}"
+      "snippet": "subtitle[${2:⟨sous-titre dans la langue secondaire⟩}]{${1:⟨sous-titre dans la langue principale⟩}}"
     },
     {
       "name": "subtitle",
-      "snippet": "subtitle{${1:⟨sous-titre⟩%text}}"
+      "snippet": "subtitle{${1:⟨sous-titre⟩}}"
     },
     {
       "keyPos": 0,
@@ -1143,7 +1143,7 @@
         "\\supervisor,\\cosupervisor,\\comonitor,\\referee,\\examiner,\\committeepresident,\\guest"
       ],
       "name": "supervisor",
-      "snippet": "supervisor[${3:⟨précisions⟩%keyvals}]{${1:⟨prénom⟩}}{${2:⟨nom⟩}}"
+      "snippet": "supervisor[${3:⟨précisions⟩}]{${1:⟨prénom⟩}}{${2:⟨nom⟩}}"
     },
     {
       "name": "supervisor",
@@ -1155,7 +1155,7 @@
         "\\tableofcontents"
       ],
       "name": "tableofcontents",
-      "snippet": "tableofcontents[${1:⟨précisions⟩%keyvals}]",
+      "snippet": "tableofcontents[${1:⟨précisions⟩}]",
       "unusual": true
     },
     {
@@ -1166,7 +1166,7 @@
     },
     {
       "name": "title",
-      "snippet": "title[${2:⟨titre dans la langue secondaire⟩%text}]{${1:⟨titre dans la langue principale⟩%text}}"
+      "snippet": "title[${2:⟨titre dans la langue secondaire⟩}]{${1:⟨titre dans la langue principale⟩}}"
     },
     {
       "name": "ttfamilyFB",
@@ -1181,7 +1181,7 @@
     },
     {
       "name": "yadsetup",
-      "snippet": "yadsetup{${1:⟨options⟩%keyvals}}"
+      "snippet": "yadsetup{${1:⟨options⟩}}"
     }
   ]
 }

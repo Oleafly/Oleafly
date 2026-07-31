@@ -25,7 +25,7 @@
         "\\floatstyle"
       ],
       "name": "floatstyle",
-      "snippet": "floatstyle{${1:default style%keyvals}}"
+      "snippet": "floatstyle{${1:default style}}"
     },
     {
       "name": "listof",
@@ -33,11 +33,11 @@
     },
     {
       "name": "newfloat",
-      "snippet": "newfloat{${1:float type%envname}}{${2:placement}}{${3:ext}}"
+      "snippet": "newfloat{${1:float type}}{${2:placement}}{${3:ext}}"
     },
     {
       "name": "newfloat",
-      "snippet": "newfloat{${1:float type%envname}}{${2:placement}}{${3:ext}}[${4:within}]"
+      "snippet": "newfloat{${1:float type}}{${2:placement}}{${3:ext}}[${4:within}]"
     },
     {
       "name": "restylefloat",

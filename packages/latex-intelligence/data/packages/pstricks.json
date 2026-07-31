@@ -476,7 +476,7 @@
     },
     {
       "name": "psForeach",
-      "snippet": "psForeach{${1:variable%cmd}}{${2:value list}}{${3:action}}"
+      "snippet": "psForeach{${1:variable}}{${2:value list}}{${3:action}}"
     },
     {
       "name": "psLine",
@@ -825,7 +825,7 @@
     },
     {
       "name": "psclipbox",
-      "snippet": "psclipbox[${2:dim%l}]{${1:stuff}}"
+      "snippet": "psclipbox[${2:dim}]{${1:stuff}}"
     },
     {
       "name": "psclipbox",
@@ -1093,7 +1093,7 @@
     },
     {
       "name": "psforeach",
-      "snippet": "psforeach{${1:variable%cmd}}{${2:value list}}{${3:action}}"
+      "snippet": "psforeach{${1:variable}}{${2:value list}}{${3:action}}"
     },
     {
       "name": "psframe",

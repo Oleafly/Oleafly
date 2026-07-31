@@ -172,7 +172,7 @@
         "\\geometry,\\newgeometry,\\usepackage/geometry#c"
       ],
       "name": "geometry",
-      "snippet": "geometry{${1:options%keyvals}}"
+      "snippet": "geometry{${1:options}}"
     },
     {
       "keyPos": 0,
@@ -180,7 +180,7 @@
         "\\loadgeometry"
       ],
       "name": "loadgeometry",
-      "snippet": "loadgeometry{${1:name%keyvals}}"
+      "snippet": "loadgeometry{${1:name}}"
     },
     {
       "keyPos": 0,
@@ -188,7 +188,7 @@
         "\\geometry,\\newgeometry,\\usepackage/geometry#c"
       ],
       "name": "newgeometry",
-      "snippet": "newgeometry{${1:options%keyvals}}"
+      "snippet": "newgeometry{${1:options}}"
     },
     {
       "name": "restoregeometry"

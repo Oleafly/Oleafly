@@ -170,7 +170,7 @@
     },
     {
       "name": "CaseSwitch",
-      "snippet": "CaseSwitch{${1:normal%text}}{${2:upper%text}}{${3:lower%text}}{${4:title%text}}",
+      "snippet": "CaseSwitch{${1:normal}}{${2:upper}}{${3:lower}}{${4:title}}",
       "unusual": true
     },
     {
@@ -220,22 +220,22 @@
     },
     {
       "name": "ClassNote",
-      "snippet": "ClassNote{${1:class name}}{${2:note text%text}}",
+      "snippet": "ClassNote{${1:class name}}{${2:note text}}",
       "unusual": true
     },
     {
       "name": "ClassNoteNoLine",
-      "snippet": "ClassNoteNoLine{${1:class name}}{${2:note text%text}}",
+      "snippet": "ClassNoteNoLine{${1:class name}}{${2:note text}}",
       "unusual": true
     },
     {
       "name": "ClassWarning",
-      "snippet": "ClassWarning{${1:class name}}{${2:warning text%text}}",
+      "snippet": "ClassWarning{${1:class name}}{${2:warning text}}",
       "unusual": true
     },
     {
       "name": "ClassWarningNoLine",
-      "snippet": "ClassWarningNoLine{${1:class name}}{${2:warning text%text}}",
+      "snippet": "ClassWarningNoLine{${1:class name}}{${2:warning text}}",
       "unusual": true
     },
     {
@@ -315,7 +315,7 @@
     },
     {
       "name": "DeclareCommandCopy",
-      "snippet": "DeclareCommandCopy{${1:cmd}}{${2:copied cmd%definition}}"
+      "snippet": "DeclareCommandCopy{${1:cmd}}{${2:copied cmd}}"
     },
     {
       "name": "DeclareCurrentRelease",
@@ -456,7 +456,7 @@
     },
     {
       "name": "DeclareMathAlphabet",
-      "snippet": "DeclareMathAlphabet{${1:math-alph%cmd}}{${2:encoding}}{${3:family}}{${4:series}}{${5:shape}}",
+      "snippet": "DeclareMathAlphabet{${1:math-alph}}{${2:encoding}}{${3:family}}{${4:series}}{${5:shape}}",
       "unusual": true
     },
     {
@@ -556,7 +556,7 @@
     },
     {
       "name": "DeclareSymbolFontAlphabet",
-      "snippet": "DeclareSymbolFontAlphabet{${1:math-alph%cmd}}{${2:sym-font}}",
+      "snippet": "DeclareSymbolFontAlphabet{${1:math-alph}}{${2:sym-font}}",
       "unusual": true
     },
     {
@@ -611,12 +611,12 @@
     },
     {
       "name": "DeclareTextCompositeCommand",
-      "snippet": "DeclareTextCompositeCommand{${1:cmd}}{${2:encoding%definition}}{${3:letter%definition}}{${4:definition}}",
+      "snippet": "DeclareTextCompositeCommand{${1:cmd}}{${2:encoding}}{${3:letter}}{${4:definition}}",
       "unusual": true
     },
     {
       "name": "DeclareTextFontCommand",
-      "snippet": "DeclareTextFontCommand{${1:cmd}}{${2:font-switches%definition}}",
+      "snippet": "DeclareTextFontCommand{${1:cmd}}{${2:font-switches}}",
       "unusual": true
     },
     {
@@ -684,7 +684,7 @@
         "\\DocumentMetadata#c"
       ],
       "name": "DocumentMetadata",
-      "snippet": "DocumentMetadata{${1:options%keyvals}}",
+      "snippet": "DocumentMetadata{${1:options}}",
       "unusual": true
     },
     {
@@ -729,27 +729,27 @@
     },
     {
       "name": "FirstMark",
-      "snippet": "FirstMark[${2:region}]{${1:class%plain}}",
+      "snippet": "FirstMark[${2:region}]{${1:class}}",
       "unusual": true
     },
     {
       "name": "FirstMark",
-      "snippet": "FirstMark{${1:class%plain}}",
+      "snippet": "FirstMark{${1:class}}",
       "unusual": true
     },
     {
       "name": "GenericError",
-      "snippet": "GenericError{${1:continuation}}{${2:message%text}}{${3:help location%text}}{${4:help info%text}}",
+      "snippet": "GenericError{${1:continuation}}{${2:message}}{${3:help location}}{${4:help info}}",
       "unusual": true
     },
     {
       "name": "GenericInfo",
-      "snippet": "GenericInfo{${1:continuation}}{${2:message%text}}",
+      "snippet": "GenericInfo{${1:continuation}}{${2:message}}",
       "unusual": true
     },
     {
       "name": "GenericWarning",
-      "snippet": "GenericWarning{${1:continuation}}{${2:message%text}}",
+      "snippet": "GenericWarning{${1:continuation}}{${2:message}}",
       "unusual": true
     },
     {
@@ -930,12 +930,12 @@
     },
     {
       "name": "IfMarksEqualTF",
-      "snippet": "IfMarksEqualTF[${6:region}]{${1:class%plain}}{${2:pos1}}{${3:pos2}}{${4:true code}}{${5:false code}}",
+      "snippet": "IfMarksEqualTF[${6:region}]{${1:class}}{${2:pos1}}{${3:pos2}}{${4:true code}}{${5:false code}}",
       "unusual": true
     },
     {
       "name": "IfMarksEqualTF",
-      "snippet": "IfMarksEqualTF{${1:class%plain}}{${2:pos1}}{${3:pos2}}{${4:true code}}{${5:false code}}",
+      "snippet": "IfMarksEqualTF{${1:class}}{${2:pos1}}{${3:pos2}}{${4:true code}}{${5:false code}}",
       "unusual": true
     },
     {
@@ -1056,7 +1056,7 @@
     },
     {
       "name": "InsertMark",
-      "snippet": "InsertMark{${1:class%plain}}{${2:text}}",
+      "snippet": "InsertMark{${1:class}}{${2:text}}",
       "unusual": true
     },
     {
@@ -1074,12 +1074,12 @@
     },
     {
       "name": "LastMark",
-      "snippet": "LastMark[${2:region}]{${1:class%plain}}",
+      "snippet": "LastMark[${2:region}]{${1:class}}",
       "unusual": true
     },
     {
       "name": "LastMark",
-      "snippet": "LastMark{${1:class%plain}}",
+      "snippet": "LastMark{${1:class}}",
       "unusual": true
     },
     {
@@ -1171,7 +1171,7 @@
     },
     {
       "name": "NewCommandCopy",
-      "snippet": "NewCommandCopy{${1:cmd}}{${2:copied cmd%definition}}"
+      "snippet": "NewCommandCopy{${1:cmd}}{${2:copied cmd}}"
     },
     {
       "name": "NewDocumentCommand",
@@ -1202,7 +1202,7 @@
     },
     {
       "name": "NewMarkClass",
-      "snippet": "NewMarkClass{${1:class%plain}}",
+      "snippet": "NewMarkClass{${1:class}}",
       "unusual": true
     },
     {
@@ -1265,32 +1265,32 @@
     },
     {
       "name": "PackageError",
-      "snippet": "PackageError{${1:package name}}{${2:error text%text}}{${3:help text%text}}",
+      "snippet": "PackageError{${1:package name}}{${2:error text}}{${3:help text}}",
       "unusual": true
     },
     {
       "name": "PackageInfo",
-      "snippet": "PackageInfo{${1:package name}}{${2:info text%text}}",
+      "snippet": "PackageInfo{${1:package name}}{${2:info text}}",
       "unusual": true
     },
     {
       "name": "PackageNote",
-      "snippet": "PackageNote{${1:package name}}{${2:note text%text}}",
+      "snippet": "PackageNote{${1:package name}}{${2:note text}}",
       "unusual": true
     },
     {
       "name": "PackageNoteNoLine",
-      "snippet": "PackageNoteNoLine{${1:package name}}{${2:note text%text}}",
+      "snippet": "PackageNoteNoLine{${1:package name}}{${2:note text}}",
       "unusual": true
     },
     {
       "name": "PackageWarning",
-      "snippet": "PackageWarning{${1:package name}}{${2:warning text%text}}",
+      "snippet": "PackageWarning{${1:package name}}{${2:warning text}}",
       "unusual": true
     },
     {
       "name": "PackageWarningNoLine",
-      "snippet": "PackageWarningNoLine{${1:package name}}{${2:warning text%text}}",
+      "snippet": "PackageWarningNoLine{${1:package name}}{${2:warning text}}",
       "unusual": true
     },
     {
@@ -1461,7 +1461,7 @@
         "\\RecordProperties#c,\\RefProperty#c,\\RefUndefinedWarn#c"
       ],
       "name": "RecordProperties",
-      "snippet": "RecordProperties{${1:label}}{${2:properties%keyvals}}",
+      "snippet": "RecordProperties{${1:label}}{${2:properties}}",
       "unusual": true
     },
     {
@@ -1470,7 +1470,7 @@
         "\\RecordProperties#c,\\RefProperty#c,\\RefUndefinedWarn#c"
       ],
       "name": "RefProperty",
-      "snippet": "RefProperty[${3:local default}]{${1:label}}{${2:property%keyvals}}",
+      "snippet": "RefProperty[${3:local default}]{${1:label}}{${2:property}}",
       "unusual": true
     },
     {
@@ -1479,7 +1479,7 @@
         "\\RecordProperties#c,\\RefProperty#c,\\RefUndefinedWarn#c"
       ],
       "name": "RefProperty",
-      "snippet": "RefProperty{${1:label}}{${2:property%keyvals}}",
+      "snippet": "RefProperty{${1:label}}{${2:property}}",
       "unusual": true
     },
     {
@@ -1488,7 +1488,7 @@
         "\\RecordProperties#c,\\RefProperty#c,\\RefUndefinedWarn#c"
       ],
       "name": "RefUndefinedWarn",
-      "snippet": "RefUndefinedWarn{${1:label}}{${2:property%keyvals}}",
+      "snippet": "RefUndefinedWarn{${1:label}}{${2:property}}",
       "unusual": true
     },
     {
@@ -1503,7 +1503,7 @@
     },
     {
       "name": "RenewCommandCopy",
-      "snippet": "RenewCommandCopy{${1:cmd}}{${2:copied cmd%definition}}"
+      "snippet": "RenewCommandCopy{${1:cmd}}{${2:copied cmd}}"
     },
     {
       "name": "RenewDocumentCommand",
@@ -1524,12 +1524,12 @@
     },
     {
       "name": "RequirePackage",
-      "snippet": "RequirePackage[${2:options%keyvals}]{${1:package}}",
+      "snippet": "RequirePackage[${2:options}]{${1:package}}",
       "unusual": true
     },
     {
       "name": "RequirePackage",
-      "snippet": "RequirePackage[${2:options%keyvals}]{${1:package}}[${3:release}]",
+      "snippet": "RequirePackage[${2:options}]{${1:package}}[${3:release}]",
       "unusual": true
     },
     {
@@ -1577,7 +1577,7 @@
     },
     {
       "name": "SetMathAlphabet",
-      "snippet": "SetMathAlphabet{${1:math-alph%cmd}}{${2:version}}{${3:encoding}}{${4:family}}{${5:series}}{${6:shape}}",
+      "snippet": "SetMathAlphabet{${1:math-alph}}{${2:version}}{${3:encoding}}{${4:family}}{${5:series}}{${6:shape}}",
       "unusual": true
     },
     {
@@ -1693,12 +1693,12 @@
     },
     {
       "name": "TopMark",
-      "snippet": "TopMark[${2:region}]{${1:class%plain}}",
+      "snippet": "TopMark[${2:region}]{${1:class}}",
       "unusual": true
     },
     {
       "name": "TopMark",
-      "snippet": "TopMark{${1:class%plain}}",
+      "snippet": "TopMark{${1:class}}",
       "unusual": true
     },
     {
@@ -2181,7 +2181,7 @@
     },
     {
       "name": "newsavebox",
-      "snippet": "newsavebox{${1:box%cmd}}",
+      "snippet": "newsavebox{${1:box}}",
       "unusual": true
     },
     {
@@ -2752,12 +2752,12 @@
     },
     {
       "name": "pdftrailer",
-      "snippet": "pdftrailer{${1:text%plain}}",
+      "snippet": "pdftrailer{${1:text}}",
       "unusual": true
     },
     {
       "name": "pdftrailerid",
-      "snippet": "pdftrailerid{${1:text%plain}}",
+      "snippet": "pdftrailerid{${1:text}}",
       "unusual": true
     },
     {
@@ -2808,17 +2808,17 @@
     },
     {
       "name": "raisebox",
-      "snippet": "raisebox{${1:raise%l}}[${3:height}][${4:depth}]{${2:text}}",
+      "snippet": "raisebox{${1:raise}}[${3:height}][${4:depth}]{${2:text}}",
       "unusual": true
     },
     {
       "name": "raisebox",
-      "snippet": "raisebox{${1:raise%l}}[${3:height}]{${2:text}}",
+      "snippet": "raisebox{${1:raise}}[${3:height}]{${2:text}}",
       "unusual": true
     },
     {
       "name": "raisebox",
-      "snippet": "raisebox{${1:raise%l}}{${2:text}}",
+      "snippet": "raisebox{${1:raise}}{${2:text}}",
       "unusual": true
     },
     {

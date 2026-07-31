@@ -6,7 +6,7 @@
   "macros": [
     {
       "name": "Bra",
-      "snippet": "Bra{${1:text%plain}}"
+      "snippet": "Bra{${1:text}}"
     },
     {
       "name": "BraDoubleVert",
@@ -18,11 +18,11 @@
     },
     {
       "name": "Braket",
-      "snippet": "Braket{${1:text%plain}}"
+      "snippet": "Braket{${1:text}}"
     },
     {
       "name": "Ket",
-      "snippet": "Ket{${1:text%plain}}"
+      "snippet": "Ket{${1:text}}"
     },
     {
       "name": "SavedDoubleVert",
@@ -30,7 +30,7 @@
     },
     {
       "name": "Set",
-      "snippet": "Set{${1:text%plain}}"
+      "snippet": "Set{${1:text}}"
     },
     {
       "name": "SetDoubleVert",
@@ -42,15 +42,15 @@
     },
     {
       "name": "bra",
-      "snippet": "bra{${1:text%plain}}"
+      "snippet": "bra{${1:text}}"
     },
     {
       "name": "braket",
-      "snippet": "braket{${1:text%plain}}"
+      "snippet": "braket{${1:text}}"
     },
     {
       "name": "ket",
-      "snippet": "ket{${1:text%plain}}"
+      "snippet": "ket{${1:text}}"
     },
     {
       "name": "midvert",
@@ -58,7 +58,7 @@
     },
     {
       "name": "set",
-      "snippet": "set{${1:text%plain}}"
+      "snippet": "set{${1:text}}"
     }
   ]
 }

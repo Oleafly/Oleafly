@@ -43,7 +43,7 @@
     },
     {
       "name": "cstsetup",
-      "snippet": "cstsetup{${1:options%keyvals}}"
+      "snippet": "cstsetup{${1:options}}"
     },
     {
       "name": "cubiccentimeter"

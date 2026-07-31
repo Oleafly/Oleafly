@@ -9,7 +9,7 @@
   "macros": [
     {
       "name": "includeslide",
-      "snippet": "includeslide[${2:options%keyvals}]{${1:label name}}"
+      "snippet": "includeslide[${2:options}]{${1:label name}}"
     },
     {
       "name": "includeslide",
@@ -35,7 +35,7 @@
     },
     {
       "name": "setjobnamebeamerversion",
-      "snippet": "setjobnamebeamerversion{${1:filename without extension%file}}"
+      "snippet": "setjobnamebeamerversion{${1:filename without extension}}"
     },
     {
       "name": "thebeamerpauses",

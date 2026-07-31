@@ -50,7 +50,7 @@
         "\\tableofcontents"
       ],
       "name": "tableofcontents",
-      "snippet": "tableofcontents[${1:options%keyvals}]"
+      "snippet": "tableofcontents[${1:options}]"
     }
   ]
 }

@@ -87,11 +87,11 @@
     },
     {
       "name": "DeclareGraphicsRule",
-      "snippet": "DeclareGraphicsRule{${1:ext}}{${2:type}}{${3:read-file}}{${4:command%plain}}"
+      "snippet": "DeclareGraphicsRule{${1:ext}}{${2:type}}{${3:read-file}}{${4:command}}"
     },
     {
       "name": "graphicspath",
-      "snippet": "graphicspath{${1:dir-list%definition}}"
+      "snippet": "graphicspath{${1:dir-list}}"
     },
     {
       "name": "includegraphics*",
@@ -107,11 +107,11 @@
     },
     {
       "name": "resizebox",
-      "snippet": "resizebox{${1:h-length%l}}{${2:v-length%l}}{${3:text}}"
+      "snippet": "resizebox{${1:h-length}}{${2:v-length}}{${3:text}}"
     },
     {
       "name": "resizebox*",
-      "snippet": "resizebox*{${1:h-length%l}}{${2:v-length%l}}{${3:text}}"
+      "snippet": "resizebox*{${1:h-length}}{${2:v-length}}{${3:text}}"
     },
     {
       "keyPos": 0,
