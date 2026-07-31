@@ -14,6 +14,8 @@ it is not a second document model.
 - Add citations and generate or refine editable TikZ figures.
 - Generate a template or figure when a configured provider supports it.
 - Use a hosted provider, an OpenAI-compatible endpoint, or Ollama locally.
+- Chat prompt shortcuts for **Friendly** and **Fire** paper review (mentor-style
+  feedback and strict Reviewer #2 critique of the current document).
 
 ## Change and approval model
 
@@ -36,5 +38,7 @@ shared by the built-in assistant and figure-generation flows.
 - `packages/ai-core/`: provider interfaces and model discovery.
 - `packages/ai-tools/`: tool contracts and host boundary.
 - `src/lib/ai/` and `src/store/chats.ts`: assistant orchestration and history.
+- `src/components/ai/prompt-shortcuts.ts`: chat prompt categories (including Review).
+- `src/lib/document-citation/`: paper-review prompts and document citation scan.
 - `src/contributions/ai-toolsets.ts`: registered tool groups.
 - `docs/mcp.md`: external-client integration using the same tool boundary.

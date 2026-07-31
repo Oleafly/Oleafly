@@ -16,6 +16,7 @@ export type LiteratureSource =
   | "crossref"
   | "pubmed"
   | "openalex"
+  | "google-scholar"
   | "uspto";
 
 export interface LiteratureSourceDefinition {
@@ -68,6 +69,14 @@ export const LITERATURE_SOURCES: LiteratureSourceDefinition[] = [
       "An open catalog of scholarly works, authors, sources, institutions, topics, publishers, and funders.",
   },
   {
+    id: "google-scholar",
+    label: "Google Scholar",
+    shortLabel: "Scholar",
+    available: true,
+    description:
+      "Google Scholar results via Serper. Requires a Serper API key under Settings → Integrations → Citation Search.",
+  },
+  {
     id: "uspto",
     label: "USPTO",
     shortLabel: "USPTO",
@@ -77,9 +86,14 @@ export const LITERATURE_SOURCES: LiteratureSourceDefinition[] = [
   },
 ];
 
-export const DEFAULT_LITERATURE_SOURCES: LiteratureSource[] = LITERATURE_SOURCES
-  .filter((source) => source.available)
-  .map((source) => source.id);
+/** Key-free sources plus Semantic Scholar (optional key). Google Scholar needs Serper. */
+export const DEFAULT_LITERATURE_SOURCES: LiteratureSource[] = [
+  "arxiv",
+  "semantic-scholar",
+  "crossref",
+  "pubmed",
+  "openalex",
+];
 
 export interface LiteratureRecord {
   id: string;
@@ -368,6 +382,53 @@ export function parseSemanticScholarLiterature(raw: string): ParsedSource {
   return { records, total: finiteNumber(response?.total) };
 }
 
+interface SerperScholarResponse {
+  organic?: Array<{
+    title?: string;
+    link?: string;
+    snippet?: string;
+    year?: number | string;
+    citedBy?: number;
+    publication?: string;
+  }>;
+}
+
+/** Normalize Serper Google Scholar organic results. */
+export function parseGoogleScholarLiterature(raw: string): ParsedSource {
+  const response = parseJson<SerperScholarResponse>(raw);
+  const organic = response?.organic ?? [];
+  const records = organic.flatMap((item, index) => {
+    const title = text(item.title);
+    if (!title) return [];
+    const url = safeUrl(item.link);
+    let arxivId: string | null = null;
+    if (url) {
+      const match = url.match(/arxiv\.org\/(?:abs|pdf)\/([^\s"'<>?#]+)/i);
+      if (match) {
+        arxivId = match[1].replace(/\.pdf$/i, "").replace(/v\d+$/i, "");
+      }
+    }
+    const sourceId = arxivId ?? url ?? `result-${index}`;
+    const record = sourceRecord("google-scholar", String(sourceId), {
+      title,
+      authors: [],
+      year: yearFrom(item.year),
+      publicationDate: null,
+      venue: text(item.publication),
+      type: arxivId ? "preprint" : "article",
+      doi: null,
+      url,
+      pdfUrl: arxivId ? `https://arxiv.org/pdf/${arxivId}` : null,
+      abstract: text(item.snippet),
+      citationCount: finiteNumber(item.citedBy),
+      openAccess: arxivId ? true : null,
+    });
+    if (arxivId) record.sourceIds.arxiv = arxivId;
+    return [record];
+  });
+  return { records, total: records.length };
+}
+
 interface PubMedResponse {
   total?: string | number;
   summary?: {
@@ -506,6 +567,7 @@ const PARSERS: Record<
   crossref: parseCrossrefLiterature,
   pubmed: parsePubMedLiterature,
   openalex: parseOpenAlexLiterature,
+  "google-scholar": parseGoogleScholarLiterature,
 };
 
 function titleIdentity(title: string): string {

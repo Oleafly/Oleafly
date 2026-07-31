@@ -4,6 +4,7 @@ import {
   mergeLiteratureRecords,
   parseArxivLiterature,
   parseCrossrefLiterature,
+  parseGoogleScholarLiterature,
   parseOpenAlexLiterature,
   parsePubMedLiterature,
   parseSemanticScholarLiterature,
@@ -174,6 +175,29 @@ describe("literature source parsers", () => {
       pdfUrl: "https://arxiv.org/pdf/2401.01234",
       openAccess: true,
     });
+  });
+});
+
+describe("Google Scholar (Serper) parser", () => {
+  it("normalizes organic hits and extracts arXiv ids from links", () => {
+    const parsed = parseGoogleScholarLiterature(
+      JSON.stringify({
+        organic: [
+          {
+            title: "A Scholar Graph Paper",
+            link: "https://arxiv.org/abs/2001.12345v2",
+            snippet: "About graphs.",
+            year: 2020,
+            citedBy: 12,
+            publication: "arXiv",
+          },
+        ],
+      }),
+    );
+    expect(parsed.records).toHaveLength(1);
+    expect(parsed.records[0].sources).toEqual(["google-scholar"]);
+    expect(parsed.records[0].sourceIds.arxiv).toBe("2001.12345");
+    expect(parsed.records[0].citationCount).toBe(12);
   });
 });
 

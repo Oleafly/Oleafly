@@ -6,6 +6,7 @@ import {
   FolderPlus,
   Image as ImageIcon,
   Italic,
+  LibraryBig,
   List,
   Moon,
   PenTool,
@@ -36,6 +37,7 @@ import {
 import { forwardFromCursor } from "@/features/synctex";
 import { exportCurrentPdf } from "@/features/export";
 import { useFilesStore } from "@/store/files";
+import { useDocumentCitationUiStore } from "@/store/document-citation-ui";
 import { useHomeViewStore, type HomePage } from "@/store/home-view";
 import {
   formattingForEngine,
@@ -303,6 +305,49 @@ export function registerPaletteCommands() {
     order: 320,
     when: supportsCitations,
     run: () => useCitationStore.getState().setOpen(true),
+  });
+  palette({
+    id: "document-citation-scan",
+    group: "Tools",
+    label: "Find citations in document",
+    keywords: "citations literature scan document paragraph references find",
+    icon: () => <LibraryBig className="size-4 text-blue-600 dark:text-blue-300" />,
+    order: 322,
+    run: () => {
+      // Capture selection (or active/main .tex content) and .bib filter text
+      // before openHomePage closes the project and clears the files store.
+      const view = getEditorView();
+      const files = useFilesStore.getState();
+      let source: string | undefined;
+      if (view) {
+        const sel = view.state.selection.main;
+        if (sel.from !== sel.to) {
+          const selected = view.state.sliceDoc(sel.from, sel.to).trim();
+          if (selected) source = selected;
+        }
+      }
+      if (!source) {
+        const active = files.activePath;
+        if (active && /\.tex$/i.test(active)) {
+          const content = files.files[active]?.content?.trim();
+          if (content) source = content;
+        }
+        if (!source && files.mainDoc) {
+          const content = files.files[files.mainDoc]?.content?.trim();
+          if (content) source = content;
+        }
+      }
+      const bibOverride =
+        files.tree
+          .filter((entry) => !entry.is_dir && entry.path.endsWith(".bib"))
+          .map((entry) => files.files[entry.path]?.content ?? "")
+          .filter(Boolean)
+          .join("\n\n") || null;
+      useDocumentCitationUiStore
+        .getState()
+        .requestDocumentScan(source, bibOverride);
+      void openHomePage("literature-search");
+    },
   });
 
   palette({
