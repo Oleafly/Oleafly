@@ -1,0 +1,1691 @@
+{
+  "args": [
+    "\\usepackage/pstricks#c"
+  ],
+  "deps": [
+    "colortbl",
+    "iftex",
+    "luatex",
+    "pdfcolmk",
+    "pgffor",
+    "pst-calculate",
+    "xcolor",
+    "xetex"
+  ],
+  "envs": [
+    {
+      "name": "psclip",
+      "snippet": "{${1:graphics}}"
+    },
+    {
+      "name": "pspicture",
+      "snippet": "(${1:x0},${2:y0})(${3:x1},${4:y1})"
+    },
+    {
+      "name": "pspicture",
+      "snippet": "[${1:keyvals}](${2:x0},${3:y0})(${4:x1},${5:y1})"
+    },
+    {
+      "name": "pspicture*",
+      "snippet": "(${1:x0},${2:y0})(${3:x1},${4:y1})"
+    },
+    {
+      "name": "pspicture*",
+      "snippet": "[${1:keyvals}](${2:x0},${3:y0})(${4:x1},${5:y1})"
+    }
+  ],
+  "keys": {
+    "\\usepackage/pstricks#c": [
+      "noxcolor",
+      "useCalc",
+      "gsfonts",
+      "psfonts",
+      "noEngineCheck",
+      "pdf",
+      "xetex",
+      "nometadata",
+      "distiller",
+      "monochrome",
+      "grayscale",
+      "dvips",
+      "xdvi",
+      "dvipdf",
+      "dvipdfm",
+      "dvipdfmx",
+      "luatex",
+      "pdftex",
+      "dvipsone",
+      "dviwindo",
+      "emtex",
+      "dviwin",
+      "oztex",
+      "textures",
+      "pctexps",
+      "pctexwin",
+      "pctexhp",
+      "pctex32",
+      "truetex",
+      "tcidvi",
+      "vtex",
+      "dvisvgm",
+      "natural",
+      "rgb",
+      "cmy",
+      "cmyk",
+      "hsb",
+      "gray",
+      "RGB",
+      "HTML",
+      "HSB",
+      "Gray",
+      "monochrome",
+      "dvipsnames",
+      "dvipsnames*",
+      "svgnames",
+      "svgnames*",
+      "x11names",
+      "x11names*",
+      "table",
+      "fixpdftex",
+      "hyperref",
+      "prologue",
+      "kernelfbox",
+      "xcdraw",
+      "noxcdraw",
+      "fixinclude",
+      "showerrors",
+      "hideerrors"
+    ]
+  },
+  "macros": [
+    {
+      "name": "AltClipMode",
+      "unusual": true
+    },
+    {
+      "name": "Cput",
+      "snippet": "Cput[${3:keyvals}]{${1:angle}}(${4:x},${5:y}){${2:stuff}}",
+      "unusual": true
+    },
+    {
+      "name": "Cput",
+      "snippet": "Cput{${1:angle}}(${3:x},${4:y}){${2:stuff}}",
+      "unusual": true
+    },
+    {
+      "name": "Cput*",
+      "snippet": "Cput*[${3:keyvals}]{${1:angle}}(${4:x},${5:y}){${2:stuff}}",
+      "unusual": true
+    },
+    {
+      "name": "Cput*",
+      "snippet": "Cput*{${1:angle}}(${3:x},${4:y}){${2:stuff}}",
+      "unusual": true
+    },
+    {
+      "name": "DontKillGlue"
+    },
+    {
+      "name": "KillGlue"
+    },
+    {
+      "name": "NormalCoor"
+    },
+    {
+      "name": "PSTlualatexfalse",
+      "unusual": true
+    },
+    {
+      "name": "PSTlualatextrue",
+      "unusual": true
+    },
+    {
+      "name": "PSTricksOff"
+    },
+    {
+      "name": "PSTricksfalse",
+      "unusual": true
+    },
+    {
+      "name": "PSTrickstrue",
+      "unusual": true
+    },
+    {
+      "name": "Rput",
+      "snippet": "Rput[${3:refpoint}]{${1:rotation}}(${4:x},${5:y}){${2:stuff}}",
+      "unusual": true
+    },
+    {
+      "name": "SpecialCoor"
+    },
+    {
+      "name": "addtopsstyle",
+      "snippet": "addtopsstyle{${1:style}}{${2:keyvals}}"
+    },
+    {
+      "name": "altcolormode",
+      "unusual": true
+    },
+    {
+      "name": "arrows",
+      "snippet": "arrows{${1:arrows}}"
+    },
+    {
+      "name": "black"
+    },
+    {
+      "name": "blue"
+    },
+    {
+      "name": "closedshadow"
+    },
+    {
+      "name": "closedshadow",
+      "snippet": "closedshadow[${1:keyvals}]"
+    },
+    {
+      "name": "closepath"
+    },
+    {
+      "name": "code",
+      "snippet": "code{${1:code}}"
+    },
+    {
+      "name": "cput",
+      "snippet": "cput[${3:keyvals}]{${1:angle}}(${4:x},${5:y}){${2:stuff}}"
+    },
+    {
+      "name": "cput",
+      "snippet": "cput{${1:angle}}(${3:x},${4:y}){${2:stuff}}"
+    },
+    {
+      "name": "cput*",
+      "snippet": "cput*[${3:keyvals}]{${1:angle}}(${4:x},${5:y}){${2:stuff}}"
+    },
+    {
+      "name": "cput*",
+      "snippet": "cput*{${1:angle}}(${3:x},${4:y}){${2:stuff}}"
+    },
+    {
+      "name": "curveto",
+      "snippet": "curveto(${1:x1},${2:y1})(${3:x2},${4:y2})(${5:x3},${6:y3})"
+    },
+    {
+      "name": "cyan"
+    },
+    {
+      "name": "darkgray"
+    },
+    {
+      "name": "degrees"
+    },
+    {
+      "name": "degrees",
+      "snippet": "degrees[${1:num}]"
+    },
+    {
+      "name": "dim",
+      "snippet": "dim{${1:dim}}"
+    },
+    {
+      "name": "endoverlaybox"
+    },
+    {
+      "name": "endpsclip",
+      "unusual": true
+    },
+    {
+      "name": "everypsbox",
+      "snippet": "everypsbox{${1:commands}}"
+    },
+    {
+      "name": "file",
+      "snippet": "file{${1:file}}"
+    },
+    {
+      "name": "fill"
+    },
+    {
+      "name": "fill",
+      "snippet": "fill[${1:keyvals}]"
+    },
+    {
+      "name": "gray"
+    },
+    {
+      "name": "green"
+    },
+    {
+      "name": "grestore"
+    },
+    {
+      "name": "gsave"
+    },
+    {
+      "name": "ifPSTlualatex",
+      "unusual": true
+    },
+    {
+      "name": "ifPSTricks",
+      "unusual": true
+    },
+    {
+      "name": "ifpsmathbox",
+      "unusual": true
+    },
+    {
+      "name": "ifpstUndefined",
+      "unusual": true
+    },
+    {
+      "name": "ifshowgrid",
+      "unusual": true
+    },
+    {
+      "name": "lightgray"
+    },
+    {
+      "name": "lineto",
+      "snippet": "lineto(${1:coor})"
+    },
+    {
+      "name": "magenta"
+    },
+    {
+      "name": "movepath",
+      "snippet": "movepath(${1:coor})"
+    },
+    {
+      "name": "moveto",
+      "snippet": "moveto(${1:coor})"
+    },
+    {
+      "name": "mrestore"
+    },
+    {
+      "name": "msave"
+    },
+    {
+      "name": "multips",
+      "snippet": "multips(${3:x0},${4:y0})(${5:x1},${6:y1}){${1:int}}{${2:graphics}}"
+    },
+    {
+      "name": "multips",
+      "snippet": "multips{${1:angle}}(${4:x0},${5:y0})(${6:x1},${7:y1}){${2:int}}{${3:graphics}}"
+    },
+    {
+      "name": "multirput",
+      "snippet": "multirput(${3:x0},${4:y0})(${5:x1},${6:y1}){${1:int}}{${2:stuff}}"
+    },
+    {
+      "name": "multirput",
+      "snippet": "multirput[${3:refpoint}](${4:x0},${5:y0})(${6:x1},${7:y1}){${1:int}}{${2:stuff}}"
+    },
+    {
+      "name": "multirput",
+      "snippet": "multirput[${4:refpoint}]{${1:angle}}(${5:x0},${6:y0})(${7:x1},${8:y1}){${2:int}}{${3:stuff}}"
+    },
+    {
+      "name": "multirput",
+      "snippet": "multirput{${1:angle}}(${4:x0},${5:y0})(${6:x1},${7:y1}){${2:int}}{${3:stuff}}"
+    },
+    {
+      "name": "multirput*",
+      "snippet": "multirput*(${3:x0},${4:y0})(${5:x1},${6:y1}){${1:int}}{${2:stuff}}"
+    },
+    {
+      "name": "multirput*",
+      "snippet": "multirput*[${3:refpoint}](${4:x0},${5:y0})(${6:x1},${7:y1}){${1:int}}{${2:stuff}}"
+    },
+    {
+      "name": "multirput*",
+      "snippet": "multirput*[${4:refpoint}]{${1:angle}}(${5:x0},${6:y0})(${7:x1},${8:y1}){${2:int}}{${3:stuff}}"
+    },
+    {
+      "name": "multirput*",
+      "snippet": "multirput*{${1:angle}}(${4:x0},${5:y0})(${6:x1},${7:y1}){${2:int}}{${3:stuff}}"
+    },
+    {
+      "name": "newcmykcolor",
+      "snippet": "newcmykcolor{${1:color%specialDef}}{${2:num1 num2 num3 num4}}"
+    },
+    {
+      "name": "newgray",
+      "snippet": "newgray{${1:color%specialDef}}{${2:num}}"
+    },
+    {
+      "name": "newhsbcolor",
+      "snippet": "newhsbcolor{${1:color%specialDef}}{${2:num1 num2 num3}}"
+    },
+    {
+      "name": "newpath"
+    },
+    {
+      "name": "newpsfontdot",
+      "snippet": "newpsfontdot{${1:arg1}}[${4:arg2}]{${2:arg3}}{${3:arg4}}",
+      "unusual": true
+    },
+    {
+      "name": "newpsfontdotH",
+      "snippet": "newpsfontdotH{${1:arg1}}[${5:arg2}]{${2:arg3}}{${3:arg4}}{${4:arg5}}",
+      "unusual": true
+    },
+    {
+      "name": "newpsobject",
+      "snippet": "newpsobject{${1:name}}{${2:object}}{${3:keyvals}}"
+    },
+    {
+      "name": "newpsstyle",
+      "snippet": "newpsstyle[${3:package}]{${1:name}}{${2:keyvals}}"
+    },
+    {
+      "name": "newpsstyle",
+      "snippet": "newpsstyle{${1:name}}{${2:keyvals}}"
+    },
+    {
+      "name": "newrgbcolor",
+      "snippet": "newrgbcolor{${1:color}}{${2:num1 num2 num3}}"
+    },
+    {
+      "name": "openshadow"
+    },
+    {
+      "name": "openshadow",
+      "snippet": "openshadow[${1:keyvals}]"
+    },
+    {
+      "name": "overlaybox"
+    },
+    {
+      "name": "parabola",
+      "snippet": "parabola(${1:x0},${2:y0})(${3:x1},${4:y1})"
+    },
+    {
+      "name": "parabola",
+      "snippet": "parabola[${1:keyvals}](${2:x0},${3:y0})(${4:x1},${5:y1})"
+    },
+    {
+      "name": "parabola",
+      "snippet": "parabola[${2:keyvals}]{${1:arrows}}(${3:x0},${4:y0})(${5:x1},${6:y1})"
+    },
+    {
+      "name": "parabola",
+      "snippet": "parabola{${1:arrows}}(${2:x0},${3:y0})(${4:x1},${5:y1})"
+    },
+    {
+      "name": "parabola*",
+      "snippet": "parabola*(${1:x0},${2:y0})(${3:x1},${4:y1})"
+    },
+    {
+      "name": "parabola*",
+      "snippet": "parabola*[${1:keyvals}](${2:x0},${3:y0})(${4:x1},${5:y1})"
+    },
+    {
+      "name": "parabola*",
+      "snippet": "parabola*[${2:keyvals}]{${1:arrows}}(${3:x0},${4:y0})(${5:x1},${6:y1})"
+    },
+    {
+      "name": "parabola*",
+      "snippet": "parabola*{${1:arrows}}(${2:x0},${3:y0})(${4:x1},${5:y1})"
+    },
+    {
+      "name": "pgfforeach",
+      "unusual": true
+    },
+    {
+      "name": "psCircle",
+      "snippet": "psCircle(${2:x0},${3:y0}){${1:radius}}"
+    },
+    {
+      "name": "psCircle",
+      "snippet": "psCircle[${2:keyvals}](${3:x0},${4:y0}){${1:radius}}"
+    },
+    {
+      "name": "psCircle*",
+      "snippet": "psCircle*(${2:x0},${3:y0}){${1:radius}}"
+    },
+    {
+      "name": "psCircle*",
+      "snippet": "psCircle*[${2:keyvals}](${3:x0},${4:y0}){${1:radius}}"
+    },
+    {
+      "name": "psCirclebox",
+      "snippet": "psCirclebox[${2:keyvals}]{${1:stuff}}"
+    },
+    {
+      "name": "psCirclebox",
+      "snippet": "psCirclebox{${1:stuff}}"
+    },
+    {
+      "name": "psCirclebox*",
+      "snippet": "psCirclebox*[${2:keyvals}]{${1:stuff}}"
+    },
+    {
+      "name": "psCirclebox*",
+      "snippet": "psCirclebox*{${1:stuff}}"
+    },
+    {
+      "name": "psDEBUG",
+      "snippet": "psDEBUG[${2:opt}]{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "psDEBUG",
+      "snippet": "psDEBUG{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "psForeach",
+      "snippet": "psForeach{${1:variable%cmd}}{${2:value list}}{${3:action}}"
+    },
+    {
+      "name": "psLine",
+      "snippet": "psLine(${1:x0},${2:y0})(${3:x1},${4:y1})"
+    },
+    {
+      "name": "psLine",
+      "snippet": "psLine(${1:x1},${2:y1})"
+    },
+    {
+      "name": "psLine",
+      "snippet": "psLine[${1:keyvals}](${2:x0},${3:y0})(${4:x1},${5:y1})"
+    },
+    {
+      "name": "psLine",
+      "snippet": "psLine[${1:keyvals}](${2:x1},${3:y1})"
+    },
+    {
+      "name": "psLine*",
+      "snippet": "psLine*(${1:x0},${2:y0})(${3:x1},${4:y1})"
+    },
+    {
+      "name": "psLine*",
+      "snippet": "psLine*(${1:x1},${2:y1})"
+    },
+    {
+      "name": "psLine*",
+      "snippet": "psLine*[${1:keyvals}](${2:x0},${3:y0})(${4:x1},${5:y1})"
+    },
+    {
+      "name": "psLine*",
+      "snippet": "psLine*[${1:keyvals}](${2:x1},${3:y1})"
+    },
+    {
+      "name": "psLoop",
+      "snippet": "psLoop{${1:n}}{${2:argument}}"
+    },
+    {
+      "name": "psLoopIndex",
+      "unusual": true
+    },
+    {
+      "name": "psPline",
+      "snippet": "psPline(${1:x1},${2:y1})(${3:x2},${4:y2})(${5:x3},${6:y3})"
+    },
+    {
+      "name": "psPline",
+      "snippet": "psPline[${1:keyvals}](${2:x1},${3:y1})(${4:x2},${5:y2})(${6:x3},${7:y3})"
+    },
+    {
+      "name": "psRing",
+      "snippet": "psRing(${3:x},${4:y}){${1:inner radius}}{${2:outer radius}}"
+    },
+    {
+      "name": "psRing",
+      "snippet": "psRing(${4:x},${5:y})[${3:start,end}]{${1:inner radius}}{${2:outer radius}}"
+    },
+    {
+      "name": "psRing",
+      "snippet": "psRing[${3:keyvals}](${4:x},${5:y}){${1:inner radius}}{${2:outer radius}}"
+    },
+    {
+      "name": "psRing",
+      "snippet": "psRing[${3:keyvals}](${5:x},${6:y})[${4:start,end}]{${1:inner radius}}{${2:outer radius}}"
+    },
+    {
+      "name": "psRing*",
+      "snippet": "psRing*(${3:x},${4:y}){${1:inner radius}}{${2:outer radius}}"
+    },
+    {
+      "name": "psRing*",
+      "snippet": "psRing*(${4:x},${5:y})[${3:start,end}]{${1:inner radius}}{${2:outer radius}}"
+    },
+    {
+      "name": "psRing*",
+      "snippet": "psRing*[${3:keyvals}](${4:x},${5:y}){${1:inner radius}}{${2:outer radius}}"
+    },
+    {
+      "name": "psRing*",
+      "snippet": "psRing*[${3:keyvals}](${5:x},${6:y})[${4:start,end}]{${1:inner radius}}{${2:outer radius}}"
+    },
+    {
+      "name": "psTextFrame",
+      "snippet": "psTextFrame(${2:x1},${3:y1})(${4:x2},${5:y2}){${1:text}}"
+    },
+    {
+      "name": "psTextFrame",
+      "snippet": "psTextFrame[${2:keyvals}](${3:x1},${4:y1})(${5:x2},${6:y2}){${1:text}}"
+    },
+    {
+      "name": "psTextFrame*",
+      "snippet": "psTextFrame*(${2:x1},${3:y1})(${4:x2},${5:y2}){${1:text}}"
+    },
+    {
+      "name": "psTextFrame*",
+      "snippet": "psTextFrame*[${2:keyvals}](${3:x1},${4:y1})(${5:x2},${6:y2}){${1:text}}"
+    },
+    {
+      "name": "psaddtolength",
+      "snippet": "psaddtolength{${1:cmd}}{${2:dim}}"
+    },
+    {
+      "name": "psarc",
+      "snippet": "psarc(${4:x},${5:y}){${1:radius}}{${2:angleA}}{${3:angleB}}"
+    },
+    {
+      "name": "psarc",
+      "snippet": "psarc[${4:keyvals}](${5:x},${6:y}){${1:radius}}{${2:angleA}}{${3:angleB}}"
+    },
+    {
+      "name": "psarc",
+      "snippet": "psarc[${5:keyvals}]{${1:arrows}}(${6:x},${7:y}){${2:radius}}{${3:angleA}}{${4:angleB}}"
+    },
+    {
+      "name": "psarc",
+      "snippet": "psarc{${1:arrows}}(${5:x},${6:y}){${2:radius}}{${3:angleA}}{${4:angleB}}"
+    },
+    {
+      "name": "psarc*",
+      "snippet": "psarc*(${4:x},${5:y}){${1:radius}}{${2:angleA}}{${3:angleB}}"
+    },
+    {
+      "name": "psarc*",
+      "snippet": "psarc*[${4:keyvals}](${5:x},${6:y}){${1:radius}}{${2:angleA}}{${3:angleB}}"
+    },
+    {
+      "name": "psarc*",
+      "snippet": "psarc*[${5:keyvals}]{${1:arrows}}(${6:x},${7:y}){${2:radius}}{${3:angleA}}{${4:angleB}}"
+    },
+    {
+      "name": "psarc*",
+      "snippet": "psarc*{${1:arrows}}(${5:x},${6:y}){${2:radius}}{${3:angleA}}{${4:angleB}}"
+    },
+    {
+      "name": "psarcAB",
+      "snippet": "psarcAB(${1:xC},${2:yC})(${3:xA},${4:yA})(${5:xB},${6:yB})"
+    },
+    {
+      "name": "psarcAB",
+      "snippet": "psarcAB[${1:keyvals}](${2:xC},${3:yC})(${4:xA},${5:yA})(${6:xB},${7:yB})"
+    },
+    {
+      "name": "psarcAB",
+      "snippet": "psarcAB[${2:keyvals}]{${1:arrows}}(${3:xC},${4:yC})(${5:xA},${6:yA})(${7:xB},${8:yB})"
+    },
+    {
+      "name": "psarcAB",
+      "snippet": "psarcAB{${1:arrows}}(${2:xC},${3:yC})(${4:xA},${5:yA})(${6:xB},${7:yB})"
+    },
+    {
+      "name": "psarcn",
+      "snippet": "psarcn(${4:x},${5:y}){${1:radius}}{${2:angleA}}{${3:angleB}}"
+    },
+    {
+      "name": "psarcn",
+      "snippet": "psarcn[${4:keyvals}](${5:x},${6:y}){${1:radius}}{${2:angleA}}{${3:angleB}}"
+    },
+    {
+      "name": "psarcn",
+      "snippet": "psarcn[${5:keyvals}]{${1:arrows}}(${6:x},${7:y}){${2:radius}}{${3:angleA}}{${4:angleB}}"
+    },
+    {
+      "name": "psarcn",
+      "snippet": "psarcn{${1:arrows}}(${5:x},${6:y}){${2:radius}}{${3:angleA}}{${4:angleB}}"
+    },
+    {
+      "name": "psarcn*",
+      "snippet": "psarcn*(${4:x},${5:y}){${1:radius}}{${2:angleA}}{${3:angleB}}"
+    },
+    {
+      "name": "psarcn*",
+      "snippet": "psarcn*[${4:keyvals}](${5:x},${6:y}){${1:radius}}{${2:angleA}}{${3:angleB}}"
+    },
+    {
+      "name": "psarcn*",
+      "snippet": "psarcn*[${5:keyvals}]{${1:arrows}}(${6:x},${7:y}){${2:radius}}{${3:angleA}}{${4:angleB}}"
+    },
+    {
+      "name": "psarcn*",
+      "snippet": "psarcn*{${1:arrows}}(${5:x},${6:y}){${2:radius}}{${3:angleA}}{${4:angleB}}"
+    },
+    {
+      "name": "psarcnAB",
+      "snippet": "psarcnAB(${1:xC},${2:yC})(${3:xA},${4:yA})(${5:xB},${6:yB})"
+    },
+    {
+      "name": "psarcnAB",
+      "snippet": "psarcnAB[${1:keyvals}](${2:xC},${3:yC})(${4:xA},${5:yA})(${6:xB},${7:yB})"
+    },
+    {
+      "name": "psarcnAB",
+      "snippet": "psarcnAB[${2:keyvals}]{${1:arrows}}(${3:xC},${4:yC})(${5:xA},${6:yA})(${7:xB},${8:yB})"
+    },
+    {
+      "name": "psarcnAB",
+      "snippet": "psarcnAB{${1:arrows}}(${2:xC},${3:yC})(${4:xA},${5:yA})(${6:xB},${7:yB})"
+    },
+    {
+      "name": "psarrowlinestyle",
+      "unusual": true
+    },
+    {
+      "name": "psbezier",
+      "snippet": "psbezier(${1:x0},${2:y0})(${3:x1},${4:y1})(${5:x2},${6:y2})(${7:x3},${8:y3})"
+    },
+    {
+      "name": "psbezier",
+      "snippet": "psbezier[${1:keyvals}](${2:x0},${3:y0})(${4:x1},${5:y1})(${6:x2},${7:y2})(${8:x3},${9:y3})"
+    },
+    {
+      "name": "psbezier",
+      "snippet": "psbezier[${2:keyvals}]{${1:arrows}}(${3:x0},${4:y0})(${5:x1},${6:y1})(${7:x2},${8:y2})(${9:x3},${10:y3})"
+    },
+    {
+      "name": "psbezier",
+      "snippet": "psbezier{${1:arrows}}(${2:x0},${3:y0})(${4:x1},${5:y1})(${6:x2},${7:y2})(${8:x3},${9:y3})"
+    },
+    {
+      "name": "psbezier*",
+      "snippet": "psbezier*(${1:x0},${2:y0})(${3:x1},${4:y1})(${5:x2},${6:y2})(${7:x3},${8:y3})"
+    },
+    {
+      "name": "psbezier*",
+      "snippet": "psbezier*[${1:keyvals}](${2:x0},${3:y0})(${4:x1},${5:y1})(${6:x2},${7:y2})(${8:x3},${9:y3})"
+    },
+    {
+      "name": "psbezier*",
+      "snippet": "psbezier*[${2:keyvals}]{${1:arrows}}(${3:x0},${4:y0})(${5:x1},${6:y1})(${7:x2},${8:y2})(${9:x3},${10:y3})"
+    },
+    {
+      "name": "psbezier*",
+      "snippet": "psbezier*{${1:arrows}}(${2:x0},${3:y0})(${4:x1},${5:y1})(${6:x2},${7:y2})(${8:x3},${9:y3})"
+    },
+    {
+      "name": "psbordercolor",
+      "unusual": true
+    },
+    {
+      "name": "pscbezier",
+      "snippet": "pscbezier(${1:x0},${2:y0})(${3:x1},${4:y1})(${5:x2},${6:y2})(${7:x3},${8:y3})"
+    },
+    {
+      "name": "pscbezier",
+      "snippet": "pscbezier[${1:keyvals}](${2:x0},${3:y0})(${4:x1},${5:y1})(${6:x2},${7:y2})(${8:x3},${9:y3})"
+    },
+    {
+      "name": "pscbezier",
+      "snippet": "pscbezier[${2:keyvals}]{${1:arrows}}(${3:x0},${4:y0})(${5:x1},${6:y1})(${7:x2},${8:y2})(${9:x3},${10:y3})"
+    },
+    {
+      "name": "pscbezier",
+      "snippet": "pscbezier{${1:arrows}}(${2:x0},${3:y0})(${4:x1},${5:y1})(${6:x2},${7:y2})(${8:x3},${9:y3})"
+    },
+    {
+      "name": "pscbezier*",
+      "snippet": "pscbezier*(${1:x0},${2:y0})(${3:x1},${4:y1})(${5:x2},${6:y2})(${7:x3},${8:y3})"
+    },
+    {
+      "name": "pscbezier*",
+      "snippet": "pscbezier*[${1:keyvals}](${2:x0},${3:y0})(${4:x1},${5:y1})(${6:x2},${7:y2})(${8:x3},${9:y3})"
+    },
+    {
+      "name": "pscbezier*",
+      "snippet": "pscbezier*[${2:keyvals}]{${1:arrows}}(${3:x0},${4:y0})(${5:x1},${6:y1})(${7:x2},${8:y2})(${9:x3},${10:y3})"
+    },
+    {
+      "name": "pscbezier*",
+      "snippet": "pscbezier*{${1:arrows}}(${2:x0},${3:y0})(${4:x1},${5:y1})(${6:x2},${7:y2})(${8:x3},${9:y3})"
+    },
+    {
+      "name": "psccurve",
+      "snippet": "psccurve(${1:x1},${2:y1})(${3:xn},${4:yn})"
+    },
+    {
+      "name": "psccurve",
+      "snippet": "psccurve[${1:keyvals}](${2:x1},${3:y1})(${4:xn},${5:yn})"
+    },
+    {
+      "name": "psccurve",
+      "snippet": "psccurve[${2:keyvals}]{${1:arrows}}(${3:x1},${4:y1})(${5:xn},${6:yn})"
+    },
+    {
+      "name": "psccurve",
+      "snippet": "psccurve{${1:arrows}}(${2:x1},${3:y1})(${4:xn},${5:yn})"
+    },
+    {
+      "name": "psccurve*",
+      "snippet": "psccurve*(${1:x1},${2:y1})(${3:xn},${4:yn})"
+    },
+    {
+      "name": "psccurve*",
+      "snippet": "psccurve*[${1:keyvals}](${2:x1},${3:y1})(${4:xn},${5:yn})"
+    },
+    {
+      "name": "psccurve*",
+      "snippet": "psccurve*[${2:keyvals}]{${1:arrows}}(${3:x1},${4:y1})(${5:xn},${6:yn})"
+    },
+    {
+      "name": "psccurve*",
+      "snippet": "psccurve*{${1:arrows}}(${2:x1},${3:y1})(${4:xn},${5:yn})"
+    },
+    {
+      "name": "pscircle",
+      "snippet": "pscircle(${2:x0},${3:y0}){${1:radius}}"
+    },
+    {
+      "name": "pscircle",
+      "snippet": "pscircle[${2:keyvals}](${3:x0},${4:y0}){${1:radius}}"
+    },
+    {
+      "name": "pscircle*",
+      "snippet": "pscircle*(${2:x0},${3:y0}){${1:radius}}"
+    },
+    {
+      "name": "pscircle*",
+      "snippet": "pscircle*[${2:keyvals}](${3:x0},${4:y0}){${1:radius}}"
+    },
+    {
+      "name": "pscircleOA",
+      "snippet": "pscircleOA(${1:xO},${2:yO})(${3:xA},${4:yA})"
+    },
+    {
+      "name": "pscircleOA",
+      "snippet": "pscircleOA[${1:keyvals}](${2:xO},${3:yO})(${4:xA},${5:yA})"
+    },
+    {
+      "name": "pscirclebox",
+      "snippet": "pscirclebox[${2:keyvals}]{${1:stuff}}"
+    },
+    {
+      "name": "pscirclebox",
+      "snippet": "pscirclebox{${1:stuff}}"
+    },
+    {
+      "name": "pscirclebox*",
+      "snippet": "pscirclebox*[${2:keyvals}]{${1:stuff}}"
+    },
+    {
+      "name": "pscirclebox*",
+      "snippet": "pscirclebox*{${1:stuff}}"
+    },
+    {
+      "name": "psclip",
+      "snippet": "psclip{${1:graphics}}",
+      "unusual": true
+    },
+    {
+      "name": "psclipbox",
+      "snippet": "psclipbox[${2:dim%l}]{${1:stuff}}"
+    },
+    {
+      "name": "psclipbox",
+      "snippet": "psclipbox{${1:stuff}}"
+    },
+    {
+      "name": "pscoor",
+      "unusual": true
+    },
+    {
+      "name": "pscurve",
+      "snippet": "pscurve(${1:x1},${2:y1})(${3:xn},${4:yn})"
+    },
+    {
+      "name": "pscurve",
+      "snippet": "pscurve[${1:keyvals}](${2:x1},${3:y1})(${4:xn},${5:yn})"
+    },
+    {
+      "name": "pscurve",
+      "snippet": "pscurve[${2:keyvals}]{${1:arrows}}(${3:x1},${4:y1})(${5:xn},${6:yn})"
+    },
+    {
+      "name": "pscurve",
+      "snippet": "pscurve{${1:arrows}}(${2:x1},${3:y1})(${4:xn},${5:yn})"
+    },
+    {
+      "name": "pscurve*",
+      "snippet": "pscurve*(${1:x1},${2:y1})(${3:xn},${4:yn})"
+    },
+    {
+      "name": "pscurve*",
+      "snippet": "pscurve*[${1:keyvals}](${2:x1},${3:y1})(${4:xn},${5:yn})"
+    },
+    {
+      "name": "pscurve*",
+      "snippet": "pscurve*[${2:keyvals}]{${1:arrows}}(${3:x1},${4:y1})(${5:xn},${6:yn})"
+    },
+    {
+      "name": "pscurve*",
+      "snippet": "pscurve*{${1:arrows}}(${2:x1},${3:y1})(${4:xn},${5:yn})"
+    },
+    {
+      "name": "pscustom",
+      "snippet": "pscustom[${2:keyvals}]{${1:commands}}"
+    },
+    {
+      "name": "pscustom",
+      "snippet": "pscustom{${1:commands}}"
+    },
+    {
+      "name": "pscustom*",
+      "snippet": "pscustom*[${2:keyvals}]{${1:commands}}"
+    },
+    {
+      "name": "pscustom*",
+      "snippet": "pscustom*{${1:commands}}"
+    },
+    {
+      "name": "psdashcolor",
+      "unusual": true
+    },
+    {
+      "name": "psdblframebox",
+      "snippet": "psdblframebox[${2:keyvals}]{${1:stuff}}"
+    },
+    {
+      "name": "psdblframebox",
+      "snippet": "psdblframebox{${1:stuff}}"
+    },
+    {
+      "name": "psdblframebox*",
+      "snippet": "psdblframebox*[${2:keyvals}]{${1:stuff}}"
+    },
+    {
+      "name": "psdblframebox*",
+      "snippet": "psdblframebox*{${1:stuff}}"
+    },
+    {
+      "name": "psdiabox",
+      "snippet": "psdiabox[${2:keyvals}]{${1:stuff}}"
+    },
+    {
+      "name": "psdiabox",
+      "snippet": "psdiabox{${1:stuff}}"
+    },
+    {
+      "name": "psdiabox*",
+      "snippet": "psdiabox*[${2:keyvals}]{${1:stuff}}"
+    },
+    {
+      "name": "psdiabox*",
+      "snippet": "psdiabox*{${1:stuff}}"
+    },
+    {
+      "name": "psdiamond",
+      "snippet": "psdiamond(${1:x0},${2:y0})(${3:x1},${4:y1})"
+    },
+    {
+      "name": "psdiamond",
+      "snippet": "psdiamond[${1:keyvals}](${2:x0},${3:y0})(${4:x1},${5:y1})"
+    },
+    {
+      "name": "psdiamond*",
+      "snippet": "psdiamond*(${1:x0},${2:y0})(${3:x1},${4:y1})"
+    },
+    {
+      "name": "psdiamond*",
+      "snippet": "psdiamond*[${1:keyvals}](${2:x0},${3:y0})(${4:x1},${5:y1})"
+    },
+    {
+      "name": "psdot",
+      "snippet": "psdot(${1:x1},${2:y1})"
+    },
+    {
+      "name": "psdot",
+      "snippet": "psdot[${1:keyvals}](${2:x1},${3:y1})"
+    },
+    {
+      "name": "psdot*",
+      "snippet": "psdot*(${1:x1},${2:y1})"
+    },
+    {
+      "name": "psdot*",
+      "snippet": "psdot*[${1:keyvals}](${2:x1},${3:y1})"
+    },
+    {
+      "name": "psdots",
+      "snippet": "psdots(${1:x1},${2:y1})(${3:xn},${4:yn})"
+    },
+    {
+      "name": "psdots",
+      "snippet": "psdots[${1:keyvals}](${2:x1},${3:y1})(${4:xn},${5:yn})"
+    },
+    {
+      "name": "psdots*",
+      "snippet": "psdots*(${1:x1},${2:y1})(${3:xn},${4:yn})"
+    },
+    {
+      "name": "psdots*",
+      "snippet": "psdots*[${1:keyvals}](${2:x1},${3:y1})(${4:xn},${5:yn})"
+    },
+    {
+      "name": "psdoublecolor",
+      "unusual": true
+    },
+    {
+      "name": "psdoublesep",
+      "unusual": true
+    },
+    {
+      "name": "psecurve",
+      "snippet": "psecurve(${1:x1},${2:y1})(${3:xn},${4:yn})"
+    },
+    {
+      "name": "psecurve",
+      "snippet": "psecurve[${1:keyvals}](${2:x1},${3:y1})(${4:xn},${5:yn})"
+    },
+    {
+      "name": "psecurve",
+      "snippet": "psecurve[${2:keyvals}]{${1:arrows}}(${3:x1},${4:y1})(${5:xn},${6:yn})"
+    },
+    {
+      "name": "psecurve",
+      "snippet": "psecurve{${1:arrows}}(${2:x1},${3:y1})(${4:xn},${5:yn})"
+    },
+    {
+      "name": "psecurve*",
+      "snippet": "psecurve*(${1:x1},${2:y1})(${3:xn},${4:yn})"
+    },
+    {
+      "name": "psecurve*",
+      "snippet": "psecurve*[${1:keyvals}](${2:x1},${3:y1})(${4:xn},${5:yn})"
+    },
+    {
+      "name": "psecurve*",
+      "snippet": "psecurve*[${2:keyvals}]{${1:arrows}}(${3:x1},${4:y1})(${5:xn},${6:yn})"
+    },
+    {
+      "name": "psecurve*",
+      "snippet": "psecurve*{${1:arrows}}(${2:x1},${3:y1})(${4:xn},${5:yn})"
+    },
+    {
+      "name": "psellipse",
+      "snippet": "psellipse(${1:x0},${2:y0})(${3:x1},${4:y1})"
+    },
+    {
+      "name": "psellipse",
+      "snippet": "psellipse[${1:keyvals}](${2:x0},${3:y0})(${4:x1},${5:y1})"
+    },
+    {
+      "name": "psellipse*",
+      "snippet": "psellipse*(${1:x0},${2:y0})(${3:x1},${4:y1})"
+    },
+    {
+      "name": "psellipse*",
+      "snippet": "psellipse*[${1:keyvals}](${2:x0},${3:y0})(${4:x1},${5:y1})"
+    },
+    {
+      "name": "psellipseAB",
+      "snippet": "psellipseAB(${2:x},${3:y}){${1:half radius}}"
+    },
+    {
+      "name": "psellipseAB",
+      "snippet": "psellipseAB[${2:keyvals}](${3:x},${4:y}){${1:half radius}}"
+    },
+    {
+      "name": "psellipseAB*",
+      "snippet": "psellipseAB*(${2:x},${3:y}){${1:half radius}}"
+    },
+    {
+      "name": "psellipseAB*",
+      "snippet": "psellipseAB*[${2:keyvals}](${3:x},${4:y}){${1:half radius}}"
+    },
+    {
+      "name": "psellipticarc",
+      "snippet": "psellipticarc(${3:x0},${4:y0})(${5:x1},${6:y1}){${1:angle1}}{${2:angle2}}"
+    },
+    {
+      "name": "psellipticarc",
+      "snippet": "psellipticarc[${3:keyvals}](${4:x0},${5:y0})(${6:x1},${7:y1}){${1:angle1}}{${2:angle2}}"
+    },
+    {
+      "name": "psellipticarc*",
+      "snippet": "psellipticarc*(${3:x0},${4:y0})(${5:x1},${6:y1}){${1:angle1}}{${2:angle2}}"
+    },
+    {
+      "name": "psellipticarc*",
+      "snippet": "psellipticarc*[${3:keyvals}](${4:x0},${5:y0})(${6:x1},${7:y1}){${1:angle1}}{${2:angle2}}"
+    },
+    {
+      "name": "psellipticarcn",
+      "snippet": "psellipticarcn(${3:x0},${4:y0})(${5:x1},${6:y1}){${1:angle1}}{${2:angle2}}"
+    },
+    {
+      "name": "psellipticarcn",
+      "snippet": "psellipticarcn[${3:keyvals}](${4:x0},${5:y0})(${6:x1},${7:y1}){${1:angle1}}{${2:angle2}}"
+    },
+    {
+      "name": "psellipticarcn*",
+      "snippet": "psellipticarcn*(${3:x0},${4:y0})(${5:x1},${6:y1}){${1:angle1}}{${2:angle2}}"
+    },
+    {
+      "name": "psellipticarcn*",
+      "snippet": "psellipticarcn*[${3:keyvals}](${4:x0},${5:y0})(${6:x1},${7:y1}){${1:angle1}}{${2:angle2}}"
+    },
+    {
+      "name": "psellipticwedge",
+      "snippet": "psellipticwedge(${3:x0},${4:y0})(${5:x1},${6:y1}){${1:angle1}}{${2:angle2}}"
+    },
+    {
+      "name": "psellipticwedge",
+      "snippet": "psellipticwedge[${3:keyvals}](${4:x0},${5:y0})(${6:x1},${7:y1}){${1:angle1}}{${2:angle2}}"
+    },
+    {
+      "name": "psellipticwedge*",
+      "snippet": "psellipticwedge*(${3:x0},${4:y0})(${5:x1},${6:y1}){${1:angle1}}{${2:angle2}}"
+    },
+    {
+      "name": "psellipticwedge*",
+      "snippet": "psellipticwedge*[${3:keyvals}](${4:x0},${5:y0})(${6:x1},${7:y1}){${1:angle1}}{${2:angle2}}"
+    },
+    {
+      "name": "psfillcolor",
+      "unusual": true
+    },
+    {
+      "name": "psforeach",
+      "snippet": "psforeach{${1:variable%cmd}}{${2:value list}}{${3:action}}"
+    },
+    {
+      "name": "psframe",
+      "snippet": "psframe(${1:x0},${2:y0})(${3:x1},${4:y1})"
+    },
+    {
+      "name": "psframe",
+      "snippet": "psframe[${1:keyvals}](${2:x0},${3:y0})(${4:x1},${5:y1})"
+    },
+    {
+      "name": "psframe*",
+      "snippet": "psframe*(${1:x0},${2:y0})(${3:x1},${4:y1})"
+    },
+    {
+      "name": "psframe*",
+      "snippet": "psframe*[${1:keyvals}](${2:x0},${3:y0})(${4:x1},${5:y1})"
+    },
+    {
+      "name": "psframebox",
+      "snippet": "psframebox[${2:keyvals}]{${1:stuff}}"
+    },
+    {
+      "name": "psframebox",
+      "snippet": "psframebox{${1:stuff}}"
+    },
+    {
+      "name": "psframebox*",
+      "snippet": "psframebox*[${2:keyvals}]{${1:stuff}}"
+    },
+    {
+      "name": "psframebox*",
+      "snippet": "psframebox*{${1:stuff}}"
+    },
+    {
+      "name": "psframesep",
+      "unusual": true
+    },
+    {
+      "name": "psgetCMYKColorValues",
+      "snippet": "psgetCMYKColorValues{${1:color macro}}",
+      "unusual": true
+    },
+    {
+      "name": "psgetColorValues",
+      "snippet": "psgetColorValues{${1:color macro}}",
+      "unusual": true
+    },
+    {
+      "name": "psgetRGBColorValues",
+      "snippet": "psgetRGBColorValues{${1:color macro}}",
+      "unusual": true
+    },
+    {
+      "name": "psgrid",
+      "snippet": "psgrid(${1:x0},${2:y0})(${3:x1},${4:y1})(${5:x2},${6:y2})"
+    },
+    {
+      "name": "psgridcolor",
+      "unusual": true
+    },
+    {
+      "name": "psgridlabelcolor",
+      "unusual": true
+    },
+    {
+      "name": "pshatchcolor",
+      "unusual": true
+    },
+    {
+      "name": "pshooklength",
+      "unusual": true
+    },
+    {
+      "name": "pshookwidth",
+      "unusual": true
+    },
+    {
+      "name": "pshskip",
+      "snippet": "pshskip{${1:length}}",
+      "unusual": true
+    },
+    {
+      "name": "pslabelsep"
+    },
+    {
+      "name": "pslbrace"
+    },
+    {
+      "name": "psline",
+      "snippet": "psline(${1:x0},${2:y0})(${3:x1},${4:y1})"
+    },
+    {
+      "name": "psline",
+      "snippet": "psline[${1:keyvals}](${2:x0},${3:y0})(${4:x1},${5:y1})"
+    },
+    {
+      "name": "psline",
+      "snippet": "psline[${2:keyvals}]{${1:arrows}}(${3:x0},${4:y0})(${5:x1},${6:y1})"
+    },
+    {
+      "name": "psline",
+      "snippet": "psline{${1:arrows}}(${2:x0},${3:y0})(${4:x1},${5:y1})"
+    },
+    {
+      "name": "psline*",
+      "snippet": "psline*(${1:x0},${2:y0})(${3:x1},${4:y1})"
+    },
+    {
+      "name": "psline*",
+      "snippet": "psline*[${1:keyvals}](${2:x0},${3:y0})(${4:x1},${5:y1})"
+    },
+    {
+      "name": "psline*",
+      "snippet": "psline*[${2:keyvals}]{${1:arrows}}(${3:x0},${4:y0})(${5:x1},${6:y1})"
+    },
+    {
+      "name": "psline*",
+      "snippet": "psline*{${1:arrows}}(${2:x0},${3:y0})(${4:x1},${5:y1})"
+    },
+    {
+      "name": "pslinearc",
+      "unusual": true
+    },
+    {
+      "name": "pslinecolor",
+      "unusual": true
+    },
+    {
+      "name": "pslinestyle",
+      "unusual": true
+    },
+    {
+      "name": "pslinetype",
+      "unusual": true
+    },
+    {
+      "name": "pslinewidth",
+      "unusual": true
+    },
+    {
+      "name": "pslongbox",
+      "snippet": "pslongbox{${1:name}}{${2:cmd}}"
+    },
+    {
+      "name": "psmathboxfalse"
+    },
+    {
+      "name": "psmathboxtrue"
+    },
+    {
+      "name": "psovalbox",
+      "snippet": "psovalbox[${2:keyvals}]{${1:stuff}}"
+    },
+    {
+      "name": "psovalbox",
+      "snippet": "psovalbox{${1:stuff}}"
+    },
+    {
+      "name": "psovalbox*",
+      "snippet": "psovalbox*[${2:keyvals}]{${1:stuff}}"
+    },
+    {
+      "name": "psovalbox*",
+      "snippet": "psovalbox*{${1:stuff}}"
+    },
+    {
+      "name": "psoverlay",
+      "snippet": "psoverlay{${1:string}}"
+    },
+    {
+      "name": "pspolygon",
+      "snippet": "pspolygon(${1:x0},${2:y0})(${3:x1},${4:y1})(${5:x2},${6:y2})"
+    },
+    {
+      "name": "pspolygon",
+      "snippet": "pspolygon[${1:keyvals}](${2:x0},${3:y0})(${4:x1},${5:y1})(${6:x2},${7:y2})"
+    },
+    {
+      "name": "pspolygon*",
+      "snippet": "pspolygon*(${1:x0},${2:y0})(${3:x1},${4:y1})(${5:x2},${6:y2})"
+    },
+    {
+      "name": "pspolygon*",
+      "snippet": "pspolygon*[${1:keyvals}](${2:x0},${3:y0})(${4:x1},${5:y1})(${6:x2},${7:y2})"
+    },
+    {
+      "name": "psrbrace"
+    },
+    {
+      "name": "psresetColor"
+    },
+    {
+      "name": "psrunit",
+      "unusual": true
+    },
+    {
+      "name": "psscalebox",
+      "snippet": "psscalebox{${1:num1 num2}}{${2:stuff}}"
+    },
+    {
+      "name": "psscaleboxto",
+      "snippet": "psscaleboxto(${2:x},${3:y}){${1:stuff}}"
+    },
+    {
+      "name": "psset",
+      "snippet": "psset{${1:keyvals}}"
+    },
+    {
+      "name": "pssetGrayscale"
+    },
+    {
+      "name": "pssetMonochrome"
+    },
+    {
+      "name": "pssetlength",
+      "snippet": "pssetlength{${1:cmd}}{${2:dim}}"
+    },
+    {
+      "name": "pssetxlength",
+      "snippet": "pssetxlength{${1:cmd}}{${2:dim}}",
+      "unusual": true
+    },
+    {
+      "name": "pssetylength",
+      "snippet": "pssetylength{${1:cmd}}{${2:dim}}",
+      "unusual": true
+    },
+    {
+      "name": "psshadowbox",
+      "snippet": "psshadowbox[${2:keyvals}]{${1:stuff}}"
+    },
+    {
+      "name": "psshadowbox",
+      "snippet": "psshadowbox{${1:stuff}}"
+    },
+    {
+      "name": "psshadowbox*",
+      "snippet": "psshadowbox*[${2:keyvals}]{${1:stuff}}"
+    },
+    {
+      "name": "psshadowbox*",
+      "snippet": "psshadowbox*{${1:stuff}}"
+    },
+    {
+      "name": "psshadowcolor",
+      "unusual": true
+    },
+    {
+      "name": "pssubgridcolor",
+      "unusual": true
+    },
+    {
+      "name": "pstCheckCoorType",
+      "snippet": "pstCheckCoorType{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "pstFPDiv",
+      "snippet": "pstFPDiv{${1:cmd}}{${2:num1}}{${3:num2}}",
+      "unusual": true
+    },
+    {
+      "name": "pstFPMul",
+      "snippet": "pstFPMul{${1:cmd}}{${2:num1}}{${3:num2}}",
+      "unusual": true
+    },
+    {
+      "name": "pstFPadd",
+      "snippet": "pstFPadd{${1:cmd}}{${2:num1}}{${3:num2}}",
+      "unusual": true
+    },
+    {
+      "name": "pstFPdiv",
+      "snippet": "pstFPdiv{${1:cmd}}{${2:num1}}{${3:num2}}",
+      "unusual": true
+    },
+    {
+      "name": "pstFPmul",
+      "snippet": "pstFPmul{${1:cmd}}{${2:num1}}{${3:num2}}",
+      "unusual": true
+    },
+    {
+      "name": "pstFPstripZeros",
+      "snippet": "pstFPstripZeros{${1:cmd}}{${2:num}}",
+      "unusual": true
+    },
+    {
+      "name": "pstFPsub",
+      "snippet": "pstFPsub{${1:cmd}}{${2:num1}}{${3:num2}}",
+      "unusual": true
+    },
+    {
+      "name": "pstVerb",
+      "snippet": "pstVerb{${1:commands}}",
+      "unusual": true
+    },
+    {
+      "name": "pstcustomize",
+      "unusual": true
+    },
+    {
+      "name": "pstdriver",
+      "unusual": true
+    },
+    {
+      "name": "pstheader",
+      "snippet": "pstheader{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "pstnodescale",
+      "unusual": true
+    },
+    {
+      "name": "pstriangle",
+      "snippet": "pstriangle(${1:x0},${2:y0})(${3:x1},${4:y1})"
+    },
+    {
+      "name": "pstriangle",
+      "snippet": "pstriangle[${1:keyvals}](${2:x0},${3:y0})(${4:x1},${5:y1})"
+    },
+    {
+      "name": "pstriangle*",
+      "snippet": "pstriangle*(${1:x0},${2:y0})(${3:x1},${4:y1})"
+    },
+    {
+      "name": "pstriangle*",
+      "snippet": "pstriangle*[${1:keyvals}](${2:x0},${3:y0})(${4:x1},${5:y1})"
+    },
+    {
+      "name": "pstribox",
+      "snippet": "pstribox[${2:keyvals}]{${1:stuff}}"
+    },
+    {
+      "name": "pstribox",
+      "snippet": "pstribox{${1:stuff}}"
+    },
+    {
+      "name": "pstribox*",
+      "snippet": "pstribox*[${2:keyvals}]{${1:stuff}}"
+    },
+    {
+      "name": "pstribox*",
+      "snippet": "pstribox*{${1:stuff}}"
+    },
+    {
+      "name": "pstrotate",
+      "unusual": true
+    },
+    {
+      "name": "pstunit",
+      "unusual": true
+    },
+    {
+      "name": "pstverb",
+      "snippet": "pstverb{${1:commands}}",
+      "unusual": true
+    },
+    {
+      "name": "pstverbscale",
+      "unusual": true
+    },
+    {
+      "name": "psunit",
+      "unusual": true
+    },
+    {
+      "name": "psverbboxfalse"
+    },
+    {
+      "name": "psverbboxtrue"
+    },
+    {
+      "name": "pswedge",
+      "snippet": "pswedge(${4:x0},${5:y0}){${1:radius}}{${2:angle1}}{${3:angle2}}"
+    },
+    {
+      "name": "pswedge",
+      "snippet": "pswedge[${4:keyvals}](${5:x0},${6:y0}){${1:radius}}{${2:angle1}}{${3:angle2}}"
+    },
+    {
+      "name": "pswedge*",
+      "snippet": "pswedge*(${4:x0},${5:y0}){${1:radius}}{${2:angle1}}{${3:angle2}}"
+    },
+    {
+      "name": "pswedge*",
+      "snippet": "pswedge*[${4:keyvals}](${5:x0},${6:y0}){${1:radius}}{${2:angle1}}{${3:angle2}}"
+    },
+    {
+      "name": "psxunit",
+      "unusual": true
+    },
+    {
+      "name": "psyunit",
+      "unusual": true
+    },
+    {
+      "name": "putoverlaybox",
+      "snippet": "putoverlaybox{${1:string}}"
+    },
+    {
+      "name": "qdisk",
+      "snippet": "qdisk(${2:coor}){${1:radius}}"
+    },
+    {
+      "name": "qline",
+      "snippet": "qline(${1:coor0})(${2:coor1})"
+    },
+    {
+      "name": "radians"
+    },
+    {
+      "name": "rcurveto",
+      "snippet": "rcurveto(${1:x1},${2:y1})(${3:x2},${4:y2})(${5:x3},${6:y3})"
+    },
+    {
+      "name": "red"
+    },
+    {
+      "name": "resetArrowOptions",
+      "unusual": true
+    },
+    {
+      "name": "reversepath"
+    },
+    {
+      "name": "rlineto",
+      "snippet": "rlineto(${1:coor})"
+    },
+    {
+      "name": "rmoveto",
+      "snippet": "rmoveto(${1:coor})"
+    },
+    {
+      "name": "rotate",
+      "snippet": "rotate{${1:angle}}"
+    },
+    {
+      "name": "rotatedown",
+      "snippet": "rotatedown{${1:stuff}}"
+    },
+    {
+      "name": "rotateleft",
+      "snippet": "rotateleft{${1:stuff}}"
+    },
+    {
+      "name": "rotateright",
+      "snippet": "rotateright{${1:stuff}}"
+    },
+    {
+      "name": "rput",
+      "snippet": "rput(${2:x},${3:y}){${1:stuff}}",
+      "unusual": true
+    },
+    {
+      "name": "rput",
+      "snippet": "rput(${2:x},${3:y}){${1:stuff}}"
+    },
+    {
+      "name": "rput",
+      "snippet": "rput[${2:refpoint}](${3:x},${4:y}){${1:stuff}}",
+      "unusual": true
+    },
+    {
+      "name": "rput",
+      "snippet": "rput[${2:refpoint}](${3:x},${4:y}){${1:stuff}}"
+    },
+    {
+      "name": "rput",
+      "snippet": "rput[${3:refpoint}]{${1:rotation}}(${4:x},${5:y}){${2:stuff}}"
+    },
+    {
+      "name": "rput",
+      "snippet": "rput{${1:rotation}}(${3:x},${4:y}){${2:stuff}}",
+      "unusual": true
+    },
+    {
+      "name": "rput",
+      "snippet": "rput{${1:rotation}}(${3:x},${4:y}){${2:stuff}}"
+    },
+    {
+      "name": "rput*",
+      "snippet": "rput*(${2:x},${3:y}){${1:stuff}}",
+      "unusual": true
+    },
+    {
+      "name": "rput*",
+      "snippet": "rput*(${2:x},${3:y}){${1:stuff}}"
+    },
+    {
+      "name": "rput*",
+      "snippet": "rput*[${2:refpoint}](${3:x},${4:y}){${1:stuff}}",
+      "unusual": true
+    },
+    {
+      "name": "rput*",
+      "snippet": "rput*[${2:refpoint}](${3:x},${4:y}){${1:stuff}}"
+    },
+    {
+      "name": "rput*",
+      "snippet": "rput*[${3:refpoint}]{${1:rotation}}(${4:x},${5:y}){${2:stuff}}",
+      "unusual": true
+    },
+    {
+      "name": "rput*",
+      "snippet": "rput*[${3:refpoint}]{${1:rotation}}(${4:x},${5:y}){${2:stuff}}"
+    },
+    {
+      "name": "rput*",
+      "snippet": "rput*{${1:rotation}}(${3:x},${4:y}){${2:stuff}}",
+      "unusual": true
+    },
+    {
+      "name": "rput*",
+      "snippet": "rput*{${1:rotation}}(${3:x},${4:y}){${2:stuff}}"
+    },
+    {
+      "name": "scale",
+      "snippet": "scale{${1:num1 num2}}"
+    },
+    {
+      "name": "scale",
+      "snippet": "scale{${1:num}}"
+    },
+    {
+      "name": "setcolor",
+      "snippet": "setcolor{${1:color}}"
+    },
+    {
+      "name": "setkeys",
+      "snippet": "setkeys{${1:family}}{${2:keyvals}}",
+      "unusual": true
+    },
+    {
+      "name": "showgridfalse",
+      "unusual": true
+    },
+    {
+      "name": "showgridtrue",
+      "unusual": true
+    },
+    {
+      "name": "stroke"
+    },
+    {
+      "name": "stroke",
+      "snippet": "stroke[${1:keyvals}]"
+    },
+    {
+      "name": "swapaxes"
+    },
+    {
+      "name": "translate",
+      "snippet": "translate(${1:coor})"
+    },
+    {
+      "name": "uput",
+      "snippet": "uput[${2:refangle}](${3:x},${4:y}){${1:stuff}}"
+    },
+    {
+      "name": "uput",
+      "snippet": "uput[${3:refangle}]{${1:rotation}}(${4:x},${5:y}){${2:stuff}}"
+    },
+    {
+      "name": "uput",
+      "snippet": "uput{${1:labelsep}}[${3:refangle}](${4:x},${5:y}){${2:stuff}}"
+    },
+    {
+      "name": "uput",
+      "snippet": "uput{${1:labelsep}}[${4:refangle}]{${2:rotation}}(${5:x},${6:y}){${3:stuff}}"
+    },
+    {
+      "name": "uput*",
+      "snippet": "uput*[${2:refangle}](${3:x},${4:y}){${1:stuff}}"
+    },
+    {
+      "name": "uput*",
+      "snippet": "uput*[${3:refangle}]{${1:rotation}}(${4:x},${5:y}){${2:stuff}}"
+    },
+    {
+      "name": "uput*",
+      "snippet": "uput*{${1:labelsep}}[${3:refangle}](${4:x},${5:y}){${2:stuff}}"
+    },
+    {
+      "name": "uput*",
+      "snippet": "uput*{${1:labelsep}}[${4:refangle}]{${2:rotation}}(${5:x},${6:y}){${3:stuff}}"
+    },
+    {
+      "name": "white"
+    },
+    {
+      "name": "yellow"
+    }
+  ]
+}

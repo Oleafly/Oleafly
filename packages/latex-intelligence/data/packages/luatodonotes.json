@@ -1,0 +1,142 @@
+{
+  "args": [
+    "\\usepackage/luatodonotes#c"
+  ],
+  "deps": [
+    "atbegshi",
+    "etoolbox",
+    "ifluatex",
+    "ifoddpage",
+    "ifthen",
+    "luacode",
+    "soul",
+    "soulpos",
+    "tikz",
+    "tikzlibrarydecorations.pathmorphing",
+    "tikzlibraryintersections",
+    "tikzlibrarypositioning",
+    "tikzlibraryshadows",
+    "xcolor",
+    "xkeyval",
+    "xstring",
+    "zref-abspage"
+  ],
+  "envs": [],
+  "keys": {
+    "\\missingfigure": [
+      "figwidth=",
+      "figheight=",
+      "figcolor="
+    ],
+    "\\todo,\\todoarea": [
+      "disable",
+      "color=",
+      "backgroundcolor=",
+      "linecolor=",
+      "bordercolor=",
+      "line",
+      "noline",
+      "inline",
+      "noinline",
+      "size=",
+      "list",
+      "nolist",
+      "caption=",
+      "prepend",
+      "noprepend",
+      "author="
+    ],
+    "\\usepackage/luatodonotes#c": [
+      "disable",
+      "obeyDraft",
+      "obeyFinal",
+      "danish",
+      "german",
+      "ngerman",
+      "english",
+      "french",
+      "swedish",
+      "spanish",
+      "catalan",
+      "italian",
+      "portuguese",
+      "dutch",
+      "croatian",
+      "colorinlistoftodos",
+      "color=",
+      "backgroundcolor=",
+      "linecolor=",
+      "bordercolor=",
+      "textsize=${1:fontsize csname}",
+      "prependcaption=${1:caption}",
+      "shadow",
+      "figwidth=",
+      "figheight=",
+      "leaderwidth=",
+      "leadertype=${1|s,sBezier,opo,os,po|}",
+      "positioning=${1|inputOrder,inputOrderStacks,sLeaderNorthEast,sLeaderNorthEastBelow,sLeaderNorthEastBelowStacks,sLeaderEast,poLeaders,poLeadersAvoidLines|}",
+      "s",
+      "bezier",
+      "opo",
+      "po",
+      "splitting=${1|none,middle,median,weightedMedian|}",
+      "interNoteSpace=",
+      "noteInnerSep=",
+      "routingAreaWidth=",
+      "minNoteWidth=",
+      "distanceNotesPageBorder=",
+      "distanceNotesText=",
+      "rasterHeight=",
+      "additionalMargin=",
+      "debug"
+    ]
+  },
+  "macros": [
+    {
+      "name": "listoftodos"
+    },
+    {
+      "name": "listoftodos",
+      "snippet": "listoftodos[${1:name}]"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\missingfigure"
+      ],
+      "name": "missingfigure",
+      "snippet": "missingfigure[${2:options%keyvals}]{${1:text%todo}}"
+    },
+    {
+      "name": "missingfigure",
+      "snippet": "missingfigure{${1:text%todo}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\todo,\\todoarea"
+      ],
+      "name": "todo",
+      "snippet": "todo[${2:options%keyvals}]{${1:text%todo}}"
+    },
+    {
+      "name": "todo",
+      "snippet": "todo{${1:text%todo}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\todo,\\todoarea"
+      ],
+      "name": "todoarea",
+      "snippet": "todoarea[${3:options%keyvals}]{${1:note text%todo}}{${2:highlighted text}}"
+    },
+    {
+      "name": "todoarea",
+      "snippet": "todoarea{${1:note text%todo}}{${2:highlighted text}}"
+    },
+    {
+      "name": "todototoc"
+    }
+  ]
+}

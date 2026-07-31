@@ -1,0 +1,67 @@
+{
+  "args": [],
+  "deps": [],
+  "envs": [],
+  "keys": {},
+  "macros": [
+    {
+      "name": "allsectionsfont",
+      "snippet": "allsectionsfont{${1:commands}}"
+    },
+    {
+      "name": "chapterfont",
+      "snippet": "chapterfont{${1:commands}}"
+    },
+    {
+      "name": "chapternumberfont",
+      "snippet": "chapternumberfont{${1:commands}}"
+    },
+    {
+      "name": "chaptertitlefont",
+      "snippet": "chaptertitlefont{${1:commands}}"
+    },
+    {
+      "name": "minisecfont",
+      "snippet": "minisecfont{${1:commands}}"
+    },
+    {
+      "name": "nohang"
+    },
+    {
+      "name": "paragraphfont",
+      "snippet": "paragraphfont{${1:commands}}"
+    },
+    {
+      "name": "partfont",
+      "snippet": "partfont{${1:commands}}"
+    },
+    {
+      "name": "partnumberfont",
+      "snippet": "partnumberfont{${1:commands}}"
+    },
+    {
+      "name": "parttitlefont",
+      "snippet": "parttitlefont{${1:commands}}"
+    },
+    {
+      "name": "sectionfont",
+      "snippet": "sectionfont{${1:commands}}"
+    },
+    {
+      "name": "subparagrahfont",
+      "snippet": "subparagrahfont{${1:commands}}"
+    },
+    {
+      "name": "subsectionfont",
+      "snippet": "subsectionfont{${1:commands}}"
+    },
+    {
+      "name": "subsubsectionfont",
+      "snippet": "subsubsectionfont{${1:commands}}"
+    },
+    {
+      "name": "ulemheading",
+      "snippet": "ulemheading{${1:style}}"
+    }
+  ]
+}

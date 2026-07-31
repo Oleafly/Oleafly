@@ -1,0 +1,93 @@
+{
+  "args": [
+    "\\usepackage/mhchem#c",
+    "\\usepackage/mhchem#c,\\mhchemoptions"
+  ],
+  "deps": [
+    "amsmath",
+    "calc",
+    "chemgreek",
+    "graphics",
+    "ifthen",
+    "keyval",
+    "l3keys2e",
+    "pgf",
+    "tikz"
+  ],
+  "envs": [],
+  "keys": {
+    "\\mhchemoptions": [
+      "textfontcommand=${1:font command}",
+      "mathfontcommand=${1:font command}",
+      "textminus=${1:symbol}",
+      "cdot=${1:symbol}",
+      "textelectrondot=${1:symbol}"
+    ],
+    "\\usepackage/mhchem#c": [
+      "version=${1:version}"
+    ],
+    "\\usepackage/mhchem#c,\\mhchemoptions": [
+      "textfontname=${1:font csname}",
+      "mathfontname=${1:font csname}",
+      "font=${1|sf|}",
+      "text-greek=${1|textgreek,upgreek,newtx,kpfonts,mathdesign,fourier,textalpha,fontspec,default,var-default|}",
+      "math-greek=${1|textgreek,upgreek,newtx,kpfonts,mathdesign,fourier,textalpha,fontspec,default,var-default|}",
+      "arrows=${3|font,pgf,pgf-filled,pgf{${1:arrow type}}{${2:width}}|}",
+      "layout=${1|stacked,staggered-deep,staggered-flat|}",
+      "minus-sidebearing-left=",
+      "minus-sidebearing-right=",
+      "minus-math-sidebearing-left=",
+      "minus-math-sidebearing-right=",
+      "minus-text-sidebearing-left=",
+      "minus-text-sidebearing-right="
+    ]
+  },
+  "macros": [
+    {
+      "name": "bond",
+      "snippet": "bond{${1:-=~.<${2:}> etc.}}"
+    },
+    {
+      "name": "ce",
+      "snippet": "ce{${1:formula}}"
+    },
+    {
+      "name": "cee",
+      "snippet": "cee{${1:equation}}"
+    },
+    {
+      "name": "cesplit",
+      "snippet": "cesplit{${1:search-and-replace list}}{${2:string}}"
+    },
+    {
+      "name": "cf",
+      "snippet": "cf[${2:opt}]{${1:arg}}"
+    },
+    {
+      "name": "cf",
+      "snippet": "cf{${1:arg}}"
+    },
+    {
+      "name": "cmath",
+      "snippet": "cmath{${1:arg}}"
+    },
+    {
+      "name": "dbond"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\usepackage/mhchem#c,\\mhchemoptions",
+        "\\mhchemoptions"
+      ],
+      "name": "mhchemoptions",
+      "snippet": "mhchemoptions{${1:options%keyvals}}"
+    },
+    {
+      "name": "sbond"
+    },
+    {
+      "name": "tbond"
+    }
+  ]
+}

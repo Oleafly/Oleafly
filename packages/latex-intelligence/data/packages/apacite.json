@@ -1,0 +1,1561 @@
+{
+  "args": [
+    "\\usepackage/apacite#c"
+  ],
+  "deps": [
+    "index",
+    "multicol",
+    "natbib"
+  ],
+  "envs": [
+    {
+      "name": "APACrefDOI",
+      "unusual": true
+    },
+    {
+      "name": "APACrefURL",
+      "unusual": true
+    },
+    {
+      "name": "APACrefURL",
+      "snippet": "[${1:date}]",
+      "unusual": true
+    },
+    {
+      "name": "APACrefURLmsg",
+      "unusual": true
+    },
+    {
+      "name": "APACrefannotation",
+      "unusual": true
+    },
+    {
+      "name": "APACrefauthors",
+      "unusual": true
+    }
+  ],
+  "keys": {
+    "\\bibliographystyle#c": [
+      "apacite",
+      "apacitex",
+      "apacann",
+      "apacannx"
+    ],
+    "\\usepackage/apacite#c": [
+      "apaciteclassic",
+      "natbibemu",
+      "natbibapa",
+      "nocitation",
+      "mask",
+      "unmask",
+      "numberedbib",
+      "unnumberedbib",
+      "sectionbib",
+      "nosectionbib",
+      "tocbib",
+      "notocbib",
+      "bibnewpage",
+      "nobibnewpage",
+      "doi",
+      "nodoi",
+      "noindex",
+      "index",
+      "includecorporate",
+      "suppresscorporate",
+      "indexpackage",
+      "noindexpackage",
+      "stdindex",
+      "tocindex",
+      "emindex",
+      "ltxemindex"
+    ]
+  },
+  "macros": [
+    {
+      "name": "APACSortNoop",
+      "snippet": "APACSortNoop{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "APACaddressInstitution",
+      "snippet": "APACaddressInstitution{${1:arg1}}{${2:arg2}}",
+      "unusual": true
+    },
+    {
+      "name": "APACaddressInstitutionEqAuth",
+      "snippet": "APACaddressInstitutionEqAuth{${1:arg1}}{${2:arg2}}",
+      "unusual": true
+    },
+    {
+      "name": "APACaddressPublisher",
+      "snippet": "APACaddressPublisher{${1:arg1}}{${2:arg2}}",
+      "unusual": true
+    },
+    {
+      "name": "APACaddressPublisherEqAuth",
+      "snippet": "APACaddressPublisherEqAuth{${1:arg1}}{${2:arg2}}",
+      "unusual": true
+    },
+    {
+      "name": "APACaddressSchool",
+      "snippet": "APACaddressSchool{${1:arg1}}{${2:arg2}}",
+      "unusual": true
+    },
+    {
+      "name": "APACbVolEdTR",
+      "snippet": "APACbVolEdTR{${1:arg1}}{${2:arg2}}",
+      "unusual": true
+    },
+    {
+      "name": "APACbVolEdTRpgs",
+      "snippet": "APACbVolEdTRpgs{${1:arg1}}{${2:arg2}}{${3:arg3}}",
+      "unusual": true
+    },
+    {
+      "name": "APACbibcite",
+      "snippet": "APACbibcite{${1:arg1}}{${2:arg2}}",
+      "unusual": true
+    },
+    {
+      "name": "APACciteatitle",
+      "snippet": "APACciteatitle{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "APACcitebtitle",
+      "snippet": "APACcitebtitle{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "APACemindex",
+      "unusual": true
+    },
+    {
+      "name": "APACexlab",
+      "snippet": "APACexlab{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "APAChowpublished",
+      "unusual": true
+    },
+    {
+      "name": "APACinsertmetastar",
+      "snippet": "APACinsertmetastar{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "APACjournalVolNumPages",
+      "snippet": "APACjournalVolNumPages{${1:journal}}{${2:volume}}{${3:issue number}}{${4:pages}}",
+      "unusual": true
+    },
+    {
+      "name": "APACltxemindex",
+      "unusual": true
+    },
+    {
+      "name": "APACmetaprenote",
+      "unusual": true
+    },
+    {
+      "name": "APACmetastar",
+      "unusual": true
+    },
+    {
+      "name": "APACmonth",
+      "snippet": "APACmonth{${1:month}}",
+      "unusual": true
+    },
+    {
+      "name": "APACorigED",
+      "snippet": "APACorigED{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "APACorigEDS",
+      "snippet": "APACorigEDS{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "APACorigbooknote",
+      "snippet": "APACorigbooknote{${1:year}}{${2:editor}}{${3:title%text}}{${4:edition}}{${5:volume}}{${6:pages}}{${7:address}}{${8:publisher}}{${9:note}}",
+      "unusual": true
+    },
+    {
+      "name": "APACorigjournalnote",
+      "snippet": "APACorigjournalnote{${1:year}}{${2:journal}}{${3:volume}}{${4:issue number}}{${5:pages}}{${6:note}}",
+      "unusual": true
+    },
+    {
+      "name": "APACorigyearnote",
+      "snippet": "APACorigyearnote{${1:year}}{${2:text}}",
+      "unusual": true
+    },
+    {
+      "name": "APACrefYear",
+      "snippet": "APACrefYear{${1:year}}",
+      "unusual": true
+    },
+    {
+      "name": "APACrefYearMonthDay",
+      "snippet": "APACrefYearMonthDay{${1:year}}{${2:month}}{${3:day}}",
+      "unusual": true
+    },
+    {
+      "name": "APACrefaetitle",
+      "snippet": "APACrefaetitle{${1:arg1}}{${2:arg2}}",
+      "unusual": true
+    },
+    {
+      "name": "APACrefatitle",
+      "snippet": "APACrefatitle{${1:arg1}}{${2:arg2}}",
+      "unusual": true
+    },
+    {
+      "name": "APACrefauthstyle",
+      "unusual": true
+    },
+    {
+      "name": "APACrefbetitle",
+      "snippet": "APACrefbetitle{${1:arg1}}{${2:arg2}}",
+      "unusual": true
+    },
+    {
+      "name": "APACrefbtitle",
+      "snippet": "APACrefbtitle{${1:arg1}}{${2:arg2}}",
+      "unusual": true
+    },
+    {
+      "name": "APACrefnote",
+      "snippet": "APACrefnote{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "APACrestorebibitem",
+      "unusual": true
+    },
+    {
+      "name": "APACstdindex",
+      "unusual": true
+    },
+    {
+      "name": "APACtocindex",
+      "unusual": true
+    },
+    {
+      "name": "APACtypeAddressSchool",
+      "snippet": "APACtypeAddressSchool{${1:arg1}}{${2:arg2}}{${3:arg3}}",
+      "unusual": true
+    },
+    {
+      "name": "APACyear",
+      "snippet": "APACyear{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "AX",
+      "snippet": "AX{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "BAP",
+      "unusual": true
+    },
+    {
+      "name": "BAastyle",
+      "unusual": true
+    },
+    {
+      "name": "BAnd",
+      "unusual": true
+    },
+    {
+      "name": "BAstyle",
+      "unusual": true
+    },
+    {
+      "name": "BAuthor",
+      "unusual": true
+    },
+    {
+      "name": "BAvailFrom",
+      "unusual": true
+    },
+    {
+      "name": "BBA",
+      "unusual": true
+    },
+    {
+      "name": "BBAA",
+      "unusual": true
+    },
+    {
+      "name": "BBAB",
+      "unusual": true
+    },
+    {
+      "name": "BBAY",
+      "unusual": true
+    },
+    {
+      "name": "BBC",
+      "unusual": true
+    },
+    {
+      "name": "BBCP",
+      "unusual": true
+    },
+    {
+      "name": "BBCQ",
+      "unusual": true
+    },
+    {
+      "name": "BBN",
+      "unusual": true
+    },
+    {
+      "name": "BBOP",
+      "unusual": true
+    },
+    {
+      "name": "BBOQ",
+      "unusual": true
+    },
+    {
+      "name": "BBYY",
+      "unusual": true
+    },
+    {
+      "name": "BCBL",
+      "unusual": true
+    },
+    {
+      "name": "BCBT",
+      "unusual": true
+    },
+    {
+      "name": "BCHAIR",
+      "unusual": true
+    },
+    {
+      "name": "BCHAIRS",
+      "unusual": true
+    },
+    {
+      "name": "BCHAP",
+      "unusual": true
+    },
+    {
+      "name": "BCHAPS",
+      "unusual": true
+    },
+    {
+      "name": "BCnt",
+      "snippet": "BCnt{${1:integer}}",
+      "unusual": true
+    },
+    {
+      "name": "BCntIP",
+      "snippet": "BCntIP{${1:integer}}",
+      "unusual": true
+    },
+    {
+      "name": "BCntND",
+      "snippet": "BCntND{${1:integer}}",
+      "unusual": true
+    },
+    {
+      "name": "BDBL",
+      "unusual": true
+    },
+    {
+      "name": "BED",
+      "unusual": true
+    },
+    {
+      "name": "BEDS",
+      "unusual": true
+    },
+    {
+      "name": "BEd",
+      "unusual": true
+    },
+    {
+      "name": "BHBI",
+      "unusual": true
+    },
+    {
+      "name": "BIP",
+      "unusual": true
+    },
+    {
+      "name": "BIn",
+      "unusual": true
+    },
+    {
+      "name": "BMTh",
+      "unusual": true
+    },
+    {
+      "name": "BMsgPostedTo",
+      "unusual": true
+    },
+    {
+      "name": "BNUM",
+      "unusual": true
+    },
+    {
+      "name": "BNUMS",
+      "unusual": true
+    },
+    {
+      "name": "BOWP",
+      "unusual": true
+    },
+    {
+      "name": "BOthers",
+      "unusual": true
+    },
+    {
+      "name": "BOthersPeriod",
+      "unusual": true
+    },
+    {
+      "name": "BPBI",
+      "unusual": true
+    },
+    {
+      "name": "BPG",
+      "unusual": true
+    },
+    {
+      "name": "BPGS",
+      "unusual": true
+    },
+    {
+      "name": "BPhD",
+      "unusual": true
+    },
+    {
+      "name": "BREPR",
+      "unusual": true
+    },
+    {
+      "name": "BRetrieved",
+      "snippet": "BRetrieved{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "BRetrievedFrom",
+      "unusual": true
+    },
+    {
+      "name": "BTR",
+      "unusual": true
+    },
+    {
+      "name": "BTRANS",
+      "unusual": true
+    },
+    {
+      "name": "BTRANSL",
+      "unusual": true
+    },
+    {
+      "name": "BTRANSS",
+      "unusual": true
+    },
+    {
+      "name": "BUMTh",
+      "unusual": true
+    },
+    {
+      "name": "BUPhD",
+      "unusual": true
+    },
+    {
+      "name": "BVOL",
+      "unusual": true
+    },
+    {
+      "name": "BVOLS",
+      "unusual": true
+    },
+    {
+      "name": "Bby",
+      "unusual": true
+    },
+    {
+      "name": "Bem",
+      "snippet": "Bem{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "CardinalNumeric",
+      "snippet": "CardinalNumeric{${1:count}}",
+      "unusual": true
+    },
+    {
+      "name": "Citeauthorp",
+      "snippet": "Citeauthorp[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "Citeauthorp",
+      "snippet": "Citeauthorp[${2:prefix}][${3:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "Citeauthorp",
+      "snippet": "Citeauthorp{${1:keylist}}"
+    },
+    {
+      "name": "Citeauthort",
+      "snippet": "Citeauthort[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "Citeauthort",
+      "snippet": "Citeauthort[${2:prefix}][${3:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "Citeauthort",
+      "snippet": "Citeauthort{${1:keylist}}"
+    },
+    {
+      "name": "Citefullauthor",
+      "snippet": "Citefullauthor[${2:postfix}]{${1:keylist}}",
+      "unusual": true
+    },
+    {
+      "name": "Citefullauthor",
+      "snippet": "Citefullauthor[${2:prefix}][${3:postfix}]{${1:keylist}}",
+      "unusual": true
+    },
+    {
+      "name": "Citefullauthor",
+      "snippet": "Citefullauthor{${1:keylist}}",
+      "unusual": true
+    },
+    {
+      "name": "Citefullauthorp",
+      "snippet": "Citefullauthorp[${2:postfix}]{${1:keylist}}",
+      "unusual": true
+    },
+    {
+      "name": "Citefullauthorp",
+      "snippet": "Citefullauthorp[${2:prefix}][${3:postfix}]{${1:keylist}}",
+      "unusual": true
+    },
+    {
+      "name": "Citefullauthorp",
+      "snippet": "Citefullauthorp{${1:keylist}}",
+      "unusual": true
+    },
+    {
+      "name": "Citefullauthort",
+      "snippet": "Citefullauthort[${2:postfix}]{${1:keylist}}",
+      "unusual": true
+    },
+    {
+      "name": "Citefullauthort",
+      "snippet": "Citefullauthort[${2:prefix}][${3:postfix}]{${1:keylist}}",
+      "unusual": true
+    },
+    {
+      "name": "Citefullauthort",
+      "snippet": "Citefullauthort{${1:keylist}}",
+      "unusual": true
+    },
+    {
+      "name": "CurrentBib",
+      "unusual": true
+    },
+    {
+      "name": "PrintAX",
+      "unusual": true
+    },
+    {
+      "name": "PrintBackRefs",
+      "snippet": "PrintBackRefs{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "PrintOrdinal",
+      "snippet": "PrintOrdinal{${1:number}}",
+      "unusual": true
+    },
+    {
+      "name": "authorindexname",
+      "unusual": true
+    },
+    {
+      "name": "bibcomputerprogram",
+      "unusual": true
+    },
+    {
+      "name": "bibcomputerprogramandmanual",
+      "unusual": true
+    },
+    {
+      "name": "bibcomputerprogrammanual",
+      "unusual": true
+    },
+    {
+      "name": "bibcomputersoftware",
+      "unusual": true
+    },
+    {
+      "name": "bibcomputersoftwareandmanual",
+      "unusual": true
+    },
+    {
+      "name": "bibcomputersoftwaremanual",
+      "unusual": true
+    },
+    {
+      "name": "bibcorporate",
+      "unusual": true
+    },
+    {
+      "name": "bibindent",
+      "unusual": true
+    },
+    {
+      "name": "bibitemsep",
+      "unusual": true
+    },
+    {
+      "name": "biblabelsep",
+      "unusual": true
+    },
+    {
+      "name": "bibleftmargin",
+      "unusual": true
+    },
+    {
+      "name": "bibliographyprenote",
+      "unusual": true
+    },
+    {
+      "name": "bibliographytypesize",
+      "unusual": true
+    },
+    {
+      "name": "bibmessage ",
+      "unusual": true
+    },
+    {
+      "name": "bibname"
+    },
+    {
+      "name": "bibnewpage",
+      "unusual": true
+    },
+    {
+      "name": "bibnodate",
+      "unusual": true
+    },
+    {
+      "name": "bibnotype",
+      "unusual": true
+    },
+    {
+      "name": "bibparsep",
+      "unusual": true
+    },
+    {
+      "name": "bibphant",
+      "snippet": "bibphant{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "bibprogramminglanguage",
+      "unusual": true
+    },
+    {
+      "name": "cite<prefix>",
+      "snippet": "cite<prefix>[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "cite<prefix>",
+      "snippet": "cite<prefix>{${1:keylist}}"
+    },
+    {
+      "name": "citeA",
+      "snippet": "citeA[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "citeA",
+      "snippet": "citeA{${1:keylist}}"
+    },
+    {
+      "name": "citeA<prefix>",
+      "snippet": "citeA<prefix>[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "citeA<prefix>",
+      "snippet": "citeA<prefix>{${1:keylist}}"
+    },
+    {
+      "name": "citeNP",
+      "snippet": "citeNP[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "citeNP",
+      "snippet": "citeNP{${1:keylist}}"
+    },
+    {
+      "name": "citeNP<prefix>",
+      "snippet": "citeNP<prefix>[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "citeNP<prefix>",
+      "snippet": "citeNP<prefix>{${1:keylist}}"
+    },
+    {
+      "name": "citeauthor",
+      "snippet": "citeauthor[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "citeauthor",
+      "snippet": "citeauthor{${1:keylist}}"
+    },
+    {
+      "name": "citeauthor<prefix>",
+      "snippet": "citeauthor<prefix>[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "citeauthor<prefix>",
+      "snippet": "citeauthor<prefix>{${1:keylist}}"
+    },
+    {
+      "name": "citeauthorNP",
+      "snippet": "citeauthorNP[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "citeauthorNP",
+      "snippet": "citeauthorNP{${1:keylist}}"
+    },
+    {
+      "name": "citeauthorNP<prefix>",
+      "snippet": "citeauthorNP<prefix>[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "citeauthorNP<prefix>",
+      "snippet": "citeauthorNP<prefix>{${1:keylist}}"
+    },
+    {
+      "name": "citeauthorp",
+      "snippet": "citeauthorp[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "citeauthorp",
+      "snippet": "citeauthorp[${2:prefix}][${3:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "citeauthorp",
+      "snippet": "citeauthorp{${1:keylist}}"
+    },
+    {
+      "name": "citeauthort",
+      "snippet": "citeauthort[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "citeauthort",
+      "snippet": "citeauthort[${2:prefix}][${3:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "citeauthort",
+      "snippet": "citeauthort{${1:keylist}}"
+    },
+    {
+      "name": "citefullauthorp",
+      "snippet": "citefullauthorp[${2:postfix}]{${1:keylist}}",
+      "unusual": true
+    },
+    {
+      "name": "citefullauthorp",
+      "snippet": "citefullauthorp[${2:prefix}][${3:postfix}]{${1:keylist}}",
+      "unusual": true
+    },
+    {
+      "name": "citefullauthorp",
+      "snippet": "citefullauthorp{${1:keylist}}",
+      "unusual": true
+    },
+    {
+      "name": "citefullauthort",
+      "snippet": "citefullauthort[${2:postfix}]{${1:keylist}}",
+      "unusual": true
+    },
+    {
+      "name": "citefullauthort",
+      "snippet": "citefullauthort[${2:prefix}][${3:postfix}]{${1:keylist}}",
+      "unusual": true
+    },
+    {
+      "name": "citefullauthort",
+      "snippet": "citefullauthort{${1:keylist}}",
+      "unusual": true
+    },
+    {
+      "name": "citeyear",
+      "snippet": "citeyear[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "citeyear<prefix>",
+      "snippet": "citeyear<prefix>[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "citeyear<prefix>",
+      "snippet": "citeyear<prefix>{${1:keylist}}"
+    },
+    {
+      "name": "citeyearNP",
+      "snippet": "citeyearNP[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "citeyearNP",
+      "snippet": "citeyearNP{${1:keylist}}"
+    },
+    {
+      "name": "citeyearNP<prefix>",
+      "snippet": "citeyearNP<prefix>[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "citeyearNP<prefix>",
+      "snippet": "citeyearNP<prefix>{${1:keylist}}"
+    },
+    {
+      "name": "corporateAX",
+      "snippet": "corporateAX{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "currentindexname",
+      "unusual": true
+    },
+    {
+      "name": "definemetaflag",
+      "snippet": "definemetaflag{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "doi",
+      "snippet": "doi{${1:DOI}}",
+      "unusual": true
+    },
+    {
+      "name": "doiprefix",
+      "unusual": true
+    },
+    {
+      "name": "fullcite",
+      "snippet": "fullcite[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "fullcite",
+      "snippet": "fullcite{${1:keylist}}"
+    },
+    {
+      "name": "fullcite<prefix>",
+      "snippet": "fullcite<prefix>[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "fullcite<prefix>",
+      "snippet": "fullcite<prefix>{${1:keylist}}"
+    },
+    {
+      "name": "fullciteA",
+      "snippet": "fullciteA[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "fullciteA",
+      "snippet": "fullciteA{${1:keylist}}"
+    },
+    {
+      "name": "fullciteA<prefix>",
+      "snippet": "fullciteA<prefix>[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "fullciteA<prefix>",
+      "snippet": "fullciteA<prefix>{${1:keylist}}"
+    },
+    {
+      "name": "fullciteNP",
+      "snippet": "fullciteNP[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "fullciteNP",
+      "snippet": "fullciteNP{${1:keylist}}"
+    },
+    {
+      "name": "fullciteNP<prefix>",
+      "snippet": "fullciteNP<prefix>[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "fullciteNP<prefix>",
+      "snippet": "fullciteNP<prefix>{${1:keylist}}"
+    },
+    {
+      "name": "fullciteauthor",
+      "snippet": "fullciteauthor[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "fullciteauthor",
+      "snippet": "fullciteauthor{${1:keylist}}"
+    },
+    {
+      "name": "fullciteauthor<prefix>",
+      "snippet": "fullciteauthor<prefix>[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "fullciteauthor<prefix>",
+      "snippet": "fullciteauthor<prefix>{${1:keylist}}"
+    },
+    {
+      "name": "fullciteauthorNP",
+      "snippet": "fullciteauthorNP[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "fullciteauthorNP",
+      "snippet": "fullciteauthorNP{${1:keylist}}"
+    },
+    {
+      "name": "fullciteauthorNP<prefix>",
+      "snippet": "fullciteauthorNP<prefix>[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "fullciteauthorNP<prefix>",
+      "snippet": "fullciteauthorNP<prefix>{${1:keylist}}"
+    },
+    {
+      "name": "makehashmacropar",
+      "unusual": true
+    },
+    {
+      "name": "makehashother",
+      "unusual": true
+    },
+    {
+      "name": "maskCitealp",
+      "snippet": "maskCitealp[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskCitealp",
+      "snippet": "maskCitealp[${2:prefix}][${3:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskCitealp",
+      "snippet": "maskCitealp{${1:keylist}}"
+    },
+    {
+      "name": "maskCitealt",
+      "snippet": "maskCitealt[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskCitealt",
+      "snippet": "maskCitealt[${2:prefix}][${3:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskCitealt",
+      "snippet": "maskCitealt{${1:keylist}}"
+    },
+    {
+      "name": "maskCiteauthor",
+      "snippet": "maskCiteauthor[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskCiteauthor",
+      "snippet": "maskCiteauthor[${2:prefix}][${3:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskCiteauthor",
+      "snippet": "maskCiteauthor{${1:keylist}}"
+    },
+    {
+      "name": "maskCiteauthorp",
+      "snippet": "maskCiteauthorp[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskCiteauthorp",
+      "snippet": "maskCiteauthorp[${2:prefix}][${3:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskCiteauthorp",
+      "snippet": "maskCiteauthorp{${1:keylist}}"
+    },
+    {
+      "name": "maskCiteauthort",
+      "snippet": "maskCiteauthort[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskCiteauthort",
+      "snippet": "maskCiteauthort[${2:prefix}][${3:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskCiteauthort",
+      "snippet": "maskCiteauthort{${1:keylist}}"
+    },
+    {
+      "name": "maskCitefullauthor",
+      "snippet": "maskCitefullauthor[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskCitefullauthor",
+      "snippet": "maskCitefullauthor[${2:prefix}][${3:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskCitefullauthor",
+      "snippet": "maskCitefullauthor{${1:keylist}}"
+    },
+    {
+      "name": "maskCitep",
+      "snippet": "maskCitep[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskCitep",
+      "snippet": "maskCitep[${2:prefix}][${3:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskCitep",
+      "snippet": "maskCitep{${1:keylist}}"
+    },
+    {
+      "name": "maskCitet",
+      "snippet": "maskCitet[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskCitet",
+      "snippet": "maskCitet[${2:prefix}][${3:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskCitet",
+      "snippet": "maskCitet{${1:keylist}}"
+    },
+    {
+      "name": "maskcitations",
+      "unusual": true
+    },
+    {
+      "name": "maskcite",
+      "snippet": "maskcite[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskcite",
+      "snippet": "maskcite{${1:keylist}}"
+    },
+    {
+      "name": "maskcite<prefix>",
+      "snippet": "maskcite<prefix>[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskcite<prefix>",
+      "snippet": "maskcite<prefix>{${1:keylist}}"
+    },
+    {
+      "name": "maskciteA",
+      "snippet": "maskciteA[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskciteA",
+      "snippet": "maskciteA{${1:keylist}}"
+    },
+    {
+      "name": "maskciteA<prefix>",
+      "snippet": "maskciteA<prefix>[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskciteA<prefix>",
+      "snippet": "maskciteA<prefix>{${1:keylist}}"
+    },
+    {
+      "name": "maskciteNP",
+      "snippet": "maskciteNP[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskciteNP",
+      "snippet": "maskciteNP{${1:keylist}}"
+    },
+    {
+      "name": "maskciteNP<prefix>",
+      "snippet": "maskciteNP<prefix>[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskciteNP<prefix>",
+      "snippet": "maskciteNP<prefix>{${1:keylist}}"
+    },
+    {
+      "name": "maskcitealp",
+      "snippet": "maskcitealp[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskcitealp",
+      "snippet": "maskcitealp[${2:prefix}][${3:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskcitealp",
+      "snippet": "maskcitealp{${1:keylist}}"
+    },
+    {
+      "name": "maskcitealt",
+      "snippet": "maskcitealt[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskcitealt",
+      "snippet": "maskcitealt[${2:prefix}][${3:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskcitealt",
+      "snippet": "maskcitealt{${1:keylist}}"
+    },
+    {
+      "name": "maskciteauthor",
+      "snippet": "maskciteauthor[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskciteauthor",
+      "snippet": "maskciteauthor{${1:keylist}}"
+    },
+    {
+      "name": "maskciteauthor<prefix>",
+      "snippet": "maskciteauthor<prefix>[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskciteauthor<prefix>",
+      "snippet": "maskciteauthor<prefix>{${1:keylist}}"
+    },
+    {
+      "name": "maskciteauthorNP",
+      "snippet": "maskciteauthorNP[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskciteauthorNP",
+      "snippet": "maskciteauthorNP{${1:keylist}}"
+    },
+    {
+      "name": "maskciteauthorNP<prefix>",
+      "snippet": "maskciteauthorNP<prefix>[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskciteauthorNP<prefix>",
+      "snippet": "maskciteauthorNP<prefix>{${1:keylist}}"
+    },
+    {
+      "name": "maskciteauthorp",
+      "snippet": "maskciteauthorp[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskciteauthorp",
+      "snippet": "maskciteauthorp[${2:prefix}][${3:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskciteauthorp",
+      "snippet": "maskciteauthorp{${1:keylist}}"
+    },
+    {
+      "name": "maskciteauthort",
+      "snippet": "maskciteauthort[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskciteauthort",
+      "snippet": "maskciteauthort[${2:prefix}][${3:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskciteauthort",
+      "snippet": "maskciteauthort{${1:keylist}}"
+    },
+    {
+      "name": "maskcitefullauthor",
+      "snippet": "maskcitefullauthor[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskcitefullauthor",
+      "snippet": "maskcitefullauthor[${2:prefix}][${3:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskcitefullauthor",
+      "snippet": "maskcitefullauthor{${1:keylist}}"
+    },
+    {
+      "name": "maskcitenum",
+      "snippet": "maskcitenum[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskcitenum",
+      "snippet": "maskcitenum[${2:prefix}][${3:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskcitenum",
+      "snippet": "maskcitenum{${1:keylist}}"
+    },
+    {
+      "name": "maskcitep",
+      "snippet": "maskcitep[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskcitep",
+      "snippet": "maskcitep[${2:prefix}][${3:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskcitep",
+      "snippet": "maskcitep{${1:keylist}}"
+    },
+    {
+      "name": "maskcitepalias",
+      "snippet": "maskcitepalias[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskcitepalias",
+      "snippet": "maskcitepalias[${2:prefix}][${3:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskcitepalias",
+      "snippet": "maskcitepalias{${1:keylist}}"
+    },
+    {
+      "name": "maskcitet",
+      "snippet": "maskcitet[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskcitet",
+      "snippet": "maskcitet[${2:prefix}][${3:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskcitet",
+      "snippet": "maskcitet{${1:keylist}}"
+    },
+    {
+      "name": "maskcitetalias",
+      "snippet": "maskcitetalias[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskcitetalias",
+      "snippet": "maskcitetalias[${2:prefix}][${3:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskcitetalias",
+      "snippet": "maskcitetalias{${1:keylist}}"
+    },
+    {
+      "name": "maskciteyear",
+      "snippet": "maskciteyear[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskciteyear",
+      "snippet": "maskciteyear{${1:keylist}}"
+    },
+    {
+      "name": "maskciteyear<prefix>",
+      "snippet": "maskciteyear<prefix>[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskciteyear<prefix>",
+      "snippet": "maskciteyear<prefix>{${1:keylist}}"
+    },
+    {
+      "name": "maskciteyearNP",
+      "snippet": "maskciteyearNP[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskciteyearNP",
+      "snippet": "maskciteyearNP{${1:keylist}}"
+    },
+    {
+      "name": "maskciteyearNP<prefix>",
+      "snippet": "maskciteyearNP<prefix>[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskciteyearNP<prefix>",
+      "snippet": "maskciteyearNP<prefix>{${1:keylist}}"
+    },
+    {
+      "name": "maskciteyearpar",
+      "snippet": "maskciteyearpar[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskciteyearpar",
+      "snippet": "maskciteyearpar[${2:prefix}][${3:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskciteyearpar",
+      "snippet": "maskciteyearpar{${1:keylist}}"
+    },
+    {
+      "name": "maskedcitationsmsg",
+      "snippet": "maskedcitationsmsg{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "maskfullcite",
+      "snippet": "maskfullcite[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskfullcite",
+      "snippet": "maskfullcite{${1:keylist}}"
+    },
+    {
+      "name": "maskfullcite<prefix>",
+      "snippet": "maskfullcite<prefix>[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskfullcite<prefix>",
+      "snippet": "maskfullcite<prefix>{${1:keylist}}"
+    },
+    {
+      "name": "maskfullciteA",
+      "snippet": "maskfullciteA[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskfullciteA",
+      "snippet": "maskfullciteA{${1:keylist}}"
+    },
+    {
+      "name": "maskfullciteA<prefix>",
+      "snippet": "maskfullciteA<prefix>[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskfullciteA<prefix>",
+      "snippet": "maskfullciteA<prefix>{${1:keylist}}"
+    },
+    {
+      "name": "maskfullciteNP",
+      "snippet": "maskfullciteNP[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskfullciteNP",
+      "snippet": "maskfullciteNP{${1:keylist}}"
+    },
+    {
+      "name": "maskfullciteNP<prefix>",
+      "snippet": "maskfullciteNP<prefix>[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskfullciteNP<prefix>",
+      "snippet": "maskfullciteNP<prefix>{${1:keylist}}"
+    },
+    {
+      "name": "maskfullciteauthor",
+      "snippet": "maskfullciteauthor[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskfullciteauthor",
+      "snippet": "maskfullciteauthor{${1:keylist}}"
+    },
+    {
+      "name": "maskfullciteauthor<prefix>",
+      "snippet": "maskfullciteauthor<prefix>[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskfullciteauthor<prefix>",
+      "snippet": "maskfullciteauthor<prefix>{${1:keylist}}"
+    },
+    {
+      "name": "maskfullciteauthorNP",
+      "snippet": "maskfullciteauthorNP[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskfullciteauthorNP",
+      "snippet": "maskfullciteauthorNP{${1:keylist}}"
+    },
+    {
+      "name": "maskfullciteauthorNP<prefix>",
+      "snippet": "maskfullciteauthorNP<prefix>[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskfullciteauthorNP<prefix>",
+      "snippet": "maskfullciteauthorNP<prefix>{${1:keylist}}"
+    },
+    {
+      "name": "masknocite",
+      "snippet": "masknocite{${1:keylist}}"
+    },
+    {
+      "name": "maskshortcite",
+      "snippet": "maskshortcite[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskshortcite",
+      "snippet": "maskshortcite{${1:keylist}}"
+    },
+    {
+      "name": "maskshortcite<prefix>",
+      "snippet": "maskshortcite<prefix>[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskshortcite<prefix>",
+      "snippet": "maskshortcite<prefix>{${1:keylist}}"
+    },
+    {
+      "name": "maskshortciteA",
+      "snippet": "maskshortciteA[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskshortciteA",
+      "snippet": "maskshortciteA{${1:keylist}}"
+    },
+    {
+      "name": "maskshortciteA<prefix>",
+      "snippet": "maskshortciteA<prefix>[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskshortciteA<prefix>",
+      "snippet": "maskshortciteA<prefix>{${1:keylist}}"
+    },
+    {
+      "name": "maskshortciteNP",
+      "snippet": "maskshortciteNP[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskshortciteNP",
+      "snippet": "maskshortciteNP{${1:keylist}}"
+    },
+    {
+      "name": "maskshortciteNP<prefix>",
+      "snippet": "maskshortciteNP<prefix>[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskshortciteNP<prefix>",
+      "snippet": "maskshortciteNP<prefix>{${1:keylist}}"
+    },
+    {
+      "name": "maskshortciteauthor",
+      "snippet": "maskshortciteauthor[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskshortciteauthor",
+      "snippet": "maskshortciteauthor{${1:keylist}}"
+    },
+    {
+      "name": "maskshortciteauthor<prefix>",
+      "snippet": "maskshortciteauthor<prefix>[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskshortciteauthor<prefix>",
+      "snippet": "maskshortciteauthor<prefix>{${1:keylist}}"
+    },
+    {
+      "name": "maskshortciteauthorNP",
+      "snippet": "maskshortciteauthorNP[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskshortciteauthorNP",
+      "snippet": "maskshortciteauthorNP{${1:keylist}}"
+    },
+    {
+      "name": "maskshortciteauthorNP<prefix>",
+      "snippet": "maskshortciteauthorNP<prefix>[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "maskshortciteauthorNP<prefix>",
+      "snippet": "maskshortciteauthorNP<prefix>{${1:keylist}}"
+    },
+    {
+      "name": "masktext",
+      "snippet": "masktext[${2:mask-mode text%text}]{${1:masked text%text}}"
+    },
+    {
+      "name": "masktext",
+      "snippet": "masktext{${1:masked text%text}}"
+    },
+    {
+      "name": "nocitemeta",
+      "snippet": "nocitemeta{${1:keylist}}"
+    },
+    {
+      "name": "onemaskedcitationmsg",
+      "snippet": "onemaskedcitationmsg{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "shortcite",
+      "snippet": "shortcite[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "shortcite<prefix>",
+      "snippet": "shortcite<prefix>[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "shortcite<prefix>",
+      "snippet": "shortcite<prefix>{${1:keylist}}"
+    },
+    {
+      "name": "shortciteA",
+      "snippet": "shortciteA[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "shortciteA",
+      "snippet": "shortciteA{${1:keylist}}"
+    },
+    {
+      "name": "shortciteA<prefix>",
+      "snippet": "shortciteA<prefix>[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "shortciteA<prefix>",
+      "snippet": "shortciteA<prefix>{${1:keylist}}"
+    },
+    {
+      "name": "shortciteNP",
+      "snippet": "shortciteNP[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "shortciteNP",
+      "snippet": "shortciteNP{${1:keylist}}"
+    },
+    {
+      "name": "shortciteNP<prefix>",
+      "snippet": "shortciteNP<prefix>[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "shortciteNP<prefix>",
+      "snippet": "shortciteNP<prefix>{${1:keylist}}"
+    },
+    {
+      "name": "shortciteauthor",
+      "snippet": "shortciteauthor[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "shortciteauthor",
+      "snippet": "shortciteauthor{${1:keylist}}"
+    },
+    {
+      "name": "shortciteauthor<prefix>",
+      "snippet": "shortciteauthor<prefix>[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "shortciteauthor<prefix>",
+      "snippet": "shortciteauthor<prefix>{${1:keylist}}"
+    },
+    {
+      "name": "shortciteauthorNP",
+      "snippet": "shortciteauthorNP[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "shortciteauthorNP",
+      "snippet": "shortciteauthorNP{${1:keylist}}"
+    },
+    {
+      "name": "shortciteauthorNP<prefix>",
+      "snippet": "shortciteauthorNP<prefix>[${2:postfix}]{${1:keylist}}"
+    },
+    {
+      "name": "shortciteauthorNP<prefix>",
+      "snippet": "shortciteauthorNP<prefix>{${1:keylist}}"
+    },
+    {
+      "name": "theBibCnt",
+      "unusual": true
+    },
+    {
+      "name": "themaskedRefs",
+      "unusual": true
+    },
+    {
+      "name": "unmaskcitations",
+      "unusual": true
+    },
+    {
+      "name": "url",
+      "snippet": "url{${1:URL}}"
+    }
+  ]
+}

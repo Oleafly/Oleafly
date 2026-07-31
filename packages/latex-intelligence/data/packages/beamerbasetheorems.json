@@ -1,0 +1,420 @@
+{
+  "args": [],
+  "deps": [
+    "amsmath",
+    "amsthm"
+  ],
+  "envs": [
+    {
+      "name": "Beispiel",
+      "unusual": true
+    },
+    {
+      "name": "Beispiel",
+      "snippet": "<${1:action specification}>",
+      "unusual": true
+    },
+    {
+      "name": "Beispiel",
+      "snippet": "<${2:action specification}>[${1:additional text%text}]",
+      "unusual": true
+    },
+    {
+      "name": "Beispiel",
+      "snippet": "[${1:additional text%text}]",
+      "unusual": true
+    },
+    {
+      "name": "Beispiel",
+      "snippet": "[${1:additional text%text}]<${2:action specification}>",
+      "unusual": true
+    },
+    {
+      "name": "Beispiele",
+      "unusual": true
+    },
+    {
+      "name": "Beispiele",
+      "snippet": "<${1:action specification}>",
+      "unusual": true
+    },
+    {
+      "name": "Beispiele",
+      "snippet": "<${2:action specification}>[${1:additional text%text}]",
+      "unusual": true
+    },
+    {
+      "name": "Beispiele",
+      "snippet": "[${1:additional text%text}]",
+      "unusual": true
+    },
+    {
+      "name": "Beispiele",
+      "snippet": "[${1:additional text%text}]<${2:action specification}>",
+      "unusual": true
+    },
+    {
+      "name": "Beweis",
+      "unusual": true
+    },
+    {
+      "name": "Beweis",
+      "snippet": "<${1:action specification}>",
+      "unusual": true
+    },
+    {
+      "name": "Beweis",
+      "snippet": "<${2:action specification}>[${1:additional text%text}]",
+      "unusual": true
+    },
+    {
+      "name": "Beweis",
+      "snippet": "[${1:additional text%text}]",
+      "unusual": true
+    },
+    {
+      "name": "Beweis",
+      "snippet": "[${1:additional text%text}]<${2:action specification}>",
+      "unusual": true
+    },
+    {
+      "name": "Fakt",
+      "unusual": true
+    },
+    {
+      "name": "Fakt",
+      "snippet": "<${1:action specification}>",
+      "unusual": true
+    },
+    {
+      "name": "Fakt",
+      "snippet": "<${2:action specification}>[${1:additional text%text}]",
+      "unusual": true
+    },
+    {
+      "name": "Fakt",
+      "snippet": "[${1:additional text%text}]",
+      "unusual": true
+    },
+    {
+      "name": "Fakt",
+      "snippet": "[${1:additional text%text}]<${2:action specification}>",
+      "unusual": true
+    },
+    {
+      "name": "Folgerung",
+      "unusual": true
+    },
+    {
+      "name": "Folgerung",
+      "snippet": "<${1:action specification}>",
+      "unusual": true
+    },
+    {
+      "name": "Folgerung",
+      "snippet": "<${2:action specification}>[${1:additional text%text}]",
+      "unusual": true
+    },
+    {
+      "name": "Folgerung",
+      "snippet": "[${1:additional text%text}]",
+      "unusual": true
+    },
+    {
+      "name": "Folgerung",
+      "snippet": "[${1:additional text%text}]<${2:action specification}>",
+      "unusual": true
+    },
+    {
+      "name": "Loesung",
+      "unusual": true
+    },
+    {
+      "name": "Loesung",
+      "snippet": "<${1:action specification}>",
+      "unusual": true
+    },
+    {
+      "name": "Loesung",
+      "snippet": "<${2:action specification}>[${1:additional text%text}]",
+      "unusual": true
+    },
+    {
+      "name": "Loesung",
+      "snippet": "[${1:additional text%text}]",
+      "unusual": true
+    },
+    {
+      "name": "Loesung",
+      "snippet": "[${1:additional text%text}]<${2:action specification}>",
+      "unusual": true
+    },
+    {
+      "name": "Satz",
+      "unusual": true
+    },
+    {
+      "name": "Satz",
+      "snippet": "<${1:action specification}>",
+      "unusual": true
+    },
+    {
+      "name": "Satz",
+      "snippet": "<${2:action specification}>[${1:additional text%text}]",
+      "unusual": true
+    },
+    {
+      "name": "Satz",
+      "snippet": "[${1:additional text%text}]",
+      "unusual": true
+    },
+    {
+      "name": "Satz",
+      "snippet": "[${1:additional text%text}]<${2:action specification}>",
+      "unusual": true
+    },
+    {
+      "name": "corollary"
+    },
+    {
+      "name": "corollary",
+      "snippet": "<${1:action specification}>"
+    },
+    {
+      "name": "corollary",
+      "snippet": "<${2:action specification}>[${1:additional text%text}]"
+    },
+    {
+      "name": "corollary",
+      "snippet": "[${1:additional text%text}]"
+    },
+    {
+      "name": "corollary",
+      "snippet": "[${1:additional text%text}]<${2:action specification}>",
+      "unusual": true
+    },
+    {
+      "name": "definition"
+    },
+    {
+      "name": "definition",
+      "snippet": "<${1:action specification}>"
+    },
+    {
+      "name": "definition",
+      "snippet": "<${2:action specification}>[${1:additional text%text}]"
+    },
+    {
+      "name": "definition",
+      "snippet": "[${1:additional text%text}]"
+    },
+    {
+      "name": "definition",
+      "snippet": "[${1:additional text%text}]<${2:action specification}>",
+      "unusual": true
+    },
+    {
+      "name": "definitions"
+    },
+    {
+      "name": "definitions",
+      "snippet": "<${1:action specification}>"
+    },
+    {
+      "name": "definitions",
+      "snippet": "<${2:action specification}>[${1:additional text%text}]"
+    },
+    {
+      "name": "definitions",
+      "snippet": "[${1:additional text%text}]"
+    },
+    {
+      "name": "definitions",
+      "snippet": "[${1:additional text%text}]<${2:action specification}>",
+      "unusual": true
+    },
+    {
+      "name": "example"
+    },
+    {
+      "name": "example",
+      "snippet": "<${1:action specification}>"
+    },
+    {
+      "name": "example",
+      "snippet": "<${2:action specification}>[${1:additional text%text}]"
+    },
+    {
+      "name": "example",
+      "snippet": "[${1:additional text%text}]"
+    },
+    {
+      "name": "example",
+      "snippet": "[${1:additional text%text}]<${2:action specification}>",
+      "unusual": true
+    },
+    {
+      "name": "examples"
+    },
+    {
+      "name": "examples",
+      "snippet": "<${1:action specification}>"
+    },
+    {
+      "name": "examples",
+      "snippet": "<${2:action specification}>[${1:additional text%text}]"
+    },
+    {
+      "name": "examples",
+      "snippet": "[${1:additional text%text}]"
+    },
+    {
+      "name": "examples",
+      "snippet": "[${1:additional text%text}]<${2:action specification}>",
+      "unusual": true
+    },
+    {
+      "name": "fact"
+    },
+    {
+      "name": "fact",
+      "snippet": "<${1:action specification}>"
+    },
+    {
+      "name": "fact",
+      "snippet": "<${2:action specification}>[${1:additional text%text}]"
+    },
+    {
+      "name": "fact",
+      "snippet": "[${1:additional text%text}]"
+    },
+    {
+      "name": "fact",
+      "snippet": "[${1:additional text%text}]<${2:action specification}>",
+      "unusual": true
+    },
+    {
+      "name": "lemma"
+    },
+    {
+      "name": "lemma",
+      "snippet": "<${1:action specification}>"
+    },
+    {
+      "name": "lemma",
+      "snippet": "<${2:action specification}>[${1:additional text%text}]"
+    },
+    {
+      "name": "lemma",
+      "snippet": "[${1:additional text%text}]"
+    },
+    {
+      "name": "lemma",
+      "snippet": "[${1:additional text%text}]<${2:action specification}>",
+      "unusual": true
+    },
+    {
+      "name": "problem"
+    },
+    {
+      "name": "problem",
+      "snippet": "<${1:action specification}>"
+    },
+    {
+      "name": "problem",
+      "snippet": "<${2:action specification}>[${1:additional text%text}]"
+    },
+    {
+      "name": "problem",
+      "snippet": "[${1:additional text%text}]"
+    },
+    {
+      "name": "problem",
+      "snippet": "[${1:additional text%text}]<${2:action specification}>",
+      "unusual": true
+    },
+    {
+      "name": "proof",
+      "snippet": "<${1:action specification}>"
+    },
+    {
+      "name": "proof",
+      "snippet": "<${2:action specification}>[${1:proof name%text}]"
+    },
+    {
+      "name": "proof",
+      "snippet": "[${1:proof name%text}]<${2:action specification}>"
+    },
+    {
+      "name": "solution"
+    },
+    {
+      "name": "solution",
+      "snippet": "<${1:action specification}>"
+    },
+    {
+      "name": "solution",
+      "snippet": "<${2:action specification}>[${1:additional text%text}]"
+    },
+    {
+      "name": "solution",
+      "snippet": "[${1:additional text%text}]"
+    },
+    {
+      "name": "solution",
+      "snippet": "[${1:additional text%text}]<${2:action specification}>",
+      "unusual": true
+    },
+    {
+      "name": "theorem"
+    },
+    {
+      "name": "theorem",
+      "snippet": "<${1:action specification}>"
+    },
+    {
+      "name": "theorem",
+      "snippet": "<${2:action specification}>[${1:additional text%text}]"
+    },
+    {
+      "name": "theorem",
+      "snippet": "[${1:additional text%text}]"
+    },
+    {
+      "name": "theorem",
+      "snippet": "[${1:additional text%text}]<${2:action specification}>",
+      "unusual": true
+    }
+  ],
+  "keys": {},
+  "macros": [
+    {
+      "name": "insertproofname",
+      "unusual": true
+    },
+    {
+      "name": "inserttheoremaddition",
+      "unusual": true
+    },
+    {
+      "name": "inserttheoremblockenv",
+      "unusual": true
+    },
+    {
+      "name": "inserttheoremheadfont",
+      "unusual": true
+    },
+    {
+      "name": "inserttheoremname",
+      "unusual": true
+    },
+    {
+      "name": "inserttheoremnumber",
+      "unusual": true
+    },
+    {
+      "name": "inserttheorempunctuation",
+      "unusual": true
+    }
+  ]
+}

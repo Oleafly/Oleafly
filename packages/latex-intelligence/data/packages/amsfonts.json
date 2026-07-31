@@ -1,0 +1,144 @@
+{
+  "args": [],
+  "deps": [],
+  "envs": [],
+  "keys": {},
+  "macros": [
+    {
+      "name": "Box"
+    },
+    {
+      "name": "Diamond"
+    },
+    {
+      "detail": "⨝ (\"amssymb\" command)",
+      "documentation": "Join",
+      "name": "Join"
+    },
+    {
+      "detail": "∠",
+      "documentation": "Angle",
+      "name": "angle"
+    },
+    {
+      "detail": "✓ (\"amsfonts\" command)",
+      "documentation": "\\ballotcheck (arevmath), tick, check mark",
+      "name": "checkmark"
+    },
+    {
+      "name": "circledR"
+    },
+    {
+      "name": "dasharrow"
+    },
+    {
+      "name": "dashleftarrow"
+    },
+    {
+      "name": "dashrightarrow"
+    },
+    {
+      "name": "hbar"
+    },
+    {
+      "name": "leadsto"
+    },
+    {
+      "name": "lhd"
+    },
+    {
+      "detail": "⌞ (\"amsfonts\" command)",
+      "documentation": "Lower left corner",
+      "name": "llcorner"
+    },
+    {
+      "name": "lozenge"
+    },
+    {
+      "detail": "⌟ (\"amsfonts\" command)",
+      "documentation": "Lower right corner",
+      "name": "lrcorner"
+    },
+    {
+      "detail": "✠ (\"amsfonts\" command)",
+      "documentation": "Maltese cross",
+      "name": "maltese"
+    },
+    {
+      "name": "mathfrak",
+      "snippet": "mathfrak{${1:text%plain}}"
+    },
+    {
+      "detail": "℧ (\"amsfonts arevmath\" command)",
+      "documentation": "\\mho (wrisym), t \\agemo (wasysym), conductance",
+      "name": "mho"
+    },
+    {
+      "name": "rhd"
+    },
+    {
+      "detail": "⇌",
+      "documentation": "\\equilibrium (wrisym), right harpoon over left",
+      "name": "rightleftharpoons"
+    },
+    {
+      "detail": "⇝ (\"amssymb\" command)",
+      "documentation": "Rightwards squiggle arrow",
+      "name": "rightsquigarrow"
+    },
+    {
+      "detail": "⊏ (\"amsfonts\" command)",
+      "documentation": "Square subset",
+      "name": "sqsubset"
+    },
+    {
+      "detail": "⊐ (\"amsfonts\" command)",
+      "documentation": "Square superset",
+      "name": "sqsupset"
+    },
+    {
+      "name": "square"
+    },
+    {
+      "detail": "⊴ (\"amssymb\" command)",
+      "documentation": "\\unlhd (wrisym), left triangle, equals",
+      "name": "trianglelefteq"
+    },
+    {
+      "detail": "⊵ (\"amssymb\" command)",
+      "documentation": "\\unrhd (wrisym), right triangle, equals",
+      "name": "trianglerighteq"
+    },
+    {
+      "detail": "⌜ (\"amsfonts\" command)",
+      "documentation": "Upper left corner",
+      "name": "ulcorner"
+    },
+    {
+      "name": "unlhd"
+    },
+    {
+      "name": "unrhd"
+    },
+    {
+      "detail": "⌝ (\"amsfonts\" command)",
+      "documentation": "Upper right corner",
+      "name": "urcorner"
+    },
+    {
+      "detail": "⊲ (\"amssymb\" command)",
+      "documentation": "Left triangle, open, variant",
+      "name": "vartriangleleft"
+    },
+    {
+      "detail": "⊳ (\"amssymb\" command)",
+      "documentation": "Right triangle, open, variant",
+      "name": "vartriangleright"
+    },
+    {
+      "detail": "¥ (\"amsfonts\" command)",
+      "documentation": "Yen sign",
+      "name": "yen"
+    }
+  ]
+}

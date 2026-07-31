@@ -1,0 +1,531 @@
+{
+  "args": [
+    "\\usepackage/bidi#c"
+  ],
+  "deps": [
+    "auxhook",
+    "bidi-perpage",
+    "biditools",
+    "iftex",
+    "ltxcmds",
+    "xetex",
+    "xkeyval",
+    "zref-abspage"
+  ],
+  "envs": [
+    {
+      "name": "LTR"
+    },
+    {
+      "name": "LTR*",
+      "unusual": true
+    },
+    {
+      "name": "LTRbibitems"
+    },
+    {
+      "name": "LTRitems"
+    },
+    {
+      "name": "RTL"
+    },
+    {
+      "name": "RTL*",
+      "unusual": true
+    },
+    {
+      "name": "RTLbibitems"
+    },
+    {
+      "name": "RTLitems"
+    }
+  ],
+  "keys": {
+    "\\lstset,\\lstinline,\\begin{lstlisting},\\lstinputlisting,\\lstMakeShortInline,\\lstdefinelanguage,\\lstdefinestyle": [
+      "captiondirection=${1|textdirection,RTL,LTR|}"
+    ],
+    "\\usepackage/bidi#c": [
+      "RTLdocument",
+      "documentdirection=${1|righttoleft,lefttoright|}",
+      "tabledirection=${1|righttoleft,lefttoright|}",
+      "script=${1|latin,nonlatin|}",
+      "rldocument",
+      "footnoterule=${1|automatic,left,right,split,textwidth|}",
+      "footnotedirection=${1|righttoleft,lefttoright|}",
+      "debugfootnotedirection",
+      "extrafootnotefeatures",
+      "DetectColumn",
+      "logo",
+      "pdfinfo",
+      "perpagefootnote"
+    ]
+  },
+  "macros": [
+    {
+      "name": "AddExtraParaSkip",
+      "snippet": "AddExtraParaSkip{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "DetectColumn",
+      "snippet": "DetectColumn[${3:opt}]{${1:arg1}}{${2:arg2}}"
+    },
+    {
+      "name": "DetectColumn",
+      "snippet": "DetectColumn{${1:arg1}}{${2:arg2}}"
+    },
+    {
+      "name": "DigitsDotDashInterCharToks",
+      "unusual": true
+    },
+    {
+      "name": "EightColumnFootnotes",
+      "unusual": true
+    },
+    {
+      "name": "FeetAboveFloat",
+      "unusual": true
+    },
+    {
+      "name": "FeetAtBottom",
+      "unusual": true
+    },
+    {
+      "name": "FeetBelowFloat",
+      "unusual": true
+    },
+    {
+      "name": "FeetBelowRagged",
+      "unusual": true
+    },
+    {
+      "name": "FiveColumnFootnotes",
+      "unusual": true
+    },
+    {
+      "name": "FourColumnFootnotes"
+    },
+    {
+      "name": "IfbidiPackageVersion",
+      "snippet": "IfbidiPackageVersion{${1:version}}{${2:true}}{${3:false}}",
+      "unusual": true
+    },
+    {
+      "name": "IfbidiPackageVersionBefore",
+      "snippet": "IfbidiPackageVersionBefore{${1:version}}{${2:true}}{${3:false}}",
+      "unusual": true
+    },
+    {
+      "name": "IfbidiPackageVersionLater",
+      "snippet": "IfbidiPackageVersionLater{${1:version}}{${2:true}}{${3:false}}",
+      "unusual": true
+    },
+    {
+      "name": "LR",
+      "snippet": "LR{${1:text}}"
+    },
+    {
+      "name": "LRE",
+      "snippet": "LRE{${1:text}}"
+    },
+    {
+      "name": "LRfootnoterule"
+    },
+    {
+      "name": "LTRcolumnfootnotes"
+    },
+    {
+      "name": "LTRdblcol"
+    },
+    {
+      "name": "LTRfootfootmark",
+      "unusual": true
+    },
+    {
+      "name": "LTRfootmarkstyle",
+      "snippet": "LTRfootmarkstyle{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "LTRfootnote",
+      "snippet": "LTRfootnote[${2:num}]{${1:text}}"
+    },
+    {
+      "name": "LTRfootnote",
+      "snippet": "LTRfootnote{${1:text}}"
+    },
+    {
+      "name": "LTRfootnotetext",
+      "snippet": "LTRfootnotetext[${2:num}]{${1:text}}"
+    },
+    {
+      "name": "LTRfootnotetext",
+      "snippet": "LTRfootnotetext{${1:text}}"
+    },
+    {
+      "name": "LTRfootscript",
+      "snippet": "LTRfootscript{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "LTRfoottextfont",
+      "unusual": true
+    },
+    {
+      "name": "LTRmarginpar",
+      "snippet": "LTRmarginpar[${2:left-text%text}]{${1:right-text%text}}"
+    },
+    {
+      "name": "LTRthanks",
+      "snippet": "LTRthanks{${1:text}}"
+    },
+    {
+      "name": "NineColumnFootnotes",
+      "unusual": true
+    },
+    {
+      "name": "NormalRTLParaLTRFootnotes",
+      "unusual": true
+    },
+    {
+      "name": "ParagraphFootnotes"
+    },
+    {
+      "name": "RL",
+      "snippet": "RL{${1:text}}"
+    },
+    {
+      "name": "RLE",
+      "snippet": "RLE{${1:text}}"
+    },
+    {
+      "name": "RTLcolumnfootnotes"
+    },
+    {
+      "name": "RTLdblcol"
+    },
+    {
+      "name": "RTLfootfootmark",
+      "unusual": true
+    },
+    {
+      "name": "RTLfootmarkstyle",
+      "snippet": "RTLfootmarkstyle{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "RTLfootnote",
+      "snippet": "RTLfootnote[${2:num}]{${1:text}}"
+    },
+    {
+      "name": "RTLfootnote",
+      "snippet": "RTLfootnote{${1:text}}"
+    },
+    {
+      "name": "RTLfootnotetext",
+      "snippet": "RTLfootnotetext[${2:num}]{${1:text}}"
+    },
+    {
+      "name": "RTLfootnotetext",
+      "snippet": "RTLfootnotetext{${1:text}}"
+    },
+    {
+      "name": "RTLfootscript",
+      "snippet": "RTLfootscript{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "RTLfoottextfont",
+      "unusual": true
+    },
+    {
+      "name": "RTLmarginpar",
+      "snippet": "RTLmarginpar[${2:left-text%text}]{${1:right-text%text}}"
+    },
+    {
+      "name": "RTLthanks",
+      "snippet": "RTLthanks{${1:text}}"
+    },
+    {
+      "name": "SepMark",
+      "snippet": "SepMark{${1:mark}}"
+    },
+    {
+      "name": "SevenColumnFootnotes",
+      "unusual": true
+    },
+    {
+      "name": "SixColumnFootnotes",
+      "unusual": true
+    },
+    {
+      "name": "SplitFootnoteRule"
+    },
+    {
+      "name": "TeXXeTOff",
+      "unusual": true
+    },
+    {
+      "name": "TeXXeTOn",
+      "unusual": true
+    },
+    {
+      "name": "TenColumnFootnotes",
+      "unusual": true
+    },
+    {
+      "name": "ThreeColumnFootnotes"
+    },
+    {
+      "name": "TwoColumnFootnotes"
+    },
+    {
+      "name": "XeLaTeX"
+    },
+    {
+      "name": "XeTeX"
+    },
+    {
+      "name": "autofootnoterule"
+    },
+    {
+      "name": "bididate",
+      "unusual": true
+    },
+    {
+      "name": "bidillap"
+    },
+    {
+      "name": "bidireleasename",
+      "unusual": true
+    },
+    {
+      "name": "bidirlap"
+    },
+    {
+      "name": "bidiversion",
+      "unusual": true
+    },
+    {
+      "name": "bracetext",
+      "unusual": true
+    },
+    {
+      "name": "debugfootnotedirection"
+    },
+    {
+      "name": "eightcolumnfootnotes",
+      "unusual": true
+    },
+    {
+      "name": "extrafeetendmini",
+      "unusual": true
+    },
+    {
+      "name": "extrafeetendminihook",
+      "unusual": true
+    },
+    {
+      "name": "extrafeetins",
+      "unusual": true
+    },
+    {
+      "name": "extrafeetinshook",
+      "unusual": true
+    },
+    {
+      "name": "fivecolumnfootnotes",
+      "unusual": true
+    },
+    {
+      "name": "footfootmark",
+      "unusual": true
+    },
+    {
+      "name": "footfudgefactor",
+      "unusual": true
+    },
+    {
+      "name": "footinsdim",
+      "unusual": true
+    },
+    {
+      "name": "footmarkstyle",
+      "snippet": "footmarkstyle{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "footmarkwidth",
+      "unusual": true
+    },
+    {
+      "name": "footscript",
+      "snippet": "footscript{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "foottextfont",
+      "unusual": true
+    },
+    {
+      "name": "fourcolumnfootnotes"
+    },
+    {
+      "name": "hboxL",
+      "snippet": "hboxL{${1:text}}"
+    },
+    {
+      "name": "hboxR",
+      "snippet": "hboxR{${1:text}}"
+    },
+    {
+      "name": "leftfootnoterule"
+    },
+    {
+      "name": "moreLRE",
+      "unusual": true
+    },
+    {
+      "name": "moreRLE",
+      "unusual": true
+    },
+    {
+      "name": "multiplefootnotemarker",
+      "unusual": true
+    },
+    {
+      "name": "ninecolumnfootnotes",
+      "unusual": true
+    },
+    {
+      "name": "normalRTLparaLTRfootnotes",
+      "unusual": true
+    },
+    {
+      "name": "normalfootnotes"
+    },
+    {
+      "name": "pLRE",
+      "unusual": true
+    },
+    {
+      "name": "pRLE",
+      "unusual": true
+    },
+    {
+      "name": "paragraphfootnotes"
+    },
+    {
+      "name": "pdfencryptsetup",
+      "snippet": "pdfencryptsetup{${1:keyvals}}",
+      "unusual": true
+    },
+    {
+      "name": "rightfootnoterule"
+    },
+    {
+      "name": "setLR"
+    },
+    {
+      "name": "setLTR"
+    },
+    {
+      "name": "setLTRbibitems"
+    },
+    {
+      "name": "setLTRmarginpar"
+    },
+    {
+      "name": "setLTRparagraphfootnotes"
+    },
+    {
+      "name": "setLTRtable",
+      "unusual": true
+    },
+    {
+      "name": "setRL"
+    },
+    {
+      "name": "setRTL"
+    },
+    {
+      "name": "setRTLbibitems"
+    },
+    {
+      "name": "setRTLmarginpar"
+    },
+    {
+      "name": "setRTLparagraphfootnotes"
+    },
+    {
+      "name": "setRTLtable",
+      "unusual": true
+    },
+    {
+      "name": "setSingleSpace",
+      "snippet": "setSingleSpace{${1:number}}",
+      "unusual": true
+    },
+    {
+      "name": "setdefaultbibitems"
+    },
+    {
+      "name": "setdefaultmarginpar"
+    },
+    {
+      "name": "setfootnoteLR"
+    },
+    {
+      "name": "setfootnoteRL"
+    },
+    {
+      "name": "setlatin",
+      "unusual": true
+    },
+    {
+      "name": "setnonlatin",
+      "unusual": true
+    },
+    {
+      "name": "sevencolumnfootnotes",
+      "unusual": true
+    },
+    {
+      "name": "sixcolumnfootnotes",
+      "unusual": true
+    },
+    {
+      "name": "tencolumnfootnotes",
+      "unusual": true
+    },
+    {
+      "name": "textwidthfootnoterule"
+    },
+    {
+      "name": "threecolumnfootnotes"
+    },
+    {
+      "name": "twocolumnfootnotes"
+    },
+    {
+      "name": "unsetLTR"
+    },
+    {
+      "name": "unsetRL"
+    },
+    {
+      "name": "unsetRTL"
+    },
+    {
+      "name": "unsetfootnoteRL"
+    },
+    {
+      "name": "vboxL",
+      "snippet": "vboxL{${1:text}}"
+    },
+    {
+      "name": "vboxR",
+      "snippet": "vboxR{${1:text}}"
+    }
+  ]
+}

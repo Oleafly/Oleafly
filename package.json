@@ -54,6 +54,7 @@
     "@oleafly/diagram": "workspace:*",
     "@oleafly/editor": "workspace:*",
     "@oleafly/latex": "workspace:*",
+    "@oleafly/latex-intelligence": "workspace:*",
     "@oleafly/preflight": "workspace:*",
     "@oleafly/preview": "workspace:*",
     "@oleafly/registry": "workspace:*",

@@ -1,0 +1,345 @@
+{
+  "args": [
+    "\\usepackage/circuitikz#c"
+  ],
+  "deps": [
+    "siunitx",
+    "tikz",
+    "tikzlibrarybending",
+    "tikzlibrarycalc",
+    "tikzlibraryfpu",
+    "xstring"
+  ],
+  "envs": [
+    {
+      "name": "circuitikz"
+    },
+    {
+      "name": "circuitikz",
+      "snippet": "[${1:options%keyvals}]"
+    }
+  ],
+  "keys": {
+    "\\ctikzloadstyle#c,\\ctikzsetstyle#c": [
+      "romano",
+      "legacy",
+      "example"
+    ],
+    "\\usepackage/circuitikz#c": [
+      "european",
+      "american",
+      "europeanvoltages",
+      "straightvoltages",
+      "americanvoltages",
+      "oldvoltagedirection",
+      "nooldvoltagedirection",
+      "RPvoltages",
+      "EFvoltages",
+      "europeancurrents",
+      "americancurrents",
+      "americanresistors",
+      "europeanresistors",
+      "americaninductors",
+      "europeaninductors",
+      "cuteinductors",
+      "americanports",
+      "europeanports",
+      "americangfsurgearrester",
+      "europeangfsurgearrester",
+      "fulldiode",
+      "emptydiode",
+      "strokediode",
+      "arrowmos",
+      "noarrowmos",
+      "fetbodydiode",
+      "nofetbodydiode",
+      "fetsolderdot",
+      "nofetsolderdot",
+      "emptypmoscircle",
+      "lazymos",
+      "legacytransistorstext",
+      "nolegacytransistorstext",
+      "centertransistorstext",
+      "straightlabels",
+      "rotatelabels",
+      "smartlabels",
+      "betterproportions",
+      "siunitx",
+      "nosiunitx",
+      "compatibility"
+    ]
+  },
+  "macros": [
+    {
+      "name": "circuitikzbasekey",
+      "unusual": true
+    },
+    {
+      "name": "ctikzclass",
+      "unusual": true
+    },
+    {
+      "name": "ctikzflipx",
+      "snippet": "ctikzflipx{${1:text%plain}}"
+    },
+    {
+      "name": "ctikzflipxy",
+      "snippet": "ctikzflipxy{${1:text%plain}}"
+    },
+    {
+      "name": "ctikzflipy",
+      "snippet": "ctikzflipy{${1:text%plain}}"
+    },
+    {
+      "name": "ctikzgetanchor",
+      "snippet": "ctikzgetanchor{${1:name}}{${2:anchor}}"
+    },
+    {
+      "name": "ctikzgetdirection",
+      "snippet": "ctikzgetdirection{${1:name}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\ctikzloadstyle#c,\\ctikzsetstyle#c"
+      ],
+      "name": "ctikzloadstyle",
+      "snippet": "ctikzloadstyle{${1:style%keyvals}}"
+    },
+    {
+      "name": "ctikzset",
+      "snippet": "ctikzset{${1:options%keyvals}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\ctikzloadstyle#c,\\ctikzsetstyle#c"
+      ],
+      "name": "ctikzsetstyle",
+      "snippet": "ctikzsetstyle{${1:style%keyvals}}"
+    },
+    {
+      "name": "ctikzsetvalof",
+      "snippet": "ctikzsetvalof{${1:option}}{${2:value}}"
+    },
+    {
+      "name": "ctikzsubcircuitactivate",
+      "snippet": "ctikzsubcircuitactivate{${1:name}}"
+    },
+    {
+      "name": "ctikzsubcircuitdef",
+      "snippet": "ctikzsubcircuitdef{${1:name}}{${2:anchor1,anchor2,...}}{${3:definition}}"
+    },
+    {
+      "name": "ctikztextnot",
+      "snippet": "ctikztextnot{${1:text%plain}}"
+    },
+    {
+      "name": "ctikztunablearrow",
+      "snippet": "ctikztunablearrow[${5:options}]{${1:thickness}}{${2:length}}{${3:angle}}{${4:name}}"
+    },
+    {
+      "name": "ctikztunablearrow",
+      "snippet": "ctikztunablearrow{${1:thickness}}{${2:length}}{${3:angle}}{${4:name}}"
+    },
+    {
+      "name": "ctikzvalof",
+      "snippet": "ctikzvalof{${1:option}}",
+      "unusual": true
+    },
+    {
+      "name": "declarebjt",
+      "snippet": "declarebjt{${1:name}}",
+      "unusual": true
+    },
+    {
+      "name": "declarebpt",
+      "snippet": "declarebpt{${1:name}}",
+      "unusual": true
+    },
+    {
+      "name": "declaregfet",
+      "snippet": "declaregfet{${1:name}}",
+      "unusual": true
+    },
+    {
+      "name": "declareigbt",
+      "snippet": "declareigbt{${1:name}}",
+      "unusual": true
+    },
+    {
+      "name": "drawbodydiode",
+      "snippet": "drawbodydiode{${1:name}}",
+      "unusual": true
+    },
+    {
+      "name": "drawdobydiodedot",
+      "snippet": "drawdobydiodedot{${1:name}}{${2:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "drawfetcore",
+      "snippet": "drawfetcore{${1:name}}",
+      "unusual": true
+    },
+    {
+      "name": "drawmeteringcircle",
+      "unusual": true
+    },
+    {
+      "name": "drawpoles",
+      "unusual": true
+    },
+    {
+      "name": "gscale",
+      "unusual": true
+    },
+    {
+      "name": "pgfcircdeclarebipole",
+      "snippet": "pgfcircdeclarebipole{${1:anchors}}{${2:lower ysize}}{${3:shape}}{${4:upper ysize}}{${5:width}}{${6:code}}",
+      "unusual": true
+    },
+    {
+      "name": "pgfcircdeclarebipolescaled",
+      "snippet": "pgfcircdeclarebipolescaled{${1:scale}}{${2:anchors}}{${3:lower ysize}}{${4:shape}}{${5:upper ysize}}{${6:width}}{${7:code}}",
+      "unusual": true
+    },
+    {
+      "name": "pgfcircdeclarecutespdt",
+      "snippet": "pgfcircdeclarecutespdt{${1:name}}{${2:bar pos}}{${3:arrow code}}",
+      "unusual": true
+    },
+    {
+      "name": "pgfcircdeclarecutesw",
+      "snippet": "pgfcircdeclarecutesw{${1:name}}{${2:bar pos}}{${3:arrow code}}",
+      "unusual": true
+    },
+    {
+      "name": "pgfcircdeclaredbipole",
+      "snippet": "pgfcircdeclaredbipole{${1:arg1}}{${2:arg2}}{${3:arg3}}",
+      "unusual": true
+    },
+    {
+      "name": "pgfcircdeclaredoublesolderjumper",
+      "snippet": "pgfcircdeclaredoublesolderjumper{${1:name}}{0|${2:1}{0}|1}",
+      "unusual": true
+    },
+    {
+      "name": "pgfcircdeclareeurologicport",
+      "snippet": "pgfcircdeclareeurologicport{${1:name}}{${2:symbol}}{${3:number}}{${4:code}}",
+      "unusual": true
+    },
+    {
+      "name": "pgfcircdeclarefourport",
+      "snippet": "pgfcircdeclarefourport{${1:name}}{${2:code}}",
+      "unusual": true
+    },
+    {
+      "name": "pgfcircdeclareieeebufferport",
+      "snippet": "pgfcircdeclareieeebufferport{${1:name}}{${2:polarity}}{${3:code}}",
+      "unusual": true
+    },
+    {
+      "name": "pgfcircdeclareieeebufferportpair",
+      "snippet": "pgfcircdeclareieeebufferportpair{${1:name}}{${2:negated name}}{${3:code}}",
+      "unusual": true
+    },
+    {
+      "name": "pgfcircdeclareieeeport",
+      "snippet": "pgfcircdeclareieeeport{${1:name}}{${2:type}}{${3:polarity}}{${4:code}}",
+      "unusual": true
+    },
+    {
+      "name": "pgfcircdeclareieeeportpair",
+      "snippet": "pgfcircdeclareieeeportpair{${1:name}}{${2:negated name}}{${3:type}}{${4:code}}",
+      "unusual": true
+    },
+    {
+      "name": "pgfcircdeclareieeetgate",
+      "snippet": "pgfcircdeclareieeetgate{${1:name}}{1 or 2}{${2:code}}",
+      "unusual": true
+    },
+    {
+      "name": "pgfcircdeclarejumper",
+      "snippet": "pgfcircdeclarejumper{${1:name}}{${2:link arc height}}",
+      "unusual": true
+    },
+    {
+      "name": "pgfcircdeclarejunctiontransistor",
+      "snippet": "pgfcircdeclarejunctiontransistor{${1:name}}{${2:code1}}{${3:code2}}",
+      "unusual": true
+    },
+    {
+      "name": "pgfcircdeclarelogicport",
+      "snippet": "pgfcircdeclarelogicport{${1:name}}{${2:number}}{${3:code}}",
+      "unusual": true
+    },
+    {
+      "name": "pgfcircdeclarequadpole",
+      "snippet": "pgfcircdeclarequadpole{${1:name}}{${2:code1}}{${3:code2}}",
+      "unusual": true
+    },
+    {
+      "name": "pgfcircdeclaresolderjumper",
+      "snippet": "pgfcircdeclaresolderjumper{${1:name}}{0|1}",
+      "unusual": true
+    },
+    {
+      "name": "pgfcircdeclarethyristor",
+      "snippet": "pgfcircdeclarethyristor{${1:name}}{${2:fill}}{${3:gate pos}}{${4:extra code}}"
+    },
+    {
+      "name": "pgfcircdeclaretransistor",
+      "snippet": "pgfcircdeclaretransistor{${1:name}}{${2:code1}}{${3:code2}}",
+      "unusual": true
+    },
+    {
+      "name": "pgfcircdeclaretriac",
+      "snippet": "pgfcircdeclaretriac{${1:name}}{${2:fill}}",
+      "unusual": true
+    },
+    {
+      "name": "pgfcircdeclaretube",
+      "snippet": "pgfcircdeclaretube{${1:name}}{${2:grid anchors}}{${3:grid code}}",
+      "unusual": true
+    },
+    {
+      "name": "pgfcircdiodestylemacro",
+      "unusual": true
+    },
+    {
+      "name": "pgfcircmathresult",
+      "unusual": true
+    },
+    {
+      "name": "pgfcircresetpath",
+      "unusual": true
+    },
+    {
+      "name": "pgfdeclaretransistorwrapperaddbulk",
+      "snippet": "pgfdeclaretransistorwrapperaddbulk{${1:name}}{${2:code1}}{${3:code2}}",
+      "unusual": true
+    },
+    {
+      "name": "pgfstartlinewidth",
+      "unusual": true
+    },
+    {
+      "name": "scaledRlen",
+      "unusual": true
+    },
+    {
+      "name": "scaledwidth",
+      "unusual": true
+    },
+    {
+      "name": "setscaledRlenforclass",
+      "unusual": true
+    },
+    {
+      "name": "unexpandedvalueof",
+      "snippet": "unexpandedvalueof{${1:option}}",
+      "unusual": true
+    }
+  ]
+}

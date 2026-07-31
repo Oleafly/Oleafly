@@ -1,0 +1,2326 @@
+{
+  "args": [
+    "\\usepackage/algorithm2e#c"
+  ],
+  "deps": [
+    "color",
+    "endfloat",
+    "ifoddpage",
+    "ifthen",
+    "relsize",
+    "tocbibind",
+    "xspace"
+  ],
+  "envs": [
+    {
+      "name": "algocf",
+      "unusual": true
+    },
+    {
+      "name": "algocf",
+      "snippet": "[${1:placement}]",
+      "unusual": true
+    },
+    {
+      "name": "algocf*",
+      "unusual": true
+    },
+    {
+      "name": "algocf*",
+      "snippet": "[${1:placement}]",
+      "unusual": true
+    },
+    {
+      "name": "algomathdisplay"
+    },
+    {
+      "name": "algorithm"
+    },
+    {
+      "name": "algorithm",
+      "snippet": "[${1:placement}]"
+    },
+    {
+      "name": "algorithm*",
+      "unusual": true
+    },
+    {
+      "name": "algorithm*",
+      "snippet": "[${1:placement}]",
+      "unusual": true
+    },
+    {
+      "name": "algorithm2e"
+    },
+    {
+      "name": "algorithm2e",
+      "snippet": "[${1:placement}]"
+    },
+    {
+      "name": "algorithm2e*",
+      "unusual": true
+    },
+    {
+      "name": "algorithm2e*",
+      "snippet": "[${1:placement}]",
+      "unusual": true
+    },
+    {
+      "name": "function"
+    },
+    {
+      "name": "function",
+      "snippet": "[${1:placement}]"
+    },
+    {
+      "name": "function*",
+      "unusual": true
+    },
+    {
+      "name": "function*",
+      "snippet": "[${1:placement}]",
+      "unusual": true
+    },
+    {
+      "name": "procedure"
+    },
+    {
+      "name": "procedure",
+      "snippet": "[${1:placement}]"
+    },
+    {
+      "name": "procedure*",
+      "unusual": true
+    },
+    {
+      "name": "procedure*",
+      "snippet": "[${1:placement}]",
+      "unusual": true
+    }
+  ],
+  "keys": {
+    "\\RestyleAlgo": [
+      "plain",
+      "plainruled",
+      "boxed",
+      "ruled",
+      "algoruled",
+      "boxruled",
+      "tworuled"
+    ],
+    "\\tcc*,\\tcp*": [
+      "r",
+      "l",
+      "h",
+      "f"
+    ],
+    "\\usepackage/algorithm2e#c": [
+      "algo2e",
+      "algochapter",
+      "algonl",
+      "algopart",
+      "algoruled",
+      "algosection",
+      "boxed",
+      "boxruled",
+      "commentsnumbered",
+      "croatian",
+      "croatiankw",
+      "czech",
+      "czechkw",
+      "displayblockmarkers",
+      "displaygroupmarkers",
+      "dotocloa",
+      "endfloat",
+      "english",
+      "englishkw",
+      "figure",
+      "fillcomment",
+      "french",
+      "frenchkw",
+      "german",
+      "germankw",
+      "hangingcomment",
+      "hanginginout",
+      "inoutnumbered",
+      "italiano",
+      "italianokw",
+      "lined",
+      "linesnumbered",
+      "linesnumberedhidden",
+      "longend",
+      "ngerman",
+      "ngermankw",
+      "noalgohanging",
+      "noend",
+      "nofillcomment",
+      "nokwfunc",
+      "noline",
+      "norelsize",
+      "noresetcount",
+      "nosemicolon",
+      "oldcommands",
+      "onelanguage",
+      "plain",
+      "plainruled",
+      "portuguese",
+      "portuguesekw",
+      "procnumbered",
+      "resetcount",
+      "rightnl",
+      "ruled",
+      "scleft",
+      "shortend",
+      "slide",
+      "slovak",
+      "slovakkw",
+      "spanish",
+      "spanishkw",
+      "sright",
+      "titlenotnumbered",
+      "titlenumbered",
+      "turkish",
+      "turkishkw",
+      "tworuled",
+      "vlined"
+    ]
+  },
+  "macros": [
+    {
+      "name": "Ako",
+      "snippet": "Ako{${1:condition}}{${2:then block}}",
+      "unusual": true
+    },
+    {
+      "name": "AlCapFnt",
+      "unusual": true
+    },
+    {
+      "name": "AlCapNameFnt",
+      "unusual": true
+    },
+    {
+      "name": "AlCapNameSty",
+      "snippet": "AlCapNameSty{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "AlCapSkip",
+      "unusual": true
+    },
+    {
+      "name": "AlCapSty",
+      "snippet": "AlCapSty{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "AlFnt",
+      "unusual": true
+    },
+    {
+      "name": "AlTitleFnt",
+      "unusual": true
+    },
+    {
+      "name": "AlTitleSty",
+      "snippet": "AlTitleSty{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "AlgoDisplayBlockMarkers"
+    },
+    {
+      "name": "AlgoDisplayGroupMarkers"
+    },
+    {
+      "name": "AlgoDontDisplayBlockMarkers"
+    },
+    {
+      "name": "AlgoDontDisplayGroupMarkers"
+    },
+    {
+      "name": "AlgoLineautorefname",
+      "unusual": true
+    },
+    {
+      "name": "AltSe",
+      "snippet": "AltSe{${1:else block}}",
+      "unusual": true
+    },
+    {
+      "name": "Altrimenti",
+      "snippet": "Altrimenti{${1:condition}}{${2:elseif block}}",
+      "unusual": true
+    },
+    {
+      "name": "Anderes",
+      "snippet": "Anderes{${1:default text}}",
+      "unusual": true
+    },
+    {
+      "name": "ArgSty",
+      "snippet": "ArgSty{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "Ate",
+      "unusual": true
+    },
+    {
+      "name": "Aus",
+      "snippet": "Aus{${1:Ausgabe}}",
+      "unusual": true
+    },
+    {
+      "name": "Autre",
+      "snippet": "Autre{${1:bloc de l’alternative}}",
+      "unusual": true
+    },
+    {
+      "name": "Begin",
+      "snippet": "Begin(${2:begin comment}){${1:block inside}}",
+      "unusual": true
+    },
+    {
+      "name": "Begin",
+      "snippet": "Begin{${1:block inside}}",
+      "unusual": true
+    },
+    {
+      "name": "Beginn",
+      "snippet": "Beginn{${1:Beginn}}",
+      "unusual": true
+    },
+    {
+      "name": "Bis",
+      "snippet": "Bis{${1:bis}}",
+      "unusual": true
+    },
+    {
+      "name": "BlankLine"
+    },
+    {
+      "name": "BlockMarkersSty",
+      "snippet": "BlockMarkersSty{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "Cas",
+      "snippet": "Cas{${1:cas où}}{${2:bloc de ce cas}}",
+      "unusual": true
+    },
+    {
+      "name": "Case",
+      "snippet": "Case(${3:case comment}){${1:case}}{${2:case block}}",
+      "unusual": true
+    },
+    {
+      "name": "Case",
+      "snippet": "Case{${1:case}}{${2:case block}}",
+      "unusual": true
+    },
+    {
+      "name": "Caso",
+      "snippet": "Caso{${1:a case}}{${2:case block}}",
+      "unusual": true
+    },
+    {
+      "name": "Caso",
+      "snippet": "Caso{${1:seleccionar}}{${2:caso block}}",
+      "unusual": true
+    },
+    {
+      "name": "CommentSty",
+      "snippet": "CommentSty{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "Dados",
+      "snippet": "Dados{${1:Dados}}",
+      "unusual": true
+    },
+    {
+      "name": "DataSty",
+      "snippet": "DataSty{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "Daten",
+      "snippet": "Daten{${1:Daten}}",
+      "unusual": true
+    },
+    {
+      "name": "Datos",
+      "snippet": "Datos{${1:Datos}}",
+      "unusual": true
+    },
+    {
+      "name": "Deb",
+      "snippet": "Deb{${1:intérieur du bloc}}",
+      "unusual": true
+    },
+    {
+      "name": "DecMargin",
+      "snippet": "DecMargin{${1:length}}"
+    },
+    {
+      "name": "Devolver",
+      "snippet": "Devolver{${1:value}}",
+      "unusual": true
+    },
+    {
+      "name": "Dok",
+      "snippet": "Dok{${1:condition}}{${2:loop block}}",
+      "unusual": true
+    },
+    {
+      "name": "Donnees",
+      "snippet": "Donnees{${1:données}}",
+      "unusual": true
+    },
+    {
+      "name": "DontPrintSemicolon"
+    },
+    {
+      "name": "Ein",
+      "snippet": "Ein{${1:Eingabe}}",
+      "unusual": true
+    },
+    {
+      "name": "Else",
+      "snippet": "Else(${2:else comment}){${1:else block}}",
+      "unusual": true
+    },
+    {
+      "name": "Else",
+      "snippet": "Else{${1:else block}}",
+      "unusual": true
+    },
+    {
+      "name": "ElseIf",
+      "snippet": "ElseIf(${2:elseif comment}){${1:elseif block}}",
+      "unusual": true
+    },
+    {
+      "name": "ElseIf",
+      "snippet": "ElseIf{${1:elseif block}}",
+      "unusual": true
+    },
+    {
+      "name": "EnOtroCaso",
+      "snippet": "EnOtroCaso{${1:else block}}",
+      "unusual": true
+    },
+    {
+      "name": "EnOtroCasoSi",
+      "snippet": "EnOtroCasoSi{${1:condition}}{${2:elseif block}}",
+      "unusual": true
+    },
+    {
+      "name": "EnParalelo",
+      "snippet": "EnParalelo{${1:condition}}{${2:loop block}}",
+      "unusual": true
+    },
+    {
+      "name": "Enqto",
+      "snippet": "Enqto{${1:stop condition}}{${2:text loop}}",
+      "unusual": true
+    },
+    {
+      "name": "Entrada",
+      "snippet": "Entrada{${1:Entrada}}",
+      "unusual": true
+    },
+    {
+      "name": "Entree",
+      "snippet": "Entree{${1:entrées}}",
+      "unusual": true
+    },
+    {
+      "name": "Ergebnis",
+      "snippet": "Ergebnis{${1:Ergebnis}}",
+      "unusual": true
+    },
+    {
+      "name": "Fall",
+      "snippet": "Fall{${1:case of}}{${2:text}}",
+      "unusual": true
+    },
+    {
+      "name": "Finche",
+      "snippet": "Finche{${1:stop condition}}{${2:text loop}}",
+      "unusual": true
+    },
+    {
+      "name": "For",
+      "snippet": "For(${3:for comment}){${1:condition}}{${2:for block}}",
+      "unusual": true
+    },
+    {
+      "name": "For",
+      "snippet": "For{${1:condition}}{${2:for block}}",
+      "unusual": true
+    },
+    {
+      "name": "ForAll",
+      "snippet": "ForAll(${3:forall comment}){${1:condition}}{${2:forall block}}",
+      "unusual": true
+    },
+    {
+      "name": "ForAll",
+      "snippet": "ForAll{${1:condition}}{${2:forall block}}",
+      "unusual": true
+    },
+    {
+      "name": "ForEach",
+      "snippet": "ForEach(${3:foreach comment}){${1:condition}}{${2:foreach block}}",
+      "unusual": true
+    },
+    {
+      "name": "ForEach",
+      "snippet": "ForEach{${1:condition}}{${2:foreach block}}",
+      "unusual": true
+    },
+    {
+      "name": "ForPar",
+      "snippet": "ForPar(${3:foreach comment}){${1:condition}}{${2:foreach block}}",
+      "unusual": true
+    },
+    {
+      "name": "ForPar",
+      "snippet": "ForPar{${1:condition}}{${2:foreach block}}",
+      "unusual": true
+    },
+    {
+      "name": "Fuer",
+      "snippet": "Fuer{${1:condition}}{${2:loop}}",
+      "unusual": true
+    },
+    {
+      "name": "FuerAlle",
+      "snippet": "FuerAlle{${1:condition}}{${2:loop}}",
+      "unusual": true
+    },
+    {
+      "name": "FuerJedes",
+      "snippet": "FuerJedes{${1:condition}}{${2:loop}}",
+      "unusual": true
+    },
+    {
+      "name": "FuerPar",
+      "snippet": "FuerPar{${1:condition}}{${2:loop}}",
+      "unusual": true
+    },
+    {
+      "name": "FuncArgSty",
+      "snippet": "FuncArgSty{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "FuncSty",
+      "snippet": "FuncSty{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "Granaj",
+      "snippet": "Granaj{${1:condition}}{${2:Seleccionar caso block}}",
+      "unusual": true
+    },
+    {
+      "name": "HDonnees",
+      "snippet": "HDonnees{${1:données}}",
+      "unusual": true
+    },
+    {
+      "name": "Hlne",
+      "unusual": true
+    },
+    {
+      "name": "If",
+      "snippet": "If(${3:then comment}){${1:condition}}{${2:then block}}",
+      "unusual": true
+    },
+    {
+      "name": "If",
+      "snippet": "If{${1:condition}}{${2:then block}}",
+      "unusual": true
+    },
+    {
+      "name": "InOutSizeDefined",
+      "unusual": true
+    },
+    {
+      "name": "Inace",
+      "snippet": "Inace{${1:else block}}",
+      "unusual": true
+    },
+    {
+      "name": "InaceAko",
+      "snippet": "InaceAko{${1:condition}}{${2:elseif block}}",
+      "unusual": true
+    },
+    {
+      "name": "IncMargin",
+      "snippet": "IncMargin{${1:length}}"
+    },
+    {
+      "name": "Indentp",
+      "snippet": "Indentp{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "Indmm",
+      "unusual": true
+    },
+    {
+      "name": "Indpp",
+      "unusual": true
+    },
+    {
+      "name": "Inicio",
+      "snippet": "Inicio{${1:inside block}}",
+      "unusual": true
+    },
+    {
+      "name": "Inizio",
+      "snippet": "Inizio{${1:inside block}}",
+      "unusual": true
+    },
+    {
+      "name": "KwA",
+      "unusual": true
+    },
+    {
+      "name": "KwData",
+      "snippet": "KwData{${1:input}}",
+      "unusual": true
+    },
+    {
+      "name": "KwDati",
+      "snippet": "KwDati{${1:Dati}}",
+      "unusual": true
+    },
+    {
+      "name": "KwDevolver",
+      "snippet": "KwDevolver{${1:value}}",
+      "unusual": true
+    },
+    {
+      "name": "KwDo",
+      "unusual": true
+    },
+    {
+      "name": "KwHData",
+      "snippet": "KwHData{${1:input}}",
+      "unusual": true
+    },
+    {
+      "name": "KwIn",
+      "snippet": "KwIn{${1:input}}",
+      "unusual": true
+    },
+    {
+      "name": "KwIng",
+      "snippet": "KwIng{${1:Ingresso}}",
+      "unusual": true
+    },
+    {
+      "name": "KwIzlaz",
+      "snippet": "KwIzlaz{${1:input}}",
+      "unusual": true
+    },
+    {
+      "name": "KwOut",
+      "snippet": "KwOut{${1:output}}",
+      "unusual": true
+    },
+    {
+      "name": "KwPodatci",
+      "snippet": "KwPodatci{${1:input}}",
+      "unusual": true
+    },
+    {
+      "name": "KwResult",
+      "snippet": "KwResult{${1:output}}",
+      "unusual": true
+    },
+    {
+      "name": "KwRet",
+      "snippet": "KwRet{${1:value}}",
+      "unusual": true
+    },
+    {
+      "name": "KwRetorna",
+      "snippet": "KwRetorna{${1:val}}",
+      "unusual": true
+    },
+    {
+      "name": "KwRezultat",
+      "snippet": "KwRezultat{${1:input}}",
+      "unusual": true
+    },
+    {
+      "name": "KwRisult",
+      "snippet": "KwRisult{${1:Risultato}}",
+      "unusual": true
+    },
+    {
+      "name": "KwRitorna",
+      "snippet": "KwRitorna{${1:ritorna}}",
+      "unusual": true
+    },
+    {
+      "name": "KwSty",
+      "snippet": "KwSty{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "KwTo",
+      "unusual": true
+    },
+    {
+      "name": "KwUlaz",
+      "snippet": "KwUlaz{${1:input}}",
+      "unusual": true
+    },
+    {
+      "name": "KwUsc",
+      "snippet": "KwUsc{${1:Uscita}}",
+      "unusual": true
+    },
+    {
+      "name": "KwVrati",
+      "unusual": true
+    },
+    {
+      "name": "KwZurueck",
+      "snippet": "KwZurueck{${1:zurück}}",
+      "unusual": true
+    },
+    {
+      "name": "LinesNotNumbered"
+    },
+    {
+      "name": "LinesNumbered"
+    },
+    {
+      "name": "LinesNumberedHidden"
+    },
+    {
+      "name": "Mientras",
+      "snippet": "Mientras{${1:condition}}{${2:loop block}}",
+      "unusual": true
+    },
+    {
+      "name": "NlSty",
+      "snippet": "NlSty{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "NoCaptionOfAlgo"
+    },
+    {
+      "name": "OstaliSlucajevi",
+      "snippet": "OstaliSlucajevi{${1:otherwise block}}",
+      "unusual": true
+    },
+    {
+      "name": "Other",
+      "snippet": "Other(${2:other comment}){${1:otherwise block}}",
+      "unusual": true
+    },
+    {
+      "name": "Other",
+      "snippet": "Other{${1:otherwise block}}",
+      "unusual": true
+    },
+    {
+      "name": "Otro",
+      "snippet": "Otro{${1:sinó block}}",
+      "unusual": true
+    },
+    {
+      "name": "Outro",
+      "snippet": "Outro{${1:otherwise block}}",
+      "unusual": true
+    },
+    {
+      "name": "Para",
+      "snippet": "Para{${1:condition}}{${2:loop block}}",
+      "unusual": true
+    },
+    {
+      "name": "Para",
+      "snippet": "Para{${1:condition}}{${2:text loop}}",
+      "unusual": true
+    },
+    {
+      "name": "ParaCada",
+      "snippet": "ParaCada{${1:condition}}{${2:loop block}}",
+      "unusual": true
+    },
+    {
+      "name": "ParaCada",
+      "snippet": "ParaCada{${1:condition}}{${2:text loop}}",
+      "unusual": true
+    },
+    {
+      "name": "ParaPar",
+      "snippet": "ParaPar{${1:condition}}{${2:text loop}}",
+      "unusual": true
+    },
+    {
+      "name": "ParaPara",
+      "snippet": "ParaPara{${1:condition}}{${2:loop block}}",
+      "unusual": true
+    },
+    {
+      "name": "ParaTodo",
+      "snippet": "ParaTodo{${1:condition}}{${2:loop block}}",
+      "unusual": true
+    },
+    {
+      "name": "ParaTodo",
+      "snippet": "ParaTodo{${1:condition}}{${2:text loop}}",
+      "unusual": true
+    },
+    {
+      "name": "Per",
+      "snippet": "Per{${1:condition}}{${2:text loop}}",
+      "unusual": true
+    },
+    {
+      "name": "PerCiascun",
+      "snippet": "PerCiascun{${1:condition}}{${2:text loop}}",
+      "unusual": true
+    },
+    {
+      "name": "PerPar",
+      "snippet": "PerPar{${1:condition}}{${2:text loop}}",
+      "unusual": true
+    },
+    {
+      "name": "PerTutti",
+      "snippet": "PerTutti{${1:condition}}{${2:text loop}}",
+      "unusual": true
+    },
+    {
+      "name": "Pocetak",
+      "snippet": "Pocetak{${1:inside block}}",
+      "unusual": true
+    },
+    {
+      "name": "Ponavljaj",
+      "snippet": "Ponavljaj{${1:stop condition}}{${2:loop block}}",
+      "unusual": true
+    },
+    {
+      "name": "Pour",
+      "snippet": "Pour{${1:condition}}{${2:bloc de la boucle}}",
+      "unusual": true
+    },
+    {
+      "name": "PourCh",
+      "snippet": "PourCh{${1:condition}}{${2:bloc de la boucle}}",
+      "unusual": true
+    },
+    {
+      "name": "PourPar",
+      "snippet": "PourPar{${1:condition}}{${2:bloc de la boucle}}",
+      "unusual": true
+    },
+    {
+      "name": "PourTous",
+      "snippet": "PourTous{${1:condition}}{${2:bloc de la boucle}}",
+      "unusual": true
+    },
+    {
+      "name": "PrintSemicolon",
+      "unusual": true
+    },
+    {
+      "name": "ProcArgFnt",
+      "unusual": true
+    },
+    {
+      "name": "ProcArgSty",
+      "snippet": "ProcArgSty{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "ProcFnt",
+      "unusual": true
+    },
+    {
+      "name": "ProcNameFnt",
+      "unusual": true
+    },
+    {
+      "name": "ProcNameSty",
+      "snippet": "ProcNameSty{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "ProcSty",
+      "snippet": "ProcSty{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "ProgSty",
+      "snippet": "ProgSty{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "Repeat",
+      "snippet": "Repeat(${3:repeat comment}){${1:end condition}}{${2:repeat block}}",
+      "unusual": true
+    },
+    {
+      "name": "Repeat",
+      "snippet": "Repeat(${3:repeat comment}){${1:end condition}}{${2:repeat block}}(${4:until comment})",
+      "unusual": true
+    },
+    {
+      "name": "Repeat",
+      "snippet": "Repeat{${1:end condition}}{${2:repeat block}}",
+      "unusual": true
+    },
+    {
+      "name": "Repeat",
+      "snippet": "Repeat{${1:end condition}}{${2:repeat block}}(${3:until comment})",
+      "unusual": true
+    },
+    {
+      "name": "Repeter",
+      "snippet": "Repeter{${1:condition d’arrêt}}{${2:bloc de la boucle}}",
+      "unusual": true
+    },
+    {
+      "name": "Repetir",
+      "snippet": "Repetir{${1:stop condition}}{${2:loop block}}",
+      "unusual": true
+    },
+    {
+      "name": "Repita",
+      "snippet": "Repita{${1:stop condition}}{${2:text loop}}",
+      "unusual": true
+    },
+    {
+      "name": "Res",
+      "snippet": "Res{${1:résultats}}",
+      "unusual": true
+    },
+    {
+      "name": "ResetInOut",
+      "snippet": "ResetInOut{${1:name}}"
+    },
+    {
+      "name": "RestoreCaptionOfAlgo"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\RestyleAlgo"
+      ],
+      "name": "RestyleAlgo",
+      "snippet": "RestyleAlgo{${1:style%keyvals}}"
+    },
+    {
+      "name": "Resultado",
+      "snippet": "Resultado{${1:Resultado}}",
+      "unusual": true
+    },
+    {
+      "name": "Retorna",
+      "snippet": "Retorna{${1:val}}",
+      "unusual": true
+    },
+    {
+      "name": "Retour",
+      "snippet": "Retour{${1:valeur}}",
+      "unusual": true
+    },
+    {
+      "name": "Return",
+      "snippet": "Return{${1:value}}",
+      "unusual": true
+    },
+    {
+      "name": "Ripeti",
+      "snippet": "Ripeti{${1:stop condition}}{${2:text loop}}",
+      "unusual": true
+    },
+    {
+      "name": "Ritorna",
+      "snippet": "Ritorna{${1:ritorna}}",
+      "unusual": true
+    },
+    {
+      "name": "SSi",
+      "snippet": "SSi{${1:condition}}{${2:then block}}",
+      "unusual": true
+    },
+    {
+      "name": "Saida",
+      "snippet": "Saida{${1:Saída}}",
+      "unusual": true
+    },
+    {
+      "name": "Salida",
+      "snippet": "Salida{${1:Salida}}",
+      "unusual": true
+    },
+    {
+      "name": "Se",
+      "snippet": "Se{${1:condition}}{${2:then block}}",
+      "unusual": true
+    },
+    {
+      "name": "Sea",
+      "snippet": "Sea{${1:condition}}{${2:then block}}",
+      "unusual": true
+    },
+    {
+      "name": "Selec",
+      "snippet": "Selec{${1:condition}}{${2:switch block}}",
+      "unusual": true
+    },
+    {
+      "name": "Seleccionar",
+      "snippet": "Seleccionar{${1:seleccionar}}{${2:caso block}}",
+      "unusual": true
+    },
+    {
+      "name": "Senao",
+      "snippet": "Senao{${1:else block}}",
+      "unusual": true
+    },
+    {
+      "name": "SenaoSe",
+      "snippet": "SenaoSe{${1:condition}}{${2:elseif block}}",
+      "unusual": true
+    },
+    {
+      "name": "SetAlCapFnt",
+      "snippet": "SetAlCapFnt{${1:font csname}}"
+    },
+    {
+      "name": "SetAlCapHSkip",
+      "snippet": "SetAlCapHSkip{${1:length}}"
+    },
+    {
+      "name": "SetAlCapNameFnt",
+      "snippet": "SetAlCapNameFnt{${1:font csname}}"
+    },
+    {
+      "name": "SetAlCapNameSty",
+      "snippet": "SetAlCapNameSty{${1:font csname}}"
+    },
+    {
+      "name": "SetAlCapSkip",
+      "snippet": "SetAlCapSkip{${1:length}}"
+    },
+    {
+      "name": "SetAlCapSty",
+      "snippet": "SetAlCapSty{${1:font csname}}"
+    },
+    {
+      "name": "SetAlFnt",
+      "snippet": "SetAlFnt{${1:font csname}}"
+    },
+    {
+      "name": "SetAlTitleFnt",
+      "snippet": "SetAlTitleFnt{${1:font csname}}"
+    },
+    {
+      "name": "SetAlTitleSty",
+      "snippet": "SetAlTitleSty{${1:font csname}}"
+    },
+    {
+      "name": "SetAlgoBlockMarkers",
+      "snippet": "SetAlgoBlockMarkers{${1:begin keywords}}{${2:end keywords}}"
+    },
+    {
+      "name": "SetAlgoCaptionLayout",
+      "snippet": "SetAlgoCaptionLayout{${1:style csname}}"
+    },
+    {
+      "name": "SetAlgoCaptionSeparator",
+      "snippet": "SetAlgoCaptionSeparator{${1:separator}}"
+    },
+    {
+      "name": "SetAlgoFuncName",
+      "snippet": "SetAlgoFuncName{${1:name}}{${2:autoref name}}"
+    },
+    {
+      "name": "SetAlgoHangIndent",
+      "snippet": "SetAlgoHangIndent{${1:length}}"
+    },
+    {
+      "name": "SetAlgoInsideSkip",
+      "snippet": "SetAlgoInsideSkip{${1:skip csname}}"
+    },
+    {
+      "name": "SetAlgoLined"
+    },
+    {
+      "name": "SetAlgoLongEnd"
+    },
+    {
+      "name": "SetAlgoNlRelativeSize",
+      "snippet": "SetAlgoNlRelativeSize{${1:number}}"
+    },
+    {
+      "name": "SetAlgoNoEnd"
+    },
+    {
+      "name": "SetAlgoNoLine"
+    },
+    {
+      "name": "SetAlgoProcName",
+      "snippet": "SetAlgoProcName{${1:name}}{${2:autoref name}}"
+    },
+    {
+      "name": "SetAlgoRefName",
+      "snippet": "SetAlgoRefName{${1:text%plain}}"
+    },
+    {
+      "name": "SetAlgoRefRelativeSize",
+      "snippet": "SetAlgoRefRelativeSize{${1:integer}}"
+    },
+    {
+      "name": "SetAlgoShortEnd"
+    },
+    {
+      "name": "SetAlgoSkip",
+      "snippet": "SetAlgoSkip{${1:skip csname}}"
+    },
+    {
+      "name": "SetAlgoVlined"
+    },
+    {
+      "name": "SetAlgorithmName",
+      "snippet": "SetAlgorithmName{${1:name}}{${2:autoref name}}{${3:listofalgorithms name}}"
+    },
+    {
+      "name": "SetArgSty",
+      "snippet": "SetArgSty{${1:font csname}}"
+    },
+    {
+      "name": "SetBlockMarkersSty",
+      "snippet": "SetBlockMarkersSty{${1:font csname}}"
+    },
+    {
+      "name": "SetCommentSty",
+      "snippet": "SetCommentSty{${1:font csname}}"
+    },
+    {
+      "name": "SetCustomAlgoRuledWidth",
+      "snippet": "SetCustomAlgoRuledWidth{${1:length}}"
+    },
+    {
+      "name": "SetDataSty",
+      "snippet": "SetDataSty{${1:font csname}}"
+    },
+    {
+      "name": "SetEndCharOfAlgoLine",
+      "snippet": "SetEndCharOfAlgoLine{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "SetFillComment"
+    },
+    {
+      "name": "SetFuncArgSty",
+      "snippet": "SetFuncArgSty{${1:font csname}}"
+    },
+    {
+      "name": "SetFuncSty",
+      "snippet": "SetFuncSty{${1:font csname}}"
+    },
+    {
+      "name": "SetInd",
+      "snippet": "SetInd{${1:before space%l}}{${2:after space%l}}"
+    },
+    {
+      "name": "SetKw",
+      "snippet": "SetKw{${1:csname}}{${2:name}}"
+    },
+    {
+      "name": "SetKwArray",
+      "snippet": "SetKwArray{${1:csname}}{${2:name}}"
+    },
+    {
+      "name": "SetKwBlock",
+      "snippet": "SetKwBlock{${1:csname}}{${2:begin text}}{${3:end text}}"
+    },
+    {
+      "name": "SetKwComment",
+      "snippet": "SetKwComment{${1:csname}}{${2:begin text}}{${3:end text}}"
+    },
+    {
+      "name": "SetKwData",
+      "snippet": "SetKwData{${1:csname}}{${2:name}}"
+    },
+    {
+      "name": "SetKwFor",
+      "snippet": "SetKwFor{${1:csname}}{${2:for text}}{${3:do text}}{${4:endfor text}}"
+    },
+    {
+      "name": "SetKwFunction",
+      "snippet": "SetKwFunction{${1:csname}}{${2:name}}"
+    },
+    {
+      "name": "SetKwHangingKw",
+      "snippet": "SetKwHangingKw{${1:csname}}{${2:name}}"
+    },
+    {
+      "name": "SetKwIF",
+      "snippet": "SetKwIF{${1:if csname}}{${2:elseif csname}}{${3:else csname}}{${4:if text}}{${5:then text}}{${6:elseif text}}{${7:else text}}{${8:endif text}}"
+    },
+    {
+      "name": "SetKwInOut",
+      "snippet": "SetKwInOut{${1:csname}}{${2:name}}"
+    },
+    {
+      "name": "SetKwInput",
+      "snippet": "SetKwInput{${1:csname}}{${2:name}}"
+    },
+    {
+      "name": "SetKwProg",
+      "snippet": "SetKwProg{${1:csname}}{${2:name}}{${3:begin text}}{${4:end text}}"
+    },
+    {
+      "name": "SetKwRepeat",
+      "snippet": "SetKwRepeat{${1:csname}}{${2:repeat text}}{${3:until text}}"
+    },
+    {
+      "name": "SetKwSty",
+      "snippet": "SetKwSty{${1:font csname}}"
+    },
+    {
+      "name": "SetKwSwitch",
+      "snippet": "SetKwSwitch{${1:switch csname}}{${2:case csname}}{${3:other csname}}{${4:switch text}}{${5:do text}}{${6:case text}}{${7:other text}}{${8:endcase text}}"
+    },
+    {
+      "name": "SetNlSkip",
+      "snippet": "SetNlSkip{${1:length}}"
+    },
+    {
+      "name": "SetNlSty",
+      "snippet": "SetNlSty{${1:font csname}}{${2:text before}}{${3:text after}}"
+    },
+    {
+      "name": "SetNoFillComment"
+    },
+    {
+      "name": "SetNothing",
+      "unusual": true
+    },
+    {
+      "name": "SetProcArgFnt",
+      "snippet": "SetProcArgFnt{${1:font csname}}"
+    },
+    {
+      "name": "SetProcArgSty",
+      "snippet": "SetProcArgSty{${1:font csname}}"
+    },
+    {
+      "name": "SetProcFnt",
+      "snippet": "SetProcFnt{${1:font csname}}"
+    },
+    {
+      "name": "SetProcNameFnt",
+      "snippet": "SetProcNameFnt{${1:font csname}}"
+    },
+    {
+      "name": "SetProcNameSty",
+      "snippet": "SetProcNameSty{${1:font csname}}"
+    },
+    {
+      "name": "SetProcSty",
+      "snippet": "SetProcSty{${1:font csname}}"
+    },
+    {
+      "name": "SetProgSty",
+      "snippet": "SetProgSty{${1:font csname}}"
+    },
+    {
+      "name": "SetSideCommentLeft"
+    },
+    {
+      "name": "SetSideCommentRight"
+    },
+    {
+      "name": "SetStartEndCondition",
+      "snippet": "SetStartEndCondition{${1:typo1}}{${2:typo2}}{${3:typo3}}"
+    },
+    {
+      "name": "SetTitleSty",
+      "snippet": "SetTitleSty{${1:type style}}{${2:type size}}"
+    },
+    {
+      "name": "SetVlineSkip",
+      "snippet": "SetVlineSkip{${1:length}}"
+    },
+    {
+      "name": "ShowLn"
+    },
+    {
+      "name": "ShowLnLabel",
+      "snippet": "ShowLnLabel{${1:text%plain}}",
+      "unusual": true
+    },
+    {
+      "name": "Si",
+      "snippet": "Si{${1:condition}}{${2:bloc du alors}}",
+      "unusual": true
+    },
+    {
+      "name": "Sinon",
+      "snippet": "Sinon{${1:bloc du sinon}}",
+      "unusual": true
+    },
+    {
+      "name": "SinonSi",
+      "snippet": "SinonSi{${1:condition}}{${2:bloc du sinonsi}}",
+      "unusual": true
+    },
+    {
+      "name": "Slucaj",
+      "snippet": "Slucaj{${1:case}}{${2:case block}}",
+      "unusual": true
+    },
+    {
+      "name": "Solange",
+      "snippet": "Solange{${1:condition}}{${2:loop}}",
+      "unusual": true
+    },
+    {
+      "name": "Sonst",
+      "snippet": "Sonst{${1:else text}}",
+      "unusual": true
+    },
+    {
+      "name": "SonstWenn",
+      "snippet": "SonstWenn{${1:condition}}{${2:elseif text}}",
+      "unusual": true
+    },
+    {
+      "name": "Sortie",
+      "snippet": "Sortie{${1:sorties}}",
+      "unusual": true
+    },
+    {
+      "name": "Suivant",
+      "snippet": "Suivant{${1:condition}}{${2:bloc du suivant-cas-alors}}",
+      "unusual": true
+    },
+    {
+      "name": "Switch",
+      "snippet": "Switch(${3:switch comment}){${1:condition}}{${2:switch block}}",
+      "unusual": true
+    },
+    {
+      "name": "Switch",
+      "snippet": "Switch{${1:condition}}{${2:switch block}}",
+      "unusual": true
+    },
+    {
+      "name": "TitleOfAlgo",
+      "snippet": "TitleOfAlgo{${1:text}}"
+    },
+    {
+      "name": "TitleSty",
+      "snippet": "TitleSty{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "Tq",
+      "snippet": "Tq{${1:condition}}{${2:bloc de la boucle}}",
+      "unusual": true
+    },
+    {
+      "name": "Unterscheide",
+      "snippet": "Unterscheide{${1:condition}}{${2:switch block}}",
+      "unusual": true
+    },
+    {
+      "name": "Vrati",
+      "unusual": true
+    },
+    {
+      "name": "Vst",
+      "snippet": "Vst{${1:input}}",
+      "unusual": true
+    },
+    {
+      "name": "Vysl",
+      "snippet": "Vysl{${1:input}}",
+      "unusual": true
+    },
+    {
+      "name": "Vyst",
+      "snippet": "Vyst{${1:input}}",
+      "unusual": true
+    },
+    {
+      "name": "Wenn",
+      "snippet": "Wenn{${1:condition}}{${2:then text}}",
+      "unusual": true
+    },
+    {
+      "name": "While",
+      "snippet": "While(${3:while comment}){${1:condition}}{${2:while block}}",
+      "unusual": true
+    },
+    {
+      "name": "While",
+      "snippet": "While{${1:condition}}{${2:while block}}",
+      "unusual": true
+    },
+    {
+      "name": "Wiederh",
+      "snippet": "Wiederh{${1:stop condition}}{${2:loop}}",
+      "unusual": true
+    },
+    {
+      "name": "Za",
+      "snippet": "Za{${1:condition}}{${2:loop block}}",
+      "unusual": true
+    },
+    {
+      "name": "ZaPar",
+      "snippet": "ZaPar{${1:condition}}{${2:loop block}}",
+      "unusual": true
+    },
+    {
+      "name": "ZaSvaki",
+      "snippet": "ZaSvaki{${1:condition}}{${2:loop block}}",
+      "unusual": true
+    },
+    {
+      "name": "ZaSvako",
+      "snippet": "ZaSvako{${1:condition}}{${2:loop block}}",
+      "unusual": true
+    },
+    {
+      "name": "ZaSvaku",
+      "snippet": "ZaSvaku{${1:condition}}{${2:loop block}}",
+      "unusual": true
+    },
+    {
+      "name": "ZaSve",
+      "snippet": "ZaSve{${1:condition}}{${2:loop block}}",
+      "unusual": true
+    },
+    {
+      "name": "Zurueck",
+      "snippet": "Zurueck{${1:zurück}}",
+      "unusual": true
+    },
+    {
+      "name": "algocfautorefname",
+      "unusual": true
+    },
+    {
+      "name": "algocffuncautorefname",
+      "unusual": true
+    },
+    {
+      "name": "algocfprocautorefname",
+      "unusual": true
+    },
+    {
+      "name": "algoendfloat",
+      "unusual": true
+    },
+    {
+      "name": "algoheightrule",
+      "unusual": true
+    },
+    {
+      "name": "algoheightruledefault",
+      "unusual": true
+    },
+    {
+      "name": "algomargin",
+      "unusual": true
+    },
+    {
+      "name": "algoplace",
+      "unusual": true
+    },
+    {
+      "name": "algorithmautorefname",
+      "unusual": true
+    },
+    {
+      "name": "algorithmcflinename",
+      "unusual": true
+    },
+    {
+      "name": "algorithmcfname",
+      "unusual": true
+    },
+    {
+      "name": "algotitleheightrule",
+      "unusual": true
+    },
+    {
+      "name": "algotitleheightruledefault",
+      "unusual": true
+    },
+    {
+      "name": "algowidth",
+      "unusual": true
+    },
+    {
+      "name": "eAko",
+      "snippet": "eAko{${1:condition}}{${2:then block}}{${3:else block}}",
+      "unusual": true
+    },
+    {
+      "name": "eIf",
+      "snippet": "eIf(${4:then comment}){${1:condition}}{${2:then block}}(${5:else comment}){${3:else block}}",
+      "unusual": true
+    },
+    {
+      "name": "eIf",
+      "snippet": "eIf(${4:then comment}){${1:condition}}{${2:then block}}{${3:else block}}",
+      "unusual": true
+    },
+    {
+      "name": "eIf",
+      "snippet": "eIf{${1:condition}}{${2:then block}}(${4:else comment}){${3:else block}}",
+      "unusual": true
+    },
+    {
+      "name": "eIf",
+      "snippet": "eIf{${1:condition}}{${2:then block}}{${3:else block}}",
+      "unusual": true
+    },
+    {
+      "name": "eSSi",
+      "snippet": "eSSi{${1:condition}}{${2:then block}}{${3:else block}}",
+      "unusual": true
+    },
+    {
+      "name": "eSe",
+      "snippet": "eSe{${1:condition}}{${2:then block}}{${3:else block}}",
+      "unusual": true
+    },
+    {
+      "name": "eSea",
+      "snippet": "eSea{${1:condition}}{${2:then block}}{${3:else block}}",
+      "unusual": true
+    },
+    {
+      "name": "eSi",
+      "snippet": "eSi{${1:condition}}{${2:bloc du alors}}{${3:bloc du sinon}}",
+      "unusual": true
+    },
+    {
+      "name": "eWenn",
+      "snippet": "eWenn{${1:condition}}{${2:then text}}{${3:else text}}",
+      "unusual": true
+    },
+    {
+      "name": "enl",
+      "unusual": true
+    },
+    {
+      "name": "functionautorefname",
+      "unusual": true
+    },
+    {
+      "name": "inoutindent",
+      "unusual": true
+    },
+    {
+      "name": "inoutsize",
+      "unusual": true
+    },
+    {
+      "name": "interspacealgoruled",
+      "unusual": true
+    },
+    {
+      "name": "interspacetitleboxruled",
+      "unusual": true
+    },
+    {
+      "name": "interspacetitleruled",
+      "unusual": true
+    },
+    {
+      "name": "lAko",
+      "snippet": "lAko{${1:condition}}{${2:then line}}",
+      "unusual": true
+    },
+    {
+      "name": "lAltSe",
+      "snippet": "lAltSe{${1:else’s line text}}",
+      "unusual": true
+    },
+    {
+      "name": "lAltrimenti",
+      "snippet": "lAltrimenti{${1:condition}}{${2:elseif’s line text}}",
+      "unusual": true
+    },
+    {
+      "name": "lAnderes",
+      "snippet": "lAnderes{${1:default line}}",
+      "unusual": true
+    },
+    {
+      "name": "lAutre",
+      "snippet": "lAutre{${1:bloc de l’alternative}}",
+      "unusual": true
+    },
+    {
+      "name": "lCas",
+      "snippet": "lCas{${1:cas où}}{${2:ligne de ce cas}}",
+      "unusual": true
+    },
+    {
+      "name": "lCase",
+      "snippet": "lCase(${3:case comment}){${1:case}}{${2:case line}}",
+      "unusual": true
+    },
+    {
+      "name": "lCase",
+      "snippet": "lCase{${1:case}}{${2:case line}}",
+      "unusual": true
+    },
+    {
+      "name": "lCaso",
+      "snippet": "lCaso{${1:a case}}{${2:case’s line}}",
+      "unusual": true
+    },
+    {
+      "name": "lCaso",
+      "snippet": "lCaso{${1:seleccionar}}{${2:caso line}}",
+      "unusual": true
+    },
+    {
+      "name": "lDok",
+      "snippet": "lDok{${1:condition}}{${2:loop line}}",
+      "unusual": true
+    },
+    {
+      "name": "lElse",
+      "snippet": "lElse(${2:else comment}){${1:else line}}",
+      "unusual": true
+    },
+    {
+      "name": "lElse",
+      "snippet": "lElse{${1:else line}}",
+      "unusual": true
+    },
+    {
+      "name": "lElseIf",
+      "snippet": "lElseIf{${1:elseif line}}",
+      "unusual": true
+    },
+    {
+      "name": "lElseif",
+      "snippet": "lElseif(${2:elseif line}){${1:elseif block}}",
+      "unusual": true
+    },
+    {
+      "name": "lEnOtroCaso",
+      "snippet": "lEnOtroCaso{${1:else line}}",
+      "unusual": true
+    },
+    {
+      "name": "lEnOtroCasoSi",
+      "snippet": "lEnOtroCasoSi{${1:condition}}{${2:elseif line without end}}",
+      "unusual": true
+    },
+    {
+      "name": "lEnParalelo",
+      "snippet": "lEnParalelo{${1:condition}}{${2:loop line}}",
+      "unusual": true
+    },
+    {
+      "name": "lEnqto",
+      "snippet": "lEnqto{${1:stop condition}}{${2:text loop}}",
+      "unusual": true
+    },
+    {
+      "name": "lFall",
+      "snippet": "lFall{${1:case of}}{${2:line text}}",
+      "unusual": true
+    },
+    {
+      "name": "lFinche",
+      "snippet": "lFinche{${1:stop condition}}{${2:text loop}}",
+      "unusual": true
+    },
+    {
+      "name": "lFor",
+      "snippet": "lFor(${3:for comment}){${1:condition}}{${2:for line}}",
+      "unusual": true
+    },
+    {
+      "name": "lFor",
+      "snippet": "lFor{${1:condition}}{${2:for line}}",
+      "unusual": true
+    },
+    {
+      "name": "lForAll",
+      "snippet": "lForAll(${3:forall comment}){${1:condition}}{${2:forall line}}",
+      "unusual": true
+    },
+    {
+      "name": "lForAll",
+      "snippet": "lForAll{${1:condition}}{${2:forall line}}",
+      "unusual": true
+    },
+    {
+      "name": "lForEach",
+      "snippet": "lForEach(${3:foreach comment}){${1:condition}}{${2:foreach line}}",
+      "unusual": true
+    },
+    {
+      "name": "lForEach",
+      "snippet": "lForEach{${1:condition}}{${2:foreach line}}",
+      "unusual": true
+    },
+    {
+      "name": "lFuer",
+      "snippet": "lFuer{${1:condition}}{${2:line loop}}",
+      "unusual": true
+    },
+    {
+      "name": "lFuerAlle",
+      "snippet": "lFuerAlle{${1:condition}}{${2:line}}",
+      "unusual": true
+    },
+    {
+      "name": "lFuerJedes",
+      "snippet": "lFuerJedes{${1:condition}}{${2:line}}",
+      "unusual": true
+    },
+    {
+      "name": "lFuerPar",
+      "snippet": "lFuerPar{${1:condition}}{${2:line}}",
+      "unusual": true
+    },
+    {
+      "name": "lIf",
+      "snippet": "lIf(${3:if comment}){${1:condition}}{${2:then line}}",
+      "unusual": true
+    },
+    {
+      "name": "lIf",
+      "snippet": "lIf{${1:condition}}{${2:then line}}",
+      "unusual": true
+    },
+    {
+      "name": "lInace",
+      "snippet": "lInace{${1:else line}}",
+      "unusual": true
+    },
+    {
+      "name": "lInaceAko",
+      "snippet": "lInaceAko{${1:condition}}{${2:elseif line without end}}",
+      "unusual": true
+    },
+    {
+      "name": "lMientras",
+      "snippet": "lMientras{${1:condition}}{${2:loop line}}",
+      "unusual": true
+    },
+    {
+      "name": "lOstaliSlucajevi",
+      "snippet": "lOstaliSlucajevi{${1:otherwise line}}",
+      "unusual": true
+    },
+    {
+      "name": "lOther",
+      "snippet": "lOther(${2:other comment}){${1:otherwise line}}",
+      "unusual": true
+    },
+    {
+      "name": "lOther",
+      "snippet": "lOther{${1:otherwise line}}",
+      "unusual": true
+    },
+    {
+      "name": "lOtro",
+      "snippet": "lOtro{${1:sinó line}}",
+      "unusual": true
+    },
+    {
+      "name": "lOutro",
+      "snippet": "lOutro{${1:otherwise’s line}}",
+      "unusual": true
+    },
+    {
+      "name": "lPara",
+      "snippet": "lPara{${1:condition}}{${2:line text loop}}",
+      "unusual": true
+    },
+    {
+      "name": "lPara",
+      "snippet": "lPara{${1:condition}}{${2:loop line}}",
+      "unusual": true
+    },
+    {
+      "name": "lParaCada",
+      "snippet": "lParaCada{${1:condition}}{${2:line text loop}}",
+      "unusual": true
+    },
+    {
+      "name": "lParaCada",
+      "snippet": "lParaCada{${1:condition}}{${2:loop line}}",
+      "unusual": true
+    },
+    {
+      "name": "lParaPar",
+      "snippet": "lParaPar{${1:condition}}{${2:line text loop}}",
+      "unusual": true
+    },
+    {
+      "name": "lParaPara",
+      "snippet": "lParaPara{${1:condition}}{${2:loop line}}",
+      "unusual": true
+    },
+    {
+      "name": "lParaTodo",
+      "snippet": "lParaTodo{${1:condition}}{${2:line text loop}}",
+      "unusual": true
+    },
+    {
+      "name": "lParaTodo",
+      "snippet": "lParaTodo{${1:condition}}{${2:loop line}}",
+      "unusual": true
+    },
+    {
+      "name": "lPer",
+      "snippet": "lPer{${1:condition}}{${2:line text loop}}",
+      "unusual": true
+    },
+    {
+      "name": "lPerCiascun",
+      "snippet": "lPerCiascun{${1:condition}}{${2:line text loop}}",
+      "unusual": true
+    },
+    {
+      "name": "lPerPar",
+      "snippet": "lPerPar{${1:condition}}{${2:line text loop}}",
+      "unusual": true
+    },
+    {
+      "name": "lPerTutti",
+      "snippet": "lPerTutti{${1:condition}}{${2:line text loop}}",
+      "unusual": true
+    },
+    {
+      "name": "lPonavljaj",
+      "snippet": "lPonavljaj{${1:stop condition}}{${2:line loop}}",
+      "unusual": true
+    },
+    {
+      "name": "lPour",
+      "snippet": "lPour{${1:condition}}{${2:ligne de la boucle}}",
+      "unusual": true
+    },
+    {
+      "name": "lPourCh",
+      "snippet": "lPourCh{${1:condition}}{${2:ligne de la boucle}}",
+      "unusual": true
+    },
+    {
+      "name": "lPourPar",
+      "snippet": "lPourPar{${1:condition}}{${2:ligne de la boucle}}",
+      "unusual": true
+    },
+    {
+      "name": "lPourTous",
+      "snippet": "lPourTous{${1:condition}}{${2:ligne de la boucle}}",
+      "unusual": true
+    },
+    {
+      "name": "lRepeat",
+      "snippet": "lRepeat(${3:repeat comment}){${1:end condition}}{${2:repeat line}}",
+      "unusual": true
+    },
+    {
+      "name": "lRepeat",
+      "snippet": "lRepeat{${1:end condition}}{${2:repeat line}}",
+      "unusual": true
+    },
+    {
+      "name": "lRepetir",
+      "snippet": "lRepetir{${1:stop condition}}{${2:line loop}}",
+      "unusual": true
+    },
+    {
+      "name": "lRepita",
+      "snippet": "lRepita{${1:stop condition}}{${2:line of the loop}}",
+      "unusual": true
+    },
+    {
+      "name": "lRipeti",
+      "snippet": "lRipeti{${1:stop condition}}{${2:line of the loop}}",
+      "unusual": true
+    },
+    {
+      "name": "lSSi",
+      "snippet": "lSSi{${1:condition}}{${2:then line}}",
+      "unusual": true
+    },
+    {
+      "name": "lSe",
+      "snippet": "lSe{${1:condition}}{${2:then’s line text}}",
+      "unusual": true
+    },
+    {
+      "name": "lSea",
+      "snippet": "lSea{${1:condition}}{${2:then’s line text}}",
+      "unusual": true
+    },
+    {
+      "name": "lSenao",
+      "snippet": "lSenao{${1:else’s line text}}",
+      "unusual": true
+    },
+    {
+      "name": "lSenaoSe",
+      "snippet": "lSenaoSe{${1:condition}}{${2:elseif’s line text}}",
+      "unusual": true
+    },
+    {
+      "name": "lSi",
+      "snippet": "lSi{${1:condition}}{${2:ligne du alors}}",
+      "unusual": true
+    },
+    {
+      "name": "lSinon",
+      "snippet": "lSinon{${1:ligne du sinon}}",
+      "unusual": true
+    },
+    {
+      "name": "lSinonSi",
+      "snippet": "lSinonSi{${1:condition}}{${2:bloc du sinonsi sans fin}}",
+      "unusual": true
+    },
+    {
+      "name": "lSlucaj",
+      "snippet": "lSlucaj{${1:case}}{${2:case line}}",
+      "unusual": true
+    },
+    {
+      "name": "lSolange",
+      "snippet": "lSolange{${1:condition}}{${2:line}}",
+      "unusual": true
+    },
+    {
+      "name": "lSonst",
+      "snippet": "lSonst{${1:else line}}",
+      "unusual": true
+    },
+    {
+      "name": "lSonstWenn",
+      "snippet": "lSonstWenn{${1:condition}}{${2:elseif line}}",
+      "unusual": true
+    },
+    {
+      "name": "lTq",
+      "snippet": "lTq{${1:condition}}{${2:ligne de la boucle}}",
+      "unusual": true
+    },
+    {
+      "name": "lWenn",
+      "snippet": "lWenn{${1:condition}}{${2:then line}}",
+      "unusual": true
+    },
+    {
+      "name": "lWhile",
+      "snippet": "lWhile(${3:while comment}){${1:condition}}{${2:while line}}",
+      "unusual": true
+    },
+    {
+      "name": "lWhile",
+      "snippet": "lWhile{${1:condition}}{${2:while line}}",
+      "unusual": true
+    },
+    {
+      "name": "lWiederh",
+      "snippet": "lWiederh{${1:stop condition}}{${2:line loop}}",
+      "unusual": true
+    },
+    {
+      "name": "lZa",
+      "snippet": "lZa{${1:condition}}{${2:loop line}}",
+      "unusual": true
+    },
+    {
+      "name": "lZaPar",
+      "snippet": "lZaPar{${1:condition}}{${2:loop line}}",
+      "unusual": true
+    },
+    {
+      "name": "lZaSvaki",
+      "snippet": "lZaSvaki{${1:condition}}{${2:loop line}}",
+      "unusual": true
+    },
+    {
+      "name": "lZaSvako",
+      "snippet": "lZaSvako{${1:condition}}{${2:loop line}}",
+      "unusual": true
+    },
+    {
+      "name": "lZaSvaku",
+      "snippet": "lZaSvaku{${1:condition}}{${2:loop line}}",
+      "unusual": true
+    },
+    {
+      "name": "lZaSve",
+      "snippet": "lZaSve{${1:condition}}{${2:loop line}}",
+      "unusual": true
+    },
+    {
+      "name": "leIf",
+      "snippet": "leIf(${4:comment}){${1:condition}}{${2:then line}}{${3:else line}}",
+      "unusual": true
+    },
+    {
+      "name": "leIf",
+      "snippet": "leIf{${1:condition}}{${2:then line}}{${3:else line}}",
+      "unusual": true
+    },
+    {
+      "name": "listalgorithmcfname",
+      "unusual": true
+    },
+    {
+      "name": "listofalgocfs",
+      "unusual": true
+    },
+    {
+      "name": "listofalgorithmes"
+    },
+    {
+      "name": "listofalgorithms"
+    },
+    {
+      "name": "lnl",
+      "snippet": "lnl{${1:label}}",
+      "unusual": true
+    },
+    {
+      "name": "lnlset",
+      "snippet": "lnlset{${1:text%plain}}{${2:label}}",
+      "unusual": true
+    },
+    {
+      "name": "next",
+      "unusual": true
+    },
+    {
+      "name": "nl",
+      "unusual": true
+    },
+    {
+      "name": "nllabel",
+      "snippet": "nllabel{${1:label}}"
+    },
+    {
+      "name": "nlset",
+      "snippet": "nlset{${1:text%plain}}"
+    },
+    {
+      "name": "procedureautorefname",
+      "unusual": true
+    },
+    {
+      "name": "setLeftLinesNumbers",
+      "unusual": true
+    },
+    {
+      "name": "setRightLinesNumbers",
+      "unusual": true
+    },
+    {
+      "name": "skipalgocfslide",
+      "unusual": true
+    },
+    {
+      "name": "skiphlne",
+      "unusual": true
+    },
+    {
+      "name": "skiplength",
+      "unusual": true
+    },
+    {
+      "name": "skiplinenumber",
+      "unusual": true
+    },
+    {
+      "name": "skiprule",
+      "unusual": true
+    },
+    {
+      "name": "skiptext",
+      "unusual": true
+    },
+    {
+      "name": "skiptotal",
+      "unusual": true
+    },
+    {
+      "name": "tcc",
+      "snippet": "tcc{${1:comments%text}}",
+      "unusual": true
+    },
+    {
+      "name": "tcc*",
+      "snippet": "tcc*[${2:alignment}]{${1:comments%text}}",
+      "unusual": true
+    },
+    {
+      "name": "tcc*",
+      "snippet": "tcc*{${1:comments%text}}",
+      "unusual": true
+    },
+    {
+      "name": "tcp",
+      "snippet": "tcp{${1:comments%text}}",
+      "unusual": true
+    },
+    {
+      "name": "tcp*",
+      "snippet": "tcp*[${2:alignment}]{${1:comments%text}}",
+      "unusual": true
+    },
+    {
+      "name": "tcp*",
+      "snippet": "tcp*{${1:comments%text}}",
+      "unusual": true
+    },
+    {
+      "name": "test",
+      "unusual": true
+    },
+    {
+      "name": "theAlgoLine",
+      "unusual": true
+    },
+    {
+      "name": "theHAlgoLine",
+      "unusual": true
+    },
+    {
+      "name": "theHalgocf",
+      "unusual": true
+    },
+    {
+      "name": "theHalgocffunc",
+      "unusual": true
+    },
+    {
+      "name": "theHalgocfproc",
+      "unusual": true
+    },
+    {
+      "name": "thealgocf",
+      "unusual": true
+    },
+    {
+      "name": "thealgocfline",
+      "unusual": true
+    },
+    {
+      "name": "thealgocfproc",
+      "unusual": true
+    },
+    {
+      "name": "thepostalgo",
+      "unusual": true
+    },
+    {
+      "name": "uAko",
+      "snippet": "uAko{${1:condition}}{${2:then block without end}}",
+      "unusual": true
+    },
+    {
+      "name": "uAltSe",
+      "snippet": "uAltSe{${1:else block without else}}",
+      "unusual": true
+    },
+    {
+      "name": "uAltrimenti",
+      "snippet": "uAltrimenti{${1:condition}}{${2:elseif block without end}}",
+      "unusual": true
+    },
+    {
+      "name": "uCas",
+      "snippet": "uCas{${1:cas où}}{${2:bloc de ce cas sans fin}}",
+      "unusual": true
+    },
+    {
+      "name": "uCase",
+      "snippet": "uCase(${3:case comment}){${1:case}}{${2:case block without end}}",
+      "unusual": true
+    },
+    {
+      "name": "uCase",
+      "snippet": "uCase{${1:case}}{${2:case block without end}}",
+      "unusual": true
+    },
+    {
+      "name": "uCaso",
+      "snippet": "uCaso{${1:a case}}{${2:case block without end}}",
+      "unusual": true
+    },
+    {
+      "name": "uElse",
+      "snippet": "uElse(${2:else block comment}){${1:else block without end}}",
+      "unusual": true
+    },
+    {
+      "name": "uElse",
+      "snippet": "uElse{${1:else block without end}}",
+      "unusual": true
+    },
+    {
+      "name": "uElseIf",
+      "snippet": "uElseIf(${2:elseif comment}){${1:elseif block without end}}",
+      "unusual": true
+    },
+    {
+      "name": "uElseIf",
+      "snippet": "uElseIf{${1:elseif block without end}}",
+      "unusual": true
+    },
+    {
+      "name": "uEnOtroCaso",
+      "snippet": "uEnOtroCaso{${1:else block without end}}",
+      "unusual": true
+    },
+    {
+      "name": "uEnOtroCasoSi",
+      "snippet": "uEnOtroCasoSi{${1:condition}}{${2:elseif block}}",
+      "unusual": true
+    },
+    {
+      "name": "uFall",
+      "snippet": "uFall{${1:case of}}{${2:text}}",
+      "unusual": true
+    },
+    {
+      "name": "uGranaj",
+      "snippet": "uGranaj{${1:seleccionar}}{${2:caso block without end}}",
+      "unusual": true
+    },
+    {
+      "name": "uIf",
+      "snippet": "uIf(${3:then comment}){${1:condition}}{${2:then block without end}}",
+      "unusual": true
+    },
+    {
+      "name": "uIf",
+      "snippet": "uIf{${1:condition}}{${2:then block without end}}",
+      "unusual": true
+    },
+    {
+      "name": "uInace",
+      "snippet": "uInace{${1:else block without end}}",
+      "unusual": true
+    },
+    {
+      "name": "uInaceAko",
+      "snippet": "uInaceAko{${1:condition}}{${2:elseif block}}",
+      "unusual": true
+    },
+    {
+      "name": "uOstaliSlucajevi",
+      "snippet": "uOstaliSlucajevi{${1:otherwise text}}",
+      "unusual": true
+    },
+    {
+      "name": "uOther",
+      "snippet": "uOther(${2:other comment}){${1:otherwise text}}",
+      "unusual": true
+    },
+    {
+      "name": "uOther",
+      "snippet": "uOther{${1:otherwise text}}",
+      "unusual": true
+    },
+    {
+      "name": "uSSi",
+      "snippet": "uSSi{${1:condition}}{${2:then block without end}}",
+      "unusual": true
+    },
+    {
+      "name": "uSe",
+      "snippet": "uSe{${1:condition}}{${2:then block without end}}",
+      "unusual": true
+    },
+    {
+      "name": "uSea",
+      "snippet": "uSea{${1:condition}}{${2:then block without end}}",
+      "unusual": true
+    },
+    {
+      "name": "uSeleccionar",
+      "snippet": "uSeleccionar{${1:seleccionar}}{${2:caso block without end}}",
+      "unusual": true
+    },
+    {
+      "name": "uSenao",
+      "snippet": "uSenao{${1:else block without else}}",
+      "unusual": true
+    },
+    {
+      "name": "uSenaoSe",
+      "snippet": "uSenaoSe{${1:condition}}{${2:elseif block without end}}",
+      "unusual": true
+    },
+    {
+      "name": "uSi",
+      "snippet": "uSi{${1:condition}}{${2:bloc du alors sans fin}}",
+      "unusual": true
+    },
+    {
+      "name": "uSinon",
+      "snippet": "uSinon{${1:bloc du sinon sans fin}}",
+      "unusual": true
+    },
+    {
+      "name": "uSinonSi",
+      "snippet": "uSinonSi{${1:condition}}{${2:bloc du sinonsi sans fin}}",
+      "unusual": true
+    },
+    {
+      "name": "uSlucaj",
+      "snippet": "uSlucaj{${1:case}}{${2:case block without end}}",
+      "unusual": true
+    },
+    {
+      "name": "uSonst",
+      "snippet": "uSonst{${1:else text without end}}",
+      "unusual": true
+    },
+    {
+      "name": "uSonstWenn",
+      "snippet": "uSonstWenn{${1:condition}}{${2:elseif text without end}}",
+      "unusual": true
+    },
+    {
+      "name": "uWenn",
+      "snippet": "uWenn{${1:condition}}{${2:then text without end}}",
+      "unusual": true
+    },
+    {
+      "name": "vespace",
+      "unusual": true
+    }
+  ]
+}

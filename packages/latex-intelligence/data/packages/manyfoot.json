@@ -1,0 +1,64 @@
+{
+  "args": [
+    "\\usepackage/manyfoot#c"
+  ],
+  "deps": [
+    "nccfoots",
+    "perpage"
+  ],
+  "envs": [],
+  "keys": {
+    "\\usepackage/manyfoot#c": [
+      "ruled",
+      "para",
+      "para*",
+      "perpage"
+    ]
+  },
+  "macros": [
+    {
+      "name": "DeclareNewFootnote",
+      "snippet": "DeclareNewFootnote[${2:footnote-style}]{${1:suffix}}[${3:enumeration-style}]"
+    },
+    {
+      "name": "DeclareNewFootnote",
+      "snippet": "DeclareNewFootnote{${1:suffix}}"
+    },
+    {
+      "name": "ExtraParaSkip",
+      "snippet": "ExtraParaSkip{${1:space%l}}"
+    },
+    {
+      "name": "SelectFootnoteRule",
+      "snippet": "SelectFootnoteRule[${2:priority}]{${1:rule-name}}[${3:action}]"
+    },
+    {
+      "name": "SelectFootnoteRule",
+      "snippet": "SelectFootnoteRule{${1:rule-name}}"
+    },
+    {
+      "name": "SetFootnoteHook",
+      "snippet": "SetFootnoteHook{${1:code}}"
+    },
+    {
+      "name": "SplitNote"
+    },
+    {
+      "name": "defaultfootnoterule"
+    },
+    {
+      "name": "extrafootnoterule"
+    },
+    {
+      "name": "footnoterulepriority"
+    },
+    {
+      "name": "newfootnote",
+      "snippet": "newfootnote[${2:style}]{${1:suffix}}"
+    },
+    {
+      "name": "newfootnote",
+      "snippet": "newfootnote{${1:suffix}}"
+    }
+  ]
+}

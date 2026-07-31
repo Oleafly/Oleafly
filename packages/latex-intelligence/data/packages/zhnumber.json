@@ -1,0 +1,210 @@
+{
+  "args": [],
+  "deps": [],
+  "envs": [],
+  "keys": {
+    "\\zhnumsetup,\\zhnumber,\\zhdigits,\\zhdigits*,\\zhnum,\\zhdig": [
+      "encoding=${1|GBK,Big5,UTF8|}",
+      "time=${1|Arabic,Chinese|}",
+      "arabicsep={${1:separator}}",
+      "style=${1|Simplified,Traditional,Normal,Financial,Ancient|}",
+      "null",
+      "ganzhi-cyclic",
+      "reset",
+      "activechar",
+      "-=",
+      "-0=",
+      "0=",
+      "1=",
+      "2=",
+      "3=",
+      "4=",
+      "5=",
+      "6=",
+      "7=",
+      "8=",
+      "9=",
+      "10=",
+      "20=",
+      "30=",
+      "40=",
+      "100=",
+      "200=",
+      "1000=",
+      "E2=",
+      "E3=",
+      "E4=",
+      "E8=",
+      "E12=",
+      "E16=",
+      "E20=",
+      "E24=",
+      "E28=",
+      "E32=",
+      "E36=",
+      "E40=",
+      "E44=",
+      "F0=",
+      "F1=",
+      "F2=",
+      "F3=",
+      "F4=",
+      "F5=",
+      "F6=",
+      "F7=",
+      "F8=",
+      "F9=",
+      "F10=",
+      "F100=",
+      "F1000=",
+      "FE2=",
+      "FE3=",
+      "dot=",
+      "and=",
+      "parts=",
+      "year=",
+      "month=",
+      "day=",
+      "hour=",
+      "minute=",
+      "weekday=",
+      "mon=",
+      "tue=",
+      "wed=",
+      "thu=",
+      "fri=",
+      "sat=",
+      "sun="
+    ]
+  },
+  "macros": [
+    {
+      "name": "zhcurrtime"
+    },
+    {
+      "name": "zhdate",
+      "snippet": "zhdate{${1:yyyy/mm/dd}}"
+    },
+    {
+      "name": "zhdate*",
+      "snippet": "zhdate*{${1:yyyy/mm/dd}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\zhnumsetup,\\zhnumber,\\zhdigits,\\zhdigits*,\\zhnum,\\zhdig"
+      ],
+      "name": "zhdig",
+      "snippet": "zhdig[${2:options%keyvals}]{${1:counter}}"
+    },
+    {
+      "name": "zhdig",
+      "snippet": "zhdig{${1:counter}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\zhnumsetup,\\zhnumber,\\zhdigits,\\zhdigits*,\\zhnum,\\zhdig"
+      ],
+      "name": "zhdigits",
+      "snippet": "zhdigits[${2:options%keyvals}]{${1:number}}"
+    },
+    {
+      "name": "zhdigits",
+      "snippet": "zhdigits{${1:number}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\zhnumsetup,\\zhnumber,\\zhdigits,\\zhdigits*,\\zhnum,\\zhdig"
+      ],
+      "name": "zhdigits*",
+      "snippet": "zhdigits*[${2:options%keyvals}]{${1:number}}"
+    },
+    {
+      "name": "zhdigits*",
+      "snippet": "zhdigits*{${1:number}}"
+    },
+    {
+      "name": "zhdizhi",
+      "snippet": "zhdizhi{${1:number}}",
+      "unusual": true
+    },
+    {
+      "name": "zhganzhi",
+      "snippet": "zhganzhi{${1:number}}",
+      "unusual": true
+    },
+    {
+      "name": "zhganzhinian",
+      "snippet": "zhganzhinian{${1:year}}",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\zhnumsetup,\\zhnumber,\\zhdigits,\\zhdigits*,\\zhnum,\\zhdig"
+      ],
+      "name": "zhnum",
+      "snippet": "zhnum[${2:options%keyvals}]{${1:counter}}"
+    },
+    {
+      "name": "zhnum",
+      "snippet": "zhnum{${1:counter}}"
+    },
+    {
+      "name": "zhnumClearWrapper",
+      "unusual": true
+    },
+    {
+      "name": "zhnumExtendScaleMap",
+      "snippet": "zhnumExtendScaleMap[${2:character}]{${1:character1, character2, ..., charactern}}",
+      "unusual": true
+    },
+    {
+      "name": "zhnumExtendScaleMap",
+      "snippet": "zhnumExtendScaleMap{${1:character1, character2, ..., charactern}}",
+      "unusual": true
+    },
+    {
+      "name": "zhnumResetWrapper",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\zhnumsetup,\\zhnumber,\\zhdigits,\\zhdigits*,\\zhnum,\\zhdig"
+      ],
+      "name": "zhnumber",
+      "snippet": "zhnumber[${2:options%keyvals}]{${1:number}}"
+    },
+    {
+      "name": "zhnumber",
+      "snippet": "zhnumber{${1:number}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\zhnumsetup,\\zhnumber,\\zhdigits,\\zhdigits*,\\zhnum,\\zhdig"
+      ],
+      "name": "zhnumsetup",
+      "snippet": "zhnumsetup{${1:options%keyvals}}"
+    },
+    {
+      "name": "zhtiangan",
+      "snippet": "zhtiangan{${1:number}}",
+      "unusual": true
+    },
+    {
+      "name": "zhtime",
+      "snippet": "zhtime{${1:hh:mm}}"
+    },
+    {
+      "name": "zhtoday"
+    },
+    {
+      "name": "zhweekday",
+      "snippet": "zhweekday{${1:yyyy/mm/dd}}"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "args": [],
+  "deps": [],
+  "envs": [],
+  "keys": {},
+  "macros": [
+    {
+      "name": "documentstyle",
+      "snippet": "documentstyle[${2:options}]{${1:style}}"
+    },
+    {
+      "name": "documentstyle",
+      "snippet": "documentstyle{${1:style}}"
+    }
+  ]
+}

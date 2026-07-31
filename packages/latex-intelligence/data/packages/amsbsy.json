@@ -1,0 +1,18 @@
+{
+  "args": [],
+  "deps": [
+    "amsgen"
+  ],
+  "envs": [],
+  "keys": {},
+  "macros": [
+    {
+      "name": "boldsymbol",
+      "snippet": "boldsymbol{${1:symbol}}"
+    },
+    {
+      "name": "pmb",
+      "snippet": "pmb{${1:symbol}}"
+    }
+  ]
+}

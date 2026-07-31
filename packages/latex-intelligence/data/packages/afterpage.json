@@ -1,0 +1,17 @@
+{
+  "args": [],
+  "deps": [],
+  "envs": [],
+  "keys": {},
+  "macros": [
+    {
+      "name": "addboxcontents",
+      "snippet": "addboxcontents{${1:contents}}",
+      "unusual": true
+    },
+    {
+      "name": "afterpage",
+      "snippet": "afterpage{${1:command%plain}}"
+    }
+  ]
+}

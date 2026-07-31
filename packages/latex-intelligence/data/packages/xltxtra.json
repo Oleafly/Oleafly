@@ -1,0 +1,65 @@
+{
+  "args": [
+    "\\usepackage/xltxtra#c"
+  ],
+  "deps": [
+    "fontspec",
+    "metalogo",
+    "realscripts",
+    "xetex"
+  ],
+  "envs": [],
+  "keys": {
+    "\\usepackage/xltxtra#c": [
+      "no-sscript",
+      "no-logos"
+    ]
+  },
+  "macros": [
+    {
+      "name": "XeLaTeX"
+    },
+    {
+      "name": "XeTeX"
+    },
+    {
+      "name": "fakesubscript",
+      "snippet": "fakesubscript{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "fakesuperscript",
+      "snippet": "fakesuperscript{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "namedglyph",
+      "snippet": "namedglyph{${1:glyphname}}"
+    },
+    {
+      "name": "realsubscript",
+      "snippet": "realsubscript{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "realsuperscript",
+      "snippet": "realsuperscript{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "showhyphens"
+    },
+    {
+      "name": "textsubscript*",
+      "snippet": "textsubscript*{${1:text}}"
+    },
+    {
+      "name": "textsuperscript*",
+      "snippet": "textsuperscript*{${1:text}}"
+    },
+    {
+      "name": "vfrac",
+      "snippet": "vfrac{${1:numerator}}{${2:denominator}}"
+    }
+  ]
+}

@@ -1,0 +1,146 @@
+{
+  "args": [
+    "\\usepackage/todonotes#c"
+  ],
+  "deps": [
+    "calc",
+    "ifthen",
+    "tikz",
+    "tikzlibrarypositioning",
+    "tikzlibraryshadows",
+    "xcolor",
+    "xkeyval"
+  ],
+  "envs": [],
+  "keys": {
+    "\\missingfigure,\\setuptodonotes,\\todostyle": [
+      "figwidth=",
+      "figheight=",
+      "figcolor="
+    ],
+    "\\todo,\\missingfigure,\\setuptodonotes,\\todostyle": [
+      "%todonotesstyle"
+    ],
+    "\\todo,\\setuptodonotes,\\todostyle": [
+      "disable",
+      "color=",
+      "backgroundcolor=",
+      "textcolor=",
+      "linecolor=",
+      "bordercolor=",
+      "shadow",
+      "noshadow",
+      "tickmarkheight=",
+      "format=${1:csname}",
+      "line",
+      "noline",
+      "inline",
+      "noinline",
+      "size=${1:fontsize command}",
+      "list",
+      "nolist",
+      "caption={${1:text}}",
+      "prepend",
+      "noprepend",
+      "fancyline",
+      "author=${1:author}",
+      "inlinewidth=",
+      "inlinepar",
+      "noinlinepar"
+    ],
+    "\\usepackage/todonotes#c": [
+      "disable",
+      "obeyDraft",
+      "obeyFinal",
+      "danish",
+      "german",
+      "ngerman",
+      "english",
+      "french",
+      "swedish",
+      "spanish",
+      "catalan",
+      "italian",
+      "portuguese",
+      "dutch",
+      "croatian",
+      "colorinlistoftodos",
+      "color=",
+      "backgroundcolor=",
+      "linecolor=",
+      "bordercolor=",
+      "tickmarkheight=",
+      "textwidth=",
+      "textsize=${1:fontsize csname}",
+      "format=${1:csname}",
+      "prependcaption={${1:text}}",
+      "loadshadowlibrary",
+      "shadow",
+      "dvistyle",
+      "figwidth="
+    ]
+  },
+  "macros": [
+    {
+      "name": "listoftodos"
+    },
+    {
+      "name": "listoftodos",
+      "snippet": "listoftodos[${1:name}]"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\missingfigure,\\setuptodonotes,\\todostyle",
+        "\\todo,\\missingfigure,\\setuptodonotes,\\todostyle"
+      ],
+      "name": "missingfigure",
+      "snippet": "missingfigure[${2:options%keyvals}]{${1:text%todo}}"
+    },
+    {
+      "name": "missingfigure",
+      "snippet": "missingfigure{${1:text%todo}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\todo,\\setuptodonotes,\\todostyle",
+        "\\missingfigure,\\setuptodonotes,\\todostyle",
+        "\\todo,\\missingfigure,\\setuptodonotes,\\todostyle"
+      ],
+      "name": "setuptodonotes",
+      "snippet": "setuptodonotes{${1:options%keyvals}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\todo,\\setuptodonotes,\\todostyle",
+        "\\todo,\\missingfigure,\\setuptodonotes,\\todostyle"
+      ],
+      "name": "todo",
+      "snippet": "todo[${2:options%keyvals}]{${1:text%todo}}"
+    },
+    {
+      "name": "todo",
+      "snippet": "todo{${1:text%todo}}"
+    },
+    {
+      "name": "todoformat",
+      "snippet": "todoformat{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "keyPos": 1,
+      "keys": [
+        "\\todo,\\setuptodonotes,\\todostyle",
+        "\\missingfigure,\\setuptodonotes,\\todostyle",
+        "\\todo,\\missingfigure,\\setuptodonotes,\\todostyle"
+      ],
+      "name": "todostyle",
+      "snippet": "todostyle{${1:name%specialDef}}{${2:options%keyvals}}"
+    },
+    {
+      "name": "todototoc"
+    }
+  ]
+}

@@ -1,0 +1,513 @@
+{
+  "args": [],
+  "deps": [
+    "amsmath",
+    "keyval"
+  ],
+  "envs": [],
+  "keys": {
+    "\\usephysicsmodule": [
+      "ab.braket",
+      "ab.legacy",
+      "ab",
+      "bm-um.legacy",
+      "braket",
+      "diagmat",
+      "doubleprod",
+      "nabla.legacy",
+      "op.legacy",
+      "qtext.legacy",
+      "xmat"
+    ],
+    "\\xmat,\\pxmat,\\bxmat,\\Bxmat,\\vxmat,\\Vxmat": [
+      "showtop=${1:rows}",
+      "showleft=${1:columns}",
+      "format=${1:format code}"
+    ]
+  },
+  "macros": [
+    {
+      "name": "Bab",
+      "snippet": "Bab[${2:size}]{${1:arg}}"
+    },
+    {
+      "name": "Bab",
+      "snippet": "Bab{${1:arg}}"
+    },
+    {
+      "name": "Bab*",
+      "snippet": "Bab*{${1:arg}}"
+    },
+    {
+      "name": "Bdiagmat",
+      "snippet": "Bdiagmat[${2:empty=entry}]{${1:entry1,entry2,...}}"
+    },
+    {
+      "name": "Bdiagmat",
+      "snippet": "Bdiagmat{${1:entry1,entry2,...}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\xmat,\\pxmat,\\bxmat,\\Bxmat,\\vxmat,\\Vxmat"
+      ],
+      "name": "Bxmat",
+      "snippet": "Bxmat[${4:options%keyvals}]{${1:entry}}{${2:rows shown}}{${3:cols shown}}"
+    },
+    {
+      "name": "Bxmat",
+      "snippet": "Bxmat{${1:entry}}{${2:rows shown}}{${3:cols shown}}"
+    },
+    {
+      "name": "PV",
+      "unusual": true
+    },
+    {
+      "name": "Res",
+      "unusual": true
+    },
+    {
+      "name": "Tr",
+      "unusual": true
+    },
+    {
+      "name": "Vab",
+      "snippet": "Vab[${2:size}]{${1:arg}}"
+    },
+    {
+      "name": "Vab",
+      "snippet": "Vab{${1:arg}}"
+    },
+    {
+      "name": "Vab*",
+      "snippet": "Vab*{${1:arg}}"
+    },
+    {
+      "name": "Vdiagmat",
+      "snippet": "Vdiagmat[${2:empty=entry}]{${1:entry1,entry2,...}}"
+    },
+    {
+      "name": "Vdiagmat",
+      "snippet": "Vdiagmat{${1:entry1,entry2,...}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\xmat,\\pxmat,\\bxmat,\\Bxmat,\\vxmat,\\Vxmat"
+      ],
+      "name": "Vxmat",
+      "snippet": "Vxmat[${4:options%keyvals}]{${1:entry}}{${2:rows shown}}{${3:cols shown}}"
+    },
+    {
+      "name": "Vxmat",
+      "snippet": "Vxmat{${1:entry}}{${2:rows shown}}{${3:cols shown}}"
+    },
+    {
+      "name": "aab",
+      "snippet": "aab[${2:size}]{${1:arg}}"
+    },
+    {
+      "name": "aab",
+      "snippet": "aab{${1:arg}}"
+    },
+    {
+      "name": "aab*",
+      "snippet": "aab*{${1:arg}}"
+    },
+    {
+      "name": "abs",
+      "snippet": "abs[${2:size}]{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "abs",
+      "snippet": "abs{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "abs*",
+      "snippet": "abs*{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "acos",
+      "unusual": true
+    },
+    {
+      "name": "acot",
+      "unusual": true
+    },
+    {
+      "name": "acsc",
+      "unusual": true
+    },
+    {
+      "name": "asec",
+      "unusual": true
+    },
+    {
+      "name": "asin",
+      "unusual": true
+    },
+    {
+      "name": "atan",
+      "unusual": true
+    },
+    {
+      "name": "bab",
+      "snippet": "bab[${2:size}]{${1:arg}}"
+    },
+    {
+      "name": "bab",
+      "snippet": "bab{${1:arg}}"
+    },
+    {
+      "name": "bab*",
+      "snippet": "bab*{${1:arg}}"
+    },
+    {
+      "name": "bdiagmat",
+      "snippet": "bdiagmat[${2:empty=entry}]{${1:entry1,entry2,...}}"
+    },
+    {
+      "name": "bdiagmat",
+      "snippet": "bdiagmat{${1:entry1,entry2,...}}"
+    },
+    {
+      "name": "beval",
+      "snippet": "beval[${2:size}]{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "beval",
+      "snippet": "beval{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "beval*",
+      "snippet": "beval*{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "bm",
+      "snippet": "bm{${1:letter}}",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\xmat,\\pxmat,\\bxmat,\\Bxmat,\\vxmat,\\Vxmat"
+      ],
+      "name": "bxmat",
+      "snippet": "bxmat[${4:options%keyvals}]{${1:entry}}{${2:rows shown}}{${3:cols shown}}"
+    },
+    {
+      "name": "bxmat",
+      "snippet": "bxmat{${1:entry}}{${2:rows shown}}{${3:cols shown}}"
+    },
+    {
+      "name": "curl",
+      "unusual": true
+    },
+    {
+      "name": "diagmat",
+      "snippet": "diagmat[${2:empty=entry}]{${1:entry1,entry2,...}}"
+    },
+    {
+      "name": "diagmat",
+      "snippet": "diagmat{${1:entry1,entry2,...}}"
+    },
+    {
+      "name": "doublecross"
+    },
+    {
+      "name": "doubledot"
+    },
+    {
+      "name": "erf",
+      "unusual": true
+    },
+    {
+      "name": "eval",
+      "snippet": "eval[${2:size}]{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "eval",
+      "snippet": "eval{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "eval*",
+      "snippet": "eval*{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "grad",
+      "unusual": true
+    },
+    {
+      "name": "ketbra",
+      "snippet": "ketbra|${1:subformula1>optional<subformula2}|"
+    },
+    {
+      "name": "ketbra*",
+      "snippet": "ketbra*|${1:subformula1>optional<subformula2}|"
+    },
+    {
+      "name": "laplacian",
+      "unusual": true
+    },
+    {
+      "name": "norm",
+      "snippet": "norm[${2:size}]{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "norm",
+      "snippet": "norm{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "norm*",
+      "snippet": "norm*{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "order",
+      "snippet": "order[${2:size}]{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "order",
+      "snippet": "order{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "order*",
+      "snippet": "order*{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "pab",
+      "snippet": "pab[${2:size}]{${1:arg}}"
+    },
+    {
+      "name": "pab",
+      "snippet": "pab{${1:arg}}"
+    },
+    {
+      "name": "pab*",
+      "snippet": "pab*{${1:arg}}"
+    },
+    {
+      "name": "pdiagmat",
+      "snippet": "pdiagmat[${2:empty=entry}]{${1:entry1,entry2,...}}"
+    },
+    {
+      "name": "pdiagmat",
+      "snippet": "pdiagmat{${1:entry1,entry2,...}}"
+    },
+    {
+      "name": "peval",
+      "snippet": "peval[${2:size}]{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "peval",
+      "snippet": "peval{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "peval*",
+      "snippet": "peval*{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "pv",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\xmat,\\pxmat,\\bxmat,\\Bxmat,\\vxmat,\\Vxmat"
+      ],
+      "name": "pxmat",
+      "snippet": "pxmat[${4:options%keyvals}]{${1:entry}}{${2:rows shown}}{${3:cols shown}}"
+    },
+    {
+      "name": "pxmat",
+      "snippet": "pxmat{${1:entry}}{${2:rows shown}}{${3:cols shown}}"
+    },
+    {
+      "name": "qall",
+      "unusual": true
+    },
+    {
+      "name": "qand",
+      "unusual": true
+    },
+    {
+      "name": "qas",
+      "unusual": true
+    },
+    {
+      "name": "qassume",
+      "unusual": true
+    },
+    {
+      "name": "qc",
+      "unusual": true
+    },
+    {
+      "name": "qcc",
+      "unusual": true
+    },
+    {
+      "name": "qcc*",
+      "unusual": true
+    },
+    {
+      "name": "qelse",
+      "unusual": true
+    },
+    {
+      "name": "qeven",
+      "unusual": true
+    },
+    {
+      "name": "qfor",
+      "unusual": true
+    },
+    {
+      "name": "qgive",
+      "unusual": true
+    },
+    {
+      "name": "qif",
+      "unusual": true
+    },
+    {
+      "name": "qin",
+      "unusual": true
+    },
+    {
+      "name": "qinteger",
+      "unusual": true
+    },
+    {
+      "name": "qlet",
+      "unusual": true
+    },
+    {
+      "name": "qodd",
+      "unusual": true
+    },
+    {
+      "name": "qor",
+      "unusual": true
+    },
+    {
+      "name": "qotherwise",
+      "unusual": true
+    },
+    {
+      "name": "qq",
+      "snippet": "qq{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "qq*",
+      "snippet": "qq*{${1:text}}",
+      "unusual": true
+    },
+    {
+      "name": "qsince",
+      "unusual": true
+    },
+    {
+      "name": "qthen",
+      "unusual": true
+    },
+    {
+      "name": "qunless",
+      "unusual": true
+    },
+    {
+      "name": "qusing",
+      "unusual": true
+    },
+    {
+      "name": "rank",
+      "unusual": true
+    },
+    {
+      "name": "res",
+      "unusual": true
+    },
+    {
+      "name": "tr",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\usephysicsmodule"
+      ],
+      "name": "usephysicsmodule",
+      "snippet": "usephysicsmodule[${2:options}]{${1:modules%keyvals}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\usephysicsmodule"
+      ],
+      "name": "usephysicsmodule",
+      "snippet": "usephysicsmodule{${1:modules%keyvals}}"
+    },
+    {
+      "name": "vab",
+      "snippet": "vab[${2:size}]{${1:arg}}"
+    },
+    {
+      "name": "vab",
+      "snippet": "vab{${1:arg}}"
+    },
+    {
+      "name": "vab*",
+      "snippet": "vab*{${1:arg}}"
+    },
+    {
+      "name": "vdiagmat",
+      "snippet": "vdiagmat[${2:empty=entry}]{${1:entry1,entry2,...}}"
+    },
+    {
+      "name": "vdiagmat",
+      "snippet": "vdiagmat{${1:entry1,entry2,...}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\xmat,\\pxmat,\\bxmat,\\Bxmat,\\vxmat,\\Vxmat"
+      ],
+      "name": "vxmat",
+      "snippet": "vxmat[${4:options%keyvals}]{${1:entry}}{${2:rows shown}}{${3:cols shown}}"
+    },
+    {
+      "name": "vxmat",
+      "snippet": "vxmat{${1:entry}}{${2:rows shown}}{${3:cols shown}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\xmat,\\pxmat,\\bxmat,\\Bxmat,\\vxmat,\\Vxmat"
+      ],
+      "name": "xmat",
+      "snippet": "xmat[${4:options%keyvals}]{${1:entry}}{${2:rows shown}}{${3:cols shown}}"
+    },
+    {
+      "name": "xmat",
+      "snippet": "xmat{${1:entry}}{${2:rows shown}}{${3:cols shown}}"
+    }
+  ]
+}

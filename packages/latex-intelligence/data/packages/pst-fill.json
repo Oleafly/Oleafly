@@ -1,0 +1,32 @@
+{
+  "args": [
+    "\\usepackage/pst-fill#c"
+  ],
+  "deps": [
+    "pst-xkey",
+    "pstricks"
+  ],
+  "envs": [],
+  "keys": {
+    "\\usepackage/pst-fill#c": [
+      "tiling"
+    ]
+  },
+  "macros": [
+    {
+      "name": "PstTiling"
+    },
+    {
+      "name": "psboxfill",
+      "snippet": "psboxfill{${1:stuff}}"
+    },
+    {
+      "name": "pstFillSetDefaults",
+      "unusual": true
+    },
+    {
+      "name": "txfillDict",
+      "unusual": true
+    }
+  ]
+}

@@ -1,0 +1,220 @@
+{
+  "args": [
+    "\\usepackage/logsys#c"
+  ],
+  "deps": [
+    "coordsys"
+  ],
+  "envs": [],
+  "keys": {
+    "\\usepackage/logsys#c": [
+      "centred",
+      "outside",
+      "inside"
+    ]
+  },
+  "macros": [
+    {
+      "name": "interval"
+    },
+    {
+      "name": "intervalthickness",
+      "snippet": "intervalthickness[${2:offset%l}]{${1:width}}"
+    },
+    {
+      "name": "intervalthickness",
+      "snippet": "intervalthickness{${1:width}}"
+    },
+    {
+      "name": "loggrid",
+      "snippet": "loggrid(${1:lower-left})(${2:upper-right})"
+    },
+    {
+      "name": "loggrid",
+      "snippet": "loggrid[${1:h-spacing}](${2:lower-left})(${3:upper-right})",
+      "unusual": true
+    },
+    {
+      "name": "loggrid",
+      "snippet": "loggrid[${1:h-spacing}][${2:v-spacing}](${3:lower-left})(${4:upper-right})"
+    },
+    {
+      "name": "loggrid*",
+      "snippet": "loggrid*(${1:lower-left})(${2:upper-right})"
+    },
+    {
+      "name": "loggrid*",
+      "snippet": "loggrid*[${1:h-spacing}](${2:lower-left})(${3:upper-right})",
+      "unusual": true
+    },
+    {
+      "name": "loggrid*",
+      "snippet": "loggrid*[${1:h-spacing}][${2:v-spacing}](${3:lower-left})(${4:upper-right})"
+    },
+    {
+      "name": "logline",
+      "snippet": "logline[${3:spacing}]{${1:from}}{${2:to}}"
+    },
+    {
+      "name": "logline",
+      "snippet": "logline{${1:from}}{${2:to}}"
+    },
+    {
+      "name": "logline*",
+      "snippet": "logline*[${3:spacing}]{${1:from}}{${2:to}}"
+    },
+    {
+      "name": "logline*",
+      "snippet": "logline*{${1:from}}{${2:to}}"
+    },
+    {
+      "name": "logloggrid",
+      "snippet": "logloggrid(${1:lower-left})(${2:upper-right})"
+    },
+    {
+      "name": "logloggrid",
+      "snippet": "logloggrid[${1:h-spacing}](${2:lower-left})(${3:upper-right})",
+      "unusual": true
+    },
+    {
+      "name": "logloggrid",
+      "snippet": "logloggrid[${1:h-spacing}][${2:v-spacing}](${3:lower-left})(${4:upper-right})"
+    },
+    {
+      "name": "logloggrid*",
+      "snippet": "logloggrid*(${1:lower-left})(${2:upper-right})"
+    },
+    {
+      "name": "logloggrid*",
+      "snippet": "logloggrid*[${1:h-spacing}](${2:lower-left})(${3:upper-right})",
+      "unusual": true
+    },
+    {
+      "name": "logloggrid*",
+      "snippet": "logloggrid*[${1:h-spacing}][${2:v-spacing}](${3:lower-left})(${4:upper-right})"
+    },
+    {
+      "name": "loglogsys",
+      "snippet": "loglogsys(${1:lower-left})(${2:upper-right})"
+    },
+    {
+      "name": "loglogsys",
+      "snippet": "loglogsys[${1:h-spacing}](${2:lower-left})(${3:upper-right})",
+      "unusual": true
+    },
+    {
+      "name": "loglogsys",
+      "snippet": "loglogsys[${1:h-spacing}][${2:v-spacing}](${3:lower-left})(${4:upper-right})"
+    },
+    {
+      "name": "loglogsys*",
+      "snippet": "loglogsys*(${1:lower-left})(${2:upper-right})"
+    },
+    {
+      "name": "loglogsys*",
+      "snippet": "loglogsys*[${1:h-spacing}](${2:lower-left})(${3:upper-right})",
+      "unusual": true
+    },
+    {
+      "name": "loglogsys*",
+      "snippet": "loglogsys*[${1:h-spacing}][${2:v-spacing}](${3:lower-left})(${4:upper-right})"
+    },
+    {
+      "name": "logsys",
+      "snippet": "logsys(${1:lower-left})(${2:upper-right})"
+    },
+    {
+      "name": "logsys",
+      "snippet": "logsys[${1:h-spacing}](${2:lower-left})(${3:upper-right})",
+      "unusual": true
+    },
+    {
+      "name": "logsys",
+      "snippet": "logsys[${1:h-spacing}][${2:v-spacing}](${3:lower-left})(${4:upper-right})"
+    },
+    {
+      "name": "logsys*",
+      "snippet": "logsys*(${1:lower-left})(${2:upper-right})"
+    },
+    {
+      "name": "logsys*",
+      "snippet": "logsys*[${1:h-spacing}](${2:lower-left})(${3:upper-right})",
+      "unusual": true
+    },
+    {
+      "name": "logsys*",
+      "snippet": "logsys*[${1:h-spacing}][${2:v-spacing}](${3:lower-left})(${4:upper-right})"
+    },
+    {
+      "name": "semiloggrid",
+      "snippet": "semiloggrid(${1:lower-left})(${2:upper-right})"
+    },
+    {
+      "name": "semiloggrid",
+      "snippet": "semiloggrid[${1:h-spacing}](${2:lower-left})(${3:upper-right})",
+      "unusual": true
+    },
+    {
+      "name": "semiloggrid",
+      "snippet": "semiloggrid[${1:h-spacing}][${2:v-spacing}](${3:lower-left})(${4:upper-right})"
+    },
+    {
+      "name": "semiloggrid*",
+      "snippet": "semiloggrid*(${1:lower-left})(${2:upper-right})"
+    },
+    {
+      "name": "semiloggrid*",
+      "snippet": "semiloggrid*[${1:h-spacing}](${2:lower-left})(${3:upper-right})",
+      "unusual": true
+    },
+    {
+      "name": "semiloggrid*",
+      "snippet": "semiloggrid*[${1:h-spacing}][${2:v-spacing}](${3:lower-left})(${4:upper-right})"
+    },
+    {
+      "name": "semilogsys",
+      "snippet": "semilogsys(${1:lower-left})(${2:upper-right})"
+    },
+    {
+      "name": "semilogsys",
+      "snippet": "semilogsys[${1:h-spacing}](${2:lower-left})(${3:upper-right})",
+      "unusual": true
+    },
+    {
+      "name": "semilogsys",
+      "snippet": "semilogsys[${1:h-spacing}][${2:v-spacing}](${3:lower-left})(${4:upper-right})"
+    },
+    {
+      "name": "semilogsys*",
+      "snippet": "semilogsys*(${1:lower-left})(${2:upper-right})"
+    },
+    {
+      "name": "semilogsys*",
+      "snippet": "semilogsys*[${1:h-spacing}](${2:lower-left})(${3:upper-right})",
+      "unusual": true
+    },
+    {
+      "name": "semilogsys*",
+      "snippet": "semilogsys*[${1:h-spacing}][${2:v-spacing}](${3:lower-left})(${4:upper-right})"
+    },
+    {
+      "name": "vinterval"
+    },
+    {
+      "name": "vlogline",
+      "snippet": "vlogline[${3:spacing}]{${1:from}}{${2:to}}"
+    },
+    {
+      "name": "vlogline",
+      "snippet": "vlogline{${1:from}}{${2:to}}"
+    },
+    {
+      "name": "vlogline*",
+      "snippet": "vlogline*[${3:spacing}]{${1:from}}{${2:to}}"
+    },
+    {
+      "name": "vlogline*",
+      "snippet": "vlogline*{${1:from}}{${2:to}}"
+    }
+  ]
+}

@@ -77,6 +77,21 @@ at the pinned tag.
 | KaTeX fonts | math rendering (via `katex`) | MIT |
 | Geist | UI typeface | SIL Open Font License 1.1 |
 
+## Bundled data
+
+| Data | Where | License |
+|---|---|---|
+| [LaTeX Workshop](https://github.com/James-Yu/LaTeX-Workshop) intellisense corpus (commit [`becabe2`](https://github.com/James-Yu/LaTeX-Workshop/tree/becabe238d3539105dd5bb9b7b3571d26e5d43e0)), © James Yu and LaTeX Workshop contributors | LaTeX completion data in `packages/latex-intelligence/data` | MIT |
+| TeXStudio CWL completion files ([texstudio-org/texstudio](https://github.com/texstudio-org/texstudio/tree/master/completion)), via LaTeX Workshop | per-package/class catalogs `packages/latex-intelligence/data/packages/*.json` | as noted upstream |
+| [CTAN](https://ctan.org/) package metadata, via LaTeX Workshop | package/class name lists in `packages/latex-intelligence/data` | as noted upstream |
+| [unimathsymbols.txt](http://milde.users.sourceforge.net/LUCR/Math/), © 2011 Günter Milde, via LaTeX Workshop | `packages/latex-intelligence/data/unimath.json` | LPPL 1.3+ |
+
+The corpus is regenerated from the pinned upstream commit by
+`scripts/latex-intelligence-extract.mjs`; its exact provenance per file is
+recorded in `packages/latex-intelligence/data/manifest.json`, and the upstream
+third-party notices are reproduced verbatim in
+`packages/latex-intelligence/data/UPSTREAM-NOTICES.md`.
+
 ---
 
 Attribution notices for Oleafly itself are in [NOTICE](NOTICE). If you

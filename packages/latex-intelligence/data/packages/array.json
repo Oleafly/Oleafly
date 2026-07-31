@@ -1,0 +1,34 @@
+{
+  "args": [],
+  "deps": [],
+  "envs": [],
+  "keys": {},
+  "macros": [
+    {
+      "name": "arraybackslash"
+    },
+    {
+      "name": "extrarowheight"
+    },
+    {
+      "name": "extratabsurround"
+    },
+    {
+      "name": "firsthline"
+    },
+    {
+      "name": "lasthline"
+    },
+    {
+      "name": "newcolumntype",
+      "snippet": "newcolumntype{${1:name%cmd}}[${3:args}]{${2:definition}}"
+    },
+    {
+      "name": "newcolumntype",
+      "snippet": "newcolumntype{${1:name%cmd}}{${2:definition}}"
+    },
+    {
+      "name": "showcols"
+    }
+  ]
+}

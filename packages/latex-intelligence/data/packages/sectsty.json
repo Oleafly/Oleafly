@@ -1,0 +1,108 @@
+{
+  "args": [
+    "\\usepackage/sectsty#c"
+  ],
+  "deps": [],
+  "envs": [],
+  "keys": {
+    "\\usepackage/sectsty#c": [
+      "garrulous",
+      "chatty",
+      "taciturn",
+      "yorkshire"
+    ]
+  },
+  "macros": [
+    {
+      "name": "SSifnumberpart",
+      "snippet": "SSifnumberpart{${1:true}}{${2:false}}",
+      "unusual": true
+    },
+    {
+      "name": "SSiftitlepart",
+      "snippet": "SSiftitlepart{${1:true}}{${2:false}}",
+      "unusual": true
+    },
+    {
+      "name": "SSsectlevel",
+      "unusual": true
+    },
+    {
+      "name": "allsectionsfont",
+      "snippet": "allsectionsfont{${1:commands}}"
+    },
+    {
+      "name": "chapterfont",
+      "snippet": "chapterfont{${1:commands}}"
+    },
+    {
+      "name": "chapterformat",
+      "unusual": true
+    },
+    {
+      "name": "chapternumberfont",
+      "snippet": "chapternumberfont{${1:commands}}"
+    },
+    {
+      "name": "chaptertitlefont",
+      "snippet": "chaptertitlefont{${1:commands}}"
+    },
+    {
+      "name": "ifcentering",
+      "snippet": "ifcentering{${1:true}}{${2:false}}",
+      "unusual": true
+    },
+    {
+      "name": "ifraggedleft",
+      "snippet": "ifraggedleft{${1:true}}{${2:false}}",
+      "unusual": true
+    },
+    {
+      "name": "minisecfont",
+      "snippet": "minisecfont{${1:commands}}"
+    },
+    {
+      "name": "nohang"
+    },
+    {
+      "name": "paragraphfont",
+      "snippet": "paragraphfont{${1:commands}}"
+    },
+    {
+      "name": "partfont",
+      "snippet": "partfont{${1:commands}}"
+    },
+    {
+      "name": "partnumberfont",
+      "snippet": "partnumberfont{${1:commands}}"
+    },
+    {
+      "name": "parttitlefont",
+      "snippet": "parttitlefont{${1:commands}}"
+    },
+    {
+      "name": "sectionfont",
+      "snippet": "sectionfont{${1:commands}}"
+    },
+    {
+      "name": "sectionrule",
+      "snippet": "sectionrule{${1:raise top%l}}{${2:top rule%l}}{${3:raise bottom%l}}{${4:bottom rule%l}}"
+    },
+    {
+      "name": "subparagraphfont",
+      "snippet": "subparagraphfont{${1:commands}}"
+    },
+    {
+      "name": "subsectionfont",
+      "snippet": "subsectionfont{${1:commands}}"
+    },
+    {
+      "name": "subsubsectionfont",
+      "snippet": "subsubsectionfont{${1:commands}}"
+    },
+    {
+      "name": "ulemheading",
+      "snippet": "ulemheading{${1:ulem command}}"
+    }
+  ]
+}

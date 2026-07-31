@@ -1,0 +1,383 @@
+{
+  "args": [
+    "\\usepackage/svn-multi#c"
+  ],
+  "deps": [
+    "currfile",
+    "filehook",
+    "graphics",
+    "kvoptions",
+    "pgf"
+  ],
+  "envs": [],
+  "keys": {
+    "\\usepackage/svn-multi#c": [
+      "old",
+      "all",
+      "verbatim",
+      "external",
+      "groups",
+      "subgroups",
+      "graphics",
+      "pgfimages",
+      "autoload",
+      "table",
+      "filehooks",
+      "autokw=${1|false,true,all,ext|}"
+    ]
+  },
+  "macros": [
+    {
+      "name": "endsvnfilerow",
+      "unusual": true
+    },
+    {
+      "name": "endsvnglobalrow",
+      "unusual": true
+    },
+    {
+      "name": "endsvngrouprow",
+      "unusual": true
+    },
+    {
+      "name": "endsvnsubgrouprow",
+      "unusual": true
+    },
+    {
+      "name": "endsvntable",
+      "unusual": true
+    },
+    {
+      "name": "ifsvnfilemodified",
+      "snippet": "ifsvnfilemodified{${1:true}}{${2:false}}"
+    },
+    {
+      "name": "ifsvnmodified",
+      "snippet": "ifsvnmodified{${1:true}}{${2:false}}"
+    },
+    {
+      "name": "svn",
+      "snippet": "svn{$%<keyword%>$}"
+    },
+    {
+      "name": "svn*",
+      "snippet": "svn*{$%<keyword%>$}"
+    },
+    {
+      "name": "svnFullAuthor",
+      "snippet": "svnFullAuthor{${1:author}}"
+    },
+    {
+      "name": "svnFullAuthor*",
+      "snippet": "svnFullAuthor*{${1:author}}"
+    },
+    {
+      "name": "svnFullRevision",
+      "snippet": "svnFullRevision{${1:revision number}}"
+    },
+    {
+      "name": "svnFullRevision*",
+      "snippet": "svnFullRevision*{${1:revision number}}"
+    },
+    {
+      "name": "svnRegisterAuthor",
+      "snippet": "svnRegisterAuthor{${1:author}}{${2:full name}}"
+    },
+    {
+      "name": "svnRegisterRevision",
+      "snippet": "svnRegisterRevision{${1:revision number}}{${2:tag name}}"
+    },
+    {
+      "name": "svnaftertable",
+      "unusual": true
+    },
+    {
+      "name": "svnauthor"
+    },
+    {
+      "name": "svnbeforetable",
+      "unusual": true
+    },
+    {
+      "name": "svncgauthor"
+    },
+    {
+      "name": "svncgdate"
+    },
+    {
+      "name": "svncgday"
+    },
+    {
+      "name": "svncgfname"
+    },
+    {
+      "name": "svncghour"
+    },
+    {
+      "name": "svncgminute"
+    },
+    {
+      "name": "svncgmonth"
+    },
+    {
+      "name": "svncgrev"
+    },
+    {
+      "name": "svncgsecond"
+    },
+    {
+      "name": "svncgtime"
+    },
+    {
+      "name": "svncgtimezone"
+    },
+    {
+      "name": "svncgtimezonehour"
+    },
+    {
+      "name": "svncgtimezoneminute"
+    },
+    {
+      "name": "svncgtoday"
+    },
+    {
+      "name": "svncgurl"
+    },
+    {
+      "name": "svncgyear"
+    },
+    {
+      "name": "svnconsiderextensions",
+      "snippet": "svnconsiderextensions{${1:ext list}}"
+    },
+    {
+      "name": "svnconsidergraphic",
+      "snippet": "svnconsidergraphic{${1:file path/name%file}}"
+    },
+    {
+      "name": "svndate"
+    },
+    {
+      "name": "svnday"
+    },
+    {
+      "name": "svnfileauthor"
+    },
+    {
+      "name": "svnfiledate"
+    },
+    {
+      "name": "svnfileday"
+    },
+    {
+      "name": "svnfilefname"
+    },
+    {
+      "name": "svnfilehour"
+    },
+    {
+      "name": "svnfileminute"
+    },
+    {
+      "name": "svnfilemonth"
+    },
+    {
+      "name": "svnfilerev"
+    },
+    {
+      "name": "svnfilerow",
+      "unusual": true
+    },
+    {
+      "name": "svnfilesecond"
+    },
+    {
+      "name": "svnfiletime"
+    },
+    {
+      "name": "svnfiletimezone"
+    },
+    {
+      "name": "svnfiletimezonehour"
+    },
+    {
+      "name": "svnfiletimezoneminute"
+    },
+    {
+      "name": "svnfiletoday"
+    },
+    {
+      "name": "svnfileurl"
+    },
+    {
+      "name": "svnfileyear"
+    },
+    {
+      "name": "svnfname"
+    },
+    {
+      "name": "svng",
+      "snippet": "svng{${1:group name}}{${2:key%plain}}"
+    },
+    {
+      "name": "svnglobalrow",
+      "unusual": true
+    },
+    {
+      "name": "svngraphicsgroup",
+      "snippet": "svngraphicsgroup{${1:graphic group name}}"
+    },
+    {
+      "name": "svngroup",
+      "snippet": "svngroup{${1:group name}}"
+    },
+    {
+      "name": "svngrouprow",
+      "unusual": true
+    },
+    {
+      "name": "svnhour"
+    },
+    {
+      "name": "svnid",
+      "snippet": "svnid{$%<Id%>$}"
+    },
+    {
+      "name": "svnidlong",
+      "snippet": "svnidlong{$%<HeadURL%>$}{$%<LastChangedDate%>$}{$%<LastRevision%>$}{$%<LastChangedBy%>$}"
+    },
+    {
+      "name": "svnignoreextensions",
+      "snippet": "svnignoreextensions{${1:ext list}}"
+    },
+    {
+      "name": "svnignoregraphic",
+      "snippet": "svnignoregraphic{${1:file path/name%file}}"
+    },
+    {
+      "name": "svnkw",
+      "snippet": "svnkw{${1:keyword name}}"
+    },
+    {
+      "name": "svnkwdef",
+      "snippet": "svnkwdef{${1:keyword name}}{${2:value}}"
+    },
+    {
+      "name": "svnkwsave",
+      "snippet": "svnkwsave{$%<keyword%>$}"
+    },
+    {
+      "name": "svnmainfilename"
+    },
+    {
+      "name": "svnmainurl"
+    },
+    {
+      "name": "svnminute"
+    },
+    {
+      "name": "svnmonth"
+    },
+    {
+      "name": "svnnolinkurl",
+      "snippet": "svnnolinkurl{${1:macro}}"
+    },
+    {
+      "name": "svnpdfdate"
+    },
+    {
+      "name": "svnrev"
+    },
+    {
+      "name": "svnrevisionsname",
+      "unusual": true
+    },
+    {
+      "name": "svnsecond"
+    },
+    {
+      "name": "svnsetcg",
+      "snippet": "svnsetcg{${1:group name}}"
+    },
+    {
+      "name": "svnsetmainfile"
+    },
+    {
+      "name": "svnsubgroup"
+    },
+    {
+      "name": "svnsubgrouprow",
+      "unusual": true
+    },
+    {
+      "name": "svntabauthor",
+      "snippet": "svntabauthor{${1:author}}"
+    },
+    {
+      "name": "svntabdate",
+      "snippet": "svntabdate{{${1:year}}{${2:month}}{${3:day}}{${4:hour}}{${5:minute}}{${6:second}}{${7:TZ hour}}{${8:TZ minute}}}"
+    },
+    {
+      "name": "svntabfile",
+      "snippet": "svntabfile{${1:nesting level}}{${2:file path/name%file}}"
+    },
+    {
+      "name": "svntabglobal",
+      "unusual": true
+    },
+    {
+      "name": "svntabgroup",
+      "snippet": "svntabgroup{${1:group name}}"
+    },
+    {
+      "name": "svntable",
+      "unusual": true
+    },
+    {
+      "name": "svntablefoot",
+      "unusual": true
+    },
+    {
+      "name": "svntablehead",
+      "unusual": true
+    },
+    {
+      "name": "svntabrev",
+      "snippet": "svntabrev{${1:revision number}}"
+    },
+    {
+      "name": "svntabsubgroup",
+      "snippet": "svntabsubgroup{${1:nesting level}}{${2:subgroup name}}"
+    },
+    {
+      "name": "svntime"
+    },
+    {
+      "name": "svntimezone"
+    },
+    {
+      "name": "svntimezonehour"
+    },
+    {
+      "name": "svntimezoneminute"
+    },
+    {
+      "name": "svntoday"
+    },
+    {
+      "name": "svnurl"
+    },
+    {
+      "name": "svnyear"
+    },
+    {
+      "name": "tableofrevisions"
+    },
+    {
+      "name": "thesvncg"
+    },
+    {
+      "name": "thesvngroup"
+    }
+  ]
+}

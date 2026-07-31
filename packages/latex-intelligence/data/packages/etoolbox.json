@@ -1,0 +1,686 @@
+{
+  "args": [],
+  "deps": [],
+  "envs": [],
+  "keys": {},
+  "macros": [
+    {
+      "name": "AfterEndDocument",
+      "snippet": "AfterEndDocument{${1:code}}"
+    },
+    {
+      "name": "AfterEndEnvironment",
+      "snippet": "AfterEndEnvironment{${1:environment}}{${2:code}}"
+    },
+    {
+      "name": "AfterEndPreamble",
+      "snippet": "AfterEndPreamble{${1:code}}"
+    },
+    {
+      "name": "AfterPreamble",
+      "snippet": "AfterPreamble{${1:code}}"
+    },
+    {
+      "name": "AtBeginEnvironment",
+      "snippet": "AtBeginEnvironment{${1:environment}}{${2:code}}"
+    },
+    {
+      "name": "AtEndEnvironment",
+      "snippet": "AtEndEnvironment{${1:environment}}{${2:code}}"
+    },
+    {
+      "name": "AtEndPreamble",
+      "snippet": "AtEndPreamble{${1:code}}"
+    },
+    {
+      "name": "BeforeBeginEnvironment",
+      "snippet": "BeforeBeginEnvironment{${1:environment}}{${2:code}}"
+    },
+    {
+      "name": "DeclareListParser",
+      "snippet": "DeclareListParser{${1:command}}{${2:separator}}"
+    },
+    {
+      "name": "DeclareListParser*",
+      "snippet": "DeclareListParser*{${1:command}}{${2:separator}}"
+    },
+    {
+      "name": "appto",
+      "snippet": "appto{${1:hook%cmd}}{${2:code}}"
+    },
+    {
+      "name": "apptocmd",
+      "snippet": "apptocmd{${1:command}}{${2:code}}{${3:success}}{${4:failure}}"
+    },
+    {
+      "name": "boolfalse",
+      "snippet": "boolfalse{${1:bool name}}"
+    },
+    {
+      "name": "booltrue",
+      "snippet": "booltrue{${1:bool name}}"
+    },
+    {
+      "name": "csappto",
+      "snippet": "csappto{${1:csname}}{${2:code}}"
+    },
+    {
+      "name": "csdimdef",
+      "snippet": "csdimdef{${1:csname}}{${2:dimen expression}}"
+    },
+    {
+      "name": "csdimgdef",
+      "snippet": "csdimgdef{${1:csname}}{${2:dimen expression}}"
+    },
+    {
+      "name": "cseappto",
+      "snippet": "cseappto{${1:csname}}{${2:code}}"
+    },
+    {
+      "name": "csepreto",
+      "snippet": "csepreto{${1:csname}}{${2:code}}"
+    },
+    {
+      "name": "csexpandonce",
+      "snippet": "csexpandonce{${1:csname}}"
+    },
+    {
+      "name": "csgappto",
+      "snippet": "csgappto{${1:csname}}{${2:code}}"
+    },
+    {
+      "name": "csgluedef",
+      "snippet": "csgluedef{${1:csname}}{${2:glue expression}}"
+    },
+    {
+      "name": "csgluegdef",
+      "snippet": "csgluegdef{${1:csname}}{${2:glue expression}}"
+    },
+    {
+      "name": "csgpreto",
+      "snippet": "csgpreto{${1:csname}}{${2:code}}"
+    },
+    {
+      "name": "csgundef",
+      "snippet": "csgundef{${1:csname}}"
+    },
+    {
+      "name": "cslet",
+      "snippet": "cslet{${1:csname}}{${2:command}}"
+    },
+    {
+      "name": "csletcs",
+      "snippet": "csletcs{${1:csname}}{${2:csname}}"
+    },
+    {
+      "name": "csmeaning",
+      "snippet": "csmeaning{${1:csname}}"
+    },
+    {
+      "name": "csmudef",
+      "snippet": "csmudef{${1:csname}}{${2:muglue expression}}"
+    },
+    {
+      "name": "csmugdef",
+      "snippet": "csmugdef{${1:csname}}{${2:muglue expression}}"
+    },
+    {
+      "name": "csnumdef",
+      "snippet": "csnumdef{${1:csname}}{${2:integer expression}}"
+    },
+    {
+      "name": "csnumgdef",
+      "snippet": "csnumgdef{${1:csname}}{${2:integer expression}}"
+    },
+    {
+      "name": "cspreto",
+      "snippet": "cspreto{${1:csname}}{${2:code}}"
+    },
+    {
+      "name": "csshow",
+      "snippet": "csshow{${1:csname}}"
+    },
+    {
+      "name": "csundef",
+      "snippet": "csundef{${1:csname}}"
+    },
+    {
+      "name": "csuse",
+      "snippet": "csuse{${1:csname}}"
+    },
+    {
+      "name": "csxappto",
+      "snippet": "csxappto{${1:csname}}{${2:code}}"
+    },
+    {
+      "name": "csxpreto",
+      "snippet": "csxpreto{${1:csname}}{${2:code}}"
+    },
+    {
+      "name": "defcounter",
+      "snippet": "defcounter{${1:counter}}{${2:integer expression}}"
+    },
+    {
+      "name": "deflength",
+      "snippet": "deflength{${1:length%cmd}}{${2:glue expression}}"
+    },
+    {
+      "name": "dimdef",
+      "snippet": "dimdef{${1:command}}{${2:dimen expression}}"
+    },
+    {
+      "name": "dimgdef",
+      "snippet": "dimgdef{${1:command}}{${2:dimen expression}}"
+    },
+    {
+      "name": "docsvlist",
+      "snippet": "docsvlist{${1:csvlist}}"
+    },
+    {
+      "name": "dolistcsloop",
+      "snippet": "dolistcsloop{${1:list csname}}"
+    },
+    {
+      "name": "dolistloop",
+      "snippet": "dolistloop{${1:list macro}}"
+    },
+    {
+      "name": "eappto",
+      "snippet": "eappto{${1:hook%cmd}}{${2:code}}"
+    },
+    {
+      "name": "epreto",
+      "snippet": "epreto{${1:hook%cmd}}{${2:code}}"
+    },
+    {
+      "name": "expandonce",
+      "snippet": "expandonce{${1:command}}"
+    },
+    {
+      "name": "forcsvlist",
+      "snippet": "forcsvlist{${1:handler}}{${2:csvlist}}"
+    },
+    {
+      "name": "forlistcsloop",
+      "snippet": "forlistcsloop{${1:handler}}{${2:list csname}}"
+    },
+    {
+      "name": "forlistloop",
+      "snippet": "forlistloop{${1:handler}}{${2:list macro}}"
+    },
+    {
+      "name": "gappto",
+      "snippet": "gappto{${1:hook%cmd}}{${2:code}}"
+    },
+    {
+      "name": "gluedef",
+      "snippet": "gluedef{${1:command}}{${2:glue expression}}"
+    },
+    {
+      "name": "gluegdef",
+      "snippet": "gluegdef{${1:command}}{${2:glue expression}}"
+    },
+    {
+      "name": "gpreto",
+      "snippet": "gpreto{${1:hook%cmd}}{${2:code}}"
+    },
+    {
+      "name": "gundef",
+      "snippet": "gundef{${1:command}}"
+    },
+    {
+      "name": "ifblank",
+      "snippet": "ifblank{${1:string}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "ifbool",
+      "snippet": "ifbool{${1:bool name}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "ifboolexpe",
+      "snippet": "ifboolexpe{${1:expression}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "ifboolexpr",
+      "snippet": "ifboolexpr{${1:expression}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "ifcscounter",
+      "snippet": "ifcscounter{${1:csname}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "ifcsdef",
+      "snippet": "ifcsdef{${1:csname}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "ifcsdimen",
+      "snippet": "ifcsdimen{${1:csname}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "ifcsempty",
+      "snippet": "ifcsempty{${1:csname}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "ifcsequal",
+      "snippet": "ifcsequal{${1:csname}}{${2:csname}}{${3:true}}{${4:false}}"
+    },
+    {
+      "name": "ifcslength",
+      "snippet": "ifcslength{${1:csname}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "ifcsltxprotect",
+      "snippet": "ifcsltxprotect{${1:csname}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "ifcsmacro",
+      "snippet": "ifcsmacro{${1:csname}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "ifcsparam",
+      "snippet": "ifcsparam{${1:csname}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "ifcsprefix",
+      "snippet": "ifcsprefix{${1:csname}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "ifcsprotected",
+      "snippet": "ifcsprotected{${1:csname}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "ifcsstrequal",
+      "snippet": "ifcsstrequal{${1:csname}}{${2:csname}}{${3:true}}{${4:false}}"
+    },
+    {
+      "name": "ifcsstring",
+      "snippet": "ifcsstring{${1:csname}}{${2:string}}{${3:true}}{${4:false}}"
+    },
+    {
+      "name": "ifcsundef",
+      "snippet": "ifcsundef{${1:csname}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "ifcsvoid",
+      "snippet": "ifcsvoid{${1:csname}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "ifdef",
+      "snippet": "ifdef{${1:control sequence}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "ifdefcounter",
+      "snippet": "ifdefcounter{${1:control sequence}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "ifdefdimen",
+      "snippet": "ifdefdimen{${1:control sequence}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "ifdefempty",
+      "snippet": "ifdefempty{${1:control sequence}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "ifdefequal",
+      "snippet": "ifdefequal{${1:control sequence}}{${2:control sequence}}{${3:true}}{${4:false}}"
+    },
+    {
+      "name": "ifdeflength",
+      "snippet": "ifdeflength{${1:control sequence}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "ifdefltxprotect",
+      "snippet": "ifdefltxprotect{${1:control sequence}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "ifdefmacro",
+      "snippet": "ifdefmacro{${1:control sequence}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "ifdefparam",
+      "snippet": "ifdefparam{${1:control sequence}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "ifdefprefix",
+      "snippet": "ifdefprefix{${1:control sequence}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "ifdefprotected",
+      "snippet": "ifdefprotected{${1:control sequence}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "ifdefstrequal",
+      "snippet": "ifdefstrequal{${1:command}}{${2:command}}{${3:true}}{${4:false}}"
+    },
+    {
+      "name": "ifdefstring",
+      "snippet": "ifdefstring{${1:command}}{${2:string}}{${3:true}}{${4:false}}"
+    },
+    {
+      "name": "ifdefvoid",
+      "snippet": "ifdefvoid{${1:control sequence}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "ifdimcomp",
+      "snippet": "ifdimcomp{${1:dimen expression}}{${2:relation}}{${3:dimen expression}}{${4:true}}{${5:false}}"
+    },
+    {
+      "name": "ifdimequal",
+      "snippet": "ifdimequal{${1:dimen expression}}{${2:dimen expression}}{${3:true}}{${4:false}}"
+    },
+    {
+      "name": "ifdimgreater",
+      "snippet": "ifdimgreater{${1:dimen expression}}{${2:dimen expression}}{${3:true}}{${4:false}}"
+    },
+    {
+      "name": "ifdimless",
+      "snippet": "ifdimless{${1:dimen expression}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "ifinlist",
+      "snippet": "ifinlist{${1:item}}{${2:list macro}}{${3:true}}{${4:false}}"
+    },
+    {
+      "name": "ifinlistcs",
+      "snippet": "ifinlistcs{${1:item}}{${2:list csname}}{${3:true}}{${4:false}}"
+    },
+    {
+      "name": "ifltxcounter",
+      "snippet": "ifltxcounter{${1:counter}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "ifnumcomp",
+      "snippet": "ifnumcomp{${1:integer expression}}{${2:relation}}{${3:integer expression}}{${4:true}}{${5:false}}"
+    },
+    {
+      "name": "ifnumequal",
+      "snippet": "ifnumequal{${1:integer expression}}{${2:integer expression}}{${3:true}}{${4:false}}"
+    },
+    {
+      "name": "ifnumgreater",
+      "snippet": "ifnumgreater{${1:integer expression}}{${2:integer expression}}{${3:true}}{${4:false}}"
+    },
+    {
+      "name": "ifnumless",
+      "snippet": "ifnumless{${1:integer expression}}{${2:integer expression}}{${3:true}}{${4:false}}"
+    },
+    {
+      "name": "ifnumodd",
+      "snippet": "ifnumodd{${1:integer expression}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "ifpatchable",
+      "snippet": "ifpatchable{${1:command}}{${2:search}}{${3:true}}{${4:false}}"
+    },
+    {
+      "name": "ifpatchable*",
+      "snippet": "ifpatchable*{${1:command}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "ifrmnum",
+      "snippet": "ifrmnum{${1:string}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "ifstrempty",
+      "snippet": "ifstrempty{${1:string}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "ifstrequal",
+      "snippet": "ifstrequal{${1:string}}{${2:string}}{${3:true}}{${4:false}}"
+    },
+    {
+      "name": "iftoggle",
+      "snippet": "iftoggle{${1:toggle name}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "ifundef",
+      "snippet": "ifundef{${1:control sequence}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "letcs",
+      "snippet": "letcs{${1:command}}{${2:csname}}"
+    },
+    {
+      "name": "listadd",
+      "snippet": "listadd{${1:list macro}}{${2:item}}"
+    },
+    {
+      "name": "listbreak"
+    },
+    {
+      "name": "listcsadd",
+      "snippet": "listcsadd{${1:list csname}}{${2:item}}"
+    },
+    {
+      "name": "listcseadd",
+      "snippet": "listcseadd{${1:list csname}}{${2:item}}"
+    },
+    {
+      "name": "listcsgadd",
+      "snippet": "listcsgadd{${1:list csname}}{${2:item}}"
+    },
+    {
+      "name": "listcsgremove",
+      "snippet": "listcsgremove{${1:list csname}}{${2:item}}"
+    },
+    {
+      "name": "listcsremove",
+      "snippet": "listcsremove{${1:list csname}}{${2:item}}"
+    },
+    {
+      "name": "listcsxadd",
+      "snippet": "listcsxadd{${1:list csname}}{${2:item}}"
+    },
+    {
+      "name": "listeadd",
+      "snippet": "listeadd{${1:list macro}}{${2:item}}"
+    },
+    {
+      "name": "listgadd",
+      "snippet": "listgadd{${1:list macro}}{${2:item}}"
+    },
+    {
+      "name": "listgremove",
+      "snippet": "listgremove{${1:list macro}}{${2:item}}"
+    },
+    {
+      "name": "listremove",
+      "snippet": "listremove{${1:list macro}}{${2:item}}"
+    },
+    {
+      "name": "listxadd",
+      "snippet": "listxadd{${1:list macro}}{${2:item}}"
+    },
+    {
+      "name": "mudef",
+      "snippet": "mudef{${1:command}}{${2:muglue expression}}"
+    },
+    {
+      "name": "mugdef",
+      "snippet": "mugdef{${1:command}}{${2:muglue expression}}"
+    },
+    {
+      "name": "newbool",
+      "snippet": "newbool{${1:bool name}}"
+    },
+    {
+      "name": "newrobustcmd",
+      "snippet": "newrobustcmd{${1:cmd}}[${3:args}][${4:default}]{${2:def}}"
+    },
+    {
+      "name": "newrobustcmd",
+      "snippet": "newrobustcmd{${1:cmd}}[${3:args}]{${2:def}}"
+    },
+    {
+      "name": "newrobustcmd",
+      "snippet": "newrobustcmd{${1:cmd}}{${2:def}}"
+    },
+    {
+      "name": "newrobustcmd*",
+      "snippet": "newrobustcmd*{${1:cmd}}[${3:args}][${4:default}]{${2:def}}"
+    },
+    {
+      "name": "newrobustcmd*",
+      "snippet": "newrobustcmd*{${1:cmd}}[${3:args}]{${2:def}}"
+    },
+    {
+      "name": "newrobustcmd*",
+      "snippet": "newrobustcmd*{${1:cmd}}{${2:def}}"
+    },
+    {
+      "name": "newtoggle",
+      "snippet": "newtoggle{${1:toggle name}}"
+    },
+    {
+      "name": "notblank",
+      "snippet": "notblank{${1:string}}{${2:true}}{${3:false}}"
+    },
+    {
+      "name": "notbool",
+      "snippet": "notbool{${1:bool name}}{${2:not true}}{${3:not false}}"
+    },
+    {
+      "name": "nottoggle",
+      "snippet": "nottoggle{${1:toggle name}}{${2:not true}}{${3:not false}}"
+    },
+    {
+      "name": "numdef",
+      "snippet": "numdef{${1:command}}{${2:integer expression}}"
+    },
+    {
+      "name": "numgdef",
+      "snippet": "numgdef{${1:command}}{${2:integer expression}}"
+    },
+    {
+      "name": "patchcmd",
+      "snippet": "patchcmd[${6:prefix}]{${1:command}}{${2:search}}{${3:replace}}{${4:success}}{${5:failure}}"
+    },
+    {
+      "name": "patchcmd",
+      "snippet": "patchcmd{${1:command}}{${2:search}}{${3:replace}}{${4:success}}{${5:failure}}"
+    },
+    {
+      "name": "preto",
+      "snippet": "preto{${1:hook%cmd}}{${2:code}}"
+    },
+    {
+      "name": "pretocmd",
+      "snippet": "pretocmd{${1:command}}{${2:code}}{${3:success}}{${4:failure}}"
+    },
+    {
+      "name": "protecting",
+      "snippet": "protecting{${1:code}}"
+    },
+    {
+      "name": "providebool",
+      "snippet": "providebool{${1:bool name}}"
+    },
+    {
+      "name": "providerobustcmd",
+      "snippet": "providerobustcmd{${1:cmd}}[${3:args}][${4:default}]{${2:def}}"
+    },
+    {
+      "name": "providerobustcmd",
+      "snippet": "providerobustcmd{${1:cmd}}[${3:args}]{${2:def}}"
+    },
+    {
+      "name": "providerobustcmd",
+      "snippet": "providerobustcmd{${1:cmd}}{${2:def}}"
+    },
+    {
+      "name": "providerobustcmd*",
+      "snippet": "providerobustcmd*{${1:cmd}}[${3:args}][${4:default}]{${2:def}}"
+    },
+    {
+      "name": "providerobustcmd*",
+      "snippet": "providerobustcmd*{${1:cmd}}[${3:args}]{${2:def}}"
+    },
+    {
+      "name": "providerobustcmd*",
+      "snippet": "providerobustcmd*{${1:cmd}}{${2:def}}"
+    },
+    {
+      "name": "providetoggle",
+      "snippet": "providetoggle{${1:toggle name}}"
+    },
+    {
+      "name": "renewrobustcmd",
+      "snippet": "renewrobustcmd{${1:cmd}}[${3:args}][${4:default}]{${2:def}}"
+    },
+    {
+      "name": "renewrobustcmd",
+      "snippet": "renewrobustcmd{${1:cmd}}[${3:args}]{${2:def}}"
+    },
+    {
+      "name": "renewrobustcmd",
+      "snippet": "renewrobustcmd{${1:cmd}}{${2:def}}"
+    },
+    {
+      "name": "renewrobustcmd*",
+      "snippet": "renewrobustcmd*{${1:cmd}}[${3:args}][${4:default}]{${2:def}}"
+    },
+    {
+      "name": "renewrobustcmd*",
+      "snippet": "renewrobustcmd*{${1:cmd}}[${3:args}]{${2:def}}"
+    },
+    {
+      "name": "renewrobustcmd*",
+      "snippet": "renewrobustcmd*{${1:cmd}}{${2:def}}"
+    },
+    {
+      "name": "rmntonum",
+      "snippet": "rmntonum{${1:numeral}}"
+    },
+    {
+      "name": "robustify",
+      "snippet": "robustify{${1:command}}"
+    },
+    {
+      "name": "setbool",
+      "snippet": "setbool{${1:bool name}}{${2:true|false}}"
+    },
+    {
+      "name": "settoggle",
+      "snippet": "settoggle{${1:toggle name}}{${2:true|false}}"
+    },
+    {
+      "name": "togglefalse",
+      "snippet": "togglefalse{${1:toggle name}}"
+    },
+    {
+      "name": "toggletrue",
+      "snippet": "toggletrue{${1:toggle name}}"
+    },
+    {
+      "name": "tracingpatches"
+    },
+    {
+      "name": "undef",
+      "snippet": "undef{${1:command}}"
+    },
+    {
+      "name": "unlessboolexpr",
+      "snippet": "unlessboolexpr{${1:expression}}{${2:code}}"
+    },
+    {
+      "name": "whileboolexpr",
+      "snippet": "whileboolexpr{${1:expression}}{${2:code}}"
+    },
+    {
+      "name": "xappto",
+      "snippet": "xappto{${1:hook%cmd}}{${2:code}}"
+    },
+    {
+      "name": "xifinlist",
+      "snippet": "xifinlist{${1:item}}{${2:list macro}}{${3:true}}{${4:false}}"
+    },
+    {
+      "name": "xifinlistcs",
+      "snippet": "xifinlistcs{${1:item}}{${2:list csname}}{${3:true}}{${4:false}}"
+    },
+    {
+      "name": "xpreto",
+      "snippet": "xpreto{${1:hook%cmd}}{${2:code}}"
+    }
+  ]
+}

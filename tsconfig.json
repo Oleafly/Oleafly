@@ -38,7 +38,8 @@
       "@oleafly/preview/polyfills": ["./packages/preview/src/polyfills.ts"],
       "@oleafly/preview/mainThreadWorker": ["./packages/preview/src/mainThreadWorker.ts"],
       "@oleafly/pdf-to-latex": ["./packages/pdf-to-latex/src/index.ts"],
-      "@oleafly/pdf-to-latex/pdf-adapter": ["./packages/pdf-to-latex/src/pdf-adapter.ts"]
+      "@oleafly/pdf-to-latex/pdf-adapter": ["./packages/pdf-to-latex/src/pdf-adapter.ts"],
+      "@oleafly/latex-intelligence": ["./packages/latex-intelligence/src/index.ts"]
     }
   },
   "include": ["src", "packages", "vite.config.ts"]

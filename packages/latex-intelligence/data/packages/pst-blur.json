@@ -1,0 +1,31 @@
+{
+  "args": [],
+  "deps": [
+    "pst-xkey",
+    "pstricks"
+  ],
+  "envs": [],
+  "keys": {},
+  "macros": [
+    {
+      "name": "ifpsblur",
+      "unusual": true
+    },
+    {
+      "name": "psblurbox",
+      "snippet": "psblurbox[${2:options%keyvals}]{${1:stuff}}"
+    },
+    {
+      "name": "psblurbox",
+      "snippet": "psblurbox{${1:stuff}}"
+    },
+    {
+      "name": "psblurfalse",
+      "unusual": true
+    },
+    {
+      "name": "psblurtrue",
+      "unusual": true
+    }
+  ]
+}

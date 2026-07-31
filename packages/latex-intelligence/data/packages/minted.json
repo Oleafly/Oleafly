@@ -1,0 +1,317 @@
+{
+  "args": [
+    "\\usepackage/minted#c"
+  ],
+  "deps": [
+    "catchfile",
+    "etoolbox",
+    "float",
+    "fvextra",
+    "latex2pydata",
+    "newfloat",
+    "pdftexcmds",
+    "pgfkeys",
+    "pgfopts",
+    "shellesc",
+    "xcolor"
+  ],
+  "envs": [
+    {
+      "name": "listing"
+    },
+    {
+      "name": "listing",
+      "snippet": "[${1:placement}]"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\begin{minted},\\mint,\\mintinline,\\inputminted,\\setminted,\\setmintedinline,\\newminted,\\newmint,\\newmintinline,\\newmintedfile"
+      ],
+      "name": "minted",
+      "snippet": "[${2:options%keyvals}]{${1:language}}"
+    },
+    {
+      "name": "minted",
+      "snippet": "{${1:language}}"
+    }
+  ],
+  "keys": {
+    "\\begin{minted},\\mint,\\mintinline,\\inputminted,\\setminted,\\setmintedinline,\\newminted,\\newmint,\\newmintinline,\\newmintedfile": [
+      "autogobble",
+      "baselinestretch=",
+      "beameroverlays",
+      "bgcolor=",
+      "bgcolorpadding=",
+      "bgcolorvphantom=${1:macro}",
+      "breakafter=${1:string}",
+      "breakafterinrun",
+      "breakaftersymbolpost=${1:string}",
+      "breakaftersymbolpre=${1:string}",
+      "breakanywhere",
+      "breakanywhereinlinestretch=",
+      "breakanywheresymbolpost=${1:string}",
+      "breakanywheresymbolpre=${1:string}",
+      "breakautoindent",
+      "breakbefore=${1:string}",
+      "breakbeforeinrun",
+      "breakbeforesymbolpost=${1:string}",
+      "breakbeforesymbolpre=${1:string}",
+      "breakbytoken",
+      "breakbytokenanywhere",
+      "breakindent=",
+      "breakindentnchars=${1:integer}",
+      "breaklines",
+      "breaksymbol=${1:string}",
+      "breaksymbolindent=",
+      "breaksymbolindentnchars=${1:integer}",
+      "breaksymbolindentleft=",
+      "breaksymbolindentleftnchars=${1:int}",
+      "breaksymbolindentritht=",
+      "breaksymbolindentrightnchars=${1:int}",
+      "breaksymbolleft=${1:string}",
+      "breaksymbolright=${1:string}",
+      "breaksymbolsep=",
+      "breaksymbolsepnchars=${1:int}",
+      "breaksymbolsepleft=",
+      "breaksymbolsepleftnchars=${1:int}",
+      "breaksymbolsepright=",
+      "breaksymbolseprightnchars=${1:int}",
+      "codetagify=${1:string list}",
+      "curlyquotes",
+      "encoding=${1:encoding}",
+      "envname=${1:string}",
+      "escapeinside=${1:two chars}",
+      "firstline=${1:integer}",
+      "firstnumber=${2|auto,last,${1:integer}|}",
+      "fontencoding=${1:font encoding}",
+      "fontfamily=${1:family name}",
+      "fontseries=${1:series name}",
+      "fontshape=${1:shape name}",
+      "fontsize=${1:size command}",
+      "formatcom=${1:command}",
+      "frame=${1|none,leftline,topline,bottomline,lines,single|}",
+      "framerule=",
+      "framesep=",
+      "funcnamehighlighting",
+      "gobble=${1:integer}",
+      "gobblefilter=${1:integer}",
+      "highlightcolor=",
+      "highlightlines=${1:list of lineno ranges}",
+      "ignorelexererrors",
+      "keywordcase=${1|lower,upper,capitalize,none|}",
+      "label=${1:string}",
+      "labelposition=${1|none,topline,bottomline,all|}",
+      "lastline=${1:integer}",
+      "linenos",
+      "listparameters=${1:macro}",
+      "literalenvname=${1:string}",
+      "literatecomment=${1:macro}",
+      "mathescape",
+      "numberblanklines",
+      "numberfirstline",
+      "numbers=${1|left,right,both,none|}",
+      "numbersep=",
+      "obeytabs",
+      "python3",
+      "rangeregex=${1:macro}",
+      "rangeregexmatchnumber=${1:integer}",
+      "rangeregexdotall",
+      "rangeregexmultiline",
+      "rangestartafterstring=${1:macro}",
+      "rangestartstring=${1:macro}",
+      "rangestopbeforestring=${1:macro}",
+      "rangestopstring=${1:macro}",
+      "resetmargins",
+      "rulecolor=",
+      "samepage",
+      "showspaces",
+      "showtabs",
+      "space=${1:macro}",
+      "spacecolor=",
+      "startinline",
+      "stepnumber=${1:integer}",
+      "stepnumberfromfirst",
+      "stepnumberoffsetvalues",
+      "stripall",
+      "stripnl",
+      "style=${1:pygments style}",
+      "tab=${1:macro}",
+      "tabcolor=",
+      "tabsize=${1:integer}",
+      "texcl",
+      "texcomments",
+      "xleftmargin=",
+      "xrightmargin="
+    ],
+    "\\usepackage/minted#c": [
+      "chapter",
+      "section",
+      "cache",
+      "cachedir=${1:directory}",
+      "debug",
+      "frozencache",
+      "highlightmode=${1|fastfirst,fast,immediate|}",
+      "inputlexerlinenos",
+      "lexerlinenos",
+      "newfloat",
+      "placeholder",
+      "verbatim"
+    ]
+  },
+  "macros": [
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\begin{minted},\\mint,\\mintinline,\\inputminted,\\setminted,\\setmintedinline,\\newminted,\\newmint,\\newmintinline,\\newmintedfile"
+      ],
+      "name": "inputminted",
+      "snippet": "inputminted[${3:options%keyvals}]{${1:language}}{${2:file}}"
+    },
+    {
+      "name": "inputminted",
+      "snippet": "inputminted{${1:language}}{${2:file}}"
+    },
+    {
+      "name": "listingscaption",
+      "unusual": true
+    },
+    {
+      "name": "listoflistings"
+    },
+    {
+      "name": "listoflistingscaption",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\begin{minted},\\mint,\\mintinline,\\inputminted,\\setminted,\\setmintedinline,\\newminted,\\newmint,\\newmintinline,\\newmintedfile"
+      ],
+      "name": "mint",
+      "snippet": "mint[${2:options}]{${1:language}}|${3:code}|"
+    },
+    {
+      "name": "mint",
+      "snippet": "mint{${1:language}}|${2:code}|"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\begin{minted},\\mint,\\mintinline,\\inputminted,\\setminted,\\setmintedinline,\\newminted,\\newmint,\\newmintinline,\\newmintedfile"
+      ],
+      "name": "mintinline",
+      "snippet": "mintinline[${2:options}]{${1:language}}|${3:code}|"
+    },
+    {
+      "name": "mintinline",
+      "snippet": "mintinline{${1:language}}|${2:code}|"
+    },
+    {
+      "keyPos": 2,
+      "keys": [
+        "\\begin{minted},\\mint,\\mintinline,\\inputminted,\\setminted,\\setmintedinline,\\newminted,\\newmint,\\newmintinline,\\newmintedfile"
+      ],
+      "name": "newmint",
+      "snippet": "newmint[${3:macro name}]{${1:language}}{${2:options%keyvals}}"
+    },
+    {
+      "keyPos": 1,
+      "keys": [
+        "\\begin{minted},\\mint,\\mintinline,\\inputminted,\\setminted,\\setmintedinline,\\newminted,\\newmint,\\newmintinline,\\newmintedfile"
+      ],
+      "name": "newmint",
+      "snippet": "newmint{${1:language}}{${2:options%keyvals}}"
+    },
+    {
+      "keyPos": 2,
+      "keys": [
+        "\\begin{minted},\\mint,\\mintinline,\\inputminted,\\setminted,\\setmintedinline,\\newminted,\\newmint,\\newmintinline,\\newmintedfile"
+      ],
+      "name": "newminted",
+      "snippet": "newminted[${3:envname}]{${1:language}}{${2:options%keyvals}}"
+    },
+    {
+      "keyPos": 1,
+      "keys": [
+        "\\begin{minted},\\mint,\\mintinline,\\inputminted,\\setminted,\\setmintedinline,\\newminted,\\newmint,\\newmintinline,\\newmintedfile"
+      ],
+      "name": "newminted",
+      "snippet": "newminted{${1:language}}{${2:options%keyvals}}"
+    },
+    {
+      "keyPos": 2,
+      "keys": [
+        "\\begin{minted},\\mint,\\mintinline,\\inputminted,\\setminted,\\setmintedinline,\\newminted,\\newmint,\\newmintinline,\\newmintedfile"
+      ],
+      "name": "newmintedfile",
+      "snippet": "newmintedfile[${3:macro name}]{${1:language}}{${2:options%keyvals}}"
+    },
+    {
+      "keyPos": 1,
+      "keys": [
+        "\\begin{minted},\\mint,\\mintinline,\\inputminted,\\setminted,\\setmintedinline,\\newminted,\\newmint,\\newmintinline,\\newmintedfile"
+      ],
+      "name": "newmintedfile",
+      "snippet": "newmintedfile{${1:language}}{${2:options%keyvals}}"
+    },
+    {
+      "keyPos": 2,
+      "keys": [
+        "\\begin{minted},\\mint,\\mintinline,\\inputminted,\\setminted,\\setmintedinline,\\newminted,\\newmint,\\newmintinline,\\newmintedfile"
+      ],
+      "name": "newmintinline",
+      "snippet": "newmintinline[${3:macro name}]{${1:language}}{${2:options%keyvals}}"
+    },
+    {
+      "keyPos": 1,
+      "keys": [
+        "\\begin{minted},\\mint,\\mintinline,\\inputminted,\\setminted,\\setmintedinline,\\newminted,\\newmint,\\newmintinline,\\newmintedfile"
+      ],
+      "name": "newmintinline",
+      "snippet": "newmintinline{${1:language}}{${2:options%keyvals}}"
+    },
+    {
+      "keyPos": 1,
+      "keys": [
+        "\\begin{minted},\\mint,\\mintinline,\\inputminted,\\setminted,\\setmintedinline,\\newminted,\\newmint,\\newmintinline,\\newmintedfile"
+      ],
+      "name": "setminted",
+      "snippet": "setminted[${2:language}]{${1:options%keyvals}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\begin{minted},\\mint,\\mintinline,\\inputminted,\\setminted,\\setmintedinline,\\newminted,\\newmint,\\newmintinline,\\newmintedfile"
+      ],
+      "name": "setminted",
+      "snippet": "setminted{${1:options%keyvals}}"
+    },
+    {
+      "keyPos": 1,
+      "keys": [
+        "\\begin{minted},\\mint,\\mintinline,\\inputminted,\\setminted,\\setmintedinline,\\newminted,\\newmint,\\newmintinline,\\newmintedfile"
+      ],
+      "name": "setmintedinline",
+      "snippet": "setmintedinline[${2:language}]{${1:options%keyvals}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\begin{minted},\\mint,\\mintinline,\\inputminted,\\setminted,\\setmintedinline,\\newminted,\\newmint,\\newmintinline,\\newmintedfile"
+      ],
+      "name": "setmintedinline",
+      "snippet": "setmintedinline{${1:options%keyvals}}"
+    },
+    {
+      "name": "usemintedstyle",
+      "snippet": "usemintedstyle[${2:language}]{${1:pygments style}}",
+      "unusual": true
+    },
+    {
+      "name": "usemintedstyle",
+      "snippet": "usemintedstyle{${1:pygments style}}",
+      "unusual": true
+    }
+  ]
+}

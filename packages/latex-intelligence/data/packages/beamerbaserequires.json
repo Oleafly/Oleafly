@@ -1,0 +1,28 @@
+{
+  "args": [],
+  "deps": [
+    "beamerbasecolor",
+    "beamerbasecompatibility",
+    "beamerbasefont",
+    "beamerbaseframe",
+    "beamerbaseframecomponents",
+    "beamerbaseframesize",
+    "beamerbaselocalstructure",
+    "beamerbasemisc",
+    "beamerbasenavigation",
+    "beamerbasenotes",
+    "beamerbaseoverlay",
+    "beamerbasesection",
+    "beamerbasetemplates",
+    "beamerbasethemes",
+    "beamerbasetheorems",
+    "beamerbasetitle",
+    "beamerbasetoc",
+    "beamerbasetranslator",
+    "beamerbasetwoscreens",
+    "beamerbaseverbatim"
+  ],
+  "envs": [],
+  "keys": {},
+  "macros": []
+}

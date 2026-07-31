@@ -1,0 +1,347 @@
+{
+  "args": [],
+  "deps": [
+    "environ",
+    "tikz",
+    "tikzlibrarybackgrounds",
+    "tikzlibrarycalc",
+    "tikzlibrarydecorations.pathmorphing"
+  ],
+  "envs": [
+    {
+      "name": "background"
+    },
+    {
+      "name": "background",
+      "snippet": "[${1:TikZ keys}]"
+    },
+    {
+      "name": "extracode"
+    },
+    {
+      "name": "extracode",
+      "snippet": "[${1:TikZ keys}]"
+    },
+    {
+      "name": "tikztimingtable"
+    }
+  ],
+  "keys": {
+    "\\usetikztiminglibrary": [
+      "arrows",
+      "either",
+      "overlays",
+      "clockarrows",
+      "columntype",
+      "nicetabs",
+      "counters",
+      "advnodes",
+      "ifsym",
+      "interval",
+      "beamer"
+    ]
+  },
+  "macros": [
+    {
+      "name": "abc",
+      "unusual": true
+    },
+    {
+      "name": "background",
+      "unusual": true
+    },
+    {
+      "name": "bgstyle",
+      "unusual": true
+    },
+    {
+      "name": "charb",
+      "unusual": true
+    },
+    {
+      "name": "charc",
+      "unusual": true
+    },
+    {
+      "name": "code",
+      "snippet": "code{${1:code}}",
+      "unusual": true
+    },
+    {
+      "name": "coldist",
+      "unusual": true
+    },
+    {
+      "name": "dslope",
+      "unusual": true
+    },
+    {
+      "name": "endbackground",
+      "unusual": true
+    },
+    {
+      "name": "endextracode"
+    },
+    {
+      "name": "extracode"
+    },
+    {
+      "name": "extracode",
+      "snippet": "extracode[${1:TikZ keys}]"
+    },
+    {
+      "name": "fulltablegrid"
+    },
+    {
+      "name": "fulltablegrid",
+      "snippet": "fulltablegrid[${1:TikZ keys}]"
+    },
+    {
+      "name": "fwidth",
+      "unusual": true
+    },
+    {
+      "name": "gslope",
+      "unusual": true
+    },
+    {
+      "name": "horlines",
+      "snippet": "horlines[${2:TikZ keys}]{${1:list}}"
+    },
+    {
+      "name": "horlines",
+      "snippet": "horlines{${1:list}}"
+    },
+    {
+      "name": "list",
+      "unusual": true
+    },
+    {
+      "name": "lslope",
+      "unusual": true
+    },
+    {
+      "name": "newdraw",
+      "unusual": true
+    },
+    {
+      "name": "newdraw",
+      "snippet": "newdraw[${1:TikZ options}]",
+      "unusual": true
+    },
+    {
+      "name": "newdrawns",
+      "unusual": true
+    },
+    {
+      "name": "newdrawns",
+      "snippet": "newdrawns[${1:TikZ options}]",
+      "unusual": true
+    },
+    {
+      "name": "nrows",
+      "unusual": true
+    },
+    {
+      "name": "nstyle",
+      "unusual": true
+    },
+    {
+      "name": "rowdist",
+      "unusual": true
+    },
+    {
+      "name": "setwscale",
+      "snippet": "setwscale{${1:math expr}}",
+      "unusual": true
+    },
+    {
+      "name": "slope",
+      "unusual": true
+    },
+    {
+      "name": "style",
+      "unusual": true
+    },
+    {
+      "name": "tablegrid"
+    },
+    {
+      "name": "tablegrid",
+      "snippet": "tablegrid[${1:TikZ keys}]"
+    },
+    {
+      "name": "tablegrid*"
+    },
+    {
+      "name": "tablegrid*",
+      "snippet": "tablegrid*[${1:TikZ keys}]"
+    },
+    {
+      "name": "tableheader",
+      "snippet": "tableheader[${3:TikZ keys}]{${1:description title%text}}{${2:signal title%text}}"
+    },
+    {
+      "name": "tableheader",
+      "snippet": "tableheader{${1:description title%text}}{${2:signal title%text}}"
+    },
+    {
+      "name": "tablerules"
+    },
+    {
+      "name": "tablerules",
+      "snippet": "tablerules[${1:TikZ keys}]"
+    },
+    {
+      "name": "texttiming",
+      "snippet": "texttiming[${2:init char/TikZ keys}]{${1:characters}}"
+    },
+    {
+      "name": "texttiming",
+      "snippet": "texttiming{${1:characters}}"
+    },
+    {
+      "name": "tikztimingchar",
+      "snippet": "tikztimingchar{${1:char}}{${2:code1}}{${3:code2}}",
+      "unusual": true
+    },
+    {
+      "name": "tikztimingcounter",
+      "snippet": "tikztimingcounter{${1:char}}",
+      "unusual": true
+    },
+    {
+      "name": "tikztimingcpy",
+      "snippet": "tikztimingcpy{${1:char1}}{${2:char2}}",
+      "unusual": true
+    },
+    {
+      "name": "tikztimingdef",
+      "snippet": "tikztimingdef{${1:char}}{${2:code}}",
+      "unusual": true
+    },
+    {
+      "name": "tikztimingecopy",
+      "snippet": "tikztimingecopy{${1:char1}}{${2:char2}}",
+      "unusual": true
+    },
+    {
+      "name": "tikztiminglet",
+      "snippet": "tikztiminglet{${1:char1}}{${2:char2}}",
+      "unusual": true
+    },
+    {
+      "name": "tikztimingmetachar",
+      "snippet": "tikztimingmetachar{${1:meta char}}[${3:args}]{${2:char group}}",
+      "unusual": true
+    },
+    {
+      "name": "tikztimingmetachar",
+      "snippet": "tikztimingmetachar{${1:meta char}}{${2:char group}}",
+      "unusual": true
+    },
+    {
+      "name": "tikztimingsetcounter",
+      "snippet": "tikztimingsetcounter{${1:char}}{${2:pgfmath expr}}",
+      "unusual": true
+    },
+    {
+      "name": "tikztimingsetdslope",
+      "snippet": "tikztimingsetdslope{${1:value}}",
+      "unusual": true
+    },
+    {
+      "name": "tikztimingsetslope",
+      "snippet": "tikztimingsetslope{${1:value}}",
+      "unusual": true
+    },
+    {
+      "name": "tikztimingsetwscale",
+      "snippet": "tikztimingsetwscale{${1:math expr}}",
+      "unusual": true
+    },
+    {
+      "name": "tikztimingsetzslope",
+      "snippet": "tikztimingsetzslope{${1:value}}",
+      "unusual": true
+    },
+    {
+      "name": "tikztiminguse",
+      "snippet": "tikztiminguse{${1:char}}{${2:code}}",
+      "unusual": true
+    },
+    {
+      "name": "tikztimingwidth",
+      "unusual": true
+    },
+    {
+      "name": "timing"
+    },
+    {
+      "name": "timing",
+      "snippet": "timing[${1:TikZ options}]"
+    },
+    {
+      "name": "timingheight",
+      "unusual": true
+    },
+    {
+      "name": "timingwidth",
+      "unusual": true
+    },
+    {
+      "name": "twidth",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\usetikztiminglibrary"
+      ],
+      "name": "usetikztiminglibrary",
+      "snippet": "usetikztiminglibrary[${2:options}]{${1:libraries%keyvals}}",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\usetikztiminglibrary"
+      ],
+      "name": "usetikztiminglibrary",
+      "snippet": "usetikztiminglibrary[${2:options}]{${1:libraries%keyvals}}[${3:date}]",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\usetikztiminglibrary"
+      ],
+      "name": "usetikztiminglibrary",
+      "snippet": "usetikztiminglibrary{${1:libraries%keyvals}}"
+    },
+    {
+      "name": "vertlines",
+      "snippet": "vertlines[${2:TikZ keys}]{${1:list}}"
+    },
+    {
+      "name": "vertlines",
+      "snippet": "vertlines{${1:list}}"
+    },
+    {
+      "name": "wscale",
+      "unusual": true
+    },
+    {
+      "name": "xunit",
+      "unusual": true
+    },
+    {
+      "name": "yunit",
+      "unusual": true
+    },
+    {
+      "name": "zslope",
+      "unusual": true
+    }
+  ]
+}

@@ -1,0 +1,141 @@
+{
+  "args": [],
+  "deps": [
+    "array",
+    "ifthen",
+    "longtable",
+    "siunitx",
+    "tocbasic",
+    "xkeyval"
+  ],
+  "envs": [
+    {
+      "name": "thenomenclature",
+      "unusual": true
+    }
+  ],
+  "keys": {},
+  "macros": [
+    {
+      "name": "eqdeclaration",
+      "unusual": true
+    },
+    {
+      "name": "makenomenclature"
+    },
+    {
+      "name": "nomAname",
+      "unusual": true
+    },
+    {
+      "name": "nomGname",
+      "unusual": true
+    },
+    {
+      "name": "nomXname",
+      "unusual": true
+    },
+    {
+      "name": "nomZname",
+      "unusual": true
+    },
+    {
+      "name": "nomenclature",
+      "snippet": "nomenclature[${3:prefix}]{${1:symbol}}{${2:description}}"
+    },
+    {
+      "name": "nomenclature",
+      "snippet": "nomenclature[${5:prefix}]{${1:symbol}}{${2:description}}{${3:units}}{${4:note}}"
+    },
+    {
+      "name": "nomenclature",
+      "snippet": "nomenclature{${1:symbol}}{${2:description}}"
+    },
+    {
+      "name": "nomenclature",
+      "snippet": "nomenclature{${1:symbol}}{${2:description}}{${3:units}}{${4:note}}"
+    },
+    {
+      "name": "nomentryend",
+      "unusual": true
+    },
+    {
+      "name": "nomeqref",
+      "snippet": "nomeqref{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "nomgroup",
+      "unusual": true
+    },
+    {
+      "name": "nomitemsep",
+      "unusual": true
+    },
+    {
+      "name": "nomlabel",
+      "unusual": true
+    },
+    {
+      "name": "nomlabelwidth",
+      "unusual": true
+    },
+    {
+      "name": "nomname",
+      "unusual": true
+    },
+    {
+      "name": "nomnorefeq"
+    },
+    {
+      "name": "nomnorefeqpage"
+    },
+    {
+      "name": "nomnorefpage"
+    },
+    {
+      "name": "nompageref",
+      "snippet": "nompageref{${1:arg}}",
+      "unusual": true
+    },
+    {
+      "name": "nompostamble",
+      "unusual": true
+    },
+    {
+      "name": "nompreamble",
+      "unusual": true
+    },
+    {
+      "name": "nomprefix",
+      "unusual": true
+    },
+    {
+      "name": "nomrefeq"
+    },
+    {
+      "name": "nomrefeqpage"
+    },
+    {
+      "name": "nomrefpage"
+    },
+    {
+      "name": "pagedeclaration",
+      "unusual": true
+    },
+    {
+      "name": "printglossary"
+    },
+    {
+      "name": "printnomenclature"
+    },
+    {
+      "name": "printnomenclature",
+      "snippet": "printnomenclature[${1:space%l}]"
+    },
+    {
+      "name": "setnomtableformat",
+      "snippet": "setnomtableformat{${1:column format}}"
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "args": [],
+  "deps": [],
+  "envs": [
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\begin{beamerboxesrounded}"
+      ],
+      "name": "beamerboxesrounded",
+      "snippet": "[${2:options%keyvals}]{${1:head%text}}"
+    },
+    {
+      "name": "beamerboxesrounded",
+      "snippet": "{${1:head%text}}"
+    }
+  ],
+  "keys": {
+    "\\begin{beamerboxesrounded}": [
+      "scheme=${1:scheme name}",
+      "upper=${1:beamer color}",
+      "lower=${1:beamer color}",
+      "width=",
+      "shadow"
+    ]
+  },
+  "macros": [
+    {
+      "name": "beamerboxesdeclarecolorscheme",
+      "snippet": "beamerboxesdeclarecolorscheme{${1:name}}{${2:upper color}}{${3:lower color}}",
+      "unusual": true
+    }
+  ]
+}

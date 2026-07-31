@@ -1,0 +1,510 @@
+{
+  "args": [
+    "\\usepackage/wasysym#c"
+  ],
+  "deps": [],
+  "envs": [],
+  "keys": {
+    "\\usepackage/wasysym#c": [
+      "compat1",
+      "integrals",
+      "nointegrals",
+      "noeuro"
+    ]
+  },
+  "macros": [
+    {
+      "name": "AC"
+    },
+    {
+      "name": "APLbox"
+    },
+    {
+      "name": "APLcirc",
+      "snippet": "APLcirc{${1:arg}}"
+    },
+    {
+      "name": "APLcomment"
+    },
+    {
+      "name": "APLdown"
+    },
+    {
+      "name": "APLdownarrowbox"
+    },
+    {
+      "name": "APLinput"
+    },
+    {
+      "name": "APLinv"
+    },
+    {
+      "name": "APLleftarrowbox"
+    },
+    {
+      "name": "APLlog"
+    },
+    {
+      "name": "APLminus"
+    },
+    {
+      "name": "APLnot",
+      "snippet": "APLnot{${1:arg}}"
+    },
+    {
+      "name": "APLrightarrowbox"
+    },
+    {
+      "name": "APLstar"
+    },
+    {
+      "name": "APLup"
+    },
+    {
+      "name": "APLuparrowbox"
+    },
+    {
+      "name": "APLvert",
+      "snippet": "APLvert{${1:arg}}"
+    },
+    {
+      "name": "Bowtie"
+    },
+    {
+      "name": "Box"
+    },
+    {
+      "name": "CIRCLE"
+    },
+    {
+      "name": "CheckedBox"
+    },
+    {
+      "name": "Circle"
+    },
+    {
+      "name": "DH"
+    },
+    {
+      "name": "DOWNarrow"
+    },
+    {
+      "name": "Diamond"
+    },
+    {
+      "name": "HF"
+    },
+    {
+      "detail": "⨝ (\"amssymb\" command)",
+      "documentation": "Join",
+      "name": "Join"
+    },
+    {
+      "name": "LEFTCIRCLE"
+    },
+    {
+      "name": "LEFTarrow"
+    },
+    {
+      "name": "LEFTcircle"
+    },
+    {
+      "name": "LHD"
+    },
+    {
+      "name": "Leftcircle"
+    },
+    {
+      "name": "Paragraph"
+    },
+    {
+      "name": "RHD"
+    },
+    {
+      "name": "RIGHTCIRCLE"
+    },
+    {
+      "name": "RIGHTarrow"
+    },
+    {
+      "name": "RIGHTcircle"
+    },
+    {
+      "name": "Rightcircle"
+    },
+    {
+      "name": "Square"
+    },
+    {
+      "name": "Thorn"
+    },
+    {
+      "name": "UParrow"
+    },
+    {
+      "name": "VHF"
+    },
+    {
+      "name": "XBox"
+    },
+    {
+      "name": "agemO"
+    },
+    {
+      "name": "applecmd"
+    },
+    {
+      "name": "apprge"
+    },
+    {
+      "name": "apprle"
+    },
+    {
+      "name": "aquarius"
+    },
+    {
+      "name": "aries"
+    },
+    {
+      "name": "ascnode"
+    },
+    {
+      "detail": "☉ (\"mathabx\" command)",
+      "documentation": "Sun",
+      "name": "astrosun"
+    },
+    {
+      "name": "ataribox"
+    },
+    {
+      "name": "bell"
+    },
+    {
+      "detail": "☻ (\"wasysym\" command)",
+      "documentation": "\\invsmileface (arevmath), black smiling face",
+      "name": "blacksmiley"
+    },
+    {
+      "name": "brokenvert"
+    },
+    {
+      "name": "cancer"
+    },
+    {
+      "name": "capricornus"
+    },
+    {
+      "name": "cent"
+    },
+    {
+      "name": "checked"
+    },
+    {
+      "name": "clock"
+    },
+    {
+      "name": "conjunction"
+    },
+    {
+      "name": "currency"
+    },
+    {
+      "name": "davidsstar"
+    },
+    {
+      "name": "descnode"
+    },
+    {
+      "name": "dh"
+    },
+    {
+      "detail": "⌀ (\"mathabx\" command)",
+      "documentation": "\\varnothing (amssymb), diameter sign",
+      "name": "diameter"
+    },
+    {
+      "name": "earth"
+    },
+    {
+      "detail": "♪ (\"arevmath\" command)",
+      "documentation": "Eighth note",
+      "name": "eighthnote"
+    },
+    {
+      "detail": "€",
+      "documentation": "Euro sign",
+      "name": "euro"
+    },
+    {
+      "detail": "♀ (\"wasysym\" command)",
+      "documentation": "\\venus (mathabx), \\girl (mathabx), venus, female",
+      "name": "female"
+    },
+    {
+      "name": "frownie"
+    },
+    {
+      "name": "fullmoon"
+    },
+    {
+      "name": "fullnote"
+    },
+    {
+      "name": "gemini"
+    },
+    {
+      "name": "gluon"
+    },
+    {
+      "name": "halfnote"
+    },
+    {
+      "detail": "⎔",
+      "documentation": "Horizontal benzene ring [hexagon flat open]",
+      "name": "hexagon"
+    },
+    {
+      "name": "hexstar"
+    },
+    {
+      "detail": "∭ (\"amsmath fourier esint wasysym\" command)",
+      "documentation": "Triple integral operator",
+      "name": "iiint"
+    },
+    {
+      "detail": "∬ (\"amsmath fourier esint wasysym\" command)",
+      "documentation": "Double integral operator",
+      "name": "iint"
+    },
+    {
+      "name": "invdiameter"
+    },
+    {
+      "name": "inve"
+    },
+    {
+      "name": "invneg"
+    },
+    {
+      "name": "jupiter"
+    },
+    {
+      "name": "kreuz"
+    },
+    {
+      "name": "leadsto"
+    },
+    {
+      "detail": "☾ (\"wasysym mathabx\" command)",
+      "documentation": "Last quarter moon",
+      "name": "leftmoon"
+    },
+    {
+      "name": "leftturn"
+    },
+    {
+      "name": "leo"
+    },
+    {
+      "name": "lhd"
+    },
+    {
+      "name": "libra"
+    },
+    {
+      "name": "lightning"
+    },
+    {
+      "name": "logof"
+    },
+    {
+      "name": "longs"
+    },
+    {
+      "detail": "♂ (\"wasysym\" command)",
+      "documentation": "\\mars (mathabx), \\boy (mathabx), mars, male",
+      "name": "male"
+    },
+    {
+      "name": "mars"
+    },
+    {
+      "name": "mercury"
+    },
+    {
+      "detail": "℧ (\"amsfonts arevmath\" command)",
+      "documentation": "\\mho (wrisym), t \\agemo (wasysym), conductance",
+      "name": "mho"
+    },
+    {
+      "name": "neptune"
+    },
+    {
+      "name": "newmoon"
+    },
+    {
+      "name": "notbackslash"
+    },
+    {
+      "name": "notslash"
+    },
+    {
+      "name": "ocircle"
+    },
+    {
+      "name": "octagon"
+    },
+    {
+      "detail": "∯ (\"esint wasysym fourier\" command)",
+      "documentation": "\\dbloint (wrisym), double contour integral operator",
+      "name": "oiint"
+    },
+    {
+      "name": "openo"
+    },
+    {
+      "name": "opposition"
+    },
+    {
+      "detail": "⬠",
+      "documentation": "White pentagon",
+      "name": "pentagon"
+    },
+    {
+      "name": "permil"
+    },
+    {
+      "name": "phone"
+    },
+    {
+      "name": "photon"
+    },
+    {
+      "name": "pisces"
+    },
+    {
+      "name": "pluto"
+    },
+    {
+      "name": "pointer"
+    },
+    {
+      "detail": "♩ (\"arevmath wasysym\" command)",
+      "documentation": "Music note (sung text sign)",
+      "name": "quarternote"
+    },
+    {
+      "name": "recorder"
+    },
+    {
+      "name": "rhd"
+    },
+    {
+      "detail": "☽ (\"wasysym mathabx\" command)",
+      "documentation": "First quarter moon",
+      "name": "rightmoon"
+    },
+    {
+      "name": "rightturn"
+    },
+    {
+      "name": "roundz"
+    },
+    {
+      "name": "sagittarius"
+    },
+    {
+      "name": "saturn"
+    },
+    {
+      "name": "scorpio"
+    },
+    {
+      "name": "smiley"
+    },
+    {
+      "detail": "⊏ (\"amsfonts\" command)",
+      "documentation": "Square subset",
+      "name": "sqsubset"
+    },
+    {
+      "detail": "⊐ (\"amsfonts\" command)",
+      "documentation": "Square superset",
+      "name": "sqsupset"
+    },
+    {
+      "detail": "☼ (\"wasysym\" command)",
+      "documentation": "White sun with rays",
+      "name": "sun"
+    },
+    {
+      "name": "taurus"
+    },
+    {
+      "name": "thorn"
+    },
+    {
+      "detail": "♫ (\"wasysym\" command)",
+      "documentation": "Beamed eighth notes",
+      "name": "twonotes"
+    },
+    {
+      "name": "unlhd"
+    },
+    {
+      "name": "unrhd"
+    },
+    {
+      "name": "uranus"
+    },
+    {
+      "name": "varangle"
+    },
+    {
+      "detail": "⬡",
+      "documentation": "White hexagon",
+      "name": "varhexagon"
+    },
+    {
+      "name": "varhexstar"
+    },
+    {
+      "name": "varint",
+      "unusual": true
+    },
+    {
+      "name": "varoint",
+      "unusual": true
+    },
+    {
+      "name": "venus"
+    },
+    {
+      "name": "vernal"
+    },
+    {
+      "name": "virgo"
+    },
+    {
+      "name": "wasycmd",
+      "unusual": true
+    },
+    {
+      "name": "wasyeuro",
+      "unusual": true
+    },
+    {
+      "name": "wasylozenge"
+    },
+    {
+      "name": "wasyparagraph",
+      "unusual": true
+    },
+    {
+      "name": "wasypropto"
+    },
+    {
+      "name": "wasytherefore"
+    }
+  ]
+}

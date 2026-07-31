@@ -1,0 +1,55 @@
+{
+  "args": [
+    "\\usepackage/kantlipsum#c"
+  ],
+  "deps": [],
+  "envs": [],
+  "keys": {
+    "\\usepackage/kantlipsum#c": [
+      "par",
+      "nopar",
+      "numbers",
+      "index"
+    ]
+  },
+  "macros": [
+    {
+      "name": "kant"
+    },
+    {
+      "name": "kant",
+      "snippet": "kant[${1:num-num}]"
+    },
+    {
+      "name": "kant",
+      "snippet": "kant[${1:num}]"
+    },
+    {
+      "name": "kant",
+      "snippet": "kant[${1:num}][${2:num-num}]"
+    },
+    {
+      "name": "kant*"
+    },
+    {
+      "name": "kant*",
+      "snippet": "kant*[${1:num-num}]"
+    },
+    {
+      "name": "kant*",
+      "snippet": "kant*[${1:num}]"
+    },
+    {
+      "name": "kant*",
+      "snippet": "kant*[${1:num}][${2:num-num}]"
+    },
+    {
+      "name": "kantdef",
+      "snippet": "kantdef{${1:cmd}}{${2:num}}"
+    },
+    {
+      "name": "kantdef",
+      "snippet": "kantdef{${1:cmd}}{${2:num}}[${3:num-num}]"
+    }
+  ]
+}

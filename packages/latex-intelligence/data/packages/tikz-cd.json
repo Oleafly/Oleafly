@@ -1,0 +1,10 @@
+{
+  "args": [],
+  "deps": [
+    "tikz",
+    "tikzlibrarycd"
+  ],
+  "envs": [],
+  "keys": {},
+  "macros": []
+}

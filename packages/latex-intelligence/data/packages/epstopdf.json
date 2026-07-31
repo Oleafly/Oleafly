@@ -1,0 +1,59 @@
+{
+  "args": [
+    "\\epstopdfsetup,\\usepackage/epstopdf#c"
+  ],
+  "deps": [
+    "grfext",
+    "infwarerr",
+    "kvoptions",
+    "pdftexcmds"
+  ],
+  "envs": [],
+  "keys": {
+    "\\epstopdfsetup,\\usepackage/epstopdf#c": [
+      "update",
+      "append",
+      "prepend",
+      "outdir=${1:directory}",
+      "suffix=${1:string}",
+      "prefersuffix",
+      "program@epstopdf=${1:program}",
+      "verbose"
+    ]
+  },
+  "macros": [
+    {
+      "name": "AppendGraphicsExtensions",
+      "snippet": "AppendGraphicsExtensions{${1:ext}}"
+    },
+    {
+      "name": "OutputFile"
+    },
+    {
+      "name": "PrependGraphicsExtensions",
+      "snippet": "PrependGraphicsExtensions{${1:ext}}"
+    },
+    {
+      "name": "SourceExt"
+    },
+    {
+      "name": "SourceFile"
+    },
+    {
+      "name": "epstopdfDeclareGraphicsRule",
+      "snippet": "epstopdfDeclareGraphicsRule{${1:ext}}{${2:type}}{${3:read-file}}{${4:command%plain}}"
+    },
+    {
+      "name": "epstopdfcall",
+      "snippet": "epstopdfcall{${1:arg}}"
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\epstopdfsetup,\\usepackage/epstopdf#c"
+      ],
+      "name": "epstopdfsetup",
+      "snippet": "epstopdfsetup{${1:key-value-list%keyvals}}"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "args": [
+    "\\usepackage/nicefrac#c"
+  ],
+  "deps": [
+    "ifthen"
+  ],
+  "envs": [],
+  "keys": {
+    "\\usepackage/nicefrac#c": [
+      "nice",
+      "ugly"
+    ]
+  },
+  "macros": [
+    {
+      "name": "nicefrac",
+      "snippet": "nicefrac[${3:fontcmd%:translatable}]{${1:num%:translatable}}{${2:den%:translatable}}"
+    },
+    {
+      "name": "nicefrac",
+      "snippet": "nicefrac{${1:num%:translatable}}{${2:den%:translatable}}"
+    }
+  ]
+}

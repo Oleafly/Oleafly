@@ -1,0 +1,99 @@
+{
+  "args": [
+    "\\usepackage/url#c"
+  ],
+  "deps": [],
+  "envs": [],
+  "keys": {
+    "\\urlstyle#c": [
+      "tt",
+      "rm",
+      "sf",
+      "same"
+    ],
+    "\\usepackage/url#c": [
+      "obeyspaces",
+      "hyphens",
+      "spaces",
+      "lowtilde",
+      "allowmove"
+    ]
+  },
+  "macros": [
+    {
+      "name": "DeclareUrlCommand",
+      "snippet": "DeclareUrlCommand{${1:cmd}}{${2:definition}}",
+      "unusual": true
+    },
+    {
+      "name": "UrlBigBreakPenalty",
+      "unusual": true
+    },
+    {
+      "name": "UrlBigBreaks",
+      "unusual": true
+    },
+    {
+      "name": "UrlBreakPenalty",
+      "unusual": true
+    },
+    {
+      "name": "UrlBreaks",
+      "unusual": true
+    },
+    {
+      "name": "UrlFont",
+      "unusual": true
+    },
+    {
+      "name": "UrlLeft",
+      "unusual": true
+    },
+    {
+      "name": "UrlNoBreaks",
+      "unusual": true
+    },
+    {
+      "name": "UrlOrds",
+      "unusual": true
+    },
+    {
+      "name": "UrlRight",
+      "unusual": true
+    },
+    {
+      "name": "UrlSpecials",
+      "unusual": true
+    },
+    {
+      "name": "UrlTildeSpecial",
+      "unusual": true
+    },
+    {
+      "name": "Urlmuskip",
+      "unusual": true
+    },
+    {
+      "name": "path",
+      "snippet": "path{${1:URL}}"
+    },
+    {
+      "name": "url",
+      "snippet": "url{${1:URL}}"
+    },
+    {
+      "name": "urldef",
+      "snippet": "urldef{${1:cmd}}",
+      "unusual": true
+    },
+    {
+      "keyPos": 0,
+      "keys": [
+        "\\urlstyle#c"
+      ],
+      "name": "urlstyle",
+      "snippet": "urlstyle{${1:style%keyvals}}",
+      "unusual": true
+    }
+  ]
+}
