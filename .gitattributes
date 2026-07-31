@@ -1,0 +1,13 @@
+# Scoped deliberately: a repo-wide `text=auto eol=lf` would renormalise the
+# committed pnpm store and vendored patches, so only the files whose exact
+# bytes matter are declared here.
+
+# Vendored upstream payloads are checksum-pinned against what upstream
+# published. Any end-of-line translation changes their bytes and the pin fails
+# on Windows checkouts only.
+resources/licenses/** -text
+*.tar.gz binary
+*.zip binary
+
+# Parsed with "\n"-based markers by scripts/fetch-language-servers.node-tests.mjs.
+.github/workflows/*.yml text eol=lf

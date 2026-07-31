@@ -20,9 +20,11 @@ import {
   isAbsolute,
   join,
   parse,
+  posix,
   relative,
   resolve,
   sep,
+  win32,
 } from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
 import { gunzipSync, inflateRawSync } from "node:zlib";
@@ -226,12 +228,19 @@ export function defaultAppDataDirectory(
   environment = process.env,
   userHome = homedir(),
 ) {
+  // The target platform is a parameter, so the separator has to come from that
+  // platform rather than from whichever host is running this. Using the host's
+  // join builds a macOS path out of backslashes when a Windows runner asks
+  // about darwin.
   if (platform === "darwin") {
-    return join(userHome, "Library", "Application Support", applicationIdentifier);
+    return posix.join(userHome, "Library", "Application Support", applicationIdentifier);
   }
   if (platform === "linux") {
     const dataHome = environment.XDG_DATA_HOME?.trim();
-    return join(dataHome ? resolve(dataHome) : join(userHome, ".local", "share"), applicationIdentifier);
+    return posix.join(
+      dataHome ? posix.resolve(dataHome) : posix.join(userHome, ".local", "share"),
+      applicationIdentifier,
+    );
   }
   if (platform === "win32") {
     const localData = environment.LOCALAPPDATA?.trim();
@@ -240,7 +249,7 @@ export function defaultAppDataDirectory(
         "LOCALAPPDATA is unavailable; cannot resolve the Oleafly app-local-data directory",
       );
     }
-    return join(resolve(localData), applicationIdentifier);
+    return win32.join(win32.resolve(localData), applicationIdentifier);
   }
   throw new Error(`unsupported app-data platform: ${platform}`);
 }

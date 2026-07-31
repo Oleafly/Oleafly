@@ -176,6 +176,7 @@ function visibleExpressions(
 class MathPreviewWidget extends WidgetType {
   private mounted = new WeakMap<HTMLElement, MountedMathPreview>();
   private liveHosts = new WeakSet<HTMLElement>();
+  private resizeObservers = new WeakMap<HTMLElement, ResizeObserver>();
 
   constructor(
     readonly expression: MathExpression,
@@ -184,7 +185,7 @@ class MathPreviewWidget extends WidgetType {
     super();
   }
 
-  toDOM(): HTMLElement {
+  toDOM(view: EditorView): HTMLElement {
     // Keep every preview inline in CodeMirror's content flow. A block widget
     // participates in the editor's virtual height map; rebuilding surrounding
     // diagnostic/semantic-token marks can then force the same source region to
@@ -214,11 +215,28 @@ class MathPreviewWidget extends WidgetType {
       eager: true,
     });
     this.mounted.set(dom, mounted);
+    // KaTeX lays out against font metrics, so a preview that paints before its
+    // math font resolves is measured at one height and then silently grows.
+    // CodeMirror sizes gutter elements from its height map, so a stale entry
+    // offsets every row below this one by the difference - a real misalignment
+    // that persists until something else happens to force a re-measure.
+    // Observing the host covers late fonts, and anything else that resizes a
+    // preview after mount.
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(() => {
+        if (!this.liveHosts.has(dom)) return;
+        view.requestMeasure();
+      });
+      observer.observe(dom);
+      this.resizeObservers.set(dom, observer);
+    }
     return dom;
   }
 
   destroy(dom: HTMLElement): void {
     this.liveHosts.delete(dom);
+    this.resizeObservers.get(dom)?.disconnect();
+    this.resizeObservers.delete(dom);
     this.mounted.get(dom)?.destroy();
     this.mounted.delete(dom);
   }
