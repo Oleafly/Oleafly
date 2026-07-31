@@ -95,9 +95,9 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
     id: "literature-search",
     name: "Citation Search",
     description:
-      "Search scholarly indexes at the same time. Duplicate records are combined automatically.",
+      "Search scholarly indexes or scan your document for ranked citation suggestions. Duplicates are combined automatically.",
     icon: LibraryBig,
-    tags: ["5 available indexes", "Saved citations", "Open source"],
+    tags: ["5 available indexes", "From document", "Saved citations"],
     category: "Research",
     page: "literature-search",
     slash: ["citations-search", "citation-search", "literature-search"],
