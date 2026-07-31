@@ -74,7 +74,10 @@ describe("continueListOnEnter", () => {
     expect(spec).not.toBeNull();
     const cursor = doc.indexOf("|");
     const result = applied(state, spec!);
-    expect(result.doc).toBe(doc.replace("|", insert));
+    // The fixture holds exactly one caret marker; splice it out explicitly.
+    expect(result.doc).toBe(
+      doc.slice(0, cursor) + insert + doc.slice(cursor + 1),
+    );
     expect(result.head).toBe(cursor + insert.length);
   });
 

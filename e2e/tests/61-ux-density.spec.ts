@@ -54,9 +54,12 @@ test("Enter continues \\item lists and Mod-Alt-. closes the open environment", a
     .poll(async () => await editorSourceText(tauriPage))
     .toContain("First point\n  \\item ");
 
-  // Close the still-open itemize from the fresh item line.
+  // Close the still-open itemize from the fresh item line. "Mod" is Meta
+  // on macOS and Ctrl elsewhere — the spec runs on both.
+  const modifier =
+    process.platform === "darwin" ? "metaKey" : "ctrlKey";
   await tauriPage.evaluate(
-    `(document.querySelector('.cm-content').dispatchEvent(new KeyboardEvent('keydown', { key: '.', metaKey: true, altKey: true, bubbles: true, cancelable: true })), 1)`,
+    `(document.querySelector('.cm-content').dispatchEvent(new KeyboardEvent('keydown', { key: '.', ${modifier}: true, altKey: true, bubbles: true, cancelable: true })), 1)`,
   );
   await expect
     .poll(async () => await editorSourceText(tauriPage))
