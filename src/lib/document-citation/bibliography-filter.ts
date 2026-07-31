@@ -27,10 +27,13 @@ function normalizeArxivId(id: string): string {
   return id.trim().replace(/v\d+$/i, "");
 }
 
-function extractArxivFromUrl(url: string): string | null {
-  const match = url.match(/arxiv\.org\/abs\/([^\s"'<>?#]+)/i);
+function extractArxivFromUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const match = url.match(/arxiv\.org\/(?:abs|pdf)\/([^\s"'<>?#]+)/i);
   if (!match) return null;
-  return normalizeArxivId(match[1]);
+  // pdf URLs often end with .pdf (e.g. /pdf/2001.12345.pdf)
+  const id = match[1].replace(/\.pdf$/i, "");
+  return normalizeArxivId(id);
 }
 
 /**
@@ -73,10 +76,11 @@ export function parseBibliographyIdentities(bibText: string): BibliographyIdenti
     if (arxiv) arxivIds.add(arxiv);
   }
 
-  // Also catch bare arxiv.org/abs links anywhere in the bib text
-  const absRe = /arxiv\.org\/abs\/([^\s"'<>?#]+)/gi;
+  // Also catch bare arxiv.org/abs|pdf links anywhere in the bib text
+  const absRe = /arxiv\.org\/(?:abs|pdf)\/([^\s"'<>?#]+)/gi;
   while ((match = absRe.exec(bibText)) !== null) {
-    arxivIds.add(normalizeArxivId(match[1]));
+    const id = match[1].replace(/\.pdf$/i, "");
+    arxivIds.add(normalizeArxivId(id));
   }
 
   return { dois, arxivIds, titles };
@@ -86,13 +90,9 @@ function recordArxivId(record: LiteratureRecord): string | null {
   if (record.sourceIds.arxiv) {
     return normalizeArxivId(record.sourceIds.arxiv);
   }
-  if (record.url) {
-    return extractArxivFromUrl(record.url);
-  }
-  if (record.pdfUrl) {
-    return extractArxivFromUrl(record.pdfUrl);
-  }
-  return null;
+  return (
+    extractArxivFromUrl(record.url) ?? extractArxivFromUrl(record.pdfUrl)
+  );
 }
 
 export function isRecordInBibliography(

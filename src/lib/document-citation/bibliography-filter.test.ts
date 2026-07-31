@@ -52,4 +52,34 @@ describe("bibliography filter", () => {
     );
     expect(kept).toHaveLength(1);
   });
+
+  it("matches arxiv via pdfUrl when url is a non-arxiv DOI link", () => {
+    const ids = parseBibliographyIdentities(sampleBib);
+    expect(
+      isRecordInBibliography(
+        rec({
+          doi: "10.9999/other",
+          title: "Completely Different Title Here",
+          url: "https://doi.org/10.9999/other",
+          pdfUrl: "https://arxiv.org/pdf/2001.12345.pdf",
+        }),
+        ids,
+      ),
+    ).toBe(true);
+  });
+
+  it("matches arxiv from a pure pdf link", () => {
+    const ids = parseBibliographyIdentities(sampleBib);
+    expect(
+      isRecordInBibliography(
+        rec({
+          doi: null,
+          title: "Completely Different Title Here",
+          url: null,
+          pdfUrl: "https://arxiv.org/pdf/2001.12345v2.pdf",
+        }),
+        ids,
+      ),
+    ).toBe(true);
+  });
 });
