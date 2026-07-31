@@ -31,7 +31,9 @@ const limits = {
   // production-only chunks to coexist without brittle filename-specific cuts.
   // The 10 KB margin also avoids a false regression when deterministic
   // minifier output shifts by a few hundred bytes across supported Node builds.
-  totalJavaScript: 9_010_000,
+  // +10 KB headroom for the Experimentation settings (Visual editor / LaTeX
+  // tools gating) and the omnibar command wiring.
+  totalJavaScript: 9_020_000,
   largestCss: 400_000,
   harperWasm: 19_000_000,
   // The real worker and the independently loaded recovery module are each
