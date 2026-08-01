@@ -159,7 +159,7 @@ test("publish to GitHub creates a real repo and pushes the project", async ({ ta
 
   await tauriPage.getByText("Publish to GitHub").click();
   await tauriPage.fill('[aria-label="Repository name"]', repoName);
-  await tauriPage.getByText("Create & push").click();
+  await tauriPage.getByText("Create and push").click();
   await expect(tauriPage.getByText("Published to")).toBeVisible({ timeout: 90_000 });
 
   const me = (await (await gh("/user")).json()) as { login: string };
