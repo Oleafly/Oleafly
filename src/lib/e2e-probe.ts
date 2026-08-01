@@ -1,3 +1,17 @@
+// The e2e devtools hooks (__importFile, __agentHandoff, __chatUsageGet, ...)
+// are installed as module side effects by the modules that own them. Several
+// of those modules only load when a lazy panel or view opens, so a suite that
+// calls a hook before opening its owner would find it undefined. This module
+// is imported at boot in dev, so importing them here guarantees every hook
+// exists from startup. The whole module is behind `import.meta.env.DEV` at its
+// only call site, so none of this reaches a production build.
+import "@/features/import";
+import "@/features/citation";
+import "@/lib/native-file-dialog";
+import "@/store/chats";
+import "@/store/agent-memory";
+import "@/store/agent-handoff";
+import "@/store/agent-todos";
 import { useFilesStore } from "@/store/files";
 import {
   getEditorView,
@@ -252,9 +266,35 @@ async function readCompiledPdfProbe(): Promise<E2ePdfProbe> {
   }
 }
 
+// Stands in for a user connecting a provider in Settings so provider-backed
+// e2e flows can run against the local fake endpoint. It lives here, not in
+// ai-tools, because ai-tools only loads when the AI panel is opened; this
+// module is imported at boot in dev, so the hook is always present.
+function installAiConnectHook() {
+  (
+    window as unknown as {
+      __aiConnect?: (provider: string, host: string, model: string) => Promise<boolean>;
+    }
+  ).__aiConnect = async (provider, host, model) => {
+    const { getConfigCached } = await import("@/lib/config-cache");
+    const { setConfig } = await import("@/lib/tauri");
+    const cfg = await getConfigCached();
+    const next = {
+      ...cfg,
+      ai_provider: provider,
+      ai_keys: { ...cfg.ai_keys, [provider]: host },
+      ai_model: model,
+    };
+    await setConfig(next);
+    window.dispatchEvent(new CustomEvent("oleafly:ai-config-changed", { detail: next }));
+    return true;
+  };
+}
+
 export function installE2ePdfProbe() {
   if (!import.meta.env.DEV) return;
   const target = window as unknown as E2eProbeWindow;
+  installAiConnectHook();
   target.__e2ePdfProbe = readCompiledPdfProbe;
   target.__e2ePdfText = async () => (await readCompiledPdfProbe()).text;
   target.__e2eHasProofreadingDiagnostic = (text) =>

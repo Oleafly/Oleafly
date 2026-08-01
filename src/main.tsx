@@ -22,8 +22,13 @@ markBootStage("entry-evaluated");
 // Must run before the shell mounts and reads the registry.
 registerContributions();
 markBootStage("contributions-registered");
+// Awaited, not floating: the e2e devtools hooks used to be installed
+// synchronously as side effects of eagerly imported modules, and specs call
+// them as soon as the library paints. Resolving this before the app renders
+// keeps that guarantee. Production drops the whole branch.
 if (import.meta.env.DEV) {
-  void import("@/lib/e2e-probe").then(({ installE2ePdfProbe }) => installE2ePdfProbe());
+  const { installE2ePdfProbe } = await import("@/lib/e2e-probe");
+  installE2ePdfProbe();
 }
 
 // Log otherwise-invisible failures so they can be diagnosed from a bug report.

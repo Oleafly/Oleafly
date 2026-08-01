@@ -18,7 +18,6 @@ import {
   readIsolatedPdf,
   readProjectBytes,
   writeProjectBytes,
-  setConfig,
 } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
@@ -181,30 +180,6 @@ export function initAiPdfCaptureFlag(): void {
       }
     })
     .catch(() => {});
-}
-
-// E2E devtools hook: lets CI connect an AI provider by writing config directly,
-// standing in for a user connecting one in Settings, so provider-backed flows
-// (streaming, tool calls, chat handoff) can run against the local fake
-// OpenAI-compatible endpoint (e2e/mock-ai-server.ts). Only DEFINES the function
-// here; the IPC runs on invocation, so this is a safe module side effect.
-if (typeof window !== "undefined" && import.meta.env.DEV) {
-  (
-    window as unknown as {
-      __aiConnect?: (provider: string, host: string, model: string) => Promise<boolean>;
-    }
-  ).__aiConnect = async (provider, host, model) => {
-    const cfg = await getConfigCached();
-    const next = {
-      ...cfg,
-      ai_provider: provider,
-      ai_keys: { ...cfg.ai_keys, [provider]: host },
-      ai_model: model,
-    };
-    await setConfig(next);
-    window.dispatchEvent(new CustomEvent("oleafly:ai-config-changed", { detail: next }));
-    return true;
-  };
 }
 
 export function createOleaflyTools(opts?: {
