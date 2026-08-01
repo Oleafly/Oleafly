@@ -82,6 +82,12 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      # The tracked localization inventory must match the source it claims to
+      # describe; a mismatch means UI strings changed without regenerating
+      # docs/localization (run `pnpm localization:inventory`).
+      - name: Check localization inventory freshness
+        run: pnpm localization:self-test && pnpm localization:check
+
       # `pnpm build` runs `tsc -b` (typecheck) then `vite build` (bundle). The
       # frontend build needs no Tectonic sidecar.
       - name: Typecheck & build

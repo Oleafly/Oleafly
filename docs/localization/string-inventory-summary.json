@@ -9,23 +9,23 @@
     "developer-only",
     "channel-specific"
   ],
-  "total_occurrences": 26454,
+  "total_occurrences": 26501,
   "counts": {
     "by_classification": {
       "channel-specific": 1357,
-      "developer-only": 18647,
-      "structured-code-then-translate": 1030,
+      "developer-only": 18690,
+      "structured-code-then-translate": 1032,
       "third-party/raw-diagnostic": 1896,
-      "translate": 3483,
+      "translate": 3485,
       "user-content": 41
     },
     "by_repository": {
-      "desktop": 26454
+      "desktop": 26501
     },
     "by_surface": {
       "ai": 1104,
       "asset-metadata": 51,
-      "core": 5880,
+      "core": 5918,
       "deadlines-data": 4573,
       "desktop-shell-metadata": 1,
       "diagram": 569,
@@ -66,8 +66,8 @@
       "rust-synctex": 4,
       "rust-template_packs": 24,
       "rust-templates": 63,
-      "settings": 1177,
-      "shell": 1670,
+      "settings": 1182,
+      "shell": 1674,
       "template-metadata": 961,
       "template-starter-content": 25,
       "templates": 252,
@@ -80,17 +80,17 @@
       "json-array-string": 21,
       "json-string-field": 5594,
       "jsx-text": 943,
-      "raw-error-flow": 145,
+      "raw-error-flow": 147,
       "release-workflow-string": 62,
       "rust-string": 1690,
       "starter-document": 25,
-      "string": 15770,
+      "string": 15813,
       "template": 13,
-      "template-expression": 1172
+      "template-expression": 1174
     },
     "by_review_basis": {
       "deterministic-asset-identity-rule": 30,
-      "deterministic-code-identity-rule": 3137,
+      "deterministic-code-identity-rule": 3139,
       "deterministic-installer-code-rule": 28,
       "deterministic-protocol-rule": 238,
       "deterministic-release-automation-rule": 60,
@@ -98,8 +98,8 @@
       "deterministic-rust-protocol-rule": 189,
       "deterministic-style-token-rule": 98,
       "deterministic-template-identity-rule": 516,
-      "deterministic-visible-copy-rule": 2372,
-      "heuristic-code-rule": 10369,
+      "deterministic-visible-copy-rule": 2374,
+      "heuristic-code-rule": 10410,
       "heuristic-rust-code-rule": 417,
       "manual-accessibility-rule": 571,
       "manual-ai-protocol-boundary": 298,
@@ -109,7 +109,7 @@
       "manual-display-value-identity-rule": 45,
       "manual-error-surface-rule": 222,
       "manual-formatter-rule": 31,
-      "manual-frontend-raw-error-rule": 145,
+      "manual-frontend-raw-error-rule": 147,
       "manual-installer-metadata-rule": 3,
       "manual-model-identity-rule": 92,
       "manual-native-menu-rule": 13,
@@ -138,8 +138,8 @@
   "repositories": [
     {
       "repository": "desktop",
-      "files": 545,
-      "source_sha256": "5f4a6f681b5ee53f2d22fe22730eeebf4dfebdcfc76bcc9a19e7dd163dd9a53b"
+      "files": 548,
+      "source_sha256": "90a2b27ebea2d085717d053095d4c364c5e078e95745f229ab78499a8bb13e12"
     }
   ],
   "error_code_manifest": {
