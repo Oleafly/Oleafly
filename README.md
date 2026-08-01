@@ -4,6 +4,8 @@
 
 # Oleafly <sup><em>beta</em></sup>
 
+[Deutsch](README.de.md) | **English** | [Español](README.es.md) | [Français](README.fr.md) | [日本語](README.ja.md) | [한국어](README.ko.md) | [Português](README.pt.md) | [Русский](README.ru.md) | [中文](README.zh.md)
+
 **Write, compile, and publish research with an AI workspace you own.**
 
 Write in LaTeX, Typst, or Markdown. Compile beside your source. Keep every
