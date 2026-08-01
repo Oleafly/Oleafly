@@ -8,7 +8,6 @@ import {
   GitFork,
   History,
   Info,
-  Loader2,
   Palette,
   Plus,
   SearchX,
@@ -37,6 +36,7 @@ import {
 } from "@/components/ui/select";
 import { HomeDock } from "@/components/library/HomeDock";
 import { LeafLogo } from "@/components/layout/LeafLogo";
+import { markBootStage } from "@/lib/boot-telemetry";
 import { WindowControls } from "@/components/layout/WindowControls";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
@@ -352,9 +352,16 @@ export function Library() {
     [projects, favs, onlyFavs, filters],
   );
 
+  // Returning to the library refetches, so externally created or edited
+  // projects (and their dates) show up. The store single-flights this with
+  // App.tsx's boot call, so mounting during boot costs no extra IPC.
   useEffect(() => {
-    void refreshProjects().catch((e) => void logError("load projects", e));
+    void refreshProjects();
   }, [refreshProjects]);
+
+  useEffect(() => {
+    if (projectsLoaded) markBootStage("projects-loaded");
+  }, [projectsLoaded]);
 
   const submitFork = async () => {
     if (!forkTarget) return;
@@ -622,7 +629,16 @@ export function Library() {
             </Empty>
             ) : (
               <div className="flex min-h-[60vh] items-center justify-center">
-                <Loader2 className="size-5 animate-spin text-muted-foreground" />
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className="flex flex-col items-center gap-3"
+                >
+                  <LeafLogo className="size-8 opacity-80" />
+                  <span className="ai-shimmer text-sm text-muted-foreground">
+                    Reading your library…
+                  </span>
+                </div>
               </div>
             )
           ) : (

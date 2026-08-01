@@ -5,7 +5,7 @@ import {
   saveGithubToken,
   type GitHubUser,
 } from "@/lib/github";
-import { getConfig } from "@/lib/tauri";
+import { getConfigCached } from "@/lib/config-cache";
 import { logError } from "@/lib/log";
 
 // App-wide GitHub connection state. Per-machine single sign-on: one token,
@@ -30,7 +30,7 @@ export const useGithubStore = create<GithubState>((set) => ({
 
   refresh: async () => {
     try {
-      const cfg = await getConfig();
+      const cfg = await getConfigCached();
       if (!cfg.github_connected) {
         set({ status: "disconnected", user: null });
         return;

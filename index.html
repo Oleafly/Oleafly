@@ -1,12 +1,186 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/leaf.svg" />
     <title>Oleafly</title>
+    <script>
+      // Resolve the theme before first paint so both the app shell and the
+      // splash render in the user's palette (no dark flash for light-theme
+      // users and vice versa). Must stay dependency-free and synchronous.
+      (function () {
+        var theme = "dark";
+        try {
+          var stored = localStorage.getItem("oleafly.theme");
+          if (stored === "light" || stored === "dark") {
+            theme = stored;
+          } else if (
+            window.matchMedia &&
+            window.matchMedia("(prefers-color-scheme: light)").matches
+          ) {
+            theme = "light";
+          }
+        } catch (e) {
+          /* storage unavailable: keep dark */
+        }
+        document.documentElement.className = theme;
+      })();
+    </script>
+    <style>
+      /* Splash only: everything else lives in the bundled stylesheet. The
+         splash must paint before any JS chunk is fetched, so it is inline
+         and self-contained. React removes #oleafly-splash on mount. */
+      #oleafly-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483647;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        background: #fbfbfa;
+        color: #6b7280;
+        font-family:
+          ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+          "Helvetica Neue", sans-serif;
+      }
+      html.dark #oleafly-splash {
+        background: #09090b;
+        color: #71717a;
+      }
+      html.dark body {
+        background: #09090b;
+      }
+      body {
+        background: #fbfbfa;
+        margin: 0;
+      }
+      .oleafly-splash-logo {
+        position: relative;
+        width: 72px;
+        height: 72px;
+      }
+      .oleafly-splash-logo svg {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+      .oleafly-splash-track path {
+        fill: currentColor;
+        opacity: 0.18;
+      }
+      /* The brand fill animation: the green leaf fills from the stem up.
+         This clip-path sweep is the animation slot — refine freely without
+         touching the markup contract (track + fill layers). */
+      .oleafly-splash-fill {
+        animation: oleafly-splash-fill 1.4s ease-in-out infinite alternate;
+      }
+      @keyframes oleafly-splash-fill {
+        from {
+          clip-path: inset(88% 0 0 0);
+        }
+        to {
+          clip-path: inset(0 0 0 0);
+        }
+      }
+      .oleafly-splash-stage {
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+        /* Shimmer: a bright band sweeps across text clipped to the gradient. */
+        background: linear-gradient(
+          90deg,
+          rgba(82, 82, 91, 0.55) 0%,
+          rgba(24, 24, 27, 0.95) 50%,
+          rgba(82, 82, 91, 0.55) 100%
+        );
+        background-size: 200% 100%;
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        animation: oleafly-splash-shimmer 1.6s linear infinite;
+      }
+      html.dark .oleafly-splash-stage {
+        background: linear-gradient(
+          90deg,
+          rgba(161, 161, 170, 0.45) 0%,
+          rgba(250, 250, 250, 0.95) 50%,
+          rgba(161, 161, 170, 0.45) 100%
+        );
+        background-size: 200% 100%;
+        -webkit-background-clip: text;
+        background-clip: text;
+      }
+      @keyframes oleafly-splash-shimmer {
+        from {
+          background-position: 200% 0;
+        }
+        to {
+          background-position: -200% 0;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .oleafly-splash-fill {
+          animation: none;
+          clip-path: none;
+        }
+        .oleafly-splash-stage {
+          animation: none;
+          background: none;
+          color: inherit;
+        }
+      }
+    </style>
   </head>
   <body>
+    <div id="oleafly-splash" role="status" aria-label="Starting Oleafly">
+      <div class="oleafly-splash-logo" aria-hidden="true">
+        <svg class="oleafly-splash-track" viewBox="0 0 24 24">
+          <path d="M21 2C6 2 4 16 3 22h1.998c.666-3.333 2.333-5.166 5.002-5.5 4-.5 7-4 8-7l-1.5-1 1-1c1-1 2.004-2.5 3.5-5.5z" />
+        </svg>
+        <svg class="oleafly-splash-fill" viewBox="0 0 24 24">
+          <path d="M21 2C6 2 4 16 3 22h1.998c.666-3.333 2.333-5.166 5.002-5.5 4-.5 7-4 8-7l-1.5-1 1-1c1-1 2.004-2.5 3.5-5.5z" fill="#34B44A" />
+        </svg>
+      </div>
+      <div id="oleafly-splash-stage" class="oleafly-splash-stage">Initializing Oleafly</div>
+    </div>
+    <script>
+      // Boot-stage narration. Real boot progress (boot-telemetry.ts) advances
+      // the text the moment a stage is reached; a 1s fallback timer keeps it
+      // moving on slow starts so the splash never looks frozen. The index is
+      // monotonic: progress signals can only move the text forward.
+      (function () {
+        var stages = [
+          "Initializing Oleafly",
+          "Loading Oleafly Core",
+          "Loading Oleafly Harness",
+          "Loading Oleafly Parsers",
+        ];
+        var current = 0;
+        function apply() {
+          var el = document.getElementById("oleafly-splash-stage");
+          if (el) el.textContent = stages[current];
+        }
+        window.__oleaflySplashStage = function (index) {
+          if (typeof index !== "number" || index <= current) return;
+          current = Math.min(index, stages.length - 1);
+          apply();
+        };
+        window.__oleaflySplashTimer = setInterval(function () {
+          if (!document.getElementById("oleafly-splash")) {
+            clearInterval(window.__oleaflySplashTimer);
+            return;
+          }
+          if (current < stages.length - 1) {
+            current += 1;
+            apply();
+          }
+        }, 1000);
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

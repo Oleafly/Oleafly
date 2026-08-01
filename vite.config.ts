@@ -64,6 +64,26 @@ export default defineConfig(async () => ({
     plugins: () => [preserveWorkerExports()],
   },
   build: {
+    rollupOptions: {
+      output: {
+        manualChunks: (id: string) => {
+          // The pdf.js main library is shared by several lazy consumers
+          // (preview, import, preflight, AI tools). Without a name, rollup's
+          // shared chunk adopts the pdf.worker?worker&url facade's name,
+          // which trips the performance budget's strict one-worker gate.
+          if (/node_modules\/pdfjs-dist\/build\/pdf\.mjs/.test(id)) {
+            return "pdfjs-lib";
+          }
+          // The ?worker&url facade is a one-line URL export. Left unnamed it
+          // becomes a chunk called pdf.worker-<hash>.js, which the budget's
+          // one-real-worker gate would count as a second worker.
+          if (/pdf\.worker\.ts\?worker/.test(id)) {
+            return "pdf-worker-url";
+          }
+          return undefined;
+        },
+      },
+    },
     minify: "terser" as const,
     terserOptions: {
       ecma: 2020 as const,

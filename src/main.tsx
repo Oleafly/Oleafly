@@ -1,4 +1,5 @@
 import "@/lib/polyfills"; // must run before pdf.js and other libs load
+import { dismissBootSplash, markBootStage } from "@/lib/boot-telemetry";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
@@ -16,8 +17,11 @@ import { registerContributions } from "@/contributions";
 import { installDesktopViewportGuard } from "@/lib/desktop-viewport";
 import "@/styles/globals.css";
 
+markBootStage("entry-evaluated");
+
 // Must run before the shell mounts and reads the registry.
 registerContributions();
+markBootStage("contributions-registered");
 if (import.meta.env.DEV) {
   void import("@/lib/e2e-probe").then(({ installE2ePdfProbe }) => installE2ePdfProbe());
 }
@@ -47,6 +51,11 @@ if (isUpdateWindow) {
   for (const el of [document.documentElement, document.body]) {
     el.style.background = "transparent";
   }
+}
+
+// Secondary windows never show the splash; drop it before their render.
+if (isUpdateWindow || isPreviewWindow) {
+  dismissBootSplash();
 }
 
 const root = document.getElementById("root");

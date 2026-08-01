@@ -5,7 +5,7 @@ import {
   hoverTooltip,
   type DecorationSet,
 } from "@codemirror/view";
-import { renderMathExpression } from "@oleafly/editor";
+import { renderMathExpression } from "@oleafly/editor/math-render";
 import { auxNumberFor, type LabelNumber } from "@/lib/aux-numbers";
 import { currentSourceProjectIntelligence } from "@/lib/project-intelligence/current";
 import {

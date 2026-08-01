@@ -1,12 +1,18 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import {
   NewProjectDialog as NewProjectDialogCore,
   type TemplatesHost,
   type TemplatesKit,
 } from "@oleafly/templates";
-import { generateTemplateAvailable } from "@/features/template-generate";
-import { TemplateGenerateModal } from "@/components/library/TemplateGenerateModal";
+
+// Lazy: the template-generation path drags the AI SDK along, which must not
+// ride in the entry chunk. The availability probe loads the module on open.
+const TemplateGenerateModal = lazy(() =>
+  import("@/components/library/TemplateGenerateModal").then((m) => ({
+    default: m.TemplateGenerateModal,
+  })),
+);
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -92,7 +98,11 @@ export function NewProjectDialog(props: {
   const [canGenerate, setCanGenerate] = useState(false);
   const [generateOpen, setGenerateOpen] = useState(false);
   useEffect(() => {
-    if (props.open) void generateTemplateAvailable().then(setCanGenerate);
+    if (props.open) {
+      void import("@/features/template-generate").then((m) =>
+        m.generateTemplateAvailable().then(setCanGenerate),
+      );
+    }
   }, [props.open]);
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
   const setSettingsInitialSection = useSettingsStore((s) => s.setSettingsInitialSection);
@@ -114,11 +124,13 @@ export function NewProjectDialog(props: {
         colorOptions={BOOK_COLOR_OPTIONS}
         defaultColor={DEFAULT_BOOK_COLOR}
       />
-      <TemplateGenerateModal
-        open={generateOpen}
-        onClose={() => setGenerateOpen(false)}
-        onSaved={() => props.onTemplatesChanged?.()}
-      />
+      <Suspense fallback={null}>
+        <TemplateGenerateModal
+          open={generateOpen}
+          onClose={() => setGenerateOpen(false)}
+          onSaved={() => props.onTemplatesChanged?.()}
+        />
+      </Suspense>
     </>
   );
 }

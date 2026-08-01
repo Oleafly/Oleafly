@@ -4,14 +4,32 @@ import { registerRailTab } from "@oleafly/registry";
 import { useGitStatusStore } from "@/store/git-status";
 import { useMcpActivityStore } from "@/store/mcp-activity";
 import { FilesPanel, ProjectSearch } from "@/components/layout/Sidebar";
-import { SourceControl } from "@/components/layout/SourceControl";
-import { PreflightPanel } from "@/components/preflight/PreflightPanel";
-import { McpActivityPanel } from "@/components/layout/McpActivityPanel";
-import { ChatPanel } from "@/components/ai/ChatPanel";
 
+// Rail panels stay lazy so their dependencies (AI SDK, git views, pdf.js
+// consumers) load on first open instead of riding in the entry chunk.
 const ReferencesPanel = lazy(() =>
   import("@/components/layout/ReferencesPanel").then((module) => ({
     default: module.ReferencesPanel,
+  })),
+);
+const SourceControl = lazy(() =>
+  import("@/components/layout/SourceControl").then((module) => ({
+    default: module.SourceControl,
+  })),
+);
+const PreflightPanel = lazy(() =>
+  import("@/components/preflight/PreflightPanel").then((module) => ({
+    default: module.PreflightPanel,
+  })),
+);
+const McpActivityPanel = lazy(() =>
+  import("@/components/layout/McpActivityPanel").then((module) => ({
+    default: module.McpActivityPanel,
+  })),
+);
+const ChatPanel = lazy(() =>
+  import("@/components/ai/ChatPanel").then((module) => ({
+    default: module.ChatPanel,
   })),
 );
 
