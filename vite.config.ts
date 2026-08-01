@@ -20,8 +20,11 @@ const preserveWorkerExports = (): Plugin => ({
   options: (options) => ({ ...options, preserveEntrySignatures: "strict" }),
 });
 
-const rejectProductionDevHooks = (): Plugin => ({
+export const rejectProductionDevHooks = (): Plugin => ({
   name: "reject-production-dev-hooks",
+  // E2E-only HTML fixtures intentionally use inline styles in the dev server.
+  // Tauri's nonce rewrite applies to bundled assets, so audit build output only.
+  apply: "build",
   transformIndexHtml: {
     order: "post",
     handler(html) {
