@@ -27,18 +27,20 @@ your computer.
 </div>
 
 <div align="center">
-
-<table>
-  <tr>
-    <td width="50%"><img src="media/hero-editor.png" alt="Oleafly with a LaTeX editor and compiled PDF open side by side (dark theme)" /></td>
-    <td width="50%"><img src="media/hero-editor-light.png" alt="Oleafly with a LaTeX editor and compiled PDF open side by side (light theme)" /></td>
-  </tr>
-</table>
-
+  <img src="media/hero-editor-light.png" alt="Oleafly with a LaTeX editor and compiled PDF open side by side (light theme)" width="92%" />
+  <br /><br />
+  <img src="media/hero-editor.png" alt="Oleafly with a LaTeX editor and compiled PDF open side by side (dark theme)" width="92%" />
 </div>
 
 <div align="center">
-  <img src="media/library-shelf.png" alt="The Oleafly library showing projects as coloured books with engine, kind, and last-modified labels" width="88%" />
+
+<table>
+  <tr>
+    <td width="50%"><img src="media/library-shelf.png" alt="The Oleafly library showing projects as coloured books with engine, kind, and last-modified labels (dark theme)" /></td>
+    <td width="50%"><img src="media/library-shelf-light.png" alt="The Oleafly library showing projects as coloured books with engine, kind, and last-modified labels (light theme)" /></td>
+  </tr>
+</table>
+
 </div>
 
 <!--
@@ -103,14 +105,28 @@ the project and keeps them addressable by `file:line`, so navigation and
 renames work across a multi-file document rather than one buffer at a time.
 
 <div align="center">
-  <img src="media/project-structure.png" alt="Oleafly's source tree beside the project map, listing sections and labels with their file and line" width="88%" />
+
+<table>
+  <tr>
+    <td width="50%"><img src="media/project-structure.png" alt="Oleafly's source tree beside the project map, listing sections and labels with their file and line (dark theme)" /></td>
+    <td width="50%"><img src="media/project-structure-light.png" alt="Oleafly's source tree beside the project map, listing sections and labels with their file and line (light theme)" /></td>
+  </tr>
+</table>
+
 </div>
 
 The citation picker reads the project's `.bib` files directly, so keys come
 with their author, year, title, and the line they were defined on.
 
 <div align="center">
-  <img src="media/citation-picker.png" alt="Choosing a citation key from parsed BibTeX entries, each showing authors, year, and source line" width="88%" />
+
+<table>
+  <tr>
+    <td width="50%"><img src="media/citation-picker.png" alt="Choosing a citation key from parsed BibTeX entries, each showing authors, year, and source line (dark theme)" /></td>
+    <td width="50%"><img src="media/citation-picker-light.png" alt="Choosing a citation key from parsed BibTeX entries, each showing authors, year, and source line (light theme)" /></td>
+  </tr>
+</table>
+
 </div>
 
 A LaTeX-aware word count ignores markup and counts only what a reader sees.
@@ -185,10 +201,6 @@ history in the app.
   <img src="media/git-diff.png" alt="A side-by-side source diff in Oleafly's Git history" width="84%" />
 </div>
 
-<div align="center">
-  <img src="media/source-control.png" alt="The Source Control panel listing a changed file with commit, push, pull, and Publish to GitHub" width="88%" />
-</div>
-
 ### Start from something useful
 
 The project gallery includes editable starters for papers, theses, reports,
@@ -220,28 +232,34 @@ Optional template packs and fonts download only when you choose them.
 - Browse conference deadlines and use optional literature lookups without
   turning the project folder into a cloud document.
 
-The tools hub collects the work that usually happens in a browser tab: PDF to
-LaTeX, an equation preview, a BibTeX validator, a table builder, citation
-search, an institution directory, and conference deadlines.
-
-<div align="center">
-  <img src="media/oleafly-tools.png" alt="The Oleafly Tools hub listing PDF to LaTeX, LaTeX preview, BibTeX validator, table generator, citation search, lab search, and conference deadlines" width="88%" />
-</div>
-
 Citation search queries arXiv, Semantic Scholar, Crossref, PubMed, OpenAlex,
 and Google Scholar together, combines duplicate records, and saves or exports
 what you keep as BibTeX. It can also scan the open document paragraph by
 paragraph and suggest citations for claims that do not have one yet.
 
 <div align="center">
-  <img src="media/literature-search.png" alt="Citation search returning deduplicated results from several indexes, each with a save and copy-BibTeX action" width="88%" />
+
+<table>
+  <tr>
+    <td width="50%"><img src="media/literature-search.png" alt="Citation search returning deduplicated results from several indexes, each with a save and copy-BibTeX action (dark theme)" /></td>
+    <td width="50%"><img src="media/literature-search-light.png" alt="Citation search returning deduplicated results from several indexes, each with a save and copy-BibTeX action (light theme)" /></td>
+  </tr>
+</table>
+
 </div>
 
 The diagram composer draws on a canvas and compiles the TikZ beside it, so the
 figure you insert is real vector source you can keep editing.
 
 <div align="center">
-  <img src="media/diagram-composer.png" alt="The diagram composer with a transformer architecture on the canvas and its compiled TikZ preview alongside" width="88%" />
+
+<table>
+  <tr>
+    <td width="50%"><img src="media/diagram-composer.png" alt="The diagram composer with a transformer architecture on the canvas and its compiled TikZ preview alongside (dark theme)" /></td>
+    <td width="50%"><img src="media/diagram-composer-light.png" alt="The diagram composer with a transformer architecture on the canvas and its compiled TikZ preview alongside (light theme)" /></td>
+  </tr>
+</table>
+
 </div>
 
 ### Check the document before someone else does
@@ -292,7 +310,14 @@ You choose the model:
 - Leave AI unconfigured and use the rest of the app normally.
 
 <div align="center">
-  <img src="media/ai-assistant-start.png" alt="The assistant panel offering starting points such as finding papers to cite, writing a literature review, and fixing source errors" width="88%" />
+
+<table>
+  <tr>
+    <td width="50%"><img src="media/ai-assistant-start.png" alt="The assistant panel offering starting points such as finding papers to cite, writing a literature review, and fixing source errors (dark theme)" /></td>
+    <td width="50%"><img src="media/ai-assistant-start-light.png" alt="The assistant panel offering starting points such as finding papers to cite, writing a literature review, and fixing source errors (light theme)" /></td>
+  </tr>
+</table>
+
 </div>
 
 File changes come with a diff and Approve or Reject controls. “Always allow”
