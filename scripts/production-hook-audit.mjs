@@ -17,3 +17,27 @@ export function assertNoProductionDevHookTokens(artifacts) {
     );
   }
 }
+
+/**
+ * Tauri adds a nonce to style-src when a production HTML asset contains an
+ * inline <style> element. CSP then ignores 'unsafe-inline', which prevents
+ * style-mod/CodeMirror from mounting its un-nonced runtime stylesheet.
+ */
+export function findInlineStyleElementCount(source) {
+  const markup = source.replace(/<!--[\s\S]*?-->/g, "");
+  return markup.match(/<style(?:\s[^>]*)?>/gi)?.length ?? 0;
+}
+
+export function assertNoTauriStyleNonceTriggers(artifacts) {
+  const findings = [];
+  for (const [fileName, source] of artifacts) {
+    if (!fileName.endsWith(".html")) continue;
+    const count = findInlineStyleElementCount(source);
+    if (count > 0) findings.push(`${fileName}: ${count} inline <style> element(s)`);
+  }
+  if (findings.length > 0) {
+    throw new Error(
+      `Production HTML would make Tauri nonce style-src and block CodeMirror runtime styles:\n${findings.join("\n")}`,
+    );
+  }
+}

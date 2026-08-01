@@ -156,7 +156,11 @@ export function CodeMirrorEditor({
   const { vim: vimEnabled, spellcheck, harper, editorTheme: editorThemeId } = host.useSettings();
   const lintDeps = host.useLintRefreshDeps();
 
-  useEffect(() => {
+  // Construct during the layout phase. The corrective measurement effect
+  // below is also a layout effect and must see a live EditorView on the first
+  // active mount; constructing in a passive effect made that measurement run
+  // too early and get skipped permanently.
+  useLayoutEffect(() => {
     if (!hostRef.current) return;
     const initialPath = host.getActivePath();
     const initialContent = initialPath ? host.getContent(initialPath) : "";

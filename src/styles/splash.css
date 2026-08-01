@@ -1,0 +1,119 @@
+/* Splash only: everything else lives in the application stylesheet. This is
+ * a blocking stylesheet link in index.html, so it still paints before any JS
+ * chunk is fetched. It must remain external: an inline <style> makes Tauri add
+ * a style-src nonce, which blocks CodeMirror's dynamically mounted styles. */
+#oleafly-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: #fbfbfa;
+  color: #6b7280;
+  font-family:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", sans-serif;
+}
+
+html.dark #oleafly-splash {
+  background: #09090b;
+  color: #71717a;
+}
+
+html.dark body {
+  background: #09090b;
+}
+
+body {
+  margin: 0;
+  background: #fbfbfa;
+}
+
+.oleafly-splash-logo {
+  position: relative;
+  width: 72px;
+  height: 72px;
+}
+
+.oleafly-splash-logo svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.oleafly-splash-track path {
+  fill: currentColor;
+  opacity: 0.18;
+}
+
+/* The brand fill animation: the green leaf fills from the stem up. */
+.oleafly-splash-fill {
+  animation: oleafly-splash-fill 1.4s ease-in-out infinite alternate;
+}
+
+@keyframes oleafly-splash-fill {
+  from {
+    clip-path: inset(88% 0 0 0);
+  }
+
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.oleafly-splash-stage {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  /* Shimmer: a bright band sweeps across text clipped to the gradient. */
+  background: linear-gradient(
+    90deg,
+    rgba(82, 82, 91, 0.55) 0%,
+    rgba(24, 24, 27, 0.95) 50%,
+    rgba(82, 82, 91, 0.55) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: oleafly-splash-shimmer 1.6s linear infinite;
+}
+
+html.dark .oleafly-splash-stage {
+  background: linear-gradient(
+    90deg,
+    rgba(161, 161, 170, 0.45) 0%,
+    rgba(250, 250, 250, 0.95) 50%,
+    rgba(161, 161, 170, 0.45) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+@keyframes oleafly-splash-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .oleafly-splash-fill {
+    animation: none;
+    clip-path: none;
+  }
+
+  .oleafly-splash-stage {
+    background: none;
+    color: inherit;
+    animation: none;
+  }
+}

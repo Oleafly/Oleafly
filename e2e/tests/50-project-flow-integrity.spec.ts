@@ -3,6 +3,7 @@ import {
   caretIn,
   clickToolbarControl,
   createBlankProject,
+  createProjectFromTemplate,
   expectDesktopShellAnchored,
   fillCommandPalette,
   openProject,
@@ -11,10 +12,86 @@ import {
   replaceEditorSource,
   selectWord,
   setEditorCaretAfter,
+  type Page,
   waitEditorContains,
 } from "../helpers";
 
 const RUN = Date.now().toString(36);
+
+interface EditorPaintProbe {
+  sourceMatchesStore: boolean;
+  sourceLength: number;
+  visibleNonblankLines: number;
+  unobscuredTextSamples: number;
+  foldMarkerCount: number;
+  largestFoldMarkerWidth: number;
+  largestFoldMarkerHeight: number;
+}
+
+async function editorPaintProbe(page: Page): Promise<EditorPaintProbe> {
+  return await page.evaluate<EditorPaintProbe>(
+    `Promise.all([
+      import("/src/components/editor/cm/controller.ts"),
+      import("/src/store/files.ts"),
+    ]).then(([controller, filesModule]) => {
+      const view = controller.getEditorView();
+      if (!view) throw new Error("CodeMirror is unavailable");
+      const files = filesModule.useFilesStore.getState();
+      const source = view.state.doc.toString();
+      const storeSource = files.activePath
+        ? files.files[files.activePath]?.content ?? ""
+        : "";
+      const scroller = document.querySelector(".cm-scroller");
+      if (!(scroller instanceof HTMLElement)) {
+        throw new Error("CodeMirror scroller is unavailable");
+      }
+      const viewport = scroller.getBoundingClientRect();
+      let visibleNonblankLines = 0;
+      let unobscuredTextSamples = 0;
+      for (const line of document.querySelectorAll(".cm-line")) {
+        if (!(line instanceof HTMLElement) || !(line.textContent || "").trim()) continue;
+        const rect = line.getBoundingClientRect();
+        const style = getComputedStyle(line);
+        const visible =
+          rect.width > 0 &&
+          rect.height > 0 &&
+          rect.bottom > viewport.top &&
+          rect.top < viewport.bottom &&
+          style.display !== "none" &&
+          style.visibility !== "hidden" &&
+          Number.parseFloat(style.opacity || "1") > 0;
+        if (!visible) continue;
+        visibleNonblankLines++;
+
+        const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
+        const textNode = walker.nextNode();
+        if (!textNode) continue;
+        const range = document.createRange();
+        range.selectNodeContents(textNode);
+        const textRect = range.getBoundingClientRect();
+        const x = Math.min(textRect.right - 1, textRect.left + 2);
+        const y = textRect.top + Math.min(2, textRect.height / 2);
+        const top = document.elementFromPoint(x, y);
+        if (top === line || (top instanceof Node && line.contains(top))) {
+          unobscuredTextSamples++;
+        }
+      }
+
+      const markers = Array.from(
+        document.querySelectorAll(".cm-fold-marker svg"),
+      ).map((marker) => marker.getBoundingClientRect());
+      return {
+        sourceMatchesStore: source === storeSource,
+        sourceLength: source.length,
+        visibleNonblankLines,
+        unobscuredTextSamples,
+        foldMarkerCount: markers.length,
+        largestFoldMarkerWidth: Math.max(0, ...markers.map((rect) => rect.width)),
+        largestFoldMarkerHeight: Math.max(0, ...markers.map((rect) => rect.height)),
+      };
+    })`,
+  );
+}
 
 test("local LaTeX command completion survives project-intelligence refresh", async ({
   tauriPage,
@@ -99,6 +176,60 @@ test("reopening a project in persisted Visual mode keeps the workspace chrome an
   expect(shell.toolbarBottom).toBeGreaterThan(shell.toolbarTop);
   expect(shell.panelTop).toBeGreaterThanOrEqual(shell.toolbarBottom);
   await expectDesktopShellAnchored(tauriPage);
+});
+
+test("a persisted Visual document paints source on its first forced-source mount", async ({
+  tauriPage,
+}) => {
+  test.setTimeout(240_000);
+  const projectName = `E2E First Source Paint ${RUN}`;
+  await createProjectFromTemplate(tauriPage, "resume", projectName);
+
+  await tauriPage.click('[aria-label="Switch to WYSIWYG view"]');
+  await expect(tauriPage.locator(".ProseMirror")).toBeVisible({ timeout: 20_000 });
+  await tauriPage.click('[aria-label="Home"]');
+  await expect(tauriPage.getByTestId("library")).toBeVisible({ timeout: 20_000 });
+
+  try {
+    // Reproduce the v0.3.1 migration path: the project remembers Visual mode,
+    // while the experiment is now disabled and Source must mount active on
+    // its very first frame.
+    await tauriPage.evaluate(
+      `import("/src/store/settings.ts").then(({ useSettingsStore }) =>
+        useSettingsStore.getState().setVisualEditor(false)
+      )`,
+    );
+    await openProject(tauriPage, projectName);
+    await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+
+    await expect
+      .poll(async () => {
+        const paint = await editorPaintProbe(tauriPage);
+        return (
+          paint.sourceMatchesStore &&
+          paint.sourceLength > 100 &&
+          paint.visibleNonblankLines > 0 &&
+          paint.unobscuredTextSamples > 0 &&
+          paint.foldMarkerCount > 0 &&
+          paint.largestFoldMarkerWidth <= 16 &&
+          paint.largestFoldMarkerHeight <= 16
+        );
+      }, { timeout: 20_000 })
+      .toBe(true);
+    const paint = await editorPaintProbe(tauriPage);
+    expect(paint.sourceLength).toBeGreaterThan(100);
+    expect(paint.visibleNonblankLines).toBeGreaterThan(0);
+    expect(paint.unobscuredTextSamples).toBeGreaterThan(0);
+    expect(paint.foldMarkerCount).toBeGreaterThan(0);
+    expect(paint.largestFoldMarkerWidth).toBeLessThanOrEqual(16);
+    expect(paint.largestFoldMarkerHeight).toBeLessThanOrEqual(16);
+  } finally {
+    await tauriPage.evaluate(
+      `import("/src/store/settings.ts").then(({ useSettingsStore }) =>
+        useSettingsStore.getState().setVisualEditor(true)
+      )`,
+    );
+  }
 });
 
 test("toolbar edits flush on immediate close, survive reopen, and compile", async ({

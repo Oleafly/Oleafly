@@ -52,6 +52,12 @@ export function foldMarkerDOM(open: boolean): HTMLElement {
 
   const svg = document.createElementNS(SVG_NS, "svg");
   svg.setAttribute("viewBox", "0 0 24 24");
+  // Give the marker an intrinsic size as well as the matching theme rule
+  // below. If CodeMirror's runtime stylesheet is delayed or rejected, an
+  // unsized inline SVG otherwise falls back to 300x150 and paints over the
+  // document until the source looks completely blank.
+  svg.setAttribute("width", "12");
+  svg.setAttribute("height", "12");
   svg.setAttribute("fill", "none");
   svg.setAttribute("stroke", "currentColor");
   svg.setAttribute("stroke-width", "2.5");

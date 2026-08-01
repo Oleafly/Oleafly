@@ -1,6 +1,9 @@
 import { readFile, readdir, stat } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { assertNoProductionDevHookTokens } from "./production-hook-audit.mjs";
+import {
+  assertNoProductionDevHookTokens,
+  assertNoTauriStyleNonceTriggers,
+} from "./production-hook-audit.mjs";
 
 const root = new URL("../dist/assets/", import.meta.url);
 const names = await readdir(root);
@@ -92,10 +95,22 @@ if (largestJavaScript > limits.largestJavaScript) {
 const indexHtml = productionTextArtifacts.find(([name]) => name === "index.html")?.[1] ?? "";
 const entrySrc = indexHtml.match(/<script[^>]+src="\/assets\/([^"]+\.js)"/)?.[1];
 const entryAsset = entrySrc ? assets.find((asset) => asset.name === entrySrc) : undefined;
+const hasExternalStylesheet = /<link[^>]+rel="stylesheet"[^>]+href="\/assets\/[^"]+\.css"/i.test(
+  indexHtml,
+);
+const hasSplashStyles = productionTextArtifacts.some(
+  ([name, source]) => name.endsWith(".css") && source.includes("#oleafly-splash"),
+);
 if (!entryAsset) {
   failures.push("entry JavaScript chunk not found in dist/index.html");
 } else if (entryAsset.bytes > limits.entryJavaScript) {
   failures.push(`entry JavaScript is ${entryAsset.bytes} bytes`);
+}
+if (!hasExternalStylesheet) {
+  failures.push("dist/index.html has no external production stylesheet");
+}
+if (!hasSplashStyles) {
+  failures.push("production CSS does not contain the boot splash styles");
 }
 if (totalJavaScript > limits.totalJavaScript) {
   failures.push(`total JavaScript is ${totalJavaScript} bytes`);
@@ -127,6 +142,7 @@ if (assets.some((asset) => asset.name.startsWith("binaryInlined-"))) {
 }
 try {
   assertNoProductionDevHookTokens(productionTextArtifacts);
+  assertNoTauriStyleNonceTriggers(productionTextArtifacts);
 } catch (error) {
   failures.push(error instanceof Error ? error.message : String(error));
 }
