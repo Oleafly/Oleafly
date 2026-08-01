@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="media/logo/png/oleafly-tile-gradient-256.png" alt="Oleafly logo" width="112" height="112" />
+<img src="https://assets.oleafly.com/brand/logo/png/oleafly-tile-gradient-256.png" alt="Oleafly logo" width="112" height="112" />
 
 # Oleafly <sup><em>beta</em></sup>
 
@@ -27,26 +27,26 @@ your computer.
 </div>
 
 <div align="center">
-  <img src="media/hero-editor-light.png" alt="Oleafly with a LaTeX editor and compiled PDF open side by side (light theme)" width="92%" />
+  <img src="https://assets.oleafly.com/images/screenshots/desktop/hero-editor-light.png" alt="Oleafly with a LaTeX editor and compiled PDF open side by side (light theme)" width="92%" />
   <br /><br />
-  <img src="media/hero-editor.png" alt="Oleafly with a LaTeX editor and compiled PDF open side by side (dark theme)" width="92%" />
+  <img src="https://assets.oleafly.com/images/screenshots/desktop/hero-editor.png" alt="Oleafly with a LaTeX editor and compiled PDF open side by side (dark theme)" width="92%" />
 </div>
 
 <div align="center">
 
 <table>
   <tr>
-    <td width="50%"><img src="media/library-shelf.png" alt="The Oleafly library showing projects as coloured books with engine, kind, and last-modified labels (dark theme)" /></td>
-    <td width="50%"><img src="media/library-shelf-light.png" alt="The Oleafly library showing projects as coloured books with engine, kind, and last-modified labels (light theme)" /></td>
+    <td width="50%"><img src="https://assets.oleafly.com/images/screenshots/desktop/library-shelf.png" alt="The Oleafly library showing projects as coloured books with engine, kind, and last-modified labels (dark theme)" /></td>
+    <td width="50%"><img src="https://assets.oleafly.com/images/screenshots/desktop/library-shelf-light.png" alt="The Oleafly library showing projects as coloured books with engine, kind, and last-modified labels (light theme)" /></td>
   </tr>
 </table>
 
 </div>
 
 <!--
-Recording placeholder: hero-editor.png is the cover until a 45–60 second,
-compressed workspace walkthrough is ready. Keep the same framing and replace
-the source above with media/workspace-tour.webp.
+Recording placeholder: the stacked hero stands in until a 45–60 second
+workspace walkthrough is ready. Keep the same framing and replace the sources
+above with https://assets.oleafly.com/videos/workspace-tour.webp.
 -->
 
 > [!NOTE]
@@ -108,8 +108,8 @@ renames work across a multi-file document rather than one buffer at a time.
 
 <table>
   <tr>
-    <td width="50%"><img src="media/project-structure.png" alt="Oleafly's source tree beside the project map, listing sections and labels with their file and line (dark theme)" /></td>
-    <td width="50%"><img src="media/project-structure-light.png" alt="Oleafly's source tree beside the project map, listing sections and labels with their file and line (light theme)" /></td>
+    <td width="50%"><img src="https://assets.oleafly.com/images/screenshots/desktop/project-structure.png" alt="Oleafly's source tree beside the project map, listing sections and labels with their file and line (dark theme)" /></td>
+    <td width="50%"><img src="https://assets.oleafly.com/images/screenshots/desktop/project-structure-light.png" alt="Oleafly's source tree beside the project map, listing sections and labels with their file and line (light theme)" /></td>
   </tr>
 </table>
 
@@ -122,8 +122,8 @@ with their author, year, title, and the line they were defined on.
 
 <table>
   <tr>
-    <td width="50%"><img src="media/citation-picker.png" alt="Choosing a citation key from parsed BibTeX entries, each showing authors, year, and source line (dark theme)" /></td>
-    <td width="50%"><img src="media/citation-picker-light.png" alt="Choosing a citation key from parsed BibTeX entries, each showing authors, year, and source line (light theme)" /></td>
+    <td width="50%"><img src="https://assets.oleafly.com/images/screenshots/desktop/citation-picker.png" alt="Choosing a citation key from parsed BibTeX entries, each showing authors, year, and source line (dark theme)" /></td>
+    <td width="50%"><img src="https://assets.oleafly.com/images/screenshots/desktop/citation-picker-light.png" alt="Choosing a citation key from parsed BibTeX entries, each showing authors, year, and source line (light theme)" /></td>
   </tr>
 </table>
 
@@ -135,8 +135,8 @@ A LaTeX-aware word count ignores markup and counts only what a reader sees.
 
 <table>
   <tr>
-    <td width="50%"><img src="media/word-count.png" alt="The word count popover reporting words, characters, and lines for the open document (dark theme)" /></td>
-    <td width="50%"><img src="media/word-count-light.png" alt="The word count popover reporting words, characters, and lines for the open document (light theme)" /></td>
+    <td width="50%"><img src="https://assets.oleafly.com/images/screenshots/desktop/word-count.png" alt="The word count popover reporting words, characters, and lines for the open document (dark theme)" /></td>
+    <td width="50%"><img src="https://assets.oleafly.com/images/screenshots/desktop/word-count-light.png" alt="The word count popover reporting words, characters, and lines for the open document (light theme)" /></td>
   </tr>
 </table>
 
@@ -159,15 +159,15 @@ A LaTeX-aware word count ignores markup and counts only what a reader sees.
 
 <table>
   <tr>
-    <td width="50%"><img src="media/settings-latex-engine.png" alt="The LaTeX Engine settings page showing the bundled engines and their options (dark theme)" /></td>
-    <td width="50%"><img src="media/settings-latex-engine-light.png" alt="The LaTeX Engine settings page showing the bundled engines and their options (light theme)" /></td>
+    <td width="50%"><img src="https://assets.oleafly.com/images/screenshots/desktop/settings-latex-engine.png" alt="The LaTeX Engine settings page showing the bundled engines and their options (dark theme)" /></td>
+    <td width="50%"><img src="https://assets.oleafly.com/images/screenshots/desktop/settings-latex-engine-light.png" alt="The LaTeX Engine settings page showing the bundled engines and their options (light theme)" /></td>
   </tr>
 </table>
 
 </div>
 
 <div align="center">
-  <img src="media/pdf-figures.png" alt="A compiled page showing plots, a colour-mapped error surface, and a results table beside the LaTeX source" width="88%" />
+  <img src="https://assets.oleafly.com/images/screenshots/desktop/pdf-figures.png" alt="A compiled page showing plots, a colour-mapped error surface, and a results table beside the LaTeX source" width="88%" />
 </div>
 
 Zoom out and the whole document is on screen at once, which is usually the
@@ -177,8 +177,8 @@ fastest way to check that floats, figures, and tables landed where you meant.
 
 <table>
   <tr>
-    <td width="50%"><img src="media/pdf-preview-spread.png" alt="A three-page document laid out in the preview with every figure and table visible (dark theme)" /></td>
-    <td width="50%"><img src="media/pdf-preview-spread-light.png" alt="A three-page document laid out in the preview with every figure and table visible (light theme)" /></td>
+    <td width="50%"><img src="https://assets.oleafly.com/images/screenshots/desktop/pdf-preview-spread.png" alt="A three-page document laid out in the preview with every figure and table visible (dark theme)" /></td>
+    <td width="50%"><img src="https://assets.oleafly.com/images/screenshots/desktop/pdf-preview-spread-light.png" alt="A three-page document laid out in the preview with every figure and table visible (light theme)" /></td>
   </tr>
 </table>
 
@@ -198,7 +198,7 @@ history in the app.
   document format to unpack.
 
 <div align="center">
-  <img src="media/git-diff.png" alt="A side-by-side source diff in Oleafly's Git history" width="84%" />
+  <img src="https://assets.oleafly.com/images/screenshots/desktop/git-diff.png" alt="A side-by-side source diff in Oleafly's Git history" width="84%" />
 </div>
 
 ### Start from something useful
@@ -212,8 +212,8 @@ Optional template packs and fonts download only when you choose them.
 
 <table>
   <tr>
-    <td width="50%"><img src="media/project-templates.png" alt="Oleafly's searchable project template gallery with live thumbnails, category counts, and engine filters (dark theme)" /></td>
-    <td width="50%"><img src="media/project-templates-light.png" alt="Oleafly's searchable project template gallery with live thumbnails, category counts, and engine filters (light theme)" /></td>
+    <td width="50%"><img src="https://assets.oleafly.com/images/screenshots/desktop/project-templates.png" alt="Oleafly's searchable project template gallery with live thumbnails, category counts, and engine filters (dark theme)" /></td>
+    <td width="50%"><img src="https://assets.oleafly.com/images/screenshots/desktop/project-templates-light.png" alt="Oleafly's searchable project template gallery with live thumbnails, category counts, and engine filters (light theme)" /></td>
   </tr>
 </table>
 
@@ -241,8 +241,8 @@ paragraph and suggest citations for claims that do not have one yet.
 
 <table>
   <tr>
-    <td width="50%"><img src="media/literature-search.png" alt="Citation search returning deduplicated results from several indexes, each with a save and copy-BibTeX action (dark theme)" /></td>
-    <td width="50%"><img src="media/literature-search-light.png" alt="Citation search returning deduplicated results from several indexes, each with a save and copy-BibTeX action (light theme)" /></td>
+    <td width="50%"><img src="https://assets.oleafly.com/images/screenshots/desktop/literature-search.png" alt="Citation search returning deduplicated results from several indexes, each with a save and copy-BibTeX action (dark theme)" /></td>
+    <td width="50%"><img src="https://assets.oleafly.com/images/screenshots/desktop/literature-search-light.png" alt="Citation search returning deduplicated results from several indexes, each with a save and copy-BibTeX action (light theme)" /></td>
   </tr>
 </table>
 
@@ -255,8 +255,8 @@ figure you insert is real vector source you can keep editing.
 
 <table>
   <tr>
-    <td width="50%"><img src="media/diagram-composer.png" alt="The diagram composer with a transformer architecture on the canvas and its compiled TikZ preview alongside (dark theme)" /></td>
-    <td width="50%"><img src="media/diagram-composer-light.png" alt="The diagram composer with a transformer architecture on the canvas and its compiled TikZ preview alongside (light theme)" /></td>
+    <td width="50%"><img src="https://assets.oleafly.com/images/screenshots/desktop/diagram-composer.png" alt="The diagram composer with a transformer architecture on the canvas and its compiled TikZ preview alongside (dark theme)" /></td>
+    <td width="50%"><img src="https://assets.oleafly.com/images/screenshots/desktop/diagram-composer-light.png" alt="The diagram composer with a transformer architecture on the canvas and its compiled TikZ preview alongside (light theme)" /></td>
   </tr>
 </table>
 
@@ -276,8 +276,8 @@ practical submission guidance, not a formal accessibility certification.
 
 <table>
   <tr>
-    <td width="50%"><img src="media/preflight-ats.png" alt="Preflight reporting an accessibility score with specific source and compiled-output findings (dark theme)" /></td>
-    <td width="50%"><img src="media/preflight-ats-light.png" alt="Preflight reporting an accessibility score with specific source and compiled-output findings (light theme)" /></td>
+    <td width="50%"><img src="https://assets.oleafly.com/images/screenshots/desktop/preflight-ats.png" alt="Preflight reporting an accessibility score with specific source and compiled-output findings (dark theme)" /></td>
+    <td width="50%"><img src="https://assets.oleafly.com/images/screenshots/desktop/preflight-ats-light.png" alt="Preflight reporting an accessibility score with specific source and compiled-output findings (light theme)" /></td>
   </tr>
 </table>
 
@@ -290,8 +290,8 @@ used in the document, and the symbols the project defines.
 
 <table>
   <tr>
-    <td width="50%"><img src="media/references-panel.png" alt="The references panel listing bibliography entries by key and year beside the source and compiled PDF (dark theme)" /></td>
-    <td width="50%"><img src="media/references-panel-light.png" alt="The references panel listing bibliography entries by key and year beside the source and compiled PDF (light theme)" /></td>
+    <td width="50%"><img src="https://assets.oleafly.com/images/screenshots/desktop/references-panel.png" alt="The references panel listing bibliography entries by key and year beside the source and compiled PDF (dark theme)" /></td>
+    <td width="50%"><img src="https://assets.oleafly.com/images/screenshots/desktop/references-panel-light.png" alt="The references panel listing bibliography entries by key and year beside the source and compiled PDF (light theme)" /></td>
   </tr>
 </table>
 
@@ -313,8 +313,8 @@ You choose the model:
 
 <table>
   <tr>
-    <td width="50%"><img src="media/ai-assistant-start.png" alt="The assistant panel offering starting points such as finding papers to cite, writing a literature review, and fixing source errors (dark theme)" /></td>
-    <td width="50%"><img src="media/ai-assistant-start-light.png" alt="The assistant panel offering starting points such as finding papers to cite, writing a literature review, and fixing source errors (light theme)" /></td>
+    <td width="50%"><img src="https://assets.oleafly.com/images/screenshots/desktop/ai-assistant-start.png" alt="The assistant panel offering starting points such as finding papers to cite, writing a literature review, and fixing source errors (dark theme)" /></td>
+    <td width="50%"><img src="https://assets.oleafly.com/images/screenshots/desktop/ai-assistant-start-light.png" alt="The assistant panel offering starting points such as finding papers to cite, writing a literature review, and fixing source errors (light theme)" /></td>
   </tr>
 </table>
 
@@ -325,14 +325,14 @@ can approve ordinary writes for the current session while deletes still stop
 for confirmation.
 
 <div align="center">
-  <img src="media/ai-approval-diff.png" alt="An assistant file change shown as a red and green diff with Reject, Always allow, and Approve controls" width="88%" />
+  <img src="https://assets.oleafly.com/images/screenshots/desktop/ai-approval-diff.png" alt="An assistant file change shown as a red and green diff with Reject, Always allow, and Approve controls" width="88%" />
 </div>
 
 Once approved, the edit lands in the file and the document recompiles. Every
 response keeps a “Restore code to before this response” action.
 
 <div align="center">
-  <img src="media/ai-chat-applied.png" alt="An approved assistant edit applied to the document and reflected in the recompiled PDF" width="88%" />
+  <img src="https://assets.oleafly.com/images/screenshots/desktop/ai-chat-applied.png" alt="An approved assistant edit applied to the document and reflected in the recompiled PDF" width="88%" />
 </div>
 
 Providers are configured in Settings. Keys stay on the machine, and a local
@@ -342,8 +342,8 @@ Ollama model works with no key at all.
 
 <table>
   <tr>
-    <td width="50%"><img src="media/settings-ai.png" alt="The AI Assistant settings page with several providers connected and a local Ollama model selected (dark theme)" /></td>
-    <td width="50%"><img src="media/settings-ai-light.png" alt="The AI Assistant settings page with several providers connected and a local Ollama model selected (light theme)" /></td>
+    <td width="50%"><img src="https://assets.oleafly.com/images/screenshots/desktop/settings-ai.png" alt="The AI Assistant settings page with several providers connected and a local Ollama model selected (dark theme)" /></td>
+    <td width="50%"><img src="https://assets.oleafly.com/images/screenshots/desktop/settings-ai-light.png" alt="The AI Assistant settings page with several providers connected and a local Ollama model selected (light theme)" /></td>
   </tr>
 </table>
 
@@ -358,8 +358,8 @@ confirming deletes, or trust the client's own approval gate.
 
 <table>
   <tr>
-    <td width="50%"><img src="media/settings-mcp.png" alt="MCP settings showing the local server, its client instructions, and the available approval policies (dark theme)" /></td>
-    <td width="50%"><img src="media/settings-mcp-light.png" alt="MCP settings showing the local server, its client instructions, and the available approval policies (light theme)" /></td>
+    <td width="50%"><img src="https://assets.oleafly.com/images/screenshots/desktop/settings-mcp.png" alt="MCP settings showing the local server, its client instructions, and the available approval policies (dark theme)" /></td>
+    <td width="50%"><img src="https://assets.oleafly.com/images/screenshots/desktop/settings-mcp-light.png" alt="MCP settings showing the local server, its client instructions, and the available approval policies (light theme)" /></td>
   </tr>
 </table>
 
@@ -375,8 +375,8 @@ documents, and typing `/` turns it into a command palette.
 
 <table>
   <tr>
-    <td width="50%"><img src="media/search-omnibar.png" alt="The omnibar listing commands and recently updated projects (dark theme)" /></td>
-    <td width="50%"><img src="media/search-omnibar-light.png" alt="The omnibar listing commands and recently updated projects (light theme)" /></td>
+    <td width="50%"><img src="https://assets.oleafly.com/images/screenshots/desktop/search-omnibar.png" alt="The omnibar listing commands and recently updated projects (dark theme)" /></td>
+    <td width="50%"><img src="https://assets.oleafly.com/images/screenshots/desktop/search-omnibar-light.png" alt="The omnibar listing commands and recently updated projects (light theme)" /></td>
   </tr>
 </table>
 
