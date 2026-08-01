@@ -5,7 +5,10 @@ Used by the README and the docs site at [oleafly.com](https://oleafly.com)
 it up on the next push.
 
 Captures are taken from the running desktop app at retina resolution, window
-only, on the dark theme, then downscaled to 2000px wide. The assistant
+only, then downscaled to 2000px wide. Where a screen exists in both themes the
+light capture is named `<name>-light.png` and the README shows the pair side by
+side, dark on the left. Screens with no `-light.png` are shown single-column,
+so adding one later is enough to turn that block into a pair. The assistant
 captures are a real run against GLM-5.2; the reasoning, tool calls, and
 summary in them are the model's own. The demo library is seeded with
 synthetic research projects; every number and figure in those documents is
@@ -48,12 +51,18 @@ quick to load.
 | `settings-mcp.png` | MCP server settings and the three approval policies |
 | `search-omnibar.png` | Omnibar over projects and commands |
 
+## Light-theme pairs
+
+`hero-editor`, `word-count`, `settings-latex-engine`, `pdf-preview-spread`,
+`project-templates`, `preflight-ats`, `references-panel`, `settings-ai`,
+`settings-mcp`, `search-omnibar` each have a `-light.png` counterpart and
+render as a two-column pair.
+
 ## Available but not currently placed
 
-`citation-search.png`, `keyboard-shortcuts.png`, `settings-latex-engine.png`,
-`ai-fix.gif`, `synctex.gif`, `github-push.gif`, `resume-tailor.gif`,
-`hero-editor.gif`, `hero-editor-light.png`, `inline-ai-edit.png`,
-`citation-lookup.png`, `editor-slash-menu.png`.
+`citation-search.png`, `keyboard-shortcuts.png`, `ai-fix.gif`, `synctex.gif`,
+`github-push.gif`, `resume-tailor.gif`, `hero-editor.gif`,
+`inline-ai-edit.png`, `citation-lookup.png`, `editor-slash-menu.png`.
 
 ## Capturing more
 
