@@ -34,6 +34,7 @@ import {
 } from "@/components/editor/LanguageServiceRuntimeBoundary";
 import { Library } from "@/components/library/Library";
 import { dismissBootSplash, markBootStage } from "@/lib/boot-telemetry";
+import { prefetchLazyChunks } from "@/lib/prefetch-chunks";
 import { useFilesStore, useActiveContent } from "@/store/files";
 import {
   isCompileCheckpointCurrent,
@@ -250,6 +251,7 @@ function AppContent() {
     void refreshProjects();
     void useGithubStore.getState().refresh();
     markBootStage("stores-ready");
+    prefetchLazyChunks();
   }, [refreshProjects]);
 
   // Closing a project (or a fresh launch) always lands back on the library,
