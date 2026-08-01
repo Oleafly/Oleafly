@@ -3,51 +3,64 @@ import { initReactI18next } from "react-i18next";
 import { resources } from "./resources";
 import {
   resolveSystemLocale,
+  SUPPORTED_LOCALES,
   type LocalePreference,
   type SupportedLocale,
 } from "./locale";
 
+const FALLBACK_LOCALE: SupportedLocale = "en";
+const NAMESPACES = Object.keys(resources[FALLBACK_LOCALE]) as Array<
+  keyof (typeof resources)[typeof FALLBACK_LOCALE]
+>;
+
 export const i18n = createInstance();
+i18n.use(initReactI18next);
+
+let initializationError: unknown = null;
+
+/** Non-null when startup fell back to English because init failed for the requested locale. */
+export function getInitializationError(): unknown {
+  return initializationError;
+}
+
+/** The user-facing notice for a failed initialization, safe to call after any successful init. */
+export function initializationFailureMessage(): string {
+  return i18n.t($ => $.errors.initialization);
+}
 
 function setDocumentLocale(language: SupportedLocale): void {
   document.documentElement.lang = language;
   document.documentElement.dir = i18n.dir(language);
 }
 
+async function initInstance(language: SupportedLocale): Promise<void> {
+  await i18n.init({
+    debug: false,
+    defaultNS: "common",
+    enableSelector: "strict",
+    fallbackLng: FALLBACK_LOCALE,
+    interpolation: { escapeValue: false },
+    lng: language,
+    ns: NAMESPACES,
+    resources,
+    returnNull: false,
+    supportedLngs: [...SUPPORTED_LOCALES],
+  });
+}
+
 export async function initializeI18n(preference: LocalePreference): Promise<SupportedLocale> {
-  const language = preference === "system" ? await resolveSystemLocale() : preference;
+  let language = preference === "system" ? await resolveSystemLocale() : preference;
 
   try {
-    await i18n.use(initReactI18next).init({
-      debug: false,
-      defaultNS: "common",
-      enableSelector: "strict",
-      fallbackLng: "en",
-      interpolation: { escapeValue: false },
-      lng: language,
-      ns: ["common", "settings", "errors"],
-      resources,
-      returnNull: false,
-      supportedLngs: ["en"],
-    });
-  } catch {
-    if (!i18n.isInitialized) {
-      await i18n.use(initReactI18next).init({
-        defaultNS: "common",
-        enableSelector: "strict",
-        fallbackLng: "en",
-        interpolation: { escapeValue: false },
-        lng: "en",
-        ns: ["common", "settings", "errors"],
-        resources,
-        returnNull: false,
-        supportedLngs: ["en"],
-      });
-    } else {
-      await i18n.changeLanguage("en");
-    }
-    setDocumentLocale("en");
-    return "en";
+    await initInstance(language);
+  } catch (error) {
+    // Retrying with English only makes sense when the failure could be
+    // locale-specific; an identical retry would reproduce the same failure,
+    // so let bootstrap surface it instead of blanking the window silently.
+    if (language === FALLBACK_LOCALE) throw error;
+    initializationError = error;
+    language = FALLBACK_LOCALE;
+    await initInstance(language);
   }
 
   setDocumentLocale(language);
