@@ -27,7 +27,14 @@ your computer.
 </div>
 
 <div align="center">
-  <img src="media/hero-editor.png" alt="Oleafly with a LaTeX editor and compiled PDF open side by side" width="92%" />
+
+<table>
+  <tr>
+    <td width="50%"><img src="media/hero-editor.png" alt="Oleafly with a LaTeX editor and compiled PDF open side by side (dark theme)" /></td>
+    <td width="50%"><img src="media/hero-editor-light.png" alt="Oleafly with a LaTeX editor and compiled PDF open side by side (light theme)" /></td>
+  </tr>
+</table>
+
 </div>
 
 <div align="center">
@@ -109,7 +116,14 @@ with their author, year, title, and the line they were defined on.
 A LaTeX-aware word count ignores markup and counts only what a reader sees.
 
 <div align="center">
-  <img src="media/word-count.png" alt="The word count popover reporting words, characters, and lines for the open document" width="78%" />
+
+<table>
+  <tr>
+    <td width="50%"><img src="media/word-count.png" alt="The word count popover reporting words, characters, and lines for the open document (dark theme)" /></td>
+    <td width="50%"><img src="media/word-count-light.png" alt="The word count popover reporting words, characters, and lines for the open document (light theme)" /></td>
+  </tr>
+</table>
+
 </div>
 
 ### Compile and read without leaving the project
@@ -126,6 +140,17 @@ A LaTeX-aware word count ignores markup and counts only what a reader sees.
 - Save the PDF into the project or export the source as a portable archive.
 
 <div align="center">
+
+<table>
+  <tr>
+    <td width="50%"><img src="media/settings-latex-engine.png" alt="The LaTeX Engine settings page showing the bundled engines and their options (dark theme)" /></td>
+    <td width="50%"><img src="media/settings-latex-engine-light.png" alt="The LaTeX Engine settings page showing the bundled engines and their options (light theme)" /></td>
+  </tr>
+</table>
+
+</div>
+
+<div align="center">
   <img src="media/pdf-figures.png" alt="A compiled page showing plots, a colour-mapped error surface, and a results table beside the LaTeX source" width="88%" />
 </div>
 
@@ -133,7 +158,14 @@ Zoom out and the whole document is on screen at once, which is usually the
 fastest way to check that floats, figures, and tables landed where you meant.
 
 <div align="center">
-  <img src="media/pdf-preview-spread.png" alt="A three-page document laid out in the preview with every figure and table visible" width="88%" />
+
+<table>
+  <tr>
+    <td width="50%"><img src="media/pdf-preview-spread.png" alt="A three-page document laid out in the preview with every figure and table visible (dark theme)" /></td>
+    <td width="50%"><img src="media/pdf-preview-spread-light.png" alt="A three-page document laid out in the preview with every figure and table visible (light theme)" /></td>
+  </tr>
+</table>
+
 </div>
 
 ### Keep a history you can inspect
@@ -165,7 +197,14 @@ and diagrams. Filter by document engine, offline readiness, or ATS suitability.
 Optional template packs and fonts download only when you choose them.
 
 <div align="center">
-  <img src="media/project-templates.png" alt="Oleafly's searchable project template gallery with live thumbnails, category counts, and engine filters" width="84%" />
+
+<table>
+  <tr>
+    <td width="50%"><img src="media/project-templates.png" alt="Oleafly's searchable project template gallery with live thumbnails, category counts, and engine filters (dark theme)" /></td>
+    <td width="50%"><img src="media/project-templates-light.png" alt="Oleafly's searchable project template gallery with live thumbnails, category counts, and engine filters (light theme)" /></td>
+  </tr>
+</table>
+
 </div>
 
 ### Move between research and publishing tasks
@@ -216,14 +255,28 @@ It also shows the text a parser or screen reader can extract. These checks are
 practical submission guidance, not a formal accessibility certification.
 
 <div align="center">
-  <img src="media/preflight-ats.png" alt="Preflight reporting an accessibility score with specific source and compiled-output findings" width="84%" />
+
+<table>
+  <tr>
+    <td width="50%"><img src="media/preflight-ats.png" alt="Preflight reporting an accessibility score with specific source and compiled-output findings (dark theme)" /></td>
+    <td width="50%"><img src="media/preflight-ats-light.png" alt="Preflight reporting an accessibility score with specific source and compiled-output findings (light theme)" /></td>
+  </tr>
+</table>
+
 </div>
 
 References and citations get their own panel: the bibliography, every citation
 used in the document, and the symbols the project defines.
 
 <div align="center">
-  <img src="media/references-panel.png" alt="The references panel listing bibliography entries by key and year beside the source and compiled PDF" width="88%" />
+
+<table>
+  <tr>
+    <td width="50%"><img src="media/references-panel.png" alt="The references panel listing bibliography entries by key and year beside the source and compiled PDF (dark theme)" /></td>
+    <td width="50%"><img src="media/references-panel-light.png" alt="The references panel listing bibliography entries by key and year beside the source and compiled PDF (light theme)" /></td>
+  </tr>
+</table>
+
 </div>
 
 ### Let AI work on the project, if you want it
@@ -261,7 +314,14 @@ Providers are configured in Settings. Keys stay on the machine, and a local
 Ollama model works with no key at all.
 
 <div align="center">
-  <img src="media/settings-ai.png" alt="The AI Assistant settings page with several providers connected and a local Ollama model selected" width="88%" />
+
+<table>
+  <tr>
+    <td width="50%"><img src="media/settings-ai.png" alt="The AI Assistant settings page with several providers connected and a local Ollama model selected (dark theme)" /></td>
+    <td width="50%"><img src="media/settings-ai-light.png" alt="The AI Assistant settings page with several providers connected and a local Ollama model selected (light theme)" /></td>
+  </tr>
+</table>
+
 </div>
 
 Oleafly can also expose its project tools to Claude Desktop, Claude Code,
@@ -270,7 +330,14 @@ three approval policies: confirm every change, auto-approve writes while
 confirming deletes, or trust the client's own approval gate.
 
 <div align="center">
-  <img src="media/settings-mcp.png" alt="MCP settings showing the local server, its client instructions, and the available approval policies" width="88%" />
+
+<table>
+  <tr>
+    <td width="50%"><img src="media/settings-mcp.png" alt="MCP settings showing the local server, its client instructions, and the available approval policies (dark theme)" /></td>
+    <td width="50%"><img src="media/settings-mcp-light.png" alt="MCP settings showing the local server, its client instructions, and the available approval policies (light theme)" /></td>
+  </tr>
+</table>
+
 </div>
 
 See the [feature reference](docs/features.md) and [MCP setup](docs/mcp.md) for
@@ -280,7 +347,14 @@ Everything is reachable from one place: the omnibar searches projects and
 documents, and typing `/` turns it into a command palette.
 
 <div align="center">
-  <img src="media/search-omnibar.png" alt="The omnibar listing commands and recently updated projects" width="88%" />
+
+<table>
+  <tr>
+    <td width="50%"><img src="media/search-omnibar.png" alt="The omnibar listing commands and recently updated projects (dark theme)" /></td>
+    <td width="50%"><img src="media/search-omnibar-light.png" alt="The omnibar listing commands and recently updated projects (light theme)" /></td>
+  </tr>
+</table>
+
 </div>
 
 ## Local-first, with a clear network boundary
