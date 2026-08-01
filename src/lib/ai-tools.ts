@@ -1,3 +1,4 @@
+import { getConfigCached } from "@/lib/config-cache";
 import {
   createOleaflyTools as createOleaflyToolsCore,
   createFigureTools as createFigureToolsCore,
@@ -17,7 +18,6 @@ import {
   readIsolatedPdf,
   readProjectBytes,
   writeProjectBytes,
-  getConfig,
   setConfig,
 } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
@@ -171,7 +171,7 @@ const HOST: AiToolsHost = {
 // unit-test mock, throws synchronously at import and breaks the whole test
 // file.
 export function initAiPdfCaptureFlag(): void {
-  void getConfig()
+  void getConfigCached()
     .then((c) => {
       const on = c.ai_pdf_capture !== false;
       try {
@@ -194,7 +194,7 @@ if (typeof window !== "undefined" && import.meta.env.DEV) {
       __aiConnect?: (provider: string, host: string, model: string) => Promise<boolean>;
     }
   ).__aiConnect = async (provider, host, model) => {
-    const cfg = await getConfig();
+    const cfg = await getConfigCached();
     const next = {
       ...cfg,
       ai_provider: provider,

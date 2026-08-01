@@ -3,7 +3,10 @@
 // stack (setSpellHost), citation keys (setBibKeysProvider), and feature
 // extensions (extraExtensions/extraKeymap). No store, Tauri, or app imports.
 
-export { CodeMirrorEditor, isLatexSourcePath, type EditorHost } from "./CodeMirrorEditor";
+// CodeMirrorEditor is deliberately NOT exported here: it wires up the live
+// math preview, whose KaTeX dependency must not ride with consumers that only
+// need the index (controller, commands). Import it via the
+// "@oleafly/editor/CodeMirrorEditor" subpath instead.
 export * from "./controller";
 export { editorTheme } from "./theme";
 export { languageForPath } from "./languages";
@@ -41,21 +44,19 @@ export {
 } from "./latex-structure-commands";
 export { createLatexLinter, lintLatexText } from "./latex-linter";
 export * from "./latex-mask";
+// math-preview / math-render are deliberately NOT exported here: they import
+// KaTeX (plus its CSS), which would ride in every chunk that touches this
+// index. Import them via the "@oleafly/editor/math-preview" or
+// "@oleafly/editor/math-render" subpaths instead. The math scanner below is
+// KaTeX-free and safe to keep on the index.
 export {
-  liveMathPreview,
-  mathHover,
-  mountMathPreview,
-  renderMathExpression,
   scanMathExpressions,
   type MathDelimiter,
   type MathExpression,
   type MathExpressionStatus,
   type MathScanOptions,
-  type MathRenderResult,
   type MathSourceFormat,
-  type MountedMathPreview,
-  type MountMathPreviewOptions,
-} from "./math-preview";
+} from "./math-source";
 export { preserveCase } from "./preserve-case";
 export {
   PROOFREADING_LIMITS,

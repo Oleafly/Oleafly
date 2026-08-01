@@ -21,7 +21,15 @@ const limits = {
   // proofreading surfaces shipped together. Keep the ceiling at 4 MB so a
   // small dependency fluctuation fails loudly without blocking the validated
   // build on an insignificant few-kilobyte delta.
-  largestJavaScript: 4_000_000,
+  // Recalibrated for the startup-experience work: the entry chunk shed
+  // KaTeX, pdf.js, and the AI SDK (lazy rail panels, lazy PDF import, editor
+  // math subpath split), so the largest emitted asset dropped from 3.96 MB
+  // to 1.84 MB. Tightened so a dependency creeping back in fails loudly.
+  largestJavaScript: 1_900_000,
+  // The chunk index.html actually loads before first paint. This is the
+  // startup gate proper: pdf.js, KaTeX, and the AI SDK must never ride in
+  // it. Measured 1.84 MB after the split; narrow headroom on top of that.
+  entryJavaScript: 1_900_000,
   // The selectable preview lazily loads pdf.js' official viewer helpers for
   // link actions and tagged-PDF structure. Keep narrow headroom above that
   // independently emitted 180 KB chunk without relaxing the startup gate.
@@ -44,6 +52,11 @@ const limits = {
   harperWasm: 19_000_000,
   // The real worker and the independently loaded recovery module are each
   // emitted once. The recovery module is lazy and never affects startup.
+  // (The startup-experience lazy split made rollup share the pdf.js MAIN
+  // library between async consumers; that chunk briefly adopted the
+  // pdf.worker URL-facade's name and false-positived here. It is pinned to
+  // the "pdfjs-lib" manual chunk in vite.config.ts, so this gate stays
+  // strict: exactly one real worker.)
   pdfWorkers: 1,
   pdfFallbacks: 1,
 };
@@ -74,6 +87,14 @@ const productionTextArtifacts = await Promise.all([
 
 if (largestJavaScript > limits.largestJavaScript) {
   failures.push(`largest JavaScript asset is ${largestJavaScript} bytes`);
+}
+const indexHtml = productionTextArtifacts.find(([name]) => name === "index.html")?.[1] ?? "";
+const entrySrc = indexHtml.match(/<script[^>]+src="\/assets\/([^"]+\.js)"/)?.[1];
+const entryAsset = entrySrc ? assets.find((asset) => asset.name === entrySrc) : undefined;
+if (!entryAsset) {
+  failures.push("entry JavaScript chunk not found in dist/index.html");
+} else if (entryAsset.bytes > limits.entryJavaScript) {
+  failures.push(`entry JavaScript is ${entryAsset.bytes} bytes`);
 }
 if (totalJavaScript > limits.totalJavaScript) {
   failures.push(`total JavaScript is ${totalJavaScript} bytes`);
@@ -116,6 +137,7 @@ if (failures.length > 0) {
 console.log(
   JSON.stringify({
     largestJavaScript,
+    entryJavaScript: entryAsset?.bytes ?? 0,
     totalJavaScript,
     largestCss,
     harperWasm: harper.bytes,

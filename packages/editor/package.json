@@ -11,7 +11,9 @@
     "./diagnostic-card": "./src/diagnostic-card.ts",
     "./latex-analysis": "./src/latex-analysis.ts",
     "./math-render": "./src/math-render.ts",
-    "./math-source": "./src/math-source.ts"
+    "./math-source": "./src/math-source.ts",
+    "./math-preview": "./src/math-preview.ts",
+    "./CodeMirrorEditor": "./src/CodeMirrorEditor.tsx"
   },
   "dependencies": {
     "@codemirror/autocomplete": "*",

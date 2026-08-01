@@ -4,6 +4,8 @@ import type { KeyBinding } from "@codemirror/view";
 import {
   CodeMirrorEditor as CodeMirrorEditorCore,
   type EditorHost,
+} from "@oleafly/editor/CodeMirrorEditor";
+import {
   setSpellHost,
   setBibKeysProvider,
   bibKeysFromSources,

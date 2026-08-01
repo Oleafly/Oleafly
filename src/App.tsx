@@ -24,18 +24,16 @@ import { SearchOmnibar } from "@/components/layout/SearchOmnibar";
 import { GlobalNewProject } from "@/components/library/GlobalNewProject";
 import { BibtexToolView } from "@/components/tools/BibtexToolView";
 import { TableToolView } from "@/components/tools/TableToolView";
-import { PdfImportView } from "@/components/import/PdfImportView";
 import { DeadlinesView } from "@/components/deadlines/DeadlinesView";
 import { LatexToolsView } from "@/components/tools/LatexToolsView";
 import { LabSearchToolView } from "@/components/tools/LabSearchToolView";
 import { useHomeViewStore } from "@/store/home-view";
-import { Editor } from "@/components/editor/Editor";
 import {
   LanguageServiceRuntimeBoundary,
   LanguageServiceRuntimeUnavailable,
 } from "@/components/editor/LanguageServiceRuntimeBoundary";
-import { PreviewPane } from "@/components/preview/PreviewPane";
 import { Library } from "@/components/library/Library";
+import { dismissBootSplash, markBootStage } from "@/lib/boot-telemetry";
 import { useFilesStore, useActiveContent } from "@/store/files";
 import {
   isCompileCheckpointCurrent,
@@ -60,7 +58,15 @@ import { AboutModal } from "@/components/layout/AboutModal";
 import { COMPILE_SUCCEEDED_EVENT } from "@/lib/compile-checkpoint";
 import { applyRemoteCompileSuccess } from "@/lib/compile-sync";
 
-// Heavy surfaces load on demand so cold start stays lean.
+// Heavy surfaces load on demand so cold start stays lean. Editor and
+// PreviewPane carry CodeMirror, KaTeX, and pdf.js — the library screen must
+// never pay for them.
+const Editor = lazy(() =>
+  import("@/components/editor/Editor").then((m) => ({ default: m.Editor })),
+);
+const PreviewPane = lazy(() =>
+  import("@/components/preview/PreviewPane").then((m) => ({ default: m.PreviewPane })),
+);
 const SettingsModal = lazy(() =>
   import("@/components/layout/SettingsModal").then((m) => ({ default: m.SettingsModal })),
 );
@@ -90,10 +96,32 @@ const LiteratureSearchToolView = lazy(() =>
     default: m.LiteratureSearchToolView,
   })),
 );
+// PdfImportView pulls the pdf.js import pipeline, which must not ride in the
+// entry chunk.
+const PdfImportView = lazy(() =>
+  import("@/components/import/PdfImportView").then((m) => ({ default: m.PdfImportView })),
+);
 
 // fallback must stay null - a visible one blocks the whole screen (these mount unconditionally, closed by default).
 function LazyModals({ children }: { children: ReactNode }) {
   return <Suspense fallback={null}>{children}</Suspense>;
+}
+
+// One-chunk-fetch placeholder for the lazy editor/preview surfaces: quiet,
+// centered, and shaped like the boot progress card so loading reads as one
+// continuous system.
+function SurfaceLoading({ label }: { label: string }) {
+  return (
+    <div className="flex h-full min-h-0 items-center justify-center">
+      <div
+        role="status"
+        aria-live="polite"
+        className="flex items-center gap-2 text-sm text-muted-foreground"
+      >
+        <span className="ai-shimmer">{label}…</span>
+      </div>
+    </div>
+  );
 }
 
 // Control cluster is offset from the centered grab thumb so it never fights the drag.
@@ -215,8 +243,13 @@ function AppContent() {
   }, [showTree, railTab, sidebarDefaultSize]);
 
   useEffect(() => {
+    // React owns the screen from here: retire the inline HTML splash and
+    // stamp the boot milestones the BootProgress card reports against.
+    markBootStage("react-mounted");
+    dismissBootSplash();
     void refreshProjects();
     void useGithubStore.getState().refresh();
+    markBootStage("stores-ready");
   }, [refreshProjects]);
 
   // Closing a project (or a fresh launch) always lands back on the library,
@@ -693,7 +726,9 @@ function AppContent() {
                         minSize={15}
                         className="min-h-0 min-w-0"
                       >
-                        <Editor />
+                        <Suspense fallback={<SurfaceLoading label="Loading editor" />}>
+                          <Editor />
+                        </Suspense>
                       </Panel>
                     )}
                     {viewMode === "split" && <VHandle id="h-mid" placement="top" />}
@@ -706,7 +741,9 @@ function AppContent() {
                         minSize={15}
                         className="min-h-0 min-w-0"
                       >
-                        <PreviewPane />
+                        <Suspense fallback={<SurfaceLoading label="Loading preview" />}>
+                          <PreviewPane />
+                        </Suspense>
                       </Panel>
                     )}
                   </PanelGroup>
