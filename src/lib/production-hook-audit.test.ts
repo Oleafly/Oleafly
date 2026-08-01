@@ -5,6 +5,7 @@ import {
   findInlineStyleElementCount,
   findProductionDevHookTokens,
 } from "../../scripts/production-hook-audit.mjs";
+import { rejectProductionDevHooks } from "../../vite.config";
 
 describe("production DEV-hook audit", () => {
   it("detects explicit and generic test-hook tokens", () => {
@@ -40,6 +41,10 @@ describe("production DEV-hook audit", () => {
 });
 
 describe("Tauri production style CSP audit", () => {
+  it("runs the HTML audit only for production builds", () => {
+    expect(rejectProductionDevHooks().apply).toBe("build");
+  });
+
   it("rejects inline style elements that would nonce style-src", () => {
     expect(findInlineStyleElementCount("<style>body{margin:0}</style>")).toBe(1);
     expect(() =>
