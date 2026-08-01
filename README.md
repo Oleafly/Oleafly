@@ -30,6 +30,10 @@ your computer.
   <img src="media/hero-editor.png" alt="Oleafly with a LaTeX editor and compiled PDF open side by side" width="92%" />
 </div>
 
+<div align="center">
+  <img src="media/library-shelf.png" alt="The Oleafly library showing projects as coloured books with engine, kind, and last-modified labels" width="88%" />
+</div>
+
 <!--
 Recording placeholder: hero-editor.png is the cover until a 45–60 second,
 compressed workspace walkthrough is ready. Keep the same framing and replace
@@ -87,6 +91,27 @@ are the current collaboration path.
 - Jump to definitions, find references, rename labels or citation keys across
   the project, and inspect definitions on hover.
 
+The project map indexes every section, label, citation key, and environment in
+the project and keeps them addressable by `file:line`, so navigation and
+renames work across a multi-file document rather than one buffer at a time.
+
+<div align="center">
+  <img src="media/project-structure.png" alt="Oleafly's source tree beside the project map, listing sections and labels with their file and line" width="88%" />
+</div>
+
+The citation picker reads the project's `.bib` files directly, so keys come
+with their author, year, title, and the line they were defined on.
+
+<div align="center">
+  <img src="media/citation-picker.png" alt="Choosing a citation key from parsed BibTeX entries, each showing authors, year, and source line" width="88%" />
+</div>
+
+A LaTeX-aware word count ignores markup and counts only what a reader sees.
+
+<div align="center">
+  <img src="media/word-count.png" alt="The word count popover reporting words, characters, and lines for the open document" width="78%" />
+</div>
+
 ### Compile and read without leaving the project
 
 - Compile LaTeX with the bundled Tectonic sidecar and Typst with its bundled
@@ -99,6 +124,17 @@ are the current collaboration path.
 - Use SyncTeX in both directions: jump from source to PDF, or
   Cmd/Ctrl-click PDF text to return to the matching source.
 - Save the PDF into the project or export the source as a portable archive.
+
+<div align="center">
+  <img src="media/pdf-figures.png" alt="A compiled page showing plots, a colour-mapped error surface, and a results table beside the LaTeX source" width="88%" />
+</div>
+
+Zoom out and the whole document is on screen at once, which is usually the
+fastest way to check that floats, figures, and tables landed where you meant.
+
+<div align="center">
+  <img src="media/pdf-preview-spread.png" alt="A three-page document laid out in the preview with every figure and table visible" width="88%" />
+</div>
 
 ### Keep a history you can inspect
 
@@ -117,6 +153,10 @@ history in the app.
   <img src="media/git-diff.png" alt="A side-by-side source diff in Oleafly's Git history" width="84%" />
 </div>
 
+<div align="center">
+  <img src="media/source-control.png" alt="The Source Control panel listing a changed file with commit, push, pull, and Publish to GitHub" width="88%" />
+</div>
+
 ### Start from something useful
 
 The project gallery includes editable starters for papers, theses, reports,
@@ -125,7 +165,7 @@ and diagrams. Filter by document engine, offline readiness, or ATS suitability.
 Optional template packs and fonts download only when you choose them.
 
 <div align="center">
-  <img src="media/project-templates.png" alt="Oleafly's searchable project template gallery" width="84%" />
+  <img src="media/project-templates.png" alt="Oleafly's searchable project template gallery with live thumbnails, category counts, and engine filters" width="84%" />
 </div>
 
 ### Move between research and publishing tasks
@@ -141,6 +181,30 @@ Optional template packs and fonts download only when you choose them.
 - Browse conference deadlines and use optional literature lookups without
   turning the project folder into a cloud document.
 
+The tools hub collects the work that usually happens in a browser tab: PDF to
+LaTeX, an equation preview, a BibTeX validator, a table builder, citation
+search, an institution directory, and conference deadlines.
+
+<div align="center">
+  <img src="media/oleafly-tools.png" alt="The Oleafly Tools hub listing PDF to LaTeX, LaTeX preview, BibTeX validator, table generator, citation search, lab search, and conference deadlines" width="88%" />
+</div>
+
+Citation search queries arXiv, Semantic Scholar, Crossref, PubMed, OpenAlex,
+and Google Scholar together, combines duplicate records, and saves or exports
+what you keep as BibTeX. It can also scan the open document paragraph by
+paragraph and suggest citations for claims that do not have one yet.
+
+<div align="center">
+  <img src="media/literature-search.png" alt="Citation search returning deduplicated results from several indexes, each with a save and copy-BibTeX action" width="88%" />
+</div>
+
+The diagram composer draws on a canvas and compiles the TikZ beside it, so the
+figure you insert is real vector source you can keep editing.
+
+<div align="center">
+  <img src="media/diagram-composer.png" alt="The diagram composer with a transformer architecture on the canvas and its compiled TikZ preview alongside" width="88%" />
+</div>
+
 ### Check the document before someone else does
 
 Preflight looks at both source and compiled output. It catches broken
@@ -152,7 +216,14 @@ It also shows the text a parser or screen reader can extract. These checks are
 practical submission guidance, not a formal accessibility certification.
 
 <div align="center">
-  <img src="media/preflight-ats.png" alt="ATS and accessibility checks in Oleafly's Preflight panel" width="84%" />
+  <img src="media/preflight-ats.png" alt="Preflight reporting an accessibility score with specific source and compiled-output findings" width="84%" />
+</div>
+
+References and citations get their own panel: the bibliography, every citation
+used in the document, and the symbols the project defines.
+
+<div align="center">
+  <img src="media/references-panel.png" alt="The references panel listing bibliography entries by key and year beside the source and compiled PDF" width="88%" />
 </div>
 
 ### Let AI work on the project, if you want it
@@ -167,17 +238,50 @@ You choose the model:
 - Run a local model through Ollama.
 - Leave AI unconfigured and use the rest of the app normally.
 
+<div align="center">
+  <img src="media/ai-assistant-start.png" alt="The assistant panel offering starting points such as finding papers to cite, writing a literature review, and fixing source errors" width="88%" />
+</div>
+
 File changes come with a diff and Approve or Reject controls. “Always allow”
 can approve ordinary writes for the current session while deletes still stop
 for confirmation.
+
+<div align="center">
+  <img src="media/ai-approval-diff.png" alt="An assistant file change shown as a red and green diff with Reject, Always allow, and Approve controls" width="88%" />
+</div>
+
+Once approved, the edit lands in the file and the document recompiles. Every
+response keeps a “Restore code to before this response” action.
+
+<div align="center">
+  <img src="media/ai-chat-applied.png" alt="An approved assistant edit applied to the document and reflected in the recompiled PDF" width="88%" />
+</div>
+
+Providers are configured in Settings. Keys stay on the machine, and a local
+Ollama model works with no key at all.
+
+<div align="center">
+  <img src="media/settings-ai.png" alt="The AI Assistant settings page with several providers connected and a local Ollama model selected" width="88%" />
+</div>
 
 Oleafly can also expose its project tools to Claude Desktop, Claude Code,
 Cursor, and other MCP clients. MCP connections support read-only mode and
 three approval policies: confirm every change, auto-approve writes while
 confirming deletes, or trust the client's own approval gate.
 
+<div align="center">
+  <img src="media/settings-mcp.png" alt="MCP settings showing the local server, its client instructions, and the available approval policies" width="88%" />
+</div>
+
 See the [feature reference](docs/features.md) and [MCP setup](docs/mcp.md) for
 the current providers, tools, and security model.
+
+Everything is reachable from one place: the omnibar searches projects and
+documents, and typing `/` turns it into a command palette.
+
+<div align="center">
+  <img src="media/search-omnibar.png" alt="The omnibar listing commands and recently updated projects" width="88%" />
+</div>
 
 ## Local-first, with a clear network boundary
 
@@ -235,6 +339,7 @@ code. End-user task guides are maintained separately from this public index.
 | [Product-engineering catalog](docs/README.md) | Feature inventories and engineering contracts |
 | [Feature reference](docs/features.md) | The product surface and supported workflows |
 | [Document engines](docs/document-engines.md) | LaTeX, Typst, and Markdown capabilities |
+| [Coming from LaTeX Workshop](docs/ComingFromLatexWorkshop.md) | Feature and shortcut mapping for VS Code + LaTeX Workshop users |
 | [Product architecture](docs/Architecture.md) | System boundaries, package ownership, and extension points |
 | [Development](docs/development.md) | Local setup, tests, and contribution workflow |
 | [Language-server toolchain](docs/language-server-toolchain.md) | Fetching, integrity, and distribution policy |
