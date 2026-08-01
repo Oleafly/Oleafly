@@ -22,12 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   no provider is set), and adds picks straight to the library or `.bib`.
 - Friendly / Fire paper review: a Review tab that streams a structured
   manuscript review in a supportive-mentor or hardened Reviewer #2 voice.
-- Package-aware LaTeX intelligence vendored from LaTeX Workshop (MIT, with
-  attribution): completions for 2,800+ package and 600+ class names with CTAN
-  descriptions, per-package commands, environments, options, and key=value
-  arguments for the packages a project actually uses, plus `@` math shortcuts,
-  glossary intelligence, and structured compile-log parsing with
-  nested-file error attribution.
+- Package-aware LaTeX intelligence: completions for 2,800+ package and 600+
+  class names with CTAN descriptions, per-package commands, environments,
+  options, and key=value arguments for the packages a project actually uses,
+  plus `@` math shortcuts, glossary intelligence, and structured compile-log
+  parsing with nested-file error attribution.
 - `% !TEX root` magic comments now set the effective main document across
   compile, SyncTeX, export, and project intelligence, with a toolbar
   indicator and a warning when the target is missing.
