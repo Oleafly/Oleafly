@@ -21,15 +21,16 @@ const limits = {
   // proofreading surfaces shipped together. Keep the ceiling at 4 MB so a
   // small dependency fluctuation fails loudly without blocking the validated
   // build on an insignificant few-kilobyte delta.
-  // Recalibrated for the startup-experience work: the entry chunk shed
-  // KaTeX, pdf.js, and the AI SDK (lazy rail panels, lazy PDF import, editor
-  // math subpath split), so the largest emitted asset dropped from 3.96 MB
-  // to 1.84 MB. Tightened so a dependency creeping back in fails loudly.
-  largestJavaScript: 1_900_000,
-  // The chunk index.html actually loads before first paint. This is the
-  // startup gate proper: pdf.js, KaTeX, and the AI SDK must never ride in
-  // it. Measured 1.84 MB after the split; narrow headroom on top of that.
-  entryJavaScript: 1_900_000,
+  // Splitting the panels out of the entry chunk was reverted: it bought 5 ms
+  // of parse time on a desktop app that loads from local disk, and cost a
+  // suspense delay that broke e2e specs asserting a panel appears within five
+  // seconds. The editor math subpath split stayed, so the entry is 3.45 MB
+  // rather than the 3.96 MB it was before that.
+  largestJavaScript: 3_550_000,
+  // The chunk index.html loads before first paint. Tracked separately from
+  // largestJavaScript so a future split is visible here even if some other
+  // asset becomes the largest.
+  entryJavaScript: 3_550_000,
   // The selectable preview lazily loads pdf.js' official viewer helpers for
   // link actions and tagged-PDF structure. Keep narrow headroom above that
   // independently emitted 180 KB chunk without relaxing the startup gate.

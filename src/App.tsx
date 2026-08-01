@@ -17,6 +17,9 @@ import { RefreshCw } from "lucide-react";
 import { ThemeProvider } from "@/lib/theme";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { TopToolbar } from "@/components/layout/TopToolbar";
+import { Editor } from "@/components/editor/Editor";
+import { PreviewPane } from "@/components/preview/PreviewPane";
+import { PdfImportView } from "@/components/import/PdfImportView";
 import { Rail } from "@/components/layout/Rail";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { CommandPalette } from "@/components/layout/CommandPalette";
@@ -34,7 +37,6 @@ import {
 } from "@/components/editor/LanguageServiceRuntimeBoundary";
 import { Library } from "@/components/library/Library";
 import { dismissBootSplash, markBootStage } from "@/lib/boot-telemetry";
-import { prefetchLazyChunks } from "@/lib/prefetch-chunks";
 import { useFilesStore, useActiveContent } from "@/store/files";
 import {
   isCompileCheckpointCurrent,
@@ -59,15 +61,6 @@ import { AboutModal } from "@/components/layout/AboutModal";
 import { COMPILE_SUCCEEDED_EVENT } from "@/lib/compile-checkpoint";
 import { applyRemoteCompileSuccess } from "@/lib/compile-sync";
 
-// Heavy surfaces load on demand so cold start stays lean. Editor and
-// PreviewPane carry CodeMirror, KaTeX, and pdf.js — the library screen must
-// never pay for them.
-const Editor = lazy(() =>
-  import("@/components/editor/Editor").then((m) => ({ default: m.Editor })),
-);
-const PreviewPane = lazy(() =>
-  import("@/components/preview/PreviewPane").then((m) => ({ default: m.PreviewPane })),
-);
 const SettingsModal = lazy(() =>
   import("@/components/layout/SettingsModal").then((m) => ({ default: m.SettingsModal })),
 );
@@ -96,11 +89,6 @@ const LiteratureSearchToolView = lazy(() =>
   import("@/components/tools/LiteratureSearchToolView").then((m) => ({
     default: m.LiteratureSearchToolView,
   })),
-);
-// PdfImportView pulls the pdf.js import pipeline, which must not ride in the
-// entry chunk.
-const PdfImportView = lazy(() =>
-  import("@/components/import/PdfImportView").then((m) => ({ default: m.PdfImportView })),
 );
 
 // fallback must stay null - a visible one blocks the whole screen (these mount unconditionally, closed by default).
@@ -251,7 +239,6 @@ function AppContent() {
     void refreshProjects();
     void useGithubStore.getState().refresh();
     markBootStage("stores-ready");
-    prefetchLazyChunks();
   }, [refreshProjects]);
 
   // Closing a project (or a fresh launch) always lands back on the library,
