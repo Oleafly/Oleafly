@@ -7,8 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-08-01
+
 ### Added
 
+- A themed splash screen while the app starts. It resolves the stored theme
+  before the first paint, so light-theme users no longer see a dark flash, and
+  it names the stage it is on rather than showing an empty window.
 - Document citation scan: a "From document" mode in Citation Search splits the
   manuscript into paragraphs, searches arXiv, Semantic Scholar, Crossref,
   PubMed, and OpenAlex (Google Scholar via an optional Serper key), hides
@@ -1161,7 +1166,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   compilation, SyncTeX, Git integration, GitHub sync, and bring-your-own-key AI
   assistance.
 
-[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/Oleafly/Oleafly/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/Oleafly/Oleafly/compare/v0.2.8...v0.3.0
 [0.2.8]: https://github.com/Oleafly/Oleafly/compare/v0.2.7...v0.2.8
 [0.2.7]: https://github.com/Oleafly/Oleafly/compare/v0.2.6...v0.2.7
