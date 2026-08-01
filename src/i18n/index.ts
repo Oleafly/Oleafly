@@ -67,9 +67,16 @@ export async function initializeI18n(preference: LocalePreference): Promise<Supp
   return language;
 }
 
+let changeSequence = 0;
+
 export async function changeLocale(preference: LocalePreference): Promise<SupportedLocale> {
+  // Resolving "system" awaits an IPC round trip, so rapid successive changes
+  // can resolve out of order; only the latest request may apply.
+  const sequence = ++changeSequence;
   const language = preference === "system" ? await resolveSystemLocale() : preference;
+  if (sequence !== changeSequence) return language;
   await i18n.changeLanguage(language);
+  if (sequence !== changeSequence) return language;
   setDocumentLocale(language);
   return language;
 }

@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { changeLocale } from "@/i18n";
 import { isLocalePreference, type LocalePreference } from "@/i18n/locale";
 
 const SETTINGS_SECTIONS = new Set([
@@ -532,7 +533,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.accent", PREF_DEFAULTS.accentColor);
     saveLs("oleafly.dockPlacement", PREF_DEFAULTS.dockPlacement);
     saveLs("oleafly.bgPattern", PREF_DEFAULTS.bgPattern);
+    const localeChanged = get().uiLocalePreference !== PREF_DEFAULTS.uiLocalePreference;
     set({ ...PREF_DEFAULTS });
+    // Keep the live language in sync with the restored preference; the store
+    // only records the choice, the i18n runtime owns applying it.
+    if (localeChanged) void changeLocale(PREF_DEFAULTS.uiLocalePreference);
     notifyProofreadingSettingsChanged("reset", get());
   },
 }));
