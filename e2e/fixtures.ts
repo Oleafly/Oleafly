@@ -45,6 +45,7 @@ for (const p of envCandidates) {
 //
 //   OLEAFLY_DATA_DIR=$(mktemp -d) pnpm tauri dev --features e2e-testing
 let nativePageOpened = false;
+const productionE2e = process.env.OLEAFLY_E2E_PRODUCTION === "1";
 const DISMISSED_TOUR_STATE = JSON.stringify({
   state: {
     schemaVersion: 1,
@@ -60,6 +61,11 @@ const DISMISSED_TOUR_STATE = JSON.stringify({
 });
 
 export async function reloadNativePage(page: TauriPage) {
+  if (productionE2e) {
+    throw new Error(
+      "packaged E2E smoke tests run one test per app launch; production reload is unsupported",
+    );
+  }
   const mainWindow = await page.waitForWindow((window) => window.label === "main", {
     timeout: 20_000,
   });
@@ -123,7 +129,9 @@ export async function reloadNativePage(page: TauriPage) {
 async function ensureNativePageReady(page: TauriPage) {
   try {
     await page.waitForFunction(
-      'document.readyState !== "loading" && !!window.__PW_ACTIVE__ && (document.querySelector("#root")?.childElementCount ?? 0) > 0',
+      productionE2e
+        ? 'document.readyState !== "loading" && (document.querySelector("#root")?.childElementCount ?? 0) > 0'
+        : 'document.readyState !== "loading" && !!window.__PW_ACTIVE__ && (document.querySelector("#root")?.childElementCount ?? 0) > 0',
       10_000,
     );
   } catch {
@@ -132,6 +140,10 @@ async function ensureNativePageReady(page: TauriPage) {
 }
 
 async function focusNativeWindow(page: TauriPage) {
+  if (productionE2e) {
+    await page.evaluate("(() => { window.focus(); return true; })()");
+    return;
+  }
   await page.evaluate(`
     import("/src/lib/tauri.ts").then(({ focusCurrentWindow }) =>
       focusCurrentWindow().then(() => true)
@@ -169,7 +181,7 @@ function createNativeTest(dismissTours: boolean) {
         await reloadNativePage(page);
       }
       await ensureNativePageReady(page);
-      if (firstPage) {
+      if (firstPage && !productionE2e) {
         // Enable the experimental Visual editor and LaTeX tools (default off)
         // so the gated e2e specs run. Wrapped as an IIFE expression, the form
         // this bridge evaluates reliably (bare multi-statement strings time out).
@@ -182,6 +194,9 @@ function createNativeTest(dismissTours: boolean) {
         await reloadNativePage(page);
       }
       if (dismissTours) {
+        if (productionE2e) {
+          throw new Error("packaged E2E tests must use tourTest to avoid a production reload");
+        }
         await page.evaluate(
           `localStorage.setItem("oleafly.tours", ${JSON.stringify(DISMISSED_TOUR_STATE)})`,
         );

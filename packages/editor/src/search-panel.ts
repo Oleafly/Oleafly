@@ -29,6 +29,10 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 function icon(paths: readonly string[]): SVGSVGElement {
   const svg = document.createElementNS(SVG_NS, "svg");
   svg.setAttribute("viewBox", "0 0 24 24");
+  // Keep controls usable even before CodeMirror mounts the base theme. Raw
+  // SVGs without intrinsic dimensions default to 300x150 in WebKit.
+  svg.setAttribute("width", "14");
+  svg.setAttribute("height", "14");
   svg.setAttribute("fill", "none");
   svg.setAttribute("stroke", "currentColor");
   svg.setAttribute("stroke-width", "2");

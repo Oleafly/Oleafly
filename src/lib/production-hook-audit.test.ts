@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   assertNoProductionDevHookTokens,
+  assertNoTauriStyleNonceTriggers,
+  findInlineStyleElementCount,
   findProductionDevHookTokens,
 } from "../../scripts/production-hook-audit.mjs";
 
@@ -34,5 +36,28 @@ describe("production DEV-hook audit", () => {
     ).toThrow(
       "assets/app.js: __mcpQueue\nassets/editor.js: __chatUsageGet",
     );
+  });
+});
+
+describe("Tauri production style CSP audit", () => {
+  it("rejects inline style elements that would nonce style-src", () => {
+    expect(findInlineStyleElementCount("<style>body{margin:0}</style>")).toBe(1);
+    expect(() =>
+      assertNoTauriStyleNonceTriggers([
+        ["index.html", "<html><head><style>.splash{}</style></head></html>"],
+      ]),
+    ).toThrow("Tauri nonce style-src and block CodeMirror runtime styles");
+  });
+
+  it("allows blocking external stylesheets and non-HTML assets", () => {
+    expect(
+      findInlineStyleElementCount("<!-- an inline <style> would be unsafe -->"),
+    ).toBe(0);
+    expect(() =>
+      assertNoTauriStyleNonceTriggers([
+        ["index.html", '<link rel="stylesheet" href="/assets/app.css">'],
+        ["assets/app.js", 'const example = "<style>"'],
+      ]),
+    ).not.toThrow();
   });
 });

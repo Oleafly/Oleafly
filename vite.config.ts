@@ -2,7 +2,10 @@ import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "node:path";
-import { assertNoProductionDevHookTokens } from "./scripts/production-hook-audit.mjs";
+import {
+  assertNoProductionDevHookTokens,
+  assertNoTauriStyleNonceTriggers,
+} from "./scripts/production-hook-audit.mjs";
 
 // Tauri expects a fixed port; if that's not available it will attempt the next one.
 const host = process.env.TAURI_DEV_HOST;
@@ -19,6 +22,16 @@ const preserveWorkerExports = (): Plugin => ({
 
 const rejectProductionDevHooks = (): Plugin => ({
   name: "reject-production-dev-hooks",
+  transformIndexHtml: {
+    order: "post",
+    handler(html) {
+      // Vite emits index.html after user generateBundle hooks. Audit the final
+      // transformed markup here so an inline style cannot silently re-enable
+      // Tauri's style-src nonce and disable CodeMirror's runtime stylesheet.
+      assertNoTauriStyleNonceTriggers([["index.html", html]]);
+      return html;
+    },
+  },
   generateBundle(_options, bundle) {
     const artifacts: [string, string][] = [];
     for (const [fileName, output] of Object.entries(bundle)) {

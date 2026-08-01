@@ -80,6 +80,13 @@ describe("VS Code-style search panel", () => {
     expect(status).toHaveAttribute("role", "status");
     expect(status).toHaveAttribute("aria-live", "polite");
     expect(status).toHaveAttribute("aria-atomic", "true");
+
+    const icons = document.querySelectorAll(".cm-vs-icon");
+    expect(icons.length).toBeGreaterThan(0);
+    for (const icon of icons) {
+      expect(icon).toHaveAttribute("width", "14");
+      expect(icon).toHaveAttribute("height", "14");
+    }
   });
 
   it("combines case, whole-word, and regular-expression filtering", () => {

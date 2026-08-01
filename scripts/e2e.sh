@@ -66,8 +66,19 @@ DATA_DIR=""
 LOG_STREAM_PID=""
 HEARTBEAT_PID=""
 SOCK="${TAURI_PLAYWRIGHT_SOCKET:-/tmp/tauri-playwright.sock}"
+APP_BINARY="${OLEAFLY_E2E_APP_BINARY:-}"
 SOCK_ID=""
 CLEANED=0
+
+# A packaged custom-protocol smoke can point this runner at a binary built
+# with `tauri build --features e2e-testing`. Default runs remain Vite-backed.
+if [ -n "$APP_BINARY" ] && [ ! -x "$APP_BINARY" ]; then
+  echo "e2e: OLEAFLY_E2E_APP_BINARY is not executable: $APP_BINARY" >&2
+  exit 2
+fi
+if [ -n "$APP_BINARY" ]; then
+  export OLEAFLY_E2E_PRODUCTION="${OLEAFLY_E2E_PRODUCTION:-1}"
+fi
 
 terminate_app_group() {
   local leader="$1"
@@ -176,14 +187,18 @@ run_playwright() {
 stream_app_log &
 LOG_STREAM_PID=$!
 
-if lsof -ti :1420 >/dev/null 2>&1; then
+if [ -z "$APP_BINARY" ] && lsof -ti :1420 >/dev/null 2>&1; then
   echo "e2e: port 1420 is already owned by pid(s): $(lsof -ti :1420 | tr '\n' ' ')" >&2
   exit 1
 fi
 
 start_app() {
   rm -f "$SOCK"
-  OLEAFLY_DATA_DIR="$DATA_DIR" pnpm tauri dev --features e2e-testing >>"$LOG" 2>&1 &
+  if [ -n "$APP_BINARY" ]; then
+    OLEAFLY_DATA_DIR="$DATA_DIR" "$APP_BINARY" >>"$LOG" 2>&1 &
+  else
+    OLEAFLY_DATA_DIR="$DATA_DIR" pnpm tauri dev --features e2e-testing >>"$LOG" 2>&1 &
+  fi
   APP_PID=$!
   echo "e2e: waiting for the bridge socket (first build can take minutes)..."
   for _ in $(seq 1 900); do
