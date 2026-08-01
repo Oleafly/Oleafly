@@ -8,7 +8,8 @@ Captures are taken from the running desktop app at retina resolution, window
 only, then downscaled to 2000px wide. Where a screen exists in both themes the
 light capture is named `<name>-light.png` and the README shows the pair side by
 side, dark on the left. Screens with no `-light.png` are shown single-column,
-so adding one later is enough to turn that block into a pair. The assistant
+so adding one later is enough to turn that block into a pair. The hero is the
+exception: it stacks full-width, light first, because it is the cover shot. The assistant
 captures are a real run against GLM-5.2; the reasoning, tool calls, and
 summary in them are the model's own. The demo library is seeded with
 synthetic research projects; every number and figure in those documents is
@@ -37,9 +38,7 @@ quick to load.
 | `pdf-figures.png` | A compiled page of plots, a colour-mapped error surface, and a results table |
 | `pdf-preview-spread.png` | A whole multi-page document laid out at once |
 | `git-diff.png` | Side-by-side source diff from Git history |
-| `source-control.png` | Source Control panel: changed file, commit box, push/pull, Publish to GitHub |
 | `project-templates.png` | Template gallery with live thumbnails, categories, and engine filters |
-| `oleafly-tools.png` | The tools hub |
 | `literature-search.png` | Deduplicated citation search across several scholarly indexes |
 | `diagram-composer.png` | Diagram canvas beside its compiled TikZ preview |
 | `preflight-ats.png` | Preflight score with source and compiled-output findings |
@@ -53,14 +52,21 @@ quick to load.
 
 ## Light-theme pairs
 
-`hero-editor`, `word-count`, `settings-latex-engine`, `pdf-preview-spread`,
-`project-templates`, `preflight-ats`, `references-panel`, `settings-ai`,
-`settings-mcp`, `search-omnibar` each have a `-light.png` counterpart and
-render as a two-column pair.
+`library-shelf`, `project-structure`, `citation-picker`, `word-count`,
+`settings-latex-engine`, `pdf-preview-spread`, `project-templates`,
+`literature-search`, `diagram-composer`, `preflight-ats`, `references-panel`,
+`ai-assistant-start`, `settings-ai`, `settings-mcp`, `search-omnibar` each have
+a `-light.png` counterpart and render as a two-column pair. `hero-editor` has
+one too but stacks instead.
+
+Still dark-only, so still single-column: `pdf-figures`, `git-diff`,
+`ai-approval-diff`, `ai-chat-applied`.
 
 ## Available but not currently placed
 
-`citation-search.png`, `keyboard-shortcuts.png`, `ai-fix.gif`, `synctex.gif`,
+`oleafly-tools.png` is held back until the tools surface leaves
+experimentation. Also unplaced: `citation-search.png`,
+`keyboard-shortcuts.png` (and its light pair), `ai-fix.gif`, `synctex.gif`,
 `github-push.gif`, `resume-tailor.gif`, `hero-editor.gif`,
 `inline-ai-edit.png`, `citation-lookup.png`, `editor-slash-menu.png`.
 
