@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"csname"},{"name":"csname","snippet":"csname{${1:arg1}}"},{"name":"insertFillPages"},{"name":"pagesDivisibleBy"},{"name":"setDefaultFillPage"},{"name":"setDefaultFillPage","snippet":"setDefaultFillPage{${1:arg1}}"},{"name":"setFillPage"},{"name":"setFillPage","snippet":"setFillPage{${1:arg1}}{${2:arg2}}"}]}

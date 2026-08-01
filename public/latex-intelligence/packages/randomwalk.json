@@ -1,0 +1,1 @@
+{"args":[],"deps":["expl3","lcg","pgfcore","xparse"],"envs":[],"keys":{},"macros":[{"name":"randomwalk"},{"name":"RandomWalk"},{"name":"RandomWalk","snippet":"RandomWalk{${1:arg1}}"}]}

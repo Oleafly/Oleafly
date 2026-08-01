@@ -1,0 +1,1 @@
+{"args":[],"deps":["etoolbox","ifthen","tikz"],"envs":[],"keys":{},"macros":[{"name":"includetikzgraphics"},{"name":"includetikzgraphics","snippet":"includetikzgraphics[${1:opt}]{${2:arg2}}"},{"name":"par"}]}

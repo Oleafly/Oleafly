@@ -1,0 +1,1 @@
+{"args":[],"deps":["tikz"],"envs":[{"name":"fullyconnectednn"}],"keys":{},"macros":[{"name":"lastnnsize","unusual":true},{"name":"nninputlayer","unusual":true},{"name":"nnlayer"},{"name":"nnlayer","snippet":"nnlayer[${1:opt}]{${2:arg2}}"},{"name":"nnlayerNoText"},{"name":"nnlayerNoText","snippet":"nnlayerNoText{${1:arg1}}"},{"name":"numlayers","unusual":true}]}

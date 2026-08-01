@@ -1,0 +1,1 @@
+{"args":[],"deps":["etoolbox","metalogo","xparse"],"envs":[],"keys":{},"macros":[{"name":"adjustlogos"},{"name":"adjustlogos","snippet":"adjustlogos{${1:arg1}}"},{"name":"autoadjustlogos"},{"name":"autoadjustlogos","snippet":"autoadjustlogos{${1:arg1}}"}]}

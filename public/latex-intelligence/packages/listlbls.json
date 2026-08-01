@@ -1,0 +1,1 @@
+{"args":["\\usepackage/listlbls#c"],"deps":["translations"],"envs":[],"keys":{"\\usepackage/listlbls#c":["draft","final","nonameref","notoc","numtoc","totoc"]},"macros":[{"name":"listoflabels"},{"name":"listoflabels","snippet":"listoflabels[${1:opt}]"}]}

@@ -1,0 +1,1 @@
+{"args":["\\usepackage/txuprcal#c"],"deps":["xkeyval"],"envs":[],"keys":{"\\usepackage/txuprcal#c":["scaled"]},"macros":[{"name":"mathbcal"},{"name":"mathcalr"},{"name":"TXUprCalScale"}]}

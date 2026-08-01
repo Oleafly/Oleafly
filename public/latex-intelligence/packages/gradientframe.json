@@ -1,0 +1,1 @@
+{"args":["\\usepackage/gradientframe#c"],"deps":["color","keyval"],"envs":[],"keys":{"\\usepackage/gradientframe#c":["linewidth","padding"]},"macros":[{"name":"gradientframe"},{"name":"gradientframe","snippet":"gradientframe[${1:opt}]{${2:arg2}}"}]}

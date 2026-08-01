@@ -1,0 +1,1 @@
+{"args":[],"deps":["natbib"],"envs":[],"keys":{},"macros":[{"name":"cite"},{"name":"cite","snippet":"cite[${1:opt}]{${2:arg2}}"},{"name":"expandafter"},{"name":"natmovechars"}]}

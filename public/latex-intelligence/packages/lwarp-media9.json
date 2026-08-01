@@ -1,0 +1,1 @@
+{"args":["\\usepackage/lwarp-media9#c"],"deps":["xkeyval"],"envs":[],"keys":{"\\usepackage/lwarp-media9#c":["addresource","flashvars"]},"macros":[{"name":"addmediapath"},{"name":"addmediapath","snippet":"addmediapath{${1:arg1}}"},{"name":"mediabutton"},{"name":"mediabutton","snippet":"mediabutton[${1:opt}]{${2:arg2}}"}]}

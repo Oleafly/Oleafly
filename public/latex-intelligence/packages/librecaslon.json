@@ -1,0 +1,1 @@
+{"args":[],"deps":["fontaxes","fontenc","fontspec","ifluatex","ifxetex","textcomp","xkeyval"],"envs":[],"keys":{},"macros":[{"name":"infigures"},{"name":"librecaslon"},{"name":"librecaslonfamily"},{"name":"librecaslonLF"},{"name":"librecaslonOsF"},{"name":"librecaslonTLF"},{"name":"rmdefault"},{"name":"sufigures"},{"name":"useosf"}]}

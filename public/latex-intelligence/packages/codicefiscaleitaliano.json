@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"CFisc"},{"name":"codfisc"},{"name":"codicefiscaleitaliano"},{"name":"getCFletter"},{"name":"getCFletter","snippet":"getCFletter{${1:arg1}}{${2:arg2}}"},{"name":"getEvenValore"},{"name":"getOddValore"}]}

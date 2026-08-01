@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"emojicite"},{"name":"emojicite","snippet":"emojicite{${1:arg1}}"},{"name":"emojicitep"},{"name":"emojicitep","snippet":"emojicitep{${1:arg1}}"}]}

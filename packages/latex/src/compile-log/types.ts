@@ -26,7 +26,7 @@ export interface LogDiagnostic {
 
 /**
  * Parsers only look at the first `MAX_COMPILE_LOG_BYTES` of a log (the head is
- * kept because diagnostics appear in compile order). LaTeX Workshop parses the
+ * kept because diagnostics appear in compile order). Most parsers read the
  * whole log; we cap it so a runaway log cannot stall the UI thread.
  */
 export const MAX_COMPILE_LOG_BYTES = 4 * 1024 * 1024;

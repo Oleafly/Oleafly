@@ -1,0 +1,1 @@
+{"args":["\\usepackage/documentation#c"],"deps":[],"envs":[],"keys":{"\\usepackage/documentation#c":["assembler","c","java"]},"macros":[{"name":"endsourcecode"},{"name":"inputsourcecode"},{"name":"inputsourcecode","snippet":"inputsourcecode{${1:arg1}}"},{"name":"sourcecode"}]}

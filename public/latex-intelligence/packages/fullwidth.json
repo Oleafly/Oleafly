@@ -1,0 +1,1 @@
+{"args":["\\usepackage/fullwidth#c"],"deps":["etoolbox","kvoptions","zref-abspage"],"envs":[],"keys":{"\\usepackage/fullwidth#c":["#1","needspace"]},"macros":[{"name":"csname","unusual":true},{"name":"endfullwidth"},{"name":"fullwidth"},{"name":"fwddate"},{"name":"fwdpackagename"},{"name":"fwdversion"},{"name":"height"},{"name":"partopsep"},{"name":"thempfn"},{"name":"width"}]}

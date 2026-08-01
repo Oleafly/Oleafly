@@ -1,0 +1,1 @@
+{"args":["\\usepackage/innerscript#c"],"deps":[],"envs":[],"keys":{"\\usepackage/innerscript#c":["close","cover","inner","legacy-script","legacy-scriptscript","no-close","no-cover","no-inner","no-script","no-scriptscript","script","scriptscript"]},"macros":[{"name":"scalemu"},{"name":"scalemu","snippet":"scalemu{${1:arg1}}{${2:arg2}}"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":["natbib","suffix"],"envs":[],"keys":{},"macros":[{"name":"cite"},{"name":"citeaffixed"},{"name":"citeaffixed","snippet":"citeaffixed{${1:arg1}}{${2:arg2}}"},{"name":"citeasnoun"},{"name":"citename"},{"name":"citeyear"}]}

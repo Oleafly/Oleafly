@@ -1,0 +1,1 @@
+{"args":["\\usepackage/turnpagewoetex#c"],"deps":["atbegshi","atveryend","everyshi","picture","turnpageetex"],"envs":[],"keys":{"\\usepackage/turnpagewoetex#c":["deutsch","english","francais","nederlands","short"]},"macros":[{"name":"tpCurrentPage","unusual":true},{"name":"tppagenr","unusual":true},{"name":"turnthepage"}]}

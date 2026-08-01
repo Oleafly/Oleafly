@@ -1,0 +1,1 @@
+{"args":[],"deps":["xkeyval"],"envs":[{"name":"etaremune"}],"keys":{},"macros":[{"name":"makelabel"},{"name":"makelabel","snippet":"makelabel{${1:arg1}}"}]}

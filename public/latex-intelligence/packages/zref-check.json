@@ -1,0 +1,1 @@
+{"args":[],"deps":["ifdraft","zref-abspage","zref-hyperref","zref-user"],"envs":[{"name":"zcregion"}],"keys":{},"macros":[{"name":"IfFormatAtLeastTF"},{"name":"zcheck"},{"name":"zctarget"},{"name":"zctarget","snippet":"zctarget{${1:arg1}}{${2:arg2}}"},{"name":"zrefchecksetup"},{"name":"zrefchecksetup","snippet":"zrefchecksetup{${1:arg1}}"}]}

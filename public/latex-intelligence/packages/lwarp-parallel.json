@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[{"name":"Parallel"}],"keys":{},"macros":[{"name":"ParallelAtEnd"},{"name":"ParallelLText"},{"name":"ParallelLText","snippet":"ParallelLText{${1:arg1}}"},{"name":"ParallelPar"},{"name":"ParallelRText"},{"name":"ParallelRText","snippet":"ParallelRText{${1:arg1}}"}]}

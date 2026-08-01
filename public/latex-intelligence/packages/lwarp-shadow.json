@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"sboxrule","unusual":true},{"name":"sboxsep","unusual":true},{"name":"sdim","unusual":true},{"name":"shabox"},{"name":"shabox","snippet":"shabox{${1:arg1}}"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":["expl3","l3keys2e"],"envs":[],"keys":{},"macros":[{"name":"wrapstuffclear"},{"name":"wrapstuffset"},{"name":"wrapstuffset","snippet":"wrapstuffset{${1:arg1}}"}]}

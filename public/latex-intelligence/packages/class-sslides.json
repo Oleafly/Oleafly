@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"efoot"},{"name":"ehead"},{"name":"evenf"},{"name":"evenf","snippet":"evenf{${1:arg1}}"},{"name":"evenh"},{"name":"evenh","snippet":"evenh{${1:arg1}}"},{"name":"oddf"},{"name":"oddf","snippet":"oddf{${1:arg1}}"},{"name":"oddh"},{"name":"oddh","snippet":"oddh{${1:arg1}}"},{"name":"ofoot"},{"name":"ohead"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[{"name":"desclist"}],"keys":{},"macros":[{"name":"description"},{"name":"enddescription"},{"name":"makelabel"},{"name":"makelabel","snippet":"makelabel{${1:arg1}}"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":["calc","graphicx","simplekv"],"envs":[],"keys":{},"macros":[{"name":"depthinlinegraphicx","unusual":true},{"name":"inlinedepthgraphicsscale","unusual":true},{"name":"inlinegraphics"},{"name":"inlinegraphicsinvscale"},{"name":"inlinegraphicsscale"},{"name":"inlinegraphicstrut"},{"name":"totheightinlinegraphicx","unusual":true}]}

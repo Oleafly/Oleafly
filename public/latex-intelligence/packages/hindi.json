@@ -1,0 +1,1 @@
+{"args":[],"deps":["devanagari","hindicaptions"],"envs":[],"keys":{},"macros":[{"name":"atcatcode"},{"name":"bblstyerror"},{"name":"captionshindi"},{"name":"CurrentOption"},{"name":"datehindi"},{"name":"dnfamilydefault"},{"name":"LdfInit"},{"name":"ProvidesLanguage"},{"name":"ProvidesLanguage","snippet":"ProvidesLanguage{${1:arg1}}{${2:arg2}}{${3:arg3}}{${4:arg4}}"}]}

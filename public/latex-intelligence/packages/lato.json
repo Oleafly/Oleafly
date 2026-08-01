@@ -1,0 +1,1 @@
+{"args":[],"deps":["fontaxes","fontspec","ifluatex","ifxetex","xkeyval"],"envs":[],"keys":{},"macros":[{"name":"expandafter"},{"name":"familydefault"},{"name":"flafamily"},{"name":"lato"},{"name":"latofamily"},{"name":"sfdefault"}]}

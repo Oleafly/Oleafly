@@ -1,0 +1,1 @@
+{"args":[],"deps":["luaotfload","luatexbase","xkeyval"],"envs":[],"keys":{},"macros":[{"name":"setluaoption"},{"name":"setluaoption","snippet":"setluaoption{${1:arg1}}{${2:arg2}}{${3:arg3}}"},{"name":"useluaoption"},{"name":"useluaoption","snippet":"useluaoption{${1:arg1}}{${2:arg2}}"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":["iftex","luatex85"],"envs":[],"keys":{},"macros":[{"name":"cooltooltip"},{"name":"cooltooltip","snippet":"cooltooltip[${1:opt}]"},{"name":"cooltooltiptoggle"},{"name":"cooltooltiptoggle","snippet":"cooltooltiptoggle{${1:arg1}}"},{"name":"expandafter"}]}

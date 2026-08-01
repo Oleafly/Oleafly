@@ -1,0 +1,1 @@
+{"args":[],"deps":["catchfile","color","expl3","filemod","graphicx","ifpdf","ifplatform","psfrag","shellesc","suffix","trimspaces","xkeyval"],"envs":[],"keys":{},"macros":[{"name":"EndPreamble"},{"name":"noexpand"},{"name":"psfragfig"},{"name":"psfragfig","snippet":"psfragfig[${1:opt}]{${2:arg2}}"},{"name":"pstool"},{"name":"pstoolsetup"}]}

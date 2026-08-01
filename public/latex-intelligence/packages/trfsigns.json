@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"dfourier"},{"name":"Dfourier"},{"name":"dft"},{"name":"dft","snippet":"dft{${1:arg1}}"},{"name":"DFT"},{"name":"DFT","snippet":"DFT{${1:arg1}}"},{"name":"e"},{"name":"fourier"},{"name":"Fourier"},{"name":"im"},{"name":"laplace"},{"name":"Laplace"},{"name":"ztransf"},{"name":"Ztransf"}]}

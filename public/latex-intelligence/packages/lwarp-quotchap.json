@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"qauthor"},{"name":"qauthor","snippet":"qauthor{${1:arg1}}"},{"name":"qauthorfont"},{"name":"qsetcnfont"},{"name":"qsetcnfont","snippet":"qsetcnfont{${1:arg1}}"},{"name":"quotefont"}]}

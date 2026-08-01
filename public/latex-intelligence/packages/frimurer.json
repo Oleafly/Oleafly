@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[{"name":"frimurer"}],"keys":{},"macros":[{"name":"textfrimurer"},{"name":"textfrimurer","snippet":"textfrimurer{${1:arg1}}"}]}

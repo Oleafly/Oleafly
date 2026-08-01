@@ -1,0 +1,1 @@
+{"args":["\\usepackage/expkv-cs#c"],"deps":["expkv","expkv-def","expkv-opt","expkv-pop"],"envs":[],"keys":{"\\usepackage/expkv-cs#c":["all"]},"macros":[{"name":"CurrentOption"},{"name":"ekvoDate"},{"name":"ekvoProcessFutureOptions"},{"name":"ekvoProcessFutureOptions","snippet":"ekvoProcessFutureOptions{${1:arg1}}"},{"name":"ekvoVersion"},{"name":"expandafter"}]}

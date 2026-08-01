@@ -1,0 +1,1 @@
+{"args":[],"deps":["float"],"envs":[],"keys":{},"macros":[{"name":"restylefloat"},{"name":"restylefloat","snippet":"restylefloat{${1:arg1}}"}]}

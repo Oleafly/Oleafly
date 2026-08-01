@@ -468,7 +468,6 @@ de este índice público.
 | [Catálogo de producto e ingeniería](docs/README.md) | Inventarios de funcionalidades y contratos de ingeniería |
 | [Referencia de funcionalidades](docs/features.md) | La superficie del producto y los flujos de trabajo admitidos |
 | [Motores de documento](docs/document-engines.md) | Capacidades de LaTeX, Typst y Markdown |
-| [Viniendo de LaTeX Workshop](docs/ComingFromLatexWorkshop.md) | Correspondencia de funcionalidades y atajos para usuarios de VS Code + LaTeX Workshop |
 | [Arquitectura del producto](docs/Architecture.md) | Fronteras del sistema, propiedad de los paquetes y puntos de extensión |
 | [Desarrollo](docs/development.md) | Configuración local, pruebas y flujo de contribución |
 | [Cadena de herramientas del servidor de lenguaje](docs/language-server-toolchain.md) | Política de descarga, integridad y distribución |

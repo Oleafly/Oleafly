@@ -1,0 +1,1 @@
+{"args":[],"deps":["amsmath","etoolbox","expl3","tikz","xparse"],"envs":[],"keys":{},"macros":[{"name":"binomc"},{"name":"binomc","snippet":"binomc{${1:arg1}}{${2:arg2}}"},{"name":"pascal"},{"name":"pascalset"},{"name":"pascalset","snippet":"pascalset{${1:arg1}}"}]}

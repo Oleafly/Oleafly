@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"hyperlink"},{"name":"hyperlink","snippet":"hyperlink{${1:arg1}}{${2:arg2}}"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"AtNextShipout"},{"name":"AtNextShipout","snippet":"AtNextShipout{${1:arg1}}"},{"name":"EveryShipout"},{"name":"EveryShipout","snippet":"EveryShipout{${1:arg1}}"},{"name":"shipout"}]}

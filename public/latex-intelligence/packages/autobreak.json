@@ -1,0 +1,1 @@
+{"args":[],"deps":["amsmath","catchfile"],"envs":[{"name":"autobreak"}],"keys":{},"macros":[{"name":"csname"},{"name":"endalign"},{"name":"everyafterautobreak","unusual":true},{"name":"everybeforeautobreak","unusual":true},{"name":"MoveEqLeft"},{"name":"string"}]}

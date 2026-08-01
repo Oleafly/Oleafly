@@ -1,0 +1,1 @@
+{"args":[],"deps":["tikz","xcolor"],"envs":[],"keys":{},"macros":[{"name":"liftarm"},{"name":"liftarmanimate"},{"name":"liftarmconstruct"},{"name":"liftarmconstruct","snippet":"liftarmconstruct{${1:arg1}}"},{"name":"liftarmconstructclear"}]}

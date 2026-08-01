@@ -1,0 +1,1 @@
+{"args":["\\usepackage/spacekern#c"],"deps":["ifluatex","luatexbase"],"envs":[],"keys":{"\\usepackage/spacekern#c":["noiwkern","noredef"]},"macros":[{"name":"redef"},{"name":"semicolon"},{"name":"tmp"}]}

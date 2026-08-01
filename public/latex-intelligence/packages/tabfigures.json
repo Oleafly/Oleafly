@@ -1,0 +1,1 @@
+{"args":["\\usepackage/tabfigures#c"],"deps":["etoolbox","xcolor"],"envs":[],"keys":{"\\usepackage/tabfigures#c":["bib","debug","enum","eqno","lineno","toc"]},"macros":[{"name":"numberline"},{"name":"numberline","snippet":"numberline{${1:arg1}}"},{"name":"tbfigures"}]}

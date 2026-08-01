@@ -1,0 +1,1 @@
+{"args":["\\usepackage/subdepth#c"],"deps":[],"envs":[],"keys":{"\\usepackage/subdepth#c":["low-sup"]},"macros":[{"name":"csname"},{"name":"csname","snippet":"csname{${1:arg1}}"}]}

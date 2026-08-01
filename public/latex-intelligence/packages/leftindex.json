@@ -1,0 +1,1 @@
+{"args":[],"deps":["mathtools","xparse"],"envs":[],"keys":{},"macros":[{"name":"leftindex"},{"name":"LeftIndex"},{"name":"manualleftindex"},{"name":"manualleftindex","snippet":"manualleftindex{${1:arg1}}{${2:arg2}}{${3:arg3}}{${4:arg4}}"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":["catchfile","kvoptions","xcolor","xstring","xwatermark"],"envs":[],"keys":{},"macros":[{"name":"gitbranch"},{"name":"gitcommit"},{"name":"gitdir"}]}

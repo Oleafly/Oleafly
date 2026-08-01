@@ -1,0 +1,1 @@
+{"args":[],"deps":["longtable","tabularx"],"envs":[{"name":"tabularx"},{"name":"tabularx*"}],"keys":{},"macros":[{"name":"convertXColumns"},{"name":"keepXColumns"}]}

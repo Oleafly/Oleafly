@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"declarecommand"},{"name":"declarecommand","snippet":"declarecommand{${1:arg1}}"},{"name":"intitlebreak"},{"name":"intitlebreakvs"},{"name":"SavedAuthor"},{"name":"SavedTitle"},{"name":"SaveTopMatter"}]}

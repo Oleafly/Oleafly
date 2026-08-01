@@ -1,0 +1,1 @@
+{"args":["\\usepackage/textfit#c"],"deps":[],"envs":[],"keys":{"\\usepackage/textfit#c":["magstep","noisy"]},"macros":[{"name":"docdate"},{"name":"filedate"},{"name":"fileversion"},{"name":"Fontname"},{"name":"Fontname","snippet":"Fontname{${1:arg1}}"},{"name":"magstep"},{"name":"magsteps"},{"name":"or"},{"name":"scaletoheight"},{"name":"scaletowidth"}]}

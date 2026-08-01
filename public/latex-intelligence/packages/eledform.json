@@ -1,0 +1,1 @@
+{"args":[],"deps":["eledmac"],"envs":[],"keys":{},"macros":[{"name":"csname"},{"name":"do"},{"name":"do","snippet":"do{${1:arg1}}"},{"name":"manuscript"},{"name":"manuscript","snippet":"manuscript{${1:arg1}}"},{"name":"varseries"},{"name":"varseries","snippet":"varseries{${1:arg1}}"}]}

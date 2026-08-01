@@ -1,0 +1,1 @@
+{"args":["\\usepackage/multidef#c"],"deps":["trimspaces","xkeyval"],"envs":[],"keys":{"\\usepackage/multidef#c":["arg","args","p","prefix","s","suffix"]},"macros":[{"name":"multidef"},{"name":"multidef","snippet":"multidef[${1:opt}]{${2:arg2}}{${3:arg3}}"}]}

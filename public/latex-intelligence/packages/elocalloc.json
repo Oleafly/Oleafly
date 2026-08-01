@@ -1,0 +1,1 @@
+{"args":[],"deps":["etex"],"envs":[],"keys":{},"macros":[{"name":"extrafloats"},{"name":"extrafloats","snippet":"extrafloats{${1:arg1}}"},{"name":"locbox"},{"name":"loccount"},{"name":"locdimen"},{"name":"locmarks"},{"name":"locmuskip"},{"name":"locskip"},{"name":"loctoks"}]}

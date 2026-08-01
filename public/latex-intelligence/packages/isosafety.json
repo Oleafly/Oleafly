@@ -1,0 +1,1 @@
+{"args":[],"deps":["graphicx","ifthen","xcolor","xkeyval"],"envs":[],"keys":{},"macros":[{"name":"isosafetypath"},{"name":"Isosign"},{"name":"Isosign","snippet":"Isosign{${1:arg1}}"}]}

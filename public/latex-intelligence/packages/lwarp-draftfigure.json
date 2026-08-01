@@ -1,0 +1,1 @@
+{"args":["\\setdf,\\usepackage/lwarp-draftfigure#c"],"deps":["xkeyval"],"envs":[],"keys":{"\\setdf,\\usepackage/lwarp-draftfigure#c":["code","content","filename","noframe","position","size","style"]},"macros":[{"name":"setdf"},{"name":"setdf","snippet":"setdf{${1:arg1}}"}]}

@@ -1,0 +1,1 @@
+{"args":["\\usepackage/trivfloat#c"],"deps":["float","floatrow"],"envs":[],"keys":{"\\usepackage/trivfloat#c":["floatrow","floatrow=false","floatrow=true"]},"macros":[{"name":"csname"},{"name":"i"},{"name":"j"},{"name":"trivfloat"},{"name":"trivfloat","snippet":"trivfloat{${1:arg1}}"}]}

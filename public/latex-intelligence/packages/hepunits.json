@@ -1,0 +1,1 @@
+{"args":["\\usepackage/hepunits#c"],"deps":["amsmath","ifthen","siunitx"],"envs":[],"keys":{"\\usepackage/hepunits#c":["freestanding","noprefixcmds","sicmds"]},"macros":[{"name":"filedate"},{"name":"fileversion"}]}

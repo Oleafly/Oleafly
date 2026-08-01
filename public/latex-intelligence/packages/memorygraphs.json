@@ -1,0 +1,1 @@
+{"args":[],"deps":["tikz"],"envs":[],"keys":{},"macros":[{"name":"arg"},{"name":"name"},{"name":"parts"},{"name":"pgfaddtoshape"},{"name":"pgfaddtoshape","snippet":"pgfaddtoshape{${1:arg1}}{${2:arg2}}"}]}

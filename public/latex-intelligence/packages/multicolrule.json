@@ -1,0 +1,1 @@
+{"args":[],"deps":["expl3","l3keys2e","multicol","scrlfile","tikz","xcolor","xparse","xpatch"],"envs":[],"keys":{},"macros":[{"name":"columnseprulecolor"},{"name":"DeclareMCRulePattern"},{"name":"DeclareMCRulePattern","snippet":"DeclareMCRulePattern{${1:arg1}}{${2:arg2}}"},{"name":"mcruledivider"},{"name":"SetMCRule"},{"name":"SetMCRule","snippet":"SetMCRule{${1:arg1}}"}]}

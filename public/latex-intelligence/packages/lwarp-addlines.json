@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"addline"},{"name":"addlines"},{"name":"removeline"},{"name":"removelines"},{"name":"squeezepage"},{"name":"squeezepage","snippet":"squeezepage[${1:opt}]"}]}

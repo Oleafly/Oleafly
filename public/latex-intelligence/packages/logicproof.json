@@ -1,0 +1,1 @@
+{"args":[],"deps":["array","ifthen"],"envs":[{"name":"logicproof"},{"name":"subproof"}],"keys":{},"macros":[{"name":"intersubproofvertspace","unusual":true},{"name":"subproofhorizspace","unusual":true}]}

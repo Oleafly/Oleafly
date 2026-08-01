@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[{"name":"CV"}],"keys":{},"macros":[{"name":"entrylabel"},{"name":"entrylabel","snippet":"entrylabel{${1:arg1}}"},{"name":"makelabel"},{"name":"section"}]}

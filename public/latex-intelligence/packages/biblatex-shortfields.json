@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"DeclareSortingTemplate"},{"name":"entrysetpunct"},{"name":"makelabel"},{"name":"makelabel","snippet":"makelabel{${1:arg1}}"},{"name":"printbibshortfields"},{"name":"printbibshortfields","snippet":"printbibshortfields[${1:opt}]"},{"name":"shortfieldswidth","unusual":true}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":["afterpage","makeidx"],"envs":[],"keys":{},"macros":[{"name":"endtheindex"},{"name":"entrypostfix"},{"name":"entryprefix"},{"name":"hhafterpage"},{"name":"hhafterpage","snippet":"hhafterpage{${1:arg1}}"},{"name":"subitem"},{"name":"subsubitem"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":["array"],"envs":[{"name":"tabularx"},{"name":"tabularx*"}],"keys":{},"macros":[{"name":"tabularxcolumn"},{"name":"tabularxcolumn","snippet":"tabularxcolumn{${1:arg1}}"}]}

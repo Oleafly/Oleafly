@@ -1,0 +1,1 @@
+{"args":["\\usepackage/schulekl#c"],"deps":["schullzk","scrlayer-scrpage"],"envs":[],"keys":{"\\usepackage/schulekl#c":["KMKpunkte","arbeit","kursarbeit"]},"macros":[{"name":"klausurname"},{"name":"klausurname","snippet":"klausurname{${1:arg1}}"}]}

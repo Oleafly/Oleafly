@@ -1,0 +1,1 @@
+{"args":["\\usepackage/lwarp-fancyvrb#c"],"deps":["xcolor"],"envs":[],"keys":{"\\usepackage/lwarp-fancyvrb#c":["gobble"]},"macros":[{"name":"do"},{"name":"FancyVerbGetLine"},{"name":"FancyVerbGetLine","snippet":"FancyVerbGetLine{${1:arg1}}"},{"name":"footnote"},{"name":"next"},{"name":"tmpb"},{"name":"VerbatimFootnotes"}]}

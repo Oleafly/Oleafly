@@ -1,0 +1,1 @@
+{"args":["\\usepackage/vdmlisting#c"],"deps":["color","listings","times"],"envs":[],"keys":{"\\usepackage/vdmlisting#c":["color","notimes"]},"macros":[{"name":"filedate"},{"name":"fileversion"},{"name":"vdmnotcovered"},{"name":"vdmnotcovered","snippet":"vdmnotcovered{${1:arg1}}"}]}

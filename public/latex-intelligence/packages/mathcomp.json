@@ -1,0 +1,1 @@
+{"args":["\\usepackage/mathcomp#c"],"deps":["textcomp"],"envs":[],"keys":{"\\usepackage/mathcomp#c":["rmdefault"]},"macros":[{"name":"dagger"},{"name":"ddagger"},{"name":"filedate"},{"name":"fileversion"},{"name":"tccelsius"},{"name":"tccentigrade"},{"name":"tcdegree"},{"name":"tcmu"},{"name":"tcohm"},{"name":"tcpertenthousand"},{"name":"tcperthousand"}]}

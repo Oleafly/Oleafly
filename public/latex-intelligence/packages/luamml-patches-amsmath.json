@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[{"name":"smallmatrix"}],"keys":{},"macros":[{"name":"arraystretch"},{"name":"endalign"},{"name":"endaligned"},{"name":"endgather"},{"name":"gathered"},{"name":"gathered","snippet":"gathered[${1:opt}]"},{"name":"label"},{"name":"split"},{"name":"tag"}]}

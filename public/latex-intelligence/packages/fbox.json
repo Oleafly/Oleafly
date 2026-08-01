@@ -1,0 +1,1 @@
+{"args":["\\usepackage/fbox#c"],"deps":["xcolor","xkeyval"],"envs":[],"keys":{"\\usepackage/fbox#c":["bcolor","boxrule","boxsep","lcolor","linewidth","rcolor","tcolor"]},"macros":[{"name":"fbox"},{"name":"fparbox"},{"name":"next"},{"name":"noexpand"},{"name":"x"}]}

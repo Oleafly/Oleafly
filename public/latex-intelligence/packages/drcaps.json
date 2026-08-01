@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"DCap"},{"name":"DCap","snippet":"DCap{${1:arg1}}"},{"name":"formatCap"},{"name":"HCap"},{"name":"HCap","snippet":"HCap{${1:arg1}}"},{"name":"RCap"},{"name":"RCap","snippet":"RCap{${1:arg1}}"}]}

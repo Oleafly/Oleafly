@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"arabtexconfig"},{"name":"linewidth","unusual":true},{"name":"UsePackage"},{"name":"UsePackage","snippet":"UsePackage{${1:arg1}}"}]}

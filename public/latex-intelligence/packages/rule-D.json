@@ -1,0 +1,1 @@
+{"args":[],"deps":["expl3","xparse"],"envs":[],"keys":{},"macros":[{"name":"EANBarcode"},{"name":"EANBarcode","snippet":"EANBarcode[${1:opt}]{${2:arg2}}"},{"name":"EANControlDigit"},{"name":"EANControlDigit","snippet":"EANControlDigit{${1:arg1}}"},{"name":"GSSetup"},{"name":"GSSetup","snippet":"GSSetup{${1:arg1}}"},{"name":"rule"}]}

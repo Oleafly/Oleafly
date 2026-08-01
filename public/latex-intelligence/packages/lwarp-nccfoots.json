@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"Footnote"},{"name":"Footnote","snippet":"Footnote{${1:arg1}}"},{"name":"Footnote","snippet":"Footnote{${1:arg1}}{${2:arg2}}"},{"name":"Footnotemark"},{"name":"Footnotemark","snippet":"Footnotemark{${1:arg1}}"}]}

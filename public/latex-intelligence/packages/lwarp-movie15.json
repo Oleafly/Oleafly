@@ -1,0 +1,1 @@
+{"args":["\\usepackage/lwarp-movie15#c"],"deps":["xkeyval"],"envs":[],"keys":{"\\usepackage/lwarp-movie15#c":["text"]},"macros":[{"name":"hyperlinkmovie"},{"name":"hyperlinkmovie","snippet":"hyperlinkmovie[${1:opt}]{${2:arg2}}{${3:arg3}}"},{"name":"movieref"},{"name":"movieref","snippet":"movieref[${1:opt}]{${2:arg2}}{${3:arg3}}"}]}

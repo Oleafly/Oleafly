@@ -1,0 +1,1 @@
+{"args":[],"deps":["arabicnumbers","bidi","calc","luabidi"],"envs":[],"keys":{},"macros":[{"name":"Jalalimonth"},{"name":"Jalalimonth","snippet":"Jalalimonth{${1:arg1}}"},{"name":"JalalimonthEnglish"},{"name":"JalalimonthEnglish","snippet":"JalalimonthEnglish{${1:arg1}}"},{"name":"Jalalitoday"}]}

@@ -1,0 +1,1 @@
+{"args":["\\usepackage/hypdestopt#c"],"deps":["alphalph","auxhook","iftex","pdfescape","pdftexcmds"],"envs":[],"keys":{"\\usepackage/hypdestopt#c":["name","num","verbose"]},"macros":[{"name":"HypDest","unusual":true},{"name":"IfFormatAtLeastTF"},{"name":"pdfdest"},{"name":"theHypDest"},{"name":"x"}]}

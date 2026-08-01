@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"cf"},{"name":"hrboxsep","unusual":true},{"name":"roundbox"},{"name":"roundbox","snippet":"roundbox{${1:arg1}}"},{"name":"vrboxsep","unusual":true}]}

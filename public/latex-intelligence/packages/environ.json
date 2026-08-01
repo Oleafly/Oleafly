@@ -1,0 +1,1 @@
+{"args":[],"deps":["trimspaces"],"envs":[],"keys":{},"macros":[{"name":"csname"},{"name":"environbodyname"},{"name":"environbodyname","snippet":"environbodyname{${1:arg1}}"},{"name":"environfinalcode"},{"name":"environfinalcode","snippet":"environfinalcode{${1:arg1}}"},{"name":"NewEnviron"},{"name":"RenewEnviron"}]}

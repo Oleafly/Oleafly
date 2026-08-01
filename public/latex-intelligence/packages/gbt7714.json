@@ -1,0 +1,1 @@
+{"args":["\\usepackage/gbt7714#c"],"deps":["natbib","url"],"envs":[],"keys":{"\\usepackage/gbt7714#c":["2005","2015","authoryear","numbers","super"]},"macros":[{"name":"bibliography"},{"name":"bibliography","snippet":"bibliography{${1:arg1}}"},{"name":"bibliographystyle"},{"name":"bibliographystyle","snippet":"bibliographystyle{${1:arg1}}"},{"name":"newblock"}]}

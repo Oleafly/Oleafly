@@ -1,0 +1,1 @@
+{"args":[],"deps":["pdftexcmds","pgfkeys"],"envs":[],"keys":{},"macros":[{"name":"bibletext"},{"name":"bibletext","snippet":"bibletext[${1:opt}]{${2:arg2}}"}]}

@@ -1,0 +1,1 @@
+{"args":["\\usepackage/sclang-prettifier#c"],"deps":["listings","textcomp","xcolor"],"envs":[],"keys":{"\\usepackage/sclang-prettifier#c":["draft","final","framed","numbered"]},"macros":[{"name":"iterate"},{"name":"scttfamily"}]}

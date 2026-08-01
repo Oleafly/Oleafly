@@ -1,0 +1,1 @@
+{"args":[],"deps":["expl3","l3keys2e","xparse","xtemplate"],"envs":[],"keys":{},"macros":[{"name":"diff"},{"name":"Diff"},{"name":"diffd"},{"name":"Diffd"},{"name":"diffdef"},{"name":"diffp"},{"name":"diffset"},{"name":"diffset","snippet":"diffset[${1:opt}]"},{"name":"dl"},{"name":"dlp"},{"name":"jacob"},{"name":"negmu"},{"name":"nilmu"},{"name":"onemu"},{"name":"twomu"}]}

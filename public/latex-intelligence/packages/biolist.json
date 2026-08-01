@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"DOUBLE","unusual":true},{"name":"SEM"},{"name":"SEMEYSTVO","unusual":true},{"name":"SEMVID","unusual":true},{"name":"VDVID"},{"name":"VID"},{"name":"VK"},{"name":"VKOMM"},{"name":"VKOMM","snippet":"VKOMM{${1:arg1}}"}]}

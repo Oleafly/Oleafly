@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"insertversion"},{"name":"version"},{"name":"version","snippet":"version{${1:arg1}}"},{"name":"versionformat"},{"name":"versionformat","snippet":"versionformat{${1:arg1}}"}]}

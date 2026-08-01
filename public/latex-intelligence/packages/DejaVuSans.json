@@ -1,0 +1,1 @@
+{"args":["\\usepackage/DejaVuSans#c"],"deps":["DejaVuSansMono","DejaVuSerif","keyval"],"envs":[],"keys":{"\\usepackage/DejaVuSans#c":["scaled"]},"macros":[{"name":"CurrentOption"},{"name":"ProcessOptionsWithKV"},{"name":"ProcessOptionsWithKV","snippet":"ProcessOptionsWithKV{${1:arg1}}"},{"name":"rmdefault"},{"name":"sfdefault"},{"name":"ttdefault"}]}

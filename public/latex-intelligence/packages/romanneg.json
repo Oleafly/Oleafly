@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"pagenumbering"},{"name":"pagenumbering","snippet":"pagenumbering{${1:arg1}}"},{"name":"stepcounter"},{"name":"stepcounter","snippet":"stepcounter{${1:arg1}}"},{"name":"thepage"}]}

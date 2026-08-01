@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"propis"},{"name":"propis","snippet":"propis[${1:opt}]{${2:arg2}}"},{"name":"Propis"},{"name":"Propis","snippet":"Propis[${1:opt}]{${2:arg2}}"},{"name":"PROpis"},{"name":"PROpis","snippet":"PROpis[${1:opt}]{${2:arg2}}"}]}

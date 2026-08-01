@@ -1,0 +1,1 @@
+{"args":["\\usepackage/metainfo#c"],"deps":[],"envs":[],"keys":{"\\usepackage/metainfo#c":["compactheadings","indexshorthand","listlocalmetainfo"]},"macros":[{"name":"chapter"},{"name":"section"},{"name":"subsection"},{"name":"subsubsection"},{"name":"typesetmetainfo"},{"name":"typesetmetainfo","snippet":"typesetmetainfo{${1:arg1}}"}]}

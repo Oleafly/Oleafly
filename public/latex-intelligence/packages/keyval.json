@@ -1,0 +1,1 @@
+{"args":["\\usepackage/keyval#c"],"deps":[],"envs":[],"keys":{"\\usepackage/keyval#c":["unknownkeysallowed","unknownkeyserror"]},"macros":[{"name":"expandafter"},{"name":"setkeys"},{"name":"setkeys","snippet":"setkeys{${1:arg1}}{${2:arg2}}"}]}

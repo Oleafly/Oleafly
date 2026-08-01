@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"ProvidesDefinition"},{"name":"ProvidesDefinition","snippet":"ProvidesDefinition{${1:arg1}}"},{"name":"UseAllDefinitions"},{"name":"UseDefinition"},{"name":"UseDefinition","snippet":"UseDefinition{${1:arg1}}"},{"name":"UseSomeDefinitions"}]}

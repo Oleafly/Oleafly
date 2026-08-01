@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"firsthline"},{"name":"lasthline"},{"name":"multicolumn"},{"name":"multicolumn","snippet":"multicolumn{${1:arg1}}{${2:arg2}}{${3:arg3}}"}]}

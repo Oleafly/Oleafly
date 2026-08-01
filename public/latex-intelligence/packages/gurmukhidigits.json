@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"digits"},{"name":"digits","snippet":"digits{${1:arg1}}"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":["amsfonts","bm","kvoptions","tikz"],"envs":[{"name":"bondgraph"}],"keys":{},"macros":[{"name":"bgelement"},{"name":"bgelement","snippet":"bgelement[${1:opt}]{${2:arg2}}"},{"name":"bond"},{"name":"bond","snippet":"bond[${1:opt}]"}]}

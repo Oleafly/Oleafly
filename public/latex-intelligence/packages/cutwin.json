@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[{"name":"cutout"},{"name":"shapedcutout"}],"keys":{},"macros":[{"name":"cutfuzz"},{"name":"opencutcenter"},{"name":"opencutleft"},{"name":"opencutright"},{"name":"pageinwindow"},{"name":"picinwindow"},{"name":"putstuffinpic"},{"name":"windowpagestuff"}]}

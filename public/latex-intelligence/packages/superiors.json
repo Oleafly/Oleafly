@@ -1,0 +1,1 @@
+{"args":[],"deps":["etoolbox","iftex","ifthen","trace","xcolor","xkeyval"],"envs":[],"keys":{},"macros":[{"name":"footnotemarkfont"},{"name":"supsDate"},{"name":"supsStyle"},{"name":"supsVersion"},{"name":"textfnscript"},{"name":"textfnscript","snippet":"textfnscript{${1:arg1}}"}]}

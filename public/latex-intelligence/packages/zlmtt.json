@@ -1,0 +1,1 @@
+{"args":[],"deps":["mweights","xkeyval"],"envs":[],"keys":{},"macros":[{"name":"filedate"},{"name":"fileversion"},{"name":"lctt"},{"name":"lctt","snippet":"lctt{${1:arg1}}"},{"name":"monott"},{"name":"monott","snippet":"monott{${1:arg1}}"},{"name":"proptt"},{"name":"proptt","snippet":"proptt{${1:arg1}}"},{"name":"ttdefault"}]}

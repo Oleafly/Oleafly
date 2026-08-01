@@ -1,0 +1,1 @@
+{"args":[],"deps":["calc","xcolor","xspace"],"envs":[],"keys":{},"macros":[{"name":"filedate"},{"name":"fileversion"},{"name":"xdotfill"},{"name":"xhrectanglefill"},{"name":"xhrectanglefill","snippet":"xhrectanglefill{${1:arg1}}{${2:arg2}}"},{"name":"xhrulefill"},{"name":"xhrulefill","snippet":"xhrulefill{${1:arg1}}{${2:arg2}}"},{"name":"xrfill"}]}

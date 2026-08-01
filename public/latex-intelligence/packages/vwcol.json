@@ -1,0 +1,1 @@
+{"args":["\\vwcolsetup,\\usepackage/vwcol#c"],"deps":["calc","color","environ","keyval","ragged2e"],"envs":[],"keys":{"\\vwcolsetup,\\usepackage/vwcol#c":["indent","justify","lines","maxrecursion","postrule","postsep","prerule","presep","quiet","rule","rulecolor","sep","siderule","sidesep","widths"]},"macros":[{"name":"par"},{"name":"vwcolsetup"}]}

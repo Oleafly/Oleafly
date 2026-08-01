@@ -1,0 +1,1 @@
+{"args":[],"deps":["expkv-def"],"envs":[],"keys":{},"macros":[{"name":"do"},{"name":"enverb"},{"name":"enverb","snippet":"enverb{${1:arg1}}{${2:arg2}}"},{"name":"enverbBody"},{"name":"enverbExecute"},{"name":"enverbListing"},{"name":"enverbListing","snippet":"enverbListing{${1:arg1}}{${2:arg2}}"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":["adjustbox","keyval","pgf"],"envs":[],"keys":{},"macros":[{"name":"lilyglyphs"},{"name":"lilyglyphs","snippet":"lilyglyphs[${1:opt}]"}]}

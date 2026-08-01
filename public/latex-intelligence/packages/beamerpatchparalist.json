@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"compactenum"},{"name":"compactitem"},{"name":"csname"},{"name":"endcompactenum"},{"name":"endcompactitem"},{"name":"enumerate"},{"name":"enumlabel"},{"name":"enumlabel","snippet":"enumlabel{${1:arg1}}"},{"name":"itemize"},{"name":"itemlabel"},{"name":"itemlabel","snippet":"itemlabel{${1:arg1}}"},{"name":"makelabel"}]}

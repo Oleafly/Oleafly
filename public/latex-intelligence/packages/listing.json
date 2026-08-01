@@ -1,0 +1,1 @@
+{"args":["\\usepackage/listing#c"],"deps":[],"envs":[{"name":"listing"}],"keys":{"\\usepackage/listing#c":["bigcaptions"]},"macros":[{"name":"filedate"},{"name":"filename"},{"name":"fileversion"},{"name":"listing","unusual":true},{"name":"listingname"},{"name":"listlistingname"},{"name":"listoflistings"},{"name":"thelisting"}]}

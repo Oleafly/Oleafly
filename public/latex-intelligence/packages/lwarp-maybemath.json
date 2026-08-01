@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"maybebm"},{"name":"maybebmsf"},{"name":"maybeit"},{"name":"maybeitrm"},{"name":"maybeitsubscript"},{"name":"mayberm"},{"name":"mayberm","snippet":"mayberm{${1:arg1}}"},{"name":"maybesf"}]}

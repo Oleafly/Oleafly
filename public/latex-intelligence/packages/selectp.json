@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"AbsVal"},{"name":"AbsVal","snippet":"AbsVal{${1:arg1}}"},{"name":"nofiles"},{"name":"outputonly"},{"name":"shipout"},{"name":"typeout"}]}

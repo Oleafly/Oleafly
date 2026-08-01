@@ -1,0 +1,1 @@
+{"args":["\\usepackage/trace#c"],"deps":[],"envs":[],"keys":{"\\usepackage/trace#c":["full","logonly"]},"macros":[{"name":"traceoff"},{"name":"traceon"},{"name":"tracingall"},{"name":"typeout"}]}

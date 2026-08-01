@@ -1,0 +1,1 @@
+{"args":["\\usepackage/PTSans#c"],"deps":["PTMono","PTSerif","keyval"],"envs":[],"keys":{"\\usepackage/PTSans#c":["scaled"]},"macros":[{"name":"CurrentOption"},{"name":"ProcessOptionsWithKV"},{"name":"ProcessOptionsWithKV","snippet":"ProcessOptionsWithKV{${1:arg1}}"},{"name":"rmdefault"},{"name":"sfdefault"},{"name":"ttdefault"}]}

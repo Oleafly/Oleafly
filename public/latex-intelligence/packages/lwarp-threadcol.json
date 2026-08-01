@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"setthreadname"},{"name":"setthreadname","snippet":"setthreadname{${1:arg1}}"}]}

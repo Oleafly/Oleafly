@@ -1,0 +1,1 @@
+{"args":["\\usepackage/euflag#c"],"deps":["amssymb","graphicx","xcolor"],"envs":[],"keys":{"\\usepackage/euflag#c":["baseline"]},"macros":[{"name":"euflag"},{"name":"euflag","snippet":"euflag[${1:opt}]"},{"name":"eustar"},{"name":"makestars"},{"name":"T"},{"name":"T","snippet":"T{${1:arg1}}{${2:arg2}}"}]}

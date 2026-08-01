@@ -1,0 +1,1 @@
+{"args":[],"deps":["iftex","microtype","textcase"],"envs":[],"keys":{},"macros":[{"name":"spacedcaps"},{"name":"spacedcaps","snippet":"spacedcaps{${1:arg1}}"},{"name":"textlcc"},{"name":"textlcc","snippet":"textlcc{${1:arg1}}"},{"name":"textslcc"},{"name":"textssc"}]}

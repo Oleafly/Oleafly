@@ -1,0 +1,1 @@
+{"args":["\\usepackage/dfgpdata#c"],"deps":[],"envs":[],"keys":{"\\usepackage/dfgpdata#c":["german","thema"]},"macros":[{"name":"deu"},{"name":"deu","snippet":"deu{${1:arg1}}"},{"name":"dfgprojpapers"},{"name":"dfgprojpapers","snippet":"dfgprojpapers[${1:opt}]{${2:arg2}}"}]}

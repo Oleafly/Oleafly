@@ -1,0 +1,1 @@
+{"args":["\\usepackage/pax#c"],"deps":["auxhook","etexcmds","graphicx","ifpdf","kvoptions","kvsetkeys","ltxcmds"],"envs":[],"keys":{"\\usepackage/pax#c":["DestX","DestY","trim","viewport"]},"macros":[{"name":"csname"},{"name":"csname","snippet":"csname{${1:arg1}}{${2:arg2}}"},{"name":"includegraphics"},{"name":"x"}]}

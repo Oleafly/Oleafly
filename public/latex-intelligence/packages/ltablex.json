@@ -1,0 +1,1 @@
+{"args":[],"deps":["longtable","tabularx"],"envs":[],"keys":{},"macros":[{"name":"caption"},{"name":"convertXColumns"},{"name":"endfirsthead"},{"name":"endfoot"},{"name":"endhead"},{"name":"endlastfoot"},{"name":"keepXColumns"},{"name":"savecaption"},{"name":"saveendfirsthead"},{"name":"saveendfoot"},{"name":"saveendhead"},{"name":"saveendlastfoot"},{"name":"verb"}]}

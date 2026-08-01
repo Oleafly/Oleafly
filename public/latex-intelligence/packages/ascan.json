@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"fullvocalize"},{"name":"next"},{"name":"setcode"},{"name":"setcode","snippet":"setcode{${1:arg1}}"},{"name":"tdef"},{"name":"tdef","snippet":"tdef{${1:arg1}}"},{"name":"temp"},{"name":"vocalize"},{"name":"xpa"}]}

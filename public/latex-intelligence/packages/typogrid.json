@@ -1,0 +1,1 @@
+{"args":["\\usepackage/typogrid#c"],"deps":["calc","eso-pic","keyval"],"envs":[],"keys":{"\\usepackage/typogrid#c":["colorgrid","columns","draft","final","grid","headings","margin"]},"macros":[{"name":"gridwidth","unusual":true},{"name":"typogrid"},{"name":"typogridsetup"},{"name":"typogridsetup","snippet":"typogridsetup{${1:arg1}}"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":["xcolor"],"envs":[{"name":"mdframed"}],"keys":{},"macros":[{"name":"csname"},{"name":"csname","snippet":"csname{${1:arg1}}"},{"name":"hspace"},{"name":"makelabel"},{"name":"makelabel","snippet":"makelabel{${1:arg1}}"},{"name":"mdfsubsubtitle"},{"name":"mdfsubtitle"},{"name":"mdtheorem"},{"name":"newmdtheoremenv"},{"name":"rule"}]}

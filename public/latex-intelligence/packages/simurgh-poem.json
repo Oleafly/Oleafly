@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[{"name":"modernpoem"},{"name":"traditionalpoem"}],"keys":{},"macros":[{"name":"csname"},{"name":"newblock"},{"name":"par"},{"name":"poemblocksep"},{"name":"poemcolsepskip"},{"name":"poemextrabaselineskip"},{"name":"poemmarginskip"},{"name":"poemskip"},{"name":"versewidth","unusual":true}]}

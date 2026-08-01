@@ -1,0 +1,1 @@
+{"args":["\\usepackage/subeqnarray#c"],"deps":[],"envs":[{"name":"subeqnarray"},{"name":"subeqnarray*"}],"keys":{"\\usepackage/subeqnarray#c":["deqn","fleqn","leqno","reqno"]},"macros":[{"name":"protect"},{"name":"slabel"},{"name":"slabel","snippet":"slabel{${1:arg1}}"},{"name":"subequation","unusual":true},{"name":"thepage"},{"name":"thesubequation"}]}

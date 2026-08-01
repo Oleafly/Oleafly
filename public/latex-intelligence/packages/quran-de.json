@@ -1,0 +1,1 @@
+{"args":[],"deps":["quran","xkeyval","xstring"],"envs":[],"keys":{},"macros":[{"name":"basmalahde"},{"name":"deGetTrans"},{"name":"deSetTrans"},{"name":"deSetTrans","snippet":"deSetTrans{${1:arg1}}"},{"name":"makeatletter"},{"name":"qurandedate"},{"name":"qurandeversion"}]}

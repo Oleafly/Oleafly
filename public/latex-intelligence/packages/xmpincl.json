@@ -1,0 +1,1 @@
+{"args":[],"deps":["ifpdf","ifthen"],"envs":[],"keys":{},"macros":[{"name":"includexmp"},{"name":"includexmp","snippet":"includexmp{${1:arg1}}"}]}

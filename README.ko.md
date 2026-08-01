@@ -446,7 +446,6 @@ pnpm tauri dev
 | [제품 엔지니어링 카탈로그](docs/README.md) | 기능 목록과 엔지니어링 계약 |
 | [기능 레퍼런스](docs/features.md) | 제품 표면과 지원되는 워크플로 |
 | [문서 엔진](docs/document-engines.md) | LaTeX, Typst, Markdown 기능 |
-| [LaTeX Workshop에서 넘어오기](docs/ComingFromLatexWorkshop.md) | VS Code + LaTeX Workshop 사용자를 위한 기능·단축키 대응표 |
 | [제품 아키텍처](docs/Architecture.md) | 시스템 경계, 패키지 소유권, 확장 지점 |
 | [개발](docs/development.md) | 로컬 설정, 테스트, 기여 워크플로 |
 | [언어 서버 툴체인](docs/language-server-toolchain.md) | 가져오기, 무결성, 배포 정책 |

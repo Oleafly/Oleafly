@@ -1,0 +1,1 @@
+{"args":["\\usepackage/mcaption#c"],"deps":["changepage"],"envs":[{"name":"margincap"}],"keys":{"\\usepackage/mcaption#c":["bottom","top","v2.2"]},"macros":[{"name":"caption"},{"name":"endmargincap"},{"name":"label"},{"name":"margincap"},{"name":"margincapalign"},{"name":"margincapsep","unusual":true}]}

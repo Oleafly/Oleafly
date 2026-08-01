@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"BlankLine"},{"name":"ResetInOut"},{"name":"ResetInOut","snippet":"ResetInOut{${1:arg1}}"},{"name":"SetKwInOut"},{"name":"SetKwInOut","snippet":"SetKwInOut{${1:arg1}}{${2:arg2}}"}]}

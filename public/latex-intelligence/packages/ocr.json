@@ -1,0 +1,1 @@
+{"args":["\\usepackage/ocr#c"],"deps":["ifthen"],"envs":[],"keys":{"\\usepackage/ocr#c":["oca","ocr-a","ocr-b","ocr-b-negative","ocr-b-outline","ocr-b-sharp","ocr-b-sharp-negative"]},"macros":[{"name":"ocrdefault"},{"name":"ocrfamily"},{"name":"ocrnegfamily"}]}

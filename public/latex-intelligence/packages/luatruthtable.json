@@ -1,0 +1,1 @@
+{"args":["\\usepackage/luatruthtable#c"],"deps":["amsmath","luacode","xkeyval"],"envs":[],"keys":{"\\usepackage/luatruthtable#c":["fltext","trtext"]},"macros":[{"name":"luaTruthTable"},{"name":"luaTruthTable","snippet":"luaTruthTable[${1:opt}]{${2:arg2}}{${3:arg3}}"}]}

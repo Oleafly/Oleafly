@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"padnum"},{"name":"padnum","snippet":"padnum{${1:arg1}}"},{"name":"setpadchar"},{"name":"setpadchar","snippet":"setpadchar{${1:arg1}}"},{"name":"setpadnum"},{"name":"setpadnum","snippet":"setpadnum{${1:arg1}}"}]}

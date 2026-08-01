@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[{"name":"allfalse"}],"keys":{},"macros":[{"name":"comparedstring"},{"name":"falseaction"},{"name":"logicbody"},{"name":"orcheck"},{"name":"orcheck","snippet":"orcheck{${1:arg1}}"},{"name":"trueaction"}]}

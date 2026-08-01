@@ -1,0 +1,1 @@
+{"args":[],"deps":["pgfkeysearch"],"envs":[],"keys":{},"macros":[{"name":"PkgDescription"},{"name":"PkgDescription","snippet":"PkgDescription{${1:arg1}}"},{"name":"PkgInfo"},{"name":"PkgInfo","snippet":"PkgInfo{${1:arg1}}{${2:arg2}}"},{"name":"SearchValueOf"},{"name":"SearchValueOf","snippet":"SearchValueOf{${1:arg1}}{${2:arg2}}{${3:arg3}}"}]}

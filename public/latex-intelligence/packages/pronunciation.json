@@ -1,0 +1,1 @@
+{"args":[],"deps":["ifthen","xparse"],"envs":[],"keys":{},"macros":[{"name":"expandafter"},{"name":"pronunciation"},{"name":"pronunciation","snippet":"pronunciation{${1:arg1}}"}]}

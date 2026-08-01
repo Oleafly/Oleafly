@@ -1,0 +1,1 @@
+{"args":[],"deps":["amsmath","mathtools"],"envs":[],"keys":{},"macros":[{"name":"comma"},{"name":"degree"},{"name":"equals"},{"name":"q"},{"name":"Q"},{"name":"sfrac"},{"name":"sfrac","snippet":"sfrac{${1:arg1}}{${2:arg2}}"}]}

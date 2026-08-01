@@ -1,0 +1,1 @@
+{"args":[],"deps":["array"],"envs":[{"name":"tabulary"},{"name":"tabulary*"}],"keys":{},"macros":[{"name":"tyformat"},{"name":"tymax","unusual":true},{"name":"tymin","unusual":true}]}

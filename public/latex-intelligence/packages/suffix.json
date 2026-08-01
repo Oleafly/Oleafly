@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"csname"},{"name":"NoSuffixName"},{"name":"SuffixName"},{"name":"SuffixName","snippet":"SuffixName{${1:arg1}}"},{"name":"WithSuffix"}]}

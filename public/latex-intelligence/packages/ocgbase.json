@@ -1,0 +1,1 @@
+{"args":[],"deps":["pdfbase","tikz"],"envs":[{"name":"ocg"},{"name":"ocmd"}],"keys":{},"macros":[{"name":"actionsocg"},{"name":"hideocg"},{"name":"hideocgs"},{"name":"ocglinkprotect"},{"name":"ocglinkprotect","snippet":"ocglinkprotect{${1:arg1}}"},{"name":"setocgs"},{"name":"showocg"},{"name":"showocgs"},{"name":"switchocg"},{"name":"toggleocgs"},{"name":"token"}]}

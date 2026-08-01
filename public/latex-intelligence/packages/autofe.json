@@ -1,0 +1,1 @@
+{"args":["\\usepackage/autofe#c"],"deps":["fontenc"],"envs":[],"keys":{"\\usepackage/autofe#c":["global","local","off"]},"macros":[{"name":"DeclareTextCommand"},{"name":"DeclareTextSymbol"},{"name":"DeclareTextSymbol","snippet":"DeclareTextSymbol{${1:arg1}}{${2:arg2}}{${3:arg3}}"},{"name":"def"},{"name":"ProvideTextCommand"}]}

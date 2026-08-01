@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"cbcolor"},{"name":"cbcolor","snippet":"cbcolor{${1:arg1}}"},{"name":"cbdelete"},{"name":"cbend"},{"name":"cbstart"},{"name":"changebargrey","unusual":true},{"name":"changebarsep","unusual":true},{"name":"changebarwidth","unusual":true},{"name":"deletebarwidth","unusual":true},{"name":"nochnagebars"}]}

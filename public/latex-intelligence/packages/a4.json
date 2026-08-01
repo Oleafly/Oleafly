@@ -1,0 +1,1 @@
+{"args":["\\usepackage/a4#c"],"deps":[],"envs":[],"keys":{"\\usepackage/a4#c":["widemargins"]},"macros":[{"name":"do"},{"name":"ExtraWidth","unusual":true},{"name":"ProvidesPackage"},{"name":"ProvidesPackage","snippet":"ProvidesPackage{${1:arg1}}{${2:arg2}}{${3:arg3}}{${4:arg4}}"},{"name":"WideMargins"}]}

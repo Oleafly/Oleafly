@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"PrintEditorsA"},{"name":"PrintEditorsA","snippet":"PrintEditorsA{${1:arg1}}"},{"name":"PrintTranslatorsA"},{"name":"PrintTranslatorsA","snippet":"PrintTranslatorsA{${1:arg1}}"}]}

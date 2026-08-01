@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"ebook"},{"name":"familydefault"},{"name":"pagefill"},{"name":"pagefill","snippet":"pagefill[${1:opt}]"},{"name":"seriesdefault"}]}

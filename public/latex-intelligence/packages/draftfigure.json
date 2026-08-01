@@ -1,0 +1,1 @@
+{"args":["\\setdf,\\usepackage/draftfigure#c"],"deps":["calc","etoolbox","graphicx","xkeyval"],"envs":[],"keys":{"\\setdf,\\usepackage/draftfigure#c":["code","content","filename","noframe","position","size","style"]},"macros":[{"name":"dfdate"},{"name":"dfversion"},{"name":"setdf"},{"name":"setdf","snippet":"setdf{${1:arg1}}"}]}

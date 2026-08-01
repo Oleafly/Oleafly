@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"CancelIgnoreSpaceAboveNextPara"},{"name":"IgnoreSpaceAboveNextPara"},{"name":"IssueParaSpace"},{"name":"ParaSpaceAbove"},{"name":"ParaSpaceAbove","snippet":"ParaSpaceAbove{${1:arg1}}"},{"name":"ParaSpaceBelow"},{"name":"ParaSpaceBelow","snippet":"ParaSpaceBelow{${1:arg1}}"}]}

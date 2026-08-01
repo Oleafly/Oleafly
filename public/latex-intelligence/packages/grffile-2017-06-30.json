@@ -1,0 +1,1 @@
+{"args":[],"deps":["graphics","graphicx","ifpdf","ifxetex","kvoptions","pdftexcmds","stringenc"],"envs":[],"keys":{},"macros":[{"name":"expandafter"},{"name":"grffilesetup"},{"name":"IfFileExists"},{"name":"noexpand"},{"name":"noexpand","snippet":"noexpand{${1:arg1}}{${2:arg2}}"},{"name":"x"}]}

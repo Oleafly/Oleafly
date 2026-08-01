@@ -1,0 +1,1 @@
+{"args":[],"deps":["fontaxes","fontenc","fontspec","ifluatex","ifxetex","mweights","textcomp","xkeyval"],"envs":[],"keys":{},"macros":[{"name":"clear"},{"name":"clearfamily"},{"name":"clearlight"},{"name":"clearthin"},{"name":"familydefault"},{"name":"seriesdefault"},{"name":"sfdefault"}]}

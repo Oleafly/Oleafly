@@ -1,0 +1,1 @@
+{"args":[],"deps":["fixmath","kvoptions"],"envs":[],"keys":{},"macros":[{"name":"mathbfit"},{"name":"mathbold"},{"name":"mathboldsans"},{"name":"mathsans"},{"name":"mathsfbfit"},{"name":"matrixsym"},{"name":"tensorsym"},{"name":"vectorsym"},{"name":"vectorsym","snippet":"vectorsym{${1:arg1}}"}]}

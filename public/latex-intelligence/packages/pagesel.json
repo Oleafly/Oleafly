@@ -1,0 +1,1 @@
+{"args":["\\usepackage/pagesel#c"],"deps":["everyshi"],"envs":[],"keys":{"\\usepackage/pagesel#c":["even","files","nofiles","nonofiles","odd"]},"macros":[{"name":"AtBeginDvi"},{"name":"AtBeginDvi","snippet":"AtBeginDvi{${1:arg1}}"},{"name":"expandafter"},{"name":"IfFormatAtLeastTF"},{"name":"x"}]}

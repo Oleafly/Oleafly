@@ -1,0 +1,1 @@
+{"args":["\\usepackage/cmathbb#c"],"deps":["amsfonts"],"envs":[],"keys":{"\\usepackage/cmathbb#c":["cmathbb","psamsfonts"]},"macros":[{"name":"mathbb"}]}

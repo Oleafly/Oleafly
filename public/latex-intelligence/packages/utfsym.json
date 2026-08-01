@@ -1,0 +1,1 @@
+{"args":[],"deps":["graphicx","l3keys2e","newunicodechar","tikz","xcolor"],"envs":[],"keys":{},"macros":[{"name":"usym"},{"name":"usym","snippet":"usym{${1:arg1}}"},{"name":"usymH"},{"name":"usymH","snippet":"usymH{${1:arg1}}{${2:arg2}}"},{"name":"usymW"},{"name":"usymW","snippet":"usymW{${1:arg1}}{${2:arg2}}"}]}

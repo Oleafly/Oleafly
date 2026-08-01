@@ -1,0 +1,1 @@
+{"args":[],"deps":["ifetex","kvoptions"],"envs":[],"keys":{},"macros":[{"name":"expandafter"},{"name":"extrafloats"},{"name":"extrafloats","snippet":"extrafloats{${1:arg1}}"}]}

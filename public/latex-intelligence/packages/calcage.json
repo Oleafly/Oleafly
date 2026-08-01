@@ -1,0 +1,1 @@
+{"args":[],"deps":["calc","datenumber","fnumprint","fp","kvoptions","xifthen","xkeyval"],"envs":[],"keys":{},"macros":[{"name":"calcage"},{"name":"calcage","snippet":"calcage[${1:opt}]{${2:arg2}}{${3:arg3}}{${4:arg4}}"}]}

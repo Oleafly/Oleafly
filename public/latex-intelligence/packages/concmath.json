@@ -1,0 +1,1 @@
+{"args":["\\usepackage/concmath#c"],"deps":["amsfonts","amssymb","exscale"],"envs":[],"keys":{"\\usepackage/concmath#c":["amsfonts","amssymb","boldsans","exscale"]},"macros":[{"name":"bfdefault"},{"name":"oldstylenums"},{"name":"oldstylenums","snippet":"oldstylenums{${1:arg1}}"},{"name":"rmdefault"}]}

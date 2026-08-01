@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"mvchr"},{"name":"mvchr","snippet":"mvchr{${1:arg1}}"},{"name":"textmvs"},{"name":"textmvs","snippet":"textmvs{${1:arg1}}"}]}

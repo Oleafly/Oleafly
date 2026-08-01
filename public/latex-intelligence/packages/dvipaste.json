@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"csname"},{"name":"paste"},{"name":"paste","snippet":"paste{${1:arg1}}{${2:arg2}}"},{"name":"sendout"},{"name":"sendout","snippet":"sendout{${1:arg1}}"}]}

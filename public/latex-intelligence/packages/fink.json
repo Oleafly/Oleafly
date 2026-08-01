@@ -1,0 +1,1 @@
+{"args":[],"deps":["kvoptions"],"envs":[],"keys":{},"macros":[{"name":"finkbase"},{"name":"finkdir"},{"name":"finkext"},{"name":"finkextension"},{"name":"finkextension","snippet":"finkextension{${1:arg1}}"},{"name":"finkfile"},{"name":"finkpath"},{"name":"InputIfFileExists"},{"name":"InputIfFileExists","snippet":"InputIfFileExists{${1:arg1}}{${2:arg2}}"}]}

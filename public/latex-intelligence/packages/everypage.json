@@ -1,0 +1,1 @@
+{"args":[],"deps":["everypage-1x"],"envs":[],"keys":{},"macros":[{"name":"AddEverypageHook"},{"name":"AddEverypageHook","snippet":"AddEverypageHook{${1:arg1}}"},{"name":"AddThispageHook"},{"name":"AddThispageHook","snippet":"AddThispageHook{${1:arg1}}"}]}

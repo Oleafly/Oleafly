@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"protect"},{"name":"protect","snippet":"protect{${1:arg1}}"},{"name":"thecitetag"},{"name":"thecitetag","snippet":"thecitetag{${1:arg1}}"},{"name":"undefined"}]}

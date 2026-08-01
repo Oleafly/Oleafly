@@ -1,0 +1,1 @@
+{"args":["\\usepackage/moresize#c"],"deps":[],"envs":[],"keys":{"\\usepackage/moresize#c":["10pt","11pt","12pt","ecpatch","normalscripts","smallscripts"]},"macros":[{"name":"Huge"},{"name":"HUGE"},{"name":"ssmall"},{"name":"UndeclareFontFamily"},{"name":"UndeclareFontFamily","snippet":"UndeclareFontFamily{${1:arg1}}{${2:arg2}}"}]}

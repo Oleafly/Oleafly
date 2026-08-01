@@ -1,0 +1,1 @@
+{"args":["\\usepackage/monofill#c"],"deps":[],"envs":[],"keys":{"\\usepackage/monofill#c":["fake-undefined"]},"macros":[{"name":"MFenspace"},{"name":"MFfieldtemplate"},{"name":"MFfieldtemplate","snippet":"MFfieldtemplate[${1:opt}]{${2:arg2}}{${3:arg3}}"},{"name":"MFfillelement"},{"name":"MFleftinfield"},{"name":"MFotherspace"},{"name":"MFrightinfield"},{"name":"MFspace"}]}

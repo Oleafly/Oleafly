@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"stackbin"},{"name":"stackbin","snippet":"stackbin[${1:opt}]{${2:arg2}}{${3:arg3}}"},{"name":"stackrel"},{"name":"stackrel","snippet":"stackrel[${1:opt}]{${2:arg2}}{${3:arg3}}"}]}

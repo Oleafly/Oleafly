@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"MagicWatermark"},{"name":"MagicWatermark","snippet":"MagicWatermark{${1:arg1}}"}]}

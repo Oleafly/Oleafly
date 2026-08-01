@@ -1,0 +1,1 @@
+{"args":[],"deps":["fontspec","iftex"],"envs":[],"keys":{},"macros":[{"name":"csconly"},{"name":"csconly","snippet":"csconly{${1:arg1}}"},{"name":"csconlyshape"},{"name":"cscshape"},{"name":"textcsc"},{"name":"textcsc","snippet":"textcsc{${1:arg1}}"},{"name":"textcscversionnumber"}]}

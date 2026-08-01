@@ -1,0 +1,1 @@
+{"args":[],"deps":["expl3","l3draw","l3keys2e","xparse","xtemplate"],"envs":[],"keys":{},"macros":[{"name":"circledtext"},{"name":"circledtextset"},{"name":"circledtextset","snippet":"circledtextset{${1:arg1}}"}]}

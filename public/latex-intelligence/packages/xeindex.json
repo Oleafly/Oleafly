@@ -1,0 +1,1 @@
+{"args":["\\usepackage/xeindex#c"],"deps":["makeidx","xesearch"],"envs":[],"keys":{"\\usepackage/xeindex#c":["mark"]},"macros":[{"name":"IndexList"},{"name":"NoIndex"},{"name":"NoIndex","snippet":"NoIndex{${1:arg1}}"},{"name":"printindex"},{"name":"StopIndex"},{"name":"StopIndexList"},{"name":"StopIndexList","snippet":"StopIndexList{${1:arg1}}"}]}

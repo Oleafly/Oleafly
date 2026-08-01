@@ -1,0 +1,1 @@
+{"args":[],"deps":["newfile"],"envs":[],"keys":{},"macros":[{"name":"Rcmd"},{"name":"Rcode"},{"name":"Rset"},{"name":"Rtable"},{"name":"Rtable","snippet":"Rtable{${1:arg1}}{${2:arg2}}"},{"name":"Rtilde"},{"name":"Rvalue"}]}

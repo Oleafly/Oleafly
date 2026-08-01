@@ -1,0 +1,1 @@
+{"args":[],"deps":["kvoptions","url"],"envs":[],"keys":{},"macros":[{"name":"mailto"},{"name":"mailto","snippet":"mailto[${1:opt}]"},{"name":"uref"},{"name":"uref","snippet":"uref{${1:arg1}}"},{"name":"uref","snippet":"uref{${1:arg1}}{${2:arg2}}"},{"name":"urisetup"},{"name":"UrlLeft"},{"name":"UrlLeft","snippet":"UrlLeft{${1:arg1}}"}]}

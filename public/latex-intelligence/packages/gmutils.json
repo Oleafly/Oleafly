@@ -1,0 +1,1 @@
+{"args":[],"deps":["gmbase","xkeyval"],"envs":[],"keys":{},"macros":[{"name":"doifdefined"},{"name":"doifdefined","snippet":"doifdefined{${1:arg1}}"},{"name":"heshe"},{"name":"HeShe"},{"name":"himher"},{"name":"HimHer"},{"name":"hisher"},{"name":"HisHer"},{"name":"hishers"},{"name":"HisHers"},{"name":"Name"},{"name":"Name","snippet":"Name{${1:arg1}}{${2:arg2}}"}]}

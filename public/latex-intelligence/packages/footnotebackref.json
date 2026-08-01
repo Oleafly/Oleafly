@@ -1,0 +1,1 @@
+{"args":[],"deps":["hyperref","kvoptions","letltxmacro"],"envs":[],"keys":{},"macros":[{"name":"BackrefFootnoteTag"},{"name":"BackrefHyperFootnoteCounter","unusual":true},{"name":"footnote"}]}

@@ -1,0 +1,1 @@
+{"args":["\\usepackage/easyfig#c"],"deps":["adjustbox","ifetex","xkeyval"],"envs":[{"name":"easyfighere"}],"keys":{"\\usepackage/easyfig#c":["caption","captionabove","here","label","placement","shortcaption","twocolumn"]},"macros":[{"name":"easyfigdefault"},{"name":"expandafter"},{"name":"Figure"}]}

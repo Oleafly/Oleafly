@@ -1,0 +1,1 @@
+{"args":[],"deps":["pdfbase"],"envs":[{"name":"ocg"},{"name":"ocmd"},{"name":"xlrbox"},{"name":"xlrbox*"}],"keys":{},"macros":[{"name":"depth"},{"name":"height"},{"name":"totalheight"},{"name":"width"},{"name":"xsavebox"},{"name":"xsbox"},{"name":"xsbox","snippet":"xsbox{${1:arg1}}{${2:arg2}}"},{"name":"xusebox"},{"name":"xusebox","snippet":"xusebox{${1:arg1}}"}]}

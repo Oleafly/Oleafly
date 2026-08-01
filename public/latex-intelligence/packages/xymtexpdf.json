@@ -1,0 +1,1 @@
+{"args":["\\usepackage/xymtexpdf#c"],"deps":[],"envs":[],"keys":{"\\usepackage/xymtexpdf#c":["dvipdfm","dvips","pdf","pdftex","ps"]},"macros":[{"name":"journalID"},{"name":"pgfsysdriver"}]}

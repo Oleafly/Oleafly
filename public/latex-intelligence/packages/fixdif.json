@@ -1,0 +1,1 @@
+{"args":["\\usepackage/fixdif#c"],"deps":[],"envs":[],"keys":{"\\usepackage/fixdif#c":["nopartial","normal","partial","rm"]},"macros":[{"name":"backslash"},{"name":"d"},{"name":"letdif"},{"name":"mathdif"},{"name":"newdif"},{"name":"renewdif"},{"name":"resetdfont"},{"name":"resetdfont","snippet":"resetdfont{${1:arg1}}"}]}

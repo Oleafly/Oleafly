@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"commaswap"},{"name":"commaswap","snippet":"commaswap{${1:arg1}}"},{"name":"dotswap"},{"name":"dotswap","snippet":"dotswap{${1:arg1}}"},{"name":"mathswapoff"},{"name":"mathswapon"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":["etextools","ltxnew","xcolor","xkeyval"],"envs":[],"keys":{},"macros":[{"name":"adjusttextlayout"},{"name":"changetextlayout"},{"name":"protect"}]}

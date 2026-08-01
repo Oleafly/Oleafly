@@ -1,0 +1,1 @@
+{"args":[],"deps":["ifthen","tikz"],"envs":[],"keys":{},"macros":[{"name":"expandafter"},{"name":"pgfdeclareanchoralias"},{"name":"pgfdeclareanchoralias","snippet":"pgfdeclareanchoralias{${1:arg1}}{${2:arg2}}{${3:arg3}}"}]}

@@ -1,0 +1,1 @@
+{"args":["\\usepackage/excludeonly#c"],"deps":[],"envs":[],"keys":{"\\usepackage/excludeonly#c":["only"]},"macros":[{"name":"excludeonly"},{"name":"excludeonly","snippet":"excludeonly{${1:arg1}}"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":["expkv-opt","pgf"],"envs":[],"keys":{},"macros":[{"name":"cistercian"},{"name":"cistercian","snippet":"cistercian{${1:arg1}}"},{"name":"cisterciannumE"},{"name":"cisterciannumE","snippet":"cisterciannumE{${1:arg1}}"},{"name":"cistercianredrawlazy"},{"name":"csname"},{"name":"csname","snippet":"csname{${1:arg1}}"},{"name":"expandafter"},{"name":"pgfsetcolor"}]}

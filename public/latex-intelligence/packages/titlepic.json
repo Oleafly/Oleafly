@@ -1,0 +1,1 @@
+{"args":["\\usepackage/titlepic#c"],"deps":[],"envs":[],"keys":{"\\usepackage/titlepic#c":["cc","tc","tt"]},"macros":[{"name":"and"},{"name":"author"},{"name":"date"},{"name":"footnote"},{"name":"footnoterule"},{"name":"footnotesize"},{"name":"maketitle"},{"name":"thanks"},{"name":"title"},{"name":"titlepic"},{"name":"titlepic","snippet":"titlepic{${1:arg1}}"}]}

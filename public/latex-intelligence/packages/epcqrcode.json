@@ -1,0 +1,1 @@
+{"args":[],"deps":["calculator","qrcode","xstring"],"envs":[],"keys":{},"macros":[{"name":"epcqr"},{"name":"epcqr","snippet":"epcqr{${1:arg1}}"}]}

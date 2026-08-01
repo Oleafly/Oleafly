@@ -1,0 +1,1 @@
+{"args":[],"deps":["longtable","tabularx"],"envs":[],"keys":{},"macros":[{"name":"LTXtable"},{"name":"LTXtable","snippet":"LTXtable{${1:arg1}}{${2:arg2}}"}]}

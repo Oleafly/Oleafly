@@ -1,0 +1,1 @@
+{"args":[],"deps":["calc","ifthen"],"envs":[],"keys":{},"macros":[{"name":"pbox"},{"name":"pbox","snippet":"pbox[${1:opt}]"},{"name":"settominwidth"},{"name":"settominwidth","snippet":"settominwidth[${1:opt}]{${2:arg2}}{${3:arg3}}"},{"name":"widthofpbox"},{"name":"widthofpbox","snippet":"widthofpbox{${1:arg1}}"}]}

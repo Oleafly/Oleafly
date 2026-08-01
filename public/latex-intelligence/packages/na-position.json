@@ -1,0 +1,1 @@
+{"args":[],"deps":["tkz-tab"],"envs":[],"keys":{},"macros":[{"name":"line"},{"name":"Nline"},{"name":"Nplot"},{"name":"plot"},{"name":"tkzTabPos"},{"name":"tkzTabPos","snippet":"tkzTabPos[${1:opt}]{${2:arg2}}"}]}

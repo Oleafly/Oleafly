@@ -1,0 +1,1 @@
+{"args":[],"deps":["metalogo","realscripts"],"envs":[],"keys":{},"macros":[{"name":"namedglyph"},{"name":"namedglyph","snippet":"namedglyph{${1:arg1}}"},{"name":"showhyphens"},{"name":"showhyphens","snippet":"showhyphens{${1:arg1}}"},{"name":"vfrac"},{"name":"vfrac","snippet":"vfrac{${1:arg1}}{${2:arg2}}"}]}

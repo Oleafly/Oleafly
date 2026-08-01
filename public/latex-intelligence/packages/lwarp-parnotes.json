@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[{"name":"autopn"}],"keys":{},"macros":[{"name":"LWRparnote"},{"name":"parnote"},{"name":"parnote","snippet":"parnote[${1:opt}]{${2:arg2}}"},{"name":"parnotemark"},{"name":"parnotemark","snippet":"parnotemark[${1:opt}]"},{"name":"parnotemark","snippet":"parnotemark{${1:arg1}}"},{"name":"parnotename"}]}

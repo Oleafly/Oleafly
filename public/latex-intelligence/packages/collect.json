@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[{"name":"collect"},{"name":"collect*"},{"name":"collectinmacro"}],"keys":{},"macros":[{"name":"definecollection"},{"name":"definecollection","snippet":"definecollection{${1:arg1}}"},{"name":"expandafter"},{"name":"includecollection"},{"name":"includecollection","snippet":"includecollection{${1:arg1}}"}]}

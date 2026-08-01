@@ -1,0 +1,1 @@
+{"args":[],"deps":["l3keys2e","multirow","rotating"],"envs":[{"name":"gradingscheme"}],"keys":{},"macros":[{"name":"entry"},{"name":"entry","snippet":"entry{${1:arg1}}{${2:arg2}}"}]}

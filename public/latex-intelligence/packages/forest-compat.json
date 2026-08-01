@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"forestcompat"},{"name":"forestcompat","snippet":"forestcompat{${1:arg1}}"}]}

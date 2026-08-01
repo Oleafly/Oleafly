@@ -1,0 +1,1 @@
+{"args":[],"deps":["environ"],"envs":[],"keys":{},"macros":[{"name":"applytemplate"},{"name":"applytemplate","snippet":"applytemplate{${1:arg1}}{${2:arg2}}{${3:arg3}}{${4:arg4}}"},{"name":"csname"},{"name":"csname","snippet":"csname{${1:arg1}}"},{"name":"scantextokens"},{"name":"tsvtemplate"}]}

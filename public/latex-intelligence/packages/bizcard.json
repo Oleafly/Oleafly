@@ -1,0 +1,1 @@
+{"args":["\\usepackage/bizcard#c"],"deps":["geometry","ifthen"],"envs":[{"name":"bizcard"}],"keys":{"\\usepackage/bizcard#c":["flat","frame","none","star"]},"macros":[{"name":"filedate"},{"name":"fileversion"}]}

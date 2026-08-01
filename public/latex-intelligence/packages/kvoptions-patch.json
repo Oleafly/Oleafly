@@ -1,0 +1,1 @@
+{"args":[],"deps":["etexcmds"],"envs":[],"keys":{},"macros":[{"name":"csname"},{"name":"CurrentOption"},{"name":"ExecuteOptions"},{"name":"expandafter"},{"name":"IfFormatAtLeastTF"},{"name":"LoadClass"},{"name":"noexpand"},{"name":"noexpand","snippet":"noexpand{${1:arg1}}"},{"name":"OptionNotUsed"},{"name":"ProcessOptions"},{"name":"t"},{"name":"x"},{"name":"y"}]}

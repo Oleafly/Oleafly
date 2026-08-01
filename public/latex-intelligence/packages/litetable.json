@@ -1,0 +1,1 @@
+{"args":[],"deps":["expl3","tikz","xparse"],"envs":[],"keys":{},"macros":[{"name":"course"},{"name":"more"},{"name":"more","snippet":"more{${1:arg1}}"},{"name":"newday"},{"name":"timelist"},{"name":"weeklist"}]}

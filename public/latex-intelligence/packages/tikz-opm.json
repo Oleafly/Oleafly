@@ -1,0 +1,1 @@
+{"args":[],"deps":["amsmath","makeshape","tikz"],"envs":[],"keys":{},"macros":[{"name":"defaulttriangleanchors"},{"name":"defaulttrianglelengths"},{"name":"opmInstance"},{"name":"opmInstance","snippet":"opmInstance{${1:arg1}}{${2:arg2}}"},{"name":"trianglepath"}]}

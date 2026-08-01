@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"printlength"},{"name":"printlength","snippet":"printlength{${1:arg1}}"},{"name":"rndprintlength"},{"name":"rndprintlength","snippet":"rndprintlength{${1:arg1}}"},{"name":"unitspace"},{"name":"uselengthunit"},{"name":"uselengthunit","snippet":"uselengthunit{${1:arg1}}"}]}

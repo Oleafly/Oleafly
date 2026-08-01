@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"expandafter"},{"name":"fbox"},{"name":"fbox","snippet":"fbox{${1:arg1}}"},{"name":"futurenonspacelet"},{"name":"futurenonspacelet","snippet":"futurenonspacelet{${1:arg1}}"},{"name":"next"},{"name":"nexttoken"}]}

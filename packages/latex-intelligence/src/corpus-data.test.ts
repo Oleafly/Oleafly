@@ -111,12 +111,21 @@ describe.each([
 describe("packages", () => {
   const fileNames = readdirSync(PACKAGES_DIR).filter((name) => name.endsWith(".json"));
 
-  it("contains exactly 247 catalogs and nothing else", () => {
+  it("holds only .json catalogs, and enough of them to be a real corpus", () => {
     expect(readdirSync(PACKAGES_DIR)).toEqual(fileNames);
-    expect(fileNames.length).toBe(247);
+    // Generated from a TeX installation, so the exact count tracks that
+    // installation. Assert a floor: a run that silently produced a handful of
+    // catalogs is a broken run, not a smaller TeX Live.
+    expect(fileNames.length).toBeGreaterThan(3000);
   });
 
-  it("every catalog passes validatePackageCatalog with well-formed entries", () => {
+  it("catalogues the document classes as class-<name>", () => {
+    expect(fileNames).toContain("class-article.json");
+    expect(fileNames).toContain("class-beamer.json");
+  });
+
+  // Thousands of catalogs to parse and validate; the default 5 s is not enough.
+  it("every catalog passes validatePackageCatalog with well-formed entries", { timeout: 60_000 }, () => {
     for (const fileName of fileNames) {
       const catalog = validatePackageCatalog(
         JSON.parse(readFileSync(`${PACKAGES_DIR}${fileName}`, "utf8")),
@@ -148,26 +157,26 @@ describe("manifest.json", () => {
     expect(manifest).not.toBeNull();
   });
 
-  it("pins the expected upstream commit", () => {
-    expect((manifest as Manifest).commit).toBe("becabe238d3539105dd5bb9b7b3571d26e5d43e0");
+  it("records the TeX Live release it was generated from", () => {
+    expect((manifest as Manifest).texlive).toMatch(/^\d{4}$/);
+    expect((manifest as Manifest).generatedBy).toContain("latex-corpus-build");
   });
 
-  it("credits every upstream source in its notices", () => {
+  it("keeps the notice for the one file carrying third-party terms", () => {
     const notices = (manifest as Manifest).notices.join("\n");
-    expect(notices).toContain("MIT");
-    expect(notices).toContain("TeXStudio");
-    expect(notices).toContain("CTAN");
     expect(notices).toContain("LPPL");
+    expect(notices).toContain("unimath");
   });
 });
 
 describe("loaders", () => {
-  it("loadPackageCatalog resolves the siunitx catalog with the ang macro", async () => {
-    const catalog = await loadPackageCatalog("siunitx");
+  it("loadPackageCatalog resolves a catalog with argument snippets", async () => {
+    const catalog = await loadPackageCatalog("amsmath");
     expect(catalog).not.toBeNull();
-    const angMacros = (catalog as PackageCatalog).macros.filter((macro) => macro.name === "ang");
-    expect(angMacros.length).toBeGreaterThan(0);
-    expect(angMacros.some((macro) => macro.snippet?.includes("${1"))).toBe(true);
+    const macros = (catalog as PackageCatalog).macros;
+    expect(macros.length).toBeGreaterThan(50);
+    expect(macros.some((macro) => macro.snippet?.includes("${1"))).toBe(true);
+    expect((catalog as PackageCatalog).envs.some((e) => e.name === "align")).toBe(true);
   });
 
   it("loadPackageCatalog rejects traversal-shaped names without throwing", async () => {

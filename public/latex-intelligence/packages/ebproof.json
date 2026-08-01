@@ -1,0 +1,1 @@
+{"args":[],"deps":["expl3","xparse"],"envs":[],"keys":{},"macros":[{"name":"ebproofnewrulestyle"},{"name":"ebproofnewrulestyle","snippet":"ebproofnewrulestyle{${1:arg1}}{${2:arg2}}"},{"name":"ebproofnewstyle"},{"name":"ebproofnewstyle","snippet":"ebproofnewstyle{${1:arg1}}{${2:arg2}}"},{"name":"inserttext"},{"name":"treemark"}]}

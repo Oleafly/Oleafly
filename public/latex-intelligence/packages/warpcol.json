@@ -1,0 +1,1 @@
+{"args":[],"deps":["array"],"envs":[],"keys":{},"macros":[{"name":"pcolbegin"},{"name":"pcolbegin","snippet":"pcolbegin{${1:arg1}}{${2:arg2}}"},{"name":"pcolend"}]}

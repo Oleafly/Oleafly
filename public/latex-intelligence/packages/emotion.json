@@ -1,0 +1,1 @@
+{"args":[],"deps":["expl3","fontspec"],"envs":[],"keys":{},"macros":[{"name":"emotion"},{"name":"emotion","snippet":"emotion{${1:arg1}}"},{"name":"emotiondef"},{"name":"emotiondef","snippet":"emotiondef{${1:arg1}}{${2:arg2}}"},{"name":"emotionsetup"},{"name":"emotionsetup","snippet":"emotionsetup{${1:arg1}}"}]}

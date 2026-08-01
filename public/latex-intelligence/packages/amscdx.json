@@ -1,0 +1,1 @@
+{"args":["\\usepackage/amscdx#c"],"deps":["amsgen","graphicx","xcolor"],"envs":[{"name":"CD"}],"keys":{"\\usepackage/amscdx#c":["lyx"]},"macros":[{"name":"CDat"},{"name":"CDlor"},{"name":"CDlor","snippet":"CDlor{${1:arg1}}"},{"name":"clap"},{"name":"clap","snippet":"clap{${1:arg1}}"},{"name":"Iat"},{"name":"minCDarrowwidth","unusual":true},{"name":"tag"}]}

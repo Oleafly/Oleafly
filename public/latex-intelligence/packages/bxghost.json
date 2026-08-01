@@ -1,0 +1,1 @@
+{"args":["\\usepackage/bxghost#c"],"deps":["bxghost-lib","luatexja","luatexja-adjust"],"envs":[],"keys":{"\\usepackage/bxghost#c":["noverb","verb"]},"macros":[{"name":"eghostguarded"},{"name":"jghostguarded"},{"name":"verb"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"CollectEnvir"},{"name":"CollectEnvir","snippet":"CollectEnvir{${1:arg1}}"},{"name":"dofilebyline"},{"name":"row"}]}

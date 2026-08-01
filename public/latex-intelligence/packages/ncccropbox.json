@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"cropbox"},{"name":"cropbox","snippet":"cropbox[${1:opt}]"},{"name":"cropboxsep"},{"name":"cropboxsep","snippet":"cropboxsep{${1:arg1}}"},{"name":"croplinelength"},{"name":"croplinelength","snippet":"croplinelength{${1:arg1}}"},{"name":"croplinewidth"},{"name":"croplinewidth","snippet":"croplinewidth{${1:arg1}}"}]}

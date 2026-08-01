@@ -138,13 +138,10 @@ export function validateManifest(value: unknown): Manifest | null {
   if (
     isRecord(value) &&
     typeof value.source === "string" &&
-    typeof value.commit === "string" &&
+    typeof value.texlive === "string" &&
     typeof value.license === "string" &&
     typeof value.generatedBy === "string" &&
-    isRecord(value.files) &&
-    Object.values(value.files).every(
-      (entry) => isRecord(entry) && isStringArray(entry.from),
-    ) &&
+    typeof value.catalogs === "number" &&
     isStringArray(value.notices)
   ) {
     return value as unknown as Manifest;

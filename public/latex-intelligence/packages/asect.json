@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"contentsline"},{"name":"contentsline","snippet":"contentsline{${1:arg1}}"},{"name":"end"},{"name":"endabstract"},{"name":"numberline"},{"name":"numberline","snippet":"numberline{${1:arg1}}"}]}

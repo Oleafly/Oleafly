@@ -1,0 +1,1 @@
+{"args":["\\usepackage/pst-exa#c"],"deps":["accsupp","changepage","etoolbox","showexpl","tcolorbox","xcolor"],"envs":[],"keys":{"\\usepackage/pst-exa#c":["pdf","swpl","tcb"]},"macros":[{"name":"filedate"},{"name":"fileversion"},{"name":"noaccsupp"},{"name":"noaccsupp","snippet":"noaccsupp{${1:arg1}}"},{"name":"noexpand"},{"name":"x"}]}

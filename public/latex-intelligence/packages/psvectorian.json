@@ -1,0 +1,1 @@
+{"args":[],"deps":["graphicx","pstricks"],"envs":[],"keys":{},"macros":[{"name":"psvectorian"},{"name":"psvectorian","snippet":"psvectorian[${1:opt}]{${2:arg2}}"},{"name":"psvectorianDefaultColor"}]}

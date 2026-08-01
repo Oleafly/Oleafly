@@ -1,0 +1,1 @@
+{"args":["\\usepackage/totalcount#c"],"deps":["xspace"],"envs":[],"keys":{"\\usepackage/totalcount#c":["xspace"]},"macros":[{"name":"DeclareTotalCounter"},{"name":"DeclareTotalCounter","snippet":"DeclareTotalCounter{${1:arg1}}"},{"name":"expandafter"},{"name":"string"}]}

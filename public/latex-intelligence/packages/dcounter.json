@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"addtocounter"},{"name":"countstyle"},{"name":"DeclareDynamicCounter"},{"name":"DeclareDynamicCounter","snippet":"DeclareDynamicCounter{${1:arg1}}"},{"name":"DynamicCount"},{"name":"DynamicCount","snippet":"DynamicCount{${1:arg1}}"},{"name":"setcounter"}]}

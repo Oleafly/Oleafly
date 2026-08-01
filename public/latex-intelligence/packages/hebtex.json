@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"document"},{"name":"endhebtex"},{"name":"endhebtext"},{"name":"hebfalse"},{"name":"hebtex"},{"name":"hebtext"},{"name":"hebtrue"},{"name":"pheb"},{"name":"setheb"},{"name":"sethebfont"},{"name":"sethebfont","snippet":"sethebfont{${1:arg1}}"},{"name":"wlog"},{"name":"wlog","snippet":"wlog{${1:arg1}}"}]}

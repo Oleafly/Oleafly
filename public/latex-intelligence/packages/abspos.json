@@ -1,0 +1,1 @@
+{"args":[],"deps":["atbegshi","expl3"],"envs":[],"keys":{},"macros":[{"name":"absposset"},{"name":"absposset","snippet":"absposset{${1:arg1}}"},{"name":"absput"},{"name":"absputcoffin"}]}

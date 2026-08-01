@@ -1,0 +1,1 @@
+{"args":["\\usepackage/emo#c"],"deps":["fontspec","graphicx","iftex","index","inputenc","xcolor","xspace"],"envs":[],"keys":{"\\usepackage/emo#c":["debug","extra","index"]},"macros":[{"name":"csname"},{"name":"emo"},{"name":"emo","snippet":"emo{${1:arg1}}"},{"name":"lingchi"},{"name":"YHWH"}]}

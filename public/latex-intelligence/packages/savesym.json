@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"restoresymbol"},{"name":"restoresymbol","snippet":"restoresymbol{${1:arg1}}{${2:arg2}}"},{"name":"savesymbol"},{"name":"savesymbol","snippet":"savesymbol{${1:arg1}}"}]}

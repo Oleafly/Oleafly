@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"greek"},{"name":"greek","snippet":"greek{${1:arg1}}"},{"name":"Greek"},{"name":"Greek","snippet":"Greek{${1:arg1}}"},{"name":"theenumi"}]}

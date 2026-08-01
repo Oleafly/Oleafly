@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[{"name":"thebibliography"}],"keys":{},"macros":[{"name":"citeasnoun"},{"name":"citeN"},{"name":"citeyearpar"},{"name":"Latincite"},{"name":"natexlab"},{"name":"natexlab","snippet":"natexlab{${1:arg1}}"},{"name":"newblock"},{"name":"shortcite"}]}

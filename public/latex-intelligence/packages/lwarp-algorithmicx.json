@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"algorithmiccomment"},{"name":"algorithmiccomment","snippet":"algorithmiccomment{${1:arg1}}"},{"name":"Comment"},{"name":"Comment","snippet":"Comment{${1:arg1}}"}]}

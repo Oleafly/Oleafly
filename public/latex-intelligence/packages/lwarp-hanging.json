@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[{"name":"hangparas"},{"name":"hangpunct"}],"keys":{},"macros":[{"name":"endhangparas"},{"name":"endhangpunct"},{"name":"hangpara"},{"name":"hangpara","snippet":"hangpara{${1:arg1}}{${2:arg2}}"},{"name":"hangparas"},{"name":"hangpunct"},{"name":"nhlq"},{"name":"nhpt"},{"name":"nhrq"}]}

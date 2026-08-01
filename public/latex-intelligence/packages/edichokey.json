@@ -1,0 +1,1 @@
+{"args":["\\usepackage/edichokey#c"],"deps":["hyperref"],"envs":[{"name":"Key"}],"keys":{"\\usepackage/edichokey#c":["hyperref"]},"macros":[{"name":"alter"},{"name":"alterindent","unusual":true},{"name":"csname"},{"name":"csname","snippet":"csname{${1:arg1}}"},{"name":"edknamestyle"},{"name":"name"},{"name":"taxonrightskip","unusual":true}]}

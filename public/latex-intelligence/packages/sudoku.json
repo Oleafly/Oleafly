@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[{"name":"sudoku"}],"keys":{},"macros":[{"name":"sudokuformat"},{"name":"sudokuformat","snippet":"sudokuformat{${1:arg1}}"},{"name":"sudokusize","unusual":true},{"name":"sudokuthickline","unusual":true},{"name":"sudokuthinline","unusual":true}]}

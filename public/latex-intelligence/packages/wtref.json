@@ -1,0 +1,1 @@
+{"args":[],"deps":["xkeyval","xparse"],"envs":[],"keys":{},"macros":[{"name":"newref"},{"name":"newref","snippet":"newref[${1:opt}]{${2:arg2}}"},{"name":"setrefstyle"},{"name":"setrefstyle","snippet":"setrefstyle{${1:arg1}}{${2:arg2}}"}]}

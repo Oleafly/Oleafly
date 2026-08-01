@@ -1,0 +1,1 @@
+{"args":["\\usepackage/lwarp-attachfile2#c"],"deps":[],"envs":[],"keys":{"\\usepackage/lwarp-attachfile2#c":["color"]},"macros":[{"name":"noattachfile"},{"name":"noattachfile","snippet":"noattachfile[${1:opt}]"},{"name":"notextattachfile"},{"name":"notextattachfile","snippet":"notextattachfile[${1:opt}]{${2:arg2}}"}]}

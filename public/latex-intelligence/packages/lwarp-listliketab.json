@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[{"name":"listliketab"}],"keys":{},"macros":[{"name":"storeliststyle"},{"name":"storestyleof"},{"name":"storestyleof","snippet":"storestyleof{${1:arg1}}"}]}

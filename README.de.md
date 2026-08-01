@@ -467,7 +467,6 @@ Code. Aufgabenorientierte Anleitungen für Endnutzer werden getrennt von diesem
 | [Produkt-Engineering-Katalog](docs/README.md) | Funktionsinventare und Engineering-Verträge |
 | [Funktionsreferenz](docs/features.md) | Die Produktoberfläche und unterstützte Workflows |
 | [Dokument-Engines](docs/document-engines.md) | Fähigkeiten von LaTeX, Typst und Markdown |
-| [Umstieg von LaTeX Workshop](docs/ComingFromLatexWorkshop.md) | Funktions- und Shortcut-Zuordnung für Nutzer von VS Code + LaTeX Workshop |
 | [Produktarchitektur](docs/Architecture.md) | Systemgrenzen, Paketverantwortlichkeiten und Erweiterungspunkte |
 | [Entwicklung](docs/development.md) | Lokales Setup, Tests und Beitrags-Workflow |
 | [Language-Server-Toolchain](docs/language-server-toolchain.md) | Bezug, Integrität und Verteilungsrichtlinie |

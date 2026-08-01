@@ -1,0 +1,1 @@
+{"args":[],"deps":["tikz"],"envs":[],"keys":{},"macros":[{"name":"drawmatrix"},{"name":"drawmatrix","snippet":"drawmatrix[${1:opt}]{${2:arg2}}"},{"name":"drawmatrixset"},{"name":"drawmatrixset","snippet":"drawmatrixset{${1:arg1}}"}]}

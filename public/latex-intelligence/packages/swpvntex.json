@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"csname"},{"name":"csname","snippet":"csname{${1:arg1}}"},{"name":"DeclareUnicodeChar"},{"name":"DeclareUnicodeChar","snippet":"DeclareUnicodeChar{${1:arg1}}{${2:arg2}}"},{"name":"U"},{"name":"U","snippet":"U{${1:arg1}}"}]}

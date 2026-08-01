@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"newrefformat"},{"name":"newrefformat","snippet":"newrefformat{${1:arg1}}{${2:arg2}}"},{"name":"prettyref"},{"name":"prettyref","snippet":"prettyref{${1:arg1}}"}]}

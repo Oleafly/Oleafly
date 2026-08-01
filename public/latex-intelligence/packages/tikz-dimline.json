@@ -1,0 +1,1 @@
+{"args":[],"deps":["ifthen","pgfplots","tikz"],"envs":[],"keys":{},"macros":[{"name":"dimline"},{"name":"dimline","snippet":"dimline[${1:opt}]{${2:arg2}}{${3:arg3}}{${4:arg4}}"}]}

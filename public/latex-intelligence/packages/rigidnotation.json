@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"Conj"},{"name":"csname"},{"name":"Herm"},{"name":"Inv"},{"name":"NewRigidNotation"},{"name":"NewRigidNotation","snippet":"NewRigidNotation{${1:arg1}}{${2:arg2}}"},{"name":"SetConciseNotation"},{"name":"Tran"},{"name":"UnsetConciseNotation"}]}

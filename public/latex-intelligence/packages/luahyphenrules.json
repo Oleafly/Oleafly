@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"csname"},{"name":"csname","snippet":"csname{${1:arg1}}"},{"name":"HyphenRules"},{"name":"HyphenRules","snippet":"HyphenRules{${1:arg1}}"}]}

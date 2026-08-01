@@ -1,0 +1,1 @@
+{"args":[],"deps":["float","tabularray"],"envs":[{"name":"abnttblr"},{"name":"longabnttblr"},{"name":"tallabnttblr"}],"keys":{},"macros":[{"name":"cftquadroaftersnum"},{"name":"cftquadroname"},{"name":"listadequadros"},{"name":"listquadroname"},{"name":"quadroname"},{"name":"SetAbntTblrFont"},{"name":"SetAbntTblrFont","snippet":"SetAbntTblrFont{${1:arg1}}"}]}

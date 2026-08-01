@@ -1,0 +1,1 @@
+{"args":[],"deps":["tikz","xifthen","xstring"],"envs":[{"name":"chordboxenv"}],"keys":{},"macros":[{"name":"bchordbox"},{"name":"bchordbox","snippet":"bchordbox[${1:opt}]{${2:arg2}}{${3:arg3}}{${4:arg4}}"},{"name":"chordbox"},{"name":"chordbox","snippet":"chordbox[${1:opt}]{${2:arg2}}{${3:arg3}}"},{"name":"nodetext"},{"name":"pitch"}]}

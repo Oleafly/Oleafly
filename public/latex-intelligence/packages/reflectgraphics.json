@@ -1,0 +1,1 @@
+{"args":["\\usepackage/reflectgraphics#c"],"deps":["calc","graphicx","keyval","kvoptions","tikz"],"envs":[],"keys":{"\\usepackage/reflectgraphics#c":["angle","clip","debug","distance","height","length","opacity","scale","trim","width"]},"macros":[{"name":"reflectgraphics"},{"name":"reflectgraphics","snippet":"reflectgraphics[${1:opt}]{${2:arg2}}"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":["kvoptions","listings"],"envs":[],"keys":{},"macros":[{"name":"ActivateVerbatimLigatures"},{"name":"DeactivateVerbatimLigatures"},{"name":"expandafter"},{"name":"RestoreVerbatimBehavior"}]}

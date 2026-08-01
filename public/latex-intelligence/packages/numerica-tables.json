@@ -1,0 +1,1 @@
+{"args":[],"deps":["booktabs"],"envs":[],"keys":{},"macros":[{"name":"here"},{"name":"sfrac"},{"name":"sfrac","snippet":"sfrac{${1:arg1}}{${2:arg2}}"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":["pgfkeys"],"envs":[],"keys":{},"macros":[{"name":"expandafter"},{"name":"pdfmarginpar"},{"name":"pdfmarginpar","snippet":"pdfmarginpar[${1:opt}]{${2:arg2}}"},{"name":"pdfmarginparset"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"noexpand"},{"name":"noexpand","snippet":"noexpand{${1:arg1}}"},{"name":"x"},{"name":"x","snippet":"x{${1:arg1}}"},{"name":"y"},{"name":"y","snippet":"y{${1:arg1}}"}]}

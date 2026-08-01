@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"pdfcryptsetup"},{"name":"pdfcryptsetup","snippet":"pdfcryptsetup{${1:arg1}}"}]}

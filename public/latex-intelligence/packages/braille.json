@@ -1,0 +1,1 @@
+{"args":["\\usepackage/braille#c"],"deps":[],"envs":[],"keys":{"\\usepackage/braille#c":["8dots","compact","mirror","puttinydots","useemptybox"]},"macros":[{"name":"braille"},{"name":"braille","snippet":"braille{${1:arg1}}"},{"name":"braillebox"},{"name":"braillebox","snippet":"braillebox{${1:arg1}}"},{"name":"brailledot"},{"name":"brailleunit","unusual":true}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"Acute"},{"name":"Bar"},{"name":"Breve"},{"name":"Check"},{"name":"Ddot"},{"name":"Dot"},{"name":"Grave"},{"name":"Hat"},{"name":"intertext"},{"name":"intertext","snippet":"intertext{${1:arg1}}"},{"name":"theMathJaxequation"},{"name":"theMathJaxsection"},{"name":"theMathJaxsubequations"},{"name":"Tilde"},{"name":"Vec"}]}

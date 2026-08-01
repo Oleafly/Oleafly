@@ -1,0 +1,1 @@
+{"args":[],"deps":["iftex","textcomp","unicode-math","xkeyval"],"envs":[],"keys":{},"macros":[{"name":"CE"},{"name":"downleftarrow"},{"name":"downrightarrow"},{"name":"FCC"},{"name":"fullleftturn"},{"name":"fullrightturn"},{"name":"leftturn"},{"name":"rightturn"},{"name":"slshape"},{"name":"upleftarrow"},{"name":"uprightarrow"}]}

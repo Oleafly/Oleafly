@@ -16,7 +16,7 @@ import {
   type AtSuggestion,
 } from "@oleafly/latex-intelligence";
 
-// LaTeX Workshop's `@`-shortcut math snippets (`@a` → \alpha, `@/` → \frac),
+// `@`-shortcut math snippets (`@a` → \alpha, `@/` → \frac),
 // vendored into public/latex-intelligence/at-suggestions.json. The source is
 // synchronous, so the corpus is cached here like src/lib/latex-corpus.ts:
 // completions return null until the background load resolves.

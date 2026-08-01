@@ -1,0 +1,1 @@
+{"args":[],"deps":["imakeidx","makeidx","xkeyval"],"envs":[],"keys":{},"macros":[{"name":"braceLeft"},{"name":"braceRight"},{"name":"index"},{"name":"writeidx"},{"name":"writeidx","snippet":"writeidx{${1:arg1}}"}]}

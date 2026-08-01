@@ -1,0 +1,1 @@
+{"args":[],"deps":["setspace"],"envs":[],"keys":{},"macros":[{"name":"baselinestretch"},{"name":"doublespacing"},{"name":"onehalfspacing"},{"name":"SetSinglespace"},{"name":"SetSinglespace","snippet":"SetSinglespace{${1:arg1}}"},{"name":"setstretch"},{"name":"setstretch","snippet":"setstretch{${1:arg1}}"},{"name":"singlespacing"},{"name":"spacesetup"}]}

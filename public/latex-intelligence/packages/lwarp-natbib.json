@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"setcitestyle"},{"name":"setcitestyle","snippet":"setcitestyle{${1:arg1}}"}]}

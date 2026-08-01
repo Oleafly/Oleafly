@@ -1,0 +1,1 @@
+{"args":[],"deps":["expl3","l3keys2e","xparse"],"envs":[],"keys":{},"macros":[{"name":"appxnote"},{"name":"appxnote","snippet":"appxnote[${1:opt}]{${2:arg2}}{${3:arg3}}"},{"name":"options"},{"name":"printappxnotes"}]}

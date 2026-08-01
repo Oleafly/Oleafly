@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[{"name":"term"},{"name":"term*"},{"name":"termlist"},{"name":"termlist*"}],"keys":{},"macros":[{"name":"makelabel"},{"name":"termindent","unusual":true},{"name":"termlabel"},{"name":"termlabelfont"}]}

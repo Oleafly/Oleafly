@@ -1,0 +1,1 @@
+{"args":["\\usepackage/getmap#c"],"deps":["ifthen","ifxetex","shellesc","stringenc","xkeyval"],"envs":[],"keys":{"\\usepackage/getmap#c":["#3"]},"macros":[{"name":"csname"},{"name":"csname","snippet":"csname{${1:arg1}}{${2:arg2}}"},{"name":"getmap"},{"name":"getmap","snippet":"getmap[${1:opt}]{${2:arg2}}"}]}

@@ -1,0 +1,1 @@
+{"args":["\\usepackage/pas-cours#c"],"deps":["amssymb","auto-pst-pdf","enumitem","fancyvrb","ifplatform","numprint","pst-plot","tikz","xkeyval","xstring"],"envs":[{"name":"ant"}],"keys":{"\\usepackage/pas-cours#c":["ant","calculs","everytoc","noeffect","noitemstyle","notitlebreak","xcas"]},"macros":[]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":["fontenc","textcomp","xkeyval"],"envs":[],"keys":{},"macros":[{"name":"DeclareOptionX"},{"name":"ExecuteOptionsX"},{"name":"familydefault"},{"name":"filedate"},{"name":"fileversion"},{"name":"ProcessOptionsX"},{"name":"ttdefault"},{"name":"ttzdefault"},{"name":"ttzfamily"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":["ifthen"],"envs":[],"keys":{},"macros":[{"name":"forloop"},{"name":"forloop","snippet":"forloop[${1:opt}]{${2:arg2}}{${3:arg3}}{${4:arg4}}{${5:arg5}}"},{"name":"forLoop"},{"name":"forLoop","snippet":"forLoop[${1:opt}]{${2:arg2}}{${3:arg3}}{${4:arg4}}{${5:arg5}}"}]}
