@@ -1,0 +1,7 @@
+{
+  "language": {
+    "description": "Elige el idioma de la interfaz. Predeterminado del sistema sigue el idioma de tu sistema operativo.",
+    "note": "Cambiar el idioma de la interfaz no cambia el idioma del documento ni los ajustes de corrección.",
+    "ariaLabel": "Idioma de la interfaz"
+  }
+}

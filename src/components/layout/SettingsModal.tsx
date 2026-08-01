@@ -75,8 +75,9 @@ import { startTour } from "@/lib/tour";
 import { TOUR_IDS } from "@/lib/tours/registry";
 import { useTourStore } from "@/store/tours";
 import { ProofreadingDictionarySection } from "@/components/settings/ProofreadingDictionarySection";
+import { useTranslation } from "react-i18next";
 import { changeLocale } from "@/i18n";
-import type { LocalePreference } from "@/i18n/locale";
+import { isLocalePreference, LOCALE_NATIVE_NAMES, SUPPORTED_LOCALES } from "@/i18n/locale";
 
 type Section =
   | "appearance"
@@ -185,6 +186,7 @@ export function SettingsModal() {
   const setOpen = useSettingsStore((s) => s.setSettingsOpen);
   const uiLocalePreference = useSettingsStore((s) => s.uiLocalePreference);
   const setUiLocalePreference = useSettingsStore((s) => s.setUiLocalePreference);
+  const { t } = useTranslation(["common", "settings"]);
   const resetToDefaults = useSettingsStore((s) => s.resetToDefaults);
   const { theme, setTheme, toggleTheme } = useTheme();
   const vim = useSettingsStore((s) => s.vim);
@@ -267,9 +269,9 @@ export function SettingsModal() {
   };
 
   const onLocaleChange = (value: string) => {
-    const preference = value as LocalePreference;
-    setUiLocalePreference(preference);
-    void changeLocale(preference);
+    if (!isLocalePreference(value)) return;
+    setUiLocalePreference(value);
+    void changeLocale(value);
   };
 
   useEffect(() => {
@@ -674,18 +676,28 @@ export function SettingsModal() {
                   className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
                 >
                   <div>
-                    <div className="text-sm font-medium">Language</div>
+                    <div className="text-sm font-medium">{t($ => $.common.language.label)}</div>
                     <div className="text-xs text-muted-foreground">
-                      Choose the interface language. System default follows your operating system language.
+                      {t($ => $.settings.language.description)}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {t($ => $.settings.language.note)}
                     </div>
                   </div>
                   <Select value={uiLocalePreference} onValueChange={onLocaleChange}>
-                    <SelectTrigger aria-label="Interface language" className="w-[176px]">
+                    <SelectTrigger
+                      aria-label={t($ => $.settings.language.ariaLabel)}
+                      className="w-[176px]"
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="z-[100]">
-                      <SelectItem value="system">System default</SelectItem>
-                      <SelectItem value="en">English</SelectItem>
+                      <SelectItem value="system">{t($ => $.common.language.system)}</SelectItem>
+                      {SUPPORTED_LOCALES.map((locale) => (
+                        <SelectItem key={locale} value={locale}>
+                          {LOCALE_NATIVE_NAMES[locale]}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

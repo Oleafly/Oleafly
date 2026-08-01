@@ -1,0 +1,7 @@
+{
+  "language": {
+    "description": "Choisissez la langue de l'interface. Par défaut du système suit la langue de votre système d'exploitation.",
+    "note": "Changer la langue de l'interface ne modifie ni la langue du document ni les réglages de correction.",
+    "ariaLabel": "Langue de l'interface"
+  }
+}
