@@ -1,0 +1,1 @@
+{"args":["\\usepackage/onlyamsmath#c"],"deps":["amsmath"],"envs":[],"keys":{"\\usepackage/onlyamsmath#c":["all","eqnarray","error","nodollardollar","warning"]},"macros":[{"name":"checkdsp"},{"name":"displaymath"},{"name":"dollarcode"},{"name":"dspcomplain"},{"name":"dspcomplain","snippet":"dspcomplain{${1:arg1}}"},{"name":"eqnarray"}]}

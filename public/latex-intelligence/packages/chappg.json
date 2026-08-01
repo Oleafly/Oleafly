@@ -1,0 +1,1 @@
+{"args":["\\usepackage/chappg#c"],"deps":[],"envs":[],"keys":{"\\usepackage/chappg#c":["auto","noauto"]},"macros":[{"name":"backmatter"},{"name":"chappgsep"},{"name":"csname"},{"name":"csname","snippet":"csname{${1:arg1}}"},{"name":"expandafter"},{"name":"mainmatter"},{"name":"pagenumbering"},{"name":"pagenumbering","snippet":"pagenumbering[${1:opt}]{${2:arg2}}"}]}

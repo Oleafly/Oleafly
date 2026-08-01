@@ -1,0 +1,1 @@
+{"args":["\\usepackage/lexref#c"],"deps":["etoolbox","ifthen","nomencl","splitidx","stringstrings","xargs","xstring"],"envs":[],"keys":{"\\usepackage/lexref#c":["CHde","CHfr","DE","indexing","nomencl","noprint","shortcutstolist"]},"macros":[{"name":"lexcitecountinteger","unusual":true},{"name":"lexciteindextempone"}]}

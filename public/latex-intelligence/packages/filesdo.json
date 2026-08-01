@@ -1,0 +1,1 @@
+{"args":[],"deps":["commado"],"envs":[],"keys":{},"macros":[{"name":"DoWithBasesExts"},{"name":"DoWithBasesExts","snippet":"DoWithBasesExts{${1:arg1}}{${2:arg2}}"},{"name":"DoWithCSL"},{"name":"DoWithCSL","snippet":"DoWithCSL{${1:arg1}}{${2:arg2}}"},{"name":"DoWithExtBases"},{"name":"DoWithExtBases","snippet":"DoWithExtBases{${1:arg1}}{${2:arg2}}"}]}

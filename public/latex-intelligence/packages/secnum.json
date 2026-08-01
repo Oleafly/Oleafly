@@ -1,0 +1,1 @@
+{"args":[],"deps":["expl3","l3keys2e","xparse"],"envs":[],"keys":{},"macros":[{"name":"setsecnum"},{"name":"setsecnum","snippet":"setsecnum{${1:arg1}}"},{"name":"thechapter"},{"name":"theparagraph"},{"name":"thesection"},{"name":"thesubparagraph"},{"name":"thesubsection"},{"name":"thesubsubsection"}]}

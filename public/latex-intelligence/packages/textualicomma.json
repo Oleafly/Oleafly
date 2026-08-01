@@ -1,0 +1,1 @@
+{"args":["\\usepackage/textualicomma#c"],"deps":["amstext"],"envs":[],"keys":{"\\usepackage/textualicomma#c":["sffamily","ttfamily"]},"macros":[{"name":"textualicommafont"},{"name":"textualicommafont","snippet":"textualicommafont{${1:arg1}}"}]}

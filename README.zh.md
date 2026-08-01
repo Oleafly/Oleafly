@@ -438,7 +438,6 @@ pnpm tauri dev
 | [产品工程目录](docs/README.md) | 功能清单与工程契约 |
 | [功能参考](docs/features.md) | 产品功能面与支持的工作流 |
 | [文档引擎](docs/document-engines.md) | LaTeX、Typst 和 Markdown 的能力 |
-| [从 LaTeX Workshop 迁移](docs/ComingFromLatexWorkshop.md) | 面向 VS Code + LaTeX Workshop 用户的功能与快捷键对照 |
 | [产品架构](docs/Architecture.md) | 系统边界、包归属与扩展点 |
 | [开发](docs/development.md) | 本地环境搭建、测试与贡献流程 |
 | [语言服务器工具链](docs/language-server-toolchain.md) | 获取、完整性校验与分发策略 |

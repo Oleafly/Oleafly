@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-08-01
+
+### Changed
+
+- The LaTeX completion catalogs are now generated from the packages
+  themselves. `scripts/latex-corpus-build.mjs` reads each package's own source
+  from a TeX Live installation, so every entry traces back to the package that
+  declares it, and regenerating against a newer TeX Live picks up new packages
+  with no manual curation. Coverage grows from 247 catalogs and 26,264
+  commands to **6,274 catalogs and 424,053 commands**, including 686 document
+  classes.
+- Deprecated-but-working commands are no longer marked as discouraged. A
+  package declares them exactly like any other command, so nothing in the
+  source distinguishes them.
+
+### Added
+
+- A contributor licence agreement (`CONTRIBUTING_CLA.md`). Contributors keep
+  their copyright and grant the maintainer the right to relicense.
+
+
 ## [0.3.2] - 2026-08-01
 
 ### Fixed
@@ -1174,7 +1195,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   compilation, SyncTeX, Git integration, GitHub sync, and bring-your-own-key AI
   assistance.
 
-[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.3.2...HEAD
+[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.3.3...HEAD
+[0.3.3]: https://github.com/Oleafly/Oleafly/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/Oleafly/Oleafly/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/Oleafly/Oleafly/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/Oleafly/Oleafly/compare/v0.2.8...v0.3.0

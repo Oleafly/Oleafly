@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"slashed"},{"name":"slashed","snippet":"slashed{${1:arg1}}"}]}

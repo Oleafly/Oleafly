@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"makeendnotes"},{"name":"notenumberformat"},{"name":"notenumberformat","snippet":"notenumberformat{${1:arg1}}"},{"name":"noteskip","unusual":true},{"name":"restorefootnotes"},{"name":"theendnotes"}]}

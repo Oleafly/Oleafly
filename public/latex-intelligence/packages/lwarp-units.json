@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"unit"},{"name":"unit","snippet":"unit[${1:opt}]{${2:arg2}}"},{"name":"unitfrac"},{"name":"unitfrac","snippet":"unitfrac[${1:opt}]{${2:arg2}}{${3:arg3}}"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":["ifthen","kvoptions","marginnote","verbatim","xparse"],"envs":[{"name":"exercise"},{"name":"solution"}],"keys":{},"macros":[{"name":"exercisenewpage"},{"name":"i","unusual":true},{"name":"ifsolutionthenelse"},{"name":"ifsolutionthenelse","snippet":"ifsolutionthenelse{${1:arg1}}{${2:arg2}}"},{"name":"solutionnewpage"},{"name":"totalpoints"}]}

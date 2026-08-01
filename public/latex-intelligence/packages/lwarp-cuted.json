@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[{"name":"strip"}],"keys":{},"macros":[{"name":"oldcolsbreak"},{"name":"oldcolsbreak","snippet":"oldcolsbreak{${1:arg1}}"},{"name":"postCutedStrip","unusual":true},{"name":"preCutedStrip","unusual":true},{"name":"stripsep","unusual":true}]}

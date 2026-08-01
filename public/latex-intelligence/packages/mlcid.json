@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"CIDC"},{"name":"CIDC","snippet":"CIDC{${1:arg1}}"},{"name":"CIDK"},{"name":"CIDK","snippet":"CIDK{${1:arg1}}"},{"name":"CIDT"},{"name":"CIDT","snippet":"CIDT{${1:arg1}}"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":["etoolbox","l3regex","xcolor","xparse"],"envs":[],"keys":{},"macros":[{"name":"coloringdefine"},{"name":"coloringdefine","snippet":"coloringdefine{${1:arg1}}"}]}

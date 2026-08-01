@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[{"name":"CD"}],"keys":{},"macros":[{"name":"CDashfalse"},{"name":"CDashtrue"},{"name":"CDfatfalse"},{"name":"CDfattrue"},{"name":"CDlor"},{"name":"CDlor","snippet":"CDlor{${1:arg1}}"}]}

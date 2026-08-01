@@ -1,0 +1,1 @@
+{"args":["\\usepackage/layaureo#c"],"deps":["calc","geometry","keyval"],"envs":[],"keys":{"\\usepackage/layaureo#c":["big","binding","rilegatura"]},"macros":[{"name":"ProcessOptionsWithKV"},{"name":"ProcessOptionsWithKV","snippet":"ProcessOptionsWithKV{${1:arg1}}"}]}

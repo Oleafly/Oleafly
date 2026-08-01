@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"QueryFiles"},{"name":"QueryFilesTF"},{"name":"QueryWorkingDirectory"},{"name":"QueryWorkingDirectory","snippet":"QueryWorkingDirectory{${1:arg1}}"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":["expl3","xcolor","xparse"],"envs":[],"keys":{},"macros":[{"name":"keyboard"},{"name":"Keyboard"},{"name":"keyboardsetup"},{"name":"keyboardsetup","snippet":"keyboardsetup{${1:arg1}}"}]}

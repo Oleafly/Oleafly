@@ -1,0 +1,1 @@
+{"args":[],"deps":["ifthen","tikz"],"envs":[],"keys":{},"macros":[{"name":"copyrightbox"},{"name":"copyrightbox","snippet":"copyrightbox[${1:opt}]{${2:arg2}}{${3:arg3}}"}]}

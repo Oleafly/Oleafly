@@ -1,0 +1,1 @@
+{"args":["\\usepackage/antanilipsum#c"],"deps":["expl3","xparse"],"envs":[],"keys":{"\\usepackage/antanilipsum#c":["index","nopar","numbers","par"]},"macros":[{"name":"antani"},{"name":"antanidef"}]}

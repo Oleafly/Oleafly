@@ -1,0 +1,1 @@
+{"args":[],"deps":["pgf","pgfkeys"],"envs":[],"keys":{},"macros":[{"name":"expandafter"},{"name":"tqftset"},{"name":"tqftset","snippet":"tqftset{${1:arg1}}"}]}

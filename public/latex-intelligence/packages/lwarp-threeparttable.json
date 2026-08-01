@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[{"name":"measuredfigure"},{"name":"tablenotes"},{"name":"threeparttable"}],"keys":{},"macros":[{"name":"tnote"},{"name":"tnote","snippet":"tnote{${1:arg1}}"}]}

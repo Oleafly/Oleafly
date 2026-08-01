@@ -1,0 +1,1 @@
+{"args":["\\usepackage/prooftrees#c"],"deps":["amssymb","amstext","forest","svn-prov"],"envs":[],"keys":{"\\usepackage/prooftrees#c":["tableau","tableaux"]},"macros":[{"name":"linenumberstyle"},{"name":"linenumberstyle","snippet":"linenumberstyle{${1:arg1}}"}]}

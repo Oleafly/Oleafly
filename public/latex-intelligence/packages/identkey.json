@@ -1,0 +1,1 @@
+{"args":[],"deps":["enumitem","etoolbox"],"envs":[],"keys":{},"macros":[{"name":"coupletcounter","unusual":true},{"name":"firstlead"},{"name":"goto"},{"name":"goto","snippet":"goto{${1:arg1}}"},{"name":"ident"},{"name":"ident","snippet":"ident{${1:arg1}}"},{"name":"lead"},{"name":"secondlead"}]}

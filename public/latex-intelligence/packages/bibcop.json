@@ -1,0 +1,1 @@
+{"args":[],"deps":["iexec","pgfopts","shellesc"],"envs":[],"keys":{},"macros":[{"name":"addbibresource"},{"name":"addbibresource","snippet":"addbibresource{${1:arg1}}"},{"name":"bibliography"},{"name":"bibliography","snippet":"bibliography{${1:arg1}}"}]}

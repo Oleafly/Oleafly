@@ -1,0 +1,1 @@
+{"args":["\\usepackage/logreq#c"],"deps":["etoolbox","keyval"],"envs":[],"keys":{"\\usepackage/logreq#c":["#3"]},"macros":[{"name":"comment"},{"name":"do"},{"name":"do","snippet":"do{${1:arg1}}"},{"name":"expandafter"},{"name":"expandafter","snippet":"expandafter{${1:arg1}}"},{"name":"LogreqDTDVersion"},{"name":"protect"}]}

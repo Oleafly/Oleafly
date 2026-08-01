@@ -1,0 +1,1 @@
+{"args":[],"deps":["atveryend","ifetex","ifluatex","ifpdf","iftex","intcalc","kvoptions"],"envs":[],"keys":{},"macros":[{"name":"IfFormatAtLeastTF"},{"name":"regstatsbox","unusual":true},{"name":"regstatscount","unusual":true},{"name":"regstatselapsedtime"},{"name":"regstatsseconds"},{"name":"regstatsskip","unusual":true},{"name":"regstatstoks","unusual":true}]}

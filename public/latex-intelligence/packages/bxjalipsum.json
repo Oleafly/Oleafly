@@ -1,0 +1,1 @@
+{"args":["\\usepackage/bxjalipsum#c"],"deps":["intcalc"],"envs":[],"keys":{"\\usepackage/bxjalipsum#c":["CJKtilde","noCJKtilde"]},"macros":[{"name":"bxDebug"},{"name":"bxDebug","snippet":"bxDebug{${1:arg1}}"},{"name":"do"},{"name":"do","snippet":"do{${1:arg1}}{${2:arg2}}"},{"name":"expandafter"},{"name":"jalipsum"}]}

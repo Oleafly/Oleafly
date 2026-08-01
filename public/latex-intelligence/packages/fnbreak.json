@@ -1,0 +1,1 @@
+{"args":["\\usepackage/fnbreak#c"],"deps":["ifthen"],"envs":[],"keys":{"\\usepackage/fnbreak#c":["label","nolabel","nonverbose","verbose"]},"macros":[{"name":"fnbreaklabel"},{"name":"fnbreaknolabel"},{"name":"fnbreaknonverbose"},{"name":"fnbreakverbose"},{"name":"IfFormatAtLeastTF"},{"name":"MessageBreak"}]}

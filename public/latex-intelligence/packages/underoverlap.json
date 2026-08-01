@@ -1,0 +1,1 @@
+{"args":[],"deps":["etoolbox","mathtools","xparse"],"envs":[],"keys":{},"macros":[{"name":"newUOLdecorator"},{"name":"newUOLdecorator","snippet":"newUOLdecorator{${1:arg1}}{${2:arg2}}"},{"name":"UOLaugment"},{"name":"UOLaugment","snippet":"UOLaugment{${1:arg1}}"},{"name":"UOLunaugment"},{"name":"UOLunaugment","snippet":"UOLunaugment{${1:arg1}}"}]}

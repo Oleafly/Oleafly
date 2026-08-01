@@ -1,0 +1,1 @@
+{"args":["\\usepackage/lwarp-imakeidx#c"],"deps":[],"envs":[{"name":"theindex"}],"keys":{"\\usepackage/lwarp-imakeidx#c":["name","options"]},"macros":[{"name":"printindex"},{"name":"printindex","snippet":"printindex[${1:opt}]"}]}

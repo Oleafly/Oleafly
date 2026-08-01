@@ -1,9 +1,1 @@
-{
-  "args": [],
-  "deps": [
-    "iftex"
-  ],
-  "envs": [],
-  "keys": {},
-  "macros": []
-}
+{"args":[],"deps":["iftex"],"envs":[],"keys":{},"macros":[{"name":"ifpdf"},{"name":"NeedsETeX"},{"name":"NeedsETeX","snippet":"NeedsETeX[${1:opt}]"},{"name":"pdffalse"},{"name":"pdftrue"},{"name":"RequireAlephTeX"},{"name":"RequireeTeX"},{"name":"RequireHINT"},{"name":"RequireLuaHBTeX"},{"name":"RequireLuaMetaTeX"},{"name":"RequireLuaTeX"},{"name":"RequirePDFTeX"},{"name":"RequireProte"},{"name":"RequirepTeX"},{"name":"RequirepTeXng"},{"name":"RequireTexpadTeX"},{"name":"RequireTUTeX"},{"name":"RequireupTeX"},{"name":"RequireVTeX"},{"name":"RequireXeTeX"}]}

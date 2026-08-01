@@ -1,0 +1,1 @@
+{"args":[],"deps":["luatexbase"],"envs":[],"keys":{},"macros":[{"name":"linebreakerdisable"},{"name":"linebreakerenable"},{"name":"linebreakersetup"},{"name":"linebreakersetup","snippet":"linebreakersetup{${1:arg1}}"}]}

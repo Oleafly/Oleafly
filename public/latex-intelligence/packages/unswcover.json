@@ -1,0 +1,1 @@
+{"args":[],"deps":["babel","graphicx","pdfpages"],"envs":[],"keys":{},"macros":[{"name":"makeunswfrontmatter"},{"name":"makeunswphdtitlepage"},{"name":"unswcotutelle"},{"name":"unswdegree"},{"name":"unswdissertationsheet"},{"name":"unswschool"}]}

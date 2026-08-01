@@ -455,7 +455,6 @@ pnpm tauri dev
 | [プロダクトエンジニアリングカタログ](docs/README.md) | 機能インベントリとエンジニアリング上の取り決め |
 | [機能リファレンス](docs/features.md) | プロダクトの提供範囲とサポートされるワークフロー |
 | [ドキュメントエンジン](docs/document-engines.md) | LaTeX、Typst、Markdown の各機能 |
-| [LaTeX Workshop からの移行](docs/ComingFromLatexWorkshop.md) | VS Code + LaTeX Workshop ユーザー向けの機能・ショートカット対応表 |
 | [プロダクトアーキテクチャ](docs/Architecture.md) | システム境界、パッケージの責務、拡張ポイント |
 | [開発](docs/development.md) | ローカルセットアップ、テスト、コントリビューションのワークフロー |
 | [言語サーバーツールチェーン](docs/language-server-toolchain.md) | 取得、整合性検証、配布のポリシー |

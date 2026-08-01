@@ -1,0 +1,1 @@
+{"args":["\\usepackage/actuarialangle#c"],"deps":["pict2e"],"envs":[],"keys":{"\\usepackage/actuarialangle#c":["nobracket","thickspace","thinspace"]},"macros":[{"name":"actuarialangle"},{"name":"angl"},{"name":"angl","snippet":"angl{${1:arg1}}"},{"name":"anglk"},{"name":"angln"},{"name":"anglr"},{"name":"group"},{"name":"overanglebracket"}]}

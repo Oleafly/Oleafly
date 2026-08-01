@@ -1,0 +1,1 @@
+{"args":["\\usepackage/quoted#c"],"deps":[],"envs":[],"keys":{"\\usepackage/quoted#c":["#1"]},"macros":[{"name":"inquote"},{"name":"lquote"},{"name":"quoted"},{"name":"quoted","snippet":"quoted{${1:arg1}}"},{"name":"rquote"}]}

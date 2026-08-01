@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"AfterLastShipout"},{"name":"AtEndAfterFileList"},{"name":"AtVeryEndDocument"},{"name":"AtVeryVeryEnd"},{"name":"BeforeClearDocument"},{"name":"BeforeClearDocument","snippet":"BeforeClearDocument{${1:arg1}}"}]}

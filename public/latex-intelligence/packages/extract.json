@@ -1,0 +1,1 @@
+{"args":[],"deps":["verbatim","xkeyval"],"envs":[],"keys":{},"macros":[{"name":"AfterEndEnv"},{"name":"begin"},{"name":"begin","snippet":"begin{${1:arg1}}"},{"name":"do"},{"name":"end"},{"name":"end","snippet":"end{${1:arg1}}"},{"name":"endextract"},{"name":"expandafter"},{"name":"extract"},{"name":"extractionlabel"},{"name":"extractline"},{"name":"string"}]}

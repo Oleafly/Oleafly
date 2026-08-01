@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"setBold"},{"name":"setBold","snippet":"setBold[${1:opt}]"},{"name":"unsetBold"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":["booktabs","glossary-long","glossary-longragged"],"envs":[{"name":"theglossary"}],"keys":{},"macros":[{"name":"glossaryheader"},{"name":"glsgroupskip"},{"name":"glsLTpenaltycheck"},{"name":"glspatchLToutput"},{"name":"glspenaltygroupskip"},{"name":"glsrestoreLToutput"}]}

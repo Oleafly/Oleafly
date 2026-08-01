@@ -1,0 +1,1 @@
+{"args":[],"deps":["fontaxes","fontenc","fontspec","ifluatex","ifxetex","textcomp","xkeyval"],"envs":[],"keys":{},"macros":[{"name":"rmdefault"},{"name":"seriesdefault"},{"name":"spectralextrabold"},{"name":"spectralextralight"},{"name":"spectrallight"},{"name":"spectralmedium"},{"name":"spectralsemibold"},{"name":"sufigures"},{"name":"swshape"}]}

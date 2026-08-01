@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[{"name":"topfloat"}],"keys":{},"macros":[{"name":"endtopI"},{"name":"endtopII"},{"name":"figcap"},{"name":"figcap","snippet":"figcap[${1:opt}]{${2:arg2}}"},{"name":"tabcap"},{"name":"tabcap","snippet":"tabcap[${1:opt}]{${2:arg2}}"},{"name":"topI"},{"name":"topII"}]}

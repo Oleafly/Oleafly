@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"csname"},{"name":"csname","snippet":"csname{${1:arg1}}"},{"name":"ResetCounterPerPage"},{"name":"ResetCounterPerPage","snippet":"ResetCounterPerPage[${1:opt}]{${2:arg2}}"}]}

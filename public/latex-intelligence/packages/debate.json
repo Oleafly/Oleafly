@@ -1,0 +1,1 @@
+{"args":[],"deps":["tcolorbox","xcolor","xkeyval"],"envs":[],"keys":{},"macros":[{"name":"debate"},{"name":"debate","snippet":"debate[${1:opt}]{${2:arg2}}"}]}

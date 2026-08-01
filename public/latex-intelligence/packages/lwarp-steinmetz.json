@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"phase"},{"name":"phase","snippet":"phase[${1:opt}]{${2:arg2}}"}]}

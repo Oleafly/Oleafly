@@ -1,0 +1,1 @@
+{"args":[],"deps":["expl3","graphicx","xparse"],"envs":[],"keys":{},"macros":[{"name":"joinbox"},{"name":"joinboxes"},{"name":"joinfigs"},{"name":"joinset"},{"name":"joinset","snippet":"joinset{${1:arg1}}"}]}

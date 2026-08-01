@@ -1,0 +1,1 @@
+{"args":["\\usepackage/mmap#c"],"deps":["cmap","ifpdf"],"envs":[],"keys":{"\\usepackage/mmap#c":["noTeX","useTeX"]},"macros":[{"name":"csname"},{"name":"expandafter"},{"name":"mmapnotexcodes"},{"name":"mmapusetexcodes"},{"name":"next"},{"name":"noexpand"}]}

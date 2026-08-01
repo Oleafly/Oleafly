@@ -1,0 +1,1 @@
+{"args":["\\usepackage/hyperref-patches#c"],"deps":[],"envs":[],"keys":{"\\usepackage/hyperref-patches#c":["nofoiltex","nolisting","nolistings","norevtex"]},"macros":[{"name":"csname"},{"name":"csname","snippet":"csname{${1:arg1}}"},{"name":"expandafter"},{"name":"theHlisting"},{"name":"theHlstlisting"}]}

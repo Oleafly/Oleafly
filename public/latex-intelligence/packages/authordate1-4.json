@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"bibhang","unusual":true},{"name":"bibheadtitle"},{"name":"bibtitle"},{"name":"cite"},{"name":"citename"},{"name":"citename","snippet":"citename{${1:arg1}}"},{"name":"newblock"},{"name":"shortcite"},{"name":"thebibliography"},{"name":"thebibliography","snippet":"thebibliography{${1:arg1}}"}]}

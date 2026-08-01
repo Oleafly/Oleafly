@@ -1,0 +1,1 @@
+{"args":[],"deps":["kvoptions","mciteplus","natbib","natmove"],"envs":[],"keys":{},"macros":[{"name":"bibliography"},{"name":"bibliography","snippet":"bibliography{${1:arg1}}"}]}

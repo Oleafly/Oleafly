@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"imagepath"},{"name":"logoheight"},{"name":"logowidth"},{"name":"logoxshift"},{"name":"logoyshift"},{"name":"oldtextbf"},{"name":"rmdefault"},{"name":"sfdefault"},{"name":"textbf"},{"name":"textbf","snippet":"textbf{${1:arg1}}"}]}

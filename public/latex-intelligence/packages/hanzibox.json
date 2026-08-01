@@ -1,0 +1,1 @@
+{"args":[],"deps":["expl3","l3draw","l3keys2e","xparse","xpinyin","xtemplate"],"envs":[],"keys":{},"macros":[{"name":"hanzibox"},{"name":"hanziboxset"},{"name":"hanziboxset","snippet":"hanziboxset{${1:arg1}}"},{"name":"hanzidialog"},{"name":"writegrid"}]}

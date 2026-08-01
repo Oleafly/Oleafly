@@ -1,0 +1,1 @@
+{"args":[],"deps":["calc","ctex","multicol","multimedia","natbib","pgf","tikz"],"envs":[],"keys":{},"macros":[{"name":"frameofframes"},{"name":"hitszbeamer"},{"name":"setframeofframes"},{"name":"setframeofframes","snippet":"setframeofframes{${1:arg1}}"},{"name":"varparallel"}]}

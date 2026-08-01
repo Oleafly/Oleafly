@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"compiler"},{"name":"compiler","snippet":"compiler{${1:arg1}}"},{"name":"interpreter"},{"name":"interpreter","snippet":"interpreter{${1:arg1}}"},{"name":"machine"},{"name":"machine","snippet":"machine{${1:arg1}}"},{"name":"program"},{"name":"program","snippet":"program{${1:arg1}}"}]}

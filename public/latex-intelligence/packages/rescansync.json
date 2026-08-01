@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[{"name":"rescansyncSaveenvPacked"},{"name":"rescansyncSaveenvghostPacked"}],"keys":{},"macros":[{"name":"rescansync"},{"name":"rescansyncPacked"},{"name":"rescansyncPacked","snippet":"rescansyncPacked{${1:arg1}}"}]}

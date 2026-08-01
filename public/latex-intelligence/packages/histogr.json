@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"histogram"},{"name":"histogram","snippet":"histogram{${1:arg1}}{${2:arg2}}"},{"name":"noverticallines"},{"name":"verticallines"}]}

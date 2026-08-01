@@ -1,0 +1,1 @@
+{"args":["\\usepackage/overpic#c"],"deps":["epic","graphicx","keyval"],"envs":[{"name":"Overpic"},{"name":"overpic"}],"keys":{"\\usepackage/overpic#c":["abs","grid","percent","permil","rel","tics","unit"]},"macros":[{"name":"setkeys"},{"name":"setOverpic"},{"name":"setOverpic","snippet":"setOverpic{${1:arg1}}"}]}

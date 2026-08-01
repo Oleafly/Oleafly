@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"marginalia"},{"name":"marginalianewgeometry"},{"name":"marginaliasetup"},{"name":"marginaliasetup","snippet":"marginaliasetup{${1:arg1}}"}]}

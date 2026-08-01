@@ -1,0 +1,1 @@
+{"args":[],"deps":["kvoptions"],"envs":[],"keys":{},"macros":[{"name":"barcode"},{"name":"BarcodeSanitize"},{"name":"csname"},{"name":"expandafter"},{"name":"HPlabel"},{"name":"ITFbarcode"},{"name":"next"},{"name":"ZWBCtest"},{"name":"ZWBCtest","snippet":"ZWBCtest{${1:arg1}}"}]}

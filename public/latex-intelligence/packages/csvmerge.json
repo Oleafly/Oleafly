@@ -1,0 +1,1 @@
+{"args":[],"deps":["etoolbox","stringstrings","trimspaces"],"envs":[],"keys":{},"macros":[{"name":"csname"},{"name":"csname","snippet":"csname{${1:arg1}}"}]}

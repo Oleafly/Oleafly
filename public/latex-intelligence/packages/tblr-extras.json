@@ -1,0 +1,1 @@
+{"args":[],"deps":["babel","caption","tabularray"],"envs":[],"keys":{},"macros":[{"name":"IfBoolFalse"},{"name":"IfBoolTF"},{"name":"IfTokenListEmpty"},{"name":"TblrCaptionAbove"},{"name":"TblrCaptionBelow"},{"name":"tblrcontfootname"},{"name":"tblrcontheadname"}]}

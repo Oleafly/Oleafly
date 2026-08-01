@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"byname"},{"name":"byname","snippet":"byname{${1:arg1}}"},{"name":"byshortname"},{"name":"byshortname","snippet":"byshortname{${1:arg1}}"},{"name":"filedate"},{"name":"fileversion"},{"name":"label"},{"name":"label","snippet":"label{${1:arg1}}"},{"name":"newnamelabel"}]}

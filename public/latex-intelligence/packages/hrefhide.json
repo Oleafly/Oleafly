@@ -1,0 +1,1 @@
+{"args":[],"deps":["hyperref","xcolor"],"envs":[],"keys":{},"macros":[{"name":"hrefdisplayonly"},{"name":"hrefdisplayonly","snippet":"hrefdisplayonly{${1:arg1}}{${2:arg2}}"},{"name":"hycoff"},{"name":"hycon"}]}

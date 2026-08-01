@@ -1,0 +1,1 @@
+{"args":[],"deps":["pdfbase"],"envs":[],"keys":{},"macros":[{"name":"addmediapath"},{"name":"addmediapath","snippet":"addmediapath{${1:arg1}}"},{"name":"includemedia"},{"name":"token"}]}

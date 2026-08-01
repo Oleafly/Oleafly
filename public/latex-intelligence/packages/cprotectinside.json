@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"cprotectinside"},{"name":"cprotectinsideAppend"},{"name":"cprotectinsideReexec"},{"name":"cprotectinsideReexec","snippet":"cprotectinsideReexec{${1:arg1}}"}]}

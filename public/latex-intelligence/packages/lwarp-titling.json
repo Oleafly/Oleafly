@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[{"name":"titlingpage"}],"keys":{},"macros":[{"name":"and"},{"name":"keepthetitle"},{"name":"killtitle"},{"name":"maketitle"},{"name":"thanksfootmark"},{"name":"thanksmarkseries"},{"name":"thanksmarkseries","snippet":"thanksmarkseries{${1:arg1}}"},{"name":"thefootnote"}]}

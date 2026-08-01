@@ -1,0 +1,1 @@
+{"args":[],"deps":["etoolbox","marginnote","pgfopts","zref-perpage"],"envs":[],"keys":{},"macros":[{"name":"expandafter"},{"name":"footnote"},{"name":"footnotemark"},{"name":"footnotetext"},{"name":"multfootnote"},{"name":"sidenote","unusual":true},{"name":"theHsidenote"}]}

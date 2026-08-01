@@ -1,0 +1,1 @@
+{"args":[],"deps":["amssymb","etoolbox","expl3","fontawesome5","l3keys2e","tcolorbox","varwidth","xcolor","xparse","xtemplate"],"envs":[],"keys":{},"macros":[{"name":"termfile"},{"name":"termset"},{"name":"termset","snippet":"termset{${1:arg1}}"},{"name":"UbuntuClose"},{"name":"UbuntuMax"},{"name":"UbuntuMin"},{"name":"WindowsLogo"}]}

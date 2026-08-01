@@ -1,0 +1,1 @@
+{"args":["\\usepackage/tracefnt#c"],"deps":[],"envs":[],"keys":{"\\usepackage/tracefnt#c":["debugshow","errorshow","infoshow","loading","pausing","warningshow"]},"macros":[{"name":"baselinestretch"},{"name":"fontsubfuzz"},{"name":"selectfont"},{"name":"tracingfonts","unusual":true}]}

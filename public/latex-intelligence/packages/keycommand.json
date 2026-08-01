@@ -1,0 +1,1 @@
+{"args":[],"deps":["etex","etoolbox","kvsetkeys","xkeyval"],"envs":[],"keys":{},"macros":[{"name":"commandkey"},{"name":"default"},{"name":"do"},{"name":"expandafter"},{"name":"getcommandkey"},{"name":"ifcommandkey"},{"name":"ifcommandkey","snippet":"ifcommandkey{${1:arg1}}"},{"name":"next"},{"name":"noexpand"},{"name":"noexpand","snippet":"noexpand{${1:arg1}}"}]}

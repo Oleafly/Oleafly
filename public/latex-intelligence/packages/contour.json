@@ -1,0 +1,1 @@
+{"args":["\\usepackage/contour#c"],"deps":["color","trig"],"envs":[],"keys":{"\\usepackage/contour#c":["auto","copies","dvips","dvipsone","outline","pdftex","vtex","xdvi"]},"macros":[{"name":"contour"},{"name":"contourlength"},{"name":"contourlength","snippet":"contourlength{${1:arg1}}"},{"name":"contournumber"},{"name":"contournumber","snippet":"contournumber{${1:arg1}}"}]}

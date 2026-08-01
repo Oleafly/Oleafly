@@ -1,4 +1,4 @@
-// LaTeX structural editing commands (LaTeX Workshop parity):
+// LaTeX structural editing commands:
 //  - continueListOnEnter: Enter inside an itemize/enumerate/description list
 //    continues the list with a new `\item`, or exits it on an empty item.
 //  - closeEnvironmentAtCursor: inserts `\end{...}` for the innermost unclosed

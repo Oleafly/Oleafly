@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"ExpandTextArea"},{"name":"ExpandTextArea","snippet":"ExpandTextArea[${1:opt}]"},{"name":"RestoreTextArea"},{"name":"StartFromHeaderArea"},{"name":"StartFromTextArea"}]}

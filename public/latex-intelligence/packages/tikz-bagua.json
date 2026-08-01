@@ -1,0 +1,1 @@
+{"args":[],"deps":["bitset","tikz","xintexpr","xparse","xstring"],"envs":[],"keys":{},"macros":[{"name":"bagua"},{"name":"Bagua"},{"name":"drawliangyi"},{"name":"drawliangyi","snippet":"drawliangyi[${1:opt}]{${2:arg2}}"},{"name":"liangyi"},{"name":"sixiang"},{"name":"taiji"},{"name":"xtaiji"}]}

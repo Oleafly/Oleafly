@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"center"},{"name":"centering"},{"name":"endcenter"},{"name":"enddescription"},{"name":"endflushleft"},{"name":"endflushright"},{"name":"endtrivlist"},{"name":"flushleft"},{"name":"flushright"},{"name":"makelabel"},{"name":"makelabel","snippet":"makelabel{${1:arg1}}"}]}

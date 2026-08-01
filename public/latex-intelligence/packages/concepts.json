@@ -1,0 +1,1 @@
+{"args":[],"deps":["etextools","ltxkeys","nth","xparse","xspace","xstring"],"envs":[],"keys":{},"macros":[{"name":"ConceptName"},{"name":"ConceptNameAndSymbols"},{"name":"ConceptOption"},{"name":"ConceptOption","snippet":"ConceptOption{${1:arg1}}{${2:arg2}}"},{"name":"ConceptSymbol"},{"name":"ConceptSymbols"},{"name":"do"},{"name":"do","snippet":"do{${1:arg1}}"}]}

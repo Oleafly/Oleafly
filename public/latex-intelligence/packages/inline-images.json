@@ -1,0 +1,1 @@
+{"args":[],"deps":["graphicx"],"envs":[],"keys":{},"macros":[{"name":"inlineimg"},{"name":"inlineimg","snippet":"inlineimg{${1:arg1}}{${2:arg2}}"}]}

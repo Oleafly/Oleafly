@@ -1,0 +1,1 @@
+{"args":["\\usepackage/rutitlepage#c"],"deps":["geometry","graphicx","iflang","ifpdf","keyval"],"envs":[],"keys":{"\\usepackage/rutitlepage#c":["authors","authorstext","colour","course","date","institution","layout","nextpagenr","others","subtitle","title"]},"macros":[{"name":"maketitleru"},{"name":"maketitleru","snippet":"maketitleru[${1:opt}]"}]}

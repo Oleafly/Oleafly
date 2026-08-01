@@ -1,0 +1,1 @@
+{"args":[],"deps":["fancyvrb","graphicx","kvoptions"],"envs":[{"name":"ditaa"}],"keys":{},"macros":[{"name":"ditaacaption"},{"name":"ditaadir"},{"name":"ditaafigwidth"},{"name":"ditaafile"},{"name":"ditaastem"}]}

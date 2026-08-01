@@ -1,0 +1,1 @@
+{"args":["\\usepackage/yfonts-otf#c"],"deps":["fontspec","iftex"],"envs":[],"keys":{"\\usepackage/yfonts-otf#c":["gothvarlongs","oldumlaut","varumlaut"]},"macros":[{"name":"etc"},{"name":"filedate"},{"name":"fileversion"},{"name":"Jvar"},{"name":"longs"},{"name":"shorts"},{"name":"ZWNJ"},{"name":"ZWS"}]}

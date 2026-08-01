@@ -1,0 +1,1 @@
+{"args":[],"deps":["fontspec"],"envs":[],"keys":{},"macros":[{"name":"emoji"},{"name":"emoji","snippet":"emoji{${1:arg1}}"},{"name":"setemojifont"},{"name":"setemojifont","snippet":"setemojifont[${1:opt}]{${2:arg2}}"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":["chemgreek","expl3","l3keys2e","tikz","xparse"],"envs":[{"name":"MOdiagram"},{"name":"modiagram"}],"keys":{},"macros":[{"name":"_"},{"name":"connect"},{"name":"connect","snippet":"connect{${1:arg1}}"},{"name":"MOsetup"},{"name":"MOsetup","snippet":"MOsetup{${1:arg1}}"},{"name":"setmodiagram"},{"name":"setmodiagram","snippet":"setmodiagram{${1:arg1}}"}]}

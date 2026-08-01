@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[{"name":"axiomlist"},{"name":"axiomlist*"}],"keys":{},"macros":[{"name":"axiom","unusual":true},{"name":"axiomlabel"},{"name":"texttag"},{"name":"texttag","snippet":"texttag{${1:arg1}}{${2:arg2}}"},{"name":"xlabel"},{"name":"xlabel","snippet":"xlabel{${1:arg1}}{${2:arg2}}"}]}

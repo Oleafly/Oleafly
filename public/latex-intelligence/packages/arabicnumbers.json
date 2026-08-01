@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"abjad"},{"name":"abjad","snippet":"abjad{${1:arg1}}"},{"name":"arabicdigits"},{"name":"arabicdigits","snippet":"arabicdigits{${1:arg1}}"},{"name":"farsidigits"},{"name":"farsidigits","snippet":"farsidigits{${1:arg1}}"}]}

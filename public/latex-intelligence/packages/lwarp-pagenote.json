@@ -1,0 +1,1 @@
+{"args":["\\usepackage/lwarp-pagenote#c"],"deps":[],"envs":[],"keys":{"\\usepackage/lwarp-pagenote#c":["page"]},"macros":[{"name":"LWRpagenote"},{"name":"pagenote"},{"name":"pagenote","snippet":"pagenote[${1:opt}]{${2:arg2}}"}]}

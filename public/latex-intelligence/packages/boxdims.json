@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"boxdimfile"},{"name":"boxdimfile","snippet":"boxdimfile{${1:arg1}}"},{"name":"boxdims"},{"name":"boxdims","snippet":"boxdims{${1:arg1}}{${2:arg2}}"},{"name":"defboxdim"},{"name":"defboxdim","snippet":"defboxdim{${1:arg1}}{${2:arg2}}"},{"name":"dimbox","unusual":true}]}

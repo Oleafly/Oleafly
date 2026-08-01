@@ -1,0 +1,1 @@
+{"args":[],"deps":["ifxetex"],"envs":[],"keys":{},"macros":[{"name":"discardNextChar"},{"name":"discardNextChar","snippet":"discardNextChar{${1:arg1}}"},{"name":"paragraph"},{"name":"sub"},{"name":"toEolnCommand"},{"name":"toEolnCommand","snippet":"toEolnCommand{${1:arg1}}{${2:arg2}}"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":["amsfonts","amssymb","mathrsfs","mathtools","stmaryrd","wasysym"],"envs":[],"keys":{},"macros":[{"name":"DeclareUnicodeCharacter"},{"name":"DeclareUnicodeCharacter","snippet":"DeclareUnicodeCharacter{${1:arg1}}{${2:arg2}}"},{"name":"tmp"}]}

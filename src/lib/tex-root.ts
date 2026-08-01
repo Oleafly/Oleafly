@@ -2,7 +2,8 @@ import { resolveProjectPath } from "@/lib/project-intelligence/source";
 import { useFilesStore } from "@/store/files";
 
 /**
- * `% !TEX root = <path>` magic-comment support (LaTeX Workshop semantics).
+ * `% !TEX root = <path>` magic-comment support, following the convention
+ * TeX editors have shared since TeXShop introduced it.
  *
  * A magic root comment in the ACTIVE editor file overrides the project's
  * stored main document for compile, project intelligence, SyncTeX, and

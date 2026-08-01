@@ -1,0 +1,1 @@
+{"args":["\\usepackage/graphicxpsd#c"],"deps":["shellesc"],"envs":[],"keys":{"\\usepackage/graphicxpsd#c":["cache=False","cache=True","cache=false","cache=true","convert","dvipdfmx","graphicsmagick","imagemagick","luatex","magick","pdftex","sips","xetex"]},"macros":[{"name":"ShellEscape"}]}

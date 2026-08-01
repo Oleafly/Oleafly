@@ -1,0 +1,1 @@
+{"args":["\\usepackage/perltex#c"],"deps":[],"envs":[],"keys":{"\\usepackage/perltex#c":["optional"]},"macros":[{"name":"begin"},{"name":"do"},{"name":"end"},{"name":"expandafter"},{"name":"let"},{"name":"perldo"},{"name":"perlnewcommand"},{"name":"perlnewenvironment"},{"name":"perlrenewcommand"},{"name":"perlrenewenvironment"},{"name":"protect"}]}

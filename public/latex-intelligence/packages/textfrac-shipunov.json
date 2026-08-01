@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"textfrac"},{"name":"textfrac","snippet":"textfrac{${1:arg1}}{${2:arg2}}"},{"name":"TextFrac"},{"name":"TextFrac","snippet":"TextFrac{${1:arg1}}{${2:arg2}}"}]}

@@ -1,0 +1,1 @@
+{"args":["\\usepackage/cmll#c"],"deps":["graphicx","ifthen","relsize"],"envs":[],"keys":{"\\usepackage/cmll#c":["emu"]},"macros":[{"name":"biginvamp"},{"name":"biginvampemu"},{"name":"bigparr"},{"name":"bigwith"},{"name":"bigwithemu"},{"name":"expandafter"},{"name":"invamp"},{"name":"invampemu"},{"name":"oc"},{"name":"parr"},{"name":"with"},{"name":"wn"}]}

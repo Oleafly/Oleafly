@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"docdate"},{"name":"docversion"},{"name":"filedate"},{"name":"filename"},{"name":"fileversion"},{"name":"s"},{"name":"s","snippet":"s{${1:arg1}}"},{"name":"suetterlin"},{"name":"textsuetterlin"},{"name":"textsuetterlin","snippet":"textsuetterlin{${1:arg1}}"}]}

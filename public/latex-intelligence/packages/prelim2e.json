@@ -1,0 +1,1 @@
+{"args":["\\usepackage/prelim2e#c"],"deps":["scrtime"],"envs":[],"keys":{"\\usepackage/prelim2e#c":["danish","draft","english","final","french","german","italian","norsk","scrtime","time"]},"macros":[{"name":"IfFormatAtLeastTF"},{"name":"PrelimText"},{"name":"PrelimTextStyle"},{"name":"PrelimWords"},{"name":"protect"}]}

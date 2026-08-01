@@ -1,0 +1,1 @@
+{"args":[],"deps":["array","calc"],"envs":[{"name":"listliketab"}],"keys":{},"macros":[{"name":"arraystretch"},{"name":"storeliststyle"},{"name":"storestyleof"},{"name":"storestyleof","snippet":"storestyleof{${1:arg1}}"}]}

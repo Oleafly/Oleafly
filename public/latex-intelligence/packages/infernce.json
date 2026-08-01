@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"csname"},{"name":"inference"},{"name":"predicate"},{"name":"predicate","snippet":"predicate{${1:arg1}}"},{"name":"predicatebegin"},{"name":"predicateend"},{"name":"the","unusual":true}]}

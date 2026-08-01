@@ -1,0 +1,1 @@
+{"args":[],"deps":["soul"],"envs":[],"keys":{},"macros":[{"name":"spaced"},{"name":"spaced","snippet":"spaced[${1:opt}]{${2:arg2}}"}]}

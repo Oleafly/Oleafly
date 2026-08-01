@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"expandafter"},{"name":"undefined"},{"name":"ushort"},{"name":"ushortCreate"},{"name":"ushortd"},{"name":"ushortdline"},{"name":"ushortdline","snippet":"ushortdline{${1:arg1}}"},{"name":"ushortdw"},{"name":"ushortEnsuremath"},{"name":"ushortw"}]}

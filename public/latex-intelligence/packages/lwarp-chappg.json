@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"chappgsep"},{"name":"pagenumbering"},{"name":"pagenumbering","snippet":"pagenumbering[${1:opt}]{${2:arg2}}"}]}

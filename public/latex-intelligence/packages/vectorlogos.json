@@ -1,0 +1,1 @@
+{"args":[],"deps":["calc","graphicx","xstring"],"envs":[],"keys":{},"macros":[{"name":"GenMacroLogoVect"},{"name":"GenMacroLogoVect","snippet":"GenMacroLogoVect{${1:arg1}}{${2:arg2}}"},{"name":"simplevectorlogo"},{"name":"vectorlogo"}]}

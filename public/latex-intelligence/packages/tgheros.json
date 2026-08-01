@@ -1,0 +1,1 @@
+{"args":["\\usepackage/tgheros#c"],"deps":["kvoptions","tgbonum","tgchorus","tgcursor","tgpagella","tgtermes"],"envs":[],"keys":{"\\usepackage/tgheros#c":["matchlowercase","matchuppercase"]},"macros":[{"name":"bfdefault"},{"name":"rmdefault"},{"name":"sfdefault"},{"name":"ttdefault"}]}

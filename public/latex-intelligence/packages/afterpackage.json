@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"AfterPackage"},{"name":"AfterPackage","snippet":"AfterPackage{${1:arg1}}"},{"name":"csname"}]}

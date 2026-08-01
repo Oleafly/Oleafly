@@ -1,0 +1,1 @@
+{"args":[],"deps":["xkeyval"],"envs":[],"keys":{},"macros":[{"name":"beginnext"},{"name":"endnext"},{"name":"LagrODE"},{"name":"LagrPDE"},{"name":"LeibODE"},{"name":"LeibPDE"},{"name":"NewtODE"},{"name":"NewtPDE"},{"name":"next"},{"name":"ode"},{"name":"pde"},{"name":"setDE"},{"name":"setDE","snippet":"setDE{${1:arg1}}"}]}

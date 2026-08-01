@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"author"},{"name":"author","snippet":"author{${1:arg1}}"},{"name":"date"},{"name":"date","snippet":"date{${1:arg1}}"},{"name":"MyAuthor"},{"name":"MyDate"},{"name":"MyTitle"},{"name":"Originalauthor"},{"name":"Originaldate"},{"name":"Originaltitle"},{"name":"title"},{"name":"title","snippet":"title{${1:arg1}}"}]}

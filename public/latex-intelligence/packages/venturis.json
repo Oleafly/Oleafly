@@ -1,0 +1,1 @@
+{"args":[],"deps":["fontenc","nfssext-cfr","svn-prov","textcomp"],"envs":[],"keys":{},"macros":[{"name":"rmdefault"},{"name":"sfdefault"},{"name":"tempf"},{"name":"tempo"},{"name":"tempr"},{"name":"temps"},{"name":"vtstyle"},{"name":"vtstyle","snippet":"vtstyle[${1:opt}]"}]}

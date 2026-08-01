@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"coloncolon"},{"name":"colonsep"},{"name":"csx"},{"name":"csx","snippet":"csx{${1:arg1}}"},{"name":"doublecolonsep"},{"name":"ensuremath"},{"name":"mathrel"},{"name":"newcommand"},{"name":"ratio"},{"name":"relax"},{"name":"x"}]}

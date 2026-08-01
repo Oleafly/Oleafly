@@ -1,0 +1,1 @@
+{"args":[],"deps":["etoolbox","forloop","ifthen","textcomp","xparse"],"envs":[],"keys":{},"macros":[{"name":"csname"},{"name":"do"},{"name":"do","snippet":"do{${1:arg1}}"}]}

@@ -1,0 +1,1 @@
+{"args":["\\usepackage/oldgerm-otf#c"],"deps":["fontspec","iftex"],"envs":[],"keys":{"\\usepackage/oldgerm-otf#c":["gothvarlongs","oldumlaut","varumlaut"]},"macros":[{"name":"etc"},{"name":"filedate"},{"name":"fileversion"},{"name":"Jvar"},{"name":"longs"},{"name":"shorts"},{"name":"ZWNJ"},{"name":"ZWS"}]}

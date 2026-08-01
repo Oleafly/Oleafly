@@ -1,0 +1,1 @@
+{"args":[],"deps":["fontenc","ifthen"],"envs":[],"keys":{},"macros":[{"name":"newstylenums"},{"name":"newstylenums","snippet":"newstylenums{${1:arg1}}"},{"name":"rmdefault"},{"name":"sfdefault"},{"name":"ttdefault"}]}

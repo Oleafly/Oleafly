@@ -1,0 +1,1 @@
+{"args":[],"deps":["everypage","everypage-1x","geometry","kvoptions","pagecolor","tikz","tikzpagenodes","xcolor","xkeyval"],"envs":[],"keys":{},"macros":[{"name":"AddEverypageHook"},{"name":"AddEverypageHook","snippet":"AddEverypageHook{${1:arg1}}"}]}

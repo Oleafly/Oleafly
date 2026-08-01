@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"cite"},{"name":"docdate"},{"name":"endmcbibliography"},{"name":"filedate"},{"name":"filename"},{"name":"filerevision"},{"name":"fileversion"},{"name":"mcbibliography"},{"name":"mcite"},{"name":"RCS"},{"name":"RCS","snippet":"RCS{${1:arg1}}{${2:arg2}}"}]}

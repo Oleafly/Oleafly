@@ -1,0 +1,1 @@
+{"args":["\\usepackage/gitver#c"],"deps":["catchfile","datetime2","hyperref","ifluatex","ifthen","pdftexcmds","shellesc","xparse"],"envs":[],"keys":{"\\usepackage/gitver#c":["noheader","nopdfinfo"]},"macros":[{"name":"getenv"},{"name":"getenv","snippet":"getenv[${1:opt}]{${2:arg2}}"},{"name":"gitVer"},{"name":"versionBox"}]}

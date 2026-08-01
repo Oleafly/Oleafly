@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"delimdef"},{"name":"delimdef","snippet":"delimdef{${1:arg1}}"},{"name":"dleft"},{"name":"dmiddle"},{"name":"dright"},{"name":"mauto"},{"name":"mbig"},{"name":"mBig"},{"name":"mbigg"},{"name":"mBigg"},{"name":"mnorm"}]}

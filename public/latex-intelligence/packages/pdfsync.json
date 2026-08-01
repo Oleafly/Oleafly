@@ -1,0 +1,1 @@
+{"args":["\\usepackage/pdfsync#c"],"deps":[],"envs":[],"keys":{"\\usepackage/pdfsync#c":["nocr","nodisplay","nohbox","nomath","nopar","novbox","off"]},"macros":[{"name":"everycr"},{"name":"everyhbox"},{"name":"everypar"},{"name":"everyvbox"},{"name":"InputIfFileExists"},{"name":"next"},{"name":"pdfsync"},{"name":"pdfsyncstart"},{"name":"pdfsyncstop"},{"name":"shipout"}]}

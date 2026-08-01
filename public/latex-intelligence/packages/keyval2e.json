@@ -1,0 +1,1 @@
+{"args":[],"deps":["catoptions"],"envs":[],"keys":{},"macros":[{"name":"csname"},{"name":"csname","snippet":"csname{${1:arg1}}{${2:arg2}}"},{"name":"currfam"},{"name":"currkey"},{"name":"currkeyval"},{"name":"currpref"},{"name":"currval"},{"name":"innoval"}]}

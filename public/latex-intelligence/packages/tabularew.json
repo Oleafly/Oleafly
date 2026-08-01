@@ -1,0 +1,1 @@
+{"args":["\\usepackage/tabularew#c"],"deps":["array"],"envs":[],"keys":{"\\usepackage/tabularew#c":["debugshow"]},"macros":[{"name":"CurrentColumn","unusual":true},{"name":"endtabularew"},{"name":"ExcessWidth","unusual":true},{"name":"expandafter"},{"name":"GetExcessWidth"},{"name":"multicolumn"},{"name":"NumberOfColumns","unusual":true},{"name":"spew"},{"name":"tabularew"}]}

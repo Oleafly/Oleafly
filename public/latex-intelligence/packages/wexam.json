@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"partlabel"},{"name":"partshook"},{"name":"subpartlabel"},{"name":"thepartno"},{"name":"thequestion"},{"name":"thesubpart"},{"name":"words"},{"name":"words","snippet":"words{${1:arg1}}"},{"name":"xwords"},{"name":"xwords","snippet":"xwords{${1:arg1}}"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"empty"},{"name":"GMhlabel","unusual":true},{"name":"gmhypertarget"},{"name":"gmiflink"},{"name":"gmiflink","snippet":"gmiflink[${1:opt}]{${2:arg2}}"},{"name":"gmifref"}]}

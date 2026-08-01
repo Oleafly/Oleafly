@@ -1,0 +1,1 @@
+{"args":[],"deps":["gb4e"],"envs":[],"keys":{},"macros":[{"name":"Next"},{"name":"Next","snippet":"Next[${1:opt}]"},{"name":"Prev"},{"name":"Prev","snippet":"Prev[${1:opt}]"},{"name":"printExNo"}]}

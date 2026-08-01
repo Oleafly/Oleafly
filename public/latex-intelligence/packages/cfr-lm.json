@@ -1,0 +1,1 @@
+{"args":[],"deps":["fontenc","l3keys2e","nfssext-cfr","svn-prov","textcomp","xparse"],"envs":[],"keys":{},"macros":[{"name":"dotdigitenc"},{"name":"ExpandArgs"},{"name":"ExpandArgs","snippet":"ExpandArgs{${1:arg1}}"},{"name":"IfFormatAtLeastTF"},{"name":"mathsterling"},{"name":"zeroslash"}]}

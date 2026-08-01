@@ -1,0 +1,1 @@
+{"args":[],"deps":["tikz"],"envs":[],"keys":{},"macros":[{"name":"cond"},{"name":"csname"},{"name":"csname","snippet":"csname{${1:arg1}}"},{"name":"increment"},{"name":"pgfmathomegarotation"},{"name":"pgfmathomegarotation","snippet":"pgfmathomegarotation{${1:arg1}}{${2:arg2}}{${3:arg3}}"},{"name":"pgfmathresult"},{"name":"xincrement"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"citepageref"},{"name":"citepageref","snippet":"citepageref{${1:arg1}}{${2:arg2}}"}]}

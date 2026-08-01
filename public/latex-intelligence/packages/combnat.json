@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"bibcite"},{"name":"citeyearpar"},{"name":"natexlab"},{"name":"natexlab","snippet":"natexlab{${1:arg1}}"},{"name":"nocite"},{"name":"nocite","snippet":"nocite{${1:arg1}}"},{"name":"protect"},{"name":"setuppapers"}]}

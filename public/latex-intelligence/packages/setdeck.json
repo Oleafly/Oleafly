@@ -1,0 +1,1 @@
+{"args":[],"deps":["tikz","xcolor"],"envs":[],"keys":{},"macros":[{"name":"setcard"},{"name":"setcard","snippet":"setcard{${1:arg1}}{${2:arg2}}{${3:arg3}}{${4:arg4}}{${5:arg5}}"},{"name":"smallsetcard"},{"name":"smallsetcard","snippet":"smallsetcard{${1:arg1}}{${2:arg2}}{${3:arg3}}{${4:arg4}}{${5:arg5}}"}]}

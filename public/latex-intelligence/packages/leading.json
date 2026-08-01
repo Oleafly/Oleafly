@@ -1,0 +1,1 @@
+{"args":[],"deps":["calc"],"envs":[],"keys":{},"macros":[{"name":"leading"},{"name":"leading","snippet":"leading{${1:arg1}}"}]}

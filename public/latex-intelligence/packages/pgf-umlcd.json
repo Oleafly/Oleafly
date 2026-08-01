@@ -1,0 +1,1 @@
+{"args":["\\usepackage/pgf-umlcd#c"],"deps":["tikz"],"envs":[],"keys":{"\\usepackage/pgf-umlcd#c":["school","simplified"]},"macros":[{"name":"expandafter"},{"name":"switchUmlcdSchool"},{"name":"umldrawcolor"},{"name":"umlfillcolor"},{"name":"umltextcolor"}]}

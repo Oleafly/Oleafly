@@ -1,0 +1,1 @@
+{"args":[],"deps":["bidituftefloat","bidituftegeneralstructure","bidituftehyperref","bidituftesidenote","bidituftetitle","bidituftetoc"],"envs":[],"keys":{},"macros":[{"name":"backmatter"},{"name":"chaptermark"},{"name":"chaptermark","snippet":"chaptermark{${1:arg1}}"},{"name":"frontmatter"},{"name":"mainmatter"}]}

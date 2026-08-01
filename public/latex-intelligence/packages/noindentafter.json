@@ -1,0 +1,1 @@
+{"args":[],"deps":["etoolbox","xpatch"],"envs":[],"keys":{},"macros":[{"name":"NoIndentAfterCmd"},{"name":"NoIndentAfterCmd","snippet":"NoIndentAfterCmd{${1:arg1}}"},{"name":"NoIndentAfterEnv"},{"name":"NoIndentAfterEnv","snippet":"NoIndentAfterEnv{${1:arg1}}"},{"name":"par"}]}

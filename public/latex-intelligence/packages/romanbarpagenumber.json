@@ -1,0 +1,1 @@
+{"args":[],"deps":["kvoptions","romanbar","xifthen"],"envs":[],"keys":{},"macros":[{"name":"pagenumbering"},{"name":"pagenumbering","snippet":"pagenumbering{${1:arg1}}"},{"name":"thepage"}]}

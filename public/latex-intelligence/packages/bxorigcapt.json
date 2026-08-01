@@ -1,0 +1,1 @@
+{"args":["\\usepackage/bxorigcapt#c"],"deps":["etoolbox"],"envs":[],"keys":{"\\usepackage/bxorigcapt#c":["main","nowarn","warn"]},"macros":[{"name":"bxDebug"},{"name":"bxDebug","snippet":"bxDebug{${1:arg1}}"},{"name":"bxorigcaptDeprecateCommand"},{"name":"bxorigcaptDeprecateCommand","snippet":"bxorigcaptDeprecateCommand{${1:arg1}}"},{"name":"today"}]}

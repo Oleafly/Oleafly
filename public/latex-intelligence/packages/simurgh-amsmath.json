@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"csname"},{"name":"csname","snippet":"csname{${1:arg1}}"},{"name":"intertext"},{"name":"intertext","snippet":"intertext{${1:arg1}}"},{"name":"label"},{"name":"numberwithin"},{"name":"numberwithin","snippet":"numberwithin[${1:opt}]{${2:arg2}}{${3:arg3}}"},{"name":"tag"}]}

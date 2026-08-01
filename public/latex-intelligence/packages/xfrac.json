@@ -1,0 +1,1 @@
+{"args":[],"deps":["amstext","expl3","graphicx","l3keys2e","textcomp","xparse","xtemplate"],"envs":[],"keys":{},"macros":[{"name":"IfFormatAtLeastTF"},{"name":"sfrac"},{"name":"sfrac","snippet":"sfrac[${1:opt}]{${2:arg2}}{${3:arg3}}{${4:arg4}}"}]}

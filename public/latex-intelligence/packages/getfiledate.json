@@ -1,0 +1,1 @@
+{"args":[],"deps":["amssymb","boxedminipage","etextools","ltxnew","xcolor","xkeyval"],"envs":[],"keys":{},"macros":[{"name":"getfiledate"},{"name":"getfiledate","snippet":"getfiledate[${1:opt}]{${2:arg2}}"},{"name":"space"}]}

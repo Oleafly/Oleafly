@@ -1,0 +1,1 @@
+{"args":[],"deps":["graphicx","ifthen"],"envs":[],"keys":{},"macros":[{"name":"dicefile"},{"name":"epsdice"},{"name":"epsdice","snippet":"epsdice[${1:opt}]{${2:arg2}}"}]}

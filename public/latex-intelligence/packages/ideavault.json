@@ -1,0 +1,1 @@
+{"args":[],"deps":["bookmark","luacode","mdframed","needspace","xargs","xpatch"],"envs":[],"keys":{},"macros":[{"name":"bookDepth"},{"name":"bookDown"},{"name":"bookmarkDepth","unusual":true},{"name":"bookSet"},{"name":"bookSet","snippet":"bookSet{${1:arg1}}"},{"name":"bookUp"}]}

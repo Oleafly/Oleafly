@@ -1,0 +1,1 @@
+{"args":["\\usepackage/newunicodechar#c"],"deps":[],"envs":[],"keys":{"\\usepackage/newunicodechar#c":["verbose"]},"macros":[{"name":"newunicodechar"},{"name":"newunicodechar","snippet":"newunicodechar{${1:arg1}}{${2:arg2}}"},{"name":"next"}]}

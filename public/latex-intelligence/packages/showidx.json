@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"flushbottom"},{"name":"index"},{"name":"makeindex"},{"name":"par"},{"name":"protect"},{"name":"protect","snippet":"protect{${1:arg1}}"},{"name":"raggedbottom"},{"name":"thepage"}]}

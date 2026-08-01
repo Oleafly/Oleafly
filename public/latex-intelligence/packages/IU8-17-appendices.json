@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"appendix"},{"name":"appendixsection"},{"name":"appendixsection","snippet":"appendixsection{${1:arg1}}"},{"name":"section"},{"name":"theequation"},{"name":"thefigure"},{"name":"thelstlisting"},{"name":"thetable"}]}

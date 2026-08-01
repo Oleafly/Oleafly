@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"begin"},{"name":"begin","snippet":"begin{${1:arg1}}"},{"name":"end"},{"name":"lemma"},{"name":"lemma","snippet":"lemma{${1:arg1}}"},{"name":"next"},{"name":"notefontsetup"},{"name":"protect"},{"name":"text"},{"name":"text","snippet":"text{${1:arg1}}{${2:arg2}}"},{"name":"xpa"}]}

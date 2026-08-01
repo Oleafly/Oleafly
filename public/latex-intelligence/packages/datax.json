@@ -1,0 +1,1 @@
+{"args":[],"deps":["pgfkeys","pgfopts"],"envs":[],"keys":{},"macros":[{"name":"datax"},{"name":"datax","snippet":"datax[${1:opt}]{${2:arg2}}"},{"name":"dataxfile"}]}

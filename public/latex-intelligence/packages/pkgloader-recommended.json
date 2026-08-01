@@ -1,0 +1,1 @@
+{"args":[],"deps":["etoolbox","expl3","filecontents","l3keys2e","l3regex","lt3graph","withargs","xparse"],"envs":[],"keys":{},"macros":[{"name":"Load"},{"name":"LoadPackagesNow"},{"name":"minput"},{"name":"minput","snippet":"minput{${1:arg1}}"},{"name":"NewDRYer"},{"name":"NewDRYer","snippet":"NewDRYer{${1:arg1}}{${2:arg2}}"}]}

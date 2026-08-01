@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"idxlayout"},{"name":"idxlayout","snippet":"idxlayout{${1:arg1}}"},{"name":"indexfont"},{"name":"indexjustific"},{"name":"indexstheadcase"},{"name":"indexsubsdelim"},{"name":"noindexprenote"},{"name":"setindexprenote"},{"name":"setindexprenote","snippet":"setindexprenote{${1:arg1}}"}]}

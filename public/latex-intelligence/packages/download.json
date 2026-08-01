@@ -1,0 +1,1 @@
+{"args":[],"deps":["expl3","l3keys2e","pdftexcmds","xparse"],"envs":[],"keys":{},"macros":[{"name":"download"},{"name":"download","snippet":"download[${1:opt}]{${2:arg2}}"}]}

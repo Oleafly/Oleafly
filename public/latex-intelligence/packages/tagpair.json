@@ -1,0 +1,1 @@
+{"args":[],"deps":["varwidth"],"envs":[{"name":"pairingline"},{"name":"taggedline"}],"keys":{},"macros":[{"name":"bottomline"},{"name":"bottomline","snippet":"bottomline{${1:arg1}}"},{"name":"linewidthfactor"},{"name":"narrowraggedleft"},{"name":"pairing"},{"name":"pairing","snippet":"pairing{${1:arg1}}{${2:arg2}}"}]}

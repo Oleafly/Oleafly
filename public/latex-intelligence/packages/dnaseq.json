@@ -1,0 +1,1 @@
+{"args":[],"deps":["color"],"envs":[],"keys":{},"macros":[{"name":"DNA"},{"name":"DNA","snippet":"DNA{${1:arg1}}"},{"name":"DNAblock"},{"name":"DNAreserve"},{"name":"htst"},{"name":"next"},{"name":"struty"}]}

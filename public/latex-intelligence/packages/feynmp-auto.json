@@ -1,0 +1,1 @@
+{"args":["\\usepackage/feynmp-auto#c"],"deps":["feynmp","ifpdf","ifxetex","pdftexcmds"],"envs":[],"keys":{"\\usepackage/feynmp-auto#c":["force"]},"macros":[{"name":"endfmffile"},{"name":"fmffile"},{"name":"fmffile","snippet":"fmffile{${1:arg1}}"},{"name":"thefmffile"}]}

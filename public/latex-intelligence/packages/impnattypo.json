@@ -1,0 +1,1 @@
+{"args":[],"deps":["ifluatex","kvoptions","luacode","luatexbase","xcolor"],"envs":[],"keys":{},"macros":[{"name":"frenchchapter"},{"name":"thechapter"},{"name":"usecolor"},{"name":"usecolor","snippet":"usecolor{${1:arg1}}"}]}

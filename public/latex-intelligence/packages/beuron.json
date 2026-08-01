@@ -1,0 +1,1 @@
+{"args":[],"deps":["expl3","fontspec","xparse"],"envs":[],"keys":{},"macros":[{"name":"beuronOmega"},{"name":"textbeuron"},{"name":"textbeuron","snippet":"textbeuron{${1:arg1}}{${2:arg2}}"},{"name":"textbeuronc"},{"name":"textbeuronc","snippet":"textbeuronc{${1:arg1}}{${2:arg2}}"},{"name":"textbeuronx"},{"name":"textbeuronx","snippet":"textbeuronx{${1:arg1}}{${2:arg2}}"}]}

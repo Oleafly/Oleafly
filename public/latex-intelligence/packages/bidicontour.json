@@ -1,0 +1,1 @@
+{"args":["\\usepackage/bidicontour#c"],"deps":["color","trig"],"envs":[],"keys":{"\\usepackage/bidicontour#c":["auto","copies","outline"]},"macros":[{"name":"bidicontour"},{"name":"bidicontourlength"},{"name":"bidicontourlength","snippet":"bidicontourlength{${1:arg1}}"},{"name":"bidicontournumber"},{"name":"bidicontournumber","snippet":"bidicontournumber{${1:arg1}}"}]}

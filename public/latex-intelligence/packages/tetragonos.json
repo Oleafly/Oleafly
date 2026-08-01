@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"csname"},{"name":"csname","snippet":"csname{${1:arg1}}"},{"name":"getTG"},{"name":"getTG","snippet":"getTG{${1:arg1}}"},{"name":"loadTG"},{"name":"loadTG","snippet":"loadTG{${1:arg1}}"},{"name":"saveTG"},{"name":"saveTG","snippet":"saveTG{${1:arg1}}{${2:arg2}}"}]}

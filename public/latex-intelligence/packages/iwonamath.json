@@ -1,0 +1,1 @@
+{"args":[],"deps":["l3keys2e"],"envs":[],"keys":{},"macros":[{"name":"DefineIwonaMathVersion"},{"name":"DefineIwonaMathVersion","snippet":"DefineIwonaMathVersion{${1:arg1}}"},{"name":"lVert"},{"name":"rVert"}]}

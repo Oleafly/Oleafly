@@ -474,7 +474,6 @@ de cet index public.
 | [Catalogue produit-ingénierie](docs/README.md) | Inventaires des fonctionnalités et contrats d'ingénierie |
 | [Référence des fonctionnalités](docs/features.md) | La surface produit et les flux de travail pris en charge |
 | [Moteurs de document](docs/document-engines.md) | Capacités LaTeX, Typst et Markdown |
-| [Venir de LaTeX Workshop](docs/ComingFromLatexWorkshop.md) | Correspondance des fonctionnalités et raccourcis pour les utilisateurs de VS Code + LaTeX Workshop |
 | [Architecture produit](docs/Architecture.md) | Frontières du système, responsabilité des packages et points d'extension |
 | [Développement](docs/development.md) | Installation locale, tests et flux de contribution |
 | [Chaîne d'outils du serveur de langage](docs/language-server-toolchain.md) | Politique de récupération, d'intégrité et de distribution |

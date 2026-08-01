@@ -1,0 +1,1 @@
+{"args":[],"deps":["hyperref","lipsum","zref-abspos","zref-user"],"envs":[],"keys":{},"macros":[{"name":"DescribeMacro"},{"name":"DescribeMacro","snippet":"DescribeMacro{${1:arg1}}"},{"name":"name"},{"name":"origDescribeMacro"}]}

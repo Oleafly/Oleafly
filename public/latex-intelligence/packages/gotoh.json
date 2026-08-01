@@ -1,0 +1,1 @@
+{"args":[],"deps":["xkeyval"],"envs":[],"keys":{},"macros":[{"name":"Gotoh"},{"name":"GotohConfig"},{"name":"GotohConfig","snippet":"GotohConfig{${1:arg1}}"}]}

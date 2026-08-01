@@ -1,0 +1,1 @@
+{"args":[],"deps":["myfilist"],"envs":[],"keys":{},"macros":[{"name":"expandafter"},{"name":"listfiles"},{"name":"listfiles","snippet":"listfiles[${1:opt}]"},{"name":"MaxLengthEmptyList"},{"name":"MaxLengthEmptyList","snippet":"MaxLengthEmptyList{${1:arg1}}"},{"name":"SetLongNameFileListChars"}]}

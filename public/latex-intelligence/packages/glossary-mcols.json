@@ -1,0 +1,1 @@
+{"args":[],"deps":["glossary-tree","multicol"],"envs":[{"name":"theglossary"}],"keys":{},"macros":[{"name":"glossaryheader"},{"name":"glsgroupheading"},{"name":"glsgroupheading","snippet":"glsgroupheading{${1:arg1}}"},{"name":"glsmcols"},{"name":"indexspace"},{"name":"item"},{"name":"subitem"},{"name":"subsubitem"}]}

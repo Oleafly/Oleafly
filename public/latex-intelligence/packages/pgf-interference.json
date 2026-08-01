@@ -1,0 +1,1 @@
+{"args":["\\usepackage/pgf-interference#c"],"deps":["tikz"],"envs":[],"keys":{"\\usepackage/pgf-interference#c":["draft"]},"macros":[{"name":"pgfinterferenceoptions"},{"name":"pgfinterferenceoptions","snippet":"pgfinterferenceoptions{${1:arg1}}"},{"name":"pgfinterferencepattern"},{"name":"pgfinterferencepattern","snippet":"pgfinterferencepattern{${1:arg1}}"}]}

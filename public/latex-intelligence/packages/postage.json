@@ -1,0 +1,1 @@
+{"args":["\\usepackage/postage#c"],"deps":["calc","graphicx","keyval","tikz"],"envs":[],"keys":{"\\usepackage/postage#c":["column","compact","normal","page","row","style"]},"macros":[{"name":"includestamp"},{"name":"includestamp","snippet":"includestamp[${1:opt}]{${2:arg2}}"}]}

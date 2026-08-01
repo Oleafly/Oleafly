@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"showlabelfont"},{"name":"showlabelrefline"},{"name":"showlabels"},{"name":"showlabels","snippet":"showlabels[${1:opt}]{${2:arg2}}"},{"name":"showlabelsetlabel"},{"name":"showlabelsetlabel","snippet":"showlabelsetlabel{${1:arg1}}"},{"name":"showlabelsinline"}]}

@@ -1,0 +1,1 @@
+{"args":["\\usepackage/ellipsis#c"],"deps":["xspace"],"envs":[],"keys":{"\\usepackage/ellipsis#c":["chicago","mla","xspace"]},"macros":[{"name":"dots"},{"name":"ellipsisgap"},{"name":"ellipsispunctuation"},{"name":"midwordellipsis"},{"name":"textellipsis"}]}

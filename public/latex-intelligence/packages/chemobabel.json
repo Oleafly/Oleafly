@@ -1,0 +1,1 @@
+{"args":["\\usepackage/chemobabel#c"],"deps":["graphicx","verbatim"],"envs":[],"keys":{"\\usepackage/chemobabel#c":["eps","extract","inkscape","inkscape-old","librsvg","nocrop","pdf"]},"macros":[{"name":"chemobabel"},{"name":"chemobabelimgdir"},{"name":"do"},{"name":"smilesobabel"},{"name":"string"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":["ifluatex","ifxetex","tikz","tikzlings-marmots"],"envs":[],"keys":{},"macros":[{"name":"marmot"},{"name":"marmot","snippet":"marmot[${1:opt}]"},{"name":"pdfrandomseed"}]}

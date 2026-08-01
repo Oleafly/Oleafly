@@ -1,0 +1,1 @@
+{"args":[],"deps":["amsmath","expl3","l3keys2e","xparse"],"envs":[],"keys":{},"macros":[{"name":"declarermatrice"},{"name":"lamatrice"},{"name":"LaMatriceInterieur"},{"name":"matid"},{"name":"matnulle"},{"name":"matrice"},{"name":"MatriceInterieur"},{"name":"simplesmatricessetup"},{"name":"simplesmatricessetup","snippet":"simplesmatricessetup{${1:arg1}}"}]}

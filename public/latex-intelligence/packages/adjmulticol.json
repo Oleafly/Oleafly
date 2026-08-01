@@ -1,0 +1,1 @@
+{"args":[],"deps":["multicol"],"envs":[{"name":"adjmulticols*"}],"keys":{},"macros":[{"name":"adjmulticols"},{"name":"adjmulticols","snippet":"adjmulticols{${1:arg1}}{${2:arg2}}{${3:arg3}}"},{"name":"endadjmulticols"}]}

@@ -1,0 +1,1 @@
+{"args":["\\usepackage/Chivo#c"],"deps":["fontaxes","fontspec","iftex","kvoptions"],"envs":[],"keys":{"\\usepackage/Chivo#c":["lf","osf","prop","scale","scaled","tab"]},"macros":[{"name":"defigures"},{"name":"familydefault"},{"name":"infigures"},{"name":"nufigures"},{"name":"sfdefault"},{"name":"sufigures"}]}

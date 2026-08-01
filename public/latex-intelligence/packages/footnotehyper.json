@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[{"name":"savenotes"}],"keys":{},"macros":[{"name":"csname"},{"name":"csname","snippet":"csname{${1:arg1}}"},{"name":"endfootnote"},{"name":"endfootnotetext"},{"name":"expandafter"},{"name":"footnote"},{"name":"footnotetext"},{"name":"makesavenoteenv"},{"name":"rule"},{"name":"spewnotes"},{"name":"thempfn"}]}

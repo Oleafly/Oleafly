@@ -1,0 +1,1 @@
+{"args":[],"deps":["fontaxes","fontenc","fontspec","ifluatex","ifxetex","textcomp","xkeyval"],"envs":[],"keys":{},"macros":[{"name":"familydefault"},{"name":"infigures"},{"name":"mintspirit"},{"name":"mintspiritfamily"},{"name":"plstyle"},{"name":"postyle"},{"name":"sfdefault"},{"name":"sufigures"},{"name":"tlstyle"},{"name":"tostyle"},{"name":"useosf"}]}

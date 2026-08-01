@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[{"name":"compacthang"},{"name":"compactlabel"},{"name":"hanginglist"},{"name":"hangingpar"},{"name":"labeledlist"},{"name":"labeledpar"}],"keys":{},"macros":[{"name":"hangingindent","unusual":true},{"name":"hangingleftmargin","unusual":true},{"name":"labeledleftmargin","unusual":true}]}

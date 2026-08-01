@@ -1,0 +1,1 @@
+{"args":["\\usepackage/textcase#c"],"deps":[],"envs":[],"keys":{"\\usepackage/textcase#c":["overload"]},"macros":[{"name":"cite"},{"name":"cite","snippet":"cite{${1:arg1}}"},{"name":"i"},{"name":"j"},{"name":"MakeTextLowercase"},{"name":"MakeTextUppercase"},{"name":"NoCaseChange"},{"name":"NoCaseChange","snippet":"NoCaseChange{${1:arg1}}"},{"name":"oe"},{"name":"OE"}]}

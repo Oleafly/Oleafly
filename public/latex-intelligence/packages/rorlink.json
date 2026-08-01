@@ -1,0 +1,1 @@
+{"args":["\\usepackage/rorlink#c"],"deps":["etoolbox","hyperref","tikz","xparse"],"envs":[],"keys":{"\\usepackage/rorlink#c":["blackwhite"]},"macros":[{"name":"rorlink"},{"name":"rorlink","snippet":"rorlink[${1:opt}]{${2:arg2}}"}]}

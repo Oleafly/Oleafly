@@ -1,0 +1,1 @@
+{"args":["\\usepackage/dotseqn#c"],"deps":[],"envs":[{"name":"eqnarray"},{"name":"equation"}],"keys":{"\\usepackage/dotseqn#c":["leftjust","nocolsep"]},"macros":[{"name":"["},{"name":"]"},{"name":"EqnDots"},{"name":"mathindent","unusual":true}]}

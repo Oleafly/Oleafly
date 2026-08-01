@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"AskOption"},{"name":"ExplainOptions"},{"name":"noexpand"},{"name":"noexpand","snippet":"noexpand{${1:arg1}}"},{"name":"opt"},{"name":"opt","snippet":"opt{${1:arg1}}"},{"name":"optv"},{"name":"optv","snippet":"optv{${1:arg1}}"},{"name":"UseOption"}]}

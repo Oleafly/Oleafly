@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[{"name":"figure*"},{"name":"table*"}],"keys":{},"macros":[{"name":"LWRsidenote"},{"name":"sidenotemark"},{"name":"sidenotemark","snippet":"sidenotemark[${1:opt}]"},{"name":"sidenotename"}]}

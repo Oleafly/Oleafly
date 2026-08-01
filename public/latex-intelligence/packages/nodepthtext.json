@@ -1,0 +1,1 @@
+{"args":[],"deps":["calc","graphicx","xstring"],"envs":[],"keys":{},"macros":[{"name":"cptraiseletter","unusual":true},{"name":"depthletter","unusual":true},{"name":"depthsampleletter","unusual":true},{"name":"nodepth"},{"name":"raiseletter"},{"name":"sampleslettersnodepth"}]}

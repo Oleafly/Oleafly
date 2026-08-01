@@ -1,0 +1,1 @@
+{"args":["\\usepackage/subdocs#c"],"deps":["keyval"],"envs":[],"keys":{"\\usepackage/subdocs#c":["clear"]},"macros":[{"name":"subdocuments"},{"name":"subdocuments","snippet":"subdocuments[${1:opt}]{${2:arg2}}"}]}

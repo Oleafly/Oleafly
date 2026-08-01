@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"aftergroup"},{"name":"bgroup"},{"name":"doafter"},{"name":"doafter","snippet":"doafter{${1:arg1}}"},{"name":"egroup"}]}

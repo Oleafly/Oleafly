@@ -1,0 +1,1 @@
+{"args":[],"deps":["etoolbox","zref-savepos"],"envs":[],"keys":{},"macros":[{"name":"saveposcnt","unusual":true},{"name":"tableft"},{"name":"tabpoint"},{"name":"tabpoint","snippet":"tabpoint[${1:opt}]"},{"name":"tabto"},{"name":"thesaveposcnt"},{"name":"theuseposcnt"},{"name":"useposcnt","unusual":true},{"name":"zsaveposx"}]}

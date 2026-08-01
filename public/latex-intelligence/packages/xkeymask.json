@@ -1,0 +1,1 @@
+{"args":[],"deps":["kvoptions","xkeyval"],"envs":[],"keys":{},"macros":[{"name":"appendmask"},{"name":"clearmask"},{"name":"CurrentOption"},{"name":"ifinmask"},{"name":"setkeys"}]}

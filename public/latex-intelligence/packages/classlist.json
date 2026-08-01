@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"ClassList"},{"name":"ClassListEntry"},{"name":"MainClassName"},{"name":"PrintClassList"},{"name":"PrintClassListEntry"},{"name":"PrintClassListEntry","snippet":"PrintClassListEntry{${1:arg1}}{${2:arg2}}{${3:arg3}}"},{"name":"PrintClassListTitle"},{"name":"x"}]}

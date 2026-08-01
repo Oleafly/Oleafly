@@ -1,0 +1,1 @@
+{"args":[],"deps":["amsthm","letltxmacro"],"envs":[],"keys":{},"macros":[{"name":"AtEndOfEnv"},{"name":"AtEndOfEnv","snippet":"AtEndOfEnv{${1:arg1}}{${2:arg2}}"},{"name":"qedsymbol"}]}

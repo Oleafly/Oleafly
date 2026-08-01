@@ -1,0 +1,1 @@
+{"args":["\\usepackage/combinet#c"],"deps":[],"envs":[],"keys":{"\\usepackage/combinet#c":["nomauthor","nomtitle","nothanks","pub","pubtop"]},"macros":[{"name":"and"},{"name":"newpage"},{"name":"published"},{"name":"published","snippet":"published[${1:opt}]{${2:arg2}}"},{"name":"thanks"},{"name":"thanks","snippet":"thanks{${1:arg1}}"}]}

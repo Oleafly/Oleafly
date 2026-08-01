@@ -1,0 +1,1 @@
+{"args":[],"deps":["fontspec","ifluatex","ifxetex","textcomp","xkeyval"],"envs":[],"keys":{},"macros":[{"name":"caladea"},{"name":"caladeafamily"},{"name":"rmdefault"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":["lastpage2e","lastpageclassic","lastpagemodern"],"envs":[],"keys":{},"macros":[{"name":"enddocument"},{"name":"lastpagecount","unusual":true},{"name":"loadlastpage"},{"name":"origenddocument"},{"name":"protect"},{"name":"string"}]}

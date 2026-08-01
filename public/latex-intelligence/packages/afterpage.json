@@ -1,17 +1,1 @@
-{
-  "args": [],
-  "deps": [],
-  "envs": [],
-  "keys": {},
-  "macros": [
-    {
-      "name": "addboxcontents",
-      "snippet": "addboxcontents{${1:contents}}",
-      "unusual": true
-    },
-    {
-      "name": "afterpage",
-      "snippet": "afterpage{${1:command}}"
-    }
-  ]
-}
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"addboxcontents"},{"name":"addboxcontents","snippet":"addboxcontents{${1:arg1}}"},{"name":"afterpage"},{"name":"afterpage","snippet":"afterpage{${1:arg1}}"},{"name":"clearpage"},{"name":"enddocument"},{"name":"expandafter"}]}

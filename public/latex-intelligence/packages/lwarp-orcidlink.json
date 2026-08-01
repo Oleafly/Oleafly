@@ -1,0 +1,1 @@
+{"args":[],"deps":["lwarp-scalerel"],"envs":[],"keys":{},"macros":[{"name":"orcidlink"},{"name":"orcidlink","snippet":"orcidlink{${1:arg1}}"}]}

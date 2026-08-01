@@ -1,0 +1,1 @@
+{"args":[],"deps":["algorithmicx","etoolbox","fifo-stack","kvoptions","tabto","tikz","totcount","varwidth"],"envs":[],"keys":{},"macros":[{"name":"BeginBox"},{"name":"BeginBox","snippet":"BeginBox[${1:opt}]"},{"name":"BoxedString"},{"name":"BoxedString","snippet":"BoxedString[${1:opt}]{${2:arg2}}"},{"name":"EndBox"}]}

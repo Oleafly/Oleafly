@@ -1,0 +1,1 @@
+{"args":[],"deps":["kvoptions"],"envs":[],"keys":{},"macros":[{"name":"asterism"},{"name":"sectionbreak"},{"name":"sectionbreak","snippet":"sectionbreak[${1:opt}]"},{"name":"sectionbreakmark"},{"name":"sectionbreakmark","snippet":"sectionbreakmark{${1:arg1}}"}]}

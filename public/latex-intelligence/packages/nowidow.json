@@ -1,0 +1,1 @@
+{"args":[],"deps":["kvoptions"],"envs":[],"keys":{},"macros":[{"name":"noclub"},{"name":"noclub","snippet":"noclub[${1:opt}]"},{"name":"nowidow"},{"name":"nowidow","snippet":"nowidow[${1:opt}]"},{"name":"setnoclub"},{"name":"setnoclub","snippet":"setnoclub[${1:opt}]"},{"name":"setnowidow"},{"name":"setnowidow","snippet":"setnowidow[${1:opt}]"}]}

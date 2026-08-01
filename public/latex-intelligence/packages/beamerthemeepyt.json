@@ -1,0 +1,1 @@
+{"args":["\\usepackage/beamerthemeepyt#c"],"deps":["xkeyval"],"envs":[],"keys":{"\\usepackage/beamerthemeepyt#c":["bottom","middle","midpoint","style","top"]},"macros":[{"name":"epytsetup"},{"name":"epytsetup","snippet":"epytsetup{${1:arg1}}"},{"name":"expandafter"},{"name":"next"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"Cstringchars"},{"name":"Fraction"},{"name":"Fraction","snippet":"Fraction{${1:arg1}}{${2:arg2}}"}]}

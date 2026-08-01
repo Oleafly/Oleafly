@@ -1,0 +1,1 @@
+{"args":[],"deps":["expl3","l3keys2e","xparse"],"envs":[],"keys":{},"macros":[{"name":"KeyparseEval"},{"name":"KeyparseEval","snippet":"KeyparseEval{${1:arg1}}{${2:arg2}}"},{"name":"KeyparseKeys"},{"name":"KeyparseKeys","snippet":"KeyparseKeys{${1:arg1}}"}]}

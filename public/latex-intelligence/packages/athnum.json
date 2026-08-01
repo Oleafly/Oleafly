@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"athnum"},{"name":"athnum","snippet":"athnum{${1:arg1}}"},{"name":"greekfontencoding"}]}

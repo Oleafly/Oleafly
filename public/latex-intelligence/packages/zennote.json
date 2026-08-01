@@ -1,0 +1,1 @@
+{"args":[],"deps":["tcolorbox"],"envs":[{"name":"noteframe"}],"keys":{},"macros":[{"name":"notenumber","unusual":true},{"name":"titlebox"},{"name":"titlebox","snippet":"titlebox{${1:arg1}}"}]}

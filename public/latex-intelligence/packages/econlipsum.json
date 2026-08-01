@@ -1,0 +1,1 @@
+{"args":["\\usepackage/econlipsum#c"],"deps":["expl3","xparse"],"envs":[],"keys":{"\\usepackage/econlipsum#c":["index","nopar","numbers","par"]},"macros":[{"name":"econ"},{"name":"econdef"}]}

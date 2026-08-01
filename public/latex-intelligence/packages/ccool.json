@@ -1,0 +1,1 @@
+{"args":[],"deps":["expl3","l3keys2e","lambdax","xparse"],"envs":[],"keys":{},"macros":[{"name":"Ccool"},{"name":"CcoolClear"},{"name":"CcoolHook"},{"name":"CcoolLambda"},{"name":"CcoolOption"},{"name":"CcoolRead"},{"name":"CcoolRead","snippet":"CcoolRead[${1:opt}]"},{"name":"CcoolVers"}]}

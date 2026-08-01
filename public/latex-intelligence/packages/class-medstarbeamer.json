@@ -1,0 +1,1 @@
+{"args":[],"deps":["amsmath","anysize","background","booktabs","cancel","enumerate","graphicx","hyperref","ifthen","pgf","soul","xcolor"],"envs":[],"keys":{},"macros":[{"name":"sizecontentscurrent"},{"name":"sizecontentscurrent","snippet":"sizecontentscurrent{${1:arg1}}"},{"name":"sizecontentsoutline"},{"name":"sizecontentsoutline","snippet":"sizecontentsoutline{${1:arg1}}"}]}

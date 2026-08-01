@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[{"name":"theindextra"}],"keys":{},"macros":[{"name":"indextrafirstmark"},{"name":"indextrakeyword"},{"name":"indextralastmark"},{"name":"indextramakecontinuation"},{"name":"indextramakegroupheading"},{"name":"indextramakemark"},{"name":"indextrasetup"},{"name":"indextrasetup","snippet":"indextrasetup{${1:arg1}}"}]}

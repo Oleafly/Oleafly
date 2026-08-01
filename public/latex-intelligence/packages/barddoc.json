@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"bard"},{"name":"barvers"},{"name":"figref"},{"name":"figref","snippet":"figref{${1:arg1}}"},{"name":"mysection"},{"name":"mysection","snippet":"mysection{${1:arg1}}"},{"name":"pac"},{"name":"pac","snippet":"pac{${1:arg1}}"},{"name":"pst"},{"name":"thefigure"}]}

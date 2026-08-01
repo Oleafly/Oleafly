@@ -1,0 +1,1 @@
+{"args":[],"deps":["expl3","xparse","xtemplate"],"envs":[],"keys":{},"macros":[{"name":"NewTasksEnvironment"},{"name":"RenewTasksEnvironment"},{"name":"settasks"},{"name":"settasks","snippet":"settasks{${1:arg1}}"},{"name":"startnewitemline"},{"name":"task","unusual":true}]}

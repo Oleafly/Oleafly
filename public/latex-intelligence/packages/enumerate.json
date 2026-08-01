@@ -1,12 +1,1 @@
-{
-  "args": [],
-  "deps": [],
-  "envs": [
-    {
-      "name": "enumerate",
-      "snippet": "[${1:option}]"
-    }
-  ],
-  "keys": {},
-  "macros": []
-}
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"csname"},{"name":"enumerate"},{"name":"makelabel"},{"name":"makelabel","snippet":"makelabel{${1:arg1}}"}]}

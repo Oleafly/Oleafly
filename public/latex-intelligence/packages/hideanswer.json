@@ -1,0 +1,1 @@
+{"args":[],"deps":["color","graphicx","xparse"],"envs":[{"name":"hideanswerdiv"},{"name":"hideanswerdiv*"},{"name":"smashanswerdiv"},{"name":"smashanswerdiv*"}],"keys":{},"macros":[{"name":"hideanswer"},{"name":"hidegraphics"},{"name":"sethideanswer"},{"name":"smashanswer"},{"name":"smashgraphics"},{"name":"switchanswer"},{"name":"unsethideanswer"}]}

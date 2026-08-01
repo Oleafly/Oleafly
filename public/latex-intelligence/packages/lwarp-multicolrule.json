@@ -1,0 +1,1 @@
+{"args":[],"deps":["multicol"],"envs":[],"keys":{},"macros":[{"name":"DeclareMCRulePattern"},{"name":"DeclareMCRulePattern","snippet":"DeclareMCRulePattern{${1:arg1}}{${2:arg2}}"},{"name":"SetMCRule"},{"name":"SetMCRule","snippet":"SetMCRule{${1:arg1}}"}]}

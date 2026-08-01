@@ -1,0 +1,1 @@
+{"args":["\\usepackage/esvect#c"],"deps":[],"envs":[],"keys":{"\\usepackage/esvect#c":["a","b","c","d","e","f","g","h"]},"macros":[{"name":"fldr"},{"name":"montraita"},{"name":"montraitd"},{"name":"relbareda"},{"name":"relbaredd"},{"name":"vv"},{"name":"vvstar"},{"name":"vvstar","snippet":"vvstar{${1:arg1}}{${2:arg2}}"}]}

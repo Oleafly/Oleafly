@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"farsimonth"},{"name":"farsimonth","snippet":"farsimonth{${1:arg1}}"},{"name":"ftoday"}]}

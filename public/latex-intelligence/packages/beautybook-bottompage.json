@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"bottomimage"},{"name":"bottomimage","snippet":"bottomimage{${1:arg1}}"},{"name":"ISBNcode"},{"name":"ISBNcode","snippet":"ISBNcode{${1:arg1}}"},{"name":"makebottomcover"},{"name":"summary"},{"name":"summary","snippet":"summary{${1:arg1}}"}]}

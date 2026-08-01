@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"endmerge"},{"name":"letter"},{"name":"letter","snippet":"letter{${1:arg1}}"},{"name":"merge"},{"name":"merge","snippet":"merge{${1:arg1}}"},{"name":"next"},{"name":"oldletter"},{"name":"perc"}]}

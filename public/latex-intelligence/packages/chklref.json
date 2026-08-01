@@ -1,0 +1,1 @@
+{"args":[],"deps":["afterpackage","auxhook","currfile"],"envs":[],"keys":{},"macros":[{"name":"AfterPackage"},{"name":"csname"},{"name":"csname","snippet":"csname{${1:arg1}}{${2:arg2}}"},{"name":"input"},{"name":"label"},{"name":"label","snippet":"label{${1:arg1}}"},{"name":"ref"},{"name":"string"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":["pgfkeys","pgfplots","tikz","xcolor"],"envs":[],"keys":{},"macros":[{"name":"false"},{"name":"osci"},{"name":"osci","snippet":"osci[${1:opt}]"},{"name":"raisedtext"},{"name":"raisedtext","snippet":"raisedtext{${1:arg1}}"},{"name":"smoothOne"},{"name":"smoothThree"},{"name":"smoothTwo"}]}

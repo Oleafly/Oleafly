@@ -1,0 +1,1 @@
+{"args":["\\usepackage/graphbox#c"],"deps":["graphicx"],"envs":[],"keys":{"\\usepackage/graphbox#c":["align","bmargin","hide","hmargin","hshift","hsmash","lmargin","margin","nobeamer","rmargin","smash","tmargin","vmargin","vshift","vsmash"]},"macros":[{"name":"gheight"},{"name":"gwidth"},{"name":"includegraphics"}]}

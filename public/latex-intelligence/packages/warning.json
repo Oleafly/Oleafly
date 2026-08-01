@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"addglobalwarning"},{"name":"addglobalwarning","snippet":"addglobalwarning{${1:arg1}}"},{"name":"IfFormatAtLeastTF"}]}

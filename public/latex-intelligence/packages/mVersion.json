@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"buildcounter","unusual":true},{"name":"buildnumber"},{"name":"increaseBuild"},{"name":"setVersion"},{"name":"setVersion","snippet":"setVersion{${1:arg1}}"},{"name":"version"},{"name":"versionnumber"}]}

@@ -1,0 +1,1 @@
+{"args":["\\usepackage/tgadventor#c"],"deps":["kvoptions","tgbonum","tgchorus","tgcursor","tgheros","tgpagella","tgtermes"],"envs":[],"keys":{"\\usepackage/tgadventor#c":["matchlowercase","matchuppercase"]},"macros":[{"name":"bfdefault"},{"name":"rmdefault"},{"name":"sfdefault"},{"name":"ttdefault"}]}

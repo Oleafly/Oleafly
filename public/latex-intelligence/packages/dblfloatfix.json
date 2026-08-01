@@ -1,0 +1,1 @@
+{"args":[],"deps":["fixltx2e"],"envs":[],"keys":{},"macros":[{"name":"dblbotnumber","unusual":true},{"name":"DBLFIXerrormessage"},{"name":"DBLFIXerrormessage","snippet":"DBLFIXerrormessage{${1:arg1}}"}]}

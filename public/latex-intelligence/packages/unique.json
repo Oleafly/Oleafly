@@ -1,0 +1,1 @@
+{"args":["\\usepackage/unique#c"],"deps":[],"envs":[],"keys":{"\\usepackage/unique#c":["aux","unq"]},"macros":[{"name":"ifuniq"},{"name":"ifuniq","snippet":"ifuniq{${1:arg1}}"},{"name":"setuniqmark"},{"name":"setuniqmark","snippet":"setuniqmark{${1:arg1}}"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"csname"},{"name":"csname","snippet":"csname{${1:arg1}}"},{"name":"hikasra"},{"name":"lowkasra"},{"name":"next"},{"name":"setcode"},{"name":"setcode","snippet":"setcode{${1:arg1}}"},{"name":"TB"}]}

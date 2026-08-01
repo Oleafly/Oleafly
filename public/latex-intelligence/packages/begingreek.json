@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[{"name":"greek"}],"keys":{},"macros":[{"name":"CBverifyandselectfont"},{"name":"greekfontfamily"},{"name":"Greekfontfamily"},{"name":"greektxt"},{"name":"greektxt","snippet":"greektxt[${1:opt}]{${2:arg2}}"}]}

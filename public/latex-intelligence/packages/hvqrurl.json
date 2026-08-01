@@ -1,0 +1,1 @@
+{"args":["\\hvqrset,\\usepackage/hvqrurl#c"],"deps":["hyperref","marginnote","qrcode","url","xcolor","xkeyval"],"envs":[],"keys":{"\\hvqrset,\\usepackage/hvqrurl#c":["forget","linktext","nohyperref","qradjust","qrcolor","qrheight","qrlevel","qrlink"]},"macros":[{"name":"hvqrset"},{"name":"hvqrset","snippet":"hvqrset{${1:arg1}}"},{"name":"hvqrurl"}]}

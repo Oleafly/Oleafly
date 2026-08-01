@@ -1,0 +1,1 @@
+{"args":["\\usepackage/beamerthemelight#c"],"deps":[],"envs":[],"keys":{"\\usepackage/beamerthemelight#c":["blue","purple","red"]},"macros":[{"name":"thankframe"},{"name":"thankframe","snippet":"thankframe{${1:arg1}}"}]}

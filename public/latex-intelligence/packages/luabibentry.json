@@ -1,0 +1,1 @@
+{"args":[],"deps":["ifluatex"],"envs":[],"keys":{},"macros":[{"name":"bibentry"},{"name":"bibentry","snippet":"bibentry{${1:arg1}}"},{"name":"setupbibentry"},{"name":"setupbibentry","snippet":"setupbibentry{${1:arg1}}"}]}

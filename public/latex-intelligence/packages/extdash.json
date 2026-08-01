@@ -1,0 +1,1 @@
+{"args":["\\usepackage/extdash#c"],"deps":[],"envs":[],"keys":{"\\usepackage/extdash#c":["allowbreakbefore","cyremdash","nospacearound","shortcuts","shortemdash","wordspacearound"]},"macros":[{"name":"BarOrDash"},{"name":"Emdash"},{"name":"Endash"},{"name":"Halfspace"},{"name":"Hyphdash"},{"name":"HyphOrDash"}]}

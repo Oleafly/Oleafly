@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"next"},{"name":"pages"},{"name":"pages","snippet":"pages[${1:opt}]{${2:arg2}}"}]}

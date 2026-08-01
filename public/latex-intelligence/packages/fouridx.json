@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"filedate"},{"name":"fileversion"},{"name":"fourIdx"},{"name":"fourIdx","snippet":"fourIdx{${1:arg1}}{${2:arg2}}{${3:arg3}}{${4:arg4}}{${5:arg5}}"}]}

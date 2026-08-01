@@ -1,0 +1,1 @@
+{"args":[],"deps":["ifthen","xstring"],"envs":[],"keys":{},"macros":[{"name":"givenAMSjournalname"},{"name":"shortifiedAMSjournalname"},{"name":"shortifyAMSjournalname"},{"name":"shortifyAMSjournalname","snippet":"shortifyAMSjournalname{${1:arg1}}"}]}

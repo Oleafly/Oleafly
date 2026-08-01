@@ -1,0 +1,1 @@
+{"args":["\\usepackage/fixfoot#c"],"deps":[],"envs":[],"keys":{"\\usepackage/fixfoot#c":["debug"]},"macros":[{"name":"csname"},{"name":"csname","snippet":"csname{${1:arg1}}"},{"name":"DeclareFixedFootnote"},{"name":"expandafter"},{"name":"noexpand"},{"name":"protect"}]}

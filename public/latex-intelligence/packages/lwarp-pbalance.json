@@ -1,0 +1,1 @@
+{"args":[],"deps":["balance"],"envs":[],"keys":{},"macros":[{"name":"balancePageNum"},{"name":"balancePageNum","snippet":"balancePageNum{${1:arg1}}"},{"name":"nopbalance"},{"name":"shrinkLastPage"},{"name":"shrinkLastPage","snippet":"shrinkLastPage{${1:arg1}}"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":["boxedminipage"],"envs":[],"keys":{},"macros":[{"name":"boxedminipage"},{"name":"boxedminipage","snippet":"boxedminipage[${1:opt}]"},{"name":"endboxedminipage"}]}

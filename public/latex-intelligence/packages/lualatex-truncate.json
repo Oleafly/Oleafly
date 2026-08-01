@@ -1,0 +1,1 @@
+{"args":["\\usepackage/lualatex-truncate#c"],"deps":["iftex","letltxmacro","truncate"],"envs":[],"keys":{"\\usepackage/lualatex-truncate#c":["breakall","breakwords"]},"macros":[{"name":"truncate"},{"name":"truncate","snippet":"truncate[${1:opt}]{${2:arg2}}{${3:arg3}}"}]}

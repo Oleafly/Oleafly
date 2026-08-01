@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"bundle"},{"name":"bundle","snippet":"bundle{${1:arg1}}"},{"name":"chunk"},{"name":"drawwith"},{"name":"drawwith","snippet":"drawwith{${1:arg1}}"},{"name":"EdgeLabelSep","unusual":true},{"name":"endbundle"},{"name":"GapDepth","unusual":true},{"name":"GapWidth","unusual":true}]}

@@ -440,7 +440,6 @@ code. End-user task guides are maintained separately from this public index.
 | [Product-engineering catalog](docs/README.md) | Feature inventories and engineering contracts |
 | [Feature reference](docs/features.md) | The product surface and supported workflows |
 | [Document engines](docs/document-engines.md) | LaTeX, Typst, and Markdown capabilities |
-| [Coming from LaTeX Workshop](docs/ComingFromLatexWorkshop.md) | Feature and shortcut mapping for VS Code + LaTeX Workshop users |
 | [Product architecture](docs/Architecture.md) | System boundaries, package ownership, and extension points |
 | [Development](docs/development.md) | Local setup, tests, and contribution workflow |
 | [Language-server toolchain](docs/language-server-toolchain.md) | Fetching, integrity, and distribution policy |

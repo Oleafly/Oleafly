@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"emline"},{"name":"emline","snippet":"emline{${1:arg1}}{${2:arg2}}{${3:arg3}}{${4:arg4}}{${5:arg5}}{${6:arg6}}"},{"name":"newpic"},{"name":"newpic","snippet":"newpic{${1:arg1}}"}]}

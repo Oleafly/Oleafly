@@ -1,0 +1,1 @@
+{"args":[],"deps":["fontspec","iftex","pgfopts"],"envs":[],"keys":{},"macros":[{"name":"renewcaps"},{"name":"renewcaps","snippet":"renewcaps{${1:arg1}}"}]}

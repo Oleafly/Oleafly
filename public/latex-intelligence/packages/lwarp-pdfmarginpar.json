@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"pdfmarginpar"},{"name":"pdfmarginpar","snippet":"pdfmarginpar[${1:opt}]{${2:arg2}}"},{"name":"pdfmarginparset"},{"name":"pdfmarginparset","snippet":"pdfmarginparset{${1:arg1}}"}]}

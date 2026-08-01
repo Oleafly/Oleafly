@@ -1,0 +1,1 @@
+{"args":["\\usepackage/addlines#c"],"deps":["afterpage","changepage"],"envs":[],"keys":{"\\usepackage/addlines#c":["draft","final"]},"macros":[{"name":"addline"},{"name":"addlines"},{"name":"removeline"},{"name":"removelines"},{"name":"squeezepage"},{"name":"squeezepage","snippet":"squeezepage[${1:opt}]"}]}

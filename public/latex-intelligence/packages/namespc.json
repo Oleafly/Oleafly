@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"csname"},{"name":"csname","snippet":"csname{${1:arg1}}"},{"name":"namespace"},{"name":"usingnamespace"},{"name":"usingnamespace","snippet":"usingnamespace{${1:arg1}}"}]}

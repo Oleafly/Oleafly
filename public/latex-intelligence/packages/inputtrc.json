@@ -1,0 +1,1 @@
+{"args":["\\usepackage/inputtrc#c"],"deps":[],"envs":[],"keys":{"\\usepackage/inputtrc#c":["i","ir","r"]},"macros":[{"name":"dotracinginputs"},{"name":"dotracinginputsreturns"},{"name":"dotracingreturns"},{"name":"expandafter"},{"name":"InputIfFileExists"},{"name":"notracinginputs"},{"name":"notracinginputsreturns"},{"name":"notracingreturns"},{"name":"setinputindentunit"}]}

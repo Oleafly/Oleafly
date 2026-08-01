@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[{"name":"abstract"}],"keys":{},"macros":[{"name":"descriptionlabel"},{"name":"descriptionlabel","snippet":"descriptionlabel{${1:arg1}}"},{"name":"headfont"},{"name":"paragraph"},{"name":"section"},{"name":"subparagraph"},{"name":"subsection"},{"name":"subsubsection"}]}

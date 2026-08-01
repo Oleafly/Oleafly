@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"nkodigits"},{"name":"nkodigits","snippet":"nkodigits{${1:arg1}}"},{"name":"nkonumber"},{"name":"nkonumber","snippet":"nkonumber{${1:arg1}}"}]}

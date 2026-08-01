@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"chaptermark"},{"name":"chaptermark","snippet":"chaptermark{${1:arg1}}"},{"name":"partmark"},{"name":"partmark","snippet":"partmark{${1:arg1}}"},{"name":"sectionmark"},{"name":"sectionmark","snippet":"sectionmark{${1:arg1}}"},{"name":"subsectionmark"},{"name":"subsectionmark","snippet":"subsectionmark{${1:arg1}}"}]}

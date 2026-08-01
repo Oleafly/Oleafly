@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[{"name":"Young"}],"keys":{},"macros":[{"name":"beginYoung"},{"name":"breedte","unusual":true},{"name":"dikte","unusual":true},{"name":"fbox"},{"name":"fbox","snippet":"fbox{${1:arg1}}"},{"name":"hoogte","unusual":true},{"name":"vr"}]}

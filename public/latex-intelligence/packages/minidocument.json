@@ -1,0 +1,1 @@
+{"args":[],"deps":["graphics"],"envs":[{"name":"minidocument"}],"keys":{},"macros":[{"name":"lastminidocument"},{"name":"minidocumentscale"},{"name":"minidocumentshipout"},{"name":"minidocumentshipout","snippet":"minidocumentshipout{${1:arg1}}"},{"name":"shipout"}]}

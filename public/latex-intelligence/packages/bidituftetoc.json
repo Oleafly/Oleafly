@@ -1,0 +1,1 @@
+{"args":["\\usepackage/bidituftetoc#c"],"deps":["biditools","titlesec","titletoc","xifthen"],"envs":[],"keys":{"\\usepackage/bidituftetoc#c":["notoc","toc"]},"macros":[{"name":"bidituftetocError"},{"name":"bidituftetocError","snippet":"bidituftetocError{${1:arg1}}{${2:arg2}}"},{"name":"listoffigures"},{"name":"listoftables"},{"name":"subparagraph"},{"name":"subsubsection"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":["xcolor","xparse"],"envs":[],"keys":{},"macros":[{"name":"NineColors"},{"name":"NineColors","snippet":"NineColors{${1:arg1}}"}]}

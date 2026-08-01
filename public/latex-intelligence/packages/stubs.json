@@ -1,0 +1,1 @@
+{"args":["\\usepackage/stubs#c"],"deps":["graphicx","textpos"],"envs":[],"keys":{"\\usepackage/stubs#c":["addmargin"]},"macros":[{"name":"stubbmargin","unusual":true},{"name":"stublmargin","unusual":true},{"name":"stubrmargin","unusual":true},{"name":"stubs"},{"name":"stubs","snippet":"stubs[${1:opt}]{${2:arg2}}"}]}

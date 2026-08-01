@@ -1,0 +1,1 @@
+{"args":[],"deps":["alphalph","enumitem"],"envs":[],"keys":{},"macros":[{"name":"thaimultialph"},{"name":"thaimultialph","snippet":"thaimultialph{${1:arg1}}"},{"name":"thaimultiAlph"},{"name":"thaimultiAlph","snippet":"thaimultiAlph{${1:arg1}}"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[{"name":"complexpolylongdiv"}],"keys":{},"macros":[{"name":"complexpolyquotient"},{"name":"complexpolyquotient","snippet":"complexpolyquotient{${1:arg1}}"}]}

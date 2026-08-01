@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"arabdef"},{"name":"arabdef","snippet":"arabdef{${1:arg1}}"},{"name":"endarray"},{"name":"endfigure"},{"name":"endtable"},{"name":"endtabular"},{"name":"next"}]}

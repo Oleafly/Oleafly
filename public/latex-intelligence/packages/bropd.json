@@ -1,0 +1,1 @@
+{"args":["\\usepackage/bropd#c"],"deps":[],"envs":[],"keys":{"\\usepackage/bropd#c":["pdalt","pdshort","sans"]},"macros":[{"name":"br"},{"name":"br","snippet":"br{${1:arg1}}"},{"name":"od"},{"name":"od","snippet":"od[${1:opt}]{${2:arg2}}{${3:arg3}}"},{"name":"pd"},{"name":"pd","snippet":"pd[${1:opt}]{${2:arg2}}{${3:arg3}}"}]}

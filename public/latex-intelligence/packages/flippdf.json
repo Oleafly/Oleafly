@@ -1,0 +1,1 @@
+{"args":["\\usepackage/flippdf#c"],"deps":["everypage","iftex"],"envs":[],"keys":{"\\usepackage/flippdf#c":["off"]},"macros":[{"name":"FlipPDF"},{"name":"UnFlipPDF"}]}

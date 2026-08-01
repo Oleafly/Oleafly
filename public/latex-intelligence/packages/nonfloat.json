@@ -1,0 +1,1 @@
+{"args":[],"deps":["ifthen"],"envs":[{"name":"figure"},{"name":"narrow"},{"name":"table"}],"keys":{},"macros":[{"name":"bottomfraction"},{"name":"figcaption"},{"name":"filedate"},{"name":"filename"},{"name":"fileversion"},{"name":"floatpagefraction"},{"name":"tabcaption"},{"name":"textfraction"},{"name":"topcaption"},{"name":"topfraction"}]}

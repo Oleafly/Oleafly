@@ -1,0 +1,1 @@
+{"args":["\\usepackage/eukdate#c"],"deps":[],"envs":[],"keys":{"\\usepackage/eukdate#c":["gregorian","julian","no-weekday","ukdate","usdate"]},"macros":[{"name":"monthname"},{"name":"today"},{"name":"weekday"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":["fontenc","fontspec","iftex"],"envs":[],"keys":{},"macros":[{"name":"dantelogo"},{"name":"dantelogo","snippet":"dantelogo[${1:opt}]"},{"name":"filedate"},{"name":"fileversion"}]}

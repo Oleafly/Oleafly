@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[{"name":"stabular"},{"name":"stabular*"}],"keys":{},"macros":[{"name":"noalign"},{"name":"noalign","snippet":"noalign{${1:arg1}}"}]}

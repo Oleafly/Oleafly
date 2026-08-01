@@ -1,0 +1,1 @@
+{"args":[],"deps":["pgfkeys","xparse"],"envs":[],"keys":{},"macros":[{"name":"dncurrent"},{"name":"dndeclare"},{"name":"dndeclare","snippet":"dndeclare{${1:arg1}}"},{"name":"dnget"},{"name":"dnload"},{"name":"dnload","snippet":"dnload{${1:arg1}}"},{"name":"dnsetcurrent"},{"name":"dnsetcurrent","snippet":"dnsetcurrent{${1:arg1}}"}]}

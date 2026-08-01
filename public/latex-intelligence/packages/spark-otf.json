@@ -1,0 +1,1 @@
+{"args":[],"deps":["ifluatex","ifxetex","luacode","xkeyval","xparse"],"envs":[],"keys":{},"macros":[{"name":"setSparkColor"},{"name":"setSparkColor","snippet":"setSparkColor{${1:arg1}}{${2:arg2}}"},{"name":"sparkBar"},{"name":"sparkDot"},{"name":"sparkDotline"}]}

@@ -1,0 +1,1 @@
+{"args":["\\usepackage/grmath#c"],"deps":[],"envs":[],"keys":{"\\usepackage/grmath#c":["enlog","grlog"]},"macros":[{"name":"arccos"},{"name":"arccot"},{"name":"arccsc"},{"name":"arcsec"},{"name":"arcsin"},{"name":"arctan"},{"name":"cos"},{"name":"cot"},{"name":"csc"},{"name":"gcd"},{"name":"lcm"},{"name":"ln"},{"name":"log"},{"name":"sec"},{"name":"sin"},{"name":"tan"}]}

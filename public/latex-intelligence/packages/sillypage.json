@@ -1,0 +1,1 @@
+{"args":[],"deps":["graphicx"],"envs":[],"keys":{},"macros":[{"name":"silly"},{"name":"silly","snippet":"silly{${1:arg1}}"},{"name":"sillynumeral"},{"name":"sillynumeral","snippet":"sillynumeral{${1:arg1}}"},{"name":"sillypageDate"},{"name":"sillypageVersion"},{"name":"sillystep"},{"name":"sillystep","snippet":"sillystep{${1:arg1}}"}]}

@@ -1,0 +1,1 @@
+{"args":["\\usepackage/multimediasymbols#c"],"deps":["keyval","pgf"],"envs":[],"keys":{"\\usepackage/multimediasymbols#c":["fill"]},"macros":[{"name":"speakersymbol"},{"name":"speakersymbol","snippet":"speakersymbol[${1:opt}]"}]}

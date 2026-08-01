@@ -1,0 +1,1 @@
+{"args":[],"deps":["expl3","l3keys2e","mathtools","pgf","xparse"],"envs":[],"keys":{},"macros":[{"name":"_"},{"name":"cev"},{"name":"cev","snippet":"cev{${1:arg1}}"},{"name":"vecev"},{"name":"vecev","snippet":"vecev{${1:arg1}}"}]}

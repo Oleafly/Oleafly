@@ -1,0 +1,1 @@
+{"args":["\\usepackage/proc#c"],"deps":[],"envs":[{"name":"abstract"}],"keys":{"\\usepackage/proc#c":["a5paper","b5paper","onecolumn","titlepage"]},"macros":[{"name":"copyrightspace"},{"name":"maketitle"},{"name":"pagename"},{"name":"thanks"},{"name":"thefootnote"}]}

@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"csname"},{"name":"csname","snippet":"csname{${1:arg1}}"},{"name":"DeleteShortVerb"},{"name":"DeleteShortVerb","snippet":"DeleteShortVerb{${1:arg1}}"},{"name":"do"},{"name":"do","snippet":"do{${1:arg1}}"},{"name":"dospecials"},{"name":"expandafter"},{"name":"MakeShortVerb"}]}

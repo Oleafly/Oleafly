@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"labelformat"},{"name":"labelformat","snippet":"labelformat{${1:arg1}}"},{"name":"Ref"},{"name":"Ref","snippet":"Ref{${1:arg1}}"},{"name":"refstepcounter"},{"name":"refstepcounter","snippet":"refstepcounter{${1:arg1}}"}]}

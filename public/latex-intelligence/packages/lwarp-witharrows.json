@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[{"name":"WithArrows"}],"keys":{},"macros":[{"name":"Arrow"},{"name":"Arrow","snippet":"Arrow[${1:opt}]{${2:arg2}}"},{"name":"unicode"},{"name":"unicode","snippet":"unicode{${1:arg1}}"}]}

@@ -1,0 +1,1 @@
+{"args":["\\usepackage/gckanbun#c"],"deps":["ifluatex","ifuptex","keyval"],"envs":[],"keys":{"\\usepackage/gckanbun#c":["prefix"]},"macros":[{"name":"csname"},{"name":"tiny"},{"name":"zh"},{"name":"zw"}]}

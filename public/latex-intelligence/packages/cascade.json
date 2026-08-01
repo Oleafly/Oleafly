@@ -1,0 +1,1 @@
+{"args":[],"deps":["l3keys2e"],"envs":[],"keys":{},"macros":[{"name":"Cascade"},{"name":"CascadeOptions"},{"name":"CascadeOptions","snippet":"CascadeOptions{${1:arg1}}"},{"name":"Edacsac"},{"name":"myfiledate"},{"name":"myfileversion"},{"name":"ShortCascade"},{"name":"ShortEdacsac"}]}

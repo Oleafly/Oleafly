@@ -1,0 +1,1 @@
+{"args":[],"deps":[],"envs":[],"keys":{},"macros":[{"name":"cc"},{"name":"cc","snippet":"cc{${1:arg1}}"},{"name":"ccname"},{"name":"enclname"},{"name":"headtoname"},{"name":"opening"},{"name":"opening","snippet":"opening{${1:arg1}}"},{"name":"pagename"}]}

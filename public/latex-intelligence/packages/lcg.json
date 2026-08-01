@@ -1,0 +1,1 @@
+{"args":["\\usepackage/lcg#c"],"deps":["keyval"],"envs":[],"keys":{"\\usepackage/lcg#c":["counter","first","last","quiet","seed"]},"macros":[{"name":"chgrand"},{"name":"rand"},{"name":"reinitrand"}]}
