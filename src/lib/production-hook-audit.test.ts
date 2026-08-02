@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   assertNoProductionDevHookTokens,
   assertNoTauriStyleNonceTriggers,
+  assertStyleSrcAllowsRuntimeStyles,
   findInlineStyleElementCount,
   findProductionDevHookTokens,
+  findStyleSrcDirective,
 } from "../../scripts/production-hook-audit.mjs";
+import tauriConfig from "../../src-tauri/tauri.conf.json";
 import { rejectProductionDevHooks } from "../../vite.config";
 
 describe("production DEV-hook audit", () => {
@@ -64,5 +67,40 @@ describe("Tauri production style CSP audit", () => {
         ["assets/app.js", 'const example = "<style>"'],
       ]),
     ).not.toThrow();
+  });
+});
+
+// The packaged-app e2e that exercises this at runtime only runs against a
+// `tauri build` binary, so on ordinary CI it skips. These assertions are what
+// actually guard the shipped policy on every commit.
+describe("Tauri CSP permits CodeMirror's runtime stylesheet", () => {
+  const shippedCsp = (
+    tauriConfig as { app: { security: { csp: string } } }
+  ).app.security.csp;
+
+  it("keeps 'unsafe-inline' in the shipped style-src", () => {
+    expect(findStyleSrcDirective(shippedCsp)).toContain("'unsafe-inline'");
+    expect(() => assertStyleSrcAllowsRuntimeStyles(shippedCsp)).not.toThrow();
+  });
+
+  it("rejects a style-src that drops 'unsafe-inline'", () => {
+    expect(() =>
+      assertStyleSrcAllowsRuntimeStyles("default-src 'self'; style-src 'self'"),
+    ).toThrow("does not allow 'unsafe-inline'");
+  });
+
+  it("rejects a nonce, which makes CSP ignore 'unsafe-inline'", () => {
+    expect(() =>
+      assertStyleSrcAllowsRuntimeStyles(
+        "style-src 'self' 'unsafe-inline' 'nonce-abc123'",
+      ),
+    ).toThrow("blocks CodeMirror's un-nonced runtime stylesheet");
+  });
+
+  it("rejects a policy with no style-src at all", () => {
+    expect(() => assertStyleSrcAllowsRuntimeStyles("default-src 'self'")).toThrow(
+      "no style-src directive",
+    );
+    expect(findStyleSrcDirective("")).toBeNull();
   });
 });

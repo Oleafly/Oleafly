@@ -41,3 +41,43 @@ export function assertNoTauriStyleNonceTriggers(artifacts) {
     );
   }
 }
+
+/**
+ * The inline-<style> audit above stops the packaged app from *acquiring* a
+ * style-src nonce. This is the other half: the configured policy has to permit
+ * un-nonced runtime styles in the first place. Dropping 'unsafe-inline' from
+ * style-src, or hard-coding a nonce into the config, breaks CodeMirror in the
+ * packaged app exactly the way the nonce did - and only in a packaged build,
+ * where no dev-mode test would notice.
+ */
+export function findStyleSrcDirective(csp) {
+  if (typeof csp !== "string" || csp.trim() === "") return null;
+  for (const directive of csp.split(";")) {
+    const parts = directive.trim().split(/\s+/);
+    if (parts[0]?.toLowerCase() === "style-src") return parts.slice(1);
+  }
+  return null;
+}
+
+export function assertStyleSrcAllowsRuntimeStyles(csp) {
+  const sources = findStyleSrcDirective(csp);
+  if (sources === null) {
+    throw new Error(
+      "Tauri CSP has no style-src directive; CodeMirror's runtime stylesheet " +
+        "would fall back to default-src and can be blocked in a packaged build",
+    );
+  }
+  const nonce = sources.find((source) => source.toLowerCase().startsWith("'nonce-"));
+  if (nonce) {
+    throw new Error(
+      `Tauri CSP style-src pins ${nonce}; a nonce makes CSP ignore 'unsafe-inline' ` +
+        "and blocks CodeMirror's un-nonced runtime stylesheet",
+    );
+  }
+  if (!sources.some((source) => source.toLowerCase() === "'unsafe-inline'")) {
+    throw new Error(
+      `Tauri CSP style-src is [${sources.join(" ")}] and does not allow 'unsafe-inline'; ` +
+        "CodeMirror mounts its stylesheet at runtime and would be blocked in a packaged build",
+    );
+  }
+}
