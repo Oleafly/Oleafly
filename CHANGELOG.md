@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.3.3] - 2026-08-01
+## [0.3.3] - 2026-08-02
 
 ### Changed
 
@@ -21,11 +21,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Deprecated-but-working commands are no longer marked as discouraged. A
   package declares them exactly like any other command, so nothing in the
   source distinguishes them.
+- Pushing a release tag now builds a complete, verified draft and stops there.
+  Publishing updates the auto-update feed that installed clients follow, so it
+  is a separate, deliberate step rather than an automatic consequence of
+  tagging.
 
 ### Added
 
 - A contributor licence agreement (`CONTRIBUTING_CLA.md`). Contributors keep
   their copyright and grant the maintainer the right to relicense.
+
+### Fixed
+
+- The end-to-end suite can no longer report success while silently skipping
+  work. A spec file that never runs now fails the suite, every run ends with a
+  manifest of what executed, and individually skipped tests are listed by name.
+  Two flaky large-document specs were also fixed: they hung whenever the app
+  window lost focus, and asserted editor geometry before it had settled.
 
 
 ## [0.3.2] - 2026-08-01
