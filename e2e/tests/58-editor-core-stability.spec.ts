@@ -254,7 +254,17 @@ async function expectStableGeometry(
   line: number,
 ) {
   await goToLine(page, line);
-  const geometry = await editorGeometry(page);
+  // goToLine's fixed pause is not always enough on a loaded machine: the editor
+  // re-measures the gutter for a few more frames, and reading once right after
+  // it caught a transient 15px drift against the 1.5px bound below. Poll for the
+  // settled layout so the strict bound keeps its meaning instead of being
+  // loosened to absorb a delay that always resolves.
+  let geometry = await editorGeometry(page);
+  const settleDeadline = Date.now() + 5_000;
+  while (geometry.maxLineNumberDelta > 1.5 && Date.now() < settleDeadline) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    geometry = await editorGeometry(page);
+  }
   expect(geometry.currentLine).toBe(line);
   // A fixed source-line count is invalid in split view: ordinary prose can
   // wrap to multiple visual rows as the native window width changes. Require
@@ -389,7 +399,22 @@ async function runAuthoringChaos(
           240, 690, 1_080, 1_530, 1_970, 2_420,
           2_860, 3_310, 3_760, 4_190, 4_640, 5_120,
         ];
-        const frame = () => new Promise(requestAnimationFrame);
+        // requestAnimationFrame stops firing altogether in an occluded or
+        // backgrounded WebView. This probe awaits a frame hundreds of times, so
+        // a bare rAF turns a window that lost focus into a silent hang that the
+        // outer wait can only report as an unexplained timeout. Racing a timer
+        // keeps the settle loops honest while guaranteeing they terminate.
+        const frame = () =>
+          new Promise((resolve) => {
+            let settled = false;
+            const finish = () => {
+              if (settled) return;
+              settled = true;
+              resolve(undefined);
+            };
+            requestAnimationFrame(finish);
+            setTimeout(finish, 100);
+          });
         const pause = (ms) =>
           new Promise((resolve) => setTimeout(resolve, ms));
         const gutterDelta = () => {
@@ -844,6 +869,21 @@ test("a realistic 6,200-line book keeps the full authoring workspace stable unde
         );
         const view = getEditorView();
         if (!view) throw new Error("editor is unavailable");
+        // An occluded or backgrounded WebView stops firing requestAnimationFrame
+        // entirely, which used to hang this probe until the outer waitLong gave
+        // up with no diagnosis. Race every frame wait against a timer so the
+        // probe always finishes and reports real numbers instead of vanishing.
+        const nextFrame = () =>
+          new Promise((resolve) => {
+            let settled = false;
+            const finish = () => {
+              if (settled) return;
+              settled = true;
+              resolve(undefined);
+            };
+            requestAnimationFrame(finish);
+            setTimeout(finish, 100);
+          });
         const durations = [];
         let blankFrames = 0;
         let missingSurfaceFrames = 0;
@@ -855,8 +895,8 @@ test("a realistic 6,200-line book keeps the full authoring workspace stable unde
             view.scrollDOM.scrollTop =
               (view.scrollDOM.scrollHeight - view.scrollDOM.clientHeight) * ratio;
             view.scrollDOM.dispatchEvent(new Event("scroll"));
-            await new Promise(requestAnimationFrame);
-            await new Promise(requestAnimationFrame);
+            await nextFrame();
+            await nextFrame();
             durations.push(performance.now() - started);
             const viewport = view.scrollDOM.getBoundingClientRect();
             const visibleLines = Array.from(
