@@ -69,23 +69,71 @@ async function goToLine(
   await new Promise((resolve) => setTimeout(resolve, 250));
 }
 
+// Preview controls sit in the toolbar until it narrows, then move into the
+// "More preview controls" overflow menu. The bridge's synthetic click is
+// sometimes discarded before React commits, which left the outline panel
+// `inert` and made this spec flaky. Toggles expose aria-pressed, so retry until
+// it actually flips, measured against a baseline fixed the first time the
+// control is present so a late commit cannot be toggled straight back off.
 async function activatePreviewControl(
   page: Parameters<typeof expectDesktopShellAnchored>[0],
   label: string,
 ) {
-  const direct = `[aria-label=${JSON.stringify(label)}]`;
-  const visible = await page.evaluate<boolean>(
-    `(() => {
-      const element = document.querySelector(${JSON.stringify(direct)});
-      return !!element && element.getClientRects().length > 0;
-    })()`,
-  );
-  if (visible) {
-    await page.click(direct);
-    return;
+  const selector = JSON.stringify(`[aria-label=${JSON.stringify(label)}]`);
+  const pressedExpression = `(() => {
+    const control = document.querySelector(${selector});
+    return control ? (control.getAttribute('aria-pressed') ?? 'none') : 'absent';
+  })()`;
+  const clickDirectExpression = `(() => {
+    const control = document.querySelector(${selector});
+    if (!control || control.getClientRects().length === 0) return "gone";
+    control.click();
+    return "clicked";
+  })()`;
+  // Reveal a control that the narrow toolbar moved into the overflow menu.
+  const revealExpression = `(() => {
+    const trigger = document.querySelector('[aria-label="More preview controls"]');
+    if (!trigger) return "missing";
+    if (trigger.getAttribute('aria-expanded') !== 'true') {
+      trigger.click();
+      return "opening";
+    }
+    return "open";
+  })()`;
+  const deadline = Date.now() + 15_000;
+  // Captured the first time the control is actually present. Comparing against
+  // this fixed value (never against the latest reading) is what stops a click
+  // that committed late from being toggled straight back off by a retry.
+  let baseline: string | null = null;
+  let last = "";
+  for (;;) {
+    const current = await page.evaluate<string>(pressedExpression);
+    if (baseline !== null && current !== "absent" && current !== baseline) return;
+    if (current === "absent") {
+      last = await page.evaluate<string>(revealExpression);
+    } else {
+      baseline ??= current;
+      last = await page.evaluate<string>(clickDirectExpression);
+      // No aria-pressed means an action, not a toggle: there is no committed
+      // state to wait for, so one delivered click is the whole contract.
+      if (baseline === "none" && last === "clicked") return;
+      if (last === "clicked") {
+        try {
+          await page.waitForFunction(
+            `${pressedExpression} !== ${JSON.stringify(baseline)}`,
+            2_000,
+          );
+          return;
+        } catch {
+          // Discarded before React committed; the loop re-checks and retries.
+        }
+      }
+    }
+    if (Date.now() > deadline) {
+      throw new Error(`preview control ${label} never activated (${last})`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 150));
   }
-  await page.click('[aria-label="More preview controls"]');
-  await page.getByRole("menu").getByText(label, { exact: true }).click();
 }
 
 async function editorGeometry(
