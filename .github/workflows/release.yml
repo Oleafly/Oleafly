@@ -16,6 +16,11 @@ on:
         description: "Tag to build & attach the release to (e.g. v0.1.0)"
         required: true
         type: string
+      keep_draft:
+        description: "Build every artifact but leave the release a draft for review"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write # tauri-action needs this to create the release & upload assets
@@ -291,9 +296,14 @@ jobs:
   # own assets, so a leg that fails simply contributes nothing - which on its own
   # leaves a release carrying only the platforms that happened to succeed. These
   # two jobs make the outcome all-or-nothing.
+  # keep_draft builds and verifies everything but stops short of flipping the
+  # release live. Publishing writes latest.json, which is the updater feed, so
+  # a release that is published even briefly can reach users on auto-update.
+  # Reviewing a draft has to be possible without that happening.
   publish:
     name: Publish (all platforms present)
     needs: build
+    if: ${{ inputs.keep_draft != true }}
     runs-on: ubuntu-22.04
     permissions:
       contents: write
@@ -328,10 +338,50 @@ jobs:
           gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false
           echo "published $TAG with all platform artifacts"
 
+  # A draft handed over for review still has to be complete, so it gets the same
+  # artifact and updater-feed checks as a publish - it just never flips live.
+  draft-ready:
+    name: Draft is complete (not published)
+    needs: build
+    if: ${{ always() && inputs.keep_draft == true }}
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    steps:
+      - name: Require every platform artifact, then stop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ needs.build.result }}" != "success" ]; then
+            echo "build did not succeed; the draft is incomplete" >&2
+            exit 1
+          fi
+          assets="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')"
+          echo "$assets"
+          missing=()
+          grep -qE '\.dmg$'                  <<<"$assets" || missing+=("macOS .dmg")
+          grep -qE '\.(msi|exe)$'            <<<"$assets" || missing+=("Windows .msi/.exe")
+          grep -qE '\.AppImage$'             <<<"$assets" || missing+=("Linux .AppImage")
+          grep -qE '\.deb$'                  <<<"$assets" || missing+=("Linux .deb")
+          grep -qE '^latest\.json$'          <<<"$assets" || missing+=("latest.json")
+          if ((${#missing[@]})); then
+            printf 'draft %s is incomplete; missing: %s\n' "$TAG" "${missing[*]}" >&2
+            exit 1
+          fi
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" -p latest.json -D . --clobber
+          for platform in darwin-aarch64 windows-x86_64 linux-x86_64; do
+            jq -e --arg p "$platform" '.platforms | has($p)' latest.json >/dev/null \
+              || { echo "latest.json is missing platform: $platform" >&2; exit 1; }
+          done
+          echo "$TAG is a complete draft; publish it manually after review"
+
   guard-incomplete:
     name: Keep an incomplete release unpublished
     needs: [build, publish]
-    if: always() && (needs.build.result != 'success' || needs.publish.result != 'success')
+    if: always() && inputs.keep_draft != true && (needs.build.result != 'success' || needs.publish.result != 'success')
     runs-on: ubuntu-22.04
     permissions:
       contents: write
