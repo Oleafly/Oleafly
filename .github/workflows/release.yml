@@ -3,9 +3,14 @@ name: Release
 #
 #     git tag v0.1.0 && git push origin v0.1.0
 #
-# or run manually from the Actions tab (provide the tag to attach to). The
-# release is created as a DRAFT so a maintainer can review the notes and the
-# attached artifacts before publishing.
+# or run manually from the Actions tab (provide the tag to attach to).
+#
+# A tag build always stops at a complete, verified DRAFT: every platform is
+# built and the artifact and updater-feed checks still run, but the release is
+# never flipped live. Publishing writes latest.json - the updater feed - which
+# installed clients pick up automatically, and that cannot be undone. So it is
+# a deliberate second step: re-run this workflow from the Actions tab for the
+# same tag with "Publish the release" checked.
 on:
   push:
     tags:
@@ -16,8 +21,8 @@ on:
         description: "Tag to build & attach the release to (e.g. v0.1.0)"
         required: true
         type: string
-      keep_draft:
-        description: "Build every artifact but leave the release a draft for review"
+      publish:
+        description: "Publish the release. Leave unchecked to build a draft for review."
         required: false
         default: false
         type: boolean
@@ -296,14 +301,15 @@ jobs:
   # own assets, so a leg that fails simply contributes nothing - which on its own
   # leaves a release carrying only the platforms that happened to succeed. These
   # two jobs make the outcome all-or-nothing.
-  # keep_draft builds and verifies everything but stops short of flipping the
-  # release live. Publishing writes latest.json, which is the updater feed, so
-  # a release that is published even briefly can reach users on auto-update.
-  # Reviewing a draft has to be possible without that happening.
+  # Publishing writes latest.json, which is the updater feed: the moment a
+  # release goes live, installed clients can pick it up automatically. There is
+  # no undo for that, so pushing a tag builds and verifies a DRAFT and stops.
+  # Publishing is a deliberate act - re-run this workflow via workflow_dispatch
+  # for the same tag with "Publish the release" checked.
   publish:
     name: Publish (all platforms present)
     needs: build
-    if: ${{ inputs.keep_draft != true }}
+    if: ${{ inputs.publish == true }}
     runs-on: ubuntu-22.04
     permissions:
       contents: write
@@ -343,7 +349,7 @@ jobs:
   draft-ready:
     name: Draft is complete (not published)
     needs: build
-    if: ${{ always() && inputs.keep_draft == true }}
+    if: ${{ always() && inputs.publish != true }}
     runs-on: ubuntu-22.04
     permissions:
       contents: read
@@ -376,12 +382,12 @@ jobs:
             jq -e --arg p "$platform" '.platforms | has($p)' latest.json >/dev/null \
               || { echo "latest.json is missing platform: $platform" >&2; exit 1; }
           done
-          echo "$TAG is a complete draft; publish it manually after review"
+          echo "$TAG is a complete, verified draft; re-run this workflow with publish=true to release it"
 
   guard-incomplete:
     name: Keep an incomplete release unpublished
     needs: [build, publish]
-    if: always() && inputs.keep_draft != true && (needs.build.result != 'success' || needs.publish.result != 'success')
+    if: always() && inputs.publish == true && (needs.build.result != 'success' || needs.publish.result != 'success')
     runs-on: ubuntu-22.04
     permissions:
       contents: write
