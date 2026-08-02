@@ -168,20 +168,53 @@ stop_heartbeat() {
   fi
 }
 
+SKIPPED_TOTAL=0
+SKIPPED_LIST="$(mktemp)"
+
 run_playwright() {
   local label="$1"
   shift
   echo "e2e: starting ${label} at $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
   start_heartbeat "$label"
   local status=0
-  pnpm exec playwright test -c e2e/playwright.config.ts "$@" || status=$?
+  local captured
+  captured="$(mktemp)"
+  # pipefail is set, so this still reports Playwright's status, not tee's.
+  pnpm exec playwright test -c e2e/playwright.config.ts "$@" 2>&1 | tee "$captured" || status=$?
   stop_heartbeat
+  # A skipped test is not coverage. Collect them so the final summary can say
+  # so out loud instead of letting "0 failed" imply everything was exercised.
+  local skipped
+  skipped="$(grep -oE '[0-9]+ skipped' "$captured" | tail -1 | grep -oE '[0-9]+' || true)"
+  if [ -n "$skipped" ] && [ "$skipped" -gt 0 ]; then
+    SKIPPED_TOTAL=$((SKIPPED_TOTAL + skipped))
+    grep -E '^[[:space:]]+-[[:space:]]+[0-9]+ ' "$captured" >>"$SKIPPED_LIST" || true
+  fi
+  rm -f "$captured"
   if [ "$status" -eq 0 ]; then
     echo "e2e: completed ${label}"
   else
     echo "e2e: failed ${label} with exit code ${status}" >&2
   fi
   return "$status"
+}
+
+# The suite launches an app per spec file. If a previous app has not released
+# port 1420 yet, the next launch dies and - before this waited - `set -e` tore
+# the whole run down, leaving later spec files silently unexecuted.
+wait_for_port_free() {
+  [ -n "$APP_BINARY" ] && return 0
+  local waited=0
+  while lsof -ti :1420 >/dev/null 2>&1; do
+    if [ "$waited" -ge 30 ]; then
+      echo "e2e: port 1420 still held after ${waited}s by pid(s): $(lsof -ti :1420 | tr '\n' ' ')" >&2
+      return 1
+    fi
+    sleep 2
+    waited=$((waited + 2))
+  done
+  [ "$waited" -gt 0 ] && echo "e2e: port 1420 cleared after ${waited}s"
+  return 0
 }
 
 stream_app_log &
@@ -259,17 +292,58 @@ else
       SUITE_SPECS+=("$spec")
     done
   fi
+  SPECS_RAN=()
+  SPECS_FAILED=()
+  SPECS_NOT_RUN=()
+  stopped_early=0
   for spec in "${SUITE_SPECS[@]}"; do
-    start_app
-    if ! run_playwright "$(basename "$spec")" "$@" "$spec"; then
+    # A spec that never runs is indistinguishable from a passing one in the
+    # exit code alone, so every spec is accounted for explicitly below.
+    if ! wait_for_port_free || ! start_app; then
+      stop_app
+      echo "e2e: retrying ${spec} after a failed app launch" >&2
+      if ! wait_for_port_free || ! start_app; then
+        stop_app
+        SPECS_NOT_RUN+=("$spec")
+        suite_status=1
+        continue
+      fi
+    fi
+    if run_playwright "$(basename "$spec")" "$@" "$spec"; then
+      SPECS_RAN+=("$spec")
+    else
+      SPECS_RAN+=("$spec")
+      SPECS_FAILED+=("$spec")
       suite_status=1
       suite_failures=$((suite_failures + 1))
     fi
     stop_app
     if [ "$SUITE_MAX_FAILURES" -gt 0 ] && [ "$suite_failures" -ge "$SUITE_MAX_FAILURES" ]; then
       echo "e2e: stopping after ${suite_failures} failed spec(s)" >&2
+      stopped_early=1
       break
     fi
   done
+
+  echo
+  echo "e2e: ===== run summary ====="
+  echo "e2e: spec files expected : ${#SUITE_SPECS[@]}"
+  echo "e2e: spec files executed : ${#SPECS_RAN[@]}"
+  echo "e2e: spec files failed   : ${#SPECS_FAILED[@]}"
+  for spec in "${SPECS_FAILED[@]:-}"; do [ -n "$spec" ] && echo "e2e:   FAILED  $spec"; done
+  if [ "${#SPECS_NOT_RUN[@]}" -gt 0 ]; then
+    echo "e2e: spec files NOT RUN  : ${#SPECS_NOT_RUN[@]} (treated as failure)"
+    for spec in "${SPECS_NOT_RUN[@]}"; do echo "e2e:   NOT RUN $spec"; done
+  fi
+  if [ "$stopped_early" -eq 1 ]; then
+    remaining=$(( ${#SUITE_SPECS[@]} - ${#SPECS_RAN[@]} - ${#SPECS_NOT_RUN[@]} ))
+    echo "e2e: stopped early, ${remaining} spec file(s) were never reached"
+  fi
+  if [ "$SKIPPED_TOTAL" -gt 0 ]; then
+    echo "e2e: individual tests skipped: ${SKIPPED_TOTAL} (skipped is not coverage)"
+    sort -u "$SKIPPED_LIST" | sed 's/^/e2e:   SKIPPED /' || true
+  fi
+  rm -f "$SKIPPED_LIST"
+  echo "e2e: ========================"
   exit "$suite_status"
 fi
