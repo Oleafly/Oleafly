@@ -198,11 +198,23 @@ function setPreviewPdfExpression(bytes: Uint8Array): string {
     import("/src/store/files.ts"),
     import("/src/store/project-analysis.ts"),
     import("/src/lib/compile-checkpoint.ts"),
-  ]).then(([{ useCompileStore }, { useFilesStore }, { useProjectAnalysisStore }, checkpoint]) => {
+  ]).then(async ([{ useCompileStore }, { useFilesStore }, { useProjectAnalysisStore }, checkpoint]) => {
     const binary = atob(${JSON.stringify(base64)});
     const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
-    const files = useFilesStore.getState();
-    const analysis = useProjectAnalysisStore.getState().snapshot;
+    // Activating a project publishes a null project id while the language
+    // service swaps runtimes, which resets this store. A readiness check made
+    // before this point can therefore be stale by the time the fixture lands,
+    // so wait for analysis to name the open project rather than failing the
+    // run on that window. The checkpoint below still refuses to install
+    // against a project that analysis has not claimed.
+    let files = useFilesStore.getState();
+    let analysis = useProjectAnalysisStore.getState().snapshot;
+    for (let attempt = 0; attempt < 100; attempt++) {
+      if (files.projectId && analysis.identity.projectId === files.projectId) break;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      files = useFilesStore.getState();
+      analysis = useProjectAnalysisStore.getState().snapshot;
+    }
     if (!files.projectId || analysis.identity.projectId !== files.projectId) {
       throw new Error("Current project analysis is unavailable for the PDF fixture");
     }
