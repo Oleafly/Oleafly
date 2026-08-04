@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-08-04
+
+### Fixed
+
+- Home project right-click menu showed dark text on a dark background in light
+  mode, making the menu hard to read. The menu and the “Change book color”
+  submenu now use themed popover colors.
+  Full issue: https://github.com/Oleafly/Oleafly/issues/37
+
 ## [0.3.3] - 2026-08-02
 
 ### Changed
@@ -1207,7 +1216,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   compilation, SyncTeX, Git integration, GitHub sync, and bring-your-own-key AI
   assistance.
 
-[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.3.3...HEAD
+[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.3.4...HEAD
+[0.3.4]: https://github.com/Oleafly/Oleafly/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/Oleafly/Oleafly/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/Oleafly/Oleafly/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/Oleafly/Oleafly/compare/v0.3.0...v0.3.1
