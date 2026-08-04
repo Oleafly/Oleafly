@@ -352,7 +352,11 @@ jobs:
     if: ${{ always() && inputs.publish != true }}
     runs-on: ubuntu-22.04
     permissions:
-      contents: read
+      # A draft release is only visible to a token with push access, so
+      # contents:read cannot see it and `gh release view` fails with
+      # "release not found". This job only reads, but write is what makes the
+      # draft visible at all.
+      contents: write
     steps:
       - name: Require every platform artifact, then stop
         env:
