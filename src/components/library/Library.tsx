@@ -684,7 +684,7 @@ export function Library() {
                     />
                   </div>
                 </ContextMenuTrigger>
-                <ContextMenuContent className="w-52 bg-[#181818]">
+                <ContextMenuContent className="w-52">
                   <ContextMenuItem onClick={() => void openProject(p.id)}>
                     <FileText className="mr-2 size-4" /> Open project
                   </ContextMenuItem>
@@ -706,7 +706,7 @@ export function Library() {
                     <ContextMenuSubTrigger>
                       <Palette className="mr-2 size-4" /> Change book color
                     </ContextMenuSubTrigger>
-                    <ContextMenuSubContent className="w-44 bg-[#181818]">
+                    <ContextMenuSubContent className="w-44">
                       {BOOK_COLOR_OPTIONS.map((c) => {
                         const active = (projectColors[p.id] ?? (p.color || DEFAULT_BOOK_COLOR)) === c.hex;
                         return (
