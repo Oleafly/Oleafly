@@ -144,6 +144,17 @@ jobs:
         if: steps.cache-tectonic.outputs.cache-hit != 'true'
         run: bash scripts/fetch-tectonic.sh x86_64-unknown-linux-gnu
 
+      - name: Cache Biber sidecar
+        id: cache-biber
+        uses: actions/cache@v6
+        with:
+          path: src-tauri/binaries/tectonic-biber-*
+          key: biber-${{ runner.os }}-${{ hashFiles('scripts/fetch-biber.sh') }}
+
+      - name: Fetch Biber sidecar
+        if: steps.cache-biber.outputs.cache-hit != 'true'
+        run: bash scripts/fetch-biber.sh x86_64-unknown-linux-gnu
+
       - name: Cache Typst sidecar
         id: cache-typst
         uses: actions/cache@v6
@@ -241,6 +252,17 @@ jobs:
       - name: Fetch Tectonic sidecar
         if: steps.cache-tectonic-e2e.outputs.cache-hit != 'true'
         run: bash scripts/fetch-tectonic.sh aarch64-apple-darwin
+
+      - name: Cache Biber sidecar
+        id: cache-biber-e2e
+        uses: actions/cache@v6
+        with:
+          path: src-tauri/binaries/tectonic-biber-*
+          key: biber-${{ runner.os }}-${{ hashFiles('scripts/fetch-biber.sh') }}
+
+      - name: Fetch Biber sidecar
+        if: steps.cache-biber-e2e.outputs.cache-hit != 'true'
+        run: bash scripts/fetch-biber.sh aarch64-apple-darwin
 
       - name: Cache Typst sidecar
         id: cache-typst-e2e
@@ -380,6 +402,17 @@ jobs:
         if: steps.cache-tectonic-e2e-linux.outputs.cache-hit != 'true'
         run: bash scripts/fetch-tectonic.sh x86_64-unknown-linux-gnu
 
+      - name: Cache Biber sidecar
+        id: cache-biber-e2e-linux
+        uses: actions/cache@v6
+        with:
+          path: src-tauri/binaries/tectonic-biber-*
+          key: biber-${{ runner.os }}-${{ hashFiles('scripts/fetch-biber.sh') }}
+
+      - name: Fetch Biber sidecar
+        if: steps.cache-biber-e2e-linux.outputs.cache-hit != 'true'
+        run: bash scripts/fetch-biber.sh x86_64-unknown-linux-gnu
+
       - name: Cache Typst sidecar
         id: cache-typst-e2e-linux
         uses: actions/cache@v6
@@ -490,6 +523,18 @@ jobs:
         if: steps.cache-tectonic-e2e-windows.outputs.cache-hit != 'true'
         shell: bash
         run: bash scripts/fetch-tectonic.sh x86_64-pc-windows-msvc
+
+      - name: Cache Biber sidecar
+        id: cache-biber-e2e-windows
+        uses: actions/cache@v6
+        with:
+          path: src-tauri/binaries/tectonic-biber-*
+          key: biber-${{ runner.os }}-${{ hashFiles('scripts/fetch-biber.sh') }}
+
+      - name: Fetch Biber sidecar
+        if: steps.cache-biber-e2e-windows.outputs.cache-hit != 'true'
+        shell: bash
+        run: bash scripts/fetch-biber.sh x86_64-pc-windows-msvc
 
       - name: Cache Typst sidecar
         id: cache-typst-e2e-windows
