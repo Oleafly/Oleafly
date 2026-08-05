@@ -477,10 +477,21 @@ export interface TaggedCompileResult {
   log: string;
 }
 
+export interface TinytexInstallState {
+  installing: boolean;
+  partial_download_bytes: number;
+}
+
 export const latexEngineInfo = () => invoke<EngineInfo>("latex_engine_info");
 export const hasTaggingEngine = () => invoke<boolean>("has_tagging_engine");
-// Emits `tinytex-download-progress` events while downloading.
+// Emits phased `tinytex-install-progress` events (download/extract/packages);
+// a failed download keeps its partial file so a retry resumes.
 export const installTinytex = () => invoke<EngineInfo>("install_tinytex");
+export const tinytexInstallState = () =>
+  invoke<TinytexInstallState>("tinytex_install_state");
+// The user confirmed quitting mid-install; the app exits immediately.
+export const confirmQuitDuringInstall = () =>
+  invoke<void>("confirm_quit_during_install");
 export const deleteTinytex = () => invoke<void>("delete_tinytex");
 export const tlmgrInstalled = () => invoke<string[]>("tlmgr_installed");
 export const tlmgrInstall = (packages: string[]) => invoke<string>("tlmgr_install", { packages });

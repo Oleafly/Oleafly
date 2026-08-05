@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, Check, Cpu, Download, Info, Loader2, Trash2, X } from "lucide-react";
-import { useEngineStore } from "@/store/engine";
+import { AlertTriangle, Check, Cpu, Download, HardDrive, Info, Loader2, Trash2, X } from "lucide-react";
+import { installPhaseLabel, useEngineStore } from "@/store/engine";
 import { useSettingsStore, type DefaultLatexEngine } from "@/store/settings";
 import { LATEX_PACKAGES, type TaggingStatus } from "@/lib/latex-packages";
+import { texDistributions, type TexDistribution } from "@/lib/tauri";
+import { isTauri } from "@tauri-apps/api/core";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -36,11 +38,15 @@ export function EngineSection() {
     useEngineStore();
   const defaultLatexEngine = useSettingsStore((s) => s.defaultLatexEngine);
   const setDefaultLatexEngine = useSettingsStore((s) => s.setDefaultLatexEngine);
+  const installPhase = useEngineStore((s) => s.installPhase);
+  const partialDownloadBytes = useEngineStore((s) => s.partialDownloadBytes);
   const [query, setQuery] = useState("");
+  const [distros, setDistros] = useState<TexDistribution[]>([]);
 
   useEffect(() => {
     // refreshPackages() needs engine info from refresh() first, so run in sequence.
     void refresh().then(() => refreshPackages());
+    if (isTauri()) void texDistributions().then(setDistros).catch(() => {});
   }, [refresh, refreshPackages]);
 
   const kind = info?.kind ?? "none";
@@ -96,6 +102,79 @@ export function EngineSection() {
       </div>
 
       <div className="flex items-center gap-1.5">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Manage TeX distributions</h3>
+        <Tooltip
+          wide
+          side="right"
+          label="Everything the latexmk engine can use on this machine. TinyTeX installs into your home folder with no admin rights; system installs (MacTeX, TeX Live, MiKTeX) are detected automatically."
+        >
+          <Info className="size-3.5 cursor-help text-muted-foreground/60 hover:text-muted-foreground" />
+        </Tooltip>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        {distros.length === 0 && (
+          <p className="text-xs text-muted-foreground">No TeX distribution detected on this machine.</p>
+        )}
+        {distros.map((distro) => (
+          <div key={distro.bin_dir} className="rounded-lg border p-3">
+            <div className="flex items-center gap-2">
+              <HardDrive className="size-4 shrink-0 text-muted-foreground" />
+              <span className="text-sm">{distro.label}</span>
+              {distro.latexmk && (
+                <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-600 dark:text-emerald-400">
+                  latexmk
+                </span>
+              )}
+              {distro.tlmgr && (
+                <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                  tlmgr
+                </span>
+              )}
+              {distro.kind === "oleafly-tinytex" && (
+                <button
+                  type="button"
+                  onClick={() => void remove()}
+                  className="ml-auto inline-flex items-center gap-1 rounded-md border border-input px-2 py-1 text-[11px] hover:bg-accent"
+                >
+                  <Trash2 className="size-3" /> Remove
+                </button>
+              )}
+            </div>
+            <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground/70">{distro.bin_dir}</p>
+          </div>
+        ))}
+        {!distros.some((d) => d.kind === "oleafly-tinytex") && (
+          <div className="rounded-lg border p-3">
+            <div className="flex items-center gap-2">
+              <Download className="size-4 shrink-0 text-muted-foreground" />
+              <span className="text-sm">TinyTeX</span>
+            </div>
+            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+              A minimal TeX Live in your home folder. Core download is about 100 MB; journal
+              templates can add packages later (up to ~1 GB total). Installing ahead of time makes
+              imported Overleaf projects compile immediately.
+            </p>
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={() => void install()}
+                disabled={installing}
+                className="inline-flex items-center gap-1.5 rounded-md bg-primary px-2.5 py-1.5 text-xs text-white hover:opacity-90 disabled:opacity-60"
+              >
+                {installing ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+                {installing
+                  ? installPhaseLabel(installPhase, progress)
+                  : partialDownloadBytes > 0
+                    ? `Resume download (${Math.round(partialDownloadBytes / 1_000_000)} MB done)`
+                    : "Download TinyTeX (~100 MB)"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center gap-1.5">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tagged / accessible export</h3>
         <Tooltip
           wide
@@ -117,22 +196,12 @@ export function EngineSection() {
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {kind === "none" && (
-            <button type="button"
-              onClick={() => void install()}
-              disabled={installing}
-              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-2.5 py-1.5 text-xs text-white hover:opacity-90 disabled:opacity-60"
-            >
-              {installing ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
-              {installing ? (progress != null ? `Installing… ${progress}%` : "Installing…") : "Install TinyTeX (~100 MB)"}
-            </button>
+            <span className="text-xs text-muted-foreground">
+              Install TinyTeX under “Manage TeX distributions” above to enable tagged export.
+            </span>
           )}
           {kind === "tinytex" && (
-            <button type="button"
-              onClick={() => void remove()}
-              className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs hover:bg-accent"
-            >
-              <Trash2 className="size-3.5" /> Delete TinyTeX to free space
-            </button>
+            <span className="text-xs text-muted-foreground">Provided by TinyTeX (managed above).</span>
           )}
           {kind === "system" && (
             <span className="text-xs text-muted-foreground">Detected on your system. Nothing to install.</span>

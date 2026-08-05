@@ -57,7 +57,15 @@ pub fn on_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
             app.request_restart();
         }
         "quit_app" => {
-            app.exit(0);
+            // Cmd+Q during a TinyTeX install goes through the same confirm
+            // flow as a window close: the frontend shows the dialog and calls
+            // `confirm_quit_during_install` if the user really means it.
+            if crate::latex_engine::install_in_progress() && !crate::latex_engine::quit_confirmed()
+            {
+                let _ = app.emit("tinytex-quit-blocked", ());
+            } else {
+                app.exit(0);
+            }
         }
         _ => {}
     }

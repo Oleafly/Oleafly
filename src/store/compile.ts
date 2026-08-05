@@ -539,6 +539,31 @@ export const useCompileStore = create<CompileState>((set, get) => ({
         return undefined;
       }
     }
+    if (files.engine.capabilities.compiler_prerequisite === "system_tex") {
+      // A TinyTeX install may be in flight: queue this compile behind it
+      // instead of failing with "latexmk not found". The engine store runs
+      // the queued compile the moment the install lands.
+      const engineModule = await import("@/store/engine");
+      const engineStore = engineModule.useEngineStore.getState();
+      if (engineStore.installing) {
+        engineStore.queueCompileAfterInstall();
+        set({
+          status: "unavailable",
+          phase: "idle",
+          failureReason:
+            "TinyTeX is still downloading. This compile starts automatically when it finishes.",
+          lastAttemptIdentity: capturedProjectId
+            ? identityForGeneration(capturedProjectId, mainDoc, intent)
+            : null,
+        });
+        abortIntent();
+        return undefined;
+      }
+      if (!matchesProjectAndMain() || checkpointAdvanced()) {
+        abortIntent();
+        return undefined;
+      }
+    }
     if (!matchesProjectAndMain() || checkpointAdvanced()) {
       abortIntent();
       return undefined;

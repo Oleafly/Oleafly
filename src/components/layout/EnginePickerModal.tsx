@@ -6,7 +6,7 @@ import {
   dismissEngineHint,
   useEnginePickerStore,
 } from "@/store/engine-picker";
-import { useEngineStore } from "@/store/engine";
+import { installPhaseLabel, useEngineStore } from "@/store/engine";
 import { useFilesStore } from "@/store/files";
 import { latexmkFixesFinding, type ImportCompatFinding } from "@oleafly/latex";
 import { notifyError, toast } from "@/lib/toast";
@@ -36,7 +36,9 @@ export function EnginePickerModal() {
 
   const info = useEngineStore((s) => s.info);
   const installing = useEngineStore((s) => s.installing);
+  const installPhase = useEngineStore((s) => s.installPhase);
   const progress = useEngineStore((s) => s.progress);
+  const partialDownloadBytes = useEngineStore((s) => s.partialDownloadBytes);
   const ensureLoaded = useEngineStore((s) => s.ensureLoaded);
   const install = useEngineStore((s) => s.install);
 
@@ -86,8 +88,17 @@ export function EnginePickerModal() {
     }
   };
 
-  const keepTectonic = () => {
+  const keepTectonic = async () => {
     if (projectId) dismissEngineHint(projectId, findings);
+    // For a latexmk project this is a real switch back, not just a dismissal
+    // ("xetex" is the stored name of the bundled Tectonic engine).
+    if (alreadyLatexmk) {
+      try {
+        await setEngine("xetex");
+      } catch (error) {
+        notifyError("switch compile engine", error);
+      }
+    }
     close();
   };
 
@@ -206,10 +217,10 @@ export function EnginePickerModal() {
                 >
                   {installing ? <Loader2 className="size-3.5 animate-spin" /> : null}
                   {installing
-                    ? progress != null
-                      ? `Downloading… ${progress}%`
-                      : "Downloading…"
-                    : "Download and use TinyTeX"}
+                    ? installPhaseLabel(installPhase, progress)
+                    : partialDownloadBytes > 0
+                      ? `Resume download (${Math.round(partialDownloadBytes / 1_000_000)} MB done)`
+                      : "Download and use TinyTeX"}
                 </Button>
               </div>
             </div>
@@ -227,8 +238,8 @@ export function EnginePickerModal() {
                 : "Zero setup, works offline. Fine for plain LaTeX and most common packages."}
             </p>
             <div className="mt-2">
-              <Button size="sm" variant="ghost" onClick={keepTectonic}>
-                Keep Tectonic
+              <Button size="sm" variant="ghost" onClick={() => void keepTectonic()}>
+                {alreadyLatexmk ? "Switch back to Tectonic" : "Keep Tectonic"}
               </Button>
             </div>
           </div>
