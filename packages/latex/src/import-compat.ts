@@ -70,7 +70,7 @@ export const IMPORT_COMPAT_CATALOG = {
     level: "info",
     title: "pdfTeX-oriented packages",
     detail:
-      "Oleafly’s default engine is Tectonic (XeTeX-class). Some pdfTeX-only packages or primitives may need small source adjustments.",
+      "Oleafly’s default engine is Tectonic (XeTeX-class), and this project relies on pdfTeX-only packages or primitives. The latexmk engine compiles with real pdfLaTeX — the same way Overleaf does.",
     latexmkFixes: true,
   },
 } as const satisfies Record<
@@ -295,6 +295,18 @@ export function classifyCompileFailure(logRaw: string): ImportCompatFinding[] {
     log.includes("cannot be found") && log.includes("font")
   ) {
     findings.push(findingFor("fontspec"));
+  }
+
+  // Journal classes (e.g. Springer's sn-jnl) hit pdfTeX-only internals under
+  // XeTeX: "Undefined control sequence" pointing at \pdf@... primitives.
+  // Real pdfLaTeX via latexmk is the fix, exactly like Overleaf.
+  if (
+    log.includes("Undefined control sequence") &&
+    ["\\pdf@", "\\pdfoutput", "\\pdfliteral", "\\pdftexversion", "\\pdfpageattr"].some(
+      (primitive) => log.includes(primitive),
+    )
+  ) {
+    findings.push(findingFor("pdftex-only"));
   }
 
   return findings;

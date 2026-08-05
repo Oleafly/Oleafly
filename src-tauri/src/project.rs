@@ -1468,8 +1468,20 @@ fn import_overleaf_project_blocking(name: Option<String>, path: &str) -> Result<
             }
             _ => {
                 let main_doc = infer_main_document(&dir)?;
-                let engine = engine_for_main_document(&default_engine(), &main_doc)
+                let mut engine = engine_for_main_document(&default_engine(), &main_doc)
                     .unwrap_or_else(|_| default_engine());
+                // Overleaf parity out of the box: imported LaTeX projects use
+                // the full latexmk toolchain when a system TeX is available.
+                // Journal classes routinely rely on tools and pdfTeX
+                // primitives the bundled Tectonic (XeTeX-class) cannot
+                // provide, and Overleaf compiles them with pdfLaTeX. Without
+                // a system TeX the project stays on Tectonic and the scan /
+                // compile-failure flows offer the switch.
+                if engine == default_engine()
+                    && crate::tex_distro::find_tex_tool("latexmk").is_some()
+                {
+                    engine = "latexmk".to_string();
+                }
                 ProjectMeta {
                     name: project_name.clone(),
                     main_doc,
