@@ -581,7 +581,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const meta = await getProject(id).catch(() => null);
     if (meta?.engine === "latexmk") {
       void recordProjectTexSpec(id).catch(() => {});
-      toast.success("Project imported — compiling with latexmk (system TeX detected).");
+      toast.success("Project imported. Compiling with latexmk (system TeX detected).");
     } else {
       toast.success("Project imported.");
     }

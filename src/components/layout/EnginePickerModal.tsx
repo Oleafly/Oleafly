@@ -126,8 +126,8 @@ export function EnginePickerModal() {
           </h2>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             {source === "compile-failure"
-              ? "The failure matches a known gap in the bundled Tectonic engine. Pick how this project should compile — the choice is saved in the project, so collaborators get the same setup."
-              : "The import scan found features the bundled Tectonic engine does not orchestrate. Pick how this project should compile — the choice is saved in the project, so collaborators get the same setup."}
+              ? "The failure matches a known gap in the bundled Tectonic engine. Pick how this project should compile. The choice is saved in the project, so collaborators get the same setup."
+              : "The import scan found features the bundled Tectonic engine does not orchestrate. Pick how this project should compile. The choice is saved in the project, so collaborators get the same setup."}
           </p>
         </div>
 
@@ -171,7 +171,7 @@ export function EnginePickerModal() {
             </div>
             <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
               {hasSystemTex
-                ? "A TeX distribution was found on this machine. latexmk orchestrates every pass — Biber, makeindex, shell-escape — exactly like Overleaf."
+                ? "A TeX distribution was found on this machine. latexmk orchestrates every pass (Biber, makeindex, shell-escape), exactly like Overleaf."
                 : "No TeX distribution (MacTeX, TeX Live, MiKTeX, TinyTeX) was found on this machine."}
             </p>
             {info?.latexmk && (
@@ -204,9 +204,9 @@ export function EnginePickerModal() {
                 <span className="text-sm font-medium">Download TinyTeX</span>
               </div>
               <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-                Installs a minimal TeX Live into your home folder — no admin rights.
-                The core download is about 100 MB; journal templates can pull more
-                packages later, up to roughly 1 GB in total.
+                Installs a minimal TeX Live into your home folder, no admin rights
+                needed. The core download is about 100 MB; journal templates can
+                pull more packages later, up to roughly 1 GB in total.
               </p>
               <div className="mt-2">
                 <Button

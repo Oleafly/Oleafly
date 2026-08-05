@@ -70,7 +70,7 @@ export const IMPORT_COMPAT_CATALOG = {
     level: "info",
     title: "pdfTeX-oriented packages",
     detail:
-      "Oleafly’s default engine is Tectonic (XeTeX-class), and this project relies on pdfTeX-only packages or primitives. The latexmk engine compiles with real pdfLaTeX — the same way Overleaf does.",
+      "Oleafly’s default engine is Tectonic (XeTeX-class), and this project relies on pdfTeX-only packages or primitives. The latexmk engine compiles with real pdfLaTeX, the same way Overleaf does.",
     latexmkFixes: true,
   },
 } as const satisfies Record<

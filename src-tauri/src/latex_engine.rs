@@ -454,7 +454,7 @@ pub async fn install_tinytex(app: tauri::AppHandle) -> Result<EngineInfo, String
     let mut stream = resp.bytes_stream();
     while let Some(chunk) = stream.next().await {
         let chunk = chunk.map_err(|e| {
-            format!("download interrupted: {e}. Your progress is saved — retry to resume.")
+            format!("download interrupted: {e}. Your progress is saved; retry to resume.")
         })?;
         received += chunk.len() as u64;
         file.write_all(&chunk).map_err(|e| e.to_string())?;
