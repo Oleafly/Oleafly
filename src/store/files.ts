@@ -31,6 +31,11 @@ import { notifyError, toast } from "@/lib/toast";
 import { scanImportCompatibility } from "@oleafly/latex";
 import { cancelProofreading } from "@/lib/proofreading/client";
 import { useDiffStore } from "@/store/diff";
+import {
+  dismissEngineHint,
+  engineHintDismissed,
+  useEnginePickerStore,
+} from "@/store/engine-picker";
 import { useSettingsStore } from "@/store/settings";
 import { nextTabSeq } from "@/store/tab-order";
 
@@ -357,40 +362,80 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       }
       await get().openFile(meta.main_doc || "main.tex");
       // Overleaf-import compatibility: surface known tool gaps early (biblatex,
-      // minted, glossaries, …) so compile failures are less mysterious.
+      // minted, glossaries, …) so compile failures are less mysterious. Scans
+      // the whole tree (bounded), not just the main document — Overleaf projects
+      // routinely keep the preamble in a file the main doc \inputs.
+      // Fire-and-forget: the scan reads files over IPC and must never delay
+      // the project becoming interactive. `seq` guards every state touch.
       if (seq === openSeq) {
+        void (async () => {
         try {
           const mainPath = meta.main_doc || "main.tex";
-          const mainContent =
-            get().files[mainPath]?.content ??
-            (await readFileContent(id, mainPath).catch(() => ""));
-          let latexmkrc: string | null = null;
-          if (tree.some((f) => !f.is_dir && f.path === "latexmkrc")) {
-            latexmkrc = await readFileContent(id, "latexmkrc").catch(() => null);
+          const depth = (p: string) => p.split("/").length;
+          const texPaths = tree
+            .filter((f) => !f.is_dir && /\.(tex|ltx|latex)$/i.test(f.path))
+            .map((f) => f.path)
+            .sort((a, b) =>
+              a === mainPath ? -1 : b === mainPath ? 1 : depth(a) - depth(b),
+            )
+            .slice(0, 40); // scanner input is capped anyway; keep IPC bounded
+          const texFiles: Array<{ path: string; content: string }> = [];
+          for (const path of texPaths) {
+            const content =
+              get().files[path]?.content ??
+              (await readFileContent(id, path).catch(() => ""));
+            if (seq !== openSeq) return;
+            if (content) texFiles.push({ path, content });
           }
-          const findings = scanImportCompatibility({
-            texFiles: [{ path: mainPath, content: mainContent }],
-            latexmkrc,
-          });
-          const blockers = findings.filter((f) => f.level === "blocker");
-          const warnings = findings.filter((f) => f.level === "warning");
-          if (blockers.length > 0) {
-            const extra = blockers.length > 1 ? ` (+${blockers.length - 1} more)` : "";
-            toast.info(`${blockers[0].title}${extra}`);
-          } else if (warnings.length > 0) {
-            if (warnings.some((f) => f.id === "biblatex-biber") && warnings.length === 1) {
-              toast.info("This project uses biblatex/Biber for the bibliography.");
-            } else {
+          const rcName = ["latexmkrc", ".latexmkrc"].find((name) =>
+            tree.some((f) => !f.is_dir && f.path === name),
+          );
+          const latexmkrc = rcName
+            ? await readFileContent(id, rcName).catch(() => null)
+            : null;
+          if (seq !== openSeq) return;
+          const findings = scanImportCompatibility({ texFiles, latexmkrc });
+          // A latexmk project already has the full toolchain; nothing to say.
+          // A previously acknowledged set of findings stays quiet too — the
+          // hint returns only when a new gap appears.
+          if (
+            findings.length > 0 &&
+            get().engine.id !== "latexmk" &&
+            !engineHintDismissed(id, findings)
+          ) {
+            const blockers = findings.filter((f) => f.level === "blocker");
+            const warnings = findings.filter((f) => f.level === "warning");
+            if (blockers.length > 0) {
+              const extra = blockers.length > 1 ? ` (+${blockers.length - 1} more)` : "";
               toast.info(
-                `${warnings.length} import note${warnings.length === 1 ? "" : "s"}: ${warnings[0].title}${
-                  warnings.length > 1 ? ` (+${warnings.length - 1} more)` : ""
-                }`,
+                `${blockers[0].title}${extra}`,
+                {
+                  label: "Choose engine…",
+                  onClick: () =>
+                    useEnginePickerStore
+                      .getState()
+                      .openPicker("project-open", findings),
+                },
+                true,
               );
+            } else if (warnings.length > 0) {
+              if (warnings.some((f) => f.id === "biblatex-biber") && warnings.length === 1) {
+                toast.info("This project uses biblatex/Biber for the bibliography.");
+              } else {
+                toast.info(
+                  `${warnings.length} import note${warnings.length === 1 ? "" : "s"}: ${warnings[0].title}${
+                    warnings.length > 1 ? ` (+${warnings.length - 1} more)` : ""
+                  }`,
+                );
+              }
+              // Plain notes need no decision; showing them once is enough.
+              dismissEngineHint(id, warnings);
             }
           }
         } catch {
           /* scan is best-effort */
         }
+        })();
       }
     } catch (e) {
       // Surface the failure and fall back to the library rather than leaving the

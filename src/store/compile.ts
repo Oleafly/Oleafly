@@ -10,6 +10,8 @@ import {
   type CompileResult,
 } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
+import { engineHintDismissed, useEnginePickerStore } from "@/store/engine-picker";
+import { classifyCompileFailure } from "@oleafly/latex";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { useSettingsStore } from "@/store/settings";
 import { notifyError } from "@/lib/toast";
@@ -351,6 +353,20 @@ async function mainDocumentSyntaxErrors(
       kind: "error",
       explanation: null,
     }));
+}
+
+/**
+ * Open the engine-picker modal when a failed Tectonic compile matches a known
+ * engine gap. Skipped for latexmk projects (they have the full toolchain) and
+ * for finding sets the user already dismissed with "Keep Tectonic".
+ */
+function maybePromptEngineGap(log: string): void {
+  const files = useFilesStore.getState();
+  if (files.engine.id !== "latex" || !files.projectId) return;
+  const findings = classifyCompileFailure(log);
+  if (findings.length === 0) return;
+  if (engineHintDismissed(files.projectId, findings)) return;
+  useEnginePickerStore.getState().openPicker("compile-failure", findings);
 }
 
 export const useCompileStore = create<CompileState>((set, get) => ({
@@ -813,6 +829,11 @@ export const useCompileStore = create<CompileState>((set, get) => ({
         };
       });
       if (!applied) return result;
+      // A failed Tectonic compile whose log matches a known engine gap
+      // (minted, missing index run, shell-escape refusal, unresolved Biber)
+      // gets the engine-picker modal instead of leaving the user to decode
+      // the log. latexmk projects already have the full toolchain.
+      if (!checkpoint) maybePromptEngineGap(result.log);
       // Tell detached windows (PDF preview, other OS windows) to reload.
       void import("@/lib/preview-window")
         .then((module) =>

@@ -91,6 +91,7 @@ function TexRootIndicator() {
 export function CompileControls() {
   const engine = useFilesStore((s) => s.engine);
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
+  const setEngine = useFilesStore((s) => s.setEngine);
   const viewMode = useSettingsStore((s) => s.viewMode);
   const setViewMode = useSettingsStore((s) => s.setViewMode);
   const recompile = useCompileStore((s) => s.recompile);
@@ -219,6 +220,29 @@ export function CompileControls() {
             Don’t check syntax
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
+
+        {engine.source_format === "latex" && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Engine (this project)</DropdownMenuLabel>
+            <DropdownMenuRadioGroup
+              value={engine.id === "latexmk" ? "latexmk" : "tectonic"}
+              onValueChange={(value) => {
+                const isLatexmk = engine.id === "latexmk";
+                if (value === "latexmk" && !isLatexmk) void setEngine("latexmk");
+                // "xetex" is the stored default for the bundled Tectonic engine.
+                if (value === "tectonic" && isLatexmk) void setEngine("xetex");
+              }}
+            >
+              <DropdownMenuRadioItem value="tectonic">
+                Tectonic <span className="ml-1 text-muted-foreground">[built in]</span>
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="latexmk">
+                latexmk <span className="ml-1 text-muted-foreground">[system TeX]</span>
+              </DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+          </>
+        )}
 
         <DropdownMenuSeparator />
         <DropdownMenuLabel>Compile error handling</DropdownMenuLabel>
