@@ -18,6 +18,38 @@ export type ImportCompatFinding = {
 /** Cap combined TeX size so import scan stays cheap and predictable. */
 const MAX_SCAN_CHARS = 512 * 1024;
 
+/** True if `tex[i]` starts a TeX line comment (`%` not escaped by `\`). */
+function isCommentPercent(tex: string, i: number): boolean {
+  if (tex[i] !== "%") return false;
+  let backslashes = 0;
+  for (let j = i - 1; j >= 0 && tex[j] === "\\"; j -= 1) backslashes += 1;
+  return backslashes % 2 === 0;
+}
+
+/**
+ * Drop line comments (`%` … EOL) so commented-out `\usepackage{…}` does not
+ * produce false-positive import toasts. Linear scan; leaves `\%` alone.
+ */
+export function stripLineComments(tex: string): string {
+  let out = "";
+  let i = 0;
+  while (i < tex.length) {
+    const ch = tex[i];
+    if (ch === "\n") {
+      out += ch;
+      i += 1;
+      continue;
+    }
+    if (isCommentPercent(tex, i)) {
+      while (i < tex.length && tex[i] !== "\n") i += 1;
+      continue;
+    }
+    out += ch;
+    i += 1;
+  }
+  return out;
+}
+
 /**
  * True if `\usepackage[...]{...}` (or without options) loads a package whose
  * name equals `pkg` or appears in a comma-separated package list.
@@ -72,8 +104,9 @@ export function scanImportCompatibility(sources: {
 }): ImportCompatFinding[] {
   const findings: ImportCompatFinding[] = [];
   const texRaw = (sources.texFiles ?? []).map((f) => f.content).join("\n\n");
-  const tex =
+  const capped =
     texRaw.length > MAX_SCAN_CHARS ? texRaw.slice(0, MAX_SCAN_CHARS) : texRaw;
+  const tex = stripLineComments(capped);
   const latexmkrc = sources.latexmkrc ?? "";
 
   const usesBiblatex =

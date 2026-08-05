@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { loadsPackage, scanImportCompatibility } from "./import-compat";
+import {
+  loadsPackage,
+  scanImportCompatibility,
+  stripLineComments,
+} from "./import-compat";
 
 describe("scanImportCompatibility", () => {
   it("flags biblatex + biber journal-style projects", () => {
@@ -64,26 +68,29 @@ describe("scanImportCompatibility", () => {
     );
   });
 
-  it("does not flag plain comments or unrelated package names", () => {
+  it("ignores commented-out usepackage lines", () => {
     const findings = scanImportCompatibility({
       texFiles: [
         {
           path: "main.tex",
           content: [
-            String.raw`% \usepackage{minted} is commented out`,
-            String.raw`% mentions of biber in comments should not match latexmkrc alone`,
+            String.raw`% \usepackage{minted}`,
+            String.raw`% \usepackage{glossaries}`,
+            String.raw`% \usepackage{pythontex}`,
             String.raw`\documentclass{article}`,
             String.raw`\usepackage{amsmath}`,
-            String.raw`\usepackage{graphicx}`,
             String.raw`\begin{document}Hello\end{document}`,
           ].join("\n"),
         },
       ],
     });
-    // Comment lines still contain package-like text; this documents current
-    // heuristic limits. Uncommented plain packages must stay quiet.
-    expect(findings.filter((f) => f.id === "pythontex")).toEqual([]);
-    expect(findings.filter((f) => f.id === "fontspec")).toEqual([]);
+    expect(findings.map((f) => f.id)).toEqual([]);
+  });
+
+  it("stripLineComments keeps escaped percent", () => {
+    expect(stripLineComments(String.raw`100\% done % trailing`)).toBe(
+      String.raw`100\% done `,
+    );
   });
 
   it("returns empty for a plain article", () => {

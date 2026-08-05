@@ -27,6 +27,12 @@ engine-specific policy.
 - Import scan (`@oleafly/latex` `scanImportCompatibility`) flags Overleaf-style
   requirements (biblatex, minted, glossaries, shell-escape, fonts) when a
   project is opened.
+- **Supervised PATH:** every supervised compile child (LaTeX, Typst, Markdown
+  tooling that goes through the same helper) gets TeX-related directories and the
+  sidecar directory prepended to `PATH`. Non-LaTeX engines simply ignore unused
+  entries; directories are only added when they exist on disk.
+- **Linux aarch64:** upstream has no Biber 2.17 binary; packaging ships a stub
+  that exits with a clear error so the bundler still has an `externalBin` file.
 
 ## Typst
 
@@ -35,6 +41,8 @@ engine-specific policy.
 - Advertises current capability limits truthfully: SyncTeX, offline, and
   isolated-compile support are currently disabled.
 - Typst-specific UI behavior is driven by the descriptor, not extensions.
+- Receives the same supervised `PATH` prepending as LaTeX (see above); Typst
+  does not use Biber or TeX Live bins.
 
 ## Markdown
 

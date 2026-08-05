@@ -836,6 +836,7 @@ pub async fn compile(request: CompileRequest<'_>) -> Result<CompileResult, Strin
     // pinned tectonic-biber ourselves and re-run Tectonic once. PATH injection
     // usually makes Tectonic call Biber mid-build; this covers edge cases.
     let mut biber_notes = String::new();
+    let mut resolved_biber: Option<PathBuf> = None;
     if request.engine.id() == DocumentEngineId::Latex
         && matches!(request.target, CompileTarget::Main { .. })
     {
@@ -852,6 +853,7 @@ pub async fn compile(request: CompileRequest<'_>) -> Result<CompileResult, Strin
         {
             match crate::biber_toolchain::find_tectonic_biber() {
                 Some(biber) => {
+                    resolved_biber = Some(biber.clone());
                     append_bounded(
                         &mut biber_notes,
                         format!(
@@ -885,6 +887,9 @@ pub async fn compile(request: CompileRequest<'_>) -> Result<CompileResult, Strin
                                     &mut biber_notes,
                                     b"\n[Oleafly] Re-running Tectonic after Biber...\n",
                                 );
+                                // Reuse the same compile args: tectonic flags are
+                                // deterministic for this entry (no cache-busting /
+                                // --fresh), so a second pass is a normal multipass.
                                 let (retry_out, retry_code) = match &spec.executable {
                                     EngineExecutable::BundledSidecar(name) => {
                                         run_bundled(
@@ -963,10 +968,8 @@ pub async fn compile(request: CompileRequest<'_>) -> Result<CompileResult, Strin
         )
         && !log.contains("[Oleafly] Bibliography needs Biber")
     {
-        let diagnosis = crate::biber_toolchain::diagnose_biber_gap(
-            &log,
-            crate::biber_toolchain::find_tectonic_biber().as_deref(),
-        );
+        let biber_for_diag = resolved_biber.or_else(crate::biber_toolchain::find_tectonic_biber);
+        let diagnosis = crate::biber_toolchain::diagnose_biber_gap(&log, biber_for_diag.as_deref());
         append_bounded(&mut log, diagnosis.as_bytes());
     }
     let pdf_path = spec.artifacts.pdf.clone();
@@ -1176,6 +1179,8 @@ async fn run_supervised_process(
         .no_console()
         .args(args)
         .current_dir(working_dir)
+        // TeX bin dirs + tectonic-biber for all supervised children (LaTeX primary;
+        // Typst/others ignore extra PATH entries that are not present or unused).
         .env("PATH", crate::biber_toolchain::compile_path_env())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
