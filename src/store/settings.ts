@@ -277,7 +277,18 @@ interface SettingsState {
   setVisualEditor: (v: boolean) => void;
   latexTools: boolean;
   setLatexTools: (v: boolean) => void;
+  // Engine for NEW LaTeX projects: "tectonic" (bundled, zero-setup) or
+  // "latexmk" (system TeX; full Overleaf tool parity). Existing projects keep
+  // their own pin in project.json.
+  defaultLatexEngine: DefaultLatexEngine;
+  setDefaultLatexEngine: (v: DefaultLatexEngine) => void;
   resetToDefaults: () => void;
+}
+
+export type DefaultLatexEngine = "tectonic" | "latexmk";
+
+function readDefaultLatexEngine(raw: string): DefaultLatexEngine {
+  return raw === "latexmk" ? "latexmk" : "tectonic";
 }
 
 const PREF_DEFAULTS = {
@@ -302,6 +313,7 @@ const PREF_DEFAULTS = {
   bgPattern: "dots" as BackgroundPattern,
   visualEditor: false,
   latexTools: false,
+  defaultLatexEngine: "tectonic" as DefaultLatexEngine,
 } as const;
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -516,6 +528,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         break;
     }
   },
+  defaultLatexEngine: readDefaultLatexEngine(ls("oleafly.defaultLatexEngine", "tectonic")),
+  setDefaultLatexEngine: (v) => {
+    saveLs("oleafly.defaultLatexEngine", v);
+    set({ defaultLatexEngine: v });
+  },
   resetToDefaults: () => {
     // Drop the persisted copies so a restart doesn't resurrect old values.
     saveLs("oleafly.vim", PREF_DEFAULTS.vim ? "1" : "0");
@@ -537,6 +554,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.bgPattern", PREF_DEFAULTS.bgPattern);
     saveLs("oleafly.visualEditor", PREF_DEFAULTS.visualEditor ? "1" : "0");
     saveLs("oleafly.latexTools", PREF_DEFAULTS.latexTools ? "1" : "0");
+    saveLs("oleafly.defaultLatexEngine", PREF_DEFAULTS.defaultLatexEngine);
     set({ ...PREF_DEFAULTS });
     notifyProofreadingSettingsChanged("reset", get());
   },

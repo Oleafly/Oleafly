@@ -858,6 +858,30 @@ fn set_main_doc_unlocked(project_id: String, main_doc: String) -> Result<Project
     Ok(meta)
 }
 
+/// Pin a project's compile engine in `project.json` (e.g. "xetex" for the
+/// bundled Tectonic, "latexmk" for a system TeX toolchain). Shares the compile
+/// lock with `set_main_doc` so an engine switch never lands between a compile's
+/// final identity check and its revision allocation.
+#[tauri::command]
+pub async fn set_project_engine(
+    state: tauri::State<'_, crate::state::AppState>,
+    project_id: String,
+    engine: String,
+) -> Result<ProjectMeta, String> {
+    let _guard = state.compile_lock.lock().await;
+    let engine = engine.trim().to_string();
+    if engine.is_empty() {
+        return Err("engine name cannot be empty".into());
+    }
+    let mut meta = read_meta(&project_id)?;
+    // Reject engines that cannot compile the current main document before
+    // persisting anything.
+    crate::document_engine::engine_for(&engine, &meta.main_doc)?;
+    meta.engine = engine;
+    write_meta(&project_id, &meta)?;
+    Ok(meta)
+}
+
 fn engine_for_main_document(current_engine: &str, main_doc: &str) -> Result<String, String> {
     let current_is_typst = matches!(
         current_engine.trim().to_ascii_lowercase().as_str(),

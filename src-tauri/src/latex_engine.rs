@@ -27,6 +27,9 @@ pub struct EngineInfo {
     pub lualatex: Option<String>,
     pub tlmgr: Option<String>,
     pub version: Option<String>,
+    /// A usable `latexmk` from any detected distribution. Present even when
+    /// `kind` is "none" (a distro can lack lualatex yet still drive latexmk).
+    pub latexmk: Option<String>,
 }
 
 impl EngineInfo {
@@ -36,8 +39,14 @@ impl EngineInfo {
             lualatex: None,
             tlmgr: None,
             version: None,
+            latexmk: find_latexmk(),
         }
     }
+}
+
+/// A `latexmk` from any detected TeX distribution (stat-only probe).
+fn find_latexmk() -> Option<String> {
+    crate::tex_distro::find_tex_tool("latexmk").map(|p| p.to_string_lossy().into_owned())
 }
 
 fn exe(name: &str) -> String {
@@ -107,6 +116,9 @@ fn find_engine() -> EngineInfo {
                 version: engine_version(&lua.to_string_lossy()),
                 lualatex: Some(lua.to_string_lossy().to_string()),
                 tlmgr: tlmgr.map(|t| t.to_string_lossy().to_string()),
+                latexmk: find_in_texdir(&dir, "latexmk")
+                    .map(|p| p.to_string_lossy().into_owned())
+                    .or_else(find_latexmk),
             };
         }
     }
@@ -123,20 +135,13 @@ fn find_engine() -> EngineInfo {
             version: engine_version("lualatex"),
             lualatex: Some("lualatex".to_string()),
             tlmgr,
+            latexmk: find_latexmk(),
         };
     }
 
-    // 3. Common system TeX Live / MacTeX / TinyTeX-in-home locations.
-    let mut roots: Vec<PathBuf> = vec![
-        PathBuf::from("/Library/TeX/texbin"), // macOS MacTeX symlink dir (holds binaries directly)
-        PathBuf::from("/usr/local/bin"),
-        PathBuf::from("/opt/homebrew/bin"),
-    ];
-    if let Ok(home) = std::env::var("HOME") {
-        roots.push(PathBuf::from(&home).join(".TinyTeX"));
-    }
-    // texbin-style dirs hold the binaries directly (no bin/<platform> nesting).
-    for dir in &roots {
+    // 3. Shared discovery: MacTeX, TeX Live (by year), MiKTeX, TinyTeX-in-home.
+    // These dirs hold binaries directly (bin/<platform> nesting already resolved).
+    for dir in crate::tex_distro::tex_bin_dirs() {
         let direct = dir.join(exe("lualatex"));
         if direct.exists() && runs(&direct.to_string_lossy()) {
             let tlmgr = dir.join(exe("tlmgr"));
@@ -145,15 +150,7 @@ fn find_engine() -> EngineInfo {
                 version: engine_version(&direct.to_string_lossy()),
                 lualatex: Some(direct.to_string_lossy().to_string()),
                 tlmgr: tlmgr.exists().then(|| tlmgr.to_string_lossy().to_string()),
-            };
-        }
-        if let Some(lua) = find_in_texdir(dir, "lualatex") {
-            let tlmgr = find_in_texdir(dir, "tlmgr");
-            return EngineInfo {
-                kind: "system".into(),
-                version: engine_version(&lua.to_string_lossy()),
-                lualatex: Some(lua.to_string_lossy().to_string()),
-                tlmgr: tlmgr.map(|t| t.to_string_lossy().to_string()),
+                latexmk: find_latexmk(),
             };
         }
     }

@@ -18,6 +18,7 @@ import {
   renameFile as apiRenameFile,
   renameProjectCmd,
   setMainDocCmd,
+  setProjectEngineCmd,
   writeFileContent,
   type FileConflictStrategy,
   type FileEntry,
@@ -30,7 +31,20 @@ import { notifyError, toast } from "@/lib/toast";
 import { scanImportCompatibility } from "@oleafly/latex";
 import { cancelProofreading } from "@/lib/proofreading/client";
 import { useDiffStore } from "@/store/diff";
+import { useSettingsStore } from "@/store/settings";
 import { nextTabSeq } from "@/store/tab-order";
+
+// Pin the user's global default engine onto a freshly created project. Only
+// LaTeX projects can take the latexmk pin; anything else (Typst templates,
+// Markdown) rejects it in validation and simply keeps its own engine.
+async function applyDefaultLatexEngine(projectId: string): Promise<void> {
+  if (useSettingsStore.getState().defaultLatexEngine !== "latexmk") return;
+  try {
+    await setProjectEngineCmd(projectId, "latexmk");
+  } catch {
+    /* non-LaTeX project or validation refusal — keep the project's engine */
+  }
+}
 
 interface FileState {
   content: string;
@@ -86,6 +100,7 @@ interface FilesStore {
   applyExternalDelete: (path: string) => void;
   applyExternalRename: (from: string, to: string) => void;
   setMainDoc: (path: string) => Promise<void>;
+  setEngine: (engine: string) => Promise<void>;
 }
 
 let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -418,6 +433,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
 
   createProject: async (name) => {
     const id = await apiCreateProject(name);
+    await applyDefaultLatexEngine(id);
     await get().refreshProjects();
     await get().openProject(id);
   },
@@ -444,6 +460,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
 
   createFromTemplate: async (name, templateId, color) => {
     const id = await apiCreateFromTemplate(name, templateId, color);
+    await applyDefaultLatexEngine(id);
     await get().refreshProjects();
     await get().openProject(id);
     return id;
@@ -818,6 +835,34 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       const message = "Document engine details could not be loaded. Engine-specific actions are disabled.";
       set({ engine: UNKNOWN_ENGINE, engineLoaded: false, engineError: message });
       notifyError("set main document", error, message);
+      throw error;
+    }
+  },
+
+  setEngine: async (engineName) => {
+    const { projectId } = get();
+    if (!projectId) return;
+    // Same race protections as setMainDoc: an engine switch invalidates the
+    // current compile output and must not let a late descriptor request from a
+    // previous selection win.
+    const seq = ++mainDocSeq;
+    const compileStore = import("@/store/compile");
+    set({ engine: UNKNOWN_ENGINE, engineLoaded: false, engineError: null });
+    try {
+      const meta = await setProjectEngineCmd(projectId, engineName);
+      if (seq !== mainDocSeq || get().projectId !== projectId) return;
+      const compile = await compileStore;
+      if (seq !== mainDocSeq || get().projectId !== projectId) return;
+      compile.useCompileStore.getState().reset();
+      set({ mainDoc: meta.main_doc });
+      const engine = await getProjectEngine(projectId);
+      if (seq !== mainDocSeq || get().projectId !== projectId) return;
+      set({ engine, engineLoaded: true, engineError: null });
+    } catch (error) {
+      if (seq !== mainDocSeq || get().projectId !== projectId) return;
+      const message = "Document engine details could not be loaded. Engine-specific actions are disabled.";
+      set({ engine: UNKNOWN_ENGINE, engineLoaded: false, engineError: message });
+      notifyError("set compile engine", error, message);
       throw error;
     }
   },

@@ -40,7 +40,7 @@ export interface EngineCapabilities {
   features: EngineFeature[];
   conversion_exports: Array<"docx" | "html" | "md" | "txt" | "pptx" | "epub">;
   template_kinds: Array<"document" | "image">;
-  compiler_prerequisite: "pandoc" | null;
+  compiler_prerequisite: "pandoc" | "system_tex" | null;
 }
 export type EngineFeature = "citations" | "document_index";
 
@@ -53,7 +53,7 @@ export interface DocumentEngineDescriptor {
   capabilities: EngineCapabilities;
 }
 
-export type DocumentEngineId = "latex" | "typst" | "markdown" | "unknown";
+export type DocumentEngineId = "latex" | "latexmk" | "typst" | "markdown" | "unknown";
 
 export const getProjectEngine = (projectId: string) =>
   invoke<DocumentEngineDescriptor>("project_engine", { projectId });
@@ -224,6 +224,11 @@ export const readAppLog = (maxBytes: number) =>
 
 export const setMainDocCmd = (projectId: string, mainDoc: string) =>
   invoke<ProjectMeta>("set_main_doc", { projectId, mainDoc });
+
+// Pin a project's compile engine ("xetex" for bundled Tectonic, "latexmk" for
+// a system TeX toolchain) in its project.json.
+export const setProjectEngineCmd = (projectId: string, engine: string) =>
+  invoke<ProjectMeta>("set_project_engine", { projectId, engine });
 
 export const renameProjectCmd = (projectId: string, name: string) =>
   invoke<ProjectMeta>("rename_project", { projectId, name });
@@ -451,7 +456,18 @@ export interface EngineInfo {
   lualatex: string | null;
   tlmgr: string | null;
   version: string | null;
+  latexmk: string | null;
 }
+
+export interface TexDistribution {
+  kind: "oleafly-tinytex" | "mactex" | "texlive" | "miktex" | "tinytex" | "other";
+  label: string;
+  bin_dir: string;
+  latexmk: string | null;
+  tlmgr: string | null;
+}
+
+export const texDistributions = () => invoke<TexDistribution[]>("tex_distributions");
 
 export interface TaggedCompileResult {
   success: boolean;

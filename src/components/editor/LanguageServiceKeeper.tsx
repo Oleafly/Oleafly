@@ -40,7 +40,9 @@ function currentProjectSnapshot(): LanguageServiceProjectSnapshot {
   const index = useIndexStore.getState();
   return {
     projectId: files.projectId,
-    engineId: files.engine.id,
+    // Language tooling follows the source format, not the compiler: a latexmk
+    // project ("latexmk" id, "latex" source_format) still wants texlab.
+    engineId: files.engine.source_format,
     engineLoaded: files.engineLoaded,
     // The effective main document: an active-file `% !TEX root` override wins
     // over the stored main doc. The snapshot comparison sees it as a plain

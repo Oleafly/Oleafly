@@ -1,10 +1,29 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, Check, Cpu, Download, Info, Loader2, Trash2, X } from "lucide-react";
 import { useEngineStore } from "@/store/engine";
+import { useSettingsStore, type DefaultLatexEngine } from "@/store/settings";
 import { LATEX_PACKAGES, type TaggingStatus } from "@/lib/latex-packages";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+
+const ENGINE_CHOICES: Array<{
+  id: DefaultLatexEngine;
+  name: string;
+  detail: string;
+}> = [
+  {
+    id: "tectonic",
+    name: "Tectonic (built in)",
+    detail: "Ships with Oleafly. Fast, offline, zero setup. Covers plain LaTeX and most common packages.",
+  },
+  {
+    id: "latexmk",
+    name: "latexmk (system TeX)",
+    detail:
+      "Uses a TeX distribution on this machine (MacTeX, TeX Live, MiKTeX, or TinyTeX). Required for minted code highlighting, glossaries/makeindex, pythontex, and shell-escape-heavy journal templates.",
+  },
+];
 
 const TAG_BADGE: Record<TaggingStatus, { label: string; className: string } | null> = {
   ok: null,
@@ -15,6 +34,8 @@ const TAG_BADGE: Record<TaggingStatus, { label: string; className: string } | nu
 export function EngineSection() {
   const { info, installing, progress, installed, busyPkg, refresh, refreshPackages, install, remove, addPackage, removePackage } =
     useEngineStore();
+  const defaultLatexEngine = useSettingsStore((s) => s.defaultLatexEngine);
+  const setDefaultLatexEngine = useSettingsStore((s) => s.setDefaultLatexEngine);
   const [query, setQuery] = useState("");
 
   useEffect(() => {
@@ -30,6 +51,50 @@ export function EngineSection() {
 
   return (
     <div className="flex flex-col gap-5">
+      <div className="flex items-center gap-1.5">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Default compile engine</h3>
+        <Tooltip
+          wide
+          side="right"
+          label="Applies to new projects. Each project pins its own engine in project.json, so collaborators opening the same project compile it the same way regardless of this setting."
+        >
+          <Info className="size-3.5 cursor-help text-muted-foreground/60 hover:text-muted-foreground" />
+        </Tooltip>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        {ENGINE_CHOICES.map((choice) => {
+          const selected = defaultLatexEngine === choice.id;
+          const missing = choice.id === "latexmk" && !info?.latexmk;
+          return (
+            <button
+              key={choice.id}
+              type="button"
+              onClick={() => setDefaultLatexEngine(choice.id)}
+              className={cn(
+                "rounded-lg border p-3 text-left transition-colors hover:bg-accent/50",
+                selected && "border-primary ring-1 ring-primary",
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <Cpu className="size-4 text-muted-foreground" />
+                <span className="text-sm">{choice.name}</span>
+                {selected && <Check className="size-3.5 text-primary" />}
+                {missing && (
+                  <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-600 dark:text-amber-400">
+                    <AlertTriangle className="size-2.5" /> no latexmk found
+                  </span>
+                )}
+              </div>
+              <p className="mt-1 text-[11px] text-muted-foreground">{choice.detail}</p>
+              {choice.id === "latexmk" && info?.latexmk && (
+                <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground/70">{info.latexmk}</p>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
       <div className="flex items-center gap-1.5">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tagged / accessible export</h3>
         <Tooltip

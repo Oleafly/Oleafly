@@ -26,6 +26,7 @@ mod state;
 mod synctex;
 mod template_packs;
 mod templates;
+mod tex_distro;
 
 use state::AppState;
 
@@ -167,6 +168,7 @@ pub fn run() {
             project::has_pandoc,
             project::download_pandoc,
             latex_engine::latex_engine_info,
+            tex_distro::tex_distributions,
             latex_engine::has_tagging_engine,
             latex_engine::install_tinytex,
             latex_engine::delete_tinytex,
@@ -182,6 +184,7 @@ pub fn run() {
             connectors::get_connector_key,
             connectors::set_connector_key,
             project::set_main_doc,
+            project::set_project_engine,
             project::set_project_color,
             project::rename_project,
             project::open_devtools,
