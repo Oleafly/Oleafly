@@ -47,6 +47,27 @@ const DEFAULT_MAIN_DIAGRAM: &str = "\\documentclass[tikz,border=4pt]{standalone}
 \\end{tikzpicture}\n\
 \\end{document}\n";
 
+/// Reproducibility pin for latexmk projects: which TeX distribution and which
+/// package versions produced this project's output. Lives in project.json so
+/// it travels with git and every coauthor sees the same spec (the app-internal
+/// `.oleafly/` directory is deliberately gitignored, so it cannot live there).
+#[derive(Serialize, Deserialize, Default, Clone)]
+pub struct TexSpec {
+    /// Distribution kind ("oleafly-tinytex", "mactex", "texlive", "miktex", ...).
+    #[serde(default)]
+    pub distribution: String,
+    /// Human label, e.g. "TeX Live 2025".
+    #[serde(default)]
+    pub distribution_label: String,
+    /// tlmgr package -> version (CTAN version or TeX Live revision). The
+    /// npm-lockfile role: coauthors are prompted to install what is missing.
+    #[serde(default)]
+    pub packages: std::collections::BTreeMap<String, String>,
+    /// Unix epoch seconds when the spec was captured.
+    #[serde(default)]
+    pub recorded_at: f64,
+}
+
 #[derive(Serialize, Deserialize, Default, Clone)]
 pub struct ProjectMeta {
     #[serde(default)]
@@ -55,6 +76,9 @@ pub struct ProjectMeta {
     pub main_doc: String,
     #[serde(default = "default_engine")]
     pub engine: String,
+    /// Present on latexmk projects once an engine spec has been recorded.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tex: Option<TexSpec>,
     /// Book-cover color (hex). Empty means "unset" so the UI falls back to its
     /// default. Stored on disk so a project's color survives across machines.
     #[serde(default)]
@@ -151,6 +175,7 @@ pub fn read_meta(project_id: &str) -> Result<ProjectMeta, String> {
             exports: Vec::new(),
             hidden: false,
             forked_from: None,
+            tex: None,
         });
     }
     let s = std::fs::read_to_string(&p).map_err(|e| format!("failed to read project.json: {e}"))?;
@@ -882,6 +907,162 @@ pub async fn set_project_engine(
     Ok(meta)
 }
 
+fn epoch_seconds() -> f64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs_f64())
+        .unwrap_or(0.0)
+}
+
+fn collect_tex_spec() -> Option<TexSpec> {
+    let active = crate::tex_distro::list_distributions()
+        .into_iter()
+        .find(|d| d.latexmk.is_some())?;
+    // No tlmgr (e.g. MiKTeX, which installs packages on the fly) still yields
+    // a distribution pin; the package map just stays empty.
+    let packages = crate::latex_engine::tlmgr_installed_versions().unwrap_or_default();
+    Some(TexSpec {
+        distribution: active.kind,
+        distribution_label: active.label,
+        packages,
+        recorded_at: epoch_seconds(),
+    })
+}
+
+/// Capture the local TeX distribution + tlmgr package versions into the
+/// project's reproducibility pin. Called after a project switches to latexmk.
+/// The slow part (tlmgr info, seconds) runs before the lock is taken.
+#[tauri::command]
+pub async fn record_project_tex_spec(
+    state: tauri::State<'_, crate::state::AppState>,
+    project_id: String,
+) -> Result<Option<TexSpec>, String> {
+    let spec = tauri::async_runtime::spawn_blocking(collect_tex_spec)
+        .await
+        .map_err(|e| e.to_string())?;
+    let Some(spec) = spec else { return Ok(None) };
+    let _guard = state.compile_lock.lock().await;
+    let mut meta = read_meta(&project_id)?;
+    if meta.engine != "latexmk" {
+        return Ok(None);
+    }
+    meta.tex = Some(spec.clone());
+    write_meta(&project_id, &meta)?;
+    Ok(Some(spec))
+}
+
+/// How this machine compares against the project's reproducibility pin.
+#[derive(Serialize)]
+pub struct TexStatus {
+    pub pinned_label: String,
+    pub local_label: Option<String>,
+    pub distribution_differs: bool,
+    pub missing_packages: Vec<String>,
+    /// Whether "install the missing packages" is actionable here (tlmgr found).
+    pub can_install_missing: bool,
+}
+
+/// Compare the local TeX setup against the project pin (latexmk projects with
+/// a recorded spec only). Coauthors get prompted from this on project open.
+#[tauri::command]
+pub async fn project_tex_status(project_id: String) -> Result<Option<TexStatus>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let meta = read_meta(&project_id)?;
+        if meta.engine != "latexmk" {
+            return Ok(None);
+        }
+        let Some(spec) = meta.tex else {
+            return Ok(None);
+        };
+        let active = crate::tex_distro::list_distributions()
+            .into_iter()
+            .find(|d| d.latexmk.is_some());
+        let local_label = active.as_ref().map(|d| d.label.clone());
+        let can_install = active.as_ref().is_some_and(|d| d.tlmgr.is_some());
+        let missing_packages = if can_install && !spec.packages.is_empty() {
+            let installed = crate::latex_engine::tlmgr_installed_versions()
+                .map(|versions| {
+                    versions
+                        .into_keys()
+                        .collect::<std::collections::BTreeSet<_>>()
+                })
+                .unwrap_or_default();
+            spec.packages
+                .keys()
+                .filter(|name| !installed.contains(*name))
+                .cloned()
+                .collect()
+        } else {
+            Vec::new()
+        };
+        let distribution_differs = local_label.as_deref() != Some(spec.distribution_label.as_str());
+        Ok(Some(TexStatus {
+            pinned_label: spec.distribution_label,
+            local_label,
+            distribution_differs,
+            missing_packages,
+            can_install_missing: can_install,
+        }))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Record a successful compile's provenance under `.oleafly/builds/`.
+/// Best-effort: failures here must never fail the compile itself.
+pub(crate) fn write_build_metadata(
+    project_id: &str,
+    revision: u64,
+    engine: &str,
+    output_id: Option<&str>,
+    compile_time_ms: u64,
+) {
+    use sha2::Digest;
+    let Ok(dir) = paths::builds_metadata_dir(project_id) else {
+        return;
+    };
+    let tex = read_meta(project_id).ok().and_then(|meta| meta.tex);
+    let lockfile_hash = tex.as_ref().map(|spec| {
+        let serialized = serde_json::to_vec(&spec.packages).unwrap_or_default();
+        format!("sha256:{:x}", sha2::Sha256::digest(&serialized))
+    });
+    let record = serde_json::json!({
+        "revision": revision,
+        "engine": engine,
+        "distribution": tex.as_ref().map(|spec| spec.distribution_label.clone()),
+        "lockfile_hash": lockfile_hash,
+        "output_id": output_id,
+        "compile_time_ms": compile_time_ms,
+        "completed_at": epoch_seconds(),
+    });
+    let path = dir.join(format!("build-{revision:010}.json"));
+    if let Ok(bytes) = serde_json::to_vec_pretty(&record) {
+        let _ = std::fs::write(path, bytes);
+    }
+    prune_build_metadata(&dir, 20);
+}
+
+/// Keep only the newest `keep` build records (names sort chronologically
+/// because the revision is zero-padded).
+fn prune_build_metadata(dir: &Path, keep: usize) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    let mut names: Vec<String> = entries
+        .flatten()
+        .filter_map(|entry| entry.file_name().into_string().ok())
+        .filter(|name| name.starts_with("build-") && name.ends_with(".json"))
+        .collect();
+    if names.len() <= keep {
+        return;
+    }
+    names.sort();
+    let excess = names.len() - keep;
+    for name in names.into_iter().take(excess) {
+        let _ = std::fs::remove_file(dir.join(name));
+    }
+}
+
 fn engine_for_main_document(current_engine: &str, main_doc: &str) -> Result<String, String> {
     let current_is_typst = matches!(
         current_engine.trim().to_ascii_lowercase().as_str(),
@@ -927,6 +1108,7 @@ fn create_markdown_project_in(root: &Path, name: String) -> Result<String, Strin
                 exports: Vec::new(),
                 hidden: false,
                 forked_from: None,
+                tex: None,
             },
         )
     })?;
@@ -1100,6 +1282,7 @@ pub fn create_project(name: String) -> Result<String, String> {
                 exports: Vec::new(),
                 hidden: false,
                 forked_from: None,
+                tex: None,
             },
         )
     })?;
@@ -1179,6 +1362,7 @@ pub fn create_project_from_pdf_conversion(
                 exports: Vec::new(),
                 hidden: false,
                 forked_from: None,
+                tex: None,
             },
         )?;
         rename_exclusive(&staging, &destination)
@@ -1216,6 +1400,7 @@ fn create_typst_project_in(root: &Path, name: String) -> Result<String, String> 
                 exports: Vec::new(),
                 hidden: false,
                 forked_from: None,
+                tex: None,
             },
         )
     })?;
@@ -1269,6 +1454,7 @@ fn create_image_project_in(
                 exports: Vec::new(),
                 hidden: false,
                 forked_from: None,
+                tex: None,
             },
         )
     })?;
@@ -1314,6 +1500,7 @@ pub fn create_diagram_project(name: String, source: String) -> Result<String, St
                 exports: Vec::new(),
                 hidden: false,
                 forked_from: None,
+                tex: None,
             },
         )
     })?;
@@ -1337,6 +1524,7 @@ pub fn get_or_create_scratch_project() -> Result<String, String> {
                 exports: Vec::new(),
                 hidden: true,
                 forked_from: None,
+                tex: None,
             },
         )?;
     }
@@ -1765,6 +1953,7 @@ pub async fn create_project_from_docx(name: String, data_base64: String) -> Resu
                 exports: Vec::new(),
                 hidden: false,
                 forked_from: None,
+                tex: None,
             },
         )?;
         rename_exclusive(&staging, &destination)
@@ -2064,6 +2253,7 @@ pub fn create_project_from_template(
                 exports: Vec::new(),
                 hidden: false,
                 forked_from: None,
+                tex: None,
             },
         )
     })?;
@@ -3188,6 +3378,7 @@ mod tests {
             exports: Vec::new(),
             hidden: false,
             forked_from: None,
+            tex: None,
         };
         let json = serde_json::to_string(&meta).unwrap();
         let decoded: ProjectMeta = serde_json::from_str(&json).unwrap();
@@ -3405,6 +3596,7 @@ mod tests {
             exports: Vec::new(),
             hidden: false,
             forked_from: None,
+            tex: None,
         };
 
         let valid = projects.join("valid-project");
@@ -3451,6 +3643,7 @@ mod tests {
                         exports: Vec::new(),
                         hidden: false,
                         forked_from: None,
+                        tex: None,
                     },
                 )
                 .unwrap();

@@ -16,9 +16,12 @@ import {
   listProjects,
   readFileContent,
   renameFile as apiRenameFile,
+  projectTexStatus,
+  recordProjectTexSpec,
   renameProjectCmd,
   setMainDocCmd,
   setProjectEngineCmd,
+  tlmgrInstall,
   writeFileContent,
   type FileConflictStrategy,
   type FileEntry,
@@ -46,8 +49,65 @@ async function applyDefaultLatexEngine(projectId: string): Promise<void> {
   if (useSettingsStore.getState().defaultLatexEngine !== "latexmk") return;
   try {
     await setProjectEngineCmd(projectId, "latexmk");
+    void recordProjectTexSpec(projectId).catch(() => {});
   } catch {
     /* non-LaTeX project or validation refusal — keep the project's engine */
+  }
+}
+
+// Compare this machine against a latexmk project's TeX pin. Missing pinned
+// packages get an actionable toast; a differing distribution gets a one-time
+// heads-up. Both remember what was shown so reopening a project stays quiet.
+async function checkTexPinStatus(
+  projectId: string,
+  stillCurrent: () => boolean,
+): Promise<void> {
+  const status = await projectTexStatus(projectId).catch(() => null);
+  if (!status || !stillCurrent()) return;
+  const remember = (key: string, value: string): boolean => {
+    try {
+      if (localStorage.getItem(key) === value) return false;
+      localStorage.setItem(key, value);
+      return true;
+    } catch {
+      return true;
+    }
+  };
+  const missing = status.missing_packages;
+  if (missing.length > 0 && status.can_install_missing) {
+    const fresh = remember(`oleafly.texGap.${projectId}`, [...missing].sort().join(","));
+    if (!fresh) return;
+    toast.info(
+      `This project pins ${missing.length} LaTeX package${missing.length === 1 ? "" : "s"} that ${missing.length === 1 ? "is" : "are"} not installed here.`,
+      {
+        label: missing.length === 1 ? "Install it" : `Install all ${missing.length}`,
+        onClick: () => {
+          void (async () => {
+            toast.info(`Installing ${missing.length} pinned package${missing.length === 1 ? "" : "s"}…`);
+            try {
+              await tlmgrInstall(missing);
+              toast.success("Pinned LaTeX packages installed.");
+            } catch (error) {
+              notifyError(
+                "install pinned packages",
+                error,
+                "Some pinned packages could not be installed. See Settings → LaTeX Engine.",
+              );
+            }
+          })();
+        },
+      },
+      true,
+    );
+  } else if (status.distribution_differs && status.local_label) {
+    const fresh = remember(
+      `oleafly.texSkew.${projectId}`,
+      `${status.pinned_label}|${status.local_label}`,
+    );
+    if (!fresh) return;
+    toast.info(
+      `This project was pinned with ${status.pinned_label}; this machine compiles with ${status.local_label}. Output may differ slightly.`,
+    );
   }
 }
 
@@ -370,6 +430,13 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       if (seq === openSeq) {
         void (async () => {
         try {
+          // latexmk projects already have the full toolchain; instead of the
+          // import scan, check this machine against the project's TeX pin so
+          // coauthors get the same packages (and know about distro skew).
+          if (get().engine.id === "latexmk") {
+            await checkTexPinStatus(id, () => seq === openSeq && get().projectId === id);
+            return;
+          }
           const mainPath = meta.main_doc || "main.tex";
           const depth = (p: string) => p.split("/").length;
           const texPaths = tree
@@ -895,6 +962,9 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     set({ engine: UNKNOWN_ENGINE, engineLoaded: false, engineError: null });
     try {
       const meta = await setProjectEngineCmd(projectId, engineName);
+      // Capture the reproducibility pin (distro + tlmgr packages) for the new
+      // latexmk project in the background; slow tlmgr calls stay off this path.
+      if (engineName === "latexmk") void recordProjectTexSpec(projectId).catch(() => {});
       if (seq !== mainDocSeq || get().projectId !== projectId) return;
       const compile = await compileStore;
       if (seq !== mainDocSeq || get().projectId !== projectId) return;

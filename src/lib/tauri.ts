@@ -78,7 +78,33 @@ export interface ProjectMeta {
   engine: string;
   color?: string;
   kind?: string;
+  tex?: TexSpec | null;
 }
+
+// Reproducibility pin for latexmk projects (stored in project.json so it
+// travels with git and every coauthor sees the same spec).
+export interface TexSpec {
+  distribution: string;
+  distribution_label: string;
+  packages: Record<string, string>;
+  recorded_at: number;
+}
+
+export interface TexStatus {
+  pinned_label: string;
+  local_label: string | null;
+  distribution_differs: boolean;
+  missing_packages: string[];
+  can_install_missing: boolean;
+}
+
+// Capture the local distro + tlmgr package versions into the project pin.
+export const recordProjectTexSpec = (projectId: string) =>
+  invoke<TexSpec | null>("record_project_tex_spec", { projectId });
+
+// Compare this machine against the project pin (null when not applicable).
+export const projectTexStatus = (projectId: string) =>
+  invoke<TexStatus | null>("project_tex_status", { projectId });
 
 export interface ProjectInfo {
   id: string;

@@ -199,6 +199,8 @@ pub fn run() {
             connectors::set_connector_key,
             project::set_main_doc,
             project::set_project_engine,
+            project::record_project_tex_spec,
+            project::project_tex_status,
             project::set_project_color,
             project::rename_project,
             project::open_devtools,

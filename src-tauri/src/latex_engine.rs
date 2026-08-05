@@ -573,6 +573,42 @@ fn tlmgr_installed_blocking() -> Result<Vec<String>, String> {
         .collect())
 }
 
+/// Installed package -> revision, for the reproducibility pin in project.json.
+/// `cat-version` is the CTAN version where known; the TeX Live revision fills
+/// in when it is not. Empty map when no tlmgr exists (e.g. MiKTeX).
+pub fn tlmgr_installed_versions() -> Result<std::collections::BTreeMap<String, String>, String> {
+    let tlmgr = tlmgr_path()?;
+    let out = Command::new(&tlmgr)
+        .no_console()
+        .args([
+            "info",
+            "--only-installed",
+            "--data",
+            "name,revision,cat-version",
+        ])
+        .output()
+        .map_err(|e| format!("failed to run tlmgr: {e}"))?;
+    if !out.status.success() {
+        return Err(String::from_utf8_lossy(&out.stderr).trim().to_string());
+    }
+    let mut versions = std::collections::BTreeMap::new();
+    for line in String::from_utf8_lossy(&out.stdout).lines() {
+        let mut fields = line.trim().splitn(3, ',');
+        let Some(name) = fields.next().map(str::trim).filter(|n| !n.is_empty()) else {
+            continue;
+        };
+        let revision = fields.next().map(str::trim).unwrap_or("");
+        let cat_version = fields.next().map(str::trim).unwrap_or("");
+        let version = if cat_version.is_empty() {
+            format!("r{revision}")
+        } else {
+            cat_version.to_string()
+        };
+        versions.insert(name.to_string(), version);
+    }
+    Ok(versions)
+}
+
 /// Install TeX packages by name via tlmgr. Returns the combined output log.
 #[tauri::command]
 pub async fn tlmgr_install(packages: Vec<String>) -> Result<String, String> {

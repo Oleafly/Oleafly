@@ -106,6 +106,13 @@ pub fn figure_build_dir(project_id: &str) -> Result<PathBuf, String> {
     secure_build_subdirectory(project_id, "figbuild")
 }
 
+/// Build metadata records: `<project>/.oleafly/builds/`. One small JSON per
+/// successful compile (engine + distribution + lockfile hash) so "my
+/// coauthor's PDF looks different" is diagnosable.
+pub fn builds_metadata_dir(project_id: &str) -> Result<PathBuf, String> {
+    secure_build_subdirectory(project_id, "builds")
+}
+
 fn secure_build_subdirectory(project_id: &str, name: &str) -> Result<PathBuf, String> {
     let project = project_dir(project_id)?;
     secure_build_subdirectory_in(&project, name)
