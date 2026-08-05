@@ -201,6 +201,7 @@ pub fn run() {
             project::set_project_engine,
             project::record_project_tex_spec,
             project::project_tex_status,
+            project::import_overleaf_project,
             project::set_project_color,
             project::rename_project,
             project::open_devtools,

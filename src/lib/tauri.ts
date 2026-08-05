@@ -102,6 +102,11 @@ export interface TexStatus {
 export const recordProjectTexSpec = (projectId: string) =>
   invoke<TexSpec | null>("record_project_tex_spec", { projectId });
 
+// Import an Overleaf ZIP export (or a plain folder) as a new project; the
+// main document is inferred when the archive carries no project.json.
+export const importOverleafProjectCmd = (path: string, name?: string) =>
+  invoke<string>("import_overleaf_project", { path, name: name ?? null });
+
 // Compare this machine against the project pin (null when not applicable).
 export const projectTexStatus = (projectId: string) =>
   invoke<TexStatus | null>("project_tex_status", { projectId });

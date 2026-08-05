@@ -11,6 +11,7 @@ import {
   gitRestore,
   getProject,
   getProjectEngine,
+  importOverleafProjectCmd,
   importPathsIntoProject as apiImportPathsIntoProject,
   listFiles,
   listProjects,
@@ -142,6 +143,7 @@ interface FilesStore {
   openProject: (id: string) => Promise<void>;
   closeProject: () => Promise<void>;
   createProject: (name: string) => Promise<void>;
+  importProject: (path: string) => Promise<string>;
   createTypstProject: (name: string) => Promise<void>;
   createMarkdownProject: (name: string) => Promise<void>;
   renameProject: (name: string) => Promise<void>;
@@ -568,6 +570,14 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const meta = await renameProjectCmd(projectId, name);
     set({ projectName: meta.name });
     await get().refreshProjects();
+  },
+
+  importProject: async (path) => {
+    const id = await importOverleafProjectCmd(path);
+    await applyDefaultLatexEngine(id);
+    await get().refreshProjects();
+    await get().openProject(id);
+    return id;
   },
 
   createFromTemplate: async (name, templateId, color) => {

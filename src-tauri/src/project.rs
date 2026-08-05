@@ -1407,6 +1407,333 @@ fn create_typst_project_in(root: &Path, name: String) -> Result<String, String> 
     Ok(id)
 }
 
+// --- Overleaf / external project import --------------------------------------
+
+const IMPORT_MAX_ENTRIES: usize = 5000;
+const IMPORT_MAX_TOTAL_BYTES: u64 = 2 * 1024 * 1024 * 1024; // 2 GiB
+const IMPORT_MAX_DEPTH: usize = 16;
+
+/// Junk and app-internal entries that never belong in an imported project.
+fn import_skip(rel: &str) -> bool {
+    rel.split('/').any(|segment| {
+        matches!(
+            segment,
+            "__MACOSX" | ".DS_Store" | ".git" | ".oleafly" | "Thumbs.db"
+        )
+    })
+}
+
+/// Import an Overleaf export (ZIP) or a plain folder as a new project.
+/// The main document is inferred when the archive has no project.json:
+/// a `% !TeX root` magic comment wins, then `\documentclass` +
+/// `\begin{document}` + a root-level `main.tex`-style name score best, and a
+/// lone `.tex` file is simply it.
+#[tauri::command]
+pub async fn import_overleaf_project(name: Option<String>, path: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || import_overleaf_project_blocking(name, &path))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+fn import_overleaf_project_blocking(name: Option<String>, path: &str) -> Result<String, String> {
+    let source = PathBuf::from(path);
+    if !source.exists() {
+        return Err(format!("import source not found: {path}"));
+    }
+    let root = paths::projects_root()?;
+    let id = unique_random_slug(&root)?;
+    let dir = root.join(&id);
+    let fallback_name = source
+        .file_stem()
+        .map(|stem| stem.to_string_lossy().into_owned())
+        .filter(|stem| !stem.trim().is_empty())
+        .unwrap_or_else(|| "Imported project".to_string());
+    let project_name = name
+        .filter(|candidate| !candidate.trim().is_empty())
+        .unwrap_or(fallback_name);
+    create_project_transaction(&dir, || {
+        if source.is_dir() {
+            copy_tree_for_import(&source, &dir, 0, &mut 0, &mut 0)?;
+        } else {
+            extract_zip_for_import(&source, &dir)?;
+        }
+        flatten_single_root_folder(&dir)?;
+        // An Oleafly-exported archive round-trips: keep its project.json when
+        // it still points at a real file. Overleaf archives have none.
+        let existing = read_import_meta(&dir);
+        let meta = match existing {
+            Some(mut meta) if dir.join(&meta.main_doc).is_file() => {
+                meta.name = project_name.clone();
+                meta
+            }
+            _ => {
+                let main_doc = infer_main_document(&dir)?;
+                let engine = engine_for_main_document(&default_engine(), &main_doc)
+                    .unwrap_or_else(|_| default_engine());
+                ProjectMeta {
+                    name: project_name.clone(),
+                    main_doc,
+                    engine,
+                    ..Default::default()
+                }
+            }
+        };
+        write_meta_at(&dir.join("project.json"), &meta)
+    })?;
+    Ok(id)
+}
+
+fn read_import_meta(dir: &Path) -> Option<ProjectMeta> {
+    let raw = std::fs::read_to_string(dir.join("project.json")).ok()?;
+    serde_json::from_str::<ProjectMeta>(&raw).ok()
+}
+
+fn extract_zip_for_import(archive: &Path, dest: &Path) -> Result<(), String> {
+    let file = std::fs::File::open(archive).map_err(|e| format!("failed to open archive: {e}"))?;
+    let mut zip = zip::ZipArchive::new(file).map_err(|e| format!("not a readable ZIP: {e}"))?;
+    if zip.len() > IMPORT_MAX_ENTRIES {
+        return Err(format!(
+            "archive has too many entries ({} > {IMPORT_MAX_ENTRIES})",
+            zip.len()
+        ));
+    }
+    let mut total: u64 = 0;
+    for index in 0..zip.len() {
+        let mut entry = zip.by_index(index).map_err(|e| e.to_string())?;
+        let Some(rel) = entry.enclosed_name() else {
+            continue; // unsafe path (absolute / traversal): skip
+        };
+        let rel_text = rel.to_string_lossy().replace('\\', "/");
+        if import_skip(&rel_text) || rel.components().count() > IMPORT_MAX_DEPTH {
+            continue;
+        }
+        let out = dest.join(&rel);
+        if entry.is_dir() {
+            std::fs::create_dir_all(&out).map_err(|e| e.to_string())?;
+            continue;
+        }
+        total = total.saturating_add(entry.size());
+        if total > IMPORT_MAX_TOTAL_BYTES {
+            return Err("archive is larger than the 2 GB import limit".to_string());
+        }
+        if let Some(parent) = out.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        let mut output = std::fs::File::create(&out).map_err(|e| e.to_string())?;
+        std::io::copy(&mut entry, &mut output).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+fn copy_tree_for_import(
+    source: &Path,
+    dest: &Path,
+    depth: usize,
+    entries: &mut usize,
+    total: &mut u64,
+) -> Result<(), String> {
+    if depth > IMPORT_MAX_DEPTH {
+        return Ok(());
+    }
+    std::fs::create_dir_all(dest).map_err(|e| e.to_string())?;
+    for entry in std::fs::read_dir(source).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let file_type = entry.file_type().map_err(|e| e.to_string())?;
+        if file_type.is_symlink() {
+            continue;
+        }
+        let file_name = entry.file_name();
+        let name_text = file_name.to_string_lossy();
+        if import_skip(&name_text) {
+            continue;
+        }
+        *entries += 1;
+        if *entries > IMPORT_MAX_ENTRIES {
+            return Err(format!(
+                "folder has too many files (> {IMPORT_MAX_ENTRIES})"
+            ));
+        }
+        let target = dest.join(&file_name);
+        if file_type.is_dir() {
+            copy_tree_for_import(&entry.path(), &target, depth + 1, entries, total)?;
+        } else if file_type.is_file() {
+            let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
+            *total = total.saturating_add(size);
+            if *total > IMPORT_MAX_TOTAL_BYTES {
+                return Err("folder is larger than the 2 GB import limit".to_string());
+            }
+            std::fs::copy(entry.path(), &target).map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
+}
+
+/// Zipping a folder usually wraps everything in one top-level directory.
+/// Unwrap it so the project root holds the actual files.
+fn flatten_single_root_folder(dir: &Path) -> Result<(), String> {
+    let entries: Vec<_> = std::fs::read_dir(dir)
+        .map_err(|e| e.to_string())?
+        .flatten()
+        .collect();
+    if entries.len() != 1 {
+        return Ok(());
+    }
+    let only = &entries[0];
+    if !only.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+        return Ok(());
+    }
+    let wrapper = only.path();
+    for child in std::fs::read_dir(&wrapper)
+        .map_err(|e| e.to_string())?
+        .flatten()
+    {
+        let target = dir.join(child.file_name());
+        std::fs::rename(child.path(), target).map_err(|e| e.to_string())?;
+    }
+    std::fs::remove_dir(&wrapper).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Pick the compile entry point for an imported project. See
+/// `import_overleaf_project` for the strategy.
+fn infer_main_document(dir: &Path) -> Result<String, String> {
+    let mut tex_files: Vec<String> = Vec::new();
+    collect_tex_files(dir, dir, 0, &mut tex_files);
+    if tex_files.is_empty() {
+        return Err(
+            "No .tex file was found in the import, so there is nothing to compile. \
+             Pick an Overleaf ZIP export or a folder containing a LaTeX project."
+                .to_string(),
+        );
+    }
+    tex_files.sort();
+    if tex_files.len() == 1 {
+        return Ok(tex_files.remove(0));
+    }
+    let mut heads: Vec<(String, String)> = tex_files
+        .iter()
+        .map(|rel| (rel.clone(), read_head_for_import(&dir.join(rel))))
+        .collect();
+    // A `% !TeX root = ...` magic comment anywhere wins when its target exists.
+    for (rel, head) in &heads {
+        if let Some(target) = tex_root_magic_target(head) {
+            let base = Path::new(rel).parent().unwrap_or(Path::new(""));
+            let joined = normalize_relative(&base.join(&target));
+            if let Some(joined) = joined {
+                if tex_files.iter().any(|candidate| candidate == &joined) {
+                    return Ok(joined);
+                }
+            }
+        }
+    }
+    heads.sort_by_key(|(rel, head)| {
+        let mut score: i32 = 0;
+        if head.contains("\\documentclass") {
+            score += 4;
+        }
+        if head.contains("\\begin{document}") {
+            score += 2;
+        }
+        if !rel.contains('/') {
+            score += 2;
+        }
+        let filename = rel.rsplit('/').next().unwrap_or(rel).to_ascii_lowercase();
+        if filename == "main.tex" {
+            score += 3;
+        } else if filename.starts_with("main") || filename == "root.tex" {
+            score += 1;
+        }
+        // Sort ascending: best score first via negation, then shallow, then name.
+        (-score, rel.matches('/').count(), rel.clone())
+    });
+    Ok(heads.remove(0).0)
+}
+
+fn collect_tex_files(root: &Path, dir: &Path, depth: usize, output: &mut Vec<String>) {
+    if depth > IMPORT_MAX_DEPTH {
+        return;
+    }
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let Ok(file_type) = entry.file_type() else {
+            continue;
+        };
+        if file_type.is_symlink() {
+            continue;
+        }
+        let path = entry.path();
+        if file_type.is_dir() {
+            if entry.file_name() != ".oleafly" {
+                collect_tex_files(root, &path, depth + 1, output);
+            }
+        } else if path
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("tex"))
+        {
+            if let Ok(rel) = path.strip_prefix(root) {
+                output.push(
+                    rel.components()
+                        .map(|c| c.as_os_str().to_string_lossy())
+                        .collect::<Vec<_>>()
+                        .join("/"),
+                );
+            }
+        }
+    }
+}
+
+fn read_head_for_import(path: &Path) -> String {
+    use std::io::Read;
+    const MAX_HEAD: u64 = 64 * 1024;
+    let Ok(file) = std::fs::File::open(path) else {
+        return String::new();
+    };
+    let mut bytes = Vec::new();
+    let _ = file.take(MAX_HEAD).read_to_end(&mut bytes);
+    String::from_utf8_lossy(&bytes).into_owned()
+}
+
+/// `% !TeX root = ../main.tex` (TeXShop/latexmk convention, case-insensitive).
+fn tex_root_magic_target(head: &str) -> Option<String> {
+    for line in head.lines().take(50) {
+        let trimmed = line.trim();
+        let Some(rest) = trimmed.strip_prefix('%') else {
+            continue;
+        };
+        let lower = rest.trim().trim_start_matches('!').to_ascii_lowercase();
+        if !lower.starts_with("tex root") {
+            continue;
+        }
+        let original = rest.trim().trim_start_matches('!');
+        let value = original
+            .split_once('=')
+            .map(|(_, rest)| rest.trim())
+            .filter(|v| !v.is_empty())?;
+        return Some(value.to_string());
+    }
+    None
+}
+
+/// Resolve `.`/`..` inside a joined relative path; None when it escapes root.
+fn normalize_relative(path: &Path) -> Option<String> {
+    let mut parts: Vec<String> = Vec::new();
+    for component in path.components() {
+        match component {
+            std::path::Component::Normal(part) => {
+                parts.push(part.to_string_lossy().into_owned());
+            }
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => {
+                parts.pop()?;
+            }
+            _ => return None,
+        }
+    }
+    Some(parts.join("/"))
+}
+
 fn create_project_transaction<F>(dir: &Path, initialize: F) -> Result<(), String>
 where
     F: FnOnce() -> Result<(), String>,
