@@ -26,7 +26,8 @@ import {
 } from "@/lib/tauri";
 import { UNKNOWN_ENGINE } from "@/lib/document-engine";
 import { flushAutoCommit, scheduleAutoCommit } from "@/lib/auto-commit";
-import { notifyError } from "@/lib/toast";
+import { notifyError, toast } from "@/lib/toast";
+import { scanImportCompatibility } from "@oleafly/latex";
 import { cancelProofreading } from "@/lib/proofreading/client";
 import { useDiffStore } from "@/store/diff";
 import { nextTabSeq } from "@/store/tab-order";
@@ -340,6 +341,35 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
         }
       }
       await get().openFile(meta.main_doc || "main.tex");
+      // Overleaf-import compatibility: surface known tool gaps early (biblatex,
+      // minted, glossaries, …) so compile failures are less mysterious.
+      if (seq === openSeq) {
+        try {
+          const mainPath = meta.main_doc || "main.tex";
+          const mainContent =
+            get().files[mainPath]?.content ??
+            (await readFileContent(id, mainPath).catch(() => ""));
+          let latexmkrc: string | null = null;
+          if (tree.some((f) => !f.is_dir && f.path === "latexmkrc")) {
+            latexmkrc = await readFileContent(id, "latexmkrc").catch(() => null);
+          }
+          const findings = scanImportCompatibility({
+            texFiles: [{ path: mainPath, content: mainContent }],
+            latexmkrc,
+          });
+          const blockers = findings.filter((f) => f.level === "blocker");
+          const warnings = findings.filter((f) => f.level === "warning");
+          if (blockers.length > 0) {
+            toast.info(
+              `${blockers[0].title}${blockers.length > 1 ? ` (+${blockers.length - 1} more)` : ""}`,
+            );
+          } else if (warnings.some((f) => f.id === "biblatex-biber")) {
+            toast.info("This project uses biblatex/Biber for the bibliography.");
+          }
+        } catch {
+          /* scan is best-effort */
+        }
+      }
     } catch (e) {
       // Surface the failure and fall back to the library rather than leaving the
       // app wedged in a half-open project with an empty tree.

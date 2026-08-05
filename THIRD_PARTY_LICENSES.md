@@ -24,6 +24,7 @@ cargo install cargo-about && cargo about generate about.hbs   # Rust / backend
 | Component | Purpose | License |
 |---|---|---|
 | [Tectonic](https://tectonic-typesetting.github.io/) | LaTeX compiler (sidecar) | MIT |
+| [Biber 2.17](https://sourceforge.net/projects/biblatex-biber/) | Bibliography backend for biblatex (`tectonic-biber` sidecar, version-pinned to Tectonic’s biblatex) | Artistic-2.0 / GPL-1.0-or-later |
 | [Typst](https://github.com/typst/typst) | Typst compiler 0.15.0 (sidecar) | Apache-2.0 |
 | [Tinymist 0.15.2](https://github.com/Myriad-Dreamin/tinymist/tree/v0.15.2) | Typst language server (checksum-pinned upstream archive resource), © 2023–2025 Myriad Dreamin and Nathan Varner | Apache-2.0 |
 

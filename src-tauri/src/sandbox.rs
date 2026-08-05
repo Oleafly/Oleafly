@@ -185,19 +185,23 @@ impl AtomicFile {
                 )?;
             }
         }
-        std::fs::OpenOptions::new()
+        // Staging-file fsync is best-effort. Some volumes reject fsync while
+        // still accepting rename; failing the whole export after a good write
+        // would tell the user the PDF was not saved when it was.
+        let _ = std::fs::OpenOptions::new()
             // Windows maps sync_all() to FlushFileBuffers, which rejects a
             // handle opened without GENERIC_WRITE. A read-only reopen works
             // on Unix but makes every atomic write fail with access denied on
             // Windows, so reopen the completed staging file for writing.
             .write(true)
             .open(&self.staging)
-            .and_then(|file| file.sync_all())
-            .map_err(|error| format!("failed to sync staged artifact: {error}"))?;
+            .and_then(|file| file.sync_all());
         replace_file(&self.staging, &self.destination)
             .map_err(|error| format!("failed to publish staged artifact: {error}"))?;
+        // From here the destination file exists. Nothing after this point may
+        // turn a successful publish into a user-facing export failure.
         self.committed = true;
-        sync_parent(&self.destination)?;
+        let _ = sync_parent(&self.destination);
         Ok(())
     }
 }
@@ -276,9 +280,22 @@ fn sync_parent(destination: &Path) -> Result<(), String> {
     let parent = destination
         .parent()
         .ok_or_else(|| "file destination has no parent folder".to_string())?;
-    std::fs::File::open(parent)
-        .and_then(|directory| directory.sync_all())
-        .map_err(|error| format!("failed to sync destination folder: {error}"))
+    match std::fs::File::open(parent).and_then(|directory| directory.sync_all()) {
+        Ok(()) => Ok(()),
+        // macOS TCC (Desktop/Downloads/Documents), iCloud, and some network
+        // volumes reject fsync on directories the app did not create, even when
+        // the user-chosen file rename already succeeded. The PDF is already at
+        // the destination; treat this as best-effort durability, not a failure.
+        Err(error)
+            if matches!(
+                error.kind(),
+                std::io::ErrorKind::PermissionDenied | std::io::ErrorKind::Unsupported
+            ) || matches!(error.raw_os_error(), Some(libc::EPERM) | Some(libc::EACCES)) =>
+        {
+            Ok(())
+        }
+        Err(error) => Err(format!("failed to sync destination folder: {error}")),
+    }
 }
 
 #[cfg(not(unix))]
@@ -379,6 +396,27 @@ mod tests {
         assert_eq!(std::fs::read(&destination).unwrap(), b"complete artifact");
         assert_eq!(std::fs::read_dir(&root).unwrap().count(), 1);
         std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn sync_parent_tolerates_permission_denied_on_directory_fsync() {
+        // /dev is not a normal export target; open+fsync may fail with EPERM
+        // on some platforms. The helper must not turn that into a hard error
+        // when the destination file path's parent is restricted.
+        let destination = PathBuf::from("/dev/null-oleafly-export-probe");
+        // If the parent cannot be opened at all with PermissionDenied, we still
+        // accept that as non-fatal. Other failures (missing parent name) remain
+        // errors only when they are not permission-related.
+        let result = sync_parent(&destination);
+        // On systems where /dev is openable and fsync works, Ok is fine too.
+        // PermissionDenied paths must not surface as Err.
+        if let Err(message) = result {
+            assert!(
+                !message.contains("Operation not permitted")
+                    && !message.contains("Permission denied"),
+                "permission errors on directory fsync must be best-effort: {message}"
+            );
+        }
     }
 
     #[test]

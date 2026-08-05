@@ -10,10 +10,20 @@ engine-specific policy.
 - Default engine: bundled Tectonic sidecar.
 - Supports multi-file projects, images, bibliography files, SyncTeX, and
   cached/offline compilation when packages are available.
-- Compile logs are normalized into editor diagnostics.
+- **biblatex / Biber:** Tectonic 0.16 ships biblatex 3.17, which requires Biber
+  2.17. Oleafly packages a pinned `tectonic-biber` sidecar (see
+  `scripts/fetch-biber.sh`), puts it on `PATH` for the compile child, and if a
+  `.bcf` is left without a usable `.bbl`, runs that Biber explicitly and
+  re-typesets once. This avoids GUI `PATH` misses and system-Biber version skew.
+- Compile logs are normalized into editor diagnostics. Incomplete bibliography
+  steps surface as `[Oleafly]` notes distinguishing “Biber not found” from
+  “Biber/biblatex version mismatch”.
 - Optional LuaLaTeX support can prepare and verify tagged PDF output for
   accessibility-oriented workflows; it is separate from the default Tectonic
   path.
+- Import scan (`@oleafly/latex` `scanImportCompatibility`) flags Overleaf-style
+  requirements (biblatex, minted, glossaries, shell-escape, fonts) when a
+  project is opened.
 
 ## Typst
 
