@@ -7,8 +7,6 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::proc::NoConsole;
-
 /// Locate a version-pinned `tectonic-biber` binary for the current app layout.
 pub fn find_tectonic_biber() -> Option<PathBuf> {
     tectonic_biber_candidates()
@@ -128,44 +126,17 @@ messages above, then recompile.\n",
     message
 }
 
-/// Run Biber on the entry stem in the build directory (explicit recovery path).
-pub fn run_biber(
-    biber: &Path,
-    out_dir: &Path,
-    project_dir: &Path,
-    entry_stem: &str,
-) -> Result<String, String> {
-    use std::process::Command;
-    // Biber reads the .bcf next to the jobname; Tectonic writes it to out_dir.
-    let mut cmd = Command::new(biber);
-    cmd.no_console()
-        .arg("--output-directory")
-        .arg(out_dir)
-        .arg("--input-directory")
-        .arg(out_dir)
-        .arg(entry_stem)
-        .current_dir(project_dir)
-        .env("PATH", compile_path_env());
-    // Also search the project for .bib files relative to the project root.
-    let output = cmd
-        .output()
-        .map_err(|e| format!("failed to run biber {}: {e}", biber.display()))?;
-    let log = format!(
-        "{}{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    if !output.status.success() {
-        return Err(if log.trim().is_empty() {
-            format!(
-                "biber exited with status {}",
-                output.status.code().unwrap_or(-1)
-            )
-        } else {
-            log
-        });
-    }
-    Ok(log)
+/// CLI args for running Biber on the entry stem written under `out_dir`.
+/// Callers should spawn via the supervised compile process path so timeout,
+/// cancel, and process-group isolation match Tectonic.
+pub fn biber_cli_args(out_dir: &Path, entry_stem: &str) -> Vec<String> {
+    vec![
+        "--output-directory".into(),
+        out_dir.to_string_lossy().into_owned(),
+        "--input-directory".into(),
+        out_dir.to_string_lossy().into_owned(),
+        entry_stem.into(),
+    ]
 }
 
 fn tectonic_biber_candidates() -> Vec<PathBuf> {
@@ -311,5 +282,20 @@ This means that your biber (2.20) and biblatex (3.17) versions are incompatible.
     fn compile_path_env_is_non_empty() {
         let env = compile_path_env();
         assert!(!env.is_empty());
+    }
+
+    #[test]
+    fn biber_cli_args_target_out_dir_and_entry_stem() {
+        let args = biber_cli_args(Path::new("/build"), "_oleafly_entry");
+        assert_eq!(
+            args,
+            [
+                "--output-directory",
+                "/build",
+                "--input-directory",
+                "/build",
+                "_oleafly_entry"
+            ]
+        );
     }
 }

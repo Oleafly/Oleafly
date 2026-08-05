@@ -860,44 +860,58 @@ pub async fn compile(request: CompileRequest<'_>) -> Result<CompileResult, Strin
                         )
                         .as_bytes(),
                     );
-                    match crate::biber_toolchain::run_biber(
+                    let biber_args = crate::biber_toolchain::biber_cli_args(out_dir, stem);
+                    // Same supervised path as Tectonic: timeout, cancel, isolation.
+                    let biber_run = run_supervised_process(
                         &biber,
-                        out_dir,
+                        &biber_args,
                         &spec.working_dir,
-                        stem,
-                    ) {
-                        Ok(biber_log) => {
+                        Some((request.app.clone(), request.log_event.to_owned())),
+                        COMPILE_TIMEOUT,
+                        request.cancel,
+                    )
+                    .await;
+                    match biber_run {
+                        Ok((biber_log, biber_code)) => {
                             append_bounded(&mut biber_notes, biber_log.as_bytes());
-                            append_bounded(
-                                &mut biber_notes,
-                                b"\n[Oleafly] Re-running Tectonic after Biber...\n",
-                            );
-                            let (retry_out, retry_code) = match &spec.executable {
-                                EngineExecutable::BundledSidecar(name) => {
-                                    run_bundled(
-                                        request.app,
-                                        name,
-                                        &spec.args,
-                                        &spec.working_dir,
-                                        request.log_event,
-                                        request.cancel,
-                                    )
-                                    .await?
-                                }
-                                EngineExecutable::ExternalPath(path) => {
-                                    run_external(
-                                        request.app,
-                                        path,
-                                        &spec.args,
-                                        &spec.working_dir,
-                                        request.log_event,
-                                        request.cancel,
-                                    )
-                                    .await?
-                                }
-                            };
-                            stdout_buf = retry_out;
-                            exit_code = retry_code;
+                            if biber_code.unwrap_or(-1) != 0 {
+                                let diagnosis = crate::biber_toolchain::diagnose_biber_gap(
+                                    &biber_log,
+                                    Some(biber.as_path()),
+                                );
+                                append_bounded(&mut biber_notes, diagnosis.as_bytes());
+                            } else {
+                                append_bounded(
+                                    &mut biber_notes,
+                                    b"\n[Oleafly] Re-running Tectonic after Biber...\n",
+                                );
+                                let (retry_out, retry_code) = match &spec.executable {
+                                    EngineExecutable::BundledSidecar(name) => {
+                                        run_bundled(
+                                            request.app,
+                                            name,
+                                            &spec.args,
+                                            &spec.working_dir,
+                                            request.log_event,
+                                            request.cancel,
+                                        )
+                                        .await?
+                                    }
+                                    EngineExecutable::ExternalPath(path) => {
+                                        run_external(
+                                            request.app,
+                                            path,
+                                            &spec.args,
+                                            &spec.working_dir,
+                                            request.log_event,
+                                            request.cancel,
+                                        )
+                                        .await?
+                                    }
+                                };
+                                stdout_buf = retry_out;
+                                exit_code = retry_code;
+                            }
                         }
                         Err(error) => {
                             append_bounded(&mut biber_notes, error.as_bytes());

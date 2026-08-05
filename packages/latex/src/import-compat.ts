@@ -1,6 +1,9 @@
 /**
  * Lightweight static scan of LaTeX sources for Overleaf-style requirements
  * that need extra tools beyond a single Tectonic typesetting pass.
+ *
+ * Matching is linear-time (indexOf / fixed-window scans) so adversarial
+ * project text cannot trigger ReDoS. Input is capped before scanning.
  */
 
 export type ImportCompatLevel = "info" | "warning" | "blocker";
@@ -12,17 +15,52 @@ export type ImportCompatFinding = {
   detail: string;
 };
 
-const BIBLATEX =
-  /\\usepackage(?:\[[^\]]*\])?\{[^}]*biblatex[^}]*\}|\\addbibresource\s*\{/;
-const BIBER_BACKEND = /backend\s*=\s*biber|\\usepackage\[[^\]]*backend\s*=\s*biber/;
-const MINTED = /\\usepackage(?:\[[^\]]*\])?\{[^}]*minted[^}]*\}|\\begin\{minted\}/;
-const GLOSSARIES =
-  /\\usepackage(?:\[[^\]]*\])?\{[^}]*(?:glossaries|imakeidx|makeidx)[^}]*\}|\\makeglossaries|\\printglossar/;
-const PYTHONTEX = /\\usepackage(?:\[[^\]]*\])?\{[^}]*pythontex[^}]*\}|\\begin\{pycode\}/;
-const SHELL_ESCAPE = /\\write18|\\ShellEscape|\\input\{\|/;
-const FONTSPEC = /\\usepackage(?:\[[^\]]*\])?\{[^}]*fontspec[^}]*\}|\\setmainfont\s*\{/;
-const PDFTEX_ONLY =
-  /\\usepackage(?:\[[^\]]*\])?\{[^}]*(?:cmap|inputenc)[^}]*\}|\\pdfoutput|\\pdfliteral/;
+/** Cap combined TeX size so import scan stays cheap and predictable. */
+const MAX_SCAN_CHARS = 512 * 1024;
+
+/**
+ * True if `\usepackage[...]{...}` (or without options) loads a package whose
+ * name equals `pkg` or appears in a comma-separated package list.
+ * Scans with indexOf only — no nested quantifiers.
+ */
+export function loadsPackage(tex: string, pkg: string): boolean {
+  const needle = "\\usepackage";
+  let from = 0;
+  while (from < tex.length) {
+    const idx = tex.indexOf(needle, from);
+    if (idx === -1) return false;
+    let j = idx + needle.length;
+    while (j < tex.length && (tex[j] === " " || tex[j] === "\t")) j += 1;
+    if (tex[j] === "[") {
+      const closeOpt = tex.indexOf("]", j + 1);
+      if (closeOpt === -1) {
+        from = idx + 1;
+        continue;
+      }
+      // Optional args can contain backend=biber etc.
+      const opts = tex.slice(j + 1, closeOpt);
+      if (pkg === "biber" && opts.includes("backend=biber")) return true;
+      j = closeOpt + 1;
+      while (j < tex.length && (tex[j] === " " || tex[j] === "\t")) j += 1;
+    }
+    if (tex[j] !== "{") {
+      from = idx + 1;
+      continue;
+    }
+    const close = tex.indexOf("}", j + 1);
+    if (close === -1) return false;
+    const list = tex.slice(j + 1, close);
+    for (const part of list.split(",")) {
+      if (part.trim() === pkg) return true;
+    }
+    from = close + 1;
+  }
+  return false;
+}
+
+function includesLiteral(tex: string, snippet: string): boolean {
+  return tex.includes(snippet);
+}
 
 /**
  * Scan concatenated project TeX (and optional latexmkrc) for known import gaps.
@@ -33,12 +71,18 @@ export function scanImportCompatibility(sources: {
   latexmkrc?: string | null;
 }): ImportCompatFinding[] {
   const findings: ImportCompatFinding[] = [];
-  const tex = (sources.texFiles ?? [])
-    .map((f) => f.content)
-    .join("\n\n");
+  const texRaw = (sources.texFiles ?? []).map((f) => f.content).join("\n\n");
+  const tex =
+    texRaw.length > MAX_SCAN_CHARS ? texRaw.slice(0, MAX_SCAN_CHARS) : texRaw;
   const latexmkrc = sources.latexmkrc ?? "";
 
-  if (BIBLATEX.test(tex) || BIBER_BACKEND.test(tex) || /biber/i.test(latexmkrc)) {
+  const usesBiblatex =
+    loadsPackage(tex, "biblatex") ||
+    includesLiteral(tex, "\\addbibresource{") ||
+    includesLiteral(tex, "backend=biber") ||
+    latexmkrc.toLowerCase().includes("biber");
+
+  if (usesBiblatex) {
     findings.push({
       id: "biblatex-biber",
       level: "warning",
@@ -48,7 +92,7 @@ export function scanImportCompatibility(sources: {
     });
   }
 
-  if (MINTED.test(tex)) {
+  if (loadsPackage(tex, "minted") || includesLiteral(tex, "\\begin{minted}")) {
     findings.push({
       id: "minted",
       level: "blocker",
@@ -58,7 +102,13 @@ export function scanImportCompatibility(sources: {
     });
   }
 
-  if (GLOSSARIES.test(tex)) {
+  if (
+    loadsPackage(tex, "glossaries") ||
+    loadsPackage(tex, "imakeidx") ||
+    loadsPackage(tex, "makeidx") ||
+    includesLiteral(tex, "\\makeglossaries") ||
+    includesLiteral(tex, "\\printglossar")
+  ) {
     findings.push({
       id: "glossaries-index",
       level: "blocker",
@@ -68,7 +118,7 @@ export function scanImportCompatibility(sources: {
     });
   }
 
-  if (PYTHONTEX.test(tex)) {
+  if (loadsPackage(tex, "pythontex") || includesLiteral(tex, "\\begin{pycode}")) {
     findings.push({
       id: "pythontex",
       level: "blocker",
@@ -78,7 +128,11 @@ export function scanImportCompatibility(sources: {
     });
   }
 
-  if (SHELL_ESCAPE.test(tex)) {
+  if (
+    includesLiteral(tex, "\\write18") ||
+    includesLiteral(tex, "\\ShellEscape") ||
+    includesLiteral(tex, "\\input{|")
+  ) {
     findings.push({
       id: "shell-escape",
       level: "warning",
@@ -88,7 +142,7 @@ export function scanImportCompatibility(sources: {
     });
   }
 
-  if (FONTSPEC.test(tex)) {
+  if (loadsPackage(tex, "fontspec") || includesLiteral(tex, "\\setmainfont{")) {
     findings.push({
       id: "fontspec",
       level: "info",
@@ -98,7 +152,12 @@ export function scanImportCompatibility(sources: {
     });
   }
 
-  if (PDFTEX_ONLY.test(tex)) {
+  if (
+    loadsPackage(tex, "cmap") ||
+    loadsPackage(tex, "inputenc") ||
+    includesLiteral(tex, "\\pdfoutput") ||
+    includesLiteral(tex, "\\pdfliteral")
+  ) {
     findings.push({
       id: "pdftex-only",
       level: "info",

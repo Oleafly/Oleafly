@@ -278,21 +278,6 @@ function parseLine(line: string, state: ParserState) {
     return;
   }
 
-  if (biblatexRerunBiber.test(line)) {
-    pushCurrent(state);
-    state.current = {
-      severity: "warning",
-      category: "biber",
-      file: null,
-      line: null,
-      text: "Bibliography needs Biber (biblatex). Oleafly should run pinned tectonic-biber automatically; if citations stay undefined, see [Oleafly] notes in this log.",
-    };
-    // Do not absorb following "(biblatex) ..." continuation lines as a
-    // multi-line package warning — the message is already complete.
-    state.searchEmptyLine = false;
-    return;
-  }
-
   result = line.match(latexError);
   if (result) {
     pushCurrent(state);

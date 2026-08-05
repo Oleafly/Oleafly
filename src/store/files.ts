@@ -360,11 +360,18 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
           const blockers = findings.filter((f) => f.level === "blocker");
           const warnings = findings.filter((f) => f.level === "warning");
           if (blockers.length > 0) {
-            toast.info(
-              `${blockers[0].title}${blockers.length > 1 ? ` (+${blockers.length - 1} more)` : ""}`,
-            );
-          } else if (warnings.some((f) => f.id === "biblatex-biber")) {
-            toast.info("This project uses biblatex/Biber for the bibliography.");
+            const extra = blockers.length > 1 ? ` (+${blockers.length - 1} more)` : "";
+            toast.info(`${blockers[0].title}${extra}`);
+          } else if (warnings.length > 0) {
+            if (warnings.some((f) => f.id === "biblatex-biber") && warnings.length === 1) {
+              toast.info("This project uses biblatex/Biber for the bibliography.");
+            } else {
+              toast.info(
+                `${warnings.length} import note${warnings.length === 1 ? "" : "s"}: ${warnings[0].title}${
+                  warnings.length > 1 ? ` (+${warnings.length - 1} more)` : ""
+                }`,
+              );
+            }
           }
         } catch {
           /* scan is best-effort */
