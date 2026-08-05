@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
 import { pickOpenPath } from "@/lib/native-file-dialog";
-import { notifyError, toast } from "@/lib/toast";
+import { notifyError } from "@/lib/toast";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import {
@@ -118,8 +118,8 @@ export function NewProjectDialog(props: {
     if (typeof selection !== "string") return;
     props.onClose();
     try {
+      // Success feedback comes from the store's single import toast.
       await useFilesStore.getState().importProject(selection);
-      toast.success("Project imported.");
     } catch (error) {
       notifyError("import project", error);
     }

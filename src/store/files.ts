@@ -575,14 +575,15 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   importProject: async (path) => {
     const id = await importOverleafProjectCmd(path);
     await applyDefaultLatexEngine(id);
+    // One toast for the whole import (callers stay silent on success). When
+    // the import picked the full toolchain, fold that into the same message
+    // and capture the reproducibility pin in the background.
     const meta = await getProject(id).catch(() => null);
     if (meta?.engine === "latexmk") {
-      // The import picked the full toolchain (system TeX detected): say so
-      // once, and capture the reproducibility pin in the background.
       void recordProjectTexSpec(id).catch(() => {});
-      toast.info(
-        "Imported. Compiling with latexmk and your system TeX — the setup Overleaf projects expect.",
-      );
+      toast.success("Project imported — compiling with latexmk (system TeX detected).");
+    } else {
+      toast.success("Project imported.");
     }
     await get().refreshProjects();
     await get().openProject(id);

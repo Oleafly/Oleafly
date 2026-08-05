@@ -236,8 +236,9 @@ export function Library() {
     if (typeof selection !== "string") return;
     setImporting(true);
     try {
+      // Success feedback (including which engine was chosen) comes from the
+      // store's single import toast.
       await importProject(selection);
-      toast.success("Project imported.");
     } catch (error) {
       notifyError("import project", error);
     } finally {
