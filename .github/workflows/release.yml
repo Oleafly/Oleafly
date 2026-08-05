@@ -104,6 +104,12 @@ jobs:
         shell: bash
         run: bash scripts/fetch-tectonic.sh ${{ matrix.rust_target }}
 
+      # Biber 2.17 matched to Tectonic's biblatex; declared as externalBin
+      # tectonic-biber. Missing here breaks the Tauri bundler on release.
+      - name: Fetch checksum-pinned Biber sidecar
+        shell: bash
+        run: bash scripts/fetch-biber.sh ${{ matrix.rust_target }}
+
       - name: Stage checksum-pinned Tinymist resource archive
         shell: bash
         run: node scripts/fetch-language-servers.mjs --server tinymist --target ${{ matrix.rust_target }} --install-mode resource

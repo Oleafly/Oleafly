@@ -1088,19 +1088,31 @@ export function PreviewPane() {
       });
       if (!destination) return;
       await writeBytesFile(destination, uint8ToBase64(exportBytes));
+      const fileName =
+        destination.split(/[/\\]/).pop() || (isImage ? "image.png" : "document.pdf");
       toast.success(
-        isImage ? "Image downloaded" : "PDF downloaded",
+        isImage ? `Image saved · ${fileName}` : `PDF saved · ${fileName}`,
         {
-          label: "View File",
-          onClick: () => void revealInDir(destination),
+          label: "Show in folder",
+          onClick: () => {
+            void revealInDir(destination).catch(() => {
+              toast.info(
+                "File was saved, but Oleafly could not open its folder (permission denied). Check the location you chose in the save dialog.",
+              );
+            });
+          },
         },
         true,
       );
     } catch (error) {
+      const detail =
+        error instanceof Error ? error.message : typeof error === "string" ? error : "";
       notifyError(
         "download preview",
         error,
-        `Couldn't download the ${isImage ? "image" : "PDF"}.`,
+        detail
+          ? `Couldn't download the ${isImage ? "image" : "PDF"}: ${detail}`
+          : `Couldn't download the ${isImage ? "image" : "PDF"}.`,
       );
     } finally {
       setExporting(false);

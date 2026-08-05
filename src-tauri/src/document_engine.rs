@@ -807,7 +807,7 @@ pub async fn compile(request: CompileRequest<'_>) -> Result<CompileResult, Strin
             .map_err(|e| format!("failed to write engine entry {}: {e}", path.display()))?;
     }
     let compile_start = std::time::Instant::now();
-    let (stdout_buf, exit_code) = match &spec.executable {
+    let (mut stdout_buf, mut exit_code) = match &spec.executable {
         EngineExecutable::BundledSidecar(name) => {
             run_bundled(
                 request.app,
@@ -832,15 +832,146 @@ pub async fn compile(request: CompileRequest<'_>) -> Result<CompileResult, Strin
         }
     };
 
+    // Biblatex recovery: if Tectonic wrote a .bcf but no usable .bbl, run the
+    // pinned tectonic-biber ourselves and re-run Tectonic once. PATH injection
+    // usually makes Tectonic call Biber mid-build; this covers edge cases.
+    let mut biber_notes = String::new();
+    let mut resolved_biber: Option<PathBuf> = None;
+    if request.engine.id() == DocumentEngineId::Latex
+        && matches!(request.target, CompileTarget::Main { .. })
+    {
+        let out_dir = &spec.artifacts.output_dir;
+        let stem = crate::paths::ENTRY_STEM;
+        let combined_for_check = spec
+            .artifacts
+            .log
+            .as_ref()
+            .and_then(|path| read_log_bounded(path).ok())
+            .unwrap_or_else(|| stdout_buf.clone());
+        if crate::biber_toolchain::bibliography_needs_biber(&combined_for_check, out_dir, stem)
+            && crate::biber_toolchain::biber_output_missing(out_dir, stem)
+        {
+            match crate::biber_toolchain::find_tectonic_biber() {
+                Some(biber) => {
+                    resolved_biber = Some(biber.clone());
+                    append_bounded(
+                        &mut biber_notes,
+                        format!(
+                            "\n[Oleafly] Running pinned Biber ({}) on {stem}...\n",
+                            biber.display()
+                        )
+                        .as_bytes(),
+                    );
+                    let biber_args = crate::biber_toolchain::biber_cli_args(out_dir, stem);
+                    // Same supervised path as Tectonic: timeout, cancel, isolation.
+                    let biber_run = run_supervised_process(
+                        &biber,
+                        &biber_args,
+                        &spec.working_dir,
+                        Some((request.app.clone(), request.log_event.to_owned())),
+                        COMPILE_TIMEOUT,
+                        request.cancel,
+                    )
+                    .await;
+                    match biber_run {
+                        Ok((biber_log, biber_code)) => {
+                            append_bounded(&mut biber_notes, biber_log.as_bytes());
+                            if biber_code.unwrap_or(-1) != 0 {
+                                let diagnosis = crate::biber_toolchain::diagnose_biber_gap(
+                                    &biber_log,
+                                    Some(biber.as_path()),
+                                );
+                                append_bounded(&mut biber_notes, diagnosis.as_bytes());
+                            } else {
+                                append_bounded(
+                                    &mut biber_notes,
+                                    b"\n[Oleafly] Re-running Tectonic after Biber...\n",
+                                );
+                                // Reuse the same compile args: tectonic flags are
+                                // deterministic for this entry (no cache-busting /
+                                // --fresh), so a second pass is a normal multipass.
+                                let (retry_out, retry_code) = match &spec.executable {
+                                    EngineExecutable::BundledSidecar(name) => {
+                                        run_bundled(
+                                            request.app,
+                                            name,
+                                            &spec.args,
+                                            &spec.working_dir,
+                                            request.log_event,
+                                            request.cancel,
+                                        )
+                                        .await?
+                                    }
+                                    EngineExecutable::ExternalPath(path) => {
+                                        run_external(
+                                            request.app,
+                                            path,
+                                            &spec.args,
+                                            &spec.working_dir,
+                                            request.log_event,
+                                            request.cancel,
+                                        )
+                                        .await?
+                                    }
+                                };
+                                stdout_buf = retry_out;
+                                exit_code = retry_code;
+                            }
+                        }
+                        Err(error) => {
+                            append_bounded(&mut biber_notes, error.as_bytes());
+                            append_bounded(
+                                &mut biber_notes,
+                                crate::biber_toolchain::diagnose_biber_gap(
+                                    &error,
+                                    Some(biber.as_path()),
+                                )
+                                .as_bytes(),
+                            );
+                        }
+                    }
+                }
+                None => {
+                    append_bounded(
+                        &mut biber_notes,
+                        crate::biber_toolchain::diagnose_biber_gap(&combined_for_check, None)
+                            .as_bytes(),
+                    );
+                }
+            }
+        }
+    }
+
     let stopped = request
         .cancel
         .is_some_and(crate::state::CompileCancel::detach);
-    let log = spec
+    let mut log = spec
         .artifacts
         .log
         .as_ref()
         .and_then(|path| read_log_bounded(path).ok())
         .unwrap_or(stdout_buf);
+    if !biber_notes.is_empty() {
+        append_bounded(&mut log, biber_notes.as_bytes());
+    }
+    // If bibliography is still incomplete after recovery, surface a clear note.
+    if request.engine.id() == DocumentEngineId::Latex
+        && matches!(request.target, CompileTarget::Main { .. })
+        && crate::biber_toolchain::bibliography_needs_biber(
+            &log,
+            &spec.artifacts.output_dir,
+            crate::paths::ENTRY_STEM,
+        )
+        && crate::biber_toolchain::biber_output_missing(
+            &spec.artifacts.output_dir,
+            crate::paths::ENTRY_STEM,
+        )
+        && !log.contains("[Oleafly] Bibliography needs Biber")
+    {
+        let biber_for_diag = resolved_biber.or_else(crate::biber_toolchain::find_tectonic_biber);
+        let diagnosis = crate::biber_toolchain::diagnose_biber_gap(&log, biber_for_diag.as_deref());
+        append_bounded(&mut log, diagnosis.as_bytes());
+    }
     let pdf_path = spec.artifacts.pdf.clone();
     let output_id = if capabilities.produces_pdf {
         tokio::task::spawn_blocking(move || {
@@ -858,7 +989,6 @@ pub async fn compile(request: CompileRequest<'_>) -> Result<CompileResult, Strin
     let has_pdf = output_id.is_some();
     let errors = request.engine.parse_errors(&log);
     let has_reported_errors = errors.iter().any(|e| e.kind == "error");
-    let mut log = log;
     if stopped {
         append_bounded(&mut log, b"\nOleafly stopped the compile on request.\n");
     }
@@ -1049,6 +1179,9 @@ async fn run_supervised_process(
         .no_console()
         .args(args)
         .current_dir(working_dir)
+        // TeX bin dirs + tectonic-biber for all supervised children (LaTeX primary;
+        // Typst/others ignore extra PATH entries that are not present or unused).
+        .env("PATH", crate::biber_toolchain::compile_path_env())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     isolate_process_tree(&mut command);

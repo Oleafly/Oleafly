@@ -4,6 +4,24 @@ import { useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
 import { notifyError, toast } from "@/lib/toast";
 
+/** Show in Finder/Explorer; never flip a successful save into a failure toast. */
+function revealExportedFile(dest: string): void {
+  void revealInDir(dest).catch(() => {
+    toast.info(
+      "File was saved, but Oleafly could not open its folder (permission denied). Check the location you chose in the save dialog.",
+    );
+  });
+}
+
+function exportSuccessToast(kind: "PDF" | "PNG", dest: string): void {
+  const fileName = dest.split(/[/\\]/).pop() || kind.toLowerCase();
+  toast.success(
+    `${kind} saved · ${fileName}`,
+    { label: "Show in folder", onClick: () => revealExportedFile(dest) },
+    true,
+  );
+}
+
 export async function exportCurrentPdf(): Promise<void> {
   const { projectId, projectName } = useFilesStore.getState();
   const { pdfBytes } = useCompileStore.getState();
@@ -16,13 +34,15 @@ export async function exportCurrentPdf(): Promise<void> {
   if (!dest) return;
   try {
     await exportPdf(projectId, dest);
-    toast.success(
-      "Export PDF complete",
-      { label: "View File", onClick: () => void revealInDir(dest) },
-      true,
-    );
+    // Destination path is known and the file was published — always success.
+    exportSuccessToast("PDF", dest);
   } catch (e) {
-    notifyError("export pdf", e, "Couldn't save the PDF");
+    const detail = e instanceof Error ? e.message : typeof e === "string" ? e : "";
+    notifyError(
+      "export pdf",
+      e,
+      detail ? `Couldn't save the PDF: ${detail}` : "Couldn't save the PDF",
+    );
   }
 }
 
@@ -41,12 +61,13 @@ export async function exportCurrentImagePng(scale = 3): Promise<void> {
     const { pdfPageToPng } = await import("@/lib/pdf-image");
     const dataUrl = await pdfPageToPng(pdfBytes, 1, scale);
     await writeBytesFile(dest, dataUrl.slice(dataUrl.indexOf(",") + 1));
-    toast.success(
-      "Export PNG complete",
-      { label: "View File", onClick: () => void revealInDir(dest) },
-      true,
-    );
+    exportSuccessToast("PNG", dest);
   } catch (e) {
-    notifyError("export png", e, "Couldn't save the PNG");
+    const detail = e instanceof Error ? e.message : typeof e === "string" ? e : "";
+    notifyError(
+      "export png",
+      e,
+      detail ? `Couldn't save the PNG: ${detail}` : "Couldn't save the PNG",
+    );
   }
 }

@@ -1,4 +1,5 @@
 mod assets;
+mod biber_toolchain;
 mod chats;
 mod citation;
 mod commands;

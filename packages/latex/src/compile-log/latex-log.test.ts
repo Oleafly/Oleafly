@@ -182,7 +182,6 @@ describe("parseLatexLog", () => {
 
   it("returns [] for empty and garbage input without throwing", () => {
     expect(parseLatexLog("")).toEqual([]);
-
     const garbage = [
       "This is pdfTeX, Version 3.141592653-2.6-1.7.11 (TeX Live 2024) (preloaded format=pdflatex)",
       " restricted \\write18 enabled.",
@@ -191,6 +190,23 @@ describe("parseLatexLog", () => {
       "\u0000\u0001 binary junk \u0002",
     ].join("\n");
     expect(parseLatexLog(garbage)).toEqual([]);
+  });
+
+  it("surfaces Oleafly Biber mode diagnostics and biblatex rerun warnings", () => {
+    const log = [
+      "Package biblatex Warning: Please (re)run Biber on the file:",
+      "(biblatex)                _oleafly_entry",
+      "(biblatex)                and rerun LaTeX afterwards.",
+      "[Oleafly] Bibliography needs Biber (biblatex), but a usable .bbl was not produced.",
+      "[Oleafly] Biber was not found (mode A): GUI launches often have a minimal PATH",
+    ].join("\n");
+    const diags = parseLatexLog(log);
+    expect(diags.some((d) => d.category === "biber" && d.message.includes("Bibliography needs Biber"))).toBe(
+      true,
+    );
+    expect(diags.some((d) => d.category === "biber" && d.severity === "error" && d.message.includes("mode A"))).toBe(
+      true,
+    );
   });
 
   it("only parses the first MAX_COMPILE_LOG_BYTES of the log", () => {
