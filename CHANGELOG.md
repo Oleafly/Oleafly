@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **biblatex / Biber for Overleaf and journal imports.** LaTeX compiles now put a
+  pinned Biber 2.17 (`tectonic-biber`, matched to Tectonic 0.16’s biblatex 3.17)
+  on the compile child’s `PATH`, recover with an explicit Biber + re-typeset when
+  a `.bcf` is left without a usable `.bbl`, and surface clear mode A (missing)
+  vs mode B (version skew) notes in the log. Opening a project also scans for
+  Overleaf-style requirements (biblatex, minted, glossaries, shell-escape, fonts).
+
 ## [0.3.4] - 2026-08-04
 
 ### Fixed

@@ -422,6 +422,7 @@ To run from source:
 git clone https://github.com/Oleafly/Oleafly.git
 cd Oleafly
 ./scripts/fetch-tectonic.sh all
+./scripts/fetch-biber.sh all
 ./scripts/fetch-typst.sh all
 pnpm install
 pnpm tauri dev

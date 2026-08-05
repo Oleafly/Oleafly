@@ -30,6 +30,11 @@ const latexMissChar = /^\s*(Missing character:.*?!)/;
 const latexNoPageOutput = /^No pages of output\.$/;
 const bibEmpty = /^Empty `thebibliography' environment/;
 const biberWarn = /^Biber warning:.*WARN - I didn't find a database entry for '([^']+)'/;
+const biblatexRerunBiber =
+  /^Package biblatex Warning: Please \(re\)run Biber on the file:/;
+const oleaflyBiberModeA = /^\[Oleafly\] Biber was not found \(mode A\)/;
+const oleaflyBiberModeB = /^\[Oleafly\] Biber\/biblatex version mismatch \(mode B\)/;
+const oleaflyBiberGap = /^\[Oleafly\] Bibliography needs Biber/;
 
 // LaTeX Warning: Reference `non-exist' on page 1 undefined on input line 10.
 // LaTeX Warning: Citation `also-nothing' on page 1 undefined on input line 12.
@@ -131,6 +136,24 @@ function parseLine(line: string, state: ParserState) {
     state.insideBoxWarn = false;
     return;
   }
+  // Oleafly annotations must not be absorbed into a multi-line package warning.
+  if (
+    oleaflyBiberModeA.test(line) ||
+    oleaflyBiberModeB.test(line) ||
+    oleaflyBiberGap.test(line)
+  ) {
+    pushCurrent(state);
+    state.searchEmptyLine = false;
+    state.insideError = false;
+    state.current = {
+      severity: "error",
+      category: "biber",
+      file: null,
+      line: null,
+      text: line.replace(/^\[Oleafly\]\s*/, "").trim(),
+    };
+    return;
+  }
   // Append the read line, since we have a corresponding result in the matching
   if (state.searchEmptyLine) {
     const context = state.insideError ? state.current?.contextLines : undefined;
@@ -216,6 +239,19 @@ function parseLine(line: string, state: ParserState) {
   }
   result = line.match(latexWarn);
   if (result) {
+    // Prefer the dedicated Biber diagnostic over a generic package warning.
+    if (biblatexRerunBiber.test(line)) {
+      pushCurrent(state);
+      state.current = {
+        severity: "warning",
+        category: "biber",
+        file: null,
+        line: null,
+        text: "Bibliography needs Biber (biblatex). Oleafly should run pinned tectonic-biber automatically; if citations stay undefined, see [Oleafly] notes in this log.",
+      };
+      state.searchEmptyLine = false;
+      return;
+    }
     pushCurrent(state);
     state.current = {
       severity: "warning",

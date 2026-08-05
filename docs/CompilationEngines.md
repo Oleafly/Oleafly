@@ -10,10 +10,29 @@ engine-specific policy.
 - Default engine: bundled Tectonic sidecar.
 - Supports multi-file projects, images, bibliography files, SyncTeX, and
   cached/offline compilation when packages are available.
-- Compile logs are normalized into editor diagnostics.
+- **biblatex / Biber:** Tectonic 0.16 ships biblatex 3.17, which requires Biber
+  2.17. Oleafly packages a pinned `tectonic-biber` sidecar (see
+  `scripts/fetch-biber.sh`) and puts its directory on `PATH` for the compile
+  child. **Primary path:** Tectonic discovers `tectonic-biber` mid-build and
+  runs it itself. **Recovery path:** if a `.bcf` is left without a usable
+  `.bbl` (PATH miss, mid-build tool failure), Oleafly runs the same sidecar via
+  the supervised process helper (timeout + cancel) and re-typesets once. This
+  avoids GUI `PATH` misses and system-Biber version skew.
+- Compile logs are normalized into editor diagnostics. Incomplete bibliography
+  steps surface as `[Oleafly]` notes distinguishing “Biber not found” from
+  “Biber/biblatex version mismatch”.
 - Optional LuaLaTeX support can prepare and verify tagged PDF output for
   accessibility-oriented workflows; it is separate from the default Tectonic
   path.
+- Import scan (`@oleafly/latex` `scanImportCompatibility`) flags Overleaf-style
+  requirements (biblatex, minted, glossaries, shell-escape, fonts) when a
+  project is opened.
+- **Supervised PATH:** every supervised compile child (LaTeX, Typst, Markdown
+  tooling that goes through the same helper) gets TeX-related directories and the
+  sidecar directory prepended to `PATH`. Non-LaTeX engines simply ignore unused
+  entries; directories are only added when they exist on disk.
+- **Linux aarch64:** upstream has no Biber 2.17 binary; packaging ships a stub
+  that exits with a clear error so the bundler still has an `externalBin` file.
 
 ## Typst
 
@@ -22,6 +41,8 @@ engine-specific policy.
 - Advertises current capability limits truthfully: SyncTeX, offline, and
   isolated-compile support are currently disabled.
 - Typst-specific UI behavior is driven by the descriptor, not extensions.
+- Receives the same supervised `PATH` prepending as LaTeX (see above); Typst
+  does not use Biber or TeX Live bins.
 
 ## Markdown
 

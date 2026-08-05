@@ -185,19 +185,23 @@ impl AtomicFile {
                 )?;
             }
         }
-        std::fs::OpenOptions::new()
+        // Staging-file fsync is best-effort. Some volumes reject fsync while
+        // still accepting rename; failing the whole export after a good write
+        // would tell the user the PDF was not saved when it was.
+        let _ = std::fs::OpenOptions::new()
             // Windows maps sync_all() to FlushFileBuffers, which rejects a
             // handle opened without GENERIC_WRITE. A read-only reopen works
             // on Unix but makes every atomic write fail with access denied on
             // Windows, so reopen the completed staging file for writing.
             .write(true)
             .open(&self.staging)
-            .and_then(|file| file.sync_all())
-            .map_err(|error| format!("failed to sync staged artifact: {error}"))?;
+            .and_then(|file| file.sync_all());
         replace_file(&self.staging, &self.destination)
             .map_err(|error| format!("failed to publish staged artifact: {error}"))?;
+        // From here the destination file exists. Nothing after this point may
+        // turn a successful publish into a user-facing export failure.
         self.committed = true;
-        sync_parent(&self.destination)?;
+        sync_parent(&self.destination);
         Ok(())
     }
 }
@@ -271,20 +275,19 @@ fn replace_file(source: &Path, destination: &Path) -> std::io::Result<()> {
     unreachable!("the bounded Windows replacement loop always returns")
 }
 
+/// Best-effort directory fsync after a successful rename. Never fails the
+/// caller: macOS TCC (Desktop/Downloads), iCloud, and some network volumes
+/// reject directory fsync even when the file itself was published.
 #[cfg(unix)]
-fn sync_parent(destination: &Path) -> Result<(), String> {
-    let parent = destination
-        .parent()
-        .ok_or_else(|| "file destination has no parent folder".to_string())?;
-    std::fs::File::open(parent)
-        .and_then(|directory| directory.sync_all())
-        .map_err(|error| format!("failed to sync destination folder: {error}"))
+fn sync_parent(destination: &Path) {
+    let Some(parent) = destination.parent() else {
+        return;
+    };
+    let _ = std::fs::File::open(parent).and_then(|directory| directory.sync_all());
 }
 
 #[cfg(not(unix))]
-fn sync_parent(_destination: &Path) -> Result<(), String> {
-    Ok(())
-}
+fn sync_parent(_destination: &Path) {}
 
 #[cfg(test)]
 mod tests {
@@ -378,6 +381,16 @@ mod tests {
         atomic_write(&destination, b"complete artifact").unwrap();
         assert_eq!(std::fs::read(&destination).unwrap(), b"complete artifact");
         assert_eq!(std::fs::read_dir(&root).unwrap().count(), 1);
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn sync_parent_is_best_effort_and_never_panics() {
+        // Restricted parents (e.g. some Desktop/Downloads layouts) may reject
+        // open/fsync; the helper must not panic or block commit.
+        sync_parent(Path::new("/dev/null-oleafly-export-probe"));
+        let root = temp_root();
+        sync_parent(&root.join("out.pdf"));
         std::fs::remove_dir_all(&root).ok();
     }
 

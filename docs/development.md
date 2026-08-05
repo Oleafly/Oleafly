@@ -21,6 +21,7 @@ localeaf/
 │   ├── resources/          templates, licenses, and pinned runtime archives
 │   └── tauri.conf.json
 ├── scripts/fetch-tectonic.sh
+│   ├── fetch-biber.sh
 ├── scripts/fetch-typst.sh
 ├── scripts/fetch-language-servers.mjs
 └── docs/
@@ -43,6 +44,7 @@ covers the port pattern, the contribution registry, and the alias wiring.
 
 ```bash
 ./scripts/fetch-tectonic.sh all     # fetch compiler sidecars for all platforms
+./scripts/fetch-biber.sh all        # pinned Biber 2.17 (biblatex / tectonic-biber)
 ./scripts/fetch-typst.sh all
 pnpm install
 pnpm language-servers:fetch         # current-host policy; see note below
