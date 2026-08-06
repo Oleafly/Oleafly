@@ -407,8 +407,12 @@ pub async fn install_tinytex(app: tauri::AppHandle) -> Result<EngineInfo, String
     use std::io::Write as _;
     use tauri::Emitter;
 
+    // Only an existing TinyTeX makes this a no-op. A system TeX (MacTeX,
+    // TeX Live) must not short-circuit the install: the user asked for the
+    // managed distribution explicitly, and the old any-lualatex guard made
+    // this command silently succeed without downloading anything.
     let existing = find_engine();
-    if existing.lualatex.is_some() {
+    if existing.kind == "tinytex" {
         return Ok(existing);
     }
 
