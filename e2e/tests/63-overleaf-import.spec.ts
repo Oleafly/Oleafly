@@ -24,6 +24,19 @@ function writeZip(name: string, entries: Record<string, string>): string {
   return zipPath;
 }
 
+// Radix dropdown triggers and menu items react to pointer events, not to a
+// synthetic element.click() (same pattern as 28-ai-chat.spec.ts).
+function pressWithPointer(selectorExpr: string): string {
+  return `(() => {
+    const el = ${selectorExpr};
+    if (!el) return false;
+    el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerId: 1 }));
+    el.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true, pointerId: 1 }));
+    el.click();
+    return true;
+  })()`;
+}
+
 async function importZip(page: Page, zipPath: string) {
   await waitLong(
     page,
@@ -31,8 +44,21 @@ async function importZip(page: Page, zipPath: string) {
     30_000,
   );
   await setNextImportPaths(page, [zipPath]);
-  await page.click('[data-testid="import-project-button"]');
-  await page.getByText("Overleaf ZIP").click();
+  const opened = await page.evaluate<boolean>(
+    pressWithPointer(`document.querySelector('[data-testid="import-project-button"]')`),
+  );
+  if (!opened) throw new Error("import dropdown trigger not found");
+  await waitLong(
+    page,
+    `[...document.querySelectorAll('[role="menuitem"]')].some((i) => (i.textContent ?? "").includes("Overleaf ZIP"))`,
+    10_000,
+  );
+  const clicked = await page.evaluate<boolean>(
+    pressWithPointer(
+      `[...document.querySelectorAll('[role="menuitem"]')].find((i) => (i.textContent ?? "").includes("Overleaf ZIP"))`,
+    ),
+  );
+  if (!clicked) throw new Error("Overleaf ZIP menu item not found");
   await waitLong(
     page,
     `!!document.querySelector('[data-tour="project-editor"] .cm-content')`,
