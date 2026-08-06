@@ -457,11 +457,12 @@ export function NewProjectDialog({
               <Button
                 variant="ghost"
                 size="sm"
+                className="text-lime-600 hover:text-lime-600"
                 data-testid="import-from-overleaf"
                 data-tour-hide
                 onClick={onImportProject}
               >
-                <FolderInput className="size-3.5" /> Import from Overleaf
+                <FolderInput className="size-3.5" /> Import an existing project
               </Button>
             )}
             {step === 1 && onGenerateWithAi && (

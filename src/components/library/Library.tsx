@@ -693,7 +693,7 @@ export function Library() {
                     disabled={importing}
                     onClick={() => void runImport("zip")}
                   >
-                    <FolderInput className="size-4" /> Import from Overleaf
+                    <FolderInput className="size-4" /> Import an existing project
                   </Button>
                 </div>
               </EmptyContent>
