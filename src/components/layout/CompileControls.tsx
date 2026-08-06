@@ -24,6 +24,7 @@ import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
+import type { TexFlavor } from "@/lib/tauri";
 import { cn, shortcut } from "@/lib/utils";
 
 function basename(path: string): string {
@@ -224,21 +225,47 @@ export function CompileControls() {
         {engine.source_format === "latex" && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuLabel>Engine (this project)</DropdownMenuLabel>
+            <DropdownMenuLabel>Compiler (this project)</DropdownMenuLabel>
             <DropdownMenuRadioGroup
-              value={engine.id === "latexmk" ? "latexmk" : "tectonic"}
+              value={
+                engine.id === "latexmk"
+                  ? (engine.tex_flavor ?? "auto")
+                  : "tectonic"
+              }
               onValueChange={(value) => {
-                const isLatexmk = engine.id === "latexmk";
-                if (value === "latexmk" && !isLatexmk) void setEngine("latexmk");
-                // "xetex" is the stored default for the bundled Tectonic engine.
-                if (value === "tectonic" && isLatexmk) void setEngine("xetex");
+                const current =
+                  engine.id === "latexmk"
+                    ? (engine.tex_flavor ?? "auto")
+                    : "tectonic";
+                if (value === current) return;
+                // "xetex" is the stored default for the bundled Tectonic
+                // engine. Everything else runs through latexmk on a system
+                // TeX: "auto" picks the compiler from the source, an explicit
+                // choice pins it (Overleaf's Compiler setting).
+                if (value === "tectonic") {
+                  void setEngine("xetex");
+                } else {
+                  void setEngine(
+                    "latexmk",
+                    value === "auto" ? null : (value as TexFlavor),
+                  );
+                }
               }}
             >
               <DropdownMenuRadioItem value="tectonic">
                 Tectonic <span className="ml-1 text-muted-foreground">[built in]</span>
               </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="latexmk">
-                latexmk <span className="ml-1 text-muted-foreground">[system TeX]</span>
+              <DropdownMenuRadioItem value="auto">
+                Auto <span className="ml-1 text-muted-foreground">[system TeX]</span>
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="pdflatex">
+                pdfLaTeX <span className="ml-1 text-muted-foreground">[system TeX]</span>
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="xelatex">
+                XeLaTeX <span className="ml-1 text-muted-foreground">[system TeX]</span>
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="lualatex">
+                LuaLaTeX <span className="ml-1 text-muted-foreground">[system TeX]</span>
               </DropdownMenuRadioItem>
             </DropdownMenuRadioGroup>
           </>

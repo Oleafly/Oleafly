@@ -79,6 +79,11 @@ pub struct ProjectMeta {
     /// Present on latexmk projects once an engine spec has been recorded.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tex: Option<TexSpec>,
+    /// Explicit latexmk compiler ("pdflatex" | "xelatex" | "lualatex"), the
+    /// Overleaf-style per-project choice. Absent means auto-detect from the
+    /// source, which stays the default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tex_flavor: Option<String>,
     /// Book-cover color (hex). Empty means "unset" so the UI falls back to its
     /// default. Stored on disk so a project's color survives across machines.
     #[serde(default)]
@@ -176,6 +181,7 @@ pub fn read_meta(project_id: &str) -> Result<ProjectMeta, String> {
             hidden: false,
             forked_from: None,
             tex: None,
+            tex_flavor: None,
         });
     }
     let s = std::fs::read_to_string(&p).map_err(|e| format!("failed to read project.json: {e}"))?;
@@ -892,19 +898,39 @@ pub async fn set_project_engine(
     state: tauri::State<'_, crate::state::AppState>,
     project_id: String,
     engine: String,
+    flavor: Option<String>,
 ) -> Result<ProjectMeta, String> {
     let _guard = state.compile_lock.lock().await;
     let engine = engine.trim().to_string();
     if engine.is_empty() {
         return Err("engine name cannot be empty".into());
     }
+    let flavor = validate_tex_flavor(&engine, flavor.as_deref())?;
     let mut meta = read_meta(&project_id)?;
     // Reject engines that cannot compile the current main document before
     // persisting anything.
     crate::document_engine::engine_for(&engine, &meta.main_doc)?;
     meta.engine = engine;
+    meta.tex_flavor = flavor;
     write_meta(&project_id, &meta)?;
     Ok(meta)
+}
+
+/// Normalize the per-project compiler choice. "auto" and empty mean
+/// auto-detect; an explicit compiler is only meaningful on latexmk, and
+/// switching to any other engine always clears it.
+fn validate_tex_flavor(engine: &str, flavor: Option<&str>) -> Result<Option<String>, String> {
+    match flavor.map(str::trim) {
+        None | Some("") | Some("auto") => Ok(None),
+        Some(value @ ("pdflatex" | "xelatex" | "lualatex")) => {
+            if engine == "latexmk" {
+                Ok(Some(value.to_string()))
+            } else {
+                Err("an explicit compiler needs the latexmk engine".into())
+            }
+        }
+        Some(other) => Err(format!("unknown compiler: {other}")),
+    }
 }
 
 fn epoch_seconds() -> f64 {
@@ -1109,6 +1135,7 @@ fn create_markdown_project_in(root: &Path, name: String) -> Result<String, Strin
                 hidden: false,
                 forked_from: None,
                 tex: None,
+                tex_flavor: None,
             },
         )
     })?;
@@ -1283,6 +1310,7 @@ pub fn create_project(name: String) -> Result<String, String> {
                 hidden: false,
                 forked_from: None,
                 tex: None,
+                tex_flavor: None,
             },
         )
     })?;
@@ -1363,6 +1391,7 @@ pub fn create_project_from_pdf_conversion(
                 hidden: false,
                 forked_from: None,
                 tex: None,
+                tex_flavor: None,
             },
         )?;
         rename_exclusive(&staging, &destination)
@@ -1401,6 +1430,7 @@ fn create_typst_project_in(root: &Path, name: String) -> Result<String, String> 
                 hidden: false,
                 forked_from: None,
                 tex: None,
+                tex_flavor: None,
             },
         )
     })?;
@@ -1794,6 +1824,7 @@ fn create_image_project_in(
                 hidden: false,
                 forked_from: None,
                 tex: None,
+                tex_flavor: None,
             },
         )
     })?;
@@ -1840,6 +1871,7 @@ pub fn create_diagram_project(name: String, source: String) -> Result<String, St
                 hidden: false,
                 forked_from: None,
                 tex: None,
+                tex_flavor: None,
             },
         )
     })?;
@@ -1864,6 +1896,7 @@ pub fn get_or_create_scratch_project() -> Result<String, String> {
                 hidden: true,
                 forked_from: None,
                 tex: None,
+                tex_flavor: None,
             },
         )?;
     }
@@ -2293,6 +2326,7 @@ pub async fn create_project_from_docx(name: String, data_base64: String) -> Resu
                 hidden: false,
                 forked_from: None,
                 tex: None,
+                tex_flavor: None,
             },
         )?;
         rename_exclusive(&staging, &destination)
@@ -2593,6 +2627,7 @@ pub fn create_project_from_template(
                 hidden: false,
                 forked_from: None,
                 tex: None,
+                tex_flavor: None,
             },
         )
     })?;
@@ -3139,8 +3174,8 @@ mod tests {
         import_skip, infer_main_document, list_projects, normalize_relative, pandoc_asset_for,
         pandoc_version_supported, read_meta, rel_slash, rename_exclusive, rename_path_in_project,
         search_docs, set_main_doc_synchronized, tex_root_magic_target, validate_conversion_export,
-        write_meta_at, FileConflictStrategy, PdfConversionFigure, ProjectMeta, RenameFileResult,
-        TexSpec, SCRATCH_PROJECT_ID,
+        validate_tex_flavor, write_meta_at, FileConflictStrategy, PdfConversionFigure, ProjectMeta,
+        RenameFileResult, TexSpec, SCRATCH_PROJECT_ID,
     };
     use std::io::Write;
     use std::path::Path;
@@ -3719,6 +3754,7 @@ mod tests {
             hidden: false,
             forked_from: None,
             tex: None,
+            tex_flavor: None,
         };
         let json = serde_json::to_string(&meta).unwrap();
         let decoded: ProjectMeta = serde_json::from_str(&json).unwrap();
@@ -3937,6 +3973,7 @@ mod tests {
             hidden: false,
             forked_from: None,
             tex: None,
+            tex_flavor: None,
         };
 
         let valid = projects.join("valid-project");
@@ -3984,6 +4021,7 @@ mod tests {
                         hidden: false,
                         forked_from: None,
                         tex: None,
+                        tex_flavor: None,
                     },
                 )
                 .unwrap();
@@ -4264,5 +4302,28 @@ mod tests {
         .unwrap();
         assert!(!std::fs::read_to_string(&path).unwrap().contains("\"tex\""));
         std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn tex_flavor_validation_accepts_compilers_only_on_latexmk() {
+        assert_eq!(
+            validate_tex_flavor("latexmk", Some("pdflatex")).unwrap(),
+            Some("pdflatex".to_string())
+        );
+        assert_eq!(
+            validate_tex_flavor("latexmk", Some("xelatex")).unwrap(),
+            Some("xelatex".to_string())
+        );
+        assert_eq!(
+            validate_tex_flavor("latexmk", Some("lualatex")).unwrap(),
+            Some("lualatex".to_string())
+        );
+        // Auto and empty clear the pin on any engine.
+        assert_eq!(validate_tex_flavor("latexmk", Some("auto")).unwrap(), None);
+        assert_eq!(validate_tex_flavor("latexmk", None).unwrap(), None);
+        assert_eq!(validate_tex_flavor("xetex", Some("")).unwrap(), None);
+        // An explicit compiler is meaningless off latexmk, and typos fail.
+        assert!(validate_tex_flavor("xetex", Some("pdflatex")).is_err());
+        assert!(validate_tex_flavor("latexmk", Some("pdftex")).is_err());
     }
 }

@@ -201,6 +201,15 @@ export const GRAMMAR_DIALECTS: {
 interface SettingsState {
   vim: boolean;
   toggleVim: () => void;
+  /** Completion popups while typing (Ctrl+Space always works). */
+  editorAutocomplete: boolean;
+  setEditorAutocomplete: (v: boolean) => void;
+  /** Auto-insert closing brackets, parentheses, and quotes. */
+  editorAutoCloseBrackets: boolean;
+  setEditorAutoCloseBrackets: (v: boolean) => void;
+  /** Keep the cursor solid instead of blinking. */
+  editorNonBlinkingCursor: boolean;
+  setEditorNonBlinkingCursor: (v: boolean) => void;
   spellcheck: boolean;
   toggleSpellcheck: () => void;
   harper: boolean;
@@ -323,6 +332,21 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       saveLs("oleafly.vim", s.vim ? "0" : "1");
       return { vim: !s.vim };
     }),
+  editorAutocomplete: ls("oleafly.editor.autocomplete", "1") !== "0",
+  setEditorAutocomplete: (v) => {
+    saveLs("oleafly.editor.autocomplete", v ? "1" : "0");
+    set({ editorAutocomplete: v });
+  },
+  editorAutoCloseBrackets: ls("oleafly.editor.closeBrackets", "1") !== "0",
+  setEditorAutoCloseBrackets: (v) => {
+    saveLs("oleafly.editor.closeBrackets", v ? "1" : "0");
+    set({ editorAutoCloseBrackets: v });
+  },
+  editorNonBlinkingCursor: ls("oleafly.editor.solidCursor", "0") === "1",
+  setEditorNonBlinkingCursor: (v) => {
+    saveLs("oleafly.editor.solidCursor", v ? "1" : "0");
+    set({ editorNonBlinkingCursor: v });
+  },
   spellcheck: ls("oleafly.spellcheck", "1") !== "0",
   toggleSpellcheck: () => {
     const spellcheck = !get().spellcheck;

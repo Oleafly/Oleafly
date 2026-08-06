@@ -62,7 +62,18 @@ export interface EditorHost {
   useDocVersion(): number;
   getContent(path: string): string;
   setContent(path: string, content: string): void;
-  useSettings(): { vim: boolean; spellcheck: boolean; harper: boolean; editorTheme: string };
+  useSettings(): {
+    vim: boolean;
+    spellcheck: boolean;
+    harper: boolean;
+    editorTheme: string;
+    /** Completion popups while typing; explicit Ctrl+Space always works. */
+    autocomplete: boolean;
+    /** Auto-insert closing brackets, parentheses, and quotes. */
+    autoCloseBrackets: boolean;
+    /** Keep the cursor solid instead of blinking. */
+    nonBlinkingCursor: boolean;
+  };
   useLintRefreshDeps(): readonly unknown[];
 }
 
@@ -78,6 +89,7 @@ const isMarkdownDocumentPath = (path: string | null): boolean =>
 function sourceToolsForPath(
   path: string | null,
   completionSources: CompletionSource[],
+  autocompleteWhileTyping: boolean,
 ): Extension[] {
   const mathPreview = isLatexDocumentPath(path)
     ? [liveMathPreview("latex")]
@@ -96,7 +108,7 @@ function sourceToolsForPath(
             : latexCompletions,
           slashCompletions,
         ],
-        activateOnTyping: true,
+        activateOnTyping: autocompleteWhileTyping,
         closeOnBlur: true,
       }),
       ...mathPreview,
@@ -110,11 +122,24 @@ function sourceToolsForPath(
       ? [
           autocompletion({
             override: completionSources,
-            activateOnTyping: true,
+            activateOnTyping: autocompleteWhileTyping,
             closeOnBlur: true,
           }),
         ]
       : []),
+  ];
+}
+
+// Bracket auto-closing and cursor rendering, both user preferences that must
+// reconfigure without recreating the editor.
+function editorPrefExtensions(
+  autoCloseBrackets: boolean,
+  nonBlinkingCursor: boolean,
+): Extension[] {
+  return [
+    autoCloseBrackets ? closeBrackets() : [],
+    // A zero blink cycle keeps the cursor permanently visible.
+    drawSelection(nonBlinkingCursor ? { cursorBlinkRate: 0 } : {}),
   ];
 }
 
@@ -146,6 +171,7 @@ export function CodeMirrorEditor({
   const prevPathRef = useRef<string | null>(null);
   const suppressSyncRef = useRef(false);
 
+  const editorPrefsCompartmentRef = useRef<Compartment | null>(null);
   const activePath = host.useActivePath();
   // NB: the active file's content is read imperatively (host.getContent) inside
   // the file-swap effect below, NOT subscribed to. Subscribing here would
@@ -153,7 +179,15 @@ export function CodeMirrorEditor({
   // edit), which is pure waste since CodeMirror owns the document and the
   // effect only needs the content when the file or docVersion actually changes.
   const docVersion = host.useDocVersion();
-  const { vim: vimEnabled, spellcheck, harper, editorTheme: editorThemeId } = host.useSettings();
+  const {
+    vim: vimEnabled,
+    spellcheck,
+    harper,
+    editorTheme: editorThemeId,
+    autocomplete,
+    autoCloseBrackets,
+    nonBlinkingCursor,
+  } = host.useSettings();
   const lintDeps = host.useLintRefreshDeps();
 
   // Construct during the layout phase. The corrective measurement effect
@@ -176,6 +210,8 @@ export function CodeMirrorEditor({
     sourceToolsCompartmentRef.current = sourceToolsCompartment;
     const hostToolsCompartment = new Compartment();
     hostToolsCompartmentRef.current = hostToolsCompartment;
+    const editorPrefsCompartment = new Compartment();
+    editorPrefsCompartmentRef.current = editorPrefsCompartment;
     prevPathRef.current = initialPath;
     const initialLang = initialPath ? languageForPath(initialPath) : null;
     const initialCompletionSources =
@@ -189,13 +225,14 @@ export function CodeMirrorEditor({
         highlightSpecialChars(),
         foldGutter({ markerDOM: foldMarkerDOM }),
         foldMarkerTheme,
-        drawSelection(),
+        editorPrefsCompartment.of(
+          editorPrefExtensions(autoCloseBrackets, nonBlinkingCursor),
+        ),
         dropCursor(),
         EditorState.allowMultipleSelections.of(true),
         indentOnInput(),
         indentUnit.of("    "),
         bracketMatching(),
-        closeBrackets(),
         rectangularSelection(),
         crosshairCursor(),
         highlightActiveLineWhenCollapsed(),
@@ -207,7 +244,7 @@ export function CodeMirrorEditor({
         historyCompartment.of(history()),
         vscodeSearch(),
         sourceToolsCompartment.of(
-          sourceToolsForPath(initialPath, initialCompletionSources),
+          sourceToolsForPath(initialPath, initialCompletionSources, autocomplete),
         ),
         ...(extraExtensions ?? []),
         hostToolsCompartment.of(extraExtensionsForPath?.(initialPath) ?? []),
@@ -320,7 +357,7 @@ export function CodeMirrorEditor({
     const effects = [langCompartmentRef.current!.reconfigure(lang ? lang : [])];
     effects.push(
       sourceToolsCompartmentRef.current!.reconfigure(
-        sourceToolsForPath(activePath, completionSources),
+        sourceToolsForPath(activePath, completionSources, autocomplete),
       ),
     );
     effects.push(
@@ -368,6 +405,39 @@ export function CodeMirrorEditor({
       effects: compartment.reconfigure(vimEnabled ? vim() : []),
     });
   }, [vimEnabled]);
+
+  // Toggle bracket auto-closing and cursor blinking without recreating the
+  // editor.
+  useEffect(() => {
+    const view = viewRef.current;
+    const compartment = editorPrefsCompartmentRef.current;
+    if (!view || !compartment) return;
+    view.dispatch({
+      effects: compartment.reconfigure(
+        editorPrefExtensions(autoCloseBrackets, nonBlinkingCursor),
+      ),
+    });
+  }, [autoCloseBrackets, nonBlinkingCursor]);
+
+  // Toggle completion-while-typing without recreating the editor. Completions
+  // live inside the source-tools compartment, so rebuild it for the current
+  // path.
+  useEffect(() => {
+    const view = viewRef.current;
+    const compartment = sourceToolsCompartmentRef.current;
+    if (!view || !compartment) return;
+    const path = host.getActivePath();
+    view.dispatch({
+      effects: compartment.reconfigure(
+        sourceToolsForPath(
+          path,
+          extraCompletionSourcesForPath?.(path) ?? [],
+          autocomplete,
+        ),
+      ),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autocomplete]);
 
   // Toggle spellcheck / Harper grammar without recreating the editor.
   useEffect(() => {

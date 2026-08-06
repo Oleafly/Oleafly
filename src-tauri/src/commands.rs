@@ -60,7 +60,9 @@ pub fn project_engine(
     project_id: String,
 ) -> Result<crate::document_engine::EngineDescriptor, String> {
     let meta = crate::project::read_meta(&project_id)?;
-    crate::document_engine::descriptor_for(&meta.engine, &meta.main_doc)
+    let mut descriptor = crate::document_engine::descriptor_for(&meta.engine, &meta.main_doc)?;
+    descriptor.tex_flavor = meta.tex_flavor;
+    Ok(descriptor)
 }
 
 /// Whether the running install can apply a downloaded update in place. Tauri's
@@ -209,6 +211,8 @@ pub async fn compile_project(
         offline: offline.unwrap_or(false),
         fast: fast.unwrap_or(false),
         halt_on_error: halt_on_error.unwrap_or(false),
+        // The project's pinned compiler is applied after the meta read below.
+        latex_flavor: None,
     };
     let ticket = state
         .compile_ticket
@@ -260,6 +264,13 @@ pub async fn compile_project(
         ));
     }
     let meta = crate::project::read_compile_meta(&project_id, &main_doc)?;
+    let options = crate::document_engine::CompileOptions {
+        latex_flavor: meta
+            .tex_flavor
+            .as_deref()
+            .and_then(crate::document_engine::LatexmkFlavor::parse),
+        ..options
+    };
     let engine = crate::document_engine::engine_for(&meta.engine, &main_doc)?;
     let prepared_spec = crate::document_engine::prepare_compile_spec(
         engine.id(),

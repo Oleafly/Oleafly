@@ -188,6 +188,12 @@ export function SettingsModal() {
   const { theme, setTheme, toggleTheme } = useTheme();
   const vim = useSettingsStore((s) => s.vim);
   const toggleVim = useSettingsStore((s) => s.toggleVim);
+  const editorAutocomplete = useSettingsStore((s) => s.editorAutocomplete);
+  const setEditorAutocomplete = useSettingsStore((s) => s.setEditorAutocomplete);
+  const editorAutoCloseBrackets = useSettingsStore((s) => s.editorAutoCloseBrackets);
+  const setEditorAutoCloseBrackets = useSettingsStore((s) => s.setEditorAutoCloseBrackets);
+  const editorNonBlinkingCursor = useSettingsStore((s) => s.editorNonBlinkingCursor);
+  const setEditorNonBlinkingCursor = useSettingsStore((s) => s.setEditorNonBlinkingCursor);
   const spellcheck = useSettingsStore((s) => s.spellcheck);
   const toggleSpellcheck = useSettingsStore((s) => s.toggleSpellcheck);
   const harper = useSettingsStore((s) => s.harper);
@@ -671,6 +677,24 @@ export function SettingsModal() {
                   desc="Enable Vim keybindings in the editor."
                   checked={vim}
                   onChange={toggleVim}
+                />
+                <ToggleRow
+                  label="Auto-complete"
+                  desc="Suggest code completions while typing. Ctrl+Space still opens suggestions when this is off."
+                  checked={editorAutocomplete}
+                  onChange={setEditorAutocomplete}
+                />
+                <ToggleRow
+                  label="Auto-close brackets"
+                  desc="Automatically insert closing brackets and parentheses."
+                  checked={editorAutoCloseBrackets}
+                  onChange={setEditorAutoCloseBrackets}
+                />
+                <ToggleRow
+                  label="Non-blinking cursor"
+                  desc="Reduce visual distraction by keeping the cursor solid."
+                  checked={editorNonBlinkingCursor}
+                  onChange={setEditorNonBlinkingCursor}
                 />
                 <ToggleRow
                   label="Spellcheck"

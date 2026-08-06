@@ -107,6 +107,11 @@ pub struct EngineDescriptor {
     pub main_document: String,
     pub source_extensions: Vec<String>,
     pub capabilities: EngineCapabilities,
+    /// The project's pinned latexmk compiler ("pdflatex" | "xelatex" |
+    /// "lualatex"); None means auto-detect. Filled in by `project_engine`
+    /// from project.json, absent in engine-only contexts.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tex_flavor: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -291,7 +296,7 @@ impl DocumentEngine for LatexEngine {
 /// comment wins, fontspec-style packages force a Unicode engine, and everything
 /// else gets pdfLaTeX (Overleaf's own default).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum LatexmkFlavor {
+pub enum LatexmkFlavor {
     Pdflatex,
     Xelatex,
     Lualatex,
@@ -305,6 +310,22 @@ impl LatexmkFlavor {
             Self::Lualatex => "-lualatex",
         }
     }
+
+    /// Parse the `project.json` `tex_flavor` value.
+    pub fn parse(value: &str) -> Option<Self> {
+        match value.trim() {
+            "pdflatex" => Some(Self::Pdflatex),
+            "xelatex" => Some(Self::Xelatex),
+            "lualatex" => Some(Self::Lualatex),
+            _ => None,
+        }
+    }
+}
+
+/// The user's pinned compiler wins over every source heuristic (magic comment
+/// included); detection only runs for the default "auto" choice.
+fn resolve_latexmk_flavor(pinned: Option<LatexmkFlavor>, source_head: &str) -> LatexmkFlavor {
+    pinned.unwrap_or_else(|| detect_latexmk_flavor(source_head))
 }
 
 fn detect_tex_program_magic(source: &str) -> Option<LatexmkFlavor> {
@@ -482,7 +503,7 @@ impl DocumentEngine for LatexmkEngine {
             } => (source_path.to_owned(), output_stem),
         };
         let source_head = read_source_head(&input_path);
-        let flavor = detect_latexmk_flavor(&source_head);
+        let flavor = resolve_latexmk_flavor(options.latex_flavor, &source_head);
         let shell_escape = latexmk_needs_shell_escape(&source_head);
         let artifacts = self.artifacts(out_dir, target);
         let args = latexmk_args(
@@ -884,6 +905,7 @@ pub fn descriptor_for(
             .map(|extension| (*extension).to_owned())
             .collect(),
         capabilities: engine.capabilities(),
+        tex_flavor: None,
     })
 }
 
@@ -939,6 +961,9 @@ pub struct CompileOptions {
     pub fast: bool,
     /// Stop at the first TeX error rather than pushing on to a best-effort PDF.
     pub halt_on_error: bool,
+    /// The project's pinned latexmk compiler; None means auto-detect from the
+    /// source. Ignored by every other engine.
+    pub latex_flavor: Option<LatexmkFlavor>,
 }
 
 pub struct CompileRequest<'a> {
@@ -2273,6 +2298,7 @@ mod tests {
             offline: true,
             fast: true,
             halt_on_error: true,
+            latex_flavor: None,
         });
         assert!(args.last().unwrap().ends_with(crate::paths::ENTRY_TEX));
         assert_eq!(&args[..2], ["-X", "compile"]);
@@ -2707,6 +2733,40 @@ mod tests {
             detect_latexmk_flavor("\\documentclass{article}"),
             LatexmkFlavor::Pdflatex
         );
+    }
+
+    #[test]
+    fn pinned_flavor_beats_every_source_heuristic() {
+        // An explicit per-project compiler wins over the magic comment and the
+        // fontspec upgrade; auto (None) falls back to detection.
+        let source = "% !TeX program = xelatex\n\\usepackage{fontspec}";
+        assert_eq!(
+            resolve_latexmk_flavor(Some(LatexmkFlavor::Pdflatex), source),
+            LatexmkFlavor::Pdflatex
+        );
+        assert_eq!(
+            resolve_latexmk_flavor(Some(LatexmkFlavor::Lualatex), source),
+            LatexmkFlavor::Lualatex
+        );
+        assert_eq!(resolve_latexmk_flavor(None, source), LatexmkFlavor::Xelatex);
+    }
+
+    #[test]
+    fn latexmk_flavor_parse_accepts_only_known_compilers() {
+        assert_eq!(
+            LatexmkFlavor::parse("pdflatex"),
+            Some(LatexmkFlavor::Pdflatex)
+        );
+        assert_eq!(
+            LatexmkFlavor::parse(" xelatex "),
+            Some(LatexmkFlavor::Xelatex)
+        );
+        assert_eq!(
+            LatexmkFlavor::parse("lualatex"),
+            Some(LatexmkFlavor::Lualatex)
+        );
+        assert_eq!(LatexmkFlavor::parse("tectonic"), None);
+        assert_eq!(LatexmkFlavor::parse(""), None);
     }
 
     #[test]

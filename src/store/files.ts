@@ -28,6 +28,7 @@ import {
   type FileEntry,
   type ProjectInfo,
   type DocumentEngineDescriptor,
+  type TexFlavor,
 } from "@/lib/tauri";
 import { UNKNOWN_ENGINE } from "@/lib/document-engine";
 import { flushAutoCommit, scheduleAutoCommit } from "@/lib/auto-commit";
@@ -167,7 +168,7 @@ interface FilesStore {
   applyExternalDelete: (path: string) => void;
   applyExternalRename: (from: string, to: string) => void;
   setMainDoc: (path: string) => Promise<void>;
-  setEngine: (engine: string) => Promise<void>;
+  setEngine: (engine: string, flavor?: TexFlavor | null) => Promise<void>;
 }
 
 let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -971,7 +972,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     }
   },
 
-  setEngine: async (engineName) => {
+  setEngine: async (engineName, flavor = null) => {
     const { projectId } = get();
     if (!projectId) return;
     // Same race protections as setMainDoc: an engine switch invalidates the
@@ -981,7 +982,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const compileStore = import("@/store/compile");
     set({ engine: UNKNOWN_ENGINE, engineLoaded: false, engineError: null });
     try {
-      const meta = await setProjectEngineCmd(projectId, engineName);
+      const meta = await setProjectEngineCmd(projectId, engineName, flavor);
       // Capture the reproducibility pin (distro + tlmgr packages) for the new
       // latexmk project in the background; slow tlmgr calls stay off this path.
       if (engineName === "latexmk") void recordProjectTexSpec(projectId).catch(() => {});
