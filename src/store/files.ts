@@ -76,6 +76,26 @@ async function checkTexPinStatus(
     }
   };
   const missing = status.missing_packages;
+  // A handful of missing packages gets a one-click install. A huge gap means
+  // the project was pinned on a much larger distribution (for example a full
+  // TeX Live against TinyTeX), where installing thousands of packages one by
+  // one is the wrong tool. Point at the distribution mismatch instead.
+  const MAX_ONE_CLICK_INSTALL = 25;
+  if (
+    missing.length > MAX_ONE_CLICK_INSTALL &&
+    status.pinned_label &&
+    status.local_label
+  ) {
+    const fresh = remember(
+      `oleafly.texGap.${projectId}`,
+      `bulk|${status.pinned_label}|${status.local_label}|${missing.length}`,
+    );
+    if (!fresh) return;
+    toast.info(
+      `This project was pinned with ${status.pinned_label}. The active ${status.local_label} is missing ${missing.length} of its packages, so compiles may fail until that distribution is used again.`,
+    );
+    return;
+  }
   if (missing.length > 0 && status.can_install_missing) {
     const fresh = remember(`oleafly.texGap.${projectId}`, [...missing].sort().join(","));
     if (!fresh) return;
@@ -108,7 +128,7 @@ async function checkTexPinStatus(
     );
     if (!fresh) return;
     toast.info(
-      `This project was pinned with ${status.pinned_label}; this machine compiles with ${status.local_label}. Output may differ slightly.`,
+      `This project was pinned with ${status.pinned_label} and this machine compiles with ${status.local_label}. Output may differ slightly.`,
     );
   }
 }
