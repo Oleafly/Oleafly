@@ -2656,4 +2656,98 @@ mod tests {
             "pdf-v1:4:6fab6075b28eda84"
         );
     }
+
+    #[test]
+    fn latexmk_engine_resolves_with_latex_capabilities() {
+        let engine = engine_for("latexmk", "main.tex").unwrap();
+        assert_eq!(engine.id(), DocumentEngineId::Latexmk);
+        let capabilities = engine.capabilities();
+        assert!(capabilities.produces_pdf);
+        assert!(capabilities.supports_synctex);
+        assert!(capabilities.supports_isolated_compile);
+        assert_eq!(capabilities.formatting_profile, FormattingProfile::Latex);
+        assert_eq!(
+            capabilities.compiler_prerequisite,
+            Some(CompilerPrerequisite::SystemTex)
+        );
+        let descriptor = descriptor_for("latexmk", "main.tex").unwrap();
+        assert_eq!(descriptor.label, "LaTeX (latexmk)");
+        // The frontend keys LaTeX behavior off source_format, not the id.
+        assert_eq!(descriptor.source_format, "latex");
+    }
+
+    #[test]
+    fn latexmk_flavor_honors_magic_program_comment() {
+        assert_eq!(
+            detect_latexmk_flavor("% !TeX program = xelatex\n\\documentclass{article}"),
+            LatexmkFlavor::Xelatex
+        );
+        assert_eq!(
+            detect_latexmk_flavor("%!TEX program = lualatex\n"),
+            LatexmkFlavor::Lualatex
+        );
+        assert_eq!(
+            detect_latexmk_flavor("% !TeX program = pdflatex\n\\usepackage{fontspec}"),
+            LatexmkFlavor::Pdflatex
+        );
+    }
+
+    #[test]
+    fn latexmk_flavor_upgrades_for_unicode_font_packages() {
+        assert_eq!(
+            detect_latexmk_flavor("\\usepackage{fontspec}"),
+            LatexmkFlavor::Xelatex
+        );
+        assert_eq!(
+            detect_latexmk_flavor("\\setmainfont{Georgia}"),
+            LatexmkFlavor::Xelatex
+        );
+        // Overleaf's default: plain projects compile with pdfLaTeX.
+        assert_eq!(
+            detect_latexmk_flavor("\\documentclass{article}"),
+            LatexmkFlavor::Pdflatex
+        );
+    }
+
+    #[test]
+    fn latexmk_shell_escape_is_scoped_to_documents_that_need_it() {
+        assert!(latexmk_needs_shell_escape("\\usepackage{minted}"));
+        assert!(latexmk_needs_shell_escape("\\write18{echo hi}"));
+        assert!(latexmk_needs_shell_escape("\\usepackage{pythontex}"));
+        assert!(!latexmk_needs_shell_escape("\\documentclass{article}"));
+    }
+
+    #[test]
+    fn latexmk_args_carry_engine_outdir_jobname_and_error_mode() {
+        let args = latexmk_args(
+            "/build",
+            "/proj/main.tex",
+            crate::paths::ENTRY_STEM,
+            LatexmkFlavor::Pdflatex,
+            true,
+            CompileOptions::default(),
+        );
+        assert_eq!(args[0], "-pdf");
+        assert!(args.contains(&"-outdir=/build".to_string()));
+        assert!(args.contains(&format!("-jobname={}", crate::paths::ENTRY_STEM)));
+        assert!(args.contains(&"-shell-escape".to_string()));
+        assert!(args.contains(&"-f".to_string()));
+        assert_eq!(args.last().unwrap(), "/proj/main.tex");
+
+        let halt = latexmk_args(
+            "/build",
+            "main.tex",
+            "_figure",
+            LatexmkFlavor::Xelatex,
+            false,
+            CompileOptions {
+                halt_on_error: true,
+                ..Default::default()
+            },
+        );
+        assert_eq!(halt[0], "-xelatex");
+        assert!(halt.contains(&"-halt-on-error".to_string()));
+        assert!(!halt.contains(&"-f".to_string()));
+        assert!(!halt.contains(&"-shell-escape".to_string()));
+    }
 }

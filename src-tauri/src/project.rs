@@ -3134,12 +3134,13 @@ mod tests {
         copy_path_in_project, create_diagram_project, create_image_project_in,
         create_markdown_project_in, create_project_from_pdf_conversion, create_project_transaction,
         create_typst_project, create_typst_project_in, download_project_zip, duplicate_project,
-        engine_for_main_document, extract_pandoc, get_or_create_scratch_project,
-        import_paths_transactional, import_paths_transactional_with, list_projects,
-        pandoc_asset_for, pandoc_version_supported, read_meta, rel_slash, rename_exclusive,
-        rename_path_in_project, search_docs, set_main_doc_synchronized, validate_conversion_export,
+        engine_for_main_document, extract_pandoc, flatten_single_root_folder,
+        get_or_create_scratch_project, import_paths_transactional, import_paths_transactional_with,
+        import_skip, infer_main_document, list_projects, normalize_relative, pandoc_asset_for,
+        pandoc_version_supported, read_meta, rel_slash, rename_exclusive, rename_path_in_project,
+        search_docs, set_main_doc_synchronized, tex_root_magic_target, validate_conversion_export,
         write_meta_at, FileConflictStrategy, PdfConversionFigure, ProjectMeta, RenameFileResult,
-        SCRATCH_PROJECT_ID,
+        TexSpec, SCRATCH_PROJECT_ID,
     };
     use std::io::Write;
     use std::path::Path;
@@ -4107,5 +4108,161 @@ mod tests {
         assert_eq!(meta.forked_from.as_deref(), Some("Original Paper"));
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn import_skip_filters_junk_and_internal_directories() {
+        assert!(import_skip("__MACOSX/main.tex"));
+        assert!(import_skip("figures/.DS_Store"));
+        assert!(import_skip(".git/config"));
+        assert!(import_skip(".oleafly/build/x.pdf"));
+        assert!(!import_skip("chapters/intro.tex"));
+        assert!(!import_skip("main.tex"));
+    }
+
+    #[test]
+    fn tex_root_magic_comment_parses_case_and_spacing_variants() {
+        assert_eq!(
+            tex_root_magic_target("% !TeX root = ../thesis.tex\n").as_deref(),
+            Some("../thesis.tex")
+        );
+        assert_eq!(
+            tex_root_magic_target("%!TEX root=main.tex\n").as_deref(),
+            Some("main.tex")
+        );
+        assert_eq!(tex_root_magic_target("% just a comment\n"), None);
+    }
+
+    #[test]
+    fn normalize_relative_resolves_dots_and_rejects_escapes() {
+        assert_eq!(
+            normalize_relative(Path::new("chapters/../thesis.tex")).as_deref(),
+            Some("thesis.tex")
+        );
+        assert_eq!(
+            normalize_relative(Path::new("a/./b.tex")).as_deref(),
+            Some("a/b.tex")
+        );
+        assert_eq!(normalize_relative(Path::new("../outside.tex")), None);
+    }
+
+    #[test]
+    fn infer_main_document_prefers_documentclass_and_root_level_main() {
+        let dir = test_dir("infer-main-scoring");
+        std::fs::create_dir_all(dir.join("chapters")).unwrap();
+        std::fs::write(
+            dir.join("main.tex"),
+            "\\documentclass{article}\n\\begin{document}Hi\\end{document}\n",
+        )
+        .unwrap();
+        std::fs::write(dir.join("chapters/ch1.tex"), "\\section{One}\n").unwrap();
+        std::fs::write(dir.join("notes.tex"), "no preamble here\n").unwrap();
+        assert_eq!(infer_main_document(&dir).unwrap(), "main.tex");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn infer_main_document_follows_a_magic_root_comment() {
+        let dir = test_dir("infer-main-magic-root");
+        std::fs::create_dir_all(dir.join("chapters")).unwrap();
+        std::fs::write(
+            dir.join("thesis.tex"),
+            "\\documentclass{report}\n\\begin{document}\\end{document}\n",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("chapters/ch1.tex"),
+            "% !TeX root = ../thesis.tex\n\\chapter{One}\n",
+        )
+        .unwrap();
+        std::fs::write(dir.join("preamble.tex"), "\\usepackage{amsmath}\n").unwrap();
+        assert_eq!(infer_main_document(&dir).unwrap(), "thesis.tex");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn infer_main_document_uses_a_lone_tex_file_as_is() {
+        let dir = test_dir("infer-main-lone");
+        std::fs::write(dir.join("paper.tex"), "\\documentclass{article}\n").unwrap();
+        std::fs::write(dir.join("refs.bib"), "@book{k, title={T}}\n").unwrap();
+        assert_eq!(infer_main_document(&dir).unwrap(), "paper.tex");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn infer_main_document_errors_without_any_tex_file() {
+        let dir = test_dir("infer-main-none");
+        std::fs::write(dir.join("readme.md"), "hello\n").unwrap();
+        assert!(infer_main_document(&dir).is_err());
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn flatten_single_root_folder_unwraps_a_zip_wrapper() {
+        let dir = test_dir("flatten-wrapper");
+        std::fs::create_dir_all(dir.join("wrapped/chapters")).unwrap();
+        std::fs::write(dir.join("wrapped/main.tex"), "x").unwrap();
+        std::fs::write(dir.join("wrapped/chapters/ch1.tex"), "y").unwrap();
+        flatten_single_root_folder(&dir).unwrap();
+        assert!(dir.join("main.tex").is_file());
+        assert!(dir.join("chapters/ch1.tex").is_file());
+        assert!(!dir.join("wrapped").exists());
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn flatten_single_root_folder_leaves_flat_projects_alone() {
+        let dir = test_dir("flatten-flat");
+        std::fs::write(dir.join("main.tex"), "x").unwrap();
+        std::fs::write(dir.join("refs.bib"), "y").unwrap();
+        flatten_single_root_folder(&dir).unwrap();
+        assert!(dir.join("main.tex").is_file());
+        assert!(dir.join("refs.bib").is_file());
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn tex_spec_round_trips_through_project_json() {
+        let dir = test_dir("tex-spec-roundtrip");
+        let path = dir.join("project.json");
+        let mut packages = std::collections::BTreeMap::new();
+        packages.insert("siunitx".to_string(), "3.3.20".to_string());
+        write_meta_at(
+            &path,
+            &ProjectMeta {
+                name: "Pinned".into(),
+                main_doc: "main.tex".into(),
+                engine: "latexmk".into(),
+                tex: Some(TexSpec {
+                    distribution: "texlive".into(),
+                    distribution_label: "TeX Live 2025".into(),
+                    packages,
+                    recorded_at: 1.0,
+                }),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let raw = std::fs::read_to_string(&path).unwrap();
+        let parsed: ProjectMeta = serde_json::from_str(&raw).unwrap();
+        let spec = parsed.tex.unwrap();
+        assert_eq!(spec.distribution_label, "TeX Live 2025");
+        assert_eq!(
+            spec.packages.get("siunitx").map(String::as_str),
+            Some("3.3.20")
+        );
+        // Projects without a pin keep project.json free of the field entirely.
+        write_meta_at(
+            &path,
+            &ProjectMeta {
+                name: "Plain".into(),
+                main_doc: "main.tex".into(),
+                engine: "xetex".into(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert!(!std::fs::read_to_string(&path).unwrap().contains("\"tex\""));
+        std::fs::remove_dir_all(dir).unwrap();
     }
 }

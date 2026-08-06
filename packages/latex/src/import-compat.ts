@@ -325,6 +325,47 @@ export function classifyCompileFailure(logRaw: string): ImportCompatFinding[] {
 }
 
 /**
+ * Package/class files a failed compile could not find, as installable tlmgr
+ * package names (best effort: the file stem is the package name for the vast
+ * majority of CTAN packages). Matches the pdfLaTeX/XeLaTeX error shapes:
+ *
+ *   ! LaTeX Error: File `foo.sty' not found.
+ *   ! I can't find file `bar.cls'.
+ *
+ * Linear indexOf scans only. Capped and deduplicated.
+ */
+export function missingLatexPackages(logRaw: string): string[] {
+  const log =
+    logRaw.length > MAX_CLASSIFY_CHARS ? logRaw.slice(0, MAX_CLASSIFY_CHARS) : logRaw;
+  const found = new Set<string>();
+  const markers = ["LaTeX Error: File `", "I can't find file `"];
+  for (const marker of markers) {
+    let from = 0;
+    while (from < log.length && found.size < 8) {
+      const idx = log.indexOf(marker, from);
+      if (idx === -1) break;
+      const start = idx + marker.length;
+      const quote = log.indexOf("'", start);
+      if (quote === -1 || quote - start > 128) {
+        from = start;
+        continue;
+      }
+      const file = log.slice(start, quote).trim();
+      const dot = file.lastIndexOf(".");
+      const ext = dot === -1 ? "" : file.slice(dot + 1).toLowerCase();
+      if (ext === "sty" || ext === "cls") {
+        const stem = file.slice(0, dot).split("/").pop() ?? "";
+        // tlmgr package names are a safe charset; anything else is not
+        // installable by name and would just fail the install call.
+        if (stem && /^[a-zA-Z0-9.-]+$/.test(stem)) found.add(stem);
+      }
+      from = quote + 1;
+    }
+  }
+  return [...found];
+}
+
+/**
  * TeX reports a missing include as `No file <name><ext>` (with a trailing
  * period). Line-scan for that shape so ordinary mentions of the extension in
  * prose do not match.

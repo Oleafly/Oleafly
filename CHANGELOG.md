@@ -37,6 +37,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   resumes interrupted downloads across app launches, pauses a running compile
   and re-queues it, and intercepts window close and Cmd+Q with a clear
   confirmation while an install is running.
+- **Missing packages install themselves.** When a latexmk compile fails on a
+  missing `.sty` or `.cls`, Oleafly names the packages and offers a one-click
+  install through tlmgr, then recompiles automatically.
 - **Reproducible projects.** `project.json` now carries the compile engine and
   a TeX pin (distribution plus tlmgr package versions) so collaborators open
   the same setup. Coauthors are prompted to install missing pinned packages

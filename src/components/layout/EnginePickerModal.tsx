@@ -116,6 +116,7 @@ export function EnginePickerModal() {
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
+        data-testid="engine-picker-modal"
         className="relative flex w-full max-w-lg flex-col gap-4 rounded-xl border bg-background p-5 shadow-2xl"
       >
         <div>
@@ -182,6 +183,7 @@ export function EnginePickerModal() {
             <div className="mt-2">
               <Button
                 size="sm"
+                data-testid="engine-picker-use-system"
                 disabled={!hasSystemTex || switching || alreadyLatexmk}
                 onClick={() => void pinLatexmk(false)}
                 data-modal-initial-focus={hasSystemTex || undefined}
@@ -238,7 +240,12 @@ export function EnginePickerModal() {
                 : "Zero setup, works offline. Fine for plain LaTeX and most common packages."}
             </p>
             <div className="mt-2">
-              <Button size="sm" variant="ghost" onClick={() => void keepTectonic()}>
+              <Button
+                size="sm"
+                variant="ghost"
+                data-testid="engine-picker-keep-tectonic"
+                onClick={() => void keepTectonic()}
+              >
                 {alreadyLatexmk ? "Switch back to Tectonic" : "Keep Tectonic"}
               </Button>
             </div>
