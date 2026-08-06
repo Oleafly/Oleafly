@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Import from Overleaf.** The Library and the template chooser now import an
+  Overleaf ZIP export or a plain folder as a new project. The main document is
+  inferred automatically: a `% !TeX root` magic comment wins, otherwise
+  `\documentclass` and `\begin{document}` scoring picks the entry, and a lone
+  `.tex` file is used as is. Extraction is hardened with path, size, and depth
+  limits, junk files are filtered, and a single wrapping folder is unwrapped.
+  Full issue: https://github.com/Oleafly/Oleafly/issues/42
+- **latexmk engine for full Overleaf parity.** Projects can compile through a
+  system TeX distribution (MacTeX, TeX Live, MiKTeX, or TinyTeX) driven by
+  `latexmk`, which orchestrates Biber, makeindex/makeglossaries, pythontex,
+  shell-escape, and multi-pass builds the way Overleaf does. The TeX flavor is
+  chosen from the source (`% !TeX program` comment, fontspec detection,
+  pdfLaTeX default) and shell-escape is enabled only when the document needs
+  it. Imported LaTeX projects pick latexmk automatically when a system TeX is
+  detected; everything else stays on the bundled Tectonic engine.
+- **Engine choice that explains itself.** Opening a project scans the whole
+  tree for Tectonic gaps (minted, glossaries, pythontex, shell-escape,
+  biblatex, pdfTeX-only classes) and a failed compile that matches a known gap
+  opens a three-option engine picker: use system TeX, download TinyTeX, or
+  keep Tectonic. Errors that originate in a publisher class or style file are
+  recognized as engine gaps too. The per-project choice lives in the compile
+  options menu, and Settings gains a default engine for new projects plus a
+  panel listing detected TeX distributions.
+- **Seamless TinyTeX install.** The on-demand TinyTeX download checks free
+  disk space first, shows phased progress for download, unpack, and packages,
+  resumes interrupted downloads across app launches, pauses a running compile
+  and re-queues it, and intercepts window close and Cmd+Q with a clear
+  confirmation while an install is running.
+- **Reproducible projects.** `project.json` now carries the compile engine and
+  a TeX pin (distribution plus tlmgr package versions) so collaborators open
+  the same setup. Coauthors are prompted to install missing pinned packages
+  with one click, a differing distribution gets a one-time heads-up, and every
+  successful compile writes a provenance record under `.oleafly/builds/`.
+
 ### Fixed
 
 - **biblatex / Biber for Overleaf and journal imports.** LaTeX compiles now put a

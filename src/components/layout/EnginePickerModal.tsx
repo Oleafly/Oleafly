@@ -205,7 +205,7 @@ export function EnginePickerModal() {
               </div>
               <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
                 Installs a minimal TeX Live into your home folder, no admin rights
-                needed. The core download is about 100 MB; journal templates can
+                needed. The core download is about 100 MB. Journal templates can
                 pull more packages later, up to roughly 1 GB in total.
               </p>
               <div className="mt-2">
@@ -234,7 +234,7 @@ export function EnginePickerModal() {
             </div>
             <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
               {fixable.length > 0
-                ? `Zero setup, works offline. ${fixable.map((f) => f.title).join("; ")} ${fixable.length === 1 ? "is" : "are"} expected to keep failing.`
+                ? `Zero setup, works offline. ${fixable.map((f) => f.title).join(", ")} ${fixable.length === 1 ? "is" : "are"} expected to keep failing.`
                 : "Zero setup, works offline. Fine for plain LaTeX and most common packages."}
             </p>
             <div className="mt-2">

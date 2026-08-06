@@ -272,7 +272,7 @@ const projectHover = hoverTooltip((view, position) => {
       if (extras?.aux) {
         const aux = dom.appendChild(document.createElement("div"));
         aux.className = "cm-code-hover-aux";
-        aux.textContent = `№ ${extras.aux.number} · p. ${extras.aux.page} — last compile`;
+        aux.textContent = `№ ${extras.aux.number} · p. ${extras.aux.page} (last compile)`;
       }
       if (extras?.assetPath) {
         const thumb = dom.appendChild(document.createElement("div"));

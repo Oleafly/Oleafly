@@ -67,7 +67,7 @@ describe("astAugmentLatexFile", () => {
     const definition = result?.definitions[0];
     expect(definition?.kind).toBe("glossary");
     expect(definition?.name).toBe("ast");
-    expect(definition?.detail).toBe("AST — Abstract Syntax Tree");
+    expect(definition?.detail).toBe("AST, Abstract Syntax Tree");
   });
 
   it("skips a leading optional argument on \\newacronym", () => {
@@ -76,7 +76,7 @@ describe("astAugmentLatexFile", () => {
     );
     const definition = result?.definitions[0];
     expect(definition?.name).toBe("k");
-    expect(definition?.detail).toBe("S — L");
+    expect(definition?.detail).toBe("S, L");
   });
 
   it("returns null when the source has no glossary macros", () => {

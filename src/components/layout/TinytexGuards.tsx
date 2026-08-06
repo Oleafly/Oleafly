@@ -50,7 +50,7 @@ export function TinytexGuards() {
       <ConfirmationDialog
         open={quitAsked && installing}
         title="TinyTeX is still installing"
-        description={`${phaseLabel} right now. If you quit, the install pauses; the downloaded part is kept and resumes the next time you open Oleafly.`}
+        description={`${phaseLabel} right now. If you quit, the install pauses. The downloaded part is kept and resumes the next time you open Oleafly.`}
         confirmLabel="Quit anyway"
         destructive
         onConfirm={() => {

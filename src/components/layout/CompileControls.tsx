@@ -69,7 +69,7 @@ function TexRootIndicator() {
   if (overriddenBy === null) return null;
   return (
     <Tooltip
-      label={`root: ${mainDoc} — set by % !TEX root in ${overriddenBy}`}
+      label={`root: ${mainDoc} (set by % !TEX root in ${overriddenBy})`}
     >
       <span
         data-testid="tex-root-indicator"

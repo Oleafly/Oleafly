@@ -167,7 +167,7 @@ function AnalysisNotice({ state }: { state: ProjectIntelligenceState }) {
         role="status"
         className="border-b border-amber-500/20 bg-amber-500/8 px-2.5 py-1.5 text-[10px] leading-relaxed text-amber-800 dark:text-amber-200"
       >
-        Updating — previous-revision citations, symbols, and ranges are hidden.
+        Updating. Previous-revision citations, symbols, and ranges are hidden.
       </div>
     );
   }
@@ -177,7 +177,7 @@ function AnalysisNotice({ state }: { state: ProjectIntelligenceState }) {
         role="status"
         className="border-b border-amber-500/20 bg-amber-500/8 px-2.5 py-1.5 text-[10px] leading-relaxed text-amber-800 dark:text-amber-200"
       >
-        Partial results — malformed or unreadable files may omit some
+        Partial results. Malformed or unreadable files may omit some
         occurrences.
       </div>
     );

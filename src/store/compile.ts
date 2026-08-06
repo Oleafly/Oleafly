@@ -11,7 +11,7 @@ import {
 } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { engineHintDismissed, useEnginePickerStore } from "@/store/engine-picker";
-import { classifyCompileFailure } from "@oleafly/latex";
+import { classifyCompileFailure, importCompatFinding } from "@oleafly/latex";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { useSettingsStore } from "@/store/settings";
 import { notifyError } from "@/lib/toast";
@@ -359,11 +359,24 @@ async function mainDocumentSyntaxErrors(
  * Open the engine-picker modal when a failed Tectonic compile matches a known
  * engine gap. Skipped for latexmk projects (they have the full toolchain) and
  * for finding sets the user already dismissed with "Keep Tectonic".
+ *
+ * Catch-all: when no specific signature matches but the errors originate in a
+ * class or style file rather than the user's own document, treat it as an
+ * engine gap too. That is the "it works on Overleaf" long tail (publisher
+ * classes relying on toolchain behavior Tectonic does not provide), and it
+ * never fires for ordinary typos, which TeX attributes to the user's .tex.
  */
-function maybePromptEngineGap(log: string): void {
+function maybePromptEngineGap(log: string, errors: CompileError[]): void {
   const files = useFilesStore.getState();
   if (files.engine.id !== "latex" || !files.projectId) return;
-  const findings = classifyCompileFailure(log);
+  let findings = classifyCompileFailure(log);
+  if (findings.length === 0) {
+    const classFileError = errors.some(
+      (error) =>
+        error.kind === "error" && /\.(cls|sty|bbx|cbx|def|ldf)$/i.test(error.file ?? ""),
+    );
+    if (classFileError) findings = [importCompatFinding("class-compat")];
+  }
   if (findings.length === 0) return;
   if (engineHintDismissed(files.projectId, findings)) return;
   useEnginePickerStore.getState().openPicker("compile-failure", findings);
@@ -858,7 +871,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       // (minted, missing index run, shell-escape refusal, unresolved Biber)
       // gets the engine-picker modal instead of leaving the user to decode
       // the log. latexmk projects already have the full toolchain.
-      if (!checkpoint) maybePromptEngineGap(result.log);
+      if (!checkpoint) maybePromptEngineGap(result.log, result.errors);
       // Tell detached windows (PDF preview, other OS windows) to reload.
       void import("@/lib/preview-window")
         .then((module) =>

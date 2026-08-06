@@ -106,7 +106,7 @@ export function EngineSection() {
         <Tooltip
           wide
           side="right"
-          label="Everything the latexmk engine can use on this machine. TinyTeX installs into your home folder with no admin rights; system installs (MacTeX, TeX Live, MiKTeX) are detected automatically."
+          label="Everything the latexmk engine can use on this machine. TinyTeX installs into your home folder with no admin rights. System installs (MacTeX, TeX Live, MiKTeX) are detected automatically."
         >
           <Info className="size-3.5 cursor-help text-muted-foreground/60 hover:text-muted-foreground" />
         </Tooltip>
@@ -151,9 +151,9 @@ export function EngineSection() {
               <span className="text-sm">TinyTeX</span>
             </div>
             <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-              A minimal TeX Live in your home folder. Core download is about 100 MB; journal
-              templates can add packages later (up to ~1 GB total). Installing ahead of time makes
-              imported Overleaf projects compile immediately.
+              A minimal TeX Live in your home folder. The core download is about 100 MB.
+              Journal templates can add packages later, up to about 1 GB in total.
+              Installing ahead of time makes imported Overleaf projects compile immediately.
             </p>
             <div className="mt-2">
               <button

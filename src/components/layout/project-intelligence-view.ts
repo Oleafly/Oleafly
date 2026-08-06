@@ -330,7 +330,7 @@ function bibliographyMetadata(entry: BibliographyEntry): {
   const author = fields.get("author");
   const title = fields.get("title");
   const year = fields.get("year");
-  const description = [title, author].filter(Boolean).join(" — ");
+  const description = [title, author].filter(Boolean).join(", ");
   return {
     description: description || `${entry.type} entry in ${entry.file}`,
     badge: year || entry.type,

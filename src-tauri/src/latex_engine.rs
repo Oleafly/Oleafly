@@ -414,7 +414,7 @@ pub async fn install_tinytex(app: tauri::AppHandle) -> Result<EngineInfo, String
         if free < MIN_FREE_BYTES {
             return Err(format!(
                 "Not enough free disk space to install TinyTeX. It needs about {:.1} GB \
-                 (download plus extraction, with room for LaTeX packages); this disk has \
+                 (download plus extraction, with room for LaTeX packages). This disk has \
                  {:.1} GB free. Free up space, then try again.",
                 gigabytes(MIN_FREE_BYTES),
                 gigabytes(free)
@@ -454,7 +454,7 @@ pub async fn install_tinytex(app: tauri::AppHandle) -> Result<EngineInfo, String
     let mut stream = resp.bytes_stream();
     while let Some(chunk) = stream.next().await {
         let chunk = chunk.map_err(|e| {
-            format!("download interrupted: {e}. Your progress is saved; retry to resume.")
+            format!("download interrupted: {e}. Your progress is saved. Retry to resume.")
         })?;
         received += chunk.len() as u64;
         file.write_all(&chunk).map_err(|e| e.to_string())?;
@@ -573,19 +573,16 @@ fn tlmgr_installed_blocking() -> Result<Vec<String>, String> {
         .collect())
 }
 
-/// Installed package -> revision, for the reproducibility pin in project.json.
-/// `cat-version` is the CTAN version where known; the TeX Live revision fills
-/// in when it is not. Empty map when no tlmgr exists (e.g. MiKTeX).
+/// Installed package -> version, for the reproducibility pin in project.json.
+/// `cat-version` is the CTAN version where the catalogue has one, "installed"
+/// otherwise. Note: `revision`/`lrev` are NOT valid `--data` fields on TeX
+/// Live 2025's tlmgr (the command exits with "unknown data field"). Empty map
+/// when no tlmgr exists (e.g. MiKTeX).
 pub fn tlmgr_installed_versions() -> Result<std::collections::BTreeMap<String, String>, String> {
     let tlmgr = tlmgr_path()?;
     let out = Command::new(&tlmgr)
         .no_console()
-        .args([
-            "info",
-            "--only-installed",
-            "--data",
-            "name,revision,cat-version",
-        ])
+        .args(["info", "--only-installed", "--data", "name,cat-version"])
         .output()
         .map_err(|e| format!("failed to run tlmgr: {e}"))?;
     if !out.status.success() {
@@ -593,18 +590,22 @@ pub fn tlmgr_installed_versions() -> Result<std::collections::BTreeMap<String, S
     }
     let mut versions = std::collections::BTreeMap::new();
     for line in String::from_utf8_lossy(&out.stdout).lines() {
-        let mut fields = line.trim().splitn(3, ',');
-        let Some(name) = fields.next().map(str::trim).filter(|n| !n.is_empty()) else {
+        let Some((name, version)) = line.trim().split_once(',') else {
             continue;
         };
-        let revision = fields.next().map(str::trim).unwrap_or("");
-        let cat_version = fields.next().map(str::trim).unwrap_or("");
-        let version = if cat_version.is_empty() {
-            format!("r{revision}")
-        } else {
-            cat_version.to_string()
-        };
-        versions.insert(name.to_string(), version);
+        let name = name.trim();
+        if name.is_empty() {
+            continue;
+        }
+        let version = version.trim();
+        versions.insert(
+            name.to_string(),
+            if version.is_empty() {
+                "installed".to_string()
+            } else {
+                version.to_string()
+            },
+        );
     }
     Ok(versions)
 }

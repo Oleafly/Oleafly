@@ -35,7 +35,7 @@ export const IMPORT_COMPAT_CATALOG = {
     level: "blocker",
     title: "minted needs shell-escape and Pygments",
     detail:
-      "Code listings via minted require \\write18 and a system pygmentize. Oleafly does not enable shell-escape by default; expect failures until that toolchain is available.",
+      "Code listings via minted require \\write18 and a system pygmentize. Oleafly does not enable shell-escape by default. Expect failures until that toolchain is available.",
     latexmkFixes: true,
   },
   "glossaries-index": {
@@ -73,6 +73,13 @@ export const IMPORT_COMPAT_CATALOG = {
       "Oleafly’s default engine is Tectonic (XeTeX-class), and this project relies on pdfTeX-only packages or primitives. The latexmk engine compiles with real pdfLaTeX, the same way Overleaf does.",
     latexmkFixes: true,
   },
+  "class-compat": {
+    level: "warning",
+    title: "Publisher class hits engine limits",
+    detail:
+      "The compile errors come from a class or style file, not from your document. Publisher classes often depend on tools or pdfTeX behavior the bundled Tectonic engine does not provide. The latexmk engine compiles with a full TeX distribution, the same way Overleaf does.",
+    latexmkFixes: true,
+  },
 } as const satisfies Record<
   string,
   { level: ImportCompatLevel; title: string; detail: string; latexmkFixes: boolean }
@@ -83,6 +90,11 @@ export type ImportCompatFindingId = keyof typeof IMPORT_COMPAT_CATALOG;
 function findingFor(id: ImportCompatFindingId): ImportCompatFinding {
   const entry = IMPORT_COMPAT_CATALOG[id];
   return { id, level: entry.level, title: entry.title, detail: entry.detail };
+}
+
+/** Public lookup for one taxonomy entry (used by catch-all failure checks). */
+export function importCompatFinding(id: ImportCompatFindingId): ImportCompatFinding {
+  return findingFor(id);
 }
 
 /** True when switching to the latexmk engine resolves this finding. */

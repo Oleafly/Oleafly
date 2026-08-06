@@ -185,7 +185,7 @@ export function ProjectCitationPicker({
           role="status"
           className="border-b border-amber-500/20 bg-amber-500/8 px-2.5 py-1.5 text-[10px] text-amber-800 dark:text-amber-200"
         >
-          Partial catalog — malformed or unreadable bibliography files may be
+          Partial catalog. Malformed or unreadable bibliography files may be
           omitted.
         </div>
       ) : null}
