@@ -506,7 +506,7 @@ impl DocumentEngine for LatexmkEngine {
         let flavor = resolve_latexmk_flavor(options.latex_flavor, &source_head);
         let shell_escape = latexmk_needs_shell_escape(&source_head);
         let artifacts = self.artifacts(out_dir, target);
-        let args = latexmk_args(
+        let mut args = latexmk_args(
             &out_dir.to_string_lossy(),
             &input_path.to_string_lossy(),
             stem,
@@ -514,6 +514,14 @@ impl DocumentEngine for LatexmkEngine {
             shell_escape,
             options,
         );
+        // latexmk's dependency database is not portable across TeX
+        // distributions: after a distro switch it can report "Nothing to do"
+        // while replaying the previous run's error. Force one full rebuild
+        // (-gg) whenever the resolved latexmk binary differs from the one
+        // that produced this build directory.
+        if latexmk_binary_changed(out_dir, &latexmk) {
+            args.insert(0, "-gg".into());
+        }
         Ok(EngineCompileSpec {
             executable: EngineExecutable::ExternalPath(latexmk),
             args,
@@ -526,6 +534,21 @@ impl DocumentEngine for LatexmkEngine {
     fn parse_errors(&self, log: &str) -> Vec<CompileError> {
         parse_tex_log_errors(log)
     }
+}
+
+/// True when this build directory was last driven by a different latexmk
+/// binary (or never by latexmk). Records the current binary path in a marker
+/// file so the forced rebuild happens exactly once per switch.
+fn latexmk_binary_changed(out_dir: &Path, latexmk: &Path) -> bool {
+    let marker = out_dir.join(".oleafly-latexmk");
+    let current = latexmk.to_string_lossy();
+    let previous = std::fs::read_to_string(&marker).unwrap_or_default();
+    if previous.trim() == current {
+        return false;
+    }
+    let _ = std::fs::create_dir_all(out_dir);
+    let _ = std::fs::write(&marker, current.as_bytes());
+    true
 }
 
 fn validate_latex_main_document(path: &str) -> Result<(), String> {
@@ -2733,6 +2756,22 @@ mod tests {
             detect_latexmk_flavor("\\documentclass{article}"),
             LatexmkFlavor::Pdflatex
         );
+    }
+
+    #[test]
+    fn latexmk_binary_change_forces_one_rebuild() {
+        let dir = std::env::temp_dir().join(format!("oleafly-lmk-marker-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let tinytex = Path::new("/tiny/bin/latexmk");
+        let mactex = Path::new("/mactex/bin/latexmk");
+        // First compile in a fresh build dir: no marker yet, rebuild once.
+        assert!(latexmk_binary_changed(&dir, tinytex));
+        // Same binary again: incremental.
+        assert!(!latexmk_binary_changed(&dir, tinytex));
+        // Distro switch: rebuild once, then incremental again.
+        assert!(latexmk_binary_changed(&dir, mactex));
+        assert!(!latexmk_binary_changed(&dir, mactex));
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

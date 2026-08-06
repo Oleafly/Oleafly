@@ -100,9 +100,12 @@ export function Tooltip({
             role="tooltip"
             className={cn(
               "pointer-events-none fixed z-[200] rounded-md border bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md",
+              // overflow-wrap anywhere: labels can carry long unbroken paths
+              // (TeX bin directories), which must wrap instead of spilling
+              // past the bubble.
               wide
-                ? "max-w-xs whitespace-normal font-normal leading-relaxed"
-                : "w-max max-w-[260px] whitespace-normal font-medium",
+                ? "max-w-xs whitespace-normal font-normal leading-relaxed [overflow-wrap:anywhere]"
+                : "w-max max-w-[260px] whitespace-normal font-medium [overflow-wrap:anywhere]",
               !pos && "opacity-0"
             )}
             style={pos ? { top: pos.top, left: pos.left } : { top: -9999, left: -9999 }}
