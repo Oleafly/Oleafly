@@ -47,6 +47,27 @@ const DEFAULT_MAIN_DIAGRAM: &str = "\\documentclass[tikz,border=4pt]{standalone}
 \\end{tikzpicture}\n\
 \\end{document}\n";
 
+/// Reproducibility pin for latexmk projects: which TeX distribution and which
+/// package versions produced this project's output. Lives in project.json so
+/// it travels with git and every coauthor sees the same spec (the app-internal
+/// `.oleafly/` directory is deliberately gitignored, so it cannot live there).
+#[derive(Serialize, Deserialize, Default, Clone)]
+pub struct TexSpec {
+    /// Distribution kind ("oleafly-tinytex", "mactex", "texlive", "miktex", ...).
+    #[serde(default)]
+    pub distribution: String,
+    /// Human label, e.g. "TeX Live 2025".
+    #[serde(default)]
+    pub distribution_label: String,
+    /// tlmgr package -> version (CTAN version or TeX Live revision). The
+    /// npm-lockfile role: coauthors are prompted to install what is missing.
+    #[serde(default)]
+    pub packages: std::collections::BTreeMap<String, String>,
+    /// Unix epoch seconds when the spec was captured.
+    #[serde(default)]
+    pub recorded_at: f64,
+}
+
 #[derive(Serialize, Deserialize, Default, Clone)]
 pub struct ProjectMeta {
     #[serde(default)]
@@ -55,6 +76,9 @@ pub struct ProjectMeta {
     pub main_doc: String,
     #[serde(default = "default_engine")]
     pub engine: String,
+    /// Present on latexmk projects once an engine spec has been recorded.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tex: Option<TexSpec>,
     /// Book-cover color (hex). Empty means "unset" so the UI falls back to its
     /// default. Stored on disk so a project's color survives across machines.
     #[serde(default)]
@@ -151,6 +175,7 @@ pub fn read_meta(project_id: &str) -> Result<ProjectMeta, String> {
             exports: Vec::new(),
             hidden: false,
             forked_from: None,
+            tex: None,
         });
     }
     let s = std::fs::read_to_string(&p).map_err(|e| format!("failed to read project.json: {e}"))?;
@@ -858,6 +883,186 @@ fn set_main_doc_unlocked(project_id: String, main_doc: String) -> Result<Project
     Ok(meta)
 }
 
+/// Pin a project's compile engine in `project.json` (e.g. "xetex" for the
+/// bundled Tectonic, "latexmk" for a system TeX toolchain). Shares the compile
+/// lock with `set_main_doc` so an engine switch never lands between a compile's
+/// final identity check and its revision allocation.
+#[tauri::command]
+pub async fn set_project_engine(
+    state: tauri::State<'_, crate::state::AppState>,
+    project_id: String,
+    engine: String,
+) -> Result<ProjectMeta, String> {
+    let _guard = state.compile_lock.lock().await;
+    let engine = engine.trim().to_string();
+    if engine.is_empty() {
+        return Err("engine name cannot be empty".into());
+    }
+    let mut meta = read_meta(&project_id)?;
+    // Reject engines that cannot compile the current main document before
+    // persisting anything.
+    crate::document_engine::engine_for(&engine, &meta.main_doc)?;
+    meta.engine = engine;
+    write_meta(&project_id, &meta)?;
+    Ok(meta)
+}
+
+fn epoch_seconds() -> f64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs_f64())
+        .unwrap_or(0.0)
+}
+
+fn collect_tex_spec() -> Option<TexSpec> {
+    let active = crate::tex_distro::list_distributions()
+        .into_iter()
+        .find(|d| d.latexmk.is_some())?;
+    // No tlmgr (e.g. MiKTeX, which installs packages on the fly) still yields
+    // a distribution pin; the package map just stays empty.
+    let packages = crate::latex_engine::tlmgr_installed_versions().unwrap_or_default();
+    Some(TexSpec {
+        distribution: active.kind,
+        distribution_label: active.label,
+        packages,
+        recorded_at: epoch_seconds(),
+    })
+}
+
+/// Capture the local TeX distribution + tlmgr package versions into the
+/// project's reproducibility pin. Called after a project switches to latexmk.
+/// The slow part (tlmgr info, seconds) runs before the lock is taken.
+#[tauri::command]
+pub async fn record_project_tex_spec(
+    state: tauri::State<'_, crate::state::AppState>,
+    project_id: String,
+) -> Result<Option<TexSpec>, String> {
+    let spec = tauri::async_runtime::spawn_blocking(collect_tex_spec)
+        .await
+        .map_err(|e| e.to_string())?;
+    let Some(spec) = spec else { return Ok(None) };
+    let _guard = state.compile_lock.lock().await;
+    let mut meta = read_meta(&project_id)?;
+    if meta.engine != "latexmk" {
+        return Ok(None);
+    }
+    meta.tex = Some(spec.clone());
+    write_meta(&project_id, &meta)?;
+    Ok(Some(spec))
+}
+
+/// How this machine compares against the project's reproducibility pin.
+#[derive(Serialize)]
+pub struct TexStatus {
+    pub pinned_label: String,
+    pub local_label: Option<String>,
+    pub distribution_differs: bool,
+    pub missing_packages: Vec<String>,
+    /// Whether "install the missing packages" is actionable here (tlmgr found).
+    pub can_install_missing: bool,
+}
+
+/// Compare the local TeX setup against the project pin (latexmk projects with
+/// a recorded spec only). Coauthors get prompted from this on project open.
+#[tauri::command]
+pub async fn project_tex_status(project_id: String) -> Result<Option<TexStatus>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let meta = read_meta(&project_id)?;
+        if meta.engine != "latexmk" {
+            return Ok(None);
+        }
+        let Some(spec) = meta.tex else {
+            return Ok(None);
+        };
+        let active = crate::tex_distro::list_distributions()
+            .into_iter()
+            .find(|d| d.latexmk.is_some());
+        let local_label = active.as_ref().map(|d| d.label.clone());
+        let can_install = active.as_ref().is_some_and(|d| d.tlmgr.is_some());
+        let missing_packages = if can_install && !spec.packages.is_empty() {
+            let installed = crate::latex_engine::tlmgr_installed_versions()
+                .map(|versions| {
+                    versions
+                        .into_keys()
+                        .collect::<std::collections::BTreeSet<_>>()
+                })
+                .unwrap_or_default();
+            spec.packages
+                .keys()
+                .filter(|name| !installed.contains(*name))
+                .cloned()
+                .collect()
+        } else {
+            Vec::new()
+        };
+        let distribution_differs = local_label.as_deref() != Some(spec.distribution_label.as_str());
+        Ok(Some(TexStatus {
+            pinned_label: spec.distribution_label,
+            local_label,
+            distribution_differs,
+            missing_packages,
+            can_install_missing: can_install,
+        }))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Record a successful compile's provenance under `.oleafly/builds/`.
+/// Best-effort: failures here must never fail the compile itself.
+pub(crate) fn write_build_metadata(
+    project_id: &str,
+    revision: u64,
+    engine: &str,
+    output_id: Option<&str>,
+    compile_time_ms: u64,
+) {
+    use sha2::Digest;
+    let Ok(dir) = paths::builds_metadata_dir(project_id) else {
+        return;
+    };
+    let tex = read_meta(project_id).ok().and_then(|meta| meta.tex);
+    let lockfile_hash = tex.as_ref().map(|spec| {
+        let serialized = serde_json::to_vec(&spec.packages).unwrap_or_default();
+        format!("sha256:{:x}", sha2::Sha256::digest(&serialized))
+    });
+    let record = serde_json::json!({
+        "revision": revision,
+        "engine": engine,
+        "distribution": tex.as_ref().map(|spec| spec.distribution_label.clone()),
+        "lockfile_hash": lockfile_hash,
+        "output_id": output_id,
+        "compile_time_ms": compile_time_ms,
+        "completed_at": epoch_seconds(),
+    });
+    let path = dir.join(format!("build-{revision:010}.json"));
+    if let Ok(bytes) = serde_json::to_vec_pretty(&record) {
+        let _ = std::fs::write(path, bytes);
+    }
+    prune_build_metadata(&dir, 20);
+}
+
+/// Keep only the newest `keep` build records (names sort chronologically
+/// because the revision is zero-padded).
+fn prune_build_metadata(dir: &Path, keep: usize) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    let mut names: Vec<String> = entries
+        .flatten()
+        .filter_map(|entry| entry.file_name().into_string().ok())
+        .filter(|name| name.starts_with("build-") && name.ends_with(".json"))
+        .collect();
+    if names.len() <= keep {
+        return;
+    }
+    names.sort();
+    let excess = names.len() - keep;
+    for name in names.into_iter().take(excess) {
+        let _ = std::fs::remove_file(dir.join(name));
+    }
+}
+
 fn engine_for_main_document(current_engine: &str, main_doc: &str) -> Result<String, String> {
     let current_is_typst = matches!(
         current_engine.trim().to_ascii_lowercase().as_str(),
@@ -903,6 +1108,7 @@ fn create_markdown_project_in(root: &Path, name: String) -> Result<String, Strin
                 exports: Vec::new(),
                 hidden: false,
                 forked_from: None,
+                tex: None,
             },
         )
     })?;
@@ -1076,6 +1282,7 @@ pub fn create_project(name: String) -> Result<String, String> {
                 exports: Vec::new(),
                 hidden: false,
                 forked_from: None,
+                tex: None,
             },
         )
     })?;
@@ -1155,6 +1362,7 @@ pub fn create_project_from_pdf_conversion(
                 exports: Vec::new(),
                 hidden: false,
                 forked_from: None,
+                tex: None,
             },
         )?;
         rename_exclusive(&staging, &destination)
@@ -1192,10 +1400,350 @@ fn create_typst_project_in(root: &Path, name: String) -> Result<String, String> 
                 exports: Vec::new(),
                 hidden: false,
                 forked_from: None,
+                tex: None,
             },
         )
     })?;
     Ok(id)
+}
+
+// --- Overleaf / external project import --------------------------------------
+
+const IMPORT_MAX_ENTRIES: usize = 5000;
+const IMPORT_MAX_TOTAL_BYTES: u64 = 2 * 1024 * 1024 * 1024; // 2 GiB
+const IMPORT_MAX_DEPTH: usize = 16;
+
+/// Junk and app-internal entries that never belong in an imported project.
+fn import_skip(rel: &str) -> bool {
+    rel.split('/').any(|segment| {
+        matches!(
+            segment,
+            "__MACOSX" | ".DS_Store" | ".git" | ".oleafly" | "Thumbs.db"
+        )
+    })
+}
+
+/// Import an Overleaf export (ZIP) or a plain folder as a new project.
+/// The main document is inferred when the archive has no project.json:
+/// a `% !TeX root` magic comment wins, then `\documentclass` +
+/// `\begin{document}` + a root-level `main.tex`-style name score best, and a
+/// lone `.tex` file is simply it.
+#[tauri::command]
+pub async fn import_overleaf_project(name: Option<String>, path: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || import_overleaf_project_blocking(name, &path))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+fn import_overleaf_project_blocking(name: Option<String>, path: &str) -> Result<String, String> {
+    let source = PathBuf::from(path);
+    if !source.exists() {
+        return Err(format!("import source not found: {path}"));
+    }
+    let root = paths::projects_root()?;
+    let id = unique_random_slug(&root)?;
+    let dir = root.join(&id);
+    let fallback_name = source
+        .file_stem()
+        .map(|stem| stem.to_string_lossy().into_owned())
+        .filter(|stem| !stem.trim().is_empty())
+        .unwrap_or_else(|| "Imported project".to_string());
+    let project_name = name
+        .filter(|candidate| !candidate.trim().is_empty())
+        .unwrap_or(fallback_name);
+    create_project_transaction(&dir, || {
+        if source.is_dir() {
+            copy_tree_for_import(&source, &dir, 0, &mut 0, &mut 0)?;
+        } else {
+            extract_zip_for_import(&source, &dir)?;
+        }
+        flatten_single_root_folder(&dir)?;
+        // An Oleafly-exported archive round-trips: keep its project.json when
+        // it still points at a real file. Overleaf archives have none.
+        let existing = read_import_meta(&dir);
+        let meta = match existing {
+            Some(mut meta) if dir.join(&meta.main_doc).is_file() => {
+                meta.name = project_name.clone();
+                meta
+            }
+            _ => {
+                let main_doc = infer_main_document(&dir)?;
+                let mut engine = engine_for_main_document(&default_engine(), &main_doc)
+                    .unwrap_or_else(|_| default_engine());
+                // Overleaf parity out of the box: imported LaTeX projects use
+                // the full latexmk toolchain when a system TeX is available.
+                // Journal classes routinely rely on tools and pdfTeX
+                // primitives the bundled Tectonic (XeTeX-class) cannot
+                // provide, and Overleaf compiles them with pdfLaTeX. Without
+                // a system TeX the project stays on Tectonic and the scan /
+                // compile-failure flows offer the switch.
+                if engine == default_engine()
+                    && crate::tex_distro::find_tex_tool("latexmk").is_some()
+                {
+                    engine = "latexmk".to_string();
+                }
+                ProjectMeta {
+                    name: project_name.clone(),
+                    main_doc,
+                    engine,
+                    ..Default::default()
+                }
+            }
+        };
+        write_meta_at(&dir.join("project.json"), &meta)
+    })?;
+    Ok(id)
+}
+
+fn read_import_meta(dir: &Path) -> Option<ProjectMeta> {
+    let raw = std::fs::read_to_string(dir.join("project.json")).ok()?;
+    serde_json::from_str::<ProjectMeta>(&raw).ok()
+}
+
+fn extract_zip_for_import(archive: &Path, dest: &Path) -> Result<(), String> {
+    let file = std::fs::File::open(archive).map_err(|e| format!("failed to open archive: {e}"))?;
+    let mut zip = zip::ZipArchive::new(file).map_err(|e| format!("not a readable ZIP: {e}"))?;
+    if zip.len() > IMPORT_MAX_ENTRIES {
+        return Err(format!(
+            "archive has too many entries ({} > {IMPORT_MAX_ENTRIES})",
+            zip.len()
+        ));
+    }
+    let mut total: u64 = 0;
+    for index in 0..zip.len() {
+        let mut entry = zip.by_index(index).map_err(|e| e.to_string())?;
+        let Some(rel) = entry.enclosed_name() else {
+            continue; // unsafe path (absolute / traversal): skip
+        };
+        let rel_text = rel.to_string_lossy().replace('\\', "/");
+        if import_skip(&rel_text) || rel.components().count() > IMPORT_MAX_DEPTH {
+            continue;
+        }
+        let out = dest.join(&rel);
+        if entry.is_dir() {
+            std::fs::create_dir_all(&out).map_err(|e| e.to_string())?;
+            continue;
+        }
+        total = total.saturating_add(entry.size());
+        if total > IMPORT_MAX_TOTAL_BYTES {
+            return Err("archive is larger than the 2 GB import limit".to_string());
+        }
+        if let Some(parent) = out.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        let mut output = std::fs::File::create(&out).map_err(|e| e.to_string())?;
+        std::io::copy(&mut entry, &mut output).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+fn copy_tree_for_import(
+    source: &Path,
+    dest: &Path,
+    depth: usize,
+    entries: &mut usize,
+    total: &mut u64,
+) -> Result<(), String> {
+    if depth > IMPORT_MAX_DEPTH {
+        return Ok(());
+    }
+    std::fs::create_dir_all(dest).map_err(|e| e.to_string())?;
+    for entry in std::fs::read_dir(source).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let file_type = entry.file_type().map_err(|e| e.to_string())?;
+        if file_type.is_symlink() {
+            continue;
+        }
+        let file_name = entry.file_name();
+        let name_text = file_name.to_string_lossy();
+        if import_skip(&name_text) {
+            continue;
+        }
+        *entries += 1;
+        if *entries > IMPORT_MAX_ENTRIES {
+            return Err(format!(
+                "folder has too many files (> {IMPORT_MAX_ENTRIES})"
+            ));
+        }
+        let target = dest.join(&file_name);
+        if file_type.is_dir() {
+            copy_tree_for_import(&entry.path(), &target, depth + 1, entries, total)?;
+        } else if file_type.is_file() {
+            let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
+            *total = total.saturating_add(size);
+            if *total > IMPORT_MAX_TOTAL_BYTES {
+                return Err("folder is larger than the 2 GB import limit".to_string());
+            }
+            std::fs::copy(entry.path(), &target).map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
+}
+
+/// Zipping a folder usually wraps everything in one top-level directory.
+/// Unwrap it so the project root holds the actual files.
+fn flatten_single_root_folder(dir: &Path) -> Result<(), String> {
+    let entries: Vec<_> = std::fs::read_dir(dir)
+        .map_err(|e| e.to_string())?
+        .flatten()
+        .collect();
+    if entries.len() != 1 {
+        return Ok(());
+    }
+    let only = &entries[0];
+    if !only.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+        return Ok(());
+    }
+    let wrapper = only.path();
+    for child in std::fs::read_dir(&wrapper)
+        .map_err(|e| e.to_string())?
+        .flatten()
+    {
+        let target = dir.join(child.file_name());
+        std::fs::rename(child.path(), target).map_err(|e| e.to_string())?;
+    }
+    std::fs::remove_dir(&wrapper).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Pick the compile entry point for an imported project. See
+/// `import_overleaf_project` for the strategy.
+fn infer_main_document(dir: &Path) -> Result<String, String> {
+    let mut tex_files: Vec<String> = Vec::new();
+    collect_tex_files(dir, dir, 0, &mut tex_files);
+    if tex_files.is_empty() {
+        return Err(
+            "No .tex file was found in the import, so there is nothing to compile. \
+             Pick an Overleaf ZIP export or a folder containing a LaTeX project."
+                .to_string(),
+        );
+    }
+    tex_files.sort();
+    if tex_files.len() == 1 {
+        return Ok(tex_files.remove(0));
+    }
+    let mut heads: Vec<(String, String)> = tex_files
+        .iter()
+        .map(|rel| (rel.clone(), read_head_for_import(&dir.join(rel))))
+        .collect();
+    // A `% !TeX root = ...` magic comment anywhere wins when its target exists.
+    for (rel, head) in &heads {
+        if let Some(target) = tex_root_magic_target(head) {
+            let base = Path::new(rel).parent().unwrap_or(Path::new(""));
+            let joined = normalize_relative(&base.join(&target));
+            if let Some(joined) = joined {
+                if tex_files.iter().any(|candidate| candidate == &joined) {
+                    return Ok(joined);
+                }
+            }
+        }
+    }
+    heads.sort_by_key(|(rel, head)| {
+        let mut score: i32 = 0;
+        if head.contains("\\documentclass") {
+            score += 4;
+        }
+        if head.contains("\\begin{document}") {
+            score += 2;
+        }
+        if !rel.contains('/') {
+            score += 2;
+        }
+        let filename = rel.rsplit('/').next().unwrap_or(rel).to_ascii_lowercase();
+        if filename == "main.tex" {
+            score += 3;
+        } else if filename.starts_with("main") || filename == "root.tex" {
+            score += 1;
+        }
+        // Sort ascending: best score first via negation, then shallow, then name.
+        (-score, rel.matches('/').count(), rel.clone())
+    });
+    Ok(heads.remove(0).0)
+}
+
+fn collect_tex_files(root: &Path, dir: &Path, depth: usize, output: &mut Vec<String>) {
+    if depth > IMPORT_MAX_DEPTH {
+        return;
+    }
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let Ok(file_type) = entry.file_type() else {
+            continue;
+        };
+        if file_type.is_symlink() {
+            continue;
+        }
+        let path = entry.path();
+        if file_type.is_dir() {
+            if entry.file_name() != ".oleafly" {
+                collect_tex_files(root, &path, depth + 1, output);
+            }
+        } else if path
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("tex"))
+        {
+            if let Ok(rel) = path.strip_prefix(root) {
+                output.push(
+                    rel.components()
+                        .map(|c| c.as_os_str().to_string_lossy())
+                        .collect::<Vec<_>>()
+                        .join("/"),
+                );
+            }
+        }
+    }
+}
+
+fn read_head_for_import(path: &Path) -> String {
+    use std::io::Read;
+    const MAX_HEAD: u64 = 64 * 1024;
+    let Ok(file) = std::fs::File::open(path) else {
+        return String::new();
+    };
+    let mut bytes = Vec::new();
+    let _ = file.take(MAX_HEAD).read_to_end(&mut bytes);
+    String::from_utf8_lossy(&bytes).into_owned()
+}
+
+/// `% !TeX root = ../main.tex` (TeXShop/latexmk convention, case-insensitive).
+fn tex_root_magic_target(head: &str) -> Option<String> {
+    for line in head.lines().take(50) {
+        let trimmed = line.trim();
+        let Some(rest) = trimmed.strip_prefix('%') else {
+            continue;
+        };
+        let lower = rest.trim().trim_start_matches('!').to_ascii_lowercase();
+        if !lower.starts_with("tex root") {
+            continue;
+        }
+        let original = rest.trim().trim_start_matches('!');
+        let value = original
+            .split_once('=')
+            .map(|(_, rest)| rest.trim())
+            .filter(|v| !v.is_empty())?;
+        return Some(value.to_string());
+    }
+    None
+}
+
+/// Resolve `.`/`..` inside a joined relative path; None when it escapes root.
+fn normalize_relative(path: &Path) -> Option<String> {
+    let mut parts: Vec<String> = Vec::new();
+    for component in path.components() {
+        match component {
+            std::path::Component::Normal(part) => {
+                parts.push(part.to_string_lossy().into_owned());
+            }
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => {
+                parts.pop()?;
+            }
+            _ => return None,
+        }
+    }
+    Some(parts.join("/"))
 }
 
 fn create_project_transaction<F>(dir: &Path, initialize: F) -> Result<(), String>
@@ -1245,6 +1793,7 @@ fn create_image_project_in(
                 exports: Vec::new(),
                 hidden: false,
                 forked_from: None,
+                tex: None,
             },
         )
     })?;
@@ -1290,6 +1839,7 @@ pub fn create_diagram_project(name: String, source: String) -> Result<String, St
                 exports: Vec::new(),
                 hidden: false,
                 forked_from: None,
+                tex: None,
             },
         )
     })?;
@@ -1313,6 +1863,7 @@ pub fn get_or_create_scratch_project() -> Result<String, String> {
                 exports: Vec::new(),
                 hidden: true,
                 forked_from: None,
+                tex: None,
             },
         )?;
     }
@@ -1741,6 +2292,7 @@ pub async fn create_project_from_docx(name: String, data_base64: String) -> Resu
                 exports: Vec::new(),
                 hidden: false,
                 forked_from: None,
+                tex: None,
             },
         )?;
         rename_exclusive(&staging, &destination)
@@ -2040,6 +2592,7 @@ pub fn create_project_from_template(
                 exports: Vec::new(),
                 hidden: false,
                 forked_from: None,
+                tex: None,
             },
         )
     })?;
@@ -2581,12 +3134,13 @@ mod tests {
         copy_path_in_project, create_diagram_project, create_image_project_in,
         create_markdown_project_in, create_project_from_pdf_conversion, create_project_transaction,
         create_typst_project, create_typst_project_in, download_project_zip, duplicate_project,
-        engine_for_main_document, extract_pandoc, get_or_create_scratch_project,
-        import_paths_transactional, import_paths_transactional_with, list_projects,
-        pandoc_asset_for, pandoc_version_supported, read_meta, rel_slash, rename_exclusive,
-        rename_path_in_project, search_docs, set_main_doc_synchronized, validate_conversion_export,
+        engine_for_main_document, extract_pandoc, flatten_single_root_folder,
+        get_or_create_scratch_project, import_paths_transactional, import_paths_transactional_with,
+        import_skip, infer_main_document, list_projects, normalize_relative, pandoc_asset_for,
+        pandoc_version_supported, read_meta, rel_slash, rename_exclusive, rename_path_in_project,
+        search_docs, set_main_doc_synchronized, tex_root_magic_target, validate_conversion_export,
         write_meta_at, FileConflictStrategy, PdfConversionFigure, ProjectMeta, RenameFileResult,
-        SCRATCH_PROJECT_ID,
+        TexSpec, SCRATCH_PROJECT_ID,
     };
     use std::io::Write;
     use std::path::Path;
@@ -3164,6 +3718,7 @@ mod tests {
             exports: Vec::new(),
             hidden: false,
             forked_from: None,
+            tex: None,
         };
         let json = serde_json::to_string(&meta).unwrap();
         let decoded: ProjectMeta = serde_json::from_str(&json).unwrap();
@@ -3381,6 +3936,7 @@ mod tests {
             exports: Vec::new(),
             hidden: false,
             forked_from: None,
+            tex: None,
         };
 
         let valid = projects.join("valid-project");
@@ -3427,6 +3983,7 @@ mod tests {
                         exports: Vec::new(),
                         hidden: false,
                         forked_from: None,
+                        tex: None,
                     },
                 )
                 .unwrap();
@@ -3551,5 +4108,161 @@ mod tests {
         assert_eq!(meta.forked_from.as_deref(), Some("Original Paper"));
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn import_skip_filters_junk_and_internal_directories() {
+        assert!(import_skip("__MACOSX/main.tex"));
+        assert!(import_skip("figures/.DS_Store"));
+        assert!(import_skip(".git/config"));
+        assert!(import_skip(".oleafly/build/x.pdf"));
+        assert!(!import_skip("chapters/intro.tex"));
+        assert!(!import_skip("main.tex"));
+    }
+
+    #[test]
+    fn tex_root_magic_comment_parses_case_and_spacing_variants() {
+        assert_eq!(
+            tex_root_magic_target("% !TeX root = ../thesis.tex\n").as_deref(),
+            Some("../thesis.tex")
+        );
+        assert_eq!(
+            tex_root_magic_target("%!TEX root=main.tex\n").as_deref(),
+            Some("main.tex")
+        );
+        assert_eq!(tex_root_magic_target("% just a comment\n"), None);
+    }
+
+    #[test]
+    fn normalize_relative_resolves_dots_and_rejects_escapes() {
+        assert_eq!(
+            normalize_relative(Path::new("chapters/../thesis.tex")).as_deref(),
+            Some("thesis.tex")
+        );
+        assert_eq!(
+            normalize_relative(Path::new("a/./b.tex")).as_deref(),
+            Some("a/b.tex")
+        );
+        assert_eq!(normalize_relative(Path::new("../outside.tex")), None);
+    }
+
+    #[test]
+    fn infer_main_document_prefers_documentclass_and_root_level_main() {
+        let dir = test_dir("infer-main-scoring");
+        std::fs::create_dir_all(dir.join("chapters")).unwrap();
+        std::fs::write(
+            dir.join("main.tex"),
+            "\\documentclass{article}\n\\begin{document}Hi\\end{document}\n",
+        )
+        .unwrap();
+        std::fs::write(dir.join("chapters/ch1.tex"), "\\section{One}\n").unwrap();
+        std::fs::write(dir.join("notes.tex"), "no preamble here\n").unwrap();
+        assert_eq!(infer_main_document(&dir).unwrap(), "main.tex");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn infer_main_document_follows_a_magic_root_comment() {
+        let dir = test_dir("infer-main-magic-root");
+        std::fs::create_dir_all(dir.join("chapters")).unwrap();
+        std::fs::write(
+            dir.join("thesis.tex"),
+            "\\documentclass{report}\n\\begin{document}\\end{document}\n",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("chapters/ch1.tex"),
+            "% !TeX root = ../thesis.tex\n\\chapter{One}\n",
+        )
+        .unwrap();
+        std::fs::write(dir.join("preamble.tex"), "\\usepackage{amsmath}\n").unwrap();
+        assert_eq!(infer_main_document(&dir).unwrap(), "thesis.tex");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn infer_main_document_uses_a_lone_tex_file_as_is() {
+        let dir = test_dir("infer-main-lone");
+        std::fs::write(dir.join("paper.tex"), "\\documentclass{article}\n").unwrap();
+        std::fs::write(dir.join("refs.bib"), "@book{k, title={T}}\n").unwrap();
+        assert_eq!(infer_main_document(&dir).unwrap(), "paper.tex");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn infer_main_document_errors_without_any_tex_file() {
+        let dir = test_dir("infer-main-none");
+        std::fs::write(dir.join("readme.md"), "hello\n").unwrap();
+        assert!(infer_main_document(&dir).is_err());
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn flatten_single_root_folder_unwraps_a_zip_wrapper() {
+        let dir = test_dir("flatten-wrapper");
+        std::fs::create_dir_all(dir.join("wrapped/chapters")).unwrap();
+        std::fs::write(dir.join("wrapped/main.tex"), "x").unwrap();
+        std::fs::write(dir.join("wrapped/chapters/ch1.tex"), "y").unwrap();
+        flatten_single_root_folder(&dir).unwrap();
+        assert!(dir.join("main.tex").is_file());
+        assert!(dir.join("chapters/ch1.tex").is_file());
+        assert!(!dir.join("wrapped").exists());
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn flatten_single_root_folder_leaves_flat_projects_alone() {
+        let dir = test_dir("flatten-flat");
+        std::fs::write(dir.join("main.tex"), "x").unwrap();
+        std::fs::write(dir.join("refs.bib"), "y").unwrap();
+        flatten_single_root_folder(&dir).unwrap();
+        assert!(dir.join("main.tex").is_file());
+        assert!(dir.join("refs.bib").is_file());
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn tex_spec_round_trips_through_project_json() {
+        let dir = test_dir("tex-spec-roundtrip");
+        let path = dir.join("project.json");
+        let mut packages = std::collections::BTreeMap::new();
+        packages.insert("siunitx".to_string(), "3.3.20".to_string());
+        write_meta_at(
+            &path,
+            &ProjectMeta {
+                name: "Pinned".into(),
+                main_doc: "main.tex".into(),
+                engine: "latexmk".into(),
+                tex: Some(TexSpec {
+                    distribution: "texlive".into(),
+                    distribution_label: "TeX Live 2025".into(),
+                    packages,
+                    recorded_at: 1.0,
+                }),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let raw = std::fs::read_to_string(&path).unwrap();
+        let parsed: ProjectMeta = serde_json::from_str(&raw).unwrap();
+        let spec = parsed.tex.unwrap();
+        assert_eq!(spec.distribution_label, "TeX Live 2025");
+        assert_eq!(
+            spec.packages.get("siunitx").map(String::as_str),
+            Some("3.3.20")
+        );
+        // Projects without a pin keep project.json free of the field entirely.
+        write_meta_at(
+            &path,
+            &ProjectMeta {
+                name: "Plain".into(),
+                main_doc: "main.tex".into(),
+                engine: "xetex".into(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert!(!std::fs::read_to_string(&path).unwrap().contains("\"tex\""));
+        std::fs::remove_dir_all(dir).unwrap();
     }
 }

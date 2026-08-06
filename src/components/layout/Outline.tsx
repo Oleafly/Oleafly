@@ -115,7 +115,7 @@ function StatusStrip({ state }: { state: ProjectIntelligenceState }) {
         role="status"
         className="border-b border-amber-500/20 bg-amber-500/8 px-2.5 py-1.5 text-[10px] leading-relaxed text-amber-800 dark:text-amber-200"
       >
-        Updating — previous-revision structure is hidden until current source
+        Updating. Previous-revision structure is hidden until current source
         ranges are ready.
       </div>
     );
@@ -126,7 +126,7 @@ function StatusStrip({ state }: { state: ProjectIntelligenceState }) {
         role="status"
         className="border-b border-amber-500/20 bg-amber-500/8 px-2.5 py-1.5 text-[10px] leading-relaxed text-amber-800 dark:text-amber-200"
       >
-        Partial map — unreadable or malformed files remain visible where
+        Partial map. Unreadable or malformed files remain visible where
         possible.
       </div>
     );

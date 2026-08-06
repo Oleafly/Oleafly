@@ -51,7 +51,10 @@ const limits = {
   // tools gating) and the omnibar command wiring.
   // +50 KB for document-citation (paragraph scan, debate ranker, Review
   // panel, Google Scholar parser): combined graph measures 9.25 MB.
-  totalJavaScript: 9_260_000,
+  // +40 KB for the Overleaf import and latexmk engine surfaces (engine
+  // picker modal, TinyTeX install guards, import taxonomy and classifier,
+  // Library import entry points): combined graph measures 9.27 MB.
+  totalJavaScript: 9_300_000,
   largestCss: 400_000,
   harperWasm: 19_000_000,
   // The real worker and the independently loaded recovery module are each

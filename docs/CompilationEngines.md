@@ -26,7 +26,64 @@ engine-specific policy.
   path.
 - Import scan (`@oleafly/latex` `scanImportCompatibility`) flags Overleaf-style
   requirements (biblatex, minted, glossaries, shell-escape, fonts) when a
-  project is opened.
+  project is opened. The same taxonomy (`IMPORT_COMPAT_CATALOG`) drives the
+  compile-failure classifier (`classifyCompileFailure`) and the engine-picker
+  modal, so every surface describes a gap in the same words.
+
+## latexmk (full Overleaf parity)
+
+Projects that need tools Tectonic does not orchestrate — `minted`
+(shell-escape + Pygments), `glossaries`/`makeidx` (external index runs),
+`pythontex`, shell-escape-heavy publisher classes — can pin the `latexmk`
+engine instead. It drives a **system TeX distribution** (MacTeX, TeX Live,
+MiKTeX, or TinyTeX) via `latexmk`, exactly the way Overleaf compiles.
+
+- Detection is shared (`src-tauri/src/tex_distro.rs`): managed TinyTeX under
+  `~/.oleafly/tinytex`, MacTeX, `/usr/local/texlive/<year>`, MiKTeX (Windows),
+  and `~/.TinyTeX` are probed stat-only. The same list feeds the compile
+  child's `PATH`.
+- The underlying TeX engine is chosen from the source: a
+  `% !TeX program = xelatex|lualatex|pdflatex` magic comment wins; fontspec /
+  polyglossia / unicode-math force XeLaTeX; everything else uses pdfLaTeX
+  (Overleaf's default).
+- `-shell-escape` is enabled only when the source needs it (minted, pythontex,
+  `\write18`, svg) — Overleaf runs sandboxed and enables it globally; a desktop
+  app should not.
+- latexmk runs the *real* main document with `-jobname=_oleafly_entry`, so all
+  artifact paths (PDF, log, SyncTeX) match the Tectonic layout and the preview,
+  log pane, and SyncTeX work unchanged.
+- TinyTeX can be installed on demand (Settings → LaTeX Engine, or the
+  engine-picker modal). The installer checks free disk space first, reports
+  phased progress (download / unpack / packages), resumes interrupted
+  downloads across launches, and intercepts app quit while running.
+
+## Why `project.json` matters
+
+`project.json` is the project's **portable contract**, and it is the reason two
+people opening the same Oleafly project see the same output:
+
+- `engine` pins how the project compiles (`xetex` = bundled Tectonic,
+  `latexmk` = system TeX). A coauthor who clones the project compiles with the
+  same engine automatically — the choice never lives only in one person's
+  app settings (the Settings default applies to *new* projects only).
+- `tex` (written when a project switches to latexmk) records the TeX
+  distribution and the `tlmgr` package versions present when the pin was made
+  — the `package-lock.json` role. On open, coauthors are prompted to install
+  missing pinned packages, and a distribution mismatch (e.g. pinned
+  "TeX Live 2025", local "MacTeX 2024") gets a heads-up that rendering may
+  differ.
+- `main_doc`, `name`, `color`, and export history ride along too.
+
+It lives at the project **root** (not under `.oleafly/`) precisely so that git
+and ZIP export carry it: the app-internal `.oleafly/` directory is gitignored
+and skipped by exports by design. Do not move engine or pin data into
+`.oleafly/` — coauthors would silently stop receiving it.
+
+Every successful compile also writes a small provenance record to
+`.oleafly/builds/` (engine, distribution, lockfile hash, output fingerprint;
+local-only, pruned to the last 20) so "my coauthor's bibliography looks
+different" is a diagnosable question — compare the two machines' latest build
+records.
 - **Supervised PATH:** every supervised compile child (LaTeX, Typst, Markdown
   tooling that goes through the same helper) gets TeX-related directories and the
   sidecar directory prepended to `PATH`. Non-LaTeX engines simply ignore unused

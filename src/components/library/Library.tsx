@@ -5,9 +5,11 @@ import {
   Check,
   Clock3,
   FileText,
+  FolderInput,
   GitFork,
   History,
   Info,
+  Loader2,
   Palette,
   Plus,
   SearchX,
@@ -15,6 +17,13 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { pickOpenPath } from "@/lib/native-file-dialog";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Input } from "@/components/ui/input";
@@ -209,6 +218,33 @@ export function Library() {
   const page = useHomeViewStore((s) => s.page);
   const projects = useFilesStore((s) => s.projects);
   const projectsLoaded = useFilesStore((s) => s.projectsLoaded);
+  const importProject = useFilesStore((s) => s.importProject);
+  const [importing, setImporting] = useState(false);
+
+  // Overleaf ZIP export or plain folder → new project. The backend infers the
+  // main document (magic comment > \documentclass scoring > lone .tex).
+  const runImport = async (kind: "zip" | "folder") => {
+    const selection = await pickOpenPath(
+      kind === "zip"
+        ? {
+            multiple: false,
+            filters: [{ name: "ZIP archive", extensions: ["zip"] }],
+            title: "Import Overleaf project (ZIP)",
+          }
+        : { multiple: false, directory: true, title: "Import project folder" },
+    );
+    if (typeof selection !== "string") return;
+    setImporting(true);
+    try {
+      // Success feedback (including which engine was chosen) comes from the
+      // store's single import toast.
+      await importProject(selection);
+    } catch (error) {
+      notifyError("import project", error);
+    } finally {
+      setImporting(false);
+    }
+  };
   const refreshProjects = useFilesStore((s) => s.refreshProjects);
   const openProject = useFilesStore((s) => s.openProject);
   const favs = useFavoritesStore((s) => s.favs);
@@ -420,6 +456,32 @@ export function Library() {
 
         </div>
         <div data-tauri-drag-region className="flex items-center justify-end gap-1.5">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                data-testid="import-project-button"
+                variant="ghost"
+                size="sm"
+                disabled={importing}
+                className="gap-1.5 text-muted-foreground hover:text-foreground"
+              >
+                {importing ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <FolderInput className="size-4" />
+                )}
+                <span className="text-xs">{importing ? "Importing…" : "Import"}</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => void runImport("zip")}>
+                Overleaf ZIP…
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => void runImport("folder")}>
+                Project folder…
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           {projects.length > 0 && (
             <>
               <Tooltip label="Advanced project filters">
@@ -617,14 +679,23 @@ export function Library() {
                 </EmptyDescription>
               </EmptyHeader>
               <EmptyContent className="max-w-2xl">
-                <Button
-                  data-testid="create-first-project"
-                  data-tour="new-project"
-                  className="bg-primary text-white hover:bg-primary"
-                  onClick={() => setNewProjectOpen(true)}
-                >
-                  <Plus className="size-4" /> Create your first project
-                </Button>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <Button
+                    data-testid="create-first-project"
+                    data-tour="new-project"
+                    className="bg-primary text-white hover:bg-primary"
+                    onClick={() => setNewProjectOpen(true)}
+                  >
+                    <Plus className="size-4" /> Create your first project
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={importing}
+                    onClick={() => void runImport("zip")}
+                  >
+                    <FolderInput className="size-4" /> Import from Overleaf
+                  </Button>
+                </div>
               </EmptyContent>
             </Empty>
             ) : (

@@ -182,33 +182,9 @@ fn host_triple_guess() -> Option<&'static str> {
 }
 
 fn tex_bin_search_dirs() -> Vec<PathBuf> {
-    let mut dirs = vec![
-        PathBuf::from("/Library/TeX/texbin"),
-        PathBuf::from("/usr/local/bin"),
-        PathBuf::from("/opt/homebrew/bin"),
-    ];
-    if let Ok(home) = std::env::var("HOME") {
-        let home = PathBuf::from(home);
-        dirs.push(home.join(".oleafly/tinytex/bin"));
-        dirs.push(home.join(".TinyTeX/bin"));
-        // TinyTeX nests bin/<platform>/
-        if let Ok(entries) = std::fs::read_dir(home.join(".oleafly/tinytex")) {
-            for entry in entries.flatten() {
-                let bin = entry.path().join("bin");
-                if bin.is_dir() {
-                    dirs.push(bin.clone());
-                    if let Ok(platforms) = std::fs::read_dir(&bin) {
-                        for platform in platforms.flatten() {
-                            if platform.path().is_dir() {
-                                dirs.push(platform.path());
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    dirs
+    // Shared discovery (MacTeX, TeX Live by year, MiKTeX, TinyTeX variants) so
+    // PATH injection and the latexmk engine agree on where TeX tools live.
+    crate::tex_distro::tex_bin_dirs()
 }
 
 fn push_unique(dirs: &mut Vec<PathBuf>, dir: PathBuf) {

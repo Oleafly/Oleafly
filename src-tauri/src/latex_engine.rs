@@ -27,6 +27,9 @@ pub struct EngineInfo {
     pub lualatex: Option<String>,
     pub tlmgr: Option<String>,
     pub version: Option<String>,
+    /// A usable `latexmk` from any detected distribution. Present even when
+    /// `kind` is "none" (a distro can lack lualatex yet still drive latexmk).
+    pub latexmk: Option<String>,
 }
 
 impl EngineInfo {
@@ -36,8 +39,14 @@ impl EngineInfo {
             lualatex: None,
             tlmgr: None,
             version: None,
+            latexmk: find_latexmk(),
         }
     }
+}
+
+/// A `latexmk` from any detected TeX distribution (stat-only probe).
+fn find_latexmk() -> Option<String> {
+    crate::tex_distro::find_tex_tool("latexmk").map(|p| p.to_string_lossy().into_owned())
 }
 
 fn exe(name: &str) -> String {
@@ -107,6 +116,9 @@ fn find_engine() -> EngineInfo {
                 version: engine_version(&lua.to_string_lossy()),
                 lualatex: Some(lua.to_string_lossy().to_string()),
                 tlmgr: tlmgr.map(|t| t.to_string_lossy().to_string()),
+                latexmk: find_in_texdir(&dir, "latexmk")
+                    .map(|p| p.to_string_lossy().into_owned())
+                    .or_else(find_latexmk),
             };
         }
     }
@@ -123,20 +135,13 @@ fn find_engine() -> EngineInfo {
             version: engine_version("lualatex"),
             lualatex: Some("lualatex".to_string()),
             tlmgr,
+            latexmk: find_latexmk(),
         };
     }
 
-    // 3. Common system TeX Live / MacTeX / TinyTeX-in-home locations.
-    let mut roots: Vec<PathBuf> = vec![
-        PathBuf::from("/Library/TeX/texbin"), // macOS MacTeX symlink dir (holds binaries directly)
-        PathBuf::from("/usr/local/bin"),
-        PathBuf::from("/opt/homebrew/bin"),
-    ];
-    if let Ok(home) = std::env::var("HOME") {
-        roots.push(PathBuf::from(&home).join(".TinyTeX"));
-    }
-    // texbin-style dirs hold the binaries directly (no bin/<platform> nesting).
-    for dir in &roots {
+    // 3. Shared discovery: MacTeX, TeX Live (by year), MiKTeX, TinyTeX-in-home.
+    // These dirs hold binaries directly (bin/<platform> nesting already resolved).
+    for dir in crate::tex_distro::tex_bin_dirs() {
         let direct = dir.join(exe("lualatex"));
         if direct.exists() && runs(&direct.to_string_lossy()) {
             let tlmgr = dir.join(exe("tlmgr"));
@@ -145,15 +150,7 @@ fn find_engine() -> EngineInfo {
                 version: engine_version(&direct.to_string_lossy()),
                 lualatex: Some(direct.to_string_lossy().to_string()),
                 tlmgr: tlmgr.exists().then(|| tlmgr.to_string_lossy().to_string()),
-            };
-        }
-        if let Some(lua) = find_in_texdir(dir, "lualatex") {
-            let tlmgr = find_in_texdir(dir, "tlmgr");
-            return EngineInfo {
-                kind: "system".into(),
-                version: engine_version(&lua.to_string_lossy()),
-                lualatex: Some(lua.to_string_lossy().to_string()),
-                tlmgr: tlmgr.map(|t| t.to_string_lossy().to_string()),
+                latexmk: find_latexmk(),
             };
         }
     }
@@ -189,11 +186,134 @@ pub async fn has_tagging_engine() -> bool {
         .unwrap_or(false)
 }
 
+// --- TinyTeX install machinery -----------------------------------------------
+//
+// The install is long (100 MB+ download, large extraction) and must survive
+// user impatience: progress is phased, the partial download resumes across
+// failures and app launches, and quitting mid-install is intercepted so the
+// user decides deliberately.
+
+use std::sync::atomic::{AtomicBool, Ordering};
+
+static INSTALL_ACTIVE: AtomicBool = AtomicBool::new(false);
+static QUIT_CONFIRMED: AtomicBool = AtomicBool::new(false);
+
+/// True while a TinyTeX download/extract is running (drives quit interception).
+pub fn install_in_progress() -> bool {
+    INSTALL_ACTIVE.load(Ordering::SeqCst)
+}
+
+/// True once the user explicitly confirmed quitting mid-install.
+pub fn quit_confirmed() -> bool {
+    QUIT_CONFIRMED.load(Ordering::SeqCst)
+}
+
+/// The user confirmed the "quit during install?" dialog: let the close through.
+#[tauri::command]
+pub fn confirm_quit_during_install(app: tauri::AppHandle) {
+    QUIT_CONFIRMED.store(true, Ordering::SeqCst);
+    app.exit(0);
+}
+
+/// Releases the install flag on every exit path, including errors and panics.
+struct InstallGuard;
+
+impl InstallGuard {
+    fn acquire() -> Result<Self, String> {
+        INSTALL_ACTIVE
+            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+            .map_err(|_| "A TinyTeX install is already in progress.".to_string())?;
+        Ok(InstallGuard)
+    }
+}
+
+impl Drop for InstallGuard {
+    fn drop(&mut self) {
+        INSTALL_ACTIVE.store(false, Ordering::SeqCst);
+    }
+}
+
+/// One progress event for the whole install. `phase` is "download",
+/// "extract", or "packages"; totals are only meaningful for the download.
 #[derive(Clone, serde::Serialize)]
 struct EngineProgress {
+    phase: &'static str,
     received: u64,
     total: Option<u64>,
 }
+
+/// Bytes of free disk space at `path`'s filesystem, when the OS can tell us.
+fn free_disk_space(path: &Path) -> Option<u64> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::ffi::OsStrExt;
+        let c_path = std::ffi::CString::new(path.as_os_str().as_bytes()).ok()?;
+        let mut stat: libc::statvfs = unsafe { std::mem::zeroed() };
+        if unsafe { libc::statvfs(c_path.as_ptr(), &mut stat) } != 0 {
+            return None;
+        }
+        // f_bavail: blocks available to unprivileged users.
+        Some(stat.f_bavail as u64 * stat.f_frsize as u64)
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::ffi::OsStrExt;
+        let mut wide: Vec<u16> = path.as_os_str().encode_wide().collect();
+        wide.push(0);
+        let mut available: u64 = 0;
+        let ok = unsafe {
+            windows_sys::Win32::Storage::FileSystem::GetDiskFreeSpaceExW(
+                wide.as_ptr(),
+                &mut available,
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+            )
+        };
+        (ok != 0).then_some(available)
+    }
+    #[cfg(not(any(unix, windows)))]
+    {
+        let _ = path;
+        None
+    }
+}
+
+/// Core download is ~100 MB and unpacks to roughly 500 MB; journal templates
+/// pull more via tlmgr afterwards. Refuse to start below this floor so an
+/// install never strands the user with a full disk.
+const MIN_FREE_BYTES: u64 = 1_500_000_000;
+
+fn gigabytes(bytes: u64) -> f64 {
+    bytes as f64 / 1_000_000_000.0
+}
+
+/// State the frontend needs to offer "Resume download" after a failure or a
+/// force-quit: how much of the archive is already on disk.
+#[derive(Clone, serde::Serialize)]
+pub struct TinytexInstallState {
+    pub installing: bool,
+    pub partial_download_bytes: u64,
+}
+
+#[tauri::command]
+pub async fn tinytex_install_state() -> TinytexInstallState {
+    let partial = tauri::async_runtime::spawn_blocking(|| {
+        tinytex_root()
+            .ok()
+            .map(|root| root.join(DOWNLOAD_TMP))
+            .and_then(|tmp| std::fs::metadata(tmp).ok())
+            .map(|meta| meta.len())
+            .unwrap_or(0)
+    })
+    .await
+    .unwrap_or(0);
+    TinytexInstallState {
+        installing: install_in_progress(),
+        partial_download_bytes: partial,
+    }
+}
+
+const DOWNLOAD_TMP: &str = "tinytex-download.tmp";
 
 fn tinytex_asset() -> Result<(String, bool), String> {
     let base =
@@ -265,8 +385,12 @@ fn extract_all(archive: &Path, is_targz: bool, dest_dir: &Path) -> Result<(), St
     Ok(())
 }
 
-/// Download and install TinyTeX on demand under `~/.oleafly/tinytex`. Emits
-/// `tinytex-download-progress` events; returns the resulting engine info.
+/// Download and install TinyTeX on demand under `~/.oleafly/tinytex`.
+///
+/// Emits phased `tinytex-install-progress` events (download / extract /
+/// packages). The download resumes from a previous partial file (HTTP Range),
+/// including across app launches after a force-quit. On failure the partial
+/// file is kept so Retry continues instead of starting over.
 #[tauri::command]
 pub async fn install_tinytex(app: tauri::AppHandle) -> Result<EngineInfo, String> {
     use futures_util::StreamExt;
@@ -278,27 +402,69 @@ pub async fn install_tinytex(app: tauri::AppHandle) -> Result<EngineInfo, String
         return Ok(existing);
     }
 
+    let _install = InstallGuard::acquire()?;
+
     let (url, is_targz) = tinytex_asset()?;
     let root = tinytex_root()?;
     std::fs::create_dir_all(&root).map_err(|e| e.to_string())?;
-    let tmp = root.join("tinytex-download.tmp");
+    let tmp = root.join(DOWNLOAD_TMP);
 
-    let resp = reqwest::get(&url)
+    // Fail before downloading a byte if the disk cannot hold the install.
+    if let Some(free) = free_disk_space(&root) {
+        if free < MIN_FREE_BYTES {
+            return Err(format!(
+                "Not enough free disk space to install TinyTeX. It needs about {:.1} GB \
+                 (download plus extraction, with room for LaTeX packages). This disk has \
+                 {:.1} GB free. Free up space, then try again.",
+                gigabytes(MIN_FREE_BYTES),
+                gigabytes(free)
+            ));
+        }
+    }
+
+    // Resume from a previous partial download when the server honors Range;
+    // a 200 (full body) response restarts cleanly from zero.
+    let already = std::fs::metadata(&tmp).map(|m| m.len()).unwrap_or(0);
+    let client = reqwest::Client::new();
+    let mut request = client.get(&url);
+    if already > 0 {
+        request = request.header(reqwest::header::RANGE, format!("bytes={already}-"));
+    }
+    let resp = request
+        .send()
         .await
         .map_err(|e| format!("download failed: {e}"))?
         .error_for_status()
         .map_err(|e| format!("download failed: {e}"))?;
-    let total = resp.content_length();
-    let mut file = std::fs::File::create(&tmp).map_err(|e| e.to_string())?;
+    let resuming = resp.status() == reqwest::StatusCode::PARTIAL_CONTENT && already > 0;
+    let total = if resuming {
+        resp.content_length().map(|remaining| remaining + already)
+    } else {
+        resp.content_length()
+    };
+    let mut file = if resuming {
+        std::fs::OpenOptions::new()
+            .append(true)
+            .open(&tmp)
+            .map_err(|e| e.to_string())?
+    } else {
+        std::fs::File::create(&tmp).map_err(|e| e.to_string())?
+    };
+    let mut received: u64 = if resuming { already } else { 0 };
     let mut stream = resp.bytes_stream();
-    let mut received: u64 = 0;
     while let Some(chunk) = stream.next().await {
-        let chunk = chunk.map_err(|e| format!("download interrupted: {e}"))?;
+        let chunk = chunk.map_err(|e| {
+            format!("download interrupted: {e}. Your progress is saved. Retry to resume.")
+        })?;
         received += chunk.len() as u64;
         file.write_all(&chunk).map_err(|e| e.to_string())?;
         let _ = app.emit(
-            "tinytex-download-progress",
-            EngineProgress { received, total },
+            "tinytex-install-progress",
+            EngineProgress {
+                phase: "download",
+                received,
+                total,
+            },
         );
     }
     file.flush().map_err(|e| e.to_string())?;
@@ -306,6 +472,14 @@ pub async fn install_tinytex(app: tauri::AppHandle) -> Result<EngineInfo, String
 
     // The archive is ~100MB; extract off the async runtime so it doesn't block
     // the webview UI while unpacking.
+    let _ = app.emit(
+        "tinytex-install-progress",
+        EngineProgress {
+            phase: "extract",
+            received: 0,
+            total: None,
+        },
+    );
     let tmp_extract = tmp.clone();
     let root_extract = root.clone();
     let extracted = tauri::async_runtime::spawn_blocking(move || {
@@ -313,8 +487,13 @@ pub async fn install_tinytex(app: tauri::AppHandle) -> Result<EngineInfo, String
     })
     .await
     .map_err(|e| e.to_string())?;
-    let _ = std::fs::remove_file(&tmp);
+    if extracted.is_err() {
+        // A truncated or corrupt archive cannot be resumed into a good one:
+        // clear it so the next attempt downloads fresh.
+        let _ = std::fs::remove_file(&tmp);
+    }
     extracted?;
+    let _ = std::fs::remove_file(&tmp);
 
     let info = find_engine();
     if info.lualatex.is_none() {
@@ -322,6 +501,27 @@ pub async fn install_tinytex(app: tauri::AppHandle) -> Result<EngineInfo, String
             "TinyTeX installed but no lualatex was found in it. Install a toolchain manually."
                 .to_string(),
         );
+    }
+
+    // TinyTeX's default bundle ships latexmk, but be defensive: if it is
+    // missing, pull it via tlmgr so the latexmk engine works out of the box.
+    if info.latexmk.is_none() {
+        let _ = app.emit(
+            "tinytex-install-progress",
+            EngineProgress {
+                phase: "packages",
+                received: 0,
+                total: None,
+            },
+        );
+        let installed =
+            tauri::async_runtime::spawn_blocking(|| tlmgr_run("install", vec!["latexmk".into()]))
+                .await;
+        if let Ok(Err(error)) = installed {
+            // Not fatal for the tagged-export flow; surface in the log only.
+            eprintln!("tlmgr install latexmk failed: {error}");
+        }
+        return Ok(find_engine());
     }
     Ok(info)
 }
@@ -371,6 +571,43 @@ fn tlmgr_installed_blocking() -> Result<Vec<String>, String> {
         .map(|l| l.trim().to_string())
         .filter(|l| !l.is_empty())
         .collect())
+}
+
+/// Installed package -> version, for the reproducibility pin in project.json.
+/// `cat-version` is the CTAN version where the catalogue has one, "installed"
+/// otherwise. Note: `revision`/`lrev` are NOT valid `--data` fields on TeX
+/// Live 2025's tlmgr (the command exits with "unknown data field"). Empty map
+/// when no tlmgr exists (e.g. MiKTeX).
+pub fn tlmgr_installed_versions() -> Result<std::collections::BTreeMap<String, String>, String> {
+    let tlmgr = tlmgr_path()?;
+    let out = Command::new(&tlmgr)
+        .no_console()
+        .args(["info", "--only-installed", "--data", "name,cat-version"])
+        .output()
+        .map_err(|e| format!("failed to run tlmgr: {e}"))?;
+    if !out.status.success() {
+        return Err(String::from_utf8_lossy(&out.stderr).trim().to_string());
+    }
+    let mut versions = std::collections::BTreeMap::new();
+    for line in String::from_utf8_lossy(&out.stdout).lines() {
+        let Some((name, version)) = line.trim().split_once(',') else {
+            continue;
+        };
+        let name = name.trim();
+        if name.is_empty() {
+            continue;
+        }
+        let version = version.trim();
+        versions.insert(
+            name.to_string(),
+            if version.is_empty() {
+                "installed".to_string()
+            } else {
+                version.to_string()
+            },
+        );
+    }
+    Ok(versions)
 }
 
 /// Install TeX packages by name via tlmgr. Returns the combined output log.
