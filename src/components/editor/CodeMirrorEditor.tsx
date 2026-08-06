@@ -154,6 +154,7 @@ const HOST: EditorHost = {
     autocomplete: useSettingsStore((s) => s.editorAutocomplete),
     autoCloseBrackets: useSettingsStore((s) => s.editorAutoCloseBrackets),
     nonBlinkingCursor: useSettingsStore((s) => s.editorNonBlinkingCursor),
+    ghostCompletion: useSettingsStore((s) => s.editorGhostCompletion),
   }),
   useLintRefreshDeps: () => [
     useSettingsStore((s) => s.showRegionalism),

@@ -65,6 +65,7 @@ describe("CodeMirrorEditor measurement", () => {
         autocomplete: true,
         autoCloseBrackets: true,
         nonBlinkingCursor: false,
+        ghostCompletion: true,
       }),
       useLintRefreshDeps: () => [],
     };
