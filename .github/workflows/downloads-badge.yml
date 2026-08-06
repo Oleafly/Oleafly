@@ -3,9 +3,13 @@ name: Downloads badge
 # Publishes an honest installer-download count for the README badge: the raw
 # GitHub total is dominated by latest.json fetches (every running app polls it
 # to check for updates) and .sig files (fetched by the updater), so this sums
-# release assets excluding both. The shields.io endpoint JSON lives on main at
-# .github/badges/downloads.json and is only committed when the count changes;
-# CI ignores that path.
+# release assets excluding both.
+#
+# The shields.io endpoint JSON lives on the unprotected `badges` branch and is
+# written through the GitHub Contents API. main's protection (signed commits,
+# PR-only) rejects direct bot pushes, which is exactly how the previous
+# commit-to-main version of this job failed; Contents API commits are signed
+# by GitHub automatically and the badges branch carries no protection rules.
 on:
   schedule:
     - cron: "17 */6 * * *"
@@ -18,23 +22,36 @@ jobs:
   update:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v7
-
       - name: Compute installer downloads and publish the badge JSON
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          total=$(gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100" \
+          set -euo pipefail
+          repo="${GITHUB_REPOSITORY}"
+          branch="badges"
+          path=".github/badges/downloads.json"
+
+          total=$(gh api "repos/${repo}/releases?per_page=100" \
             --jq '[.[].assets[] | select(.name != "latest.json") | select(.name | endswith(".sig") | not) | .download_count] | add // 0')
-          mkdir -p .github/badges
-          printf '{"schemaVersion":1,"label":"Downloads","message":"%s","color":"22c55e"}\n' "$total" > .github/badges/downloads.json
-          if git diff --quiet -- .github/badges/downloads.json; then
+          json=$(printf '{"schemaVersion":1,"label":"Downloads","message":"%s","color":"22c55e"}\n' "$total")
+
+          # Create the badges branch from main on first run.
+          if ! gh api "repos/${repo}/branches/${branch}" >/dev/null 2>&1; then
+            base=$(gh api "repos/${repo}/git/refs/heads/main" --jq .object.sha)
+            gh api -X POST "repos/${repo}/git/refs" -f ref="refs/heads/${branch}" -f sha="$base"
+          fi
+
+          # Skip the commit when the count is unchanged.
+          existing=$(gh api "repos/${repo}/contents/${path}?ref=${branch}" --jq .content 2>/dev/null | base64 -d || true)
+          if [ "$existing" = "$json" ]; then
             echo "count unchanged ($total)"
             exit 0
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .github/badges/downloads.json
-          git commit -m "chore: downloads badge count $total"
-          git pull --rebase origin main
-          git push origin main
+
+          sha=$(gh api "repos/${repo}/contents/${path}?ref=${branch}" --jq .sha 2>/dev/null || true)
+          gh api -X PUT "repos/${repo}/contents/${path}" \
+            -f branch="$branch" \
+            -f message="chore: downloads badge count $total" \
+            -f content="$(printf '%s' "$json" | base64 | tr -d '\n')" \
+            ${sha:+-f sha="$sha"}
+          echo "published count $total to ${branch}"
