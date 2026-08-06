@@ -4,7 +4,7 @@
 //! PDFs. Tagged output needs LuaLaTeX + TeX Live 2025 or newer. Rather than
 //! bundle a heavy toolchain by default, we mirror the Pandoc model: detect an
 //! engine the user already has, and otherwise offer an on-demand TinyTeX
-//! install (a ~100MB TeX Live that installs to the user's home dir with no
+//! install (a ~250MB TeX Live that installs to the user's home dir with no
 //! admin rights and manages packages with `tlmgr`). Everything here is opt-in
 //! and deletable from Settings.
 
@@ -15,10 +15,13 @@ use crate::paths;
 use crate::proc::NoConsole;
 use crate::state::AppState;
 
-/// rstudio/tinytex-releases scheme "1" (the default set, ~100MB). The exact tag
-/// should be validated on a real machine; the manual-install fallback covers
-/// platforms/versions we cannot fetch automatically.
-const TINYTEX_TAG: &str = "daily";
+/// Pinned rstudio/tinytex-releases tag. A fixed monthly release, never the
+/// moving "daily" tag, so every install of a given Oleafly version gets the
+/// same TeX Live snapshot (reproducibility) and the download cannot change or
+/// break underneath a shipped build. To bump: pick the newest vYYYY.MM tag,
+/// confirm `TinyTeX-<tag>.zip` / `.tgz` / `.tar.gz` assets exist, and update
+/// the download-size copy here and in the UI if it moved meaningfully.
+const TINYTEX_TAG: &str = "v2026.08";
 
 #[derive(Clone, serde::Serialize)]
 pub struct EngineInfo {
@@ -188,7 +191,7 @@ pub async fn has_tagging_engine() -> bool {
 
 // --- TinyTeX install machinery -----------------------------------------------
 //
-// The install is long (100 MB+ download, large extraction) and must survive
+// The install is long (200 MB+ download, large extraction) and must survive
 // user impatience: progress is phased, the partial download resumes across
 // failures and app launches, and quitting mid-install is intercepted so the
 // user decides deliberately.
@@ -278,10 +281,10 @@ fn free_disk_space(path: &Path) -> Option<u64> {
     }
 }
 
-/// Core download is ~100 MB and unpacks to roughly 500 MB; journal templates
-/// pull more via tlmgr afterwards. Refuse to start below this floor so an
-/// install never strands the user with a full disk.
-const MIN_FREE_BYTES: u64 = 1_500_000_000;
+/// Core download is 200-270 MB depending on platform and unpacks to well under
+/// 1 GB; journal templates pull more via tlmgr afterwards. Refuse to start
+/// below this floor so an install never strands the user with a full disk.
+const MIN_FREE_BYTES: u64 = 2_000_000_000;
 
 fn gigabytes(bytes: u64) -> f64 {
     bytes as f64 / 1_000_000_000.0
@@ -315,20 +318,27 @@ pub async fn tinytex_install_state() -> TinytexInstallState {
 
 const DOWNLOAD_TMP: &str = "tinytex-download.tmp";
 
+/// The download URL and archive kind for this platform.
+///
+/// Versioned releases name their assets `TinyTeX-<tag>.zip` (Windows),
+/// `TinyTeX-<tag>.tgz` (macOS, universal binaries), and `TinyTeX-<tag>.tar.gz`
+/// (Linux x86_64). These are the "TinyTeX" scheme (more packages than the
+/// older scheme-1 bundle), and they are the only per-platform assets published
+/// as zip/gzip; the slimmer scheme-1 bundles moved to xz, which this installer
+/// does not decompress. One scheme on every platform also means coauthors on
+/// different machines start from the same package set.
 fn tinytex_asset() -> Result<(String, bool), String> {
     let base =
         format!("https://github.com/rstudio/tinytex-releases/releases/download/{TINYTEX_TAG}");
     if cfg!(target_os = "windows") {
-        Ok((format!("{base}/TinyTeX-1.zip"), false))
+        Ok((format!("{base}/TinyTeX-{TINYTEX_TAG}.zip"), false))
     } else if cfg!(target_os = "macos") {
-        // macOS bundle is universal (bin/universal-darwin), so arm64 is fine.
-        Ok((format!("{base}/TinyTeX-1.tar.gz"), true))
+        Ok((format!("{base}/TinyTeX-{TINYTEX_TAG}.tgz"), true))
     } else if cfg!(target_os = "linux") {
-        // The Linux TinyTeX bundle ships only bin/x86_64-linux binaries; there is
-        // no upstream aarch64-linux build. Fail early rather than download ~100MB
-        // of binaries that can't run.
+        // Upstream's only non-xz Linux bundle is x86_64. Fail early on other
+        // architectures rather than download binaries that can't run.
         if std::env::consts::ARCH == "x86_64" {
-            Ok((format!("{base}/TinyTeX-1.tar.gz"), true))
+            Ok((format!("{base}/TinyTeX-{TINYTEX_TAG}.tar.gz"), true))
         } else {
             Err(format!(
                 "Automatic TinyTeX install is not available for Linux {}. Install a LuaLaTeX / TeX Live 2025 toolchain from your package manager.",
@@ -470,7 +480,7 @@ pub async fn install_tinytex(app: tauri::AppHandle) -> Result<EngineInfo, String
     file.flush().map_err(|e| e.to_string())?;
     drop(file);
 
-    // The archive is ~100MB; extract off the async runtime so it doesn't block
+    // The archive is a few hundred MB; extract off the async runtime so it doesn't block
     // the webview UI while unpacking.
     let _ = app.emit(
         "tinytex-install-progress",
@@ -588,8 +598,15 @@ pub fn tlmgr_installed_versions() -> Result<std::collections::BTreeMap<String, S
     if !out.status.success() {
         return Err(String::from_utf8_lossy(&out.stderr).trim().to_string());
     }
+    Ok(parse_tlmgr_versions(&String::from_utf8_lossy(&out.stdout)))
+}
+
+/// Parse `tlmgr info --only-installed --data name,cat-version` output: one
+/// `name,version` pair per line, version possibly empty (packages the CTAN
+/// catalogue has no version for).
+fn parse_tlmgr_versions(stdout: &str) -> std::collections::BTreeMap<String, String> {
     let mut versions = std::collections::BTreeMap::new();
-    for line in String::from_utf8_lossy(&out.stdout).lines() {
+    for line in stdout.lines() {
         let Some((name, version)) = line.trim().split_once(',') else {
             continue;
         };
@@ -607,7 +624,7 @@ pub fn tlmgr_installed_versions() -> Result<std::collections::BTreeMap<String, S
             },
         );
     }
-    Ok(versions)
+    versions
 }
 
 /// Install TeX packages by name via tlmgr. Returns the combined output log.
@@ -628,19 +645,28 @@ pub async fn tlmgr_remove(packages: Vec<String>) -> Result<String, String> {
     }
 }
 
-fn tlmgr_run(action: &str, packages: Vec<String>) -> Result<String, String> {
-    if packages.is_empty() {
-        return Ok(String::new());
-    }
-    // Names are validated to a safe charset so they cannot be flags/paths.
-    for p in &packages {
-        if !p
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '.')
+/// Names are validated to a safe charset so they cannot be flags/paths. Real
+/// TeX Live package names start with a letter or digit; a leading `-` or `.`
+/// would read as a flag or a relative path.
+fn validate_package_names(packages: &[String]) -> Result<(), String> {
+    for p in packages {
+        let starts_safe = p.chars().next().is_some_and(|c| c.is_ascii_alphanumeric());
+        if !starts_safe
+            || !p
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '.')
         {
             return Err(format!("invalid package name: {p}"));
         }
     }
+    Ok(())
+}
+
+fn tlmgr_run(action: &str, packages: Vec<String>) -> Result<String, String> {
+    if packages.is_empty() {
+        return Ok(String::new());
+    }
+    validate_package_names(&packages)?;
     let tlmgr = tlmgr_path()?;
     let mut cmd = Command::new(&tlmgr);
     cmd.no_console().arg(action).arg("--");
@@ -788,4 +814,90 @@ pub async fn compile_tagged(
         );
     }
     Ok(result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tinytex_asset_uses_the_pinned_release() {
+        // Every supported platform must build a URL under the pinned tag with
+        // the versioned asset name; the moving "daily" tag must never appear.
+        let asset = tinytex_asset();
+        if let Ok((url, is_targz)) = asset {
+            assert!(url.contains(&format!("/download/{TINYTEX_TAG}/")));
+            assert!(url.contains(&format!("TinyTeX-{TINYTEX_TAG}")));
+            assert!(!url.contains("daily"));
+            if cfg!(target_os = "windows") {
+                assert!(url.ends_with(".zip"));
+                assert!(!is_targz);
+            } else {
+                assert!(url.ends_with(".tgz") || url.ends_with(".tar.gz"));
+                assert!(is_targz);
+            }
+        }
+    }
+
+    #[test]
+    fn tinytex_tag_is_a_fixed_release() {
+        assert_ne!(TINYTEX_TAG, "daily");
+        assert!(TINYTEX_TAG.starts_with('v'));
+    }
+
+    #[test]
+    fn parse_tlmgr_versions_reads_name_and_cat_version() {
+        let out = "amsmath,2.17o\nbiblatex,3.20\nlatexmk,4.86a\n";
+        let map = parse_tlmgr_versions(out);
+        assert_eq!(map.len(), 3);
+        assert_eq!(map["amsmath"], "2.17o");
+        assert_eq!(map["biblatex"], "3.20");
+        assert_eq!(map["latexmk"], "4.86a");
+    }
+
+    #[test]
+    fn parse_tlmgr_versions_defaults_missing_versions_to_installed() {
+        // Packages without a CTAN catalogue version print an empty field.
+        let out = "scheme-infraonly,\nhyphen-base,\n";
+        let map = parse_tlmgr_versions(out);
+        assert_eq!(map["scheme-infraonly"], "installed");
+        assert_eq!(map["hyphen-base"], "installed");
+    }
+
+    #[test]
+    fn parse_tlmgr_versions_skips_malformed_lines() {
+        // Lines without a comma (warnings, blank lines) and empty names are
+        // dropped instead of poisoning the pin.
+        let out = "tlmgr: package repository ...\n\namsmath,2.17o\n,orphan\n";
+        let map = parse_tlmgr_versions(out);
+        assert_eq!(map.len(), 1);
+        assert!(map.contains_key("amsmath"));
+    }
+
+    #[test]
+    fn parse_tlmgr_versions_trims_whitespace() {
+        let out = "  amsmath , 2.17o \n";
+        let map = parse_tlmgr_versions(out);
+        assert_eq!(map["amsmath"], "2.17o");
+    }
+
+    #[test]
+    fn validate_package_names_accepts_safe_charset() {
+        let ok = vec!["amsmath".into(), "l3kernel".into(), "pdf-tools.x".into()];
+        assert!(validate_package_names(&ok).is_ok());
+    }
+
+    #[test]
+    fn validate_package_names_rejects_flags_and_paths() {
+        for bad in ["--gui", "../etc", "a b", "pkg;rm", ""] {
+            let list = vec![bad.to_string()];
+            assert!(validate_package_names(&list).is_err(), "accepted {bad:?}");
+        }
+    }
+
+    #[test]
+    fn gigabytes_converts_decimal_gb() {
+        assert!((gigabytes(2_000_000_000) - 2.0).abs() < f64::EPSILON);
+        assert!((gigabytes(0) - 0.0).abs() < f64::EPSILON);
+    }
 }

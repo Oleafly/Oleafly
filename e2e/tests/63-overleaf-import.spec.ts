@@ -1,9 +1,10 @@
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { strToU8, zipSync } from "fflate";
 import { test, expect } from "../fixtures";
 import {
+  openGallery,
   openProject,
   setNextImportPaths,
   waitLong,
@@ -173,4 +174,69 @@ test("a Tectonic project with an engine gap offers the engine picker", async ({
   // The choice is remembered: the project stays on the bundled engine.
   const state = await projectState(tauriPage);
   expect(state.engineId).toBe("latex");
+});
+
+test("a plain folder imports with the main document inferred", async ({
+  tauriPage,
+}) => {
+  test.setTimeout(120_000);
+  const dir = mkdtempSync(join(tmpdir(), "oleafly-ovl-folder-"));
+  writeFileSync(
+    join(dir, "report.tex"),
+    "\\documentclass{article}\n\\begin{document}Folder import.\\input{sections/intro}\\end{document}\n",
+  );
+  mkdirSync(join(dir, "sections"));
+  writeFileSync(join(dir, "sections", "intro.tex"), "Intro section.\n");
+  await waitLong(
+    tauriPage,
+    `!!document.querySelector('[data-testid="library"][data-projects-loaded="true"]')`,
+    30_000,
+  );
+  await setNextImportPaths(tauriPage, [dir]);
+  const opened = await tauriPage.evaluate<boolean>(
+    pressWithPointer(`document.querySelector('[data-testid="import-project-button"]')`),
+  );
+  if (!opened) throw new Error("import dropdown trigger not found");
+  await waitLong(
+    tauriPage,
+    `[...document.querySelectorAll('[role="menuitem"]')].some((i) => (i.textContent ?? "").includes("Project folder"))`,
+    10_000,
+  );
+  const clicked = await tauriPage.evaluate<boolean>(
+    pressWithPointer(
+      `[...document.querySelectorAll('[role="menuitem"]')].find((i) => (i.textContent ?? "").includes("Project folder"))`,
+    ),
+  );
+  if (!clicked) throw new Error("Project folder menu item not found");
+  await waitLong(
+    tauriPage,
+    `!!document.querySelector('[data-tour="project-editor"] .cm-content')`,
+    45_000,
+  );
+  const state = await projectState(tauriPage);
+  // Root-level \documentclass file beats the section fragment.
+  expect(state.main).toBe("report.tex");
+  expect(state.paths).toContain("sections/intro.tex");
+});
+
+test("the template chooser imports an Overleaf ZIP from its header button", async ({
+  tauriPage,
+}) => {
+  test.setTimeout(120_000);
+  const zipPath = writeZip("chooser-import.zip", {
+    "main.tex":
+      "\\documentclass{article}\n\\begin{document}From the chooser.\\end{document}\n",
+  });
+  await openGallery(tauriPage);
+  // The path must be queued before the click: the picker opens immediately.
+  await setNextImportPaths(tauriPage, [zipPath]);
+  await tauriPage.click('[data-testid="import-from-overleaf"]');
+  await waitLong(
+    tauriPage,
+    `!!document.querySelector('[data-tour="project-editor"] .cm-content')`,
+    45_000,
+  );
+  const state = await projectState(tauriPage);
+  expect(state.main).toBe("main.tex");
+  expect(state.name).toBe("chooser-import");
 });
