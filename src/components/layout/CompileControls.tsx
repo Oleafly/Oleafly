@@ -262,19 +262,19 @@ export function CompileControls() {
                 }
               }}
             >
-              <DropdownMenuRadioItem value="tectonic">
+              <DropdownMenuRadioItem value="tectonic" data-testid="compiler-tectonic">
                 Tectonic <span className="ml-1 text-muted-foreground">[built in]</span>
               </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="auto">
+              <DropdownMenuRadioItem value="auto" data-testid="compiler-auto">
                 Auto <span className="ml-1 text-muted-foreground">[system TeX]</span>
               </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="pdflatex">
+              <DropdownMenuRadioItem value="pdflatex" data-testid="compiler-pdflatex">
                 pdfLaTeX <span className="ml-1 text-muted-foreground">[system TeX]</span>
               </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="xelatex">
+              <DropdownMenuRadioItem value="xelatex" data-testid="compiler-xelatex">
                 XeLaTeX <span className="ml-1 text-muted-foreground">[system TeX]</span>
               </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="lualatex">
+              <DropdownMenuRadioItem value="lualatex" data-testid="compiler-lualatex">
                 LuaLaTeX <span className="ml-1 text-muted-foreground">[system TeX]</span>
               </DropdownMenuRadioItem>
             </DropdownMenuRadioGroup>

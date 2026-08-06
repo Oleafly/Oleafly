@@ -371,6 +371,7 @@ export function SettingsModal() {
               size="icon"
               className="size-7"
               aria-label="Close settings"
+              data-testid="settings-close"
               onClick={closeSettings}
             >
               <X className="size-4" />
