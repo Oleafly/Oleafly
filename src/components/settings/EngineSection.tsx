@@ -23,9 +23,20 @@ const ENGINE_CHOICES: Array<{
     id: "latexmk",
     name: "latexmk (system TeX)",
     detail:
-      "Uses a TeX distribution on this machine (MacTeX, TeX Live, MiKTeX, or TinyTeX). Required for minted code highlighting, glossaries/makeindex, pythontex, and shell-escape-heavy journal templates.",
+      "Runs pdfLaTeX, XeLaTeX, or LuaLaTeX from a TeX distribution on this machine (MacTeX, TeX Live, MiKTeX, or TinyTeX). Required for minted code highlighting, glossaries/makeindex, pythontex, and shell-escape-heavy journal templates.",
   },
 ];
+
+// Plain-sentence summary of what a detected distribution ships and where
+// Oleafly runs it from, for the info icon on each row.
+function distroTooltip(distro: TexDistribution): string {
+  const tools = [distro.latexmk && "latexmk", distro.tlmgr && "tlmgr"].filter(Boolean);
+  const bundled =
+    tools.length > 0
+      ? `Bundled with ${tools.join(" and ")}.`
+      : "No latexmk or tlmgr was found in this install.";
+  return `${bundled} Oleafly runs its TeX tools from ${distro.bin_dir}.`;
+}
 
 const TAG_BADGE: Record<TaggingStatus, { label: string; className: string } | null> = {
   ok: null,
@@ -46,8 +57,16 @@ export function EngineSection() {
   useEffect(() => {
     // refreshPackages() needs engine info from refresh() first, so run in sequence.
     void refresh().then(() => refreshPackages());
-    if (isTauri()) void texDistributions().then(setDistros).catch(() => {});
   }, [refresh, refreshPackages]);
+
+  // Reload the distribution list whenever an install or removal lands, so the
+  // freshly installed TinyTeX row replaces the download card immediately (and
+  // returns after a removal).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: info triggers a reload after remove()
+  useEffect(() => {
+    if (installing || !isTauri()) return;
+    void texDistributions().then(setDistros).catch(() => {});
+  }, [installing, info]);
 
   const kind = info?.kind ?? "none";
   const hasEngine = kind !== "none";
@@ -121,6 +140,9 @@ export function EngineSection() {
             <div className="flex items-center gap-2">
               <HardDrive className="size-4 shrink-0 text-muted-foreground" />
               <span className="text-sm">{distro.label}</span>
+              <Tooltip wide side="right" label={distroTooltip(distro)}>
+                <Info className="size-3.5 shrink-0 cursor-help text-muted-foreground/60 hover:text-muted-foreground" />
+              </Tooltip>
               {distro.latexmk && (
                 <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-600 dark:text-emerald-400">
                   latexmk

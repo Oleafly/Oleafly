@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Overleaf-style compiler choice.** The compile options menu now offers
+  pdfLaTeX, XeLaTeX, and LuaLaTeX alongside Tectonic and Auto. An explicit
+  choice pins the compiler in `project.json` and overrides source detection,
+  exactly like Overleaf's Compiler setting. Auto keeps the existing behavior:
+  the magic comment or font packages decide, with pdfLaTeX as the default.
+- **Editor preferences.** Settings gains three toggles: Auto-complete
+  (suggestions while typing, with Ctrl+Space always available), Auto-close
+  brackets, and Non-blinking cursor. All three apply instantly without
+  reopening the editor.
+
 ## [0.3.5] - 2026-08-06
 
 ### Added
