@@ -32,10 +32,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   recognized as engine gaps too. The per-project choice lives in the compile
   options menu, and Settings gains a default engine for new projects plus a
   panel listing detected TeX distributions.
-- **Seamless TinyTeX install.** The on-demand TinyTeX download checks free
-  disk space first, shows phased progress for download, unpack, and packages,
-  resumes interrupted downloads across app launches, pauses a running compile
-  and re-queues it, and intercepts window close and Cmd+Q with a clear
+- **Seamless TinyTeX install.** The on-demand TinyTeX download is pinned to a
+  fixed upstream release (v2026.08) so every install of a given Oleafly build
+  gets the same TeX Live snapshot. The installer checks free disk space first,
+  shows phased progress for download, unpack, and packages, resumes
+  interrupted downloads across app launches, pauses a running compile and
+  re-queues it, and intercepts window close and Cmd+Q with a clear
   confirmation while an install is running.
 - **Missing packages install themselves.** When a latexmk compile fails on a
   missing `.sty` or `.cls`, Oleafly names the packages and offers a one-click
@@ -54,6 +56,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a `.bcf` is left without a usable `.bbl`, and surface clear mode A (missing)
   vs mode B (version skew) notes in the log. Opening a project also scans for
   Overleaf-style requirements (biblatex, minted, glossaries, shell-escape, fonts).
+  Full issue: https://github.com/Oleafly/Oleafly/issues/40
+- **PDF export no longer fails on macOS permission quirks.** After a
+  successful save, a failure to fsync the destination's parent folder (common
+  on macOS for folders like Desktop or Downloads) is treated as non-fatal
+  instead of flipping the export result to an error, and export failures now
+  surface a clearer diagnostic in the preview pane.
 
 ## [0.3.4] - 2026-08-04
 

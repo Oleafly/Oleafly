@@ -206,8 +206,8 @@ export function EnginePickerModal() {
                 <span className="text-sm font-medium">Download TinyTeX</span>
               </div>
               <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-                Installs a minimal TeX Live into your home folder, no admin rights
-                needed. The core download is about 100 MB. Journal templates can
+                Installs a compact TeX Live into your home folder, no admin rights
+                needed. The core download is about 250 MB. Journal templates can
                 pull more packages later, up to roughly 1 GB in total.
               </p>
               <div className="mt-2">
