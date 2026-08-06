@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   ChevronDown,
   FileText,
+  Info,
   Loader2,
   Play,
   RefreshCw,
@@ -225,7 +226,16 @@ export function CompileControls() {
         {engine.source_format === "latex" && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuLabel>Compiler (this project)</DropdownMenuLabel>
+            <DropdownMenuLabel className="flex items-center gap-1.5">
+              Compiler (this project)
+              <Tooltip
+                wide
+                side="right"
+                label="Tectonic is built in and needs no setup. Auto uses your system TeX and picks the compiler from the source. pdfLaTeX is the Overleaf default and matches most journal templates. XeLaTeX and LuaLaTeX add system fonts and full Unicode. LuaLaTeX also enables tagged accessible PDFs."
+              >
+                <Info className="size-3 cursor-help text-muted-foreground/60 hover:text-muted-foreground" />
+              </Tooltip>
+            </DropdownMenuLabel>
             <DropdownMenuRadioGroup
               value={
                 engine.id === "latexmk"

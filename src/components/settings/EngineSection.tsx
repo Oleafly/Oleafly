@@ -62,7 +62,7 @@ export function EngineSection() {
   // Reload the distribution list whenever an install or removal lands, so the
   // freshly installed TinyTeX row replaces the download card immediately (and
   // returns after a removal).
-  // biome-ignore lint/correctness/useExhaustiveDependencies: info is a deliberate trigger, remove() updates it after deleting TinyTeX and the list must refresh then too
+  // biome-ignore lint/correctness/useExhaustiveDependencies: info triggers a reload after remove()
   useEffect(() => {
     if (installing || !isTauri()) return;
     void texDistributions().then(setDistros).catch(() => {});
