@@ -62,6 +62,9 @@ describe("CodeMirrorEditor measurement", () => {
         spellcheck: false,
         harper: false,
         editorTheme: "system",
+        autocomplete: true,
+        autoCloseBrackets: true,
+        nonBlinkingCursor: false,
       }),
       useLintRefreshDeps: () => [],
     };

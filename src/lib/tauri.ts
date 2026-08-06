@@ -51,7 +51,11 @@ export interface DocumentEngineDescriptor {
   main_document: string;
   source_extensions: string[];
   capabilities: EngineCapabilities;
+  /** Pinned latexmk compiler; absent means auto-detect from the source. */
+  tex_flavor?: TexFlavor;
 }
+
+export type TexFlavor = "pdflatex" | "xelatex" | "lualatex";
 
 export type DocumentEngineId = "latex" | "latexmk" | "typst" | "markdown" | "unknown";
 
@@ -257,9 +261,13 @@ export const setMainDocCmd = (projectId: string, mainDoc: string) =>
   invoke<ProjectMeta>("set_main_doc", { projectId, mainDoc });
 
 // Pin a project's compile engine ("xetex" for bundled Tectonic, "latexmk" for
-// a system TeX toolchain) in its project.json.
-export const setProjectEngineCmd = (projectId: string, engine: string) =>
-  invoke<ProjectMeta>("set_project_engine", { projectId, engine });
+// a system TeX toolchain) in its project.json. On latexmk, `flavor` pins the
+// compiler (pdflatex / xelatex / lualatex); null keeps auto-detection.
+export const setProjectEngineCmd = (
+  projectId: string,
+  engine: string,
+  flavor: TexFlavor | null = null,
+) => invoke<ProjectMeta>("set_project_engine", { projectId, engine, flavor });
 
 export const renameProjectCmd = (projectId: string, name: string) =>
   invoke<ProjectMeta>("rename_project", { projectId, name });

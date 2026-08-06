@@ -18,33 +18,26 @@ pub fn exe(name: &str) -> String {
     }
 }
 
-/// TeX binary directories to probe, best-first: Oleafly's managed TinyTeX
-/// (pinned, tlmgr-writable), then versioned system installs (MacTeX, TeX Live
-/// by year, MiKTeX), then generic locations. Only existing directories are
-/// returned.
+/// TeX binary directories to probe, best-first: full system installs (MacTeX,
+/// TeX Live by year, MiKTeX), then Oleafly's managed TinyTeX, then generic
+/// locations. A complete system distribution must outrank the compact TinyTeX:
+/// installing TinyTeX next to a full TeX Live used to silently downgrade every
+/// latexmk compile to the smaller package set and break previously working
+/// projects. Only existing directories are returned.
 pub fn tex_bin_dirs() -> Vec<PathBuf> {
     let mut dirs = Vec::new();
     let home = crate::paths::home_dir().ok();
-
-    // Oleafly's own TinyTeX (managed install; may nest TinyTeX/bin/<platform>).
-    if let Ok(root) = crate::paths::oleafly_root() {
-        push_texdir_bins(&mut dirs, &root.join("tinytex"));
-    }
 
     #[cfg(target_os = "macos")]
     {
         push_existing(&mut dirs, PathBuf::from("/Library/TeX/texbin"));
         push_texlive_year_bins(&mut dirs, Path::new("/usr/local/texlive"));
-        push_existing(&mut dirs, PathBuf::from("/usr/local/bin"));
-        push_existing(&mut dirs, PathBuf::from("/opt/homebrew/bin"));
     }
 
     #[cfg(all(unix, not(target_os = "macos")))]
     {
         push_texlive_year_bins(&mut dirs, Path::new("/usr/local/texlive"));
         push_texlive_year_bins(&mut dirs, Path::new("/opt/texlive"));
-        push_existing(&mut dirs, PathBuf::from("/usr/local/bin"));
-        push_existing(&mut dirs, PathBuf::from("/usr/bin"));
     }
 
     #[cfg(windows)]
@@ -68,9 +61,28 @@ pub fn tex_bin_dirs() -> Vec<PathBuf> {
         );
     }
 
+    // Oleafly's own TinyTeX (managed install; may nest TinyTeX/bin/<platform>).
+    if let Ok(root) = crate::paths::oleafly_root() {
+        push_texdir_bins(&mut dirs, &root.join("tinytex"));
+    }
+
     // A user-installed TinyTeX in the home directory (any platform).
     if let Some(home) = &home {
         push_texdir_bins(&mut dirs, &home.join(".TinyTeX"));
+    }
+
+    // Generic locations last: these usually hold symlinks into one of the real
+    // distributions above.
+    #[cfg(target_os = "macos")]
+    {
+        push_existing(&mut dirs, PathBuf::from("/usr/local/bin"));
+        push_existing(&mut dirs, PathBuf::from("/opt/homebrew/bin"));
+    }
+
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        push_existing(&mut dirs, PathBuf::from("/usr/local/bin"));
+        push_existing(&mut dirs, PathBuf::from("/usr/bin"));
     }
 
     dirs

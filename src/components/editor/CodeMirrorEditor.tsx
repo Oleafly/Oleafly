@@ -151,6 +151,9 @@ const HOST: EditorHost = {
     spellcheck: useSettingsStore((s) => s.spellcheck),
     harper: useSettingsStore((s) => s.harper),
     editorTheme: useSettingsStore((s) => s.editorTheme),
+    autocomplete: useSettingsStore((s) => s.editorAutocomplete),
+    autoCloseBrackets: useSettingsStore((s) => s.editorAutoCloseBrackets),
+    nonBlinkingCursor: useSettingsStore((s) => s.editorNonBlinkingCursor),
   }),
   useLintRefreshDeps: () => [
     useSettingsStore((s) => s.showRegionalism),

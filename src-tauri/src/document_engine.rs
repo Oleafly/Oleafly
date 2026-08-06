@@ -107,6 +107,11 @@ pub struct EngineDescriptor {
     pub main_document: String,
     pub source_extensions: Vec<String>,
     pub capabilities: EngineCapabilities,
+    /// The project's pinned latexmk compiler ("pdflatex" | "xelatex" |
+    /// "lualatex"); None means auto-detect. Filled in by `project_engine`
+    /// from project.json, absent in engine-only contexts.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tex_flavor: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -291,7 +296,7 @@ impl DocumentEngine for LatexEngine {
 /// comment wins, fontspec-style packages force a Unicode engine, and everything
 /// else gets pdfLaTeX (Overleaf's own default).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum LatexmkFlavor {
+pub enum LatexmkFlavor {
     Pdflatex,
     Xelatex,
     Lualatex,
@@ -305,6 +310,22 @@ impl LatexmkFlavor {
             Self::Lualatex => "-lualatex",
         }
     }
+
+    /// Parse the `project.json` `tex_flavor` value.
+    pub fn parse(value: &str) -> Option<Self> {
+        match value.trim() {
+            "pdflatex" => Some(Self::Pdflatex),
+            "xelatex" => Some(Self::Xelatex),
+            "lualatex" => Some(Self::Lualatex),
+            _ => None,
+        }
+    }
+}
+
+/// The user's pinned compiler wins over every source heuristic (magic comment
+/// included); detection only runs for the default "auto" choice.
+fn resolve_latexmk_flavor(pinned: Option<LatexmkFlavor>, source_head: &str) -> LatexmkFlavor {
+    pinned.unwrap_or_else(|| detect_latexmk_flavor(source_head))
 }
 
 fn detect_tex_program_magic(source: &str) -> Option<LatexmkFlavor> {
@@ -482,10 +503,10 @@ impl DocumentEngine for LatexmkEngine {
             } => (source_path.to_owned(), output_stem),
         };
         let source_head = read_source_head(&input_path);
-        let flavor = detect_latexmk_flavor(&source_head);
+        let flavor = resolve_latexmk_flavor(options.latex_flavor, &source_head);
         let shell_escape = latexmk_needs_shell_escape(&source_head);
         let artifacts = self.artifacts(out_dir, target);
-        let args = latexmk_args(
+        let mut args = latexmk_args(
             &out_dir.to_string_lossy(),
             &input_path.to_string_lossy(),
             stem,
@@ -493,6 +514,14 @@ impl DocumentEngine for LatexmkEngine {
             shell_escape,
             options,
         );
+        // latexmk's dependency database is not portable across TeX
+        // distributions: after a distro switch it can report "Nothing to do"
+        // while replaying the previous run's error. Force one full rebuild
+        // (-gg) whenever the resolved latexmk binary differs from the one
+        // that produced this build directory.
+        if latexmk_binary_changed(out_dir, &latexmk) {
+            args.insert(0, "-gg".into());
+        }
         Ok(EngineCompileSpec {
             executable: EngineExecutable::ExternalPath(latexmk),
             args,
@@ -505,6 +534,21 @@ impl DocumentEngine for LatexmkEngine {
     fn parse_errors(&self, log: &str) -> Vec<CompileError> {
         parse_tex_log_errors(log)
     }
+}
+
+/// True when this build directory was last driven by a different latexmk
+/// binary (or never by latexmk). Records the current binary path in a marker
+/// file so the forced rebuild happens exactly once per switch.
+fn latexmk_binary_changed(out_dir: &Path, latexmk: &Path) -> bool {
+    let marker = out_dir.join(".oleafly-latexmk");
+    let current = latexmk.to_string_lossy();
+    let previous = std::fs::read_to_string(&marker).unwrap_or_default();
+    if previous.trim() == current {
+        return false;
+    }
+    let _ = std::fs::create_dir_all(out_dir);
+    let _ = std::fs::write(&marker, current.as_bytes());
+    true
 }
 
 fn validate_latex_main_document(path: &str) -> Result<(), String> {
@@ -884,6 +928,7 @@ pub fn descriptor_for(
             .map(|extension| (*extension).to_owned())
             .collect(),
         capabilities: engine.capabilities(),
+        tex_flavor: None,
     })
 }
 
@@ -939,6 +984,9 @@ pub struct CompileOptions {
     pub fast: bool,
     /// Stop at the first TeX error rather than pushing on to a best-effort PDF.
     pub halt_on_error: bool,
+    /// The project's pinned latexmk compiler; None means auto-detect from the
+    /// source. Ignored by every other engine.
+    pub latex_flavor: Option<LatexmkFlavor>,
 }
 
 pub struct CompileRequest<'a> {
@@ -2273,6 +2321,7 @@ mod tests {
             offline: true,
             fast: true,
             halt_on_error: true,
+            latex_flavor: None,
         });
         assert!(args.last().unwrap().ends_with(crate::paths::ENTRY_TEX));
         assert_eq!(&args[..2], ["-X", "compile"]);
@@ -2707,6 +2756,56 @@ mod tests {
             detect_latexmk_flavor("\\documentclass{article}"),
             LatexmkFlavor::Pdflatex
         );
+    }
+
+    #[test]
+    fn latexmk_binary_change_forces_one_rebuild() {
+        let dir = std::env::temp_dir().join(format!("oleafly-lmk-marker-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let tinytex = Path::new("/tiny/bin/latexmk");
+        let mactex = Path::new("/mactex/bin/latexmk");
+        // First compile in a fresh build dir: no marker yet, rebuild once.
+        assert!(latexmk_binary_changed(&dir, tinytex));
+        // Same binary again: incremental.
+        assert!(!latexmk_binary_changed(&dir, tinytex));
+        // Distro switch: rebuild once, then incremental again.
+        assert!(latexmk_binary_changed(&dir, mactex));
+        assert!(!latexmk_binary_changed(&dir, mactex));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn pinned_flavor_beats_every_source_heuristic() {
+        // An explicit per-project compiler wins over the magic comment and the
+        // fontspec upgrade; auto (None) falls back to detection.
+        let source = "% !TeX program = xelatex\n\\usepackage{fontspec}";
+        assert_eq!(
+            resolve_latexmk_flavor(Some(LatexmkFlavor::Pdflatex), source),
+            LatexmkFlavor::Pdflatex
+        );
+        assert_eq!(
+            resolve_latexmk_flavor(Some(LatexmkFlavor::Lualatex), source),
+            LatexmkFlavor::Lualatex
+        );
+        assert_eq!(resolve_latexmk_flavor(None, source), LatexmkFlavor::Xelatex);
+    }
+
+    #[test]
+    fn latexmk_flavor_parse_accepts_only_known_compilers() {
+        assert_eq!(
+            LatexmkFlavor::parse("pdflatex"),
+            Some(LatexmkFlavor::Pdflatex)
+        );
+        assert_eq!(
+            LatexmkFlavor::parse(" xelatex "),
+            Some(LatexmkFlavor::Xelatex)
+        );
+        assert_eq!(
+            LatexmkFlavor::parse("lualatex"),
+            Some(LatexmkFlavor::Lualatex)
+        );
+        assert_eq!(LatexmkFlavor::parse("tectonic"), None);
+        assert_eq!(LatexmkFlavor::parse(""), None);
     }
 
     #[test]

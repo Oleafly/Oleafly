@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   ChevronDown,
   FileText,
+  Info,
   Loader2,
   Play,
   RefreshCw,
@@ -24,6 +25,7 @@ import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
+import type { TexFlavor } from "@/lib/tauri";
 import { cn, shortcut } from "@/lib/utils";
 
 function basename(path: string): string {
@@ -224,21 +226,56 @@ export function CompileControls() {
         {engine.source_format === "latex" && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuLabel>Engine (this project)</DropdownMenuLabel>
+            <DropdownMenuLabel className="flex items-center gap-1.5">
+              Compiler (this project)
+              <Tooltip
+                wide
+                side="right"
+                label="Tectonic is built in and needs no setup. Auto uses your system TeX and picks the compiler from the source. pdfLaTeX is the Overleaf default and matches most journal templates. XeLaTeX and LuaLaTeX add system fonts and full Unicode. LuaLaTeX also enables tagged accessible PDFs."
+              >
+                <Info className="size-3 cursor-help text-muted-foreground/60 hover:text-muted-foreground" />
+              </Tooltip>
+            </DropdownMenuLabel>
             <DropdownMenuRadioGroup
-              value={engine.id === "latexmk" ? "latexmk" : "tectonic"}
+              value={
+                engine.id === "latexmk"
+                  ? (engine.tex_flavor ?? "auto")
+                  : "tectonic"
+              }
               onValueChange={(value) => {
-                const isLatexmk = engine.id === "latexmk";
-                if (value === "latexmk" && !isLatexmk) void setEngine("latexmk");
-                // "xetex" is the stored default for the bundled Tectonic engine.
-                if (value === "tectonic" && isLatexmk) void setEngine("xetex");
+                const current =
+                  engine.id === "latexmk"
+                    ? (engine.tex_flavor ?? "auto")
+                    : "tectonic";
+                if (value === current) return;
+                // "xetex" is the stored default for the bundled Tectonic
+                // engine. Everything else runs through latexmk on a system
+                // TeX: "auto" picks the compiler from the source, an explicit
+                // choice pins it (Overleaf's Compiler setting).
+                if (value === "tectonic") {
+                  void setEngine("xetex");
+                } else {
+                  void setEngine(
+                    "latexmk",
+                    value === "auto" ? null : (value as TexFlavor),
+                  );
+                }
               }}
             >
-              <DropdownMenuRadioItem value="tectonic">
+              <DropdownMenuRadioItem value="tectonic" data-testid="compiler-tectonic">
                 Tectonic <span className="ml-1 text-muted-foreground">[built in]</span>
               </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="latexmk">
-                latexmk <span className="ml-1 text-muted-foreground">[system TeX]</span>
+              <DropdownMenuRadioItem value="auto" data-testid="compiler-auto">
+                Auto <span className="ml-1 text-muted-foreground">[system TeX]</span>
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="pdflatex" data-testid="compiler-pdflatex">
+                pdfLaTeX <span className="ml-1 text-muted-foreground">[system TeX]</span>
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="xelatex" data-testid="compiler-xelatex">
+                XeLaTeX <span className="ml-1 text-muted-foreground">[system TeX]</span>
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="lualatex" data-testid="compiler-lualatex">
+                LuaLaTeX <span className="ml-1 text-muted-foreground">[system TeX]</span>
               </DropdownMenuRadioItem>
             </DropdownMenuRadioGroup>
           </>
