@@ -10,9 +10,15 @@ import {
   type CompileResult,
 } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
+import { engineHintDismissed, useEnginePickerStore } from "@/store/engine-picker";
+import {
+  classifyCompileFailure,
+  importCompatFinding,
+  missingLatexPackages,
+} from "@oleafly/latex";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { useSettingsStore } from "@/store/settings";
-import { notifyError } from "@/lib/toast";
+import { notifyError, toast } from "@/lib/toast";
 import { compileOfflineForEngine } from "@/lib/document-engine";
 import { ensurePandoc } from "@/features/pandoc";
 import {
@@ -353,6 +359,91 @@ async function mainDocumentSyntaxErrors(
     }));
 }
 
+/**
+ * Open the engine-picker modal when a failed Tectonic compile matches a known
+ * engine gap. Skipped for latexmk projects (they have the full toolchain) and
+ * for finding sets the user already dismissed with "Keep Tectonic".
+ *
+ * Catch-all: when no specific signature matches but the errors originate in a
+ * class or style file rather than the user's own document, treat it as an
+ * engine gap too. That is the "it works on Overleaf" long tail (publisher
+ * classes relying on toolchain behavior Tectonic does not provide), and it
+ * never fires for ordinary typos, which TeX attributes to the user's .tex.
+ */
+// Last missing-package suggestion per project, so auto-compile retries of the
+// same failure do not stack identical toasts. Session-scoped on purpose: a
+// fresh launch may as well offer the install again.
+const suggestedPackagesByProject = new Map<string, string>();
+
+/**
+ * A latexmk compile that failed on a missing .sty/.cls gets a one-click
+ * "install via tlmgr and recompile" toast. This closes the gap between a
+ * minimal TinyTeX and what a journal template actually loads.
+ */
+function maybeSuggestMissingPackages(log: string): void {
+  const files = useFilesStore.getState();
+  const projectId = files.projectId;
+  if (files.engine.id !== "latexmk" || !projectId) return;
+  const packages = missingLatexPackages(log);
+  if (packages.length === 0) return;
+  const signature = [...packages].sort().join(",");
+  if (suggestedPackagesByProject.get(projectId) === signature) return;
+  suggestedPackagesByProject.set(projectId, signature);
+  void (async () => {
+    const tauri = await import("@/lib/tauri");
+    const info = await tauri.latexEngineInfo().catch(() => null);
+    if (!info?.tlmgr) return; // MiKTeX installs on the fly; nothing to offer
+    const label = packages.length === 1 ? `Install ${packages[0]}` : `Install all ${packages.length}`;
+    const summary =
+      packages.length === 1
+        ? `The compile needs the LaTeX package "${packages[0]}", which is not installed.`
+        : `The compile needs ${packages.length} LaTeX packages that are not installed (${packages.join(", ")}).`;
+    toast.info(
+      summary,
+      {
+        label,
+        onClick: () => {
+          void (async () => {
+            toast.info(
+              packages.length === 1
+                ? `Installing ${packages[0]}. The compile restarts when it finishes.`
+                : `Installing ${packages.length} packages. The compile restarts when they finish.`,
+            );
+            try {
+              await tauri.tlmgrInstall(packages);
+              suggestedPackagesByProject.delete(projectId);
+              void useCompileStore.getState().recompile();
+            } catch (error) {
+              notifyError(
+                "install missing packages",
+                error,
+                "The packages could not be installed. See Settings, LaTeX Engine for details.",
+              );
+            }
+          })();
+        },
+      },
+      true,
+    );
+  })();
+}
+
+function maybePromptEngineGap(log: string, errors: CompileError[]): void {
+  const files = useFilesStore.getState();
+  if (files.engine.id !== "latex" || !files.projectId) return;
+  let findings = classifyCompileFailure(log);
+  if (findings.length === 0) {
+    const classFileError = errors.some(
+      (error) =>
+        error.kind === "error" && /\.(cls|sty|bbx|cbx|def|ldf)$/i.test(error.file ?? ""),
+    );
+    if (classFileError) findings = [importCompatFinding("class-compat")];
+  }
+  if (findings.length === 0) return;
+  if (engineHintDismissed(files.projectId, findings)) return;
+  useEnginePickerStore.getState().openPicker("compile-failure", findings);
+}
+
 export const useCompileStore = create<CompileState>((set, get) => ({
   status: "idle",
   phase: "idle",
@@ -515,6 +606,31 @@ export const useCompileStore = create<CompileState>((set, get) => ({
             : null,
         });
         notifyError("Pandoc setup", e);
+        abortIntent();
+        return undefined;
+      }
+      if (!matchesProjectAndMain() || checkpointAdvanced()) {
+        abortIntent();
+        return undefined;
+      }
+    }
+    if (files.engine.capabilities.compiler_prerequisite === "system_tex") {
+      // A TinyTeX install may be in flight: queue this compile behind it
+      // instead of failing with "latexmk not found". The engine store runs
+      // the queued compile the moment the install lands.
+      const engineModule = await import("@/store/engine");
+      const engineStore = engineModule.useEngineStore.getState();
+      if (engineStore.installing) {
+        engineStore.queueCompileAfterInstall();
+        set({
+          status: "unavailable",
+          phase: "idle",
+          failureReason:
+            "TinyTeX is still downloading. This compile starts automatically when it finishes.",
+          lastAttemptIdentity: capturedProjectId
+            ? identityForGeneration(capturedProjectId, mainDoc, intent)
+            : null,
+        });
         abortIntent();
         return undefined;
       }
@@ -813,6 +929,14 @@ export const useCompileStore = create<CompileState>((set, get) => ({
         };
       });
       if (!applied) return result;
+      // A failed Tectonic compile whose log matches a known engine gap
+      // (minted, missing index run, shell-escape refusal, unresolved Biber)
+      // gets the engine-picker modal instead of leaving the user to decode
+      // the log. latexmk projects already have the full toolchain.
+      if (!checkpoint) {
+        maybePromptEngineGap(result.log, result.errors);
+        maybeSuggestMissingPackages(result.log);
+      }
       // Tell detached windows (PDF preview, other OS windows) to reload.
       void import("@/lib/preview-window")
         .then((module) =>

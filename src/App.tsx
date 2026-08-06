@@ -58,6 +58,8 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { cn } from "@/lib/utils";
 import { ExternalToolApprovals } from "@/components/ai/ExternalToolApprovals";
 import { AboutModal } from "@/components/layout/AboutModal";
+import { EnginePickerModal } from "@/components/layout/EnginePickerModal";
+import { TinytexGuards } from "@/components/layout/TinytexGuards";
 import { COMPILE_SUCCEEDED_EVENT } from "@/lib/compile-checkpoint";
 import { applyRemoteCompileSuccess } from "@/lib/compile-sync";
 
@@ -634,6 +636,8 @@ function AppContent() {
           {toolsOpen && <LatexToolsView />}
         </Suspense>
         <ExternalToolApprovals />
+        <EnginePickerModal />
+        <TinytexGuards />
         <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
         {chatFloating && (
           <Suspense fallback={null}>
@@ -746,6 +750,8 @@ function AppContent() {
         <SearchOmnibar />
         <GlobalNewProject />
         <ExternalToolApprovals />
+        <EnginePickerModal />
+        <TinytexGuards />
         <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
         {chatFloating && (
           <Suspense fallback={null}>

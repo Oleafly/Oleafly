@@ -152,7 +152,7 @@ function glossaryDefinition(
     macro.content === "newabbreviation";
   let detail = "glossary entry";
   if (isAcronym && groups.length >= 3) {
-    detail = `${trimmedRaw(api, groups[1].content)} — ${trimmedRaw(api, groups[2].content)}`;
+    detail = `${trimmedRaw(api, groups[1].content)}, ${trimmedRaw(api, groups[2].content)}`;
   } else if (!isAcronym && groups.length >= 2) {
     const nameField = /name\s*=\s*\{?([^,{}]+)/u.exec(
       trimmedRaw(api, groups[1].content),

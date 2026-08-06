@@ -7,6 +7,7 @@ use crate::proc::{isolate_process_tree, terminate_process_tree, NoConsole};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DocumentEngineId {
     Latex,
+    Latexmk,
     Typst,
     Markdown,
 }
@@ -15,6 +16,7 @@ impl DocumentEngineId {
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::Latex => "latex",
+            Self::Latexmk => "latexmk",
             Self::Typst => "typst",
             Self::Markdown => "markdown",
         }
@@ -78,6 +80,9 @@ pub enum TemplateKind {
 #[serde(rename_all = "snake_case")]
 pub enum CompilerPrerequisite {
     Pandoc,
+    /// A system TeX distribution (MacTeX, TeX Live, MiKTeX, or TinyTeX) that
+    /// provides `latexmk`. Used by engines Oleafly does not bundle.
+    SystemTex,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -171,6 +176,9 @@ pub trait DocumentEngine: Sync {
 
 struct LatexEngine;
 static LATEX_ENGINE: LatexEngine = LatexEngine;
+
+struct LatexmkEngine;
+static LATEXMK_ENGINE: LatexmkEngine = LatexmkEngine;
 
 struct TypstEngine;
 static TYPST_ENGINE: TypstEngine = TypstEngine;
@@ -268,6 +276,227 @@ impl DocumentEngine for LatexEngine {
             executable: EngineExecutable::BundledSidecar("tectonic"),
             args: tectonic_args(&out, &search_path, &entry, options),
             input,
+            artifacts,
+            working_dir: project_dir.to_owned(),
+        })
+    }
+
+    fn parse_errors(&self, log: &str) -> Vec<CompileError> {
+        parse_tex_log_errors(log)
+    }
+}
+
+/// Which TeX engine latexmk should drive. Chosen from the source itself so an
+/// Overleaf import compiles out of the box: a `% !TeX program = ...` magic
+/// comment wins, fontspec-style packages force a Unicode engine, and everything
+/// else gets pdfLaTeX (Overleaf's own default).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LatexmkFlavor {
+    Pdflatex,
+    Xelatex,
+    Lualatex,
+}
+
+impl LatexmkFlavor {
+    const fn as_arg(self) -> &'static str {
+        match self {
+            Self::Pdflatex => "-pdf",
+            Self::Xelatex => "-xelatex",
+            Self::Lualatex => "-lualatex",
+        }
+    }
+}
+
+fn detect_tex_program_magic(source: &str) -> Option<LatexmkFlavor> {
+    // TeXShop/latexmk convention: `% !TeX program = xelatex` near the top.
+    for line in source.lines().take(100) {
+        let trimmed = line.trim();
+        let Some(rest) = trimmed.strip_prefix('%') else {
+            continue;
+        };
+        let lower = rest.trim().trim_start_matches('!').to_ascii_lowercase();
+        let Some(value) = lower
+            .strip_prefix("tex program")
+            .map(str::trim_start)
+            .and_then(|v| v.strip_prefix('='))
+        else {
+            continue;
+        };
+        return match value.trim() {
+            "xelatex" => Some(LatexmkFlavor::Xelatex),
+            "lualatex" => Some(LatexmkFlavor::Lualatex),
+            "pdflatex" | "latex" => Some(LatexmkFlavor::Pdflatex),
+            _ => None,
+        };
+    }
+    None
+}
+
+fn detect_latexmk_flavor(source: &str) -> LatexmkFlavor {
+    if let Some(flavor) = detect_tex_program_magic(source) {
+        return flavor;
+    }
+    // These packages hard-fail under pdfLaTeX; XeLaTeX also matches how the
+    // bundled Tectonic (XeTeX-class) rendered the project before a switch.
+    if source.contains("fontspec")
+        || source.contains("polyglossia")
+        || source.contains("unicode-math")
+        || source.contains("\\setmainfont")
+    {
+        return LatexmkFlavor::Xelatex;
+    }
+    LatexmkFlavor::Pdflatex
+}
+
+/// Enable `-shell-escape` only when the source actually uses features that
+/// need it (Overleaf enables it unconditionally, but Overleaf compiles inside
+/// a container; on a user's machine it is arbitrary command execution, so it
+/// stays scoped to documents that require it). Plain substring checks: a
+/// commented-out `minted` merely enables the flag, it never breaks a compile.
+fn latexmk_needs_shell_escape(source: &str) -> bool {
+    [
+        "minted",
+        "pythontex",
+        "\\write18",
+        "\\ShellEscape",
+        "\\input{|",
+        "{svg}",
+    ]
+    .iter()
+    .any(|needle| source.contains(needle))
+}
+
+/// Read the head of a source file for flavor/shell-escape sniffing. Bounded so
+/// a giant generated file cannot balloon compile preparation.
+fn read_source_head(path: &Path) -> String {
+    use std::io::Read;
+    const MAX_SNIFF_BYTES: u64 = 512 * 1024;
+    let Ok(file) = std::fs::File::open(path) else {
+        return String::new();
+    };
+    let mut bytes = Vec::new();
+    let _ = file.take(MAX_SNIFF_BYTES).read_to_end(&mut bytes);
+    String::from_utf8_lossy(&bytes).into_owned()
+}
+
+fn latexmk_args(
+    out_dir: &str,
+    entry: &str,
+    stem: &str,
+    flavor: LatexmkFlavor,
+    shell_escape: bool,
+    options: CompileOptions,
+) -> Vec<String> {
+    let mut args: Vec<String> = vec![
+        flavor.as_arg().into(),
+        "-interaction=nonstopmode".into(),
+        "-synctex=1".into(),
+        format!("-outdir={out_dir}"),
+        format!("-jobname={stem}"),
+    ];
+    if shell_escape {
+        args.push("-shell-escape".into());
+    }
+    if options.halt_on_error {
+        args.push("-halt-on-error".into());
+    } else {
+        // Push on to a best-effort PDF after TeX errors (Tectonic
+        // continue-on-errors parity).
+        args.push("-f".into());
+    }
+    // `options.fast` is intentionally ignored: deciding how many passes to run
+    // is latexmk's whole job, and `-outdir` reuse already makes warm runs fast.
+    args.push(entry.into());
+    args
+}
+
+impl DocumentEngine for LatexmkEngine {
+    fn id(&self) -> DocumentEngineId {
+        DocumentEngineId::Latexmk
+    }
+
+    fn capabilities(&self) -> EngineCapabilities {
+        EngineCapabilities {
+            produces_pdf: true,
+            supports_synctex: true,
+            // latexmk itself never touches the network; "offline" is simply
+            // its normal mode, so the flag is accepted and has no effect.
+            supports_offline: true,
+            supports_isolated_compile: true,
+            formatting_profile: FormattingProfile::Latex,
+            source_preflight_profile: SourcePreflightProfile::Latex,
+            features: &[EngineFeature::Citations, EngineFeature::DocumentIndex],
+            conversion_exports: &[
+                ConversionExport::Docx,
+                ConversionExport::Html,
+                ConversionExport::Md,
+                ConversionExport::Txt,
+                ConversionExport::Pptx,
+                ConversionExport::Epub,
+            ],
+            template_kinds: &[TemplateKind::Document, TemplateKind::Image],
+            compiler_prerequisite: Some(CompilerPrerequisite::SystemTex),
+        }
+    }
+
+    fn accepts_metadata_name(&self, name: &str) -> bool {
+        name.trim().eq_ignore_ascii_case("latexmk")
+    }
+
+    fn accepts_main_document(&self, main_document: &str) -> bool {
+        LATEX_ENGINE.accepts_main_document(main_document)
+    }
+
+    fn source_extensions(&self) -> &'static [&'static str] {
+        LATEX_ENGINE.source_extensions()
+    }
+
+    fn artifacts(&self, out_dir: &Path, target: CompileTarget<'_>) -> EngineArtifacts {
+        LATEX_ENGINE.artifacts(out_dir, target)
+    }
+
+    fn compile_spec(
+        &self,
+        out_dir: &Path,
+        project_dir: &Path,
+        target: CompileTarget<'_>,
+        options: CompileOptions,
+    ) -> Result<EngineCompileSpec, String> {
+        let latexmk = crate::tex_distro::find_tex_tool("latexmk").ok_or_else(|| {
+            "latexmk was not found on this machine. The latexmk engine needs a TeX \
+             distribution (MacTeX, TeX Live, MiKTeX, or TinyTeX). Install one, or switch \
+             this project back to the built-in Tectonic engine."
+                .to_string()
+        })?;
+        // No generated wrapper: latexmk drives the real main document directly so
+        // Biber, makeindex, and multi-pass logic all see the project's own jobs.
+        // `-jobname` keeps every artifact on the same paths Tectonic uses.
+        let (input_path, stem) = match target {
+            CompileTarget::Main { main_document } => {
+                validate_latex_main_document(main_document)?;
+                (project_dir.join(main_document), crate::paths::ENTRY_STEM)
+            }
+            CompileTarget::Isolated {
+                source_path,
+                output_stem,
+            } => (source_path.to_owned(), output_stem),
+        };
+        let source_head = read_source_head(&input_path);
+        let flavor = detect_latexmk_flavor(&source_head);
+        let shell_escape = latexmk_needs_shell_escape(&source_head);
+        let artifacts = self.artifacts(out_dir, target);
+        let args = latexmk_args(
+            &out_dir.to_string_lossy(),
+            &input_path.to_string_lossy(),
+            stem,
+            flavor,
+            shell_escape,
+            options,
+        );
+        Ok(EngineCompileSpec {
+            executable: EngineExecutable::ExternalPath(latexmk),
+            args,
+            input: EngineInput::Direct(input_path),
             artifacts,
             working_dir: project_dir.to_owned(),
         })
@@ -467,7 +696,10 @@ pub fn engine_for(
     metadata_name: &str,
     main_document: &str,
 ) -> Result<&'static dyn DocumentEngine, String> {
-    let engine: &'static dyn DocumentEngine = if LATEX_ENGINE.accepts_metadata_name(metadata_name) {
+    let engine: &'static dyn DocumentEngine = if LATEXMK_ENGINE.accepts_metadata_name(metadata_name)
+    {
+        &LATEXMK_ENGINE
+    } else if LATEX_ENGINE.accepts_metadata_name(metadata_name) {
         &LATEX_ENGINE
     } else if TYPST_ENGINE.accepts_metadata_name(metadata_name) {
         &TYPST_ENGINE
@@ -636,11 +868,15 @@ pub fn descriptor_for(
         id: engine.id().as_str().to_owned(),
         label: match engine.id() {
             DocumentEngineId::Latex => "LaTeX",
+            DocumentEngineId::Latexmk => "LaTeX (latexmk)",
             DocumentEngineId::Typst => "Typst",
             DocumentEngineId::Markdown => "Markdown / Pandoc",
         }
         .to_owned(),
-        source_format: engine.id().as_str().to_owned(),
+        source_format: match engine.id() {
+            DocumentEngineId::Latexmk => "latex".to_owned(),
+            id => id.as_str().to_owned(),
+        },
         main_document: main_document.to_owned(),
         source_extensions: engine
             .source_extensions()
@@ -740,6 +976,7 @@ pub async fn prepare_compile_spec(
     tokio::task::spawn_blocking(move || {
         let engine: &'static dyn DocumentEngine = match engine_id {
             DocumentEngineId::Latex => &LATEX_ENGINE,
+            DocumentEngineId::Latexmk => &LATEXMK_ENGINE,
             DocumentEngineId::Typst => &TYPST_ENGINE,
             DocumentEngineId::Markdown => &MARKDOWN_ENGINE,
         };
@@ -2418,5 +2655,99 @@ mod tests {
             fingerprint_compile_output(&[0, 1, 2, 255]),
             "pdf-v1:4:6fab6075b28eda84"
         );
+    }
+
+    #[test]
+    fn latexmk_engine_resolves_with_latex_capabilities() {
+        let engine = engine_for("latexmk", "main.tex").unwrap();
+        assert_eq!(engine.id(), DocumentEngineId::Latexmk);
+        let capabilities = engine.capabilities();
+        assert!(capabilities.produces_pdf);
+        assert!(capabilities.supports_synctex);
+        assert!(capabilities.supports_isolated_compile);
+        assert_eq!(capabilities.formatting_profile, FormattingProfile::Latex);
+        assert_eq!(
+            capabilities.compiler_prerequisite,
+            Some(CompilerPrerequisite::SystemTex)
+        );
+        let descriptor = descriptor_for("latexmk", "main.tex").unwrap();
+        assert_eq!(descriptor.label, "LaTeX (latexmk)");
+        // The frontend keys LaTeX behavior off source_format, not the id.
+        assert_eq!(descriptor.source_format, "latex");
+    }
+
+    #[test]
+    fn latexmk_flavor_honors_magic_program_comment() {
+        assert_eq!(
+            detect_latexmk_flavor("% !TeX program = xelatex\n\\documentclass{article}"),
+            LatexmkFlavor::Xelatex
+        );
+        assert_eq!(
+            detect_latexmk_flavor("%!TEX program = lualatex\n"),
+            LatexmkFlavor::Lualatex
+        );
+        assert_eq!(
+            detect_latexmk_flavor("% !TeX program = pdflatex\n\\usepackage{fontspec}"),
+            LatexmkFlavor::Pdflatex
+        );
+    }
+
+    #[test]
+    fn latexmk_flavor_upgrades_for_unicode_font_packages() {
+        assert_eq!(
+            detect_latexmk_flavor("\\usepackage{fontspec}"),
+            LatexmkFlavor::Xelatex
+        );
+        assert_eq!(
+            detect_latexmk_flavor("\\setmainfont{Georgia}"),
+            LatexmkFlavor::Xelatex
+        );
+        // Overleaf's default: plain projects compile with pdfLaTeX.
+        assert_eq!(
+            detect_latexmk_flavor("\\documentclass{article}"),
+            LatexmkFlavor::Pdflatex
+        );
+    }
+
+    #[test]
+    fn latexmk_shell_escape_is_scoped_to_documents_that_need_it() {
+        assert!(latexmk_needs_shell_escape("\\usepackage{minted}"));
+        assert!(latexmk_needs_shell_escape("\\write18{echo hi}"));
+        assert!(latexmk_needs_shell_escape("\\usepackage{pythontex}"));
+        assert!(!latexmk_needs_shell_escape("\\documentclass{article}"));
+    }
+
+    #[test]
+    fn latexmk_args_carry_engine_outdir_jobname_and_error_mode() {
+        let args = latexmk_args(
+            "/build",
+            "/proj/main.tex",
+            crate::paths::ENTRY_STEM,
+            LatexmkFlavor::Pdflatex,
+            true,
+            CompileOptions::default(),
+        );
+        assert_eq!(args[0], "-pdf");
+        assert!(args.contains(&"-outdir=/build".to_string()));
+        assert!(args.contains(&format!("-jobname={}", crate::paths::ENTRY_STEM)));
+        assert!(args.contains(&"-shell-escape".to_string()));
+        assert!(args.contains(&"-f".to_string()));
+        assert_eq!(args.last().unwrap(), "/proj/main.tex");
+
+        let halt = latexmk_args(
+            "/build",
+            "main.tex",
+            "_figure",
+            LatexmkFlavor::Xelatex,
+            false,
+            CompileOptions {
+                halt_on_error: true,
+                ..Default::default()
+            },
+        );
+        assert_eq!(halt[0], "-xelatex");
+        assert!(halt.contains(&"-halt-on-error".to_string()));
+        assert!(!halt.contains(&"-f".to_string()));
+        assert!(!halt.contains(&"-shell-escape".to_string()));
     }
 }

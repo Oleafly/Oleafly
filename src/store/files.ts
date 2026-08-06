@@ -11,13 +11,18 @@ import {
   gitRestore,
   getProject,
   getProjectEngine,
+  importOverleafProjectCmd,
   importPathsIntoProject as apiImportPathsIntoProject,
   listFiles,
   listProjects,
   readFileContent,
   renameFile as apiRenameFile,
+  projectTexStatus,
+  recordProjectTexSpec,
   renameProjectCmd,
   setMainDocCmd,
+  setProjectEngineCmd,
+  tlmgrInstall,
   writeFileContent,
   type FileConflictStrategy,
   type FileEntry,
@@ -30,7 +35,82 @@ import { notifyError, toast } from "@/lib/toast";
 import { scanImportCompatibility } from "@oleafly/latex";
 import { cancelProofreading } from "@/lib/proofreading/client";
 import { useDiffStore } from "@/store/diff";
+import {
+  dismissEngineHint,
+  engineHintDismissed,
+  useEnginePickerStore,
+} from "@/store/engine-picker";
+import { useSettingsStore } from "@/store/settings";
 import { nextTabSeq } from "@/store/tab-order";
+
+// Pin the user's global default engine onto a freshly created project. Only
+// LaTeX projects can take the latexmk pin; anything else (Typst templates,
+// Markdown) rejects it in validation and simply keeps its own engine.
+async function applyDefaultLatexEngine(projectId: string): Promise<void> {
+  if (useSettingsStore.getState().defaultLatexEngine !== "latexmk") return;
+  try {
+    await setProjectEngineCmd(projectId, "latexmk");
+    void recordProjectTexSpec(projectId).catch(() => {});
+  } catch {
+    /* non-LaTeX project or validation refusal — keep the project's engine */
+  }
+}
+
+// Compare this machine against a latexmk project's TeX pin. Missing pinned
+// packages get an actionable toast; a differing distribution gets a one-time
+// heads-up. Both remember what was shown so reopening a project stays quiet.
+async function checkTexPinStatus(
+  projectId: string,
+  stillCurrent: () => boolean,
+): Promise<void> {
+  const status = await projectTexStatus(projectId).catch(() => null);
+  if (!status || !stillCurrent()) return;
+  const remember = (key: string, value: string): boolean => {
+    try {
+      if (localStorage.getItem(key) === value) return false;
+      localStorage.setItem(key, value);
+      return true;
+    } catch {
+      return true;
+    }
+  };
+  const missing = status.missing_packages;
+  if (missing.length > 0 && status.can_install_missing) {
+    const fresh = remember(`oleafly.texGap.${projectId}`, [...missing].sort().join(","));
+    if (!fresh) return;
+    toast.info(
+      `This project pins ${missing.length} LaTeX package${missing.length === 1 ? "" : "s"} that ${missing.length === 1 ? "is" : "are"} not installed here.`,
+      {
+        label: missing.length === 1 ? "Install it" : `Install all ${missing.length}`,
+        onClick: () => {
+          void (async () => {
+            toast.info(`Installing ${missing.length} pinned package${missing.length === 1 ? "" : "s"}…`);
+            try {
+              await tlmgrInstall(missing);
+              toast.success("Pinned LaTeX packages installed.");
+            } catch (error) {
+              notifyError(
+                "install pinned packages",
+                error,
+                "Some pinned packages could not be installed. See Settings → LaTeX Engine.",
+              );
+            }
+          })();
+        },
+      },
+      true,
+    );
+  } else if (status.distribution_differs && status.local_label) {
+    const fresh = remember(
+      `oleafly.texSkew.${projectId}`,
+      `${status.pinned_label}|${status.local_label}`,
+    );
+    if (!fresh) return;
+    toast.info(
+      `This project was pinned with ${status.pinned_label}; this machine compiles with ${status.local_label}. Output may differ slightly.`,
+    );
+  }
+}
 
 interface FileState {
   content: string;
@@ -63,6 +143,7 @@ interface FilesStore {
   openProject: (id: string) => Promise<void>;
   closeProject: () => Promise<void>;
   createProject: (name: string) => Promise<void>;
+  importProject: (path: string) => Promise<string>;
   createTypstProject: (name: string) => Promise<void>;
   createMarkdownProject: (name: string) => Promise<void>;
   renameProject: (name: string) => Promise<void>;
@@ -86,6 +167,7 @@ interface FilesStore {
   applyExternalDelete: (path: string) => void;
   applyExternalRename: (from: string, to: string) => void;
   setMainDoc: (path: string) => Promise<void>;
+  setEngine: (engine: string) => Promise<void>;
 }
 
 let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -342,40 +424,87 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       }
       await get().openFile(meta.main_doc || "main.tex");
       // Overleaf-import compatibility: surface known tool gaps early (biblatex,
-      // minted, glossaries, …) so compile failures are less mysterious.
+      // minted, glossaries, …) so compile failures are less mysterious. Scans
+      // the whole tree (bounded), not just the main document — Overleaf projects
+      // routinely keep the preamble in a file the main doc \inputs.
+      // Fire-and-forget: the scan reads files over IPC and must never delay
+      // the project becoming interactive. `seq` guards every state touch.
       if (seq === openSeq) {
+        void (async () => {
         try {
-          const mainPath = meta.main_doc || "main.tex";
-          const mainContent =
-            get().files[mainPath]?.content ??
-            (await readFileContent(id, mainPath).catch(() => ""));
-          let latexmkrc: string | null = null;
-          if (tree.some((f) => !f.is_dir && f.path === "latexmkrc")) {
-            latexmkrc = await readFileContent(id, "latexmkrc").catch(() => null);
+          // latexmk projects already have the full toolchain; instead of the
+          // import scan, check this machine against the project's TeX pin so
+          // coauthors get the same packages (and know about distro skew).
+          if (get().engine.id === "latexmk") {
+            await checkTexPinStatus(id, () => seq === openSeq && get().projectId === id);
+            return;
           }
-          const findings = scanImportCompatibility({
-            texFiles: [{ path: mainPath, content: mainContent }],
-            latexmkrc,
-          });
-          const blockers = findings.filter((f) => f.level === "blocker");
-          const warnings = findings.filter((f) => f.level === "warning");
-          if (blockers.length > 0) {
-            const extra = blockers.length > 1 ? ` (+${blockers.length - 1} more)` : "";
-            toast.info(`${blockers[0].title}${extra}`);
-          } else if (warnings.length > 0) {
-            if (warnings.some((f) => f.id === "biblatex-biber") && warnings.length === 1) {
-              toast.info("This project uses biblatex/Biber for the bibliography.");
-            } else {
+          const mainPath = meta.main_doc || "main.tex";
+          const depth = (p: string) => p.split("/").length;
+          const texPaths = tree
+            .filter((f) => !f.is_dir && /\.(tex|ltx|latex)$/i.test(f.path))
+            .map((f) => f.path)
+            .sort((a, b) =>
+              a === mainPath ? -1 : b === mainPath ? 1 : depth(a) - depth(b),
+            )
+            .slice(0, 40); // scanner input is capped anyway; keep IPC bounded
+          const texFiles: Array<{ path: string; content: string }> = [];
+          for (const path of texPaths) {
+            const content =
+              get().files[path]?.content ??
+              (await readFileContent(id, path).catch(() => ""));
+            if (seq !== openSeq) return;
+            if (content) texFiles.push({ path, content });
+          }
+          const rcName = ["latexmkrc", ".latexmkrc"].find((name) =>
+            tree.some((f) => !f.is_dir && f.path === name),
+          );
+          const latexmkrc = rcName
+            ? await readFileContent(id, rcName).catch(() => null)
+            : null;
+          if (seq !== openSeq) return;
+          const findings = scanImportCompatibility({ texFiles, latexmkrc });
+          // A latexmk project already has the full toolchain; nothing to say.
+          // A previously acknowledged set of findings stays quiet too — the
+          // hint returns only when a new gap appears.
+          if (
+            findings.length > 0 &&
+            get().engine.id !== "latexmk" &&
+            !engineHintDismissed(id, findings)
+          ) {
+            const blockers = findings.filter((f) => f.level === "blocker");
+            const warnings = findings.filter((f) => f.level === "warning");
+            if (blockers.length > 0) {
+              const extra = blockers.length > 1 ? ` (+${blockers.length - 1} more)` : "";
               toast.info(
-                `${warnings.length} import note${warnings.length === 1 ? "" : "s"}: ${warnings[0].title}${
-                  warnings.length > 1 ? ` (+${warnings.length - 1} more)` : ""
-                }`,
+                `${blockers[0].title}${extra}`,
+                {
+                  label: "Choose engine…",
+                  onClick: () =>
+                    useEnginePickerStore
+                      .getState()
+                      .openPicker("project-open", findings),
+                },
+                true,
               );
+            } else if (warnings.length > 0) {
+              if (warnings.some((f) => f.id === "biblatex-biber") && warnings.length === 1) {
+                toast.info("This project uses biblatex/Biber for the bibliography.");
+              } else {
+                toast.info(
+                  `${warnings.length} import note${warnings.length === 1 ? "" : "s"}: ${warnings[0].title}${
+                    warnings.length > 1 ? ` (+${warnings.length - 1} more)` : ""
+                  }`,
+                );
+              }
+              // Plain notes need no decision; showing them once is enough.
+              dismissEngineHint(id, warnings);
             }
           }
         } catch {
           /* scan is best-effort */
         }
+        })();
       }
     } catch (e) {
       // Surface the failure and fall back to the library rather than leaving the
@@ -418,6 +547,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
 
   createProject: async (name) => {
     const id = await apiCreateProject(name);
+    await applyDefaultLatexEngine(id);
     await get().refreshProjects();
     await get().openProject(id);
   },
@@ -442,8 +572,27 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     await get().refreshProjects();
   },
 
+  importProject: async (path) => {
+    const id = await importOverleafProjectCmd(path);
+    await applyDefaultLatexEngine(id);
+    // One toast for the whole import (callers stay silent on success). When
+    // the import picked the full toolchain, fold that into the same message
+    // and capture the reproducibility pin in the background.
+    const meta = await getProject(id).catch(() => null);
+    if (meta?.engine === "latexmk") {
+      void recordProjectTexSpec(id).catch(() => {});
+      toast.success("Project imported. Compiling with latexmk (system TeX detected).");
+    } else {
+      toast.success("Project imported.");
+    }
+    await get().refreshProjects();
+    await get().openProject(id);
+    return id;
+  },
+
   createFromTemplate: async (name, templateId, color) => {
     const id = await apiCreateFromTemplate(name, templateId, color);
+    await applyDefaultLatexEngine(id);
     await get().refreshProjects();
     await get().openProject(id);
     return id;
@@ -818,6 +967,37 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       const message = "Document engine details could not be loaded. Engine-specific actions are disabled.";
       set({ engine: UNKNOWN_ENGINE, engineLoaded: false, engineError: message });
       notifyError("set main document", error, message);
+      throw error;
+    }
+  },
+
+  setEngine: async (engineName) => {
+    const { projectId } = get();
+    if (!projectId) return;
+    // Same race protections as setMainDoc: an engine switch invalidates the
+    // current compile output and must not let a late descriptor request from a
+    // previous selection win.
+    const seq = ++mainDocSeq;
+    const compileStore = import("@/store/compile");
+    set({ engine: UNKNOWN_ENGINE, engineLoaded: false, engineError: null });
+    try {
+      const meta = await setProjectEngineCmd(projectId, engineName);
+      // Capture the reproducibility pin (distro + tlmgr packages) for the new
+      // latexmk project in the background; slow tlmgr calls stay off this path.
+      if (engineName === "latexmk") void recordProjectTexSpec(projectId).catch(() => {});
+      if (seq !== mainDocSeq || get().projectId !== projectId) return;
+      const compile = await compileStore;
+      if (seq !== mainDocSeq || get().projectId !== projectId) return;
+      compile.useCompileStore.getState().reset();
+      set({ mainDoc: meta.main_doc });
+      const engine = await getProjectEngine(projectId);
+      if (seq !== mainDocSeq || get().projectId !== projectId) return;
+      set({ engine, engineLoaded: true, engineError: null });
+    } catch (error) {
+      if (seq !== mainDocSeq || get().projectId !== projectId) return;
+      const message = "Document engine details could not be loaded. Engine-specific actions are disabled.";
+      set({ engine: UNKNOWN_ENGINE, engineLoaded: false, engineError: message });
+      notifyError("set compile engine", error, message);
       throw error;
     }
   },

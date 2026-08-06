@@ -309,6 +309,23 @@ pub async fn compile_project(
                 .fetch_add(1, std::sync::atomic::Ordering::SeqCst)
                 + 1,
         );
+        // Provenance record (engine + distribution + lockfile hash) for
+        // "my coauthor's PDF looks different" debugging. Best-effort, off
+        // the command path.
+        let record_project = project_id.clone();
+        let record_engine = meta.engine.clone();
+        let record_output = result.output_id.clone();
+        let record_revision = result.output_revision.unwrap_or(0);
+        let record_time = result.compile_time_ms;
+        tauri::async_runtime::spawn_blocking(move || {
+            crate::project::write_build_metadata(
+                &record_project,
+                record_revision,
+                &record_engine,
+                record_output.as_deref(),
+                record_time,
+            );
+        });
     }
     #[cfg(debug_assertions)]
     eprintln!(

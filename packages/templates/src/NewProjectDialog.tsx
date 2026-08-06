@@ -5,6 +5,7 @@ import {
   Check,
   Download,
   FileText,
+  FolderInput,
   Hash,
   Search,
   Sparkles,
@@ -196,6 +197,7 @@ export function NewProjectDialog({
   onClose,
   onCreate,
   onGenerateWithAi,
+  onImportProject,
   onOpenTemplateDownloads,
   host,
   kit,
@@ -210,6 +212,8 @@ export function NewProjectDialog({
   onClose: () => void;
   onCreate: (name: string, templateId: string, color: string) => void | Promise<void>;
   onGenerateWithAi?: () => void;
+  /** Import an existing project (Overleaf ZIP / folder) instead of a template. */
+  onImportProject?: () => void;
   onOpenTemplateDownloads?: () => void;
   host: TemplatesHost;
   kit: TemplatesKit;
@@ -449,6 +453,17 @@ export function NewProjectDialog({
             {step === 1 ? "Choose a template" : "Name your project"}
           </h2>
           <div className="flex items-center gap-2">
+            {step === 1 && onImportProject && (
+              <Button
+                variant="ghost"
+                size="sm"
+                data-testid="import-from-overleaf"
+                data-tour-hide
+                onClick={onImportProject}
+              >
+                <FolderInput className="size-3.5" /> Import from Overleaf
+              </Button>
+            )}
             {step === 1 && onGenerateWithAi && (
               <Button
                 variant="ghostPrimary"

@@ -40,7 +40,7 @@ export interface EngineCapabilities {
   features: EngineFeature[];
   conversion_exports: Array<"docx" | "html" | "md" | "txt" | "pptx" | "epub">;
   template_kinds: Array<"document" | "image">;
-  compiler_prerequisite: "pandoc" | null;
+  compiler_prerequisite: "pandoc" | "system_tex" | null;
 }
 export type EngineFeature = "citations" | "document_index";
 
@@ -53,7 +53,7 @@ export interface DocumentEngineDescriptor {
   capabilities: EngineCapabilities;
 }
 
-export type DocumentEngineId = "latex" | "typst" | "markdown" | "unknown";
+export type DocumentEngineId = "latex" | "latexmk" | "typst" | "markdown" | "unknown";
 
 export const getProjectEngine = (projectId: string) =>
   invoke<DocumentEngineDescriptor>("project_engine", { projectId });
@@ -78,7 +78,38 @@ export interface ProjectMeta {
   engine: string;
   color?: string;
   kind?: string;
+  tex?: TexSpec | null;
 }
+
+// Reproducibility pin for latexmk projects (stored in project.json so it
+// travels with git and every coauthor sees the same spec).
+export interface TexSpec {
+  distribution: string;
+  distribution_label: string;
+  packages: Record<string, string>;
+  recorded_at: number;
+}
+
+export interface TexStatus {
+  pinned_label: string;
+  local_label: string | null;
+  distribution_differs: boolean;
+  missing_packages: string[];
+  can_install_missing: boolean;
+}
+
+// Capture the local distro + tlmgr package versions into the project pin.
+export const recordProjectTexSpec = (projectId: string) =>
+  invoke<TexSpec | null>("record_project_tex_spec", { projectId });
+
+// Import an Overleaf ZIP export (or a plain folder) as a new project; the
+// main document is inferred when the archive carries no project.json.
+export const importOverleafProjectCmd = (path: string, name?: string) =>
+  invoke<string>("import_overleaf_project", { path, name: name ?? null });
+
+// Compare this machine against the project pin (null when not applicable).
+export const projectTexStatus = (projectId: string) =>
+  invoke<TexStatus | null>("project_tex_status", { projectId });
 
 export interface ProjectInfo {
   id: string;
@@ -224,6 +255,11 @@ export const readAppLog = (maxBytes: number) =>
 
 export const setMainDocCmd = (projectId: string, mainDoc: string) =>
   invoke<ProjectMeta>("set_main_doc", { projectId, mainDoc });
+
+// Pin a project's compile engine ("xetex" for bundled Tectonic, "latexmk" for
+// a system TeX toolchain) in its project.json.
+export const setProjectEngineCmd = (projectId: string, engine: string) =>
+  invoke<ProjectMeta>("set_project_engine", { projectId, engine });
 
 export const renameProjectCmd = (projectId: string, name: string) =>
   invoke<ProjectMeta>("rename_project", { projectId, name });
@@ -451,7 +487,18 @@ export interface EngineInfo {
   lualatex: string | null;
   tlmgr: string | null;
   version: string | null;
+  latexmk: string | null;
 }
+
+export interface TexDistribution {
+  kind: "oleafly-tinytex" | "mactex" | "texlive" | "miktex" | "tinytex" | "other";
+  label: string;
+  bin_dir: string;
+  latexmk: string | null;
+  tlmgr: string | null;
+}
+
+export const texDistributions = () => invoke<TexDistribution[]>("tex_distributions");
 
 export interface TaggedCompileResult {
   success: boolean;
@@ -461,10 +508,21 @@ export interface TaggedCompileResult {
   log: string;
 }
 
+export interface TinytexInstallState {
+  installing: boolean;
+  partial_download_bytes: number;
+}
+
 export const latexEngineInfo = () => invoke<EngineInfo>("latex_engine_info");
 export const hasTaggingEngine = () => invoke<boolean>("has_tagging_engine");
-// Emits `tinytex-download-progress` events while downloading.
+// Emits phased `tinytex-install-progress` events (download/extract/packages);
+// a failed download keeps its partial file so a retry resumes.
 export const installTinytex = () => invoke<EngineInfo>("install_tinytex");
+export const tinytexInstallState = () =>
+  invoke<TinytexInstallState>("tinytex_install_state");
+// The user confirmed quitting mid-install; the app exits immediately.
+export const confirmQuitDuringInstall = () =>
+  invoke<void>("confirm_quit_during_install");
 export const deleteTinytex = () => invoke<void>("delete_tinytex");
 export const tlmgrInstalled = () => invoke<string[]>("tlmgr_installed");
 export const tlmgrInstall = (packages: string[]) => invoke<string>("tlmgr_install", { packages });

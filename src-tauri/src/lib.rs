@@ -26,6 +26,7 @@ mod state;
 mod synctex;
 mod template_packs;
 mod templates;
+mod tex_distro;
 
 use state::AppState;
 
@@ -67,6 +68,18 @@ pub fn run() {
     builder
         .manage(AppState::default())
         .manage(mcp::server::McpState::default())
+        // Closing the app mid-TinyTeX-install must be a deliberate choice: block
+        // the close, let the frontend show a confirm dialog, and only pass a
+        // close through after `confirm_quit_during_install`.
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                if latex_engine::install_in_progress() && !latex_engine::quit_confirmed() {
+                    api.prevent_close();
+                    use tauri::Emitter;
+                    let _ = window.emit("tinytex-quit-blocked", ());
+                }
+            }
+        })
         .setup(|app| {
             if std::env::var("OLEAFLY_E2E_WINDOW").is_err() {
                 use tauri::Manager;
@@ -167,6 +180,9 @@ pub fn run() {
             project::has_pandoc,
             project::download_pandoc,
             latex_engine::latex_engine_info,
+            latex_engine::tinytex_install_state,
+            latex_engine::confirm_quit_during_install,
+            tex_distro::tex_distributions,
             latex_engine::has_tagging_engine,
             latex_engine::install_tinytex,
             latex_engine::delete_tinytex,
@@ -182,6 +198,10 @@ pub fn run() {
             connectors::get_connector_key,
             connectors::set_connector_key,
             project::set_main_doc,
+            project::set_project_engine,
+            project::record_project_tex_spec,
+            project::project_tex_status,
+            project::import_overleaf_project,
             project::set_project_color,
             project::rename_project,
             project::open_devtools,
