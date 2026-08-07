@@ -3,7 +3,11 @@ use serde::{Deserialize, Serialize};
 use crate::complete::Usage;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
+#[serde(
+    tag = "kind",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
 pub enum AgentEvent {
     TextDelta { text: String },
     ReasoningDelta { text: String },

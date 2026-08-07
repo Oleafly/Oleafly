@@ -4,8 +4,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use crate::error::{AgentError, Result};
-use crate::message::{parse_data_url, ContentPart, Message, Role};
+use crate::message::{parse_arguments, parse_data_url, ContentPart, Message, Role};
 use crate::provider::{Resolved, Wire};
+use crate::tool::{anthropic_tools, google_tools, openai_tools, ToolSchema};
 
 /// Anthropic rejects a request that does not declare a token ceiling, so one
 /// has to be chosen when the caller expresses no preference.
@@ -31,6 +32,8 @@ pub struct CompletionRequest {
     pub max_tokens: Option<u32>,
     #[serde(default)]
     pub timeout_ms: Option<u64>,
+    #[serde(default)]
+    pub tools: Vec<ToolSchema>,
 }
 
 impl CompletionRequest {
@@ -73,9 +76,57 @@ pub(crate) fn openai_body(resolved: &Resolved, req: &CompletionRequest) -> Resul
         messages.push(json!({ "role": "system", "content": system }));
     }
     for message in &req.messages {
+        let results: Vec<&ContentPart> = message
+            .content
+            .iter()
+            .filter(|p| matches!(p, ContentPart::ToolResult { .. }))
+            .collect();
+        // OpenAI carries every tool result as its own message with role "tool",
+        // rather than as parts of a user turn the way the other two do.
+        for part in &results {
+            if let ContentPart::ToolResult { id, output, .. } = part {
+                messages.push(json!({
+                    "role": "tool",
+                    "tool_call_id": id,
+                    "content": output,
+                }));
+            }
+        }
+
+        let rest: Vec<&ContentPart> = message
+            .content
+            .iter()
+            .filter(|p| !matches!(p, ContentPart::ToolResult { .. }))
+            .collect();
+        if rest.is_empty() {
+            continue;
+        }
+
+        let calls: Vec<Value> = rest
+            .iter()
+            .filter_map(|part| match part {
+                ContentPart::ToolUse {
+                    id,
+                    name,
+                    arguments,
+                } => Some(json!({
+                    "id": id,
+                    "type": "function",
+                    "function": { "name": name, "arguments": arguments },
+                })),
+                _ => None,
+            })
+            .collect();
+
+        let visible: Vec<&&ContentPart> = rest
+            .iter()
+            .filter(|p| !matches!(p, ContentPart::ToolUse { .. }))
+            .collect();
+
         // A lone text part goes out as a bare string. Some OpenAI-compatible
         // servers (older Ollama builds among them) only accept that form.
-        let content = match message.content.as_slice() {
+        let content = match visible.as_slice() {
+            [] => Value::Null,
             [ContentPart::Text { text }] => json!(text),
             parts => {
                 let mut out = Vec::with_capacity(parts.len());
@@ -89,12 +140,18 @@ pub(crate) fn openai_body(resolved: &Resolved, req: &CompletionRequest) -> Resul
                             parse_data_url(image)?;
                             json!({ "type": "image_url", "image_url": { "url": image } })
                         }
+                        _ => continue,
                     });
                 }
                 json!(out)
             }
         };
-        messages.push(json!({ "role": role_str(message.role), "content": content }));
+
+        let mut entry = json!({ "role": role_str(message.role), "content": content });
+        if !calls.is_empty() {
+            entry["tool_calls"] = Value::Array(calls);
+        }
+        messages.push(entry);
     }
 
     let mut body = json!({ "model": resolved.model_id, "messages": messages });
@@ -103,6 +160,9 @@ pub(crate) fn openai_body(resolved: &Resolved, req: &CompletionRequest) -> Resul
     }
     if let Some(m) = req.max_tokens {
         body["max_tokens"] = json!(m);
+    }
+    if !req.tools.is_empty() {
+        body["tools"] = openai_tools(&req.tools);
     }
     Ok(body)
 }
@@ -125,6 +185,21 @@ pub(crate) fn anthropic_body(resolved: &Resolved, req: &CompletionRequest) -> Re
                         }
                     })
                 }
+                ContentPart::ToolUse {
+                    id,
+                    name,
+                    arguments,
+                } => json!({
+                    "type": "tool_use",
+                    "id": id,
+                    "name": name,
+                    "input": parse_arguments(arguments),
+                }),
+                ContentPart::ToolResult { id, output, .. } => json!({
+                    "type": "tool_result",
+                    "tool_use_id": id,
+                    "content": output,
+                }),
             });
         }
         messages.push(json!({ "role": role_str(message.role), "content": parts }));
@@ -140,6 +215,9 @@ pub(crate) fn anthropic_body(resolved: &Resolved, req: &CompletionRequest) -> Re
     }
     if let Some(t) = req.temperature {
         body["temperature"] = json!(t);
+    }
+    if !req.tools.is_empty() {
+        body["tools"] = anthropic_tools(&req.tools);
     }
     Ok(body)
 }
@@ -160,6 +238,19 @@ pub(crate) fn google_body(req: &CompletionRequest) -> Result<Value> {
                         }
                     })
                 }
+                ContentPart::ToolUse {
+                    name, arguments, ..
+                } => json!({
+                    "functionCall": { "name": name, "args": parse_arguments(arguments) }
+                }),
+                // Gemini keys a response by tool name, not by call id, so a
+                // parallel call to the same tool cannot be told apart here.
+                ContentPart::ToolResult { name, output, .. } => json!({
+                    "functionResponse": {
+                        "name": name,
+                        "response": { "result": output }
+                    }
+                }),
             });
         }
         // Gemini names the assistant turn "model".
@@ -183,6 +274,9 @@ pub(crate) fn google_body(req: &CompletionRequest) -> Result<Value> {
     }
     if !generation.is_empty() {
         body["generationConfig"] = Value::Object(generation);
+    }
+    if !req.tools.is_empty() {
+        body["tools"] = google_tools(&req.tools);
     }
     Ok(body)
 }
@@ -465,6 +559,188 @@ mod tests {
         assert!(openai_body(&openai(), &req).is_err());
         assert!(anthropic_body(&openai(), &req).is_err());
         assert!(google_body(&req).is_err());
+    }
+
+    fn tool_turn() -> CompletionRequest {
+        CompletionRequest {
+            system: Some("sys".into()),
+            messages: vec![
+                Message::user("read main.tex"),
+                Message {
+                    role: Role::Assistant,
+                    content: vec![
+                        ContentPart::text("Reading it now."),
+                        ContentPart::ToolUse {
+                            id: "call_1".into(),
+                            name: "read_file".into(),
+                            arguments: "{\"path\":\"main.tex\"}".into(),
+                        },
+                    ],
+                },
+                Message {
+                    role: Role::User,
+                    content: vec![ContentPart::ToolResult {
+                        id: "call_1".into(),
+                        name: "read_file".into(),
+                        output: "\\documentclass{article}".into(),
+                    }],
+                },
+            ],
+            tools: vec![crate::tool::ToolSchema {
+                name: "read_file".into(),
+                description: "Read a file".into(),
+                input_schema: json!({"type":"object","properties":{}}),
+            }],
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn openai_puts_tool_calls_on_the_assistant_and_results_in_their_own_messages() {
+        let body = openai_body(&openai(), &tool_turn()).unwrap();
+        let messages = body["messages"].as_array().unwrap();
+
+        assert_eq!(messages[0]["role"], "system");
+        assert_eq!(messages[1]["role"], "user");
+
+        let assistant = &messages[2];
+        assert_eq!(assistant["role"], "assistant");
+        assert_eq!(assistant["content"], "Reading it now.");
+        assert_eq!(assistant["tool_calls"][0]["id"], "call_1");
+        assert_eq!(assistant["tool_calls"][0]["function"]["name"], "read_file");
+        assert_eq!(
+            assistant["tool_calls"][0]["function"]["arguments"],
+            "{\"path\":\"main.tex\"}"
+        );
+
+        let result = &messages[3];
+        assert_eq!(result["role"], "tool");
+        assert_eq!(result["tool_call_id"], "call_1");
+        assert_eq!(result["content"], "\\documentclass{article}");
+        assert_eq!(messages.len(), 4);
+    }
+
+    #[test]
+    fn a_tool_result_only_turn_produces_no_empty_user_message() {
+        let request = CompletionRequest {
+            messages: vec![Message {
+                role: Role::User,
+                content: vec![ContentPart::ToolResult {
+                    id: "c".into(),
+                    name: "n".into(),
+                    output: "out".into(),
+                }],
+            }],
+            ..Default::default()
+        };
+        let body = openai_body(&openai(), &request).unwrap();
+        let messages = body["messages"].as_array().unwrap();
+        assert_eq!(messages.len(), 1);
+        assert_eq!(messages[0]["role"], "tool");
+    }
+
+    #[test]
+    fn an_assistant_turn_of_only_tool_calls_sends_null_content() {
+        let request = CompletionRequest {
+            messages: vec![Message {
+                role: Role::Assistant,
+                content: vec![ContentPart::ToolUse {
+                    id: "c".into(),
+                    name: "n".into(),
+                    arguments: "{}".into(),
+                }],
+            }],
+            ..Default::default()
+        };
+        let body = openai_body(&openai(), &request).unwrap();
+        assert!(body["messages"][0]["content"].is_null());
+        assert_eq!(body["messages"][0]["tool_calls"][0]["id"], "c");
+    }
+
+    #[test]
+    fn anthropic_keeps_tool_blocks_inside_the_turn_and_parses_arguments() {
+        let body = anthropic_body(&openai(), &tool_turn()).unwrap();
+        let messages = body["messages"].as_array().unwrap();
+
+        let assistant = &messages[1];
+        assert_eq!(assistant["content"][0]["type"], "text");
+        assert_eq!(assistant["content"][1]["type"], "tool_use");
+        assert_eq!(assistant["content"][1]["id"], "call_1");
+        assert_eq!(assistant["content"][1]["input"]["path"], "main.tex");
+
+        let result = &messages[2];
+        assert_eq!(result["role"], "user");
+        assert_eq!(result["content"][0]["type"], "tool_result");
+        assert_eq!(result["content"][0]["tool_use_id"], "call_1");
+    }
+
+    #[test]
+    fn google_uses_function_call_and_response_parts() {
+        let body = google_body(&tool_turn()).unwrap();
+        let contents = body["contents"].as_array().unwrap();
+
+        assert_eq!(contents[1]["role"], "model");
+        assert_eq!(contents[1]["parts"][1]["functionCall"]["name"], "read_file");
+        assert_eq!(
+            contents[1]["parts"][1]["functionCall"]["args"]["path"],
+            "main.tex"
+        );
+
+        assert_eq!(contents[2]["role"], "user");
+        assert_eq!(
+            contents[2]["parts"][0]["functionResponse"]["name"],
+            "read_file"
+        );
+    }
+
+    #[test]
+    fn tool_schemas_reach_every_provider_in_its_own_shape() {
+        let request = tool_turn();
+        assert_eq!(
+            openai_body(&openai(), &request).unwrap()["tools"][0]["function"]["name"],
+            "read_file"
+        );
+        assert_eq!(
+            anthropic_body(&openai(), &request).unwrap()["tools"][0]["name"],
+            "read_file"
+        );
+        assert_eq!(
+            google_body(&request).unwrap()["tools"][0]["functionDeclarations"][0]["name"],
+            "read_file"
+        );
+    }
+
+    #[test]
+    fn a_request_without_tools_sends_no_tools_field() {
+        let request = CompletionRequest::prompt("s", "u");
+        assert!(openai_body(&openai(), &request)
+            .unwrap()
+            .get("tools")
+            .is_none());
+        assert!(anthropic_body(&openai(), &request)
+            .unwrap()
+            .get("tools")
+            .is_none());
+        assert!(google_body(&request).unwrap().get("tools").is_none());
+    }
+
+    #[test]
+    fn truncated_tool_arguments_do_not_break_the_request() {
+        let request = CompletionRequest {
+            messages: vec![Message {
+                role: Role::Assistant,
+                content: vec![ContentPart::ToolUse {
+                    id: "c".into(),
+                    name: "n".into(),
+                    arguments: "{\"path\":".into(),
+                }],
+            }],
+            ..Default::default()
+        };
+        assert_eq!(
+            anthropic_body(&openai(), &request).unwrap()["messages"][0]["content"][0]["input"],
+            json!({})
+        );
     }
 
     #[test]
