@@ -1051,7 +1051,7 @@ ${sandboxedCustom}`;
       runOwnerRef.current = false;
       endChatRun(runHandle);
     }
-  }, [messages, streaming, apiKey, provider, model, customProviders, projectId, projectName, currentHead, figureMode, figureModeAvailable, engineLoaded, documentEngine, projectKind, openAISettings, flushStreamPatches, updateLast, setMessages, setInput, activeProviderName]);
+  }, [messages, streaming, apiKey, provider, model, projectId, projectName, currentHead, figureMode, figureModeAvailable, engineLoaded, documentEngine, projectKind, openAISettings, flushStreamPatches, updateLast, setMessages, setInput, activeProviderName]);
 
   const stop = useCallback(() => {
     abortRef.current?.abort();

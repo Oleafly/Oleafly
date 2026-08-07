@@ -29,6 +29,7 @@ import {
   type ProjectInfo,
   type DocumentEngineDescriptor,
   type TexFlavor,
+  mcpSetActiveProject,
 } from "@/lib/tauri";
 import { UNKNOWN_ENGINE } from "@/lib/document-engine";
 import { flushAutoCommit, scheduleAutoCommit } from "@/lib/auto-commit";
@@ -399,6 +400,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     // leave the previous project's authoritative result visible.
     cancelProofreading("source");
     cancelProofreading("visual");
+    void mcpSetActiveProject(id).catch(() => {});
     set({
       loading: true,
       projectId: id,
