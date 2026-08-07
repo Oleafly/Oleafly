@@ -347,6 +347,27 @@ pub(crate) fn parse_google(body: &Value) -> Result<(String, Usage)> {
 /// All three formats nest the useful sentence under `error.message`; anything
 /// else is truncated raw text, because an unparsed body still beats a bare
 /// status code when a user reports a problem.
+pub(crate) fn auth_headers(resolved: &Resolved) -> reqwest::header::HeaderMap {
+    use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
+    let mut headers = HeaderMap::new();
+    let Some(token) = resolved.auth.as_deref() else {
+        return headers;
+    };
+    let (name, value) = match resolved.wire {
+        Wire::OpenAiChat { .. } => ("authorization", format!("Bearer {token}")),
+        Wire::Anthropic { .. } => ("x-api-key", token.to_string()),
+        Wire::Google { .. } => ("x-goog-api-key", token.to_string()),
+    };
+    if let (Ok(name), Ok(mut value)) = (
+        HeaderName::from_bytes(name.as_bytes()),
+        HeaderValue::from_str(&value),
+    ) {
+        value.set_sensitive(true);
+        headers.insert(name, value);
+    }
+    headers
+}
+
 pub(crate) fn request_error(error: reqwest::Error) -> AgentError {
     if error.is_timeout() {
         AgentError::Timeout
@@ -398,11 +419,11 @@ pub async fn complete(
                 "{}/chat/completions",
                 base_url.trim_end_matches('/')
             ))
-            .bearer_auth(&resolved.credential)
+            .headers(auth_headers(resolved))
             .json(&openai_body(resolved, req)?),
         Wire::Anthropic { base_url } => client
             .post(format!("{}/messages", base_url.trim_end_matches('/')))
-            .header("x-api-key", &resolved.credential)
+            .headers(auth_headers(resolved))
             .header("anthropic-version", "2023-06-01")
             .json(&anthropic_body(resolved, req)?),
         Wire::Google { base_url } => client
@@ -413,7 +434,7 @@ pub async fn complete(
             ))
             // Gemini takes the key in a header as well as a query parameter,
             // and the header keeps it out of proxy and server access logs.
-            .header("x-goog-api-key", &resolved.credential)
+            .headers(auth_headers(resolved))
             .json(&google_body(req)?),
     };
 
@@ -456,6 +477,7 @@ mod tests {
             provider_id: "test".into(),
             model_id: "m-1".into(),
             credential: "sk-test".into(),
+            auth: Some("sk-test".into()),
             wire,
         }
     }
@@ -888,6 +910,60 @@ mod tests {
             }
             other => panic!("expected a provider error, got {other:?}"),
         }
+    }
+
+    fn header_names(resolved: &Resolved) -> Vec<String> {
+        auth_headers(resolved)
+            .keys()
+            .map(|k| k.as_str().to_string())
+            .collect()
+    }
+
+    fn header_value(resolved: &Resolved, name: &str) -> Option<String> {
+        auth_headers(resolved)
+            .get(name)
+            .map(|v| String::from_utf8_lossy(v.as_bytes()).to_string())
+    }
+
+    #[test]
+    fn each_wire_authenticates_the_way_its_api_documents() {
+        let openai_wire = openai();
+        assert_eq!(
+            header_value(&openai_wire, "authorization").as_deref(),
+            Some("Bearer sk-test")
+        );
+
+        let anthropic_wire = resolved(Wire::Anthropic {
+            base_url: ANTHROPIC_BASE.into(),
+        });
+        assert_eq!(
+            header_value(&anthropic_wire, "x-api-key").as_deref(),
+            Some("sk-test")
+        );
+        assert!(header_value(&anthropic_wire, "authorization").is_none());
+
+        let google_wire = resolved(Wire::Google {
+            base_url: GOOGLE_BASE.into(),
+        });
+        assert_eq!(
+            header_value(&google_wire, "x-goog-api-key").as_deref(),
+            Some("sk-test")
+        );
+    }
+
+    #[test]
+    fn a_provider_that_needs_no_credential_gets_no_auth_header() {
+        let anonymous = Resolved {
+            auth: None,
+            ..openai()
+        };
+        assert!(header_names(&anonymous).is_empty());
+    }
+
+    #[test]
+    fn the_credential_header_is_marked_sensitive_so_it_stays_out_of_logs() {
+        let headers = auth_headers(&openai());
+        assert!(headers.get("authorization").unwrap().is_sensitive());
     }
 
     #[test]

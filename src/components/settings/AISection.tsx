@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
-import { getConfig, setConfig, type AppConfig, type CustomProvider, type StoredModel } from "@/lib/tauri";
+import {
+  getConfig,
+  REDACTED_SECRET,
+  setConfig,
+  type AppConfig,
+  type CustomProvider,
+  type StoredModel,
+} from "@/lib/tauri";
 import { defaultModel, discoveryFor, fetchProviderModels, getProvider } from "@/lib/ai-providers";
 import { enabledModels, mergeFetchedModels, seedProviderModels } from "@/lib/ai-model-state";
 import { listOllamaModels, DEFAULT_OLLAMA_HOST } from "@/lib/ollama";
@@ -71,9 +78,19 @@ export function AISection() {
       const next: AppConfig = { ...DEFAULT_CFG, ...c, ai_keys: merged };
       setCfg(next);
       setSysPrompt(next.ai_system_prompt || "");
+      // The inputs start empty for a stored credential. `savedKeys` still
+      // carries the redaction marker, which is what marks the provider
+      // connected, but showing the marker in the field would let an edit
+      // append to it and save the marker as the key.
+      const editable = Object.fromEntries(
+        Object.entries(merged).map(([id, value]) => [
+          id,
+          value === REDACTED_SECRET ? "" : value,
+        ]),
+      );
       // Merge under any keys already typed: the load resolves async and must
       // not wipe an edit made before it landed.
-      setKeys((prev) => ({ ...merged, ...prev }));
+      setKeys((prev) => ({ ...editable, ...prev }));
       setSavedKeys(merged);
       if (Object.keys(c.ai_keys ?? {}).length === 0 && c.ai_api_key) {
         void setConfig(next);

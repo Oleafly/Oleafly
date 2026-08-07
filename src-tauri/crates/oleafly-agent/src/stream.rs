@@ -4,7 +4,7 @@ use futures_util::StreamExt;
 use serde_json::Value;
 
 use crate::complete::{
-    anthropic_body, google_body, openai_body, request_error, CompletionRequest, Usage,
+    anthropic_body, auth_headers, google_body, openai_body, request_error, CompletionRequest, Usage,
 };
 use crate::error::{AgentError, Result};
 use crate::event::AgentEvent;
@@ -411,11 +411,11 @@ where
                 "{}/chat/completions",
                 base_url.trim_end_matches('/')
             ))
-            .bearer_auth(&resolved.credential)
+            .headers(auth_headers(resolved))
             .json(&body),
         Wire::Anthropic { base_url } => client
             .post(format!("{}/messages", base_url.trim_end_matches('/')))
-            .header("x-api-key", &resolved.credential)
+            .headers(auth_headers(resolved))
             .header("anthropic-version", "2023-06-01")
             .json(&body),
         Wire::Google { base_url } => client
@@ -424,7 +424,7 @@ where
                 base_url.trim_end_matches('/'),
                 resolved.model_id
             ))
-            .header("x-goog-api-key", &resolved.credential)
+            .headers(auth_headers(resolved))
             .json(&body),
     };
 
@@ -766,6 +766,7 @@ mod tests {
             provider_id: "groq".into(),
             model_id: "m".into(),
             credential: "k".into(),
+            auth: Some("k".into()),
             wire: Wire::OpenAiChat {
                 base_url: "https://api.groq.com/openai/v1".into(),
                 reasoning_content: false,
@@ -791,6 +792,7 @@ mod tests {
             provider_id: "google".into(),
             model_id: "gemini-2.5-pro".into(),
             credential: "k".into(),
+            auth: Some("k".into()),
             wire: Wire::Google {
                 base_url: crate::provider::GOOGLE_BASE.into(),
             },

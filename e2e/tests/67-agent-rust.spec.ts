@@ -209,6 +209,47 @@ test("the Ollama host stays readable because it is not a secret", async ({ tauri
   expect(host).toBe(server.url);
 });
 
+test("a custom OpenAI-compatible provider streams through the harness", async ({
+  tauriPage,
+}) => {
+  test.setTimeout(60_000);
+  await openAgentProject(tauriPage);
+
+  // A user-defined provider takes a different route than the catalog: its base
+  // URL comes from config, and the harness deliberately omits stream_options
+  // because a self-hosted server can reject unknown fields. Registering one
+  // pointed at the mock exercises that route for real.
+  await tauriPage.evaluate(`
+    (async () => {
+      const { getConfig, setConfig } = await import("/src/lib/tauri.ts");
+      const cfg = await getConfig();
+      await setConfig({
+        ...cfg,
+        ai_custom_providers: [
+          ...cfg.ai_custom_providers.filter((c) => c.id !== "e2e-gateway"),
+          {
+            id: "e2e-gateway",
+            name: "E2E Gateway",
+            baseURL: ${JSON.stringify(server.url)} + "/v1",
+            keyOptional: false,
+          },
+        ],
+        ai_keys: { ...cfg.ai_keys, "e2e-gateway": "sk-e2e-gateway" },
+        ai_provider: "e2e-gateway",
+        ai_model: "llama3.2",
+      });
+      window.dispatchEvent(new CustomEvent("oleafly:ai-config-changed"));
+    })()
+  `);
+
+  await openChat(tauriPage);
+  server.setToolCall(null);
+  server.setReply("CUSTOMPROVIDER33");
+  await ask(tauriPage, "Reply with the marker.");
+
+  await waitForReply(tauriPage, "CUSTOMPROVIDER33");
+});
+
 test("the AI SDK is gone from the shipped bundle", async ({ tauriPage }) => {
   // A4 removed the in-webview provider clients. If one came back, the renderer
   // would regain the ability to call a provider directly.

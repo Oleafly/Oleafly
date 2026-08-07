@@ -657,6 +657,12 @@ export const mcpRegenerateToken = () => invoke<void>("mcp_regenerate_token");
 export const mcpRegisterTools = (
   tools: { name: string; description: string; inputSchema: unknown }[],
 ) => invoke<void>("mcp_register_tools", { tools });
+/**
+ * What `getConfig` returns in place of a stored provider credential. The value
+ * itself never leaves the backend; this only reports that one exists.
+ */
+export const REDACTED_SECRET = "__stored__";
+
 export const mcpSetActiveProject = (projectId: string | null) =>
   invoke<void>("mcp_set_active_project", { projectId });
 export const mcpToolResult = (callId: number, result: unknown) =>
