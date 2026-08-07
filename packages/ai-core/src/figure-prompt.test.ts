@@ -9,8 +9,6 @@ describe("vision capability", () => {
   });
 
   it("does not claim vision for GLM's text-only chat models", () => {
-    // Verified against the live API: these reject an image part with
-    // "messages.content.type is invalid, allowed values: ['text']".
     for (const id of ["glm-5.2", "glm-4.6", "glm-5.1", "glm-4.5-air", "glm-5-turbo"]) {
       expect(modelSupportsVision("zai", id), `${id} is text only`).toBe(false);
     }

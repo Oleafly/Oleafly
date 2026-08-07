@@ -86,7 +86,6 @@ describe("cancellation", () => {
 
     const pending = completeText({ user: "hi", signal: controller.signal });
     controller.abort();
-    // The backend surfaces the dropped request as an ordinary error string.
     rejectCall("The request was cancelled.");
 
     await expect(pending).rejects.toMatchObject({ name: "AbortError" });

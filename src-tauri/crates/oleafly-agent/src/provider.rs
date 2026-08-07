@@ -2,25 +2,18 @@ use std::collections::BTreeMap;
 
 use crate::error::{AgentError, Result};
 
-/// How a provider's HTTP API is shaped.
-///
-/// Eleven providers ship in the catalog, but they speak three wire formats.
-/// Everything with a `base_url` in the catalog is OpenAI-compatible, which is
-/// why adding a provider is usually a catalog entry and no new code.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Wire {
-    /// `POST {base}/chat/completions`, bearer auth.
     OpenAiChat {
         base_url: String,
-        /// Whether the provider streams its thinking phase as
-        /// `reasoning_content`. Inert for one-shot completions; the streaming
-        /// path in [`crate::stream`] depends on it.
         reasoning_content: bool,
     },
-    /// `POST {base}/messages`, `x-api-key` auth.
-    Anthropic { base_url: String },
-    /// `POST {base}/models/{model}:generateContent`, key as a query parameter.
-    Google { base_url: String },
+    Anthropic {
+        base_url: String,
+    },
+    Google {
+        base_url: String,
+    },
 }
 
 pub const OPENAI_BASE: &str = "https://api.openai.com/v1";
@@ -28,22 +21,13 @@ pub const ANTHROPIC_BASE: &str = "https://api.anthropic.com/v1";
 pub const GOOGLE_BASE: &str = "https://generativelanguage.googleapis.com/v1beta";
 pub const OLLAMA_DEFAULT_HOST: &str = "http://localhost:11434";
 
-/// A catalog provider: its id, its OpenAI-compatible base (when it has one),
-/// and the model chosen when the user has not picked one.
 pub struct CatalogEntry {
     pub id: &'static str,
     pub base_url: Option<&'static str>,
     pub default_model: &'static str,
-    /// Credential is a host URL rather than an API key (Ollama).
     pub is_host: bool,
 }
 
-/// Mirrors `PROVIDERS` in `packages/ai-core/src/providers.ts`, in the same
-/// order, which decides the fallback below.
-///
-/// Only what a completion needs lives here: routing and the default model. The
-/// full model catalog with display names still drives Settings from the
-/// TypeScript side, and folds into this crate when that path is retired.
 pub const CATALOG: &[CatalogEntry] = &[
     CatalogEntry {
         id: "openai",
@@ -117,7 +101,6 @@ pub fn catalog_entry(id: &str) -> Option<&'static CatalogEntry> {
     CATALOG.iter().find(|p| p.id == id)
 }
 
-/// Position in [`CATALOG`], used to break ties deterministically.
 fn catalog_rank(id: &str) -> usize {
     CATALOG
         .iter()
@@ -138,14 +121,10 @@ pub struct CustomProvider {
     pub key_optional: bool,
 }
 
-/// The AI slice of the app config, decoupled from the Tauri `AppConfig` so the
-/// crate stays usable from a plain binary.
 #[derive(Debug, Clone, Default)]
 pub struct ProviderConfig {
     pub provider: String,
     pub model: String,
-    /// Legacy single key, applied to the saved provider when it has no entry
-    /// in `keys`.
     pub legacy_key: String,
     pub keys: BTreeMap<String, String>,
     pub custom: Vec<CustomProvider>,
@@ -156,22 +135,10 @@ pub struct Resolved {
     pub provider_id: String,
     pub model_id: String,
     pub credential: String,
-    /// What to send as the request credential, when anything should be sent.
-    ///
-    /// Not the same as `credential`: Ollama stores a host URL there, and a
-    /// custom provider marked key_optional stores nothing at all. Sending
-    /// either as a bearer token is wrong, and an empty one makes a malformed
-    /// header that some servers reject outright.
     pub auth: Option<String>,
     pub wire: Wire,
 }
 
-/// Pick the provider a request should go to.
-///
-/// Mirrors `pickActiveProvider` in `providers.ts`: the saved provider wins when
-/// it has a credential, otherwise the first configured one stands in, and a
-/// custom provider marked `key_optional` counts as configured without any
-/// credential at all.
 pub fn pick_provider(cfg: &ProviderConfig) -> (String, String, String) {
     let saved = if cfg.provider.is_empty() {
         "openai".to_string()
@@ -198,9 +165,6 @@ pub fn pick_provider(cfg: &ProviderConfig) -> (String, String, String) {
     let provider_id = if has_credential(&saved) {
         saved.clone()
     } else {
-        // The TypeScript version falls back to whichever key appears first in
-        // config.json, which depends on the order the file happened to be
-        // written in. Catalog order is the same choice made reproducibly.
         let mut candidates: Vec<&str> = keys
             .keys()
             .map(|k| k.as_str())
@@ -225,11 +189,6 @@ pub fn pick_provider(cfg: &ProviderConfig) -> (String, String, String) {
     (provider_id, model_id, credential)
 }
 
-/// Choose the wire format and endpoint for a provider.
-///
-/// Mirrors `buildModel` in `providers.ts`, including the reason z.ai and
-/// DeepSeek take the compatible path: both stream their thinking phase as
-/// `reasoning_content`, which the strict OpenAI shape drops.
 pub fn wire_for(provider_id: &str, credential: &str, custom_base: Option<&str>) -> Wire {
     match provider_id {
         "anthropic" => Wire::Anthropic {
@@ -261,8 +220,6 @@ pub fn wire_for(provider_id: &str, credential: &str, custom_base: Option<&str>) 
                 base_url: entry.base_url.unwrap_or(OPENAI_BASE).to_string(),
                 reasoning_content: false,
             },
-            // Not in the catalog, so it is a user-defined provider. Nearly
-            // every self-hosted or third-party base is OpenAI-compatible.
             None => Wire::OpenAiChat {
                 base_url: custom_base
                     .unwrap_or(OPENAI_BASE)
@@ -274,17 +231,11 @@ pub fn wire_for(provider_id: &str, credential: &str, custom_base: Option<&str>) 
     }
 }
 
-/// Resolve the active provider all the way to a callable endpoint.
 pub fn resolve(cfg: &ProviderConfig) -> Result<Resolved> {
     let (provider_id, model_id, credential) = pick_provider(cfg);
     build_resolved(cfg, provider_id, model_id, credential)
 }
 
-/// Resolve a caller-named provider and model instead of the active one.
-///
-/// Template generation lets the user try one specific model without changing
-/// what the rest of the app uses. The credential still comes from the stored
-/// config, so naming a provider never means passing a key in.
 pub fn resolve_specific(
     cfg: &ProviderConfig,
     provider_id: &str,
@@ -294,7 +245,6 @@ pub fn resolve_specific(
         .keys
         .get(provider_id)
         .cloned()
-        // The legacy single key only ever belonged to the saved provider.
         .or_else(|| (cfg.provider == provider_id).then(|| cfg.legacy_key.clone()))
         .unwrap_or_default();
     let model = if model_id.is_empty() {
@@ -307,8 +257,6 @@ pub fn resolve_specific(
 
 fn auth_for(provider_id: &str, is_host: bool, credential: &str) -> Option<String> {
     if is_host {
-        // A local runtime authenticates nothing, but OpenAI-compatible clients
-        // still send a token, so keep the placeholder the app has always used.
         return Some(provider_id.to_string());
     }
     let trimmed = credential.trim();
@@ -379,7 +327,6 @@ mod tests {
         let mut cfg = cfg_with(&[("zai", "z"), ("anthropic", "a")]);
         cfg.provider = "google".into();
         let (id, _, _) = pick_provider(&cfg);
-        // anthropic is second in the catalog, zai fourth.
         assert_eq!(id, "anthropic");
     }
 
@@ -434,7 +381,6 @@ mod tests {
         cfg.model = "gpt-4.1-mini".into();
         assert_eq!(pick_provider(&cfg).1, "gpt-4.1-mini");
 
-        // Saved provider unusable: its model must not leak to the fallback.
         cfg.provider = "anthropic".into();
         assert_eq!(pick_provider(&cfg).1, "gpt-4o");
     }
@@ -449,7 +395,6 @@ mod tests {
         assert_eq!(resolved.provider_id, "groq");
         assert_eq!(resolved.model_id, "llama-3.1-8b-instant");
         assert_eq!(resolved.credential, "gsk-1");
-        // The active provider's model must not leak into the override.
         assert_ne!(resolved.model_id, cfg.model);
     }
 
@@ -502,8 +447,6 @@ mod tests {
             base_url: "http://127.0.0.1:8000/v1".into(),
             key_optional: true,
         }];
-        // An empty bearer token is a malformed header, and some servers reject
-        // the request outright rather than treating it as unauthenticated.
         assert_eq!(resolve(&cfg).unwrap().auth, None);
     }
 
@@ -518,7 +461,6 @@ mod tests {
         }];
         let resolved = resolve(&cfg).unwrap();
 
-        // Surrounding whitespace comes from pasting a key into Settings.
         assert_eq!(resolved.auth.as_deref(), Some("sk-gateway"));
         assert_eq!(
             resolved.wire,
@@ -556,7 +498,6 @@ mod tests {
 
         assert_eq!(resolved.auth.as_deref(), Some("sk-zai-1"));
         assert_eq!(resolved.model_id, "glm-5.2");
-        // The general /api/paas/v4 endpoint bills separately from the plan.
         assert_eq!(
             resolved.wire,
             Wire::OpenAiChat {
@@ -591,7 +532,6 @@ mod tests {
 
     #[test]
     fn ollama_host_override_is_normalized() {
-        // Trailing slashes came from users pasting the host out of a browser.
         for host in [
             "http://box:11434",
             "http://box:11434/",

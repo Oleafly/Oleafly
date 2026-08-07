@@ -2,8 +2,6 @@ import { describe, expect, it } from "vitest";
 import type { StoredModel } from "@/lib/tauri";
 import { pickActiveModel } from "@/lib/ai-model-state";
 
-// The rule addCustomProvider applies: activate only when nothing is
-// configured yet, and pick a model the gateway actually listed.
 function activation(
   current: { provider: string; model: string },
   addedId: string,
@@ -26,8 +24,6 @@ describe("adding a custom provider", () => {
   });
 
   it("never leaves a gateway pointed at the catalog fallback", () => {
-    // defaultModel() answers gpt-4o-mini outside the catalog. Reached by
-    // provider fallback, that made every call fail on an unknown model.
     const next = activation({ provider: "", model: "" }, "my-gateway", [model("llama-3-70b")], "gpt-4o-mini");
     expect(next.model).not.toBe("gpt-4o-mini");
   });

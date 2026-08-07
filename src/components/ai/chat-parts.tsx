@@ -163,29 +163,6 @@ export function formatError(e: unknown, providerLabel?: string): string {
   return parts.join(" ");
 }
 
-export function isRetryable(e: unknown): boolean {
-  const err = typeof e === "object" && e !== null
-    ? e as Record<string, unknown>
-    : {};
-  const statusValue = err.statusCode ?? err.status;
-  const status = typeof statusValue === "number" ? statusValue : undefined;
-  if (status && [400, 401, 402, 403, 404, 405, 422].includes(status)) return false;
-  const text = `${String(err.message ?? "")} ${String(err.responseBody ?? "")}`.toLowerCase();
-  if (
-    /insufficient balance|no resource package|out of credit|insufficient[_ ]?quota|billing|payment required|invalid api key|incorrect api key|unauthorized|authentication|no api key|model.*(not found|does not exist|not exist|unavailable)|invalid model|not supported/.test(
-      text
-    )
-  ) {
-    return false;
-  }
-  return true;
-}
-
-export const MAX_STEPS = 50;
-export const MAX_RETRIES = 4;
-export const RETRY_BASE_MS = 800;
-export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
 // Plain text, not markdown, so a long stream stays cheap.
 export function ReasoningBlock({
   text,

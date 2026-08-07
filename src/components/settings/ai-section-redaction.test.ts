@@ -41,8 +41,6 @@ describe("redacted credentials in Settings", () => {
   });
 
   it("cannot save the marker itself as a credential", () => {
-    // An empty field means nothing was typed, so nothing is sent, so the
-    // marker can never be persisted back over the real key.
     expect(editableKeys({ openai: REDACTED_SECRET }).openai).toBe("");
     expect(isDirty(editableKeys({ openai: REDACTED_SECRET }).openai, REDACTED_SECRET)).toBe(false);
   });

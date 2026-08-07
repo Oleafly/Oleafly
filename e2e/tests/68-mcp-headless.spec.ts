@@ -1,11 +1,6 @@
 import { test, expect } from "../fixtures";
 import { createBlankProject, openProject, writeProjectText, type Page } from "../helpers";
 
-// A5: the MCP server used to forward every tools/call into the webview, so it
-// could not answer unless a window was alive and rendering. Project I/O now
-// runs in Rust. These tests call the HTTP endpoint directly and assert the
-// answer comes back without the renderer executing anything.
-
 const PROJECT = "MCP Headless";
 
 interface Connection {
@@ -25,10 +20,13 @@ async function openMcpProject(page: Page) {
   await expect(page.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 }
 
-async function startServer(page: Page): Promise<Connection> {
+async function startServer(page: Page, policy = "trust"): Promise<Connection> {
   return page.evaluate<Connection>(`
     (async () => {
-      const { mcpConnectionInfo, mcpSetEnabled } = await import("/src/lib/tauri.ts");
+      const { getConfig, mcpConnectionInfo, mcpSetEnabled, setConfig } =
+        await import("/src/lib/tauri.ts");
+      const cfg = await getConfig();
+      await setConfig({ ...cfg, mcp_approval_policy: ${JSON.stringify(policy)} });
       await mcpSetEnabled(true);
       const { refreshMcpRegistry } = await import("/src/lib/mcp-bridge.ts");
       await refreshMcpRegistry();
@@ -43,8 +41,6 @@ async function rpc(
   method: string,
   params: Record<string, unknown>,
 ): Promise<unknown> {
-  // Issued from Node rather than the webview so nothing in the renderer is
-  // involved in serving the call.
   const response = await fetch(connection.url, {
     method: "POST",
     headers: {
@@ -150,9 +146,49 @@ test.describe("MCP without the webview", () => {
     expect(response.status).toBe(401);
   });
 
+  test("the default policy sends a change to the app to be approved", async ({ tauriPage }) => {
+    const asking = await startServer(tauriPage, "ask");
+
+    const pending = rpc(tauriPage, asking, "tools/call", {
+      name: "write_file",
+      arguments: { path: "must-not-exist.tex", content: "x" },
+    });
+
+    await expect(tauriPage.getByTestId("mcp-approval-panel")).toBeVisible({ timeout: 20_000 });
+    await tauriPage.getByTestId("tool-confirm-reject").click();
+    await pending;
+
+    const listed = await rpc(tauriPage, asking, "tools/call", { name: "list_files", arguments: {} });
+    expect(resultText(listed), "a rejected write must not reach disk").not.toContain(
+      "must-not-exist.tex",
+    );
+  });
+
+  test("auto_writes still stops at a delete", async ({ tauriPage }) => {
+    const auto = await startServer(tauriPage, "auto_writes");
+
+    await rpc(tauriPage, auto, "tools/call", {
+      name: "write_file",
+      arguments: { path: "auto-written.tex", content: "kept\n" },
+    });
+    const listed = await rpc(tauriPage, auto, "tools/call", { name: "list_files", arguments: {} });
+    expect(resultText(listed), "an edit is auto approved").toContain("auto-written.tex");
+
+    const pending = rpc(tauriPage, auto, "tools/call", {
+      name: "delete_file",
+      arguments: { path: "auto-written.tex" },
+    });
+    await expect(tauriPage.getByTestId("mcp-approval-panel")).toBeVisible({ timeout: 20_000 });
+    await tauriPage.getByTestId("tool-confirm-reject").click();
+    await pending;
+
+    const after = await rpc(tauriPage, auto, "tools/call", { name: "list_files", arguments: {} });
+    expect(resultText(after), "the file must survive an unapproved delete").toContain(
+      "auto-written.tex",
+    );
+  });
+
   test("a tool that needs the UI is still routed to the app", async ({ tauriPage }) => {
-    // The split is deliberate: only project I/O went native. A UI tool must
-    // keep reaching the window rather than being answered with a wrong result.
     const payload = await rpc(tauriPage, connection, "tools/list", {});
     const names = JSON.stringify(payload);
     expect(names).toContain("read_file");

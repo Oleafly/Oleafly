@@ -30,11 +30,6 @@ type DiscoveryResult =
   | { ok: true; models: { id: string; name: string }[] }
   | { ok: false; reason: "invalid-key" | "unreachable" };
 
-/**
- * Ask the backend for a provider's models. `key` is a credential the user has
- * typed but not saved yet; without it the stored one is used, so refreshing a
- * saved provider works without the window ever holding the credential.
- */
 async function discoverModels(args: {
   providerId: string;
   key?: string;
@@ -106,10 +101,6 @@ export function AISection() {
       const next: AppConfig = { ...DEFAULT_CFG, ...c, ai_keys: merged };
       setCfg(next);
       setSysPrompt(next.ai_system_prompt || "");
-      // The inputs start empty for a stored credential. `savedKeys` still
-      // carries the redaction marker, which is what marks the provider
-      // connected, but showing the marker in the field would let an edit
-      // append to it and save the marker as the key.
       const editable = Object.fromEntries(
         Object.entries(merged).map(([id, value]) => [
           id,
@@ -246,10 +237,6 @@ export function AISection() {
     }
     const customProvider: CustomProvider = { id, name, baseURL, keyOptional: !apiKey };
     const nextKeys = apiKey ? { ...cfg.ai_keys, [id]: apiKey } : cfg.ai_keys;
-    // Activate only when nothing is configured yet, the same rule
-    // validateAndSave uses. Without this the first provider a user adds is
-    // reached by fallback but left on defaultModel(), which answers
-    // gpt-4o-mini for anything outside the catalog, so every call fails.
     const isFirst = !cfg.ai_provider;
     const next: AppConfig = {
       ...cfg,

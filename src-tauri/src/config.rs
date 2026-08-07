@@ -236,8 +236,12 @@ fn write_config_at(path: &std::path::Path, config: &AppConfig) -> Result<(), Str
 
 pub const REDACTED: &str = "__stored__";
 
+#[tauri::command]
+pub fn redacted_secret_marker() -> &'static str {
+    REDACTED
+}
+
 fn is_credential(provider: &str) -> bool {
-    // Ollama stores a host URL rather than a secret, and Settings shows it.
     provider != "ollama"
 }
 
@@ -274,9 +278,6 @@ pub fn get_config() -> Result<AppConfig, String> {
     // Same for the MCP bearer token: only `mcp_connection_info` may hand it
     // to the webview (for Settings copy buttons while the server is running).
     cfg.mcp_token = String::new();
-    // Provider credentials are answered as presence only. The renderer parses
-    // untrusted LaTeX, BibTeX and PDFs, so a key that never arrives there
-    // cannot be exfiltrated from there. The Rust agent calls the providers.
     redact_ai_secrets(&mut cfg);
     Ok(cfg)
 }
@@ -290,8 +291,6 @@ pub fn set_config(mut config: AppConfig) -> Result<(), String> {
     if config.mcp_token.is_empty() {
         config.mcp_token = stored.mcp_token.clone();
     }
-    // A redacted or blank value means "unchanged"; dropping the entry
-    // entirely is how the frontend deletes a credential.
     restore_ai_secrets(&mut config, &stored);
     config.github_connected = false;
     write_config(&config)

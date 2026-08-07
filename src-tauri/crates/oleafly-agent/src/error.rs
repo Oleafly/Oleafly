@@ -1,34 +1,16 @@
 use std::fmt;
 
-/// Why a completion failed, and whether retrying it could succeed.
-///
-/// The distinction matters to the caller: the chat surfaces offer a retry
-/// button for transient failures and a settings link for configuration ones,
-/// so collapsing everything into a string would lose the difference.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AgentError {
-    /// No provider is configured, or the configured one has no credential.
     NotConfigured(String),
-    /// The request never reached the provider.
     Transport(String),
-    /// The provider answered with a non-success status.
-    Provider {
-        status: u16,
-        message: String,
-    },
-    /// The provider answered, but not in the shape its API documents.
+    Provider { status: u16, message: String },
     Decode(String),
-    /// The caller cancelled, or the deadline elapsed.
     Cancelled,
     Timeout,
 }
 
 impl AgentError {
-    /// Whether offering the user a retry makes sense.
-    ///
-    /// 401/403 mean a bad key and 400 means a malformed request: retrying
-    /// those verbatim just burns another round trip. 429 and 5xx are the
-    /// provider asking for patience.
     pub fn retryable(&self) -> bool {
         match self {
             AgentError::Transport(_) | AgentError::Timeout => true,
