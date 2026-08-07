@@ -17,10 +17,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Inline ghost completion.** A dim preview of the most likely completion
-  appears after the cursor as you type, drawn from the completion sources the
-  editor already runs. Tab accepts it, Escape dismisses it. No model call and
-  no network. Settings gains an "Inline suggestion" toggle.
 - **MCP answers project tools without the app window.** Reading, writing,
   searching, listing, creating, renaming, and deleting project files are served
   directly by the backend, so an external MCP client is no longer blocked when
