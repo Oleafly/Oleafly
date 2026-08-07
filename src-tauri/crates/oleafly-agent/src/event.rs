@@ -9,14 +9,50 @@ use crate::complete::Usage;
     rename_all_fields = "camelCase"
 )]
 pub enum AgentEvent {
-    TextDelta { text: String },
-    ReasoningDelta { text: String },
-    ToolCallStart { id: String, name: String },
-    ToolCallArgsDelta { id: String, json: String },
-    ToolCallEnd { id: String, arguments: String },
-    Usage { usage: Usage },
-    Done { stop_reason: Option<String> },
-    Error { message: String, retryable: bool },
+    StepStart {
+        step: u32,
+    },
+    Retry {
+        attempt: u32,
+        max: u32,
+    },
+    ToolRequest {
+        id: String,
+        name: String,
+        arguments: String,
+    },
+    ToolOutcome {
+        id: String,
+        output: String,
+    },
+    TextDelta {
+        text: String,
+    },
+    ReasoningDelta {
+        text: String,
+    },
+    ToolCallStart {
+        id: String,
+        name: String,
+    },
+    ToolCallArgsDelta {
+        id: String,
+        json: String,
+    },
+    ToolCallEnd {
+        id: String,
+        arguments: String,
+    },
+    Usage {
+        usage: Usage,
+    },
+    Done {
+        stop_reason: Option<String>,
+    },
+    Error {
+        message: String,
+        retryable: bool,
+    },
 }
 
 #[cfg(test)]

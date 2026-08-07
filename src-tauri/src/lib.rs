@@ -140,6 +140,8 @@ pub fn run() {
             agent::agent_complete,
             agent::agent_cancel,
             agent::agent_stream,
+            agent::agent_run,
+            agent::agent_tool_result,
             commands::reload_views,
             commands::library_root,
             commands::app_version,

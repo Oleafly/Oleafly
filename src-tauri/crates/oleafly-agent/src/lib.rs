@@ -18,6 +18,7 @@ pub mod error;
 pub mod event;
 pub mod message;
 pub mod provider;
+pub mod run;
 pub mod sse;
 pub mod stream;
 pub mod tool;
@@ -27,6 +28,7 @@ pub use error::{AgentError, Result};
 pub use event::AgentEvent;
 pub use message::{ContentPart, Message, Role};
 pub use provider::{resolve, CustomProvider, ProviderConfig, Resolved, Wire};
+pub use run::{run_agent, RunConfig, RunOutcome, ToolOutput, ToolRunner};
 pub use stream::{stream_completion, StreamOutcome, ToolCall};
 pub use tool::ToolSchema;
 

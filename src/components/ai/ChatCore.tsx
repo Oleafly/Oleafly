@@ -8,6 +8,8 @@ import {
   type ToolSet,
   type UserContent,
 } from "ai";
+import { rustAgentEnabled } from "@/lib/agent-backend";
+import { runAgentHarness } from "./agent-turn";
 import {
   ArrowLeftRight,
   ArrowUp,
@@ -904,6 +906,122 @@ ${sandboxedCustom}`;
     }
 
     try {
+      if (await rustAgentEnabled()) {
+        const tools = resolveChatTools(registry.aiToolsets, figure ? "figure" : "chat", {
+          confirm,
+          onImage: (d: string) => pendingImagesRef.current.push(d),
+        });
+        if (!documentEngine.capabilities.features.includes("document_index")) {
+          delete tools.project_map;
+        }
+
+        let reasoningStartedAt: number | null = null;
+        const outcome = await runAgentHarness({
+          system: effectiveSystem,
+          messages: apiMessages,
+          tools,
+          signal: ac.signal,
+          takePendingImages: () =>
+            modelSupportsVision(provider, model) ? pendingImagesRef.current.splice(0) : [],
+          handlers: {
+            onActivity: () => {
+              lastPartAtRef.current = Date.now();
+              runHandle.lastPartAt = Date.now();
+            },
+            onThinking: (label) => setRunThinking(label),
+            onStep: () => {},
+            onRetry: (attempt, max) =>
+              setRunThinking(`Connection issue, retrying (${attempt}/${max})…`),
+            onText: (chunk) =>
+              updateRunLast((m) => ({ ...m, content: (m.content ?? "") + chunk })),
+            onReasoningStart: () => {
+              if (reasoningStartedAt !== null) return;
+              reasoningStartedAt = Date.now();
+              updateRunLast((m) => ({
+                ...m,
+                reasoningBlocks: [
+                  ...(m.reasoningBlocks ?? []),
+                  { id: crypto.randomUUID(), text: "", beforeTool: (m.toolCalls ?? []).length },
+                ],
+              }));
+            },
+            onReasoningDelta: (chunk) =>
+              updateRunLast((m) => {
+                const blocks = [...(m.reasoningBlocks ?? [])];
+                if (!blocks.length) return m;
+                const last = { ...blocks[blocks.length - 1] };
+                last.text += chunk;
+                blocks[blocks.length - 1] = last;
+                return { ...m, reasoningBlocks: blocks };
+              }),
+            onReasoningEnd: () => {
+              if (reasoningStartedAt === null) return;
+              const ms = Date.now() - reasoningStartedAt;
+              reasoningStartedAt = null;
+              updateRunLast((m) => {
+                const blocks = [...(m.reasoningBlocks ?? [])];
+                if (!blocks.length) return m;
+                const last = { ...blocks[blocks.length - 1] };
+                if (last.ms === undefined) last.ms = ms;
+                blocks[blocks.length - 1] = last;
+                return { ...m, reasoningBlocks: blocks };
+              });
+            },
+            onToolCall: (call) =>
+              updateRunLast((m) => ({
+                ...m,
+                toolCalls: [
+                  ...(m.toolCalls || []),
+                  { id: call.id, name: call.name, status: "running" as const },
+                ],
+              })),
+            onToolResult: ({ id, output }) => {
+              const outStr = (
+                typeof output === "string" ? output : JSON.stringify(output, null, 2)
+              ).slice(0, 500);
+              updateRunLast((m) => {
+                const calls = [...(m.toolCalls || [])];
+                for (let i = calls.length - 1; i >= 0; i--) {
+                  if (calls[i].id === id && calls[i].status === "running") {
+                    calls[i] = { ...calls[i], status: "done", output: outStr };
+                    break;
+                  }
+                }
+                return { ...m, toolCalls: calls };
+              });
+            },
+            onUsage: (usage) => {
+              usageIn = usage.input;
+              usageOut = usage.output;
+              if (runIsCurrent())
+                setRunUsage({
+                  input: usageIn,
+                  output: usageOut,
+                  steps: usageSteps,
+                  usd: estimateUsd(model, usageIn, usageOut).usd,
+                });
+            },
+          },
+        });
+
+        usageSteps = outcome.steps;
+        if (outcome.error) {
+          updateRunLast((m) => ({
+            ...m,
+            content: (m.content ? `${m.content}\n\n` : "") + outcome.error,
+          }));
+        }
+        if (outcome.stopped_at_cap) {
+          updateRunLast((m) => ({
+            ...m,
+            content:
+              (m.content ? `${m.content}\n\n` : "") +
+              "_Reached the step safety limit. You can continue by sending another message._",
+          }));
+        }
+        return;
+      }
+
       // Pure w.r.t. apiMessages (does not mutate it).
       const runStep = async (modelInstance: LanguageModel, tools: ToolSet) => {
         const result = streamText({
