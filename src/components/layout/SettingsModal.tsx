@@ -192,6 +192,8 @@ export function SettingsModal() {
   const setEditorAutocomplete = useSettingsStore((s) => s.setEditorAutocomplete);
   const editorAutoCloseBrackets = useSettingsStore((s) => s.editorAutoCloseBrackets);
   const setEditorAutoCloseBrackets = useSettingsStore((s) => s.setEditorAutoCloseBrackets);
+  const editorGhostCompletion = useSettingsStore((s) => s.editorGhostCompletion);
+  const setEditorGhostCompletion = useSettingsStore((s) => s.setEditorGhostCompletion);
   const editorNonBlinkingCursor = useSettingsStore((s) => s.editorNonBlinkingCursor);
   const setEditorNonBlinkingCursor = useSettingsStore((s) => s.setEditorNonBlinkingCursor);
   const spellcheck = useSettingsStore((s) => s.spellcheck);
@@ -690,6 +692,12 @@ export function SettingsModal() {
                   desc="Automatically insert closing brackets and parentheses."
                   checked={editorAutoCloseBrackets}
                   onChange={setEditorAutoCloseBrackets}
+                />
+                <ToggleRow
+                  label="Inline suggestion"
+                  desc="Preview the most likely completion in dim text after the cursor. Press Tab to accept it."
+                  checked={editorGhostCompletion}
+                  onChange={setEditorGhostCompletion}
                 />
                 <ToggleRow
                   label="Non-blinking cursor"

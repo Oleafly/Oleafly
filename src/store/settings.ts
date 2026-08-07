@@ -207,6 +207,9 @@ interface SettingsState {
   /** Auto-insert closing brackets, parentheses, and quotes. */
   editorAutoCloseBrackets: boolean;
   setEditorAutoCloseBrackets: (v: boolean) => void;
+  /** Dim inline preview of the most likely completion, accepted with Tab. */
+  editorGhostCompletion: boolean;
+  setEditorGhostCompletion: (v: boolean) => void;
   /** Keep the cursor solid instead of blinking. */
   editorNonBlinkingCursor: boolean;
   setEditorNonBlinkingCursor: (v: boolean) => void;
@@ -341,6 +344,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setEditorAutoCloseBrackets: (v) => {
     saveLs("oleafly.editor.closeBrackets", v ? "1" : "0");
     set({ editorAutoCloseBrackets: v });
+  },
+  editorGhostCompletion: ls("oleafly.editor.ghostCompletion", "1") !== "0",
+  setEditorGhostCompletion: (v) => {
+    saveLs("oleafly.editor.ghostCompletion", v ? "1" : "0");
+    set({ editorGhostCompletion: v });
   },
   editorNonBlinkingCursor: ls("oleafly.editor.solidCursor", "0") === "1",
   setEditorNonBlinkingCursor: (v) => {
