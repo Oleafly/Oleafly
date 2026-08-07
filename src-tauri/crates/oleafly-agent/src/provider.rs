@@ -156,6 +156,13 @@ pub struct Resolved {
     pub provider_id: String,
     pub model_id: String,
     pub credential: String,
+    /// What to send as the request credential, when anything should be sent.
+    ///
+    /// Not the same as `credential`: Ollama stores a host URL there, and a
+    /// custom provider marked key_optional stores nothing at all. Sending
+    /// either as a bearer token is wrong, and an empty one makes a malformed
+    /// header that some servers reject outright.
+    pub auth: Option<String>,
     pub wire: Wire,
 }
 
@@ -298,6 +305,19 @@ pub fn resolve_specific(
     build_resolved(cfg, provider_id.to_string(), model, credential)
 }
 
+fn auth_for(provider_id: &str, is_host: bool, credential: &str) -> Option<String> {
+    if is_host {
+        // A local runtime authenticates nothing, but OpenAI-compatible clients
+        // still send a token, so keep the placeholder the app has always used.
+        return Some(provider_id.to_string());
+    }
+    let trimmed = credential.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    Some(trimmed.to_string())
+}
+
 fn build_resolved(
     cfg: &ProviderConfig,
     provider_id: String,
@@ -321,10 +341,12 @@ fn build_resolved(
         &credential,
         custom.map(|c| c.base_url.as_str()),
     );
+    let auth = auth_for(&provider_id, is_host, &credential);
     Ok(Resolved {
         provider_id,
         model_id,
         credential,
+        auth,
         wire,
     })
 }
@@ -459,6 +481,89 @@ mod tests {
             "sk-legacy"
         );
         assert!(resolve_specific(&cfg, "groq", "llama-3.3-70b-versatile").is_err());
+    }
+
+    #[test]
+    fn the_ollama_host_is_never_sent_as_a_bearer_token() {
+        let mut cfg = cfg_with(&[("ollama", "http://box:11434")]);
+        cfg.provider = "ollama".into();
+        let resolved = resolve(&cfg).unwrap();
+
+        assert_eq!(resolved.credential, "http://box:11434");
+        assert_eq!(resolved.auth.as_deref(), Some("ollama"));
+    }
+
+    #[test]
+    fn a_key_optional_custom_provider_sends_no_credential_at_all() {
+        let mut cfg = cfg_with(&[]);
+        cfg.provider = "local-vllm".into();
+        cfg.custom = vec![CustomProvider {
+            id: "local-vllm".into(),
+            base_url: "http://127.0.0.1:8000/v1".into(),
+            key_optional: true,
+        }];
+        // An empty bearer token is a malformed header, and some servers reject
+        // the request outright rather than treating it as unauthenticated.
+        assert_eq!(resolve(&cfg).unwrap().auth, None);
+    }
+
+    #[test]
+    fn a_custom_provider_with_a_key_authenticates_with_it() {
+        let mut cfg = cfg_with(&[("my-gateway", "  sk-gateway  ")]);
+        cfg.provider = "my-gateway".into();
+        cfg.custom = vec![CustomProvider {
+            id: "my-gateway".into(),
+            base_url: "https://gateway.example.com/v1/".into(),
+            key_optional: false,
+        }];
+        let resolved = resolve(&cfg).unwrap();
+
+        // Surrounding whitespace comes from pasting a key into Settings.
+        assert_eq!(resolved.auth.as_deref(), Some("sk-gateway"));
+        assert_eq!(
+            resolved.wire,
+            Wire::OpenAiChat {
+                base_url: "https://gateway.example.com/v1".into(),
+                reasoning_content: true
+            }
+        );
+    }
+
+    #[test]
+    fn openrouter_uses_its_own_base_and_the_stored_key() {
+        let mut cfg = cfg_with(&[("openrouter", "sk-or-1")]);
+        cfg.provider = "openrouter".into();
+        cfg.model = "anthropic/claude-3.5-sonnet".into();
+        let resolved = resolve(&cfg).unwrap();
+
+        assert_eq!(resolved.auth.as_deref(), Some("sk-or-1"));
+        assert_eq!(resolved.model_id, "anthropic/claude-3.5-sonnet");
+        assert_eq!(
+            resolved.wire,
+            Wire::OpenAiChat {
+                base_url: "https://openrouter.ai/api/v1".into(),
+                reasoning_content: false
+            }
+        );
+    }
+
+    #[test]
+    fn the_zai_coding_plan_keeps_its_coding_endpoint_and_thinking_phase() {
+        let mut cfg = cfg_with(&[("zai", "sk-zai-1")]);
+        cfg.provider = "zai".into();
+        cfg.model = "glm-5.2".into();
+        let resolved = resolve(&cfg).unwrap();
+
+        assert_eq!(resolved.auth.as_deref(), Some("sk-zai-1"));
+        assert_eq!(resolved.model_id, "glm-5.2");
+        // The general /api/paas/v4 endpoint bills separately from the plan.
+        assert_eq!(
+            resolved.wire,
+            Wire::OpenAiChat {
+                base_url: "https://api.z.ai/api/coding/paas/v4".into(),
+                reasoning_content: true
+            }
+        );
     }
 
     #[test]
