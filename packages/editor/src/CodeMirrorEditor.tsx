@@ -52,6 +52,7 @@ import {
 import { liveMathPreview } from "./math-preview";
 import { createLatexLinter } from "./latex-linter";
 import { latexFolding } from "./latex-folding";
+import { ghostCompletion } from "./ghost-completion";
 import { foldMarkerDOM, foldMarkerTheme } from "./fold-marker";
 
 // The use* members are React hooks: must follow hook rules, and the host
@@ -73,6 +74,8 @@ export interface EditorHost {
     autoCloseBrackets: boolean;
     /** Keep the cursor solid instead of blinking. */
     nonBlinkingCursor: boolean;
+    /** Dim inline preview of the top completion, accepted with Tab. */
+    ghostCompletion: boolean;
   };
   useLintRefreshDeps(): readonly unknown[];
 }
@@ -90,6 +93,7 @@ function sourceToolsForPath(
   path: string | null,
   completionSources: CompletionSource[],
   autocompleteWhileTyping: boolean,
+  ghostCompletionEnabled: boolean,
 ): Extension[] {
   const mathPreview = isLatexDocumentPath(path)
     ? [liveMathPreview("latex")]
@@ -98,16 +102,22 @@ function sourceToolsForPath(
       : [];
 
   if (isLatexSourcePath(path)) {
+    // The ghost preview reads the same sources the popup does, so the two can
+    // never suggest different things.
+    const sources = [
+      ...completionSources,
+      completionSources.length > 0 ? latexCommandCompletions : latexCompletions,
+      slashCompletions,
+    ];
     return [
       latexFolding(),
+      // Before autocompletion: both register keymaps at the highest
+      // precedence, where the earlier extension wins, and the ghost's Escape
+      // has to record its dismissal before the popup consumes the key. Its
+      // handlers decline whenever the popup should own the key instead.
+      ...(ghostCompletionEnabled ? [ghostCompletion(sources)] : []),
       autocompletion({
-        override: [
-          ...completionSources,
-          completionSources.length > 0
-            ? latexCommandCompletions
-            : latexCompletions,
-          slashCompletions,
-        ],
+        override: sources,
         activateOnTyping: autocompleteWhileTyping,
         closeOnBlur: true,
       }),
@@ -120,6 +130,7 @@ function sourceToolsForPath(
     ...mathPreview,
     ...(completionSources.length > 0
       ? [
+          ...(ghostCompletionEnabled ? [ghostCompletion(completionSources)] : []),
           autocompletion({
             override: completionSources,
             activateOnTyping: autocompleteWhileTyping,
@@ -187,6 +198,7 @@ export function CodeMirrorEditor({
     autocomplete,
     autoCloseBrackets,
     nonBlinkingCursor,
+    ghostCompletion: ghostCompletionEnabled,
   } = host.useSettings();
   const lintDeps = host.useLintRefreshDeps();
 
@@ -244,7 +256,12 @@ export function CodeMirrorEditor({
         historyCompartment.of(history()),
         vscodeSearch(),
         sourceToolsCompartment.of(
-          sourceToolsForPath(initialPath, initialCompletionSources, autocomplete),
+          sourceToolsForPath(
+            initialPath,
+            initialCompletionSources,
+            autocomplete,
+            ghostCompletionEnabled,
+          ),
         ),
         ...(extraExtensions ?? []),
         hostToolsCompartment.of(extraExtensionsForPath?.(initialPath) ?? []),
@@ -357,7 +374,12 @@ export function CodeMirrorEditor({
     const effects = [langCompartmentRef.current!.reconfigure(lang ? lang : [])];
     effects.push(
       sourceToolsCompartmentRef.current!.reconfigure(
-        sourceToolsForPath(activePath, completionSources, autocomplete),
+        sourceToolsForPath(
+          activePath,
+          completionSources,
+          autocomplete,
+          ghostCompletionEnabled,
+        ),
       ),
     );
     effects.push(
@@ -433,11 +455,12 @@ export function CodeMirrorEditor({
           path,
           extraCompletionSourcesForPath?.(path) ?? [],
           autocomplete,
+          ghostCompletionEnabled,
         ),
       ),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autocomplete]);
+  }, [autocomplete, ghostCompletionEnabled]);
 
   // Toggle spellcheck / Harper grammar without recreating the editor.
   useEffect(() => {

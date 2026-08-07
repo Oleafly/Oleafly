@@ -18,6 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (suggestions while typing, with Ctrl+Space always available), Auto-close
   brackets, and Non-blinking cursor. All three apply instantly without
   reopening the editor.
+- **Inline suggestion.** The rest of the most likely completion now appears in
+  dim text after the cursor, accepted with Tab and dismissed with Escape. The
+  candidate comes from the completion sources the editor already runs, so
+  there is no model call, no network, and no delay. While the completion popup
+  is open the preview mirrors the highlighted option and Tab stays with the
+  popup, so the two surfaces can never disagree. Turn it off under Settings,
+  Inline suggestion.
 
 ## [0.3.5] - 2026-08-06
 
