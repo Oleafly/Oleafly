@@ -1,9 +1,3 @@
-//! Tauri surface for `oleafly-agent`.
-//!
-//! The point of this module is what it does *not* do: the provider credential
-//! is read from the config here, in the backend, and never travels to the
-//! webview. Callers name a request and get text back.
-
 use std::collections::HashMap;
 use std::sync::Mutex;
 
@@ -17,22 +11,17 @@ use crate::config::AppConfig;
 #[derive(Default)]
 pub struct AgentState {
     client: Mutex<Option<reqwest::Client>>,
-    /// In-flight completions, so `agent_cancel` can drop one mid-request.
     running: Mutex<HashMap<String, tauri::async_runtime::JoinHandle<()>>>,
-    /// Tool calls the harness is waiting on the frontend to execute.
     pending_tools: Mutex<HashMap<String, tokio::sync::oneshot::Sender<ToolOutput>>>,
 }
 
 impl AgentState {
-    /// One pooled client for the process. Built lazily so app startup does not
-    /// pay for TLS setup that a user without an AI key never needs.
     fn client(&self) -> reqwest::Client {
         let mut slot = self.client.lock().unwrap();
         slot.get_or_insert_with(oleafly_agent::build_client).clone()
     }
 }
 
-/// Project the AI slice of the app config onto the crate's own shape.
 pub fn provider_config(cfg: &AppConfig) -> ProviderConfig {
     ProviderConfig {
         provider: cfg.ai_provider.clone(),
@@ -55,8 +44,6 @@ pub fn provider_config(cfg: &AppConfig) -> ProviderConfig {
     }
 }
 
-/// Naming a provider and model for one call without changing the active one.
-/// Only ids travel; the credential is still looked up in the backend.
 #[derive(serde::Deserialize)]
 pub struct ProviderOverride {
     pub provider_id: String,
@@ -64,7 +51,6 @@ pub struct ProviderOverride {
     pub model_id: String,
 }
 
-/// Run one completion against the user's active provider.
 #[tauri::command]
 pub async fn agent_complete(
     state: State<'_, AgentState>,
@@ -75,8 +61,6 @@ pub async fn agent_complete(
     let resolved = resolve_for(provider_override)?;
     let client = state.client();
 
-    // The work runs in its own task so that cancelling means dropping the
-    // request rather than waiting for a reply nobody wants any more.
     let (tx, rx) = tokio::sync::oneshot::channel();
     let handle = tauri::async_runtime::spawn(async move {
         let result = oleafly_agent::complete(&client, &resolved, &request).await;
@@ -89,14 +73,10 @@ pub async fn agent_complete(
 
     match outcome {
         Ok(result) => result.map_err(|e| e.to_string()),
-        // The sender was dropped without sending, which only happens when the
-        // task was aborted by `agent_cancel`.
         Err(_) => Err(oleafly_agent::AgentError::Cancelled.to_string()),
     }
 }
 
-/// Abandon an in-flight completion. Unknown ids are not an error: the request
-/// may have finished between the user's click and this call.
 #[tauri::command]
 pub fn agent_cancel(state: State<'_, AgentState>, request_id: String) {
     if let Some(handle) = state.running.lock().unwrap().remove(&request_id) {
@@ -179,8 +159,6 @@ pub async fn agent_run(
                 let state = handle.state::<AgentState>();
                 state.pending_tools.lock().unwrap().insert(key.clone(), tx);
             }
-            // Announced only after the waiter exists, so a fast reply cannot
-            // arrive before anything is listening for it.
             let _ = tool_sink.send(AgentEvent::ToolRequest {
                 id: call.id.clone(),
                 name: call.name.clone(),
@@ -247,12 +225,6 @@ fn drop_pending_tools(state: &State<'_, AgentState>, request_id: &str) {
         .retain(|key, _| !key.starts_with(&prefix));
 }
 
-/// Ask a provider what models it offers.
-///
-/// `key` carries a credential the user has just typed but not saved yet, so a
-/// paste can be validated before it is persisted. When absent the stored one
-/// is used, which is what makes refreshing a saved provider work without the
-/// window ever holding the credential.
 #[tauri::command]
 pub async fn agent_list_models(
     state: State<'_, AgentState>,

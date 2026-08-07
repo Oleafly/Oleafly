@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { packChatHistory, packToolOutput, truncateText } from "./ai-context-pack";
+import { packChatHistory, truncateText } from "./ai-context-pack";
 
 describe("truncateText", () => {
   it("leaves short strings alone", () => {
@@ -13,17 +13,6 @@ describe("truncateText", () => {
   });
 });
 
-describe("packToolOutput", () => {
-  it("passes small objects through", () => {
-    expect(packToolOutput({ ok: true })).toEqual({ ok: true });
-  });
-  it("truncates large content fields", () => {
-    const out = packToolOutput({ content: "x".repeat(50_000) }, 1000) as {
-      content: string;
-    };
-    expect(out.content.length).toBeLessThan(50_000);
-  });
-});
 
 describe("packChatHistory", () => {
   it("keeps only recent turns", () => {

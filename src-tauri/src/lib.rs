@@ -250,6 +250,7 @@ pub fn run() {
             project::clear_build_cache,
             project::delete_project,
             commands::reveal_in_dir,
+            config::redacted_secret_marker,
             config::get_config,
             config::set_config,
             mcp::mcp_register_tools,

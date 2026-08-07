@@ -1,8 +1,5 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
 
-// Every model call runs in the Rust backend. Provider credentials are read
-// there and never reach the webview.
-
 export type AgentContentPart =
   | { type: "text"; text: string }
   | { type: "image"; image: string }
@@ -47,8 +44,6 @@ function abortError(): DOMException {
   return new DOMException("Aborted", "AbortError");
 }
 
-// Settle on abort rather than waiting for the backend to notice. A wedged
-// connection would otherwise leave the caller hanging after the user gave up.
 function withAbort<T>(work: Promise<T>, signal?: AbortSignal): Promise<T> {
   if (!signal) return work;
   return Promise.race([
@@ -59,12 +54,6 @@ function withAbort<T>(work: Promise<T>, signal?: AbortSignal): Promise<T> {
   ]);
 }
 
-/**
- * Run a completion in the backend, honouring an abort signal.
- *
- * Aborting tells Rust to drop the in-flight request rather than leaving it to
- * finish into a void, which matters for long reasoning calls the user cancels.
- */
 export async function completeViaBackend(
   request: AgentCompletionRequest,
   signal?: AbortSignal,
@@ -88,8 +77,6 @@ export async function completeViaBackend(
       signal,
     );
   } catch (error) {
-    // The backend reports a cancelled request as a normal error. Callers
-    // distinguish an abort by its name, so restore that here.
     if (signal?.aborted) throw abortError();
     throw new Error(typeof error === "string" ? error : String(error));
   } finally {
@@ -277,7 +264,6 @@ export async function streamText(args: {
   return full;
 }
 
-/** The common case: a system prompt and one user message, returning text. */
 export async function completeText(args: {
   system?: string;
   user: string;

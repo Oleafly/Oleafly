@@ -657,22 +657,14 @@ export const mcpRegenerateToken = () => invoke<void>("mcp_regenerate_token");
 export const mcpRegisterTools = (
   tools: { name: string; description: string; inputSchema: unknown }[],
 ) => invoke<void>("mcp_register_tools", { tools });
-/**
- * What `getConfig` returns in place of a stored provider credential. The value
- * itself never leaves the backend; this only reports that one exists.
- */
 export const REDACTED_SECRET = "__stored__";
+export const redactedSecretMarker = () => invoke<string>("redacted_secret_marker");
 
 export interface ProviderModel {
   id: string;
   name: string;
 }
 
-/**
- * List a provider's models. The request is made in the backend, so a stored
- * credential never has to reach the window. `key` is only for validating one
- * the user has typed but not saved.
- */
 export const agentListModels = (args: {
   providerId: string;
   key?: string;

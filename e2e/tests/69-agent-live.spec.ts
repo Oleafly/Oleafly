@@ -8,14 +8,6 @@ import {
   type Page,
 } from "../helpers";
 
-// Real provider, real key, real network. Everything else in this suite runs
-// against a local mock, which proves the plumbing but never the wire: a mock
-// cannot show that the endpoint is right, that the credential is accepted, or
-// that a reasoning model's thinking phase is parsed. This file does.
-//
-// Opt in with E2E_AI_TOKEN in e2e/.env. Skipped when unset, so CI without
-// secrets stays green.
-
 const TOKEN = process.env.E2E_AI_TOKEN;
 const PROVIDER = process.env.E2E_AI_PROVIDER_ID || "zai";
 const MODEL = process.env.E2E_AI_MODEL || "glm-5.2";
@@ -23,8 +15,6 @@ const MODEL = process.env.E2E_AI_MODEL || "glm-5.2";
 const PROJECT = "Agent Live";
 const TA = 'textarea[placeholder*="Ask AI"]';
 
-// Real calls are slow, and a reasoning model can think for a while before its
-// first visible token.
 const REPLY_TIMEOUT = 120_000;
 
 async function openLiveProject(page: Page) {
@@ -39,7 +29,6 @@ async function openLiveProject(page: Page) {
   await expect(page.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 }
 
-/** Point the app at the real provider. The key goes to the hermetic config. */
 async function connectLive(page: Page, providerId: string, baseURL?: string) {
   const ok = await page.evaluate<boolean>(`
     (async () => {
@@ -80,13 +69,6 @@ async function ask(page: Page, text: string) {
   await page.press(TA, "Enter");
 }
 
-/**
- * Wait for a run to start and then finish.
- *
- * Waiting only for the Stop button to be absent returns instantly, because it
- * has not rendered yet at the moment the message is sent. That made two tests
- * assert against an empty transcript and fail for the wrong reason.
- */
 async function waitForRun(page: Page, timeoutMs = REPLY_TIMEOUT) {
   await waitLong(page, `!!document.querySelector('[aria-label="Stop"]')`, 30_000);
   await waitLong(page, `!document.querySelector('[aria-label="Stop"]')`, timeoutMs);
@@ -100,8 +82,6 @@ test.describe("live provider", () => {
     await openLiveProject(tauriPage);
     await connectLive(tauriPage, PROVIDER);
 
-    // Discovery runs in Rust against the stored credential. A wrong endpoint
-    // or a rejected key fails here rather than silently later.
     const models = await tauriPage.evaluate<{ id: string }[]>(`
       (async () => {
         const { agentListModels } = await import("/src/lib/tauri.ts");
@@ -126,8 +106,6 @@ test.describe("live provider", () => {
       REPLY_TIMEOUT,
     );
 
-    // Usage comes from the provider's own accounting, so a non-zero count
-    // proves the usage frame was parsed rather than defaulted.
     const usageButton = tauriPage.locator('button[aria-label="View AI usage"]');
     await expect(usageButton).toBeVisible({ timeout: 20_000 });
     await usageButton.click();
@@ -143,9 +121,6 @@ test.describe("live provider", () => {
     await connectLive(tauriPage, PROVIDER);
     await openChat(tauriPage);
 
-    // GLM and DeepSeek send their thinking as reasoning_content, which the
-    // strict OpenAI shape drops. No mock covers this, and getting it wrong
-    // means total silence while the model thinks.
     await ask(tauriPage, "Think step by step, then answer: what is 17 times 23?");
     await waitForRun(tauriPage);
 
@@ -181,10 +156,6 @@ test.describe("live provider", () => {
     test.setTimeout(REPLY_TIMEOUT);
     await openLiveProject(tauriPage);
 
-    // A user-defined provider takes a different route: its base URL comes from
-    // config and stream_options is deliberately omitted, because a
-    // self-hosted or third-party gateway can reject unknown fields. Pointing
-    // one at the same real endpoint proves that route against a live API.
     const baseURL =
       process.env.E2E_AI_BASE_URL || "https://api.z.ai/api/coding/paas/v4";
     await connectLive(tauriPage, "live-gateway", baseURL);
@@ -202,10 +173,6 @@ test.describe("live provider", () => {
     test.setTimeout(REPLY_TIMEOUT);
     await openLiveProject(tauriPage);
 
-    // The flow a user goes through: paste a key, the app validates it by
-    // listing models, persists that list, and picks an active model from it.
-    // Picking the catalog default blind would point a plan or a gateway at a
-    // model it does not serve.
     const outcome = await tauriPage.evaluate<{
       active: string;
       stored: string[];
@@ -254,9 +221,6 @@ test.describe("live provider", () => {
     test.setTimeout(REPLY_TIMEOUT);
     await openLiveProject(tauriPage);
 
-    // Seed a discovered model that cannot exist, then reconcile against the
-    // real listing. Without pruning it would sit in the picker forever and
-    // fail whenever a user chose it.
     const stillThere = await tauriPage.evaluate<boolean>(`
       (async () => {
         const { agentListModels } = await import("/src/lib/tauri.ts");
@@ -279,7 +243,6 @@ test.describe("live provider", () => {
     test.setTimeout(REPLY_TIMEOUT);
     await openLiveProject(tauriPage);
 
-    // Real 401 handling, which a mock cannot exercise honestly.
     const failure = await tauriPage.evaluate<string>(`
       (async () => {
         const { agentListModels, getConfig, setConfig } = await import("/src/lib/tauri.ts");

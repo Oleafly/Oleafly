@@ -6,15 +6,6 @@ export function seedProviderModels(providerId: string): StoredModel[] {
   return (p?.models ?? []).map((m) => ({ id: m.id, name: m.name, enabled: true, source: "builtin" }));
 }
 
-/**
- * Reconcile a stored model list with what the provider now advertises.
- *
- * New models are added and names filled in. Models the provider has stopped
- * listing are dropped, but only the ones discovery put there: a built-in seed
- * survives because some providers expose an incomplete /models, and a
- * user-added model survives because it was deliberate. Enabled state is kept
- * for everything that stays.
- */
 export function mergeFetchedModels(existing: StoredModel[], fetched: AIModel[]): StoredModel[] {
   const listed = new Set(fetched.map((f) => f.id));
   const kept = existing.filter((m) => m.source !== "fetched" || listed.has(m.id));
@@ -27,13 +18,6 @@ export function mergeFetchedModels(existing: StoredModel[], fetched: AIModel[]):
   return [...byId.values()];
 }
 
-/**
- * Choose a model the provider will actually accept.
- *
- * The catalog default is a guess: a plan may not include it, and for a custom
- * gateway it is not even the right vendor. Prefer it only when the provider
- * listed it, otherwise take the first model the provider offered.
- */
 export function pickActiveModel(
   models: StoredModel[],
   catalogDefault: string,

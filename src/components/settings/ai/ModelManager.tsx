@@ -38,8 +38,6 @@ export function ModelManager({ providerId, models, apiKey, onChange }: ModelMana
     setRefreshing(true);
     setRefreshError("");
     try {
-      // The backend holds the stored credential, so refreshing works for a
-      // saved provider even though the key field is deliberately empty.
       const fetched = await agentListModels({ providerId, key: apiKey || undefined });
       onChange(mergeFetchedModels(models, fetched));
     } catch (error) {

@@ -125,7 +125,6 @@ function harness(events: AgentEvent[], tools: ToolSet = {}) {
     if (command !== "agent_run") return;
     const channel = args.onEvent as { onmessage: ((event: AgentEvent) => void) | null };
     for (const event of events) channel.onmessage?.(event);
-    // Let the tool promises settle before the run resolves.
     await new Promise((resolve) => setTimeout(resolve, 0));
     return { text: "", usage: { input: 0, output: 0 }, steps: 1, stopped_at_cap: false, error: null };
   });

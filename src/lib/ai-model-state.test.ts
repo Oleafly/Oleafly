@@ -132,8 +132,6 @@ describe("reconciling a refreshed model list", () => {
   });
 
   it("keeps a built-in seed the provider does not list", () => {
-    // Some providers expose an incomplete /models, and dropping a seed there
-    // would remove a model that actually works.
     const next = mergeFetchedModels([stored("glm-5.2", "builtin")], [
       { id: "glm-4.6", name: "GLM-4.6" },
     ]);
@@ -167,8 +165,6 @@ describe("choosing the active model after a key is saved", () => {
   });
 
   it("never points a custom gateway at the catalog fallback", () => {
-    // defaultModel() answers gpt-4o-mini for anything outside the catalog,
-    // which no self-hosted gateway is going to serve.
     const models = [stored("mixtral-local")];
     expect(pickActiveModel(models, "gpt-4o-mini")).toBe("mixtral-local");
   });

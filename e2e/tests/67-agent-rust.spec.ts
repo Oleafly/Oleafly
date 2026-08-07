@@ -10,14 +10,6 @@ import {
 } from "../helpers";
 import { startMockAiServer, type MockAiServer } from "../mock-ai-server";
 
-// The agent harness runs in Rust: provider calls, streaming, the turn loop and
-// tool dispatch all happen in the backend. The frontend only renders events and
-// executes the tool side effects that touch the UI.
-//
-// The mock server is an OpenAI-compatible endpoint, so the "Ollama (local)"
-// provider points Rust at it and every wire-format, streaming and tool path
-// runs for real against canned responses. Nothing here needs a network or key.
-
 const PROJECT = "Agent Rust";
 const TA = 'textarea[placeholder*="Ask AI"]';
 
@@ -48,8 +40,6 @@ async function openAgentProject(page: Page) {
     await createBlankProject(page, PROJECT);
   }
   await expect(page.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  // Set the provider before the chat panel mounts so it reads a connected
-  // config rather than depending on a live config-changed event.
   await connect(page);
 }
 
@@ -93,9 +83,6 @@ test("no model call is made from the webview", async ({ tauriPage }) => {
   await ask(tauriPage, "Reply with the marker.");
   await waitForReply(tauriPage, "NOWEBVIEWCALL7");
 
-  // Resource timing records every request the renderer actually issued.
-  // Completions and model discovery both happen in Rust, so nothing here may
-  // name a provider endpoint of any kind.
   const rendererCalls = await tauriPage.evaluate<string[]>(
     `performance
       .getEntriesByType("resource")
@@ -112,8 +99,6 @@ test("a tool call is dispatched by Rust and executed in the app", async ({ tauri
   await openAgentProject(tauriPage);
   await openChat(tauriPage);
 
-  // The mock answers the follow-up turn (the one carrying the tool result)
-  // with `then`, so seeing it proves the whole round trip closed.
   server.setToolCall({ name: "read_file", args: { path: "main.tex" }, then: "TOOLROUNDTRIP88" });
   await ask(tauriPage, "Read main.tex, then confirm.");
 
@@ -133,9 +118,6 @@ test("a write tool run by the agent lands on disk", async ({ tauriPage }) => {
   });
   await ask(tauriPage, "Create agent-wrote.tex.");
 
-  // Writing is approval gated, and that gate is the frontend's job: Rust asks,
-  // the user answers, and only then does the harness get a result. Clicking it
-  // is what proves the request and reply pair works across the boundary.
   const approve = tauriPage.getByTestId("tool-confirm-approve");
   await expect(approve).toBeVisible({ timeout: 30_000 });
   await approve.click();
@@ -165,7 +147,6 @@ test("provider credentials are never handed to the webview", async ({ tauriPage 
   test.setTimeout(60_000);
   await openAgentProject(tauriPage);
 
-  // Store a recognizable key, then read the config back the way the app does.
   const leaked = await tauriPage.evaluate<{ stored: string; visible: string }>(`
     (async () => {
       const { getConfig, setConfig } = await import("/src/lib/tauri.ts");
@@ -188,8 +169,6 @@ test("a redacted config round trip does not destroy the stored key", async ({ ta
   test.setTimeout(60_000);
   await openAgentProject(tauriPage);
 
-  // Saving an unrelated setting re-sends the redacted key. The stored value has
-  // to survive that, or opening Settings would silently sign the user out.
   const stillPresent = await tauriPage.evaluate<boolean>(`
     (async () => {
       const { getConfig, setConfig } = await import("/src/lib/tauri.ts");
@@ -221,10 +200,6 @@ test("a custom OpenAI-compatible provider streams through the harness", async ({
   test.setTimeout(60_000);
   await openAgentProject(tauriPage);
 
-  // A user-defined provider takes a different route than the catalog: its base
-  // URL comes from config, and the harness deliberately omits stream_options
-  // because a self-hosted server can reject unknown fields. Registering one
-  // pointed at the mock exercises that route for real.
   await tauriPage.evaluate(`
     (async () => {
       const { getConfig, setConfig } = await import("/src/lib/tauri.ts");
@@ -256,9 +231,24 @@ test("a custom OpenAI-compatible provider streams through the harness", async ({
   await waitForReply(tauriPage, "CUSTOMPROVIDER33");
 });
 
+test("the redaction marker has one definition, not two", async ({ tauriPage }) => {
+  test.setTimeout(60_000);
+  await openAgentProject(tauriPage);
+
+  const agreed = await tauriPage.evaluate<{ frontend: string; backend: string }>(`
+    (async () => {
+      const { REDACTED_SECRET, redactedSecretMarker } = await import("/src/lib/tauri.ts");
+      return { frontend: REDACTED_SECRET, backend: await redactedSecretMarker() };
+    })()
+  `);
+
+  expect(agreed.backend).not.toBe("");
+  expect(agreed.frontend, "a drifted marker silently breaks the credential round trip").toBe(
+    agreed.backend,
+  );
+});
+
 test("the AI SDK is gone from the shipped bundle", async ({ tauriPage }) => {
-  // A4 removed the in-webview provider clients. If one came back, the renderer
-  // would regain the ability to call a provider directly.
   const present = await tauriPage.evaluate<boolean>(`
     (async () => {
       try {

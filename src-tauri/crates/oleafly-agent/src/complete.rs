@@ -8,17 +8,10 @@ use crate::message::{parse_arguments, parse_data_url, ContentPart, Message, Role
 use crate::provider::{Resolved, Wire};
 use crate::tool::{anthropic_tools, google_tools, openai_tools, ToolSchema};
 
-/// Anthropic rejects a request that does not declare a token ceiling, so one
-/// has to be chosen when the caller expresses no preference.
 const DEFAULT_MAX_TOKENS: u32 = 4096;
 
-/// Longest a single one-shot completion may take. Generous enough for a
-/// reasoning model on a long paper, short enough that a wedged connection
-/// surfaces as an error rather than a spinner that never resolves.
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(180);
 
-/// How much of an unrecognized error body to keep. Provider errors reach the
-/// user in a toast, and some services answer with an entire HTML page.
 const MAX_ERROR_CHARS: usize = 300;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -37,7 +30,6 @@ pub struct CompletionRequest {
 }
 
 impl CompletionRequest {
-    /// The single-prompt shape used by most call sites.
     pub fn prompt(system: impl Into<String>, user: impl Into<String>) -> Self {
         CompletionRequest {
             system: Some(system.into()),
@@ -68,8 +60,6 @@ fn role_str(role: Role) -> &'static str {
     }
 }
 
-// --- request bodies -------------------------------------------------------
-
 pub(crate) fn openai_body(resolved: &Resolved, req: &CompletionRequest) -> Result<Value> {
     let mut messages: Vec<Value> = Vec::new();
     if let Some(system) = req.system.as_ref().filter(|s| !s.is_empty()) {
@@ -81,8 +71,6 @@ pub(crate) fn openai_body(resolved: &Resolved, req: &CompletionRequest) -> Resul
             .iter()
             .filter(|p| matches!(p, ContentPart::ToolResult { .. }))
             .collect();
-        // OpenAI carries every tool result as its own message with role "tool",
-        // rather than as parts of a user turn the way the other two do.
         for part in &results {
             if let ContentPart::ToolResult { id, output, .. } = part {
                 messages.push(json!({
@@ -123,8 +111,6 @@ pub(crate) fn openai_body(resolved: &Resolved, req: &CompletionRequest) -> Resul
             .filter(|p| !matches!(p, ContentPart::ToolUse { .. }))
             .collect();
 
-        // A lone text part goes out as a bare string. Some OpenAI-compatible
-        // servers (older Ollama builds among them) only accept that form.
         let content = match visible.as_slice() {
             [] => Value::Null,
             [ContentPart::Text { text }] => json!(text),
@@ -134,9 +120,6 @@ pub(crate) fn openai_body(resolved: &Resolved, req: &CompletionRequest) -> Resul
                     out.push(match part {
                         ContentPart::Text { text } => json!({ "type": "text", "text": text }),
                         ContentPart::Image { image } => {
-                            // Validated even though the URL passes through
-                            // whole, so a bad image fails here rather than as
-                            // an opaque 400 from the provider.
                             parse_data_url(image)?;
                             json!({ "type": "image_url", "image_url": { "url": image } })
                         }
@@ -243,8 +226,6 @@ pub(crate) fn google_body(req: &CompletionRequest) -> Result<Value> {
                 } => json!({
                     "functionCall": { "name": name, "args": parse_arguments(arguments) }
                 }),
-                // Gemini keys a response by tool name, not by call id, so a
-                // parallel call to the same tool cannot be told apart here.
                 ContentPart::ToolResult { name, output, .. } => json!({
                     "functionResponse": {
                         "name": name,
@@ -253,7 +234,6 @@ pub(crate) fn google_body(req: &CompletionRequest) -> Result<Value> {
                 }),
             });
         }
-        // Gemini names the assistant turn "model".
         let role = match message.role {
             Role::User => "user",
             Role::Assistant => "model",
@@ -281,8 +261,6 @@ pub(crate) fn google_body(req: &CompletionRequest) -> Result<Value> {
     Ok(body)
 }
 
-// --- response parsing -----------------------------------------------------
-
 fn as_u32(value: Option<&Value>) -> u32 {
     value.and_then(|v| v.as_u64()).unwrap_or(0) as u32
 }
@@ -291,8 +269,6 @@ pub(crate) fn parse_openai(body: &Value) -> Result<(String, Usage)> {
     let message = body
         .pointer("/choices/0/message")
         .ok_or_else(|| AgentError::Decode("response carried no choices".into()))?;
-    // Reasoning models put the visible answer in `content` and their thinking
-    // in a sibling field, so only `content` is the reply.
     let text = message
         .get("content")
         .and_then(|c| c.as_str())
@@ -310,8 +286,6 @@ pub(crate) fn parse_anthropic(body: &Value) -> Result<(String, Usage)> {
         .get("content")
         .and_then(|c| c.as_array())
         .ok_or_else(|| AgentError::Decode("response carried no content blocks".into()))?;
-    // A reply can arrive as several text blocks, and a thinking block sits in
-    // the same array, so blocks are filtered by type rather than concatenated.
     let text = blocks
         .iter()
         .filter(|b| b.get("type").and_then(|t| t.as_str()) == Some("text"))
@@ -342,11 +316,6 @@ pub(crate) fn parse_google(body: &Value) -> Result<(String, Usage)> {
     Ok((text, usage))
 }
 
-/// Pull the human-readable part out of an error body.
-///
-/// All three formats nest the useful sentence under `error.message`; anything
-/// else is truncated raw text, because an unparsed body still beats a bare
-/// status code when a user reports a problem.
 pub(crate) fn auth_headers(resolved: &Resolved) -> reqwest::header::HeaderMap {
     use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
     let mut headers = HeaderMap::new();
@@ -397,12 +366,6 @@ pub(crate) fn error_message(status: u16, raw: &str) -> AgentError {
     AgentError::Provider { status, message }
 }
 
-// --- the call ------------------------------------------------------------
-
-/// Run one completion against the resolved provider.
-///
-/// Cancellation is the caller's job: abort the task holding this future and
-/// the in-flight request drops with it.
 pub async fn complete(
     client: &reqwest::Client,
     resolved: &Resolved,
@@ -432,8 +395,6 @@ pub async fn complete(
                 base_url.trim_end_matches('/'),
                 resolved.model_id
             ))
-            // Gemini takes the key in a header as well as a query parameter,
-            // and the header keeps it out of proxy and server access logs.
             .headers(auth_headers(resolved))
             .json(&google_body(req)?),
     };
@@ -874,8 +835,6 @@ mod tests {
 
     #[test]
     fn a_content_free_reply_is_empty_text_rather_than_an_error() {
-        // A refusal or a pure tool turn has no content. The caller decides what
-        // an empty reply means; parsing must not invent a failure.
         let body = json!({ "choices": [{ "message": { "role": "assistant" } }] });
         assert_eq!(parse_openai(&body).unwrap().0, "");
     }
@@ -968,8 +927,6 @@ mod tests {
 
     #[test]
     fn endpoints_are_built_without_double_slashes() {
-        // Users paste custom bases with a trailing slash; the URL still has to
-        // come out well formed.
         for base in [OPENAI_BASE, "http://localhost:8000/v1/"] {
             let url = format!("{}/chat/completions", base.trim_end_matches('/'));
             assert!(!url.contains("//chat"), "bad url {url}");

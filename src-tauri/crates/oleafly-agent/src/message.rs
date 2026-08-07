@@ -3,16 +3,12 @@ use serde_json::Value;
 
 use crate::error::{AgentError, Result};
 
-/// One piece of a user turn. Providers disagree on how images travel, so the
-/// caller hands over a data URL and each wire format reshapes it.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum ContentPart {
     Text {
         text: String,
     },
-    /// A `data:<media-type>;base64,<payload>` URL, matching what the browser
-    /// FileReader produces on the desktop side.
     Image {
         image: String,
     },
@@ -63,17 +59,11 @@ pub(crate) fn parse_arguments(raw: &str) -> Value {
     serde_json::from_str(raw).unwrap_or_else(|_| Value::Object(Default::default()))
 }
 
-/// A data URL split into the two halves every provider needs separately.
 pub(crate) struct DataUrl<'a> {
     pub media_type: &'a str,
     pub base64: &'a str,
 }
 
-/// Split `data:image/png;base64,AAAA` into its media type and payload.
-///
-/// Only base64 data URLs are accepted. A remote `https://` image would need
-/// the backend to fetch it, which turns a completion into an outbound request
-/// to an address the model chose, so it is refused rather than followed.
 pub(crate) fn parse_data_url(url: &str) -> Result<DataUrl<'_>> {
     let rest = url
         .strip_prefix("data:")
@@ -128,8 +118,6 @@ mod tests {
 
     #[test]
     fn keeps_commas_inside_the_payload() {
-        // Base64 never contains a comma, but splitting on the last one instead
-        // of the first would silently corrupt the payload if it ever did.
         let parsed = parse_data_url("data:image/jpeg;base64,AA,BB").unwrap();
         assert_eq!(parsed.base64, "AA,BB");
     }

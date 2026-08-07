@@ -10,8 +10,6 @@ import {
   saveCustomTemplate,
 } from "@/lib/tauri";
 
-// A whole document has to come back, and a slow provider on a long template
-// can sit well past the usual completion time before the first byte lands.
 const GENERATE_TIMEOUT_MS = 45_000;
 
 const SYSTEM = [

@@ -63,11 +63,6 @@ pub(crate) fn parse_models(wire: &Wire, body: &Value) -> Result<Vec<ModelInfo>> 
     Ok(models)
 }
 
-/// Ask a provider what models it offers.
-///
-/// Runs here rather than in the app window so the stored credential is never
-/// needed there. A freshly typed key can be validated by resolving with it
-/// before anything is saved.
 pub async fn list_models(client: &reqwest::Client, resolved: &Resolved) -> Result<Vec<ModelInfo>> {
     let mut request = client
         .get(models_url(resolved))

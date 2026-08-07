@@ -3,29 +3,30 @@ use serde_json::{json, Value};
 const MAX_SEARCH_HITS: usize = 200;
 const MAX_READ_LINES: usize = 4000;
 
-pub fn handles(name: &str) -> bool {
-    matches!(
-        name,
-        "read_file"
-            | "write_file"
-            | "replace_in_file"
-            | "create_file"
-            | "delete_file"
-            | "rename_file"
-            | "list_files"
-            | "search_project"
-    )
+const READ_ONLY: &[&str] = &["read_file", "list_files", "search_project"];
+const AUTO_APPROVABLE: &[&str] = &[
+    "write_file",
+    "replace_in_file",
+    "create_file",
+    "rename_file",
+];
+const ALWAYS_CONFIRM: &[&str] = &["delete_file"];
+
+pub fn handles(name: &str, approval_policy: &str) -> bool {
+    if READ_ONLY.contains(&name) {
+        return true;
+    }
+    match approval_policy {
+        "trust" => AUTO_APPROVABLE.contains(&name) || ALWAYS_CONFIRM.contains(&name),
+        "auto_writes" => AUTO_APPROVABLE.contains(&name),
+        _ => false,
+    }
 }
 
 fn arg<'a>(arguments: &'a Value, key: &str) -> Option<&'a str> {
     arguments.get(key).and_then(|v| v.as_str())
 }
 
-/// Which project a headless call operates on.
-///
-/// An explicit argument wins, then whatever the app last reported as open,
-/// then the most recently modified project on disk. The last one is what lets
-/// the server answer with no window running at all.
 pub fn resolve_project(arguments: &Value, reported: Option<String>) -> Result<String, String> {
     if let Some(explicit) = arg(arguments, "project_id") {
         crate::paths::validate_project_id(explicit)?;
@@ -200,31 +201,71 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_native_set_covers_project_io_and_nothing_that_needs_the_ui() {
+    fn reads_never_need_a_prompt_under_any_policy() {
+        for policy in ["ask", "auto_writes", "trust"] {
+            for name in ["read_file", "list_files", "search_project"] {
+                assert!(handles(name, policy), "{name} under {policy}");
+            }
+        }
+    }
+
+    #[test]
+    fn the_default_policy_sends_every_change_to_the_app_to_be_approved() {
         for name in [
-            "read_file",
             "write_file",
             "replace_in_file",
             "create_file",
-            "delete_file",
             "rename_file",
-            "list_files",
-            "search_project",
-        ] {
-            assert!(handles(name), "{name} should run natively");
-        }
-        for name in [
-            "verify_pdf_pages",
-            "preview_figure",
-            "insert_figure",
-            "toggle_theme",
-            "update_todos",
-            "project_map",
+            "delete_file",
         ] {
             assert!(
-                !handles(name),
-                "{name} needs the app and must not run natively"
+                !handles(name, "ask"),
+                "{name} must be approved before it runs"
             );
+        }
+    }
+
+    #[test]
+    fn auto_writes_still_stops_at_a_delete() {
+        for name in [
+            "write_file",
+            "replace_in_file",
+            "create_file",
+            "rename_file",
+        ] {
+            assert!(handles(name, "auto_writes"), "{name} is auto approvable");
+        }
+        assert!(
+            !handles("delete_file", "auto_writes"),
+            "a delete always needs a click"
+        );
+    }
+
+    #[test]
+    fn trust_permits_every_change_including_a_delete() {
+        for name in ["write_file", "delete_file", "rename_file"] {
+            assert!(handles(name, "trust"), "{name} under trust");
+        }
+    }
+
+    #[test]
+    fn an_unknown_policy_is_treated_as_the_strictest_one() {
+        assert!(!handles("write_file", ""));
+        assert!(!handles("write_file", "nonsense"));
+    }
+
+    #[test]
+    fn tools_that_need_the_interface_never_run_natively() {
+        for policy in ["ask", "auto_writes", "trust"] {
+            for name in [
+                "verify_pdf_pages",
+                "preview_figure",
+                "insert_figure",
+                "toggle_theme",
+                "set_main_doc",
+            ] {
+                assert!(!handles(name, policy), "{name} under {policy}");
+            }
         }
     }
 
