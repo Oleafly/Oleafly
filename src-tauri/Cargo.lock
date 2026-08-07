@@ -2252,6 +2252,7 @@ dependencies = [
  "flate2",
  "futures-util",
  "libc",
+ "oleafly-agent",
  "rand 0.8.7",
  "reqwest 0.12.28",
  "ring",
@@ -2271,6 +2272,17 @@ dependencies = [
  "tokio",
  "windows-sys 0.61.2",
  "zip",
+]
+
+[[package]]
+name = "oleafly-agent"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]

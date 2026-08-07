@@ -1,3 +1,13 @@
+# The Rust tree is a Cargo workspace: `oleafly` (the Tauri app) is the root
+# member, and reusable engine crates live under `crates/`. Rooting the
+# workspace here rather than at the repo top keeps `src-tauri/target` and every
+# CI path that references it unchanged. When the CLI lands and the crates need
+# to build without the Tauri toolchain, hoisting them to a repo-root workspace
+# is a single deliberate move.
+[workspace]
+members = ["crates/*"]
+resolver = "2"
+
 [package]
 name = "oleafly"
 version = "0.3.5"
@@ -15,6 +25,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+oleafly-agent = { path = "crates/oleafly-agent" }
 tauri = { version = "2", features = ["macos-private-api"] }
 tokio = { version = "1", features = ["time", "sync", "macros", "process", "io-util"] }
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }

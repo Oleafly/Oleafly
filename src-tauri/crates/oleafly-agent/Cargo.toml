@@ -1,0 +1,21 @@
+[package]
+name = "oleafly-agent"
+version = "0.1.0"
+description = "LLM provider clients and agent orchestration for Oleafly"
+license = "AGPL-3.0-or-later"
+edition = "2021"
+rust-version = "1.77"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+reqwest = { version = "0.12", default-features = false, features = [
+  "rustls-tls",
+  "json",
+  "stream",
+] }
+tokio = { version = "1", features = ["time", "sync"] }
+base64 = "0.22"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt"] }
