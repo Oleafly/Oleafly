@@ -41,3 +41,14 @@ if (typeof localStorage === "undefined") {
     },
   } as Storage);
 }
+
+if (typeof ResizeObserver === "undefined") {
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
+}

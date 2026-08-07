@@ -210,12 +210,16 @@ export function AISection() {
       setKeys({ ...nextKeys, [id]: "" });
       setSavedKeys(nextKeys);
       setStatus((s) => ({ ...s, [id]: "valid" }));
+      const label = provider?.name ?? custom?.name ?? id;
+      const validated = res.ok && supportsModelDiscovery(id, Boolean(custom));
       setMsg({
         ok: true,
         text:
           custom && !res.ok
             ? `${custom.name} key saved. Add models manually below.`
-            : `${provider?.name ?? custom?.name ?? id} connected.`,
+            : validated
+              ? `${label} connected.`
+              : `${label} key saved. It is checked on first use.`,
       });
     } catch (e) {
       setStatus((s) => ({ ...s, [id]: "error" }));
