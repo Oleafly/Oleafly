@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ModelMessage, ToolSet } from "ai";
+import type { ModelMessage, ToolSet } from "@/lib/chat-types";
 
 const mocks = vi.hoisted(() => ({
   invoke: vi.fn(),

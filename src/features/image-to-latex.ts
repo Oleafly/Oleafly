@@ -1,8 +1,7 @@
-import { generateText } from "ai";
-import { completeViaBackend, rustAgentEnabled } from "@/lib/agent-backend";
+import { completeViaBackend } from "@/lib/agent-backend";
 import { insertAtCursor } from "@/components/editor/cm/controller";
 import { modelSupportsVision } from "@/lib/ai-figure";
-import { hasConfiguredProvider, resolveActiveModel } from "@/lib/ai-providers";
+import { hasConfiguredProvider, pickActiveProvider } from "@/lib/ai-providers";
 import { logError } from "@/lib/log";
 import { getConfig } from "@/lib/tauri";
 import { toast } from "@/lib/toast";
@@ -11,7 +10,7 @@ export async function imageToLatexAvailable(): Promise<boolean> {
   try {
     const cfg = await getConfig();
     if (!hasConfiguredProvider(cfg)) return false;
-    const { providerId, modelId } = resolveActiveModel(cfg);
+    const { providerId, modelId } = pickActiveProvider(cfg);
     return modelSupportsVision(providerId, modelId);
   } catch {
     return false;
@@ -32,36 +31,18 @@ export async function imageToLatex(file: File): Promise<void> {
   });
   toast.info("Transcribing image ...");
   try {
-    const text = (await rustAgentEnabled())
-      ? (
-          await completeViaBackend({
-            system: TRANSCRIBE_SYSTEM,
-            messages: [
-              {
-                role: "user",
-                content: [
-                  { type: "text", text: TRANSCRIBE_PROMPT },
-                  { type: "image", image: dataUrl },
-                ],
-              },
-            ],
-          })
-        ).text
-      : (
-          await generateText({
-            model: resolveActiveModel(await getConfig()).model,
-            system: TRANSCRIBE_SYSTEM,
-            messages: [
-              {
-                role: "user",
-                content: [
-                  { type: "text", text: TRANSCRIBE_PROMPT },
-                  { type: "image", image: dataUrl },
-                ],
-              },
-            ],
-          })
-        ).text;
+    const { text } = await completeViaBackend({
+      system: TRANSCRIBE_SYSTEM,
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: TRANSCRIBE_PROMPT },
+            { type: "image", image: dataUrl },
+          ],
+        },
+      ],
+    });
     const snippet = text
       .replace(/^```[a-zA-Z]*\n?/gm, "")
       .replace(/```$/gm, "")

@@ -1,7 +1,5 @@
-import { streamText } from "ai";
-import { rustAgentEnabled, streamText as streamViaRust } from "@/lib/agent-backend";
-import { getConfig } from "@/lib/tauri";
-import { resolveActiveModel, type AIConfigLike } from "@/lib/ai-providers";
+import { streamText as streamViaRust } from "@/lib/agent-backend";
+import type { AIConfigLike } from "@/lib/ai-providers";
 import type { DocumentEngineDescriptor } from "@/lib/tauri";
 
 export type InlineEditArgs = {
@@ -55,30 +53,13 @@ export async function runInlineCompletion(args: InlineEditArgs): Promise<string>
     `\n\nInstruction: ${args.instruction}`,
   ].join("");
 
-  if (await rustAgentEnabled()) {
-    return stripFence(
-      await streamViaRust({
-        system: systemFor(args.engine),
-        user: prompt,
-        signal: args.signal,
-        onToken: args.onToken,
-      }),
-    );
-  }
-
-  const cfg = args.config ?? (await getConfig());
-  const { model } = resolveActiveModel(cfg);
-  const result = streamText({
-    model,
-    system: systemFor(args.engine),
-    prompt,
-    abortSignal: args.signal,
-  });
-
-  let full = "";
-  for await (const delta of result.textStream) {
-    full += delta;
-    args.onToken?.(full);
-  }
-  return stripFence(full);
+  return stripFence(
+    await streamViaRust({
+      system: systemFor(args.engine),
+      user: prompt,
+      signal: args.signal,
+      onToken: args.onToken,
+    }),
+  );
 }
+

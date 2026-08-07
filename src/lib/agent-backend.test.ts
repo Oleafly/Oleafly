@@ -13,8 +13,6 @@ import {
   AgentStreamError,
   completeText,
   completeViaBackend,
-  resetAgentBackendCache,
-  rustAgentEnabled,
   streamText,
   streamViaBackend,
   type AgentEvent,
@@ -26,27 +24,6 @@ function reply(text: string) {
 
 beforeEach(() => {
   mocks.invoke.mockReset();
-  resetAgentBackendCache();
-});
-
-describe("backend selection", () => {
-  it("is asked for once and then remembered", async () => {
-    mocks.invoke.mockResolvedValue("rust");
-    expect(await rustAgentEnabled()).toBe(true);
-    expect(await rustAgentEnabled()).toBe(true);
-    expect(mocks.invoke).toHaveBeenCalledTimes(1);
-  });
-
-  it("falls back to the TypeScript path when the command is missing", async () => {
-    // An older build has no agent_backend command; AI must keep working.
-    mocks.invoke.mockRejectedValue(new Error("unknown command"));
-    expect(await rustAgentEnabled()).toBe(false);
-  });
-
-  it("treats anything other than rust as the TypeScript path", async () => {
-    mocks.invoke.mockResolvedValue("ts");
-    expect(await rustAgentEnabled()).toBe(false);
-  });
 });
 
 describe("completion requests", () => {

@@ -1,4 +1,3 @@
-import { jsonSchema } from "ai";
 import { registerConnector } from "./connectors";
 
 type RawSchema = {
@@ -68,7 +67,7 @@ async function requireKey(
 
 export function createResearchTools(host: ResearchToolsHost): Record<
   string,
-  { description: string; inputSchema: ReturnType<typeof jsonSchema>; execute: RawToolDef["execute"] }
+  { description: string; inputSchema: RawSchema; execute: RawToolDef["execute"] }
 > {
   const tools: Record<string, RawToolDef> = {
     alphaxiv_search: {
@@ -214,12 +213,5 @@ export function createResearchTools(host: ResearchToolsHost): Record<
     },
   };
 
-  const wrapped: Record<
-    string,
-    { description: string; inputSchema: ReturnType<typeof jsonSchema>; execute: RawToolDef["execute"] }
-  > = {};
-  for (const [name, def] of Object.entries(tools)) {
-    wrapped[name] = { description: def.description, inputSchema: jsonSchema(def.inputSchema), execute: def.execute };
-  }
-  return wrapped;
+  return tools;
 }

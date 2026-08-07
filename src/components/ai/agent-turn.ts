@@ -1,4 +1,4 @@
-import type { ModelMessage, ToolSet } from "ai";
+import type { ModelMessage, ToolSet } from "@/lib/chat-types";
 import {
   runViaBackend,
   type AgentContentPart,

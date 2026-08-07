@@ -1,34 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { generateText } = vi.hoisted(() => ({ generateText: vi.fn() }));
-vi.mock("ai", () => ({ generateText }));
-vi.mock("@/lib/tauri", () => ({
-  getConfig: vi.fn(async () => ({
-    ai_provider: "openai",
-    ai_model: "gpt-4o-mini",
-    ai_keys: { openai: "sk" },
-  })),
-}));
-vi.mock("@/lib/ai-providers", () => ({
-  resolveActiveModel: vi.fn(() => ({
-    model: { id: "gpt-4o-mini" },
-    label: "GPT-4o mini",
-  })),
-}));
+const { completeText } = vi.hoisted(() => ({ completeText: vi.fn() }));
+vi.mock("@/lib/agent-backend", () => ({ completeText }));
 
-import { getConfig } from "@/lib/tauri";
-import { resolveActiveModel } from "@/lib/ai-providers";
 import { completeChatWithActiveModel } from "./llm-complete";
 
 beforeEach(() => {
-  generateText.mockReset();
-  vi.mocked(getConfig).mockClear();
-  vi.mocked(resolveActiveModel).mockClear();
+  completeText.mockReset();
 });
 
 describe("completeChatWithActiveModel", () => {
-  it("routes through generateText with active model and returns text", async () => {
-    generateText.mockResolvedValue({ text: "NEEDS: ...\n1.\nFOR: a\nAGAINST: b\nSCORE: 80" });
+  it("routes through the Rust agent and returns its text", async () => {
+    completeText.mockResolvedValue("NEEDS: ...\n1.\nFOR: a\nAGAINST: b\nSCORE: 80");
 
     const out = await completeChatWithActiveModel({
       system: "sys",
@@ -37,38 +20,31 @@ describe("completeChatWithActiveModel", () => {
     });
 
     expect(out).toBe("NEEDS: ...\n1.\nFOR: a\nAGAINST: b\nSCORE: 80");
-    expect(getConfig).toHaveBeenCalledOnce();
-    expect(resolveActiveModel).toHaveBeenCalledOnce();
-    expect(generateText).toHaveBeenCalledWith({
-      model: { id: "gpt-4o-mini" },
+    expect(completeText).toHaveBeenCalledWith({
       system: "sys",
-      prompt: "user prompt",
+      user: "user prompt",
       temperature: 0.2,
-      abortSignal: undefined,
+      signal: undefined,
     });
   });
 
-  it("forwards abortSignal to generateText", async () => {
-    generateText.mockResolvedValue({ text: "ok" });
-    const signal = AbortSignal.abort();
+  it("forwards the abort signal so a scan can be cancelled", async () => {
+    completeText.mockResolvedValue("");
+    const controller = new AbortController();
 
     await completeChatWithActiveModel({
       system: "s",
       user: "u",
       temperature: 0,
-      signal,
+      signal: controller.signal,
     });
 
-    expect(generateText.mock.calls[0][0].abortSignal).toBe(signal);
+    expect(completeText.mock.calls[0][0].signal).toBe(controller.signal);
   });
 
-  it("returns empty string when result.text is missing", async () => {
-    generateText.mockResolvedValue({});
-    const out = await completeChatWithActiveModel({
-      system: "s",
-      user: "u",
-      temperature: 0.1,
-    });
-    expect(out).toBe("");
+  it("never receives a provider credential from the caller", async () => {
+    completeText.mockResolvedValue("");
+    await completeChatWithActiveModel({ system: "s", user: "u", temperature: 0 });
+    expect(JSON.stringify(completeText.mock.calls[0][0])).not.toMatch(/sk-|api[_-]?key/i);
   });
 });

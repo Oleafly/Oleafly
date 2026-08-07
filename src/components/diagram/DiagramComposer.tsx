@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { generateText } from "ai";
 import {
   DiagramComposer as DiagramComposerCore,
   DiagramKitContext,
@@ -26,7 +25,8 @@ import {
   saveFigureToCache,
   getConfig,
 } from "@/lib/tauri";
-import { resolveActiveModel, hasConfiguredProvider } from "@/lib/ai-providers";
+import { completeText } from "@/lib/agent-backend";
+import { hasConfiguredProvider } from "@/lib/ai-providers";
 import { pdfPageToPng } from "@/lib/pdf-image";
 import { insertAtCursor } from "@/components/editor/cm/controller";
 import { editorTheme } from "@/components/editor/cm/theme";
@@ -87,15 +87,13 @@ async function fixWithAi(code: string, logTail: string): Promise<string> {
   if (!hasConfiguredProvider(cfg)) {
     throw new Error("Connect an AI provider in Settings to use Fix with AI.");
   }
-  const { model: aiModel } = resolveActiveModel(cfg);
   let text: string;
   try {
-    ({ text } = await generateText({
-      model: aiModel,
+    text = await completeText({
       system:
         "You fix LaTeX/TikZ figure code so it compiles under Tectonic (XeLaTeX) in a standalone document with tikz + shapes.geometric, arrows.meta, positioning, calc, backgrounds loaded. Return ONLY the corrected figure body: the \\begin{tikzpicture}...\\end{tikzpicture} plus any \\definecolor lines. No preamble, no \\documentclass, no explanation, no markdown code fences. Never use em dashes.",
-      prompt: `This TikZ figure failed to compile. Fix it.\n\nCODE:\n${code}\n\nCOMPILE LOG (tail):\n${logTail}`,
-    }));
+      user: `This TikZ figure failed to compile. Fix it.\n\nCODE:\n${code}\n\nCOMPILE LOG (tail):\n${logTail}`,
+    });
   } catch (e) {
     throw new Error(`Fix failed: ${e}`);
   }

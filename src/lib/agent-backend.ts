@@ -1,11 +1,7 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
 
-// One-shot completions routed through the Rust agent crate.
-//
-// The point of this path is that the provider credential never reaches the
-// webview: the backend reads it from the config, calls the provider, and
-// returns only the text. The in-webview AI SDK path still exists behind
-// `OLEAFLY_AGENT=ts` so the two can be compared on a single build.
+// Every model call runs in the Rust backend. Provider credentials are read
+// there and never reach the webview.
 
 export type AgentContentPart =
   | { type: "text"; text: string }
@@ -38,26 +34,6 @@ export interface AgentCompletionResponse {
   usage: { input: number; output: number };
   provider_id: string;
   model_id: string;
-}
-
-let backendPromise: Promise<string> | null = null;
-
-/**
- * Whether AI calls should go through Rust. Resolved once per session: the
- * backend reads an environment variable that cannot change while the app runs.
- */
-export async function rustAgentEnabled(): Promise<boolean> {
-  if (!backendPromise) {
-    // A failure here means the command is missing, which is only possible on a
-    // build without the Rust path. Falling back to TypeScript is the safe read.
-    backendPromise = invoke<string>("agent_backend").catch(() => "ts");
-  }
-  return (await backendPromise) === "rust";
-}
-
-/** Test seam: forget the cached backend choice. */
-export function resetAgentBackendCache(): void {
-  backendPromise = null;
 }
 
 let counter = 0;

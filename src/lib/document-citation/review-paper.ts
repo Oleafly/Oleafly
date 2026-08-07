@@ -1,7 +1,4 @@
-import { streamText } from "ai";
-import { rustAgentEnabled, streamText as streamViaRust } from "@/lib/agent-backend";
-import { getConfig } from "@/lib/tauri";
-import { resolveActiveModel } from "@/lib/ai-providers";
+import { streamText as streamViaRust } from "@/lib/agent-backend";
 import {
   systemPromptForReview,
   userPromptForReview,
@@ -16,32 +13,11 @@ export async function runPaperReview(args: {
   signal?: AbortSignal;
   onChunk?: (full: string) => void;
 }): Promise<string> {
-  const temperature = args.mode === "fire" ? 0.7 : 0.4;
-
-  if (await rustAgentEnabled()) {
-    return streamViaRust({
-      system: systemPromptForReview(args.mode),
-      user: userPromptForReview(args.paperText),
-      temperature,
-      signal: args.signal,
-      onToken: args.onChunk,
-    });
-  }
-
-  const cfg = await getConfig();
-  const { model } = resolveActiveModel(cfg);
-  const result = streamText({
-    model,
+  return streamViaRust({
     system: systemPromptForReview(args.mode),
-    prompt: userPromptForReview(args.paperText),
-    temperature,
-    abortSignal: args.signal,
+    user: userPromptForReview(args.paperText),
+    temperature: args.mode === "fire" ? 0.7 : 0.4,
+    signal: args.signal,
+    onToken: args.onChunk,
   });
-
-  let full = "";
-  for await (const delta of result.textStream) {
-    full += delta;
-    args.onChunk?.(full);
-  }
-  return full;
 }

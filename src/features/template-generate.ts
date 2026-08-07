@@ -1,6 +1,5 @@
-import { generateText } from "ai";
-import { completeViaBackend, rustAgentEnabled } from "@/lib/agent-backend";
-import { buildModel, hasConfiguredProvider, resolveActiveModel } from "@/lib/ai-providers";
+import { completeViaBackend } from "@/lib/agent-backend";
+import { hasConfiguredProvider } from "@/lib/ai-providers";
 import { pdfPageToPng } from "@/lib/pdf-image";
 import {
   compileIsolated,
@@ -89,38 +88,15 @@ export async function generateTemplateSource(
 ): Promise<ParsedTemplate> {
   const prompt = `Create a template for: ${description}`;
 
-  if (await rustAgentEnabled()) {
-    const { text } = await completeViaBackend(
-      {
-        system: SYSTEM,
-        messages: [{ role: "user", content: [{ type: "text", text: prompt }] }],
-        timeout_ms: GENERATE_TIMEOUT_MS,
-      },
-      undefined,
-      override
-        ? { provider_id: override.providerId, model_id: override.modelId }
-        : undefined,
-    );
-    return parseGeneratedTemplate(text);
-  }
-
-  const cfg = await getConfig();
-  let model: ReturnType<typeof buildModel>;
-  if (override) {
-    const credential = cfg.ai_keys?.[override.providerId] ?? "";
-    const customBaseURL = cfg.ai_custom_providers?.find(
-      (c) => c.id === override.providerId,
-    )?.baseURL;
-    model = buildModel(override.providerId, override.modelId, credential, customBaseURL);
-  } else {
-    model = resolveActiveModel(cfg).model;
-  }
-  const { text } = await generateText({
-    model,
-    system: SYSTEM,
-    prompt,
-    abortSignal: AbortSignal.timeout(GENERATE_TIMEOUT_MS),
-  });
+  const { text } = await completeViaBackend(
+    {
+      system: SYSTEM,
+      messages: [{ role: "user", content: [{ type: "text", text: prompt }] }],
+      timeout_ms: GENERATE_TIMEOUT_MS,
+    },
+    undefined,
+    override ? { provider_id: override.providerId, model_id: override.modelId } : undefined,
+  );
   return parseGeneratedTemplate(text);
 }
 
