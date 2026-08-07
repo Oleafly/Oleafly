@@ -14,7 +14,7 @@ import {
   seedProviderModels,
   setModelEnabled,
 } from "@/lib/ai-model-state";
-import { discoveryFor, fetchProviderModels, getProvider } from "@/lib/ai-providers";
+import { agentListModels } from "@/lib/tauri";
 
 export interface ModelManagerProps {
   providerId: string;
@@ -37,19 +37,18 @@ export function ModelManager({ providerId, models, apiKey, onChange }: ModelMana
   async function refresh() {
     setRefreshing(true);
     setRefreshError("");
-    const provider = getProvider(providerId);
-    const res = await fetchProviderModels({
-      providerId,
-      baseURL: provider?.baseURL,
-      key: apiKey,
-      discovery: discoveryFor(providerId),
-      seed: provider?.models ?? [],
-    });
-    setRefreshing(false);
-    if (res.ok) {
-      onChange(mergeFetchedModels(models, res.models));
-    } else {
-      setRefreshError(res.reason === "invalid-key" ? "Invalid API key." : "Could not reach the provider.");
+    try {
+      // The backend holds the stored credential, so refreshing works for a
+      // saved provider even though the key field is deliberately empty.
+      const fetched = await agentListModels({ providerId, key: apiKey || undefined });
+      onChange(mergeFetchedModels(models, fetched));
+    } catch (error) {
+      const message = String(error);
+      setRefreshError(
+        /401|403|api key/i.test(message) ? "Invalid API key." : "Could not reach the provider.",
+      );
+    } finally {
+      setRefreshing(false);
     }
   }
 

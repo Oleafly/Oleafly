@@ -141,6 +141,7 @@ pub fn run() {
             agent::agent_stream,
             agent::agent_run,
             agent::agent_tool_result,
+            agent::agent_list_models,
             commands::reload_views,
             commands::library_root,
             commands::app_version,

@@ -663,6 +663,27 @@ export const mcpRegisterTools = (
  */
 export const REDACTED_SECRET = "__stored__";
 
+export interface ProviderModel {
+  id: string;
+  name: string;
+}
+
+/**
+ * List a provider's models. The request is made in the backend, so a stored
+ * credential never has to reach the window. `key` is only for validating one
+ * the user has typed but not saved.
+ */
+export const agentListModels = (args: {
+  providerId: string;
+  key?: string;
+  baseURL?: string;
+}) =>
+  invoke<ProviderModel[]>("agent_list_models", {
+    providerId: args.providerId,
+    key: args.key ?? null,
+    baseUrl: args.baseURL ?? null,
+  });
+
 export const mcpSetActiveProject = (projectId: string | null) =>
   invoke<void>("mcp_set_active_project", { projectId });
 export const mcpToolResult = (callId: number, result: unknown) =>
