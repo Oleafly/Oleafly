@@ -1,0 +1,229 @@
+import { test, expect } from "../fixtures";
+import {
+  createBlankProject,
+  fillTextarea,
+  openProject,
+  openRailTab,
+  waitLong,
+  type Page,
+} from "../helpers";
+
+// Real provider, real key, real network. Everything else in this suite runs
+// against a local mock, which proves the plumbing but never the wire: a mock
+// cannot show that the endpoint is right, that the credential is accepted, or
+// that a reasoning model's thinking phase is parsed. This file does.
+//
+// Opt in with E2E_AI_TOKEN in e2e/.env. Skipped when unset, so CI without
+// secrets stays green.
+
+const TOKEN = process.env.E2E_AI_TOKEN;
+const PROVIDER = process.env.E2E_AI_PROVIDER_ID || "zai";
+const MODEL = process.env.E2E_AI_MODEL || "glm-5.2";
+
+const PROJECT = "Agent Live";
+const TA = 'textarea[placeholder*="Ask AI"]';
+
+// Real calls are slow, and a reasoning model can think for a while before its
+// first visible token.
+const REPLY_TIMEOUT = 120_000;
+
+async function openLiveProject(page: Page) {
+  const exists = await page.evaluate<boolean>(
+    `document.body.innerText.includes(${JSON.stringify(PROJECT)})`,
+  );
+  if (exists) {
+    await openProject(page, PROJECT);
+  } else {
+    await createBlankProject(page, PROJECT);
+  }
+  await expect(page.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+}
+
+/** Point the app at the real provider. The key goes to the hermetic config. */
+async function connectLive(page: Page, providerId: string, baseURL?: string) {
+  const ok = await page.evaluate<boolean>(`
+    (async () => {
+      const { getConfig, setConfig } = await import("/src/lib/tauri.ts");
+      const cfg = await getConfig();
+      const custom = ${JSON.stringify(baseURL ?? null)}
+        ? [
+            ...cfg.ai_custom_providers.filter((c) => c.id !== ${JSON.stringify(providerId)}),
+            {
+              id: ${JSON.stringify(providerId)},
+              name: "Live Gateway",
+              baseURL: ${JSON.stringify(baseURL ?? "")},
+              keyOptional: false,
+            },
+          ]
+        : cfg.ai_custom_providers;
+      await setConfig({
+        ...cfg,
+        ai_custom_providers: custom,
+        ai_keys: { ...cfg.ai_keys, [${JSON.stringify(providerId)}]: ${JSON.stringify(TOKEN ?? "")} },
+        ai_provider: ${JSON.stringify(providerId)},
+        ai_model: ${JSON.stringify(MODEL)},
+      });
+      window.dispatchEvent(new CustomEvent("oleafly:ai-config-changed"));
+      return true;
+    })()
+  `);
+  expect(ok).toBe(true);
+}
+
+async function openChat(page: Page) {
+  await openRailTab(page, "Chat / AI Assistant");
+  await expect(page.locator(TA)).toBeVisible({ timeout: 10_000 });
+}
+
+async function ask(page: Page, text: string) {
+  await fillTextarea(page, TA, text);
+  await page.press(TA, "Enter");
+}
+
+/**
+ * Wait for a run to start and then finish.
+ *
+ * Waiting only for the Stop button to be absent returns instantly, because it
+ * has not rendered yet at the moment the message is sent. That made two tests
+ * assert against an empty transcript and fail for the wrong reason.
+ */
+async function waitForRun(page: Page, timeoutMs = REPLY_TIMEOUT) {
+  await waitLong(page, `!!document.querySelector('[aria-label="Stop"]')`, 30_000);
+  await waitLong(page, `!document.querySelector('[aria-label="Stop"]')`, timeoutMs);
+}
+
+test.describe("live provider", () => {
+  test.skip(!TOKEN, "set E2E_AI_TOKEN in e2e/.env to run against a real provider");
+
+  test("lists the models the key actually has access to", async ({ tauriPage }) => {
+    test.setTimeout(REPLY_TIMEOUT);
+    await openLiveProject(tauriPage);
+    await connectLive(tauriPage, PROVIDER);
+
+    // Discovery runs in Rust against the stored credential. A wrong endpoint
+    // or a rejected key fails here rather than silently later.
+    const models = await tauriPage.evaluate<{ id: string }[]>(`
+      (async () => {
+        const { agentListModels } = await import("/src/lib/tauri.ts");
+        return await agentListModels({ providerId: ${JSON.stringify(PROVIDER)} });
+      })()
+    `);
+
+    expect(models.length, "the provider returned no models").toBeGreaterThan(0);
+    expect(models.every((m) => typeof m.id === "string" && m.id.length > 0)).toBe(true);
+  });
+
+  test("streams a real reply and records real token usage", async ({ tauriPage }) => {
+    test.setTimeout(REPLY_TIMEOUT);
+    await openLiveProject(tauriPage);
+    await connectLive(tauriPage, PROVIDER);
+    await openChat(tauriPage);
+
+    await ask(tauriPage, "Reply with exactly this token and nothing else: LIVEZAI7");
+    await waitLong(
+      tauriPage,
+      `document.body.innerText.includes("LIVEZAI7") && !document.querySelector('[aria-label="Stop"]')`,
+      REPLY_TIMEOUT,
+    );
+
+    // Usage comes from the provider's own accounting, so a non-zero count
+    // proves the usage frame was parsed rather than defaulted.
+    const usageButton = tauriPage.locator('button[aria-label="View AI usage"]');
+    await expect(usageButton).toBeVisible({ timeout: 20_000 });
+    await usageButton.click();
+    const usage = tauriPage.getByTestId("ai-run-usage");
+    await expect(usage).toBeVisible({ timeout: 10_000 });
+    const text = await usage.textContent();
+    expect(text ?? "", "token counts should not be zero").toMatch(/[1-9]/);
+  });
+
+  test("streams the thinking phase separately from the answer", async ({ tauriPage }) => {
+    test.setTimeout(REPLY_TIMEOUT);
+    await openLiveProject(tauriPage);
+    await connectLive(tauriPage, PROVIDER);
+    await openChat(tauriPage);
+
+    // GLM and DeepSeek send their thinking as reasoning_content, which the
+    // strict OpenAI shape drops. No mock covers this, and getting it wrong
+    // means total silence while the model thinks.
+    await ask(tauriPage, "Think step by step, then answer: what is 17 times 23?");
+    await waitForRun(tauriPage);
+
+    const sawReasoning = await tauriPage.evaluate<boolean>(
+      `/Thought for|Reasoning/i.test(document.body.innerText)`,
+    );
+    expect(sawReasoning, "no thinking phase was rendered").toBe(true);
+
+    const answered = await tauriPage.evaluate<boolean>(
+      `document.body.innerText.includes("391")`,
+    );
+    expect(answered, "the answer should survive the thinking phase").toBe(true);
+  });
+
+  test("runs a real tool call against the project", async ({ tauriPage }) => {
+    test.setTimeout(REPLY_TIMEOUT);
+    await openLiveProject(tauriPage);
+    await connectLive(tauriPage, PROVIDER);
+    await openChat(tauriPage);
+
+    await ask(
+      tauriPage,
+      "Use the read_file tool to read main.tex, then reply with the documentclass name only.",
+    );
+    await waitForRun(tauriPage);
+
+    const transcript = await tauriPage.evaluate<string>(`document.body.innerText`);
+    expect(transcript, "the tool call should appear in the transcript").toContain("read_file");
+    expect(transcript, "the model should report what it read").toMatch(/article/i);
+  });
+
+  test("the same key works through a custom provider entry", async ({ tauriPage }) => {
+    test.setTimeout(REPLY_TIMEOUT);
+    await openLiveProject(tauriPage);
+
+    // A user-defined provider takes a different route: its base URL comes from
+    // config and stream_options is deliberately omitted, because a
+    // self-hosted or third-party gateway can reject unknown fields. Pointing
+    // one at the same real endpoint proves that route against a live API.
+    const baseURL =
+      process.env.E2E_AI_BASE_URL || "https://api.z.ai/api/coding/paas/v4";
+    await connectLive(tauriPage, "live-gateway", baseURL);
+    await openChat(tauriPage);
+
+    await ask(tauriPage, "Reply with exactly this token and nothing else: LIVECUSTOM9");
+    await waitLong(
+      tauriPage,
+      `document.body.innerText.includes("LIVECUSTOM9") && !document.querySelector('[aria-label="Stop"]')`,
+      REPLY_TIMEOUT,
+    );
+  });
+
+  test("a rejected key surfaces the provider's own message", async ({ tauriPage }) => {
+    test.setTimeout(REPLY_TIMEOUT);
+    await openLiveProject(tauriPage);
+
+    // Real 401 handling, which a mock cannot exercise honestly.
+    const failure = await tauriPage.evaluate<string>(`
+      (async () => {
+        const { agentListModels, getConfig, setConfig } = await import("/src/lib/tauri.ts");
+        const cfg = await getConfig();
+        await setConfig({
+          ...cfg,
+          ai_keys: { ...cfg.ai_keys, "live-bad": "sk-definitely-not-valid" },
+        });
+        try {
+          await agentListModels({
+            providerId: "live-bad",
+            baseURL: ${JSON.stringify(process.env.E2E_AI_BASE_URL || "https://api.z.ai/api/coding/paas/v4")},
+          });
+          return "UNEXPECTED SUCCESS";
+        } catch (error) {
+          return String(error);
+        }
+      })()
+    `);
+
+    expect(failure).not.toBe("UNEXPECTED SUCCESS");
+    expect(failure, "the provider's status should reach the user").toMatch(/40[13]|invalid|unauthor/i);
+  });
+});
