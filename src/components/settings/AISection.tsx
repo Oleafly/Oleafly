@@ -9,7 +9,12 @@ import {
   type StoredModel,
 } from "@/lib/tauri";
 import { defaultModel, getProvider } from "@/lib/ai-providers";
-import { enabledModels, mergeFetchedModels, seedProviderModels } from "@/lib/ai-model-state";
+import {
+  enabledModels,
+  mergeFetchedModels,
+  pickActiveModel,
+  seedProviderModels,
+} from "@/lib/ai-model-state";
 import { listOllamaModels, DEFAULT_OLLAMA_HOST } from "@/lib/ollama";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSettingsStore } from "@/store/settings";
@@ -202,7 +207,7 @@ export function AISection() {
         ai_keys: nextKeys,
         ai_provider_models: { ...cfg.ai_provider_models, [id]: mergedModels },
         ai_provider: cfg.ai_provider || id,
-        ai_model: wasActive ? cfg.ai_model : defaultModel(id),
+        ai_model: wasActive ? cfg.ai_model : pickActiveModel(mergedModels, defaultModel(id)),
       };
       await persist(next);
       setKeys(nextKeys);

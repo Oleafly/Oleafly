@@ -198,6 +198,83 @@ test.describe("live provider", () => {
     );
   });
 
+  test("saving a key selects a model the provider actually offers", async ({ tauriPage }) => {
+    test.setTimeout(REPLY_TIMEOUT);
+    await openLiveProject(tauriPage);
+
+    // The flow a user goes through: paste a key, the app validates it by
+    // listing models, persists that list, and picks an active model from it.
+    // Picking the catalog default blind would point a plan or a gateway at a
+    // model it does not serve.
+    const outcome = await tauriPage.evaluate<{
+      active: string;
+      stored: string[];
+      listed: string[];
+    }>(`
+      (async () => {
+        const { agentListModels, getConfig, setConfig } = await import("/src/lib/tauri.ts");
+        const { mergeFetchedModels, pickActiveModel, seedProviderModels } =
+          await import("/src/lib/ai-model-state.ts");
+        const { defaultModel } = await import("/src/lib/ai-providers.ts");
+
+        const id = ${JSON.stringify(PROVIDER)};
+        const listed = await agentListModels({ providerId: id, key: ${JSON.stringify(TOKEN ?? "")} });
+        const merged = mergeFetchedModels(seedProviderModels(id), listed);
+        const active = pickActiveModel(merged, defaultModel(id));
+
+        const cfg = await getConfig();
+        await setConfig({
+          ...cfg,
+          ai_keys: { ...cfg.ai_keys, [id]: ${JSON.stringify(TOKEN ?? "")} },
+          ai_provider_models: { ...cfg.ai_provider_models, [id]: merged },
+          ai_provider: id,
+          ai_model: active,
+        });
+
+        const saved = await getConfig();
+        return {
+          active: saved.ai_model,
+          stored: (saved.ai_provider_models[id] || []).map((m) => m.id),
+          listed: listed.map((m) => m.id),
+        };
+      })()
+    `);
+
+    expect(outcome.listed.length, "the provider listed no models").toBeGreaterThan(0);
+    expect(outcome.stored, "the fetched list must persist").toEqual(
+      expect.arrayContaining(outcome.listed),
+    );
+    expect(
+      outcome.listed.includes(outcome.active),
+      "the selected model must be one the provider offers",
+    ).toBe(true);
+  });
+
+  test("a refresh drops a model the provider no longer lists", async ({ tauriPage }) => {
+    test.setTimeout(REPLY_TIMEOUT);
+    await openLiveProject(tauriPage);
+
+    // Seed a discovered model that cannot exist, then reconcile against the
+    // real listing. Without pruning it would sit in the picker forever and
+    // fail whenever a user chose it.
+    const stillThere = await tauriPage.evaluate<boolean>(`
+      (async () => {
+        const { agentListModels } = await import("/src/lib/tauri.ts");
+        const { mergeFetchedModels } = await import("/src/lib/ai-model-state.ts");
+        const id = ${JSON.stringify(PROVIDER)};
+        const listed = await agentListModels({ providerId: id, key: ${JSON.stringify(TOKEN ?? "")} });
+        const withGhost = [
+          { id: "glm-retired-0", name: "Retired", enabled: true, source: "fetched" },
+          ...listed.map((m) => ({ ...m, enabled: true, source: "fetched" })),
+        ];
+        const merged = mergeFetchedModels(withGhost, listed);
+        return merged.some((m) => m.id === "glm-retired-0");
+      })()
+    `);
+
+    expect(stillThere, "a deprecated model survived the refresh").toBe(false);
+  });
+
   test("a rejected key surfaces the provider's own message", async ({ tauriPage }) => {
     test.setTimeout(REPLY_TIMEOUT);
     await openLiveProject(tauriPage);
