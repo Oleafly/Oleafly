@@ -234,30 +234,65 @@ fn write_config_at(path: &std::path::Path, config: &AppConfig) -> Result<(), Str
     })
 }
 
+pub const REDACTED: &str = "__stored__";
+
+fn is_credential(provider: &str) -> bool {
+    // Ollama stores a host URL rather than a secret, and Settings shows it.
+    provider != "ollama"
+}
+
+pub fn redact_ai_secrets(cfg: &mut AppConfig) {
+    for (provider, value) in cfg.ai_keys.iter_mut() {
+        if !value.is_empty() && is_credential(provider) {
+            *value = REDACTED.to_string();
+        }
+    }
+    if !cfg.ai_api_key.is_empty() {
+        cfg.ai_api_key = REDACTED.to_string();
+    }
+}
+
+fn restore_ai_secrets(config: &mut AppConfig, stored: &AppConfig) {
+    for (provider, value) in config.ai_keys.iter_mut() {
+        if value == REDACTED || value.is_empty() {
+            if let Some(previous) = stored.ai_keys.get(provider) {
+                *value = previous.clone();
+            }
+        }
+    }
+    if config.ai_api_key == REDACTED || config.ai_api_key.is_empty() {
+        config.ai_api_key = stored.ai_api_key.clone();
+    }
+}
+
 #[tauri::command]
 pub fn get_config() -> Result<AppConfig, String> {
     let mut cfg = read_config()?;
     // Never expose the GitHub push token to the webview; report only presence.
-    // (The AI keys stay, since the frontend calls those providers directly.)
     cfg.github_connected = !cfg.github_token.is_empty();
     cfg.github_token = String::new();
     // Same for the MCP bearer token: only `mcp_connection_info` may hand it
     // to the webview (for Settings copy buttons while the server is running).
     cfg.mcp_token = String::new();
+    // Provider credentials are answered as presence only. The renderer parses
+    // untrusted LaTeX, BibTeX and PDFs, so a key that never arrives there
+    // cannot be exfiltrated from there. The Rust agent calls the providers.
+    redact_ai_secrets(&mut cfg);
     Ok(cfg)
 }
 
 #[tauri::command]
 pub fn set_config(mut config: AppConfig) -> Result<(), String> {
-    if config.github_token.is_empty() || config.mcp_token.is_empty() {
-        let stored = read_config()?;
-        if config.github_token.is_empty() {
-            config.github_token = stored.github_token;
-        }
-        if config.mcp_token.is_empty() {
-            config.mcp_token = stored.mcp_token;
-        }
+    let stored = read_config()?;
+    if config.github_token.is_empty() {
+        config.github_token = stored.github_token.clone();
     }
+    if config.mcp_token.is_empty() {
+        config.mcp_token = stored.mcp_token.clone();
+    }
+    // A redacted or blank value means "unchanged"; dropping the entry
+    // entirely is how the frontend deletes a credential.
+    restore_ai_secrets(&mut config, &stored);
     config.github_connected = false;
     write_config(&config)
 }
@@ -265,6 +300,75 @@ pub fn set_config(mut config: AppConfig) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn cfg_with_keys() -> AppConfig {
+        let mut cfg = AppConfig::default();
+        cfg.ai_keys.insert("openai".into(), "sk-real".into());
+        cfg.ai_keys.insert("groq".into(), "gsk-real".into());
+        cfg.ai_api_key = "sk-legacy".into();
+        cfg
+    }
+
+    #[test]
+    fn redaction_reports_presence_without_the_value() {
+        let mut cfg = cfg_with_keys();
+        cfg.ai_keys.insert("mistral".into(), String::new());
+        redact_ai_secrets(&mut cfg);
+
+        assert_eq!(cfg.ai_keys.get("openai").unwrap(), REDACTED);
+        assert_eq!(cfg.ai_keys.get("groq").unwrap(), REDACTED);
+        assert_eq!(cfg.ai_api_key, REDACTED);
+        assert_eq!(cfg.ai_keys.get("mistral").unwrap(), "");
+        assert!(!serde_json::to_string(&cfg).unwrap().contains("sk-real"));
+    }
+
+    #[test]
+    fn the_ollama_host_is_not_a_secret_and_stays_visible() {
+        let mut cfg = AppConfig::default();
+        cfg.ai_keys
+            .insert("ollama".into(), "http://localhost:11434".into());
+        cfg.ai_keys.insert("openai".into(), "sk-real".into());
+        redact_ai_secrets(&mut cfg);
+        assert_eq!(cfg.ai_keys.get("ollama").unwrap(), "http://localhost:11434");
+        assert_eq!(cfg.ai_keys.get("openai").unwrap(), REDACTED);
+    }
+
+    #[test]
+    fn a_redacted_round_trip_never_overwrites_a_stored_key() {
+        let stored = cfg_with_keys();
+        let mut incoming = stored.clone();
+        redact_ai_secrets(&mut incoming);
+        incoming.ai_model = "gpt-4o-mini".into();
+
+        restore_ai_secrets(&mut incoming, &stored);
+        assert_eq!(incoming.ai_keys.get("openai").unwrap(), "sk-real");
+        assert_eq!(incoming.ai_keys.get("groq").unwrap(), "gsk-real");
+        assert_eq!(incoming.ai_api_key, "sk-legacy");
+        assert_eq!(incoming.ai_model, "gpt-4o-mini");
+    }
+
+    #[test]
+    fn a_new_value_replaces_the_stored_one() {
+        let stored = cfg_with_keys();
+        let mut incoming = stored.clone();
+        redact_ai_secrets(&mut incoming);
+        incoming.ai_keys.insert("openai".into(), "sk-new".into());
+
+        restore_ai_secrets(&mut incoming, &stored);
+        assert_eq!(incoming.ai_keys.get("openai").unwrap(), "sk-new");
+    }
+
+    #[test]
+    fn dropping_the_entry_is_how_a_credential_is_deleted() {
+        let stored = cfg_with_keys();
+        let mut incoming = stored.clone();
+        redact_ai_secrets(&mut incoming);
+        incoming.ai_keys.remove("groq");
+
+        restore_ai_secrets(&mut incoming, &stored);
+        assert!(!incoming.ai_keys.contains_key("groq"));
+        assert_eq!(incoming.ai_keys.get("openai").unwrap(), "sk-real");
+    }
 
     fn temp_dir() -> std::path::PathBuf {
         use std::sync::atomic::{AtomicU64, Ordering};

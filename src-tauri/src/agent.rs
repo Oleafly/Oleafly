@@ -55,22 +55,6 @@ pub fn provider_config(cfg: &AppConfig) -> ProviderConfig {
     }
 }
 
-/// Which implementation the frontend should use for AI calls.
-///
-/// The Rust path is the default on this branch. `OLEAFLY_AGENT=ts` restores
-/// the previous in-webview path so the two can be compared on one build.
-#[tauri::command]
-pub fn agent_backend() -> String {
-    backend_from(std::env::var("OLEAFLY_AGENT").ok().as_deref())
-}
-
-fn backend_from(value: Option<&str>) -> String {
-    match value {
-        Some("ts") => "ts".to_string(),
-        _ => "rust".to_string(),
-    }
-}
-
 /// Naming a provider and model for one call without changing the active one.
 /// Only ids travel; the credential is still looked up in the backend.
 #[derive(serde::Deserialize)]
@@ -341,15 +325,5 @@ mod tests {
         assert_eq!(resolved.provider_id, "groq");
         assert_eq!(resolved.model_id, "llama-3.3-70b-versatile");
         assert_eq!(resolved.credential, "gsk-1");
-    }
-
-    #[test]
-    fn the_backend_flag_defaults_to_rust_and_only_ts_opts_out() {
-        // Driven through the pure helper: cargo test runs in parallel, so
-        // mutating the process environment here would race other tests.
-        assert_eq!(backend_from(None), "rust");
-        assert_eq!(backend_from(Some("ts")), "ts");
-        assert_eq!(backend_from(Some("rust")), "rust");
-        assert_eq!(backend_from(Some("nonsense")), "rust");
     }
 }

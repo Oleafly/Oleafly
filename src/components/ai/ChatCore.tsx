@@ -1,14 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import {
-  streamText,
-  type AssistantContent,
-  type LanguageModel,
-  type ModelMessage,
-  type ToolContent,
-  type ToolSet,
-  type UserContent,
-} from "ai";
-import { rustAgentEnabled } from "@/lib/agent-backend";
+import type { AssistantContent, ModelMessage, ToolSet, UserContent } from "@/lib/chat-types";
 import { runAgentHarness } from "./agent-turn";
 import {
   ArrowLeftRight,
@@ -59,7 +50,7 @@ import {
 } from "@/components/ai/chat-run-registry";
 import { personaGradient } from "@/lib/persona-colors";
 import { toast } from "@/lib/toast";
-import { buildModel as buildAiModel, defaultModel, mergeCustomProviders, resolveActiveModel } from "@/lib/ai-providers";
+import { defaultModel, mergeCustomProviders, pickActiveProvider } from "@/lib/ai-providers";
 import { enabledModels } from "@/lib/ai-model-state";
 import { useSettingsStore } from "@/store/settings";
 import { useChatsStore, type ChatMessage, type StoredChat } from "@/store/chats";
@@ -71,7 +62,7 @@ import { useAgentTodoStore } from "@/store/agent-todos";
 import { useAgentMemoryStore } from "@/store/agent-memory";
 import { useAgentHandoffStore } from "@/store/agent-handoff";
 import { buildWorkspaceContext } from "@/lib/ai-context";
-import { packChatHistory, packToolOutput } from "@/lib/ai-context-pack";
+import { packChatHistory } from "@/lib/ai-context-pack";
 import { estimateUsd, formatUsd } from "@/lib/ai-pricing";
 import { formatRagContext, retrieveProjectChunks } from "@/lib/ai-rag";
 import { ChatHistoryModal } from "@/components/ai/ChatHistoryModal";
@@ -94,11 +85,6 @@ import {
   InfoHint,
   MessageItem,
   formatError,
-  isRetryable,
-  MAX_STEPS,
-  MAX_RETRIES,
-  RETRY_BASE_MS,
-  sleep,
 } from "@/components/ai/chat-parts";
 import type { EngineFeature } from "@/lib/tauri";
 
@@ -589,7 +575,7 @@ export function ChatCore() {
     // configured default, not whatever the last conversation was left on.
     const cfg = cfgRef.current;
     if (cfg) {
-      const { providerId, modelId } = resolveActiveModel(cfg);
+      const { providerId, modelId } = pickActiveProvider(cfg);
       setProvider(providerId);
       setModel(modelId);
       setApiKey(keysMap[providerId] || "");
@@ -906,409 +892,115 @@ ${sandboxedCustom}`;
     }
 
     try {
-      if (await rustAgentEnabled()) {
-        const tools = resolveChatTools(registry.aiToolsets, figure ? "figure" : "chat", {
-          confirm,
-          onImage: (d: string) => pendingImagesRef.current.push(d),
-        });
-        if (!documentEngine.capabilities.features.includes("document_index")) {
-          delete tools.project_map;
-        }
+      const tools = resolveChatTools(registry.aiToolsets, figure ? "figure" : "chat", {
+        confirm,
+        onImage: (d: string) => pendingImagesRef.current.push(d),
+      });
+      if (!documentEngine.capabilities.features.includes("document_index")) {
+        delete tools.project_map;
+      }
 
-        let reasoningStartedAt: number | null = null;
-        const outcome = await runAgentHarness({
-          system: effectiveSystem,
-          messages: apiMessages,
-          tools,
-          signal: ac.signal,
-          takePendingImages: () =>
-            modelSupportsVision(provider, model) ? pendingImagesRef.current.splice(0) : [],
-          handlers: {
-            onActivity: () => {
-              lastPartAtRef.current = Date.now();
-              runHandle.lastPartAt = Date.now();
-            },
-            onThinking: (label) => setRunThinking(label),
-            onStep: () => {},
-            onRetry: (attempt, max) =>
-              setRunThinking(`Connection issue, retrying (${attempt}/${max})…`),
-            onText: (chunk) =>
-              updateRunLast((m) => ({ ...m, content: (m.content ?? "") + chunk })),
-            onReasoningStart: () => {
-              if (reasoningStartedAt !== null) return;
-              reasoningStartedAt = Date.now();
-              updateRunLast((m) => ({
-                ...m,
-                reasoningBlocks: [
-                  ...(m.reasoningBlocks ?? []),
-                  { id: crypto.randomUUID(), text: "", beforeTool: (m.toolCalls ?? []).length },
-                ],
-              }));
-            },
-            onReasoningDelta: (chunk) =>
-              updateRunLast((m) => {
-                const blocks = [...(m.reasoningBlocks ?? [])];
-                if (!blocks.length) return m;
-                const last = { ...blocks[blocks.length - 1] };
-                last.text += chunk;
-                blocks[blocks.length - 1] = last;
-                return { ...m, reasoningBlocks: blocks };
-              }),
-            onReasoningEnd: () => {
-              if (reasoningStartedAt === null) return;
-              const ms = Date.now() - reasoningStartedAt;
-              reasoningStartedAt = null;
-              updateRunLast((m) => {
-                const blocks = [...(m.reasoningBlocks ?? [])];
-                if (!blocks.length) return m;
-                const last = { ...blocks[blocks.length - 1] };
-                if (last.ms === undefined) last.ms = ms;
-                blocks[blocks.length - 1] = last;
-                return { ...m, reasoningBlocks: blocks };
-              });
-            },
-            onToolCall: (call) =>
-              updateRunLast((m) => ({
-                ...m,
-                toolCalls: [
-                  ...(m.toolCalls || []),
-                  { id: call.id, name: call.name, status: "running" as const },
-                ],
-              })),
-            onToolResult: ({ id, output }) => {
-              const outStr = (
-                typeof output === "string" ? output : JSON.stringify(output, null, 2)
-              ).slice(0, 500);
-              updateRunLast((m) => {
-                const calls = [...(m.toolCalls || [])];
-                for (let i = calls.length - 1; i >= 0; i--) {
-                  if (calls[i].id === id && calls[i].status === "running") {
-                    calls[i] = { ...calls[i], status: "done", output: outStr };
-                    break;
-                  }
-                }
-                return { ...m, toolCalls: calls };
-              });
-            },
-            onUsage: (usage) => {
-              usageIn = usage.input;
-              usageOut = usage.output;
-              if (runIsCurrent())
-                setRunUsage({
-                  input: usageIn,
-                  output: usageOut,
-                  steps: usageSteps,
-                  usd: estimateUsd(model, usageIn, usageOut).usd,
-                });
-            },
+      let reasoningStartedAt: number | null = null;
+      const outcome = await runAgentHarness({
+        system: effectiveSystem,
+        messages: apiMessages,
+        tools,
+        signal: ac.signal,
+        takePendingImages: () =>
+          modelSupportsVision(provider, model) ? pendingImagesRef.current.splice(0) : [],
+        handlers: {
+          onActivity: () => {
+            lastPartAtRef.current = Date.now();
+            runHandle.lastPartAt = Date.now();
           },
-        });
-
-        usageSteps = outcome.steps;
-        if (outcome.error) {
-          updateRunLast((m) => ({
-            ...m,
-            content: (m.content ? `${m.content}\n\n` : "") + outcome.error,
-          }));
-        }
-        if (outcome.stopped_at_cap) {
-          updateRunLast((m) => ({
-            ...m,
-            content:
-              (m.content ? `${m.content}\n\n` : "") +
-              "_Reached the step safety limit. You can continue by sending another message._",
-          }));
-        }
-        return;
-      }
-
-      // Pure w.r.t. apiMessages (does not mutate it).
-      const runStep = async (modelInstance: LanguageModel, tools: ToolSet) => {
-        const result = streamText({
-          model: modelInstance,
-          messages: apiMessages,
-          tools,
-          system: effectiveSystem,
-          abortSignal: ac.signal,
-        });
-
-        let stepText = "";
-        let stepReasoning = "";
-        const stepToolCalls: { id: string; name: string; args: unknown }[] = [];
-        const stepToolResults: { id: string; name: string; output: unknown }[] = [];
-        let errorMsg = "";
-        let errorRetryable = true;
-        let stepUsage: { input: number; output: number } = { input: 0, output: 0 };
-        // Each thinking phase becomes its own block, anchored to the number
-        // of tool calls that precede it, so the transcript interleaves
-        // thought -> tools -> thought in true arrival order.
-        let reasoningStartedAt: number | null = null;
-        const openReasoning = () => {
-          if (reasoningStartedAt !== null) return;
-          reasoningStartedAt = Date.now();
-          updateRunLast((m) => ({
-            ...m,
-            reasoningBlocks: [
-              ...(m.reasoningBlocks ?? []),
-              { id: crypto.randomUUID(), text: "", beforeTool: (m.toolCalls ?? []).length },
-            ],
-          }));
-        };
-        const appendReasoning = (chunk: string) => {
-          updateRunLast((m) => {
-            const blocks = [...(m.reasoningBlocks ?? [])];
-            if (!blocks.length) return m;
-            const last = { ...blocks[blocks.length - 1] };
-            last.text += chunk;
-            blocks[blocks.length - 1] = last;
-            return { ...m, reasoningBlocks: blocks };
-          });
-        };
-        const endReasoning = () => {
-          if (reasoningStartedAt === null) return;
-          const ms = Date.now() - reasoningStartedAt;
-          reasoningStartedAt = null;
-          updateRunLast((m) => {
-            const blocks = [...(m.reasoningBlocks ?? [])];
-            if (!blocks.length) return m;
-            const last = { ...blocks[blocks.length - 1] };
-            if (last.ms === undefined) last.ms = ms;
-            blocks[blocks.length - 1] = last;
-            return { ...m, reasoningBlocks: blocks };
-          });
-        };
-
-        for await (const part of result.fullStream) {
-          if (ac.signal.aborted) break;
-          // Any stream activity resets the stall watchdog.
-          lastPartAtRef.current = Date.now();
-          runHandle.lastPartAt = Date.now();
-          switch (part.type) {
-            case "text-delta":
-              setRunThinking(null);
-              endReasoning();
-              stepText += part.text;
-              updateRunLast((m) => ({ ...m, content: stepText }));
-              break;
-
-            // Reasoning models (GLM, DeepSeek R1) stream a "thinking" phase
-            // before any text/tool call. It renders LIVE in the message's
-            // auto-expanded ReasoningBlock; time it for the collapsed label.
-            case "reasoning-start":
-              setRunThinking("Reasoning…");
-              openReasoning();
-              break;
-            case "reasoning-delta": {
-              setRunThinking("Reasoning…");
-              openReasoning();
-              const chunk = part.text;
-              if (chunk) {
-                stepReasoning += chunk;
-                appendReasoning(chunk);
-              }
-              break;
-            }
-            case "reasoning-end":
-              endReasoning();
-              break;
-
-            case "tool-call": {
-              endReasoning();
-              stepToolCalls.push({ id: part.toolCallId, name: part.toolName, args: part.input });
-              setRunThinking(`Running ${part.toolName}…`);
-              updateRunLast((m) => ({
-                ...m,
-                toolCalls: [
-                  ...(m.toolCalls || []),
-                  { id: part.toolCallId, name: part.toolName, status: "running" as const },
-                ],
-              }));
-              break;
-            }
-
-            case "tool-result": {
-              const out = part.output;
-              const outStr = typeof out === "string" ? out.slice(0, 500) : JSON.stringify(out, null, 2).slice(0, 500);
-              stepToolResults.push({
-                id: part.toolCallId,
-                name: part.toolName,
-                output: out,
-              });
-              setRunThinking("Processing result…");
-              updateRunLast((m) => {
-                const calls = [...(m.toolCalls || [])];
-                for (let i = calls.length - 1; i >= 0; i--) {
-                  if (calls[i].name === part.toolName && calls[i].status === "running") {
-                    calls[i] = { ...calls[i], status: "done", output: outStr };
-                    break;
-                  }
+          onThinking: (label) => setRunThinking(label),
+          onStep: () => {},
+          onRetry: (attempt, max) =>
+            setRunThinking(`Connection issue, retrying (${attempt}/${max})…`),
+          onText: (chunk) =>
+            updateRunLast((m) => ({ ...m, content: (m.content ?? "") + chunk })),
+          onReasoningStart: () => {
+            if (reasoningStartedAt !== null) return;
+            reasoningStartedAt = Date.now();
+            updateRunLast((m) => ({
+              ...m,
+              reasoningBlocks: [
+                ...(m.reasoningBlocks ?? []),
+                { id: crypto.randomUUID(), text: "", beforeTool: (m.toolCalls ?? []).length },
+              ],
+            }));
+          },
+          onReasoningDelta: (chunk) =>
+            updateRunLast((m) => {
+              const blocks = [...(m.reasoningBlocks ?? [])];
+              if (!blocks.length) return m;
+              const last = { ...blocks[blocks.length - 1] };
+              last.text += chunk;
+              blocks[blocks.length - 1] = last;
+              return { ...m, reasoningBlocks: blocks };
+            }),
+          onReasoningEnd: () => {
+            if (reasoningStartedAt === null) return;
+            const ms = Date.now() - reasoningStartedAt;
+            reasoningStartedAt = null;
+            updateRunLast((m) => {
+              const blocks = [...(m.reasoningBlocks ?? [])];
+              if (!blocks.length) return m;
+              const last = { ...blocks[blocks.length - 1] };
+              if (last.ms === undefined) last.ms = ms;
+              blocks[blocks.length - 1] = last;
+              return { ...m, reasoningBlocks: blocks };
+            });
+          },
+          onToolCall: (call) =>
+            updateRunLast((m) => ({
+              ...m,
+              toolCalls: [
+                ...(m.toolCalls || []),
+                { id: call.id, name: call.name, status: "running" as const },
+              ],
+            })),
+          onToolResult: ({ id, output }) => {
+            const outStr = (
+              typeof output === "string" ? output : JSON.stringify(output, null, 2)
+            ).slice(0, 500);
+            updateRunLast((m) => {
+              const calls = [...(m.toolCalls || [])];
+              for (let i = calls.length - 1; i >= 0; i--) {
+                if (calls[i].id === id && calls[i].status === "running") {
+                  calls[i] = { ...calls[i], status: "done", output: outStr };
+                  break;
                 }
-                return { ...m, toolCalls: calls };
+              }
+              return { ...m, toolCalls: calls };
+            });
+          },
+          onUsage: (usage) => {
+            usageIn = usage.input;
+            usageOut = usage.output;
+            if (runIsCurrent())
+              setRunUsage({
+                input: usageIn,
+                output: usageOut,
+                steps: usageSteps,
+                usd: estimateUsd(model, usageIn, usageOut).usd,
               });
-              break;
-            }
+          },
+        },
+      });
 
-            case "error":
-              errorMsg = formatError(
-                part.error,
-                activeProviderName
-              );
-              errorRetryable = isRetryable(part.error);
-              break;
-
-            case "finish":
-              break;
-          }
-        }
-
-        // Usage is async in the AI SDK; resolve after the stream finishes.
-        try {
-          const u = await result.usage;
-          stepUsage = {
-            input: u?.inputTokens ?? (u as { promptTokens?: number })?.promptTokens ?? 0,
-            output: u?.outputTokens ?? (u as { completionTokens?: number })?.completionTokens ?? 0,
-          };
-        } catch {
-          /* provider may not report usage */
-        }
-
-        return {
-          stepText,
-          stepReasoning,
-          stepToolCalls,
-          stepToolResults,
-          errorMsg,
-          errorRetryable,
-          stepUsage,
-        };
-      };
-
-      let reachedCap = false;
-
-      for (let step = 0; step < MAX_STEPS; step++) {
-        if (ac.signal.aborted) break;
-        setRunThinking(step === 0 ? "Thinking…" : "Continuing…");
-
-        // Attach any queued page/figure PNGs so a vision model can inspect them.
-        // (verify_pdf_pages and figure preview_figure both push via onImage.)
-        if (pendingImagesRef.current.length) {
-          const imgs = pendingImagesRef.current.splice(0);
-          if (modelSupportsVision(provider, model)) {
-            const content: UserContent = [
-              {
-                type: "text",
-                text: figure
-                  ? "Here is the rendered figure. Check for overlapping labels, cramped spacing, misalignment, and legibility, and refine it if it is not clean."
-                  : "Here are rendered PDF page image(s) from verify_pdf_pages. Check for overflow, cut-off text, empty regions, and layout problems. Fix source if needed, then recompile and re-verify.",
-              },
-              ...imgs.map((image) => ({ type: "image" as const, image })),
-            ];
-            apiMessages.push({
-              role: "user",
-              content,
-            });
-          }
-        }
-
-        const customBaseURL = customProviders.find((c) => c.id === provider)?.baseURL;
-        const modelInstance = buildAiModel(provider, model, apiKey, customBaseURL);
-        const tools = resolveChatTools(registry.aiToolsets, figure ? "figure" : "chat", {
-          confirm,
-          onImage: (d: string) => pendingImagesRef.current.push(d),
-        });
-        if (!documentEngine.capabilities.features.includes("document_index")) {
-          delete tools.project_map;
-        }
-        // Retry the same step on stream disconnects / transient API errors so a
-        // dropped connection never abandons an unfinished task.
-        let stepText = "";
-        let stepReasoning = "";
-        let stepToolCalls: { id: string; name: string; args: unknown }[] = [];
-        let stepToolResults: { id: string; name: string; output: unknown }[] = [];
-        let fatalError = "";
-
-        for (let attempt = 0; ; attempt++) {
-          try {
-            const r = await runStep(modelInstance, tools);
-            stepText = r.stepText;
-            stepReasoning = r.stepReasoning;
-            stepToolCalls = r.stepToolCalls;
-            stepToolResults = r.stepToolResults;
-            // Only retry when nothing useful happened (no text, no tool calls).
-            const isEmpty = !stepText && stepToolCalls.length === 0;
-            if (r.errorMsg && isEmpty && r.errorRetryable && attempt < MAX_RETRIES) {
-              setRunThinking(`Connection issue, retrying (${attempt + 1}/${MAX_RETRIES})…`);
-              await sleep(RETRY_BASE_MS * (attempt + 1));
-              continue;
-            }
-            // Count usage once, for the attempt we keep. Doing it before the
-            // retry decision would sum every discarded empty attempt's tokens
-            // and inflate the step count.
-            usageIn += r.stepUsage?.input ?? 0;
-            usageOut += r.stepUsage?.output ?? 0;
-            usageSteps += 1;
-            if (runIsCurrent()) setRunUsage({
-              input: usageIn,
-              output: usageOut,
-              steps: usageSteps,
-              usd: estimateUsd(model, usageIn, usageOut).usd,
-            });
-            // Permanent error (bad key, quota, model): stop and show it now.
-            if (r.errorMsg) fatalError = r.errorMsg;
-            break;
-          } catch (e) {
-            if (ac.signal.aborted) throw e;
-            if (attempt < MAX_RETRIES) {
-              setRunThinking(`Stream interrupted - retrying (${attempt + 1}/${MAX_RETRIES})…`);
-              await sleep(RETRY_BASE_MS * (attempt + 1));
-              continue;
-            }
-            throw e;
-          }
-        }
-
-        // Exhausted retries with nothing to show for it - surface and stop.
-        if (fatalError && !stepText && stepToolCalls.length === 0) {
-          updateRunLast((m) => ({ ...m, content: (m.content ? `${m.content}\n\n` : "") + fatalError }));
-          break;
-        }
-
-        // If the model didn't call any tools, it gave a final answer - done.
-        if (stepToolCalls.length === 0) {
-          break;
-        }
-
-        apiMessages.push({
-          role: "assistant",
-          content: buildToolContinuation(stepReasoning, stepText, stepToolCalls),
-        });
-
-        for (const tr of stepToolResults) {
-          const packed = packToolOutput(tr.output);
-          const content: ToolContent = [
-            {
-              type: "tool-result",
-              toolCallId: tr.id,
-              toolName: tr.name,
-              output: {
-                type: "text",
-                value: typeof packed === "string" ? packed : JSON.stringify(packed),
-              },
-            },
-          ];
-          apiMessages.push({
-            role: "tool",
-            content,
-          });
-        }
-
-        if (step === MAX_STEPS - 1) reachedCap = true;
-      }
-
-      if (reachedCap) {
+      usageSteps = outcome.steps;
+      if (outcome.error) {
         updateRunLast((m) => ({
           ...m,
-          content: (m.content ? `${m.content}\n\n` : "") +
+          content: (m.content ? `${m.content}\n\n` : "") + outcome.error,
+        }));
+      }
+      if (outcome.stopped_at_cap) {
+        updateRunLast((m) => ({
+          ...m,
+          content:
+            (m.content ? `${m.content}\n\n` : "") +
             "_Reached the step safety limit. You can continue by sending another message._",
         }));
       }

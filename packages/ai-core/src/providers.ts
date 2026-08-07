@@ -1,8 +1,3 @@
-import { createOpenAI } from "@ai-sdk/openai";
-import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { createAnthropic } from "@ai-sdk/anthropic";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
-
 export interface AIModel {
   id: string;
   name: string;
@@ -173,52 +168,6 @@ export function credentialMeta(providerId: string): { label: string; placeholder
   return { label: "API key", placeholder: "sk-…" };
 }
 
-export function buildModel(
-  provider: string,
-  model: string,
-  credential: string,
-  baseURLOverride?: string
-) {
-  if (provider === "anthropic") {
-    return createAnthropic({ apiKey: credential })(model);
-  }
-  if (provider === "ollama") {
-    const host = (credential || "http://localhost:11434").replace(/\/{1,20}$/, "");
-    return createOpenAI({ baseURL: `${host}/v1`, apiKey: "ollama" }).chat(model);
-  }
-  // GLM and DeepSeek stream their thinking phase as `reasoning_content`, a
-  // field the strict OpenAI provider silently drops. Dropping it means the
-  // app sees TOTAL silence while the model thinks, so the stall watchdog
-  // aborts long-thinking runs (GLM-4.6) with no reply. The openai-compatible
-  // provider maps reasoning_content into real reasoning stream parts.
-  if (provider === "zai" || provider === "deepseek") {
-    const p = getProvider(provider);
-    return createOpenAICompatible({
-      name: provider,
-      baseURL: p?.baseURL ?? "",
-      apiKey: credential,
-    }).chatModel(model);
-  }
-  if (provider === "google") {
-    return createGoogleGenerativeAI({ apiKey: credential })(model);
-  }
-  // Anything not in the static catalog is a user-defined custom provider.
-  // Most self-hosted / third-party bases are OpenAI-compatible, so route
-  // those through the same reasoning-aware provider used above.
-  if (!PROVIDER_BY_ID[provider] && baseURLOverride) {
-    return createOpenAICompatible({
-      name: provider,
-      baseURL: baseURLOverride,
-      apiKey: credential,
-    }).chatModel(model);
-  }
-  const baseURL = getProvider(provider)?.baseURL;
-  return createOpenAI({
-    apiKey: credential,
-    ...(baseURL ? { baseURL } : {}),
-  }).chat(model);
-}
-
 export interface CustomProviderLike {
   id: string;
   name: string;
@@ -274,22 +223,4 @@ export function hasConfiguredProvider(cfg: AIConfigLike): boolean {
   const { providerId, credential } = pickActiveProvider(cfg);
   if (credential.trim().length > 0) return true;
   return Boolean(cfg.ai_custom_providers?.find((c) => c.id === providerId)?.keyOptional);
-}
-
-export function resolveActiveModel(cfg: AIConfigLike): {
-  model: ReturnType<typeof buildModel>;
-  providerId: string;
-  modelId: string;
-  label: string;
-} {
-  const { providerId, modelId, credential } = pickActiveProvider(cfg);
-  const label =
-    getProvider(providerId)?.models.find((m) => m.id === modelId)?.name ?? modelId;
-  const customBaseURL = cfg.ai_custom_providers?.find((c) => c.id === providerId)?.baseURL;
-  return {
-    model: buildModel(providerId, modelId, credential, customBaseURL),
-    providerId,
-    modelId,
-    label,
-  };
 }

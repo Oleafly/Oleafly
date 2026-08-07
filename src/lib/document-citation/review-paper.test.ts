@@ -1,39 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { streamText } = vi.hoisted(() => ({ streamText: vi.fn() }));
-vi.mock("ai", () => ({ streamText }));
-vi.mock("@/lib/tauri", () => ({
-  getConfig: vi.fn(async () => ({
-    ai_provider: "openai",
-    ai_model: "gpt-4o-mini",
-    ai_keys: { openai: "sk" },
-  })),
-}));
-vi.mock("@/lib/ai-providers", () => ({
-  resolveActiveModel: vi.fn(() => ({
-    model: { id: "gpt-4o-mini" },
-    label: "GPT-4o mini",
-  })),
-}));
+vi.mock("@/lib/agent-backend", () => ({ streamText }));
 
-import { getConfig } from "@/lib/tauri";
-import { resolveActiveModel } from "@/lib/ai-providers";
 import { systemPromptForReview, userPromptForReview } from "./review-prompts";
 import { runPaperReview } from "./review-paper";
 
 beforeEach(() => {
   streamText.mockReset();
-  vi.mocked(getConfig).mockClear();
-  vi.mocked(resolveActiveModel).mockClear();
 });
-
-function fakeStream(chunks: string[]) {
-  return {
-    textStream: (async function* () {
-      for (const c of chunks) yield c;
-    })(),
-  };
-}
 
 describe("review prompts", () => {
   it("friendly prompt is constructive", () => {
@@ -72,43 +47,43 @@ describe("review prompts", () => {
 });
 
 describe("runPaperReview", () => {
-  it("streams chunks and returns concatenated text", async () => {
-    streamText.mockReturnValue(fakeStream(["## Summary\n", "Looks solid."]));
+  it("streams chunks through the caller's callback and returns the whole text", async () => {
+    streamText.mockImplementation(async (args: { onToken?: (full: string) => void }) => {
+      args.onToken?.("Strong ");
+      args.onToken?.("Strong contribution.");
+      return "Strong contribution.";
+    });
+
     const seen: string[] = [];
     const out = await runPaperReview({
       mode: "friendly",
-      paperText: "A short paper.",
+      paperText: "Abstract: ...",
       onChunk: (full) => seen.push(full),
     });
-    expect(out).toBe("## Summary\nLooks solid.");
-    expect(seen.at(-1)).toBe(out);
-    expect(getConfig).toHaveBeenCalledOnce();
-    expect(resolveActiveModel).toHaveBeenCalledOnce();
+
+    expect(out).toBe("Strong contribution.");
+    expect(seen).toEqual(["Strong ", "Strong contribution."]);
   });
 
-  it("uses lower temperature for friendly and higher for fire", async () => {
-    streamText.mockReturnValue(fakeStream(["ok"]));
+  it("runs fire mode hotter than friendly mode", async () => {
+    streamText.mockResolvedValue("");
+    await runPaperReview({ mode: "friendly", paperText: "x" });
+    await runPaperReview({ mode: "fire", paperText: "x" });
 
-    await runPaperReview({ mode: "friendly", paperText: "p" });
-    expect(streamText.mock.calls[0][0].temperature).toBe(0.4);
-    expect(streamText.mock.calls[0][0].system).toMatch(/mentor|constructive/i);
-
-    streamText.mockReturnValue(fakeStream(["ok"]));
-    await runPaperReview({ mode: "fire", paperText: "p" });
-    expect(streamText.mock.calls[1][0].temperature).toBe(0.7);
-    expect(streamText.mock.calls[1][0].system).toMatch(/Reviewer #2|harsh/i);
+    const [friendly, fire] = streamText.mock.calls.map((c) => c[0].temperature);
+    expect(friendly).toBeLessThan(fire);
   });
 
-  it("forwards abortSignal and truncated user prompt", async () => {
-    streamText.mockReturnValue(fakeStream(["x"]));
-    const signal = AbortSignal.abort();
-    const long = "z".repeat(20_000);
+  it("forwards the abort signal and the truncated prompt", async () => {
+    streamText.mockResolvedValue("");
+    const controller = new AbortController();
+    const long = "a".repeat(20_000);
 
-    await runPaperReview({ mode: "fire", paperText: long, signal });
+    await runPaperReview({ mode: "fire", paperText: long, signal: controller.signal });
 
-    const arg = streamText.mock.calls[0][0];
-    expect(arg.abortSignal).toBe(signal);
-    expect(arg.prompt.length).toBeLessThan(13_000);
-    expect(arg.prompt).toMatch(/truncated/i);
+    const call = streamText.mock.calls[0][0];
+    expect(call.signal).toBe(controller.signal);
+    expect(call.user).toBe(userPromptForReview(long));
+    expect(call.system).toBe(systemPromptForReview("fire"));
   });
 });
