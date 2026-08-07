@@ -1,4 +1,5 @@
 import { generateText } from "ai";
+import { completeViaBackend, rustAgentEnabled } from "@/lib/agent-backend";
 import { buildModel, hasConfiguredProvider, resolveActiveModel } from "@/lib/ai-providers";
 import { pdfPageToPng } from "@/lib/pdf-image";
 import {
@@ -9,6 +10,10 @@ import {
   readIsolatedPdf,
   saveCustomTemplate,
 } from "@/lib/tauri";
+
+// A whole document has to come back, and a slow provider on a long template
+// can sit well past the usual completion time before the first byte lands.
+const GENERATE_TIMEOUT_MS = 45_000;
 
 const SYSTEM = [
   "You create document templates for a LaTeX/Typst/Markdown editor.",
@@ -82,6 +87,23 @@ export async function generateTemplateSource(
   description: string,
   override?: { providerId: string; modelId: string },
 ): Promise<ParsedTemplate> {
+  const prompt = `Create a template for: ${description}`;
+
+  if (await rustAgentEnabled()) {
+    const { text } = await completeViaBackend(
+      {
+        system: SYSTEM,
+        messages: [{ role: "user", content: [{ type: "text", text: prompt }] }],
+        timeout_ms: GENERATE_TIMEOUT_MS,
+      },
+      undefined,
+      override
+        ? { provider_id: override.providerId, model_id: override.modelId }
+        : undefined,
+    );
+    return parseGeneratedTemplate(text);
+  }
+
   const cfg = await getConfig();
   let model: ReturnType<typeof buildModel>;
   if (override) {
@@ -96,8 +118,8 @@ export async function generateTemplateSource(
   const { text } = await generateText({
     model,
     system: SYSTEM,
-    prompt: `Create a template for: ${description}`,
-    abortSignal: AbortSignal.timeout(45_000),
+    prompt,
+    abortSignal: AbortSignal.timeout(GENERATE_TIMEOUT_MS),
   });
   return parseGeneratedTemplate(text);
 }

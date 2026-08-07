@@ -1,4 +1,5 @@
 import { generateText } from "ai";
+import { completeViaBackend, rustAgentEnabled } from "@/lib/agent-backend";
 import { insertAtCursor } from "@/components/editor/cm/controller";
 import { modelSupportsVision } from "@/lib/ai-figure";
 import { hasConfiguredProvider, resolveActiveModel } from "@/lib/ai-providers";
@@ -17,9 +18,12 @@ export async function imageToLatexAvailable(): Promise<boolean> {
   }
 }
 
+const TRANSCRIBE_SYSTEM =
+  "You transcribe images into LaTeX. Return ONLY a LaTeX snippet: an equation environment, a tabular, or plain text matching the image. No preamble, no documentclass, no markdown fences, no explanation. Transcribe exactly what is visible, never invent content. Never use em dashes.";
+
+const TRANSCRIBE_PROMPT = "Transcribe this image to LaTeX.";
+
 export async function imageToLatex(file: File): Promise<void> {
-  const cfg = await getConfig();
-  const { model } = resolveActiveModel(cfg);
   const dataUrl = await new Promise<string>((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => resolve(String(r.result));
@@ -28,20 +32,36 @@ export async function imageToLatex(file: File): Promise<void> {
   });
   toast.info("Transcribing image ...");
   try {
-    const { text } = await generateText({
-      model,
-      system:
-        "You transcribe images into LaTeX. Return ONLY a LaTeX snippet: an equation environment, a tabular, or plain text matching the image. No preamble, no documentclass, no markdown fences, no explanation. Transcribe exactly what is visible, never invent content. Never use em dashes.",
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text", text: "Transcribe this image to LaTeX." },
-            { type: "image", image: dataUrl },
-          ],
-        },
-      ],
-    });
+    const text = (await rustAgentEnabled())
+      ? (
+          await completeViaBackend({
+            system: TRANSCRIBE_SYSTEM,
+            messages: [
+              {
+                role: "user",
+                content: [
+                  { type: "text", text: TRANSCRIBE_PROMPT },
+                  { type: "image", image: dataUrl },
+                ],
+              },
+            ],
+          })
+        ).text
+      : (
+          await generateText({
+            model: resolveActiveModel(await getConfig()).model,
+            system: TRANSCRIBE_SYSTEM,
+            messages: [
+              {
+                role: "user",
+                content: [
+                  { type: "text", text: TRANSCRIBE_PROMPT },
+                  { type: "image", image: dataUrl },
+                ],
+              },
+            ],
+          })
+        ).text;
     const snippet = text
       .replace(/^```[a-zA-Z]*\n?/gm, "")
       .replace(/```$/gm, "")

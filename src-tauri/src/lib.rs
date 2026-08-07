@@ -1,3 +1,4 @@
+mod agent;
 mod assets;
 mod biber_toolchain;
 mod chats;
@@ -67,6 +68,7 @@ pub fn run() {
 
     builder
         .manage(AppState::default())
+        .manage(agent::AgentState::default())
         .manage(mcp::server::McpState::default())
         // Closing the app mid-TinyTeX-install must be a deliberate choice: block
         // the close, let the frontend show a confirm dialog, and only pass a
@@ -134,6 +136,9 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            agent::agent_backend,
+            agent::agent_complete,
+            agent::agent_cancel,
             commands::reload_views,
             commands::library_root,
             commands::app_version,
