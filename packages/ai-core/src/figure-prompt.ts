@@ -8,6 +8,10 @@ export function modelSupportsVision(provider: string, model: string): boolean {
   // Claude 3 and 4 families are all vision-capable.
   if (/claude-3|claude-.{0,40}-4|claude-(sonnet|opus|haiku)-4/.test(m)) return true;
   if (/llava|bakllava|-vl\b|vision|moondream|minicpm-v/.test(m)) return true;
+  // GLM's vision line is the V suffix (glm-4v, glm-4.1v, glm-4.5v). The plain
+  // chat models are text only: glm-5.2 and glm-4.6 reject an image part with
+  // "messages.content.type is invalid, allowed values: ['text']".
+  if (/^glm-[\d.]+v\b/.test(m)) return true;
   if (provider === "xai" && /vision/.test(m)) return true;
   return false;
 }
