@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::error::{AgentError, Result};
 
@@ -14,6 +15,16 @@ pub enum ContentPart {
     /// FileReader produces on the desktop side.
     Image {
         image: String,
+    },
+    ToolUse {
+        id: String,
+        name: String,
+        arguments: String,
+    },
+    ToolResult {
+        id: String,
+        name: String,
+        output: String,
     },
 }
 
@@ -43,6 +54,13 @@ impl Message {
             content: vec![ContentPart::text(text)],
         }
     }
+}
+
+pub(crate) fn parse_arguments(raw: &str) -> Value {
+    if raw.trim().is_empty() {
+        return Value::Object(Default::default());
+    }
+    serde_json::from_str(raw).unwrap_or_else(|_| Value::Object(Default::default()))
 }
 
 /// A data URL split into the two halves every provider needs separately.
@@ -80,6 +98,14 @@ pub(crate) fn parse_data_url(url: &str) -> Result<DataUrl<'_>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tool_arguments_that_are_not_json_become_an_empty_object() {
+        assert_eq!(parse_arguments(""), serde_json::json!({}));
+        assert_eq!(parse_arguments("   "), serde_json::json!({}));
+        assert_eq!(parse_arguments("{\"a\":1}"), serde_json::json!({"a":1}));
+        assert_eq!(parse_arguments("{truncated"), serde_json::json!({}));
+    }
 
     #[test]
     fn parses_a_base64_data_url() {
