@@ -246,11 +246,18 @@ export function AISection() {
     }
     const customProvider: CustomProvider = { id, name, baseURL, keyOptional: !apiKey };
     const nextKeys = apiKey ? { ...cfg.ai_keys, [id]: apiKey } : cfg.ai_keys;
+    // Activate only when nothing is configured yet, the same rule
+    // validateAndSave uses. Without this the first provider a user adds is
+    // reached by fallback but left on defaultModel(), which answers
+    // gpt-4o-mini for anything outside the catalog, so every call fails.
+    const isFirst = !cfg.ai_provider;
     const next: AppConfig = {
       ...cfg,
       ai_custom_providers: [...cfg.ai_custom_providers, customProvider],
       ai_provider_models: { ...cfg.ai_provider_models, [id]: models },
       ai_keys: nextKeys,
+      ai_provider: isFirst ? id : cfg.ai_provider,
+      ai_model: isFirst ? pickActiveModel(models, defaultModel(id)) : cfg.ai_model,
     };
     try {
       await persist(next);
