@@ -258,13 +258,14 @@ pub fn redact_ai_secrets(cfg: &mut AppConfig) {
 
 fn restore_ai_secrets(config: &mut AppConfig, stored: &AppConfig) {
     for (provider, value) in config.ai_keys.iter_mut() {
-        if value == REDACTED || value.is_empty() {
+        if value == REDACTED {
             if let Some(previous) = stored.ai_keys.get(provider) {
                 *value = previous.clone();
             }
         }
     }
-    if config.ai_api_key == REDACTED || config.ai_api_key.is_empty() {
+    config.ai_keys.retain(|_, value| !value.is_empty());
+    if config.ai_api_key == REDACTED {
         config.ai_api_key = stored.ai_api_key.clone();
     }
 }
@@ -306,6 +307,44 @@ mod tests {
         cfg.ai_keys.insert("groq".into(), "gsk-real".into());
         cfg.ai_api_key = "sk-legacy".into();
         cfg
+    }
+
+    #[test]
+    fn an_existing_install_keeps_working_without_re_entering_a_key() {
+        let dir = temp_dir();
+        std::env::set_var("OLEAFLY_DATA_DIR", &dir);
+
+        let before = AppConfig {
+            ai_provider: "openai".into(),
+            ai_model: "gpt-4o".into(),
+            ai_keys: HashMap::from([("openai".into(), "sk-from-an-older-build".into())]),
+            ..AppConfig::default()
+        };
+        write_config(&before).unwrap();
+
+        let hydrated = read_config().unwrap();
+        assert_eq!(
+            hydrated.ai_keys.get("openai").unwrap(),
+            "sk-from-an-older-build"
+        );
+        assert_eq!(hydrated.ai_provider, "openai");
+
+        let mut visible = hydrated.clone();
+        redact_ai_secrets(&mut visible);
+        assert_eq!(visible.ai_keys.get("openai").unwrap(), REDACTED);
+        assert!(!serde_json::to_string(&visible)
+            .unwrap()
+            .contains("sk-from-an-older-build"));
+
+        let mut round_trip = visible.clone();
+        round_trip.ai_model = "gpt-4o-mini".into();
+        restore_ai_secrets(&mut round_trip, &hydrated);
+        assert_eq!(
+            round_trip.ai_keys.get("openai").unwrap(),
+            "sk-from-an-older-build"
+        );
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
     }
 
     #[test]
@@ -355,6 +394,18 @@ mod tests {
 
         restore_ai_secrets(&mut incoming, &stored);
         assert_eq!(incoming.ai_keys.get("openai").unwrap(), "sk-new");
+    }
+
+    #[test]
+    fn a_blank_value_clears_a_stored_credential() {
+        let stored = cfg_with_keys();
+        let mut incoming = stored.clone();
+        redact_ai_secrets(&mut incoming);
+        incoming.ai_keys.insert("openai".into(), String::new());
+
+        restore_ai_secrets(&mut incoming, &stored);
+        assert!(!incoming.ai_keys.contains_key("openai"));
+        assert_eq!(incoming.ai_keys.get("groq").unwrap(), "gsk-real");
     }
 
     #[test]

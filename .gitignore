@@ -46,3 +46,5 @@ e2e/.env
 .superpowers/
 e2e-debug/
 src-tauri/tauri.windows-signing.conf.json
+
+.playwright-mcp/

@@ -1,9 +1,3 @@
-# The Rust tree is a Cargo workspace: `oleafly` (the Tauri app) is the root
-# member, and reusable engine crates live under `crates/`. Rooting the
-# workspace here rather than at the repo top keeps `src-tauri/target` and every
-# CI path that references it unchanged. When the CLI lands and the crates need
-# to build without the Tauri toolchain, hoisting them to a repo-root workspace
-# is a single deliberate move.
 [workspace]
 members = ["crates/*"]
 resolver = "2"

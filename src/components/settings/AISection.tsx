@@ -8,7 +8,7 @@ import {
   type CustomProvider,
   type StoredModel,
 } from "@/lib/tauri";
-import { defaultModel, getProvider } from "@/lib/ai-providers";
+import { defaultModel, getProvider, supportsModelDiscovery } from "@/lib/ai-providers";
 import {
   enabledModels,
   mergeFetchedModels,
@@ -34,12 +34,16 @@ async function discoverModels(args: {
   providerId: string;
   key?: string;
   baseURL?: string;
+  isCustom?: boolean;
 }): Promise<DiscoveryResult> {
+  if (!supportsModelDiscovery(args.providerId, args.isCustom)) {
+    return { ok: true, models: [] };
+  }
   try {
     return { ok: true, models: await agentListModels(args) };
   } catch (error) {
     const message = String(error);
-    return { ok: false, reason: /401|403|api key/i.test(message) ? "invalid-key" : "unreachable" };
+    return { ok: false, reason: message.includes("[auth]") ? "invalid-key" : "unreachable" };
   }
 }
 
@@ -180,13 +184,15 @@ export function AISection() {
     try {
       const custom = cfg.ai_custom_providers.find((c) => c.id === id);
       const provider = getProvider(id);
-      const res = await discoverModels({ providerId: id, key: value, baseURL: custom?.baseURL });
-      if (!res.ok && !custom) {
+      const res = await discoverModels({
+        providerId: id,
+        key: value,
+        baseURL: custom?.baseURL,
+        isCustom: Boolean(custom),
+      });
+      if (!res.ok && res.reason === "invalid-key" && !custom) {
         setStatus((s) => ({ ...s, [id]: "error" }));
-        setErrorMsg((m) => ({
-          ...m,
-          [id]: res.reason === "invalid-key" ? "Invalid API key." : "Could not reach the provider.",
-        }));
+        setErrorMsg((m) => ({ ...m, [id]: "Invalid API key." }));
         return;
       }
       const nextKeys = { ...keys, [id]: value };
@@ -201,7 +207,7 @@ export function AISection() {
         ai_model: wasActive ? cfg.ai_model : pickActiveModel(mergedModels, defaultModel(id)),
       };
       await persist(next);
-      setKeys(nextKeys);
+      setKeys({ ...nextKeys, [id]: "" });
       setSavedKeys(nextKeys);
       setStatus((s) => ({ ...s, [id]: "valid" }));
       setMsg({
@@ -231,7 +237,7 @@ export function AISection() {
       return { ok: false, message: "That provider ID is already in use." };
     }
     let models: StoredModel[] = [];
-    const res = await discoverModels({ providerId: id, key: apiKey, baseURL });
+    const res = await discoverModels({ providerId: id, key: apiKey, baseURL, isCustom: true });
     if (res.ok) {
       models = res.models.map((m) => ({ id: m.id, name: m.name, enabled: true, source: "fetched" as const }));
     }

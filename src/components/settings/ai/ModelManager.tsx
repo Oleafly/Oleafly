@@ -43,7 +43,7 @@ export function ModelManager({ providerId, models, apiKey, onChange }: ModelMana
     } catch (error) {
       const message = String(error);
       setRefreshError(
-        /401|403|api key/i.test(message) ? "Invalid API key." : "Could not reach the provider.",
+        message.includes("[auth]") ? "Invalid API key." : "Could not reach the provider.",
       );
     } finally {
       setRefreshing(false);

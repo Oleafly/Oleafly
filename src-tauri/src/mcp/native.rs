@@ -1,7 +1,8 @@
 use serde_json::{json, Value};
 
 const MAX_SEARCH_HITS: usize = 200;
-const MAX_READ_LINES: usize = 4000;
+const MAX_READ_LINES: usize = 800;
+const MAX_READ_CHARS: usize = 40_000;
 
 const READ_ONLY: &[&str] = &["read_file", "list_files", "search_project"];
 const AUTO_APPROVABLE: &[&str] = &[
@@ -70,8 +71,8 @@ fn required<'a>(arguments: &'a Value, key: &str) -> Result<&'a str, String> {
     arg(arguments, key).ok_or_else(|| format!("missing required argument: {key}"))
 }
 
-fn text(value: impl Into<String>) -> Value {
-    json!({ "content": [{ "type": "text", "text": value.into() }] })
+fn payload(value: Value) -> Value {
+    json!({ "content": [{ "type": "text", "text": value.to_string() }] })
 }
 
 pub async fn call(project_id: &str, name: &str, arguments: &Value) -> Result<Value, String> {
@@ -79,19 +80,35 @@ pub async fn call(project_id: &str, name: &str, arguments: &Value) -> Result<Val
         "read_file" => {
             let path = required(arguments, "path")?;
             let body = crate::project::read_file(project_id.to_string(), path.to_string())?;
+            let all: Vec<&str> = body.lines().collect();
             let offset = arguments
                 .get("offset")
                 .and_then(|v| v.as_u64())
                 .unwrap_or(1)
                 .max(1) as usize;
-            let limit = arguments
+            let start = (offset - 1).min(all.len());
+            let take = arguments
                 .get("limit")
                 .and_then(|v| v.as_u64())
+                .filter(|v| *v > 0)
                 .map(|v| v as usize)
                 .unwrap_or(MAX_READ_LINES)
                 .min(MAX_READ_LINES);
-            let lines: Vec<&str> = body.lines().skip(offset - 1).take(limit).collect();
-            Ok(text(lines.join("\n")))
+            let slice: Vec<&str> = all.iter().skip(start).take(take).copied().collect();
+            let mut content = slice.join("\n");
+            let mut truncated = start + slice.len() < all.len();
+            if content.chars().count() > MAX_READ_CHARS {
+                content = content.chars().take(MAX_READ_CHARS).collect();
+                truncated = true;
+            }
+            Ok(payload(json!({
+                "path": path,
+                "offset": offset,
+                "lines_returned": slice.len(),
+                "total_lines": all.len(),
+                "truncated": truncated,
+                "content": content,
+            })))
         }
         "write_file" => {
             let path = required(arguments, "path")?;
@@ -102,7 +119,9 @@ pub async fn call(project_id: &str, name: &str, arguments: &Value) -> Result<Val
                 content.to_string(),
             )
             .await?;
-            Ok(text(format!("wrote {path}")))
+            Ok(payload(
+                json!({ "success": true, "path": path, "bytes": content.len() }),
+            ))
         }
         "replace_in_file" => {
             let path = required(arguments, "path")?;
@@ -124,9 +143,9 @@ pub async fn call(project_id: &str, name: &str, arguments: &Value) -> Result<Val
             };
             let replacements = if all { body.matches(find).count() } else { 1 };
             crate::project::write_file(project_id.to_string(), path.to_string(), updated).await?;
-            Ok(text(format!(
-                "replaced {replacements} occurrence(s) in {path}"
-            )))
+            Ok(payload(
+                json!({ "success": true, "path": path, "replacements": replacements }),
+            ))
         }
         "create_file" => {
             let path = required(arguments, "path")?;
@@ -135,12 +154,14 @@ pub async fn call(project_id: &str, name: &str, arguments: &Value) -> Result<Val
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false);
             crate::project::create_file(project_id.to_string(), path.to_string(), is_dir)?;
-            Ok(text(format!("created {path}")))
+            Ok(payload(
+                json!({ "success": true, "path": path, "is_dir": is_dir }),
+            ))
         }
         "delete_file" => {
             let path = required(arguments, "path")?;
             crate::project::delete_file(project_id.to_string(), path.to_string())?;
-            Ok(text(format!("deleted {path}")))
+            Ok(payload(json!({ "success": true, "path": path })))
         }
         "rename_file" => {
             let from = required(arguments, "from")?;
@@ -151,12 +172,15 @@ pub async fn call(project_id: &str, name: &str, arguments: &Value) -> Result<Val
                 to.to_string(),
                 None,
             )?;
-            Ok(text(format!("renamed {from} to {to}")))
+            Ok(payload(json!({ "success": true, "from": from, "to": to })))
         }
         "list_files" => {
             let entries = crate::project::list_files(project_id.to_string()).await?;
-            let paths: Vec<String> = entries.iter().map(|e| e.path.clone()).collect();
-            Ok(text(paths.join("\n")))
+            let files: Vec<Value> = entries
+                .iter()
+                .map(|e| json!({ "path": e.path, "is_dir": e.is_dir }))
+                .collect();
+            Ok(payload(json!({ "files": files })))
         }
         "search_project" => {
             let query = required(arguments, "query")?;
@@ -176,7 +200,11 @@ pub async fn call(project_id: &str, name: &str, arguments: &Value) -> Result<Val
                 };
                 for (index, line) in body.lines().enumerate() {
                     if line.contains(query) {
-                        hits.push(format!("{}:{}: {}", entry.path, index + 1, line.trim()));
+                        hits.push(json!({
+                            "path": entry.path,
+                            "line": index + 1,
+                            "text": line.trim(),
+                        }));
                         if hits.len() >= MAX_SEARCH_HITS {
                             break;
                         }
@@ -186,11 +214,7 @@ pub async fn call(project_id: &str, name: &str, arguments: &Value) -> Result<Val
                     break;
                 }
             }
-            Ok(text(if hits.is_empty() {
-                "no matches".to_string()
-            } else {
-                hits.join("\n")
-            }))
+            Ok(payload(json!({ "matches": hits })))
         }
         other => Err(format!("{other} is not handled natively")),
     }
@@ -294,8 +318,6 @@ mod tests {
 
     #[test]
     fn a_blank_reported_project_does_not_count_as_open() {
-        // Whatever the disk scan finds, an empty id must never be returned:
-        // it would resolve to the projects root itself.
         match resolve_project(&json!({}), Some(String::new())) {
             Ok(id) => assert!(!id.is_empty()),
             Err(error) => assert!(!error.is_empty()),
@@ -309,9 +331,13 @@ mod tests {
     }
 
     #[test]
-    fn text_results_use_the_mcp_content_shape() {
-        let value = text("hello");
+    fn results_carry_a_json_document_in_the_mcp_text_block() {
+        let value = payload(json!({ "path": "main.tex", "content": "body" }));
         assert_eq!(value["content"][0]["type"], "text");
-        assert_eq!(value["content"][0]["text"], "hello");
+
+        let inner: Value =
+            serde_json::from_str(value["content"][0]["text"].as_str().unwrap()).unwrap();
+        assert_eq!(inner["path"], "main.tex");
+        assert_eq!(inner["content"], "body");
     }
 }

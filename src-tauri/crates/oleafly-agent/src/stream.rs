@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::time::Duration;
 
 use futures_util::StreamExt;
 use serde_json::Value;
@@ -10,6 +11,8 @@ use crate::error::{AgentError, Result};
 use crate::event::AgentEvent;
 use crate::provider::{catalog_entry, Resolved, Wire};
 use crate::sse::{SseDecoder, SseEvent};
+
+const DEFAULT_STREAM_IDLE_TIMEOUT: Duration = Duration::from_secs(120);
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ToolCall {
@@ -295,10 +298,14 @@ impl Translator {
                     .and_then(|m| m.as_str())
                     .unwrap_or("stream error")
                     .to_string();
+                let kind = value
+                    .pointer("/error/type")
+                    .and_then(|t| t.as_str())
+                    .unwrap_or_default();
                 self.done = true;
                 out.push(AgentEvent::Error {
                     message,
-                    retryable: true,
+                    retryable: anthropic_error_is_retryable(kind),
                 });
             }
             _ => {}
@@ -359,6 +366,13 @@ impl Translator {
         }
         out
     }
+}
+
+fn anthropic_error_is_retryable(kind: &str) -> bool {
+    matches!(
+        kind,
+        "overloaded_error" | "api_error" | "rate_limit_error" | "timeout_error" | ""
+    )
 }
 
 fn nonempty(value: Option<&Value>) -> Option<String> {
@@ -428,6 +442,10 @@ where
             .json(&body),
     };
 
+    let idle = req
+        .timeout_ms
+        .map(Duration::from_millis)
+        .unwrap_or(DEFAULT_STREAM_IDLE_TIMEOUT);
     let response = builder
         .header("accept", "text/event-stream")
         .send()
@@ -446,7 +464,10 @@ where
     let mut outcome = StreamOutcome::default();
     let mut stream = response.bytes_stream();
 
-    while let Some(chunk) = stream.next().await {
+    while let Some(chunk) = tokio::time::timeout(idle, stream.next())
+        .await
+        .map_err(|_| AgentError::Timeout)?
+    {
         let bytes = chunk.map_err(request_error)?;
         let text = String::from_utf8_lossy(&bytes).to_string();
         for event in decoder.push(&text) {
@@ -682,6 +703,29 @@ mod tests {
         assert!(!events
             .iter()
             .any(|e| matches!(e, AgentEvent::ToolCallEnd { .. })));
+    }
+
+    #[test]
+    fn an_authentication_stream_error_is_not_offered_as_retryable() {
+        let raw = "event: error\ndata: {\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"bad key\"}}\n\n";
+        let (events, _) = run(WireKind::Anthropic, raw);
+        assert!(events.iter().any(|e| matches!(
+            e,
+            AgentEvent::Error { retryable: false, message } if message == "bad key"
+        )));
+    }
+
+    #[test]
+    fn an_overloaded_stream_error_stays_retryable() {
+        let raw = "event: error\ndata: {\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\",\"message\":\"busy\"}}\n\n";
+        let (events, _) = run(WireKind::Anthropic, raw);
+        assert!(events.iter().any(|e| matches!(
+            e,
+            AgentEvent::Error {
+                retryable: true,
+                ..
+            }
+        )));
     }
 
     #[test]
