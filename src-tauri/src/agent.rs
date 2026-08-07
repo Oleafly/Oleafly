@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::Mutex;
+use std::sync::{Mutex, MutexGuard};
 
 use oleafly_agent::{
     AgentEvent, CompletionRequest, CompletionResponse, ProviderConfig, RunConfig, ToolOutput,
@@ -7,6 +7,10 @@ use oleafly_agent::{
 use tauri::State;
 
 use crate::config::AppConfig;
+
+fn lock_or_recover<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
+    m.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+}
 
 #[derive(Default)]
 pub struct AgentState {
@@ -17,7 +21,7 @@ pub struct AgentState {
 
 impl AgentState {
     fn client(&self) -> reqwest::Client {
-        let mut slot = self.client.lock().unwrap();
+        let mut slot = lock_or_recover(&self.client);
         slot.get_or_insert_with(oleafly_agent::build_client).clone()
     }
 }
@@ -79,7 +83,7 @@ pub async fn agent_complete(
 
 #[tauri::command]
 pub fn agent_cancel(state: State<'_, AgentState>, request_id: String) {
-    if let Some(handle) = state.running.lock().unwrap().remove(&request_id) {
+    if let Some(handle) = lock_or_recover(&state.running).remove(&request_id) {
         handle.abort();
     }
 }
@@ -157,7 +161,7 @@ pub async fn agent_run(
             {
                 use tauri::Manager;
                 let state = handle.state::<AgentState>();
-                state.pending_tools.lock().unwrap().insert(key.clone(), tx);
+                lock_or_recover(&state.pending_tools).insert(key.clone(), tx);
             }
             let _ = tool_sink.send(AgentEvent::ToolRequest {
                 id: call.id.clone(),
@@ -207,7 +211,7 @@ pub fn agent_tool_result(
     output: ToolOutput,
 ) {
     let key = tool_key(&request_id, &call_id);
-    if let Some(sender) = state.pending_tools.lock().unwrap().remove(&key) {
+    if let Some(sender) = lock_or_recover(&state.pending_tools).remove(&key) {
         let _ = sender.send(output);
     }
 }
@@ -218,11 +222,24 @@ fn tool_key(request_id: &str, call_id: &str) -> String {
 
 fn drop_pending_tools(state: &State<'_, AgentState>, request_id: &str) {
     let prefix = format!("{request_id}\u{1f}");
-    state
-        .pending_tools
-        .lock()
-        .unwrap()
-        .retain(|key, _| !key.starts_with(&prefix));
+    lock_or_recover(&state.pending_tools).retain(|key, _| !key.starts_with(&prefix));
+}
+
+fn endpoint_override_allowed(
+    projected: &ProviderConfig,
+    provider_id: &str,
+    key_supplied: bool,
+    base_url: &Option<String>,
+) -> bool {
+    if base_url.is_none() || key_supplied {
+        return true;
+    }
+    let stored = projected
+        .keys
+        .get(provider_id)
+        .map(|k| !k.trim().is_empty())
+        .unwrap_or(false);
+    !stored
 }
 
 #[tauri::command]
@@ -234,10 +251,19 @@ pub async fn agent_list_models(
 ) -> Result<Vec<oleafly_agent::ModelInfo>, String> {
     let cfg = crate::config::read_config()?;
     let mut projected = provider_config(&cfg);
-    if let Some(key) = key.filter(|k| !k.trim().is_empty()) {
+    let supplied_key = key.filter(|k| !k.trim().is_empty());
+    let base_url = base_url.filter(|b| !b.trim().is_empty());
+
+    if !endpoint_override_allowed(&projected, &provider_id, supplied_key.is_some(), &base_url) {
+        return Err(format!(
+            "Re-enter the API key to change the endpoint for {provider_id}."
+        ));
+    }
+
+    if let Some(key) = supplied_key {
         projected.keys.insert(provider_id.clone(), key);
     }
-    if let Some(base_url) = base_url.filter(|b| !b.trim().is_empty()) {
+    if let Some(base_url) = base_url {
         match projected.custom.iter_mut().find(|c| c.id == provider_id) {
             Some(existing) => existing.base_url = base_url,
             None => projected.custom.push(oleafly_agent::CustomProvider {
@@ -252,7 +278,7 @@ pub async fn agent_list_models(
         .map_err(|e| e.to_string())?;
     oleafly_agent::list_models(&state.client(), &resolved)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("[{}] {e}", e.kind()))
 }
 
 fn resolve_for(
@@ -274,18 +300,13 @@ fn register(
     request_id: &str,
     handle: tauri::async_runtime::JoinHandle<()>,
 ) {
-    if let Some(previous) = state
-        .running
-        .lock()
-        .unwrap()
-        .insert(request_id.to_string(), handle)
-    {
+    if let Some(previous) = lock_or_recover(&state.running).insert(request_id.to_string(), handle) {
         previous.abort();
     }
 }
 
 fn unregister(state: &State<'_, AgentState>, request_id: &str) {
-    state.running.lock().unwrap().remove(request_id);
+    lock_or_recover(&state.running).remove(request_id);
 }
 
 #[cfg(test)]
@@ -301,6 +322,55 @@ mod tests {
                 .collect(),
             ..AppConfig::default()
         }
+    }
+
+    fn with_custom(provider: &str, key: &str, base_url: &str) -> ProviderConfig {
+        let mut cfg = provider_config(&config_with(provider, &[(provider, key)]));
+        cfg.custom.push(oleafly_agent::CustomProvider {
+            id: provider.into(),
+            base_url: base_url.into(),
+            key_optional: false,
+        });
+        cfg
+    }
+
+    #[test]
+    fn a_stored_key_never_travels_to_a_caller_chosen_endpoint() {
+        let cfg = with_custom("gateway", "sk-stored", "https://gateway.example.com/v1");
+        assert!(!endpoint_override_allowed(
+            &cfg,
+            "gateway",
+            false,
+            &Some("https://attacker.example.com/v1".into())
+        ));
+    }
+
+    #[test]
+    fn supplying_the_key_with_the_endpoint_is_allowed() {
+        let cfg = with_custom("gateway", "sk-stored", "https://gateway.example.com/v1");
+        assert!(endpoint_override_allowed(
+            &cfg,
+            "gateway",
+            true,
+            &Some("https://new.example.com/v1".into())
+        ));
+    }
+
+    #[test]
+    fn a_provider_with_no_stored_key_may_name_its_endpoint() {
+        let cfg = provider_config(&AppConfig::default());
+        assert!(endpoint_override_allowed(
+            &cfg,
+            "brand-new",
+            false,
+            &Some("http://127.0.0.1:8000/v1".into())
+        ));
+    }
+
+    #[test]
+    fn listing_without_an_endpoint_override_is_always_allowed() {
+        let cfg = with_custom("gateway", "sk-stored", "https://gateway.example.com/v1");
+        assert!(endpoint_override_allowed(&cfg, "gateway", false, &None));
     }
 
     #[test]

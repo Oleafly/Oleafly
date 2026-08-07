@@ -26,5 +26,5 @@ pub fn build_client() -> reqwest::Client {
         .connect_timeout(Duration::from_secs(20))
         .user_agent(concat!("oleafly/", env!("CARGO_PKG_VERSION")))
         .build()
-        .unwrap_or_default()
+        .expect("the TLS backend failed to initialise, so no provider is reachable")
 }

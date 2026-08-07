@@ -10,7 +10,7 @@ allowBuilds:
 # Force the transitive postcss (via vite) to a patched version.
 # GHSA-r28c-9q8g-f849: source-map path traversal in postcss <= 8.5.17.
 overrides:
-  nanoid@<3.3.17: ">=3.3.17"
+  nanoid@<3.3.17: "3.3.17"
   postcss@<8.5.18: ">=8.5.18"
   # Held at 6.7.0: 6.7.1 correlated with large-editor scroll-probe failures
   # in the e2e chaos test (CI twice, locally not fully reproducible). The

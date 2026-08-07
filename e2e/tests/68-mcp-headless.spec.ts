@@ -26,9 +26,14 @@ async function startServer(page: Page, policy = "trust"): Promise<Connection> {
       const { getConfig, mcpConnectionInfo, mcpSetEnabled, setConfig } =
         await import("/src/lib/tauri.ts");
       const cfg = await getConfig();
-      await setConfig({ ...cfg, mcp_approval_policy: ${JSON.stringify(policy)} });
+      await setConfig({
+        ...cfg,
+        mcp_approval_policy: ${JSON.stringify(policy)},
+        mcp_read_only: false,
+      });
       await mcpSetEnabled(true);
-      const { refreshMcpRegistry } = await import("/src/lib/mcp-bridge.ts");
+      const { refreshMcpRegistry, startMcpBridge } = await import("/src/lib/mcp-bridge.ts");
+      await startMcpBridge();
       await refreshMcpRegistry();
       return await mcpConnectionInfo();
     })()
@@ -86,15 +91,15 @@ test.describe("MCP without the webview", () => {
       name: "list_files",
       arguments: {},
     });
-    expect(resultText(listed)).toContain("headless.tex");
+    const files = JSON.parse(resultText(listed)).files as { path: string }[];
+    expect(files.map((f) => f.path)).toContain("headless.tex");
 
     const found = await rpc(tauriPage, connection, "tools/call", {
       name: "search_project",
       arguments: { query: "MCPHEADLESSMARKER" },
     });
-    const hits = resultText(found);
-    expect(hits).toContain("headless.tex");
-    expect(hits).toMatch(/headless\.tex:1:/);
+    const matches = JSON.parse(resultText(found)).matches as { path: string; line: number }[];
+    expect(matches.some((m) => m.path === "headless.tex" && m.line === 1)).toBe(true);
   });
 
   test("writes and replaces through the native path", async ({ tauriPage }) => {
@@ -107,13 +112,13 @@ test.describe("MCP without the webview", () => {
       name: "replace_in_file",
       arguments: { path: "native-write.tex", find: "alpha", replace: "gamma", replace_all: true },
     });
-    expect(resultText(replaced)).toContain("2 occurrence");
+    expect(JSON.parse(resultText(replaced)).replacements).toBe(2);
 
     const read = await rpc(tauriPage, connection, "tools/call", {
       name: "read_file",
       arguments: { path: "native-write.tex" },
     });
-    expect(resultText(read)).toBe("gamma beta gamma");
+    expect(JSON.parse(resultText(read)).content).toBe("gamma beta gamma");
   });
 
   test("a replace that matches nothing is reported rather than silently ignored", async ({

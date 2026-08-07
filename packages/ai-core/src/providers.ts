@@ -152,6 +152,23 @@ export const PROVIDER_BY_ID: Record<string, AIProvider> = Object.fromEntries(
   PROVIDERS.map((p) => [p.id, p])
 );
 
+const MODEL_DISCOVERY = new Set([
+  "openai",
+  "anthropic",
+  "google",
+  "ollama",
+  "zai",
+  "groq",
+  "openrouter",
+  "deepseek",
+  "mistral",
+  "xai",
+]);
+
+export function supportsModelDiscovery(providerId: string, isCustom = false): boolean {
+  return isCustom || MODEL_DISCOVERY.has(providerId);
+}
+
 export function getProvider(id: string): AIProvider | undefined {
   return PROVIDER_BY_ID[id];
 }

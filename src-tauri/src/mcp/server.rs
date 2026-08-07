@@ -123,9 +123,13 @@ async fn mcp_post(State(app): State<AppHandle>, headers: HeaderMap, body: String
             name,
             arguments,
         } => {
-            let policy = crate::config::read_config()
-                .map(|cfg| cfg.mcp_approval_policy)
-                .unwrap_or_default();
+            let policy = tokio::task::spawn_blocking(|| {
+                crate::config::read_config().map(|cfg| cfg.mcp_approval_policy)
+            })
+            .await
+            .ok()
+            .and_then(|read| read.ok())
+            .unwrap_or_default();
             if super::native::handles(&name, &policy) {
                 let reported = state.active_project.lock().await.clone();
                 let outcome = match super::native::resolve_project(&arguments, reported) {

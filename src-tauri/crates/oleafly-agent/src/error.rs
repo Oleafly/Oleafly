@@ -11,6 +11,25 @@ pub enum AgentError {
 }
 
 impl AgentError {
+    pub fn kind(&self) -> &'static str {
+        match self {
+            AgentError::NotConfigured(_) => "not_configured",
+            AgentError::Transport(_) => "transport",
+            AgentError::Provider { status, .. } if *status == 401 || *status == 403 => "auth",
+            AgentError::Provider { .. } => "provider",
+            AgentError::Decode(_) => "decode",
+            AgentError::Cancelled => "cancelled",
+            AgentError::Timeout => "timeout",
+        }
+    }
+
+    pub fn status(&self) -> Option<u16> {
+        match self {
+            AgentError::Provider { status, .. } => Some(*status),
+            _ => None,
+        }
+    }
+
     pub fn retryable(&self) -> bool {
         match self {
             AgentError::Transport(_) | AgentError::Timeout => true,
@@ -42,6 +61,22 @@ pub type Result<T> = std::result::Result<T, AgentError>;
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_rejected_credential_is_classified_without_reading_the_message() {
+        let err = AgentError::Provider {
+            status: 401,
+            message: "Incorrect API key".into(),
+        };
+        assert_eq!(err.kind(), "auth");
+        assert_eq!(err.status(), Some(401));
+
+        let err = AgentError::Provider {
+            status: 500,
+            message: "boom".into(),
+        };
+        assert_eq!(err.kind(), "provider");
+    }
 
     #[test]
     fn retryable_covers_transient_failures_only() {
