@@ -26,6 +26,7 @@ vi.mock("@/lib/tauri", () => ({
   setMainDocCmd: mocks.setMainDocCmd,
   deleteFile: mocks.deleteFile,
   listProjects: vi.fn(),
+  mcpSetActiveProject: vi.fn(async () => {}),
 }));
 vi.mock("@/lib/auto-commit", () => ({
   flushAutoCommit: mocks.flushAutoCommit,

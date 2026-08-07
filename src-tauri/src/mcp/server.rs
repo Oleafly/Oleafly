@@ -38,6 +38,8 @@ pub struct McpState {
     /// Present while the server runs; sending true triggers graceful shutdown.
     pub shutdown: Mutex<Option<watch::Sender<bool>>>,
     pub bound_port: Mutex<Option<u16>>,
+    /// The project the app last reported as open, used when a call names none.
+    pub active_project: Mutex<Option<String>>,
     /// The running axum task, so `stop` can await teardown (the listener is
     /// released early in graceful shutdown) before a caller rebinds the port.
     pub serve_task: Mutex<Option<tauri::async_runtime::JoinHandle<()>>>,
@@ -122,6 +124,21 @@ async fn mcp_post(State(app): State<AppHandle>, headers: HeaderMap, body: String
             name,
             arguments,
         } => {
+            // Project I/O runs here rather than in the webview, so the server
+            // answers whether or not a window is open.
+            if super::native::handles(&name) {
+                let reported = state.active_project.lock().await.clone();
+                let outcome = match super::native::resolve_project(&arguments, reported) {
+                    Ok(project_id) => super::native::call(&project_id, &name, &arguments).await,
+                    Err(error) => Err(error),
+                };
+                return match outcome {
+                    Ok(result) => (StatusCode::OK, Json(rpc_result(id, result))).into_response(),
+                    Err(error) => {
+                        (StatusCode::OK, Json(rpc_error(id, -32000, &error))).into_response()
+                    }
+                };
+            }
             let call_id = state.call_seq.fetch_add(1, Ordering::SeqCst);
             let (tx, rx) = oneshot::channel();
             state.pending.lock().await.insert(call_id, tx);

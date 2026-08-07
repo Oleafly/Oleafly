@@ -252,6 +252,7 @@ pub fn run() {
             config::get_config,
             config::set_config,
             mcp::mcp_register_tools,
+            mcp::mcp_set_active_project,
             mcp::mcp_tool_result,
             mcp::mcp_status,
             mcp::mcp_set_enabled,

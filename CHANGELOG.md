@@ -7,8 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **Provider API keys no longer reach the editor process.** Every AI call now
+  runs in the Rust backend, which reads the credential itself. The app window
+  is told only that a key exists. Previously each configured key was handed to
+  the same process that parses untrusted LaTeX, BibTeX, and PDF files, so a
+  single injection there could have exposed every provider key at once.
+
 ### Added
 
+- **Inline ghost completion.** A dim preview of the most likely completion
+  appears after the cursor as you type, drawn from the completion sources the
+  editor already runs. Tab accepts it, Escape dismisses it. No model call and
+  no network. Settings gains an "Inline suggestion" toggle.
+- **MCP answers project tools without the app window.** Reading, writing,
+  searching, listing, creating, renaming, and deleting project files are served
+  directly by the backend, so an external MCP client is no longer blocked when
+  the window is busy. Tools that genuinely need the interface, such as figure
+  preview and PDF vision checks, still run in the app.
 - **Overleaf-style compiler choice.** The compile options menu now offers
   pdfLaTeX, XeLaTeX, and LuaLaTeX alongside Tectonic and Auto. An explicit
   choice pins the compiler in `project.json` and overrides source detection,
