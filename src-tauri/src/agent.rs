@@ -7,7 +7,9 @@
 use std::collections::HashMap;
 use std::sync::Mutex;
 
-use oleafly_agent::{CompletionRequest, CompletionResponse, ProviderConfig};
+use oleafly_agent::{
+    AgentEvent, CompletionRequest, CompletionResponse, ProviderConfig, RunConfig, ToolOutput,
+};
 use tauri::State;
 
 use crate::config::AppConfig;
@@ -17,6 +19,8 @@ pub struct AgentState {
     client: Mutex<Option<reqwest::Client>>,
     /// In-flight completions, so `agent_cancel` can drop one mid-request.
     running: Mutex<HashMap<String, tauri::async_runtime::JoinHandle<()>>>,
+    /// Tool calls the harness is waiting on the frontend to execute.
+    pending_tools: Mutex<HashMap<String, tokio::sync::oneshot::Sender<ToolOutput>>>,
 }
 
 impl AgentState {
@@ -158,6 +162,105 @@ pub async fn agent_stream(
             Ok(())
         }
     }
+}
+
+#[tauri::command]
+pub async fn agent_run(
+    state: State<'_, AgentState>,
+    app: tauri::AppHandle,
+    request_id: String,
+    request: CompletionRequest,
+    config: Option<RunConfig>,
+    provider_override: Option<ProviderOverride>,
+    on_event: tauri::ipc::Channel<AgentEvent>,
+) -> Result<oleafly_agent::RunOutcome, String> {
+    let resolved = resolve_for(provider_override)?;
+    let client = state.client();
+    let config = config.unwrap_or_default();
+
+    let sink = on_event.clone();
+    let tool_sink = on_event.clone();
+    let run_id = request_id.clone();
+    let handle = app.clone();
+
+    let run_tool: oleafly_agent::ToolRunner = std::sync::Arc::new(move |call| {
+        let tool_sink = tool_sink.clone();
+        let handle = handle.clone();
+        let run_id = run_id.clone();
+        Box::pin(async move {
+            let key = tool_key(&run_id, &call.id);
+            let (tx, rx) = tokio::sync::oneshot::channel();
+            {
+                use tauri::Manager;
+                let state = handle.state::<AgentState>();
+                state.pending_tools.lock().unwrap().insert(key.clone(), tx);
+            }
+            // Announced only after the waiter exists, so a fast reply cannot
+            // arrive before anything is listening for it.
+            let _ = tool_sink.send(AgentEvent::ToolRequest {
+                id: call.id.clone(),
+                name: call.name.clone(),
+                arguments: call.arguments.clone(),
+            });
+            match rx.await {
+                Ok(output) => output,
+                Err(_) => ToolOutput::text("{\"error\":\"the tool was not executed\"}"),
+            }
+        })
+    });
+
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    let task = tauri::async_runtime::spawn(async move {
+        let outcome = oleafly_agent::run_agent(
+            &client,
+            &resolved,
+            request,
+            &config,
+            run_tool,
+            move |event| {
+                let _ = sink.send(event);
+            },
+        )
+        .await;
+        let _ = tx.send(outcome);
+    });
+
+    register(&state, &request_id, task);
+    let outcome = rx.await;
+    unregister(&state, &request_id);
+    drop_pending_tools(&state, &request_id);
+
+    match outcome {
+        Ok(Ok(result)) => Ok(result),
+        Ok(Err(error)) => Err(error.to_string()),
+        Err(_) => Err(oleafly_agent::AgentError::Cancelled.to_string()),
+    }
+}
+
+#[tauri::command]
+pub fn agent_tool_result(
+    state: State<'_, AgentState>,
+    request_id: String,
+    call_id: String,
+    output: ToolOutput,
+) {
+    let key = tool_key(&request_id, &call_id);
+    if let Some(sender) = state.pending_tools.lock().unwrap().remove(&key) {
+        let _ = sender.send(output);
+    }
+}
+
+fn tool_key(request_id: &str, call_id: &str) -> String {
+    format!("{request_id}\u{1f}{call_id}")
+}
+
+fn drop_pending_tools(state: &State<'_, AgentState>, request_id: &str) {
+    let prefix = format!("{request_id}\u{1f}");
+    state
+        .pending_tools
+        .lock()
+        .unwrap()
+        .retain(|key, _| !key.starts_with(&prefix));
 }
 
 fn resolve_for(

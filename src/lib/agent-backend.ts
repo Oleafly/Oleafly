@@ -9,7 +9,15 @@ import { Channel, invoke } from "@tauri-apps/api/core";
 
 export type AgentContentPart =
   | { type: "text"; text: string }
-  | { type: "image"; image: string };
+  | { type: "image"; image: string }
+  | { type: "toolUse"; id: string; name: string; arguments: string }
+  | { type: "toolResult"; id: string; name: string; output: string };
+
+export interface AgentToolSchema {
+  name: string;
+  description: string;
+  input_schema: unknown;
+}
 
 export interface AgentMessage {
   role: "user" | "assistant";
@@ -22,6 +30,7 @@ export interface AgentCompletionRequest {
   temperature?: number;
   max_tokens?: number;
   timeout_ms?: number;
+  tools?: AgentToolSchema[];
 }
 
 export interface AgentCompletionResponse {
@@ -113,6 +122,10 @@ export async function completeViaBackend(
 }
 
 export type AgentEvent =
+  | { kind: "stepStart"; step: number }
+  | { kind: "retry"; attempt: number; max: number }
+  | { kind: "toolRequest"; id: string; name: string; arguments: string }
+  | { kind: "toolOutcome"; id: string; output: string }
   | { kind: "textDelta"; text: string }
   | { kind: "reasoningDelta"; text: string }
   | { kind: "toolCallStart"; id: string; name: string }
@@ -171,6 +184,93 @@ export async function streamViaBackend(
   } catch (error) {
     if (signal?.aborted) throw abortError();
     if (error instanceof AgentStreamError || error instanceof DOMException) throw error;
+    throw new Error(typeof error === "string" ? error : String(error));
+  } finally {
+    signal?.removeEventListener("abort", onAbort);
+  }
+}
+
+export interface AgentRunOutcome {
+  text: string;
+  usage: { input: number; output: number };
+  steps: number;
+  stopped_at_cap: boolean;
+  error: string | null;
+}
+
+export interface AgentRunConfig {
+  max_steps: number;
+  max_retries: number;
+  retry_base_ms: number;
+}
+
+export interface AgentToolRequest {
+  id: string;
+  name: string;
+  arguments: string;
+}
+
+export interface AgentToolOutput {
+  output: string;
+  images?: string[];
+}
+
+export async function runViaBackend(
+  request: AgentCompletionRequest,
+  handlers: {
+    onEvent: (event: AgentEvent) => void;
+    onToolRequest: (call: AgentToolRequest) => Promise<AgentToolOutput>;
+  },
+  signal?: AbortSignal,
+  config?: AgentRunConfig,
+  providerOverride?: { provider_id: string; model_id: string },
+): Promise<AgentRunOutcome> {
+  const requestId = nextRequestId();
+  if (signal?.aborted) throw abortError();
+
+  const onAbort = () => {
+    void invoke("agent_cancel", { requestId }).catch(() => {});
+  };
+  signal?.addEventListener("abort", onAbort, { once: true });
+
+  const channel = new Channel<AgentEvent>();
+  channel.onmessage = (event) => {
+    if (event.kind === "toolRequest") {
+      const call: AgentToolRequest = {
+        id: event.id,
+        name: event.name,
+        arguments: event.arguments,
+      };
+      void handlers
+        .onToolRequest(call)
+        .catch<AgentToolOutput>((error) => ({
+          output: JSON.stringify({ error: String(error) }),
+        }))
+        .then((output) =>
+          invoke("agent_tool_result", {
+            requestId,
+            callId: call.id,
+            output: { output: output.output, images: output.images ?? [] },
+          }).catch(() => {}),
+        );
+      return;
+    }
+    handlers.onEvent(event);
+  };
+
+  try {
+    return await withAbort(
+      invoke<AgentRunOutcome>("agent_run", {
+        requestId,
+        request,
+        config: config ?? null,
+        providerOverride: providerOverride ?? null,
+        onEvent: channel,
+      }),
+      signal,
+    );
+  } catch (error) {
+    if (signal?.aborted) throw abortError();
     throw new Error(typeof error === "string" ? error : String(error));
   } finally {
     signal?.removeEventListener("abort", onAbort);
