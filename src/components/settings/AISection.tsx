@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
+  agentListModels,
   getConfig,
   REDACTED_SECRET,
   setConfig,
@@ -7,7 +8,7 @@ import {
   type CustomProvider,
   type StoredModel,
 } from "@/lib/tauri";
-import { defaultModel, discoveryFor, fetchProviderModels, getProvider } from "@/lib/ai-providers";
+import { defaultModel, getProvider } from "@/lib/ai-providers";
 import { enabledModels, mergeFetchedModels, seedProviderModels } from "@/lib/ai-model-state";
 import { listOllamaModels, DEFAULT_OLLAMA_HOST } from "@/lib/ollama";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -19,6 +20,28 @@ import { PersonasTab } from "./ai/PersonasTab";
 import { AddCustomProviderDialog, type AddCustomProviderInput } from "./ai/AddCustomProviderDialog";
 
 type AITab = "providers" | "instructions" | "personas";
+
+type DiscoveryResult =
+  | { ok: true; models: { id: string; name: string }[] }
+  | { ok: false; reason: "invalid-key" | "unreachable" };
+
+/**
+ * Ask the backend for a provider's models. `key` is a credential the user has
+ * typed but not saved yet; without it the stored one is used, so refreshing a
+ * saved provider works without the window ever holding the credential.
+ */
+async function discoverModels(args: {
+  providerId: string;
+  key?: string;
+  baseURL?: string;
+}): Promise<DiscoveryResult> {
+  try {
+    return { ok: true, models: await agentListModels(args) };
+  } catch (error) {
+    const message = String(error);
+    return { ok: false, reason: /401|403|api key/i.test(message) ? "invalid-key" : "unreachable" };
+  }
+}
 
 const DEFAULT_CFG: AppConfig = {
   github_token: "",
@@ -161,15 +184,7 @@ export function AISection() {
     try {
       const custom = cfg.ai_custom_providers.find((c) => c.id === id);
       const provider = getProvider(id);
-      const baseURL = custom?.baseURL ?? provider?.baseURL;
-      const discovery = custom ? { kind: "openai" as const, modelsPath: "/models" } : discoveryFor(id);
-      const res = await fetchProviderModels({
-        providerId: id,
-        baseURL,
-        key: value,
-        discovery,
-        seed: provider?.models ?? [],
-      });
+      const res = await discoverModels({ providerId: id, key: value, baseURL: custom?.baseURL });
       if (!res.ok && !custom) {
         setStatus((s) => ({ ...s, [id]: "error" }));
         setErrorMsg((m) => ({
@@ -220,13 +235,7 @@ export function AISection() {
       return { ok: false, message: "That provider ID is already in use." };
     }
     let models: StoredModel[] = [];
-    const res = await fetchProviderModels({
-      providerId: id,
-      baseURL,
-      key: apiKey,
-      discovery: { kind: "openai", modelsPath: "/models" },
-      seed: [],
-    });
+    const res = await discoverModels({ providerId: id, key: apiKey, baseURL });
     if (res.ok) {
       models = res.models.map((m) => ({ id: m.id, name: m.name, enabled: true, source: "fetched" as const }));
     }

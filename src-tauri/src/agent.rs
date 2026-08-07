@@ -247,6 +247,42 @@ fn drop_pending_tools(state: &State<'_, AgentState>, request_id: &str) {
         .retain(|key, _| !key.starts_with(&prefix));
 }
 
+/// Ask a provider what models it offers.
+///
+/// `key` carries a credential the user has just typed but not saved yet, so a
+/// paste can be validated before it is persisted. When absent the stored one
+/// is used, which is what makes refreshing a saved provider work without the
+/// window ever holding the credential.
+#[tauri::command]
+pub async fn agent_list_models(
+    state: State<'_, AgentState>,
+    provider_id: String,
+    key: Option<String>,
+    base_url: Option<String>,
+) -> Result<Vec<oleafly_agent::ModelInfo>, String> {
+    let cfg = crate::config::read_config()?;
+    let mut projected = provider_config(&cfg);
+    if let Some(key) = key.filter(|k| !k.trim().is_empty()) {
+        projected.keys.insert(provider_id.clone(), key);
+    }
+    if let Some(base_url) = base_url.filter(|b| !b.trim().is_empty()) {
+        match projected.custom.iter_mut().find(|c| c.id == provider_id) {
+            Some(existing) => existing.base_url = base_url,
+            None => projected.custom.push(oleafly_agent::CustomProvider {
+                id: provider_id.clone(),
+                base_url,
+                key_optional: true,
+            }),
+        }
+    }
+
+    let resolved = oleafly_agent::provider::resolve_specific(&projected, &provider_id, "")
+        .map_err(|e| e.to_string())?;
+    oleafly_agent::list_models(&state.client(), &resolved)
+        .await
+        .map_err(|e| e.to_string())
+}
+
 fn resolve_for(
     provider_override: Option<ProviderOverride>,
 ) -> Result<oleafly_agent::Resolved, String> {

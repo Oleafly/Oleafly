@@ -93,12 +93,18 @@ test("no model call is made from the webview", async ({ tauriPage }) => {
   await ask(tauriPage, "Reply with the marker.");
   await waitForReply(tauriPage, "NOWEBVIEWCALL7");
 
-  // Resource timing records every request the renderer actually issued. The
-  // provider call happens in Rust, so nothing here may name the endpoint.
-  const rendererCalls = await tauriPage.evaluate<number>(
-    `performance.getEntriesByType("resource").filter((e) => String(e.name).includes("/chat/completions")).length`,
+  // Resource timing records every request the renderer actually issued.
+  // Completions and model discovery both happen in Rust, so nothing here may
+  // name a provider endpoint of any kind.
+  const rendererCalls = await tauriPage.evaluate<string[]>(
+    `performance
+      .getEntriesByType("resource")
+      .map((e) => String(e.name))
+      .filter((name) =>
+        /chat[/]completions|v1[/]models|api[.]openai[.]com|api[.]anthropic[.]com|generativelanguage|openrouter[.]ai|api[.]z[.]ai/.test(name),
+      )`,
   );
-  expect(rendererCalls, "the renderer must not talk to a model provider").toBe(0);
+  expect(rendererCalls, "the renderer must not talk to a model provider").toEqual([]);
 });
 
 test("a tool call is dispatched by Rust and executed in the app", async ({ tauriPage }) => {
