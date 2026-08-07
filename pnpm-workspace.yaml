@@ -6,10 +6,11 @@ allowBuilds:
 
 # Force the transitive nanoid (via hunspell-asm) to a patched version.
 # GHSA-mwcw-c2x4-8c55: predictable results in nanoid < 3.3.8.
+# GHSA-2v37-7h3g-55p8: custom generators loop forever on size zero, < 3.3.17.
 # Force the transitive postcss (via vite) to a patched version.
 # GHSA-r28c-9q8g-f849: source-map path traversal in postcss <= 8.5.17.
 overrides:
-  nanoid@<3.3.8: ">=3.3.8"
+  nanoid@<3.3.17: ">=3.3.17"
   postcss@<8.5.18: ">=8.5.18"
   # Held at 6.7.0: 6.7.1 correlated with large-editor scroll-probe failures
   # in the e2e chaos test (CI twice, locally not fully reproducible). The
