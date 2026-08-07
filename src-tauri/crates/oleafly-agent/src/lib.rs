@@ -15,13 +15,18 @@
 
 pub mod complete;
 pub mod error;
+pub mod event;
 pub mod message;
 pub mod provider;
+pub mod sse;
+pub mod stream;
 
 pub use complete::{complete, CompletionRequest, CompletionResponse, Usage};
 pub use error::{AgentError, Result};
+pub use event::AgentEvent;
 pub use message::{ContentPart, Message, Role};
 pub use provider::{resolve, CustomProvider, ProviderConfig, Resolved, Wire};
+pub use stream::{stream_completion, StreamOutcome, ToolCall};
 
 use std::time::Duration;
 

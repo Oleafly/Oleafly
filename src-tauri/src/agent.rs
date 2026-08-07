@@ -84,15 +84,7 @@ pub async fn agent_complete(
     request: CompletionRequest,
     provider_override: Option<ProviderOverride>,
 ) -> Result<CompletionResponse, String> {
-    let cfg = crate::config::read_config()?;
-    let projected = provider_config(&cfg);
-    let resolved = match provider_override {
-        Some(o) => {
-            oleafly_agent::provider::resolve_specific(&projected, &o.provider_id, &o.model_id)
-        }
-        None => oleafly_agent::resolve(&projected),
-    }
-    .map_err(|e| e.to_string())?;
+    let resolved = resolve_for(provider_override)?;
     let client = state.client();
 
     // The work runs in its own task so that cancelling means dropping the
@@ -103,16 +95,9 @@ pub async fn agent_complete(
         let _ = tx.send(result);
     });
 
-    {
-        let mut running = state.running.lock().unwrap();
-        // A repeated id means the caller reused it; the older request loses.
-        if let Some(previous) = running.insert(request_id.clone(), handle) {
-            previous.abort();
-        }
-    }
-
+    register(&state, &request_id, handle);
     let outcome = rx.await;
-    state.running.lock().unwrap().remove(&request_id);
+    unregister(&state, &request_id);
 
     match outcome {
         Ok(result) => result.map_err(|e| e.to_string()),
@@ -129,6 +114,83 @@ pub fn agent_cancel(state: State<'_, AgentState>, request_id: String) {
     if let Some(handle) = state.running.lock().unwrap().remove(&request_id) {
         handle.abort();
     }
+}
+
+#[tauri::command]
+pub async fn agent_stream(
+    state: State<'_, AgentState>,
+    request_id: String,
+    request: CompletionRequest,
+    provider_override: Option<ProviderOverride>,
+    on_event: tauri::ipc::Channel<oleafly_agent::AgentEvent>,
+) -> Result<(), String> {
+    let resolved = resolve_for(provider_override)?;
+    let client = state.client();
+
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    let sink = on_event.clone();
+    let handle = tauri::async_runtime::spawn(async move {
+        let outcome = oleafly_agent::stream_completion(&client, &resolved, &request, |event| {
+            let _ = sink.send(event);
+        })
+        .await;
+        let _ = tx.send(outcome.map(|_| ()));
+    });
+
+    register(&state, &request_id, handle);
+    let outcome = rx.await;
+    unregister(&state, &request_id);
+
+    match outcome {
+        Ok(Ok(())) => Ok(()),
+        Ok(Err(error)) => {
+            let _ = on_event.send(oleafly_agent::AgentEvent::Error {
+                message: error.to_string(),
+                retryable: error.retryable(),
+            });
+            Ok(())
+        }
+        Err(_) => {
+            let _ = on_event.send(oleafly_agent::AgentEvent::Error {
+                message: oleafly_agent::AgentError::Cancelled.to_string(),
+                retryable: false,
+            });
+            Ok(())
+        }
+    }
+}
+
+fn resolve_for(
+    provider_override: Option<ProviderOverride>,
+) -> Result<oleafly_agent::Resolved, String> {
+    let cfg = crate::config::read_config()?;
+    let projected = provider_config(&cfg);
+    match provider_override {
+        Some(o) => {
+            oleafly_agent::provider::resolve_specific(&projected, &o.provider_id, &o.model_id)
+        }
+        None => oleafly_agent::resolve(&projected),
+    }
+    .map_err(|e| e.to_string())
+}
+
+fn register(
+    state: &State<'_, AgentState>,
+    request_id: &str,
+    handle: tauri::async_runtime::JoinHandle<()>,
+) {
+    if let Some(previous) = state
+        .running
+        .lock()
+        .unwrap()
+        .insert(request_id.to_string(), handle)
+    {
+        previous.abort();
+    }
+}
+
+fn unregister(state: &State<'_, AgentState>, request_id: &str) {
+    state.running.lock().unwrap().remove(request_id);
 }
 
 #[cfg(test)]

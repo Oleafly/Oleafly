@@ -253,6 +253,14 @@ pub(crate) fn parse_google(body: &Value) -> Result<(String, Usage)> {
 /// All three formats nest the useful sentence under `error.message`; anything
 /// else is truncated raw text, because an unparsed body still beats a bare
 /// status code when a user reports a problem.
+pub(crate) fn request_error(error: reqwest::Error) -> AgentError {
+    if error.is_timeout() {
+        AgentError::Timeout
+    } else {
+        AgentError::Transport(error.to_string())
+    }
+}
+
 pub(crate) fn error_message(status: u16, raw: &str) -> AgentError {
     let message = serde_json::from_str::<Value>(raw)
         .ok()
@@ -315,19 +323,14 @@ pub async fn complete(
             .json(&google_body(req)?),
     };
 
-    let response = builder.timeout(timeout).send().await.map_err(|e| {
-        if e.is_timeout() {
-            AgentError::Timeout
-        } else {
-            AgentError::Transport(e.to_string())
-        }
-    })?;
+    let response = builder
+        .timeout(timeout)
+        .send()
+        .await
+        .map_err(request_error)?;
 
     let status = response.status().as_u16();
-    let raw = response
-        .text()
-        .await
-        .map_err(|e| AgentError::Transport(e.to_string()))?;
+    let raw = response.text().await.map_err(request_error)?;
 
     if !(200..300).contains(&status) {
         return Err(error_message(status, &raw));
