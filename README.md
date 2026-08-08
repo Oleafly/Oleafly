@@ -55,10 +55,10 @@ above with https://cdn.oleafly.com/videos/workspace-tour.webp.
 > [!NOTE]
 > Oleafly is ready for day-to-day documents, but the project is still moving
 > quickly. Advanced package compatibility and a few platform integrations are
-> still being hardened. macOS builds are signed and notarized; Windows builds
-> are not signed yet. Download only from the official releases page and review
-> the release notes
-> before installing an unsigned preview build.
+> still being hardened. macOS releases are signed and notarized. Windows
+> releases use Authenticode when release signing is configured. Download only
+> from the official releases page, and check the release notes if your operating
+> system shows a warning.
 
 ## Research has enough moving parts already
 
@@ -97,7 +97,8 @@ are the current collaboration path.
   blocks stay visible as editable source instead of disappearing.
 - Insert headings, lists, links, citations, cross-references, equations,
   fractions, figures, tables, and symbols from the editor toolbar.
-- Use command, citation, label, file, and slash-command autocomplete.
+- Use command, citation, label, file, slash-command, and inline ghost-text
+  completion.
 - Find and replace, fold sections and environments, turn on Vim bindings, and
   run offline spelling and grammar checks.
 - Jump to definitions, find references, rename labels or citation keys across
@@ -147,8 +148,15 @@ A LaTeX-aware word count ignores markup and counts only what a reader sees.
 
 ### Compile and read without leaving the project
 
-- Compile LaTeX with the bundled Tectonic sidecar and Typst with its bundled
-  engine. A full TeX installation is not required for the default workflow.
+- Compile LaTeX with bundled Tectonic by default. Each project can instead use
+  `latexmk` with pdfLaTeX, XeLaTeX, or LuaLaTeX when a traditional TeX
+  toolchain is required.
+- Use a detected MacTeX, TeX Live, MiKTeX, or TinyTeX installation. If none is
+  available, Oleafly can install a managed TinyTeX copy without administrator
+  access. Use system TeX only with projects you trust because it is not fully
+  sandboxed.
+- Compile Typst with its bundled engine. A full TeX installation is not needed
+  for the default Tectonic workflow.
 - See compiler failures as editor diagnostics and readable error cards rather
   than hunting through a raw log.
 - Read the PDF beside the source with continuous scrolling, virtualized pages,
@@ -197,7 +205,7 @@ history in the app.
 - Restore an earlier file without replacing the rest of the project.
 - Stage, discard, commit, push, and pull from the Source Control panel.
 - Publish a project to GitHub or connect an existing repository.
-- Keep working from the terminal or another editor; there is no private
+- Keep working from the terminal or another editor. There is no private
   document format to unpack.
 
 <div align="center">
@@ -229,7 +237,8 @@ Optional template packs and fonts download only when you choose them.
 - Draw a diagram on a visual canvas or edit its TikZ directly, then insert it
   as vector source or an image. The saved TikZ can be reopened and edited.
 - Import Word documents through Pandoc, reconstruct an editable LaTeX project
-  from a PDF locally, or transcribe an equation image with a vision model.
+  from a PDF locally, import an Overleaf project ZIP, or transcribe an equation
+  image with a vision model.
 - Export PDF and source archives, plus Word, HTML, Markdown, text, PowerPoint,
   or EPUB when the document engine and project type support them.
 - Browse conference deadlines and use optional literature lookups without
@@ -323,7 +332,7 @@ You choose the model:
 
 </div>
 
-File changes come with a diff and Approve or Reject controls. “Always allow”
+File changes come with a diff and Approve or Reject controls. "Always allow"
 can approve ordinary writes for the current session while deletes still stop
 for confirmation.
 
@@ -332,14 +341,15 @@ for confirmation.
 </div>
 
 Once approved, the edit lands in the file and the document recompiles. Every
-response keeps a “Restore code to before this response” action.
+response keeps a "Restore code to before this response" action.
 
 <div align="center">
   <img src="https://cdn.oleafly.com/images/screenshots/desktop/ai-chat-applied.png" alt="An approved assistant edit applied to the document and reflected in the recompiled PDF" width="88%" />
 </div>
 
-Providers are configured in Settings. Keys stay on the machine, and a local
-Ollama model works with no key at all.
+Providers are configured in Settings. Keys are encrypted on disk and resolved
+by the Rust backend, so the webview never receives them. Hosted requests send a
+key only to its provider. A local Ollama model needs no cloud key.
 
 <div align="center">
 
@@ -353,9 +363,9 @@ Ollama model works with no key at all.
 </div>
 
 Oleafly can also expose its project tools to Claude Desktop, Claude Code,
-Cursor, and other MCP clients. MCP connections support read-only mode and
-three approval policies: confirm every change, auto-approve writes while
-confirming deletes, or trust the client's own approval gate.
+Cursor, Codex, and other MCP clients. The server binds to localhost and supports
+read-only mode plus three approval policies. Native file tools can keep working
+after the last window closes when the selected policy permits it.
 
 <div align="center">
 
@@ -411,8 +421,10 @@ Download the latest build from
 | --- | --- |
 | macOS, Apple Silicon | `.dmg` |
 | Windows, x86_64 | `.msi` or `-setup.exe` |
-| Linux, x86_64 | `.AppImage`, `.deb`, or `.rpm` |
+| Linux, x86_64 | `.AppImage` or `.deb` |
 | Linux, ARM64 | `.AppImage` or `.deb` |
+
+Linux packages require glibc 2.39 or newer.
 
 The first LaTeX compile may download packages required by the document.
 Tectonic caches them for later builds, and Offline mode restricts compilation
@@ -423,10 +435,11 @@ To run from source:
 ```bash
 git clone https://github.com/Oleafly/Oleafly.git
 cd Oleafly
+pnpm install
 ./scripts/fetch-tectonic.sh all
 ./scripts/fetch-biber.sh all
 ./scripts/fetch-typst.sh all
-pnpm install
+pnpm language-servers:fetch
 pnpm tauri dev
 ```
 
@@ -459,7 +472,7 @@ contributors. Bug reports, fixes, templates, documentation, and careful
 product feedback are welcome.
 
 1. Read [CONTRIBUTING.md](CONTRIBUTING.md).
-2. Open an issue before a large change; small, focused fixes can go straight
+2. Open an issue before a large change. Small, focused fixes can go straight
    to a pull request.
 3. Run the relevant checks before submitting:
 
