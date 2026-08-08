@@ -198,6 +198,7 @@ export async function refreshMcpRegistry(): Promise<void> {
   await rebuildRegistry();
 }
 
+
 async function handleCall(payload: {
   callId: number;
   name: string;

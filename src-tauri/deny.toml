@@ -54,6 +54,7 @@ allow = [
 confidence-threshold = 0.8
 exceptions = [
   { allow = ["AGPL-3.0-or-later"], crate = "oleafly" },
+  { allow = ["AGPL-3.0-or-later"], crate = "oleafly-agent" },
 ]
 
 [bans]

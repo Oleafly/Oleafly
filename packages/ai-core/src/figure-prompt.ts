@@ -8,6 +8,7 @@ export function modelSupportsVision(provider: string, model: string): boolean {
   // Claude 3 and 4 families are all vision-capable.
   if (/claude-3|claude-.{0,40}-4|claude-(sonnet|opus|haiku)-4/.test(m)) return true;
   if (/llava|bakllava|-vl\b|vision|moondream|minicpm-v/.test(m)) return true;
+  if (/^glm-[\d.]+v\b/.test(m)) return true;
   if (provider === "xai" && /vision/.test(m)) return true;
   return false;
 }

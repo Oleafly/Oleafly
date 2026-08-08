@@ -1,6 +1,5 @@
-import { streamText } from "ai";
-import { getConfig } from "@/lib/tauri";
-import { resolveActiveModel, type AIConfigLike } from "@/lib/ai-providers";
+import { streamText as streamViaRust } from "@/lib/agent-backend";
+import type { AIConfigLike } from "@/lib/ai-providers";
 import type { DocumentEngineDescriptor } from "@/lib/tauri";
 
 export type InlineEditArgs = {
@@ -47,8 +46,6 @@ function stripFence(s: string): string {
 }
 
 export async function runInlineCompletion(args: InlineEditArgs): Promise<string> {
-  const cfg = args.config ?? (await getConfig());
-  const { model } = resolveActiveModel(cfg);
   const prompt = [
     args.context?.before ? `Context before:\n${args.context.before}\n` : "",
     `Selected text to edit:\n${args.selection}`,
@@ -56,17 +53,13 @@ export async function runInlineCompletion(args: InlineEditArgs): Promise<string>
     `\n\nInstruction: ${args.instruction}`,
   ].join("");
 
-  const result = streamText({
-    model,
-    system: systemFor(args.engine),
-    prompt,
-    abortSignal: args.signal,
-  });
-
-  let full = "";
-  for await (const delta of result.textStream) {
-    full += delta;
-    args.onToken?.(full);
-  }
-  return stripFence(full);
+  return stripFence(
+    await streamViaRust({
+      system: systemFor(args.engine),
+      user: prompt,
+      signal: args.signal,
+      onToken: args.onToken,
+    }),
+  );
 }
+

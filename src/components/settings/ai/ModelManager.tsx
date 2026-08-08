@@ -14,7 +14,8 @@ import {
   seedProviderModels,
   setModelEnabled,
 } from "@/lib/ai-model-state";
-import { discoveryFor, fetchProviderModels, getProvider } from "@/lib/ai-providers";
+import { agentListModels } from "@/lib/tauri";
+import { agentErrorKind } from "@/lib/agent-backend";
 
 export interface ModelManagerProps {
   providerId: string;
@@ -37,19 +38,15 @@ export function ModelManager({ providerId, models, apiKey, onChange }: ModelMana
   async function refresh() {
     setRefreshing(true);
     setRefreshError("");
-    const provider = getProvider(providerId);
-    const res = await fetchProviderModels({
-      providerId,
-      baseURL: provider?.baseURL,
-      key: apiKey,
-      discovery: discoveryFor(providerId),
-      seed: provider?.models ?? [],
-    });
-    setRefreshing(false);
-    if (res.ok) {
-      onChange(mergeFetchedModels(models, res.models));
-    } else {
-      setRefreshError(res.reason === "invalid-key" ? "Invalid API key." : "Could not reach the provider.");
+    try {
+      const fetched = await agentListModels({ providerId, key: apiKey || undefined });
+      onChange(mergeFetchedModels(models, fetched));
+    } catch (error) {
+      setRefreshError(
+        agentErrorKind(error) === "auth" ? "Invalid API key." : "Could not reach the provider.",
+      );
+    } finally {
+      setRefreshing(false);
     }
   }
 

@@ -1,4 +1,4 @@
-import { useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { Check, ChevronDown, ChevronRight, ExternalLink, Loader2, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
@@ -200,6 +200,17 @@ export function ProvidersTab({
   const activeProvider = cfg.ai_provider;
   const allProviders = mergeCustomProviders(cfg.ai_custom_providers);
   const [confirmRemove, setConfirmRemove] = useState<{ id: string; name: string } | null>(null);
+  const [editingKey, setEditingKey] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    setEditingKey((current) => {
+      const settled = Object.keys(current).filter((id) => current[id] && status[id] === "valid");
+      if (!settled.length) return current;
+      const next = { ...current };
+      for (const id of settled) delete next[id];
+      return next;
+    });
+  }, [status]);
 
   return (
     <div className="space-y-4">
@@ -219,6 +230,7 @@ export function ProvidersTab({
           // A custom provider is usable the moment it's added, key or not
           // (self-hosted bases may not require one).
           const isConfigured = hasSaved || isCustom;
+          const isReplacingKey = !hasSaved || (editingKey[p.id] ?? false);
           const isSelected = activeProvider === p.id;
           const isActive = isSelected && isConfigured;
           // Settings never recommends or expands a provider implicitly. The
@@ -250,21 +262,23 @@ export function ProvidersTab({
                     {isOpen && <p className="mt-0.5 text-xs text-muted-foreground">{p.blurb}</p>}
                   </div>
                 </button>
-                {isConfigured && (
-                  <span className="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-1 text-[10px] font-medium leading-none text-emerald-600 dark:text-emerald-400">
-                    <Check className="size-3 shrink-0" /> Connected
-                  </span>
-                )}
-                {p.signupUrl && isOpen && (
-                  <button type="button"
-                    onClick={() => {
-                      if (p.signupUrl) void open(p.signupUrl);
-                    }}
-                    className="flex shrink-0 items-center gap-1 text-[11px] text-primary hover:underline dark:text-primary"
-                  >
-                    {p.isHost ? "Docs" : "Get key"} <ExternalLink className="size-3" />
-                  </button>
-                )}
+                <div className="mt-0.5 flex shrink-0 items-center gap-2">
+                  {isConfigured && (
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-1 text-[10px] font-medium leading-none text-emerald-600 dark:text-emerald-400">
+                      <Check className="size-3 shrink-0" /> Connected
+                    </span>
+                  )}
+                  {p.signupUrl && isOpen && (
+                    <button type="button"
+                      onClick={() => {
+                        if (p.signupUrl) void open(p.signupUrl);
+                      }}
+                      className="flex shrink-0 items-center gap-1 text-[11px] leading-none text-primary hover:underline dark:text-primary"
+                    >
+                      {p.isHost ? "Docs" : "Get key"} <ExternalLink className="size-3" />
+                    </button>
+                  )}
+                </div>
               </div>
 
               {!isOpen ? null : p.id === "ollama" ? (
@@ -311,14 +325,28 @@ export function ProvidersTab({
                     );
                   })()}
                   <div className="mt-2 flex gap-2">
-                    <Input
-                      type="password"
-                      value={value}
-                      onChange={(e) => setKeys((k) => ({ ...k, [p.id]: e.target.value }))}
-                      placeholder="Paste your API key here"
-                      data-testid={`ai-provider-key-${p.id}`}
-                      className="flex-1 rounded-md border border-input bg-background px-3 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-ring"
-                    />
+                    {isReplacingKey ? (
+                      <Input
+                        type="password"
+                        value={value}
+                        onChange={(e) => setKeys((k) => ({ ...k, [p.id]: e.target.value }))}
+                        placeholder="Paste your API key here"
+                        data-testid={`ai-provider-key-${p.id}`}
+                        autoFocus={hasSaved}
+                        className="flex-1 rounded-md border border-input bg-background px-3 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-ring"
+                      />
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        data-testid={`ai-provider-replace-${p.id}`}
+                        disabled={saving === p.id}
+                        onClick={() => setEditingKey((m) => ({ ...m, [p.id]: true }))}
+                        className="h-8 text-xs"
+                      >
+                        Replace key
+                      </Button>
+                    )}
                     {dirty ? (
                       <Button
                         size="sm"

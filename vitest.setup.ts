@@ -41,3 +41,11 @@ if (typeof localStorage === "undefined") {
     },
   } as Storage);
 }
+
+if (typeof ResizeObserver === "undefined") {
+  function noop() {}
+  function resizeObserverStub() {
+    return { observe: noop, unobserve: noop, disconnect: noop };
+  }
+  (globalThis as Record<string, unknown>).ResizeObserver = resizeObserverStub;
+}

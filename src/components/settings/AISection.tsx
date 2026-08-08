@@ -1,7 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
-import { getConfig, setConfig, type AppConfig, type CustomProvider, type StoredModel } from "@/lib/tauri";
-import { defaultModel, discoveryFor, fetchProviderModels, getProvider } from "@/lib/ai-providers";
-import { enabledModels, mergeFetchedModels, seedProviderModels } from "@/lib/ai-model-state";
+import {
+  agentListModels,
+  getConfig,
+  setConfig,
+  type AppConfig,
+  type CustomProvider,
+  type StoredModel,
+} from "@/lib/tauri";
+import { defaultModel, getProvider, supportsModelDiscovery } from "@/lib/ai-providers";
+import {
+  enabledModels,
+  mergeFetchedModels,
+  pickActiveModel,
+  seedProviderModels,
+} from "@/lib/ai-model-state";
 import { listOllamaModels, DEFAULT_OLLAMA_HOST } from "@/lib/ollama";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSettingsStore } from "@/store/settings";
@@ -10,8 +22,30 @@ import { ProvidersTab, type ProviderStatus } from "./ai/ProvidersTab";
 import { InstructionsTab } from "./ai/InstructionsTab";
 import { PersonasTab } from "./ai/PersonasTab";
 import { AddCustomProviderDialog, type AddCustomProviderInput } from "./ai/AddCustomProviderDialog";
+import { editableKeys, withKey, withoutKey } from "./ai-keys";
+import { agentErrorKind } from "@/lib/agent-backend";
 
 type AITab = "providers" | "instructions" | "personas";
+
+type DiscoveryResult =
+  | { ok: true; models: { id: string; name: string }[] }
+  | { ok: false; reason: "invalid-key" | "unreachable" };
+
+async function discoverModels(args: {
+  providerId: string;
+  key?: string;
+  baseURL?: string;
+  isCustom?: boolean;
+}): Promise<DiscoveryResult> {
+  if (!supportsModelDiscovery(args.providerId, args.isCustom)) {
+    return { ok: true, models: [] };
+  }
+  try {
+    return { ok: true, models: await agentListModels(args) };
+  } catch (error) {
+    return { ok: false, reason: agentErrorKind(error) === "auth" ? "invalid-key" : "unreachable" };
+  }
+}
 
 const DEFAULT_CFG: AppConfig = {
   github_token: "",
@@ -71,9 +105,10 @@ export function AISection() {
       const next: AppConfig = { ...DEFAULT_CFG, ...c, ai_keys: merged };
       setCfg(next);
       setSysPrompt(next.ai_system_prompt || "");
+      const editable = editableKeys(merged);
       // Merge under any keys already typed: the load resolves async and must
       // not wipe an edit made before it landed.
-      setKeys((prev) => ({ ...merged, ...prev }));
+      setKeys((prev) => ({ ...editable, ...prev }));
       setSavedKeys(merged);
       if (Object.keys(c.ai_keys ?? {}).length === 0 && c.ai_api_key) {
         void setConfig(next);
@@ -108,7 +143,7 @@ export function AISection() {
   // Saves the host and activates the model in one step; no separate "Save" button for Ollama.
   const applyOllamaModel = async (model: string) => {
     const host = (keys.ollama || DEFAULT_OLLAMA_HOST).trim();
-    const nextKeys = { ...keys, ollama: host };
+    const nextKeys = withKey(cfg.ai_keys, "ollama", host);
     setSaving("ollama");
     setMsg(null);
     try {
@@ -118,7 +153,7 @@ export function AISection() {
         ai_provider: "ollama",
         ai_model: model,
       });
-      setKeys(nextKeys);
+      setKeys(editableKeys(nextKeys));
       setSavedKeys(nextKeys);
       setMsg({ ok: true, text: `Ollama connected · ${model}` });
     } catch (e) {
@@ -144,24 +179,18 @@ export function AISection() {
     try {
       const custom = cfg.ai_custom_providers.find((c) => c.id === id);
       const provider = getProvider(id);
-      const baseURL = custom?.baseURL ?? provider?.baseURL;
-      const discovery = custom ? { kind: "openai" as const, modelsPath: "/models" } : discoveryFor(id);
-      const res = await fetchProviderModels({
+      const res = await discoverModels({
         providerId: id,
-        baseURL,
         key: value,
-        discovery,
-        seed: provider?.models ?? [],
+        baseURL: custom?.baseURL,
+        isCustom: Boolean(custom),
       });
-      if (!res.ok && !custom) {
+      if (!res.ok && res.reason === "invalid-key" && !custom) {
         setStatus((s) => ({ ...s, [id]: "error" }));
-        setErrorMsg((m) => ({
-          ...m,
-          [id]: res.reason === "invalid-key" ? "Invalid API key." : "Could not reach the provider.",
-        }));
+        setErrorMsg((m) => ({ ...m, [id]: "Invalid API key." }));
         return;
       }
-      const nextKeys = { ...keys, [id]: value };
+      const nextKeys = withKey(cfg.ai_keys, id, value);
       const existingModels = cfg.ai_provider_models[id] ?? seedProviderModels(id);
       const mergedModels = res.ok ? mergeFetchedModels(existingModels, res.models) : existingModels;
       const wasActive = Boolean(cfg.ai_provider);
@@ -170,18 +199,22 @@ export function AISection() {
         ai_keys: nextKeys,
         ai_provider_models: { ...cfg.ai_provider_models, [id]: mergedModels },
         ai_provider: cfg.ai_provider || id,
-        ai_model: wasActive ? cfg.ai_model : defaultModel(id),
+        ai_model: wasActive ? cfg.ai_model : pickActiveModel(mergedModels, defaultModel(id)),
       };
       await persist(next);
-      setKeys(nextKeys);
+      setKeys({ ...editableKeys(nextKeys), [id]: "" });
       setSavedKeys(nextKeys);
       setStatus((s) => ({ ...s, [id]: "valid" }));
+      const label = provider?.name ?? custom?.name ?? id;
+      const validated = res.ok && supportsModelDiscovery(id, Boolean(custom));
       setMsg({
         ok: true,
         text:
           custom && !res.ok
             ? `${custom.name} key saved. Add models manually below.`
-            : `${provider?.name ?? custom?.name ?? id} connected.`,
+            : validated
+              ? `${label} connected.`
+              : `${label} key saved. It is checked on first use.`,
       });
     } catch (e) {
       setStatus((s) => ({ ...s, [id]: "error" }));
@@ -203,23 +236,20 @@ export function AISection() {
       return { ok: false, message: "That provider ID is already in use." };
     }
     let models: StoredModel[] = [];
-    const res = await fetchProviderModels({
-      providerId: id,
-      baseURL,
-      key: apiKey,
-      discovery: { kind: "openai", modelsPath: "/models" },
-      seed: [],
-    });
+    const res = await discoverModels({ providerId: id, key: apiKey, baseURL, isCustom: true });
     if (res.ok) {
       models = res.models.map((m) => ({ id: m.id, name: m.name, enabled: true, source: "fetched" as const }));
     }
     const customProvider: CustomProvider = { id, name, baseURL, keyOptional: !apiKey };
     const nextKeys = apiKey ? { ...cfg.ai_keys, [id]: apiKey } : cfg.ai_keys;
+    const isFirst = !cfg.ai_provider;
     const next: AppConfig = {
       ...cfg,
       ai_custom_providers: [...cfg.ai_custom_providers, customProvider],
       ai_provider_models: { ...cfg.ai_provider_models, [id]: models },
       ai_keys: nextKeys,
+      ai_provider: isFirst ? id : cfg.ai_provider,
+      ai_model: isFirst ? pickActiveModel(models, defaultModel(id)) : cfg.ai_model,
     };
     try {
       await persist(next);
@@ -239,8 +269,7 @@ export function AISection() {
     setSaving(id);
     setMsg(null);
     try {
-      const nextKeys = { ...keys };
-      delete nextKeys[id];
+      const nextKeys = withoutKey(cfg.ai_keys, id);
       const nextModels = { ...cfg.ai_provider_models };
       delete nextModels[id];
       const wasActive = cfg.ai_provider === id;
@@ -253,7 +282,7 @@ export function AISection() {
         ai_model: wasActive ? "" : cfg.ai_model,
       };
       await persist(next);
-      setKeys(nextKeys);
+      setKeys(editableKeys(nextKeys));
       setSavedKeys(nextKeys);
     } catch (e) {
       setMsg({ ok: false, text: String(e) });
@@ -305,8 +334,7 @@ export function AISection() {
     setSaving(id);
     setMsg(null);
     try {
-      const nextKeys = { ...keys };
-      delete nextKeys[id];
+      const nextKeys = withoutKey(cfg.ai_keys, id);
       const wasActive = cfg.ai_provider === id;
       const next: AppConfig = {
         ...cfg,
@@ -317,7 +345,7 @@ export function AISection() {
         ai_api_key: wasActive ? "" : cfg.ai_api_key,
       };
       await persist(next);
-      setKeys(nextKeys);
+      setKeys(editableKeys(nextKeys));
       setSavedKeys(nextKeys);
       setMsg({
         ok: true,

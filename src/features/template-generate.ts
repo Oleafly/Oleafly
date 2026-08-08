@@ -1,5 +1,5 @@
-import { generateText } from "ai";
-import { buildModel, hasConfiguredProvider, resolveActiveModel } from "@/lib/ai-providers";
+import { completeViaBackend } from "@/lib/agent-backend";
+import { hasConfiguredProvider } from "@/lib/ai-providers";
 import { pdfPageToPng } from "@/lib/pdf-image";
 import {
   compileIsolated,
@@ -9,6 +9,8 @@ import {
   readIsolatedPdf,
   saveCustomTemplate,
 } from "@/lib/tauri";
+
+const GENERATE_TIMEOUT_MS = 45_000;
 
 const SYSTEM = [
   "You create document templates for a LaTeX/Typst/Markdown editor.",
@@ -82,23 +84,17 @@ export async function generateTemplateSource(
   description: string,
   override?: { providerId: string; modelId: string },
 ): Promise<ParsedTemplate> {
-  const cfg = await getConfig();
-  let model: ReturnType<typeof buildModel>;
-  if (override) {
-    const credential = cfg.ai_keys?.[override.providerId] ?? "";
-    const customBaseURL = cfg.ai_custom_providers?.find(
-      (c) => c.id === override.providerId,
-    )?.baseURL;
-    model = buildModel(override.providerId, override.modelId, credential, customBaseURL);
-  } else {
-    model = resolveActiveModel(cfg).model;
-  }
-  const { text } = await generateText({
-    model,
-    system: SYSTEM,
-    prompt: `Create a template for: ${description}`,
-    abortSignal: AbortSignal.timeout(45_000),
-  });
+  const prompt = `Create a template for: ${description}`;
+
+  const { text } = await completeViaBackend(
+    {
+      system: SYSTEM,
+      messages: [{ role: "user", content: [{ type: "text", text: prompt }] }],
+      timeout_ms: GENERATE_TIMEOUT_MS,
+    },
+    undefined,
+    override ? { provider_id: override.providerId, model_id: override.modelId } : undefined,
+  );
   return parseGeneratedTemplate(text);
 }
 

@@ -208,3 +208,68 @@ describe("chats store addUsage", () => {
     expect(useChatsStore.getState().chats[0].usage?.inputTokens).toBe(9);
   });
 });
+
+describe("live transcripts", () => {
+  const msg = (content: string) => ({ role: "assistant" as const, content });
+
+  beforeEach(() => {
+    useChatsStore.setState({ live: {} });
+  });
+
+  it("prefers the live transcript over the saved one while a run streams", () => {
+    useChatsStore.setState({
+      projectId: "P",
+      chats: [
+        {
+          id: "c1",
+          projectId: "P",
+          title: "t",
+          createdAt: 1,
+          updatedAt: 1,
+          messages: [msg("saved")],
+          headOid: null,
+        } as StoredChat,
+      ],
+    });
+    useChatsStore.getState().setLive("c1", [msg("saved"), msg("stream")]);
+    expect(useChatsStore.getState().liveOrSaved("c1")?.map((m) => m.content)).toEqual([
+      "saved",
+      "stream",
+    ]);
+    useChatsStore.getState().clearLive("c1");
+    expect(useChatsStore.getState().liveOrSaved("c1")?.map((m) => m.content)).toEqual(["saved"]);
+  });
+
+  it("notifies subscribers on every live update so a remounted view streams", () => {
+    const seen: number[] = [];
+    const unsub = useChatsStore.subscribe((s) => {
+      if (s.live.c2) seen.push(s.live.c2.length);
+    });
+    useChatsStore.getState().setLive("c2", [msg("a")]);
+    useChatsStore.getState().setLive("c2", [msg("a"), msg("b")]);
+    unsub();
+    expect(seen).toEqual([1, 2]);
+  });
+
+  it("drops the live transcript when the chat is removed", () => {
+    useChatsStore.setState({
+      projectId: "P",
+      chats: [
+        {
+          id: "c3",
+          projectId: "P",
+          title: "t",
+          createdAt: 1,
+          updatedAt: 1,
+          messages: [],
+          headOid: null,
+        } as StoredChat,
+      ],
+      activeId: "c3",
+    });
+    useChatsStore.getState().setLive("c3", [msg("x")]);
+    useChatsStore.getState().remove("c3");
+    expect(useChatsStore.getState().live.c3).toBeUndefined();
+    expect(useChatsStore.getState().liveOrSaved("c3")).toBeUndefined();
+  });
+});

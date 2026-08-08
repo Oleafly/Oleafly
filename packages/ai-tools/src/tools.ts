@@ -1,4 +1,3 @@
-import { jsonSchema } from "ai";
 import {
   buildStandaloneDoc,
   slugifyFigureName,
@@ -725,22 +724,7 @@ export function createOleaflyTools(
     },
   };
 
-  const wrapped: Record<
-    string,
-    {
-      description: string;
-      inputSchema: ReturnType<typeof jsonSchema>;
-      execute: RawToolDef["execute"];
-    }
-  > = {};
-  for (const [name, def] of Object.entries(tools)) {
-    wrapped[name] = {
-      description: def.description,
-      inputSchema: jsonSchema(def.inputSchema),
-      execute: def.execute,
-    };
-  }
-  return wrapped;
+  return tools;
 }
 
 function pngDataUrlToBase64(dataUrl: string): string {
@@ -948,20 +932,5 @@ export function createFigureTools(
     },
   };
 
-  const wrapped: Record<
-    string,
-    {
-      description: string;
-      inputSchema: ReturnType<typeof jsonSchema>;
-      execute: RawToolDef["execute"];
-    }
-  > = {};
-  for (const [name, def] of Object.entries(tools)) {
-    wrapped[name] = {
-      description: def.description,
-      inputSchema: jsonSchema(def.inputSchema),
-      execute: def.execute,
-    };
-  }
-  return wrapped;
+  return tools;
 }

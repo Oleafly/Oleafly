@@ -7,13 +7,25 @@ export function seedProviderModels(providerId: string): StoredModel[] {
 }
 
 export function mergeFetchedModels(existing: StoredModel[], fetched: AIModel[]): StoredModel[] {
-  const byId = new Map(existing.map((m) => [m.id, m]));
+  const listed = new Set(fetched.map((f) => f.id));
+  const kept = existing.filter((m) => m.source !== "fetched" || listed.has(m.id));
+  const byId = new Map(kept.map((m) => [m.id, m]));
   for (const f of fetched) {
     const prev = byId.get(f.id);
     if (prev) byId.set(f.id, { ...prev, name: prev.name || f.name });
     else byId.set(f.id, { id: f.id, name: f.name, enabled: true, source: "fetched" });
   }
   return [...byId.values()];
+}
+
+export function pickActiveModel(
+  models: StoredModel[],
+  catalogDefault: string,
+): string {
+  const enabled = models.filter((m) => m.enabled);
+  const pool = enabled.length > 0 ? enabled : models;
+  if (pool.some((m) => m.id === catalogDefault)) return catalogDefault;
+  return pool[0]?.id ?? catalogDefault;
 }
 
 export function enabledModels(list: StoredModel[]): StoredModel[] {

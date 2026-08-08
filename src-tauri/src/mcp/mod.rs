@@ -1,3 +1,4 @@
+pub mod native;
 pub mod protocol;
 pub mod server;
 
@@ -50,6 +51,12 @@ pub async fn start_configured(app: AppHandle, preferred_port: u16) -> Result<u16
     cfg.mcp_port = port;
     crate::config::write_config(&cfg)?;
     Ok(port)
+}
+
+#[tauri::command]
+pub async fn mcp_set_active_project(app: AppHandle, project_id: Option<String>) {
+    let state = app.state::<McpState>();
+    *state.active_project.lock().await = project_id;
 }
 
 #[tauri::command]

@@ -1,5 +1,5 @@
 import { modelSupportsVision } from "@oleafly/ai-core";
-import { hasConfiguredProvider, resolveActiveModel } from "@/lib/ai-providers";
+import { hasConfiguredProvider, pickActiveProvider } from "@/lib/ai-providers";
 import { pdfPageToPng } from "@/lib/pdf-image";
 import { getConfig } from "@/lib/tauri";
 import { useAgentHandoffStore } from "@/store/agent-handoff";
@@ -12,7 +12,7 @@ export async function refineAvailable(): Promise<boolean> {
   try {
     const cfg = await getConfig();
     if (!hasConfiguredProvider(cfg)) return false;
-    const { providerId, modelId } = resolveActiveModel(cfg);
+    const { providerId, modelId } = pickActiveProvider(cfg);
     return modelSupportsVision(providerId, modelId);
   } catch {
     return false;

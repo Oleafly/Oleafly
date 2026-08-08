@@ -9,11 +9,5 @@
   "exports": {
     ".": "./src/index.ts"
   },
-  "dependencies": {
-    "@ai-sdk/anthropic": "*",
-    "@ai-sdk/google": "*",
-    "@ai-sdk/openai": "*",
-    "@ai-sdk/openai-compatible": "*",
-    "ai": "*"
-  }
+  "dependencies": {}
 }
