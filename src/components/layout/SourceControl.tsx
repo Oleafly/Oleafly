@@ -112,10 +112,11 @@ export function SourceControl() {
     setBusy(true);
     setStatus(null);
     try {
+      await useFilesStore.getState().prepareExternalMutation(projectId);
       const res = await gitPull(projectId);
-      setStatus({ ok: true, text: res });
+      await useFilesStore.getState().applyProjectStateChanged(res.state);
+      setStatus({ ok: true, text: res.message });
       await refresh();
-      await refreshTree();
     } catch (e) {
       setStatus({ ok: false, text: String(e) });
     } finally {
@@ -146,9 +147,10 @@ export function SourceControl() {
   const discard = async (path: string) => {
     if (!projectId) return;
     try {
-      await gitDiscard(projectId, path);
+      await useFilesStore.getState().prepareExternalMutation(projectId);
+      const event = await gitDiscard(projectId, path);
+      await useFilesStore.getState().applyProjectStateChanged(event);
       await refresh();
-      await refreshTree();
       notifyGitChanged();
     } catch (e) {
       setStatus({ ok: false, text: String(e) });

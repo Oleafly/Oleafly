@@ -20,7 +20,11 @@ import "@/styles/globals.css";
 
 markBootStage("entry-evaluated");
 
-reapOrphanAgentRuns();
+void (async () => {
+const bootViewParam = new URLSearchParams(window.location.search).get("view");
+if (bootViewParam !== "update" && bootViewParam !== "preview") {
+  await reapOrphanAgentRuns();
+}
 
 // Must run before the shell mounts and reads the registry.
 registerContributions();
@@ -45,7 +49,7 @@ window.addEventListener("error", (e) => {
   void appendAppLog(`Uncaught error: ${msg}`).catch(() => {});
 });
 
-const viewParam = new URLSearchParams(window.location.search).get("view");
+const viewParam = bootViewParam;
 const isUpdateWindow = viewParam === "update";
 const isPreviewWindow = viewParam === "preview";
 
@@ -94,3 +98,7 @@ createRoot(root).render(
     </ErrorBoundary>
   </StrictMode>,
 );
+})().catch((error) => {
+  const message = error instanceof Error ? error.stack || error.message : String(error);
+  void appendAppLog(`Application bootstrap failed: ${message}`).catch(() => {});
+});

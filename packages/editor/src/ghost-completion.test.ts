@@ -1,8 +1,14 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
-import type { CompletionSource } from "@codemirror/autocomplete";
+import {
+  autocompletion,
+  completionStatus,
+  moveCompletionSelection,
+  startCompletion,
+  type CompletionSource,
+} from "@codemirror/autocomplete";
 import {
   acceptGhostCompletion,
   clearGhostCompletion,
@@ -29,9 +35,17 @@ function sourceOf(
 
 // jsdom has no layout, but the ghost only needs the state field and the view
 // plugin, both of which run headless.
-function mount(doc: string, sources: CompletionSource[]): EditorView {
+function mount(
+  doc: string,
+  sources: CompletionSource[],
+  selection = 0,
+): EditorView {
   const view = new EditorView({
-    state: EditorState.create({ doc, extensions: [ghostCompletion(sources)] }),
+    state: EditorState.create({
+      doc,
+      selection: { anchor: selection },
+      extensions: [ghostCompletion(sources)],
+    }),
     parent: document.body,
   });
   view.focus();
@@ -46,6 +60,28 @@ function caretToEnd(view: EditorView) {
 const settle = () => new Promise((resolve) => queueMicrotask(() => resolve(null)));
 
 describe("ghost completion suggestions", () => {
+  it("does not materialize a large prose document for a non-trigger token", async () => {
+    const doc = `${"ordinary prose ".repeat(100_000)}typing`;
+    const source = vi.fn<CompletionSource>((context) => {
+      context.state.doc.toString();
+      return null;
+    });
+    const view = mount(doc, [source], doc.length);
+    const sliceString = vi.spyOn(view.state.doc, "sliceString");
+    const toString = vi.spyOn(view.state.doc, "toString");
+
+    await settle();
+
+    expect(source).not.toHaveBeenCalled();
+    expect(toString).not.toHaveBeenCalled();
+    expect(
+      sliceString.mock.calls.every(([from = 0, to = view.state.doc.length]) =>
+        to - from <= 2_048
+      ),
+    ).toBe(true);
+    view.destroy();
+  });
+
   it("offers the remainder of the best matching command", async () => {
     const view = mount("\\alp", [sourceOf(["\\alpha", "\\alphabet"])]);
     caretToEnd(view);
@@ -81,8 +117,8 @@ describe("ghost completion suggestions", () => {
     view.destroy();
   });
 
-  it("needs three characters for a plain word", async () => {
-    const view = mount("se", [sourceOf(["section"])]);
+  it("needs three characters after an at-reference trigger", async () => {
+    const view = mount("@se", [sourceOf(["section"])]);
     caretToEnd(view);
     await settle();
     expect(pendingGhostCompletion(view)).toBeNull();
@@ -168,6 +204,17 @@ describe("ghost completion suggestions", () => {
     view.destroy();
   });
 
+  it("does not run a queued source after the editor is destroyed", async () => {
+    const source = vi.fn(sourceOf(["\\alpha"]));
+    const view = mount("\\alp", [source]);
+    source.mockClear();
+
+    view.destroy();
+    await settle();
+
+    expect(source).not.toHaveBeenCalled();
+  });
+
   it("clears the suggestion when the selection is not empty", async () => {
     const view = mount("\\alp", [sourceOf(["\\alpha"])]);
     caretToEnd(view);
@@ -177,6 +224,35 @@ describe("ghost completion suggestions", () => {
     view.dispatch({ selection: { anchor: 0, head: 4 } });
     await settle();
     expect(pendingGhostCompletion(view)).toBeNull();
+    view.destroy();
+  });
+
+  it("tracks the highlighted option while the completion popup stays open", async () => {
+    const source = sourceOf(["alpha", "alpine"]);
+    const view = new EditorView({
+      state: EditorState.create({
+        doc: "alp",
+        selection: { anchor: 3 },
+        extensions: [
+          ghostCompletion([source]),
+          autocompletion({
+            override: [source],
+            activateOnTyping: false,
+            interactionDelay: 0,
+          }),
+        ],
+      }),
+      parent: document.body,
+    });
+
+    expect(startCompletion(view)).toBe(true);
+    await vi.waitFor(() => expect(completionStatus(view.state)).toBe("active"));
+    await settle();
+    expect(pendingGhostCompletion(view)).toBe("ha");
+
+    expect(moveCompletionSelection(true)(view)).toBe(true);
+    await settle();
+    expect(pendingGhostCompletion(view)).toBe("ine");
     view.destroy();
   });
 });

@@ -30,6 +30,12 @@ pub fn resolve_in_project(project_id: &str, rel: &str) -> Result<PathBuf, String
 ///      (or its nearest existing ancestor, for not-yet-created files) must stay
 ///      within `root`.
 pub fn resolve_within(root: &Path, rel: &str) -> Result<PathBuf, String> {
+    // Project paths use one portable wire format on every OS. Treating a
+    // backslash as a literal filename character on Unix but as a separator on
+    // Windows would make traversal validation and mutation scopes disagree.
+    if rel.contains('\\') {
+        return Err(format!("illegal path: {rel}"));
+    }
     let rel_path = Path::new(rel);
     if rel_path.is_absolute() {
         return Err(format!("illegal path: {rel}"));
@@ -66,6 +72,7 @@ fn nearest_existing(path: &Path) -> Option<PathBuf> {
 }
 
 /// Whether `rel` resolves to the project root itself (must never be deleted).
+#[cfg(test)]
 pub fn is_root_delete(root: &Path, rel: &str) -> bool {
     if rel.is_empty() || rel == "." {
         return true;
@@ -314,6 +321,8 @@ mod tests {
         let root = temp_root();
         assert!(resolve_within(&root, "../secret").is_err());
         assert!(resolve_within(&root, "a/../../secret").is_err());
+        assert!(resolve_within(&root, "..\\secret").is_err());
+        assert!(resolve_within(&root, "C:\\Windows\\system.ini").is_err());
         std::fs::remove_dir_all(&root).ok();
     }
 

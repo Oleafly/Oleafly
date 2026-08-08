@@ -54,6 +54,7 @@ import { createLatexLinter } from "./latex-linter";
 import { latexFolding } from "./latex-folding";
 import { ghostCompletion } from "./ghost-completion";
 import { foldMarkerDOM, foldMarkerTheme } from "./fold-marker";
+import { gateCompletionSource } from "./completion-trigger";
 
 // The use* members are React hooks: must follow hook rules, and the host
 // object identity must stay stable across renders.
@@ -92,9 +93,17 @@ const isMarkdownDocumentPath = (path: string | null): boolean =>
 function sourceToolsForPath(
   path: string | null,
   completionSources: CompletionSource[],
+  ghostCompletionSources: CompletionSource[],
   autocompleteWhileTyping: boolean,
   ghostCompletionEnabled: boolean,
 ): Extension[] {
+  // The host explicitly identifies the synchronous sources shared with ghost
+  // completion. Gate those same function identities in the popup as well,
+  // while leaving popup-only async sources (for example an LSP) untouched.
+  const synchronousSources = new Set(ghostCompletionSources);
+  const gatedCompletionSources = completionSources.map((source) =>
+    synchronousSources.has(source) ? gateCompletionSource(source, path) : source,
+  );
   const mathPreview = isLatexDocumentPath(path)
     ? [liveMathPreview("latex")]
     : isMarkdownDocumentPath(path)
@@ -102,11 +111,18 @@ function sourceToolsForPath(
       : [];
 
   if (isLatexSourcePath(path)) {
-    // The ghost preview reads the same sources the popup does, so the two can
-    // never suggest different things.
+    const staticLatexSource =
+      completionSources.length > 0 ? latexCommandCompletions : latexCompletions;
     const sources = [
-      ...completionSources,
-      completionSources.length > 0 ? latexCommandCompletions : latexCompletions,
+      ...gatedCompletionSources,
+      staticLatexSource,
+      slashCompletions,
+    ];
+    // Async popup sources (for example an LSP) must not be probed by the ghost:
+    // calling one just to discard its Promise would still launch the request.
+    const ghostSources = [
+      ...ghostCompletionSources,
+      staticLatexSource,
       slashCompletions,
     ];
     return [
@@ -115,7 +131,7 @@ function sourceToolsForPath(
       // precedence, where the earlier extension wins, and the ghost's Escape
       // has to record its dismissal before the popup consumes the key. Its
       // handlers decline whenever the popup should own the key instead.
-      ...(ghostCompletionEnabled ? [ghostCompletion(sources)] : []),
+      ...(ghostCompletionEnabled ? [ghostCompletion(ghostSources, path)] : []),
       autocompletion({
         override: sources,
         activateOnTyping: autocompleteWhileTyping,
@@ -128,11 +144,13 @@ function sourceToolsForPath(
 
   return [
     ...mathPreview,
-    ...(completionSources.length > 0
+    ...(ghostCompletionEnabled && ghostCompletionSources.length > 0
+      ? [ghostCompletion(ghostCompletionSources, path)]
+      : []),
+    ...(gatedCompletionSources.length > 0
       ? [
-          ...(ghostCompletionEnabled ? [ghostCompletion(completionSources)] : []),
           autocompletion({
-            override: completionSources,
+            override: gatedCompletionSources,
             activateOnTyping: autocompleteWhileTyping,
             closeOnBlur: true,
           }),
@@ -160,6 +178,7 @@ export function CodeMirrorEditor({
   extraExtensions,
   extraExtensionsForPath,
   extraCompletionSourcesForPath,
+  extraGhostCompletionSourcesForPath,
   extraKeymap,
 }: {
   active?: boolean;
@@ -167,6 +186,8 @@ export function CodeMirrorEditor({
   extraExtensions?: Extension[];
   extraExtensionsForPath?: (path: string | null) => Extension[];
   extraCompletionSourcesForPath?: (path: string | null) => CompletionSource[];
+  /** Known-synchronous sources safe for inline ghost completion to call. */
+  extraGhostCompletionSourcesForPath?: (path: string | null) => CompletionSource[];
   // Checked before the default keymaps (CodeMirror keymap precedence: earlier
   // extensions in the array win).
   extraKeymap?: KeyBinding[];
@@ -228,6 +249,8 @@ export function CodeMirrorEditor({
     const initialLang = initialPath ? languageForPath(initialPath) : null;
     const initialCompletionSources =
       extraCompletionSourcesForPath?.(initialPath) ?? [];
+    const initialGhostCompletionSources =
+      extraGhostCompletionSourcesForPath?.(initialPath) ?? [];
 
     const state = EditorState.create({
       doc: initialContent,
@@ -259,6 +282,7 @@ export function CodeMirrorEditor({
           sourceToolsForPath(
             initialPath,
             initialCompletionSources,
+            initialGhostCompletionSources,
             autocomplete,
             ghostCompletionEnabled,
           ),
@@ -371,12 +395,15 @@ export function CodeMirrorEditor({
     const lang = languageForPath(activePath);
     const completionSources =
       extraCompletionSourcesForPath?.(activePath) ?? [];
+    const ghostCompletionSources =
+      extraGhostCompletionSourcesForPath?.(activePath) ?? [];
     const effects = [langCompartmentRef.current!.reconfigure(lang ? lang : [])];
     effects.push(
       sourceToolsCompartmentRef.current!.reconfigure(
         sourceToolsForPath(
           activePath,
           completionSources,
+          ghostCompletionSources,
           autocomplete,
           ghostCompletionEnabled,
         ),
@@ -454,6 +481,7 @@ export function CodeMirrorEditor({
         sourceToolsForPath(
           path,
           extraCompletionSourcesForPath?.(path) ?? [],
+          extraGhostCompletionSourcesForPath?.(path) ?? [],
           autocomplete,
           ghostCompletionEnabled,
         ),

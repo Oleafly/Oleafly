@@ -111,7 +111,7 @@ fn catalog_rank(id: &str) -> usize {
 pub fn default_model(provider_id: &str) -> &str {
     catalog_entry(provider_id)
         .map(|p| p.default_model)
-        .unwrap_or("gpt-4o-mini")
+        .unwrap_or_default()
 }
 
 #[derive(Debug, Clone, Default)]
@@ -127,6 +127,8 @@ pub struct ProviderConfig {
     pub model: String,
     pub legacy_key: String,
     pub keys: BTreeMap<String, String>,
+    /// Provider ids explicitly present with an empty list have no enabled model.
+    pub enabled_models: BTreeMap<String, Vec<String>>,
     pub custom: Vec<CustomProvider>,
 }
 
@@ -154,22 +156,26 @@ pub fn pick_provider(cfg: &ProviderConfig) -> (String, String, String) {
     let key_optional: Vec<&str> = cfg
         .custom
         .iter()
-        .filter(|c| c.key_optional)
+        .filter(|c| c.key_optional && catalog_entry(&c.id).is_none())
         .map(|c| c.id.as_str())
         .collect();
 
     let has_credential = |id: &str| {
-        keys.get(id).map(|k| !k.trim().is_empty()).unwrap_or(false) || key_optional.contains(&id)
+        keys.get(id).map(|k| !k.trim().is_empty()).unwrap_or(false)
+            || key_optional.contains(&id)
+            || catalog_entry(id)
+                .map(|entry| entry.is_host)
+                .unwrap_or(false)
     };
 
-    let provider_id = if has_credential(&saved) {
+    let provider_id = if has_credential(&saved) && saved_model(cfg, &saved).is_some() {
         saved.clone()
     } else {
         let mut candidates: Vec<&str> = keys
             .keys()
             .map(|k| k.as_str())
             .chain(key_optional.iter().copied())
-            .filter(|id| has_credential(id))
+            .filter(|id| has_credential(id) && enabled_model(cfg, id).is_some())
             .collect();
         candidates.sort_by_key(|id| (catalog_rank(id), *id));
         candidates.dedup();
@@ -180,13 +186,43 @@ pub fn pick_provider(cfg: &ProviderConfig) -> (String, String, String) {
     };
 
     let credential = keys.get(&provider_id).cloned().unwrap_or_default();
-    let model_id = if provider_id == saved && !cfg.model.is_empty() {
-        cfg.model.clone()
+    let model_id = if provider_id == saved {
+        saved_model(cfg, &saved).unwrap_or_default()
     } else {
-        default_model(&provider_id).to_string()
+        enabled_model(cfg, &provider_id).unwrap_or_default()
     };
 
     (provider_id, model_id, credential)
+}
+
+fn saved_model(cfg: &ProviderConfig, provider_id: &str) -> Option<String> {
+    match cfg.enabled_models.get(provider_id) {
+        None if !cfg.model.trim().is_empty() => Some(cfg.model.clone()),
+        Some(models)
+            if !cfg.model.trim().is_empty() && models.iter().any(|model| model == &cfg.model) =>
+        {
+            Some(cfg.model.clone())
+        }
+        _ => enabled_model(cfg, provider_id),
+    }
+}
+
+fn enabled_model(cfg: &ProviderConfig, provider_id: &str) -> Option<String> {
+    match cfg.enabled_models.get(provider_id) {
+        Some(models) => {
+            let catalog_default = default_model(provider_id);
+            models
+                .iter()
+                .filter(|model| !model.trim().is_empty())
+                .find(|model| !catalog_default.is_empty() && model.as_str() == catalog_default)
+                .or_else(|| models.iter().find(|model| !model.trim().is_empty()))
+                .cloned()
+        }
+        None => {
+            let catalog_default = default_model(provider_id);
+            (!catalog_default.is_empty()).then(|| catalog_default.to_string())
+        }
+    }
 }
 
 pub fn wire_for(provider_id: &str, credential: &str, custom_base: Option<&str>) -> Wire {
@@ -241,23 +277,47 @@ pub fn resolve_specific(
     provider_id: &str,
     model_id: &str,
 ) -> Result<Resolved> {
-    let credential = cfg
-        .keys
-        .get(provider_id)
-        .cloned()
-        .or_else(|| (cfg.provider == provider_id).then(|| cfg.legacy_key.clone()))
-        .unwrap_or_default();
+    let credential = credential_for(cfg, provider_id);
     let model = if model_id.is_empty() {
-        default_model(provider_id).to_string()
+        enabled_model(cfg, provider_id).unwrap_or_default()
     } else {
+        if cfg
+            .enabled_models
+            .get(provider_id)
+            .map(|models| !models.iter().any(|enabled| enabled == model_id))
+            .unwrap_or(false)
+        {
+            return Err(AgentError::NotConfigured(format!(
+                "Model {model_id} is not enabled for {provider_id}. Enable it in Settings under AI."
+            )));
+        }
         model_id.to_string()
     };
     build_resolved(cfg, provider_id.to_string(), model, credential)
 }
 
-fn auth_for(provider_id: &str, is_host: bool, credential: &str) -> Option<String> {
+/// Model listing needs provider credentials and an endpoint before a model can be selected.
+pub fn resolve_for_model_listing(cfg: &ProviderConfig, provider_id: &str) -> Result<Resolved> {
+    let placeholder = enabled_model(cfg, provider_id).unwrap_or_else(|| provider_id.to_string());
+    build_resolved(
+        cfg,
+        provider_id.to_string(),
+        placeholder,
+        credential_for(cfg, provider_id),
+    )
+}
+
+fn credential_for(cfg: &ProviderConfig, provider_id: &str) -> String {
+    cfg.keys
+        .get(provider_id)
+        .cloned()
+        .or_else(|| (cfg.provider == provider_id).then(|| cfg.legacy_key.clone()))
+        .unwrap_or_default()
+}
+
+fn auth_for(is_host: bool, credential: &str) -> Option<String> {
     if is_host {
-        return Some(provider_id.to_string());
+        return None;
     }
     let trimmed = credential.trim();
     if trimmed.is_empty() {
@@ -272,11 +332,23 @@ fn build_resolved(
     model_id: String,
     credential: String,
 ) -> Result<Resolved> {
-    let custom = cfg.custom.iter().find(|c| c.id == provider_id);
+    if model_id.trim().is_empty() {
+        return Err(AgentError::NotConfigured(format!(
+            "No enabled model is configured for {provider_id}. Enable one in Settings under AI."
+        )));
+    }
+    let catalog = catalog_entry(&provider_id);
+    let custom = catalog
+        .is_none()
+        .then(|| cfg.custom.iter().find(|c| c.id == provider_id))
+        .flatten();
+    if catalog.is_none() && custom.is_none() {
+        return Err(AgentError::NotConfigured(format!(
+            "Unknown AI provider {provider_id}. Add it as a custom provider before use."
+        )));
+    }
     let key_optional = custom.map(|c| c.key_optional).unwrap_or(false);
-    let is_host = catalog_entry(&provider_id)
-        .map(|p| p.is_host)
-        .unwrap_or(false);
+    let is_host = catalog.map(|provider| provider.is_host).unwrap_or(false);
 
     if credential.trim().is_empty() && !key_optional && !is_host {
         return Err(AgentError::NotConfigured(format!(
@@ -289,7 +361,12 @@ fn build_resolved(
         &credential,
         custom.map(|c| c.base_url.as_str()),
     );
-    let auth = auth_for(&provider_id, is_host, &credential);
+    if matches!(wire, Wire::Google { .. }) && !valid_google_model_id(&model_id) {
+        return Err(AgentError::NotConfigured(format!(
+            "Invalid Google model id {model_id}. Choose a model listed by Google."
+        )));
+    }
+    let auth = auth_for(is_host, &credential);
     Ok(Resolved {
         provider_id,
         model_id,
@@ -297,6 +374,14 @@ fn build_resolved(
         auth,
         wire,
     })
+}
+
+fn valid_google_model_id(model_id: &str) -> bool {
+    !model_id.is_empty()
+        && model_id.len() <= 256
+        && model_id
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.'))
 }
 
 #[cfg(test)]
@@ -327,6 +412,35 @@ mod tests {
     }
 
     #[test]
+    fn a_custom_duplicate_cannot_make_catalog_auth_optional() {
+        let cfg = ProviderConfig {
+            provider: "openai".into(),
+            model: "gpt-4o".into(),
+            custom: vec![CustomProvider {
+                id: "openai".into(),
+                base_url: "http://attacker.example".into(),
+                key_optional: true,
+            }],
+            ..Default::default()
+        };
+
+        assert!(matches!(resolve(&cfg), Err(AgentError::NotConfigured(_))));
+    }
+
+    #[test]
+    fn google_model_ids_cannot_escape_the_models_path_segment() {
+        let cfg = cfg_with(&[("google", "google-key")]);
+
+        assert!(resolve_specific(&cfg, "google", "gemini-2.5-pro").is_ok());
+        for model in ["../other", "gemini?key=attacker", "gemini#fragment", "a/b"] {
+            assert!(
+                resolve_specific(&cfg, "google", model).is_err(),
+                "should reject {model}"
+            );
+        }
+    }
+
+    #[test]
     fn a_custom_provider_reaches_its_own_base_url() {
         let cfg = ProviderConfig {
             provider: "mycorp".into(),
@@ -345,6 +459,21 @@ mod tests {
             other => panic!("unexpected wire {other:?}"),
         }
         assert_eq!(r.auth.as_deref(), Some("sk-real"));
+    }
+
+    #[test]
+    fn an_unknown_provider_key_is_never_sent_to_the_openai_fallback() {
+        let mut cfg = cfg_with(&[("unknown-provider", "provider-secret")]);
+        cfg.provider = "unknown-provider".into();
+        cfg.model = "unknown-model".into();
+        cfg.enabled_models
+            .insert("unknown-provider".into(), vec!["unknown-model".into()]);
+
+        let error = resolve(&cfg).unwrap_err();
+        assert!(
+            matches!(error, AgentError::NotConfigured(message) if message.contains("Unknown AI provider"))
+        );
+        assert!(resolve_specific(&cfg, "unknown-provider", "unknown-model").is_err());
     }
 
     use super::*;
@@ -369,11 +498,84 @@ mod tests {
     }
 
     #[test]
+    fn a_saved_host_provider_does_not_need_a_stored_host_value() {
+        let mut cfg = cfg_with(&[("openai", "sk-cloud")]);
+        cfg.provider = "ollama".into();
+
+        let resolved = resolve(&cfg).unwrap();
+        assert_eq!(resolved.provider_id, "ollama");
+        assert_eq!(resolved.model_id, default_model("ollama"));
+        assert_eq!(resolved.credential, "");
+        assert!(matches!(
+            resolved.wire,
+            Wire::OpenAiChat { ref base_url, .. }
+                if base_url == &format!("{OLLAMA_DEFAULT_HOST}/v1")
+        ));
+    }
+
+    #[test]
     fn falls_back_in_catalog_order_when_the_saved_provider_has_no_key() {
         let mut cfg = cfg_with(&[("zai", "z"), ("anthropic", "a")]);
         cfg.provider = "google".into();
         let (id, _, _) = pick_provider(&cfg);
         assert_eq!(id, "anthropic");
+    }
+
+    #[test]
+    fn fallback_uses_the_enabled_catalog_default_or_first_model() {
+        let mut cfg = cfg_with(&[("anthropic", "a")]);
+        cfg.provider = "google".into();
+        cfg.enabled_models.insert(
+            "anthropic".into(),
+            vec!["claude-small".into(), default_model("anthropic").into()],
+        );
+        assert_eq!(pick_provider(&cfg).1, default_model("anthropic"));
+
+        cfg.enabled_models
+            .insert("anthropic".into(), vec!["claude-small".into()]);
+        assert_eq!(pick_provider(&cfg).1, "claude-small");
+    }
+
+    #[test]
+    fn fallback_custom_provider_uses_its_first_enabled_model() {
+        let mut cfg = cfg_with(&[("corp", "secret")]);
+        cfg.provider = "openai".into();
+        cfg.custom.push(CustomProvider {
+            id: "corp".into(),
+            base_url: "https://models.example/v1".into(),
+            key_optional: false,
+        });
+        cfg.enabled_models
+            .insert("corp".into(), vec!["corp-reasoner".into()]);
+
+        let resolved = resolve(&cfg).unwrap();
+        assert_eq!(resolved.provider_id, "corp");
+        assert_eq!(resolved.model_id, "corp-reasoner");
+    }
+
+    #[test]
+    fn explicitly_empty_models_are_not_eligible_for_fallback() {
+        let mut cfg = cfg_with(&[("anthropic", "a"), ("groq", "g")]);
+        cfg.provider = "google".into();
+        cfg.enabled_models.insert("anthropic".into(), vec![]);
+        cfg.enabled_models
+            .insert("groq".into(), vec!["llama-enabled".into()]);
+
+        let resolved = resolve(&cfg).unwrap();
+        assert_eq!(resolved.provider_id, "groq");
+        assert_eq!(resolved.model_id, "llama-enabled");
+
+        cfg.keys.remove("groq");
+        assert!(matches!(resolve(&cfg), Err(AgentError::NotConfigured(_))));
+
+        let mut active = cfg_with(&[("anthropic", "a")]);
+        active.provider = "anthropic".into();
+        active.model = "stale-disabled-model".into();
+        active.enabled_models.insert("anthropic".into(), vec![]);
+        let error = resolve(&active).unwrap_err();
+        assert!(
+            matches!(error, AgentError::NotConfigured(message) if message.contains("No enabled model"))
+        );
     }
 
     #[test]
@@ -407,6 +609,7 @@ mod tests {
     fn key_optional_custom_provider_is_configured_without_a_credential() {
         let mut cfg = cfg_with(&[]);
         cfg.provider = "local-vllm".into();
+        cfg.model = "local-model".into();
         cfg.custom = vec![CustomProvider {
             id: "local-vllm".into(),
             base_url: "http://127.0.0.1:8000/v1".into(),
@@ -425,10 +628,37 @@ mod tests {
         let mut cfg = cfg_with(&[("openai", "sk-a")]);
         cfg.provider = "openai".into();
         cfg.model = "gpt-4.1-mini".into();
+
+        // Legacy configurations without a projected catalog retain their saved model.
         assert_eq!(pick_provider(&cfg).1, "gpt-4.1-mini");
 
+        cfg.enabled_models.insert(
+            "openai".into(),
+            vec!["gpt-enabled".into(), "gpt-4.1-mini".into()],
+        );
+        assert_eq!(pick_provider(&cfg).1, "gpt-4.1-mini");
+
+        cfg.enabled_models
+            .insert("openai".into(), vec!["gpt-enabled".into()]);
+        assert_eq!(pick_provider(&cfg).1, "gpt-enabled");
+
+        cfg.enabled_models.remove("openai");
         cfg.provider = "anthropic".into();
         assert_eq!(pick_provider(&cfg).1, "gpt-4o");
+    }
+
+    #[test]
+    fn a_saved_provider_with_no_enabled_model_falls_back_to_an_eligible_provider() {
+        let mut cfg = cfg_with(&[("openai", "sk-a"), ("groq", "g")]);
+        cfg.provider = "openai".into();
+        cfg.model = "stale-disabled-model".into();
+        cfg.enabled_models.insert("openai".into(), vec![]);
+        cfg.enabled_models
+            .insert("groq".into(), vec!["llama-enabled".into()]);
+
+        let resolved = resolve(&cfg).unwrap();
+        assert_eq!(resolved.provider_id, "groq");
+        assert_eq!(resolved.model_id, "llama-enabled");
     }
 
     #[test]
@@ -451,6 +681,37 @@ mod tests {
             resolve_specific(&cfg, "mistral", "").unwrap().model_id,
             "mistral-large-latest"
         );
+    }
+
+    #[test]
+    fn an_override_without_an_enabled_model_is_refused() {
+        let mut cfg = cfg_with(&[("mistral", "m")]);
+        cfg.enabled_models.insert("mistral".into(), vec![]);
+
+        assert!(matches!(
+            resolve_specific(&cfg, "mistral", ""),
+            Err(AgentError::NotConfigured(message)) if message.contains("No enabled model")
+        ));
+        assert!(matches!(
+            resolve_specific(&cfg, "mistral", "disabled-model"),
+            Err(AgentError::NotConfigured(message)) if message.contains("not enabled")
+        ));
+    }
+
+    #[test]
+    fn model_listing_can_resolve_a_provider_before_a_model_is_enabled() {
+        let mut cfg = cfg_with(&[("corp", "secret")]);
+        cfg.custom.push(CustomProvider {
+            id: "corp".into(),
+            base_url: "https://models.example/v1".into(),
+            key_optional: false,
+        });
+        cfg.enabled_models.insert("corp".into(), vec![]);
+
+        let resolved = resolve_for_model_listing(&cfg, "corp").unwrap();
+        assert_eq!(resolved.provider_id, "corp");
+        assert_eq!(resolved.model_id, "corp");
+        assert_eq!(resolved.auth.as_deref(), Some("secret"));
     }
 
     #[test]
@@ -481,13 +742,15 @@ mod tests {
         let resolved = resolve(&cfg).unwrap();
 
         assert_eq!(resolved.credential, "http://box:11434");
-        assert_eq!(resolved.auth.as_deref(), Some("ollama"));
+        assert_eq!(resolved.auth, None);
+        assert!(crate::wire::auth_headers(&resolved).is_empty());
     }
 
     #[test]
     fn a_key_optional_custom_provider_sends_no_credential_at_all() {
         let mut cfg = cfg_with(&[]);
         cfg.provider = "local-vllm".into();
+        cfg.model = "local-model".into();
         cfg.custom = vec![CustomProvider {
             id: "local-vllm".into(),
             base_url: "http://127.0.0.1:8000/v1".into(),
@@ -500,6 +763,7 @@ mod tests {
     fn a_custom_provider_with_a_key_authenticates_with_it() {
         let mut cfg = cfg_with(&[("my-gateway", "  sk-gateway  ")]);
         cfg.provider = "my-gateway".into();
+        cfg.model = "gateway-model".into();
         cfg.custom = vec![CustomProvider {
             id: "my-gateway".into(),
             base_url: "https://gateway.example.com/v1/".into(),

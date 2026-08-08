@@ -74,7 +74,7 @@ lowercase engineering references contain deeper contracts and release policy.
 
 ```bash
 pnpm test                    # frontend unit tests (Vitest)
-cd src-tauri && cargo test --lib   # Rust backend tests
+cargo test --workspace --all-targets  # Rust workspace tests
 ```
 
 Backend logic that touches the filesystem, git, or user paths **must** have a
@@ -94,14 +94,14 @@ what counts as prose.
   `biome.json`). Prefer not adding new warnings.
 - **Rust** - the backend must be `cargo fmt`-clean and `cargo clippy`-clean;
   both are **blocking** in CI (`clippy` runs with `-D warnings`). Run
-  `cargo fmt` and `cargo clippy --all-targets --fix` before pushing.
+  `cargo fmt --all` and `cargo clippy --workspace --all-targets -- -D warnings` before pushing.
 - Match the surrounding code - comment density, naming, and idiom.
 
 ## Pull requests
 
 1. Fork and branch from `main` (`git checkout -b fix/short-description`).
 2. Keep the change focused; unrelated refactors belong in their own PR.
-3. Make sure `pnpm lint`, `pnpm build`, and `cargo test --lib` pass locally.
+3. Make sure `pnpm lint`, `pnpm build`, and `cargo test --workspace --all-targets` pass locally.
 4. Fill out the PR template - link the issue, describe the change, note how you
    tested it.
 5. CI must be green (the frontend build and Rust tests are required checks).

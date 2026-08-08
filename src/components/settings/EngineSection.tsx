@@ -23,7 +23,7 @@ const ENGINE_CHOICES: Array<{
     id: "latexmk",
     name: "latexmk (system TeX)",
     detail:
-      "Runs pdfLaTeX, XeLaTeX, or LuaLaTeX from a TeX distribution on this machine (MacTeX, TeX Live, MiKTeX, or TinyTeX). Required for minted code highlighting, glossaries/makeindex, pythontex, and shell-escape-heavy journal templates.",
+      "For trusted projects only. Runs a local TeX distribution that can read files available to your account. Supports full package sets and multi-pass workflows. Host command execution remains a separate per-project permission.",
   },
 ];
 
@@ -175,7 +175,7 @@ export function EngineSection() {
             <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
               A compact TeX Live in your home folder. The core download is about 250 MB.
               Journal templates can add packages later, up to about 1 GB in total.
-              Installing ahead of time makes imported Overleaf projects compile immediately.
+              Installing ahead of time makes system LaTeX available when you explicitly choose it.
             </p>
             <div className="mt-2">
               <button
@@ -201,7 +201,7 @@ export function EngineSection() {
         <Tooltip
           wide
           side="right"
-          label="The default engine (Tectonic) is fast and offline but cannot produce tagged, Section 508 / PDF-UA PDFs. That needs LuaLaTeX. Oleafly uses one you already have, or installs TinyTeX (about 250 MB) on demand. It lives in your home folder and needs no admin rights."
+          label="The default engine (Tectonic) is fast and offline but cannot produce tagged, Section 508 / PDF-UA PDFs. That needs system LuaLaTeX, which can read local files available to your account and should be used only with trusted projects. Oleafly can use an existing distribution or managed TinyTeX."
         >
           <Info className="size-3.5 cursor-help text-muted-foreground/60 hover:text-muted-foreground" />
         </Tooltip>

@@ -1,9 +1,7 @@
 import { streamText as streamViaRust } from "@/lib/agent-backend";
-import type { AIConfigLike } from "@/lib/ai-providers";
 import type { DocumentEngineDescriptor } from "@/lib/tauri";
 
 export type InlineEditArgs = {
-  config?: AIConfigLike;
   engine?: DocumentEngineDescriptor;
   instruction: string;
   selection: string;
@@ -17,7 +15,7 @@ export const PRESETS: { id: string; label: string; instruction: string }[] = [
   { id: "grammar", label: "Fix grammar", instruction: "Fix any spelling and grammar mistakes in the selected text." },
   { id: "concise", label: "Make concise", instruction: "Make the selected text more concise without losing meaning." },
   { id: "expand", label: "Expand", instruction: "Expand the selected text with more detail." },
-  { id: "fix-source", label: "Fix source", instruction: "Fix source syntax errors in the selection; keep it valid for the active document engine." },
+  { id: "fix-source", label: "Fix source", instruction: "Fix source syntax errors in the selection. Keep it valid for the active document engine." },
   { id: "translate", label: "Translate", instruction: "Translate the selected text to English." },
 ];
 
@@ -62,4 +60,3 @@ export async function runInlineCompletion(args: InlineEditArgs): Promise<string>
     }),
   );
 }
-

@@ -11,10 +11,14 @@ use crate::tool::ToolSchema;
 pub(crate) use crate::wire::{anthropic_body, auth_headers, google_body, openai_body};
 pub use crate::wire::{request_builder, wire_body};
 
-
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(180);
+const MAX_COMPLETION_DURATION: Duration = Duration::from_secs(10 * 60);
 
 const MAX_ERROR_CHARS: usize = 300;
+/// Successful completion JSON is bounded well above normal model responses.
+pub(crate) const MAX_COMPLETION_BODY_BYTES: usize = 16 * 1024 * 1024;
+/// Error documents only need enough room to carry a useful provider message.
+pub(crate) const MAX_ERROR_BODY_BYTES: usize = 1024 * 1024;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CompletionRequest {
@@ -43,6 +47,13 @@ impl CompletionRequest {
     }
 }
 
+fn completion_timeout(req: &CompletionRequest) -> Duration {
+    req.timeout_ms
+        .map(Duration::from_millis)
+        .unwrap_or(DEFAULT_TIMEOUT)
+        .min(MAX_COMPLETION_DURATION)
+}
+
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Usage {
     pub input: u32,
@@ -57,9 +68,11 @@ pub struct CompletionResponse {
     pub model_id: String,
 }
 
-
 fn as_u32(value: Option<&Value>) -> u32 {
-    value.and_then(|v| v.as_u64()).unwrap_or(0) as u32
+    value
+        .and_then(|v| v.as_u64())
+        .map(|number| u32::try_from(number).unwrap_or(u32::MAX))
+        .unwrap_or(0)
 }
 
 pub(crate) fn parse_openai(body: &Value) -> Result<(String, Usage)> {
@@ -113,13 +126,71 @@ pub(crate) fn parse_google(body: &Value) -> Result<(String, Usage)> {
     Ok((text, usage))
 }
 
-
 pub(crate) fn request_error(error: reqwest::Error) -> AgentError {
     if error.is_timeout() {
         AgentError::Timeout
     } else {
         AgentError::Transport(error.to_string())
     }
+}
+
+struct BoundedBody {
+    bytes: Vec<u8>,
+    max_bytes: usize,
+    description: &'static str,
+}
+
+impl BoundedBody {
+    fn new(max_bytes: usize, description: &'static str) -> Self {
+        Self {
+            bytes: Vec::new(),
+            max_bytes,
+            description,
+        }
+    }
+
+    fn push(&mut self, chunk: &[u8]) -> Result<()> {
+        let next_len = self
+            .bytes
+            .len()
+            .checked_add(chunk.len())
+            .ok_or_else(|| body_limit_error(self.description, self.max_bytes))?;
+        if next_len > self.max_bytes {
+            return Err(body_limit_error(self.description, self.max_bytes));
+        }
+        self.bytes.extend_from_slice(chunk);
+        Ok(())
+    }
+
+    fn finish(self) -> Vec<u8> {
+        self.bytes
+    }
+}
+
+fn body_limit_error(description: &str, max_bytes: usize) -> AgentError {
+    AgentError::Decode(format!(
+        "{description} exceeded the {max_bytes}-byte safety limit"
+    ))
+}
+
+pub(crate) async fn read_body_limited(
+    mut response: reqwest::Response,
+    max_bytes: usize,
+    description: &'static str,
+) -> Result<Vec<u8>> {
+    if response
+        .content_length()
+        .map(|length| length > max_bytes as u64)
+        .unwrap_or(false)
+    {
+        return Err(body_limit_error(description, max_bytes));
+    }
+
+    let mut body = BoundedBody::new(max_bytes, description);
+    while let Some(chunk) = response.chunk().await.map_err(request_error)? {
+        body.push(&chunk)?;
+    }
+    Ok(body.finish())
 }
 
 pub(crate) fn error_message(status: u16, raw: &str) -> AgentError {
@@ -143,17 +214,34 @@ pub(crate) fn error_message(status: u16, raw: &str) -> AgentError {
     AgentError::Provider { status, message }
 }
 
+fn provider_error_from_read(status: u16, body: Result<Vec<u8>>) -> AgentError {
+    match body {
+        Ok(raw) => error_message(status, &String::from_utf8_lossy(&raw)),
+        // The status is already known. Preserve it when a provider sends an oversized
+        // error document so retryability is still classified correctly.
+        Err(AgentError::Decode(message)) => AgentError::Provider { status, message },
+        Err(error) => error,
+    }
+}
 
+pub(crate) async fn read_provider_error(
+    response: reqwest::Response,
+    status: u16,
+    description: &'static str,
+) -> AgentError {
+    provider_error_from_read(
+        status,
+        read_body_limited(response, MAX_ERROR_BODY_BYTES, description).await,
+    )
+}
 
 pub async fn complete(
     client: &reqwest::Client,
     resolved: &Resolved,
     req: &CompletionRequest,
 ) -> Result<CompletionResponse> {
-    let timeout = req
-        .timeout_ms
-        .map(Duration::from_millis)
-        .unwrap_or(DEFAULT_TIMEOUT);
+    crate::run::validate_completion_request(req)?;
+    let timeout = completion_timeout(req);
 
     let builder = request_builder(client, resolved, false).json(&wire_body(resolved, req)?);
 
@@ -164,13 +252,18 @@ pub async fn complete(
         .map_err(request_error)?;
 
     let status = response.status().as_u16();
-    let raw = response.text().await.map_err(request_error)?;
-
     if !(200..300).contains(&status) {
-        return Err(error_message(status, &raw));
+        return Err(read_provider_error(response, status, "completion error response body").await);
     }
+    let raw = read_body_limited(
+        response,
+        MAX_COMPLETION_BODY_BYTES,
+        "completion response body",
+    )
+    .await?;
 
-    let body: Value = serde_json::from_str(&raw).map_err(|e| AgentError::Decode(e.to_string()))?;
+    let body: Value =
+        serde_json::from_slice(&raw).map_err(|e| AgentError::Decode(e.to_string()))?;
     let (text, usage) = match &resolved.wire {
         Wire::OpenAiChat { .. } => parse_openai(&body)?,
         Wire::Anthropic { .. } => parse_anthropic(&body)?,
@@ -205,6 +298,46 @@ mod tests {
                 output: 3
             }
         );
+    }
+
+    #[test]
+    fn provider_usage_counters_saturate_instead_of_wrapping() {
+        assert_eq!(as_u32(Some(&json!(u64::MAX))), u32::MAX);
+    }
+
+    #[test]
+    fn oversized_error_documents_preserve_provider_retryability() {
+        let transient = provider_error_from_read(
+            503,
+            Err(body_limit_error(
+                "provider error body",
+                MAX_ERROR_BODY_BYTES,
+            )),
+        );
+        assert!(transient.retryable());
+        assert_eq!(transient.status(), Some(503));
+
+        let rejected = provider_error_from_read(
+            401,
+            Err(body_limit_error(
+                "provider error body",
+                MAX_ERROR_BODY_BYTES,
+            )),
+        );
+        assert!(!rejected.retryable());
+        assert_eq!(rejected.status(), Some(401));
+    }
+
+    #[test]
+    fn completion_timeout_honors_shorter_requests_and_caps_longer_ones() {
+        let mut request = CompletionRequest::default();
+        assert_eq!(completion_timeout(&request), DEFAULT_TIMEOUT);
+
+        request.timeout_ms = Some(1_500);
+        assert_eq!(completion_timeout(&request), Duration::from_millis(1_500));
+
+        request.timeout_ms = Some(u64::MAX);
+        assert_eq!(completion_timeout(&request), MAX_COMPLETION_DURATION);
     }
 
     #[test]
@@ -292,5 +425,18 @@ mod tests {
             }
             other => panic!("expected a provider error, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn body_collection_accepts_the_limit_and_rejects_the_next_byte() {
+        let mut body = BoundedBody::new(5, "test body");
+        body.push(b"12").unwrap();
+        body.push(b"345").unwrap();
+        assert_eq!(body.bytes, b"12345");
+
+        let error = body.push(b"6").unwrap_err();
+        assert!(matches!(error, AgentError::Decode(_)));
+        assert!(!error.retryable());
+        assert_eq!(body.bytes, b"12345");
     }
 }

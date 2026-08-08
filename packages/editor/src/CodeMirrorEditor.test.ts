@@ -4,6 +4,7 @@ import { createElement } from "react";
 import { render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { EditorView } from "@codemirror/view";
+import type { CompletionSource } from "@codemirror/autocomplete";
 import {
   CodeMirrorEditor,
   isLatexSourcePath,
@@ -73,5 +74,51 @@ describe("CodeMirrorEditor measurement", () => {
     render(createElement(CodeMirrorEditor, { active: true, host }));
 
     expect(measuredPublishedView).toBe(true);
+  });
+
+  it("never invokes an async popup source from ghost completion", async () => {
+    const asyncPopupSource = vi.fn<CompletionSource>(async () => null);
+    const synchronousGhostSource = vi.fn<CompletionSource>((context) => {
+      const token = context.matchBefore(/[A-Za-z]+$/u);
+      return token
+        ? {
+            from: token.from,
+            options: [{ label: `${token.text}ha` }],
+          }
+        : null;
+    });
+    const host: EditorHost = {
+      useActivePath: () => "main.typ",
+      getActivePath: () => "main.typ",
+      useDocVersion: () => 0,
+      getContent: () => "@alp",
+      setContent: vi.fn(),
+      useSettings: () => ({
+        vim: false,
+        spellcheck: false,
+        harper: false,
+        editorTheme: "system",
+        autocomplete: false,
+        autoCloseBrackets: true,
+        nonBlinkingCursor: false,
+        ghostCompletion: true,
+      }),
+      useLintRefreshDeps: () => [],
+    };
+
+    render(
+      createElement(CodeMirrorEditor, {
+        active: true,
+        host,
+        extraCompletionSourcesForPath: () => [asyncPopupSource],
+        extraGhostCompletionSourcesForPath: () => [synchronousGhostSource],
+      }),
+    );
+    const view = getEditorView();
+    expect(view).not.toBeNull();
+    view?.dispatch({ selection: { anchor: view.state.doc.length } });
+
+    await vi.waitFor(() => expect(synchronousGhostSource).toHaveBeenCalled());
+    expect(asyncPopupSource).not.toHaveBeenCalled();
   });
 });

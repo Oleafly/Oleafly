@@ -34,8 +34,38 @@ function summarizeArgs(args: Record<string, unknown>): string {
   }
 }
 
+const OMITTED_ARGUMENT_KEYS = /(?:content|code|source|data|image|base64|bytes|replace)/i;
+const MAX_ARGUMENT_KEYS = 16;
+const MAX_ARGUMENT_VALUE_CHARS = 160;
+
+export function sanitizeMcpArgs(args: Record<string, unknown>): Record<string, unknown> {
+  const sanitized: Record<string, unknown> = {};
+  const entries = Object.entries(args ?? {}).slice(0, MAX_ARGUMENT_KEYS);
+  for (const [key, value] of entries) {
+    if (typeof value === "string") {
+      sanitized[key] = /^\[omitted \d+ chars\]$/.test(value)
+        ? value
+        : OMITTED_ARGUMENT_KEYS.test(key)
+        ? `[omitted ${value.length} chars]`
+        : value.length > MAX_ARGUMENT_VALUE_CHARS
+          ? `${value.slice(0, MAX_ARGUMENT_VALUE_CHARS - 1)}…`
+          : value;
+    } else if (typeof value === "number" || typeof value === "boolean" || value == null) {
+      sanitized[key] = value;
+    } else if (Array.isArray(value)) {
+      sanitized[key] = `[${value.length} items]`;
+    } else {
+      sanitized[key] = "[object]";
+    }
+  }
+  if (Object.keys(args ?? {}).length > entries.length) {
+    sanitized._truncated = true;
+  }
+  return sanitized;
+}
+
 export function formatMcpArgs(args: Record<string, unknown>): string {
-  return summarizeArgs(args);
+  return summarizeArgs(sanitizeMcpArgs(args));
 }
 
 export const useMcpActivityStore = create<McpActivityState>((set) => ({
@@ -49,7 +79,7 @@ export const useMcpActivityStore = create<McpActivityState>((set) => ({
       id,
       ts: Date.now(),
       name,
-      args: args ?? {},
+      args: sanitizeMcpArgs(args),
       status: "running",
     };
     set((s) => ({
@@ -64,7 +94,7 @@ export const useMcpActivityStore = create<McpActivityState>((set) => ({
       // have been evicted by the MAX_LOGS cap, or endCall may fire twice for one
       // id; bumping unread regardless would drift the badge above the visible
       // completed calls.
-      if (!s.logs.some((e) => e.id === id)) return s;
+      if (!s.logs.some((e) => e.id === id && e.status === "running")) return s;
       return {
         unread: s.unread + 1,
         logs: s.logs.map((e) =>

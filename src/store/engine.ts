@@ -101,21 +101,22 @@ export const useEngineStore = create<EngineStore>((set, get) => ({
       /* compile store unavailable — nothing to pause */
     }
     set({ installing: true, installPhase: "download", progress: 0 });
-    const unlisten = await listen<{
-      phase: InstallPhase;
-      received: number;
-      total: number | null;
-    }>("tinytex-install-progress", (e) => {
-      const { phase, received, total } = e.payload;
-      set({
-        installPhase: phase,
-        progress:
-          phase === "download" && total
-            ? Math.round((received / total) * 100)
-            : null,
-      });
-    });
+    let unlisten: (() => void) | null = null;
     try {
+      unlisten = await listen<{
+        phase: InstallPhase;
+        received: number;
+        total: number | null;
+      }>("tinytex-install-progress", (e) => {
+        const { phase, received, total } = e.payload;
+        set({
+          installPhase: phase,
+          progress:
+            phase === "download" && total
+              ? Math.round((received / total) * 100)
+              : null,
+        });
+      });
       const info = await installTinytex();
       set({ info, partialDownloadBytes: 0 });
       toast.success("TinyTeX installed.");
@@ -140,7 +141,7 @@ export const useEngineStore = create<EngineStore>((set, get) => ({
           ),
       });
     } finally {
-      unlisten();
+      unlisten?.();
       set({ installing: false, installPhase: null, progress: null });
     }
   },

@@ -866,7 +866,7 @@ test("every clean CI and release Tauri build fetches only pinned Tinymist", asyn
   const exactFetchPattern =
     /^run: node scripts\/fetch-language-servers\.mjs --server tinymist --target (?:\$\{\{ matrix\.rust_target \}\}|aarch64-apple-darwin|aarch64-unknown-linux-gnu|x86_64-unknown-linux-gnu|x86_64-pc-windows-msvc) --install-mode resource$/;
   for (const [name, workflow, expectedFetchCount] of [
-    ["release", releaseWorkflow, 1],
+    ["release", releaseWorkflow, 2],
     ["CI", ciWorkflow, 4],
   ]) {
     const fetchCommands = workflow

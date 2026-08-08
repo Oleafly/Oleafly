@@ -61,6 +61,54 @@ pub fn projects_root() -> Result<PathBuf, String> {
     Ok(root)
 }
 
+/// Device-local trust decisions that must never live in a project checkout.
+/// The directory is a sibling of `projects/`, and every component is required
+/// to be a real directory so project-controlled symlinks cannot redirect it.
+pub fn device_trust_root() -> Result<PathBuf, String> {
+    let data = oleafly_root()?;
+    match std::fs::symlink_metadata(&data) {
+        Ok(_) => ensure_real_directory(&data, "Oleafly data")?,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            std::fs::create_dir_all(&data)
+                .map_err(|e| format!("failed to create Oleafly data directory {data:?}: {e}"))?;
+            ensure_real_directory(&data, "Oleafly data")?;
+        }
+        Err(error) => {
+            return Err(format!(
+                "failed to inspect Oleafly data directory {data:?}: {error}"
+            ));
+        }
+    }
+    let data = data
+        .canonicalize()
+        .map_err(|e| format!("failed to resolve Oleafly data directory: {e}"))?;
+    let trust = data.join("device-trust");
+    ensure_real_directory(&trust, "device trust")?;
+    let trust = trust
+        .canonicalize()
+        .map_err(|e| format!("failed to resolve device trust directory: {e}"))?;
+    if trust.parent() != Some(data.as_path()) {
+        return Err("device trust directory escapes the Oleafly data root".into());
+    }
+    Ok(trust)
+}
+
+/// Local records granting a specific project permission to execute commands
+/// through TeX. Kept outside `projects/` so Git, imports, AI tools, and MCP
+/// project mutations cannot manufacture consent.
+pub fn shell_escape_trust_root() -> Result<PathBuf, String> {
+    let trust = device_trust_root()?;
+    let shell = trust.join("latex-shell-escape");
+    ensure_real_directory(&shell, "LaTeX shell trust")?;
+    let shell = shell
+        .canonicalize()
+        .map_err(|e| format!("failed to resolve LaTeX shell trust directory: {e}"))?;
+    if shell.parent() != Some(trust.as_path()) {
+        return Err("LaTeX shell trust directory escapes the device trust root".into());
+    }
+    Ok(shell)
+}
+
 /// Validate a project id. Ids are a single path segment of safe characters, so
 /// a crafted id (`..`, `/etc/x`, `a/b`, an absolute path, or a Windows drive
 /// prefix) can never escape the projects root when joined. Every path-taking
@@ -78,14 +126,41 @@ pub fn validate_project_id(project_id: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// A single project directory: `~/.oleafly/projects/<id>/` (created if missing).
+/// Resolve an existing project directory. Project-scoped commands must never
+/// create this directory implicitly: a delayed autosave after project deletion
+/// would otherwise resurrect a metadata-less zombie project.
 pub fn project_dir(project_id: &str) -> Result<PathBuf, String> {
     validate_project_id(project_id)?;
     let root = projects_root()?
         .canonicalize()
         .map_err(|e| format!("failed to resolve projects root: {e}"))?;
     let dir = root.join(project_id);
+    let metadata = std::fs::symlink_metadata(&dir).map_err(|error| {
+        if error.kind() == std::io::ErrorKind::NotFound {
+            format!("project does not exist: {project_id}")
+        } else {
+            format!("failed to inspect project directory {dir:?}: {error}")
+        }
+    })?;
+    if !metadata.is_dir() || metadata.file_type().is_symlink() || is_reparse_point(&metadata) {
+        return Err(format!("project path is not a real directory: {dir:?}"));
+    }
+    verify_project_directory(root, dir)
+}
+
+/// Create a directory only for an explicit project-creation flow. Keeping this
+/// separate from `project_dir` makes accidental resurrection impossible.
+pub(crate) fn create_project_dir(project_id: &str) -> Result<PathBuf, String> {
+    validate_project_id(project_id)?;
+    let root = projects_root()?
+        .canonicalize()
+        .map_err(|e| format!("failed to resolve projects root: {e}"))?;
+    let dir = root.join(project_id);
     ensure_real_directory(&dir, "project")?;
+    verify_project_directory(root, dir)
+}
+
+fn verify_project_directory(root: PathBuf, dir: PathBuf) -> Result<PathBuf, String> {
     let resolved = dir
         .canonicalize()
         .map_err(|e| format!("failed to resolve project dir {dir:?}: {e}"))?;
@@ -212,6 +287,29 @@ mod tests {
         assert!(validate_project_id("default").is_ok());
         assert!(validate_project_id("flying-pink-pikachu").is_ok());
         assert!(validate_project_id("proj_01").is_ok());
+    }
+
+    #[test]
+    fn resolving_a_missing_project_never_creates_it() {
+        let _env_guard = data_dir_env_lock();
+        let root = std::env::temp_dir().join(format!(
+            "oleafly-missing-project-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let missing = root.join("projects").join("gone");
+
+        assert!(project_dir("gone").unwrap_err().contains("does not exist"));
+        assert!(!missing.exists());
+        let created = create_project_dir("gone").unwrap();
+        assert_eq!(created, missing.canonicalize().unwrap());
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[cfg(unix)]

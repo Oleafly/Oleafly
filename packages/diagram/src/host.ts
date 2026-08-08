@@ -10,11 +10,11 @@ export interface DiagramHost {
     background?: string,
   ): Promise<string>;
   listFiles(projectId: string): Promise<{ path: string }[]>;
-  writeFileContent(projectId: string, path: string, content: string): Promise<void>;
-  writeProjectBytes(projectId: string, relPath: string, dataBase64: string): Promise<void>;
+  writeFileContent(projectId: string, path: string, content: string): Promise<unknown>;
+  writeProjectBytes(projectId: string, relPath: string, dataBase64: string): Promise<unknown>;
   insertAtCursor(text: string): void;
   getMainDoc(): string;
-  applyExternalWrite(path: string, content: string): void;
+  applyExternalWrite(projectId: string, path: string, content: string): void;
   saveActive(): Promise<void>;
   refreshTree(): Promise<void>;
   createImageProject(name: string, source: string): Promise<string>;

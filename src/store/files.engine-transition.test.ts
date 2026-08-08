@@ -4,36 +4,54 @@ import { canUseFigureMode, LATEX_ENGINE } from "@/lib/document-engine";
 const mocks = vi.hoisted(() => ({
   getProject: vi.fn(),
   getProjectEngine: vi.fn(),
+  createProjectFromTemplate: vi.fn(),
+  importOverleafProjectCmd: vi.fn(),
+  setProjectEngineCmd: vi.fn(),
+  recordProjectTexSpec: vi.fn(),
+  projectMutationGeneration: vi.fn(),
   gitRestore: vi.fn(),
   listFiles: vi.fn(),
   readFileContent: vi.fn(),
   writeFileContent: vi.fn(),
   notifyError: vi.fn(),
+  toastInfo: vi.fn(),
+  toastSuccess: vi.fn(),
   setMainDocCmd: vi.fn(),
+  setProjectShellEscapeCmd: vi.fn(),
   deleteFile: vi.fn(),
   resetCompile: vi.fn(),
   flushAutoCommit: vi.fn(),
   scheduleAutoCommit: vi.fn(),
+  mcpSetActiveProject: vi.fn(async () => {}),
 }));
 
 vi.mock("@/lib/tauri", () => ({
   getProject: mocks.getProject,
   getProjectEngine: mocks.getProjectEngine,
+  createProjectFromTemplate: mocks.createProjectFromTemplate,
+  importOverleafProjectCmd: mocks.importOverleafProjectCmd,
+  setProjectEngineCmd: mocks.setProjectEngineCmd,
+  recordProjectTexSpec: mocks.recordProjectTexSpec,
+  projectMutationGeneration: mocks.projectMutationGeneration,
   gitRestore: mocks.gitRestore,
   listFiles: mocks.listFiles,
   readFileContent: mocks.readFileContent,
   writeFileContent: mocks.writeFileContent,
   setMainDocCmd: mocks.setMainDocCmd,
+  setProjectShellEscapeCmd: mocks.setProjectShellEscapeCmd,
   deleteFile: mocks.deleteFile,
-  listProjects: vi.fn(),
-  mcpSetActiveProject: vi.fn(async () => {}),
+  listProjects: vi.fn(async () => []),
+  mcpSetActiveProject: mocks.mcpSetActiveProject,
 }));
 vi.mock("@/lib/auto-commit", () => ({
   flushAutoCommit: mocks.flushAutoCommit,
   scheduleAutoCommit: mocks.scheduleAutoCommit,
 }));
 vi.mock("@/lib/log", () => ({ logError: vi.fn() }));
-vi.mock("@/lib/toast", () => ({ notifyError: mocks.notifyError }));
+vi.mock("@/lib/toast", () => ({
+  notifyError: mocks.notifyError,
+  toast: { info: mocks.toastInfo, success: mocks.toastSuccess },
+}));
 vi.mock("@/store/diff", () => ({ useDiffStore: { getState: () => ({ clearActiveDiff: vi.fn() }) } }));
 vi.mock("@/store/tab-order", () => ({ nextTabSeq: () => 1 }));
 vi.mock("@/store/compile", () => ({
@@ -43,6 +61,9 @@ vi.mock("@/store/compile", () => ({
 }));
 
 import { useFilesStore } from "./files";
+import { useSettingsStore } from "./settings";
+
+let projectStateRevision = 10_000;
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -60,20 +81,247 @@ beforeEach(async () => {
   mocks.scheduleAutoCommit.mockReset();
   await useFilesStore.getState().closeProject();
   mocks.notifyError.mockReset();
+  mocks.toastInfo.mockReset();
+  mocks.toastSuccess.mockReset();
   mocks.writeFileContent.mockReset().mockResolvedValue(undefined);
   mocks.flushAutoCommit.mockReset();
   mocks.scheduleAutoCommit.mockReset();
   mocks.getProject.mockReset().mockResolvedValue({ name: "Paper", kind: "", main_doc: "main.tex" });
+  mocks.createProjectFromTemplate.mockReset().mockResolvedValue("templated-project");
+  mocks.importOverleafProjectCmd.mockReset().mockResolvedValue("imported-project");
+  mocks.setProjectEngineCmd.mockReset().mockResolvedValue(undefined);
+  mocks.recordProjectTexSpec.mockReset().mockResolvedValue(undefined);
+  mocks.projectMutationGeneration.mockReset().mockResolvedValue(0);
   mocks.listFiles.mockReset().mockResolvedValue([{ path: "main.tex", is_dir: false }]);
   mocks.readFileContent.mockReset().mockResolvedValue("hello");
   mocks.getProjectEngine.mockReset();
-  mocks.gitRestore.mockReset().mockResolvedValue(undefined);
+  mocks.gitRestore.mockReset().mockImplementation(async () => ({
+    projectId: "project",
+    revision: ++projectStateRevision,
+    reason: "git-restore",
+    filesChanged: false,
+    mutationGeneration: 1,
+    project: {
+      name: "Paper",
+      main_doc: "main.tex",
+      engine: "latex",
+      kind: "",
+      allow_shell_escape: false,
+    },
+    engine: LATEX_ENGINE,
+  }));
   mocks.setMainDocCmd.mockReset();
+  mocks.setProjectShellEscapeCmd.mockReset();
   mocks.deleteFile.mockReset().mockResolvedValue(undefined);
   mocks.resetCompile.mockReset();
+  mocks.mcpSetActiveProject.mockReset().mockResolvedValue(undefined);
+  useSettingsStore.setState({ defaultLatexEngine: "tectonic" });
 });
 
 describe("transactional project transitions", () => {
+  it("applies authoritative project metadata events and ignores an older revision", async () => {
+    const engine = {
+      ...LATEX_ENGINE,
+      id: "latexmk" as const,
+      label: "LaTeX (latexmk)",
+      allow_shell_escape: false,
+    };
+    useFilesStore.setState({
+      projectId: "project",
+      projectName: "Before",
+      mainDoc: "main.tex",
+      engine: LATEX_ENGINE,
+      engineLoaded: true,
+    });
+    const revision = ++projectStateRevision;
+
+    await useFilesStore.getState().applyProjectStateChanged({
+      projectId: "project",
+      revision,
+      reason: "git-pull",
+      filesChanged: false,
+      mutationGeneration: 7,
+      project: {
+        name: "After",
+        main_doc: "paper.tex",
+        engine: "latexmk",
+        kind: "document",
+        allow_shell_escape: false,
+      },
+      engine,
+    });
+    expect(useFilesStore.getState()).toMatchObject({
+      projectName: "After",
+      projectKind: "document",
+      mainDoc: "paper.tex",
+      engine,
+      engineLoaded: true,
+    });
+
+    await useFilesStore.getState().applyProjectStateChanged({
+      projectId: "project",
+      revision: revision - 1,
+      reason: "stale",
+      filesChanged: false,
+      mutationGeneration: 6,
+      project: {
+        name: "Stale",
+        main_doc: "stale.tex",
+        engine: "latex",
+        kind: "",
+        allow_shell_escape: false,
+      },
+      engine: LATEX_ENGINE,
+    });
+    expect(useFilesStore.getState().projectName).toBe("After");
+    expect(useFilesStore.getState().mainDoc).toBe("paper.tex");
+  });
+
+  it("publishes a changed worktree and its reloaded buffers atomically", async () => {
+    const updatedTree = [
+      { path: "main.tex", is_dir: false },
+      { path: "new.tex", is_dir: false },
+    ];
+    mocks.listFiles.mockResolvedValue(updatedTree);
+    mocks.readFileContent.mockResolvedValue("remote revision");
+    useFilesStore.setState({
+      projectId: "project",
+      projectName: "Before",
+      mainDoc: "main.tex",
+      engine: LATEX_ENGINE,
+      engineLoaded: true,
+      tree: [{ path: "main.tex", is_dir: false }],
+      files: {
+        "main.tex": { content: "old revision", dirty: false },
+        "removed.tex": { content: "removed", dirty: false },
+      },
+      openTabs: ["main.tex", "removed.tex"],
+      tabOrder: { "main.tex": 1, "removed.tex": 2 },
+      activePath: "removed.tex",
+    });
+
+    await useFilesStore.getState().applyProjectStateChanged({
+      projectId: "project",
+      revision: ++projectStateRevision,
+      reason: "git-pull",
+      filesChanged: true,
+      mutationGeneration: 8,
+      project: {
+        name: "After",
+        main_doc: "main.tex",
+        engine: "latex",
+        kind: "",
+        allow_shell_escape: false,
+      },
+      engine: LATEX_ENGINE,
+    });
+
+    expect(useFilesStore.getState()).toMatchObject({
+      projectName: "After",
+      tree: updatedTree,
+      files: { "main.tex": { content: "remote revision", dirty: false } },
+      openTabs: ["main.tex"],
+      activePath: "main.tex",
+    });
+    expect(useFilesStore.getState().files["removed.tex"]).toBeUndefined();
+  });
+
+  it("restarts an in-flight project open when an authoritative event lands between reads", async () => {
+    const staleMeta = deferred<{
+      name: string;
+      kind: string;
+      main_doc: string;
+      engine: string;
+    }>();
+    mocks.getProject
+      .mockReset()
+      .mockReturnValueOnce(staleMeta.promise)
+      .mockResolvedValue({
+        name: "Authoritative",
+        kind: "",
+        main_doc: "main.tex",
+        engine: "latex",
+      });
+    mocks.getProjectEngine.mockResolvedValue(LATEX_ENGINE);
+
+    const opening = useFilesStore.getState().openProject("project");
+    await vi.waitFor(() => expect(useFilesStore.getState().projectId).toBe("project"));
+    await useFilesStore.getState().applyProjectStateChanged({
+      projectId: "project",
+      revision: ++projectStateRevision,
+      reason: "git-pull",
+      filesChanged: false,
+      mutationGeneration: 9,
+      project: {
+        name: "Authoritative",
+        main_doc: "main.tex",
+        engine: "latex",
+        kind: "",
+        allow_shell_escape: false,
+      },
+      engine: LATEX_ENGINE,
+    });
+    staleMeta.resolve({
+      name: "Stale",
+      kind: "",
+      main_doc: "main.tex",
+      engine: "latex",
+    });
+    await opening;
+
+    await vi.waitFor(() => expect(mocks.getProject).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() => expect(useFilesStore.getState().loading).toBe(false));
+    expect(useFilesStore.getState().projectName).toBe("Authoritative");
+  });
+
+  it("keeps imported projects on the backend's safe engine even when system TeX is the default", async () => {
+    useSettingsStore.setState({ defaultLatexEngine: "latexmk" });
+    mocks.getProject.mockResolvedValue({
+      name: "Imported",
+      kind: "",
+      main_doc: "main.tex",
+      engine: "latex",
+    });
+    mocks.getProjectEngine.mockResolvedValue(LATEX_ENGINE);
+
+    await expect(
+      useFilesStore.getState().importProject("/tmp/untrusted-project.zip"),
+    ).resolves.toBe("imported-project");
+
+    expect(mocks.importOverleafProjectCmd).toHaveBeenCalledWith(
+      "/tmp/untrusted-project.zip",
+    );
+    expect(mocks.setProjectEngineCmd).not.toHaveBeenCalled();
+    expect(mocks.recordProjectTexSpec).not.toHaveBeenCalled();
+    expect(useFilesStore.getState().engine).toEqual(LATEX_ENGINE);
+  });
+
+  it("keeps downloaded and custom templates on the backend's safe engine", async () => {
+    useSettingsStore.setState({ defaultLatexEngine: "latexmk" });
+    mocks.getProject.mockResolvedValue({
+      name: "Templated",
+      kind: "",
+      main_doc: "main.tex",
+      engine: "latex",
+    });
+    mocks.getProjectEngine.mockResolvedValue(LATEX_ENGINE);
+
+    await expect(
+      useFilesStore
+        .getState()
+        .createFromTemplate("Templated", "downloaded-template", "blue"),
+    ).resolves.toBe("templated-project");
+
+    expect(mocks.createProjectFromTemplate).toHaveBeenCalledWith(
+      "Templated",
+      "downloaded-template",
+      "blue",
+    );
+    expect(mocks.setProjectEngineCmd).not.toHaveBeenCalled();
+    expect(mocks.recordProjectTexSpec).not.toHaveBeenCalled();
+    expect(useFilesStore.getState().engine).toEqual(LATEX_ENGINE);
+  });
+
   it("drains old writes and publishes restored buffers with the restored tree atomically", async () => {
     const write = deferred<void>();
     const restoredRead = deferred<string>();
@@ -103,6 +351,7 @@ describe("transactional project transitions", () => {
         "project",
         "main.tex",
         "stale buffer",
+        expect.any(Number),
       ),
     );
     const restoring =
@@ -178,11 +427,13 @@ describe("transactional project transitions", () => {
       "old-project",
       "main.tex",
       "main changes",
+      expect.any(Number),
     );
     expect(mocks.writeFileContent).toHaveBeenCalledWith(
       "old-project",
       "notes.tex",
       "notes changes",
+      expect.any(Number),
     );
     expect(mocks.flushAutoCommit).toHaveBeenCalledTimes(1);
     expect(useFilesStore.getState().projectId).toBeNull();
@@ -212,6 +463,7 @@ describe("transactional project transitions", () => {
         "old-project",
         "main.tex",
         "unsaved",
+        expect.any(Number),
       ),
     );
     expect(mocks.getProject).not.toHaveBeenCalled();
@@ -253,8 +505,8 @@ describe("transactional project transitions", () => {
   });
 
   it("orders a newer close flush behind an older in-flight save", async () => {
-    const oldWrite = deferred<void>();
-    const newWrite = deferred<void>();
+    const oldWrite = deferred<{ generation: number }>();
+    const newWrite = deferred<{ generation: number }>();
     mocks.writeFileContent
       .mockImplementationOnce(() => oldWrite.promise)
       .mockImplementationOnce(() => newWrite.promise);
@@ -274,18 +526,254 @@ describe("transactional project transitions", () => {
 
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(mocks.writeFileContent).toHaveBeenCalledTimes(1);
-    oldWrite.resolve();
+    oldWrite.resolve({ generation: 8 });
     await saving;
     await vi.waitFor(() => expect(mocks.writeFileContent).toHaveBeenCalledTimes(2));
     expect(useFilesStore.getState().projectId).toBe("project");
-    newWrite.resolve();
+    newWrite.resolve({ generation: 9 });
     await closing;
 
     expect(mocks.writeFileContent.mock.calls.map((call) => call[2])).toEqual([
       "old snapshot",
       "new snapshot",
     ]);
+    expect(mocks.writeFileContent.mock.calls.map((call) => call[3])).toEqual([0, 8]);
     expect(useFilesStore.getState().projectId).toBeNull();
+  });
+
+  it("retries a dirty snapshot after a stale generation conflict", async () => {
+    vi.useFakeTimers();
+    try {
+      mocks.projectMutationGeneration
+        .mockReset()
+        .mockResolvedValueOnce(7)
+        .mockResolvedValue(8);
+      mocks.writeFileContent
+        .mockRejectedValueOnce(new Error("mutation conflict at generation 8: target changed"))
+        .mockResolvedValueOnce({ generation: 9 });
+      useFilesStore.setState({
+        projectId: "project",
+        files: { "main.tex": { content: "local snapshot", dirty: true } },
+        openTabs: ["main.tex"],
+        activePath: "main.tex",
+      });
+
+      await expect(useFilesStore.getState().saveFile("main.tex")).rejects.toThrow(
+        "mutation conflict",
+      );
+      expect(useFilesStore.getState().files["main.tex"].dirty).toBe(true);
+
+      await vi.advanceTimersByTimeAsync(1_500);
+      await vi.waitFor(() => expect(mocks.writeFileContent).toHaveBeenCalledTimes(2));
+      expect(mocks.writeFileContent.mock.calls.map((call) => call[3])).toEqual([7, 8]);
+      expect(useFilesStore.getState().files["main.tex"].dirty).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe("external filesystem reconciliation", () => {
+  it("preserves a dirty local edit after an external write races an in-flight save", async () => {
+    const staleWrite = deferred<void>();
+    mocks.writeFileContent
+      .mockImplementationOnce(() => staleWrite.promise)
+      .mockResolvedValue(undefined);
+    useFilesStore.setState({
+      projectId: "project",
+      files: { "main.tex": { content: "stale local edit", dirty: true } },
+      openTabs: ["main.tex"],
+      activePath: "main.tex",
+    });
+
+    const saving = useFilesStore.getState().saveFile("main.tex");
+    await vi.waitFor(() => expect(mocks.writeFileContent).toHaveBeenCalledTimes(1));
+    useFilesStore
+      .getState()
+      .applyExternalWrite("project", "main.tex", "external edit");
+
+    expect(useFilesStore.getState().files["main.tex"]).toEqual({
+      content: "stale local edit",
+      dirty: true,
+    });
+    expect(mocks.writeFileContent).toHaveBeenCalledTimes(1);
+
+    staleWrite.resolve();
+    await saving;
+    await vi.waitFor(() => expect(mocks.writeFileContent).toHaveBeenCalledTimes(2));
+    expect(mocks.writeFileContent.mock.calls.map((call) => call[2])).toEqual([
+      "stale local edit",
+      "stale local edit",
+    ]);
+    await vi.waitFor(() =>
+      expect(useFilesStore.getState().files["main.tex"]).toEqual({
+        content: "stale local edit",
+        dirty: false,
+      }),
+    );
+    expect(mocks.toastInfo).toHaveBeenCalledWith(expect.stringContaining("local edit was kept"));
+  });
+
+  it("applies an external write directly when the local buffer is clean", () => {
+    useFilesStore.setState({
+      projectId: "project",
+      files: { "main.tex": { content: "old", dirty: false } },
+      openTabs: ["main.tex"],
+      activePath: "main.tex",
+    });
+
+    useFilesStore.getState().applyExternalWrite("project", "main.tex", "external edit");
+
+    expect(useFilesStore.getState().files["main.tex"]).toEqual({
+      content: "external edit",
+      dirty: false,
+    });
+    expect(mocks.writeFileContent).not.toHaveBeenCalled();
+  });
+
+  it("remaps every open descendant when an external folder is renamed", () => {
+    useFilesStore.setState({
+      projectId: "project",
+      files: {
+        "chapters/one.tex": { content: "one", dirty: false },
+        "chapters/nested/two.tex": { content: "two", dirty: true },
+        "main.tex": { content: "main", dirty: false },
+      },
+      openTabs: ["chapters/one.tex", "chapters/nested/two.tex", "main.tex"],
+      tabOrder: { "chapters/one.tex": 1, "chapters/nested/two.tex": 2, "main.tex": 3 },
+      activePath: "chapters/nested/two.tex",
+    });
+
+    useFilesStore.getState().applyExternalRename("project", "chapters", "sections");
+
+    expect(useFilesStore.getState()).toMatchObject({
+      files: {
+        "sections/one.tex": { content: "one", dirty: false },
+        "sections/nested/two.tex": { content: "two", dirty: true },
+        "main.tex": { content: "main", dirty: false },
+      },
+      openTabs: ["sections/one.tex", "sections/nested/two.tex", "main.tex"],
+      tabOrder: { "sections/one.tex": 1, "sections/nested/two.tex": 2, "main.tex": 3 },
+      activePath: "sections/nested/two.tex",
+    });
+    expect(useFilesStore.getState().files["chapters/one.tex"]).toBeUndefined();
+    expect(Object.keys(useFilesStore.getState().files).sort()).toEqual([
+      "main.tex",
+      "sections/nested/two.tex",
+      "sections/one.tex",
+    ]);
+  });
+
+  it("remaps the persisted main-document identity and reloads its engine", async () => {
+    mocks.getProjectEngine.mockResolvedValue(LATEX_ENGINE);
+    useFilesStore.setState({
+      projectId: "project",
+      mainDoc: "chapters/main.tex",
+      files: { "chapters/main.tex": { content: "main", dirty: false } },
+      openTabs: ["chapters/main.tex"],
+      activePath: "chapters/main.tex",
+    });
+
+    expect(
+      useFilesStore.getState().applyExternalRename("project", "chapters", "sections"),
+    ).toBe(true);
+
+    expect(useFilesStore.getState().mainDoc).toBe("sections/main.tex");
+    await vi.waitFor(() => expect(mocks.resetCompile).toHaveBeenCalledOnce());
+    expect(mocks.getProjectEngine).toHaveBeenCalledWith("project");
+    expect(useFilesStore.getState()).toMatchObject({
+      engine: LATEX_ENGINE,
+      engineLoaded: true,
+      engineError: null,
+    });
+  });
+
+  it("drops every open descendant and tab-order entry after an external folder delete", () => {
+    useFilesStore.setState({
+      projectId: "project",
+      files: {
+        "chapters/one.tex": { content: "one", dirty: false },
+        "chapters/nested/two.tex": { content: "two", dirty: false },
+        "main.tex": { content: "main", dirty: false },
+      },
+      openTabs: ["chapters/one.tex", "chapters/nested/two.tex", "main.tex"],
+      tabOrder: { "chapters/one.tex": 1, "chapters/nested/two.tex": 2, "main.tex": 3 },
+      activePath: "chapters/one.tex",
+    });
+
+    useFilesStore.getState().applyExternalDelete("project", "chapters");
+
+    expect(useFilesStore.getState()).toMatchObject({
+      files: { "main.tex": { content: "main", dirty: false } },
+      openTabs: ["main.tex"],
+      tabOrder: { "main.tex": 3 },
+      activePath: "main.tex",
+    });
+    expect(Object.keys(useFilesStore.getState().files)).toEqual(["main.tex"]);
+    expect(Object.keys(useFilesStore.getState().tabOrder)).toEqual(["main.tex"]);
+  });
+
+  it("restores a dirty buffer when an external delete races a local edit", async () => {
+    useFilesStore.setState({
+      projectId: "project",
+      files: { "notes.tex": { content: "unsaved", dirty: true } },
+      openTabs: ["notes.tex"],
+      tabOrder: { "notes.tex": 1 },
+      activePath: "notes.tex",
+    });
+
+    const applied = useFilesStore.getState().applyExternalDelete("project", "notes.tex");
+
+    expect(applied).toBe(false);
+    expect(useFilesStore.getState().files["notes.tex"]).toEqual({
+      content: "unsaved",
+      dirty: true,
+    });
+    await vi.waitFor(() =>
+      expect(mocks.writeFileContent).toHaveBeenCalledWith(
+        "project",
+        "notes.tex",
+        "unsaved",
+        expect.any(Number),
+      ),
+    );
+    await vi.waitFor(() =>
+      expect(useFilesStore.getState().files["notes.tex"]).toEqual({
+        content: "unsaved",
+        dirty: false,
+      }),
+    );
+  });
+});
+
+describe("MCP active-project synchronization", () => {
+  it("clears the backend target when the project closes", async () => {
+    useFilesStore.setState({ projectId: "project", files: {} });
+
+    await useFilesStore.getState().closeProject();
+
+    expect(mocks.mcpSetActiveProject).toHaveBeenLastCalledWith(null);
+    expect(useFilesStore.getState().projectId).toBeNull();
+  });
+
+  it("never publishes a project id that fails validation/loading", async () => {
+    mocks.getProject.mockRejectedValue(new Error("missing project"));
+
+    await useFilesStore.getState().openProject("missing");
+
+    expect(mocks.mcpSetActiveProject.mock.calls).toEqual([[null], [null]]);
+    expect(useFilesStore.getState().projectId).toBeNull();
+  });
+
+  it("publishes a validated project after first clearing the old target", async () => {
+    mocks.getProjectEngine.mockResolvedValue(LATEX_ENGINE);
+
+    await useFilesStore.getState().openProject("project");
+
+    expect(mocks.mcpSetActiveProject.mock.calls.slice(0, 2)).toEqual([
+      [null],
+      ["project"],
+    ]);
   });
 });
 
@@ -320,11 +808,13 @@ describe("delete and autosave coordination", () => {
         "project",
         "notes.tex",
         "new notes",
+        expect.any(Number),
       );
       expect(mocks.writeFileContent).not.toHaveBeenCalledWith(
         "project",
         "target.tex",
         expect.anything(),
+        expect.any(Number),
       );
       deletion.resolve();
       await deleting;
@@ -407,6 +897,7 @@ describe("delete and autosave coordination", () => {
         "project",
         "target.tex",
         "must survive",
+        expect.any(Number),
       );
     } finally {
       vi.useRealTimers();
@@ -436,6 +927,40 @@ describe("project engine transition", () => {
 
     expect(useFilesStore.getState().openTabs).not.toContain("late.tex");
     expect(useFilesStore.getState().activePath).toBeNull();
+  });
+
+  it("does not publish file content into a replacement project", async () => {
+    const pending = deferred<string>();
+    useFilesStore.setState({
+      projectId: "old-project",
+      files: {},
+      openTabs: [],
+      tabOrder: {},
+      activePath: null,
+    });
+    mocks.readFileContent.mockReturnValue(pending.promise);
+
+    const opening = useFilesStore.getState().openFile("late.tex");
+    await vi.waitFor(() =>
+      expect(mocks.readFileContent).toHaveBeenCalledWith("old-project", "late.tex")
+    );
+    useFilesStore.setState({
+      projectId: "replacement",
+      files: { "main.tex": { content: "replacement", dirty: false } },
+      openTabs: ["main.tex"],
+      tabOrder: { "main.tex": 1 },
+      activePath: "main.tex",
+    });
+    pending.resolve("late content");
+    await opening;
+
+    expect(useFilesStore.getState()).toMatchObject({
+      projectId: "replacement",
+      files: { "main.tex": { content: "replacement", dirty: false } },
+      openTabs: ["main.tex"],
+      activePath: "main.tex",
+    });
+    expect(useFilesStore.getState().files["late.tex"]).toBeUndefined();
   });
 
   it("denies capabilities until the backend descriptor resolves", async () => {
@@ -527,5 +1052,28 @@ describe("project engine transition", () => {
     await changing;
     expect(useFilesStore.getState().projectId).toBe("replacement");
     expect(useFilesStore.getState().mainDoc).toBe("main.md");
+  });
+
+  it("publishes shell-escape consent only after the backend commits it", async () => {
+    const pending = deferred<{ allow_shell_escape: boolean }>();
+    mocks.setProjectShellEscapeCmd.mockReturnValue(pending.promise);
+    useFilesStore.setState({
+      projectId: "project",
+      engine: { ...LATEX_ENGINE, id: "latexmk", allow_shell_escape: false },
+      engineLoaded: true,
+    });
+
+    const changing = useFilesStore.getState().setShellEscape(true);
+    await vi.waitFor(() =>
+      expect(mocks.setProjectShellEscapeCmd).toHaveBeenCalledWith("project", true),
+    );
+    expect(useFilesStore.getState().engine.allow_shell_escape).toBe(false);
+    expect(mocks.resetCompile).not.toHaveBeenCalled();
+
+    pending.resolve({ allow_shell_escape: true });
+    await changing;
+
+    expect(mocks.resetCompile).toHaveBeenCalledOnce();
+    expect(useFilesStore.getState().engine.allow_shell_escape).toBe(true);
   });
 });

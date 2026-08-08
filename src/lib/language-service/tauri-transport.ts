@@ -992,7 +992,7 @@ export class TauriLanguageServiceTransport
       }
       const failure = cleanupFailure
         ? new Error(
-            `${primaryFailure.message}; backend cleanup also failed: ${cleanupFailure.message}`,
+            `${primaryFailure.message}. Backend cleanup also failed: ${cleanupFailure.message}`,
           )
         : primaryFailure;
       if (attempt === this.startAttempt) {

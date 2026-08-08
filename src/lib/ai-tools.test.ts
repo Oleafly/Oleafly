@@ -9,15 +9,19 @@ const mocks = vi.hoisted(() => ({
     createFile: vi.fn(),
     deleteFile: vi.fn(),
     renameFile: vi.fn(),
+    projectMutationGeneration: vi.fn(),
     setMainDocCmd: vi.fn(),
     listFiles: vi.fn(),
     searchProject: vi.fn(),
   },
   filesState: {
     projectId: "proj" as string | null,
-    applyExternalWrite: vi.fn(),
-    applyExternalDelete: vi.fn(),
-    applyExternalRename: vi.fn(),
+    files: {} as Record<string, { content: string; dirty: boolean }>,
+    applyExternalWrite: vi.fn(() => true),
+    applyExternalDelete: vi.fn(() => true),
+    applyExternalRename: vi.fn(() => true),
+    prepareExternalMutation: vi.fn(async () => 0),
+    recordMutationGeneration: vi.fn(),
     refreshTree: vi.fn(),
   },
   compileState: { recompile: vi.fn(), log: "", pdfBytes: null as Uint8Array | null },
@@ -38,9 +42,14 @@ import { createOleaflyTools } from "./ai-tools";
 
 beforeEach(() => {
   for (const f of Object.values(mocks.api)) f.mockReset();
-  mocks.filesState.applyExternalWrite.mockReset();
-  mocks.filesState.applyExternalDelete.mockReset();
+  mocks.filesState.applyExternalWrite.mockReset().mockReturnValue(true);
+  mocks.filesState.applyExternalDelete.mockReset().mockReturnValue(true);
+  mocks.filesState.applyExternalRename.mockReset().mockReturnValue(true);
+  mocks.filesState.prepareExternalMutation.mockReset().mockResolvedValue(0);
+  mocks.filesState.recordMutationGeneration.mockReset();
+  mocks.api.projectMutationGeneration.mockResolvedValue(0);
   mocks.filesState.projectId = "proj";
+  mocks.filesState.files = {};
 });
 
 describe("ai-tools: destructive edits require approval (U1)", () => {
@@ -57,7 +66,7 @@ describe("ai-tools: destructive edits require approval (U1)", () => {
     const confirm = vi.fn().mockResolvedValue(true);
     const tools = createOleaflyTools({ confirm });
     const res = await tools.delete_file.execute({ path: "old.tex" });
-    expect(mocks.api.deleteFile).toHaveBeenCalledWith("proj", "old.tex");
+    expect(mocks.api.deleteFile).toHaveBeenCalledWith("proj", "old.tex", 0);
     expect(res).toMatchObject({ success: true, path: "old.tex" });
   });
 
@@ -83,6 +92,23 @@ describe("ai-tools: destructive edits require approval (U1)", () => {
     );
   });
 
+  it("commits an approved write against the fresh post-approval generation", async () => {
+    mocks.api.readFileContent.mockResolvedValue("old body");
+    mocks.filesState.prepareExternalMutation
+      .mockResolvedValueOnce(4)
+      .mockResolvedValueOnce(9);
+    const tools = createOleaflyTools({ confirm: async () => true });
+
+    await tools.write_file.execute({ path: "a.tex", content: "new body" });
+
+    expect(mocks.api.writeFileContent).toHaveBeenCalledWith(
+      "proj",
+      "a.tex",
+      "new body",
+      9,
+    );
+  });
+
   it("write_file on a new file shows an empty old side (all additions)", async () => {
     mocks.api.readFileContent.mockRejectedValue(new Error("no such file"));
     const confirm = vi.fn().mockResolvedValue(false);
@@ -93,6 +119,24 @@ describe("ai-tools: destructive edits require approval (U1)", () => {
         diff: { path: "new.tex", oldText: "", newText: "hello" },
       }),
     );
+  });
+
+  it("reports a conflict when a local edit lands while the write IPC is running", async () => {
+    mocks.filesState.applyExternalWrite.mockReturnValue(false);
+    const tools = createOleaflyTools();
+
+    const res = await tools.write_file.execute({ path: "a.tex", content: "external" });
+
+    expect(res).toMatchObject({ conflict: true, error: expect.stringContaining("local edit") });
+  });
+
+  it("reports a conflict when unsaved local edits race a delete", async () => {
+    mocks.filesState.applyExternalDelete.mockReturnValue(false);
+    const tools = createOleaflyTools();
+
+    const res = await tools.delete_file.execute({ path: "a.tex" });
+
+    expect(res).toMatchObject({ conflict: true, error: expect.stringContaining("restored") });
   });
 
   it("replace_in_file's approval request carries the applied diff", async () => {
@@ -119,7 +163,12 @@ describe("ai-tools: destructive edits require approval (U1)", () => {
       find: "PLACEHOLDER",
       replace: "$$a + $& $1 $`",
     });
-    expect(mocks.api.writeFileContent).toHaveBeenCalledWith("proj", "a.tex", "x $$a + $& $1 $` y");
+    expect(mocks.api.writeFileContent).toHaveBeenCalledWith(
+      "proj",
+      "a.tex",
+      "x $$a + $& $1 $` y",
+      0,
+    );
   });
 
   it("replace_in_file errors before asking for approval when find is absent", async () => {
@@ -130,6 +179,52 @@ describe("ai-tools: destructive edits require approval (U1)", () => {
     expect(confirm).not.toHaveBeenCalled();
     expect(mocks.api.writeFileContent).not.toHaveBeenCalled();
     expect(res).toMatchObject({ error: expect.stringContaining("not found") });
+  });
+
+  it("rejects an empty find string without constructing replacement output", async () => {
+    mocks.api.readFileContent.mockResolvedValue("abc");
+    const tools = createOleaflyTools();
+
+    const res = await tools.replace_in_file.execute({
+      path: "a.tex",
+      find: "",
+      replace: "x",
+      replace_all: true,
+    });
+
+    expect(res).toMatchObject({ error: expect.stringContaining("must not be empty") });
+    expect(mocks.api.readFileContent).not.toHaveBeenCalled();
+    expect(mocks.api.writeFileContent).not.toHaveBeenCalled();
+  });
+
+  it("rejects replacement output over the bounded write limit before constructing it", async () => {
+    mocks.api.readFileContent.mockResolvedValue("a".repeat(9 * 1024 * 1024));
+    const tools = createOleaflyTools();
+
+    const res = await tools.replace_in_file.execute({
+      path: "a.tex",
+      find: "a",
+      replace: "aa",
+      replace_all: true,
+    });
+
+    expect(res).toMatchObject({ error: expect.stringContaining("exceeds") });
+    expect(mocks.api.writeFileContent).not.toHaveBeenCalled();
+  });
+
+  it("rejects pathological replace-all counts even when output size is unchanged", async () => {
+    mocks.api.readFileContent.mockResolvedValue("a".repeat(100_001));
+    const tools = createOleaflyTools();
+
+    const res = await tools.replace_in_file.execute({
+      path: "a.tex",
+      find: "a",
+      replace: "a",
+      replace_all: true,
+    });
+
+    expect(res).toMatchObject({ error: expect.stringContaining("operation limit") });
+    expect(mocks.api.writeFileContent).not.toHaveBeenCalled();
   });
 
   it("create_file is gated and declines without touching disk when refused", async () => {
@@ -169,6 +264,26 @@ describe("ai-tools: project scoping", () => {
     const tools = createOleaflyTools();
     await tools.search_project.execute({ query: "theorem" });
     expect(mocks.api.searchProject).toHaveBeenCalledWith("proj", "theorem");
+  });
+
+  it("does not write when the active project changes during approval", async () => {
+    mocks.api.readFileContent.mockResolvedValue("old");
+    let approve!: (value: boolean) => void;
+    const confirm = vi.fn(
+      () => new Promise<boolean>((resolve) => {
+        approve = resolve;
+      }),
+    );
+    const tools = createOleaflyTools({ confirm });
+    const pending = tools.write_file.execute({ path: "a.tex", content: "new" });
+    await vi.waitFor(() => expect(confirm).toHaveBeenCalledOnce());
+
+    mocks.filesState.projectId = "other";
+    approve(true);
+
+    await expect(pending).resolves.toMatchObject({ error: expect.stringContaining("Project changed") });
+    expect(mocks.api.writeFileContent).not.toHaveBeenCalled();
+    expect(mocks.filesState.applyExternalWrite).not.toHaveBeenCalled();
   });
 });
 

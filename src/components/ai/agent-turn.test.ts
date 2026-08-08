@@ -298,6 +298,66 @@ describe("harness", () => {
       { name: "read_file", description: "d", input_schema: { type: "object" } },
     ]);
   });
+
+  it("suppresses a tool result that finishes after the run is cancelled", async () => {
+    const captured: {
+      channel?: { onmessage: ((event: AgentEvent) => void) | null };
+      finishTool?: (value: unknown) => void;
+    } = {};
+    mocks.invoke.mockImplementation((command: string, args: Record<string, unknown>) => {
+      if (command === "agent_run") {
+        captured.channel = args.onEvent as typeof captured.channel;
+        return new Promise(() => {});
+      }
+      return Promise.resolve();
+    });
+    const execute = vi.fn(
+      () => new Promise((resolve) => {
+        captured.finishTool = resolve;
+      }),
+    );
+    const takePendingImages = vi.fn(() => ["data:image/png;base64,AA"]);
+    const handlers = {
+      onActivity: vi.fn(),
+      onThinking: vi.fn(),
+      onText: vi.fn(),
+      onReasoningStart: vi.fn(),
+      onReasoningDelta: vi.fn(),
+      onReasoningEnd: vi.fn(),
+      onToolCall: vi.fn(),
+      onToolResult: vi.fn(),
+      onUsage: vi.fn(),
+      onStep: vi.fn(),
+      onRetry: vi.fn(),
+    };
+    const controller = new AbortController();
+    const pending = runAgentHarness({
+      system: "sys",
+      messages: [{ role: "user", content: "hi" }],
+      tools: { slow_write: { execute } } as unknown as ToolSet,
+      signal: controller.signal,
+      takePendingImages,
+      handlers,
+    });
+    await vi.waitFor(() => expect(captured.channel).toBeDefined());
+    captured.channel?.onmessage?.({
+      kind: "toolRequest",
+      id: "late-tool",
+      name: "slow_write",
+      arguments: "{}",
+    });
+    await vi.waitFor(() => expect(execute).toHaveBeenCalledOnce());
+
+    controller.abort();
+    await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+    captured.finishTool?.({ ok: true });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(handlers.onToolResult).not.toHaveBeenCalled();
+    expect(handlers.onThinking).not.toHaveBeenCalledWith("Processing result…");
+    expect(takePendingImages).not.toHaveBeenCalled();
+    expect(mocks.invoke).not.toHaveBeenCalledWith("agent_tool_result", expect.anything());
+  });
 });
 
 describe("file attachments", () => {

@@ -47,7 +47,7 @@ The app shell supplies concrete adapters at the boundary.
   rules without importing app stores.
 - `@oleafly/diagram`, `@oleafly/templates`, and `@oleafly/ai-tools` expose
   host interfaces for compile, file, UI, and approval services.
-- `@oleafly/registry` owns contribution contracts; it is an internal registry,
+- `@oleafly/registry` owns contribution contracts. It is an internal registry,
   not a dynamic third-party plugin SDK.
 
 The app creates the concrete host adapters in `src/`. A package must not import
@@ -67,9 +67,11 @@ must not infer engine behavior from a filename extension.
   or export operations.
 - Long-lived credentials use encrypted app-managed storage.
 - MCP binds to loopback and uses a bearer token plus the normal approval model.
-- Downloaded runtimes are pinned, verified, and extracted with allowlisted
-  archive members.
-- Hosted integrations are opt-in; the local workflow remains useful offline.
+  Renderer sessions coordinate tools while a window is connected. The Rust
+  backend handles the safe native subset when no renderer is connected.
+- Downloaded runtimes are pinned and verified. `tinytex_archive.rs` validates
+  the exact reviewed member manifest before extracting into staging.
+- Hosted integrations are opt-in. The local workflow remains useful offline.
 
 ## Repository maintenance
 
@@ -87,7 +89,7 @@ must not infer engine behavior from a filename extension.
 Workspace packages are consumed as TypeScript source. When a package is added,
 keep the aliases in `tsconfig.json`, `vite.config.ts`, and `vitest.config.ts` in
 sync, add the workspace dependency at the root, and include package sources in
-the Tailwind scan. Tests move with the package; compatibility shims may remain
+the Tailwind scan. Tests move with the package. Compatibility shims may remain
 at old app paths when a public import path would otherwise churn.
 
 ## Detailed references

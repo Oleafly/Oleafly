@@ -1,6 +1,6 @@
 use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::AtomicU64;
 use tauri::async_runtime::Mutex;
 
 /// Process-wide app state.
@@ -19,6 +19,10 @@ pub struct AppState {
     /// Monotonic identity for successful main-document outputs. Allocated while
     /// `compile_lock` is held so every window observes one total output order.
     pub compile_output_revision: AtomicU64,
+    /// Process-wide ordering for project metadata/trust/worktree events shared
+    /// by every window. Renderers ignore payloads older than the last revision
+    /// they applied, preventing slow refreshes from repainting stale trust.
+    pub project_state_revision: AtomicU64,
     /// Latest compile ticket per project id.
     pub latest_compile: Mutex<HashMap<String, u64>>,
     /// Absolute paths the user has just written via a native save/export dialog.
@@ -36,28 +40,64 @@ pub struct AppState {
 /// effect rather than being silently dropped.
 #[derive(Default)]
 pub struct CompileCancel {
-    requested: AtomicBool,
-    pid: std::sync::Mutex<Option<u32>>,
+    state: std::sync::Mutex<CompileCancelState>,
+}
+
+#[derive(Default)]
+struct CompileCancelState {
+    active: bool,
+    requested: bool,
+    pid: Option<u32>,
 }
 
 impl CompileCancel {
+    /// Starts one compile lifecycle before its first child exists. An idle Stop
+    /// request is deliberately not carried into this scope, while a Stop that
+    /// lands after `begin` remains pending until the next child attaches.
+    pub fn begin(&self) {
+        let mut state = self.state.lock().unwrap_or_else(|error| error.into_inner());
+        *state = CompileCancelState {
+            active: true,
+            ..CompileCancelState::default()
+        };
+    }
+
     /// Records a stop request and returns the pid to terminate, if one is running.
     pub fn request(&self) -> Option<u32> {
-        self.requested.store(true, Ordering::SeqCst);
-        *self.pid.lock().unwrap_or_else(|error| error.into_inner())
+        let mut state = self.state.lock().unwrap_or_else(|error| error.into_inner());
+        if !state.active {
+            return None;
+        }
+        state.requested = true;
+        state.pid
     }
 
     /// Registers a freshly spawned compiler. Returns `false` when a stop already
     /// landed, meaning the caller must terminate the child it just started.
     pub fn attach(&self, pid: u32) -> bool {
-        *self.pid.lock().unwrap_or_else(|error| error.into_inner()) = Some(pid);
-        !self.requested.load(Ordering::SeqCst)
+        let mut state = self.state.lock().unwrap_or_else(|error| error.into_inner());
+        if !state.active {
+            return false;
+        }
+        state.pid = Some(pid);
+        !state.requested
+    }
+
+    /// Clears a finished child without consuming a stop request that may need
+    /// to reach the next process in the same multi-pass compile.
+    pub fn unregister(&self, pid: u32) {
+        let mut state = self.state.lock().unwrap_or_else(|error| error.into_inner());
+        if state.pid == Some(pid) {
+            state.pid = None;
+        }
     }
 
     /// Unregisters the compiler and reports whether it was stopped on request.
     pub fn detach(&self) -> bool {
-        *self.pid.lock().unwrap_or_else(|error| error.into_inner()) = None;
-        self.requested.swap(false, Ordering::SeqCst)
+        let mut state = self.state.lock().unwrap_or_else(|error| error.into_inner());
+        let requested = state.active && state.requested;
+        *state = CompileCancelState::default();
+        requested
     }
 }
 
@@ -69,6 +109,7 @@ impl Default for AppState {
             pandoc_install_lock: Mutex::new(()),
             compile_ticket: AtomicU64::new(0),
             compile_output_revision: AtomicU64::new(0),
+            project_state_revision: AtomicU64::new(0),
             latest_compile: Mutex::new(HashMap::new()),
             reveal_allowlist: Mutex::new(VecDeque::new()),
             compile_cancel: CompileCancel::default(),

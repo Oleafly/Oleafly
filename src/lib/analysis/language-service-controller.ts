@@ -278,9 +278,9 @@ function safeLanguageServiceFailure(
 }
 
 export const MARKDOWN_LOCAL_ONLY_REASON =
-  "Markdown analysis is provided by Oleafly's local project index; no language server is configured.";
+  "Markdown analysis is provided by Oleafly's local project index. No language server is configured.";
 export const BIBTEX_LOCAL_ONLY_REASON =
-  "BibTeX analysis is provided by Oleafly's local project index; the file is not opened in the document language server.";
+  "BibTeX analysis is provided by Oleafly's local project index. The file is not opened in the document language server.";
 export const LANGUAGE_SERVICE_DISPOSE_FAILURE_REASON =
   "Language-service native session cleanup could not be completed.";
 
@@ -702,7 +702,7 @@ export class LanguageServiceController {
     this.publishIndex(desired);
     if (engineBecameUnloaded) {
       this.publishNotRun(
-        "Document engine details are still loading; language analysis has not run.",
+        "Document engine details are still loading. Language analysis has not run.",
       );
     }
     this.enqueueReconcile(operation);
@@ -881,7 +881,7 @@ export class LanguageServiceController {
       await this.teardownRuntime(this.runtime);
       if (!this.operationIsCurrent(operation, desired)) return;
       this.publishNotRun(
-        "Document engine details are still loading; language analysis has not run.",
+        "Document engine details are still loading. Language analysis has not run.",
       );
       this.publishLocalDocuments(desired);
       this.publishIndex(desired);
@@ -1670,7 +1670,7 @@ export class LanguageServiceController {
       readiness: "restarting",
       capabilities: null,
       failure,
-      reason: `Language service exited unexpectedly; restart ${attempt} is scheduled.`,
+      reason: `Language service exited unexpectedly. Restart ${attempt} is scheduled.`,
       restartAttempt: attempt,
     });
     runtime.restartHandle = this.scheduler.setTimeout(() => {

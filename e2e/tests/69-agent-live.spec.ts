@@ -11,6 +11,8 @@ import {
 const TOKEN = process.env.E2E_AI_TOKEN;
 const PROVIDER = process.env.E2E_AI_PROVIDER_ID || "zai";
 const MODEL = process.env.E2E_AI_MODEL || "glm-5.2";
+const OPENAI_COMPATIBLE = PROVIDER !== "anthropic" && PROVIDER !== "google";
+const EXPECT_REASONING = process.env.E2E_AI_EXPECT_REASONING === "1" || PROVIDER === "zai";
 
 const PROJECT = "Agent Live";
 const TA = 'textarea[placeholder*="Ask AI"]';
@@ -99,10 +101,10 @@ test.describe("live provider", () => {
     await connectLive(tauriPage, PROVIDER);
     await openChat(tauriPage);
 
-    await ask(tauriPage, "Reply with exactly this token and nothing else: LIVEZAI7");
+    await ask(tauriPage, "Reply with exactly this token and nothing else: LIVEPROVIDER7");
     await waitLong(
       tauriPage,
-      `document.body.innerText.includes("LIVEZAI7") && !document.querySelector('[aria-label="Stop"]')`,
+      `document.body.innerText.includes("LIVEPROVIDER7") && !document.querySelector('[aria-label="Stop"]')`,
       REPLY_TIMEOUT,
     );
 
@@ -116,6 +118,7 @@ test.describe("live provider", () => {
   });
 
   test("streams the thinking phase separately from the answer", async ({ tauriPage }) => {
+    test.skip(!EXPECT_REASONING, `${PROVIDER} is not configured to expose reasoning tokens`);
     test.setTimeout(REPLY_TIMEOUT);
     await openLiveProject(tauriPage);
     await connectLive(tauriPage, PROVIDER);
@@ -153,6 +156,10 @@ test.describe("live provider", () => {
   });
 
   test("the same key works through a custom provider entry", async ({ tauriPage }) => {
+    test.skip(
+      !OPENAI_COMPATIBLE,
+      "custom provider entries use the OpenAI-compatible wire protocol",
+    );
     test.setTimeout(REPLY_TIMEOUT);
     await openLiveProject(tauriPage);
 
@@ -240,20 +247,20 @@ test.describe("live provider", () => {
   });
 
   test("a rejected key surfaces the provider's own message", async ({ tauriPage }) => {
+    test.skip(
+      !OPENAI_COMPATIBLE,
+      "the custom-base invalid-key probe uses the OpenAI-compatible wire protocol",
+    );
     test.setTimeout(REPLY_TIMEOUT);
     await openLiveProject(tauriPage);
 
     const failure = await tauriPage.evaluate<string>(`
       (async () => {
-        const { agentListModels, getConfig, setConfig } = await import("/src/lib/tauri.ts");
-        const cfg = await getConfig();
-        await setConfig({
-          ...cfg,
-          ai_keys: { ...cfg.ai_keys, "live-bad": "sk-definitely-not-valid" },
-        });
+        const { agentListModels } = await import("/src/lib/tauri.ts");
         try {
           await agentListModels({
             providerId: "live-bad",
+            key: "sk-definitely-not-valid",
             baseURL: ${JSON.stringify(process.env.E2E_AI_BASE_URL || "https://api.z.ai/api/coding/paas/v4")},
           });
           return "UNEXPECTED SUCCESS";

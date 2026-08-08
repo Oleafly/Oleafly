@@ -303,7 +303,15 @@ export const useChatsStore = create<ChatsState>((set, get) => ({
     const chats = memoryByProject.get(projectId) ?? loaded;
     cacheProjectChats(projectId, chats);
     if (my !== loadSeq) return; // a newer load superseded this one
-    set({ projectId, chats, activeId: null });
+    set((state) => ({
+      projectId,
+      chats,
+      activeId: null,
+      // A live transcript is meaningful only while its project owns the active
+      // run. Never let a cancelled project's partial reply shadow its saved
+      // transcript when navigation later returns to that project.
+      live: state.projectId === projectId ? state.live : {},
+    }));
   },
 
   create: (projectId, headOid) => {

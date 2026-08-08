@@ -412,6 +412,7 @@ Download the latest build from
 | macOS, Apple Silicon | `.dmg` |
 | Windows, x86_64 | `.msi` or `-setup.exe` |
 | Linux, x86_64 | `.AppImage`, `.deb`, or `.rpm` |
+| Linux, ARM64 | `.AppImage` or `.deb` |
 
 The first LaTeX compile may download packages required by the document.
 Tectonic caches them for later builds, and Offline mode restricts compilation
@@ -465,7 +466,7 @@ product feedback are welcome.
    ```bash
    pnpm build
    pnpm test
-   cargo test --manifest-path src-tauri/Cargo.toml --lib
+   cargo test --workspace --all-targets
    ```
 
 Please report security issues privately as described in

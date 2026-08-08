@@ -1069,9 +1069,9 @@ ${sandboxedCustom}`;
         }
         if (runChatId) {
           useChatsStore.getState().saveMessages(runChatId, messagesRef.current);
-          useChatsStore.getState().clearLive(runChatId);
         }
       }
+      if (runChatId) useChatsStore.getState().clearLive(runChatId);
       runOwnerRef.current = false;
       endChatRun(runHandle);
     }
@@ -1141,6 +1141,7 @@ ${sandboxedCustom}`;
     const run = activeChatRun();
     if (run && run.projectId !== projectId) {
       run.pendingApproval?.resolve(false);
+      if (run.chatId) useChatsStore.getState().clearLive(run.chatId);
       cancelChatRun(run.controller, persistTimerRef.current, () => {
         if (streamRafRef.current != null) cancelAnimationFrame(streamRafRef.current);
         streamRafRef.current = null;

@@ -1,9 +1,15 @@
+use std::time::Duration;
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::complete::{auth_headers, error_message, request_error};
+use crate::complete::{auth_headers, read_body_limited, read_provider_error, request_error};
 use crate::error::{AgentError, Result};
 use crate::provider::{Resolved, Wire};
+
+const MODEL_LIST_TIMEOUT: Duration = Duration::from_secs(60);
+/// A complete provider catalog comfortably fits below this ceiling.
+const MAX_MODEL_BODY_BYTES: usize = 8 * 1024 * 1024;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ModelInfo {
@@ -66,19 +72,27 @@ pub(crate) fn parse_models(wire: &Wire, body: &Value) -> Result<Vec<ModelInfo>> 
 pub async fn list_models(client: &reqwest::Client, resolved: &Resolved) -> Result<Vec<ModelInfo>> {
     let mut request = client
         .get(models_url(resolved))
-        .headers(auth_headers(resolved));
+        .headers(auth_headers(resolved))
+        .timeout(MODEL_LIST_TIMEOUT);
     if matches!(resolved.wire, Wire::Anthropic { .. }) {
         request = request.header("anthropic-version", "2023-06-01");
     }
 
     let response = request.send().await.map_err(request_error)?;
     let status = response.status().as_u16();
-    let raw = response.text().await.map_err(request_error)?;
-
     if !(200..300).contains(&status) {
-        return Err(error_message(status, &raw));
+        return Err(
+            read_provider_error(response, status, "model listing error response body").await,
+        );
     }
-    let body: Value = serde_json::from_str(&raw).map_err(|e| AgentError::Decode(e.to_string()))?;
+    let raw = read_body_limited(
+        response,
+        MAX_MODEL_BODY_BYTES,
+        "model listing response body",
+    )
+    .await?;
+    let body: Value =
+        serde_json::from_slice(&raw).map_err(|e| AgentError::Decode(e.to_string()))?;
     parse_models(&resolved.wire, &body)
 }
 
@@ -196,7 +210,8 @@ mod tests {
 
     #[test]
     fn a_rejected_key_is_reported_as_a_provider_error_and_is_not_retryable() {
-        let error = error_message(401, r#"{"error":{"message":"Incorrect API key"}}"#);
+        let error =
+            crate::complete::error_message(401, r#"{"error":{"message":"Incorrect API key"}}"#);
         assert!(!error.retryable());
         assert!(error.to_string().contains("Incorrect API key"));
     }

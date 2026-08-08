@@ -497,7 +497,7 @@ produit réfléchis sont les bienvenus.
    ```bash
    pnpm build
    pnpm test
-   cargo test --manifest-path src-tauri/Cargo.toml --lib
+   cargo test --workspace --all-targets
    ```
 
 Merci de signaler les problèmes de sécurité en privé, comme décrit dans

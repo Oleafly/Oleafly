@@ -62,6 +62,7 @@ import { EnginePickerModal } from "@/components/layout/EnginePickerModal";
 import { TinytexGuards } from "@/components/layout/TinytexGuards";
 import { COMPILE_SUCCEEDED_EVENT } from "@/lib/compile-checkpoint";
 import { applyRemoteCompileSuccess } from "@/lib/compile-sync";
+import type { ProjectStateChanged } from "@/lib/tauri";
 
 const SettingsModal = lazy(() =>
   import("@/components/layout/SettingsModal").then((m) => ({ default: m.SettingsModal })),
@@ -441,7 +442,16 @@ function AppContent() {
   useEffect(() => {
     if (!isTauri()) return;
     const selfLabel = getCurrentWindow().label;
-    const unFiles = listen<{ projectId: string; paths?: string[]; from?: string }>(
+    type ExternalFileChange =
+      | { kind: "write"; path: string; content: string }
+      | { kind: "create" | "delete"; path: string }
+      | { kind: "rename"; from: string; to: string };
+    const unFiles = listen<{
+      projectId: string;
+      paths?: string[];
+      from?: string;
+      change?: ExternalFileChange;
+    }>(
       "project:files-changed",
       (e) => {
         // Ignore our own broadcast: this window already applied the write
@@ -451,7 +461,21 @@ function AppContent() {
         const pid = e.payload?.projectId;
         const fs = useFilesStore.getState();
         if (!pid || pid !== fs.projectId) return;
+        const change = e.payload?.change;
+        if (change?.kind === "delete") {
+          fs.applyExternalDelete(pid, change.path);
+          return;
+        }
+        if (change?.kind === "rename") {
+          fs.applyExternalRename(pid, change.from, change.to);
+          return;
+        }
+        if (change?.kind === "write") {
+          fs.applyExternalWrite(pid, change.path, change.content);
+          return;
+        }
         void fs.refreshTree();
+        if (change?.kind === "create") return;
         const paths = e.payload?.paths?.length
           ? e.payload.paths
           : Object.keys(fs.files);
@@ -475,7 +499,7 @@ function AppContent() {
                   ) {
                     return;
                   }
-                  cur.applyExternalWrite(path, content);
+                  cur.applyExternalWrite(pid, path, content);
                 })
                 .catch(() => {});
             });
@@ -486,6 +510,15 @@ function AppContent() {
     const unCompile = listen<unknown>(COMPILE_SUCCEEDED_EVENT, (event) => {
       void applyRemoteCompileSuccess(event.payload, selfLabel);
     });
+    const unProjectState = listen<ProjectStateChanged>("project-state-changed", (event) => {
+      const files = useFilesStore.getState();
+      if (!event.payload || event.payload.projectId !== files.projectId) return;
+      void files.applyProjectStateChanged(event.payload).then((applied) => {
+        // Ignore delayed older events. Accepted metadata/worktree changes make
+        // every preflight assertion stale even if no source file changed.
+        if (applied) usePreflightStore.getState().reset();
+      });
+    });
     const unSettings = listen<{ section?: string }>("settings:open", (e) => {
       const s = useSettingsStore.getState();
       if (e.payload?.section) s.setSettingsInitialSection(e.payload.section);
@@ -494,6 +527,7 @@ function AppContent() {
     return () => {
       void unFiles.then((f) => f());
       void unCompile.then((f) => f());
+      void unProjectState.then((f) => f());
       void unSettings.then((f) => f());
     };
   }, []);

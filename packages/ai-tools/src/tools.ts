@@ -32,20 +32,40 @@ export interface ProjectIndexView {
 export interface AiToolsHost {
   getProjectId(): string | null;
   readFileContent(projectId: string, path: string): Promise<string>;
-  writeFileContent(projectId: string, path: string, content: string): Promise<void>;
-  createFile(projectId: string, path: string, isDir: boolean): Promise<unknown>;
-  deleteFile(projectId: string, path: string): Promise<unknown>;
-  renameFile(projectId: string, from: string, to: string): Promise<unknown>;
+  writeFileContent(
+    projectId: string,
+    path: string,
+    content: string,
+    expectedGeneration?: number,
+  ): Promise<unknown>;
+  createFile(
+    projectId: string,
+    path: string,
+    isDir: boolean,
+    expectedGeneration?: number,
+  ): Promise<unknown>;
+  deleteFile(projectId: string, path: string, expectedGeneration?: number): Promise<unknown>;
+  renameFile(
+    projectId: string,
+    from: string,
+    to: string,
+    expectedGeneration?: number,
+  ): Promise<unknown>;
   setMainDoc(projectId: string, path: string): Promise<{ main_doc: string }>;
   listFiles(projectId: string): Promise<unknown[]>;
   searchProject(projectId: string, query: string): Promise<unknown[]>;
   readProjectBytes(projectId: string, path: string): Promise<ArrayBuffer | ArrayLike<number>>;
-  writeProjectBytes(projectId: string, relPath: string, dataBase64: string): Promise<void>;
-  // Reflect completed tool actions into the app's open-editor state.
-  applyExternalWrite(path: string, content: string): void;
-  applyExternalRename(from: string, to: string): void;
-  applyExternalDelete(path: string): void;
-  refreshTree(): Promise<void>;
+  writeProjectBytes(
+    projectId: string,
+    relPath: string,
+    dataBase64: string,
+    expectedGeneration?: number,
+  ): Promise<unknown>;
+  prepareExternalMutation(projectId: string): Promise<number>;
+  applyExternalWrite(projectId: string, path: string, content: string): boolean;
+  applyExternalRename(projectId: string, from: string, to: string): boolean;
+  applyExternalDelete(projectId: string, path: string): boolean;
+  refreshTree(projectId: string): Promise<void>;
   recompile(): Promise<
     { ok?: boolean; errors?: unknown[]; has_pdf?: boolean; log?: string | null } | null | undefined
   >;
@@ -65,12 +85,17 @@ export interface AiToolsHost {
   setLastFigurePreview(v: { pdfBytes: Uint8Array } | null): void;
   getLastFigurePreview(): { pdfBytes: Uint8Array } | null;
   getFigureInsertTarget(): { from: number; to: number } | null;
-  insertAtCursor(projectId: string, text: string): boolean | Promise<boolean>;
+  insertAtCursor(
+    projectId: string,
+    text: string,
+    mutationAllowed?: () => boolean,
+  ): boolean | Promise<boolean>;
   replaceRange(
     projectId: string,
     from: number,
     to: number,
     text: string,
+    mutationAllowed?: () => boolean,
   ): boolean | Promise<boolean>;
   // Agent plan checklist (update_todos / get_todos).
   getAgentTodos(): { id: string; content: string; status: string }[];
@@ -106,9 +131,37 @@ export interface ToolApprovalRequest {
 
 export type ConfirmFn = (req: ToolApprovalRequest) => Promise<boolean>;
 
+const MAX_MUTATION_BYTES = 16 * 1024 * 1024;
+const MAX_REPLACEMENTS = 100_000;
+const textEncoder = new TextEncoder();
+
+function mutationSizeError(content: string): string | null {
+  if (content.length > MAX_MUTATION_BYTES || textEncoder.encode(content).byteLength > MAX_MUTATION_BYTES) {
+    return `File content exceeds the ${MAX_MUTATION_BYTES / (1024 * 1024)} MiB write limit.`;
+  }
+  return null;
+}
+
+function occurrenceCount(text: string, needle: string, replaceAll: boolean): number {
+  const first = text.indexOf(needle);
+  if (first < 0) return 0;
+  if (!replaceAll) return 1;
+  let count = 0;
+  let at = first;
+  while (at >= 0) {
+    count += 1;
+    at = text.indexOf(needle, at + needle.length);
+  }
+  return count;
+}
+
 export function createOleaflyTools(
   host: AiToolsHost,
-  opts?: { confirm?: ConfirmFn; onImage?: (dataUrl: string) => void },
+  opts?: {
+    confirm?: ConfirmFn;
+    onImage?: (dataUrl: string) => void;
+    mutationAllowed?: () => boolean;
+  },
 ) {
   const confirm = opts?.confirm;
   const onImage = opts?.onImage;
@@ -124,16 +177,36 @@ export function createOleaflyTools(
     extractPdfText,
   } = host;
   const pid = () => host.getProjectId();
+  const mutationAllowed = () => opts?.mutationAllowed?.() ?? true;
+  const assertMutationAllowed = (projectId: string) => {
+    if (pid() !== projectId || !mutationAllowed()) {
+      throw new Error("Project changed or the external request was cancelled before mutation.");
+    }
+  };
+  const prepareMutation = async (projectId: string) => {
+    assertMutationAllowed(projectId);
+    const generation = await host.prepareExternalMutation(projectId);
+    assertMutationAllowed(projectId);
+    return generation;
+  };
   const declined = (tool: string) => ({
     error: "The user declined this change.",
     declined: true as const,
     tool,
   });
+  const approveStateMutation = async (tool: string, summary: string): Promise<boolean> => {
+    if (!opts?.mutationAllowed) return true;
+    const projectId = pid();
+    if (!projectId) throw new Error("No project open");
+    if (confirm && !(await confirm({ tool, summary }))) return false;
+    assertMutationAllowed(projectId);
+    return true;
+  };
 
   const tools: Record<string, RawToolDef> = {
     read_file: {
       description:
-        "Read a file in the current project. Prefer offset/limit for large files. Returns truncated content when over the size cap; re-read another slice if needed.",
+        "Read a file in the current project. Prefer offset/limit for large files. Returns truncated content when over the size cap. Read another slice if needed.",
       inputSchema: {
         type: "object",
         properties: {
@@ -191,7 +264,11 @@ export function createOleaflyTools(
         type: "object",
         properties: {
           path: { type: "string", description: "Project-relative file path" },
-          content: { type: "string", description: "The full file content to write" },
+          content: {
+            type: "string",
+            maxLength: MAX_MUTATION_BYTES,
+            description: "The full file content to write",
+          },
         },
         required: ["path", "content"],
         additionalProperties: false,
@@ -200,20 +277,37 @@ export function createOleaflyTools(
         const { path, content } = input as { path: string; content: string };
         const id = pid();
         if (!id) return { error: "No project open" };
-        if (confirm) {
-          const oldText = await readFileContent(id, path).catch(() => "");
-          if (!(await confirm({
-            tool: "write_file",
-            summary: `Write ${path}`,
-            path,
-            diff: { path, oldText, newText: content },
-          }))) {
-            return declined("write_file");
-          }
-        }
         try {
-          await writeFileContent(id, path, content);
-          host.applyExternalWrite(path, content);
+          const sizeError = mutationSizeError(content);
+          if (sizeError) return { error: sizeError };
+          let expectedGeneration: number;
+          if (confirm) {
+            await prepareMutation(id);
+            const oldText = await readFileContent(id, path).catch(() => "");
+            if (!(await confirm({
+              tool: "write_file",
+              summary: `Write ${path}`,
+              path,
+              diff: { path, oldText, newText: content },
+            }))) {
+              return declined("write_file");
+            }
+            expectedGeneration = await prepareMutation(id);
+            const latest = await readFileContent(id, path).catch(() => "");
+            if (latest !== oldText) {
+              return { error: `${path} changed while approval was pending. Review and retry.` };
+            }
+            assertMutationAllowed(id);
+          } else {
+            expectedGeneration = await prepareMutation(id);
+          }
+          await writeFileContent(id, path, content, expectedGeneration);
+          if (!host.applyExternalWrite(id, path, content)) {
+            return {
+              error: `${path} changed locally while the external write was running. The local edit was preserved. Review and retry.`,
+              conflict: true,
+            };
+          }
           return { success: true, path, bytes: content.length };
         } catch (e) {
           return { error: String(e) };
@@ -228,8 +322,16 @@ export function createOleaflyTools(
         type: "object",
         properties: {
           path: { type: "string", description: "Project-relative file path" },
-          find: { type: "string", description: "Exact string to search for (verbatim, including backslashes)" },
-          replace: { type: "string", description: "String to replace it with" },
+          find: {
+            type: "string",
+            minLength: 1,
+            description: "Exact string to search for (verbatim, including backslashes)",
+          },
+          replace: {
+            type: "string",
+            maxLength: MAX_MUTATION_BYTES,
+            description: "String to replace it with",
+          },
           replace_all: { type: "boolean", description: "Replace every occurrence (default: false - first only)", default: false },
         },
         required: ["path", "find", "replace"],
@@ -241,20 +343,30 @@ export function createOleaflyTools(
         };
         const id = pid();
         if (!id) return { error: "No project open" };
+        if (!find) return { error: "find must not be empty" };
         try {
+          let expectedGeneration = await prepareMutation(id);
           const original = await readFileContent(id, path);
-          if (!original.includes(find)) {
+          const count = occurrenceCount(original, find, !!replace_all);
+          if (count === 0) {
             return { error: "find string not found in file", path };
           }
-          const count = replace_all ? original.split(find).length - 1 : 1;
-          // Both branches replace literally: String.prototype.replace with a
-          // string pattern would interpret `$$`, `$&`, `` $` ``, `$'`, `$1`.. in
-          // the AI-supplied `replace` text and corrupt LaTeX (e.g. `$$` -> `$`).
-          // Splice the first occurrence in by index instead.
+          const outputChars = original.length + count * (replace.length - find.length);
+          if (!Number.isSafeInteger(outputChars) || outputChars > MAX_MUTATION_BYTES) {
+            return { error: `Replacement output exceeds the ${MAX_MUTATION_BYTES / (1024 * 1024)} MiB write limit.` };
+          }
+          if (count > MAX_REPLACEMENTS) {
+            return { error: `Replacement count exceeds the ${MAX_REPLACEMENTS.toLocaleString()} operation limit.` };
+          }
+          // A callback replacement is literal; a replacement string would
+          // interpret `$$`, `$&`, `` $` ``, `$'`, `$1`.. and corrupt LaTeX.
+          // Splice the single-occurrence form directly to avoid that syntax.
           const idx = original.indexOf(find);
           const updated = replace_all
-            ? original.split(find).join(replace)
+            ? original.replaceAll(find, () => replace)
             : original.slice(0, idx) + replace + original.slice(idx + find.length);
+          const sizeError = mutationSizeError(updated);
+          if (sizeError) return { error: sizeError };
           // Nothing has been written yet; declining leaves the file untouched.
           if (confirm && !(await confirm({
             tool: "replace_in_file",
@@ -264,8 +376,19 @@ export function createOleaflyTools(
           }))) {
             return declined("replace_in_file");
           }
-          await writeFileContent(id, path, updated);
-          host.applyExternalWrite(path, updated);
+          expectedGeneration = await prepareMutation(id);
+          const latest = await readFileContent(id, path);
+          if (latest !== original) {
+            return { error: `${path} changed while approval was pending. Review and retry.` };
+          }
+          assertMutationAllowed(id);
+          await writeFileContent(id, path, updated, expectedGeneration);
+          if (!host.applyExternalWrite(id, path, updated)) {
+            return {
+              error: `${path} changed locally while the external edit was running. The local edit was preserved. Review and retry.`,
+              conflict: true,
+            };
+          }
           return { success: true, path, replacements: count };
         } catch (e) {
           return { error: String(e) };
@@ -293,8 +416,9 @@ export function createOleaflyTools(
           return declined("create_file");
         }
         try {
-          await apiCreateFile(id, path, is_dir ?? false);
-          await host.refreshTree();
+          const expectedGeneration = await prepareMutation(id);
+          await apiCreateFile(id, path, is_dir ?? false, expectedGeneration);
+          await host.refreshTree(id);
           return { success: true, path, is_dir: is_dir ?? false };
         } catch (e) {
           return { error: String(e) };
@@ -321,8 +445,11 @@ export function createOleaflyTools(
           return declined("rename_file");
         }
         try {
-          await apiRenameFile(id, from, to);
-          host.applyExternalRename(from, to);
+          const expectedGeneration = await prepareMutation(id);
+          await apiRenameFile(id, from, to, expectedGeneration);
+          if (!host.applyExternalRename(id, from, to)) {
+            return { error: "Project changed while the rename was running.", conflict: true };
+          }
           return { success: true, from, to };
         } catch (e) {
           return { error: String(e) };
@@ -348,8 +475,14 @@ export function createOleaflyTools(
           return declined("delete_file");
         }
         try {
-          await apiDeleteFile(id, path);
-          host.applyExternalDelete(path);
+          const expectedGeneration = await prepareMutation(id);
+          await apiDeleteFile(id, path, expectedGeneration);
+          if (!host.applyExternalDelete(id, path)) {
+            return {
+              error: `${path} changed locally while deletion was running. Unsaved local edits were restored. Review and retry.`,
+              conflict: true,
+            };
+          }
           return { success: true, path };
         } catch (e) {
           return { error: String(e) };
@@ -444,6 +577,7 @@ export function createOleaflyTools(
           return declined("set_main_doc");
         }
         try {
+          await prepareMutation(id);
           const meta = await setMainDocCmd(id, path);
           return { success: true, main_doc: meta.main_doc };
         } catch (e) {
@@ -506,6 +640,10 @@ export function createOleaflyTools(
       },
       execute: async () => {
         try {
+          if (!(await approveStateMutation("toggle_theme", "Toggle the application theme"))) {
+            return declined("toggle_theme");
+          }
+          if (!mutationAllowed()) return { error: "The external request was cancelled before mutation." };
           window.dispatchEvent(new CustomEvent("oleafly:toggle-theme"));
           return { success: true };
         } catch (e) {
@@ -572,6 +710,9 @@ export function createOleaflyTools(
         additionalProperties: false,
       },
       execute: async (input) => {
+        if (!(await approveStateMutation("update_todos", "Replace the agent checklist"))) {
+          return declined("update_todos");
+        }
         const raw = (input.todos as { id: string; content: string; status: string }[]) ?? [];
         const allowed = new Set(["pending", "in_progress", "completed", "cancelled"]);
         const todos = raw
@@ -604,12 +745,17 @@ export function createOleaflyTools(
       inputSchema: {
         type: "object",
         properties: {
-          content: { type: "string", description: "Note text (short; durable project knowledge)" },
+          content: { type: "string", description: "Note text for short, durable project knowledge" },
         },
         required: ["content"],
         additionalProperties: false,
       },
-      execute: async (input) => host.rememberNote(String(input.content ?? "")),
+      execute: async (input) => {
+        if (!(await approveStateMutation("remember_note", "Save a project memory note"))) {
+          return declined("remember_note");
+        }
+        return host.rememberNote(String(input.content ?? ""));
+      },
     },
 
     forget_note: {
@@ -622,7 +768,12 @@ export function createOleaflyTools(
         required: ["id"],
         additionalProperties: false,
       },
-      execute: async (input) => host.forgetNote(String(input.id ?? "")),
+      execute: async (input) => {
+        if (!(await approveStateMutation("forget_note", "Remove a project memory note"))) {
+          return declined("forget_note");
+        }
+        return host.forgetNote(String(input.id ?? ""));
+      },
     },
 
     list_notes: {
@@ -638,7 +789,7 @@ export function createOleaflyTools(
 
     verify_pdf_pages: {
       description:
-        "After a successful compile, inspect rendered PDF pages for layout issues (overflow, cut-off text, empty regions). Vision models receive page PNGs; text-only models get page text excerpts. Prefer after structural edits. Respects the user setting that allows PDF page capture.",
+        "After a successful compile, inspect rendered PDF pages for layout issues (overflow, cut-off text, empty regions). Vision models receive page PNGs. Text-only models get page text excerpts. Prefer after structural edits. Respects the user setting that allows PDF page capture.",
       inputSchema: {
         type: "object",
         properties: {
@@ -715,7 +866,7 @@ export function createOleaflyTools(
             note:
               images.length > 0
                 ? "Page images were attached for vision models. Inspect for overflow, cut-off text, and empty regions."
-                : "No images captured; inspect text excerpts only.",
+                : "No images captured. Inspect text excerpts only.",
           };
         } catch (e) {
           return { error: String(e) };
@@ -732,11 +883,60 @@ function pngDataUrlToBase64(dataUrl: string): string {
   return comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
 }
 
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const MAX_IMAGE_PIXELS = 32_000_000;
+
+function imageTypeAndDimensions(
+  bytes: Uint8Array,
+): { mime: "image/png" | "image/jpeg" | "image/gif"; width: number; height: number } | null {
+  if (
+    bytes.length >= 24 &&
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47 &&
+    bytes[4] === 0x0d &&
+    bytes[5] === 0x0a &&
+    bytes[6] === 0x1a &&
+    bytes[7] === 0x0a
+  ) {
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    return { mime: "image/png", width: view.getUint32(16), height: view.getUint32(20) };
+  }
+  if (bytes.length >= 10 && bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46) {
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    return { mime: "image/gif", width: view.getUint16(6, true), height: view.getUint16(8, true) };
+  }
+  if (bytes.length >= 4 && bytes[0] === 0xff && bytes[1] === 0xd8) {
+    const sof = new Set([0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf]);
+    let offset = 2;
+    while (offset + 8 < bytes.length) {
+      if (bytes[offset] !== 0xff) {
+        offset += 1;
+        continue;
+      }
+      while (offset < bytes.length && bytes[offset] === 0xff) offset += 1;
+      const marker = bytes[offset++];
+      if (marker === 0xd9 || marker === 0xda || offset + 1 >= bytes.length) break;
+      const length = (bytes[offset] << 8) | bytes[offset + 1];
+      if (length < 2 || offset + length > bytes.length) break;
+      if (sof.has(marker) && length >= 7) {
+        const height = (bytes[offset + 3] << 8) | bytes[offset + 4];
+        const width = (bytes[offset + 5] << 8) | bytes[offset + 6];
+        return { mime: "image/jpeg", width, height };
+      }
+      offset += length;
+    }
+  }
+  return null;
+}
+
 export function createFigureTools(
   host: AiToolsHost,
   opts?: {
     confirm?: ConfirmFn;
     onImage?: (dataUrl: string) => void;
+    mutationAllowed?: () => boolean;
   },
 ) {
   const confirm = opts?.confirm;
@@ -754,6 +954,18 @@ export function createFigureTools(
     replaceRange,
   } = host;
   const pid = () => host.getProjectId();
+  const mutationAllowed = () => opts?.mutationAllowed?.() ?? true;
+  const assertMutationAllowed = (projectId: string) => {
+    if (pid() !== projectId || !mutationAllowed()) {
+      throw new Error("Project changed or the external request was cancelled before mutation.");
+    }
+  };
+  const prepareMutation = async (projectId: string) => {
+    assertMutationAllowed(projectId);
+    const generation = await host.prepareExternalMutation(projectId);
+    assertMutationAllowed(projectId);
+    return generation;
+  };
   const declined = (tool: string) => ({
     error: "The user declined this change.",
     declined: true as const,
@@ -825,7 +1037,7 @@ export function createFigureTools(
 
     insert_figure: {
       description:
-        "Insert the finished figure into the document at the user's cursor (or the selected paragraph it was generated from), and save a PNG copy to figures/. Provide the final `code`, and optionally a `caption` and `label`; set raw=true to insert the bare code without a figure environment.",
+        "Insert the finished figure into the document at the user's cursor (or the selected paragraph it was generated from), and save a PNG copy to figures/. Provide the final `code`, and optionally a `caption` and `label`. Set raw=true to insert the bare code without a figure environment.",
       inputSchema: {
         type: "object",
         properties: {
@@ -877,16 +1089,27 @@ export function createFigureTools(
         ) {
           return declined("insert_figure");
         }
+        try {
+          await prepareMutation(id);
+        } catch (e) {
+          return { error: String(e) };
+        }
         const target = getFigureInsertTarget();
         const inserted = target
-          ? await replaceRange(id, target.from, target.to, latex)
-          : await insertAtCursor(id, latex);
+          ? await replaceRange(id, target.from, target.to, latex, mutationAllowed)
+          : await insertAtCursor(id, latex, mutationAllowed);
         if (!inserted) return { error: "No editable document is open" };
         try {
           if (png) {
             const name = slugifyFigureName(caption || label || "figure");
-            await writeProjectBytes(id, `figures/${name}.png`, pngDataUrlToBase64(png));
-            await host.refreshTree();
+            const expectedGeneration = await prepareMutation(id);
+            await writeProjectBytes(
+              id,
+              `figures/${name}.png`,
+              pngDataUrlToBase64(png),
+              expectedGeneration,
+            );
+            await host.refreshTree(id);
           }
         } catch {
           /* saving the raster copy is optional; the LaTeX is already inserted */
@@ -915,16 +1138,19 @@ export function createFigureTools(
         if (!id) return { error: "No project open" };
         try {
           const bytes = new Uint8Array(await readProjectBytes(id, path));
-          const lower = path.toLowerCase();
-          const mime =
-            lower.endsWith(".jpg") || lower.endsWith(".jpeg")
-              ? "image/jpeg"
-              : lower.endsWith(".gif")
-                ? "image/gif"
-                : "image/png";
+          if (bytes.byteLength > MAX_IMAGE_BYTES) {
+            return { error: `Image exceeds the ${MAX_IMAGE_BYTES / (1024 * 1024)} MiB limit.` };
+          }
+          const image = imageTypeAndDimensions(bytes);
+          if (!image || image.width <= 0 || image.height <= 0) {
+            return { error: "Only valid PNG, JPEG, and GIF images are supported." };
+          }
+          if (image.width * image.height > MAX_IMAGE_PIXELS) {
+            return { error: `Image dimensions exceed the ${MAX_IMAGE_PIXELS.toLocaleString()} pixel limit.` };
+          }
           const b64 = bytesToBase64(bytes);
-          if (onImage) onImage(`data:${mime};base64,${b64}`);
-          return { loaded: true, path };
+          if (onImage) onImage(`data:${image.mime};base64,${b64}`);
+          return { loaded: true, path, width: image.width, height: image.height };
         } catch (e) {
           return { error: String(e) };
         }

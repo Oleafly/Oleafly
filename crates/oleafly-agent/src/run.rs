@@ -1,4 +1,5 @@
 use std::future::Future;
+use std::io::Write;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
@@ -10,7 +11,20 @@ use crate::error::{AgentError, Result};
 use crate::event::AgentEvent;
 use crate::message::{ContentPart, Message, Role};
 use crate::provider::Resolved;
-use crate::stream::{stream_completion, StreamOutcome, ToolCall};
+use crate::stream::{stream_completion, StreamOutcome, ToolCall, MAX_STREAM_TOOL_CALLS};
+
+const MAX_RETRY_DELAY_MS: u64 = 60_000;
+const MAX_TOOL_EXECUTION_DURATION: Duration = Duration::from_secs(5 * 60);
+const MAX_TOOL_OUTPUT_TEXT_BYTES: usize = 64 * 1024;
+const MAX_TOOL_OUTPUT_IMAGES: usize = 6;
+// A 10 MiB binary attachment occupies about 13.4 MiB once base64 encoded.
+const MAX_TOOL_IMAGE_DATA_URL_BYTES: usize = 14 * 1024 * 1024;
+const MAX_TOOL_OUTPUT_IMAGE_BYTES: usize = 84 * 1024 * 1024;
+const MAX_TOOL_RESULT_BATCH_BYTES: usize = 96 * 1024 * 1024;
+const MAX_AGENT_HISTORY_BYTES: usize = 128 * 1024 * 1024;
+const MAX_AGENT_MESSAGES: usize = 128;
+const MAX_TOOL_DEFINITIONS: usize = 128;
+const MAX_AGENT_TOOL_CALLS: usize = 256;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RunConfig {
@@ -57,6 +71,130 @@ pub struct RunOutcome {
 pub type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send>>;
 pub type ToolRunner = Arc<dyn Fn(ToolCall) -> BoxFuture<ToolOutput> + Send + Sync>;
 
+#[derive(Clone, Copy)]
+struct ToolOutputLimits {
+    max_text_bytes: usize,
+    max_images: usize,
+    max_image_bytes: usize,
+    max_total_image_bytes: usize,
+}
+
+impl Default for ToolOutputLimits {
+    fn default() -> Self {
+        Self {
+            max_text_bytes: MAX_TOOL_OUTPUT_TEXT_BYTES,
+            max_images: MAX_TOOL_OUTPUT_IMAGES,
+            max_image_bytes: MAX_TOOL_IMAGE_DATA_URL_BYTES,
+            max_total_image_bytes: MAX_TOOL_OUTPUT_IMAGE_BYTES,
+        }
+    }
+}
+
+struct LimitedWriter {
+    bytes: usize,
+    max_bytes: usize,
+}
+
+impl Write for LimitedWriter {
+    fn write(&mut self, buffer: &[u8]) -> std::io::Result<usize> {
+        let next = self
+            .bytes
+            .checked_add(buffer.len())
+            .filter(|next| *next <= self.max_bytes)
+            .ok_or_else(|| std::io::Error::other("serialized history limit exceeded"))?;
+        self.bytes = next;
+        Ok(buffer.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+struct HistoryBudget {
+    serialized_bytes: usize,
+    messages: usize,
+    tool_calls: usize,
+}
+
+/// Reject renderer/provider requests that would create unbounded JSON or history state.
+pub fn validate_completion_request(request: &CompletionRequest) -> Result<()> {
+    HistoryBudget::new(request).map(|_| ())
+}
+
+impl HistoryBudget {
+    fn new(request: &CompletionRequest) -> Result<Self> {
+        if request.messages.len() > MAX_AGENT_MESSAGES {
+            return Err(history_limit_error("agent message count"));
+        }
+        if request.tools.len() > MAX_TOOL_DEFINITIONS {
+            return Err(history_limit_error("tool definition count"));
+        }
+        let tool_calls = count_tool_calls(&request.messages)?;
+        if tool_calls > MAX_AGENT_TOOL_CALLS {
+            return Err(history_limit_error("agent tool-call count"));
+        }
+        Ok(Self {
+            serialized_bytes: serialized_size_limited(request, MAX_AGENT_HISTORY_BYTES)?,
+            messages: request.messages.len(),
+            tool_calls,
+        })
+    }
+
+    fn append_message(&mut self, message: &Message, new_tool_calls: usize) -> Result<()> {
+        let messages = self
+            .messages
+            .checked_add(1)
+            .filter(|messages| *messages <= MAX_AGENT_MESSAGES)
+            .ok_or_else(|| history_limit_error("agent message count"))?;
+        let tool_calls = self
+            .tool_calls
+            .checked_add(new_tool_calls)
+            .filter(|tool_calls| *tool_calls <= MAX_AGENT_TOOL_CALLS)
+            .ok_or_else(|| history_limit_error("agent tool-call count"))?;
+        let remaining = MAX_AGENT_HISTORY_BYTES.saturating_sub(self.serialized_bytes);
+        let message_bytes = serialized_size_limited(message, remaining)?;
+        let serialized_bytes = self
+            .serialized_bytes
+            .checked_add(message_bytes)
+            .and_then(|bytes| bytes.checked_add(1))
+            .filter(|bytes| *bytes <= MAX_AGENT_HISTORY_BYTES)
+            .ok_or_else(|| history_limit_error("serialized agent history"))?;
+
+        self.messages = messages;
+        self.tool_calls = tool_calls;
+        self.serialized_bytes = serialized_bytes;
+        Ok(())
+    }
+}
+
+fn history_limit_error(description: &str) -> AgentError {
+    AgentError::Decode(format!("{description} exceeded its safety limit"))
+}
+
+fn serialized_size_limited<T: Serialize>(value: &T, max_bytes: usize) -> Result<usize> {
+    let mut writer = LimitedWriter {
+        bytes: 0,
+        max_bytes,
+    };
+    serde_json::to_writer(&mut writer, value)
+        .map_err(|_| history_limit_error("serialized agent history"))?;
+    Ok(writer.bytes)
+}
+
+fn count_tool_calls(messages: &[Message]) -> Result<usize> {
+    messages.iter().try_fold(0usize, |total, message| {
+        let calls = message
+            .content
+            .iter()
+            .filter(|part| matches!(part, ContentPart::ToolUse { .. }))
+            .count();
+        total
+            .checked_add(calls)
+            .ok_or_else(|| history_limit_error("agent tool-call count"))
+    })
+}
+
 fn assistant_turn(outcome: &StreamOutcome) -> Message {
     let mut content = Vec::new();
     if !outcome.text.is_empty() {
@@ -99,28 +237,146 @@ fn empty(outcome: &StreamOutcome) -> bool {
     outcome.text.is_empty() && outcome.tool_calls.is_empty()
 }
 
+fn accumulate_usage(total: &mut Usage, addition: Usage) {
+    total.input = total.input.saturating_add(addition.input);
+    total.output = total.output.saturating_add(addition.output);
+}
+
 fn should_retry(error: &AgentError, attempt: u32, max_retries: u32, saw_output: bool) -> bool {
     error.retryable() && attempt < max_retries && !saw_output
+}
+
+fn retry_delay(base_ms: u64, attempt: u32) -> Duration {
+    let multiplier = u64::from(attempt).saturating_add(1);
+    Duration::from_millis(base_ms.saturating_mul(multiplier).min(MAX_RETRY_DELAY_MS))
+}
+
+fn truncate_utf8(value: &mut String, max_bytes: usize) {
+    if value.len() <= max_bytes {
+        return;
+    }
+    let mut end = max_bytes;
+    while !value.is_char_boundary(end) {
+        end -= 1;
+    }
+    value.truncate(end);
+}
+
+fn fit_with_notice(value: &mut String, max_bytes: usize, notice: &str) {
+    let mut notice = notice.to_string();
+    truncate_utf8(&mut notice, max_bytes);
+    truncate_utf8(value, max_bytes.saturating_sub(notice.len()));
+    value.push_str(&notice);
+}
+
+fn sanitize_tool_output(mut output: ToolOutput, limits: ToolOutputLimits) -> ToolOutput {
+    let text_truncated = output.output.len() > limits.max_text_bytes;
+    let mut image_bytes = 0usize;
+    let mut kept_images = Vec::with_capacity(output.images.len().min(limits.max_images));
+    let mut omitted_images = 0usize;
+
+    for image in std::mem::take(&mut output.images) {
+        let next_total = image_bytes.checked_add(image.len());
+        let allowed = kept_images.len() < limits.max_images
+            && image.len() <= limits.max_image_bytes
+            && next_total
+                .map(|total| total <= limits.max_total_image_bytes)
+                .unwrap_or(false);
+        if allowed {
+            image_bytes = next_total.unwrap_or(image_bytes);
+            kept_images.push(image);
+        } else {
+            omitted_images = omitted_images.saturating_add(1);
+        }
+    }
+    output.images = kept_images;
+
+    if text_truncated || omitted_images > 0 {
+        let notice = match (text_truncated, omitted_images) {
+            (true, 0) => "\n[tool output truncated by backend safety limit]".to_string(),
+            (false, count) => format!("\n[{count} tool image(s) omitted by backend safety limit]"),
+            (true, count) => format!(
+                "\n[tool output truncated and {count} image(s) omitted by backend safety limit]"
+            ),
+        };
+        fit_with_notice(&mut output.output, limits.max_text_bytes, &notice);
+    }
+    output
+}
+
+/// Apply the same retention limits at external trust boundaries and in the agent loop.
+pub fn bound_tool_output(output: ToolOutput) -> ToolOutput {
+    sanitize_tool_output(output, ToolOutputLimits::default())
+}
+
+fn tool_output_payload_bytes(output: &ToolOutput) -> Result<usize> {
+    output
+        .images
+        .iter()
+        .try_fold(output.output.len(), |total, image| {
+            total
+                .checked_add(image.len())
+                .ok_or_else(|| history_limit_error("tool result batch"))
+        })
+}
+
+fn add_tool_batch_bytes(total: &mut usize, bytes: usize, limit: usize) -> Result<()> {
+    let next = total
+        .checked_add(bytes)
+        .filter(|next| *next <= limit)
+        .ok_or_else(|| history_limit_error("tool result batch"))?;
+    *total = next;
+    Ok(())
+}
+
+fn validate_tool_calls_per_turn(calls: usize) -> Result<()> {
+    if calls > MAX_STREAM_TOOL_CALLS {
+        Err(history_limit_error("tool calls in one turn"))
+    } else {
+        Ok(())
+    }
+}
+
+async fn run_tool_with_timeout(
+    call: ToolCall,
+    run_tool: &ToolRunner,
+    timeout: Duration,
+) -> ToolOutput {
+    match tokio::time::timeout(timeout, run_tool(call)).await {
+        Ok(output) => output,
+        Err(_) => ToolOutput::text(
+            serde_json::json!({ "error": "the tool execution timed out" }).to_string(),
+        ),
+    }
 }
 
 async fn run_tools<F>(
     calls: Vec<ToolCall>,
     run_tool: &ToolRunner,
     on_event: &mut F,
-) -> Vec<(ToolCall, ToolOutput)>
+) -> Result<Vec<(ToolCall, ToolOutput)>>
 where
     F: FnMut(AgentEvent) + Send,
 {
+    validate_tool_calls_per_turn(calls.len())?;
     let mut results = Vec::with_capacity(calls.len());
+    let mut batch_bytes = 0usize;
     for call in calls {
-        let output = run_tool(call.clone()).await;
+        let output = bound_tool_output(
+            run_tool_with_timeout(call.clone(), run_tool, MAX_TOOL_EXECUTION_DURATION).await,
+        );
+        add_tool_batch_bytes(
+            &mut batch_bytes,
+            tool_output_payload_bytes(&output)?,
+            MAX_TOOL_RESULT_BATCH_BYTES,
+        )?;
         on_event(AgentEvent::ToolOutcome {
             id: call.id.clone(),
             output: output.output.clone(),
         });
         results.push((call, output));
     }
-    results
+    Ok(results)
 }
 
 async fn stream_with_retries<F>(
@@ -160,10 +416,7 @@ where
                     attempt: attempt + 1,
                     max: config.max_retries,
                 });
-                tokio::time::sleep(Duration::from_millis(
-                    config.retry_base_ms * (attempt as u64 + 1),
-                ))
-                .await;
+                tokio::time::sleep(retry_delay(config.retry_base_ms, attempt)).await;
             }
         }
     }
@@ -183,6 +436,7 @@ where
 {
     let mut request = request;
     let mut result = RunOutcome::default();
+    let mut history = HistoryBudget::new(&request)?;
 
     for step in 0..config.max_steps {
         on_event(AgentEvent::StepStart { step });
@@ -199,9 +453,8 @@ where
             return Ok(result);
         };
 
-        result.usage.input += outcome.usage.input;
-        result.usage.output += outcome.usage.output;
-        result.steps += 1;
+        accumulate_usage(&mut result.usage, outcome.usage);
+        result.steps = result.steps.saturating_add(1);
         on_event(AgentEvent::Usage {
             usage: result.usage,
         });
@@ -217,9 +470,16 @@ where
             return Ok(result);
         }
 
-        request.messages.push(assistant_turn(&outcome));
-        let results = run_tools(outcome.tool_calls, &run_tool, &mut on_event).await;
-        request.messages.push(results_turn(results));
+        validate_tool_calls_per_turn(outcome.tool_calls.len())?;
+        let new_tool_calls = outcome.tool_calls.len();
+        let assistant = assistant_turn(&outcome);
+        history.append_message(&assistant, new_tool_calls)?;
+        request.messages.push(assistant);
+
+        let results = run_tools(outcome.tool_calls, &run_tool, &mut on_event).await?;
+        let results = results_turn(results);
+        history.append_message(&results, 0)?;
+        request.messages.push(results);
     }
 
     result.stopped_at_cap = true;
@@ -343,6 +603,125 @@ mod tests {
             message: "bad key".into(),
         };
         assert!(!should_retry(&fatal, 0, 4, false));
+    }
+
+    #[test]
+    fn retry_delay_scales_linearly_for_normal_budgets() {
+        assert_eq!(retry_delay(800, 3), Duration::from_millis(3_200));
+    }
+
+    #[test]
+    fn retry_delay_saturates_without_overflowing() {
+        assert_eq!(
+            retry_delay(u64::MAX, u32::MAX),
+            Duration::from_millis(MAX_RETRY_DELAY_MS)
+        );
+    }
+
+    #[test]
+    fn cumulative_usage_saturates_instead_of_wrapping() {
+        let mut usage = Usage {
+            input: u32::MAX - 1,
+            output: u32::MAX,
+        };
+        accumulate_usage(
+            &mut usage,
+            Usage {
+                input: 10,
+                output: 1,
+            },
+        );
+
+        assert_eq!(usage.input, u32::MAX);
+        assert_eq!(usage.output, u32::MAX);
+    }
+
+    #[test]
+    fn tool_outputs_are_bounded_before_entering_history() {
+        let output = ToolOutput {
+            output: "x".repeat(200),
+            images: vec!["1234".into(), "1234567".into(), "5678".into(), "z".into()],
+        };
+        let sanitized = sanitize_tool_output(
+            output,
+            ToolOutputLimits {
+                max_text_bytes: 128,
+                max_images: 2,
+                max_image_bytes: 6,
+                max_total_image_bytes: 8,
+            },
+        );
+
+        assert!(sanitized.output.len() <= 128);
+        assert!(sanitized.output.contains("backend safety limit"));
+        assert_eq!(sanitized.images, ["1234", "5678"]);
+    }
+
+    #[test]
+    fn utf8_tool_text_is_truncated_only_at_character_boundaries() {
+        let sanitized = sanitize_tool_output(
+            ToolOutput::text("🧪".repeat(100)),
+            ToolOutputLimits {
+                max_text_bytes: 64,
+                ..ToolOutputLimits::default()
+            },
+        );
+
+        assert!(sanitized.output.len() <= 64);
+        assert!(std::str::from_utf8(sanitized.output.as_bytes()).is_ok());
+    }
+
+    #[test]
+    fn tool_result_batches_have_an_aggregate_ceiling() {
+        let mut bytes = 0;
+        add_tool_batch_bytes(&mut bytes, 5, 8).unwrap();
+        let error = add_tool_batch_bytes(&mut bytes, 4, 8).unwrap_err();
+
+        assert!(matches!(error, AgentError::Decode(_)));
+        assert!(!error.retryable());
+        assert_eq!(bytes, 5);
+    }
+
+    #[tokio::test]
+    async fn tool_execution_has_a_backend_deadline() {
+        let runner: ToolRunner = Arc::new(|_| Box::pin(std::future::pending()));
+        let output = run_tool_with_timeout(ToolCall::default(), &runner, Duration::ZERO).await;
+
+        let value: serde_json::Value = serde_json::from_str(&output.output).unwrap();
+        assert_eq!(value["error"], "the tool execution timed out");
+    }
+
+    #[test]
+    fn serialized_history_is_counted_without_allocating_a_copy() {
+        let message = Message::user("a payload");
+        let exact = serde_json::to_vec(&message).unwrap().len();
+        assert_eq!(serialized_size_limited(&message, exact).unwrap(), exact);
+        assert!(matches!(
+            serialized_size_limited(&message, exact - 1),
+            Err(AgentError::Decode(_))
+        ));
+    }
+
+    #[test]
+    fn history_and_tool_call_counts_are_backend_enforced() {
+        let too_many_messages = CompletionRequest {
+            messages: vec![Message::user(""); MAX_AGENT_MESSAGES + 1],
+            ..Default::default()
+        };
+        assert!(matches!(
+            HistoryBudget::new(&too_many_messages),
+            Err(AgentError::Decode(_))
+        ));
+
+        let request = CompletionRequest::default();
+        let mut history = HistoryBudget::new(&request).unwrap();
+        assert!(matches!(
+            history.append_message(&Message::user("next"), MAX_AGENT_TOOL_CALLS + 1),
+            Err(AgentError::Decode(_))
+        ));
+        assert!(validate_tool_calls_per_turn(MAX_STREAM_TOOL_CALLS).is_ok());
+        assert!(validate_tool_calls_per_turn(MAX_STREAM_TOOL_CALLS + 1).is_err());
+        assert!(validate_completion_request(&too_many_messages).is_err());
     }
 
     #[test]

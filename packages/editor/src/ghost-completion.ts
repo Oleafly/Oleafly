@@ -16,6 +16,10 @@ import {
   type DecorationSet,
   type ViewUpdate,
 } from "@codemirror/view";
+import {
+  boundedCompletionContext,
+  isCompletionTextLexicallyTriggered,
+} from "./completion-trigger";
 
 // Inline "ghost" completion: the rest of the most likely candidate, drawn dim
 // after the cursor and accepted with Tab.
@@ -117,13 +121,11 @@ const ghostField = StateField.define<GhostSuggestion | null>({
     ),
 });
 
-/** The identifier being typed at `pos`: a LaTeX command or a plain word. */
+/** The identifier being typed at `pos`: a LaTeX command or syntax query. */
 function typedPrefix(
-  view: EditorView,
+  before: string,
   pos: number,
 ): { from: number; text: string } | null {
-  const line = view.state.doc.lineAt(pos);
-  const before = line.text.slice(0, pos - line.from);
   const match = before.match(/(\\[a-zA-Z@]*|[A-Za-z][A-Za-z0-9]*)$/);
   if (!match) return null;
   const text = match[1];
@@ -135,8 +137,10 @@ function typedPrefix(
 
 /** Only suggest at the end of a word, never in the middle of one. */
 function atWordEnd(view: EditorView, pos: number): boolean {
-  const line = view.state.doc.lineAt(pos);
-  const after = line.text.slice(pos - line.from);
+  const after = view.state.sliceDoc(
+    pos,
+    Math.min(view.state.doc.length, pos + 1),
+  );
   return after === "" || /^[\s}\]),.;:$&]/.test(after);
 }
 
@@ -193,13 +197,15 @@ function syncResult(
 function computeGhost(
   view: EditorView,
   sources: CompletionSource[],
+  path: string | null,
 ): GhostSuggestion | null {
   const selection = view.state.selection.main;
   if (!selection.empty || view.state.readOnly) return null;
   const pos = selection.head;
   if (view.state.field(dismissedField, false) === pos) return null;
   if (!atWordEnd(view, pos)) return null;
-  const prefix = typedPrefix(view, pos);
+  const before = boundedCompletionContext(view.state, pos);
+  const prefix = typedPrefix(before, pos);
   if (!prefix) return null;
 
   // Popup open: mirror the highlighted option so the two never disagree.
@@ -208,6 +214,12 @@ function computeGhost(
     const label = selected ? previewLabel(selected, prefix.text) : null;
     return label ? { pos, text: label.slice(prefix.text.length) } : null;
   }
+
+  // A bare word in prose is not a completion request. In particular, do not
+  // call host sources here: some intentionally build a full-source snapshot
+  // once a syntactic trigger is known, which would otherwise make every
+  // ordinary keystroke O(document size).
+  if (!isCompletionTextLexicallyTriggered(before, path)) return null;
 
   const context = new CompletionContext(view.state, pos, false);
   for (const source of sources) {
@@ -264,12 +276,16 @@ const ghostTheme = EditorView.baseTheme({
  * Inline ghost completion driven by `sources`, which should be the same
  * completion sources the popup uses so both surfaces agree.
  */
-export function ghostCompletion(sources: CompletionSource[]): Extension {
+export function ghostCompletion(
+  sources: CompletionSource[],
+  path: string | null = null,
+): Extension {
   const plugin = ViewPlugin.fromClass(
     class {
       // Recomputing inside update() would dispatch during an update, so the
       // work is deferred to a microtask and guarded against a stale view.
       private scheduled = false;
+      private destroyed = false;
 
       constructor(readonly view: EditorView) {
         this.schedule();
@@ -277,10 +293,14 @@ export function ghostCompletion(sources: CompletionSource[]): Extension {
 
       update(update: ViewUpdate) {
         // The popup opening or closing changes where the suggestion comes
-        // from, and closing it moves neither cursor nor document, so without
-        // this the last preview would linger on screen.
+        // from. Moving its highlight also moves neither cursor nor document,
+        // so both status and selected-option changes must trigger a refresh.
+        const previousStatus = completionStatus(update.startState);
+        const nextStatus = completionStatus(update.state);
         const popupChanged =
-          completionStatus(update.startState) !== completionStatus(update.state);
+          previousStatus !== nextStatus ||
+          (nextStatus === "active" &&
+            selectedCompletion(update.startState) !== selectedCompletion(update.state));
         if (update.docChanged || update.selectionSet || popupChanged) {
           this.schedule();
         }
@@ -291,6 +311,7 @@ export function ghostCompletion(sources: CompletionSource[]): Extension {
         this.scheduled = true;
         queueMicrotask(() => {
           this.scheduled = false;
+          if (this.destroyed) return;
           this.refresh();
         });
       }
@@ -304,14 +325,14 @@ export function ghostCompletion(sources: CompletionSource[]): Extension {
         // while the user types. The suggestion is anchored to the cursor and
         // only survives until the next edit, so an unfocused editor cannot
         // accumulate stale previews anyway.
-        const next = computeGhost(view, sources);
+        const next = computeGhost(view, sources, path);
         const current = view.state.field(ghostField, false) ?? null;
         if (next?.text === current?.text && next?.pos === current?.pos) return;
         view.dispatch({ effects: setGhost.of(next) });
       }
 
       destroy() {
-        this.scheduled = true;
+        this.destroyed = true;
       }
     },
   );
