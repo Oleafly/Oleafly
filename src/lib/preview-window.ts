@@ -18,7 +18,6 @@ export type PreviewCompileStatus =
   | "unavailable";
 
 export interface PreviewWindowState {
-  /** Backend-authoritative project/worktree epoch known by the producer. */
   projectStateRevision: number;
   identity: CompileRequestIdentity;
   status: PreviewCompileStatus;

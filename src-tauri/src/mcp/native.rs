@@ -14,7 +14,6 @@ const NATIVE_MUTATING: &[&str] = &[
     "replace_in_file",
     "create_file",
     "rename_file",
-    "delete_file",
 ];
 
 const MUTATING: &[&str] = &[
@@ -61,18 +60,22 @@ fn resolve_project_in(
     arguments: &Value,
     reported: Option<String>,
 ) -> Result<String, String> {
+    if arguments.get("project_id").is_some() {
+        return Err("project_id is not accepted. Native tools use the open project".into());
+    }
     let root = projects_root
         .canonicalize()
         .map_err(|e| format!("could not resolve the projects directory: {e}"))?;
-    let project_id = if let Some(explicit) = arg(arguments, "project_id") {
-        explicit.to_string()
-    } else if let Some(open) = reported.filter(|project| !project.is_empty()) {
-        open
-    } else {
-        most_recent_project(&root)?
-    };
+    let project_id = reported
+        .filter(|project| !project.is_empty())
+        .ok_or_else(|| "no project is open in Oleafly".to_string())?;
     crate::paths::validate_project_id(&project_id)?;
-    let candidate = root.join(&project_id);
+    validate_open_project(&root, &project_id)?;
+    Ok(project_id)
+}
+
+fn validate_open_project(root: &std::path::Path, project_id: &str) -> Result<(), String> {
+    let candidate = root.join(project_id);
     let metadata = std::fs::symlink_metadata(&candidate)
         .map_err(|_| "the open project is no longer available".to_string())?;
     if !metadata.is_dir() || metadata.file_type().is_symlink() {
@@ -81,49 +84,15 @@ fn resolve_project_in(
     let resolved = candidate
         .canonicalize()
         .map_err(|_| "the open project is no longer available".to_string())?;
-    if resolved.parent() != Some(root.as_path()) {
+    if resolved.parent() != Some(root) {
         return Err("the open project escapes the project library".into());
     }
-    Ok(project_id)
-}
-
-fn most_recent_project(projects_root: &std::path::Path) -> Result<String, String> {
-    let mut candidates = Vec::new();
-    for entry in std::fs::read_dir(projects_root)
-        .map_err(|e| format!("could not read the project library: {e}"))?
-    {
-        let Ok(entry) = entry else {
-            continue;
-        };
-        let Ok(project_id) = entry.file_name().into_string() else {
-            continue;
-        };
-        if crate::paths::validate_project_id(&project_id).is_err() {
-            continue;
-        }
-        let Ok(metadata) = std::fs::symlink_metadata(entry.path()) else {
-            continue;
-        };
-        if !metadata.is_dir() || metadata.file_type().is_symlink() {
-            continue;
-        }
-        let project_meta = entry.path().join("project.json");
-        let Ok(project_meta_metadata) = std::fs::symlink_metadata(&project_meta) else {
-            continue;
-        };
-        if !project_meta_metadata.is_file() || project_meta_metadata.file_type().is_symlink() {
-            continue;
-        }
-        let modified = project_meta_metadata
-            .modified()
-            .unwrap_or(std::time::UNIX_EPOCH);
-        candidates.push((modified, project_id));
+    let metadata = std::fs::symlink_metadata(resolved.join("project.json"))
+        .map_err(|_| "the open project metadata is no longer available".to_string())?;
+    if !metadata.is_file() || metadata.file_type().is_symlink() {
+        return Err("the open project metadata is not a real file".into());
     }
-    candidates
-        .into_iter()
-        .max_by(|left, right| left.cmp(right))
-        .map(|(_, project_id)| project_id)
-        .ok_or_else(|| "no project is open and none was found in the project library".to_string())
+    Ok(())
 }
 
 fn required<'a>(arguments: &'a Value, key: &str) -> Result<&'a str, String> {
@@ -303,18 +272,8 @@ async fn replace_in_file(project_id: &str, arguments: &Value) -> Result<(Value, 
         .unwrap_or(false);
 
     let body = crate::project::read_file_limited(project_id, path, MAX_READ_FILE_BYTES)?;
-    if !body.contains(find) {
-        return Err(format!("no match for the search text in {path}"));
-    }
-    let occurrences = body.matches(find).count();
-    let replacements = if all { occurrences } else { 1 };
-    let output_bytes =
-        replacement_output_size(body.len(), find.len(), replace.len(), replacements)?;
-    if output_bytes > MAX_MUTATED_FILE_BYTES {
-        return Err(format!(
-            "replacement would exceed the {MAX_MUTATED_FILE_BYTES}-byte write limit"
-        ));
-    }
+    let replacements = replacement_count(&body, find, all, path)?;
+    validate_replacement_size(&body, find, replace, replacements)?;
     let updated = if all {
         body.replace(find, replace)
     } else {
@@ -331,6 +290,30 @@ async fn replace_in_file(project_id: &str, arguments: &Value) -> Result<(Value, 
         payload(json!({ "success": true, "path": path, "replacements": replacements })),
         updated,
     ))
+}
+
+fn replacement_count(body: &str, find: &str, all: bool, path: &str) -> Result<usize, String> {
+    let occurrences = body.matches(find).count();
+    if occurrences == 0 {
+        return Err(format!("no match for the search text in {path}"));
+    }
+    Ok(if all { occurrences } else { 1 })
+}
+
+fn validate_replacement_size(
+    body: &str,
+    find: &str,
+    replace: &str,
+    replacements: usize,
+) -> Result<(), String> {
+    let output_bytes =
+        replacement_output_size(body.len(), find.len(), replace.len(), replacements)?;
+    if output_bytes > MAX_MUTATED_FILE_BYTES {
+        return Err(format!(
+            "replacement would exceed the {MAX_MUTATED_FILE_BYTES}-byte write limit"
+        ));
+    }
+    Ok(())
 }
 
 fn mutation_event(name: &str, arguments: &Value, content: Option<String>) -> Option<Value> {
@@ -483,7 +466,7 @@ mod tests {
             assert!(handles(name, "trust"), "{name} under trust");
         }
         assert!(!handles("delete_file", "auto_writes"));
-        assert!(handles("delete_file", "trust"));
+        assert!(!handles("delete_file", "trust"));
     }
 
     #[tokio::test]
@@ -531,26 +514,20 @@ mod tests {
     }
 
     fn project_root() -> std::path::PathBuf {
-        use std::sync::atomic::{AtomicU64, Ordering};
-        static NEXT: AtomicU64 = AtomicU64::new(0);
-        let root = std::env::temp_dir().join(format!(
-            "oleafly-native-scope-{}-{}",
-            std::process::id(),
-            NEXT.fetch_add(1, Ordering::Relaxed)
-        ));
-        std::fs::create_dir_all(&root).unwrap();
-        root
+        tempfile::Builder::new()
+            .prefix("oleafly-native-scope-")
+            .tempdir()
+            .unwrap()
+            .keep()
     }
 
     #[test]
-    fn an_explicit_project_argument_selects_a_real_library_project() {
+    fn an_explicit_project_argument_cannot_override_the_open_project() {
         let root = project_root();
         std::fs::create_dir(root.join("swift-violet-fox")).unwrap();
         let arguments = json!({ "project_id": "swift-violet-fox" });
-        assert_eq!(
-            resolve_project_in(&root, &arguments, Some("other-project".into())).unwrap(),
-            "swift-violet-fox"
-        );
+        std::fs::create_dir(root.join("other-project")).unwrap();
+        assert!(resolve_project_in(&root, &arguments, Some("other-project".into())).is_err());
         std::fs::remove_dir_all(root).unwrap();
     }
 
@@ -565,7 +542,9 @@ mod tests {
     #[test]
     fn the_open_project_is_used_when_the_call_names_none() {
         let root = project_root();
-        std::fs::create_dir(root.join("open-one")).unwrap();
+        let project = root.join("open-one");
+        std::fs::create_dir(&project).unwrap();
+        std::fs::write(project.join("project.json"), "{}").unwrap();
         assert_eq!(
             resolve_project_in(&root, &json!({}), Some("open-one".into())).unwrap(),
             "open-one"
@@ -574,7 +553,7 @@ mod tests {
     }
 
     #[test]
-    fn the_most_recent_project_is_used_without_a_reported_project() {
+    fn native_calls_require_a_reported_open_project() {
         let root = project_root();
         for project_id in ["older", "newer"] {
             let project = root.join(project_id);
@@ -582,10 +561,8 @@ mod tests {
             std::fs::write(project.join("project.json"), "{}").unwrap();
             std::thread::sleep(std::time::Duration::from_millis(10));
         }
-        assert_eq!(
-            resolve_project_in(&root, &json!({}), Some(String::new())).unwrap(),
-            "newer"
-        );
+        assert!(resolve_project_in(&root, &json!({}), Some(String::new())).is_err());
+        assert!(resolve_project_in(&root, &json!({}), None).is_err());
         std::fs::remove_dir_all(root).unwrap();
     }
 

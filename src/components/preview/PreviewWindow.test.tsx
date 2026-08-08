@@ -255,7 +255,6 @@ describe("detached preview request identity", () => {
     expect(screen.queryByTestId("detached-pdf-bytes")).not.toBeInTheDocument();
     expect(screen.getByText("No verified PDF")).toBeInTheDocument();
 
-    // A delayed success from before the mutation cannot restore stale bytes.
     emitRefresh(successState("alpha", 2, 2));
     await act(async () => {
       await Promise.resolve();

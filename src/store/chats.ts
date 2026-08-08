@@ -307,9 +307,6 @@ export const useChatsStore = create<ChatsState>((set, get) => ({
       projectId,
       chats,
       activeId: null,
-      // A live transcript is meaningful only while its project owns the active
-      // run. Never let a cancelled project's partial reply shadow its saved
-      // transcript when navigation later returns to that project.
       live: state.projectId === projectId ? state.live : {},
     }));
   },

@@ -213,44 +213,81 @@ where
         .map(Duration::from_millis)
         .unwrap_or(DEFAULT_STREAM_IDLE_TIMEOUT);
     let response = open_stream(client, resolved, req).await?;
-    let kind = WireKind::from(&resolved.wire);
-    let mut translator = Translator::new(kind);
-    let mut utf8 = IncrementalUtf8Decoder::default();
-    let mut decoder = SseDecoder::new();
-    let mut outcome = StreamOutcome::default();
-    let mut budget = StreamBudget::default();
-    let mut stream = response.bytes_stream();
+    let mut state = StreamState::new(WireKind::from(&resolved.wire));
+    consume_response(response, idle, &mut state, &mut on_event).await?;
+    state.finish(&mut on_event)?;
+    finalize(
+        state.translator,
+        state.outcome,
+        &mut state.budget,
+        &mut on_event,
+    )
+}
 
+struct StreamState {
+    translator: Translator,
+    utf8: IncrementalUtf8Decoder,
+    decoder: SseDecoder,
+    outcome: StreamOutcome,
+    budget: StreamBudget,
+}
+
+impl StreamState {
+    fn new(kind: WireKind) -> Self {
+        Self {
+            translator: Translator::new(kind),
+            utf8: IncrementalUtf8Decoder::default(),
+            decoder: SseDecoder::new(),
+            outcome: StreamOutcome::default(),
+            budget: StreamBudget::default(),
+        }
+    }
+
+    fn push<F: FnMut(AgentEvent)>(&mut self, bytes: &[u8], on_event: &mut F) -> Result<()> {
+        self.budget.add_raw(bytes.len())?;
+        let text = self.utf8.push(bytes)?;
+        translate_batch(
+            &mut self.translator,
+            self.decoder.push(&text)?,
+            &mut self.outcome,
+            &mut self.budget,
+            on_event,
+        )
+    }
+
+    fn finish<F: FnMut(AgentEvent)>(&mut self, on_event: &mut F) -> Result<()> {
+        if self.translator.error().is_some() {
+            return Ok(());
+        }
+        std::mem::take(&mut self.utf8).finish()?;
+        let tail: Vec<SseEvent> = self.decoder.finish()?.into_iter().collect();
+        translate_batch(
+            &mut self.translator,
+            tail,
+            &mut self.outcome,
+            &mut self.budget,
+            on_event,
+        )
+    }
+}
+
+async fn consume_response<F: FnMut(AgentEvent)>(
+    response: reqwest::Response,
+    idle: Duration,
+    state: &mut StreamState,
+    on_event: &mut F,
+) -> Result<()> {
+    let mut stream = response.bytes_stream();
     while let Some(chunk) = tokio::time::timeout(idle, stream.next())
         .await
         .map_err(|_| AgentError::Timeout)?
     {
-        let bytes = chunk.map_err(request_error)?;
-        budget.add_raw(bytes.len())?;
-        let text = utf8.push(&bytes)?;
-        translate_batch(
-            &mut translator,
-            decoder.push(&text)?,
-            &mut outcome,
-            &mut budget,
-            &mut on_event,
-        )?;
-        if translator.error().is_some() {
+        state.push(&chunk.map_err(request_error)?, on_event)?;
+        if state.translator.error().is_some() {
             break;
         }
     }
-    if translator.error().is_none() {
-        utf8.finish()?;
-        let tail: Vec<SseEvent> = decoder.finish()?.into_iter().collect();
-        translate_batch(
-            &mut translator,
-            tail,
-            &mut outcome,
-            &mut budget,
-            &mut on_event,
-        )?;
-    }
-    finalize(translator, outcome, &mut budget, &mut on_event)
+    Ok(())
 }
 
 fn finalize<F: FnMut(AgentEvent)>(

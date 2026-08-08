@@ -32,7 +32,6 @@ function withOccurrenceKeys(values: string[]) {
   });
 }
 
-/** Lightweight review renderer that avoids adding remark-gfm to the literature chunk. */
 function ReviewMarkdown({ text }: { text: string }) {
   const blocks = withOccurrenceKeys(text.split(/\n{2,}/));
   return (

@@ -166,10 +166,6 @@ export function AISection() {
 
   // Pastes are validated by fetching the provider's live model list before
   // the key is trusted; an unreachable or rejected key never gets persisted.
-  // Providers without discovery are checked on first use. Custom providers
-  // are also non-blocking: most third-party bases are OpenAI-compatible, so
-  // discovery is attempted with that shape, but a failure only skips
-  // auto-discovered models and the user can add models manually.
   const validateAndSave = async (id: string) => {
     const value = (keys[id] ?? "").trim();
     if (!value) return;

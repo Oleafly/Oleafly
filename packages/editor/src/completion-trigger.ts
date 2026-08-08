@@ -4,24 +4,14 @@ import type {
 } from "@codemirror/autocomplete";
 import type { EditorState } from "@codemirror/state";
 
-/**
- * Completion recognition only needs the syntax immediately before the caret.
- * Keeping this window fixed prevents a long line or document from turning an
- * ordinary keystroke into an O(document-size) allocation.
- */
 export const COMPLETION_CONTEXT_LIMIT = 2_048;
 
-type CompletionSyntax =
+export type CompletionSyntax =
   | "latex"
   | "markdown"
   | "typst"
   | "bibtex"
   | "generic";
-
-const LATEX_PATH = /\.(?:tex|latex|ltx|sty|cls)$/i;
-const MARKDOWN_PATH = /\.(?:md|markdown)$/i;
-const TYPST_PATH = /\.typ$/i;
-const BIBTEX_PATH = /\.bib$/i;
 
 const LATEX_COMMAND = /\\[A-Za-z@]*$/u;
 const LATEX_SLASH_COMMAND = /\/[A-Za-z]*$/u;
@@ -43,14 +33,6 @@ export function boundedCompletionContext(
   const safePos = Math.max(0, Math.min(pos, state.doc.length));
   const safeLimit = Math.max(0, limit);
   return state.sliceDoc(Math.max(0, safePos - safeLimit), safePos);
-}
-
-function syntaxForPath(path: string | null): CompletionSyntax {
-  if (path && LATEX_PATH.test(path)) return "latex";
-  if (path && MARKDOWN_PATH.test(path)) return "markdown";
-  if (path && TYPST_PATH.test(path)) return "typst";
-  if (path && BIBTEX_PATH.test(path)) return "bibtex";
-  return "generic";
 }
 
 function lastUnclosedDelimiter(
@@ -75,7 +57,6 @@ function lastUnclosedDelimiter(
   return openers.at(-1) ?? -1;
 }
 
-/** True when the caret is inside an argument belonging to a LaTeX command. */
 function hasOpenLatexArgument(before: string): boolean {
   for (const [open, close] of [
     ["{", "}"],
@@ -87,15 +68,41 @@ function hasOpenLatexArgument(before: string): boolean {
       Math.max(0, opener - 1_000),
       opener,
     );
-    if (
-      /\\[A-Za-z@]+\*?(?:\s*(?:\[[^\]]*\]|\{[^{}]*\}))*\s*$/u.test(
-        commandPrefix,
-      )
-    ) {
-      return true;
-    }
+    if (hasLatexCommandPrefix(commandPrefix)) return true;
   }
   return false;
+}
+
+function hasLatexCommandPrefix(text: string): boolean {
+  let cursor = trimWhitespaceBackward(text, text.length);
+  while (cursor > 0 && (text[cursor - 1] === "]" || text[cursor - 1] === "}")) {
+    const close = text[cursor - 1];
+    const open = close === "]" ? "[" : "{";
+    let depth = 1;
+    cursor--;
+    while (cursor > 0 && depth > 0) {
+      cursor--;
+      if (text[cursor] === close) depth++;
+      else if (text[cursor] === open) depth--;
+    }
+    if (depth !== 0) return false;
+    cursor = trimWhitespaceBackward(text, cursor);
+  }
+  if (cursor > 0 && text[cursor - 1] === "*") cursor--;
+  const commandEnd = cursor;
+  while (cursor > 0 && isLatexCommandCharacter(text[cursor - 1])) cursor--;
+  return commandEnd > cursor && cursor > 0 && text[cursor - 1] === "\\";
+}
+
+function trimWhitespaceBackward(text: string, cursor: number): number {
+  while (cursor > 0 && /\s/u.test(text[cursor - 1])) cursor--;
+  return cursor;
+}
+
+function isLatexCommandCharacter(character: string): boolean {
+  return character === "@" ||
+    (character >= "A" && character <= "Z") ||
+    (character >= "a" && character <= "z");
 }
 
 function latexTriggered(before: string): boolean {
@@ -106,7 +113,6 @@ function latexTriggered(before: string): boolean {
   ) {
     return true;
   }
-  // Avoid delimiter stacks for the overwhelmingly common prose-only window.
   return before.includes("\\") && hasOpenLatexArgument(before);
 }
 
@@ -126,24 +132,20 @@ function bibtexTriggered(before: string): boolean {
   return BIBTEX_REFERENCE.test(before);
 }
 
-/**
- * Cheap, allocation-bounded recognition of completion syntax at the caret.
- * `generic` is used by the standalone ghost extension, which has no filename.
- */
 export function isCompletionLexicallyTriggered(
   state: EditorState,
   pos: number,
-  path: string | null = null,
+  syntax: CompletionSyntax = "generic",
 ): boolean {
   const before = boundedCompletionContext(state, pos);
-  return isCompletionTextLexicallyTriggered(before, path);
+  return isCompletionTextLexicallyTriggered(before, syntax);
 }
 
 export function isCompletionTextLexicallyTriggered(
   before: string,
-  path: string | null = null,
+  syntax: CompletionSyntax = "generic",
 ): boolean {
-  switch (syntaxForPath(path)) {
+  switch (syntax) {
     case "latex":
       return latexTriggered(before);
     case "markdown":
@@ -164,23 +166,18 @@ export function isCompletionTextLexicallyTriggered(
 
 export function shouldRunCompletionSource(
   context: CompletionContext,
-  path: string | null,
+  syntax: CompletionSyntax,
 ): boolean {
   return (
     context.explicit ||
-    isCompletionLexicallyTriggered(context.state, context.pos, path)
+    isCompletionLexicallyTriggered(context.state, context.pos, syntax)
   );
 }
 
-/**
- * Protect host-provided sources at the editor boundary. Some sources need a
- * full source snapshot once they know a completion is possible; the wrapper
- * ensures they are never asked for that snapshot on ordinary prose typing.
- */
 export function gateCompletionSource(
   source: CompletionSource,
-  path: string | null,
+  syntax: CompletionSyntax,
 ): CompletionSource {
   return (context) =>
-    shouldRunCompletionSource(context, path) ? source(context) : null;
+    shouldRunCompletionSource(context, syntax) ? source(context) : null;
 }

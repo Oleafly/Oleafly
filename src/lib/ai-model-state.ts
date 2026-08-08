@@ -10,9 +10,6 @@ export function mergeFetchedModels(
   existing: StoredModel[],
   fetched: readonly AIModel[] | null,
 ): StoredModel[] {
-  // `null` means discovery was unsupported or failed, so the existing list is
-  // still the only authority we have. An empty array is different: it is a
-  // successful live response saying that no catalog models remain available.
   if (fetched === null) return existing;
   const listed = new Set(fetched.map((f) => f.id));
   const kept = existing.filter((m) => m.source === "custom" || listed.has(m.id));

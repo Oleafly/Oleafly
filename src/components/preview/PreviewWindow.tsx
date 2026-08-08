@@ -432,9 +432,6 @@ export function PreviewWindow({
       ) {
         return;
       }
-      // A fresh compile message may beat the corresponding backend mutation
-      // event to this window. Advancing here prevents that later event from
-      // clearing an output already stamped with the same/newer project epoch.
       projectStateRevisionRef.current = candidate.projectStateRevision;
       if (candidate.identity.projectId !== projectIdRef.current) {
         retargetProject(candidate.identity.projectId);
@@ -499,9 +496,6 @@ export function PreviewWindow({
           return;
         }
         projectStateRevisionRef.current = revision;
-        // A source/main/engine/trust mutation makes the retained detached PDF
-        // stale immediately. Wait for a new compile checkpoint rather than
-        // continuing to present an artifact from the previous project state.
         ++artifactLoadGenerationRef.current;
         compileStateRef.current = null;
         previewDocumentRef.current = null;

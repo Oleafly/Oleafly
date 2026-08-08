@@ -936,6 +936,25 @@ test("every clean CI and release Tauri build fetches only pinned Tinymist", asyn
   assert.ok(stageIndex >= 0 && smokeIndex > stageIndex);
 });
 
+test("live-provider release tests stage every required sidecar", async () => {
+  const workflow = await readFile(
+    join(ROOT, ".github", "workflows", "release.yml"),
+    "utf8",
+  );
+  const job = workflowJobBlock(workflow, "provider-live");
+  const buildIndex = job.indexOf("run: ./scripts/e2e.sh");
+  assert.notEqual(buildIndex, -1, "provider-live must run the real app suite");
+  for (const command of [
+    "bash scripts/fetch-tectonic.sh aarch64-apple-darwin",
+    "bash scripts/fetch-biber.sh aarch64-apple-darwin",
+    "bash scripts/fetch-typst.sh aarch64-apple-darwin",
+  ]) {
+    const fetchIndex = job.indexOf(command);
+    assert.notEqual(fetchIndex, -1, `provider-live is missing ${command}`);
+    assert.ok(fetchIndex < buildIndex, `${command} must run before the app build`);
+  }
+});
+
 test("app-data resolution matches Tauri's identifier-scoped directory model", () => {
   assert.equal(
     defaultAppDataDirectory(

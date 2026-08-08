@@ -34,11 +34,6 @@ export interface CompileSuccessCheckpoint {
   completedAt: number;
 }
 
-/**
- * Cross-window envelope for a successful compile. The project-state epoch is
- * captured when the producer broadcasts, so a receiver can reject a delayed
- * pre-mutation success even if its PDF is still readable on disk.
- */
 export interface CompileSucceededEvent {
   projectStateRevision: number;
   checkpoint: CompileSuccessCheckpoint;

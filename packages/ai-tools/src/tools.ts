@@ -358,9 +358,6 @@ export function createOleaflyTools(
           if (count > MAX_REPLACEMENTS) {
             return { error: `Replacement count exceeds the ${MAX_REPLACEMENTS.toLocaleString()} operation limit.` };
           }
-          // A callback replacement is literal; a replacement string would
-          // interpret `$$`, `$&`, `` $` ``, `$'`, `$1`.. and corrupt LaTeX.
-          // Splice the single-occurrence form directly to avoid that syntax.
           const idx = original.indexOf(find);
           const updated = replace_all
             ? original.replaceAll(find, () => replace)
@@ -885,50 +882,72 @@ function pngDataUrlToBase64(dataUrl: string): string {
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const MAX_IMAGE_PIXELS = 32_000_000;
+type ImageDimensions = {
+  mime: "image/png" | "image/jpeg" | "image/gif";
+  width: number;
+  height: number;
+};
 
-function imageTypeAndDimensions(
-  bytes: Uint8Array,
-): { mime: "image/png" | "image/jpeg" | "image/gif"; width: number; height: number } | null {
-  if (
-    bytes.length >= 24 &&
-    bytes[0] === 0x89 &&
-    bytes[1] === 0x50 &&
-    bytes[2] === 0x4e &&
-    bytes[3] === 0x47 &&
-    bytes[4] === 0x0d &&
-    bytes[5] === 0x0a &&
-    bytes[6] === 0x1a &&
-    bytes[7] === 0x0a
-  ) {
-    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-    return { mime: "image/png", width: view.getUint32(16), height: view.getUint32(20) };
-  }
-  if (bytes.length >= 10 && bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46) {
-    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-    return { mime: "image/gif", width: view.getUint16(6, true), height: view.getUint16(8, true) };
-  }
-  if (bytes.length >= 4 && bytes[0] === 0xff && bytes[1] === 0xd8) {
-    const sof = new Set([0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf]);
-    let offset = 2;
-    while (offset + 8 < bytes.length) {
-      if (bytes[offset] !== 0xff) {
-        offset += 1;
-        continue;
-      }
-      while (offset < bytes.length && bytes[offset] === 0xff) offset += 1;
-      const marker = bytes[offset++];
-      if (marker === 0xd9 || marker === 0xda || offset + 1 >= bytes.length) break;
-      const length = (bytes[offset] << 8) | bytes[offset + 1];
-      if (length < 2 || offset + length > bytes.length) break;
-      if (sof.has(marker) && length >= 7) {
-        const height = (bytes[offset + 3] << 8) | bytes[offset + 4];
-        const width = (bytes[offset + 5] << 8) | bytes[offset + 6];
-        return { mime: "image/jpeg", width, height };
-      }
-      offset += length;
+function imageTypeAndDimensions(bytes: Uint8Array): ImageDimensions | null {
+  return pngDimensions(bytes) ?? gifDimensions(bytes) ?? jpegDimensions(bytes);
+}
+
+function pngDimensions(bytes: Uint8Array): ImageDimensions | null {
+  if (bytes.length < 24 || !hasBytePrefix(bytes, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) return null;
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  return { mime: "image/png", width: view.getUint32(16), height: view.getUint32(20) };
+}
+
+function gifDimensions(bytes: Uint8Array): ImageDimensions | null {
+  if (bytes.length < 10 || !hasBytePrefix(bytes, [0x47, 0x49, 0x46])) return null;
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  return { mime: "image/gif", width: view.getUint16(6, true), height: view.getUint16(8, true) };
+}
+
+function jpegDimensions(bytes: Uint8Array): ImageDimensions | null {
+  if (bytes.length < 4 || !hasBytePrefix(bytes, [0xff, 0xd8])) return null;
+  const startOfFrame = new Set([
+    0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7,
+    0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf,
+  ]);
+  let offset = 2;
+  while (offset + 8 < bytes.length) {
+    if (bytes[offset] !== 0xff) {
+      offset += 1;
+      continue;
     }
+    while (offset < bytes.length && bytes[offset] === 0xff) offset += 1;
+    const marker = bytes[offset++];
+    const length = jpegSegmentLength(bytes, offset, marker);
+    if (length === null) break;
+    const dimensions = jpegFrameDimensions(bytes, offset, marker, length, startOfFrame);
+    if (dimensions) return dimensions;
+    offset += length;
   }
   return null;
+}
+
+function hasBytePrefix(bytes: Uint8Array, prefix: readonly number[]): boolean {
+  return prefix.every((byte, index) => bytes[index] === byte);
+}
+
+function jpegSegmentLength(bytes: Uint8Array, offset: number, marker: number): number | null {
+  if (marker === 0xd9 || marker === 0xda || offset + 1 >= bytes.length) return null;
+  const length = (bytes[offset] << 8) | bytes[offset + 1];
+  return length >= 2 && offset + length <= bytes.length ? length : null;
+}
+
+function jpegFrameDimensions(
+  bytes: Uint8Array,
+  offset: number,
+  marker: number,
+  length: number,
+  startOfFrame: ReadonlySet<number>,
+): ImageDimensions | null {
+  if (!startOfFrame.has(marker) || length < 7) return null;
+  const height = (bytes[offset + 3] << 8) | bytes[offset + 4];
+  const width = (bytes[offset + 5] << 8) | bytes[offset + 6];
+  return { mime: "image/jpeg", width, height };
 }
 
 export function createFigureTools(

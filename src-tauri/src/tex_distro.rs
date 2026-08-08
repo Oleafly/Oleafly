@@ -131,9 +131,17 @@ fn compose_tex_bin_dirs(
     user_tinytex: Vec<PathBuf>,
     generic: Vec<PathBuf>,
 ) -> Vec<PathBuf> {
+    let system: Vec<_> = system
+        .into_iter()
+        .filter(|dir| bin_dir_has_complete_tex(dir))
+        .collect();
     let (inherited_tinytex, inherited_system): (Vec<_>, Vec<_>) = inherited
         .into_iter()
         .partition(|dir| bin_dir_is_tinytex(dir));
+    let inherited_system: Vec<_> = inherited_system
+        .into_iter()
+        .filter(|dir| bin_dir_has_complete_tex(dir))
+        .collect();
     let mut dirs = Vec::new();
     for tier in [
         system,
@@ -154,6 +162,19 @@ fn bin_dir_has_tex(dir: &Path) -> bool {
     ["latexmk", "tlmgr", "pdflatex", "xelatex", "lualatex"]
         .into_iter()
         .any(|tool| dir.join(exe(tool)).is_file())
+}
+
+fn bin_dir_has_complete_tex(dir: &Path) -> bool {
+    [
+        "latexmk",
+        "pdflatex",
+        "xelatex",
+        "lualatex",
+        "kpsewhich",
+        "biber",
+    ]
+    .into_iter()
+    .all(|tool| dir.join(exe(tool)).is_file())
 }
 
 fn bin_dir_is_tinytex(dir: &Path) -> bool {
@@ -369,53 +390,58 @@ fn named_tinytex_root(dir: &Path) -> Option<PathBuf> {
 
 fn platform_dir_rank_for(os: &str, arch: &str, name: &str) -> Option<u8> {
     let lower = name.to_ascii_lowercase();
-    let os_matches = match os {
-        "macos" => lower.contains("darwin"),
-        "linux" => lower.contains("linux"),
-        "windows" => lower == "windows" || lower.contains("win32") || lower.contains("mingw"),
-        other => lower.contains(other),
-    };
-    if !os_matches {
+    if !platform_os_matches(os, &lower) {
         return None;
     }
-    if (os == "macos" && lower.contains("universal")) || (os == "windows" && lower == "windows") {
+    if platform_is_preferred_universal(os, &lower) || platform_arch_matches(arch, &lower) {
         return Some(0);
     }
-
-    let arch_matches = match arch {
-        "x86_64" => ["x86_64", "amd64"]
-            .into_iter()
-            .any(|alias| lower.contains(alias)),
-        "aarch64" => ["aarch64", "arm64"]
-            .into_iter()
-            .any(|alias| lower.contains(alias)),
-        "x86" | "i686" => ["i386", "i686"]
-            .into_iter()
-            .any(|alias| lower.contains(alias)),
-        "arm" => ["armhf", "armv7"]
-            .into_iter()
-            .any(|alias| lower.contains(alias)),
-        other => lower.contains(other),
-    };
-    if arch_matches {
-        return Some(0);
-    }
-
-    let names_an_architecture = [
-        "x86_64", "amd64", "aarch64", "arm64", "i386", "i686", "armhf", "armv7", "powerpc", "ppc",
-    ]
-    .into_iter()
-    .any(|known| lower.contains(known));
-    if names_an_architecture {
+    if platform_names_architecture(&lower) {
         return None;
     }
-
-    // TeX Live's historic `win32` directory is usable on x86/x64 Windows, but
-    // it must not outrank the current architecture-neutral `windows` layout.
     if os == "windows" && lower.contains("win32") {
         return matches!(arch, "x86_64" | "x86" | "i686").then_some(1);
     }
     Some(2)
+}
+
+fn platform_os_matches(os: &str, name: &str) -> bool {
+    match os {
+        "macos" => name.contains("darwin"),
+        "linux" => name.contains("linux"),
+        "windows" => name == "windows" || name.contains("win32") || name.contains("mingw"),
+        other => name.contains(other),
+    }
+}
+
+fn platform_is_preferred_universal(os: &str, name: &str) -> bool {
+    (os == "macos" && name.contains("universal")) || (os == "windows" && name == "windows")
+}
+
+fn platform_arch_matches(arch: &str, name: &str) -> bool {
+    match arch {
+        "x86_64" => ["x86_64", "amd64"]
+            .into_iter()
+            .any(|alias| name.contains(alias)),
+        "aarch64" => ["aarch64", "arm64"]
+            .into_iter()
+            .any(|alias| name.contains(alias)),
+        "x86" | "i686" => ["i386", "i686"]
+            .into_iter()
+            .any(|alias| name.contains(alias)),
+        "arm" => ["armhf", "armv7"]
+            .into_iter()
+            .any(|alias| name.contains(alias)),
+        other => name.contains(other),
+    }
+}
+
+fn platform_names_architecture(name: &str) -> bool {
+    [
+        "x86_64", "amd64", "aarch64", "arm64", "i386", "i686", "armhf", "armv7", "powerpc", "ppc",
+    ]
+    .into_iter()
+    .any(|known| name.contains(known))
 }
 
 fn push_platform_bins_for(dirs: &mut Vec<PathBuf>, bin: &Path, os: &str, arch: &str) {
@@ -507,19 +533,29 @@ mod tests {
     use super::*;
 
     fn test_dir(name: &str) -> PathBuf {
-        let nonce = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
+        tempfile::Builder::new()
+            .prefix(&format!("oleafly-texdist-{name}-"))
+            .tempdir()
             .unwrap()
-            .as_nanos();
-        std::env::temp_dir().join(format!(
-            "oleafly-texdist-{name}-{}-{nonce}",
-            std::process::id()
-        ))
+            .keep()
     }
 
     fn create_tool(dir: &Path, name: &str) {
         std::fs::create_dir_all(dir).unwrap();
         std::fs::write(dir.join(exe(name)), b"test tool").unwrap();
+    }
+
+    fn create_complete_tex(dir: &Path) {
+        for tool in [
+            "latexmk",
+            "pdflatex",
+            "xelatex",
+            "lualatex",
+            "kpsewhich",
+            "biber",
+        ] {
+            create_tool(dir, tool);
+        }
     }
 
     #[test]
@@ -533,8 +569,8 @@ mod tests {
 
     #[test]
     fn texlive_year_bins_prefer_newest() {
-        let root = std::env::temp_dir().join(format!("oleafly-texdist-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&root);
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path();
         let platform = match std::env::consts::OS {
             "macos" => "universal-darwin",
             "linux" if std::env::consts::ARCH == "aarch64" => "aarch64-linux",
@@ -547,10 +583,10 @@ mod tests {
         }
         std::fs::create_dir_all(root.join("texmf")).unwrap();
         let mut dirs = Vec::new();
-        push_texlive_year_bins(&mut dirs, &root);
+        push_texlive_year_bins(&mut dirs, root);
         assert_eq!(dirs.len(), 2);
         assert!(dirs[0].to_string_lossy().contains("2025"));
-        let _ = std::fs::remove_dir_all(&root);
+        let _ = std::fs::remove_dir_all(root);
     }
 
     #[test]
@@ -672,7 +708,7 @@ mod tests {
         let root = test_dir("inherited-priority");
         let inherited_system = root.join("custom-system/bin");
         let managed = root.join(".oleafly/tinytex/bin/host");
-        create_tool(&inherited_system, "latexmk");
+        create_complete_tex(&inherited_system);
         create_tool(&managed, "latexmk");
 
         let dirs = compose_tex_bin_dirs(
@@ -687,6 +723,26 @@ mod tests {
         std::fs::remove_dir_all(root).unwrap();
     }
 
+    #[test]
+    fn an_incomplete_system_install_does_not_outrank_managed_tinytex() {
+        let root = test_dir("incomplete-system");
+        let incomplete = root.join("system/bin");
+        let managed = root.join(".oleafly/tinytex/bin/host");
+        create_tool(&incomplete, "pdflatex");
+        create_tool(&managed, "latexmk");
+
+        let dirs = compose_tex_bin_dirs(
+            vec![incomplete],
+            Vec::new(),
+            vec![managed.clone()],
+            Vec::new(),
+            Vec::new(),
+        );
+        assert_eq!(dirs, vec![managed]);
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
     #[cfg(unix)]
     #[test]
     fn a_path_symlink_into_tinytex_stays_in_the_tinytex_tier() {
@@ -694,7 +750,7 @@ mod tests {
         let system = root.join("custom-system/bin");
         let tinytex = root.join("TinyTeX/bin/host");
         let inherited_wrapper = root.join("wrapper/bin");
-        create_tool(&system, "latexmk");
+        create_complete_tex(&system);
         create_tool(&tinytex, "latexmk");
         std::fs::create_dir_all(&inherited_wrapper).unwrap();
         std::os::unix::fs::symlink(

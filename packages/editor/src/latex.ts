@@ -927,7 +927,7 @@ function referenceCitationCompletions(
 export function latexReferenceCitationCompletions(
   context: CompletionContext,
 ): CompletionResult | null {
-  if (!shouldRunCompletionSource(context, "source.tex")) return null;
+  if (!shouldRunCompletionSource(context, "latex")) return null;
   const source = context.state.doc.toString();
   if (!isLatexCompletionPosition(source, context.pos)) return null;
   return referenceCitationCompletions(
@@ -939,7 +939,7 @@ export function latexReferenceCitationCompletions(
 export function latexCompletions(
   context: CompletionContext
 ): CompletionResult | null {
-  if (!shouldRunCompletionSource(context, "source.tex")) return null;
+  if (!shouldRunCompletionSource(context, "latex")) return null;
   const source = context.state.doc.toString();
   if (!isLatexCompletionPosition(source, context.pos)) return null;
   const guard = createCompletionRequestGuard(context);
@@ -975,7 +975,7 @@ function commandCompletions(
 export function latexCommandCompletions(
   context: CompletionContext,
 ): CompletionResult | null {
-  if (!shouldRunCompletionSource(context, "source.tex")) return null;
+  if (!shouldRunCompletionSource(context, "latex")) return null;
   const source = context.state.doc.toString();
   if (!isLatexCompletionPosition(source, context.pos)) return null;
   const guard = createCompletionRequestGuard(context);
@@ -988,7 +988,7 @@ export function latexCommandCompletions(
 export function slashCompletions(
   context: CompletionContext
 ): CompletionResult | null {
-  if (!shouldRunCompletionSource(context, "source.tex")) return null;
+  if (!shouldRunCompletionSource(context, "latex")) return null;
   const source = context.state.doc.toString();
   if (!isLatexCompletionPosition(source, context.pos)) return null;
   const guard = createCompletionRequestGuard(context);

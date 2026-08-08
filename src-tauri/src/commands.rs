@@ -616,15 +616,8 @@ mod tests {
 
     #[test]
     fn project_binary_reads_reject_non_files_and_oversized_payloads_before_allocation() {
-        let root = std::env::temp_dir().join(format!(
-            "oleafly-binary-read-{}-{}",
-            std::process::id(),
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_nanos()
-        ));
-        std::fs::create_dir(&root).unwrap();
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path();
         let small = root.join("small.png");
         let large = root.join("large.png");
         std::fs::write(&small, b"png").unwrap();
@@ -637,7 +630,7 @@ mod tests {
         assert!(read_regular_file_limited(&large, "large.png", 4)
             .unwrap_err()
             .contains("4-byte limit"));
-        assert!(read_regular_file_limited(&root, "folder", 100)
+        assert!(read_regular_file_limited(root, "folder", 100)
             .unwrap_err()
             .contains("regular project file"));
         std::fs::remove_dir_all(root).unwrap();

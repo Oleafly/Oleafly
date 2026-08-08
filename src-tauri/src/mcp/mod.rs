@@ -102,6 +102,10 @@ pub async fn mcp_set_active_project(
     if !server::renderer_session_is_fresh(&state, renderer_session) {
         return Err("stale or expired MCP renderer session".into());
     }
+    if let Some(project_id) = project_id.as_deref() {
+        crate::paths::validate_project_id(project_id)?;
+        crate::project::read_meta(project_id)?;
+    }
     *state.active_project.lock().await = project_id;
     Ok(())
 }
@@ -349,12 +353,10 @@ pub async fn mcp_regenerate_token(app: AppHandle) -> Result<(), String> {
                 }),
             );
         });
-    if published_epoch == revoked_epoch {
-        state.published_epoch.store(next_epoch, Ordering::Release);
-    } else if published_epoch != 0 {
-        // Fail closed if lifecycle state was ever inconsistent.
-        state.published_epoch.store(0, Ordering::Release);
-    }
+    state.published_epoch.store(
+        server::advance_published_epoch(published_epoch, revoked_epoch, next_epoch),
+        Ordering::Release,
+    );
     Ok(())
 }
 

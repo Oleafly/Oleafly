@@ -87,7 +87,6 @@ export interface ProjectMeta {
   allow_shell_escape: boolean;
 }
 
-/** Authoritative metadata/worktree snapshot broadcast after a backend mutation. */
 export interface ProjectStateChanged {
   projectId: string;
   revision: number;
@@ -550,8 +549,8 @@ export const gitReadVersionLabels = (projectId: string) =>
 export const gitSetVersionLabel = (projectId: string, oid: string, label: string) =>
   invoke<void>("git_set_version_label", { projectId, oid, label });
 
-export const gitRestore = (projectId: string, oid: string) =>
-  invoke<ProjectStateChanged>("git_restore", { projectId, oid });
+export const gitRestore = (projectId: string, oid: string, expectedGeneration: number) =>
+  invoke<ProjectStateChanged>("git_restore", { projectId, oid, expectedGeneration });
 
 export const exportPdf = (projectId: string, dest: string) =>
   invoke<void>("export_pdf", { projectId, dest });
@@ -840,8 +839,8 @@ export interface GitPullResult {
   message: string;
   state: ProjectStateChanged;
 }
-export const gitPull = (projectId: string) =>
-  invoke<GitPullResult>("git_pull", { projectId });
+export const gitPull = (projectId: string, expectedGeneration: number) =>
+  invoke<GitPullResult>("git_pull", { projectId, expectedGeneration });
 
 export interface GitFileChange {
   path: string;
@@ -855,8 +854,8 @@ export const gitStatus = (projectId: string) =>
 export const gitDiff = (projectId: string, path?: string, staged = false) =>
   invoke<string>("git_diff", { projectId, path: path ?? null, staged });
 
-export const gitDiscard = (projectId: string, path: string) =>
-  invoke<ProjectStateChanged>("git_discard", { projectId, path });
+export const gitDiscard = (projectId: string, path: string, expectedGeneration: number) =>
+  invoke<ProjectStateChanged>("git_discard", { projectId, path, expectedGeneration });
 
 export const gitHeadOid = (projectId: string) =>
   invoke<string | null>("git_head_oid", { projectId });

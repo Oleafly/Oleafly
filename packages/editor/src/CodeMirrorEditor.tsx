@@ -54,7 +54,7 @@ import { createLatexLinter } from "./latex-linter";
 import { latexFolding } from "./latex-folding";
 import { ghostCompletion } from "./ghost-completion";
 import { foldMarkerDOM, foldMarkerTheme } from "./fold-marker";
-import { gateCompletionSource } from "./completion-trigger";
+import { gateCompletionSource, type CompletionSyntax } from "./completion-trigger";
 
 // The use* members are React hooks: must follow hook rules, and the host
 // object identity must stay stable across renders.
@@ -62,6 +62,7 @@ export interface EditorHost {
   useActivePath(): string | null;
   getActivePath(): string | null;
   useDocVersion(): number;
+  useCompletionSyntax(path: string | null): CompletionSyntax;
   getContent(path: string): string;
   setContent(path: string, content: string): void;
   useSettings(): {
@@ -92,17 +93,15 @@ const isMarkdownDocumentPath = (path: string | null): boolean =>
 
 function sourceToolsForPath(
   path: string | null,
+  completionSyntax: CompletionSyntax,
   completionSources: CompletionSource[],
   ghostCompletionSources: CompletionSource[],
   autocompleteWhileTyping: boolean,
   ghostCompletionEnabled: boolean,
 ): Extension[] {
-  // The host explicitly identifies the synchronous sources shared with ghost
-  // completion. Gate those same function identities in the popup as well,
-  // while leaving popup-only async sources (for example an LSP) untouched.
   const synchronousSources = new Set(ghostCompletionSources);
   const gatedCompletionSources = completionSources.map((source) =>
-    synchronousSources.has(source) ? gateCompletionSource(source, path) : source,
+    synchronousSources.has(source) ? gateCompletionSource(source, completionSyntax) : source,
   );
   const mathPreview = isLatexDocumentPath(path)
     ? [liveMathPreview("latex")]
@@ -118,8 +117,6 @@ function sourceToolsForPath(
       staticLatexSource,
       slashCompletions,
     ];
-    // Async popup sources (for example an LSP) must not be probed by the ghost:
-    // calling one just to discard its Promise would still launch the request.
     const ghostSources = [
       ...ghostCompletionSources,
       staticLatexSource,
@@ -131,7 +128,7 @@ function sourceToolsForPath(
       // precedence, where the earlier extension wins, and the ghost's Escape
       // has to record its dismissal before the popup consumes the key. Its
       // handlers decline whenever the popup should own the key instead.
-      ...(ghostCompletionEnabled ? [ghostCompletion(ghostSources, path)] : []),
+      ...(ghostCompletionEnabled ? [ghostCompletion(ghostSources, completionSyntax)] : []),
       autocompletion({
         override: sources,
         activateOnTyping: autocompleteWhileTyping,
@@ -145,7 +142,7 @@ function sourceToolsForPath(
   return [
     ...mathPreview,
     ...(ghostCompletionEnabled && ghostCompletionSources.length > 0
-      ? [ghostCompletion(ghostCompletionSources, path)]
+      ? [ghostCompletion(ghostCompletionSources, completionSyntax)]
       : []),
     ...(gatedCompletionSources.length > 0
       ? [
@@ -186,7 +183,6 @@ export function CodeMirrorEditor({
   extraExtensions?: Extension[];
   extraExtensionsForPath?: (path: string | null) => Extension[];
   extraCompletionSourcesForPath?: (path: string | null) => CompletionSource[];
-  /** Known-synchronous sources safe for inline ghost completion to call. */
   extraGhostCompletionSourcesForPath?: (path: string | null) => CompletionSource[];
   // Checked before the default keymaps (CodeMirror keymap precedence: earlier
   // extensions in the array win).
@@ -205,6 +201,7 @@ export function CodeMirrorEditor({
 
   const editorPrefsCompartmentRef = useRef<Compartment | null>(null);
   const activePath = host.useActivePath();
+  const completionSyntax = host.useCompletionSyntax(activePath);
   // NB: the active file's content is read imperatively (host.getContent) inside
   // the file-swap effect below, NOT subscribed to. Subscribing here would
   // re-render this component on every keystroke (the store updates on each
@@ -281,6 +278,7 @@ export function CodeMirrorEditor({
         sourceToolsCompartment.of(
           sourceToolsForPath(
             initialPath,
+            completionSyntax,
             initialCompletionSources,
             initialGhostCompletionSources,
             autocomplete,
@@ -402,6 +400,7 @@ export function CodeMirrorEditor({
       sourceToolsCompartmentRef.current!.reconfigure(
         sourceToolsForPath(
           activePath,
+          completionSyntax,
           completionSources,
           ghostCompletionSources,
           autocomplete,
@@ -480,6 +479,7 @@ export function CodeMirrorEditor({
       effects: compartment.reconfigure(
         sourceToolsForPath(
           path,
+          completionSyntax,
           extraCompletionSourcesForPath?.(path) ?? [],
           extraGhostCompletionSourcesForPath?.(path) ?? [],
           autocomplete,
@@ -488,7 +488,7 @@ export function CodeMirrorEditor({
       ),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autocomplete, ghostCompletionEnabled]);
+  }, [autocomplete, ghostCompletionEnabled, completionSyntax]);
 
   // Toggle spellcheck / Harper grammar without recreating the editor.
   useEffect(() => {

@@ -92,6 +92,18 @@ async function reconnectRenderer(page: Page): Promise<void> {
   `);
 }
 
+async function stopRendererHeartbeat(page: Page): Promise<void> {
+  await page.evaluate<void>(`
+    (() => {
+      const stop = window.__mcpStopHeartbeat;
+      if (typeof stop !== "function") {
+        throw new Error("MCP heartbeat test hook is unavailable");
+      }
+      stop();
+    })()
+  `);
+}
+
 test.describe("MCP without the webview", () => {
   let connection: Connection;
 
@@ -161,6 +173,37 @@ test.describe("MCP without the webview", () => {
     } finally {
       await reconnectRenderer(tauriPage);
     }
+  });
+
+  test("does not delete files without an active approval interface", async ({ tauriPage }) => {
+    await disconnectRenderer(tauriPage);
+    try {
+      const payload = (await rpc(tauriPage, connection, "tools/call", {
+        name: "delete_file",
+        arguments: { path: "headless.tex" },
+      })) as { result?: { isError?: boolean } };
+      expect(payload.result?.isError).toBe(true);
+
+      const read = await rpc(tauriPage, connection, "tools/call", {
+        name: "read_file",
+        arguments: { path: "headless.tex" },
+      });
+      expect(resultText(read)).toContain("MCPHEADLESSMARKER");
+    } finally {
+      await reconnectRenderer(tauriPage);
+    }
+  });
+
+  test("keeps native reads available after a renderer lease expires", async ({ tauriPage }) => {
+    test.setTimeout(120_000);
+    await stopRendererHeartbeat(tauriPage);
+    await tauriPage.waitForTimeout(46_000);
+
+    const payload = await rpc(tauriPage, connection, "tools/call", {
+      name: "read_file",
+      arguments: { path: "headless.tex" },
+    });
+    expect(resultText(payload)).toContain("MCPHEADLESSMARKER");
   });
 
   test("a native write refreshes an already-open editor buffer", async ({ tauriPage }) => {

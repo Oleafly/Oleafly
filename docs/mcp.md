@@ -95,8 +95,9 @@ assistant, so names, descriptions, and schemas stay in lockstep. File reads,
 listing, and search execute in Rust. File writes, replacement, creation,
 renaming, and deletion use the renderer coordinator while a window is active so
 dirty editor buffers cannot overwrite an external change. After the renderer
-disconnects, those file mutations can execute natively when the approval policy
-allows them.
+disconnects, writes, replacements, creates, and renames can execute natively
+when the approval policy allows them. Deletion always requires a connected
+window.
 
 ### Orientation
 
@@ -149,14 +150,14 @@ Your MCP client (Claude Desktop, Claude Code, and others) already asks you to ap
 
 - **Confirm every change** (default): every write, rename, and delete shows an approval card in Oleafly (with a red/green diff when content rewrites, a rendered image for figures). The card floats as "External agent request (MCP)".
 - **Auto-approve edits, confirm deletes**: writes and renames apply immediately. Deletes still show a card. **Always allow writes** on a card sets this for the current session. After the renderer disconnects, approved edit types continue natively but deletes remain unavailable because they still require confirmation.
-- **Trust this connection**: Oleafly never prompts. Your client's own approval is the only gate, deletes included. Use this when your client already confirms every tool call and you want a frictionless flow.
+- **Trust this connection**: backend writes and renames do not prompt. Deletion still requires a connected window. Use this only when you trust the client and its own approval controls.
 - **Read-only mode** (separate toggle) removes mutating tools from `tools/list` entirely, so an external app can read and compile but never modify files, whatever the policy.
 - **Bearer token**: 256-bit random value stored in authenticated encrypted
   local storage under `~/.oleafly/`. `get_config` never sends the token to the
   webview. Only Settings connection info exposes it while the server is
   running.
 - **Localhost only**: bind address is `127.0.0.1`. Requests with a browser `Origin` header are rejected, and `Host` must be loopback.
-- **No arbitrary paths**: tools only touch validated projects directly under the Oleafly projects directory, through the same sandbox as the built-in tools. Calls target the open project first and fall back to the most recently updated valid library project when no renderer is active.
+- **No arbitrary paths**: native tools accept only project-relative paths inside the project last reported by the app. Calls cannot supply another project ID, and the backend never guesses from other library projects.
 
 ### Why claude.ai in the browser cannot connect
 

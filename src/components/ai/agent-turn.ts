@@ -246,9 +246,6 @@ export async function runAgentHarness(args: {
           }
         }
 
-        // A tool already executing may not be cooperatively cancellable. Once
-        // Stop is pressed, never let its eventual result mutate chat state,
-        // consume queued images, or continue the backend run.
         if (args.signal.aborted) return { output: "" };
         handlers.onToolResult({ id: call.id, name: call.name, output });
         handlers.onThinking("Processing result…");
