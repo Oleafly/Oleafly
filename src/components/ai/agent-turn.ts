@@ -1,4 +1,7 @@
 import type { ModelMessage, ToolSet } from "@/lib/chat-types";
+import { packToolOutput, truncateText } from "@/lib/ai-context-pack";
+
+const ATTACHMENT_MAX_CHARS = 48_000;
 import {
   runViaBackend,
   type AgentContentPart,
@@ -43,6 +46,41 @@ export function toolSchemasFor(tools: ToolSet): AgentToolSchema[] {
   });
 }
 
+const TEXT_FILE_EXTENSIONS = /\.(txt|tex|typ|bib|md|csv|json|ya?ml|toml|log)$/i;
+
+function isTextAttachment(mediaType: string, name: string): boolean {
+  if (mediaType.startsWith("text/")) return true;
+  if (mediaType === "application/json") return true;
+  return TEXT_FILE_EXTENSIONS.test(name);
+}
+
+function decodeDataUrl(dataUrl: string): string | null {
+  const base64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
+  try {
+    const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+    return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+  } catch {
+    return null;
+  }
+}
+
+export function fileAttachmentText(part: {
+  data?: unknown;
+  mediaType?: unknown;
+  name?: unknown;
+}): string {
+  const name = typeof part.name === "string" && part.name ? part.name : "attachment";
+  const mediaType = typeof part.mediaType === "string" ? part.mediaType : "";
+  const data = typeof part.data === "string" ? part.data : "";
+  if (isTextAttachment(mediaType, name)) {
+    const text = data ? decodeDataUrl(data) : null;
+    if (text !== null) {
+      return `Attached file "${name}":\n\n${truncateText(text, ATTACHMENT_MAX_CHARS)}`;
+    }
+  }
+  return `[The attachment "${name}" (${mediaType || "unknown type"}) could not be included. Only text based files are supported here; ask the user to paste the relevant content instead.]`;
+}
+
 function partsFromContent(content: unknown): AgentContentPart[] {
   if (typeof content === "string") {
     return content ? [{ type: "text", text: content }] : [];
@@ -58,6 +96,9 @@ function partsFromContent(content: unknown): AgentContentPart[] {
         break;
       case "image":
         parts.push({ type: "image", image: String(part.image) });
+        break;
+      case "file":
+        parts.push({ type: "text", text: fileAttachmentText(part) });
         break;
       case "tool-call":
         parts.push({
@@ -99,11 +140,12 @@ export function toAgentMessages(messages: ModelMessage[]): AgentMessage[] {
 }
 
 export function packToolOutputText(output: unknown): string {
-  if (typeof output === "string") return output;
+  const packed = packToolOutput(output);
+  if (typeof packed === "string") return packed;
   try {
-    return JSON.stringify(output ?? null);
+    return JSON.stringify(packed ?? null);
   } catch {
-    return String(output);
+    return String(packed);
   }
 }
 

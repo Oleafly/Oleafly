@@ -22,8 +22,8 @@ pub struct RunConfig {
 impl Default for RunConfig {
     fn default() -> Self {
         RunConfig {
-            max_steps: 24,
-            max_retries: 2,
+            max_steps: 50,
+            max_retries: 4,
             retry_base_ms: 800,
         }
     }
@@ -99,6 +99,10 @@ fn empty(outcome: &StreamOutcome) -> bool {
     outcome.text.is_empty() && outcome.tool_calls.is_empty()
 }
 
+fn should_retry(error: &AgentError, attempt: u32, max_retries: u32, saw_output: bool) -> bool {
+    error.retryable() && attempt < max_retries && !saw_output
+}
+
 pub async fn run_agent<F>(
     client: &reqwest::Client,
     resolved: &Resolved,
@@ -120,7 +124,19 @@ where
         let mut fatal: Option<AgentError> = None;
 
         for attempt in 0..=config.max_retries {
-            let streamed = stream_completion(client, resolved, &request, &mut on_event).await;
+            let mut saw_output = false;
+            let streamed = {
+                let forward = &mut |event: AgentEvent| {
+                    if matches!(
+                        event,
+                        AgentEvent::TextDelta { .. } | AgentEvent::ReasoningDelta { .. }
+                    ) {
+                        saw_output = true;
+                    }
+                    on_event(event);
+                };
+                stream_completion(client, resolved, &request, forward).await
+            };
 
             match streamed {
                 Ok(outcome) => {
@@ -128,7 +144,7 @@ where
                     break;
                 }
                 Err(error) => {
-                    if error.retryable() && attempt < config.max_retries {
+                    if should_retry(&error, attempt, config.max_retries, saw_output) {
                         on_event(AgentEvent::Retry {
                             attempt: attempt + 1,
                             max: config.max_retries,
@@ -289,11 +305,27 @@ mod tests {
     }
 
     #[test]
-    fn the_default_budget_leaves_room_for_a_multi_file_edit() {
+    fn the_default_budget_matches_the_typescript_loop_it_replaced() {
         let config = RunConfig::default();
-        assert!(config.max_steps >= 12);
-        assert!(config.max_retries >= 1);
+        assert_eq!(config.max_steps, 50);
+        assert_eq!(config.max_retries, 4);
+        assert_eq!(config.retry_base_ms, 800);
     }
+
+    #[test]
+    fn a_retryable_error_is_retried_only_before_any_output_streamed() {
+        let error = AgentError::Transport("connection reset".into());
+        assert!(should_retry(&error, 0, 4, false));
+        assert!(!should_retry(&error, 0, 4, true));
+        assert!(!should_retry(&error, 4, 4, false));
+
+        let fatal = AgentError::Provider {
+            status: 401,
+            message: "bad key".into(),
+        };
+        assert!(!should_retry(&fatal, 0, 4, false));
+    }
+
 
     #[test]
     fn a_tool_output_deserializes_with_or_without_images() {

@@ -257,10 +257,19 @@ pub fn redact_ai_secrets(cfg: &mut AppConfig) {
 }
 
 fn restore_ai_secrets(config: &mut AppConfig, stored: &AppConfig) {
+    let legacy_provider = if stored.ai_provider.is_empty() {
+        "openai"
+    } else {
+        stored.ai_provider.as_str()
+    };
     for (provider, value) in config.ai_keys.iter_mut() {
         if value == REDACTED {
             if let Some(previous) = stored.ai_keys.get(provider) {
                 *value = previous.clone();
+            } else if provider == legacy_provider && !stored.ai_api_key.is_empty() {
+                *value = stored.ai_api_key.clone();
+            } else {
+                value.clear();
             }
         }
     }
@@ -408,6 +417,54 @@ mod tests {
         cfg.ai_keys.insert("groq".into(), "gsk-real".into());
         cfg.ai_api_key = "sk-legacy".into();
         cfg
+    }
+
+    #[test]
+    fn a_legacy_marker_migrates_the_single_key_into_the_key_map() {
+        let stored = AppConfig {
+            ai_provider: "anthropic".into(),
+            ai_api_key: "sk-legacy".into(),
+            ..AppConfig::default()
+        };
+        let mut incoming = AppConfig {
+            ai_provider: "anthropic".into(),
+            ai_api_key: REDACTED.into(),
+            ai_keys: HashMap::from([("anthropic".to_string(), REDACTED.to_string())]),
+            ..AppConfig::default()
+        };
+        restore_ai_secrets(&mut incoming, &stored);
+        assert_eq!(
+            incoming.ai_keys.get("anthropic").map(String::as_str),
+            Some("sk-legacy")
+        );
+    }
+
+    #[test]
+    fn a_legacy_marker_defaults_to_openai_when_no_provider_was_saved() {
+        let stored = AppConfig {
+            ai_api_key: "sk-legacy".into(),
+            ..AppConfig::default()
+        };
+        let mut incoming = AppConfig {
+            ai_keys: HashMap::from([("openai".to_string(), REDACTED.to_string())]),
+            ..AppConfig::default()
+        };
+        restore_ai_secrets(&mut incoming, &stored);
+        assert_eq!(
+            incoming.ai_keys.get("openai").map(String::as_str),
+            Some("sk-legacy")
+        );
+    }
+
+    #[test]
+    fn an_unresolvable_marker_is_dropped_not_persisted_as_a_key() {
+        let stored = AppConfig::default();
+        let mut incoming = AppConfig {
+            ai_keys: HashMap::from([("groq".to_string(), REDACTED.to_string())]),
+            ..AppConfig::default()
+        };
+        restore_ai_secrets(&mut incoming, &stored);
+        assert!(!incoming.ai_keys.contains_key("groq"));
     }
 
     #[test]

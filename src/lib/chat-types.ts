@@ -9,7 +9,7 @@ export type ToolSet = Record<
 
 export type TextPart = { type: "text"; text: string };
 export type ImagePart = { type: "image"; image: string };
-export type FilePart = { type: "file"; data: string; mediaType: string };
+export type FilePart = { type: "file"; data: string; mediaType: string; name?: string };
 export type ReasoningPart = { type: "reasoning"; text: string };
 export type ToolCallPart = {
   type: "tool-call";
