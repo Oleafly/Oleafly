@@ -192,14 +192,35 @@ pub async fn git_log(project_id: String) -> Result<Vec<GitCommit>, String> {
 }
 
 #[tauri::command]
-pub async fn git_restore(project_id: String, oid: String) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
-        let root = ensure_repo(&project_id)?;
-        run_git(&root, &["checkout", &oid, "--", "."])?;
-        Ok(())
+pub async fn git_restore(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, crate::state::AppState>,
+    project_id: String,
+    oid: String,
+) -> Result<crate::project::ProjectStateChanged, String> {
+    if !(4..=64).contains(&oid.len()) || !oid.chars().all(|character| character.is_ascii_hexdigit())
+    {
+        return Err("invalid Git commit id".into());
+    }
+    let operation_id = project_id.clone();
+    let mutation = crate::project::mutate_project_worktree(&state, project_id.clone(), move |_| {
+        let root = ensure_repo(&operation_id)?;
+        ok_or_err(run_git(&root, &["checkout", &oid, "--", "."])?)?;
+        Ok(((), true))
     })
-    .await
-    .map_err(|e| e.to_string())?
+    .await?;
+    let outcome = mutation.value;
+    let event = crate::project::publish_project_state_changed(
+        &app,
+        &state,
+        &project_id,
+        mutation.project,
+        "git-restore",
+        true,
+        Some(mutation.generation),
+    );
+    outcome?;
+    event
 }
 
 fn out_to_string(out: &std::process::Output) -> String {
@@ -465,30 +486,58 @@ pub async fn git_push(project_id: String) -> Result<String, String> {
 }
 
 #[tauri::command]
-pub async fn git_pull(project_id: String) -> Result<String, String> {
-    let root = ensure_repo(&project_id)?;
+pub async fn git_pull(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, crate::state::AppState>,
+    project_id: String,
+) -> Result<GitPullResult, String> {
     let cfg = config::read_config()?;
-    let remote_out = run_git(&root, &["remote", "get-url", "origin"])?;
-    let remote = String::from_utf8_lossy(&remote_out.stdout)
-        .trim()
-        .to_string();
-    if remote.is_empty() {
-        return Err("No remote 'origin' set for this project.".into());
-    }
-    let branch = current_branch(&root)?;
-    // Pull from `origin` directly. With a token, auth comes from the env-backed
-    // credential helper; without one, this still works for public repos (and
-    // SSH remotes use the user's keys). Either way git updates the tracking ref.
-    let pull_args = ["pull", "--no-rebase", "origin", branch.as_str()];
-    let out = if cfg.github_token.is_empty() {
-        run_git(&root, &pull_args)?
-    } else {
-        run_git_authed(&root, &cfg.github_token, &pull_args)?
-    };
-    if !out.status.success() {
-        return Err(out_to_string(&out));
-    }
-    Ok(format!("Pulled origin/{branch}"))
+    let token = cfg.github_token;
+    let operation_id = project_id.clone();
+    let mutation = crate::project::mutate_project_worktree(&state, project_id.clone(), move |_| {
+        let root = ensure_repo(&operation_id)?;
+        let remote_out = run_git(&root, &["remote", "get-url", "origin"])?;
+        let remote = String::from_utf8_lossy(&remote_out.stdout)
+            .trim()
+            .to_string();
+        if remote.is_empty() {
+            return Err("No remote 'origin' set for this project.".into());
+        }
+        let branch = current_branch(&root)?;
+        // Pull from `origin` directly. With a token, auth comes from the
+        // env-backed credential helper; otherwise public/SSH auth applies.
+        let pull_args = ["pull", "--no-rebase", "origin", branch.as_str()];
+        let out = if token.is_empty() {
+            run_git(&root, &pull_args)?
+        } else {
+            run_git_authed(&root, &token, &pull_args)?
+        };
+        if !out.status.success() {
+            return Err(out_to_string(&out));
+        }
+        Ok((format!("Pulled origin/{branch}"), true))
+    })
+    .await?;
+    let outcome = mutation.value;
+    let event = crate::project::publish_project_state_changed(
+        &app,
+        &state,
+        &project_id,
+        mutation.project,
+        "git-pull",
+        true,
+        Some(mutation.generation),
+    )?;
+    Ok(GitPullResult {
+        message: outcome?,
+        state: event,
+    })
+}
+
+#[derive(Serialize)]
+pub struct GitPullResult {
+    pub message: String,
+    pub state: crate::project::ProjectStateChanged,
 }
 
 #[derive(Serialize)]
@@ -586,10 +635,36 @@ pub async fn git_diff(
 }
 
 #[tauri::command]
-pub fn git_discard(project_id: String, path: String) -> Result<(), String> {
-    let root = ensure_repo(&project_id)?;
-    run_git(&root, &["checkout", "--", &path])?;
-    Ok(())
+pub async fn git_discard(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, crate::state::AppState>,
+    project_id: String,
+    path: String,
+) -> Result<crate::project::ProjectStateChanged, String> {
+    let operation_id = project_id.clone();
+    let mutation = crate::project::mutate_project_worktree(&state, project_id.clone(), move |_| {
+        let root = ensure_repo(&operation_id)?;
+        // Disable Git's `:(glob)`/`:(attr)` pathspec language. This IPC value
+        // names one literal project path and must not expand into other files.
+        ok_or_err(run_git(
+            &root,
+            &["--literal-pathspecs", "checkout", "--", &path],
+        )?)?;
+        Ok(((), true))
+    })
+    .await?;
+    let outcome = mutation.value;
+    let event = crate::project::publish_project_state_changed(
+        &app,
+        &state,
+        &project_id,
+        mutation.project,
+        "git-discard",
+        true,
+        Some(mutation.generation),
+    );
+    outcome?;
+    event
 }
 
 #[tauri::command]

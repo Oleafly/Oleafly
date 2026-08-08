@@ -461,7 +461,7 @@ Oleafly 由
    ```bash
    pnpm build
    pnpm test
-   cargo test --manifest-path src-tauri/Cargo.toml --lib
+   cargo test --workspace --all-targets
    ```
 
 安全问题请按照

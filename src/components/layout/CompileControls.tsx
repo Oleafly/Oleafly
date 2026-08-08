@@ -231,7 +231,7 @@ export function CompileControls() {
               <Tooltip
                 wide
                 side="right"
-                label="Tectonic is built in and needs no setup. Auto uses your system TeX and picks the compiler from the source. pdfLaTeX is the Overleaf default and matches most journal templates. XeLaTeX and LuaLaTeX add system fonts and full Unicode. LuaLaTeX also enables tagged accessible PDFs."
+                label="Tectonic is built in and needs no setup. The other choices run system TeX, which can read local files available to your account and should be used only with trusted projects. Auto picks the compiler from the source. pdfLaTeX matches most journal templates. XeLaTeX and LuaLaTeX add system fonts and Unicode."
               >
                 <Info className="size-3 cursor-help text-muted-foreground/60 hover:text-muted-foreground" />
               </Tooltip>

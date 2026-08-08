@@ -129,7 +129,7 @@ jobs:
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: src-tauri -> target
+          workspaces: . -> src-tauri/target
 
       # Tauri externalBin compilers must exist before compiling. Tinymist is
       # staged separately as an immutable resource archive below.
@@ -179,16 +179,13 @@ jobs:
         run: bash scripts/smoke-markdown.sh x86_64-unknown-linux-gnu
 
       - name: Test
-        working-directory: src-tauri
-        run: cargo test --lib
+        run: cargo test --workspace --all-targets
 
       - name: Format check
-        working-directory: src-tauri
-        run: cargo fmt --check
+        run: cargo fmt --all -- --check
 
       - name: Clippy
-        working-directory: src-tauri
-        run: cargo clippy --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets -- -D warnings
 
   cargo-deny:
     # RustSec advisories plus a permissive-only license gate for everything
@@ -240,7 +237,7 @@ jobs:
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: src-tauri -> target
+          workspaces: . -> src-tauri/target
 
       - name: Cache Tectonic sidecar
         id: cache-tectonic-e2e
@@ -389,7 +386,7 @@ jobs:
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: src-tauri -> target
+          workspaces: . -> src-tauri/target
 
       - name: Cache Tectonic sidecar
         id: cache-tectonic-e2e-linux
@@ -510,7 +507,7 @@ jobs:
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: src-tauri -> target
+          workspaces: . -> src-tauri/target
 
       - name: Cache Tectonic sidecar
         id: cache-tectonic-e2e-windows

@@ -46,10 +46,11 @@ export interface AgentCompletionResponse {
 }
 
 let counter = 0;
+const agentSessionId = crypto.randomUUID();
 
 function nextRequestId(): string {
   counter += 1;
-  return `agent-${counter}-${crypto.randomUUID()}`;
+  return `agent:${agentSessionId}:${counter}:${crypto.randomUUID()}`;
 }
 
 interface InvokeRunOptions {
@@ -85,8 +86,8 @@ async function invokeRun<T>(command: string, options: InvokeRunOptions): Promise
   }
 }
 
-export function reapOrphanAgentRuns(): void {
-  void invoke("agent_cancel_all").catch(() => {});
+export async function reapOrphanAgentRuns(): Promise<void> {
+  await invoke("agent_cancel_all", { sessionId: agentSessionId }).catch(() => {});
 }
 
 function abortError(): DOMException {
@@ -95,12 +96,25 @@ function abortError(): DOMException {
 
 function withAbort<T>(work: Promise<T>, signal?: AbortSignal): Promise<T> {
   if (!signal) return work;
-  return Promise.race([
-    work,
-    new Promise<never>((_, reject) => {
-      signal.addEventListener("abort", () => reject(abortError()), { once: true });
-    }),
-  ]);
+  if (signal.aborted) return Promise.reject(abortError());
+  return new Promise<T>((resolve, reject) => {
+    const cleanup = () => signal.removeEventListener("abort", onAbort);
+    const onAbort = () => {
+      cleanup();
+      reject(abortError());
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+    work.then(
+      (value) => {
+        cleanup();
+        resolve(value);
+      },
+      (error) => {
+        cleanup();
+        reject(error);
+      },
+    );
+  });
 }
 
 export async function completeViaBackend(
@@ -147,6 +161,7 @@ export async function streamViaBackend(
   const channel = new Channel<AgentEvent>();
   let failure: AgentStreamError | null = null;
   channel.onmessage = (event) => {
+    if (signal?.aborted) return;
     if (event.kind === "error") {
       failure = new AgentStreamError(event.message, event.retryable);
       return;
@@ -154,11 +169,15 @@ export async function streamViaBackend(
     onEvent(event);
   };
 
-  await invokeRun<void>("agent_stream", {
-    args: { request, providerOverride: providerOverride ?? null, onEvent: channel },
-    signal,
-    failure: () => failure,
-  });
+  try {
+    await invokeRun<void>("agent_stream", {
+      args: { request, providerOverride: providerOverride ?? null, onEvent: channel },
+      signal,
+      failure: () => failure,
+    });
+  } finally {
+    channel.onmessage = () => {};
+  }
 }
 
 export interface AgentRunOutcome {
@@ -199,6 +218,7 @@ export async function runViaBackend(
   const channel = new Channel<AgentEvent>();
   let replyTo = "";
   channel.onmessage = (event) => {
+    if (signal?.aborted) return;
     if (event.kind === "toolRequest") {
       const call: AgentToolRequest = {
         id: event.id,
@@ -210,30 +230,35 @@ export async function runViaBackend(
         .catch<AgentToolOutput>((error) => ({
           output: JSON.stringify({ error: String(error) }),
         }))
-        .then((output) =>
-          invoke("agent_tool_result", {
+        .then((output) => {
+          if (signal?.aborted) return;
+          return invoke("agent_tool_result", {
             requestId: replyTo,
             callId: call.id,
             output: { output: output.output, images: output.images ?? [] },
-          }).catch(() => {}),
-        );
+          }).catch(() => {});
+        });
       return;
     }
     handlers.onEvent(event);
   };
 
-  return invokeRun<AgentRunOutcome>("agent_run", {
-    args: {
-      request,
-      config: config ?? null,
-      providerOverride: providerOverride ?? null,
-      onEvent: channel,
-    },
-    signal,
-    onRequestId: (id) => {
-      replyTo = id;
-    },
-  });
+  try {
+    return await invokeRun<AgentRunOutcome>("agent_run", {
+      args: {
+        request,
+        config: config ?? null,
+        providerOverride: providerOverride ?? null,
+        onEvent: channel,
+      },
+      signal,
+      onRequestId: (id) => {
+        replyTo = id;
+      },
+    });
+  } finally {
+    channel.onmessage = () => {};
+  }
 }
 
 export async function streamText(args: {

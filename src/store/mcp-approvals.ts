@@ -14,6 +14,7 @@ interface McpApprovalState {
   decide(id: number, approved: boolean): void;
   approveSession(id: number): void;
   setSessionAutoApprove(v: boolean): void;
+  cancelAll(): void;
 }
 
 let nextId = 1;
@@ -43,5 +44,10 @@ export const useMcpApprovalStore = create<McpApprovalState>((set, get) => ({
   },
   setSessionAutoApprove(v) {
     set({ sessionAutoApprove: v });
+  },
+  cancelAll() {
+    for (const resolve of resolvers.values()) resolve(false);
+    resolvers.clear();
+    set({ queue: [], sessionAutoApprove: false });
   },
 }));

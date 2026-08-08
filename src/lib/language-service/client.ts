@@ -712,7 +712,7 @@ export class LanguageServiceClient {
     this.setState("stopping");
     this.rejectAll(
       new LanguageServiceExitedError(
-        "Language service is stopping; pending results were invalidated",
+        "Language service is stopping. Pending results were invalidated.",
       ),
     );
     let shutdownError: Error | null = null;

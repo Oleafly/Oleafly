@@ -220,6 +220,7 @@ export function CodeMirrorEditor({ active = true }: { active?: boolean }) {
         languageServiceCompletion,
         ...projectCompletionSourcesForPath(path),
       ]}
+      extraGhostCompletionSourcesForPath={projectCompletionSourcesForPath}
       extraKeymap={EXTRA_KEYMAP}
     />
   );

@@ -113,7 +113,7 @@ Running the developer fetch command is itself an explicit setup action. The
 default stages Tinymist's exact upstream archive at its manifest-declared
 `src-tauri/resources/language-servers/tinymist/0.15.2/<asset>` path and puts
 TexLab in the current user's app-data directory described above. The Tinymist
-archive—not its extracted executable—is the Tauri resource.
+archive, not its extracted executable, is the Tauri resource.
 
 Verified release archives are cached separately under the ignored
 `src-tauri/target/language-servers/archives` tree. Override only that archive

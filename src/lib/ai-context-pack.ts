@@ -8,7 +8,7 @@ export const HISTORY_MAX_TURNS = 24;
 export function truncateText(s: string, max: number): string {
   if (s.length <= max) return s;
   const keep = Math.max(0, max - 80);
-  return `${s.slice(0, keep)}\n… [truncated ${s.length - keep} chars; re-read with tools if needed]`;
+  return `${s.slice(0, keep)}\n… [truncated ${s.length - keep} chars. Re-read with tools if needed]`;
 }
 
 export function packToolOutput(output: unknown, maxChars = TOOL_RESULT_MAX_CHARS): unknown {

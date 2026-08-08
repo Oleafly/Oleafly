@@ -17,7 +17,7 @@ Closes #
 <!-- Commands you ran, platforms you tried, manual steps. -->
 
 - [ ] `pnpm build` passes
-- [ ] `cd src-tauri && cargo test --lib` passes
+- [ ] `cargo test --workspace --all-targets` passes
 - [ ] Ran the app (`pnpm tauri dev`) and exercised the change
 
 ## Checklist

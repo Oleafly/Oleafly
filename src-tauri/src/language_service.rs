@@ -1800,14 +1800,14 @@ async fn stop_process(child: &mut tokio::process::Child, pid: u32) -> ProcessOut
             exit_code: None,
             signal: None,
             reason: bounded_message(format!(
-                "stop requested; process wait failed after termination: {error}"
+                "stop requested. Process wait failed after termination: {error}"
             )),
         },
         Err(_) => ProcessOutcome {
             status: LanguageServiceStatus::Stopped,
             exit_code: None,
             signal: None,
-            reason: "stop requested; process did not report termination before timeout".into(),
+            reason: "stop requested. The process did not report termination before timeout".into(),
         },
     }
 }

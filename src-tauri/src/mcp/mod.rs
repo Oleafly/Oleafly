@@ -4,7 +4,8 @@ pub mod server;
 
 use serde::Serialize;
 use serde_json::Value;
-use tauri::{AppHandle, Manager};
+use std::sync::atomic::Ordering;
+use tauri::{AppHandle, Emitter, Manager};
 
 use protocol::ToolMeta;
 use server::McpState;
@@ -25,12 +26,29 @@ pub struct McpConnectionInfo {
 
 async fn status(app: &AppHandle) -> Result<McpStatus, String> {
     let state = app.state::<McpState>();
-    let port = *state.bound_port.lock().await;
+    // Do not expose the gap between a listener transition and its config
+    // commit as a stable status response.
+    let _control = state.control.lock().await;
+    let ready_port = {
+        // Keep the port, epoch, publication, and lease in one lifecycle
+        // snapshot. Release it before potentially slow keychain-backed config
+        // IO so renderer heartbeats are never delayed by status rendering.
+        let _lifecycle = state.lifecycle.lock().await;
+        let port = *state.bound_port.lock().await;
+        let epoch = state.epoch.load(Ordering::Acquire);
+        let published_epoch = state.published_epoch.load(Ordering::Acquire);
+        let renderer_session = state.active_renderer_session.load(Ordering::Acquire);
+        port.filter(|_| {
+            published_epoch != 0
+                && published_epoch == epoch
+                && server::renderer_session_is_fresh(&state, renderer_session)
+        })
+    };
     let cfg = crate::config::read_config()?;
     Ok(McpStatus {
-        running: port.is_some(),
-        port,
-        url: port.map(|p| format!("http://127.0.0.1:{p}/mcp")),
+        running: ready_port.is_some(),
+        port: ready_port,
+        url: ready_port.map(|p| format!("http://127.0.0.1:{p}/mcp")),
         enabled: cfg.mcp_enabled,
     })
 }
@@ -45,8 +63,28 @@ async fn start_available(app: AppHandle, preferred_port: u16) -> Result<u16, Str
     }
 }
 
-pub async fn start_configured(app: AppHandle, preferred_port: u16) -> Result<u16, String> {
-    let port = start_available(app, preferred_port).await?;
+fn configured_start_candidate(
+    enabled: bool,
+    configured_port: u16,
+    running_port: Option<u16>,
+) -> Option<u16> {
+    (enabled && running_port.is_none()).then_some(configured_port)
+}
+
+pub async fn start_configured(app: AppHandle, _preferred_port: u16) -> Result<u16, String> {
+    let state = app.state::<McpState>();
+    let _control = state.control.lock().await;
+    // The setup task may have read `enabled=true` before a fast settings
+    // interaction disabled MCP. Re-read under the command gate so stale
+    // autostart intent cannot resurrect a listener after disable commits.
+    let latest = crate::config::read_config()?;
+    let running_port = *state.bound_port.lock().await;
+    let Some(preferred_port) =
+        configured_start_candidate(latest.mcp_enabled, latest.mcp_port, running_port)
+    else {
+        return Ok(running_port.unwrap_or(latest.mcp_port));
+    };
+    let port = start_available(app.clone(), preferred_port).await?;
     let mut cfg = crate::config::read_config()?;
     cfg.mcp_port = port;
     crate::config::write_config(&cfg)?;
@@ -54,23 +92,99 @@ pub async fn start_configured(app: AppHandle, preferred_port: u16) -> Result<u16
 }
 
 #[tauri::command]
-pub async fn mcp_set_active_project(app: AppHandle, project_id: Option<String>) {
+pub async fn mcp_set_active_project(
+    app: AppHandle,
+    project_id: Option<String>,
+    renderer_session: u64,
+) -> Result<(), String> {
     let state = app.state::<McpState>();
+    let _lifecycle = state.lifecycle.lock().await;
+    if !server::renderer_session_is_fresh(&state, renderer_session) {
+        return Err("stale or expired MCP renderer session".into());
+    }
     *state.active_project.lock().await = project_id;
-}
-
-#[tauri::command]
-pub async fn mcp_register_tools(app: AppHandle, tools: Vec<ToolMeta>) -> Result<(), String> {
-    let state = app.state::<McpState>();
-    *state.registry.lock().await = tools;
     Ok(())
 }
 
 #[tauri::command]
-pub async fn mcp_tool_result(app: AppHandle, call_id: u64, result: Value) -> Result<(), String> {
+pub async fn mcp_begin_renderer_session(app: AppHandle) -> Result<u64, String> {
+    server::begin_renderer_session(&app).await
+}
+
+#[tauri::command]
+pub async fn mcp_renderer_heartbeat(app: AppHandle, renderer_session: u64) -> Result<(), String> {
+    server::renderer_heartbeat(&app, renderer_session).await
+}
+
+#[tauri::command]
+pub async fn mcp_end_renderer_session(app: AppHandle, renderer_session: u64) -> Result<(), String> {
+    server::end_renderer_session(&app, renderer_session).await
+}
+
+#[tauri::command]
+pub async fn mcp_register_tools(
+    app: AppHandle,
+    tools: Vec<ToolMeta>,
+    renderer_session: u64,
+) -> Result<(), String> {
+    if tools.is_empty() {
+        return Err("MCP tool registration must contain at least one tool".into());
+    }
     let state = app.state::<McpState>();
-    if let Some(tx) = state.pending.lock().await.remove(&call_id) {
-        let _ = tx.send(result); // receiver may have timed out; that's fine
+    let _lifecycle = state.lifecycle.lock().await;
+    if !server::renderer_session_is_fresh(&state, renderer_session) {
+        return Err("stale or expired MCP renderer session".into());
+    }
+    // Also acts as the dispatch admission barrier while registry state and its
+    // authorization epoch move together.
+    let token = state.token.lock().await;
+    let published_epoch = state.published_epoch.load(Ordering::Acquire);
+    let running = state.shutdown.lock().await.is_some();
+
+    if running && published_epoch != 0 {
+        let mut registry = state.registry.lock().await;
+        let changed = *registry != tools;
+        if changed {
+            *registry = tools;
+        }
+        state.registry_initialized.store(true, Ordering::Release);
+        drop(registry);
+        if changed {
+            let (_, next_epoch) =
+                server::invalidate_pending(&state, server::PendingInterruption::Revoked, |epoch| {
+                    let _ = app.emit(
+                        "mcp:requests-revoked",
+                        serde_json::json!({
+                            "epoch": epoch,
+                            "reason": "tool-registry-changed",
+                            "rendererSession": renderer_session,
+                        }),
+                    );
+                });
+            state.published_epoch.store(next_epoch, Ordering::Release);
+        }
+        return Ok(());
+    }
+
+    *state.registry.lock().await = tools;
+    state.registry_initialized.store(true, Ordering::Release);
+    drop(token);
+    // Covers both arrival orders: registration-before-start is retained for
+    // start(), while start-before-registration publishes readiness here.
+    server::publish_if_ready_locked(&app, &state).await?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn mcp_tool_result(
+    app: AppHandle,
+    call_id: u64,
+    result: Value,
+    renderer_session: u64,
+) -> Result<(), String> {
+    let state = app.state::<McpState>();
+    if let Some(call) = server::take_pending_result(&state, call_id, renderer_session) {
+        let _ = call.sender.send(server::PendingReply::Result(result));
     }
     Ok(())
 }
@@ -82,29 +196,65 @@ pub async fn mcp_status(app: AppHandle) -> Result<McpStatus, String> {
 
 #[tauri::command]
 pub async fn mcp_set_enabled(app: AppHandle, enabled: bool) -> Result<McpStatus, String> {
+    let state = app.state::<McpState>();
+    let control = state.control.lock().await;
+    if !enabled {
+        // Stop is deliberately unconditional and idempotent. A separate
+        // bound-port check can race an autostart and persist `false` while
+        // leaving the newly bound listener alive.
+        let stop_result = server::stop(&app).await;
+        finish_disable(stop_result, || {
+            // Read after stop so a credential or policy update serialized ahead
+            // of us is retained. Cleanup errors must not resurrect an explicitly
+            // disabled server on the next launch.
+            let mut cfg = crate::config::read_config()?;
+            cfg.mcp_enabled = false;
+            crate::config::write_config(&cfg)
+        })?;
+        drop(control);
+        return status(&app).await;
+    }
+
     let cfg = crate::config::read_config()?;
     let running_port = *app.state::<McpState>().bound_port.lock().await;
-    let started_port = if enabled && running_port.is_none() {
+    let started_port = if running_port.is_none() {
         Some(start_available(app.clone(), cfg.mcp_port).await?)
     } else {
         None
     };
-    if !enabled && running_port.is_some() {
-        server::stop(&app).await?;
-    }
     let mut cfg = crate::config::read_config()?;
     if let Some(port) = started_port {
         cfg.mcp_port = port;
     }
-    cfg.mcp_enabled = enabled;
+    cfg.mcp_enabled = true;
     crate::config::write_config(&cfg)?;
+    drop(control);
     status(&app).await
+}
+
+fn finish_disable(
+    stop_result: Result<(), String>,
+    persist_disabled: impl FnOnce() -> Result<(), String>,
+) -> Result<(), String> {
+    let persist_result = persist_disabled();
+    match (stop_result, persist_result) {
+        (Ok(()), Ok(())) => Ok(()),
+        (Err(stop_error), Ok(())) => Err(stop_error),
+        (Ok(()), Err(persist_error)) => Err(format!(
+            "MCP server stopped, but the disabled setting could not be persisted: {persist_error}"
+        )),
+        (Err(stop_error), Err(persist_error)) => Err(format!(
+            "{stop_error}. The disabled setting also could not be saved: {persist_error}"
+        )),
+    }
 }
 
 #[tauri::command]
 pub async fn mcp_restart_server(app: AppHandle) -> Result<McpStatus, String> {
+    let state = app.state::<McpState>();
+    let control = state.control.lock().await;
     let preferred_port = crate::config::read_config()?.mcp_port;
-    if app.state::<McpState>().bound_port.lock().await.is_some() {
+    if state.bound_port.lock().await.is_some() {
         server::stop(&app).await?;
     }
     let port = start_available(app.clone(), preferred_port).await?;
@@ -112,12 +262,23 @@ pub async fn mcp_restart_server(app: AppHandle) -> Result<McpStatus, String> {
     cfg.mcp_port = port;
     cfg.mcp_enabled = true;
     crate::config::write_config(&cfg)?;
+    drop(control);
     status(&app).await
 }
 
 #[tauri::command]
 pub async fn mcp_connection_info(app: AppHandle) -> Result<McpConnectionInfo, String> {
     let state = app.state::<McpState>();
+    let _lifecycle = state.lifecycle.lock().await;
+    let epoch = state.epoch.load(Ordering::Acquire);
+    let published_epoch = state.published_epoch.load(Ordering::Acquire);
+    let renderer_session = state.active_renderer_session.load(Ordering::Acquire);
+    if published_epoch == 0
+        || published_epoch != epoch
+        || !server::renderer_session_is_fresh(&state, renderer_session)
+    {
+        return Err("MCP server is not ready. Retry shortly.".into());
+    }
     let port = state
         .bound_port
         .lock()
@@ -137,18 +298,95 @@ pub async fn mcp_connection_info(app: AppHandle) -> Result<McpConnectionInfo, St
 
 #[tauri::command]
 pub async fn mcp_regenerate_token(app: AppHandle) -> Result<(), String> {
-    let token = crate::secrets::generate_mcp_token();
-    let mut cfg = crate::config::read_config()?;
-    cfg.mcp_token = token.clone();
-    crate::config::write_config(&cfg)?;
     let state = app.state::<McpState>();
+    let _control = state.control.lock().await;
+    let _lifecycle = state.lifecycle.lock().await;
+    let token = crate::secrets::generate_mcp_token();
+    let old_config = crate::config::read_config()?;
+    let mut next_config = old_config.clone();
+    next_config.mcp_token = token.clone();
+    let running = state.shutdown.lock().await.is_some();
+    if !running {
+        crate::config::write_config(&next_config)?;
+        return Ok(());
+    }
+
+    let port = state
+        .bound_port
+        .lock()
+        .await
+        .ok_or_else(|| "MCP server is running without a bound port".to_string())?;
+    let published_epoch = state.published_epoch.load(Ordering::Acquire);
     let mut cached = state.token.lock().await;
-    if cached.is_some() {
-        *cached = Some(token.clone());
-        if let Some(port) = *state.bound_port.lock().await {
-            // Best effort: keep the discovery file in sync.
-            let _ = server::rewrite_discovery_file(port, &token);
+    if !cached.as_deref().is_some_and(|token| !token.is_empty()) {
+        return Err("MCP server is running without an active credential".into());
+    }
+
+    // Persist first, then atomically replace the owner-only discovery file.
+    // Admissions remain blocked on `token` throughout. If publication fails,
+    // restore the previous config while the old live credential remains valid.
+    crate::config::write_config(&next_config)?;
+    if published_epoch != 0 {
+        if let Err(error) = server::rewrite_discovery_file(port, &token) {
+            let rollback = crate::config::write_config(&old_config);
+            return Err(match rollback {
+                Ok(()) => format!("failed to publish regenerated MCP credential: {error}"),
+                Err(rollback_error) => format!(
+                    "failed to publish regenerated MCP credential: {error}. Restoring the previous config also failed: {rollback_error}"
+                ),
+            });
         }
     }
+    *cached = Some(token);
+    let (revoked_epoch, next_epoch) =
+        server::invalidate_pending(&state, server::PendingInterruption::Revoked, |epoch| {
+            let _ = app.emit(
+                "mcp:requests-revoked",
+                serde_json::json!({
+                    "epoch": epoch,
+                    "reason": "credential-regenerated",
+                    "rendererSession": state.active_renderer_session.load(Ordering::Acquire),
+                }),
+            );
+        });
+    if published_epoch == revoked_epoch {
+        state.published_epoch.store(next_epoch, Ordering::Release);
+    } else if published_epoch != 0 {
+        // Fail closed if lifecycle state was ever inconsistent.
+        state.published_epoch.store(0, Ordering::Release);
+    }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{configured_start_candidate, finish_disable};
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    #[test]
+    fn disabled_intent_is_persisted_even_when_stop_cleanup_fails() {
+        let persisted = AtomicBool::new(false);
+        let result = finish_disable(Err("discovery cleanup failed".into()), || {
+            persisted.store(true, Ordering::Release);
+            Ok(())
+        });
+
+        assert!(persisted.load(Ordering::Acquire));
+        assert_eq!(result.unwrap_err(), "discovery cleanup failed");
+    }
+
+    #[test]
+    fn disable_reports_both_stop_and_persistence_failures() {
+        let error = finish_disable(Err("stop failed".into()), || Err("config failed".into()))
+            .expect_err("both failures must be surfaced");
+        assert!(error.contains("stop failed"));
+        assert!(error.contains("config failed"));
+    }
+
+    #[test]
+    fn stale_autostart_intent_rechecks_the_committed_enabled_state() {
+        assert_eq!(configured_start_candidate(false, 5323, None), None);
+        assert_eq!(configured_start_candidate(true, 5323, Some(6000)), None);
+        assert_eq!(configured_start_candidate(true, 5323, None), Some(5323));
+    }
 }

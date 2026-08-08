@@ -191,10 +191,10 @@ const createState: StateCreator<ProjectAnalysisStore> = (set, get) => ({
         identity: { ...current.identity, projectRevision: revision },
         diagnosticsByUri: {},
         features: createFeaturePlaceholders(
-          "Project content changed; analysis has not run",
+          "Project content changed. Analysis has not run.",
         ),
         projectIndex: notRunAnalysisSlot(
-          "Project content changed; index is not current",
+          "Project content changed. The index is not current.",
         ),
         updatedAt: Date.now(),
       },
@@ -219,7 +219,7 @@ const createState: StateCreator<ProjectAnalysisStore> = (set, get) => ({
     if (prior && prior.version !== version) {
       delete diagnosticsByUri[uri];
       features.diagnostics = notRunAnalysisSlot(
-        "Document changed; diagnostics are awaiting acknowledgement",
+        "Document changed. Diagnostics are awaiting acknowledgement.",
       );
     }
     for (const [feature, slot] of Object.entries(features)) {
@@ -229,7 +229,7 @@ const createState: StateCreator<ProjectAnalysisStore> = (set, get) => ({
         slot.request.documentVersion !== version
       ) {
         features[feature as ProjectAnalysisFeature] =
-          notRunAnalysisSlot("Document changed; analysis has not run");
+          notRunAnalysisSlot("Document changed. Analysis has not run.");
       }
     }
     set({
@@ -476,7 +476,7 @@ const createState: StateCreator<ProjectAnalysisStore> = (set, get) => ({
         },
         diagnosticsByUri: {},
         features: createFeaturePlaceholders(
-          "Language service restarted; analysis has not run",
+          "Language service restarted. Analysis has not run.",
         ),
         updatedAt: Date.now(),
       },

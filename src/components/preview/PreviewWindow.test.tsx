@@ -77,6 +77,7 @@ function successState(
   value: number,
   outputRevision: number,
   projectRevision = outputRevision,
+  projectStateRevision = outputRevision,
 ): PreviewWindowState {
   const identity = {
     projectId,
@@ -85,6 +86,7 @@ function successState(
     requestGeneration: projectRevision,
   };
   return {
+    projectStateRevision,
     identity,
     status: "success",
     checkpoint: {
@@ -108,6 +110,14 @@ function emitRefresh(state: PreviewWindowState) {
 function emitProject(projectId: string) {
   act(() => {
     mocks.listeners.get("preview:project")?.({ payload: { projectId } });
+  });
+}
+
+function emitProjectState(projectId: string, revision: number) {
+  act(() => {
+    mocks.listeners.get("project-state-changed")?.({
+      payload: { projectId, revision },
+    });
   });
 }
 
@@ -233,6 +243,33 @@ describe("detached preview request identity", () => {
     expect(screen.queryByTestId("detached-pdf-bytes")).not.toBeInTheDocument();
   });
 
+  it("clears output on a project-state mutation but ignores a delayed older event", async () => {
+    mocks.readCompiledPdf
+      .mockResolvedValueOnce(buffer(1))
+      .mockResolvedValueOnce(buffer(2));
+    render(<PreviewWindow />);
+    emitRefresh(successState("alpha", 1, 1));
+    await screen.findByText("1");
+
+    emitProjectState("alpha", 10);
+    expect(screen.queryByTestId("detached-pdf-bytes")).not.toBeInTheDocument();
+    expect(screen.getByText("No verified PDF")).toBeInTheDocument();
+
+    // A delayed success from before the mutation cannot restore stale bytes.
+    emitRefresh(successState("alpha", 2, 2));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(mocks.readCompiledPdf).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("No verified PDF")).toBeInTheDocument();
+
+    emitRefresh(successState("alpha", 2, 2, 2, 10));
+    await screen.findByText("2");
+    emitProjectState("alpha", 9);
+    expect(screen.getByTestId("detached-pdf-bytes")).toHaveTextContent("2");
+  });
+
   it("rejects a delayed success after a newer project revision is announced", async () => {
     mocks.readCompiledPdf.mockResolvedValue(buffer(1));
     render(<PreviewWindow />);
@@ -241,6 +278,7 @@ describe("detached preview request identity", () => {
     await screen.findByText("1");
 
     emitRefresh({
+      projectStateRevision: 10,
       identity: {
         projectId: "alpha",
         mainDocument: "main.tex",

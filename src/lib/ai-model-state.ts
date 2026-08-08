@@ -6,9 +6,16 @@ export function seedProviderModels(providerId: string): StoredModel[] {
   return (p?.models ?? []).map((m) => ({ id: m.id, name: m.name, enabled: true, source: "builtin" }));
 }
 
-export function mergeFetchedModels(existing: StoredModel[], fetched: AIModel[]): StoredModel[] {
+export function mergeFetchedModels(
+  existing: StoredModel[],
+  fetched: readonly AIModel[] | null,
+): StoredModel[] {
+  // `null` means discovery was unsupported or failed, so the existing list is
+  // still the only authority we have. An empty array is different: it is a
+  // successful live response saying that no catalog models remain available.
+  if (fetched === null) return existing;
   const listed = new Set(fetched.map((f) => f.id));
-  const kept = existing.filter((m) => m.source !== "fetched" || listed.has(m.id));
+  const kept = existing.filter((m) => m.source === "custom" || listed.has(m.id));
   const byId = new Map(kept.map((m) => [m.id, m]));
   for (const f of fetched) {
     const prev = byId.get(f.id);
@@ -26,6 +33,17 @@ export function pickActiveModel(
   const pool = enabled.length > 0 ? enabled : models;
   if (pool.some((m) => m.id === catalogDefault)) return catalogDefault;
   return pool[0]?.id ?? catalogDefault;
+}
+
+export function reconcileActiveModel(
+  models: StoredModel[],
+  currentModel: string,
+  catalogDefault: string,
+): string {
+  const enabled = models.filter((model) => model.enabled);
+  if (enabled.some((model) => model.id === currentModel)) return currentModel;
+  if (enabled.some((model) => model.id === catalogDefault)) return catalogDefault;
+  return enabled[0]?.id ?? "";
 }
 
 export function enabledModels(list: StoredModel[]): StoredModel[] {

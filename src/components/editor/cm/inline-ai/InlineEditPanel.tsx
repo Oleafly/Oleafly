@@ -98,7 +98,6 @@ export function InlineEditPanel() {
     abortRef.current = ctrl;
     try {
       await runInlineCompletion({
-        config: config ?? undefined,
         engine: useFilesStore.getState().engineLoaded
           ? useFilesStore.getState().engine
           : undefined,

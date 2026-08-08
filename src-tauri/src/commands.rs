@@ -7,6 +7,7 @@ use crate::proc::NoConsole;
 use crate::state::AppState;
 
 const MAX_QUEUED_PROJECTS: usize = 128;
+const MAX_PROJECT_BINARY_READ_BYTES: u64 = 8 * 1024 * 1024;
 
 #[tauri::command]
 pub fn reload_views(app: tauri::AppHandle, window: tauri::WebviewWindow) {
@@ -62,6 +63,7 @@ pub fn project_engine(
     let meta = crate::project::read_meta(&project_id)?;
     let mut descriptor = crate::document_engine::descriptor_for(&meta.engine, &meta.main_doc)?;
     descriptor.tex_flavor = meta.tex_flavor;
+    descriptor.allow_shell_escape = meta.allow_shell_escape;
     Ok(descriptor)
 }
 
@@ -174,8 +176,9 @@ pub async fn cancel_compile(state: State<'_, AppState>) -> Result<bool, String> 
             crate::proc::terminate_process_tree(pid).await;
             Ok(true)
         }
-        // No compiler is running yet. The flag stays set so a compile that is
-        // mid-spawn still stops instead of racing past the request.
+        // A compile can be active before it owns a child pid. Its lifecycle
+        // retains the stop for the pending spawn; an actually idle request is
+        // ignored so it cannot poison the next compile.
         None => Ok(false),
     }
 }
@@ -213,6 +216,7 @@ pub async fn compile_project(
         halt_on_error: halt_on_error.unwrap_or(false),
         // The project's pinned compiler is applied after the meta read below.
         latex_flavor: None,
+        allow_shell_escape: false,
     };
     let ticket = state
         .compile_ticket
@@ -269,6 +273,7 @@ pub async fn compile_project(
             .tex_flavor
             .as_deref()
             .and_then(crate::document_engine::LatexmkFlavor::parse),
+        allow_shell_escape: meta.allow_shell_escape,
         ..options
     };
     let engine = crate::document_engine::engine_for(&meta.engine, &main_doc)?;
@@ -442,6 +447,10 @@ pub async fn compile_isolated(
         log_event: "figure:log",
         options: crate::document_engine::CompileOptions {
             offline: offline.unwrap_or(false),
+            latex_flavor: meta
+                .tex_flavor
+                .as_deref()
+                .and_then(crate::document_engine::LatexmkFlavor::parse),
             ..Default::default()
         },
         cancel: None,
@@ -472,11 +481,86 @@ pub async fn read_isolated_pdf(project_id: String) -> Result<Response, String> {
 
 /// Read raw bytes from a project-relative path (path-guarded). Used to hand an
 /// existing project image (e.g. a hand-drawn sketch) to a vision model.
+fn open_regular_nofollow(target: &std::path::Path) -> std::io::Result<std::fs::File> {
+    let mut options = std::fs::OpenOptions::new();
+    options.read(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt as _;
+        options.custom_flags(libc::O_NOFOLLOW);
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::OpenOptionsExt as _;
+        use windows_sys::Win32::Storage::FileSystem::FILE_FLAG_OPEN_REPARSE_POINT;
+        options.custom_flags(FILE_FLAG_OPEN_REPARSE_POINT);
+    }
+    options.open(target)
+}
+
+#[cfg(windows)]
+fn metadata_is_reparse_point(metadata: &std::fs::Metadata) -> bool {
+    use std::os::windows::fs::MetadataExt as _;
+    metadata.file_attributes() & 0x400 != 0
+}
+
+#[cfg(not(windows))]
+fn metadata_is_reparse_point(_metadata: &std::fs::Metadata) -> bool {
+    false
+}
+
+fn read_regular_file_limited(
+    target: &std::path::Path,
+    display_path: &str,
+    max_bytes: u64,
+) -> Result<Vec<u8>, String> {
+    use std::io::Read as _;
+
+    let metadata = std::fs::symlink_metadata(target)
+        .map_err(|e| format!("cannot inspect {display_path}: {e}"))?;
+    if metadata.file_type().is_symlink()
+        || metadata_is_reparse_point(&metadata)
+        || !metadata.is_file()
+    {
+        return Err(format!(
+            "cannot read {display_path}: not a regular project file"
+        ));
+    }
+    if metadata.len() > max_bytes {
+        return Err(format!(
+            "cannot read {display_path}: file exceeds the {max_bytes}-byte limit"
+        ));
+    }
+    let file =
+        open_regular_nofollow(target).map_err(|e| format!("cannot read {display_path}: {e}"))?;
+    let opened_metadata = file
+        .metadata()
+        .map_err(|e| format!("cannot inspect opened {display_path}: {e}"))?;
+    if !opened_metadata.is_file()
+        || metadata_is_reparse_point(&opened_metadata)
+        || opened_metadata.len() > max_bytes
+    {
+        return Err(format!(
+            "cannot read {display_path}: opened file exceeds the {max_bytes}-byte limit or is not regular"
+        ));
+    }
+    let mut bytes = Vec::with_capacity(opened_metadata.len() as usize);
+    file.take(max_bytes.saturating_add(1))
+        .read_to_end(&mut bytes)
+        .map_err(|e| format!("cannot read {display_path}: {e}"))?;
+    if bytes.len() as u64 > max_bytes {
+        return Err(format!(
+            "cannot read {display_path}: file exceeds the {max_bytes}-byte limit"
+        ));
+    }
+    Ok(bytes)
+}
+
 #[tauri::command]
 pub async fn read_project_bytes(project_id: String, rel_path: String) -> Result<Response, String> {
     let target = crate::project::resolve_in_project(&project_id, &rel_path)?;
-    let bytes = tauri::async_runtime::spawn_blocking(move || -> Result<Vec<u8>, String> {
-        std::fs::read(&target).map_err(|e| format!("cannot read {rel_path}: {e}"))
+    let bytes = tauri::async_runtime::spawn_blocking(move || {
+        read_regular_file_limited(&target, &rel_path, MAX_PROJECT_BINARY_READ_BYTES)
     })
     .await
     .map_err(|e| e.to_string())??;
@@ -490,14 +574,13 @@ pub async fn write_project_bytes(
     project_id: String,
     rel_path: String,
     data_base64: String,
-) -> Result<(), String> {
-    let bytes = decode_b64(&data_base64)?;
-    let target = crate::project::resolve_in_project(&project_id, &rel_path)?;
-    tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
-        if let Some(parent) = target.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-        }
-        crate::sandbox::atomic_write(&target, &bytes)
+    expected_generation: Option<u64>,
+) -> Result<crate::project::FileMutationResult, String> {
+    let admission =
+        crate::project::admit_project_file_write(project_id, rel_path, expected_generation)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let bytes = decode_b64(&data_base64)?;
+        admission.write(&bytes)
     })
     .await
     .map_err(|e| e.to_string())?
@@ -529,6 +612,35 @@ mod tests {
         let enc = STANDARD.encode(b"PNGDATA");
         assert_eq!(decode_b64(&enc).unwrap(), b"PNGDATA");
         assert!(decode_b64("not*base64!").is_err());
+    }
+
+    #[test]
+    fn project_binary_reads_reject_non_files_and_oversized_payloads_before_allocation() {
+        let root = std::env::temp_dir().join(format!(
+            "oleafly-binary-read-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir(&root).unwrap();
+        let small = root.join("small.png");
+        let large = root.join("large.png");
+        std::fs::write(&small, b"png").unwrap();
+        std::fs::write(&large, b"12345").unwrap();
+
+        assert_eq!(
+            read_regular_file_limited(&small, "small.png", 3).unwrap(),
+            b"png"
+        );
+        assert!(read_regular_file_limited(&large, "large.png", 4)
+            .unwrap_err()
+            .contains("4-byte limit"));
+        assert!(read_regular_file_limited(&root, "folder", 100)
+            .unwrap_err()
+            .contains("regular project file"));
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]

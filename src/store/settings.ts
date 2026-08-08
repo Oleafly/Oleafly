@@ -305,6 +305,10 @@ function readDefaultLatexEngine(raw: string): DefaultLatexEngine {
 
 const PREF_DEFAULTS = {
   vim: false,
+  editorAutocomplete: true,
+  editorAutoCloseBrackets: true,
+  editorGhostCompletion: true,
+  editorNonBlinkingCursor: false,
   spellcheck: true,
   harper: true,
   grammarDialect: "american" as GrammarDialect,
@@ -568,6 +572,22 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   resetToDefaults: () => {
     // Drop the persisted copies so a restart doesn't resurrect old values.
     saveLs("oleafly.vim", PREF_DEFAULTS.vim ? "1" : "0");
+    saveLs(
+      "oleafly.editor.autocomplete",
+      PREF_DEFAULTS.editorAutocomplete ? "1" : "0",
+    );
+    saveLs(
+      "oleafly.editor.closeBrackets",
+      PREF_DEFAULTS.editorAutoCloseBrackets ? "1" : "0",
+    );
+    saveLs(
+      "oleafly.editor.ghostCompletion",
+      PREF_DEFAULTS.editorGhostCompletion ? "1" : "0",
+    );
+    saveLs(
+      "oleafly.editor.solidCursor",
+      PREF_DEFAULTS.editorNonBlinkingCursor ? "1" : "0",
+    );
     saveLs("oleafly.spellcheck", PREF_DEFAULTS.spellcheck ? "1" : "0");
     saveLs("oleafly.harper", PREF_DEFAULTS.harper ? "1" : "0");
     saveLs("oleafly.harper.dialect", PREF_DEFAULTS.grammarDialect);

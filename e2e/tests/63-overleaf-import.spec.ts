@@ -73,6 +73,7 @@ async function projectState(page: Page) {
     name: string;
     paths: string[];
     engineId: string;
+    allowShellEscape: boolean;
   }>(
     `import("/src/store/files.ts").then((m) => {
       const s = m.useFilesStore.getState();
@@ -81,6 +82,7 @@ async function projectState(page: Page) {
         name: s.projectName,
         paths: s.tree.filter((f) => !f.is_dir).map((f) => f.path),
         engineId: s.engine.id,
+        allowShellEscape: s.engine.allow_shell_escape,
       };
     })`,
   );
@@ -130,8 +132,8 @@ test("a Tectonic project with an engine gap offers the engine picker", async ({
       "\\documentclass{article}\n\\usepackage{minted}\n\\begin{document}\\begin{minted}{python}\nprint(1)\n\\end{minted}\\end{document}\n",
   });
   await importZip(tauriPage, zipPath);
-  // Machines with a system TeX import straight onto latexmk. Pin the bundled
-  // engine so the scan flow under test is the same on every machine.
+  // Imports stay on the bundled engine even when system TeX is the user's
+  // default. Pin it explicitly so this test also documents that trust boundary.
   await tauriPage.evaluate(
     `import("/src/store/files.ts").then((m) => m.useFilesStore.getState().setEngine("xetex"))`,
   );
@@ -165,6 +167,8 @@ test("a Tectonic project with an engine gap offers the engine picker", async ({
   );
   expect(modalText).toContain("minted");
   expect(modalText).toContain("Keep using Tectonic");
+  expect(modalText).toContain("Shell-dependent features were detected");
+  await expect(tauriPage.getByTestId("engine-picker-shell-escape")).not.toBeChecked();
   await tauriPage.click('[data-testid="engine-picker-keep-tectonic"]');
   await waitLong(
     tauriPage,
@@ -174,6 +178,7 @@ test("a Tectonic project with an engine gap offers the engine picker", async ({
   // The choice is remembered: the project stays on the bundled engine.
   const state = await projectState(tauriPage);
   expect(state.engineId).toBe("latex");
+  expect(state.allowShellEscape).toBe(false);
 });
 
 test("a plain folder imports with the main document inferred", async ({

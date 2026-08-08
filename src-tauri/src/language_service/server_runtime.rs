@@ -1037,7 +1037,7 @@ fn resolve_texlab(
     Err(LanguageServiceError::setup_required(
         profile.kind,
         profile.version.clone(),
-        "TexLab is not installed; install the pinned language server before starting it",
+        "TexLab is not installed. Install the pinned language server before starting it.",
     ))
 }
 
@@ -1193,7 +1193,7 @@ fn validate_resource_path(
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
                 return Err(LanguageServiceError::new(
                     LanguageServiceErrorCode::SidecarUnavailable,
-                    "the pinned Tinymist resource archive is missing; reinstall Oleafly",
+                    "the pinned Tinymist resource archive is missing. Reinstall Oleafly.",
                 ))
             }
             Err(error) => return Err(resource_integrity_io(error)),

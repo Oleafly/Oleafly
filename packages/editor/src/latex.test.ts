@@ -16,6 +16,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   latexCommandCompletions,
   latexCompletions,
+  latexReferenceCitationCompletions,
   setBibKeysProvider,
   slashCompletions,
 } from "./latex";
@@ -60,6 +61,30 @@ afterEach(() => {
 });
 
 describe("recovery-oriented LaTeX completion", () => {
+  it("does not materialize a large document for ordinary prose", () => {
+    const source = `${"ordinary prose ".repeat(100_000)}typing`;
+    const state = EditorState.create({ doc: source });
+    const context = new CompletionContext(state, state.doc.length, false);
+    const sliceString = vi.spyOn(state.doc, "sliceString");
+    const toString = vi.spyOn(state.doc, "toString");
+
+    for (const completionSource of [
+      latexReferenceCitationCompletions,
+      latexCompletions,
+      latexCommandCompletions,
+      slashCompletions,
+    ]) {
+      expect(completionSource(context)).toBeNull();
+    }
+
+    expect(toString).not.toHaveBeenCalled();
+    expect(
+      sliceString.mock.calls.every(([from = 0, to = state.doc.length]) =>
+        to - from <= 2_048
+      ),
+    ).toBe(true);
+  });
+
   it("opens static command suggestions automatically while async language sources are unavailable", async () => {
     const unavailableLanguageService = async () => null;
     const unavailableProjectIndex = () => null;

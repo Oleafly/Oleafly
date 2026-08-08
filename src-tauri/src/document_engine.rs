@@ -112,6 +112,9 @@ pub struct EngineDescriptor {
     /// from project.json, absent in engine-only contexts.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tex_flavor: Option<String>,
+    /// Whether the user explicitly allowed this project to execute host
+    /// commands through system TeX. Always false outside project context.
+    pub allow_shell_escape: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -369,25 +372,7 @@ fn detect_latexmk_flavor(source: &str) -> LatexmkFlavor {
     LatexmkFlavor::Pdflatex
 }
 
-/// Enable `-shell-escape` only when the source actually uses features that
-/// need it (Overleaf enables it unconditionally, but Overleaf compiles inside
-/// a container; on a user's machine it is arbitrary command execution, so it
-/// stays scoped to documents that require it). Plain substring checks: a
-/// commented-out `minted` merely enables the flag, it never breaks a compile.
-fn latexmk_needs_shell_escape(source: &str) -> bool {
-    [
-        "minted",
-        "pythontex",
-        "\\write18",
-        "\\ShellEscape",
-        "\\input{|",
-        "{svg}",
-    ]
-    .iter()
-    .any(|needle| source.contains(needle))
-}
-
-/// Read the head of a source file for flavor/shell-escape sniffing. Bounded so
+/// Read the head of a source file for compiler-flavor sniffing. Bounded so
 /// a giant generated file cannot balloon compile preparation.
 fn read_source_head(path: &Path) -> String {
     use std::io::Read;
@@ -400,24 +385,151 @@ fn read_source_head(path: &Path) -> String {
     String::from_utf8_lossy(&bytes).into_owned()
 }
 
+fn denied_shell_escape_feature(source: &str, log: &str) -> Option<&'static str> {
+    let source = source.to_ascii_lowercase();
+    let log = log.to_ascii_lowercase();
+    if ["minted", "inputminted", "mintinline", "pygmentize"]
+        .iter()
+        .any(|needle| source.contains(needle) || log.contains(needle))
+    {
+        return Some("minted syntax highlighting");
+    }
+    if ["pythontex", "pycode", "pysub", "pygment"]
+        .iter()
+        .any(|needle| source.contains(needle) || log.contains(needle))
+    {
+        return Some("PythonTeX");
+    }
+    if ["\\write18", "\\shellescape", "\\input{|", "includesvg"]
+        .iter()
+        .any(|needle| source.contains(needle))
+        || ["shell escape", "shell-escape", "runsystem"]
+            .iter()
+            .any(|needle| log.contains(needle))
+    {
+        return Some("a LaTeX shell command");
+    }
+    None
+}
+
+fn pythontex_job_present(log: &str, code_path: &Path) -> bool {
+    let metadata = match std::fs::symlink_metadata(code_path) {
+        Ok(metadata) => metadata,
+        Err(_) => return false,
+    };
+    if !metadata.is_file() || metadata.file_type().is_symlink() {
+        return false;
+    }
+    let log = log.to_ascii_lowercase();
+    log.contains("pythontex.sty")
+        || log.contains("package pythontex")
+        || log.contains("run pythontex")
+}
+
+fn clear_pythontex_code_artifact(out_dir: &Path, stem: &str) -> Result<PathBuf, String> {
+    let path = out_dir.join(format!("{stem}.pytxcode"));
+    match std::fs::symlink_metadata(&path) {
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(path),
+        Err(error) => Err(format!("failed to inspect stale PythonTeX code: {error}")),
+        Ok(metadata) if metadata.is_dir() && !metadata.file_type().is_symlink() => {
+            Err("PythonTeX code artifact is unexpectedly a directory".into())
+        }
+        Ok(_) => {
+            std::fs::remove_file(&path)
+                .map_err(|error| format!("failed to clear stale PythonTeX code: {error}"))?;
+            Ok(path)
+        }
+    }
+}
+
+fn pythontex_tool_for_latexmk(latexmk: &Path) -> Option<PathBuf> {
+    let candidate = latexmk.parent()?.join(crate::tex_distro::exe("pythontex"));
+    candidate.is_file().then_some(candidate)
+}
+
+fn pythontex_job_arg(project_dir: &Path, out_dir: &Path, stem: &str) -> Result<String, String> {
+    let relative = out_dir
+        .strip_prefix(project_dir)
+        .map_err(|_| "PythonTeX output must stay inside the project directory".to_string())?;
+    Ok(relative.join(stem).to_string_lossy().into_owned())
+}
+
+fn pythontex_args(project_dir: &Path, out_dir: &Path, stem: &str) -> Result<Vec<String>, String> {
+    Ok(vec![
+        "--error-exit-code".into(),
+        "true".into(),
+        pythontex_job_arg(project_dir, out_dir, stem)?,
+    ])
+}
+
+fn validate_latexmk_path_characters(path: &str) -> Result<(), String> {
+    let safe = path.chars().all(|character| {
+        if !character.is_ascii() {
+            return !character.is_control();
+        }
+        character.is_ascii_alphanumeric()
+            || matches!(
+                character,
+                '/' | '.' | '-' | '_' | ' ' | '(' | ')' | '[' | ']' | ',' | '+' | '=' | '@'
+            )
+    });
+    if safe {
+        Ok(())
+    } else {
+        Err(
+            "latexmk paths may contain letters, numbers, spaces, and portable filename punctuation only"
+                .into(),
+        )
+    }
+}
+
+fn latexmk_relative_path_arg(path: &Path) -> Result<String, String> {
+    if path.as_os_str().is_empty()
+        || path.is_absolute()
+        || path.components().any(|component| {
+            matches!(
+                component,
+                std::path::Component::ParentDir
+                    | std::path::Component::RootDir
+                    | std::path::Component::Prefix(_)
+            )
+        })
+    {
+        return Err("latexmk paths must stay project-relative".into());
+    }
+    let value = path.to_string_lossy().replace('\\', "/");
+    validate_latexmk_path_characters(&value)?;
+    // latexmk does not support a `--` option terminator. Prefix every entry,
+    // including ordinary names, so a valid file such as
+    // `-pdflatex=malicious.tex` can never be parsed as a compiler override.
+    Ok(format!("./{value}"))
+}
+
 fn latexmk_args(
-    out_dir: &str,
-    entry: &str,
+    out_dir: &Path,
+    entry: &Path,
     stem: &str,
     flavor: LatexmkFlavor,
-    shell_escape: bool,
     options: CompileOptions,
-) -> Vec<String> {
+) -> Result<Vec<String>, String> {
+    let out_dir = latexmk_relative_path_arg(out_dir)?;
     let mut args: Vec<String> = vec![
+        // A project-local .latexmkrc is executable Perl. Never load rc files
+        // from an imported project (or from ambient user/system state).
+        "-norc".into(),
+        // Oleafly compiles on the host rather than in Overleaf's container.
+        // Command execution is enabled only by explicit per-project consent.
+        if options.allow_shell_escape {
+            "-shell-escape".into()
+        } else {
+            "-no-shell-escape".into()
+        },
         flavor.as_arg().into(),
         "-interaction=nonstopmode".into(),
         "-synctex=1".into(),
         format!("-outdir={out_dir}"),
         format!("-jobname={stem}"),
     ];
-    if shell_escape {
-        args.push("-shell-escape".into());
-    }
     if options.halt_on_error {
         args.push("-halt-on-error".into());
     } else {
@@ -425,10 +537,17 @@ fn latexmk_args(
         // continue-on-errors parity).
         args.push("-f".into());
     }
+    if flavor == LatexmkFlavor::Lualatex && !options.allow_shell_escape {
+        // Keep the network surface explicitly disabled. LuaTeX also gates
+        // native library loading and process execution on shell escape. Its
+        // stronger `--safer` flag cannot be used with LaTeX: luaotfload
+        // deliberately aborts whenever that flag is present.
+        args.push("-latexoption=--nosocket".into());
+    }
     // `options.fast` is intentionally ignored: deciding how many passes to run
     // is latexmk's whole job, and `-outdir` reuse already makes warm runs fast.
-    args.push(entry.into());
-    args
+    args.push(latexmk_relative_path_arg(entry)?);
+    Ok(args)
 }
 
 impl DocumentEngine for LatexmkEngine {
@@ -489,6 +608,13 @@ impl DocumentEngine for LatexmkEngine {
              this project back to the built-in Tectonic engine."
                 .to_string()
         })?;
+        let resolved_latexmk = latexmk.canonicalize().unwrap_or_else(|_| latexmk.clone());
+        let resolved_project = project_dir
+            .canonicalize()
+            .unwrap_or_else(|_| project_dir.to_path_buf());
+        if resolved_latexmk.starts_with(&resolved_project) {
+            return Err("refusing to run a project-local latexmk executable".into());
+        }
         // No generated wrapper: latexmk drives the real main document directly so
         // Biber, makeindex, and multi-pass logic all see the project's own jobs.
         // `-jobname` keeps every artifact on the same paths Tectonic uses.
@@ -504,16 +630,14 @@ impl DocumentEngine for LatexmkEngine {
         };
         let source_head = read_source_head(&input_path);
         let flavor = resolve_latexmk_flavor(options.latex_flavor, &source_head);
-        let shell_escape = latexmk_needs_shell_escape(&source_head);
+        let entry_path = input_path
+            .strip_prefix(project_dir)
+            .map_err(|_| "latexmk input must stay inside the project directory".to_string())?;
+        let relative_out_dir = out_dir
+            .strip_prefix(project_dir)
+            .map_err(|_| "latexmk output must stay inside the project directory".to_string())?;
         let artifacts = self.artifacts(out_dir, target);
-        let mut args = latexmk_args(
-            &out_dir.to_string_lossy(),
-            &input_path.to_string_lossy(),
-            stem,
-            flavor,
-            shell_escape,
-            options,
-        );
+        let mut args = latexmk_args(relative_out_dir, entry_path, stem, flavor, options)?;
         // latexmk's dependency database is not portable across TeX
         // distributions: after a distro switch it can report "Nothing to do"
         // while replaying the previous run's error. Force one full rebuild
@@ -536,19 +660,38 @@ impl DocumentEngine for LatexmkEngine {
     }
 }
 
-/// True when this build directory was last driven by a different latexmk
-/// binary (or never by latexmk). Records the current binary path in a marker
-/// file so the forced rebuild happens exactly once per switch.
+/// True when this build directory was last *successfully* driven by a different
+/// latexmk binary (or never by latexmk). This probe is deliberately read-only:
+/// recording before process spawn/success could suppress the required rebuild
+/// after a failed or cancelled distribution switch.
 fn latexmk_binary_changed(out_dir: &Path, latexmk: &Path) -> bool {
+    const MAX_MARKER_BYTES: u64 = 64 * 1024;
     let marker = out_dir.join(".oleafly-latexmk");
-    let current = latexmk.to_string_lossy();
-    let previous = std::fs::read_to_string(&marker).unwrap_or_default();
-    if previous.trim() == current {
-        return false;
+    let resolved = std::fs::canonicalize(latexmk).unwrap_or_else(|_| latexmk.to_owned());
+    let current = resolved.to_string_lossy();
+    let previous = std::fs::symlink_metadata(&marker)
+        .ok()
+        .filter(|metadata| {
+            metadata.is_file()
+                && !metadata.file_type().is_symlink()
+                && metadata.len() <= MAX_MARKER_BYTES
+        })
+        .and_then(|_| std::fs::read_to_string(&marker).ok())
+        .unwrap_or_default();
+    previous.trim() != current
+}
+
+/// Publish the successful compiler identity without following a crafted marker
+/// symlink. Failure is intentionally best-effort: it only causes another safe
+/// `-gg` rebuild on the next compile.
+fn record_latexmk_binary(out_dir: &Path, latexmk: &Path) {
+    let resolved = std::fs::canonicalize(latexmk).unwrap_or_else(|_| latexmk.to_owned());
+    if std::fs::create_dir_all(out_dir).is_ok() {
+        let _ = crate::sandbox::atomic_write(
+            &out_dir.join(".oleafly-latexmk"),
+            resolved.to_string_lossy().as_bytes(),
+        );
     }
-    let _ = std::fs::create_dir_all(out_dir);
-    let _ = std::fs::write(&marker, current.as_bytes());
-    true
 }
 
 fn validate_latex_main_document(path: &str) -> Result<(), String> {
@@ -929,6 +1072,7 @@ pub fn descriptor_for(
             .collect(),
         capabilities: engine.capabilities(),
         tex_flavor: None,
+        allow_shell_escape: false,
     })
 }
 
@@ -987,6 +1131,9 @@ pub struct CompileOptions {
     /// The project's pinned latexmk compiler; None means auto-detect from the
     /// source. Ignored by every other engine.
     pub latex_flavor: Option<LatexmkFlavor>,
+    /// Explicit per-project consent for system TeX to execute host commands.
+    /// Ignored by every engine except latexmk and false for isolated AI builds.
+    pub allow_shell_escape: bool,
 }
 
 pub struct CompileRequest<'a> {
@@ -1053,7 +1200,43 @@ pub async fn prepare_compile_spec(
     .map_err(|error| format!("failed to prepare compiler command: {error}"))?
 }
 
+/// Owns the stop request for one complete compile, including any Biber and
+/// retry passes. Error returns must clear it too or the next compile can be
+/// killed by a stale request.
+struct CompileCancelScope<'a> {
+    cancel: Option<&'a crate::state::CompileCancel>,
+    active: bool,
+}
+
+impl<'a> CompileCancelScope<'a> {
+    fn new(cancel: Option<&'a crate::state::CompileCancel>) -> Self {
+        if let Some(cancel) = cancel {
+            cancel.begin();
+        }
+        Self {
+            cancel,
+            active: true,
+        }
+    }
+
+    fn finish(mut self) -> bool {
+        self.active = false;
+        self.cancel.is_some_and(crate::state::CompileCancel::detach)
+    }
+}
+
+impl Drop for CompileCancelScope<'_> {
+    fn drop(&mut self) {
+        if self.active {
+            if let Some(cancel) = self.cancel {
+                let _ = cancel.detach();
+            }
+        }
+    }
+}
+
 pub async fn compile(request: CompileRequest<'_>) -> Result<CompileResult, String> {
+    let cancel_scope = CompileCancelScope::new(request.cancel);
     let capabilities = request.engine.capabilities();
     if request.options.offline && !capabilities.supports_offline {
         return Err(format!(
@@ -1082,11 +1265,28 @@ pub async fn compile(request: CompileRequest<'_>) -> Result<CompileResult, Strin
             .await?
         }
     };
+    // Keep host TeX package/runtime state stable across the whole workflow,
+    // including PythonTeX/retry passes and other Oleafly processes. Bundled
+    // Tectonic/Typst and Pandoc do not share mutable TeX distribution state.
+    let _tex_runtime = if request.engine.id() == DocumentEngineId::Latexmk {
+        Some(crate::latex_engine::acquire_tex_runtime_read()?)
+    } else {
+        None
+    };
     let cleanup_artifacts = spec.artifacts.clone();
     let retained_stale =
         tokio::task::spawn_blocking(move || clear_stale_artifacts(&cleanup_artifacts))
             .await
             .map_err(|error| format!("failed to clear compiler artifacts: {error}"))?;
+    if request.engine.id() == DocumentEngineId::Latexmk
+        && matches!(request.target, CompileTarget::Main { .. })
+        && request.options.allow_shell_escape
+    {
+        // A helper may execute only code emitted by this compile. Removing the
+        // prior program before latexmk starts makes any later regular file a
+        // current-run artifact; a failed/non-PythonTeX pass cannot replay it.
+        clear_pythontex_code_artifact(&spec.artifacts.output_dir, crate::paths::ENTRY_STEM)?;
+    }
     if let EngineInput::Generated { path, content } = &spec.input {
         std::fs::write(path, content)
             .map_err(|e| format!("failed to write engine entry {}: {e}", path.display()))?;
@@ -1227,9 +1427,130 @@ pub async fn compile(request: CompileRequest<'_>) -> Result<CompileResult, Strin
         }
     }
 
-    let stopped = request
-        .cancel
-        .is_some_and(crate::state::CompileCancel::detach);
+    // PythonTeX is a three-stage workflow: TeX emits a .pytxcode program,
+    // pythontex executes it, then TeX consumes the generated macros. We never
+    // load project .latexmkrc files (executable Perl), so orchestrate that one
+    // helper explicitly through the same timeout/cancellation/process-tree
+    // supervisor as the compiler. It is reachable only after device-local
+    // shell-command consent for this project.
+    let mut pythontex_notes = String::new();
+    let mut pythontex_failure: Option<String> = None;
+    if request.engine.id() == DocumentEngineId::Latexmk
+        && matches!(request.target, CompileTarget::Main { .. })
+        && request.options.allow_shell_escape
+        && exit_code == Some(0)
+    {
+        let stem = crate::paths::ENTRY_STEM;
+        let code_path = spec.artifacts.output_dir.join(format!("{stem}.pytxcode"));
+        let initial_log = spec
+            .artifacts
+            .log
+            .as_ref()
+            .and_then(|path| read_log_bounded(path).ok())
+            .unwrap_or_else(|| stdout_buf.clone());
+        if pythontex_job_present(&initial_log, &code_path) {
+            let latexmk = match &spec.executable {
+                EngineExecutable::ExternalPath(path) => path,
+                EngineExecutable::BundledSidecar(_) => {
+                    return Err("latexmk unexpectedly resolved to a bundled compiler".into());
+                }
+            };
+            match pythontex_tool_for_latexmk(latexmk) {
+                None => {
+                    let message = format!(
+                        "PythonTeX is required, but the active TeX distribution ({}) does not provide its pythontex helper.",
+                        latexmk.display()
+                    );
+                    append_bounded(
+                        &mut pythontex_notes,
+                        format!("\n[Oleafly] {message}\n").as_bytes(),
+                    );
+                    pythontex_failure = Some(message);
+                    exit_code = Some(-1);
+                }
+                Some(pythontex) => {
+                    let helper_args =
+                        pythontex_args(&spec.working_dir, &spec.artifacts.output_dir, stem)?;
+                    append_bounded(
+                        &mut pythontex_notes,
+                        format!(
+                            "\n[Oleafly] Running PythonTeX ({}) on {stem}...\n",
+                            pythontex.display()
+                        )
+                        .as_bytes(),
+                    );
+                    match run_supervised_process(
+                        &pythontex,
+                        &helper_args,
+                        &spec.working_dir,
+                        Some((request.app.clone(), request.log_event.to_owned())),
+                        COMPILE_TIMEOUT,
+                        request.cancel,
+                    )
+                    .await
+                    {
+                        Ok((helper_log, helper_code)) => {
+                            append_bounded(&mut pythontex_notes, helper_log.as_bytes());
+                            if helper_code == Some(0) {
+                                append_bounded(
+                                    &mut pythontex_notes,
+                                    b"\n[Oleafly] Re-running latexmk after PythonTeX...\n",
+                                );
+                                match run_external(
+                                    request.app,
+                                    latexmk,
+                                    &spec.args,
+                                    &spec.working_dir,
+                                    request.log_event,
+                                    request.cancel,
+                                )
+                                .await
+                                {
+                                    Ok((retry_log, retry_code)) => {
+                                        stdout_buf = retry_log;
+                                        exit_code = retry_code;
+                                    }
+                                    Err(error) => {
+                                        let message = format!(
+                                            "failed to re-run latexmk after PythonTeX: {error}"
+                                        );
+                                        append_bounded(
+                                            &mut pythontex_notes,
+                                            format!("\n[Oleafly] {message}\n").as_bytes(),
+                                        );
+                                        pythontex_failure = Some(message);
+                                        exit_code = Some(-1);
+                                    }
+                                }
+                            } else {
+                                let message = format!(
+                                    "PythonTeX helper failed with exit code {}.",
+                                    helper_code.unwrap_or(-1)
+                                );
+                                append_bounded(
+                                    &mut pythontex_notes,
+                                    format!("\n[Oleafly] {message}\n").as_bytes(),
+                                );
+                                pythontex_failure = Some(message);
+                                exit_code = helper_code.or(Some(-1));
+                            }
+                        }
+                        Err(error) => {
+                            let message = format!("failed to run PythonTeX helper: {error}");
+                            append_bounded(
+                                &mut pythontex_notes,
+                                format!("\n[Oleafly] {message}\n").as_bytes(),
+                            );
+                            pythontex_failure = Some(message);
+                            exit_code = Some(-1);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let stopped = cancel_scope.finish();
     let mut log = spec
         .artifacts
         .log
@@ -1238,6 +1559,9 @@ pub async fn compile(request: CompileRequest<'_>) -> Result<CompileResult, Strin
         .unwrap_or(stdout_buf);
     if !biber_notes.is_empty() {
         append_bounded(&mut log, biber_notes.as_bytes());
+    }
+    if !pythontex_notes.is_empty() {
+        append_bounded(&mut log, pythontex_notes.as_bytes());
     }
     // If bibliography is still incomplete after recovery, surface a clear note.
     if request.engine.id() == DocumentEngineId::Latex
@@ -1272,14 +1596,60 @@ pub async fn compile(request: CompileRequest<'_>) -> Result<CompileResult, Strin
         None
     };
     let has_pdf = output_id.is_some();
-    let errors = request.engine.parse_errors(&log);
+    let mut errors = request.engine.parse_errors(&log);
+    if !stopped {
+        if let Some(message) = pythontex_failure {
+            errors.push(CompileError {
+                line: None,
+                file: None,
+                message,
+                kind: "error".into(),
+                explanation: Some(
+                    "Install PythonTeX in the same TeX distribution that provides latexmk, or disable PythonTeX in this document. PythonTeX runs project code and therefore also requires explicit shell-command consent.".into(),
+                ),
+            });
+        }
+    }
+    let initially_failed = !has_pdf
+        || exit_code.unwrap_or(-1) != 0
+        || errors.iter().any(|error| error.kind == "error");
+    if !stopped
+        && initially_failed
+        && request.engine.id() == DocumentEngineId::Latexmk
+        && !request.options.allow_shell_escape
+    {
+        let source_head = read_source_head(spec.input.path());
+        if let Some(feature) = denied_shell_escape_feature(&source_head, &log) {
+            let message = format!(
+                "{feature} needs LaTeX shell escape, but host command execution is disabled for this project."
+            );
+            let explanation = "Enable “Allow LaTeX shell commands” in this project's compiler settings only if you trust every project file. Enabling it permits arbitrary commands and persistent background programs to run on your computer. Cancellation cleanup is best-effort for programs that deliberately detach.".to_string();
+            append_bounded(
+                &mut log,
+                format!("\n[Oleafly] {message} {explanation}\n").as_bytes(),
+            );
+            errors.push(CompileError {
+                line: None,
+                file: None,
+                message,
+                kind: "error".into(),
+                explanation: Some(explanation),
+            });
+        }
+    }
     let has_reported_errors = errors.iter().any(|e| e.kind == "error");
     if stopped {
         append_bounded(&mut log, b"\nOleafly stopped the compile on request.\n");
     }
+    let ok = !stopped && has_pdf && exit_code.unwrap_or(-1) == 0 && !has_reported_errors;
+    if ok && request.engine.id() == DocumentEngineId::Latexmk {
+        if let EngineExecutable::ExternalPath(latexmk) = &spec.executable {
+            record_latexmk_binary(&spec.artifacts.output_dir, latexmk);
+        }
+    }
     Ok(CompileResult {
         stopped,
-        ok: !stopped && has_pdf && exit_code.unwrap_or(-1) == 0 && !has_reported_errors,
+        ok,
         has_pdf,
         output_id,
         output_revision: None,
@@ -1297,12 +1667,30 @@ pub async fn compile(request: CompileRequest<'_>) -> Result<CompileResult, Strin
 }
 
 const COMPILE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(300);
+const COMPILER_PIPE_CLOSE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(1);
 const MAX_LOG_BYTES: usize = 1024 * 1024;
 const MAX_EMITTED_LOG_BYTES: usize = 256 * 1024;
 const LOG_TRUNCATED: &str = "\n[Oleafly: compiler output truncated]\n";
 
+fn mark_log_truncated(output: &mut String) {
+    if output.ends_with(LOG_TRUNCATED) {
+        return;
+    }
+    let keep = MAX_LOG_BYTES.saturating_sub(LOG_TRUNCATED.len());
+    let boundary = (0..=keep.min(output.len()))
+        .rev()
+        .find(|index| output.is_char_boundary(*index))
+        .unwrap_or(0);
+    output.truncate(boundary);
+    output.push_str(LOG_TRUNCATED);
+}
+
 fn append_bounded(output: &mut String, bytes: &[u8]) {
+    if bytes.is_empty() {
+        return;
+    }
     if output.len() >= MAX_LOG_BYTES {
+        mark_log_truncated(output);
         return;
     }
     let remaining = MAX_LOG_BYTES - output.len();
@@ -1312,14 +1700,8 @@ fn append_bounded(output: &mut String, bytes: &[u8]) {
         .find(|index| text.is_char_boundary(*index))
         .unwrap_or(0);
     output.push_str(&text[..take]);
-    if text.len() > take && !output.ends_with(LOG_TRUNCATED) {
-        let keep = MAX_LOG_BYTES.saturating_sub(LOG_TRUNCATED.len());
-        let boundary = (0..=keep)
-            .rev()
-            .find(|index| output.is_char_boundary(*index))
-            .unwrap_or(0);
-        output.truncate(boundary);
-        output.push_str(LOG_TRUNCATED);
+    if text.len() > take {
+        mark_log_truncated(output);
     }
 }
 
@@ -1393,6 +1775,70 @@ fn resolve_bundled_sidecar(name: &str) -> Result<PathBuf, String> {
         .ok_or_else(|| format!("bundled sidecar not found: {}", path.display()))
 }
 
+#[derive(Default)]
+struct Utf8StreamDecoder {
+    pending: Vec<u8>,
+}
+
+impl Utf8StreamDecoder {
+    fn push(&mut self, bytes: &[u8], finish: bool) -> String {
+        self.pending.extend_from_slice(bytes);
+        let mut output = String::new();
+        let mut consumed = 0;
+        while consumed < self.pending.len() {
+            match std::str::from_utf8(&self.pending[consumed..]) {
+                Ok(valid) => {
+                    output.push_str(valid);
+                    consumed = self.pending.len();
+                }
+                Err(error) => {
+                    let valid_end = consumed + error.valid_up_to();
+                    output.push_str(
+                        std::str::from_utf8(&self.pending[consumed..valid_end])
+                            .expect("valid_up_to must identify valid UTF-8"),
+                    );
+                    consumed = valid_end;
+                    match error.error_len() {
+                        Some(invalid_len) => {
+                            output.push('\u{fffd}');
+                            consumed += invalid_len;
+                        }
+                        None if finish => {
+                            output.push_str(&String::from_utf8_lossy(&self.pending[consumed..]));
+                            consumed = self.pending.len();
+                        }
+                        None => break,
+                    }
+                }
+            }
+        }
+        if consumed > 0 {
+            self.pending.drain(..consumed);
+        }
+        output
+    }
+}
+
+fn emit_and_collect_compiler_text(
+    text: &str,
+    app: Option<&tauri::AppHandle>,
+    event: &str,
+    emitted: &std::sync::atomic::AtomicUsize,
+    collected: &mut String,
+) {
+    if let Some(app) = app {
+        let claimed = claim_emit_budget(emitted, text.len());
+        let boundary = (0..=claimed.min(text.len()))
+            .rev()
+            .find(|index| text.is_char_boundary(*index))
+            .unwrap_or(0);
+        if boundary > 0 {
+            let _ = app.emit(event, &text[..boundary]);
+        }
+    }
+    append_bounded(collected, text.as_bytes());
+}
+
 async fn pump_external_output<R>(
     mut reader: R,
     app: Option<tauri::AppHandle>,
@@ -1404,19 +1850,30 @@ where
 {
     use tokio::io::AsyncReadExt;
     let mut collected = String::new();
+    let mut decoder = Utf8StreamDecoder::default();
     let mut chunk = [0_u8; 8192];
     loop {
         match reader.read(&mut chunk).await {
-            Ok(0) | Err(_) => break,
+            Ok(0) | Err(_) => {
+                let tail = decoder.push(&[], true);
+                emit_and_collect_compiler_text(
+                    &tail,
+                    app.as_ref(),
+                    &log_event,
+                    &emitted,
+                    &mut collected,
+                );
+                break;
+            }
             Ok(read) => {
-                if let Some(app) = &app {
-                    let emit_len = claim_emit_budget(&emitted, read);
-                    if emit_len > 0 {
-                        let text = String::from_utf8_lossy(&chunk[..emit_len]);
-                        let _ = app.emit(&log_event, text.as_ref());
-                    }
-                }
-                append_bounded(&mut collected, &chunk[..read]);
+                let text = decoder.push(&chunk[..read], false);
+                emit_and_collect_compiler_text(
+                    &text,
+                    app.as_ref(),
+                    &log_event,
+                    &emitted,
+                    &mut collected,
+                );
             }
         }
     }
@@ -1450,6 +1907,94 @@ pub async fn run_supervised_external(
     run_supervised_process(path, args, working_dir, None, COMPILE_TIMEOUT, None).await
 }
 
+/// Run an external compiler with the same timeout, bounded logs, process-tree
+/// isolation, restricted TeX environment, and user-cancellation lane as normal
+/// document compilation.
+pub(crate) async fn run_supervised_external_cancellable(
+    path: &Path,
+    args: &[String],
+    working_dir: &Path,
+    cancel: &crate::state::CompileCancel,
+) -> Result<(String, Option<i32>), String> {
+    run_supervised_process(path, args, working_dir, None, COMPILE_TIMEOUT, Some(cancel)).await
+}
+
+/// Keeps the cancellation registry aligned with the lifetime of one actual
+/// child. The stop-request bit deliberately survives between children so a
+/// click between TeX/Biber passes reaches the next spawn.
+struct CompileChildRegistration<'a> {
+    cancel: Option<&'a crate::state::CompileCancel>,
+    pid: Option<u32>,
+}
+
+impl Drop for CompileChildRegistration<'_> {
+    fn drop(&mut self) {
+        if let (Some(cancel), Some(pid)) = (self.cancel, self.pid) {
+            cancel.unregister(pid);
+        }
+    }
+}
+
+async fn drain_output_task(
+    mut task: tokio::task::JoinHandle<String>,
+    timeout: std::time::Duration,
+) -> Result<String, ()> {
+    match tokio::time::timeout(timeout, &mut task).await {
+        Ok(result) => result.map_err(|_| ()),
+        Err(_) => {
+            // Dropping JoinHandle detaches the task. Explicitly abort and await
+            // it so the pipe reader/fd cannot leak after a descendant keeps the
+            // inherited write end open.
+            task.abort();
+            let _ = task.await;
+            Err(())
+        }
+    }
+}
+
+async fn drain_compiler_output(
+    stdout: tokio::task::JoinHandle<String>,
+    stderr: tokio::task::JoinHandle<String>,
+    process_group: Option<u32>,
+) -> (String, bool) {
+    let mut stalled = false;
+    let mut log = match drain_output_task(stdout, COMPILER_PIPE_CLOSE_TIMEOUT).await {
+        Ok(output) => output,
+        Err(()) => {
+            stalled = true;
+            if let Some(pid) = process_group {
+                terminate_process_tree(pid).await;
+            }
+            String::new()
+        }
+    };
+    match drain_output_task(stderr, COMPILER_PIPE_CLOSE_TIMEOUT).await {
+        Ok(output) => append_bounded(&mut log, output.as_bytes()),
+        Err(()) => {
+            if !stalled {
+                if let Some(pid) = process_group {
+                    terminate_process_tree(pid).await;
+                }
+            }
+            stalled = true;
+        }
+    }
+    (log, stalled)
+}
+
+fn is_luatex_invocation(path: &Path, args: &[String]) -> bool {
+    args.iter().any(|argument| argument == "-lualatex")
+        || path
+            .file_stem()
+            .and_then(|name| name.to_str())
+            .is_some_and(|name| {
+                matches!(
+                    name.to_ascii_lowercase().as_str(),
+                    "lualatex" | "luatex" | "luahbtex"
+                )
+            })
+}
+
 async fn run_supervised_process(
     path: &Path,
     args: &[String],
@@ -1459,6 +2004,7 @@ async fn run_supervised_process(
     cancel: Option<&crate::state::CompileCancel>,
 ) -> Result<(String, Option<i32>), String> {
     use std::process::Stdio;
+    let is_luatex = is_luatex_invocation(path, args);
     let mut command = tokio::process::Command::new(path);
     command
         .no_console()
@@ -1466,18 +2012,74 @@ async fn run_supervised_process(
         .current_dir(working_dir)
         // TeX bin dirs + tectonic-biber for all supervised children (LaTeX primary;
         // Typst/others ignore extra PATH entries that are not present or unused).
-        .env("PATH", crate::biber_toolchain::compile_path_env())
+        .env(
+            "PATH",
+            crate::biber_toolchain::compile_path_env_for(path, working_dir),
+        )
+        // Windows normally searches the child working directory before PATH.
+        // An imported `pdflatex.exe`/`biber.exe` must never shadow the selected
+        // TeX distribution when latexmk launches helpers by bare name.
+        .env("NoDefaultCurrentDirectoryInExePath", "1")
+        // Defense in depth for distributions that still honor Kpathsea's
+        // paranoid modes. This is not a filesystem sandbox (notably TeX Live
+        // 2026 and MiKTeX do not provide the same read boundary); system TeX
+        // must therefore be used only with trusted projects. The shell setting
+        // is inherited by subprocesses on distributions that honor it.
+        .env("openout_any", "p");
+    // `openin_any=p` breaks a normal LuaLaTeX bootstrap because luaotfload
+    // opens Kpathsea-resolved system data through Lua's io library. Other TeX
+    // engines retain this best-effort read restriction; the UI treats system
+    // TeX as trusted-project-only because it is not a real sandbox on every
+    // distribution regardless.
+    if !is_luatex {
+        command.env("openin_any", "p");
+    }
+    if !args.iter().any(|argument| argument == "-shell-escape") {
+        command.env("shell_escape", "f");
+    }
+    command
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
+        .stderr(Stdio::piped())
+        .kill_on_drop(true);
     isolate_process_tree(&mut command);
     let mut child = command
         .spawn()
         .map_err(|e| format!("failed to spawn {}: {e}", path.display()))?;
-    if let (Some(cancel), Some(pid)) = (cancel, child.id()) {
+    let child_pid = match child.id() {
+        Some(pid) => pid,
+        None => {
+            let _ = child.start_kill();
+            return Err(format!(
+                "spawned compiler {} did not expose a process id",
+                path.display()
+            ));
+        }
+    };
+    let _containment = match crate::proc::contain_process_tree(child_pid) {
+        Ok(containment) => containment,
+        Err(error) => {
+            let _ = tokio::time::timeout(
+                COMPILER_PIPE_CLOSE_TIMEOUT,
+                terminate_process_tree(child_pid),
+            )
+            .await;
+            let _ = child.start_kill();
+            let _ = tokio::time::timeout(COMPILER_PIPE_CLOSE_TIMEOUT, child.wait()).await;
+            return Err(format!(
+                "failed to contain compiler process tree for {}: {error}",
+                path.display()
+            ));
+        }
+    };
+    let _registration = CompileChildRegistration {
+        cancel,
+        pid: Some(child_pid),
+    };
+    if let Some(cancel) = cancel {
         // A stop can land between the request and the spawn. `attach` reports
         // that case so the child we just started is ended immediately.
-        if !cancel.attach(pid) {
-            terminate_process_tree(pid).await;
+        if !cancel.attach(child_pid) {
+            terminate_process_tree(child_pid).await;
         }
     }
     let stdout = child.stdout.take().ok_or("stdout was not captured")?;
@@ -1497,17 +2099,19 @@ async fn run_supervised_process(
         emitted.clone(),
     ));
     let code = match tokio::time::timeout(timeout, child.wait()).await {
-        Ok(status) => status
-            .map_err(|e| format!("failed waiting for {}: {e}", path.display()))?
-            .code(),
+        Ok(Ok(status)) => status.code(),
+        Ok(Err(error)) => {
+            terminate_process_tree(child_pid).await;
+            let _ = child.start_kill();
+            let _ = tokio::time::timeout(COMPILER_PIPE_CLOSE_TIMEOUT, child.wait()).await;
+            let _ = drain_compiler_output(out, err, Some(child_pid)).await;
+            return Err(format!("failed waiting for {}: {error}", path.display()));
+        }
         Err(_) => {
-            if let Some(pid) = child.id() {
-                terminate_process_tree(pid).await;
-            }
+            terminate_process_tree(child_pid).await;
             let _ = child.kill().await;
             let _ = child.wait().await;
-            let mut log = out.await.unwrap_or_default();
-            append_bounded(&mut log, err.await.unwrap_or_default().as_bytes());
+            let (mut log, pipes_stalled) = drain_compiler_output(out, err, Some(child_pid)).await;
             let message = format!(
                 "error: process timed out after {:.3}s and was stopped",
                 timeout.as_secs_f64()
@@ -1520,11 +2124,23 @@ async fn run_supervised_process(
                 }
             }
             append_bounded(&mut log, message.as_bytes());
+            if pipes_stalled {
+                append_bounded(
+                    &mut log,
+                    b"\nerror: compiler descendants kept output pipes open and were stopped",
+                );
+            }
             return Ok((log, Some(-1)));
         }
     };
-    let mut log = out.await.unwrap_or_default();
-    append_bounded(&mut log, err.await.unwrap_or_default().as_bytes());
+    let (mut log, pipes_stalled) = drain_compiler_output(out, err, Some(child_pid)).await;
+    if pipes_stalled {
+        append_bounded(
+            &mut log,
+            b"\nerror: compiler descendants kept output pipes open and were stopped",
+        );
+        return Ok((log, Some(-1)));
+    }
     Ok((log, code))
 }
 
@@ -1888,6 +2504,46 @@ mod tests {
     use super::*;
 
     #[test]
+    fn compiler_output_utf8_decoder_preserves_split_codepoints() {
+        let mut decoder = Utf8StreamDecoder::default();
+        assert_eq!(decoder.push(b"prefix \xf0\x9f", false), "prefix ");
+        assert_eq!(decoder.push(b"\x98\x80 suffix", false), "😀 suffix");
+        assert_eq!(decoder.push(&[], true), "");
+
+        let mut truncated = Utf8StreamDecoder::default();
+        assert_eq!(truncated.push(b"bad \xe2\x82", false), "bad ");
+        assert_eq!(truncated.push(&[], true), "�");
+    }
+
+    #[tokio::test]
+    async fn timed_out_output_drain_aborts_and_drops_the_reader_task() {
+        struct DropFlag(std::sync::Arc<std::sync::atomic::AtomicBool>);
+        impl Drop for DropFlag {
+            fn drop(&mut self) {
+                self.0.store(true, std::sync::atomic::Ordering::SeqCst);
+            }
+        }
+
+        let dropped = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let (started_tx, started_rx) = tokio::sync::oneshot::channel();
+        let task_dropped = dropped.clone();
+        let task = tokio::spawn(async move {
+            let _guard = DropFlag(task_dropped);
+            let _ = started_tx.send(());
+            std::future::pending::<()>().await;
+            String::new()
+        });
+        started_rx.await.unwrap();
+
+        assert!(
+            drain_output_task(task, std::time::Duration::from_millis(10))
+                .await
+                .is_err()
+        );
+        assert!(dropped.load(std::sync::atomic::Ordering::SeqCst));
+    }
+
+    #[test]
     fn tex_errors_get_plain_english_explanations() {
         let log = "! Undefined control sequence.\nl.42 \\foo\n";
         let errors = parse_tex_log_errors(log);
@@ -2010,6 +2666,14 @@ mod tests {
         let length = output.len();
         append_bounded(&mut output, b"ignored");
         assert_eq!(output.len(), length);
+
+        // The streaming reader naturally lands exactly on the byte limit
+        // before it observes the next chunk. That next chunk must still turn
+        // the retained tail into an explicit truncation marker.
+        let mut exact = "x".repeat(MAX_LOG_BYTES);
+        append_bounded(&mut exact, b"overflow");
+        assert_eq!(exact.len(), MAX_LOG_BYTES);
+        assert!(exact.ends_with(LOG_TRUNCATED));
     }
 
     #[test]
@@ -2067,6 +2731,37 @@ mod tests {
         let _ = std::fs::remove_dir_all(root);
     }
 
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn exited_compiler_cannot_hang_on_inherited_output_pipes() {
+        let root = std::env::temp_dir().join(format!(
+            "oleafly-inherited-pipes-{}-{}",
+            std::process::id(),
+            rand::random::<u64>()
+        ));
+        std::fs::create_dir_all(&root).unwrap();
+        let marker = root.join("descendant-survived");
+        let script = format!("(sleep 1.6; touch '{}') & exit 0", marker.display());
+        let started = std::time::Instant::now();
+        let (log, code) = run_supervised_process(
+            Path::new("/bin/sh"),
+            &["-c".into(), script],
+            &root,
+            None,
+            std::time::Duration::from_secs(5),
+            None,
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(code, Some(-1));
+        assert!(log.contains("kept output pipes open"), "{log}");
+        assert!(started.elapsed() < std::time::Duration::from_secs(3));
+        tokio::time::sleep(std::time::Duration::from_millis(800)).await;
+        assert!(!marker.exists(), "the inherited-pipe descendant survived");
+        let _ = std::fs::remove_dir_all(root);
+    }
+
     #[cfg(windows)]
     #[tokio::test]
     async fn timeout_terminates_windows_grandchild_tree() {
@@ -2117,6 +2812,7 @@ mod tests {
                 "source_format": "latex",
                 "main_document": "main.ltx",
                 "source_extensions": ["tex", "ltx", "latex"],
+                "allow_shell_escape": false,
                 "capabilities": {
                     "produces_pdf": true,
                     "supports_synctex": true,
@@ -2322,6 +3018,7 @@ mod tests {
             fast: true,
             halt_on_error: true,
             latex_flavor: None,
+            allow_shell_escape: false,
         });
         assert!(args.last().unwrap().ends_with(crate::paths::ENTRY_TEX));
         assert_eq!(&args[..2], ["-X", "compile"]);
@@ -2330,6 +3027,7 @@ mod tests {
     #[test]
     fn a_stop_landing_before_the_spawn_still_reaches_the_child() {
         let cancel = crate::state::CompileCancel::default();
+        cancel.begin();
         assert_eq!(cancel.request(), None, "no compiler is running yet");
         assert!(
             !cancel.attach(4242),
@@ -2342,9 +3040,55 @@ mod tests {
     #[test]
     fn a_stop_during_a_compile_returns_the_running_pid() {
         let cancel = crate::state::CompileCancel::default();
+        cancel.begin();
         assert!(cancel.attach(99), "no stop is pending");
         assert_eq!(cancel.request(), Some(99));
         assert!(cancel.detach());
+    }
+
+    #[test]
+    fn a_finished_child_does_not_leave_a_stale_pid_between_compile_passes() {
+        let cancel = crate::state::CompileCancel::default();
+        cancel.begin();
+        assert!(cancel.attach(99));
+        cancel.unregister(99);
+        assert_eq!(
+            cancel.request(),
+            None,
+            "a finished process must no longer be targeted"
+        );
+        assert!(
+            !cancel.attach(100),
+            "the pending stop still reaches the next pass"
+        );
+        cancel.unregister(100);
+        assert!(cancel.detach());
+    }
+
+    #[test]
+    fn compile_cancel_scope_clears_pending_stop_on_error_exit() {
+        let cancel = crate::state::CompileCancel::default();
+        {
+            let _scope = CompileCancelScope::new(Some(&cancel));
+            assert_eq!(cancel.request(), None);
+        }
+        cancel.begin();
+        assert!(
+            cancel.attach(101),
+            "an error from the previous compile must not stop the next one"
+        );
+        cancel.unregister(101);
+        assert!(!cancel.detach());
+    }
+
+    #[test]
+    fn an_idle_stop_cannot_poison_the_next_compile() {
+        let cancel = crate::state::CompileCancel::default();
+        assert_eq!(cancel.request(), None);
+        cancel.begin();
+        assert!(cancel.attach(202));
+        cancel.unregister(202);
+        assert!(!cancel.detach());
     }
 
     #[test]
@@ -2766,10 +3510,15 @@ mod tests {
         let mactex = Path::new("/mactex/bin/latexmk");
         // First compile in a fresh build dir: no marker yet, rebuild once.
         assert!(latexmk_binary_changed(&dir, tinytex));
-        // Same binary again: incremental.
+        // Merely probing must not mark a compiler that never completed.
+        assert!(latexmk_binary_changed(&dir, tinytex));
+        record_latexmk_binary(&dir, tinytex);
+        // Same successfully-recorded binary again: incremental.
         assert!(!latexmk_binary_changed(&dir, tinytex));
-        // Distro switch: rebuild once, then incremental again.
+        // Distro switch: rebuild until success records it, then incremental.
         assert!(latexmk_binary_changed(&dir, mactex));
+        assert!(latexmk_binary_changed(&dir, mactex));
+        record_latexmk_binary(&dir, mactex);
         assert!(!latexmk_binary_changed(&dir, mactex));
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -2809,44 +3558,226 @@ mod tests {
     }
 
     #[test]
-    fn latexmk_shell_escape_is_scoped_to_documents_that_need_it() {
-        assert!(latexmk_needs_shell_escape("\\usepackage{minted}"));
-        assert!(latexmk_needs_shell_escape("\\write18{echo hi}"));
-        assert!(latexmk_needs_shell_escape("\\usepackage{pythontex}"));
-        assert!(!latexmk_needs_shell_escape("\\documentclass{article}"));
-    }
-
-    #[test]
     fn latexmk_args_carry_engine_outdir_jobname_and_error_mode() {
         let args = latexmk_args(
-            "/build",
-            "/proj/main.tex",
+            Path::new(".oleafly/build"),
+            Path::new("main.tex"),
             crate::paths::ENTRY_STEM,
             LatexmkFlavor::Pdflatex,
-            true,
             CompileOptions::default(),
-        );
-        assert_eq!(args[0], "-pdf");
-        assert!(args.contains(&"-outdir=/build".to_string()));
+        )
+        .unwrap();
+        assert!(args.contains(&"-pdf".to_string()));
+        assert!(args.contains(&"-outdir=./.oleafly/build".to_string()));
         assert!(args.contains(&format!("-jobname={}", crate::paths::ENTRY_STEM)));
-        assert!(args.contains(&"-shell-escape".to_string()));
+        assert!(args.contains(&"-norc".to_string()));
+        assert!(args.contains(&"-no-shell-escape".to_string()));
+        assert!(!args.contains(&"-shell-escape".to_string()));
+        assert!(!args.contains(&"-latexoption=--nosocket".to_string()));
         assert!(args.contains(&"-f".to_string()));
-        assert_eq!(args.last().unwrap(), "/proj/main.tex");
+        assert_eq!(args.last().unwrap(), "./main.tex");
 
         let halt = latexmk_args(
-            "/build",
-            "main.tex",
+            Path::new(".oleafly/build"),
+            Path::new("main.tex"),
             "_figure",
             LatexmkFlavor::Xelatex,
-            false,
             CompileOptions {
                 halt_on_error: true,
                 ..Default::default()
             },
-        );
-        assert_eq!(halt[0], "-xelatex");
+        )
+        .unwrap();
+        assert!(halt.contains(&"-xelatex".to_string()));
         assert!(halt.contains(&"-halt-on-error".to_string()));
         assert!(!halt.contains(&"-f".to_string()));
         assert!(!halt.contains(&"-shell-escape".to_string()));
+
+        let trusted = latexmk_args(
+            Path::new(".oleafly/build"),
+            Path::new("main.tex"),
+            crate::paths::ENTRY_STEM,
+            LatexmkFlavor::Lualatex,
+            CompileOptions {
+                allow_shell_escape: true,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert!(trusted.contains(&"-shell-escape".to_string()));
+        assert!(!trusted.contains(&"-no-shell-escape".to_string()));
+        assert!(!trusted.contains(&"-latexoption=--nosocket".to_string()));
+        assert!(trusted.contains(&"-norc".to_string()));
+
+        let untrusted_lualatex = latexmk_args(
+            Path::new(".oleafly/build"),
+            Path::new("main.tex"),
+            crate::paths::ENTRY_STEM,
+            LatexmkFlavor::Lualatex,
+            CompileOptions::default(),
+        )
+        .unwrap();
+        assert!(untrusted_lualatex.contains(&"-no-shell-escape".to_string()));
+        assert!(untrusted_lualatex.contains(&"-latexoption=--nosocket".to_string()));
+    }
+
+    #[test]
+    fn luatex_invocation_detection_covers_latexmk_and_direct_platform_names() {
+        assert!(is_luatex_invocation(
+            Path::new("/tex/bin/latexmk"),
+            &["-lualatex".into()]
+        ));
+        assert!(is_luatex_invocation(Path::new("C:/tex/LUALATEX.EXE"), &[]));
+        assert!(is_luatex_invocation(Path::new("/tex/bin/luahbtex"), &[]));
+        assert!(!is_luatex_invocation(
+            Path::new("/tex/bin/latexmk"),
+            &["-pdf".into()]
+        ));
+    }
+
+    #[test]
+    fn latexmk_leading_dash_entry_is_forced_to_a_positional_path() {
+        let hostile = Path::new("-pdflatex=sh evil.tex");
+        let args = latexmk_args(
+            Path::new(".oleafly/build"),
+            hostile,
+            crate::paths::ENTRY_STEM,
+            LatexmkFlavor::Pdflatex,
+            CompileOptions::default(),
+        )
+        .unwrap();
+        let entry = args.last().unwrap();
+        assert!(!entry.starts_with('-'));
+        assert_eq!(entry, "./-pdflatex=sh evil.tex");
+        assert!(latexmk_args(
+            Path::new(".oleafly/build"),
+            Path::new("../outside.tex"),
+            crate::paths::ENTRY_STEM,
+            LatexmkFlavor::Pdflatex,
+            CompileOptions::default(),
+        )
+        .is_err());
+        for hostile in [
+            "paper`touch marker`.tex",
+            "paper\"; touch marker; \".tex",
+            "paper|touch marker.tex",
+            "paper's.tex",
+        ] {
+            assert!(latexmk_args(
+                Path::new(".oleafly/build"),
+                Path::new(hostile),
+                crate::paths::ENTRY_STEM,
+                LatexmkFlavor::Pdflatex,
+                CompileOptions::default(),
+            )
+            .is_err());
+        }
+    }
+
+    #[test]
+    fn pythontex_helper_is_exactly_scoped_to_a_current_project_job() {
+        let root = std::env::temp_dir().join(format!(
+            "oleafly-pythontex-helper-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let project = root.join("project");
+        let out = project.join(".oleafly/build");
+        let bin = root.join("texbin");
+        std::fs::create_dir_all(&out).unwrap();
+        std::fs::create_dir_all(&bin).unwrap();
+        let code = out.join("_oleafly_entry.pytxcode");
+        std::fs::write(&code, "stale pythontex code").unwrap();
+        assert_eq!(
+            clear_pythontex_code_artifact(&out, crate::paths::ENTRY_STEM).unwrap(),
+            code
+        );
+        assert!(!code.exists());
+        std::fs::write(&code, "current pythontex code").unwrap();
+        assert!(!pythontex_job_present("ordinary latex log", &code));
+        assert!(pythontex_job_present(
+            "(/texmf-dist/tex/latex/pythontex/pythontex.sty)",
+            &code
+        ));
+
+        let args = pythontex_args(&project, &out, crate::paths::ENTRY_STEM).unwrap();
+        assert_eq!(&args[..2], ["--error-exit-code", "true"]);
+        assert_eq!(
+            args[2],
+            Path::new(".oleafly")
+                .join("build")
+                .join(crate::paths::ENTRY_STEM)
+                .to_string_lossy()
+        );
+        assert!(pythontex_args(&project, &root.join("outside"), "job").is_err());
+
+        let latexmk = bin.join(crate::tex_distro::exe("latexmk"));
+        let pythontex = bin.join(crate::tex_distro::exe("pythontex"));
+        std::fs::write(&latexmk, "latexmk").unwrap();
+        assert_eq!(pythontex_tool_for_latexmk(&latexmk), None);
+        std::fs::write(&pythontex, "pythontex").unwrap();
+        assert_eq!(pythontex_tool_for_latexmk(&latexmk), Some(pythontex));
+        std::fs::remove_file(&code).unwrap();
+        std::fs::create_dir(&code).unwrap();
+        assert!(clear_pythontex_code_artifact(&out, crate::paths::ENTRY_STEM).is_err());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn latexmk_marker_detects_a_retargeted_distribution_symlink() {
+        use std::os::unix::fs::symlink;
+
+        let dir = std::env::temp_dir().join(format!("oleafly-lmk-symlink-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("one")).unwrap();
+        std::fs::create_dir_all(dir.join("two")).unwrap();
+        std::fs::write(dir.join("one/latexmk"), b"one").unwrap();
+        std::fs::write(dir.join("two/latexmk"), b"two").unwrap();
+        let link = dir.join("latexmk");
+        symlink(dir.join("one/latexmk"), &link).unwrap();
+        let build = dir.join("build");
+        assert!(latexmk_binary_changed(&build, &link));
+        record_latexmk_binary(&build, &link);
+        assert!(!latexmk_binary_changed(&build, &link));
+        std::fs::remove_file(&link).unwrap();
+        symlink(dir.join("two/latexmk"), &link).unwrap();
+        assert!(latexmk_binary_changed(&build, &link));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn latexmk_marker_publication_replaces_instead_of_following_symlinks() {
+        use std::os::unix::fs::symlink;
+
+        let dir =
+            std::env::temp_dir().join(format!("oleafly-lmk-marker-symlink-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let build = dir.join("build");
+        std::fs::create_dir_all(&build).unwrap();
+        let outside = dir.join("project-source.tex");
+        std::fs::write(&outside, "do not overwrite").unwrap();
+        let marker = build.join(".oleafly-latexmk");
+        symlink(&outside, &marker).unwrap();
+
+        record_latexmk_binary(&build, Path::new("/reviewed/bin/latexmk"));
+
+        assert_eq!(
+            std::fs::read_to_string(&outside).unwrap(),
+            "do not overwrite"
+        );
+        assert!(!std::fs::symlink_metadata(&marker)
+            .unwrap()
+            .file_type()
+            .is_symlink());
+        assert_eq!(
+            std::fs::read_to_string(&marker).unwrap(),
+            "/reviewed/bin/latexmk"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

@@ -25,7 +25,7 @@ const chatJson = (pid: string, id: string) =>
 beforeEach(() => {
   loadCalls.length = 0;
   saveProjectChats.mockClear();
-  useChatsStore.setState({ projectId: null, chats: [], activeId: null });
+  useChatsStore.setState({ projectId: null, chats: [], activeId: null, live: {} });
 });
 
 describe("chats store load", () => {
@@ -271,5 +271,48 @@ describe("live transcripts", () => {
     useChatsStore.getState().remove("c3");
     expect(useChatsStore.getState().live.c3).toBeUndefined();
     expect(useChatsStore.getState().liveOrSaved("c3")).toBeUndefined();
+  });
+
+  it("drops a partial transcript on project switch instead of reviving it on return", async () => {
+    const savedA = JSON.stringify([
+      {
+        id: "live-a",
+        projectId: "live-project-a",
+        title: "t",
+        createdAt: 1,
+        updatedAt: 1,
+        messages: [msg("saved-a")],
+        headOid: null,
+      },
+    ]);
+    const loadA = useChatsStore.getState().load("live-project-a");
+    loadCalls[0].resolve(savedA);
+    await loadA;
+    useChatsStore.getState().setLive("live-a", [msg("partial-a")]);
+
+    const loadB = useChatsStore.getState().load("live-project-b");
+    loadCalls[1].resolve(chatJson("live-project-b", "live-b"));
+    await loadB;
+    expect(useChatsStore.getState().live).toEqual({});
+
+    const returnA = useChatsStore.getState().load("live-project-a");
+    loadCalls[2].resolve(savedA);
+    await returnA;
+    expect(useChatsStore.getState().liveOrSaved("live-a")?.map((m) => m.content)).toEqual([
+      "saved-a",
+    ]);
+  });
+
+  it("keeps a live transcript when the same project reloads", async () => {
+    const first = useChatsStore.getState().load("same-live-project");
+    loadCalls[0].resolve(chatJson("same-live-project", "same-live-chat"));
+    await first;
+    useChatsStore.getState().setLive("same-live-chat", [msg("streaming")]);
+
+    const again = useChatsStore.getState().load("same-live-project");
+    loadCalls[1].resolve(chatJson("same-live-project", "same-live-chat"));
+    await again;
+
+    expect(useChatsStore.getState().live["same-live-chat"]?.[0].content).toBe("streaming");
   });
 });

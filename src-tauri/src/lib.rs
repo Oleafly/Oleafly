@@ -28,6 +28,7 @@ mod synctex;
 mod template_packs;
 mod templates;
 mod tex_distro;
+mod tinytex_archive;
 
 use state::AppState;
 
@@ -128,8 +129,11 @@ pub fn run() {
                         if let Err(e) = crate::mcp::start_configured(handle, cfg.mcp_port).await {
                             eprintln!("mcp: autostart failed: {e}");
                         }
-                    } else {
-                        crate::mcp::server::remove_discovery_file();
+                    } else if let Err(e) = crate::mcp::server::remove_discovery_file() {
+                        eprintln!("mcp: disabled-startup discovery cleanup failed: {e}");
+                        let _ = crate::project::append_app_log(format!(
+                            "MCP disabled-startup discovery cleanup failed: {e}"
+                        ));
                     }
                 }
             });
@@ -176,6 +180,7 @@ pub fn run() {
             synctex::synctex_map_line,
             project::list_files,
             project::read_file,
+            project::project_mutation_generation,
             project::write_file,
             project::create_file,
             project::delete_file,
@@ -208,6 +213,7 @@ pub fn run() {
             connectors::set_connector_key,
             project::set_main_doc,
             project::set_project_engine,
+            project::set_project_shell_escape,
             project::record_project_tex_spec,
             project::project_tex_status,
             project::import_overleaf_project,
@@ -254,6 +260,9 @@ pub fn run() {
             config::redacted_secret_marker,
             config::get_config,
             config::set_config,
+            mcp::mcp_begin_renderer_session,
+            mcp::mcp_renderer_heartbeat,
+            mcp::mcp_end_renderer_session,
             mcp::mcp_register_tools,
             mcp::mcp_set_active_project,
             mcp::mcp_tool_result,

@@ -197,7 +197,7 @@ function runningState(
     stale: retained !== null,
     currentFileFallbackAllowed,
     reason: retained
-      ? "Project content changed; retained analysis is stale while the current revision runs."
+      ? "Project content changed. Retained analysis is stale while the current revision runs."
       : "Project intelligence is analyzing the current revision.",
   };
 }
@@ -548,7 +548,7 @@ export const useIndexStore = create<IndexStore>((set, get) => {
         intelligenceState: {
           ...runningState(state.intelligenceState, identity),
           reason:
-            "Project files changed; the source graph is being refreshed.",
+            "Project files changed. The source graph is being refreshed.",
         },
       }));
     },
@@ -568,7 +568,7 @@ export const useIndexStore = create<IndexStore>((set, get) => {
           data: state.intelligenceState.data,
           stale: state.intelligenceState.data !== null,
           reason:
-            "Project files changed; source snapshots are being loaded for current analysis.",
+            "Project files changed. Source snapshots are being loaded for current analysis.",
         },
       }));
 

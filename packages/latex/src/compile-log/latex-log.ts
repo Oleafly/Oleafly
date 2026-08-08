@@ -247,7 +247,7 @@ function parseLine(line: string, state: ParserState) {
         category: "biber",
         file: null,
         line: null,
-        text: "Bibliography needs Biber (biblatex). Oleafly should run pinned tectonic-biber automatically; if citations stay undefined, see [Oleafly] notes in this log.",
+        text: "Bibliography needs Biber (biblatex). Oleafly should run pinned tectonic-biber automatically. If citations stay undefined, see [Oleafly] notes in this log.",
       };
       state.searchEmptyLine = false;
       return;
