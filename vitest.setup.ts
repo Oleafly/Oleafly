@@ -43,12 +43,9 @@ if (typeof localStorage === "undefined") {
 }
 
 if (typeof ResizeObserver === "undefined") {
-  vi.stubGlobal(
-    "ResizeObserver",
-    class {
-      observe() {}
-      unobserve() {}
-      disconnect() {}
-    },
-  );
+  const noop = () => {};
+  function resizeObserverStub() {
+    return { observe: noop, unobserve: noop, disconnect: noop };
+  }
+  (globalThis as Record<string, unknown>).ResizeObserver = resizeObserverStub;
 }
