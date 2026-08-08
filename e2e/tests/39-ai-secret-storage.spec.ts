@@ -33,6 +33,8 @@ test("AI credentials persist encrypted and never return to the window", async ({
 
   await openSettings(tauriPage, "ai");
   const restoredCard = tauriPage.getByTestId("ai-provider-card-perplexity");
+  await expect(restoredCard.locator('input[type="password"]')).toBeHidden();
+  await tauriPage.click('[data-testid="ai-provider-replace-perplexity"]');
   await expect(restoredCard.locator('input[type="password"]')).toBeVisible();
   await expect(restoredCard.locator('input[type="password"]')).toHaveValue("");
   await expect(tauriPage.getByTestId("ai-provider-delete-perplexity")).toBeVisible();

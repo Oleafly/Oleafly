@@ -32,6 +32,19 @@ test("connect an AI provider through the settings UI", async ({ tauriPage }) => 
   // saved the key into the wrong provider.
   await tauriPage.evaluate(
     inProviderCard(`
+      const replace = card.querySelector('[data-testid^="ai-provider-replace-"]');
+      if (replace) replace.click();
+      return 1;
+    `),
+  );
+  await tauriPage
+    .waitForFunction(
+      inProviderCard(`return !!card.querySelector('input[type="password"]');`),
+      5_000,
+    )
+    .catch(() => {});
+  await tauriPage.evaluate(
+    inProviderCard(`
       const input = card.querySelector('input[type="password"]');
       const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
       set.call(input, ${JSON.stringify(TOKEN)});
