@@ -43,7 +43,7 @@ if (typeof localStorage === "undefined") {
 }
 
 if (typeof ResizeObserver === "undefined") {
-  const noop = () => {};
+  function noop() {}
   function resizeObserverStub() {
     return { observe: noop, unobserve: noop, disconnect: noop };
   }
