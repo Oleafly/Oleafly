@@ -1,2 +1,3 @@
 exclude_paths:
   - "e2e/**"
+  - "Cargo.lock"
