@@ -26,6 +26,8 @@ pub struct CompletionRequest {
     #[serde(default)]
     pub timeout_ms: Option<u64>,
     #[serde(default)]
+    pub idle_timeout_ms: Option<u64>,
+    #[serde(default)]
     pub tools: Vec<ToolSchema>,
 }
 
@@ -366,6 +368,43 @@ pub(crate) fn error_message(status: u16, raw: &str) -> AgentError {
     AgentError::Provider { status, message }
 }
 
+pub fn request_builder(
+    client: &reqwest::Client,
+    resolved: &Resolved,
+    streaming: bool,
+) -> reqwest::RequestBuilder {
+    let builder = match &resolved.wire {
+        Wire::OpenAiChat { base_url, .. } => client.post(format!(
+            "{}/chat/completions",
+            base_url.trim_end_matches('/')
+        )),
+        Wire::Anthropic { base_url } => client
+            .post(format!("{}/messages", base_url.trim_end_matches('/')))
+            .header("anthropic-version", "2023-06-01"),
+        Wire::Google { base_url } => {
+            let action = if streaming {
+                "streamGenerateContent?alt=sse"
+            } else {
+                "generateContent"
+            };
+            client.post(format!(
+                "{}/models/{}:{action}",
+                base_url.trim_end_matches('/'),
+                resolved.model_id
+            ))
+        }
+    };
+    builder.headers(auth_headers(resolved))
+}
+
+pub fn wire_body(resolved: &Resolved, req: &CompletionRequest) -> Result<serde_json::Value> {
+    match &resolved.wire {
+        Wire::OpenAiChat { .. } => openai_body(resolved, req),
+        Wire::Anthropic { .. } => anthropic_body(resolved, req),
+        Wire::Google { .. } => google_body(req),
+    }
+}
+
 pub async fn complete(
     client: &reqwest::Client,
     resolved: &Resolved,
@@ -376,28 +415,7 @@ pub async fn complete(
         .map(Duration::from_millis)
         .unwrap_or(DEFAULT_TIMEOUT);
 
-    let builder = match &resolved.wire {
-        Wire::OpenAiChat { base_url, .. } => client
-            .post(format!(
-                "{}/chat/completions",
-                base_url.trim_end_matches('/')
-            ))
-            .headers(auth_headers(resolved))
-            .json(&openai_body(resolved, req)?),
-        Wire::Anthropic { base_url } => client
-            .post(format!("{}/messages", base_url.trim_end_matches('/')))
-            .headers(auth_headers(resolved))
-            .header("anthropic-version", "2023-06-01")
-            .json(&anthropic_body(resolved, req)?),
-        Wire::Google { base_url } => client
-            .post(format!(
-                "{}/models/{}:generateContent",
-                base_url.trim_end_matches('/'),
-                resolved.model_id
-            ))
-            .headers(auth_headers(resolved))
-            .json(&google_body(req)?),
-    };
+    let builder = request_builder(client, resolved, false).json(&wire_body(resolved, req)?);
 
     let response = builder
         .timeout(timeout)

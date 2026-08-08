@@ -7,6 +7,7 @@ pub struct SseEvent {
 #[derive(Default)]
 pub struct SseDecoder {
     buffer: String,
+    pending_cr: bool,
 }
 
 impl SseDecoder {
@@ -15,8 +16,20 @@ impl SseDecoder {
     }
 
     pub fn push(&mut self, chunk: &str) -> Vec<SseEvent> {
-        self.buffer
-            .push_str(&chunk.replace("\r\n", "\n").replace('\r', "\n"));
+        for ch in chunk.chars() {
+            if self.pending_cr {
+                self.pending_cr = false;
+                self.buffer.push('\n');
+                if ch == '\n' {
+                    continue;
+                }
+            }
+            if ch == '\r' {
+                self.pending_cr = true;
+            } else {
+                self.buffer.push(ch);
+            }
+        }
         let mut events = Vec::new();
 
         while let Some(end) = self.buffer.find("\n\n") {
@@ -29,6 +42,10 @@ impl SseDecoder {
     }
 
     pub fn finish(&mut self) -> Option<SseEvent> {
+        if self.pending_cr {
+            self.pending_cr = false;
+            self.buffer.push('\n');
+        }
         let rest: String = self.buffer.drain(..).collect();
         parse_block(rest.trim_end_matches('\n'))
     }
@@ -128,6 +145,32 @@ mod tests {
         assert!(d.push("data: {\"a\":1}\r").is_empty());
         let events = d.push("\n\r\n");
         assert_eq!(events[0].data, "{\"a\":1}");
+    }
+
+    #[test]
+    fn a_crlf_split_across_chunks_does_not_invent_an_event_boundary() {
+        let mut d = SseDecoder::new();
+        assert!(d.push("event: content_block_delta\r").is_empty());
+        let events = d.push("\ndata: {\"a\":1}\r\n\r\n");
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].event.as_deref(), Some("content_block_delta"));
+        assert_eq!(events[0].data, "{\"a\":1}");
+    }
+
+    #[test]
+    fn a_lone_carriage_return_still_ends_the_line() {
+        let mut d = SseDecoder::new();
+        let events = d.push("data: one\rdata: two\r\rdata: three\n\n");
+        assert_eq!(events.len(), 2);
+        assert_eq!(events[0].data, "one\ntwo");
+        assert_eq!(events[1].data, "three");
+    }
+
+    #[test]
+    fn a_trailing_carriage_return_is_flushed_by_finish() {
+        let mut d = SseDecoder::new();
+        assert!(d.push("data: tail\r").is_empty());
+        assert_eq!(d.finish().unwrap().data, "tail");
     }
 
     #[test]

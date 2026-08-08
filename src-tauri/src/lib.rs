@@ -138,6 +138,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             agent::agent_complete,
             agent::agent_cancel,
+            agent::agent_cancel_all,
             agent::agent_stream,
             agent::agent_run,
             agent::agent_tool_result,

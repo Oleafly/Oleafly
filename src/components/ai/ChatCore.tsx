@@ -901,6 +901,8 @@ ${sandboxedCustom}`;
       }
 
       let reasoningStartedAt: number | null = null;
+      let stepContent = "";
+      let stepBlocks: ChatMessage["reasoningBlocks"] = [];
       const outcome = await runAgentHarness({
         system: effectiveSystem,
         messages: apiMessages,
@@ -909,15 +911,31 @@ ${sandboxedCustom}`;
         providerOverride: { provider_id: provider, model_id: model },
         takePendingImages: () =>
           modelSupportsVision(provider, model) ? pendingImagesRef.current.splice(0) : [],
+        imageInstruction: figure
+          ? "Here is the rendered figure. Check for overlapping labels, cramped spacing, misalignment, and legibility, and refine it if it is not clean."
+          : "Here are rendered PDF page image(s) from verify_pdf_pages. Check for overflow, cut-off text, empty regions, and layout problems. Fix source if needed, then recompile and re-verify.",
         handlers: {
           onActivity: () => {
             lastPartAtRef.current = Date.now();
             runHandle.lastPartAt = Date.now();
           },
           onThinking: (label) => setRunThinking(label),
-          onStep: () => {},
-          onRetry: (attempt, max) =>
-            setRunThinking(`Connection issue, retrying (${attempt}/${max})…`),
+          onStep: (step) => {
+            usageSteps = step + 1;
+            updateRunLast((m) => {
+              stepContent = m.content ?? "";
+              stepBlocks = m.reasoningBlocks ? [...m.reasoningBlocks] : [];
+              return m;
+            });
+          },
+          onRetry: (attempt, max) => {
+            setRunThinking(`Connection issue, retrying (${attempt}/${max})…`);
+            updateRunLast((m) => ({
+              ...m,
+              content: stepContent,
+              reasoningBlocks: stepBlocks,
+            }));
+          },
           onText: (chunk) =>
             updateRunLast((m) => ({ ...m, content: (m.content ?? "") + chunk })),
           onReasoningStart: () => {

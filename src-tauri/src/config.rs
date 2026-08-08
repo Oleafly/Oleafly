@@ -292,6 +292,14 @@ pub fn get_config() -> Result<AppConfig, String> {
     Ok(cfg)
 }
 
+fn key_unchanged(config: &AppConfig, stored: &AppConfig, id: &str) -> bool {
+    config
+        .ai_keys
+        .get(id)
+        .map(|v| stored.ai_keys.get(id).is_some_and(|s| s == v))
+        .unwrap_or(false)
+}
+
 fn drop_keys_for_moved_endpoints(config: &mut AppConfig, stored: &AppConfig) {
     for previous in &stored.ai_custom_providers {
         if previous.base_url.trim().is_empty() {
@@ -305,17 +313,42 @@ fn drop_keys_for_moved_endpoints(config: &mut AppConfig, stored: &AppConfig) {
             Some(current) => current.base_url.trim() != previous.base_url.trim(),
             None => false,
         };
-        if !moved {
-            continue;
-        }
-        let unchanged = config
-            .ai_keys
-            .get(&previous.id)
-            .map(|v| stored.ai_keys.get(&previous.id).is_some_and(|s| s == v))
-            .unwrap_or(false);
-        if unchanged {
+        if moved && key_unchanged(config, stored, &previous.id) {
             config.ai_keys.remove(&previous.id);
         }
+    }
+
+    let recreated: Vec<String> = config
+        .ai_custom_providers
+        .iter()
+        .filter(|current| {
+            !stored
+                .ai_custom_providers
+                .iter()
+                .any(|p| p.id == current.id)
+                && oleafly_agent::provider::catalog_entry(&current.id).is_none()
+                && key_unchanged(config, stored, &current.id)
+        })
+        .map(|current| current.id.clone())
+        .collect();
+    for id in recreated {
+        config.ai_keys.remove(&id);
+    }
+
+    let orphaned: Vec<String> = stored
+        .ai_custom_providers
+        .iter()
+        .filter(|previous| {
+            !config
+                .ai_custom_providers
+                .iter()
+                .any(|c| c.id == previous.id)
+                && oleafly_agent::provider::catalog_entry(&previous.id).is_none()
+        })
+        .map(|previous| previous.id.clone())
+        .collect();
+    for id in orphaned {
+        config.ai_keys.remove(&id);
     }
 }
 
@@ -389,15 +422,53 @@ mod tests {
     }
 
     #[test]
-    fn deleting_a_custom_provider_is_not_treated_as_a_move() {
+    fn deleting_a_custom_provider_drops_its_key_too() {
         let stored = with_custom("https://api.mycorp.test/v1", "sk-real");
         let mut incoming = AppConfig {
             ai_keys: HashMap::from([("mycorp".to_string(), "sk-real".to_string())]),
             ..AppConfig::default()
         };
         drop_keys_for_moved_endpoints(&mut incoming, &stored);
+        assert!(!incoming.ai_keys.contains_key("mycorp"));
+    }
+
+    #[test]
+    fn delete_then_recreate_cannot_reattach_a_stored_key_to_a_new_endpoint() {
+        let stored = with_custom("https://api.mycorp.test/v1", "sk-real");
+        let mut step_one = AppConfig {
+            ai_keys: HashMap::from([("mycorp".to_string(), REDACTED.to_string())]),
+            ..AppConfig::default()
+        };
+        restore_ai_secrets(&mut step_one, &stored);
+        drop_keys_for_moved_endpoints(&mut step_one, &stored);
+        assert!(!step_one.ai_keys.contains_key("mycorp"));
+
+        let stale_stored = with_custom("https://api.mycorp.test/v1", "sk-real");
+        let mut step_two = AppConfig {
+            ai_custom_providers: vec![custom("mycorp", "http://attacker.example")],
+            ai_keys: HashMap::from([("mycorp".to_string(), "sk-real".to_string())]),
+            ..AppConfig::default()
+        };
+        let mut no_provider_stored = stale_stored.clone();
+        no_provider_stored.ai_custom_providers.clear();
+        drop_keys_for_moved_endpoints(&mut step_two, &no_provider_stored);
+        assert!(!step_two.ai_keys.contains_key("mycorp"));
+    }
+
+    #[test]
+    fn a_custom_entry_shadowing_a_catalog_id_never_drops_the_catalog_key() {
+        let stored = AppConfig {
+            ai_keys: HashMap::from([("openai".to_string(), "sk-real".to_string())]),
+            ..AppConfig::default()
+        };
+        let mut incoming = AppConfig {
+            ai_custom_providers: vec![custom("openai", "http://attacker.example")],
+            ai_keys: HashMap::from([("openai".to_string(), "sk-real".to_string())]),
+            ..AppConfig::default()
+        };
+        drop_keys_for_moved_endpoints(&mut incoming, &stored);
         assert_eq!(
-            incoming.ai_keys.get("mycorp").map(String::as_str),
+            incoming.ai_keys.get("openai").map(String::as_str),
             Some("sk-real")
         );
     }
@@ -467,10 +538,24 @@ mod tests {
         assert!(!incoming.ai_keys.contains_key("groq"));
     }
 
+    static DATA_DIR_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    struct DataDirGuard;
+
+    impl Drop for DataDirGuard {
+        fn drop(&mut self) {
+            std::env::remove_var("OLEAFLY_DATA_DIR");
+        }
+    }
+
     #[test]
     fn an_existing_install_keeps_working_without_re_entering_a_key() {
+        let _lock = DATA_DIR_LOCK
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         let dir = temp_dir();
         std::env::set_var("OLEAFLY_DATA_DIR", &dir);
+        let _guard = DataDirGuard;
 
         let before = AppConfig {
             ai_provider: "openai".into(),
@@ -501,8 +586,6 @@ mod tests {
             round_trip.ai_keys.get("openai").unwrap(),
             "sk-from-an-older-build"
         );
-
-        std::env::remove_var("OLEAFLY_DATA_DIR");
     }
 
     #[test]

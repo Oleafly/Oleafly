@@ -55,6 +55,18 @@ pub struct ProviderOverride {
     pub model_id: String,
 }
 
+fn tagged(error: oleafly_agent::AgentError) -> String {
+    format!("[{}] {error}", error.kind())
+}
+
+async fn resolve_off_thread(
+    provider_override: Option<ProviderOverride>,
+) -> Result<oleafly_agent::Resolved, String> {
+    tauri::async_runtime::spawn_blocking(move || resolve_for(provider_override))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
 #[tauri::command]
 pub async fn agent_complete(
     state: State<'_, AgentState>,
@@ -62,7 +74,7 @@ pub async fn agent_complete(
     request: CompletionRequest,
     provider_override: Option<ProviderOverride>,
 ) -> Result<CompletionResponse, String> {
-    let resolved = resolve_for(provider_override)?;
+    let resolved = resolve_off_thread(provider_override).await?;
     let client = state.client();
 
     let (tx, rx) = tokio::sync::oneshot::channel();
@@ -76,9 +88,17 @@ pub async fn agent_complete(
     unregister(&state, &request_id);
 
     match outcome {
-        Ok(result) => result.map_err(|e| e.to_string()),
-        Err(_) => Err(oleafly_agent::AgentError::Cancelled.to_string()),
+        Ok(result) => result.map_err(tagged),
+        Err(_) => Err(tagged(oleafly_agent::AgentError::Cancelled)),
     }
+}
+
+#[tauri::command]
+pub fn agent_cancel_all(state: State<'_, AgentState>) {
+    for (_, handle) in lock_or_recover(&state.running).drain() {
+        handle.abort();
+    }
+    lock_or_recover(&state.pending_tools).clear();
 }
 
 #[tauri::command]
@@ -96,7 +116,7 @@ pub async fn agent_stream(
     provider_override: Option<ProviderOverride>,
     on_event: tauri::ipc::Channel<oleafly_agent::AgentEvent>,
 ) -> Result<(), String> {
-    let resolved = resolve_for(provider_override)?;
+    let resolved = resolve_off_thread(provider_override).await?;
     let client = state.client();
 
     let (tx, rx) = tokio::sync::oneshot::channel();
@@ -115,20 +135,8 @@ pub async fn agent_stream(
 
     match outcome {
         Ok(Ok(())) => Ok(()),
-        Ok(Err(error)) => {
-            let _ = on_event.send(oleafly_agent::AgentEvent::Error {
-                message: error.to_string(),
-                retryable: error.retryable(),
-            });
-            Ok(())
-        }
-        Err(_) => {
-            let _ = on_event.send(oleafly_agent::AgentEvent::Error {
-                message: oleafly_agent::AgentError::Cancelled.to_string(),
-                retryable: false,
-            });
-            Ok(())
-        }
+        Ok(Err(error)) => Err(tagged(error)),
+        Err(_) => Err(tagged(oleafly_agent::AgentError::Cancelled)),
     }
 }
 
@@ -142,7 +150,7 @@ pub async fn agent_run(
     provider_override: Option<ProviderOverride>,
     on_event: tauri::ipc::Channel<AgentEvent>,
 ) -> Result<oleafly_agent::RunOutcome, String> {
-    let resolved = resolve_for(provider_override)?;
+    let resolved = resolve_off_thread(provider_override).await?;
     let client = state.client();
     let config = config.unwrap_or_default();
 
@@ -198,8 +206,8 @@ pub async fn agent_run(
 
     match outcome {
         Ok(Ok(result)) => Ok(result),
-        Ok(Err(error)) => Err(error.to_string()),
-        Err(_) => Err(oleafly_agent::AgentError::Cancelled.to_string()),
+        Ok(Err(error)) => Err(tagged(error)),
+        Err(_) => Err(tagged(oleafly_agent::AgentError::Cancelled)),
     }
 }
 
@@ -249,7 +257,9 @@ pub async fn agent_list_models(
     key: Option<String>,
     base_url: Option<String>,
 ) -> Result<Vec<oleafly_agent::ModelInfo>, String> {
-    let cfg = crate::config::read_config()?;
+    let cfg = tauri::async_runtime::spawn_blocking(crate::config::read_config)
+        .await
+        .map_err(|e| e.to_string())??;
     let mut projected = provider_config(&cfg);
     let supplied_key = key.filter(|k| !k.trim().is_empty());
     let base_url = base_url.filter(|b| !b.trim().is_empty());
