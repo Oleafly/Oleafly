@@ -155,33 +155,7 @@ pub async fn agent_run(
     let config = config.unwrap_or_default();
 
     let sink = on_event.clone();
-    let tool_sink = on_event.clone();
-    let run_id = request_id.clone();
-    let handle = app.clone();
-
-    let run_tool: oleafly_agent::ToolRunner = std::sync::Arc::new(move |call| {
-        let tool_sink = tool_sink.clone();
-        let handle = handle.clone();
-        let run_id = run_id.clone();
-        Box::pin(async move {
-            let key = tool_key(&run_id, &call.id);
-            let (tx, rx) = tokio::sync::oneshot::channel();
-            {
-                use tauri::Manager;
-                let state = handle.state::<AgentState>();
-                lock_or_recover(&state.pending_tools).insert(key.clone(), tx);
-            }
-            let _ = tool_sink.send(AgentEvent::ToolRequest {
-                id: call.id.clone(),
-                name: call.name.clone(),
-                arguments: call.arguments.clone(),
-            });
-            match rx.await {
-                Ok(output) => output,
-                Err(_) => ToolOutput::text("{\"error\":\"the tool was not executed\"}"),
-            }
-        })
-    });
+    let run_tool = webview_tool_runner(app.clone(), request_id.clone(), on_event.clone());
 
     let (tx, rx) = tokio::sync::oneshot::channel();
     let task = tauri::async_runtime::spawn(async move {
@@ -209,6 +183,36 @@ pub async fn agent_run(
         Ok(Err(error)) => Err(tagged(error)),
         Err(_) => Err(tagged(oleafly_agent::AgentError::Cancelled)),
     }
+}
+
+fn webview_tool_runner(
+    app: tauri::AppHandle,
+    request_id: String,
+    tool_sink: tauri::ipc::Channel<AgentEvent>,
+) -> oleafly_agent::ToolRunner {
+    std::sync::Arc::new(move |call| {
+        let tool_sink = tool_sink.clone();
+        let handle = app.clone();
+        let run_id = request_id.clone();
+        Box::pin(async move {
+            let key = tool_key(&run_id, &call.id);
+            let (tx, rx) = tokio::sync::oneshot::channel();
+            {
+                use tauri::Manager;
+                let state = handle.state::<AgentState>();
+                lock_or_recover(&state.pending_tools).insert(key.clone(), tx);
+            }
+            let _ = tool_sink.send(AgentEvent::ToolRequest {
+                id: call.id.clone(),
+                name: call.name.clone(),
+                arguments: call.arguments.clone(),
+            });
+            match rx.await {
+                Ok(output) => output,
+                Err(_) => ToolOutput::text("{\"error\":\"the tool was not executed\"}"),
+            }
+        })
+    })
 }
 
 #[tauri::command]

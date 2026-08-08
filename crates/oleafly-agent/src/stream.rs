@@ -197,42 +197,54 @@ impl Translator {
         }
 
         if let Some(delta) = choice.get("delta") {
-            if let Some(text) = nonempty(delta.get("reasoning_content")) {
-                out.push(AgentEvent::ReasoningDelta { text });
+            out.extend(self.openai_delta(delta));
+        }
+        out
+    }
+
+    fn openai_delta(&mut self, delta: &Value) -> Vec<AgentEvent> {
+        let mut out = Vec::new();
+        if let Some(text) = nonempty(delta.get("reasoning_content")) {
+            out.push(AgentEvent::ReasoningDelta { text });
+        }
+        if let Some(text) = nonempty(delta.get("reasoning")) {
+            out.push(AgentEvent::ReasoningDelta { text });
+        }
+        if let Some(text) = nonempty(delta.get("content")) {
+            out.push(AgentEvent::TextDelta { text });
+        }
+        if let Some(calls) = delta.get("tool_calls").and_then(|c| c.as_array()) {
+            for (position, call) in calls.iter().enumerate() {
+                out.extend(self.openai_tool_call(call, position));
             }
-            if let Some(text) = nonempty(delta.get("reasoning")) {
-                out.push(AgentEvent::ReasoningDelta { text });
-            }
-            if let Some(text) = nonempty(delta.get("content")) {
-                out.push(AgentEvent::TextDelta { text });
-            }
-            if let Some(calls) = delta.get("tool_calls").and_then(|c| c.as_array()) {
-                for (position, call) in calls.iter().enumerate() {
-                    let index = call
-                        .get("index")
-                        .and_then(|i| i.as_i64())
-                        .unwrap_or(position as i64);
-                    let name = call
-                        .pointer("/function/name")
-                        .and_then(|n| n.as_str())
-                        .unwrap_or_default();
-                    if !name.is_empty() {
-                        let id = call
-                            .get("id")
-                            .and_then(|i| i.as_str())
-                            .map(|s| s.to_string())
-                            .unwrap_or_else(|| format!("call_{index}"));
-                        out.extend(self.start_call(index, id, name.to_string()));
-                    }
-                    if let Some(fragment) = call
-                        .pointer("/function/arguments")
-                        .and_then(|a| a.as_str())
-                        .filter(|a| !a.is_empty())
-                    {
-                        out.extend(self.push_args(index, fragment));
-                    }
-                }
-            }
+        }
+        out
+    }
+
+    fn openai_tool_call(&mut self, call: &Value, position: usize) -> Vec<AgentEvent> {
+        let mut out = Vec::new();
+        let index = call
+            .get("index")
+            .and_then(|i| i.as_i64())
+            .unwrap_or(position as i64);
+        let name = call
+            .pointer("/function/name")
+            .and_then(|n| n.as_str())
+            .unwrap_or_default();
+        if !name.is_empty() {
+            let id = call
+                .get("id")
+                .and_then(|i| i.as_str())
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| format!("call_{index}"));
+            out.extend(self.start_call(index, id, name.to_string()));
+        }
+        if let Some(fragment) = call
+            .pointer("/function/arguments")
+            .and_then(|a| a.as_str())
+            .filter(|a| !a.is_empty())
+        {
+            out.extend(self.push_args(index, fragment));
         }
         out
     }
@@ -256,82 +268,90 @@ impl Translator {
             "message_start" => {
                 self.usage.input = u32_at_path(&value, "/message/usage/input_tokens");
             }
-            "content_block_start" => {
-                if value
-                    .pointer("/content_block/type")
-                    .and_then(|t| t.as_str())
-                    == Some("tool_use")
-                {
-                    let id = value
-                        .pointer("/content_block/id")
-                        .and_then(|i| i.as_str())
-                        .unwrap_or_default()
-                        .to_string();
-                    let name = value
-                        .pointer("/content_block/name")
-                        .and_then(|n| n.as_str())
-                        .unwrap_or_default()
-                        .to_string();
-                    out.extend(self.start_call(index, id, name));
-                }
-            }
-            "content_block_delta" => {
-                let delta_type = value.pointer("/delta/type").and_then(|t| t.as_str());
-                match delta_type {
-                    Some("text_delta") => {
-                        if let Some(text) = nonempty(value.pointer("/delta/text")) {
-                            out.push(AgentEvent::TextDelta { text });
-                        }
-                    }
-                    Some("thinking_delta") => {
-                        if let Some(text) = nonempty(value.pointer("/delta/thinking")) {
-                            out.push(AgentEvent::ReasoningDelta { text });
-                        }
-                    }
-                    Some("input_json_delta") => {
-                        if let Some(fragment) = value
-                            .pointer("/delta/partial_json")
-                            .and_then(|p| p.as_str())
-                            .filter(|p| !p.is_empty())
-                        {
-                            out.extend(self.push_args(index, fragment));
-                        }
-                    }
-                    _ => {}
-                }
-            }
+            "content_block_start" => out.extend(self.anthropic_block_start(&value, index)),
+            "content_block_delta" => out.extend(self.anthropic_block_delta(&value, index)),
             "content_block_stop" => {
                 out.extend(self.close_call(index));
             }
-            "message_delta" => {
-                if let Some(reason) = value.pointer("/delta/stop_reason").and_then(|r| r.as_str()) {
-                    self.stop_reason = Some(reason.to_string());
-                }
-                let output = u32_at_path(&value, "/usage/output_tokens");
-                if output > 0 {
-                    self.usage.output = output;
-                    out.push(AgentEvent::Usage { usage: self.usage });
-                }
-            }
+            "message_delta" => out.extend(self.anthropic_message_delta(&value)),
             "message_stop" => {
                 out.extend(self.finish());
             }
-            "error" => {
-                let message = value
-                    .pointer("/error/message")
-                    .and_then(|m| m.as_str())
-                    .unwrap_or("stream error")
-                    .to_string();
-                let kind = value
-                    .pointer("/error/type")
-                    .and_then(|t| t.as_str())
-                    .unwrap_or_default();
-                self.done = true;
-                self.error = Some(anthropic_stream_error(kind, message));
+            "error" => self.anthropic_terminal_error(&value),
+            _ => {}
+        }
+        out
+    }
+
+    fn anthropic_block_start(&mut self, value: &Value, index: i64) -> Vec<AgentEvent> {
+        if value.pointer("/content_block/type").and_then(|t| t.as_str()) != Some("tool_use") {
+            return Vec::new();
+        }
+        let id = value
+            .pointer("/content_block/id")
+            .and_then(|i| i.as_str())
+            .unwrap_or_default()
+            .to_string();
+        let name = value
+            .pointer("/content_block/name")
+            .and_then(|n| n.as_str())
+            .unwrap_or_default()
+            .to_string();
+        self.start_call(index, id, name)
+    }
+
+    fn anthropic_block_delta(&mut self, value: &Value, index: i64) -> Vec<AgentEvent> {
+        let mut out = Vec::new();
+        match value.pointer("/delta/type").and_then(|t| t.as_str()) {
+            Some("text_delta") => {
+                if let Some(text) = nonempty(value.pointer("/delta/text")) {
+                    out.push(AgentEvent::TextDelta { text });
+                }
+            }
+            Some("thinking_delta") => {
+                if let Some(text) = nonempty(value.pointer("/delta/thinking")) {
+                    out.push(AgentEvent::ReasoningDelta { text });
+                }
+            }
+            Some("input_json_delta") => {
+                if let Some(fragment) = value
+                    .pointer("/delta/partial_json")
+                    .and_then(|p| p.as_str())
+                    .filter(|p| !p.is_empty())
+                {
+                    out.extend(self.push_args(index, fragment));
+                }
             }
             _ => {}
         }
         out
+    }
+
+    fn anthropic_message_delta(&mut self, value: &Value) -> Vec<AgentEvent> {
+        let mut out = Vec::new();
+        if let Some(reason) = value.pointer("/delta/stop_reason").and_then(|r| r.as_str()) {
+            self.stop_reason = Some(reason.to_string());
+        }
+        let output = u32_at_path(value, "/usage/output_tokens");
+        if output > 0 {
+            self.usage.output = output;
+            out.push(AgentEvent::Usage { usage: self.usage });
+        }
+        out
+    }
+
+    fn anthropic_terminal_error(&mut self, value: &Value) {
+        let message = value
+            .pointer("/error/message")
+            .and_then(|m| m.as_str())
+            .unwrap_or("stream error")
+            .to_string();
+        let kind = value
+            .pointer("/error/type")
+            .and_then(|t| t.as_str())
+            .unwrap_or_default();
+        self.done = true;
+        self.error = Some(anthropic_stream_error(kind, message));
     }
 
     fn google(&mut self, event: &SseEvent) -> Vec<AgentEvent> {
@@ -360,24 +380,7 @@ impl Translator {
                     out.push(AgentEvent::TextDelta { text });
                 }
                 if let Some(call) = part.get("functionCall") {
-                    let name = call
-                        .get("name")
-                        .and_then(|n| n.as_str())
-                        .unwrap_or_default()
-                        .to_string();
-                    if name.is_empty() {
-                        continue;
-                    }
-                    self.synthetic += 1;
-                    let index = -self.synthetic;
-                    let id = format!("call_{}_{}", name, self.synthetic);
-                    let arguments = call
-                        .get("args")
-                        .map(|a| a.to_string())
-                        .unwrap_or_else(|| "{}".to_string());
-                    out.extend(self.start_call(index, id, name));
-                    out.extend(self.push_args(index, &arguments));
-                    out.extend(self.close_call(index));
+                    out.extend(self.google_function_call(call));
                 }
             }
         }
@@ -388,6 +391,28 @@ impl Translator {
         {
             self.stop_reason = Some(reason.to_string());
         }
+        out
+    }
+
+    fn google_function_call(&mut self, call: &Value) -> Vec<AgentEvent> {
+        let name = call
+            .get("name")
+            .and_then(|n| n.as_str())
+            .unwrap_or_default()
+            .to_string();
+        if name.is_empty() {
+            return Vec::new();
+        }
+        self.synthetic += 1;
+        let index = -self.synthetic;
+        let id = format!("call_{}_{}", name, self.synthetic);
+        let arguments = call
+            .get("args")
+            .map(|a| a.to_string())
+            .unwrap_or_else(|| "{}".to_string());
+        let mut out = self.start_call(index, id, name);
+        out.extend(self.push_args(index, &arguments));
+        out.extend(self.close_call(index));
         out
     }
 }
@@ -457,25 +482,11 @@ pub async fn stream_completion<F>(
 where
     F: FnMut(AgentEvent),
 {
-    let body = stream_body(resolved, req)?;
-    let builder = crate::complete::request_builder(client, resolved, true).json(&body);
-
     let idle = req
         .idle_timeout_ms
         .map(Duration::from_millis)
         .unwrap_or(DEFAULT_STREAM_IDLE_TIMEOUT);
-    let response = builder
-        .header("accept", "text/event-stream")
-        .send()
-        .await
-        .map_err(request_error)?;
-
-    let status = response.status().as_u16();
-    if !(200..300).contains(&status) {
-        let raw = response.text().await.unwrap_or_default();
-        return Err(crate::complete::error_message(status, &raw));
-    }
-
+    let response = open_stream(client, resolved, req).await?;
     let kind = WireKind::from(&resolved.wire);
     let mut translator = Translator::new(kind);
     let mut decoder = SseDecoder::new();
@@ -488,24 +499,28 @@ where
     {
         let bytes = chunk.map_err(request_error)?;
         let text = String::from_utf8_lossy(&bytes).to_string();
-        for event in decoder.push(&text) {
-            for agent_event in translator.translate(&event) {
-                accumulate(&mut outcome, &agent_event);
-                on_event(agent_event);
-            }
-        }
+        translate_batch(
+            &mut translator,
+            decoder.push(&text),
+            &mut outcome,
+            &mut on_event,
+        );
         if translator.error().is_some() {
             break;
         }
     }
     if translator.error().is_none() {
-        if let Some(event) = decoder.finish() {
-            for agent_event in translator.translate(&event) {
-                accumulate(&mut outcome, &agent_event);
-                on_event(agent_event);
-            }
-        }
+        let tail: Vec<SseEvent> = decoder.finish().into_iter().collect();
+        translate_batch(&mut translator, tail, &mut outcome, &mut on_event);
     }
+    finalize(translator, outcome, &mut on_event)
+}
+
+fn finalize<F: FnMut(AgentEvent)>(
+    mut translator: Translator,
+    mut outcome: StreamOutcome,
+    on_event: &mut F,
+) -> Result<StreamOutcome> {
     if let Some(error) = translator.take_error() {
         return Err(error);
     }
@@ -513,11 +528,45 @@ where
         accumulate(&mut outcome, &agent_event);
         on_event(agent_event);
     }
-
     outcome.usage = translator.usage();
     outcome.tool_calls = translator.tool_calls();
     outcome.stop_reason = translator.stop_reason();
     Ok(outcome)
+}
+
+async fn open_stream(
+    client: &reqwest::Client,
+    resolved: &Resolved,
+    req: &CompletionRequest,
+) -> Result<reqwest::Response> {
+    let body = stream_body(resolved, req)?;
+    let response = crate::complete::request_builder(client, resolved, true)
+        .json(&body)
+        .header("accept", "text/event-stream")
+        .send()
+        .await
+        .map_err(request_error)?;
+
+    let status = response.status().as_u16();
+    if !(200..300).contains(&status) {
+        let raw = response.text().await.unwrap_or_default();
+        return Err(crate::complete::error_message(status, &raw));
+    }
+    Ok(response)
+}
+
+fn translate_batch<F: FnMut(AgentEvent)>(
+    translator: &mut Translator,
+    events: Vec<SseEvent>,
+    outcome: &mut StreamOutcome,
+    on_event: &mut F,
+) {
+    for event in events {
+        for agent_event in translator.translate(&event) {
+            accumulate(outcome, &agent_event);
+            on_event(agent_event);
+        }
+    }
 }
 
 fn accumulate(outcome: &mut StreamOutcome, event: &AgentEvent) {

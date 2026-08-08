@@ -1,10 +1,10 @@
-import { REDACTED_SECRET } from "@/lib/tauri";
+import { REDACTED_MARKER } from "@/lib/tauri";
 
 export type KeyMap = Record<string, string>;
 
 export function editableKeys(stored: KeyMap): KeyMap {
   return Object.fromEntries(
-    Object.entries(stored).map(([id, value]) => [id, value === REDACTED_SECRET ? "" : value]),
+    Object.entries(stored).map(([id, value]) => [id, value === REDACTED_MARKER ? "" : value]),
   );
 }
 

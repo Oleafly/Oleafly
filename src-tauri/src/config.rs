@@ -300,25 +300,25 @@ fn key_unchanged(config: &AppConfig, stored: &AppConfig, id: &str) -> bool {
         .unwrap_or(false)
 }
 
-fn drop_keys_for_moved_endpoints(config: &mut AppConfig, stored: &AppConfig) {
-    for previous in &stored.ai_custom_providers {
-        if previous.base_url.trim().is_empty() {
-            continue;
-        }
-        let moved = match config
-            .ai_custom_providers
-            .iter()
-            .find(|c| c.id == previous.id)
-        {
-            Some(current) => current.base_url.trim() != previous.base_url.trim(),
-            None => false,
-        };
-        if moved && key_unchanged(config, stored, &previous.id) {
-            config.ai_keys.remove(&previous.id);
-        }
-    }
+fn moved_endpoint_ids(config: &AppConfig, stored: &AppConfig) -> Vec<String> {
+    stored
+        .ai_custom_providers
+        .iter()
+        .filter(|previous| !previous.base_url.trim().is_empty())
+        .filter(|previous| {
+            config
+                .ai_custom_providers
+                .iter()
+                .find(|c| c.id == previous.id)
+                .is_some_and(|current| current.base_url.trim() != previous.base_url.trim())
+        })
+        .filter(|previous| key_unchanged(config, stored, &previous.id))
+        .map(|previous| previous.id.clone())
+        .collect()
+}
 
-    let recreated: Vec<String> = config
+fn recreated_provider_ids(config: &AppConfig, stored: &AppConfig) -> Vec<String> {
+    config
         .ai_custom_providers
         .iter()
         .filter(|current| {
@@ -330,12 +330,11 @@ fn drop_keys_for_moved_endpoints(config: &mut AppConfig, stored: &AppConfig) {
                 && key_unchanged(config, stored, &current.id)
         })
         .map(|current| current.id.clone())
-        .collect();
-    for id in recreated {
-        config.ai_keys.remove(&id);
-    }
+        .collect()
+}
 
-    let orphaned: Vec<String> = stored
+fn orphaned_provider_ids(config: &AppConfig, stored: &AppConfig) -> Vec<String> {
+    stored
         .ai_custom_providers
         .iter()
         .filter(|previous| {
@@ -346,8 +345,16 @@ fn drop_keys_for_moved_endpoints(config: &mut AppConfig, stored: &AppConfig) {
                 && oleafly_agent::provider::catalog_entry(&previous.id).is_none()
         })
         .map(|previous| previous.id.clone())
+        .collect()
+}
+
+fn drop_keys_for_moved_endpoints(config: &mut AppConfig, stored: &AppConfig) {
+    let doomed: Vec<String> = moved_endpoint_ids(config, stored)
+        .into_iter()
+        .chain(recreated_provider_ids(config, stored))
+        .chain(orphaned_provider_ids(config, stored))
         .collect();
-    for id in orphaned {
+    for id in doomed {
         config.ai_keys.remove(&id);
     }
 }

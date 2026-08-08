@@ -8,6 +8,7 @@ pub mod run;
 pub mod sse;
 pub mod stream;
 pub mod tool;
+pub mod wire;
 
 pub use complete::{complete, CompletionRequest, CompletionResponse, Usage};
 pub use error::{AgentError, Result};

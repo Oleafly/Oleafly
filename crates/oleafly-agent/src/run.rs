@@ -103,6 +103,73 @@ fn should_retry(error: &AgentError, attempt: u32, max_retries: u32, saw_output: 
     error.retryable() && attempt < max_retries && !saw_output
 }
 
+async fn run_tools<F>(
+    calls: Vec<ToolCall>,
+    run_tool: &ToolRunner,
+    on_event: &mut F,
+) -> Vec<(ToolCall, ToolOutput)>
+where
+    F: FnMut(AgentEvent) + Send,
+{
+    let mut results = Vec::with_capacity(calls.len());
+    for call in calls {
+        let output = run_tool(call.clone()).await;
+        on_event(AgentEvent::ToolOutcome {
+            id: call.id.clone(),
+            output: output.output.clone(),
+        });
+        results.push((call, output));
+    }
+    results
+}
+
+async fn stream_with_retries<F>(
+    client: &reqwest::Client,
+    resolved: &Resolved,
+    request: &CompletionRequest,
+    config: &RunConfig,
+    on_event: &mut F,
+) -> Result<StreamOutcome>
+where
+    F: FnMut(AgentEvent) + Send,
+{
+    let mut last = AgentError::Transport("stream failed".into());
+    for attempt in 0..=config.max_retries {
+        let mut saw_output = false;
+        let streamed = {
+            let forward = &mut |event: AgentEvent| {
+                if matches!(
+                    event,
+                    AgentEvent::TextDelta { .. } | AgentEvent::ReasoningDelta { .. }
+                ) {
+                    saw_output = true;
+                }
+                on_event(event);
+            };
+            stream_completion(client, resolved, request, forward).await
+        };
+
+        match streamed {
+            Ok(outcome) => return Ok(outcome),
+            Err(error) => {
+                if !should_retry(&error, attempt, config.max_retries, saw_output) {
+                    return Err(error);
+                }
+                last = error;
+                on_event(AgentEvent::Retry {
+                    attempt: attempt + 1,
+                    max: config.max_retries,
+                });
+                tokio::time::sleep(Duration::from_millis(
+                    config.retry_base_ms * (attempt as u64 + 1),
+                ))
+                .await;
+            }
+        }
+    }
+    Err(last)
+}
+
 pub async fn run_agent<F>(
     client: &reqwest::Client,
     resolved: &Resolved,
@@ -120,49 +187,10 @@ where
     for step in 0..config.max_steps {
         on_event(AgentEvent::StepStart { step });
 
-        let mut turn: Option<StreamOutcome> = None;
-        let mut fatal: Option<AgentError> = None;
+        let turn = stream_with_retries(client, resolved, &request, config, &mut on_event).await;
 
-        for attempt in 0..=config.max_retries {
-            let mut saw_output = false;
-            let streamed = {
-                let forward = &mut |event: AgentEvent| {
-                    if matches!(
-                        event,
-                        AgentEvent::TextDelta { .. } | AgentEvent::ReasoningDelta { .. }
-                    ) {
-                        saw_output = true;
-                    }
-                    on_event(event);
-                };
-                stream_completion(client, resolved, &request, forward).await
-            };
-
-            match streamed {
-                Ok(outcome) => {
-                    turn = Some(outcome);
-                    break;
-                }
-                Err(error) => {
-                    if should_retry(&error, attempt, config.max_retries, saw_output) {
-                        on_event(AgentEvent::Retry {
-                            attempt: attempt + 1,
-                            max: config.max_retries,
-                        });
-                        tokio::time::sleep(Duration::from_millis(
-                            config.retry_base_ms * (attempt as u64 + 1),
-                        ))
-                        .await;
-                        continue;
-                    }
-                    fatal = Some(error);
-                    break;
-                }
-            }
-        }
-
-        let Some(outcome) = turn else {
-            let error = fatal.unwrap_or(AgentError::Transport("stream failed".into()));
+        let Ok(outcome) = turn else {
+            let error = turn.unwrap_err();
             result.error = Some(error.to_string());
             on_event(AgentEvent::Error {
                 message: error.to_string(),
@@ -190,16 +218,7 @@ where
         }
 
         request.messages.push(assistant_turn(&outcome));
-
-        let mut results = Vec::with_capacity(outcome.tool_calls.len());
-        for call in outcome.tool_calls {
-            let output = run_tool(call.clone()).await;
-            on_event(AgentEvent::ToolOutcome {
-                id: call.id.clone(),
-                output: output.output.clone(),
-            });
-            results.push((call, output));
-        }
+        let results = run_tools(outcome.tool_calls, &run_tool, &mut on_event).await;
         request.messages.push(results_turn(results));
     }
 

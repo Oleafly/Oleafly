@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { lintGutter, setDiagnostics, type Diagnostic } from "@codemirror/lint";
@@ -248,7 +248,13 @@ describe("proofreading gutter card", () => {
     return marker;
   }
 
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
   afterEach(() => {
+    vi.runOnlyPendingTimers();
+    vi.useRealTimers();
     document
       .querySelectorAll(".cm-proofread-card")
       .forEach((node) => node.remove());

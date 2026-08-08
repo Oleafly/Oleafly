@@ -49,7 +49,7 @@ let counter = 0;
 
 function nextRequestId(): string {
   counter += 1;
-  return `agent-${counter}-${Math.random().toString(36).slice(2, 10)}`;
+  return `agent-${counter}-${crypto.randomUUID()}`;
 }
 
 interface InvokeRunOptions {
