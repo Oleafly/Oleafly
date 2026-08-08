@@ -283,6 +283,33 @@ pub fn get_config() -> Result<AppConfig, String> {
     Ok(cfg)
 }
 
+fn drop_keys_for_moved_endpoints(config: &mut AppConfig, stored: &AppConfig) {
+    for previous in &stored.ai_custom_providers {
+        if previous.base_url.trim().is_empty() {
+            continue;
+        }
+        let moved = match config
+            .ai_custom_providers
+            .iter()
+            .find(|c| c.id == previous.id)
+        {
+            Some(current) => current.base_url.trim() != previous.base_url.trim(),
+            None => false,
+        };
+        if !moved {
+            continue;
+        }
+        let unchanged = config
+            .ai_keys
+            .get(&previous.id)
+            .map(|v| stored.ai_keys.get(&previous.id).is_some_and(|s| s == v))
+            .unwrap_or(false);
+        if unchanged {
+            config.ai_keys.remove(&previous.id);
+        }
+    }
+}
+
 #[tauri::command]
 pub fn set_config(mut config: AppConfig) -> Result<(), String> {
     let stored = read_config()?;
@@ -293,6 +320,7 @@ pub fn set_config(mut config: AppConfig) -> Result<(), String> {
         config.mcp_token = stored.mcp_token.clone();
     }
     restore_ai_secrets(&mut config, &stored);
+    drop_keys_for_moved_endpoints(&mut config, &stored);
     config.github_connected = false;
     write_config(&config)
 }
@@ -300,6 +328,79 @@ pub fn set_config(mut config: AppConfig) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn custom(id: &str, base: &str) -> CustomProvider {
+        CustomProvider {
+            id: id.into(),
+            name: id.into(),
+            base_url: base.into(),
+            key_optional: false,
+        }
+    }
+
+    fn with_custom(base: &str, key: &str) -> AppConfig {
+        AppConfig {
+            ai_custom_providers: vec![custom("mycorp", base)],
+            ai_keys: HashMap::from([("mycorp".to_string(), key.to_string())]),
+            ..AppConfig::default()
+        }
+    }
+
+    #[test]
+    fn repointing_a_custom_endpoint_drops_the_stored_key() {
+        let stored = with_custom("https://api.mycorp.test/v1", "sk-real");
+        let mut incoming = with_custom("http://attacker.example", "sk-real");
+        drop_keys_for_moved_endpoints(&mut incoming, &stored);
+        assert!(
+            !incoming.ai_keys.contains_key("mycorp"),
+            "a moved endpoint kept the credential it must not reach"
+        );
+    }
+
+    #[test]
+    fn repointing_while_supplying_a_new_key_keeps_that_key() {
+        let stored = with_custom("https://api.mycorp.test/v1", "sk-real");
+        let mut incoming = with_custom("https://api.mycorp.test/v2", "sk-freshly-typed");
+        drop_keys_for_moved_endpoints(&mut incoming, &stored);
+        assert_eq!(
+            incoming.ai_keys.get("mycorp").map(String::as_str),
+            Some("sk-freshly-typed")
+        );
+    }
+
+    #[test]
+    fn leaving_the_endpoint_alone_keeps_the_key() {
+        let stored = with_custom("https://api.mycorp.test/v1", "sk-real");
+        let mut incoming = with_custom("https://api.mycorp.test/v1", "sk-real");
+        drop_keys_for_moved_endpoints(&mut incoming, &stored);
+        assert_eq!(
+            incoming.ai_keys.get("mycorp").map(String::as_str),
+            Some("sk-real")
+        );
+    }
+
+    #[test]
+    fn deleting_a_custom_provider_is_not_treated_as_a_move() {
+        let stored = with_custom("https://api.mycorp.test/v1", "sk-real");
+        let mut incoming = AppConfig {
+            ai_keys: HashMap::from([("mycorp".to_string(), "sk-real".to_string())]),
+            ..AppConfig::default()
+        };
+        drop_keys_for_moved_endpoints(&mut incoming, &stored);
+        assert_eq!(
+            incoming.ai_keys.get("mycorp").map(String::as_str),
+            Some("sk-real")
+        );
+    }
+
+    #[test]
+    fn a_marker_round_trip_through_set_config_cannot_move_the_endpoint() {
+        let stored = with_custom("https://api.mycorp.test/v1", "sk-real");
+        let mut incoming = with_custom("http://attacker.example", REDACTED);
+        restore_ai_secrets(&mut incoming, &stored);
+        drop_keys_for_moved_endpoints(&mut incoming, &stored);
+        assert!(!incoming.ai_keys.contains_key("mycorp"));
+    }
 
     fn cfg_with_keys() -> AppConfig {
         let mut cfg = AppConfig::default();

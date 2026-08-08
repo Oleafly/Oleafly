@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import {
   agentListModels,
   getConfig,
-  REDACTED_SECRET,
   setConfig,
   type AppConfig,
   type CustomProvider,
@@ -23,6 +22,8 @@ import { ProvidersTab, type ProviderStatus } from "./ai/ProvidersTab";
 import { InstructionsTab } from "./ai/InstructionsTab";
 import { PersonasTab } from "./ai/PersonasTab";
 import { AddCustomProviderDialog, type AddCustomProviderInput } from "./ai/AddCustomProviderDialog";
+import { editableKeys, withKey, withoutKey } from "./ai-keys";
+import { agentErrorKind } from "@/lib/agent-backend";
 
 type AITab = "providers" | "instructions" | "personas";
 
@@ -42,8 +43,7 @@ async function discoverModels(args: {
   try {
     return { ok: true, models: await agentListModels(args) };
   } catch (error) {
-    const message = String(error);
-    return { ok: false, reason: message.includes("[auth]") ? "invalid-key" : "unreachable" };
+    return { ok: false, reason: agentErrorKind(error) === "auth" ? "invalid-key" : "unreachable" };
   }
 }
 
@@ -105,12 +105,7 @@ export function AISection() {
       const next: AppConfig = { ...DEFAULT_CFG, ...c, ai_keys: merged };
       setCfg(next);
       setSysPrompt(next.ai_system_prompt || "");
-      const editable = Object.fromEntries(
-        Object.entries(merged).map(([id, value]) => [
-          id,
-          value === REDACTED_SECRET ? "" : value,
-        ]),
-      );
+      const editable = editableKeys(merged);
       // Merge under any keys already typed: the load resolves async and must
       // not wipe an edit made before it landed.
       setKeys((prev) => ({ ...editable, ...prev }));
@@ -148,7 +143,7 @@ export function AISection() {
   // Saves the host and activates the model in one step; no separate "Save" button for Ollama.
   const applyOllamaModel = async (model: string) => {
     const host = (keys.ollama || DEFAULT_OLLAMA_HOST).trim();
-    const nextKeys = { ...keys, ollama: host };
+    const nextKeys = withKey(cfg.ai_keys, "ollama", host);
     setSaving("ollama");
     setMsg(null);
     try {
@@ -158,7 +153,7 @@ export function AISection() {
         ai_provider: "ollama",
         ai_model: model,
       });
-      setKeys(nextKeys);
+      setKeys(editableKeys(nextKeys));
       setSavedKeys(nextKeys);
       setMsg({ ok: true, text: `Ollama connected · ${model}` });
     } catch (e) {
@@ -195,7 +190,7 @@ export function AISection() {
         setErrorMsg((m) => ({ ...m, [id]: "Invalid API key." }));
         return;
       }
-      const nextKeys = { ...keys, [id]: value };
+      const nextKeys = withKey(cfg.ai_keys, id, value);
       const existingModels = cfg.ai_provider_models[id] ?? seedProviderModels(id);
       const mergedModels = res.ok ? mergeFetchedModels(existingModels, res.models) : existingModels;
       const wasActive = Boolean(cfg.ai_provider);
@@ -207,7 +202,7 @@ export function AISection() {
         ai_model: wasActive ? cfg.ai_model : pickActiveModel(mergedModels, defaultModel(id)),
       };
       await persist(next);
-      setKeys({ ...nextKeys, [id]: "" });
+      setKeys({ ...editableKeys(nextKeys), [id]: "" });
       setSavedKeys(nextKeys);
       setStatus((s) => ({ ...s, [id]: "valid" }));
       const label = provider?.name ?? custom?.name ?? id;
@@ -274,8 +269,7 @@ export function AISection() {
     setSaving(id);
     setMsg(null);
     try {
-      const nextKeys = { ...keys };
-      delete nextKeys[id];
+      const nextKeys = withoutKey(cfg.ai_keys, id);
       const nextModels = { ...cfg.ai_provider_models };
       delete nextModels[id];
       const wasActive = cfg.ai_provider === id;
@@ -288,7 +282,7 @@ export function AISection() {
         ai_model: wasActive ? "" : cfg.ai_model,
       };
       await persist(next);
-      setKeys(nextKeys);
+      setKeys(editableKeys(nextKeys));
       setSavedKeys(nextKeys);
     } catch (e) {
       setMsg({ ok: false, text: String(e) });
@@ -340,8 +334,7 @@ export function AISection() {
     setSaving(id);
     setMsg(null);
     try {
-      const nextKeys = { ...keys };
-      delete nextKeys[id];
+      const nextKeys = withoutKey(cfg.ai_keys, id);
       const wasActive = cfg.ai_provider === id;
       const next: AppConfig = {
         ...cfg,
@@ -352,7 +345,7 @@ export function AISection() {
         ai_api_key: wasActive ? "" : cfg.ai_api_key,
       };
       await persist(next);
-      setKeys(nextKeys);
+      setKeys(editableKeys(nextKeys));
       setSavedKeys(nextKeys);
       setMsg({
         ok: true,
