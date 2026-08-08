@@ -99,6 +99,10 @@ interface ChatsState {
   remove: (chatId: string) => void;
   setActive: (chatId: string | null) => void;
   byId: (chatId: string) => StoredChat | undefined;
+  live: Record<string, ChatMessage[]>;
+  setLive: (chatId: string, messages: ChatMessage[]) => void;
+  clearLive: (chatId: string) => void;
+  liveOrSaved: (chatId: string) => ChatMessage[] | undefined;
 }
 
 const legacyKey = (pid: string) => `oleafly.chats.${pid}`;
@@ -394,11 +398,26 @@ export const useChatsStore = create<ChatsState>((set, get) => ({
     cacheProjectChats(projectId, updated);
     void queuePersist(projectId, updated);
     set({ chats: updated, activeId: activeId === chatId ? null : activeId });
+    get().clearLive(chatId);
   },
 
   setActive: (chatId) => set({ activeId: chatId }),
 
   byId: (chatId) => get().chats.find((c) => c.id === chatId),
+
+  live: {},
+
+  setLive: (chatId, messages) => set((s) => ({ live: { ...s.live, [chatId]: messages } })),
+
+  clearLive: (chatId) =>
+    set((s) => {
+      if (!(chatId in s.live)) return s;
+      const next = { ...s.live };
+      delete next[chatId];
+      return { live: next };
+    }),
+
+  liveOrSaved: (chatId) => get().live[chatId] ?? get().byId(chatId)?.messages,
 }));
 
 // E2E / devtools: inspect and seed per-chat usage without a model call.
