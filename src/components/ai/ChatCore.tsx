@@ -882,7 +882,7 @@ ${sandboxedCustom}`;
         ...outgoing.map((a) =>
           a.mediaType.startsWith("image/")
             ? { type: "image" as const, image: a.dataUrl }
-            : { type: "file" as const, data: a.dataUrl, mediaType: a.mediaType },
+            : { type: "file" as const, data: a.dataUrl, mediaType: a.mediaType, name: a.name },
         ),
       ];
       apiMessages[apiMessages.length - 1] = {
@@ -906,6 +906,7 @@ ${sandboxedCustom}`;
         messages: apiMessages,
         tools,
         signal: ac.signal,
+        providerOverride: { provider_id: provider, model_id: model },
         takePendingImages: () =>
           modelSupportsVision(provider, model) ? pendingImagesRef.current.splice(0) : [],
         handlers: {

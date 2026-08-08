@@ -15,6 +15,7 @@ import {
   setModelEnabled,
 } from "@/lib/ai-model-state";
 import { agentListModels } from "@/lib/tauri";
+import { agentErrorKind } from "@/lib/agent-backend";
 
 export interface ModelManagerProps {
   providerId: string;
@@ -41,9 +42,8 @@ export function ModelManager({ providerId, models, apiKey, onChange }: ModelMana
       const fetched = await agentListModels({ providerId, key: apiKey || undefined });
       onChange(mergeFetchedModels(models, fetched));
     } catch (error) {
-      const message = String(error);
       setRefreshError(
-        message.includes("[auth]") ? "Invalid API key." : "Could not reach the provider.",
+        agentErrorKind(error) === "auth" ? "Invalid API key." : "Could not reach the provider.",
       );
     } finally {
       setRefreshing(false);

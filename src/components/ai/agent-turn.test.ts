@@ -11,7 +11,12 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke, Channel: mocks.Channel }));
 
 import type { AgentEvent } from "@/lib/agent-backend";
-import { runAgentHarness, toAgentMessages, toolSchemasFor } from "./agent-turn";
+import {
+  packToolOutputText,
+  runAgentHarness,
+  toAgentMessages,
+  toolSchemasFor,
+} from "./agent-turn";
 
 beforeEach(() => {
   mocks.invoke.mockReset();
@@ -292,5 +297,102 @@ describe("harness", () => {
     expect(request.tools).toEqual([
       { name: "read_file", description: "d", input_schema: { type: "object" } },
     ]);
+  });
+});
+
+describe("file attachments", () => {
+  const dataUrl = (text: string) =>
+    `data:text/plain;base64,${Buffer.from(text, "utf8").toString("base64")}`;
+
+  it("inlines a text attachment as a labeled text part", () => {
+    const messages: ModelMessage[] = [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "summarize this" },
+          { type: "file", data: dataUrl("@article{k, title={T}}"), mediaType: "text/plain", name: "refs.bib" },
+        ],
+      },
+    ];
+    const out = toAgentMessages(messages);
+    expect(out).toHaveLength(1);
+    expect(out[0].content).toHaveLength(2);
+    const attached = out[0].content[1];
+    expect(attached.type).toBe("text");
+    expect((attached as { text: string }).text).toContain('Attached file "refs.bib"');
+    expect((attached as { text: string }).text).toContain("@article{k, title={T}}");
+  });
+
+  it("recognizes tex-like extensions even with a generic media type", () => {
+    const messages: ModelMessage[] = [
+      {
+        role: "user",
+        content: [
+          {
+            type: "file",
+            data: dataUrl("\\section{Intro}"),
+            mediaType: "application/octet-stream",
+            name: "main.tex",
+          },
+        ],
+      },
+    ];
+    const out = toAgentMessages(messages);
+    expect((out[0].content[0] as { text: string }).text).toContain("\\section{Intro}");
+  });
+
+  it("keeps an attachment-only message instead of dropping it", () => {
+    const messages: ModelMessage[] = [
+      {
+        role: "user",
+        content: [
+          { type: "file", data: dataUrl("hello"), mediaType: "text/plain", name: "note.txt" },
+        ],
+      },
+    ];
+    expect(toAgentMessages(messages)).toHaveLength(1);
+  });
+
+  it("names an unsupported binary attachment instead of silently omitting it", () => {
+    const messages: ModelMessage[] = [
+      {
+        role: "user",
+        content: [
+          { type: "file", data: "data:application/pdf;base64,AAAA", mediaType: "application/pdf", name: "paper.pdf" },
+        ],
+      },
+    ];
+    const out = toAgentMessages(messages);
+    const text = (out[0].content[0] as { text: string }).text;
+    expect(text).toContain('"paper.pdf"');
+    expect(text).toContain("could not be included");
+  });
+
+  it("caps an oversized text attachment", () => {
+    const messages: ModelMessage[] = [
+      {
+        role: "user",
+        content: [
+          { type: "file", data: dataUrl("x".repeat(60_000)), mediaType: "text/plain", name: "big.txt" },
+        ],
+      },
+    ];
+    const text = (toAgentMessages(messages)[0].content[0] as { text: string }).text;
+    expect(text.length).toBeLessThan(50_000);
+    expect(text).toContain("truncated");
+  });
+});
+
+describe("tool output packing", () => {
+  it("truncates an oversized string field the way the removed TS loop did", () => {
+    const packed = packToolOutputText({ content: "y".repeat(40_000), path: "main.tex" });
+    expect(packed.length).toBeLessThan(20_000);
+    expect(packed).toContain("truncated");
+    expect(packed).toContain("main.tex");
+  });
+
+  it("leaves a small output untouched", () => {
+    expect(packToolOutputText({ ok: true })).toBe('{"ok":true}');
+    expect(packToolOutputText("done")).toBe("done");
   });
 });

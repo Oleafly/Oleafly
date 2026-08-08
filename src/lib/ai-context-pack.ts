@@ -11,6 +11,34 @@ export function truncateText(s: string, max: number): string {
   return `${s.slice(0, keep)}\n… [truncated ${s.length - keep} chars; re-read with tools if needed]`;
 }
 
+export function packToolOutput(output: unknown, maxChars = TOOL_RESULT_MAX_CHARS): unknown {
+  if (output == null) return output;
+  if (typeof output === "string") return truncateText(output, maxChars);
+
+  if (typeof output === "object") {
+    try {
+      const raw = JSON.stringify(output);
+      if (raw.length <= maxChars) return output;
+      const o = { ...(output as Record<string, unknown>) };
+      for (const key of ["content", "log", "text", "log_tail", "body"]) {
+        if (typeof o[key] === "string") {
+          o[key] = truncateText(o[key] as string, Math.floor(maxChars * 0.7));
+        }
+      }
+      const again = JSON.stringify(o);
+      if (again.length <= maxChars) return o;
+      return {
+        truncated: true,
+        preview: truncateText(again, maxChars),
+        note: "Tool output was truncated for context. Call the tool again with a narrower scope if needed.",
+      };
+    } catch {
+      return { truncated: true, note: "Tool output could not be serialized." };
+    }
+  }
+  return output;
+}
+
 
 export type HistoryMsg = { role: string; content: string };
 
