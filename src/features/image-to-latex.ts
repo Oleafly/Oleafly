@@ -1,7 +1,7 @@
-import { generateText } from "ai";
+import { completeViaBackend } from "@/lib/agent-backend";
 import { insertAtCursor } from "@/components/editor/cm/controller";
 import { modelSupportsVision } from "@/lib/ai-figure";
-import { hasConfiguredProvider, resolveActiveModel } from "@/lib/ai-providers";
+import { hasConfiguredProvider, pickActiveProvider } from "@/lib/ai-providers";
 import { logError } from "@/lib/log";
 import { getConfig } from "@/lib/tauri";
 import { toast } from "@/lib/toast";
@@ -10,16 +10,19 @@ export async function imageToLatexAvailable(): Promise<boolean> {
   try {
     const cfg = await getConfig();
     if (!hasConfiguredProvider(cfg)) return false;
-    const { providerId, modelId } = resolveActiveModel(cfg);
+    const { providerId, modelId } = pickActiveProvider(cfg);
     return modelSupportsVision(providerId, modelId);
   } catch {
     return false;
   }
 }
 
+const TRANSCRIBE_SYSTEM =
+  "You transcribe images into LaTeX. Return ONLY a LaTeX snippet: an equation environment, a tabular, or plain text matching the image. No preamble, no documentclass, no markdown fences, no explanation. Transcribe exactly what is visible, never invent content. Never use em dashes.";
+
+const TRANSCRIBE_PROMPT = "Transcribe this image to LaTeX.";
+
 export async function imageToLatex(file: File): Promise<void> {
-  const cfg = await getConfig();
-  const { model } = resolveActiveModel(cfg);
   const dataUrl = await new Promise<string>((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => resolve(String(r.result));
@@ -28,15 +31,13 @@ export async function imageToLatex(file: File): Promise<void> {
   });
   toast.info("Transcribing image ...");
   try {
-    const { text } = await generateText({
-      model,
-      system:
-        "You transcribe images into LaTeX. Return ONLY a LaTeX snippet: an equation environment, a tabular, or plain text matching the image. No preamble, no documentclass, no markdown fences, no explanation. Transcribe exactly what is visible, never invent content. Never use em dashes.",
+    const { text } = await completeViaBackend({
+      system: TRANSCRIBE_SYSTEM,
       messages: [
         {
           role: "user",
           content: [
-            { type: "text", text: "Transcribe this image to LaTeX." },
+            { type: "text", text: TRANSCRIBE_PROMPT },
             { type: "image", image: dataUrl },
           ],
         },

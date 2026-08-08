@@ -5,6 +5,7 @@ import {
   deleteModel,
   enabledModels,
   mergeFetchedModels,
+  pickActiveModel,
   restoreSeedModels,
   seedProviderModels,
   setModelEnabled,
@@ -95,5 +96,85 @@ describe("restoreSeedModels", () => {
   it("is a no-op for providers without seeds", () => {
     const list = [stored("a")];
     expect(restoreSeedModels(list, "unknown")).toBe(list);
+  });
+});
+
+describe("reconciling a refreshed model list", () => {
+  const stored = (id: string, source: StoredModel["source"], enabled = true): StoredModel => ({
+    id,
+    name: id,
+    enabled,
+    source,
+  });
+
+  it("adds models the provider has started offering", () => {
+    const next = mergeFetchedModels([stored("glm-4.6", "fetched")], [
+      { id: "glm-4.6", name: "GLM-4.6" },
+      { id: "glm-5.2", name: "GLM-5.2" },
+    ]);
+    expect(next.map((m) => m.id)).toEqual(["glm-4.6", "glm-5.2"]);
+  });
+
+  it("drops a discovered model the provider has deprecated", () => {
+    const next = mergeFetchedModels(
+      [stored("glm-4.5", "fetched"), stored("glm-5.2", "fetched")],
+      [{ id: "glm-5.2", name: "GLM-5.2" }],
+    );
+    expect(next.map((m) => m.id)).toEqual(["glm-5.2"]);
+  });
+
+  it("keeps a model the user added by hand", () => {
+    const next = mergeFetchedModels(
+      [stored("my-private-model", "custom"), stored("gone", "fetched")],
+      [{ id: "glm-5.2", name: "GLM-5.2" }],
+    );
+    expect(next.map((m) => m.id)).toEqual(["my-private-model", "glm-5.2"]);
+  });
+
+  it("keeps a built-in seed the provider does not list", () => {
+    const next = mergeFetchedModels([stored("glm-5.2", "builtin")], [
+      { id: "glm-4.6", name: "GLM-4.6" },
+    ]);
+    expect(next.map((m) => m.id)).toEqual(["glm-5.2", "glm-4.6"]);
+  });
+
+  it("preserves the enabled state of a model that survives", () => {
+    const next = mergeFetchedModels([stored("glm-5.2", "fetched", false)], [
+      { id: "glm-5.2", name: "GLM-5.2" },
+    ]);
+    expect(next[0].enabled).toBe(false);
+  });
+});
+
+describe("choosing the active model after a key is saved", () => {
+  const stored = (id: string, enabled = true): StoredModel => ({
+    id,
+    name: id,
+    enabled,
+    source: "fetched",
+  });
+
+  it("uses the catalog default when the provider actually offers it", () => {
+    const models = [stored("glm-4.6"), stored("glm-5.2")];
+    expect(pickActiveModel(models, "glm-5.2")).toBe("glm-5.2");
+  });
+
+  it("falls back to what the provider offered when the default is not on the plan", () => {
+    const models = [stored("glm-4.5-air"), stored("glm-4.6")];
+    expect(pickActiveModel(models, "glm-5.2")).toBe("glm-4.5-air");
+  });
+
+  it("never points a custom gateway at the catalog fallback", () => {
+    const models = [stored("mixtral-local")];
+    expect(pickActiveModel(models, "gpt-4o-mini")).toBe("mixtral-local");
+  });
+
+  it("ignores disabled models when a usable one exists", () => {
+    const models = [stored("disabled-one", false), stored("usable")];
+    expect(pickActiveModel(models, "gpt-4o-mini")).toBe("usable");
+  });
+
+  it("keeps the catalog default when the provider listed nothing", () => {
+    expect(pickActiveModel([], "glm-5.2")).toBe("glm-5.2");
   });
 });

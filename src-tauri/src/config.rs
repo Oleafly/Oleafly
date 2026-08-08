@@ -234,30 +234,142 @@ fn write_config_at(path: &std::path::Path, config: &AppConfig) -> Result<(), Str
     })
 }
 
+pub const REDACTED: &str = "__stored__";
+
+#[tauri::command]
+pub fn redacted_secret_marker() -> &'static str {
+    REDACTED
+}
+
+fn is_credential(provider: &str) -> bool {
+    provider != "ollama"
+}
+
+pub fn redact_ai_secrets(cfg: &mut AppConfig) {
+    for (provider, value) in cfg.ai_keys.iter_mut() {
+        if !value.is_empty() && is_credential(provider) {
+            *value = REDACTED.to_string();
+        }
+    }
+    if !cfg.ai_api_key.is_empty() {
+        cfg.ai_api_key = REDACTED.to_string();
+    }
+}
+
+fn restore_ai_secrets(config: &mut AppConfig, stored: &AppConfig) {
+    let legacy_provider = if stored.ai_provider.is_empty() {
+        "openai"
+    } else {
+        stored.ai_provider.as_str()
+    };
+    for (provider, value) in config.ai_keys.iter_mut() {
+        if value == REDACTED {
+            if let Some(previous) = stored.ai_keys.get(provider) {
+                *value = previous.clone();
+            } else if provider == legacy_provider && !stored.ai_api_key.is_empty() {
+                *value = stored.ai_api_key.clone();
+            } else {
+                value.clear();
+            }
+        }
+    }
+    config.ai_keys.retain(|_, value| !value.is_empty());
+    if config.ai_api_key == REDACTED {
+        config.ai_api_key = stored.ai_api_key.clone();
+    }
+}
+
 #[tauri::command]
 pub fn get_config() -> Result<AppConfig, String> {
     let mut cfg = read_config()?;
     // Never expose the GitHub push token to the webview; report only presence.
-    // (The AI keys stay, since the frontend calls those providers directly.)
     cfg.github_connected = !cfg.github_token.is_empty();
     cfg.github_token = String::new();
     // Same for the MCP bearer token: only `mcp_connection_info` may hand it
     // to the webview (for Settings copy buttons while the server is running).
     cfg.mcp_token = String::new();
+    redact_ai_secrets(&mut cfg);
     Ok(cfg)
+}
+
+fn key_unchanged(config: &AppConfig, stored: &AppConfig, id: &str) -> bool {
+    config
+        .ai_keys
+        .get(id)
+        .map(|v| stored.ai_keys.get(id).is_some_and(|s| s == v))
+        .unwrap_or(false)
+}
+
+fn moved_endpoint_ids(config: &AppConfig, stored: &AppConfig) -> Vec<String> {
+    stored
+        .ai_custom_providers
+        .iter()
+        .filter(|previous| !previous.base_url.trim().is_empty())
+        .filter(|previous| {
+            config
+                .ai_custom_providers
+                .iter()
+                .find(|c| c.id == previous.id)
+                .is_some_and(|current| current.base_url.trim() != previous.base_url.trim())
+        })
+        .filter(|previous| key_unchanged(config, stored, &previous.id))
+        .map(|previous| previous.id.clone())
+        .collect()
+}
+
+fn recreated_provider_ids(config: &AppConfig, stored: &AppConfig) -> Vec<String> {
+    config
+        .ai_custom_providers
+        .iter()
+        .filter(|current| {
+            !stored
+                .ai_custom_providers
+                .iter()
+                .any(|p| p.id == current.id)
+                && oleafly_agent::provider::catalog_entry(&current.id).is_none()
+                && key_unchanged(config, stored, &current.id)
+        })
+        .map(|current| current.id.clone())
+        .collect()
+}
+
+fn orphaned_provider_ids(config: &AppConfig, stored: &AppConfig) -> Vec<String> {
+    stored
+        .ai_custom_providers
+        .iter()
+        .filter(|previous| {
+            !config
+                .ai_custom_providers
+                .iter()
+                .any(|c| c.id == previous.id)
+                && oleafly_agent::provider::catalog_entry(&previous.id).is_none()
+        })
+        .map(|previous| previous.id.clone())
+        .collect()
+}
+
+fn drop_keys_for_moved_endpoints(config: &mut AppConfig, stored: &AppConfig) {
+    let doomed: Vec<String> = moved_endpoint_ids(config, stored)
+        .into_iter()
+        .chain(recreated_provider_ids(config, stored))
+        .chain(orphaned_provider_ids(config, stored))
+        .collect();
+    for id in doomed {
+        config.ai_keys.remove(&id);
+    }
 }
 
 #[tauri::command]
 pub fn set_config(mut config: AppConfig) -> Result<(), String> {
-    if config.github_token.is_empty() || config.mcp_token.is_empty() {
-        let stored = read_config()?;
-        if config.github_token.is_empty() {
-            config.github_token = stored.github_token;
-        }
-        if config.mcp_token.is_empty() {
-            config.mcp_token = stored.mcp_token;
-        }
+    let stored = read_config()?;
+    if config.github_token.is_empty() {
+        config.github_token = stored.github_token.clone();
     }
+    if config.mcp_token.is_empty() {
+        config.mcp_token = stored.mcp_token.clone();
+    }
+    restore_ai_secrets(&mut config, &stored);
+    drop_keys_for_moved_endpoints(&mut config, &stored);
     config.github_connected = false;
     write_config(&config)
 }
@@ -265,6 +377,296 @@ pub fn set_config(mut config: AppConfig) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn custom(id: &str, base: &str) -> CustomProvider {
+        CustomProvider {
+            id: id.into(),
+            name: id.into(),
+            base_url: base.into(),
+            key_optional: false,
+        }
+    }
+
+    fn with_custom(base: &str, key: &str) -> AppConfig {
+        AppConfig {
+            ai_custom_providers: vec![custom("mycorp", base)],
+            ai_keys: HashMap::from([("mycorp".to_string(), key.to_string())]),
+            ..AppConfig::default()
+        }
+    }
+
+    #[test]
+    fn repointing_a_custom_endpoint_drops_the_stored_key() {
+        let stored = with_custom("https://api.mycorp.test/v1", "sk-real");
+        let mut incoming = with_custom("http://attacker.example", "sk-real");
+        drop_keys_for_moved_endpoints(&mut incoming, &stored);
+        assert!(
+            !incoming.ai_keys.contains_key("mycorp"),
+            "a moved endpoint kept the credential it must not reach"
+        );
+    }
+
+    #[test]
+    fn repointing_while_supplying_a_new_key_keeps_that_key() {
+        let stored = with_custom("https://api.mycorp.test/v1", "sk-real");
+        let mut incoming = with_custom("https://api.mycorp.test/v2", "sk-freshly-typed");
+        drop_keys_for_moved_endpoints(&mut incoming, &stored);
+        assert_eq!(
+            incoming.ai_keys.get("mycorp").map(String::as_str),
+            Some("sk-freshly-typed")
+        );
+    }
+
+    #[test]
+    fn leaving_the_endpoint_alone_keeps_the_key() {
+        let stored = with_custom("https://api.mycorp.test/v1", "sk-real");
+        let mut incoming = with_custom("https://api.mycorp.test/v1", "sk-real");
+        drop_keys_for_moved_endpoints(&mut incoming, &stored);
+        assert_eq!(
+            incoming.ai_keys.get("mycorp").map(String::as_str),
+            Some("sk-real")
+        );
+    }
+
+    #[test]
+    fn deleting_a_custom_provider_drops_its_key_too() {
+        let stored = with_custom("https://api.mycorp.test/v1", "sk-real");
+        let mut incoming = AppConfig {
+            ai_keys: HashMap::from([("mycorp".to_string(), "sk-real".to_string())]),
+            ..AppConfig::default()
+        };
+        drop_keys_for_moved_endpoints(&mut incoming, &stored);
+        assert!(!incoming.ai_keys.contains_key("mycorp"));
+    }
+
+    #[test]
+    fn delete_then_recreate_cannot_reattach_a_stored_key_to_a_new_endpoint() {
+        let stored = with_custom("https://api.mycorp.test/v1", "sk-real");
+        let mut step_one = AppConfig {
+            ai_keys: HashMap::from([("mycorp".to_string(), REDACTED.to_string())]),
+            ..AppConfig::default()
+        };
+        restore_ai_secrets(&mut step_one, &stored);
+        drop_keys_for_moved_endpoints(&mut step_one, &stored);
+        assert!(!step_one.ai_keys.contains_key("mycorp"));
+
+        let stale_stored = with_custom("https://api.mycorp.test/v1", "sk-real");
+        let mut step_two = AppConfig {
+            ai_custom_providers: vec![custom("mycorp", "http://attacker.example")],
+            ai_keys: HashMap::from([("mycorp".to_string(), "sk-real".to_string())]),
+            ..AppConfig::default()
+        };
+        let mut no_provider_stored = stale_stored.clone();
+        no_provider_stored.ai_custom_providers.clear();
+        drop_keys_for_moved_endpoints(&mut step_two, &no_provider_stored);
+        assert!(!step_two.ai_keys.contains_key("mycorp"));
+    }
+
+    #[test]
+    fn a_custom_entry_shadowing_a_catalog_id_never_drops_the_catalog_key() {
+        let stored = AppConfig {
+            ai_keys: HashMap::from([("openai".to_string(), "sk-real".to_string())]),
+            ..AppConfig::default()
+        };
+        let mut incoming = AppConfig {
+            ai_custom_providers: vec![custom("openai", "http://attacker.example")],
+            ai_keys: HashMap::from([("openai".to_string(), "sk-real".to_string())]),
+            ..AppConfig::default()
+        };
+        drop_keys_for_moved_endpoints(&mut incoming, &stored);
+        assert_eq!(
+            incoming.ai_keys.get("openai").map(String::as_str),
+            Some("sk-real")
+        );
+    }
+
+    #[test]
+    fn a_marker_round_trip_through_set_config_cannot_move_the_endpoint() {
+        let stored = with_custom("https://api.mycorp.test/v1", "sk-real");
+        let mut incoming = with_custom("http://attacker.example", REDACTED);
+        restore_ai_secrets(&mut incoming, &stored);
+        drop_keys_for_moved_endpoints(&mut incoming, &stored);
+        assert!(!incoming.ai_keys.contains_key("mycorp"));
+    }
+
+    fn cfg_with_keys() -> AppConfig {
+        let mut cfg = AppConfig::default();
+        cfg.ai_keys.insert("openai".into(), "sk-real".into());
+        cfg.ai_keys.insert("groq".into(), "gsk-real".into());
+        cfg.ai_api_key = "sk-legacy".into();
+        cfg
+    }
+
+    #[test]
+    fn a_legacy_marker_migrates_the_single_key_into_the_key_map() {
+        let stored = AppConfig {
+            ai_provider: "anthropic".into(),
+            ai_api_key: "sk-legacy".into(),
+            ..AppConfig::default()
+        };
+        let mut incoming = AppConfig {
+            ai_provider: "anthropic".into(),
+            ai_api_key: REDACTED.into(),
+            ai_keys: HashMap::from([("anthropic".to_string(), REDACTED.to_string())]),
+            ..AppConfig::default()
+        };
+        restore_ai_secrets(&mut incoming, &stored);
+        assert_eq!(
+            incoming.ai_keys.get("anthropic").map(String::as_str),
+            Some("sk-legacy")
+        );
+    }
+
+    #[test]
+    fn a_legacy_marker_defaults_to_openai_when_no_provider_was_saved() {
+        let stored = AppConfig {
+            ai_api_key: "sk-legacy".into(),
+            ..AppConfig::default()
+        };
+        let mut incoming = AppConfig {
+            ai_keys: HashMap::from([("openai".to_string(), REDACTED.to_string())]),
+            ..AppConfig::default()
+        };
+        restore_ai_secrets(&mut incoming, &stored);
+        assert_eq!(
+            incoming.ai_keys.get("openai").map(String::as_str),
+            Some("sk-legacy")
+        );
+    }
+
+    #[test]
+    fn an_unresolvable_marker_is_dropped_not_persisted_as_a_key() {
+        let stored = AppConfig::default();
+        let mut incoming = AppConfig {
+            ai_keys: HashMap::from([("groq".to_string(), REDACTED.to_string())]),
+            ..AppConfig::default()
+        };
+        restore_ai_secrets(&mut incoming, &stored);
+        assert!(!incoming.ai_keys.contains_key("groq"));
+    }
+
+    static DATA_DIR_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    struct DataDirGuard;
+
+    impl Drop for DataDirGuard {
+        fn drop(&mut self) {
+            std::env::remove_var("OLEAFLY_DATA_DIR");
+        }
+    }
+
+    #[test]
+    fn an_existing_install_keeps_working_without_re_entering_a_key() {
+        let _lock = DATA_DIR_LOCK
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let dir = temp_dir();
+        std::env::set_var("OLEAFLY_DATA_DIR", &dir);
+        let _guard = DataDirGuard;
+
+        let before = AppConfig {
+            ai_provider: "openai".into(),
+            ai_model: "gpt-4o".into(),
+            ai_keys: HashMap::from([("openai".into(), "sk-from-an-older-build".into())]),
+            ..AppConfig::default()
+        };
+        write_config(&before).unwrap();
+
+        let hydrated = read_config().unwrap();
+        assert_eq!(
+            hydrated.ai_keys.get("openai").unwrap(),
+            "sk-from-an-older-build"
+        );
+        assert_eq!(hydrated.ai_provider, "openai");
+
+        let mut visible = hydrated.clone();
+        redact_ai_secrets(&mut visible);
+        assert_eq!(visible.ai_keys.get("openai").unwrap(), REDACTED);
+        assert!(!serde_json::to_string(&visible)
+            .unwrap()
+            .contains("sk-from-an-older-build"));
+
+        let mut round_trip = visible.clone();
+        round_trip.ai_model = "gpt-4o-mini".into();
+        restore_ai_secrets(&mut round_trip, &hydrated);
+        assert_eq!(
+            round_trip.ai_keys.get("openai").unwrap(),
+            "sk-from-an-older-build"
+        );
+    }
+
+    #[test]
+    fn redaction_reports_presence_without_the_value() {
+        let mut cfg = cfg_with_keys();
+        cfg.ai_keys.insert("mistral".into(), String::new());
+        redact_ai_secrets(&mut cfg);
+
+        assert_eq!(cfg.ai_keys.get("openai").unwrap(), REDACTED);
+        assert_eq!(cfg.ai_keys.get("groq").unwrap(), REDACTED);
+        assert_eq!(cfg.ai_api_key, REDACTED);
+        assert_eq!(cfg.ai_keys.get("mistral").unwrap(), "");
+        assert!(!serde_json::to_string(&cfg).unwrap().contains("sk-real"));
+    }
+
+    #[test]
+    fn the_ollama_host_is_not_a_secret_and_stays_visible() {
+        let mut cfg = AppConfig::default();
+        cfg.ai_keys
+            .insert("ollama".into(), "http://localhost:11434".into());
+        cfg.ai_keys.insert("openai".into(), "sk-real".into());
+        redact_ai_secrets(&mut cfg);
+        assert_eq!(cfg.ai_keys.get("ollama").unwrap(), "http://localhost:11434");
+        assert_eq!(cfg.ai_keys.get("openai").unwrap(), REDACTED);
+    }
+
+    #[test]
+    fn a_redacted_round_trip_never_overwrites_a_stored_key() {
+        let stored = cfg_with_keys();
+        let mut incoming = stored.clone();
+        redact_ai_secrets(&mut incoming);
+        incoming.ai_model = "gpt-4o-mini".into();
+
+        restore_ai_secrets(&mut incoming, &stored);
+        assert_eq!(incoming.ai_keys.get("openai").unwrap(), "sk-real");
+        assert_eq!(incoming.ai_keys.get("groq").unwrap(), "gsk-real");
+        assert_eq!(incoming.ai_api_key, "sk-legacy");
+        assert_eq!(incoming.ai_model, "gpt-4o-mini");
+    }
+
+    #[test]
+    fn a_new_value_replaces_the_stored_one() {
+        let stored = cfg_with_keys();
+        let mut incoming = stored.clone();
+        redact_ai_secrets(&mut incoming);
+        incoming.ai_keys.insert("openai".into(), "sk-new".into());
+
+        restore_ai_secrets(&mut incoming, &stored);
+        assert_eq!(incoming.ai_keys.get("openai").unwrap(), "sk-new");
+    }
+
+    #[test]
+    fn a_blank_value_clears_a_stored_credential() {
+        let stored = cfg_with_keys();
+        let mut incoming = stored.clone();
+        redact_ai_secrets(&mut incoming);
+        incoming.ai_keys.insert("openai".into(), String::new());
+
+        restore_ai_secrets(&mut incoming, &stored);
+        assert!(!incoming.ai_keys.contains_key("openai"));
+        assert_eq!(incoming.ai_keys.get("groq").unwrap(), "gsk-real");
+    }
+
+    #[test]
+    fn dropping_the_entry_is_how_a_credential_is_deleted() {
+        let stored = cfg_with_keys();
+        let mut incoming = stored.clone();
+        redact_ai_secrets(&mut incoming);
+        incoming.ai_keys.remove("groq");
+
+        restore_ai_secrets(&mut incoming, &stored);
+        assert!(!incoming.ai_keys.contains_key("groq"));
+        assert_eq!(incoming.ai_keys.get("openai").unwrap(), "sk-real");
+    }
 
     fn temp_dir() -> std::path::PathBuf {
         use std::sync::atomic::{AtomicU64, Ordering};

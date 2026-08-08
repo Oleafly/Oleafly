@@ -19,7 +19,6 @@ export function packToolOutput(output: unknown, maxChars = TOOL_RESULT_MAX_CHARS
     try {
       const raw = JSON.stringify(output);
       if (raw.length <= maxChars) return output;
-      // Prefer trimming known large string fields.
       const o = { ...(output as Record<string, unknown>) };
       for (const key of ["content", "log", "text", "log_tail", "body"]) {
         if (typeof o[key] === "string") {
@@ -39,6 +38,7 @@ export function packToolOutput(output: unknown, maxChars = TOOL_RESULT_MAX_CHARS
   }
   return output;
 }
+
 
 export type HistoryMsg = { role: string; content: string };
 

@@ -657,6 +657,27 @@ export const mcpRegenerateToken = () => invoke<void>("mcp_regenerate_token");
 export const mcpRegisterTools = (
   tools: { name: string; description: string; inputSchema: unknown }[],
 ) => invoke<void>("mcp_register_tools", { tools });
+export const REDACTED_MARKER = "__stored__";
+export const redactedSecretMarker = () => invoke<string>("redacted_secret_marker");
+
+export interface ProviderModel {
+  id: string;
+  name: string;
+}
+
+export const agentListModels = (args: {
+  providerId: string;
+  key?: string;
+  baseURL?: string;
+}) =>
+  invoke<ProviderModel[]>("agent_list_models", {
+    providerId: args.providerId,
+    key: args.key ?? null,
+    baseUrl: args.baseURL ?? null,
+  });
+
+export const mcpSetActiveProject = (projectId: string | null) =>
+  invoke<void>("mcp_set_active_project", { projectId });
 export const mcpToolResult = (callId: number, result: unknown) =>
   invoke<void>("mcp_tool_result", { callId, result });
 

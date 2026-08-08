@@ -38,6 +38,7 @@ pub struct McpState {
     /// Present while the server runs; sending true triggers graceful shutdown.
     pub shutdown: Mutex<Option<watch::Sender<bool>>>,
     pub bound_port: Mutex<Option<u16>>,
+    pub active_project: Mutex<Option<String>>,
     /// The running axum task, so `stop` can await teardown (the listener is
     /// released early in graceful shutdown) before a caller rebinds the port.
     pub serve_task: Mutex<Option<tauri::async_runtime::JoinHandle<()>>>,
@@ -122,6 +123,26 @@ async fn mcp_post(State(app): State<AppHandle>, headers: HeaderMap, body: String
             name,
             arguments,
         } => {
+            let policy = tokio::task::spawn_blocking(|| {
+                crate::config::read_config().map(|cfg| cfg.mcp_approval_policy)
+            })
+            .await
+            .ok()
+            .and_then(|read| read.ok())
+            .unwrap_or_default();
+            if super::native::handles(&name, &policy) {
+                let reported = state.active_project.lock().await.clone();
+                let outcome = match super::native::resolve_project(&arguments, reported) {
+                    Ok(project_id) => super::native::call(&project_id, &name, &arguments).await,
+                    Err(error) => Err(error),
+                };
+                return match outcome {
+                    Ok(result) => (StatusCode::OK, Json(rpc_result(id, result))).into_response(),
+                    Err(error) => {
+                        (StatusCode::OK, Json(rpc_error(id, -32000, &error))).into_response()
+                    }
+                };
+            }
             let call_id = state.call_seq.fetch_add(1, Ordering::SeqCst);
             let (tx, rx) = oneshot::channel();
             state.pending.lock().await.insert(call_id, tx);
