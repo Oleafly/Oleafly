@@ -621,7 +621,9 @@ export function ChatCore() {
     for (const patch of patches) last = patch.apply(last);
     copy[copy.length - 1] = last;
     setMessages(copy);
-    persistDebounced(patches[patches.length - 1].chatId, copy);
+    const chatId = patches[patches.length - 1].chatId;
+    if (chatId) useChatsStore.getState().setLive(chatId, copy);
+    persistDebounced(chatId, copy);
   }, [persistDebounced, setMessages]);
 
   // High-frequency stream deltas are coalesced to one setState per animation
@@ -1065,7 +1067,10 @@ ${sandboxedCustom}`;
           clearTimeout(persistTimerRef.current);
           persistTimerRef.current = null;
         }
-        if (runChatId) useChatsStore.getState().saveMessages(runChatId, messagesRef.current);
+        if (runChatId) {
+          useChatsStore.getState().saveMessages(runChatId, messagesRef.current);
+          useChatsStore.getState().clearLive(runChatId);
+        }
       }
       runOwnerRef.current = false;
       endChatRun(runHandle);
@@ -1160,8 +1165,8 @@ ${sandboxedCustom}`;
           setStreaming(true);
           setPendingApproval(run.pendingApproval);
           if (!runOwnerRef.current) {
-            const chat = cs.byId(run.chatId);
-            if (chat) setMessages(chat.messages);
+            const current = cs.liveOrSaved(run.chatId);
+            if (current) setMessages(current);
           }
         }
       } else if (!run && !runOwnerRef.current) {
@@ -1182,8 +1187,8 @@ ${sandboxedCustom}`;
       if (!run || run.projectId !== projectId || !run.chatId) return;
       const cs = useChatsStore.getState();
       if (cs.projectId !== projectId || run.chatId !== cs.activeId) return;
-      const chat = cs.byId(run.chatId);
-      if (chat) setMessages(chat.messages);
+      const current = cs.liveOrSaved(run.chatId);
+      if (current) setMessages(current);
     });
     return () => {
       unsubRun();

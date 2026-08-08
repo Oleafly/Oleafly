@@ -326,7 +326,6 @@ mod tests {
         assert!(!should_retry(&fatal, 0, 4, false));
     }
 
-
     #[test]
     fn a_tool_output_deserializes_with_or_without_images() {
         let plain: ToolOutput = serde_json::from_str(r#"{"output":"ok"}"#).unwrap();
