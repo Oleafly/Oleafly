@@ -230,6 +230,7 @@ export function ProvidersTab({
           // A custom provider is usable the moment it's added, key or not
           // (self-hosted bases may not require one).
           const isConfigured = hasSaved || isCustom;
+          const isReplacingKey = !hasSaved || (editingKey[p.id] ?? false);
           const isSelected = activeProvider === p.id;
           const isActive = isSelected && isConfigured;
           // Settings never recommends or expands a provider implicitly. The
@@ -324,7 +325,7 @@ export function ProvidersTab({
                     );
                   })()}
                   <div className="mt-2 flex gap-2">
-                    {!hasSaved || (editingKey[p.id] ?? false) ? (
+                    {isReplacingKey ? (
                       <Input
                         type="password"
                         value={value}
