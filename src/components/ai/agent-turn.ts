@@ -81,49 +81,51 @@ export function fileAttachmentText(part: {
   return `[The attachment "${name}" (${mediaType || "unknown type"}) could not be included. Only text based files are supported here; ask the user to paste the relevant content instead.]`;
 }
 
+function toolUsePart(part: Record<string, unknown>): AgentContentPart {
+  return {
+    type: "toolUse",
+    id: String(part.toolCallId),
+    name: String(part.toolName),
+    arguments: JSON.stringify(part.input ?? {}),
+  };
+}
+
+function toolResultPart(part: Record<string, unknown>): AgentContentPart {
+  const output = part.output as { value?: unknown } | undefined;
+  const value = output && "value" in output ? output.value : part.output;
+  return {
+    type: "toolResult",
+    id: String(part.toolCallId),
+    name: String(part.toolName),
+    output: typeof value === "string" ? value : JSON.stringify(value ?? null),
+  };
+}
+
+function convertPart(part: Record<string, unknown>): AgentContentPart | null {
+  switch (part.type) {
+    case "text":
+      return part.text ? { type: "text", text: String(part.text) } : null;
+    case "image":
+      return { type: "image", image: String(part.image) };
+    case "file":
+      return { type: "text", text: fileAttachmentText(part) };
+    case "tool-call":
+      return toolUsePart(part);
+    case "tool-result":
+      return toolResultPart(part);
+    default:
+      return null;
+  }
+}
+
 function partsFromContent(content: unknown): AgentContentPart[] {
   if (typeof content === "string") {
     return content ? [{ type: "text", text: content }] : [];
   }
   if (!Array.isArray(content)) return [];
-
-  const parts: AgentContentPart[] = [];
-  for (const raw of content) {
-    const part = raw as Record<string, unknown>;
-    switch (part.type) {
-      case "text":
-        if (part.text) parts.push({ type: "text", text: String(part.text) });
-        break;
-      case "image":
-        parts.push({ type: "image", image: String(part.image) });
-        break;
-      case "file":
-        parts.push({ type: "text", text: fileAttachmentText(part) });
-        break;
-      case "tool-call":
-        parts.push({
-          type: "toolUse",
-          id: String(part.toolCallId),
-          name: String(part.toolName),
-          arguments: JSON.stringify(part.input ?? {}),
-        });
-        break;
-      case "tool-result": {
-        const output = part.output as { value?: unknown } | undefined;
-        const value = output && "value" in output ? output.value : part.output;
-        parts.push({
-          type: "toolResult",
-          id: String(part.toolCallId),
-          name: String(part.toolName),
-          output: typeof value === "string" ? value : JSON.stringify(value ?? null),
-        });
-        break;
-      }
-      default:
-        break;
-    }
-  }
-  return parts;
+  return content
+    .map((raw) => convertPart(raw as Record<string, unknown>))
+    .filter((part): part is AgentContentPart => part !== null);
 }
 
 export function toAgentMessages(messages: ModelMessage[]): AgentMessage[] {

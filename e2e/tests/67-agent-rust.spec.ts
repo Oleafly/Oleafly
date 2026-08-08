@@ -237,8 +237,8 @@ test("the redaction marker has one definition, not two", async ({ tauriPage }) =
 
   const agreed = await tauriPage.evaluate<{ frontend: string; backend: string }>(`
     (async () => {
-      const { REDACTED_SECRET, redactedSecretMarker } = await import("/src/lib/tauri.ts");
-      return { frontend: REDACTED_SECRET, backend: await redactedSecretMarker() };
+      const { REDACTED_MARKER, redactedSecretMarker } = await import("/src/lib/tauri.ts");
+      return { frontend: REDACTED_MARKER, backend: await redactedSecretMarker() };
     })()
   `);
 

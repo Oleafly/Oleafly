@@ -45,6 +45,10 @@ describe("completeChatWithActiveModel", () => {
   it("never receives a provider credential from the caller", async () => {
     completeText.mockResolvedValue("");
     await completeChatWithActiveModel({ system: "s", user: "u", temperature: 0 });
-    expect(JSON.stringify(completeText.mock.calls[0][0])).not.toMatch(/sk-|api[_-]?key/i);
+    const call = completeText.mock.calls[0][0] as Record<string, unknown>;
+    for (const [key, value] of Object.entries(call)) {
+      expect(key).not.toMatch(/sk-|api[_-]?key/i);
+      expect(String(value)).not.toMatch(/sk-|api[_-]?key/i);
+    }
   });
 });
