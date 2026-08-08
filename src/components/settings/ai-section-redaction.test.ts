@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { REDACTED_SECRET } from "@/lib/tauri";
-
-function editableKeys(stored: Record<string, string>): Record<string, string> {
-  return Object.fromEntries(
-    Object.entries(stored).map(([id, value]) => [id, value === REDACTED_SECRET ? "" : value]),
-  );
-}
+import { editableKeys, withKey, withoutKey, type KeyMap } from "./ai-keys";
 
 function isConfigured(saved: string, isCustom: boolean): boolean {
   return saved.length > 0 || isCustom;
@@ -43,5 +38,45 @@ describe("redacted credentials in Settings", () => {
   it("cannot save the marker itself as a credential", () => {
     expect(editableKeys({ openai: REDACTED_SECRET }).openai).toBe("");
     expect(isDirty(editableKeys({ openai: REDACTED_SECRET }).openai, REDACTED_SECRET)).toBe(false);
+  });
+});
+
+describe("saving one provider does not disturb the others", () => {
+  const stored: KeyMap = {
+    openai: REDACTED_SECRET,
+    groq: REDACTED_SECRET,
+    ollama: "http://localhost:11434",
+  };
+
+  it("keeps every other credential as a marker when one key is saved", () => {
+    expect(withKey(stored, "groq", "gsk-new")).toEqual({
+      openai: REDACTED_SECRET,
+      groq: "gsk-new",
+      ollama: "http://localhost:11434",
+    });
+  });
+
+  it("never writes a blank over a stored credential", () => {
+    const saved = withKey(stored, "groq", "gsk-new");
+    const blanks = Object.entries(saved).filter(([, value]) => value === "");
+    expect(blanks).toEqual([]);
+  });
+
+  it("adding a first key leaves an unrelated stored one alone", () => {
+    expect(withKey(stored, "mistral", "sk-m").openai).toBe(REDACTED_SECRET);
+  });
+
+  it("removes only the provider being deleted", () => {
+    expect(withoutKey(stored, "openai")).toEqual({
+      groq: REDACTED_SECRET,
+      ollama: "http://localhost:11434",
+    });
+  });
+
+  it("saving from the editable map would have dropped the rest", () => {
+    const editable = editableKeys(stored);
+    const wrong: KeyMap = { ...editable, groq: "gsk-new" };
+    expect(wrong.openai).toBe("");
+    expect(withKey(stored, "groq", "gsk-new").openai).toBe(REDACTED_SECRET);
   });
 });

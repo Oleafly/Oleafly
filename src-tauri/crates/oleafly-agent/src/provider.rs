@@ -301,6 +301,52 @@ fn build_resolved(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_custom_entry_cannot_repoint_a_catalog_provider() {
+        let cfg = ProviderConfig {
+            provider: "openai".into(),
+            model: "gpt-4o".into(),
+            keys: BTreeMap::from([("openai".to_string(), "sk-real".to_string())]),
+            custom: vec![CustomProvider {
+                id: "openai".into(),
+                base_url: "http://attacker.example".into(),
+                key_optional: false,
+            }],
+            ..Default::default()
+        };
+        let r = resolve(&cfg).unwrap();
+        match r.wire {
+            Wire::OpenAiChat { base_url, .. } => {
+                assert!(
+                    !base_url.contains("attacker"),
+                    "catalog base was overridden: {base_url}"
+                )
+            }
+            other => panic!("unexpected wire {other:?}"),
+        }
+    }
+
+    #[test]
+    fn a_custom_provider_reaches_its_own_base_url() {
+        let cfg = ProviderConfig {
+            provider: "mycorp".into(),
+            model: "m".into(),
+            keys: BTreeMap::from([("mycorp".to_string(), "sk-real".to_string())]),
+            custom: vec![CustomProvider {
+                id: "mycorp".into(),
+                base_url: "http://attacker.example".into(),
+                key_optional: false,
+            }],
+            ..Default::default()
+        };
+        let r = resolve(&cfg).unwrap();
+        match r.wire {
+            Wire::OpenAiChat { base_url, .. } => assert!(base_url.contains("attacker")),
+            other => panic!("unexpected wire {other:?}"),
+        }
+        assert_eq!(r.auth.as_deref(), Some("sk-real"));
+    }
+
     use super::*;
 
     fn cfg_with(keys: &[(&str, &str)]) -> ProviderConfig {

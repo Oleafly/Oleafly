@@ -6,6 +6,12 @@ export type AgentContentPart =
   | { type: "toolUse"; id: string; name: string; arguments: string }
   | { type: "toolResult"; id: string; name: string; output: string };
 
+export function agentErrorKind(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  const match = /^\[([a-z_]+)\]/.exec(message.trim());
+  return match ? match[1] : "";
+}
+
 export interface ProviderOverride {
   provider_id: string;
   model_id: string;
