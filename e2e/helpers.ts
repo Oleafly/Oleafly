@@ -931,6 +931,19 @@ export async function ensureAiConnected(page: Page) {
   await expandProviderCard(page);
   await page.evaluate(
     inProviderCard(`
+      const replace = card.querySelector('[data-testid^="ai-provider-replace-"]');
+      if (replace) replace.click();
+      return 1;
+    `),
+  );
+  await page
+    .waitForFunction(
+      inProviderCard(`return !!card.querySelector('input[type="password"]');`),
+      5_000,
+    )
+    .catch(() => {});
+  await page.evaluate(
+    inProviderCard(`
       const input = card.querySelector('input[type="password"]');
       if (!input) throw new Error('no key input in the provider card');
       const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
