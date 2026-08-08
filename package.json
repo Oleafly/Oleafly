@@ -118,7 +118,7 @@
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "@vitejs/plugin-react": "^4.3.4",
+    "@vitejs/plugin-react": "^5.2.0",
     "jsdom": "^29.1.1",
     "pdf-lib": "^1.17.1",
     "tailwindcss": "^4.3.3",
