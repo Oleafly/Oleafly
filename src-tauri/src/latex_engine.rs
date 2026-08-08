@@ -105,19 +105,53 @@ async fn run_tex_utility_with_pipe_timeout(
     timeout: std::time::Duration,
     pipe_drain_timeout: std::time::Duration,
 ) -> Result<TexUtilityOutput, String> {
-    use std::process::Stdio;
+    let mut utility = spawn_tex_utility(program, args).await?;
+    let status = wait_for_utility(&mut utility.child, utility.process_id, program, timeout).await;
+    let status = match status {
+        Ok(status) => status,
+        Err(error) => {
+            abort_pipe_tasks(utility.stdout, utility.stderr).await;
+            return Err(error);
+        }
+    };
+    let (stdout_result, stderr_result) = drain_utility_pipes(
+        utility.stdout,
+        utility.stderr,
+        utility.process_id,
+        program,
+        pipe_drain_timeout,
+    )
+    .await?;
+    let (stdout, stdout_truncated) =
+        stdout_result.map_err(|e| format!("failed joining TeX utility output task: {e}"))??;
+    let (stderr, stderr_truncated) =
+        stderr_result.map_err(|e| format!("failed joining TeX utility error task: {e}"))??;
+    if stdout_truncated || stderr_truncated {
+        return Err(format!(
+            "{} produced more than {} MiB of output and was rejected",
+            program.display(),
+            MAX_UTILITY_OUTPUT_BYTES / (1024 * 1024)
+        ));
+    }
+    Ok(TexUtilityOutput {
+        success: status.success(),
+        stdout: String::from_utf8_lossy(&stdout).into_owned(),
+        stderr: String::from_utf8_lossy(&stderr).into_owned(),
+    })
+}
 
-    let mut command = tokio::process::Command::new(program);
-    command
-        .no_console()
-        .args(args)
-        .env("PATH", crate::biber_toolchain::tool_path_env(program))
-        .env("NoDefaultCurrentDirectoryInExePath", "1")
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .kill_on_drop(true);
-    crate::proc::isolate_process_tree(&mut command);
+type UtilityPipeTask = tokio::task::JoinHandle<Result<(Vec<u8>, bool), String>>;
+
+struct SpawnedUtility {
+    child: tokio::process::Child,
+    process_id: u32,
+    _containment: crate::proc::ProcessTreeGuard,
+    stdout: UtilityPipeTask,
+    stderr: UtilityPipeTask,
+}
+
+async fn spawn_tex_utility(program: &Path, args: &[String]) -> Result<SpawnedUtility, String> {
+    let mut command = tex_utility_command(program, args);
     let mut child = command
         .spawn()
         .map_err(|e| format!("failed to run {}: {e}", program.display()))?;
@@ -131,7 +165,7 @@ async fn run_tex_utility_with_pipe_timeout(
             ));
         }
     };
-    let _containment = match crate::proc::contain_process_tree(process_id) {
+    let containment = match crate::proc::contain_process_tree(process_id) {
         Ok(containment) => containment,
         Err(error) => {
             let _ = tokio::time::timeout(
@@ -149,87 +183,101 @@ async fn run_tex_utility_with_pipe_timeout(
     };
     let stdout = child.stdout.take().ok_or("stdout was not captured")?;
     let stderr = child.stderr.take().ok_or("stderr was not captured")?;
-    let mut stdout_task = tokio::spawn(read_utility_pipe(stdout));
-    let mut stderr_task = tokio::spawn(read_utility_pipe(stderr));
+    Ok(SpawnedUtility {
+        child,
+        process_id,
+        _containment: containment,
+        stdout: tokio::spawn(read_utility_pipe(stdout)),
+        stderr: tokio::spawn(read_utility_pipe(stderr)),
+    })
+}
 
-    let status = match tokio::time::timeout(timeout, child.wait()).await {
-        Ok(Ok(status)) => status,
+fn tex_utility_command(program: &Path, args: &[String]) -> tokio::process::Command {
+    use std::process::Stdio;
+
+    let mut command = tokio::process::Command::new(program);
+    command
+        .no_console()
+        .args(args)
+        .env("PATH", crate::biber_toolchain::tool_path_env(program))
+        .env("NoDefaultCurrentDirectoryInExePath", "1")
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .kill_on_drop(true);
+    crate::proc::isolate_process_tree(&mut command);
+    command
+}
+
+async fn stop_utility(child: &mut tokio::process::Child, process_id: u32) {
+    let _ = tokio::time::timeout(
+        UTILITY_CLEANUP_TIMEOUT,
+        crate::proc::terminate_process_tree(process_id),
+    )
+    .await;
+    let _ = child.start_kill();
+    let _ = tokio::time::timeout(UTILITY_CLEANUP_TIMEOUT, child.wait()).await;
+}
+
+async fn wait_for_utility(
+    child: &mut tokio::process::Child,
+    process_id: u32,
+    program: &Path,
+    timeout: std::time::Duration,
+) -> Result<std::process::ExitStatus, String> {
+    match tokio::time::timeout(timeout, child.wait()).await {
+        Ok(Ok(status)) => Ok(status),
         Ok(Err(error)) => {
-            let _ = tokio::time::timeout(
-                UTILITY_CLEANUP_TIMEOUT,
-                crate::proc::terminate_process_tree(process_id),
-            )
-            .await;
-            let _ = child.start_kill();
-            let _ = tokio::time::timeout(UTILITY_CLEANUP_TIMEOUT, child.wait()).await;
-            stdout_task.abort();
-            stderr_task.abort();
-            let _ = stdout_task.await;
-            let _ = stderr_task.await;
-            return Err(format!("failed waiting for {}: {error}", program.display()));
+            stop_utility(child, process_id).await;
+            Err(format!("failed waiting for {}: {error}", program.display()))
         }
         Err(_) => {
-            let _ = tokio::time::timeout(
-                UTILITY_CLEANUP_TIMEOUT,
-                crate::proc::terminate_process_tree(process_id),
-            )
-            .await;
-            let _ = child.start_kill();
-            let _ = tokio::time::timeout(UTILITY_CLEANUP_TIMEOUT, child.wait()).await;
-            stdout_task.abort();
-            stderr_task.abort();
-            let _ = stdout_task.await;
-            let _ = stderr_task.await;
-            return Err(format!(
+            stop_utility(child, process_id).await;
+            Err(format!(
                 "{} timed out after {} seconds and was stopped",
                 program.display(),
                 timeout.as_secs()
-            ));
+            ))
         }
-    };
-    let pipe_results = tokio::time::timeout(pipe_drain_timeout, async {
-        tokio::join!(&mut stdout_task, &mut stderr_task)
-    })
-    .await;
-    let (stdout_result, stderr_result) = match pipe_results {
-        Ok(results) => results,
+    }
+}
+
+async fn abort_pipe_tasks(stdout: UtilityPipeTask, stderr: UtilityPipeTask) {
+    stdout.abort();
+    stderr.abort();
+    let _ = stdout.await;
+    let _ = stderr.await;
+}
+
+async fn drain_utility_pipes(
+    mut stdout: UtilityPipeTask,
+    mut stderr: UtilityPipeTask,
+    process_id: u32,
+    program: &Path,
+    timeout: std::time::Duration,
+) -> Result<
+    (
+        Result<Result<(Vec<u8>, bool), String>, tokio::task::JoinError>,
+        Result<Result<(Vec<u8>, bool), String>, tokio::task::JoinError>,
+    ),
+    String,
+> {
+    match tokio::time::timeout(timeout, async { tokio::join!(&mut stdout, &mut stderr) }).await {
+        Ok(results) => Ok(results),
         Err(_) => {
-            // The leader has exited, but a descendant can keep an inherited
-            // stdout/stderr handle open forever. Kill the still-current process
-            // group immediately. The containment guard remains authoritative
-            // on Windows even after the leader has exited.
             let _ = tokio::time::timeout(
                 UTILITY_CLEANUP_TIMEOUT,
                 crate::proc::terminate_process_tree(process_id),
             )
             .await;
-            stdout_task.abort();
-            stderr_task.abort();
-            let _ = stdout_task.await;
-            let _ = stderr_task.await;
-            return Err(format!(
+            abort_pipe_tasks(stdout, stderr).await;
+            Err(format!(
                 "{} exited but its output pipes did not close within {} seconds. Its process tree was stopped.",
                 program.display(),
-                pipe_drain_timeout.as_secs_f64()
-            ));
+                timeout.as_secs_f64()
+            ))
         }
-    };
-    let (stdout, stdout_truncated) =
-        stdout_result.map_err(|e| format!("failed joining TeX utility output task: {e}"))??;
-    let (stderr, stderr_truncated) =
-        stderr_result.map_err(|e| format!("failed joining TeX utility error task: {e}"))??;
-    if stdout_truncated || stderr_truncated {
-        return Err(format!(
-            "{} produced more than {} MiB of output and was rejected",
-            program.display(),
-            MAX_UTILITY_OUTPUT_BYTES / (1024 * 1024)
-        ));
     }
-    Ok(TexUtilityOutput {
-        success: status.success(),
-        stdout: String::from_utf8_lossy(&stdout).into_owned(),
-        stderr: String::from_utf8_lossy(&stderr).into_owned(),
-    })
 }
 
 fn utility_error(output: &TexUtilityOutput) -> String {
@@ -403,86 +451,18 @@ pub(crate) struct TexRuntimeLock {
     file: std::fs::File,
 }
 
-#[cfg(unix)]
 fn lock_file(file: &std::fs::File, exclusive: bool, conflict: &str) -> Result<(), String> {
-    use std::os::fd::AsRawFd as _;
-    let mode = if exclusive {
-        libc::LOCK_EX
+    let result = if exclusive {
+        fs4::FileExt::try_lock(file)
     } else {
-        libc::LOCK_SH
+        fs4::FileExt::try_lock_shared(file)
     };
-    if unsafe { libc::flock(file.as_raw_fd(), mode | libc::LOCK_NB) } == 0 {
-        Ok(())
-    } else {
-        Err(format!("{conflict}: {}", std::io::Error::last_os_error()))
-    }
+    result.map_err(|error| format!("{conflict}: {error}"))
 }
 
-#[cfg(unix)]
 fn unlock_file(file: &std::fs::File) {
-    use std::os::fd::AsRawFd as _;
-    unsafe {
-        libc::flock(file.as_raw_fd(), libc::LOCK_UN);
-    }
+    let _ = fs4::FileExt::unlock(file);
 }
-
-#[cfg(windows)]
-fn lock_file(file: &std::fs::File, exclusive: bool, conflict: &str) -> Result<(), String> {
-    use std::os::windows::io::AsRawHandle as _;
-    use windows_sys::Win32::Storage::FileSystem::{
-        LockFileEx, LOCKFILE_EXCLUSIVE_LOCK, LOCKFILE_FAIL_IMMEDIATELY,
-    };
-    use windows_sys::Win32::System::IO::OVERLAPPED;
-
-    let flags = LOCKFILE_FAIL_IMMEDIATELY
-        | if exclusive {
-            LOCKFILE_EXCLUSIVE_LOCK
-        } else {
-            0
-        };
-    let mut overlapped = OVERLAPPED::default();
-    let result = unsafe {
-        LockFileEx(
-            file.as_raw_handle() as _,
-            flags,
-            0,
-            u32::MAX,
-            u32::MAX,
-            &mut overlapped,
-        )
-    };
-    if result != 0 {
-        Ok(())
-    } else {
-        Err(format!("{conflict}: {}", std::io::Error::last_os_error()))
-    }
-}
-
-#[cfg(windows)]
-fn unlock_file(file: &std::fs::File) {
-    use std::os::windows::io::AsRawHandle as _;
-    use windows_sys::Win32::Storage::FileSystem::UnlockFileEx;
-    use windows_sys::Win32::System::IO::OVERLAPPED;
-
-    let mut overlapped = OVERLAPPED::default();
-    unsafe {
-        UnlockFileEx(
-            file.as_raw_handle() as _,
-            0,
-            u32::MAX,
-            u32::MAX,
-            &mut overlapped,
-        );
-    }
-}
-
-#[cfg(not(any(unix, windows)))]
-fn lock_file(_file: &std::fs::File, _exclusive: bool, _conflict: &str) -> Result<(), String> {
-    Ok(())
-}
-
-#[cfg(not(any(unix, windows)))]
-fn unlock_file(_file: &std::fs::File) {}
 
 impl Drop for TinytexProcessLock {
     fn drop(&mut self) {
@@ -700,7 +680,7 @@ impl TinytexAsset {
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(PartialEq, serde::Serialize, serde::Deserialize)]
 struct TinytexInstallMarker {
     schema_version: u32,
     release: String,
@@ -711,6 +691,20 @@ struct TinytexInstallMarker {
     archive_members: u64,
     expanded_bytes: u64,
     manifest_sha256: String,
+}
+
+fn install_marker(asset: &TinytexAsset) -> TinytexInstallMarker {
+    TinytexInstallMarker {
+        schema_version: 2,
+        release: TINYTEX_TAG.to_string(),
+        os: std::env::consts::OS.to_string(),
+        arch: std::env::consts::ARCH.to_string(),
+        archive_bytes: asset.expected_bytes,
+        archive_sha256: asset.expected_sha256.to_string(),
+        archive_members: asset.expected_members,
+        expanded_bytes: asset.expected_expanded_bytes,
+        manifest_sha256: asset.expected_manifest_sha256.to_string(),
+    }
 }
 
 fn remove_install_path(path: &Path) -> Result<(), String> {
@@ -732,17 +726,7 @@ fn remove_install_path(path: &Path) -> Result<(), String> {
 fn write_install_marker(root: &Path, asset: &TinytexAsset) -> Result<(), String> {
     use std::io::Write as _;
 
-    let marker = TinytexInstallMarker {
-        schema_version: 2,
-        release: TINYTEX_TAG.to_string(),
-        os: std::env::consts::OS.to_string(),
-        arch: std::env::consts::ARCH.to_string(),
-        archive_bytes: asset.expected_bytes,
-        archive_sha256: asset.expected_sha256.to_string(),
-        archive_members: asset.expected_members,
-        expanded_bytes: asset.expected_expanded_bytes,
-        manifest_sha256: asset.expected_manifest_sha256.to_string(),
-    };
+    let marker = install_marker(asset);
     let body = serde_json::to_vec_pretty(&marker)
         .map_err(|e| format!("failed to encode TinyTeX install marker: {e}"))?;
     let path = root.join(INSTALL_MARKER);
@@ -767,16 +751,7 @@ fn validate_install_marker(root: &Path, asset: &TinytexAsset) -> Result<(), Stri
         &std::fs::read(&path).map_err(|e| format!("failed to read TinyTeX install marker: {e}"))?,
     )
     .map_err(|e| format!("TinyTeX install marker is invalid: {e}"))?;
-    let matches = marker.schema_version == 2
-        && marker.release == TINYTEX_TAG
-        && marker.os == std::env::consts::OS
-        && marker.arch == std::env::consts::ARCH
-        && marker.archive_bytes == asset.expected_bytes
-        && marker.archive_sha256 == asset.expected_sha256
-        && marker.archive_members == asset.expected_members
-        && marker.expanded_bytes == asset.expected_expanded_bytes
-        && marker.manifest_sha256 == asset.expected_manifest_sha256;
-    if !matches {
+    if marker != install_marker(asset) {
         return Err(format!(
             "TinyTeX install marker does not match {TINYTEX_TAG} for {}/{}.",
             std::env::consts::OS,
@@ -792,24 +767,22 @@ async fn validate_tinytex_executables(root: &Path) -> Result<EngineInfo, String>
     let mut info = engine_info_for_lualatex_unlocked(lualatex.clone(), "tinytex")
         .await
         .ok_or_else(|| "TinyTeX lualatex did not pass its version probe.".to_string())?;
-    for name in ["tlmgr", "latexmk"] {
-        let tool = sibling_tool(&lualatex, name)
-            .ok_or_else(|| format!("TinyTeX has no host-compatible {name} binary."))?;
-        let output = run_tex_utility(&tool, &["--version".into()], TEX_PROBE_TIMEOUT).await?;
-        if !output.success {
-            return Err(format!(
-                "TinyTeX {name} validation failed: {}",
-                utility_error(&output)
-            ));
-        }
-        let path = tool.to_string_lossy().into_owned();
-        if name == "tlmgr" {
-            info.tlmgr = Some(path);
-        } else {
-            info.latexmk = Some(path);
-        }
-    }
+    info.tlmgr = Some(validate_tinytex_tool(&lualatex, "tlmgr").await?);
+    info.latexmk = Some(validate_tinytex_tool(&lualatex, "latexmk").await?);
     Ok(info)
+}
+
+async fn validate_tinytex_tool(lualatex: &Path, name: &str) -> Result<String, String> {
+    let tool = sibling_tool(lualatex, name)
+        .ok_or_else(|| format!("TinyTeX has no host-compatible {name} binary."))?;
+    let output = run_tex_utility(&tool, &["--version".into()], TEX_PROBE_TIMEOUT).await?;
+    if !output.success {
+        return Err(format!(
+            "TinyTeX {name} validation failed: {}",
+            utility_error(&output)
+        ));
+    }
+    Ok(tool.to_string_lossy().into_owned())
 }
 
 async fn validate_tinytex_root(root: &Path, asset: &TinytexAsset) -> Result<EngineInfo, String> {
@@ -837,6 +810,24 @@ async fn prepare_staged_tinytex(root: &Path) -> Result<EngineInfo, String> {
 }
 
 fn publish_staged_tinytex(staging: &Path, destination: &Path) -> Result<(), String> {
+    validate_publish_paths(staging, destination)?;
+    let backup = tinytex_previous_sibling(destination)?;
+    remove_install_path(&backup)?;
+    let had_destination = std::fs::symlink_metadata(destination).is_ok();
+    if had_destination {
+        std::fs::rename(destination, &backup)
+            .map_err(|error| format!("failed to stage the previous TinyTeX install: {error}"))?;
+    }
+    publish_or_restore(staging, destination, &backup, had_destination)?;
+    if let Some(parent) = destination.parent() {
+        if let Ok(directory) = std::fs::File::open(parent) {
+            let _ = directory.sync_all();
+        }
+    }
+    Ok(())
+}
+
+fn validate_publish_paths(staging: &Path, destination: &Path) -> Result<(), String> {
     if !staging.is_dir() {
         return Err("TinyTeX staging directory disappeared before publication.".into());
     }
@@ -849,32 +840,33 @@ fn publish_staged_tinytex(staging: &Path, destination: &Path) -> Result<(), Stri
     if staging_parent != destination_parent {
         return Err("TinyTeX staging and destination must be sibling directories.".into());
     }
+    Ok(())
+}
+
+fn tinytex_previous_sibling(destination: &Path) -> Result<PathBuf, String> {
     let destination_name = destination
         .file_name()
         .ok_or_else(|| "TinyTeX destination path has no file name.".to_string())?;
     let mut backup_name = destination_name.to_os_string();
     backup_name.push(".previous");
-    let backup = destination.with_file_name(backup_name);
-    remove_install_path(&backup)?;
-    let had_destination = std::fs::symlink_metadata(destination).is_ok();
-    if had_destination {
-        std::fs::rename(destination, &backup)
-            .map_err(|e| format!("failed to stage the previous TinyTeX install: {e}"))?;
-    }
+    Ok(destination.with_file_name(backup_name))
+}
+
+fn publish_or_restore(
+    staging: &Path,
+    destination: &Path,
+    backup: &Path,
+    had_destination: bool,
+) -> Result<(), String> {
     if let Err(error) = std::fs::rename(staging, destination) {
         if had_destination {
-            if let Err(rollback_error) = std::fs::rename(&backup, destination) {
+            if let Err(rollback_error) = std::fs::rename(backup, destination) {
                 return Err(format!(
                     "failed to publish TinyTeX installation: {error}. Restoring the previous installation also failed: {rollback_error}"
                 ));
             }
         }
         return Err(format!("failed to publish TinyTeX installation: {error}"));
-    }
-    if let Some(parent) = destination.parent() {
-        if let Ok(directory) = std::fs::File::open(parent) {
-            let _ = directory.sync_all();
-        }
     }
     Ok(())
 }
@@ -937,60 +929,73 @@ fn tinytex_asset_for(os: &str, arch: &str) -> Result<TinytexAsset, String> {
     let base =
         format!("https://github.com/rstudio/tinytex-releases/releases/download/{TINYTEX_TAG}");
     match (os, arch) {
-        ("windows", "x86_64") => Ok(TinytexAsset {
-            url: format!("{base}/TinyTeX-{TINYTEX_TAG}.zip"),
-            format: ArchiveFormat::Zip,
-            expected_bytes: 246_862_169,
-            expected_sha256:
-                "313314cdf15ad94e78931f6eff9bfc978f233ece7e5877f26467afe0b40f377b",
-            expected_members: 22_948,
-            expected_expanded_bytes: 535_736_875,
-            expected_manifest_sha256:
-                "cdc4ee187e1445c7157ca5387414d3e9539511df654ac353ccf67592ab652f37",
-        }),
+        ("windows", "x86_64") => Ok(tinytex_asset_metadata(
+            &base, ("TinyTeX", "zip", ArchiveFormat::Zip, 246_862_169,
+            "313314cdf15ad94e78931f6eff9bfc978f233ece7e5877f26467afe0b40f377b",
+            22_948, 535_736_875,
+            "cdc4ee187e1445c7157ca5387414d3e9539511df654ac353ccf67592ab652f37",
+        ))),
         ("windows", unsupported_arch) => Err(format!(
             "Automatic TinyTeX install is not available for Windows {unsupported_arch}. Install a compatible TeX Live toolchain manually."
         )),
-        ("macos", "x86_64" | "aarch64") => Ok(TinytexAsset {
-            url: format!("{base}/TinyTeX-{TINYTEX_TAG}.tgz"),
-            format: ArchiveFormat::TarGz,
-            expected_bytes: 265_813_745,
-            expected_sha256:
-                "c1e6ee0474300c72395647aa93aca0ea4bb600192e9a22bf539d57a583acb5c5",
-            expected_members: 19_994,
-            expected_expanded_bytes: 517_999_787,
-            expected_manifest_sha256:
-                "5018a2635526cc1d3a27b4eaa2bff8239c181afc6da01a063d1ff33809a3abd1",
-        }),
+        ("macos", "x86_64" | "aarch64") => Ok(tinytex_asset_metadata(
+            &base, ("TinyTeX", "tgz", ArchiveFormat::TarGz, 265_813_745,
+            "c1e6ee0474300c72395647aa93aca0ea4bb600192e9a22bf539d57a583acb5c5",
+            19_994, 517_999_787,
+            "5018a2635526cc1d3a27b4eaa2bff8239c181afc6da01a063d1ff33809a3abd1",
+        ))),
         ("macos", unsupported_arch) => Err(format!(
             "Automatic TinyTeX install is not available for macOS {unsupported_arch}. Install a compatible TeX Live toolchain manually."
         )),
-        ("linux", "x86_64") => Ok(TinytexAsset {
-            url: format!("{base}/TinyTeX-{TINYTEX_TAG}.tar.gz"),
-            format: ArchiveFormat::TarGz,
-            expected_bytes: 200_145_836,
-            expected_sha256:
-                "6f39005ce5c60863698793481352df75c051980b68a47726d49be9a00a377767",
-            expected_members: 19_994,
-            expected_expanded_bytes: 415_152_635,
-            expected_manifest_sha256:
-                "a69e2c1225af6911235e2a2ca40bf4a7968df6a64dc70ac5a43448683b53c938",
-        }),
-        ("linux", "aarch64") => Ok(TinytexAsset {
-            url: format!("{base}/TinyTeX-linux-arm64-{TINYTEX_TAG}.tar.xz"),
-            format: ArchiveFormat::TarXz,
-            expected_bytes: 155_871_496,
-            expected_sha256:
-                "c6713bf6c44048a4902040a08763c611deac3644b844f03d7244ae49a54a2a08",
-            expected_members: 19_992,
-            expected_expanded_bytes: 422_289_956,
-            expected_manifest_sha256:
-                "87da0e4715f7d96e6aeb8a62532b036e1a47267be5f86aa4de962b2539868ce4",
-        }),
+        ("linux", "x86_64") => Ok(tinytex_asset_metadata(
+            &base, ("TinyTeX", "tar.gz", ArchiveFormat::TarGz, 200_145_836,
+            "6f39005ce5c60863698793481352df75c051980b68a47726d49be9a00a377767",
+            19_994, 415_152_635,
+            "a69e2c1225af6911235e2a2ca40bf4a7968df6a64dc70ac5a43448683b53c938",
+        ))),
+        ("linux", "aarch64") => Ok(tinytex_asset_metadata(
+            &base, ("TinyTeX-linux-arm64", "tar.xz", ArchiveFormat::TarXz, 155_871_496,
+            "c6713bf6c44048a4902040a08763c611deac3644b844f03d7244ae49a54a2a08",
+            19_992, 422_289_956,
+            "87da0e4715f7d96e6aeb8a62532b036e1a47267be5f86aa4de962b2539868ce4",
+        ))),
         ("linux", unsupported_arch) => Err(format!(
             "Automatic TinyTeX install is not available for Linux {unsupported_arch}. Install a LuaLaTeX / TeX Live 2025 toolchain from your package manager."
         )),
         _ => Err("Automatic TinyTeX install is not supported on this platform. Install a LuaLaTeX / TeX Live 2025 toolchain manually.".to_string()),
+    }
+}
+
+type TinytexAssetMetadata = (
+    &'static str,
+    &'static str,
+    ArchiveFormat,
+    u64,
+    &'static str,
+    u64,
+    u64,
+    &'static str,
+);
+
+fn tinytex_asset_metadata(base: &str, metadata: TinytexAssetMetadata) -> TinytexAsset {
+    let (
+        name,
+        extension,
+        format,
+        expected_bytes,
+        expected_sha256,
+        expected_members,
+        expected_expanded_bytes,
+        expected_manifest_sha256,
+    ) = metadata;
+    TinytexAsset {
+        url: format!("{base}/{name}-{TINYTEX_TAG}.{extension}"),
+        format,
+        expected_bytes,
+        expected_sha256,
+        expected_members,
+        expected_expanded_bytes,
+        expected_manifest_sha256,
     }
 }
 
@@ -1035,168 +1040,206 @@ fn verify_tinytex_archive(path: &Path, asset: &TinytexAsset) -> Result<(), Strin
     Ok(())
 }
 
-/// Download and install TinyTeX on demand under `~/.oleafly/tinytex`.
-///
-/// Emits phased `tinytex-install-progress` events (download / extract /
-/// packages). The download resumes from a previous partial file (HTTP Range),
-/// including across app launches after a force-quit. On failure the partial
-/// file is kept so Retry continues instead of starting over.
-#[tauri::command]
-pub async fn install_tinytex(
-    app: tauri::AppHandle,
-    state: tauri::State<'_, AppState>,
-) -> Result<EngineInfo, String> {
-    use futures_util::StreamExt;
-    use std::io::Write as _;
-    use tauri::Emitter;
+struct TinytexInstallPaths {
+    root: PathBuf,
+    staging: PathBuf,
+    download: PathBuf,
+}
 
-    let _install = TinytexMutationGuard::acquire_install()?;
-    {
-        let _runtime = acquire_tex_runtime_write()?;
-        recover_interrupted_publish()?;
-    }
-    let root = tinytex_root()?;
-    let asset = tinytex_asset()?;
-    // Only a fully validated managed TinyTeX makes this a no-op. A system TeX
-    // must not short-circuit an explicit managed install request, while a
-    // half-extracted tree without tlmgr/latexmk must be repaired.
-    if let Ok(existing) = validate_tinytex_root(&root, &asset).await {
-        let cleanup = [
-            tinytex_staging_root()?,
-            tinytex_backup_root()?,
-            tinytex_download_path()?,
-            legacy_tinytex_download_path()?,
-        ];
-        let _ = tauri::async_runtime::spawn_blocking(move || {
-            for path in cleanup {
-                let _ = remove_install_path(&path);
-            }
-        })
-        .await;
-        return Ok(existing);
-    }
-
+fn prepare_install_paths() -> Result<TinytexInstallPaths, String> {
     let app_root = paths::oleafly_root()?;
-    std::fs::create_dir_all(&app_root).map_err(|e| e.to_string())?;
-    let staging = tinytex_staging_root()?;
-    let tmp = tinytex_download_path()?;
-    let legacy_tmp = legacy_tinytex_download_path()?;
-    if !tmp.exists() && legacy_tmp.is_file() {
-        std::fs::rename(&legacy_tmp, &tmp)
-            .map_err(|e| format!("failed to migrate the partial TinyTeX download: {e}"))?;
-    }
+    std::fs::create_dir_all(&app_root).map_err(|error| error.to_string())?;
+    let paths = TinytexInstallPaths {
+        root: tinytex_root()?,
+        staging: tinytex_staging_root()?,
+        download: tinytex_download_path()?,
+    };
+    migrate_legacy_download(&paths.download)?;
+    ensure_install_space(&app_root)?;
+    Ok(paths)
+}
 
-    // Fail before downloading a byte if the disk cannot hold the install.
-    if let Some(free) = free_disk_space(&app_root) {
-        if free < MIN_FREE_BYTES {
-            return Err(format!(
-                "Not enough free disk space to install TinyTeX. It needs about {:.1} GB \
-                 (download plus extraction, with room for LaTeX packages). This disk has \
-                 {:.1} GB free. Free up space, then try again.",
-                gigabytes(MIN_FREE_BYTES),
-                gigabytes(free)
-            ));
-        }
+fn migrate_legacy_download(download: &Path) -> Result<(), String> {
+    let legacy = legacy_tinytex_download_path()?;
+    if download.exists() || !legacy.is_file() {
+        return Ok(());
     }
+    std::fs::rename(&legacy, download)
+        .map_err(|error| format!("failed to migrate the partial TinyTeX download: {error}"))
+}
 
-    // Resume a partial download, but never accept more or fewer bytes than the
-    // reviewed release asset. A complete temp file skips HTTP and proceeds
-    // directly to verification, which also recovers cleanly after a force-quit
-    // between download and extraction.
-    let mut already = std::fs::metadata(&tmp).map(|m| m.len()).unwrap_or(0);
-    if already > asset.expected_bytes {
-        let _ = std::fs::remove_file(&tmp);
-        already = 0;
+fn ensure_install_space(app_root: &Path) -> Result<(), String> {
+    let Some(free) = free_disk_space(app_root) else {
+        return Ok(());
+    };
+    if free >= MIN_FREE_BYTES {
+        return Ok(());
     }
-    if already < asset.expected_bytes {
-        let client = reqwest::Client::builder()
-            .connect_timeout(std::time::Duration::from_secs(30))
-            .timeout(std::time::Duration::from_secs(2 * 60 * 60))
-            .build()
-            .map_err(|e| format!("could not initialize TinyTeX downloader: {e}"))?;
-        let mut request = client.get(&asset.url);
-        if already > 0 {
-            request = request.header(reqwest::header::RANGE, format!("bytes={already}-"));
+    Err(format!(
+        "Not enough free disk space to install TinyTeX. It needs about {:.1} GB (download plus extraction, with room for LaTeX packages). This disk has {:.1} GB free. Free up space, then try again.",
+        gigabytes(MIN_FREE_BYTES),
+        gigabytes(free)
+    ))
+}
+
+async fn clean_redundant_install_files() -> Result<(), String> {
+    let paths = [
+        tinytex_staging_root()?,
+        tinytex_backup_root()?,
+        tinytex_download_path()?,
+        legacy_tinytex_download_path()?,
+    ];
+    tauri::async_runtime::spawn_blocking(move || {
+        for path in paths {
+            let _ = remove_install_path(&path);
         }
-        let resp = request
-            .send()
-            .await
-            .map_err(|e| format!("download failed: {e}"))?
-            .error_for_status()
-            .map_err(|e| format!("download failed: {e}"))?;
-        let resuming = resp.status() == reqwest::StatusCode::PARTIAL_CONTENT && already > 0;
-        if let Some(response_bytes) = resp.content_length() {
-            let claimed_total = if resuming {
-                already.checked_add(response_bytes)
-            } else {
-                Some(response_bytes)
-            };
-            if claimed_total != Some(asset.expected_bytes) {
-                return Err(format!(
-                    "TinyTeX server reported an unexpected download size. Expected {} bytes.",
-                    asset.expected_bytes
-                ));
-            }
-        }
-        let mut file = if resuming {
-            std::fs::OpenOptions::new()
-                .append(true)
-                .open(&tmp)
-                .map_err(|e| e.to_string())?
+    })
+    .await
+    .map_err(|error| error.to_string())
+}
+
+async fn open_tinytex_download(
+    asset: &TinytexAsset,
+    already: u64,
+) -> Result<(reqwest::Response, bool), String> {
+    let client = reqwest::Client::builder()
+        .connect_timeout(std::time::Duration::from_secs(30))
+        .timeout(std::time::Duration::from_secs(2 * 60 * 60))
+        .build()
+        .map_err(|error| format!("could not initialize TinyTeX downloader: {error}"))?;
+    let mut request = client.get(&asset.url);
+    if already > 0 {
+        request = request.header(reqwest::header::RANGE, format!("bytes={already}-"));
+    }
+    let response = request
+        .send()
+        .await
+        .map_err(|error| format!("download failed: {error}"))?
+        .error_for_status()
+        .map_err(|error| format!("download failed: {error}"))?;
+    let resuming = response.status() == reqwest::StatusCode::PARTIAL_CONTENT && already > 0;
+    if let Some(response_bytes) = response.content_length() {
+        let claimed_total = if resuming {
+            already.checked_add(response_bytes)
         } else {
-            std::fs::File::create(&tmp).map_err(|e| e.to_string())?
+            Some(response_bytes)
         };
-        let mut received: u64 = if resuming { already } else { 0 };
-        let mut stream = resp.bytes_stream();
-        while let Some(chunk) = stream.next().await {
-            let chunk = chunk.map_err(|e| {
-                format!("download interrupted: {e}. Your progress is saved. Retry to resume.")
-            })?;
-            received = received
-                .checked_add(chunk.len() as u64)
-                .ok_or_else(|| "TinyTeX download size overflowed.".to_string())?;
-            if received > asset.expected_bytes {
-                drop(file);
-                let _ = std::fs::remove_file(&tmp);
-                return Err("TinyTeX download exceeded its pinned size and was discarded.".into());
-            }
-            file.write_all(&chunk).map_err(|e| e.to_string())?;
-            let _ = app.emit(
-                "tinytex-install-progress",
-                EngineProgress {
-                    phase: "download",
-                    received,
-                    total: Some(asset.expected_bytes),
-                },
-            );
-        }
-        file.flush().map_err(|e| e.to_string())?;
-        drop(file);
-        if received != asset.expected_bytes {
+        if claimed_total != Some(asset.expected_bytes) {
             return Err(format!(
-                "download interrupted after {received} of {} bytes. Your progress is saved. Retry to resume.",
+                "TinyTeX server reported an unexpected download size. Expected {} bytes.",
                 asset.expected_bytes
             ));
         }
     }
+    Ok((response, resuming))
+}
 
-    let verify_tmp = tmp.clone();
+async fn write_tinytex_download(
+    app: &tauri::AppHandle,
+    path: &Path,
+    asset: &TinytexAsset,
+    response: reqwest::Response,
+    already: u64,
+    resuming: bool,
+) -> Result<(), String> {
+    use futures_util::StreamExt as _;
+    use std::io::Write as _;
+    use tauri::Emitter as _;
+
+    let mut file = open_download_file(path, resuming)?;
+    let mut received = if resuming { already } else { 0 };
+    let mut stream = response.bytes_stream();
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|error| {
+            format!("download interrupted: {error}. Your progress is saved. Retry to resume.")
+        })?;
+        received = checked_received_bytes(received, chunk.len())?;
+        if received > asset.expected_bytes {
+            drop(file);
+            let _ = std::fs::remove_file(path);
+            return Err("TinyTeX download exceeded its pinned size and was discarded.".into());
+        }
+        file.write_all(&chunk).map_err(|error| error.to_string())?;
+        let _ = app.emit(
+            "tinytex-install-progress",
+            EngineProgress {
+                phase: "download",
+                received,
+                total: Some(asset.expected_bytes),
+            },
+        );
+    }
+    file.flush().map_err(|error| error.to_string())?;
+    if received == asset.expected_bytes {
+        Ok(())
+    } else {
+        Err(format!(
+            "download interrupted after {received} of {} bytes. Your progress is saved. Retry to resume.",
+            asset.expected_bytes
+        ))
+    }
+}
+
+fn open_download_file(path: &Path, resuming: bool) -> Result<std::fs::File, String> {
+    if resuming {
+        std::fs::OpenOptions::new()
+            .append(true)
+            .open(path)
+            .map_err(|error| error.to_string())
+    } else {
+        std::fs::File::create(path).map_err(|error| error.to_string())
+    }
+}
+
+fn checked_received_bytes(received: u64, chunk_bytes: usize) -> Result<u64, String> {
+    received
+        .checked_add(chunk_bytes as u64)
+        .ok_or_else(|| "TinyTeX download size overflowed.".to_string())
+}
+
+async fn download_tinytex(
+    app: &tauri::AppHandle,
+    path: &Path,
+    asset: &TinytexAsset,
+) -> Result<(), String> {
+    let mut already = std::fs::metadata(path)
+        .map(|metadata| metadata.len())
+        .unwrap_or(0);
+    if already > asset.expected_bytes {
+        let _ = std::fs::remove_file(path);
+        already = 0;
+    }
+    if already == asset.expected_bytes {
+        return Ok(());
+    }
+    let (response, resuming) = open_tinytex_download(asset, already).await?;
+    write_tinytex_download(app, path, asset, response, already, resuming).await
+}
+
+async fn verify_download(path: &Path, asset: &TinytexAsset) -> Result<(), String> {
+    let verify_path = path.to_path_buf();
     let verify_asset = asset.clone();
-    let verified = tauri::async_runtime::spawn_blocking(move || {
-        verify_tinytex_archive(&verify_tmp, &verify_asset)
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        verify_tinytex_archive(&verify_path, &verify_asset)
     })
     .await
-    .map_err(|e| e.to_string())?;
-    if let Err(error) = verified {
-        let _ = std::fs::remove_file(&tmp);
+    .map_err(|error| error.to_string())?;
+    if let Err(error) = result {
+        let _ = std::fs::remove_file(path);
         return Err(format!(
             "{error} The download was discarded. Retry to download a clean copy."
         ));
     }
+    Ok(())
+}
 
-    // Extract into a sibling staging tree. The final managed path remains
-    // untouched until every required executable passes validation and the
-    // completion marker is durable.
+async fn extract_tinytex(
+    app: &tauri::AppHandle,
+    paths: &TinytexInstallPaths,
+    asset: &TinytexAsset,
+) -> Result<(), String> {
+    use tauri::Emitter as _;
+
     let _ = app.emit(
         "tinytex-install-progress",
         EngineProgress {
@@ -1205,30 +1248,37 @@ pub async fn install_tinytex(
             total: None,
         },
     );
-    let tmp_extract = tmp.clone();
-    let staging_extract = staging.clone();
-    let asset_extract = asset.clone();
-    let extracted = tauri::async_runtime::spawn_blocking(move || {
-        remove_install_path(&staging_extract)?;
-        std::fs::create_dir_all(&staging_extract)
-            .map_err(|e| format!("failed to create TinyTeX staging directory: {e}"))?;
+    let download = paths.download.clone();
+    let staging = paths.staging.clone();
+    let extract_staging = staging.clone();
+    let extract_asset = asset.clone();
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        remove_install_path(&extract_staging)?;
+        std::fs::create_dir_all(&extract_staging)
+            .map_err(|error| format!("failed to create TinyTeX staging directory: {error}"))?;
         crate::tinytex_archive::extract_all(
-            &tmp_extract,
-            asset_extract.format,
-            asset_extract.member_policy(),
-            &staging_extract,
+            &download,
+            extract_asset.format,
+            extract_asset.member_policy(),
+            &extract_staging,
         )
     })
     .await
-    .map_err(|e| e.to_string())?;
-    if extracted.is_err() {
-        let failed_staging = staging.clone();
-        let _ = tauri::async_runtime::spawn_blocking(move || remove_install_path(&failed_staging))
-            .await;
+    .map_err(|error| error.to_string())?;
+    if result.is_err() {
+        let _ = tauri::async_runtime::spawn_blocking(move || remove_install_path(&staging)).await;
     }
-    extracted?;
+    result
+}
 
-    let needs_latexmk = find_in_texdir(&staging, "lualatex")
+async fn validate_staged_tinytex(
+    app: &tauri::AppHandle,
+    staging: &Path,
+    asset: &TinytexAsset,
+) -> Result<(), String> {
+    use tauri::Emitter as _;
+
+    let needs_latexmk = find_in_texdir(staging, "lualatex")
         .and_then(|lualatex| sibling_tool(&lualatex, "latexmk"))
         .is_none();
     if needs_latexmk {
@@ -1241,62 +1291,107 @@ pub async fn install_tinytex(
             },
         );
     }
-    if let Err(error) = prepare_staged_tinytex(&staging).await {
-        let failed_staging = staging.clone();
+    if let Err(error) = prepare_staged_tinytex(staging).await {
+        let failed_staging = staging.to_path_buf();
         let _ = tauri::async_runtime::spawn_blocking(move || remove_install_path(&failed_staging))
             .await;
         return Err(format!(
             "TinyTeX validation failed before installation: {error}"
         ));
     }
-    write_install_marker(&staging, &asset)?;
+    write_install_marker(staging, asset)
+}
 
-    // Downloading and validating the sibling staging tree does not disturb an
-    // active compiler. Only the atomic publication needs to wait for both
-    // compile lanes, preventing Windows file-in-use failures and Unix compiles
-    // from mixing runtime files from two distributions.
-    let installed = {
-        let _compile = state.compile_lock.lock().await;
-        let _figure_compile = state.figure_compile_lock.lock().await;
-        let _runtime = acquire_tex_runtime_write()?;
-        let publish_staging = staging.clone();
-        let publish_root = root.clone();
-        tauri::async_runtime::spawn_blocking(move || {
-            publish_staged_tinytex(&publish_staging, &publish_root)
-        })
+async fn publish_tinytex(
+    state: &AppState,
+    paths: &TinytexInstallPaths,
+    asset: &TinytexAsset,
+) -> Result<EngineInfo, String> {
+    let _compile = state.compile_lock.lock().await;
+    let _figure_compile = state.figure_compile_lock.lock().await;
+    let _runtime = acquire_tex_runtime_write()?;
+    let staging = paths.staging.clone();
+    let root = paths.root.clone();
+    tauri::async_runtime::spawn_blocking(move || publish_staged_tinytex(&staging, &root))
         .await
-        .map_err(|e| e.to_string())??;
-        match validate_tinytex_root_unlocked(&root, &asset).await {
-            Ok(info) => {
-                let finalize_root = root.clone();
-                let _ = tauri::async_runtime::spawn_blocking(move || {
-                    finalize_published_tinytex(&finalize_root)
-                })
+        .map_err(|error| error.to_string())??;
+    match validate_tinytex_root_unlocked(&paths.root, asset).await {
+        Ok(info) => {
+            let root = paths.root.clone();
+            let _ = tauri::async_runtime::spawn_blocking(move || finalize_published_tinytex(&root))
                 .await;
-                Ok(info)
-            }
-            Err(error) => {
-                let rollback_root = root.clone();
-                let rollback = tauri::async_runtime::spawn_blocking(move || {
-                    rollback_published_tinytex(&rollback_root)
-                })
-                .await
-                .map_err(|e| e.to_string())?;
-                match rollback {
-                    Ok(()) => Err(format!(
-                        "TinyTeX final validation failed and the previous installation was restored: {error}"
-                    )),
-                    Err(rollback_error) => Err(format!(
-                        "TinyTeX final validation failed: {error}. Restoring the previous installation also failed: {rollback_error}"
-                    )),
-                }
-            }
+            Ok(info)
         }
+        Err(error) => rollback_failed_publish(&paths.root, error).await,
+    }
+}
+
+async fn rollback_failed_publish(
+    root: &Path,
+    validation_error: String,
+) -> Result<EngineInfo, String> {
+    let rollback_root = root.to_path_buf();
+    let rollback =
+        tauri::async_runtime::spawn_blocking(move || rollback_published_tinytex(&rollback_root))
+            .await
+            .map_err(|error| error.to_string())?;
+    match rollback {
+        Ok(()) => Err(format!(
+            "TinyTeX final validation failed and the previous installation was restored: {validation_error}"
+        )),
+        Err(rollback_error) => Err(format!(
+            "TinyTeX final validation failed: {validation_error}. Restoring the previous installation also failed: {rollback_error}"
+        )),
+    }
+}
+
+async fn reuse_existing_tinytex(asset: &TinytexAsset) -> Result<Option<EngineInfo>, String> {
+    let root = tinytex_root()?;
+    let Ok(existing) = validate_tinytex_root(&root, asset).await else {
+        return Ok(None);
     };
+    let _ = clean_redundant_install_files().await;
+    Ok(Some(existing))
+}
+
+async fn install_prepared_tinytex(
+    app: &tauri::AppHandle,
+    state: &AppState,
+    asset: &TinytexAsset,
+) -> Result<EngineInfo, String> {
+    let paths = prepare_install_paths()?;
+    download_tinytex(app, &paths.download, asset).await?;
+    verify_download(&paths.download, asset).await?;
+    extract_tinytex(app, &paths, asset).await?;
+    validate_staged_tinytex(app, &paths.staging, asset).await?;
+    let installed = publish_tinytex(state, &paths, asset).await;
     if installed.is_ok() {
-        let _ = std::fs::remove_file(&tmp);
+        let _ = std::fs::remove_file(&paths.download);
     }
     installed
+}
+
+/// Download and install TinyTeX on demand under `~/.oleafly/tinytex`.
+///
+/// Emits phased `tinytex-install-progress` events (download / extract /
+/// packages). The download resumes from a previous partial file (HTTP Range),
+/// including across app launches after a force-quit. On failure the partial
+/// file is kept so Retry continues instead of starting over.
+#[tauri::command]
+pub async fn install_tinytex(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
+) -> Result<EngineInfo, String> {
+    let _install = TinytexMutationGuard::acquire_install()?;
+    {
+        let _runtime = acquire_tex_runtime_write()?;
+        recover_interrupted_publish()?;
+    }
+    let asset = tinytex_asset()?;
+    if let Some(existing) = reuse_existing_tinytex(&asset).await? {
+        return Ok(existing);
+    }
+    install_prepared_tinytex(&app, &state, &asset).await
 }
 
 /// Remove our TinyTeX install to free disk space.
@@ -1310,19 +1405,22 @@ async fn delete_tinytex_synchronized(state: &AppState) -> Result<(), String> {
     let _compile = state.compile_lock.lock().await;
     let _figure_compile = state.figure_compile_lock.lock().await;
     let _runtime = acquire_tex_runtime_write()?;
-    tauri::async_runtime::spawn_blocking(|| -> Result<(), String> {
-        for path in [
-            tinytex_root()?,
-            tinytex_staging_root()?,
-            tinytex_backup_root()?,
-            tinytex_download_path()?,
-        ] {
-            remove_install_path(&path)?;
-        }
-        Ok(())
-    })
-    .await
-    .map_err(|e| e.to_string())?
+    tauri::async_runtime::spawn_blocking(delete_tinytex_paths)
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+fn delete_tinytex_paths() -> Result<(), String> {
+    let paths = [
+        tinytex_root()?,
+        tinytex_staging_root()?,
+        tinytex_backup_root()?,
+        tinytex_download_path()?,
+    ];
+    for path in paths {
+        remove_install_path(&path)?;
+    }
+    Ok(())
 }
 
 fn tlmgr_path() -> Result<String, String> {
@@ -1693,14 +1791,11 @@ mod tests {
     }
 
     fn test_dir(label: &str) -> PathBuf {
-        let nonce = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
+        tempfile::Builder::new()
+            .prefix(&format!("oleafly-tinytex-{label}-"))
+            .tempdir()
             .unwrap()
-            .as_nanos();
-        std::env::temp_dir().join(format!(
-            "oleafly-tinytex-{label}-{}-{nonce}",
-            std::process::id()
-        ))
+            .keep()
     }
 
     #[test]
@@ -1729,54 +1824,67 @@ mod tests {
         }
     }
 
+    type AssetCase = (
+        &'static str,
+        &'static str,
+        &'static str,
+        ArchiveFormat,
+        u64,
+        &'static str,
+        u64,
+        u64,
+        &'static str,
+    );
+
+    const ASSET_CASES: &[AssetCase] = &[
+        (
+            "windows",
+            "x86_64",
+            ".zip",
+            ArchiveFormat::Zip,
+            246_862_169,
+            "313314cdf15ad94e78931f6eff9bfc978f233ece7e5877f26467afe0b40f377b",
+            22_948,
+            535_736_875,
+            "cdc4ee187e1445c7157ca5387414d3e9539511df654ac353ccf67592ab652f37",
+        ),
+        (
+            "macos",
+            "aarch64",
+            ".tgz",
+            ArchiveFormat::TarGz,
+            265_813_745,
+            "c1e6ee0474300c72395647aa93aca0ea4bb600192e9a22bf539d57a583acb5c5",
+            19_994,
+            517_999_787,
+            "5018a2635526cc1d3a27b4eaa2bff8239c181afc6da01a063d1ff33809a3abd1",
+        ),
+        (
+            "linux",
+            "x86_64",
+            ".tar.gz",
+            ArchiveFormat::TarGz,
+            200_145_836,
+            "6f39005ce5c60863698793481352df75c051980b68a47726d49be9a00a377767",
+            19_994,
+            415_152_635,
+            "a69e2c1225af6911235e2a2ca40bf4a7968df6a64dc70ac5a43448683b53c938",
+        ),
+        (
+            "linux",
+            "aarch64",
+            ".tar.xz",
+            ArchiveFormat::TarXz,
+            155_871_496,
+            "c6713bf6c44048a4902040a08763c611deac3644b844f03d7244ae49a54a2a08",
+            19_992,
+            422_289_956,
+            "87da0e4715f7d96e6aeb8a62532b036e1a47267be5f86aa4de962b2539868ce4",
+        ),
+    ];
+
     #[test]
     fn tinytex_assets_pin_reviewed_archive_and_member_manifests() {
-        let cases = [
-            (
-                "windows",
-                "x86_64",
-                ".zip",
-                ArchiveFormat::Zip,
-                246_862_169,
-                "313314cdf15ad94e78931f6eff9bfc978f233ece7e5877f26467afe0b40f377b",
-                22_948,
-                535_736_875,
-                "cdc4ee187e1445c7157ca5387414d3e9539511df654ac353ccf67592ab652f37",
-            ),
-            (
-                "macos",
-                "aarch64",
-                ".tgz",
-                ArchiveFormat::TarGz,
-                265_813_745,
-                "c1e6ee0474300c72395647aa93aca0ea4bb600192e9a22bf539d57a583acb5c5",
-                19_994,
-                517_999_787,
-                "5018a2635526cc1d3a27b4eaa2bff8239c181afc6da01a063d1ff33809a3abd1",
-            ),
-            (
-                "linux",
-                "x86_64",
-                ".tar.gz",
-                ArchiveFormat::TarGz,
-                200_145_836,
-                "6f39005ce5c60863698793481352df75c051980b68a47726d49be9a00a377767",
-                19_994,
-                415_152_635,
-                "a69e2c1225af6911235e2a2ca40bf4a7968df6a64dc70ac5a43448683b53c938",
-            ),
-            (
-                "linux",
-                "aarch64",
-                ".tar.xz",
-                ArchiveFormat::TarXz,
-                155_871_496,
-                "c6713bf6c44048a4902040a08763c611deac3644b844f03d7244ae49a54a2a08",
-                19_992,
-                422_289_956,
-                "87da0e4715f7d96e6aeb8a62532b036e1a47267be5f86aa4de962b2539868ce4",
-            ),
-        ];
         for (
             os,
             arch,
@@ -1787,7 +1895,7 @@ mod tests {
             expected_members,
             expected_expanded_bytes,
             expected_manifest_sha256,
-        ) in cases
+        ) in ASSET_CASES.iter().copied()
         {
             let asset = tinytex_asset_for(os, arch).unwrap();
             assert!(asset.url.ends_with(suffix));

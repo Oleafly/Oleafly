@@ -348,8 +348,8 @@ response keeps a "Restore code to before this response" action.
 </div>
 
 Providers are configured in Settings. Keys are encrypted on disk and resolved
-by the Rust backend, so the webview never receives them. Hosted requests send a
-key only to its provider. A local Ollama model needs no cloud key.
+by the Rust backend, so the webview never receives them. Hosted requests send
+the key only to the selected provider. A local Ollama model needs no cloud key.
 
 <div align="center">
 
@@ -365,7 +365,9 @@ key only to its provider. A local Ollama model needs no cloud key.
 Oleafly can also expose its project tools to Claude Desktop, Claude Code,
 Cursor, Codex, and other MCP clients. The server binds to localhost and supports
 read-only mode plus three approval policies. Native file tools can keep working
-after the last window closes when the selected policy permits it.
+after the last window closes when the selected policy permits it. They stay
+confined to the last project reported by the app and never choose another
+library project by recency.
 
 <div align="center">
 

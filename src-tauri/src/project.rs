@@ -737,13 +737,8 @@ mod bounded_read_tests {
 
     #[test]
     fn limited_reads_reject_oversized_files_before_returning_content() {
-        use std::sync::atomic::{AtomicU64, Ordering};
-        static NEXT: AtomicU64 = AtomicU64::new(0);
-        let path = std::env::temp_dir().join(format!(
-            "oleafly-bounded-read-{}-{}",
-            std::process::id(),
-            NEXT.fetch_add(1, Ordering::Relaxed)
-        ));
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("bounded-read.txt");
         std::fs::write(&path, b"12345").unwrap();
 
         assert_eq!(read_utf8_limited(&path, 5).unwrap(), "12345");
@@ -1210,6 +1205,7 @@ pub(crate) struct ProjectWorktreeMutation<T> {
 pub(crate) async fn mutate_project_worktree<T, F>(
     state: &crate::state::AppState,
     project_id: String,
+    expected_generation: Option<u64>,
     operation: F,
 ) -> Result<ProjectWorktreeMutation<T>, String>
 where
@@ -1220,7 +1216,7 @@ where
     let admission = admit_mutation(
         &project_id,
         vec![MutationScope::subtree(String::new())],
-        None,
+        expected_generation,
     )?;
     let _compile = state.compile_lock.lock().await;
     let _figure_compile = state.figure_compile_lock.lock().await;
@@ -5105,16 +5101,11 @@ mod tests {
     use std::sync::Arc;
 
     fn test_dir(label: &str) -> std::path::PathBuf {
-        let path = std::env::temp_dir().join(format!(
-            "oleafly-{label}-{}-{}",
-            std::process::id(),
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_nanos()
-        ));
-        std::fs::create_dir_all(&path).unwrap();
-        path
+        tempfile::Builder::new()
+            .prefix(&format!("oleafly-{label}-"))
+            .tempdir()
+            .unwrap()
+            .keep()
     }
 
     fn mutation_project_id(label: &str) -> String {
@@ -6972,7 +6963,7 @@ mod tests {
         let worker_id = project_id.clone();
         let (started_tx, started_rx) = tokio::sync::oneshot::channel();
         let worker = tokio::spawn(async move {
-            super::mutate_project_worktree(&worker_state, worker_id, move |project| {
+            super::mutate_project_worktree(&worker_state, worker_id, None, move |project| {
                 let _ = started_tx.send(());
                 std::fs::write(
                     project.join("project.json"),
@@ -6998,7 +6989,7 @@ mod tests {
             .exists());
 
         let changed_back =
-            super::mutate_project_worktree(&state, project_id.clone(), move |project| {
+            super::mutate_project_worktree(&state, project_id.clone(), None, move |project| {
                 std::fs::write(
                     project.join("project.json"),
                     r#"{"name":"Git Trust","main_doc":"main.tex","engine":"latexmk"}"#,
@@ -7023,6 +7014,7 @@ mod tests {
         let failed = super::mutate_project_worktree(
             &state,
             project_id.clone(),
+            None,
             move |_project| -> Result<((), bool), String> {
                 Err("simulated conflicting pull".into())
             },
@@ -7042,6 +7034,7 @@ mod tests {
         let repaired = super::mutate_project_worktree(
             &state,
             project_id.clone(),
+            None,
             move |project| -> Result<((), bool), String> {
                 std::fs::write(project.join("project.json"), "{malformed")
                     .map_err(|error| error.to_string())?;

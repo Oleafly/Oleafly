@@ -300,7 +300,8 @@ This means that your biber (2.20) and biblatex (3.17) versions are incompatible.
 
     #[test]
     fn compiler_path_drops_current_directory_and_relative_entries() {
-        let absolute = std::env::temp_dir();
+        let directory = tempfile::tempdir().unwrap();
+        let absolute = directory.path().to_owned();
         let inherited = std::env::join_paths([PathBuf::from("."), absolute.clone()]).unwrap();
         let hardened = compile_path_env_with_inherited(Some(&inherited), None, None);
         let entries: Vec<_> = std::env::split_paths(&hardened).collect();
@@ -311,8 +312,8 @@ This means that your biber (2.20) and biblatex (3.17) versions are incompatible.
 
     #[test]
     fn compiler_path_prefers_selected_distribution_and_excludes_project() {
-        let root =
-            std::env::temp_dir().join(format!("oleafly-compile-path-{}", std::process::id()));
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path();
         let project_bin = root.join("project/bin");
         let distro_a = root.join("distro-a/bin");
         let distro_b = root.join("distro-b/bin");

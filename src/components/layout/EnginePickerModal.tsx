@@ -93,11 +93,12 @@ export function EnginePickerModal() {
         const compile = await import("@/store/compile");
         void compile.useCompileStore.getState().recompile();
       }
-    } catch {
+    } catch (error) {
       const current = useFilesStore.getState();
       if (current.projectId === projectId) {
         setShellEscapeConsent(current.engine.allow_shell_escape);
       }
+      notifyError("switch compile engine", error, "Could not switch the compile engine.");
     } finally {
       setSwitching(false);
     }
@@ -115,8 +116,9 @@ export function EnginePickerModal() {
           ? "External commands are allowed for this project on this computer."
           : "External commands are blocked for this project on this computer.",
       );
-    } catch {
+    } catch (error) {
       setShellEscapeConsent(previous);
+      notifyError("update external command access", error, "Could not update external command access.");
     } finally {
       setShellEscapeSaving(false);
     }

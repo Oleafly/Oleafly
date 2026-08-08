@@ -8,6 +8,8 @@ import {
   createProjectFromTemplate as apiCreateFromTemplate,
   deleteFile as apiDeleteFile,
   gitLog,
+  gitDiscard,
+  gitPull,
   gitRestore,
   getProject,
   getProjectEngine,
@@ -175,6 +177,8 @@ interface FilesStore {
   renameProject: (name: string) => Promise<void>;
   createFromTemplate: (name: string, templateId: string, color?: string) => Promise<string>;
   restoreFromGit: (oid: string) => Promise<void>;
+  pullFromGit: () => Promise<string>;
+  discardFromGit: (path: string) => Promise<void>;
 
   refreshTree: () => Promise<void>;
   openFile: (path: string) => Promise<void>;
@@ -212,6 +216,7 @@ const pendingWrites = new Map<string, Promise<number>>();
 let knownMutationProjectId: string | null = null;
 let knownMutationGeneration: number | null = null;
 let lastProjectStateRevision = 0;
+let fileReloadRevision = 0;
 // Project opens and closes are state transactions. Serializing them keeps a
 // double click or a close during an open from interleaving two project states.
 let projectTransition: Promise<void> = Promise.resolve();
@@ -371,9 +376,12 @@ async function flushDirtyBuffers(projectId: string, get: () => FilesStore): Prom
   }
 }
 
-function enqueueProjectTransition(operation: () => Promise<void>): Promise<void> {
+function enqueueProjectTransition<T>(operation: () => Promise<T>): Promise<T> {
   const queued = projectTransition.catch(() => {}).then(operation);
-  projectTransition = queued.catch(() => {});
+  projectTransition = queued.then(
+    () => {},
+    () => {},
+  );
   return queued;
 }
 
@@ -487,9 +495,6 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       if (lastProjectStateRevision === projectStateRevisionAtOpen) return false;
       if (!reopenQueued) {
         reopenQueued = true;
-        // The authoritative event may have landed between any two of the
-        // metadata/tree/engine reads below. Re-run the whole open transaction
-        // after this one unwinds instead of publishing a mixed snapshot.
         void get().openProject(id, shouldContinue);
       }
       return true;
@@ -686,13 +691,6 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
 
   importProject: async (path) => {
     const id = await importOverleafProjectCmd(path);
-    // Imported archives are untrusted input. The backend deliberately
-    // normalizes their engine to the bundled sandboxed default; do not apply
-    // the user's system-TeX preference until they explicitly opt in for this
-    // project after reviewing it.
-    // One toast for the whole import (callers stay silent on success). System
-    // TeX is now an explicit post-review choice, so there is no implicit pin to
-    // record here.
     toast.success("Project imported.");
     await get().refreshProjects();
     await get().openProject(id);
@@ -701,9 +699,6 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
 
   createFromTemplate: async (name, templateId, color) => {
     const id = await apiCreateFromTemplate(name, templateId, color);
-    // Templates may come from downloaded packs or the user's custom template
-    // directory. As with imports, preserve the backend's safe engine until the
-    // user explicitly trusts this project's contents and switches engines.
     await get().refreshProjects();
     await get().openProject(id);
     return id;
@@ -811,6 +806,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const state = files[path];
     if (!projectId || !state) return;
     const written = state.content;
+    const reloadRevision = fileReloadRevision;
     try {
       await enqueueWrite(projectId, path, written);
     } catch (error) {
@@ -828,6 +824,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       // The file was deleted while the write was in flight: do not resurrect it
       // as an entry with undefined content.
       if (!cur) return {};
+      if (fileReloadRevision !== reloadRevision) return {};
       // Newer keystrokes landed during the write, so what is on disk is already
       // stale. Leave it dirty; a later autosave will persist the newer content.
       if (cur.content !== written) return {};
@@ -1318,9 +1315,8 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       return true;
     }
 
-    // Read the new tree and clean in-memory buffers before publishing either.
-    // A Git pull/restore is one filesystem transaction; exposing its tree with
-    // the previous buffers creates a mixed project graph for the editor/indexer.
+    fileReloadRevision++;
+
     const before = get();
     try {
       const tree = await listFiles(projectId);
@@ -1510,78 +1506,35 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     if (!projectId) return;
 
     set({ loading: true });
-    cancelPendingAutosave();
     try {
-      await drainProjectWrites(projectId);
+      const expectedGeneration = await get().prepareExternalMutation(projectId);
       if (get().projectId !== projectId) return;
 
-      const event = await gitRestore(projectId, oid);
+      const event = await gitRestore(projectId, oid, expectedGeneration);
       if (get().projectId !== projectId) return;
       await get().applyProjectStateChanged(event);
-      if (get().projectId !== projectId) return;
-
-      // Read both the restored tree and every text buffer before publishing
-      // either. IndexKeeper observes `tree`; an earlier tree-only publish let it
-      // analyze the previous revision's buffers and briefly accept a mixed graph.
-      const tree = await listFiles(projectId);
-      if (get().projectId !== projectId) return;
-      const filePaths = new Set(
-        tree.filter((entry) => !entry.is_dir).map((entry) => entry.path),
-      );
-      const paths = Object.keys(get().files).filter((path) =>
-        filePaths.has(path),
-      );
-      const loaded = await Promise.all(
-        paths.map(async (path) => {
-          try {
-            return [
-              path,
-              {
-                content: await readFileContent(projectId, path),
-                dirty: false,
-              },
-            ] as const;
-          } catch {
-            return null;
-          }
-        }),
-      );
-      if (get().projectId !== projectId) return;
-      const reloaded: Record<string, FileState> = {};
-      for (const entry of loaded) {
-        if (entry) reloaded[entry[0]] = entry[1];
-      }
-
-      cancelPendingAutosave();
-      set((state) => {
-        if (state.projectId !== projectId) return {};
-        const openTabs = state.openTabs.filter((path) =>
-          filePaths.has(path),
-        );
-        const tabOrder = Object.fromEntries(
-          Object.entries(state.tabOrder).filter(([path]) =>
-            filePaths.has(path),
-          ),
-        );
-        const activePath =
-          state.activePath && filePaths.has(state.activePath)
-            ? state.activePath
-            : (openTabs.at(-1) ?? null);
-        return {
-          tree,
-          files: reloaded,
-          openTabs,
-          tabOrder,
-          activePath,
-          docVersion: state.docVersion + 1,
-          loading: false,
-        };
-      });
     } finally {
       if (get().projectId === projectId && get().loading) {
         set({ loading: false });
       }
     }
+  }),
+
+  pullFromGit: () => enqueueProjectTransition(async () => {
+    const { projectId } = get();
+    if (!projectId) return "";
+    const expectedGeneration = await get().prepareExternalMutation(projectId);
+    const result = await gitPull(projectId, expectedGeneration);
+    await get().applyProjectStateChanged(result.state);
+    return result.message;
+  }),
+
+  discardFromGit: (path) => enqueueProjectTransition(async () => {
+    const { projectId } = get();
+    if (!projectId) return;
+    const expectedGeneration = await get().prepareExternalMutation(projectId);
+    const event = await gitDiscard(projectId, path, expectedGeneration);
+    await get().applyProjectStateChanged(event);
   }),
 }));
 

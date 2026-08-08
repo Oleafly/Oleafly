@@ -765,6 +765,7 @@ export async function startMcpBridge(): Promise<() => void> {
     const w = window as unknown as {
       __mcpDecide?: (verb: string) => string;
       __mcpDisconnectRenderer?: () => Promise<void>;
+      __mcpStopHeartbeat?: () => void;
       __mcpQueue?: () => string[];
     };
     w.__mcpDecide = (verb) => {
@@ -777,6 +778,7 @@ export async function startMcpBridge(): Promise<() => void> {
     w.__mcpQueue = () =>
       useMcpApprovalStore.getState().queue.map((q) => `${q.id}:${q.req.tool}`);
     w.__mcpDisconnectRenderer = disconnectRendererSession;
+    w.__mcpStopHeartbeat = stopRendererHeartbeat;
   }
 
   if (!bridgeStartupReady) {

@@ -19,6 +19,7 @@ import {
 import {
   boundedCompletionContext,
   isCompletionTextLexicallyTriggered,
+  type CompletionSyntax,
 } from "./completion-trigger";
 
 // Inline "ghost" completion: the rest of the most likely candidate, drawn dim
@@ -121,18 +122,47 @@ const ghostField = StateField.define<GhostSuggestion | null>({
     ),
 });
 
-/** The identifier being typed at `pos`: a LaTeX command or syntax query. */
 function typedPrefix(
   before: string,
   pos: number,
 ): { from: number; text: string } | null {
-  const match = before.match(/(\\[a-zA-Z@]*|[A-Za-z][A-Za-z0-9]*)$/);
-  if (!match) return null;
-  const text = match[1];
-  const letters = text.startsWith("\\") ? text.length - 1 : text.length;
-  const minimum = text.startsWith("\\") ? MIN_COMMAND_LETTERS : MIN_WORD_LETTERS;
-  if (letters < minimum) return null;
+  const start = typedPrefixStart(before);
+  const text = before.slice(start);
+  const minimum = typedPrefixMinimum(text);
+  if (minimum === null) return null;
+  if (text.length < minimum) return null;
   return { from: pos - text.length, text };
+}
+
+function typedPrefixStart(before: string): number {
+  let start = before.length;
+  while (start > 0) {
+    if (!isIdentifierContinuation(before[start - 1])) break;
+    start--;
+  }
+  if (start > 0) {
+    if (before[start - 1] === "\\") start--;
+  }
+  if (before[start] === "@") start++;
+  return start;
+}
+
+function typedPrefixMinimum(text: string): number | null {
+  if (!text) return null;
+  if (text[0] === "\\") return MIN_COMMAND_LETTERS + 1;
+  if (isAsciiLetter(text[0])) return MIN_WORD_LETTERS;
+  return null;
+}
+
+function isAsciiLetter(character: string): boolean {
+  return (character >= "A" && character <= "Z") ||
+    (character >= "a" && character <= "z");
+}
+
+function isIdentifierContinuation(character: string): boolean {
+  return isAsciiLetter(character) ||
+    (character >= "0" && character <= "9") ||
+    character === "@";
 }
 
 /** Only suggest at the end of a word, never in the middle of one. */
@@ -197,7 +227,7 @@ function syncResult(
 function computeGhost(
   view: EditorView,
   sources: CompletionSource[],
-  path: string | null,
+  syntax: CompletionSyntax,
 ): GhostSuggestion | null {
   const selection = view.state.selection.main;
   if (!selection.empty || view.state.readOnly) return null;
@@ -215,11 +245,7 @@ function computeGhost(
     return label ? { pos, text: label.slice(prefix.text.length) } : null;
   }
 
-  // A bare word in prose is not a completion request. In particular, do not
-  // call host sources here: some intentionally build a full-source snapshot
-  // once a syntactic trigger is known, which would otherwise make every
-  // ordinary keystroke O(document size).
-  if (!isCompletionTextLexicallyTriggered(before, path)) return null;
+  if (!isCompletionTextLexicallyTriggered(before, syntax)) return null;
 
   const context = new CompletionContext(view.state, pos, false);
   for (const source of sources) {
@@ -278,7 +304,7 @@ const ghostTheme = EditorView.baseTheme({
  */
 export function ghostCompletion(
   sources: CompletionSource[],
-  path: string | null = null,
+  syntax: CompletionSyntax = "generic",
 ): Extension {
   const plugin = ViewPlugin.fromClass(
     class {
@@ -292,9 +318,6 @@ export function ghostCompletion(
       }
 
       update(update: ViewUpdate) {
-        // The popup opening or closing changes where the suggestion comes
-        // from. Moving its highlight also moves neither cursor nor document,
-        // so both status and selected-option changes must trigger a refresh.
         const previousStatus = completionStatus(update.startState);
         const nextStatus = completionStatus(update.state);
         const popupChanged =
@@ -325,7 +348,7 @@ export function ghostCompletion(
         // while the user types. The suggestion is anchored to the cursor and
         // only survives until the next edit, so an unfocused editor cannot
         // accumulate stale previews anyway.
-        const next = computeGhost(view, sources, path);
+        const next = computeGhost(view, sources, syntax);
         const current = view.state.field(ghostField, false) ?? null;
         if (next?.text === current?.text && next?.pos === current?.pos) return;
         view.dispatch({ effects: setGhost.of(next) });

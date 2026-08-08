@@ -56,6 +56,7 @@ describe("CodeMirrorEditor measurement", () => {
       useActivePath: () => "main.tex",
       getActivePath: () => "main.tex",
       useDocVersion: () => 0,
+      useCompletionSyntax: () => "latex",
       getContent: () => "\\documentclass{article}\n\\begin{document}\nHello\n\\end{document}\n",
       setContent: vi.fn(),
       useSettings: () => ({
@@ -91,6 +92,7 @@ describe("CodeMirrorEditor measurement", () => {
       useActivePath: () => "main.typ",
       getActivePath: () => "main.typ",
       useDocVersion: () => 0,
+      useCompletionSyntax: () => "latex",
       getContent: () => "@alp",
       setContent: vi.fn(),
       useSettings: () => ({

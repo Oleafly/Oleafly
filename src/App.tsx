@@ -64,6 +64,71 @@ import { COMPILE_SUCCEEDED_EVENT } from "@/lib/compile-checkpoint";
 import { applyRemoteCompileSuccess } from "@/lib/compile-sync";
 import type { ProjectStateChanged } from "@/lib/tauri";
 
+type ExternalFileChange =
+  | { kind: "write"; path: string; content: string }
+  | { kind: "create" | "delete"; path: string }
+  | { kind: "rename"; from: string; to: string };
+
+interface ExternalFileChangePayload {
+  projectId: string;
+  paths?: string[];
+  from?: string;
+  change?: ExternalFileChange;
+}
+
+function applyExternalFileChange(payload: ExternalFileChangePayload, selfLabel: string) {
+  if (payload.from === selfLabel) return;
+  const files = useFilesStore.getState();
+  if (!payload.projectId) return;
+  if (payload.projectId !== files.projectId) return;
+  if (applyKnownExternalChange(files, payload.projectId, payload.change)) return;
+  void files.refreshTree();
+  if (payload.change?.kind === "create") return;
+  let paths = payload.paths;
+  if (!paths?.length) paths = Object.keys(files.files);
+  for (const path of paths) refreshExternalFile(payload.projectId, path, files.files[path]);
+}
+
+function applyKnownExternalChange(
+  files: ReturnType<typeof useFilesStore.getState>,
+  projectId: string,
+  change: ExternalFileChange | undefined,
+): boolean {
+  switch (change?.kind) {
+    case "delete":
+      files.applyExternalDelete(projectId, change.path);
+      return true;
+    case "rename":
+      files.applyExternalRename(projectId, change.from, change.to);
+      return true;
+    case "write":
+      files.applyExternalWrite(projectId, change.path, change.content);
+      return true;
+    default:
+      return false;
+  }
+}
+
+function refreshExternalFile(
+  projectId: string,
+  path: string,
+  file: { content: string; dirty: boolean } | undefined,
+) {
+  if (!file || file.dirty) return;
+  const contentBeforeRead = file.content;
+  void import("@/lib/tauri").then(({ readFileContent }) => {
+    void readFileContent(projectId, path)
+      .then((content) => {
+        const current = useFilesStore.getState();
+        const latest = current.files[path];
+        if (current.projectId !== projectId || latest?.dirty) return;
+        if (latest?.content !== contentBeforeRead) return;
+        current.applyExternalWrite(projectId, path, content);
+      })
+      .catch(() => {});
+  });
+}
+
 const SettingsModal = lazy(() =>
   import("@/components/layout/SettingsModal").then((m) => ({ default: m.SettingsModal })),
 );
@@ -442,71 +507,9 @@ function AppContent() {
   useEffect(() => {
     if (!isTauri()) return;
     const selfLabel = getCurrentWindow().label;
-    type ExternalFileChange =
-      | { kind: "write"; path: string; content: string }
-      | { kind: "create" | "delete"; path: string }
-      | { kind: "rename"; from: string; to: string };
-    const unFiles = listen<{
-      projectId: string;
-      paths?: string[];
-      from?: string;
-      change?: ExternalFileChange;
-    }>(
-      "project:files-changed",
-      (e) => {
-        // Ignore our own broadcast: this window already applied the write
-        // directly, and re-reading it would bump docVersion and reset the
-        // editor cursor/undo on the active file.
-        if (e.payload?.from === selfLabel) return;
-        const pid = e.payload?.projectId;
-        const fs = useFilesStore.getState();
-        if (!pid || pid !== fs.projectId) return;
-        const change = e.payload?.change;
-        if (change?.kind === "delete") {
-          fs.applyExternalDelete(pid, change.path);
-          return;
-        }
-        if (change?.kind === "rename") {
-          fs.applyExternalRename(pid, change.from, change.to);
-          return;
-        }
-        if (change?.kind === "write") {
-          fs.applyExternalWrite(pid, change.path, change.content);
-          return;
-        }
-        void fs.refreshTree();
-        if (change?.kind === "create") return;
-        const paths = e.payload?.paths?.length
-          ? e.payload.paths
-          : Object.keys(fs.files);
-        for (const path of paths) {
-          const contentBeforeRead = fs.files[path]?.content;
-          if (contentBeforeRead !== undefined && !fs.files[path]?.dirty) {
-            void import("@/lib/tauri").then(({ readFileContent }) => {
-              void readFileContent(pid, path)
-                .then((content) => {
-                  const cur = useFilesStore.getState();
-                  if (cur.projectId !== pid) return;
-                  // A read started for an older filesystem notification can
-                  // finish after a local edit has already been saved. At that
-                  // point `dirty` is false again, so checking it alone can
-                  // overwrite the newer editor buffer with the stale read.
-                  // Apply only if the local snapshot is exactly the one that
-                  // existed when this read began.
-                  if (
-                    cur.files[path]?.dirty ||
-                    cur.files[path]?.content !== contentBeforeRead
-                  ) {
-                    return;
-                  }
-                  cur.applyExternalWrite(pid, path, content);
-                })
-                .catch(() => {});
-            });
-          }
-        }
-      },
-    );
+    const unFiles = listen<ExternalFileChangePayload>("project:files-changed", (event) => {
+      if (event.payload) applyExternalFileChange(event.payload, selfLabel);
+    });
     const unCompile = listen<unknown>(COMPILE_SUCCEEDED_EVENT, (event) => {
       void applyRemoteCompileSuccess(event.payload, selfLabel);
     });
@@ -514,8 +517,6 @@ function AppContent() {
       const files = useFilesStore.getState();
       if (!event.payload || event.payload.projectId !== files.projectId) return;
       void files.applyProjectStateChanged(event.payload).then((applied) => {
-        // Ignore delayed older events. Accepted metadata/worktree changes make
-        // every preflight assertion stale even if no source file changed.
         if (applied) usePreflightStore.getState().reset();
       });
     });

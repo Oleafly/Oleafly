@@ -10,6 +10,8 @@ const mocks = vi.hoisted(() => ({
   recordProjectTexSpec: vi.fn(),
   projectMutationGeneration: vi.fn(),
   gitRestore: vi.fn(),
+  gitPull: vi.fn(),
+  gitDiscard: vi.fn(),
   listFiles: vi.fn(),
   readFileContent: vi.fn(),
   writeFileContent: vi.fn(),
@@ -34,6 +36,8 @@ vi.mock("@/lib/tauri", () => ({
   recordProjectTexSpec: mocks.recordProjectTexSpec,
   projectMutationGeneration: mocks.projectMutationGeneration,
   gitRestore: mocks.gitRestore,
+  gitPull: mocks.gitPull,
+  gitDiscard: mocks.gitDiscard,
   listFiles: mocks.listFiles,
   readFileContent: mocks.readFileContent,
   writeFileContent: mocks.writeFileContent,
@@ -99,7 +103,7 @@ beforeEach(async () => {
     projectId: "project",
     revision: ++projectStateRevision,
     reason: "git-restore",
-    filesChanged: false,
+    filesChanged: true,
     mutationGeneration: 1,
     project: {
       name: "Paper",
@@ -110,6 +114,11 @@ beforeEach(async () => {
     },
     engine: LATEX_ENGINE,
   }));
+  mocks.gitPull.mockReset().mockImplementation(async () => ({
+    message: "Pulled",
+    state: await mocks.gitRestore(),
+  }));
+  mocks.gitDiscard.mockReset().mockImplementation(async () => mocks.gitRestore());
   mocks.setMainDocCmd.mockReset();
   mocks.setProjectShellEscapeCmd.mockReset();
   mocks.deleteFile.mockReset().mockResolvedValue(undefined);
@@ -224,6 +233,49 @@ describe("transactional project transitions", () => {
       activePath: "main.tex",
     });
     expect(useFilesStore.getState().files["removed.tex"]).toBeUndefined();
+  });
+
+  it("keeps a local edit dirty when a project reload overtakes its save", async () => {
+    const staleWrite = deferred<void>();
+    mocks.writeFileContent
+      .mockImplementationOnce(() => staleWrite.promise)
+      .mockResolvedValue(undefined);
+    useFilesStore.setState({
+      projectId: "project",
+      files: { "main.tex": { content: "local edit", dirty: true } },
+      tree: [{ path: "main.tex", is_dir: false }],
+      openTabs: ["main.tex"],
+      activePath: "main.tex",
+    });
+
+    const saving = useFilesStore.getState().saveFile("main.tex");
+    await vi.waitFor(() => expect(mocks.writeFileContent).toHaveBeenCalledTimes(1));
+    await useFilesStore.getState().applyProjectStateChanged({
+      projectId: "project",
+      revision: ++projectStateRevision,
+      reason: "git-pull",
+      filesChanged: true,
+      mutationGeneration: 8,
+      project: {
+        name: "Paper",
+        main_doc: "main.tex",
+        engine: "latex",
+        kind: "",
+        allow_shell_escape: false,
+      },
+      engine: LATEX_ENGINE,
+    });
+
+    staleWrite.resolve();
+    await saving;
+    expect(useFilesStore.getState().files["main.tex"]).toEqual({
+      content: "local edit",
+      dirty: true,
+    });
+
+    await useFilesStore.getState().saveFile("main.tex");
+    expect(mocks.writeFileContent).toHaveBeenCalledTimes(2);
+    expect(useFilesStore.getState().files["main.tex"].dirty).toBe(false);
   });
 
   it("restarts an in-flight project open when an authoritative event lands between reads", async () => {
@@ -382,6 +434,7 @@ describe("transactional project transitions", () => {
     expect(mocks.gitRestore).toHaveBeenCalledWith(
       "project",
       "restored-oid",
+      0,
     );
     expect(useFilesStore.getState()).toMatchObject({
       tree: restoredTree,
@@ -395,6 +448,34 @@ describe("transactional project transitions", () => {
       activePath: "main.tex",
       loading: false,
     });
+  });
+
+  it("flushes an unsaved buffer before restoring Git history", async () => {
+    const write = deferred<void>();
+    mocks.writeFileContent.mockReturnValue(write.promise);
+    useFilesStore.setState({
+      projectId: "project",
+      tree: [{ path: "main.tex", is_dir: false }],
+      files: { "main.tex": { content: "unsaved local edit", dirty: true } },
+      openTabs: ["main.tex"],
+      tabOrder: { "main.tex": 1 },
+      activePath: "main.tex",
+    });
+
+    const restoring = useFilesStore.getState().restoreFromGit("restored-oid");
+    await vi.waitFor(() =>
+      expect(mocks.writeFileContent).toHaveBeenCalledWith(
+        "project",
+        "main.tex",
+        "unsaved local edit",
+        expect.any(Number),
+      ),
+    );
+    expect(mocks.gitRestore).not.toHaveBeenCalled();
+
+    write.resolve();
+    await restoring;
+    expect(mocks.gitRestore).toHaveBeenCalledWith("project", "restored-oid", 0);
   });
 
   it("writes every dirty buffer before closing and only then clears project state", async () => {

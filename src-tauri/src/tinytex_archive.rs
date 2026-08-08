@@ -43,14 +43,23 @@ impl<'a> ArchiveManifest<'a> {
         size: u64,
         link_target: Option<&Path>,
     ) -> Result<(), String> {
-        use sha2::Digest as _;
-
         let path = validated_archive_path(path)?;
-        if !self.paths.insert(path.clone()) {
+        self.validate_member(&path, size, link_target)?;
+        self.hash_member(kind, &path, size, link_target)?;
+        Ok(())
+    }
+
+    fn validate_member(
+        &mut self,
+        path: &str,
+        size: u64,
+        link_target: Option<&Path>,
+    ) -> Result<(), String> {
+        if !self.paths.insert(path.to_owned()) {
             return Err(format!("TinyTeX archive contains duplicate member {path}."));
         }
         if let Some(target) = link_target {
-            validate_archive_link_target(Path::new(&path), target)?;
+            validate_archive_link_target(Path::new(path), target)?;
         }
         self.members = self
             .members
@@ -60,9 +69,21 @@ impl<'a> ArchiveManifest<'a> {
             .expanded_bytes
             .checked_add(size)
             .ok_or_else(|| "TinyTeX expanded size overflowed.".to_string())?;
-        if self.members > self.policy.members || self.expanded_bytes > self.policy.expanded_bytes {
-            return Err("TinyTeX archive exceeds its reviewed extraction limits.".into());
-        }
+        let within_limits = self.members <= self.policy.members
+            && self.expanded_bytes <= self.policy.expanded_bytes;
+        within_limits
+            .then_some(())
+            .ok_or_else(|| "TinyTeX archive exceeds its reviewed extraction limits.".into())
+    }
+
+    fn hash_member(
+        &mut self,
+        kind: &str,
+        path: &str,
+        size: u64,
+        link_target: Option<&Path>,
+    ) -> Result<(), String> {
+        use sha2::Digest as _;
         self.hasher.update(kind.as_bytes());
         self.hasher.update([0]);
         self.hasher.update(path.as_bytes());
@@ -93,6 +114,16 @@ impl<'a> ArchiveManifest<'a> {
         }
         Ok(())
     }
+}
+
+fn validate_tar_mode(path: &Path, mode: u32) -> Result<(), String> {
+    if mode & 0o7000 != 0 || mode & 0o002 != 0 {
+        return Err(format!(
+            "TinyTeX archive member {} has unsafe permissions.",
+            path.display()
+        ));
+    }
+    Ok(())
 }
 
 fn validated_archive_path(path: &Path) -> Result<String, String> {
@@ -151,46 +182,42 @@ pub(crate) fn inspect_tar<R: std::io::Read>(
     let mut archive = tar::Archive::new(reader);
     let mut manifest = ArchiveManifest::new(policy);
     for entry in archive.entries().map_err(|e| e.to_string())? {
-        let entry = entry.map_err(|e| e.to_string())?;
-        let entry_type = entry.header().entry_type();
-        let (kind, link_target) = if entry_type.is_file() {
-            ("file", None)
-        } else if entry_type.is_dir() {
-            ("directory", None)
-        } else if entry_type.is_symlink() {
-            let target = entry
-                .link_name()
-                .map_err(|e| e.to_string())?
-                .ok_or_else(|| {
-                    "TinyTeX archive contains a symlink without a target.".to_string()
-                })?;
-            ("symlink", Some(target.into_owned()))
-        } else {
-            return Err("TinyTeX archive contains an unsupported member type.".into());
-        };
+        let mut entry = entry.map_err(|e| e.to_string())?;
+        let (kind, link_target) = tar_member_kind(&mut entry)?;
         let path = entry.path().map_err(|e| e.to_string())?.into_owned();
+        validate_tar_mode(&path, entry.header().mode().map_err(|e| e.to_string())?)?;
         manifest.record(kind, &path, entry.size(), link_target.as_deref())?;
     }
     manifest.finish()
 }
 
+fn tar_member_kind<R: std::io::Read>(
+    entry: &mut tar::Entry<'_, R>,
+) -> Result<(&'static str, Option<std::path::PathBuf>), String> {
+    let entry_type = entry.header().entry_type();
+    if entry_type.is_file() {
+        return Ok(("file", None));
+    }
+    if entry_type.is_dir() {
+        return Ok(("directory", None));
+    }
+    if !entry_type.is_symlink() {
+        return Err("TinyTeX archive contains an unsupported member type.".into());
+    }
+    let target = entry
+        .link_name()
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "TinyTeX archive contains a symlink without a target.".to_string())?;
+    Ok(("symlink", Some(target.into_owned())))
+}
+
 fn extract_tar<R: std::io::Read>(reader: R, destination: &Path) -> Result<(), String> {
     let mut archive = tar::Archive::new(reader);
-    archive.set_preserve_permissions(true);
+    archive.set_preserve_permissions(false);
     archive.set_overwrite(true);
     for entry in archive.entries().map_err(|e| e.to_string())? {
         let mut entry = entry.map_err(|e| e.to_string())?;
-        let path = entry.path().map_err(|e| e.to_string())?.into_owned();
-        validated_archive_path(&path)?;
-        if entry.header().entry_type().is_symlink() {
-            let target = entry
-                .link_name()
-                .map_err(|e| e.to_string())?
-                .ok_or_else(|| {
-                    "TinyTeX archive contains a symlink without a target.".to_string()
-                })?;
-            validate_archive_link_target(&path, &target)?;
-        }
+        let path = validate_tar_entry(&mut entry)?;
         if !entry.unpack_in(destination).map_err(|e| e.to_string())? {
             return Err(format!(
                 "TinyTeX archive member {} could not be confined to staging.",
@@ -201,6 +228,22 @@ fn extract_tar<R: std::io::Read>(reader: R, destination: &Path) -> Result<(), St
     Ok(())
 }
 
+fn validate_tar_entry<R: std::io::Read>(
+    entry: &mut tar::Entry<'_, R>,
+) -> Result<std::path::PathBuf, String> {
+    let path = entry.path().map_err(|e| e.to_string())?.into_owned();
+    validated_archive_path(&path)?;
+    validate_tar_mode(&path, entry.header().mode().map_err(|e| e.to_string())?)?;
+    if entry.header().entry_type().is_symlink() {
+        let target = entry
+            .link_name()
+            .map_err(|e| e.to_string())?
+            .ok_or_else(|| "TinyTeX archive contains a symlink without a target.".to_string())?;
+        validate_archive_link_target(&path, &target)?;
+    }
+    Ok(path)
+}
+
 pub(crate) fn inspect_archive(
     archive: &Path,
     format: ArchiveFormat,
@@ -209,40 +252,42 @@ pub(crate) fn inspect_archive(
     let file = std::fs::File::open(archive).map_err(|e| e.to_string())?;
     match format {
         ArchiveFormat::TarGz => inspect_tar(flate2::read::GzDecoder::new(file), policy),
-        ArchiveFormat::TarXz => {
-            #[cfg(target_os = "linux")]
-            {
-                const XZ_MEMORY_LIMIT_BYTES: u64 = 64 * 1024 * 1024;
-                let stream = liblzma::stream::Stream::new_stream_decoder(XZ_MEMORY_LIMIT_BYTES, 0)
-                    .map_err(|e| format!("failed to initialize XZ decoder: {e}"))?;
-                inspect_tar(liblzma::read::XzDecoder::new_stream(file, stream), policy)
-            }
-            #[cfg(not(target_os = "linux"))]
-            {
-                let _ = file;
-                Err("XZ TinyTeX archives are supported only on Linux.".into())
-            }
-        }
-        ArchiveFormat::Zip => {
-            let mut zip = zip::ZipArchive::new(file).map_err(|e| e.to_string())?;
-            let mut manifest = ArchiveManifest::new(policy);
-            for index in 0..zip.len() {
-                let entry = zip.by_index(index).map_err(|e| e.to_string())?;
-                let path = entry
-                    .enclosed_name()
-                    .ok_or_else(|| "TinyTeX archive contains an unsafe member path.".to_string())?;
-                let kind = if entry.is_dir() { "directory" } else { "file" };
-                if entry
-                    .unix_mode()
-                    .is_some_and(|mode| mode & 0o170000 == 0o120000)
-                {
-                    return Err("TinyTeX ZIP contains an unsupported symbolic link.".into());
-                }
-                manifest.record(kind, &path, entry.size(), None)?;
-            }
-            manifest.finish()
-        }
+        ArchiveFormat::TarXz => inspect_xz(file, policy),
+        ArchiveFormat::Zip => inspect_zip(file, policy),
     }
+}
+
+#[cfg(target_os = "linux")]
+fn inspect_xz(file: std::fs::File, policy: ArchiveMemberPolicy<'_>) -> Result<(), String> {
+    const XZ_MEMORY_LIMIT_BYTES: u64 = 64 * 1024 * 1024;
+    let stream = liblzma::stream::Stream::new_stream_decoder(XZ_MEMORY_LIMIT_BYTES, 0)
+        .map_err(|e| format!("failed to initialize XZ decoder: {e}"))?;
+    inspect_tar(liblzma::read::XzDecoder::new_stream(file, stream), policy)
+}
+
+#[cfg(not(target_os = "linux"))]
+fn inspect_xz(_file: std::fs::File, _policy: ArchiveMemberPolicy<'_>) -> Result<(), String> {
+    Err("XZ TinyTeX archives are supported only on Linux.".into())
+}
+
+fn inspect_zip(file: std::fs::File, policy: ArchiveMemberPolicy<'_>) -> Result<(), String> {
+    let mut zip = zip::ZipArchive::new(file).map_err(|e| e.to_string())?;
+    let mut manifest = ArchiveManifest::new(policy);
+    for index in 0..zip.len() {
+        let entry = zip.by_index(index).map_err(|e| e.to_string())?;
+        let path = entry
+            .enclosed_name()
+            .ok_or_else(|| "TinyTeX archive contains an unsafe member path.".to_string())?;
+        let kind = if entry.is_dir() { "directory" } else { "file" };
+        let symbolic_link = entry
+            .unix_mode()
+            .is_some_and(|mode| mode & 0o170000 == 0o120000);
+        if symbolic_link {
+            return Err("TinyTeX ZIP contains an unsupported symbolic link.".into());
+        }
+        manifest.record(kind, &path, entry.size(), None)?;
+    }
+    manifest.finish()
 }
 
 pub(crate) fn extract_all(
@@ -255,48 +300,114 @@ pub(crate) fn extract_all(
     std::fs::create_dir_all(destination).map_err(|e| e.to_string())?;
     let file = std::fs::File::open(archive).map_err(|e| e.to_string())?;
     match format {
-        ArchiveFormat::TarGz => extract_tar(flate2::read::GzDecoder::new(file), destination)?,
-        ArchiveFormat::TarXz => {
-            #[cfg(target_os = "linux")]
-            {
-                const XZ_MEMORY_LIMIT_BYTES: u64 = 64 * 1024 * 1024;
-                let stream = liblzma::stream::Stream::new_stream_decoder(XZ_MEMORY_LIMIT_BYTES, 0)
-                    .map_err(|e| format!("failed to initialize XZ decoder: {e}"))?;
-                extract_tar(
-                    liblzma::read::XzDecoder::new_stream(file, stream),
-                    destination,
-                )?;
-            }
-            #[cfg(not(target_os = "linux"))]
-            {
-                let _ = file;
-                return Err("XZ TinyTeX archives are supported only on Linux.".into());
-            }
-        }
-        ArchiveFormat::Zip => {
-            let mut zip = zip::ZipArchive::new(file).map_err(|e| e.to_string())?;
-            for index in 0..zip.len() {
-                let mut entry = zip.by_index(index).map_err(|e| e.to_string())?;
-                let relative = entry
-                    .enclosed_name()
-                    .ok_or_else(|| "TinyTeX archive contains an unsafe member path.".to_string())?
-                    .to_path_buf();
-                let output = destination.join(relative);
-                if entry.is_dir() {
-                    std::fs::create_dir_all(&output).map_err(|e| e.to_string())?;
-                } else {
-                    if let Some(parent) = output.parent() {
-                        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-                    }
-                    let mut target = std::fs::OpenOptions::new()
-                        .write(true)
-                        .create_new(true)
-                        .open(&output)
-                        .map_err(|e| e.to_string())?;
-                    std::io::copy(&mut entry, &mut target).map_err(|e| e.to_string())?;
-                }
-            }
-        }
+        ArchiveFormat::TarGz => extract_tar(flate2::read::GzDecoder::new(file), destination),
+        ArchiveFormat::TarXz => extract_xz(file, destination),
+        ArchiveFormat::Zip => extract_zip(file, destination),
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn extract_xz(file: std::fs::File, destination: &Path) -> Result<(), String> {
+    const XZ_MEMORY_LIMIT_BYTES: u64 = 64 * 1024 * 1024;
+    let stream = liblzma::stream::Stream::new_stream_decoder(XZ_MEMORY_LIMIT_BYTES, 0)
+        .map_err(|e| format!("failed to initialize XZ decoder: {e}"))?;
+    extract_tar(
+        liblzma::read::XzDecoder::new_stream(file, stream),
+        destination,
+    )
+}
+
+#[cfg(not(target_os = "linux"))]
+fn extract_xz(_file: std::fs::File, _destination: &Path) -> Result<(), String> {
+    Err("XZ TinyTeX archives are supported only on Linux.".into())
+}
+
+fn extract_zip(file: std::fs::File, destination: &Path) -> Result<(), String> {
+    let mut zip = zip::ZipArchive::new(file).map_err(|e| e.to_string())?;
+    for index in 0..zip.len() {
+        let mut entry = zip.by_index(index).map_err(|e| e.to_string())?;
+        extract_zip_entry(&mut entry, destination)?;
     }
     Ok(())
+}
+
+fn extract_zip_entry<R: std::io::Read>(
+    entry: &mut zip::read::ZipFile<'_, R>,
+    destination: &Path,
+) -> Result<(), String> {
+    let relative = entry
+        .enclosed_name()
+        .ok_or_else(|| "TinyTeX archive contains an unsafe member path.".to_string())?
+        .to_path_buf();
+    let output = destination.join(relative);
+    if entry.is_dir() {
+        return std::fs::create_dir_all(&output).map_err(|e| e.to_string());
+    }
+    if let Some(parent) = output.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    let mut target = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&output)
+        .map_err(|e| e.to_string())?;
+    std::io::copy(entry, &mut target).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn policy() -> ArchiveMemberPolicy<'static> {
+        ArchiveMemberPolicy {
+            members: 1,
+            expanded_bytes: 1,
+            manifest_sha256: "unused",
+        }
+    }
+
+    #[test]
+    fn member_paths_stay_beneath_the_reviewed_root() {
+        assert!(validated_archive_path(Path::new("TinyTeX/bin/tool")).is_ok());
+        assert!(validated_archive_path(Path::new("TinyTeX/../escape")).is_err());
+        assert!(validated_archive_path(Path::new("Other/tool")).is_err());
+        assert!(validated_archive_path(Path::new("/TinyTeX/tool")).is_err());
+    }
+
+    #[test]
+    fn link_targets_cannot_escape_the_reviewed_root() {
+        assert!(validate_archive_link_target(
+            Path::new("TinyTeX/bin/tool"),
+            Path::new("../lib/tool")
+        )
+        .is_ok());
+        assert!(validate_archive_link_target(
+            Path::new("TinyTeX/bin/tool"),
+            Path::new("../../outside")
+        )
+        .is_err());
+        assert!(
+            validate_archive_link_target(Path::new("TinyTeX/bin/tool"), Path::new("/outside"))
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn duplicate_members_are_rejected() {
+        let mut manifest = ArchiveManifest::new(policy());
+        manifest
+            .record("file", Path::new("TinyTeX/file"), 1, None)
+            .unwrap();
+        assert!(manifest
+            .record("file", Path::new("TinyTeX/file"), 1, None)
+            .is_err());
+    }
+
+    #[test]
+    fn unsafe_archive_permissions_are_rejected() {
+        assert!(validate_tar_mode(Path::new("TinyTeX/file"), 0o755).is_ok());
+        assert!(validate_tar_mode(Path::new("TinyTeX/file"), 0o4755).is_err());
+        assert!(validate_tar_mode(Path::new("TinyTeX/file"), 0o777).is_err());
+    }
 }

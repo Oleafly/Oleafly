@@ -132,8 +132,6 @@ test("a Tectonic project with an engine gap offers the engine picker", async ({
       "\\documentclass{article}\n\\usepackage{minted}\n\\begin{document}\\begin{minted}{python}\nprint(1)\n\\end{minted}\\end{document}\n",
   });
   await importZip(tauriPage, zipPath);
-  // Imports stay on the bundled engine even when system TeX is the user's
-  // default. Pin it explicitly so this test also documents that trust boundary.
   await tauriPage.evaluate(
     `import("/src/store/files.ts").then((m) => m.useFilesStore.getState().setEngine("xetex"))`,
   );

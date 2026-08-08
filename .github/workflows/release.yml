@@ -415,6 +415,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Fetch Tectonic sidecar
+        run: bash scripts/fetch-tectonic.sh aarch64-apple-darwin
+
+      - name: Fetch Biber sidecar
+        run: bash scripts/fetch-biber.sh aarch64-apple-darwin
+
+      - name: Fetch Typst sidecar
+        run: bash scripts/fetch-typst.sh aarch64-apple-darwin
+
       - name: Fetch pinned Tinymist resource
         run: node scripts/fetch-language-servers.mjs --server tinymist --target aarch64-apple-darwin --install-mode resource
 

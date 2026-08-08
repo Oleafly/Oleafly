@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Compile entry wrapper (neutralizes pdfLaTeX-only commands under XeTeX).
 pub const ENTRY_TEX: &str = "_oleafly_entry.tex";
@@ -66,19 +66,7 @@ pub fn projects_root() -> Result<PathBuf, String> {
 /// to be a real directory so project-controlled symlinks cannot redirect it.
 pub fn device_trust_root() -> Result<PathBuf, String> {
     let data = oleafly_root()?;
-    match std::fs::symlink_metadata(&data) {
-        Ok(_) => ensure_real_directory(&data, "Oleafly data")?,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-            std::fs::create_dir_all(&data)
-                .map_err(|e| format!("failed to create Oleafly data directory {data:?}: {e}"))?;
-            ensure_real_directory(&data, "Oleafly data")?;
-        }
-        Err(error) => {
-            return Err(format!(
-                "failed to inspect Oleafly data directory {data:?}: {error}"
-            ));
-        }
-    }
+    ensure_data_directory(&data)?;
     let data = data
         .canonicalize()
         .map_err(|e| format!("failed to resolve Oleafly data directory: {e}"))?;
@@ -91,6 +79,23 @@ pub fn device_trust_root() -> Result<PathBuf, String> {
         return Err("device trust directory escapes the Oleafly data root".into());
     }
     Ok(trust)
+}
+
+fn ensure_data_directory(data: &Path) -> Result<(), String> {
+    match std::fs::symlink_metadata(data) {
+        Ok(_) => ensure_real_directory(data, "Oleafly data")?,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            std::fs::create_dir_all(data)
+                .map_err(|e| format!("failed to create Oleafly data directory {data:?}: {e}"))?;
+            ensure_real_directory(data, "Oleafly data")?;
+        }
+        Err(error) => {
+            return Err(format!(
+                "failed to inspect Oleafly data directory {data:?}: {error}"
+            ));
+        }
+    }
+    Ok(())
 }
 
 /// Local records granting a specific project permission to execute commands
@@ -112,7 +117,6 @@ pub fn shell_escape_trust_root() -> Result<PathBuf, String> {
 /// Validate a project id. Ids are a single path segment of safe characters, so
 /// a crafted id (`..`, `/etc/x`, `a/b`, an absolute path, or a Windows drive
 /// prefix) can never escape the projects root when joined. Every path-taking
-/// command resolves through `project_dir`, so validating here covers them all.
 pub fn validate_project_id(project_id: &str) -> Result<(), String> {
     if project_id.is_empty() {
         return Err("empty project id".to_string());
@@ -292,15 +296,9 @@ mod tests {
     #[test]
     fn resolving_a_missing_project_never_creates_it() {
         let _env_guard = data_dir_env_lock();
-        let root = std::env::temp_dir().join(format!(
-            "oleafly-missing-project-{}-{}",
-            std::process::id(),
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_nanos()
-        ));
-        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path();
+        std::env::set_var("OLEAFLY_DATA_DIR", root);
         let missing = root.join("projects").join("gone");
 
         assert!(project_dir("gone").unwrap_err().contains("does not exist"));
@@ -309,7 +307,6 @@ mod tests {
         assert_eq!(created, missing.canonicalize().unwrap());
 
         std::env::remove_var("OLEAFLY_DATA_DIR");
-        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[cfg(unix)]
@@ -317,17 +314,10 @@ mod tests {
     fn build_paths_reject_symlink_components() {
         use std::os::unix::fs::symlink;
 
-        let temp = std::env::temp_dir().join(format!(
-            "oleafly-path-test-{}-{}",
-            std::process::id(),
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_nanos()
-        ));
+        let directory = tempfile::tempdir().unwrap();
+        let temp = directory.path();
         let project = temp.join("project");
         let outside = temp.join("outside");
-        std::fs::create_dir(&temp).unwrap();
         std::fs::create_dir(&project).unwrap();
         std::fs::create_dir(&outside).unwrap();
         symlink(&outside, project.join(".oleafly")).unwrap();
@@ -337,6 +327,5 @@ mod tests {
         std::fs::create_dir(project.join(".oleafly")).unwrap();
         symlink(&outside, project.join(".oleafly/build")).unwrap();
         assert!(secure_build_subdirectory_in(&project, "build").is_err());
-        std::fs::remove_dir_all(temp).unwrap();
     }
 }

@@ -14,6 +14,9 @@ use crate::provider::Resolved;
 use crate::stream::{stream_completion, StreamOutcome, ToolCall, MAX_STREAM_TOOL_CALLS};
 
 const MAX_RETRY_DELAY_MS: u64 = 60_000;
+const MAX_AGENT_RUN_DURATION: Duration = Duration::from_secs(30 * 60);
+const MAX_AGENT_STEPS: u32 = 50;
+const MAX_AGENT_RETRIES: u32 = 8;
 const MAX_TOOL_EXECUTION_DURATION: Duration = Duration::from_secs(5 * 60);
 const MAX_TOOL_OUTPUT_TEXT_BYTES: usize = 64 * 1024;
 const MAX_TOOL_OUTPUT_IMAGES: usize = 6;
@@ -22,6 +25,8 @@ const MAX_TOOL_IMAGE_DATA_URL_BYTES: usize = 14 * 1024 * 1024;
 const MAX_TOOL_OUTPUT_IMAGE_BYTES: usize = 84 * 1024 * 1024;
 const MAX_TOOL_RESULT_BATCH_BYTES: usize = 96 * 1024 * 1024;
 const MAX_AGENT_HISTORY_BYTES: usize = 128 * 1024 * 1024;
+const MAX_AGENT_CONTEXT_CHARS: usize = 100_000;
+const MAX_AGENT_IMAGES: usize = 12;
 const MAX_AGENT_MESSAGES: usize = 128;
 const MAX_TOOL_DEFINITIONS: usize = 128;
 const MAX_AGENT_TOOL_CALLS: usize = 256;
@@ -113,6 +118,8 @@ impl Write for LimitedWriter {
 
 struct HistoryBudget {
     serialized_bytes: usize,
+    context_chars: usize,
+    images: usize,
     messages: usize,
     tool_calls: usize,
 }
@@ -134,8 +141,18 @@ impl HistoryBudget {
         if tool_calls > MAX_AGENT_TOOL_CALLS {
             return Err(history_limit_error("agent tool-call count"));
         }
+        let context_chars = completion_context_chars(request)?;
+        if context_chars > MAX_AGENT_CONTEXT_CHARS {
+            return Err(history_limit_error("agent context"));
+        }
+        let images = count_images(&request.messages)?;
+        if images > MAX_AGENT_IMAGES {
+            return Err(history_limit_error("agent image count"));
+        }
         Ok(Self {
             serialized_bytes: serialized_size_limited(request, MAX_AGENT_HISTORY_BYTES)?,
+            context_chars,
+            images,
             messages: request.messages.len(),
             tool_calls,
         })
@@ -152,6 +169,16 @@ impl HistoryBudget {
             .checked_add(new_tool_calls)
             .filter(|tool_calls| *tool_calls <= MAX_AGENT_TOOL_CALLS)
             .ok_or_else(|| history_limit_error("agent tool-call count"))?;
+        let context_chars = self
+            .context_chars
+            .checked_add(message_context_chars(message)?)
+            .filter(|chars| *chars <= MAX_AGENT_CONTEXT_CHARS)
+            .ok_or_else(|| history_limit_error("agent context"))?;
+        let images = self
+            .images
+            .checked_add(message_image_count(message))
+            .filter(|images| *images <= MAX_AGENT_IMAGES)
+            .ok_or_else(|| history_limit_error("agent image count"))?;
         let remaining = MAX_AGENT_HISTORY_BYTES.saturating_sub(self.serialized_bytes);
         let message_bytes = serialized_size_limited(message, remaining)?;
         let serialized_bytes = self
@@ -163,6 +190,8 @@ impl HistoryBudget {
 
         self.messages = messages;
         self.tool_calls = tool_calls;
+        self.context_chars = context_chars;
+        self.images = images;
         self.serialized_bytes = serialized_bytes;
         Ok(())
     }
@@ -192,6 +221,80 @@ fn count_tool_calls(messages: &[Message]) -> Result<usize> {
         total
             .checked_add(calls)
             .ok_or_else(|| history_limit_error("agent tool-call count"))
+    })
+}
+
+fn checked_chars(value: &str) -> Result<usize> {
+    let chars = value.chars().count();
+    (chars <= MAX_AGENT_CONTEXT_CHARS)
+        .then_some(chars)
+        .ok_or_else(|| history_limit_error("agent context"))
+}
+
+fn message_context_chars(message: &Message) -> Result<usize> {
+    message.content.iter().try_fold(0usize, |total, part| {
+        let chars = match part {
+            ContentPart::Text { text } => checked_chars(text)?,
+            ContentPart::Image { .. } => 0,
+            ContentPart::ToolUse {
+                id,
+                name,
+                arguments,
+            } => {
+                let id = checked_chars(id)?;
+                let name = checked_chars(name)?;
+                let arguments = checked_chars(arguments)?;
+                id.checked_add(name)
+                    .and_then(|sum| sum.checked_add(arguments))
+                    .ok_or_else(|| history_limit_error("agent context"))?
+            }
+            ContentPart::ToolResult { id, name, output } => {
+                let id = checked_chars(id)?;
+                let name = checked_chars(name)?;
+                let output = checked_chars(output)?;
+                id.checked_add(name)
+                    .and_then(|sum| sum.checked_add(output))
+                    .ok_or_else(|| history_limit_error("agent context"))?
+            }
+        };
+        total
+            .checked_add(chars)
+            .ok_or_else(|| history_limit_error("agent context"))
+    })
+}
+
+fn completion_context_chars(request: &CompletionRequest) -> Result<usize> {
+    let system = request
+        .system
+        .as_deref()
+        .map(checked_chars)
+        .transpose()?
+        .unwrap_or(0);
+    let messages = request.messages.iter().try_fold(0usize, |total, message| {
+        total
+            .checked_add(message_context_chars(message)?)
+            .ok_or_else(|| history_limit_error("agent context"))
+    })?;
+    let tools = serialized_size_limited(&request.tools, MAX_AGENT_CONTEXT_CHARS)?;
+    system
+        .checked_add(messages)
+        .and_then(|sum| sum.checked_add(tools))
+        .ok_or_else(|| history_limit_error("agent context"))
+}
+
+fn message_image_count(message: &Message) -> usize {
+    message
+        .content
+        .iter()
+        .filter(|part| matches!(part, ContentPart::Image { .. }))
+        .count()
+}
+
+fn count_images(messages: &[Message]) -> Result<usize> {
+    messages.iter().try_fold(0usize, |total, message| {
+        total
+            .checked_add(message_image_count(message))
+            .ok_or_else(|| history_limit_error("agent image count"))
     })
 }
 
@@ -242,13 +345,27 @@ fn accumulate_usage(total: &mut Usage, addition: Usage) {
     total.output = total.output.saturating_add(addition.output);
 }
 
-fn should_retry(error: &AgentError, attempt: u32, max_retries: u32, saw_output: bool) -> bool {
-    error.retryable() && attempt < max_retries && !saw_output
+fn should_retry(error: &AgentError, retries_remaining: u32, saw_output: bool) -> bool {
+    error.retryable() && retries_remaining > 0 && !saw_output
 }
 
-fn retry_delay(base_ms: u64, attempt: u32) -> Duration {
-    let multiplier = u64::from(attempt).saturating_add(1);
-    Duration::from_millis(base_ms.saturating_mul(multiplier).min(MAX_RETRY_DELAY_MS))
+fn retry_delay(base_ms: u64, attempt: u32, jitter_basis_points: u16) -> Duration {
+    let multiplier = 1u64.checked_shl(attempt.min(16)).unwrap_or(u64::MAX);
+    let delay = base_ms.saturating_mul(multiplier).min(MAX_RETRY_DELAY_MS);
+    let jitter = u64::from(jitter_basis_points.clamp(750, 1_250));
+    Duration::from_millis(
+        delay
+            .saturating_mul(jitter)
+            .saturating_div(1_000)
+            .min(MAX_RETRY_DELAY_MS),
+    )
+}
+
+fn retry_jitter_basis_points() -> u16 {
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |duration| duration.subsec_nanos());
+    750 + (nanos % 501) as u16
 }
 
 fn truncate_utf8(value: &mut String, max_bytes: usize) {
@@ -299,7 +416,18 @@ fn sanitize_tool_output(mut output: ToolOutput, limits: ToolOutputLimits) -> Too
                 "\n[tool output truncated and {count} image(s) omitted by backend safety limit]"
             ),
         };
-        fit_with_notice(&mut output.output, limits.max_text_bytes, &notice);
+        let was_json = serde_json::from_str::<serde_json::Value>(&output.output).is_ok();
+        let json_notice = serde_json::json!({
+            "error": "tool output exceeded the backend safety limit",
+            "text_truncated": text_truncated,
+            "omitted_images": omitted_images,
+        })
+        .to_string();
+        if was_json && json_notice.len() <= limits.max_text_bytes {
+            output.output = json_notice;
+        } else {
+            fit_with_notice(&mut output.output, limits.max_text_bytes, &notice);
+        }
     }
     output
 }
@@ -384,13 +512,14 @@ async fn stream_with_retries<F>(
     resolved: &Resolved,
     request: &CompletionRequest,
     config: &RunConfig,
+    retries_remaining: &mut u32,
     on_event: &mut F,
 ) -> Result<StreamOutcome>
 where
     F: FnMut(AgentEvent) + Send,
 {
-    let mut last = AgentError::Transport("stream failed".into());
-    for attempt in 0..=config.max_retries {
+    let mut attempt = 0;
+    loop {
         let mut saw_output = false;
         let streamed = {
             let forward = &mut |event: AgentEvent| {
@@ -408,22 +537,46 @@ where
         match streamed {
             Ok(outcome) => return Ok(outcome),
             Err(error) => {
-                if !should_retry(&error, attempt, config.max_retries, saw_output) {
+                if !should_retry(&error, *retries_remaining, saw_output) {
                     return Err(error);
                 }
-                last = error;
+                *retries_remaining = retries_remaining.saturating_sub(1);
                 on_event(AgentEvent::Retry {
                     attempt: attempt + 1,
-                    max: config.max_retries,
+                    max: config.max_retries.min(MAX_AGENT_RETRIES),
                 });
-                tokio::time::sleep(retry_delay(config.retry_base_ms, attempt)).await;
+                tokio::time::sleep(retry_delay(
+                    config.retry_base_ms,
+                    attempt,
+                    retry_jitter_basis_points(),
+                ))
+                .await;
+                attempt = attempt.saturating_add(1);
             }
         }
     }
-    Err(last)
 }
 
 pub async fn run_agent<F>(
+    client: &reqwest::Client,
+    resolved: &Resolved,
+    request: CompletionRequest,
+    config: &RunConfig,
+    run_tool: ToolRunner,
+    on_event: F,
+) -> Result<RunOutcome>
+where
+    F: FnMut(AgentEvent) + Send,
+{
+    tokio::time::timeout(
+        MAX_AGENT_RUN_DURATION,
+        run_agent_inner(client, resolved, request, config, run_tool, on_event),
+    )
+    .await
+    .map_err(|_| AgentError::Timeout)?
+}
+
+async fn run_agent_inner<F>(
     client: &reqwest::Client,
     resolved: &Resolved,
     request: CompletionRequest,
@@ -437,11 +590,20 @@ where
     let mut request = request;
     let mut result = RunOutcome::default();
     let mut history = HistoryBudget::new(&request)?;
+    let mut retries_remaining = config.max_retries.min(MAX_AGENT_RETRIES);
 
-    for step in 0..config.max_steps {
+    for step in 0..config.max_steps.min(MAX_AGENT_STEPS) {
         on_event(AgentEvent::StepStart { step });
 
-        let turn = stream_with_retries(client, resolved, &request, config, &mut on_event).await;
+        let turn = stream_with_retries(
+            client,
+            resolved,
+            &request,
+            config,
+            &mut retries_remaining,
+            &mut on_event,
+        )
+        .await;
 
         let Ok(outcome) = turn else {
             let error = turn.unwrap_err();
@@ -594,26 +756,28 @@ mod tests {
     #[test]
     fn a_retryable_error_is_retried_only_before_any_output_streamed() {
         let error = AgentError::Transport("connection reset".into());
-        assert!(should_retry(&error, 0, 4, false));
-        assert!(!should_retry(&error, 0, 4, true));
-        assert!(!should_retry(&error, 4, 4, false));
+        assert!(should_retry(&error, 4, false));
+        assert!(!should_retry(&error, 4, true));
+        assert!(!should_retry(&error, 0, false));
 
         let fatal = AgentError::Provider {
             status: 401,
             message: "bad key".into(),
         };
-        assert!(!should_retry(&fatal, 0, 4, false));
+        assert!(!should_retry(&fatal, 4, false));
     }
 
     #[test]
-    fn retry_delay_scales_linearly_for_normal_budgets() {
-        assert_eq!(retry_delay(800, 3), Duration::from_millis(3_200));
+    fn retry_delay_uses_exponential_backoff_and_bounded_jitter() {
+        assert_eq!(retry_delay(800, 3, 1_000), Duration::from_millis(6_400));
+        assert_eq!(retry_delay(800, 0, 750), Duration::from_millis(600));
+        assert_eq!(retry_delay(800, 0, 1_250), Duration::from_millis(1_000));
     }
 
     #[test]
     fn retry_delay_saturates_without_overflowing() {
         assert_eq!(
-            retry_delay(u64::MAX, u32::MAX),
+            retry_delay(u64::MAX, u32::MAX, 1_250),
             Duration::from_millis(MAX_RETRY_DELAY_MS)
         );
     }
@@ -672,6 +836,20 @@ mod tests {
     }
 
     #[test]
+    fn truncated_json_tool_output_remains_valid_json() {
+        let sanitized = sanitize_tool_output(
+            ToolOutput::text(serde_json::json!({ "value": "x".repeat(200) }).to_string()),
+            ToolOutputLimits {
+                max_text_bytes: 128,
+                ..ToolOutputLimits::default()
+            },
+        );
+
+        let value: serde_json::Value = serde_json::from_str(&sanitized.output).unwrap();
+        assert_eq!(value["text_truncated"], true);
+    }
+
+    #[test]
     fn tool_result_batches_have_an_aggregate_ceiling() {
         let mut bytes = 0;
         add_tool_batch_bytes(&mut bytes, 5, 8).unwrap();
@@ -722,6 +900,25 @@ mod tests {
         assert!(validate_tool_calls_per_turn(MAX_STREAM_TOOL_CALLS).is_ok());
         assert!(validate_tool_calls_per_turn(MAX_STREAM_TOOL_CALLS + 1).is_err());
         assert!(validate_completion_request(&too_many_messages).is_err());
+
+        let excessive_context = CompletionRequest {
+            messages: vec![Message::user("x".repeat(MAX_AGENT_CONTEXT_CHARS + 1))],
+            ..Default::default()
+        };
+        assert!(validate_completion_request(&excessive_context).is_err());
+
+        let excessive_images = CompletionRequest {
+            messages: vec![Message {
+                role: Role::User,
+                content: (0..=MAX_AGENT_IMAGES)
+                    .map(|_| ContentPart::Image {
+                        image: "data:image/png;base64,AA".into(),
+                    })
+                    .collect(),
+            }],
+            ..Default::default()
+        };
+        assert!(validate_completion_request(&excessive_images).is_err());
     }
 
     #[test]

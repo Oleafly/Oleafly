@@ -197,17 +197,20 @@ pub async fn git_restore(
     state: tauri::State<'_, crate::state::AppState>,
     project_id: String,
     oid: String,
+    expected_generation: Option<u64>,
 ) -> Result<crate::project::ProjectStateChanged, String> {
-    if !(4..=64).contains(&oid.len()) || !oid.chars().all(|character| character.is_ascii_hexdigit())
-    {
-        return Err("invalid Git commit id".into());
-    }
+    validate_git_oid(&oid)?;
     let operation_id = project_id.clone();
-    let mutation = crate::project::mutate_project_worktree(&state, project_id.clone(), move |_| {
-        let root = ensure_repo(&operation_id)?;
-        ok_or_err(run_git(&root, &["checkout", &oid, "--", "."])?)?;
-        Ok(((), true))
-    })
+    let mutation = crate::project::mutate_project_worktree(
+        &state,
+        project_id.clone(),
+        expected_generation,
+        move |_| {
+            let root = ensure_repo(&operation_id)?;
+            restore_worktree(&root, &oid)?;
+            Ok(((), true))
+        },
+    )
     .await?;
     let outcome = mutation.value;
     let event = crate::project::publish_project_state_changed(
@@ -221,6 +224,19 @@ pub async fn git_restore(
     );
     outcome?;
     event
+}
+
+fn validate_git_oid(oid: &str) -> Result<(), String> {
+    if (4..=64).contains(&oid.len()) && oid.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        Ok(())
+    } else {
+        Err("invalid Git commit id".into())
+    }
+}
+
+fn restore_worktree(root: &PathBuf, oid: &str) -> Result<(), String> {
+    validate_git_oid(oid)?;
+    ok_or_err(run_git(root, &["checkout", oid, "--", "."])?)
 }
 
 fn out_to_string(out: &std::process::Output) -> String {
@@ -490,33 +506,20 @@ pub async fn git_pull(
     app: tauri::AppHandle,
     state: tauri::State<'_, crate::state::AppState>,
     project_id: String,
+    expected_generation: Option<u64>,
 ) -> Result<GitPullResult, String> {
     let cfg = config::read_config()?;
     let token = cfg.github_token;
     let operation_id = project_id.clone();
-    let mutation = crate::project::mutate_project_worktree(&state, project_id.clone(), move |_| {
-        let root = ensure_repo(&operation_id)?;
-        let remote_out = run_git(&root, &["remote", "get-url", "origin"])?;
-        let remote = String::from_utf8_lossy(&remote_out.stdout)
-            .trim()
-            .to_string();
-        if remote.is_empty() {
-            return Err("No remote 'origin' set for this project.".into());
-        }
-        let branch = current_branch(&root)?;
-        // Pull from `origin` directly. With a token, auth comes from the
-        // env-backed credential helper; otherwise public/SSH auth applies.
-        let pull_args = ["pull", "--no-rebase", "origin", branch.as_str()];
-        let out = if token.is_empty() {
-            run_git(&root, &pull_args)?
-        } else {
-            run_git_authed(&root, &token, &pull_args)?
-        };
-        if !out.status.success() {
-            return Err(out_to_string(&out));
-        }
-        Ok((format!("Pulled origin/{branch}"), true))
-    })
+    let mutation = crate::project::mutate_project_worktree(
+        &state,
+        project_id.clone(),
+        expected_generation,
+        move |_| {
+            let root = ensure_repo(&operation_id)?;
+            Ok((pull_origin(&root, &token)?, true))
+        },
+    )
     .await?;
     let outcome = mutation.value;
     let event = crate::project::publish_project_state_changed(
@@ -532,6 +535,25 @@ pub async fn git_pull(
         message: outcome?,
         state: event,
     })
+}
+
+fn pull_origin(root: &PathBuf, token: &str) -> Result<String, String> {
+    let remote_out = run_git(root, &["remote", "get-url", "origin"])?;
+    if String::from_utf8_lossy(&remote_out.stdout)
+        .trim()
+        .is_empty()
+    {
+        return Err("No remote 'origin' set for this project.".into());
+    }
+    let branch = current_branch(root)?;
+    let pull_args = ["pull", "--no-rebase", "origin", branch.as_str()];
+    let output = if token.is_empty() {
+        run_git(root, &pull_args)?
+    } else {
+        run_git_authed(root, token, &pull_args)?
+    };
+    ok_or_err(output)?;
+    Ok(format!("Pulled origin/{branch}"))
 }
 
 #[derive(Serialize)]
@@ -640,18 +662,24 @@ pub async fn git_discard(
     state: tauri::State<'_, crate::state::AppState>,
     project_id: String,
     path: String,
+    expected_generation: Option<u64>,
 ) -> Result<crate::project::ProjectStateChanged, String> {
     let operation_id = project_id.clone();
-    let mutation = crate::project::mutate_project_worktree(&state, project_id.clone(), move |_| {
-        let root = ensure_repo(&operation_id)?;
-        // Disable Git's `:(glob)`/`:(attr)` pathspec language. This IPC value
-        // names one literal project path and must not expand into other files.
-        ok_or_err(run_git(
-            &root,
-            &["--literal-pathspecs", "checkout", "--", &path],
-        )?)?;
-        Ok(((), true))
-    })
+    let mutation = crate::project::mutate_project_worktree(
+        &state,
+        project_id.clone(),
+        expected_generation,
+        move |_| {
+            let root = ensure_repo(&operation_id)?;
+            // Disable Git's `:(glob)`/`:(attr)` pathspec language. This IPC value
+            // names one literal project path and must not expand into other files.
+            ok_or_err(run_git(
+                &root,
+                &["--literal-pathspecs", "checkout", "--", &path],
+            )?)?;
+            Ok(((), true))
+        },
+    )
     .await?;
     let outcome = mutation.value;
     let event = crate::project::publish_project_state_changed(
@@ -839,8 +867,8 @@ pub async fn git_show(project_id: String, rev: String, path: String) -> Result<S
 mod tests {
     use super::{
         auto_commit_update_in, commit_index, is_allowed_remote_url, parse_status_porcelain,
-        read_version_labels_at, run_git, sanitize_url, show, stage, stage_all, unstage,
-        unstage_all, update_message,
+        read_version_labels_at, restore_worktree, run_git, sanitize_url, show, stage, stage_all,
+        unstage, unstage_all, update_message, validate_git_oid,
     };
     use std::path::{Path, PathBuf};
     use std::sync::atomic::{AtomicU32, Ordering};
@@ -862,6 +890,33 @@ mod tests {
 
     fn write(root: &Path, name: &str, content: &str) {
         std::fs::write(root.join(name), content).unwrap();
+    }
+
+    #[test]
+    fn commit_ids_accept_hex_and_reject_revision_syntax() {
+        assert!(validate_git_oid("a1b2").is_ok());
+        assert!(validate_git_oid(&"f".repeat(64)).is_ok());
+        for invalid in ["abc", "HEAD", "abcd^", "abcd:path", "../abcd"] {
+            assert!(validate_git_oid(invalid).is_err(), "{invalid}");
+        }
+    }
+
+    #[test]
+    fn restore_replaces_tracked_content_without_interpreting_revision_syntax() {
+        let root = temp_repo();
+        write(&root, "main.tex", "first\n");
+        stage_all(&root).unwrap();
+        assert!(commit_index(&root, "first").unwrap());
+        let first =
+            String::from_utf8_lossy(&run_git(&root, &["rev-parse", "HEAD"]).unwrap().stdout)
+                .trim()
+                .to_string();
+        write(&root, "main.tex", "second\n");
+        restore_worktree(&root, &first).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(root.join("main.tex")).unwrap(),
+            "first\n"
+        );
     }
 
     fn status(root: &PathBuf) -> Vec<super::GitFileChange> {

@@ -129,14 +129,18 @@ pub fn contain_process_tree(pid: u32) -> std::io::Result<ProcessTreeGuard> {
 
 #[cfg(windows)]
 pub fn contain_process_tree(pid: u32) -> std::io::Result<ProcessTreeGuard> {
-    use std::ffi::c_void;
-    use std::mem::size_of;
+    let job = assign_process_to_new_job(pid)?;
+    if let Err(error) = resume_suspended_process(pid) {
+        unsafe { windows_sys::Win32::Foundation::CloseHandle(job) };
+        return Err(error);
+    }
+    Ok(ProcessTreeGuard { job })
+}
+
+#[cfg(windows)]
+fn assign_process_to_new_job(pid: u32) -> std::io::Result<*mut std::ffi::c_void> {
     use windows_sys::Win32::Foundation::CloseHandle;
-    use windows_sys::Win32::System::JobObjects::{
-        AssignProcessToJobObject, CreateJobObjectW, JobObjectExtendedLimitInformation,
-        SetInformationJobObject, JOBOBJECT_EXTENDED_LIMIT_INFORMATION,
-        JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
-    };
+    use windows_sys::Win32::System::JobObjects::{AssignProcessToJobObject, CreateJobObjectW};
     use windows_sys::Win32::System::Threading::{
         OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SET_QUOTA, PROCESS_TERMINATE,
     };
@@ -146,16 +150,7 @@ pub fn contain_process_tree(pid: u32) -> std::io::Result<ProcessTreeGuard> {
         if job.is_null() {
             return Err(std::io::Error::last_os_error());
         }
-        let mut limits = JOBOBJECT_EXTENDED_LIMIT_INFORMATION::default();
-        limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
-        if SetInformationJobObject(
-            job,
-            JobObjectExtendedLimitInformation,
-            (&limits as *const JOBOBJECT_EXTENDED_LIMIT_INFORMATION).cast::<c_void>(),
-            size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32,
-        ) == 0
-        {
-            let error = std::io::Error::last_os_error();
+        if let Err(error) = configure_kill_on_close(job) {
             CloseHandle(job);
             return Err(error);
         }
@@ -180,11 +175,31 @@ pub fn contain_process_tree(pid: u32) -> std::io::Result<ProcessTreeGuard> {
             CloseHandle(job);
             return Err(error);
         }
-        if let Err(error) = resume_suspended_process(pid) {
-            CloseHandle(job);
-            return Err(error);
+        Ok(job)
+    }
+}
+
+#[cfg(windows)]
+fn configure_kill_on_close(job: *mut std::ffi::c_void) -> std::io::Result<()> {
+    use windows_sys::Win32::System::JobObjects::{
+        JobObjectExtendedLimitInformation, SetInformationJobObject,
+        JOBOBJECT_EXTENDED_LIMIT_INFORMATION, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
+    };
+
+    unsafe {
+        let mut limits = JOBOBJECT_EXTENDED_LIMIT_INFORMATION::default();
+        limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+        let result = SetInformationJobObject(
+            job,
+            JobObjectExtendedLimitInformation,
+            (&limits as *const JOBOBJECT_EXTENDED_LIMIT_INFORMATION).cast(),
+            std::mem::size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32,
+        );
+        if result == 0 {
+            Err(std::io::Error::last_os_error())
+        } else {
+            Ok(())
         }
-        Ok(ProcessTreeGuard { job })
     }
 }
 
@@ -196,9 +211,6 @@ fn resume_suspended_process(pid: u32) -> std::io::Result<()> {
     use windows_sys::Win32::Foundation::{CloseHandle, INVALID_HANDLE_VALUE};
     use windows_sys::Win32::System::Diagnostics::ToolHelp::{
         CreateToolhelp32Snapshot, Thread32First, Thread32Next, TH32CS_SNAPTHREAD, THREADENTRY32,
-    };
-    use windows_sys::Win32::System::Threading::{
-        OpenThread, ResumeThread, THREAD_QUERY_LIMITED_INFORMATION, THREAD_SUSPEND_RESUME,
     };
 
     unsafe {
@@ -214,28 +226,11 @@ fn resume_suspended_process(pid: u32) -> std::io::Result<()> {
         let mut resumed = 0usize;
         while has_entry {
             if entry.th32OwnerProcessID == pid {
-                let thread = OpenThread(
-                    THREAD_SUSPEND_RESUME | THREAD_QUERY_LIMITED_INFORMATION,
-                    0,
-                    entry.th32ThreadID,
-                );
-                if thread.is_null() {
-                    let error = std::io::Error::last_os_error();
+                if let Err(error) = resume_thread(entry.th32ThreadID) {
                     CloseHandle(snapshot);
                     return Err(error);
                 }
-                let previous_suspend_count = ResumeThread(thread);
-                let resume_error = if previous_suspend_count == u32::MAX {
-                    Some(std::io::Error::last_os_error())
-                } else {
-                    resumed += 1;
-                    None
-                };
-                CloseHandle(thread);
-                if let Some(error) = resume_error {
-                    CloseHandle(snapshot);
-                    return Err(error);
-                }
+                resumed += 1;
             }
             has_entry = Thread32Next(snapshot, &mut entry) != 0;
         }
@@ -247,6 +242,29 @@ fn resume_suspended_process(pid: u32) -> std::io::Result<()> {
             ));
         }
         Ok(())
+    }
+}
+
+#[cfg(windows)]
+fn resume_thread(thread_id: u32) -> std::io::Result<()> {
+    use windows_sys::Win32::Foundation::CloseHandle;
+    use windows_sys::Win32::System::Threading::{
+        OpenThread, ResumeThread, THREAD_QUERY_LIMITED_INFORMATION, THREAD_SUSPEND_RESUME,
+    };
+
+    unsafe {
+        let thread = OpenThread(
+            THREAD_SUSPEND_RESUME | THREAD_QUERY_LIMITED_INFORMATION,
+            0,
+            thread_id,
+        );
+        if thread.is_null() {
+            return Err(std::io::Error::last_os_error());
+        }
+        let previous_suspend_count = ResumeThread(thread);
+        let error = (previous_suspend_count == u32::MAX).then(std::io::Error::last_os_error);
+        CloseHandle(thread);
+        error.map_or(Ok(()), Err)
     }
 }
 

@@ -40,10 +40,11 @@ MiKTeX, or TinyTeX) via `latexmk` while preserving Oleafly's artifact layout.
 
 - Detection is shared (`src-tauri/src/tex_distro.rs`). Full system
   distributions from standard locations and inherited `PATH` entries are
-  ordered first. Managed TinyTeX under `~/.oleafly/tinytex` and user TinyTeX
-  installations follow. Symlinks into TinyTeX remain in the TinyTeX tier. The
-  same ordered list feeds tool lookup, Settings, and the compile child's
-  `PATH`.
+  ordered first only when the same binary directory contains `latexmk`,
+  pdfLaTeX, XeLaTeX, LuaLaTeX, `kpsewhich`, and Biber. Managed TinyTeX under
+  `~/.oleafly/tinytex` and user TinyTeX installations follow. Symlinks into
+  TinyTeX remain in the TinyTeX tier. The same ordered list feeds tool lookup,
+  Settings, and the compile child's `PATH`.
 - The underlying TeX engine is chosen from the source: a
   `% !TeX program = xelatex|lualatex|pdflatex` magic comment wins. fontspec /
   polyglossia / unicode-math force XeLaTeX. Everything else uses pdfLaTeX

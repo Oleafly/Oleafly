@@ -43,7 +43,6 @@ export function systemPromptForReview(mode: PaperReviewMode): string {
   return mode === "friendly" ? FRIENDLY_SYSTEM : FIRE_SYSTEM;
 }
 
-/** Build the user prompt. The paper body is truncated to keep context bounded. */
 export function userPromptForReview(paperText: string): string {
   const body =
     paperText.length > PAPER_TEXT_LIMIT
