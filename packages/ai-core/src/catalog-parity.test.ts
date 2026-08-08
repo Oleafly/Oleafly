@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { PROVIDERS } from "./providers";
 
 const RUST = readFileSync(
-  join(process.cwd(), "src-tauri/crates/oleafly-agent/src/provider.rs"),
+  join(process.cwd(), "crates/oleafly-agent/src/provider.rs"),
   "utf8",
 );
 

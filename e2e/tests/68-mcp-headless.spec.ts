@@ -96,10 +96,14 @@ test.describe("MCP without the webview", () => {
 
     const found = await rpc(tauriPage, connection, "tools/call", {
       name: "search_project",
-      arguments: { query: "MCPHEADLESSMARKER" },
+      arguments: { query: "mcpheadlessmarker" },
     });
-    const matches = JSON.parse(resultText(found)).matches as { path: string; line: number }[];
-    expect(matches.some((m) => m.path === "headless.tex" && m.line === 1)).toBe(true);
+    const parsed = JSON.parse(resultText(found)) as {
+      results: { path: string; line: number }[];
+      total: number;
+    };
+    expect(parsed.results.some((m) => m.path === "headless.tex" && m.line === 1)).toBe(true);
+    expect(parsed.total).toBeGreaterThanOrEqual(1);
   });
 
   test("writes and replaces through the native path", async ({ tauriPage }) => {

@@ -157,6 +157,7 @@ export async function runAgentHarness(args: {
   config?: AgentRunConfig;
   providerOverride?: { provider_id: string; model_id: string };
   takePendingImages?: () => string[];
+  imageInstruction?: string;
   handlers: HarnessHandlers;
 }): Promise<AgentRunOutcome> {
   const { handlers } = args;
@@ -243,10 +244,12 @@ export async function runAgentHarness(args: {
 
         handlers.onToolResult({ id: call.id, name: call.name, output });
         handlers.onThinking("Processing result…");
-        return {
-          output: packToolOutputText(output),
-          images: args.takePendingImages?.() ?? [],
-        };
+        const images = args.takePendingImages?.() ?? [];
+        let packed = packToolOutputText(output);
+        if (images.length && args.imageInstruction) {
+          packed = `${packed}\n\n${args.imageInstruction}`;
+        }
+        return { output: packed, images };
       },
     },
     args.signal,

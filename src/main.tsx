@@ -13,11 +13,14 @@ import { PreviewWindow } from "@/components/preview/PreviewWindow";
 import { ThemeProvider } from "@/lib/theme";
 import { Toaster } from "@/components/ui/sonner";
 import { appendAppLog } from "@/lib/tauri";
+import { reapOrphanAgentRuns } from "@/lib/agent-backend";
 import { registerContributions } from "@/contributions";
 import { installDesktopViewportGuard } from "@/lib/desktop-viewport";
 import "@/styles/globals.css";
 
 markBootStage("entry-evaluated");
+
+reapOrphanAgentRuns();
 
 // Must run before the shell mounts and reads the registry.
 registerContributions();

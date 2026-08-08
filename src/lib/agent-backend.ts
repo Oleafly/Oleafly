@@ -34,6 +34,7 @@ export interface AgentCompletionRequest {
   temperature?: number;
   max_tokens?: number;
   timeout_ms?: number;
+  idle_timeout_ms?: number;
   tools?: AgentToolSchema[];
 }
 
@@ -51,13 +52,15 @@ function nextRequestId(): string {
   return `agent-${counter}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-async function invokeRun<T>(
-  command: string,
-  args: Record<string, unknown>,
-  signal: AbortSignal | undefined,
-  onFailure?: () => Error | null,
-  onRequestId?: (id: string) => void,
-): Promise<T> {
+interface InvokeRunOptions {
+  args: Record<string, unknown>;
+  signal?: AbortSignal;
+  failure?: () => Error | null;
+  onRequestId?: (id: string) => void;
+}
+
+async function invokeRun<T>(command: string, options: InvokeRunOptions): Promise<T> {
+  const { args, signal, failure, onRequestId } = options;
   const requestId = nextRequestId();
   onRequestId?.(requestId);
   if (signal?.aborted) throw abortError();
@@ -70,8 +73,8 @@ async function invokeRun<T>(
   try {
     const result = await withAbort<T>(invoke<T>(command, { requestId, ...args }), signal);
     if (signal?.aborted) throw abortError();
-    const failure = onFailure?.();
-    if (failure) throw failure;
+    const pending = failure?.();
+    if (pending) throw pending;
     return result;
   } catch (error) {
     if (signal?.aborted) throw abortError();
@@ -80,6 +83,10 @@ async function invokeRun<T>(
   } finally {
     signal?.removeEventListener("abort", onAbort);
   }
+}
+
+export function reapOrphanAgentRuns(): void {
+  void invoke("agent_cancel_all").catch(() => {});
 }
 
 function abortError(): DOMException {
@@ -101,11 +108,10 @@ export async function completeViaBackend(
   signal?: AbortSignal,
   providerOverride?: ProviderOverride,
 ): Promise<AgentCompletionResponse> {
-  return invokeRun<AgentCompletionResponse>(
-    "agent_complete",
-    { request, providerOverride: providerOverride ?? null },
+  return invokeRun<AgentCompletionResponse>("agent_complete", {
+    args: { request, providerOverride: providerOverride ?? null },
     signal,
-  );
+  });
 }
 
 export type AgentEvent =
@@ -148,12 +154,11 @@ export async function streamViaBackend(
     onEvent(event);
   };
 
-  await invokeRun<void>(
-    "agent_stream",
-    { request, providerOverride: providerOverride ?? null, onEvent: channel },
+  await invokeRun<void>("agent_stream", {
+    args: { request, providerOverride: providerOverride ?? null, onEvent: channel },
     signal,
-    () => failure,
-  );
+    failure: () => failure,
+  });
 }
 
 export interface AgentRunOutcome {
@@ -217,20 +222,18 @@ export async function runViaBackend(
     handlers.onEvent(event);
   };
 
-  return invokeRun<AgentRunOutcome>(
-    "agent_run",
-    {
+  return invokeRun<AgentRunOutcome>("agent_run", {
+    args: {
       request,
       config: config ?? null,
       providerOverride: providerOverride ?? null,
       onEvent: channel,
     },
     signal,
-    undefined,
-    (id) => {
+    onRequestId: (id) => {
       replyTo = id;
     },
-  );
+  });
 }
 
 export async function streamText(args: {

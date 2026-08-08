@@ -5,7 +5,7 @@ use futures_util::StreamExt;
 use serde_json::Value;
 
 use crate::complete::{
-    anthropic_body, auth_headers, google_body, openai_body, request_error, CompletionRequest, Usage,
+    anthropic_body, google_body, openai_body, request_error, CompletionRequest, Usage,
 };
 use crate::error::{AgentError, Result};
 use crate::event::AgentEvent;
@@ -56,6 +56,7 @@ pub struct Translator {
     usage: Usage,
     done: bool,
     synthetic: i64,
+    error: Option<AgentError>,
 }
 
 impl Translator {
@@ -69,7 +70,24 @@ impl Translator {
             usage: Usage::default(),
             done: false,
             synthetic: 0,
+            error: None,
         }
+    }
+
+    pub fn error(&self) -> Option<&AgentError> {
+        self.error.as_ref()
+    }
+
+    pub fn take_error(&mut self) -> Option<AgentError> {
+        self.error.take()
+    }
+
+    fn decode_failure(&mut self, data: &str) -> Vec<AgentEvent> {
+        let snippet: String = data.chars().take(120).collect();
+        self.error = Some(AgentError::Decode(format!(
+            "the provider sent unparseable stream data: {snippet}"
+        )));
+        Vec::new()
     }
 
     pub fn translate(&mut self, event: &SseEvent) -> Vec<AgentEvent> {
@@ -155,8 +173,11 @@ impl Translator {
         if event.data.trim() == "[DONE]" {
             return self.finish();
         }
-        let Ok(value) = serde_json::from_str::<Value>(&event.data) else {
+        if event.data.trim().is_empty() {
             return Vec::new();
+        }
+        let Ok(value) = serde_json::from_str::<Value>(&event.data) else {
+            return self.decode_failure(&event.data);
         };
         let mut out = Vec::new();
 
@@ -217,8 +238,11 @@ impl Translator {
     }
 
     fn anthropic(&mut self, event: &SseEvent) -> Vec<AgentEvent> {
-        let Ok(value) = serde_json::from_str::<Value>(&event.data) else {
+        if event.data.trim().is_empty() {
             return Vec::new();
+        }
+        let Ok(value) = serde_json::from_str::<Value>(&event.data) else {
+            return self.decode_failure(&event.data);
         };
         let kind = event
             .event
@@ -303,10 +327,7 @@ impl Translator {
                     .and_then(|t| t.as_str())
                     .unwrap_or_default();
                 self.done = true;
-                out.push(AgentEvent::Error {
-                    message,
-                    retryable: anthropic_error_is_retryable(kind),
-                });
+                self.error = Some(anthropic_stream_error(kind, message));
             }
             _ => {}
         }
@@ -314,8 +335,11 @@ impl Translator {
     }
 
     fn google(&mut self, event: &SseEvent) -> Vec<AgentEvent> {
-        let Ok(value) = serde_json::from_str::<Value>(&event.data) else {
+        if event.data.trim().is_empty() {
             return Vec::new();
+        }
+        let Ok(value) = serde_json::from_str::<Value>(&event.data) else {
+            return self.decode_failure(&event.data);
         };
         let mut out = Vec::new();
 
@@ -368,11 +392,26 @@ impl Translator {
     }
 }
 
-fn anthropic_error_is_retryable(kind: &str) -> bool {
-    matches!(
-        kind,
-        "overloaded_error" | "api_error" | "rate_limit_error" | "timeout_error" | ""
-    )
+fn anthropic_stream_error(kind: &str, message: String) -> AgentError {
+    match kind {
+        "rate_limit_error" => AgentError::Provider {
+            status: 429,
+            message,
+        },
+        "overloaded_error" | "api_error" | "" => AgentError::Provider {
+            status: 529,
+            message,
+        },
+        "timeout_error" => AgentError::Timeout,
+        "authentication_error" | "permission_error" => AgentError::Provider {
+            status: 401,
+            message,
+        },
+        _ => AgentError::Provider {
+            status: 400,
+            message,
+        },
+    }
 }
 
 fn nonempty(value: Option<&Value>) -> Option<String> {
@@ -419,31 +458,10 @@ where
     F: FnMut(AgentEvent),
 {
     let body = stream_body(resolved, req)?;
-    let builder = match &resolved.wire {
-        Wire::OpenAiChat { base_url, .. } => client
-            .post(format!(
-                "{}/chat/completions",
-                base_url.trim_end_matches('/')
-            ))
-            .headers(auth_headers(resolved))
-            .json(&body),
-        Wire::Anthropic { base_url } => client
-            .post(format!("{}/messages", base_url.trim_end_matches('/')))
-            .headers(auth_headers(resolved))
-            .header("anthropic-version", "2023-06-01")
-            .json(&body),
-        Wire::Google { base_url } => client
-            .post(format!(
-                "{}/models/{}:streamGenerateContent?alt=sse",
-                base_url.trim_end_matches('/'),
-                resolved.model_id
-            ))
-            .headers(auth_headers(resolved))
-            .json(&body),
-    };
+    let builder = crate::complete::request_builder(client, resolved, true).json(&body);
 
     let idle = req
-        .timeout_ms
+        .idle_timeout_ms
         .map(Duration::from_millis)
         .unwrap_or(DEFAULT_STREAM_IDLE_TIMEOUT);
     let response = builder
@@ -476,12 +494,20 @@ where
                 on_event(agent_event);
             }
         }
-    }
-    if let Some(event) = decoder.finish() {
-        for agent_event in translator.translate(&event) {
-            accumulate(&mut outcome, &agent_event);
-            on_event(agent_event);
+        if translator.error().is_some() {
+            break;
         }
+    }
+    if translator.error().is_none() {
+        if let Some(event) = decoder.finish() {
+            for agent_event in translator.translate(&event) {
+                accumulate(&mut outcome, &agent_event);
+                on_event(agent_event);
+            }
+        }
+    }
+    if let Some(error) = translator.take_error() {
+        return Err(error);
     }
     for agent_event in translator.finish() {
         accumulate(&mut outcome, &agent_event);
@@ -708,36 +734,44 @@ mod tests {
     #[test]
     fn an_authentication_stream_error_is_not_offered_as_retryable() {
         let raw = "event: error\ndata: {\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"bad key\"}}\n\n";
-        let (events, _) = run(WireKind::Anthropic, raw);
-        assert!(events.iter().any(|e| matches!(
-            e,
-            AgentEvent::Error { retryable: false, message } if message == "bad key"
-        )));
+        let (_, translator) = run(WireKind::Anthropic, raw);
+        let error = translator.error().expect("the error must be terminal");
+        assert!(!error.retryable());
+        assert_eq!(error.kind(), "auth");
+        assert!(error.to_string().contains("bad key"));
     }
 
     #[test]
     fn an_overloaded_stream_error_stays_retryable() {
         let raw = "event: error\ndata: {\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\",\"message\":\"busy\"}}\n\n";
-        let (events, _) = run(WireKind::Anthropic, raw);
-        assert!(events.iter().any(|e| matches!(
-            e,
-            AgentEvent::Error {
-                retryable: true,
-                ..
-            }
-        )));
+        let (_, translator) = run(WireKind::Anthropic, raw);
+        let error = translator.error().expect("the error must be terminal");
+        assert!(error.retryable());
     }
 
     #[test]
     fn anthropic_stream_errors_stop_the_turn() {
         let raw =
             "event: error\ndata: {\"type\":\"error\",\"error\":{\"message\":\"overloaded\"}}\n\n";
-        let (events, _) = run(WireKind::Anthropic, raw);
-        assert!(events.iter().any(|e| matches!(
-            e,
-            AgentEvent::Error { message, .. } if message == "overloaded"
-        )));
+        let (events, translator) = run(WireKind::Anthropic, raw);
+        assert!(translator.error().is_some());
         assert!(!events.iter().any(|e| matches!(e, AgentEvent::Done { .. })));
+        assert!(!events.iter().any(|e| matches!(e, AgentEvent::Error { .. })));
+    }
+
+    #[test]
+    fn malformed_stream_json_becomes_a_decode_error_not_a_silent_skip() {
+        let raw = "data: {\"choices\": [{\"delta\": {\"content\": \"hi\"}\n\n";
+        let (_, translator) = run(WireKind::OpenAi, raw);
+        let error = translator.error().expect("garbage data must surface");
+        assert_eq!(error.kind(), "decode");
+    }
+
+    #[test]
+    fn an_event_with_no_data_is_not_a_decode_error() {
+        let raw = "event: ping\ndata: {\"type\": \"ping\"}\n\n";
+        let (_, translator) = run(WireKind::Anthropic, raw);
+        assert!(translator.error().is_none());
     }
 
     #[test]

@@ -1,6 +1,6 @@
 use serde_json::{json, Value};
 
-const MAX_SEARCH_HITS: usize = 200;
+const MAX_SEARCH_RESULTS: usize = 20;
 const MAX_READ_LINES: usize = 800;
 const MAX_READ_CHARS: usize = 40_000;
 
@@ -77,147 +77,151 @@ fn payload(value: Value) -> Value {
 
 pub async fn call(project_id: &str, name: &str, arguments: &Value) -> Result<Value, String> {
     match name {
-        "read_file" => {
-            let path = required(arguments, "path")?;
-            let body = crate::project::read_file(project_id.to_string(), path.to_string())?;
-            let all: Vec<&str> = body.lines().collect();
-            let offset = arguments
-                .get("offset")
-                .and_then(|v| v.as_u64())
-                .unwrap_or(1)
-                .max(1) as usize;
-            let start = (offset - 1).min(all.len());
-            let take = arguments
-                .get("limit")
-                .and_then(|v| v.as_u64())
-                .filter(|v| *v > 0)
-                .map(|v| v as usize)
-                .unwrap_or(MAX_READ_LINES)
-                .min(MAX_READ_LINES);
-            let slice: Vec<&str> = all.iter().skip(start).take(take).copied().collect();
-            let mut content = slice.join("\n");
-            let mut truncated = start + slice.len() < all.len();
-            if content.chars().count() > MAX_READ_CHARS {
-                content = content.chars().take(MAX_READ_CHARS).collect();
-                truncated = true;
-            }
-            Ok(payload(json!({
-                "path": path,
-                "offset": offset,
-                "lines_returned": slice.len(),
-                "total_lines": all.len(),
-                "truncated": truncated,
-                "content": content,
-            })))
-        }
-        "write_file" => {
-            let path = required(arguments, "path")?;
-            let content = required(arguments, "content")?;
-            crate::project::write_file(
-                project_id.to_string(),
-                path.to_string(),
-                content.to_string(),
-            )
-            .await?;
-            Ok(payload(
-                json!({ "success": true, "path": path, "bytes": content.len() }),
-            ))
-        }
-        "replace_in_file" => {
-            let path = required(arguments, "path")?;
-            let find = required(arguments, "find")?;
-            let replace = required(arguments, "replace")?;
-            let all = arguments
-                .get("replace_all")
-                .and_then(|v| v.as_bool())
-                .unwrap_or(false);
-
-            let body = crate::project::read_file(project_id.to_string(), path.to_string())?;
-            if !body.contains(find) {
-                return Err(format!("no match for the search text in {path}"));
-            }
-            let updated = if all {
-                body.replace(find, replace)
-            } else {
-                body.replacen(find, replace, 1)
-            };
-            let replacements = if all { body.matches(find).count() } else { 1 };
-            crate::project::write_file(project_id.to_string(), path.to_string(), updated).await?;
-            Ok(payload(
-                json!({ "success": true, "path": path, "replacements": replacements }),
-            ))
-        }
-        "create_file" => {
-            let path = required(arguments, "path")?;
-            let is_dir = arguments
-                .get("is_dir")
-                .and_then(|v| v.as_bool())
-                .unwrap_or(false);
-            crate::project::create_file(project_id.to_string(), path.to_string(), is_dir)?;
-            Ok(payload(
-                json!({ "success": true, "path": path, "is_dir": is_dir }),
-            ))
-        }
-        "delete_file" => {
-            let path = required(arguments, "path")?;
-            crate::project::delete_file(project_id.to_string(), path.to_string())?;
-            Ok(payload(json!({ "success": true, "path": path })))
-        }
-        "rename_file" => {
-            let from = required(arguments, "from")?;
-            let to = required(arguments, "to")?;
-            crate::project::rename_file(
-                project_id.to_string(),
-                from.to_string(),
-                to.to_string(),
-                None,
-            )?;
-            Ok(payload(json!({ "success": true, "from": from, "to": to })))
-        }
-        "list_files" => {
-            let entries = crate::project::list_files(project_id.to_string()).await?;
-            let files: Vec<Value> = entries
-                .iter()
-                .map(|e| json!({ "path": e.path, "is_dir": e.is_dir }))
-                .collect();
-            Ok(payload(json!({ "files": files })))
-        }
-        "search_project" => {
-            let query = required(arguments, "query")?;
-            if query.is_empty() {
-                return Err("query must not be empty".into());
-            }
-            let entries = crate::project::list_files(project_id.to_string()).await?;
-            let mut hits = Vec::new();
-            for entry in entries {
-                if entry.is_dir {
-                    continue;
-                }
-                let Ok(body) =
-                    crate::project::read_file(project_id.to_string(), entry.path.clone())
-                else {
-                    continue;
-                };
-                for (index, line) in body.lines().enumerate() {
-                    if line.contains(query) {
-                        hits.push(json!({
-                            "path": entry.path,
-                            "line": index + 1,
-                            "text": line.trim(),
-                        }));
-                        if hits.len() >= MAX_SEARCH_HITS {
-                            break;
-                        }
-                    }
-                }
-                if hits.len() >= MAX_SEARCH_HITS {
-                    break;
-                }
-            }
-            Ok(payload(json!({ "matches": hits })))
-        }
+        "read_file" => read_file(project_id, arguments),
+        "write_file" => write_file(project_id, arguments).await,
+        "replace_in_file" => replace_in_file(project_id, arguments).await,
+        "create_file" => create_file(project_id, arguments),
+        "delete_file" => delete_file(project_id, arguments),
+        "rename_file" => rename_file(project_id, arguments),
+        "list_files" => list_files(project_id).await,
+        "search_project" => search_project(project_id, arguments).await,
         other => Err(format!("{other} is not handled natively")),
     }
+}
+
+fn read_file(project_id: &str, arguments: &Value) -> Result<Value, String> {
+    let path = required(arguments, "path")?;
+    let body = crate::project::read_file(project_id.to_string(), path.to_string())?;
+    let all: Vec<&str> = body.lines().collect();
+    let offset = arguments
+        .get("offset")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(1)
+        .max(1) as usize;
+    let start = (offset - 1).min(all.len());
+    let take = arguments
+        .get("limit")
+        .and_then(|v| v.as_u64())
+        .filter(|v| *v > 0)
+        .map(|v| v as usize)
+        .unwrap_or(MAX_READ_LINES)
+        .min(MAX_READ_LINES);
+    let slice: Vec<&str> = all.iter().skip(start).take(take).copied().collect();
+    let mut content = slice.join("\n");
+    let mut truncated = start + slice.len() < all.len();
+    if content.chars().count() > MAX_READ_CHARS {
+        content = content.chars().take(MAX_READ_CHARS).collect();
+        truncated = true;
+    }
+    Ok(payload(json!({
+        "path": path,
+        "offset": offset,
+        "lines_returned": slice.len(),
+        "total_lines": all.len(),
+        "truncated": truncated,
+        "content": content,
+    })))
+}
+
+async fn write_file(project_id: &str, arguments: &Value) -> Result<Value, String> {
+    let path = required(arguments, "path")?;
+    let content = required(arguments, "content")?;
+    crate::project::write_file(
+        project_id.to_string(),
+        path.to_string(),
+        content.to_string(),
+    )
+    .await?;
+    Ok(payload(
+        json!({ "success": true, "path": path, "bytes": content.len() }),
+    ))
+}
+
+async fn replace_in_file(project_id: &str, arguments: &Value) -> Result<Value, String> {
+    let path = required(arguments, "path")?;
+    let find = required(arguments, "find")?;
+    let replace = required(arguments, "replace")?;
+    let all = arguments
+        .get("replace_all")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+
+    let body = crate::project::read_file(project_id.to_string(), path.to_string())?;
+    if !body.contains(find) {
+        return Err(format!("no match for the search text in {path}"));
+    }
+    let updated = if all {
+        body.replace(find, replace)
+    } else {
+        body.replacen(find, replace, 1)
+    };
+    let replacements = if all { body.matches(find).count() } else { 1 };
+    crate::project::write_file(project_id.to_string(), path.to_string(), updated).await?;
+    Ok(payload(
+        json!({ "success": true, "path": path, "replacements": replacements }),
+    ))
+}
+
+fn create_file(project_id: &str, arguments: &Value) -> Result<Value, String> {
+    let path = required(arguments, "path")?;
+    let is_dir = arguments
+        .get("is_dir")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    crate::project::create_file(project_id.to_string(), path.to_string(), is_dir)?;
+    Ok(payload(
+        json!({ "success": true, "path": path, "is_dir": is_dir }),
+    ))
+}
+
+fn delete_file(project_id: &str, arguments: &Value) -> Result<Value, String> {
+    let path = required(arguments, "path")?;
+    crate::project::delete_file(project_id.to_string(), path.to_string())?;
+    Ok(payload(json!({ "success": true, "path": path })))
+}
+
+fn rename_file(project_id: &str, arguments: &Value) -> Result<Value, String> {
+    let from = required(arguments, "from")?;
+    let to = required(arguments, "to")?;
+    crate::project::rename_file(
+        project_id.to_string(),
+        from.to_string(),
+        to.to_string(),
+        None,
+    )?;
+    Ok(payload(json!({ "success": true, "from": from, "to": to })))
+}
+
+async fn list_files(project_id: &str) -> Result<Value, String> {
+    let entries = crate::project::list_files(project_id.to_string()).await?;
+    let files: Vec<Value> = entries
+        .iter()
+        .map(|e| json!({ "path": e.path, "is_dir": e.is_dir }))
+        .collect();
+    Ok(payload(json!({ "files": files })))
+}
+
+async fn search_project(project_id: &str, arguments: &Value) -> Result<Value, String> {
+    let query = required(arguments, "query")?;
+    if query.is_empty() {
+        return Err("query must not be empty".into());
+    }
+    let hits = crate::project::search_project(project_id.to_string(), query.to_string()).await?;
+    let total = hits.len();
+    let results: Vec<Value> = hits
+        .into_iter()
+        .take(MAX_SEARCH_RESULTS)
+        .map(|hit| {
+            json!({
+                "project_id": hit.project_id,
+                "project_name": hit.project_name,
+                "path": hit.path,
+                "line": hit.line,
+                "preview": hit.preview,
+            })
+        })
+        .collect();
+    Ok(payload(json!({ "results": results, "total": total })))
 }
 
 #[cfg(test)]
