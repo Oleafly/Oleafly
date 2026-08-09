@@ -52,6 +52,7 @@ import {
 import { useSettingsStore } from "@/store/settings";
 import { nextTabSeq } from "@/store/tab-order";
 import { recordProjectStateRevision } from "@/lib/project-state-revision";
+import { flushWysiwygPendingEdits } from "@/components/editor/wysiwyg/controller";
 
 // Pin the user's global default engine onto a freshly created project. Only
 // LaTeX projects can take the latexmk pin; anything else (Typst templates,
@@ -595,6 +596,7 @@ async function prepareProjectSwitch(
   if (previousProjectId) {
     set({ loading: true });
     try {
+      flushWysiwygPendingEdits();
       await flushDirtyBuffers(previousProjectId, get);
     } catch (error) {
       set({ loading: false });
@@ -936,6 +938,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     if (projectId) {
       set({ loading: true });
       try {
+        flushWysiwygPendingEdits();
         await flushDirtyBuffers(projectId, get);
       } catch (error) {
         set({ loading: false });

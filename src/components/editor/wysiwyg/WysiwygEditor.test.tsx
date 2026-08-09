@@ -4,6 +4,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { Editor } from "@tiptap/core";
 import { WysiwygEditor } from "./WysiwygEditor";
 import { useFilesStore } from "@/store/files";
+import { flushWysiwygPendingEdits } from "./controller";
 
 let lastEditor: Editor | null = null;
 
@@ -44,6 +45,7 @@ Body text.
 
 function setFiles(files: Record<string, { content: string; dirty: boolean }>, activePath: string) {
   useFilesStore.setState({
+    projectId: null,
     activePath,
     files,
   } as unknown as ReturnType<typeof useFilesStore.getState>);
@@ -218,6 +220,42 @@ describe("WysiwygEditor", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("flushes a pending edit synchronously for a project transition", () => {
+    render(<WysiwygEditor wysiwyg={true} />);
+
+    act(() => {
+      requireEditor()
+        .chain()
+        .insertContentAt(requireEditor().state.doc.content.size, " TRANSITION-EDIT")
+        .run();
+      flushWysiwygPendingEdits();
+    });
+
+    expect(useFilesStore.getState().files["main.tex"].content).toContain(
+      "TRANSITION-EDIT",
+    );
+  });
+
+  it("does not flush an old editor into a replacement project during unmount", () => {
+    useFilesStore.setState({ projectId: "project" });
+    const { unmount } = render(<WysiwygEditor wysiwyg={true} />);
+
+    act(() => {
+      requireEditor()
+        .chain()
+        .insertContentAt(requireEditor().state.doc.content.size, " OLD-PROJECT-EDIT")
+        .run();
+      useFilesStore.setState({
+        projectId: "replacement-project",
+        files: { "main.tex": { content: LATEX_B, dirty: false } },
+        activePath: "main.tex",
+      } as unknown as ReturnType<typeof useFilesStore.getState>);
+      unmount();
+    });
+
+    expect(useFilesStore.getState().files["main.tex"].content).toBe(LATEX_B);
   });
 
   it("does not rewrite the store merely from loading a file with no edits", () => {
