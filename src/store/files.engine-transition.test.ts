@@ -1055,6 +1055,24 @@ describe("delete and autosave coordination", () => {
 });
 
 describe("project engine transition", () => {
+  it("normalizes Windows line endings when a text file enters the editor store", async () => {
+    useFilesStore.setState({
+      projectId: "project",
+      files: {},
+      openTabs: [],
+      tabOrder: {},
+      activePath: null,
+    });
+    mocks.readFileContent.mockResolvedValue("first\r\nsecond\r\n");
+
+    await useFilesStore.getState().openFile("main.tex");
+
+    expect(useFilesStore.getState().files["main.tex"]).toEqual({
+      content: "first\nsecond\n",
+      dirty: false,
+    });
+  });
+
   it("does not reopen a tab after it is closed while its content is loading", async () => {
     const pending = deferred<string>();
     useFilesStore.setState({
