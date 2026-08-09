@@ -30,10 +30,21 @@ on:
 permissions:
   contents: write # tauri-action needs this to create the release & upload assets
 
+env:
+  RELEASE_TARGETS: >-
+    aarch64-apple-darwin
+    x86_64-unknown-linux-gnu
+    aarch64-unknown-linux-gnu
+    x86_64-pc-windows-msvc
+
 jobs:
   build:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
     env:
       # The 0.2.8 build graph exceeds Node's default ~4GB heap during vite
       # build on the 7GB macOS arm64 runners.
@@ -266,6 +277,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Build & release
+        id: tauri
         uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -291,6 +303,111 @@ jobs:
           # below performs a deterministic target-owned merge before release.
           retryAttempts: 3
           args: ${{ matrix.args }} ${{ env.TAURI_SIGN_ARGS }}
+
+      # Work with byte-for-byte copies of the files tauri-action uploaded to
+      # the draft release. This keeps provenance and SBOM subjects aligned with
+      # what users will actually download, regardless of target output layout.
+      - name: Stage release artifacts for supply-chain metadata
+        shell: bash
+        env:
+          ARTIFACT_PATHS: ${{ steps.tauri.outputs.artifactPaths }}
+        run: |
+          node <<'NODE'
+          const fs = require("node:fs");
+          const path = require("node:path");
+
+          const destination = path.resolve("release-subjects");
+          const sbomInput = path.resolve("sbom-input");
+          fs.mkdirSync(destination, { recursive: true });
+          fs.mkdirSync(path.join(sbomInput, "artifacts"), { recursive: true });
+          fs.mkdirSync("sbom", { recursive: true });
+          const seenSources = new Set();
+          const seen = new Set();
+          for (const artifact of JSON.parse(process.env.ARTIFACT_PATHS)) {
+            let source = path.resolve(artifact);
+            // tauri-action reports the macOS .app directory before converting
+            // it to the .tar.gz file that is actually uploaded to the release.
+            if (fs.statSync(source).isDirectory() && fs.existsSync(`${source}.tar.gz`)) {
+              source = `${source}.tar.gz`;
+            }
+            if (!fs.statSync(source).isFile()) {
+              throw new Error(`release artifact is not a file: ${source}`);
+            }
+            source = fs.realpathSync(source);
+            if (seenSources.has(source)) continue;
+            seenSources.add(source);
+            const name = path.basename(source);
+            if (seen.has(name)) {
+              throw new Error(`duplicate release artifact name: ${name}`);
+            }
+            seen.add(name);
+            fs.copyFileSync(source, path.join(destination, name));
+            fs.copyFileSync(source, path.join(sbomInput, "artifacts", name));
+          }
+          if (seen.size === 0) {
+            throw new Error("tauri-action did not report any release artifacts");
+          }
+
+          const workspace = process.cwd();
+          const copyInput = (source) => {
+            const relative = path.relative(workspace, source);
+            const target = path.join(sbomInput, relative);
+            fs.mkdirSync(path.dirname(target), { recursive: true });
+            fs.copyFileSync(source, target);
+          };
+          for (const name of ["package.json", "pnpm-lock.yaml", "Cargo.toml", "Cargo.lock"]) {
+            copyInput(path.join(workspace, name));
+          }
+          const collectManifests = (directory) => {
+            if (!fs.existsSync(directory)) return;
+            for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+              if (entry.name === "node_modules" || entry.name === "target") continue;
+              const item = path.join(directory, entry.name);
+              if (entry.isDirectory()) collectManifests(item);
+              if (entry.isFile() && (entry.name === "package.json" || entry.name === "Cargo.toml")) {
+                copyInput(item);
+              }
+            }
+          };
+          for (const root of ["packages", "crates", "src-tauri"]) {
+            collectManifests(path.join(workspace, root));
+          }
+          NODE
+
+      - name: Attest release artifact provenance
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        with:
+          subject-path: release-subjects/*
+
+      - name: Generate platform SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          # Scan the shipped files plus the locked Rust and pnpm dependency
+          # manifests; scanning installers alone misses statically linked crates.
+          path: sbom-input
+          format: spdx-json
+          output-file: sbom/Oleafly-${{ github.event.inputs.tag || github.ref_name }}-${{ matrix.rust_target }}.spdx.json
+          upload-artifact: false
+          upload-release-assets: false
+
+      - name: Attest platform SBOM
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        with:
+          subject-path: release-subjects/*
+          sbom-path: sbom/Oleafly-${{ github.event.inputs.tag || github.ref_name }}-${{ matrix.rust_target }}.spdx.json
+
+      - name: Attest SBOM provenance
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        with:
+          subject-path: sbom/Oleafly-${{ github.event.inputs.tag || github.ref_name }}-${{ matrix.rust_target }}.spdx.json
+
+      - name: Preserve platform SBOM
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-sbom-${{ matrix.rust_target }}
+          path: sbom/Oleafly-${{ github.event.inputs.tag || github.ref_name }}-${{ matrix.rust_target }}.spdx.json
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Preserve this target's updater fragment
         uses: actions/upload-artifact@v7
@@ -333,6 +450,8 @@ jobs:
     runs-on: ubuntu-22.04
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     steps:
       - name: Download per-target updater fragments
         uses: actions/download-artifact@v7
@@ -391,6 +510,67 @@ jobs:
           done
           gh release upload "$TAG" latest.json --repo "$GITHUB_REPOSITORY" --clobber
 
+      - name: Attest updater manifest provenance
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        with:
+          subject-path: latest.json
+
+  release-metadata:
+    name: Attach and verify release supply-chain metadata
+    needs: [build, finalize-updater]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+      attestations: read
+    steps:
+      - name: Download platform SBOMs
+        uses: actions/download-artifact@v7
+        with:
+          pattern: release-sbom-*
+          path: release-sboms
+          merge-multiple: true
+
+      - name: Attach SBOMs to the draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected=()
+          for target in $RELEASE_TARGETS; do
+            expected+=("release-sboms/Oleafly-${TAG}-${target}.spdx.json")
+          done
+          for sbom in "${expected[@]}"; do
+            test -s "$sbom" || { echo "missing release SBOM: $sbom" >&2; exit 1; }
+          done
+          gh release upload "$TAG" "${expected[@]}" --repo "$GITHUB_REPOSITORY" --clobber
+
+      - name: Verify published release attestations
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir release-assets --clobber
+          while IFS= read -r -d '' asset; do
+            case "$asset" in
+              *.sig) continue ;;
+            esac
+            gh attestation verify "$asset" --repo "$GITHUB_REPOSITORY" \
+              --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml"
+            case "$asset" in
+              *.spdx.json|*/latest.json) ;;
+              *)
+                gh attestation verify "$asset" --repo "$GITHUB_REPOSITORY" \
+                  --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml" \
+                  --predicate-type https://spdx.dev/Document/v2.3
+                ;;
+            esac
+          done < <(find release-assets -type f -print0)
+
   # A tag must never yield a half-published release. Each matrix leg uploads its
   # own assets, so a leg that fails simply contributes nothing - which on its own
   # leaves a release carrying only the platforms that happened to succeed. These
@@ -402,7 +582,7 @@ jobs:
   # for the same tag with "Publish the release" checked.
   publish:
     name: Publish (all platforms present)
-    needs: [build, finalize-updater]
+    needs: [build, finalize-updater, release-metadata]
     if: ${{ inputs.publish == true }}
     runs-on: ubuntu-22.04
     permissions:
@@ -428,6 +608,10 @@ jobs:
           grep -qE '_(amd64|x86_64)\.deb$'   <<<"$assets" || missing+=("Linux x86_64 .deb")
           grep -qE '_(arm64|aarch64)\.deb$'  <<<"$assets" || missing+=("Linux ARM64 .deb")
           grep -qE '^latest\.json$'          <<<"$assets" || missing+=("latest.json")
+          for target in $RELEASE_TARGETS; do
+            grep -qx "Oleafly-${TAG}-${target}.spdx.json" <<<"$assets" \
+              || missing+=("${target} SBOM")
+          done
           if ((${#missing[@]})); then
             printf 'refusing to publish %s; missing: %s\n' "$TAG" "${missing[*]}" >&2
             exit 1
@@ -446,7 +630,7 @@ jobs:
   # artifact and updater-feed checks as a publish - it just never flips live.
   draft-ready:
     name: Draft is complete (not published)
-    needs: [build, finalize-updater]
+    needs: [build, finalize-updater, release-metadata]
     if: ${{ always() && inputs.publish != true }}
     runs-on: ubuntu-22.04
     permissions:
@@ -463,8 +647,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ "${{ needs.build.result }}" != "success" ] || [ "${{ needs['finalize-updater'].result }}" != "success" ]; then
-            echo "build or updater finalization did not succeed; the draft is incomplete" >&2
+          if [ "${{ needs.build.result }}" != "success" ] || [ "${{ needs['finalize-updater'].result }}" != "success" ] || [ "${{ needs['release-metadata'].result }}" != "success" ]; then
+            echo "build, updater finalization, or release metadata did not succeed; the draft is incomplete" >&2
             exit 1
           fi
           assets="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')"
@@ -477,6 +661,10 @@ jobs:
           grep -qE '_(amd64|x86_64)\.deb$'   <<<"$assets" || missing+=("Linux x86_64 .deb")
           grep -qE '_(arm64|aarch64)\.deb$'  <<<"$assets" || missing+=("Linux ARM64 .deb")
           grep -qE '^latest\.json$'          <<<"$assets" || missing+=("latest.json")
+          for target in $RELEASE_TARGETS; do
+            grep -qx "Oleafly-${TAG}-${target}.spdx.json" <<<"$assets" \
+              || missing+=("${target} SBOM")
+          done
           if ((${#missing[@]})); then
             printf 'draft %s is incomplete; missing: %s\n' "$TAG" "${missing[*]}" >&2
             exit 1
@@ -490,8 +678,8 @@ jobs:
 
   guard-incomplete:
     name: Keep an incomplete release unpublished
-    needs: [build, finalize-updater, publish]
-    if: always() && inputs.publish == true && (needs.build.result != 'success' || needs['finalize-updater'].result != 'success' || needs.publish.result != 'success')
+    needs: [build, finalize-updater, release-metadata, publish]
+    if: always() && inputs.publish == true && (needs.build.result != 'success' || needs['finalize-updater'].result != 'success' || needs['release-metadata'].result != 'success' || needs.publish.result != 'success')
     runs-on: ubuntu-22.04
     permissions:
       contents: write

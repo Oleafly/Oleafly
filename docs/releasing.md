@@ -52,6 +52,38 @@ in-app updater only *does* something once there are **two** published releases:
 the version a user has installed, and a newer one to update to. Your first
 release just establishes the baseline.
 
+## Provenance and SBOMs
+
+Every release build creates GitHub artifact attestations for the files uploaded
+by Tauri and for the canonical `latest.json` updater manifest. It also attaches
+one SPDX JSON software bill of materials (SBOM) for each supported build target:
+
+- macOS Apple Silicon
+- Linux x86_64
+- Linux ARM64
+- Windows x86_64
+
+The workflow verifies the uploaded files against GitHub's attestation service
+before a draft is marked complete. Missing SBOMs or invalid attestations keep
+the release in draft state.
+
+Anyone can independently verify a downloaded installer with the GitHub CLI:
+
+```sh
+gh attestation verify ./Oleafly-installer-file \
+  --repo Oleafly/Oleafly \
+  --signer-workflow Oleafly/Oleafly/.github/workflows/release.yml
+```
+
+To verify the installer's SPDX SBOM attestation as well:
+
+```sh
+gh attestation verify ./Oleafly-installer-file \
+  --repo Oleafly/Oleafly \
+  --signer-workflow Oleafly/Oleafly/.github/workflows/release.yml \
+  --predicate-type https://spdx.dev/Document/v2.3
+```
+
 ## Gotchas
 
 - **The tag must match the manifests.** That's the whole job of
