@@ -52,7 +52,10 @@ import {
 import { useSettingsStore } from "@/store/settings";
 import { nextTabSeq } from "@/store/tab-order";
 import { recordProjectStateRevision } from "@/lib/project-state-revision";
-import { flushWysiwygPendingEdits } from "@/components/editor/wysiwyg/controller";
+import {
+  flushWysiwygPendingEdits,
+  invalidateWysiwygProjectSession,
+} from "@/components/editor/wysiwyg/controller";
 
 // Pin the user's global default engine onto a freshly created project. Only
 // LaTeX projects can take the latexmk pin; anything else (Typst templates,
@@ -621,6 +624,7 @@ async function prepareProjectSwitch(
 }
 
 function beginProjectOpen(id: string, shouldContinue: () => boolean, set: FilesSet, get: FilesGet) {
+  invalidateWysiwygProjectSession();
   const seq = ++openSeq;
   invalidateAllPendingFileOpens();
   mainDocSeq++;
@@ -959,6 +963,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     cancelProofreading("source");
     cancelProofreading("visual");
     await mcpSetActiveProject(null).catch(() => {});
+    invalidateWysiwygProjectSession();
     resetMutationGeneration();
     set(EMPTY_PROJECT_STATE);
   }),
