@@ -1,1 +1,0 @@
-{"version":3,"file":"style.mjs","names":[],"sources":["../../../src/icons/Authentik/style.ts"],"sourcesContent":["export const TITLE = 'Authentik';\nexport const COLOR_PRIMARY = '#FD4B2D';\n"],"mappings":";AAAA,MAAa,QAAQ;AACrB,MAAa,gBAAgB"}

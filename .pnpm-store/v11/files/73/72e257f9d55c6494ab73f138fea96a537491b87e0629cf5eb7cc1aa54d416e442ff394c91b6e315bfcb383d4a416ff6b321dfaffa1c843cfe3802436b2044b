@@ -1,1 +1,0 @@
-export declare function useRegisteredLabelId(idProp: string | undefined, setLabelId: (id: string | undefined) => void): string | undefined;

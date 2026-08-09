@@ -1,1 +1,0 @@
-{"version":3,"sources":["../src/index.ts"],"sourcesContent":["import { BulletList } from '@tiptap/extension-list'\n\nexport type { BulletListOptions } from '@tiptap/extension-list'\nexport { BulletList } from '@tiptap/extension-list'\n\nexport default BulletList\n"],"mappings":";AAAA,SAAS,kBAAkB;AAG3B,SAAS,cAAAA,mBAAkB;AAE3B,IAAO,gBAAQ;","names":["BulletList"]}

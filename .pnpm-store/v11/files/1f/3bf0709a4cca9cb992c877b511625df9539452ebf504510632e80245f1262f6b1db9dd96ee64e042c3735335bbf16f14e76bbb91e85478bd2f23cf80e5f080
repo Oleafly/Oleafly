@@ -1,1 +1,0 @@
-{"version":3,"sources":["../src/index.ts"],"sourcesContent":["import { OrderedList } from '@tiptap/extension-list'\n\nexport type { OrderedListOptions } from '@tiptap/extension-list'\nexport { OrderedList } from '@tiptap/extension-list'\n\nexport default OrderedList\n"],"mappings":";AAAA,SAAS,mBAAmB;AAG5B,SAAS,eAAAA,oBAAmB;AAE5B,IAAO,gBAAQ;","names":["OrderedList"]}

@@ -1,1 +1,0 @@
-{"version":3,"file":"style.mjs","names":[],"sources":["../../../src/icons/Auth0/style.ts"],"sourcesContent":["export const TITLE = 'Auth0';\nexport const COLOR_PRIMARY = '#fff';\n"],"mappings":";AAAA,MAAa,QAAQ;AACrB,MAAa,gBAAgB"}

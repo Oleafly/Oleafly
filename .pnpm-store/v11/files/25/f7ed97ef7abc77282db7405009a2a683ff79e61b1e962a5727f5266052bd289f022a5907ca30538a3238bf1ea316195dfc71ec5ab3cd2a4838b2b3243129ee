@@ -1,1 +1,0 @@
-{"version":3,"sources":["../src/index.ts"],"sourcesContent":["import { Gapcursor } from '@tiptap/extensions'\n\nexport { Gapcursor } from '@tiptap/extensions'\n\nexport default Gapcursor\n"],"mappings":";;;;;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA,wBAA0B;AAE1B,IAAAA,qBAA0B;AAE1B,IAAO,gBAAQ;","names":["import_extensions"]}

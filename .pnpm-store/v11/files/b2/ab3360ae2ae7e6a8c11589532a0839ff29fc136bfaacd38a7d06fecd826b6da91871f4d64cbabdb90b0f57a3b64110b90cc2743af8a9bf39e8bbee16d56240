@@ -1,1 +1,0 @@
-{"version":3,"sources":["../src/index.ts"],"sourcesContent":["import { ListItem } from '@tiptap/extension-list'\n\nexport type { ListItemOptions } from '@tiptap/extension-list'\nexport { ListItem } from '@tiptap/extension-list'\n\nexport default ListItem\n"],"mappings":";AAAA,SAAS,gBAAgB;AAGzB,SAAS,YAAAA,iBAAgB;AAEzB,IAAO,gBAAQ;","names":["ListItem"]}

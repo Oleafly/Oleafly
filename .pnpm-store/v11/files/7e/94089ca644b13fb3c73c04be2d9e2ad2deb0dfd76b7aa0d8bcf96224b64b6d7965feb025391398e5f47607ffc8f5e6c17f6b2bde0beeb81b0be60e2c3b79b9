@@ -1,1 +1,0 @@
-{"version":3,"file":"style.mjs","names":[],"sources":["../../../src/icons/Authelia/style.ts"],"sourcesContent":["export const TITLE = 'Authelia';\nexport const COLOR_PRIMARY = '#B3C7FF';\n"],"mappings":";AAAA,MAAa,QAAQ;AACrB,MAAa,gBAAgB"}

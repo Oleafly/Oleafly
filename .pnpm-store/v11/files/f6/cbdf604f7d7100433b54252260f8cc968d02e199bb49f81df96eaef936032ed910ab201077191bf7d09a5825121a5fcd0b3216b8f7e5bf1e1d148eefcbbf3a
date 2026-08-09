@@ -1,1 +1,0 @@
-{"version":3,"file":"animations.mjs","names":[],"sources":["../../src/styles/animations.ts"],"sourcesContent":["import { keyframes } from 'antd-style';\n\nexport const fadeIn = keyframes`\n    0% {\n      opacity: 0;\n    }\n    100% {\n      opacity: 1;\n    }\n`;\n"],"mappings":";;AAEA,MAAa,SAAS,SAAS"}

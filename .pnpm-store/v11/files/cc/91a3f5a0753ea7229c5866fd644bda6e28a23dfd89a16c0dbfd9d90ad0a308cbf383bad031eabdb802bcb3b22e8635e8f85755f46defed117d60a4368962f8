@@ -1,1 +1,0 @@
-{"version":3,"file":"style.mjs","names":[],"sources":["../../../src/icons/WeChat/style.ts"],"sourcesContent":["export const TITLE = 'WeChat';\nexport const COLOR_PRIMARY = '#07C160';\n"],"mappings":";AAAA,MAAa,QAAQ;AACrB,MAAa,gBAAgB"}

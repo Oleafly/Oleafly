@@ -1,4 +1,0 @@
-"use client";
-import { EditorSlashMenuEmpty, EditorSlashMenuGroup, EditorSlashMenuGroupLabel, EditorSlashMenuHiddenInput, EditorSlashMenuItem, EditorSlashMenuItemContent, EditorSlashMenuItemExtra, EditorSlashMenuItemIcon, EditorSlashMenuItemLabel, EditorSlashMenuList, EditorSlashMenuPopup, EditorSlashMenuPortal, EditorSlashMenuPositioner, EditorSlashMenuRoot } from "./atoms.mjs";
-import EditorSlashMenu from "./EditorSlashMenu.mjs";
-export { EditorSlashMenuEmpty, EditorSlashMenuGroup, EditorSlashMenuGroupLabel, EditorSlashMenuHiddenInput, EditorSlashMenuItem, EditorSlashMenuItemContent, EditorSlashMenuItemExtra, EditorSlashMenuItemIcon, EditorSlashMenuItemLabel, EditorSlashMenuList, EditorSlashMenuPopup, EditorSlashMenuPortal, EditorSlashMenuPositioner, EditorSlashMenuRoot, EditorSlashMenu as default };
