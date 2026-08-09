@@ -12,10 +12,6 @@ pub(super) fn ensure_token() -> Result<String, String> {
     Ok(token)
 }
 
-/// Connection info for local clients: `<data-dir>/mcp.json`, hardened to
-/// owner-only (0600 on unix, current-user ACL on Windows), present only while
-/// the server is running and its tool registry is ready. Documented in
-/// docs/mcp.md.
 pub(super) fn write_discovery_file(port: u16, token: &str) -> Result<(), String> {
     let path = paths::oleafly_root()?.join("mcp.json");
     write_discovery_file_at(&path, port, token)
@@ -34,10 +30,6 @@ pub(super) fn write_discovery_file_at(
     write_private_discovery(path, body.as_bytes())
 }
 
-/// Publish the bearer-token discovery document atomically. The temporary file
-/// is owner-only before token bytes are written: mode 0600 at create time on
-/// Unix, or an empty file whose inherited ACL is replaced and checked first on
-/// Windows. Hardening failures abort startup instead of being silently ignored.
 fn write_private_discovery(path: &std::path::Path, bytes: &[u8]) -> Result<(), String> {
     let parent = path
         .parent()
@@ -171,7 +163,6 @@ fn harden_empty_discovery_file(_path: &std::path::Path) -> Result<(), String> {
     Err("owner-only MCP discovery files are unsupported on this platform".into())
 }
 
-/// Rewrite the discovery file after a token regeneration while running.
 pub fn rewrite_discovery_file(port: u16, token: &str) -> Result<(), String> {
     write_discovery_file(port, token)
 }

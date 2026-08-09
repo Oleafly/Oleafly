@@ -75,10 +75,6 @@ pub fn isolate_process_tree(command: &mut tokio::process::Command) {
     }
 }
 
-/// Owns every process descended from one supervised child. On Windows a Job
-/// Object is required because `taskkill /T` cannot discover orphans after the
-/// leader exits; on Unix the isolated process group provides the same lifetime
-/// boundary. Dropping the guard is intentionally destructive to stragglers.
 #[cfg(not(windows))]
 pub struct ProcessTreeGuard {
     process_group: i32,
@@ -129,12 +125,13 @@ pub fn contain_process_tree(pid: u32) -> std::io::Result<ProcessTreeGuard> {
 
 #[cfg(windows)]
 pub fn contain_process_tree(pid: u32) -> std::io::Result<ProcessTreeGuard> {
-    let job = assign_process_to_new_job(pid)?;
+    let guard = ProcessTreeGuard {
+        job: assign_process_to_new_job(pid)?,
+    };
     if let Err(error) = resume_suspended_process(pid) {
-        unsafe { windows_sys::Win32::Foundation::CloseHandle(job) };
         return Err(error);
     }
-    Ok(ProcessTreeGuard { job })
+    Ok(guard)
 }
 
 #[cfg(windows)]
@@ -203,9 +200,6 @@ fn configure_kill_on_close(job: *mut std::ffi::c_void) -> std::io::Result<()> {
     }
 }
 
-/// Resume every thread owned by a process created with `CREATE_SUSPENDED`.
-/// A newly created suspended process has not executed user code yet, so it
-/// cannot create descendants before Job Object assignment completes.
 #[cfg(windows)]
 fn resume_suspended_process(pid: u32) -> std::io::Result<()> {
     use windows_sys::Win32::Foundation::{CloseHandle, INVALID_HANDLE_VALUE};

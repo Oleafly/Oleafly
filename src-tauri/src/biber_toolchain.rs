@@ -51,8 +51,6 @@ pub fn compile_path_env() -> std::ffi::OsString {
     compile_path_env_with_inherited(std::env::var_os("PATH").as_deref(), None, None)
 }
 
-/// PATH for a TeX utility that has already been resolved to an exact
-/// distribution. Its sibling tools must win over every other installation.
 pub fn tool_path_env(preferred_executable: &Path) -> std::ffi::OsString {
     compile_path_env_with_inherited(
         std::env::var_os("PATH").as_deref(),
@@ -61,10 +59,6 @@ pub fn tool_path_env(preferred_executable: &Path) -> std::ffi::OsString {
     )
 }
 
-/// Compiler PATH with the exact selected tool's directory first and all paths
-/// inside the project removed. This keeps one TeX distribution coherent and
-/// prevents an absolute project PATH entry from reintroducing local executable
-/// shadowing after Windows current-directory search is disabled.
 pub fn compile_path_env_for(
     preferred_executable: &Path,
     excluded_project_root: &Path,
@@ -95,9 +89,6 @@ fn compile_path_env_with_inherited(
     }
     if let Some(inherited) = inherited {
         for dir in std::env::split_paths(inherited) {
-            // Empty/relative PATH entries mean the child working directory.
-            // Never let project-local executables participate in compiler
-            // helper discovery; absolute system/user tool dirs remain usable.
             if dir.is_absolute() {
                 add(dir);
             }

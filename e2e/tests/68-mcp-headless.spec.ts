@@ -197,7 +197,7 @@ test.describe("MCP without the webview", () => {
   test("keeps native reads available after a renderer lease expires", async ({ tauriPage }) => {
     test.setTimeout(120_000);
     await stopRendererHeartbeat(tauriPage);
-    await tauriPage.waitForTimeout(46_000);
+    await new Promise((resolve) => setTimeout(resolve, 46_000));
 
     const payload = await rpc(tauriPage, connection, "tools/call", {
       name: "read_file",
@@ -235,8 +235,9 @@ test.describe("MCP without the webview", () => {
     const payload = (await rpc(tauriPage, connection, "tools/call", {
       name: "write_file",
       arguments: { path: "read-only-bypass.tex", content: "must not exist" },
-    })) as { error?: { message?: string } };
-    expect(payload.error?.message ?? "").toMatch(/read-only/i);
+    })) as { result?: { isError?: boolean } };
+    expect(payload.result?.isError).toBe(true);
+    expect(resultText(payload)).toMatch(/read-only/i);
 
     const listed = await rpc(tauriPage, connection, "tools/call", {
       name: "list_files",
@@ -261,9 +262,9 @@ test.describe("MCP without the webview", () => {
     const payload = (await rpc(tauriPage, connection, "tools/call", {
       name: "read_file",
       arguments: { project_id: "../../../etc", path: "passwd" },
-    })) as { error?: { message?: string } };
+    })) as { result?: { isError?: boolean } };
 
-    expect(payload.error, "traversal must not be served").toBeTruthy();
+    expect(payload.result?.isError, "traversal must not be served").toBe(true);
     expect(resultText(payload)).not.toContain("root:");
   });
 

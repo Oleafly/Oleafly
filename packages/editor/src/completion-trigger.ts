@@ -95,7 +95,7 @@ function hasLatexCommandPrefix(text: string): boolean {
 }
 
 function trimWhitespaceBackward(text: string, cursor: number): number {
-  while (cursor > 0 && /\s/u.test(text[cursor - 1])) cursor--;
+  while (cursor > 0 && text[cursor - 1].trim() === "") cursor--;
   return cursor;
 }
 

@@ -176,9 +176,6 @@ pub async fn cancel_compile(state: State<'_, AppState>) -> Result<bool, String> 
             crate::proc::terminate_process_tree(pid).await;
             Ok(true)
         }
-        // A compile can be active before it owns a child pid. Its lifecycle
-        // retains the stop for the pending spawn; an actually idle request is
-        // ignored so it cannot poison the next compile.
         None => Ok(false),
     }
 }

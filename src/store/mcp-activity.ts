@@ -34,7 +34,7 @@ function summarizeArgs(args: Record<string, unknown>): string {
   }
 }
 
-const OMITTED_ARGUMENT_KEYS = /(?:content|code|source|data|image|base64|bytes|replace)/i;
+const OMITTED_ARGUMENT_KEYS = ["content", "code", "source", "data", "image", "base64", "bytes", "replace"];
 const MAX_ARGUMENT_KEYS = 16;
 const MAX_ARGUMENT_VALUE_CHARS = 160;
 
@@ -42,26 +42,38 @@ export function sanitizeMcpArgs(args: Record<string, unknown>): Record<string, u
   const sanitized: Record<string, unknown> = {};
   const entries = Object.entries(args ?? {}).slice(0, MAX_ARGUMENT_KEYS);
   for (const [key, value] of entries) {
-    if (typeof value === "string") {
-      sanitized[key] = /^\[omitted \d+ chars\]$/.test(value)
-        ? value
-        : OMITTED_ARGUMENT_KEYS.test(key)
-        ? `[omitted ${value.length} chars]`
-        : value.length > MAX_ARGUMENT_VALUE_CHARS
-          ? `${value.slice(0, MAX_ARGUMENT_VALUE_CHARS - 1)}…`
-          : value;
-    } else if (typeof value === "number" || typeof value === "boolean" || value == null) {
-      sanitized[key] = value;
-    } else if (Array.isArray(value)) {
-      sanitized[key] = `[${value.length} items]`;
-    } else {
-      sanitized[key] = "[object]";
-    }
+    sanitized[key] = sanitizeMcpArg(key, value);
   }
   if (Object.keys(args ?? {}).length > entries.length) {
     sanitized._truncated = true;
   }
   return sanitized;
+}
+
+function sanitizeMcpArg(key: string, value: unknown): unknown {
+  if (typeof value === "string") return sanitizeMcpString(key, value);
+  if (typeof value === "number" || typeof value === "boolean" || value == null) return value;
+  if (Array.isArray(value)) return `[${value.length} items]`;
+  return "[object]";
+}
+
+function sanitizeMcpString(key: string, value: string): string {
+  if (isOmittedMarker(value)) return value;
+  const normalizedKey = key.toLowerCase();
+  if (OMITTED_ARGUMENT_KEYS.some((candidate) => normalizedKey.includes(candidate))) {
+    return `[omitted ${value.length} chars]`;
+  }
+  return value.length > MAX_ARGUMENT_VALUE_CHARS
+    ? `${value.slice(0, MAX_ARGUMENT_VALUE_CHARS - 1)}…`
+    : value;
+}
+
+function isOmittedMarker(value: string): boolean {
+  const prefix = "[omitted ";
+  const suffix = " chars]";
+  if (!value.startsWith(prefix) || !value.endsWith(suffix)) return false;
+  const count = value.slice(prefix.length, -suffix.length);
+  return count.length > 0 && [...count].every((character) => character >= "0" && character <= "9");
 }
 
 export function formatMcpArgs(args: Record<string, unknown>): string {

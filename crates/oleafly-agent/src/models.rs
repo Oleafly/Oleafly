@@ -8,7 +8,6 @@ use crate::error::{AgentError, Result};
 use crate::provider::{Resolved, Wire};
 
 const MODEL_LIST_TIMEOUT: Duration = Duration::from_secs(60);
-/// A complete provider catalog comfortably fits below this ceiling.
 const MAX_MODEL_BODY_BYTES: usize = 8 * 1024 * 1024;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

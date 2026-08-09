@@ -1,4 +1,4 @@
-import { create } from "zustand";
+import { create, type StoreApi } from "zustand";
 import {
   createFile as apiCreateFile,
   copyFile as apiCopyFile,
@@ -31,6 +31,7 @@ import {
   type FileConflictStrategy,
   type FileEntry,
   type ProjectInfo,
+  type ProjectMeta,
   type ProjectStateChanged,
   type DocumentEngineDescriptor,
   type TexFlavor,
@@ -385,6 +386,240 @@ function enqueueProjectTransition<T>(operation: () => Promise<T>): Promise<T> {
   return queued;
 }
 
+async function scanOpenProjectCompatibility(
+  id: string,
+  meta: ProjectMeta,
+  tree: FileEntry[],
+  seq: number,
+  get: () => FilesStore,
+): Promise<void> {
+  try {
+    if (get().engine.id === "latexmk") {
+      await checkTexPinStatus(id, () => seq === openSeq && get().projectId === id);
+      return;
+    }
+    const { texFiles, latexmkrc } = await loadCompatibilityInputs(id, meta, tree, seq, get);
+    if (seq !== openSeq) return;
+    const findings = scanImportCompatibility({ texFiles, latexmkrc });
+    showCompatibilityFindings(id, findings, get);
+  } catch {
+    return;
+  }
+}
+
+async function loadCompatibilityInputs(
+  id: string,
+  meta: ProjectMeta,
+  tree: FileEntry[],
+  seq: number,
+  get: () => FilesStore,
+) {
+  const mainPath = meta.main_doc || "main.tex";
+  const depth = (path: string) => path.split("/").length;
+  const texPaths = tree
+    .filter((entry) => !entry.is_dir && isTexSourcePath(entry.path))
+    .map((entry) => entry.path)
+    .sort((left, right) =>
+      left === mainPath ? -1 : right === mainPath ? 1 : depth(left) - depth(right),
+    )
+    .slice(0, 40);
+  const texFiles: Array<{ path: string; content: string }> = [];
+  for (const path of texPaths) {
+    const content = get().files[path]?.content ?? (await readFileContent(id, path).catch(() => ""));
+    if (seq !== openSeq) break;
+    if (content) texFiles.push({ path, content });
+  }
+  const rcName = ["latexmkrc", ".latexmkrc"].find((name) =>
+    tree.some((entry) => !entry.is_dir && entry.path === name),
+  );
+  const latexmkrc = rcName ? await readFileContent(id, rcName).catch(() => null) : null;
+  return { texFiles, latexmkrc };
+}
+
+function isTexSourcePath(path: string): boolean {
+  const extension = path.slice(path.lastIndexOf(".") + 1).toLowerCase();
+  return extension === "tex" || extension === "ltx" || extension === "latex";
+}
+
+function showCompatibilityFindings(
+  id: string,
+  findings: ReturnType<typeof scanImportCompatibility>,
+  get: () => FilesStore,
+): void {
+  if (findings.length === 0 || get().engine.id === "latexmk" || engineHintDismissed(id, findings)) {
+    return;
+  }
+  const blockers = findings.filter((finding) => finding.level === "blocker");
+  if (blockers.length > 0) {
+    const extra = blockers.length > 1 ? ` (+${blockers.length - 1} more)` : "";
+    toast.info(
+      `${blockers[0].title}${extra}`,
+      {
+        label: "Choose engine…",
+        onClick: () => useEnginePickerStore.getState().openPicker("project-open", findings),
+      },
+      true,
+    );
+    return;
+  }
+  showCompatibilityWarnings(id, findings.filter((finding) => finding.level === "warning"));
+}
+
+function showCompatibilityWarnings(
+  id: string,
+  warnings: ReturnType<typeof scanImportCompatibility>,
+): void {
+  if (warnings.length === 0) return;
+  if (warnings.length === 1 && warnings[0].id === "biblatex-biber") {
+    toast.info("This project uses biblatex/Biber for the bibliography.");
+  } else {
+    const plural = warnings.length === 1 ? "" : "s";
+    const extra = warnings.length > 1 ? ` (+${warnings.length - 1} more)` : "";
+    toast.info(`${warnings.length} import note${plural}: ${warnings[0].title}${extra}`);
+  }
+  dismissEngineHint(id, warnings);
+}
+
+type FilesSet = StoreApi<FilesStore>["setState"];
+type FilesGet = StoreApi<FilesStore>["getState"];
+
+async function prepareProjectSwitch(
+  shouldContinue: () => boolean,
+  set: FilesSet,
+  get: FilesGet,
+): Promise<{ previousProjectId: string | null } | null> {
+  if (!shouldContinue()) return null;
+  const previousProjectId = get().projectId;
+  if (previousProjectId) {
+    set({ loading: true });
+    try {
+      await flushDirtyBuffers(previousProjectId, get);
+    } catch (error) {
+      set({ loading: false });
+      notifyError(
+        "save before switching projects",
+        error,
+        "The project stayed open because one or more files could not be saved.",
+      );
+      return null;
+    }
+    flushAutoCommit();
+  }
+  if (!shouldContinue()) {
+    set({ loading: false });
+    return null;
+  }
+  await mcpSetActiveProject(null).catch(() => {});
+  if (shouldContinue()) return { previousProjectId };
+  await mcpSetActiveProject(previousProjectId).catch(() => {});
+  set({ loading: false });
+  return null;
+}
+
+function beginProjectOpen(id: string, shouldContinue: () => boolean, set: FilesSet, get: FilesGet) {
+  const seq = ++openSeq;
+  invalidateAllPendingFileOpens();
+  mainDocSeq++;
+  cancelPendingAutosave();
+  cancelProofreading("source");
+  cancelProofreading("visual");
+  resetMutationGeneration(id);
+  set({ ...EMPTY_PROJECT_STATE, loading: true, projectId: id });
+  const revision = lastProjectStateRevision;
+  let reopenQueued = false;
+  const superseded = () => {
+    if (seq !== openSeq) return true;
+    if (lastProjectStateRevision === revision) return false;
+    if (!reopenQueued) {
+      reopenQueued = true;
+      void get().openProject(id, shouldContinue);
+    }
+    return true;
+  };
+  return { seq, superseded };
+}
+
+async function loadOpenedProject(
+  id: string,
+  seq: number,
+  superseded: () => boolean,
+  set: FilesSet,
+  get: FilesGet,
+): Promise<void> {
+  const [meta, generation] = await Promise.all([getProject(id), projectMutationGeneration(id)]);
+  if (superseded()) return;
+  rememberMutationGeneration(id, generation);
+  await mcpSetActiveProject(id).catch(() => {});
+  if (superseded()) return;
+  const tree = await listFiles(id);
+  if (superseded()) return;
+  set({ projectName: meta.name, projectKind: meta.kind ?? "", mainDoc: meta.main_doc, tree });
+  await loadOpenedProjectEngine(id, superseded, set);
+  if (superseded()) return;
+  await preloadBibliographies(id, tree, superseded, set);
+  await get().openFile(meta.main_doc || "main.tex");
+  if (superseded()) return;
+  if (seq === openSeq) void scanOpenProjectCompatibility(id, meta, tree, seq, get);
+}
+
+async function loadOpenedProjectEngine(
+  id: string,
+  superseded: () => boolean,
+  set: FilesSet,
+): Promise<void> {
+  try {
+    const engine = await getProjectEngine(id);
+    if (!superseded()) set({ engine, engineLoaded: true, engineError: null });
+  } catch (error) {
+    if (superseded()) return;
+    const message = "Document engine details could not be loaded. Engine-specific actions are disabled.";
+    set({ engine: UNKNOWN_ENGINE, engineLoaded: false, engineError: message });
+    notifyError("load document engine", error, message);
+  }
+}
+
+async function preloadBibliographies(
+  id: string,
+  tree: FileEntry[],
+  superseded: () => boolean,
+  set: FilesSet,
+): Promise<void> {
+  const bibliographies = tree.filter((entry) => !entry.is_dir && entry.path.endsWith(".bib"));
+  for (const bibliography of bibliographies) {
+    try {
+      const content = await readFileContent(id, bibliography.path);
+      if (superseded()) return;
+      set((state) => ({
+        files: { ...state.files, [bibliography.path]: { content, dirty: false } },
+      }));
+    } catch {
+    }
+  }
+}
+
+async function openProjectTransition(
+  id: string,
+  shouldContinue: () => boolean,
+  set: FilesSet,
+  get: FilesGet,
+): Promise<void> {
+  const prepared = await prepareProjectSwitch(shouldContinue, set, get);
+  if (!prepared) return;
+  const { seq, superseded } = beginProjectOpen(id, shouldContinue, set, get);
+  try {
+    await loadOpenedProject(id, seq, superseded, set, get);
+  } catch (error) {
+    if (seq === openSeq) {
+      await mcpSetActiveProject(null).catch(() => {});
+      resetMutationGeneration();
+      set(EMPTY_PROJECT_STATE);
+      notifyError("open project", error, "Could not open the project. See the app log for details.");
+    }
+  } finally {
+    if (seq === openSeq) set({ loading: false });
+  }
+}
+
 const EMPTY_PROJECT_STATE = {
   projectId: null,
   projectName: "",
@@ -431,207 +666,8 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     set({ projects, projectsLoaded: true });
   },
 
-  openProject: (id, shouldContinue = () => true) => enqueueProjectTransition(async () => {
-    if (!shouldContinue()) return;
-    const previousProjectId = get().projectId;
-    if (previousProjectId) {
-      set({ loading: true });
-      try {
-        await flushDirtyBuffers(previousProjectId, get);
-      } catch (error) {
-        set({ loading: false });
-        notifyError(
-          "save before switching projects",
-          error,
-          "The project stayed open because one or more files could not be saved.",
-        );
-        return;
-      }
-      flushAutoCommit();
-    }
-
-    if (!shouldContinue()) {
-      set({ loading: false });
-      return;
-    }
-
-    await mcpSetActiveProject(null).catch(() => {});
-    if (!shouldContinue()) {
-      await mcpSetActiveProject(previousProjectId).catch(() => {});
-      set({ loading: false });
-      return;
-    }
-
-    const seq = ++openSeq;
-    invalidateAllPendingFileOpens();
-    mainDocSeq++;
-    cancelPendingAutosave();
-    // Project identity is a hard proofreading boundary. Clear both surfaces
-    // synchronously with the store transition rather than waiting for React
-    // editor effects, which may run after a fast library -> project reopen and
-    // leave the previous project's authoritative result visible.
-    cancelProofreading("source");
-    cancelProofreading("visual");
-    resetMutationGeneration(id);
-    set({
-      loading: true,
-      projectId: id,
-      projectName: "",
-      projectKind: "",
-      mainDoc: "main.tex",
-      engine: UNKNOWN_ENGINE,
-      engineLoaded: false,
-      engineError: null,
-      tree: [],
-      files: {},
-      openTabs: [],
-      tabOrder: {},
-      activePath: null,
-    });
-    const projectStateRevisionAtOpen = lastProjectStateRevision;
-    let reopenQueued = false;
-    const stopForNewerProjectState = () => {
-      if (seq !== openSeq) return true;
-      if (lastProjectStateRevision === projectStateRevisionAtOpen) return false;
-      if (!reopenQueued) {
-        reopenQueued = true;
-        void get().openProject(id, shouldContinue);
-      }
-      return true;
-    };
-    try {
-      const [meta, generation] = await Promise.all([
-        getProject(id),
-        projectMutationGeneration(id),
-      ]);
-      if (stopForNewerProjectState()) return;
-      rememberMutationGeneration(id, generation);
-      await mcpSetActiveProject(id).catch(() => {});
-      if (stopForNewerProjectState()) return;
-      const tree = await listFiles(id);
-      if (stopForNewerProjectState()) return;
-      set({ projectName: meta.name, projectKind: meta.kind ?? "", mainDoc: meta.main_doc, tree });
-      try {
-        const engine = await getProjectEngine(id);
-        if (stopForNewerProjectState()) return;
-        set({ engine, engineLoaded: true, engineError: null });
-      } catch (error) {
-        if (stopForNewerProjectState()) return;
-        const message = "Document engine details could not be loaded. Engine-specific actions are disabled.";
-        set({ engine: UNKNOWN_ENGINE, engineLoaded: false, engineError: message });
-        notifyError("load document engine", error, message);
-      }
-      // Preload .bib files so citation autocomplete works.
-      const bibs = tree.filter((f) => !f.is_dir && f.path.endsWith(".bib"));
-      for (const b of bibs) {
-        try {
-          const content = await readFileContent(id, b.path);
-          if (stopForNewerProjectState()) return;
-          set((s) => ({
-            files: { ...s.files, [b.path]: { content, dirty: false } },
-          }));
-        } catch {
-          /* ignore unreadable bib */
-        }
-      }
-      await get().openFile(meta.main_doc || "main.tex");
-      if (stopForNewerProjectState()) return;
-      // Overleaf-import compatibility: surface known tool gaps early (biblatex,
-      // minted, glossaries, …) so compile failures are less mysterious. Scans
-      // the whole tree (bounded), not just the main document — Overleaf projects
-      // routinely keep the preamble in a file the main doc \inputs.
-      // Fire-and-forget: the scan reads files over IPC and must never delay
-      // the project becoming interactive. `seq` guards every state touch.
-      if (seq === openSeq) {
-        void (async () => {
-        try {
-          // latexmk projects already have the full toolchain; instead of the
-          // import scan, check this machine against the project's TeX pin so
-          // coauthors get the same packages (and know about distro skew).
-          if (get().engine.id === "latexmk") {
-            await checkTexPinStatus(id, () => seq === openSeq && get().projectId === id);
-            return;
-          }
-          const mainPath = meta.main_doc || "main.tex";
-          const depth = (p: string) => p.split("/").length;
-          const texPaths = tree
-            .filter((f) => !f.is_dir && /\.(tex|ltx|latex)$/i.test(f.path))
-            .map((f) => f.path)
-            .sort((a, b) =>
-              a === mainPath ? -1 : b === mainPath ? 1 : depth(a) - depth(b),
-            )
-            .slice(0, 40); // scanner input is capped anyway; keep IPC bounded
-          const texFiles: Array<{ path: string; content: string }> = [];
-          for (const path of texPaths) {
-            const content =
-              get().files[path]?.content ??
-              (await readFileContent(id, path).catch(() => ""));
-            if (seq !== openSeq) return;
-            if (content) texFiles.push({ path, content });
-          }
-          const rcName = ["latexmkrc", ".latexmkrc"].find((name) =>
-            tree.some((f) => !f.is_dir && f.path === name),
-          );
-          const latexmkrc = rcName
-            ? await readFileContent(id, rcName).catch(() => null)
-            : null;
-          if (seq !== openSeq) return;
-          const findings = scanImportCompatibility({ texFiles, latexmkrc });
-          // A latexmk project already has the full toolchain; nothing to say.
-          // A previously acknowledged set of findings stays quiet too — the
-          // hint returns only when a new gap appears.
-          if (
-            findings.length > 0 &&
-            get().engine.id !== "latexmk" &&
-            !engineHintDismissed(id, findings)
-          ) {
-            const blockers = findings.filter((f) => f.level === "blocker");
-            const warnings = findings.filter((f) => f.level === "warning");
-            if (blockers.length > 0) {
-              const extra = blockers.length > 1 ? ` (+${blockers.length - 1} more)` : "";
-              toast.info(
-                `${blockers[0].title}${extra}`,
-                {
-                  label: "Choose engine…",
-                  onClick: () =>
-                    useEnginePickerStore
-                      .getState()
-                      .openPicker("project-open", findings),
-                },
-                true,
-              );
-            } else if (warnings.length > 0) {
-              if (warnings.some((f) => f.id === "biblatex-biber") && warnings.length === 1) {
-                toast.info("This project uses biblatex/Biber for the bibliography.");
-              } else {
-                toast.info(
-                  `${warnings.length} import note${warnings.length === 1 ? "" : "s"}: ${warnings[0].title}${
-                    warnings.length > 1 ? ` (+${warnings.length - 1} more)` : ""
-                  }`,
-                );
-              }
-              // Plain notes need no decision; showing them once is enough.
-              dismissEngineHint(id, warnings);
-            }
-          }
-        } catch {
-          /* scan is best-effort */
-        }
-        })();
-      }
-    } catch (e) {
-      // Surface the failure and fall back to the library rather than leaving the
-      // app wedged in a half-open project with an empty tree.
-      if (seq === openSeq) {
-        await mcpSetActiveProject(null).catch(() => {});
-        resetMutationGeneration();
-        set(EMPTY_PROJECT_STATE);
-        notifyError("open project", e, "Could not open the project. See the app log for details.");
-      }
-    } finally {
-      if (seq === openSeq) set({ loading: false });
-    }
-  }),
+  openProject: (id, shouldContinue = () => true) =>
+    enqueueProjectTransition(() => openProjectTransition(id, shouldContinue, set, get)),
 
   closeProject: () => enqueueProjectTransition(async () => {
     const projectId = get().projectId;

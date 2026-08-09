@@ -50,6 +50,66 @@ function recordMutationResult(projectId: string, result: unknown): void {
   }
 }
 
+function mutationAllowed(
+  projectId: string,
+  allowed: () => boolean,
+): boolean {
+  return useFilesStore.getState().projectId === projectId && allowed();
+}
+
+async function currentDiskContent(projectId: string, path: string): Promise<string> {
+  const cached = useFilesStore.getState().files[path]?.content;
+  return cached ?? readFileContent(projectId, path);
+}
+
+const insertAtCursorHost: AiToolsHost["insertAtCursor"] = async (
+  projectId,
+  text,
+  allowed = () => true,
+) => {
+  if (!mutationAllowed(projectId, allowed)) return false;
+  if (getEditorView()) {
+    insertAtCursor(text);
+    return true;
+  }
+  const files = useFilesStore.getState();
+  const path = files.activePath || files.mainDoc || "main.tex";
+  const expectedGeneration = await files.prepareExternalMutation(projectId);
+  const current = await currentDiskContent(projectId, path);
+  if (!mutationAllowed(projectId, allowed)) return false;
+  const documentEnd = current.lastIndexOf("\\end{document}");
+  const at = documentEnd >= 0 ? documentEnd : current.length;
+  const next = `${current.slice(0, at)}${text}\n${current.slice(at)}`;
+  const result = await writeFileContent(projectId, path, next, expectedGeneration);
+  recordMutationResult(projectId, result);
+  return useFilesStore.getState().applyExternalWrite(projectId, path, next);
+};
+
+const replaceRangeHost: AiToolsHost["replaceRange"] = async (
+  projectId,
+  from,
+  to,
+  text,
+  allowed = () => true,
+) => {
+  if (!mutationAllowed(projectId, allowed)) return false;
+  if (getEditorView()) {
+    replaceRangeInEditor(from, to, text);
+    return true;
+  }
+  const files = useFilesStore.getState();
+  const path = files.activePath || files.mainDoc || "main.tex";
+  const expectedGeneration = await files.prepareExternalMutation(projectId);
+  const current = await currentDiskContent(projectId, path);
+  if (!mutationAllowed(projectId, allowed)) return false;
+  const start = Math.max(0, Math.min(from, current.length));
+  const end = Math.max(start, Math.min(to, current.length));
+  const next = `${current.slice(0, start)}${text}${current.slice(end)}`;
+  const result = await writeFileContent(projectId, path, next, expectedGeneration);
+  recordMutationResult(projectId, result);
+  return useFilesStore.getState().applyExternalWrite(projectId, path, next);
+};
+
 const HOST: AiToolsHost = {
   getProjectId: () => useFilesStore.getState().projectId,
   readFileContent,
@@ -84,8 +144,6 @@ const HOST: AiToolsHost = {
   },
   listFiles,
   searchProject,
-  // NB: the figure-pipeline services are referenced lazily (arrow wrappers)
-  // so test mocks of @/lib/tauri that omit them don't fail at module init.
   readProjectBytes: (projectId, path) => readProjectBytes(projectId, path),
   writeProjectBytes: async (projectId, relPath, b64, expectedGeneration) => {
     const result = await writeProjectBytes(projectId, relPath, b64, expectedGeneration);
@@ -157,45 +215,8 @@ const HOST: AiToolsHost = {
   setLastFigurePreview,
   getLastFigurePreview,
   getFigureInsertTarget,
-  insertAtCursor: async (projectId, text, mutationAllowed = () => true) => {
-    if (useFilesStore.getState().projectId !== projectId) return false;
-    if (!mutationAllowed()) return false;
-    if (getEditorView()) {
-      insertAtCursor(text);
-      return true;
-    }
-    const files = useFilesStore.getState();
-    const path = files.activePath || files.mainDoc || "main.tex";
-    const expectedGeneration = await files.prepareExternalMutation(projectId);
-    const current = files.files[path]?.content ?? (await readFileContent(projectId, path));
-    if (useFilesStore.getState().projectId !== projectId || !mutationAllowed()) return false;
-    const documentEnd = current.lastIndexOf("\\end{document}");
-    const at = documentEnd >= 0 ? documentEnd : current.length;
-    const next = `${current.slice(0, at)}${text}\n${current.slice(at)}`;
-    const result = await writeFileContent(projectId, path, next, expectedGeneration);
-    recordMutationResult(projectId, result);
-    return useFilesStore.getState().applyExternalWrite(projectId, path, next);
-  },
-  replaceRange: async (projectId, from, to, text, mutationAllowed = () => true) => {
-    if (useFilesStore.getState().projectId !== projectId) return false;
-    if (!mutationAllowed()) return false;
-    if (getEditorView()) {
-      replaceRangeInEditor(from, to, text);
-      return true;
-    }
-    const files = useFilesStore.getState();
-    const path = files.activePath || files.mainDoc || "main.tex";
-    if (!path) return false;
-    const expectedGeneration = await files.prepareExternalMutation(projectId);
-    const current = files.files[path]?.content ?? (await readFileContent(projectId, path));
-    if (useFilesStore.getState().projectId !== projectId || !mutationAllowed()) return false;
-    const start = Math.max(0, Math.min(from, current.length));
-    const end = Math.max(start, Math.min(to, current.length));
-    const next = `${current.slice(0, start)}${text}${current.slice(end)}`;
-    const result = await writeFileContent(projectId, path, next, expectedGeneration);
-    recordMutationResult(projectId, result);
-    return useFilesStore.getState().applyExternalWrite(projectId, path, next);
-  },
+  insertAtCursor: insertAtCursorHost,
+  replaceRange: replaceRangeHost,
   getAgentTodos: () => useAgentTodoStore.getState().todos,
   setAgentTodos: (todos) =>
     useAgentTodoStore.getState().setTodos(

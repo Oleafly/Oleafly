@@ -15,10 +15,6 @@ use crate::tinytex_archive::{ArchiveFormat, ArchiveMemberPolicy};
 use std::path::{Path, PathBuf};
 
 /// Pinned rstudio/tinytex-releases tag. A fixed monthly release, never the
-/// moving "daily" tag, gives each Oleafly version a reproducible TeX Live
-/// snapshot. GitHub release assets are still mutable, so `tinytex_asset_for`
-/// also pins the reviewed byte count and SHA-256. To bump: pick the newest
-/// vYYYY.MM tag, confirm every asset, and update all three values together.
 const TINYTEX_TAG: &str = "v2026.08";
 
 #[derive(Clone, serde::Serialize)]
@@ -88,9 +84,6 @@ where
     Ok((bytes, truncated))
 }
 
-/// Run a TeX utility without allowing a hung executable or unbounded output to
-/// occupy a runtime worker forever. Timeout kills the isolated process tree;
-/// `kill_on_drop` also stops the leader if the async request is cancelled.
 async fn run_tex_utility(
     program: &Path,
     args: &[String],
@@ -360,13 +353,7 @@ async fn engine_info_for_lualatex(lualatex: PathBuf, kind: &str) -> Option<Engin
     engine_info_for_lualatex_unlocked(lualatex, kind).await
 }
 
-/// Locate a usable LuaLaTeX and its sibling `tlmgr` in the same system-first
-/// order as normal latexmk compilation. A broken earlier candidate is skipped
-/// after an execution probe rather than hiding a usable later distribution.
 async fn find_engine() -> EngineInfo {
-    // Recovery renames the backup into the managed destination. Serialize that
-    // mutation with install publication and deletion; status polling must never
-    // restore a backup between either operation's filesystem steps.
     if let Ok(_recovery) = TinytexMutationGuard::acquire_maintenance() {
         if let Ok(_runtime) = acquire_tex_runtime_write() {
             let _ = recover_interrupted_publish();
@@ -426,13 +413,8 @@ pub fn confirm_quit_during_install(app: tauri::AppHandle) {
     app.exit(0);
 }
 
-/// Exclusively owns the managed TinyTeX tree. Installation and deletion share
-/// this guard so neither can remove the other's download, staging, backup, or
-/// published directory. Only an installation marks the quit-interception flag.
 struct TinytexMutationGuard {
     installing: bool,
-    // The OS lock makes the transaction exclusive across independently
-    // launched Oleafly processes, not only across windows in this process.
     process_lock: Option<TinytexProcessLock>,
 }
 
@@ -441,11 +423,6 @@ struct TinytexProcessLock {
     file: std::fs::File,
 }
 
-/// Shared by every process that executes a host TeX distribution. Compiles and
-/// package queries take a shared lock for their complete workflow; package
-/// mutations and managed-distribution publication/deletion take the exclusive
-/// side. This is separate from the long-lived TinyTeX install lock so
-/// downloading/extracting a sibling staging tree does not block compilation.
 #[derive(Debug)]
 pub(crate) struct TexRuntimeLock {
     file: std::fs::File,
@@ -564,9 +541,6 @@ impl TinytexMutationGuard {
 
 impl Drop for TinytexMutationGuard {
     fn drop(&mut self) {
-        // Release the cross-process lock before advertising in-process
-        // availability, so a waiting local request cannot observe a false
-        // "another process" conflict during field destruction.
         drop(self.process_lock.take());
         if self.installing {
             INSTALL_ACTIVE.store(false, Ordering::SeqCst);
@@ -904,10 +878,6 @@ fn recover_interrupted_publish() -> Result<(), String> {
     match (destination_exists, backup_exists) {
         (false, true) => std::fs::rename(&backup, &destination)
             .map_err(|e| format!("failed to recover the previous TinyTeX install: {e}")),
-        // Staging is fully executable-validated before its pinned completion
-        // marker is written. If both paths survive a crash, that marker tells
-        // recovery whether publication reached the validated candidate or the
-        // destination must roll back to the known previous tree.
         (true, true) => {
             match tinytex_asset().and_then(|asset| validate_install_marker(&destination, &asset)) {
                 Ok(()) => finalize_published_tinytex(&destination),
@@ -918,13 +888,6 @@ fn recover_interrupted_publish() -> Result<(), String> {
     }
 }
 
-/// The pinned download metadata for one supported platform.
-///
-/// Versioned releases name their assets `TinyTeX-<tag>.zip` (Windows x86_64),
-/// `TinyTeX-<tag>.tgz` (macOS universal binaries), and
-/// `TinyTeX-<tag>.tar.gz` (Linux x86_64). Upstream publishes Linux ARM64 as a
-/// separately named XZ asset. Every entry below pins a reviewed size and digest
-/// instead of trusting the mutable GitHub release tag.
 fn tinytex_asset_for(os: &str, arch: &str) -> Result<TinytexAsset, String> {
     let base =
         format!("https://github.com/rstudio/tinytex-releases/releases/download/{TINYTEX_TAG}");
@@ -1003,9 +966,6 @@ fn tinytex_asset() -> Result<TinytexAsset, String> {
     tinytex_asset_for(std::env::consts::OS, std::env::consts::ARCH)
 }
 
-/// Verify the archive before parsing or executing any content. The GitHub tag
-/// itself is mutable, so both the exact byte count and SHA-256 are compiled into
-/// the app and must match the reviewed release asset.
 fn verify_tinytex_archive(path: &Path, asset: &TinytexAsset) -> Result<(), String> {
     use sha2::{Digest, Sha256};
     use std::io::Read as _;
@@ -1371,12 +1331,6 @@ async fn install_prepared_tinytex(
     installed
 }
 
-/// Download and install TinyTeX on demand under `~/.oleafly/tinytex`.
-///
-/// Emits phased `tinytex-install-progress` events (download / extract /
-/// packages). The download resumes from a previous partial file (HTTP Range),
-/// including across app launches after a force-quit. On failure the partial
-/// file is kept so Retry continues instead of starting over.
 #[tauri::command]
 pub async fn install_tinytex(
     app: tauri::AppHandle,
@@ -1432,8 +1386,6 @@ fn tlmgr_path() -> Result<String, String> {
         })
 }
 
-/// Names of installed TeX packages (via `tlmgr info --only-installed`). The
-/// subprocess is asynchronous, output-bounded, and time-bounded.
 #[tauri::command]
 pub async fn tlmgr_installed() -> Result<Vec<String>, String> {
     let tlmgr = tlmgr_path()?;
@@ -1464,12 +1416,6 @@ async fn tlmgr_installed_at(tlmgr: &str) -> Result<Vec<String>, String> {
         .collect())
 }
 
-/// Query package versions using an explicitly selected distribution's tlmgr.
-/// Callers that already resolved the active compiler use this to keep the
-/// compiler, distribution label, and package inventory from different trees
-/// from being mixed together. `cat-version` is the CTAN version where the
-/// catalogue has one, "installed" otherwise; `revision`/`lrev` are not valid
-/// `--data` fields on TeX Live 2025's tlmgr.
 pub async fn tlmgr_installed_versions_at(
     tlmgr: &str,
 ) -> Result<std::collections::BTreeMap<String, String>, String> {
@@ -1561,8 +1507,6 @@ async fn tlmgr_mutate_synchronized(
         return Ok(String::new());
     }
     validate_package_names(&packages)?;
-    // Package database mutations can change files used by either compile lane
-    // and must not overlap another Oleafly process's install/remove operation.
     let _mutation = TinytexMutationGuard::acquire_maintenance()?;
     let _compile = state.compile_lock.lock().await;
     let _figure_compile = state.figure_compile_lock.lock().await;
@@ -1608,8 +1552,6 @@ fn tagged_lualatex_args(out_dir: &str, main_doc: &str) -> Vec<String> {
     ]
 }
 
-/// Clears the shared stop flag/pid on every tagged-compile exit path, including
-/// discovery and spawn failures before the normal result path is reached.
 struct TaggedCancelGuard<'a> {
     cancel: &'a crate::state::CompileCancel,
     active: bool,
@@ -1652,8 +1594,6 @@ pub async fn compile_tagged(
     // This writes the same build outputs (`_oleafly_entry.pdf`, etc.) as
     // `compile_project`, which serializes on `compile_lock`. Hold that same lock
     // for the whole run so a Tectonic and a LuaLaTeX compile can't clobber each
-    // other's outputs. The guard is held until the end of this function across
-    // both supervised process awaits.
     let _guard = state.compile_lock.lock().await;
     let cancel_guard = TaggedCancelGuard::new(&state.compile_cancel);
 
@@ -1906,7 +1846,6 @@ mod tests {
             assert_eq!(asset.expected_expanded_bytes, expected_expanded_bytes);
             assert_eq!(asset.expected_manifest_sha256, expected_manifest_sha256);
         }
-        // The macOS archive contains universal binaries and supports Intel too.
         assert_eq!(
             tinytex_asset_for("macos", "x86_64").unwrap().format,
             ArchiveFormat::TarGz
@@ -2181,8 +2120,6 @@ mod tests {
         std::fs::remove_dir_all(root).unwrap();
     }
 
-    // Held across awaits deliberately: every test which overrides the process-
-    // global data root shares this lock.
     #[test]
     fn tinytex_filesystem_lock_excludes_another_process_handle() {
         let _env_guard = crate::paths::data_dir_env_lock();
@@ -2231,8 +2168,6 @@ mod tests {
         std::fs::remove_dir_all(data).unwrap();
     }
 
-    // Held across awaits deliberately: every test which overrides the process-
-    // global data root shares this lock.
     #[allow(clippy::await_holding_lock)]
     #[tokio::test]
     async fn tinytex_delete_cannot_race_an_active_install() {

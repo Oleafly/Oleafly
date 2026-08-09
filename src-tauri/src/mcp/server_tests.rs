@@ -48,8 +48,6 @@ fn constant_time_eq_basics() {
 
 #[test]
 fn origin_header_is_rejected() {
-    // Native MCP clients send no Origin; browsers always do. Rejecting
-    // every Origin blocks DNS-rebinding and hostile-page fetches.
     assert!(origin_allowed(&h(&[])));
     assert!(!origin_allowed(&h(&[("origin", "https://evil.example")])));
     assert!(!origin_allowed(&h(&[("origin", "http://127.0.0.1:5323")])));
@@ -88,24 +86,20 @@ fn unreadable_configuration_disables_every_mutating_tool() {
 fn readiness_waits_for_both_start_and_nonempty_registration_in_either_order() {
     let epoch = 7;
 
-    // Registration arrives before the listener.
     assert_eq!(publication_candidate(None, true, true, 0), None);
     assert_eq!(
         publication_candidate(Some(epoch), true, true, 0),
         Some(epoch)
     );
 
-    // The listener arrives before registration.
     assert_eq!(publication_candidate(Some(epoch), false, true, 0), None);
     assert_eq!(
         publication_candidate(Some(epoch), true, true, 0),
         Some(epoch)
     );
 
-    // A stale renderer lease never publishes a retained registry.
     assert_eq!(publication_candidate(Some(epoch), true, false, 0), None);
 
-    // Publication is single-shot within one epoch.
     assert_eq!(publication_candidate(Some(epoch), true, true, epoch), None);
 }
 
@@ -381,36 +375,10 @@ fn abandoned_and_timed_out_calls_emit_exact_cancellation_metadata() {
     activate_test_renderer(&state, 60);
     let cancellations = Arc::new(std::sync::Mutex::new(Vec::new()));
 
-    let disconnected_events = Arc::clone(&cancellations);
-    let (_, disconnected) = register_pending(
-        &state,
-        6,
-        60,
-        |_| Ok(()),
-        Some(Box::new(move |call_id, epoch, reason| {
-            disconnected_events
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner())
-                .push((call_id, epoch, reason));
-        })),
-    )
-    .expect("disconnected call registration");
+    let disconnected = cancellation_registration(&state, Arc::clone(&cancellations));
     drop(disconnected);
 
-    let timeout_events = Arc::clone(&cancellations);
-    let (_, mut timed_out) = register_pending(
-        &state,
-        6,
-        60,
-        |_| Ok(()),
-        Some(Box::new(move |call_id, epoch, reason| {
-            timeout_events
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner())
-                .push((call_id, epoch, reason));
-        })),
-    )
-    .expect("timed out call registration");
+    let mut timed_out = cancellation_registration(&state, Arc::clone(&cancellations));
     timed_out.mark_timed_out();
     drop(timed_out);
 
@@ -433,6 +401,28 @@ fn abandoned_and_timed_out_calls_emit_exact_cancellation_metadata() {
         })
     );
     assert!(lock_pending(&state).is_empty());
+}
+
+type CancellationEvents = Arc<std::sync::Mutex<Vec<(u64, u64, &'static str)>>>;
+
+fn cancellation_registration<'a>(
+    state: &'a McpState,
+    events: CancellationEvents,
+) -> PendingRegistration<'a> {
+    let (_, registration) = register_pending(
+        state,
+        6,
+        60,
+        |_| Ok(()),
+        Some(Box::new(move |call_id, epoch, reason| {
+            events
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .push((call_id, epoch, reason));
+        })),
+    )
+    .expect("call registration");
+    registration
 }
 
 #[test]

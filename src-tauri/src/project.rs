@@ -85,9 +85,6 @@ pub struct ProjectMeta {
     /// source, which stays the default.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tex_flavor: Option<String>,
-    /// Hydrated view of device-local consent for this project identity. The
-    /// value is deliberately stripped from project.json before every write;
-    /// project content, Git, imports, AI tools, and MCP cannot grant trust.
     #[serde(default)]
     pub allow_shell_escape: bool,
     /// Book-cover color (hex). Empty means "unset" so the UI falls back to its
@@ -106,9 +103,6 @@ pub struct ProjectMeta {
     pub forked_from: Option<String>,
 }
 
-/// Backend-authoritative cross-window snapshot after metadata, trust, or
-/// worktree changes. `revision` is process-wide and monotonic; renderers must
-/// ignore older payloads/refresh completions.
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectStateChanged {
@@ -148,9 +142,6 @@ pub(crate) fn publish_project_state_changed(
         project,
         engine,
     };
-    // A state mutation is already committed; an event delivery failure must
-    // not falsely report that it did not happen. The invoking window also gets
-    // the command response, while other windows reconcile on the next event.
     let _ = app.emit("project-state-changed", &payload);
     Ok(payload)
 }
@@ -169,8 +160,6 @@ fn shell_escape_trust_path(project_id: &str) -> Result<PathBuf, String> {
     Ok(paths::shell_escape_trust_root()?.join(format!("{project_id}.json")))
 }
 
-/// Bind consent to both the canonical project path and its filesystem object.
-/// A directory removed/recreated under the same slug must not inherit trust.
 fn shell_escape_project_identity(project_id: &str) -> Result<String, String> {
     use sha2::{Digest, Sha256};
 
@@ -367,9 +356,6 @@ impl RenameFileResult {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub struct FileMutationResult {
-    /// Monotonic project mutation watermark. A renderer may pass this back as
-    /// `expectedGeneration` to reject an edit based on an older overlapping
-    /// file/subtree state.
     pub generation: u64,
 }
 
@@ -439,8 +425,6 @@ pub fn read_meta(project_id: &str) -> Result<ProjectMeta, String> {
         meta.engine = default_engine();
     }
     normalize_loaded_tex_flavor(&mut meta)?;
-    // Never accept this capability bit from project.json. Only the matching
-    // device-local record for the current directory identity is authoritative.
     meta.allow_shell_escape =
         meta.engine == "latexmk" && shell_escape_trusted(project_id).unwrap_or(false);
     Ok(meta)
@@ -448,9 +432,6 @@ pub fn read_meta(project_id: &str) -> Result<ProjectMeta, String> {
 
 fn normalize_loaded_tex_flavor(meta: &mut ProjectMeta) -> Result<(), String> {
     if meta.engine != "latexmk" {
-        // Older versions could leave a stale compiler pin behind when changing
-        // engines. It was never actionable off latexmk, so clear it to keep
-        // legacy projects open and make the descriptor match the compiler.
         meta.tex_flavor = None;
         meta.allow_shell_escape = false;
         return Ok(());
@@ -486,8 +467,6 @@ pub(crate) fn ensure_compile_meta_unchanged(
 }
 
 fn write_meta_at(path: &Path, meta: &ProjectMeta) -> Result<(), String> {
-    // Device trust is not project data. Always strip the hydrated view before
-    // persisting metadata, even when a caller passes a trusted ProjectMeta.
     let mut disk_meta = serde_json::to_value(meta).map_err(|e| e.to_string())?;
     disk_meta
         .as_object_mut()
@@ -674,9 +653,6 @@ fn bounded_list_walk(
     Ok(())
 }
 
-/// MCP-facing tree walk with aggregate entry/result/deadline bounds. The drop
-/// guard also stops its blocking worker promptly if the HTTP request is
-/// cancelled while the scan is in progress.
 pub(crate) async fn list_files_bounded(project_id: String) -> Result<BoundedFileList, String> {
     let (mut cancellation, cancelled) = ScanCancellation::new();
     let limits = FileListLimits {
@@ -749,14 +725,6 @@ mod bounded_read_tests {
     }
 }
 
-/// Mutations are admitted before they enter a blocking worker, then serialized
-/// per project. This closes a cross-webview race that renderer-local queues
-/// cannot see: an autosave already waiting in Rust must not recreate a path
-/// after another window deletes or renames it.
-///
-/// The generation is a project-wide watermark, while conflict checks are
-/// path/subtree-aware. Consequently unrelated files can proceed concurrently
-/// from the same expected generation without false conflicts.
 const MAX_COORDINATED_PROJECTS: usize = 128;
 const MAX_PENDING_MUTATIONS_PER_PROJECT: usize = 256;
 const MAX_TRACKED_MUTATION_SCOPES: usize = 16_384;
@@ -769,10 +737,6 @@ fn current_mutation_watermark() -> u64 {
 }
 
 fn portable_scope_path(path: String) -> String {
-    // Match the deliberately case-insensitive collision rules used for file
-    // publication. Default macOS and Windows filesystems alias these spellings;
-    // treating them as independent CAS scopes would let stale writes bypass a
-    // rename or delete merely by changing case.
     path.split('/')
         .map(|component| component.to_lowercase())
         .collect::<Vec<_>>()
@@ -867,15 +831,8 @@ fn mutation_parent_path(path: &str) -> String {
 #[derive(Default)]
 struct ProjectMutationState {
     committed_generation: u64,
-    /// If detailed scope history reaches its fixed cap, older clients fail
-    /// closed against this watermark instead of allowing the map to grow
-    /// without bound.
     compacted_through: u64,
     pending: HashMap<u64, Vec<MutationScope>>,
-    /// Latest committed change for an exact path or subtree. Delete/rename
-    /// source scopes act as generation tombstones: they reject only operations
-    /// admitted before the structural change, while a later corrective write
-    /// is intentionally allowed.
     committed_scopes: HashMap<MutationScope, u64>,
 }
 
@@ -925,8 +882,6 @@ fn project_mutation_coordinator(
     project_id: &str,
 ) -> Result<Arc<ProjectMutationCoordinator>, String> {
     paths::validate_project_id(project_id)?;
-    // Project IDs are ASCII and must share one coordinator even when callers
-    // vary case. They identify the same directory on default macOS/Windows.
     let registry_key = project_id.to_ascii_lowercase();
     let mut registry = lock_unpoisoned(mutation_registry());
     registry.clock = registry.clock.saturating_add(1);
@@ -949,9 +904,6 @@ fn project_mutation_coordinator(
         };
         registry.projects.remove(&eviction);
     }
-    // Detailed per-path history is bounded and coordinators are LRU-evicted.
-    // Recreated state starts at the process-wide watermark so a stale renderer
-    // token can never match an empty generation-zero history after eviction.
     let coordinator = Arc::new(ProjectMutationCoordinator::new(current_mutation_watermark()));
     registry.projects.insert(
         registry_key,
@@ -975,10 +927,7 @@ fn with_project_metadata<T>(
 struct MutationAdmission {
     coordinator: Arc<ProjectMutationCoordinator>,
     generation: u64,
-    /// All paths whose concurrent mutation conflicts with this operation.
     scopes: Vec<MutationScope>,
-    /// Paths actually changed on success. Copy, for example, reads its source
-    /// under the transaction but advances only the destination generation.
     commit_scopes: Vec<MutationScope>,
     expected_generation: Option<u64>,
     finished: bool,
@@ -1159,12 +1108,6 @@ impl MutationAdmission {
             };
             return Ok((value, generation));
         }
-        // Once the operation has changed the filesystem it is the committed
-        // linearization point and must be reported as success. A newer request
-        // admitted while this closure was running will acquire the operation
-        // lock next and may supersede this value, but returning an error here
-        // would falsely claim a rename/delete never happened and cause the
-        // renderer to skip the reconciliation for an already-committed change.
         let mut state = lock_unpoisoned(&coordinator.state);
         self.record_commit(&mut state);
         Ok((value, self.generation))
@@ -1189,19 +1132,11 @@ pub fn project_mutation_generation(project_id: String) -> Result<u64, String> {
 }
 
 pub(crate) struct ProjectWorktreeMutation<T> {
-    /// Result of the external command. Kept inside the committed mutation so
-    /// callers can publish the authoritative post-state before surfacing a
-    /// failure that may have partially changed the worktree.
     pub value: Result<T, String>,
     pub project: ProjectMeta,
     pub generation: u64,
 }
 
-/// Serialize a Git/external whole-worktree replacement with both compile lanes,
-/// ordinary file mutations, and metadata/trust changes. Trust is revoked before
-/// the external operation starts and is never restored automatically: commands
-/// such as `git pull` can partially modify a worktree before reporting failure,
-/// so every attempted external replacement needs fresh explicit consent.
 pub(crate) async fn mutate_project_worktree<T, F>(
     state: &crate::state::AppState,
     project_id: String,
@@ -1224,23 +1159,12 @@ where
         let ((value, project), generation) = admission.run_maybe(|| {
             with_project_metadata(&project_id, || {
                 let root = paths::project_dir(&project_id)?;
-                // Read before revocation so an unreadable project cannot turn a
-                // trust-record deletion into the only observable side effect.
                 let pre_state = read_meta(&project_id)?;
                 revoke_shell_escape_trust(&project_id)?;
                 let (mut value, changed) = match operation(&root) {
                     Ok((value, changed)) => (Ok(value), changed || pre_state.allow_shell_escape),
-                    // External commands are not transactional. A non-zero Git
-                    // exit may leave conflict markers, index updates, or a
-                    // partially replaced tree, so conservatively commit the
-                    // whole-project generation on every attempted failure.
                     Err(error) => (Err(error), true),
                 };
-                // Git may replace project.json with malformed or capability-
-                // escalating content. Repair it under the metadata lock and
-                // always return an event-serializable safe snapshot. A repair
-                // failure is folded into the command outcome only after the
-                // whole-worktree generation has committed.
                 let project = match reconcile_external_worktree_meta(&project_id, &pre_state) {
                     Ok(project) => project,
                     Err(reconcile_error) => {
@@ -1285,9 +1209,6 @@ pub async fn write_file(
     )?;
     tauri::async_runtime::spawn_blocking(move || -> Result<FileMutationResult, String> {
         let (_, generation) = admission.run(|| {
-            // Resolve again under the project mutation lock. A concurrently
-            // replaced parent symlink must not invalidate the sandbox check
-            // performed before this blocking task was admitted.
             let p = resolve(&project_id, &path)?;
             if let Some(parent) = p.parent() {
                 std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
@@ -1456,9 +1377,6 @@ async fn rename_file_synchronized(
     conflict_strategy: Option<FileConflictStrategy>,
     expected_generation: Option<u64>,
 ) -> Result<RenameFileResult, String> {
-    // A rename can remap project.json.main_doc and change its selected engine.
-    // Serialize it with compile publication just like explicit main-document
-    // and engine changes, so an old-main PDF cannot publish after the rename.
     let _compile = state.compile_lock.lock().await;
     tauri::async_runtime::spawn_blocking(move || {
         rename_file_blocking(project_id, from, to, conflict_strategy, expected_generation)
@@ -1527,9 +1445,6 @@ struct MoveTransaction {
 impl MoveTransaction {
     fn commit(self) -> RenameFileResult {
         if let Some(MoveRollback::Replaced { backup, .. }) = &self.rollback {
-            // The move and its metadata commit have succeeded. A cleanup error
-            // must not report failure and invite a destructive retry; the
-            // backup remains under the app-private project directory.
             let _ = remove_path(backup);
         }
         self.result
@@ -2072,8 +1987,6 @@ pub async fn copy_file(
     let source_rel = mutation_relative_path(&from, false)?;
     let destination_rel = mutation_relative_path(&to, false)?;
     let source_scope = MutationScope::subtree(source_rel);
-    // Keep-both chooses its final sibling under the operation lock. Tracking
-    // the parent subtree covers every possible collision-resolved destination.
     let destination_scope = MutationScope::subtree(mutation_parent_path(&destination_rel));
     let admission = admit_mutation_with_commit(
         &project_id,
@@ -2155,8 +2068,6 @@ pub async fn save_file_base64(
     )?;
     tauri::async_runtime::spawn_blocking(move || -> Result<FileMutationResult, String> {
         use base64::{engine::general_purpose::STANDARD, Engine};
-        // Admission happens before decoding so request order is authoritative,
-        // but CPU-heavy decoding stays outside the per-project operation lock.
         let bytes = STANDARD
             .decode(data.trim())
             .map_err(|e| format!("invalid base64: {e}"))?;
@@ -2256,8 +2167,6 @@ fn set_main_doc_unlocked(project_id: String, main_doc: String) -> Result<Project
         if main_doc.is_empty() {
             return Err("main document path cannot be empty".into());
         }
-        // Reject traversal / absolute paths and require the file to exist
-        // inside the project before persisting it as the compile entry point.
         let resolved = resolve(&project_id, &main_doc)?;
         if !resolved.is_file() {
             return Err(format!("main document not found: {main_doc}"));
@@ -2314,8 +2223,6 @@ fn set_project_engine_unlocked(
     let flavor = validate_tex_flavor(&engine, flavor)?;
     with_project_metadata(project_id, || {
         let mut meta = read_meta(project_id)?;
-        // Reject engines that cannot compile the current main document before
-        // persisting anything.
         crate::document_engine::engine_for(&engine, &meta.main_doc)?;
         meta.engine = engine;
         meta.tex_flavor = flavor;
@@ -2328,9 +2235,6 @@ fn set_project_engine_unlocked(
     })
 }
 
-/// Persist explicit, per-project consent for host command execution by
-/// latexmk/TeX. This command is the trust boundary: imports and copies never
-/// preserve an enabled bit from project.json.
 #[tauri::command]
 pub async fn set_project_shell_escape(
     app: tauri::AppHandle,
@@ -2575,10 +2479,6 @@ fn engine_for_main_document(current_engine: &str, main_doc: &str) -> Result<Stri
     Ok(selected)
 }
 
-/// Choose an engine for files crossing an external trust boundary. System TeX
-/// can read user-accessible local files even with shell commands disabled, so
-/// imports and downloaded templates must start on the bundled/default engine;
-/// the user can explicitly switch after reviewing the project.
 fn engine_for_untrusted_project(main_doc: &str) -> Result<String, String> {
     engine_for_main_document(&default_engine(), main_doc)
 }
@@ -2602,10 +2502,6 @@ fn main_document_family(path: &str) -> u8 {
     }
 }
 
-/// Recover a compile entry after an external worktree replacement removed or
-/// invalidated project.json. The scan shares the same aggregate/depth/deadline
-/// bounds as MCP listing so a hostile checkout cannot make Git reconciliation
-/// consume unbounded memory or block indefinitely.
 fn infer_external_main_document(root: &Path, preferred: &str) -> Result<String, String> {
     let preferred_family = main_document_family(preferred);
     let cancelled = AtomicBool::new(false);
@@ -2655,10 +2551,6 @@ fn infer_external_main_document(root: &Path, preferred: &str) -> Result<String, 
     })
 }
 
-/// Treat Git/external worktree content as data, never as a capability grant.
-/// Valid metadata may update ordinary project settings, but it cannot switch a
-/// previously bundled project onto host TeX. Malformed metadata is repaired
-/// from the previous local snapshot and a bounded main-document inference.
 fn reconcile_external_worktree_meta(
     project_id: &str,
     previous: &ProjectMeta,
@@ -2678,8 +2570,6 @@ fn reconcile_external_worktree_meta(
     }
 
     let requested_engine = if meta.engine == "latexmk" && previous.engine != "latexmk" {
-        // System TeX can read user-accessible host files. A remote branch may
-        // not cross that boundary merely by editing versioned project.json.
         engine_for_untrusted_project(&meta.main_doc)?
     } else {
         engine_for_main_document(&meta.engine, &meta.main_doc)
@@ -3080,10 +2970,6 @@ fn import_overleaf_project_blocking(name: Option<String>, path: &str) -> Result<
             extract_zip_for_import(&source, &dir)?;
         }
         flatten_single_root_folder(&dir)?;
-        // Keep harmless display metadata from an Oleafly export when its main
-        // file still exists. Engine choice and host-command consent are local
-        // trust decisions and are normalized below; Overleaf archives have no
-        // metadata at all.
         let existing = read_import_meta(&dir);
         let mut meta = match existing {
             Some(mut meta) if dir.join(&meta.main_doc).is_file() => {
@@ -3102,8 +2988,6 @@ fn import_overleaf_project_blocking(name: Option<String>, path: &str) -> Result<
                 }
             }
         };
-        // Imported metadata is untrusted project content. Neither system-TeX
-        // selection nor host-command consent may arrive pre-enabled.
         meta.engine =
             engine_for_untrusted_project(&meta.main_doc).unwrap_or_else(|_| default_engine());
         meta.tex_flavor = None;
@@ -4724,8 +4608,6 @@ pub async fn duplicate_project(project_id: String, new_name: String) -> Result<S
             };
             meta.name = new_name;
             meta.forked_from = Some(source_name);
-            // A duplicate is a new trust boundary: require a fresh explicit
-            // consent instead of cloning permission to execute host commands.
             meta.allow_shell_escape = false;
             write_meta(&new_id, &meta)
         })();
@@ -4789,9 +4671,6 @@ pub async fn import_paths_into_project(
     }
     let destination_rel = mutation_relative_path(&dest_dir, true)?;
     let destination_scope = MutationScope::subtree(destination_rel);
-    // Source paths may themselves point into this project. Admitting a root
-    // read scope before any filesystem inspection makes the whole snapshot
-    // stable without leaving a resolve-before-admission race.
     let conflict_scopes = vec![MutationScope::subtree(String::new())];
     let admission = admit_mutation_with_commit(
         &project_id,
@@ -5002,7 +4881,6 @@ where
         .collect())
 }
 
-/// Clear the build cache (forces a clean rebuild on next compile).
 #[tauri::command]
 pub fn clear_build_cache(project_id: String) -> Result<(), String> {
     let build = paths::build_dir(&project_id)?;
@@ -5014,7 +4892,6 @@ pub fn clear_build_cache(project_id: String) -> Result<(), String> {
     Ok(())
 }
 
-/// Delete a project (removes its directory entirely).
 #[tauri::command]
 pub async fn delete_project(
     project_id: String,
@@ -5033,9 +4910,6 @@ async fn delete_project_synchronized(
         vec![MutationScope::subtree(String::new())],
         None,
     )?;
-    // Do not remove a compiler's cwd/output tree underneath it. The lock order
-    // matches other lifecycle operations: main compile, isolated compile, file
-    // mutation, then metadata.
     let _compile = state.compile_lock.lock().await;
     let _figure_compile = state.figure_compile_lock.lock().await;
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
@@ -5064,9 +4938,6 @@ async fn delete_project_synchronized(
                     Ok(_) => {}
                 }
                 let verified = paths::project_dir(&project_id)?;
-                // Revoke first. If directory removal then fails, the project
-                // remains safely untrusted; a removed project can never leave
-                // a stale grant that a recreated slug might inherit.
                 revoke_shell_escape_trust(&project_id)?;
                 std::fs::remove_dir_all(&verified)
                     .map_err(|e| format!("failed to delete project: {e}"))?;
@@ -5078,8 +4949,6 @@ async fn delete_project_synchronized(
     .await
     .map_err(|e| e.to_string())?
 }
-
-// Path-sandbox unit tests live in `sandbox.rs`.
 
 #[cfg(test)]
 mod tests {
@@ -5135,9 +5004,6 @@ mod tests {
             rel_slash(root, &root.join("sections").join("intro.tex")),
             "sections/intro.tex"
         );
-        // A component holding a literal backslash (what Windows' path separator
-        // becomes via `to_string_lossy`) must be normalized to a forward slash,
-        // or the frontend file tree (which splits on "/") breaks on Windows.
         let win_like = Path::new("/proj/sections\\intro.tex");
         assert_eq!(rel_slash(root, win_like), "sections/intro.tex");
     }
@@ -6087,8 +5953,6 @@ mod tests {
         let src = root.join("draft.tex");
         let dst = root.join("final.tex");
         std::fs::write(&src, "document").unwrap();
-        // A directory at project.json forces the atomic metadata writer to
-        // fail after the filesystem move has been staged.
         std::fs::create_dir(root.join("project.json")).unwrap();
         let meta = ProjectMeta {
             main_doc: "draft.tex".into(),
@@ -6832,8 +6696,6 @@ mod tests {
         let project_id = super::create_project("Untrusted Paper".into()).unwrap();
         let project = crate::paths::project_dir(&project_id).unwrap();
 
-        // A crafted checkout may claim consent in project.json, but read_meta
-        // overwrites that bit from the out-of-band device record.
         std::fs::write(
             project.join("project.json"),
             r#"{
@@ -6850,8 +6712,6 @@ mod tests {
         assert!(trusted.allow_shell_escape);
         assert!(read_meta(&project_id).unwrap().allow_shell_escape);
 
-        // Project rename preserves the same slug/directory identity, while the
-        // metadata rewrite scrubs the capability bit from project.json.
         let renamed = super::rename_project(project_id.clone(), "Trusted Paper".into()).unwrap();
         assert!(renamed.allow_shell_escape);
         assert!(!std::fs::read_to_string(project.join("project.json"))
@@ -6859,7 +6719,6 @@ mod tests {
             .contains("allow_shell_escape"));
         assert!(read_meta(&project_id).unwrap().allow_shell_escape);
 
-        // Leaving latexmk revokes the grant; switching back cannot resurrect it.
         super::set_project_engine_unlocked(&project_id, "xetex", None).unwrap();
         assert!(!read_meta(&project_id).unwrap().allow_shell_escape);
         super::set_project_engine_unlocked(&project_id, "latexmk", None).unwrap();
@@ -6885,7 +6744,6 @@ mod tests {
                 .await
                 .unwrap_err();
         assert!(write_error.contains("managed by Oleafly"));
-        // Native AI/MCP writes use this admission API before accepting bytes.
         assert!(
             super::admit_project_file_write(project_id.clone(), "PROJECT.JSON".into(), None,)
                 .err()
@@ -7000,14 +6858,9 @@ mod tests {
             .await
             .unwrap();
         changed_back.value.unwrap();
-        // A branch cannot escalate a bundled-engine project back onto host TeX
-        // merely by changing versioned metadata.
         assert_eq!(changed_back.project.engine, "xetex");
         assert!(!changed_back.project.allow_shell_escape);
 
-        // Git can leave conflict markers or partial index/worktree updates and
-        // still exit non-zero. The failure must therefore advance the whole-
-        // project generation, stay untrusted, and return a post-state snapshot.
         super::set_project_engine_unlocked(&project_id, "latexmk", None).unwrap();
         super::set_project_shell_escape_unlocked(&project_id, true).unwrap();
         let before_failure = super::project_mutation_generation(project_id.clone()).unwrap();

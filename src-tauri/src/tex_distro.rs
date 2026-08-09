@@ -1,7 +1,5 @@
 //! System TeX distribution discovery.
 //!
-//! One shared enumeration of TeX binary directories (MacTeX, TeX Live, MiKTeX,
-//! managed TinyTeX, user TinyTeX) feeds three consumers: the PATH injected
 //! into compile children (`biber_toolchain`), the latexmk engine's tool
 //! lookup (`document_engine`), and the tagged-export engine probe
 //! (`latex_engine`). GUI apps launch with a minimal PATH, so relying on the
@@ -41,9 +39,6 @@ pub fn tex_bin_dirs() -> Vec<PathBuf> {
     {
         push_texlive_year_bins(&mut system, Path::new("/usr/local/texlive"));
         push_texlive_year_bins(&mut system, Path::new("/opt/texlive"));
-        // Distribution packages (apt, dnf, pacman, ...) normally install TeX
-        // into /usr/bin rather than a versioned TeX Live directory. Keep that
-        // complete system toolchain ahead of Oleafly's compact TinyTeX.
         push_existing(&mut system, PathBuf::from("/usr/bin"));
     }
 
@@ -73,8 +68,6 @@ pub fn tex_bin_dirs() -> Vec<PathBuf> {
         push_texdir_bins(&mut managed, &root.join("tinytex"));
     }
 
-    // User-managed TinyTeX uses a different documented root on each OS. Keep
-    // the legacy ~/.TinyTeX probe as well because existing installations use it.
     let appdata = std::env::var_os("APPDATA").map(PathBuf::from);
     let programdata = std::env::var_os("PROGRAMDATA").map(PathBuf::from);
     for root in user_tinytex_roots_for(
@@ -116,10 +109,6 @@ pub fn find_tex_tool(name: &str) -> Option<PathBuf> {
     find_tex_tool_in_dirs(name, tex_bin_dirs())
 }
 
-/// Every existing candidate for a TeX tool in the same priority order used by
-/// `find_tex_tool`. Callers that need to execute a probe can continue to the
-/// next distribution when an earlier file exists but is not runnable on this
-/// host (for example, a stale or wrong-architecture binary).
 pub(crate) fn tex_tool_candidates(name: &str) -> Vec<PathBuf> {
     tex_tool_candidates_in_dirs(name, tex_bin_dirs())
 }
@@ -226,9 +215,6 @@ pub struct TexDistribution {
     pub tlmgr: Option<String>,
 }
 
-/// The distribution that owns the exact `latexmk` selected for compilation.
-/// Package queries and mutations must resolve through this value as well: using
-/// a separately discovered `tlmgr` can inspect or modify a different TeX tree.
 pub fn active_latexmk_distribution() -> Option<TexDistribution> {
     let latexmk = find_tex_tool("latexmk")?;
     distribution_for_bin_dir(latexmk.parent()?)
@@ -266,8 +252,6 @@ pub fn list_distributions() -> Vec<TexDistribution> {
 
 fn distribution_for_bin_dir(dir: &Path) -> Option<TexDistribution> {
     let (kind, root) = classify_bin_dir(dir);
-    // Generic locations (/usr/local/bin, homebrew, inherited PATH entries) only
-    // count as a TeX distribution when a TeX tool is actually present there.
     let latexmk = dir.join(exe("latexmk"));
     let tlmgr = dir.join(exe("tlmgr"));
     let has_tex = latexmk.is_file()
@@ -473,8 +457,6 @@ fn push_texdir_bins(dirs: &mut Vec<PathBuf>, root: &Path) {
     }
 }
 
-/// Host-compatible `bin/<platform>` directories under a TeX-style root,
-/// including the one archive nesting level used by TinyTeX releases.
 pub(crate) fn texdir_bin_dirs(root: &Path) -> Vec<PathBuf> {
     if !root.is_dir() {
         return Vec::new();
