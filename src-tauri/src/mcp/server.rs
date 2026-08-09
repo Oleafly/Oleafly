@@ -463,10 +463,12 @@ pub use lifecycle::{start, stop};
 #[path = "server_discovery.rs"]
 mod discovery;
 
+#[cfg(test)]
+use discovery::remove_discovery_file_at;
+#[cfg(all(test, unix))]
+use discovery::write_discovery_file_at;
 use discovery::{ensure_token, remove_discovery_file_checked, write_discovery_file};
 pub use discovery::{remove_discovery_file, rewrite_discovery_file};
-#[cfg(test)]
-use discovery::{remove_discovery_file_at, write_discovery_file_at};
 #[cfg(test)]
 #[path = "server_tests.rs"]
 mod tests;

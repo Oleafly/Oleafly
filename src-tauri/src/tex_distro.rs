@@ -26,7 +26,10 @@ pub fn tex_bin_dirs() -> Vec<PathBuf> {
     let mut system = Vec::new();
     let mut managed = Vec::new();
     let mut user_tinytex = Vec::new();
+    #[cfg(not(windows))]
     let mut generic = Vec::new();
+    #[cfg(windows)]
+    let generic = Vec::new();
     let home = crate::paths::home_dir().ok();
 
     #[cfg(target_os = "macos")]

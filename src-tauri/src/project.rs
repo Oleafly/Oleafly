@@ -160,6 +160,37 @@ fn shell_escape_trust_path(project_id: &str) -> Result<PathBuf, String> {
     Ok(paths::shell_escape_trust_root()?.join(format!("{project_id}.json")))
 }
 
+#[cfg(windows)]
+fn windows_directory_identity(directory: &Path) -> Result<(u32, u64), String> {
+    use std::os::windows::fs::OpenOptionsExt as _;
+    use std::os::windows::io::AsRawHandle as _;
+    use windows_sys::Win32::Storage::FileSystem::{
+        GetFileInformationByHandle, BY_HANDLE_FILE_INFORMATION, FILE_FLAG_BACKUP_SEMANTICS,
+    };
+
+    let directory = std::fs::OpenOptions::new()
+        .read(true)
+        .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
+        .open(directory)
+        .map_err(|e| format!("failed to open project identity: {e}"))?;
+    let mut information = BY_HANDLE_FILE_INFORMATION::default();
+    let succeeded = unsafe {
+        GetFileInformationByHandle(
+            directory.as_raw_handle(),
+            std::ptr::addr_of_mut!(information),
+        )
+    };
+    if succeeded == 0 {
+        return Err(format!(
+            "failed to read project identity: {}",
+            std::io::Error::last_os_error()
+        ));
+    }
+    let file_index =
+        (u64::from(information.nFileIndexHigh) << 32) | u64::from(information.nFileIndexLow);
+    Ok((information.dwVolumeSerialNumber, file_index))
+}
+
 fn shell_escape_project_identity(project_id: &str) -> Result<String, String> {
     use sha2::{Digest, Sha256};
 
@@ -183,16 +214,12 @@ fn shell_escape_project_identity(project_id: &str) -> Result<String, String> {
     {
         use std::os::windows::ffi::OsStrExt as _;
         use std::os::windows::fs::MetadataExt as _;
+        let (volume_serial_number, file_index) = windows_directory_identity(&directory)?;
         for unit in directory.as_os_str().encode_wide() {
             digest.update(unit.to_le_bytes());
         }
-        digest.update(
-            metadata
-                .volume_serial_number()
-                .unwrap_or_default()
-                .to_le_bytes(),
-        );
-        digest.update(metadata.file_index().unwrap_or_default().to_le_bytes());
+        digest.update(volume_serial_number.to_le_bytes());
+        digest.update(file_index.to_le_bytes());
         digest.update(metadata.creation_time().to_le_bytes());
     }
     #[cfg(not(any(unix, windows)))]
