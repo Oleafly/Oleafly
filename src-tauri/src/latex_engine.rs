@@ -1580,105 +1580,129 @@ impl Drop for TaggedCancelGuard<'_> {
     }
 }
 
-/// Compile the (prepared) main document with LuaLaTeX to produce a tagged PDF.
-/// Unlike the Tectonic path, this runs LuaLaTeX directly on the main file so
-/// `\DocumentMetadata` remains the first line. Writes the PDF to the same build
-/// location Tectonic uses, so the existing `read_compiled_pdf` and the Preflight
-/// verifier pick it up unchanged. Runs twice to resolve references.
-#[tauri::command]
-pub async fn compile_tagged(
-    state: tauri::State<'_, AppState>,
+struct TaggedCompilePlan {
     project_id: String,
     main_doc: String,
-) -> Result<TaggedCompileResult, String> {
-    // This writes the same build outputs (`_oleafly_entry.pdf`, etc.) as
-    // `compile_project`, which serializes on `compile_lock`. Hold that same lock
-    // for the whole run so a Tectonic and a LuaLaTeX compile can't clobber each
-    let _guard = state.compile_lock.lock().await;
-    let cancel_guard = TaggedCancelGuard::new(&state.compile_cancel);
+    engine_id: String,
+    lualatex: PathBuf,
+    project_dir: PathBuf,
+    pdf: PathBuf,
+    args: Vec<String>,
+}
 
+struct TaggedCompileExecution {
+    success: bool,
+    output_id: Option<String>,
+    log: String,
+}
+
+async fn prepare_tagged_compile(
+    project_id: String,
+    main_doc: String,
+) -> Result<TaggedCompilePlan, String> {
     let meta = crate::project::read_compile_meta(&project_id, &main_doc)?;
-    let engine = find_engine().await;
-    let lualatex = engine
+    let lualatex = find_engine()
+        .await
         .lualatex
         .ok_or_else(|| "No LuaLaTeX engine available. Install TinyTeX first.".to_string())?;
-
     let project_dir = paths::project_dir(&project_id)?;
     let build_dir = paths::build_dir(&project_id)?;
-    // Validate main_doc stays inside the project (rejects absolute paths / `..`).
     let tex_path = crate::project::resolve_in_project(&project_id, &main_doc)?;
     if !tex_path.exists() {
         return Err(format!("main document not found: {main_doc}"));
     }
-    std::fs::create_dir_all(&build_dir).map_err(|e| e.to_string())?;
-
-    let out_dir = build_dir.to_string_lossy().into_owned();
-    let lualatex = PathBuf::from(&lualatex);
-    let _runtime = acquire_tex_runtime_read()?;
+    std::fs::create_dir_all(&build_dir).map_err(|error| error.to_string())?;
     let pdf = build_dir.join(format!("{}.pdf", paths::ENTRY_STEM));
-    match std::fs::remove_file(&pdf) {
-        Ok(()) => {}
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-        Err(error) => {
-            return Err(format!(
-                "failed to clear stale tagged PDF {}: {error}",
-                pdf.display()
-            ));
-        }
-    }
+    remove_stale_tagged_pdf(&pdf)?;
+    let args = tagged_lualatex_args(&build_dir.to_string_lossy(), &main_doc);
+    Ok(TaggedCompilePlan {
+        project_id,
+        main_doc,
+        engine_id: meta.engine,
+        lualatex: PathBuf::from(lualatex),
+        project_dir,
+        pdf,
+        args,
+    })
+}
 
-    let args = tagged_lualatex_args(&out_dir, &main_doc);
+fn remove_stale_tagged_pdf(pdf: &Path) -> Result<(), String> {
+    match std::fs::remove_file(pdf) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(format!(
+            "failed to clear stale tagged PDF {}: {error}",
+            pdf.display()
+        )),
+    }
+}
+
+async fn run_tagged_compile(
+    plan: &TaggedCompilePlan,
+    cancel: &crate::state::CompileCancel,
+    cancel_guard: TaggedCancelGuard<'_>,
+) -> Result<TaggedCompileExecution, String> {
     let mut log = String::new();
     let mut success = false;
     for pass in 0..2 {
         let (pass_log, exit_code) = crate::document_engine::run_supervised_external_cancellable(
-            &lualatex,
-            &args,
-            &project_dir,
-            &state.compile_cancel,
+            &plan.lualatex,
+            &plan.args,
+            &plan.project_dir,
+            cancel,
         )
         .await
         .map_err(|error| format!("failed to run lualatex: {error}"))?;
         log = pass_log;
         success = exit_code == Some(0);
         if !success && pass == 0 {
-            break; // a hard failure on the first pass won't be fixed by a second
+            break;
         }
     }
-    let stopped = cancel_guard.finish();
-    if stopped {
+    if cancel_guard.finish() {
         success = false;
         log.push_str("\nOleafly stopped the tagged compile on request.\n");
     }
+    let pdf = plan.pdf.clone();
     let output_id = tauri::async_runtime::spawn_blocking(move || {
-        std::fs::read(&pdf)
+        std::fs::read(pdf)
             .ok()
             .map(|bytes| crate::document_engine::fingerprint_compile_output(&bytes))
     })
     .await
     .map_err(|error| format!("failed to verify tagged compiler output: {error}"))?;
-    let has_pdf = output_id.is_some();
-    let mut result = TaggedCompileResult {
-        success: success && has_pdf,
-        has_pdf,
+    Ok(TaggedCompileExecution {
+        success,
         output_id,
-        output_revision: None,
         log,
+    })
+}
+
+fn publish_tagged_compile(
+    state: &AppState,
+    plan: &TaggedCompilePlan,
+    execution: TaggedCompileExecution,
+) -> TaggedCompileResult {
+    let has_pdf = execution.output_id.is_some();
+    let mut result = TaggedCompileResult {
+        success: execution.success && has_pdf,
+        has_pdf,
+        output_id: execution.output_id,
+        output_revision: None,
+        log: execution.log,
     };
-    // The fingerprint above is still only a candidate. Revalidate the
-    // persisted project/main selection under the shared compile lock before
-    // publishing either the identity or a success revision.
-    if let Err(error) =
-        crate::project::ensure_compile_meta_unchanged(&project_id, &main_doc, &meta.engine)
-    {
+    if let Err(error) = crate::project::ensure_compile_meta_unchanged(
+        &plan.project_id,
+        &plan.main_doc,
+        &plan.engine_id,
+    ) {
         result.success = false;
         result.has_pdf = false;
         result.output_id = None;
-        result.output_revision = None;
         result
             .log
             .push_str(&format!("\nOleafly rejected the tagged output: {error}"));
-        return Ok(result);
+        return result;
     }
     if result.success {
         result.output_revision = Some(
@@ -1688,7 +1712,21 @@ pub async fn compile_tagged(
                 + 1,
         );
     }
-    Ok(result)
+    result
+}
+
+#[tauri::command]
+pub async fn compile_tagged(
+    state: tauri::State<'_, AppState>,
+    project_id: String,
+    main_doc: String,
+) -> Result<TaggedCompileResult, String> {
+    let _guard = state.compile_lock.lock().await;
+    let cancel_guard = TaggedCancelGuard::new(&state.compile_cancel);
+    let plan = prepare_tagged_compile(project_id, main_doc).await?;
+    let _runtime = acquire_tex_runtime_read()?;
+    let execution = run_tagged_compile(&plan, &state.compile_cancel, cancel_guard).await?;
+    Ok(publish_tagged_compile(&state, &plan, execution))
 }
 
 #[cfg(test)]

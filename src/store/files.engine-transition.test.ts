@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   listFiles: vi.fn(),
   readFileContent: vi.fn(),
   writeFileContent: vi.fn(),
+  logError: vi.fn(),
   notifyError: vi.fn(),
   toastInfo: vi.fn(),
   toastSuccess: vi.fn(),
@@ -51,7 +52,7 @@ vi.mock("@/lib/auto-commit", () => ({
   flushAutoCommit: mocks.flushAutoCommit,
   scheduleAutoCommit: mocks.scheduleAutoCommit,
 }));
-vi.mock("@/lib/log", () => ({ logError: vi.fn() }));
+vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/lib/toast", () => ({
   notifyError: mocks.notifyError,
   toast: { info: mocks.toastInfo, success: mocks.toastSuccess },
@@ -85,6 +86,7 @@ beforeEach(async () => {
   mocks.scheduleAutoCommit.mockReset();
   await useFilesStore.getState().closeProject();
   mocks.notifyError.mockReset();
+  mocks.logError.mockReset().mockResolvedValue(undefined);
   mocks.toastInfo.mockReset();
   mocks.toastSuccess.mockReset();
   mocks.writeFileContent.mockReset().mockResolvedValue(undefined);
@@ -860,6 +862,46 @@ describe("MCP active-project synchronization", () => {
       [null],
       ["project"],
     ]);
+  });
+});
+
+describe("best-effort project loading diagnostics", () => {
+  it("logs bibliography preload failures without blocking the project", async () => {
+    const failure = new Error("bibliography read failed");
+    mocks.getProjectEngine.mockResolvedValue(LATEX_ENGINE);
+    mocks.listFiles.mockResolvedValue([
+      { path: "main.tex", is_dir: false },
+      { path: "references.bib", is_dir: false },
+    ]);
+    mocks.readFileContent.mockImplementation(async (_projectId, path) => {
+      if (path === "references.bib") throw failure;
+      return "hello";
+    });
+
+    await useFilesStore.getState().openProject("project");
+
+    expect(useFilesStore.getState().projectId).toBe("project");
+    expect(mocks.logError).toHaveBeenCalledWith("preload bibliography", failure);
+  });
+
+  it("logs compatibility scan failures without blocking the project", async () => {
+    const failure = new Error("source read failed");
+    mocks.getProjectEngine.mockResolvedValue(LATEX_ENGINE);
+    mocks.listFiles.mockResolvedValue([
+      { path: "main.tex", is_dir: false },
+      { path: "chapter.tex", is_dir: false },
+    ]);
+    mocks.readFileContent.mockImplementation(async (_projectId, path) => {
+      if (path === "chapter.tex") throw failure;
+      return "hello";
+    });
+
+    await useFilesStore.getState().openProject("project");
+
+    await vi.waitFor(() =>
+      expect(mocks.logError).toHaveBeenCalledWith("scan project compatibility", failure),
+    );
+    expect(useFilesStore.getState().projectId).toBe("project");
   });
 });
 
