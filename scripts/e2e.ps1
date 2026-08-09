@@ -114,8 +114,6 @@ Get-Content -LiteralPath '$escapedLog' -Wait -Tail 0 |
 }
 
 function Run-Playwright([string]$label, [string[]]$selection) {
-  $safeLabel = $label -replace "[^A-Za-z0-9._-]", "-"
-  $outputDir = "test-results/$safeLabel"
   $script:heartbeat = Start-OutputProcess @"
 `$started = Get-Date
 while (`$true) {
@@ -125,13 +123,14 @@ while (`$true) {
 }
 "@
   Write-Host "e2e: starting $label at $((Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'))"
-  & pnpm exec playwright test -c e2e/playwright.config.ts "--output=$outputDir" @playwrightArgs @selection | Out-Host
+  & pnpm exec playwright test -c e2e/playwright.config.ts @playwrightArgs @selection | Out-Host
   $status = $LASTEXITCODE
 
   if ($null -ne $script:heartbeat -and -not $script:heartbeat.HasExited) {
     Stop-Process -Id $script:heartbeat.Id -Force -ErrorAction SilentlyContinue
   }
   $script:heartbeat = $null
+  Preserve-RunArtifacts $label
   if ($status -eq 0) {
     Write-Host "e2e: completed $label"
   } else {
@@ -140,10 +139,22 @@ while (`$true) {
   return $status
 }
 
-function Preserve-AppLog([string]$label) {
+function Preserve-RunArtifacts([string]$label) {
   $safeLabel = $label -replace "[^A-Za-z0-9._-]", "-"
-  $resultDir = Join-Path "test-results" $safeLabel
+  $resultDir = Join-Path "e2e-artifacts" $safeLabel
+  Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $resultDir
   New-Item -ItemType Directory -Force -Path $resultDir | Out-Null
+  if (Test-Path "test-results") {
+    $sourceRoot = (Resolve-Path "test-results").Path.TrimEnd([char[]]"\/")
+    Get-ChildItem -Path "test-results" -Recurse -File | Where-Object {
+      $_.Name -eq "error-context.md" -or $_.Name -eq "trace.zip" -or $_.Extension -eq ".log"
+    } | ForEach-Object {
+      $relativePath = $_.FullName.Substring($sourceRoot.Length).TrimStart([char[]]"\/")
+      $destination = Join-Path (Join-Path $resultDir "playwright") $relativePath
+      New-Item -ItemType Directory -Force -Path (Split-Path $destination) | Out-Null
+      Copy-Item $_.FullName $destination -Force
+    }
+  }
   if ($null -ne $script:log -and (Test-Path $script:log)) {
     Copy-Item $script:log (Join-Path $resultDir "app.log") -Force
   }
@@ -179,7 +190,6 @@ try {
     $label = "requested-spec-selection"
     Start-App $label
     $code = Run-Playwright $label @()
-    Preserve-AppLog $label
     Stop-App
   } else {
     $code = 0
@@ -209,7 +219,6 @@ try {
       $specPath = "e2e/tests/$($spec.Name)"
       Start-App $label
       $status = Run-Playwright $label @($specPath)
-      Preserve-AppLog $label
       Stop-App
       if ($status -ne 0) {
         $code = 1
