@@ -206,7 +206,7 @@ function tokenAttributes(
     class: `wysiwyg-project-intelligence is-${resolution}`,
     role: "link",
     tabindex: "0",
-    "aria-label": `${noun} ${token.key}, ${state}. Enter or F12 to go to definition; Shift+Enter or Shift+F12 to find references.`,
+    "aria-label": `${noun} ${token.key}, ${state}. Enter or F12 to go to definition. Shift+Enter or Shift+F12 to find references.`,
     "aria-keyshortcuts": "Enter F12 Shift+Enter Shift+F12",
     title: `${noun} “${token.key}” · ${state}\nClick/F12: go to definition · Shift-click/Shift-F12: find references`,
     "data-project-intelligence-key": token.key,

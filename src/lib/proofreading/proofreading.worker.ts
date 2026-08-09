@@ -658,7 +658,7 @@ async function analyze(
       const grammar = await grammarDiagnostics(request, ignored);
       if (grammar.malformedLintCount > 0) {
         return resultResponse(request, "partial", grammar.diagnostics, {
-          message: `${grammar.malformedLintCount.toLocaleString()} malformed grammar finding${grammar.malformedLintCount === 1 ? " was" : "s were"} skipped; all valid findings are shown.`,
+          message: `${grammar.malformedLintCount.toLocaleString()} malformed grammar finding${grammar.malformedLintCount === 1 ? " was" : "s were"} skipped. All valid findings are shown.`,
         });
       }
       writeCache(
@@ -753,7 +753,7 @@ async function analyze(
   }
   if (partialReasons.length > 0) {
     return resultResponse(request, "partial", diagnostics, {
-      message: `Partial proofreading: ${partialReasons.join("; ")}. Valid findings are still shown.`,
+      message: `Partial proofreading: ${partialReasons.join(", ")}. Valid findings are still shown.`,
       ...(spellingResult.status === "fulfilled"
         ? {
             activeDictionaryLocale:

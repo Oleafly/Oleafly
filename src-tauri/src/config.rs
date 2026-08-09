@@ -545,8 +545,6 @@ mod tests {
         assert!(!incoming.ai_keys.contains_key("groq"));
     }
 
-    static DATA_DIR_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
-
     struct DataDirGuard;
 
     impl Drop for DataDirGuard {
@@ -557,9 +555,7 @@ mod tests {
 
     #[test]
     fn an_existing_install_keeps_working_without_re_entering_a_key() {
-        let _lock = DATA_DIR_LOCK
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let _env_guard = crate::paths::data_dir_env_lock();
         let dir = temp_dir();
         std::env::set_var("OLEAFLY_DATA_DIR", &dir);
         let _guard = DataDirGuard;

@@ -16,7 +16,9 @@ use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
 use tokio::sync::{mpsc, watch};
 
 use crate::paths;
-use crate::proc::{isolate_process_tree, terminate_process_tree, NoConsole};
+use crate::proc::{
+    contain_process_tree, isolate_process_tree, terminate_process_tree, NoConsole, ProcessTreeGuard,
+};
 use server_runtime::{InstallOutcome, InstallStatus, InstallerState};
 
 const MAX_MESSAGE_BYTES: usize = 16 * 1024 * 1024;
@@ -447,7 +449,7 @@ struct SpawnedSession {
     stdout: tokio::process::ChildStdout,
     stderr: tokio::process::ChildStderr,
     pid: u32,
-    containment: ProcessContainment,
+    containment: ProcessTreeGuard,
 }
 
 struct SessionRuntime {
@@ -457,7 +459,7 @@ struct SessionRuntime {
     stdin: tokio::process::ChildStdin,
     stdout: tokio::process::ChildStdout,
     stderr: tokio::process::ChildStderr,
-    containment: ProcessContainment,
+    containment: ProcessTreeGuard,
     outbound_rx: mpsc::Receiver<OutboundFrame>,
     stop_rx: watch::Receiver<bool>,
 }
@@ -487,43 +489,6 @@ enum StdoutFailure {
 enum StderrFailure {
     Io(String),
     ChannelClosed,
-}
-
-#[cfg(not(windows))]
-struct ProcessContainment {
-    process_group: i32,
-}
-
-#[cfg(not(windows))]
-impl Drop for ProcessContainment {
-    fn drop(&mut self) {
-        if self.process_group > 0 {
-            unsafe {
-                let _ = libc::kill(-self.process_group, libc::SIGKILL);
-            }
-            self.process_group = 0;
-        }
-    }
-}
-
-#[cfg(windows)]
-struct ProcessContainment {
-    job: windows_sys::Win32::Foundation::HANDLE,
-}
-
-#[cfg(windows)]
-unsafe impl Send for ProcessContainment {}
-
-#[cfg(windows)]
-impl Drop for ProcessContainment {
-    fn drop(&mut self) {
-        if !self.job.is_null() {
-            unsafe {
-                windows_sys::Win32::Foundation::CloseHandle(self.job);
-            }
-            self.job = std::ptr::null_mut();
-        }
-    }
 }
 
 impl ProtocolFailure {
@@ -1293,7 +1258,7 @@ fn spawn_sidecar(
             "spawned language server did not expose a process id",
         )
     })?;
-    let containment = assign_process_containment(pid).map_err(|error| {
+    let containment = contain_process_tree(pid).map_err(|error| {
         terminate_process_tree_now(pid);
         let _ = child.start_kill();
         LanguageServiceError::new(
@@ -1330,74 +1295,6 @@ fn spawn_sidecar(
         pid,
         containment,
     })
-}
-
-#[cfg(not(windows))]
-fn assign_process_containment(pid: u32) -> std::io::Result<ProcessContainment> {
-    let process_group = i32::try_from(pid).map_err(|_| {
-        std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            "language-server process id cannot identify a process group",
-        )
-    })?;
-    Ok(ProcessContainment { process_group })
-}
-
-#[cfg(windows)]
-fn assign_process_containment(pid: u32) -> std::io::Result<ProcessContainment> {
-    use std::ffi::c_void;
-    use std::mem::size_of;
-    use windows_sys::Win32::Foundation::CloseHandle;
-    use windows_sys::Win32::System::JobObjects::{
-        AssignProcessToJobObject, CreateJobObjectW, JobObjectExtendedLimitInformation,
-        SetInformationJobObject, JOBOBJECT_EXTENDED_LIMIT_INFORMATION,
-        JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
-    };
-    use windows_sys::Win32::System::Threading::{
-        OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SET_QUOTA, PROCESS_TERMINATE,
-    };
-
-    unsafe {
-        let job = CreateJobObjectW(std::ptr::null(), std::ptr::null());
-        if job.is_null() {
-            return Err(std::io::Error::last_os_error());
-        }
-        let mut limits = JOBOBJECT_EXTENDED_LIMIT_INFORMATION::default();
-        limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
-        if SetInformationJobObject(
-            job,
-            JobObjectExtendedLimitInformation,
-            (&limits as *const JOBOBJECT_EXTENDED_LIMIT_INFORMATION).cast::<c_void>(),
-            size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32,
-        ) == 0
-        {
-            let error = std::io::Error::last_os_error();
-            CloseHandle(job);
-            return Err(error);
-        }
-        let process = OpenProcess(
-            PROCESS_SET_QUOTA | PROCESS_TERMINATE | PROCESS_QUERY_LIMITED_INFORMATION,
-            0,
-            pid,
-        );
-        if process.is_null() {
-            let error = std::io::Error::last_os_error();
-            CloseHandle(job);
-            return Err(error);
-        }
-        let assigned = AssignProcessToJobObject(job, process);
-        let error = if assigned == 0 {
-            Some(std::io::Error::last_os_error())
-        } else {
-            None
-        };
-        CloseHandle(process);
-        if let Some(error) = error {
-            CloseHandle(job);
-            return Err(error);
-        }
-        Ok(ProcessContainment { job })
-    }
 }
 
 fn stop_spawned_session_now(mut spawned: SpawnedSession) {
@@ -1800,14 +1697,14 @@ async fn stop_process(child: &mut tokio::process::Child, pid: u32) -> ProcessOut
             exit_code: None,
             signal: None,
             reason: bounded_message(format!(
-                "stop requested; process wait failed after termination: {error}"
+                "stop requested. Process wait failed after termination: {error}"
             )),
         },
         Err(_) => ProcessOutcome {
             status: LanguageServiceStatus::Stopped,
             exit_code: None,
             signal: None,
-            reason: "stop requested; process did not report termination before timeout".into(),
+            reason: "stop requested. The process did not report termination before timeout".into(),
         },
     }
 }
@@ -2771,6 +2668,31 @@ mod tests {
         assert_eq!(error.code, LanguageServiceErrorCode::SidecarUnavailable);
         assert!(!error.message.contains(secret_name));
         assert!(!error.message.contains(&executable.display().to_string()));
+    }
+
+    #[cfg(windows)]
+    #[tokio::test]
+    async fn spawned_language_server_resumes_after_job_assignment() {
+        let args = vec!["/D".into(), "/S".into(), "/C".into(), "exit 0".into()];
+        let spawned = spawn_sidecar(Path::new("cmd.exe"), &args, Path::new("."))
+            .expect("spawn contained language server");
+        let SpawnedSession {
+            mut child,
+            stdin,
+            stdout,
+            stderr,
+            containment,
+            ..
+        } = spawned;
+        drop(stdin);
+        drop(stdout);
+        drop(stderr);
+        let status = tokio::time::timeout(Duration::from_secs(10), child.wait())
+            .await
+            .expect("language server remained suspended")
+            .expect("wait for language server");
+        assert!(status.success());
+        drop(containment);
     }
 
     #[cfg(unix)]

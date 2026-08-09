@@ -1,6 +1,6 @@
 # MCP server
 
-Oleafly can act as an MCP (Model Context Protocol) server. Any MCP client (Claude Desktop, Claude Code, Cursor, Codex CLI, Grok CLI, and others) can read, edit, search, and compile the project you have open, using the same tools and the same approval prompts as Oleafly's built-in assistant. You do not need an API key in Oleafly for this; the external app brings its own model.
+Oleafly can act as an MCP (Model Context Protocol) server. Any MCP client (Claude Desktop, Claude Code, Cursor, Codex CLI, Grok CLI, and others) can read, edit, search, and compile the project you have open, using the same tools and the same approval prompts as Oleafly's built-in assistant. You do not need an API key in Oleafly for this. The external app brings its own model.
 
 This is useful when you already have a Claude (or similar) subscription and want that chat app to drive Oleafly, without pasting an API key into Settings.
 
@@ -9,7 +9,10 @@ This is useful when you already have a Claude (or similar) subscription and want
 1. Open **Settings → MCP**.
 2. Toggle **Enable MCP server** on.
 
-The server runs only while Oleafly is open. It listens on `127.0.0.1` only (this computer), never on the network. When you turn it off or quit Oleafly, the endpoint disappears.
+The server runs only while the Oleafly application process is open. It listens
+on `127.0.0.1` only (this computer), never on the network. When you turn it off
+or quit Oleafly, the endpoint disappears. Native project tools remain available
+if the renderer window closes while the application process stays active.
 
 Oleafly prefers port `5323` (`http://127.0.0.1:5323/mcp`). If it is unavailable, the server automatically binds another free local port and saves it for the next launch. Settings shows the active URL. Its restart button reuses the current port when possible or selects another free one.
 
@@ -87,7 +90,14 @@ The `mcp.json` file next to your Oleafly data (shown in Settings) contains the s
 
 ## What the tools can do
 
-The MCP tool list is registered from the same tool objects as the in-app assistant, so names, descriptions, and schemas stay in lockstep.
+The MCP tool list is registered from the same tool objects as the in-app
+assistant, so names, descriptions, and schemas stay in lockstep. File reads,
+listing, and search execute in Rust. File writes, replacement, creation,
+renaming, and deletion use the renderer coordinator while a window is active so
+dirty editor buffers cannot overwrite an external change. After the renderer
+disconnects, writes, replacements, creates, and renames can execute natively
+when the approval policy allows them. Deletion always requires a connected
+window.
 
 ### Orientation
 
@@ -124,7 +134,7 @@ The MCP tool list is registered from the same tool objects as the in-app assista
 | Tool | What it does |
 |---|---|
 | `compile` | Compile the project to PDF |
-| `preview_figure` | Compile a figure in isolation; returns a PNG image |
+| `preview_figure` | Compile a figure in isolation and return a PNG image |
 | `insert_figure` | Insert the last previewed figure into the document |
 | `load_image` | Load an image from the project for figure work |
 
@@ -139,15 +149,15 @@ The MCP tool list is registered from the same tool objects as the in-app assista
 Your MCP client (Claude Desktop, Claude Code, and others) already asks you to approve tool use on its side before it ever calls Oleafly. Oleafly's own approval is a second, deeper gate that shows the actual change, and it is the one that still protects you after you click "Always allow" in the client. Choose how much of it you want with the **approval policy** in Settings:
 
 - **Confirm every change** (default): every write, rename, and delete shows an approval card in Oleafly (with a red/green diff when content rewrites, a rendered image for figures). The card floats as "External agent request (MCP)".
-- **Auto-approve edits, confirm deletes**: writes and renames apply immediately; deletes still show a card. **Always allow writes** on a card sets this for the current session.
-- **Trust this connection**: Oleafly never prompts. Your client's own approval is the only gate, deletes included. Use this when your client already confirms every tool call and you want a frictionless flow.
+- **Auto-approve edits, confirm deletes**: writes and renames apply immediately while an Oleafly window owns the renderer session. Deletes still show a card. **Always allow writes** on a card sets this for the current session.
+- **Trust this connection**: mutating tools do not prompt, but still require an active Oleafly renderer to enforce the policy. Use this only when you trust the client and its own approval controls.
 - **Read-only mode** (separate toggle) removes mutating tools from `tools/list` entirely, so an external app can read and compile but never modify files, whatever the policy.
 - **Bearer token**: 256-bit random value stored in authenticated encrypted
   local storage under `~/.oleafly/`. `get_config` never sends the token to the
   webview. Only Settings connection info exposes it while the server is
   running.
 - **Localhost only**: bind address is `127.0.0.1`. Requests with a browser `Origin` header are rejected, and `Host` must be loopback.
-- **No arbitrary paths**: tools only touch the open project under the Oleafly projects directory, through the same sandbox as the built-in tools.
+- **No arbitrary paths**: native tools accept only project-relative paths inside the project last reported by the app. Calls cannot supply another project ID, and the backend never guesses from other library projects.
 
 ### Why claude.ai in the browser cannot connect
 
@@ -162,7 +172,8 @@ A cloud chat service cannot reach `127.0.0.1` on your machine. Use **Claude Desk
 | HTTP 401 | Token mismatch (e.g. after Regenerate). Copy the new token into the client. |
 | HTTP 403 | Client sent an `Origin` header or a non-loopback `Host`. Use a native MCP client, not a browser tab. |
 | Call timed out | Each tool call waits up to **5 minutes** (300 s) for compiles or for you to click Approve. Approve or reject pending cards, or retry. |
-| Cannot connect | Oleafly must be running with MCP enabled. The server does not run in the background after quit. |
+| Tool requires an active window | The tool mutates state or needs UI context. Open an Oleafly window and retry. Only bounded read-only file tools remain available without the renderer. |
+| Cannot connect | The Oleafly application process must be running with MCP enabled. The server does not run after the application quits. |
 
 ## Non-goals (for now)
 

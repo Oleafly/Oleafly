@@ -7,7 +7,7 @@ use crate::error::AgentError;
 use crate::event::AgentEvent;
 use crate::provider::Wire;
 use crate::sse::SseEvent;
-use crate::stream::ToolCall;
+use crate::stream::{ToolCall, MAX_STREAM_TOOL_CALLS};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WireKind {
@@ -102,6 +102,12 @@ impl Translator {
 
     fn start_call(&mut self, index: i64, id: String, name: String) -> Vec<AgentEvent> {
         if self.open.contains_key(&index) {
+            return Vec::new();
+        }
+        if self.open.len().saturating_add(self.finished.len()) >= MAX_STREAM_TOOL_CALLS {
+            self.error = Some(AgentError::Decode(format!(
+                "provider stream exceeded the {MAX_STREAM_TOOL_CALLS}-tool-call safety limit"
+            )));
             return Vec::new();
         }
         self.order.push(index);
@@ -263,7 +269,11 @@ impl Translator {
     }
 
     fn anthropic_block_start(&mut self, value: &Value, index: i64) -> Vec<AgentEvent> {
-        if value.pointer("/content_block/type").and_then(|t| t.as_str()) != Some("tool_use") {
+        if value
+            .pointer("/content_block/type")
+            .and_then(|t| t.as_str())
+            != Some("tool_use")
+        {
             return Vec::new();
         }
         let id = value
@@ -426,9 +436,16 @@ fn nonempty(value: Option<&Value>) -> Option<String> {
 }
 
 fn u32_at(value: &Value, key: &str) -> u32 {
-    value.get(key).and_then(|v| v.as_u64()).unwrap_or(0) as u32
+    saturating_u32(value.get(key))
 }
 
 fn u32_at_path(value: &Value, path: &str) -> u32 {
-    value.pointer(path).and_then(|v| v.as_u64()).unwrap_or(0) as u32
+    saturating_u32(value.pointer(path))
+}
+
+fn saturating_u32(value: Option<&Value>) -> u32 {
+    value
+        .and_then(|value| value.as_u64())
+        .map(|number| u32::try_from(number).unwrap_or(u32::MAX))
+        .unwrap_or(0)
 }

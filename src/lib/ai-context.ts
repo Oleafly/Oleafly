@@ -99,7 +99,7 @@ export async function buildWorkspaceContext(): Promise<string> {
   const memory = useAgentMemoryStore.getState().asPromptBlock();
 
   return [
-    "### Live workspace context (auto-injected; may be slightly stale)",
+    "### Live workspace context (auto-injected and possibly slightly stale)",
     `You are currently in the ${view} view.`,
     `Project: ${files.projectName ?? "?"} · kind: ${files.projectKind ?? "tex"} · main: ${mainDoc}`,
     `Active file: ${activePath ?? "(none)"}${line != null ? ` · cursor line ${line}` : ""}`,
@@ -113,7 +113,7 @@ export async function buildWorkspaceContext(): Promise<string> {
       : "Active file excerpt: (empty or binary)",
     `Project map:\n${map}`,
     memory || null,
-    "Use tools to refresh anything you need to verify; do not invent file contents beyond this context.",
+    "Use tools to refresh anything you need to verify. Do not invent file contents beyond this context.",
   ]
     .filter(Boolean)
     .join("\n");

@@ -20,6 +20,7 @@ import {
   currentCompileProducerId,
   notifyCompileSucceeded,
 } from "./cross-window";
+import { currentProjectStateRevision } from "./project-state-revision";
 
 beforeEach(() => {
   mocks.emit.mockReset().mockResolvedValue(undefined);
@@ -44,7 +45,10 @@ describe("cross-window compile events", () => {
     expect(mocks.emit).toHaveBeenCalledTimes(1);
     expect(mocks.emit).toHaveBeenCalledWith(
       COMPILE_SUCCEEDED_EVENT,
-      checkpoint,
+      {
+        projectStateRevision: currentProjectStateRevision(),
+        checkpoint,
+      },
     );
     expect(COMPILE_SUCCEEDED_EVENT).not.toBe("compile:done");
   });

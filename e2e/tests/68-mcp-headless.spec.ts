@@ -1,5 +1,11 @@
 import { test, expect } from "../fixtures";
-import { createBlankProject, openProject, writeProjectText, type Page } from "../helpers";
+import {
+  createBlankProject,
+  editorSource,
+  openProject,
+  writeProjectText,
+  type Page,
+} from "../helpers";
 
 const PROJECT = "MCP Headless";
 
@@ -55,13 +61,47 @@ async function rpc(
     },
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
   });
-  expect(response.ok, `${method} should return 200`).toBe(true);
+  const failureBody = response.ok ? "" : await response.clone().text();
+  expect(
+    response.ok,
+    `${method} should return 200, received ${response.status}: ${failureBody}`,
+  ).toBe(true);
   return response.json();
 }
 
 function resultText(payload: unknown): string {
   const content = (payload as { result?: { content?: { text?: string }[] } })?.result?.content;
   return (content ?? []).map((part) => part.text ?? "").join("\n");
+}
+
+async function disconnectRenderer(page: Page): Promise<void> {
+  await page.evaluate<void>(`
+    (() => {
+      const disconnect = window.__mcpDisconnectRenderer;
+      if (typeof disconnect !== "function") {
+        throw new Error("MCP renderer disconnect hook is unavailable");
+      }
+      return disconnect();
+    })()
+  `);
+}
+
+async function reconnectRenderer(page: Page): Promise<void> {
+  await page.evaluate<void>(`
+    import("/src/lib/mcp-bridge.ts").then(({ startMcpBridge }) => startMcpBridge())
+  `);
+}
+
+async function stopRendererHeartbeat(page: Page): Promise<void> {
+  await page.evaluate<void>(`
+    (() => {
+      const stop = window.__mcpStopHeartbeat;
+      if (typeof stop !== "function") {
+        throw new Error("MCP heartbeat test hook is unavailable");
+      }
+      stop();
+    })()
+  `);
 }
 
 test.describe("MCP without the webview", () => {
@@ -106,23 +146,105 @@ test.describe("MCP without the webview", () => {
     expect(parsed.total).toBeGreaterThanOrEqual(1);
   });
 
-  test("writes and replaces through the native path", async ({ tauriPage }) => {
+  test("rejects every mutation after the renderer disconnects", async ({ tauriPage }) => {
+    await disconnectRenderer(tauriPage);
+    try {
+      for (const [name, arguments_] of [
+        ["write_file", { path: "native-write.tex", content: "must not exist\n" }],
+        ["replace_in_file", { path: "headless.tex", find: "One", replace: "Two" }],
+        ["create_file", { path: "native-created.tex" }],
+        ["rename_file", { from: "headless.tex", to: "renamed.tex" }],
+        ["delete_file", { path: "headless.tex" }],
+      ] as const) {
+        const payload = (await rpc(tauriPage, connection, "tools/call", {
+          name,
+          arguments: arguments_,
+        })) as { result?: { isError?: boolean } };
+        expect(payload.result?.isError, `${name} must require the renderer`).toBe(true);
+        expect(resultText(payload)).toMatch(/active Oleafly window|approval/i);
+      }
+
+      const listed = await rpc(tauriPage, connection, "tools/call", {
+        name: "list_files",
+        arguments: {},
+      });
+      expect(resultText(listed)).toContain("headless.tex");
+      expect(resultText(listed)).not.toContain("native-write.tex");
+      expect(resultText(listed)).not.toContain("native-created.tex");
+    } finally {
+      await reconnectRenderer(tauriPage);
+    }
+  });
+
+  test("does not delete files without an active approval interface", async ({ tauriPage }) => {
+    await disconnectRenderer(tauriPage);
+    try {
+      const payload = (await rpc(tauriPage, connection, "tools/call", {
+        name: "delete_file",
+        arguments: { path: "headless.tex" },
+      })) as { result?: { isError?: boolean } };
+      expect(payload.result?.isError).toBe(true);
+
+      const read = await rpc(tauriPage, connection, "tools/call", {
+        name: "read_file",
+        arguments: { path: "headless.tex" },
+      });
+      expect(resultText(read)).toContain("MCPHEADLESSMARKER");
+    } finally {
+      await reconnectRenderer(tauriPage);
+    }
+  });
+
+  test("keeps native reads available after a renderer lease expires", async ({ tauriPage }) => {
+    test.setTimeout(120_000);
+    await stopRendererHeartbeat(tauriPage);
+    await new Promise((resolve) => setTimeout(resolve, 46_000));
+
+    const payload = await rpc(tauriPage, connection, "tools/call", {
+      name: "read_file",
+      arguments: { path: "headless.tex" },
+    });
+    expect(resultText(payload)).toContain("MCPHEADLESSMARKER");
+  });
+
+  test("a renderer-approved write refreshes an already-open editor buffer", async ({ tauriPage }) => {
+    await tauriPage.evaluate(`
+      import("/src/store/files.ts").then(({ useFilesStore }) =>
+        useFilesStore.getState().openFile("headless.tex")
+      )
+    `);
+    await expect.poll(() => editorSource(tauriPage)).toContain("MCPHEADLESSMARKER");
+
     await rpc(tauriPage, connection, "tools/call", {
       name: "write_file",
-      arguments: { path: "native-write.tex", content: "alpha beta alpha\n" },
+      arguments: { path: "headless.tex", content: "% NATIVEBUFFERREFRESH\n\\section{Two}\n" },
     });
 
-    const replaced = await rpc(tauriPage, connection, "tools/call", {
-      name: "replace_in_file",
-      arguments: { path: "native-write.tex", find: "alpha", replace: "gamma", replace_all: true },
-    });
-    expect(JSON.parse(resultText(replaced)).replacements).toBe(2);
+    await expect.poll(() => editorSource(tauriPage)).toContain("NATIVEBUFFERREFRESH");
+  });
 
-    const read = await rpc(tauriPage, connection, "tools/call", {
-      name: "read_file",
-      arguments: { path: "native-write.tex" },
+  test("read-only config is enforced even before the webview registry refreshes", async ({
+    tauriPage,
+  }) => {
+    await tauriPage.evaluate(`
+      import("/src/lib/tauri.ts").then(async ({ getConfig, setConfig }) => {
+        const cfg = await getConfig();
+        await setConfig({ ...cfg, mcp_read_only: true });
+      })
+    `);
+
+    const payload = (await rpc(tauriPage, connection, "tools/call", {
+      name: "write_file",
+      arguments: { path: "read-only-bypass.tex", content: "must not exist" },
+    })) as { result?: { isError?: boolean } };
+    expect(payload.result?.isError).toBe(true);
+    expect(resultText(payload)).toMatch(/read-only/i);
+
+    const listed = await rpc(tauriPage, connection, "tools/call", {
+      name: "list_files",
+      arguments: {},
     });
-    expect(JSON.parse(resultText(read)).content).toBe("gamma beta gamma");
+    expect(resultText(listed)).not.toContain("read-only-bypass.tex");
   });
 
   test("a replace that matches nothing is reported rather than silently ignored", async ({
@@ -131,18 +253,19 @@ test.describe("MCP without the webview", () => {
     const payload = (await rpc(tauriPage, connection, "tools/call", {
       name: "replace_in_file",
       arguments: { path: "headless.tex", find: "NOTPRESENTANYWHERE", replace: "x" },
-    })) as { error?: { message?: string } };
+    })) as { result?: { isError?: boolean } };
 
-    expect(payload.error?.message ?? "").toMatch(/no match/i);
+    expect(payload.result?.isError).toBe(true);
+    expect(resultText(payload)).toMatch(/no match|not found/i);
   });
 
   test("a project id outside the library is refused", async ({ tauriPage }) => {
     const payload = (await rpc(tauriPage, connection, "tools/call", {
       name: "read_file",
       arguments: { project_id: "../../../etc", path: "passwd" },
-    })) as { error?: { message?: string } };
+    })) as { result?: { isError?: boolean } };
 
-    expect(payload.error, "traversal must not be served").toBeTruthy();
+    expect(payload.result?.isError, "traversal must not be served").toBe(true);
     expect(resultText(payload)).not.toContain("root:");
   });
 

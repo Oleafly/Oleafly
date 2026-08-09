@@ -490,7 +490,7 @@ Produktfeedback sind willkommen.
    ```bash
    pnpm build
    pnpm test
-   cargo test --manifest-path src-tauri/Cargo.toml --lib
+   cargo test --workspace --all-targets
    ```
 
 Bitte melde Sicherheitsprobleme vertraulich, wie in

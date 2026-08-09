@@ -1,12 +1,12 @@
 # Auto-updates
 
 Oleafly ships with an in-app updater (Tauri's `plugin-updater`). On launch it
-quietly checks the latest GitHub Release; if a newer version is available it
+quietly checks the latest GitHub Release. If a newer version is available it
 opens a dedicated, branded update window (not a native OS dialog) that shows the
 changelog and offers to download, verify, install, and restart. Users can also
 trigger a check from **About → Check for updates** (which reports the result
 inline), or on macOS and Linux from the **Oleafly → Check for Updates** menu.
-That application menu (macOS and Linux only — Windows has no menu bar) also
+That application menu (macOS and Linux only, because Windows has no menu bar) also
 offers **Reload Views** for refreshing webviews and **Restart Application** for
 a full process restart.
 
@@ -64,9 +64,17 @@ git commit -am "chore: release v0.2.2"
 git tag v0.2.2 && git push origin main --tags   # triggers the Release workflow
 ```
 
-The workflow builds every platform, signs the updater artifacts, generates
-`latest.json`, and creates a **draft** release. Publish it once the artifacts
-look right. Installed apps will pick up the update on their next launch.
+The workflow builds macOS Apple Silicon, Windows x64, Linux x64, and Linux
+ARM64 artifacts. It signs available platform and updater artifacts, generates
+`latest.json`, and creates a verified **draft** release. To publish, rerun the
+workflow manually for the same tag with **Publish the release** enabled.
+
+Publishing also runs the real-app provider contract against Anthropic and
+Google. The repository must provide `ANTHROPIC_API_KEY` and `GOOGLE_API_KEY` as
+Actions secrets. Optional `ANTHROPIC_E2E_MODEL` and `GOOGLE_E2E_MODEL`
+repository variables can select models available to those accounts. Missing
+credentials or a failed model-listing, streaming, usage, or tool-call check
+keeps the release in draft form.
 
 ## Failure and rollback
 

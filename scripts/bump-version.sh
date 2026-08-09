@@ -6,7 +6,7 @@
 #   - package.json            ("version")
 #   - src-tauri/tauri.conf.json ("version")
 #   - src-tauri/Cargo.toml     ([package] version)
-#   - src-tauri/Cargo.lock     (the oleafly package entry)
+#   - Cargo.lock               (the oleafly package entry)
 #
 # Usage:
 #   ./scripts/bump-version.sh 0.2.0
@@ -33,9 +33,9 @@ fi
 pkg="$ROOT/package.json"
 conf="$ROOT/src-tauri/tauri.conf.json"
 cargo="$ROOT/src-tauri/Cargo.toml"
-lock="$ROOT/src-tauri/Cargo.lock"
+lock="$ROOT/Cargo.lock"
 
-for f in "$pkg" "$conf" "$cargo"; do
+for f in "$pkg" "$conf" "$cargo" "$lock"; do
   [[ -f "$f" ]] || { echo "error: missing $f" >&2; exit 1; }
 done
 
@@ -50,15 +50,13 @@ perl -0pi -e 's/("version"\s*:\s*")[^"]*(")/${1}'"$VERSION"'${2}/' "$conf"
 perl -pi -e 'if (!$seen && /^version = "/) { s/^version = "[^"]*"/version = "'"$VERSION"'"/; $seen = 1 }' "$cargo"
 
 # Cargo.lock: the version line immediately under the oleafly package entry.
-if [[ -f "$lock" ]]; then
-  perl -0pi -e 's/(name = "oleafly"\nversion = ")[^"]*(")/${1}'"$VERSION"'${2}/' "$lock"
-fi
+perl -0pi -e 's/(name = "oleafly"\nversion = ")[^"]*(")/${1}'"$VERSION"'${2}/' "$lock"
 
 echo "Set version to $VERSION in:"
 echo "  - package.json"
 echo "  - src-tauri/tauri.conf.json"
 echo "  - src-tauri/Cargo.toml"
-[[ -f "$lock" ]] && echo "  - src-tauri/Cargo.lock"
+echo "  - Cargo.lock"
 echo
 echo "Next steps:"
 echo "  git commit -am \"chore: release v$VERSION\""

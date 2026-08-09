@@ -16,6 +16,11 @@ import {
   type DecorationSet,
   type ViewUpdate,
 } from "@codemirror/view";
+import {
+  boundedCompletionContext,
+  isCompletionTextLexicallyTriggered,
+  type CompletionSyntax,
+} from "./completion-trigger";
 
 // Inline "ghost" completion: the rest of the most likely candidate, drawn dim
 // after the cursor and accepted with Tab.
@@ -117,38 +122,59 @@ const ghostField = StateField.define<GhostSuggestion | null>({
     ),
 });
 
-/** The identifier being typed at `pos`: a LaTeX command or a plain word. */
 function typedPrefix(
-  view: EditorView,
+  before: string,
   pos: number,
 ): { from: number; text: string } | null {
-  const line = view.state.doc.lineAt(pos);
-  const before = line.text.slice(0, pos - line.from);
-  const match = before.match(/(\\[a-zA-Z@]*|[A-Za-z][A-Za-z0-9]*)$/);
-  if (!match) return null;
-  const text = match[1];
-  const letters = text.startsWith("\\") ? text.length - 1 : text.length;
-  const minimum = text.startsWith("\\") ? MIN_COMMAND_LETTERS : MIN_WORD_LETTERS;
-  if (letters < minimum) return null;
+  const start = typedPrefixStart(before);
+  const text = before.slice(start);
+  const minimum = typedPrefixMinimum(text);
+  if (minimum === null) return null;
+  if (text.length < minimum) return null;
   return { from: pos - text.length, text };
 }
 
-/** Only suggest at the end of a word, never in the middle of one. */
-function atWordEnd(view: EditorView, pos: number): boolean {
-  const line = view.state.doc.lineAt(pos);
-  const after = line.text.slice(pos - line.from);
-  return after === "" || /^[\s}\]),.;:$&]/.test(after);
+function typedPrefixStart(before: string): number {
+  let start = before.length;
+  while (start > 0) {
+    if (!isIdentifierContinuation(before[start - 1])) break;
+    start--;
+  }
+  if (start > 0) {
+    if (before[start - 1] === "\\") start--;
+  }
+  if (before[start] === "@") start++;
+  return start;
 }
 
-/**
- * What the ghost shows, and exactly what Tab inserts.
- *
- * The label is used rather than the option's `apply`, because every source
- * here wraps `apply` in a guard function whose expansion cannot be inspected.
- * Inserting the label keeps the preview honest: what is shown is what lands.
- * Choosing the same option from the popup may expand further (a command with
- * arguments becomes a snippet), which is the popup's job, not this one's.
- */
+function typedPrefixMinimum(text: string): number | null {
+  if (!text) return null;
+  if (text[0] === "\\") return MIN_COMMAND_LETTERS + 1;
+  if (isAsciiLetter(text[0])) return MIN_WORD_LETTERS;
+  return null;
+}
+
+function isAsciiLetter(character: string): boolean {
+  return (character >= "A" && character <= "Z") ||
+    (character >= "a" && character <= "z");
+}
+
+function isIdentifierContinuation(character: string): boolean {
+  return isAsciiLetter(character) ||
+    (character >= "0" && character <= "9") ||
+    character === "@";
+}
+
+const WORD_END_PUNCTUATION = new Set(["}", "]", ")", ",", ".", ":", "$", "&"]);
+
+function atWordEnd(view: EditorView, pos: number): boolean {
+  const after = view.state.sliceDoc(
+    pos,
+    Math.min(view.state.doc.length, pos + 1),
+  );
+  return after === "" || after.trim() === "" || WORD_END_PUNCTUATION.has(after);
+}
+
 function previewLabel(option: Completion, prefix: string): string | null {
   const label = typeof option.apply === "string" ? option.apply : option.label;
   if (label.length <= prefix.length || !label.startsWith(prefix)) return null;
@@ -193,13 +219,15 @@ function syncResult(
 function computeGhost(
   view: EditorView,
   sources: CompletionSource[],
+  syntax: CompletionSyntax,
 ): GhostSuggestion | null {
   const selection = view.state.selection.main;
   if (!selection.empty || view.state.readOnly) return null;
   const pos = selection.head;
   if (view.state.field(dismissedField, false) === pos) return null;
   if (!atWordEnd(view, pos)) return null;
-  const prefix = typedPrefix(view, pos);
+  const before = boundedCompletionContext(view.state, pos);
+  const prefix = typedPrefix(before, pos);
   if (!prefix) return null;
 
   // Popup open: mirror the highlighted option so the two never disagree.
@@ -208,6 +236,8 @@ function computeGhost(
     const label = selected ? previewLabel(selected, prefix.text) : null;
     return label ? { pos, text: label.slice(prefix.text.length) } : null;
   }
+
+  if (!isCompletionTextLexicallyTriggered(before, syntax)) return null;
 
   const context = new CompletionContext(view.state, pos, false);
   for (const source of sources) {
@@ -264,23 +294,28 @@ const ghostTheme = EditorView.baseTheme({
  * Inline ghost completion driven by `sources`, which should be the same
  * completion sources the popup uses so both surfaces agree.
  */
-export function ghostCompletion(sources: CompletionSource[]): Extension {
+export function ghostCompletion(
+  sources: CompletionSource[],
+  syntax: CompletionSyntax = "generic",
+): Extension {
   const plugin = ViewPlugin.fromClass(
     class {
       // Recomputing inside update() would dispatch during an update, so the
       // work is deferred to a microtask and guarded against a stale view.
       private scheduled = false;
+      private destroyed = false;
 
       constructor(readonly view: EditorView) {
         this.schedule();
       }
 
       update(update: ViewUpdate) {
-        // The popup opening or closing changes where the suggestion comes
-        // from, and closing it moves neither cursor nor document, so without
-        // this the last preview would linger on screen.
+        const previousStatus = completionStatus(update.startState);
+        const nextStatus = completionStatus(update.state);
         const popupChanged =
-          completionStatus(update.startState) !== completionStatus(update.state);
+          previousStatus !== nextStatus ||
+          (nextStatus === "active" &&
+            selectedCompletion(update.startState) !== selectedCompletion(update.state));
         if (update.docChanged || update.selectionSet || popupChanged) {
           this.schedule();
         }
@@ -291,6 +326,7 @@ export function ghostCompletion(sources: CompletionSource[]): Extension {
         this.scheduled = true;
         queueMicrotask(() => {
           this.scheduled = false;
+          if (this.destroyed) return;
           this.refresh();
         });
       }
@@ -304,14 +340,14 @@ export function ghostCompletion(sources: CompletionSource[]): Extension {
         // while the user types. The suggestion is anchored to the cursor and
         // only survives until the next edit, so an unfocused editor cannot
         // accumulate stale previews anyway.
-        const next = computeGhost(view, sources);
+        const next = computeGhost(view, sources, syntax);
         const current = view.state.field(ghostField, false) ?? null;
         if (next?.text === current?.text && next?.pos === current?.pos) return;
         view.dispatch({ effects: setGhost.of(next) });
       }
 
       destroy() {
-        this.scheduled = true;
+        this.destroyed = true;
       }
     },
   );

@@ -129,7 +129,7 @@ jobs:
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: src-tauri -> target
+          workspaces: . -> src-tauri/target
 
       # Tauri externalBin compilers must exist before compiling. Tinymist is
       # staged separately as an immutable resource archive below.
@@ -179,16 +179,49 @@ jobs:
         run: bash scripts/smoke-markdown.sh x86_64-unknown-linux-gnu
 
       - name: Test
-        working-directory: src-tauri
-        run: cargo test --lib
+        run: cargo test --workspace --all-targets
 
       - name: Format check
-        working-directory: src-tauri
-        run: cargo fmt --check
+        run: cargo fmt --all -- --check
 
       - name: Clippy
-        working-directory: src-tauri
-        run: cargo clippy --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+  rust-windows:
+    name: Rust tests (Windows Job Objects)
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772
+        with:
+          toolchain: stable
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: . -> src-tauri/target
+
+      - name: Fetch compiler sidecars
+        shell: bash
+        run: |
+          bash scripts/fetch-tectonic.sh x86_64-pc-windows-msvc
+          bash scripts/fetch-biber.sh x86_64-pc-windows-msvc
+          bash scripts/fetch-typst.sh x86_64-pc-windows-msvc
+
+      - name: Stage checksum-pinned Tinymist resource archive
+        run: node scripts/fetch-language-servers.mjs --server tinymist --target x86_64-pc-windows-msvc --install-mode resource
+
+      - name: Run the native Windows test suite
+        env:
+          OLEAFLY_EMBED_TEST_MANIFEST: "1"
+        run: cargo test --workspace --lib
 
   cargo-deny:
     # RustSec advisories plus a permissive-only license gate for everything
@@ -240,7 +273,7 @@ jobs:
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: src-tauri -> target
+          workspaces: . -> src-tauri/target
 
       - name: Cache Tectonic sidecar
         id: cache-tectonic-e2e
@@ -389,7 +422,7 @@ jobs:
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: src-tauri -> target
+          workspaces: . -> src-tauri/target
 
       - name: Cache Tectonic sidecar
         id: cache-tectonic-e2e-linux
@@ -510,7 +543,7 @@ jobs:
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: src-tauri -> target
+          workspaces: . -> src-tauri/target
 
       - name: Cache Tectonic sidecar
         id: cache-tectonic-e2e-windows

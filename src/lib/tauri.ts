@@ -53,6 +53,7 @@ export interface DocumentEngineDescriptor {
   capabilities: EngineCapabilities;
   /** Pinned latexmk compiler; absent means auto-detect from the source. */
   tex_flavor?: TexFlavor;
+  allow_shell_escape: boolean;
 }
 
 export type TexFlavor = "pdflatex" | "xelatex" | "lualatex";
@@ -83,6 +84,17 @@ export interface ProjectMeta {
   color?: string;
   kind?: string;
   tex?: TexSpec | null;
+  allow_shell_escape: boolean;
+}
+
+export interface ProjectStateChanged {
+  projectId: string;
+  revision: number;
+  reason: string;
+  filesChanged: boolean;
+  mutationGeneration: number | null;
+  project: ProjectMeta;
+  engine: DocumentEngineDescriptor;
 }
 
 // Reproducibility pin for latexmk projects (stored in project.json so it
@@ -167,8 +179,25 @@ export const readIsolatedPdf = (projectId: string) =>
 export const readProjectBytes = (projectId: string, relPath: string) =>
   invoke<ArrayBuffer>("read_project_bytes", { projectId, relPath });
 
-export const writeProjectBytes = (projectId: string, relPath: string, dataBase64: string) =>
-  invoke<void>("write_project_bytes", { projectId, relPath, dataBase64 });
+export interface FileMutationResult {
+  generation: number;
+}
+
+export const projectMutationGeneration = (projectId: string) =>
+  invoke<number>("project_mutation_generation", { projectId });
+
+export const writeProjectBytes = (
+  projectId: string,
+  relPath: string,
+  dataBase64: string,
+  expectedGeneration?: number,
+) =>
+  invoke<FileMutationResult>("write_project_bytes", {
+    projectId,
+    relPath,
+    dataBase64,
+    expectedGeneration,
+  });
 
 // Used for absolute paths from a save dialog.
 export const writeBytesFile = (dest: string, dataBase64: string) =>
@@ -190,20 +219,30 @@ export const readFileContent = (projectId: string, path: string) =>
 export const writeFileContent = (
   projectId: string,
   path: string,
-  content: string
-) => invoke<void>("write_file", { projectId, path, content });
+  content: string,
+  expectedGeneration?: number,
+) => invoke<FileMutationResult>("write_file", { projectId, path, content, expectedGeneration });
 
-export const createFile = (projectId: string, path: string, isDir: boolean) =>
-  invoke<void>("create_file", { projectId, path, isDir });
+export const createFile = (
+  projectId: string,
+  path: string,
+  isDir: boolean,
+  expectedGeneration?: number,
+) => invoke<FileMutationResult>("create_file", { projectId, path, isDir, expectedGeneration });
 
-export const deleteFile = (projectId: string, path: string) =>
-  invoke<void>("delete_file", { projectId, path });
+export const deleteFile = (projectId: string, path: string, expectedGeneration?: number) =>
+  invoke<FileMutationResult>("delete_file", { projectId, path, expectedGeneration });
 
 export type FileConflictStrategy = "error" | "keep_both" | "replace";
 
 export type RenameFileResult =
-  | { status: "renamed"; path: string }
-  | { status: "conflict"; destination: string; suggested_destination: string };
+  | { status: "renamed"; path: string; generation: number }
+  | {
+      status: "conflict";
+      destination: string;
+      suggested_destination: string;
+      generation: number;
+    };
 
 export class FileConflictError extends Error {
   readonly destination: string;
@@ -225,25 +264,55 @@ export async function renameFile(
   from: string,
   to: string,
   conflictStrategy: FileConflictStrategy = "error",
+  expectedGeneration?: number,
 ): Promise<string> {
   const result = await invoke<RenameFileResult>("rename_file", {
     projectId,
     from,
     to,
     conflictStrategy,
+    expectedGeneration,
   });
   if (result.status === "conflict") throw new FileConflictError(result);
   return result.path;
 }
 
-export const copyFile = (projectId: string, from: string, to: string) =>
-  invoke<string>("copy_file", { projectId, from, to });
+export interface CopyFileResult {
+  path: string;
+  generation: number;
+}
 
-export const importPathsIntoProject = (projectId: string, destDir: string, sourcePaths: string[]) =>
-  invoke<string[]>("import_paths_into_project", { projectId, destDir, sourcePaths });
+export const copyFile = (
+  projectId: string,
+  from: string,
+  to: string,
+  expectedGeneration?: number,
+) => invoke<CopyFileResult>("copy_file", { projectId, from, to, expectedGeneration });
 
-export const saveFileBase64 = (projectId: string, path: string, data: string) =>
-  invoke<void>("save_file_base64", { projectId, path, data });
+export interface ImportPathsResult {
+  paths: string[];
+  generation: number;
+}
+
+export const importPathsIntoProject = (
+  projectId: string,
+  destDir: string,
+  sourcePaths: string[],
+  expectedGeneration?: number,
+) =>
+  invoke<ImportPathsResult>("import_paths_into_project", {
+    projectId,
+    destDir,
+    sourcePaths,
+    expectedGeneration,
+  });
+
+export const saveFileBase64 = (
+  projectId: string,
+  path: string,
+  data: string,
+  expectedGeneration?: number,
+) => invoke<FileMutationResult>("save_file_base64", { projectId, path, data, expectedGeneration });
 
 export const readFileBase64 = (projectId: string, path: string) =>
   invoke<string>("read_file_base64", { projectId, path });
@@ -268,6 +337,15 @@ export const setProjectEngineCmd = (
   engine: string,
   flavor: TexFlavor | null = null,
 ) => invoke<ProjectMeta>("set_project_engine", { projectId, engine, flavor });
+
+export const setProjectShellEscapeCmd = (
+  projectId: string,
+  allowShellEscape: boolean,
+) =>
+  invoke<ProjectMeta>("set_project_shell_escape", {
+    projectId,
+    allowShellEscape,
+  });
 
 export const renameProjectCmd = (projectId: string, name: string) =>
   invoke<ProjectMeta>("rename_project", { projectId, name });
@@ -471,8 +549,8 @@ export const gitReadVersionLabels = (projectId: string) =>
 export const gitSetVersionLabel = (projectId: string, oid: string, label: string) =>
   invoke<void>("git_set_version_label", { projectId, oid, label });
 
-export const gitRestore = (projectId: string, oid: string) =>
-  invoke<void>("git_restore", { projectId, oid });
+export const gitRestore = (projectId: string, oid: string, expectedGeneration: number) =>
+  invoke<ProjectStateChanged>("git_restore", { projectId, oid, expectedGeneration });
 
 export const exportPdf = (projectId: string, dest: string) =>
   invoke<void>("export_pdf", { projectId, dest });
@@ -654,9 +732,31 @@ export const mcpSetEnabled = (enabled: boolean) =>
 export const mcpRestartServer = () => invoke<McpStatus>("mcp_restart_server");
 export const mcpConnectionInfo = () => invoke<McpConnectionInfo>("mcp_connection_info");
 export const mcpRegenerateToken = () => invoke<void>("mcp_regenerate_token");
+let activeMcpRendererSession: number | null = null;
+let mcpRendererBeginSequence = 0;
+export const mcpBeginRendererSession = async () => {
+  const beginSequence = ++mcpRendererBeginSequence;
+  const rendererSession = await invoke<number>("mcp_begin_renderer_session");
+  if (!Number.isSafeInteger(rendererSession) || rendererSession <= 0) {
+    throw new Error("The MCP backend returned an invalid renderer session");
+  }
+  if (beginSequence === mcpRendererBeginSequence) {
+    activeMcpRendererSession = rendererSession;
+  }
+  return rendererSession;
+};
+export const mcpRendererHeartbeat = (rendererSession: number) =>
+  invoke<void>("mcp_renderer_heartbeat", { rendererSession });
+export const mcpEndRendererSession = async (rendererSession: number) => {
+  await invoke<void>("mcp_end_renderer_session", { rendererSession });
+  if (activeMcpRendererSession === rendererSession) {
+    activeMcpRendererSession = null;
+  }
+};
 export const mcpRegisterTools = (
   tools: { name: string; description: string; inputSchema: unknown }[],
-) => invoke<void>("mcp_register_tools", { tools });
+  rendererSession: number,
+) => invoke<void>("mcp_register_tools", { tools, rendererSession });
 export const REDACTED_MARKER = "__stored__";
 export const redactedSecretMarker = () => invoke<string>("redacted_secret_marker");
 
@@ -676,10 +776,20 @@ export const agentListModels = (args: {
     baseUrl: args.baseURL ?? null,
   });
 
-export const mcpSetActiveProject = (projectId: string | null) =>
-  invoke<void>("mcp_set_active_project", { projectId });
-export const mcpToolResult = (callId: number, result: unknown) =>
-  invoke<void>("mcp_tool_result", { callId, result });
+export const mcpSetActiveProject = (projectId: string | null) => {
+  if (activeMcpRendererSession === null) {
+    return Promise.reject(new Error("The MCP renderer session is not ready"));
+  }
+  return invoke<void>("mcp_set_active_project", {
+    projectId,
+    rendererSession: activeMcpRendererSession,
+  });
+};
+export const mcpToolResult = (
+  callId: number,
+  result: unknown,
+  rendererSession: number,
+) => invoke<void>("mcp_tool_result", { callId, result, rendererSession });
 
 // --- GitHub (token stays in the Rust core; these never take/return it) ---
 
@@ -725,8 +835,12 @@ export const gitAheadBehind = (projectId: string) =>
 
 export const gitPush = (projectId: string) =>
   invoke<string>("git_push", { projectId });
-export const gitPull = (projectId: string) =>
-  invoke<string>("git_pull", { projectId });
+export interface GitPullResult {
+  message: string;
+  state: ProjectStateChanged;
+}
+export const gitPull = (projectId: string, expectedGeneration: number) =>
+  invoke<GitPullResult>("git_pull", { projectId, expectedGeneration });
 
 export interface GitFileChange {
   path: string;
@@ -740,8 +854,8 @@ export const gitStatus = (projectId: string) =>
 export const gitDiff = (projectId: string, path?: string, staged = false) =>
   invoke<string>("git_diff", { projectId, path: path ?? null, staged });
 
-export const gitDiscard = (projectId: string, path: string) =>
-  invoke<void>("git_discard", { projectId, path });
+export const gitDiscard = (projectId: string, path: string, expectedGeneration: number) =>
+  invoke<ProjectStateChanged>("git_discard", { projectId, path, expectedGeneration });
 
 export const gitHeadOid = (projectId: string) =>
   invoke<string | null>("git_head_oid", { projectId });

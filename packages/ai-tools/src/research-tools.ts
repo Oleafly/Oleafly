@@ -128,7 +128,7 @@ export function createResearchTools(host: ResearchToolsHost): Record<
 
     literature_search: {
       description:
-        "Search OpenAlex's scholarly-works index by natural-language query. Keyless and free; results include titles, authors, publication year, and OpenAlex/DOI ids. Use for general literature discovery.",
+        "Search OpenAlex's scholarly-works index by natural-language query. It is keyless and free. Results include titles, authors, publication year, and OpenAlex or DOI ids. Use for general literature discovery.",
       inputSchema: {
         type: "object",
         properties: {

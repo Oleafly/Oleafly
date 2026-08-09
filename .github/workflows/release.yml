@@ -50,6 +50,10 @@ jobs:
             os: ubuntu-22.04
             rust_target: x86_64-unknown-linux-gnu
             args: ""
+          - name: Linux (ARM64)
+            os: ubuntu-24.04-arm
+            rust_target: aarch64-unknown-linux-gnu
+            args: "--target aarch64-unknown-linux-gnu"
           - name: Windows (x86_64)
             os: windows-latest
             rust_target: x86_64-pc-windows-msvc
@@ -57,9 +61,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
 
       - name: Install Linux system dependencies (Tauri)
-        if: matrix.os == 'ubuntu-22.04'
+        if: startsWith(matrix.os, 'ubuntu-')
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -90,7 +96,7 @@ jobs:
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: src-tauri -> target
+          workspaces: . -> src-tauri/target
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -255,7 +261,7 @@ jobs:
             echo ""
             echo "---"
             echo ""
-            echo "**Downloads:** grab your platform's installer below (macOS \`aarch64\` \`.dmg\`, Windows \`.msi\` / \`-setup.exe\`, Linux \`.AppImage\` / \`.deb\`)."
+            echo "**Downloads:** grab your platform's installer below (macOS Apple Silicon \`.dmg\`, Windows x86_64 \`.msi\` / \`-setup.exe\`, Linux x86_64 or ARM64 \`.AppImage\` / \`.deb\`)."
             echo 'CHANGELOG_EOF'
           } >> "$GITHUB_OUTPUT"
 
@@ -280,13 +286,25 @@ jobs:
           releaseBody: ${{ steps.notes.outputs.body }}
           releaseDraft: true
           prerelease: false
+          # Matrix jobs concurrently merge latest.json on the draft release.
+          # Retries handle transient delete/upload conflicts; the finalize job
+          # below performs a deterministic target-owned merge before release.
+          retryAttempts: 3
           args: ${{ matrix.args }} ${{ env.TAURI_SIGN_ARGS }}
+
+      - name: Preserve this target's updater fragment
+        uses: actions/upload-artifact@v7
+        with:
+          name: updater-fragment-${{ matrix.rust_target }}
+          path: latest.json
+          if-no-files-found: error
+          retention-days: 2
 
       - name: Verify staged compiler sidecars and Tinymist resource policy
         shell: bash
         run: |
           node scripts/fetch-language-servers.mjs --check --server tinymist --target ${{ matrix.rust_target }} --install-mode resource
-          if [[ "${{ matrix.rust_target }}" == "aarch64-apple-darwin" ]]; then
+          if [[ "${{ matrix.rust_target }}" == "aarch64-apple-darwin" || "${{ matrix.rust_target }}" == "aarch64-unknown-linux-gnu" ]]; then
             RUNTIME_DIR="src-tauri/target/${{ matrix.rust_target }}/release"
             test -f "$RUNTIME_DIR/tectonic"
             test ! -e "$RUNTIME_DIR/tinymist"
@@ -303,6 +321,158 @@ jobs:
             test -f "$RUNTIME_DIR/typst"
           fi
 
+  # Each tauri-action leg produces a complete latest.json candidate by merging
+  # the release's current manifest. Those read/delete/upload operations are not
+  # atomic across a matrix, so the last writer can otherwise lose a concurrent
+  # platform. Preserve every leg's local candidate above, then retain only the
+  # keys owned by that leg and publish one deterministic manifest after all four
+  # builds succeed.
+  finalize-updater:
+    name: Finalize updater manifest (all targets)
+    needs: build
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - name: Download per-target updater fragments
+        uses: actions/download-artifact@v7
+        with:
+          pattern: updater-fragment-*
+          path: updater-fragments
+
+      - name: Merge target-owned updater entries and upload canonical latest.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mac="updater-fragments/updater-fragment-aarch64-apple-darwin/latest.json"
+          windows="updater-fragments/updater-fragment-x86_64-pc-windows-msvc/latest.json"
+          linux_x64="updater-fragments/updater-fragment-x86_64-unknown-linux-gnu/latest.json"
+          linux_arm64="updater-fragments/updater-fragment-aarch64-unknown-linux-gnu/latest.json"
+          fragments=("$mac" "$windows" "$linux_x64" "$linux_arm64")
+          for fragment in "${fragments[@]}"; do
+            test -s "$fragment" || { echo "missing updater fragment: $fragment" >&2; exit 1; }
+            jq -e '.version and (.platforms | type == "object")' "$fragment" >/dev/null
+          done
+          metadata_variants="$(jq -c '[.version, .notes]' "${fragments[@]}" | sort -u | wc -l | tr -d ' ')"
+          test "$metadata_variants" = 1 || {
+            echo "updater fragments disagree on version or release notes" >&2
+            exit 1
+          }
+          jq -n \
+            --slurpfile mac "$mac" \
+            --slurpfile windows "$windows" \
+            --slurpfile linux_x64 "$linux_x64" \
+            --slurpfile linux_arm64 "$linux_arm64" '
+              def owned($document; $prefix):
+                $document.platforms
+                | with_entries(select(.key | startswith($prefix)));
+              {
+                version: $mac[0].version,
+                notes: $mac[0].notes,
+                pub_date: ([$mac[0].pub_date, $windows[0].pub_date, $linux_x64[0].pub_date, $linux_arm64[0].pub_date] | max),
+                platforms: (
+                  owned($mac[0]; "darwin-aarch64")
+                  + owned($windows[0]; "windows-x86_64")
+                  + owned($linux_x64[0]; "linux-x86_64")
+                  + owned($linux_arm64[0]; "linux-aarch64")
+                )
+              }
+            ' > latest.json
+          for platform in \
+            darwin-aarch64 darwin-aarch64-app \
+            windows-x86_64 windows-x86_64-msi windows-x86_64-nsis \
+            linux-x86_64 linux-x86_64-appimage linux-x86_64-deb \
+            linux-aarch64 linux-aarch64-appimage linux-aarch64-deb; do
+            jq -e --arg p "$platform" '.platforms | has($p)' latest.json >/dev/null \
+              || { echo "merged latest.json is missing platform: $platform" >&2; exit 1; }
+          done
+          gh release upload "$TAG" latest.json --repo "$GITHUB_REPOSITORY" --clobber
+
+  provider-live:
+    name: Release-candidate live provider contracts
+    runs-on: macos-14
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Install Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Fetch Tectonic sidecar
+        run: bash scripts/fetch-tectonic.sh aarch64-apple-darwin
+
+      - name: Fetch Biber sidecar
+        run: bash scripts/fetch-biber.sh aarch64-apple-darwin
+
+      - name: Fetch Typst sidecar
+        run: bash scripts/fetch-typst.sh aarch64-apple-darwin
+
+      - name: Fetch pinned Tinymist resource
+        run: node scripts/fetch-language-servers.mjs --server tinymist --target aarch64-apple-darwin --install-mode resource
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: . -> src-tauri/target
+
+      - name: Install Playwright browser
+        run: pnpm exec playwright install chromium
+
+      - name: Require live-provider release credentials
+        env:
+          ANTHROPIC_TOKEN: ${{ secrets.ANTHROPIC_API_KEY }}
+          GOOGLE_TOKEN: ${{ secrets.GOOGLE_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [ -n "$ANTHROPIC_TOKEN" ] || { echo "ANTHROPIC_API_KEY is required to publish" >&2; exit 1; }
+          [ -n "$GOOGLE_TOKEN" ] || { echo "GOOGLE_API_KEY is required to publish" >&2; exit 1; }
+
+      - name: Verify Anthropic against the release candidate
+        env:
+          E2E_AI_TOKEN: ${{ secrets.ANTHROPIC_API_KEY }}
+          E2E_AI_PROVIDER_ID: anthropic
+          E2E_AI_MODEL: ${{ vars.ANTHROPIC_E2E_MODEL || 'claude-sonnet-4-20250514' }}
+        run: ./scripts/e2e.sh e2e/tests/69-agent-live.spec.ts
+
+      - name: Verify Google against the release candidate
+        env:
+          E2E_AI_TOKEN: ${{ secrets.GOOGLE_API_KEY }}
+          E2E_AI_PROVIDER_ID: google
+          E2E_AI_MODEL: ${{ vars.GOOGLE_E2E_MODEL || 'gemini-2.5-pro' }}
+        run: ./scripts/e2e.sh e2e/tests/69-agent-live.spec.ts
+
+      - name: Upload failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: live-provider-release-test-results
+          path: |
+            test-results/**/error-context.md
+            test-results/**/trace.zip
+            test-results/**/*.log
+          retention-days: 7
+          if-no-files-found: ignore
+
   # A tag must never yield a half-published release. Each matrix leg uploads its
   # own assets, so a leg that fails simply contributes nothing - which on its own
   # leaves a release carrying only the platforms that happened to succeed. These
@@ -314,7 +484,7 @@ jobs:
   # for the same tag with "Publish the release" checked.
   publish:
     name: Publish (all platforms present)
-    needs: build
+    needs: [build, finalize-updater, provider-live]
     if: ${{ inputs.publish == true }}
     runs-on: ubuntu-22.04
     permissions:
@@ -330,11 +500,15 @@ jobs:
           assets="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')"
           echo "$assets"
           missing=()
-          # One representative artifact per platform, plus the updater feed.
+          # One representative artifact per supported architecture, plus the
+          # updater feed. Architecture-specific names prevent one Linux build
+          # from accidentally satisfying both checks.
           grep -qE '\.dmg$'                  <<<"$assets" || missing+=("macOS .dmg")
           grep -qE '\.(msi|exe)$'            <<<"$assets" || missing+=("Windows .msi/.exe")
-          grep -qE '\.AppImage$'             <<<"$assets" || missing+=("Linux .AppImage")
-          grep -qE '\.deb$'                  <<<"$assets" || missing+=("Linux .deb")
+          grep -qE '_(amd64|x86_64)\.AppImage$' <<<"$assets" || missing+=("Linux x86_64 .AppImage")
+          grep -qE '_(arm64|aarch64)\.AppImage$' <<<"$assets" || missing+=("Linux ARM64 .AppImage")
+          grep -qE '_(amd64|x86_64)\.deb$'   <<<"$assets" || missing+=("Linux x86_64 .deb")
+          grep -qE '_(arm64|aarch64)\.deb$'  <<<"$assets" || missing+=("Linux ARM64 .deb")
           grep -qE '^latest\.json$'          <<<"$assets" || missing+=("latest.json")
           if ((${#missing[@]})); then
             printf 'refusing to publish %s; missing: %s\n' "$TAG" "${missing[*]}" >&2
@@ -343,7 +517,7 @@ jobs:
           # The updater feed must offer every platform too, or clients on a
           # missing one silently never see the release.
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" -p latest.json -D . --clobber
-          for platform in darwin-aarch64 windows-x86_64 linux-x86_64; do
+          for platform in darwin-aarch64 windows-x86_64 linux-x86_64 linux-aarch64; do
             jq -e --arg p "$platform" '.platforms | has($p)' latest.json >/dev/null \
               || { echo "latest.json is missing platform: $platform" >&2; exit 1; }
           done
@@ -354,7 +528,7 @@ jobs:
   # artifact and updater-feed checks as a publish - it just never flips live.
   draft-ready:
     name: Draft is complete (not published)
-    needs: build
+    needs: [build, finalize-updater, provider-live]
     if: ${{ always() && inputs.publish != true }}
     runs-on: ubuntu-22.04
     permissions:
@@ -371,8 +545,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ "${{ needs.build.result }}" != "success" ]; then
-            echo "build did not succeed; the draft is incomplete" >&2
+          if [ "${{ needs.build.result }}" != "success" ] || [ "${{ needs['finalize-updater'].result }}" != "success" ] || [ "${{ needs['provider-live'].result }}" != "success" ]; then
+            echo "build, updater finalization, or live-provider validation did not succeed; the draft is incomplete" >&2
             exit 1
           fi
           assets="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')"
@@ -380,15 +554,17 @@ jobs:
           missing=()
           grep -qE '\.dmg$'                  <<<"$assets" || missing+=("macOS .dmg")
           grep -qE '\.(msi|exe)$'            <<<"$assets" || missing+=("Windows .msi/.exe")
-          grep -qE '\.AppImage$'             <<<"$assets" || missing+=("Linux .AppImage")
-          grep -qE '\.deb$'                  <<<"$assets" || missing+=("Linux .deb")
+          grep -qE '_(amd64|x86_64)\.AppImage$' <<<"$assets" || missing+=("Linux x86_64 .AppImage")
+          grep -qE '_(arm64|aarch64)\.AppImage$' <<<"$assets" || missing+=("Linux ARM64 .AppImage")
+          grep -qE '_(amd64|x86_64)\.deb$'   <<<"$assets" || missing+=("Linux x86_64 .deb")
+          grep -qE '_(arm64|aarch64)\.deb$'  <<<"$assets" || missing+=("Linux ARM64 .deb")
           grep -qE '^latest\.json$'          <<<"$assets" || missing+=("latest.json")
           if ((${#missing[@]})); then
             printf 'draft %s is incomplete; missing: %s\n' "$TAG" "${missing[*]}" >&2
             exit 1
           fi
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" -p latest.json -D . --clobber
-          for platform in darwin-aarch64 windows-x86_64 linux-x86_64; do
+          for platform in darwin-aarch64 windows-x86_64 linux-x86_64 linux-aarch64; do
             jq -e --arg p "$platform" '.platforms | has($p)' latest.json >/dev/null \
               || { echo "latest.json is missing platform: $platform" >&2; exit 1; }
           done
@@ -396,8 +572,8 @@ jobs:
 
   guard-incomplete:
     name: Keep an incomplete release unpublished
-    needs: [build, publish]
-    if: always() && inputs.publish == true && (needs.build.result != 'success' || needs.publish.result != 'success')
+    needs: [build, finalize-updater, provider-live, publish]
+    if: always() && inputs.publish == true && (needs.build.result != 'success' || needs['finalize-updater'].result != 'success' || needs['provider-live'].result != 'success' || needs.publish.result != 'success')
     runs-on: ubuntu-22.04
     permissions:
       contents: write

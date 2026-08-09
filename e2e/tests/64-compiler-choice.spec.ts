@@ -19,7 +19,7 @@ const PROJECT = "Compiler Pin";
 function pressWithPointer(selectorExpr: string): string {
   return `(() => {
     const el = ${selectorExpr};
-    if (!el) return false;
+    if (!el || el.matches(':disabled')) return false;
     el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerId: 1 }));
     el.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true, pointerId: 1 }));
     el.click();
@@ -70,17 +70,31 @@ async function openCompilerProject(page: Page) {
 }
 
 async function openCompileMenu(page: Page) {
-  const opened = await page.evaluate<boolean>(
-    pressWithPointer(
-      `document.querySelector('[data-testid="compile-options-button"]')`,
-    ),
-  );
-  if (!opened) throw new Error("compile options trigger not found");
   await waitLong(
     page,
-    `!!document.querySelector('[data-testid="compiler-tectonic"]')`,
-    10_000,
+    `import("/src/store/files.ts").then((m) => {
+      const trigger = document.querySelector('[data-testid="compile-options-button"]');
+      return m.useFilesStore.getState().engineLoaded && !!trigger && !trigger.matches(':disabled');
+    })`,
+    20_000,
   );
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const opened = await page.evaluate<boolean>(
+      pressWithPointer(
+        `document.querySelector('[data-testid="compile-options-button"]')`,
+      ),
+    );
+    if (!opened) continue;
+    for (let tick = 0; tick < 20; tick++) {
+      const visible = await page.evaluate<boolean>(
+        `!!document.querySelector('[data-testid="compiler-tectonic"]')`,
+      );
+      if (visible) return;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    await page.press("body", "Escape");
+  }
+  throw new Error("compile options menu did not open");
 }
 
 async function chooseCompiler(page: Page, testid: string) {
@@ -89,6 +103,11 @@ async function chooseCompiler(page: Page, testid: string) {
     pressWithPointer(`document.querySelector('[data-testid="${testid}"]')`),
   );
   if (!clicked) throw new Error(`compiler item ${testid} not found`);
+  await waitLong(
+    page,
+    `!document.querySelector('[data-testid="${testid}"]')`,
+    10_000,
+  );
 }
 
 async function engineState(page: Page) {
@@ -105,7 +124,8 @@ async function waitForEngine(page: Page, id: string, flavor: string | null) {
     page,
     `import("/src/store/files.ts").then((m) => {
       const engine = m.useFilesStore.getState().engine;
-      return engine.id === ${JSON.stringify(id)}
+      return m.useFilesStore.getState().engineLoaded
+        && engine.id === ${JSON.stringify(id)}
         && (engine.tex_flavor ?? null) === ${JSON.stringify(flavor)};
     })`,
     20_000,
@@ -122,6 +142,15 @@ async function checkedCompiler(page: Page): Promise<string | null> {
       return checked ? checked.getAttribute("data-testid") : null;
     })()`,
   );
+}
+
+async function expectCheckedCompiler(page: Page, testid: string) {
+  await waitLong(
+    page,
+    `document.querySelector('[data-testid="${testid}"]')?.getAttribute("aria-checked") === "true"`,
+    10_000,
+  );
+  expect(await checkedCompiler(page)).toBe(testid);
 }
 
 test("a new LaTeX project starts on Tectonic with no compiler pinned", async ({
@@ -147,7 +176,7 @@ test("a new LaTeX project starts on Tectonic with no compiler pinned", async ({
   expect(initial.flavor).toBeNull();
 
   await openCompileMenu(tauriPage);
-  expect(await checkedCompiler(tauriPage)).toBe("compiler-tectonic");
+  await expectCheckedCompiler(tauriPage, "compiler-tectonic");
   await tauriPage.press("body", "Escape");
 });
 
@@ -161,7 +190,7 @@ test("picking pdfLaTeX moves the project to latexmk and pins the compiler", asyn
 
   // The menu reflects the stored pin, not just the engine.
   await openCompileMenu(tauriPage);
-  expect(await checkedCompiler(tauriPage)).toBe("compiler-pdflatex");
+  await expectCheckedCompiler(tauriPage, "compiler-pdflatex");
   await tauriPage.press("body", "Escape");
 });
 
@@ -206,7 +235,7 @@ test("Auto keeps latexmk but clears the pin so the source decides", async ({
   await waitForEngine(tauriPage, "latexmk", null);
 
   await openCompileMenu(tauriPage);
-  expect(await checkedCompiler(tauriPage)).toBe("compiler-auto");
+  await expectCheckedCompiler(tauriPage, "compiler-auto");
   await tauriPage.press("body", "Escape");
 });
 

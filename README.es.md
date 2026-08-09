@@ -491,7 +491,7 @@ documentación y los comentarios cuidadosos sobre el producto son bienvenidos.
    ```bash
    pnpm build
    pnpm test
-   cargo test --manifest-path src-tauri/Cargo.toml --lib
+   cargo test --workspace --all-targets
    ```
 
 Informa de los problemas de seguridad en privado tal como se describe en

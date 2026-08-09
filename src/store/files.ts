@@ -1,4 +1,4 @@
-import { create } from "zustand";
+import { create, type StoreApi } from "zustand";
 import {
   createFile as apiCreateFile,
   copyFile as apiCopyFile,
@@ -8,6 +8,8 @@ import {
   createProjectFromTemplate as apiCreateFromTemplate,
   deleteFile as apiDeleteFile,
   gitLog,
+  gitDiscard,
+  gitPull,
   gitRestore,
   getProject,
   getProjectEngine,
@@ -17,22 +19,27 @@ import {
   listProjects,
   readFileContent,
   renameFile as apiRenameFile,
+  projectMutationGeneration,
   projectTexStatus,
   recordProjectTexSpec,
   renameProjectCmd,
   setMainDocCmd,
   setProjectEngineCmd,
+  setProjectShellEscapeCmd,
   tlmgrInstall,
   writeFileContent,
   type FileConflictStrategy,
   type FileEntry,
   type ProjectInfo,
+  type ProjectMeta,
+  type ProjectStateChanged,
   type DocumentEngineDescriptor,
   type TexFlavor,
   mcpSetActiveProject,
 } from "@/lib/tauri";
 import { UNKNOWN_ENGINE } from "@/lib/document-engine";
 import { flushAutoCommit, scheduleAutoCommit } from "@/lib/auto-commit";
+import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
 import { scanImportCompatibility } from "@oleafly/latex";
 import { cancelProofreading } from "@/lib/proofreading/client";
@@ -44,6 +51,7 @@ import {
 } from "@/store/engine-picker";
 import { useSettingsStore } from "@/store/settings";
 import { nextTabSeq } from "@/store/tab-order";
+import { recordProjectStateRevision } from "@/lib/project-state-revision";
 
 // Pin the user's global default engine onto a freshly created project. Only
 // LaTeX projects can take the latexmk pin; anything else (Typst templates,
@@ -162,7 +170,7 @@ interface FilesStore {
   docVersion: number;
 
   refreshProjects: () => Promise<void>;
-  openProject: (id: string) => Promise<void>;
+  openProject: (id: string, shouldContinue?: () => boolean) => Promise<void>;
   closeProject: () => Promise<void>;
   createProject: (name: string) => Promise<void>;
   importProject: (path: string) => Promise<string>;
@@ -171,6 +179,8 @@ interface FilesStore {
   renameProject: (name: string) => Promise<void>;
   createFromTemplate: (name: string, templateId: string, color?: string) => Promise<string>;
   restoreFromGit: (oid: string) => Promise<void>;
+  pullFromGit: () => Promise<string>;
+  discardFromGit: (path: string) => Promise<void>;
 
   refreshTree: () => Promise<void>;
   openFile: (path: string) => Promise<void>;
@@ -185,11 +195,15 @@ interface FilesStore {
   renameEntry: (from: string, to: string, conflictStrategy?: FileConflictStrategy) => Promise<string>;
   copyEntry: (path: string, isDir?: boolean) => Promise<void>;
   importPaths: (destDir: string, sourcePaths: string[]) => Promise<void>;
-  applyExternalWrite: (path: string, content: string) => void;
-  applyExternalDelete: (path: string) => void;
-  applyExternalRename: (from: string, to: string) => void;
+  prepareExternalMutation: (projectId: string) => Promise<number>;
+  recordMutationGeneration: (projectId: string, generation: number) => void;
+  applyExternalWrite: (projectId: string, path: string, content: string) => boolean;
+  applyExternalDelete: (projectId: string, path: string) => boolean;
+  applyExternalRename: (projectId: string, from: string, to: string) => boolean;
+  applyProjectStateChanged: (event: ProjectStateChanged) => Promise<boolean>;
   setMainDoc: (path: string) => Promise<void>;
   setEngine: (engine: string, flavor?: TexFlavor | null) => Promise<void>;
+  setShellEscape: (allow: boolean) => Promise<void>;
 }
 
 let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -200,7 +214,11 @@ const pendingSaves = new Set<string>();
 // Writes to the same project path must land in edit order. Without this queue,
 // a slow autosave can finish after a newer transition flush and put stale
 // content back on disk.
-const pendingWrites = new Map<string, Promise<void>>();
+const pendingWrites = new Map<string, Promise<number>>();
+let knownMutationProjectId: string | null = null;
+let knownMutationGeneration: number | null = null;
+let lastProjectStateRevision = 0;
+let fileReloadRevision = 0;
 // Project opens and closes are state transactions. Serializing them keeps a
 // double click or a close during an open from interleaving two project states.
 let projectTransition: Promise<void> = Promise.resolve();
@@ -219,7 +237,12 @@ function fileOpenKey(projectId: string, path: string) {
 
 function invalidatePendingFileOpen(projectId: string | null, path: string) {
   if (!projectId) return;
-  pendingFileOpens.set(fileOpenKey(projectId, path), ++fileOpenSeq);
+  pendingFileOpens.delete(fileOpenKey(projectId, path));
+}
+
+function invalidateAllPendingFileOpens() {
+  fileOpenEpoch++;
+  pendingFileOpens.clear();
 }
 
 function stopAutosaveTimer() {
@@ -238,20 +261,55 @@ function writeKey(projectId: string, path: string) {
   return `${projectId}\0${path}`;
 }
 
+function resetMutationGeneration(projectId: string | null = null) {
+  knownMutationProjectId = projectId;
+  knownMutationGeneration = null;
+}
+
+function rememberMutationGeneration(projectId: string, generation: number): number {
+  if (!Number.isSafeInteger(generation) || generation < 0) {
+    throw new Error("The backend returned an invalid project mutation generation.");
+  }
+  if (knownMutationProjectId !== projectId) {
+    knownMutationProjectId = projectId;
+    knownMutationGeneration = generation;
+  } else {
+    knownMutationGeneration = Math.max(knownMutationGeneration ?? 0, generation);
+  }
+  return knownMutationGeneration;
+}
+
+async function refreshMutationGeneration(projectId: string): Promise<number> {
+  const generation = await projectMutationGeneration(projectId);
+  return rememberMutationGeneration(projectId, generation);
+}
+
 function enqueueWrite(projectId: string, path: string, content: string): Promise<void> {
   const key = writeKey(projectId, path);
-  const previous = pendingWrites.get(key) ?? Promise.resolve();
-  const write = previous
-    .catch(() => {
-      // A later snapshot is still worth writing after an earlier attempt failed.
+  const baseline =
+    knownMutationProjectId === projectId && knownMutationGeneration !== null
+      ? Promise.resolve(knownMutationGeneration)
+      : refreshMutationGeneration(projectId);
+  const previous = pendingWrites.get(key);
+  const expected = previous ?? baseline;
+  let tracked: Promise<number>;
+  tracked = expected
+    .then(async (expectedGeneration) => {
+      const result = await writeFileContent(projectId, path, content, expectedGeneration);
+      return rememberMutationGeneration(
+        projectId,
+        Number.isSafeInteger(result?.generation) ? result.generation : expectedGeneration,
+      );
     })
-    .then(() => writeFileContent(projectId, path, content));
-  let tracked: Promise<void>;
-  tracked = write.finally(() => {
-    if (pendingWrites.get(key) === tracked) pendingWrites.delete(key);
-  });
+    .catch(async (error) => {
+      await refreshMutationGeneration(projectId).catch(() => {});
+      throw error;
+    })
+    .finally(() => {
+      if (pendingWrites.get(key) === tracked) pendingWrites.delete(key);
+    });
   pendingWrites.set(key, tracked);
-  return tracked;
+  return tracked.then(() => {});
 }
 
 async function drainProjectWrites(projectId: string): Promise<void> {
@@ -320,10 +378,508 @@ async function flushDirtyBuffers(projectId: string, get: () => FilesStore): Prom
   }
 }
 
-function enqueueProjectTransition(operation: () => Promise<void>): Promise<void> {
+function assertNoUnsavedBuffers(
+  get: () => FilesStore,
+  isDeletedPath: (candidate: string) => boolean,
+): void {
+  const unsaved = Object.entries(get().files)
+    .filter(([candidate, file]) => isDeletedPath(candidate) && file.dirty)
+    .map(([candidate]) => candidate);
+  if (unsaved.length > 0) {
+    throw new Error(
+      `Save or close the unsaved file${unsaved.length === 1 ? "" : "s"} before deleting: ${unsaved.join(", ")}`,
+    );
+  }
+}
+
+// A queued autosave must not recreate a file after the backend removes it.
+// Let already-running writes settle, discard queued snapshots for the
+// deleted subtree, and then perform the delete.
+function discardQueuedSavesUnder(
+  projectId: string,
+  isDeletedPath: (candidate: string) => boolean,
+): { discardedPending: Set<string>; writes: Promise<number>[] } {
+  stopAutosaveTimer();
+  const discardedPending = new Set<string>();
+  for (const pendingPath of [...pendingSaves]) {
+    if (isDeletedPath(pendingPath)) {
+      pendingSaves.delete(pendingPath);
+      discardedPending.add(pendingPath);
+    }
+  }
+  const writes = [...pendingWrites.entries()]
+    .filter(([key]) => isDeletedPath(key.slice(projectId.length + 1)))
+    .map(([, write]) => write);
+  return { discardedPending, writes };
+}
+
+function pruneDeletedPaths(s: FilesStore, isDeletedPath: (candidate: string) => boolean) {
+  const files = Object.fromEntries(
+    Object.entries(s.files).filter(([candidate]) => !isDeletedPath(candidate)),
+  );
+  const tabOrder = Object.fromEntries(
+    Object.entries(s.tabOrder).filter(([candidate]) => !isDeletedPath(candidate)),
+  );
+  const openTabs = s.openTabs.filter((candidate) => !isDeletedPath(candidate));
+  const deletedActive = !!s.activePath && isDeletedPath(s.activePath);
+  return {
+    files,
+    tabOrder,
+    openTabs,
+    activePath: deletedActive ? (openTabs.at(-1) ?? null) : s.activePath,
+  };
+}
+
+function restoreDiscardedSaves(
+  get: () => FilesStore,
+  projectId: string,
+  discardedPending: Set<string>,
+): void {
+  const current = get();
+  if (current.projectId !== projectId) return;
+  for (const pendingPath of discardedPending) {
+    if (current.files[pendingPath]?.dirty) pendingSaves.add(pendingPath);
+  }
+}
+
+async function reopenMainDocAfterDelete(
+  get: () => FilesStore,
+  projectId: string,
+  isDeletedPath: (candidate: string) => boolean,
+): Promise<void> {
+  const current = get();
+  if (
+    current.projectId === projectId &&
+    !current.activePath &&
+    !isDeletedPath(current.mainDoc)
+  ) {
+    await current.openFile(current.mainDoc);
+  }
+}
+
+// Only split off an extension for files; a folder name is copied whole (so
+// "v1.0" doesn't become "v1 copy.0").
+function copyDestinationFor(path: string, isDir: boolean): string {
+  const slash = path.lastIndexOf("/");
+  const dir = slash >= 0 ? path.slice(0, slash) : "";
+  const file = slash >= 0 ? path.slice(slash + 1) : path;
+  const dot = isDir ? -1 : file.lastIndexOf(".");
+  const base = dot > 0 ? file.slice(0, dot) : file;
+  const ext = dot > 0 ? file.slice(dot) : "";
+  return dir ? `${dir}/${base} copy${ext}` : `${base} copy${ext}`;
+}
+
+function enqueueProjectTransition<T>(operation: () => Promise<T>): Promise<T> {
   const queued = projectTransition.catch(() => {}).then(operation);
-  projectTransition = queued.catch(() => {});
+  projectTransition = queued.then(
+    () => {},
+    () => {},
+  );
   return queued;
+}
+
+async function scanOpenProjectCompatibility(
+  id: string,
+  meta: ProjectMeta,
+  tree: FileEntry[],
+  seq: number,
+  get: () => FilesStore,
+): Promise<void> {
+  try {
+    if (get().engine.id === "latexmk") {
+      await checkTexPinStatus(id, () => seq === openSeq && get().projectId === id);
+      return;
+    }
+    const { texFiles, latexmkrc } = await loadCompatibilityInputs(id, meta, tree, seq, get);
+    if (seq !== openSeq) return;
+    const findings = scanImportCompatibility({ texFiles, latexmkrc });
+    showCompatibilityFindings(id, findings, get);
+  } catch (error) {
+    void logError("scan project compatibility", error);
+  }
+}
+
+async function loadCompatibilityInputs(
+  id: string,
+  meta: ProjectMeta,
+  tree: FileEntry[],
+  seq: number,
+  get: () => FilesStore,
+) {
+  const mainPath = meta.main_doc || "main.tex";
+  const depth = (path: string) => path.split("/").length;
+  const texPaths = tree
+    .filter((entry) => !entry.is_dir && isTexSourcePath(entry.path))
+    .map((entry) => entry.path)
+    .sort((left, right) =>
+      left === mainPath ? -1 : right === mainPath ? 1 : depth(left) - depth(right),
+    )
+    .slice(0, 40);
+  const texFiles: Array<{ path: string; content: string }> = [];
+  for (const path of texPaths) {
+    const content =
+      get().files[path]?.content ?? (await readCompatibilityInput(id, path)) ?? "";
+    if (seq !== openSeq) break;
+    if (content) texFiles.push({ path, content });
+  }
+  const rcName = ["latexmkrc", ".latexmkrc"].find((name) =>
+    tree.some((entry) => !entry.is_dir && entry.path === name),
+  );
+  const latexmkrc = rcName ? await readCompatibilityInput(id, rcName) : null;
+  return { texFiles, latexmkrc };
+}
+
+async function readCompatibilityInput(id: string, path: string): Promise<string | null> {
+  try {
+    return await readFileContent(id, path);
+  } catch (error) {
+    void logError("scan project compatibility", error);
+    return null;
+  }
+}
+
+function isTexSourcePath(path: string): boolean {
+  const extension = path.slice(path.lastIndexOf(".") + 1).toLowerCase();
+  return extension === "tex" || extension === "ltx" || extension === "latex";
+}
+
+function showCompatibilityFindings(
+  id: string,
+  findings: ReturnType<typeof scanImportCompatibility>,
+  get: () => FilesStore,
+): void {
+  if (findings.length === 0 || get().engine.id === "latexmk" || engineHintDismissed(id, findings)) {
+    return;
+  }
+  const blockers = findings.filter((finding) => finding.level === "blocker");
+  if (blockers.length > 0) {
+    const extra = blockers.length > 1 ? ` (+${blockers.length - 1} more)` : "";
+    toast.info(
+      `${blockers[0].title}${extra}`,
+      {
+        label: "Choose engine…",
+        onClick: () => useEnginePickerStore.getState().openPicker("project-open", findings),
+      },
+      true,
+    );
+    return;
+  }
+  showCompatibilityWarnings(id, findings.filter((finding) => finding.level === "warning"));
+}
+
+function showCompatibilityWarnings(
+  id: string,
+  warnings: ReturnType<typeof scanImportCompatibility>,
+): void {
+  if (warnings.length === 0) return;
+  if (warnings.length === 1 && warnings[0].id === "biblatex-biber") {
+    toast.info("This project uses biblatex/Biber for the bibliography.");
+  } else {
+    const plural = warnings.length === 1 ? "" : "s";
+    const extra = warnings.length > 1 ? ` (+${warnings.length - 1} more)` : "";
+    toast.info(`${warnings.length} import note${plural}: ${warnings[0].title}${extra}`);
+  }
+  dismissEngineHint(id, warnings);
+}
+
+type FilesSet = StoreApi<FilesStore>["setState"];
+type FilesGet = StoreApi<FilesStore>["getState"];
+
+async function prepareProjectSwitch(
+  shouldContinue: () => boolean,
+  set: FilesSet,
+  get: FilesGet,
+): Promise<{ previousProjectId: string | null } | null> {
+  if (!shouldContinue()) return null;
+  const previousProjectId = get().projectId;
+  if (previousProjectId) {
+    set({ loading: true });
+    try {
+      await flushDirtyBuffers(previousProjectId, get);
+    } catch (error) {
+      set({ loading: false });
+      notifyError(
+        "save before switching projects",
+        error,
+        "The project stayed open because one or more files could not be saved.",
+      );
+      return null;
+    }
+    flushAutoCommit();
+  }
+  if (!shouldContinue()) {
+    set({ loading: false });
+    return null;
+  }
+  await mcpSetActiveProject(null).catch(() => {});
+  if (shouldContinue()) return { previousProjectId };
+  await mcpSetActiveProject(previousProjectId).catch(() => {});
+  set({ loading: false });
+  return null;
+}
+
+function beginProjectOpen(id: string, shouldContinue: () => boolean, set: FilesSet, get: FilesGet) {
+  const seq = ++openSeq;
+  invalidateAllPendingFileOpens();
+  mainDocSeq++;
+  cancelPendingAutosave();
+  cancelProofreading("source");
+  cancelProofreading("visual");
+  resetMutationGeneration(id);
+  set({ ...EMPTY_PROJECT_STATE, loading: true, projectId: id });
+  const revision = lastProjectStateRevision;
+  let reopenQueued = false;
+  const superseded = () => {
+    if (seq !== openSeq) return true;
+    if (lastProjectStateRevision === revision) return false;
+    if (!reopenQueued) {
+      reopenQueued = true;
+      void get().openProject(id, shouldContinue);
+    }
+    return true;
+  };
+  return { seq, superseded };
+}
+
+async function loadOpenedProject(
+  id: string,
+  seq: number,
+  superseded: () => boolean,
+  set: FilesSet,
+  get: FilesGet,
+): Promise<void> {
+  const [meta, generation] = await Promise.all([getProject(id), projectMutationGeneration(id)]);
+  if (superseded()) return;
+  rememberMutationGeneration(id, generation);
+  await mcpSetActiveProject(id).catch(() => {});
+  if (superseded()) return;
+  const tree = await listFiles(id);
+  if (superseded()) return;
+  set({ projectName: meta.name, projectKind: meta.kind ?? "", mainDoc: meta.main_doc, tree });
+  await loadOpenedProjectEngine(id, superseded, set);
+  if (superseded()) return;
+  await preloadBibliographies(id, tree, superseded, set);
+  await get().openFile(meta.main_doc || "main.tex");
+  if (superseded()) return;
+  if (seq === openSeq) void scanOpenProjectCompatibility(id, meta, tree, seq, get);
+}
+
+async function loadOpenedProjectEngine(
+  id: string,
+  superseded: () => boolean,
+  set: FilesSet,
+): Promise<void> {
+  try {
+    const engine = await getProjectEngine(id);
+    if (!superseded()) set({ engine, engineLoaded: true, engineError: null });
+  } catch (error) {
+    if (superseded()) return;
+    const message = "Document engine details could not be loaded. Engine-specific actions are disabled.";
+    set({ engine: UNKNOWN_ENGINE, engineLoaded: false, engineError: message });
+    notifyError("load document engine", error, message);
+  }
+}
+
+async function preloadBibliographies(
+  id: string,
+  tree: FileEntry[],
+  superseded: () => boolean,
+  set: FilesSet,
+): Promise<void> {
+  const bibliographies = tree.filter((entry) => !entry.is_dir && entry.path.endsWith(".bib"));
+  for (const bibliography of bibliographies) {
+    try {
+      const content = await readFileContent(id, bibliography.path);
+      if (superseded()) return;
+      set((state) => ({
+        files: { ...state.files, [bibliography.path]: { content, dirty: false } },
+      }));
+    } catch (error) {
+      void logError("preload bibliography", error);
+    }
+  }
+}
+
+async function openProjectTransition(
+  id: string,
+  shouldContinue: () => boolean,
+  set: FilesSet,
+  get: FilesGet,
+): Promise<void> {
+  const prepared = await prepareProjectSwitch(shouldContinue, set, get);
+  if (!prepared) return;
+  const { seq, superseded } = beginProjectOpen(id, shouldContinue, set, get);
+  try {
+    await loadOpenedProject(id, seq, superseded, set, get);
+  } catch (error) {
+    if (seq === openSeq) {
+      await mcpSetActiveProject(null).catch(() => {});
+      resetMutationGeneration();
+      set(EMPTY_PROJECT_STATE);
+      notifyError("open project", error, "Could not open the project. See the app log for details.");
+    }
+  } finally {
+    if (seq === openSeq) set({ loading: false });
+  }
+}
+
+type ProjectMetadataState = Pick<
+  FilesStore,
+  "projectName" | "projectKind" | "mainDoc" | "engine" | "engineLoaded" | "engineError"
+>;
+
+interface ReloadedProjectFiles {
+  loaded: Map<string, string>;
+  attempted: Set<string>;
+}
+
+const BINARY_RELOAD_EXTENSIONS = new Set([
+  "pdf",
+  "png",
+  "jpg",
+  "jpeg",
+  "gif",
+  "webp",
+  "svg",
+  "eps",
+  "zip",
+  "gz",
+  "ttf",
+  "otf",
+  "woff",
+  "woff2",
+]);
+
+function projectMetadataState(event: ProjectStateChanged): ProjectMetadataState {
+  return {
+    projectName: event.project.name,
+    projectKind: event.project.kind ?? "",
+    mainDoc: event.project.main_doc,
+    engine: event.engine,
+    engineLoaded: true,
+    engineError: null,
+  };
+}
+
+function projectStateEventIsValid(event: ProjectStateChanged, get: FilesGet): boolean {
+  if (get().projectId !== event.projectId) return false;
+  if (!Number.isSafeInteger(event.revision) || event.revision <= lastProjectStateRevision) {
+    return false;
+  }
+  return (
+    event.mutationGeneration === null ||
+    (Number.isSafeInteger(event.mutationGeneration) && event.mutationGeneration >= 0)
+  );
+}
+
+function admitProjectStateEvent(event: ProjectStateChanged): number {
+  const revision = event.revision;
+  lastProjectStateRevision = revision;
+  recordProjectStateRevision(revision);
+  mainDocSeq++;
+  invalidateAllPendingFileOpens();
+  if (event.mutationGeneration !== null) {
+    rememberMutationGeneration(event.projectId, event.mutationGeneration);
+  }
+  void import("@/store/compile").then(({ useCompileStore }) => {
+    if (lastProjectStateRevision === revision) useCompileStore.getState().reset();
+  });
+  return revision;
+}
+
+function projectRevisionIsCurrent(projectId: string, revision: number, get: FilesGet): boolean {
+  return get().projectId === projectId && lastProjectStateRevision === revision;
+}
+
+function isBinaryReloadPath(path: string): boolean {
+  const dot = path.lastIndexOf(".");
+  return dot >= 0 && BINARY_RELOAD_EXTENSIONS.has(path.slice(dot + 1).toLowerCase());
+}
+
+async function loadChangedProjectFiles(
+  projectId: string,
+  captured: Record<string, FileState>,
+  filePaths: Set<string>,
+): Promise<ReloadedProjectFiles> {
+  const loaded = new Map<string, string>();
+  const attempted = new Set<string>();
+  await Promise.all(
+    Object.entries(captured).map(async ([path, file]) => {
+      if (file.dirty || !filePaths.has(path) || isBinaryReloadPath(path)) return;
+      attempted.add(path);
+      const content = await readFileContent(projectId, path).catch(() => null);
+      if (content !== null) loaded.set(path, content);
+    }),
+  );
+  return { loaded, attempted };
+}
+
+function reconcileProjectFile(
+  path: string,
+  current: FileState,
+  captured: Record<string, FileState>,
+  filePaths: Set<string>,
+  reloaded: ReloadedProjectFiles,
+  removedDirty: string[],
+): FileState | undefined {
+  if (!filePaths.has(path)) {
+    if (current.dirty) removedDirty.push(path);
+    return current.dirty ? current : undefined;
+  }
+  const previous = captured[path];
+  if (!previous || current.dirty || current.content !== previous.content) return current;
+  const content = reloaded.loaded.get(path);
+  if (content !== undefined) return { content, dirty: false };
+  return reloaded.attempted.has(path) ? undefined : current;
+}
+
+function reconciledProjectState(
+  state: FilesStore,
+  metadata: ProjectMetadataState,
+  tree: FileEntry[],
+  captured: Record<string, FileState>,
+  reloaded: ReloadedProjectFiles,
+  removedDirty: string[],
+): Partial<FilesStore> {
+  const filePaths = new Set(tree.filter((entry) => !entry.is_dir).map((entry) => entry.path));
+  const files: Record<string, FileState> = {};
+  for (const [path, current] of Object.entries(state.files)) {
+    const file = reconcileProjectFile(
+      path,
+      current,
+      captured,
+      filePaths,
+      reloaded,
+      removedDirty,
+    );
+    if (file) files[path] = file;
+  }
+  const retained = (path: string) => filePaths.has(path) || files[path]?.dirty;
+  const openTabs = state.openTabs.filter(retained);
+  return {
+    ...metadata,
+    tree,
+    files,
+    openTabs,
+    tabOrder: Object.fromEntries(Object.entries(state.tabOrder).filter(([path]) => retained(path))),
+    activePath:
+      state.activePath && retained(state.activePath) ? state.activePath : (openTabs.at(-1) ?? null),
+    docVersion: state.docVersion + 1,
+  };
+}
+
+function restoreRemovedDirtyFiles(paths: string[], get: FilesGet): void {
+  if (paths.length === 0) return;
+  toast.info(
+    "A project update removed files with unsaved edits. Oleafly kept your edits and is restoring those files.",
+  );
+  for (const path of paths) {
+    pendingSaves.add(path);
+    void get()
+      .saveFile(path)
+      .then(() => get().refreshTree())
+      .catch(() => scheduleAutosave(get));
+  }
 }
 
 const EMPTY_PROJECT_STATE = {
@@ -372,174 +928,8 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     set({ projects, projectsLoaded: true });
   },
 
-  openProject: (id) => enqueueProjectTransition(async () => {
-    const previousProjectId = get().projectId;
-    if (previousProjectId) {
-      set({ loading: true });
-      try {
-        await flushDirtyBuffers(previousProjectId, get);
-      } catch (error) {
-        set({ loading: false });
-        notifyError(
-          "save before switching projects",
-          error,
-          "The project stayed open because one or more files could not be saved.",
-        );
-        return;
-      }
-      flushAutoCommit();
-    }
-
-    const seq = ++openSeq;
-    fileOpenEpoch++;
-    mainDocSeq++;
-    cancelPendingAutosave();
-    // Project identity is a hard proofreading boundary. Clear both surfaces
-    // synchronously with the store transition rather than waiting for React
-    // editor effects, which may run after a fast library -> project reopen and
-    // leave the previous project's authoritative result visible.
-    cancelProofreading("source");
-    cancelProofreading("visual");
-    void mcpSetActiveProject(id).catch(() => {});
-    set({
-      loading: true,
-      projectId: id,
-      projectName: "",
-      projectKind: "",
-      mainDoc: "main.tex",
-      engine: UNKNOWN_ENGINE,
-      engineLoaded: false,
-      engineError: null,
-      tree: [],
-      files: {},
-      openTabs: [],
-      tabOrder: {},
-      activePath: null,
-    });
-    try {
-      const meta = await getProject(id);
-      if (seq !== openSeq) return; // a newer openProject superseded this one
-      const tree = await listFiles(id);
-      if (seq !== openSeq) return;
-      set({ projectName: meta.name, projectKind: meta.kind ?? "", mainDoc: meta.main_doc, tree });
-      try {
-        const engine = await getProjectEngine(id);
-        if (seq !== openSeq) return;
-        set({ engine, engineLoaded: true, engineError: null });
-      } catch (error) {
-        if (seq !== openSeq) return;
-        const message = "Document engine details could not be loaded. Engine-specific actions are disabled.";
-        set({ engine: UNKNOWN_ENGINE, engineLoaded: false, engineError: message });
-        notifyError("load document engine", error, message);
-      }
-      // Preload .bib files so citation autocomplete works.
-      const bibs = tree.filter((f) => !f.is_dir && f.path.endsWith(".bib"));
-      for (const b of bibs) {
-        try {
-          const content = await readFileContent(id, b.path);
-          if (seq !== openSeq) return;
-          set((s) => ({
-            files: { ...s.files, [b.path]: { content, dirty: false } },
-          }));
-        } catch {
-          /* ignore unreadable bib */
-        }
-      }
-      await get().openFile(meta.main_doc || "main.tex");
-      // Overleaf-import compatibility: surface known tool gaps early (biblatex,
-      // minted, glossaries, …) so compile failures are less mysterious. Scans
-      // the whole tree (bounded), not just the main document — Overleaf projects
-      // routinely keep the preamble in a file the main doc \inputs.
-      // Fire-and-forget: the scan reads files over IPC and must never delay
-      // the project becoming interactive. `seq` guards every state touch.
-      if (seq === openSeq) {
-        void (async () => {
-        try {
-          // latexmk projects already have the full toolchain; instead of the
-          // import scan, check this machine against the project's TeX pin so
-          // coauthors get the same packages (and know about distro skew).
-          if (get().engine.id === "latexmk") {
-            await checkTexPinStatus(id, () => seq === openSeq && get().projectId === id);
-            return;
-          }
-          const mainPath = meta.main_doc || "main.tex";
-          const depth = (p: string) => p.split("/").length;
-          const texPaths = tree
-            .filter((f) => !f.is_dir && /\.(tex|ltx|latex)$/i.test(f.path))
-            .map((f) => f.path)
-            .sort((a, b) =>
-              a === mainPath ? -1 : b === mainPath ? 1 : depth(a) - depth(b),
-            )
-            .slice(0, 40); // scanner input is capped anyway; keep IPC bounded
-          const texFiles: Array<{ path: string; content: string }> = [];
-          for (const path of texPaths) {
-            const content =
-              get().files[path]?.content ??
-              (await readFileContent(id, path).catch(() => ""));
-            if (seq !== openSeq) return;
-            if (content) texFiles.push({ path, content });
-          }
-          const rcName = ["latexmkrc", ".latexmkrc"].find((name) =>
-            tree.some((f) => !f.is_dir && f.path === name),
-          );
-          const latexmkrc = rcName
-            ? await readFileContent(id, rcName).catch(() => null)
-            : null;
-          if (seq !== openSeq) return;
-          const findings = scanImportCompatibility({ texFiles, latexmkrc });
-          // A latexmk project already has the full toolchain; nothing to say.
-          // A previously acknowledged set of findings stays quiet too — the
-          // hint returns only when a new gap appears.
-          if (
-            findings.length > 0 &&
-            get().engine.id !== "latexmk" &&
-            !engineHintDismissed(id, findings)
-          ) {
-            const blockers = findings.filter((f) => f.level === "blocker");
-            const warnings = findings.filter((f) => f.level === "warning");
-            if (blockers.length > 0) {
-              const extra = blockers.length > 1 ? ` (+${blockers.length - 1} more)` : "";
-              toast.info(
-                `${blockers[0].title}${extra}`,
-                {
-                  label: "Choose engine…",
-                  onClick: () =>
-                    useEnginePickerStore
-                      .getState()
-                      .openPicker("project-open", findings),
-                },
-                true,
-              );
-            } else if (warnings.length > 0) {
-              if (warnings.some((f) => f.id === "biblatex-biber") && warnings.length === 1) {
-                toast.info("This project uses biblatex/Biber for the bibliography.");
-              } else {
-                toast.info(
-                  `${warnings.length} import note${warnings.length === 1 ? "" : "s"}: ${warnings[0].title}${
-                    warnings.length > 1 ? ` (+${warnings.length - 1} more)` : ""
-                  }`,
-                );
-              }
-              // Plain notes need no decision; showing them once is enough.
-              dismissEngineHint(id, warnings);
-            }
-          }
-        } catch {
-          /* scan is best-effort */
-        }
-        })();
-      }
-    } catch (e) {
-      // Surface the failure and fall back to the library rather than leaving the
-      // app wedged in a half-open project with an empty tree.
-      if (seq === openSeq) {
-        set(EMPTY_PROJECT_STATE);
-        notifyError("open project", e, "Could not open the project. See the app log for details.");
-      }
-    } finally {
-      if (seq === openSeq) set({ loading: false });
-    }
-  }),
+  openProject: (id, shouldContinue = () => true) =>
+    enqueueProjectTransition(() => openProjectTransition(id, shouldContinue, set, get)),
 
   closeProject: () => enqueueProjectTransition(async () => {
     const projectId = get().projectId;
@@ -560,11 +950,13 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     }
 
     openSeq++;
-    fileOpenEpoch++;
+    invalidateAllPendingFileOpens();
     mainDocSeq++;
     cancelPendingAutosave();
     cancelProofreading("source");
     cancelProofreading("visual");
+    await mcpSetActiveProject(null).catch(() => {});
+    resetMutationGeneration();
     set(EMPTY_PROJECT_STATE);
   }),
 
@@ -597,17 +989,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
 
   importProject: async (path) => {
     const id = await importOverleafProjectCmd(path);
-    await applyDefaultLatexEngine(id);
-    // One toast for the whole import (callers stay silent on success). When
-    // the import picked the full toolchain, fold that into the same message
-    // and capture the reproducibility pin in the background.
-    const meta = await getProject(id).catch(() => null);
-    if (meta?.engine === "latexmk") {
-      void recordProjectTexSpec(id).catch(() => {});
-      toast.success("Project imported. Compiling with latexmk (system TeX detected).");
-    } else {
-      toast.success("Project imported.");
-    }
+    toast.success("Project imported.");
     await get().refreshProjects();
     await get().openProject(id);
     return id;
@@ -615,7 +997,6 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
 
   createFromTemplate: async (name, templateId, color) => {
     const id = await apiCreateFromTemplate(name, templateId, color);
-    await applyDefaultLatexEngine(id);
     await get().refreshProjects();
     await get().openProject(id);
     return id;
@@ -642,10 +1023,19 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     if (!files[path] && !isBinary) {
       try {
         const content = await readFileContent(projectId, path);
+        if (
+          get().projectId !== projectId ||
+          fileOpenEpoch !== epoch ||
+          pendingFileOpens.get(key) !== requestSeq
+        ) {
+          if (pendingFileOpens.get(key) === requestSeq) pendingFileOpens.delete(key);
+          return;
+        }
         set((s) => ({
           files: { ...s.files, [path]: { content, dirty: false } },
         }));
       } catch {
+        if (pendingFileOpens.get(key) === requestSeq) pendingFileOpens.delete(key);
         return;
       }
     }
@@ -654,6 +1044,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       fileOpenEpoch !== epoch ||
       pendingFileOpens.get(key) !== requestSeq
     ) {
+      if (pendingFileOpens.get(key) === requestSeq) pendingFileOpens.delete(key);
       return;
     }
     // Opening a file makes it the active view, so unfocus any git diff (otherwise
@@ -667,6 +1058,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
         activePath: path,
       };
     });
+    if (pendingFileOpens.get(key) === requestSeq) pendingFileOpens.delete(key);
   },
 
   setActive: (path) => {
@@ -712,11 +1104,15 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const state = files[path];
     if (!projectId || !state) return;
     const written = state.content;
+    const reloadRevision = fileReloadRevision;
     try {
       await enqueueWrite(projectId, path, written);
     } catch (error) {
       if (get().projectId === projectId && get().files[path]?.dirty) {
         pendingSaves.add(path);
+        if (String(error).includes("mutation conflict at generation")) {
+          scheduleAutosave(get);
+        }
       }
       throw error;
     }
@@ -726,6 +1122,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       // The file was deleted while the write was in flight: do not resurrect it
       // as an entry with undefined content.
       if (!cur) return {};
+      if (fileReloadRevision !== reloadRevision) return {};
       // Newer keystrokes landed during the write, so what is on disk is already
       // stale. Leave it dirty; a later autosave will persist the newer content.
       if (cur.content !== written) return {};
@@ -744,89 +1141,63 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   createFile: async (path, isDir) => {
     const { projectId } = get();
     if (!projectId) return;
-    await apiCreateFile(projectId, path, isDir);
+    const result = await apiCreateFile(projectId, path, isDir);
+    if (Number.isSafeInteger(result?.generation)) {
+      rememberMutationGeneration(projectId, result.generation);
+    }
     await get().refreshTree();
     if (!isDir) await get().openFile(path);
   },
 
-  deleteEntry: async (path) => {
+  deleteEntry: (path) => enqueueProjectTransition(async () => {
     const { projectId } = get();
     if (!projectId) return;
 
     const isDeletedPath = (candidate: string) =>
       candidate === path || candidate.startsWith(`${path}/`);
-    // A queued autosave must not recreate a file after the backend removes it.
-    // Let already-running writes settle, discard queued snapshots for the
-    // deleted subtree, and then perform the delete.
-    stopAutosaveTimer();
-    const discardedPending = new Set<string>();
-    for (const pendingPath of [...pendingSaves]) {
-      if (isDeletedPath(pendingPath)) {
-        pendingSaves.delete(pendingPath);
-        discardedPending.add(pendingPath);
-      }
-    }
+    assertNoUnsavedBuffers(get, isDeletedPath);
+    const { discardedPending, writes } = discardQueuedSavesUnder(projectId, isDeletedPath);
     // Deleting one subtree must not suspend autosave for unrelated buffers.
     scheduleAutosave(get);
-    const writes = [...pendingWrites.entries()]
-      .filter(([key]) => {
-        const pendingPath = key.slice(projectId.length + 1);
-        return isDeletedPath(pendingPath);
-      })
-      .map(([, write]) => write);
     let deleted = false;
     try {
       if (writes.length > 0) await Promise.allSettled(writes);
       if (get().projectId !== projectId) return;
 
-      await apiDeleteFile(projectId, path);
+      const expectedGeneration = await refreshMutationGeneration(projectId);
+      const result = await apiDeleteFile(projectId, path, expectedGeneration);
+      if (Number.isSafeInteger(result?.generation)) {
+        rememberMutationGeneration(projectId, result.generation);
+      }
       deleted = true;
       if (get().projectId !== projectId) return;
 
-      set((s) => {
-        if (s.projectId !== projectId) return {};
-        const files = Object.fromEntries(
-          Object.entries(s.files).filter(([candidate]) => !isDeletedPath(candidate)),
-        );
-        const tabOrder = Object.fromEntries(
-          Object.entries(s.tabOrder).filter(([candidate]) => !isDeletedPath(candidate)),
-        );
-        const openTabs = s.openTabs.filter((candidate) => !isDeletedPath(candidate));
-        const deletedActive = !!s.activePath && isDeletedPath(s.activePath);
-        return {
-          files,
-          tabOrder,
-          openTabs,
-          activePath: deletedActive ? (openTabs.at(-1) ?? null) : s.activePath,
-        };
-      });
+      set((s) => (s.projectId === projectId ? pruneDeletedPaths(s, isDeletedPath) : {}));
       await get().refreshTree();
-      const current = get();
-      if (
-        current.projectId === projectId &&
-        !current.activePath &&
-        !isDeletedPath(current.mainDoc)
-      ) {
-        await current.openFile(current.mainDoc);
-      }
+      await reopenMainDocAfterDelete(get, projectId, isDeletedPath);
     } finally {
-      if (!deleted && get().projectId === projectId) {
-        const current = get();
-        for (const pendingPath of discardedPending) {
-          if (current.files[pendingPath]?.dirty) pendingSaves.add(pendingPath);
-        }
-      }
+      if (!deleted) restoreDiscardedSaves(get, projectId, discardedPending);
       scheduleAutosave(get);
     }
-  },
+  }),
 
-  renameEntry: async (from, to, conflictStrategy = "error") => {
+  renameEntry: (from, to, conflictStrategy = "error") => enqueueProjectTransition(async () => {
     const { projectId } = get();
     if (!projectId) return to;
+    const previousMainDoc = get().mainDoc;
     // A pending write to the old path could otherwise recreate it after the
     // filesystem move. Drain all dirty buffers through the per-path queue first.
     await flushDirtyBuffers(projectId, get);
-    const destination = await apiRenameFile(projectId, from, to, conflictStrategy);
+    await drainProjectWrites(projectId);
+    const expectedGeneration = await refreshMutationGeneration(projectId);
+    const destination = await apiRenameFile(
+      projectId,
+      from,
+      to,
+      conflictStrategy,
+      expectedGeneration,
+    );
+    await refreshMutationGeneration(projectId);
     // Follow the moved/renamed path in memory so an open tab, its buffer, the
     // active file, and the main-doc pointer don't go stale (also handles folder
     // moves, which carry every descendant path with them).
@@ -866,38 +1237,90 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
         mainDoc: remap(s.mainDoc),
       };
     });
+    const renamedMainDoc = remap(previousMainDoc);
+    if (renamedMainDoc !== previousMainDoc) {
+      const seq = ++mainDocSeq;
+      set({ engine: UNKNOWN_ENGINE, engineLoaded: false, engineError: null });
+      const compileStore = import("@/store/compile");
+      try {
+        const [engine, compile] = await Promise.all([
+          getProjectEngine(projectId),
+          compileStore,
+        ]);
+        if (seq === mainDocSeq && get().projectId === projectId) {
+          compile.useCompileStore.getState().reset();
+          set({ engine, engineLoaded: true, engineError: null });
+        }
+      } catch (error) {
+        if (seq === mainDocSeq && get().projectId === projectId) {
+          const message =
+            "Document engine details could not be loaded after renaming the main document.";
+          set({ engine: UNKNOWN_ENGINE, engineLoaded: false, engineError: message });
+          notifyError("rename main document", error, message);
+        }
+      }
+    }
     await get().refreshTree();
     return destination;
-  },
+  }),
 
-  copyEntry: async (path, isDir = false) => {
+  copyEntry: (path, isDir = false) => enqueueProjectTransition(async () => {
     const { projectId } = get();
     if (!projectId) return;
-    const slash = path.lastIndexOf("/");
-    const dir = slash >= 0 ? path.slice(0, slash) : "";
-    const file = slash >= 0 ? path.slice(slash + 1) : path;
-    // Only split off an extension for files; a folder name is copied whole (so
-    // "v1.0" doesn't become "v1 copy.0").
-    const dot = isDir ? -1 : file.lastIndexOf(".");
-    const base = dot > 0 ? file.slice(0, dot) : file;
-    const ext = dot > 0 ? file.slice(dot) : "";
-    const to = dir ? `${dir}/${base} copy${ext}` : `${base} copy${ext}`;
+    const to = copyDestinationFor(path, isDir);
     try {
-      await apiCopyFile(projectId, path, to);
+      await drainProjectWrites(projectId);
+      const expectedGeneration = await refreshMutationGeneration(projectId);
+      const result = await apiCopyFile(projectId, path, to, expectedGeneration);
+      if (Number.isSafeInteger(result?.generation)) {
+        rememberMutationGeneration(projectId, result.generation);
+      }
       if (get().projectId === projectId) await get().refreshTree();
     } catch (e) {
       notifyError("copy file", e, `Could not copy "${path}".`);
     }
-  },
+  }),
 
-  importPaths: async (destDir, sourcePaths) => {
+  importPaths: (destDir, sourcePaths) => enqueueProjectTransition(async () => {
     const { projectId } = get();
     if (!projectId || sourcePaths.length === 0) return;
     try {
-      await apiImportPathsIntoProject(projectId, destDir, sourcePaths);
+      await drainProjectWrites(projectId);
+      const expectedGeneration = await refreshMutationGeneration(projectId);
+      const result = await apiImportPathsIntoProject(
+        projectId,
+        destDir,
+        sourcePaths,
+        expectedGeneration,
+      );
+      if (Number.isSafeInteger(result?.generation)) {
+        rememberMutationGeneration(projectId, result.generation);
+      }
       if (get().projectId === projectId) await get().refreshTree();
     } catch (e) {
       notifyError("import files", e, "Could not import. See the app log for details.");
+    }
+  }),
+
+  prepareExternalMutation: async (projectId) => {
+    if (get().projectId !== projectId) {
+      throw new Error("Project changed before the external mutation could run.");
+    }
+    await flushDirtyBuffers(projectId, get);
+    await drainProjectWrites(projectId);
+    if (get().projectId !== projectId) {
+      throw new Error("Project changed before the external mutation could run.");
+    }
+    const generation = await refreshMutationGeneration(projectId);
+    if (get().projectId !== projectId) {
+      throw new Error("Project changed before the external mutation could run.");
+    }
+    return generation;
+  },
+
+  recordMutationGeneration: (projectId, generation) => {
+    if (get().projectId === projectId) {
+      rememberMutationGeneration(projectId, generation);
     }
   },
 
@@ -905,7 +1328,55 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   // disk, so the in-memory editor buffer stays in sync and the next save does
   // not clobber the edit. Cross-window broadcast is done by the AI host so
   // listeners can re-apply without echoing forever.
-  applyExternalWrite: (path, content) => {
+  applyExternalWrite: (projectId, path, content) => {
+    if (get().projectId !== projectId) return false;
+    void refreshMutationGeneration(projectId).catch(() => {});
+    const currentFile = get().files[path];
+    if (currentFile?.dirty) {
+      const localContent = currentFile.content;
+      pendingSaves.delete(path);
+      void enqueueWrite(projectId, path, localContent)
+        .then(() => {
+          if (
+            get().projectId === projectId &&
+            get().files[path]?.content === localContent
+          ) {
+            set((s) => ({
+              files: {
+                ...s.files,
+                [path]: { content: localContent, dirty: false },
+              },
+            }));
+            pendingSaves.delete(path);
+          }
+          scheduleAutosave(get);
+        })
+        .catch((error) => {
+          if (get().projectId === projectId) {
+            const latest = get().files[path];
+            if (latest) {
+              set((s) => ({
+                files: {
+                  ...s.files,
+                  [path]: { ...latest, dirty: true },
+                },
+              }));
+              pendingSaves.add(path);
+              scheduleAutosave(get);
+            }
+          }
+          notifyError(
+            "preserve local file change",
+            error,
+            `Could not preserve your local update to "${path}".`,
+          );
+        });
+      toast.info(
+        `An external edit to "${path}" arrived while you had unsaved changes. Your local edit was kept.`,
+      );
+      return false;
+    }
+    const mustFollowPendingWrite = pendingWrites.has(writeKey(projectId, path));
     pendingSaves.delete(path);
     set((s) => {
       const activatesPath = !s.activePath || s.activePath === path;
@@ -916,36 +1387,117 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
         docVersion: activatesPath ? s.docVersion + 1 : s.docVersion,
       };
     });
+    if (mustFollowPendingWrite) {
+      void enqueueWrite(projectId, path, content).catch((error) => {
+        if (
+          get().projectId === projectId &&
+          get().files[path]?.content === content
+        ) {
+          set((s) => ({
+            files: {
+              ...s.files,
+              [path]: { content, dirty: true },
+            },
+          }));
+          pendingSaves.add(path);
+          scheduleAutosave(get);
+        }
+        notifyError(
+          "preserve external file change",
+          error,
+          `Could not persist the latest external update to "${path}".`,
+        );
+      });
+    }
     void get().refreshTree();
+    return true;
   },
 
-  applyExternalDelete: (path) => {
+  applyExternalDelete: (projectId, path) => {
+    if (get().projectId !== projectId) return false;
+    void refreshMutationGeneration(projectId).catch(() => {});
+    invalidateAllPendingFileOpens();
+    const isDeletedPath = (candidate: string) =>
+      candidate === path || candidate.startsWith(`${path}/`);
+    const preserved = Object.entries(get().files).filter(
+      ([candidate, file]) => isDeletedPath(candidate) && file.dirty,
+    );
+    for (const pending of [...pendingSaves]) {
+      if (isDeletedPath(pending)) pendingSaves.delete(pending);
+    }
     set((s) => {
       const files = { ...s.files };
-      delete files[path];
+      for (const candidate of Object.keys(files)) {
+        if (isDeletedPath(candidate) && !files[candidate].dirty) delete files[candidate];
+      }
+      const tabOrder = { ...s.tabOrder };
+      for (const candidate of Object.keys(tabOrder)) {
+        if (isDeletedPath(candidate) && !files[candidate]) delete tabOrder[candidate];
+      }
+      const openTabs = s.openTabs.filter((candidate) => !!files[candidate]);
       return {
         files,
-        openTabs: s.openTabs.filter((p) => p !== path && !p.startsWith(`${path}/`)),
-        activePath:
-          s.activePath === path || s.activePath?.startsWith(`${path}/`)
-            ? null
-            : s.activePath,
+        tabOrder,
+        openTabs,
+        activePath: s.activePath && files[s.activePath] ? s.activePath : openTabs.at(-1) ?? null,
       };
     });
+    for (const [preservedPath, file] of preserved) {
+      void enqueueWrite(projectId, preservedPath, file.content)
+        .then(() => {
+          if (
+            get().projectId === projectId &&
+            get().files[preservedPath]?.content === file.content
+          ) {
+            set((s) => ({
+              files: {
+                ...s.files,
+                [preservedPath]: { content: file.content, dirty: false },
+              },
+            }));
+            pendingSaves.delete(preservedPath);
+          }
+          void get().refreshTree();
+          scheduleAutosave(get);
+        })
+        .catch((error) => {
+          if (get().projectId === projectId && get().files[preservedPath]) {
+            pendingSaves.add(preservedPath);
+            scheduleAutosave(get);
+          }
+          notifyError(
+            "restore local file after external delete",
+            error,
+            `Could not restore your unsaved update to "${preservedPath}".`,
+          );
+        });
+    }
+    if (preserved.length > 0) {
+      toast.info("An external deletion raced unsaved edits. Your local edits were restored.");
+    }
     void get().refreshTree();
+    return preserved.length === 0;
   },
 
-  applyExternalRename: (from, to) => {
+  applyExternalRename: (projectId, from, to) => {
+    if (get().projectId !== projectId) return false;
+    void refreshMutationGeneration(projectId).catch(() => {});
+    invalidateAllPendingFileOpens();
+    const remap = (path: string) =>
+      path === from ? to : path.startsWith(`${from}/`) ? `${to}${path.slice(from.length)}` : path;
+    const renamedPending = [...pendingSaves].map(remap);
+    pendingSaves.clear();
+    for (const path of renamedPending) pendingSaves.add(path);
+    let mainDocChanged = false;
     set((s) => {
-      const files = { ...s.files };
-      if (files[from]) {
-        files[to] = { ...files[from] };
-        delete files[from];
+      const files: Record<string, FileState> = {};
+      for (const [path, file] of Object.entries(s.files)) {
+        files[remap(path)] = file;
       }
-      const remap = (p: string) =>
-        p === from ? to : p.startsWith(`${from}/`) ? `${to}${p.slice(from.length)}` : p;
       const tabOrder: Record<string, number> = {};
       for (const [k, v] of Object.entries(s.tabOrder)) tabOrder[remap(k)] = v;
+      const mainDoc = remap(s.mainDoc);
+      mainDocChanged = mainDoc !== s.mainDoc;
       return {
         files,
         tabOrder,
@@ -956,10 +1508,73 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
             : s.activePath?.startsWith(`${from}/`)
             ? to + s.activePath?.slice(from.length)
             : s.activePath,
+        mainDoc,
         docVersion: s.activePath === from || s.activePath?.startsWith(`${from}/`) ? s.docVersion + 1 : s.docVersion,
       };
     });
+    if (mainDocChanged) {
+      const seq = ++mainDocSeq;
+      set({ engine: UNKNOWN_ENGINE, engineLoaded: false, engineError: null });
+      void Promise.all([getProjectEngine(projectId), import("@/store/compile")])
+        .then(([engine, { useCompileStore }]) => {
+          if (seq !== mainDocSeq || get().projectId !== projectId) return;
+          useCompileStore.getState().reset();
+          set({ engine, engineLoaded: true, engineError: null });
+        })
+        .catch((error) => {
+          if (seq !== mainDocSeq || get().projectId !== projectId) return;
+          const message =
+            "Document engine details could not be loaded after renaming the main document.";
+          set({ engine: UNKNOWN_ENGINE, engineLoaded: false, engineError: message });
+          notifyError("reconcile renamed main document", error, message);
+        });
+    }
+    for (const [path, file] of Object.entries(get().files)) {
+      if (file.dirty) pendingSaves.add(path);
+    }
+    scheduleAutosave(get);
     void get().refreshTree();
+    return true;
+  },
+
+  applyProjectStateChanged: async (event) => {
+    const projectId = event.projectId;
+    if (!projectStateEventIsValid(event, get)) return false;
+    const revision = admitProjectStateEvent(event);
+    const metadata = projectMetadataState(event);
+    if (!event.filesChanged) {
+      if (projectRevisionIsCurrent(projectId, revision, get)) set(metadata);
+      return true;
+    }
+    fileReloadRevision++;
+    const captured = get().files;
+    try {
+      const tree = await listFiles(projectId);
+      if (!projectRevisionIsCurrent(projectId, revision, get)) return false;
+      const filePaths = new Set(
+        tree.filter((entry) => !entry.is_dir).map((entry) => entry.path),
+      );
+      const reloaded = await loadChangedProjectFiles(projectId, captured, filePaths);
+      if (!projectRevisionIsCurrent(projectId, revision, get)) return false;
+      const removedDirty: string[] = [];
+      set((state) => {
+        if (!projectRevisionIsCurrent(projectId, revision, () => state)) return {};
+        return reconciledProjectState(state, metadata, tree, captured, reloaded, removedDirty);
+      });
+      restoreRemovedDirtyFiles(removedDirty, get);
+      scheduleAutosave(get);
+      return true;
+    } catch (error) {
+      if (!projectRevisionIsCurrent(projectId, revision, get)) return false;
+      set(metadata);
+      void get().refreshTree();
+      notifyError(
+        "reload project after external change",
+        error,
+        "Project settings were updated, but some changed files could not be reloaded.",
+      );
+      return true;
+    }
   },
 
   setMainDoc: async (path) => {
@@ -1025,81 +1640,66 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     }
   },
 
+  setShellEscape: async (allow) => {
+    const { projectId } = get();
+    if (!projectId) return;
+    const seq = ++mainDocSeq;
+    const compileStore = import("@/store/compile");
+    try {
+      const compile = await compileStore;
+      if (seq !== mainDocSeq || get().projectId !== projectId) return;
+      const meta = await setProjectShellEscapeCmd(projectId, allow);
+      if (seq !== mainDocSeq || get().projectId !== projectId) return;
+      compile.useCompileStore.getState().reset();
+      set((state) => ({
+        engine: { ...state.engine, allow_shell_escape: meta.allow_shell_escape },
+        engineLoaded: true,
+        engineError: null,
+      }));
+    } catch (error) {
+      if (seq !== mainDocSeq || get().projectId !== projectId) return;
+      notifyError(
+        allow ? "allow external TeX commands" : "block external TeX commands",
+        error,
+      );
+      throw error;
+    }
+  },
+
   restoreFromGit: (oid) => enqueueProjectTransition(async () => {
     const { projectId } = get();
     if (!projectId) return;
 
     set({ loading: true });
-    cancelPendingAutosave();
     try {
-      await drainProjectWrites(projectId);
+      const expectedGeneration = await get().prepareExternalMutation(projectId);
       if (get().projectId !== projectId) return;
 
-      await gitRestore(projectId, oid);
+      const event = await gitRestore(projectId, oid, expectedGeneration);
       if (get().projectId !== projectId) return;
-
-      // Read both the restored tree and every text buffer before publishing
-      // either. IndexKeeper observes `tree`; an earlier tree-only publish let it
-      // analyze the previous revision's buffers and briefly accept a mixed graph.
-      const tree = await listFiles(projectId);
-      if (get().projectId !== projectId) return;
-      const filePaths = new Set(
-        tree.filter((entry) => !entry.is_dir).map((entry) => entry.path),
-      );
-      const paths = Object.keys(get().files).filter((path) =>
-        filePaths.has(path),
-      );
-      const loaded = await Promise.all(
-        paths.map(async (path) => {
-          try {
-            return [
-              path,
-              {
-                content: await readFileContent(projectId, path),
-                dirty: false,
-              },
-            ] as const;
-          } catch {
-            return null;
-          }
-        }),
-      );
-      if (get().projectId !== projectId) return;
-      const reloaded: Record<string, FileState> = {};
-      for (const entry of loaded) {
-        if (entry) reloaded[entry[0]] = entry[1];
-      }
-
-      cancelPendingAutosave();
-      set((state) => {
-        if (state.projectId !== projectId) return {};
-        const openTabs = state.openTabs.filter((path) =>
-          filePaths.has(path),
-        );
-        const tabOrder = Object.fromEntries(
-          Object.entries(state.tabOrder).filter(([path]) =>
-            filePaths.has(path),
-          ),
-        );
-        const activePath =
-          state.activePath && filePaths.has(state.activePath)
-            ? state.activePath
-            : (openTabs.at(-1) ?? null);
-        return {
-          tree,
-          files: reloaded,
-          openTabs,
-          tabOrder,
-          activePath,
-          docVersion: state.docVersion + 1,
-          loading: false,
-        };
-      });
+      await get().applyProjectStateChanged(event);
     } finally {
       if (get().projectId === projectId && get().loading) {
         set({ loading: false });
       }
     }
+  }),
+
+  pullFromGit: () => enqueueProjectTransition(async () => {
+    const { projectId } = get();
+    if (!projectId) return "";
+    const expectedGeneration = await get().prepareExternalMutation(projectId);
+    const result = await gitPull(projectId, expectedGeneration);
+    await get().applyProjectStateChanged(result.state);
+    return result.message;
+  }),
+
+  discardFromGit: (path) => enqueueProjectTransition(async () => {
+    const { projectId } = get();
+    if (!projectId) return;
+    const expectedGeneration = await get().prepareExternalMutation(projectId);
+    const event = await gitDiscard(projectId, path, expectedGeneration);
+    await get().applyProjectStateChanged(event);
   }),
 }));
 

@@ -469,7 +469,7 @@ Oleafly는
    ```bash
    pnpm build
    pnpm test
-   cargo test --manifest-path src-tauri/Cargo.toml --lib
+   cargo test --workspace --all-targets
    ```
 
 보안 문제는 [SECURITY.md](SECURITY.md)에 안내된 대로 비공개로 제보해

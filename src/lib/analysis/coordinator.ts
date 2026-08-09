@@ -596,7 +596,7 @@ export class ProjectAnalysisCoordinator {
         ) {
           actions.markFeatureNotRun(
             feature,
-            "Supported and ready; analysis has not run",
+            "Supported and ready. Analysis has not run.",
           );
         }
       } else {

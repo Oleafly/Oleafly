@@ -6,6 +6,7 @@ import {
   type CompileSuccessCheckpoint,
 } from "@/lib/compile-checkpoint";
 import type { CompileRequestIdentity } from "@/store/compile";
+import { currentProjectStateRevision } from "@/lib/project-state-revision";
 
 const PREVIEW_WINDOW_LABEL = "preview";
 
@@ -17,11 +18,19 @@ export type PreviewCompileStatus =
   | "unavailable";
 
 export interface PreviewWindowState {
+  projectStateRevision: number;
   identity: CompileRequestIdentity;
   status: PreviewCompileStatus;
   checkpoint: CompileSuccessCheckpoint | null;
   message?: string;
 }
+
+export type PreviewWindowStateInput = Omit<
+  PreviewWindowState,
+  "projectStateRevision"
+> & {
+  projectStateRevision?: number;
+};
 
 const PREVIEW_COMPILE_STATUSES = new Set<PreviewCompileStatus>([
   "not_run",
@@ -62,6 +71,9 @@ export function isPreviewWindowState(
   if (!value || typeof value !== "object") return false;
   const candidate = value as Partial<PreviewWindowState>;
   if (
+    typeof candidate.projectStateRevision !== "number" ||
+    !Number.isSafeInteger(candidate.projectStateRevision) ||
+    candidate.projectStateRevision < 0 ||
     !isCompileRequestIdentity(candidate.identity) ||
     typeof candidate.status !== "string" ||
     !PREVIEW_COMPILE_STATUSES.has(
@@ -96,19 +108,32 @@ export function isPreviewWindowState(
     : checkpoint === null || exactCheckpoint;
 }
 
+function stampProjectStateRevision(
+  state: PreviewWindowStateInput,
+): PreviewWindowState {
+  return {
+    ...state,
+    projectStateRevision:
+      state.projectStateRevision ?? currentProjectStateRevision(),
+  };
+}
+
 // Renders `?view=preview` in its own JS context (see main.tsx) and stays in
 // sync via the `preview:refresh` / `preview:project` events the main window
 // emits (on compile and on project switch).
 export async function openPreviewWindow(
   projectId: string,
   title: string,
-  initialState?: PreviewWindowState,
+  initialState?: PreviewWindowStateInput,
 ): Promise<void> {
   if (!isTauri()) return;
+  const stampedState = initialState
+    ? stampProjectStateRevision(initialState)
+    : undefined;
   const existing = await WebviewWindow.getByLabel(PREVIEW_WINDOW_LABEL);
   if (existing) {
     await emit("preview:project", { projectId });
-    if (initialState) await emit("preview:refresh", initialState);
+    if (stampedState) await emit("preview:refresh", stampedState);
     await existing.setFocus();
     return;
   }
@@ -116,8 +141,8 @@ export async function openPreviewWindow(
     view: "preview",
     project: projectId,
   });
-  if (initialState) {
-    query.set("state", JSON.stringify(initialState));
+  if (stampedState) {
+    query.set("state", JSON.stringify(stampedState));
   }
   new WebviewWindow(PREVIEW_WINDOW_LABEL, {
     url: `index.html?${query.toString()}`,
@@ -130,9 +155,12 @@ export async function openPreviewWindow(
   });
 }
 
-export function refreshPreviewWindow(state?: PreviewWindowState): void {
+export function refreshPreviewWindow(state?: PreviewWindowStateInput): void {
   if (!isTauri()) return;
-  void emit("preview:refresh", state).catch(() => {});
+  void emit(
+    "preview:refresh",
+    state ? stampProjectStateRevision(state) : undefined,
+  ).catch(() => {});
 }
 
 export function retargetPreviewWindow(projectId: string): void {

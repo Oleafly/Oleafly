@@ -74,8 +74,17 @@ lowercase engineering references contain deeper contracts and release policy.
 
 ```bash
 pnpm test                    # frontend unit tests (Vitest)
-cd src-tauri && cargo test --lib   # Rust backend tests
+cargo test --workspace --all-targets  # Rust workspace tests
 ```
+
+On Windows, run the Rust tests as
+`OLEAFLY_EMBED_TEST_MANIFEST=1 cargo test --workspace --lib` (PowerShell:
+`$env:OLEAFLY_EMBED_TEST_MANIFEST="1"`). The variable makes the build script
+link a Common Controls v6 manifest into test binaries; without it they exit
+with `STATUS_ENTRYPOINT_NOT_FOUND` before running, because only the packaged
+app binary receives the manifest that Tauri normally embeds. Leave the
+variable unset for `cargo build` and `pnpm tauri` commands so the app binary
+keeps its single embedded manifest.
 
 Backend logic that touches the filesystem, git, or user paths **must** have a
 test. The path-sandboxing helpers (`resolve_within`, `validate_project_id`) and
@@ -94,14 +103,14 @@ what counts as prose.
   `biome.json`). Prefer not adding new warnings.
 - **Rust** - the backend must be `cargo fmt`-clean and `cargo clippy`-clean;
   both are **blocking** in CI (`clippy` runs with `-D warnings`). Run
-  `cargo fmt` and `cargo clippy --all-targets --fix` before pushing.
+  `cargo fmt --all` and `cargo clippy --workspace --all-targets -- -D warnings` before pushing.
 - Match the surrounding code - comment density, naming, and idiom.
 
 ## Pull requests
 
 1. Fork and branch from `main` (`git checkout -b fix/short-description`).
 2. Keep the change focused; unrelated refactors belong in their own PR.
-3. Make sure `pnpm lint`, `pnpm build`, and `cargo test --lib` pass locally.
+3. Make sure `pnpm lint`, `pnpm build`, and `cargo test --workspace --all-targets` pass locally.
 4. Fill out the PR template - link the issue, describe the change, note how you
    tested it.
 5. CI must be green (the frontend build and Rust tests are required checks).

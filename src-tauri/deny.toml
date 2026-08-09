@@ -30,10 +30,6 @@ ignore = [
   "RUSTSEC-2025-0081",
   "RUSTSEC-2025-0098",
   "RUSTSEC-2025-0100",
-  # quick-xml DoS advisories; fixed in 0.41 but plist (via tauri) pins 0.39,
-  # and plist only parses local files here, not attacker-controlled XML.
-  "RUSTSEC-2026-0194",
-  "RUSTSEC-2026-0195",
 ]
 
 [licenses]

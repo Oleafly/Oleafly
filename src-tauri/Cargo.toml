@@ -37,6 +37,8 @@ zip = { version = "4", default-features = false, features = ["deflate"] }
 tar = "0.4"
 # Streaming the pandoc download so we can report progress.
 futures-util = "0.3"
+fs4 = "1.1"
+atomicwrites = "0.4"
 sha2 = "0.10"
 # Async HTTP client for the GitHub OAuth device flow, which can't be called
 # from the webview (CORS). The API endpoints on api.github.com are still called
@@ -53,12 +55,21 @@ windows-sys = { version = "0.61", features = [
   "Win32_Foundation",
   "Win32_Security",
   "Win32_Storage_FileSystem",
+  "Win32_System_Diagnostics_ToolHelp",
   "Win32_System_IO",
   "Win32_System_JobObjects",
   "Win32_System_Threading",
 ] }
 
+[target.'cfg(target_os = "linux")'.dependencies]
+# Streaming decoder for TinyTeX's official Linux ARM64 .tar.xz. Static linking
+# avoids a runtime liblzma dependency; disabling defaults avoids bindgen.
+liblzma = { version = "=0.4.7", default-features = false, features = ["static"] }
+
 [features]
 custom-protocol = ["tauri/custom-protocol"]
 # E2E automation bridge (Playwright socket server); never in release builds.
 e2e-testing = ["dep:tauri-plugin-playwright"]
+
+[dev-dependencies]
+tempfile = "3.27"

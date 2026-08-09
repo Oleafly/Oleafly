@@ -12,6 +12,7 @@ import {
   enabledModels,
   mergeFetchedModels,
   pickActiveModel,
+  reconcileActiveModel,
   seedProviderModels,
 } from "@/lib/ai-model-state";
 import { listOllamaModels, DEFAULT_OLLAMA_HOST } from "@/lib/ollama";
@@ -29,7 +30,7 @@ type AITab = "providers" | "instructions" | "personas";
 
 type DiscoveryResult =
   | { ok: true; models: { id: string; name: string }[] }
-  | { ok: false; reason: "invalid-key" | "unreachable" };
+  | { ok: false; reason: "invalid-key" | "unreachable" | "unsupported" };
 
 async function discoverModels(args: {
   providerId: string;
@@ -38,7 +39,7 @@ async function discoverModels(args: {
   isCustom?: boolean;
 }): Promise<DiscoveryResult> {
   if (!supportsModelDiscovery(args.providerId, args.isCustom)) {
-    return { ok: true, models: [] };
+    return { ok: false, reason: "unsupported" };
   }
   try {
     return { ok: true, models: await agentListModels(args) };
@@ -165,10 +166,6 @@ export function AISection() {
 
   // Pastes are validated by fetching the provider's live model list before
   // the key is trusted; an unreachable or rejected key never gets persisted.
-  // Custom providers are the exception: most third-party bases are
-  // OpenAI-compatible, so discovery is attempted with that shape, but a
-  // failure there only skips auto-discovered models - the key still saves
-  // and the user can add models manually via ModelManager.
   const validateAndSave = async (id: string) => {
     const value = (keys[id] ?? "").trim();
     if (!value) return;
@@ -192,14 +189,19 @@ export function AISection() {
       }
       const nextKeys = withKey(cfg.ai_keys, id, value);
       const existingModels = cfg.ai_provider_models[id] ?? seedProviderModels(id);
-      const mergedModels = res.ok ? mergeFetchedModels(existingModels, res.models) : existingModels;
-      const wasActive = Boolean(cfg.ai_provider);
+      const mergedModels = mergeFetchedModels(existingModels, res.ok ? res.models : null);
+      const nextProvider = cfg.ai_provider || id;
+      const nextModel = !cfg.ai_provider
+        ? pickActiveModel(mergedModels, defaultModel(id))
+        : cfg.ai_provider === id
+          ? reconcileActiveModel(mergedModels, cfg.ai_model, defaultModel(id))
+          : cfg.ai_model;
       const next: AppConfig = {
         ...cfg,
         ai_keys: nextKeys,
         ai_provider_models: { ...cfg.ai_provider_models, [id]: mergedModels },
-        ai_provider: cfg.ai_provider || id,
-        ai_model: wasActive ? cfg.ai_model : pickActiveModel(mergedModels, defaultModel(id)),
+        ai_provider: nextProvider,
+        ai_model: nextModel,
       };
       await persist(next);
       setKeys({ ...editableKeys(nextKeys), [id]: "" });

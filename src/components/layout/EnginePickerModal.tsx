@@ -1,6 +1,7 @@
 import { useEffect, useId, useState } from "react";
-import { Check, Cpu, Download, Loader2, Zap } from "lucide-react";
+import { Check, Cpu, Download, Loader2, ShieldAlert, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import {
   dismissEngineHint,
@@ -32,7 +33,9 @@ export function EnginePickerModal() {
 
   const projectId = useFilesStore((s) => s.projectId);
   const engineId = useFilesStore((s) => s.engine.id);
+  const allowShellEscape = useFilesStore((s) => s.engine.allow_shell_escape);
   const setEngine = useFilesStore((s) => s.setEngine);
+  const setShellEscape = useFilesStore((s) => s.setShellEscape);
 
   const info = useEngineStore((s) => s.info);
   const installing = useEngineStore((s) => s.installing);
@@ -43,6 +46,8 @@ export function EnginePickerModal() {
   const install = useEngineStore((s) => s.install);
 
   const [switching, setSwitching] = useState(false);
+  const [shellEscapeSaving, setShellEscapeSaving] = useState(false);
+  const [shellEscapeConsent, setShellEscapeConsent] = useState(allowShellEscape);
   const titleId = useId();
   const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDivElement>(
     open,
@@ -53,16 +58,31 @@ export function EnginePickerModal() {
     if (open) void ensureLoaded();
   }, [open, ensureLoaded]);
 
+  useEffect(() => {
+    if (!open) return;
+    const state = useFilesStore.getState();
+    if (state.projectId === projectId) {
+      setShellEscapeConsent(state.engine.allow_shell_escape);
+    }
+  }, [open, projectId]);
+
   if (!open) return null;
 
   const hasSystemTex = !!info?.latexmk;
   const alreadyLatexmk = engineId === "latexmk";
   const fixable = findings.filter((finding) => latexmkFixesFinding(finding.id));
+  const needsShellEscape = findings.some((finding) =>
+    ["minted", "pythontex", "shell-escape"].includes(finding.id),
+  );
 
   const pinLatexmk = async (afterInstall: boolean) => {
     setSwitching(true);
     try {
       await setEngine("latexmk");
+      const selected = useFilesStore.getState();
+      if (selected.projectId !== projectId || selected.engine.id !== "latexmk") return;
+      if (shellEscapeConsent) await setShellEscape(true);
+      if (useFilesStore.getState().projectId !== projectId) return;
       toast.success(
         afterInstall
           ? "TinyTeX installed. This project now compiles with latexmk."
@@ -74,9 +94,33 @@ export function EnginePickerModal() {
         void compile.useCompileStore.getState().recompile();
       }
     } catch (error) {
-      notifyError("switch compile engine", error);
+      const current = useFilesStore.getState();
+      if (current.projectId === projectId) {
+        setShellEscapeConsent(current.engine.allow_shell_escape);
+      }
+      notifyError("switch compile engine", error, "Could not switch the compile engine.");
     } finally {
       setSwitching(false);
+    }
+  };
+
+  const updateShellEscape = async (allow: boolean) => {
+    const previous = shellEscapeConsent;
+    setShellEscapeConsent(allow);
+    if (!alreadyLatexmk) return;
+    setShellEscapeSaving(true);
+    try {
+      await setShellEscape(allow);
+      toast.success(
+        allow
+          ? "External commands are allowed for this project on this computer."
+          : "External commands are blocked for this project on this computer.",
+      );
+    } catch (error) {
+      setShellEscapeConsent(previous);
+      notifyError("update external command access", error, "Could not update external command access.");
+    } finally {
+      setShellEscapeSaving(false);
     }
   };
 
@@ -172,7 +216,7 @@ export function EnginePickerModal() {
             </div>
             <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
               {hasSystemTex
-                ? "A TeX distribution was found on this machine. latexmk orchestrates every pass (Biber, makeindex, shell-escape), exactly like Overleaf."
+                ? "A TeX distribution was found on this machine. System TeX can read local files available to your account, so use it only with projects you trust. External commands remain blocked unless you allow them below."
                 : "No TeX distribution (MacTeX, TeX Live, MiKTeX, TinyTeX) was found on this machine."}
             </p>
             {info?.latexmk && (
@@ -180,6 +224,44 @@ export function EnginePickerModal() {
                 {info.latexmk}
               </p>
             )}
+            <div className="mt-3 border-t pt-3">
+              <label
+                htmlFor="engine-shell-escape"
+                className="flex min-h-11 cursor-pointer items-start gap-2.5"
+              >
+                <Checkbox
+                  id="engine-shell-escape"
+                  data-testid="engine-picker-shell-escape"
+                  checked={shellEscapeConsent}
+                  disabled={switching || shellEscapeSaving}
+                  aria-describedby="engine-shell-escape-warning"
+                  onCheckedChange={(checked) => void updateShellEscape(checked === true)}
+                  className="mt-0.5"
+                />
+                <span className="min-w-0 text-xs">
+                  <span className="flex items-center gap-1.5 font-medium">
+                    {shellEscapeSaving ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <ShieldAlert className="size-3.5 text-amber-600 dark:text-amber-500" />
+                    )}
+                    Allow external commands on this computer
+                  </span>
+                  <span
+                    id="engine-shell-escape-warning"
+                    className="mt-1 block leading-relaxed text-muted-foreground"
+                  >
+                    Required by minted and some PythonTeX documents. LaTeX can run programs with
+                    your user permissions, so enable this only for a project you trust.
+                  </span>
+                </span>
+              </label>
+              {needsShellEscape && !shellEscapeConsent && (
+                <p className="mt-2 text-[11px] font-medium text-amber-700 dark:text-amber-400">
+                  Shell-dependent features were detected and will stay blocked by default.
+                </p>
+              )}
+            </div>
             <div className="mt-2">
               <Button
                 size="sm"

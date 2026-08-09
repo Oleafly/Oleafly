@@ -35,7 +35,7 @@ export const IMPORT_COMPAT_CATALOG = {
     level: "blocker",
     title: "minted needs shell-escape and Pygments",
     detail:
-      "Code listings via minted require \\write18 and a system pygmentize. Oleafly does not enable shell-escape by default. Expect failures until that toolchain is available.",
+      "Code listings via minted require a system TeX distribution and pygmentize. Switch to system LaTeX, then allow external commands on this computer only if you trust every project file.",
     latexmkFixes: true,
   },
   "glossaries-index": {
@@ -49,14 +49,14 @@ export const IMPORT_COMPAT_CATALOG = {
     level: "blocker",
     title: "pythontex",
     detail:
-      "pythontex needs a Python helper pass outside the core Tectonic compile loop.",
+      "PythonTeX needs its helper from the active system TeX distribution. Switch to system LaTeX, then allow external commands on this computer only if you trust every project file.",
     latexmkFixes: true,
   },
   "shell-escape": {
     level: "warning",
     title: "Shell-escape commands",
     detail:
-      "The source uses \\write18 / shell escapes. These are disabled by default for safety and often fail when host tools are missing.",
+      "The source uses \\write18 or another shell escape. Switch to system LaTeX, then allow external commands on this computer only if you trust every project file and the required host tools are installed.",
     latexmkFixes: true,
   },
   fontspec: {

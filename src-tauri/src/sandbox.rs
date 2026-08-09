@@ -30,6 +30,9 @@ pub fn resolve_in_project(project_id: &str, rel: &str) -> Result<PathBuf, String
 ///      (or its nearest existing ancestor, for not-yet-created files) must stay
 ///      within `root`.
 pub fn resolve_within(root: &Path, rel: &str) -> Result<PathBuf, String> {
+    if rel.contains('\\') {
+        return Err(format!("illegal path: {rel}"));
+    }
     let rel_path = Path::new(rel);
     if rel_path.is_absolute() {
         return Err(format!("illegal path: {rel}"));
@@ -66,6 +69,7 @@ fn nearest_existing(path: &Path) -> Option<PathBuf> {
 }
 
 /// Whether `rel` resolves to the project root itself (must never be deleted).
+#[cfg(test)]
 pub fn is_root_delete(root: &Path, rel: &str) -> bool {
     if rel.is_empty() || rel == "." {
         return true;
@@ -221,58 +225,38 @@ pub fn atomic_write(destination: &Path, bytes: &[u8]) -> Result<(), String> {
     transaction.commit()
 }
 
-#[cfg(not(windows))]
-fn replace_file(source: &Path, destination: &Path) -> std::io::Result<()> {
-    std::fs::rename(source, destination)
+pub(crate) fn replace_file(source: &Path, destination: &Path) -> std::io::Result<()> {
+    #[cfg(windows)]
+    {
+        const RETRY_DELAYS_MS: [u64; 9] = [10, 20, 40, 80, 160, 320, 500, 500, 500];
+        for delay in RETRY_DELAYS_MS {
+            match atomicwrites::replace_atomic(source, destination) {
+                Ok(()) => return Ok(()),
+                Err(error) if is_retryable_replace_error_code(error.raw_os_error()) => {
+                    std::thread::sleep(std::time::Duration::from_millis(delay));
+                }
+                Err(error) => return Err(error),
+            }
+        }
+    }
+    atomicwrites::replace_atomic(source, destination)
 }
 
 #[cfg(any(windows, test))]
-fn is_retryable_windows_replace_error_code(code: Option<i32>) -> bool {
-    // ERROR_ACCESS_DENIED can be returned while Defender or an indexer has a
-    // transient handle. The remaining values are the documented sharing,
-    // locking, and mapped-file conflicts emitted when a compiler is still
-    // releasing the destination.
-    matches!(code, Some(5 | 32 | 33 | 1224))
-}
-
-#[cfg(windows)]
-fn replace_file(source: &Path, destination: &Path) -> std::io::Result<()> {
-    use std::os::windows::ffi::OsStrExt;
-    use std::time::Duration;
-    use windows_sys::Win32::Storage::FileSystem::{
-        MoveFileExW, MOVEFILE_REPLACE_EXISTING, MOVEFILE_WRITE_THROUGH,
-    };
-
-    const RETRY_DELAYS_MS: [u64; 9] = [10, 20, 40, 80, 160, 320, 500, 500, 500];
-    let source: Vec<u16> = source.as_os_str().encode_wide().chain(Some(0)).collect();
-    let destination: Vec<u16> = destination
-        .as_os_str()
-        .encode_wide()
-        .chain(Some(0))
-        .collect();
-
-    for attempt in 0..=RETRY_DELAYS_MS.len() {
-        let result = unsafe {
-            MoveFileExW(
-                source.as_ptr(),
-                destination.as_ptr(),
-                MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH,
-            )
-        };
-        if result != 0 {
-            return Ok(());
-        }
-
-        let error = std::io::Error::last_os_error();
-        if attempt == RETRY_DELAYS_MS.len()
-            || !is_retryable_windows_replace_error_code(error.raw_os_error())
-        {
-            return Err(error);
-        }
-        std::thread::sleep(Duration::from_millis(RETRY_DELAYS_MS[attempt]));
-    }
-
-    unreachable!("the bounded Windows replacement loop always returns")
+fn is_retryable_replace_error_code(code: Option<i32>) -> bool {
+    const ERROR_ACCESS_DENIED: i32 = 5;
+    const ERROR_SHARING_VIOLATION: i32 = 32;
+    const ERROR_LOCK_VIOLATION: i32 = 33;
+    const ERROR_USER_MAPPED_FILE: i32 = 1224;
+    matches!(
+        code,
+        Some(
+            ERROR_ACCESS_DENIED
+                | ERROR_SHARING_VIOLATION
+                | ERROR_LOCK_VIOLATION
+                | ERROR_USER_MAPPED_FILE
+        )
+    )
 }
 
 /// Best-effort directory fsync after a successful rename. Never fails the
@@ -314,6 +298,8 @@ mod tests {
         let root = temp_root();
         assert!(resolve_within(&root, "../secret").is_err());
         assert!(resolve_within(&root, "a/../../secret").is_err());
+        assert!(resolve_within(&root, "..\\secret").is_err());
+        assert!(resolve_within(&root, "C:\\Windows\\system.ini").is_err());
         std::fs::remove_dir_all(&root).ok();
     }
 
@@ -356,17 +342,6 @@ mod tests {
     }
 
     #[test]
-    fn classifies_only_transient_windows_replace_errors_as_retryable() {
-        for code in [5, 32, 33, 1224] {
-            assert!(is_retryable_windows_replace_error_code(Some(code)));
-        }
-        for code in [2, 3, 87, 112] {
-            assert!(!is_retryable_windows_replace_error_code(Some(code)));
-        }
-        assert!(!is_retryable_windows_replace_error_code(None));
-    }
-
-    #[test]
     fn atomic_write_replaces_only_after_the_staged_payload_is_complete() {
         let root = temp_root();
         let destination = root.join("artifact.pdf");
@@ -392,6 +367,17 @@ mod tests {
         let root = temp_root();
         sync_parent(&root.join("out.pdf"));
         std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn classifies_only_transient_windows_replace_errors_as_retryable() {
+        for code in [5, 32, 33, 1224] {
+            assert!(is_retryable_replace_error_code(Some(code)));
+        }
+        for code in [2, 3, 87, 112] {
+            assert!(!is_retryable_replace_error_code(Some(code)));
+        }
+        assert!(!is_retryable_replace_error_code(None));
     }
 
     #[test]

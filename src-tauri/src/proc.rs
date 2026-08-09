@@ -11,13 +11,15 @@
 //! `no_console()` is a no-op on macOS and Linux, where a spawned child has no
 //! console window to hide; those platforms compile the trivial branch.
 
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 /// `CREATE_NO_WINDOW` (winbase.h): the child runs without allocating a console.
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 #[cfg(windows)]
 const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
+#[cfg(windows)]
+const CREATE_SUSPENDED: u32 = 0x0000_0004;
 
 /// exactly where it would set any other builder option.
 pub trait NoConsole {
@@ -52,6 +54,71 @@ impl NoConsole for tokio::process::Command {
     }
 }
 
+/// Run a synchronous command while applying the same Windows Job Object
+/// containment used by async compiler and language-server children.
+pub fn output_contained(command: &mut Command) -> std::io::Result<std::process::Output> {
+    // `Command::output` configures these streams for the caller, but the
+    // Windows path has to use `spawn` so the suspended child can be assigned
+    // to its Job Object before it starts. Reproduce `output` semantics before
+    // spawning or `wait_with_output` has no pipes to collect.
+    command
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP | CREATE_SUSPENDED);
+        let mut child = command.spawn()?;
+        let pid = child.id();
+        let _containment = match contain_process_tree(pid) {
+            Ok(containment) => containment,
+            Err(error) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(error);
+            }
+        };
+        child.wait_with_output()
+    }
+    #[cfg(not(windows))]
+    {
+        command.output()
+    }
+}
+
+/// Spawn a short-lived platform helper without blocking the Tauri command.
+/// The reaper owns the containment guard until the helper exits.
+pub fn spawn_contained(command: &mut Command) -> std::io::Result<()> {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP | CREATE_SUSPENDED);
+        let mut child = command.spawn()?;
+        let pid = child.id();
+        let containment = match contain_process_tree(pid) {
+            Ok(containment) => containment,
+            Err(error) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(error);
+            }
+        };
+        std::thread::Builder::new()
+            .name("oleafly-child-reaper".into())
+            .spawn(move || {
+                let _containment = containment;
+                let _ = child.wait();
+            })?;
+        Ok(())
+    }
+    #[cfg(not(windows))]
+    {
+        command.spawn()?;
+        Ok(())
+    }
+}
+
 pub fn isolate_process_tree(command: &mut tokio::process::Command) {
     #[cfg(unix)]
     unsafe {
@@ -69,7 +136,198 @@ pub fn isolate_process_tree(command: &mut tokio::process::Command) {
         use std::os::windows::process::CommandExt;
         command
             .as_std_mut()
-            .creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP);
+            .creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP | CREATE_SUSPENDED);
+    }
+}
+
+#[cfg(not(windows))]
+pub struct ProcessTreeGuard {
+    process_group: i32,
+}
+
+#[cfg(not(windows))]
+impl Drop for ProcessTreeGuard {
+    fn drop(&mut self) {
+        if self.process_group > 0 {
+            unsafe {
+                let _ = libc::kill(-self.process_group, libc::SIGKILL);
+            }
+            self.process_group = 0;
+        }
+    }
+}
+
+#[cfg(windows)]
+pub struct ProcessTreeGuard {
+    job: windows_sys::Win32::Foundation::HANDLE,
+}
+
+#[cfg(windows)]
+unsafe impl Send for ProcessTreeGuard {}
+
+#[cfg(windows)]
+impl Drop for ProcessTreeGuard {
+    fn drop(&mut self) {
+        if !self.job.is_null() {
+            unsafe {
+                windows_sys::Win32::Foundation::CloseHandle(self.job);
+            }
+            self.job = std::ptr::null_mut();
+        }
+    }
+}
+
+#[cfg(not(windows))]
+pub fn contain_process_tree(pid: u32) -> std::io::Result<ProcessTreeGuard> {
+    let process_group = i32::try_from(pid).map_err(|_| {
+        std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "child process id cannot identify a process group",
+        )
+    })?;
+    Ok(ProcessTreeGuard { process_group })
+}
+
+#[cfg(windows)]
+pub fn contain_process_tree(pid: u32) -> std::io::Result<ProcessTreeGuard> {
+    let guard = ProcessTreeGuard {
+        job: assign_process_to_new_job(pid)?,
+    };
+    if let Err(error) = resume_suspended_process(pid) {
+        // Closing a kill-on-close Job Object also terminates the child that is
+        // still suspended. Be explicit here so this error path cannot regress
+        // into leaking either the HANDLE or the child process.
+        drop(guard);
+        return Err(error);
+    }
+    Ok(guard)
+}
+
+#[cfg(windows)]
+fn assign_process_to_new_job(pid: u32) -> std::io::Result<*mut std::ffi::c_void> {
+    use windows_sys::Win32::Foundation::CloseHandle;
+    use windows_sys::Win32::System::JobObjects::{AssignProcessToJobObject, CreateJobObjectW};
+    use windows_sys::Win32::System::Threading::{
+        OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SET_QUOTA, PROCESS_TERMINATE,
+    };
+
+    unsafe {
+        let job = CreateJobObjectW(std::ptr::null(), std::ptr::null());
+        if job.is_null() {
+            return Err(std::io::Error::last_os_error());
+        }
+        if let Err(error) = configure_kill_on_close(job) {
+            CloseHandle(job);
+            return Err(error);
+        }
+        let process = OpenProcess(
+            PROCESS_SET_QUOTA | PROCESS_TERMINATE | PROCESS_QUERY_LIMITED_INFORMATION,
+            0,
+            pid,
+        );
+        if process.is_null() {
+            let error = std::io::Error::last_os_error();
+            CloseHandle(job);
+            return Err(error);
+        }
+        let assigned = AssignProcessToJobObject(job, process);
+        let error = if assigned == 0 {
+            Some(std::io::Error::last_os_error())
+        } else {
+            None
+        };
+        CloseHandle(process);
+        if let Some(error) = error {
+            CloseHandle(job);
+            return Err(error);
+        }
+        Ok(job)
+    }
+}
+
+#[cfg(windows)]
+fn configure_kill_on_close(job: *mut std::ffi::c_void) -> std::io::Result<()> {
+    use windows_sys::Win32::System::JobObjects::{
+        JobObjectExtendedLimitInformation, SetInformationJobObject,
+        JOBOBJECT_EXTENDED_LIMIT_INFORMATION, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
+    };
+
+    unsafe {
+        let mut limits = JOBOBJECT_EXTENDED_LIMIT_INFORMATION::default();
+        limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+        let result = SetInformationJobObject(
+            job,
+            JobObjectExtendedLimitInformation,
+            (&limits as *const JOBOBJECT_EXTENDED_LIMIT_INFORMATION).cast(),
+            std::mem::size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32,
+        );
+        if result == 0 {
+            Err(std::io::Error::last_os_error())
+        } else {
+            Ok(())
+        }
+    }
+}
+
+#[cfg(windows)]
+fn resume_suspended_process(pid: u32) -> std::io::Result<()> {
+    use windows_sys::Win32::Foundation::{CloseHandle, INVALID_HANDLE_VALUE};
+    use windows_sys::Win32::System::Diagnostics::ToolHelp::{
+        CreateToolhelp32Snapshot, Thread32First, Thread32Next, TH32CS_SNAPTHREAD, THREADENTRY32,
+    };
+
+    unsafe {
+        let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+        if snapshot == INVALID_HANDLE_VALUE {
+            return Err(std::io::Error::last_os_error());
+        }
+        let mut entry = THREADENTRY32 {
+            dwSize: std::mem::size_of::<THREADENTRY32>() as u32,
+            ..Default::default()
+        };
+        let mut has_entry = Thread32First(snapshot, &mut entry) != 0;
+        let mut resumed = 0usize;
+        while has_entry {
+            if entry.th32OwnerProcessID == pid {
+                if let Err(error) = resume_thread(entry.th32ThreadID) {
+                    CloseHandle(snapshot);
+                    return Err(error);
+                }
+                resumed += 1;
+            }
+            has_entry = Thread32Next(snapshot, &mut entry) != 0;
+        }
+        CloseHandle(snapshot);
+        if resumed == 0 {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "the suspended child process had no resumable thread",
+            ));
+        }
+        Ok(())
+    }
+}
+
+#[cfg(windows)]
+fn resume_thread(thread_id: u32) -> std::io::Result<()> {
+    use windows_sys::Win32::Foundation::CloseHandle;
+    use windows_sys::Win32::System::Threading::{
+        OpenThread, ResumeThread, THREAD_QUERY_LIMITED_INFORMATION, THREAD_SUSPEND_RESUME,
+    };
+
+    unsafe {
+        let thread = OpenThread(
+            THREAD_SUSPEND_RESUME | THREAD_QUERY_LIMITED_INFORMATION,
+            0,
+            thread_id,
+        );
+        if thread.is_null() {
+            return Err(std::io::Error::last_os_error());
+        }
+        let previous_suspend_count = ResumeThread(thread);
+        let error = (previous_suspend_count == u32::MAX).then(std::io::Error::last_os_error);
+        CloseHandle(thread);
+        error.map_or(Ok(()), Err)
     }
 }
 
@@ -85,5 +343,71 @@ pub async fn terminate_process_tree(pid: u32) {
             .args(["/PID", &pid.to_string(), "/T", "/F"])
             .status()
             .await;
+    }
+}
+
+#[cfg(all(test, windows))]
+mod windows_tests {
+    use super::*;
+    use std::time::Duration;
+
+    #[tokio::test]
+    async fn suspended_child_runs_only_after_job_assignment() {
+        let mut command = tokio::process::Command::new("cmd.exe");
+        command
+            .args(["/D", "/S", "/C", "exit 0"])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .kill_on_drop(true);
+        isolate_process_tree(&mut command);
+        let mut child = command.spawn().expect("spawn suspended child");
+        let pid = child.id().expect("child process id");
+        let _guard = contain_process_tree(pid).expect("assign and resume child");
+        let status = tokio::time::timeout(Duration::from_secs(10), child.wait())
+            .await
+            .expect("child timed out")
+            .expect("wait for child");
+        assert!(status.success());
+    }
+
+    #[tokio::test]
+    async fn dropping_the_job_terminates_the_running_child() {
+        let mut command = tokio::process::Command::new("cmd.exe");
+        command
+            .args(["/D", "/S", "/C", "ping -n 30 127.0.0.1 >NUL"])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .kill_on_drop(true);
+        isolate_process_tree(&mut command);
+        let mut child = command.spawn().expect("spawn suspended child");
+        let pid = child.id().expect("child process id");
+        let guard = contain_process_tree(pid).expect("assign and resume child");
+        tokio::time::sleep(Duration::from_secs(2)).await;
+        assert!(
+            child.try_wait().expect("probe running child").is_none(),
+            "the child must still be running before the job handle closes"
+        );
+        drop(guard);
+        tokio::time::timeout(Duration::from_secs(10), child.wait())
+            .await
+            .expect("Job Object did not terminate the child")
+            .expect("wait for terminated child");
+    }
+
+    #[test]
+    fn synchronous_commands_run_inside_a_job_object() {
+        let output = output_contained(Command::new("cmd.exe").args([
+            "/D",
+            "/S",
+            "/C",
+            "echo contained-out & echo contained-err 1>&2",
+        ]))
+        .expect("run contained synchronous child");
+
+        assert!(output.status.success());
+        assert!(String::from_utf8_lossy(&output.stdout).contains("contained-out"));
+        assert!(String::from_utf8_lossy(&output.stderr).contains("contained-err"));
     }
 }
