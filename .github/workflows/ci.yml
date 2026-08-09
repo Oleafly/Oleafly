@@ -219,6 +219,25 @@ jobs:
       - name: Run the native Windows test suite
         run: cargo test --workspace --all-targets
 
+      - name: Diagnose native test loader failures
+        if: failure()
+        shell: pwsh
+        run: |
+          $test = Get-ChildItem src-tauri/target/debug/deps/oleafly_lib-*.exe |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+          $dumpbin = Get-ChildItem "${env:ProgramFiles}/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC" -Filter dumpbin.exe -Recurse |
+            Where-Object FullName -Match 'Hostx64\\x64' |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+          if ($test -and $dumpbin) {
+            & $dumpbin.FullName /dependents $test.FullName
+            & $dumpbin.FullName /imports $test.FullName
+          }
+          Get-WinEvent -FilterHashtable @{ LogName = 'Application'; StartTime = (Get-Date).AddMinutes(-10) } -ErrorAction SilentlyContinue |
+            Where-Object Message -Match 'oleafly_lib' |
+            Format-List TimeCreated, Id, ProviderName, Message
+
   cargo-deny:
     # RustSec advisories plus a permissive-only license gate for everything
     # compiled into the shipped binary. Policy lives in src-tauri/deny.toml.
