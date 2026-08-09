@@ -2626,6 +2626,10 @@ pub fn compiled_pdf_path(
 mod tests {
     use super::*;
 
+    fn joined(dir: &str, name: &str) -> String {
+        Path::new(dir).join(name).to_string_lossy().into_owned()
+    }
+
     #[test]
     fn compiler_output_utf8_decoder_preserves_split_codepoints() {
         let mut decoder = Utf8StreamDecoder::default();
@@ -2992,7 +2996,7 @@ mod tests {
                 "continue-on-errors",
                 "-Z",
                 "search-path=/project",
-                "/build/_oleafly_entry.tex"
+                joined("/build", "_oleafly_entry.tex").as_str()
             ]
         );
         assert_eq!(
@@ -3371,8 +3375,8 @@ mod tests {
                 "--color",
                 "never",
                 "compile",
-                "/project/chapters/main.typ",
-                "/build/_oleafly_entry.pdf",
+                joined("/project", "chapters/main.typ").as_str(),
+                joined("/build", "_oleafly_entry.pdf").as_str(),
                 "--root",
                 "/project",
                 "--diagnostic-format",
@@ -3462,9 +3466,9 @@ mod tests {
                 "--standalone",
                 "--resource-path=/project",
                 "--pdf-engine=/app/tectonic",
-                "--output=/build/_oleafly_entry.pdf",
+                format!("--output={}", joined("/build", "_oleafly_entry.pdf")).as_str(),
                 "--",
-                "/project/chapters/main.md",
+                joined("/project", "chapters/main.md").as_str(),
             ]
         );
     }
@@ -3808,11 +3812,10 @@ mod tests {
         let args = pythontex_args(&project, &out, crate::paths::ENTRY_STEM).unwrap();
         assert_eq!(&args[..2], ["--error-exit-code", "true"]);
         assert_eq!(
-            args[2],
+            Path::new(&args[2]),
             Path::new(".oleafly")
                 .join("build")
                 .join(crate::paths::ENTRY_STEM)
-                .to_string_lossy()
         );
         assert!(pythontex_args(&project, &root.join("outside"), "job").is_err());
 

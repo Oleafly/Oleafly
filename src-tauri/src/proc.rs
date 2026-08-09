@@ -384,12 +384,16 @@ mod windows_tests {
         let mut child = command.spawn().expect("spawn suspended child");
         let pid = child.id().expect("child process id");
         let guard = contain_process_tree(pid).expect("assign and resume child");
+        tokio::time::sleep(Duration::from_secs(2)).await;
+        assert!(
+            child.try_wait().expect("probe running child").is_none(),
+            "the child must still be running before the job handle closes"
+        );
         drop(guard);
-        let status = tokio::time::timeout(Duration::from_secs(10), child.wait())
+        tokio::time::timeout(Duration::from_secs(10), child.wait())
             .await
             .expect("Job Object did not terminate the child")
             .expect("wait for terminated child");
-        assert!(!status.success());
     }
 
     #[test]
