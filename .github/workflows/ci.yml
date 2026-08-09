@@ -89,8 +89,21 @@ jobs:
       - name: Check performance budgets
         run: pnpm check:performance
 
-      # Unit tests for the LaTeX masking (spell/grammar false-positive coverage).
+      - name: Test with coverage
+        if: github.event_name == 'push' || github.event_name == 'pull_request'
+        run: pnpm test:coverage
+
+      - name: Upload frontend coverage
+        if: github.event_name == 'push' || github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-coverage
+          path: coverage/frontend/lcov.info
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Test
+        if: github.event_name != 'push' && github.event_name != 'pull_request'
         run: pnpm test
 
       # Deterministic p95 gates for the core editor's book-scale synchronous
@@ -178,7 +191,29 @@ jobs:
       - name: Smoke-test managed Pandoc with bundled Tectonic
         run: bash scripts/smoke-markdown.sh x86_64-unknown-linux-gnu
 
+      - name: Install cargo-llvm-cov
+        if: github.event_name == 'push' || github.event_name == 'pull_request'
+        uses: taiki-e/install-action@7f4eb899022d8fe70b20c4f3de697aa85c309026 # v2.85.11
+        with:
+          tool: cargo-llvm-cov@0.8.7
+
+      - name: Test with coverage
+        if: github.event_name == 'push' || github.event_name == 'pull_request'
+        run: |
+          mkdir -p coverage/rust
+          cargo llvm-cov --workspace --all-targets --lcov --output-path coverage/rust/lcov.info
+
+      - name: Upload Rust coverage
+        if: github.event_name == 'push' || github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v7
+        with:
+          name: rust-coverage
+          path: coverage/rust/lcov.info
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Test
+        if: github.event_name != 'push' && github.event_name != 'pull_request'
         run: cargo test --workspace --all-targets
 
       - name: Format check
@@ -236,6 +271,52 @@ jobs:
         with:
           manifest-path: src-tauri/Cargo.toml
           command: check
+
+  sonarqube:
+    name: SonarQube Cloud
+    needs: [frontend, rust]
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Download frontend coverage
+        uses: actions/download-artifact@v7
+        with:
+          name: frontend-coverage
+          path: coverage/frontend
+
+      - name: Download Rust coverage
+        uses: actions/download-artifact@v7
+        with:
+          name: rust-coverage
+          path: coverage/rust
+
+      - name: Validate SonarQube Cloud configuration
+        env:
+          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          test -n "$SONAR_ORGANIZATION" || { echo "SONAR_ORGANIZATION repository variable is missing" >&2; exit 1; }
+          test -n "$SONAR_PROJECT_KEY" || { echo "SONAR_PROJECT_KEY repository variable is missing" >&2; exit 1; }
+          test -n "$SONAR_TOKEN" || { echo "SONAR_TOKEN repository secret is missing" >&2; exit 1; }
+
+      - name: Analyze with SonarQube Cloud
+        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >-
+            -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }}
+            -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}
 
   e2e:
     # The full no-mock suite against the real app (WKWebView + Rust + Tectonic
