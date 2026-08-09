@@ -27,6 +27,7 @@ const mocks = vi.hoisted(() => ({
   scheduleAutoCommit: vi.fn(),
   mcpSetActiveProject: vi.fn(async () => {}),
   flushWysiwygPendingEdits: vi.fn(),
+  invalidateWysiwygProjectSession: vi.fn(),
 }));
 
 vi.mock("@/lib/tauri", () => ({
@@ -67,6 +68,7 @@ vi.mock("@/store/compile", () => ({
 }));
 vi.mock("@/components/editor/wysiwyg/controller", () => ({
   flushWysiwygPendingEdits: mocks.flushWysiwygPendingEdits,
+  invalidateWysiwygProjectSession: mocks.invalidateWysiwygProjectSession,
 }));
 
 import { useFilesStore } from "./files";
@@ -131,6 +133,7 @@ beforeEach(async () => {
   mocks.resetCompile.mockReset();
   mocks.mcpSetActiveProject.mockReset().mockResolvedValue(undefined);
   mocks.flushWysiwygPendingEdits.mockReset();
+  mocks.invalidateWysiwygProjectSession.mockReset();
   useSettingsStore.setState({ defaultLatexEngine: "tectonic" });
 });
 
@@ -547,6 +550,7 @@ describe("transactional project transitions", () => {
     await useFilesStore.getState().closeProject();
 
     expect(mocks.flushWysiwygPendingEdits).toHaveBeenCalledTimes(1);
+    expect(mocks.invalidateWysiwygProjectSession).toHaveBeenCalledTimes(1);
     expect(mocks.writeFileContent).toHaveBeenCalledWith(
       "project",
       "main.tex",
@@ -588,6 +592,7 @@ describe("transactional project transitions", () => {
     await opening;
 
     expect(mocks.getProject).toHaveBeenCalledWith("replacement");
+    expect(mocks.invalidateWysiwygProjectSession).toHaveBeenCalledTimes(1);
     expect(useFilesStore.getState().projectId).toBe("replacement");
     expect(useFilesStore.getState().files["main.tex"].content).toBe("replacement content");
   });
