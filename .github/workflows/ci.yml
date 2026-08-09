@@ -288,13 +288,13 @@ jobs:
           fetch-depth: 0
 
       - name: Download frontend coverage
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: frontend-coverage
           path: coverage/frontend
 
       - name: Download Rust coverage
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: rust-coverage
           path: coverage/rust
