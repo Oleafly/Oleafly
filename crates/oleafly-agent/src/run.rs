@@ -20,7 +20,6 @@ const MAX_AGENT_RETRIES: u32 = 8;
 const MAX_TOOL_EXECUTION_DURATION: Duration = Duration::from_secs(5 * 60);
 const MAX_TOOL_OUTPUT_TEXT_BYTES: usize = 64 * 1024;
 const MAX_TOOL_OUTPUT_IMAGES: usize = 6;
-// A 10 MiB binary attachment occupies about 13.4 MiB once base64 encoded.
 const MAX_TOOL_IMAGE_DATA_URL_BYTES: usize = 14 * 1024 * 1024;
 const MAX_TOOL_OUTPUT_IMAGE_BYTES: usize = 84 * 1024 * 1024;
 const MAX_TOOL_RESULT_BATCH_BYTES: usize = 96 * 1024 * 1024;
@@ -124,7 +123,6 @@ struct HistoryBudget {
     tool_calls: usize,
 }
 
-/// Reject renderer/provider requests that would create unbounded JSON or history state.
 pub fn validate_completion_request(request: &CompletionRequest) -> Result<()> {
     HistoryBudget::new(request).map(|_| ())
 }
@@ -159,26 +157,25 @@ impl HistoryBudget {
     }
 
     fn append_message(&mut self, message: &Message, new_tool_calls: usize) -> Result<()> {
-        let messages = self
-            .messages
-            .checked_add(1)
-            .filter(|messages| *messages <= MAX_AGENT_MESSAGES)
-            .ok_or_else(|| history_limit_error("agent message count"))?;
-        let tool_calls = self
-            .tool_calls
-            .checked_add(new_tool_calls)
-            .filter(|tool_calls| *tool_calls <= MAX_AGENT_TOOL_CALLS)
-            .ok_or_else(|| history_limit_error("agent tool-call count"))?;
-        let context_chars = self
-            .context_chars
-            .checked_add(message_context_chars(message)?)
-            .filter(|chars| *chars <= MAX_AGENT_CONTEXT_CHARS)
-            .ok_or_else(|| history_limit_error("agent context"))?;
-        let images = self
-            .images
-            .checked_add(message_image_count(message))
-            .filter(|images| *images <= MAX_AGENT_IMAGES)
-            .ok_or_else(|| history_limit_error("agent image count"))?;
+        let messages = bounded_add(self.messages, 1, MAX_AGENT_MESSAGES, "agent message count")?;
+        let tool_calls = bounded_add(
+            self.tool_calls,
+            new_tool_calls,
+            MAX_AGENT_TOOL_CALLS,
+            "agent tool-call count",
+        )?;
+        let context_chars = bounded_add(
+            self.context_chars,
+            message_context_chars(message)?,
+            MAX_AGENT_CONTEXT_CHARS,
+            "agent context",
+        )?;
+        let images = bounded_add(
+            self.images,
+            message_image_count(message),
+            MAX_AGENT_IMAGES,
+            "agent image count",
+        )?;
         let remaining = MAX_AGENT_HISTORY_BYTES.saturating_sub(self.serialized_bytes);
         let message_bytes = serialized_size_limited(message, remaining)?;
         let serialized_bytes = self
@@ -195,6 +192,13 @@ impl HistoryBudget {
         self.serialized_bytes = serialized_bytes;
         Ok(())
     }
+}
+
+fn bounded_add(current: usize, added: usize, limit: usize, description: &str) -> Result<usize> {
+    current
+        .checked_add(added)
+        .filter(|value| *value <= limit)
+        .ok_or_else(|| history_limit_error(description))
 }
 
 fn history_limit_error(description: &str) -> AgentError {
@@ -233,32 +237,32 @@ fn checked_chars(value: &str) -> Result<usize> {
 
 fn message_context_chars(message: &Message) -> Result<usize> {
     message.content.iter().try_fold(0usize, |total, part| {
-        let chars = match part {
-            ContentPart::Text { text } => checked_chars(text)?,
-            ContentPart::Image { .. } => 0,
-            ContentPart::ToolUse {
-                id,
-                name,
-                arguments,
-            } => {
-                let id = checked_chars(id)?;
-                let name = checked_chars(name)?;
-                let arguments = checked_chars(arguments)?;
-                id.checked_add(name)
-                    .and_then(|sum| sum.checked_add(arguments))
-                    .ok_or_else(|| history_limit_error("agent context"))?
-            }
-            ContentPart::ToolResult { id, name, output } => {
-                let id = checked_chars(id)?;
-                let name = checked_chars(name)?;
-                let output = checked_chars(output)?;
-                id.checked_add(name)
-                    .and_then(|sum| sum.checked_add(output))
-                    .ok_or_else(|| history_limit_error("agent context"))?
-            }
-        };
+        let chars = part_context_chars(part)?;
         total
             .checked_add(chars)
+            .ok_or_else(|| history_limit_error("agent context"))
+    })
+}
+
+fn part_context_chars(part: &ContentPart) -> Result<usize> {
+    match part {
+        ContentPart::Text { text } => checked_chars(text),
+        ContentPart::Image { .. } => Ok(0),
+        ContentPart::ToolUse {
+            id,
+            name,
+            arguments,
+        } => checked_context_fields([id.as_str(), name.as_str(), arguments.as_str()]),
+        ContentPart::ToolResult { id, name, output } => {
+            checked_context_fields([id.as_str(), name.as_str(), output.as_str()])
+        }
+    }
+}
+
+fn checked_context_fields<const N: usize>(fields: [&str; N]) -> Result<usize> {
+    fields.into_iter().try_fold(0usize, |total, field| {
+        total
+            .checked_add(checked_chars(field)?)
             .ok_or_else(|| history_limit_error("agent context"))
     })
 }
@@ -432,7 +436,6 @@ fn sanitize_tool_output(mut output: ToolOutput, limits: ToolOutputLimits) -> Too
     output
 }
 
-/// Apply the same retention limits at external trust boundaries and in the agent loop.
 pub fn bound_tool_output(output: ToolOutput) -> ToolOutput {
     sanitize_tool_output(output, ToolOutputLimits::default())
 }
@@ -594,8 +597,7 @@ where
 
     for step in 0..config.max_steps.min(MAX_AGENT_STEPS) {
         on_event(AgentEvent::StepStart { step });
-
-        let turn = stream_with_retries(
+        let outcome = stream_with_retries(
             client,
             resolved,
             &request,
@@ -604,48 +606,85 @@ where
             &mut on_event,
         )
         .await;
-
-        let Ok(outcome) = turn else {
-            let error = turn.unwrap_err();
-            result.error = Some(error.to_string());
-            on_event(AgentEvent::Error {
-                message: error.to_string(),
-                retryable: error.retryable(),
-            });
-            return Ok(result);
+        let outcome = match outcome {
+            Ok(outcome) => outcome,
+            Err(error) => return Ok(finish_with_stream_error(result, error, &mut on_event)),
         };
-
-        accumulate_usage(&mut result.usage, outcome.usage);
-        result.steps = result.steps.saturating_add(1);
-        on_event(AgentEvent::Usage {
-            usage: result.usage,
-        });
-
-        if !outcome.text.is_empty() {
-            result.text = outcome.text.clone();
-        }
-
+        record_stream_outcome(&mut result, &outcome, &mut on_event);
         if outcome.tool_calls.is_empty() {
-            if empty(&outcome) {
-                result.error = Some("The model returned nothing.".into());
-            }
-            return Ok(result);
+            return Ok(finish_without_tools(result, &outcome));
         }
-
-        validate_tool_calls_per_turn(outcome.tool_calls.len())?;
-        let new_tool_calls = outcome.tool_calls.len();
-        let assistant = assistant_turn(&outcome);
-        history.append_message(&assistant, new_tool_calls)?;
-        request.messages.push(assistant);
-
-        let results = run_tools(outcome.tool_calls, &run_tool, &mut on_event).await?;
-        let results = results_turn(results);
-        history.append_message(&results, 0)?;
-        request.messages.push(results);
+        append_tool_turns(
+            &mut request,
+            &mut history,
+            outcome,
+            &run_tool,
+            &mut on_event,
+        )
+        .await?;
     }
 
     result.stopped_at_cap = true;
     Ok(result)
+}
+
+fn finish_with_stream_error<F>(
+    mut result: RunOutcome,
+    error: AgentError,
+    on_event: &mut F,
+) -> RunOutcome
+where
+    F: FnMut(AgentEvent),
+{
+    result.error = Some(error.to_string());
+    on_event(AgentEvent::Error {
+        message: error.to_string(),
+        retryable: error.retryable(),
+    });
+    result
+}
+
+fn record_stream_outcome<F>(result: &mut RunOutcome, outcome: &StreamOutcome, on_event: &mut F)
+where
+    F: FnMut(AgentEvent),
+{
+    accumulate_usage(&mut result.usage, outcome.usage);
+    result.steps = result.steps.saturating_add(1);
+    on_event(AgentEvent::Usage {
+        usage: result.usage,
+    });
+    if !outcome.text.is_empty() {
+        result.text.clone_from(&outcome.text);
+    }
+}
+
+fn finish_without_tools(mut result: RunOutcome, outcome: &StreamOutcome) -> RunOutcome {
+    if empty(outcome) {
+        result.error = Some("The model returned nothing.".into());
+    }
+    result
+}
+
+async fn append_tool_turns<F>(
+    request: &mut CompletionRequest,
+    history: &mut HistoryBudget,
+    outcome: StreamOutcome,
+    run_tool: &ToolRunner,
+    on_event: &mut F,
+) -> Result<()>
+where
+    F: FnMut(AgentEvent) + Send,
+{
+    validate_tool_calls_per_turn(outcome.tool_calls.len())?;
+    let new_tool_calls = outcome.tool_calls.len();
+    let assistant = assistant_turn(&outcome);
+    history.append_message(&assistant, new_tool_calls)?;
+    request.messages.push(assistant);
+    let results = run_tools(outcome.tool_calls, run_tool, on_event).await?;
+    let results = results_turn(results);
+    history.append_message(&results, 0)?;
+    request.messages.push(results);
+    Ok(())
 }
 
 #[cfg(test)]

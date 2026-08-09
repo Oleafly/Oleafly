@@ -1,7 +1,3 @@
-//! Authenticated localhost MCP endpoint. Project file tools can continue in
-//! Rust after the renderer exits. Tools that need the interface are forwarded
-//! only while a fresh renderer session is available.
-
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -18,15 +14,13 @@ use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::{oneshot, watch, Mutex, OwnedSemaphorePermit, Semaphore};
 
-use super::protocol::{dispatch, rpc_error, rpc_result, RpcOutcome, ToolMeta};
+use super::protocol::{dispatch, rpc_error, rpc_result, rpc_tool_error, RpcOutcome, ToolMeta};
 use crate::paths;
 
 /// Upper bound for one forwarded tool call: compiles and human approvals are
 /// slow; anything past this returns a JSON-RPC error to the client.
 const CALL_TIMEOUT: Duration = Duration::from_secs(300);
 const REQUEST_BODY_TIMEOUT: Duration = Duration::from_secs(30);
-// `write_file` accepts up to 16 MiB. Four MiB of JSON envelope headroom keeps
-// that contract while bounding retained request memory to 160 MiB total.
 const MAX_REQUEST_BODY_BYTES: usize = 20 * 1024 * 1024;
 const MAX_AUTHENTICATED_REQUESTS: usize = 8;
 const MAX_PENDING_FORWARD_CALLS: usize = 16;
@@ -38,9 +32,6 @@ const CANCEL_REASON_TIMEOUT: &str = "timeout";
 const INSTRUCTIONS: &str = "Oleafly is a local-first LaTeX editor. Project tools require the project currently reported by the app. Start with get_status to see the selected project. Use list_files or project_map to orient, then read and edit files and call compile. Destructive edits may pause for the user to approve inside Oleafly.";
 
 pub struct McpState {
-    /// Serializes user-facing start/stop/restart/token commands through their
-    /// config writes. The inner lifecycle lock only covers listener state, so
-    /// releasing it before persistence would let competing intents overtake.
     pub(crate) control: Mutex<()>,
     pub lifecycle: Mutex<()>,
     /// Tool metadata pushed by the webview at startup (and on policy change).
@@ -48,24 +39,12 @@ pub struct McpState {
     /// In-flight forwarded calls awaiting a webview result.
     pub(crate) pending: std::sync::Mutex<HashMap<u64, PendingCall>>,
     pub call_seq: AtomicU64,
-    /// Changes on every start, stop, credential, and registry transition.
-    /// Forwarded calls retain the epoch they were admitted under so stale
-    /// renderer results can never cross one of those boundaries.
     pub(crate) epoch: AtomicU64,
-    /// A non-empty renderer registry has been received at least once. The
-    /// listener may bind before this happens, but it is not ready or published.
     pub(crate) registry_initialized: AtomicBool,
-    /// The running epoch whose discovery file and started event have been
-    /// published. Zero means the bound listener is intentionally not ready.
     pub(crate) published_epoch: AtomicU64,
-    /// Monotonic renderer incarnation. Every forwarded request/result is bound
-    /// to this value so a reloaded webview cannot answer work emitted to its
-    /// predecessor.
     pub(crate) active_renderer_session: AtomicU64,
     renderer_session_seq: AtomicU64,
     renderer_lease: std::sync::Mutex<Option<RendererLease>>,
-    /// One bounded supervisor for the active renderer incarnation. Completed
-    /// handles are replaced on the next begin; they never accumulate.
     renderer_lease_task: Mutex<Option<tauri::async_runtime::JoinHandle<()>>>,
     request_slots: Arc<Semaphore>,
     pub token: Mutex<Option<String>>,
@@ -73,9 +52,6 @@ pub struct McpState {
     pub shutdown: Mutex<Option<watch::Sender<bool>>>,
     pub bound_port: Mutex<Option<u16>>,
     pub active_project: Mutex<Option<String>>,
-    /// The monitor owns the actual Axum JoinHandle and signals this completion
-    /// channel before it attempts lifecycle cleanup. Stop can therefore wait
-    /// while holding `lifecycle` without deadlocking the monitor.
     serve_instance: Mutex<Option<ServeInstance>>,
     serve_seq: AtomicU64,
 }
@@ -160,8 +136,6 @@ fn next_nonzero_sequence(sequence: &AtomicU64, label: &str) -> Result<u64, Strin
 }
 
 fn activate_renderer_lease_at(state: &McpState, session: u64, now: Instant) {
-    // Publish the session only after its deadline exists. Readers can observe
-    // either the old lease or a temporary mismatch, both of which fail closed.
     *lock_renderer_lease(state) = Some(RendererLease {
         session,
         deadline: now + RENDERER_LEASE_TTL,
@@ -185,9 +159,6 @@ pub(crate) fn renderer_session_is_fresh(state: &McpState, session: u64) -> bool 
     renderer_session_is_fresh_at(state, session, Instant::now())
 }
 
-/// Returns `(was_expired, needs_revocation)`. An active (non-superseded)
-/// renderer may recover after OS sleep or timer throttling; callers revoke an
-/// unprocessed expiry, re-arm the supervisor, and republish as needed.
 fn renew_renderer_lease_at(
     state: &McpState,
     session: u64,
@@ -270,9 +241,6 @@ impl Drop for PendingRegistration<'_> {
                 false
             }
         };
-        // Emitting while holding the pending mutex could deadlock a renderer
-        // reply. The removal is atomic; notification happens immediately after
-        // the guard is released.
         if !removed {
             return;
         }
@@ -282,9 +250,6 @@ impl Drop for PendingRegistration<'_> {
     }
 }
 
-/// Register and emit as one critical section. Stop takes the same pending lock,
-/// so event order is always tool-call then server-stopped; a call can never be
-/// emitted into the renderer after its epoch was invalidated.
 fn register_pending<'a, Emit>(
     state: &'a McpState,
     epoch: u64,
@@ -365,10 +330,6 @@ fn tool_call_cancelled_payload(
     })
 }
 
-/// Advance the authorization epoch and wake every forwarded HTTP request. The
-/// lifecycle event is emitted while the pending registry is locked and before
-/// any interruption reply is delivered, allowing the renderer to discard its
-/// queued work before HTTP callers resume.
 pub(crate) fn invalidate_pending<Emit>(
     state: &McpState,
     interruption: PendingInterruption,
@@ -401,191 +362,12 @@ fn renderer_revocation_payload(epoch: u64, reason: &'static str, renderer_sessio
     })
 }
 
-fn log_discovery_cleanup_error(context: &str, error: &str) {
-    let message = format!("MCP {context}: {error}");
-    #[cfg(debug_assertions)]
-    eprintln!("{message}");
-    let _ = crate::project::append_app_log(message);
-}
+#[path = "server_renderer.rs"]
+mod renderer;
 
-fn combine_cleanup_error(
-    primary: String,
-    cleanup: Result<(), String>,
-    cleanup_context: &str,
-) -> String {
-    match cleanup {
-        Ok(()) => primary,
-        Err(cleanup_error) => format!("{primary}. {cleanup_context}: {cleanup_error}"),
-    }
-}
+pub(crate) use renderer::{begin_renderer_session, end_renderer_session, renderer_heartbeat};
+use renderer::{clear_renderer_registry, combine_cleanup_error, log_discovery_cleanup_error};
 
-async fn clear_renderer_registry(state: &McpState) {
-    state.registry_initialized.store(false, Ordering::Release);
-    state.registry.lock().await.clear();
-}
-
-/// Caller holds both lifecycle and token/admission barriers.
-fn revoke_expired_renderer_authorization_locked(
-    app: &AppHandle,
-    state: &McpState,
-    renderer_session: u64,
-) {
-    let published_epoch = state.published_epoch.load(Ordering::Acquire);
-    let (revoked_epoch, next_epoch) =
-        invalidate_pending(state, PendingInterruption::Revoked, |epoch| {
-            let _ = app.emit(
-                "mcp:requests-revoked",
-                renderer_revocation_payload(epoch, "renderer-lease-expired", renderer_session),
-            );
-        });
-    state.published_epoch.store(
-        advance_published_epoch(published_epoch, revoked_epoch, next_epoch),
-        Ordering::Release,
-    );
-}
-
-async fn replace_renderer_supervisor_locked(
-    app: &AppHandle,
-    state: &McpState,
-    renderer_session: u64,
-) {
-    if let Some(previous) = state.renderer_lease_task.lock().await.take() {
-        previous.abort();
-    }
-    let supervisor_app = app.clone();
-    let task = tauri::async_runtime::spawn(async move {
-        supervise_renderer_lease(supervisor_app, renderer_session).await;
-    });
-    *state.renderer_lease_task.lock().await = Some(task);
-}
-
-async fn supervise_renderer_lease(app: AppHandle, renderer_session: u64) {
-    loop {
-        let deadline = {
-            let state = app.state::<McpState>();
-            if state.active_renderer_session.load(Ordering::Acquire) != renderer_session {
-                return;
-            }
-            let lease = lock_renderer_lease(&state);
-            let Some(lease) = lease
-                .as_ref()
-                .filter(|lease| lease.session == renderer_session)
-            else {
-                return;
-            };
-            lease.deadline
-        };
-        tokio::time::sleep_until(tokio::time::Instant::from_std(deadline)).await;
-
-        let state = app.state::<McpState>();
-        let _lifecycle = state.lifecycle.lock().await;
-        if !renderer_lease_expired_at(&state, renderer_session, Instant::now()) {
-            continue;
-        }
-
-        // Keep the session and registry so an otherwise healthy renderer can
-        // recover after OS sleep or timer throttling. Authorization and
-        // discovery still fail closed until that same session heartbeats.
-        let _token = state.token.lock().await;
-        let now = Instant::now();
-        if !mark_renderer_expiration_revoked_at(&state, renderer_session, now) {
-            continue;
-        }
-        revoke_expired_renderer_authorization_locked(&app, &state, renderer_session);
-        return;
-    }
-}
-
-pub(crate) async fn begin_renderer_session(app: &AppHandle) -> Result<u64, String> {
-    let state = app.state::<McpState>();
-    let _lifecycle = state.lifecycle.lock().await;
-    let renderer_session =
-        next_nonzero_sequence(&state.renderer_session_seq, "MCP renderer session")?;
-
-    if let Some(previous) = state.renderer_lease_task.lock().await.take() {
-        previous.abort();
-    }
-    let _token = state.token.lock().await;
-    activate_renderer_lease_at(&state, renderer_session, Instant::now());
-    clear_renderer_registry(&state).await;
-    *state.active_project.lock().await = None;
-    state.published_epoch.store(0, Ordering::Release);
-    invalidate_pending(&state, PendingInterruption::Revoked, |epoch| {
-        let _ = app.emit(
-            "mcp:requests-revoked",
-            renderer_revocation_payload(epoch, "renderer-session-changed", renderer_session),
-        );
-    });
-    if let Err(error) = remove_discovery_file_checked() {
-        log_discovery_cleanup_error("renderer session cleanup failed", &error);
-    }
-    drop(_token);
-    replace_renderer_supervisor_locked(app, &state, renderer_session).await;
-    Ok(renderer_session)
-}
-
-pub(crate) async fn renderer_heartbeat(
-    app: &AppHandle,
-    renderer_session: u64,
-) -> Result<(), String> {
-    let state = app.state::<McpState>();
-    let _lifecycle = state.lifecycle.lock().await;
-    // Holding the admission barrier makes an overdue heartbeat linearize as an
-    // expiry revocation followed by renewal; no request can slip through using
-    // the old epoch after the deadline.
-    let token = state.token.lock().await;
-    let (was_expired, needs_revocation) =
-        renew_renderer_lease_at(&state, renderer_session, Instant::now())?;
-    if needs_revocation {
-        revoke_expired_renderer_authorization_locked(app, &state, renderer_session);
-    }
-    drop(token);
-    if was_expired {
-        replace_renderer_supervisor_locked(app, &state, renderer_session).await;
-    }
-    // Normally this is a no-op. After expiry it atomically restores discovery
-    // and readiness only if the retained registry still belongs to this session.
-    publish_if_ready_locked(app, &state).await?;
-    Ok(())
-}
-
-pub(crate) async fn end_renderer_session(
-    app: &AppHandle,
-    renderer_session: u64,
-) -> Result<(), String> {
-    let state = app.state::<McpState>();
-    let _lifecycle = state.lifecycle.lock().await;
-    if state.active_renderer_session.load(Ordering::Acquire) != renderer_session {
-        return Ok(());
-    }
-    if let Some(supervisor) = state.renderer_lease_task.lock().await.take() {
-        supervisor.abort();
-    }
-    let _token = state.token.lock().await;
-    *lock_renderer_lease(&state) = None;
-    state.active_renderer_session.store(0, Ordering::Release);
-    let published_epoch = state.published_epoch.load(Ordering::Acquire);
-    let (revoked_epoch, next_epoch) =
-        invalidate_pending(&state, PendingInterruption::Revoked, |epoch| {
-            let _ = app.emit(
-                "mcp:requests-revoked",
-                renderer_revocation_payload(epoch, "renderer-session-changed", renderer_session),
-            );
-        });
-    state.published_epoch.store(
-        advance_published_epoch(published_epoch, revoked_epoch, next_epoch),
-        Ordering::Release,
-    );
-    // Keep the last validated registry, publication epoch, token, and discovery
-    // file. This lets native project tools remain available after the renderer
-    // exits. A later renderer session clears and republishes the registry before
-    // it can receive forwarded calls.
-    Ok(())
-}
-
-/// Pure readiness decision used by both start and registration. Lifecycle
-/// callers serialize the state transitions; this helper makes both arrival
-/// orders explicit and unit-testable.
 fn publication_candidate(
     running_epoch: Option<u64>,
     registry_initialized: bool,
@@ -616,9 +398,6 @@ pub(crate) fn advance_published_epoch(
     }
 }
 
-/// Publish a bound listener once a stable, non-empty renderer registry exists.
-/// The caller must hold `state.lifecycle`, which serializes start, stop, tool
-/// registration, and credential rotation.
 pub(crate) async fn publish_if_ready_locked(
     app: &AppHandle,
     state: &McpState,
@@ -647,9 +426,6 @@ pub(crate) async fn publish_if_ready_locked(
         .filter(|token| !token.is_empty())
         .ok_or_else(|| "MCP listener has no active credential".to_string())?;
 
-    // Keep admission closed until both publication and the renderer lifecycle
-    // notification have succeeded. A client racing the atomic rename receives
-    // a retryable 503 rather than seeing an empty tool surface.
     write_discovery_file(port, &token)?;
     if let Err(error) = app.emit(
         "mcp:server-started",
@@ -675,189 +451,15 @@ use request::{
     collect_body_limited_with_timeout, constant_time_eq, effective_policy, host_allowed,
     origin_allowed,
 };
-fn serve_exit_is_current(active_id: Option<u64>, exited_id: u64, shutdown_present: bool) -> bool {
-    active_id == Some(exited_id) && shutdown_present
-}
+#[path = "server_lifecycle.rs"]
+mod lifecycle;
 
-async fn signal_completion_before_cleanup<Cleanup, CleanupFuture>(
-    completed: oneshot::Sender<()>,
-    cleanup: Cleanup,
-) where
-    Cleanup: FnOnce() -> CleanupFuture,
-    CleanupFuture: std::future::Future<Output = ()>,
-{
-    // Stop may await this receiver while holding `lifecycle`. The signal must
-    // therefore happen before cleanup attempts to acquire that same lock.
-    let _ = completed.send(());
-    cleanup().await;
-}
+#[cfg(test)]
+use lifecycle::{
+    claim_unexpected_serve_exit, serve_exit_is_current, signal_completion_before_cleanup,
+};
+pub use lifecycle::{start, stop};
 
-/// Claim the current listener for unexpected-exit cleanup. Caller holds
-/// `lifecycle`, so the two async mutexes form one atomic lifecycle transition.
-async fn claim_unexpected_serve_exit(state: &McpState, serve_id: u64) -> bool {
-    let active_id = state
-        .serve_instance
-        .lock()
-        .await
-        .as_ref()
-        .map(|instance| instance.id);
-    let shutdown_present = state.shutdown.lock().await.is_some();
-    if !serve_exit_is_current(active_id, serve_id, shutdown_present) {
-        return false;
-    }
-    state.serve_instance.lock().await.take();
-    state.shutdown.lock().await.take();
-    true
-}
-
-async fn handle_serve_exit(app: AppHandle, serve_id: u64, outcome: Result<(), String>) {
-    let state = app.state::<McpState>();
-    let _lifecycle = state.lifecycle.lock().await;
-    if !claim_unexpected_serve_exit(&state, serve_id).await {
-        return;
-    }
-
-    // The monitor signalled completion before acquiring `lifecycle`, so this
-    // receiver was already ready when the claimed instance was dropped.
-    let mut token = state.token.lock().await;
-    *token = None;
-    clear_renderer_registry(&state).await;
-    let published_epoch = state.published_epoch.swap(0, Ordering::AcqRel);
-    invalidate_pending(&state, PendingInterruption::ServerStopped, |epoch| {
-        if published_epoch == epoch {
-            let _ = app.emit("mcp:server-stopped", json!({ "epoch": epoch }));
-        }
-    });
-    drop(token);
-    *state.bound_port.lock().await = None;
-    if let Err(error) = remove_discovery_file_checked() {
-        log_discovery_cleanup_error("unexpected listener cleanup failed", &error);
-    }
-    let detail = outcome
-        .err()
-        .unwrap_or_else(|| "listener exited without a shutdown request".into());
-    let message = format!("MCP listener terminated unexpectedly: {detail}");
-    #[cfg(debug_assertions)]
-    eprintln!("{message}");
-    let _ = crate::project::append_app_log(message);
-}
-
-/// Start the server. Returns the bound port. Errors if already running or the
-/// port is taken.
-pub async fn start(app: AppHandle, port: u16) -> Result<u16, String> {
-    let state = app.state::<McpState>();
-    let _lifecycle = state.lifecycle.lock().await;
-    if state.shutdown.lock().await.is_some() {
-        return Err("MCP server already running".into());
-    }
-    let token = ensure_token()?;
-    // A previous process may have crashed without cleanup. Never let its
-    // credential document represent this listener before our registry is ready.
-    remove_discovery_file_checked()?;
-
-    let addr = SocketAddr::from(([127, 0, 0, 1], port));
-    let listener = tokio::net::TcpListener::bind(addr)
-        .await
-        .map_err(|e| format!("could not bind {addr}: {e}"))?;
-    let bound = listener.local_addr().map(|a| a.port()).unwrap_or(port);
-    let serve_id = next_nonzero_sequence(&state.serve_seq, "MCP listener")?;
-    let (tx, mut rx) = watch::channel(false);
-    state.epoch.fetch_add(1, Ordering::AcqRel);
-    state.published_epoch.store(0, Ordering::Release);
-
-    let router = Router::new()
-        .route("/mcp", post(mcp_post))
-        .with_state(app.clone());
-    // Make all authorization state visible before the listener begins polling.
-    // Until publication succeeds, authenticated requests receive a retryable
-    // 503 because `published_epoch` remains zero.
-    *state.token.lock().await = Some(token);
-    *state.shutdown.lock().await = Some(tx);
-    *state.bound_port.lock().await = Some(bound);
-    let runner = tauri::async_runtime::spawn(async move {
-        axum::serve(listener, router)
-            .with_graceful_shutdown(async move {
-                let _ = rx.changed().await;
-            })
-            .await
-    });
-    let (completed_tx, completed_rx) = oneshot::channel();
-    let monitor_app = app.clone();
-    tauri::async_runtime::spawn(async move {
-        let outcome = runner
-            .await
-            .map_err(|error| format!("listener task failed: {error}"))
-            .and_then(|result| result.map_err(|error| error.to_string()));
-        signal_completion_before_cleanup(completed_tx, || async move {
-            handle_serve_exit(monitor_app, serve_id, outcome).await;
-        })
-        .await;
-    });
-    *state.serve_instance.lock().await = Some(ServeInstance {
-        id: serve_id,
-        completed: completed_rx,
-    });
-    if let Err(error) = publish_if_ready_locked(&app, &state).await {
-        // Publication is part of startup when registration arrived first. Roll
-        // the listener back completely instead of leaving a half-ready server.
-        state.published_epoch.store(0, Ordering::Release);
-        *state.token.lock().await = None;
-        if let Some(shutdown) = state.shutdown.lock().await.take() {
-            let _ = shutdown.send(true);
-        }
-        invalidate_pending(&state, PendingInterruption::ServerStopped, |_| {});
-        let instance = state.serve_instance.lock().await.take();
-        if let Some(instance) = instance {
-            let _ = tokio::time::timeout(Duration::from_secs(3), instance.completed).await;
-        }
-        *state.bound_port.lock().await = None;
-        return Err(combine_cleanup_error(
-            error,
-            remove_discovery_file_checked(),
-            "Startup rollback also failed to remove the MCP discovery file",
-        ));
-    }
-    Ok(bound)
-}
-
-pub async fn stop(app: &AppHandle) -> Result<(), String> {
-    let state = app.state::<McpState>();
-    let _lifecycle = state.lifecycle.lock().await;
-    let shutdown = state.shutdown.lock().await.take();
-    if let Some(tx) = shutdown {
-        // Block new authorization before invalidating/draining admitted calls.
-        // The pending lock then makes stopped-event -> failed-call ordering
-        // atomic with respect to both registration and renderer replies.
-        let mut token = state.token.lock().await;
-        *token = None;
-        let published_epoch = state.published_epoch.swap(0, Ordering::AcqRel);
-        invalidate_pending(&state, PendingInterruption::ServerStopped, |epoch| {
-            if published_epoch == epoch {
-                let _ = app.emit("mcp:server-stopped", json!({ "epoch": epoch }));
-            }
-        });
-        drop(token);
-        let _ = tx.send(true);
-    }
-    // The frontend discards its local registry on `server-stopped`. Retaining
-    // this copy would let a rapid restart publish tools that the renderer can
-    // no longer dispatch, so every new listener waits for fresh registration.
-    clear_renderer_registry(&state).await;
-    // Wait (bounded) for the serve task to finish so the listener is fully
-    // released before any caller rebinds the same port. Graceful shutdown drops
-    // the listener early, so this returns near-instantly in the normal case; the
-    // timeout guards against a long in-flight tool call holding the drain open
-    // (the detached task finishes on its own, port already freed).
-    let instance = state.serve_instance.lock().await.take();
-    if let Some(instance) = instance {
-        let _ = tokio::time::timeout(Duration::from_secs(3), instance.completed).await;
-    }
-    *state.bound_port.lock().await = None;
-    *state.token.lock().await = None;
-    remove_discovery_file_checked()
-}
-
-/// Read the persisted token, generating and persisting one on first use.
 #[path = "server_discovery.rs"]
 mod discovery;
 

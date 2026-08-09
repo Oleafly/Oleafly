@@ -127,21 +127,26 @@ beforeEach(async () => {
   useSettingsStore.setState({ defaultLatexEngine: "tectonic" });
 });
 
+function seedProjectMetadata() {
+  const engine = {
+    ...LATEX_ENGINE,
+    id: "latexmk" as const,
+    label: "LaTeX (latexmk)",
+    allow_shell_escape: false,
+  };
+  useFilesStore.setState({
+    projectId: "project",
+    projectName: "Before",
+    mainDoc: "main.tex",
+    engine: LATEX_ENGINE,
+    engineLoaded: true,
+  });
+  return engine;
+}
+
 describe("transactional project transitions", () => {
   it("applies authoritative project metadata events and ignores an older revision", async () => {
-    const engine = {
-      ...LATEX_ENGINE,
-      id: "latexmk" as const,
-      label: "LaTeX (latexmk)",
-      allow_shell_escape: false,
-    };
-    useFilesStore.setState({
-      projectId: "project",
-      projectName: "Before",
-      mainDoc: "main.tex",
-      engine: LATEX_ENGINE,
-      engineLoaded: true,
-    });
+    const engine = seedProjectMetadata();
     const revision = ++projectStateRevision;
 
     await useFilesStore.getState().applyProjectStateChanged({

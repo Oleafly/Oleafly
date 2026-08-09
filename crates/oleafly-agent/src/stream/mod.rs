@@ -13,13 +13,9 @@ use crate::provider::{catalog_entry, Resolved, Wire};
 use crate::sse::{SseDecoder, SseEvent};
 
 const DEFAULT_STREAM_IDLE_TIMEOUT: Duration = Duration::from_secs(120);
-/// A stream may run for a long agent turn, but never indefinitely.
 const MAX_STREAM_DURATION: Duration = Duration::from_secs(10 * 60);
-/// Raw provider bytes and combined visible/reasoning output remain bounded.
 const MAX_STREAM_BYTES: usize = 32 * 1024 * 1024;
-/// Tool JSON can be substantial for document edits without needing the full stream budget.
 const MAX_TOOL_ARGUMENT_BYTES: usize = 8 * 1024 * 1024;
-/// Bound provider-controlled tool-call bookkeeping before the agent loop sees it.
 pub(crate) const MAX_STREAM_TOOL_CALLS: usize = 32;
 
 mod translate;

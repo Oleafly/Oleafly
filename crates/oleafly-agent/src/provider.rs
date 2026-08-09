@@ -127,7 +127,6 @@ pub struct ProviderConfig {
     pub model: String,
     pub legacy_key: String,
     pub keys: BTreeMap<String, String>,
-    /// Provider ids explicitly present with an empty list have no enabled model.
     pub enabled_models: BTreeMap<String, Vec<String>>,
     pub custom: Vec<CustomProvider>,
 }
@@ -296,7 +295,6 @@ pub fn resolve_specific(
     build_resolved(cfg, provider_id.to_string(), model, credential)
 }
 
-/// Model listing needs provider credentials and an endpoint before a model can be selected.
 pub fn resolve_for_model_listing(cfg: &ProviderConfig, provider_id: &str) -> Result<Resolved> {
     let placeholder = enabled_model(cfg, provider_id).unwrap_or_else(|| provider_id.to_string());
     build_resolved(
@@ -629,7 +627,6 @@ mod tests {
         cfg.provider = "openai".into();
         cfg.model = "gpt-4.1-mini".into();
 
-        // Legacy configurations without a projected catalog retain their saved model.
         assert_eq!(pick_provider(&cfg).1, "gpt-4.1-mini");
 
         cfg.enabled_models.insert(

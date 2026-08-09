@@ -15,9 +15,7 @@ const DEFAULT_TIMEOUT: Duration = Duration::from_secs(180);
 const MAX_COMPLETION_DURATION: Duration = Duration::from_secs(10 * 60);
 
 const MAX_ERROR_CHARS: usize = 300;
-/// Successful completion JSON is bounded well above normal model responses.
 pub(crate) const MAX_COMPLETION_BODY_BYTES: usize = 16 * 1024 * 1024;
-/// Error documents only need enough room to carry a useful provider message.
 pub(crate) const MAX_ERROR_BODY_BYTES: usize = 1024 * 1024;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -217,8 +215,6 @@ pub(crate) fn error_message(status: u16, raw: &str) -> AgentError {
 fn provider_error_from_read(status: u16, body: Result<Vec<u8>>) -> AgentError {
     match body {
         Ok(raw) => error_message(status, &String::from_utf8_lossy(&raw)),
-        // The status is already known. Preserve it when a provider sends an oversized
-        // error document so retryability is still classified correctly.
         Err(AgentError::Decode(message)) => AgentError::Provider { status, message },
         Err(error) => error,
     }

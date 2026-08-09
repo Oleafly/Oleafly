@@ -165,24 +165,16 @@ function isIdentifierContinuation(character: string): boolean {
     character === "@";
 }
 
-/** Only suggest at the end of a word, never in the middle of one. */
+const WORD_END_PUNCTUATION = new Set(["}", "]", ")", ",", ".", ":", "$", "&"]);
+
 function atWordEnd(view: EditorView, pos: number): boolean {
   const after = view.state.sliceDoc(
     pos,
     Math.min(view.state.doc.length, pos + 1),
   );
-  return after === "" || /^[\s}\]),.;:$&]/.test(after);
+  return after === "" || after.trim() === "" || WORD_END_PUNCTUATION.has(after);
 }
 
-/**
- * What the ghost shows, and exactly what Tab inserts.
- *
- * The label is used rather than the option's `apply`, because every source
- * here wraps `apply` in a guard function whose expansion cannot be inspected.
- * Inserting the label keeps the preview honest: what is shown is what lands.
- * Choosing the same option from the popup may expand further (a command with
- * arguments becomes a snippet), which is the popup's job, not this one's.
- */
 function previewLabel(option: Completion, prefix: string): string | null {
   const label = typeof option.apply === "string" ? option.apply : option.label;
   if (label.length <= prefix.length || !label.startsWith(prefix)) return null;

@@ -42,6 +42,16 @@ pub fn rpc_error(id: Value, code: i64, message: &str) -> Value {
     json!({ "jsonrpc": "2.0", "id": id, "error": { "code": code, "message": message } })
 }
 
+pub fn rpc_tool_error(id: Value, message: &str) -> Value {
+    rpc_result(
+        id,
+        json!({
+            "content": [{ "type": "text", "text": message }],
+            "isError": true,
+        }),
+    )
+}
+
 pub fn dispatch(msg: &Value, tools: &[ToolMeta], instructions: &str) -> RpcOutcome {
     let method = msg.get("method").and_then(Value::as_str).unwrap_or("");
     let id = msg.get("id").cloned();
@@ -121,6 +131,18 @@ mod tests {
         assert_eq!(v.pointer("/result/serverInfo/name").unwrap(), "oleafly");
         assert!(v.pointer("/result/capabilities/tools").is_some());
         assert_eq!(v.pointer("/result/instructions").unwrap(), "hi");
+    }
+
+    #[test]
+    fn tool_errors_are_successful_json_rpc_results() {
+        let response = rpc_tool_error(json!(7), "approval is unavailable");
+        assert_eq!(response["id"], 7);
+        assert_eq!(response["result"]["isError"], true);
+        assert_eq!(
+            response["result"]["content"][0]["text"],
+            "approval is unavailable"
+        );
+        assert!(response.get("error").is_none());
     }
 
     #[test]

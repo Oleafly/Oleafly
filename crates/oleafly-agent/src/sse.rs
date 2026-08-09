@@ -1,6 +1,5 @@
 use crate::error::{AgentError, Result};
 
-/// One provider event may be large, but must not become an unbounded line buffer.
 pub(crate) const MAX_SSE_EVENT_BYTES: usize = 1024 * 1024;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]

@@ -19,9 +19,6 @@ pub struct AppState {
     /// Monotonic identity for successful main-document outputs. Allocated while
     /// `compile_lock` is held so every window observes one total output order.
     pub compile_output_revision: AtomicU64,
-    /// Process-wide ordering for project metadata/trust/worktree events shared
-    /// by every window. Renderers ignore payloads older than the last revision
-    /// they applied, preventing slow refreshes from repainting stale trust.
     pub project_state_revision: AtomicU64,
     /// Latest compile ticket per project id.
     pub latest_compile: Mutex<HashMap<String, u64>>,
@@ -51,9 +48,6 @@ struct CompileCancelState {
 }
 
 impl CompileCancel {
-    /// Starts one compile lifecycle before its first child exists. An idle Stop
-    /// request is deliberately not carried into this scope, while a Stop that
-    /// lands after `begin` remains pending until the next child attaches.
     pub fn begin(&self) {
         let mut state = self.state.lock().unwrap_or_else(|error| error.into_inner());
         *state = CompileCancelState {
@@ -83,8 +77,6 @@ impl CompileCancel {
         !state.requested
     }
 
-    /// Clears a finished child without consuming a stop request that may need
-    /// to reach the next process in the same multi-pass compile.
     pub fn unregister(&self, pid: u32) {
         let mut state = self.state.lock().unwrap_or_else(|error| error.into_inner());
         if state.pid == Some(pid) {

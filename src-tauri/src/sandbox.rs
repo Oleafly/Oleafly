@@ -30,9 +30,6 @@ pub fn resolve_in_project(project_id: &str, rel: &str) -> Result<PathBuf, String
 ///      (or its nearest existing ancestor, for not-yet-created files) must stay
 ///      within `root`.
 pub fn resolve_within(root: &Path, rel: &str) -> Result<PathBuf, String> {
-    // Project paths use one portable wire format on every OS. Treating a
-    // backslash as a literal filename character on Unix but as a separator on
-    // Windows would make traversal validation and mutation scopes disagree.
     if rel.contains('\\') {
         return Err(format!("illegal path: {rel}"));
     }

@@ -61,9 +61,6 @@ pub fn projects_root() -> Result<PathBuf, String> {
     Ok(root)
 }
 
-/// Device-local trust decisions that must never live in a project checkout.
-/// The directory is a sibling of `projects/`, and every component is required
-/// to be a real directory so project-controlled symlinks cannot redirect it.
 pub fn device_trust_root() -> Result<PathBuf, String> {
     let data = oleafly_root()?;
     ensure_data_directory(&data)?;
@@ -98,9 +95,6 @@ fn ensure_data_directory(data: &Path) -> Result<(), String> {
     Ok(())
 }
 
-/// Local records granting a specific project permission to execute commands
-/// through TeX. Kept outside `projects/` so Git, imports, AI tools, and MCP
-/// project mutations cannot manufacture consent.
 pub fn shell_escape_trust_root() -> Result<PathBuf, String> {
     let trust = device_trust_root()?;
     let shell = trust.join("latex-shell-escape");
@@ -130,9 +124,6 @@ pub fn validate_project_id(project_id: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// Resolve an existing project directory. Project-scoped commands must never
-/// create this directory implicitly: a delayed autosave after project deletion
-/// would otherwise resurrect a metadata-less zombie project.
 pub fn project_dir(project_id: &str) -> Result<PathBuf, String> {
     validate_project_id(project_id)?;
     let root = projects_root()?
@@ -152,8 +143,6 @@ pub fn project_dir(project_id: &str) -> Result<PathBuf, String> {
     verify_project_directory(root, dir)
 }
 
-/// Create a directory only for an explicit project-creation flow. Keeping this
-/// separate from `project_dir` makes accidental resurrection impossible.
 pub(crate) fn create_project_dir(project_id: &str) -> Result<PathBuf, String> {
     validate_project_id(project_id)?;
     let root = projects_root()?

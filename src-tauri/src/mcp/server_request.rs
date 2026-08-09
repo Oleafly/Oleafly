@@ -35,9 +35,6 @@ pub fn authorized(headers: &HeaderMap, token: &str) -> bool {
     constant_time_eq(presented.as_bytes(), token.as_bytes())
 }
 
-/// Browsers always attach an Origin to cross-origin fetches; native MCP
-/// clients never do. Rejecting every Origin blocks hostile web pages and
-/// DNS-rebinding regardless of what they put in the header.
 pub fn origin_allowed(headers: &HeaderMap) -> bool {
     headers.get("origin").is_none()
 }
@@ -187,6 +184,10 @@ fn json_rpc_error(id: Value, message: &str) -> Response {
     (StatusCode::OK, Json(rpc_error(id, -32000, message))).into_response()
 }
 
+fn json_tool_error(id: Value, message: &str) -> Response {
+    (StatusCode::OK, Json(rpc_tool_error(id, message))).into_response()
+}
+
 async fn authenticate_request(
     state: &McpState,
     headers: &HeaderMap,
@@ -277,7 +278,7 @@ async fn handle_forward_call(
     .and_then(|read| read.ok());
     let (policy, read_only) = effective_policy(config);
     if read_only && crate::mcp::native::is_mutating(&name) {
-        return json_rpc_error(id, "tool disabled by read-only mode");
+        return json_tool_error(id, "tool disabled by read-only mode");
     }
     let renderer_is_fresh = renderer_session_is_fresh(state, renderer_session);
     let prefer_native = !crate::mcp::native::is_mutating(&name) || !renderer_is_fresh;
@@ -285,7 +286,7 @@ async fn handle_forward_call(
         return run_native_call(app, state, epoch, id, name, arguments).await;
     }
     if !renderer_is_fresh {
-        return json_rpc_error(id, "this tool requires an active Oleafly window");
+        return json_tool_error(id, "this tool requires an active Oleafly window");
     }
     forward_to_renderer(app, state, epoch, renderer_session, id, name, arguments).await
 }
@@ -348,8 +349,8 @@ fn native_call_response(
             }
             (StatusCode::OK, Json(rpc_result(id, outcome.result))).into_response()
         }
-        (_, Err(error)) => json_rpc_error(id, &error),
-        (None, Ok(_)) => json_rpc_error(id, "project resolution failed"),
+        (_, Err(error)) => json_tool_error(id, &error),
+        (None, Ok(_)) => json_tool_error(id, "project resolution failed"),
     }
 }
 

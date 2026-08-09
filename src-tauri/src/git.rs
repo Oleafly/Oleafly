@@ -671,8 +671,6 @@ pub async fn git_discard(
         expected_generation,
         move |_| {
             let root = ensure_repo(&operation_id)?;
-            // Disable Git's `:(glob)`/`:(attr)` pathspec language. This IPC value
-            // names one literal project path and must not expand into other files.
             ok_or_err(run_git(
                 &root,
                 &["--literal-pathspecs", "checkout", "--", &path],

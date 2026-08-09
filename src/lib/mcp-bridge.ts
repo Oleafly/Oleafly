@@ -60,7 +60,6 @@ const MUTATING_TOOLS = new Set([
   "forget_note",
 ]);
 
-// The ai SDK wraps schemas via jsonSchema(); unwrap back to plain JSON.
 export function rawSchemaOf(schema: unknown): unknown {
   if (schema && typeof schema === "object" && "jsonSchema" in schema) {
     return (schema as { jsonSchema: unknown }).jsonSchema;
@@ -90,62 +89,124 @@ function validateSchemaValue(
   depth: number,
 ): string | null {
   if (depth > 12) return `${path} is nested too deeply`;
-  if (schema.enum && !schema.enum.some((candidate) => Object.is(candidate, value))) {
-    return `${path} must be one of the advertised values`;
+  const enumError = validateEnum(schema.enum, value, path);
+  if (enumError) return enumError;
+  switch (schema.type) {
+    case "object":
+      return validateObjectSchema(schema, value, path, depth);
+    case "array":
+      return validateArraySchema(schema, value, path, depth);
+    case "string":
+      return validateStringSchema(schema, value, path);
+    case "number":
+    case "integer":
+      return validateNumberSchema(schema, value, path);
+    case "boolean":
+      return typeof value === "boolean" ? null : `${path} must be a boolean`;
+    default:
+      return null;
   }
-  if (schema.type === "object") {
-    if (!value || typeof value !== "object" || Array.isArray(value)) {
-      return `${path} must be an object`;
-    }
-    const record = value as Record<string, unknown>;
-    for (const required of schema.required ?? []) {
-      if (!Object.hasOwn(record, required)) return `${path}.${required} is required`;
-    }
-    if (schema.additionalProperties === false) {
-      for (const key of Object.keys(record)) {
-        if (!Object.hasOwn(schema.properties ?? {}, key)) {
-          return `${path}.${key} is not allowed`;
-        }
-      }
-    }
-    for (const [key, child] of Object.entries(schema.properties ?? {})) {
-      if (!Object.hasOwn(record, key)) continue;
-      const error = validateSchemaValue(child, record[key], `${path}.${key}`, depth + 1);
-      if (error) return error;
-    }
-  } else if (schema.type === "array") {
-    if (!Array.isArray(value)) return `${path} must be an array`;
-    if (schema.minItems !== undefined && value.length < schema.minItems) {
-      return `${path} must contain at least ${schema.minItems} items`;
-    }
-    if (schema.maxItems !== undefined && value.length > schema.maxItems) {
-      return `${path} must contain at most ${schema.maxItems} items`;
-    }
-    if (schema.items) {
-      for (let index = 0; index < value.length; index += 1) {
-        const error = validateSchemaValue(schema.items, value[index], `${path}[${index}]`, depth + 1);
-        if (error) return error;
-      }
-    }
-  } else if (schema.type === "string") {
-    if (typeof value !== "string") return `${path} must be a string`;
-    if (schema.minLength !== undefined && value.length < schema.minLength) {
-      return `${path} must contain at least ${schema.minLength} characters`;
-    }
-    if (schema.maxLength !== undefined && value.length > schema.maxLength) {
-      return `${path} must contain at most ${schema.maxLength} characters`;
-    }
-  } else if (schema.type === "number" || schema.type === "integer") {
-    if (typeof value !== "number" || !Number.isFinite(value)) return `${path} must be a number`;
-    if (schema.type === "integer" && !Number.isInteger(value)) return `${path} must be an integer`;
-    if (schema.minimum !== undefined && value < schema.minimum) {
-      return `${path} must be at least ${schema.minimum}`;
-    }
-    if (schema.maximum !== undefined && value > schema.maximum) {
-      return `${path} must be at most ${schema.maximum}`;
-    }
-  } else if (schema.type === "boolean" && typeof value !== "boolean") {
-    return `${path} must be a boolean`;
+}
+
+function validateEnum(values: unknown[] | undefined, value: unknown, path: string): string | null {
+  if (!values) return null;
+  return values.some((candidate) => Object.is(candidate, value))
+    ? null
+    : `${path} must be one of the advertised values`;
+}
+
+function validateObjectSchema(
+  schema: JsonSchema,
+  value: unknown,
+  path: string,
+  depth: number,
+): string | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return `${path} must be an object`;
+  }
+  const record = value as Record<string, unknown>;
+  const requiredError = validateRequiredProperties(schema, record, path);
+  if (requiredError) return requiredError;
+  const unknownError = validateKnownProperties(schema, record, path);
+  if (unknownError) return unknownError;
+  return validateChildProperties(schema, record, path, depth);
+}
+
+function validateRequiredProperties(
+  schema: JsonSchema,
+  record: Record<string, unknown>,
+  path: string,
+): string | null {
+  const missing = (schema.required ?? []).find((required) => !Object.hasOwn(record, required));
+  return missing ? `${path}.${missing} is required` : null;
+}
+
+function validateKnownProperties(
+  schema: JsonSchema,
+  record: Record<string, unknown>,
+  path: string,
+): string | null {
+  if (schema.additionalProperties !== false) return null;
+  const unknown = Object.keys(record).find(
+    (key) => !Object.hasOwn(schema.properties ?? {}, key),
+  );
+  return unknown ? `${path}.${unknown} is not allowed` : null;
+}
+
+function validateChildProperties(
+  schema: JsonSchema,
+  record: Record<string, unknown>,
+  path: string,
+  depth: number,
+): string | null {
+  for (const [key, child] of Object.entries(schema.properties ?? {})) {
+    if (!Object.hasOwn(record, key)) continue;
+    const error = validateSchemaValue(child, record[key], `${path}.${key}`, depth + 1);
+    if (error) return error;
+  }
+  return null;
+}
+
+function validateArraySchema(
+  schema: JsonSchema,
+  value: unknown,
+  path: string,
+  depth: number,
+): string | null {
+  if (!Array.isArray(value)) return `${path} must be an array`;
+  if (schema.minItems !== undefined && value.length < schema.minItems) {
+    return `${path} must contain at least ${schema.minItems} items`;
+  }
+  if (schema.maxItems !== undefined && value.length > schema.maxItems) {
+    return `${path} must contain at most ${schema.maxItems} items`;
+  }
+  if (!schema.items) return null;
+  for (let index = 0; index < value.length; index += 1) {
+    const error = validateSchemaValue(schema.items, value[index], `${path}[${index}]`, depth + 1);
+    if (error) return error;
+  }
+  return null;
+}
+
+function validateStringSchema(schema: JsonSchema, value: unknown, path: string): string | null {
+  if (typeof value !== "string") return `${path} must be a string`;
+  if (schema.minLength !== undefined && value.length < schema.minLength) {
+    return `${path} must contain at least ${schema.minLength} characters`;
+  }
+  if (schema.maxLength !== undefined && value.length > schema.maxLength) {
+    return `${path} must contain at most ${schema.maxLength} characters`;
+  }
+  return null;
+}
+
+function validateNumberSchema(schema: JsonSchema, value: unknown, path: string): string | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return `${path} must be a number`;
+  if (schema.type === "integer" && !Number.isInteger(value)) return `${path} must be an integer`;
+  if (schema.minimum !== undefined && value < schema.minimum) {
+    return `${path} must be at least ${schema.minimum}`;
+  }
+  if (schema.maximum !== undefined && value > schema.maximum) {
+    return `${path} must be at most ${schema.maximum}`;
   }
   return null;
 }
@@ -399,12 +460,6 @@ function isStaleRendererError(error: unknown): boolean {
   );
 }
 
-// Policy values:
-// - "trust":       never prompt in Oleafly. The MCP client's own approval
-//                  (e.g. Claude's Allow/Deny) is the only gate, deletes included.
-// - "auto_writes": auto-approve edits; deletes and figure inserts still prompt
-//                  in Oleafly with a diff.
-// - "ask" (default): prompt in Oleafly for every change.
 export function confirmForPolicy(policy: string, request: ConfirmFn): ConfirmFn {
   if (policy === "trust") return async () => true;
   if (policy === "auto_writes") {
@@ -429,37 +484,45 @@ function rebuildRegistry(): Promise<void> {
   const session = rendererSession;
   registryReady = false;
   registry = {};
-  const build = registryBuildChain.catch(() => {}).then(async () => {
-    if (generation !== bridgeGeneration || session === null || session !== rendererSession) return;
-    const cfg = await getConfig();
-    if (generation !== bridgeGeneration || session !== rendererSession) return;
-    const nextRegistry = buildMcpToolRegistry({
-      confirm: confirmForPolicy(cfg.mcp_approval_policy, confirm),
-      readOnly: !!cfg.mcp_read_only,
-      onImage: captureImage,
-      mutationAllowed,
-    });
-    try {
-      await mcpRegisterTools(
-        Object.entries(nextRegistry).map(([name, tool]) => ({
-          name,
-          description: tool.description,
-          inputSchema: rawSchemaOf(tool.inputSchema),
-        })),
-        session,
-      );
-    } catch (error) {
-      if (session === rendererSession && isStaleRendererError(error)) {
-        supersedeRendererSession();
-      }
-      throw error;
-    }
-    if (generation !== bridgeGeneration || session !== rendererSession) return;
-    registry = nextRegistry;
-    registryReady = true;
-  });
+  const build = registryBuildChain
+    .catch(() => {})
+    .then(() => buildRegistry(generation, session));
   registryBuildChain = build.catch(() => {});
   return build;
+}
+
+function bridgeSessionIsCurrent(generation: number, session: number | null): session is number {
+  return generation === bridgeGeneration && session !== null && session === rendererSession;
+}
+
+async function buildRegistry(generation: number, session: number | null): Promise<void> {
+  if (!bridgeSessionIsCurrent(generation, session)) return;
+  const cfg = await getConfig();
+  if (!bridgeSessionIsCurrent(generation, session)) return;
+  const nextRegistry = buildMcpToolRegistry({
+    confirm: confirmForPolicy(cfg.mcp_approval_policy, confirm),
+    readOnly: !!cfg.mcp_read_only,
+    onImage: captureImage,
+    mutationAllowed,
+  });
+  try {
+    await mcpRegisterTools(
+      Object.entries(nextRegistry).map(([name, tool]) => ({
+        name,
+        description: tool.description,
+        inputSchema: rawSchemaOf(tool.inputSchema),
+      })),
+      session,
+    );
+  } catch (error) {
+    if (session === rendererSession && isStaleRendererError(error)) {
+      supersedeRendererSession();
+    }
+    throw error;
+  }
+  if (!bridgeSessionIsCurrent(generation, session)) return;
+  registry = nextRegistry;
+  registryReady = true;
 }
 
 export async function refreshMcpRegistry(): Promise<void> {
