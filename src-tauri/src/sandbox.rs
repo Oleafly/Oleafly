@@ -225,8 +225,26 @@ pub fn atomic_write(destination: &Path, bytes: &[u8]) -> Result<(), String> {
     transaction.commit()
 }
 
-fn replace_file(source: &Path, destination: &Path) -> std::io::Result<()> {
+pub(crate) fn replace_file(source: &Path, destination: &Path) -> std::io::Result<()> {
+    #[cfg(windows)]
+    {
+        const RETRY_DELAYS_MS: [u64; 9] = [10, 20, 40, 80, 160, 320, 500, 500, 500];
+        for delay in RETRY_DELAYS_MS {
+            match atomicwrites::replace_atomic(source, destination) {
+                Ok(()) => return Ok(()),
+                Err(error) if is_retryable_replace_error_code(error.raw_os_error()) => {
+                    std::thread::sleep(std::time::Duration::from_millis(delay));
+                }
+                Err(error) => return Err(error),
+            }
+        }
+    }
     atomicwrites::replace_atomic(source, destination)
+}
+
+#[cfg(any(windows, test))]
+fn is_retryable_replace_error_code(code: Option<i32>) -> bool {
+    matches!(code, Some(5 | 32 | 33 | 1224))
 }
 
 /// Best-effort directory fsync after a successful rename. Never fails the
@@ -337,6 +355,17 @@ mod tests {
         let root = temp_root();
         sync_parent(&root.join("out.pdf"));
         std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn classifies_only_transient_windows_replace_errors_as_retryable() {
+        for code in [5, 32, 33, 1224] {
+            assert!(is_retryable_replace_error_code(Some(code)));
+        }
+        for code in [2, 3, 87, 112] {
+            assert!(!is_retryable_replace_error_code(Some(code)));
+        }
+        assert!(!is_retryable_replace_error_code(None));
     }
 
     #[test]
