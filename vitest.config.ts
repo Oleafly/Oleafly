@@ -25,5 +25,12 @@ export default defineConfig({
     environment: "node",
     include: ["src/**/*.test.ts", "src/**/*.test.tsx", "packages/**/*.test.ts", "packages/**/*.test.tsx"],
     setupFiles: ["./vitest.setup.ts"],
+    coverage: {
+      provider: "v8",
+      reporter: ["lcov"],
+      reportsDirectory: "coverage/frontend",
+      include: ["src/**/*.{ts,tsx}", "packages/*/src/**/*.{ts,tsx}", "scripts/**/*.{js,mjs,cjs,ts,mts,cts}"],
+      exclude: ["**/*.test.{ts,tsx}", "**/*.node-tests.mjs", "**/*.d.ts", "**/*.d.mts"],
+    },
   },
 });
