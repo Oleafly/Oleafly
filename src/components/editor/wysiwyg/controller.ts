@@ -3,6 +3,7 @@ import type { Editor } from "@tiptap/react";
 let editor: Editor | null = null;
 let visible = false;
 let setVisibility: ((visible: boolean) => void) | null = null;
+let flushPendingEdits: (() => void) | null = null;
 let projectNavigation: {
   goToDefinition: () => boolean;
   findReferences: () => boolean;
@@ -30,6 +31,14 @@ export function setWysiwygVisibilityController(
   controller: ((visible: boolean) => void) | null,
 ) {
   setVisibility = controller;
+}
+
+export function setWysiwygFlushController(controller: (() => void) | null) {
+  flushPendingEdits = controller;
+}
+
+export function flushWysiwygPendingEdits() {
+  flushPendingEdits?.();
 }
 
 /**

@@ -26,6 +26,7 @@ const mocks = vi.hoisted(() => ({
   flushAutoCommit: vi.fn(),
   scheduleAutoCommit: vi.fn(),
   mcpSetActiveProject: vi.fn(async () => {}),
+  flushWysiwygPendingEdits: vi.fn(),
 }));
 
 vi.mock("@/lib/tauri", () => ({
@@ -63,6 +64,9 @@ vi.mock("@/store/compile", () => ({
   useCompileStore: {
     getState: () => ({ reset: mocks.resetCompile }),
   },
+}));
+vi.mock("@/components/editor/wysiwyg/controller", () => ({
+  flushWysiwygPendingEdits: mocks.flushWysiwygPendingEdits,
 }));
 
 import { useFilesStore } from "./files";
@@ -126,6 +130,7 @@ beforeEach(async () => {
   mocks.deleteFile.mockReset().mockResolvedValue(undefined);
   mocks.resetCompile.mockReset();
   mocks.mcpSetActiveProject.mockReset().mockResolvedValue(undefined);
+  mocks.flushWysiwygPendingEdits.mockReset();
   useSettingsStore.setState({ defaultLatexEngine: "tectonic" });
 });
 
@@ -526,6 +531,28 @@ describe("transactional project transitions", () => {
     expect(mocks.flushAutoCommit).toHaveBeenCalledTimes(1);
     expect(useFilesStore.getState().projectId).toBeNull();
     expect(useFilesStore.getState().files).toEqual({});
+  });
+
+  it("flushes pending Visual edits before collecting dirty buffers for close", async () => {
+    useFilesStore.setState({
+      projectId: "project",
+      files: { "main.tex": { content: "persisted source", dirty: false } },
+      openTabs: ["main.tex"],
+      activePath: "main.tex",
+    });
+    mocks.flushWysiwygPendingEdits.mockImplementation(() => {
+      useFilesStore.getState().setContent("main.tex", "pending visual edit");
+    });
+
+    await useFilesStore.getState().closeProject();
+
+    expect(mocks.flushWysiwygPendingEdits).toHaveBeenCalledTimes(1);
+    expect(mocks.writeFileContent).toHaveBeenCalledWith(
+      "project",
+      "main.tex",
+      "pending visual edit",
+      expect.any(Number),
+    );
   });
 
   it("flushes the old project before loading a different project", async () => {
