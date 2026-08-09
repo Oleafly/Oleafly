@@ -120,7 +120,7 @@
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.4",
     "@vitest/coverage-v8": "4.1.10",
-    "jsdom": "^29.1.1",
+    "jsdom": "^30.0.1",
     "pdf-lib": "^1.17.1",
     "tailwindcss": "^4.3.3",
     "terser": "^5.49.0",
