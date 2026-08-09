@@ -175,7 +175,7 @@ fn write_private(path: &Path, bytes: &[u8]) -> Result<(), String> {
 }
 
 fn replace_file(source: &Path, destination: &Path) -> std::io::Result<()> {
-    atomicwrites::replace_atomic(source, destination)
+    crate::sandbox::replace_file(source, destination)
 }
 
 fn load_or_create_key(path: &Path) -> Result<[u8; 32], String> {
