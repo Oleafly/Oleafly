@@ -35,6 +35,9 @@ src-tauri/binaries/*
 # Playwright e2e artifacts
 test-results/
 
+# Local unit-test coverage reports (CI uploads these as short-lived artifacts)
+coverage/
+
 # e2e secrets (copy from e2e/.env.example)
 e2e/.env
 
