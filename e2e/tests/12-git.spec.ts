@@ -44,7 +44,7 @@ test("a successful compile auto-commits an Update entry into history", async ({ 
     seen = await tauriPage.evaluate<boolean>(
       `/Update:[^\\n]*main\\.tex/.test(document.body.innerText)`,
     );
-    await tauriPage.click('[aria-label="Close"]');
+    await tauriPage.click('[aria-label="Close version history"]');
     if (!seen) await new Promise((r) => setTimeout(r, 1000));
   }
   expect(seen).toBe(true);

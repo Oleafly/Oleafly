@@ -202,7 +202,8 @@ test("the pinned compiler survives closing and reopening the project", async ({
   await chooseCompiler(tauriPage, "compiler-xelatex");
   await waitForEngine(tauriPage, "latexmk", "xelatex");
 
-  await tauriPage.click('[title="Back to library"]');
+  // openProject owns the library transition. Clicking Home here as well races
+  // its readiness check against the outgoing workspace.
   await openProject(tauriPage, PROJECT);
   await waitLong(
     tauriPage,

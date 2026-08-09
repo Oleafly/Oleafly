@@ -42,7 +42,7 @@ export function AboutModal({ open: isOpen, onClose }: { open: boolean; onClose: 
           data-modal-initial-focus
           onClick={onClose}
           className="absolute right-3 top-3 flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-          aria-label="Close"
+          aria-label="Close About dialog"
         >
           <X className="size-4" />
         </button>

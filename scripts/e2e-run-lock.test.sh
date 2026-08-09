@@ -72,3 +72,11 @@ case "$powershell_launcher" in
   *'@selection | Out-Host'*'Get-ChildItem -Path "e2e/tests" -Filter "*.spec.ts"'*'$specPath = "e2e/tests/$($spec.Name)"'*'Run-Playwright $label @($specPath)'*"Stop-App"*) ;;
   *) exit 1 ;;
 esac
+case "$launcher" in
+  *'local output_dir="test-results/$safe_label"'*'"--output=$output_dir"'*) ;;
+  *) exit 1 ;;
+esac
+case "$powershell_launcher" in
+  *'$outputDir = "test-results/$safeLabel"'*'"--output=$outputDir"'*'$resultDir = Join-Path "test-results" $safeLabel'*) ;;
+  *) exit 1 ;;
+esac
