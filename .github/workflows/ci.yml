@@ -325,7 +325,7 @@ jobs:
     # automatically when their E2E_* env vars are absent, so CI runs the ungated
     # tests.
     name: E2E (real app, macOS, shard ${{ matrix.shard }}/4)
-    runs-on: macos-14
+    runs-on: macos-15
     # Sharded like the Linux lane. Serially the suite needs more than the
     # ceiling below, so an unsharded run was killed mid-suite and reported
     # nothing about the specs it never reached.
