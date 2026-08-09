@@ -199,7 +199,7 @@ jobs:
           node-version: 22
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.96.1
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
