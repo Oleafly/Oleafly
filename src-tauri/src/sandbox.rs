@@ -244,7 +244,19 @@ pub(crate) fn replace_file(source: &Path, destination: &Path) -> std::io::Result
 
 #[cfg(any(windows, test))]
 fn is_retryable_replace_error_code(code: Option<i32>) -> bool {
-    matches!(code, Some(5 | 32 | 33 | 1224))
+    const ERROR_ACCESS_DENIED: i32 = 5;
+    const ERROR_SHARING_VIOLATION: i32 = 32;
+    const ERROR_LOCK_VIOLATION: i32 = 33;
+    const ERROR_USER_MAPPED_FILE: i32 = 1224;
+    matches!(
+        code,
+        Some(
+            ERROR_ACCESS_DENIED
+                | ERROR_SHARING_VIOLATION
+                | ERROR_LOCK_VIOLATION
+                | ERROR_USER_MAPPED_FILE
+        )
+    )
 }
 
 /// Best-effort directory fsync after a successful rename. Never fails the
