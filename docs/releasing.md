@@ -52,6 +52,26 @@ in-app updater only *does* something once there are **two** published releases:
 the version a user has installed, and a newer one to update to. Your first
 release just establishes the baseline.
 
+## Live provider validation
+
+Publishing runs the agent contract tests against the real Anthropic and Google
+APIs, so a release can never ship an updater feed while a provider integration
+is broken. That needs two repository secrets, `ANTHROPIC_API_KEY` and
+`GOOGLE_API_KEY`.
+
+The gate is scoped to publishing, not to tagging:
+
+| Run | Secrets present | Result |
+| --- | --- | --- |
+| Tag push (draft) | yes | Contracts verified; draft is fully verified |
+| Tag push (draft) | no | Contracts skipped with a warning; draft still completes |
+| Publish | yes | Contracts must pass, or the release stays a draft |
+| Publish | no | Fails immediately; nothing is published |
+
+So a missing key never blocks cutting a draft, and never lets one reach users.
+If a draft carries the "never verified against the live providers" warning, add
+the secrets and re-run the workflow for the same tag before publishing.
+
 ## Gotchas
 
 - **The tag must match the manifests.** That's the whole job of
