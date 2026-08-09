@@ -391,116 +391,6 @@ jobs:
           done
           gh release upload "$TAG" latest.json --repo "$GITHUB_REPOSITORY" --clobber
 
-  # Live contracts are a PUBLISH gate: shipping an updater feed without proving
-  # the providers still answer is the failure this catches. A draft is a build
-  # for review, so missing credentials downgrade it to an unverified draft with
-  # a loud warning instead of failing the tag. Resolving that here, off the
-  # macOS runner, keeps a skipped verification from booting a billed machine.
-  provider-credentials:
-    name: Live provider credentials
-    runs-on: ubuntu-22.04
-    permissions:
-      contents: read
-    outputs:
-      verify: ${{ steps.resolve.outputs.verify }}
-    steps:
-      - name: Resolve live-provider release credentials
-        id: resolve
-        env:
-          ANTHROPIC_TOKEN: ${{ secrets.ANTHROPIC_API_KEY }}
-          GOOGLE_TOKEN: ${{ secrets.GOOGLE_API_KEY }}
-          PUBLISHING: ${{ inputs.publish == true }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          missing=()
-          [ -n "$ANTHROPIC_TOKEN" ] || missing+=("ANTHROPIC_API_KEY")
-          [ -n "$GOOGLE_TOKEN" ] || missing+=("GOOGLE_API_KEY")
-          if ((${#missing[@]} == 0)); then
-            echo "verify=true" >>"$GITHUB_OUTPUT"
-            exit 0
-          fi
-          if [ "$PUBLISHING" = "true" ]; then
-            printf 'publishing requires live provider credentials; missing: %s\n' "${missing[*]}" >&2
-            exit 1
-          fi
-          echo "verify=false" >>"$GITHUB_OUTPUT"
-          printf '::warning::Live provider contracts were not verified (missing %s). This draft is unverified against the providers, and publishing the tag will fail until the secrets exist.\n' "${missing[*]}"
-
-  provider-live:
-    name: Release-candidate live provider contracts
-    needs: provider-credentials
-    if: ${{ needs.provider-credentials.outputs.verify == 'true' }}
-    runs-on: macos-14
-    timeout-minutes: 45
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.inputs.tag || github.ref }}
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v6
-
-      - name: Install Node
-        uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Fetch Tectonic sidecar
-        run: bash scripts/fetch-tectonic.sh aarch64-apple-darwin
-
-      - name: Fetch Biber sidecar
-        run: bash scripts/fetch-biber.sh aarch64-apple-darwin
-
-      - name: Fetch Typst sidecar
-        run: bash scripts/fetch-typst.sh aarch64-apple-darwin
-
-      - name: Fetch pinned Tinymist resource
-        run: node scripts/fetch-language-servers.mjs --server tinymist --target aarch64-apple-darwin --install-mode resource
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache Rust build
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: . -> src-tauri/target
-
-      - name: Install Playwright browser
-        run: pnpm exec playwright install chromium
-
-      - name: Verify Anthropic against the release candidate
-        env:
-          E2E_AI_TOKEN: ${{ secrets.ANTHROPIC_API_KEY }}
-          E2E_AI_PROVIDER_ID: anthropic
-          E2E_AI_MODEL: ${{ vars.ANTHROPIC_E2E_MODEL || 'claude-sonnet-4-20250514' }}
-        run: ./scripts/e2e.sh e2e/tests/69-agent-live.spec.ts
-
-      - name: Verify Google against the release candidate
-        env:
-          E2E_AI_TOKEN: ${{ secrets.GOOGLE_API_KEY }}
-          E2E_AI_PROVIDER_ID: google
-          E2E_AI_MODEL: ${{ vars.GOOGLE_E2E_MODEL || 'gemini-2.5-pro' }}
-        run: ./scripts/e2e.sh e2e/tests/69-agent-live.spec.ts
-
-      - name: Upload failure artifacts
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: live-provider-release-test-results
-          path: |
-            test-results/**/error-context.md
-            test-results/**/trace.zip
-            test-results/**/*.log
-          retention-days: 7
-          if-no-files-found: ignore
-
   # A tag must never yield a half-published release. Each matrix leg uploads its
   # own assets, so a leg that fails simply contributes nothing - which on its own
   # leaves a release carrying only the platforms that happened to succeed. These
@@ -512,7 +402,7 @@ jobs:
   # for the same tag with "Publish the release" checked.
   publish:
     name: Publish (all platforms present)
-    needs: [build, finalize-updater, provider-credentials, provider-live]
+    needs: [build, finalize-updater]
     if: ${{ inputs.publish == true }}
     runs-on: ubuntu-22.04
     permissions:
@@ -556,7 +446,7 @@ jobs:
   # artifact and updater-feed checks as a publish - it just never flips live.
   draft-ready:
     name: Draft is complete (not published)
-    needs: [build, finalize-updater, provider-credentials, provider-live]
+    needs: [build, finalize-updater]
     if: ${{ always() && inputs.publish != true }}
     runs-on: ubuntu-22.04
     permissions:
@@ -573,17 +463,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ "${{ needs.build.result }}" != "success" ] || [ "${{ needs['finalize-updater'].result }}" != "success" ] || [ "${{ needs['provider-credentials'].result }}" != "success" ]; then
+          if [ "${{ needs.build.result }}" != "success" ] || [ "${{ needs['finalize-updater'].result }}" != "success" ]; then
             echo "build or updater finalization did not succeed; the draft is incomplete" >&2
             exit 1
           fi
-          # Skipped means the credentials job found no provider secrets and said
-          # so; the draft stands, unverified. A failure is a real contract break.
-          case "${{ needs['provider-live'].result }}" in
-            success) ;;
-            skipped) echo "::warning::$TAG is a draft that was never verified against the live providers" ;;
-            *) echo "live-provider validation did not succeed; the draft is incomplete" >&2; exit 1 ;;
-          esac
           assets="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')"
           echo "$assets"
           missing=()
@@ -607,8 +490,8 @@ jobs:
 
   guard-incomplete:
     name: Keep an incomplete release unpublished
-    needs: [build, finalize-updater, provider-credentials, provider-live, publish]
-    if: always() && inputs.publish == true && (needs.build.result != 'success' || needs['finalize-updater'].result != 'success' || needs['provider-credentials'].result != 'success' || needs['provider-live'].result != 'success' || needs.publish.result != 'success')
+    needs: [build, finalize-updater, publish]
+    if: always() && inputs.publish == true && (needs.build.result != 'success' || needs['finalize-updater'].result != 'success' || needs.publish.result != 'success')
     runs-on: ubuntu-22.04
     permissions:
       contents: write

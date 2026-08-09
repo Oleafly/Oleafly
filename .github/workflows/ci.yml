@@ -246,8 +246,15 @@ jobs:
     # the sharded Linux lane; billed macOS minutes stay for the runs that gate
     # releases.
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    name: E2E (real app, macOS)
+    name: E2E (real app, macOS, shard ${{ matrix.shard }}/4)
     runs-on: macos-14
+    # Sharded like the Linux lane. Serially the suite needs more than the
+    # ceiling below, so an unsharded run was killed mid-suite and reported
+    # nothing about the specs it never reached.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     # Hard ceiling well under the job cap: a systemically broken environment
     # (e.g. the webview failing to start) must fail fast, not burn billed
     # macOS minutes timing out 118 tests one by one.
@@ -357,13 +364,13 @@ jobs:
         # only unmasked the next. The caps still abandon a systemically broken
         # environment rather than timing out spec by spec, and --global-timeout
         # bounds the complete suite to 50 minutes.
-        run: ./scripts/e2e.sh --suite-max-failures=6 --max-failures=10 --global-timeout=3000000
+        run: ./scripts/e2e.sh --shard=${{ matrix.shard }}/4 --suite-max-failures=6 --max-failures=10 --global-timeout=3000000
 
       - name: Upload failure artifacts
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: e2e-test-results-macos
+          name: e2e-test-results-macos-shard-${{ matrix.shard }}
           # Only the small, useful debugging files. Avoids uploading the macOS
           # driver's ~1 GB per-run screencast blob that lives under test-results/.
           path: |
@@ -519,8 +526,14 @@ jobs:
     # via its own fixture, and scripts/e2e.ps1 is the launcher.
     # Slow lane: nightly + manual pre-release only (see the macOS job note).
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    name: E2E (real app, Windows)
+    name: E2E (real app, Windows, shard ${{ matrix.shard }}/4)
     runs-on: windows-2022
+    # Sharded like the Linux lane: serially this suite passed 246 tests and was
+    # still killed at the ceiling with specs unrun, so the result said nothing.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
@@ -622,13 +635,13 @@ jobs:
         shell: pwsh
         # Same reasoning as the macOS lane: report every failing spec in one
         # run instead of one per round.
-        run: powershell -File scripts/e2e.ps1 --suite-max-failures=6 --max-failures=10 --global-timeout=3000000
+        run: powershell -File scripts/e2e.ps1 --shard=${{ matrix.shard }}/4 --suite-max-failures=6 --max-failures=10 --global-timeout=3000000
 
       - name: Upload failure artifacts
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: e2e-test-results-windows
+          name: e2e-test-results-windows-shard-${{ matrix.shard }}
           # Only the small, useful debugging files. Avoids uploading the macOS
           # driver's ~1 GB per-run screencast blob that lives under test-results/.
           path: |
