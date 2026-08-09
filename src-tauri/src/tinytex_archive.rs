@@ -126,6 +126,20 @@ fn validate_tar_mode(path: &Path, mode: u32) -> Result<(), String> {
     Ok(())
 }
 
+fn validate_zip_member_mode(path: &Path, mode: u32) -> Result<(), String> {
+    let file_type = mode & 0o170000;
+    if file_type == 0o120000 {
+        return Err("TinyTeX ZIP contains an unsupported symbolic link.".into());
+    }
+    if !matches!(file_type, 0 | 0o040000 | 0o100000) {
+        return Err(format!(
+            "TinyTeX ZIP member {} has an unsupported file type.",
+            path.display()
+        ));
+    }
+    validate_tar_mode(path, mode)
+}
+
 fn validated_archive_path(path: &Path) -> Result<String, String> {
     let path_text = path
         .to_str()
@@ -280,17 +294,7 @@ fn inspect_zip(file: std::fs::File, policy: ArchiveMemberPolicy<'_>) -> Result<(
             .ok_or_else(|| "TinyTeX archive contains an unsafe member path.".to_string())?;
         let kind = if entry.is_dir() { "directory" } else { "file" };
         if let Some(mode) = entry.unix_mode() {
-            let file_type = mode & 0o170000;
-            if file_type == 0o120000 {
-                return Err("TinyTeX ZIP contains an unsupported symbolic link.".into());
-            }
-            if !matches!(file_type, 0 | 0o040000 | 0o100000) {
-                return Err(format!(
-                    "TinyTeX ZIP member {} has an unsupported file type.",
-                    path.display()
-                ));
-            }
-            validate_tar_mode(&path, mode)?;
+            validate_zip_member_mode(&path, mode)?;
         }
         manifest.record(kind, &path, entry.size(), None)?;
     }
